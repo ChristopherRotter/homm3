@@ -6,20 +6,6 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024). M3 (fidelity) below, refined at M2's closure (T5c) and agreed by the user there, each task about half a context; the exit: the reference set passes, or each difference is a listed fix or a classified quirk. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 H2 — The harness for batch E3: the underground, more heroes, the start's reads
-
-- **Scope:** (the adventure lane's request of 2026-10-13, survey
-  `docs/rules/surveys/E08-battles.md` §13; H1 done 2026-10-19: questions, the difficulty,
-  battles from the map, heroes' details, a tile's monster.) The underground (the panel's level
-  button, the view and minimap on level 1, its path arrows, a `walk` with a level: E3-4); the
-  hero list scrolled beyond its fifth row; the 156 heroes' experience at the start (E3-7: an
-  observation summing them up, its lowest and highest and how many at each); a second day (the
-  week's dialogs); a level-up dialog after a battle, if one shows. Tested on a shipped two-level
-  map until `h3-map`'s writer has the underground (the adventure lane's, with T22a).
-- **Acceptance:** each read and the underground walk shown on a shipped map; the runbook says
-  how.
-- **Depends on:** nothing (H1 done). **Status:** ready.
-
 ### E17 M3 T4b-2 — The log's text drawn
 
 - **Scope:** (T4b split with the user on 2026-10-19: T4b-1, the catalogue's format, the keys, the
@@ -115,6 +101,7 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 
 ## Inbox
 
+- 2026-10-19 (E17 H1, H2, done): **the harness's check grows with the adventure lane's tools**: once `h3-experiment` places monsters of other dispositions and guarded piles (E08 T22a), the check spec (`capture/checks/harness-check.toml`) gains a monster's offers (join, join for gold, flee) and a pile's question, which H1 checked only on a local map; once `h3-map`'s writer has the underground, a walk on level 1 (H2 showed it on the shipped `Arrogance`). A batch E3 recipe comes with T22a's spec (`capture/batches/`).
 - 2026-10-16 (the battle lane, E04c T10c; for your information): the original opens a town's gate as a defender begins its step onto hex 96 (the walker still on 97, then the step); the engine reports `GateOpened` after the `Moved` onto 96 (the same state): whether the viewer's animation opens it before the step. Your note of 2026-10-15 for the battle lane (the First Aid Tent's patient, idle war machines defending) is in the battle queue's inbox now.
 - 2026-10-15 (E17 M3 T3b): **for T8**: the battle waits for the heal's sound to end
   (`wait_for_sample` after `first_aid_tent_action`'s animation, design §7.15): at speed 0 the

@@ -136,3 +136,60 @@ field = "Diplomacy"
 field = "Logistics"
 [[encounter.record]]
 field = "anything odd"
+
+[[encounter]]
+id = "Lvl"
+title = "A battle that gives a level: the level-up dialog after it"
+questions = []
+procedure = ["Walk into the Pikemen; auto combat."]
+[encounter.hero]
+type = "Damacon"
+specialty = "resource gold"
+at = [3, 23]
+primary = [5, 5, 1, 1]
+army = [["Archangel", 20]]
+[encounter.opponent]
+monster = "Pikeman"
+count = 150
+[[encounter.record]]
+field = "level after"
+[[encounter.record]]
+field = "experience after"
+[[encounter.record]]
+field = "anything odd"
+
+[[encounter]]
+id = "Six"
+title = "A second day: a hero's points renewed"
+questions = []
+procedure = ["End both players' turns; walk one tile east on day 2."]
+[encounter.hero]
+type = "Grindan"
+specialty = "resource gold"
+at = [10, 3]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
+[[encounter.record]]
+field = "the date"
+[[encounter.record]]
+field = "points before the walk"
+[[encounter.record]]
+field = "anything odd"
+
+[[encounter]]
+id = "Seven"
+title = "The seventh hero of the list (scrolled); the heroes off the map at the start"
+questions = []
+procedure = ["Select the hero."]
+[encounter.hero]
+type = "Nagash"
+specialty = "resource gold"
+at = [10, 8]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
+[[encounter.record]]
+field = "the hero's tile"
+[[encounter.record]]
+field = "the heroes off the map: experience"
+[[encounter.record]]
+field = "anything odd"

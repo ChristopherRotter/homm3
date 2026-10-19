@@ -1092,3 +1092,25 @@ reads, a second day).
   user's, D5's random amounts within their ranges.
 - **For later:** H2; the guarded pile's question and a monster's offers in a committed check
   once h3-experiment places them (E08 T22a); a level-up dialog after a battle (not met yet).
+
+### H2 — The underground, more heroes, the start's reads, a second day (2026-10-19)
+
+The same session and branch as H1, right after it.
+
+- **Built:** `h3mem.py`: the level in a packed tile (bit 26), the path's arrows of both levels,
+  the map's levels, the date (game +0x1F63E); `h3adv.py`: `walk = [x, y, level]` (the panel's
+  level button, the minimap on that level, the hover checked with its level), the hero list
+  scrolled for a player with more than five heroes, `level_up` (the left or right skill of a
+  level-up dialog, `[button.ok_disabled]`), the observations `date`, `level_ups`,
+  `heroes:experience`; `h3drive.Game.start` ends a game left running first (two games on the
+  display made the dumps unreadable). The `adventure` probes leave out the level button.
+- **Checked:** the check recipe with three more Red heroes (seven: the list scrolled for the
+  sixth and seventh), a level-up (1 500 experience: level 2, the left skill taken), both turns
+  ended and a walk on day 2 (`month 1, week 1, day 2`, the day's 1 560 points), the heroes off
+  the map (147: 40 to 90). The underground on the shipped `Arrogance` (hot seat with four
+  humans, Purple's hero on level 1): a walk to (5, 8, 1) after the view was put on the surface,
+  three green marks on level 1, arrived.
+- **For later:** the underground in the check once `h3-map`'s writer places it; a committed
+  check of the monsters' offers and a guarded pile's question once `h3-experiment` places them
+  (E08 T22a).
+

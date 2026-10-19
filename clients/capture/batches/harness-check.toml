@@ -1,13 +1,19 @@
 # The capture harness's own check (E17 H1, *provisional*; capture/checks/harness-check.toml, the
 # runbook's "An experiment batch"): each thing the harness does on the adventure map, played on
-# Easy. A monster's questions wait for h3-experiment's dispositions (E08 T22a): until then they
+# Easy (E17 H1, H2). The underground waits for h3-map's writer (E17-log.md, H2: a shipped map). A monster's questions wait for h3-experiment's dispositions (E08 T22a): until then they
 # were checked on a local map (E17-log.md, H1).
 
 spec = "clients/capture/checks/harness-check.toml"
 players = ["Red", "Blue"]
 difficulty = "easy"
 
-# Day 1, Red: a battle fought by the computer, a retreat, a surrender, a hero's details.
+# Day 1, Red: the seventh hero of the list and the heroes off the map, a battle fought by the
+# computer, a retreat, a surrender, a hero's details, a level-up.
+
+[[step]]
+encounter = "Seven"
+hero = "Seven"
+record = { "the hero's tile" = "hero:tile", "the heroes off the map: experience" = "heroes:experience" }
 
 [[step]]
 encounter = "Win"
@@ -37,3 +43,26 @@ record = { "Red's gold before" = "before:resource:gold:red", "Blue's gold before
 encounter = "Exp"
 hero = "Exp"
 record = { "experience" = "hero:experience", "level" = "hero:level", "primary skills" = "hero:primary", "Diplomacy" = "hero:skill:Diplomacy", "Logistics" = "hero:skill:Logistics" }
+
+[[step]]
+encounter = "Lvl"
+hero = "Lvl"
+walk = [4, 23]
+battle = "auto"
+level_up = "left"
+expect = { question = "none", battle = true, dialogs = true }
+record = { "level after" = "hero:level", "experience after" = "hero:experience" }
+
+[[step]]
+end_turn = true
+
+[[step]]
+end_turn = true
+
+# Day 2, Red.
+
+[[step]]
+encounter = "Six"
+hero = "Six"
+walk = [11, 3]
+record = { "the date" = "date", "points before the walk" = "before:points" }

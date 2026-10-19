@@ -141,6 +141,9 @@ class Game:
                 if old.is_file():
                     old.unlink()
             shutil.copy(map_path, maps / Path(map_path).name)
+        # A game left running (an earlier run's `--keep`, an interrupted batch) takes the display
+        # and makes the dumps unreadable: end it first (E17 H2).
+        subprocess.run(["wineserver", "-k"], env=env(), check=False)
         if self.clock_dir.exists():
             shutil.rmtree(self.clock_dir)
         self.clock_dir.mkdir()

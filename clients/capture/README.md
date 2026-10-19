@@ -1,6 +1,6 @@
 # Reference captures: the runbook
 
-*Provisional* (E17 M1 T8, M2 T1, T3, T6, T4b-1, H1; ADR-0020 point 9; findings in `docs/epics/E17-design.md` §6).
+*Provisional* (E17 M1 T8, M2 T1, T3, T6, T4b-1, H1, H2; ADR-0020 point 9; findings in `docs/epics/E17-design.md` §6).
 The original game runs unattended in a Linux sandbox under Wine, on a virtual X display at 16 bits,
 so an XWD dump of the display is the original's own 5-6-5 screen and compares exactly with our
 renders. A script steers it through its menus by fixed coordinates and recognises each screen by a
@@ -21,7 +21,7 @@ enter git (they stay in the sandbox or `clients/out/`).
 | `screens.toml` | The screens the driver recognises: 12 probes `[x, y, 5-6-5 value]` each (numbers only). |
 | `h3cap.py` | `diff` (our render against a capture, with masks) and `find` (the original's obstacles in a capture); `compare` and `boxes_at` for the frame check. |
 | `h3mem.py` | Reads the running game's state from its memory: the battle's clocks, idle steps, active stack and the mouse's highlight, each stack's group, frame, hex, offsets and draw layer, and each side's hero's group and frame and its flag's frame (M3 T3a), the magic animation drawn and the stacks under it (M3 T3b), the battle's outcome (H1); the adventure map's players, heroes (with their experience, level, army and skills: H1), view and path, the difficulty, a tile's monster, the topmost dialog's text (H1; below). |
-| `h3adv.py` | The adventure map (M2 T6, H1): hot seat at a chosen difficulty, heroes, tiles clicked twice, questions answered, battles played, turns; `batch` plays an experiment batch and fills its results template, `compare` sets two filled templates side by side, `learn-button`. |
+| `h3adv.py` | The adventure map (M2 T6, H1, H2): hot seat at a chosen difficulty, heroes (the list scrolled), tiles of either level clicked twice, questions answered, battles played, level-ups chosen, turns; `batch` plays an experiment batch and fills its results template, `compare` sets two filled templates side by side, `learn-button`. |
 | `h3lod.py` | The original's text tables, read from the run directory's LODs at run time (H1): which record a dialog's text was written from (`ADVEVENT:86`); never their text. |
 | `batches/` | The batches' recipes: a spec's procedure as steps (`E08-batch-2.toml`), and the harness's own check (`harness-check.toml`, its spec in `checks/`). |
 | `../situations/` | The capture set: `set.toml` and its situations' scenario files; the recorded sequences, `sequences.toml`, their scenarios `seq-*.toml` and `timelines/`. |
@@ -176,8 +176,10 @@ was played), and `<out>/steps.jsonl`, each step's observation. E08 batch 2 (41 s
 three minutes, the check about two.
 
 A recipe is the spec's procedure as `[[step]]`s. A hero's step selects the hero (`hero`, its name
-on the map) and, with `walk`, clicks the tile once, reads the path's marks from memory, clicks it
-again and waits until the hero, its points and the players' resources rest, on the way:
+on the map; from the hero list, scrolled when the player has more than five) and, with `walk =
+[x, y]` (or `[x, y, level]`, 1 the underground: the view switches by the panel's level button),
+clicks the tile once, reads the path's marks from memory (on both levels), clicks it again and
+waits until the hero, its points and the players' resources rest, on the way:
 
 - **answering questions** (a monster's offer to join, to join for gold, to flee; a guarded pile's
   question): a dialog with both an OK and a Cancel button; its text, read from the game's memory,
@@ -191,6 +193,8 @@ again and waits until the hero, its points and the players' resources rest, on t
   stack defends until one of that side's acts, which then retreats or surrenders, the
   confirmation's OK clicked). The result window's OK (`[button.battle_ok]`) ends it. A battle the
   step does not plan stops the batch.
+- **choosing a level-up's skill**: the dialog whose OK stays disabled (`[button.ok_disabled]`)
+  until one of its two offered skills is clicked: `level_up = "left"` (the default) or `"right"`.
 - clicking any other dialog's OK.
 
 A step without `walk` only reads. `record` fills the template's fields and table rows from the
@@ -201,7 +205,9 @@ observation; `before:<observation>` reads the same before the step:
 | `arrived`, `moved` | yes or no: the hero stands on the tile; it left its tile |
 | `mark`, `marks`, `points`, `points_if_moved` | the target's path mark at the first click (green, red, none), the marks, the points left (if it moved) |
 | `resource:<name>[:<colour>]` | a resource of the hero's player (or of `red`, `blue`, …) |
-| `difficulty` | the game's difficulty |
+| `difficulty`, `date` | the game's difficulty; the date (`month 1, week 1, day 2`) |
+| `heroes:experience` | the heroes off the map (E3-7): `147 heroes: 40 to 90; 2 at 40, 1 at 90` |
+| `level_ups` | the level-up dialogs passed |
 | `question`, `questions` | the questions' kinds (`join, flee`; `none`), their records |
 | `battle`, `winner`, `retreated`, `surrendered` | yes or no; the side (`attacker`, `defender`, `none`) |
 | `stacks:start`, `stacks:end[:<side>]` | the battle's stacks (`attacker 20 Archangels \| defender 3 Pikemen, 2 Halberdiers`) |
@@ -243,6 +249,9 @@ button that shows in more than one place (a dialog's OK): `python3 capture/h3adv
 | Hot-seat names | OK | (340, 444) |
 | Any dialog | OK: found by `[button.ok]` | its corner + (33, 16) |
 | Adventure map | the hero list's row *i* (0 to 4) | (638, 227 + 32 *i*) |
+| Adventure map | the hero list's arrows: up, down (one row each) | (638, 203), (638, 379) |
+| Adventure map | the surface or the underground (the level button) | (725, 211) |
+| Level-up dialog | its two skills: left, right | the disabled OK's corner + (−150, −64), (−52, −64) |
 | Adventure map | tile (x, y) in the view at (vx, vy) | (24 + 32 (x − vx), 24 + 32 (y − vy)) |
 | Adventure map | the minimap (72 × 72 map): centre the view on (x, y) | (630 + 2x, 26 + 2y) |
 | Adventure map | end the turn | key `e` |
@@ -295,8 +304,11 @@ design §7.1.
   tile walks at once). The game also walks on the first click when the hero's path already ends
   on that tile; `walk` notes it under "anything odd".
 - On the adventure map a click on another of the player's heroes routes the selected hero to it
-  (a meeting): heroes are selected from the hero list only. The list's scrolling is not built: a
-  hero beyond its fifth row stops the batch.
+  (a meeting): heroes are selected from the hero list only. The list holds the heroes by their
+  type's number, not in the map's order; with more than five the harness scrolls it to its top
+  first, then down to the hero's row (H2).
+- The panel's level button changes with the map (enabled on a two-level map) and the level shown:
+  the `adventure` probes leave it out (H2).
 - The adventure panel takes the current player's colour: the `adventure` probes are the ones
   equal on Red's and Blue's turn (`adventure_map`, Red's, stays for the battle's recipes).
 - A player without towns gets a message at the end of its turn and at the start of its next

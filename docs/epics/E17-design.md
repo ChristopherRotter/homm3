@@ -657,8 +657,24 @@ batch") does it on the harness; everything a record holds is read from the game'
   for the map's 2/3/1/1 and Diplomacy and Logistics expert for basic and advanced (E3-6's
   question, for the adventure lane to judge). A player left without heroes and towns is out: with
   one human left the game ends in the Hall of Fame, so a map keeps each player a hero.
-- **Not built yet** (E17 H2): scrolling the hero list (more than five heroes), the underground,
-  the 156 heroes' experience at the start, a second day.
+- **The underground, more heroes, a level-up, a second day (E17 H2, 2026-10-19).** The packed
+  view and mouse tile hold the level in bit 26; the path's arrows are a u16 per tile level by
+  level, the underground's after the surface's. The panel's level button (725, 211) switches the
+  view (the minimap then shows that level); it is enabled only on a two-level map and changes
+  with the level shown, so the `adventure` probes leave it out. Shown on a shipped map
+  (`Arrogance`, four humans in hot seat, Purple's hero on level 1): the view switched from the
+  surface back to level 1, the path to (5, 8, 1) three green marks there, the hero arrived; `h3-map`'s
+  writer has no underground yet, so the check has none. The hero list holds the heroes by their
+  type's number, not in the map's order; its arrows at (638, 203) and (638, 379) move it a row
+  (no scroll position found in the adventure manager): with more than five heroes the harness
+  clicks up three times (eight heroes at most) and down to the hero's row, and checks the
+  selection in memory. A level-up after a battle shows two offered skills and keeps its OK
+  disabled until one is clicked (`[button.ok_disabled]`, probes on the pixels that change when it
+  is enabled); the skills sit at the OK's corner + (−150, −64) and (−52, −64). The date is game
+  +0x1F63E (day, week, month, u16 each). The heroes off the map at a new game (E3-7) held 40 to 90
+  in two runs (147 heroes; 1 and 4 at 90). A map hero's custom experience draws its level-ups at
+  the start: 5 000 gave level 5 in both runs, but 3/5/1/2 with Diplomacy expert in one and
+  3/4/2/2 with Diplomacy advanced in the other.
 
 
 ## 7. Animation timing (M2 T3)

@@ -60,9 +60,11 @@ BEGIN = (497, 553)  # scenario list
 DIFFICULTY_BUTTONS = (521, 478, 32)  # the scenario list's player difficulty: Easy's centre, the step
 PARK = (700, 300)  # over the right panel: no edge scrolls, no tile hovered
 HERO_LIST = (638, 227, 32, 5)  # the hero list's portraits: x, the first one's y, the step, rows
+LIST_UP, LIST_DOWN = (638, 203), (638, 379)  # the hero list's arrows (E17 H2)
 MAP_AREA = (8, 8, 18, 17)  # the map's screen area: its top-left, the tiles across and down
 TILE = 32
 RADAR = (630, 26, 144)  # the minimap: its top-left and side in pixels
+LEVEL_BUTTON = (725, 211)  # the panel's surface/underground button (E17 H2)
 CENTRE = (9, 8)  # a minimap click puts the clicked tile here in the view
 QUIET = 1.5  # seconds without a change: a walk or a visit is over
 STRANGE = 30  # seconds on an unknown screen without a dialog: the batch stops
@@ -161,7 +163,9 @@ def end_turn(game, mem):
 
 # -- the map: the view, tiles, heroes ------------------------------------------------------------
 def select(game, mem, name):
-    """Selects the current player's hero `name` from the hero list (the first five rows only)."""
+    """Selects the current player's hero `name` from the hero list. With more than five heroes
+    (E17 H2) the list is scrolled to its top first (three clicks on its up arrow: eight heroes at
+    most), then down until the hero's row shows; the selection is checked in memory."""
     hero = mem.hero_named(name)
     player = mem.player(mem.current_player())
     if hero["owner"] != player["colour"]:
@@ -170,8 +174,12 @@ def select(game, mem, name):
         return hero
     x, y, step, rows = HERO_LIST
     row = player["heroes"].index(hero["index"])
-    if row >= rows:
-        raise ValueError(f"{name} is row {row + 1} of the hero list: scrolling it is not built")
+    if len(player["heroes"]) > rows:
+        for _ in range(len(player["heroes"]) - rows):
+            game.click(*LIST_UP, 0.4)
+        for _ in range(max(0, row - rows + 1)):
+            game.click(*LIST_DOWN, 0.4)
+        row = min(row, rows - 1)
     game.click(x, y + step * row, 0.6)
     game.move(*PARK)
     wait_for(lambda: mem.player(player["colour"])["selected"] == hero["index"], f"select {name}")
@@ -186,8 +194,21 @@ def wait_for(test, what, limit=3.0):
         time.sleep(0.05)
 
 
-def centre(game, mem, x, y):
-    """Centres the view on tile (x, y) by a click on the minimap."""
+def show_level(game, mem, level):
+    """Shows the surface (0) or the underground (1) by the panel's level button (E17 H2)."""
+    if mem.view_level() == level:
+        return
+    if level >= mem.levels():
+        raise ValueError(f"the map has no level {level}")
+    game.click(*LEVEL_BUTTON, 0.5)
+    game.move(*PARK)
+    wait_for(lambda: mem.view_level() == level, f"the view on level {level}")
+
+
+def centre(game, mem, x, y, level=0):
+    """Centres the view on tile (x, y) of a level by a click on the minimap (which shows the level
+    the view shows)."""
+    show_level(game, mem, level)
     left, top, size = RADAR
     side = mem.i32(mem.game() + h3mem.MAP_SIDE)
     scale = size / side
@@ -206,11 +227,12 @@ def tile_point(mem, x, y):
     return left + TILE * (x - vx) + TILE // 2, top + TILE * (y - vy) + TILE // 2
 
 
-def hover(game, mem, x, y):
-    """Puts the mouse on tile (x, y) and waits until the game sees it there."""
+def hover(game, mem, x, y, level=0):
+    """Puts the mouse on tile (x, y) of the level the view shows and waits until the game sees it
+    there."""
     point = tile_point(mem, x, y)
     game.move(*point)
-    wait_for(lambda: mem.mouse_tile() == (x, y), f"the mouse on {(x, y)}")
+    wait_for(lambda: mem.mouse_tile() == (x, y, level), f"the mouse on {(x, y, level)}")
     return point
 
 
@@ -218,7 +240,7 @@ def observe(mem, index):
     """The hero by index (its type, which stays when it leaves the map) and every player's
     resources: what a step waits on and records."""
     hero = mem.hero(index)
-    return {"tile": hero["tile"][:2], "points": hero["points"], "owner": hero["owner"],
+    return {"tile": hero["tile"], "points": hero["points"], "owner": hero["owner"],
             "resources": {colour: mem.player(colour)["resources"] for colour in range(8)
                           if mem.player(colour)["heroes"] or colour == hero["owner"]}}
 
@@ -231,6 +253,9 @@ KINDS = {"ADVEVENT:86": "join", "ADVEVENT:88": "join for gold", "ADVEVENT:89+90"
 BATTLE_PARK = (420, 580)  # over the battle's panel, off the battlefield
 SIDES = ("attacker", "defender")
 BATTLE_KEYS = {"retreat": "r", "surrender": "s"}
+# The level-up dialog's two offered skills from its OK's corner, the OK disabled until one is
+# chosen (E17 H2, `[button.ok_disabled]`): a step's `level_up`, default the left one.
+LEVEL_UP_CHOICES = {"left": (-150, -64), "right": (-52, -64)}
 
 
 def reply(answer, kind):
@@ -297,13 +322,13 @@ def fight(game, mem, plan, limit=300.0):
     return record
 
 
-def settle(game, mem, index, answer=None, battle=None):
+def settle(game, mem, index, answer=None, battle=None, level_up="left"):
     """Waits until the hero, its points and the players' resources stay the same for QUIET
     seconds on the adventure map (the walk and any visit over), on the way answering each question
     as `answer` says, playing each battle as `battle` says and clicking any other dialog's OK;
     returns the observation and what happened: the dialogs passed, the questions (record, kind,
-    answer) and the battles (fight's records)."""
-    events = {"dialogs": 0, "questions": [], "battles": []}
+    answer), the battles (fight's records) and the level-ups (the skill chosen: `level_up`)."""
+    events = {"dialogs": 0, "questions": [], "battles": [], "level_ups": []}
     last, since, known = None, time.monotonic(), time.monotonic()
     end = time.monotonic() + 600
     while time.monotonic() < end:
@@ -318,6 +343,14 @@ def settle(game, mem, index, answer=None, battle=None):
         if game.matches("battle", pix):
             events["battles"].append(fight(game, mem, battle))
             last, since = None, time.monotonic()
+            continue
+        waiting = find_button(game, "ok_disabled", pix)
+        if waiting:
+            dx, dy = LEVEL_UP_CHOICES[level_up]
+            game.click(waiting[0][0] + dx, waiting[0][1] + dy, 0.5)
+            game.move(*PARK)
+            events["level_ups"].append(level_up)
+            last, since, known = None, time.monotonic(), time.monotonic()
             continue
         oks, cancels = find_button(game, "ok", pix), find_button(game, "cancel", pix)
         if oks or cancels:
@@ -347,16 +380,18 @@ def settle(game, mem, index, answer=None, battle=None):
     raise TimeoutError(f"hero {index} does not come to rest")
 
 
-def walk(game, mem, name, target, answer=None, battle=None):
+def walk(game, mem, name, target, answer=None, battle=None, level_up="left"):
     """Selects the hero, clicks the target tile once (the path shows: its marks are read) and
     again (the hero goes, or not, or visits what stands there), waits until it rests, answering
     questions and playing battles on the way (settle); returns the observation."""
     hero = select(game, mem, name)
     index = hero["index"]
-    (x0, y0), (x, y) = hero["tile"][:2], target
-    centre(game, mem, (x0 + x) // 2, (y0 + y) // 2)
+    x0, y0, z0 = hero["tile"]
+    x, y, z = (*target, 0) if len(target) == 2 else target
+    # Both ends in the view when they share a level, else the target alone (E17 H2).
+    centre(game, mem, *(((x0 + x) // 2, (y0 + y) // 2) if z == z0 else (x, y)), z)
     before = observe(mem, index)
-    game.click(*hover(game, mem, x, y), 0.3)
+    game.click(*hover(game, mem, x, y, z), 0.3)
     game.move(*PARK)
     time.sleep(0.3)
     path = mem.path()
@@ -364,14 +399,14 @@ def walk(game, mem, name, target, answer=None, battle=None):
     # before makes the first click walk.
     first_walked = observe(mem, index) != before
     if not first_walked:
-        game.click(*hover(game, mem, x, y), 0.3)
+        game.click(*hover(game, mem, x, y, z), 0.3)
         game.move(*PARK)
-    after, events = settle(game, mem, index, answer, battle)
+    after, events = settle(game, mem, index, answer, battle, level_up)
     colours = sorted(set(path.values()))
     return {
-        "hero": name, "index": index, "from": before["tile"], "target": [x, y],
-        "tile": after["tile"], "marks": len(path), "mark": path.get((x, y), "none"),
-        "path": colours, "arrived": after["tile"] == [x, y],
+        "hero": name, "index": index, "from": before["tile"], "target": list(target),
+        "tile": after["tile"], "marks": len(path), "mark": path.get((x, y, z), "none"),
+        "path": colours, "arrived": after["tile"] == [x, y, z],
         "moved": after["tile"] != before["tile"], "points_before": before["points"],
         "points": after["points"], "first_click_walked": first_walked, **events,
     }
@@ -419,6 +454,17 @@ def hero_value(mem, hero, field):
     raise ValueError(f"unknown hero detail `{field}`")
 
 
+def pool_experience(mem):
+    """The experience of the heroes off the map (E3-7: the start's draws): their number, the
+    lowest and the highest, and how many hold each of these."""
+    found = [h["experience"] for h in mem.all_heroes() if h["owner"] < 0]
+    if not found:
+        return "none"
+    low, high = min(found), max(found)
+    return (f"{len(found)} heroes: {low} to {high}; {found.count(low)} at {low}, "
+            f"{found.count(high)} at {high}")
+
+
 def stacks_text(mem, stacks, side=None):
     """A battle's stacks by side (`attacker 20 Archangels | defender 3 Pikemen, 2 Halberdiers`),
     or one side's."""
@@ -435,7 +481,7 @@ def value(obs, what, mem):
     `monster:`, `aggression:` and another hero's details)."""
     yes = {True: "yes", False: "no"}
     if what.startswith("before:"):
-        return value({**obs, "after": obs["before"]}, what.split(":", 1)[1], mem)
+        return value({"before": obs["before"], "after": obs["before"]}, what.split(":", 1)[1], mem)
     after = obs["after"]
     if what in ("arrived", "moved"):
         return yes[obs[what]]
@@ -451,6 +497,12 @@ def value(obs, what, mem):
         return str(after["resources"][owner][name])
     if what == "difficulty":
         return mem.difficulty()
+    if what == "date":
+        return "month {}, week {}, day {}".format(*mem.date())
+    if what == "level_ups":
+        return str(len(obs.get("level_ups", [])))
+    if what == "heroes:experience":
+        return pool_experience(mem)
     if what == "question":
         return ", ".join(q["kind"] for q in obs.get("questions", [])) or "none"
     if what == "questions":
@@ -579,7 +631,8 @@ def batch(recipe_path, map_path=None, out=None):
                 index = select(game, mem, step["hero"])["index"]
                 before = snapshot(mem, index)
                 obs = (walk(game, mem, step["hero"], step["walk"], step.get("answer"),
-                            step.get("battle")) if "walk" in step else {"hero": step["hero"]})
+                            step.get("battle"), step.get("level_up", "left"))
+                       if "walk" in step else {"hero": step["hero"]})
                 obs.update(before=before, after=snapshot(mem, index))
             obs["encounter"] = step.get("encounter")
             obs["record"] = {field: value(obs, what, mem)

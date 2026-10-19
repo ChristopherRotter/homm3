@@ -43,6 +43,8 @@ SKILLS = ("Pathfinding", "Archery", "Logistics", "Scouting", "Diplomacy", "Navig
 # Game (E17 H1): the difficulty (i8 +0x1F6D8, 0 easy to 4 impossible), the tiles (a pointer
 # +0x1FC40, level by level, row by row, 0x26 bytes each), two levels (u8 +0x1FC48).
 DIFFICULTY, TILES, TWO_LEVELS, TILE_SIZE = 0x1F6D8, 0x1FC40, 0x1FC48, 0x26
+# The date (E17 H2; H3API's H3Main date): the day of the week, the week and the month, u16 each.
+DATE = 0x1F63E
 DIFFICULTIES = ("easy", "normal", "hard", "expert", "impossible")
 # A tile (map_item): the class's word (u32 +0x0; a monster's count bits 0-11, aggression 12-16
 # signed, never flees 17, does not grow 18), class (i32 +0x1E), subclass (i16 +0x22).
@@ -59,8 +61,9 @@ WINDOW_MANAGER_POINTER, TOP_DIALOG, FIRST_ITEM, NEXT_ITEM, ITEM_ID, ITEM_TEXT = 
 # Player: the selected hero (i32 +0x4, -1 none), the hero count (i8 +0x1) and the heroes (i32[8]
 # +0x8, the hero list's order), the resources (i32[7] +0x9C).
 RESOURCES = ("wood", "mercury", "ore", "sulfur", "crystal", "gems", "gold")
-# Adventure manager: the arrows of the selected hero's path (u16 per tile of level 0, +0x48),
-# the view's top-left tile (+0xE4) and the tile under the mouse (+0xE8), both packed (unpack).
+# Adventure manager: the arrows of the selected hero's path (a pointer +0x48 to a u16 per tile,
+# level by level: the underground's after the surface's, E17 H2), the view's top-left tile (+0xE4)
+# and the tile under the mouse (+0xE8), both packed (unpack; the level in bit 26).
 PATH, VIEW, MOUSE_TILE = 0x48, 0xE4, 0xE8
 # A path arrow's frame: 0 none, 1 to 25 a move today (green), 26 to 50 a later one (red).
 GREEN_FRAMES = range(1, 26)
@@ -255,19 +258,31 @@ class Mem:
 
     def view(self):
         """The view's top-left tile (x, y): the screen's map area starts there at (8, 8)."""
-        return unpack(self.manager_field(VIEW))
+        return unpack(self.manager_field(VIEW))[:2]
+
+    def view_level(self):
+        """The level the view shows: 0 the surface, 1 the underground (E17 H2)."""
+        return unpack(self.manager_field(VIEW))[2]
 
     def mouse_tile(self):
-        """The tile under the mouse (x, y), as the game sees it."""
+        """The tile under the mouse (x, y, level), as the game sees it."""
         return unpack(self.manager_field(MOUSE_TILE))
 
+    def levels(self):
+        return 2 if self.read(self.game() + TWO_LEVELS, 1)[0] else 1
+
     def path(self):
-        """The selected hero's path as the map shows it: {(x, y): "green" | "red"}, level 0."""
+        """The selected hero's path as the map shows it: {(x, y, level): "green" | "red"}."""
         side = self.i32(self.game() + MAP_SIDE)
-        raw = self.read(self.manager_field(PATH), 2 * side * side)
-        frames = struct.unpack(f"<{side * side}H", raw)
-        return {(i % side, i // side): "green" if f in GREEN_FRAMES else "red"
-                for i, f in enumerate(frames) if f}
+        tiles = side * side * self.levels()
+        frames = struct.unpack(f"<{tiles}H", self.read(self.manager_field(PATH), 2 * tiles))
+        return {(i % side, i // side % side, i // (side * side)):
+                "green" if f in GREEN_FRAMES else "red" for i, f in enumerate(frames) if f}
+
+    def date(self):
+        """(month, week, day of the week), each from 1 (E17 H2)."""
+        day, week, month = struct.unpack("<3H", self.read(self.game() + DATE, 6))
+        return month, week, day
 
 
     def difficulty(self):
@@ -324,10 +339,10 @@ class Mem:
 
 
 def unpack(packed):
-    """A packed tile (x in bits 0-9, y in bits 16-25, each signed): (x, y). The bits between
-    belong to something else."""
+    """A packed tile (x in bits 0-9, y in bits 16-25, each signed, the level in bit 26): (x, y,
+    level). The bits between belong to something else."""
     x, y = packed & 0x3FF, (packed >> 16) & 0x3FF
-    return x - 1024 * (x >= 512), y - 1024 * (y >= 512)
+    return x - 1024 * (x >= 512), y - 1024 * (y >= 512), (packed >> 26) & 1
 
 
 def adventure_state(mem):

@@ -1,6 +1,6 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a done); the adventure lane's harness H1 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
@@ -320,8 +320,10 @@ it (`docs/rules/surveys/E08-battles.md` §13; the requests in the queue's inbox 
   before and after and a tile's monster from memory; `setup.sh` turns on the auto combat of
   creatures. The check recipe (`capture/batches/harness-check.toml`) plays each; batch 2 still
   reproduces.
-- H2 (queue): the underground, the hero list's scrolling, the 156 heroes' experience, a second
-  day.
+- **H2 done 2026-10-19** ([log](E17-log.md#h2--the-underground-more-heroes-the-starts-reads-a-second-day-2026-10-19)):
+  a `walk` onto either level (the view switched by the panel's button; shown on a shipped map),
+  the hero list scrolled beyond five heroes, a level-up's skill chosen, the heroes off the map's
+  experience, the date; the check recipe plays a second day.
 
 ### Later (refined when they come up)
 
