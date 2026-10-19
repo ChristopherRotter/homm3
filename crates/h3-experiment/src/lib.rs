@@ -707,6 +707,7 @@ pub fn build_only(
         roads,
         players,
         objects,
+        underground: None,
     };
     Ok((map, text))
 }
@@ -735,6 +736,7 @@ fn piles(p: &PileSpec, tables: &Tables, size: u8) -> Result<Vec<MapObject>, Stri
                 tile: (x, p.row),
                 template: template.clone(),
                 amount: p.amount,
+                guards: None,
             })
         })
         .collect())

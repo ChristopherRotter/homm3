@@ -1,9 +1,9 @@
 //! Writer for the subset of the SoD map format (`.h3m`, version `0x1C`) that staged experiments
-//! need (E04a T2, OPEN-QUESTIONS Q28): one level of a base terrain with rectangles of other
-//! terrains and straight east-west roads (E08 T10a), players without a main town, heroes with
-//! custom armies, skills, artifacts, spells and primary skills (or their hero type's own),
-//! wandering monsters, resource piles (E08 T16b), special grounds (E04c T3) and towns of a fixed
-//! faction (E04c T5b).
+//! need (E04a T2, OPEN-QUESTIONS Q28): a base terrain with rectangles of other terrains and
+//! straight east-west roads (E08 T10a), an underground level below it (E08 T22a1), players
+//! without a main town, heroes with custom armies, skills, artifacts, spells and primary skills
+//! (or their hero type's own), wandering monsters, resource piles (E08 T16b; guarded since E08
+//! T22a1), special grounds (E04c T3) and towns of a fixed faction (E04c T5b).
 //!
 //! Layout notes are in `docs/formats/h3m.md`. The field order follows VCMI 1.7.5's map reader
 //! (`lib/mapping/MapFormatH3M.cpp`, `MapReaderH3M.cpp`, `ObjectTemplate::readMap`; GPL-2.0-or-later,
@@ -336,7 +336,7 @@ pub struct Monster {
     pub fixed_count: bool,
 }
 
-/// A resource pile placed on the map (E08 T16b), without a message or guards.
+/// A resource pile placed on the map (E08 T16b), with or without guards (E08 T22a1).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Pile {
     /// Tile the pile stands on.
@@ -345,6 +345,31 @@ pub struct Pile {
     pub template: ObjectTemplate,
     /// Amount as the map stores it (0 = drawn when the game starts; `docs/formats/h3m.md`).
     pub amount: u32,
+    /// The guards; `None`: no message and no guards.
+    pub guards: Option<Guards>,
+}
+
+/// A pile's guards (E08 T22a1; ADV-PIK-004): the format keeps them in the pile's message
+/// (`docs/formats/h3m.md`, "Shared parts of the bodies").
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Guards {
+    /// The stacks (creature id, count) by slot; at least one.
+    pub army: [Option<(u16, u16)>; ARMY_SLOTS],
+    /// The message's text: the game shows it and asks before the battle (the engine's offer to
+    /// fight); empty, the guards fight at once.
+    pub question: String,
+}
+
+/// A map's underground level (E08 T22a1): a base terrain, rectangles of other terrains and the
+/// objects on it, as the surface's; no roads.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Underground {
+    /// Terrain of every tile no patch covers.
+    pub terrain: Terrain,
+    /// Rectangles of other terrains; a later patch covers an earlier one.
+    pub patches: Vec<Patch>,
+    /// Objects on the level, written after the surface's.
+    pub objects: Vec<MapObject>,
 }
 
 /// A special ground placed on the map (E04c T3): an object without a body, which heroes and
@@ -474,7 +499,8 @@ const ROAD_MIRRORED: u8 = 0x10;
 /// shore battlefield's tiles, from it, batch 3b).
 const COASTAL: u8 = 0x40;
 
-/// A map: one level, a base terrain, rectangles of other terrains and roads.
+/// A map: a base terrain, rectangles of other terrains, roads and objects on the surface, and
+/// an underground level if it has one.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Map {
     /// Name shown in the scenario list.
@@ -491,8 +517,22 @@ pub struct Map {
     pub roads: Vec<Road>,
     /// Players (index = colour); `None` = nobody plays this colour.
     pub players: [Option<Player>; PLAYERS],
-    /// Objects.
+    /// Objects on the surface.
     pub objects: Vec<MapObject>,
+    /// The underground level (E08 T22a1); `None`: the map has one level.
+    pub underground: Option<Underground>,
+}
+
+impl Map {
+    /// Every object with its level (0 the surface, 1 the underground), the surface's first: the
+    /// order they are written in.
+    fn placed(&self) -> impl Iterator<Item = (u8, &MapObject)> {
+        let below = self.underground.iter().flat_map(|u| &u.objects);
+        self.objects
+            .iter()
+            .map(|o| (0, o))
+            .chain(below.map(|o| (1, o)))
+    }
 }
 
 /// Writes `map` as an uncompressed SoD map.
@@ -506,7 +546,7 @@ pub fn write(map: &Map) -> Result<Vec<u8>, WriteError> {
     out.u32(SOD_FORMAT);
     out.bool(map.players.iter().any(Option::is_some));
     out.u32(u32::from(map.size));
-    out.bool(false); // no underground
+    out.bool(map.underground.is_some());
     out.string(&map.name)?;
     out.string(&map.description)?;
     out.u8(1); // difficulty: normal
@@ -526,25 +566,34 @@ pub fn write(map: &Map) -> Result<Vec<u8>, WriteError> {
     out.bytes(&[0; 4]); // no banned skills
     out.u32(0); // no rumors
     out.bytes(&[0; HERO_COUNT as usize]); // no customised hero types
-    write_terrain(&mut out, map);
+    write_terrain(&mut out, map.size, map.terrain, &map.patches, &map.roads);
+    if let Some(underground) = &map.underground {
+        write_terrain(
+            &mut out,
+            map.size,
+            underground.terrain,
+            &underground.patches,
+            &[],
+        );
+    }
     let templates = templates(map);
     out.u32(len32(templates.len()));
     for template in &templates {
         template.write(&mut out)?;
     }
-    out.u32(len32(map.objects.len()));
-    for (index, object) in map.objects.iter().enumerate() {
+    out.u32(len32(map.placed().count()));
+    for (index, (level, object)) in map.placed().enumerate() {
         let template = object_template(object);
         let template_index = templates.iter().position(|t| *t == template).unwrap_or(0);
         let (x, y) = position(object);
-        out.bytes(&[x, y, 0]);
+        out.bytes(&[x, y, level]);
         out.u32(len32(template_index));
         out.bytes(&[0; 5]);
         let identifier = len32(index).saturating_add(1);
         match object {
             MapObject::Hero(hero) => write_hero(&mut out, hero, identifier)?,
             MapObject::Monster(monster) => write_monster(&mut out, monster, identifier),
-            MapObject::Pile(pile) => write_pile(&mut out, pile),
+            MapObject::Pile(pile) => write_pile(&mut out, pile)?,
             MapObject::Ground(_) => {} // no body
             MapObject::Town(town) => write_town(&mut out, town, identifier),
         }
@@ -574,7 +623,8 @@ fn validate(map: &Map) -> Result<(), WriteError> {
     if ![36, 72, 108, 144].contains(&map.size) {
         return Err(out_of_range("map size", map.size));
     }
-    for patch in &map.patches {
+    let below = map.underground.iter().flat_map(|u| &u.patches);
+    for patch in map.patches.iter().chain(below) {
         if patch.from.0 > patch.to.0 || patch.from.1 > patch.to.1 {
             return Err(out_of_range("patch corners (from after to)", patch.from.0));
         }
@@ -595,7 +645,7 @@ fn validate(map: &Map) -> Result<(), WriteError> {
             return Err(out_of_range("road over another road (row)", road.row));
         }
     }
-    for object in &map.objects {
+    for (_, object) in map.placed() {
         let (x, y) = match object {
             MapObject::Hero(hero) => hero.tile,
             MapObject::Monster(monster) => monster.tile,
@@ -653,14 +703,7 @@ fn validate_hero(map: &Map, hero: &Hero) -> Result<(), WriteError> {
         }
     }
     if let Some(army) = &hero.army {
-        for &(creature, count) in army.iter().flatten() {
-            if creature >= CREATURE_COUNT {
-                return Err(out_of_range("creature", creature));
-            }
-            if count == 0 {
-                return Err(out_of_range("stack size", count));
-            }
-        }
+        validate_army(army)?;
     }
     if let Some(artifacts) = &hero.artifacts {
         let worn = artifacts.worn.iter().flatten();
@@ -696,6 +739,25 @@ fn validate_pile(pile: &Pile) -> Result<(), WriteError> {
     if pile.amount > MAX_PILE_AMOUNT {
         return Err(out_of_range("pile amount", pile.amount));
     }
+    if let Some(guards) = &pile.guards {
+        if guards.army.iter().all(Option::is_none) {
+            return Err(out_of_range("pile guards (no stack)", 0u8));
+        }
+        validate_army(&guards.army)?;
+    }
+    Ok(())
+}
+
+/// Every stack of an army names a creature the map may name and holds one or more.
+fn validate_army(army: &[Option<(u16, u16)>; ARMY_SLOTS]) -> Result<(), WriteError> {
+    for &(creature, count) in army.iter().flatten() {
+        if creature >= CREATURE_COUNT {
+            return Err(out_of_range("creature", creature));
+        }
+        if count == 0 {
+            return Err(out_of_range("stack size", count));
+        }
+    }
     Ok(())
 }
 
@@ -723,13 +785,8 @@ fn validate_town(map: &Map, town: &Town) -> Result<(), WriteError> {
     {
         return Err(out_of_range("town owner (no playable player)", owner));
     }
-    for &(creature, count) in town.garrison.iter().flatten().flatten() {
-        if creature >= CREATURE_COUNT {
-            return Err(out_of_range("creature", creature));
-        }
-        if count == 0 {
-            return Err(out_of_range("stack size", count));
-        }
+    if let Some(garrison) = &town.garrison {
+        validate_army(garrison)?;
     }
     if let TownBuildings::Custom { built, forbidden } = &town.buildings {
         let last = MAP_BUILDINGS % 8;
@@ -760,9 +817,8 @@ fn write_player(
     out.bool(false); // town not random
     out.bool(false); // no main town
     let heroes: Vec<u8> = map
-        .objects
-        .iter()
-        .filter_map(|object| match object {
+        .placed()
+        .filter_map(|(_, object)| match object {
             MapObject::Hero(hero) if usize::from(hero.owner) == colour => Some(hero.hero_type),
             _ => None,
         })
@@ -785,28 +841,28 @@ fn write_player(
     Ok(())
 }
 
-fn write_terrain(out: &mut Out, map: &Map) {
-    let size = usize::from(map.size);
+/// One level's tiles, row by row: its base terrain, the patches over it, the roads on it.
+fn write_terrain(out: &mut Out, side: u8, base: Terrain, patches: &[Patch], roads: &[Road]) {
+    let size = usize::from(side);
     let terrain_at = |x: u8, y: u8| {
-        map.patches
+        patches
             .iter()
             .rev()
             .find(|patch| patch.covers(x, y))
-            .map_or(map.terrain, |patch| patch.terrain)
+            .map_or(base, |patch| patch.terrain)
     };
     let coastal = |x: u8, y: u8| {
-        let near = |c: u8| c.saturating_sub(1)..=c.saturating_add(1).min(map.size - 1);
+        let near = |c: u8| c.saturating_sub(1)..=c.saturating_add(1).min(side - 1);
         near(y).any(|ny| near(x).any(|nx| terrain_at(nx, ny) == Terrain::Water))
     };
-    for (index, (y, x)) in (0..map.size)
-        .flat_map(|y| (0..map.size).map(move |x| (y, x)))
+    for (index, (y, x)) in (0..side)
+        .flat_map(|y| (0..side).map(move |x| (y, x)))
         .enumerate()
     {
         let terrain = terrain_at(x, y);
         // A deterministic spread over the eight interior pictures (the editor picks randomly).
         let variant = ((index * 7 + index / size * 3) % 8) as u8;
-        let road = map
-            .roads
+        let road = roads
             .iter()
             .filter(|road| road.row == y)
             .find_map(|road| Some((road.kind as u8, road.picture(x)?)));
@@ -839,7 +895,7 @@ fn object_template(object: &MapObject) -> ObjectTemplate {
 /// Distinct templates in order of first use.
 fn templates(map: &Map) -> Vec<ObjectTemplate> {
     let mut templates: Vec<ObjectTemplate> = Vec::new();
-    for object in &map.objects {
+    for (_, object) in map.placed() {
         let template = object_template(object);
         if !templates.contains(&template) {
             templates.push(template);
@@ -882,11 +938,7 @@ fn write_hero(out: &mut Out, hero: &Hero, identifier: u32) -> Result<(), WriteEr
     }
     out.bool(hero.army.is_some());
     if let Some(army) = &hero.army {
-        for slot in army {
-            let (creature, count) = slot.unwrap_or((0xffff, 0));
-            out.u16(creature);
-            out.u16(count);
-        }
+        write_army(out, army);
     }
     out.bool(hero.tight_formation);
     out.bool(hero.artifacts.is_some());
@@ -924,12 +976,28 @@ fn write_monster(out: &mut Out, monster: &Monster, identifier: u32) {
     out.bytes(&[0, 0]);
 }
 
-/// A pile's body as the editor writes one without a message: the message flag, the amount and 4
-/// unused bytes (`docs/formats/h3m.md`, classes 76 and 79).
-fn write_pile(out: &mut Out, pile: &Pile) {
-    out.bool(false); // no message (and so no guards)
+/// A pile's body (`docs/formats/h3m.md`, classes 76 and 79): the message (unguarded: none;
+/// guarded: its text, the guards' flag and army, 4 unused bytes), the amount and 4 unused bytes.
+fn write_pile(out: &mut Out, pile: &Pile) -> Result<(), WriteError> {
+    out.bool(pile.guards.is_some());
+    if let Some(guards) = &pile.guards {
+        out.string(&guards.question)?;
+        out.bool(true);
+        write_army(out, &guards.army);
+        out.bytes(&[0; 4]);
+    }
     out.u32(pile.amount);
     out.bytes(&[0; 4]);
+    Ok(())
+}
+
+/// An army's seven slots, `0xFFFF` for an empty one.
+fn write_army(out: &mut Out, army: &[Option<(u16, u16)>; ARMY_SLOTS]) {
+    for slot in army {
+        let (creature, count) = slot.unwrap_or((0xffff, 0));
+        out.u16(creature);
+        out.u16(count);
+    }
 }
 
 /// A town's body (`docs/formats/h3m.md`, classes 77 and 98): no name, no required or banned
@@ -940,11 +1008,7 @@ fn write_town(out: &mut Out, town: &Town, identifier: u32) {
     out.bool(false); // no custom name
     out.bool(town.garrison.is_some());
     if let Some(garrison) = &town.garrison {
-        for slot in garrison {
-            let (creature, count) = slot.unwrap_or((0xffff, 0));
-            out.u16(creature);
-            out.u16(count);
-        }
+        write_army(out, garrison);
     }
     out.bool(town.tight_formation);
     match &town.buildings {
@@ -1077,6 +1141,7 @@ mod tests {
                     fixed_count: true,
                 }),
             ],
+            underground: None,
         }
     }
 
@@ -1159,7 +1224,7 @@ mod tests {
         });
         assert!(write(&map).is_ok());
         let mut out = Out::default();
-        write_terrain(&mut out, &map);
+        write_terrain(&mut out, map.size, map.terrain, &map.patches, &map.roads);
         let bytes = out.0;
         assert_eq!(bytes.len(), 7 * 36 * 36);
         let tile = |x: usize, y: usize| &bytes[7 * (y * 36 + x)..][..7];
@@ -1384,6 +1449,7 @@ mod tests {
             tile: (7, 9),
             template: template.clone(),
             amount: 0x0006_0304,
+            guards: None,
         }));
         let bytes = write(&map).unwrap();
         assert_eq!(templates(&map).len(), 3);
@@ -1409,6 +1475,122 @@ mod tests {
         assert!(with_pile(&|p| p.tile = (36, 0)).is_err());
         assert!(with_pile(&|p| p.amount = MAX_PILE_AMOUNT).is_ok());
         assert!(with_pile(&|p| p.amount = MAX_PILE_AMOUNT + 1).is_err());
+    }
+
+    #[test]
+    fn guarded_piles_carry_their_guards_in_the_message() {
+        let mut map = smoke_like_map();
+        let mut army = [None; ARMY_SLOTS];
+        army[2] = Some((0, 12));
+        map.objects.push(MapObject::Pile(Pile {
+            tile: (7, 9),
+            template: ObjectTemplate::from_objects_txt(WOOD).unwrap(),
+            amount: 5,
+            guards: Some(Guards {
+                army,
+                question: "Q?".into(),
+            }),
+        }));
+        let bytes = write(&map).unwrap();
+        // The body after the object's 12 bytes: the message flag, its text, the guards' flag and
+        // army, 4 unused bytes; the amount and 4 unused bytes; then the event count.
+        let body = &bytes[bytes.len() - 4 - 48..bytes.len() - 4];
+        assert_eq!(&body[..7], &[1, 2, 0, 0, 0, b'Q', b'?']);
+        assert_eq!(body[7], 1);
+        let mut stacks = Vec::new();
+        for slot in body[8..36].chunks(4) {
+            stacks.push((
+                u16::from_le_bytes([slot[0], slot[1]]),
+                u16::from_le_bytes([slot[2], slot[3]]),
+            ));
+        }
+        let empty = (0xffff, 0);
+        assert_eq!(stacks, [empty, empty, (0, 12), empty, empty, empty, empty]);
+        assert_eq!(&body[36..], &[0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0]);
+        let with_guards = |f: &dyn Fn(&mut Guards)| {
+            let mut map = map.clone();
+            if let Some(MapObject::Pile(Pile {
+                guards: Some(guards),
+                ..
+            })) = map.objects.last_mut()
+            {
+                f(guards);
+            }
+            write(&map)
+        };
+        // No question: an empty text, the guards fight at once.
+        let at_once = with_guards(&|g| g.question.clear()).unwrap();
+        assert_eq!(at_once.len(), bytes.len() - 2);
+        assert!(with_guards(&|g| g.army = [None; ARMY_SLOTS]).is_err());
+        assert!(with_guards(&|g| g.army[0] = Some((CREATURE_COUNT, 1))).is_err());
+        assert!(with_guards(&|g| g.army[0] = Some((1, 0))).is_err());
+        assert!(with_guards(&|g| g.question = "\u{100}".into()).is_err());
+    }
+
+    #[test]
+    fn the_underground_follows_the_surface() {
+        let mut map = smoke_like_map();
+        let one_level = write(&map).unwrap();
+        let MapObject::Hero(mut below) = map.objects[0].clone() else {
+            panic!("the smoke map's first object is a hero")
+        };
+        below.tile = (3, 4);
+        below.hero_type = 1;
+        map.underground = Some(Underground {
+            terrain: Terrain::Subterranean,
+            patches: vec![Patch {
+                terrain: Terrain::Rock,
+                from: (0, 0),
+                to: (35, 1),
+            }],
+            objects: vec![MapObject::Hero(below.clone())],
+        });
+        let bytes = write(&map).unwrap();
+        // The header's flag, the second level's tiles after the first's, the hero's object.
+        assert_eq!(&bytes[4..10], &[1, 36, 0, 0, 0, 1]);
+        let mut out = Out::default();
+        write_hero(&mut out, &below, 3).unwrap();
+        // The second level's tiles, Red's second hero in its list (type and an empty name), the
+        // hero's object (12 bytes and its body).
+        assert_eq!(
+            bytes.len(),
+            one_level.len() + 7 * 36 * 36 + 5 + 12 + out.0.len()
+        );
+        let find = |level: &[u8]| bytes.windows(level.len()).position(|w| w == level).unwrap();
+        let mut surface = Out::default();
+        write_terrain(&mut surface, 36, map.terrain, &map.patches, &map.roads);
+        let mut out = Out::default();
+        let u = map.underground.as_ref().unwrap();
+        write_terrain(&mut out, 36, u.terrain, &u.patches, &[]);
+        assert_eq!(find(&out.0), find(&surface.0) + 7 * 36 * 36);
+        assert_eq!((out.0[0], out.0[7 * 36 * 2]), (9, 6));
+        // Red's heroes: the surface's, then the underground's.
+        let mut out = Out::default();
+        write_player(&mut out, &map, 0, map.players[0].as_ref()).unwrap();
+        assert_eq!(
+            &out.0[out.0.len() - 14..],
+            &[2, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0]
+        );
+        assert_eq!(
+            map.placed().map(|(level, _)| level).collect::<Vec<_>>(),
+            [0, 0, 1]
+        );
+        let with_level = |f: &dyn Fn(&mut Underground)| {
+            let mut map = map.clone();
+            f(map.underground.as_mut().unwrap());
+            write(&map)
+        };
+        assert!(with_level(&|u| u.patches[0].to = (36, 1)).is_err());
+        assert!(with_level(&|u| u.patches[0].from = (1, 2)).is_err());
+        assert!(
+            with_level(&|u| {
+                if let MapObject::Hero(h) = &mut u.objects[0] {
+                    h.tile = (35, 4);
+                }
+            })
+            .is_err()
+        );
+        assert!(with_level(&|u| u.objects.clear()).is_ok());
     }
 
     #[test]

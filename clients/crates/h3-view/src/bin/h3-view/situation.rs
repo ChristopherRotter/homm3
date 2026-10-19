@@ -356,6 +356,7 @@ fn map(
         roads: Vec::new(),
         players,
         objects: vec![hero((tile.0 - 1, tile.1), 0)?, hero(tile, 1)?],
+        underground: None,
     })
 }
 
