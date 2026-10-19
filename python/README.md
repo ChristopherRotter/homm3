@@ -28,11 +28,11 @@ import numpy as np
 import h3env
 
 batch = h3env.BattleBatch(64, threads=4, seed=1)
-batch.add_encounters()              # or add_scenario(text, attacker="external", defender="random")
+batch.add_encounters()  # or add_scenario(text, attacker="external", defender="random")
 batch.reset()
 rng = np.random.default_rng(1)
 for _ in range(1000):
-    batch.random_actions(rng)       # a policy fills batch.actions from batch.obs and the masks
+    batch.random_actions(rng)  # a policy fills batch.actions from batch.obs and the masks
     batch.step()
 ```
 

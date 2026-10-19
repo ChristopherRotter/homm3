@@ -9,8 +9,7 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   T4; #252) done. **Increment 3:** T5a (#253), T5b1 and T5b2 (#255, after the shared #254) merged;
   **T6a** (the Python binding on Linux, `python/`, design §5) on the session branch
   `claude/trusting-tesla-0b0n8o` (2026-10-19), its pull request opened when ready. The shared
-  pull request `shared/bench-ai-workloads` (the batch workloads' rows in `benches/README.md`) is
-  open beside it. **Next:** T6b (PyTorch's index; Windows), then the user's checkpoint of
+  #256 (the batch workloads' rows in `benches/README.md`) is open beside it. **Next:** T6b (PyTorch's index; Windows), then the user's checkpoint of
   increment 3.
 - **Order** (BACKLOG): E05, then E23 (the battle lane: the system actor's policy), then E06.
 - **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v28 (T5b2) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q5, AI-QUIRK-1, AI-STUB-1.
