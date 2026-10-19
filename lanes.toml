@@ -122,6 +122,7 @@ paths = [
     "docs/epics/E02*",
     "docs/epics/E03*",
     "docs/epics/E04*",
+    "docs/epics/E23*",
     "docs/lanes/battle/",
 ]
 
