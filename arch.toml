@@ -229,8 +229,10 @@ dev_external = []
 layer = "adapter"
 logic = false
 # h3-game and h3-adventure: AdventureEnv in the adventure-owned src/adventure/ (ADR-0017 point 8).
-deps = ["h3-kernel", "h3-content", "h3-content-battle", "h3-contracts", "h3-battle", "h3-adventure", "h3-game"]
-external = []
+# h3-heroes, serde and toml: the encounter sampler (E05 T5b) reads its versioned TOML files and
+# derives a sampled hero's battle values.
+deps = ["h3-kernel", "h3-content", "h3-content-battle", "h3-contracts", "h3-battle", "h3-adventure", "h3-game", "h3-heroes"]
+external = ["serde", "toml"]
 dev_deps = ["h3-pack-battle", "h3-map", "h3-pack-adventure"]
 dev_external = ["proptest", "criterion"]
 
