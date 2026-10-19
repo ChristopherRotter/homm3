@@ -74,3 +74,10 @@ side); `--eval-every` minutes apart and at the end. Every `h3env.train.Config` f
 `checkpoint.pt` (the network and the optimizer at the last evaluation). The criterion of E05's
 exit 7: the final evaluation's sampled `win_rate` at least 0.8 (greedy play can repeat itself
 against Random until the step limit).
+
+A checkpoint against Random and the baseline bots (E05 T7), on the episodes of `h3 ai eval`'s
+table (`cargo run --release -p h3-cli -- ai eval`):
+
+```sh
+uv run --group train python -m h3env.train.ladder --checkpoint runs/pool/best.pt
+```

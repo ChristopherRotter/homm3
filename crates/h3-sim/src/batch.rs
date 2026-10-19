@@ -37,6 +37,7 @@ use crate::action::{
     ACTION_COUNT, Action, ActionMask, CREATURE_CAST, HERO_CAST, RETREAT, SPELL_COUNT, SURRENDER,
     SpellMask, TARGET_COUNT, TargetMask,
 };
+use crate::bots;
 use crate::encounter::{Kind, Sampler};
 use crate::env::{BattleEnv, StepError};
 use crate::observation::OBSERVATION_LEN;
@@ -58,6 +59,10 @@ pub enum Policy {
     /// Uniformly random legal commands that fight the battle out ([`rollout::choose`]): for
     /// tests and benchmarks only.
     Random,
+    /// The baseline bot [`bots::aggressor`] (E05 T7): the nearest enemy first.
+    Aggressor,
+    /// The baseline bot [`bots::greedy`] (E05 T7): the most valuable previewed kills first.
+    Greedy,
 }
 
 impl Policy {
@@ -71,6 +76,8 @@ impl Policy {
     ) -> Command {
         match self {
             Self::Random => rollout::pick(env, side, rng, legal),
+            Self::Aggressor => bots::aggressor(env.state(), env.ruleset(), side, legal),
+            Self::Greedy => bots::greedy(env.state(), env.ruleset(), side, legal),
         }
     }
 }

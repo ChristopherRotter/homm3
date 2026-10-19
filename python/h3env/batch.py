@@ -17,7 +17,12 @@ from . import _ffi
 from ._ffi import H3Error
 
 #: Seat names for `add_scenario` (`H3_SEAT_*`).
-SEATS = {"external": _ffi.SEAT_EXTERNAL, "random": _ffi.SEAT_RANDOM}
+SEATS = {
+    "external": _ffi.SEAT_EXTERNAL,
+    "random": _ffi.SEAT_RANDOM,
+    "aggressor": _ffi.SEAT_AGGRESSOR,
+    "greedy": _ffi.SEAT_GREEDY,
+}
 
 
 def episode_seed(batch_seed: int, env: int, episode: int) -> int:
@@ -170,7 +175,8 @@ class BattleBatch:
     ) -> None:
         """Adds a scenario's text (the format of `packs/synthetic/scenarios/`) with its seats.
 
-        Seats: `"external"` (the caller acts) or `"random"` (uniformly random legal commands inside
+        Seats: `"external"` (the caller acts), `"aggressor"` or `"greedy"` (the baseline bots inside
+        the call, v30) or `"random"` (uniformly random legal commands inside
         the call; tests); at least one external. Every side plays as a human player's whatever the
         scenario says (ADR-0025 point 6).
         """

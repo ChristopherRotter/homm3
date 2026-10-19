@@ -413,3 +413,32 @@ steps/s on the sandbox's 4 cores (`threads = 4`).
   the user's machine with the GTX 1070.
 - **Determinism:** the env is deterministic; torch on a GPU is not bit for bit. Seeds are set and
   recorded; a run is reproduced in its numbers, not bitwise. Nothing here is a gate.
+
+## 9. Baselines (T7) — built 2026-10-19 (AI-Q6)
+
+Increment 5, cut at the user's checkpoint (2026-10-19): the bots as internal seats, the runner,
+the trained network's row. The user's decisions: two bots (Aggressor, Greedy value); their
+damage estimate is the engine's preview of their own attack (AI-Q6, ADR-0025 point 5 amended),
+never of the retaliation; the ratings are the server's Glicko-2, copied.
+
+- **The preview** (`h3_battle::preview`, BAT-DMG-011; the AI lane's `cross-lane` change, #274):
+  for an attack or shot that validates, the first strike's least and greatest damage and kills,
+  every stage of the real strike, none of the rolls. Leaves out the retaliation, a second strike,
+  secondary targets and reflection (the user: the original shows none of them); the agents'
+  encodings may carry it later (AI-Q7).
+- **The bots** (`h3_sim::bots`, `Policy::Aggressor`, `Policy::Greedy`): read their side's
+  observation, the creature data and the preview; never cast; deterministic (ties to the command
+  listed first). Aggressor: shoot the nearest enemy it can shoot, else attack the nearest it can
+  reach, else walk toward the nearest. Greedy: the shot or attack with the greatest previewed
+  kills × `ai_value`, less its own estimate of the retaliation (the survivors' mean damage scaled
+  by attack against defense in per mille, as BAT-DMG-002's first stage: integers only), else walk
+  toward the most valuable enemy (count × `ai_value`).
+- **Seats** (C ABI v30): `H3_SEAT_AGGRESSOR` (2), `H3_SEAT_GREEDY` (3); Python's `"aggressor"`,
+  `"greedy"` for `add_scenario` and `add_encounters`.
+- **`h3 ai eval`** (`h3-cli`'s `src/ai/eval.rs`): every ordered pair of policies on the same
+  held-out encounters, the episode seeds of the Python evaluation (`EVAL_SEED`, 100 envs × 10);
+  per pair the win rate (both sides weighed equally, a draw or truncation no win) and value
+  efficiency (the mean reward v1); Glicko-2 ratings (`src/ai/rating.rs`, copied from
+  `h3-server`), each game one rating period, episode by episode in a fixed order of the pairs.
+- **The network's row:** `python -m h3env.train.ladder --checkpoint <run>/best.pt` plays the
+  sampled policy against `random`, `aggressor` and `greedy` on the same episodes.

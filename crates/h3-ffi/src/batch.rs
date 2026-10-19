@@ -27,6 +27,10 @@ pub const H3_ERR_NOT_READY: i32 = -6;
 pub const H3_SEAT_EXTERNAL: i32 = 0;
 /// `H3Seats`: uniformly random legal commands played inside the call (tests and benchmarks).
 pub const H3_SEAT_RANDOM: i32 = 1;
+/// `H3Seats`: the baseline bot Aggressor inside the call (v30, E05 T7; `h3_sim::bots`).
+pub const H3_SEAT_AGGRESSOR: i32 = 2;
+/// `H3Seats`: the baseline bot Greedy inside the call (v30, E05 T7; `h3_sim::bots`).
+pub const H3_SEAT_GREEDY: i32 = 3;
 
 /// `H3BatchBuffers.encounter`: the env's scenario is no encounter distribution.
 pub const H3_ENCOUNTER_NONE: i32 = -1;
@@ -143,6 +147,8 @@ fn seat(code: i32) -> Option<Seat> {
     match code {
         H3_SEAT_EXTERNAL => Some(Seat::External),
         H3_SEAT_RANDOM => Some(Seat::Internal(Policy::Random)),
+        H3_SEAT_AGGRESSOR => Some(Seat::Internal(Policy::Aggressor)),
+        H3_SEAT_GREEDY => Some(Seat::Internal(Policy::Greedy)),
         _ => None,
     }
 }
