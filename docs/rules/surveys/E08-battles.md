@@ -24,8 +24,12 @@ increments' parts are marked *(inc. 4)* or *(inc. 5)*. Input, not rules (`README
   [Wandering creature](https://heroes.thelazy.net/index.php/Wandering_creature),
   [Diplomacy](https://heroes.thelazy.net/index.php/Diplomacy). Re-check a fact against the page
   before a rule cites it with `high` confidence.
-- `maps`: a census of the 164 maps shipped with the user's installation, read with `h3-map`
-  (a throwaway example, not committed).
+- `maps`: a census of the 164 maps of the user's installation, read with `h3-map`
+  (a throwaway example, not committed). Four of them turned out to be the user's own
+  (`experiment`, `Untitled`, edited copies of `All for One` and `Terrible Rumor`; removed on
+  2026-10-18): the counts below include them; the 160 shipped maps' census, as far as
+  `crates/h3-map/examples/original_data.rs` reproduces it, is `docs/formats/h3m.md`'s "Import"
+  (E08 T21b).
 - Earlier surveys this one builds on: `E04-battle.md` §2–§4 (retreat, surrender, the outcome:
   experience, artifacts, war machines, Necromancy; batch 1b's answers in `E04a-log.md`),
   `E04c-battlefields.md` §4 (the battlefield from the tile), `E08-objects.md` (visits, pickups).
@@ -74,7 +78,7 @@ Where the reading agrees with VCMI or the wiki the fact has its consensus
 
 Class 54 is a monster of a fixed creature (its subclass is the creature id); classes 71 (any
 level), 72–75 (levels 1–4) and 162–164 (levels 5–7) are random monsters (`maps`: the body is the
-same for all nine, `h3_map::model::MonsterBody`). The census of the 164 shipped maps:
+same for all nine, `h3_map::model::MonsterBody`). The census of the 164 maps (`maps`: the user's four among them; over the 160 shipped, 13 863 monsters, 355 treasures, 53 with an artifact):
 
 | What | Count |
 |---|---|
@@ -87,7 +91,7 @@ same for all nine, `h3_map::model::MonsterBody`). The census of the 164 shipped 
 
 Of the 9 maps that import whole today (`docs/formats/h3m.md`, "Import"), 7 hold monsters, as
 inert blockers: `Adventures of Jared Haret` (24), `Faeries` (35), `Knee Deep in the Dead` (26),
-`Pandora's Box ` (232), `Race for Ardintinny` (93), `Unholy Quest` (52), `experiment` (25).
+`Pandora's Box ` (232), `Race for Ardintinny` (93), `Unholy Quest` (52), `experiment` (25, the user's own).
 
 ### 1.2 What the loader keeps (0x5013B0)
 

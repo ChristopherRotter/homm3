@@ -23,7 +23,9 @@ cross-platform determinism check (ADR-0003 §11, E01 exit criterion 2).
 | `siege-s7.toml` | siege | 7 | 8 (E04c T5: the skirmish's armies at the vale's Citadel with a damaging moat of two rows; re-recorded in E04c T6, when Brea leads the attacker with her Catapult at Advanced Ballistics, Hurlers and Quake: her Catapult's shots miss onto other walls and bring down two of them and the keep, the Hurlers destroy the gate, two Quakes hit an absent tower (BAT-QUIRK-22) and bring down the other two walls; re-recorded in E04c T7, when the vale's Citadel sets up its keep of seven Spires, 4 + the town's three structures, which shoots first every round on its own, BAT-SIE-016; the attacker still wins, in 90 commands; re-recorded in E04c T7d, when the keep aims as the original's computer, BAT-SIE-020: the attacker still wins, in 104 commands; re-recorded in E04c T8, when the vale's Tavern and fountain raise its defenders' morale and luck by 1, BAT-SIE-025: the attacker still wins, in 224 commands; re-recorded in E04c T10a, when the Catapult's stack id comes before the Ballista's, as the original's records (D-23): the same 89 commands, new hashes; re-recorded in E04c T10b, the review's fixes (the attacker wins a speed tie after the Catapult's turn, the commanded Catapult neither waits nor defends, the computer's weak walkers keep out of the moat): the defender wins, in 146 commands, with four wall shots and two Quakes) |
 
 Regenerate (only when a change *intentionally* alters game behavior, the synthetic pack, or an
-algorithm/encoding version — say so in the commit message):
+algorithm/encoding version — say so in the commit message). To pick a new replay's agent seed,
+count the events per agent seed with a throwaway test in `crates/h3-cli/tests` (`run_random`, then
+re-apply the commands with an event sink):
 
 ```sh
 cargo build -p h3-cli

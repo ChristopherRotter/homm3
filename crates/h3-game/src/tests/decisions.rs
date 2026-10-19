@@ -373,8 +373,11 @@ fn a_guard_offers_its_key_s_holders_to_pass_without_a_price() {
     );
     assert_eq!(legal_commands(&state, &rules, red), [ACCEPT, DECLINE]);
     // Declined, the guard stays; accepted, it leaves the map for everyone, and nothing is paid.
+    // The pending offer to pass is part of the state hash (a fixed test for its kind's arm,
+    // which otherwise only the seeded proptests reach: E08 T21b).
     let mut declined = state.clone();
     play(&mut declined, &rules, RED, DECLINE).unwrap();
+    assert_ne!(declined.state_hash(), state.state_hash());
     assert!(
         declined
             .adventure()

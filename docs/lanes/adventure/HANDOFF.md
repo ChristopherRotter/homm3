@@ -4,8 +4,8 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 
 ## Current state
 
-- **E08**: increments 1 and 2 **closed** (2026-10-12, -13). **Increment 3** (monsters and battles, decisions 19–41): rounds 1 to 3 (T17a to T19b2) **done**; round 4: T20a1 to T20b3b1 **done** (decisions 35–40; #234 the neutral seat, #236 the plans with monsters); T21 split, its rule part first (decision 41): **T21a done** (#239, guarded piles), **T20b3b2 done** (the maps, replays and benchmarks with monsters, grounds and guarded piles); round 4 closed; next T21b (the audit) with T22a (batch E3). Design and cut: `E08-design.md`. Records: `E08-log.md`.
-- **Map reader and import** (`h3-map`): `read`/`parse` into `model::RawMap`; `import` into `h3_game::GameSetup`, `import_map` its static layer (`MAP_IMPORT_VERSION` 7, `docs/formats/h3m.md` "Import"). Every shipped map's static layer imports and validates; 4 maps import whole, the rest are typed `Unsupported`. `verify --with-original-data` runs `crates/h3-map/examples/original_data.rs` on the shipped maps (with the monsters', grounds' and guarded piles' census).
+- **E08**: increments 1 and 2 **closed** (2026-10-12, -13). **Increment 3** (monsters and battles, decisions 19–42): rounds 1 to 4 (T17a to T21a, T20b3b2; #240 the last) **done**. Round 5: **T21b done** (decision 42; the audit: every exit criterion but batch E3 holds, `E08-log.md`); next T22a (batch E3's spec), then T22b (scored, the closure). Design and cut: `E08-design.md`. Records: `E08-log.md`.
+- **Map reader and import** (`h3-map`): `read`/`parse` into `model::RawMap`; `import` into `h3_game::GameSetup`, `import_map` its static layer (`MAP_IMPORT_VERSION` 7, `docs/formats/h3m.md` "Import"). Every shipped map's static layer imports and validates; of the 160 shipped maps 2 import whole (`Race for Ardintinny`, `Tutorial.tut`), the rest are typed `Unsupported` (the 164 before 2026-10-18 held four of the user's). `verify --with-original-data` runs `crates/h3-map/examples/original_data.rs` on the shipped maps (with the monsters', grounds' and guarded piles' census).
 - **Monsters, grounds, guarded piles** (T20a2a): kinds `Monster`, `Ground`; `[params.monsters]`; `ObjectSetup.monster`/`.drawn` (ADV-MON-002 to -004); `army_left`; `battle_ground` (ADV-GRD-001); `ObjectView.monster`. T20a2b: `guard_of` (ADV-MON-005, -006). T20b1: `answer.rs` (ADV-MON-007), offers `Join`, `JoinForGold`, `Pursue` (ADV-MON-008). T20b2: `split` (ADV-MON-009, flag 24), `Defender::Monster`, `Actor::System`, `end_monster_battle` (ADV-MON-010). T20b3b1: `MonsterChanged`; fringe monsters in strict (decision 40). T21a (ADV-PIK-004, `state/piles.rs`): `Guards`, `guards_left`, `OfferKind::Fight`, `Defender::Guards`, `end_unowned_battle`.
 - **The store of heroes** (T18b, GAM-HER-001): `GameState` keeps `Arc<HeroDetails>` by `HeroId`, from `GameHeroSetup.details` or the defaults, validated by `h3-heroes`; `attack_defense`, `join_bonus` (T20a1); `GameObservation.heroes`.
 - **Objects** (T12–T15): types (`ruleset/objects.rs`, ADV-OBJ-002); contents drawn at the build (ADV-PIK-001 to -003); removals (`state/occupancy.rs`); `ObjectView`s (no index). Visits (ADV-OBJ-003, -004; `visit_at`, `tile_object`); gains and offers in `AdventureOutcome` (ADV-OBJ-005). Purchases and keys (`state/flags.rs`; ADV-VIS-001 to -004); `offer_stands`.
@@ -19,7 +19,7 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 - **Experiments**: `h3-experiment` (battle-owned) has the adventure shape; batches 1 and 2 scored. **From increment 3 agents run batches** on the client lane's harness (decision 21; `E08-battles.md` §13).
 - **Adventure ruleset part** (v8 since T20b1): terrains, roads, rivers, the movement and setup parameters, the object types, the starting resources by difficulty, the battle terrains, the monsters' parameters (with the price resource).
 - **Properties** on generated playable maps (`h3-map`'s `play.rs`, `view.rs`; T8b2); since T19b2 `Step::Fight` runs (hero casts through `h3-battle`, a dev-dependency); since T20b3b1 monsters (`MONSTERS`), grounds and the system actor; since T21a guarded piles (`GUARDED`); `the_plans_play_battles_to_a_victory` counts 192 fixed cases.
-- **Next:** #239 (T21a) and T20b3b2's pull request (on it) to merge, then T21b with T22a (QUEUE).
+- **Next:** #262 (shared docs) then T21b's pull request to merge, then T22a (QUEUE).
 - **ADRs accepted**: ADR-0015 to -0017 (2026-10-10), their increment-2 amendments (#115), increment 3's (ADR-0013 too) applied by T18a (#185).
 - **Fuzzing is stable-only** (user, 2026-10-10).
 - **R01** (the content split): the core `h3-content` and `h3-pack` (`core.toml`) are shared; the writer is `h3_map::writer`.
@@ -39,14 +39,14 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 
 ## Recent sessions
 
+### 2026-10-19 — round 5, first session: T21b, the audit
+
+#239, #240 merged; baseline 093a930f green (full, original data). Decision 42: T21b alone plus `shared/e08-t21b-docs` (06-security, 07, the 160 maps' staging). The audit held every criterion but batch E3; a coverage run with all proptests skipped found two proptest-only lines (fixed tests); a guarded pile's hiding got a test; the 160 maps' census (2 import whole).
+
 ### 2026-10-15 — round 4, sixth session: T21a, then T20b3b2
 
-#236 merged; baseline light (c1309983 verified). Decision 41: T21a (guarded piles) before T20b3b2, so the maps, replays and benchmarks change once. T21a (#239): import v7, adventure state hash v10, game state hash v8; the battle at the pile's tile (0x4A4886). T20b3b2: the maps with monsters, piles and grounds (no monster within two tiles of a hero), nine replays (five new from a seed search), the benchmarks re-baselined.
+Decision 41: T21a before T20b3b2, so the maps, replays and benchmarks change once. T21a (#239): import v7, adventure state hash v10, game state hash v8. T20b3b2 (#240): the maps with monsters, piles and grounds, nine replays, the benchmarks re-baselined.
 
 ### 2026-10-15 — round 4, fourth session: T20b3a, then T20b3b1
 
-Decision 38: T20b3a, the neutral seat. Decision 39: the plans first. T20b3b1: `MonsterChanged`; a fringe monster in strict (decision 40).
-
-### 2026-10-15 — round 4, third session: T20b1 and T20b2
-
-Decision 37: T20b in three. T20b1: the answer and its offers (part v8). T20b2: flag 24 (`shared/`), the split, `Actor::System`; replay format v4.
+Decisions 38–40: the neutral seat; the plans first; `MonsterChanged`, a fringe monster in strict.

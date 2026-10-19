@@ -4,63 +4,47 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E04c closed (2026-10-16, T10c):** #243, #244 merged; `h3-heroes` and `heroes.toml` moved to the adventure lane. **Next:** E05 and `h3-sim`/`h3-ffi` went to the AI lane (AI-Q1); next here E23 (after E05) or E11, the user's choice. A rule changing an encoding is `cross-lane`.
-- **2026-10-19:** the AI lane's two proptest cases fixed (#265 on `battle/proptest-defects`, open).
-- **Open:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35 (none blocks), BAT-STUB-1, the inbox, Q43; S-23, S-24, batch 2g.
-- **Versions** (unchanged since T10b): battle state hash v51, battle part hash v6 (the encodings, replay format and C ABI are the AI lane's); shared: core ruleset hash v45, pack format v43, protocol v33. Next ids: BAT-Q51, BAT-QUIRK-24, BAT-STUB-4, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-24, S-30.
+- **No epic in progress.** E04c closed 2026-10-16; since then #265 (the AI lane's two proptest cases) and the docs' cleanup (#267 merged; the QUEUE's and OPEN-QUESTIONS' consolidation, #268 open), all 2026-10-19. E05, `h3-sim` and `h3-ffi` are the AI lane's (AI-Q1), `h3-heroes` the adventure lane's.
+- **Next, the user's choice:** E23, the original's battle AI (after E05; to refine: a reading increment, then about three), or E11's battle part. Waiting on this lane meanwhile: CLT-Q2's table-only LOD reader (decided, small; QUEUE).
+- **Open:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35, BAT-Q51 (none blocks), BAT-STUB-1, the inbox (by kind since 2026-10-19), Q43; S-23, S-24, batch 2g.
+- **Versions** (unchanged since T10b): battle state hash v51, battle part hash v6 (the encodings, replay format and C ABI are the AI lane's); shared: core ruleset hash v45, pack format v43, protocol v33. Next ids: BAT-Q52, BAT-QUIRK-24, BAT-STUB-4, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-24, S-30.
 - Working agreement: increments with a user checkpoint (Q41); the user confirms seams and ADRs; batches by the user or an agent.
 
 ## Standing traps
 
-**Content and packs**
-- `packs/base|ab|sod` are generated (`core.toml`, `battle.toml`): change `crates/h3-harvest` or its gap-fill file and re-run the harvester (`cargo run -p h3-harvest -- --install original-data/install --out packs`); never edit them by hand. Harvested keys may coincide across kinds (`base:ballista` is a creature and an artifact).
+Area traps live where they are used: experiments in `docs/experiments/README.md`, replays in `fixtures/README.md`, packs in `packs/README.md`, code reading in the global HANDOFF and `docs/exe/README.md`.
 
-- A data quirk's value stays in the pack; its fix is a `quirk.content`-gated override the compiler reads (ADR-0007).
-- Tests patch the synthetic pack by text (`h3-pack-battle`'s `Texts`): each patch asserts it matched; a text in both files names its file. To pick replay seeds, count events per agent seed with a throwaway test in `crates/h3-cli/tests` (`run_random`, then re-apply the commands with an event sink).
-
-**Code reading**
-- Edit docs with targeted replacements, never by rewriting a file from memory.
-- The executable's x87 runs at 53 bits (`installation.md` §7.10): emulate it with `h3_kernel::arith::X87` and test against vectors from exact rational arithmetic; check each float constant's width (`qword` double or `dword` f32).
-- Name an address only after reading its code (§7.15 had misnamed 0x469E50).
-
-**Battle code and tests**
-- Stack ids: war machines follow the army in the original's record order (Catapult, Ballista, Tent, Ammo Cart: `state::RECORD_ORDER`, D-23), not in `BattleSetup.war_machines`' order; then a town's turrets (keep, upper, lower), off the field (254, 255, 251): a rule that walks stacks for targets or distances leaves them out (`Stack::is_turret`).
-- The aim's and berserk's paths read `BattleSetup.human`: a computer's weak walker keeps out of the moat (BAT-SIE-022): set `human` in tests at a town.
-- The computer's choices (`aim.rs`) read Fight Values, which test creatures lack (`fighting_turret_ruleset`); `BattleState::new` has run the keep's first shot already (`tests/aim.rs`'s `fresh`). It reads a war machine's damage as the original's record (`aim::damage`); its values are small, so ties (the later stack) decide often.
-- Defend spoils exact damage expectations: skip turns with `activate`. `BattleState::new` drops the first activation's events (use `start`).
-- Hidden obstacles leak through public events too: a hidden obstacle that does nothing must not change them (a mine that does not go off must not split a `Moved`). `hidden_obstacles_do_not_show` checks the acting side's commands and casts (its profiles leave BAT-QUIRK-4 off; no Berserk in its books, BAT-Q31); the computer's aim (the turrets', the automatic Ballista's) reads only `obstacles::public_pits`. `legal_commands` lists no casts: a property over legal commands must add `cast_targets` × `second_targets` itself.
-- Natural obstacles follow the original's hex records (`h3_battle::natural`): the piece listed last wins a shared hex, and a removal clears its hexes and anchor for every piece (0x466B30).
-- A dead stack's timed effects stay until the command's end (`effects::remove_dead`): code that brings a stack back within a command removes them first, a reused record is cleared with `effects::forget`. The first activation skips the freezing checks (`turn::activate_first`); good morale goes through `turn::morale_turn`.
-- Hero spells and masteries come from `h3-heroes` (ADR-0013 point 2; the adventure lane's since E04c: `cross-lane`); the battle reads `BattleMagic` only. Tests: `support::masteries(r, [schools])`. A stack's spell test needs the casting side (`affects_stack`, `share`, `resists`: the heroes' `Guard`, BAT-MAG-066); battle-wide hero magic is `BattleState.limits`, derived at the start.
-- Rule code reads abilities via `ruleset.abilities(creature)`; per-attack booleans are `StackTraits` bits set at setup. `Stack.spells` holds the spells' values only: a creature's `innate_spell` is read where the original reads the creature (`magic::mirror_chance`, `magic::reflection`).
-- A two-hex stack's position is its rear hex (BAT-GEO-002): where VCMI measures at its head, use `Footprint::front` (placement, a shot's aim, the berserk shooter); a shot's distance is `footprint_distance` (the original turns its shooter, BAT-Q36); `hexes()` keeps the front hex first. Tests place two-hex stacks by the rear hex.
+**Battle code**
+- Stack ids: war machines follow the army in the original's record order (`state::RECORD_ORDER`: Catapult, Ballista, Tent, Ammo Cart), then a town's turrets, off the field: a rule that walks stacks for targets or distances leaves them out (`Stack::is_turret`).
+- A two-hex stack's position is its rear hex (BAT-GEO-002): where VCMI measures at its head, use `Footprint::front`; a shot's distance is `footprint_distance`; `hexes()` keeps the front hex first. Tests place two-hex stacks by the rear hex.
 - Relations go by the acting stack's controller and the other stack's own side (`Stack::may_attack`; `is_hostile_to` only for blocking and multi-headed strikes).
-- Each position of a walk may open a town's gate (`obstacles::moved`); a quiet sink walks position by position only where something acts or the gate is closed for a defender's walker (`siege::gate_closed_for`): a new rule in `moved` needs the same, or the sinks diverge.
-- A retired quirk flag keeps its `REGISTRY` position without a name (`flags()` lists the live ones). A flag that comes or goes changes the faithful ruleset hashes: the golden replays, and the adventure lane's faithful replays (a `cross-lane` header line).
+- Abilities via `ruleset.abilities(creature)`; per-attack booleans are `StackTraits` bits set at setup; `Stack.spells` holds values only (a creature's `innate_spell` is read where the original reads the creature).
+- Hero spells and masteries come from `h3-heroes` (ADR-0013 point 2; `cross-lane`); the battle reads `BattleMagic`, battle-wide hero magic `BattleState.limits`. A stack's spell test needs the casting side (`affects_stack`, `share`, `resists`).
+- A dead stack's timed effects stay until the command's end (`effects::remove_dead`): code that brings a stack back within a command removes them first (`effects::forget` for a reused record). A stack can die from another's death (a clone with its original): loops over targets fixed before damage skip dead stacks; every path that kills calls `created::died`.
+- The first activation skips the freezing checks (`turn::activate_first`); good morale goes through `turn::morale_turn`.
+- Hidden information leaks through public events too: a hidden obstacle that does nothing must not change them. A new state field a rule reads goes into `observe_as` (ADR-0014 point 8) and, `cross-lane`, the AI lane's encoding; `h3-protocol`'s hygiene tests fail on a draw a viewer sees before the first hidden cast.
+- At a town the computer's choices (`aim.rs`: turrets, the automatic Ballista, a weak walker's moat avoidance) read `BattleSetup.human` and Fight Values, which test creatures lack (`fighting_turret_ruleset`); `BattleState::new` has fired the keep's first shot.
 
-- `properties.rs` plays its games at a `Place` (field, battlefield, garrison, town): what a property assumes must hold at each.
-- The observation is complete since T9a: a new state field a rule reads goes into `observe_as` (public, own part or neither: ADR-0014 point 8), the flat encoding (version and ABI bump) and the hygiene property.
-- `h3-protocol`'s hygiene tests compare a viewer's frames across seeds on the `full` scenario up to the first hidden cast: no draw the viewer sees may come before it, public or its own (T9b: resistance on Brea's stacks, Eagle Eye listing Mire or Snare).
+**Tests**
+- Defend spoils exact damage expectations: skip turns with `activate`. `BattleState::new` drops the first activation's events (use `start`).
+- `legal_commands` lists no casts: a property over legal commands adds `cast_targets` × `second_targets`. `properties.rs` plays at every `Place`.
+- Tests patch the synthetic pack by text (`Texts`): each patch asserts it matched.
 
-**Fixtures and benchmarks**
-- Golden replays and the `benches/battle/` baselines change with behavior, the synthetic pack, an encoding or the toolchain: regenerate deliberately (`fixtures/README.md`, `cargo xtask bench-check --update --workload random-rollouts-full`) and give the reason in the commit.
-- A field added to `Stack` costs Ir wherever stacks are walked (+0.6 % for 8 bytes in T6a): keep per-stack data the hot paths do not read beside the stacks (`BattleState.raised`, `.created`).
-- A stack can now die from another's death (a clone with its original, BAT-MAG-038): loops over targets fixed before damage skip dead stacks, and every path that kills calls `created::died` (`effects::damaged` after damage, the death stare, the sacrifice; it also releases binds).
-- Code added to `movement::reachable_within` can push `fits` out of line (T5c1, T6b); keep `casters::ready` a cheap early exit (+2 % Ir in T7b1). Before re-baselining, compare `h3 bench --games 20` step counts (the old commit in a worktree) and per-function callgrind profiles (`--inclusive=no`, `--toggle-collect='*random_rollout*'`).
+**Packs, replays, benchmarks**
+- `packs/base|ab|sod` are generated: change `h3-harvest` or its gap-fill file and re-run it; harvested keys may coincide across kinds (`base:ballista`).
+- A quirk flag that comes or goes (a retired one keeps its `REGISTRY` position) changes the faithful ruleset hashes: the golden replays and the adventure lane's faithful replays (`cross-lane`).
+- Golden replays and `benches/battle/` change with behaviour, the synthetic pack, an encoding or the toolchain: regenerate deliberately, the reason in the commit.
+- A field added to `Stack` costs Ir wherever stacks are walked (cold per-stack data goes beside them: `BattleState.raised`, `.created`); code in `movement::reachable_within` or `casters::ready` swings inlining. Before re-baselining, measure `master` in a worktree (own target dir) and compare per-function callgrind profiles. `random-rollouts-full` was at +1.34 % on `master` (2026-10-19).
 
 **Process**
-- The user merges with merge commits or squashes (#164: merge master into a stacked branch, keep its own files' side); after a rebase-merge, `git rebase --onto origin/master <old base head>`. Fetch master again before opening a pull request that bumps a shared version (#167 took protocol v27).
-
-**Experiments in the original game**
-- The installation is read-only: maps go to the gitignored `experiments/out/`, the user copies them. Results hold for SoD; observation sources name the setup.
-- Agent runs (`experiments/agent/`): one map per encounter (`--only`); a random starting bonus may arm a hero: play again. Rounds by the acted bits (`catapult.py`). A rerun is no new sample (the draws repeat). A hero's spell book fails the battle screen's probes. A worktree runs the harness through a symlinked `original-data`. Predictions: a throwaway test in `crates/h3-cli/tests` on the base pack (every stack defends).
-- The `.h3m` writer: terrains, water (coast flag), roads, piles, grounds, towns (`docs/experiments/README.md`). A hero type once per map, eight heroes per player. Wandering monsters act on their own: use a Blue hero to hold still. Check moves against speed (14 columns apart). A single-alignment army has +1 morale: mix two where an extra turn spoils a count. Every hero has a Catapult.
+- Edit the long docs (`installation.md`, the catalog) by targeted replacements, never by rewriting from memory.
+- The user merges with merge commits or squashes: rebase a stacked branch with `git rebase --onto origin/master <old base head>`; fetch `master` again before a pull request that bumps a shared version.
 
 ## Recent sessions
 
 ### 2026-10-19 (seventy-second) — the AI lane's two proptest cases
 
-A walk's step onto the outer bridge opened the gate only with a recording sink; a Clone on the gate's hex kept it open (fixed: `obstacles::go`, `travel_through`). The invariant property missed BAT-SIE-011's pass. Seeds committed.
+#265 (merged): a walk's step onto the outer bridge opened the gate only with a recording sink, and a Clone on the gate's hex kept it open (fixed in `obstacles::go`, `travel_through`); the invariant property missed BAT-SIE-011's pass. Then, at the user's request, the docs' cleanup: this HANDOFF trimmed (#267: duplicates and stale traps out, area traps moved to the experiments and fixtures READMEs); the QUEUE's inbox merged by kind (20.6 → 9.1 KB), its items for other lanes sent to their inboxes, the First Aid Tent made BAT-Q51, BAT-Q33 brought up to date (`BattleSetup.human`, AI-Q3); BAT-Q28 and BAT-Q32 cut to their open parts (row 2's and row 13's record to the experiments README); CLT-Q2 queued.
 
 ### 2026-10-16 (seventy-first) — E04c T10c: the closure (increment 10)
 
