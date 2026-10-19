@@ -20,6 +20,7 @@ use h3_render::tint::{Tint, adjust_hue_saturation};
 use crate::batch::{Batch, Sprite};
 use crate::layout::BattleLayout;
 use crate::scene::Draw;
+use crate::text::encode_1252;
 
 /// The screen's pixel format (design §3.2: the executable's 16-bit 5-6-5 screen).
 pub const FORMAT: PixelFormat = PixelFormat::RGB565;
@@ -220,6 +221,34 @@ pub fn compose(
                     bugs,
                 };
                 draw_text(&mut screen, text.as_bytes(), area, style);
+            }
+            Draw::Log { text } => {
+                // 0x5BC7F0: the item's picture, opaque (0x44FDB0), then its text (0x5BC5F0 →
+                // 0x4B5490) in the item's box, the colour and alignment it was made with.
+                let log = &layout.log;
+                let [x, y] = log.place;
+                draw_image(&mut screen, picture_of(batch, &log.picture)?, x, y);
+                let font = batch
+                    .font(&log.font)
+                    .ok_or_else(|| ComposeError::Missing(log.font.clone()))?;
+                let palette = batch
+                    .palette(&log.font_palette)
+                    .ok_or_else(|| ComposeError::Missing(log.font_palette.clone()))?;
+                let area = TextBox {
+                    x,
+                    y,
+                    width: log.size[0],
+                    height: log.size[1],
+                };
+                let colours = ScreenPalette::new(palette, FORMAT);
+                let style = TextStyle {
+                    font,
+                    colours: &colours,
+                    colour: log.colour,
+                    alignment: log.align,
+                    bugs,
+                };
+                draw_text(&mut screen, &encode_1252(text).0, area, style);
             }
             Draw::Creature {
                 def,

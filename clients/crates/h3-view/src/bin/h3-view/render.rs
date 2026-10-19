@@ -274,6 +274,10 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
         }
     }
     .map_err(|e| e.to_string())?;
+    // The panel's draws after the battlefield: its log empty, as at a battle's start (E17 M3
+    // T4b-2b-1; a record's lines come with M3 T6).
+    let mut list = list;
+    list.extend(scene::panel(""));
     let names = batch::names(&list, &layout);
     let (batch, loaded) = timed(|| {
         let mut batch = Batch::default();
@@ -419,10 +423,23 @@ mod tests {
         let _ = fs::remove_dir_all(&root);
         fs::create_dir_all(&data).unwrap();
         let pal = build::pal(&Palette::default(), &[0; 256], 0, &[]);
+        // The panel's log item: its picture and font (E17 M3 T4b-2b-1).
+        let picture = build::pcx_indexed(1, 1, &[0], &Palette::default());
+        let font = build::fnt(&h3_assets::fnt::Font {
+            height: 1,
+            y_offset: 0,
+            glyphs: Vec::new(),
+        });
         for (name, items) in [
             ("H3sprite.lod", vec![]),
             ("H3ab_spr.lod", vec![]),
-            ("H3bitmap.lod", vec![]),
+            (
+                "H3bitmap.lod",
+                vec![
+                    ("CROLLOVR.PCX", &picture[..], true),
+                    ("SMALFONT.FNT", &font[..], true),
+                ],
+            ),
             ("h3ab_bmp.lod", vec![("GAME.PAL", &pal[..], true)]),
         ] {
             fs::write(data.join(name), lod(0x200, &items)).unwrap();
@@ -438,7 +455,7 @@ mod tests {
         let lines = render(&options).unwrap();
         assert_eq!(lines[0], root.join("out/still.png").display().to_string());
         assert!(
-            lines[1].starts_with("0 draws; batch of 1 assets"),
+            lines[1].starts_with("1 draws; batch of 3 assets"),
             "{lines:?}"
         );
         let png = fs::read(root.join("out/still.png")).unwrap();

@@ -8,6 +8,7 @@
 
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::string::{String, ToString};
+use alloc::vec;
 use alloc::vec::Vec;
 use core::fmt;
 
@@ -193,6 +194,21 @@ pub enum Draw {
         /// Its outline: the layout's outline palette's entry, none for no outline.
         outline: Option<u8>,
     },
+    /// The battle log's item in the panel (0x46BCBE; §9.5; E17 M3 T4b-2b-1): the layout's picture,
+    /// then the text in its font over it.
+    Log {
+        /// The entries it shows, one per line (0x472C30: the first, then a line break and the
+        /// next if there is one; the status line's text instead when it shows).
+        text: String,
+    },
+}
+
+/// What the panel below the battlefield draws, after the battlefield (E17 M3 T4b-2b-1): so far its
+/// log's item, showing `log` (empty at a battle's start); the panel's picture and buttons come with
+/// M3 T6.
+#[must_use]
+pub fn panel(log: &str) -> Vec<Draw> {
+    vec![Draw::Log { text: log.into() }]
 }
 
 /// Why a snapshot has no draw list.

@@ -239,7 +239,7 @@ button that shows in more than one place (a dialog's OK): `python3 capture/h3adv
 | Scenario list | Begin (the only map in `Maps/` is selected) | (497, 553) |
 | Adventure map | park the cursor (an edge scrolls the map) | (700, 300) |
 | Adventure map | step the selected hero east into the enemy | key `Right` |
-| Battle | park the cursor over the panel | (420, 580) |
+| Battle | park the cursor over the panel, beside the log's item (M3 T4b-2b-1) | (618, 593) |
 | Battle | a hex *h* (row r, column c): move, shoot, attack from the side the cursor points | (36 + 44c + 22 if r is even, 112 + 42r): `hex:<h>` |
 | Battle | attack hex *h* from its right neighbour (M3 T1a) | its point + (18, 0): `click:x,y` |
 | Battle | wait, defend | keys `w`, `d` |
@@ -286,8 +286,12 @@ design §7.1.
 
 ## Traps
 
-- The game draws its own cursor: probes keep 50 px away from where it rests, and the recipes
-  park it.
+- The game draws its own cursor: the recipes park it (the battle's at (618, 593) since M3
+  T4b-2b-1, beside the log's item, which the set compares), and probes stay clear of its picture
+  where it rests (the battle's nearest, 34 px right on its row and 15 px above it).
+- `machines`' timeline (M3 T3b) varies between runs: the automatic Ballistas' shots, and the
+  heal after one, start 1 ms later than recorded in most runs (M3 T4b-2b-1, 8 runs, at either
+  park point); a `CHANGED` there with only such shifts is that, not a change of the viewer.
 - The battle panel's buttons change with whose turn it is: the `battle` probes are the ones equal
   in both states.
 - An XWD file's colour map holds bytes the X server leaves unset: compare pixels, never files.

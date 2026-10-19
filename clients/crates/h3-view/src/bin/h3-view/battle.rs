@@ -132,20 +132,23 @@ impl Battle {
         })
     }
 
-    /// The draw list of the battle at `moment`.
+    /// The draw list of the battle at `moment`, the panel's after it (its log empty: the
+    /// events' lines come with M3 T6).
     pub fn list(&self, t: u32, moment: &Moment) -> Result<Vec<Draw>, String> {
         let snapshot = self
             .record
             .first_snapshot()
             .ok_or("the record holds no snapshot")?;
-        scene::battle_at(
+        let mut list = scene::battle_at(
             snapshot,
             moment,
             &self.record.header.manifest,
             &self.tables,
             &self.layout,
         )
-        .map_err(|e| format!("{t} ms: {e}"))
+        .map_err(|e| format!("{t} ms: {e}"))?;
+        list.extend(scene::panel(""));
+        Ok(list)
     }
 
     /// The draw list of the battle at `t`.

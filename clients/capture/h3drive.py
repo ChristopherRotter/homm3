@@ -73,6 +73,10 @@ GAME_DIR = ROOT / "original-data" / "wine" / "game"
 SCREENS = HERE / "screens.toml"
 DISPLAY = ":99"
 WIDTH, HEIGHT = 800, 600
+# Where the battle's recipes park the mouse: the game draws its own cursor, so in the panel, off
+# the battlefield, beside the log's item (the layout's [log], compared since M3 T4b-2b-1) and
+# below its scroll arrows, more than 50 px from the probes; hovering nothing that shows a hint.
+PARK = (618, 593)
 
 
 def xwd565(data):
@@ -269,7 +273,7 @@ def into_battle(game, key="Right"):
     enemy, and steps the clock to the battle screen. Returns the clock's time at the opening."""
     game.clock("freeze")
     game.key(key)
-    game.move(420, 580)  # over the panel, off the battlefield
+    game.move(*PARK)
     return game.step_until("battle", 10)
 
 
@@ -472,14 +476,14 @@ def act(game, action):
         game.move(*hex_point(int(arg)))
         time.sleep(0.3)
         game.click(*hex_point(int(arg)))
-        game.move(420, 580)
+        game.move(*PARK)
         time.sleep(0.3)
     elif kind in ("click", "move"):
         x, y = map(int, arg.split(","))
         (game.click if kind == "click" else game.move)(x, y)
         time.sleep(0.3)
         if kind == "click":
-            game.move(420, 580)  # the game draws its own cursor: off the battlefield (M3 T1a)
+            game.move(*PARK)
             time.sleep(0.3)
     elif kind == "key":
         game.key(arg, 0.3)

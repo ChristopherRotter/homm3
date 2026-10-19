@@ -12,10 +12,10 @@ use h3_content_battle::BattleRuleset;
 use h3_contracts::{BattleResult, BattleSide};
 
 use crate::casters;
-use crate::combat::{can_shoot, melee, shoot};
+use crate::combat::{DamagePreview, can_shoot, melee, shoot, strike_preview};
 use crate::effects;
 use crate::error::CommandError;
-use crate::event::{Event, EventKind, Sink};
+use crate::event::{Event, EventKind, Sink, StrikeFlags};
 use crate::geometry::{Field, Hex};
 use crate::magic::{self, Cast, CastTarget};
 use crate::movement::reachable;
@@ -421,6 +421,31 @@ fn plan_tactics(
         | Command::CreatureCast { .. }
         | Command::ShootWall { .. } => Err(CommandError::InTacticsPhase),
     }
+}
+
+/// The engine's damage preview of `command` for `actor` (BAT-DMG-011; AI-Q6, ADR-0025 point 5):
+/// for an attack or a shot that validates, the least and greatest damage and kills of its first
+/// strike on its target, counting every modifier the strike reveals (the target's defense and
+/// protections, its hero's Armorer) and none of the rolls; `None` for any other command or one
+/// that does not validate. Never the retaliation, nor a second strike or the other stacks an
+/// attack hits: the original shows none of them before the strike.
+pub fn preview(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    actor: BattleSide,
+    command: Command,
+) -> Option<DamagePreview> {
+    let (pair, flags, charge) = match plan(state, ruleset, actor, command).ok()? {
+        Plan::Attack {
+            mover,
+            target,
+            charge,
+            ..
+        } => ((mover, target), StrikeFlags::NONE, charge),
+        Plan::Shoot { mover, target, .. } => ((mover, target), StrikeFlags::RANGED, 0),
+        _ => return None,
+    };
+    Some(strike_preview(state, ruleset, pair, flags, charge))
 }
 
 /// Applies `command` on behalf of `actor` (supplied by the trusted caller, never decoded from the

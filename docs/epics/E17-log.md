@@ -1084,6 +1084,7 @@ against a capture); the user chose T4b-2a.
 - **For later:** T4b-2b (the log item's width and place, the small font's colour, the status
   line, one line drawn against a capture), T6's event mapping (which event writes which line, a
   `Struck` per target into one strike's hits, the defend's gain).
+
 ### H1 — Questions, the difficulty, battles from the map (2026-10-19)
 
 On `client/e17-harness-e3`, the user present: the adventure lane's E08 T22a waited on the
@@ -1143,3 +1144,28 @@ The same session and branch as H1, right after it.
   check of the monsters' offers and a guarded pile's question once `h3-experiment` places them
   (E08 T22a).
 
+### M3 T4b-2b-1 — The log's item in the panel (2026-10-19)
+
+On `client/e17-m3-t4b-2b-1`, the user present: asked for the next task, the agent proposed
+splitting T4b-2b into the item read, drawn and checked on the still capture set (T4b-2b-1) and a
+strike's line against a capture (T4b-2b-2); the user chose that.
+
+- **Starting point:** master at `6c35bb4` (#269, T4b-2a, merged on 2026-10-19).
+- **Read** (design §9.5, the map): `combat_dialog_create` 0x4721D0, `battle_panel_create`
+  0x46BC30 (the panel at (0, 556), 800 × 44), the log's item 0x46BCBE (a text item with a
+  picture: at (214, 563), 400 × 32, `smalfont.fnt` over `cRollovr.pcx`, colour 1, alignment
+  1), `text_item_create` 0x5BC280, `text_pcx_create` 0x5BC760, their drawing 0x5BC7F0 and
+  0x5BC5F0, and `battle_log_show_from` 0x472C30 (the first shown entry and the next, a line
+  break between, as the item's text).
+- **Built:** the layout's `[log]`, `Draw::Log` and `scene::panel` (the adapters append it after
+  the battlefield, empty), `compose` draws it (100 % covered); `h3cap`'s mask
+  `panel_beside_log` and the capture set on it.
+- **Found:** the original at the opening shows the item's picture and no text; the harness's
+  parked cursor (420, 580) lay inside the item (77 pixels): parked at (618, 593) since.
+- **Checked:** the capture set, 31 situations, every frame as recorded (exact) with the log's
+  item compared; the recorded sequences' timelines as recorded with the new park point, but
+  `machines`: in 7 of 8 runs the automatic Ballistas' shots (and the heal after one) started
+  1 ms later than recorded, at either park point (the old one too, 2 of 3 runs), a run-to-run
+  variation in this sandbox, not the park point's (the capture README's traps).
+- **For later:** T4b-2b-2 (a strike in hot seat, its line in the log against the capture: the
+  panel's frame at a sequence's end and our render with the composed line), T6.

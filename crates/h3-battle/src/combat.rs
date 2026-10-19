@@ -430,6 +430,58 @@ pub(crate) fn shot_damage_range(
     )
 }
 
+/// The engine's reading of an attack's first strike before it is made (BAT-DMG-011; AI-Q6,
+/// ADR-0025 point 5): what the strike on its target would do at the least and at the greatest
+/// base damage.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DamagePreview {
+    /// The least and the greatest damage (BAT-DMG-002; as [`EventKind::Struck`] reports it,
+    /// before the target's hit points cap it).
+    ///
+    /// [`EventKind::Struck`]: crate::EventKind::Struck
+    pub damage: [u64; 2],
+    /// The least and the greatest number of creatures it kills (BAT-DMG-003).
+    pub kills: [u32; 2],
+}
+
+/// The preview of `attacker`'s first strike on `target`, a shot when `flags` holds `RANGED`,
+/// else melee after `charge` hexes (BAT-DMG-011): every stage of the real strike, with the base
+/// damage at the ends of its range (BAT-DMG-001; fixed while blessed or cursed, BAT-MAG-011) and
+/// none of the rolls (luck, death blow, a commanded war machine's double damage).
+// rule: BAT-DMG-011
+pub(crate) fn strike_preview(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    (attacker, target): (StackId, StackId),
+    flags: StrikeFlags,
+    charge: u8,
+) -> DamagePreview {
+    let (striker, victim) = (state.at(attacker), state.at(target));
+    let n = u64::from(striking_count(striker));
+    let (min, max) = (striker.damage_min, striker.damage_max);
+    let ends = striker
+        .spells
+        .damage
+        .fixed(min, max)
+        .map_or([u64::from(min), u64::from(max)], |each| [each, each]);
+    let blow = Blow {
+        charge,
+        death_blow: false,
+        lucky: false,
+        double_damage: false,
+        retaliation_percent: 100,
+    };
+    let terms = specialist_terms(state, ruleset, attacker);
+    let (inputs, _) = strike_inputs(ruleset, state, (striker, victim), (flags, terms), blow);
+    let (params, staged) = (ruleset.battle(), staged(ruleset));
+    let damage = ends.map(|each| inputs.damage(n.saturating_mul(each), params, staged));
+    let kills = damage.map(|d| {
+        let mut copy = *victim;
+        apply_damage(&mut copy, d)
+    });
+    DamagePreview { damage, kills }
+}
+
 /// A turret's shot at `victim` takes only the target's protections, the original's stage 3
 /// (BAT-SIE-018; 0x443D90): Air Shield's share, the half while petrified and the Armorer of the
 /// hero of its controller. No attack or defense, luck, Bless or Curse, hero's bonus, wall or

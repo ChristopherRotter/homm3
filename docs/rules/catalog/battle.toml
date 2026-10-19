@@ -1132,6 +1132,22 @@ numeric  = "integer"
   confidence = "high"
 
 [[rule]]
+id       = "BAT-DMG-011"
+title    = "The damage preview of an attack's first strike"
+context  = "battle"
+status   = "implemented"
+summary  = "An engine query, not a rule of the original's play (h3_battle::preview; AI-Q6, ADR-0025 point 5: the bots read it, the agents' encodings may later, AI-Q7). For a melee attack or a shot that validates (BAT-ATK-001, BAT-RNG-001), the least and greatest damage and kills of its first strike on its target: every stage of the real strike (attack and defense, hate, jousting over the hexes the attack travels, the protections, the defending hero's Armorer, the shooters' penalties; BAT-DMG-002) applied to the base damage at the ends of its range, the striking count times the minimum and times the maximum (BAT-DMG-001; one value while blessed or cursed, BAT-MAG-011), with none of the rolls: no luck (BAT-LCK-002), death blow (BAT-DMG-007) or double damage (BAT-WAR-006). Kills as the strike's (BAT-DMG-003: the top creature first; every creature of a clone). The user (2026-10-19): a preview must not promise more than the attack achieves, so whatever the strike reveals counts; but it shows only one's own strike: never the retaliation, a second strike, the other stacks an attack hits (breath, three heads, area shots) or Fire Shield's reflection, which bots and agents estimate themselves. Not foreseen: damage the attacker takes on its way (a fire wall, the moat, a land mine) before the strike."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 lib/battle/CBattleInfoCallback.cpp battleEstimateDamage (L1150): DamageCalculator::calculateDmgRange (lib/battle/DamageCalculator.cpp L556) applies the strike's attack and defense factors to the base damage range's ends, without luck unless the attack is lucky; getCasualties (L522) counts kills from the defender's first creature's hit points left, then whole creatures, at most its count. VCMI also estimates the retaliation from the survivors; the engine leaves it out (the user)."
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CBattleInfoCallback.cpp#L1150"
+  retrieved  = "2026-10-19"
+  confidence = "high"
+  note       = "The engine's stages are its own (BAT-DMG-002 and the rules it names), not VCMI's factors; only the shape of the preview follows VCMI."
+
+[[rule]]
 id       = "BAT-RET-001"
 title    = "Retaliation"
 context  = "battle"

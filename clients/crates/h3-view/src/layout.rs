@@ -44,6 +44,31 @@ pub struct BattleLayout {
     pub player_palette: String,
     /// A stack's count box (§4.3; E17 M3 T4a).
     pub count_box: CountBox,
+    /// The battle log's item in the panel (§9.5; E17 M3 T4b-2b-1).
+    pub log: Log,
+}
+
+/// The battle log's item in the panel below the battlefield (the panel 0x46BC30 at (0, 556), its
+/// text item 0x46BCBE; design §9.5): a picture with a text over it, the log's shown entries. The
+/// status line shows in the same item.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Log {
+    /// The item's picture, drawn opaque from its top-left corner (`cRollovr.pcx`; the executable
+    /// draws at most the item's size of it, 0x5BC7F0: the picture is that size).
+    pub picture: String,
+    /// The item's top-left corner on the screen (214, 563: the panel's 0, 556 plus 214, 7).
+    pub place: [i32; 2],
+    /// Its width and height, the text's box (400 × 32: two lines of the font).
+    pub size: [i32; 2],
+    /// The font (`smalfont.fnt`).
+    pub font: String,
+    /// The palette the font's colours come from (`game.pal`).
+    pub font_palette: String,
+    /// The text drawer's colour argument (1).
+    pub colour: u32,
+    /// The text drawer's alignment (1: each line centred, from the box's top).
+    pub align: u32,
 }
 
 /// A stack's count box (`draw_battle_stack`'s part 1, 0x43E568; design §4.3): its picture beside
@@ -190,6 +215,9 @@ mod tests {
         assert_eq!(b.tint_rect, [[1, 1], [28, 9]]);
         assert_eq!(b.tint, [0x3F40_0000, 0x3F4C_CCCD]);
         assert_eq!((b.text_size, b.text_colour, b.text_align), ([30, 15], 4, 1));
+        let log = &layout.log;
+        assert_eq!((log.place, log.size), ([214, 563], [400, 32]));
+        assert_eq!((log.colour, log.align), (1, 1));
         let flat = BattleLayout {
             outline_ramp: 0,
             ..layout

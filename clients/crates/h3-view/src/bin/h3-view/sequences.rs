@@ -349,8 +349,11 @@ pub(crate) fn draw_frames(
             }
         }
         log.push_str(&describe(frame.t, &moment));
-        let list = scene::battle_at(snapshot, &moment, manifest, tables, layout)
+        let mut list = scene::battle_at(snapshot, &moment, manifest, tables, layout)
             .map_err(|e| e.to_string())?;
+        // The panel's log, empty as at the opening (E17 M3 T4b-2b-1): the capture set compares
+        // its item; a sequence's frame check, the battlefield only.
+        list.extend(scene::panel(""));
         lists.push((frame, list));
     }
     let mut names = std::collections::BTreeSet::new();
