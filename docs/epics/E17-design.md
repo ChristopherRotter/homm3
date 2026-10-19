@@ -1514,15 +1514,15 @@ text` and the gate's check; the formats in `clients/README.md` ("The string cata
 - **Rows** are records counted from 0 with the header rows, as `h3-formats`' parser reads them (a
   quoted field with line breaks is one record): `GENRLTXT`'s record n is VCMI's
   `core.genrltxt.<n − 1>` (its parser skips the header) and `installation.md`'s 1-based "line
-  n + 1". The executable's own indexing (which record a code site's text number names) is read
-  with the log (T4b-2): the keys' rows for the battle log's events are *provisional* until then.
+  n + 1". The executable's own indexing is the same: its row n is record n (read in T4b-2a,
+  §9.4).
 - **Specifiers.** The original's rows use `%s`, `%d` and `%%`; the key names each specifier's
   argument in order (`printf`), and its declared kind must match (`text` for `%s`, `number` for
   `%d`), so a row and a key that disagree fail the gate. The forms of one key may name different
   arguments (`battle.log.perish`: "one …" without the count, "%d … perish" with it).
 - **Plural rows.** Where the original has a singular and a plural row, the key has the forms
   `one` and `other`; the original's pack picks `one` for a count of exactly 1 (the executable's
-  rule as far as the rows show it; which count picks it per event is T4b-2's reading). A
+  rule; which number picks it per line: §9.4). A
   creature's names are a family over the asset tables: `crtraits.txt`'s non-blank records from
   record 2 are the original ids in order (the harvesters' reading), its first two columns the
   singular and plural; the asset tables' `[[creature]]` carries `original` (the comment `#
@@ -1572,3 +1572,50 @@ text` and the gate's check; the formats in `clients/README.md` ("The string cata
   `h3-formats` decodes the text tables as 1252 with every byte kept (undefined ones as their C1
   controls), so a localized installation's tables in another code page (1250, 1251) can be
   re-decoded without an engine change; that and its fonts wait for such an installation.
+
+### 9.4 The battle log's lines (M3 T4b-2a)
+
+T4b-2 split with the user on 2026-10-19 (the line drawn left as T4b-2b). Read: `battle_log_add`
+(0x472E90), the strike's line (`battle_log_damage` 0x469A90, H3API's `ReportDamageDone`) and what
+its strike and shot callers pass, `creature_name` (0x440100), and the lines of wait (0x479918),
+defend (0x479758), morale (0x464AD5, 0x464CDF) and luck (0x44187A, 0x43F998). Built as
+`h3_view::battle_log`; `h3-view text --log` prints sample lines from the user's tables, and the
+gate composes them.
+
+- **Rows.** The executable reads `GENRLTXT.TXT` through `general_text` (0x6A5D5C, its rows at
+  +0x20): its row n is our record n, from 0 with the header, checked on the battle log's fifteen
+  rows and the clone limit's against the user's file. The keys lose *provisional*;
+  `battle.log.destroyed` (row 668) is new, and the bad luck key (row 45) is gone: no battle code
+  writes that row, as the original has no bad luck (the protocol's `lucky` is good luck only).
+- **Names.** A stack's name is its creature's singular for a number of exactly 1, else the plural,
+  0 included (0x440100 and its inlined copies). The number that names a stack also picks its
+  row's form: the striker's for the damage row, the kills for the perish row.
+- **A strike** (0x469A90): the damage row by the attackers' number (their name, the damage); with
+  kills above 0 the perish row appended, whose text begins with a line break: row 668 for a war
+  machine (creature flag 0x40, its name by the kills), else rows 379 and 380 (the kills, the
+  name by them), with the word for creatures (rows 43, 44, by the kills) when the caller names no
+  target. Its callers: a strike or shot at one target names it (`melee_strike` 0x441C5D, the
+  shot 0x43FDB4); a breath's stack behind of another creature adds its damage and kills and
+  names no target, while one of the target's own creature is left out of the line (0x441B9B: the
+  line reports the target's hit alone; copied, the M3 review list); a multi-headed striker's
+  loop (0x440310, its line at 0x4404ED; `melee_strike` writes none for it, 0x441B95) and the
+  area shots (0x43FC4F, 0x44003F) add every hit up and name their creature when all share one,
+  else none. A hidden battle writes no line. The other callers (spells, the moat, fire walls,
+  land mines, turrets, Fire Shield, the striker's effects) come with T6 and T7.
+- **Turns.** Wait: rows 137 and 138 by the number, with the name; none in the tactics phase.
+  Defend: rows 121 and 122 by the number, with the name and the gain max(1, defense × 20 / 100)
+  (integer, the stack's defense skill); a war machine writes none. Morale: good row 34, bad row
+  35, luck: good row 46 after a strike's or a shot's lucky roll; each with the name by the
+  number.
+- **Entries** (0x472E90 with its second argument 1): a text without a line break is one entry;
+  with one, its first break becomes a space when the text then takes fewer than two lines of the
+  small font (`smalfont.fnt`, §3.6; `text_line_count` 0x4B5820) at the log item's width, else
+  the text is two entries split there. The number of new entries (at most 2) sets the first line
+  the log shows. With the second argument 0 the text goes to the **status line** instead, unless
+  a log entry came less than 3 000 ms ago (`clock_ms` 0x4F82E0) and the third argument is 0.
+  Built: `battle_log::entries`, the line count as an argument; the log item's width, the
+  scrolling, the font's colour and the panel are T4b-2b's and T6's.
+- **The caller's.** Which event writes which line, when none (a hidden battle, a wait in the
+  tactics phase, a war machine's defend), how the protocol's events (`Struck` once per target,
+  `Defended` without its gain) become a strike's hits and a defend's gain: T6's event mapping.
+
