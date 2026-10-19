@@ -4,13 +4,13 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E17 M0–M2 done; M3 T1a–T1c, T2, T3a, T3b, T4a, T4b-1 done; H1, H2 done (2026-10-19: the adventure lane's harness); next: M3 T4b-2, T5–T8** (`QUEUE.md`; T9 closes M3). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
-- **Pull request (2026-10-19):** H1 and H2 (`client/e17-harness-e3`).
+- **E17 M0–M2 done; M3 T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a done; H1, H2 done (2026-10-19: the adventure lane's harness); next: M3 T4b-2b, T5–T8** (`QUEUE.md`; T9 closes M3). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
+- **Pull request (2026-10-19):** H1 and H2 (`client/e17-harness-e3`) open.
 - **The user's requirements**, epic "Decisions": a string catalogue (JSON packs, no committed translation: CLT-Q7); graphics options (`faithful` the default); exhaustive reference diffs.
 - The lane owns `clients/`, `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
 - **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does.
 - The lane needs the user's computer online (it may sleep: stage all first) for the original files, from `original-data/install/` into the clone's: the four LODs (one per staging call), `h3maped.exe`, the two `.snd` (sound: also `MP3/COMBAT01`–`04`); the captures also `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`. `sandbox-setup.sh` copies only the engine's few: `cp -rn` the staged `original-data/.` before `capture/setup.sh`. Frames live only in their sandbox.
-- **Open:** CLT-Q2 (a table-only LOD reader; until then whole archives); CLT-Q4 (the background variant); CLT-Q5 (boats in `h3-map`'s writer); CLT-Q6 (player colours, a hero's sex: red and blue flags).
+- **Open:** CLT-Q2 (a table-only LOD reader; until then whole archives); CLT-Q4 (the background variant); CLT-Q5 (boats in `h3-map`'s writer); CLT-Q6 (player colours, a hero's sex).
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
 
@@ -55,7 +55,6 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - **2026-10-19, E17 H1, H2 (the user present: the adventure lane's batch E3 first).**
   `h3adv.py`: questions, the difficulty, battles, level-ups, the underground, the list's
   scrolling, heroes' details; auto combat needs `Combat Auto Creatures`.
-- **2026-10-19, E17 M3 T4b-1 (the user present).** The string catalogue: keys, JSON packs, the
-  original's text through the keys; CLT-Q7.
-- **2026-10-15, E17 M3 T4a (the user present).** Fonts, the text drawer, the tint, count
-  boxes: all exact.
+- **2026-10-19, E17 M3 T4b-2a (the user present; T4b-2 split).** The log's lines read (row n
+  = record n), the keys corrected, `h3_view::battle_log`.
+- **2026-10-19, E17 M3 T4b-1 (the user present).** The string catalogue; CLT-Q7.

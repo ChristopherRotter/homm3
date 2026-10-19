@@ -31,7 +31,7 @@ commands:
           names nothing mentions, timings) to <out>/gate/report.md, and checks that every name
           in the asset tables (<tables>, default clients/assets) is found and decodes, and that
           every key of the string catalogue (<file>, default clients/text/keys.toml) is read
-          from the text tables with its arguments. <dir>
+          from the text tables with its arguments, and the battle log's lines compose. <dir>
           defaults to $H3_INSTALL, then to the repository's original-data/install; <out> to
           clients/out (gitignored). Build with --release for meaningful times (about 3 s,
           against 30 s).
@@ -98,14 +98,16 @@ commands:
           clients/out/sequences) and exits 1 when one differs. --frames: also draws the viewer's
           frame at each time the harness kept a frame of the original (<dir>/<id>/frames.toml,
           from `h3drive.py frames`) into <dir>/<id>/ours/, and what it drew into ours.txt.
-  text [<key> [<name>=<value>]...] [--pack <file.json>] [--install <dir>] [--tables <dir>]
-       [--keys <file>]
+  text [<key> [<name>=<value>]...] [--log] [--pack <file.json>] [--install <dir>]
+       [--tables <dir>] [--keys <file>]
           the string catalogue (clients/text/keys.toml; docs/epics/E17-design.md §9): without a
           key, every key's forms as the installation's text tables give them ({{name}} where an
           argument goes); with one, its text for the arguments given (a whole number is a
           number; `count` picks a plural form, `context` a context's form). --pack puts a
           language pack before the original's text (nested JSON, i18next's conventions, its
-          language its file's name: de.json) and lists what in it no key names.
+          language its file's name: de.json) and lists what in it no key names. --log prints
+          the battle log's lines for a few stacks instead, as the executable composes them
+          (\n where a line breaks).
   harvest [--install <dir>] [--packs <dir>] [--out <dir>]
           generates the asset tables (<out>/{base,ab,sod}.toml, default clients/out/harvest)
           from the installation copy's Heroes3.exe and H3bitmap.lod, keyed by the packs (default

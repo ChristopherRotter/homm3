@@ -392,3 +392,19 @@ The full record of done tasks (the epic file keeps one line each).
   0.68 at the same point. The pool filled (8), the learner beat its frozen past selves 0.54 →
   0.64 of the pool episodes; updates hold about 24 000 samples (the frozen side's moves do not
   train). Too short to show whether the drift is gone: that is the next hour on the GTX 1070.
+- **The second hour** (#264 merged; the pool at its defaults; the user capped it at 40 minutes:
+  440 updates; against Random on the 1 000 held-out episodes per side):
+
+  | Minutes | Sampled | Attacker | Defender | Greedy | First hour (sampled) |
+  |---|---|---|---|---|---|
+  | 0 (untrained) | 0.500 | 0.717 | 0.284 | 0.317 | 0.500 |
+  | 11.5 | 0.775 | 0.932 | 0.618 | 0.746 | 0.779 |
+  | 23.3 | **0.811** | 0.943 | 0.679 | 0.720 | 0.726 |
+  | 35.7 | 0.790 | 0.945 | 0.636 | 0.700 | 0.725 |
+  | 42.2 (final) | **0.800** | 0.943 | 0.658 | 0.714 | 0.724 (48 min) |
+
+  The pool held the defender at 0.62–0.68 where naive self-play fell to 0.52. **Exit criterion 7
+  met** (the user, 2026-10-19: the final 0.800, the best 0.811 in `best.pt`; ±1.8 points at
+  95 %). The pool cost about a third of the updates per minute (440 in 42 minutes against 744
+  in 48): the frozen networks' forward passes per call, and longer evaluations (82–140 s) as the
+  agent's defence lasts. Increment 4 done; T7 next (increment 5, the user's checkpoint).

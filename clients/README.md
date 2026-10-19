@@ -51,8 +51,8 @@ search the parent directories).
   with `h3_assets::wav` to SDL's own loader's samples (`clients/out/gate/sounds.tsv`), and every
   sound the tables name is one of them. Then the string catalogue (`--keys <file>`, default
   `clients/text/keys.toml`): every key's original forms are read from the text tables where the
-  game searches them, each row's `%s` and `%d` as the key names them. A debug build takes about
-  ten times as long.
+  game searches them, each row's `%s` and `%d` as the key names them, and the battle log's
+  sample lines compose from them. A debug build takes about ten times as long.
 - **A look at the drawers:** `cargo run --release -p h3-view -- sprite CPKMAN.DEF --group 2
   --background CmBkGrMt.pcx [--mirror]` draws every frame of one group of a DEF side by side over
   a PCX, as the battle draws a stack, into `clients/out/sprite/` (the base archives searched
@@ -183,7 +183,10 @@ player's pack, the client's own, the original's (E17 M3 T4b-1; the user, 2026-10
 2026-10-19; ADR-0020's amendment draft in `docs/lanes/client/adr-drafts/`; detail:
 `docs/epics/E17-design.md` §9). Library: `h3_view::text` (pure); the command `h3-view text`
 prints every key's forms from the installation, or one key's text (`h3-view text
-battle.log.damage attacker=Imps damage=4 count=2 [--pack de.json]`).
+battle.log.damage attacker=Imps damage=4 count=2 [--pack de.json]`). The battle log's lines are
+composed from the keys as the executable composes them from its rows (`h3_view::battle_log`, M3
+T4b-2a, design §9.4: a strike's damage and perish rows, wait, defend, morale, luck, and the log
+entries a line becomes); `h3-view text --log` prints sample lines.
 
 - **The key catalogue** `clients/text/keys.toml` (committed; identifiers and numbers only, as the
   asset tables): `[[key]]` with `id` (lower-case segments of letters, digits and `-` joined by
