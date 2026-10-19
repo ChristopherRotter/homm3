@@ -2,7 +2,8 @@
 //! (`docs/formats/installation.md`).
 //!
 //! These readers exist for the harvesting tool (`h3-harvest`, E02), which turns the original
-//! tables into the committed TOML packs once (OPEN-QUESTIONS Q13). The engine itself never reads
+//! tables into the committed TOML packs once (OPEN-QUESTIONS Q13), and for the clients' asset
+//! loading (`clients/`, ADR-0020; the LOD table alone, CLT-Q2). The engine itself never reads
 //! original files at run time. The experiment maps' writer (`.h3m`) moved to `h3-map` with the
 //! content split (R01a).
 //!
