@@ -7,10 +7,10 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 - **Opened 2026-10-18** with E05's refinement (AI-Q1): the lane owns `h3-sim` (its `src/adventure/` stays the adventure lane's until E13), `h3-ffi`, `h3-cli`'s `src/ai/`, `python/`, `benches/ai/`, E05 and E06 (`lanes.toml`).
 - **E05** (`docs/epics/E05-battle-env.md`): in progress. Increments 1 (T1, T2) and 2 (T3a–T3d,
   T4; #252) done. **Increment 3** (T5a, T5b1, T5b2, T6a, T6b): T5a merged (#253); AI-Q4 answered
-  2026-10-19 (design §4.4); T5b1 (the sampler, `h3_sim::encounter`, §4.2) and T5b2 (the batch's
-  encounter source, C ABI v28, §4.1) built on `claude/practical-meitner-mtns9h`; its pull request
-  waits for the shared #254 (`arch.toml`: `h3-sim` gets `h3-heroes`, `serde`, `toml`, `h3-ffi`
-  `h3-game`, `h3-pack-adventure`; the kernel stream `ENCOUNTER`, ADR-0025 point 4). **Next:** T6a.
+  2026-10-19 (design §4.4); the shared #254 merged (`arch.toml` edges for `h3-sim` and `h3-ffi`,
+  the kernel stream `ENCOUNTER`, ADR-0025 point 4); T5b1 (the sampler, `h3_sim::encounter`, §4.2)
+  and T5b2 (the batch's encounter source, C ABI v28, §4.1) in the **open pull request from
+  `claude/practical-meitner-mtns9h`** (2026-10-19). **Next:** T6a.
 - **Order** (BACKLOG): E05, then E23 (the battle lane: the system actor's policy), then E06.
 - **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v28 (T5b2) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q5, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
@@ -51,7 +51,7 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 
 - Went through A1–A12 with the user: A3's level ramp, A4's normal ratio (≥ 0.5), A5 as reviewed,
   A12's neutral kinds weighted 0 until E23; recorded in design §4.4 and OPEN-QUESTIONS.
-- Shared #254 opened (both T5b parts' dependencies in one, later the stream `ENCOUNTER`); T5b1
+- Shared #254 (both T5b parts' dependencies in one, later the stream `ENCOUNTER`; merged); T5b1
   (`encounters-v1.toml`, `h3_sim::encounter`, the frequency check) and T5b2 (`Scenario::encounters`,
   `h3_batch_add_encounters`, C ABI v28, the workload) on the session branch (`E05-log.md`).
 - The baseline verify of `master` failed coverage on the adventure lane's `h3-game` (QUEUE inbox;
