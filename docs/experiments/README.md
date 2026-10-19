@@ -184,6 +184,14 @@ Running a spec in our engine (to print predictions automatically) is not built (
 revisit with the next batches, E04b); the predictions are computed by hand or with a script and
 written into the spec.
 
+**Traps of a batch** (from the battle lane's HANDOFF, 2026-10-19): a predicted count needs a
+throwaway test in `crates/h3-cli/tests` on the base pack (every stack defends). Wandering monsters
+act on their own: a Blue hero holds still. Check each move against the creature's speed (the
+armies start 14 columns apart). A single-alignment army has +1 morale: mix two where an extra
+turn spoils a count. Every hero has a Catapult. A rerun is no new sample (the draws repeat); a
+random starting bonus may arm a hero: play again. Count rounds by the acted bits
+(`catapult.py`). A worktree runs the harness through a symlinked `original-data`.
+
 ## Status
 
 | Batch | Purpose | State |
