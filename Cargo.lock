@@ -546,6 +546,7 @@ dependencies = [
  "h3-content",
  "h3-contracts",
  "h3-kernel",
+ "h3-pack-adventure",
  "h3-pack-battle",
  "h3-sim",
 ]

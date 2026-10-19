@@ -6,7 +6,7 @@ use std::ffi::c_char;
 use std::sync::Arc;
 
 use h3_pack_battle::ScenarioDef;
-use h3_sim::{BattleBatch, BattleEnv, Scenario, Seat};
+use h3_sim::{BattleBatch, BattleEnv, EncounterTable, Sampler, Scenario, Seat};
 
 /// The ids of the built-in packs, compiled into the library ([`builtin_pack`]).
 pub const BUILTIN_PACKS: [&str; 5] = ["synthetic", "synthetic-ext", "base", "ab", "sod"];
@@ -100,6 +100,66 @@ pub fn add_to_batch(
     batch.add_scenario(scenario).map_err(|e| e.to_string())?;
     if compiled {
         rulesets.push((def.packs, def.profile, index));
+    }
+    Ok(())
+}
+
+/// The packs and profile of the encounter distribution v1: the census's (`census-v1.toml`).
+const ENCOUNTER_PACKS: [&str; 3] = ["base", "ab", "sod"];
+/// See [`ENCOUNTER_PACKS`].
+const ENCOUNTER_PROFILE: &str = "base:faithful";
+
+/// Adds the encounter distribution v1 (E05 T5b2; `h3_sim::encounter`) to `batch` with `weight`,
+/// its kinds drawn by `kinds` (in `h3_sim::Kind::ALL`'s order) or, without, by the
+/// distribution's default (the neutral kinds 0 until E23). It runs on the original packs
+/// (`base`, `ab`, `sod`, `base:faithful`), sharing their ruleset with the batch's scenarios on
+/// them (ADR-0025 point 9); the adventure part (its random monsters) is compiled here.
+///
+/// # Errors
+/// A message naming the stage that failed (`packs:`, `adventure:`, `encounters:`), or the batch's
+/// refusal (weight); the batch is unchanged.
+pub fn add_encounters(
+    batch: &mut BattleBatch,
+    rulesets: &mut Vec<(Vec<String>, String, usize)>,
+    weight: u32,
+    kinds: Option<[u32; 6]>,
+) -> Result<(), String> {
+    let packs: Vec<String> = ENCOUNTER_PACKS.map(String::from).to_vec();
+    let shared = rulesets
+        .iter()
+        .find(|(p, profile, _)| *p == packs && profile == ENCOUNTER_PROFILE)
+        .and_then(|&(_, _, index)| batch.scenarios().get(index))
+        .map(|s| s.ruleset().clone());
+    let compiled = shared.is_none();
+    let battle = match shared {
+        Some(ruleset) => ruleset,
+        None => Arc::new(
+            h3_pack_battle::compile(
+                &[
+                    h3_pack_battle::BASE_PACK,
+                    h3_pack_battle::AB_PACK,
+                    h3_pack_battle::SOD_PACK,
+                ],
+                ENCOUNTER_PROFILE,
+            )
+            .map_err(|e| format!("packs: {e}"))?,
+        ),
+    };
+    let (_, adventure) =
+        h3_pack_adventure::compile(&h3_pack_adventure::ORIGINAL_PACKS, ENCOUNTER_PROFILE)
+            .map_err(|e| format!("adventure: {e}"))?;
+    let mut sampler = Sampler::new(battle, Arc::new(adventure), &EncounterTable::v1())
+        .map_err(|e| format!("encounters: {e}"))?;
+    if let Some(kinds) = kinds {
+        sampler = sampler
+            .with_weights(kinds)
+            .map_err(|e| format!("encounters: {e}"))?;
+    }
+    let scenario = Scenario::encounters(Arc::new(sampler), weight).map_err(|e| e.to_string())?;
+    let index = batch.scenarios().len();
+    batch.add_scenario(scenario).map_err(|e| e.to_string())?;
+    if compiled {
+        rulesets.push((packs, ENCOUNTER_PROFILE.to_owned(), index));
     }
     Ok(())
 }

@@ -9,8 +9,9 @@ AI-Q3). A handover, not binding: each task that builds a section deletes its det
 ADR-0025 points 1 to 7 as code: `h3_sim::batch` (`BattleBatch`, `Scenario`, `Seat`, `Policy`,
 `EnvReport`, `Outputs`, `episode_seed`, `draw_scenario`; the threads in `batch::pool`) and C ABI
 v27 in `h3-ffi`'s `src/batch.rs`, declared in `include/h3.h` (T1's sketch with its names, plus
-`H3Seats`, `H3_SEAT_*`, `H3_CURRENCY_*` and `H3_ERR_NOT_READY`; `h3_batch_set_encounters` comes
-with T5). Decisions of the build beyond the ADR (the agent's, provisional):
+`H3Seats`, `H3_SEAT_*`, `H3_CURRENCY_*` and `H3_ERR_NOT_READY`; the encounter source came with
+T5b2 as `h3_batch_add_encounters`, C ABI v28, §4.1). Decisions of the build beyond the ADR (the
+agent's, provisional):
 
 - **Outputs:** the big arrays (observations, entry masks, final observations) are the caller's,
   written in place by the workers; the small per-env values come back as one `EnvReport` per
@@ -103,9 +104,19 @@ rewards between its own moves (§5).
   packs: about 18 ms for `base`, `ab` and `sod` (2.6 ms for the synthetic skirmish) in a release
   build on the cloud sandbox, about ten times that in a debug build; the batch's shared rulesets
   (above) avoid it per env.
-- **Episode sources of a batch:** (i) a weighted list of fixed scenarios (`h3_batch_add_scenario`:
-  text, integer weight, seats); each reset draws one by weight; or (ii) the encounter
-  distribution (T5).
+- **Episode sources of a batch:** a weighted list of entries, each reset drawing one by weight:
+  (i) a fixed scenario (`h3_batch_add_scenario`: text, integer weight, seats), or (ii) the
+  encounter distribution (**built, T5b2**): `Scenario::encounters(sampler, weight)` in Rust,
+  `h3_batch_add_encounters(batch, weight, kinds, error, error_len)` in C ABI v28 (`kinds` null for
+  the distribution's weights, else six in `H3_ENCOUNTER_*` order: a curriculum; on the original
+  packs, `base:faithful`, sharing their ruleset with the batch's scenarios on them; the adventure
+  part compiled per call). `Scenario::episode(seed, max_steps)` gives an episode's env, seats and
+  kind: the sampler's encounter of the episode's seed, drawn from stream `ENCOUNTER` (a kernel
+  stream, #254) so that it is independent of the entry's draw from `SETUP`; the neutral kinds'
+  defender is played inside the call. Each env reports its episode's kind (`EnvReport.encounter`,
+  `H3BatchBuffers.encounter`: `H3_ENCOUNTER_*`, -1 for a fixed scenario). Cost in a release build
+  on the cloud sandbox: a sample 50 µs at the default weights (26 µs at A1's shares), an
+  episode's start with its env 160 µs, about 2 % of an episode of some 300 steps.
 
 ### 4.2 The encounter distribution v1 (built, T5b1)
 
@@ -118,7 +129,7 @@ rewards between its own moves (§5).
   and a point in it evenly, linear between), computed from the stated normal or log-normal when
   the file was written.
 - **`Sampler`** (`h3_sim::encounter`): built on the battle and adventure parts of one core
-  (`GameRuleset`'s check); `sample(seed)` draws every choice from stream `SETUP` of the seed and
+  (`GameRuleset`'s check); `sample(seed)` draws every choice from stream `ENCOUNTER` of the seed and
   returns an `Encounter`: kind, week, a `BattleSetup` (obstacles left to the episode,
   `random_obstacles`; both sides human), the seats (A12) and the `Facts` drawn (place, level,
   count, redraws, ratio, k, factions, hero levels, values, fort). Its default weights are the
@@ -140,8 +151,8 @@ rewards between its own moves (§5).
   (level 4 falls from 10 % to 4 % of them), in week 2 1 %, from week 4 none; under random play the
   attacker wins 98 % of the neutral battles, 80 % of the hero battles, 63 % of the sieges a hero
   defends.
-- Not drawn yet: the difficulty (A11: Normal), two boats (A10), creature banks (A1). T5b2 makes the
-  sampler a batch's episode source.
+- Not drawn yet: the difficulty (A11: Normal), two boats (A10), creature banks (A1). T5b2 made the
+  sampler a batch's episode source (§4.1).
 
 ### 4.3 The census v1 (T5a, built)
 
@@ -256,7 +267,10 @@ as proposed. How T5b1 pins down what a row leaves open is marked *(T5b1)*.
   them): `batch-random-full` — a batch of 64 envs of `packs/synthetic/scenarios/full.toml`, one
   thread, 1 000 calls of random legal actions chosen from the batch's own masks (casts through the
   heads), observations and masks written, counted inside `h3_sim::batch::BattleBatch::step`;
-  `batch-random-siege` the same on the siege. T5 adds `batch-random-encounters-v1`.
+  `batch-random-siege` the same on the siege; `batch-random-encounters-v1` (T5b2) the same on the
+  encounter distribution at its default weights (`h3 ai bench --encounters default`): 11.86 G
+  instructions against 11.45 G for `full`, the automatic resets' sampling included (on the
+  sandbox about 39 700 steps/s inside `step` against 50 700 for `full`, a run beside a verify).
 - **Recorded** (wall time, no gate): `h3 ai bench --envs N --threads T --calls K` prints steps/s
   inside `BattleBatch::step` and with the head calls and the random choice; on the user's Ryzen 9
   3900X for T = 1, 6, 12, 24 and N = 64, 256, 1 024 at T9 (moved from T3 by the user, 2026-10-18;

@@ -198,3 +198,25 @@ The full record of done tasks (the epic file keeps one line each).
 - **Verify:** the baseline full verify of `master` (1f32f10) failed only coverage, on the
   adventure lane's `h3-game/src/state.rs:569` (a pending Pass offer's hash tag; 0 hits in
   `cargo llvm-cov -p h3-game`): queued for the adventure lane.
+
+## T5b2 — The batch's encounter source (2026-10-19)
+
+- In the session of T5b1, as its cut allowed when T5b1 finished early (the user, 2026-10-19).
+- **Found before building:** the batch draws an episode's entry from stream `SETUP` of the
+  episode's seed, the sampler drew from the same stream: mixed with fixed scenarios, the entry's
+  draw and the encounter's kind would have been correlated. A kernel stream `ENCOUNTER` (id 6)
+  went into the shared #254 with a clause in ADR-0025 point 4; the sampler draws from it.
+- **Built:** `Scenario` holds a fixed battle or the encounter distribution
+  (`Scenario::encounters`); `Scenario::episode` gives an episode's env, seats and kind;
+  `setup()` and `seats()` are `None` for the distribution; `EnvReport.encounter`. C ABI v28:
+  `h3_batch_add_encounters` (`h3-ffi` compiles the adventure part, `h3-pack-adventure`, #254),
+  `H3BatchBuffers.encounter` (appended), `H3_ENCOUNTER_*`; `h3.h` and the C smoke test.
+  `h3 ai bench --encounters default|a,b,c,d,e,f`; the workload `batch-random-encounters-v1`.
+- **Measured** (release, the sandbox): a sample 50 µs at the default weights, 26 µs at A1's
+  shares (the hero kinds derive two heroes); an episode's start with its env 160 µs; the
+  workload 11 858 763 279 instructions (`full`: 11 457 336 633).
+- **Tests:** `h3-sim`'s `encounters_play_as_single_envs` (the encounter source mixed with a fixed
+  scenario, threads 0 and 2, bit for bit as single envs of `Scenario::episode`; the reports'
+  kinds), `h3-ffi`'s `encounters_are_an_episode_source` (errors, shared ruleset, curricula, the
+  kinds per entry, a neutral defender played inside the call), `h3-cli`'s bench and command-line
+  tests, the C smoke test.

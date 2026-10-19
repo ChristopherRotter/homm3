@@ -125,13 +125,15 @@ static int play(H3Env *env, Played *out) {
 }
 
 /* A batch of BATCH envs on two threads (E05 T3d): the siege against a random defender and in
- * self-play, CALLS calls of random legal actions from the batch's masks. */
+ * self-play, and (v28) the encounter distribution with its neutral kinds, CALLS calls of random
+ * legal actions from the batch's masks. */
 #define BATCH 4
 #define CALLS 300
 
 typedef struct Batched {
     int episodes;
     int decided;
+    int encounters;
 } Batched;
 
 static int play_batch(Batched *out) {
@@ -145,6 +147,11 @@ static int play_batch(Batched *out) {
                                 sizeof error) == H3_OK);
     CHECK(h3_batch_add_scenario(batch, SIEGE, strlen(SIEGE), 1, self_play, error, sizeof error) ==
           H3_OK);
+    uint32_t kinds[6] = {1, 1, 1, 1, 1, 1};
+    CHECK(h3_batch_add_encounters(batch, 2, kinds, error, sizeof error) == H3_OK);
+    uint32_t no_kinds[6] = {0};
+    CHECK(h3_batch_add_encounters(batch, 1, no_kinds, error, sizeof error) == H3_ERR_ARGUMENT);
+    CHECK(strncmp(error, "encounters: ", 12) == 0);
     uint32_t n_actions = h3_action_count();
     uint32_t n_spells = h3_spell_count();
     uint32_t n_targets = h3_target_count();
@@ -161,9 +168,10 @@ static int play_batch(Batched *out) {
     uint16_t spells[BATCH], targets[BATCH];
     uint64_t seed[BATCH];
     int32_t status[BATCH];
+    int8_t encounter[BATCH];
     H3Action actions[BATCH];
-    H3BatchBuffers buffers = {obs,       mask,    to_move,  reward, done, truncated, result,
-                              final_obs, episode, scenario, seed,   status};
+    H3BatchBuffers buffers = {obs,     mask,     to_move, reward, done,     truncated, result,
+                              final_obs, episode, scenario, seed, status, encounter};
     CHECK(h3_batch_reset(batch, &buffers) == H3_OK);
     uint64_t lcg = 777;
     memset(out, 0, sizeof *out);
@@ -194,6 +202,10 @@ static int play_batch(Batched *out) {
             out->episodes += done[i];
             out->decided += done[i] && !truncated[i];
             CHECK(done[i] ? result[i] != H3_RESULT_NONE || truncated[i] : reward[2 * i] == 0);
+            CHECK(scenario[i] == 2 ? encounter[i] >= H3_ENCOUNTER_WANDERING &&
+                                         encounter[i] <= H3_ENCOUNTER_SIEGE_NEUTRAL
+                                   : encounter[i] == H3_ENCOUNTER_NONE);
+            out->encounters += done[i] && scenario[i] == 2;
         }
     }
     CHECK(seed[0] == h3_batch_episode_seed(9, 0, episode[0]));
@@ -206,7 +218,7 @@ static int play_batch(Batched *out) {
 }
 
 int main(void) {
-    CHECK(h3_abi_version() == 27);
+    CHECK(h3_abi_version() == 28);
 
     /* The full scenario: both sides are led by heroes with spell books. */
     H3Env *env = h3_env_create_synthetic(2, 42, 1000);
@@ -247,9 +259,9 @@ int main(void) {
 
     printf("ffi smoke ok: %d steps, %d casts, %d stack casts, result %d, final hash %016llx; "
            "siege: %d steps, %d wall shots, result %d, final hash %016llx; "
-           "batch: %d episodes, %d decided\n",
+           "batch: %d episodes, %d decided, %d encounters\n",
            full.steps, full.casts, full.stack_casts, (int)full.result.result,
            (unsigned long long)hash, town.steps, town.wall_shots, (int)town.result.result,
-           (unsigned long long)siege_hash, batched.episodes, batched.decided);
+           (unsigned long long)siege_hash, batched.episodes, batched.decided, batched.encounters);
     return 0;
 }

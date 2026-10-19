@@ -11,7 +11,7 @@ use crate::batch::Scenario;
 use crate::rollout;
 
 /// The sampler of the shipped distribution on the original packs (`base:faithful`).
-static SAMPLER: LazyLock<Sampler> = LazyLock::new(|| {
+pub(crate) static SAMPLER: LazyLock<Sampler> = LazyLock::new(|| {
     let profile = "base:faithful";
     let (_, adventure) =
         h3_pack_adventure::compile(&h3_pack_adventure::ORIGINAL_PACKS, profile).unwrap();
@@ -470,3 +470,4 @@ fn guards_divide_evenly() {
     assert_eq!(counts(10, 3), [4, 3, 3]);
     assert_eq!(counts(2, 3), [1, 1]);
 }
+

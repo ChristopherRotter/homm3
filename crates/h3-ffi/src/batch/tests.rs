@@ -35,6 +35,7 @@ struct Arrays {
     scenario: Vec<u32>,
     seed: Vec<u64>,
     status: Vec<i32>,
+    encounter: Vec<i8>,
 }
 
 impl Arrays {
@@ -52,6 +53,7 @@ impl Arrays {
             scenario: vec![0; n],
             seed: vec![0; n],
             status: vec![0; n],
+            encounter: vec![0; n],
         }
     }
 
@@ -69,6 +71,7 @@ impl Arrays {
             scenario: self.scenario.as_mut_ptr(),
             episode_seed: self.seed.as_mut_ptr(),
             status: self.status.as_mut_ptr(),
+            encounter: self.encounter.as_mut_ptr(),
         }
     }
 }
@@ -498,4 +501,110 @@ fn errors_are_codes_not_panics() {
     assert_eq!(error_code(&BatchError::NotReset), H3_ERR_NOT_READY);
     assert_eq!(H3_ERR_PANIC, -99);
     assert!([HERO_CAST, CREATURE_CAST].iter().all(|&c| c < ACTION_COUNT));
+}
+
+/// `h3_batch_add_encounters` with its code and message.
+fn add_encounters(b: *mut H3Batch, weight: u32, kinds: Option<[u32; 6]>) -> (i32, String) {
+    let mut error = [0 as c_char; 256];
+    let kinds_ptr = kinds.as_ref().map_or(std::ptr::null(), |k| k.as_ptr());
+    let code =
+        unsafe { h3_batch_add_encounters(b, weight, kinds_ptr, error.as_mut_ptr(), error.len()) };
+    let bytes: Vec<u8> = error
+        .iter()
+        .take_while(|c| **c != 0)
+        .map(|c| *c as u8)
+        .collect();
+    (code, String::from_utf8(bytes).unwrap())
+}
+
+/// E05 T5b2: the encounter distribution through the C ABI: its kinds in the reports, its
+/// ruleset shared with a scenario on the original packs, its weights and errors.
+#[test]
+fn encounters_are_an_episode_source() {
+    let n = 12;
+    let b = create(&config(n, 2, 4, 400)).unwrap();
+    assert_eq!(add_encounters(std::ptr::null_mut(), 1, None).0, H3_ERR_NULL);
+    let (code, message) = add_encounters(b, 0, None);
+    assert_eq!(code, H3_ERR_ARGUMENT);
+    assert!(message.contains("weight"), "{message}");
+    let (code, message) = add_encounters(b, 1, Some([0; 6]));
+    assert_eq!(code, H3_ERR_ARGUMENT);
+    assert!(message.starts_with("encounters: "), "{message}");
+    // A scenario on the original packs first: the encounters share its ruleset.
+    assert_eq!(add(b, TOWN, 1, EXTERNAL).0, H3_OK);
+    assert_eq!(add_encounters(b, 3, None), (H3_OK, String::new()));
+    // Only hero battles, then the neutral kinds as a curriculum.
+    assert_eq!(add_encounters(b, 2, Some([0, 0, 1, 0, 0, 0])).0, H3_OK);
+    assert_eq!(add_encounters(b, 2, Some([1, 1, 0, 0, 0, 1])).0, H3_OK);
+    let h = unsafe { &*b };
+    let scenarios = h.batch.scenarios();
+    assert_eq!(scenarios.len(), 4);
+    assert!(
+        scenarios[1..]
+            .iter()
+            .all(|s| Arc::ptr_eq(s.ruleset(), scenarios[0].ruleset()))
+    );
+    let mut arrays = Arrays::new(n as usize);
+    let buffers = arrays.buffers();
+    assert_eq!(unsafe { h3_batch_reset(b, &buffers) }, H3_OK);
+    let mut rng = Rng::for_stream(4, StreamId::AGENT);
+    let mut seen = [false; 6];
+    for _ in 0..60 {
+        for i in 0..n as usize {
+            let kind = arrays.encounter[i];
+            match arrays.scenario[i] {
+                0 => assert_eq!(i32::from(kind), H3_ENCOUNTER_NONE),
+                1 => assert!(
+                    [
+                        H3_ENCOUNTER_HERO,
+                        H3_ENCOUNTER_SIEGE_HERO,
+                        H3_ENCOUNTER_SIEGE_GARRISON
+                    ]
+                    .contains(&i32::from(kind))
+                ),
+                2 => assert_eq!(i32::from(kind), H3_ENCOUNTER_HERO),
+                _ => assert!(
+                    [
+                        H3_ENCOUNTER_WANDERING,
+                        H3_ENCOUNTER_GUARDS,
+                        H3_ENCOUNTER_SIEGE_NEUTRAL
+                    ]
+                    .contains(&i32::from(kind))
+                ),
+            }
+            if kind >= 0 {
+                seen[kind as usize] = true;
+            }
+        }
+        let actions: Vec<H3Action> = (0..n as usize)
+            .map(|i| {
+                let mask = &arrays.mask[i * ACTION_COUNT..(i + 1) * ACTION_COUNT];
+                let legal: Vec<usize> = (0..ACTION_COUNT)
+                    .filter(|&e| mask[e] == 1 && e != CREATURE_CAST && e != HERO_CAST)
+                    .collect();
+                let entry = legal[rng.below(legal.len() as u32) as usize];
+                H3Action {
+                    entry: entry as u32,
+                    spell: 0,
+                    target: 0,
+                    second: 0,
+                }
+            })
+            .collect();
+        assert_eq!(
+            unsafe { h3_batch_step(b, actions.as_ptr(), &buffers) },
+            H3_OK
+        );
+        // A neutral defender is played inside the call: the caller always acts as the attacker.
+        for i in 0..n as usize {
+            if arrays.scenario[i] == 3 {
+                assert_eq!(arrays.to_move[i], 0);
+            }
+        }
+    }
+    assert!(
+        seen[H3_ENCOUNTER_HERO as usize] && seen[H3_ENCOUNTER_WANDERING as usize],
+        "{seen:?}"
+    );
+    unsafe { h3_batch_destroy(b) };
 }

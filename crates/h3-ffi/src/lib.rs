@@ -25,10 +25,13 @@ mod batch;
 mod scenario;
 
 pub use batch::{
-    H3_CURRENCY_AI_VALUE, H3_CURRENCY_GOLD, H3_ERR_NOT_READY, H3_SEAT_EXTERNAL, H3_SEAT_RANDOM,
-    H3Batch, H3BatchBuffers, H3BatchConfig, H3RewardConfig, H3Seats, h3_batch_add_scenario,
-    h3_batch_create, h3_batch_destroy, h3_batch_episode_seed, h3_batch_reset, h3_batch_second_mask,
-    h3_batch_spell_mask, h3_batch_step, h3_batch_target_mask,
+    H3_CURRENCY_AI_VALUE, H3_CURRENCY_GOLD, H3_ENCOUNTER_GUARDS, H3_ENCOUNTER_HERO,
+    H3_ENCOUNTER_NONE, H3_ENCOUNTER_SIEGE_GARRISON, H3_ENCOUNTER_SIEGE_HERO,
+    H3_ENCOUNTER_SIEGE_NEUTRAL, H3_ENCOUNTER_WANDERING, H3_ERR_NOT_READY, H3_SEAT_EXTERNAL,
+    H3_SEAT_RANDOM, H3Batch, H3BatchBuffers, H3BatchConfig, H3RewardConfig, H3Seats,
+    h3_batch_add_encounters, h3_batch_add_scenario, h3_batch_create, h3_batch_destroy,
+    h3_batch_episode_seed, h3_batch_reset, h3_batch_second_mask, h3_batch_spell_mask,
+    h3_batch_step, h3_batch_target_mask,
 };
 
 /// Version of this ABI (functions, structs, error codes, and the action/observation encodings).
@@ -81,8 +84,10 @@ pub use batch::{
 /// T3d): the training batch, `h3_batch_*` (N envs per handle on T threads, seats per scenario,
 /// same-step automatic reset, the head calls per batch, reward v1, the caller's arrays in
 /// `H3BatchBuffers`; ADR-0025 points 1 to 8) and `H3_ERR_NOT_READY`; the encodings and the single
-/// env's functions unchanged.
-pub const H3_ABI_VERSION: u32 = 27;
+/// env's functions unchanged. v28 (E05 T5b2): `h3_batch_add_encounters` (the encounter
+/// distribution v1 as an episode source) and `H3BatchBuffers.encounter` (each env's encounter
+/// kind, `H3_ENCOUNTER_*`; the struct grows by one pointer at its end); the encodings unchanged.
+pub const H3_ABI_VERSION: u32 = 28;
 
 /// `H3StepResult.result`: the battle is not decided (still running, or truncated).
 pub const H3_RESULT_NONE: i32 = -1;
@@ -619,7 +624,7 @@ mod tests {
 
     #[test]
     fn abi_smoke_create_step_destroy() {
-        assert_eq!(h3_abi_version(), 27);
+        assert_eq!(h3_abi_version(), 28);
         assert_eq!(h3_action_count() as usize, ACTION_COUNT);
         assert_eq!(h3_spell_count() as usize, SPELL_COUNT);
         assert_eq!(h3_target_count() as usize, TARGET_COUNT);

@@ -16,6 +16,7 @@ h3-content.workspace = true
 h3-contracts.workspace = true
 h3-battle.workspace = true
 h3-pack-battle.workspace = true
+h3-pack-adventure.workspace = true
 h3-sim.workspace = true
 
 [lints]

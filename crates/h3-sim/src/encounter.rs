@@ -3,7 +3,7 @@
 //! week, place, armies, heroes and town drawn by the census of the shipped maps
 //! (`data/census-v1.toml`) and the stated assumptions A1 to A12 (`data/encounters-v1.toml`).
 //!
-//! * Every draw of an encounter comes from stream `SETUP` of its seed, so a seed always gives the
+//! * Every draw of an encounter comes from stream `ENCOUNTER` of its seed, so a seed always gives the
 //!   same encounter on the same rulesets; its battle's own draws (the obstacles, the battle) come
 //!   from the other streams of the same seed.
 //! * The game's rules are used where the engine has them: a random monster's creature
@@ -34,7 +34,7 @@ use crate::batch::{Policy, Seat};
 mod hero;
 mod table;
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;
 
 pub use table::{EncounterTable, KindRow, LEVELS, Place, QUANTILES, Quantiles, WEEKS};
 
@@ -399,9 +399,9 @@ impl Sampler {
         self.rules.core()
     }
 
-    /// The encounter of `seed`: every draw from its stream `SETUP`.
+    /// The encounter of `seed`: every draw from its stream `ENCOUNTER`.
     pub fn sample(&self, seed: u64) -> Encounter {
-        let rng = &mut Rng::for_stream(seed, StreamId::SETUP);
+        let rng = &mut Rng::for_stream(seed, StreamId::ENCOUNTER);
         let kind = Kind::ALL[pick(rng, self.weights.iter().copied())];
         let row = &self.table.kinds[kind.index()];
         let week = pick(rng, row.week.iter().copied()) as u8 + 1;

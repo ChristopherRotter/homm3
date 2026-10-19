@@ -1,5 +1,6 @@
-//! `h3 ai bench` (E05 T3c; `docs/epics/E05-design.md` §7): a batch of N envs of one scenario,
-//! both seats external, called K times with random legal actions chosen from the batch's own
+//! `h3 ai bench` (E05 T3c; `docs/epics/E05-design.md` §7): a batch of N envs of one scenario (or,
+//! since T5b2, of the encounter distribution v1 on the original packs), the caller's seats
+//! external, called K times with random legal actions chosen from the batch's own
 //! masks (a cast through the head calls, made only when an env chose one), observations and entry
 //! masks written. It reports the steps per second of wall time, inside `BattleBatch::step` and
 //! with the head calls and the choice. `cargo xtask bench-check` counts the gated workloads'
@@ -13,8 +14,8 @@ use std::time::Instant;
 use h3_kernel::{Rng, StreamId};
 use h3_sim::action::{CREATURE_CAST, HERO_CAST};
 use h3_sim::{
-    ACTION_COUNT, Action, BatchConfig, BattleBatch, EnvReport, OBSERVATION_LEN, Outputs,
-    RewardConfig, SPELL_COUNT, Scenario, Seat, TARGET_COUNT,
+    ACTION_COUNT, Action, BatchConfig, BattleBatch, EncounterTable, EnvReport, OBSERVATION_LEN,
+    Outputs, RewardConfig, SPELL_COUNT, Sampler, Scenario, Seat, TARGET_COUNT,
 };
 
 use crate::load_scenario;
@@ -24,6 +25,9 @@ use crate::load_scenario;
 pub struct BenchOptions {
     /// The scenario file.
     pub scenario: PathBuf,
+    /// The encounter distribution v1 instead, its kinds drawn by these weights (in
+    /// `h3_sim::Kind::ALL`'s order); `scenario` and `packs_dir` are then unused.
+    pub encounters: Option<[u32; 6]>,
     /// The packs' directory.
     pub packs_dir: PathBuf,
     /// The batch's envs, N.
@@ -168,22 +172,48 @@ fn choose(batch: &mut BattleBatch, arrays: &mut Arrays, rng: &mut Rng) -> Result
     Ok(())
 }
 
+/// The encounter distribution v1 on the original packs (`base:faithful`) with the kinds' `weights`.
+fn encounters(weights: [u32; 6]) -> Result<Scenario, String> {
+    let profile = "base:faithful";
+    let battle = h3_pack_battle::compile(
+        &[
+            h3_pack_battle::BASE_PACK,
+            h3_pack_battle::AB_PACK,
+            h3_pack_battle::SOD_PACK,
+        ],
+        profile,
+    )
+    .map_err(|e| e.to_string())?;
+    let (_, adventure) = h3_pack_adventure::compile(&h3_pack_adventure::ORIGINAL_PACKS, profile)
+        .map_err(|e| e.to_string())?;
+    let sampler = Sampler::new(Arc::new(battle), Arc::new(adventure), &EncounterTable::v1())
+        .and_then(|s| s.with_weights(weights))
+        .map_err(|e| e.to_string())?;
+    Scenario::encounters(Arc::new(sampler), 1).map_err(|e| e.to_string())
+}
+
 /// Plays the benchmark (see the module documentation).
 ///
 /// # Errors
 ///
 /// A message: the scenario does not load, or the batch refuses its settings.
 pub fn run(options: &BenchOptions) -> Result<BenchReport, String> {
-    let (def, ruleset, setup) = load_scenario(&options.scenario, &options.packs_dir, options.seed)
-        .map_err(|e| e.to_string())?;
-    let scenario = Scenario::new(
-        Arc::new(ruleset),
-        &setup,
-        def.random_obstacles,
-        1,
-        [Seat::External; 2],
-    )
-    .map_err(|e| e.to_string())?;
+    let scenario = match options.encounters {
+        Some(weights) => encounters(weights)?,
+        None => {
+            let (def, ruleset, setup) =
+                load_scenario(&options.scenario, &options.packs_dir, options.seed)
+                    .map_err(|e| e.to_string())?;
+            Scenario::new(
+                Arc::new(ruleset),
+                &setup,
+                def.random_obstacles,
+                1,
+                [Seat::External; 2],
+            )
+            .map_err(|e| e.to_string())?
+        }
+    };
     let mut batch = BattleBatch::new(BatchConfig {
         envs: options.envs,
         threads: options.threads,

@@ -1,5 +1,5 @@
 /*
- * h3 engine C ABI, version 27 (see crates/h3-ffi/src/lib.rs and ADR-0011; the batch: ADR-0025).
+ * h3 engine C ABI, version 28 (see crates/h3-ffi/src/lib.rs and ADR-0011; the batch: ADR-0025).
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
  * Handles are opaque. Functions return H3_OK (0) or a negative error code; they never unwind.
@@ -91,6 +91,15 @@ uint64_t h3_env_state_hash(const H3Env *env);
  * players' (ADR-0025 point 6); Retreat and Surrender are never legal and refused (point 7). */
 #define H3_SEAT_EXTERNAL 0 /* the caller plays the side */
 #define H3_SEAT_RANDOM 1   /* uniformly random legal commands inside the call (tests) */
+/* The encounter distribution's kinds (v28): H3BatchBuffers.encounter and the weights of
+ * h3_batch_add_encounters, in this order. */
+#define H3_ENCOUNTER_NONE (-1)          /* the episode's scenario is no encounter distribution */
+#define H3_ENCOUNTER_WANDERING 0        /* a hero attacks a wandering monster */
+#define H3_ENCOUNTER_GUARDS 1           /* a hero attacks the guards of a pile or a garrison */
+#define H3_ENCOUNTER_HERO 2             /* a hero attacks a hero in the field */
+#define H3_ENCOUNTER_SIEGE_HERO 3       /* a hero attacks a town a hero defends */
+#define H3_ENCOUNTER_SIEGE_GARRISON 4   /* a hero attacks a player's town without a hero */
+#define H3_ENCOUNTER_SIEGE_NEUTRAL 5    /* a hero attacks a neutral town */
 #define H3_CURRENCY_AI_VALUE 0 /* the creatures' ai_value */
 #define H3_CURRENCY_GOLD 1     /* the creatures' cost in the ruleset's money */
 
@@ -130,6 +139,7 @@ typedef struct H3BatchBuffers {
     uint32_t *scenario;     /* the index of its scenario, in the order added */
     uint64_t *episode_seed; /* its seed: a single env with it plays the same battle */
     int32_t *status;        /* H3_OK, or why the env refused this call's action (unchanged) */
+    int8_t *encounter;      /* its episode's H3_ENCOUNTER_* kind (v28) */
 } H3BatchBuffers;
 
 /* NULL on error, its message written into error[0..error_len] as for h3_env_create_scenario. */
@@ -140,6 +150,13 @@ void h3_batch_destroy(H3Batch *batch);
  * error (the batch unchanged). */
 int32_t h3_batch_add_scenario(H3Batch *batch, const char *toml, size_t len, uint32_t weight,
                               H3Seats seats, char *error, size_t error_len);
+/* Adds the encounter distribution v1 (v28, E05 T5b) with weight >= 1: each episode's battle and
+ * seats drawn from its seed (a neutral defender played inside the call), on the original packs
+ * (base, ab, sod, base:faithful; their ruleset shared with the batch's scenarios on them).
+ * kinds: NULL for the distribution's weights (the neutral kinds 0), or six weights in
+ * H3_ENCOUNTER_* order, not all 0. H3_ERR_ARGUMENT with a message on error (batch unchanged). */
+int32_t h3_batch_add_encounters(H3Batch *batch, uint32_t weight, const uint32_t *kinds,
+                                char *error, size_t error_len);
 /* Every env's first episode (a later call replays the same episodes). */
 int32_t h3_batch_reset(H3Batch *batch, const H3BatchBuffers *out);
 /* The head masks for every env at once (len >= N * h3_spell_count() or h3_target_count()),

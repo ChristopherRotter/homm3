@@ -4,7 +4,9 @@
 //! * Each env's episodes come from a weighted list of [`Scenario`]s; episode `k` of env `i` has
 //!   the seed [`episode_seed`]`(batch seed, i, k)` (stream [`StreamId::env`] of the batch seed),
 //!   and its scenario is drawn from that seed's stream `SETUP`. A single [`BattleEnv`] from
-//!   [`Scenario::env`] with that seed plays the same battle bit for bit.
+//!   [`Scenario::env`] with that seed plays the same battle bit for bit. A scenario is one battle
+//!   or the encounter distribution ([`Scenario::encounters`], E05 T5b2), which draws each
+//!   episode's battle and seats from the seed's stream `ENCOUNTER`.
 //! * A scenario names a [`Seat`] per side: `External` (the caller acts) or `Internal` (a
 //!   [`Policy`] plays inside the call, drawing from stream [`StreamId::seat`] of the episode
 //!   seed). Every side the batch reports to move is external.
@@ -34,6 +36,7 @@ use crate::action::{
     ACTION_COUNT, Action, ActionMask, RETREAT, SPELL_COUNT, SURRENDER, SpellMask, TARGET_COUNT,
     TargetMask,
 };
+use crate::encounter::{Kind, Sampler};
 use crate::env::{BattleEnv, StepError};
 use crate::observation::OBSERVATION_LEN;
 use crate::reward::{self, RewardConfig};
@@ -130,14 +133,38 @@ impl std::fmt::Display for BatchError {
 
 impl std::error::Error for BatchError {}
 
-/// An episode source entry: a battle, its weight among the batch's scenarios and its seats.
+/// What an episode source entry plays.
+#[derive(Debug, Clone)]
+enum Episodes {
+    /// One battle, its obstacles generated for each episode when `random_obstacles` is set.
+    Fixed {
+        setup: Arc<BattleSetup>,
+        random_obstacles: bool,
+        seats: [Seat; 2],
+    },
+    /// The encounter distribution: each episode's battle and seats drawn from its seed.
+    Encounters(Arc<Sampler>),
+}
+
+/// An episode source entry: a battle and its seats, or the encounter distribution (E05 T5b2), with
+/// its weight among the batch's scenarios.
 #[derive(Debug, Clone)]
 pub struct Scenario {
     ruleset: Arc<BattleRuleset>,
-    setup: Arc<BattleSetup>,
-    random_obstacles: bool,
+    episodes: Episodes,
     weight: u32,
-    seats: [Seat; 2],
+}
+
+/// One episode of a scenario: its battle, its seats and, from the encounter distribution, its
+/// kind.
+#[derive(Debug)]
+pub struct Episode {
+    /// The battle.
+    pub env: BattleEnv,
+    /// Who plays each side, indexed by [`BattleSide::index`].
+    pub seats: [Seat; 2],
+    /// The encounter's kind, if the scenario is the encounter distribution.
+    pub kind: Option<Kind>,
 }
 
 impl Scenario {
@@ -168,13 +195,33 @@ impl Scenario {
         });
         let scenario = Self {
             ruleset,
-            setup,
-            random_obstacles,
+            episodes: Episodes::Fixed {
+                setup,
+                random_obstacles,
+                seats,
+            },
             weight,
-            seats,
         };
         scenario.env(0, 0).map_err(BatchError::Setup)?;
         Ok(scenario)
+    }
+
+    /// The encounter distribution of `sampler` as a scenario drawn with `weight`: each episode
+    /// plays the encounter [`Sampler::sample`] draws from the episode's seed (stream
+    /// `ENCOUNTER`), on the sampler's battle part, with the encounter's seats (the attacker always
+    /// external).
+    ///
+    /// # Errors
+    /// [`BatchError::ZeroWeight`].
+    pub fn encounters(sampler: Arc<Sampler>, weight: u32) -> Result<Self, BatchError> {
+        if weight == 0 {
+            return Err(BatchError::ZeroWeight);
+        }
+        Ok(Self {
+            ruleset: Arc::clone(sampler.battle()),
+            episodes: Episodes::Encounters(sampler),
+            weight,
+        })
     }
 
     /// The ruleset its battles run on (shared by the scenarios a caller built on it).
@@ -182,9 +229,21 @@ impl Scenario {
         &self.ruleset
     }
 
-    /// The setup every episode starts from (`human = [true, true]`).
-    pub fn setup(&self) -> &Arc<BattleSetup> {
-        &self.setup
+    /// The setup every episode starts from (`human = [true, true]`); `None` for the encounter
+    /// distribution, whose episodes each draw their own.
+    pub fn setup(&self) -> Option<&Arc<BattleSetup>> {
+        match &self.episodes {
+            Episodes::Fixed { setup, .. } => Some(setup),
+            Episodes::Encounters(_) => None,
+        }
+    }
+
+    /// The sampler of the encounter distribution, if the scenario is one.
+    pub fn sampler(&self) -> Option<&Arc<Sampler>> {
+        match &self.episodes {
+            Episodes::Fixed { .. } => None,
+            Episodes::Encounters(sampler) => Some(sampler),
+        }
     }
 
     /// The scenario's weight.
@@ -192,25 +251,55 @@ impl Scenario {
         self.weight
     }
 
-    /// The seats, indexed by [`BattleSide::index`].
-    pub fn seats(&self) -> [Seat; 2] {
-        self.seats
+    /// The seats, indexed by [`BattleSide::index`]; `None` for the encounter distribution, whose
+    /// episodes each have their own ([`Episode::seats`]).
+    pub fn seats(&self) -> Option<[Seat; 2]> {
+        match &self.episodes {
+            Episodes::Fixed { seats, .. } => Some(*seats),
+            Episodes::Encounters(_) => None,
+        }
     }
 
-    /// A single environment playing this scenario's battle with `seed` (truncated after
-    /// `max_steps` accepted steps of both sides, 0 = no limit): the battle a batch plays for an
-    /// episode with that seed.
+    /// The episode a batch plays with `seed` (truncated after `max_steps` accepted steps of both
+    /// sides, 0 = no limit): its single environment, its seats and its encounter's kind.
     ///
     /// # Errors
-    /// The battle's [`SetupError`] (checked once by [`new`](Self::new) with seed 0; generated
-    /// obstacles never make a valid setup invalid).
-    pub fn env(&self, seed: u64, max_steps: u32) -> Result<BattleEnv, SetupError> {
-        let create = if self.random_obstacles {
+    /// The battle's [`SetupError`] (a fixed scenario's is checked once by [`new`](Self::new) with
+    /// seed 0, generated obstacles never make a valid setup invalid; a sampled one is valid by
+    /// the sampler's tests).
+    pub fn episode(&self, seed: u64, max_steps: u32) -> Result<Episode, SetupError> {
+        let (setup, random_obstacles, seats, kind) = match &self.episodes {
+            Episodes::Fixed {
+                setup,
+                random_obstacles,
+                seats,
+            } => (Arc::clone(setup), *random_obstacles, *seats, None),
+            Episodes::Encounters(sampler) => {
+                let encounter = sampler.sample(seed);
+                let setup = Arc::new(BattleSetup {
+                    human: [true, true],
+                    ..encounter.setup
+                });
+                let random = encounter.random_obstacles;
+                (setup, random, encounter.seats, Some(encounter.kind))
+            }
+        };
+        let create = if random_obstacles {
             BattleEnv::with_random_obstacles
         } else {
             BattleEnv::new
         };
-        create(self.ruleset.clone(), self.setup.clone(), seed, max_steps)
+        let env = create(self.ruleset.clone(), setup, seed, max_steps)?;
+        Ok(Episode { env, seats, kind })
+    }
+
+    /// A single environment playing this scenario's battle with `seed`: the battle a batch plays
+    /// for an episode with that seed ([`episode`](Self::episode)'s).
+    ///
+    /// # Errors
+    /// As [`episode`](Self::episode).
+    pub fn env(&self, seed: u64, max_steps: u32) -> Result<BattleEnv, SetupError> {
+        self.episode(seed, max_steps).map(|episode| episode.env)
     }
 }
 
@@ -274,6 +363,8 @@ pub struct EnvReport {
     pub episode: u32,
     /// The index of the current episode's scenario among the batch's.
     pub scenario: u32,
+    /// The current episode's encounter kind, if its scenario is the encounter distribution.
+    pub encounter: Option<Kind>,
     /// The current episode's seed.
     pub episode_seed: u64,
     /// Why the env refused this call's action (it is unchanged), if it did.
@@ -306,9 +397,10 @@ struct Slot {
     seeds: Rng,
     /// Episodes started (the current one is `started - 1`).
     started: u32,
-    /// The current episode's seed and scenario.
+    /// The current episode's seed, scenario and encounter kind.
     episode_seed: u64,
     scenario: u32,
+    kind: Option<Kind>,
     /// The current episode, `None` before the first reset or after giving up.
     env: Option<BattleEnv>,
     /// The current scenario's seats and the internal seats' streams.
@@ -371,6 +463,7 @@ impl BattleBatch {
                 started: 0,
                 episode_seed: 0,
                 scenario: 0,
+                kind: None,
                 env: None,
                 seats: [Seat::External; 2],
                 seat_rngs: [Rng::from_seed(0), Rng::from_seed(0)],
@@ -418,7 +511,7 @@ impl BattleBatch {
     pub fn add_scenario(&mut self, scenario: Scenario) -> Result<(), BatchError> {
         self.total_weight = self
             .total_weight
-            .checked_add(scenario.weight)
+            .checked_add(scenario.weight())
             .ok_or(BatchError::WeightOverflow)?;
         self.scenarios.push(scenario);
         Ok(())
@@ -713,13 +806,15 @@ fn begin(slot: &mut Slot, source: Source<'_>) {
         slot.started = slot.started.saturating_add(1);
         slot.episode_seed = slot.seeds.next_u64();
         let index = draw_scenario(source.scenarios, source.total, slot.episode_seed);
-        let scenario = &source.scenarios[index];
         slot.scenario = index as u32;
-        slot.seats = scenario.seats;
         slot.seat_rngs = [0, 1].map(|s| Rng::for_stream(slot.episode_seed, StreamId::seat(s)));
-        let Ok(mut env) = scenario.env(slot.episode_seed, source.max_steps) else {
+        let Ok(episode) = source.scenarios[index].episode(slot.episode_seed, source.max_steps)
+        else {
             continue;
         };
+        slot.seats = episode.seats;
+        slot.kind = episode.kind;
+        let mut env = episode.env;
         play_internal(&mut env, slot.seats, &mut slot.seat_rngs, &mut slot.legal);
         if !env.is_done() {
             slot.env = Some(env);
@@ -808,6 +903,7 @@ fn write_state(slot: &mut Slot, rows: Rows<'_>, report: &mut EnvReport) {
     report.to_move = acting.map(|(_, side)| side);
     report.episode = slot.started.saturating_sub(1);
     report.scenario = slot.scenario;
+    report.encounter = slot.kind;
     report.episode_seed = slot.episode_seed;
     if let Some(r) = rows.report {
         *r = *report;

@@ -18,6 +18,7 @@ fn options(scenario: &str, threads: u32) -> BenchOptions {
         calls: 60,
         seed: 3,
         max_steps: 0,
+        encounters: None,
     }
 }
 
@@ -94,6 +95,35 @@ fn the_command_line() {
     assert!(main(&missing).is_err());
     let no_envs = [ok.clone(), args(&["--envs", "0"])].concat();
     assert!(main(&no_envs).unwrap_err().contains("at least one env"));
+    // E05 T5b2: the encounter distribution, at its own weights or a curriculum's.
+    let encounters = |w: &str| args(&["bench", "--encounters", w, "--envs", "2", "--calls", "5"]);
+    main(&encounters("default")).unwrap();
+    main(&encounters("0, 0, 1, 1, 0, 0")).unwrap();
+    for bad in ["1,2", "a,b,c,d,e,f"] {
+        assert!(
+            main(&encounters(bad))
+                .unwrap_err()
+                .contains("not six weights")
+        );
+    }
+    assert!(
+        main(&encounters("0,0,0,0,0,0"))
+            .unwrap_err()
+            .contains("weights")
+    );
+}
+
+/// E05 T5b2: the batch plays the encounter distribution, the neutral kinds' defender inside the
+/// call, its episodes ending and restarting.
+#[test]
+fn the_bench_plays_the_encounters() {
+    let report = run(&BenchOptions {
+        encounters: Some([1, 1, 1, 1, 1, 1]),
+        calls: 300,
+        ..options("nowhere.toml", 2)
+    })
+    .unwrap();
+    assert!(report.steps >= 5 * 300 && report.episodes > 0, "{report:?}");
 }
 
 /// E05 T5a: a map whose census is known, written with `h3-map`'s writer: grass with water along
