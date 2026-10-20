@@ -1,7 +1,7 @@
 # E23 — The original's battle AI
 
-Status: **in progress**, refined 2026-10-19 (BAT-Q52); T1a1 done, the rest of T1a's cut up for the
-user's checkpoint · Follows E05 (the
+Status: **in progress**, refined 2026-10-19 (BAT-Q52); T1a1 and T1a2 done (the cut confirmed
+2026-10-20), T1a3 next · Follows E05 (the
 AI lane, nearly done) · Followed by E06 (training: this policy holds the neutral seat; AI-Q1) ·
 The battle lane's, later the AI lane's (BACKLOG).
 
@@ -83,25 +83,27 @@ about 45 KB of unread code beyond the dispatch).
   Hard), the order of action; the rest mapped into parts S, O, W, P, C, H, A with sizes
   (`installation.md` §7.34; the log).
 
-**Proposed for the user's checkpoint** (from §7.34's table; the neutral side first, each about
-one session's reading; the parts' names as there):
+**Confirmed at the checkpoint** (the user, 2026-10-20: the cut as proposed, T1a2 as queued; from
+§7.34's table; the neutral side first, each about one session's reading; the parts' names as
+there):
 
-- [ ] **T1a2 The shooters' rest and the walker's choice** — part S (the area value, the wall shot,
-  2.2 KB) and 0x421680 itself (2.3 KB): its branches (melee, move, the Tent and the Cart, the
-  arrow towers, its draw), its helpers named by role.
+- [x] **T1a2 The shooters' rest and the walker's choice** (2026-10-20) — part S in full (the area
+  value, the area's hexes, the wall shot) and 0x421680 with its branches, draw and helpers by
+  role (`installation.md` §7.35; the log).
 - [ ] **T1a3 The walker's helpers** — the rest of part W and the order's sort, part O (about
-  10 KB): the melee targets and their values, the destinations, the odds (0x420A80, which reaches
-  the adventure AI's valuations, part A).
+  11 KB after T1a2): the hex scores (0x420260, 0x41FB60), the plan's hexes 0x436300, the
+  fallbacks (0x420760, 0x4208F0), 0x41F3B0, 0x41F920, the walk 0x41F580's end, the odds' totals
+  (0x420A80, which reaches the adventure AI's valuations, part A).
 - [ ] **T1a4 The AI pathfinder** — part P (4.6 KB): the walker's path among equally short ones
   against BAT-MOV-003 (S-11, Q53).
 - [ ] **T1a5 The creature casts and the spell evaluation** — part C (12.9 KB): the cast entry's
   kinds, the spell context 0x4369C0, the estimates, the predictions; shared with the hero's choice.
-- [ ] **T1a6 The hero** — part H (5.8 KB): the cast choice 0x43C800's candidates, the retreat test
+- [ ] **T1a6 The hero** (read just before T5) — part H (5.8 KB): the cast choice 0x43C800's candidates, the retreat test
   0x41E570; part A (6.4 KB) only as far as the battle needs it (the adventure lane's to read with
   its AI). The Catapult and the First Aid Tent are read (§7.29; §7.14, BAT-Q51).
 
-T1b may follow T1a5 (the neutral side's map complete), with T1a6 moved before T5: the seam's
-questions are the neutral side's. The user decides at the checkpoint.
+**T1b follows T1a5** (the user, 2026-10-20): the neutral side's map is then complete and the
+seam's questions are the neutral side's; T1a6 moves to just before T5.
 
 **Increment 2:** T1b, then the user's review.
 
@@ -124,7 +126,7 @@ questions are the neutral side's. The user decides at the checkpoint.
 - [ ] **T4 Creature casts** — the abilities a computer stack chooses to use, per T1a's map. With
   T2 to T4 a side without a hero is complete: the AI lane's and the adventure lane's inboxes get
   the function (`Policy::System`, the neutral seat, A12's weights are theirs).
-- [ ] **T5 The hero's spells.**
+- [ ] **T5 The hero's spells** (T1a6's reading first).
 - [ ] **T6 The hero's other choices** — retreat and surrender, the tactics phase, the Catapult's
   aim, the First Aid Tent's patient (BAT-Q51); BAT-Q33's rule.
 - [ ] **T7 The closure** — the batch rows' leftovers, the benchmarks, the docs.

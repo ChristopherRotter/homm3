@@ -6,12 +6,12 @@ Pre-refined tasks of the battle lane, in order, then the inbox of discovered wor
 
 E23, the original's battle AI, is in progress (refined 2026-10-19, BAT-Q52; `docs/epics/E23-original-battle-ai.md`). E04b closed on 2026-10-12, E04c on 2026-10-16 (their epic files and logs; their cuts: OPEN-QUESTIONS BAT-Q10 to BAT-Q27, BAT-Q37 to BAT-Q50).
 
-### E23 T1a2 — The shooters' rest and the walker's choice
+### E23 T1a3 — The walker's helpers
 
-- **Scope:** E23 T1a2 as the epic file proposes it (T1a1's cut, `installation.md` §7.34's table): part S (the area shot value 0x41EDA0 with 0x5A46F0, the wall shot 0x41EEA0 and its draw) and the walker's choice 0x421680 itself: its branches (melee, a move, the Tent and the Ammo Cart, the arrow towers, the draw at 0x421B02), what decides each, its helpers named by role. Read with `scripts/exe.py` (stage `Heroes3.exe`); no code.
-- **Acceptance:** §7.34 (or a §7.35) holds the readings; the map's entries for S and 0x421680's helpers say their roles; the readings at risk added to §7.34's list; the epic file's later T1a parts adjusted if the reading moves a boundary.
-- **Depends on:** the user's checkpoint on T1a1's cut (T1a2 to T1a6, T1b after T1a5); `Heroes3.exe` staged.
-- **Status:** waiting for the checkpoint.
+- **Scope:** E23 T1a3 as the epic file names it (§7.34's table, §7.35's "Not read here"): the rest of part W behind 0x421680 (the hex scores 0x420260 and 0x41FB60 with 0x41FD60, the plan's hexes 0x436300 and its helpers 0x436180, 0x436620, 0x436760, the fallbacks 0x420760 and 0x4208F0, 0x41F3B0 to its end, 0x41F920, the walk 0x41F580's end, 0x420A80's totals as far as the battle needs) and part O, the order's sort 0x423340. Read with `scripts/exe.py` (stage `Heroes3.exe`); no code. If it proves larger than a session, cut it at the user's checkpoint (the scores and the plan first).
+- **Acceptance:** §7.35 (or a §7.36) holds the readings; the map's entries for W and O are `read` or say what was not; the readings at risk added; part A's share named for the adventure lane.
+- **Depends on:** the user's review of T1a2's pull request; `Heroes3.exe` staged.
+- **Status:** queued.
 
 **Waiting on this lane** (found in the 2026-10-19 consolidation; never queued here):
 - **Open questions naming this lane:** CLT-Q4 (a battle's background variant in the setup) and CLT-Q6 (each side's player colour and a hero's sex for viewers): small setup fields, `cross-lane` with the server lane's wire; the client lane holds them.
