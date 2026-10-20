@@ -82,8 +82,8 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   neutral share later, PPO and a league with search last, fixed targets, and runs of a few hours
   that can be interrupted and resumed (the user's addition); the other proposals stand.
 - Wrote `docs/epics/E06-battle-ai.md` (decisions 1 to 12, increments T1 to T9, exit criteria),
-  AI-Q8 answered, AI-Q7's plan (T5), T1 queued. BACKLOG's E06 row (refined, in progress, the
-  order note) is a `shared/` change still to make.
+  AI-Q8 answered, AI-Q7's plan (T5), T1 queued. Open: #296 (`shared/e06-refined`: BACKLOG's
+  E06 row, docs/07 §7; merges first) and #297 (this lane's).
 
 ### 2026-10-20 — T9c and T9d, the closure
 
