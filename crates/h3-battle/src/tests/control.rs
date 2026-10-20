@@ -437,12 +437,12 @@ fn a_berserk_stack_does_not_attack_from_a_pit_its_side_sees() {
 
 /// A Castle siege of a Citadel with a damaging moat (70), players `human`: the defender's
 /// `count` fixed (10 hit points each) berserk at speed 3 inside before the gate (11, 5), the
-/// attacker's slow at (4, 1) beyond its reach, the only other stack; the gate `open` or not.
+/// attacker's slow at (8, 1) beyond its reach, the only other stack; the gate `open` or not.
 fn before_the_gate(r: &BattleRuleset, count: u32, human: [bool; 2], open: bool) -> BattleState {
     let mut s = arena_on(
         r,
         [None, None],
-        &[("slow", 1, 4, 1)],
+        &[("slow", 1, 8, 1)],
         &[("fixed", count, 12, 5)],
         1,
         |setup| {
@@ -470,12 +470,13 @@ fn before_the_gate(r: &BattleRuleset, count: u32, human: [bool; 2], open: bool) 
 // covers: BAT-MAG-025, BAT-SIE-022
 #[test]
 fn a_computer_s_weak_berserk_walker_keeps_out_of_the_moat() {
-    // Through the gate and over the bridge (10, 5), its third step goes on a shortest path to
-    // the slow (7 more) either to the moat's (9, 4) or to (9, 5); the lowest hex is the moat's
-    // (77), where a human player's stack stops and takes 70. The computer's pathfinder keeps
-    // a weak stack out of its stops in the berserk turn too (0x445582, 0x42232C: 0x4B3400 with
-    // the side argument -1), so only the gate counts for the 40 times: with at most 4 times the
-    // moat's damage (28 fixed), or at most 40 times (29) with the gate open, it goes to (9, 5).
+    // Through the gate and over the bridge (10, 5), its third step goes on the pathfinder's
+    // path to the slow up the moat's column: the moat's (9, 4) (BAT-MOV-003's order, the step
+    // into the moat costing only its turn's last step), where a human player's stack stops and
+    // takes 70. The computer's pathfinder keeps a weak stack out of its stops in the berserk turn
+    // too (0x445582, 0x42232C: 0x4B3400 with the side argument -1), so only the gate counts for
+    // the 40 times: with at most 4 times the moat's damage (28 fixed), or at most 40 times (29)
+    // with the gate open, it goes round by (9, 5).
     let r = ruleset();
     let walk = |count, human, open| {
         let mut s = before_the_gate(&r, count, human, open);

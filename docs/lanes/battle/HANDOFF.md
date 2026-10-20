@@ -43,6 +43,10 @@ Area traps live where they are used: experiments in `docs/experiments/README.md`
 
 ## Recent sessions
 
+### 2026-10-20 (eighty-third) — E23 T1c, pathfinding as the original's (in progress)
+
+#307 and #311 had merged. The user: T1c whole (over the walks first), S-11 a fix-optional quirk (BAT-QUIRK-24, BAT-Q54; the flag on `shared/e23-t1c-quirk`, merged into `battle/e23-t1c`; the adventure lane's faithful replays re-recorded, `cross-lane`, agreed). In progress: `pathfinder.rs` (0x4B3400 ported: the walks' paths and the berserk turn's map and walk), `control.rs` rewritten on it.
+
 ### 2026-10-20 (eighty-second) — E23 T1a4b, the pathfinder's head; BAT-Q53
 
 After #307 the user decided that pathfinding must work exactly as the original's (BAT-Q53) and chose T1a4b first, then the walks and the berserk turn aligned together (T1c, queued; the inbox's BAT-MOV-003 and BAT-MAG-025 items folded in). Read in full (§7.41): the head, `stack_automatic` 0x474BF0 (the war machines' cases, auto combat and the four combat settings), 0x4B1460, `walker_path` and `cursor_path` (range the speed). S-11 placed: an attack ends only at the target's position hex, so a two-hex target reachable only by its other hex is a candidate the berserk walk never reaches (it goes round or does nothing); §7.40's "not in the search" corrected. Branch `battle/e23-t1a4b` stacked on #307. A fresh agent re-read three findings blind (the Ballista's and the Ammo Cart's cases of 0x474BF0, a walk's range, the attack's end and the berserk turn's empty path) and agreed on all three.
