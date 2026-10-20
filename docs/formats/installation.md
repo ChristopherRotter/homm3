@@ -3197,8 +3197,8 @@ tactics phase too (the routine also derives flying or walking from flag `0x2` an
 **0x422060, a shooter in the tactics phase** (0x18E bytes). Speed 0: Wait (8). On Easy
 (`[game]+0x1F6D8` = 0) a side that is not human (+0x54A4) also waits. Otherwise it builds the AI
 pathfinder's map for the stack (0x4B2DA0: to 127, with the tactics flag) and walks the field's
-hexes in order. A hex counts when the map marks it reachable (bit 1 of the byte +4 of its 30-byte
-cell) and it lies in the side's tactics zone (0x4763F0: a column at most 2d + 1 for the
+hexes in order. A hex counts when the map marks it reachable (the bit `0x1` of the byte +4 of its
+30-byte cell) and it lies in the side's tactics zone (0x4763F0: a column at most 2d + 1 for the
 attacker, at least 2d + 15 for the defender, d the Tactics difference +0x13D70, §7.32). Its score
 walks the stack's neighbours there (0x523DF0: 6, or 8 for a two-hex stack) that lie on the field:
 +1 for each without a stack (the stack itself counts as none), and a stack that shoots (flag
