@@ -2933,3 +2933,33 @@ The user merged T24a2b1 (#309) and took T24a2b2 whole (decision 54). Baseline `m
 - **ADV-Q15**: thirteen points for the checkpoint (D-14 to D-21, A-7 to A-10, T24b's scope, the
   batch's rows), each with options and a recommendation. **T24a is done**; T24b waits for the
   answers.
+
+### Increment 4, round 1: T24b1, the `h3-heroes` side (2026-10-20, `adventure/e08-t24b1`)
+
+#312 (T24a2b2) was merged. The user answered ADV-Q15: **every point as recommended** (decision
+55); point 3 clarified on asking (the user's "assuming that Elementalists will be correctly
+classified as magic heroes" means `strict-fixed` only; `faithful` keeps SoD's 6 and 4). T24b cut
+by crate, the user's choice of four (decision 56). Baseline `master` c4fbe58 (engine code
+c4faca92, verified on 6f84c54; light gates in the sandbox). CI on `master` still fails unstarted
+(billing). Docs only.
+
+- **ADR-0013's amendment draft** (`docs/lanes/adventure/adr-drafts/0013-increment-4.md`): points
+  1, 2, 3, 11 amended, point 12 new: progression as `h3-heroes`' rules (experience to levels with
+  the bound at level 74; the level limit an input; a level-up drawn through a source its caller
+  gives, the original's reseeded generator provided; the offers by the original's procedure; the
+  answer a hero change; the computer's evaluation ported as a rule, read first). The details gain
+  the two counters; the seed byte stays out (server-only, the game's). Point 2's "from increment
+  4 movement and scouting" becomes a later increment's.
+- **`E08-design.md` rewritten for increment 4**: increment 3's sections pruned (all built; their
+  records here, T18a to T22b); part A (§1–§10) the hero side: the data (hero parameters' table,
+  highest level and forced skills; the class's `offer_intervals`; A-10 as the data quirk
+  `quirk.content.elementalist_offer_intervals` through a new `[[hero_class_override]]`), the
+  thresholds and their test vectors (step + step / 5 equals the original's × 1.2; checked by a
+  script against §1.1), the cap min(experience + n, cap) (which also lowers, D-19, and caps at
+  load, D-21), the draw source and the generator's vectors (§2.3's seeds 738 928 and 31 946 705,
+  re-computed), the primary skill, the offers, `GainLevel`, the evaluation's place and inputs
+  with its risk (the spell values), rule ids (HER-LVL-006 new: the original's choice) and quirk
+  ids ADV-QUIRK-9 to -13. Part B (§11–§17) headings for T24b2, with increment 3's last versions.
+- **Stale references** to the pruned sections repointed to this log: three refs in
+  `docs/exe/map.toml`, a ref each in `heroes.toml` and `game.toml`; the battle lane's inbox has
+  `gapfill.toml`'s source url (battle-owned) and the coming gap-fill of hero data.
