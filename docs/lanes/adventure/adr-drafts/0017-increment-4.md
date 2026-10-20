@@ -1,8 +1,8 @@
 # ADR-0017 amendment (draft): hero progression in the game
 
-- Status: Draft (E08 T24b2, 2026-10-20), from the user's answers at ADV-Q15 (the epic's decision
-  55); put to the user with T24b1's ADR-0013 draft and the cut (ADV-Q16), then into ADR-0017
-  through a `shared/` pull request.
+- Status: Accepted by the user (2026-10-20, ADV-Q16; the epic's decision 58), drafted in E08
+  T24b2 from the answers at ADV-Q15 (decision 55); goes into ADR-0017 through T26's `shared/`
+  pull request.
 - Amends: ADR-0017 points 1, 4, 5, 6, 8, 9 and 11.
 - Detail: `docs/epics/E08-design.md` part B (§11–§17); the hero rules: part A and
   `adr-drafts/0013-increment-4.md`; facts: survey `docs/rules/surveys/E08-progression.md`.

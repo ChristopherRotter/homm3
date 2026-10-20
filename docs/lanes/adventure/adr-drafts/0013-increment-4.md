@@ -1,8 +1,8 @@
 # ADR-0013 amendment (draft): hero progression in `h3-heroes`
 
-- Status: Draft (E08 T24b1, 2026-10-20), from the user's answers at ADV-Q15 (the epic's decision
-  55); put to the user with T24b2's ADR-0017 draft and the cut, then into ADR-0013 through a
-  `shared/` pull request.
+- Status: Accepted by the user (2026-10-20, ADV-Q16; the epic's decision 58), drafted in E08
+  T24b1 from the answers at ADV-Q15 (decision 55); goes into ADR-0013 through T26's `shared/`
+  pull request.
 - Amends: ADR-0013 points 1, 2, 3 and 11; adds point 12.
 - Detail: `docs/epics/E08-design.md` part A (§1–§10); facts: survey
   `docs/rules/surveys/E08-progression.md`.
@@ -15,7 +15,10 @@ levels at load. The original draws a level from the hero's seed byte and the lev
 the experience at the scenario's level limit (§1.3), and lets the computer's evaluation choose at
 load (§3.2, §9). ADR-0013 already makes `h3-heroes` the hero model beneath the contexts, changed
 through typed hero changes, and foresees that increment 4 adds skills, primary skills and levels
-(point 2). Towns, objects and E10's computer players will level heroes too.
+(point 2). Other contexts reach the same rules later: map objects and town buildings give
+experience (the levels then follow as after a battle), teach skills (Witch Huts, Scholars,
+Universities: the same learning bound) and primary skills (the same saturation); prisons and
+tavern heroes get levels at load; E10's computer players choose among the same offers.
 
 ## Decision
 
@@ -60,7 +63,8 @@ through typed hero changes, and foresees that increment 4 adds skills, primary s
 
 - Faithful level-ups are a function of the seed byte, the level and the hero's skills, as the
   original's (a reload draws the same); `strict-fixed` draws them from the owner's stream.
-- The towns' and objects' levels (later increments) and E10's computer players reuse the same
+- Later increments' experience, skill and primary-skill gains (objects, town buildings), the
+  levels at load of prisons and tavern heroes, and E10's computer players reuse the same
   functions; no context keeps its own copy.
 - The data adds hero parameters, a class field and a class override kind (shared core content,
   the pack format and the core ruleset hash); the details' counters move the game state hash.

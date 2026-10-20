@@ -2991,3 +2991,10 @@ battle lane's E23 T1c merged since T24b1; this change is docs only). Docs only.
   `cross-lane` parts.
 - **ADV-Q16**: seven points (the two drafts, the answers' shape, the system actor's default,
   `strict-fixed` at load, the intervals as data, the cut). **T24b is done.**
+- **ADV-Q16, the user's answers (the same evening; decision 58).** Asked one by one with context
+  at the user's request: every point as recommended. On ADR-0013's draft the user asked why
+  towns and map objects need the hero rules: they share what lies beneath the level-up (gains of
+  experience, skills and primary skills from objects and buildings, levels at load of prisons and
+  tavern heroes, the computer players' choices), so the draft's context and consequences were
+  tightened to say so. Both drafts marked accepted (T26's `shared/` pull request applies them);
+  T25 and T26 ready. Applied to #321 before its merge.
