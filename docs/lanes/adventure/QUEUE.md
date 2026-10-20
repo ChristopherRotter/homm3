@@ -9,6 +9,7 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1
 ### E08 T22b — Batch E3 scored; the closure
 
 - **Scope:** batch E3's three filled templates (T22a3: `experiments/results/E08-batch-3a.md`, `-3b.md`, `-3c.md`, played by the harness; the hand-helped run's E3-3 at aggressions 1 and 6 in `E08-log.md`, T22a3) scored against each spec's predictions (D-8 to D-13, A-6, E3-6's level-ups, E3-9's formation): the rule catalog's sources (`observation`), the quirks ledger, OPEN-QUESTIONS where unclear; what the original refutes decided with the user (an engine change now or increment 4's); increment 3 closed (its exit criteria), increment 4 refined (with the four rows moved there by decision 45, in the inbox below).
+- Settled by the user at T22a3's end (decision 46): ADV-QUIRK-7 stays fixed, no flag (E3-4 a source); E3-9's reset to loose a new quirk fixed in every profile, no flag, after a code reading confirms it for every hero (the loader's formation byte; Blue was human in hot seat).
 - **Acceptance:** the increment's exit criteria (T21b's audit held every one but the batch, `E08-log.md`). **Depends on:** T22a3 (done). **Status:** next (its seam to confirm with the user: the scoring alone, or with the closure and increment 4's refinement).
 
 ## Inbox
