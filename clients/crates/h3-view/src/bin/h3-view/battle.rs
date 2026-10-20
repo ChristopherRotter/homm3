@@ -124,7 +124,7 @@ impl Battle {
             .map_err(|e| e.to_string())?
             .with_heroes(motion::heroes(&record, &tables, &parsed, Some(seed))?);
         let commands = commands.len();
-        let panels = crate::log::panels(&record, &timeline, &tables, &layout, &parsed)?;
+        let panels = crate::log::panels(&record, &timeline.log, &tables, &layout, &parsed)?;
         Ok(Self {
             record,
             tables,

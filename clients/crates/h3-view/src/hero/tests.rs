@@ -91,6 +91,7 @@ fn the_flags_wave_and_the_hero_moves_after_standing_long_enough() {
         vec![Action {
             end: 3_000,
             happenings: Vec::new(),
+            ..Action::default()
         }],
     );
     let at = |t| heroes.at(&timeline, t)[1].map(|p| (p.group, p.frame));
@@ -135,6 +136,7 @@ fn a_death_asks_one_hero_for_defeat_or_the_other_for_victory() {
     let died = vec![Action {
         end: 1_000,
         happenings: vec![Happening::Died(Side::Defender)],
+        ..Action::default()
     }];
     let timeline = idle(&[(0, 0)], died.clone());
     let at = |seed, t| {
@@ -183,6 +185,7 @@ fn each_reaction_plays_once_a_round() {
         } else {
             vec![Happening::Died(Side::Defender)]
         },
+        ..Action::default()
     };
     // The second death's draws come after the first's one (below 60: defeat).
     let mut after = seed;
@@ -204,6 +207,7 @@ fn each_reaction_plays_once_a_round() {
     let cleared = vec![Action {
         end: 1_000,
         happenings: vec![Happening::Died(Side::Defender), Happening::Round],
+        ..Action::default()
     }];
     assert_eq!(group(&idle(&[(0, 0)], cleared), 1_000), Some(0));
     // A hero whose DEF lacks the group: the reaction counts as played, nothing shows.

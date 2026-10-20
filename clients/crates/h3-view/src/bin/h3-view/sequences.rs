@@ -20,6 +20,7 @@ use h3_view::batch::{self, Batch};
 use h3_view::compose::compose;
 use h3_view::hero::HeroPose;
 use h3_view::layout::BattleLayout;
+use h3_view::mouse::track::Shown;
 use h3_view::mouse::{self, Legal};
 use h3_view::record::Record;
 use h3_view::scene::Panels;
@@ -28,7 +29,7 @@ use h3_view::{layout, record, scene};
 use serde::Deserialize;
 
 use crate::render::{lookup, read_archives, write};
-use crate::{assets, log, motion, scenario};
+use crate::{assets, log, motion, pointer, scenario};
 
 /// The sequences file.
 #[derive(Debug, Deserialize)]
@@ -48,6 +49,10 @@ struct Sequence {
     ms: u32,
     #[serde(default)]
     command: Vec<Step>,
+    /// The harness's actions in the original (E17 M3 T6c-2: the mouse's inputs,
+    /// `crate::pointer::inputs`).
+    #[serde(default)]
+    actions: Vec<String>,
 }
 
 impl Sequence {
@@ -80,18 +85,21 @@ struct Step {
 struct Frames {
     frame: Vec<Kept>,
     /// Where the harness left the mouse (E17 M3 T6c-1: a situation's, drawn with its cursor, hint
-    /// and marked stack; none for a sequence, whose parked cursor the frame check masks).
+    /// and marked stack; none for a sequence, whose mouse moves: `Interface::shown`).
     #[serde(default)]
     mouse: Option<[i32; 2]>,
 }
 
-/// What the frames draw below and over the battlefield: the panel over the battle and the acting
-/// stack's legal commands at the opening, which the mouse's cursor and hint ask (E17 M3 T6c-1).
+/// What the frames draw below and over the battlefield: the panel over the battle and the mouse:
+/// over time (a sequence, E17 M3 T6c-2), or at the opening where the frames name it, asking the
+/// acting stack's legal commands then (a situation, T6c-1).
 pub(crate) struct Interface<'a> {
     /// The panel.
     pub panels: &'a Panels,
-    /// The legal commands.
+    /// The legal commands at the opening.
     pub legal: &'a Legal,
+    /// The mouse over time.
+    pub shown: Option<&'a Shown>,
 }
 
 /// One kept frame: its time, the stacks the original shows fidgeting then (the viewer draws
@@ -107,6 +115,10 @@ struct Kept {
     fidgets: Vec<[u32; 4]>,
     #[serde(default)]
     heroes: Vec<[u32; 3]>,
+    /// The point the original's cursor is drawn at (its memory: it reads the mouse on a 33 ms
+    /// grid of its own, E17 M3 T6c-2, design §9.10); none: the mouse's.
+    #[serde(default)]
+    cursor: Option<[i32; 2]>,
 }
 
 /// The command's options.
@@ -205,10 +217,6 @@ fn sequences(options: &Options) -> Result<usize, String> {
         if options.only.as_ref().is_some_and(|id| *id != sequence.id) {
             continue;
         }
-        if sequence.command.is_empty() {
-            println!("{}: no engine commands, skipped", sequence.id);
-            continue;
-        }
         let steps: Vec<(Seat, Command)> = sequence
             .command
             .iter()
@@ -252,9 +260,25 @@ fn sequences(options: &Options) -> Result<usize, String> {
         let snapshot = record
             .first_snapshot()
             .ok_or("the record holds no snapshot")?;
-        let timeline = anim::timeline(snapshot, &commands, &looks, stage, options.speed)
+        let mut timeline = anim::timeline(snapshot, &commands, &looks, stage, options.speed)
             .map_err(|e| format!("{}: {e}", sequence.id))?
             .with_heroes(motion::heroes(&record, &tables, &archives, None)?);
+        // The mouse as the harness moved it (E17 M3 T6c-2): its cursor, the stack it marks and
+        // enters, the status line's hints, each turn's battle from the engine.
+        let scenario_path = dir.join(&sequence.scenario);
+        let turned = scenario::turned(&scenario_path, &options.packs, 1, &steps)
+            .map_err(|e| format!("{}: {e}", sequence.id))?;
+        let inputs = pointer::inputs(&sequence.actions, sequence.pre, &layout, &timeline)
+            .map_err(|e| format!("{}: {e}", sequence.id))?;
+        let catalogue = log::catalogue(&tables, &archives)?;
+        let shown = pointer::shown(&record, &timeline, &turned, &inputs, &layout, &catalogue);
+        pointer::entered(
+            &mut timeline,
+            &shown,
+            &record,
+            &looks,
+            tables.battle.groups.mouse_over,
+        );
         // What the harness saw: its recording ends `ms` after the actions.
         let until = sequence.until();
         let ours: String = timeline
@@ -267,10 +291,11 @@ fn sequences(options: &Options) -> Result<usize, String> {
         write(&ours_path, ours.as_bytes())?;
         if let Some(dir) = &options.frames {
             let here = dir.join(&sequence.id);
-            let panels = log::panels(&record, &timeline, &tables, &layout, &archives)?;
+            let panels = log::panels(&record, &shown.log, &tables, &layout, &archives)?;
             let interface = Interface {
                 panels: &panels,
                 legal: &Legal::default(),
+                shown: Some(&shown),
             };
             let drawn = draw_frames(
                 &here, &record, &timeline, &tables, &layout, &archives, &interface,
@@ -293,6 +318,15 @@ fn sequences(options: &Options) -> Result<usize, String> {
         let recorded_path = dir.join(&sequence.timeline);
         let recorded = fs::read_to_string(&recorded_path)
             .map_err(|e| format!("{}: {e}", recorded_path.display()))?;
+        // The original's own fidgets are not compared (the viewer draws none of its own in a
+        // check, design §7.2), but those of the stacks the mouse entered (E17 M3 T6c-2).
+        let entered: std::collections::BTreeSet<String> = shown
+            .entered
+            .iter()
+            .filter_map(|(_, id)| timeline.members.iter().find(|m| m.stack == *id))
+            .map(|m| format!("{}.{}", u8::from(m.side == Side::Defender), m.record))
+            .collect();
+        let recorded = anim::unfidgeted(&recorded, &entered);
         let diff = anim::differences(&ours, &recorded);
         if diff.is_empty() {
             println!(
@@ -341,7 +375,8 @@ pub(crate) fn draw_frames(
     let mut lists = Vec::new();
     let mut drawn = String::new();
     let mut texts = serde_json::Map::new();
-    // The mouse where the harness left it, at the opening (E17 M3 T6c-1; over time: T6c-2).
+    // A situation's mouse where the harness left it, at the opening (E17 M3 T6c-1); a sequence's
+    // over time (T6c-2: `interface.shown`).
     let pointer = kept.mouse.map(|point| {
         (
             point,
@@ -361,7 +396,10 @@ pub(crate) fn draw_frames(
     };
     for frame in &kept.frame {
         let mut moment = scene::Moment::at(timeline, frame.t);
-        moment.marked = pointer.as_ref().and_then(|(_, p)| p.marked);
+        moment.marked = match interface.shown {
+            Some(shown) => shown.marked(frame.t),
+            None => pointer.as_ref().and_then(|(_, p)| p.marked),
+        };
         for &[side, index, group, f] in &frame.fidgets {
             let side = if side == 0 {
                 Side::Attacker
@@ -422,7 +460,14 @@ pub(crate) fn draw_frames(
         // *provisional*, the situations' battles write no lines; T6c-2 times it).
         let text = status.as_deref().unwrap_or_else(|| panels.text(frame.t));
         list.extend(panels.at_showing(snapshot, &timeline.turns, frame.t, layout, text));
-        if let Some((point, p)) = &pointer {
+        if let Some(shown) = interface.shown {
+            // The cursor's frame now, drawn where the original's is (its memory), else at the
+            // mouse.
+            let point = frame.cursor.or_else(|| shown.point(frame.t));
+            if let (Some(f), Some(point)) = (shown.frame(frame.t), point) {
+                list.push(mouse::cursor(layout, f, point));
+            }
+        } else if let Some((point, p)) = &pointer {
             list.push(p.cursor(layout, *point));
         }
         let stem = Path::new(&frame.file).with_extension("");

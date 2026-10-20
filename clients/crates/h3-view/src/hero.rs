@@ -66,13 +66,22 @@ pub enum Happening {
     Round,
 }
 
-/// An action: when it ended (the heroes' idle clocks start again then) and what it did.
+/// An action: when it started and ended (the heroes' idle clocks start again then), what it did,
+/// and what its start does to the stacks the mouse or a fidget left in group 1 (E17 M3 T6c-2).
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Action {
+    /// Its start (`action_dispatcher` 0x478D80's head).
+    pub start: u32,
     /// Its end.
     pub end: u32,
     /// What it did, in order.
     pub happenings: alloc::vec::Vec<Happening>,
+    /// Its start stands every stack showing group 1 (`battle_stand_fidgets` 0x479DE0: a walk, a
+    /// strike, a shot, a cast, a creature's cast, the Catapult's shot).
+    pub stands: bool,
+    /// Its start unmarks the mouse's stack (`battle_clear_highlight` 0x477E10: a walk, a strike,
+    /// a shot, a cast, the Catapult's shot).
+    pub unmarks: bool,
 }
 
 /// The battle's heroes: each side's look (none: no hero), whose players are human, the groups,

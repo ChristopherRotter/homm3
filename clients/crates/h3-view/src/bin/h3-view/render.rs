@@ -243,7 +243,7 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
         )
         .map_err(|e| e.to_string())?
         .with_heroes(motion::heroes(&record, &tables, &archives, None)?);
-        let panels = crate::log::panels(&record, &timeline, &tables, &layout, &archives)?;
+        let panels = crate::log::panels(&record, &timeline.log, &tables, &layout, &archives)?;
         // The acting stack's legal commands at the opening, for the mouse (E17 M3 T6c-1): the
         // engine's, from the scenario; a record names none.
         let legal = if options.scenario() {
@@ -254,6 +254,7 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
         let interface = crate::sequences::Interface {
             panels: &panels,
             legal: &h3_view::mouse::Legal::new(&legal),
+            shown: None,
         };
         let drawn = crate::sequences::draw_frames(
             dir, &record, &timeline, &tables, &layout, &archives, &interface,
@@ -286,7 +287,16 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
             .with_heroes(motion::heroes(&record, &tables, &archives, Some(seed))?);
             lines.push(format!("the timeline ends at {} ms", timeline.end));
             let moment = scene::Moment::at(&timeline, t);
-            let panels = crate::log::panels(&record, &timeline, &tables, &layout, &archives)?;
+            // The mouse parked as the harness parks it (E17 M3 T6c-2): a human's turn writes the
+            // hint there, none.
+            let catalogue = crate::log::catalogue(&tables, &archives)?;
+            let parked = [h3_view::mouse::track::Input::Move {
+                at: 0,
+                to: crate::pointer::PARK,
+            }];
+            let shown =
+                crate::pointer::shown(&record, &timeline, &[], &parked, &layout, &catalogue);
+            let panels = crate::log::panels(&record, &shown.log, &tables, &layout, &archives)?;
             panel = panels.at(observation, &timeline.turns, t, &layout);
             scene::battle_at(observation, &moment, manifest, &tables, &layout)
         }

@@ -8,7 +8,6 @@ use h3_assets::fnt::Font;
 use h3_formats::lod::LodArchive;
 use h3_protocol::wire::{Event, ServerMessage};
 use h3_render::Bugs;
-use h3_view::anim::Timeline;
 use h3_view::battle_log::{self, Named};
 use h3_view::layout::BattleLayout;
 use h3_view::record::Record;
@@ -88,13 +87,14 @@ pub fn texts(
     Some(battle_log::texts(logged, &word, &lines, &human))
 }
 
-/// The panel over the record's battle as `timeline` plays it (E17 M3 T6b): its turns and its log's
-/// texts ([`texts`]) in the original's words from `archives`' text tables (read only when the
-/// battle writes a line), measured in the log item's font of `layout`, drawn with the original's
-/// drawing bugs.
+/// The panel over the record's battle (E17 M3 T6b): its turns and its log's texts ([`texts`])
+/// through `logged` (the timeline's log, with the mouse's hints since T6c-2:
+/// `crate::pointer::shown`) in the original's words from `archives`' text tables (read only when
+/// the battle writes a line), measured in the log item's font of `layout`, drawn with the
+/// original's drawing bugs.
 pub fn panels(
     record: &Record,
-    timeline: &Timeline,
+    logged: &[(u32, battle_log::Logged)],
     tables: &Tables,
     layout: &BattleLayout,
     archives: &[(&str, LodArchive<'_>)],
@@ -102,10 +102,14 @@ pub fn panels(
     let snapshot = record
         .first_snapshot()
         .ok_or("the record holds no snapshot")?;
-    let writes = timeline
-        .log
-        .iter()
-        .any(|(_, l)| !matches!(l, battle_log::Logged::Action | battle_log::Logged::Turn(_)));
+    let writes = logged.iter().any(|(_, l)| {
+        !matches!(
+            l,
+            battle_log::Logged::Action
+                | battle_log::Logged::Turn(_)
+                | battle_log::Logged::Status { .. }
+        )
+    });
     let catalogue = if writes {
         catalogue(tables, archives)?
     } else {
@@ -116,7 +120,7 @@ pub fn panels(
         .map_err(|e| format!("{}: {e:?}", item.font))?;
     let texts = texts(
         record,
-        &timeline.log,
+        logged,
         &catalogue,
         &font,
         item.size[0],

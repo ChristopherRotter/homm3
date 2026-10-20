@@ -10,6 +10,7 @@ mod harvest;
 mod log;
 mod motion;
 mod play;
+mod pointer;
 mod render;
 mod scenario;
 mod sequences;

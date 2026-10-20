@@ -6,12 +6,12 @@
 use std::fs;
 use std::path::Path;
 
-use h3_battle::{BattleSetup, BattleSide, BattleState, LegalCommands, NoopSink};
+use h3_battle::{BattleSetup, BattleSide, BattleState, LegalCommands, NoopSink, Viewer};
 use h3_content_battle::BattleRuleset;
 use h3_kernel::{Rng, StreamId};
 use h3_protocol::session::Bot as _;
 use h3_protocol::session::{ConnId, GameConfig, SeatKind, Session};
-use h3_protocol::wire::{ClientMessage, Command, Seat, ServerMessage};
+use h3_protocol::wire::{ClientMessage, Command, Observation, Seat, ServerMessage};
 use h3_protocol::{codec, map};
 
 use crate::bot::Greedy;
@@ -185,6 +185,38 @@ pub fn opening_legal(scenario: &Path, packs: &Path, seed: u64) -> Result<Vec<Com
         .side_to_act()
         .map(|side| map::legal_commands(&state, &ruleset, side))
         .unwrap_or_default())
+}
+
+/// The battle `scenario` sets up with `seed` before each of `commands` and after the last, while
+/// a side is to act (E17 M3 T6c-2: what the mouse's cursor asks at each turn): a spectator's
+/// observation and the legal commands of the side to act. A rejected command is an error.
+pub fn turned(
+    scenario: &Path,
+    packs: &Path,
+    seed: u64,
+    commands: &[(Seat, Command)],
+) -> Result<Vec<(Observation, Vec<Command>)>, String> {
+    let (ruleset, setup) = battle(scenario, packs, seed)?;
+    let mut state =
+        BattleState::new(&ruleset, &setup, seed).map_err(|e| format!("the setup: {e:?}"))?;
+    let mut out = Vec::new();
+    let mut commands = commands.iter();
+    while let Some(side) = state.side_to_act() {
+        let observation = map::observe(&state, &ruleset, Viewer::Spectator);
+        out.push((observation, map::legal_commands(&state, &ruleset, side)));
+        let Some(&(_, command)) = commands.next() else {
+            break;
+        };
+        h3_battle::apply(
+            &mut state,
+            &ruleset,
+            side,
+            map::command_to_engine(command),
+            &mut NoopSink,
+        )
+        .map_err(|e| format!("command {} ({command:?}): {e:?}", out.len()))?;
+    }
+    Ok(out)
 }
 
 /// The most commands a fought battle may take.
