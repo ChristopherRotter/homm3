@@ -14,9 +14,9 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 - **E06 refined 2026-10-20** (AI-Q8; `docs/epics/E06-battle-ai.md`): it starts now beside E23
   with the kinds a player plays on both sides; the neutral share (T7) waits for E23's policy of a
   side without a hero (its T2 to T4). PPO and a league first, search last; runs of a few hours,
-  interruptible and resumable. **T1 and T2a done** on `claude/nice-knuth-ekooly` (one pull
-  request, after ADR-0026's #306): the design note `docs/epics/E06-design.md`, the run's config
-  and record (`h3env.train.run`). **Next:** T2b, T2c (QUEUE).
+  interruptible and resumable. **T1 and T2a done:** #310 (open, the user's checkpoint; ADR-0026
+  merged in #306): the design note `docs/epics/E06-design.md`, the run's config and record
+  (`h3env.train.run`). **Next:** T2b, T2c (QUEUE).
 - **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v30 (T7: the bots' seats) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q9, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
