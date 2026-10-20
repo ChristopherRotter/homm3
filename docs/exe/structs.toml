@@ -212,6 +212,7 @@ fields = [
   { offset = 0x20, name = "corpse_sides", type = "u8[14]", summary = "their sides", confidence = "read", refs = ["installation.md §7.18"] },
   { offset = 0x2E, name = "corpse_records", type = "u8[14]", summary = "their record indices", confidence = "read", refs = ["installation.md §7.18"] },
   { offset = 0x3C, name = "corpse_other_hex", type = "u8[14]", summary = "per corpse the other hex of a two-hex one (0 next, 1 previous)", confidence = "read", refs = ["installation.md §7.18"] },
+  { offset = 0x4A, name = "attackable", type = "u8", summary = "the battle pathfinder's attack mark: the stack here can be attacked at the cell's cost (0x4B3400; 0x4B2FF0); +0x4A and +0x4B are cleared in its head", confidence = "read", refs = ["installation.md §7.40"] },
 ]
 
 [[struct]]
@@ -490,4 +491,29 @@ fields = [
   { offset = 0x8, name = "next", type = "dialog_item*", summary = "the next item of the dialog (0 after the last)", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
   { offset = 0x10, name = "id", type = "i16", summary = "the item's id (a question's OK 30725, its Cancel 30726)", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
   { offset = 0x30, name = "text", type = "string", summary = "a text item's text: a string record, the characters' pointer at +0x34 and their number at +0x38 (H3API's H3String)", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
+]
+
+[[struct]]
+name = "pathfinder"
+size = 0x70
+summary = "The pathfinder object (H3API's H3Pathfinder): the battle pathfinder 0x4B3400's fields only."
+refs = ["installation.md §7.40"]
+h3api = "H3Pathfinder"
+fields = [
+  { offset = 0x24, name = "cells", type = "pathfinder_cell*", summary = "in a battle 187 cells of 30 bytes, one per hex (0x4B3B90)", confidence = "read", refs = ["installation.md §7.40"] },
+  { offset = 0x38, name = "queue", type = "vector", summary = "the battle search's queue of 30-byte entries, sorted by cost from highest to lowest (0x4B3BB0): +0x3C begin, +0x40 end, +0x44 capacity's end", confidence = "read", refs = ["installation.md §7.40"] },
+  { offset = 0x48, name = "path", type = "vector", summary = "the path's cell pointers, from the end to the first step (+0x4C begin, +0x50 end; H3API's arrowPath)", confidence = "read", refs = ["installation.md §7.38", "installation.md §7.40"] },
+  { offset = 0x68, name = "stops", type = "u8*", summary = "a byte per battle hex: the walker's stops (0x4B3290; H3API's battleHexes)", confidence = "read", refs = ["installation.md §7.38", "installation.md §7.40"] },
+]
+
+[[struct]]
+name = "pathfinder_cell"
+size = 0x1E
+summary = "A battle pathfinder cell, the shape of its queue's entries too (0x4B3BB0)."
+refs = ["installation.md §7.40"]
+fields = [
+  { offset = 0x0, name = "hex", type = "u16", summary = "the hex in bits 0-9", confidence = "read" },
+  { offset = 0x4, name = "flags", type = "u32", summary = "bit 0 reached; bits 12-15 the direction of the step into the hex; bits 26-31 the hexes flown over in a row (not an end)", confidence = "read" },
+  { offset = 0x8, name = "attack_from", type = "u16", summary = "on the target's cell after an attack is found: the hex to attack from (bits 0-9)", confidence = "read" },
+  { offset = 0x18, name = "cost", type = "u16", summary = "the cost; an attack mark's cost on a stack's hex", confidence = "read" },
 ]

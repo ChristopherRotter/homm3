@@ -1,7 +1,7 @@
 # E23 — The original's battle AI
 
-Status: **in progress**, refined 2026-10-19 (BAT-Q52); T1a1, T1a2 and T1a3a to T1a3d done (the cuts
-confirmed 2026-10-20), T1a4 next · Follows E05 (the
+Status: **in progress**, refined 2026-10-19 (BAT-Q52); T1a1, T1a2, T1a3a to T1a3d and T1a4a done (the cuts
+confirmed 2026-10-20), T1a4b next · Follows E05 (the
 AI lane, done) · Followed by E06 (training: this policy holds the neutral seat; AI-Q1) ·
 The battle lane's, later the AI lane's (BACKLOG).
 
@@ -106,8 +106,15 @@ there):
   - [x] **T1a3d The hero's value in the odds** (2026-10-20; the user: all in one part) — the
     caster record 0x526D40 and the best damage spell 0x5275B0 with their helpers: up to four times
     the side's whole strength, from the hero's maximum mana (`installation.md` §7.39; the log).
-- [ ] **T1a4 The AI pathfinder** — part P (about 3.8 KB; the walk 0x41F580 is read): the walker's path among equally short ones
-  against BAT-MOV-003 (S-11, Q53).
+- **T1a4 The AI pathfinder** — part P (about 4.9 KB with the library's vectors; the walk 0x41F580
+  is read), cut in two (the user, 2026-10-20: the search first):
+  - [x] **T1a4a The search** (2026-10-20) — 0x4B3400's loop with its queue 0x4B3BB0 and the path's
+    trace: a uniform-cost search, first in first out at a tie, directions from top right
+    clockwise; batch 3c's M2 and G4 walks follow it, BAT-MOV-003 does not (`installation.md`
+    §7.40; the log; the inbox).
+  - [ ] **T1a4b The head** (about 1 KB) — 0x4B3400's setup to 0x4B3533 (the automatic test
+    0x474BF0, the hit points, the speed, the cells 0x4B1460) and its callers' use (0x5239D0,
+    0x523A70).
 - [ ] **T1a5 The creature casts and the spell evaluation** — part C (12.9 KB): the cast entry's
   kinds, the spell context 0x4369C0, the estimates, the predictions; shared with the hero's choice.
 - [ ] **T1a6 The hero** (read just before T5) — part H (5.8 KB): the cast choice 0x43C800's candidates, the retreat test
