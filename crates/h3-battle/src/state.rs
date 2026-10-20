@@ -853,7 +853,7 @@ impl Stack {
     /// Whether the stack is the attacker's Catapult (BAT-SIE-009): the record of its slot, not a
     /// stack raised from its corpse into that slot (BAT-MAG-052; the original tests the creature,
     /// 0x473C35). A created stack takes [`CREATED_SLOT`].
-    pub(crate) const fn is_catapult(&self) -> bool {
+    pub const fn is_catapult(&self) -> bool {
         self.slot == CATAPULT_SLOT && !self.traits.contains(StackTraits::RAISED)
     }
 

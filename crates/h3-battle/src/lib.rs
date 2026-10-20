@@ -28,6 +28,7 @@ mod binds;
 mod casters;
 mod combat;
 mod command;
+pub mod computer;
 mod control;
 mod created;
 mod damage;
