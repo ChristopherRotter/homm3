@@ -19,7 +19,7 @@ neutral share waits for E23's side without a hero.
    ladder from Python and `h3 ai eval`, the cut of the next increments. Read first: the epic file,
    `E05-log.md` §8 and §9, `python/h3env/train/`. **Acceptance:** the note and the draft
    committed; T2 refined in the epic file; stops for the user's review (no code). **Depends on:**
-   nothing. **Status:** ready.
+   nothing. **Status:** in progress (`claude/nice-knuth-ekooly`, 2026-10-20 11:48 UTC).
 
 ## Inbox
 
