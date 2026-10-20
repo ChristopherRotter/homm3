@@ -19,7 +19,8 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   Ctrl+C, `--resume`), T2c (#319: C ABI v31). **Increment 2 done:** T3a (#324: the held-out sets
   v1, the bots' table), T3b (#328: the SPRT gate, promotions, ladders, `--init-from`); the
   user's hour `t3b-1` (evaluation 21.4 %, the agent at the bots' level, stalling: AI-Q9).
-  **Next:** increment 3 (T4, the league) with AI-Q9 at the user's checkpoint.
+  **Increment 3 refined** (AI-Q9 answered): T4a (the league, one pull request), then T4b (two
+  league runs of 60 M samples, γ 0.995 and 1.0). **In progress:** T4a.
 - **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v31 (E06 T2c: the record's identity, N capped) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q10, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
@@ -91,6 +92,11 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 
 ## Recent sessions
 
+### 2026-10-20 — E06 increment 3's refinement, T4a (in progress)
+
+- The user (AI-Q9): two league runs in T4b (γ 1.0 beside 0.995), T4a in one pull request, 60 M
+  samples a run. T4a in progress on `claude/blissful-lamport-gl6j3d`.
+
 ### 2026-10-20 — E06 T3b's hour (`t3b-1`)
 
 - The user ran `configs/e06-t3b.toml`: record committed, results in `E06-log.md`; AI-Q9
@@ -98,6 +104,5 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 
 ### 2026-10-20 — E06 T3b (the evaluation gate)
 
-- #324 merged; the user: "no need to cut" T3b. The SPRT gate, promotions, ladders, record schema
-  4, checkpoint format 2, `--init-from`. 87 Python tests with torch (CPU), 69 without; the scoped
-  verify (Python only); a real CLI run in the sandbox (`E06-log.md`).
+- The SPRT gate, promotions, ladders, record schema 4, checkpoint format 2, `--init-from` (the
+  user: no cut); 87 Python tests with torch (CPU), 69 without (`E06-log.md`).

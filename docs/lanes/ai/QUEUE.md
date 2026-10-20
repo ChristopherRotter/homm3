@@ -12,8 +12,30 @@ neutral share waits for E23's side without a hero. Increment 1 done 2026-10-20: 
 (ADR-0026, design `E06-design.md`), T2b1 (the full checkpoint and `--resume`; its pending gate and
 `--init-from` moved to T3b), T2c (C ABI v31). Increment 2 done 2026-10-20: T3a (the held-out
 sets v1, the bots' table), T3b (the SPRT gate, promotions, ladders, `--init-from`; the user's
-hour `t3b-1`: evaluation 21.4 %, stalling suspected, AI-Q9). **Next:** increment 3 (T4a, T4b;
-design §8, §10) with AI-Q9, refined at the user's checkpoint: no task is ready until then.
+hour `t3b-1`: evaluation 21.4 %, stalling suspected, AI-Q9). Increment 3 refined 2026-10-20
+(AI-Q9 answered): T4a, then T4b.
+
+### E06 T4a — The league
+
+- **Scope:** design §8 (ADR-0026 point 8) replacing E05's pool in `h3env.train`: members (a
+  snapshot every `snapshot_every` samples, every promoted network), the episode's opponent
+  (self-play with `self_play`, else a member on a random side), the `live` members per rollout by
+  `(1 − p_m)^pfsp_power` with decayed scores, at most `size` with the most-beaten snapshot
+  retired; `[league]` replacing `[pool]`; the members' networks in `league/<id>.pt` outside the
+  checkpoint (format 3); record schema 5 (the live set per update, the member table per gate);
+  `configs/e06-t4.toml` (a gate every 10 M samples, ladders of 250 per kind, 60 M samples).
+- **Acceptance:** the Definition of Done; the trainer's tests (with and without torch) cover the
+  draw, the scores, the retirement, a resume with a league; a short CPU run in the sandbox.
+- **Depends on:** nothing. **Status:** in progress (`claude/blissful-lamport-gl6j3d`,
+  2026-10-20T21:35Z).
+
+### E06 T4b — The first league runs
+
+- **Scope:** the user runs `configs/e06-t4.toml` twice (AI-Q9): at γ 0.995 and with `--set
+  ppo.gamma=1.0`, 60 M samples each, one stopped and resumed for real; both records committed,
+  the results in `E06-log.md` (the truncations, the ladders, the league's table).
+- **Acceptance:** both records pass `check_record`; increment 3's checkpoint with the user.
+- **Depends on:** T4a merged. **Status:** waiting (T4a).
 
 ## Inbox
 
