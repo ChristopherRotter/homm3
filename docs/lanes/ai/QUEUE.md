@@ -7,8 +7,19 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 **E05** (`docs/epics/E05-battle-env.md`) closed 2026-10-20 (T1 to T9 in six increments; the
 record in `E05-log.md`, the environment as built in `docs/07-simulation-and-ai.md` §1.1).
 
-1. **E06's refinement** (training at scale, evaluation, search; BACKLOG: after E23, the battle
-   lane's), when the user calls it; the inbox's E06 items and AI-Q7 are its input.
+**E06** (`docs/epics/E06-battle-ai.md`) refined 2026-10-20 (AI-Q8): it starts beside E23, the
+neutral share waits for E23's side without a hero.
+
+1. **E06 T1 Design and ADR draft** — **Scope:** the epic's T1: `docs/epics/E06-design.md` and an
+   ADR draft in `docs/lanes/ai/adr-drafts/` for the training pipeline (decisions 3, 4, 8, 9, 11):
+   the run's config file and record (where committed records live), the resumable training state
+   and its save cadence (atomic writes, the schedule in samples not wall time, the held-out set's
+   disjointness without E05's set of every training seed), the held-out set v1 (per kind and
+   side, sized for the targets' 95 % intervals), the SPRT's bounds, the league's sampling, the
+   ladder from Python and `h3 ai eval`, the cut of the next increments. Read first: the epic file,
+   `E05-log.md` §8 and §9, `python/h3env/train/`. **Acceptance:** the note and the draft
+   committed; T2 refined in the epic file; stops for the user's review (no code). **Depends on:**
+   nothing. **Status:** ready.
 
 ## Inbox
 
@@ -28,7 +39,7 @@ Pass offer (fixed by the adventure lane's fixed tests, #266).
   full runs passed on other random cases. The
   battle lane's branch is docs only and changed nothing there.
 
-**For E06** (training at scale, evaluation, search):
+**For E06** (training at scale, evaluation, search; the epic's T2 to T5 take them up):
 - **Evaluation:** greedy play (the most likely heads) repeats itself against Random until the
   step limit (up to 17 % of the battles in T8b's sandbox run); the sampled policy never. E06's
   evaluation and any search agent need a rule for it (sampled play, or a tie-break or repetition
