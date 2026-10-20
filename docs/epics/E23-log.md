@@ -143,3 +143,32 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   best spell's tests (the range, the own hero's Cloak, the floor of 0) and the damage value's
   formula (the base, `X`, the row at a threshold, the smaller product). It agreed on all three
   and read the same table.
+
+## T1a4a — the pathfinder's search (2026-10-20, increment 1)
+
+- **The seam** (the user, 2026-10-20): T1a4 measured about 4.9 KB with its helpers (about 2 KB of
+  it the library's vectors); cut in two, the search first (recommended) over the head and the
+  path's trace first or all at once. The trace (about 0.2 KB) moved into the search: the tie
+  order needs it. T1a4b keeps the head (about 1 KB).
+- **Read** (`docs/formats/installation.md` §7.40), all in full: 0x4B3400 from its setup to its
+  end, the push 0x4B3BB0, the cell 0x4B3B90, the opposite direction 0x523EC0; the library's
+  vectors (0x4B3F70, 0x4B4270, 0x434620, 0x434BF0, 0x434C30, 0x54D120, 0x5093C0, the empty
+  0x404140, which H3API calls `H3String::Assign`) by shape. The object is H3API's
+  `H3Pathfinder` (+0x24 cells, +0x38 the queue, +0x48 the path, +0x68 the stops; `structs.toml`).
+- **Found:** a uniform-cost search: the queue sorted by cost, a new entry before the equal ones,
+  taken from the lowest end, so first in, first out at a tie; each taken hex's neighbours from
+  top right clockwise; a hex keeps the first hex that reached it at its lowest cost (only a
+  strictly cheaper path replaces). A stop costs the rest of the turn; a blocked neighbour gets the
+  attack marks; flyers and Devils pass over blocked hexes up to their speed. The search ends at
+  the target reached or marked and traces the path back. **BAT-MOV-003's tie order differs**
+  (from the end, right first): simulated on batch 3c's fields, the reading gives M2's walk along
+  row 5 and G4's through 94, as observed, the engine's not; batch 2c's F2 agrees with both. The
+  queue holds at most 500 entries. S-11 is not in the search.
+- **Map:** 14 entries (13 new; 0x4B3400 read, `pathfinder_push` and the rest named) and two
+  struct records (`pathfinder`, `pathfinder_cell`) with the hex record's +0x4A. The battle queue's
+  inbox has BAT-MOV-003's alignment for the user's call.
+- **Checks:** a fresh agent re-read three findings blind, on a copy of the tool and the map
+  made before the edits: the push's tests and the queue's order at a tie (first in, first out),
+  the neighbours' order and when a cell is replaced (only by a strictly lower cost), the trace and
+  the result for a walk. It agreed on all three; its one addition (a target at the start gives
+  false) is in §7.40.

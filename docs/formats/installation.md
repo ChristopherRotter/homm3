@@ -890,8 +890,9 @@ duration at 255 (quirk S-17) and ends Hypnotize first. While active:
   within its speed, else only walks as far as it can (action 6, or a plain move);
 - after its own attack (the melee attack routine 0x441F55, the shot routine 0x4402F7) it ends; a
   retaliation does not end it. Cure, Dispel and an Anti-Magic of level 5 or more end it.
-The wiki's pathing bug (S-11) was not read: it would sit in 0x4B3400. Q53: the engine uses its
-own pathfinding; S-11 stays unconfirmed.
+The wiki's pathing bug (S-11) is not in the pathfinder's search (§7.40, which gives up on no
+reachable target); its head is T1a4b's. Q53: the engine uses its own pathfinding; S-11 stays
+unconfirmed.
 
 **Hypnotize** (spell 60; power factor 25, effect 10, 10, 20, 50; one target). Target test
 (0x5A8090 case 60, after the general tests): 0 if the stack has Magic Mirror active (§7.13);
@@ -988,7 +989,7 @@ hexes already marked, 0x46A520) calls in turn the Fire Wall trigger 0x59FCD0, th
 trigger 0x59FB40 and the moat's damage 0x469E50 (sieges, E04c; Quicksand acts in the walker,
 §7.16). A walker (0x441FA0) enters each hex of the path its pathfinder chose (0x5239D0 →
 0x4B3400, the pathfinder of survey S-11, which avoids Quicksand its side can see and nothing
-else, §7.16) and stops when it dies; a flyer (0x4B49C0) and a
+else, §7.16; its order among equally short paths §7.40) and stops when it dies; a flyer (0x4B49C0) and a
 teleporting creature (0x4B4E90) enter only the hexes they land on. After an action that does not
 move the stack (defend 0x4798F3, wait 0x479AD6, a shot or melee attack from where it stands
 0x4792D7, 0x4789C7) the array is cleared and the stack's own hexes are entered again; a stack that
@@ -3851,3 +3852,95 @@ spells with the bit `0x8000` count.
 **Readings at risk** (for T1b): the table's rows at a threshold (`X` equal to `t_k` takes row `k`)
 and the products' truncation; the AI values from `SPTRAITS.TXT` at run time; the maximum mana; the
 mastery on the hero's tile against the battle's field; the bit `0x8000`'s spells only.
+
+### 7.40 Code reading: the pathfinder's search (E23 T1a4a, 2026-10-20)
+
+Read for E23 T1a4a (the user's cut, 2026-10-20: the search first, its head T1a4b): the battle
+pathfinder 0x4B3400 from its setup (0x4B3538) to its end, with the push 0x4B3BB0, the cell
+0x4B3B90 and the opposite direction 0x523EC0; the library's vectors recognised by their shape.
+The path's tracing at the end belongs to the search's tie order and is read here too. Insight
+only, nothing copied (Q29). The head (to 0x4B3533: the automatic test 0x474BF0, the hit points,
+the speed, the cells' allocation 0x4B1460) is T1a4b's; §7.31's re-reads cover parts of it, and
+it clears the hex records' attack marks (+0x4A, +0x4B; 0x4B34B8).
+
+**The arguments** (the berserk call 0x42232C shows them): the stack S, a side (−1: every stack
+counts as an enemy), a target hex T (−1 none), the tactics flag, the range R in cost and the
+speed `s` (−1: the stack's). **The object** (`this`, H3API's H3Pathfinder): +0x24 the cells (187
+of 30 bytes), +0x38 the queue (a vector of 30-byte entries, begin +0x3C, end +0x40), +0x48 the
+path (a vector of cell pointers, +0x4C, +0x50), +0x68 the stops (a byte per hex, 0x4B3290). A cell
+and an entry share one shape: the hex (+0, 10 bits), the flags (+4: bit 0 reached, bits 12–15 the
+direction of the step into the hex, bits 26–31 the hexes flown over in a row), the hex to attack
+from (+8, on a target's cell), the cost (+0x18, 16 bits); an entry's other bytes are left over in
+the push's stack frame and mean nothing.
+
+**The setup** (0x4B3538 to 0x4B35C5): the stops marked (0x4B3290), the path and the queue
+emptied (an erase of all: 0x5093C0 and 0x4B4270 copy the empty tail, 0x404140 is an empty
+`ret`), the cells zeroed; S's
+position pushed at cost 0 with the direction S faces (1, right, for facing 1, else 4).
+
+**The push 0x4B3BB0** (a hex, a direction, a cost, the flown count, R). Nothing for a hex off the
+field, a cost above R, a hex already reached at a cost no higher (only a strictly cheaper path
+replaces a cell) or a queue of 500 entries. Otherwise the entry goes into the queue, which is kept
+sorted by cost from the highest to the lowest, **before the first entry whose cost is not higher**
+(a binary search; the insert 0x4B3F70 or an inlined append), and is copied into the hex's cell.
+
+**The loop** (0x4B35CA to 0x4B3A8F). It takes the queue's last entry E: the lowest cost and, among
+equal costs, the one pushed first. So it is a uniform-cost search, first in, first out at a tie.
+An entry whose hex was since reached more cheaply is still taken and expanded. With a target hex,
+for an E not flown over (bits 26–31 clear) the nearest such hex to T is kept (0x469670, the first
+at a tie) and **E at T ends the search**. Then, for the directions 0 to 5 in this order (top
+right, right, bottom right, bottom left, left, top left; 0x523D90), the neighbour N on the field:
+
+- **The step's cost** is 1 or, when the step enters a stop (N, or for a two-hex S the hex beside
+  N, not already covered: §7.31's re-read), the rest of the turn, `s − (c mod s)` with `c` E's
+  cost: a stop costs up to the next multiple of `s`, and within a range of one turn nothing goes
+  on from it.
+- **S fits at N** (0x446C40) and does not avoid N as a stop (§7.31): N is pushed with `c` plus the
+  step, the direction, and a flown count of 0.
+- **Otherwise** (occupied, blocked, an avoided stop) **the attack marks**, at cost `a` = `c`, plus
+  `s` when E is a stop; none when `a` exceeds R, or when R is within `s` and E (or for a two-hex S
+  the hex beside E) is a stop. A stack at N not of the side asked has its position's cell, and for
+  a two-hex stack its other hex's, marked attackable (the hex record's +0x4A) at `a`, unless it is
+  marked at no more already; for a two-hex S the same for the stack on the hex beside N (by S's
+  facing). **When the marked hex is T the search ends**: T's cell takes the direction and E's hex
+  as the hex to attack from, and goes first into the path.
+- **Then** a flyer (flag `0x2`) or a Devil or Arch Devil (54, 55) passes over N when its flown
+  count plus 1 stays below its speed: N is pushed with that count, as a hex that is no end (§7.38).
+
+**The end** (0x4B3AAE). Without a target hex: false; the cells are the map 0x4B2DA0's callers
+read. With one: for a stack with a target stack (S+0x10 not −1; the berserk turn 0x4222C0 sets
++0x10 and +0x14 to the target's side and record) only a marked T counts, and the trace starts from
+the hex to attack from; for any other only T reached counts (the nearest hex kept above is
+dropped: false). The trace goes from that hex back to S's position, appending each cell's
+pointer to the path and stepping against its direction (0x523EC0: `(k + 3) mod 6`). So the path
+holds the cells from the end (in an attack, T's mark first) to the first step, without the start,
+and the result is whether it is non-empty (false for T at the start).
+
+**So a path among equally short ones** takes, for each hex, the first hex the search took
+(cheapest, then first discovered) from which a step reaches it at its lowest cost. Discovery
+follows each taken hex's directions: top right, right, bottom right, bottom left, left, top
+left. On plain steps this is a breadth-first search from the start in which each hex keeps the
+neighbour that discovered it. **The engine's BAT-MOV-003 chooses from the end instead**: each
+position's first neighbour one step nearer, in the order right, bottom right, bottom left, left,
+top left, top right. Simulated on batch 3c's fields, the reading gives what the original walked
+and the engine does not:
+
+- M2, the Magic Elementals 86 → 111: the reading gives 86, 87 … 94, 111, along row 5 as observed;
+  the engine walks along row 6.
+- G4, the Minotaur Kings 96 → 76: the reading gives 96, 95, 94, 76, as observed; the engine 96,
+  95, 77, 76.
+
+Batch 2c's F2 (two rows straight up through the top-right neighbour) agrees with both rules. The
+inbox has the alignment.
+
+**A berserk stack's attack position** (0x42232C: T its target's hex, range 127): the first hex
+the search takes from which T is a blocked neighbour (for a two-hex walker also through the hex
+beside N). The loop gives up on no target it can reach within the range, apart from the 500
+entries' bound. S-11's failure, if the original has it, lies elsewhere: the target's choice
+(§7.14) or the head (T1a4b).
+
+**What these read**: S's position, facing, flags (two-hex, flying), creature and +0x10; the
+stops; the field's stacks and their sides; the hex records' attack marks. **Draws:** none.
+
+**Readings at risk** (for T1b): the tie order (batch 3c's M2 and G4 agree, as simulated); the
+stop's cost as the rest of the turn; the flown count's bound; the attack mark's cost from a stop.
