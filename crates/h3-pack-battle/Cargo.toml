@@ -19,6 +19,7 @@ toml.workspace = true
 [dev-dependencies]
 h3-heroes.workspace = true
 h3-battle.workspace = true
+h3-battle-ai.workspace = true
 
 [lints]
 workspace = true

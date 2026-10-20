@@ -19,6 +19,24 @@ where  = "crates/h3-battle/src/observe.rs::observe_as"
 reason = "The observation does not show which dead created stacks vanished when their rounds ran out (Created::vanished). Since the E04b T11b review that mark decides whether a later created stack takes the record (BAT-MAG-037, BAT-MAG-052), so the observation is not complete on this point (ADR-0014 point 8): a public per-stack field for the next observation-encoding bump (BAT-Q35)"
 epic   = "E05"
 
+[[stub]]
+id     = "BAT-STUB-4"
+where  = "crates/h3-battle-ai/src/lib.rs::unchecked"
+reason = "The computer's walker (0x421F80, 0x421680; installation.md §7.35 to §7.38) is not built: a stack that cannot shoot defends, the original's default action, and draws nothing (BAT-AI-001). The First Aid Tent's patient (§7.14, BAT-Q51) waits for E23 T6"
+epic   = "E23"
+
+[[stub]]
+id     = "BAT-STUB-5"
+where  = "crates/h3-battle-ai/src/lib.rs::unchecked"
+reason = "The hero's side of the computer (E23 T5, T6): no hero's cast (0x422DA0, T1a6's reading) and no retreat test (0x41E570); the tactics phase ends at once instead of the shooters' placement and the walkers' choice in the zone (§7.34); a commanded Catapult shoots the first wall the engine lists instead of the computer's aim (§7.29, the gate first) (BAT-AI-001)"
+epic   = "E23"
+
+[[stub]]
+id     = "BAT-STUB-6"
+where  = "crates/h3-battle-ai/src/shooter.rs::shoot"
+reason = "The area shooters' value at a hex (0x41EDA0 with the area 0x5A46F0; Magogs, Liches, Power Liches) and the Cyclops's wall shot (0x41EEA0; installation.md §7.35) are not built: they shoot the single-target choice at the front hex (BAT-AI-002); E23 T2b, with BAT-QUIRK-25's first slip"
+epic   = "E23"
+
 # --- adventure (ADV-STUB-<n>) ---
 
 [[stub]]

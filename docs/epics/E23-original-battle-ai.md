@@ -1,7 +1,7 @@
 # E23 — The original's battle AI
 
 Status: **in progress**, refined 2026-10-19 (BAT-Q52); T1a1 to T1a4 done (the cuts confirmed
-2026-10-20), T1c done (BAT-Q53, BAT-Q54); T1a5 done as cut (part C, §7.42 to §7.45); T1a5e (the spell evaluators) done (§7.46); T1b done, ADR-0027 accepted (BAT-Q55); T2 next · Follows E05 (the
+2026-10-20), T1c done (BAT-Q53, BAT-Q54); T1a5 done as cut (part C, §7.42 to §7.45); T1a5e (the spell evaluators) done (§7.46); T1b done, ADR-0027 accepted (BAT-Q55); T2a done (the crate, the plain shooters), T2b next · Follows E05 (the
 AI lane, done) · Followed by E06 (training: this policy holds the neutral seat; AI-Q1) ·
 The battle lane's, later the AI lane's (BACKLOG).
 
@@ -160,9 +160,16 @@ found after that decision) belong to the neutral side's map too and are read (§
 
 **Later increments** (cut at each checkpoint from T1a's map; the neutral side first):
 
-- [ ] **T2 The crate and the shooters** — the `shared/` registration; the function, always a legal
-  command; every computer shooter as the automatic Ballista already shoots (0x41F060), with the
-  area estimate and the wall shot.
+- **T2 The crate and the shooters**, cut in two (the user, 2026-10-20: T2a first, T2b's shape
+  decided at its checkpoint):
+  - [x] **T2a The crate and the plain shooters** (2026-10-20) — the `shared/` registration
+    (#334); `h3-battle`'s public `computer` module; `h3_battle_ai::choose`, always a legal command
+    (property tests on the test ruleset and the harvested packs); every computer shooter as the
+    automatic Ballista shoots (0x41F060); stand-ins for the rest (BAT-STUB-4 to 6); BAT-AI-001,
+    BAT-AI-002; about 7 µs per decision (the log).
+  - [ ] **T2b The area value and the wall shot** — BAT-QUIRK-25's flag (`shared/`, after the
+    adventure lane's `shared/e08-t26b`), the area value 0x41EDA0 with slip 1, the wall shot
+    0x41EEA0, the gated benchmark and the budget (ADR-0027 point 11).
 - [ ] **T3 Walkers** — melee targets and moves (0x4221F0's walker branch, the melee estimate, the
   AI pathfinder), waits and defends.
 - [ ] **T4 Creature casts** — the abilities a computer stack chooses to use, per T1a's map. With
