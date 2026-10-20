@@ -8,6 +8,9 @@
 
 [scenario]
 id = "sequence-machines"
+# Both players human, as the original's hot-seat map (`h3-view situation --hot-seat`): the
+# panel's buttons lit on either side's turn (E17 M3 T6a).
+human = ["attacker", "defender"]
 packs = ["base"]
 profile = "base:faithful"
 terrain = "base:grass"

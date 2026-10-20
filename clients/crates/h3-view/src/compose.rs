@@ -9,9 +9,11 @@ use alloc::vec::Vec;
 use core::fmt;
 
 use h3_assets::def::Frame;
-use h3_assets::palette::Rgb;
+use h3_assets::palette::{Palette, Rgb};
 use h3_render::Bugs;
-use h3_render::blit::{Drawer, Placement, draw_frame, draw_image, draw_image_keyed};
+use h3_render::blit::{
+    Drawer, Placement, draw_frame, draw_image, draw_image_keyed, draw_image_keyed_in,
+};
 use h3_render::palette::{ScreenPalette, with_player_colours};
 use h3_render::screen::{PixelFormat, Screen};
 use h3_render::text::{TextBox, TextStyle, draw_text};
@@ -139,13 +141,7 @@ pub fn compose(
                 let players = batch
                     .palette(palette)
                     .ok_or_else(|| ComposeError::Missing(palette.clone()))?;
-                let colours: Vec<Rgb> = players
-                    .0
-                    .iter()
-                    .skip(32 * usize::from(*player))
-                    .take(32)
-                    .copied()
-                    .collect();
+                let colours = player_colours(players, *player);
                 let palette =
                     ScreenPalette::new(&with_player_colours(&sprite.def.palette, &colours), FORMAT);
                 let at = Placement {
@@ -224,30 +220,63 @@ pub fn compose(
                 };
                 draw_text(&mut screen, text.as_bytes(), area, style);
             }
-            Draw::Log { text } => {
+            Draw::Picture {
+                picture,
+                x,
+                y,
+                player,
+            } => {
+                // `H3DlgPcx` (0x450450 → 0x44FDB0): index 0 transparent, the picture's entries
+                // 224-255 in the player's colours (0x450520) when it has one (§9.7).
+                let image = picture_of(batch, picture)?;
+                match (player, image) {
+                    (Some(colours), h3_assets::pcx::Pcx::Indexed(indexed)) => {
+                        let players = batch
+                            .palette(&colours.palette)
+                            .ok_or_else(|| ComposeError::Missing(colours.palette.clone()))?;
+                        let of = player_colours(players, colours.player);
+                        let palette = with_player_colours(&indexed.palette, &of);
+                        draw_image_keyed_in(&mut screen, image, &palette, *x, *y);
+                    }
+                    _ => draw_image_keyed(&mut screen, image, *x, *y),
+                }
+            }
+            Draw::Button { def, frame, x, y } => {
+                // 0x456940: group 0's frame, frame 0 when the group has no such frame; the plain
+                // drawer with runs skipped (0x47BF00 → 0x47C570; §9.7).
+                let count = batch
+                    .sprite(def)
+                    .and_then(|s| s.def.groups.iter().find(|g| g.id == 0))
+                    .map_or(0, |g| g.frames.len());
+                let frame = if usize::try_from(*frame).unwrap_or(usize::MAX) < count {
+                    *frame
+                } else {
+                    0
+                };
+                plain(&mut screen, batch, def, (0, frame), *x, *y, false)?;
+            }
+            Draw::Text { item, x, y, text } => {
                 // 0x5BC7F0: the item's picture, opaque (0x44FDB0), then its text (0x5BC5F0 →
                 // 0x4B5490) in the item's box, the colour and alignment it was made with.
-                let log = &layout.log;
-                let [x, y] = log.place;
-                draw_image(&mut screen, picture_of(batch, &log.picture)?, x, y);
+                draw_image(&mut screen, picture_of(batch, &item.picture)?, *x, *y);
                 let font = batch
-                    .font(&log.font)
-                    .ok_or_else(|| ComposeError::Missing(log.font.clone()))?;
+                    .font(&item.font)
+                    .ok_or_else(|| ComposeError::Missing(item.font.clone()))?;
                 let palette = batch
-                    .palette(&log.font_palette)
-                    .ok_or_else(|| ComposeError::Missing(log.font_palette.clone()))?;
+                    .palette(&item.font_palette)
+                    .ok_or_else(|| ComposeError::Missing(item.font_palette.clone()))?;
                 let area = TextBox {
-                    x,
-                    y,
-                    width: log.size[0],
-                    height: log.size[1],
+                    x: *x,
+                    y: *y,
+                    width: item.size[0],
+                    height: item.size[1],
                 };
                 let colours = ScreenPalette::new(palette, FORMAT);
                 let style = TextStyle {
                     font,
                     colours: &colours,
-                    colour: log.colour,
-                    alignment: log.align,
+                    colour: item.colour,
+                    alignment: item.align,
                     bugs,
                 };
                 draw_text(&mut screen, &encode_1252(text).0, area, style);
@@ -331,6 +360,17 @@ fn drawn(
     let palette = ScreenPalette::new(&sprite.def.palette, FORMAT);
     draw_frame(screen, frame, &palette, at, drawer);
     Ok(())
+}
+
+/// A player's 32 colours of the players' palette (from entry 32 x the player's colour).
+fn player_colours(players: &Palette, player: u8) -> Vec<Rgb> {
+    players
+        .0
+        .iter()
+        .skip(32 * usize::from(player))
+        .take(32)
+        .copied()
+        .collect()
 }
 
 fn picture_of<'b>(batch: &'b Batch, name: &str) -> Result<&'b h3_assets::pcx::Pcx, ComposeError> {

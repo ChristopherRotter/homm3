@@ -81,6 +81,8 @@ pub struct Sides {
     pub stacks: [Vec<(u8, String, u32)>; 2],
     pub tight: [bool; 2],
     pub heroes: [Option<SideHero>; 2],
+    /// Whether each side's player is human (the scenario's `human`; E17 M3 T6a).
+    pub human: [bool; 2],
     /// Each side's war machines as its hero's artifacts (E17 M3 T3b): the worn slot (13 to 16,
     /// `ArtSlots.txt`'s order) and the artifact's number, which is the original's when the packs
     /// come in their order (base first: the Ballista 4, the Ammo Cart 5, the First Aid Tent 6).
@@ -161,6 +163,7 @@ pub fn sides(scenario: &Path, packs: &Path) -> Result<Sides, String> {
         stacks,
         tight: ["attacker", "defender"].map(|side| tight.iter().any(|t| t == side)),
         heroes,
+        human: setup.human,
         machines: [machines(0)?, machines(1)?],
     })
 }

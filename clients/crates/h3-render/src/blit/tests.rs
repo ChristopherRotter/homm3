@@ -347,6 +347,19 @@ fn images_are_drawn_opaque_and_clipped() {
     assert_eq!(s.pixels(), [WHITE, 0xF800, WHITE]);
     draw_image_keyed(&mut s, &rgb, 2, -1);
     assert_eq!(s.pixels(), [WHITE, 0xF800, 0x07E0]);
+    // Through another palette (E17 M3 T6a: a picture in a player's colours): its index 3 green,
+    // index 0 still transparent; a 24-bit image as it is.
+    let mut green = Palette::default();
+    green.0[3] = Rgb {
+        r: 0,
+        g: 0xFF,
+        b: 0,
+    };
+    let mut s = screen(3, 1);
+    draw_image_keyed_in(&mut s, &indexed, &green, 1, 0);
+    assert_eq!(s.pixels(), [WHITE, 0x07E0, WHITE]);
+    draw_image_keyed_in(&mut s, &rgb, &green, 0, 0);
+    assert_eq!(s.pixels(), [0x001F, 0x07E0, WHITE]);
 }
 
 #[test]

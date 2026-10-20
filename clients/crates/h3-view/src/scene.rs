@@ -8,7 +8,6 @@
 
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::string::{String, ToString};
-use alloc::vec;
 use alloc::vec::Vec;
 use core::fmt;
 
@@ -18,6 +17,7 @@ use crate::anim::{Magic, Pose, Projectile, Ray, Timeline};
 use crate::hero::{FLAG_START, HeroPose};
 use crate::layout::BattleLayout;
 use crate::tables::{ObstacleArt, Tables};
+use crate::ui::Text;
 
 /// The row passes of the battle's redraw (0x494440, §4.6): for each row, passes 0–7, each over
 /// the row's columns left to right.
@@ -200,21 +200,78 @@ pub enum Draw {
         /// Its outline: the layout's outline palette's entry, none for no outline.
         outline: Option<u8>,
     },
-    /// The battle log's item in the panel (0x46BCBE; §9.5; E17 M3 T4b-2b-1): the layout's picture,
-    /// then the text in its font over it.
-    Log {
-        /// The entries it shows, one per line (0x472C30: the first, then a line break and the
-        /// next if there is one; the status line's text instead when it shows).
+    /// A dialog's picture (`H3DlgPcx`, E17 M3 T6a; §9.7): index 0 transparent, in its own colours
+    /// or a player's.
+    Picture {
+        /// The picture.
+        picture: String,
+        /// Its left edge.
+        x: i32,
+        /// Its top edge.
+        y: i32,
+        /// The player's colours over its entries 224–255, if any.
+        player: Option<PlayerColours>,
+    },
+    /// A dialog's button (`H3DlgDefButton`, E17 M3 T6a; §9.7): a frame of its DEF's group 0 (frame
+    /// 0 when the group has no such frame), by the plain drawer with runs skipped.
+    Button {
+        /// The DEF.
+        def: String,
+        /// The frame in group 0 its state shows.
+        frame: u32,
+        /// The canvas's left edge.
+        x: i32,
+        /// The canvas's top edge.
+        y: i32,
+    },
+    /// A dialog's text over a picture (`H3DlgTextPcx`; the battle log's item, §9.5; E17 M3
+    /// T4b-2b-1, T6a): the item's picture, then the text in its font over it.
+    Text {
+        /// The item: its picture, size, font and how the text is drawn.
+        item: Text,
+        /// Its left edge.
+        x: i32,
+        /// Its top edge.
+        y: i32,
+        /// The text (the log's: its shown entries, one per line, 0x472C30; the status line's
+        /// text instead when it shows).
         text: String,
     },
 }
 
-/// What the panel below the battlefield draws, after the battlefield (E17 M3 T4b-2b-1): so far its
-/// log's item, showing `log` (empty at a battle's start); the panel's picture and buttons come with
-/// M3 T6.
+/// A picture's player colours (0x450520): the players' palette and the player's colour (0 red to
+/// 7 pink), whose 32 entries of that palette replace the picture's 224–255.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PlayerColours {
+    /// The players' palette (`PLAYERS.PAL`).
+    pub palette: String,
+    /// The player's colour.
+    pub player: u8,
+}
+
+/// What the panel below the battlefield draws, after the battlefield (E17 M3 T4b-2b-1, T6a; §9.7):
+/// the layout's panel as the stacks of `side` (the active stack's controller; none before a turn)
+/// begin their turn in the battle `observation` shows (`crate::panel`), its log showing `log`.
 #[must_use]
-pub fn panel(log: &str) -> Vec<Draw> {
-    vec![Draw::Log { text: log.into() }]
+pub fn panel(
+    observation: &Observation,
+    side: Option<Side>,
+    log: &str,
+    layout: &BattleLayout,
+) -> Vec<Draw> {
+    let shown = crate::panel::shown(observation, side, log, PLAYERS);
+    layout.panel.draws(&shown, &layout.player_palette)
+}
+
+/// The side whose turn it is at `moment`: its active stack's controller, else the observation's
+/// active stack's (E17 M3 T6a).
+#[must_use]
+pub fn acting(observation: &Observation, moment: &Moment) -> Option<Side> {
+    moment
+        .active
+        .or(observation.active)
+        .and_then(|id| observation.stacks.iter().find(|s| s.id == id))
+        .map(|s| s.controller)
 }
 
 /// Why a snapshot has no draw list.

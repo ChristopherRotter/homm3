@@ -8,7 +8,8 @@ an XWD dump of the 16-bit X display (raw 5-6-5), a render is h3-view's PNG, whos
                 [--out <diff.png>]
       counts the pixels that differ outside the masks and writes the capture dimmed with them red
       (the masked parts blue). Masks: `panel` (the bottom bar), `panel_beside_log` (the bottom
-      bar but its log's item, the layout's [log]), `heroes` (the two corners where
+      bar but its log's item, the layout's panel's item 2005), `cursor` (the game's cursor where
+      the battle's recipes park the mouse), `heroes` (the two corners where
       the heroes and their flags stand), `count_boxes` (each living stack's box, from the record's
       first snapshot: design §4.3).
   h3cap.py find <capture.xwd> <scenario.toml> [--out <dir>]
@@ -45,6 +46,11 @@ WIDTH = 17  # hexes per row
 # the flags at (29, 20) and (755, 20) lie inside these boxes.
 HERO_BOXES = [(0, 0, 107, 156), (693, 0, 800, 156)]
 COUNT_BOX = (30, 11)
+# The game's own cursor where the battle's recipes park the mouse (h3drive.py's PARK): its first
+# frame's canvas (CRDEFLT.DEF, 20 x 24, its hot spot at the corner), which the viewer does not draw
+# in a comparison (the cursor rules are M3 T6c's). Masked in the capture set since M3 T6a, when the
+# panel around it is compared.
+CURSOR_BOX = (618, 593, 638, 617)
 
 
 def xwd565(path):
@@ -130,27 +136,43 @@ def boxes_at(observation, poses):
     return count_boxes({**observation, "stacks": moved}, showing)
 
 
-def mask(names, record=None, shape=(600, 800)):
-    """The masked pixels: what we do not draw yet."""
-    m = np.zeros(shape, bool)
+def log_item():
+    """The battle log's item on the screen, (x, y, width, height): the layout's panel's text item
+    2005 at the panel's corner plus its own (E17 M3 T4b-2b-1, T6a; h3_view::panel::LOG)."""
+    panel = layout()["panel"]
+    item = next(i for i in panel["items"] if i["id"] == 2005)
+    (px, py), (ax, ay) = panel["place"], item["at"]
+    return (px + ax, py + ay, *item["size"])
+
+
+def mask_boxes(names, record=None, shape=(600, 800)):
+    """The masks' rectangles, each (x0, y0, x1, y1)."""
     boxes = []
     for name in names:
         if name == "panel":
             boxes.append((0, FIELD_BOTTOM, shape[1], shape[0]))
         elif name == "panel_beside_log":
-            # The panel but its log's item (E17 M3 T4b-2b-1; the layout's [log]).
-            (x, y), (w, h) = layout()["log"]["place"], layout()["log"]["size"]
+            # The panel but its log's item (E17 M3 T4b-2b-1).
+            x, y, w, h = log_item()
             boxes += [(0, FIELD_BOTTOM, shape[1], y), (0, y, x, y + h),
                       (x + w, y, shape[1], y + h), (0, y + h, shape[1], shape[0])]
         elif name == "heroes":
             boxes += HERO_BOXES
+        elif name == "cursor":
+            boxes.append(CURSOR_BOX)
         elif name == "count_boxes":
             if record is None:
                 sys.exit("the mask `count_boxes` needs --record")
             boxes += count_boxes(snapshot(record))
         elif name:
             sys.exit(f"unknown mask `{name}`")
-    for x0, y0, x1, y1 in boxes:
+    return boxes
+
+
+def mask(names, record=None, shape=(600, 800)):
+    """The masked pixels: what we do not draw yet."""
+    m = np.zeros(shape, bool)
+    for x0, y0, x1, y1 in mask_boxes(names, record, shape):
         m[max(y0, 0) : max(y1, 0), max(x0, 0) : max(x1, 0)] = True
     return m
 

@@ -55,8 +55,9 @@ xdd.dll (xdd.c: freeze, step, run), so that every frame is taken at an exact gam
   h3drive.py drawn [--out <dir>] [--only <id>] [--record]
                                             the viewer's frames of every sequence and situation
                                             at the times last kept, without the original (no
-                                            Wine): each one's PNGs against situations/kept/
-                                            drawn.txt (`same`, `CHANGED`, `new`); exits 1 on a
+                                            Wine): each one's pixels outside its comparison's
+                                            fixed masks against situations/kept/drawn.txt
+                                            (`same`, `CHANGED`, `new`); exits 1 on a
                                             change; --record writes the digests (runbook, "Which
                                             captures a change needs"; default <dir>:
                                             clients/out/drawn)
@@ -786,10 +787,7 @@ def run_frames(rest):
             stem = Path(k["frame"]).stem
             cap = np.load(here / "frames" / k["frame"])["screen"]
             ours = h3cap.png565(here / "ours" / f"{stem}.png")
-            # The panel, but its log's item from the entry's `log_at` on (E17 M3 T4b-2b-2).
-            log_at = e.get("log_at")
-            masks = ["panel_beside_log" if log_at is not None and k["t"] >= log_at else "panel"]
-            masked = h3cap.mask(masks, shape=cap.shape)
+            masked = h3cap.mask(compared_masks("sequences", e, k["t"]), shape=cap.shape)
             # The count boxes masked where the drawn poses show them and where the viewer drew
             # them, unless the entry compares them (`boxes`, E17 M3 T5a): then only those whose
             # count is not the one the original shows (its memory: +0x50 while it is not -1,
@@ -831,6 +829,44 @@ def run_frames(rest):
     return 1 if failed else 0
 
 
+def compared_masks(kind, entry, t):
+    """The fixed masks a comparison applies to a frame at `t` ms: a sequence's the panel, but its
+    log's item from the entry's `log_at` on (E17 M3 T4b-2b-2); a situation's its `mask` list. (A
+    sequence's count boxes are masked besides, by the original's counts: not fixed.)"""
+    if kind == "sequences":
+        log_at = entry.get("log_at")
+        return ["panel_beside_log" if log_at is not None and t >= log_at else "panel"]
+    return entry.get("mask", [])
+
+
+def png_digest(path, boxes):
+    """The digest of a viewer's PNG (8-bit RGB, unfiltered rows: h3_render::png) with the pixels in
+    `boxes` (each x0, y0, x1, y1) blanked: what a comparison with those masks sees (E17 M3 T6a)."""
+    import hashlib
+    import zlib
+
+    data = Path(path).read_bytes()
+    at, idat, width, height = 8, b"", 0, 0
+    while at < len(data):
+        length, kind = struct.unpack(">I4s", data[at:at + 8])
+        body = data[at + 8:at + 8 + length]
+        if kind == b"IHDR":
+            width, height = struct.unpack(">II", body[:8])
+        elif kind == b"IDAT":
+            idat += body
+        at += 12 + length
+    raw = bytearray(zlib.decompress(idat))
+    stride = 1 + 3 * width
+    if any(raw[y * stride] for y in range(height)):
+        sys.exit(f"{path}: a filtered row (not h3_render::png's)")
+    for x0, y0, x1, y1 in boxes:
+        x0, x1 = max(x0, 0), min(x1, width)
+        for y in range(max(y0, 0), min(y1, height)):
+            if x1 > x0:
+                raw[y * stride + 1 + 3 * x0:y * stride + 1 + 3 * x1] = bytes(3 * (x1 - x0))
+    return hashlib.sha1(bytes(raw)).hexdigest()[:16]
+
+
 def keep(set_path, kind, ident, frames):
     """Keeps a capture's `frames.toml` (its frames' times, the fidgets and heroes the original's
     memory showed: numbers only, ADR-0009) in `situations/kept/<kind>/<id>.toml`, beside the set
@@ -844,13 +880,14 @@ def run_drawn(rest):
     """The viewer's frames without the original (runbook, "Which captures a change needs"): for
     each recorded sequence with engine commands and each situation of the capture set, the
     viewer draws its frames at the times the harness last kept frames of the original
-    (`situations/kept/`, written by `frames` and `set`); each frame's digest (its PNG file's:
-    the viewer's encoder is deterministic) is compared with `situations/kept/drawn.txt`. One line
-    per sequence or situation (`same`, `CHANGED (<n> of <m> frames, the first at <ms>)`, `new`,
-    or the viewer's own timeline check failing); exits 1 unless every one is the same. With
-    `--record` it writes the digests instead (those not run kept). Needs the release `h3-view`
-    and the user's original files only."""
-    import hashlib
+    (`situations/kept/`, written by `frames` and `set`); each frame's digest (of its pixels
+    outside the fixed masks its comparison applies, `compared_masks`: a change only under them
+    leaves the recorded count true; E17 M3 T6a) is compared with `situations/kept/drawn.txt`. One
+    line per sequence or situation (`same`, `CHANGED (<n> of <m> frames, the first at <ms>)`,
+    `new`, or the viewer's own timeline check failing); exits 1 unless every one is the same.
+    With `--record` it writes the digests instead (those not run kept). Needs the release
+    `h3-view` and the user's original files only."""
+    import h3cap
 
     situations = ROOT / "clients" / "situations"
     kept_dir = situations / "kept"
@@ -897,9 +934,12 @@ def run_drawn(rest):
             print(f"{name}: the viewer failed ({' '.join(last)})", flush=True)
             failed += 1
             continue
-        frames = [Path(f["file"]).stem for f in tomllib.loads(kept.read_text())["frame"]]
-        got[name] = {stem: hashlib.sha1((here / "ours" / f"{stem}.png").read_bytes())
-                     .hexdigest()[:16] for stem in frames}
+        listed = tomllib.loads(kept.read_text())["frame"]
+        frames = [Path(f["file"]).stem for f in listed]
+        got[name] = {Path(f["file"]).stem: png_digest(
+            here / "ours" / f"{Path(f['file']).stem}.png",
+            h3cap.mask_boxes(compared_masks(kind, entry, f["t"])))
+            for f in listed}
         before = recorded.get(name)
         if before is None:
             verdict = "new"
@@ -916,7 +956,8 @@ def run_drawn(rest):
     if record:
         recorded.update(got)
         lines = ["# The viewer's frames at the times last kept (h3drive.py drawn --record): each",
-                 "# frame's PNG digest, `<kind>/<id> <frame> <sha1, 16 digits>`."]
+                 "# frame's digest outside its comparison's fixed masks (h3drive.py png_digest),",
+                 "# `<kind>/<id> <frame> <sha1, 16 digits>`."]
         lines += [f"{name} {stem} {digest}" for name in sorted(recorded)
                   for stem, digest in recorded[name].items()]
         digests_path.write_text("\n".join(lines) + "\n")

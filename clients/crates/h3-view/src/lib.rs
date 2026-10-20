@@ -3,7 +3,8 @@
 //! [`anim`] plays its commands at the original's timing, [`scene`] makes the draw list of a
 //! snapshot at a time ([`hero`]: the heroes and their flags), [`batch`] holds a checkpoint's decoded assets,
 //! [`compose`] draws the list into a frame; [`tables`] and [`layout`] are the asset tables and
-//! the screen layouts; [`cursor`] is the game's mouse cursor and [`clock`] the battle's clock in
+//! the screen layouts, [`ui`] the dialog items they are made of and [`panel`] the battle's panel
+//! of them; [`cursor`] is the game's mouse cursor and [`clock`] the battle's clock in
 //! the window; [`sound`] is what a battle's opening plays; [`text`] is the string catalogue and
 //! its language packs, [`battle_log`] the battle log's lines composed from it. The adapters (the
 //! real-asset gate, the headless renderer, the window through `h3-sdl`) are the binary's modules,
@@ -37,9 +38,11 @@ pub mod compose;
 pub mod cursor;
 pub mod hero;
 pub mod layout;
+pub mod panel;
 pub mod ray;
 pub mod record;
 pub mod scene;
 pub mod sound;
 pub mod tables;
 pub mod text;
+pub mod ui;

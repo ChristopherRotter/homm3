@@ -6,6 +6,8 @@
 use alloc::string::{String, ToString};
 use serde::Deserialize;
 
+use crate::ui::{Dialog, Text};
+
 /// The battle screen's layout: the frame, the hex grid and where sprites stand.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -44,31 +46,10 @@ pub struct BattleLayout {
     pub player_palette: String,
     /// A stack's count box (§4.3; E17 M3 T4a).
     pub count_box: CountBox,
-    /// The battle log's item in the panel (§9.5; E17 M3 T4b-2b-1).
-    pub log: Log,
-}
-
-/// The battle log's item in the panel below the battlefield (the panel 0x46BC30 at (0, 556), its
-/// text item 0x46BCBE; design §9.5): a picture with a text over it, the log's shown entries. The
-/// status line shows in the same item.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct Log {
-    /// The item's picture, drawn opaque from its top-left corner (`cRollovr.pcx`; the executable
-    /// draws at most the item's size of it, 0x5BC7F0: the picture is that size).
-    pub picture: String,
-    /// The item's top-left corner on the screen (214, 563: the panel's 0, 556 plus 214, 7).
-    pub place: [i32; 2],
-    /// Its width and height, the text's box (400 × 32: two lines of the font).
-    pub size: [i32; 2],
-    /// The font (`smalfont.fnt`).
-    pub font: String,
-    /// The palette the font's colours come from (`game.pal`).
-    pub font_palette: String,
-    /// The text drawer's colour argument (1).
-    pub colour: u32,
-    /// The text drawer's alignment (1: each line centred, from the box's top).
-    pub align: u32,
+    /// The panel below the battlefield, a dialog of the executable's items (§9.5, §9.7; E17 M3
+    /// T4b-2b-1, T6a): its picture, buttons and the battle log's item (`crate::panel` names
+    /// them).
+    pub panel: Dialog,
 }
 
 /// A stack's count box (`draw_battle_stack`'s part 1, 0x43E568; design §4.3): its picture beside
@@ -135,6 +116,13 @@ impl CountBox {
 }
 
 impl BattleLayout {
+    /// The battle log's item in the panel (control 2005, `crate::panel::LOG`), if the layout has
+    /// one.
+    #[must_use]
+    pub fn log(&self) -> Option<&Text> {
+        self.panel.text(crate::panel::LOG)
+    }
+
     /// The top-left corner of the box of the hex in `row` and `column`.
     pub fn hex_box(&self, row: u8, column: u8) -> [i32; 2] {
         let shift = if row.is_multiple_of(2) {
@@ -215,9 +203,12 @@ mod tests {
         assert_eq!(b.tint_rect, [[1, 1], [28, 9]]);
         assert_eq!(b.tint, [0x3F40_0000, 0x3F4C_CCCD]);
         assert_eq!((b.text_size, b.text_colour, b.text_align), ([30, 15], 4, 1));
-        let log = &layout.log;
-        assert_eq!((log.place, log.size), ([214, 563], [400, 32]));
+        // §9.5, §9.7: the panel at (0, 556), its log's item at its (214, 7).
+        assert_eq!(layout.panel.place, [0, 556]);
+        let log = layout.log().unwrap();
+        assert_eq!((log.at, log.size), ([214, 7], [400, 32]));
         assert_eq!((log.colour, log.align), (1, 1));
+        assert_eq!(layout.panel.items.len(), 11);
         let flat = BattleLayout {
             outline_ramp: 0,
             ..layout
