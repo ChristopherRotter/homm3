@@ -270,7 +270,7 @@ Each with the user's checkpoint; only the next one refined (Q41's pattern).
   pending one at the resume, `--init-from`; the user one pull request). The hour on the user's
   machine with gates (`python/configs/e06-t3b.toml`) measures §9's evaluation share; its result
   sets T4's cadences.
-- **Increment 3** (refined 2026-10-20, AI-Q9): T4a (the league of §8, one pull request; with
+- **Increment 3** (refined 2026-10-20, AI-Q9): T4a (done 2026-10-20: the league of §8; with
   `configs/e06-t4.toml`: a gate every 10 M samples and ladders of 250 per kind, about 12 % of a
   run by `t3b-1`'s costs), T4b (two league runs of 60 M samples, about 3.5 hours each, at γ 0.995
   and γ 1.0 against the stalling; one of them stopped and resumed for real).
