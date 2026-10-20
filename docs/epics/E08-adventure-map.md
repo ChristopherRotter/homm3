@@ -267,13 +267,25 @@ Refined with the user on 2026-10-20 (T23; ADV-Q14). Built like increments 1 to 3
     hero parameters first (then the class side), or the plain data first (then the override and
     the flags).
 
+### Decisions at round 2 (2026-10-20, user)
+
+62. **T27 whole** (the user's choice of three; not chosen: T27a alone, the levels and the draws
+    first, or T28 first): one pull request, `cross-lane` with the user's consent, with every rule
+    of design part A §2–§7, game state hash v9 and the nine adventure replays re-recorded. **The
+    level check in `h3-heroes`, as designed** (the user's choice of two, asked because the battle
+    lane's tests and the AI lane's battle encounters built heroes at levels above their
+    experience's): the details' validation refuses a level above the experience's level, and
+    those heroes carry their level's experience (the battle lane's random test heroes at levels 1
+    to 74). Not chosen: the check in the game only.
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T23 Increment 4 refined.** Done (2026-10-20, `adventure/e08-t23`; decisions 48–50): progression only, the first round queued (T24a, T24b), the inbox sorted; docs only (log).
 - **T24a The progression survey.** Cut in two (decision 51): **T24a1** done (2026-10-20, `adventure/e08-t24a1`: survey §1–§2, experience to levels and the level-up, with VCMI; log); **T24a2** cut again (decision 52): **T24a2a** done (2026-10-20, `adventure/e08-t24a2a`: survey §3–§4, levels at load and what follows the level; log); T24a2b cut (decision 53): **T24a2b1** done (2026-10-20, `adventure/e08-t24a2b1`: survey §5–§6, the wiki and the census; log); **T24a2b2** done (2026-10-20, `adventure/e08-t24a2b2`, decision 54: survey §7–§9, the batch's plan, the rule ids, the second reading; ADV-Q15; log). **T24a done**; its checkpoint is ADV-Q15.
 - **T24b The ADR amendment drafts, the design note and the cut.** Cut by crate (decision 56): **T24b1** done (2026-10-20, `adventure/e08-t24b1`: ADR-0013's amendment draft, `E08-design.md` rewritten with part A, the hero side; log); **T24b2** done (2026-10-20, `adventure/e08-t24b2`, decision 57: ADR-0017's amendment draft, `E08-design.md` part B with the cut in five rounds and the exit criteria; ADV-Q16; log). **T24b done**; its checkpoint ADV-Q16 answered (decision 58).
 - **T25 to T33 The building tasks**, proposed by T24b2 in five rounds (`E08-design.md` §17, with increment 4's exit criteria): T25 + T26 (the evaluation's reading; the shared groundwork), T27 + T28 (`h3-heroes`' progression; the choice ported), T29 + T30 (the game's build, levels at load and the import; the level-up as a decision), T31 + T32a (env, replays, fixtures, properties, benchmarks; batch E4's spec and recipe), T32b + T33 (the run; the scoring and the closure). **Confirmed** at ADV-Q16 (decision 58); round 1 is next.
-- **Round 1: T25 + T26a** (decision 59). **T25** done (2026-10-20, `adventure/e08-t25`: survey §10, the evaluation read, no draws, the map's terrain shares, E3-6's four choices fit; ADV-Q17, decision 60; log). **T26a** done (2026-10-20, `shared/e08-t26a` #325: ADR-0013 and ADR-0017 amended). **T26b** done (2026-10-20, `shared/e08-t26b`, `cross-lane`, decision 61: the level data, the offered skills, the class's intervals, the class override, two flags, the packs; pack format v44, core ruleset hash v46; log). **Round 1 closed**; round 2 (T27 + T28) next, its cut at its checkpoint.
+- **Round 1: T25 + T26a** (decision 59). **T25** done (2026-10-20, `adventure/e08-t25`: survey §10, the evaluation read, no draws, the map's terrain shares, E3-6's four choices fit; ADV-Q17, decision 60; log). **T26a** done (2026-10-20, `shared/e08-t26a` #325: ADR-0013 and ADR-0017 amended). **T26b** done (2026-10-20, `shared/e08-t26b`, `cross-lane`, decision 61: the level data, the offered skills, the class's intervals, the class override, two flags, the packs; pack format v44, core ruleset hash v46; log). **Round 1 closed**.
+- **Round 2: T27 + T28** (decision 62). **T27** done (2026-10-20, `adventure/e08-t27`, `cross-lane`: `h3-heroes`' levels, the bound, the limit's cap, the draws, the primary skill, the offers, `GainLevel`, the offers' levels in the details; HER-EXP-002, -003, HER-LVL-001 to -005; `ADV-QUIRK-11` to `-13`; game state hash v9; log). T28 next.
 
 ## Later increments (sketch)
 

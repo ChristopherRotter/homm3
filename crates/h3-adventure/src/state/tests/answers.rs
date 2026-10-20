@@ -120,6 +120,7 @@ fn diplomat(level: u8) -> Arc<HeroDetails> {
         hero_type: HeroTypeId::from_raw(0),
         level: 1,
         experience: 0,
+        offered: Default::default(),
         primary: [0, 0, 1, 1],
         skills: (level > 0)
             .then_some((DIPLOMACY, level))

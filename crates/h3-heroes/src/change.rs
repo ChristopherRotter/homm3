@@ -3,14 +3,21 @@
 //! ([`check_change`], HER-CHG-001) so that applying it ([`apply_change`]) cannot fail; where a
 //! received artifact goes (HER-CHG-002); what a defeated hero yields, in which order
 //! (HER-ART-004); the artifact a destroyed war machine takes with it (HER-WAR-002); since E08
-//! T19a2b a learned spell.
+//! T19a2b a learned spell; since E08 T27 a level (HER-LVL-005) and the experience a gain gives
+//! under the scenario's level limit (HER-EXP-003).
 
 use alloc::vec;
 
-use h3_content::{ArtifactType, CreatureFlag, CreatureTypeId, Ruleset, SpellId};
+use h3_content::{
+    ArtifactType, CreatureFlag, CreatureTypeId, MAX_HERO_SKILLS, MAX_SKILL_LEVEL, Ruleset, SkillId,
+    SpellId,
+};
 
-use crate::details::{ArtifactInstance, HeroDetails, check_artifact, hero_spell};
+use crate::details::{
+    ArtifactInstance, HeroDetails, OfferLevels, PrimarySkill, check_artifact, hero_spell,
+};
 use crate::error::ChangeError;
+use crate::level::{gained_under_limit, pending_levels};
 
 /// Where an artifact is in a hero's details.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -25,7 +32,8 @@ pub enum ArtifactPlace {
 /// to its store, checked first ([`check_change`]).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HeroChange {
-    /// The hero gains experience points (the sum saturates).
+    /// The hero gains experience points: the sum, at most the bound or the scenario's level
+    /// limit's cap (HER-EXP-002, HER-EXP-003; [`apply_change_limited`]).
     GainExperience(u32),
     /// Its spell points become this many.
     SetSpellPoints(u16),
@@ -36,19 +44,35 @@ pub enum HeroChange {
     /// It learns a spell, added at the end of its learned spells (E08 T19a2b: an Eagle Eye pick,
     /// HER-SPL-006).
     LearnSpell(SpellId),
+    /// It is given its next level (E08 T27, HER-LVL-005; [`crate::LevelUp::change`]): one more
+    /// level, one more of the primary skill (at most the ruleset's `primary_max`: A-9,
+    /// `ADV-QUIRK-13`), the learned skill (a known one a level up, a new one at Basic after the
+    /// others) and the offers' levels.
+    GainLevel {
+        /// The primary skill that gains 1.
+        primary: PrimarySkill,
+        /// The skill learned, if any.
+        learned: Option<SkillId>,
+        /// The levels at which Wisdom and a school were last offered, after this level.
+        offered: OfferLevels,
+    },
 }
 
 /// Checks a change against valid hero details (HER-CHG-001): the details stay valid with it
 /// ([`crate::validate`]). Experience and spell points always pass; a received artifact must be
 /// one of the ruleset holding a spell exactly when it is a scroll (HER-ART-003) and find room
 /// (HER-CHG-002); a removed one must be there; a learned spell must be a hero spell of the
-/// ruleset (HER-SPL-001) the hero has not learned.
+/// ruleset (HER-SPL-001) the hero has not learned; a level must be pending, its learned skill the
+/// ruleset's, below Expert if known and new only below the most skills, the offers' levels at most
+/// the new level (HER-LVL-005). Whether the skill was one of the level's offers is the caller's
+/// check (it holds the drawn [`crate::LevelUp`]).
 ///
 /// # Errors
 /// [`ChangeError::Artifact`] for an artifact the ruleset refuses, [`ChangeError::NoRoom`] when it
 /// fits no free position and the backpack cannot take it, [`ChangeError::NoArtifact`] when there
 /// is none at the place, [`ChangeError::Spell`] for a spell the ruleset refuses,
-/// [`ChangeError::KnownSpell`] for one the hero has learned.
+/// [`ChangeError::KnownSpell`] for one the hero has learned; [`ChangeError::NoLevelPending`],
+/// [`ChangeError::CannotLearn`] and [`ChangeError::OfferedAboveLevel`] for a level.
 pub fn check_change(
     details: &HeroDetails,
     ruleset: &Ruleset,
@@ -72,18 +96,66 @@ pub fn check_change(
                 .then_some(())
                 .ok_or(ChangeError::KnownSpell(spell))
         }
+        HeroChange::GainLevel {
+            learned, offered, ..
+        } => check_level(details, ruleset, learned, offered),
     }
 }
 
+/// [`check_change`] of a level (HER-LVL-005).
+fn check_level(
+    details: &HeroDetails,
+    ruleset: &Ruleset,
+    learned: Option<SkillId>,
+    offered: OfferLevels,
+) -> Result<(), ChangeError> {
+    // rule: HER-LVL-005
+    let pending = ruleset
+        .hero_params()
+        .is_some_and(|params| pending_levels(details, params) > 0);
+    if !pending {
+        return Err(ChangeError::NoLevelPending);
+    }
+    if let Some(skill) = learned {
+        let known = details.skills.iter().find(|&&(s, _)| s == skill);
+        let learnable = ruleset.skill(skill).is_some()
+            && known.map_or(details.skills.len() < MAX_HERO_SKILLS, |&(_, level)| {
+                level < MAX_SKILL_LEVEL
+            });
+        if !learnable {
+            return Err(ChangeError::CannotLearn(skill));
+        }
+    }
+    let level = u16::from(details.level) + 1;
+    (u16::from(offered.wisdom.max(offered.school)) <= level)
+        .then_some(())
+        .ok_or(ChangeError::OfferedAboveLevel)
+}
+
 /// Applies a change if [`check_change`] passes it (HER-CHG-001, HER-CHG-002); one it refuses
-/// changes nothing.
+/// changes nothing. A scenario without a level limit: [`apply_change_limited`] with limit 0.
 pub fn apply_change(details: &mut HeroDetails, ruleset: &Ruleset, change: HeroChange) {
+    apply_change_limited(details, ruleset, 0, change);
+}
+
+/// [`apply_change`] in a scenario with the level limit `level_limit` (0 none): experience gains
+/// stop at the limit's cap and lower experience above it (HER-EXP-003,
+/// [`crate::gained_under_limit`]).
+pub fn apply_change_limited(
+    details: &mut HeroDetails,
+    ruleset: &Ruleset,
+    level_limit: u8,
+    change: HeroChange,
+) {
     if check_change(details, ruleset, change).is_err() {
         return;
     }
     match change {
         HeroChange::GainExperience(points) => {
-            details.experience = details.experience.saturating_add(points);
+            // rule: HER-EXP-003
+            details.experience = ruleset.hero_params().map_or(details.experience, |params| {
+                gained_under_limit(details, params, points, level_limit)
+            });
         }
         HeroChange::SetSpellPoints(points) => details.mana = points,
         HeroChange::AddArtifact(item) => {
@@ -107,6 +179,26 @@ pub fn apply_change(details: &mut HeroDetails, ruleset: &Ruleset, change: HeroCh
             list.extend(rest.into_iter().skip(1));
         }
         HeroChange::LearnSpell(spell) => details.spells.push(spell),
+        HeroChange::GainLevel {
+            primary,
+            learned,
+            offered,
+        } => {
+            // rule: HER-LVL-005
+            details.level = details.level.saturating_add(1);
+            // A-9: the gain saturates at `primary_max`.
+            // rule: HER-LVL-001
+            let max = ruleset.hero_params().map_or(0, |params| params.primary_max);
+            let base = &mut details.primary[primary.index()];
+            *base = base.saturating_add(1).min(max);
+            if let Some(skill) = learned {
+                match details.skills.iter_mut().find(|(s, _)| *s == skill) {
+                    Some((_, level)) => *level += 1,
+                    None => details.skills.push((skill, 1)),
+                }
+            }
+            details.offered = offered;
+        }
     }
 }
 

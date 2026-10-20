@@ -3076,3 +3076,47 @@ the light gates only, green).
   0.2 %). After merging `master` (eight commits, docs and the AI lane's Python) the second run
   failed only `deny`: RUSTSEC-2026-0382 (`rustls-webpki` 0.103.15, `h3-server`'s TLS), published
   between the two runs. The user chose to bump it here: 0.103.16 in `Cargo.lock`.
+
+### Increment 4, round 2: T27, `h3-heroes`' progression (2026-10-20, `adventure/e08-t27`)
+
+The user took T27 whole (decision 62, after #335 merged) and the level check in `h3-heroes` as
+designed; one pull request, `cross-lane` with the user's consent. Baseline `master` b989682.
+
+- **`h3-heroes`** (design part A §2–§7; the sections replaced by a summary): `level.rs`:
+  `experience_for` (the table's thresholds; level 0 as 1, past the table its last entry),
+  `experience_bound` (level 75's threshold − 1, A-7), `level_of` (the thresholds at or below,
+  at most `max_level`), `experience_cap` (a limit's threshold, 0 or above `max_level` none: A-8),
+  `gained_under_limit` (the sum at most the cap, experience above it lowered by any gain: D-19;
+  no lower than the hero's level's threshold, so the details stay valid; design §2–§7's note),
+  `pending_levels`. `level_up.rs`: the `Draws` trait (`between`, inclusive), `impl Draws for
+  Rng` (the owner's stream), `OriginalDraws` (the C runtime's generator seeded with
+  214 013 L + 156 823 S + 154 079; `state`, `rand`), `draw_level_up(details, ruleset, banned,
+  draws) -> Option<LevelUp>` (the primary skill by the class's rows, D-15; the two offers through
+  `hero_secondary_offer`'s steps: Wisdom outright, a school with a known one weighing 1 (D-17),
+  any candidate by weight with a banned one 0 or 1 if known (D-18); the school's level set
+  between the offers, both levels after them), `LevelUp { level, primary, offers, offered }`,
+  `Offers { None, One, Two }`, `Choice { First, Second }`, `LevelUp::learned`/`change`.
+  `HeroChange::GainLevel { primary, learned, offered }` (checked: a level pending, the skill
+  learnable, the offers' levels at most the new level; applied: level + 1, the primary + 1 at
+  most `primary_max` (A-9), the skill, the levels), `apply_change_limited` (`apply_change` is it
+  with limit 0). `HeroDetails.offered: OfferLevels { wisdom, school }`; the validation refuses
+  `ExperienceAboveBound`, `LevelAboveExperience`, `OfferedAboveLevel`; `ChangeError` gains
+  `NoLevelPending`, `CannotLearn`, `OfferedAboveLevel`. Tests (`tests/level.rs`): the survey's
+  thresholds and seeds (738 928 → 3, 31 946 705 → 91), the Knight's offers (S = 1: Leadership and
+  Tactics; S = 200: Leadership and Sorcery), batch E3c's E3-6 (the Death Knight, S = 75, levels 2
+  to 5 chosen left, right, right, right: 3/6/1/1, Pathfinding and Scouting advanced, Logistics
+  expert), each step of the offers with fixed draws; 100 % coverage. Specialty tests that ran at
+  level 255 run at 74 (their expected values recomputed).
+- **The other lanes' heroes** (decision 62): every `HeroDetails` literal gained `offered`; heroes
+  above level 1 carry their level's experience (`experience_for`): the battle lane's
+  `h3-pack-battle` tests (their random heroes at levels 1 to 74, was 255) and the AI lane's
+  encounter sampler (`h3-sim/src/encounter/hero.rs`; its battles unchanged: the battle reads no
+  experience). `h3-map`'s play property refuses a told `GainLevel`.
+- **`h3-game`**: the details' hash gains the offers' levels: **game state hash v9**. The battle's
+  experience still goes through `apply_change` (no limit) until T29 passes the map's.
+- **Replays**: the nine adventure replays re-recorded with their options: commands unchanged,
+  their checkpoints, final hashes and `game_state_hash_version` moved.
+- **Rules and quirks**: HER-EXP-002, HER-EXP-003, HER-LVL-001 to -005 written (`implemented`;
+  sources the code reading, the wiki, VCMI, E3-6), HER-DET-001 and HER-CHG-001 amended;
+  `ADV-QUIRK-11` to `-13` written (exploit-fix, no flag), `ADV-QUIRK-10`'s regression test named.
+- **Inboxes**: battle and AI (their tests' and sampler's heroes), the lane's own (T29's limit).

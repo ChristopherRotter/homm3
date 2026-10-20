@@ -13,7 +13,7 @@ use h3_content::{
     StartingStack,
 };
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
-use h3_heroes::{ArtifactInstance, DetailsError, HeroDetails};
+use h3_heroes::{ArtifactInstance, DetailsError, HeroDetails, OfferLevels};
 use h3_kernel::Rng;
 
 use crate::{GameRuleset, GameState};
@@ -271,6 +271,7 @@ fn hero_details(
             let (low, width) = DEFAULT_EXPERIENCE;
             low + draws.range_inclusive(0, width)
         }),
+        offered: OfferLevels::default(),
         primary: custom.primary.unwrap_or_else(|| {
             core.hero_class(hero_type.class)
                 .map_or([0; 4], |class| class.primary)
