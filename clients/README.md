@@ -110,6 +110,10 @@ search the parent directories).
   --frames`) and compares them with masks against the counts in `situations/timelines/`; from a
   sequence's `log_at` also the log's item, the viewer drawing the record's first strike's line
   there (M3 T4b-2b-2, design §9.6: `strike`).
+- **Without the original** (2026-10-20): `python3 capture/h3drive.py drawn` draws the viewer's
+  frames of every sequence and situation at the times the last capture kept
+  (`situations/kept/`) and compares their digests with `kept/drawn.txt`: a task captures in the
+  original only what it lists as changed (the runbook, "Which captures a change needs").
 
 | Path | What |
 |---|---|
@@ -123,7 +127,7 @@ search the parent directories).
 | `clients/layouts/battle.toml` | the battle screen's layout at the native resolution (ADR-0020 point 3: layouts are data): the frame, the hex boxes, where sprites stand, the stack canvas, the layer-1 pass's columns, the outline's palette entry, the heroes' and flags' canvases, the count box (`docs/epics/E17-design.md` §4), the log's item in the panel (§9.5); an HD layout is another file of the same format (*provisional*) |
 | `clients/scenarios/*.toml` | the client's battle scenarios (the scenario format of `packs/README.md`) for `h3-view render` and `play`: the stills T7 renders, `smoke.toml` the captured smoke battle (T8), `battle.toml` the whole battle `play` fights (M2 T4b-2a) |
 | `clients/capture/` | the reference captures (below; the runbook `capture/README.md`): `setup.sh`, the driver `h3drive.py` and its screens' probes, `h3cap.py` (diffs, obstacles), the `xdd.dll` source (forwarder and virtual clock) |
-| `clients/situations/` | the capture set (`set.toml`) and its situations' scenario files: what the harness shows the original, with each frame's recorded differences; the recorded sequences (`sequences.toml`, `timelines/`) with their engine commands |
+| `clients/situations/` | the capture set (`set.toml`) and its situations' scenario files: what the harness shows the original, with each frame's recorded differences; the recorded sequences (`sequences.toml`, `timelines/`) with their engine commands; `kept/`, what the last captures kept and the viewer's digests at those times |
 | `clients/out/` | local output (renders, reports); gitignored |
 
 The decoders, the compositor and the scene model are pure (no I/O, clock or threads; time is an
