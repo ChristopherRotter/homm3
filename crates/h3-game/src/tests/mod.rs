@@ -147,6 +147,7 @@ fn core_pack(extra: bool) -> ContentPack {
             primary: [1, 1, 1, 1],
             primary_gain: [[25, 25, 25, 25], [25, 25, 25, 25]],
             skill_weights: vec![],
+            offer_intervals: [6, 4],
         }],
         heroes: vec![
             hero_type("t:orrin", &[("t:imp", [2, 5]), ("t:gog", [1, 3])], &[]),
@@ -298,6 +299,12 @@ fn core_pack(extra: bool) -> ContentPack {
             primary_max: 99,
             backpack: 64,
             learn_level: 2,
+            experience: vec![
+                0, 1000, 2000, 3200, 4600, 6200, 8000, 10000, 12200, 14700, 17500, 20600,
+            ],
+            max_level: 74,
+            wisdom: key("t:sense"),
+            schools: vec![],
         }),
         ..ContentPack::new(manifest())
     }

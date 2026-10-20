@@ -58,6 +58,26 @@ pub struct DataQuirks {
     /// Creature specialists whose specialty names another creature.
     #[serde(default)]
     pub specialty_creature: Vec<SpecialtyCreatureFix>,
+    /// Hero classes whose level-up intervals are not their group's (E08 T26b).
+    #[serde(default)]
+    pub class_intervals: Vec<ClassIntervalsFix>,
+}
+
+/// A hero class the executable leaves on the other group's intervals (ADV-QUIRK-10: the
+/// Elementalist on the might classes').
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ClassIntervalsFix {
+    /// The quirk's flag (`quirk.content.<name>`).
+    pub flag: String,
+    /// The quirk's id, for the override's comment.
+    pub quirk: String,
+    /// The class, by name.
+    pub class: String,
+    /// The fixed intervals, `[wisdom, school]`.
+    pub intervals: [u8; 2],
+    /// Source ids.
+    pub sources: Vec<String>,
 }
 
 /// Upgrades whose level in the executable differs from their base creature's (BAT-QUIRK-19).
@@ -361,6 +381,24 @@ pub struct Heroes {
     pub specialty_extra: Vec<SpecialtyExtra>,
     /// Limits of a hero's details (E04a T4a).
     pub params: HeroParams,
+    /// The level-up's intervals by class (E08 T26b).
+    pub offer_intervals: OfferIntervals,
+}
+
+/// The levels after which a level-up offers Wisdom and a magic school (E08 T26b, pack format
+/// v44; HER-LVL-004): the classes the executable lists get the short intervals, every other the
+/// long ones.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct OfferIntervals {
+    /// The listed classes' intervals, `[wisdom, school]`.
+    pub short: [u8; 2],
+    /// Every other class's.
+    pub long: [u8; 2],
+    /// The listed classes, by name.
+    pub short_classes: Vec<String>,
+    /// Source ids.
+    pub sources: Vec<String>,
 }
 
 /// The pack's `[hero_params]` (E04a T4a).
@@ -375,6 +413,14 @@ pub struct HeroParams {
     pub backpack: u16,
     /// The highest spell level a hero may learn without Wisdom (E08 T19a2b).
     pub learn_level: u8,
+    /// The experience of the first levels (E08 T26b).
+    pub experience: Vec<u32>,
+    /// The highest level (E08 T26b).
+    pub max_level: u8,
+    /// The skill offered on the Wisdom interval, by name (E08 T26b).
+    pub wisdom: String,
+    /// The skills drawn on the school interval, by name (E08 T26b).
+    pub schools: Vec<String>,
     /// Source ids.
     pub sources: Vec<String>,
 }
@@ -788,6 +834,7 @@ impl GapFill {
                 .chain(&g.heroes.creature_specialty.sources)
                 .chain(&g.heroes.spell_specialty.sources)
                 .chain(&g.heroes.params.sources)
+                .chain(&g.heroes.offer_intervals.sources)
                 .chain(g.heroes.skill_effects.iter().flat_map(|e| &e.sources))
                 .chain(g.heroes.skill_extra.iter().flat_map(|e| &e.sources))
                 .chain(g.heroes.specialty_extra.iter().flat_map(|e| &e.sources))
@@ -810,6 +857,12 @@ impl GapFill {
                 .chain(
                     g.data_quirks
                         .specialty_creature
+                        .iter()
+                        .flat_map(|f| &f.sources),
+                )
+                .chain(
+                    g.data_quirks
+                        .class_intervals
                         .iter()
                         .flat_map(|f| &f.sources),
                 );

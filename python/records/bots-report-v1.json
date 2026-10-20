@@ -2,7 +2,7 @@
   "schema": 1,
   "set": "report-v1",
   "max_steps": 2000,
-  "engine": {"encounters": 1, "core": "0d3a614fe50b8beb", "battle": "dd49b3f029b159bb", "adventure": "d8aaed1ab8f1742f"},
+  "engine": {"encounters": 1, "core": "6384653ed1e4c038", "battle": "dd49b3f029b159bb", "adventure": "d8aaed1ab8f1742f"},
   "policies": ["random", "aggressor", "greedy"],
   "strata": [
     {"name": "hero", "weight": 100, "seed": "0x5eede7a100010002", "envs": 500, "episodes_per_env": 1},

@@ -395,6 +395,7 @@ faction = "conflux"
 primary = [3, 1, 1, 1]
 primary_gain = [[45, 25, 15, 15], [30, 30, 20, 20]]
 skill_weights = { "base:pathfinding" = 6, "base:archery" = 8, "base:logistics" = 8, "base:scouting" = 6, "base:diplomacy" = 2, "base:navigation" = 5, "base:leadership" = 3, "base:wisdom" = 2, "base:mysticism" = 3, "base:luck" = 2, "base:ballistics" = 8, "base:eagle_eye" = 2, "base:estates" = 3, "base:fire_magic" = 3, "base:air_magic" = 2, "base:water_magic" = 2, "base:earth_magic" = 3, "base:scholar" = 1, "base:tactics" = 8, "base:artillery" = 8, "base:learning" = 8, "base:offense" = 9, "base:armorer" = 5, "base:intelligence" = 1, "base:sorcery" = 1, "base:resistance" = 2, "base:first_aid" = 1 }
+offer_intervals = [6, 4]
 
 [[hero_class]]
 id = "elementalist"
@@ -403,6 +404,12 @@ faction = "conflux"
 primary = [0, 0, 3, 3]
 primary_gain = [[15, 15, 35, 35], [25, 25, 25, 25]]
 skill_weights = { "base:pathfinding" = 2, "base:archery" = 2, "base:logistics" = 2, "base:scouting" = 2, "base:diplomacy" = 4, "base:navigation" = 4, "base:leadership" = 3, "base:wisdom" = 8, "base:mysticism" = 8, "base:luck" = 2, "base:ballistics" = 4, "base:eagle_eye" = 8, "base:estates" = 3, "base:fire_magic" = 6, "base:air_magic" = 6, "base:water_magic" = 6, "base:earth_magic" = 6, "base:scholar" = 8, "base:tactics" = 1, "base:artillery" = 1, "base:learning" = 4, "base:offense" = 1, "base:armorer" = 1, "base:intelligence" = 8, "base:sorcery" = 8, "base:first_aid" = 4 }
+offer_intervals = [6, 4]
+
+[[hero_class_override]]
+target = "ab:elementalist"  # ADV-QUIRK-10
+fixes = "quirk.content.elementalist_offer_intervals"
+offer_intervals = [3, 3]
 
 [[hero]]
 id = "pasis"  # original id 128

@@ -115,6 +115,9 @@ pub struct HeroPacks {
     pub sod: String,
     /// Each spell's key and pack, by spell id (the sieges' mines, E04c T5).
     pub spell_keys: Vec<(String, &'static str)>,
+    /// Each secondary skill's `base` key and name, by skill id (the hero parameters' offered
+    /// skills, E08 T26b).
+    pub skills: Vec<(String, String)>,
 }
 
 impl HeroPacks {
@@ -1097,6 +1100,13 @@ pub fn harvest_heroes(
         "HCTRAITS.TXT",
     )?;
     let mut classes: Vec<(String, &'static str)> = Vec::with_capacity(class_rows.len());
+    // The level-up's due offers (E08 T26b; HER-LVL-004): the classes the executable lists get the
+    // short intervals (0x4DAD74), every other the long ones; a data quirk's class gets an override
+    // gated by its flag with the fixed ones (ADR-0007, amendment E04b T8e).
+    let intervals = &gap.heroes.offer_intervals;
+    let mut short_used = vec![false; intervals.short_classes.len()];
+    let class_fixes = &gap.data_quirks.class_intervals;
+    let mut class_fixes_used = vec![false; class_fixes.len()];
     for (i, row) in class_rows.iter().enumerate() {
         let name = row[0].trim();
         let what = format!("hero class `{name}`");
@@ -1131,7 +1141,49 @@ pub fn harvest_heroes(
             }
         }
         let _ = writeln!(text, "skill_weights = {{ {} }}", weights.join(", "));
+        let short = intervals
+            .short_classes
+            .iter()
+            .zip(short_used.iter_mut())
+            .find(|(c, _)| c.as_str() == name);
+        let [w, s] = match short {
+            Some((_, used)) => {
+                *used = true;
+                intervals.short
+            }
+            None => intervals.long,
+        };
+        let _ = writeln!(text, "offer_intervals = [{w}, {s}]");
+        for (fix, used) in class_fixes
+            .iter()
+            .zip(class_fixes_used.iter_mut())
+            .filter(|(f, _)| f.class == name)
+        {
+            let [w, s] = fix.intervals;
+            let _ = write!(
+                text,
+                "\n[[hero_class_override]]\ntarget = \"{pack}:{key}\"  # {}\nfixes = \"{}\"\n\
+                 offer_intervals = [{w}, {s}]\n",
+                fix.quirk, fix.flag
+            );
+            *used = true;
+        }
         classes.push((key, pack));
+    }
+    if let Some((c, _)) = intervals
+        .short_classes
+        .iter()
+        .zip(&short_used)
+        .find(|(_, used)| !**used)
+    {
+        return Err(format!("gapfill: offer_intervals: unknown class `{c}`"));
+    }
+    if let Some((f, _)) = class_fixes
+        .iter()
+        .zip(&class_fixes_used)
+        .find(|(_, used)| !**used)
+    {
+        return Err(format!("gapfill: data quirk: unknown class `{}`", f.class));
     }
     report.push("HCTRAITS: aggression and tavern weights not harvested (E09)".into());
 
@@ -1403,6 +1455,7 @@ pub fn harvest_heroes(
             .into(),
     );
     out.spell_keys = spell_keys;
+    out.skills = skills;
     Ok(out)
 }
 

@@ -14,10 +14,11 @@ use std::fmt;
 use h3_content::{
     Affects, ArtifactClass, ArtifactDef, ArtifactSlotDef, ArtifactSlotOverride, CompileError,
     ContentKey, ContentPack, CreatureDef, CreatureFlag, CreatureInfoDef, CreatureOverride,
-    CreaturePatch, CreatureSelector, CreatureStat, FactionDef, HeroClassDef, HeroEffect,
-    HeroEffectDef, HeroOverride, HeroParamsDef, HeroPatch, HeroTypeDef, KeyError, PackManifest,
-    ProfileDef, RAISED_LEVELS, RaisedCreature, ResourceDef, Ruleset, SecondarySkillDef,
-    SpellCategory, SpellDef, SpellGrant, SpellSchoolDef, SpellScope, StartingStackDef, TerrainDef,
+    CreaturePatch, CreatureSelector, CreatureStat, FactionDef, HeroClassDef, HeroClassOverride,
+    HeroClassPatch, HeroEffect, HeroEffectDef, HeroOverride, HeroParamsDef, HeroPatch, HeroTypeDef,
+    KeyError, PackManifest, ProfileDef, RAISED_LEVELS, RaisedCreature, ResourceDef, Ruleset,
+    SecondarySkillDef, SpellCategory, SpellDef, SpellGrant, SpellSchoolDef, SpellScope,
+    StartingStackDef, TerrainDef,
 };
 use serde::{Deserialize, Serialize};
 
@@ -97,6 +98,8 @@ struct PackFile {
     hero: Vec<HeroDto>,
     #[serde(default)]
     hero_override: Vec<HeroOverrideDto>,
+    #[serde(default)]
+    hero_class_override: Vec<HeroClassOverrideDto>,
     #[serde(default)]
     artifact_slot: Vec<ArtifactSlotDto>,
     #[serde(default)]
@@ -258,6 +261,18 @@ struct HeroClassDto {
     primary_gain: [[u8; 4]; 2],
     #[serde(default)]
     skill_weights: BTreeMap<String, u8>,
+    /// Pack format v44 (E08 T26b): `[wisdom, school]`.
+    offer_intervals: [u8; 2],
+}
+
+/// `[[hero_class_override]]` (pack format v44, E08 T26b): a hero class of the closure gets new
+/// offer intervals, gated by `fixes` as a creature override.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct HeroClassOverrideDto {
+    target: String,
+    fixes: Option<String>,
+    offer_intervals: Option<[u8; 2]>,
 }
 
 /// `[[hero]]`: a hero type.
@@ -336,6 +351,14 @@ struct HeroParamsDto {
     backpack: u16,
     /// Pack format v40 (E08 T19a2b).
     learn_level: u8,
+    /// Pack format v44 (E08 T26b): the experience of the first levels.
+    experience: Vec<u32>,
+    /// Pack format v44.
+    max_level: u8,
+    /// Pack format v44: the skill offered on the Wisdom interval.
+    wisdom: String,
+    /// Pack format v44: the skills drawn on the school interval.
+    schools: Vec<String>,
 }
 
 /// `[[artifact_slot_override]]`: changes to a slot of the closure.
@@ -1042,6 +1065,20 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
                     .into_iter()
                     .map(|(k, w)| Ok((reference(&pack_id, &k)?, w)))
                     .collect::<Result<_, KeyError>>()?,
+                offer_intervals: c.offer_intervals,
+            })
+        })
+        .collect::<Result<Vec<_>, KeyError>>()?;
+    let hero_class_overrides = file
+        .hero_class_override
+        .into_iter()
+        .map(|o| {
+            Ok(HeroClassOverride {
+                target: ContentKey::parse(&o.target)?,
+                fixes: o.fixes,
+                patch: HeroClassPatch {
+                    offer_intervals: o.offer_intervals,
+                },
             })
         })
         .collect::<Result<Vec<_>, KeyError>>()?;
@@ -1088,6 +1125,21 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
             })
         })
         .collect::<Result<Vec<_>, PackError>>()?;
+    let hero_params = file
+        .hero_params
+        .map(|p| {
+            Ok::<_, KeyError>(HeroParamsDef {
+                primary_min: p.primary_min,
+                primary_max: p.primary_max,
+                backpack: p.backpack,
+                learn_level: p.learn_level,
+                experience: p.experience,
+                max_level: p.max_level,
+                wisdom: reference(&pack_id, &p.wisdom)?,
+                schools: references(&pack_id, &p.schools)?,
+            })
+        })
+        .transpose()?;
     let artifact_slots = file
         .artifact_slot
         .into_iter()
@@ -1162,16 +1214,12 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
         hero_classes,
         heroes,
         hero_overrides,
+        hero_class_overrides,
         artifact_slots,
         artifact_slot_overrides,
         artifacts,
         profiles,
-        hero_params: file.hero_params.map(|p| HeroParamsDef {
-            primary_min: p.primary_min,
-            primary_max: p.primary_max,
-            backpack: p.backpack,
-            learn_level: p.learn_level,
-        }),
+        hero_params,
         ..ContentPack::new(manifest)
     })
 }

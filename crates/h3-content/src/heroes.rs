@@ -142,6 +142,9 @@ pub struct HeroClass {
     pub primary_gain: [[u8; 4]; 2],
     /// Level-up weights of secondary skills, in pack order (no skill twice).
     pub skill_weights: Vec<(SkillId, u8)>,
+    /// The levels after which a level-up offers Wisdom and a magic school if it may:
+    /// `[wisdom, school]`, each at least 1 (E08 T26b; HER-LVL-004).
+    pub offer_intervals: [u8; 2],
 }
 
 /// Handle of a hero class in a [`crate::Ruleset`].
@@ -183,8 +186,9 @@ pub struct HeroType {
 pub type HeroTypeId = Handle<HeroType>;
 
 /// Compiled hero parameters (Tier 2, E04a T4a): the limits of a hero's details
-/// (`h3-heroes`) and of a battle hero's primary skills.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// (`h3-heroes`) and of a battle hero's primary skills; since E08 T26b the experience of every
+/// level and the skills a level-up offers when they are due.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HeroParams {
     /// Lowest effective primary skills (attack, defense, power, knowledge); a lower total
     /// counts as this value (HER-DET-001).
@@ -196,11 +200,58 @@ pub struct HeroParams {
     /// The highest spell level a hero may learn without a `learn_level` effect (pack format
     /// v40, E08 T19a2b; the original's 2, Wisdom adding its level), 0..=5.
     pub learn_level: u8,
+    /// The experience of levels 1 to `max_level + 1`, rising strictly: the pack's levels, then
+    /// each step the previous one + a fifth of it, rounded down (E08 T26b; HER-EXP-002). The last
+    /// entry bounds a hero's experience (A-7).
+    pub experience: Vec<u32>,
+    /// The highest level (E08 T26b; 74, A-7's fix).
+    pub max_level: u8,
+    /// The skill a level-up offers when the class's Wisdom interval is due (HER-LVL-004).
+    pub wisdom: SkillId,
+    /// The skills a level-up draws from when the class's school interval is due, in pack order.
+    pub schools: Vec<SkillId>,
+}
+
+/// The experience of levels 1 to `max_level + 1` from the pack's first levels (E08 T26b): at
+/// least two, the first 0, rising strictly, no more than `max_level + 1`; each later step is the
+/// previous one + a fifth of it, rounded down (the original's truncated × 1.2, survey
+/// `E08-progression.md` §1.1), and every threshold must fit 32 bits.
+fn thresholds(given: &[u32], max_level: u8) -> Result<Vec<u32>, CompileError> {
+    let rising = CompileError::InvalidHeroParams(
+        "experience must start at 0 and rise strictly over at least two levels",
+    );
+    let [.., before, last] = given else {
+        return Err(rising);
+    };
+    if given.first() != Some(&0) || given.windows(2).any(|w| w.first() >= w.last()) {
+        return Err(rising);
+    }
+    let levels = usize::from(max_level) + 1;
+    if given.len() > levels {
+        return Err(CompileError::InvalidHeroParams(
+            "experience must list at most max_level + 1 levels",
+        ));
+    }
+    let mut table = given.to_vec();
+    let (mut at, mut step) = (u64::from(*last), u64::from(last - before));
+    while table.len() < levels {
+        step += step / 5;
+        at += step;
+        table.push(u32::try_from(at).map_err(|_| {
+            CompileError::InvalidHeroParams("experience must fit 32 bits up to max_level + 1")
+        })?);
+    }
+    Ok(table)
 }
 
 /// Validates hero parameters: every minimum at most the maximum (HER-DET-001), the learnable
-/// level at most the highest spell level.
-fn compile_params(def: &HeroParamsDef) -> Result<HeroParams, CompileError> {
+/// level at most the highest spell level, the experience table ([`thresholds`]); resolves the
+/// skills a level-up offers when due.
+fn compile_params(
+    def: &HeroParamsDef,
+    refs: &Refs<'_>,
+    skills: &BTreeMap<String, SkillId>,
+) -> Result<HeroParams, CompileError> {
     if def.primary_min.iter().any(|&m| m > def.primary_max) {
         return Err(CompileError::InvalidHeroParams(
             "primary_min must not exceed primary_max",
@@ -216,6 +267,10 @@ fn compile_params(def: &HeroParamsDef) -> Result<HeroParams, CompileError> {
         primary_max: def.primary_max,
         backpack: def.backpack,
         learn_level: def.learn_level,
+        experience: thresholds(&def.experience, def.max_level)?,
+        max_level: def.max_level,
+        wisdom: refs.resolve(&def.wisdom, skills, "secondary skill")?,
+        schools: distinct(refs, &def.schools, skills, "secondary skill")?,
     })
 }
 
@@ -436,7 +491,7 @@ impl HeroContent {
             if self.params.is_some() {
                 return Err(CompileError::DuplicateHeroParams(String::from(refs.pack)));
             }
-            self.params = Some(compile_params(def)?);
+            self.params = Some(compile_params(def, refs, &self.skills.index)?);
         }
         for def in &pack.hero_classes {
             self.classes.register(&def.key, refs.pack, "hero class")?;
@@ -452,6 +507,7 @@ impl HeroContent {
                     &self.skills.index,
                     "secondary skill",
                 )?,
+                offer_intervals: def.offer_intervals,
             });
         }
         for def in &pack.heroes {
@@ -483,9 +539,10 @@ impl HeroContent {
         Ok(())
     }
 
-    /// Applies the pack's hero overrides to hero types of its closure (E04b T8e). A gated one's
-    /// target and references are resolved in every profile; it is applied (and then validated
-    /// with the hero) only where `applies` says so (ADR-0007, amendment E04b T8e).
+    /// Applies the pack's hero overrides to hero types of its closure (E04b T8e) and its hero
+    /// class overrides to classes of its closure (E08 T26b). A gated one's target and references
+    /// are resolved in every profile; it is applied (and then validated with its entry) only where
+    /// `applies` says so (ADR-0007, amendment E04b T8e).
     pub(crate) fn add_overrides(
         &mut self,
         pack: &ContentPack,
@@ -505,6 +562,17 @@ impl HeroContent {
                 (apply, self.heroes.items.get_mut(id.index()), specialty)
             {
                 hero.specialty = list;
+            }
+        }
+        for o in &pack.hero_class_overrides {
+            let id = refs.resolve(&o.target, &self.classes.index, "hero class")?;
+            let apply = applies(o.fixes.as_deref())?;
+            if let (true, Some(class), Some(intervals)) = (
+                apply,
+                self.classes.items.get_mut(id.index()),
+                o.patch.offer_intervals,
+            ) {
+                class.offer_intervals = intervals;
             }
         }
         Ok(())
@@ -581,6 +649,13 @@ impl HeroContent {
                     "each primary_gain row must sum to 100",
                 ));
             }
+            if c.offer_intervals.contains(&0) {
+                return Err(invalid(
+                    "hero class",
+                    &c.key,
+                    "offer_intervals must be at least 1",
+                ));
+            }
         }
         for h in &self.heroes.items {
             let reason = if h.skills.len() > MAX_HERO_SKILLS {
@@ -628,9 +703,10 @@ impl CanonicalHash for HeroContent {
     /// Schools (key, name, protection rank (v18)); spells (key, name, category, level, schools,
     /// cost, power, effect, granted by name only (v39); v43: the battle fields left with the
     /// content split, R01); skills (key, name, the three effect lists); classes (key, name, faction,
-    /// primary, gains, weights); hero types (key, name, class, skills, spell book, spells,
-    /// army, war machines, specialty); then the artifact content (`hash_artifacts`); then the
-    /// hero parameters as presence flag + fields (v11).
+    /// primary, gains, weights, offer intervals (v46)); hero types (key, name, class, skills, spell
+    /// book, spells, army, war machines, specialty); then the artifact content (`hash_artifacts`);
+    /// then the hero parameters as presence flag + fields (v11; v46: the compiled experience
+    /// table as length + values, the highest level, Wisdom, the schools).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_len(self.schools.items.len());
         for s in &self.schools.items {
@@ -670,6 +746,7 @@ impl CanonicalHash for HeroContent {
                 skill.hash_into(h);
                 h.write_u8(w);
             }
+            h.write_bytes(&c.offer_intervals);
         }
         h.write_len(self.heroes.items.len());
         for t in &self.heroes.items {
@@ -699,6 +776,13 @@ impl CanonicalHash for HeroContent {
             h.write_u8(p.primary_max);
             h.write_u16(p.backpack);
             h.write_u8(p.learn_level);
+            h.write_len(p.experience.len());
+            for &e in &p.experience {
+                h.write_u32(e);
+            }
+            h.write_u8(p.max_level);
+            p.wisdom.hash_into(h);
+            p.schools.hash_into(h);
         }
     }
 }

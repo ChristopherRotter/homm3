@@ -110,6 +110,8 @@ pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&[
     "quirk.adventure.split_from_tile",
     "quirk.battle.no_defender_ballista_at_fort",
     "quirk.battle.berserk_walks_to_position_hex",
+    "quirk.adventure.level_up_from_seed",
+    "quirk.content.elementalist_offer_intervals",
 ]);
 
 /// Q-0003: creatures of a side without a hero never get lucky strikes (BAT-LCK-002).
@@ -232,6 +234,18 @@ pub const NO_DEFENDER_BALLISTA_AT_FORT: QuirkFlag = QuirkFlag(25);
 /// the walk ends next to either of the target's hexes.
 pub const BERSERK_WALKS_TO_POSITION_HEX: QuirkFlag = QuirkFlag(26);
 
+/// ADV-QUIRK-9: a level-up's draws come from the C runtime's generator reseeded from the hero's
+/// seed byte and the new level, as the original's (`hero_level_up` 0x4DA720; survey
+/// `E08-progression.md` §2.2), so a hero's level-ups follow from its seed. Off: from the owner's
+/// stream. Read by the game from E08 T29 (GAM-HER-002).
+pub const LEVEL_UP_FROM_SEED: QuirkFlag = QuirkFlag(27);
+
+/// ADV-QUIRK-10 (data, A-10): the Elementalist gets Wisdom and the magic schools on the might
+/// classes' intervals, 6 and 4 (the original's list of the shorter intervals, 0x4DAD74, ends with
+/// the RoE classes). Off: a gated override gives it the magic classes' 3 and 3. Read by the
+/// compiler only.
+pub const ELEMENTALIST_OFFER_INTERVALS: QuirkFlag = QuirkFlag(28);
+
 /// The prefix of the flags of data quirks: a gated override names one of them (`fixes`), and
 /// rule code never reads them (ADR-0007, amendment E04b T8e).
 pub const DATA_QUIRK_PREFIX: &str = "quirk.content.";
@@ -274,7 +288,15 @@ mod tests {
 
     #[test]
     fn registry_lookup_and_bitset() {
-        assert_eq!(REGISTRY.len(), 27);
+        assert_eq!(REGISTRY.len(), 29);
+        assert_eq!(
+            REGISTRY.lookup("quirk.adventure.level_up_from_seed"),
+            Some(LEVEL_UP_FROM_SEED)
+        );
+        assert_eq!(
+            REGISTRY.lookup("quirk.content.elementalist_offer_intervals"),
+            Some(ELEMENTALIST_OFFER_INTERVALS)
+        );
         assert_eq!(
             REGISTRY.lookup("quirk.battle.berserk_walks_to_position_hex"),
             Some(BERSERK_WALKS_TO_POSITION_HEX)
@@ -405,7 +427,7 @@ mod tests {
         }
         // The positions stay taken, so the flags after them keep their indices
         // (`registry_lookup_and_bitset`), and the flags that exist are every other position.
-        assert_eq!(REGISTRY.len(), 27);
+        assert_eq!(REGISTRY.len(), 29);
         assert_eq!(
             [REGISTRY.names[9], REGISTRY.names[10], REGISTRY.names[14]],
             [RETIRED; 3]
@@ -414,7 +436,7 @@ mod tests {
             REGISTRY
                 .flags()
                 .map(QuirkFlag::index)
-                .eq((0..27).filter(|i| ![9, 10, 14].contains(i)))
+                .eq((0..29).filter(|i| ![9, 10, 14].contains(i)))
         );
         // A registry without retired flags has them all.
         assert!(TEST.flags().map(QuirkFlag::index).eq(0..2));

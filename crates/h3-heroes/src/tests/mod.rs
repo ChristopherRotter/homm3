@@ -163,6 +163,7 @@ fn pack() -> ContentPack {
             primary: [2, 2, 1, 1],
             primary_gain: [[35, 45, 10, 10], [30, 30, 20, 20]],
             skill_weights: vec![],
+            offer_intervals: [6, 4],
         }],
         heroes: vec![HeroTypeDef {
             key: key("t:orrin"),
@@ -218,6 +219,12 @@ fn pack() -> ContentPack {
             primary_max: 99,
             backpack: 3,
             learn_level: 2,
+            experience: vec![
+                0, 1000, 2000, 3200, 4600, 6200, 8000, 10000, 12200, 14700, 17500, 20600,
+            ],
+            max_level: 74,
+            wisdom: key("t:wisdom"),
+            schools: vec![],
         }),
         ..ContentPack::new(PackManifest {
             id: "t".into(),

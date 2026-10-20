@@ -57,8 +57,9 @@ belongs in the data every context reads.
    ruleset, before any ruleset part reads the entity: every context sees one profile's values.
    The ruleset hash covers the resulting data (and the profile, as before).
 4. **Scope:** gating for `[[creature_override]]` and a new `[[hero_override]]` (for now only
-   `specialty`, replacing the whole list); the harvester writes both from its gap-fill file.
-   Per-profile Tier-2 *parameters* stay deferred (ADR-0006).
+   `specialty`, replacing the whole list); since E08 T26b also `[[hero_class_override]]`
+   (`offer_intervals`; the class override kind of ADR-0013 point 12); the harvester writes them
+   from its gap-fill file. Per-profile Tier-2 *parameters* stay deferred (ADR-0006).
 
 Rejected: overrides inside a profile (`base`'s profiles cannot reach `ab`'s entities, closure
 rule; a profile would become a data patch); a second "level for calculations" field (every
@@ -88,3 +89,5 @@ BAT-QUIRK-9). The user retired both. How a flag is retired:
 - 2026-10-01: Amended by E03 T6 (first quirk flag).
 - 2026-10-11: Amended by E04b T8e (data quirks: `content` flags and gated overrides; BAT-Q25).
 - 2026-10-12: Amended by E04b T11b (retiring a flag; BAT-Q29, BAT-Q30).
+- 2026-10-20: Point 4's scope gains the hero class override (E08 T26b; decided with ADR-0013
+  point 12 at ADV-Q16).

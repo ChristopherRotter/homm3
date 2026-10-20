@@ -21,27 +21,13 @@ player sees is the game's (part B).
 
 ### 1. The data
 
-- **Hero parameters** (Tier 2, `[hero_params]` in the core pack, `h3_content::HeroParams`):
-  - `experience`: the thresholds of levels 1 to 12 (0, 1 000, 2 000, 3 200, 4 600, 6 200,
-    8 000, 10 000, 12 200, 14 700, 17 500, 20 600; `experience_by_level` 0x679C88, §1.1);
-  - `max_level`: 74 (A-7's fix, §2);
-  - the skills the level-up forces: **Wisdom** and the **magic schools** (Fire, Air, Water,
-    Earth), as keys the compile resolves (no code names a skill, ADR-0016 point 4; a per-skill
-    marker would do as well, the building task chooses).
-  The compile extends the table to `max_level + 1` (each step the previous + previous / 5, §2)
-  and refuses a table that does not rise strictly or overflows 32 bits (a `max_level` above 78
-  would). The compiled thresholds are kept in the ruleset (a level is then a search, not a loop).
-- **The hero class** (`[[hero_class]]`, `h3_content::HeroClass`) gains `offer_intervals =
-  [wisdom, school]`: the levels after which Wisdom and a school are forced (§2.4: 3 and 3 for
-  the classes the original counts as magic, 6 and 4 for the others). Beside `primary_gain` and
-  `skill_weights`, which the packs already hold. **A-10 as a data quirk** (decision 55: magic in
-  `strict-fixed` only): the `ab` pack's Elementalist gets the original's `[6, 4]` and a
-  `[[hero_class_override]]` with `fixes = "quirk.content.elementalist_offer_intervals"` gives it
-  `[3, 3]` where the flag is off (the pattern of `[[hero_override]]`, `packs/README.md`). A new
-  override kind; the Planeswalker is `[6, 4]` either way.
-- Sources: `original-data` (code reading: the table 0x679C88, the intervals 0x4DAD74, the forced
-  skills 0x4DAD00 and 0x679CBC); the values are not in the text tables, so they are gap-filled
-  (the harvester's gap-fill or the packs directly).
+- **Built by T26b** (`E08-log.md`; `packs/README.md`, "Hero parameters"): `HeroParams` holds the
+  experience of levels 1 to `max_level + 1` (the pack's twelve, then each step + step / 5; 75
+  entries, the last the bound of §2), `max_level` 74, `wisdom` and `schools` (the forced skills,
+  resolved keys in the original's order); `HeroClass::offer_intervals` (`[wisdom, school]`: 3 and
+  3 for the eight classes 0x4DAD74 lists, 6 and 4 else); `[[hero_class_override]]`, with A-10's
+  data quirk in the `ab` pack (`quirk.content.elementalist_offer_intervals`, `ADV-QUIRK-10`).
+  The level of an experience is then a search of `experience` (§2).
 - **The adventure part's terrains** (`packs/*/adventure.toml`, adventure-owned; decision 60) gain
   their straight step's cost by Pathfinding level 1–3 beside the cost without it (the original's
   `step_cost_table` 0x63E510: sand and snow 125, 100, 100; swamp 150, 125, 100; rough 100, 100,
@@ -204,18 +190,15 @@ the source, it returns a skill or none.
   wrapped threshold (A-8), **ADV-QUIRK-13** a primary skill wraps at 128 (A-9): fixed, no flag;
   **ADV-QUIRK-14** the computer's terrain shares count only coast-flagged tiles (A-11, survey
   §10.3): the original's in every profile, no flag (decision 60), written with T28.
-  The two flags take the registry's next free positions (after 26, BAT-QUIRK-24's since E23 T1c).
+  The two flags are registered (T26b): 27 `quirk.adventure.level_up_from_seed`, 28
+  `quirk.content.elementalist_offer_intervals`; `ADV-QUIRK-10`'s entry is written (its data
+  quirk is complete), `ADV-QUIRK-9`'s waits for its rule (T29).
 
 ### 10. The hero side's shared and `cross-lane` needs (for the cut, §17)
 
-- `h3-content` (shared core, a `shared/` pull request): the hero parameters' table, highest level
-  and forced skills; the class's `offer_intervals`; `[[hero_class_override]]`; the quirk flag in
-  the registry; the pack format and core ruleset hash bumps.
-- The packs' `core.toml` (`base`, `ab`, the synthetic packs; battle-owned, `cross-lane` or in the
-  shared change) and the harvester's gap-fill; the golden replays' headers move with the core
-  ruleset hash (both lanes' re-recordings, as at E04c T7e).
-- `h3-heroes` (this lane): §2 to §8's rules, `HeroDetails`' counters, `GainLevel`, the checks;
-  the game state hash moves with the details (§15).
+Built by T26b (`shared/e08-t26b`, `cross-lane`): the data model and the flags in `h3-content`,
+the packs and the harvester's gap-fill, both lanes' replay headers. What remains is the lane's own
+(`h3-heroes`, T27 and T28; the game state hash with the details, §15).
 
 ## Part B — the game side (T24b2)
 
@@ -234,7 +217,8 @@ calls `h3-heroes`, who answers, what a player sees. ADR-0017's draft holds the d
 - **The source of a level's draws** (part A §4): with the flag `quirk.adventure.level_up_from_seed`
   on (`faithful`) the original's generator from the seed and the new level, at load and in play
   alike; off (`strict-fixed`) the setup stream at load and the owner's stream in play. Registered
-  with T26's data (the registry's next free position); `ADV-QUIRK-9`'s ledger entry with T29.
+  by T26b (position 27, on in `faithful`; no code reads it yet); `ADV-QUIRK-9`'s ledger entry
+  with T29.
 - **Hygiene and isolation** (the properties, §14): the seeds and a level's offers never reach
   another player's observation or events; in `strict-fixed` a level-up draws only from its
   owner's stream.
@@ -322,8 +306,8 @@ calls `h3-heroes`, who answers, what a player sees. ADR-0017's draft holds the d
 
 Increment 3's last: core ruleset hash v45 (the battle lane's since), game state hash v8,
 adventure state hash v10, adventure ruleset part v8, map import v7, action encoding v3, adventure
-replay format v4. Increment 4: the core ruleset hash and the pack format (T26: hero parameters,
-the class field, the override kind, two flags), the game state hash v9 (T27 or T29, whichever
+replay format v4. Increment 4: the core ruleset hash v46 and the pack format v44 (T26b, done:
+hero parameters, the class field, the override kind, two flags), the game state hash v9 (T27 or T29, whichever
 first changes what it hashes: the details' counters, the seeds, the limit and banned skills), the
 map import v8 (T29), the action encoding v4 and the replay format v5 (T30 or T31, with the
 answers), the adventure ruleset part v9 (T29: the terrains' costs by Pathfinding level). The
@@ -353,7 +337,7 @@ confirmed at its checkpoint):
 
 | Round | Tasks | Content |
 |---|---|---|
-| 1 | **T25** + **T26** | Cut (decision 59): **T25** done (2026-10-20: survey §10; ADV-Q17, decision 60) and **T26a** done (2026-10-20, #325: ADR-0013 and -0017 amended); **T26b**: the hero parameters (table, highest level, forced skills), the class's `offer_intervals`, `[[hero_class_override]]`, the two flags, the packs and the gap-fill, the bumps and the re-recordings (part A §1, §10) |
+| 1 | **T25** + **T26** | Done. Cut (decision 59): **T25** (2026-10-20: survey §10; ADV-Q17, decision 60), **T26a** (2026-10-20, #325: ADR-0013 and -0017 amended), **T26b** (2026-10-20, `shared/e08-t26b`, decision 61: the hero parameters' level data and offered skills, the class's `offer_intervals`, `[[hero_class_override]]`, the two flags, the packs and the gap-fill, the bumps and the replays' headers; part A §1, §10) |
 | 2 | **T27** + **T28** | T27: `h3-heroes`' progression (part A §2–§7: levels, the bound, the limit's cap, the draw source and the original's generator, the primary skill, the offers, `GainLevel`, the counters, the checks; HER-EXP-002, -003, HER-LVL-001 to -005; `ADV-QUIRK-10` to `-13`). T28: the original's choice ported, its flag-clear path (part A §8, HER-LVL-006; survey §10; `ADV-QUIRK-14`) |
 | 3 | **T29** + **T30** | T29: the game's setup and build (§11, §12: the seeds, the limit and banned skills, the terrains' costs by Pathfinding level and the map's shares, levels at load, the import's refusal lifted, the 5 shipped maps; GAM-HER-002, GAM-SET-002; `ADV-QUIRK-9`). T30: the level-up as a decision (§13: the answers, the events, the observation, the system actor's default, the battle's levels; GAM-DEC-002, GAM-BAT-008) |
 | 4 | **T31** + **T32a** | T31: the env, replays, fixtures, properties and benchmarks (§14). T32a: batch E4's spec and recipe (§16; `cross-lane`) |
