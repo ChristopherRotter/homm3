@@ -13,7 +13,7 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   AI-Q6): the preview (#274), ADR-0025 point 5 (#271), the bots, `h3 ai eval`, C ABI v30
   (#276), the user's network at Aggressor's level: exit criterion 6 met. **Increment 6**
   (T9, the closure) cut 2026-10-19: T9a (the audit) and T9b (the review) done 2026-10-20 on
-  `claude/festive-brown-igukig`, its pull request open (watch it). **Next:** T9c on the user's
+  `claude/festive-brown-igukig`, #286 open (watch it until it merges). **Next:** T9c on the user's
   machine (QUEUE: the commands), then T9d.
 - **Order** (BACKLOG): E05, then E23 (the battle lane: the system actor's policy), then E06.
 - **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v30 (T7: the bots' seats) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q8, AI-QUIRK-1, AI-STUB-1.
