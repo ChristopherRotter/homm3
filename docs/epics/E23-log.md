@@ -253,3 +253,39 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
 - **Readings at risk** (for T1b's batch rows): S-11's three outcomes; a berserk flyer whose search
   ends on a hex it passed over (rocks or stacks on the target's near side) does nothing; the war
   machine's aim by its front; the walk beyond the speed into a seen pit of its own side.
+
+## T1a5a — the spell context and the predictions (2026-10-20, increment 1)
+
+- **The cut** (the user, 2026-10-20): part C (12.9 KB in 34 functions by T1a1's sweep, re-run
+  the same) in four parts of about 3.2 KB: T1a5a the context and the predictions, T1a5b the raise
+  and the Faerie Dragon, T1a5c the Ogre Mage's and the Master Genie's scan with the evaluation,
+  T1a5d the estimates. The context first (recommended; three of the four cast kinds, the hero's
+  cast and the retreat test read it), over the raise and the dragon first, or the estimates
+  first.
+- **Read** (`docs/formats/installation.md` §7.42), all in full: the context 0x4369C0 with the fill
+  0x43C040, the seed 0x43BF20 and the destructors 0x436C30, 0x436BF0; the predictions 0x422A40
+  with 0x4430D0, the side's run 0x422880, the melee prediction 0x4227A0 and the predicted strike
+  0x4224E0.
+- **Found:** by the cast entry's table only the Archangel, the Pit Lord, the Master Genie, the Ogre
+  Mage and the Faerie Dragon cast for the computer; its elementals never do (a reading at risk).
+  The context holds per stack of the side the largest strike it can meet this turn (melee, seeded
+  with the retaliation at its own target, or a shot), by the enemies' whole counts; the enemy's
+  arrow towers are no threat. It marks the enemy beaten when the side's predicted strikes leave
+  only war machines, and builds a second context for the other side. The predictions cover only
+  the side's run up to the other side's next stack in the predicted order (both runs for the
+  retreat test): shots, strikes, multi-headed strikes, breath, Fire Shield's reflection, the
+  second strike, and the retaliation only above Easy for a computer side. A predicted strike's
+  jousting distance comes from the pathfinder's last search, so a retaliating Cavalier or
+  Champion is predicted with the attacker's run-up. The predicted walkers draw their candidates'
+  values from the battle's generator. No rule of the engine changes.
+- **Map:** 13 entries (5 new: 0x4227A0, 0x4430D0, 0x43BF20, 0x436BF0, the pathfinder pointer
+  0x699284; 8 updated, 0x4224E0, 0x422880 and 0x422A40 renamed `ai_predict_strike`,
+  `ai_predict_run`, `ai_predictions`); structs: the stack's planned damage and threat record
+  (+0x534 to +0x544), the context's layout `ai_spell_context`.
+- **Checks:** a fresh agent re-read three findings blind, on a copy of the tool and the map made
+  before the edits: the cast entry's cases with every write of action 10 (the computer's three, the
+  player's three), the run's skips, its end by the controller and 0x4227A0's retaliation tests (on
+  Easy only for a human attacker), and the jousting distance's cell with the breath's missing side
+  test. It agreed on all three; its note that nothing asks whether the target survived the strike
+  is in §7.42 (a dead target strikes back by no hit points). The premise it left open, that the
+  cells hold the attacker's own map, rests on 0x421680's call at 0x4217BE.

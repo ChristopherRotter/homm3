@@ -1,7 +1,7 @@
 # E23 — The original's battle AI
 
 Status: **in progress**, refined 2026-10-19 (BAT-Q52); T1a1 to T1a4 done (the cuts confirmed
-2026-10-20), T1c done (BAT-Q53, BAT-Q54); T1a5 next · Follows E05 (the
+2026-10-20), T1c done (BAT-Q53, BAT-Q54); T1a5 cut in four, T1a5a done, T1a5b next · Follows E05 (the
 AI lane, done) · Followed by E06 (training: this policy holds the neutral seat; AI-Q1) ·
 The battle lane's, later the AI lane's (BACKLOG).
 
@@ -118,8 +118,18 @@ there):
 - [x] **T1c Pathfinding as the original's** (2026-10-20; BAT-Q53; the user: whole, S-11 fix-optional,
   BAT-Q54) — `pathfinder.rs` ports 0x4B3400: the walks' paths (BAT-MOV-003; batch 3c's M2 and G4) and
   the berserk turn's candidates, attack position and walk (BAT-MAG-025), S-11 as BAT-QUIRK-24 (the log).
-- [ ] **T1a5 The creature casts and the spell evaluation** — part C (12.9 KB): the cast entry's
-  kinds, the spell context 0x4369C0, the estimates, the predictions; shared with the hero's choice.
+- **T1a5 The creature casts and the spell evaluation** — part C (12.9 KB, 34 functions; shared
+  with the hero's choice), cut in four of about 3.2 KB (the user, 2026-10-20: the context first):
+  - [x] **T1a5a The spell context and the predictions** (2026-10-20) — the context 0x4369C0 (the
+    threats each stack meets, the enemy beaten, a second context for the other side) and the
+    predictions 0x422A40 (the side's run up to the other side's next stack: shots, strikes,
+    retaliations, Fire Shield, breath); the computer's elementals never cast (`installation.md`
+    §7.42; the log).
+  - [ ] **T1a5b The raise and the Faerie Dragon** — 0x421000 (the Archangel, the Pit Lord) and
+    0x420F00 (the dragon's damage values: one target, Chain Lightning, an area), with their helpers.
+  - [ ] **T1a5c The Ogre Mage's and the Master Genie's scan, the evaluation** — 0x420D20, 0x43C330
+    (Bloodlust), the Genie's value, the evaluation 0x43A670 with its helpers.
+  - [ ] **T1a5d The estimates** — 0x437800, the core 0x437A00 with 0x43CB20, 0x443E30.
 - [ ] **T1a6 The hero** (read just before T5) — part H (5.8 KB): the cast choice 0x43C800's candidates, the retreat test
   0x41E570; the rest of part A (about 2.4 KB) only as far as the battle needs it (the adventure lane's to read with
   its AI). The Catapult and the First Aid Tent are read (§7.29; §7.14, BAT-Q51).

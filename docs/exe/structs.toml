@@ -114,6 +114,11 @@ fields = [
   { offset = 0x504, name = "bound_by", type = "list", summary = "the stacks that bind this stack", confidence = "read", refs = ["installation.md §7.20"] },
   { offset = 0x514, name = "unicorn_aura_1", type = "list", summary = "the other aura list of 0x43EA70 (§7.14): by its two halves, for a Unicorn the neighbours it protects, whose real side is its controller", confidence = "inferred", refs = ["installation.md §7.14"] },
   { offset = 0x524, name = "unicorn_aura_2", type = "list", summary = "the adjacent Unicorns that protect this stack (their controller is this stack's real side, §7.14); while it is not empty the spell test multiplies a spell's factor by 0.8 unless the spell is positive (0x5A8599), with no artifact test", confidence = "read", refs = ["installation.md §7.14", "installation.md §7.23"] },
+  { offset = 0x534, name = "ai_planned_damage", type = "i32", summary = "the computer's predicted damage on this stack this turn (0x4430D0: at most its hit points), from 0x422A40's predictions; 0x443080 with flag 1 subtracts it", confidence = "read", refs = ["installation.md §7.31", "installation.md §7.42"] },
+  { offset = 0x538, name = "ai_threat_enemy", type = "battle_stack*", summary = "the threat record's nearest enemy (0x422B20)", confidence = "read", refs = ["installation.md §7.31"] },
+  { offset = 0x53C, name = "ai_threat_value", type = "i32", summary = "the threat record's value", confidence = "read", refs = ["installation.md §7.31"] },
+  { offset = 0x540, name = "ai_threat_cost", type = "i32", summary = "the threat record's cost to that enemy", confidence = "read", refs = ["installation.md §7.31"] },
+  { offset = 0x544, name = "ai_threat_mask", type = "u32", summary = "the threat record's enemies within one turn, by record index", confidence = "read", refs = ["installation.md §7.31", "installation.md §7.42"] },
 ]
 
 [[struct]]
@@ -516,4 +521,26 @@ fields = [
   { offset = 0x4, name = "flags", type = "u32", summary = "bit 0 reached; bits 12-15 the direction of the step into the hex; bits 26-31 the hexes flown over in a row (not an end)", confidence = "read" },
   { offset = 0x8, name = "attack_from", type = "u16", summary = "on the target's cell after an attack is found: the hex to attack from (bits 0-9)", confidence = "read" },
   { offset = 0x18, name = "cost", type = "u16", summary = "the cost; an attack mark's cost on a stack's hex", confidence = "read" },
+]
+
+[[struct]]
+name = "ai_spell_context"
+size = 0x410
+summary = "The computer's spell context for a side (0x4369C0; a local of the hero's cast and the creature casts, or the second context on the heap)."
+refs = ["installation.md §7.42"]
+fields = [
+  { offset = 0x4, name = "hero", type = "hero*", summary = "the side's hero (+0x53CC)", confidence = "read" },
+  { offset = 0x8, name = "enemy_hero", type = "hero*", summary = "the other side's hero", confidence = "read" },
+  { offset = 0xC, name = "side", type = "i32", summary = "the side", confidence = "read" },
+  { offset = 0x10, name = "other_side", type = "i32", summary = "1 - side", confidence = "read" },
+  { offset = 0x14, name = "threat_mask", type = "u32", summary = "the other side's records that threaten one of the side's, by record index (0x43C040)", confidence = "read" },
+  { offset = 0x18, name = "melee_threat_mask", type = "u32", summary = "of them, those that threaten in melee", confidence = "read" },
+  { offset = 0x1C, name = "enemy_beaten", type = "u8", summary = "no record of the other side but war machines has hit points after the planned damage", confidence = "read" },
+  { offset = 0x1D, name = "creature_cast", type = "u8", summary = "1 from the creature casts, 0 from the hero's cast", confidence = "read" },
+  { offset = 0x20, name = "battle_context", type = "ai_battle_context", summary = "0x435EC0's context for the side (installation.md §7.31)", confidence = "read" },
+  { offset = 0x48, name = "other", type = "ai_spell_context*", summary = "the second context, for the other side (in it: back to the first)", confidence = "read" },
+  { offset = 0x4C, name = "owns_other", type = "u8", summary = "the destructor 0x436C30 deletes +0x48", confidence = "read" },
+  { offset = 0x50, name = "melee_threats", type = "entry[20]", summary = "per record of the side {the stack, its damage, how many, their sum}: the strongest melee threat, seeded with the retaliation at the record's target (0x43BF20)", confidence = "read" },
+  { offset = 0x190, name = "shot_threats", type = "entry[20]", summary = "the same for the enemies that can shoot now", confidence = "read" },
+  { offset = 0x2D0, name = "worst_threats", type = "entry[20]", summary = "per record the melee entry, or the shot entry when its damage is larger", confidence = "read" },
 ]
