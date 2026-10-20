@@ -1,4 +1,4 @@
-//! `h3 ai bench` (E05 T3c; `docs/epics/E05-design.md` §7): a batch of N envs of one scenario (or,
+//! `h3 ai bench` (E05 T3c; `docs/epics/E05-log.md` §7): a batch of N envs of one scenario (or,
 //! since T5b2, of the encounter distribution v1 on the original packs), the caller's seats
 //! external, called K times with random legal actions chosen from the batch's own
 //! masks (a cast through the head calls, made only when an env chose one), observations and entry

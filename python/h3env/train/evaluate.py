@@ -1,4 +1,4 @@
-"""The smoke run's evaluation (E05 T8, `docs/epics/E05-design.md` §8.2): the agent against the
+"""The smoke run's evaluation (E05 T8, `docs/epics/E05-log.md` §8.2): the agent against the
 engine's Random on held-out episodes of the encounter family, once as the attacker and once as the
 defender of the same battles.
 

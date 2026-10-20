@@ -4,8 +4,10 @@
 - Date: 2026-10-18
 - Deciders: user + AI lane session
 
-Detail (the C sketch, the reward's worked examples, the distribution's shape, the package
-layout): `docs/epics/E05-design.md`.
+Detail: the code documentation (`h3_sim`'s `batch`, `reward`, `encounter`, `bots`; `h3-ffi`'s
+`batch`; `h3-cli`'s `src/ai/`), `python/README.md`, `docs/07-simulation-and-ai.md` §1.1 and
+[`docs/epics/E05-log.md`](../epics/E05-log.md) (the design note `E05-design.md` was deleted when
+E05 closed, 2026-10-20; its text is kept there, §1 to §9).
 
 ## Context
 
@@ -106,3 +108,4 @@ and ADR-0023 point 7 (`human`, `difficulty`) stay as they are.
   sides human).
 - 2026-10-19: Point 5: bots also read the engine's damage preview of their own attacks, never
   the retaliation (E05 T7's cut, AI-Q6).
+- 2026-10-20: The working-detail line after E05's closure (the design note deleted).

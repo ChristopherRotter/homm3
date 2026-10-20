@@ -1,4 +1,4 @@
-"""The smoke run's PPO (E05 T8, `docs/epics/E05-design.md` §8.3): self-play over a `BattleBatch`
+"""The smoke run's PPO (E05 T8, `docs/epics/E05-log.md` §8.3): self-play over a `BattleBatch`
 of the encounter distribution, one network for both sides, one trajectory per (env, side).
 
 Each call's sample is the acting side's decision (observation, masks, chosen heads, its

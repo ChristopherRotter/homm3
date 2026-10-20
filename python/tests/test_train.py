@@ -1,4 +1,4 @@
-"""The smoke training (E05 T8b, `docs/epics/E05-design.md` §8): the network's masked choices, its
+"""The smoke training (E05 T8b, `docs/epics/E05-log.md` §8): the network's masked choices, its
 log-probabilities, GAE over two sides, an update, the held-out evaluation and a checkpoint. They
 need the group `train` (`uv sync --group train`) and are skipped without it."""
 

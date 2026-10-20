@@ -1,6 +1,6 @@
 # h3env — the battle environment from Python
 
-The AI lane's Python binding of the engine (E05 T6a; `docs/epics/E05-design.md` §5): ctypes over
+The AI lane's Python binding of the engine (E05 T6a; `docs/epics/E05-log.md` §5): ctypes over
 the C ABI (`crates/h3-ffi/include/h3.h`, ADR-0011, ADR-0025), numpy arrays the engine writes in
 place.
 
