@@ -1,239 +1,229 @@
-# E08 design note: increment 3
+# E08 design note: increment 4
 
-A handover, not binding (`docs/adr/README.md`): the working detail behind increment 3's
-amendments of ADR-0013, -0016 and -0017 (drafted in E08 T17b, accepted by the user at ADV-Q13
-with its changes, applied by T18a, #185). The task that builds a section deletes it; the file goes
-when the epic closes.
-Facts and sources: survey `docs/rules/surveys/E08-battles.md` (§ numbers below are the survey's
-unless they name this note). Increment 2's note went with T15b; its versions are in `E08-log.md`.
+A handover, not binding (`docs/adr/README.md`): the working detail behind increment 4's
+amendments of ADR-0013 (`docs/lanes/adventure/adr-drafts/0013-increment-4.md`, T24b1) and
+ADR-0017 (T24b2), from the user's answers at ADV-Q15 (the epic's decision 55). The task that
+builds a section deletes it; the file goes when the epic closes. Facts and sources: survey
+`docs/rules/surveys/E08-progression.md` (§ numbers are the survey's unless they name this note).
+Increment 3's note was pruned by T24b1: every section was built, its records are in `E08-log.md`
+(T18a to T22b) and its last versions in §15 below.
 
-## 1. The store of heroes (GAM-HER-001)
+Written in two parts (decision 56): **part A**, the hero side (`h3-heroes`), by T24b1; **part B**,
+the game side and the cut, by T24b2 (headings only until then).
 
-Built by T18b (2026-10-14): `h3_game::GameState`'s store, `HeroDetailsSetup`, the import of the
-customisations (`docs/formats/h3m.md`, "Import"), the formation on `HeroOnMap`, HER-MAN-001; the
-formation into `BattleSetup.formations` since T19a1.
+## Part A — the hero side (`h3-heroes`; T24b1)
 
-## 2. Reading and changing a hero's details (the hero model, decision 25)
+Everything in part A is a rule of `h3-heroes`, the hero model beneath the contexts (ADR-0013
+point 2): pure functions of a hero's details, the ruleset and explicit inputs (the scenario's
+level limit and banned skills, a draw source). Who calls them, when, with which source, and what a
+player sees is the game's (part B).
 
-`h3-heroes` is in the `shared` layer since T18a. Moved at the round-1 checkpoint (decision 28)
-to the tasks that first use them:
-- **T19a2a** built (2026-10-14; decision 32): `h3_heroes::HeroChange` (`GainExperience`,
-  `SetSpellPoints`, `AddArtifact` placed by HER-CHG-002, `RemoveArtifact(ArtifactPlace)`),
-  `check_change` and `apply_change` (HER-CHG-001; the game applies only checked changes),
-  `gained_experience` (HER-EXP-001), `next_capture` (HER-ART-004), `lost_war_machine`
-  (HER-WAR-002). **T19a2b**: `LearnSpell(SpellId)`, the Necromancy share, the raised creature.
-- **T20a1** built (2026-10-14; decision 35): `h3_heroes::attack_defense` (HER-ADV-001: the
-  battle hero's effective Attack and Defense, HER-BAT-001, clamped 0–99; read: the original's
-  hero record +0x476 to +0x479 holds the worn artifacts' bonuses, `hero_equip_artifact` adds them
-  and `hero_remove_artifact` subtracts them) and `join_bonus` (HER-ADV-002: 0–3 from the
-  `join_bonus` kind, Diplomacy's 1, 2, 3 in the packs, so no code reads the skill by name,
-  ADR-0016 point 4).
-- **T20a2a** built (2026-10-15; decision 36): the game's difficulty as a static input
-  (`AdventureSetup.difficulty`, `AdventureState::difficulty`, in the state hash's bump to v9), read
-  only by ADV-MON-007's Easy rule (D-10, T20b).
-- **T20a2b** built (2026-10-15): the game passes its store (`&[Arc<HeroDetails>]` by `HeroId`)
-  to `AdventureState::apply` and `reach`; the adventure reads the visiting hero's details only
-  through `h3-heroes`' derivations (in increment 3 the two above; T20b's answer is the first
-  reader, through the guard's visit). A later increment adds movement and scouting (decision 48).
-- Increment 3's adventure visits change no hero (a joining group changes the army only); the
-  battle's outcome does (§5).
+### 1. The data
 
-## 3. Monsters on the map (ADV-MON-001 to -006; T20a)
+- **Hero parameters** (Tier 2, `[hero_params]` in the core pack, `h3_content::HeroParams`):
+  - `experience`: the thresholds of levels 1 to 12 (0, 1 000, 2 000, 3 200, 4 600, 6 200,
+    8 000, 10 000, 12 200, 14 700, 17 500, 20 600; `experience_by_level` 0x679C88, §1.1);
+  - `max_level`: 74 (A-7's fix, §2);
+  - the skills the level-up forces: **Wisdom** and the **magic schools** (Fire, Air, Water,
+    Earth), as keys the compile resolves (no code names a skill, ADR-0016 point 4; a per-skill
+    marker would do as well, the building task chooses).
+  The compile extends the table to `max_level + 1` (each step the previous + previous / 5, §2)
+  and refuses a table that does not rise strictly or overflows 32 bits (a `max_level` above 78
+  would). The compiled thresholds are kept in the ruleset (a level is then a search, not a loop).
+- **The hero class** (`[[hero_class]]`, `h3_content::HeroClass`) gains `offer_intervals =
+  [wisdom, school]`: the levels after which Wisdom and a school are forced (§2.4: 3 and 3 for
+  the classes the original counts as magic, 6 and 4 for the others). Beside `primary_gain` and
+  `skill_weights`, which the packs already hold. **A-10 as a data quirk** (decision 55: magic in
+  `strict-fixed` only): the `ab` pack's Elementalist gets the original's `[6, 4]` and a
+  `[[hero_class_override]]` with `fixes = "quirk.content.elementalist_offer_intervals"` gives it
+  `[3, 3]` where the flag is off (the pattern of `[[hero_override]]`, `packs/README.md`). A new
+  override kind; the Planeswalker is `[6, 4]` either way.
+- Sources: `original-data` (code reading: the table 0x679C88, the intervals 0x4DAD74, the forced
+  skills 0x4DAD00 and 0x679CBC); the values are not in the text tables, so they are gap-filled
+  (the harvester's gap-fill or the packs directly).
+- **Not data**: the scenario's level limit and banned skills are the map's (`RawMap::level_limit`,
+  `banned_skills`), inputs from the game (§11).
 
-Built by T20a2a (2026-10-15; decision 36; `E08-log.md`): the monster and ground kinds with the
-monsters' parameters and `not_random_monsters` (part v7), the import of monsters and grounds
-(`docs/formats/h3m.md`, v6), the setup's checks, the draws (ADV-MON-002 to -004), the static map's
-monsters and drawn tiles, `army_left` (written from T20b), what a viewer sees (ADV-FOG-006), a
-ground's battlefield (ADV-GRD-001; the topmost, the last in map order); adventure state hash v9.
-T20a2b built guarded tiles (2026-10-15): `guard_of` (ADV-MON-005, the original's scan), a step
-onto a guarded tile the path's last and `Reach` ending there (ADV-MON-006); the guard's visit is
-`ADV-STUB-5` until T20b.
+### 2. Experience to levels and its bound (HER-EXP-002; A-7)
 
-## 4. The monster's answer and the offers (ADV-MON-007, -008; T20b)
+- **Thresholds**: levels 1 to 12 from the table; from 13 each step is the previous step + step / 5
+  (integer), which equals the original's truncated f64 product × 1.2 at every level up to the
+  overflow (§1.1): 13 → 24 320, 14 → 28 784, 15 → 34 140, 16 → 40 567, 20 → 81 961,
+  30 → 496 963, 40 → 3 066 455, 50 → 18 975 933, 60 → 117 483 099, 70 → 727 413 425,
+  74 → 1 508 362 195, 75 → 1 810 034 207 (the test vectors).
+- **The level of an experience**: the number of thresholds at or below it, at most `max_level`
+  (`h3_heroes::level_of`).
+- **The bound** (A-7, always fixed, decision 55): a hero's experience is at most level 75's
+  threshold − 1 = **1 810 034 206**, so level 74 is the highest, as HotA's fix (the wiki). The
+  original's wrapped levels past 74 (88, 100, …), its hang at 2³¹ − 1 and its negative experience
+  cannot happen: every gain saturates at the bound (§3).
 
-- Inputs (§3.1): power = ⌊army value × √((1 + 0.05 D)(1 + 0.05 A))⌋ (the army value in 32-bit
-  integers, the factor in double precision with its square root stored as a float: `kernel::num`
-  operations, ADR-0003); strength = AI value × count; r = power / strength in single precision;
-  St by the thresholds with D-8 (r > 0.5 for −1); Sy with D-9 (the own type counts; the related
-  type by faction and level, so `BAT-QUIRK-19` breaks the elementals' pairs in `faithful`); L
-  `h3_heroes::join_bonus`, +1 (at most 3) on Easy (D-10); M the aggression; never flees.
-- The decision (§3.2) as a function returning `MonsterAnswer::{Fight, OfferJoin,
-  OfferJoinForGold(price), OfferPursue}` (the monster leaves only after a declined pursuit or by
-  joining); the chain continues in `AdventureState::decline_offer` (new, infallible):
-  a declined join goes to step 4 (fight at M = C or when it never flees, else the pursue offer).
-- Offer kinds (adventure `OfferKind`): `Join` (no price), `JoinForGold { price }` (the creature's
-  gold cost × count; not opened when the treasury cannot pay: the game calls `decline_offer`, no
-  `OfferRefused` event), `Pursue` (accept: the battle; decline: the monster leaves, no treasure),
-  `Fight` (a guarded pile's question). `Answer::{Accept, Decline}` and the env's two answer
-  entries serve all of them.
-- Joining: the group becomes one stack (merged with a stack of its creature, else the first free
-  slot of seven); with neither the join offer is skipped as declined (**`ADV-STUB-2`** at the skip:
-  the original's army dialog, 0x5D11D0, not read; a feature to-do for army management,
-  decision 48). Then the treasure's resources to the owner (gains), the monster leaves the map.
-- Events: the offers as increment 2's (`OfferOpened`, `OfferAnswered`) with the new kinds; a
-  monster's flight and joining as removals (`ObjectRemoved`) seen where the tiles are.
+### 3. The scenario's level limit (HER-EXP-003; D-19, D-21, A-8)
 
-Built by T20b1 (2026-10-15; decision 37; `E08-log.md`), as above with these details: the answer
-(`answer.rs`, `Temper`) computed in `kernel::arith::X87` (the factor's terms and product in double
-precision, the root and the army's value stored as floats, the ratio divided at 53 bits and stored
-as a float); the related type by the content's upgrades (the first upgrade, else the creature whose
-first upgrade it is with its faction and level); the price resource a parameter of the monsters
-(`[params.monsters] price_resource`, part v8); the offers opened, chained and declined by the game
-(`GameState::settle_outcome`; game state hash v7); `AdventureEventKind::CreaturesJoined` to the
-owner. A step that enters a guarded tile whose own object makes an offer defers the guard's visit
-(`AdventureOutcome::guard_after`, kept on the decision): the original asks the object's question
-first, and a player has at most one open decision; the game calls `AdventureState::visit_guard`
-after the answer, or at once when the offer does not open. A fight and an accepted pursuit do
-nothing until T20b2 (`ADV-STUB-6`).
+- The **cap** of a limit L is level L's threshold when 1 ≤ L ≤ `max_level`; a limit of 0 (none) or
+  above `max_level` is **no limit** (A-8 always fixed: the original's wrapped, often negative cap
+  of a limit above 75 cannot happen); without a limit the cap is the bound (§2).
+- **A gain** of n points makes the experience min(experience + n, cap), saturating: within the
+  cap as without a limit; experience already above the cap is **lowered to it** (D-19, the
+  original's 0x4E347E; a gain of 0 lowers it too). `HeroChange::GainExperience(u32)` keeps its
+  shape; applying it needs the limit, which the game passes (an argument of `apply_change`, or a
+  limits value beside the ruleset: the building task chooses).
+- **At load** (D-21): a placed hero's custom experience is gained from 0 (§8), so it is capped at
+  the limit and the hero gets the limit's levels, as the original's; a custom experience above
+  the bound is capped the same way, not refused (the census found none near it, §6.4).
+- The original's message that a hero can gain no more (a human owner here) is an event for the
+  game (§13). No shipped map has a limit (§6.2): the rule is tested by unit tests and batch E4.
 
-Built by T20b2 (2026-10-15; decision 37): a fight (and an accepted pursuit) returns a
-`BattleStart` whose defender is `Defender::Monster { creature, count }`, unsplit, at the
-monster's tile; the game splits it (`h3_adventure::split`, ADV-MON-009) with the draws its
-profile gives (`TileRand`, the C runtime's `rand` seeded by the tile, under `ADV-QUIRK-6`, flag 24;
-else the attacker's stream after the battle's seed, before the obstacles'), the defending side
-without a hero and without an owner; `Actor::System` plays it (`GameCommand::Battle` to the first
-battle whose side to act is unowned, `GameState::unowned_battle`; any other command
-`NotForSystem`); at the end `AdventureState::end_monster_battle` (ADV-MON-010) keeps the
-survivors as the monster's count (A-6 fixed, `ADV-QUIRK-7`) or removes it, with the treasure
-after a victory. The env's neutral seat plays the unowned side since T20b3a (`Seat::Neutral`,
-`ADV-STUB-7` closed); replay format v4 (`system battle …`) came with T20b2, since the writer must
-name the new actor.
+### 4. The draws (HER-LVL-002; D-14)
 
-## 5. Battles through the game (GAM-BAT-001 to -003; T19a1, T19a2)
+- A level-up draws through a **draw source** its caller gives (ADR-0003 point 7: randomness through
+  an explicit parameter): one operation, `between(low, high)`, inclusive, as the original's
+  `random_between` (0x50B230).
+- **The original's source** (`faithful`, decision 55): the C runtime's generator (`rand`:
+  state × 214 013 + 2 531 011, bits 16 to 30) seeded per level with
+  214 013 L + 156 823 S + 154 079 (32-bit, wrapping), L the new level, S the hero's seed byte
+  (1–255); `between(a, b)` = a + rand() mod (b − a + 1) (§2.2). A small type in `h3-heroes`
+  beside the trait, the twin of `h3_adventure::split::TileRand` (one generator type in `h3-kernel`
+  could serve both and the battle's obstacles later: a shared change, not needed now).
+- **The owner's stream** (`strict-fixed`): the source implemented over `kernel::Rng`
+  (`range_inclusive`). Which source, the seed byte and the stream are the game's (§11, ADR-0017).
+- Order of a level's draws: the primary skill, the first offer, the second offer (§5, §6), then
+  the choice at load if it draws (§8). A level draws 1 + 0 to 4 numbers.
+- Test vectors (§2.3): a Knight with S = 1 reaching level 2: seed 738 928, the primary's draw 3
+  (Attack); with S = 200: seed 31 946 705, the draw 91 (Knowledge).
 
-Built by T19a1 (2026-10-14; decision 29): `Decision::Battle(Arc<OpenBattle>)` (state, owners,
-heroes, tile; game state hash v6), `GameCommand::Battle` from the owner of the side to act
-(`NotYourSide`, `NoBattle`, `BattleOpen`, `Battle(CommandError)`), `legal_commands` mapped,
-`GameEvent::{BattleStarted, Battle, BattleEnded}` seen by the owners, `GameObservation.battle`;
-the setup from the visit (`h3_adventure::BattleStart`: both sides' armies and formations, the
-tile, `AdventureState::battle_ground`: the part's `BattleTerrains`, underground then the coast,
-whose flag the static map keeps since import v5), the battle heroes with their maximum spell
-points, the war machines, the funds, the seeds (`ADV-QUIRK-5`, flag 23); the outcome's armies,
-the heroes leaving the map (`HeroRemoved`) and a surrender's gold (GAM-BAT-005). Left:
-- **T19a2a** built (2026-10-14): after the adventure's part, `GameState::heroes_after_battle`:
-  each side's spell points and destroyed war machines' artifacts, the staying winner's
-  experience (the loser's army and raised records, +500 after a victory over a hero, Learning)
-  and the capture, each change told to the hero's owner (`GameEvent::HeroChanged`). The reading
-  (2026-10-14): `battle_end` 0x477470 gives a winner with a hero the experience (0x46A350:
-  −500 again after a retreat or surrender, × the Learning getter 0x4E4840 on f32 points), the
-  raised creatures, Eagle Eye, then the capture 0x46A070 (nothing after a retreat or surrender;
-  worn by position skipping the book, the Grail and the war machines, then the backpack from
-  its end, each through `hero_give_artifact` 0x4E3070: equip, else the backpack's end, at most
-  64; it stops at the first the winner cannot take). Not built: a captured part completing a
-  combination (SoD asks a human, builds at once for the computer), Titan's Thunder's spell book
-  (0x4E2A64), the Grail's exclusion (the packs do not mark it).
-- **T19a2b** built (2026-10-14, decision 33): `h3_heroes::necromancy` (HER-NEC-001, -002),
-  `raised_count` and `AdventureState::raise` (GAM-BAT-006, `CreaturesRaised` to the owner),
-  `learn_level` and `learns_spell` with `HeroChange::LearnSpell` (HER-SPL-005, -006, GAM-BAT-007),
-  after the experience and before the capture; the data in `shared/e08-t19a2b`. The plan, as
-  built: Necromancy per killed stack, rounded down (`E04-battle.md` §4.5),
-  the raised creature by the `raises` kind (decision 30). D-9 read in the code (2026-10-14):
-  Necromancy (0x4775E1) counts every killed record, summoned stacks, clones and war machines too
-  (E04c batch 2d NE:7): per record `min(killed, trunc(f32(min(hp, raised_hp) × killed) × rate /
-  f32(raised_hp)))`, at least 1 in all if anything was killed, the winner only, the rate at
-  most 1.0; the power (0x4E3CD0): the skill's share × (1 + 0.05 × level) for the specialist,
-  +0.05/0.10/0.15 for artifacts 54–56 only with the skill, +0.10/0.20 by town buildings, +0.30
-  for the Cloak (130) only without it; the creature (0x4E3C60): Skeleton, with the Cloak by the
-  Necromancy level (0 Skeleton, 1 Walking Dead, 2 Wight, 3 Lich); a full army (0x469F20): the
-  upgrade at ⌈2c/3⌉ ((2c + 2) / 3) if it has a free slot, the elementals 112–115 excepted, else
-  nothing. Eagle Eye: `HeroOutcome::learned` into the winner's spells, with a worn spell book,
-  of a level its Wisdom allows (BAT-Q24: Wisdom + 2), a `shared/` Wisdom kind first. Checked again
-  at the build: the count's x87 arithmetic per record (0x477643: fild, fstp f32, fmul the share,
-  fdiv f32(raised hp), ftol; `X87::over`), the Cloak's 30 % without the skill a rule (decision 33).
-  Not built: the Necropolis buildings' +10/+20 % (E09), the elementals' exception to the upgrade.
-- **T20a2a** built (2026-10-15): a ground on the tile replaces the field (ADV-GRD-001); **T20b2**
-  built (2026-10-15): the unowned side (`Actor::System`; decision 29), the monster's split and its
-  survivors (ADV-MON-009, -010, A-6), a beaten monster's treasure (§4).
-- Not in increment 3: CLT-Q4's background variant (trees, mountains and dead vegetation within 3
-  tiles) needs those decorations typed (E12's long tail); viewers keep the third picture.
+### 5. The primary skill (HER-LVL-001; D-15, A-9)
 
-## 6. Hero against hero (GAM-BAT-004, -005; T19a1, T19a2)
+- r = `between(1, 100)`; the class's `primary_gain` row 1 for a new level of 2 to 9, row 2 from
+  the level-up **to** 10 (D-15, the new level); r walks Attack, Defense, Spell Power, Knowledge
+  subtracting each chance, and the skill it stops on gains 1.
+- **A-9, always fixed**: the gain saturates at the ruleset's `primary_max` (99) on the base the
+  engine keeps without artifacts (`HeroDetails.primary`, §4.2); the original's byte, which holds
+  the artifacts' bonuses too, wraps at 128. The effective skill (base + artifacts, clamped by its
+  readers) is the original's at every value below the wrap.
 
-Built by T19a1: the visit from the neighbouring tile at the step's price, the battle at once, both
-players own it; the visit concerns the hero whatever object lies under it (only leaving the
-visitor's tile across its top is refused); a surrender's price from the loser's owner to the
-winner's (D-13). Only the attacker's stream moves. T19a2a added the captured artifacts and the +500 (§5).
+### 6. The offers (HER-LVL-003, HER-LVL-004; D-16, D-17, D-18, A-10)
 
-## 7. Guarded piles (ADV-PIK-004; T21a)
+`h3_heroes`' offer (the original's `hero_secondary_offer` 0x4DAD00, §2.4): given the hero, a
+window of skill levels [lowest, bound), an excluded skill, the new level L, the banned skills and
+the source, it returns a skill or none.
+- **Candidates**: the skills whose level (0 when unknown) is in the window, not the excluded one;
+  with eight skills known (`MAX_HERO_SKILLS`) the lowest becomes 1 (only advances); an empty
+  window gives none.
+- **1. Wisdom**, returned without a draw, when L ≥ the Wisdom counter + the class's Wisdom
+  interval, it is a candidate, not excluded and not banned.
+- **2. A school**, when L ≥ the school counter + the class's school interval and the excluded skill
+  is no school: a draw among the candidate schools not banned, **a known school weighing 1**
+  (D-17), an unknown one its class weight; no weight at all: step 3.
+- **3. Any candidate**, by weight: the class's (`skill_weights`, an absent skill 0), a known skill
+  at least 1; **a banned skill 0, or 1 if the hero knows it** (D-18). No weight: none.
+- **A draw**: `between(1, total)`, then the candidates in the ruleset's skill order (the original's
+  ids' order, which the packs keep), each subtracting its weight until the rest is at or below 0.
+- **The level's two offers** (0x4DA94D–0x4DA9AE): the first an advance (window [1, 3)), else any
+  skill below Expert ([0, 3)); a school as the first sets the school counter to L before the
+  second is drawn; the second a new skill ([0, 1)) other than the first, else any skill below
+  Expert other than the first ([0, 3)). After both: an offered Wisdom sets the Wisdom counter to
+  L, an offered school the school counter. The counters follow the offers, not the answer.
+- **The intervals** are the class's `offer_intervals` (§1); the Elementalist's follow A-10's data
+  quirk (`faithful` 6 and 4, `strict-fixed` 3 and 3).
+- The result of a level, `h3_heroes::LevelUp` (names the building task's): the new level, the
+  primary skill gained, the offers (none, one, or two in order: left and right) and the counters
+  after it. Drawing it changes nothing; the answer does (§7).
+- Test vectors (§2.4): the Knight above, knowing basic Leadership only: S = 1 offers Leadership
+  and Tactics, S = 200 Leadership and Sorcery; batch E3c's E3-6 (§3.3): a Death Knight with
+  S = 75 and eight basic skills, levels 2 to 5.
 
-- The import: an empty guards record is a plain pile (3 shipped); guards up to seven stacks with
-  an optional text (the text itself is presentation: a flag); D-6's `Unsupported` lifted.
-- The visit (from the neighbour, as a pile): a question → `Fight` offer; no question → the battle
-  at once; guards unsplit; a win picks the pile up, a loss or retreat leaves the guards' survivors
-  in `army_left`.
+### 7. The answer as a hero change; the details (HER-LVL-005)
 
-Built by T21a (2026-10-15; decision 41; `E08-log.md`): `Guards` (`ObjectSetup.guards`,
-`MapObject.guards`; checked as a hero's army, no war machine, piles only), the import (map import
-v7; a random stack among the guards unsupported, none shipped), `OfferKind::Fight`,
-`Defender::Guards`, `AdventureState::{guards_left, end_unowned_battle}`: the battle at the pile's
-tile (the code reading: the visited tile's position, 0x4A4886); a draw leaves the pile without
-guards, so the next visit picks it up; the plans' guarded piles (`play.rs`'s `GUARDED`); adventure
-state hash v10, game state hash v8.
+- **`HeroChange::GainLevel`** (name the building task's): the level + 1, the primary skill + 1
+  (§5), the learned skill if any (a known skill one level up, at most Expert; a new one at Basic in
+  the next slot, at most eight), the counters set (§6). One change per level, atomic. Checked
+  (HER-CHG-001): a level is pending (§ below), the learned skill can be learned, the counters at
+  most the new level. Whether the skill is one of the level's offers is the game's check (it holds
+  the drawn level-up); `h3-heroes` checks only that the details stay valid.
+- Later increments add the plain gains (a skill from a Witch Hut, a primary skill from an
+  object: increment 5's sketch) as their own variants when they need them.
+- **`HeroDetails`** gains the two counters (the levels at which Wisdom and a school were last
+  offered: the original's +0x90 and +0x3F), 0 at the start; the hero's seed byte S is **not** in
+  the details (server-only, decision 9: the game keeps it beside them, §11).
+- **The level** stays the details' field, the levels given so far (the original's +0x55): at most
+  the experience's level; the difference is the hero's **pending level-ups**, which the game turns
+  into decisions or gives at load. The validation (HER-DET-001) gains: the experience at most the
+  bound, the level at most the experience's level, the counters at most the level.
+- Every rule that reads the level (the specialties' growth HER-BAT-004, -005; Learning HER-EXP-001;
+  Intelligence HER-MAN-001; the spell specialties) reads the given level, unchanged (§4.2): while
+  a level-up is pending its gains are not yet the hero's, as in the original's modal dialog.
 
-## 8. The env and replays (T19b1, T19b2)
+### 8. The original's choice between two offers (HER-LVL-006; D-20)
 
-Built by T19b1 (2026-10-14, decision 34): action encoding v3 (`Action::{Adventure(MapAction),
-Battle(h3_sim::action::Action)}`, `Phase` by whether the player is in a battle, each phase's masks
-empty in the other; `ADV-STUB-4` closed: another player's hero's tile is a legal destination);
-`to_move` with each open battle's owner of the side to act; the env's battle masks; the random
-agent plays a battle with the battle's own agent (`h3_sim::rollout::choose`: it never retreats or
-surrenders); replay format v3 (`Actor` per command, `<player> battle <command>` in the file); the
-golden replays re-recorded, two with hero battles; the game's battle sink passes `RECORDS`; the
-fork workload with a battle open (the heroes seek each other: random play seldom fights). Built
-by T19b2 (decision 35): the property plans play battles to a victory (the driver's runs of
-fighting steps, its hero casts; captures, Necromancy and Eagle Eye's learning happen in them).
-Built by T20b3a (decision 38): the neutral seat (`Seat::Neutral`, its battle actions issued as
-`Actor::System`; decision 29), `to_move` yielding seats (`ADV-STUB-7` closed), its masks, steps and
-observation; `random_rollout` and the recorder play it at random until the battle lane has
-ported the original's battle AI (decision 27). Built by T20b3b1 (decisions 39, 40): the property
-plans with monsters and grounds, the driver playing the system actor, the checks of joins,
-flights, treasures and monster battles; `MonsterChanged`; a monster shows on the fringe in either
-profile. Left:
-Built by T20b3b2 (decision 41, after T21a): the fixture maps with the plans' monsters, guarded
-piles and grounds (beside each hero a monster and a pile; none within two tiles of a hero), nine
-golden replays (four with their options, five searched: monsters joining, fleeing, pursued,
-beaten and winning, piles asking, fought at once, beaten and winning, hero battles in both
-profiles), the env's and the CLI's tests on the changed duel, the three benchmarks re-baselined.
+- Decision 55: **the computer's evaluation is ported**: `ai_level_up_choice` (0x52BBD0) with
+  `ai_secondary_skill_value` (0x524690, 0x684 bytes) and `ai_takes_new_secondary_skill` (0x524DD0,
+  0xF3 bytes): both offers known or both new, the higher of the two values, the first on a tie;
+  otherwise 0x524DD0 decides whether the new skill is taken (§2.5, §9).
+- **Not read yet**: the first building task reads 0x524690 and 0x524DD0 (and what they call) with
+  VCMI's `CGHeroInstance` counterpart and the wiki, as a survey section (§10 of the survey), before
+  the rule is built. Known: the flag argument, clear at load and for a hero without an owner,
+  replaces the army's summed creature values by the defaults 1 000 and 500 (0x5246D5–0x524722).
+- **Its place**: an `h3-heroes` rule (the hero model beneath the contexts), so the game's levels at
+  load and E10's computer players call the same function. **Its inputs**: the hero's details, the
+  two offers, the army's worth (the setup's defaults, or a computer player's army: an argument,
+  since the army is not part of the details) and the level's draw source, if the reading finds
+  that 0x524DD0 draws (the survey's open point, §9); only the setup's path is built in
+  increment 4.
+- **A risk the reading settles**: if 0x524690 reaches the adventure AI's spell values (0x5275B0
+  and its helpers, read by the battle lane, E23, `installation.md` §7.39) or other game state, those
+  inputs come from the caller or move beneath the contexts too; the reading's task says which and
+  the cut's later tasks adapt.
+- **The levels at load** seen from the hero (the game's sequence is GAM-SET-002, §12): after the
+  custom skills, army, spells and artifacts, the experience set to 0 and the custom experience
+  gained (§3), then each pending level drawn with the original's source and S (§4), two offers
+  chosen by this rule with the setup's defaults, one learned, none the primary only, each applied
+  as `GainLevel` (§7); the spell points after (HER-MAN-001). In `strict-fixed` the owner's stream
+  draws (D-14's flag).
 
-## 9. Versions
+### 9. Rule ids and quirks proposed
 
-Shared (T19a2b): core ruleset hash v44, pack format v40. Game state hash v8 (heroes' details since T18b, battles since T19a1; the monsters' offer kinds since T20b1; a guarded pile's offer since T21a); adventure
-state hash v10 (the formation since T18b, the coast since T19a1; the monsters, drawn tiles, armies
-left and the difficulty since T20a2a; the guards since T21a); adventure ruleset part v8 (the battle terrains since
-T19a1; the monster and ground kinds and the monsters' parameters since T20a2a; the price resource
-since T20b1); map import v7 (hero customisations since T18b, the coast since T19a1, monsters and
-grounds since T20a2a, the piles' guards since T21a); action encoding v3 (since T19b1); adventure replay
-format v4 (actors since T19b1, the system actor since T20b2). Each bumps once in the increment,
-in the task that first changes it.
+- Rules (survey §8, ids written when built): HER-EXP-002 (§2), HER-EXP-003 (§3), HER-LVL-001
+  (§5), HER-LVL-002 (§4), HER-LVL-003 and -004 (§6), HER-LVL-005 (§7), and **HER-LVL-006** (new,
+  §8: the original's choice between two offers). HER-DET-001 and HER-CHG-001 gain the checks of
+  §7. The game's GAM-HER-002, GAM-DEC-002, GAM-SET-002, GAM-BAT-008: part B.
+- Quirks for `docs/rules/quirks-adventure.md` (confirmed by the second reading, §9), each written
+  with its rule: **ADV-QUIRK-9** a level's draws follow the hero's seed byte and the level (D-14;
+  fix-optional, its flag the game's: §11); **ADV-QUIRK-10** the Elementalist's might intervals
+  (A-10; fix-optional, the data quirk `quirk.content.elementalist_offer_intervals`, §1);
+  **ADV-QUIRK-11** the levels past 74 wrap (A-7), **ADV-QUIRK-12** a limit above 75 caps at a
+  wrapped threshold (A-8), **ADV-QUIRK-13** a primary skill wraps at 128 (A-9): fixed, no flag.
+  The two flags take the registry's next free positions (after 25).
 
-## 10. Shared and cross-lane work
+### 10. The hero side's shared and `cross-lane` needs (for the cut, §17)
 
-- Done: T18a (#185: the ADR amendments, `arch.toml`, the kinds `necromancy`, `experience_gain`,
-  `max_mana`, `join_bonus`, pack format v37); T18b (the harvester reads Necromancy's, Learning's
-  and Intelligence's tables; `h3_heroes::max_mana`); T19a (`shared/e08-t19a`: `ADV-QUIRK-5`'s
-  flag, `h3-map`'s battle part for its tests, battles in `06-security.md`; T19a1 `cross-lane`:
-  the flag on in `base:faithful`, the harvester's profile); `shared/e08-t19a2` (#194: `raises`);
-  `shared/e08-t19a2b` (`cross-lane`, decision 33: `learn_level`, `unless_skill`, `X87::over`,
-  the harvested Wisdom, `raises` and Necromancy artifacts, the replays, the heroes' changes in
-  `06-security.md`); `shared/e08-t19b2` (`h3-battle` as `h3-map`'s dev-dependency); T20a1
-  (`cross-lane`: `attack_defense`, `join_bonus`, Diplomacy's values in the gap-fill and the packs).
-- `cross-lane` (battle-owned), still to come: `h3-heroes`' additions of later increments (built:
-  `HeroChange`, its check, the Learning factor and the capture in T19a2a, Necromancy and the
-  learning in T19a2b, the adventure's reads in T20a1); `h3-experiment`'s spec for batch E3 (monsters,
-  custom heroes, the difficulty); the client lane's recipes (its inbox, 2026-10-13).
-  **The handover of `h3-heroes`**: as soon as the battle lane is done with it (the user,
-  ADV-Q13; the battle lane's inbox asks it to say when), a `shared/` change of `lanes.toml`; the
-  additions above are `cross-lane` until then.
-- The battle lane (its inbox): the original's battle AI, the faithful policy of the neutral seat
-  and of a computer player's battles (decision 27).
+- `h3-content` (shared core, a `shared/` pull request): the hero parameters' table, highest level
+  and forced skills; the class's `offer_intervals`; `[[hero_class_override]]`; the quirk flag in
+  the registry; the pack format and core ruleset hash bumps.
+- The packs' `core.toml` (`base`, `ab`, the synthetic packs; battle-owned, `cross-lane` or in the
+  shared change) and the harvester's gap-fill; the golden replays' headers move with the core
+  ruleset hash (both lanes' re-recordings, as at E04c T7e).
+- `h3-heroes` (this lane): §2 to §8's rules, `HeroDetails`' counters, `GainLevel`, the checks;
+  the game state hash moves with the details (§15).
 
-## 11. The building tasks (confirmed at ADV-Q13)
+## Part B — the game side (T24b2)
 
-| Round | Tasks | Content |
-|---|---|---|
-| 1 | T18a + T18b | done (2026-10-14): the shared groundwork with the ADR amendments (§10); the store of heroes, its defaults, the import of hero customisations (§1), trimmed at the checkpoint (decision 28) |
-| 2 | T19a1 + T19a2 | split at the checkpoint (decision 29): T19a1 done (2026-10-14): battles through the game, hero against hero, the armies' and the map's outcome (§5, §6); T19a2 split again (decision 32): T19a2a done (2026-10-14), the heroes' outcome without pack changes; T19a2b done (2026-10-14, decision 33), Necromancy and Eagle Eye (§2, §5); round 2 closed |
-| 3 | T19b1 + T19b2 | split at the checkpoint (decision 34): T19b1 done (2026-10-14), the env, replays and benchmarks with battles, the versions (§8); T19b2 done (2026-10-14, decision 35), the property plans to a victory; round 3 closed |
-| 4 | T20a + T20b | T20a split (decision 35): T20a1 done (2026-10-14), the heroes' groundwork (`attack_defense`, `join_bonus`, Diplomacy's values; with T19b2), T20a2 split again (decision 36): T20a2a done (2026-10-15), monsters and grounds as data with every bump; T20a2b done (2026-10-15), guarded tiles and the store passed through; T20b split in three (decision 37): T20b1 done (2026-10-15), the answer and its offers; T20b2 done (2026-10-15), the monster's battle; T20b3 split (decision 38): T20b3a done (2026-10-15), the neutral seat; T20b3b split (decision 39): T20b3b1 done (2026-10-15), the plans with monsters; T20b3b2 done (2026-10-15, after T21a, decision 41), the maps, replays and benchmarks with monsters and guarded piles; round 4 closed. Monsters on the map, guarded tiles, grounds, the adventure's reads of the store, `attack_defense`, `join_bonus`, the difficulty (§2, §3); the monster's answer, offers, joining, the split, its battle, the unowned side (§4) |
-| 5 | T21 + T22a | T21 split (decision 41): T21a done (2026-10-15), guarded piles (§7), before T20b3b2 so the maps, replays and benchmarks change once; T21b done (2026-10-19, decision 42), the audit; T22a split (decisions 43, 44): T22a1 done (the tools), T22a2a done (2026-10-20, the monster rows' batches E3a and E3b with their recipes), T22a2b done (2026-10-20, decision 45, the hero rows' batch E3c with its recipe), T22a3 done (2026-10-20, decision 46, the run of all three on the harness) |
-| 6 | T22b | batch E3 scored, increment 3 closed, increment 4 refined |
+Headings only until T24b2 writes them (ADR-0017's draft; QUEUE's T24b2 entry).
+
+### 11. The seed byte and the stream (GAM-HER-002; D-14's flag)
+
+### 12. The map's level limit and banned skills; the import; levels at load (GAM-SET-002; D-21)
+
+### 13. A level-up as a pending decision (GAM-DEC-002); the battle's experience into levels (GAM-BAT-008); events and what a player sees
+
+### 14. The env, replays and properties
+
+### 15. Versions
+
+Increment 3's last: core ruleset hash v45 (the battle lane's since), game state hash v8,
+adventure state hash v10, adventure ruleset part v8, map import v7, action encoding v3, adventure
+replay format v4. Each bumps once in the increment, in the task that first changes it.
+
+### 16. Batch E4
+
+### 17. Shared and `cross-lane` work; the building tasks
