@@ -1387,6 +1387,41 @@ are just a few types of buttons that are used in lots of places in the entire ga
   cursor's mask goes with them) and the mouse (T6c); the tactics phase's panel (0x46C050) and
   Auto Combat switched on (the queue's inbox).
 
+### M3 T6b — The panel and the log over a battle (2026-10-20)
+
+On `client/e17-m3-t6b`, the user present: offered T6b split in two (the panel over time, the log
+over time), the user chose it whole.
+
+- **Starting point:** `master` at `774ba0e` (#322 merged as `3618525`); no client pull request
+  open; the client gates' baseline (`verify-once`, the full `check.sh`) passed on the sandbox.
+- **The reading** (design §9.8): what sets the controls' states while a battle runs (an action
+  and its animation set none; a computer's turn keeps the colours and the scroll buttons);
+  `battle_log_add`'s two paths in full, `battle_log_settle` (0x472BF0) and its callers, the scroll
+  (0x472DB0, 0x472DF0, 0x472E40: H3API's ShowHint guess at 0x472DF0 is the up button), the
+  panel's set-text (0x46BF50: shown at once), the mouse posted at a human's turn (0x4ECC00); where
+  `melee_strike`, `stack_shot`, `first_aid_tent_action` and `round_start` write their lines (rows
+  415 and 413 new keys). Six map entries, four summaries extended.
+- **Built:** the timeline's `log` (`battle_log::Logged`: an action's and a turn's start, a strike's
+  line after its animation, an area shot's as its reactions start, wait, defend, heal, morale,
+  luck, a round), `battle_log::Log` (the executable's state), `word`, `texts`, `text_at`;
+  `panel::turns` (each turn's battle folded from the events), `panel::kept`; `scene::Panels`
+  (replacing `scene::acting`) for the frame check, the stills and the window; the adapters' log
+  (`log::panels`, replacing `first_strike`, `after_one` and `log_at`; the text tables read only
+  when the battle writes a line); the gate composes the heal's and the round's lines.
+- **The harness:** a frame is kept where the screen changes outside the parked cursor (the
+  panel's changes fell on kept frames in all ten); `h3mem.battle_log` reads the item's text and
+  the entries; the frame check masks the parked cursor only and lists the log's item (` log`)
+  where the original's text is not the viewer's (`ours-log.json`) and its pixels differ (the
+  memory lags the screen a step as a turn starts: at first every such frame was listed).
+- **Found on the way:** on a computer's turn the scroll buttons stay as the human's turn enabled
+  them (`melee`: 539 pixels until `Kept`); the hover's hint ignores the 3 000 ms rule (`behind` at
+  7 144 ms; T6c, `NOTES.md`).
+- **Checked against the original:** all ten sequences captured afresh: counts as recorded (896
+  frames), the log's item exact in 228, listed in 668 (hints; rolled lines). One `strike` run read
+  the left hero's reaction a step late at 3 730 ms (2 152 pixels, the runbook's trap); run again,
+  as recorded. One `set` run failed on a screen dump (not a 5-6-5 dump); run again: 31 situations,
+  57 frames exact. `drawn --record`, then `drawn` all 41 the same.
+
 ## Accepted review lists (M1, M2)
 
 Moved from the epic file on 2026-10-20 (less start-up reading), unchanged.

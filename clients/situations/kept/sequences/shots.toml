@@ -2,7 +2,7 @@
 
 [[frame]]
 t = 0
-file = "t00000.npz"
+file = "t00000b.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
 
@@ -152,7 +152,7 @@ heroes = [[0, 0, 0], [1, 0, 0]]
 
 [[frame]]
 t = 1517
-file = "t01517.npz"
+file = "t01517b.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
 
@@ -332,7 +332,7 @@ heroes = [[0, 0, 0], [1, 0, 0]]
 
 [[frame]]
 t = 3471
-file = "t03471.npz"
+file = "t03471b.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
 
@@ -596,7 +596,7 @@ heroes = [[0, 0, 0], [1, 0, 0]]
 
 [[frame]]
 t = 6655
-file = "t06655.npz"
+file = "t06655b.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
 

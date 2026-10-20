@@ -5,9 +5,12 @@
 //!
 //! A stack is named by its creature's key in the catalogue (`creature.base:pikeman`) and a number,
 //! which picks the name's form: the original's singular for exactly 1, else its plural (the
-//! creature table's two names, 0x440100). Which event writes which line, and when none (a hidden
-//! battle, a wait in the tactics phase, a war machine's defend), is the caller's: the event
-//! mapping comes with the battle panel (M3 T6).
+//! creature table's two names, 0x440100).
+//!
+//! The log over a battle (E17 M3 T6b, design §9.8): the timeline says what the battle writes and
+//! when ([`Logged`], `crate::anim`), [`word`] words it, and [`texts`] keeps the log as the
+//! executable does ([`Log`]: the combat dialog's entries, its new entries' count, the first shown,
+//! the time it showed them) to give the text its item shows from each time on.
 
 use alloc::format;
 use alloc::string::String;
@@ -15,6 +18,290 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use crate::text::{Args, Catalogue};
+
+/// What the battle writes into its log, or does to it, at a time (E17 M3 T6b, design §9.8): the
+/// timeline's record of it (`crate::anim::Timeline::log`), each stack by its id and its number
+/// then.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Logged {
+    /// An action starts (`action_dispatcher` 0x478D80's head): entries new for 3 000 ms or more
+    /// are new no longer (0x472BF0).
+    Action,
+    /// The stack's turn starts (`battle_controls_state` 0x4782D0): for a human player's, entries
+    /// new for 3 000 ms or more are new no longer (0x47884C), and the mouse is posted again
+    /// (0x4ECC00), which sets the status line to its hint where it rests.
+    Turn(u8),
+    /// A strike's or a shot's line (`battle_log_damage` 0x469A90): the striker and its number,
+    /// how the hits add up, each hit's stack, damage and kills.
+    Strike {
+        /// The striker.
+        attacker: u8,
+        /// Its number then.
+        count: u32,
+        /// How its hits add up.
+        spread: Spread,
+        /// Each hit: the stack, its damage and its kills.
+        hits: Vec<(u8, u64, u32)>,
+    },
+    /// A stack waits (0x479988; none in the tactics phase).
+    Wait {
+        /// The stack.
+        stack: u8,
+        /// Its number.
+        count: u32,
+    },
+    /// A stack defends (0x4797E3; none for a war machine).
+    Defend {
+        /// The stack.
+        stack: u8,
+        /// Its number.
+        count: u32,
+    },
+    /// The First Aid Tent heals a stack (0x478D0A).
+    Heal {
+        /// The tent.
+        healer: u8,
+        /// The patient.
+        target: u8,
+        /// The tent's number and the patient's.
+        counts: [u32; 2],
+        /// The hit points healed.
+        hit_points: u32,
+    },
+    /// Good or bad morale (0x464AD5, 0x464CDF).
+    Morale {
+        /// The stack.
+        stack: u8,
+        /// Its number.
+        count: u32,
+        /// Good morale.
+        good: bool,
+    },
+    /// Good luck on a strike or a shot (0x44187A, 0x43F998), before its animation.
+    Luck {
+        /// The striker.
+        stack: u8,
+        /// Its number.
+        count: u32,
+    },
+    /// A round starts outside the tactics phase (`round_start` 0x4761E9).
+    Round,
+}
+
+/// A stack as [`word`] names it: its creature's key in the catalogue, whether it is a war machine
+/// and its defense skill.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Named {
+    /// Its creature's key (`creature.base:pikeman`).
+    pub creature: String,
+    /// A war machine.
+    pub war_machine: bool,
+    /// Its defense skill (a defend's gain).
+    pub defense: i32,
+}
+
+/// The line `logged` writes (none for what writes none, or a stack `stack` does not name).
+#[must_use]
+pub fn word(
+    catalogue: &Catalogue,
+    logged: &Logged,
+    stack: &dyn Fn(u8) -> Option<Named>,
+) -> Option<String> {
+    let named = |id: u8, count: u32| stack(id).map(|n| (n, count));
+    match logged {
+        Logged::Action | Logged::Turn(_) => None,
+        Logged::Strike {
+            attacker,
+            count,
+            spread,
+            hits,
+        } => {
+            let (striker, count) = named(*attacker, *count)?;
+            let struck: Vec<(Named, u64, u32)> = hits
+                .iter()
+                .map(|&(id, damage, kills)| stack(id).map(|n| (n, damage, kills)))
+                .collect::<Option<_>>()?;
+            let hits: Vec<Hit<'_>> = struck
+                .iter()
+                .map(|(n, damage, kills)| Hit {
+                    creature: &n.creature,
+                    war_machine: n.war_machine,
+                    damage: *damage,
+                    kills: *kills,
+                })
+                .collect();
+            let attacker = Stack {
+                creature: &striker.creature,
+                count,
+            };
+            Some(strike(catalogue, attacker, *spread, &hits))
+        }
+        Logged::Wait { stack, count } => {
+            let (n, count) = named(*stack, *count)?;
+            Some(wait(catalogue, n.stack(count)))
+        }
+        Logged::Defend { stack, count } => {
+            let (n, count) = named(*stack, *count)?;
+            // 0x479758: max(1, its defense × 20 / 100).
+            let gain = (i64::from(n.defense) * 20 / 100).max(1);
+            Some(defend(catalogue, n.stack(count), gain))
+        }
+        Logged::Heal {
+            healer,
+            target,
+            counts,
+            hit_points,
+        } => {
+            let (tent, _) = named(*healer, counts[0])?;
+            let (patient, _) = named(*target, counts[1])?;
+            Some(heal(
+                catalogue,
+                tent.stack(counts[0]),
+                patient.stack(counts[1]),
+                *hit_points,
+            ))
+        }
+        Logged::Morale { stack, count, good } => {
+            let (n, count) = named(*stack, *count)?;
+            let compose = if *good { morale_good } else { morale_bad };
+            Some(compose(catalogue, n.stack(count)))
+        }
+        Logged::Luck { stack, count } => {
+            let (n, count) = named(*stack, *count)?;
+            Some(luck_good(catalogue, n.stack(count)))
+        }
+        Logged::Round => Some(catalogue.text("battle.log.round", &Args::new())),
+    }
+}
+
+impl Named {
+    /// The stack as a line names it with `count` creatures.
+    fn stack(&self, count: u32) -> Stack<'_> {
+        Stack {
+            creature: &self.creature,
+            count,
+        }
+    }
+}
+
+/// How long new entries keep the status line out (0x472F09, 0x472C06): 3 000 ms.
+pub const NEW_FOR: u32 = 3000;
+
+/// The battle's log as the executable keeps it (the combat dialog's +0x54 to +0x6C; design §9.4,
+/// §9.8): its entries, how many of the last are new (+0x64, at most 2), the first shown (+0x68),
+/// when it last showed them (+0x6C) and the text its item shows, the status line's too.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Log {
+    /// The entries, oldest first.
+    pub entries: Vec<String>,
+    /// How many of the last entries are new.
+    pub fresh: u32,
+    /// The first entry shown.
+    pub first: usize,
+    /// When it last showed its entries (ms).
+    pub at: u32,
+    /// The text its item shows.
+    pub text: String,
+}
+
+impl Log {
+    /// A line enters the log at `now` (0x472E90 with its second argument 1): its entries
+    /// ([`entries`], by `lines`) added and new, at most two new in all, the log shown from the
+    /// first new one.
+    pub fn add(&mut self, line: &str, now: u32, lines: &dyn Fn(&str) -> i64) {
+        let new = entries(line, lines);
+        let added = u32::try_from(new.len()).unwrap_or(u32::MAX);
+        self.at = now;
+        self.fresh = self.fresh.saturating_add(added).min(2);
+        self.entries.extend(new);
+        let fresh = usize::try_from(self.fresh).unwrap_or(usize::MAX);
+        self.show_from(self.entries.len().saturating_sub(fresh), now);
+    }
+
+    /// The status line (0x472E90 with its second argument 0): `text` replaces the item's, unless
+    /// new entries showed less than [`NEW_FOR`] ago and `force` is false.
+    pub fn status(&mut self, text: &str, now: u32, force: bool) {
+        if self.fresh > 0 && now.saturating_sub(self.at) < NEW_FOR && !force {
+            return;
+        }
+        self.text = String::from(text);
+    }
+
+    /// Entries new for [`NEW_FOR`] or more are new no longer, and the status line is emptied
+    /// (0x472BF0).
+    pub fn settle(&mut self, now: u32) {
+        if self.fresh != 0 && now.saturating_sub(self.at) >= NEW_FOR {
+            self.fresh = 0;
+            self.status("", now, false);
+        }
+    }
+
+    /// The scroll buttons and the arrow keys (0x472DF0, 0x472E40, 0x472DB0): the log shown from
+    /// `by` entries later (earlier when negative), from the next-to-last at most and the first
+    /// at least.
+    pub fn scroll(&mut self, by: i64, now: u32) {
+        let count = i64::try_from(self.entries.len()).unwrap_or(i64::MAX);
+        let first = i64::try_from(self.first).unwrap_or(0);
+        let to = first.saturating_add(by).min(count - 2).max(0);
+        self.show_from(usize::try_from(to).unwrap_or(0), now);
+    }
+
+    /// The log shown from entry `first` (`battle_log_show_from` 0x472C30): nothing past the last.
+    fn show_from(&mut self, first: usize, now: u32) {
+        if first >= self.entries.len() {
+            return;
+        }
+        self.first = first;
+        self.text = shown(&self.entries, first);
+        self.at = now;
+    }
+}
+
+/// The text the log's item shows from each time on (E17 M3 T6b), as the executable's log keeps it
+/// through `logged` (in time order): each line worded by `word`, its entries by `lines`; at the
+/// turn of a stack `human` names, the mouse rests over nothing that has a hint (*provisional*:
+/// the status line's hints are M3 T6c's), so the status line it sets is empty. The first change
+/// is the opening's empty log at 0.
+#[must_use]
+pub fn texts(
+    logged: &[(u32, Logged)],
+    word: &dyn Fn(&Logged) -> Option<String>,
+    lines: &dyn Fn(&str) -> i64,
+    human: &dyn Fn(u8) -> bool,
+) -> Vec<(u32, String)> {
+    let mut log = Log::default();
+    let mut out = vec![(0, String::new())];
+    for (now, happened) in logged {
+        let now = *now;
+        match happened {
+            Logged::Action => log.settle(now),
+            Logged::Turn(stack) if human(*stack) => {
+                log.settle(now);
+                log.status("", now, false);
+            }
+            Logged::Turn(_) => {}
+            other => {
+                if let Some(line) = word(other) {
+                    log.add(&line, now, lines);
+                }
+            }
+        }
+        if out.last().is_some_and(|(_, text)| *text != log.text) {
+            out.push((now, log.text.clone()));
+        }
+    }
+    out
+}
+
+/// The text of `texts` ([`texts`]) at `t`: the last change by then.
+#[must_use]
+pub fn text_at(texts: &[(u32, String)], t: u32) -> &str {
+    texts
+        .iter()
+        .rev()
+        .find(|(at, _)| *at <= t)
+        .map_or("", |(_, text)| text.as_str())
+}
 
 /// A stack as a line names it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -122,6 +409,24 @@ pub fn morale_bad(catalogue: &Catalogue, stack: Stack<'_>) -> String {
 #[must_use]
 pub fn luck_good(catalogue: &Catalogue, stack: Stack<'_>) -> String {
     named(catalogue, "battle.log.luck-good", stack)
+}
+
+/// The First Aid Tent heals a stack (`first_aid_tent_action` 0x478CE4, E17 M3 T6b): the tent's
+/// name by its number, the patient's by its, and the hit points healed.
+#[must_use]
+pub fn heal(
+    catalogue: &Catalogue,
+    healer: Stack<'_>,
+    patient: Stack<'_>,
+    hit_points: u32,
+) -> String {
+    catalogue.text(
+        "battle.log.heal",
+        &Args::new()
+            .text("healer", &name(catalogue, healer))
+            .text("creature", &name(catalogue, patient))
+            .number("hit_points", i64::from(hit_points)),
+    )
 }
 
 /// The log's entries a line becomes (`battle_log_add` 0x472E90): a line without a line break is
