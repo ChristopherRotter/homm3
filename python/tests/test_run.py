@@ -38,6 +38,19 @@ from h3env.train.run import (
 
 PYTHON = Path(__file__).resolve().parents[1]
 
+#: A record's identity as `ppo.identity` gives it (C ABI v31), without the machine.
+IDENTITY = {
+    "commit": "abc",
+    "dirty": False,
+    "abi": 31,
+    "observation_encoding": 21,
+    "action_encoding": 13,
+    "encounters": 1,
+    "entries": [{"kind": "encounters", "weight": 1, "ruleset_hash": "00000000000000aa"}],
+    "torch": "x",
+    "device": "cpu",
+}
+
 
 def test_a_config_file_states_only_what_differs() -> None:
     text = """
@@ -211,14 +224,7 @@ def test_the_first_ctrl_c_requests_a_stop_and_the_second_raises() -> None:
 
 def test_a_resume_cuts_the_metrics_back_to_the_checkpoint(tmp_path: Path) -> None:
     out = tmp_path / "r"
-    identity = {
-        "started": "t0",
-        "commit": "abc",
-        "dirty": False,
-        "abi": 30,
-        "torch": "x",
-        "device": "cpu",
-    }
+    identity = {"started": "t0", **IDENTITY}
     config = load_config("samples = 40\n")
     run = Run(out, config, identity, "samples = 40\n")
     start = {"type": "start", "name": "r", "segment": 0, "seed": 1, "identity": identity}
@@ -301,7 +307,7 @@ def _update(update: int, samples: int, loss: float) -> dict:
 
 def test_a_run_writes_its_metrics_and_record(tmp_path: Path) -> None:
     shown: list[dict] = []
-    identity = {"commit": "abc", "dirty": False, "abi": 30, "torch": "x", "device": "cpu"}
+    identity = IDENTITY
     run = Run(
         tmp_path / "r", load_config("samples = 30\n"), identity, "samples = 30\n", shown.append
     )
@@ -366,6 +372,7 @@ def test_check_record_names_what_is_missing() -> None:
         }
     )
     assert "`identity.commit` is missing" in problems and "`id` is empty" in problems
+    assert "`identity.entries` is missing" in problems
     assert "`segments` is empty" in problems
     assert "`config.ppo` is missing" in problems and "evaluation 0 lacks" in problems[-1]
 

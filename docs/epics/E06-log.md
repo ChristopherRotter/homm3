@@ -111,3 +111,23 @@ entry only where a task builds on it.
   `lost`). 61 tests pass with torch 2.14 on the CPU (the GPU test skipped), 48 with torch
   blocked. Through the command line: a tiny run stopped by `kill -INT` after 16 updates, a
   refused `ppo.lr`, the resume with a cut budget to its end, the record valid.
+
+## T2c — C ABI v31 (2026-10-20)
+
+- **Built** (design §4; ADR-0026 point 9; exit criterion 1): `h3_sim::MAX_ENVS` (65 536) and
+  `BatchError::TooManyEnvs` (`h3_batch_create` aborted on the allocation of an absurd N, which
+  no `catch_unwind` catches; now it returns the message), `h3_sim::ENCOUNTERS_VERSION` (1, the
+  table's parse checks it). C ABI v31: `h3_observation_encoding_version`,
+  `h3_action_encoding_version`, `h3_encounters_version`, `h3_batch_scenario_count`,
+  `h3_batch_scenario_info` (`H3ScenarioInfo`: the core and battle rulesets' content hashes, a
+  replay header's two, the encounter sampler's adventure ruleset's or 0, the weight, whether
+  the entry is the encounter distribution), `H3_BATCH_MAX_ENVS`; the encodings unchanged.
+- **The binding:** `ABI_VERSION` 31, `_ffi.versions()`, `BattleBatch.entries()` (hashes as 16
+  hex digits, so JSON readers keep them whole); `ppo.identity` puts both into the record:
+  schema 3, `check_record` requires the new keys.
+- **Tests:** `h3-ffi` (`each_entry_names_its_rulesets`: every function's null and range errors,
+  the hashes against the Rust batch's, the town and the encounters sharing the original packs'
+  ruleset; an N of `u32::MAX` refused with its message), `h3-sim` (the new error and its
+  message), the C smoke test (the versions, the entries of its batch, the cap); Python:
+  `test_abi.py` (the version, the versions, the layout's 32 bytes), `test_batch.py` (the
+  entries, the cap through the binding). 62 Python tests with torch on the CPU, 49 without.

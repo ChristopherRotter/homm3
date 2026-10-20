@@ -155,6 +155,20 @@ static int play_batch(Batched *out) {
     CHECK(h3_batch_add_encounters(batch, 1, no_kinds, NULL, error, sizeof error) ==
           H3_ERR_ARGUMENT);
     CHECK(strncmp(error, "encounters: ", 12) == 0);
+    /* v31: each entry's engine identity; the two sieges share one ruleset. */
+    CHECK(h3_batch_scenario_count(batch) == 4);
+    H3ScenarioInfo siege = {0}, again = {0}, encounters = {0};
+    CHECK(h3_batch_scenario_info(batch, 0, &siege) == H3_OK);
+    CHECK(h3_batch_scenario_info(batch, 1, &again) == H3_OK);
+    CHECK(h3_batch_scenario_info(batch, 2, &encounters) == H3_OK);
+    CHECK(h3_batch_scenario_info(batch, 4, &siege) == H3_ERR_ARGUMENT);
+    CHECK(siege.encounters == 0 && siege.adventure_ruleset_hash == 0 && siege.weight == 1);
+    CHECK(siege.battle_ruleset_hash == again.battle_ruleset_hash && siege.ruleset_hash != 0);
+    CHECK(encounters.encounters == 1 && encounters.adventure_ruleset_hash != 0);
+    CHECK(encounters.battle_ruleset_hash != siege.battle_ruleset_hash && encounters.weight == 2);
+    H3BatchConfig huge = config;
+    huge.envs = H3_BATCH_MAX_ENVS + 1;
+    CHECK(h3_batch_create(&huge, error, sizeof error) == NULL);
     uint32_t n_actions = h3_action_count();
     uint32_t n_spells = h3_spell_count();
     uint32_t n_targets = h3_target_count();
@@ -222,7 +236,9 @@ static int play_batch(Batched *out) {
 }
 
 int main(void) {
-    CHECK(h3_abi_version() == 30);
+    CHECK(h3_abi_version() == 31);
+    CHECK(h3_observation_encoding_version() == 21 && h3_action_encoding_version() == 13);
+    CHECK(h3_encounters_version() == 1);
 
     /* The full scenario: both sides are led by heroes with spell books. */
     H3Env *env = h3_env_create_synthetic(2, 42, 1000);

@@ -499,14 +499,15 @@ def save(path: Path, state: dict[str, Any]) -> None:
 
 
 def identity(trainer: Trainer) -> dict:
-    """The record's identity (design §4.2): the source, the engine's ABI and sizes, torch and the
-    device, the machine. The rulesets' hashes and the encodings' versions come with C ABI v31
-    (T2c)."""
+    """The record's identity (design §4): the source; the engine's ABI, encodings' and encounter
+    distribution's versions, sizes and the batch's entries with their rulesets' content hashes
+    (C ABI v31, T2c); torch and the device; the machine."""
     device = trainer.device
     return {
         "started": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         **source(),
-        "abi": _ffi.ABI_VERSION,
+        **_ffi.versions(),
+        "entries": trainer.batch.entries(),
         "observation_len": trainer.batch.observation_len,
         "action_count": trainer.batch.action_count,
         "parameters": sum(p.numel() for p in trainer.policy.parameters()),

@@ -170,6 +170,9 @@ def test_the_binding_refuses_what_the_engine_would_misread() -> None:
             BattleBatch(1, **options)
     with pytest.raises(ValueError, match="out of range"):
         BattleBatch(-1)
+    # v31: the engine refuses an absurd N (it aborted on its allocation).
+    with pytest.raises(H3Error, match=f"at most {_ffi.BATCH_MAX_ENVS}"):
+        BattleBatch(_ffi.BATCH_MAX_ENVS + 1)
     with pytest.raises(ValueError, match="weight"):
         batch.add_scenario(scenario("duel"), weight=-1)
 
@@ -179,6 +182,13 @@ def test_encounters_are_an_episode_source() -> None:
     batch = BattleBatch(n, threads=2, seed=4, max_steps=400)
     batch.add_scenario(scenario("duel"))
     batch.add_encounters(weight=3)
+    # v31: each entry's engine identity, for a run's record.
+    duel, encounters = batch.entries()
+    assert (duel["kind"], duel["weight"], duel["adventure_ruleset_hash"]) == ("scenario", 1, None)
+    assert (encounters["kind"], encounters["weight"]) == ("encounters", 3)
+    assert duel["battle_ruleset_hash"] != encounters["battle_ruleset_hash"]
+    assert all(len(e["ruleset_hash"]) == 16 for e in (duel, encounters))
+    assert int(encounters["adventure_ruleset_hash"], 16) != 0
     batch.reset()
     rng = np.random.default_rng(2)
     kinds: set[int] = set()

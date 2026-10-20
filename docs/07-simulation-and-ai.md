@@ -33,7 +33,9 @@ design note kept in `docs/epics/E05-log.md` (§1 to §9).
   three cast heads are one call each for the whole batch. An ended episode resets in the same
   call (its reward, result and, after a truncation, both final observations reported). T std
   threads in contiguous shards; play never depends on T, and a batch steps bit for bit as N
-  single envs with their episode seeds (a property test).
+  single envs with their episode seeds (a property test). At most `MAX_ENVS` (65 536) envs; each
+  entry's rulesets' content hashes and the encodings' and encounters' versions read back for a
+  training run's record (C ABI v31, E06 T2c).
 - **Seats** per scenario side: `External` (the caller acts) or `Internal(policy)`, played inside
   the call: `Random` (tests and benchmarks), `System` (E23's policy of the original's computer),
   the bots `Aggressor` and `Greedy`. Every side plays as a human player's (`human`), and Retreat

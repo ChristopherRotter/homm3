@@ -1,5 +1,5 @@
 /*
- * h3 engine C ABI, version 30 (see crates/h3-ffi/src/lib.rs and ADR-0011; the batch: ADR-0025).
+ * h3 engine C ABI, version 31 (see crates/h3-ffi/src/lib.rs and ADR-0011; the batch: ADR-0025).
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
  * Handles are opaque. Functions return H3_OK (0) or a negative error code; they never unwind.
@@ -65,6 +65,8 @@ uint32_t h3_action_count(void); /* entries */
 uint32_t h3_spell_count(void);  /* values of H3Action.spell */
 uint32_t h3_target_count(void); /* values of H3Action.target and .second */
 uint32_t h3_observation_len(void);
+uint32_t h3_observation_encoding_version(void); /* v31 */
+uint32_t h3_action_encoding_version(void);      /* v31 */
 
 /* scenario: 0 = duel, 1 = skirmish, 2 = full armies; max_steps 0 = unlimited. NULL on error. */
 H3Env *h3_env_create_synthetic(uint32_t scenario, uint64_t seed, uint32_t max_steps);
@@ -107,6 +109,7 @@ uint64_t h3_env_state_hash(const H3Env *env); /* trusted tooling: the full state
 #define H3_ENCOUNTER_SIEGE_HERO 3       /* a hero attacks a town a hero defends */
 #define H3_ENCOUNTER_SIEGE_GARRISON 4   /* a hero attacks a player's town without a hero */
 #define H3_ENCOUNTER_SIEGE_NEUTRAL 5    /* a hero attacks a neutral town */
+#define H3_BATCH_MAX_ENVS 65536 /* v31: H3BatchConfig.envs at most (h3_sim::MAX_ENVS) */
 #define H3_CURRENCY_AI_VALUE 0 /* the creatures' ai_value */
 #define H3_CURRENCY_GOLD 1     /* the creatures' cost in the ruleset's money */
 
@@ -119,7 +122,7 @@ typedef struct H3RewardConfig {
 } H3RewardConfig;
 
 typedef struct H3BatchConfig {
-    uint32_t envs;      /* N >= 1 */
+    uint32_t envs;      /* 1 <= N <= H3_BATCH_MAX_ENVS (v31: more is refused) */
     uint32_t threads;   /* T (at most N are started); 0 = the caller's thread */
     uint64_t seed;      /* every env's episode seeds derive from it */
     uint32_t max_steps; /* accepted steps of both seats per episode; 0 = unlimited */
@@ -130,6 +133,16 @@ typedef struct H3Seats {
     int32_t attacker; /* H3_SEAT_*; at least one side external */
     int32_t defender;
 } H3Seats;
+
+/* An episode source entry's engine identity (v31, E06 T2c): a training run's record names it. */
+typedef struct H3ScenarioInfo {
+    uint64_t ruleset_hash;           /* the core ruleset's content hash (a replay header's) */
+    uint64_t battle_ruleset_hash;    /* the battle ruleset's (a replay header's) */
+    uint64_t adventure_ruleset_hash; /* the encounter distribution's adventure ruleset's; 0 for a
+                                        scenario */
+    uint32_t weight;                 /* its weight among the entries */
+    uint32_t encounters;             /* 1: h3_batch_add_encounters' entry, 0: a scenario */
+} H3ScenarioInfo;
 
 /* The caller's arrays, N rows each; a NULL pointer skips that output. They must not overlap. */
 typedef struct H3BatchBuffers {
@@ -182,6 +195,11 @@ int32_t h3_batch_second_mask(H3Batch *batch, const uint32_t *entries, const uint
 int32_t h3_batch_step(H3Batch *batch, const H3Action *actions, const H3BatchBuffers *out);
 /* The seed of an env's episode (0 the first), as H3BatchBuffers.episode_seed (trusted tooling). */
 uint64_t h3_batch_episode_seed(uint64_t batch_seed, uint32_t env, uint32_t episode);
+/* v31 (E06 T2c): the entries in the order added (0 for NULL), each one's identity (H3_ERR_NULL,
+ * H3_ERR_ARGUMENT for an index past them), and the encounter distribution's version. */
+uint32_t h3_batch_scenario_count(const H3Batch *batch);
+int32_t h3_batch_scenario_info(const H3Batch *batch, uint32_t index, H3ScenarioInfo *out);
+uint32_t h3_encounters_version(void);
 
 #ifdef __cplusplus
 }

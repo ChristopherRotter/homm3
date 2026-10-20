@@ -772,6 +772,11 @@ fn errors() {
         BattleBatch::new(BatchConfig { envs: 0, ..config }).unwrap_err(),
         BatchError::NoEnvs
     );
+    let envs = MAX_ENVS + 1;
+    assert_eq!(
+        BattleBatch::new(BatchConfig { envs, ..config }).unwrap_err(),
+        BatchError::TooManyEnvs(envs)
+    );
     let (ruleset, setup) = h3_pack_battle::synthetic(TEXTS[1]).unwrap();
     let ruleset = Arc::new(ruleset);
     let new = |setup: &BattleSetup, weight, seats| {
@@ -891,6 +896,7 @@ fn errors() {
     );
     let messages = [
         BatchError::NoEnvs,
+        BatchError::TooManyEnvs(MAX_ENVS + 1),
         BatchError::NoExternalSeat,
         BatchError::ZeroWeight,
         BatchError::WeightOverflow,
@@ -906,8 +912,9 @@ fn errors() {
     ]
     .map(|e| e.to_string());
     assert!(messages.iter().all(|m| !m.is_empty()));
-    assert_eq!(messages[7], "a thread did not start: refused");
-    assert_eq!(messages[8], "`obs` has 1 elements, 2 needed");
+    assert_eq!(messages[1], "65537 envs: a batch holds at most 65536");
+    assert_eq!(messages[8], "a thread did not start: refused");
+    assert_eq!(messages[9], "`obs` has 1 elements, 2 needed");
 }
 
 #[test]

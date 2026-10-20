@@ -97,16 +97,16 @@ Still to come:
   system actor), file (`league/<id>.pt`, outside the checkpoint), birth in samples and its decayed
   score counts (§8); the next snapshot in samples.
 
-## 4. The record — built (T2a, T2b1), extended by T2c, T3, T4
+## 4. The record — built (T2a, T2b1, T2c), extended by T3, T4
 
 Built: `run.Run` and `run.Record` (typed `metrics.jsonl`: `start` with the identity, `update`,
 `snapshot`, `eval`, `stop`, `segment`, `end`; `record.json` schema 2, rebuilt from those records
 in order: its segments with their seeds, commits, changes, spans, how each ended and the records
 dropped), `python/records/` (README, `check_record` over every committed record in
-`tests/test_run.py`). Still to come:
+`tests/test_run.py`); schema 3 (T2c, C ABI v31): the identity's encodings' and encounter
+distribution's versions and the batch's `entries` (kind, weight, the core, battle and adventure
+rulesets' content hashes). Still to come:
 
-- **T2c:** in the identity, the observation and action encodings' versions, the encounter
-  table's version and the content hash of each of the batch's rulesets (schema 3).
 - **T3:** the record's parent (`--init-from`); `gate`, `promotion`, `ladder` records; every gate
   (candidate, pairs, LLR, the result), promotion and ladder (§7, with its intervals) in the
   record; its curve per gate interval.
@@ -257,14 +257,12 @@ Prioritized fictitious self-play (AlphaStar's PFSP) over the learner's past, gro
 
 Each with the user's checkpoint; only the next one refined (Q41's pattern).
 
-- **Increment 1** (now): T1, the user's review, then T2 in three small pull requests:
+- **Increment 1** (done 2026-10-20): T1, the user's review, then T2 in three small pull
+  requests:
   - **T2a — Config and record:** done 2026-10-20 (`E06-log.md`).
   - **T2b1 — The full checkpoint and `--resume`:** done 2026-10-20 (`E06-log.md`; the user cut
     T2b there: the pending gate or ladder and `--init-from` wait for T3's gate, §3).
-  - **T2c — C ABI v31:** the record's engine identity (the batch's rulesets' content hashes, the
-    observation and action encodings' versions, the encounter table's version) and
-    `h3_batch_create`'s N range-checked (the binding already checks it); `h3env`'s
-    `ABI_VERSION`.
+  - **T2c — C ABI v31:** done 2026-10-20 (`E06-log.md`).
   - Moved to T5: the observations written in place. It needs no ABI change: `h3_batch_step`
     takes its buffers per call, so the binding can pass the rollout's row (the read-only
     attributes stay); worth its code only if a profile shows the copy.

@@ -14,11 +14,11 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 - **E06 refined 2026-10-20** (AI-Q8; `docs/epics/E06-battle-ai.md`): it starts now beside E23
   with the kinds a player plays on both sides; the neutral share (T7) waits for E23's policy of a
   side without a hero (its T2 to T4). PPO and a league first, search last; runs of a few hours,
-  interruptible and resumable. **Done:** T1, T2a (#310; ADR-0026 in #306: the design note
-  `docs/epics/E06-design.md`, the run's config and record), T2b1 (the full checkpoint, Ctrl+C,
-  `--resume`; the pull request of `claude/brave-noether-dlpxsp`, the user's checkpoint). **Next:**
-  T2c (QUEUE); the pending gate and `--init-from` moved to T3b.
-- **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v30 (T7: the bots' seats) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q9, AI-QUIRK-1, AI-STUB-1.
+  interruptible and resumable. **Increment 1 done:** T1, T2a (#310; ADR-0026 in #306: the design
+  note `docs/epics/E06-design.md`, the run's config and record), T2b1 (#315: the full checkpoint,
+  Ctrl+C, `--resume`), T2c (C ABI v31: the pull request of `claude/brave-noether-dlpxsp`).
+  **Next:** increment 2 (T3a, T3b), refined at the user's checkpoint.
+- **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v31 (E06 T2c: the record's identity, N capped) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q9, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
 ## Standing traps
@@ -84,6 +84,11 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 
 ## Recent sessions
 
+### 2026-10-20 — E06 T2c (C ABI v31)
+
+- After #315's merge, the user asked for the next task: T2c as queued. `MAX_ENVS` 65 536; the
+  record's identity from `_ffi.versions()` and `BattleBatch.entries()` (schema 3). The full verify.
+
 ### 2026-10-20 — E06 T2b1 (the full checkpoint and `--resume`)
 
 - #310 had merged. Offered three seams; the user chose T2b1: T2b without the pending gate and
@@ -98,10 +103,3 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 - T2a: TOML configs, the schedule in samples, typed metrics and `record.json`, the held-out
   check without a growing set; `requires-python >= 3.11` (`tomllib`). 55 Python tests with
   torch on the CPU; the full verify before the pull request (`E06-log.md`).
-
-### 2026-10-20 — E06's refinement
-
-- The user called it while E23 reads (T1a3); AI-Q8: start now (the neutral share later), PPO and
-  a league with search last, fixed targets, runs of hours that can be interrupted and resumed.
-- Wrote `docs/epics/E06-battle-ai.md`; #296 (`shared/`), #297 merged. Fixed `master`'s red
-  `a_batch_is_n_single_envs` (its reference tried 65 skipped episodes, the batch 64).
