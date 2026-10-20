@@ -19,7 +19,21 @@ neutral share waits for E23's side without a hero.
    ladder from Python and `h3 ai eval`, the cut of the next increments. Read first: the epic file,
    `E05-log.md` §8 and §9, `python/h3env/train/`. **Acceptance:** the note and the draft
    committed; T2 refined in the epic file; stops for the user's review (no code). **Depends on:**
-   nothing. **Status:** in progress (`claude/nice-knuth-ekooly`, 2026-10-20 11:48 UTC).
+   nothing. **Status:** waiting (the user's review of `docs/epics/E06-design.md`, its §11, and the
+   ADR draft `docs/lanes/ai/adr-drafts/training-pipeline.md`; drafted 2026-10-20 on
+   `claude/nice-knuth-ekooly`). After the review: the answers into the note and the draft, the
+   draft to a `shared/` pull request for its number, T1 into `E06-log.md`.
+2. **E06 T2a Config and record** — **Scope:** the epic's T2a (design §1, §2, §4, §5.3 against
+   v0). **Acceptance:** a run from a TOML config writes its typed metrics and `record.json`
+   atomically; the held-out check needs no growing set; `python/records/` with the schema test;
+   the torch-free tests pass in the sandbox, the torch ones on the user's machine (a lane
+   command). **Depends on:** T1's review. **Status:** waiting (T1's review).
+3. **E06 T2b The full checkpoint and `--resume`** — **Scope:** the epic's T2b (design §3).
+   **Acceptance:** §3.4's tests. **Depends on:** T2a. **Status:** waiting (T1's review).
+4. **E06 T2c C ABI v31** — **Scope:** the epic's T2c (the record's engine identity, N
+   range-checked). **Acceptance:** the ABI's tests and the C smoke test, `h3env`'s
+   `ABI_VERSION` 31, the full verify. **Depends on:** T1's review (independent of T2a, T2b).
+   **Status:** waiting (T1's review).
 
 ## Inbox
 
@@ -46,7 +60,7 @@ Pass offer (fixed by the adventure lane's fixed tests, #266).
   hashing (E04b T11a); an encounter sample costs 50 µs (two heroes derived, each artifact through
   `apply_change`'s checks; a `Vec` per level-up's skill draw), 2 % of an episode (T5b2); the
   trainer copies each call's observations (9 MB at 256 envs) into the rollout, which the batch
-  could write in place (`H3BatchBuffers.obs` per call) (T8b). The battle lane's `full` workload
+  could write in place (`H3BatchBuffers.obs` per call) (T8b; E06 T5, no ABI change: design §10). The battle lane's `full` workload
   is lopsided (8 attacker victories in 2 399 agent seeds; E04b T11a): the encounter workload
   (`batch-random-encounters-v1`) is the realistic one. On the user's Ryzen 9 3900X the step
   scales to 9.9 × at 1 024 envs on 24 threads but only 3.8 × at 64 envs (`E05-log.md`, T9c's
@@ -58,7 +72,7 @@ Pass offer (fixed by the adventure lane's fixed tests, #266).
   chance and class split, A6's upgraded share, the guards' anti-magic share.
 - **The C ABI** (E05 T9b): `h3_batch_create` takes any N (an absurd one aborts on its
   allocation, which no `catch_unwind` catches; the binding range-checks it, a trusted local
-  consumer, ADR-0011); `h3env.tools.Env` keeps its handle after `H3_ERR_PANIC` (tests only).
+  consumer, ADR-0011; E06 T2c); `h3env.tools.Env` keeps its handle after `H3_ERR_PANIC` (tests only).
 
 **For E23** (the system actor; the neutral kinds' share): A3 grows a wandering stack by a tenth
 of its count, VCMI 1.7.5's `CGCreature::newTurn` a tenth of its power (a thousand per creature:

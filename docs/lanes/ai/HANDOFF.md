@@ -14,8 +14,9 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 - **E06 refined 2026-10-20** (AI-Q8; `docs/epics/E06-battle-ai.md`): it starts now beside E23
   with the kinds a player plays on both sides; the neutral share (T7) waits for E23's policy of a
   side without a hero (its T2 to T4). PPO and a league first, search last; runs of a few hours,
-  interruptible and resumable. **Next:** T1, the design and ADR draft (QUEUE), then the user's
-  review.
+  interruptible and resumable. **T1 drafted, in the user's review** (branch
+  `claude/nice-knuth-ekooly`): `docs/epics/E06-design.md` (§11 the review points) and
+  `adr-drafts/training-pipeline.md`. **Next:** the review's answers, then T2a to T2c (QUEUE).
 - **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v30 (T7: the bots' seats) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q8, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
@@ -76,6 +77,14 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 
 ## Recent sessions
 
+### 2026-10-20 — E06 T1, the design and the ADR draft
+
+- Offered a narrower seam (the run's lifecycle only); the user chose T1 as queued. CI's runs on
+  `master` never start (minutes); no original data staged (not needed).
+- Wrote the design note (run, config, schedule in samples, full checkpoint and resume, records,
+  held-out sets v1 with E05's as v0, SPRT gate, ladder, league, costs, the cut: T2 as T2a to T2c,
+  the observations in place to T5) and the ADR draft (nine decisions). Docs only.
+
 ### 2026-10-20 — E06's refinement
 
 - The user called it while E23 reads (T1a3); asked four questions (AI-Q8): start now with the
@@ -96,13 +105,3 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 - T9d: `shared/e05-closure` (BACKLOG, ADR-0025's line, docs/07 §1.1, the global HANDOFF's verify
   line), then `ai/e05-closure` (the design note kept in the log, its 26 references repointed:
   comments only, a full verify again; the battle queue's inbox for E23's references).
-
-### 2026-10-19/20 — Increment 6's cut; T9a, the audit, and T9b, the review
-
-- The user cut increment 6 (T9a to T9d; four reviewers; AI-Q7 to E06; the Linux verify with
-  original data in a later staged sandbox). T9a: criteria 1 to 7 met, the inbox by destination.
-- T9b: four fresh reviewers, 21 findings (`E05-log.md`); the user chose the Catapult as a placed
-  war machine and one Glicko-2 period per run. A tried fix of A3's growth broke A4's premise:
-  reverted, noted for E23.
-- Python's `h3env.train` tests need torch (`--group train`), absent in the sandbox: the
-  evaluation's skip count was checked ad hoc by loading `evaluate.py` without the package.
