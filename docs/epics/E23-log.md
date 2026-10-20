@@ -243,6 +243,13 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   draws other obstacles; `fixtures/README.md`). `random-rollouts-full` 79.3 k Ir per step against
   master's 78.7 k (+0.8 %), `random-rollouts-siege` +1.4 % per step (every walk at a town traces
   its path); both re-baselined, profiles compared with master.
+- **Checks:** a fresh agent re-read three points blind (0x4222C0's cost cell, hex to attack from
+  and empty path; the marks' cell writes and the flyer's pass after them; the failed move in
+  0x478900 with 0x445950 and 0x441FA0) and agreed on all three. It found one gap, fixed: 0x41F580
+  searches anew for the position to attack from, which a flyer never reaches when it is a hex it
+  passes over, so such a walk beyond the speed does nothing (a test). Its other note, the
+  computer's stop avoidance in a walk's own search, changes no path within a move (the module's
+  note).
 - **Readings at risk** (for T1b's batch rows): S-11's three outcomes; a berserk flyer whose search
   ends on a hex it passed over (rocks or stacks on the target's near side) does nothing; the war
   machine's aim by its front; the walk beyond the speed into a seen pit of its own side.

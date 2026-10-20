@@ -18,7 +18,10 @@
 //! position is queued at most twice, below); its refusal to mark from a stop when the range is
 //! within one move (0x4B378D: the walks' searches, which read no marks); the side whose stacks
 //! are no targets (every caller here asks with none, as the berserk turn's side −1); the tactics
-//! phase's range (no walk is searched there: a placement is one move).
+//! phase's range (no walk is searched there: a placement is one move); the computer's stop
+//! avoidance in a walk's own search (0x4B3420: for a stack the computer plays at a town; the
+//! engine's walks are commands, whose legality reads no player, and within one move a stop is
+//! an end that no path to another position passes, so no such path changes).
 
 use h3_content_battle::MAX_FIELD_HEXES;
 

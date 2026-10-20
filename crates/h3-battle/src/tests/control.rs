@@ -582,6 +582,11 @@ fn a_berserk_flyer_passes_over_what_blocks_it_but_never_lands_there() {
     let mut s = flight((5, 5), &[(4, 4), (4, 5), (4, 6)]);
     let events = berserk_now(&mut s, &r);
     assert!(passed(&events) && moves(&r, &events).is_empty() && strikes(&events).is_empty());
+    // The same beyond its speed: the walk towards that rock searches anew and reaches it on no
+    // step it stands on (0x41F580), so it does nothing either.
+    let mut s = flight((12, 5), &[(11, 4), (11, 5), (11, 6)]);
+    let events = berserk_now(&mut s, &r);
+    assert!(passed(&events) && moves(&r, &events).is_empty());
 }
 
 // covers: BAT-MAG-025, BAT-MAG-032

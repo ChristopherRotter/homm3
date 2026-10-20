@@ -79,7 +79,9 @@ pub(crate) fn berserk<S: Sink>(
 /// where its move reaches it (a seen pit there stops it before the attack, BAT-MAG-032; out of
 /// its move, BAT-QUIRK-24's case, it does nothing, as the original's move fails, 0x445950); if
 /// not, it walks along the path towards that position, at most its speed in steps, and ends after
-/// a stop it enters (§7.38: 0x41F580 without scores); a flyer ends where it does not pass over.
+/// a stop it enters (§7.38: 0x41F580 without scores, its own search to that position finding the
+/// same path); a flyer ends where it does not pass over, and does nothing when that position is
+/// one it passes over (the new search reaches it on no step it stands on).
 // rule: BAT-MAG-025
 fn walk_and_attack<S: Sink>(
     state: &mut BattleState,
@@ -130,6 +132,11 @@ fn walk_and_attack<S: Sink>(
             melee(state, ruleset, id, target, me.hex, charge, sink);
         }
         return true;
+    }
+    // The walk searches anew for that position (0x41F580), which reaches none it passes over:
+    // a flyer whose search ended on such a hex does nothing.
+    if walk.flown(from) > 0 {
+        return passes(id, sink);
     }
     let (path, len) = walk.path();
     // One of its first `speed` positions is no pass: a flyer passes over fewer than its speed
