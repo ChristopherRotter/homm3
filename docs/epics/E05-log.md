@@ -549,7 +549,12 @@ The full record of done tasks (the epic file keeps one line each).
   check).
 - **The Linux verify** (the cloud sandbox, 2 vCPUs; the user's executable, `H3bitmap.lod`,
   `H3ab_bmp.lod`, `Objects.txt`, `maps.tar` and `extracted.tar` staged from the device link):
-  LINUX_VERIFY_RESULT
+  `scripts/verify-once.sh engine --force -- --with-original-data` on b2d2e56 passed all 16 steps
+  (coverage 852 s, determinism 489 s; `bench-check`: `random-rollouts-full` +1.40 %, `-siege`
+  +0.27 % against their baselines, the battle lane's single-env gates; the original-data step:
+  the committed packs match the installation, the address map agrees with the executable, 160 of
+  160 maps read). `--force`, because the setup's baseline found the code verified by #286's run
+  (without the original data) and ran the light gates only.
 - Exit criteria 8 (the sweep recorded; the single-env gates in the Linux run's `bench-check`) and
   9 met.
 
