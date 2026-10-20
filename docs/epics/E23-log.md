@@ -385,4 +385,5 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   agreed on all three.
 - **Tooling:** the reading ran on the user's computer through the device shell (Python 3.10
   there): `uv run -q --no-project --python 3.11 --with capstone --with pefile python
-  scripts/exe.py …` with the repo's own `original-data/install/Heroes3.exe`, no staging.
+  scripts/exe.py …` with the repo's own `original-data/install/Heroes3.exe`, no staging. Not to
+  repeat (the user, 2026-10-20; #330): the computer may go offline mid-reading; read in the sandbox.
