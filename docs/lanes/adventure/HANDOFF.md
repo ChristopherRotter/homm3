@@ -4,7 +4,7 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 
 ## Current state
 
-- **E08**: increments 1, 2 and 3 **closed** (2026-10-12, -13, -20; increment 3: decisions 19–47). **Increment 4: hero progression only** (decisions 48–58). T24a done (survey `E08-progression.md`; ADV-Q15: decision 55); T24b done (drafts `adr-drafts/0013-`, `0017-increment-4.md`; `E08-design.md` parts A, B, the cut §17); ADV-Q16 answered (decision 58: drafts accepted, cut confirmed); **round 1: T25 + T26** (QUEUE). Records: `E08-log.md`.
+- **E08**: increments 1, 2 and 3 **closed** (2026-10-12, -13, -20; increment 3: decisions 19–47). **Increment 4: hero progression only** (decisions 48–60). T24a done (survey `E08-progression.md`; ADV-Q15: decision 55); T24b done (`E08-design.md`, the cut §17; ADV-Q16: decision 58). Round 1 (decision 59): T25 done (survey §10; ADV-Q17: decision 60), T26a done (#325, the ADRs amended); **T26b next** (QUEUE). Records: `E08-log.md`.
 - **Map reader and import** (`h3-map`): `read`/`parse` into `model::RawMap`; `import` into `h3_game::GameSetup`, `import_map` its static layer (`MAP_IMPORT_VERSION` 7, `docs/formats/h3m.md` "Import"). Every shipped map's static layer imports and validates; of the 160 shipped maps 2 import whole (`Race for Ardintinny`, `Tutorial.tut`), the rest are typed `Unsupported`. `verify --with-original-data` runs `crates/h3-map/examples/original_data.rs` on the shipped maps (with the monsters', grounds' and guarded piles' census).
 - **Monsters, grounds, guarded piles** (T20a2a): kinds `Monster`, `Ground`; `[params.monsters]`; `ObjectSetup.monster`/`.drawn` (ADV-MON-002 to -004); `army_left`; `battle_ground` (ADV-GRD-001); `ObjectView.monster`. T20a2b: `guard_of` (ADV-MON-005, -006). T20b1: `answer.rs` (ADV-MON-007), offers `Join`, `JoinForGold`, `Pursue` (ADV-MON-008). T20b2: `split` (ADV-MON-009, flag 24), `Defender::Monster`, `Actor::System`, `end_monster_battle` (ADV-MON-010). T20b3b1: `MonsterChanged`; fringe monsters in strict (decision 40). T21a (ADV-PIK-004, `state/piles.rs`): `Guards`, `guards_left`, `OfferKind::Fight`, `Defender::Guards`, `end_unowned_battle`.
 - **The store of heroes** (T18b, GAM-HER-001): `GameState` keeps `Arc<HeroDetails>` by `HeroId`, from `GameHeroSetup.details` or the defaults, validated by `h3-heroes`; `attack_defense`, `join_bonus` (T20a1); `GameObservation.heroes`.
@@ -19,7 +19,7 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 - **Experiments**: `h3-experiment` (battle's) has the adventure shape (batch E3's since T22a1: difficulty, underground, dispositions, guarded piles); batches 1, 2 and E3 scored. **Agents run batches** on the client lane's harness (decision 21; E17 H1, H2: questions, battles from the map, the underground, `level_up`, `heroes:experience`).
 - **Adventure ruleset part** (v8 since T20b1): terrains, roads, rivers, the movement and setup parameters, the object types, the starting resources by difficulty, the battle terrains, the monsters' parameters (with the price resource).
 - **Properties** on generated playable maps (`h3-map`'s `play.rs`, `view.rs`; T8b2); since T19b2 `Step::Fight` runs (hero casts through `h3-battle`, a dev-dependency); since T20b3b1 monsters (`MONSTERS`), grounds and the system actor; since T21a guarded piles (`GUARDED`); `the_plans_play_battles_to_a_victory` counts 192 fixed cases.
-- **Next:** #321 to merge; round 1 (T25 + T26). T26's `shared/` pull request applies both accepted drafts.
+- **Next:** #325 (shared) then T25's pull request to merge; T26b (code: shared and `cross-lane`).
 - **ADRs accepted**: ADR-0015 to -0017 (2026-10-10), their increment-2 amendments (#115), increment 3's (ADR-0013 too) applied by T18a (#185).
 - **Fuzzing is stable-only** (user, 2026-10-10).
 - **R01** (the content split): the core `h3-content` and `h3-pack` (`core.toml`) are shared; the writer is `h3_map::writer`.
@@ -40,14 +40,10 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 
 ## Recent sessions
 
+### 2026-10-20 — increment 4, eighth session: round 1, T25 and T26a
+
+Baseline 774ba0e. Decisions 59 (T25 + T26a), 60 (ADV-Q17). T26a: ADRs amended (#325). T25: survey §10 (no draws; the map's coast shares, A-11; E3-6 fits); the executable staged from the user's folder.
+
 ### 2026-10-20 — increment 4, seventh session: T24b2, T24b done
 
 Baseline ed4a213. Decision 57 (T24b2 whole). ADR-0017's draft; design part B, the cut. ADV-Q16 answered (decision 58: as recommended; ADR-0013's context tightened). Battle inbox: T26's, T32a's `cross-lane` parts.
-
-### 2026-10-20 — increment 4, sixth session: T24b1, the `h3-heroes` side
-
-Baseline c4fbe58 (engine code verified on 6f84c54, light gates). Decisions 55 (ADV-Q15 as recommended), 56 (T24b by crate). ADR-0013's draft; `E08-design.md` rewritten (part A).
-
-### 2026-10-20 — increment 4, fifth session: T24a2b2, T24a done
-
-Decision 54. Survey §7 (batch E4), §8 (rule ids), §9 (second reading). The client lane's inbox has E4's harness needs.
