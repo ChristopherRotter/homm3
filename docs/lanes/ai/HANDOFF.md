@@ -10,8 +10,12 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   `E05-log.md` §n), the environment as built in `docs/07-simulation-and-ai.md` §1.1. Criteria
   6 to 9 on the user's machine: the bots and `h3 ai eval`, the smoke run's 0.800 against Random,
   the sweep (about 50 000 steps/s a thread, 497 000 on 24), the verifies with original data on
-  Linux and Windows. **Next:** E06's refinement when the user calls it (QUEUE).
-- **Order** (BACKLOG): E05, then E23 (the battle lane: the system actor's policy), then E06.
+  Linux and Windows.
+- **E06 refined 2026-10-20** (AI-Q8; `docs/epics/E06-battle-ai.md`): it starts now beside E23
+  with the kinds a player plays on both sides; the neutral share (T7) waits for E23's policy of a
+  side without a hero (its T2 to T4). PPO and a league first, search last; runs of a few hours,
+  interruptible and resumable. **Next:** T1, the design and ADR draft (QUEUE), then the user's
+  review.
 - **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v30 (T7: the bots' seats) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q8, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
@@ -72,6 +76,15 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 
 ## Recent sessions
 
+### 2026-10-20 — E06's refinement
+
+- The user called it while E23 reads (T1a3); asked four questions (AI-Q8): start now with the
+  neutral share later, PPO and a league with search last, fixed targets, and runs of a few hours
+  that can be interrupted and resumed (the user's addition); the other proposals stand.
+- Wrote `docs/epics/E06-battle-ai.md` (decisions 1 to 12, increments T1 to T9, exit criteria),
+  AI-Q8 answered, AI-Q7's plan (T5), T1 queued. BACKLOG's E06 row (refined, in progress, the
+  order note) is a `shared/` change still to make.
+
 ### 2026-10-20 — T9c and T9d, the closure
 
 - #286 merged; `master` at b2d2e56 (#288, docs only). The user ran QUEUE's commands as one
@@ -91,14 +104,3 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   reverted, noted for E23.
 - Python's `h3env.train` tests need torch (`--group train`), absent in the sandbox: the
   evaluation's skip count was checked ad hoc by loading `evaluate.py` without the package.
-
-### 2026-10-19 — Increment 5: T7, the baselines (AI-Q6), and the network's row
-
-- #270 merged. The user cut increment 5 (T7) and decided AI-Q6 (the bots read the engine's
-  preview of their own attacks, never the retaliation; Glicko-2 from the server). Opened #271
-  (`shared/`, ADR-0025 point 5) and #274 (`cross-lane`, `h3_battle::preview`).
-- Built the bots, `h3 ai eval` (Greedy 0.828, Aggressor 0.800 against Random), C ABI v30 and
-  `h3env.train.ladder` (`E05-log.md`); #271, #274, #276 merged. The user's network: 0.802
-  against Random, 0.498 against Aggressor, 0.479 against Greedy (T7d).
-- For the global HANDOFF (a `shared/` change, kept from T8b): `cargo xtask verify` outside
-  `scripts/sandbox-verify.sh` needs `LLVM_COV`, `LLVM_PROFDATA` on `/usr/lib/llvm-20/bin`.
