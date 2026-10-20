@@ -1,4 +1,4 @@
-"""The smoke run's network (E05 T8, `docs/epics/E05-design.md` §8.3): an MLP over the flat
+"""The smoke run's network (E05 T8, `docs/epics/E05-log.md` §8.3): an MLP over the flat
 observation v21 with a value head and the factorized action's heads, each cast head conditioned
 on the earlier choices and masked by the batch's head calls.
 

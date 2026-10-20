@@ -1,5 +1,5 @@
 //! E05 T4: reward v1 against the six hand-computed outcomes of T1's design (`ai_value` of
-//! `base`, p = 10; `docs/epics/E05-design.md` §3 points here), the gold currency, and its zero
+//! `base`, p = 10; `docs/epics/E05-log.md` §3 points here), the gold currency, and its zero
 //! sum.
 
 use h3_content::HeroTypeId;

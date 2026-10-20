@@ -4,30 +4,11 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 
 ## Tasks
 
-**E05** (`docs/epics/E05-battle-env.md`, refined 2026-10-18, AI-Q1). Increments 1 and 2 done;
-increment 3 done 2026-10-19 (#253, #255, #257, #258); increment 4 (T8) done 2026-10-19 (#260,
-#264; exit criterion 7 met).
+**E05** (`docs/epics/E05-battle-env.md`) closed 2026-10-20 (T1 to T9 in six increments; the
+record in `E05-log.md`, the environment as built in `docs/07-simulation-and-ai.md` §1.1).
 
-Increment 6 (T9, the closure) cut 2026-10-19 (the epic: T9a to T9d; AI-Q7 moves to E06).
-
-T9a and T9b done 2026-10-20 (`claude/festive-brown-igukig`, its pull request).
-
-1. **T9c The user's machine**: the bench sweep and the Windows verify with original data; the
-   Linux verify with original data in a sandbox with the user's files staged (criteria 8, 9).
-   On `master` after this lane's T9 pull request, in PowerShell (the conda env of
-   `python/README.md` for the Python line):
-   ```powershell
-   cargo build --release -p h3-cli -p h3-ffi
-   foreach ($n in 64, 256, 1024) { foreach ($t in 1, 6, 12, 24) {
-     .\target\release\h3.exe ai bench --encounters default --envs $n --threads $t --calls (1048576 / $n) } }
-   .\target\release\h3.exe ai bench --encounters default --envs 256 --threads 12 --calls 4096
-   uv --directory python run python -m h3env.bench --encounters --envs 256 --threads 12 --calls 4096
-   cargo xtask verify --with-original-data --summary
-   ```
-   Record the 12 lines' two steps/s, the Rust/Python pair and the verify's steps in
-   `E05-log.md`. If another lane's step fails the full verify (E04c's precedent: `h3-server`'s
-   coverage on Windows), add `cargo xtask verify --scope ai --with-original-data --summary`.
-2. **T9d The closure**: the `shared/` pull request, the design note folded, the epic closed.
+1. **E06's refinement** (training at scale, evaluation, search; BACKLOG: after E23, the battle
+   lane's), when the user calls it; the inbox's E06 items and AI-Q7 are its input.
 
 ## Inbox
 
@@ -56,7 +37,9 @@ Pass offer (fixed by the adventure lane's fixed tests, #266).
   trainer copies each call's observations (9 MB at 256 envs) into the rollout, which the batch
   could write in place (`H3BatchBuffers.obs` per call) (T8b). The battle lane's `full` workload
   is lopsided (8 attacker victories in 2 399 agent seeds; E04b T11a): the encounter workload
-  (`batch-random-encounters-v1`) is the realistic one.
+  (`batch-random-encounters-v1`) is the realistic one. On the user's Ryzen 9 3900X the step
+  scales to 9.9 × at 1 024 envs on 24 threads but only 3.8 × at 64 envs (`E05-log.md`, T9c's
+  table): E06's batch size and thread count from there.
 
 - **Encounters v2** (with the adventure's logged encounters, decision 7; E05 T9b): A7's "+0.5 a
   week" in weeks 9 to 16 is rounded down in `encounters-v1.toml` (odd weeks half a level low);

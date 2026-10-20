@@ -1,4 +1,4 @@
-//! The training batch (E05 T3, ADR-0025 points 1 to 7; `docs/epics/E05-design.md` §1, §2): N
+//! The training batch (E05 T3, ADR-0025 points 1 to 7; `docs/epics/E05-log.md` §1, §2): N
 //! battle environments stepped together for training.
 //!
 //! * Each env's episodes come from a weighted list of [`Scenario`]s; episode `k` of env `i` has

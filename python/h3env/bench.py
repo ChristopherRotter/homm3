@@ -1,4 +1,4 @@
-"""Python's steps/s through the binding (E05 T6a, `docs/epics/E05-design.md` §7), the counterpart
+"""Python's steps/s through the binding (E05 T6a, `docs/epics/E05-log.md` §7), the counterpart
 of `h3 ai bench`: a batch of N envs of one scenario or of the encounter distribution v1, both
 seats external, K calls of uniformly random legal actions chosen from the batch's own masks (a
 cast's heads through the head calls), observations and entry masks written.

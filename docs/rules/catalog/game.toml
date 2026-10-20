@@ -42,7 +42,7 @@ numeric  = "integer"
 id       = "GAM-HER-001"
 title    = "The store of heroes: a hero's details when the game is built"
 context  = "game"
-status   = "implemented"
+status   = "verified"
 summary  = "The game keeps every hero's details by id, built when the game is built (ADR-0017 point 1): each field the setup customises (the map's hero body over its hero type's map-wide entry: experience, primary and secondary skills, artifacts worn and in the backpack, learned spells), else the default: level 1; an experience of 40 + a draw of 0-50 from the setup stream (a placeholder, drawn in hero order after every starting army; D-12, the original's rand() bias not kept); the class's primary skills; the hero type's secondary skills and spells; worn, the spell book when the type starts with one (only without custom artifacts) and the artifact of each war machine its starting army's roll gave (GAM-SET-001), where no worn artifact takes its slot. Then the spell points full (HER-MAN-001). The hero model validates them (h3_heroes::validate); a hero above level 1's experience (1 000 or more) is refused by the import until increment 4's levels. The owner sees its heroes' details, every viewer the type of the heroes it sees. E08 T18b: `h3_game::GameState::new`."
 numeric  = "integer"
 
@@ -57,7 +57,14 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGHeroInstance.cpp#L379-L455"
   retrieved  = "2026-10-14"
   confidence = "high"
-  note       = "Disagrees on the experience's upper bound (89 against the code's 90; D-12 as the code reading). VCMI also gives every hero a catapult (siege only, E04c/E09) and resets the formation to loose (the map's kept here; E3-9 checks the original)."
+  note       = "Disagrees on the experience's upper bound (89 against the code's 90; D-12 as the code reading). VCMI also gives every hero a catapult (siege only, E04c/E09) and resets the formation to loose, as the original never applies the map's (E3-9, E08 T22b; kept here: ADV-QUIRK-8)."
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-3c.md E3-7 (stamp b026743c, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, 2026-10-20): the 152 heroes off the map at 40 to 90 experience (3 at 40, 1 at 90); a hero placed with its type's defaults at 51, level 1"
+  retrieved  = "2026-10-20"
+  confidence = "high"
+  note       = "Confirms D-12 as the reading (40 to 90; VCMI's 40 to 89 refuted by the 90). E3-6 (a custom 5 000) started at level 5 with four level-ups' gains (3/6/1/1 from 2/3/1/1, four secondary advances), as VCMI: the import refuses such a hero until increment 4's levels. E08 T22b."
 
 [[rule]]
 id       = "GAM-TRN-001"
@@ -190,7 +197,7 @@ context  = "game"
 status   = "implemented"
 summary  = "A visit that starts a battle (increment 3: another player's hero's, GAM-BAT-004) opens it at once as a pending decision owned by the players of its sides: the attacker the visitor's owner, the defender the visited hero's owner, who plays outside its turn. Its setup: each side's army and formation as on the map, each hero's battle hero (h3_heroes::derive_battle_hero, with its maximum spell points, HER-MAN-001) and war machines (h3_heroes::war_machines); the battle is fought at the defender's tile, on the terrain the tile gives in the original's order (the adventure part's battle terrains: underground the subterranean, else on a coast tile, the map's flag 0x40, sand with the shore's battlefield, else the tile's own; since E08 T20a2a a special ground on the tile replaces the battlefield, ADV-GRD-001; boats, mines and sieges come later); each side owner's gold as its funds (a surrender's price, the battle part's resource). The battle's own seed is the attacking player's stream's next draw; its obstacles (h3_battle::generate_setup_obstacles) come from the tile's seed 110 291 x + 167 801 y + 81 569 (32-bit, the level not included) under ADV-QUIRK-5 (faithful), else from that stream's next draw. While it is open its owners' only legal commands are the battle's (`GameCommand::Battle`), for the side to act, by its owner (`NotYourSide` for the other, `NoBattle` without one, `BattleOpen` for an answer); neither owner can end its turn or move. Its start, its events by their visibility (a public one to both owners, a side's to its owner) and its end are told to its owners only; each sees its side's observation (`GameObservation::battle`). The command that ends it applies its outcome (GAM-BAT-002, GAM-BAT-003, GAM-BAT-005) and closes the decision. E08 T19a: `GameState::start_battle`, `battle_command`, `OpenBattle`, `AdventureState::battle_ground`."
 numeric  = "integer"
-quirks   = ["ADV-QUIRK-5"]
+quirks   = ["ADV-QUIRK-5", "ADV-QUIRK-8"]
 
   [[rule.source]]
   kind       = "design"
@@ -213,6 +220,13 @@ quirks   = ["ADV-QUIRK-5"]
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/BattleInfo.cpp#L160"
   retrieved  = "2026-10-14"
   confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-3c.md E3-8 (stamp b026743c, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, 2026-10-20): a step onto Blue's hero E3-9 started the battle at once, without a question; E3-9, tight in the map, defended in the loose formation (hexes 15, 49, 100, 151, 185)"
+  retrieved  = "2026-10-20"
+  confidence = "high"
+  note       = "The visit as the rule. The formation is ADV-QUIRK-8 (the original never applies the map's flag; fixed: the engine keeps it). E08 T22b."
 
 [[rule]]
 id       = "GAM-BAT-002"
@@ -256,6 +270,13 @@ numeric  = "integer"
   retrieved  = "2026-10-03"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-3c.md E3-8 (stamp b026743c, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, 2026-10-20): after the attacker's surrender the defending hero E3-9 had 0 experience, as before"
+  retrieved  = "2026-10-20"
+  confidence = "high"
+  note       = "Confirms that the +500 for a defeated hero is taken off again after a surrender (no creature died). E08 T22b."
+
 [[rule]]
 id       = "GAM-BAT-003"
 title    = "A hero that loses, retreats or surrenders leaves the map"
@@ -273,6 +294,13 @@ numeric  = "integer"
   kind       = "design"
   ref        = "E08 decision 19 (a defeated hero leaves the map); BAT-END-001's note (a side left with only created stacks has lost, BAT-Q7)"
   confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-3c.md E3-8 (stamp b026743c, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, 2026-10-20): the surrendering attacker E3-8 left the map with its whole army"
+  retrieved  = "2026-10-20"
+  confidence = "high"
+  note       = "Confirms a surrendering hero's removal. E08 T22b."
 
 [[rule]]
 id       = "GAM-BAT-004"
@@ -313,7 +341,7 @@ numeric  = "integer"
 id       = "GAM-BAT-005"
 title    = "A surrender's gold goes to the other side's owner"
 context  = "game"
-status   = "implemented"
+status   = "verified"
 summary  = "When a side surrenders, its price (BattleOutcome::surrender_cost, BAT-FLE-002) leaves its owner's treasury, saturating at what it holds, and the amount paid enters the other side's owner's treasury (GAM-RES-001's saturation), also when that side has lost too (BAT-Q7); each change is told to its owner only (`ResourcePaid`, `ResourceGained`). The original takes the price and adds it to the winner's owner; VCMI only takes it (D-13, decided as the code reading). E08 T19a."
 numeric  = "integer"
 
@@ -329,6 +357,13 @@ numeric  = "integer"
   retrieved  = "2026-10-14"
   confidence = "high"
   note       = "Disagrees: the winner's owner gets nothing. D-13 decided as the code reading (E08 decision 23)."
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-3c.md E3-8 (stamp b026743c, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, 2026-10-20): the attacker surrendered at once on its own turn; Red's gold 20 000 to 18 800, Blue's 20 900 to 22 100 (a price of 1 200)"
+  retrieved  = "2026-10-20"
+  confidence = "high"
+  note       = "Confirms D-13 as the reading: the price goes to the winner's owner (VCMI: nowhere; to the player whose turn it is would have left both unchanged). E08 T22b."
 
 [[rule]]
 id       = "GAM-BAT-006"

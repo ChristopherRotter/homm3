@@ -1,4 +1,4 @@
-"""Single environments: trusted tooling (E05 T6a; `docs/epics/E05-design.md` §6, ADR-0011).
+"""Single environments: trusted tooling (E05 T6a; `docs/epics/E05-log.md` §6, ADR-0011).
 
 `Env` wraps the single-env C functions (`h3_env_*`). Unlike the batch it reads the full state
 (`state_hash`, `fork`) and keeps the escapes (Retreat, Surrender) and the scenario's own `human`
