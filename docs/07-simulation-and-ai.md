@@ -20,12 +20,64 @@ A thin, allocation-conscious wrapper over the game logic:
 
 The scenario distribution matters as much as the engine: training on few fixed setups overfits. Battle setups are sampled from generators (armies, terrain, heroes, artifacts, spells); adventure training needs generated maps (epic: map generator, seeded by the user's existing project, optimizing zone balance and minimal teleport connections among other objectives).
 
+### 1.1 The battle environment as built (E05, ADR-0025)
+
+E05 (closed 2026-10-20) made every battle the engine plays trainable from Python. The decisions
+are ADR-0025's; the build's detail is in the code documentation (`h3_sim`'s `batch`, `reward`,
+`encounter`, `bots`; `h3-ffi`'s `batch`; `h3-cli`'s `src/ai/`), `python/README.md` and the
+design note kept in `docs/epics/E05-log.md` (§1 to §9).
+
+- **The batch** (`h3_sim::batch`, C ABI `h3_batch_*`): N envs per handle stepped by one call;
+  observations and entry masks are written into the caller's arrays, and per env the acting side,
+  both sides' rewards, done, truncated, the result, the episode's seed and kind and a status. The
+  three cast heads are one call each for the whole batch. An ended episode resets in the same
+  call (its reward, result and, after a truncation, both final observations reported). T std
+  threads in contiguous shards; play never depends on T, and a batch steps bit for bit as N
+  single envs with their episode seeds (a property test).
+- **Seats** per scenario side: `External` (the caller acts) or `Internal(policy)`, played inside
+  the call: `Random` (tests and benchmarks), `System` (E23's policy of the original's computer),
+  the bots `Aggressor` and `Greedy`. Every side plays as a human player's (`human`), and Retreat
+  and Surrender are masked out: whether to fight or flee is the adventure's (E13).
+- **Episode sources:** a weighted list of the battle lane's scenario files and the **encounter
+  distribution v1** (`crates/h3-sim/data/encounters-v1.toml`): the census of the 159 shipped maps
+  (`census-v1.toml`, aggregate counts only, written by `h3 ai census`) and the assumptions A1 to
+  A12 decided with the user (AI-Q4): kind, week, place, the armies and their balance, heroes and
+  sieges, integers only. Creatures, counts and splits come from the engine's own rules; a hero's
+  level-ups, spells and artifacts are approximations. The default weights draw the kinds with a
+  player on both sides (a hero battle 4/7, a siege a hero defends 2/7, a garrison's 1/7); the
+  neutral kinds are built and weigh 0 until E23's policy plays them. Encounters v2 will come from
+  the adventure's logged battles.
+- **Reward v1:** `r_s = (K_o − K_s − p · (m_s − m_o)) / S` in `ai_value` (or the creatures' cost),
+  K a side's losses including the war machines the battle placed, m its mana spent, p 10 per
+  spell point (provisional), S both sides' value at the start; terminal, 0 after a truncation,
+  zero-sum exactly.
+- **Information:** only projected observations cross the batch (the acting side's, both sides' at
+  a truncation). The fork, the state hash and the episode seeds are trusted tooling (`h3.h`,
+  `h3env.tools`), never an agent's input.
+- **Python** (`python/`, package `h3env`): ctypes over the C ABI, the caller's numpy arrays
+  written in place, the library's ABI version checked, short arrays refused and the outputs read-only; uv with
+  CPython 3.12 (on the user's machine a conda Python); PyTorch 2.14 (CUDA 12.6) in the opt-in
+  group `train`.
+- **The smoke training** (`h3env.train`): an own PPO over the factorized heads, since a library's
+  masked PPO masks each dimension alone and the cast's heads are conditioned on the earlier
+  choices; an MLP over `symlog` of the flat observation v21; self-play with a pool of frozen
+  earlier networks (naive self-play let the defender regress); evaluation of the sampled policy
+  on held-out episode seeds (greedy play repeats itself until the step limit). After 40 minutes
+  on the GTX 1070 it won 0.800 against Random.
+- **Baselines** (`h3_sim::bots`, `h3 ai eval`): Aggressor and Greedy read their side's
+  observation and the engine's preview of their own attacks, never the retaliation (AI-Q6); one
+  Glicko-2 period per run. On 1 000 held-out encounters per pair: Greedy 0.828 and Aggressor
+  0.800 against Random, Greedy 0.519 against Aggressor; the smoke network 0.802 against Random,
+  0.498 against Aggressor, 0.479 against Greedy.
+- **Throughput** (wall time, not gated; the gates count instructions in `benches/ai/`):
+  T9C_THROUGHPUT
+
 ## 2. Baselines (needed before RL)
 
 Scripted bots are baselines for evaluation only; training uses self-play and the system actor alone (AI-Q1):
 
-- random legal agent (also the benchmark workload),
-- simple heuristic battle bot (e.g., greedy damage/value),
+- random legal agent (also the benchmark workload; built, `Policy::Random`),
+- simple heuristic battle bots (built in E05: Aggressor and Greedy value, §1.1),
 - later: stronger scripted bots, search-based agents (MCTS with the forkable env), and references such as the original game's AI and other open-source AIs where comparison is feasible.
 
 ## 3. Strategy per problem
@@ -68,4 +120,4 @@ Local PC: Ryzen 9 3900-class CPU (12 cores / 24 threads), GTX 1070 (8 GB, Pascal
 
 ## 7. Deferred
 
-RL algorithm selection, network architectures, the reward's weights, the exact opponent ladder, league management, multi-agent (>2 players) handling.
+RL algorithm selection, network architectures, the reward's weights beyond v1 (its mana price is provisional), the exact opponent ladder, league management, multi-agent (>2 players) handling. E05's smoke run chose nothing here for good: its PPO, network and settings only show the environment trainable (E06 decides).
