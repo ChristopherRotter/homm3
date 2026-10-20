@@ -1,5 +1,7 @@
 # E08 batch E3b — results
 
+> Played by the capture harness on 2026-10-20 (`clients/capture/h3adv.py batch clients/capture/batches/E08-batch-3b.toml`): the same Complete 4.0 `Heroes3.exe` under Wine, without the HD mod; hot seat, difficulty Normal, the starting bonus random, Show Route on; read from the game's memory.
+
 Map file: `E08-batch-3b.h3m`. Fill in the blanks below and keep this file; an agent records the results (`docs/experiments/README.md`).
 
 **Stamp `a2586e5b`.** The map's description in the scenario list starts with "Stamp a2586e5b.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
@@ -26,10 +28,10 @@ Map file: `E08-batch-3b.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- E3-1's primary skills (attack/defense/power/knowledge) before: 
-- the questions asked (none, flee, join, …): 
-- a battle (yes/no): 
-- the monster on its tile after: 
+- E3-1's primary skills (attack/defense/power/knowledge) before: 1/1/1/1
+- the questions asked (none, flee, join, …): none
+- a battle (yes/no): yes
+- the monster on its tile after: none
 - anything odd: 
 
 ## E3-1c — 36 Halberdiers against 10 savage Pikemen on Normal (D-10's control) (D-10, ADV-MON-007)
@@ -43,10 +45,10 @@ Map file: `E08-batch-3b.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- E3-1c's primary skills (attack/defense/power/knowledge) before: 
-- the questions asked (none, flee, join, …): 
-- a battle (yes/no): 
-- the monster on its tile after: 
+- E3-1c's primary skills (attack/defense/power/knowledge) before: 0/0/1/1
+- the questions asked (none, flee, join, …): none
+- a battle (yes/no): yes
+- the monster on its tile after: none
 - anything odd: 
 
 ## E3-2 — 56 Pikemen against 10 savage Pikemen on Normal (the survey's E3-2, D-9) (D-9, ADV-MON-007)
@@ -60,10 +62,10 @@ Map file: `E08-batch-3b.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- E3-2's primary skills (attack/defense/power/knowledge) before: 
-- the questions asked (none, flee, join, …): 
-- a battle (yes/no): 
-- the monster on its tile after: 
+- E3-2's primary skills (attack/defense/power/knowledge) before: 0/0/1/1
+- the questions asked (none, flee, join, …): flee
+- a battle (yes/no): no
+- the monster on its tile after: none
 - anything odd: 
 
 ## E3-2c — Control: 39 Halberdiers against 10 savage Pikemen on Normal (D-9, ADV-MON-007)
@@ -77,10 +79,10 @@ Map file: `E08-batch-3b.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- E3-2c's primary skills (attack/defense/power/knowledge) before: 
-- the questions asked (none, flee, join, …): 
-- a battle (yes/no): 
-- the monster on its tile after: 
+- E3-2c's primary skills (attack/defense/power/knowledge) before: 0/0/1/1
+- the questions asked (none, flee, join, …): flee
+- a battle (yes/no): no
+- the monster on its tile after: none
 - anything odd: 
 
 ## E3-3r — r = 0.5 exactly: four Red heroes in turn against 32 friendly Halberdiers (D-8) (D-8, ADV-MON-007)
@@ -97,22 +99,22 @@ Map file: `E08-batch-3b.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- the Halberdiers' aggression at the start (memory): 
-- never flees (memory, yes/no): 
-- L0's primary skills before: 
-- L0: the questions asked: 
-- L0: a battle (yes/no): 
-- L1's primary skills before: 
-- L1: the questions asked: 
-- L1: a battle (yes/no): 
-- L2's primary skills before: 
-- L2: the questions asked: 
-- L2: a battle (yes/no): 
-- L3's primary skills before: 
-- L3: the questions asked: 
-- L3: a battle (yes/no): 
-- the Halberdiers on their tile after: 
-- the Halberdiers' aggression after the four visits (memory): 
+- the Halberdiers' aggression at the start (memory): 3
+- never flees (memory, yes/no): yes
+- L0's primary skills before: 0/0/1/1
+- L0: the questions asked: none
+- L0: a battle (yes/no): yes
+- L1's primary skills before: 0/0/1/1
+- L1: the questions asked: none
+- L1: a battle (yes/no): yes
+- L2's primary skills before: 0/0/1/1
+- L2: the questions asked: none
+- L2: a battle (yes/no): yes
+- L3's primary skills before: 0/0/1/1
+- L3: the questions asked: join
+- L3: a battle (yes/no): yes
+- the Halberdiers on their tile after: 32 Halberdiers
+- the Halberdiers' aggression after the four visits (memory): 3
 - anything odd: 
 
 ## E3-3b — r = 0.5 exactly: the same with Blue's four heroes and a second monster (D-8) (D-8, ADV-MON-007)
@@ -129,22 +131,22 @@ Map file: `E08-batch-3b.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- the Halberdiers' aggression at the start (memory): 
-- never flees (memory, yes/no): 
-- L0's primary skills before: 
-- L0: the questions asked: 
-- L0: a battle (yes/no): 
-- L1's primary skills before: 
-- L1: the questions asked: 
-- L1: a battle (yes/no): 
-- L2's primary skills before: 
-- L2: the questions asked: 
-- L2: a battle (yes/no): 
-- L3's primary skills before: 
-- L3: the questions asked: 
-- L3: a battle (yes/no): 
-- the Halberdiers on their tile after: 
-- the Halberdiers' aggression after the four visits (memory): 
+- the Halberdiers' aggression at the start (memory): 3
+- never flees (memory, yes/no): yes
+- L0's primary skills before: 0/0/1/1
+- L0: the questions asked: none
+- L0: a battle (yes/no): yes
+- L1's primary skills before: 0/0/1/1
+- L1: the questions asked: none
+- L1: a battle (yes/no): yes
+- L2's primary skills before: 0/0/1/1
+- L2: the questions asked: none
+- L2: a battle (yes/no): yes
+- L3's primary skills before: 0/0/1/1
+- L3: the questions asked: join
+- L3: a battle (yes/no): yes
+- the Halberdiers on their tile after: 32 Halberdiers
+- the Halberdiers' aggression after the four visits (memory): 3
 - anything odd: 
 
 ## E3-4 — The upgraded stack's draw at d2 = 50: 30 Pikemen at (12, 27) underground (D-11) (D-11, ADV-MON-009, A-6)
@@ -159,8 +161,8 @@ Map file: `E08-batch-3b.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- the defender's stacks at the battle's start: 
-- the monster on its tile after the retreat: 
+- the defender's stacks at the battle's start: 8 Pikemen, 8 Pikemen, 7 Halberdiers, 7 Pikemen
+- the monster on its tile after the retreat: 23 Pikemen
 - anything odd: 
 
 ## E3-4c — D-11's control: d2 = 50 where VCMI's formula upgrades too, 30 Pikemen at (29, 10) (D-11, ADV-MON-009, A-6)
@@ -174,8 +176,8 @@ Map file: `E08-batch-3b.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- the defender's stacks at the battle's start: 
-- the monster on its tile after the retreat: 
+- the defender's stacks at the battle's start: 8 Pikemen, 8 Pikemen, 7 Halberdiers, 7 Pikemen
+- the monster on its tile after the retreat: 23 Pikemen
 - anything odd: 
 
 ## E3-5 — A retreat from an upgraded stack, then a second visit (A-6) (A-6, ADV-QUIRK-7, ADV-MON-009, ADV-MON-010)
@@ -190,9 +192,9 @@ Map file: `E08-batch-3b.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- A: the defender's stacks at the battle's start: 
-- the monster on its tile after A's retreat: 
-- B: the defender's stacks at the battle's start: 
-- B: the battle's winner: 
-- the monster on its tile after B's battle: 
+- A: the defender's stacks at the battle's start: 8 Pikemen, 8 Pikemen, 7 Halberdiers, 7 Pikemen
+- the monster on its tile after A's retreat: 23 Pikemen
+- B: the defender's stacks at the battle's start: 12 Pikemen, 11 Halberdiers
+- B: the battle's winner: attacker
+- the monster on its tile after B's battle: none
 - anything odd: 
