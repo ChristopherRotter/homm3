@@ -1,9 +1,11 @@
 # E08 batch E3c played by the capture harness (E08 T22a2b, `cross-lane`; h3adv.py batch): the
 # procedure of experiments/specs/E08-batch-3c.toml as steps, on Normal. Hot seat, Red and Blue
 # human; Blue's hero never moves. Two reads at the start (the heroes off the map, a hero with a
-# custom experience), then Red's E3-8 attacks Blue's E3-9 and surrenders at its first stack's
-# turn (Blue's stacks defend until then). `expect` is the code reading's outcome (the engine's): a
-# difference shows under the encounter's "anything odd".
+# custom experience) and one of E3-9's experience, then Red's E3-8 attacks Blue's E3-9 and
+# surrenders at its first stack's turn (Blue's stacks defend until then). `expect` is the code
+# reading's outcome (the engine's): a difference shows under the encounter's "anything odd". The
+# winner is read but not relied on (the client lane's inbox: a winner of -1 would print
+# "defender"); who surrendered and the gold decide.
 
 spec = "experiments/specs/E08-batch-3c.toml"
 players = ["Red", "Blue"]
@@ -22,6 +24,11 @@ hero = "E3-6"
 record = { "E3-6's experience" = "hero:experience", "E3-6's level" = "hero:level", "E3-6's primary skills (attack/defense/power/knowledge)" = "hero:primary", "Pathfinding" = "hero:skill:Pathfinding", "Archery" = "hero:skill:Archery", "Logistics" = "hero:skill:Logistics", "Scouting" = "hero:skill:Scouting", "Navigation" = "hero:skill:Navigation", "Mysticism" = "hero:skill:Mysticism", "Offense" = "hero:skill:Offense", "Armorer" = "hero:skill:Armorer" }
 
 # --- Day 1, Red: D-13 and E3-9 -----------------------------------------------------------------
+
+[[step]]
+encounter = "E3-8"
+hero = "E3-8"
+record = { "E3-9's experience before" = "hero[E3-9]:experience" }
 
 [[step]]
 encounter = "E3-8"

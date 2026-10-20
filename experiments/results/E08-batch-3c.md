@@ -2,7 +2,7 @@
 
 Map file: `E08-batch-3c.h3m`. Fill in the blanks below and keep this file; an agent records the results (`docs/experiments/README.md`).
 
-**Stamp `7723590e`.** The map's description in the scenario list starts with "Stamp 7723590e.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
+**Stamp `b026743c`.** The map's description in the scenario list starts with "Stamp b026743c.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
 
 **Difficulty: Normal.** Choose it in the scenario list before you start.
 
@@ -59,7 +59,7 @@ Map file: `E08-batch-3c.h3m`. Fill in the blanks below and keep this file; an ag
 - Red hero **E3-8** (Octavia, specialty resource gold): attack 0, defense 0, power 1, knowledge 1; no skills; no artifacts; no spells; army 10 Pikeman, 5 Archer, 2 Swordsman, 1 Monk, 4 Halberdier
 - Opponent: Blue hero **E3-9** (Gelare, specialty resource gold): attack 0, defense 0, power 1, knowledge 1; no skills; no artifacts; no spells; army 10 Gremlin, 5 Stone Gargoyle, 3 Stone Golem, 2 Mage, 5 Master Gremlin
 
-1. Day 1, Red's turn, after E3-6: select Red's hero E3-8 (10 Pikemen, 5 Archers, 2 Swordsmen, 1 Monk, 4 Halberdiers; loose formation). Read its primary skills and Red's gold. Blue's hero E3-9 (tight formation, five stacks) stands on the tile east of it.
+1. Day 1, Red's turn, after E3-6: select Red's hero E3-8 (10 Pikemen, 5 Archers, 2 Swordsmen, 1 Monk, 4 Halberdiers; loose formation). Read its primary skills and Red's gold. Blue's hero E3-9 (tight formation, five stacks) stands on the tile east of it; its experience before comes from the game's memory (the harness; by hand, leave it empty).
 2. Click E3-9 twice: the battle starts at once. Note each stack's hex at the start (the harness reads them).
 3. Blue's stacks defend until a stack of Red's acts; then Red surrenders (the surrender button, then Yes).
 4. Note Red's and Blue's gold after, whether E3-8 is still on the map, its army and E3-9's experience.
@@ -67,6 +67,7 @@ Map file: `E08-batch-3c.h3m`. Fill in the blanks below and keep this file; an ag
 **Record**
 
 - E3-8's primary skills (attack/defense/power/knowledge) before: 
+- E3-9's experience before: 
 - Red's gold before: 
 - Blue's gold before: 
 - the questions asked (none, …): 

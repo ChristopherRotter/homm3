@@ -6,11 +6,11 @@
 # batch confirms or refutes it. Build: see docs/experiments/README.md. Predictions are for the agent
 # who evaluates the results; the template never shows them.
 #
-# | row  | question                                  | the reading (the engine)        | VCMI 1.7.5            |
-# | E3-7 | the default experience (D-12)             | 40 to 90                        | 40 to 89              |
-# | E3-6 | 5 000 experience at the start             | level 5; the gains not read     | level 5, 4 level-ups' gains |
-# | E3-8 | a surrender's price (D-13)                | Red -1 200, Blue +1 200         | Red -1 200, Blue +0   |
-# | E3-8 | the map's tight formation (E3-9)          | Blue tight: rows 2, 4, 5, 6, 8  | reset: loose 0, 2, 5, 8, 10 |
+# | row  | question                          | the reading (the engine)            | VCMI 1.7.5                  |
+# | E3-7 | the default experience (D-12)     | 40 to 90                            | 40 to 89                    |
+# | E3-6 | 5 000 experience at the start     | level 5; the gains not read         | level 5, 4 level-ups' gains |
+# | E3-8 | a surrender's price (D-13)        | Red -1 200, Blue +1 200             | Red -1 200, Blue +0         |
+# | E3-8 | the map's tight formation (E3-9)  | not read; the engine keeps it: tight | reset: loose               |
 #
 # The early signs (the client lane's harness check, E17 H1 and H2, not this batch): 147 heroes off
 # the map held 40 to 90 in two runs (1 and 4 at 90); a hero with 5 000 experience, 2/3/1/1, basic
@@ -31,7 +31,10 @@
 # The trap of the starting bonus: a hot-seat player's random starting bonus may give a hero an
 # artifact. A surrender discount's artifact (Statesman's Medal, Diplomat's Ring, Ambassador's Sash)
 # on E3-8 would lower the price (by 10 % each; HER-BAT-007): a price other than 1 200 with
-# Blue's gain equal to Red's loss still answers D-13. E3-8's primary skills are read before.
+# Blue's gain equal to Red's loss still answers D-13. E3-8's primary skills are read before. On
+# E3-6 an artifact's bonus would show in its primary skills (the hero's +0x476 to +0x479 hold the
+# worn artifacts' bonuses, HER-ADV-001): a primary sum above 11 then says nothing of the gains,
+# and the secondary skills' sum decides the row.
 
 [map]
 name = "E08 batch E3c"
@@ -136,13 +139,14 @@ id = "E3-8"
 title = "A hot-seat battle between heroes: the attacker surrenders; the defender's tight formation"
 questions = ["D-13", "E3-9", "GAM-BAT-005", "BAT-FLE-002", "BAT-SET-001"]
 procedure = [
-    "Day 1, Red's turn, after E3-6: select Red's hero E3-8 (10 Pikemen, 5 Archers, 2 Swordsmen, 1 Monk, 4 Halberdiers; loose formation). Read its primary skills and Red's gold. Blue's hero E3-9 (tight formation, five stacks) stands on the tile east of it.",
+    "Day 1, Red's turn, after E3-6: select Red's hero E3-8 (10 Pikemen, 5 Archers, 2 Swordsmen, 1 Monk, 4 Halberdiers; loose formation). Read its primary skills and Red's gold. Blue's hero E3-9 (tight formation, five stacks) stands on the tile east of it; its experience before comes from the game's memory (the harness; by hand, leave it empty).",
     "Click E3-9 twice: the battle starts at once. Note each stack's hex at the start (the harness reads them).",
     "Blue's stacks defend until a stack of Red's acts; then Red surrenders (the surrender button, then Yes).",
     "Note Red's and Blue's gold after, whether E3-8 is still on the map, its army and E3-9's experience.",
 ]
 record = [
     { field = "E3-8's primary skills (attack/defense/power/knowledge) before" },
+    { field = "E3-9's experience before" },
     { field = "Red's gold before" },
     { field = "Blue's gold before" },
     { field = "the questions asked (none, …)" },
@@ -167,20 +171,24 @@ predictions = """
   1 x 400 + 4 x 75 = 2 400: **1 200** (no Diplomacy, no discount).
 - **D-13, the reading** (action_dispatcher 0x479637 to 0x47966F; the engine's GAM-BAT-005): Red's
   gold **-1 200**, Blue's **+1 200**. **VCMI 1.7.5** (doSurrenderAction): Red's -1 200, **Blue's
-  unchanged**. The early sign (E17 H1) moved a defender's 470 to the attacker's player; this row
-  asks the other direction.
+  unchanged**. The early sign (E17 H1) moved a defender's 470 to the attacker's player, on the
+  attacker's turn, so it could not tell the winner's owner from the player whose turn it is; this
+  row can: **to the player whose turn it is**, Red pays and gets it back (**both golds
+  unchanged**).
 - **The outcome**: the defender wins (who surrendered: the attacker); **E3-8 leaves the map with
-  its whole army** (GAM-BAT-003); **E3-9's experience stays 0** (no creature killed; the +500 for a defeated
-  hero is taken off again after a surrender, battle_experience 0x46A350, GAM-BAT-002).
+  its whole army** (GAM-BAT-003); **E3-9's experience stays as before, 0** (the map's custom 0;
+  no creature killed; the +500 for a defeated hero is taken off again after a surrender,
+  battle_experience 0x46A350, GAM-BAT-002; VCMI 1.7.5 gives the 500 only after a normal win,
+  BattleResultProcessor: the same). A confirmation, not a dispute.
 - **E3-9, the formation** (BAT-SET-001, by slot: loose rows 0, 2, 5, 8, 10 and tight 2, 4, 5, 6,
   8 for five stacks; hex = 17 x row + column, the attacker in column 1, the defender in column 15;
   the engine keeps the map's flag, GAM-HER-001): **the attacker (loose) 1, 35, 86, 137, 171** for
-  every source; **the defender (tight) 49, 83, 100, 117, 151** under the reading. VCMI 1.7.5
-  resets every hero to loose at the start (initHero's setFormation(LOOSE)): the defender **15, 49,
-  100, 151, 185**. Only
-  83/117 against 15/185 tell them apart; both columns' 49, 100, 151 are shared.
+  every source; **the defender (tight) 49, 83, 100, 117, 151** under the engine (the original's
+  handling of the map's flag was not read, survey §6.4). VCMI 1.7.5 resets every hero to loose at
+  the start (initHero's setFormation(LOOSE)): the defender **15, 49, 100, 151, 185**. Only 83 and
+  117 against 15 and 185 tell them apart; 49, 100 and 151 are in both.
 - The tight table rests on VCMI's layout and the wiki (BAT-SET-001), never observed in the
-  original: a defender other than these two answers both questions (record the hexes as read).
+  original: defender hexes other than these two sets refute that table (record them as read).
 """
 [encounter.hero]
 type = "Octavia"
