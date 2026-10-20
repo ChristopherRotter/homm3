@@ -162,3 +162,16 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Defaults: fixed in every profile
 - Regression test: `crates/h3-heroes/src/tests/level.rs`, `a_level_is_checked_and_applied`
 - Decided by / date: the user 2026-10-20 (ADV-Q15; the epic's decision 55)
+
+### ADV-QUIRK-14 — The computer's terrain shares count only the coast
+- Class: preserve, no flag: the rule in every profile (the user, 2026-10-20, ADV-Q17, A-11; the epic's decision 60)
+- Context / rules affected: heroes, HER-LVL-006 (E08 T28); the game's count of the shares with E08 T29 (GAM-SET-002)
+- Original behavior: `ai_map_terrain_shares` (0x52B9C0), which weighs Pathfinding and Navigation for the computer's choice of skills, counts only the tiles of both levels with the tile flag `0x40` that are not rock: the map file's coast flag, which the editor sets on land beside water and on no other tile. So the water share is 0 on every map with a coast (Navigation worth nothing), Pathfinding is weighed by the coast's terrain alone, and a map without a coast divides 0 by 0: a NaN, which `_ftol` turns into 0 (both worth nothing).
+- Intended/expected behavior: probably the map's tiles (what a fix would count is a guess, ADV-Q17).
+- Impact: AI-only (which offer the computer takes: the levels at load, an unowned hero's default, later E10's computer players); harmless to the rules.
+- Community status: not documented (VCMI does not reproduce the evaluation, survey `E08-progression.md` §10.7).
+- Sources: code reading (E08 T25, survey `E08-progression.md` §10.3; re-read by T28: the flag test at the tile's +0xC and the rock test before the counts); `docs/formats/h3m.md`, "Tile" (the coast flag).
+- Flag: none
+- Defaults: the original's in every profile
+- Regression test: `crates/h3-heroes/src/tests/choice.rs`, `the_shares_are_the_originals_doubles` (the evaluation on the counts); the count from the static map with E08 T29
+- Decided by / date: the user 2026-10-20 (ADV-Q17; the epic's decision 60)

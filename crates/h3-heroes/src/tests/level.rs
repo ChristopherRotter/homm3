@@ -71,7 +71,7 @@ fn class(k: &str, primary: [u8; 4], gain: [[u8; 4]; 2], weights: [u8; 28]) -> He
 
 /// The test pack with the original's 28 skills, Wisdom and the four schools, a Knight (Orrin) and
 /// a Death Knight (`t:dk`) with the base pack's chances and weights.
-fn base_pack() -> ContentPack {
+pub(super) fn base_pack() -> ContentPack {
     let mut p = pack();
     p.skills = BASE_SKILLS
         .iter()
@@ -108,16 +108,16 @@ fn base_pack() -> ContentPack {
     p
 }
 
-fn base() -> Ruleset {
+pub(super) fn base() -> Ruleset {
     compile(base_pack()).unwrap()
 }
 
-fn s(r: &Ruleset, name: &str) -> SkillId {
+pub(super) fn s(r: &Ruleset, name: &str) -> SkillId {
     skill(r, &std::format!("t:{name}"))
 }
 
 /// A bare hero of `hero` at level 1 with `experience`, the skills given at their levels.
-fn hero(r: &Ruleset, hero: &str, experience: u32, skills: &[(&str, u8)]) -> HeroDetails {
+pub(super) fn hero(r: &Ruleset, hero: &str, experience: u32, skills: &[(&str, u8)]) -> HeroDetails {
     HeroDetails {
         hero_type: r.hero_type_by_key(hero).unwrap(),
         level: 1,
@@ -156,13 +156,18 @@ impl Draws for Fixed {
 }
 
 /// The level-up drawn with the original's draws for the seed byte at the next level.
-fn original(r: &Ruleset, d: &HeroDetails, seed: u8, banned: &[SkillId]) -> LevelUp {
+pub(super) fn original(r: &Ruleset, d: &HeroDetails, seed: u8, banned: &[SkillId]) -> LevelUp {
     let mut draws = OriginalDraws::new(seed, d.level + 1);
     draw_level_up(d, r, banned, &mut draws).unwrap()
 }
 
 /// `d` with the level-up's answer applied, checked first and valid after.
-fn answered(r: &Ruleset, mut d: HeroDetails, up: &LevelUp, choice: Choice) -> HeroDetails {
+pub(super) fn answered(
+    r: &Ruleset,
+    mut d: HeroDetails,
+    up: &LevelUp,
+    choice: Choice,
+) -> HeroDetails {
     let change = up.change(choice);
     assert_eq!(check_change(&d, r, change), Ok(()), "{change:?}");
     apply_change(&mut d, r, change);
@@ -532,11 +537,13 @@ fn wisdom_and_a_school_are_offered_after_the_class_intervals() {
     );
 }
 
-// covers: HER-LVL-001, HER-LVL-002, HER-LVL-003, HER-LVL-004, HER-LVL-005
+// covers: HER-LVL-001, HER-LVL-002, HER-LVL-003, HER-LVL-004, HER-LVL-005, HER-LVL-006
 #[test]
 fn batch_e3c_e3_6_levels_a_death_knight_from_its_seed() {
     // Survey §3.3: a Death Knight with 5 000 experience, 2/3/1/1 and eight basic skills, S = 75,
-    // levels 2 to 5 chosen left, right, right, right.
+    // levels 2 to 5 chosen left, right, right, right; §10.6: the original's choice at load takes
+    // them on the batch's map, which has no coast (Pathfinding and Navigation worth 0; values 0
+    // against 0, 35 against 100, 0 against 50, 1 against 100).
     let r = base();
     let skills = [
         "pathfinding",
@@ -565,7 +572,19 @@ fn batch_e3c_e3_6_levels_a_death_knight_from_its_seed() {
             Offers::Two(s(&r, first), s(&r, second)),
             "level {level}"
         );
-        d = answered(&r, d, &up, choice);
+        let chosen = original_choice(&d, &r, &up, ArmyWorth::SETUP, TerrainShares::default());
+        assert_eq!(chosen, choice, "level {level}");
+        // With the file's shares (1.0, as before any map is counted) levels 2 and 4 would take
+        // Navigation (500 against Pathfinding's 250, then against Scouting's 50).
+        let file = TerrainShares {
+            tiles: 1,
+            water: 1,
+            rough: [1; 3],
+        };
+        let at_file = original_choice(&d, &r, &up, ArmyWorth::SETUP, file);
+        let flips = level == 2 || level == 4;
+        assert_eq!(at_file != choice, flips, "level {level}");
+        d = answered(&r, d, &up, chosen);
     }
     assert_eq!(d.level, 5);
     assert_eq!(d.primary, [3, 6, 1, 1]);

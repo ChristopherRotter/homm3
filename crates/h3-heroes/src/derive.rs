@@ -317,7 +317,25 @@ fn effective_primary(
     params: &HeroParams,
     skill: PrimarySkill,
 ) -> u8 {
-    let mut total = i32::from(details.primary[skill.index()]);
+    effective_primary_from(
+        details,
+        ruleset,
+        params,
+        skill,
+        details.primary[skill.index()],
+    )
+}
+
+/// [`effective_primary`] with the base value `base` in place of the details' (E08 T28: the
+/// original's choice sees the level's primary skill already raised, HER-LVL-006).
+pub(crate) fn effective_primary_from(
+    details: &HeroDetails,
+    ruleset: &Ruleset,
+    params: &HeroParams,
+    skill: PrimarySkill,
+    base: u8,
+) -> u8 {
+    let mut total = i32::from(base);
     for effect in effects(details, ruleset, Count::PerCopy) {
         if let HeroEffect::PrimarySkills {
             attack,
