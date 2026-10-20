@@ -1,11 +1,11 @@
 # E08 progression survey (E08 T24a): experience, levels, level-ups
 
 Date: 2026-10-20. Scope: E08 increment 4 (decision 48: hero progression only), input for T24b's
-ADR drafts and the cut. Written in parts (decisions 51, 52): **T24a1** §1 experience to levels
+ADR drafts and the cut. Written in parts (decisions 51 to 53): **T24a1** §1 experience to levels
 and §2 the level-up, from the code and VCMI; **T24a2a** §3 levels at load and §4 what follows the
-level, the same way; **T24a2b** the rest (the wiki on every section, §5's further disputes, §6
-the census, §7 the batch's plan, the proposed rule ids, a fresh agent's second reading, the
-questions for the user's checkpoint). Input, not rules (`README.md`).
+level, the same way; **T24a2b1** §5 the wiki on §1–§4 and §6 the census of the shipped maps;
+**T24a2b2** the rest (§7 the batch's plan, the proposed rule ids, a fresh agent's second reading,
+the questions for the user's checkpoint). Input, not rules (`README.md`).
 
 **Sources** (retrieved 2026-10-20):
 - `original-data`: a code reading of the user's `Heroes3.exe` (SoD 4.0 Complete); every address
@@ -28,9 +28,12 @@ questions for the user's checkpoint). Input, not rules (`README.md`).
   0x4CAE10, `placed_hero_setup` 0x4D8B30) and the battle's end into the levels (`battle_end`
   0x477470, `adventure_battle` 0x4AD470); H3API's names for the game's `heroSetup` and
   `campaignInfo` decide which setup is which (§3.1).
-- `wiki`: not read in T24a1 and T24a2a (T24a2b, with the user's approval).
-- `computed`: the tables and the worked level-up below come from a throwaway script that
-  follows the reading (not committed); test vectors to confirm, not facts.
+- `wiki`: read in T24a2b1 with the user's approval (2026-10-20): the pages §5 names,
+  `https://heroes.thelazy.net/index.php/<Page>`.
+- `original-data` (the census, T24a2b1): the installation's 160 shipped maps read with `h3-map`'s
+  reader (§6).
+- `computed`: the tables, the worked level-up and §6's counts come from throwaway scripts that
+  follow the reading (not committed); test vectors to confirm, not facts.
 
 ## 0. Findings in short
 
@@ -76,6 +79,21 @@ questions for the user's checkpoint). Input, not rules (`README.md`).
   (0x4AE324, 0x4AE42C); the engine's rules that read the level (`h3-heroes`' specialties, the
   spell points) need no change but the level's source; VCMI shows another player's hero
   without its level.
+
+- **The wiki** (§5, T24a2b1) agrees with the reading on the thresholds, the levels past 74 (88,
+  100, 108, 868, 3 732, 5 920, 6 424, then a hang: the reading's arithmetic gives the same
+  sequence), the hero's fixed seed (D-14), the primary rows from the level-up to level 10
+  (D-15), the Wisdom and school intervals and the Elementalist counted as might (D-16, A-10), a
+  class-banned known skill weighing 1 (D-18); it is silent on the level limit and a known
+  school's weight (D-17); it differs on the primary bound (A-9: a reset at 129) and on **D-20**:
+  a hero levelled at load always takes the left offer, as VCMI's first. E3-6 fits the reading's
+  choice, not always-left (§5.2): a conflict for the second reading and the batch (T24a2b2).
+- **The census** (§6): 103 placed heroes and prisoners have a custom experience (42 heroes,
+  61 prisoners; levels 3 to 15, two prisoners 42); no shipped map has a level limit, a custom
+  primary skill above 9, a hero that knows a skill its map bans, an Elementalist with
+  experience, or experience anywhere near A-7. Without the import's refusal of an experience 5
+  maps import whole (3 more: `Adventures of Jared Haret`, `Faeries`, `Knee Deep in the Dead`),
+  with 9 heroes and 41 level-ups at load.
 
 ## 1. Experience to levels
 
@@ -296,10 +314,10 @@ Quirk candidates (for the user to classify; §6's census sizes A-7, A-8):
 
 | Id | Title | Impact | Suggested class | Confidence it exists in SoD |
 |---|---|---|---|---|
-| A-7 | Past level 74 the 32-bit thresholds wrap: 1 810 034 207 experience makes level 88 (75 to 87 skipped), more gives wrapped levels, 2³¹ − 1 hangs the game, a gain past it makes the experience negative and the level 0 | state-corrupting (a hang, a lost level) | always fixed: the engine bounds the experience (options for T24b: at 1 810 034 206, so level 74 stays the highest, or VCMI's longer table) | high: the arithmetic (computed); the wiki on the highest level (T24a2) |
-| A-8 | A level limit above 75 caps at a wrapped threshold: negative for 92 of 180 limits (a negative experience at the next gain), else a level unrelated to the limit | state-corrupting | always fixed (e.g. the import refuses or clamps such a limit) | high if a map can hold such a limit: the census (T24a2) |
-| A-9 | A primary skill past 127 wraps to −128 on a level-up | gameplay-altering, rare (a 99 plus worn artifacts plus level-ups) | always fixed or fix-optional (the user) | high: the reading; reachability with the census |
-| A-10 | The Elementalist gets Wisdom and schools on the might classes' intervals (D-16) | gameplay-altering (small: the Elementalist's offers) | the user: a faithful rule, or a fix-optional flag | medium: one reading; T24a2's second reading and the batch |
+| A-7 | Past level 74 the 32-bit thresholds wrap: 1 810 034 207 experience makes level 88 (75 to 87 skipped), more gives wrapped levels, 2³¹ − 1 hangs the game, a gain past it makes the experience negative and the level 0 | state-corrupting (a hang, a lost level) | always fixed: the engine bounds the experience (options for T24b: at 1 810 034 206, so level 74 stays the highest, or VCMI's longer table) | high: the arithmetic (computed) and the wiki's levels agree (§5) |
+| A-8 | A level limit above 75 caps at a wrapped threshold: negative for 92 of 180 limits (a negative experience at the next gain), else a level unrelated to the limit | state-corrupting | always fixed (e.g. the import refuses or clamps such a limit) | high if a map can hold such a limit; no shipped map has a limit (§6.2) |
+| A-9 | A primary skill past 127 wraps to −128 on a level-up | gameplay-altering, rare (a 99 plus worn artifacts plus level-ups) | always fixed or fix-optional (the user) | high: the reading; the wiki differs (a reset to 0 at 129, §5); no shipped hero starts above 9 (§6.1) |
+| A-10 | The Elementalist gets Wisdom and schools on the might classes' intervals (D-16) | gameplay-altering (small: the Elementalist's offers) | the user: a faithful rule, or a fix-optional flag | high: the reading and the wiki agree (§5); no Elementalist levels at load on the shipped maps (§6.1) |
 
 ### 2.8 Leads for T24a2
 
@@ -396,7 +414,7 @@ copies it).
 
 | Id | Question | Sources | Needed by | Settle by |
 |---|---|---|---|---|
-| D-20 | At load, which offer is learned: the computer's evaluation (0x52BBD0; the reading) or the first (VCMI) | the reading against VCMI | the import's levels (decision 48) | the user at T24a2b's checkpoint; the evaluation (0x524690, 0x524DD0) is unread: E10's computer players need it as well. Options for T24b: read and port it, or the first offer (VCMI) as a documented stand-in |
+| D-20 | At load, which offer is learned: the computer's evaluation (0x52BBD0; the reading) or the first (VCMI) | the reading against VCMI and the wiki (always the left offer; §5.2: E3-6 fits the reading) | the import's levels (decision 48) | the user at T24a2b2's checkpoint; the evaluation (0x524690, 0x524DD0) is unread: E10's computer players need it as well. Options for T24b: read and port it, or the first offer (VCMI) as a documented stand-in |
 | D-21 | At load, a custom experience above the scenario's level limit: capped and lowered to the limit's threshold (the reading) or levelled to its own level (VCMI) | the reading against VCMI | the import | the user; recommended: the reading (§6's census: does a shipped map have such a hero?) |
 
 ## 4. What follows the level (T24a2a)
@@ -453,8 +471,123 @@ level-up's draws and offers are the owner's: the offers and the seed byte are hi
 for every other player (decision 9); the gains show to others only as far as primary skills do
 (in a battle against the hero, §9 of `E08-battles.md`).
 
-## 5. Disputes against the wiki *(T24a2)*
+## 5. The wiki against §1–§4 (T24a2b1)
 
-## 6. The census *(T24a2)*
+Read through WebFetch (summarised; short verbatim quotes asked for, the pages' raw markup),
+2026-10-20, with the user's approval: `https://heroes.thelazy.net/index.php/Experience`,
+`…/Secondary_skill` (section "Secondary skill advancement rules"), `…/Hero_class`,
+`…/Primary_skill`, `…/Prison`, `…/Campaign` and the search for "level limit". None of the
+passages below carries a version mark; the pages mark HotA's changes apart (`{{hota}}`,
+`{{-wh}}`), so they are read as the SoD game's.
 
-## 7. The batch's plan *(T24a2)*
+### 5.1 Point by point
+
+| Survey | The wiki | Against the reading |
+|---|---|---|
+| §1.1 the thresholds | Experience: levels 1 to 20 (13 = 24 320 … 17 = 48 279, 20 = 81 961) and 70 to 75 (74 = 1 508 362 195, "75/88" = 1 810 034 207) | the same numbers |
+| §1.2 the highest level (A-7) | "after reaching level 75, a hero gets level 88 at once (13 more level-ups consecutively)"; the next levels 100, 108, 868, 3 732, 5 920; "The final usable level is level 6424", beyond it an endless loop of level-ups; HotA: at most 74, the overflow fixed | **agrees**, and more exactly than §1.2 said: the levels a hero can hold are the records of the wrapped thresholds, and the reading's arithmetic (32-bit sums, `crt_ftol`'s low word; computed) gives exactly 75 → 88, 100, 108, 868, 3 732, 5 920, 6 424. Past 6 424 (from 2 147 400 657, level 6 425's wrapped threshold) the next record would make the hero level 72 924, which the 16-bit level (+0x55) cannot hold: the wiki's endless loop there fits that bound (where the loop then runs on was not read). A-7's confidence stays high |
+| §1.3 the level limit | no page; the search finds only the Campaign page's tips (a hero that "has already hit the level limit") | silent: the reading stands alone against VCMI (D-19, D-21; an experiment candidate) |
+| §2.2 the seed (D-14) | "The random seed for offering skills is separate for every hero and is fixed at the start of the scenario", unhired heroes included; reloading brings the same offers; skills learned elsewhere (Witch Hut, Scholar) change the sequence | **agrees** with the reading (S per hero from the new game; a level's offers follow S, L and the hero's skills). VCMI's own stream per hero would repeat on a reload too, but not when the order of other draws changes |
+| §2.3 the primary rows (D-15) | Hero class: "chances to raise them at 2-9 and 10+ level-ups", numbered by the level reached; Primary skill: "levels 1 to 9" and "after that" | **agrees** with the reading (the new level 10 takes the second row), against VCMI; the five rows checked (Knight, Cleric, Death Knight, Planeswalker, Elementalist) equal the packs' `primary_gain` |
+| §2.3 the bound (A-9) | Primary skill: "The upper limit is 99. At 129 the skill value is reset to 0." | **differs**: the reading's byte wraps past 127 to −128; a value that acts or shows as 0 from there would fit a clamp of negative values (not read), but the wiki's 129 does not fit the wrap at 128. Reachable only past 99 with artifacts (§6: no shipped map's hero starts near it) |
+| §2.4 the offers | two different skills: first a known one at Basic or Advanced, second by the class's weights; two new ones when nothing below Expert is known; "if there is only one skill to offer, it will be forcefully added"; none: the primary skill only; eight skills: two advances; a class's weights in 112ths | **agrees** (every class's `skill_weights` in the packs sums to 112) |
+| §2.4 Wisdom and schools | Wisdom due every 3 levels for magic classes, 6 for might (at levels 3 and 6 when never offered, then counted from the last offer); a school every 3 and 4; Wisdom first; a counter reset whenever its skill is offered, by chance or forced | **agrees** (+0x90, +0x3F; an offer by chance resets as well) |
+| D-16, A-10 the Elementalist | "The only exception is the Elementalist class, to which are considered Might heroes by the levelling system"; Hero class: "a might hero (or an Elementalist)"; HotA made it level as a magic class | **agrees** with the reading against VCMI; A-10's confidence rises to high (the reading and the wiki) |
+| D-17 a due school | "The exact School of Magic offered is randomly chosen based on the relative probabilities" | silent on a known school's weight |
+| D-18 banned skills | "If the hero's class is banned from obtaining a specific skill but the hero has it, consider the weight to be equal to 1"; step 1 ignores "globally banned skills" (Navigation on land-locked maps) with no such exception | the class ban **agrees** with the reading (a known skill weighs at least 1); for a skill **the map** bans and the hero knows, the wiki's letter gives 0, the reading 1, VCMI the class weight: three answers, reached only when a hero knows a skill its map bans (§6) |
+| §3 levels at load | heroes starting with more than 1 000 experience, "such as" a Prison's, "are assumed to have always selected the left-hand skill option during their fictitious level-ups", so they advance known skills first | the gains at load **agree**; the choice **conflicts** (D-20, §5.2) |
+| §4 | not asked (the battle's experience; the view of another player's hero) | — |
+
+Seen on the way: a new game's hero starts with 40 to 90 experience (Experience; the reading's
+default, §3.1); a prisoner is not freed while its player has eight heroes outside towns
+(Prison; for the increment that builds prisons).
+
+### 5.2 D-20 is a conflict of sources
+
+The wiki (always the left offer at load) agrees with VCMI (the first offer) against the reading
+(`ai_level_up_choice` 0x52BBD0 chooses). Batch E3c's E3-6, a placed Death Knight levelled at
+load in SoD, does not fit always-left: under the reading's draws only S = 75 gives both its
+primary gains and offers from which its advances can be taken, and those need left, right,
+right, right (§3.3; the other two seeds that give the gains, 86 and 247, offer pairs without
+them). So E3-6 sides with the reading, if the reading's draws are right, which the run did not
+test (S unread). By `docs/04-rules-and-sources.md` §2 the reading is not built on alone: the
+second reading (T24a2b2) re-reads 0x4D8B30's path to the levels and 0x52BBD0 for a left-only
+branch at load, and the batch (§7) reads S and the offers of every level at load, which settles
+it. Until then D-20 is the user's at the checkpoint (an ADV-Q, T24a2b2).
+
+## 6. The census (T24a2b1)
+
+Counted on 2026-10-20 over the installation's 160 shipped maps (`original-data/maps.tar`: 49 RoE,
+55 AB, 56 SoD) with `h3-map`'s reader, a throwaway example and script (not committed); the levels
+from §1.1's thresholds. Decision 22's "42 of 116 placed heroes" counted the 164 maps of T18b (the
+user's four maps among them); over the 160 the heroes with an experience are the same 42.
+
+### 6.1 Placed heroes with a custom experience, and their levels
+
+The hero objects: 108 heroes (class 34), 89 prisons (62) and 176 random heroes (70, refused by
+the import as `RandomHero`; 18 of them carry an experience too, drawn heroes for whoever builds
+random heroes). Of the 197 heroes and prisoners, **103 have a custom experience, every one at
+least 1 000** (none between 1 and 999): 42 heroes in 18 maps (RoE 13, AB 19, SoD 10) and 61
+prisoners in 28 maps. Each takes it from its own body; no placed hero takes a map-wide entry's
+(SoD's hero settings: only `Marshland Menace` has entries with an experience, 15 hero types at
+2 000, level 3, reached through its taverns, E09).
+
+| Level at load | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 13 | 15 | 42 | Level-ups |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Heroes (42) | 6 | 6 | 4 | 1 | 4 | 2 | 8 | 2 | 6 | | 3 | | 273 |
+| Prisoners (61) | 4 | 6 | 5 | 1 | 12 | 1 | 17 | 5 | 1 | 3 | 4 | 2 | 495 |
+
+The highest: two prisoners of `Pandora's Box ` with 5 000 000 (level 42); among the heroes
+40 000 (level 15: `Adventures of Jared Haret`'s Theodorus, `Good Witch, Bad Witch`'s Rosic). 20
+of the 42 heroes and 21 of the 61 prisoners are of a magic class; **no Elementalist** and one
+Conflux hero (Pasis, a Planeswalker prisoner, level 13): D-16 and A-10 do not reach the levels at
+load on the shipped maps. Prisons are untyped objects in the import (their levels at load come
+with the increment that builds them, as the wiki's "fictitious level-ups" of a prisoner, §5).
+
+**Custom primary skills:** 6 heroes (4 in `Adventures of Jared Haret`, 2 in `Good Witch, Bad
+Witch`), the largest value 9: **none above 99**, so the import's clamp, which the placed hero's
+setup does not have (§3.1, the QUEUE inbox), changes no shipped map; A-9 is not reached at load.
+
+### 6.2 Level limits (A-8, D-19, D-21)
+
+**No shipped map has a level limit**: the header byte is 0 on all 111 AB and SoD maps (RoE has
+none). A-8, the limit's part of D-19 and D-21 come only with other maps (the editor's setting).
+
+### 6.3 Banned skills (D-18)
+
+19 maps ban skills, all SoD: Navigation all 19, Eagle Eye 6, Scouting 1, and `Heroes of Might not
+Magic` (and its allied copy) 13 (Wisdom, Mysticism, the four schools, Necromancy, Scholar,
+Intelligence, Sorcery, Resistance besides Navigation and Eagle Eye). **No placed hero or
+prisoner knows a skill its map bans**, by its custom or its starting skills: D-18's map-ban
+case does not arise at load. It can through the taverns (2 to 91 hero types per banning map
+start with a banned skill; the maps' allowed heroes not counted; whether a hired hero keeps such
+a skill was not read) and through skills learned on the map (Witch Huts, Scholars): E09 and
+increment 5.
+
+### 6.4 Experience near A-7
+
+The largest custom experience is 5 000 000; the objects' experience rewards (82 in 35 maps:
+events, Pandora's boxes, seer's huts) give at most 35 000 each and 85 000 per map (`Back For
+Revenge`): far below level 74's 1 508 362 195. A-7 comes only from long play, never from a
+map's data.
+
+### 6.5 The maps that import whole without the refusal
+
+With `Unsupported::HeroExperience` lifted (a throwaway patch, not committed), **5 maps import
+whole and validate**: today's two and `Adventures of Jared Haret`, `Faeries` and `Knee Deep in
+the Dead` (refused today for an experience first). `Unholy Quest`, T18b's fourth, has been refused
+since T20a2a for a monster's artifact. The rest: a hero generated at a main town 128, a random
+hero 18, a monster's artifact 8, a hero standing in a town 1. The three maps' 9 heroes get 41
+level-ups at load: Theodorus (Wizard) 15, Josephine 7 and Thane 6 (Alchemists), Gunnar 5 and
+Lorelei 4 (Overlords), Christian 4 and Edric 3 (Knights), Nymus 3 (Demoniac), Sandro 3
+(Necromancer).
+
+### 6.6 For T24b
+
+On the maps increment 4 can import, levels at load mean 9 heroes at levels 3 to 15: D-20's
+choice decides their skills; no level limit, no Elementalist, no banned skill, no primary skill
+above 99 and nothing near A-7 among them. The other cases (the limit, A-7 to A-9, D-18's map
+ban) need other maps or long play: T24b decides whether increment 4 builds them or bounds them
+(A-7, A-8 are state-corrupting, always fixed).
+
+## 7. The batch's plan *(T24a2b2)*

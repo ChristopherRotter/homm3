@@ -231,10 +231,14 @@ Refined with the user on 2026-10-20 (T23; ADV-Q14). Built like increments 1 to 3
 
 52. **T24a2 is cut again** (the user's choice of four): **T24a2a** the rest of the code reading, levels at load and what follows the level, with VCMI, docs only; **T24a2b** the wiki, the census, the batch's plan, the rule ids, the second reading and the ADV-Q. Not chosen: levels at load with the census, levels at load alone, or T24a2 whole.
 
+### Decisions at round 1's third session (2026-10-20, user)
+
+53. **T24a2b is cut** (the user's choice of four): **T24a2b1** the wiki on the survey's §1–§4 and the census of the shipped maps (survey §5, §6), docs only; **T24a2b2** the batch's plan, the rule ids, the second reading and the ADV-Q. Not chosen: the census alone, the second reading alone, or the wiki alone.
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T23 Increment 4 refined.** Done (2026-10-20, `adventure/e08-t23`; decisions 48–50): progression only, the first round queued (T24a, T24b), the inbox sorted; docs only (log).
-- **T24a The progression survey.** Cut in two (decision 51): **T24a1** done (2026-10-20, `adventure/e08-t24a1`: survey §1–§2, experience to levels and the level-up, with VCMI; log); **T24a2** cut again (decision 52): **T24a2a** done (2026-10-20, `adventure/e08-t24a2a`: survey §3–§4, levels at load and what follows the level; log); **T24a2b** next (queue).
+- **T24a The progression survey.** Cut in two (decision 51): **T24a1** done (2026-10-20, `adventure/e08-t24a1`: survey §1–§2, experience to levels and the level-up, with VCMI; log); **T24a2** cut again (decision 52): **T24a2a** done (2026-10-20, `adventure/e08-t24a2a`: survey §3–§4, levels at load and what follows the level; log); T24a2b cut (decision 53): **T24a2b1** done (2026-10-20, `adventure/e08-t24a2b1`: survey §5–§6, the wiki and the census; log); **T24a2b2** next (queue).
 - **T24b The ADR amendment drafts, the design note and the cut.** After T24a's checkpoint (queue).
 
 ## Later increments (sketch)

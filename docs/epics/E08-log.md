@@ -2877,3 +2877,34 @@ light gates passed here). Docs only: survey `E08-progression.md` §3–§4, §0 
 - **Map**: `placed_heroes_setup`, `placed_hero_setup` new; 0x486590 and 0x487290 renamed and
   rewritten; `structs.toml`: `hero_setup` (0x334), the game's `hero_setup` and `campaign_info`,
   +0x1F45C corrected to H3API's `bigCampaignIndex` (T24a1's guess was a scenario).
+
+### Increment 4, round 1: T24a2b1, the wiki and the census (2026-10-20, `adventure/e08-t24a2b1`)
+
+The user merged T24a2a (#303) and cut T24a2b (decision 53): **T24a2b1** the wiki on the survey's
+§1–§4 and the census; **T24a2b2** the batch's plan, the rule ids, the second reading and the
+ADV-Q. Baseline `master` 49df46d (engine code d95c95dd, the full verify green in the sandbox).
+Docs only: survey `E08-progression.md` §5–§6, §0 and the dispute and quirk tables updated.
+
+- **The wiki** (§5; Experience, Secondary skill, Hero class, Primary skill, Prison, Campaign):
+  agrees on the thresholds and the levels past 74 (88, 100, 108, 868, 3 732, 5 920, 6 424, then
+  a hang; the reading's 32-bit arithmetic gives the same records, and the next, 72 924, does
+  not fit the 16-bit level), the fixed seed per hero (D-14), the second primary row from the
+  level-up to 10 (D-15; the five rows checked equal the packs, every class's weights sum to
+  112), the Wisdom and school intervals and the Elementalist counted as might (D-16, A-10 now
+  high), a class-banned known skill at weight 1; silent on the level limit (D-19, D-21) and a
+  known school's weight (D-17); differs on the primary bound (A-9: "At 129 the skill value is
+  reset to 0") and on a map-banned known skill (ignored, D-18: three answers).
+- **D-20 is a conflict of sources** (§5.2): the wiki says heroes starting above 1 000
+  experience, "such as" prisoners, always took the left offer, as VCMI's first; E3-6's only
+  fitting seed (75) needs left, right, right, right under the reading's draws. For T24a2b2: the
+  second reading looks for a left-only branch on 0x4D8B30's path, the batch reads S at load.
+- **The census** (§6; the 160 shipped maps): 103 heroes and prisoners with a custom experience
+  (42 heroes in 18 maps, 61 prisoners in 28; all at least 1 000; levels 3 to 15, two prisoners
+  at 42; 768 level-ups at load), none from a map-wide entry (`Marshland Menace`'s 15 reach only
+  its taverns); no level limit on any map (A-8, D-21 unreachable on them); custom primary skills
+  at most 9 (the import's clamp changes nothing); 19 SoD maps ban skills, no placed hero knows
+  one; no Elementalist with experience; experience at most 5 000 000 (A-7 only from play).
+  Without the refusal of an experience, 5 maps import whole (`Adventures of Jared Haret`,
+  `Faeries`, `Knee Deep in the Dead` besides today's two; `Unholy Quest` is refused for a
+  monster's artifact since T20a2a): 9 heroes, 41 level-ups at load.
+- **Not done here** (T24a2b2): the batch's plan, the rule ids, the second reading, the ADV-Q.

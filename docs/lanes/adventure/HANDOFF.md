@@ -4,7 +4,7 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 
 ## Current state
 
-- **E08**: increments 1, 2 and 3 **closed** (2026-10-12, -13, -20; increment 3: decisions 19–47). **Increment 4: hero progression only** (decisions 48–52). T24a1, T24a2a done; **next: T24a2b**, then T24b (QUEUE). Design (increment 3's until T24b): `E08-design.md`. Records: `E08-log.md`.
+- **E08**: increments 1, 2 and 3 **closed** (2026-10-12, -13, -20; increment 3: decisions 19–47). **Increment 4: hero progression only** (decisions 48–53). T24a1, T24a2a, T24a2b1 done; **next: T24a2b2**, then T24b (QUEUE). Design (increment 3's until T24b): `E08-design.md`. Records: `E08-log.md`.
 - **Map reader and import** (`h3-map`): `read`/`parse` into `model::RawMap`; `import` into `h3_game::GameSetup`, `import_map` its static layer (`MAP_IMPORT_VERSION` 7, `docs/formats/h3m.md` "Import"). Every shipped map's static layer imports and validates; of the 160 shipped maps 2 import whole (`Race for Ardintinny`, `Tutorial.tut`), the rest are typed `Unsupported`. `verify --with-original-data` runs `crates/h3-map/examples/original_data.rs` on the shipped maps (with the monsters', grounds' and guarded piles' census).
 - **Monsters, grounds, guarded piles** (T20a2a): kinds `Monster`, `Ground`; `[params.monsters]`; `ObjectSetup.monster`/`.drawn` (ADV-MON-002 to -004); `army_left`; `battle_ground` (ADV-GRD-001); `ObjectView.monster`. T20a2b: `guard_of` (ADV-MON-005, -006). T20b1: `answer.rs` (ADV-MON-007), offers `Join`, `JoinForGold`, `Pursue` (ADV-MON-008). T20b2: `split` (ADV-MON-009, flag 24), `Defender::Monster`, `Actor::System`, `end_monster_battle` (ADV-MON-010). T20b3b1: `MonsterChanged`; fringe monsters in strict (decision 40). T21a (ADV-PIK-004, `state/piles.rs`): `Guards`, `guards_left`, `OfferKind::Fight`, `Defender::Guards`, `end_unowned_battle`.
 - **The store of heroes** (T18b, GAM-HER-001): `GameState` keeps `Arc<HeroDetails>` by `HeroId`, from `GameHeroSetup.details` or the defaults, validated by `h3-heroes`; `attack_defense`, `join_bonus` (T20a1); `GameObservation.heroes`.
@@ -19,7 +19,7 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 - **Experiments**: `h3-experiment` (battle's) has the adventure shape (batch E3's since T22a1: difficulty, underground, dispositions, guarded piles); batches 1, 2 and E3 scored. **Agents run batches** on the client lane's harness (decision 21; E17 H1, H2: questions, battles from the map, the underground, `level_up`, `heroes:experience`).
 - **Adventure ruleset part** (v8 since T20b1): terrains, roads, rivers, the movement and setup parameters, the object types, the starting resources by difficulty, the battle terrains, the monsters' parameters (with the price resource).
 - **Properties** on generated playable maps (`h3-map`'s `play.rs`, `view.rs`; T8b2); since T19b2 `Step::Fight` runs (hero casts through `h3-battle`, a dev-dependency); since T20b3b1 monsters (`MONSTERS`), grounds and the system actor; since T21a guarded piles (`GUARDED`); `the_plans_play_battles_to_a_victory` counts 192 fixed cases.
-- **Next:** T24a2a's pull request to merge; then T24a2b (stage `Heroes3.exe`, `maps.tar`; the wiki with the user's approval).
+- **Next:** T24a2b1's pull request to merge; then T24a2b2 (stage `Heroes3.exe`; D-20 is a conflict of sources, survey §5.2).
 - **ADRs accepted**: ADR-0015 to -0017 (2026-10-10), their increment-2 amendments (#115), increment 3's (ADR-0013 too) applied by T18a (#185).
 - **Fuzzing is stable-only** (user, 2026-10-10).
 - **R01** (the content split): the core `h3-content` and `h3-pack` (`core.toml`) are shared; the writer is `h3_map::writer`.
@@ -33,11 +33,16 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 - RNG seeds and stream positions are server-only state (decision 9): never in an observation, never seeded from client data.
 - Template masks: bit `j` of byte `i` is the tile `7 − j` columns left of and `5 − i` rows above the anchor (`h3m.md` had it mirrored until T5a); check a geometric reading of the format against the shipped maps (towns' gates, heroes' tiles) before building on it.
 - Stage archives, not files (~13 k tokens per 50): the user's `original-data/maps.tar` (the shipped maps; untar into `original-data/install`) and `extracted.tar` (the text tables, since 2026-10-15); the sprite archives only for `.msk` sizes.
+- A shallow clone: `git fetch --depth=60 origin master` before `sandbox-setup.sh`, or its baseline runs in full.
 - A `CARGO_TARGET_DIR` outside `target/` is not gitignored: keep extra target directories under `target/` (`target/cov`), or `git add -A` commits gigabytes.
 - An experiment's map and template must come from the same compile (batch 1a's map predated the review's Q4c, T10c): after any change to a spec, compile again and copy the map to the user's folder in the same step. Since T16b a mismatch shows: the map's description starts with `Stamp <hex>.`, the template's top with its own (`docs/experiments/README.md`).
 - A shared change the lane needs (Cargo members, `arch.toml`, `lanes.toml`, contracts, kernel, xtask) goes in a `shared/` pull request; one that must land with lane paths (a new crate) needs the user's consent and the label `cross-lane`. A `shared/` or cross-lane branch runs the full verify (its scoped `check-lane` fails by design).
 
 ## Recent sessions
+
+### 2026-10-20 — increment 4, fourth session: T24a2b1, the wiki and the census
+
+Baseline 49df46d (full verify green). Decision 53. Survey §5 (wiki; D-20 conflicts: left offer at load) and §6 (160 maps: no level limit, 3 maps more import whole).
 
 ### 2026-10-20 — increment 4, third session: T24a2a, levels at load
 
@@ -46,7 +51,3 @@ Baseline 810c584 (light gates). Decision 52. Survey §3–§4: placed heroes via
 ### 2026-10-20 — increment 4, second session: T24a1, the progression survey's first part
 
 Baseline c4fe6b1 (light gates). Decision 51: T24a cut in two. Survey §1–§2 (0x4E33B0, 0x4DA720, 0x4DAD00; VCMI): D-14–D-19, A-7–A-10. Shared note: `crt_ftol` returns a 64-bit truncation's low word.
-
-### 2026-10-20 — increment 4, first session: T23, increment 4 refined
-
-Baseline 6f7d601 (light gates). ADV-Q14: progression only (decision 48), T23 alone, docs only (49), the batch keeps decision 45's rows (50); T24a, T24b queued, the inbox sorted, moved items re-tagged. Setup: `git fetch --depth=60 origin master` first, or a shallow clone's baseline runs in full.
