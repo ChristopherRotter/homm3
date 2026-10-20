@@ -271,6 +271,32 @@ def stacks(mem):
     return [[s["side"], s["creature"], s["count"], s["hex"]] for s in mem.stacks()]
 
 
+def auto_combat(game, mem, end, stall=10.0):
+    """Turns auto combat on once the battle takes orders: a key before a stack is active is lost
+    (a game's first battle starts more slowly: E08 T22a3, every run of batch E3b). The key goes
+    again when the same stack stays active with every stack unchanged for `stall` seconds (auto
+    combat's computer acts in the same millisecond); never while auto combat runs, which a
+    second key would stop."""
+    while True:
+        while mem.globals()["active"] is None:
+            if find_button(game, "battle_ok"):
+                return  # over before any stack's turn
+            if time.monotonic() > end:
+                raise TimeoutError("no stack's turn for auto combat")
+            time.sleep(0.1)
+        game.key("a", 0.5)
+        state = (mem.globals()["active"], stacks(mem))
+        quiet = time.monotonic() + stall
+        while (mem.globals()["active"], stacks(mem)) == state:
+            if time.monotonic() > quiet:
+                break  # the key was lost: press it again
+            if time.monotonic() > end:
+                raise TimeoutError("auto combat does not start")
+            time.sleep(0.2)
+        else:
+            return
+
+
 def fight(game, mem, plan, limit=300.0):
     """Plays the battle on the screen as `plan` says and returns its record: the stacks at the
     start and the end, the outcome and how it was played. `plan`: "auto" (auto combat: the
@@ -290,7 +316,7 @@ def fight(game, mem, plan, limit=300.0):
     record = {"plan": plan, "start": stacks(mem)}
     end = time.monotonic() + limit
     if action == "auto":
-        game.key("a", 0.5)
+        auto_combat(game, mem, end)
     else:
         while True:
             if time.monotonic() > end:
