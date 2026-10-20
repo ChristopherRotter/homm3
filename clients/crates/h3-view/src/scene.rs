@@ -11,7 +11,7 @@ use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::fmt;
 
-use h3_protocol::wire::{Manifest, Observation, Side, Stack};
+use h3_protocol::wire::{Event, Manifest, Observation, Side, Stack};
 
 use crate::anim::{Magic, Pose, Projectile, Ray, Timeline};
 use crate::hero::{FLAG_START, HeroPose};
@@ -251,27 +251,77 @@ pub struct PlayerColours {
 
 /// What the panel below the battlefield draws, after the battlefield (E17 M3 T4b-2b-1, T6a; §9.7):
 /// the layout's panel as the stacks of `side` (the active stack's controller; none before a turn)
-/// begin their turn in the battle `observation` shows (`crate::panel`), its log showing `log`.
+/// begin their turn in the battle `observation` shows (`crate::panel`), with what it `kept` from
+/// the turns before, its log showing `log`.
 #[must_use]
 pub fn panel(
     observation: &Observation,
     side: Option<Side>,
+    kept: crate::panel::Kept,
     log: &str,
     layout: &BattleLayout,
 ) -> Vec<Draw> {
-    let shown = crate::panel::shown(observation, side, log, PLAYERS);
+    let shown = crate::panel::shown(observation, side, kept, log, PLAYERS);
     layout.panel.draws(&shown, &layout.player_palette)
 }
 
-/// The side whose turn it is at `moment`: its active stack's controller, else the observation's
-/// active stack's (E17 M3 T6a).
-#[must_use]
-pub fn acting(observation: &Observation, moment: &Moment) -> Option<Side> {
-    moment
-        .active
-        .or(observation.active)
-        .and_then(|id| observation.stacks.iter().find(|s| s.id == id))
-        .map(|s| s.controller)
+/// The panel over a battle (E17 M3 T6b, design §9.8): the battle as each turn's start found it
+/// (`crate::panel::turns`) and the text its log's item shows from each time on
+/// (`crate::battle_log::texts`), drawn at any time of the battle by [`Panels::at`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Panels {
+    /// The battle at each `TurnStarted`'s turn, in order.
+    turns: Vec<Observation>,
+    /// The log item's text from each time on.
+    texts: Vec<(u32, String)>,
+}
+
+impl Panels {
+    /// The panel over the battle the record's opening `snapshot` and its `events` (in order)
+    /// show, its log's item showing `texts`.
+    #[must_use]
+    pub fn new(snapshot: &Observation, events: &[Event], texts: Vec<(u32, String)>) -> Self {
+        Self {
+            turns: crate::panel::turns(snapshot, events),
+            texts,
+        }
+    }
+
+    /// The text the log's item shows at `t`.
+    #[must_use]
+    pub fn text(&self, t: u32) -> &str {
+        crate::battle_log::text_at(&self.texts, t)
+    }
+
+    /// What the panel draws at `t` of the battle `snapshot` opens, whose turns started at the
+    /// times of `started` (a timeline's `turns`, in the order of the `TurnStarted`s): as its last
+    /// turn's start by then set it (the opening's before the first), with what it kept from the
+    /// turns so far (`crate::panel::kept`, the opening's side the one it was built for:
+    /// *provisional*).
+    #[must_use]
+    pub fn at(
+        &self,
+        snapshot: &Observation,
+        started: &[(u32, u8)],
+        t: u32,
+        layout: &BattleLayout,
+    ) -> Vec<Draw> {
+        let controller = |o: &Observation| {
+            o.active
+                .and_then(|id| snapshot.stacks.iter().find(|s| s.id == id))
+                .map(|s| s.controller)
+        };
+        let started = started.iter().filter(|(at, _)| *at <= t).count();
+        let turns = self.turns.get(..started).unwrap_or(&self.turns);
+        let sides: Vec<(Side, bool)> = core::iter::once(snapshot)
+            .chain(turns)
+            .filter_map(|o| controller(o).map(|s| (s, o.tactics.is_some())))
+            .collect();
+        let built = controller(snapshot).unwrap_or(Side::Attacker);
+        let kept = crate::panel::kept(snapshot, &sides, built);
+        let now = turns.last().unwrap_or(snapshot);
+        panel(now, controller(now), kept, self.text(t), layout)
+    }
 }
 
 /// Why a snapshot has no draw list.

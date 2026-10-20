@@ -1,16 +1,18 @@
-//! The battle log in the adapters (E17 M3 T4b-2b-2, `docs/epics/E17-design.md` §9.6): the
-//! catalogue the viewer's lines come from (the key catalogue and the original's pack from the
-//! user's text tables), and the text the log's item shows after a record's first strike, for the
-//! frame check (`h3-view sequences --frames`, a sequence's `log_at`). *Provisional*: one strike
-//! entering an empty log, its stacks named as the opening's snapshot has them; which event writes
-//! which line, and the log over a whole battle, are M3 T6's.
+//! The battle log and the panel in the adapters (E17 M3 T4b-2b-2, T6b; `docs/epics/E17-design.md`
+//! §9.6, §9.8): the catalogue the viewer's lines come from (the key catalogue and the original's
+//! pack from the user's text tables), and the panel over a record's battle: each turn's start and
+//! the text the log's item shows from each time on, its lines worded from the record's stacks as
+//! the opening's snapshot names them.
 
 use h3_assets::fnt::Font;
 use h3_formats::lod::LodArchive;
 use h3_protocol::wire::{Event, ServerMessage};
 use h3_render::Bugs;
-use h3_view::battle_log::{self, Hit, Spread, Stack};
+use h3_view::anim::Timeline;
+use h3_view::battle_log::{self, Named};
+use h3_view::layout::BattleLayout;
 use h3_view::record::Record;
+use h3_view::scene::Panels;
 use h3_view::tables::Tables;
 use h3_view::text::pack::Pack;
 use h3_view::text::{Catalogue, encode_1252};
@@ -36,74 +38,92 @@ pub fn catalogue(
     }
 }
 
-/// The line of the record's first strike (`battle_log::strike`): the first command's events with a
-/// `Struck`, its hits those of the first striker up to another's (the retaliation), at one target
-/// and the stack behind it (`Spread::Target`); each stack named by its creature and, the striker,
-/// by its number in the opening's snapshot. None without a strike.
-pub fn first_strike(record: &Record, catalogue: &Catalogue) -> Option<String> {
-    let snapshot = record.first_snapshot()?;
-    let keys = &record.header.manifest.keys.creatures;
-    let struck = |e: &Event| match *e {
-        Event::Struck {
-            attacker,
-            target,
-            ref damage,
-            kills,
-            ..
-        } => Some((attacker, target, damage.0, kills)),
-        _ => None,
-    };
-    let events = record.messages.iter().find_map(|m| match m {
-        ServerMessage::Events { events, .. } if events.iter().any(|e| struck(e).is_some()) => {
-            Some(events)
-        }
-        _ => None,
-    })?;
-    let strikes: Vec<_> = events.iter().filter_map(struck).collect();
-    let striker = strikes.first()?.0;
-    let stack = |id: u8| snapshot.stacks.iter().find(|s| s.id == id);
-    let name = |id: u8| {
-        stack(id)
-            .and_then(|s| keys.get(usize::from(s.creature)))
-            .map(|key| format!("creature.{key}"))
-    };
-    let named: Vec<(String, bool, u64, u32)> = strikes
+/// The record's events, in order.
+pub fn events(record: &Record) -> Vec<Event> {
+    record
+        .messages
         .iter()
-        .take_while(|s| s.0 == striker)
-        .map(|&(_, target, damage, kills)| {
-            let machine = stack(target).is_some_and(|s| s.war_machine);
-            Some((name(target)?, machine, damage, kills))
+        .filter_map(|m| match m {
+            ServerMessage::Events { events, .. } => Some(events.iter().cloned()),
+            _ => None,
         })
-        .collect::<Option<_>>()?;
-    let hits: Vec<Hit<'_>> = named
-        .iter()
-        .map(|(creature, war_machine, damage, kills)| Hit {
-            creature,
-            war_machine: *war_machine,
-            damage: *damage,
-            kills: *kills,
-        })
-        .collect();
-    let attacker = name(striker)?;
-    let count = stack(striker)?.count;
-    Some(battle_log::strike(
-        catalogue,
-        Stack {
-            creature: &attacker,
-            count,
-        },
-        Spread::Target,
-        &hits,
-    ))
+        .flatten()
+        .collect()
 }
 
-/// The log item's text after `line` entered an empty log (0x472E90, 0x472C30): its entries as
-/// `font` measures them at `width`, the first shown.
-pub fn after_one(line: &str, font: &Font, width: i32, bugs: Bugs) -> String {
+/// The text the log's item shows from each time on through the record's battle as its timeline's
+/// `logged` has it (`battle_log::texts`): each line in `catalogue`'s words, the stacks named as the
+/// opening's snapshot has them (a creature's key, whether a war machine, its defense), its
+/// entries measured in `font` at `width` (the log item's, §9.4); a human side's stacks by the
+/// snapshot's `human`. None without a snapshot.
+pub fn texts(
+    record: &Record,
+    logged: &[(u32, battle_log::Logged)],
+    catalogue: &Catalogue,
+    font: &Font,
+    width: i32,
+    bugs: Bugs,
+) -> Option<Vec<(u32, String)>> {
+    let snapshot = record.first_snapshot()?;
+    let keys = &record.header.manifest.keys.creatures;
+    let stack = |id: u8| snapshot.stacks.iter().find(|s| s.id == id);
+    let named = |id: u8| {
+        let s = stack(id)?;
+        let key = keys.get(usize::from(s.creature))?;
+        Some(Named {
+            creature: format!("creature.{key}"),
+            war_machine: s.war_machine,
+            defense: s.defense,
+        })
+    };
+    let word = |logged: &battle_log::Logged| battle_log::word(catalogue, logged, &named);
     let lines = |text: &str| {
         h3_render::text::line_count(font, &encode_1252(text).0, i64::from(width), bugs)
     };
-    battle_log::shown(&battle_log::entries(line, &lines), 0)
+    let human = |id: u8| {
+        stack(id).is_some_and(|s| {
+            snapshot.sides[usize::from(s.controller == h3_protocol::wire::Side::Defender)].human
+        })
+    };
+    Some(battle_log::texts(logged, &word, &lines, &human))
+}
+
+/// The panel over the record's battle as `timeline` plays it (E17 M3 T6b): its turns and its log's
+/// texts ([`texts`]) in the original's words from `archives`' text tables (read only when the
+/// battle writes a line), measured in the log item's font of `layout`, drawn with the original's
+/// drawing bugs.
+pub fn panels(
+    record: &Record,
+    timeline: &Timeline,
+    tables: &Tables,
+    layout: &BattleLayout,
+    archives: &[(&str, LodArchive<'_>)],
+) -> Result<Panels, String> {
+    let snapshot = record
+        .first_snapshot()
+        .ok_or("the record holds no snapshot")?;
+    let writes = timeline
+        .log
+        .iter()
+        .any(|(_, l)| !matches!(l, battle_log::Logged::Action | battle_log::Logged::Turn(_)));
+    let catalogue = if writes {
+        catalogue(tables, archives)?
+    } else {
+        Catalogue::default()
+    };
+    let item = layout.log().ok_or("the layout's panel has no log item")?;
+    let font = h3_assets::fnt::decode_fnt(&lookup(archives, &item.font)?)
+        .map_err(|e| format!("{}: {e:?}", item.font))?;
+    let texts = texts(
+        record,
+        &timeline.log,
+        &catalogue,
+        &font,
+        item.size[0],
+        Bugs::Original,
+    )
+    .ok_or("the record holds no snapshot")?;
+    Ok(Panels::new(snapshot, &events(record), texts))
 }
 
 #[cfg(test)]
@@ -140,8 +160,24 @@ mod tests {
         record::parse(&text).unwrap()
     }
 
+    /// Every glyph one pixel wide.
+    fn narrow() -> Font {
+        use h3_assets::fnt::Glyph;
+        let glyph = Glyph {
+            left: 0,
+            width: 1,
+            right: 0,
+            pixels: vec![0],
+        };
+        Font {
+            height: 1,
+            y_offset: 0,
+            glyphs: vec![glyph; 256],
+        }
+    }
+
     #[test]
-    fn the_first_strike_is_named_by_the_opening() {
+    fn a_strikes_line_is_named_by_the_opening() {
         let catalogue = Catalogue {
             packs: vec![Pack::from_json("en", PACK).unwrap()],
         };
@@ -151,38 +187,66 @@ mod tests {
             from: 47,
         };
         let record = played(&[(Seat::Attacker, strike)]);
+        let line = battle_log::Logged::Strike {
+            attacker: 0,
+            count: 1,
+            spread: battle_log::Spread::Target,
+            hits: vec![(3, 100, 10)],
+        };
+        let logged = [(5, battle_log::Logged::Action), (3730, line)];
+        // Joined when the line fits the width, split in two entries when it does not.
+        let wide = texts(&record, &logged, &catalogue, &narrow(), 400, Bugs::Original).unwrap();
         assert_eq!(
-            first_strike(&record, &catalogue).as_deref(),
+            wide,
+            [
+                (0, String::new()),
+                (3730, "Archangel hits for 100. 10 Pikemen fall.".into())
+            ]
+        );
+        let tight = texts(&record, &logged, &catalogue, &narrow(), 30, Bugs::Fixed).unwrap();
+        assert_eq!(
+            tight.last().map(|(_, t)| t.as_str()),
             Some("Archangel hits for 100.\n10 Pikemen fall.")
         );
-        // A record without a strike has no line.
-        let record = played(&[(Seat::Attacker, Command::Defend {})]);
-        assert_eq!(first_strike(&record, &catalogue), None);
+        // A stack the opening lacks names no line; the record's events are its commands'.
+        let ghost = battle_log::Logged::Wait { stack: 9, count: 1 };
+        let none = texts(
+            &record,
+            &[(0, ghost)],
+            &catalogue,
+            &narrow(),
+            400,
+            Bugs::Original,
+        );
+        assert_eq!(none.unwrap(), [(0, String::new())]);
+        assert!(
+            events(&record)
+                .iter()
+                .any(|e| matches!(e, Event::Struck { .. }))
+        );
     }
 
     #[test]
-    fn a_line_shows_joined_when_it_fits() {
-        use h3_assets::fnt::Glyph;
-        // Every glyph one pixel wide: "Hit. Fall." takes 10.
-        let glyph = Glyph {
-            left: 0,
-            width: 1,
-            right: 0,
-            pixels: vec![0],
+    fn a_human_turn_starts_with_the_status_line_empty() {
+        let catalogue = Catalogue {
+            packs: vec![Pack::from_json("en", PACK).unwrap()],
         };
-        let font = Font {
-            height: 1,
-            y_offset: 0,
-            glyphs: vec![glyph; 256],
+        let record = played(&[(Seat::Attacker, Command::Defend {})]);
+        // Both sides are human in `seq-strike.toml`: a turn 3 000 ms after a line empties the
+        // item; one sooner leaves it.
+        let line = battle_log::Logged::Strike {
+            attacker: 0,
+            count: 1,
+            spread: battle_log::Spread::Target,
+            hits: vec![(3, 100, 10)],
         };
-        assert_eq!(
-            after_one("Hit.\nFall.", &font, 10, Bugs::Original),
-            "Hit. Fall."
-        );
-        assert_eq!(
-            after_one("Hit.\nFall.", &font, 9, Bugs::Original),
-            "Hit.\nFall."
-        );
-        assert_eq!(after_one("Hit.", &font, 2, Bugs::Fixed), "Hit.");
+        let logged = [
+            (100, line),
+            (200, battle_log::Logged::Turn(3)),
+            (3100, battle_log::Logged::Turn(3)),
+        ];
+        let got = texts(&record, &logged, &catalogue, &narrow(), 400, Bugs::Original).unwrap();
+        assert_eq!(got.len(), 3);
+        assert_eq!(got[2], (3100, String::new()));
     }
 }

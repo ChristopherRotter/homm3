@@ -15,6 +15,7 @@ use h3_view::batch::{self, Batch, Sprite};
 use h3_view::compose::compose;
 use h3_view::layout::{self, BattleLayout};
 use h3_view::record::{self, Record};
+use h3_view::scene::Panels;
 use h3_view::scene::{self, Draw, Moment};
 use h3_view::tables::{Sounds, Tables};
 
@@ -60,6 +61,8 @@ pub struct Battle {
     layout: BattleLayout,
     /// The battle at the original's timing.
     pub timeline: Timeline,
+    /// The panel over the battle: its turns and its log (E17 M3 T6b).
+    pub panels: Panels,
     /// The commands played.
     pub commands: usize,
     /// The archives' bytes until the batch is loaded (CLT-Q2: whole archives).
@@ -121,19 +124,21 @@ impl Battle {
             .map_err(|e| e.to_string())?
             .with_heroes(motion::heroes(&record, &tables, &parsed, Some(seed))?);
         let commands = commands.len();
+        let panels = crate::log::panels(&record, &timeline, &tables, &layout, &parsed)?;
         Ok(Self {
             record,
             tables,
             layout,
             timeline,
+            panels,
             commands,
             archives,
             batch: Batch::default(),
         })
     }
 
-    /// The draw list of the battle at `moment`, the panel's after it as the turn's start sets it
-    /// (its log empty: the events' lines come with M3 T6b).
+    /// The draw list of the battle at `moment` (at `t`), the panel's after it as the battle's
+    /// turns and lines left it (E17 M3 T6b).
     pub fn list(&self, t: u32, moment: &Moment) -> Result<Vec<Draw>, String> {
         let snapshot = self
             .record
@@ -147,12 +152,10 @@ impl Battle {
             &self.layout,
         )
         .map_err(|e| format!("{t} ms: {e}"))?;
-        list.extend(scene::panel(
-            snapshot,
-            scene::acting(snapshot, moment),
-            "",
-            &self.layout,
-        ));
+        list.extend(
+            self.panels
+                .at(snapshot, &self.timeline.turns, t, &self.layout),
+        );
         Ok(list)
     }
 

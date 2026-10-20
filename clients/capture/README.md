@@ -44,8 +44,9 @@ alter (the user, 2026-10-20):
    for the assets). The viewer draws every sequence and situation at the times `kept/` holds and
    compares each frame's digest with `kept/drawn.txt`; its timeline check (`h3-view sequences`)
    runs with it. The digest is of the frame's pixels outside the fixed masks its comparison
-   applies (a sequence's panel, a situation's `mask`; E17 M3 T6a): a frame whose digest is the
-   same shows the comparison what the last capture compared, so its recorded count still holds.
+   applies (a sequence's parked cursor since M3 T6b, its panel before; a situation's `mask`; E17
+   M3 T6a): a frame whose digest is the same shows the comparison what the last capture
+   compared, so its recorded count still holds.
 2. **Capture what changed:** `frames --only <id>` or `set --only <id>` for each one `drawn` lists
    as `CHANGED` or `new`, and for each sequence or situation whose entry the task adds or
    changes (scenario, actions, `ms`, `boxes`, masks: the kept times or the comparison change
@@ -174,15 +175,19 @@ python3 capture/h3drive.py frames [--only <id>] [--out <dir>] [--reuse]
 ```
 
 For each recorded sequence: its battle in the original, stepped 1 ms at a time, keeping every
-distinct battlefield (`<dir>/<id>/frames/t<ms>.npz` and their states in `frames.jsonl`); the
-viewer's frame at each of those times (`h3-view sequences <id> --frames <dir>`: `ours/`, and what it
-drew in `ours.txt`, with the heroes the original showed: their defeat and victory come from its
-generator; the flags are the viewer's own); the masked diff of each pair (the panel, the count
-boxes where the drawn poses show them; the heroes are compared since M3 T3a), written to `frames.txt` and, for a frame that differs, `diff/t<ms>.png`; each
-line compared with the sequence's recorded `timelines/<id>-frames.txt` (`ok`, `new`, `CHANGED`;
-exit 1 on a change). An entry's `log_at` (M3 T4b-2b-2) compares the log's item from that time on
-(`panel_beside_log` instead of `panel`), the viewer drawing its record's first strike's line
-there (design §9.6). An entry with `boxes = true` (M3 T5a) compares the count boxes; any other
+distinct screen (its battlefield and, since M3 T6b, its panel, the parked cursor left out;
+`<dir>/<id>/frames/t<ms>.npz` and their states in `frames.jsonl`, the log's item and entries
+among them: `h3mem`'s `battle_log`); the viewer's frame at each of those times (`h3-view
+sequences <id> --frames <dir>`: `ours/`, what it drew in `ours.txt` and its log item's text in
+`ours-log.json`, with the heroes the original showed: their defeat and victory come from its
+generator; the flags are the viewer's own); the masked diff of each pair (the parked cursor, the
+count boxes where the drawn poses show them; the heroes are compared since M3 T3a, the panel
+since T6b), written to `frames.txt` and, for a frame that differs, `diff/t<ms>.png`; each line
+compared with the sequence's recorded `timelines/<id>-frames.txt` (`ok`, `new`, `CHANGED`; exit 1
+on a change). The log's item (M3 T6b, design §9.8) is compared where the original's shows the
+text the viewer drew; where it shows another (a status line's hint, T6c, or a line whose numbers
+the engine rolled otherwise) and its pixels differ, the item is masked and listed at the end of
+the frame's line, ` log`. An entry with `boxes = true` (M3 T5a) compares the count boxes; any other
 masks them where the drawn poses show them and where the viewer drew them (`ours.txt` lists the
 boxes it drew, ` box<x>,<y>n<count>@<side>.<record>`). With `boxes`, a box whose count is not the
 one the original's memory shows (`h3mem`'s `shown`, +0x50, while it is not −1, else its `count`;
@@ -336,8 +341,11 @@ design §7.1.
 - The battle panel's buttons change with whose turn it is: the `battle` probes are the ones equal
   in both states.
 - A click's hover leaves the status line's hint in the log's item (`Attack Pikemen` over a
-  target) until a log line replaces it, and a line held there less than 3 000 ms keeps hints out
-  (design §9.4, §9.6): compare the log's item only from a sequence's `log_at`.
+  target) until a log line replaces it or a human's turn starts (the mouse posted again over
+  nothing), and a line held there less than 3 000 ms keeps hints out (design §9.4, §9.8): the
+  frame check lists the item (` log`) where the original's text is not the viewer's.
+- The game's memory can lag the screen by a step as a turn starts (below): the log's text read
+  then may be the one before; the frame check lists the item only where its pixels differ too.
 - A hero's reaction may be read a step late at its first frame: one of two runs of `strike`
   (M3 T5a) read the left hero standing at 3 730 ms while its screen showed its reaction (group 3)
   (2 400 pixels), one of two in T5b-1 its frame 0 while the screen showed frame 1 (2 152); run

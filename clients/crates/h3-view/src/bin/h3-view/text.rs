@@ -236,8 +236,8 @@ fn text(options: &Options) -> Result<Vec<String>, String> {
     Ok(lines)
 }
 
-/// The battle log's lines (`h3_view::battle_log`, E17 M3 T4b-2a) for a few stacks of the asset
-/// tables: each composer once or twice, by its name.
+/// The battle log's lines (`h3_view::battle_log`, E17 M3 T4b-2a; the heal's and the round's,
+/// T6b) for a few stacks of the asset tables: each composer once or twice, by its name.
 pub fn log_samples(catalogue: &Catalogue) -> Vec<(&'static str, String)> {
     let stack = |key, count| Stack {
         creature: key,
@@ -249,10 +249,11 @@ pub fn log_samples(catalogue: &Catalogue) -> Vec<(&'static str, String)> {
         damage,
         kills,
     };
-    let (wolves, pikemen, ballista) = (
+    let (wolves, pikemen, ballista, tent) = (
         "creature.base:wolf_rider",
         "creature.base:pikeman",
         "creature.base:ballista",
+        "creature.base:first_aid_tent",
     );
     let c = catalogue;
     let strike = |attacker, spread, hits: &[Hit<'_>]| battle_log::strike(c, attacker, spread, hits);
@@ -295,6 +296,11 @@ pub fn log_samples(catalogue: &Catalogue) -> Vec<(&'static str, String)> {
         ("morale-good", battle_log::morale_good(c, stack(wolves, 8))),
         ("morale-bad", battle_log::morale_bad(c, stack(pikemen, 1))),
         ("luck-good", battle_log::luck_good(c, stack(wolves, 8))),
+        (
+            "heal",
+            battle_log::heal(c, stack(tent, 1), stack(pikemen, 12), 17),
+        ),
+        ("round", c.text("battle.log.round", &Args::new())),
     ]
 }
 
@@ -420,9 +426,10 @@ mod tests {
                 "damage": "{{attacker}} {{damage}}", "perish": " {{count}} {{creature}}",
                 "destroyed": " {{creature}}", "wait": "{{creature}}",
                 "defend": "{{creature}} {{defense}}", "morale-good": "{{creature}}",
-                "morale-bad": "{{creature}}", "luck-good": "{{creature}}" } },
+                "morale-bad": "{{creature}}", "luck-good": "{{creature}}",
+                "heal": "{{healer}} {{creature}} {{hit_points}}", "round": "R" } },
                 "word": { "creature": "w" }, "creature": { "base:wolf_rider": "W",
-                "base:pikeman": "P", "base:ballista": "B" } }"#,
+                "base:pikeman": "P", "base:ballista": "B", "base:first_aid_tent": "T" } }"#,
         )
         .unwrap();
         let catalogue = Catalogue { packs: vec![pack] };

@@ -579,6 +579,17 @@ fn the_shot_sequence_plays_as_recorded() {
     assert_eq!(t.projectile(2114), arrow([125, 136]));
     assert_eq!(t.flights.len(), 2);
     assert_eq!((t.outlined(99), t.outlined(100)), (Some(0), None));
+    // E17 M3 T6b: the first shot's line after its reactions, as the original wrote it.
+    assert_eq!(strikes(&t)[0], 1588);
+}
+
+/// When the timeline's strike lines are written (E17 M3 T6b).
+fn strikes(t: &Timeline) -> Vec<u32> {
+    t.log
+        .iter()
+        .filter(|(_, l)| matches!(l, Logged::Strike { .. }))
+        .map(|(at, _)| *at)
+        .collect()
 }
 
 #[test]
@@ -614,6 +625,8 @@ fn the_melee_sequence_plays_as_recorded() {
     let outlined: Vec<Option<u8>> = [1818, 1918, 2017, 2018].map(|t2| t.outlined(t2)).into();
     assert_eq!(outlined, [None, Some(2), Some(2), None]);
     assert_eq!((t.pulse(1917), t.pulse(1918), t.pulse(5000)), (1, 2, 2));
+    // E17 M3 T6b: each strike's line after its animation, as the original wrote them.
+    assert_eq!(strikes(&t), [5266, 6466]);
 }
 
 #[test]
@@ -2301,4 +2314,153 @@ fn a_war_machine_is_outlined_from_its_tick_to_its_first_frame() {
     let t = play(&o, &[(Some(0), events)]);
     assert_eq!(t.steps, [0]);
     assert_eq!(t.outlined(50), Some(0));
+}
+
+#[test]
+fn the_log_records_what_the_battle_writes_and_when() {
+    // E17 M3 T6b (design §9.8): the Angels (0) and the Marksmen (1) against the Goblins (2, 4)
+    // and the Pikemen (3); the attacker's tent (5); the battle opens in the tactics phase.
+    let mut o = snapshot(vec![
+        at(0, Side::Attacker, ANGEL, 52, false),
+        at(1, Side::Attacker, MARKSMAN, 35, false),
+        at(2, Side::Defender, GOBLIN, 53, false),
+        at(3, Side::Defender, PIKEMAN, 54, false),
+        at(4, Side::Defender, GOBLIN, 51, false),
+        machine(5, Side::Attacker, TENT, 153, 18),
+    ]);
+    o.tactics = Some(h3_protocol::wire::Tactics {
+        side: Side::Attacker,
+        columns: 3,
+    });
+    let lucky = Strike {
+        lucky: true,
+        ..flags(false, false, false)
+    };
+    let beside = flags(false, false, true);
+    let shot = flags(true, false, false);
+    let lucky_shot = Strike {
+        lucky: true,
+        ..shot
+    };
+    let commands = [
+        // In the tactics phase: a wait and a round write nothing.
+        (
+            Some(0),
+            vec![
+                Event::Waited { stack: 0 },
+                Event::RoundStarted { round: 1 },
+                Event::TacticsEnded {},
+                Event::TurnStarted { stack: 0 },
+            ],
+        ),
+        // A lucky breath (its line the target's) and a multi-headed strike (every hit's).
+        (
+            Some(100),
+            vec![
+                struck(0, 2, 1, lucky),
+                struck(0, 3, 1, beside),
+                struck(0, 2, 0, flags(false, false, false)),
+                struck(0, 4, 0, beside),
+                Event::TurnStarted { stack: 1 },
+            ],
+        ),
+        // A lucky shot at one target, an area shot (its line as its reactions start).
+        (
+            None,
+            vec![
+                struck(1, 3, 1, lucky_shot),
+                struck(1, 2, 0, shot),
+                struck(
+                    1,
+                    3,
+                    0,
+                    Strike {
+                        secondary: true,
+                        ..shot
+                    },
+                ),
+                Event::TurnStarted { stack: 2 },
+            ],
+        ),
+        // Morale, a defend, a war machine's defend, a heal, a wait and a round.
+        (
+            None,
+            vec![
+                Event::GoodMorale { stack: 2 },
+                Event::BadMorale { stack: 4 },
+                Event::Defended { stack: 2 },
+                Event::Defended { stack: 5 },
+                healed(5, 0),
+                Event::Waited { stack: 4 },
+                // An event the timeline does not show.
+                Event::TurnPassed { stack: 3 },
+                Event::RoundStarted { round: 2 },
+                Event::TurnStarted { stack: 0 },
+            ],
+        ),
+    ];
+    let t = play(&o, &commands);
+    let kinds: Vec<&str> = t
+        .log
+        .iter()
+        .map(|(_, l)| match l {
+            Logged::Action => "action",
+            Logged::Turn(_) => "turn",
+            Logged::Strike {
+                spread: Spread::Target,
+                ..
+            } => "strike",
+            Logged::Strike { .. } => "around",
+            Logged::Wait { .. } => "wait",
+            Logged::Defend { .. } => "defend",
+            Logged::Heal { .. } => "heal",
+            Logged::Morale { good: true, .. } => "good",
+            Logged::Morale { .. } => "bad",
+            Logged::Luck { .. } => "luck",
+            Logged::Round => "round",
+        })
+        .collect();
+    assert_eq!(
+        kinds,
+        [
+            "action", "turn", "action", "luck", "strike", "around", "turn", "action", "luck",
+            "strike", "around", "turn", "action", "good", "bad", "defend", "heal", "wait", "round",
+            "turn"
+        ]
+    );
+    // In time order; the striker by its number then, the hits with their damage and kills.
+    assert!(t.log.windows(2).all(|w| w[0].0 <= w[1].0));
+    assert!(t.log.iter().any(|(_, l)| *l
+        == Logged::Strike {
+            attacker: 0,
+            count: 40,
+            spread: Spread::Target,
+            hits: vec![(2, 1, 1), (3, 1, 1)]
+        }));
+    // The area shot's line comes as its reactions start: before the turn after them.
+    let area = t
+        .log
+        .iter()
+        .position(|(_, l)| {
+            matches!(
+                l,
+                Logged::Strike {
+                    attacker: 1,
+                    spread: Spread::Around,
+                    ..
+                }
+            )
+        })
+        .unwrap();
+    assert!(t.log[area].0 < t.log[area + 1].0);
+    let heal = t.log.iter().find(|(_, l)| matches!(l, Logged::Heal { .. }));
+    assert_eq!(
+        heal.map(|(_, l)| l.clone()),
+        Some(Logged::Heal {
+            healer: 5,
+            target: 0,
+            counts: [40, 40],
+            hit_points: 6
+        })
+    );
 }

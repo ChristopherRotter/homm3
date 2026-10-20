@@ -13,6 +13,7 @@ use h3_render::Bugs;
 use h3_view::anim::{self, Speed};
 use h3_view::batch::{self, Batch};
 use h3_view::compose::compose;
+use h3_view::scene::Panels;
 use h3_view::{layout, record, scene};
 
 use crate::gate::{find_ci, timed};
@@ -242,16 +243,15 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
         )
         .map_err(|e| e.to_string())?
         .with_heroes(motion::heroes(&record, &tables, &archives, None)?);
+        let panels = crate::log::panels(&record, &timeline, &tables, &layout, &archives)?;
         let drawn = crate::sequences::draw_frames(
-            dir, &record, &timeline, &tables, &layout, &archives, None,
+            dir, &record, &timeline, &tables, &layout, &archives, &panels,
         )?;
         lines.push(format!("{drawn} frames drawn in {}", dir.display()));
         return Ok(lines);
     }
-    let mut moment = scene::Moment {
-        active: observation.active,
-        ..scene::Moment::default()
-    };
+    // The panel at the opening, or at `--at` as the record's turns and lines left it (E17 M3 T6b).
+    let mut panel = Panels::new(observation, &[], Vec::new()).at(observation, &[], 0, &layout);
     let list = match options.at {
         None => scene::battle(observation, manifest, &tables, &layout),
         Some(t) => {
@@ -274,20 +274,16 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
             .map_err(|e| e.to_string())?
             .with_heroes(motion::heroes(&record, &tables, &archives, Some(seed))?);
             lines.push(format!("the timeline ends at {} ms", timeline.end));
-            moment = scene::Moment::at(&timeline, t);
+            let moment = scene::Moment::at(&timeline, t);
+            let panels = crate::log::panels(&record, &timeline, &tables, &layout, &archives)?;
+            panel = panels.at(observation, &timeline.turns, t, &layout);
             scene::battle_at(observation, &moment, manifest, &tables, &layout)
         }
     }
     .map_err(|e| e.to_string())?;
-    // The panel's draws after the battlefield as the turn's start sets them, its log empty, as at
-    // a battle's start (E17 M3 T4b-2b-1, T6a; a record's lines come with M3 T6b).
+    // The panel's draws after the battlefield (E17 M3 T4b-2b-1, T6a, T6b).
     let mut list = list;
-    list.extend(scene::panel(
-        observation,
-        scene::acting(observation, &moment),
-        "",
-        &layout,
-    ));
+    list.extend(panel);
     let names = batch::names(&list, &layout);
     let (batch, loaded) = timed(|| {
         let mut batch = Batch::default();

@@ -69,7 +69,8 @@ search the parent directories).
   count boxes (M3 T4a; hidden through walks and flights, M3 T5a; a strike's kills from its end,
   M3 T5b-1; not yet tinted by spells), the
   panel (M3 T6a: its picture in the acting player's colours and its buttons as the turn's start
-  sets them, `h3_view::panel`; the log's item empty, as at the opening, M3 T4b-2b-1); not yet
+  sets them, `h3_view::panel`; since M3 T6b through the battle's turns and with its log's lines,
+  `scene::Panels`); not yet
   corpses, spell obstacles or the grid. With `--at <ms>` (and
   `--speed <0-2>`) the record's commands are played at the original's timing first and each
   stack is drawn in its pose then (`h3_view::anim`, E17 M2 T4a); `--frames <dir>` draws so each
@@ -108,9 +109,8 @@ search the parent directories).
 - **The frame check** (E17 M2 T4b-1, design §7.9): `python3 capture/h3drive.py frames` (from
   `clients/`, in a sandbox with the harness) keeps every distinct battlefield the original shows
   in each recorded sequence, draws the viewer's frame at the same times (`h3-view sequences
-  --frames`) and compares them with masks against the counts in `situations/timelines/`; from a
-  sequence's `log_at` also the log's item, the viewer drawing the record's first strike's line
-  there (M3 T4b-2b-2, design §9.6: `strike`).
+  --frames`) and compares them with masks against the counts in `situations/timelines/`; since
+  M3 T6b the whole panel, the log's item where the original's text is the viewer's (design §9.8).
 - **Without the original** (2026-10-20): `python3 capture/h3drive.py drawn` draws the viewer's
   frames of every sequence and situation at the times the last capture kept
   (`situations/kept/`) and compares their digests with `kept/drawn.txt`: a task captures in the
@@ -195,8 +195,10 @@ prints every key's forms from the installation, or one key's text (`h3-view text
 battle.log.damage attacker=Imps damage=4 count=2 [--pack de.json]`). The battle log's lines are
 composed from the keys as the executable composes them from its rows (`h3_view::battle_log`, M3
 T4b-2a, design §9.4: a strike's damage and perish rows, wait, defend, morale, luck, and the log
-entries a line becomes; the text the log's item shows, M3 T4b-2b-2); `h3-view text --log` prints
-sample lines, and the frame check draws one strike's line (design §9.6).
+entries a line becomes; the text the log's item shows, M3 T4b-2b-2; the heal's and the round's
+lines, which event writes which line and when, and the log kept as the executable keeps it, M3
+T6b, design §9.8); `h3-view text --log` prints sample lines, and the viewer's frames show the
+log's lines over the battle.
 
 - **The key catalogue** `clients/text/keys.toml` (committed; identifiers and numbers only, as the
   asset tables): `[[key]]` with `id` (lower-case segments of letters, digits and `-` joined by

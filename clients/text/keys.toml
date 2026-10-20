@@ -86,6 +86,20 @@ id = "battle.log.luck-good"
 args = { creature = "text" }
 original = [{ at = "GENRLTXT:46", printf = ["creature"] }]
 
+# The First Aid Tent heals a stack (0x478CE4, E17 M3 T6b): the tent's name and the patient's, each
+# by its own number; `hit_points`: the hit points healed. Its row's line break joins or splits it
+# as any line's (0x472E90).
+[[key]]
+id = "battle.log.heal"
+args = { healer = "text", creature = "text", hit_points = "number" }
+original = [{ at = "GENRLTXT:415", printf = ["healer", "creature", "hit_points"] }]
+
+# A round starts outside the tactics phase (`round_start` 0x4761E9, E17 M3 T6b; the battle's first
+# round writes none).
+[[key]]
+id = "battle.log.round"
+original = [{ at = "GENRLTXT:413" }]
+
 # The word for a creature, by `count`: a strike's perish row names it when the strike killed
 # several kinds.
 [[key]]

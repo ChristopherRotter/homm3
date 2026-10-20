@@ -86,6 +86,13 @@ MAGIC_ANIMATION, MAGIC_FRAME, MAGIC_SHOWN = 0x132EC, 0x132F0, 0x20
 # The battle's outcome (E17 H1; structs.toml, battle_manager): each side retreated (u8 +0x132B0)
 # or surrendered (u8 +0x132B2), the winner (i32 +0x13D48: 0 the attacker, 1 the defender).
 RETREATED, SURRENDERED, WINNER = 0x132B0, 0x132B2, 0x13D48
+# The battle's log (E17 M3 T6b, design §9.8): the combat dialog (a pointer at the manager's
+# +0x132FC) holds the entries (a vector of string pointers: begin +0x58, end +0x5C), the new
+# entries' count +0x64, the first shown +0x68 and the time it last showed them +0x6C (the
+# game's clock); its panel (+0x70) the log's text item (+0x34), whose string record at +0x30 is
+# what the item shows, the status line's text included.
+COMBAT_DIALOG, LOG_ENTRIES, LOG_FRESH, LOG_FIRST, LOG_TIME, LOG_PANEL, PANEL_LOG_ITEM = (
+    0x132FC, 0x58, 0x64, 0x68, 0x6C, 0x70, 0x34)
 # Stack fields (structs.toml, battle_stack): name -> offset (all i32).
 FIELDS = {
     "draw_layer": 0x8,
@@ -204,6 +211,28 @@ class Mem:
                  "frame": self.i32(manager + HERO_FRAMES + 4 * side),
                  "flag": self.i32(manager + FLAG_FRAMES + 4 * side)}
                 for side in (0, 1) if self.u32(manager + HERO_POINTERS + 4 * side)]
+
+    def c_string(self, pointer, limit=1024):
+        """The characters at `pointer` up to their terminator ("" for none)."""
+        if not pointer:
+            return ""
+        return self.read(pointer, limit).split(b"\0")[0].decode("cp1252")
+
+    def battle_log(self):
+        """The battle's log (E17 M3 T6b): the text its item shows (the status line's too), its
+        entries, the new entries' count, the first shown and the time it last showed them (the
+        game's clock, ms); None before the battle's dialog exists."""
+        manager = self.manager()
+        dialog = self.u32(manager + COMBAT_DIALOG) if manager else 0
+        panel = self.u32(dialog + LOG_PANEL) if dialog else 0
+        item = self.u32(panel + PANEL_LOG_ITEM) if panel else 0
+        if not item:
+            return None
+        begin, end = self.u32(dialog + LOG_ENTRIES), self.u32(dialog + LOG_ENTRIES + 4)
+        entries = [self.c_string(self.u32(at)) for at in range(begin, end, 4)] if begin else []
+        return {"text": self.c_string(self.u32(item + ITEM_TEXT)), "entries": entries,
+                "fresh": self.i32(dialog + LOG_FRESH), "first": self.i32(dialog + LOG_FIRST),
+                "at": self.u32(dialog + LOG_TIME)}
 
     # -- the adventure map ---------------------------------------------------------------------
     def game(self):
@@ -366,4 +395,5 @@ if __name__ == "__main__":
     elif len(sys.argv) > 1:
         sys.exit(__doc__)
     else:
-        print(json.dumps({"globals": mem.globals(), "stacks": mem.stacks()}, indent=1))
+        print(json.dumps({"globals": mem.globals(), "stacks": mem.stacks(),
+                          "log": mem.battle_log()}, indent=1))

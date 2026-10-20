@@ -6,7 +6,8 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use super::{
-    Hit, Spread, Stack, defend, entries, luck_good, morale_bad, morale_good, shown, strike, wait,
+    Hit, Log, Logged, NEW_FOR, Named, Spread, Stack, defend, entries, heal, luck_good, morale_bad,
+    morale_good, shown, strike, text_at, texts, wait, word,
 };
 use crate::text::Catalogue;
 use crate::text::pack::Pack;
@@ -24,7 +25,9 @@ const PACK: &str = r#"{
         "defend_other": "{{creature}} brace,\n+{{defense}}.",
         "morale-good": "{{creature}}: again.",
         "morale-bad": "{{creature}}: frozen.",
-        "luck-good": "{{creature}}: lucky."
+        "luck-good": "{{creature}}: lucky.",
+        "heal": "{{healer}} mends {{creature}}\nfor {{hit_points}}.",
+        "round": "Round."
     } },
     "word": { "creature_one": "beast", "creature_other": "beasts" },
     "creature": {
@@ -195,4 +198,232 @@ fn the_item_shows_two_entries_from_the_first() {
     assert_eq!(shown(&log, 2), "Three.");
     assert_eq!(shown(&log, 3), "");
     assert_eq!(shown(&[], 0), "");
+}
+
+/// The stacks [`word`] names: 1 an Ant, 2 a Bee (defense 7), 3 a Cart (a war machine).
+fn named(id: u8) -> Option<Named> {
+    let (creature, war_machine, defense) = match id {
+        1 => ("creature.t:ant", false, 0),
+        2 => ("creature.t:bee", false, 7),
+        3 => ("creature.t:cart", true, 0),
+        _ => return None,
+    };
+    Some(Named {
+        creature: creature.into(),
+        war_machine,
+        defense,
+    })
+}
+
+fn worded(logged: &Logged) -> Option<String> {
+    word(&catalogue(), logged, &named)
+}
+
+#[test]
+fn a_heal_names_the_tent_and_its_patient() {
+    let c = catalogue();
+    assert_eq!(
+        heal(
+            &c,
+            stack("creature.t:cart", 1),
+            stack("creature.t:ant", 3),
+            25
+        ),
+        "Cart mends Ants\nfor 25."
+    );
+}
+
+#[test]
+fn each_happening_has_its_line() {
+    let strike = Logged::Strike {
+        attacker: 1,
+        count: 2,
+        spread: Spread::Target,
+        hits: vec![(2, 30, 1), (3, 5, 1)],
+    };
+    // Two kinds hit: the word for creatures; the second a war machine that stays unnamed.
+    assert_eq!(
+        worded(&strike).as_deref(),
+        Some("Ants hit for 35.\n2 beasts fall.")
+    );
+    let wrecked = Logged::Strike {
+        attacker: 2,
+        count: 1,
+        spread: Spread::Around,
+        hits: vec![(3, 9, 1)],
+    };
+    assert_eq!(
+        worded(&wrecked).as_deref(),
+        Some("Bee hits for 9.\nCart wrecked.")
+    );
+    let wait = Logged::Wait { stack: 1, count: 1 };
+    assert_eq!(worded(&wait).as_deref(), Some("Ant holds."));
+    // A defend's gain: max(1, defense × 20 / 100), 7 → 1, 0 → 1.
+    let defend = Logged::Defend { stack: 2, count: 4 };
+    assert_eq!(worded(&defend).as_deref(), Some("Bees brace,\n+1."));
+    let heal = Logged::Heal {
+        healer: 3,
+        target: 1,
+        counts: [1, 5],
+        hit_points: 12,
+    };
+    assert_eq!(worded(&heal).as_deref(), Some("Cart mends Ants\nfor 12."));
+    let good = Logged::Morale {
+        stack: 1,
+        count: 1,
+        good: true,
+    };
+    let bad = Logged::Morale {
+        stack: 2,
+        count: 2,
+        good: false,
+    };
+    assert_eq!(worded(&good).as_deref(), Some("Ant: again."));
+    assert_eq!(worded(&bad).as_deref(), Some("Bees: frozen."));
+    let luck = Logged::Luck { stack: 1, count: 3 };
+    assert_eq!(worded(&luck).as_deref(), Some("Ants: lucky."));
+    assert_eq!(worded(&Logged::Round).as_deref(), Some("Round."));
+    // What writes no line, and a stack the names lack.
+    assert_eq!(worded(&Logged::Action), None);
+    assert_eq!(worded(&Logged::Turn(1)), None);
+    for ghost in [
+        Logged::Strike {
+            attacker: 9,
+            count: 1,
+            spread: Spread::Target,
+            hits: vec![],
+        },
+        Logged::Strike {
+            attacker: 1,
+            count: 1,
+            spread: Spread::Target,
+            hits: vec![(9, 1, 0)],
+        },
+        Logged::Wait { stack: 9, count: 1 },
+        Logged::Defend { stack: 9, count: 1 },
+        Logged::Heal {
+            healer: 9,
+            target: 1,
+            counts: [1, 1],
+            hit_points: 1,
+        },
+        Logged::Heal {
+            healer: 3,
+            target: 9,
+            counts: [1, 1],
+            hit_points: 1,
+        },
+        Logged::Morale {
+            stack: 9,
+            count: 1,
+            good: true,
+        },
+        Logged::Luck { stack: 9, count: 1 },
+    ] {
+        assert_eq!(worded(&ghost), None);
+    }
+}
+
+/// Each character a line: a text of more than one character takes two lines or more.
+fn by_chars(text: &str) -> i64 {
+    i64::try_from(text.chars().count()).unwrap()
+}
+
+/// Ten characters to a line.
+fn tens(text: &str) -> i64 {
+    i64::try_from(text.chars().count().div_ceil(10)).unwrap()
+}
+
+#[test]
+fn new_entries_show_and_keep_the_status_line_out() {
+    let mut log = Log::default();
+    log.status("hint", 0, false);
+    assert_eq!(log.text, "hint");
+    // One entry, then a line split in two: at most two new, the log shown from the first new.
+    log.add("one", 100, &tens);
+    assert_eq!((log.fresh, log.first, log.text.as_str()), (1, 0, "one"));
+    log.add("two\nthree", 200, &by_chars);
+    assert_eq!(log.entries, ["one", "two", "three"]);
+    assert_eq!(
+        (log.fresh, log.first, log.text.as_str()),
+        (2, 1, "two\nthree")
+    );
+    // The status line waits 3 000 ms from the last showing, unless forced.
+    log.status("hint", 200 + NEW_FOR - 1, false);
+    assert_eq!(log.text, "two\nthree");
+    log.status("forced", 300, true);
+    assert_eq!(log.text, "forced");
+    log.status("hint", 200 + NEW_FOR, false);
+    assert_eq!((log.fresh, log.text.as_str()), (2, "hint"));
+}
+
+#[test]
+fn settled_entries_empty_the_status_line() {
+    let mut log = Log::default();
+    // Nothing new: nothing happens.
+    log.status("hint", 0, false);
+    log.settle(5000);
+    assert_eq!(log.text, "hint");
+    log.add("one", 100, &tens);
+    log.settle(100 + NEW_FOR - 1);
+    assert_eq!((log.fresh, log.text.as_str()), (1, "one"));
+    log.settle(100 + NEW_FOR);
+    assert_eq!((log.fresh, log.text.as_str()), (0, ""));
+}
+
+#[test]
+fn the_scroll_keeps_two_entries_in_view() {
+    let mut log = Log::default();
+    // Nothing to show: the text stays.
+    log.scroll(1, 0);
+    assert_eq!((log.first, log.text.as_str()), (0, ""));
+    for (i, line) in ["a", "b", "c", "d"].iter().enumerate() {
+        log.add(line, u32::try_from(i).unwrap(), &tens);
+    }
+    // Two new at most: the last two show.
+    assert_eq!((log.fresh, log.first, log.text.as_str()), (2, 2, "c\nd"));
+    // Up and down by one, the next-to-last at most, the first at least.
+    log.scroll(-1, 10);
+    assert_eq!((log.first, log.text.as_str(), log.at), (1, "b\nc", 10));
+    log.scroll(3, 11);
+    assert_eq!((log.first, log.text.as_str()), (2, "c\nd"));
+    log.scroll(-5, 12);
+    assert_eq!((log.first, log.text.as_str()), (0, "a\nb"));
+    // One entry: the first.
+    let mut one = Log::default();
+    one.add("a", 0, &tens);
+    one.scroll(1, 1);
+    assert_eq!((one.first, one.text.as_str()), (0, "a"));
+}
+
+#[test]
+fn the_item_follows_the_lines_and_turns() {
+    let human = |stack: u8| stack == 1;
+    let logged = [
+        (0, Logged::Turn(1)),
+        (10, Logged::Wait { stack: 1, count: 1 }),
+        (10, Logged::Turn(2)),
+        (20, Logged::Action),
+        (20, Logged::Wait { stack: 9, count: 1 }),
+        (1000, Logged::Turn(1)),
+        (3010, Logged::Turn(2)),
+        (3010, Logged::Action),
+        (3500, Logged::Round),
+        (6500, Logged::Turn(1)),
+    ];
+    let got = texts(&logged, &worded, &tens, &human);
+    assert_eq!(
+        got,
+        [
+            (0, String::new()),
+            (10, "Ant holds.".into()),
+            (3010, String::new()),
+            (3500, "Round.".into()),
+            (6500, String::new()),
+        ]
+    );
+    assert_eq!(text_at(&got, 9), "");
+    assert_eq!(text_at(&got, 3499), "");
+    assert_eq!(text_at(&got, 4000), "Round.");
+    assert_eq!(text_at(&[], 4000), "");
 }
