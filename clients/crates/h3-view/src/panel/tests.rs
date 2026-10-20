@@ -246,7 +246,14 @@ fn each_turn_finds_the_battle_its_events_left() {
     assert_eq!(turns[2].sides[0].hero.as_ref().map(|h| h.casts), Some(0));
     let mut heroless = battle();
     heroless.sides[0].hero = None;
-    let after = super::turns(&heroless, &[cast, Event::TurnStarted { stack: 0 }]);
+    let after = super::turns(
+        &heroless,
+        &[
+            cast,
+            Event::RoundStarted { round: 2 },
+            Event::TurnStarted { stack: 0 },
+        ],
+    );
     assert!(after[0].sides[0].hero.is_none());
 }
 

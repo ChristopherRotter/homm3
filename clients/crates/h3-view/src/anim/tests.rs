@@ -2392,6 +2392,8 @@ fn the_log_records_what_the_battle_writes_and_when() {
                 Event::Defended { stack: 5 },
                 healed(5, 0),
                 Event::Waited { stack: 4 },
+                // An event the timeline does not show.
+                Event::TurnPassed { stack: 3 },
                 Event::RoundStarted { round: 2 },
                 Event::TurnStarted { stack: 0 },
             ],
