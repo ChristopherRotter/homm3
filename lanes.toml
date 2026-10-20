@@ -101,6 +101,8 @@ name = "battle"
 code = "BAT"
 paths = [
     "crates/h3-battle/",
+    # The original's battle AI, the computer's policy of a battle side (E23, ADR-0027).
+    "crates/h3-battle-ai/",
     "crates/h3-content-battle/",
     "crates/h3-pack-battle/",
     # The CLI's battle commands and golden replays; its AI commands are the AI lane's (`src/ai/`).
