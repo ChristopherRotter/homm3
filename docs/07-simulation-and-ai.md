@@ -68,9 +68,15 @@ design note kept in `docs/epics/E05-log.md` (§1 to §9).
   on the GTX 1070 it won 0.800 against Random.
 - **Baselines** (`h3_sim::bots`, `h3 ai eval`): Aggressor and Greedy read their side's
   observation and the engine's preview of their own attacks, never the retaliation (AI-Q6); one
-  Glicko-2 period per run. On 1 000 held-out encounters per pair: Greedy 0.828 and Aggressor
+  Glicko-2 period per run. On 1 000 held-out encounters per pair (v0): Greedy 0.828 and Aggressor
   0.800 against Random, Greedy 0.519 against Aggressor; the smoke network 0.802 against Random,
   0.498 against Aggressor, 0.479 against Greedy.
+- **Held-out sets** (E06 T3a, `docs/epics/E06-design.md` §5): `h3 ai eval --set` and the Python
+  ladder play the report set v1 (by default: per kind with a player on both sides 500 battles
+  from both sides, the kinds weighed 4 : 2 : 1, the win rate with its 95 % interval) or E05's v0;
+  the trainer checks every training episode against both and the gate set v1. The bots' table on
+  the report set is committed (`python/records/bots-report-v1.json`): Greedy 0.832 ± 0.013 and
+  Aggressor 0.810 ± 0.014 against Random, Greedy 0.533 ± 0.018 against Aggressor.
 - **Throughput** (wall time, not gated; the gates count instructions in `benches/ai/`):
   on the user's Ryzen 9 3900X (Windows, release, the encounter distribution) about 50 000 steps/s
   on one thread whatever the batch size, and inside the step 387 000 on 12 threads and 497 000 on

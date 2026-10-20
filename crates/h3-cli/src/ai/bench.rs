@@ -174,6 +174,20 @@ fn choose(batch: &mut BattleBatch, arrays: &mut Arrays, rng: &mut Rng) -> Result
 
 /// The encounter distribution v1 on the original packs (`base:faithful`) with the kinds' `weights`.
 pub(super) fn encounters(weights: [u32; 6]) -> Result<Scenario, String> {
+    encounters_of(&sampler()?, weights)
+}
+
+/// The encounter distribution of `sampler` with the kinds' `weights`, one batch entry.
+pub(super) fn encounters_of(sampler: &Sampler, weights: [u32; 6]) -> Result<Scenario, String> {
+    let sampler = sampler
+        .clone()
+        .with_weights(weights)
+        .map_err(|e| e.to_string())?;
+    Scenario::encounters(Arc::new(sampler), 1, None).map_err(|e| e.to_string())
+}
+
+/// The encounter distribution v1 on the original packs (`base:faithful`), at its own weights.
+pub(super) fn sampler() -> Result<Sampler, String> {
     let profile = "base:faithful";
     let battle = h3_pack_battle::compile(
         &[
@@ -186,10 +200,8 @@ pub(super) fn encounters(weights: [u32; 6]) -> Result<Scenario, String> {
     .map_err(|e| e.to_string())?;
     let (_, adventure) = h3_pack_adventure::compile(&h3_pack_adventure::ORIGINAL_PACKS, profile)
         .map_err(|e| e.to_string())?;
-    let sampler = Sampler::new(Arc::new(battle), Arc::new(adventure), &EncounterTable::v1())
-        .and_then(|s| s.with_weights(weights))
-        .map_err(|e| e.to_string())?;
-    Scenario::encounters(Arc::new(sampler), 1, None).map_err(|e| e.to_string())
+    Sampler::new(Arc::new(battle), Arc::new(adventure), &EncounterTable::v1())
+        .map_err(|e| e.to_string())
 }
 
 /// Plays the benchmark (see the module documentation).

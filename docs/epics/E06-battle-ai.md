@@ -1,6 +1,6 @@
 # E06 — Battle AI v1 and the local training pipeline v0
 
-Status: **in progress**, refined 2026-10-20 (AI-Q8); increment 1 (T1, T2a, T2b1, T2c) done; T3 next · Lane: **ai** · Follows E05 (closed
+Status: **in progress**, refined 2026-10-20 (AI-Q8); increment 1 (T1, T2a, T2b1, T2c) done; increment 2: T3a done, T3b next · Lane: **ai** · Follows E05 (closed
 2026-10-20) · Runs beside E23 (the battle lane: the original's battle AI, the system actor's
 policy), whose neutral side opens E06's neutral share (decision 1)
 
@@ -106,13 +106,18 @@ the user, 2026-10-20: T1 and T2a in one).
   and encounters' versions, each entry's rulesets' content hashes), N capped at `MAX_ENVS`;
   the record in `E06-log.md`. The observations written in place moved to T5.
 
+**Increment 2:** T3a, then T3b (the user, 2026-10-20: T3a in one pull request).
+
+- [x] **T3a The held-out sets v1** — done 2026-10-20: `h3 ai eval --set report-v1|v0` and
+  `--json`, the report set's stratified rates and intervals in Python and the ladder, the gate
+  set's seeds, every held-out seed in the trainer's check, the bots' table
+  `python/records/bots-report-v1.json`, the bots' fallbacks tested; the record in `E06-log.md`.
+- [ ] **T3b The evaluation gate** — the SPRT promotion on the gate set, the ladder per promoted
+  network, a pending gate or ladder at the resume, `--init-from`, an hour with gates on the
+  user's machine (the evaluation's share of a run measured).
+
 **Later increments** (cut at each checkpoint; proposed in design §10):
 
-- [ ] **T3 The evaluation gate** — T3a: the held-out sets v1 (report and gate) in Python and
-  `h3 ai eval --set`, the ladder on them, the bots' table committed, the bots' fallback branches
-  tested; T3b: the SPRT promotion, the ladder per promoted network, a pending gate or ladder at
-  the resume, `--init-from`, an hour with gates on the user's machine (the evaluation's share of
-  a run measured).
 - [ ] **T4 The league** — T4a: PFSP over snapshots and promoted networks with a live set (design
   §8); T4b: the first multi-hour run, its resume used for real.
 - [ ] **T5 The network and the preview** — the entity network against the MLP; AI-Q7 (b); the

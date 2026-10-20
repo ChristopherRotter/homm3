@@ -1,12 +1,14 @@
 //! The bots against Random on the encounter distribution (E05 T7): legal commands only, every
-//! battle to its end, and both bots ahead of Random from either side.
+//! battle to its end, and both bots ahead of Random from either side; their fallbacks (E06 T3a).
 
 use std::sync::Arc;
 
-use h3_battle::LegalCommands;
+use h3_battle::{Command, LegalCommands, observe};
 use h3_contracts::{BattleResult, BattleSide};
 use h3_kernel::{Rng, StreamId};
 
+use super::{aggressor, greedy};
+use crate::BattleEnv;
 use crate::batch::{Policy, Scenario};
 use crate::encounter::tests::SAMPLER;
 use crate::rollout;
@@ -57,4 +59,60 @@ fn the_bots_play_each_other_to_the_end() {
         play([Policy::Aggressor, Policy::Greedy], seed);
         play([Policy::Greedy, Policy::Aggressor], seed);
     }
+}
+
+/// The battle of a synthetic scenario's `text`, its seed 1, no step limit.
+fn synthetic(text: &str) -> BattleEnv {
+    let (ruleset, setup) = h3_pack_battle::synthetic(text).unwrap();
+    BattleEnv::new(Arc::new(ruleset), Arc::new(setup), 1, 0).unwrap()
+}
+
+/// E06 T3a (E05 T9b's inbox): in the tactics phase neither bot places a stack; both end the phase
+/// (their fallback's first choice, BAT-TAC-002).
+#[test]
+fn the_bots_end_the_tactics_phase() {
+    let env = synthetic(h3_pack_battle::SYNTHETIC_FULL);
+    let side = env.to_move().unwrap();
+    assert!(observe(env.state(), env.ruleset(), side).tactics.is_some());
+    let mut legal = LegalCommands::new();
+    for bot in [aggressor, greedy] {
+        let chosen = bot(env.state(), env.ruleset(), side, &mut legal);
+        assert_eq!(chosen, Command::EndTactics);
+    }
+}
+
+/// E06 T3a (E05 T9b's inbox): the commanded Catapult has no attack, no move and no Defend (BAT-Q50):
+/// both bots shoot the walls (their fallback's first command that stays in the battle), every
+/// time it acts in the siege played by the two bots.
+#[test]
+fn the_bots_shoot_the_walls_with_a_commanded_catapult() {
+    let mut env = synthetic(h3_pack_battle::SYNTHETIC_SIEGE);
+    let mut legal = LegalCommands::new();
+    let mut catapult_turns = 0;
+    for _ in 0..2000 {
+        let Some(side) = env.to_move() else {
+            break;
+        };
+        let bot = if side == BattleSide::Attacker {
+            aggressor
+        } else {
+            greedy
+        };
+        let chosen = bot(env.state(), env.ruleset(), side, &mut legal);
+        if !legal
+            .iter()
+            .any(|c| matches!(c, Command::Defend | Command::EndTactics))
+        {
+            catapult_turns += 1;
+            assert!(matches!(chosen, Command::ShootWall { .. }), "{chosen:?}");
+            let other = if side == BattleSide::Attacker {
+                greedy
+            } else {
+                aggressor
+            };
+            assert_eq!(other(env.state(), env.ruleset(), side, &mut legal), chosen);
+        }
+        rollout::step_command(&mut env, side, chosen).unwrap();
+    }
+    assert!(catapult_turns > 0);
 }

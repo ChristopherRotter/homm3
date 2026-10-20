@@ -1,5 +1,5 @@
 """A run's lifecycle without torch (E06 T2a, T2b1; ADR-0026, `docs/epics/E06-design.md` §1 to
-§5.3): the config file and `--set`, the schedule in samples, atomic writes, the held-out check,
+§5): the config file and `--set`, the schedule in samples, atomic writes, the held-out check,
 the run's directory and record, what a resume needs (its allowed changes, the segments' seeds,
 the metrics cut back, Ctrl+C), and every committed record and config."""
 
@@ -13,7 +13,7 @@ import pytest
 
 from h3env.train import Config
 from h3env.train.__main__ import line, parse
-from h3env.train.evaluate import EVAL_SEED, episode_seeds
+from h3env.train.evaluate import EVAL_SEED, GATE_V1_SEED, REPORT_V1_SEED, episode_seeds
 from h3env.train.run import (
     RECORD_SCHEMA,
     RESUMABLE,
@@ -97,7 +97,9 @@ lr_schedule = "constant"
         ("seed = [", [], "not TOML"),
         ("", ["ppo.lr_schedule=cosine"], "linear or constant"),
         ("", ["samples=0"], "`samples` must be positive"),
-        ("", [f"seed={EVAL_SEED}"], "held-out episodes' batch seed"),
+        ("", [f"seed={EVAL_SEED}"], "held-out set's batch seed"),
+        ("", [f"seed={REPORT_V1_SEED + 3}"], "held-out set's batch seed"),
+        ("", [f"seed={GATE_V1_SEED}"], "held-out set's batch seed"),
     ],
 )
 def test_a_wrong_config_is_refused(text: str, sets: list[str], message: str) -> None:
@@ -378,7 +380,10 @@ def test_check_record_names_what_is_missing() -> None:
 
 
 def test_every_committed_record_and_config_is_valid() -> None:
+    # `bots-<set>.json` is the bots' table (`h3 ai eval --json`, `tests/test_evaluate.py`).
     for path in sorted((PYTHON / "records").glob("*.json")):
+        if path.name.startswith("bots-"):
+            continue
         assert check_record(json.loads(path.read_text(encoding="utf-8"))) == [], path.name
     configs = sorted((PYTHON / "configs").glob("*.toml"))
     assert configs

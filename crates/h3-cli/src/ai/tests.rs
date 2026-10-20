@@ -343,52 +343,63 @@ fn a_towns_fort_is_its_highest_fort_building() {
     assert_eq!(fort_level(&custom(0x38)), 3);
 }
 
-/// E05 T9b: `h3 ai eval`'s default episodes are the Python evaluation's (the ladder's row stands
-/// beside its table): the two seeds are one.
+/// E05 T9b, E06 T3a: `h3 ai eval`'s held-out sets are the Python evaluation's (the ladder's row
+/// stands beside its table): the seeds and the report set's size are one.
 #[test]
-fn the_eval_seed_is_the_python_evaluations() {
+fn the_eval_seeds_are_the_python_evaluations() {
     let python = include_str!("../../../../python/h3env/train/evaluate.py");
-    let line = python
-        .lines()
-        .find_map(|l| l.strip_prefix("EVAL_SEED = 0x"))
-        .unwrap();
-    let seed = u64::from_str_radix(&line.replace('_', ""), 16).unwrap();
-    assert_eq!(seed, super::eval::EVAL_SEED);
+    let constant = |name: &str| {
+        let prefix = format!("{name} = ");
+        let value = python
+            .lines()
+            .find_map(|l| l.strip_prefix(prefix.as_str()))
+            .unwrap()
+            .replace('_', "");
+        value.strip_prefix("0x").map_or_else(
+            || value.parse().unwrap(),
+            |hex| u64::from_str_radix(hex, 16).unwrap(),
+        )
+    };
+    assert_eq!(constant("EVAL_SEED"), super::eval::EVAL_SEED);
+    assert_eq!(constant("REPORT_V1_SEED"), super::eval::REPORT_V1_SEED);
+    assert_eq!(
+        constant("REPORT_V1_ENVS"),
+        u64::from(super::eval::REPORT_V1_ENVS)
+    );
 }
 
 /// E05 T7: `h3 ai eval` plays every ordered pair on the same episodes, the same way twice; the
 /// bots win most games against Random; the ratings follow; its arguments are checked.
 #[test]
 fn the_eval_runner_rates_the_policies() {
-    use super::eval::{self, EVAL_SEED, EvalOptions};
+    use super::eval::{self, EVAL_SEED, EvalOptions, Stratum};
     let options = EvalOptions {
+        set: "v0".to_owned(),
         policies: eval::policies("random, greedy,aggressor").unwrap(),
-        episodes: 12,
-        envs: 4,
-        seed: EVAL_SEED,
+        strata: Stratum::v0(12, 4, EVAL_SEED, [0, 0, 1, 1, 1, 0]),
         max_steps: 2000,
-        weights: [0, 0, 1, 1, 1, 0],
     };
-    let source = super::bench::encounters(options.weights).unwrap();
-    let report = eval::run(&source, &options).unwrap();
-    assert_eq!(report, eval::run(&source, &options).unwrap());
+    let sampler = super::bench::sampler().unwrap();
+    let report = eval::run(&sampler, &options).unwrap();
+    assert_eq!(report, eval::run(&sampler, &options).unwrap());
     assert_eq!(report.names, ["random", "greedy", "aggressor"]);
     for a in 0..3 {
         for b in (0..3).filter(|&b| b != a) {
-            assert_eq!(report.pairs[a][b].episodes, 12);
+            assert_eq!(report.pairs[a][b][0].episodes, 12);
             let both = report.win_rate(a, b) + report.win_rate(b, a);
             assert!(both <= 1.0 + 1e-9, "{a} {b}: {both}");
             assert!(
                 (report.value(a, b) + report.value(b, a)).abs() < 1e-6,
                 "zero-sum"
             );
+            assert!((0.0..0.5).contains(&report.interval(a, b)));
         }
     }
     assert!(report.win_rate(1, 0) > 0.5 && report.win_rate(2, 0) > 0.5);
     assert!(report.ratings[0].rating < report.ratings[1].rating.min(report.ratings[2].rating));
     let text = report.to_text();
     assert!(
-        text.contains("win rate") && text.contains("Glicko-2"),
+        text.contains("win rate") && text.contains("Glicko-2") && !text.contains("win rate in"),
         "{text}"
     );
     assert!(eval::policies("random,minimax").is_err());
@@ -396,10 +407,105 @@ fn the_eval_runner_rates_the_policies() {
         policies: eval::policies("greedy").unwrap(),
         ..options
     };
-    assert!(eval::run(&source, &one).is_err());
+    assert!(eval::run(&sampler, &one).is_err());
     let words = |w: &[&str]| w.iter().map(|s| (*s).to_owned()).collect::<Vec<_>>();
     assert!(main(&words(&["eval", "--policies", "nobody"])).is_err());
-    assert!(main(&words(&["eval", "--seed", "0xZZ"])).is_err());
+    assert!(main(&words(&["eval", "--set", "v0", "--seed", "0xZZ"])).is_err());
     assert!(main(&words(&["eval", "--colour", "red"])).is_err());
     assert!(main(&words(&["eval", "--max-steps", "0"])).is_err());
+    let v0 = ["eval", "--set", "v0", "--policies", "random,greedy"];
+    main(&words(
+        &[&v0[..], &["--episodes", "2", "--envs", "2", "--seed", "7"]].concat(),
+    ))
+    .unwrap();
+}
+
+/// E06 T3a: the report set v1, one stratum per kind with a player on both sides, the first
+/// episode of each env; the overall rate weighs the kinds as the distribution does (4 : 2 : 1),
+/// its interval is the stratified one of design §5; the JSON table and the command line.
+#[test]
+fn the_report_set_is_stratified_by_kind() {
+    use super::eval::{self, EvalOptions, EvalReport, PairResult, REPORT_V1_SEED, Stratum};
+    let strata = Stratum::report_v1(2).unwrap();
+    let described: Vec<_> = strata
+        .iter()
+        .map(|s| (s.name.as_str(), s.weight, s.seed, s.envs, s.per_env))
+        .collect();
+    assert_eq!(
+        described,
+        [
+            ("hero", 100, REPORT_V1_SEED + 2, 2, 1),
+            ("siege_hero", 50, REPORT_V1_SEED + 3, 2, 1),
+            ("siege_garrison", 25, REPORT_V1_SEED + 4, 2, 1),
+        ]
+    );
+    assert_eq!(strata[1].kinds, [0, 0, 0, 1, 0, 0]);
+    assert!(Stratum::report_v1(0).is_err() && Stratum::report_v1(501).is_err());
+    let options = EvalOptions {
+        set: "report-v1".to_owned(),
+        policies: eval::policies("random,aggressor").unwrap(),
+        strata,
+        max_steps: 2000,
+    };
+    let report = eval::run(&super::bench::sampler().unwrap(), &options).unwrap();
+    assert_eq!(report.episodes_per_pair(), 6);
+    assert!((0..3).all(|s| report.pairs[0][1][s].episodes == 2));
+    let by_kind: f64 = [4.0, 2.0, 1.0]
+        .iter()
+        .enumerate()
+        .map(|(s, w)| w * report.stratum_rate(1, 0, s))
+        .sum();
+    assert!((report.win_rate(1, 0) - by_kind / 7.0).abs() < 1e-12);
+    assert!(report.to_text().contains("win rate in siege_garrison"));
+    let json = report.to_json();
+    for key in [
+        "\"set\": \"report-v1\"",
+        "\"stratum\": \"siege_garrison\"",
+        "\"seed\": \"0x5eede7a100010003\"",
+        "\"engine\": {\"encounters\": 1",
+        "\"by_stratum\": {\"hero\"",
+    ] {
+        assert!(json.contains(key), "{key}: {json}");
+    }
+    assert_eq!(json.matches('{').count(), json.matches('}').count());
+    // Design §5: 0.75 on every kind and side, 500 games each, is ±1.8 points.
+    let pair = |wins| PairResult {
+        episodes: 500,
+        wins,
+        ..PairResult::default()
+    };
+    let known = EvalReport {
+        strata: Stratum::report_v1(500).unwrap(),
+        pairs: vec![
+            vec![Vec::new(), vec![pair([375, 0]); 3]],
+            vec![vec![pair([0, 375]); 3], Vec::new()],
+        ],
+        ..report
+    };
+    assert!((known.win_rate(0, 1) - 0.75).abs() < 1e-12);
+    assert!(
+        (known.interval(0, 1) - 0.0176).abs() < 1e-4,
+        "{}",
+        known.interval(0, 1)
+    );
+    // The command line: the set fixes its episodes; the table goes to a file.
+    let words = |w: &[&str]| w.iter().map(|s| (*s).to_owned()).collect::<Vec<_>>();
+    for (bad, message) in [
+        (&["--set", "v9"][..], "unknown set"),
+        (&["--envs", "3"], "fixes its episodes"),
+        (&["--encounters", "default"], "fixes its episodes"),
+        (&["--episodes", "501"], "per kind"),
+    ] {
+        let error = main(&words(&[&["eval"][..], bad].concat())).unwrap_err();
+        assert!(error.contains(message), "{error}");
+    }
+    let out = std::env::temp_dir().join(format!("h3-eval-{}.json", std::process::id()));
+    let path = out.to_str().unwrap();
+    let run = ["eval", "--episodes", "1", "--policies", "aggressor,greedy"];
+    main(&words(&[&run[..], &["--json", path]].concat())).unwrap();
+    let written = std::fs::read_to_string(&out).unwrap();
+    std::fs::remove_file(&out).unwrap();
+    assert!(written.starts_with("{\n  \"schema\": 1,") && written.contains("\"greedy\""));
+    let nowhere = [&run[..], &["--json", "/nonexistent/dir/table.json"]].concat();
+    assert!(main(&words(&nowhere)).is_err());
 }

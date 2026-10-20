@@ -28,6 +28,20 @@ A record (schema 3, `h3env.train.run.Record`; `docs/epics/E06-design.md` §4):
 `python/configs/`). To commit a run's record: copy `runs/<run>/record.json` to
 `records/<run>.json`.
 
+## The bots' table
+
+`bots-report-v1.json` (E06 T3a; design §7): Random, Aggressor and Greedy against each other on
+the report set v1, every ordered pair on its 1 500 battles: per kind and side the games, wins,
+truncations and mean rewards, per pair the overall win rate with its 95 % interval and the value
+efficiency, the Glicko-2 ratings, and the engine's identity (the encounter distribution's
+version, the rulesets' content hashes). It is a function of the engine; `tests/test_evaluate.py`
+checks its strata, its identity against the engine's and its rates. Regenerate it when the bots
+or the rules move (from the repository's root, about 15 s in release):
+
+```sh
+cargo run --release -p h3-cli -- ai eval --set report-v1 --json python/records/bots-report-v1.json
+```
+
 ## Lineage
 
 The promoted networks (from E06 T3) and the run that holds the current best. None yet.

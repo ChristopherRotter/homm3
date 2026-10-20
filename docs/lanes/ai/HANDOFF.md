@@ -16,8 +16,9 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   side without a hero (its T2 to T4). PPO and a league first, search last; runs of a few hours,
   interruptible and resumable. **Increment 1 done:** T1, T2a (#310; ADR-0026 in #306: the design
   note `docs/epics/E06-design.md`, the run's config and record), T2b1 (#315: the full checkpoint,
-  Ctrl+C, `--resume`), T2c (C ABI v31: the pull request of `claude/brave-noether-dlpxsp`).
-  **Next:** increment 2 (T3a, T3b), refined at the user's checkpoint.
+  Ctrl+C, `--resume`), T2c (#319: C ABI v31). **Increment 2:** T3a (the held-out sets v1, the
+  bots' table; the pull request of `claude/pensive-maxwell-16n287`). **Next:** T3b (the SPRT
+  gate), refined at the user's checkpoint.
 - **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v31 (E06 T2c: the record's identity, N capped) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q9, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
@@ -49,8 +50,10 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 - Scenario texts are parsed and packs compiled in `h3-ffi` (`src/scenario.rs`), never in `h3-sim`: `arch.toml` gives `h3-sim` `h3-pack-battle` for tests only. Each `h3_env_create_scenario` compiles its packs (about 18 ms for `base`, `ab`, `sod` in release, ten times that in debug).
 
 - The bots (`h3_sim::bots`) read the engine's preview (`h3_battle::preview`, BAT-DMG-011): a
-  change to the battle's strike stages moves them and `h3 ai eval`'s table; its default episodes
-  are the Python evaluation's (`EVAL_SEED`, both literals pinned by an `h3-cli` test).
+  change to the strike stages (or any rule) moves them and the bots' table
+  `python/records/bots-report-v1.json`: regenerate it (`python/records/README.md`; a test
+  catches stale ruleset hashes, not moved code). The held-out sets' seeds live in `evaluate.py`
+  and `src/ai/eval.rs`, pinned by an `h3-cli` test.
 - Reward v1 reads the war machines from the outcome's records (what the battle placed: a
   siege's Catapult in, a Ballista BAT-QUIRK-23 leaves out not), never `setup.war_machines`.
 - `h3env.BattleBatch`'s output arrays are read-only attributes (the engine holds their
@@ -63,7 +66,8 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   `Trainer.state` and `restore` together, and into `test_a_stopped_run_resumes_to_its_budget`'s
   comparisons; `resume` checks before `Run(…, resume=…)` cuts the metrics (a refused resume
   changes nothing). `h3env.train.run` stays free of torch
-  (the package loads its torch modules lazily); `tests/test_run.py` runs without torch. In a background shell `cd`
+  (the package loads its torch modules lazily); `tests/test_run.py` runs without torch
+  (to block it: a `torch.py` raising `ModuleNotFoundError` first on `PYTHONPATH`; pytest 9). In a background shell `cd`
   may not hold: run `uv --directory python run …` (a plain `uv run` from the root takes the
   system Python). A run in the sandbox competes with a verify for the 4 cores: run one at a time.
 - `python/` is a uv project (`uv sync`, `uv run pytest`, `uv run python -m h3env.bench`); its
@@ -80,9 +84,16 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   while the environment's network access is **Custom** with `*.pytorch.org`: **Trusted** ignores
   the Allowed domains. The proxy's 403 says why in its body, which curl hides: send a raw
   `CONNECT host:443` to `$HTTPS_PROXY` ("no rule or allowlist entry allows host", 2026-10-19).
-  Reached on 2026-10-20: `uv --directory python sync --group train` took 25 minutes, 6 GB.
+  `uv --directory python sync --group train`: 3 to 25 minutes, 6 GB.
 
 ## Recent sessions
+
+### 2026-10-20 — E06 T3a (the held-out sets v1, the bots' table)
+
+- #319 had merged. The user asked for a small increment; offered T3a in two pieces, the user
+  chose all of T3a in one pull request. `h3 ai eval --set`, `--json`; `evaluate.report`,
+  `stratified`, the gate set's seeds; the bots' table committed; the bots' fallbacks tested.
+  69 Python tests with torch (CPU), 56 without; the full verify (`E06-log.md`).
 
 ### 2026-10-20 — E06 T2c (C ABI v31)
 
@@ -91,15 +102,5 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 
 ### 2026-10-20 — E06 T2b1 (the full checkpoint and `--resume`)
 
-- #310 had merged. Offered three seams; the user chose T2b1: T2b without the pending gate and
-  `--init-from` (T3b, they need the gate). Fixed T2a's `progress.episodes` (the last rollout's).
-- 61 Python tests with torch (CPU), 48 without; a CLI run stopped by SIGINT and resumed. Python
-  only: the scoped verify (the engine code verified on `c4f56c6`).
-
-### 2026-10-20 — E06 T1 (the design, ADR-0026) and T2a (config and record)
-
-- The user chose T1 as queued, accepted the design (ADR-0026, #306), T1 with T2a in one pull
-  request. CI's runs never start (minutes).
-- T2a: TOML configs, the schedule in samples, typed metrics and `record.json`, the held-out
-  check without a growing set; `requires-python >= 3.11` (`tomllib`). 55 Python tests with
-  torch on the CPU; the full verify before the pull request (`E06-log.md`).
+- The user chose T2b1 of three seams (the pending gate and `--init-from` moved to T3b). 61
+  Python tests with torch (CPU), 48 without; the scoped verify.

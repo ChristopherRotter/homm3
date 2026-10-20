@@ -10,8 +10,9 @@ record in `E05-log.md`, the environment as built in `docs/07-simulation-and-ai.m
 **E06** (`docs/epics/E06-battle-ai.md`) refined 2026-10-20 (AI-Q8): it starts beside E23, the
 neutral share waits for E23's side without a hero. Increment 1 done 2026-10-20: T1 and T2a
 (ADR-0026, design `E06-design.md`), T2b1 (the full checkpoint and `--resume`; its pending gate and
-`--init-from` moved to T3b), T2c (C ABI v31). **Next:** increment 2 (T3a, T3b; design §10), refined
-at the user's checkpoint: no task is ready until then.
+`--init-from` moved to T3b), T2c (C ABI v31). Increment 2: T3a done 2026-10-20 (the held-out sets
+v1, the bots' table). **Next:** T3b (the SPRT gate; design §6, §10), refined at the user's
+checkpoint: no task is ready until then.
 
 ## Inbox
 
@@ -28,8 +29,7 @@ Pass offer (fixed by the adventure lane's fixed tests, #266).
 - **Baselines and AI-Q7:** Greedy value beats Aggressor only 0.519 on the held-out episodes: the
   preview of its own kills buys little without spells or a plan; a stronger baseline (casts, a
   one-ply look at the opponent's reply) is E06's, and AI-Q7 (whether the agents get the preview)
-  moved there (T7c; the user, 2026-10-19). The bots' fallback branches (the tactics phase, a
-  commanded Catapult) have no targeted test (E05 T9b).
+  moved there (T7c; the user, 2026-10-19).
 - **Encodings:** `h3_sim::action::encode` answers without a viewer (the same root as F-sec-2's
   leak, which the sim's `step` closes); it leaks nothing today (E04b T11b, the battle lane).
 - **Performance**, each worth a look when a profile of training shows it: the flat observation

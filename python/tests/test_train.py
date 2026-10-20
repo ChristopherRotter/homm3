@@ -20,7 +20,14 @@ from h3env import BattleBatch, _ffi
 torch = pytest.importorskip("torch")
 
 from h3env.train import EVAL_SEED, Config, Policy, Rollout, gae, resume, train  # noqa: E402
-from h3env.train.evaluate import episode_seeds, ladder, load, play, random_agent  # noqa: E402
+from h3env.train.evaluate import (  # noqa: E402
+    REPORT_V1_SEED,
+    episode_seeds,
+    ladder,
+    load,
+    play,
+    random_agent,
+)
 from h3env.train.ppo import Trainer  # noqa: E402
 from h3env.train.run import (  # noqa: E402
     ConfigError,
@@ -425,25 +432,45 @@ def test_the_final_evaluation_reuses_the_last_when_nothing_changed(tmp_path) -> 
 
 
 def test_a_checkpoint_plays_the_ladder(tmp_path, capsys) -> None:
-    # E05 T7: a saved network against Random and both bots, as `h3 ai eval`'s table's row.
+    # E05 T7, E06 T3a: a saved network against Random and both bots, as `h3 ai eval`'s table's
+    # row: on the report set v1 (by default) and on v0.
     train(Config(**SMALL, samples=1, eval_every=0, eval_start=False), tmp_path)
     policy = load(tmp_path / "checkpoint.pt")
-    rows = ladder(policy, episodes=4, envs=2, max_steps=300)
+    rows = ladder(policy, held_out="v0", episodes=4, envs=2, max_steps=300)
     assert list(rows) == ["random", "aggressor", "greedy"]
     for row in rows.values():
         assert row["attacker"]["episodes"] == row["defender"]["episodes"] == 4
         assert row["attacker"]["skipped"] == row["defender"]["skipped"] == 0
         assert 0.0 <= row["win_rate"] <= 1.0
+    rows = ladder(policy, opponents=["greedy"], per_kind=2, max_steps=300)
+    row = rows["greedy"]
+    assert row["games"] == 12 and list(row["kinds"]) == ["hero", "siege_hero", "siege_garrison"]
+    assert 0.0 <= row["win_rate"] <= 1.0 and row["interval"] >= 0.0
+    # The sampled policy draws alike on the same episodes (common random numbers).
+    again = ladder(policy, opponents=["greedy"], per_kind=2, max_steps=300)["greedy"]
+    assert again["by_kind"] == row["by_kind"]
+    with pytest.raises(ValueError, match="held-out set"):
+        ladder(policy, held_out="v7")
     from h3env.train.ladder import main
 
-    main(["--checkpoint", str(tmp_path / "checkpoint.pt"), "--episodes", "2", "--envs", "2"])
+    checkpoint = ["--checkpoint", str(tmp_path / "checkpoint.pt")]
+    out = tmp_path / "ladder.json"
+    main([*checkpoint, "--episodes", "1", "--max-steps", "300", "--json", str(out)])
     lines = capsys.readouterr().out.splitlines()
     assert [line.split(":")[0].split()[-1] for line in lines] == ["random", "aggressor", "greedy"]
+    assert all("±" in line and "siege_garrison" in line for line in lines)
+    assert set(json.loads(out.read_text())) == {"random", "aggressor", "greedy"}
+    main([*checkpoint, "--set", "v0", "--episodes", "2", "--envs", "2"])
+    assert len(capsys.readouterr().out.splitlines()) == 3
+    with pytest.raises(SystemExit):
+        main([*checkpoint, "--envs", "2"])
     with pytest.raises(ValueError, match="unknown opponent"):
         play(random_agent(np.random.default_rng(0)), episodes=2, envs=2, opponent="minimax")
-    # E05 T9b: a network trained on the ladder's own episodes (its run's seed EVAL_SEED) is refused.
+    # E05 T9b, E06 T3a: a network trained on a held-out set's episodes (its run's seed one of
+    # theirs) is refused.
     saved = torch.load(tmp_path / "checkpoint.pt", weights_only=True)
-    saved["config"]["seed"] = EVAL_SEED
-    torch.save(saved, tmp_path / "same.pt")
-    with pytest.raises(SystemExit):
-        main(["--checkpoint", str(tmp_path / "same.pt")])
+    for seed in (EVAL_SEED, REPORT_V1_SEED + 4):
+        saved["config"]["seed"] = seed
+        torch.save(saved, tmp_path / "same.pt")
+        with pytest.raises(SystemExit):
+            main(["--checkpoint", str(tmp_path / "same.pt")])
