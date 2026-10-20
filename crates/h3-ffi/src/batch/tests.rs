@@ -576,7 +576,7 @@ fn info(b: *const H3Batch, index: u32) -> (i32, H3ScenarioInfo) {
 #[test]
 fn each_entry_names_its_rulesets() {
     // E06 T2c (v31): a training run's record names the content its batch plays.
-    assert_eq!(h3_encounters_version(), h3_sim::ENCOUNTERS_VERSION);
+    assert_eq!(h3_encounters_version(), ENCOUNTERS_VERSION);
     let null: *const H3Batch = std::ptr::null();
     assert_eq!(unsafe { h3_batch_scenario_count(null) }, 0);
     assert_eq!(info(null, 0).0, H3_ERR_NULL);
