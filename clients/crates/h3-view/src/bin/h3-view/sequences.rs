@@ -410,7 +410,14 @@ pub(crate) fn draw_frames(
                 .members
                 .iter()
                 .find(|m| m.side == side && u32::from(m.record) == index);
-            if let Some(m) = member {
+            // A stack the mouse entered fidgets as the viewer's timeline has it (E17 M3 T6c-2:
+            // the original's memory runs ahead of its screen there).
+            let entered = |m: &&anim::Member| {
+                interface
+                    .shown
+                    .is_some_and(|s| s.entered.iter().any(|&(_, id)| id == m.stack))
+            };
+            if let Some(m) = member.filter(|m| !entered(m)) {
                 let now = moment.poses.get(&m.stack).copied().unwrap_or(m.start);
                 let pose = Pose {
                     group,

@@ -10,29 +10,26 @@ use super::{Key, Pose, Timeline};
 
 impl Timeline {
     /// Plays the stacks the mouse entered (`entered`, each `(t, stack)`, in time order): `group`
-    /// the DEF group a fidget shows, `frames` a stack's frames in it (0: none). A stack's fidget
-    /// ends at its last frame (it stands at the next idle step), at the start of an action that
-    /// stands the fidgeting stacks (`battle_stand_fidgets` 0x479DE0: [`super::Action::stands`]),
-    /// at a key of its own (an action draws it) or when the mouse enters it again. No stalls: the
-    /// viewer draws none of its own in a check (§7.2; *provisional* in a window, where the
-    /// original draws one in 8 of 101 steps).
+    /// the DEF group a fidget shows, `frames` a stack's frames in it (0: none); entering redraws
+    /// the stack at once (0x477DF8: only inside its new frame's rectangle, design §9.10). A
+    /// stack's fidget ends at its last frame (it stands at the next idle step), at the
+    /// start of an action that stands the fidgeting stacks (`battle_stand_fidgets` 0x479DE0:
+    /// [`super::Action::stands`]), at a key of its own (an action draws it) or when the mouse
+    /// enters it again; an idle step at the same time comes first. No stalls: the viewer draws
+    /// none of its own in a check (§7.2; *provisional* in a window, where the original stalls one
+    /// step in about 12).
     pub fn enter(&mut self, entered: &[(u32, u8)], group: u32, frames: &dyn Fn(u8) -> u32) {
         if entered.is_empty() {
             return;
         }
-        let stands: Vec<u32> = self
-            .actions
-            .iter()
-            .filter(|a| a.stands)
-            .map(|a| a.start)
-            .collect();
-        let mut added: BTreeMap<u8, Vec<(u32, Pose)>> = BTreeMap::new();
+        let starts: Vec<(u32, bool)> = self.actions.iter().map(|a| (a.start, a.stands)).collect();
+        let mut added: BTreeMap<u8, Vec<Key>> = BTreeMap::new();
         for (n, &(t, stack)) in entered.iter().enumerate() {
             let Some(member) = self.members.iter().find(|m| m.stack == stack) else {
                 continue;
             };
             let standing = member.start.group;
-            // The pose then: the mouse's last key since the timeline's own last, else its own.
+            // The pose then (in memory): the mouse's last key after the timeline's own last.
             let own = self
                 .keys
                 .iter()
@@ -41,7 +38,8 @@ impl Timeline {
                 .map(|k| (k.drawn, k.pose));
             let mine = added
                 .get(&stack)
-                .and_then(|list| list.iter().rfind(|(at, _)| *at <= t).copied());
+                .and_then(|list| list.iter().rfind(|k| k.drawn <= t))
+                .map(|k| (k.drawn, k.pose));
             let now = match (own, mine) {
                 (Some((a, own)), Some((b, mine))) => {
                     if b >= a {
@@ -54,29 +52,33 @@ impl Timeline {
                 (None, Some((_, mine))) => mine,
                 (None, None) => member.start,
             };
-            let list = added.entry(stack).or_default();
-            // A fidget the mouse started earlier ends here.
-            list.retain(|(at, _)| *at <= t);
-            let count = frames(stack);
-            if count == 0 || now.group == group {
-                if now.group != standing || now.frame != 0 {
-                    list.push((
-                        t,
-                        Pose {
-                            group: standing,
-                            frame: 0,
-                            offset: [0, 0],
-                            ..now
-                        },
-                    ));
-                }
-                continue;
-            }
+            let key = |drawn: u32, shown: u32, pose: Pose| Key {
+                stack,
+                drawn,
+                shown,
+                pose,
+            };
             let base = Pose {
                 offset: [0, 0],
                 ..now
             };
-            list.push((
+            let stand = Pose {
+                group: standing,
+                frame: 0,
+                ..base
+            };
+            let list = added.entry(stack).or_default();
+            // A fidget the mouse started earlier ends here.
+            list.retain(|k| k.drawn <= t);
+            let count = frames(stack);
+            if count == 0 || now.group == group {
+                if now.group != standing || now.frame != 0 {
+                    list.push(key(t, t, stand));
+                }
+                continue;
+            }
+            list.push(key(
+                t,
                 t,
                 Pose {
                     group,
@@ -91,7 +93,10 @@ impl Timeline {
                 .filter(|k| k.stack == stack && k.drawn > t)
                 .map(|k| k.drawn)
                 .min();
-            let calm = stands.iter().copied().find(|&s| s >= t);
+            let calm = starts
+                .iter()
+                .find(|&&(s, stands)| stands && s >= t)
+                .map(|&(s, _)| s);
             let again = entered[n + 1..]
                 .iter()
                 .find(|(_, s)| *s == stack)
@@ -100,12 +105,13 @@ impl Timeline {
             let mut frame = 0;
             let mut ended = false;
             for step in self.steps_after(t, count) {
-                if until.is_some_and(|u| step >= u) {
+                if until.is_some_and(|u| step > u) {
                     break;
                 }
                 frame += 1;
                 if frame < count {
-                    list.push((
+                    list.push(key(
+                        step,
                         step,
                         Pose {
                             group,
@@ -114,28 +120,15 @@ impl Timeline {
                         },
                     ));
                 } else {
-                    list.push((
-                        step,
-                        Pose {
-                            group: standing,
-                            frame: 0,
-                            ..base
-                        },
-                    ));
+                    list.push(key(step, step, stand));
                     ended = true;
                     break;
                 }
             }
-            // A standing action's start stands it (unless its own key or the mouse comes first).
+            // A standing action's start stands it (redrawn at once), unless its own key or the
+            // mouse comes first.
             if !ended && let Some(calm) = calm.filter(|&c| until == Some(c)) {
-                list.push((
-                    calm,
-                    Pose {
-                        group: standing,
-                        frame: 0,
-                        ..base
-                    },
-                ));
+                list.push(key(calm, calm, stand));
             }
         }
         self.merge(&added);
@@ -168,42 +161,29 @@ impl Timeline {
     }
 
     /// The mouse's keys merged into the timeline's: each stack's in time order, a key of the mouse
-    /// before the timeline's own at the same time (the mouse acts as the battle waits, before the
-    /// action it gives starts).
-    fn merge(&mut self, added: &BTreeMap<u8, Vec<(u32, Pose)>>) {
-        let mut pending: BTreeMap<u8, core::iter::Peekable<core::slice::Iter<'_, (u32, Pose)>>> =
-            added
-                .iter()
-                .map(|(s, l)| (*s, l.iter().peekable()))
-                .collect();
+    /// before the timeline's own drawn at the same time (the mouse acts as the battle waits,
+    /// before the action it gives starts).
+    fn merge(&mut self, added: &BTreeMap<u8, Vec<Key>>) {
+        let mut pending: BTreeMap<u8, core::iter::Peekable<core::slice::Iter<'_, Key>>> = added
+            .iter()
+            .map(|(s, l)| (*s, l.iter().peekable()))
+            .collect();
         let mut keys =
             Vec::with_capacity(self.keys.len() + added.values().map(Vec::len).sum::<usize>());
         for key in core::mem::take(&mut self.keys) {
             if let Some(list) = pending.get_mut(&key.stack) {
-                while let Some(&&(at, pose)) = list.peek() {
-                    if at > key.drawn {
+                while let Some(&&mine) = list.peek() {
+                    if mine.drawn > key.drawn {
                         break;
                     }
-                    keys.push(Key {
-                        stack: key.stack,
-                        drawn: at,
-                        shown: at,
-                        pose,
-                    });
+                    keys.push(mine);
                     list.next();
                 }
             }
             keys.push(key);
         }
-        for (stack, list) in pending {
-            for &(at, pose) in list {
-                keys.push(Key {
-                    stack,
-                    drawn: at,
-                    shown: at,
-                    pose,
-                });
-            }
+        for list in pending.into_values() {
+            keys.extend(list.copied());
         }
         self.keys = keys;
     }

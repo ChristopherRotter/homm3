@@ -574,6 +574,9 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
         to_scenario(game)
     t0 = into_battle(game)
     mem = h3mem.Mem()
+    # The mouse poll's grid from the opening (M3 T6c-2): the cursor moves at the same times in
+    # every run.
+    mem.align_mouse_poll(t0)
     now = game.clock(f"step {pre}") if pre else t0
     kept = Path(out) / "frames"
     if frames:

@@ -94,6 +94,9 @@ pub enum Logged {
         /// Whether it replaces the item's text over new entries.
         forced: bool,
     },
+    /// The log scrolled by its buttons or the arrow keys (0x472DF0, 0x472E40, 0x472DB0; E17 M3
+    /// T6c-2: the window's), by entries (up: negative).
+    Scroll(i64),
 }
 
 /// A stack as [`word`] names it: its creature's key in the catalogue, whether it is a war machine
@@ -117,7 +120,7 @@ pub fn word(
 ) -> Option<String> {
     let named = |id: u8, count: u32| stack(id).map(|n| (n, count));
     match logged {
-        Logged::Action | Logged::Turn(_) | Logged::Status { .. } => None,
+        Logged::Action | Logged::Turn(_) | Logged::Status { .. } | Logged::Scroll(_) => None,
         Logged::Strike {
             attacker,
             count,
@@ -286,6 +289,7 @@ pub fn texts(
             Logged::Turn(stack) if human(*stack) => log.settle(now),
             Logged::Turn(_) => {}
             Logged::Status { text, forced } => log.status(text, now, *forced),
+            Logged::Scroll(by) => log.scroll(*by, now),
             other => {
                 if let Some(line) = word(other) {
                     log.add(&line, now, lines);

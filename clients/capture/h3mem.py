@@ -86,6 +86,7 @@ ACTIVE_STACK, MOUSE_HIGHLIGHT, MOUSE_HEX = 0x132C8, 0x132CC, 0x132D0
 # the game's clock, `mouse_poll` 0x50D680; design §9.10).
 MOUSE_AT, CURSOR_KIND, MOUSE_MANAGER, CURSOR_TYPE, CURSOR_FRAME, CURSOR_X, CURSOR_Y = (
     0x132D4, 0x132E0, 0x699260, 0x4C, 0x50, 0x6C, 0x70)
+MOUSE_POLL_NEXT = 0x69CA18  # the mouse poll's next time (0x50D680, a 33 ms grid)
 # The magic animation (E17 M3 T3b, design §7.15): its number in the table 0x641E08 (+0x132EC,
 # the last loaded) and the frame drawn (+0x132F0); a stack shows it while its byte +0x20 is set
 # (`PlayMagicAnimation` 0x496840, `draw_battle_stack`'s tail 0x43E795).
@@ -137,11 +138,26 @@ def game_pid():
 
 class Mem:
     def __init__(self, pid=None):
-        self.file = open(f"/proc/{pid or game_pid()}/mem", "rb", buffering=0)
+        self.pid = pid or game_pid()
+        self.file = open(f"/proc/{self.pid}/mem", "rb", buffering=0)
 
     def read(self, address, size):
         self.file.seek(address)
         return self.file.read(size)
+
+    def write_u32(self, address, value):
+        """Writes a u32 into the game's memory: only the harness's own timers (M3 T6c-2,
+        `align_mouse_poll`), never the game's state."""
+        with open(f"/proc/{self.pid}/mem", "r+b", buffering=0) as f:
+            f.seek(address)
+            f.write(struct.pack("<I", value))
+
+    def align_mouse_poll(self, now):
+        """The mouse manager reads the mouse on a 33 ms grid of the game's clock (`mouse_poll`
+        0x50D680: its next time 0x69CA18), whose phase the menus before a battle leave at random:
+        set to `now` (the opening), the grid runs from the opening in every run (M3 T6c-2,
+        design §9.10), so the frames a sequence keeps where the cursor moves keep their times."""
+        self.write_u32(MOUSE_POLL_NEXT, now)
 
     def u32(self, address):
         return struct.unpack("<I", self.read(address, 4))[0]

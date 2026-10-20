@@ -443,6 +443,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     redraw |= drawn_cursor;
                 }
                 Event::Redraw => redraw = true,
+                Event::KeyUp(_) | Event::Click { .. } | Event::Key(_) => {}
             }
         }
         // A hardware cursor SDL could not remake (a new scale) is drawn instead.

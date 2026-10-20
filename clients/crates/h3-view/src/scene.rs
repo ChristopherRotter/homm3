@@ -281,7 +281,24 @@ pub fn panel(
     log: &str,
     layout: &BattleLayout,
 ) -> Vec<Draw> {
-    let shown = crate::panel::shown(observation, side, kept, log, PLAYERS);
+    pressed_panel(observation, side, kept, log, layout, None)
+}
+
+/// As [`panel`], the button `pressed` (the mouse's or a hotkey's, E17 M3 T6c-2) showing its
+/// click frame unless it is disabled (a disabled button takes no press, 0x4562DD).
+fn pressed_panel(
+    observation: &Observation,
+    side: Option<Side>,
+    kept: crate::panel::Kept,
+    log: &str,
+    layout: &BattleLayout,
+    pressed: Option<u16>,
+) -> Vec<Draw> {
+    let mut shown = crate::panel::shown(observation, side, kept, log, PLAYERS);
+    if let Some(id) = pressed {
+        let state = shown.states.entry(id).or_default();
+        state.pressed = !state.disabled;
+    }
     layout.panel.draws(&shown, &layout.player_palette)
 }
 
@@ -339,6 +356,20 @@ impl Panels {
         layout: &BattleLayout,
         text: &str,
     ) -> Vec<Draw> {
+        self.at_pressed(snapshot, started, t, layout, text, None)
+    }
+
+    /// As [`Panels::at_showing`], the button `pressed` showing its click frame (E17 M3 T6c-2).
+    #[must_use]
+    pub fn at_pressed(
+        &self,
+        snapshot: &Observation,
+        started: &[(u32, u8)],
+        t: u32,
+        layout: &BattleLayout,
+        text: &str,
+        pressed: Option<u16>,
+    ) -> Vec<Draw> {
         let controller = |o: &Observation| {
             o.active
                 .and_then(|id| snapshot.stacks.iter().find(|s| s.id == id))
@@ -353,7 +384,7 @@ impl Panels {
         let built = controller(snapshot).unwrap_or(Side::Attacker);
         let kept = crate::panel::kept(snapshot, &sides, built);
         let now = turns.last().unwrap_or(snapshot);
-        panel(now, controller(now), kept, text, layout)
+        pressed_panel(now, controller(now), kept, text, layout, pressed)
     }
 }
 
