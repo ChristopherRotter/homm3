@@ -4,7 +4,7 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E17 M0–M2 done; M3 T1a–T5b-2b done; H1, H2 done (2026-10-19: the adventure lane's harness); next: M3 T6–T8** (`QUEUE.md`; T9 closes M3). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
+- **E17 M0–M2 done; M3 T1a–T6a done; H1, H2 done (2026-10-19: the adventure lane's harness); next: M3 T6b, T6c, T7a–T8** (`QUEUE.md`; T9 closes M3). Screens are built from the executable's dialog items (`h3_view::ui`, the user: reusable components; design §9.7). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
 - **Captures** (the user, 2026-10-20): `h3drive.py drawn` first (no Wine); capture only what it lists or the task changes, all at a milestone's closure or after a harness change (runbook, "Which captures a change needs"). Detail for later tasks: `NOTES.md`.
 - **The user's requirements**, epic "Decisions": a string catalogue (JSON packs, no committed translation: CLT-Q7); graphics options (`faithful` the default); exhaustive reference diffs.
 - The lane owns `clients/`, `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
@@ -51,11 +51,11 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
+- **2026-10-20, E17 M3 T6a (the panel's still).** T6 split (T6b, T6c queued); dialog items as
+  components (`ui`), the panel's states at a turn's start (`panel`); the set compares the whole
+  panel, exact (the parked cursor masked); `drawn` digests what the comparisons see.
 - **2026-10-20, the lane's process (the user).** `drawn` and `situations/kept/` scope the
   captures; the inbox's detail in `NOTES.md`, the M1 and M2 review lists in the log; the
   capture setup waits for the sandbox setup's apt (a `shared/` PR fixed its retry and LLVM).
 - **2026-10-20, E17 M3 T5b-2b (`fly`, `machines`).** Every sequence with frames compares its
-  boxes; a magic animation drawn after its stack's box (0x43E795); a heal keeps the count.
-- **2026-10-20, E17 M3 T5b-2a (`behind`, `shots`).** Boxes compared, `behind` to 4 000 ms; a
-  shot's struck in layer 5; the first arrow's holes in the rocks listed. The original's rolls
-  varied between runs (runbook "Traps").
+  boxes; a magic animation drawn after its stack's count box (0x43E795); a heal keeps the count.

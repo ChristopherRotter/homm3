@@ -6,21 +6,32 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024). M3 (fidelity) below, refined at M2's closure (T5c) and agreed by the user there, each task about half a context; the exit: the reference set passes, or each difference is a listed fix or a classified quirk. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M3 T6 — The battle interface
+### E17 M3 T6b — The panel and the log over time
 
-- **Scope:** the panel below the battlefield (its picture, buttons and their states), the log's
-  lines from the string catalogue as the engine's events produce them (`battle_log`'s composers;
-  which event writes which line: design §9.4, "The caller's"; it replaces `h3-view`'s
-  provisional `log::first_strike`, T4b-2b-2), when a line appears (after the strike's animation,
-  0x441C5D; the original showed `strike`'s first at the next turn, 3 730 ms: a sequence's `log_at`
-  is observed until then), several entries and which two show (the new entries' count, 0x472E90)
-  and the scroll buttons, the status line (the hint over a stack, `Attack Pikemen` in `strike`),
-  the heroes' portraits if the panel shows them, the cursor rules of the executable (which
-  cursor over which hex; T5a's `CRDEFLT.DEF` frame 0 is provisional), the mouse over a stack in
-  the window (group 1 and the outline 0x70, read and recorded in T1b-2: `NOTES.md`); its masks
-  removed. May split when refined.
-- **Acceptance:** a frame with the panel matches the original's outside the listed differences.
-- **Depends on:** nothing (T4b-2b-2 done). **Status:** ready.
+- **Scope:** T6 split with the user on 2026-10-20 (the panel's still T6a done). The log's lines from
+  the string catalogue as the engine's events produce them (`battle_log`'s composers; which event
+  writes which line: design §9.4, "The caller's"; it replaces `h3-view`'s provisional
+  `log::first_strike`, T4b-2b-2), when a line appears (after the strike's animation, 0x441C5D;
+  the original showed `strike`'s first at the next turn, 3 730 ms: a sequence's `log_at` is
+  observed until then), several entries and which two show (the new entries' count, 0x472E90)
+  and the scroll buttons; the panel through a battle (design §9.7: what a click, an animation and
+  the computer's turn change, the picture's colours kept from an earlier turn, the side the panel
+  is built for), compared in the sequences: their `panel` masks removed.
+- **Acceptance:** the sequences' frames match the original's in the panel outside the listed
+  differences.
+- **Depends on:** nothing (T6a done). **Status:** ready.
+
+### E17 M3 T6c — The status line, the cursors and the mouse
+
+- **Scope:** the status line (the hint over a stack, `Attack Pikemen` in `strike`; a control's
+  hints, 0x5FE840), the cursor rules of the executable (which cursor over which hex; T5a's
+  `CRDEFLT.DEF` frame 0 is provisional), the mouse over a stack in the window (group 1 and the
+  outline 0x70, read and recorded in T1b-2: `NOTES.md`), a button pressed and the panel's
+  hotkeys in the window (design §9.7); the harness's mouse over the field and the panel as
+  situations. May split when refined.
+- **Acceptance:** the hover situations' frames match the original's outside the listed
+  differences.
+- **Depends on:** nothing (T6a done). **Status:** ready.
 
 ### E17 M3 T7a — Code reading: the magic animations
 
@@ -79,8 +90,8 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
   user, a fresh reviewer agent over M3, the next milestone
   refined (sieges, live play, HD or the adventure map: the user's choice), M3 marked done.
 - **Acceptance:** M3's exit holds; the review list answered or carried on.
-- **Depends on:** T6–T8 (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2,
-  T5a, T5b-1, T5b-2a, T5b-2b done).
+- **Depends on:** T6b, T6c, T7a–T8 (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1,
+  T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a done).
   **Status:** waiting.
 
 ## Inbox
@@ -98,9 +109,12 @@ Other lanes add entries here. The client lane turns each into a task, or moves i
 - CLT-Q2 (2026-10-12, 2026-10-19): the table-only LOD reader is in `h3-formats`: switch the
   archive set to the directories and a batch's ranges, `h3-view gate` measuring it. NOTES,
   "Assets and archives".
-- For T6: the mouse over a stack (T1b-2), the shot cursor's half damage without the shooter's
+- For T6c: the mouse over a stack (T1b-2), the shot cursor's half damage without the shooter's
   turn (0x4767E6); for T7c: the message when no hex is free for a created stack; for T8: the
   battle waits for the heal's sound (T3b). NOTES, "The battle screen".
+- 2026-10-20 (T6a): the tactics phase's panel (0x46C050, not read) and Auto Combat switched on
+  (its button selected, the panel dimmed while stacks play themselves) wait for a record with a
+  tactics phase and for live play. Design §9.7.
 - When CLT-Q5 is answered: the deck and the two boats as situations; CLT-Q4: the background
   variants 0 and 1. NOTES, "Battlefields and boats".
 - Sieges (the battle lane, 2026-10-14 to 16): the turrets as stacks, the Catapult, the gate
