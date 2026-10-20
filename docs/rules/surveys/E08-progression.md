@@ -5,7 +5,7 @@ ADR drafts and the cut. Written in parts (decisions 51 to 54): **T24a1** §1 exp
 and §2 the level-up, from the code and VCMI; **T24a2a** §3 levels at load and §4 what follows the
 level, the same way; **T24a2b1** §5 the wiki on §1–§4 and §6 the census of the shipped maps;
 **T24a2b2** (decision 54) §7 the batch's plan, §8 the proposed rule ids, §9 a fresh agent's second
-reading; the questions for the user's checkpoint are ADV-Q15 (`docs/OPEN-QUESTIONS.md`). Input, not rules (`README.md`).
+reading; the questions for the user's checkpoint are ADV-Q15 (`docs/OPEN-QUESTIONS.md`); **T25** (decision 59) §10, the computer's evaluation, for the port (ADV-Q17). Input, not rules (`README.md`).
 
 **Sources** (retrieved 2026-10-20):
 - `original-data`: a code reading of the user's `Heroes3.exe` (SoD 4.0 Complete); every address
@@ -100,6 +100,12 @@ reading; the questions for the user's checkpoint are ADV-Q15 (`docs/OPEN-QUESTIO
   predictions from the hero's seed byte read in memory (the harness's needs in the client lane's
   inbox). **The proposed rule ids** (§8): HER-EXP-002/-003, HER-LVL-001 to -005, GAM-HER-002,
   GAM-DEC-002, GAM-SET-002, GAM-BAT-008. The questions for the checkpoint: ADV-Q15.
+- **The computer's evaluation** (§10, T25): no draws; a skill's value from the army's worth
+  (1 000 and 500 at load), the hero's primary skills with artifacts, Wisdom, two tables and **the
+  map's terrain shares**, which count only coast-flagged tiles, so Navigation is worth 0 and
+  Pathfinding follows the coast's terrain (A-11); a new skill is taken when it ranks among the
+  hero's best unknown skills its free slots allow. E3-6's four choices all follow from it. The
+  flag-set path (computer players) reads E10's state.
 
 ## 1. Experience to levels
 
@@ -693,3 +699,139 @@ and how the engine gets the evaluation (port 0x524690 and 0x524DD0, or a stand-i
 Not settled by it: whether 0x524DD0 or `hero_learn_secondary_skill` (0x4E22D0) draw from the
 generator (a draw there cannot move a later level's offers, which are reseeded, but may make the
 choice itself random); the x87 precision (53 bits assumed, as §1.1's level 13 = 24 320 needs).
+
+## 10. The computer's evaluation (T25)
+
+Read in E08 T25 (decision 59) for the port decided at ADV-Q15 (D-20, decision 55): what
+`ai_level_up_choice` (0x52BBD0, §2.5) calls, `ai_secondary_skill_value` (0x524690) and
+`ai_takes_new_secondary_skill` (0x524DD0), and what they reach. Sources: `original-data` (the
+code reading; the tables' values read from the executable's data), `vcmi` (VCMI 1.7.5
+`AI/Nullkiller/Analyzers/HeroManager.cpp`, `AI/Nullkiller/AIGateway.cpp`); the wiki was not
+searched beyond §5's pages (no page on the computer's skill choice is known).
+
+### 10.1 The choice (0x52BBD0, re-read)
+
+Arguments: the hero, the first offer, the second offer, a flag (clear during the new game's
+setup and for a hero without an owner, §2.5). Both offers known, or both new: the value of each
+(0x524690), the second only when its value is higher (the first on a tie). One known, one new:
+0x524DD0 for the new one decides; yes takes the new, no the known. **No draws** here or in its
+helpers (they call no `rand`; the learning 0x4E22D0 calls nothing): the choice is a function of
+the hero, the offers, the flag and the map's shares (§10.3), so §9's open point is settled.
+
+### 10.2 A skill's value (0x524690)
+
+0 for a skill at Expert, and for an unknown skill when the hero knows eight. Otherwise, with L
+the skill's level (0 unknown), A the army's worth and B its shooters' worth, by skill (integer
+divisions truncate; the primary skills are the hero's with its worn artifacts' bonuses, +0x476,
+Spell Power SP and Knowledge Kn held to 1–99, Attack At to 0–99):
+
+| Skill | Flag clear (the setup) | Flag set (a computer player, a timed-out dialog) |
+|---|---|---|
+| Pathfinding | trunc(A × rough share[L] / 4) | the same |
+| Archery | {16, 7, 11}[L] × B / 100 (0x640380) | the same |
+| Logistics | A / 10 | the same |
+| Scouting, Necromancy, Learning | A / 20 | the same |
+| Diplomacy | A / 100 | the same |
+| Navigation | trunc(A × water share / 2) | the same |
+| Leadership, Luck, Tactics | A / 50 | the same |
+| Wisdom | SP × 25 | SP × spell-power effectiveness / 2 |
+| Mysticism | 1 | knowledge effectiveness / 10 |
+| Ballistics | A / 8 | the same |
+| Eagle Eye | 2 with Wisdom, else 0 | spell-power effectiveness / 5 with Wisdom, else 0 |
+| Estates | {725, 725, 1550}[L] (0x64038C) | that × a player's AI value (0x6929E0) |
+| Fire, Air, Water, Earth | SP × 10 with Wisdom; without: 0, 25, 3, 30 | 0x524D20 (§10.4) |
+| Scholar | SP × 5 with Wisdom, else 0 | SP × spell-power effectiveness / 10 with Wisdom, else 0 |
+| Artillery | At × 10 | the same, 0 without a worn Ballista |
+| Offense, Armorer | 7A / 100 | the same |
+| Intelligence | Kn × 10 | Kn × knowledge effectiveness / 4 |
+| Sorcery | SP × 2 | SP × spell-power effectiveness / 20 |
+| Resistance | A / 40 | the same |
+| First Aid | 250 | the same, 0 without a worn First Aid Tent |
+
+**A and B**: with the flag clear A = 1 000 and B = 500 (§9); set, A = 1 000 + Σ AI value ×
+count over the army's stacks and B = 500 + the same over its shooters (creature flag `0x4`).
+The two effectiveness words are the hero's +0x47E and +0x486 (H3API's
+`aiSpellPowerEffectiveness`, `aiKnowledgeEffectiveness`), which the adventure AI writes after
+battles (0x4ADCEC) and elsewhere: computer-player state, not read.
+
+### 10.3 The map's shares (0x52B9C0)
+
+The two shares are globals the game computes from the map: in `new_game_heroes` right before the
+heroes' setups (0x4C0018, so the levels at load see them) and when a saved game is loaded. Over
+every tile of both levels **that has the tile flag `0x40`** and is not rock: the count, the water
+tiles among them, and per Pathfinding level 0–2 the tiles whose straight step costs more than 100
+(`step_cost` with no road and no native terrain: sand and snow at levels 0 and 1, swamp at 0 to
+2, rough at 0; `step_cost_table` 0x63E510); water share = water / count, rough share[L] =
+rough[L] / count, as f64.
+
+The flag `0x40` is the map file's coast flag, which the editor sets on land beside water and on
+no other tile (`docs/formats/h3m.md`, "Tile"). So the shares sample the coast only, and **the
+water share is 0 on every map that has a coast** (no water tile carries the flag): Navigation is
+worth nothing at load. A map without a coast divides 0 by 0: both shares are NaNs, and
+`crt_ftol` turns a NaN product into the integer indefinite, whose low word is 0 (§1.2): Pathfinding
+and Navigation are worth 0 there too. Quirk candidate **A-11**: the computer's terrain shares
+count only coastal land tiles (probably meant all tiles), so Navigation is always worth 0 and
+Pathfinding by the coast's terrain. Harmless to the rules (it moves only the computer's choices:
+the levels at load, later E10's players); a faithful choice needs it reproduced. **The user at
+ADV-Q17: reproduced in every profile, no flag** (what a fix would count is a guess).
+
+### 10.4 The flag-set path (E10)
+
+The schools' value with the flag set comes from `ai_school_value` (0x524D20, not read further): it
+builds the hero's caster record (0x526D40) and takes a best spell value (0x5275B0), the adventure
+AI's spell values the battle lane read (`docs/formats/installation.md` §7.39). With the
+effectiveness words and the per-player values, the flag-set path reads computer-player state the
+engine does not have: it belongs to E10. For increment 4 (levels at load) only the clear path is
+needed: the hero's details, the class's weights, the two shares, 1 000 and 500.
+
+### 10.5 The new skill or the advance (0x524DD0)
+
+Every skill gets a value (§10.2, the same flag): a known skill 0; an unknown one 0 when its class
+weight is 0, unless it is the offered new skill. The 28 skills are sorted by value with an
+exchange sort (for each position from the first, each later one is swapped in when the earlier
+holds a greater value: ascending, ties in the sort's own order). Then from the highest value
+down: a known skill is passed; the offered skill means **yes**; any other unknown skill uses up
+one of the hero's free slots (8 − skills known), and when none is left the answer is **no**; a
+walk that ends means yes. So the computer takes a new skill when it ranks among the hero's
+best unknown skills that its free slots could still take.
+
+Worked (computed): a Knight at load knowing basic Leadership only, offered Leadership's advance
+and Tactics (§2.4's S = 1), on a map without a coast: the unknown skills' values are Estates 725,
+First Aid 250, Ballistics 125, Logistics 100, Archery 80, Offense 70, Armorer 70, …, Tactics 20;
+seven free slots are used up before Tactics: no, the Knight advances Leadership.
+
+### 10.6 Batch E3c's E3-6 against the evaluation
+
+§3.3 found that only S = 75 gives E3-6's primary gains and offers from which its advances can be
+taken, chosen left, right, right, right: (Pathfinding, Navigation), (Archery, Logistics),
+(Navigation, Scouting), (Mysticism, Logistics), every skill known. Its map was 36 × 36 grass
+(`experiments/specs/E08-batch-3c.toml`): no coast, so Pathfinding and Navigation are worth 0. The
+evaluation then chooses: 0 against 0, the first (Pathfinding); 35 against 100 (Logistics); 0
+against 50 (Scouting); 1 against 100 (Logistics): **all four as observed**. Always-left (the wiki,
+VCMI) would have taken Archery at level 3, and the shares' file values (1.0) would have taken
+Navigation at level 2. So the run, the reading's draws (S = 75 from the primary gains alone) and
+this evaluation agree on all eight facts of E3-6; still unconfirmed in memory (S was not read):
+batch E4's E4-1 reads it.
+
+### 10.7 VCMI
+
+VCMI does not reproduce the evaluation. Its server levels a hero at load with the first offer
+(§3.4); its Nullkiller AI chooses in play by its own scores per hero role
+(`HeroManager::selectBestSkill`: fixed weights such as Logistics, Diplomacy, Earth Magic,
+Armorer, Offense 2 for a main hero, rules for known skills, Wisdom and a first school), unrelated
+to 0x524690.
+
+### 10.8 For the port (T28) and the cut
+
+- The rule (HER-LVL-006) takes the hero's details, the class, the two offers, the flag's inputs
+  (A and B: 1 000 and 500 at load) and **the map's shares** (an input the game computes from the
+  static map at the build: the coast flag, the terrain and its cost by Pathfinding level, which
+  the adventure part does not hold yet: the packs' terrains have their cost without Pathfinding
+  only).
+- The shares' arithmetic is f64 (counts to f64, a division, × A, / 4 or / 2, truncated): through
+  `kernel::num` as the original's, or an integer form tested equal; a NaN gives 0.
+- **ADV-Q17** (the user, decision 60): A-11 reproduced in every profile (no flag); the system
+  actor's default (ADR-0017 point 6) chooses with the setup's inputs until E10, since the
+  flag-set path needs E10's computer-player state; the adventure part's terrains gain their
+  cost by Pathfinding level now (the original's `step_cost_table`), which increment 5's movement
+  reuses.
