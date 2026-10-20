@@ -2717,3 +2717,60 @@ templates and one function of the harness (`clients/capture/h3adv.py`, the user'
   aggression 6 at none; every hero 0/0. Its other 43 of 48 records matched the batch's.
 - **Next:** T22b scores batch E3 (with the hand-helped run's E3-3 as two extra aggressions) and
   closes increment 3.
+
+### Round 5 of increment 3: T22b, batch E3 scored; increment 3 closed (2026-10-20, `adventure/e08-t22b`, `cross-lane`)
+
+Decision 47: the scoring, E3-9's code reading and the closure in one pull request; increment 4's
+refinement next session; docs only (no test pins the batch). `cross-lane` for the status row in
+`docs/experiments/README.md` (the user's consent). The baseline was `master` 7ac0b91 (engine code
+b4487432, verified by #291's full run with the original data; the light gates passed here).
+
+**T22b — batch E3 scored** (each spec's predictions against `experiments/results/E08-batch-3a.md`,
+`-3b.md` and `-3c.md`, played by the harness at T22a3; the stamps matched):
+
+| Row | Observed | Reading (engine) | VCMI 1.7.5 | Verdict |
+|---|---|---|---|---|
+| E3-1, 52 Pikemen against 10 savage Pikemen | Easy: flee offer, no battle; Normal: a battle at once | flee on Easy (C = 11), a battle on Normal (C = 10 = M) | a battle on both | the reading: D-10 (and D-9) |
+| E3-1c, 36 Halberdiers, the same | Easy: flee offer; Normal: a battle at once | the same | a battle on both | the reading: D-10 alone |
+| E3-2, 56 Pikemen, the same | flee offer on Easy and Normal | flee (Sy 2: the own type counts) | a battle (Sy 0) | the reading: D-9 |
+| E3-2c, 39 Halberdiers (control) | flee offer on both | flee | flee | the shared part holds |
+| E3-3r, E3-3b, r = 0.5 exactly against 32 friendly Halberdiers | aggression 3 twice: no question at L0 to L2, a join offer at L3; every visit a battle; 32 kept, aggression 3 after | offers at L ≥ M: L3 | offers at L ≥ M − 1: L2, L3 | the reading: D-8 |
+| E3-4, (12, 27) underground, d2 = 50 | 8, 8, 7 Halberdiers, 7 Pikemen; 23 Pikemen after the retreat | Halberdiers; 30 kept (A-6 fixed) | no Halberdiers; 30 | the reading: D-11; A-6 the original's |
+| E3-4c, (29, 10), d2 = 50 (control) | the same; 23 | Halberdiers; 30 | Halberdiers; 30 | VCMI's formula and a threshold below 50 refuted with E3-4 |
+| E3-5 A, (12, 27), d2 = 25 | 8, 8, 7 Halberdiers, 7 Pikemen; 23 after the retreat | the same; 30 | the same; 30 | A-6 confirmed (the wiki's bug) |
+| E3-5 B, 5 Archangels against what is left | 12 Pikemen, 11 Halberdiers; won, the tile empty | after 23: 12 + 11 (after 30: 15 + 15) | 15 + 15 | A-6 confirmed again |
+| E3-7, the 152 heroes off the map | 40 to 90 (3 at 40, 1 at 90); E3-7 51, level 1 | 40 to 90 | 40 to 89 | the reading: D-12 |
+| E3-6, 5 000 experience, 2/3/1/1, eight basic skills | level 5, 3/6/1/1, Logistics expert, Pathfinding and Scouting advanced | level 5; the gains not read (the import refuses the hero) | level 5 with four level-ups' gains | VCMI's: the gains at load (increment 4) |
+| E3-8, the attacker's surrender on its turn | no question; Red 20 000 → 18 800, Blue 20 900 → 22 100; E3-8 off the map, its army whole; E3-9 0 experience after | Red −1 200, Blue +1 200; E3-8 off; 0 | Red −1 200, Blue unchanged | the reading: D-13 |
+| E3-9, the defender tight in the map | hexes 15, 49, 100, 151, 185 (loose) | tight: 49, 83, 100, 117, 151 | reset to loose | VCMI's: `ADV-QUIRK-8`, fixed |
+
+- **The extra draws** (the hand-helped E3b run of T22a3, not the batch's record): aggression 1
+  offered to join at L1, L2 and L3 (VCMI: L0 too), aggression 6 at none: D-8 a third time.
+- The starting bonus: E3-1 on Normal showed 1/1/1/1 (an artifact; St stays 8 at r ≈ 5.46: the
+  row stands); Blue's 20 900 gold at the start is its bonus; every E3-3 visit 0/0. Nothing odd
+  was noted.
+- **The catalog:** ADV-MON-007, ADV-MON-009, GAM-HER-001 and GAM-BAT-005 now `verified` (an
+  `observation` source each); observation sources for ADV-MON-008 (the flight, a declined
+  join), ADV-MON-010 (A-6 observed, kept fixed), GAM-BAT-001 (the visit; `ADV-QUIRK-8`),
+  GAM-BAT-002 (no +500 after a surrender) and GAM-BAT-003. The survey's D-8 to D-13 and A-6
+  rows, §6.3 and §6.4 say so; `ADV-QUIRK-7` gained the observation; `docs/experiments/README.md`
+  has the batch's row.
+- **E3-9's reading** (decision 46's condition; survey §6.4): the formation is bit 0 of the
+  hero's byte +0x48 (the hero screen's buttons clear and set it, 0x4DD577, 0x4DD587);
+  `map_hero_setup` (0x486590) writes none of +0x48, so the map's flag reaches no hero, whoever
+  owns it: **`ADV-QUIRK-8`**, fixed in every profile, no flag (the engine keeps the map's
+  flag; its tests: the import's and the battle start's). Found with it:
+  `battle_war_machine_stacks` (0x463600) places an army by `tight_formation_slots` (0x63D1DC)
+  only when the hero has the bit **and** its side's player is human (+0x54A4), else by
+  `loose_formation_slots` (0x63D118), on `battle_army_hexes` (0x63D0A8): a computer player's
+  hero always fights loose. Both tables match BAT-SET-001's rows (the battle lane's inbox). Four
+  map entries and a struct field (`hero` +0x48).
+- **What the original refutes** (the task's call with the user): nothing that needs an engine
+  change now. E3-6's gains at load go to increment 4's levels (its inbox line), E3-9 is fixed by
+  decision 46, A-6 by decision 23.
+
+**Increment 3 closed.** T21b's audit held every exit criterion but the batch; since then the
+engine code changed only by T22a1 (the writer's underground and guards, `h3-experiment`) and
+other lanes, and #291's full local verify with the original data passed on that code
+(b4487432, all 16 steps). The batch is staged and scored; the HANDOFF, this log and `QUEUE.md`
+are current. Increment 4's refinement is next (QUEUE: T23).
