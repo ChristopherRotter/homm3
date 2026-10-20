@@ -230,9 +230,13 @@ Agents usually work in a cloud sandbox cloned from GitHub.
    the link, the user may upload them; otherwise the session only prepares (Q48).
 3. **Setup:** `scripts/sandbox-setup.sh --lane <lane>` makes the clone track every branch name
    first, links the image's `stable` toolchain as the pinned one, copies the staged files into
-   `original-data/` and starts the tool installs (cargo-deny's and cargo-llvm-cov's release
-   binaries; `capstone` and `pefile` for the code-reading tool `scripts/exe.py`,
-   `docs/exe/README.md`) and the baseline in the background through `scripts/verify-once.sh`
+   `original-data/` and starts the tool installs (the apt packages, the client lane's SDL build
+   dependencies among them: `target/sandbox/apt.log` ends with `apt: installed`; cargo-deny's
+   and cargo-llvm-cov's release binaries; the toolchain's `llvm-tools-preview`, whose
+   `llvm-cov` and `llvm-profdata` `scripts/llvm-tools.sh` picks for the coverage gate before
+   the apt package `llvm-20`; `capstone` and `pefile` for the code-reading tool
+   `scripts/exe.py`, `docs/exe/README.md`) and the baseline in the background through
+   `scripts/verify-once.sh`
    (`docs/05-testing.md`, "Each code state once"): the engine's gates, or the client lane's
    `clients/scripts/check.sh`, run in full only when no run has verified that code yet (then
    about 20 minutes on two CPUs; read the docs meanwhile, then check `target/sandbox/setup.log`

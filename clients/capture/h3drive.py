@@ -49,6 +49,17 @@ xdd.dll (xdd.c: freeze, step, run), so that every frame is taken at an exact gam
                                             clients/situations/sequences.toml) unattended: each
                                             one's timeline against its recorded one; exits 1 on
                                             any change (default <dir>: clients/out/sequences)
+  h3drive.py frames [<sequences.toml>] [--out <dir>] [--only <id>] [--reuse]
+                                            the frame check (runbook); `frames` and `set` keep
+                                            their kept frames' numbers in situations/kept/
+  h3drive.py drawn [--out <dir>] [--only <id>] [--record]
+                                            the viewer's frames of every sequence and situation
+                                            at the times last kept, without the original (no
+                                            Wine): each one's PNGs against situations/kept/
+                                            drawn.txt (`same`, `CHANGED`, `new`); exits 1 on a
+                                            change; --record writes the digests (runbook, "Which
+                                            captures a change needs"; default <dir>:
+                                            clients/out/drawn)
 
 Library use: `Game` (start, wait, click, key, clock, settled, step_until, dump, stop), the
 recipes (`to_scenario`, `into_battle`, `hex_point`), `capture` and `sequence`. Needs numpy,
@@ -305,6 +316,8 @@ def main(args):
         sys.exit(run_sequences(args[1:]))
     elif args[0] == "frames":
         sys.exit(run_frames(args[1:]))
+    elif args[0] == "drawn":
+        sys.exit(run_drawn(args[1:]))
     else:
         sys.exit(__doc__)
 
@@ -432,6 +445,7 @@ def run_set(rest):
         kept = [{"t": at, "frame": p.name, "stacks": st}
                 for at, p, st in zip(sorted(frames), paths, stacks)]
         (here / "frames.toml").write_text(frames_toml(kept))
+        keep(set_path, "set", sid, here / "frames.toml")
         ours = here / "ours.png"  # its record: ours.jsonl (the count boxes' masks)
         subprocess.run([h3view, "render", str(scenario), "--out", str(ours), "--frames",
                         str(here)], check=True, capture_output=True)
@@ -746,6 +760,7 @@ def run_frames(rest):
         # moment per millisecond (M3 T1a).
         kept = [k for i, k in enumerate(kept) if i + 1 == len(kept) or kept[i + 1]["t"] != k["t"]]
         (here / "frames.toml").write_text(frames_toml(kept))
+        keep(set_path, "sequences", e["id"], here / "frames.toml")
         subprocess.run([h3view, "sequences", e["id"], "--frames", str(out), "--out", str(here)],
                        check=True, capture_output=True)
         observation = h3cap.snapshot(here / f"{e['id']}.jsonl")
@@ -813,6 +828,101 @@ def run_frames(rest):
         print(f"{e['id']}: {len(kept)} frames, {differing} differ outside the masks "
               f"({only_redraws} only by redraw artifacts) {verdict}", flush=True)
     print(f"frames: {len(entries)} sequences, {failed} not as recorded; under {out}")
+    return 1 if failed else 0
+
+
+def keep(set_path, kind, ident, frames):
+    """Keeps a capture's `frames.toml` (its frames' times, the fidgets and heroes the original's
+    memory showed: numbers only, ADR-0009) in `situations/kept/<kind>/<id>.toml`, beside the set
+    it ran from, so that `drawn` can draw the viewer's frames without the original."""
+    kept = set_path.parent / "kept" / kind / f"{ident}.toml"
+    kept.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy(frames, kept)
+
+
+def run_drawn(rest):
+    """The viewer's frames without the original (runbook, "Which captures a change needs"): for
+    each recorded sequence with engine commands and each situation of the capture set, the
+    viewer draws its frames at the times the harness last kept frames of the original
+    (`situations/kept/`, written by `frames` and `set`); each frame's digest (its PNG file's:
+    the viewer's encoder is deterministic) is compared with `situations/kept/drawn.txt`. One line
+    per sequence or situation (`same`, `CHANGED (<n> of <m> frames, the first at <ms>)`, `new`,
+    or the viewer's own timeline check failing); exits 1 unless every one is the same. With
+    `--record` it writes the digests instead (those not run kept). Needs the release `h3-view`
+    and the user's original files only."""
+    import hashlib
+
+    situations = ROOT / "clients" / "situations"
+    kept_dir = situations / "kept"
+    record = "--record" in rest
+    rest = [r for r in rest if r != "--record"]
+    opts = dict(zip(rest[::2], rest[1::2]))
+    out = Path(opts.get("--out", ROOT / "clients" / "out" / "drawn"))
+    h3view = str(ROOT / "clients" / "target" / "release" / "h3-view")
+    items = [("sequences", e["id"], e)
+             for e in tomllib.loads((situations / "sequences.toml").read_text())["sequence"]
+             if e.get("command")]
+    items += [("set", s["id"], s)
+              for s in tomllib.loads((situations / "set.toml").read_text())["situation"]]
+    if "--only" in opts:
+        items = [i for i in items if i[1] == opts["--only"]]
+    digests_path = kept_dir / "drawn.txt"
+    recorded = {}
+    if digests_path.exists():
+        for line in digests_path.read_text().splitlines():
+            if line and not line.startswith("#"):
+                name, stem, digest = line.split()
+                recorded.setdefault(name, {})[stem] = digest
+    got, failed = {}, 0
+    for kind, ident, entry in items:
+        name = f"{kind}/{ident}"
+        kept = kept_dir / kind / f"{ident}.toml"
+        if not kept.exists():
+            command = "frames" if kind == "sequences" else "set"
+            print(f"{name}: no kept frames (capture it: `{command} --only {ident}`)", flush=True)
+            failed += 1
+            continue
+        here = out / kind / ident
+        shutil.rmtree(here, ignore_errors=True)
+        here.mkdir(parents=True)
+        shutil.copy(kept, here / "frames.toml")
+        if kind == "sequences":
+            args = [h3view, "sequences", ident, "--frames", str(out / kind), "--out", str(here)]
+        else:
+            args = [h3view, "render", str(situations / entry["scenario"]), "--out",
+                    str(here / "ours.png"), "--frames", str(here)]
+        run_result = subprocess.run(args, capture_output=True, text=True)
+        if run_result.returncode != 0:
+            last = (run_result.stdout + run_result.stderr).strip().splitlines()[-1:]
+            print(f"{name}: the viewer failed ({' '.join(last)})", flush=True)
+            failed += 1
+            continue
+        frames = [Path(f["file"]).stem for f in tomllib.loads(kept.read_text())["frame"]]
+        got[name] = {stem: hashlib.sha1((here / "ours" / f"{stem}.png").read_bytes())
+                     .hexdigest()[:16] for stem in frames}
+        before = recorded.get(name)
+        if before is None:
+            verdict = "new"
+        elif before == got[name]:
+            verdict = "same"
+        else:
+            differ = [stem for stem in frames if before.get(stem) != got[name][stem]]
+            gone = [stem for stem in before if stem not in got[name]]
+            first = (differ or gone)[0].lstrip("t").rstrip("b").lstrip("0") or "0"
+            verdict = (f"CHANGED ({len(differ) + len(gone)} of {len(frames)} frames, the first "
+                       f"at {first})")
+        failed += verdict != "same"
+        print(f"{name}: {len(frames)} frames {verdict}", flush=True)
+    if record:
+        recorded.update(got)
+        lines = ["# The viewer's frames at the times last kept (h3drive.py drawn --record): each",
+                 "# frame's PNG digest, `<kind>/<id> <frame> <sha1, 16 digits>`."]
+        lines += [f"{name} {stem} {digest}" for name in sorted(recorded)
+                  for stem, digest in recorded[name].items()]
+        digests_path.write_text("\n".join(lines) + "\n")
+        print(f"drawn: {len(got)} recorded in {digests_path}")
+        return 0
+    print(f"drawn: {len(items)} sequences and situations, {failed} not the same; under {out}")
     return 1 if failed else 0
 
 

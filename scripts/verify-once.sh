@@ -192,9 +192,8 @@ if [ "$kind" = engine ]; then
     "$root/scripts/sandbox-verify.sh" "${extra[@]}"
     code=$?
 else
-    export LLVM_COV="${LLVM_COV:-/usr/lib/llvm-20/bin/llvm-cov}"
-    export LLVM_PROFDATA="${LLVM_PROFDATA:-/usr/lib/llvm-20/bin/llvm-profdata}"
-    "$root/clients/scripts/check.sh" > "$log" 2>&1
+    (cd "$root" && . "$root/scripts/llvm-tools.sh" && llvm_tools_env && \
+        "$root/clients/scripts/check.sh") > "$log" 2>&1
     code=$?
     echo "EXIT=$code" >> "$log"
 fi
