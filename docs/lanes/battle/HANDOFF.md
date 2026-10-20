@@ -47,7 +47,7 @@ Area traps live where they are used: experiments in `docs/experiments/README.md`
 
 ### 2026-10-20 (eighty-ninth) — E23 T2a, the crate and the plain shooters
 
-Proposed T2 in two (the flag's registry position collides with the adventure lane's unmerged `shared/e08-t26b`); the user: T2a now, T2b's shape later. `shared/` #334 (the registration, the skeleton `cross-lane`); the battle PR: `computer` (`shoots`, `shot_target`), `choose`/`unchecked`, the shooter, the stand-ins, two property tests. About 7 µs per decision in release (the log). The sandbox VM restarted once: the baseline re-ran.
+Proposed T2 in two (the flag's registry position collides with the adventure lane's unmerged `shared/e08-t26b`); the user: T2a now, T2b's shape later. `shared/` #334 (the registration, the skeleton `cross-lane`); the battle PR: `computer` (`shoots`, `shot_target`), `choose`/`unchecked`, the shooter, the stand-ins, two property tests. About 6 µs per decision in release, a shot 50 µs (the log). #334 merged (squashed): the branch rebased onto it. Master's `deny` failed on RUSTSEC-2026-0382: `rustls-webpki` bumped here. CI cannot start (billing): the full local verify stands in.
 
 ### 2026-10-20 (eighty-eighth) — E23 T1b, the survey and the ADR draft
 

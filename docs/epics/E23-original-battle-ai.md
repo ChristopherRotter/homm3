@@ -166,7 +166,7 @@ found after that decision) belong to the neutral side's map too and are read (§
     (#334); `h3-battle`'s public `computer` module; `h3_battle_ai::choose`, always a legal command
     (property tests on the test ruleset and the harvested packs); every computer shooter as the
     automatic Ballista shoots (0x41F060); stand-ins for the rest (BAT-STUB-4 to 6); BAT-AI-001,
-    BAT-AI-002; about 7 µs per decision (the log).
+    BAT-AI-002; about 6 µs per decision, a shot about 50 µs (the log).
   - [ ] **T2b The area value and the wall shot** — BAT-QUIRK-25's flag (`shared/`, after the
     adventure lane's `shared/e08-t26b`), the area value 0x41EDA0 with slip 1, the wall shot
     0x41EEA0, the gated benchmark and the budget (ADR-0027 point 11).
