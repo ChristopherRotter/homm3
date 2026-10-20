@@ -51,7 +51,7 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
-- **2026-10-20, E17 M3 T6a (the panel's still).** T6 split (T6b, T6c queued); dialog items as
+- **2026-10-20, E17 M3 T6a (the panel's still; #322 open).** T6 split (T6b, T6c queued); dialog items as
   components (`ui`), the panel's states at a turn's start (`panel`); the set compares the whole
   panel, exact (the parked cursor masked); `drawn` digests what the comparisons see.
 - **2026-10-20, the lane's process (the user).** `drawn` and `situations/kept/` scope the
