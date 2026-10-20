@@ -1,11 +1,11 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
 [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
-are there). Next: M3 T5b-2b–T8 (`docs/lanes/client/QUEUE.md`).
+are there). Next: M3 T6–T8 (`docs/lanes/client/QUEUE.md`).
 
 ## Goal
 
@@ -343,6 +343,13 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   and `machines` T5b-2b). Both compare their boxes; `behind` runs to the Marksmen's second
   shot's end (4 000 ms); a shot's struck stacks take layer 5 as in a melee (the original's
   memory); listed: the first arrow's steps over the rocks (the original's redraws, §7.11).
+- **T5b-2b done 2026-10-20** ([log](E17-log.md#m3-t5b-2b--the-count-boxes-in-fly-and-machines-2026-10-20),
+  [design §4.3, §7.15](E17-design.md)): both sequences at once (the user). Every sequence with
+  frames now compares its boxes; a magic animation is drawn after its stack's count box
+  (`draw_battle_stack`'s part 0 runs on from the sprite into the box: the heal's frames lie over
+  the patient's box in `machines`, now exact in all 106 frames); the heal never changes a box's
+  number (it lowers +0x58 only); `fly`'s breath kills differ from the original's (8 and 13
+  against 9 and 16): both boxes listed from 4 300 ms.
 
 ### The adventure lane's harness (H1, H2: its batch E3)
 
@@ -540,6 +547,10 @@ original cannot be matched (the fidgets' generator); the others are lifted.
 ## M3 review list
 
 (Filled by the tasks: choices queued for the milestone review under the autonomy contract.)
+
+- T5b-2b: the scene draws a magic animation after its stack's count box (0x43E568, 0x43E795; T3b
+  had it before); a siege's second box (part 1 after the moat's parts) not built until sieges;
+  `fly`'s breath boxes listed with their counts (the engine's own roll), not classified.
 
 - T5b-2a: `behind` lengthened to 4 000 ms; the first arrow's holes in the rocks (13 636 to
   13 735 ms, design §7.11) listed with their counts, not classified (a rule "the terrain where

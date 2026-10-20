@@ -270,7 +270,10 @@ pixels of the 800 × 600 frame; the battlefield takes its top 800 × 556.
 
 - **The call:** the redraw calls 0x494F40 per hex, which calls 0x43E140 (stack, x, y, part) with
   that hex record's anchor; 0x43E140 adds the stack's +0x104 to x and +0x100 to y (0 at rest; set
-  by animations, M2). Part 0 draws the sprite, part 1 the count box (§4.3).
+  by animations, M2). Part 0 draws the sprite, runs on into the count box (0x43E568, §4.3) and
+  ends with a magic animation over the stack (0x43E795, §7.15); part 1 enters at the box and
+  draws it alone, called by 0x494F40 only in a siege (+0x53A8), after the moat's parts (M3
+  T5b-2b: read for the heal over the patient's box in `machines`).
 - **Which hex:** 0x494F40 skips a hex whose +0x1A equals the stack's facing (+0x44). The stack's
   placement (0x4687C0; 0x43D8B0 at the start) writes +0x1A: −1 under a one-hex stack; under a
   two-hex stack (facing 1) 0 at its position (+0x38) and 1 at its other hex position + 1, (facing
@@ -310,7 +313,8 @@ pixels of the 800 × 600 frame; the battlefield takes its top 800 × 556.
 
 ### 4.3 The count box
 
-- Part 1 of 0x43E140, called right after the sprite: drawn when the manager forces it (+0x13D34),
+- 0x43E140 from 0x43E568, after the sprite in part 0 (and alone in a siege's part 1, §4.2), before
+  a magic animation over the stack (M3 T5b-2b): drawn when the manager forces it (+0x13D34),
   else only for a stack that is not dead (0x200000), not a war machine (creature flag 0x40), whose
   +0x30 (H3API's `skipCountDraw`) is 0 and whose group is 1 or 2 (mouse-over, standing).
 - The picture `CmNumWin.pcx` (30 × 11; manager +0x13D54), index 0 transparent (0x4958E0 →
@@ -335,9 +339,9 @@ pixels of the 800 × 600 frame; the battlefield takes its top 800 × 556.
   in `tiny.fnt` into (x, y, 30, 15) with colour 4 (`game.pal`'s entry 13, white) and alignment 1
   (centred, from the top). A count of seven digits or more shows its first five (the box's last
   line cut at the glyph that fits, §3.6).
-- **Built** (M3 T4a): the scene's `Draw::CountBox` after each stack's sprite (and any magic
-  animation over it) for a living stack, not a war machine, in group 1 or 2, by its pose's hex
-  and facing; the hexes ahead taken by every living stack's poses and the blocked hexes; the
+- **Built** (M3 T4a): the scene's `Draw::CountBox` after each stack's sprite (and before any
+  magic animation over it since M3 T5b-2b) for a living stack, not a war machine, in group 1 or
+  2, by its pose's hex and facing; the hexes ahead taken by every living stack's poses and the blocked hexes; the
   layout's `[count_box]` holds the numbers. Every creature's troop-count offset is 0 in the
   harvested tables. Checked: the capture set without the count-box mask, 31 situations, all 57
   frames exact (§6.2). Not yet: the spells' tint (M3 T7b, with the first sequences that cast on
@@ -410,6 +414,22 @@ pixels of the 800 × 600 frame; the battlefield takes its top 800 × 556.
   frames with the boxes compared; the Gnolls' box listed from 3 471 to 5 479 ms (` n1.1`: the
   Cyclops' throw kills 6 in the engine, 7 in the original; the Arch Magi's ray then leaves 19 in
   both), the Beholders' 2 → 1 → none as in the original.
+- **The heal** (M3 T5b-2b; `first_aid_tent_action` 0x478B90): the tent's heal, min(Random(1,
+  trunc(25 × the First Aid getter)), +0x58), comes off the patient's +0x58 (0x478C22), the top
+  creature's lost hit points; +0x4C is only read, for the log line's name (one or several, 0x478C6A),
+  and +0x50 is not touched. So a heal never changes a box's number (no creature comes back), and
+  the patient's box stands under the heal's frames (§4.2, §7.15).
+- **Checked** (M3 T5b-2b; `fly` and `machines` with `boxes = true`): `fly` as before in all 102
+  frames (artifacts only); its breath kills 8 Pikemen and 13 Gnolls in the engine, 9 and 16 in
+  the original (30 → 21 and 30 → 14; +0x50 holds 30 from 2 700 ms), so both boxes are masked and
+  listed from 4 300 ms, the breath's end, when both sides show the new count (` n0.2`, ` n0.3`;
+  the Pikemen's not from 4 450 to 5 300, while they strike back: no box); the Black Dragon's
+  stays 1. `machines` exact in all 106 frames with the boxes compared: the Archers' shot kills one
+  of the defending Pikemen in both (20 → 19, +0x50 20 from 1 021 to 2 221 ms), neither Ballista
+  kills; the war machines have no box. With T3b's order (the box over the heal) 6 to 29 pixels a
+  frame differed in the patient's box from 5 945 to 7 845 ms: in the original the heal's
+  translucent frames blend over the box's border and tint (`ff30` → `7b88`, the blend with
+  black).
 - VCMI's `showStackAmountBox` gives the same four positions (its hex centre is the anchor −
   (0, 16)) but leaves out t and counts every stack ahead as taking the hex, war machines included.
 
@@ -478,7 +498,8 @@ The redraw 0x494440, after the background:
    right (right to left in a siege's rows 6–10): pass 0 a siege wall part (not read); pass 1 the
    corpses on the hex, in their list's order (a two-hex corpse from one of its hexes, as a stack);
    pass 2 the layer-0 obstacle anchored there; in every pass the living stack on the hex if its
-   **draw layer** (+0x8) equals the pass, then its count box.
+   **draw layer** (+0x8) equals the pass, then its count box and a magic animation over it (in
+   a siege the moat's parts and the box again, §4.2).
 5. Siege towers, then the calls at 0x494AAC and 0x494ABC (not read); then the frame is shown.
 
 - The draw layer (H3API calls +0x8 "visibility") is 4 from the setup (0x43D750); 6 for the
@@ -1380,8 +1401,9 @@ tail (0x43E795) and the drawers behind it; recorded in the capture set's `war-ma
   trunc(`time` × F) on the deadline (§7.1), and a last redraw that clears the byte erases it.
   In `machines` frame i of the heal is drawn at 5 845 + 100 i and shown 100 ms later, erased at
   7 945, when the next turn starts.
-- **Where it is drawn** (`draw_battle_stack`, part 0, after the stack's sprite and before its
-  count box): x = the position's anchor (22 pixels toward the front of a two-hex stack) − W / 2;
+- **Where it is drawn** (`draw_battle_stack`'s part 0 after the stack's sprite and its count
+  box, 0x43E795; T3b had it before the box, M3 T5b-2b: the heal lies over the patient's box): x =
+  the position's anchor (22 pixels toward the front of a two-hex stack) − W / 2;
   y by the kind's low nibble: 0 the anchor − H (standing on the hex), 1 the anchor − H / 2 −
   h / 2 (centred on the creature), 2 the anchor − H − h (above it), with W, H the DEF's size and h
   the creature's height (+0x16C: 267 less its standing frame's top, 0x43DD62); 3 beside the

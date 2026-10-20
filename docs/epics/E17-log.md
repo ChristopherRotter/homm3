@@ -1312,3 +1312,34 @@ T5b-2b); the user chose that.
   computer's stack walk at 2 396 ms (its frame run as recorded). The capture set: 31 situations,
   57 frames as recorded.
 - **For later:** T5b-2b (`fly`, `machines`), T7b (the spells' tint).
+
+### M3 T5b-2b — The count boxes in `fly` and `machines` (2026-10-20)
+
+On `client/e17-m3-t5b-2b`, the user present: asked for a small increment; the agent offered
+`fly` or `machines` alone or both, the user chose both (the task as queued).
+
+- **Starting point:** master at `c4fe6b1` (#297, after #299, T5b-2a), no client pull request
+  open; the client gates' baseline (`verify-once`: the code verified on #299) passed on the
+  sandbox. SDL's build dependencies (`clients.yml`'s apt list) had to be installed by hand for
+  the release build: the light baseline does not.
+- **The heal read** (design §4.3; `first_aid_tent_action` 0x478B90): the heal comes off the
+  patient's +0x58 (0x478C22), +0x4C is only read for the log line's name (0x478C6A), +0x50 not
+  touched: a heal never changes a box's number.
+- **The draw order fixed** (design §4.2, §4.3, §4.6, §7.15): `machines` with its boxes compared
+  differed in the patient's box through the heal (5 945 to 7 845 ms, 6 to 29 pixels a frame):
+  the original's heal frames blend over the box's border and tint. `draw_battle_stack`'s part 0
+  runs on from the sprite into the box (0x43E568) and draws the magic animation after it
+  (0x43E795); `draw_hex_stack` calls part 1 (the box alone) only in a siege, after the moat's
+  parts (0x494FD1). T3b had read "after the sprite, before the box". Built: the scene emits
+  `Draw::CountBox` before `Draw::Magic` (a test of the order). `machines` then exact in all 106
+  frames; the Archers' shot kills one Pikeman in both (20 → 19), the Ballistas none.
+- **`fly`** with its boxes compared: all 102 frames as before (17 artifacts only); the breath
+  kills 8 Pikemen and 13 Gnolls in the engine, 9 and 16 in the original, so both boxes are
+  masked and listed from 4 300 ms, the breath's end (` n0.2`, ` n0.3`); before it both show 30.
+  No `ms` lengthened: every strike ends inside both sequences.
+- **Checked against the original** (all ten captured afresh): every sequence's frames as
+  recorded, `strike` on its second run (the first left a Pikeman alive again, 10 → 1: the
+  runbook's trap); the viewer's timelines as recorded; the capture set's 31 situations as
+  recorded.
+- **For later:** sieges draw the box a second time after the moat's parts (part 1); T7b (the
+  spells' tint).

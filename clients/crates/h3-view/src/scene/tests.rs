@@ -410,6 +410,37 @@ fn a_count_box_follows_the_moments_stacks() {
 }
 
 #[test]
+fn a_magic_animation_is_drawn_over_its_stacks_count_box() {
+    // E17 M3 T5b-2b (§4.3, §7.15): `draw_battle_stack`'s part 0 draws the sprite, the count box
+    // (0x43E568) and then the magic animation (0x43E795); the First Aid Tent's heal lies over the
+    // patient's box in `machines`.
+    let layout = layout();
+    let mut o = observation();
+    o.terrain = Some(0);
+    o.stacks = vec![stack(0, Side::Attacker, 0, hex(4, 2), false)];
+    let moment = Moment {
+        magic: Some(Magic {
+            def: "Heal.def".to_string(),
+            frame: 0,
+            translucent: true,
+            over: vec![(0, [7, 8], false)],
+        }),
+        ..Moment::default()
+    };
+    let list = battle_at(&o, &moment, &keys(), &tables(), &layout).unwrap();
+    let order: Vec<_> = list
+        .iter()
+        .filter_map(|d| match d {
+            Draw::Creature { .. } => Some("sprite"),
+            Draw::CountBox { .. } => Some("box"),
+            Draw::Magic { .. } => Some("magic"),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(order, ["sprite", "box", "magic"]);
+}
+
+#[test]
 fn a_moment_draws_each_stack_in_its_pose() {
     // E17 M2 T4a: the poses of a timeline. In row 4 the Pikemen walk (frame 3 of group 0, moved
     // by their offset) and lose the outline to the active defender; the dragon on 4/9 died: its
