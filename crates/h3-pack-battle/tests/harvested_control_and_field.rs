@@ -43,6 +43,7 @@ fn details(
         hero_type: r.hero_type_by_key(hero).unwrap(),
         level: 1,
         experience: 0,
+        offered: Default::default(),
         primary: [0, 0, power, knowledge],
         skills,
         worn: vec![r.artifact_by_key("base:spell_book").unwrap().into()],

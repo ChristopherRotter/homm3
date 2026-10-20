@@ -48,6 +48,7 @@ fn details(
         hero_type: r.hero_type_by_key(hero).unwrap(),
         level: 1,
         experience: 0,
+        offered: Default::default(),
         primary: [0, 0, power, knowledge],
         skills: if sorcery {
             vec![(r.skill_by_key("base:sorcery").unwrap(), 1)]
@@ -333,6 +334,7 @@ fn batch_2a_r1_r2_chain_lightning_by_the_screen_distance_and_the_army_slot() {
             hero_type: r.hero_type_by_key(blue).unwrap(),
             level: 1,
             experience: 0,
+            offered: Default::default(),
             primary: [0; 4],
             skills: vec![(r.skill_by_key("base:tactics").unwrap(), 3)],
             worn: vec![],

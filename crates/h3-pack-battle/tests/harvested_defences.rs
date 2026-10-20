@@ -218,6 +218,7 @@ fn the_artifacts_give_the_originals_defences() {
         hero_type: r.hero_type_by_key("base:solmyr").unwrap(),
         level: 1,
         experience: 0,
+        offered: Default::default(),
         primary: [0, 0, 1, 1],
         skills: vec![],
         worn: keys

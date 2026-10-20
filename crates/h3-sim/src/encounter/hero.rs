@@ -138,6 +138,7 @@ impl HeroData {
             hero_type,
             level,
             experience: 0,
+            offered: Default::default(),
             primary,
             skills,
             worn: Vec::new(),

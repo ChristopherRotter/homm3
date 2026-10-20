@@ -486,6 +486,7 @@ fn damage_bonuses_sum_skills_artifacts_and_specialty() {
     let r = damage_ruleset("t:archery", 500);
     let d = HeroDetails {
         level: 10,
+        experience: xp(&r, 10),
         ..details(&r)
     };
     let bonuses = |ranged, melee, reduction| DamageBonuses {
@@ -516,11 +517,16 @@ fn damage_bonuses_sum_skills_artifacts_and_specialty() {
     let r = damage_ruleset("t:offense", 65_535);
     let fast = HeroDetails {
         level: 3,
+        experience: xp(&r, 3),
         ..more.clone()
     };
     let grown = derive_battle_hero(&fast, &r).unwrap().damage;
     assert_eq!(grown, bonuses(1000 + 500 + 2000, 41_321 + 100, 10_000));
-    let saturated = HeroDetails { level: 10, ..more };
+    let saturated = HeroDetails {
+        level: 10,
+        experience: xp(&r, 10),
+        ..more
+    };
     assert_eq!(
         derive_battle_hero(&saturated, &r).unwrap().damage.melee.bp,
         u32::from(u16::MAX)
@@ -575,6 +581,7 @@ fn artillery_and_first_aid_make_the_hero_command_its_war_machines() {
     let control = |r: &Ruleset, level: u8, artillery: Option<u8>, first_aid: Option<u8>| {
         let mut d = HeroDetails {
             level,
+            experience: xp(r, level),
             ..details(r)
         };
         d.skills
@@ -618,10 +625,10 @@ fn artillery_and_first_aid_make_the_hero_command_its_war_machines() {
     assert_eq!(control(&r, 20, Some(2), None).0, Some((2, 2, 9000)));
     assert_eq!(control(&r, 20, Some(3), None).0, Some((3, 2, 10_000)));
     assert_eq!(control(&r, 10, None, Some(3)).1, Some(45_000 + 5000));
-    // Far beyond `u16`: level 255.
+    // Beyond `u16`: level 74, the highest (HER-EXP-002).
     assert_eq!(
-        control(&r, u8::MAX, None, Some(3)).1,
-        Some(30_000 + 30_000 * 500 * 255 / 10_000 + 5000)
+        control(&r, 74, None, Some(3)).1,
+        Some(30_000 + 30_000 * 500 * 74 / 10_000 + 5000)
     );
 }
 
@@ -734,6 +741,7 @@ fn stack_statistics_are_summed_per_creatures_statistic_and_operation() {
     // 2, +10 % attack and defense; the speed in any case.
     let mut d = details(&r);
     d.level = 5;
+    d.experience = xp(&r, 5);
     let mut want = vec![
         effect(
             CreatureSelector::Flag(CreatureFlag::Alive),
@@ -756,11 +764,13 @@ fn stack_statistics_are_summed_per_creatures_statistic_and_operation() {
     want.truncate(3);
     want.push(specialty(0)[2]);
     assert_eq!(derive_battle_hero(&d, &r).unwrap().effects, want);
-    // At level 255, 127 steps of 5 % saturate at i16::MAX basis points; so does the largest
-    // growth per step at level 1 of a level-1 creature, whose specialty without speed gives none.
-    d.level = u8::MAX;
+    // At level 74, the highest (HER-EXP-002), 37 steps of 5 %; the largest growth per step at
+    // level 1 of a level-1 creature, whose specialty without speed gives none, saturates at
+    // i16::MAX basis points.
+    d.level = 74;
+    d.experience = xp(&r, 74);
     let hero = derive_battle_hero(&d, &r).unwrap();
-    assert_eq!(hero.effects.get(3..), Some(&specialty(i16::MAX)[..]));
+    assert_eq!(hero.effects.get(3..), Some(&specialty(18_500)[..]));
     let mut p = pack();
     p.heroes[0].specialty = vec![HeroEffectDef::CreatureSpecialty {
         creature: key("t:peasant"),
@@ -969,6 +979,7 @@ fn magic_and_spell_bonuses_are_derived() {
     let r = magic_ruleset();
     let mut d = details(&r);
     d.level = 10;
+    d.experience = xp(&r, 10);
     d.skills
         .extend([(skill(&r, "t:wisdom"), 2), (skill(&r, "t:logistics"), 3)]);
     let hero = derive_battle_hero(&d, &r).unwrap();
@@ -1219,6 +1230,7 @@ fn with_quirk_q0005_rates_carry_the_originals_single_precision_values() {
     let r = original(magic_pack());
     let mut d = details(&r);
     d.level = 10;
+    d.experience = xp(&r, 10);
     d.skills.push((skill(&r, "t:logistics"), 3));
     let effects = derive_battle_hero(&d, &r).unwrap().effects;
     assert_eq!(
@@ -1250,6 +1262,7 @@ fn with_quirk_q0005_rates_carry_the_originals_single_precision_values() {
     let r = original(p);
     let mut d = details(&r);
     d.level = 23;
+    d.experience = xp(&r, 23);
     d.skills.push((skill(&r, "t:first_aid"), 3));
     let tent = derive_battle_hero(&d, &r)
         .unwrap()
@@ -1317,6 +1330,7 @@ fn opening_spells_and_eagle_eye_are_derived() {
         let id = |k| spell_id(&r, k);
         let mut d = details(&r);
         d.level = 2;
+        d.experience = xp(&r, 2);
         d.skills.push((skill(&r, "t:luck"), 1));
         let hero = derive_battle_hero(&d, &r).unwrap();
         // In the order of the artifact types, whatever the order worn: the helm (a part of the
@@ -1346,6 +1360,7 @@ fn opening_spells_and_eagle_eye_are_derived() {
         // Expert at level 20: 60 % doubled and the eye's 5 %, at most 100 %; spells to level 4.
         let mut expert = d.clone();
         expert.level = 20;
+        expert.experience = xp(&r, 20);
         expert.skills.retain(|&(s, _)| s != skill(&r, "t:luck"));
         expert.skills.push((skill(&r, "t:luck"), 3));
         expert.spells.clear();

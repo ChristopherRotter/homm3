@@ -146,6 +146,7 @@ fn batch_2a_r6_the_hero_casts_in_his_ballistas_turn() {
         hero_type: r.hero_type_by_key(hero).unwrap(),
         level: 1,
         experience: 0,
+        offered: Default::default(),
         primary: [0, 0, 1, knowledge],
         skills,
         worn: worn.iter().map(|k| artifact(k)).collect(),

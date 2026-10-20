@@ -34,6 +34,7 @@ fn details(r: &BattleRuleset, rng: &mut Rng) -> HeroDetails {
         hero_type: HeroTypeId::from_index(pick(rng, r.hero_types().len())).unwrap(),
         level: u8::try_from(1 + rng.below(255)).unwrap(),
         experience: 0,
+        offered: Default::default(),
         primary: [0; 4].map(|_| u8::try_from(rng.below(100)).unwrap()),
         skills: vec![],
         worn: vec![],

@@ -1518,6 +1518,7 @@ fn harvested_magic_derives() {
         hero_type: sod.hero_type_by_key(hero).unwrap(),
         level: 12,
         experience: 0,
+        offered: Default::default(),
         primary: [1, 1, 5, 5],
         skills: skills
             .iter()
@@ -1616,6 +1617,7 @@ fn hero_details_fit_the_harvested_slots() {
             hero_type: r.hero_type_by_key("base:orrin").unwrap(),
             level: 10,
             experience: 20_000,
+            offered: Default::default(),
             primary: [5, 4, 2, 2],
             skills: vec![(r.skill_by_key("base:archery").unwrap(), 3)],
             worn: worn.iter().map(art).map(Into::into).collect(),
@@ -1851,6 +1853,7 @@ fn the_data_quirks_are_fixed_in_strict_fixed() {
             hero_type: r.hero_type_by_key(hero).unwrap(),
             level: 4,
             experience: 0,
+            offered: Default::default(),
             primary: [0, 0, 1, 1],
             skills: vec![],
             worn: vec![],
@@ -1916,6 +1919,7 @@ fn harvested_hero_effects_reproduce_the_experiments() {
             hero_type: sod.hero_type_by_key(hero).unwrap(),
             level,
             experience: 0,
+            offered: Default::default(),
             primary,
             skills: vec![],
             worn: worn
