@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 83d5f74827e788e3204c331da6a52a58d06c1f6372af40f47cc75742792cdd8c # shrinks to envs = 2, threads = 0, seed = 858137567051331881, max_steps = 3, currency = Gold, mana_price = 12, picks = [(2, 1, 2)], play = 12906565122113746474
