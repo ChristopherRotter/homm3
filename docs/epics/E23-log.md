@@ -89,3 +89,57 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
 - **Map:** 12 entries (5 new: 0x4235C0, 0x4237C0, 0x423820, 0x4429F0, 0x445840; 7 updated;
   the three helpers named `ai_blocked_shooters_value`, `ai_multi_headed_strike_value`,
   `ai_breath_strike_value`).
+
+## T1a3c — the fallbacks and the ends (2026-10-20, increment 1)
+
+- **The seam** (the user, 2026-10-20): all of T1a3c in one session (about 3.4 KB), over the
+  fallbacks and the walk first (recommended) or the odds and the retaliation first. The hero's
+  value inside the odds (0x526D40, 0x5275B0 and ten helpers, about 4 KB of the adventure AI)
+  became its own task, T1a3d, before T1a4 (recommended; over keeping it in T1a6 or folding it
+  into T1a5): the neutral side has no hero but its odds weigh the player's.
+- **Read** (`docs/formats/installation.md` §7.38), all in full but for the hero's value: the walk
+  0x41F580, the guard 0x420760 with 0x4205D0, 0x4B3F20, 0x4466C0, 0x4674C0, the step to safety
+  0x4208F0, the destination map 0x4B2FF0, the last retaliation's gain 0x41F3B0 with 0x435980, and
+  the odds 0x420A80.
+- **Corrected:** §7.35 read 0x420A80 as the sides' whole strength; it compares their strength at
+  range (the stacks that can shoot now, the hero's value, the defender's turrets as Archers), the
+  whole strength feeding only the hero's value. `ai_walker_odds` renamed `ai_stronger_at_range`;
+  §7.35 and 0x4213F0's entry reworded.
+- **Found:** with the scores and its flag (Hard and above or a human side, the target more than a
+  turn away) the walk takes only hexes that score no lower than the last and waits when it falls
+  short; without the flag it first reaches the hex from which the rest takes whole turns. The
+  walk ends after a stop it enters, so a berserk stack's walk ends on a pit it sees when it gets that far (§7.14
+  updated; the inbox for BAT-MAG-025). The destination map is Teleport's, a two-hex enemy's other
+  hex left unmarked. The desperate kills in 0x41F3B0 use the top creature's remaining hit points
+  where its lost ones belong. No rule of the engine changes here.
+- **Map:** 14 entries (5 new: 0x4205D0, 0x4B3F20, 0x435980, 0x4466C0, 0x4674C0; 9 updated).
+
+## T1a3d — the hero's value in the odds (2026-10-20, increment 1)
+
+- **The seam** (the user, 2026-10-20): all of T1a3d in one session (about 4.4 KB, of it about
+  1.6 KB the library's vector and sort), over the record and the best spell's loop first
+  (recommended) or a spell's value first.
+- **Read** (`docs/formats/installation.md` §7.39), all in full: the caster record 0x526D40 with
+  the vector's insert 0x4347A0 and the sort's parts 0x434CE0, 0x435160, 0x435240, 0x435290,
+  0x52BD50 (Visual C++ 5/6's, recognised by shape); the best spell 0x5275B0; a spell's value
+  0x5273D0 with the damage value 0x5270E0 and its curve 0x640398, the other kinds 0x5271C0 and
+  0x527290; the hero's tile's field 0x4E4FA0 (H3API's `GetSpecialSpellTerrain` confirmed) with
+  0x4FCF40.
+- **Found:** in the battle only R+0, the power R+8 and the mana R+0x10 of the record count
+  (0x420A80 overwrites R+4 with the side's whole strength `S`; the list and R+0xC serve only the
+  other battle spells' value). The odds count the damage spells with the AI bit `0x8000` (Magic
+  Arrow, Ice Bolt, Lightning Bolt, Implosion, Frost Ring, Fireball, Meteor Shower; Titan's
+  Lightning Bolt 1), the best one worth `min(10 d φ_n', S × Y(10 d / S))`: `d` the spell's AI
+  value × (power + mastery) with the Orbs and Sorcery, `Y` a concave curve that reaches 4, so at
+  most four times `S`. The mana is the hero's maximum (HER-MAN-001's formula), not the points
+  left; the mastery takes the hero's own tile's field, the cost none; only the hero's own
+  Recanter's Cloak counts, Cursed Ground not. With `S` = 0 the value is 0 (a NaN product's
+  0x80000000 under the floor of 0). No rule of the engine changes.
+- **Map:** 16 entries (13 new; 0x526D40 and 0x5275B0 renamed `ai_caster_record` and
+  `ai_best_spell_value` and read; 0x420A80 updated). The adventure lane's inbox has what of its AI
+  is read; the seven other callers of 0x526D40 and their masks are not.
+- **Checks:** a fresh agent re-read three findings blind, on a copy of the tool and the map
+  made before the edits: the record's power and mana (the maximum, not the points left), the
+  best spell's tests (the range, the own hero's Cloak, the floor of 0) and the damage value's
+  formula (the base, `X`, the row at a threshold, the smaller product). It agreed on all three
+  and read the same table.

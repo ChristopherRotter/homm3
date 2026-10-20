@@ -227,10 +227,14 @@ Refined with the user on 2026-10-20 (T23; ADV-Q14). Built like increments 1 to 3
 
 51. **T24a is cut in two** (the user's choice of four, for a small increment): **T24a1** the code reading of experience to levels (the rest of 0x4E33B0, the level limit) and the level-up (0x4DA720: the primary draw, the offers, the seed), compared with VCMI as D-rows, docs only; **T24a2** the rest (levels at load, what follows the level, the wiki, the census, the batch's plan, the rule ids, the second reading, the ADV-Q). Not chosen: the code reading without VCMI, all deciding code (with levels at load) first, or T24a whole.
 
+### Decisions at round 1's second session (2026-10-20, user)
+
+52. **T24a2 is cut again** (the user's choice of four): **T24a2a** the rest of the code reading, levels at load and what follows the level, with VCMI, docs only; **T24a2b** the wiki, the census, the batch's plan, the rule ids, the second reading and the ADV-Q. Not chosen: levels at load with the census, levels at load alone, or T24a2 whole.
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T23 Increment 4 refined.** Done (2026-10-20, `adventure/e08-t23`; decisions 48–50): progression only, the first round queued (T24a, T24b), the inbox sorted; docs only (log).
-- **T24a The progression survey.** Cut in two (decision 51): **T24a1** done (2026-10-20, `adventure/e08-t24a1`: survey §1–§2, experience to levels and the level-up, with VCMI; log); **T24a2** next (queue).
+- **T24a The progression survey.** Cut in two (decision 51): **T24a1** done (2026-10-20, `adventure/e08-t24a1`: survey §1–§2, experience to levels and the level-up, with VCMI; log); **T24a2** cut again (decision 52): **T24a2a** done (2026-10-20, `adventure/e08-t24a2a`: survey §3–§4, levels at load and what follows the level; log); **T24a2b** next (queue).
 - **T24b The ADR amendment drafts, the design note and the cut.** After T24a's checkpoint (queue).
 
 ## Later increments (sketch)

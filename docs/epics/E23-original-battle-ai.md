@@ -1,7 +1,7 @@
 # E23 — The original's battle AI
 
-Status: **in progress**, refined 2026-10-19 (BAT-Q52); T1a1, T1a2, T1a3a and T1a3b done (the cuts
-confirmed 2026-10-20), T1a3c next · Follows E05 (the
+Status: **in progress**, refined 2026-10-19 (BAT-Q52); T1a1, T1a2 and T1a3a to T1a3d done (the cuts
+confirmed 2026-10-20), T1a4 next · Follows E05 (the
 AI lane, done) · Followed by E06 (training: this policy holds the neutral seat; AI-Q1) ·
 The battle lane's, later the AI lane's (BACKLOG).
 
@@ -91,7 +91,7 @@ there):
   value, the area's hexes, the wall shot) and 0x421680 with its branches, draw and helpers by
   role (`installation.md` §7.35; the log).
 - **T1a3 The walker's helpers**, cut in three by size (the user, 2026-10-20: about 10.7 KB
-  left; the hex scores first):
+  left; the hex scores first), and a fourth for the hero's value in the odds:
   - [x] **T1a3a The hex scores** (2026-10-20) — the enemies' reach 0x420260 with its
     multi-headed branch, the crowding and breath scores 0x41FB60 with the area threat 0x41F920
     (`installation.md` §7.36; the log).
@@ -99,15 +99,19 @@ there):
     shooters blocked, the multi-headed and breath strikes (the jousters' longer run-up at a tie);
     part O, 0x423340, the library sort (ties of the two sides unordered above 16 stacks)
     (`installation.md` §7.37; the log).
-  - [ ] **T1a3c The fallbacks and the ends** (about 4 KB) — 0x420760, 0x4208F0, 0x41F3B0,
-    0x4B2FF0, the walk 0x41F580's end, the odds' totals (0x420A80, which reaches the adventure
-    AI's valuations, part A).
-- [ ] **T1a4 The AI pathfinder** — part P (4.6 KB): the walker's path among equally short ones
+  - [x] **T1a3c The fallbacks and the ends** (2026-10-20) — the walk 0x41F580 (on Hard and up a
+    walker holds back from a worse hex and waits), the two fallbacks, the destination map (as
+    Teleport's), the last retaliation's gain, the odds 0x420A80, which compare strength at range
+    (§7.35 corrected) (`installation.md` §7.38; the log).
+  - [x] **T1a3d The hero's value in the odds** (2026-10-20; the user: all in one part) — the
+    caster record 0x526D40 and the best damage spell 0x5275B0 with their helpers: up to four times
+    the side's whole strength, from the hero's maximum mana (`installation.md` §7.39; the log).
+- [ ] **T1a4 The AI pathfinder** — part P (about 3.8 KB; the walk 0x41F580 is read): the walker's path among equally short ones
   against BAT-MOV-003 (S-11, Q53).
 - [ ] **T1a5 The creature casts and the spell evaluation** — part C (12.9 KB): the cast entry's
   kinds, the spell context 0x4369C0, the estimates, the predictions; shared with the hero's choice.
 - [ ] **T1a6 The hero** (read just before T5) — part H (5.8 KB): the cast choice 0x43C800's candidates, the retreat test
-  0x41E570; part A (6.4 KB) only as far as the battle needs it (the adventure lane's to read with
+  0x41E570; the rest of part A (about 2.4 KB) only as far as the battle needs it (the adventure lane's to read with
   its AI). The Catapult and the First Aid Tent are read (§7.29; §7.14, BAT-Q51).
 
 **T1b follows T1a5** (the user, 2026-10-20): the neutral side's map is then complete and the
