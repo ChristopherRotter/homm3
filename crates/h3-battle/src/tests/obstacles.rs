@@ -806,11 +806,11 @@ fn expert_dispel_removes_every_spell_obstacle() {
 
 // covers: BAT-MOV-003
 #[test]
-fn of_two_shortest_paths_a_walker_takes_the_one_by_its_ends_first_neighbour() {
-    // E04b T11b review (r3 F-10): the tie between two equally short paths. From the end, a
-    // position's predecessor is its first neighbour one step nearer the start in the order
-    // right, bottom right, bottom left, left, top left, top right. Batch 2c F2 observed the
-    // first case for either side: two rows straight up, a walker passes its up-right neighbour.
+fn of_two_shortest_paths_a_walker_takes_the_one_its_search_reaches_first() {
+    // The original's pathfinder (0x4B3400, `installation.md` §7.40): a position comes from the
+    // first position the search took next to it, and a taken position queues its neighbours from
+    // top right clockwise. Batch 2c F2 observed the first case for either side: two rows straight
+    // up, a walker passes its up-right neighbour.
     let r = ruleset();
     let field = field(&r);
     let mut s = battle(&r, &[(0, "fixed", 1)], &[(0, "fixed", 1)], 1);
@@ -821,19 +821,18 @@ fn of_two_shortest_paths_a_walker_takes_the_one_by_its_ends_first_neighbour() {
         let (path, len) = crate::movement::path(&s, field, StackId(id), &me, at(&r, x, y));
         path[..len].iter().map(|&h| field.coords(h)).collect()
     };
-    // Up: the end's bottom right neighbour (the start's up-right one) comes before its bottom
-    // left one; the attacker's and the defender's walker alike.
+    // Up: the start's up-right neighbour (queued first) before its up-left one; the attacker's
+    // and the defender's walker alike.
     assert_eq!(cells(0, (5, 3)), [(5, 4), (5, 3)]);
     assert_eq!(cells(1, (12, 3)), [(12, 4), (12, 3)]);
-    // Down: the end's top left neighbour (the start's down-left one) comes before its top
-    // right one.
-    assert_eq!(cells(0, (5, 7)), [(4, 6), (5, 7)]);
-    assert_eq!(cells(1, (12, 7)), [(11, 6), (12, 7)]);
+    // Down: its down-right neighbour (queued third) before its down-left one (fourth).
+    assert_eq!(cells(0, (5, 7)), [(5, 6), (5, 7)]);
+    assert_eq!(cells(1, (12, 7)), [(12, 6), (12, 7)]);
 }
 
 // covers: BAT-MOV-003
 #[test]
-fn a_walkers_path_is_a_shortest_one_chosen_from_its_end() {
+fn a_walkers_path_is_a_shortest_one_around_obstacles() {
     let r = ruleset();
     let s = battle_with_obstacles(
         &r,

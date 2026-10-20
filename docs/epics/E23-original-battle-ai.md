@@ -1,7 +1,7 @@
 # E23 — The original's battle AI
 
 Status: **in progress**, refined 2026-10-19 (BAT-Q52); T1a1 to T1a4 done (the cuts confirmed
-2026-10-20), T1c next (BAT-Q53) · Follows E05 (the
+2026-10-20), T1c done (BAT-Q53, BAT-Q54); T1a5 next · Follows E05 (the
 AI lane, done) · Followed by E06 (training: this policy holds the neutral seat; AI-Q1) ·
 The battle lane's, later the AI lane's (BACKLOG).
 
@@ -115,12 +115,9 @@ there):
   - [x] **T1a4b The head** (2026-10-20) — 0x4B3400's setup, the automatic test 0x474BF0, the
     cells 0x4B1460, the walk's and the cursor's calls; S-11 placed in the attack's end on the
     target's position hex (`installation.md` §7.41; the log).
-- [ ] **T1c Pathfinding as the original's** (BAT-Q53, the user 2026-10-20: "pathfinding must
-  work exactly as in the original"; T1a4b first, then this) — code in `h3-battle`: the walks'
-  paths by §7.40's search (BAT-MOV-003), the berserk turn's attack position, its walk beyond its
-  speed along the search's path and its end on a stop it enters (BAT-MAG-025, §7.38), the
-  attack's end on the target's position hex (S-11, §7.41, its class with its batch row); batch 3c's
-  M2 and G4 as tests; the golden replays and `benches/battle/` regenerated.
+- [x] **T1c Pathfinding as the original's** (2026-10-20; BAT-Q53; the user: whole, S-11 fix-optional,
+  BAT-Q54) — `pathfinder.rs` ports 0x4B3400: the walks' paths (BAT-MOV-003; batch 3c's M2 and G4) and
+  the berserk turn's candidates, attack position and walk (BAT-MAG-025), S-11 as BAT-QUIRK-24 (the log).
 - [ ] **T1a5 The creature casts and the spell evaluation** — part C (12.9 KB): the cast entry's
   kinds, the spell context 0x4369C0, the estimates, the predictions; shared with the hero's choice.
 - [ ] **T1a6 The hero** (read just before T5) — part H (5.8 KB): the cast choice 0x43C800's candidates, the retreat test

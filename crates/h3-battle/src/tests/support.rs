@@ -1927,6 +1927,13 @@ pub fn try_ruleset_from(
                 )],
             },
             ProfileDef {
+                key: ContentKey::new("t", "berserk_position").unwrap(),
+                quirks: vec![(
+                    String::from("quirk.battle.berserk_walks_to_position_hex"),
+                    true,
+                )],
+            },
+            ProfileDef {
                 key: ContentKey::new("t", "original").unwrap(),
                 quirks: vec![
                     (String::from("quirk.battle.first_protection"), true),

@@ -465,10 +465,10 @@ fn a_walk_over_the_outer_bridge_opens_the_held_gate_with_every_sink() {
         place(&mut s, &r, 2, 11, 5);
         assert!(!open(&s));
         activate(&mut s, 1);
-        // On to (8, 5) over the outer bridge (9, 5): the step there opens the gate, and the
+        // On to (8, 4) over the outer bridge (9, 5): the step there opens the gate, and the
         // stack on the gate's hex holds it open after the walk.
         let mut t = s.clone();
-        let events = act(&mut t, &r, walk(&r, 8, 5)).unwrap();
+        let events = act(&mut t, &r, walk(&r, 8, 4)).unwrap();
         let path: Vec<Hex> = events
             .iter()
             .filter_map(|e| match e.kind {
@@ -476,7 +476,7 @@ fn a_walk_over_the_outer_bridge_opens_the_held_gate_with_every_sink() {
                 _ => None,
             })
             .collect();
-        assert_eq!(path, [at(&r, 9, 5), at(&r, 8, 5)], "{moat:?}");
+        assert_eq!(path, [at(&r, 9, 5), at(&r, 8, 4)], "{moat:?}");
         assert_eq!(gate(&events), [true], "{moat:?}");
         assert!(open(&t));
         assert!(soaked(&events).is_empty());
@@ -486,13 +486,58 @@ fn a_walk_over_the_outer_bridge_opens_the_held_gate_with_every_sink() {
             &mut quiet,
             &r,
             BattleSide::Defender,
-            walk(&r, 8, 5),
+            walk(&r, 8, 4),
             &mut NoopSink,
         )
         .unwrap();
         assert!(open(&quiet), "{moat:?}");
         assert_eq!(quiet.state_hash(), t.state_hash(), "{moat:?}");
     }
+}
+
+// covers: BAT-MOV-003, BAT-SIE-003
+/// Batch 3c M2 and G4 (the original without HD, played by an agent): of equally short paths a
+/// walker takes its pathfinder's (`installation.md` §7.40), where BAT-MOV-003's choice from the
+/// end (until E23 T1c) took the others. M2: the attacker's Magic Elementals (speed 9) walk from 86
+/// (1, 5) into the moat's 111 (9, 6) of a Citadel along row 5 to 94 (9, 5) and step down, not
+/// along row 6. G4: the defender's Minotaur Kings walk from the gate's 96 (11, 5) of a Fort out to
+/// 76 (8, 4) over 95 and 94, not 77 (9, 4).
+#[test]
+fn batch_3c_m2_and_g4_walks_take_the_pathfinders_path() {
+    let r = ruleset();
+    let moved = |events: &[Event]| -> Vec<(i32, i32)> {
+        events
+            .iter()
+            .filter_map(|e| match e.kind {
+                EventKind::Moved { to, .. } => Some(field(&r).coords(to)),
+                _ => None,
+            })
+            .collect()
+    };
+    let citadel = town(&r, "t:castle", FortLevel::Citadel, Moat::Damaging);
+    let mut s = at_town(
+        &r,
+        citadel,
+        [None, None],
+        &[("fast", 10, 1, 5)],
+        &[("fixed", 1, 14, 9)],
+    );
+    let events = act(&mut s, &r, walk(&r, 9, 6)).unwrap();
+    let mut row_5: Vec<(i32, i32)> = (2..10).map(|x| (x, 5)).collect();
+    row_5.push((9, 6));
+    assert_eq!(moved(&events), row_5);
+    let fort = town(&r, "t:castle", FortLevel::Fort, Moat::Absent);
+    let mut s = at_town(
+        &r,
+        fort,
+        [None, None],
+        &[("fixed", 1, 2, 1)],
+        &[("fixed", 1, 14, 9)],
+    );
+    place(&mut s, &r, 1, 11, 5);
+    activate(&mut s, 1);
+    let events = act(&mut s, &r, walk(&r, 8, 4)).unwrap();
+    assert_eq!(moved(&events), [(10, 5), (9, 5), (8, 4)]);
 }
 
 // ---------------------------------------------------------------- BAT-SIE-004
