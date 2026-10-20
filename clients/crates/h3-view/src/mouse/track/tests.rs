@@ -5,7 +5,6 @@
 use alloc::collections::BTreeSet;
 use alloc::format;
 use alloc::string::String;
-use alloc::vec;
 use alloc::vec::Vec;
 
 use h3_protocol::wire::{Command, Observation, Side};
