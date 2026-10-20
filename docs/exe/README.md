@@ -34,7 +34,10 @@ amendment 3). The tool reads the gitignored copy in `original-data/` and writes 
 
 1. The executable: `original-data/install/Heroes3.exe` (a cloud session stages it from the user's
    repo folder, `docs/08-work-process.md`, "Cloud sandbox"; the tool refuses any other build than
-   SHA-256 `aac39e8c…`, `installation.md` §1).
+   SHA-256 `aac39e8c…`, `installation.md` §1). **Read in the cloud sandbox**, not through the
+   device shell on the user's computer (the user, 2026-10-20): the computer may go offline in the
+   middle of a reading, and the tool there sees the user's map, not the session's edits (E23
+   T1a5e tried it; Python 3.10 there needs `uv run --python 3.11`).
 2. `pip install capstone pefile` (in a sandbox add `--break-system-packages`;
    `scripts/sandbox-setup.sh` does it). Python 3.11 or later.
 

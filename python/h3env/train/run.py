@@ -33,11 +33,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import IO, Any
 
-from .evaluate import HELD_OUT_BATCH_SEEDS
+from .evaluate import HELD_OUT_BATCH_SEEDS, OPPONENTS, REPORT_V1_ENVS
 
 #: The version of `record.json`'s layout (`check_record`); 2: its segments (T2b1); 3: the
-#: engine's identity (the encodings' and encounters' versions, the batch's entries, T2c).
-RECORD_SCHEMA = 3
+#: engine's identity (the encodings' and encounters' versions, the batch's entries, T2c); 4: the
+#: gates, promotions and ladders instead of the evaluations, the parent (T3b).
+RECORD_SCHEMA = 4
 
 #: The identity's keys a record needs.
 IDENTITY = (
@@ -99,19 +100,30 @@ class Config:
     pool_size: int = field(default=8, metadata=_in("pool"))
     #: Samples between snapshots (the first after this many).
     pool_every: int = field(default=600_000, metadata=_in("pool"))
-    #: Samples between evaluations against Random (and one at the end); 0: only at the end. Until
-    #: the gate and the ladder (T3) replace it.
-    eval_every: int = field(default=5_000_000, metadata=_in("evaluation"))
-    eval_episodes: int = field(default=1000, metadata=_in("evaluation"))
-    eval_envs: int = field(default=100, metadata=_in("evaluation"))
-    #: The held-out episodes' batch seed (E05's `EVAL_SEED`, the held-out set v0).
-    eval_seed: int = field(default=0x5EED_E7A1_0000_0001, metadata=_in("evaluation"))
-    #: Also evaluate greedy play (the criterion is the sampled policy's).
-    eval_greedy: bool = field(default=True, metadata=_in("evaluation"))
-    #: Evaluate the untrained network and Random itself on the same episodes first.
-    eval_start: bool = field(default=True, metadata=_in("evaluation"))
+    #: Samples between gates (design §6): the learner against the best on the gate set v1, an
+    #: SPRT promotes it; 0: only at the end. A run also gates at its end if it trained since its
+    #: last gate.
+    gate_every: int = field(default=10_000_000, metadata=_in("gate"))
+    #: The SPRT's hypotheses (Elo differences) and error rates, and its cap in pairs (the cap
+    #: rejects as inconclusive; at most the gate set's 4 000).
+    elo0: float = field(default=0.0, metadata=_in("gate"))
+    elo1: float = field(default=20.0, metadata=_in("gate"))
+    alpha: float = field(default=0.05, metadata=_in("gate"))
+    beta: float = field(default=0.05, metadata=_in("gate"))
+    max_pairs: int = field(default=4000, metadata=_in("gate"))
+    #: The engine seats each promoted network's ladder plays (design §7), on the report set v1.
+    ladder_opponents: list[str] = field(
+        default_factory=lambda: list(OPPONENTS), metadata=_in("ladder")
+    )
+    #: Episodes per kind of a promoted network's ladder (the report set's first; at most 500).
+    ladder_episodes: int = field(default=250, metadata=_in("ladder"))
+    #: Episodes per kind of the final best's ladder at the run's end (0: none; 500 for a claim
+    #: of a target).
+    ladder_final_episodes: int = field(default=500, metadata=_in("ladder"))
+    #: The promoted networks before it each ladder also plays (both seats external).
+    ladder_promoted: int = field(default=1, metadata=_in("ladder"))
     #: Minutes of wall time between checkpoints, taken at the next update boundary (0: at every
-    #: one); also after each evaluation, at a stop and at the end (design §3.2).
+    #: one); also before and after each gate and ladder, at a stop and at the end (design §3.2).
     checkpoint_minutes: float = field(default=5.0, metadata=_in("checkpoint"))
     device: str = field(default="auto", metadata=_in("device"))
     torch_threads: int = field(default=0, metadata=_in("device"))
@@ -144,6 +156,15 @@ _KINDS = {bool: "true or false", int: "an integer", float: "a number", str: "a s
 
 def _check_type(key: str, value: Any) -> Any:
     default = getattr(Config(), key)
+    if key == "ladder_opponents":
+        if (
+            isinstance(value, list)
+            and value
+            and all(v in OPPONENTS for v in value)
+            and len(set(value)) == len(value)
+        ):
+            return value
+        raise ConfigError(f"`ladder_opponents` takes distinct names of {OPPONENTS}, not {value!r}")
     if key == "kinds":
         if value is None or (
             isinstance(value, list)
@@ -246,7 +267,7 @@ def resolve(config: Config) -> Config:
     for key in ("samples", "envs", "max_steps", "rollout", "epochs", "minibatches", "hidden"):
         if getattr(c, key) <= 0:
             problems.append(f"`{key}` must be positive")
-    for key in ("threads", "pool_every", "eval_every", "torch_threads"):
+    for key in ("threads", "pool_every", "gate_every", "torch_threads", "ladder_promoted"):
         if getattr(c, key) < 0:
             problems.append(f"`{key}` must not be negative")
     if c.checkpoint_minutes < 0:
@@ -255,8 +276,14 @@ def resolve(config: Config) -> Config:
         problems.append("`lr_schedule` is linear or constant")
     if not 0.0 <= c.lr_floor <= 1.0 or not 0.0 <= c.pool_share <= 1.0:
         problems.append("`lr_floor` and `pool_share` lie in [0, 1]")
-    if c.seed == c.eval_seed or c.seed in HELD_OUT_BATCH_SEEDS:
-        problems.append("`seed` is a held-out set's batch seed (`eval_seed`, v0, the v1 sets')")
+    if c.seed in HELD_OUT_BATCH_SEEDS:
+        problems.append("`seed` is a held-out set's batch seed (v0's, the v1 sets')")
+    if not (0.0 < c.alpha < 0.5 and 0.0 < c.beta < 0.5 and c.elo0 < c.elo1):
+        problems.append("the gate's `alpha` and `beta` lie in (0, 0.5), `elo0` below `elo1`")
+    if not 1 <= c.max_pairs <= 4000:
+        problems.append("`max_pairs` lies in 1 to 4000 (the gate set's pairs)")
+    if not 1 <= c.ladder_episodes <= REPORT_V1_ENVS or not 0 <= c.ladder_final_episodes <= 500:
+        problems.append("`ladder_episodes` lies in 1 to 500, `ladder_final_episodes` in 0 to 500")
     if problems:
         raise ConfigError("; ".join(problems))
     return c
@@ -353,10 +380,12 @@ class Stop:
             self._installed = False
 
 
-def atomic_write(path: Path, write: Callable[[IO[bytes]], None]) -> None:
+def atomic_write(path: Path, write: Callable[[IO[bytes]], None]) -> bool:
     """`write`s into `<path>.tmp` beside `path`, syncs it, then replaces `path` (atomic on one
-    volume). Windows refuses the replace while another process holds `path` open: five tries
-    over about a second, then the error."""
+    volume); returns whether it did. Windows refuses the replace while another process holds
+    `path` open (a ladder reading `best.pt`): five tries over about a second, then the old file
+    stays, a warning goes to standard error and the run goes on (design §3; the next save
+    tries again)."""
     path = Path(path)
     tmp = path.with_name(path.name + ".tmp")
     with open(tmp, "wb") as f:
@@ -366,11 +395,14 @@ def atomic_write(path: Path, write: Callable[[IO[bytes]], None]) -> None:
     for attempt in range(5):
         try:
             os.replace(tmp, path)
-            return
-        except PermissionError:
+            return True
+        except PermissionError as e:
             if attempt == 4:
-                raise
+                tmp.unlink(missing_ok=True)
+                print(f"warning: {path} kept, its replace refused: {e}", file=sys.stderr)
+                return False
             time.sleep(0.25)
+    return False
 
 
 def atomic_write_text(path: Path, text: str) -> None:
@@ -435,7 +467,7 @@ def machine() -> dict[str, Any]:
     }
 
 
-#: The update records' fields the record's curve averages per evaluation interval.
+#: The update records' fields the record's curve averages per gate interval.
 CURVE = (
     "samples_per_s",
     "attacker_won",
@@ -448,14 +480,6 @@ CURVE = (
     "clip",
     "explained_variance",
 )
-
-
-def _rates(result: dict) -> dict[str, Any]:
-    return {
-        "win_rate": result["win_rate"],
-        "attacker": result["attacker"]["win_rate"],
-        "defender": result["defender"]["win_rate"],
-    }
 
 
 def _segment(record: dict[str, Any]) -> dict[str, Any]:
@@ -477,6 +501,10 @@ def _segment(record: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+#: A gate record's fields the record keeps.
+GATE = ("best", "result", "pairs", "counts", "llr", "score", "elo", "games", "seconds")
+
+
 class Record:
     """The run's summary (`record.json`, design §4), built from its typed metrics records in
     order (so `metrics.jsonl` replayed rebuilds it: a resume does, `Run`)."""
@@ -485,16 +513,22 @@ class Record:
         self.name = name
         self.config = config
         self.identity = identity
+        #: The network the run started from (`--init-from`), or None.
+        self.parent: dict[str, Any] | None = None
         self.progress: dict[str, Any] = {
             "samples": 0,
             "updates": 0,
             "episodes": 0,
             "minutes": 0.0,
+            #: The gates' and ladders' wall time (their share of the run's, design §9).
+            "evaluation_minutes": 0.0,
             "ended": None,
         }
         self.segments: list[dict[str, Any]] = []
         self.curve: list[dict[str, Any]] = []
-        self.evaluations: list[dict[str, Any]] = []
+        self.gates: list[dict[str, Any]] = []
+        self.promotions: list[dict[str, Any]] = []
+        self.ladders: list[dict[str, Any]] = []
         self._sums: dict[str, float] = {}
         self._count = 0
 
@@ -507,8 +541,10 @@ class Record:
 
     def observe(self, record: dict[str, Any]) -> None:
         kind = record["type"]
+        at = {k: record[k] for k in ("samples", "update", "minutes") if k in record}
         if kind == "start":
             self.identity = record.get("identity", self.identity)
+            self.parent = record.get("parent")
             self.segments = [_segment(record)]
         elif kind == "segment":
             last = self.segments[-1]
@@ -530,42 +566,49 @@ class Record:
                 if value is not None and value == value:  # NaN (no variance) counts nothing
                     self._sums[k] = self._sums.get(k, 0.0) + float(value)
             self._count += 1
-        elif kind == "eval" and not record.get("repeated"):
+        elif kind == "gate":
             if self._count:
                 point = {k: v / self._count for k, v in self._sums.items()}
                 self.curve.append(
                     {"samples": record["samples"], "updates": record["update"], **point}
                 )
             self._sums, self._count = {}, 0
-            entry: dict[str, Any] = {
-                "samples": record["samples"],
-                "update": record["update"],
-                "minutes": record["minutes"],
-                "sampled": record["sampled"],
-            }
-            for name in ("greedy", "random"):
-                if name in record:
-                    entry[name] = _rates(record[name])
-            self.evaluations.append(entry)
+            self.gates.append({**at, **{k: record[k] for k in GATE}})
+            self.progress["evaluation_minutes"] += record["seconds"] / 60
+        elif kind == "promotion":
+            self.promotions.append({**at, "index": record["index"], "how": record["how"]})
+        elif kind == "ladder":
+            self.ladders.append(
+                {
+                    **at,
+                    **{k: record[k] for k in ("index", "final", "per_kind", "seconds")},
+                    "opponents": {
+                        name: {k: row[k] for k in ("win_rate", "interval", "value", "kinds")}
+                        for name, row in record["opponents"].items()
+                    },
+                }
+            )
+            self.progress["evaluation_minutes"] += record["seconds"] / 60
         elif kind == "stop":
             self._ended(record, "stop")
         elif kind == "end":
             self._ended(record, record["reason"])
 
     def summary(self) -> dict[str, Any]:
-        best = max(self.evaluations, key=lambda e: e["sampled"]["win_rate"], default=None)
+        best = self.promotions[-1] if self.promotions else None
         return {
             "schema": RECORD_SCHEMA,
             "id": self.name,
             "identity": self.identity,
+            "parent": self.parent,
             "config": by_table(self.config),
             "progress": dict(self.progress),
             "segments": self.segments,
             "curve": self.curve,
-            "evaluations": self.evaluations,
-            "best": None
-            if best is None
-            else {"samples": best["samples"], "win_rate": best["sampled"]["win_rate"]},
+            "gates": self.gates,
+            "promotions": self.promotions,
+            "ladders": self.ladders,
+            "best": None if best is None else {"index": best["index"], "samples": best["samples"]},
         }
 
 
@@ -584,7 +627,9 @@ def check_record(record: Any) -> list[str]:
         "progress": dict,
         "segments": list,
         "curve": list,
-        "evaluations": list,
+        "gates": list,
+        "promotions": list,
+        "ladders": list,
     }
     for key, kind in shapes.items():
         if not isinstance(record.get(key), kind):
@@ -597,7 +642,7 @@ def check_record(record: Any) -> list[str]:
     for key in ("seed", "samples", *(t for t in TABLES if t)):
         if key not in record["config"]:
             problems.append(f"`config.{key}` is missing")
-    for key in ("samples", "updates", "episodes", "minutes", "ended"):
+    for key in ("samples", "updates", "episodes", "minutes", "evaluation_minutes", "ended"):
         if key not in record["progress"]:
             problems.append(f"`progress.{key}` is missing")
     if not record["id"]:
@@ -607,9 +652,16 @@ def check_record(record: Any) -> list[str]:
     for i, s in enumerate(record["segments"]):
         if not isinstance(s, dict) or not {"segment", "seed", "ended", "start", "end"} <= set(s):
             problems.append(f"segment {i} lacks `segment`, `seed`, `ended`, `start` or `end`")
-    for i, e in enumerate(record["evaluations"]):
-        if not isinstance(e, dict) or "samples" not in e or "win_rate" not in e.get("sampled", {}):
-            problems.append(f"evaluation {i} lacks `samples` or `sampled.win_rate`")
+    if "parent" not in record:
+        problems.append("`parent` is missing")
+    for name, needs in (
+        ("gates", {"samples", "result", "pairs", "llr", "score"}),
+        ("promotions", {"samples", "index", "how"}),
+        ("ladders", {"samples", "index", "final", "opponents"}),
+    ):
+        for i, entry in enumerate(record[name]):
+            if not isinstance(entry, dict) or not needs <= set(entry):
+                problems.append(f"{name} {i} lacks one of {sorted(needs)}")
     return problems
 
 

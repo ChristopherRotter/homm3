@@ -1,7 +1,7 @@
 # E23 — The original's battle AI
 
 Status: **in progress**, refined 2026-10-19 (BAT-Q52); T1a1 to T1a4 done (the cuts confirmed
-2026-10-20), T1c done (BAT-Q53, BAT-Q54); T1a5 done as cut (part C, §7.42 to §7.45); T1a5e (the spell evaluators) found, to place · Follows E05 (the
+2026-10-20), T1c done (BAT-Q53, BAT-Q54); T1a5 done as cut (part C, §7.42 to §7.45); T1a5e (the spell evaluators) done (§7.46); T1b done, ADR-0027 accepted (BAT-Q55); T2 next · Follows E05 (the
 AI lane, done) · Followed by E06 (training: this policy holds the neutral seat; AI-Q1) ·
 The battle lane's, later the AI lane's (BACKLOG).
 
@@ -138,28 +138,25 @@ there):
   - [x] **T1a5d The estimates** (2026-10-20) — the attack bonus's value 0x437800 (the worth's rise
     for the rounds' share of the battle's expected length); 0x437A00 is the stack record's copy
     (`installation.md` §7.45; the log).
-  - [ ] **T1a5e The spell evaluators** (found in T1a5c; proposed, for the user to cut and place) —
-    the 36 per-spell evaluators 0x43B690 hands out, reached only through its table and so missing
-    from T1a1's sweep: about 11.6 KB with their helpers, the Master Genie's 21 spells about 7.3 KB
-    of it (the neutral side needs those before T4), the rest the hero's (with T1a6).
+  - [x] **T1a5e The spell evaluators** (2026-10-20; found in T1a5c; the user: in one part, before
+    T1b) — the 36 evaluators 0x43B690 hands out and their nine helpers (about 11.6 KB): the
+    removals value what they remove by its evaluator, so the Genie needs 34 of the 36, not its 21
+    (`installation.md` §7.46; the log).
 - [ ] **T1a6 The hero** (read just before T5) — part H (5.8 KB): the cast choice 0x43C800's candidates, the retreat test
   0x41E570; the rest of part A (about 2.4 KB) only as far as the battle needs it (the adventure lane's to read with
   its AI). The Catapult and the First Aid Tent are read (§7.29; §7.14, BAT-Q51).
 
 **T1b follows T1a5** (the user, 2026-10-20): the neutral side's map is then complete and the
-seam's questions are the neutral side's; T1a6 moves to just before T5. The Master Genie's
-evaluators (T1a5e, found after that decision) belong to the neutral side's map too.
+seam's questions are the neutral side's; T1a6 moves to just before T5. The evaluators (T1a5e,
+found after that decision) belong to the neutral side's map too and are read (§7.46).
 
 **Increment 2:** T1b, then the user's review.
 
-- [ ] **T1b The survey and the ADR draft** — the survey `docs/rules/surveys/E23-battle-ai.md`
-  (the wiki's and VCMI's descriptions against the reading; VCMI's `BattleAI` is its own design);
-  the readings at risk, each with a planned batch row; the ADR draft
-  (`docs/lanes/battle/adr-drafts/`) for the seam: the crate and its name, the surface `h3-battle`
-  exposes for the computer's numbers, the function's signature and stream, how a walker's path
-  among equally short ones is chosen (a `Command` carries a destination; 0x4B3400 against
-  BAT-MOV-003), the cost budget per decision, the rule ids for the computer's choices (as
-  BAT-WAR-008 and BAT-SIE-020 to BAT-SIE-023 for the automatic machines).
+- [x] **T1b The survey and the ADR draft** (2026-10-20; the user: no split) — the survey
+  (`docs/rules/surveys/E23-battle-ai.md`: the reading, the wiki and VCMI, 18 batch rows in 4a
+  and 4b, the original's slips) and the ADR draft, accepted as **ADR-0027** (`docs/adr/0027-original-battle-ai.md`:
+  `h3-battle-ai` in the application layer, `choose`, a public `computer` module in `h3-battle`,
+  `BAT-AI-nnn`, the budget at T2, the slips behind one fix-optional flag, BAT-QUIRK-25); accepted by the user, BAT-Q55 (the log).
 
 **Later increments** (cut at each checkpoint from T1a's map; the neutral side first):
 

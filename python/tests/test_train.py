@@ -21,7 +21,9 @@ torch = pytest.importorskip("torch")
 
 from h3env.train import EVAL_SEED, Config, Policy, Rollout, gae, resume, train  # noqa: E402
 from h3env.train.evaluate import (  # noqa: E402
+    GATE_V1_SEED,
     REPORT_V1_SEED,
+    Stopped,
     episode_seeds,
     ladder,
     load,
@@ -49,9 +51,12 @@ SMALL = dict(
     minibatches=2,
     hidden=32,
     embed=8,
-    eval_episodes=8,
-    eval_envs=8,
-    eval_greedy=False,
+    # Gates only at the end, of 4 pairs at most; ladders of one episode per kind against Random.
+    gate_every=0,
+    max_pairs=4,
+    ladder_opponents=["random"],
+    ladder_episodes=1,
+    ladder_final_episodes=1,
     device="cpu",
 )
 #: The most samples one update of `SMALL` holds (its rollout's rows).
@@ -205,19 +210,25 @@ def test_the_evaluation_plays_fixed_held_out_episodes() -> None:
 
 def test_a_short_run_writes_its_files_and_round_trips_its_checkpoint(tmp_path) -> None:
     # A budget just past one update's samples: two updates (or more, if they hold few).
-    config = Config(**SMALL, samples=ONE_UPDATE + 1, eval_every=0, pool_every=1)
+    config = Config(**SMALL, samples=ONE_UPDATE + 1, pool_every=1)
     trainer = train(config, tmp_path, text="samples = 129\n")
     records = [json.loads(line) for line in (tmp_path / "metrics.jsonl").read_text().splitlines()]
     assert records[0]["type"] == "start" and records[-1]["type"] == "end"
     assert records[-1]["reason"] == "budget"
     updates = [r for r in records if r["type"] == "update"]
-    evals = [r for r in records if r["type"] == "eval"]
     n = len(updates)
     # The budget in samples: the run stops at the first update boundary at or past it.
     assert n >= 2 and updates[-2]["samples"] < config.samples <= updates[-1]["samples"]
-    # The untrained network with Random's own rates first, then the final evaluation.
-    assert [e["update"] for e in evals] == [0, n]
-    assert "random" in evals[0] and not evals[0]["final"] and evals[1]["final"]
+    # Best #0, the untrained network, and its ladder first; at the end the learner's gate (and,
+    # promoted, its ladder), then the best's final ladder.
+    kinds = [r["type"] for r in records if r["type"] not in ("update", "snapshot")]
+    promoted = [r for r in records if r["type"] == "gate"][0]["result"] == "promoted"
+    tail = ["gate", "promotion", "ladder", "ladder"] if promoted else ["gate", "ladder"]
+    assert kinds == ["start", "promotion", "ladder", *tail, "end"]
+    ladders = [r for r in records if r["type"] == "ladder"]
+    assert (ladders[0]["index"], ladders[0]["final"], ladders[-1]["final"]) == (0, False, True)
+    assert ladders[0]["opponents"]["random"]["games"] == 6
+    assert (tmp_path / "promoted" / "0.pt").exists()
     for r in updates:
         assert all(np.isfinite(r[k]) for k in ("policy_loss", "value_loss", "entropy", "kl"))
         assert r["update_samples"] > 0
@@ -228,7 +239,8 @@ def test_a_short_run_writes_its_files_and_round_trips_its_checkpoint(tmp_path) -
     # the pool the snapshots before it made.
     assert [r["pool"] for r in updates] == list(range(n)) and len(trainer.pool) == n
     assert sum(r["type"] == "snapshot" for r in records) == n
-    assert (tmp_path / "best.pt").exists() and evals[-1]["best"] >= evals[0]["best"]
+    best = torch.load(tmp_path / "best.pt", weights_only=True)
+    assert best["index"] == (1 if promoted else 0) and best["run"] == tmp_path.name
     assert (tmp_path / "config.toml").read_text() == "samples = 129\n"
     assert not list(tmp_path.glob("*.tmp"))
     record = json.loads((tmp_path / "record.json").read_text())
@@ -237,7 +249,8 @@ def test_a_short_run_writes_its_files_and_round_trips_its_checkpoint(tmp_path) -
     assert record["config"]["network"]["hidden"] == 32
     assert record["config"]["ppo"]["lr_horizon"] == ONE_UPDATE + 1
     assert record["progress"]["ended"] == "budget" and record["progress"]["updates"] == n
-    assert len(record["evaluations"]) == 2 and len(record["curve"]) == 1
+    assert len(record["gates"]) == 1 and len(record["curve"]) == 1
+    assert record["progress"]["evaluation_minutes"] > 0
     saved = torch.load(tmp_path / "checkpoint.pt", weights_only=True)
     restored = Policy.for_batch(trainer.batch, hidden=32, embed=8)
     restored.load_state_dict(saved["policy"])
@@ -267,7 +280,7 @@ def _same(a: dict, b: dict) -> None:
 def test_a_stopped_run_resumes_to_its_budget(tmp_path) -> None:
     # Ctrl+C after the third update: the run saves and stops. A trainer of the next segment takes
     # the whole state over; a resume refuses a change to the training and continues to the budget.
-    config = Config(**SMALL, samples=4 * ONE_UPDATE, eval_every=0, eval_start=False, pool_every=1)
+    config = Config(**SMALL, samples=4 * ONE_UPDATE, pool_every=1)
 
     def interrupt(record: dict) -> None:
         if record["type"] == "update" and record["update"] == 3:
@@ -277,7 +290,7 @@ def test_a_stopped_run_resumes_to_its_budget(tmp_path) -> None:
     assert _records(tmp_path)[-1]["type"] == "stop" and stopped.updates == 3
     state = torch.load(tmp_path / "checkpoint.pt", weights_only=True)
     assert (state["format"], state["segment"], state["updates"], state["finished"]) == (
-        1,
+        2,
         0,
         3,
         False,
@@ -327,8 +340,9 @@ def test_a_stopped_run_resumes_to_its_budget(tmp_path) -> None:
         resume(tmp_path)
 
 
-#: A run that dies hard (SIGKILL; TerminateProcess on Windows) while it writes its fourth
-#: checkpoint, the one after its third update (`checkpoint_minutes` 0: one at every update).
+#: A run that dies hard (SIGKILL; TerminateProcess on Windows) while it writes its fifth
+#: checkpoint, the one after its third update (`checkpoint_minutes` 0: one at every update; two
+#: around best #0's ladder before the first).
 KILLED = """
 import json, os, signal, sys
 from pathlib import Path
@@ -342,7 +356,7 @@ def dying(path, data):
     global saves
     if path.name == "checkpoint.pt":
         saves += 1
-        if saves == 4:
+        if saves == 5:
             path.with_name(path.name + ".tmp").write_bytes(b"half")
             os.kill(os.getpid(), getattr(signal, "SIGKILL", signal.SIGTERM))
     write(path, data)
@@ -353,7 +367,7 @@ ppo.train(Config(**json.loads(sys.argv[2])), Path(sys.argv[1]))
 
 
 def test_a_run_killed_hard_resumes_from_its_last_checkpoint(tmp_path) -> None:
-    settings = dict(SMALL, samples=6 * ONE_UPDATE, eval_every=0, eval_start=False)
+    settings = dict(SMALL, samples=6 * ONE_UPDATE)
     child = subprocess.run(
         [
             sys.executable,
@@ -385,10 +399,10 @@ def test_a_run_killed_hard_resumes_from_its_last_checkpoint(tmp_path) -> None:
 
 
 def test_a_training_episode_on_the_held_out_set_stops_the_run() -> None:
-    # The config refuses the evaluation's seed for training; past that check, the batch's first
-    # episodes are the held-out ones and the trainer stops at its reset.
+    # The config refuses a held-out set's batch seed for training; past that check, the batch's
+    # first episodes are the gate set's and the trainer stops at its reset.
     with pytest.raises(HeldOutError):
-        Trainer(Config(**SMALL, seed=5, eval_seed=5))
+        Trainer(Config(**SMALL, seed=GATE_V1_SEED))
 
 
 def test_a_frozen_network_plays_its_side_and_only_the_learner_trains() -> None:
@@ -419,22 +433,131 @@ def test_a_frozen_network_plays_its_side_and_only_the_learner_trains() -> None:
     assert stats["update_samples"] > 0 and np.isfinite(stats["policy_loss"])
 
 
-def test_the_final_evaluation_reuses_the_last_when_nothing_changed(tmp_path) -> None:
-    # An evaluation after the update: the final one is the last one's record again.
-    train(Config(**SMALL, samples=1, eval_every=1), tmp_path)
-    records = [json.loads(line) for line in (tmp_path / "metrics.jsonl").read_text().splitlines()]
-    evals = [r for r in records if r["type"] == "eval"]
-    assert [(e["update"], e["final"], e.get("repeated", False)) for e in evals] == [
-        (0, False, False),
-        (1, False, False),
-        (1, True, True),
+def _gate(result: str):
+    """A stand-in for `gate.gate` that decides at once (`result`)."""
+
+    def decided(candidate, best, bounds, **settings) -> dict:
+        assert candidate.training and not best.training
+        return {
+            "result": result,
+            "pairs": 10,
+            "counts": [0, 0, 0, 0, 10],
+            "llr": 3.0,
+            "bounds": [-2.94, 2.94],
+            "score": 1.0,
+            "elo": None,
+            "games": 20,
+            "seconds": 0.0,
+        }
+
+    return decided
+
+
+def test_the_end_gates_only_after_training_since_the_last_gate(tmp_path, monkeypatch) -> None:
+    # A gate after every update: none more at the end, only the best's final ladder.
+    monkeypatch.setattr("h3env.train.ppo.gate", _gate("rejected"))
+    trainer = train(Config(**{**SMALL, "gate_every": 1}, samples=2 * ONE_UPDATE), tmp_path)
+    records = _records(tmp_path)
+    gates = [r["update"] for r in records if r["type"] == "gate"]
+    assert gates == list(range(1, trainer.updates + 1))
+    ladders = [(r["index"], r["final"]) for r in records if r["type"] == "ladder"]
+    assert ladders == [(0, False), (0, True)] and records[-1]["type"] == "end"
+
+
+def test_promotions_keep_their_networks_and_ladder_the_one_before(tmp_path, monkeypatch) -> None:
+    # Every gate promotes: each promoted network is kept and becomes best.pt; its ladder plays
+    # the engine's seats and the promoted network before it (both seats external).
+    monkeypatch.setattr("h3env.train.ppo.gate", _gate("promoted"))
+    trainer = train(Config(**{**SMALL, "gate_every": 1}, samples=2 * ONE_UPDATE), tmp_path)
+    n = trainer.updates
+    records = _records(tmp_path)
+    promotions = [(r["index"], r["how"], r["update"]) for r in records if r["type"] == "promotion"]
+    assert promotions == [(0, "start", 0), *((i, "gate", i) for i in range(1, n + 1))]
+    for i in range(n + 1):
+        assert torch.load(tmp_path / "promoted" / f"{i}.pt", weights_only=True)["index"] == i
+    best = torch.load(tmp_path / "best.pt", weights_only=True)
+    assert best["index"] == n and best["updates"] == n
+    _same(best["policy"], trainer.policy.state_dict())
+    ladders = [r for r in records if r["type"] == "ladder"]
+    assert [(r["index"], r["final"]) for r in ladders] == [
+        *((i, False) for i in range(n + 1)),
+        (n, True),
     ]
+    assert list(ladders[0]["opponents"]) == ["random"]
+    for r in ladders[1:]:
+        assert list(r["opponents"]) == ["random", f"promoted-{r['index'] - 1}"]
+        assert r["opponents"][f"promoted-{r['index'] - 1}"]["games"] == 6
+    assert [i for i, _ in trainer.lineage] == [n - 1, n]
+    record = json.loads((tmp_path / "record.json").read_text())
+    assert check_record(record) == [] and record["best"] == {"index": n, "samples": trainer.samples}
+
+
+def test_a_gate_cut_short_runs_first_at_the_resume(tmp_path, monkeypatch) -> None:
+    # Ctrl+C during the first gate: the run stops with the gate pending, which the resume plays
+    # first, on the learner of the checkpoint; then its promotion's ladder.
+    def cut(candidate, best, bounds, stop=None, **settings) -> dict:
+        stop.request()
+        raise Stopped
+
+    monkeypatch.setattr("h3env.train.ppo.gate", cut)
+    stopped = train(Config(**{**SMALL, "gate_every": 1}, samples=3 * ONE_UPDATE), tmp_path)
+    records = _records(tmp_path)
+    assert records[-1]["type"] == "stop" and not any(r["type"] == "gate" for r in records)
+    state = torch.load(tmp_path / "checkpoint.pt", weights_only=True)
+    assert state["pending"] == {"kind": "gate"} and state["updates"] == stopped.updates == 1
+    monkeypatch.setattr("h3env.train.ppo.gate", _gate("promoted"))
+    resume(tmp_path)
+    records = _records(tmp_path)
+    at = next(i for i, r in enumerate(records) if r["type"] == "segment")
+    assert records[at]["pending"] == {"kind": "gate"}
+    kinds = [(r["type"], r["update"]) for r in records[at + 1 : at + 4]]
+    assert kinds == [("gate", 1), ("promotion", 1), ("ladder", 1)]
+    _same(torch.load(tmp_path / "promoted" / "1.pt", weights_only=True)["policy"], state["policy"])
+    # A ladder cut short resumes too: its promoted network's from its file.
+    assert check_record(json.loads((tmp_path / "record.json").read_text())) == []
+
+
+def test_a_ladder_cut_short_runs_first_at_the_resume(tmp_path, monkeypatch) -> None:
+    import h3env.train.ppo as ppo
+
+    real = ppo.ladder
+
+    def cut(*args, stop=None, **kwargs):
+        stop.request()
+        raise Stopped
+
+    monkeypatch.setattr("h3env.train.ppo.ladder", cut)
+    train(Config(**SMALL, samples=ONE_UPDATE), tmp_path)
+    state = torch.load(tmp_path / "checkpoint.pt", weights_only=True)
+    assert state["pending"] == {"kind": "ladder", "final": False} and state["updates"] == 0
+    monkeypatch.setattr("h3env.train.ppo.ladder", real)
+    trainer = resume(tmp_path)
+    records = _records(tmp_path)
+    at = next(i for i, r in enumerate(records) if r["type"] == "segment")
+    assert (records[at + 1]["type"], records[at + 1]["index"]) == ("ladder", 0)
+    assert [i for i, _ in trainer.lineage][0] == 0 and records[-1]["type"] == "end"
+
+
+def test_a_run_starts_from_its_parents_network(tmp_path) -> None:
+    # `--init-from`: the learner and best #0 start from another run's best; the record names it.
+    train(Config(**SMALL, samples=1), tmp_path / "a")
+    parent = torch.load(tmp_path / "a" / "best.pt", weights_only=True)
+    train(Config(**SMALL, samples=1, seed=2), tmp_path / "b", init_from=tmp_path / "a" / "best.pt")
+    zero = torch.load(tmp_path / "b" / "promoted" / "0.pt", weights_only=True)
+    _same(zero["policy"], parent["policy"])
+    assert zero["how"] == "init" and zero["parent"]["run"] == "a"
+    assert zero["parent"]["index"] == parent["index"]
+    record = json.loads((tmp_path / "b" / "record.json").read_text())
+    assert record["parent"]["path"] == str(tmp_path / "a" / "best.pt")
+    assert record["promotions"][0]["how"] == "init"
+    with pytest.raises(ConfigError, match="not a network of this run's size"):
+        train(Config(**{**SMALL, "hidden": 16}, samples=1), init_from=tmp_path / "a" / "best.pt")
 
 
 def test_a_checkpoint_plays_the_ladder(tmp_path, capsys) -> None:
     # E05 T7, E06 T3a: a saved network against Random and both bots, as `h3 ai eval`'s table's
     # row: on the report set v1 (by default) and on v0.
-    train(Config(**SMALL, samples=1, eval_every=0, eval_start=False), tmp_path)
+    train(Config(**SMALL, samples=1), tmp_path)
     policy = load(tmp_path / "checkpoint.pt")
     rows = ladder(policy, held_out="v0", episodes=4, envs=2, max_steps=300)
     assert list(rows) == ["random", "aggressor", "greedy"]

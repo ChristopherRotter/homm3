@@ -1,6 +1,6 @@
 # E06 — Battle AI v1 and the local training pipeline v0
 
-Status: **in progress**, refined 2026-10-20 (AI-Q8); increment 1 (T1, T2a, T2b1, T2c) done; increment 2: T3a done, T3b next · Lane: **ai** · Follows E05 (closed
+Status: **in progress**, refined 2026-10-20 (AI-Q8); increment 1 (T1, T2a, T2b1, T2c) done; increment 2 (T3a, T3b) done; increment 3 (T4) next · Lane: **ai** · Follows E05 (closed
 2026-10-20) · Runs beside E23 (the battle lane: the original's battle AI, the system actor's
 policy), whose neutral side opens E06's neutral share (decision 1)
 
@@ -106,15 +106,18 @@ the user, 2026-10-20: T1 and T2a in one).
   and encounters' versions, each entry's rulesets' content hashes), N capped at `MAX_ENVS`;
   the record in `E06-log.md`. The observations written in place moved to T5.
 
-**Increment 2:** T3a, then T3b (the user, 2026-10-20: T3a in one pull request).
+**Increment 2:** T3a, then T3b (the user, 2026-10-20: each in one pull request).
 
 - [x] **T3a The held-out sets v1** — done 2026-10-20: `h3 ai eval --set report-v1|v0` and
   `--json`, the report set's stratified rates and intervals in Python and the ladder, the gate
   set's seeds, every held-out seed in the trainer's check, the bots' table
   `python/records/bots-report-v1.json`, the bots' fallbacks tested; the record in `E06-log.md`.
-- [ ] **T3b The evaluation gate** — the SPRT promotion on the gate set, the ladder per promoted
-  network, a pending gate or ladder at the resume, `--init-from`, an hour with gates on the
-  user's machine (the evaluation's share of a run measured).
+- [x] **T3b The evaluation gate** — done 2026-10-20: the SPRT gate on the gate set
+  (`h3env.train.gate`), promotions (`promoted/<n>.pt`, `best.pt`), the ladder per promotion and
+  the final best's, `[gate]` and `[ladder]` replacing `[evaluation]`, record schema 4, checkpoint
+  format 2 with a pending gate or ladder at the resume, `--init-from`; the record in
+  `E06-log.md`. The hour with gates on the user's machine (`configs/e06-t3b.toml`) is the user's
+  to run: its evaluation share sets T4's cadences.
 
 **Later increments** (cut at each checkpoint; proposed in design §10):
 

@@ -36,6 +36,12 @@ The skill, artifact and battle surveys were compiled by sub-agents and reviewed 
 | [E08-battles.md](E08-battles.md) | increment 3 (E08 T17a, 2026-10-13): wandering monsters in the map file and their census, aggression, random creatures and counts, guarded tiles and the step that starts a battle, the monster's answer (fight, join, pay, flee), the split into stacks seeded by the tile, the battle's seed and obstacles, after the battle (A-6), guarded piles, the heroes' details and custom experience, battles between two players' heroes, applying an outcome, what each viewer learns, the pending decisions, the user's calls sized, disputes D-8 to D-13 with a batch plan, proposed rule ids |
 | [E08-progression.md](E08-progression.md) | increment 4 (E08 T24a1, T24a2a, T24a2b1 and T24a2b2, 2026-10-20; complete, its checkpoint ADV-Q15): experience to levels (the table, the steps × 1.2, the 32-bit wrap past level 74, the level limit), the level-up (one level at a time, its seed from the hero's seed byte and the level, the primary draw, the two offers with Wisdom and school guarantees, the human's answer and the computer's), compared with VCMI; levels at load (the placed hero's setup `placed_hero_setup` 0x4D8B30, the computer's choice; 0x486590 is a campaign's carried hero), the battle's levels, the rules that read the level; disputes D-14 to D-21, quirk candidates A-7 to A-10; the wiki on all of it (D-20 a conflict: the left offer at load); the census of the 160 shipped maps (heroes with an experience and their levels, no level limit, banned skills, the maps that import whole without the refusal); batch E4's plan, the proposed rule ids, a fresh agent's second reading (confirms; D-20's code side) |
 
+## E23 (E23 T1b, 2026-10-20; battle lane)
+
+| File | Contents |
+|---|---|
+| [E23-battle-ai.md](E23-battle-ai.md) | the original's battle AI for E23's seam: the reading in one place (`installation.md` §7.34 to §7.46: two decisions per activation, the shooter, the walker, the creature casts, the difficulty's branches, the draws), the wiki and VCMI compared, 18 planned batch rows (4a the neutral side, 4b a computer hero's), the original's slips in its own estimates, the ADR draft's questions |
+
 This index is a common path (`lanes.toml`): each lane adds its epics' sections.
 
 ## Disputes: input for experiment batch 1

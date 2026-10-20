@@ -10,9 +10,11 @@ record in `E05-log.md`, the environment as built in `docs/07-simulation-and-ai.m
 **E06** (`docs/epics/E06-battle-ai.md`) refined 2026-10-20 (AI-Q8): it starts beside E23, the
 neutral share waits for E23's side without a hero. Increment 1 done 2026-10-20: T1 and T2a
 (ADR-0026, design `E06-design.md`), T2b1 (the full checkpoint and `--resume`; its pending gate and
-`--init-from` moved to T3b), T2c (C ABI v31). Increment 2: T3a done 2026-10-20 (the held-out sets
-v1, the bots' table). **Next:** T3b (the SPRT gate; design §6, §10), refined at the user's
-checkpoint: no task is ready until then.
+`--init-from` moved to T3b), T2c (C ABI v31). Increment 2 done 2026-10-20: T3a (the held-out
+sets v1, the bots' table), T3b (the SPRT gate, promotions, ladders, `--init-from`). **Next:** the
+user runs the hour with gates (`python/configs/e06-t3b.toml`; its record's evaluation share sets
+T4's cadences), then increment 3 (T4a, T4b; design §8, §10), refined at the user's checkpoint: no
+task is ready until then.
 
 ## Inbox
 
@@ -50,6 +52,12 @@ Pass offer (fixed by the adventure lane's fixed tests, #266).
   (`batch-random-encounters-v1`) is the realistic one. On the user's Ryzen 9 3900X the step
   scales to 9.9 × at 1 024 envs on 24 threads but only 3.8 × at 64 envs (`E05-log.md`, T9c's
   table): E06's batch size and thread count from there.
+
+- **The gate's uncounted games** (E06 T3b): its batches step all of their envs while it waits for
+  the slowest battle among the pairs it needs (5 006 games for 150 pairs in the sandbox, 353 s on
+  the CPU). If the user's hour shows the gates' share too high, play the gate set in rounds that
+  stop an env past the episode the next pairs need (a C ABI change: start or pause an env at a
+  given episode), or shrink `max_pairs`.
 
 - **Encounters v2** (with the adventure's logged encounters, decision 7; E05 T9b): A7's "+0.5 a
   week" in weeks 9 to 16 is rounded down in `encounters-v1.toml` (odd weeks half a level low);
