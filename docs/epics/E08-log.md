@@ -2577,3 +2577,57 @@ gates here).
   harness check (`capture/checks/harness-check.toml`) can now place a monster's offers, a pile's
   question and a walk below (its inbox).
 
+
+### Round 5 of increment 3: T22a2a, batch E3's monster rows (2026-10-20, `adventure/e08-t22a2a`, `cross-lane`)
+
+Decision 44: T22a2 in two by rows, the monster rows first, the recipes written here. The
+baseline was `master` 818dd7e (its engine code bc73ebe verified in full in the sandbox, without
+the original data's steps). No code changes; the specs, templates and recipes only.
+
+- **Two batches, two difficulties.** `experiments/specs/E08-batch-3a.toml` on Easy (E3-1,
+  E3-1c, E3-2, E3-2c: savage groups of 10 Pikemen that may flee, against 52 Pikemen, 36
+  Halberdiers, 56 Pikemen, 39 Halberdiers) and `-3b.toml` on Normal (the same four at the same
+  tiles; E3-3 twice, Red's and Blue's; E3-4 below and its control E3-4c; E3-5). Each spec's
+  header holds the formulas and a table of every source's outcome; every row's predictions name
+  the reading (the engine), VCMI 1.7.5 and the mixed cases.
+- **What each row tells.** E3-1c (Halberdiers, the Pikemen's upgrade, counted by every source)
+  settles D-10 whatever D-9: a flee offer on Easy (C = 11) and a battle on Normal (C = 10 = M).
+  E3-2 settles D-9 whatever D-10 (a flee offer under the reading on either difficulty, a battle
+  under VCMI). E3-1 is the survey's row (both together), E3-2c the control (a flee offer for
+  every source). E3-3 (D-8): 23 Pikemen against 32 friendly, never-fleeing Halberdiers, r = 0.5
+  exactly, four heroes with Diplomacy 0 to 3 in turn, each retreating at once so the monster
+  keeps 32; the reading offers to join at L >= M, VCMI at L >= M - 1, so a monster with M = 1 to
+  4 tells it (the aggression is drawn at the start, read from the tile's word before the first
+  visit and after the last); two monsters: 82 % under uniform draws. E3-4 (D-11): 30 Pikemen at
+  (12, 27) below against 10 Griffins: 8, 8, 7 Halberdiers, 7 under the reading (d2 = 50), none
+  under VCMI. E3-4c (the review's addition): (29, 10) on the surface, d2 = 50 too but VCMI's
+  formula 49 there, so Halberdiers under both: with E3-4 it tells VCMI's formula from a misread
+  threshold (d2 < 50: none at both). E3-5 (A-6): the same split on (12, 27) above (d2 = 25, every
+  source upgrades), a retreat, the count read (23 under the reading and the wiki, 30 under the
+  engine and VCMI), then 5 Archangels' visit (12 and 11, or 15 and 15) and a win. E3-4 and E3-4c
+  are A-6 samples too.
+- **The engine's outcomes.** A throwaway test in `crates/h3-cli/tests` (never committed) read
+  both compiled maps through `h3_cli::adventure::load_map`, played each visit with
+  `h3_game::apply` (offers declined, battles retreated, the system side defending) and gave the
+  reading's predictions at every row; for E3-3 it searched seeds for each aggression 1 to 7.
+- **The starting bonus.** A hot-seat player's random bonus may give a hero an artifact: up to +2
+  Attack or Defense leaves every St above unchanged, but voids an E3-3 visit (r > 0.5); every
+  answer's visit records the hero's primary skills before it (`before:hero:primary`, +0x476 with
+  the artifacts' bonuses).
+- **Feasibility.** Each player keeps a hero after its battles (hot seat ends when a player is
+  out); Red has eight heroes, Blue eight on the map in 3b (the list scrolled, H2); every attacker
+  stands beside its monster, no guard zones overlap, the retreating side is faster or out of
+  reach in round 1.
+- **The recipes** (`clients/capture/batches/E08-batch-3a.toml`, 4 steps; `-3b.toml`, 19 steps;
+  `cross-lane`, the client lane's inbox told): `answer = "no"` for every question (E3-5 B pursues
+  a flee offer that only a wrong never-flees bit could bring), `battle` auto or retreat, `expect`
+  the reading's outcome where it is fixed, E3-3 without `expect` (it depends on M). A script
+  checked every record key against the compiled templates' fields (all filled).
+- **The review** (a second agent, the specs, templates and recipes against the survey, the
+  packs' AI values, the harness's runbook and code): every number and outcome recomputed and
+  matching (VCMI's values 24 and 50 at (12, 27) above and below), D-9 and the M = C fight
+  confirmed in VCMI's source; one finding (E3-4's d2 = 50 alone cannot tell VCMI from a strict
+  threshold: E3-4c added), two minor ones taken (E3-5 B's answer, E3-3's second aggression read),
+  one left (no final `end_turn`: harmless).
+- Stamps: E3a `786afe33`, E3b `a2586e5b`. **Next:** T22a2b (the hero rows E3-6 to E3-9 and the
+  inbox's rows), then T22a3 runs E3a, E3b and E3c on the harness.

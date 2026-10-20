@@ -1,0 +1,174 @@
+# E08 batch E3b played by the capture harness (E08 T22a2a, `cross-lane`; h3adv.py batch): the
+# procedure of experiments/specs/E08-batch-3b.toml as steps, on Normal. Hot seat, Red and Blue
+# human. A visit clicks a monster twice and answers its questions No (a flee offer: let it go; a
+# join offer: decline); a battle is played by auto combat or retreated at once, as the spec's
+# procedure says. E3-3's aggression comes from the tile's word before its first visit. `expect`
+# is the code reading's outcome (the engine's) where it is fixed: a difference shows under the
+# encounter's "anything odd" (E3-3's questions depend on the aggression drawn: no `expect`).
+
+spec = "experiments/specs/E08-batch-3b.toml"
+players = ["Red", "Blue"]
+difficulty = "normal"
+
+# --- Day 1, Red: D-9 and D-10's control on Normal -----------------------------------------------
+
+[[step]]
+encounter = "E3-1"
+hero = "E3-1"
+walk = [4, 3]
+answer = "no"
+battle = "auto"
+expect = { question = "none", battle = true, dialogs = true }
+record = { "E3-1's primary skills (attack/defense/power/knowledge) before" = "before:hero:primary", "the questions asked (none, flee, join, …)" = "question", "a battle (yes/no)" = "battle", "the monster on its tile after" = "monster:4,3" }
+
+[[step]]
+encounter = "E3-1c"
+hero = "E3-1c"
+walk = [4, 7]
+answer = "no"
+battle = "auto"
+expect = { question = "none", battle = true, dialogs = true }
+record = { "E3-1c's primary skills (attack/defense/power/knowledge) before" = "before:hero:primary", "the questions asked (none, flee, join, …)" = "question", "a battle (yes/no)" = "battle", "the monster on its tile after" = "monster:4,7" }
+
+[[step]]
+encounter = "E3-2"
+hero = "E3-2"
+walk = [4, 11]
+answer = "no"
+battle = "auto"
+expect = { question = "flee", battle = false }
+record = { "E3-2's primary skills (attack/defense/power/knowledge) before" = "before:hero:primary", "the questions asked (none, flee, join, …)" = "question", "a battle (yes/no)" = "battle", "the monster on its tile after" = "monster:4,11" }
+
+[[step]]
+encounter = "E3-2c"
+hero = "E3-2c"
+walk = [4, 15]
+answer = "no"
+battle = "auto"
+expect = { question = "flee", battle = false }
+record = { "E3-2c's primary skills (attack/defense/power/knowledge) before" = "before:hero:primary", "the questions asked (none, flee, join, …)" = "question", "a battle (yes/no)" = "battle", "the monster on its tile after" = "monster:4,15" }
+
+# --- Day 1, Red: D-8 with the first friendly monster (12, 5) ------------------------------------
+
+[[step]]
+encounter = "E3-3r"
+hero = "E3-3r L0"
+record = { "the Halberdiers' aggression at the start (memory)" = "aggression:12,5", "never flees (memory, yes/no)" = "never_flees:12,5" }
+
+[[step]]
+encounter = "E3-3r"
+hero = "E3-3r L0"
+walk = [12, 5]
+answer = "no"
+battle = "retreat"
+expect = { battle = true, dialogs = true }
+record = { "L0's primary skills before" = "before:hero:primary", "L0: the questions asked" = "question", "L0: a battle (yes/no)" = "battle" }
+
+[[step]]
+encounter = "E3-3r"
+hero = "E3-3r L1"
+walk = [12, 5]
+answer = "no"
+battle = "retreat"
+expect = { battle = true, dialogs = true }
+record = { "L1's primary skills before" = "before:hero:primary", "L1: the questions asked" = "question", "L1: a battle (yes/no)" = "battle" }
+
+[[step]]
+encounter = "E3-3r"
+hero = "E3-3r L2"
+walk = [12, 5]
+answer = "no"
+battle = "retreat"
+expect = { battle = true, dialogs = true }
+record = { "L2's primary skills before" = "before:hero:primary", "L2: the questions asked" = "question", "L2: a battle (yes/no)" = "battle" }
+
+[[step]]
+encounter = "E3-3r"
+hero = "E3-3r L3"
+walk = [12, 5]
+answer = "no"
+battle = "retreat"
+expect = { battle = true, dialogs = true }
+record = { "L3's primary skills before" = "before:hero:primary", "L3: the questions asked" = "question", "L3: a battle (yes/no)" = "battle", "the Halberdiers on their tile after" = "monster:12,5", "the Halberdiers' aggression after the four visits (memory)" = "aggression:12,5" }
+
+[[step]]
+end_turn = true
+
+# --- Day 1, Blue: D-8 with the second friendly monster (20, 12) ---------------------------------
+
+[[step]]
+encounter = "E3-3b"
+hero = "E3-3b L0"
+record = { "the Halberdiers' aggression at the start (memory)" = "aggression:20,12", "never flees (memory, yes/no)" = "never_flees:20,12" }
+
+[[step]]
+encounter = "E3-3b"
+hero = "E3-3b L0"
+walk = [20, 12]
+answer = "no"
+battle = "retreat"
+expect = { battle = true, dialogs = true }
+record = { "L0's primary skills before" = "before:hero:primary", "L0: the questions asked" = "question", "L0: a battle (yes/no)" = "battle" }
+
+[[step]]
+encounter = "E3-3b"
+hero = "E3-3b L1"
+walk = [20, 12]
+answer = "no"
+battle = "retreat"
+expect = { battle = true, dialogs = true }
+record = { "L1's primary skills before" = "before:hero:primary", "L1: the questions asked" = "question", "L1: a battle (yes/no)" = "battle" }
+
+[[step]]
+encounter = "E3-3b"
+hero = "E3-3b L2"
+walk = [20, 12]
+answer = "no"
+battle = "retreat"
+expect = { battle = true, dialogs = true }
+record = { "L2's primary skills before" = "before:hero:primary", "L2: the questions asked" = "question", "L2: a battle (yes/no)" = "battle" }
+
+[[step]]
+encounter = "E3-3b"
+hero = "E3-3b L3"
+walk = [20, 12]
+answer = "no"
+battle = "retreat"
+expect = { battle = true, dialogs = true }
+record = { "L3's primary skills before" = "before:hero:primary", "L3: the questions asked" = "question", "L3: a battle (yes/no)" = "battle", "the Halberdiers on their tile after" = "monster:20,12", "the Halberdiers' aggression after the four visits (memory)" = "aggression:20,12" }
+
+# --- Day 1, Blue: D-11 underground and its control, A-6 on the surface ----------------------------
+
+[[step]]
+encounter = "E3-4"
+hero = "E3-4"
+walk = [12, 27, 1]
+battle = "retreat"
+expect = { question = "none", battle = true, dialogs = true }
+record = { "the defender's stacks at the battle's start" = "stacks:start:defender", "the monster on its tile after the retreat" = "monster:12,27,1" }
+
+[[step]]
+encounter = "E3-4c"
+hero = "E3-4c"
+walk = [29, 10]
+battle = "retreat"
+expect = { question = "none", battle = true, dialogs = true }
+record = { "the defender's stacks at the battle's start" = "stacks:start:defender", "the monster on its tile after the retreat" = "monster:29,10" }
+
+[[step]]
+encounter = "E3-5"
+hero = "E3-5 A"
+walk = [12, 27]
+battle = "retreat"
+expect = { question = "none", battle = true, dialogs = true }
+record = { "A: the defender's stacks at the battle's start" = "stacks:start:defender", "the monster on its tile after A's retreat" = "monster:12,27" }
+
+[[step]]
+encounter = "E3-5"
+hero = "E3-5 B"
+walk = [12, 27]
+# C = 11 > M = 10 here: only the never-flees bit keeps the flee offer away; if it comes, pursue.
+answer = { flee = "yes", other = "no" }
+battle = "auto"
+expect = { question = "none", battle = true, dialogs = true }
+record = { "B: the defender's stacks at the battle's start" = "stacks:start:defender", "B: the battle's winner" = "winner", "the monster on its tile after B's battle" = "monster:12,27" }
