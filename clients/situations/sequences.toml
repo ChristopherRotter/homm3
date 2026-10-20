@@ -16,8 +16,9 @@
 # (`h3drive.py frames`; the artifacts since M3 T1c, design §7.11). `boxes = true` (E17 M3 T5a,
 # design §4.3): the frame check compares the count boxes; without it they are masked where the
 # drawn poses show them and where the viewer drew them. Compared in the sequences whose counts
-# never change (no rolled strike: T5a), in `shot` and `melee` (T5b-1, the numbers over time) and
-# in `behind` and `shots` (T5b-2a): a box whose count is not the one the original's memory shows
+# never change (no rolled strike: T5a), in `shot` and `melee` (T5b-1, the numbers over time), in
+# `behind` and `shots` (T5b-2a) and in `fly` and `machines` (T5b-2b): in every sequence with
+# frames. A box whose count is not the one the original's memory shows
 # (the engine rolls its own damage) is masked and listed after the frame's counts
 # (` n<side>.<record>`); `strike` at 2 730 ms differs in 134 pixels of the original's redraws
 # (design §4.3).
@@ -136,7 +137,9 @@ command = [
 # Black Dragons fly from row 2 to row 3 beside the attacker's column and breathe down and to the
 # left through the Pikemen into the Gnolls (the cursor up and to the right of the Pikemen puts
 # the Dragons' head there, on hex 53); the Pikemen strike back; then the Angels fly from row 0
-# down to row 9 over the Dragons and five stacks (design §7.10, §7.4).
+# down to row 9 over the Dragons and five stacks (design §7.10, §7.4). Its boxes (M3 T5b-2b): the
+# breath kills 8 Pikemen and 13 Gnolls in the engine, 9 and 16 in the original: both listed from
+# its end at 4 300 ms (design §4.3).
 [[sequence]]
 id = "fly"
 scenario = "seq-fly.toml"
@@ -145,6 +148,7 @@ actions = ["click:116,267", "turn:0.0", "hex:155"]
 ms = 3000
 timeline = "timelines/fly.txt"
 frames = "timelines/fly-frames.txt"
+boxes = true
 command = [
     { seat = "Defender", command = { Attack = { target = 2, from = 54 } } },
     { seat = "Attacker", at = 5900, command = { Move = { to = 155 } } },
@@ -153,7 +157,9 @@ command = [
 # E17 M3 T3b: the war machines in hot seat (`seq-machines.toml`). Round 1: the Pikemen defend, the
 # Archers shoot them; then the machines on their own: the attacker's Ballista shoots right at the
 # Archers, the defender's Ballista left at the Pikemen, the attacker's First Aid Tent heals the
-# Pikemen (the magic animation 79, design §7.15); round 2: the Archers defend.
+# Pikemen (the magic animation 79, design §7.15); round 2: the Archers defend. Its boxes (M3
+# T5b-2b): the shot's kill as the original's, the heal's frames over the patient's box (design
+# §4.3).
 [[sequence]]
 id = "machines"
 scenario = "seq-machines.toml"
@@ -162,6 +168,7 @@ actions = ["key:d", "turn:1.0", "hex:86", "turn:1.0", "key:d"]
 ms = 500
 timeline = "timelines/machines.txt"
 frames = "timelines/machines-frames.txt"
+boxes = true
 command = [
     { seat = "Attacker", command = { Defend = {} } },
     { seat = "Defender", at = 0, command = { Shoot = { target = 0, at = 86 } } },

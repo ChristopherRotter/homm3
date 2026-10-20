@@ -3413,7 +3413,7 @@ the hero's predictions (0x43AA60) call it once with 0 and once with 1.
 
 **0x420A80, "the stronger side"** (read at its end; **corrected in §7.38**: it compares the
 sides' strength at range, not their whole strength): true when the side's stacks that can shoot
-now, a value of its hero through the adventure AI's routines (0x526D40, 0x5275B0: part A) and,
+now, a value of its hero through the adventure AI's routines (0x526D40, 0x5275B0: its best damage spell, §7.39) and,
 for the defender at a fort, its turrets (the keep's at a Citadel or Castle, the towers' halves at
 a Castle) exceed the other's (0x420CCE). It decides three branches above: taking the plan's value
 alone, holding the walls, and giving up a losing attack.
@@ -3717,7 +3717,7 @@ the side's other stacks within reach gain when E can no longer strike back.
 blind, petrified, paralysed and the arrow towers: two sums of strength (0x442E60, the context's
 least bonuses), every record's and those that can shoot now (0x4428F0, the Ballista included).
 The latter gains the side's hero's value (0x526D40 with the hero and the first sum, then
-0x5275B0 with `0x8000`; part A, T1a3d) when the hero has its spell book and neither hero wears
+0x5275B0 with `0x8000`; read in §7.39) when the hero has its spell book and neither hero wears
 the Orb of Inhibition (126), outside an anti-magic garrison (+0x53C4); and, for the defender at a
 fort (+0x132F4 at least 2), its turrets in Archers' AI values (creature 2's +0x40, 0x5BF4F0's count
 `a`): the keep's `a` times it while it stands (+0x13F98), at a Castle (3) each standing tower
@@ -3729,12 +3729,125 @@ the hero's value. **§7.35 read it as the whole strength; corrected here**: wher
 **What these read**: the pathfinder's path and map with the side's stops (§7.36), the threat
 records (§7.31), the stacks' flags, counts, effects and retaliations, the hex anchors, Teleport's
 rules with the hero's mastery, the turrets; the hero's spell book and, through the hero's value,
-what part A reads (T1a3d). **Draws:** none.
+what it reads (§7.39). **Draws:** none.
 
 **Readings at risk** (for T1b): the walk's score test and its Wait on Hard and above (a walker
 that holds back); the free part of the walk without the flag; the guard hex's order; the step to
 safety's strict improvement; the destination map as Teleport's; the desperate kills' top-creature
 term; the odds by ranged strength with the turrets as Archers.
 
-**Not read here** (T1a3d, part A's share): the hero's value 0x526D40 and 0x5275B0 with their ten
-helpers (about 4 KB of the adventure AI).
+**Not read here:** the hero's value 0x526D40 and 0x5275B0 with their helpers, read in §7.39
+(T1a3d).
+
+### 7.39 Code reading: the hero's value in the odds (E23 T1a3d, 2026-10-20)
+
+Read for E23 T1a3d (the user's cut, 2026-10-20: all of T1a3d in one part): the value 0x420A80
+adds for a side's hero (§7.38), that is the adventure AI's caster record 0x526D40 and its best
+spell 0x5275B0 with their helpers, in full; the record's library vector and sort recognised by
+their shape. Insight only, nothing copied (Q29). With it the odds are read; the other callers of
+the two (the adventure AI's, their map entries) stay the adventure lane's.
+
+**The call** (0x420BBA to 0x420BF1). 0x420A80 builds the record R on its stack for the side's
+hero (0x526D40), sets R+4 to the side's whole strength `S` (the first sum, §7.38), asks 0x5275B0
+for the best value among the spells with the AI bit `0x8000` (§7.6), adds it to the side's sum at
+range and frees R's list. In the battle only 0x420A80 calls the two.
+
+**0x526D40, the caster record** (`this` = R, 0x24 bytes; the hero). R+0 the hero; R+0x18 to
++0x20 a Visual C++ 5/6 `std::vector` of 12-byte army entries (begin, end, capacity's end; +0x14
+the allocator's byte). Without a spell book (artifact 0) or with the Orb of Inhibition (126) on
+the hero, R+4, +8, +0xC and +0x10 are 0 and the list empty. Otherwise R+4 is the army's value
+(0x44AC80); R+8 **the power**, the hero's Spell Power byte (+0x478) held to 1–99; R+0xC the power
+plus the duration bonus (0x4E4DB0); R+0x10 **the mana**, `trunc(f32(10 K) × i)` with `K` the
+Knowledge byte (+0x479) held to 1–99 and `i` Intelligence's factor (0x4E48B0): the hero's
+*maximum* spell points by the formula of the map's setup (HER-MAN-001), not the points it has
+left. The list: per army slot with a creature, {the type, its AI value (+0x40) × the count, the
+count}, sorted by the value, highest first, through the library's `std::sort` (§7.37's shape: above
+16 entries the quicksort 0x434CE0 with its median 0x435240 and partition 0x435290 and the
+unguarded insertion 0x52BD50; at most 16 the insertion sort 0x435160); a hero's seven slots take
+only 0x435160, which keeps equal values in slot order. 0x4347A0 is the vector's insert (n copies at
+a position). **In the battle only R+0, R+8 and R+0x10 count**: 0x420A80 overwrites R+4, and only
+the effect value (0x527290, below) reads R+0xC and the list.
+
+**0x5275B0, the best spell** (R; a mask of AI bits, `0x8000` from 0x420A80). 0 when R+8 is 0 (no
+book or the Orb). Otherwise the largest value 0x5273D0 gives, from 0 (a value of 0 or less adds
+nothing), among the spells 0–69 the hero has available (+0x430, §7.22: the book's and the
+artifacts') whose flags share a bit with the mask and, when the hero itself wears Recanter's Cloak
+(83), of level 2 at most. With `0x8000` they are Magic Arrow, Ice Bolt, Lightning Bolt, Implosion,
+Frost Ring, Fireball and Meteor Shower (15–18, 20, 21, 23), and Titan's Lightning Bolt (57),
+which is worth 1 (below); not Chain Lightning or Inferno (`0x10000`), nor Death Ripple, Destroy
+Undead or Armageddon (`0x20000`).
+
+**0x5273D0, a spell's value** (R; the spell). Its mastery `m` (0x4E5080, 0–3) on the special
+field of **the hero's own map tile** (0x4E4FA0, through 0x4FCF40: Magic Plains 1, Lucid Pools 6,
+Fiery Fields 7, Rocklands 8, Magic Clouds 9 by the tile's special ground, as the battle's setup
+maps them, §7.26; else −1, and −1 for a hero off the map); its cost `c` (0x4E5240 with no enemy
+army and field −1: the skills' mastery, the army's Mages). 0 when `c` exceeds the mana; the casts
+`n` = mana / `c` (1000 when `c` is 0, as for Titan's Lightning Bolt). Then by the spell's AI bits
+(flags and `0x1F8000`): `0x8000` the damage value with `n` casts against the strength R+4
+(0x5270E0); `0x10000` the same with one cast; `0x20000` 0x5271C0; `0x40000` 0x527290; `0x80000`
+and `0x100000` inline (below); anything else, a combination included (57: `0x108000`), 1.
+
+**0x5270E0, the damage value** (R; the spell, `m`, the casts `n`, a strength `S`). The base
+`b = v_m × (P + m)`, with `v_m` the spell's AI value at mastery `m` (+0x68 of the spell's record,
+`SPTRAITS.TXT`'s last numbers: Magic Arrow 10, Ice Bolt 20, Lightning Bolt 25, Implosion 75,
+Frost Ring 12, Fireball 15, Meteor Shower 37, the same at every mastery) and `P` the power R+8:
+about the damage's power part, without the spell's base effect (Titan's Lightning Bolt takes its
+effect, 600, but never gets here). `d` = the caster's bonuses on `b` with no target stack
+(0x4E5760: the Orb's × 1.5 and Sorcery, no specialty, §7.8). Then in doubles: `X = 10 d / S`;
+`k` the first row of 0–12 whose threshold `t_k` X reaches (13 when none); `Y = α_k X + β_k`;
+`Z = φ_n' X` with `n' = min(n, 13)`; the value is `trunc(S × Z)` when `Y > Z`, else
+`trunc(S × Y)`. The table 0x640398 holds 14 rows of four doubles, `φ`, `t`, `α`, `β`:
+
+| k | φ_k | t_k | α_k | β_k |
+|---|---|---|---|---|
+| 0 | 0 | 4.8 | 0 | 4 |
+| 1 | 0.83 | 1.557 | 0.5 | 1.6 |
+| 2 | 1.53 | 0.752 | 0.987 | 0.842 |
+| 3 | 2.11 | 0.433 | 1.452 | 0.492 |
+| 4 | 2.59 | 0.275 | 1.888 | 0.303 |
+| 5 | 2.99 | 0.186 | 2.291 | 0.192 |
+| 6 | 3.33 | 0.131 | 2.657 | 0.124 |
+| 7 | 3.6 | 0.095 | 2.986 | 0.081 |
+| 8 | 3.84 | 0.071 | 3.277 | 0.053 |
+| 9 | 4.03 | 0.054 | 3.353 | 0.035 |
+| 10 | 4.19 | 0.041 | 3.755 | 0.023 |
+| 11 | 4.33 | 0.032 | 3.947 | 0.016 |
+| 12 | 4.44 | 0.025 | 4.112 | 0.01 |
+| 13 | 4.53 | (0, not read) | 4.53 | 0 |
+
+`Y` is a concave, piecewise linear curve of `X`, from `4.53 X` near 0 to 4 from `X` = 4.8; `Z`
+bounds it by the casts the mana allows (`φ`: 0.83 for one, 4.53 from 13). **So the hero's value
+is `min(10 d φ_n', S × Y(10 d / S))`, at most four times the side's whole strength**: a Lightning
+Bolt at Expert with power 10, 100 mana and no Sorcery against `S` = 5000 gives `X` = 0.65, row 3,
+`Y` = 1.4358, `Z` = 2.886 and 7179. With `S` = 0 (every stack of the side blind, petrified or
+paralysed) `X` is infinite, `S × Y` is NaN, `crt_ftol` returns 0x80000000 and the floor of 0 in
+0x5275B0 drops it: the value is 0.
+
+**The other kinds** (the adventure AI's masks reach them, the battle's does not). `0x20000`
+(0x5271C0, damage to every stack): over the hero's army slots `A` accumulates
+`trunc(w × count × (1 − f) + A)` with `w` the creature's AI value and `f` its spell factor
+(0x44A4D0); 0 when `A` is 0, else `max(0, 0x5270E0(A) − (R+4 − A))`, the damage value against the
+army's spared part less the part it hurts. `0x40000` (0x527290, the other battle spells): `e` =
+R+0xC × `n` rounds; a mass spell (0x59E060 false) covers the whole list with `e` held to 7, a
+single-target one one entry when `e` is below 7, else `min(⌊e / 7⌋, R+0xC)` entries for 7 rounds;
+the sum over those first entries of the sorted list (for a spell of positive polarity only those
+it can affect) of `v_m × value × e`, divided by 700. `0x80000` (new or raised stacks):
+`x = 10 v_m (P + m) / R+4` held to 0.9, times `φ_n'`, held to 3.9; `trunc(R+4 × x)`. `0x100000`
+(the map's spells, Earthquake): `trunc((0.001 √n + 0.009) × (v_m × R+4))`, the last product in
+32-bit integers.
+
+**What these read**: the hero's spell book, Orb of Inhibition and Recanter's Cloak, its Spell
+Power and Knowledge bytes, Intelligence, its available spells, its school skills and the special
+ground of its map tile, Sorcery and the elemental Orbs, its army (the Mages, for the cost),
+`SPTRAITS.TXT`'s AI values and costs; the side's whole strength. **Draws:** none.
+
+**Where the odds' hero differs from the battle's** (they weigh it as the adventure AI does): the
+mana is the maximum, not the points left, so a hero that has cast or cannot pay still counts in
+full; the mastery takes the hero's tile's field, the cost no field, the battle the battle's tile
+(§7.26); an enemy hero's Recanter's Cloak and Cursed Ground do not count (the battle bars those
+spells for either hero, §7.20); a hero that has cast this round counts as before; only the damage
+spells with the bit `0x8000` count.
+
+**Readings at risk** (for T1b): the table's rows at a threshold (`X` equal to `t_k` takes row `k`)
+and the products' truncation; the AI values from `SPTRAITS.TXT` at run time; the maximum mana; the
+mastery on the hero's tile against the battle's field; the bit `0x8000`'s spells only.

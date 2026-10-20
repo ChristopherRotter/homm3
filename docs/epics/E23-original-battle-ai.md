@@ -1,7 +1,7 @@
 # E23 — The original's battle AI
 
-Status: **in progress**, refined 2026-10-19 (BAT-Q52); T1a1, T1a2 and T1a3a to T1a3c done (the cuts
-confirmed 2026-10-20), T1a3d next · Follows E05 (the
+Status: **in progress**, refined 2026-10-19 (BAT-Q52); T1a1, T1a2 and T1a3a to T1a3d done (the cuts
+confirmed 2026-10-20), T1a4 next · Follows E05 (the
 AI lane, done) · Followed by E06 (training: this policy holds the neutral seat; AI-Q1) ·
 The battle lane's, later the AI lane's (BACKLOG).
 
@@ -103,9 +103,9 @@ there):
     walker holds back from a worse hex and waits), the two fallbacks, the destination map (as
     Teleport's), the last retaliation's gain, the odds 0x420A80, which compare strength at range
     (§7.35 corrected) (`installation.md` §7.38; the log).
-  - [ ] **T1a3d The hero's value in the odds** (about 4 KB, part A's share; the user,
-    2026-10-20: before T1a4, as the neutral side's odds weigh the player's hero) — 0x526D40 and
-    0x5275B0 with their ten helpers, as far as the battle needs.
+  - [x] **T1a3d The hero's value in the odds** (2026-10-20; the user: all in one part) — the
+    caster record 0x526D40 and the best damage spell 0x5275B0 with their helpers: up to four times
+    the side's whole strength, from the hero's maximum mana (`installation.md` §7.39; the log).
 - [ ] **T1a4 The AI pathfinder** — part P (about 3.8 KB; the walk 0x41F580 is read): the walker's path among equally short ones
   against BAT-MOV-003 (S-11, Q53).
 - [ ] **T1a5 The creature casts and the spell evaluation** — part C (12.9 KB): the cast entry's
