@@ -182,6 +182,18 @@ external = []
 dev_deps = []
 dev_external = ["proptest"]
 
+# The original's battle AI (ADR-0027; E23): the computer's policy of a battle side, a logic crate in
+# the application layer beside the battle (a domain crate may not depend on another). It reads the
+# computer's numbers the battle's rules use through `h3-battle`'s public `computer` module and
+# builds its test rulesets in code.
+[crate.h3-battle-ai]
+layer = "application"
+logic = true
+deps = ["h3-kernel", "h3-content", "h3-content-battle", "h3-contracts", "h3-battle"]
+external = []
+dev_deps = []
+dev_external = ["proptest"]
+
 # .h3m reader and import into the setup types (ADR-0015 point 4; E08 T3). Map files are untrusted:
 # property-tested on arbitrary bytes. The experiment maps' writer (moved here from h3-formats with
 # the content split, R01a).
@@ -222,7 +234,7 @@ layer = "adapter"
 logic = false
 deps = ["h3-kernel", "h3-content", "h3-content-battle", "h3-contracts", "h3-pack"]
 external = ["serde", "toml"]
-dev_deps = ["h3-heroes", "h3-battle"]  # hero details and their battle effects checked against the harvested packs
+dev_deps = ["h3-heroes", "h3-battle", "h3-battle-ai"]  # hero details and their battle effects, and the computer's commands, checked against the harvested packs
 dev_external = []
 
 [crate.h3-sim]
