@@ -339,3 +339,8 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
 - **Map:** 52 entries (45 new: the 36 evaluators unread, 0x43C4A0, 0x447EB0, 0x43A910, 0x43B690,
   0x436C60, 0x43CDF0, 0x5586D0, 0x436F60, 0x43B680; 7 updated: 0x420D20, 0x43C330, 0x43A670,
   0x437800, 0x437A00, 0x43CB20, 0x443E30).
+- **Checks:** a fresh agent re-read three findings blind, on a copy of the tool and the map made
+  before the edits: the scan's draw, order and strength floor; the Genie's mean, the empty
+  evaluator and the Magic Mirror scaling; the attack bonus's value with 0x437A00 as the record's
+  copy. It agreed on all three; its note that the strength floor also applies after a candidate
+  taken in the loop (the value read anew) is in §7.44.

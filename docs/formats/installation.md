@@ -4251,8 +4251,9 @@ far, the battle context). It takes the caster's strength (0x442E60) and builds t
 (0x4369C0 with flag 1, §7.42). **When the value so far is not 0 it draws `random(1, 100)`
 (0x420D98) and casts nothing on 30 or less**; at 0 it draws nothing. Then, over the side's records
 from the last to the first, but the caster and the arrow towers, a record R whose position the
-creature's cast test accepts (0x4476C0, §7.21), with a value so far above 0 only one whose
-strength is at least the caster's: its value, the Ogre Mage's by 0x43C330, the Genie's by
+creature's cast test accepts (0x4476C0, §7.21), once the value so far is above 0 (the walker's or
+an earlier candidate's, read anew for each) only one whose strength is at least the caster's: its
+value, the Ogre Mage's by 0x43C330, the Genie's by
 0x43C4A0. One above 0 and above the value so far replaces it and takes R's position, where the
 cast (action 10) goes. **So the Ogre Mage's and the Genie's casts must beat the walker's value; with
 one to beat they are skipped three times in ten and go only to a stack at least as strong as the
