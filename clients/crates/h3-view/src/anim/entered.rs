@@ -33,25 +33,18 @@ impl Timeline {
             let own = self
                 .keys
                 .iter()
-                .filter(|k| k.stack == stack && k.drawn <= t)
-                .last()
+                .rfind(|k| k.stack == stack && k.drawn <= t)
                 .map(|k| (k.drawn, k.pose));
             let mine = added
                 .get(&stack)
                 .and_then(|list| list.iter().rfind(|k| k.drawn <= t))
                 .map(|k| (k.drawn, k.pose));
-            let now = match (own, mine) {
-                (Some((a, own)), Some((b, mine))) => {
-                    if b >= a {
-                        mine
-                    } else {
-                        own
-                    }
-                }
-                (Some((_, own)), None) => own,
-                (None, Some((_, mine))) => mine,
-                (None, None) => member.start,
-            };
+            // The later of the two; the mouse's at the same time (it came after).
+            let now = [own, mine]
+                .into_iter()
+                .flatten()
+                .max_by_key(|(at, _)| *at)
+                .map_or(member.start, |(_, pose)| pose);
             let key = |drawn: u32, shown: u32, pose: Pose| Key {
                 stack,
                 drawn,
@@ -150,12 +143,9 @@ impl Timeline {
             let from = t.max(self.idle.from);
             let until =
                 from.saturating_add(super::IDLE_STEP.saturating_mul(left.saturating_add(1)));
-            let mut idle = self.idle;
-            idle.run(until, |s| {
-                if s > t && out.len() < want {
-                    out.push(s);
-                }
-            });
+            let (mut idle, mut more) = (self.idle, Vec::new());
+            idle.run(until, |s| more.push(s));
+            out.extend(more.into_iter().filter(|&s| s > t).take(want - out.len()));
         }
         out
     }

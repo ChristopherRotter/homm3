@@ -542,7 +542,9 @@ def value(obs, what, mem):
         fought = battles[-1]
         kind, *rest = what.split(":")
         if kind in ("winner", "retreated", "surrendered"):
-            return "none" if fought[kind] is None else SIDES[fought[kind]]
+            # A winner of -1 is none (E17 M3 T6c-2: it read `defender`, SIDES[-1]).
+            value = fought[kind]
+            return "none" if value is None or value < 0 else SIDES[value]
         moment, side = rest[0], SIDES.index(rest[1]) if len(rest) > 1 else None
         if kind == "stacks":
             return stacks_text(mem, fought[moment], side)

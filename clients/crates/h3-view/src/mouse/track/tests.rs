@@ -30,13 +30,17 @@ fn status(text: &str, forced: bool) -> Logged {
     }
 }
 
-/// The acting stack 0 may walk to 87 and strike the stack on 90 from 89.
+/// The acting stack 0 may walk to 87 and strike the stack on 90 from 89 or 91.
 fn legal() -> Legal {
     Legal::new(&[
         Command::Move { to: 87 },
         Command::Attack {
             target: 1,
             from: 89,
+        },
+        Command::Attack {
+            target: 1,
+            from: 91,
         },
     ])
 }
@@ -55,10 +59,14 @@ fn a_waiting_human_turn_takes_each_move() {
     };
     let turns = [Turn { field, human: true }];
     let l = layout();
-    // Two points of hex 90 in different slots: the first moves on its frame, the second only
-    // when its sword differs.
-    let (a, b) = (centre(90), [centre(90)[0] - 15, centre(90)[1] + 5]);
+    // Two points of hex 90 in different slots: right of its centre the sword from 91, left of
+    // it the one from 89; the same point again changes nothing.
+    let (a, b) = (
+        [centre(90)[0] + 10, centre(90)[1]],
+        [centre(90)[0] - 10, centre(90)[1]],
+    );
     let frame = |p: [i32; 2]| slots(&o, &legal, 90)[slot(&l, p, 90)];
+    assert_ne!(frame(a), frame(b));
     let inputs = [
         Input::Move { at: 0, to: PARK },
         Input::Move { at: 100, to: a },
@@ -74,25 +82,17 @@ fn a_waiting_human_turn_takes_each_move() {
         },
     ];
     let shown = run(&[], &[], &turns, &inputs);
-    let mut frames = vec![(0, 6), (100, frame(a))];
-    if frame(b) != frame(a) {
-        frames.push((150, frame(b)));
-    }
-    frames.extend([(200, 1), (300, 6)]);
+    let frames = [(0, 6), (100, frame(a)), (150, frame(b)), (200, 1), (300, 6)];
     assert_eq!(shown.frames, frames);
     assert_eq!(shown.marked, [(100, Some(1)), (200, None)]);
     assert_eq!(shown.entered, [(100, 1)]);
-    let mut log = vec![
+    let log = [
         (0, status("Empty", false)),
         (100, status("Attack(1)", true)),
-    ];
-    if frame(b) != frame(a) {
-        log.push((150, status("Attack(1)", true)));
-    }
-    log.extend([
+        (150, status("Attack(1)", true)),
         (200, status("Move(0)", false)),
         (300, status("Empty", false)),
-    ]);
+    ];
     assert_eq!(shown.log, log);
     assert_eq!(
         shown.points,
@@ -149,6 +149,11 @@ fn moves_wait_while_an_action_plays() {
         },
         Input::Act { at: 100 },
         Input::Move { at: 100, to: PARK },
+        // At the turn's time: after the turn starts; over Wait, its hint.
+        Input::Move {
+            at: 500,
+            to: [700, 570],
+        },
     ];
     let log = [(100, Logged::Action), (500, Logged::Turn(2))];
     let shown = run(&log, &[Start { unmarks: true }], &turns, &inputs);
@@ -162,11 +167,15 @@ fn moves_wait_while_an_action_plays() {
             (500, Logged::Turn(2)),
             (500, status("Empty", false)),
             (500, status("Empty", false)),
+            (500, status("Control(\"battle.control.wait\")", false)),
         ]
     );
     assert_eq!(shown.marked, [(0, Some(1)), (100, None)]);
     assert_eq!(shown.frames.last(), Some(&(100, 6)));
-    assert_eq!(shown.points, [(0, centre(90)), (100, PARK)]);
+    assert_eq!(
+        shown.points,
+        [(0, centre(90)), (100, PARK), (500, [700, 570])]
+    );
 }
 
 #[test]
@@ -268,6 +277,11 @@ fn a_target_left_over_says_no_shots_left() {
             to: centre(88),
         },
         Input::Move { at: 30, to: off },
+        // Nothing again: no hex before or now, written again.
+        Input::Move {
+            at: 35,
+            to: [6, 200],
+        },
     ];
     let shown = run(&[], &[], &turns, &inputs);
     let texts: Vec<_> = shown
@@ -286,6 +300,7 @@ fn a_target_left_over_says_no_shots_left() {
             (10, "NoShots".into()),
             (20, "Empty".into()),
             (30, "Empty".into()),
+            (35, "Empty".into()),
         ]
     );
 }
@@ -342,4 +357,44 @@ fn without_turns_the_panel_still_answers() {
     assert_eq!(shown.log, [(0, status("", false)), (9, Logged::Action)]);
     assert_eq!(shown.frames, [(0, 6)]);
     assert_eq!(Input::Act { at: 4 }.at(), 4);
+}
+
+#[test]
+fn a_two_hex_stack_stays_marked_across_its_hexes() {
+    // The defender's two-hex stack on 90 (its other hex 89): from one hex to the other it stays
+    // marked and is not entered again. A turn the battle has no entry for, and a line, pass.
+    let mut o = battle();
+    o.stacks[1].two_hex = true;
+    let legal = legal();
+    let turns = [Turn {
+        field: Field {
+            observation: &o,
+            legal: &legal,
+            facing: &Facing::Sides,
+        },
+        human: true,
+    }];
+    let inputs = [
+        Input::Move {
+            at: 0,
+            to: centre(90),
+        },
+        Input::Move {
+            at: 10,
+            to: centre(89),
+        },
+    ];
+    let log = [
+        (5, Logged::Wait { stack: 0, count: 1 }),
+        (20, Logged::Turn(3)),
+    ];
+    let shown = run(&log, &[], &turns, &inputs);
+    assert_eq!(shown.marked, [(0, Some(1))]);
+    assert_eq!(shown.entered, [(0, 1)]);
+    assert!(
+        shown
+            .log
+            .contains(&(5, Logged::Wait { stack: 0, count: 1 }))
+    );
+    assert_eq!(shown.log.last(), Some(&(20, Logged::Turn(3))));
 }

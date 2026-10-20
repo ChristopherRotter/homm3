@@ -2525,6 +2525,17 @@ fn the_stacks_the_mouse_enters_fidget_on_the_idle_steps() {
     assert_eq!(pose(&t, 1, 100), (1, 1));
     assert_eq!(t.at(150)[&1], walk.at(150)[&1]);
     assert_eq!(t.at(2000)[&1], walk.at(2000)[&1]);
+    // Played whole between two commands: the steps before the next one.
+    let later = play(&o, &[(Some(2000), vec![moved(0, 35, 36)])]);
+    let mut t = later.clone();
+    t.enter(&[(50, 1)], 1, &fidget);
+    assert_eq!(pose(&t, 1, 200), (1, 2));
+    assert_eq!(pose(&t, 1, 300), (2, 0));
+    // Entered after its own walk: the mouse's keys after the walk's.
+    let mut t = walk.clone();
+    t.enter(&[(9000, 1)], 1, &fidget);
+    assert_eq!(pose(&t, 1, 9000), (1, 0));
+    assert_eq!(t.at(8000)[&1], walk.at(8000)[&1]);
     // An entered stack that is not the battle's: nothing.
     let mut t = play(&o, &[]);
     t.enter(&[(50, 9)], 1, &fidget);
@@ -2567,7 +2578,7 @@ fn an_actions_start_stands_and_unmarks_by_what_it_does() {
         damage: 1,
     };
     assert_eq!(calms(&[cast]), (true, true));
-    assert_eq!(calms(&[creature.clone()]), (true, false));
+    assert_eq!(calms(core::slice::from_ref(&creature)), (true, false));
     assert_eq!(calms(&[wall]), (true, true));
     assert_eq!(calms(&[moved(0, 1, 2)]), (true, true));
     let later = [Event::TurnStarted { stack: 1 }, moved(1, 2, 3)];
