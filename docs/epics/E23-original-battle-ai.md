@@ -1,7 +1,7 @@
 # E23 — The original's battle AI
 
 Status: **in progress**, refined 2026-10-19 (BAT-Q52); T1a1 to T1a4 done (the cuts confirmed
-2026-10-20), T1c done (BAT-Q53, BAT-Q54); T1a5 cut in four, T1a5a done, T1a5b next · Follows E05 (the
+2026-10-20), T1c done (BAT-Q53, BAT-Q54); T1a5 cut in four, T1a5a and T1a5b done, T1a5c next · Follows E05 (the
 AI lane, done) · Followed by E06 (training: this policy holds the neutral seat; AI-Q1) ·
 The battle lane's, later the AI lane's (BACKLOG).
 
@@ -125,8 +125,10 @@ there):
     predictions 0x422A40 (the side's run up to the other side's next stack: shots, strikes,
     retaliations, Fire Shield, breath); the computer's elementals never cast (`installation.md`
     §7.42; the log).
-  - [ ] **T1a5b The raise and the Faerie Dragon** — 0x421000 (the Archangel, the Pit Lord) and
-    0x420F00 (the dragon's damage values: one target, Chain Lightning, an area), with their helpers.
+  - [x] **T1a5b The raise and the Faerie Dragon** (2026-10-20) — the raise 0x421000 (it must beat
+    the walker's value; doubled when the side is overwhelmingly stronger) and the dragon 0x420F00
+    (it casts whenever its spell is worth anything; one target, Chain Lightning, an area, friendly
+    damage against it) (`installation.md` §7.43; the log).
   - [ ] **T1a5c The Ogre Mage's and the Master Genie's scan, the evaluation** — 0x420D20, 0x43C330
     (Bloodlust), the Genie's value, the evaluation 0x43A670 with its helpers.
   - [ ] **T1a5d The estimates** — 0x437800, the core 0x437A00 with 0x43CB20, 0x443E30.
