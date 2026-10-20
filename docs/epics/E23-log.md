@@ -419,4 +419,5 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   the library sort and the draws are no slips); the draft's point 9 says so.
 - **Accepted (the user, 2026-10-20, BAT-Q55):** the ADR draft as amended and the survey's batch
   rows, "all accepted now": ADR-0027 (`docs/adr/0027-original-battle-ai.md`, `shared/` #332, merged
-  before this task's #331, which drops the draft). Next: T2's cut at this checkpoint.
+  before this task's #331, which drops the draft). T2's cut (the user): whole, as the epic says; the
+  session proposed three parts and the wall shot in T6. Not started in this session.
