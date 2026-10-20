@@ -16,9 +16,10 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   side without a hero (its T2 to T4). PPO and a league first, search last; runs of a few hours,
   interruptible and resumable. **Increment 1 done:** T1, T2a (#310; ADR-0026 in #306: the design
   note `docs/epics/E06-design.md`, the run's config and record), T2b1 (#315: the full checkpoint,
-  Ctrl+C, `--resume`), T2c (#319: C ABI v31). **Increment 2:** T3a (the held-out sets v1, the
-  bots' table; the pull request of `claude/pensive-maxwell-16n287`). **Next:** T3b (the SPRT
-  gate), refined at the user's checkpoint.
+  Ctrl+C, `--resume`), T2c (#319: C ABI v31). **Increment 2 done:** T3a (#324: the held-out sets
+  v1, the bots' table), T3b (the SPRT gate, promotions, ladders, `--init-from`: the pull request
+  of `claude/pensive-maxwell-16n287`). **Next:** the user's hour with gates
+  (`configs/e06-t3b.toml`), then increment 3 (T4, the league) at the user's checkpoint.
 - **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v31 (E06 T2c: the record's identity, N capped) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q9, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
@@ -64,7 +65,8 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   train pytest`); a run is a TOML config (`python/configs/`, `--set`), its budget and cadences in
   samples; its files go into `python/runs/` (ignored). A piece of training state goes into
   `Trainer.state` and `restore` together, and into `test_a_stopped_run_resumes_to_its_budget`'s
-  comparisons; `resume` checks before `Run(…, resume=…)` cuts the metrics (a refused resume
+  comparisons (checkpoint format 2, T3b; the promoted networks stay in `promoted/`, which a
+  resume reads); `resume` checks before `Run(…, resume=…)` cuts the metrics (a refused resume
   changes nothing). `h3env.train.run` stays free of torch
   (the package loads its torch modules lazily); `tests/test_run.py` runs without torch
   (to block it: a `torch.py` raising `ModuleNotFoundError` first on `PYTHONPATH`; pytest 9). In a background shell `cd`
@@ -88,19 +90,15 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 
 ## Recent sessions
 
+### 2026-10-20 — E06 T3b (the evaluation gate)
+
+- #324 merged; the user: "no need to cut" T3b. The SPRT gate, promotions, ladders in the run,
+  record schema 4, checkpoint format 2 with pending work, `--init-from`. 86 Python tests with
+  torch (CPU), 61 without; Python only: the scoped verify (`E06-log.md`).
+
 ### 2026-10-20 — E06 T3a (the held-out sets v1, the bots' table)
 
 - #319 had merged. The user asked for a small increment; offered T3a in two pieces, the user
   chose all of T3a in one pull request. `h3 ai eval --set`, `--json`; `evaluate.report`,
   `stratified`, the gate set's seeds; the bots' table committed; the bots' fallbacks tested.
   69 Python tests with torch (CPU), 56 without; the full verify (`E06-log.md`).
-
-### 2026-10-20 — E06 T2c (C ABI v31)
-
-- After #315's merge, the user asked for the next task: T2c as queued. `MAX_ENVS` 65 536; the
-  record's identity from `_ffi.versions()` and `BattleBatch.entries()` (schema 3). The full verify.
-
-### 2026-10-20 — E06 T2b1 (the full checkpoint and `--resume`)
-
-- The user chose T2b1 of three seams (the pending gate and `--init-from` moved to T3b). 61
-  Python tests with torch (CPU), 48 without; the scoped verify.

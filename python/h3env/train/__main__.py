@@ -1,16 +1,20 @@
-"""A training run from the command line (E06 T2a, T2b1; ADR-0026, `docs/epics/E06-design.md`
+"""A training run from the command line (E06 T2a, T2b1, T3b; ADR-0026, `docs/epics/E06-design.md`
 §1.3):
 
     uv run --group train python -m h3env.train --config configs/pool-smoke.toml --out runs/smoke
     uv run --group train python -m h3env.train --out runs/x --set samples=2_000_000
     uv run --group train python -m h3env.train --resume runs/smoke --set samples=40_000_000
+    uv run --group train python -m h3env.train --config configs/e06-t3b.toml --out runs/t3b-2 \
+        --init-from runs/t3b-1/best.pt
 
 The config file states what differs from the defaults (`h3env.train.run.Config`); each `--set
-table.key=value` overrides one key. Each update and each evaluation prints one line; the run's
-files go into `--out` (`config.toml`, `metrics.jsonl`, `record.json`, `checkpoint.pt`,
-`best.pt`). Ctrl+C saves and stops the run (a second Ctrl+C aborts it, losing what the first would
-have saved); `--resume` continues it from its checkpoint, the config the checkpoint's: its `--set`s
-may change only the budget, the threads, the device and the checkpoints' cadence.
+table.key=value` overrides one key. Each update, gate, promotion and ladder prints one line; the
+run's files go into `--out` (`config.toml`, `metrics.jsonl`, `record.json`, `checkpoint.pt`,
+`promoted/<n>.pt`, `best.pt`). `--init-from` starts a new run from a saved network (its parent,
+best #0). Ctrl+C saves and stops the run (a second Ctrl+C aborts it, losing what the first would
+have saved); `--resume` continues it from its checkpoint (a gate or ladder the stop cut short
+first), the config the checkpoint's: its `--set`s may change only the budget, the threads, the
+device and the checkpoints' cadence.
 """
 
 from __future__ import annotations
@@ -33,6 +37,7 @@ class Command:
     text: str = ""
     resume: bool = False
     sets: list[str] = field(default_factory=list)
+    init_from: Path | None = None
 
 
 def parse(argv: list[str] | None = None) -> Command:
@@ -50,35 +55,49 @@ def parse(argv: list[str] | None = None) -> Command:
     where.add_argument(
         "--resume", type=Path, default=None, metavar="DIR", help="continue the run in DIR"
     )
+    parser.add_argument(
+        "--init-from", type=Path, default=None, metavar="FILE", help="a new run's parent network"
+    )
     args = parser.parse_args(argv)
     if args.resume is not None:
-        if args.config is not None:
-            parser.error("--resume takes the run's config from its checkpoint: change it by --set")
+        if args.config is not None or args.init_from is not None:
+            parser.error(
+                "--resume takes the run's config and network from its checkpoint: change the "
+                "config by --set"
+            )
         return Command(args.resume, resume=True, sets=args.set)
+    if args.init_from is not None and not args.init_from.exists():
+        parser.error(f"--init-from: {args.init_from} does not exist")
     text = "" if args.config is None else args.config.read_text(encoding="utf-8")
     try:
         config = load_config(text, args.set)
         check_new(args.out)
     except (ConfigError, RunExistsError) as e:
         parser.error(str(e))
-    return Command(args.out, config, text)
+    return Command(args.out, config, text, init_from=args.init_from)
 
 
 def line(record: dict) -> str | None:
     kind = record["type"]
-    if kind == "eval":
-        g = record["sampled"]
-        text = (
-            f"eval update {record['update']:>4} {record['samples']:>11} samples: sampled "
-            f"{g['win_rate']:.3f} (attacker {g['attacker']['win_rate']:.3f}, defender "
-            f"{g['defender']['win_rate']:.3f})"
+    if kind == "gate":
+        elo = "" if record["elo"] is None else f" ({record['elo']:+.0f} Elo)"
+        return (
+            f"gate update {record['update']:>4} {record['samples']:>11} samples against best "
+            f"#{record['best']}: {record['result']} after {record['pairs']} pairs, score "
+            f"{record['score']:.3f}{elo}, LLR {record['llr']:+.2f} [{record['seconds']:.0f} s]"
         )
-        for name in ("greedy", "random"):
-            if name in record:
-                text += f", {name} {record[name]['win_rate']:.3f}"
-        if record.get("repeated"):
-            return text + " [final: the last evaluation's]"
-        return text + f" best {record['best']:.3f} [{record['eval_s']:.0f} s]"
+    if kind == "promotion":
+        return f"promoted #{record['index']} ({record['how']}) at update {record['update']}"
+    if kind == "ladder":
+        rows = ", ".join(
+            f"{name} {r['win_rate']:.3f} ± {r['interval']:.3f}"
+            for name, r in record["opponents"].items()
+        )
+        final = " final" if record["final"] else ""
+        return (
+            f"ladder{final} #{record['index']} ({record['per_kind']} per kind): {rows} "
+            f"[{record['seconds']:.0f} s]"
+        )
     if kind == "update":
         return (
             f"update {record['update']:>4} {record['minutes']:6.1f} min {record['samples']:>11} "
@@ -102,6 +121,7 @@ def line(record: dict) -> str | None:
             f"segment {record['segment']} from update {record['update']}, {record['samples']} "
             f"samples (batch seed {record['seed']:#x}, {record['dropped']} records dropped"
             f"{changed})"
+            + (f", the pending {record['pending']['kind']} first" if record.get("pending") else "")
         )
     return None
 
@@ -117,7 +137,16 @@ def main(argv: list[str] | None = None) -> None:
     from .ppo import resume, train
 
     if not command.resume:
-        train(command.config, command.out, log=show, text=command.text)
+        try:
+            train(
+                command.config,
+                command.out,
+                log=show,
+                text=command.text,
+                init_from=command.init_from,
+            )
+        except ConfigError as e:
+            sys.exit(f"python -m h3env.train: error: {e}")
         return
     try:
         resume(command.out, command.sets, log=show)

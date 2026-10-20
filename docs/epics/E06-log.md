@@ -172,3 +172,39 @@ entry only where a task builds on it.
   and rates recomputed by `stratified`), `test_run.py` (the seeds refused, the records' test skips
   `bots-*.json`), `test_train.py` (the ladder on both sets, common random numbers, the command
   line, the refusals). 69 Python tests with torch on the CPU (the GPU test skipped), 56 without.
+
+## T3b — The evaluation gate (2026-10-20)
+
+- **Cut:** offered T3b in three pieces (the gate as a tool first); the user: "no need to cut it".
+- **Built** (design §1 to §4, §6, §7; ADR-0026 points 6, 7, 9): `h3env.train.gate` (`Sprt`: the
+  generalized SPRT of design §6 on the five pair scores; `play_gate`: two batches of the gate set
+  v1, the candidate attacking in one and the best in the other, both seats external, each network
+  on its own rows (`evaluate.duel`, its draws seeded alike at every gate), pairs in order until
+  the test decides, the first min(500, `max_pairs`) envs only; `gate`; `python -m
+  h3env.train.gate --candidate --best`). In the run (`ppo._go`): best #0 (the untrained network,
+  or the parent's with `--init-from`), a gate every `gate.gate_every` samples (10 M; 0: only at
+  the end) and at the end if the learner trained since its last, a promotion's
+  `promoted/<n>.pt` and `best.pt` (the network with its index, how, run and parent), its ladder
+  against `ladder.ladder_opponents` and the `ladder_promoted` networks before it (both seats
+  external) on `ladder_episodes` (250) per kind, the final best's on `ladder_final_episodes`
+  (500). `[gate]` and `[ladder]` replace `[evaluation]` (E05's evaluation against Random on v0 is
+  gone; v0 stays a held-out set and a ladder option).
+- **Resumable** (design §3): checkpoint format 2 (the promoted entries, the next gate, the last
+  gate and final ladder, `pending`), saved before and after each gate and ladder; Ctrl+C stops
+  either at its next batch call (`evaluate.Stopped`), and a resume runs it first (the gate on the
+  saved learner, the ladder on its network read from `promoted/`; the lineage stays outside the
+  checkpoint). Format 1 is refused with a pointer to `--init-from`. A replace Windows refuses
+  five times keeps the old file and warns (`run.atomic_write`, a ladder reading `best.pt`).
+- **Record** schema 4: `parent`, `gates`, `promotions`, `ladders`, `best` (the latest
+  promotion), the curve per gate interval, `progress.evaluation_minutes` (the gates' and
+  ladders' share of the run). `python/configs/e06-t3b.toml`: the user's hour with gates (30 M
+  samples, a gate every 5 M).
+- **Tests:** `test_gate.py` (new: the scores and Elo, the SPRT's bounds and formula, decisions in
+  pair order, the cap; its error rates by simulation, 200 gates at either hypothesis, at least
+  180 right, 300 to 900 pairs on average, +100 Elo under 150; a network against itself on the
+  gate set not promoted, reproducible); `test_run.py` (the new keys and their refusals, the
+  record of gates, promotions and ladders, `--init-from`'s command line, the printed lines, a
+  refused replace keeping its file); `test_train.py` (a run's gate and ladders, a stand-in gate
+  that promotes each time: every promoted network kept, each ladder against the one before; the
+  end gating only after training; a gate and a ladder cut short by Ctrl+C run first at the
+  resume; `--init-from`, and a network of another size refused).

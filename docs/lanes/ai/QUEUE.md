@@ -10,9 +10,11 @@ record in `E05-log.md`, the environment as built in `docs/07-simulation-and-ai.m
 **E06** (`docs/epics/E06-battle-ai.md`) refined 2026-10-20 (AI-Q8): it starts beside E23, the
 neutral share waits for E23's side without a hero. Increment 1 done 2026-10-20: T1 and T2a
 (ADR-0026, design `E06-design.md`), T2b1 (the full checkpoint and `--resume`; its pending gate and
-`--init-from` moved to T3b), T2c (C ABI v31). Increment 2: T3a done 2026-10-20 (the held-out sets
-v1, the bots' table). **Next:** T3b (the SPRT gate; design §6, §10), refined at the user's
-checkpoint: no task is ready until then.
+`--init-from` moved to T3b), T2c (C ABI v31). Increment 2 done 2026-10-20: T3a (the held-out
+sets v1, the bots' table), T3b (the SPRT gate, promotions, ladders, `--init-from`). **Next:** the
+user runs the hour with gates (`python/configs/e06-t3b.toml`; its record's evaluation share sets
+T4's cadences), then increment 3 (T4a, T4b; design §8, §10), refined at the user's checkpoint: no
+task is ready until then.
 
 ## Inbox
 
