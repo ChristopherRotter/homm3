@@ -80,7 +80,23 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### Adventure lane (`ADV-Q<n>`)
 
-(no open questions)
+#### ADV-Q15 — Increment 4's checkpoint: the progression survey's disputes, quirks and scope (E08 T24a2b2)
+
+The progression survey is complete (`docs/rules/surveys/E08-progression.md`: §1–§4 the code reading with VCMI, §5 the wiki, §6 the census, §7 batch E4's plan, §8 the proposed rule ids, §9 a fresh agent's second reading, which confirmed §1–§3). T24b drafts the ADR amendments, the design note and the building tasks from the answers. Each point: the options, **recommended** first.
+
+1. **D-14, a level's draws.** **The reading's reseed from the hero's seed byte S and the new level, with the C runtime's generator, in `faithful`, and the owner's stream in `strict-fixed` (a fix-optional flag), S drawn at the build from the game's stream, server-only** (as decision 26); the reading's in every profile; or VCMI's own stream per hero. The wiki agrees that a hero's offers are fixed from the scenario's start (§5).
+2. **D-15, the primary skill's second row.** **From the level-up to level 10 (the reading, the wiki's "10+ level-ups")**, or from 11 (VCMI).
+3. **D-16 and A-10, the Elementalist's Wisdom and school intervals.** The reading, the second reading and the wiki agree: SoD treats it as a might class (6 and 4); VCMI and HotA give it 3 and 3. **A fix-optional quirk (`faithful` 6 and 4, `strict-fixed` 3 and 3)**; or a faithful rule in every profile. No shipped hero is affected at load (§6.1).
+4. **D-17, a due school among known schools.** **Each known school weighs 1 (the reading)**, or its class weight (VCMI); the wiki is silent.
+5. **D-18, a banned skill the hero knows.** **Weight 1 (the reading; the wiki agrees for a class's banned skill)**, or its class weight (VCMI), or 0 (the wiki's letter for a skill the map bans). No shipped hero reaches it at load (§6.3).
+6. **D-19, experience above the level limit's cap.** **Lowered to the cap at the next gain (the reading)**, or kept (VCMI); the wiki is silent. No shipped map has a limit (§6.2).
+7. **D-20, the skill learned at each two-offer level at load: a conflict of sources** (`docs/04-rules-and-sources.md` §2). The code reading and the second reading: the computer's evaluation (0x52BBD0 with 0x524690 and 0x524DD0, the army's value replaced by defaults, §9); batch E3c's E3-6 fits it (§3.3); VCMI and the wiki: always the left offer (§5.2). Batch E4's row E4-1 settles it. Options for what increment 4 builds: **read 0x524690 and 0x524DD0 and port the evaluation (E10's computer players need the same functions)**; the left offer as a documented stand-in until E10 ports the evaluation; or the left offer for good. It decides the skills of the 9 heroes the importable maps level at load (§6.5).
+8. **D-21, a custom experience above the level limit at load.** **Capped and lowered to the limit (the reading)**, or levelled to its own level (VCMI).
+9. **A-7, the wrap past level 74** (state-corrupting, so always fixed). How: **the experience bounded at level 74's range (1 810 034 206), so level 74 is the highest, as HotA's fix (the wiki)**; or VCMI's table to level 197.
+10. **A-8, a level limit above 75** (state-corrupting, always fixed). **A limit above 74 acts as none (with point 9's bound)**; or the import refuses such a map.
+11. **A-9, a primary skill past 127.** **Always fixed: a level-up's +1 saturates at the ruleset's `primary_max` (99), the engine keeping the base without artifacts (§4.2)**; or fix-optional. The wiki's "at 129 the skill value is reset to 0" differs from the reading's wrap at 128; no row plans it.
+12. **Scope for T24b** (§6.6). **Increment 4 lifts the import's refusal of a custom experience (3 more maps import whole), builds the level limit with A-8's fix though no shipped map has one (the header byte is already read), and leaves the levels at load of prisoners, random heroes and tavern heroes to the increments that build them (QUEUE inbox)**; or without the level limit.
+13. **Batch E4** (§7): **the ten rows as planned**, with the harness's needs in the client lane's inbox and the spec's level limit a `cross-lane` change with T24b's batch task; or fewer rows (E4-1 to E4-4, the level-up's own).
 
 ### Server lane (`SRV-Q<n>`)
 

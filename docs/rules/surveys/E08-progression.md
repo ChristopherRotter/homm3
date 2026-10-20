@@ -1,11 +1,11 @@
 # E08 progression survey (E08 T24a): experience, levels, level-ups
 
 Date: 2026-10-20. Scope: E08 increment 4 (decision 48: hero progression only), input for T24b's
-ADR drafts and the cut. Written in parts (decisions 51 to 53): **T24a1** §1 experience to levels
+ADR drafts and the cut. Written in parts (decisions 51 to 54): **T24a1** §1 experience to levels
 and §2 the level-up, from the code and VCMI; **T24a2a** §3 levels at load and §4 what follows the
 level, the same way; **T24a2b1** §5 the wiki on §1–§4 and §6 the census of the shipped maps;
-**T24a2b2** the rest (§7 the batch's plan, the proposed rule ids, a fresh agent's second reading,
-the questions for the user's checkpoint). Input, not rules (`README.md`).
+**T24a2b2** (decision 54) §7 the batch's plan, §8 the proposed rule ids, §9 a fresh agent's second
+reading; the questions for the user's checkpoint are ADV-Q15 (`docs/OPEN-QUESTIONS.md`). Input, not rules (`README.md`).
 
 **Sources** (retrieved 2026-10-20):
 - `original-data`: a code reading of the user's `Heroes3.exe` (SoD 4.0 Complete); every address
@@ -94,6 +94,12 @@ the questions for the user's checkpoint). Input, not rules (`README.md`).
   experience, or experience anywhere near A-7. Without the import's refusal of an experience 5
   maps import whole (3 more: `Adventures of Jared Haret`, `Faeries`, `Knee Deep in the Dead`),
   with 9 heroes and 41 level-ups at load.
+- **The second reading** (§9, T24a2b2) confirms §1 to §3 and settles D-20's code side:
+  0x52BBD0 evaluates the two offers at load as anywhere (the army's value replaced by defaults),
+  never the left offer by default. **The batch's plan** (§7): batch E4's ten rows, most of them
+  predictions from the hero's seed byte read in memory (the harness's needs in the client lane's
+  inbox). **The proposed rule ids** (§8): HER-EXP-002/-003, HER-LVL-001 to -005, GAM-HER-002,
+  GAM-DEC-002, GAM-SET-002, GAM-BAT-008. The questions for the checkpoint: ADV-Q15.
 
 ## 1. Experience to levels
 
@@ -513,7 +519,8 @@ them). So E3-6 sides with the reading, if the reading's draws are right, which t
 test (S unread). By `docs/04-rules-and-sources.md` §2 the reading is not built on alone: the
 second reading (T24a2b2) re-reads 0x4D8B30's path to the levels and 0x52BBD0 for a left-only
 branch at load, and the batch (§7) reads S and the offers of every level at load, which settles
-it. Until then D-20 is the user's at the checkpoint (an ADV-Q, T24a2b2).
+it. Until then D-20 is the user's at the checkpoint (an ADV-Q, T24a2b2). *(T24a2b2: the second
+reading found no left-only branch: 0x52BBD0 evaluates at load too, §9; the question is ADV-Q15.)*
 
 ## 6. The census (T24a2b1)
 
@@ -655,3 +662,34 @@ For T24b's cut; ids follow the catalogs' prefixes (`HER-` `heroes.toml`, `GAM-` 
 HER-EXP-001 (the gain grown by Learning) and the specialties that read the level (HER-BAT-004,
 HER-BAT-005, HER-MAN-001) keep their ids; only the level's source changes (§4.2). The view of
 another player's hero shows no level (ADV-FOG-006 unchanged).
+
+## 9. The second reading (T24a2b2)
+
+A fresh agent re-read the deciding code without this survey (2026-10-20), from questions on
+each function, and **confirmed §1 to §3 point by point**: the table and the steps × 1.2
+(`crt_ftol`, 32-bit sums, the loop to the first threshold above the experience), the level
+limit's cap with the experience above it lowered and the gain returning 0 (§1.3); the level-up's
+pass per level, the reseed 214 013 L + 156 823 S + 154 079 with the new level and S the unsigned
+byte +0x8F drawn 1–255 by `new_game_heroes` (0x4BFEC2), the primary row by the new level (row 2
+from 10) and the unbounded +1 (§2.1–§2.3); the offers' windows and fallbacks, the intervals with
+**the Elementalist at 6 and 4**, the guarantees, a known school weighing 1, a banned skill 0 or 1
+if known, the counters set on the offer, not on learning (§2.4); the human dialog's conditions and
+0x52BBD0 for everyone else, the setup flag 0x698400 set and cleared by `new_game_heroes` (§2.5);
+the placed hero's order of setup with its primary skills unclamped and the gain with the levels
+given and the owner not told (§3.2), and 0x486590 as the campaign's carried-over hero's copy
+(§3.1).
+
+**What it adds, for D-20** (§5.2): `ai_level_up_choice` (0x52BBD0) **never takes the left offer
+by default**. With both offers known or both new it compares `ai_secondary_skill_value`
+(0x524690) of each and keeps the first on a tie; otherwise `ai_takes_new_secondary_skill`
+(0x524DD0) decides. Its flag, clear during the setup and for a hero without an owner, only
+reaches those helpers: in 0x524690 a set flag sums the army's creature values (0x5246D5 to
+0x524722), a clear one keeps the defaults 1 000 and 500. The first offer is learned without it on
+the new game's path only when there is no second offer. So the code side of D-20 is settled
+twice: levels at load are chosen by the computer's evaluation, with the army's value replaced by
+the defaults; the wiki's always-left is not in the code. What stays open is the experiment (E4-1)
+and how the engine gets the evaluation (port 0x524690 and 0x524DD0, or a stand-in: ADV-Q15).
+
+Not settled by it: whether 0x524DD0 or `hero_learn_secondary_skill` (0x4E22D0) draw from the
+generator (a draw there cannot move a later level's offers, which are reseeded, but may make the
+choice itself random); the x87 precision (53 bits assumed, as §1.1's level 13 = 24 320 needs).

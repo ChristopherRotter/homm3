@@ -242,7 +242,7 @@ Refined with the user on 2026-10-20 (T23; ADV-Q14). Built like increments 1 to 3
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T23 Increment 4 refined.** Done (2026-10-20, `adventure/e08-t23`; decisions 48–50): progression only, the first round queued (T24a, T24b), the inbox sorted; docs only (log).
-- **T24a The progression survey.** Cut in two (decision 51): **T24a1** done (2026-10-20, `adventure/e08-t24a1`: survey §1–§2, experience to levels and the level-up, with VCMI; log); **T24a2** cut again (decision 52): **T24a2a** done (2026-10-20, `adventure/e08-t24a2a`: survey §3–§4, levels at load and what follows the level; log); T24a2b cut (decision 53): **T24a2b1** done (2026-10-20, `adventure/e08-t24a2b1`: survey §5–§6, the wiki and the census; log); **T24a2b2** next (queue).
+- **T24a The progression survey.** Cut in two (decision 51): **T24a1** done (2026-10-20, `adventure/e08-t24a1`: survey §1–§2, experience to levels and the level-up, with VCMI; log); **T24a2** cut again (decision 52): **T24a2a** done (2026-10-20, `adventure/e08-t24a2a`: survey §3–§4, levels at load and what follows the level; log); T24a2b cut (decision 53): **T24a2b1** done (2026-10-20, `adventure/e08-t24a2b1`: survey §5–§6, the wiki and the census; log); **T24a2b2** done (2026-10-20, `adventure/e08-t24a2b2`, decision 54: survey §7–§9, the batch's plan, the rule ids, the second reading; ADV-Q15; log). **T24a done**; its checkpoint is ADV-Q15.
 - **T24b The ADR amendment drafts, the design note and the cut.** After T24a's checkpoint (queue).
 
 ## Later increments (sketch)
