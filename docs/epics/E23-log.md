@@ -402,7 +402,7 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   rows W1, W2); the retreat conditions (never on Easy, half the time on Normal, the siege's four)
   go to T1a6. VCMI 1.7.5 plays every side with its own `BattleAI` (default for neutrals too), waits
   by evaluation, casts with every caster creature, and its adventure AI only retreats.
-- **The ADR draft** (`docs/lanes/battle/adr-drafts/original-battle-ai.md`): `h3-battle-ai` in the
+- **The ADR draft** (then `docs/lanes/battle/adr-drafts/original-battle-ai.md`, now ADR-0027): `h3-battle-ai` in the
   **application** layer (arch.toml: a domain crate may not depend on another; the callers are
   adapters); `choose(&BattleState, &BattleRuleset, BattleSide, &mut Rng) -> Command`, one command
   per call (the hero's cast and the stack's action two calls, the round's mark skipping the hero),
@@ -417,3 +417,6 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   strict-fixed off), registered with the first slip built. The survey's §4 lists the 17 slips
   with their fixes (a slip: a wrong record, argument, spell, side, mastery or test; tie orders,
   the library sort and the draws are no slips); the draft's point 9 says so.
+- **Accepted (the user, 2026-10-20, BAT-Q55):** the ADR draft as amended and the survey's batch
+  rows, "all accepted now": ADR-0027 (`docs/adr/0027-original-battle-ai.md`, `shared/` #332, merged
+  before this task's #331, which drops the draft). Next: T2's cut at this checkpoint.

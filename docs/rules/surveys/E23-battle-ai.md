@@ -2,8 +2,8 @@
 
 The survey behind E23's seam (T1b, 2026-10-20): what the original's computer does in a battle, as
 read; where the wiki and VCMI stand; the readings at risk with a planned batch row each; the
-original's slips in its own estimates; and the questions the ADR draft
-(`docs/lanes/battle/adr-drafts/original-battle-ai.md`) settles. The detail of every routine stays
+original's slips in its own estimates; and the questions ADR-0027
+(`docs/adr/0027-original-battle-ai.md`, accepted 2026-10-20) settles. The detail of every routine stays
 in its reading; this file points there.
 
 Sources: `code` (the executable, `docs/formats/installation.md` §7.34 to §7.46, E23 T1a1 to T1a5e;
@@ -164,7 +164,7 @@ each estimate as the rule it estimates:
 The ledger entry lists them; a slip found later joins the same flag. The tie orders, the library
 sort (§7.37) and the draws are the original's behaviour, not slips: no flag.
 
-## 5. For the ADR draft
+## 5. For the ADR (ADR-0027)
 
 The crate and its layer; the surface `h3-battle` gives it (one implementation of the computer's
 numbers the rules already use); the function, its stream and its fallback; the walker's path (a

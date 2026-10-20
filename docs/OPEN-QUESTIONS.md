@@ -78,29 +78,6 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 **Options:** (a) keep BAT-WAR-003 (the wiki, VCMI); (b) follow the reading (the most hit points lost; an idle machine defends); (c) (b) after a batch row confirms it. **Recommendation:** (c): one row with an automatic tent and two wounded stacks settles it. **Blocked:** nothing.
 
-#### BAT-Q55 — E23's seam: the policy crate, and the original's slips (E23 T1b; the user's review)
-
-**Context.** T1b wrote the survey (`docs/rules/surveys/E23-battle-ai.md`) and the ADR draft
-(`docs/lanes/battle/adr-drafts/original-battle-ai.md`); the epic stops here for the user's review
-(BAT-Q52). The draft's main points: `h3-battle-ai` as an **application-layer** logic crate (a
-domain crate may not depend on `h3-battle`); `choose(&BattleState, &BattleRuleset, BattleSide,
-&mut Rng) -> Command`, one command per call, validated with a Defend fallback that a property
-test keeps from firing; the whole state read, draws from the caller's stream; `h3-battle` exposes
-its computer's numbers (`aim.rs`, the pathfinder) as a public `computer` module, one
-implementation; a move carries a destination only (T1c's paths); rule ids `BAT-AI-nnn`; the cost
-budget set at T2's checkpoint from a gated benchmark (provisional 1 ms per decision); a
-`POLICY_VERSION`; the spells' AI values harvested into the battle pack before T3. **One call
-for the user:** the original's slips in its own estimates (the survey's §4: the walls test's
-wrong records, Magic Mirror's doubled chance, Paralyze reading Blind's record, …) decide only the
-computer's choices. **Options:** (a) port them as read, each named in its rule, no quirk flags;
-(b) quirk flags (fix-optional) per slip; (c) fix them. **Recommendation:** (a): they are the
-original's computer, and the ledger is for the game's rules. **The user (2026-10-20): one
-fix-optional flag for all the fixes related to the original AI** (BAT-QUIRK-25,
-`quirk.battle.original_ai_slips`; the draft's point 9 and the survey's §4 now say so; still open:
-the draft's acceptance). Also for review: the survey's
-batch rows (4a for the neutral side with T2 to T4, 4b for the hero's with T5 and T6). **Blocked:**
-T2 (the crate's registration and the shooters) waits for the review.
-
 ### Adventure lane (`ADV-Q<n>`)
 
 (no open questions)
@@ -135,6 +112,7 @@ Newest first in each block. A lane adds an answered question at the top of its o
 
 ### Battle lane (`BAT-Q<n>`)
 
+- *(2026-10-20, BAT-Q55, E23 T1b)* **E23's seam accepted: ADR-0027; the original AI's slips behind one flag.** T1b (the user: no split) wrote the survey (`docs/rules/surveys/E23-battle-ai.md`: the reading in one place, the wiki and VCMI compared, 18 planned batch rows in 4a and 4b, the original's slips) and the ADR draft: `h3-battle-ai` an application-layer logic crate; `choose(&BattleState, &BattleRuleset, BattleSide, &mut Rng) -> Command`, one command per call, validated with a Defend fallback; the whole state, the caller's stream; `h3-battle`'s public `computer` module as the one implementation of the computer's numbers; destinations only; `BAT-AI-nnn`; the cost budget set at T2; `POLICY_VERSION`; the spells' AI values into the battle pack before T3. Asked whether to port the original's slips in its own estimates as read without flags (recommended), as quirks, or fixed: **user: one fix-optional flag for all fixes related to the original AI** (BAT-QUIRK-25, `quirk.battle.original_ai_slips`: faithful the slips, strict-fixed each estimate as its rule; the survey's §4 lists 17). Then **"all accepted now"**: the draft as amended (ADR-0027, `shared/` #332) and the batch rows.
 - *(2026-10-20, BAT-Q54, E23 T1c)* **T1c whole; S-11 a fix-optional quirk.** At T1c's start the agent proposed cutting it: the walks' paths first (BAT-MOV-003), the berserk turn after it. **User: T1c as queued** (the walks and the berserk turn together). Asked S-11's class (the pathfinder ends a berserk walker's attack only next to its target's position hex, `installation.md` §7.41; BAT-Q53 had left the class to its batch row; the survey suggests fix-optional): **user: a fix-optional quirk**, BAT-QUIRK-24 (`quirk.battle.berserk_walks_to_position_hex`, registry position 26, `shared/e23-t1c-quirk`): faithful as the original, strict-fixed the walk ends next to either of the target's hexes, as HD does. Its consequences, asked and **agreed by the user**: the flag's `shared/` pull request merges first; the faithful ruleset hashes move, so the adventure lane's faithful replays are re-recorded (`cross-lane`).
 - *(2026-10-20, BAT-Q53, E23 T1a4a)* **Pathfinding exactly as the original's.** T1a4a read the battle pathfinder's search (`installation.md` §7.40): a uniform-cost search, first in first out at a tie, neighbours from top right clockwise; BAT-MOV-003 chooses among equally short paths from the end instead, and batch 3c's M2 and G4 walks follow the original's order, not the engine's. Q53 (2026-10-07) had kept the engine's own pathfinding for S-11 and the berserk path. **User: pathfinding must work exactly as in the original** (supersedes Q53's call for the paths; S-11's classification waits for its batch row). The cut: T1a4b (the pathfinder's head and callers) first, then the walks (BAT-MOV-003) and the berserk turn's positions and walk (BAT-MAG-025) aligned together.
 - *(2026-10-19, BAT-Q52, E23 refinement)* **E23: the neutral side first, a crate of its own, reading first, T1 in two parts.** After #277 the user chose E23's epic file as the battle lane's next small increment; the agent proposed its refinement with four questions. **User:** (1) after the reading, the policy is built first for a side without a hero (shots, melee attacks and moves, waits and defends, creature casts), the hero's parts after it (as recommended); (2) the policy lives in a battle-lane crate of its own, not in a module of `h3-battle` (the agent had recommended the module, which reuses `aim.rs`'s computer numbers without a shared change): `h3-battle` keeps those numbers and gives the crate a public surface for them, T1b's ADR draft names both; (3) the code reading is the main source, a batch row confirms only a reading at risk (the agent had recommended capturing the computer's decisions one by one in the original); (4) T1 in two parts, T1a the reading's map, T1b the survey and the ADR draft with the user's review (as recommended). Unchanged: increments with a checkpoint each (Q41's pattern). Recorded in `docs/epics/E23-original-battle-ai.md`.
