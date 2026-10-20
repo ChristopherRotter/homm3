@@ -43,8 +43,9 @@ alter (the user, 2026-10-20):
    `python3 capture/h3drive.py drawn` (about 3 minutes; no Wine, only the user's original files
    for the assets). The viewer draws every sequence and situation at the times `kept/` holds and
    compares each frame's digest with `kept/drawn.txt`; its timeline check (`h3-view sequences`)
-   runs with it. A frame whose digest is the same is the frame the last capture compared, so its
-   recorded count still holds.
+   runs with it. The digest is of the frame's pixels outside the fixed masks its comparison
+   applies (a sequence's panel, a situation's `mask`; E17 M3 T6a): a frame whose digest is the
+   same shows the comparison what the last capture compared, so its recorded count still holds.
 2. **Capture what changed:** `frames --only <id>` or `set --only <id>` for each one `drawn` lists
    as `CHANGED` or `new`, and for each sequence or situation whose entry the task adds or
    changes (scenario, actions, `ms`, `boxes`, masks: the kept times or the comparison change
@@ -52,12 +53,16 @@ alter (the user, 2026-10-20):
 3. **Then** `drawn --record`, and commit `kept/` and `drawn.txt` with the task (the captures
    refresh `kept/` themselves).
 4. **Everything** (`frames` and `set` without `--only`): at a milestone's closure, and after a
-   change to the harness (`capture/*.py`, `xdd.c`, `setup.sh`, `screens.toml`), which can change
-   the original's side.
+   change to the harness (`capture/*.py`, `xdd.c`, `setup.sh`, `screens.toml`) that can change
+   the original's side: how it is driven, captured or read. A change to `drawn` alone (how the
+   viewer's frames are digested) cannot: there the digests are recorded again from the last
+   captured state, `drawn --record` with the viewer that state was compared with (E17 M3 T6a: a
+   worktree of `master`), before the task's own change.
 
 `drawn` reporting every one the same (a change that reaches no reference frame) needs no Wine
-setup at all. Its digests are of the PNG files: a change of the viewer's PNG encoder shows every
-frame as changed; then `drawn --record` once, after `frames` and `set` passed.
+setup at all. Its digests are of the PNG files' pixels (`h3_render::png`'s unfiltered rows): a
+change of the viewer's PNG encoder's format shows every frame as changed; then `drawn --record`
+once, after `frames` and `set` passed.
 
 ## Common uses
 
