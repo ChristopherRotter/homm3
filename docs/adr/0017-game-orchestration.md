@@ -39,7 +39,13 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    write, built with the state from the setup's customisations or the hero type's and class's
    defaults (a default experience is a setup placeholder from the setup stream), spell points
    full, validated by `h3-heroes`; a setup the increment cannot represent fails the import
-   (`Unsupported`: an experience of level 2 or more, E08 decision 22). A hero that leaves the map
+   (`Unsupported`). From increment 4 the store keeps beside each hero's details its **level
+   seed** (1–255, drawn from the setup stream when the store is built, never changed), and the
+   game the scenario's **level limit** and **banned skills** (static, from the setup). A custom
+   experience is no longer refused: the build gives a placed hero its **levels at load**, after
+   its custom skills, army, spells and artifacts and before its spell points, from experience 0
+   with the limit, each two-offer level chosen by the original's choice (ADR-0013 point 12) with
+   the setup's defaults for the army. A hero that leaves the map
    keeps its details (the pool and the tavern are E09's). The contexts **read a hero's details
    by reference**: the game passes its store to the adventure's commands and queries (later the
    towns'), which read through `h3-heroes`' derivations (ADR-0013 point 2); what a command
@@ -90,11 +96,15 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    (ADR-0016 point 4) takes its two draws from the tile in `faithful` (`ADV-QUIRK-6`) and from
    the attacking player's stream in `strict-fixed`. Increment 3's setup placeholders: a random
    monster's creature and count, every monster's aggression, a hero's default experience.
+   **A level's draws** (increment 4) come from the original's source, the hero's level seed and
+   the new level, in `faithful` (`ADV-QUIRK-9`, fix-optional, E08 decision 55); in
+   `strict-fixed` from the owner's stream in play and from the setup stream at load. A level is
+   drawn when it is given or its decision opens, never earlier.
 5. **Seeds are server-only** (E08 decision 9). The master seed and the stream positions are
    authoritative state: in the state hash (which never reaches a client either), never in an
    observation or event, never seeded from client data; the observation-hygiene and
    ownership-isolation tests cover them. A replay holds the seed and is released only after
-   the game.
+   the game. The heroes' level seeds are server-only too; a level-up's offers are its owner's.
 6. **No blocking prompts: pending decisions.** What needs a player's answer (a level-up, an
    object's question, monsters offering to join, a battle) is a pending decision in the state,
    owned by the players it involves (a battle against another player's hero: both). Its owners
@@ -115,7 +125,13 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    While it is open its owners' only legal commands are `GameCommand::Battle(h3_battle::Command)`
    by the owner of the side to act (the system actor for an unowned side); neither owner can
    end its turn; it blocks no one else. The command that ends the battle applies its outcome
-   (point 11) and closes the decision.
+   (point 11) and closes the decision. **A level-up** (increment 4) with two offers is a pending
+   decision of the hero's owner, answered **`First`** or **`Second`** (the original's left and
+   right offer). A hero's pending levels are given in order, one at a time: a level with one offer
+   learns it and one with none gives the primary skill only, at once, with an event to the
+   owner; a level with two opens the decision, and its answer gives the level and draws the next.
+   The system actor's default answer to a level-up is the original's choice (ADR-0013 point 12)
+   with the hero's army, as the original's when the dialog's time runs out.
 7. **Simultaneous play is designed for, not built.** Built now: turn groups, streams per player,
    pending decisions. **Not decided** (deferred to the increment that builds it): the target
    that commands of the players of one group commute (any interleaving, the same state hash; a
@@ -144,13 +160,18 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    side to act or the **neutral seat** for an unowned side, which the caller plays with a policy
    of its choice. The observation adds the open battle as its owner's side sees it
    (`h3_battle::observe_as`); the adventure replay format v3 records each command's actor.
+   Increment 4's action encoding v4 appends two entries, the first and the second offer, legal
+   only while a level-up is the player's open decision (`Accept` and `Decline` only while an offer
+   is); the observation shows its owner the open level-up (the hero, the new level, the primary
+   skill gained, the two offers).
 9. **Versions owned by the adventure lane** (T2 adds the rows): the game state hash (`h3-game`),
    the adventure state and ruleset-part hashes (`h3-adventure`), the import version (`h3-map`),
    the adventure replay format and encodings (`h3-sim`'s sub-path, to the AI lane at E05).
    Increment 2 bumps the game state hash to v2 (treasuries, decisions), the action encoding to
    v2 and, if the answer command needs it, the adventure replay format (E08 T14). Increment 3:
    the game state hash v5, the adventure state hash v7, the adventure ruleset part v6, the map
-   import v4, the action encoding v3, the adventure replay format v3.
+   import v4, the action encoding v3, the adventure replay format v3. Increment 4: the game state
+   hash v9, the map import v8, the action encoding v4, the adventure replay format v5.
 10. **Gains and costs cross by outcome.** A context's `apply` returns an outcome: the resources
     its command gains for the actor and the offers it opens, each with its price. The context
     never sees a treasury. The game adds the gains after the context applied (gains cannot fail,
@@ -172,13 +193,15 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
     on the first write), routes its commands and maps its events to the owners of the sides
     they are visible to (an unowned side's to no player). When it ends the game applies the
     outcome at once and infallibly, in every context (the heroes' part as hero changes):
-    casualties (a monster's or guards' survivors stay with the object), experience as a number
-    for the winner's hero (no levels until increment 4), Necromancy, Eagle Eye's spells, spell
+    casualties (a monster's or guards' survivors stay with the object), experience for the
+    winner's hero, Necromancy, Eagle Eye's spells, spell
     points, destroyed war machines' artifacts, the loser's artifacts to the winner (the first
     fitting slot, else the backpack), a surrender's gold from the loser's owner to the
     winner's, a hero that lost, retreated or surrendered leaves the map, a beaten monster leaves
     it and its treasure's resources go to the winner's owner, a won guarded pile is picked up; a
-    monster that survives keeps every stack's survivors (A-6 fixed).
+    monster that survives keeps every stack's survivors (A-6 fixed). Then (increment 4) the
+    winner's owner gets its hero's level-ups (point 6), as the original gives a human player's
+    levels after the battle's screen.
 
 ## Consequences
 
@@ -198,6 +221,11 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
 - The simultaneous-play inventory (point 7) gains a monster two players can fight and a battle
   writing two players' heroes, armies and treasuries. Battles reach the wire through `h3-game`
   only when the server hosts whole games (ADR-0018).
+- Increment 4: faithful level-ups are predictable from the level seed, which stays server-only,
+  so an agent learns no more than a reloading player; `strict-fixed` hides them behind the
+  owner's stream. The observation's open decision becomes a choice of kinds (an offer or a
+  level-up). Level-ups write only their owner's hero: nothing for point 7's inventory. The
+  golden replays, fixtures and property plans answer the levels a battle gives.
 
 ## Alternatives considered
 
@@ -221,6 +249,11 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   versions; the phase keeps the battle lane's encoding as it is.
 - A separate adventure sim crate: a second env stack (batching, replay header) for the AI lane
   to merge at E05.
+- Increment 4 (ADV-Q16): `Accept` and `Decline` read as left and right (an answer whose meaning
+  depends on the decision's kind); the owner's stream at load in `strict-fixed` (the setup's
+  randomness is the setup stream's); all of a battle's levels drawn at once (the original draws
+  each after the previous answer, whose skill enters the next draw); the first offer as the
+  system actor's default (not the original's; a fallback if the army's path proves costly).
 
 ## Revision history
 
@@ -240,3 +273,10 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   `-6`) and its seed from the attacker's stream, chained offers and battles as pending
   decisions, the env's battle phase and neutral seat, battles through the game (drafted in E08
   T17b, #181; survey `E08-battles.md`).
+- 2026-10-20 (E08 T26a; the user at ADV-Q15 and ADV-Q16): points 1, 4, 5, 6, 8, 9 and 11 amended
+  for increment 4, hero progression: the level seed beside each hero and the scenario's limit
+  and banned skills, levels at load instead of the import's refusal, a level's draws by the
+  profile (`ADV-QUIRK-9`), the seeds server-only, a two-offer level-up as the owner's pending
+  decision answered `First` or `Second` one level at a time with the original's choice as the
+  system default, action encoding v4 and the observation's level-up, the versions, the battle's
+  winner levelling after the outcome. Drafted in E08 T24b2 (#321; survey `E08-progression.md`).

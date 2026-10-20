@@ -19,22 +19,30 @@ are computed before the seam (03-domain). The seam must change once for E04a and
    contexts meet through ids and explicit pure translations. A cross-context `HeroId` names a
    record of the game's **store of heroes** (ADR-0017 point 1): the contexts read a hero's details
    there by reference and change them by returning **hero changes** that the game applies through
-   `h3-heroes`. The army is not part of `HeroDetails`.
+   `h3-heroes`. The army is not part of `HeroDetails`. The details hold the level-up's two
+   counters (the levels at which Wisdom and a magic school were last offered; E08 increment 4);
+   their level is the levels given, at most the experience's level, the difference the hero's
+   pending level-ups. A hero's level seed is not part of them: it is the game's server-only state
+   (ADR-0017 point 1).
 2. **Crates.** `h3-heroes` is the **hero model**: a logic crate in the shared layer beneath the
    contexts (kernel, content, contracts only) with `HeroDetails`, its validation, the translations
    (`derive_battle_hero`, `war_machines`) and the typed hero changes (`HeroChange`: experience,
-   spell points, a spell, an artifact; increment 4 adds skills, primary skills and levels) with
-   their checks; no commands, no map, game or battle state. The adventure, the game and later the
+   spell points, a spell, an artifact; from E08 increment 4 a level-up: the level, its primary
+   skill, the learned skill, the counters) with their checks; no commands, no map, game or battle state. The adventure, the game and later the
    towns depend on it; `h3-battle` never does and sees only `BattleHero` (points 4 and 5). **What
    a hero has from its details in every context is derived here once** (BAT-Q19): its available
    spells (learned, worn scrolls, the spell-giving artifacts) and its mastery of a spell
    (`h3_heroes::available_spells`, `spell_masteries`), from E08 increment 3 the adventure's Attack
    and Defense, Diplomacy's join bonus, the maximum spell points, Necromancy and Learning, from
-   increment 4 movement and scouting; no context keeps its own copy, and no adventure profile
+   increment 4 progression (point 12), later movement and scouting (E08 decision 48); no context
+   keeps its own copy, and no adventure profile
    seam copies them (E08 decision 5 withdrawn).
 3. **Effects are data.** Artifacts, skill levels and specialties carry a closed `HeroEffect` enum in
    content (Tier 3, like `Ability`, ADR-0012); the translation resolves them into a closed
    `BattleEffect` enum in contracts. Percentages are **basis points** in content and seam.
+   Progression is data too (Tier 2, ADR-0006): the hero parameters hold the experience of levels
+   1 to 12, the highest level and the skills a level-up forces (Wisdom, the magic schools); a
+   hero class holds its primary chances, skill weights and two forcing intervals.
 4. **`BattleHero` is a hybrid:** typed fields for what the battle reads by name (primary skills,
    Tactics level, damage bonuses, war-machine control as derived numbers (the Catapult's: the
    Ballistics level, ADR-0023 point 6; the Ballista's also the Artillery level), surrender
@@ -66,7 +74,35 @@ are computed before the seam (03-domain). The seam must change once for E04a and
     Surrender) and the observation encoding (v4: a hero block per side, the opponent's without
     its private part); E04b designs a factorized one for casting together with E05.
 11. **Rule ids.** Battle rules keep `BAT-` (new areas `BAT-TAC`, `BAT-FLE`, `BAT-HER`); derivation
-    rules are `HER-` rules in `docs/rules/catalog/heroes.toml`.
+    rules are `HER-` rules in `docs/rules/catalog/heroes.toml`, progression's `HER-EXP-` and
+    `HER-LVL-` (E08 increment 4).
+12. **Progression is `h3-heroes`' rules** (E08 increment 4; pure functions of the details, the
+    ruleset and explicit inputs). No context writes a hero: an object or a building describes its
+    effect, a context reads the details through `h3-heroes` and returns typed hero changes, and
+    the game applies them and gives the levels that follow (point 1, ADR-0017 point 10); later
+    increments' experience, skill and primary-skill gains, the levels at load of prisons and
+    tavern heroes, and E10's computer players reuse the same functions.
+    1. **Experience to levels:** levels 1 to 12 from the table, each further step the previous
+       × 1.2 truncated (the original's); the experience is bounded at the highest level's range,
+       so **level 74 is the highest** (A-7, always fixed, as HotA's fix).
+    2. **The scenario's level limit** is an input: a gain caps the experience at the limit's
+       threshold and lowers experience above it (D-19); a limit of 0 or above the highest level
+       is none (A-8, always fixed).
+    3. **A level-up** is drawn one level at a time through a **draw source its caller gives**:
+       the primary skill from the class's chances (the second row from the level-up to level 10,
+       D-15), +1 saturating at `primary_max` (A-9, always fixed); two offers by the original's
+       procedure (an advance, then a new skill; Wisdom and a school forced after the class's
+       intervals; the class's weights, a known school weighing 1 when one is due, a banned skill
+       0, or 1 if known: D-17, D-18), the map's banned skills an input. The Elementalist's
+       intervals are the original's 6 and 4, the magic classes' 3 and 3 by a data quirk off in
+       `strict-fixed` (A-10, `ADV-QUIRK-10`).
+    4. **The original's source** is provided here: its C runtime generator reseeded per level
+       from the hero's seed and the new level. Which source a game uses is ADR-0017's (point 4).
+    5. **The answer** is the level-up's hero change; who answers is the game's (ADR-0017 point 6).
+    6. **The original's choice between two offers** (the computer's evaluation, 0x52BBD0 with
+       0x524690 and 0x524DD0) is ported as a rule here, read first: it chooses at load (D-20) and
+       for the system actor's default, and will for E10's computer players; what it needs beyond
+       the details (the army's worth, the setup's defaults) is an argument.
 
 ## Consequences
 
@@ -83,6 +119,10 @@ are computed before the seam (03-domain). The seam must change once for E04a and
   ADV-Q13; a `shared/` change of `lanes.toml`); until then the adventure's additions to it are
   `cross-lane`.
 - This revises the epic's non-goal "the orchestrator computes the surrender cost" (point 8).
+- Progression (point 12): faithful level-ups are a function of the seed, the level and the hero's
+  skills, as the original's; the data adds hero parameters, a class field and a class override
+  kind (the pack format, the core ruleset hash); the details' counters move the game state hash;
+  the evaluation's port needs a code reading first (E08 T25).
 
 ## Alternatives considered
 
@@ -100,6 +140,10 @@ are computed before the seam (03-domain). The seam must change once for E04a and
 - A `Place { stack, hex }` tactics command: about 3 500 extra actions for little gain.
 - The orchestrator pricing surrenders: the action mask could not tell whether surrender is
   affordable.
+- Progression (E08 ADV-Q16): the first offer at load (VCMI, the wiki; the code reading twice says
+  otherwise, D-20); VCMI's table to level 197 (diverges from SoD's levels, A-7); the intervals by a
+  might/magic affinity of the class (no other rule reads one); progression in `h3-game` (towns,
+  objects and computer players would each need the game).
 
 ## Revision history
 
@@ -136,3 +180,10 @@ are computed before the seam (03-domain). The seam must change once for E04a and
 - 2026-10-15 (E04c T10b; the user, BAT-Q50): point 9 — at a town the defender's option to retreat
   (the town's Escape Tunnel) is private to the defender: the original enables the retreat control
   for the acting side only (0x478573), and a town's buildings are no public fact (ADR-0023 point 2).
+- 2026-10-20 (E08 T26a; the user at ADV-Q15 and ADV-Q16): points 1, 2, 3 and 11 amended and point
+  12 added for E08 increment 4, hero progression: the details' counters and the level's meaning,
+  the level-up's hero change, progression's data, `HER-EXP-` and `HER-LVL-`, and progression as
+  `h3-heroes`' rules (experience to levels bounded at 74, the level limit as an input, a level-up
+  through a draw source its caller gives, the original's offers, the original's choice ported);
+  no context writes a hero (the user's note at ADV-Q16). Drafted in E08 T24b1 (#318; survey
+  `E08-progression.md`).
