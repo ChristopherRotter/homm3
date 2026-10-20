@@ -516,14 +516,68 @@ The full record of done tasks (the epic file keeps one line each).
   panic, the sampler's untested dimensions (encounters v2), the bots' fallback branches without
   a targeted test.
 
+## T9c — The user's machine and the verifies with original data (2026-10-20)
+
+- **The code:** `master` at b2d2e56 (#288 after #286, docs only: the same code, fingerprint
+  b4487432). The user's Ryzen 9 3900X (12 cores, 24 threads, 64 GB), Windows 10 Pro 19045,
+  rustc 1.97.0, release; QUEUE's commands as one script in the user's repo (`target\t9c\t9c.ps1`,
+  its logs read over the device link), the machine otherwise idle.
+- **The sweep** (`h3 ai bench --encounters default`, 1 048 576 steps per row, seed 1; thousands
+  of steps/s inside `BattleBatch::step` / with the head calls and the bench's random choice):
+
+  | N \ T | 1 | 6 | 12 | 24 |
+  |---|---|---|---|---|
+  | 64 | 53 / 49 | 177 / 127 | 203 / 121 | 199 / 95 |
+  | 256 | 50 / 46 | 228 / 162 | 335 / 194 | 375 / 177 |
+  | 1 024 | 50 / 47 | 233 / 172 | 387 / 240 | 497 / 264 |
+
+  One thread gives about 50 000 steps/s whatever N (T3c's sandbox indication on `full`: 46 000 to
+  49 000). Inside the step 12 threads give 3.8 to 7.7 × and 24 (SMT) 3.7 to 9.9 ×, more the
+  larger the batch: at N = 64 a call (64 steps, 0.3 ms at 12 threads) is too short for more than
+  12 workers. The bench's choice (a scan of every mask in the caller's thread) is serial and caps
+  the second figure, which falls beyond 12 threads at N = 64 and 256: a learner's policy
+  replaces it.
+- **Rust against Python** (N = 256, T = 12, 4 096 calls, twice in turn): Rust 336 964 and 333 152
+  / 194 542 and 193 298; Python 314 319 and 327 436 / 158 107 and 163 212 (3 771 episodes against
+  Rust's 3 773: the choices differ). Inside the step Python is 2 to 7 % behind Rust, with its
+  numpy choice 16 to 19 %.
+- **The Windows verify** (`cargo xtask verify --with-original-data --summary`, 6 min 40 s): every
+  step passed (coverage 288 s, determinism 72 s); `ffi-smoke` and `bench-check` N/A on Windows;
+  the original-data step's harvest check passed (the committed packs match the installation), its
+  executable-map check skipped (`exe.py` needs Python 3.11: the script ran outside the conda env,
+  `CONDA_PREFIX` unset, so `uv` used `python/.venv` as it stands and the system Python ran the
+  check).
+- **The Linux verify** (the cloud sandbox, 2 vCPUs; the user's executable, `H3bitmap.lod`,
+  `H3ab_bmp.lod`, `Objects.txt`, `maps.tar` and `extracted.tar` staged from the device link):
+  LINUX_VERIFY_RESULT
+- Exit criteria 8 (the sweep recorded; the single-env gates in the Linux run's `bench-check`) and
+  9 met.
+
+## T9d — The closure (2026-10-20)
+
+- **Shared first** (`shared/e05-closure`): BACKLOG (E05 done), ADR-0025's working-detail line,
+  `docs/07-simulation-and-ai.md` §1.1 (the environment as built: the batch, seats, episode
+  sources, reward v1, the information boundary, Python, the smoke training, the baselines, the
+  throughput) and its baselines and deferred items, the global HANDOFF's verify line (the
+  script's LLVM variables, the lane's note since T8b). Docs only: the light gates.
+- **The design note at closure** (below): every section had stayed after its task built it, as
+  the record of the build's decisions, and the code and the Python package cited it by section.
+  Its text is kept below with its numbering, the note deleted, and the references (26 in
+  `h3-sim`, `h3-ffi`, `h3-cli`'s `src/ai/`, the two data files' headers, `python/`, the epic
+  file and OPEN-QUESTIONS) repointed to `E05-log.md` §n; comments only, so the branch's code
+  fingerprint changed and its full verify ran again (LANE_VERIFY_RESULT). E23's epic file (the
+  battle lane's) cites the note too: the battle queue's inbox says where to.
+- **Exit criteria:** 1 to 7 (T9a, after T9b's fixes) and 8 and 9 (T9c) met.
+- **What later epics inherit:** the AI queue's inbox by destination (E06, encounters v2, E23,
+  E13), AI-Q7 (E06), the neutral kinds weighed 0 until E23 (A12).
+
 ## The design note at closure
 
-`docs/epics/E05-design.md` was deleted when E05 closed (T9d, the ADR index's rule). Its sections
-had stayed after their tasks built them, as the record of the build's decisions; its text at the
-closure follows, its numbering kept: "`E05-log.md` §n" in the code and the Python package, and
-"design §n" in earlier entries of this log and in OPEN-QUESTIONS, point here. The lasting parts
-are in `docs/07-simulation-and-ai.md` §1.1 (the environment as built); the decisions are
-ADR-0025's.
+`docs/epics/E05-design.md` was deleted when E05 closed (T9d, the ADR index's rule). Its sections had
+stayed after their tasks built them, as the record of the build's decisions; its text at the closure
+follows, its numbering kept: "`E05-log.md` §n" in the code and the Python package, and "design §n"
+in the epic file, earlier entries of this log and OPEN-QUESTIONS, point here. The lasting parts are
+in `docs/07-simulation-and-ai.md` §1.1 (the environment as built); the decisions are ADR-0025's.
 
 ### 1. The batch API (a) — built (T3b, T3c, T3d)
 

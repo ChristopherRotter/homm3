@@ -1,6 +1,6 @@
 # E05 — Battle environment v1
 
-Status: **in progress** 2026-10-18 (AI-Q1; increment 1 done: T1, ADR-0025 accepted; T2; increment 2 done: T3 and T4; increment 3 done: T5 and T6; increment 4 done: T8, exit criterion 7 met; increment 5 done: T7, exit criterion 6 met; increment 6, T9, in progress: T9a and T9b done) · Lane: **ai**
+Status: **closed** 2026-10-20 (refined 2026-10-18, AI-Q1; T1–T9 done in 6 increments, each with a user checkpoint; verified on Linux and Windows incl. `--with-original-data`; the smoke run 0.800 against Random after 40 minutes on the user's GTX 1070; the batched benchmarks on the user's Ryzen 9 3900X) · Lane: **ai**
 (opened with this epic) · Follows E04c (closed 2026-10-16) · Followed by E23 (the original's battle
 AI, the system actor) and E06 (training and proficiency)
 
@@ -180,11 +180,13 @@ criteria 8 and 9), in four parts; AI-Q7 moves to E06 (the user).
   recorded (reward v1's war machines as the battle placed them, the trusted tooling marked in
   `h3.h`, the binding's arrays guarded, the evaluation's skipped episodes, one Glicko-2 period
   per run), 2026-10-20. Record in `E05-log.md`.
-- [ ] **T9c The user's machine** — `h3 ai bench` over threads and batch sizes (design §7, moved
-  from T3c; criterion 8), the Python binding's steps/s; `cargo xtask verify --with-original-data`
-  on Windows, and on Linux in a sandbox with the user's files staged (criterion 9).
-- [ ] **T9d The closure** — the `shared/` pull request (BACKLOG, ADR-0025's working-detail line),
-  the design note's lasting parts into `docs/07-simulation-and-ai.md`, the epic closed.
+- [x] **T9c The user's machine** — the sweep (about 50 000 steps/s on one thread, 497 000 on 24
+  at 1 024 envs inside the step), Python within 2 to 7 % of Rust; the verifies with original
+  data on Windows and in a sandbox with the user's files staged, `master` at b2d2e56: criteria 8
+  and 9 met, 2026-10-20. Record in `E05-log.md`.
+- [x] **T9d The closure** — `shared/e05-closure` (BACKLOG, ADR-0025's working-detail line,
+  `docs/07-simulation-and-ai.md` §1.1 the environment as built); the design note kept in
+  `E05-log.md` (§1 to §9) and deleted; the epic closed, 2026-10-20. Record in `E05-log.md`.
 
 ## Exit criteria
 
