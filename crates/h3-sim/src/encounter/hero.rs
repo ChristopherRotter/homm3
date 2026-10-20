@@ -1,7 +1,8 @@
 //! A7: a sampled hero. Its level-ups, spells and artifacts are the distribution's approximation
-//! of a human main hero (design §4.4), not the game's rules (`h3-heroes` has no level-up rule);
-//! its battle values are the hero model's (`h3_heroes::derive_battle_hero`, `max_mana`,
-//! `war_machines`), as the game derives them (GAM-BAT-001).
+//! of a human main hero (design §4.4), not the game's rules (`h3_heroes::draw_level_up`, E08 T27);
+//! its experience is its level's (HER-EXP-002, E08 T27); its battle values are the hero model's
+//! (`h3_heroes::derive_battle_hero`, `max_mana`, `war_machines`), as the game derives them
+//! (GAM-BAT-001).
 
 use h3_content::{
     ArtifactClass, ArtifactTypeId, CreatureTypeId, HeroEffect, MAX_HERO_SKILLS, MAX_SKILL_LEVEL,
@@ -9,8 +10,8 @@ use h3_content::{
 };
 use h3_contracts::BattleHero;
 use h3_heroes::{
-    ArtifactInstance, HeroChange, HeroDetails, apply_change, derive_battle_hero, learn_level,
-    max_mana, war_machines,
+    ArtifactInstance, HeroChange, HeroDetails, apply_change, derive_battle_hero, experience_for,
+    learn_level, max_mana, war_machines,
 };
 use h3_kernel::Rng;
 
@@ -137,7 +138,10 @@ impl HeroData {
         let mut details = HeroDetails {
             hero_type,
             level,
-            experience: 0,
+            experience: core
+                .hero_params()
+                .map_or(0, |params| experience_for(params, level)),
+            offered: Default::default(),
             primary,
             skills,
             worn: Vec::new(),

@@ -11,6 +11,7 @@ use h3_content::{
 };
 
 use crate::error::DetailsError;
+use crate::level::{experience_bound, level_of};
 
 /// The four primary skills, in the order of every `[u8; 4]` of primary skills.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -75,6 +76,17 @@ impl From<ArtifactTypeId> for ArtifactInstance {
     }
 }
 
+/// The levels at which a level-up last offered Wisdom and a magic school (E08 T27, HER-LVL-004:
+/// the original's +0x90 and +0x3F): the next is due once the hero's level reaches one of them
+/// plus its class's interval. 0 at the start; at most the hero's level.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct OfferLevels {
+    /// The level at which Wisdom was last offered.
+    pub wisdom: u8,
+    /// The level at which a magic school was last offered.
+    pub school: u8,
+}
+
 /// The lasting details of a hero (ADR-0013 point 1): what the hero is between battles, apart
 /// from its army. Values are *base* values; what artifacts and the specialty add is derived
 /// ([`crate::derive_battle_hero`]).
@@ -86,11 +98,14 @@ impl From<ArtifactTypeId> for ArtifactInstance {
 pub struct HeroDetails {
     /// The hero type: class, specialty and identity.
     pub hero_type: HeroTypeId,
-    /// Level (at least 1).
+    /// Level (at least 1): the levels given so far, at most the level of the experience
+    /// ([`crate::level_of`]). Fewer are the hero's pending level-ups ([`crate::pending_levels`],
+    /// E08 T27), which the game gives one at a time.
     pub level: u8,
-    /// Experience points. Not checked against the level: the experience table arrives with
-    /// hero progression (E08–E10).
+    /// Experience points, at most the ruleset's bound ([`crate::experience_bound`], HER-EXP-002).
     pub experience: u32,
+    /// The levels at which Wisdom and a school were last offered (E08 T27, HER-LVL-004).
+    pub offered: OfferLevels,
     /// Base primary skills ([`PrimarySkill`] order), without artifacts; at most the ruleset's
     /// `primary_max`. A value below the ruleset's minimum is allowed and counts as the minimum
     /// (a map may set Knowledge 0).
@@ -130,6 +145,17 @@ pub(crate) fn check<'r>(
         .ok_or(DetailsError::UnknownHeroType)?;
     if details.level == 0 {
         return Err(DetailsError::LevelZero);
+    }
+    // rule: HER-EXP-002
+    if details.experience > experience_bound(params) {
+        return Err(DetailsError::ExperienceAboveBound);
+    }
+    if details.level > level_of(params, details.experience) {
+        return Err(DetailsError::LevelAboveExperience);
+    }
+    // rule: HER-LVL-004
+    if details.offered.wisdom.max(details.offered.school) > details.level {
+        return Err(DetailsError::OfferedAboveLevel);
     }
     if let Some(skill) = PrimarySkill::ALL
         .into_iter()

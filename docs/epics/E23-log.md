@@ -421,3 +421,52 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   rows, "all accepted now": ADR-0027 (`docs/adr/0027-original-battle-ai.md`, `shared/` #332, merged
   before this task's #331, which drops the draft). T2's cut (the user): whole, as the epic says; the
   session proposed three parts and the wall shot in T6. Not started in this session.
+
+## T2a — the crate and the plain shooters (2026-10-20, increment 3)
+
+- **The cut** (the user, 2026-10-20): T2 in two, T2a now and T2b's shape at its checkpoint. The
+  session proposed it because T2 whole is two pull requests, a new crate, its property tests and
+  three kinds of shot, and because BAT-QUIRK-25's flag cannot take the registry's next position:
+  the adventure lane's then unmerged `shared/e08-t26b` (#335, merged since) takes 27 and 28
+  (ADV-QUIRK-9, ADV-QUIRK-10), so the flag takes 29. The plain shooters need no flag.
+- **The registration** (`shared/e23-t2a-crate`, #334, `cross-lane`, merged): the workspace
+  member, `[crate.h3-battle-ai]` (application, logic; test rulesets in code), `h3-pack-battle`'s
+  dev-dependency on it, `crates/h3-battle-ai/` the battle lane's; the skeleton crate with it (the
+  workspace needs the member; #45's precedent). CI could not start (the account's billing): the
+  full local verify of the battle branch stands in.
+- **`h3-battle`'s `computer` module** (ADR-0027 point 6): `shoots` (BAT-RNG-001's test, the
+  original's 0x4428F0) and `shot_target` (`aim::ballista_target`, the automatic Ballista's
+  0x41F060 and 0x41EB80); `Stack::is_catapult` public. Nothing else yet: what the policy needs is
+  added when a task builds it.
+- **`h3-battle-ai`**: `choose` = `unchecked` validated, Defend when refused (ADR-0027 point 3);
+  `unchecked` follows 0x4221F0: the side not to act or a battle over: Defend; the tactics phase:
+  EndTactics (stand-in, BAT-STUB-5); a stack that can shoot now: the shooter (`shooter.rs`: the
+  target's front hex; no target: Defend); the commanded Catapult: the first wall shot the engine
+  lists (BAT-STUB-5); any other stack (a walker, the commanded First Aid Tent): Defend (BAT-STUB-4).
+  The area shooters and the Cyclops shoot as the others (BAT-STUB-6, T2b). The stream is not drawn
+  from yet (`_rng`; the walker's draw, T3). `POLICY_VERSION` = 1. Rules BAT-AI-001 (the dispatch)
+  and BAT-AI-002 (the shooter).
+- **The shooter's test, not "the Ballista always"**: the original sends the Ballista to its
+  shooter whether or not it can shoot; there it always can (unlimited shots, Q-0004). The policy
+  asks the rule's test, so a Ballista out of shots (strict-fixed) is no shooter and defends, never
+  an illegal shot.
+- **Tests**: on a ruleset in code (`src/tests.rs`: the shot at the computer's target and front
+  hex, the better value, a walker and a blocked shooter defend, the commanded Ballista shoots and
+  the commanded tent defends once it has a patient, the tactics phase, the other side and a
+  finished battle, the fallback; a property of 48 random battles with heroes, every difficulty,
+  `human` both ways: every choice accepted, the same for the same stream, the same stream left);
+  on the harvested packs (`h3-pack-battle/tests/harvested_computer.rs`: 48 battles per profile,
+  half at towns of every faction and fort level, a quarter on special battlefields, random heroes
+  with Tactics, Artillery, First Aid, Ballistics and spells; 7 steps in 10 play the choice, the
+  others a cast or a legal command; reached: 1 734 shots, 42 wall shots, 59 tactics ends, 64
+  battles over).
+- **Cost** (ADR-0027 point 11, the ceiling 1 ms until T2b's gated benchmark; a throwaway release
+  test, not committed): 200 battles of the harvested SoD creatures without heroes, every
+  difficulty, half the steps the policy's: 34 532 decisions, 5.9 µs on average (most are the
+  walkers' Defend stand-in), 4 185 shots 49 µs on average (the threat records' searches), the
+  slowest 0.36 ms. A second run showed two decisions above 1 ms (2.2 ms) that took under 0.4 ms in
+  the first: the sandbox's scheduling. The walker (T3) will cost more; T2b's benchmark counts
+  instructions.
+- **Master's `deny` gate** failed on a new advisory (RUSTSEC-2026-0382, `rustls-webpki` 0.103.15,
+  through `h3-server`'s `rustls`); the adventure lane's #335 bumped the lockfile to 0.103.16 (the
+  advisory's fix) before this pull request, which was rebased onto it.

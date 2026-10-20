@@ -4,8 +4,10 @@
 //! the pure translations to what a battle needs, and the typed changes the game applies to its
 //! store of heroes (E08 T19a2a: a battle's outcome; T19a2b: a hero's Necromancy, the spell level
 //! it may learn and the Eagle Eye picks it learns), and what the adventure map reads of a hero
-//! (E08 T20a1: its Attack and Defense, its join bonus). No commands and no map or battle state:
-//! equipping, learning and levelling up arrive with the adventure and game epics (E08–E10); the
+//! (E08 T20a1: its Attack and Defense, its join bonus), and since E08 T27 its progression: the
+//! levels of its experience, the scenario's level limit, a level-up's draws and the answer as a
+//! change (ADR-0013 point 12). No commands and no map or battle state: who levels a hero up, when,
+//! and equipping and learning arrive with the adventure and game epics (E08–E10); the
 //! battle never depends on this crate and reads only the battle hero of the seam
 //! (`h3_contracts::BattleHero`).
 //!
@@ -33,17 +35,26 @@ mod change;
 mod derive;
 mod details;
 mod error;
+mod level;
+mod level_up;
 mod spells;
 
 pub use change::{
-    ArtifactPlace, HeroChange, apply_change, check_change, lost_war_machine, next_capture,
+    ArtifactPlace, HeroChange, apply_change, apply_change_limited, check_change, lost_war_machine,
+    next_capture,
 };
 pub use derive::{
     MANA_PER_KNOWLEDGE, MAX_JOIN_BONUS, Necromancy, attack_defense, derive_battle_hero,
     gained_experience, join_bonus, max_mana, necromancy,
 };
-pub use details::{ArtifactInstance, HeroDetails, PrimarySkill, validate, war_machines};
+pub use details::{
+    ArtifactInstance, HeroDetails, OfferLevels, PrimarySkill, validate, war_machines,
+};
 pub use error::{ChangeError, DetailsError};
+pub use level::{
+    experience_bound, experience_cap, experience_for, gained_under_limit, level_of, pending_levels,
+};
+pub use level_up::{Choice, Draws, LevelUp, Offers, OriginalDraws, draw_level_up};
 pub use spells::{available_spells, learn_level, learns_spell, spell_masteries};
 
 #[cfg(test)]

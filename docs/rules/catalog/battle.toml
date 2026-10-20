@@ -4908,3 +4908,46 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/BattleInfo.cpp"
   retrieved  = "2026-10-15"
   confidence = "medium"
+
+[[rule]]
+id       = "BAT-AI-001"
+title    = "The original's battle AI: the computer's command for the side to act"
+context  = "battle"
+status   = "implemented"
+summary  = "The policy of a battle side the original's computer plays (ADR-0027; h3_battle_ai::choose): one command per call for the side to act, the active stack's controller (BAT-MAG-026), whatever BattleSetup.human says; the whole state, never an observation; draws from the caller's stream, never the battle's; the same state and stream give the same command (ADR-0027 points 2 to 5). Each activation the original first asks the hero's cast (0x422DA0) and then the stack's action (0x477EE0): the retreat test for a side with a hero (a computer side retreats, never surrenders), then the stack's turn (0x4221F0): a stack that can shoot now (BAT-RNG-001's test, the original's 0x4428F0; the Ballista always can in the original, under Q-0004) shoots (BAT-AI-002); any other is a walker (0x421F80). The engine checks the choice (h3_battle::validate): a choice it refuses becomes Defend (none is known; the property tests on the test ruleset and on the harvested packs, sieges and special battlefields included, assert the engine accepts every choice). Scope (E23 T2a): the walker defends, the original's default action (BAT-STUB-4, E23 T3: the walker's choice, its Wait on Hard and above); the hero's side casts nothing and has no retreat test, the tactics phase ends at once, a commanded Catapult shoots the first wall the engine lists, a commanded First Aid Tent defends (BAT-STUB-5, T5 and T6). For a side not to act, or a battle that is over, the command is Defend, which the engine refuses."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.34; E23 T1a1): the battle loop 0x4744C0 → the hero's cast 0x422DA0 at each activation, then the stack's action 0x477EE0 (the retreat test 0x41E570; the surrender branch is a human's only, 0x47815A) → the stack's turn 0x4221F0 (default Defend; a stack that can shoot now, 0x4428F0, or the Ballista, creature 146, to the shooter 0x41F060 outside the tactics phase; any other to the walker 0x421F80, which Waits on Hard and above when nothing acted)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Combat - Heroes 3 wiki (retreating and surrendering): 'Same applies for enemy AI heroes, which however never surrender'; Difficulty level: on Easy the AI does not wait and uses no creature tactics (read 2026-10-20 through the summarising fetch; survey docs/rules/surveys/E23-battle-ai.md §2)"
+  url        = "https://heroes.thelazy.net/index.php/Combat"
+  retrieved  = "2026-10-20"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0027 (accepted, BAT-Q55): the crate h3-battle-ai, the function, always legal and always the same, the caller's stream, the computer's numbers through h3-battle's public computer module, POLICY_VERSION; VCMI 1.7.5's BattleAI is its own design and no source of the original's choices (survey §2)"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-AI-002"
+title    = "The original's battle AI: the computer's shooter"
+context  = "battle"
+status   = "implemented"
+summary  = "A computer stack that can shoot now (BAT-AI-001) shoots the stack the original's computer picks for a shooter (0x41F060, 0x41EB80), the automatic Ballista's choice (BAT-WAR-008, built there and shared through h3_battle::computer::shot_target): among the living stacks of the side its controller fights but the turrets, a stack that keeps its turns before one that loses them, then the best computer's shot value, ties to the later stack, with the desperate mode's rerun; the shot is aimed at the target's front hex (the original aims at its position; a single target is hit whichever of its hexes is aimed at). Without a target it defends (action 3). Its numbers are the original's x87 arithmetic in every profile (ADR-0027 point 6). Scope (E23 T2a): the Magogs', Liches' and Power Liches' value at a hex with their own side's losses subtracted (0x41EDA0) and the Cyclops's wall shot (0x41EEA0) are not built: they shoot as the others (BAT-STUB-6, E23 T2b)."
+numeric  = "float"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.33, §7.35; E04c T7e, E23 T1a2): 0x4221F0 → 0x41F060 (the context 0x435EC0, the threat records 0x422B20, the target 0x41EB80, the wall shot 0x41EEA0 for flag 0x20, the desperate rerun; no target: action 3) → 0x41EB80 (the area value 0x41EDA0 for the Magogs, Liches and Power Liches; 0x435CB0 for the others)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04c-batch-3h.md (agent run under Wine, 2026-10-15): the automatic Ballista's targets in six encounters as the reading of 0x41F060 and 0x41EB80 (BAT-WAR-008), the routine every computer shooter takes"
+  confidence = "high"

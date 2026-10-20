@@ -31,6 +31,7 @@ fn details(r: &BattleRuleset, hero: &str, primary: [u8; 4], spells: &[&str]) -> 
         hero_type: r.hero_type_by_key(hero).unwrap(),
         level: 1,
         experience: 0,
+        offered: Default::default(),
         primary,
         skills: vec![],
         worn: spells

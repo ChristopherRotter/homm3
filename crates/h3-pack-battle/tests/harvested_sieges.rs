@@ -25,15 +25,18 @@ fn pick(rng: &mut Rng, n: usize) -> usize {
     rng.below(u32::try_from(n).unwrap()) as usize
 }
 
-/// Valid details of a casting hero: a random hero type, level 1 to 255, primary skills 0 to 99,
+/// Valid details of a casting hero: a random hero type, level 1 to 74 with its experience (HER-EXP-002), primary skills 0 to 99,
 /// Ballistics and Artillery at random levels (none to Expert) and up to six other skills, worn
 /// artifacts drawn at random (each kept if the details stay valid), a Spell Book, half the
 /// spells and mana.
 fn details(r: &BattleRuleset, rng: &mut Rng) -> HeroDetails {
+    let hero_type = HeroTypeId::from_index(pick(rng, r.hero_types().len())).unwrap();
+    let level = u8::try_from(1 + rng.below(74)).unwrap();
     let mut d = HeroDetails {
-        hero_type: HeroTypeId::from_index(pick(rng, r.hero_types().len())).unwrap(),
-        level: u8::try_from(1 + rng.below(255)).unwrap(),
-        experience: 0,
+        hero_type,
+        level,
+        experience: h3_heroes::experience_for(r.hero_params().unwrap(), level),
+        offered: Default::default(),
         primary: [0; 4].map(|_| u8::try_from(rng.below(100)).unwrap()),
         skills: vec![],
         worn: vec![],
