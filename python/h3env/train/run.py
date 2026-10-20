@@ -1,6 +1,7 @@
-"""A training run's lifecycle, free of torch (E06 T2a; ADR-0026, `docs/epics/E06-design.md` §1,
-§2, §4, §5.3): the config and its TOML file, the schedule in samples, atomic writes, the held-out
-check, the run's directory with its typed metrics and its record.
+"""A training run's lifecycle, free of torch (E06 T2a, T2b1; ADR-0026, `docs/epics/E06-design.md`
+§1 to §5.3): the config and its TOML file, the schedule in samples, atomic writes, the held-out
+check, the run's directory with its typed metrics and its record, and what a resume needs from
+them (the changes it allows, the segments' batch seeds, the metrics cut back to the save, Ctrl+C).
 
 A config file states only what differs from the defaults here; its tables group the keys (each
 key belongs to one table, named in `Config`'s field metadata):
@@ -21,8 +22,10 @@ import dataclasses
 import json
 import os
 import platform
+import signal
 import subprocess
 import sys
+import threading
 import time
 import tomllib
 from collections.abc import Callable, Iterable
@@ -30,8 +33,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import IO, Any
 
-#: The version of `record.json`'s layout (`check_record`).
-RECORD_SCHEMA = 1
+#: The version of `record.json`'s layout (`check_record`); 2: its segments (T2b1).
+RECORD_SCHEMA = 2
 
 
 def _in(table: str) -> dict:
@@ -91,6 +94,9 @@ class Config:
     eval_greedy: bool = field(default=True, metadata=_in("evaluation"))
     #: Evaluate the untrained network and Random itself on the same episodes first.
     eval_start: bool = field(default=True, metadata=_in("evaluation"))
+    #: Minutes of wall time between checkpoints, taken at the next update boundary (0: at every
+    #: one); also after each evaluation, at a stop and at the end (design §3.2).
+    checkpoint_minutes: float = field(default=5.0, metadata=_in("checkpoint"))
     device: str = field(default="auto", metadata=_in("device"))
     torch_threads: int = field(default=0, metadata=_in("device"))
 
@@ -101,6 +107,16 @@ for _f in dataclasses.fields(Config):
     _t = _f.metadata.get("table", "")
     TABLES[_t] = (*TABLES.get(_t, ()), _f.name)
 _FIELDS = {f.name: f for f in dataclasses.fields(Config)}
+
+#: The keys a resume may change (design §1.3): the budget, the machine's share, the checkpoints'
+#: cadence. Every other key changes the training: that is a new run.
+RESUMABLE = ("samples", "threads", "device", "torch_threads", "checkpoint_minutes")
+
+
+def key_path(key: str) -> str:
+    """`table.key` as a config file and `--set` name it (`key` at the top level)."""
+    table = _FIELDS[key].metadata.get("table", "")
+    return f"{table}.{key}" if table else key
 
 
 class ConfigError(ValueError):
@@ -169,12 +185,40 @@ def load_config(text: str = "", sets: Iterable[str] = ()) -> Config:
         else:
             _assign(values, "", key, value)
     for item in sets:
-        path, sep, raw = item.partition("=")
-        if not sep:
-            raise ConfigError(f"--set takes table.key=value, not {item!r}")
-        table, _, key = path.strip().rpartition(".")
-        _assign(values, table, key, _parse_value(raw.strip()))
+        _set(values, item)
     return resolve(Config(**values))
+
+
+def _set(values: dict[str, Any], item: str) -> None:
+    path, sep, raw = item.partition("=")
+    if not sep:
+        raise ConfigError(f"--set takes table.key=value, not {item!r}")
+    table, _, key = path.strip().rpartition(".")
+    _assign(values, table, key, _parse_value(raw.strip()))
+
+
+def resumed(saved: Config, sets: Iterable[str] = ()) -> tuple[Config, dict[str, list[Any]]]:
+    """The config a resume continues with (design §1.3): the checkpoint's with each `--set`
+    applied, and what changed (`{key: [old, new]}`, for the segment's record). A change outside
+    `RESUMABLE` is refused with its keys named. The learning rate's horizon stays the one fixed
+    at the run's start, whatever the budget becomes."""
+    values = dataclasses.asdict(saved)
+    for item in sets:
+        _set(values, item)
+    config = resolve(Config(**values))
+    changed = {
+        k: [getattr(saved, k), getattr(config, k)]
+        for k in _FIELDS
+        if getattr(saved, k) != getattr(config, k)
+    }
+    refused = [key_path(k) for k in changed if k not in RESUMABLE]
+    if refused:
+        allowed = ", ".join(key_path(k) for k in RESUMABLE)
+        raise ConfigError(
+            f"a resume changes only {allowed}; {', '.join(refused)} would change the training: "
+            "start a new run"
+        )
+    return config, changed
 
 
 def resolve(config: Config) -> Config:
@@ -189,6 +233,8 @@ def resolve(config: Config) -> Config:
     for key in ("threads", "pool_every", "eval_every", "torch_threads"):
         if getattr(c, key) < 0:
             problems.append(f"`{key}` must not be negative")
+    if c.checkpoint_minutes < 0:
+        problems.append("`checkpoint_minutes` must not be negative")
     if c.lr_schedule not in ("linear", "constant"):
         problems.append("`lr_schedule` is linear or constant")
     if not 0.0 <= c.lr_floor <= 1.0 or not 0.0 <= c.pool_share <= 1.0:
@@ -233,6 +279,62 @@ class Cadence:
             return False
         self.next = (samples // self.every + 1) * self.every
         return True
+
+
+_MASK64 = (1 << 64) - 1
+_GOLDEN = 0x9E3779B97F4A7C15
+
+
+def splitmix64(state: int) -> int:
+    """SplitMix64's next output from `state` (Steele, Lea and Flood 2014; the generator's state
+    advances by the golden gamma before the mix)."""
+    z = (state + _GOLDEN) & _MASK64
+    z = ((z ^ (z >> 30)) * 0xBF58476D1CE4E5B9) & _MASK64
+    z = ((z ^ (z >> 27)) * 0x94D049BB133111EB) & _MASK64
+    return z ^ (z >> 31)
+
+
+def segment_seed(seed: int, segment: int) -> int:
+    """Segment `segment`'s batch seed (design §3.3): the run's `seed` for the first, else the
+    `segment`-th output of SplitMix64 seeded with `seed`, so a resumed run plays episodes it has
+    not trained on. Every episode's seed is still checked against the held-out set's."""
+    if segment == 0:
+        return seed
+    return splitmix64((seed + (segment - 1) * _GOLDEN) & _MASK64)
+
+
+class Stop:
+    """A requested stop (design §3.2): while installed (`with stop:`, in the main thread), the
+    first SIGINT (Ctrl+C; Windows delivers it to Python too) sets `requested`, which the run reads
+    at each batch call of a rollout and at each update boundary; the second raises
+    `KeyboardInterrupt` at once (losing what the first would have saved)."""
+
+    def __init__(self) -> None:
+        self.requested = False
+        self._previous: Any = None
+        self._installed = False
+
+    def request(self) -> None:
+        self.requested = True
+
+    def _handle(self, signum: int, frame: Any) -> None:
+        if self.requested:
+            raise KeyboardInterrupt
+        self.requested = True
+
+    def __enter__(self) -> Stop:
+        if threading.current_thread() is threading.main_thread():
+            self._previous = signal.signal(signal.SIGINT, self._handle)
+            self._installed = True
+        return self
+
+    def __exit__(self, *exc: Any) -> None:
+        if self._installed:
+            previous = self._previous
+            signal.signal(
+                signal.SIGINT, signal.default_int_handler if previous is None else previous
+            )
+            self._installed = False
 
 
 def atomic_write(path: Path, write: Callable[[IO[bytes]], None]) -> None:
@@ -340,9 +442,28 @@ def _rates(result: dict) -> dict[str, Any]:
     }
 
 
+def _segment(record: dict[str, Any]) -> dict[str, Any]:
+    """A segment's entry in the record, opened by its `start` or `segment` record."""
+    identity = record.get("identity", {})
+    at = {"samples": record["samples"], "updates": record["update"], "minutes": record["minutes"]}
+    return {
+        "segment": record.get("segment", 0),
+        "seed": record.get("seed"),
+        **{k: identity.get(k) for k in ("started", "commit", "dirty", "device")},
+        "changed": record.get("changed", {}),
+        "start": at,
+        "end": dict(at),
+        #: "budget" (its `end`), "stop" (its `stop`), "lost" (killed or crashed: the next
+        #: segment found no record of its end), None (running).
+        "ended": None,
+        #: Its records after its last checkpoint, cut at the next segment's start.
+        "dropped": 0,
+    }
+
+
 class Record:
-    """The run's summary (`record.json`, design §4.2), built from its typed metrics records in
-    order (so `metrics.jsonl` replayed rebuilds it)."""
+    """The run's summary (`record.json`, design §4), built from its typed metrics records in
+    order (so `metrics.jsonl` replayed rebuilds it: a resume does, `Run`)."""
 
     def __init__(self, name: str, config: Config, identity: dict[str, Any]) -> None:
         self.name = name
@@ -355,17 +476,39 @@ class Record:
             "minutes": 0.0,
             "ended": None,
         }
+        self.segments: list[dict[str, Any]] = []
         self.curve: list[dict[str, Any]] = []
         self.evaluations: list[dict[str, Any]] = []
         self._sums: dict[str, float] = {}
         self._count = 0
 
+    def _ended(self, record: dict[str, Any], how: str) -> None:
+        self.progress["ended"] = how
+        self.progress["minutes"] = record["minutes"]
+        if self.segments:
+            self.segments[-1]["ended"] = how
+            self.segments[-1]["end"]["minutes"] = record["minutes"]
+
     def observe(self, record: dict[str, Any]) -> None:
         kind = record["type"]
-        if kind == "update":
+        if kind == "start":
+            self.identity = record.get("identity", self.identity)
+            self.segments = [_segment(record)]
+        elif kind == "segment":
+            last = self.segments[-1]
+            if last["ended"] is None:
+                last["ended"] = "lost"
+            last["dropped"] = record["dropped"]
+            self.segments.append(_segment(record))
+            self.progress["ended"] = None
+        elif kind == "update":
             for k in ("samples", "episodes", "minutes"):
                 self.progress[k] = record[k]
             self.progress["updates"] = record["update"]
+            if self.segments:
+                end = self.segments[-1]["end"]
+                end["samples"], end["updates"] = record["samples"], record["update"]
+                end["minutes"] = record["minutes"]
             for k in CURVE:
                 value = record.get(k)
                 if value is not None and value == value:  # NaN (no variance) counts nothing
@@ -388,9 +531,10 @@ class Record:
                 if name in record:
                     entry[name] = _rates(record[name])
             self.evaluations.append(entry)
+        elif kind == "stop":
+            self._ended(record, "stop")
         elif kind == "end":
-            self.progress["ended"] = record["reason"]
-            self.progress["minutes"] = record["minutes"]
+            self._ended(record, record["reason"])
 
     def summary(self) -> dict[str, Any]:
         best = max(self.evaluations, key=lambda e: e["sampled"]["win_rate"], default=None)
@@ -400,6 +544,7 @@ class Record:
             "identity": self.identity,
             "config": by_table(self.config),
             "progress": dict(self.progress),
+            "segments": self.segments,
             "curve": self.curve,
             "evaluations": self.evaluations,
             "best": None
@@ -421,6 +566,7 @@ def check_record(record: Any) -> list[str]:
         "identity": dict,
         "config": dict,
         "progress": dict,
+        "segments": list,
         "curve": list,
         "evaluations": list,
     }
@@ -440,6 +586,11 @@ def check_record(record: Any) -> list[str]:
             problems.append(f"`progress.{key}` is missing")
     if not record["id"]:
         problems.append("`id` is empty")
+    if not record["segments"]:
+        problems.append("`segments` is empty")
+    for i, s in enumerate(record["segments"]):
+        if not isinstance(s, dict) or not {"segment", "seed", "ended", "start", "end"} <= set(s):
+            problems.append(f"segment {i} lacks `segment`, `seed`, `ended`, `start` or `end`")
     for i, e in enumerate(record["evaluations"]):
         if not isinstance(e, dict) or "samples" not in e or "win_rate" not in e.get("sampled", {}):
             problems.append(f"evaluation {i} lacks `samples` or `sampled.win_rate`")
@@ -450,19 +601,30 @@ class RunExistsError(FileExistsError):
     """The directory already holds a run's metrics: a new run would mix its records with them."""
 
 
+class ResumeError(RuntimeError):
+    """A run that cannot be resumed: no checkpoint, another checkpoint format, metrics shorter
+    than at the save, or a finished run whose budget the resume does not extend."""
+
+
 def check_new(out: Path | None) -> None:
-    """Refuses a directory whose `metrics.jsonl` holds records (resuming a run is T2b's
-    `--resume`)."""
+    """Refuses a directory whose `metrics.jsonl` holds records (`--resume` continues one)."""
     if out is not None:
         metrics = Path(out) / "metrics.jsonl"
         if metrics.exists() and metrics.stat().st_size > 0:
-            raise RunExistsError(f"{out} already holds a run (its metrics.jsonl): choose another")
+            raise RunExistsError(
+                f"{out} already holds a run (its metrics.jsonl): choose another, or --resume it"
+            )
 
 
 class Run:
     """A run's directory (design §1.1): `config.toml` (the file as given), `metrics.jsonl` (one
     typed record per line, flushed), `record.json` (rewritten atomically by `write_record`).
-    Without a directory it keeps the record in memory only."""
+    Without a directory it keeps the record in memory only.
+
+    With `resume` (`(length, seconds)` from a checkpoint, design §3.3) it reopens a run's
+    directory instead: `metrics.jsonl` is cut back to the `length` bytes it had at the save (the
+    records after it, `dropped`, were of updates the resumed run plays again), the record is
+    rebuilt from what stays, and the run's clock continues from `seconds`."""
 
     def __init__(
         self,
@@ -471,32 +633,70 @@ class Run:
         identity: dict[str, Any],
         text: str = "",
         log: Callable[[dict[str, Any]], None] | None = None,
+        resume: tuple[int, float] | None = None,
     ) -> None:
         self.out = None if out is None else Path(out)
         name = config.name or (self.out.name if self.out is not None else "")
         self.record = Record(name, config, identity)
         self.log = log
-        self.metrics: IO[str] | None = None
+        self.metrics: IO[bytes] | None = None
+        #: `metrics.jsonl`'s length in bytes (a checkpoint's position in it).
+        self.length = 0
+        self.dropped = 0
         self.start = time.perf_counter()
-        if self.out is not None:
+        self.offset = 0.0 if resume is None else resume[1]
+        if self.out is None:
+            return
+        if resume is None:
             check_new(self.out)
             self.out.mkdir(parents=True, exist_ok=True)
-            for stale in self.out.glob("*.tmp"):
-                stale.unlink()
+        for stale in self.out.glob("*.tmp"):
+            stale.unlink()
+        path = self.out / "metrics.jsonl"
+        if resume is None:
             atomic_write_text(self.out / "config.toml", text)
-            self.metrics = (self.out / "metrics.jsonl").open("a", encoding="utf-8")
+        else:
+            self._cut(path, resume[0])
+        self.metrics = path.open("ab")
+        self.length = path.stat().st_size
+
+    def _cut(self, path: Path, length: int) -> None:
+        data = path.read_bytes() if path.exists() else b""
+        if len(data) < length:
+            raise ResumeError(
+                f"{path} holds {len(data)} bytes, fewer than the {length} at the checkpoint"
+            )
+        self.dropped = sum(1 for line in data[length:].split(b"\n") if line.strip())
+        for line in data[:length].decode("utf-8").splitlines():
+            self.record.observe(json.loads(line))
+        with path.open("r+b") as f:
+            f.truncate(length)
+
+    def seconds(self) -> float:
+        """The run's wall time: its segments' up to their last checkpoints, and this one's."""
+        return self.offset + time.perf_counter() - self.start
 
     def minutes(self) -> float:
-        return (time.perf_counter() - self.start) / 60
+        return self.seconds() / 60
 
     def emit(self, record: dict[str, Any]) -> None:
         """Appends one typed record (`type` first) and shows it to the log."""
         self.record.observe(record)
         if self.metrics is not None:
-            self.metrics.write(json.dumps(record) + "\n")
+            line = (json.dumps(record) + "\n").encode("utf-8")
+            self.metrics.write(line)
             self.metrics.flush()
+            self.length += len(line)
         if self.log is not None:
             self.log(record)
+
+    def sync(self) -> int:
+        """Puts the metrics on disk (before a checkpoint names their length) and returns that
+        length."""
+        if self.metrics is not None:
+            self.metrics.flush()
+            os.fsync(self.metrics.fileno())
+        return self.length
 
     def write_record(self) -> None:
         if self.out is not None:

@@ -9,14 +9,12 @@ record in `E05-log.md`, the environment as built in `docs/07-simulation-and-ai.m
 
 **E06** (`docs/epics/E06-battle-ai.md`) refined 2026-10-20 (AI-Q8): it starts beside E23, the
 neutral share waits for E23's side without a hero. T1 and T2a done (ADR-0026, design
-`E06-design.md`; one pull request).
+`E06-design.md`; one pull request), T2b1 done (the full checkpoint and `--resume`; its pending gate
+and `--init-from` moved to T3b).
 
-1. **E06 T2b The full checkpoint and `--resume`** — **Scope:** the epic's T2b (design §3).
-   **Acceptance:** §3.4's tests (the torch ones run in the sandbox while it reaches PyTorch's
-   index). **Depends on:** T2a (done). **Status:** ready.
-2. **E06 T2c C ABI v31** — **Scope:** the epic's T2c (the record's engine identity, N
-   range-checked). **Acceptance:** the ABI's tests and the C smoke test, `h3env`'s
-   `ABI_VERSION` 31, the full verify. **Depends on:** nothing (independent of T2a, T2b).
+1. **E06 T2c C ABI v31** — **Scope:** the epic's T2c (the record's engine identity, N
+   range-checked; `record.json` schema 3). **Acceptance:** the ABI's tests and the C smoke test,
+   `h3env`'s `ABI_VERSION` 31, the full verify. **Depends on:** nothing (independent of T2b1).
    **Status:** ready.
 
 ## Inbox
