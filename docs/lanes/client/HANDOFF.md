@@ -51,7 +51,7 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
-- **2026-10-20, E17 M3 T6b (panel and log over time; PR open).** The user took T6b whole. The
+- **2026-10-20, E17 M3 T6b (panel and log over time; #333 open).** The user took T6b whole. The
   log read; the timeline's `log`, `battle_log::Log`, `scene::Panels`; the harness keeps panel
   changes and reads the log: the sequences compare the panel, the item listed (` log`) where the
   original shows a hint (T6c) or a rolled line.
