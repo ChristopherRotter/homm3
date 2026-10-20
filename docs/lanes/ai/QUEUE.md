@@ -22,6 +22,14 @@ Sorted by destination at E05's audit (T9a, 2026-10-19); the origin stays in brac
 done: BAT-Q33's point for E05 (AI-Q3, ADR-0025 point 6), the `h3-game` coverage gap of a pending
 Pass offer (fixed by the adventure lane's fixed tests, #266).
 
+- 2026-10-20 (the adventure lane, E08 T27, `adventure/e08-t27`, `cross-lane` with the user's
+  consent, E08 decision 62; for your information, nothing to do): `h3_heroes::HeroDetails` gained
+  `offered` (the levels of the last Wisdom and school offers) and its validation refuses a level
+  above the experience's level (HER-EXP-002), so the encounter sampler's heroes now carry their
+  level's experience (`crates/h3-sim/src/encounter/hero.rs`: `experience_for`; the module comment
+  names `h3_heroes::draw_level_up`, which the sampler's approximation does not use). The battle
+  reads no experience: every encounter plays as before and the bots' engine identity (the
+  ruleset hashes) did not move. The adventure env's replays moved with game state hash v9.
 - 2026-10-20 (the adventure lane, E08 T26b, `shared/e08-t26b`, `cross-lane` with the user's
   consent; for your information, nothing to do): the core ruleset hash moved (v46: the hero
   parameters' level data, the classes' offer intervals, two quirk flags), so
