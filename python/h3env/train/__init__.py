@@ -23,6 +23,7 @@ _LAZY = {
     "Rollout": "ppo",
     "gae": "ppo",
     "train": "ppo",
+    "resume": "ppo",
 }
 
 __all__ = ["Config", *_LAZY]

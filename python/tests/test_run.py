@@ -1,10 +1,12 @@
-"""A run's lifecycle without torch (E06 T2a; ADR-0026, `docs/epics/E06-design.md` §1, §2, §4,
+"""A run's lifecycle without torch (E06 T2a, T2b1; ADR-0026, `docs/epics/E06-design.md` §1 to
 §5.3): the config file and `--set`, the schedule in samples, atomic writes, the held-out check,
-the run's directory and record, and every committed record and config."""
+the run's directory and record, what a resume needs (its allowed changes, the segments' seeds,
+the metrics cut back, Ctrl+C), and every committed record and config."""
 
 from __future__ import annotations
 
 import json
+import signal
 from pathlib import Path
 
 import pytest
@@ -14,19 +16,24 @@ from h3env.train.__main__ import line, parse
 from h3env.train.evaluate import EVAL_SEED, episode_seeds
 from h3env.train.run import (
     RECORD_SCHEMA,
+    RESUMABLE,
     TABLES,
     Cadence,
     ConfigError,
     HeldOut,
     HeldOutError,
+    ResumeError,
     Run,
     RunExistsError,
+    Stop,
     atomic_write,
     atomic_write_text,
     by_table,
     check_record,
     learning_rate,
     load_config,
+    resumed,
+    segment_seed,
 )
 
 PYTHON = Path(__file__).resolve().parents[1]
@@ -98,13 +105,19 @@ def test_every_key_has_one_table_and_the_record_shows_them() -> None:
 def test_the_command_line_reads_the_file_and_the_overrides(tmp_path: Path) -> None:
     path = tmp_path / "run.toml"
     path.write_text("samples = 5_000\n[ppo]\nlr = 3e-4\n", encoding="utf-8")
-    config, out, text = parse(
-        ["--config", str(path), "--set", "ppo.lr=1e-4", "--out", str(tmp_path / "r")]
-    )
-    assert (config.samples, config.lr, out) == (5_000, 1e-4, tmp_path / "r")
-    assert text == path.read_text(encoding="utf-8")
+    command = parse(["--config", str(path), "--set", "ppo.lr=1e-4", "--out", str(tmp_path / "r")])
+    config = command.config
+    assert (config.samples, config.lr, command.out) == (5_000, 1e-4, tmp_path / "r")
+    assert command.text == path.read_text(encoding="utf-8") and not command.resume
     with pytest.raises(SystemExit):
         parse(["--set", "ppo.lr=fast"])
+    # A resume names the run's directory; its config is the checkpoint's, changed by --set only.
+    command = parse(["--resume", str(tmp_path / "r"), "--set", "samples=9000"])
+    assert command.resume and command.out == tmp_path / "r" and command.config is None
+    assert command.sets == ["samples=9000"]
+    for wrong in (["--config", str(path)], ["--out", str(tmp_path / "s")]):
+        with pytest.raises(SystemExit):
+            parse(["--resume", str(tmp_path / "r"), *wrong])
 
 
 def test_the_learning_rate_follows_samples() -> None:
@@ -146,6 +159,110 @@ def test_an_atomic_write_replaces_whole_or_not_at_all(tmp_path: Path) -> None:
     assert path.read_text() == "second" and (tmp_path / "state.bin.tmp").exists()
     Run(tmp_path, Config(), {}).close()
     assert not list(tmp_path.glob("*.tmp"))
+
+
+def test_a_resume_changes_only_what_leaves_the_training_as_it_is() -> None:
+    saved = load_config("samples = 1000\n[ppo]\nlr = 1e-3\n")
+    config, changed = resumed(
+        saved,
+        ["samples=3000", "env.threads=3", "device.device=cpu", "checkpoint.checkpoint_minutes=1"],
+    )
+    assert (config.samples, config.threads, config.device, config.checkpoint_minutes) == (
+        3000,
+        3,
+        "cpu",
+        1.0,
+    )
+    assert set(changed) <= set(RESUMABLE) and changed["samples"] == [1000, 3000]
+    # The learning rate's horizon stays the start's budget.
+    assert config.lr_horizon == 1000 and resumed(saved) == (saved, {})
+    with pytest.raises(ConfigError, match=r"env\.envs, ppo\.lr would change the training"):
+        resumed(saved, ["ppo.lr=1e-4", "env.envs=8", "samples=5"])
+    with pytest.raises(ConfigError, match="unknown key"):
+        resumed(saved, ["ppo.speed=2"])
+
+
+def test_each_segment_has_its_own_batch_seed() -> None:
+    assert segment_seed(7, 0) == 7
+    # SplitMix64's reference outputs for the seed 0.
+    assert [segment_seed(0, s) for s in (1, 2, 3)] == [
+        0xE220A8397B1DCDAF,
+        0x6E789E6AA1B965F4,
+        0x06C45D188009454F,
+    ]
+    seeds = [segment_seed(Config().seed, s) for s in range(50)]
+    assert len(set(seeds)) == 50 and all(0 <= s < 2**64 for s in seeds)
+    assert Config().eval_seed not in seeds
+
+
+def test_the_first_ctrl_c_requests_a_stop_and_the_second_raises() -> None:
+    before = signal.getsignal(signal.SIGINT)
+    stop = Stop()
+    with stop:
+        signal.raise_signal(signal.SIGINT)
+        assert stop.requested
+        with pytest.raises(KeyboardInterrupt):
+            signal.raise_signal(signal.SIGINT)
+    assert signal.getsignal(signal.SIGINT) is before
+    asked = Stop()
+    asked.request()
+    assert asked.requested
+
+
+def test_a_resume_cuts_the_metrics_back_to_the_checkpoint(tmp_path: Path) -> None:
+    out = tmp_path / "r"
+    identity = {
+        "started": "t0",
+        "commit": "abc",
+        "dirty": False,
+        "abi": 30,
+        "torch": "x",
+        "device": "cpu",
+    }
+    config = load_config("samples = 40\n")
+    run = Run(out, config, identity, "samples = 40\n")
+    start = {"type": "start", "name": "r", "segment": 0, "seed": 1, "identity": identity}
+    run.emit({**start, "update": 0, "samples": 0, "episodes": 0, "minutes": 0.0})
+    run.emit(_update(1, 10, 1.0))
+    run.emit(_update(2, 20, 3.0))
+    length = run.sync()
+    assert length == (out / "metrics.jsonl").stat().st_size
+    run.emit(_update(3, 30, 5.0))
+    run.close()
+    kept = (out / "metrics.jsonl").read_bytes()[:length]
+    # A kill in the middle of a line; a temporary of a checkpoint's write.
+    with (out / "metrics.jsonl").open("ab") as f:
+        f.write(b'{"type": "upd')
+    (out / "checkpoint.pt.tmp").write_bytes(b"half")
+    with pytest.raises(ResumeError, match="fewer than"):
+        Run(out, config, {}, resume=(10**6, 0.0))
+    again = Run(out, config, {}, resume=(length, 90.0))
+    assert again.dropped == 2 and again.minutes() >= 1.5
+    assert (out / "metrics.jsonl").read_bytes() == kept and not list(out.glob("*.tmp"))
+    assert again.record.progress["updates"] == 2 and again.record.identity == identity
+    segment = {"type": "segment", "segment": 1, "seed": 99, "dropped": again.dropped}
+    resumed_at = {**segment, "changed": {"samples": [30, 40]}, "identity": {"commit": "def"}}
+    again.emit({**resumed_at, "update": 2, "samples": 20, "episodes": 6, "minutes": 1.5})
+    again.emit(_update(3, 30, 5.0))
+    again.emit({"type": "stop", "update": 3, "samples": 30, "minutes": 2.0})
+    again.write_record()
+    again.close()
+    lines = [json.loads(x) for x in (out / "metrics.jsonl").read_text().splitlines()]
+    assert [x.get("update") for x in lines if x["type"] == "update"] == [1, 2, 3]
+    record = json.loads((out / "record.json").read_text())
+    assert check_record(record) == []
+    first, second = record["segments"]
+    assert (first["segment"], first["seed"], first["ended"], first["dropped"]) == (0, 1, "lost", 2)
+    assert first["start"]["samples"] == 0 and first["end"]["samples"] == 20
+    assert first["commit"] == "abc" and second["commit"] == "def"
+    assert (second["ended"], second["changed"], second["end"]["updates"]) == (
+        "stop",
+        {"samples": [30, 40]},
+        3,
+    )
+    assert record["progress"]["ended"] == "stop" and record["progress"]["minutes"] == 2.0
+    assert "segment 1 from update 2" in line(lines[3]) and "samples 30 -> 40" in line(lines[3])
+    assert "--resume" in line(lines[-1])
 
 
 def test_the_held_out_check_needs_no_growing_set() -> None:
@@ -224,6 +341,7 @@ def test_a_run_writes_its_metrics_and_record(tmp_path: Path) -> None:
     assert [e["samples"] for e in record["evaluations"]] == [0, 20, 30]
     assert record["evaluations"][0]["random"]["win_rate"] == 0.5
     assert record["best"] == {"samples": 20, "win_rate": 0.7}
+    assert [(s["segment"], s["ended"]) for s in record["segments"]] == [(0, "budget")]
     assert line(records[0]) is None and "budget" in line(records[-1])
     # A new run never appends to another's records.
     with pytest.raises(RunExistsError):
@@ -242,11 +360,13 @@ def test_check_record_names_what_is_missing() -> None:
             "identity": {},
             "config": {},
             "progress": {},
+            "segments": [],
             "curve": [],
             "evaluations": [{}],
         }
     )
     assert "`identity.commit` is missing" in problems and "`id` is empty" in problems
+    assert "`segments` is empty" in problems
     assert "`config.ppo` is missing" in problems and "evaluation 0 lacks" in problems[-1]
 
 
