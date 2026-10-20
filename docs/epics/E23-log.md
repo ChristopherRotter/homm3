@@ -309,3 +309,8 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   neither of. The dragon's value reads none of the context's tables. No rule of the engine changes.
 - **Map:** 12 entries (9 new: 0x436E30, 0x437040, 0x437190, 0x43C620, 0x43D250, 0x43D400,
   0x5A4920, 0x5A66B0 and the jumps table 0x63B7C8; 3 updated: 0x420F00, 0x421000, 0x447330).
+- **Checks:** a fresh agent re-read three findings blind, on a copy of the tool and the map made
+  before the edits: the dragon's hexes and its first positive value taken whatever the value so
+  far; 0x43C620's mastery by field, its routing and the caster's hero in 0x436E30 with the sums'
+  tests in 0x437040; the raise's candidates (dead only for the Pit Lord), its value, doubling and
+  strict comparison with the entry value. It agreed on all three.
