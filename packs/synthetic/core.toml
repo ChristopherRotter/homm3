@@ -762,6 +762,7 @@ faction = "vale"
 primary = [2, 2, 1, 1]              # attack, defense, power, knowledge
 primary_gain = [[40, 40, 10, 10], [30, 30, 20, 20]]  # percent per level-up: levels 2-9, 10+
 skill_weights = { marksmanship = 6, brawling = 6, plating = 5, command = 8, omens = 3, drill = 4, gunnery = 4, mending = 2, parley = 2, wayfinding = 5 }
+offer_intervals = [5, 4]            # format v44 (E08 T26b): levels until channeling and stormcraft are offered
 
 [[hero_class]]
 id = "sage"
@@ -770,6 +771,7 @@ faction = "vale"
 primary = [0, 1, 2, 2]
 primary_gain = [[10, 15, 35, 40], [20, 20, 30, 30]]
 skill_weights = { omens = 6, parley = 5, mending = 5, wayfinding = 8, stormcraft = 4, channeling = 3 }
+offer_intervals = [2, 2]
 
 [[hero]]
 id = "ansel"
@@ -1050,6 +1052,10 @@ primary_min = [0, 0, 1, 2]          # HER-DET-001: lower totals count as these
 primary_max = 40                    # HER-DET-001
 backpack = 3                        # HER-ART-002
 learn_level = 2                     # format v40 (E08 T19a2b): the highest spell level learnable without Wisdom
+experience = [0, 500, 1200, 2000]   # format v44 (E08 T26b): levels 1-4; later steps +1/5 each (HER-EXP-002)
+max_level = 20
+wisdom = "channeling"               # offered when the class's first interval is due
+schools = ["stormcraft"]            # drawn from when the second is due
 
 [[profile]]
 id = "faithful"        # default: preserve/fix-optional quirks on

@@ -576,6 +576,16 @@ primary_min = [0, 0, 1, 1]
 primary_max = 99
 backpack = 64
 learn_level = 2
+experience = [0, 1000, 2000]
+max_level = 74
+wisdom = "Skill 7"
+schools = ["Skill 14", "Skill 15"]
+sources = ["s"]
+
+[heroes.offer_intervals]
+short = [3, 3]
+long = [6, 4]
+short_classes = ["Class 1", "Class 3"]
 sources = ["s"]
 
 [[heroes.skill_effects]]
@@ -1090,7 +1100,22 @@ fn harvests_hero_content() {
     assert!(base.contains(
         "basic = [{ kind = \"learn_level\", levels = 1 }]\nadvanced = []\nexpert = [{ kind = \"learn_level\", levels = 3 }]"
     ));
-    assert!(base.contains("backpack = 64\nlearn_level = 2\n"));
+    assert!(base.contains(
+        "backpack = 64\nlearn_level = 2\nexperience = [0, 1000, 2000]\nmax_level = 74\n\
+         wisdom = \"skill_7\"\nschools = [\"skill_14\", \"skill_15\"]\n"
+    ));
+    // E08 T26b: the listed classes' intervals and every other's.
+    let intervals = |k: &str| {
+        r.hero_classes()
+            .iter()
+            .find(|c| c.key.as_str() == k)
+            .unwrap()
+            .offer_intervals
+    };
+    assert_eq!(
+        ["base:class_0", "base:class_1", "base:class_3", "ab:class_5"].map(intervals),
+        [[6, 4], [3, 3], [3, 3], [6, 4]]
+    );
     assert!(base.contains("basic = [{ kind = \"experience_gain\", bp = 500 }]"));
     assert!(base.contains("expert = [{ kind = \"max_mana\", bp = 10000 }]"));
     assert!(
@@ -1674,6 +1699,13 @@ flag = "quirk.content.roland_crusader_specialty"
 hero = "Hero 1"
 creature = "Unit 2"
 sources = ["s"]
+
+[[data_quirks.class_intervals]]
+flag = "quirk.content.elementalist_offer_intervals"
+quirk = "ADV-QUIRK-10"
+class = "Class 5"
+intervals = [3, 3]
+sources = ["s"]
 "#;
 
 #[test]
@@ -1709,6 +1741,20 @@ fn harvests_data_quirk_fixes() {
     let id = |r: &h3_content::Ruleset, k: &str| std::format!("{:?}", r.creature_by_key(k).unwrap());
     assert!(named(&faithful).contains(&id(&faithful, "base:unit_148")));
     assert!(named(&fixed).contains(&id(&fixed, "base:unit_2")));
+    // E08 T26b: the class keeps the executable's intervals in `faithful`, the fixed ones
+    // otherwise (ADV-QUIRK-10).
+    assert!(texts[1].contains(
+        "[[hero_class_override]]\ntarget = \"ab:class_5\"  # ADV-QUIRK-10\n\
+         fixes = \"quirk.content.elementalist_offer_intervals\"\noffer_intervals = [3, 3]\n"
+    ));
+    let intervals = |r: &h3_content::Ruleset| {
+        r.hero_classes()
+            .iter()
+            .find(|c| c.key.as_str() == "ab:class_5")
+            .unwrap()
+            .offer_intervals
+    };
+    assert_eq!((intervals(&faithful), intervals(&fixed)), ([6, 4], [3, 3]));
 }
 
 #[test]
@@ -1747,5 +1793,30 @@ fn data_quirk_fixes_are_checked() {
         "hero = \"Hero 2\"",
         &none,
         "a data quirk's specialty fix must meet exactly one creature specialist",
+    );
+    fails(
+        "class = \"Class 5\"",
+        "class = \"Class 9\"",
+        &none,
+        "gapfill: data quirk: unknown class `Class 9`",
+    );
+    // E08 T26b: the gap-fill's names of classes and skills must exist.
+    fails(
+        "short_classes = [\"Class 1\", \"Class 3\"]",
+        "short_classes = [\"Class 1\", \"Class 7\"]",
+        &none,
+        "gapfill: offer_intervals: unknown class `Class 7`",
+    );
+    fails(
+        "wisdom = \"Skill 7\"",
+        "wisdom = \"Skill 99\"",
+        &none,
+        "gapfill: hero params: unknown skill `Skill 99`",
+    );
+    fails(
+        "schools = [\"Skill 14\", \"Skill 15\"]",
+        "schools = [\"Skill 14\", \"Skill 98\"]",
+        &none,
+        "gapfill: hero params: unknown skill `Skill 98`",
     );
 }

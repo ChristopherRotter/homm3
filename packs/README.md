@@ -153,8 +153,10 @@ value; the override's target and references are resolved in every profile, and i
 harvester compiles its packs in both profiles). The flag must be a registered `quirk.content` flag
 (`CompileError::NotADataQuirk`). `[[hero_override]]` changes a hero type of the closure, the
 pack's own included: `target` (a full key), optional `fixes`, and `specialty` (replaces the whole
-list). The harvested `ab` pack fixes Roland's specialty (Q-0006) and the Ice, Magma and Energy
-Elementals' levels (BAT-QUIRK-19) so:
+list). Since v44 (E08 T26b) `[[hero_class_override]]` changes a hero class of the closure the same
+way: `target`, optional `fixes`, and `offer_intervals`. The harvested `ab` pack fixes Roland's
+specialty (Q-0006), the Ice, Magma and Energy Elementals' levels (BAT-QUIRK-19) and the
+Elementalist's intervals (ADV-QUIRK-10) so:
 
 ```toml
 [[creature_override]]
@@ -166,6 +168,11 @@ level = 3
 target = "ab:roland"
 fixes = "quirk.content.roland_crusader_specialty"
 specialty = [{ kind = "creature_specialty", creature = "base:swordsman", bp_per_step = 500, speed = 1 }]
+
+[[hero_class_override]]
+target = "ab:elementalist"
+fixes = "quirk.content.elementalist_offer_intervals"
+offer_intervals = [3, 3]
 ```
 
 **Creature flags** (`h3_content::CreatureFlag`, mirroring the executable's flag bits,
@@ -488,6 +495,7 @@ faction = "vale"
 primary = [2, 2, 1, 1]             # starting attack, defense, power, knowledge
 primary_gain = [[40, 40, 10, 10], [30, 30, 20, 20]]  # level-up chances (%): levels 2-9, 10+; rows sum to 100
 skill_weights = { marksmanship = 6, command = 8 }    # level-up weights; unlisted skills weigh 0
+offer_intervals = [5, 4]           # v44: levels until `[hero_params]`'s wisdom and schools are offered; each >= 1
 
 [[hero]]
 id = "ansel"
@@ -761,8 +769,17 @@ a ruleset without them cannot validate hero details): `primary_min` (four values
 defense, power, knowledge: lower totals count as these), `primary_max` (the highest primary
 skill, base and effective; every minimum at most this), `backpack` (the most artifacts in a
 hero's backpack) and since v40 `learn_level` (0..=5: the highest spell level a hero may learn
-without a `learn_level` effect). Rules HER-DET-001 and HER-ART-002; the base pack's values come
-from the gap-fill file (`[heroes.params]`: 0/0/1/1, 99, 64, 2).
+without a `learn_level` effect). Since v44 (E08 T26b): `experience` (the experience of levels 1
+to n: at least two, the first 0, rising strictly), `max_level` (the highest level; `experience`
+lists at most `max_level + 1` levels), `wisdom` (the skill a level-up offers when the class's
+first interval is due) and `schools` (distinct skills, drawn from when the second is due; HER-LVL-004).
+The compiler continues the experience table to level `max_level + 1`, each step the previous
+one + a fifth of it, rounded down (HER-EXP-002), and refuses a table above 32 bits (a
+`max_level` above 78 with the base pack's levels); the last threshold bounds a hero's experience.
+Rules HER-DET-001 and HER-ART-002; the base pack's values come from the gap-fill file
+(`[heroes.params]`: 0/0/1/1, 99, 64, 2; the original's levels 1–12, 74, Wisdom, the four magic
+schools), the classes' intervals from `[heroes.offer_intervals]` (3 and 3 for the eight classes
+the executable lists, 6 and 4 for the others).
 
 **Profiles** (`[[profile]]` with `quirks = { "quirk.<context>.<name>" = true | false }`; unlisted
 flags are off): the registered flags are in `h3_content::REGISTRY` and the quirks ledger

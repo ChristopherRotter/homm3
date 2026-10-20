@@ -110,3 +110,16 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Regression test: `crates/h3-map/src/tests/import.rs`, `a_placed_heros_customisations_and_formation_carry_over`; `crates/h3-adventure/src/command/tests.rs`, `a_step_toward_another_players_hero_visits_it_and_starts_a_battle` (the defender's tight formation in the battle's start)
 - Decided by / date: the user, 2026-10-20 (decision 46; the reading E08 T22b)
 - Open with it: whether a computer player's side should fight loose whatever its hero's formation (0x463679) is decided when the game has computer players (E10) or a formation command (army management, E08 decision 48).
+
+### ADV-QUIRK-10 — The Elementalist levels as a might class
+- Class: fix-optional (the user, 2026-10-20, ADV-Q15: `faithful` keeps SoD's 6 and 4, `strict-fixed` gives the magic classes' 3 and 3; the epic's decision 55)
+- Context / rules affected: heroes, HER-LVL-004 (Wisdom and a magic school due after the class's intervals; built with E08 T27); a data quirk (ADR-0007, amendment E04b T8e)
+- Original behavior: `hero_secondary_offer` (0x4DAD00) takes a class's intervals from the list at 0x4DAD74: Wisdom 3 and schools 3 for the classes 1, 3, 5, 7, 9, 11, 13 and 15 (Cleric to Witch), else 6 and 4. The list stops at the RoE classes, so the Elementalist (17), a magic class, is offered Wisdom and the schools on the might classes' intervals; the Planeswalker (16) is might either way.
+- Intended/expected behavior: the Elementalist levels as the magic class it is, 3 and 3 (as VCMI and HotA).
+- Impact: gameplay-altering (small): an Elementalist is offered Wisdom and the schools less often; no shipped map levels an Elementalist at load (survey `E08-progression.md` §6.1).
+- Community status: known: the wiki ("The only exception is the Elementalist class, to which are considered Might heroes by the levelling system"); HotA made it level as a magic class; VCMI 1.7.5 gives it 3 and 3 by its class's affinity (D-16).
+- Sources: code reading 0x4DAD74 (E08 T24a1, survey `E08-progression.md` §2.4), confirmed by the second reading (§9); wiki Secondary skill (https://heroes.thelazy.net/index.php/Secondary_skill), Hero class (https://heroes.thelazy.net/index.php/Hero_class); VCMI 1.7.5 `lib/mapObjects/CGHeroInstance.cpp` (`maxlevelsToWisdom`, `maxlevelsToMagicSchool`).
+- Flag: `quirk.content.elementalist_offer_intervals` (flag 28 in `h3_content`'s registry, E08 T26b), a data quirk: the `ab` pack keeps the executable's `offer_intervals = [6, 4]` and a `[[hero_class_override]]` gated by the flag gives `[3, 3]` (the harvester's gap-fill `data_quirks.class_intervals`)
+- Defaults: faithful = on (6 and 4), strict-fixed = off (3 and 3)
+- Regression test: `crates/h3-pack/src/tests.rs`, `the_harvested_level_data_and_the_elementalists_intervals`; `crates/h3-harvest/src/tests.rs`, `harvests_data_quirk_fixes`; the offers that read the intervals with E08 T27
+- Decided by / date: classified by the user 2026-10-20 (ADV-Q15; the epic's decision 55)
