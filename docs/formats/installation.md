@@ -3128,3 +3128,145 @@ value; ties to the lower id. **The wiki** (Ballista): the Ballista without Artil
 target the computer chooses (not re-read this session). **Batch 3h** (an agent under Wine, six
 encounters, two rounds each): every target as this reading; VCMI's refuted by the tie (TI), the
 desperate mode (DE), the value (DN) and an enemy Ballista before creatures (AR).
+
+### 7.34 Code reading: the computer's battle turn, its entries and the map of the rest (E23 T1a1, 2026-10-20)
+
+Read for E23 T1a1 (the battle queue; BAT-Q52: the reading first): the top of the computer's
+battle turn in full, and the rest mapped by its calls into the parts the later readings take
+(the epic file's T1a2 onwards). Insight only, nothing copied (Q29). Sizes are bytes of code
+within the tool's function bounds.
+
+**Two entries per activation.** Every stack activation (0x465330) ends with the battle window's
+control update 0x4782D0 (0x46580E; the battle loop calls it too when auto-combat is switched
+off, 0x47425B), and both of that function's returns come after the computer's hero cast 0x422DA0
+(0x478861, 0x47887D). Then, when no command came for the active stack and the battle is hidden or
+the stack acts on its own (0x474BF0: every stack of a side without a human player, §7.33), the
+battle loop calls the stack's action 0x477EE0 (0x4744CF) and dispatches any action it wrote
+(0x47462D). The Catapult (0x473C00, §7.29) and the First Aid Tent (0x473EA0, §7.14) have turns of
+their own in the battle loop (0x4743A3, 0x47428E), outside both. The action codes the computer
+writes to +0x3C are the dispatcher's (0x47902F; its jump table is indexed by the action less one):
+1 a hero's cast, 2 a move to +0x44, 3 Defend, 4 retreat, 5 surrender (the price at +0x40), 6 a
+move and attack, 7 a strike or shot at +0x44, 8 Wait, 9 a wall shot, 10 a creature's cast, 11 the
+tent's heal, 12 nothing. (`scripts/exe.py switch` labels this table's cases one lower: it misses
+the `dec` before the range check.)
+
+**0x422DA0, the hero's cast** (0x1AD bytes). The action is set to 0. No cast when the side's hero
+has cast this round (+0x54B4), in the tactics phase (+0x13D68), or when the active stack is a war
+machine (flag `0x40`). For a side whose player is human: only in a hidden battle, or in
+auto-combat (+0x132C4) or on a remote turn with the option 0x698798 set (it sits beside the
+auto-combat option for creatures, 0x698794, in every settings routine: inferred to be the one for
+spells). Then for any side: none at an anti-magic garrison (+0x53C4); the side needs a hero who
+wears a spellbook (artifact 0); neither hero may wear the Orb of Inhibition (126). Then the spell
+context 0x4369C0 for the side (shared with the creature casts: part C below), the retreat test
+0x41E570, and the cast choice 0x43C800 given the test's answer (§7.21: it writes the cast action
+itself). A written cast answers true and leaves action 1 for the dispatcher; none sets action 0
+and answers false. So the computer's hero considers a cast at the activation of every stack of
+its side that is not a war machine, before that stack acts; the round's mark +0x54B4 allows one.
+
+**0x477EE0, the stack's action** (0x3E5 bytes, re-read in full). `human`: the acting side's player
+(+0x54A8) is a human player (0x4CE940). In the tactics phase, or when the retreat test 0x41E570
+answers no, the stack's turn 0x4221F0 follows. When it answers yes:
+
+- a human side (in auto-combat) is asked only while +0x1402F is set (set at the side's setup,
+  0x463A4B): the retreat question (general text 414, with the hero's name); "no" clears
+  +0x1402F, so the question comes once per battle, and the stack acts (0x4221F0); "yes" goes on;
+- the side retreats (action 4) when the other side has no hero, or the side itself has none;
+- the price: over the side's first 20 records with a creature and a count, `worth` sums count ×
+  the creature's gold cost (+0x38), and `real` sums (count − temporary creatures +0x54) × gold
+  over those that are not summoned (`0x400000`) and have more creatures than temporary ones; the
+  price is trunc(f32(real / 2, truncated) × 0x4E4580's factor), stored in 0x695030. The player's
+  surrender button computes the same price (0x474D80, from 0x475008 to 0x47508A);
+- the defender (side 1) at a town (+0x53C8) retreats; so does a side whose player's gold (the
+  player record's +0xB4) is below price + 2500, or whose `worth` is at most price + 2500;
+- otherwise a human is asked (general text 130, with the hero's name and the price): "yes"
+  surrenders (5, the price at +0x40), "no" retreats (4). **A computer side retreats**: the
+  surrender branch is taken only for `human` (0x47815A).
+
+So the computer never surrenders through this routine: when its retreat test says yes, it
+retreats. The test is asked at every activation outside the tactics phase (and once more inside
+0x422DA0 when the hero may cast), and it draws (0x41E5BC; below).
+
+**0x4221F0, the stack's turn** (0xD0 bytes, re-read). It clears the active-stack pointer
++0x132C8, then the mouse-over highlight (0x477E10, presentation only: the highlighted stack's or
+arrow tower's mark and a redraw), and sets the active record's +0x10 and +0x14 to −1
+(not read). The default action is Defend (3). A stack that can shoot now (0x4428F0) or the
+Ballista (146) is a shooter: in the tactics phase it goes to 0x422060, else to 0x41F060 (§7.33)
+with the acting side (+0x132C0). Any other stack goes to 0x421F80 with the flags 0, 0, in the
+tactics phase too (the routine also derives flying or walking from flag `0x2` and uses neither).
+
+**0x422060, a shooter in the tactics phase** (0x18E bytes). Speed 0: Wait (8). On Easy
+(`[game]+0x1F6D8` = 0) a side that is not human (+0x54A4) also waits. Otherwise it builds the AI
+pathfinder's map for the stack (0x4B2DA0: to 127, with the tactics flag) and walks the field's
+hexes in order. A hex counts when the map marks it reachable (bit 1 of the byte +4 of its 30-byte
+cell) and it lies in the side's tactics zone (0x4763F0: a column at most 2d + 1 for the
+attacker, at least 2d + 15 for the defender, d the Tactics difference +0x13D70, §7.32). Its score
+walks the stack's neighbours there (0x523DF0: 6, or 8 for a two-hex stack) that lie on the field:
++1 for each without a stack (the stack itself counts as none), and a stack that shoots (flag
+`0x4`) of either side sets the score to 1000, the count going on from there. The best starts as
+the stack's own hex with 100; a lower score replaces it, an equal one only when it is the stack's
+own hex. So the shooter goes to the first hex, in hex order, with the fewest free neighbours (the
+most stacks or field's edge around it; an obstacle's hex counts as free), never to a hex next to a
+shooter, and stays where it is on a tie. A best hex other than its own: a move there (2); else
+Wait (8).
+
+**0x421F80, a walker's turn** (0xD5 bytes). Its arguments: the stack, a flag passed on to
+0x421680, a flag that skips the creature's cast, the side. It takes the context 0x435EC0 for the
+side (§7.31; the third argument goes to the context's byte +9), the order of action 0x41F140
+(below) and the threat records 0x422B20 of the side for the stack (§7.31). Then the walker's
+choice 0x421680 (part W); when it chose nothing and casts are not skipped, the creature's cast
+entry 0x421280 (part C, §7.21); when neither acted: Wait (8) outside the wait phase (+0x13DE4)
+on Hard and above (`[game]+0x1F6D8` at least 2) or for a human side (+0x54A4); else Defend (3).
+**Below Hard a computer stack never waits.**
+
+**0x41F140, the order of action** (0x23F bytes, read without its sort). Per living stack of both
+sides but the arrow towers, a key: the First Aid Tent and the Ammo Cart (147, 148) −100 000; a
+stack with +0x290 or +0x2B0 above 1 −10 000; a stack that has acted (`0x4000000`) or is disabled
+(0x41F380: +0x290, +0x2B0 or +0x2C0 set, §7.33's test) its speed − 1000; one that has waited
+(`0x2000000`), or any in the wait phase, minus its speed; else its speed. The list is sorted
+(0x423340, recursive 0x423630; not read). Walking it from the start, the side expected first is
++0x132B8's (the side activated last); when the stack at a place is of the other side, the next
+stack with the same key of the expected side is swapped in, and the side expected next is the
+other one: equal keys alternate between the sides (the record's side +0xF4). Each record's +0x190
+gets its rank, the number of stacks less its index. The predictions below use it.
+
+**Predictions.** The spell choice asks the stack routines what a stack would do: 0x422880 (from
+0x422A40, under 0x4369C0 and the retreat test) calls 0x41F060 with its flag 1 for a stack that can
+shoot now and keeps a shot (7), else 0x421F80 with casts skipped and keeps a move and attack (6);
+0x43AA60 (under the hero's choice) calls 0x421F80 twice, with 0x421680's flag 0 and then 1. So
+the hero's and the creatures' cast values rest on the walker's and the shooter's choices.
+
+**What the dispatch reads.** The difficulty (Easy: no repositioning of a computer's shooter in the
+tactics phase; Normal and below: no Wait), `human` (the side's player, and +0x54A4: the questions
+in auto-combat, the hero's cast only when hidden or by option, Wait), the side's own army and its
+player's gold (the surrender's terms), both heroes' artifacts (spellbook, Orb of Inhibition), the
+public stack states (speed, the acted and waited bits, disabling spells). Nothing hidden from the
+side.
+
+**Random draws** (all through 0x50B230): the retreat test (0x41E5BC), the wall shot (0x41EFFB),
+the walker's choice (0x421B02), the creature-cast scan (0x420D98) and the cast choice (0x43CA60);
+besides those, the rules' own draws inside the estimates (Chain Lightning's next target,
+0x5A628E, §7.23) and the Catapult's aim (§7.29). The dispatch itself draws nothing.
+
+**The map of the rest** (by calls from the parts' roots; a function counts in the first part that
+reaches it; the rules' functions already read, the C runtime and the containers' helpers are left
+out; unread unless named):
+
+| Part | Roots | Unread | Largest unread functions | Notes |
+|---|---|---|---|---|
+| S, the shooters' rest | 0x41F060 | 2.2 KB, 6 functions | the area value 0x41EDA0, the wall shot 0x41EEA0, the area's stacks 0x5A46F0 | the rest of 0x41F060's tree is read (§7.31, §7.33) |
+| O, the order's sort | 0x423340 | 1.3 KB, 5 | 0x423340, 0x423630 | 0x41F140 above |
+| W, the walker's choice | 0x421680 (0x8F9) | 11.6 KB, 28 | 0x420260, 0x436300, 0x41FD60, 0x4B2FF0, 0x420A80, 0x41F920 | the draw 0x421B02; 0x421947 and 0x421A0C test the Tent and the Cart, 0x421827 the arrow towers; 0x420A80 reaches the adventure AI (below) |
+| P, the AI pathfinder | 0x4B3400 (0x787), 0x41F580 | 4.6 KB, 11 | 0x4B3400, 0x41F580 and 9 helpers | the walker's path among equally short ones (BAT-MOV-003); the threat records' map 0x4B2DA0 is read |
+| C, the creature casts and the spell evaluation | 0x421280, 0x4369C0 | 12.9 KB, 34 | 0x437A00 (0x6FA), 0x43C040, 0x43CB20, 0x4224E0, 0x43A670, 0x421000 | 0x4369C0's context and the evaluation 0x43A670 serve the hero's choice too; the predictions 0x422880 |
+| H, the hero | 0x43C800, 0x41E570 | 5.8 KB, 12 | 0x41E570, 0x43BB20 and 10 helpers | rests on C; the Catapult and the Tent are read (§7.29; 0x473EA0, §7.14) |
+| A, the adventure AI's routines | (from 0x420A80, 0x41E570) | 6.4 KB, 21 | | values the adventure map uses too (a hero's worth, an army's): the adventure lane's to read with its AI |
+
+About 45 KB of unread code in all. T1a2's checkpoint cuts the readings from this table.
+
+**Readings at risk** (for T1b's batch rows, Q57): the computer never surrenders (0x47815A;
+against the wiki and VCMI); no Wait below Hard (0x42201D); a computer's shooter in the tactics
+phase only above Easy, to the hex with the fewest free neighbours (0x422060; one placement in a
+batch); the hero's cast considered before every stack's action, not only once per round (the
+round's mark allows one). Not a risk but a difference in the rules (the battle queue's inbox): the
+surrender's price leaves out Basic Resurrection's temporary creatures (+0x54, 0x47502A to
+0x47503E), which BAT-FLE-002 counts.
