@@ -427,8 +427,8 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
 - **The cut** (the user, 2026-10-20): T2 in two, T2a now and T2b's shape at its checkpoint. The
   session proposed it because T2 whole is two pull requests, a new crate, its property tests and
   three kinds of shot, and because BAT-QUIRK-25's flag cannot take the registry's next position:
-  the adventure lane's unmerged `shared/e08-t26b` takes 27 and 28 (ADV-QUIRK-9, ADV-QUIRK-10), so
-  the flag takes 29 and merges after it. The plain shooters need no flag.
+  the adventure lane's then unmerged `shared/e08-t26b` (#335, merged since) takes 27 and 28
+  (ADV-QUIRK-9, ADV-QUIRK-10), so the flag takes 29. The plain shooters need no flag.
 - **The registration** (`shared/e23-t2a-crate`, #334, `cross-lane`, merged): the workspace
   member, `[crate.h3-battle-ai]` (application, logic; test rulesets in code), `h3-pack-battle`'s
   dev-dependency on it, `crates/h3-battle-ai/` the battle lane's; the skeleton crate with it (the
@@ -468,5 +468,5 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   the first: the sandbox's scheduling. The walker (T3) will cost more; T2b's benchmark counts
   instructions.
 - **Master's `deny` gate** failed on a new advisory (RUSTSEC-2026-0382, `rustls-webpki` 0.103.15,
-  through `h3-server`'s `rustls`): this pull request bumps the lockfile to 0.103.16 (the
-  advisory's fix; the server lane's inbox says so).
+  through `h3-server`'s `rustls`); the adventure lane's #335 bumped the lockfile to 0.103.16 (the
+  advisory's fix) before this pull request, which was rebased onto it.

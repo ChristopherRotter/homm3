@@ -167,8 +167,8 @@ found after that decision) belong to the neutral side's map too and are read (§
     (property tests on the test ruleset and the harvested packs); every computer shooter as the
     automatic Ballista shoots (0x41F060); stand-ins for the rest (BAT-STUB-4 to 6); BAT-AI-001,
     BAT-AI-002; about 6 µs per decision, a shot about 50 µs (the log).
-  - [ ] **T2b The area value and the wall shot** — BAT-QUIRK-25's flag (`shared/`, after the
-    adventure lane's `shared/e08-t26b`), the area value 0x41EDA0 with slip 1, the wall shot
+  - [ ] **T2b The area value and the wall shot** — BAT-QUIRK-25's flag (`shared/`, registry position
+    29: the adventure lane's #335 took 27 and 28), the area value 0x41EDA0 with slip 1, the wall shot
     0x41EEA0, the gated benchmark and the budget (ADR-0027 point 11).
 - [ ] **T3 Walkers** — melee targets and moves (0x4221F0's walker branch, the melee estimate, the
   AI pathfinder), waits and defends.

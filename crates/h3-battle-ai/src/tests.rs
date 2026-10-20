@@ -121,6 +121,7 @@ fn core() -> Ruleset {
         primary: [1, 1, 1, 1],
         primary_gain: [[25, 25, 25, 25], [25, 25, 25, 25]],
         skill_weights: vec![],
+        offer_intervals: [6, 4],
     }];
     pack.heroes = vec![HeroTypeDef {
         key: key("t:hero"),
