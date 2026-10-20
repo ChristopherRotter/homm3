@@ -2303,7 +2303,8 @@ the front hex by side, BAT-GEO-002). **Second look** (a fresh agent's independen
 0x4466A0, 0x446720, 0x440160 and 0x467600, 2026-10-13): it agrees on every point above; it traced
 the damage path after the turn (0x43F900 → 0x443F40 → 0x443B90 → 0x443C96; the wall test 0x467510
 at 0x443C79 gets the turned front hex too) and found 0x443B90 also reached without a turn through
-0x443E30 from 0x437800 and 0x438910, likely the computer player's damage estimates (not read).
+0x443E30 from 0x437800 and 0x438910, likely the computer player's damage estimates (read since:
+the attack and defense bonuses' values, §7.45, §7.46).
 
 ### 7.26 Code reading: the battlefield (E04c T1, 2026-10-13)
 
@@ -3268,7 +3269,7 @@ About 45 KB of unread code in all. T1a2's checkpoint cuts the readings from this
 more in part): part W keeps about 10 KB for T1a3. **T1a3a** (§7.36) read the hex scores (about
 3.6 KB); T1a3b and T1a3c keep the rest of part W and part O. **T1a5** (§7.42 to §7.45) read part C;
 the per-spell evaluators that 0x43B690 hands out (§7.44, about 11.6 KB) are reached only through
-that table, so this sweep of calls did not count them.
+that table, so this sweep of calls did not count them; T1a5e read them (§7.46).
 
 **Readings at risk** (for T1b's batch rows, Q57): the computer never surrenders (0x47815A;
 against the wiki and VCMI); no Wait below Hard (0x42201D); a computer's shooter in the tactics
@@ -4315,8 +4316,8 @@ spell takes 0x43B680, which answers 0: Chain Lightning, the area spells, Death R
 Undead, Armageddon, Resurrection, Animate Dead, Sacrifice, Teleport, Remove Obstacle, the four
 summons, Stone Gaze and Bind. **These evaluators are reached only through this table**, so T1a1's
 sweep (§7.34) did not count them: 36 unread, with 9 helpers about 11.6 KB, shared with the hero's
-choice; the Genie's 21 spells take about 7.3 KB of it. Until they are read, the Genie's value is
-known only in its frame.
+choice; the Genie's 21 spells take about 7.3 KB of it. Read in §7.46 (T1a5e), which corrects
+this: through the removals the Genie needs 34 of the 36.
 
 **What these read**: the side's stacks, their spells, threat records and strengths; Magic Mirror on
 the targets; the active stack and the order's ranks; the field. Nothing hidden from the side.
@@ -4364,3 +4365,197 @@ Slayer and Weakness (§7.44).
 **What these read**: the stacks' attack, defense, spells and counts; the heroes' Armorer; the
 context. **Draws:** none. **Readings at risk:** none of their own (they show through the casts).
 
+
+### 7.46 Code reading: the spell evaluators (E23 T1a5e, 2026-10-20)
+
+Read for E23 T1a5e (the user, 2026-10-20: in one part): the 36 evaluators that 0x43B690 hands out
+(§7.44) and their nine helpers 0x4387C0, 0x438910, 0x4396E0, 0x439A80, 0x439550, 0x435DC0,
+0x4426F0, 0x435850 and 0x43A340, about 11.6 KB, all in full. Insight only, nothing copied (Q29).
+With it part C is read whole (§7.42 to §7.46).
+
+**Correction to §7.44: the Master Genie needs nearly all of them.** The evaluators of Cure,
+Anti-Magic and Dispel value what they would remove through 0x439A80 (below), which calls each
+lasting spell's own evaluator from the same table. So the Genie's value of Cure and Anti-Magic
+reaches the evaluator of every spell that can last on a stack, its own side's and the enemy's;
+only Dispel's and Clone's (no stack keeps either as a lasting spell) serve the hero's choice alone.
+The neutral side needs 34 of the 36.
+
+**The frame.** Each evaluator has the spell context as `this` (§7.42), the stack S and the
+candidate (spell, mastery, power, rounds, flag; §7.44). A helpful spell's S is a stack of the
+context's side, a harmful one's a stack of the other side; the removals call both kinds on either
+side. They read:
+
+- the context's three tables at S's record index, each entry {the stack, its damage, how many,
+  their sum}: the melee threats, the shots and the worse of the two (§7.42);
+- S's threat enemy E (+0x538) and its turns to attack it (0x448BD0 at S's speed; "E within a turn"
+  below: E exists and the turns are 1);
+- the context's flags: the enemy beaten (+0x1C), the desperate mode (+0x28, the battle context's
+  +8, §7.31) and the threat mask (+0x14: "S threatens", it can strike one of the side's stacks
+  this turn, §7.42);
+- **the rounds' share** `t = min(1, r / k)`, `k` the balance class (+0x3C, §7.35), less `1 / k`
+  (at least 0) for an S that has acted this round (`0x4000000`), as in 0x437800 (§7.45);
+- **the gain** `trunc((√g − 1) × w × t)` of 0x437800, `w` S's strength (0x442E60 with the
+  context's least attack and defense, §7.31), `g` a factor on S's damage or on the damage it takes;
+- the candidate's flag: 1 from a cast's candidate, 0 from a removal. With it the value of
+  Curse, Slow, Sorrow, Misfortune, Blind, Forgetfulness, Disrupting Ray and Disease is multiplied
+  by the resistance factor 0x5A8090 (the spell, the context's side, S; the context's creature-cast
+  flag +0x1D), through a single-precision float except for Sorrow and Misfortune.
+
+**The defenses.**
+
+- **0x4387C0, a protection's value** (S, a threat E, the rounds, a factor `f`): E's strike on S
+  `d` (0x442780: E's count and shot flag, uncapped) becomes `d' = trunc(d / f)`; when `d` exceeds
+  S's hit points `h`, `d = h` and `f = h / d'`. It is 0 unless `d' < d`; 0 when the enemy is
+  beaten and the planned damage (+0x534) with the top creature's lost hit points (+0x58) is short
+  of a creature's hit points (+0xC0); 0 when the melee and shot sums times `k`, with the lost hit
+  points, are short of them too. Else `trunc((√f − 1) × w × t)`, without the "acted" step.
+- **Shield** (0x438C60) and **Air Shield** (0x438BC0): E the largest melee (shot) threat; with `M`
+  and `T` the melee and shot sums, `f = (M + T) / (trunc(M × e / 100) + T)` (Air Shield: `T`
+  reduced instead), `e` the share the spell keeps at the mastery (85, 85, 70, 70; 75, 75, 50, 50).
+- **Stone Skin** (0x438D90): **0x438910, a defense bonus's value** (S, the rounds, `b`): E the worse
+  threat; `f = D / D'`, the damage of a base of 100 by E (0x443E30, E's shot flag) on S and on a
+  copy of S with `b` more defense; then 0x4387C0.
+- **Fire Shield** (0x43A110): 0 when the enemy is beaten; its percentage `p` at the mastery (20,
+  20, 25, 30), 20 less for an Efreet Sultan (53), nothing at 0. E the largest melee threat, 0
+  against a fire-immune one (`0x4000`). Each of the `n` melee threats (the entry's count) is
+  reflected as E's strike would be, `min(trunc(d_E × p / 100), h)` (`d_E` capped at S's hit
+  points): `g = (n × that + d) / d`, `d` S's melee strike on E; then the gain on S's strike with
+  its shot flag, capped at E's hit points as in 0x437800, with the "acted" step.
+- **0x4396E0, a spell protection's value** (S, schools, a level limit, the rounds, the share kept
+  `p`; the map's old name "creature cast value" was a guess). 0 unless the other side may cast as
+  a hero (0x41F890, §7.23), 0 when the enemy is beaten or S is a clone. Over the damage spells
+  (flags `0x1` and `0x200`: 15 to 26, 57) of the schools up to the level that the other side's
+  hero has (+0x430), may aim at S (0x5A3C80) and pays from its mana (+0x18; the cost 0x4E5240 at
+  its mastery on the field): the damage on S (0x5A78E0 of `power × factor + value` at the hero's
+  mastery, the side's power +0x53D4), the part the spell takes off `x = trunc(f32(min(d, h) −
+  trunc(d × p / 100)) × f)`, `f` the resistance factor 0x5A8090, and its kill value (0x442FD0, S's
+  shot flag); the best of them times `t`. Two of its arguments are not the caster's: the damage's
+  caster bonuses (0x4E5760) are the context's own hero's (none for the neutral side), and the
+  cost's "enemy army" is the caster's own (§7.21: its Pegasi add 2).
+- **The Protections** from Air (0x4399A0), Fire (0x4399D0), Water (0x439A40) and Earth (0x439A00):
+  0x4396E0 for their school (1, 2, 4, 8) up to level 5, `p` their kept share (70, 70, 50, 50).
+- **Magic Mirror** (0x439DE0): 0x4396E0 for every school, `p = 2 × (50 − c)` with `c` its chance
+  (20, 20, 30, 40), so it keeps 60, 60, 40 and 20 %: twice the chance, as the evaluation's mirror
+  scaling (§7.44). It makes a copy of S and drops it unused.
+
+**Attack and speed.**
+
+- **Bloodlust** (0x438100) and **Precision** (0x438B50): 0x437800 against E with the spell's value,
+  E within a turn; Bloodlust only for an S that cannot shoot now, Precision only for one that can.
+- **Slayer** (0x438D00): E within a turn and a king the mastery reaches (king 1 always, king 2
+  from Advanced, king 3 at Expert): 0x437800 with its 8.
+- **Weakness** (0x438ED0): S threatens, not in the desperate mode, E within a turn: 0x437800 of S
+  against E with `min(S's attack, v)`, the value of what S would lose taken as that of a gain.
+- **Prayer** (0x438AC0): 0x438910 (defense) plus 0x439550 (speed) plus, E within a turn, 0x437800
+  (attack), each with its value.
+- **Haste** (0x4396B0): 0x439550 with its value.
+- **0x439550, a speed bonus's value** (S, `b`, the rounds): 0 without E, when the enemy is beaten,
+  or with no round left (the rounds less 1 when S acted). `s0` S's speed (0x448CD0), `s1` its speed
+  at the setup (+0x64) plus `b`, `t0` and `t1` its turns to attack at each; 0 when `t1 > k`. When
+  `t1 = 1` and S overtakes E (`s0 ≤ E's speed < s1`): `max(0, x(S, E) + x(E, S))`, the exchange
+  values (0x435DC0) of striking first. Plus, when `t1 < t0`, the rounds of fighting won: `(k − t1
+  + 1) × w / k − (k − min(t0, k + 1) + 1) × w / k`, in integers.
+- **0x435DC0, an exchange's value** (the battle context; A, B, a flag): A's attack on B (0x4359B0,
+  §7.31, A's shot flag), then B's on A if B lives, with A's shot flag again; the kill value of B's
+  lost hit points less that of A's (both with A's shot flag; the desperate flag when the context's
+  +8 is set and its prediction flag +9 is not).
+- **Slow** (0x439270): 0 without E, when beaten, when `t0 > k` or with no round left. `s1 = max(1,
+  trunc(v × s0 / 100))` (75, 75, 50, 50). When `t0 = 1`: the best `x(R, S) + x(S, R)` over the
+  side's able stacks R (not blind, petrified, paralysed or dead, not the Tent or the Cart) whose
+  threat enemy is S and that Slow lets act first (`s1 < R's speed ≤ s0`). Plus, when S cannot
+  shoot now, the rounds of fighting S loses, `min(its turns at s1 − t0, the rounds)`, by the same
+  difference; with the flag, × the resistance.
+- **0x4426F0, the damage per creature** (as in 0x442780, §7.31): `max + bonus` while blessed,
+  `max(1, min − penalty)` while cursed, else `(min + max) / 2.0`.
+- **Bless** (0x437430): E within a turn; `g = (max + v) / that` (`v` 0, 0, 1, 1: the bonus Bless
+  stores, §7.9); then the gain on S's strike on E (its shot flag, capped) as in 0x437800.
+- **Curse** (0x43B370): S threatens, not desperate, not beaten; `g = max(1, min − v) / that`;
+  `trunc(trunc(w − √g × w) × t)`, with the flag × the resistance. No test of E or the turns.
+- **Frenzy** (0x4375D0): E within a turn; S's strike on E by its count from its hit points `d1`;
+  the exchange 0x4359B0 (0 when S dies in it); S's strike again by the survivors `d2` (halved for a
+  shooter that shoots twice, which 0x442780 doubled); `g = (d1 + d2) / d1`, then the gain on S's
+  strike with its shot flag. **The spell's value is not read**: Frenzy is valued as a second strike.
+
+**Luck, morale and retaliation.**
+
+- **0x435850, the value of a morale or luck change** (the current value `m`, clamped to ±3 by the
+  callers, the change `c`, two factors `P` and `N`): the change of `V`, `V(m) = P × m` above 0 and
+  `N × m` below (`N < 0`, so each point below 0 costs `|N|`), the result clamped to ±3; 0 for a
+  rise at 3 or a fall at −3. A rise from below 0 is always valued as one that crosses 0 (its test
+  compares `c` with `m`, not with `−m`): from −3 by 1 it gives `−2P + 3|N|`, not `|N|`. Morale's
+  `P` and `N` are 0.0173 and −0.0833 (doubles 0x63B780), luck's 0.0173 and −0.0122 (floats
+  0x63B790).
+- **Mirth** (0x438170): 0 for a creature without morale (`0x20000`); `x` the change by `+v`, 0 when
+  `x = 0`; `trunc(w × t × x)`.
+- **Sorrow** (0x4382C0): 0 without morale, when S does not threaten, in the desperate mode or when
+  beaten; `x` minus the change by `−v`, with the flag × the resistance; as Mirth.
+- **Misfortune** (0x438F60): S threatens, not desperate (no "beaten" test); luck's factors; as
+  Sorrow.
+- **Fortune** (0x438490): E within a turn; the luck `L` (+0x4EC, not clamped), `v` cut to `3 − L`;
+  nothing at `L ≥ 3` or `L + v ≤ −3`. With `d` S's strike on E (uncapped): each point of bad luck
+  removed (`−L` when it crosses 0, else `v`) is worth `u / 24`, `u` the gain of a halved strike
+  doubled (`g = 2`, capped at E's hit points); each point of good luck (`L + v` from below 0,
+  else `v`) `u′ / 24`, `u′` the gain of a doubled strike: one chance in 24 per point.
+- **Counterstrike** (0x439E80): 0 for Royal Griffins (5) and when beaten; the extra retaliations
+  used, `min(v, n − r)` with `n` the melee threats and `r` S's own (1, a Griffin's 2), 0 at none.
+  0 when E's strike (capped) kills S; `d2` the survivors' retaliation on E (capped at its hit
+  points); `base = d1 + r × d2` (`d1` S's strike; one `d2` more for a melee creature that strikes
+  twice), `g = (base + extra × d2) / base`; the gain on S's strike with its shot flag.
+
+**The disabling spells** (S of the other side).
+
+- **Blind and Paralyze** (0x439100): S threatens, not beaten. When S's strength is at least the
+  other side's able strength (the battle context's +0x18: S is all that fights), `trunc((0.5 −
+  √(e / 400)) × w)`, `e` **Blind's** retaliation share at the mastery (50, 50, 25, 0) for Paralyze
+  too; else `trunc(w × t)`. With the flag × the resistance to Blind (62), for Paralyze too.
+- **Berserk** (0x43A400): 0 when beaten; the mean, in integers, of **0x43A340, a berserk attack's
+  value**, over S's targets (0x445490): 0 for a target of the context's side; else the exchange of
+  S on it (0x4359B0) with both stacks' losses counted as gains. No `t`.
+- **Hypnotize** (0x43A500): 0 when beaten or S cannot act (blind, petrified, paralysed, dead, the
+  Tent, the Cart). `n = min(k, (1, 1, 2, 3) by the mastery, 0x660858)`, less 1 when S acted; the
+  pathfinder's map (0x4B2DA0) from S for the context's side up to `n` times its speed; the best
+  0x43A340 over the other living stacks of S's side it reaches.
+- **Forgetfulness** (0x43B500): S can shoot now, not a clone, not desperate, not beaten: its worth
+  with the shot flag less without (0x442A50), times its hit points left over a creature's, times
+  `t`; with the flag × the resistance. No test of the mastery (§7.14: below Advanced S still
+  shoots, with half its creatures).
+- **Disrupting Ray** (0x438DC0): not desperate; some stack of the side has S as its threat enemy;
+  `trunc(w − √(1 − 0.05 v) × w)` (`v` 3, 3, 4, 5), no `t`, no "beaten" test; with the flag × the
+  resistance.
+- **Poison** (0x439500): not beaten; the kill value of half the top creature's hit points left.
+- **Disease** (0x438A10): S threatens, not desperate; `trunc(0.1 w × the rounds)` (as `w − 0.9w`),
+  no `k`; with the flag × the resistance **to Weakness (45)**.
+- **Age** (0x4373F0): not beaten; `trunc(w / 3)`.
+- **Clone** (0x43B2E0; S of the context's side): not beaten, S has not acted, E within a turn: the
+  kill value of S's strike on E (capped).
+
+**The removals.**
+
+- **0x439A80, a removal's value** (a copy T of a stack, a flag): over the spells 10 to 80 lasting
+  on T (+0x198), with the flag the harmful ones (the record's type below 0), without it all but
+  Poison (71), in id order: the spell ends on the copy (0x444510: later spells are valued without
+  the earlier ones) and its evaluator gets the copy and (the spell, T's mastery of it, its rounds
+  left as power and rounds, flag 0). A harmful spell on the context's side, or a helpful one on the
+  other side, adds its value in the other side's context (+0x48); the rest subtract theirs in this
+  one: a removal is worth what the removed spells are worth to their caster. Disrupting Ray
+  (rounds 255) counts though 0x444510 never ends it (§7.9).
+- **Dispel** (0x439BC0): the removal of all (as the rules end them, §7.10).
+- **Anti-Magic** (0x439D40): the removal of all plus 0x4396E0 for every school up to level `v`
+  (4, 4, 5, 6), nothing kept. The rules end only harmful spells below `v` and block only spells
+  below `v` (§7.13): the estimate takes away the stack's helpful spells too and counts level `v`.
+- **Cure** (0x439C30): the removal of the harmful ones (the rules end a list, not Bind or
+  Disrupting Ray, §7.10) plus the healing `x = min(+0x58, power × 5 + value)` (10, 10, 20, 30):
+  `trunc(worth × x / h + removal)` (0x442A50, S's shot flag; `h` a creature's hit points), the
+  healing left out when the enemy is beaten and S loses no creature to the planned damage.
+
+**What these read**: the stacks' counts, hit points, attack, defense, damage, speed, morale, luck,
+spells and threat records; the context's tables and classes; the other side's hero's spells,
+mana, mastery and power; the field. Nothing hidden from the side. **Draws:** none.
+
+**For T1b and T4** (the original's estimates as read, no rule quirks): the protections' caster
+bonuses and cost (0x4396E0); Magic Mirror's doubled chance; Anti-Magic's removal and level; the
+morale and luck rise from below 0 (0x435850); Blind's record and resistance for Paralyze;
+Disease's resistance to Weakness; Frenzy valued without its effect; the exchange's shot flag
+(0x435DC0); the removals' Disrupting Ray. A port follows them as read unless T1b decides
+otherwise. **Readings at risk:** none of their own (they show through the Genie's cast, §7.44's
+row, and the hero's choice, T1a6).
