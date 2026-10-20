@@ -5,8 +5,9 @@
 //! h3 ai bench [--scenario <file>] [--packs-dir packs] [--envs 64] [--threads 0] [--calls 1000]
 //!             [--seed 1] [--max-steps 0] [--encounters default|<six weights, a,b,c,d,e,f>]
 //! h3 ai census <maps folder or file>... [--out <file>]
-//! h3 ai eval [--policies random,aggressor,greedy] [--episodes 1000] [--envs 100] [--seed <s>]
-//!            [--max-steps 2000] [--encounters default|<six weights, a,b,c,d,e,f>]
+//! h3 ai eval [--set report-v1|v0] [--policies random,aggressor,greedy] [--max-steps 2000]
+//!            [--episodes <per kind, 500 | v0: 1000>] [--json <file>]
+//!            v0 only: [--envs 100] [--seed <s>] [--encounters default|<six weights, a,b,c,d,e,f>]
 //! ```
 
 // The bench times itself with the wall clock (an adapter).
@@ -27,8 +28,9 @@ pub const USAGE: &str = "usage:
   h3 ai bench [--scenario <file>] [--packs-dir packs] [--envs 64] [--threads 0] [--calls 1000]
               [--seed 1] [--max-steps 0] [--encounters default|<six weights, a,b,c,d,e,f>]
   h3 ai census <maps folder or file>... [--out <file>]
-  h3 ai eval [--policies random,aggressor,greedy] [--episodes 1000] [--envs 100] [--seed <s>]
-             [--max-steps 2000] [--encounters default|<six weights, a,b,c,d,e,f>]";
+  h3 ai eval [--set report-v1|v0] [--policies random,aggressor,greedy] [--max-steps 2000]
+             [--episodes <per kind, 500 | v0: 1000>] [--json <file>]
+             v0 only: [--envs 100] [--seed <s>] [--encounters default|<six weights, a,b,c,d,e,f>]";
 
 /// Parsed arguments: `--name value` options and positional words.
 struct Args {
@@ -147,47 +149,69 @@ fn bench(args: &Args) -> Result<(), String> {
     Ok(())
 }
 
-/// `h3 ai eval`: the engine's policies against each other on the held-out encounters (E05 T7).
+/// `h3 ai eval`: the engine's policies against each other on a held-out set of encounters (E05
+/// T7; the sets E06 T3a).
 fn eval(args: &Args) -> Result<(), String> {
     args.check(&[
+        "set",
         "policies",
         "episodes",
         "envs",
         "seed",
         "max-steps",
         "encounters",
+        "json",
     ])?;
-    let seed = match args.get("seed") {
-        None => eval::EVAL_SEED,
-        Some(v) => v
-            .strip_prefix("0x")
-            .map_or_else(|| v.parse(), |hex| u64::from_str_radix(hex, 16))
-            .map_err(|_| format!("--seed: `{v}` is not a number"))?,
+    let set = args.get("set").unwrap_or("report-v1");
+    let strata = match set {
+        "report-v1" => {
+            if let Some(name) = ["envs", "seed", "encounters"]
+                .into_iter()
+                .find(|name| args.get(name).is_some())
+            {
+                return Err(format!(
+                    "--{name}: the report set v1 fixes its episodes (only --set v0 takes it)"
+                ));
+            }
+            eval::Stratum::report_v1(args.num("episodes", eval::REPORT_V1_ENVS)?)?
+        }
+        "v0" => {
+            let seed = match args.get("seed") {
+                None => eval::EVAL_SEED,
+                Some(v) => v
+                    .strip_prefix("0x")
+                    .map_or_else(|| v.parse(), |hex| u64::from_str_radix(hex, 16))
+                    .map_err(|_| format!("--seed: `{v}` is not a number"))?,
+            };
+            let weights = encounter_weights(args.get("encounters").unwrap_or("default"))?;
+            eval::Stratum::v0(
+                args.num("episodes", 1000)?,
+                args.num("envs", 100)?,
+                seed,
+                weights,
+            )
+        }
+        _ => return Err(format!("--set: unknown set `{set}` (report-v1, v0)")),
     };
-    let weights = encounter_weights(args.get("encounters").unwrap_or("default"))?;
     let options = eval::EvalOptions {
+        set: set.to_owned(),
         policies: eval::policies(args.get("policies").unwrap_or("random,aggressor,greedy"))?,
-        episodes: args.num("episodes", 1000)?,
-        envs: args.num("envs", 100)?,
-        seed,
+        strata,
         max_steps: args.num("max-steps", 2000)?,
-        weights,
     };
     if options.max_steps == 0 {
         // Two deterministic bots may repeat themselves forever (E05 T9b).
         return Err("--max-steps: eval needs a step limit (not 0)".to_owned());
     }
-    let source = bench::encounters(options.weights)?;
+    let sampler = bench::sampler()?;
     let start = std::time::Instant::now();
-    let report = eval::run(&source, &options)?;
+    let report = eval::run(&sampler, &options)?;
     print!("{}", report.to_text());
-    println!(
-        "{} episodes per ordered pair, seed {:#x}, {:.1}s",
-        report.pairs[0][1].episodes,
-        options.seed,
-        start.elapsed().as_secs_f64()
-    );
-    Ok(())
+    println!("{:.1}s", start.elapsed().as_secs_f64());
+    match args.get("json") {
+        Some(path) => std::fs::write(path, report.to_json()).map_err(|e| format!("{path}: {e}")),
+        None => Ok(()),
+    }
 }
 
 /// `--encounters`: `default` (the distribution's own weights) or six weights `a,b,c,d,e,f` (the

@@ -112,54 +112,32 @@ rulesets' content hashes). Still to come:
   record; its curve per gate interval.
 - **T4:** the league's live set per update and its member table at the end.
 
-## 5. The held-out sets
+## 5. The held-out sets — built (T3a)
 
-### 5.1 The report set v1 (the ladder and the targets)
+Built (`h3env.train.evaluate`, `h3 ai eval --set`, `python -m h3env.train.ladder --set`;
+`E06-log.md`, T3a; the constants pinned between Rust and Python by an `h3-cli` test):
 
-Stratified by kind and side, so every kind shows with a known count and the overall rate weighs
-them as the distribution does: for each player kind k (hero, siege a hero defends, siege of a
-garrison; `H3_ENCOUNTER_*` 2, 3, 4) a batch of 500 envs, batch seed `REPORT_V1_SEED + k`, the
-kind's weight one-hot, the first episode of each env; each episode played twice, the agent
-attacking and defending (E05's two batches). So 500 games per (kind, side), 3 000 per opponent.
-
-- **The overall rate** at the default weights: w = (4, 2, 1)/7 over the kinds, the sides equal:
-  `r = ½ Σ_side Σ_k w_k · r_k,side`. Its 95 % interval (normal, stratified variance
-  `¼ Σ Σ w_k² r(1 − r)/n`):
-
-  | Rate | Overall | One kind (both sides) | One kind and side |
-  |---|---|---|---|
-  | 0.95 | ±0.9 points | ±1.4 | ±1.9 |
-  | 0.75 | ±1.8 | ±2.7 | ±3.8 |
-  | 0.50 | ±2.0 | ±3.1 | ±4.4 |
-
-  The targets' intervals (decision 7) as E05's evaluation had them (±1.8 at 0.8). A prefix (the
-  first n envs of each kind) is itself a stratified set: 250 per (kind, side) gives ±2.5 at 0.75,
-  for the intermediate ladders (§7).
-- The sampled policy (decision 8), its generator seeded per (set, kind, side) alike for every
-  checkpoint: two networks meet the same episodes and, as far as their play agrees, the same
-  draws (common random numbers).
-- The neutral kinds join as report set v2 with T7 (the player's seat only).
-
-### 5.2 The gate set v1 (the SPRT)
-
-The default distribution (kinds at their weights), batch seed `GATE_V1_SEED`, 500 envs × 8
-episodes: pair j is episode ⌊j / 500⌋ of env j mod 500, 4 000 pairs at most, each played twice
-(the candidate attacking, then the best). Separate from the report set, so the networks the gate
-selects are not measured on the episodes that selected them.
-
-### 5.3 Disjointness without E05's growing set — built against v0 (T2a)
-
-`run.HeldOut`: the held-out episodes' seeds fixed and computed once (`episode_seed(batch seed,
-env, episode)`), each training episode's seed checked against them (the reset's and every ended
-one's): a hit stops the run; `resolve` refuses `seed == eval_seed`. No state to checkpoint. Still
-to come: v1's 1 500 + 4 000 seeds beside v0's 1 000 (T3a; a resumed segment's episodes are
-checked as the first's, T2b1); the ladder refuses a network trained on a held-out batch
-seed, as E05's does for `EVAL_SEED`.
-
-E05's set (`EVAL_SEED`, 100 envs × 10 episodes, the default kinds) stays as **v0**, selectable in
-`h3 ai eval` and the Python ladder, so E05's numbers can be compared; v1 becomes both tools'
-default (T3a). The seeds' constants are defined in Python and in `h3-cli`'s `src/ai/eval.rs`,
-pinned equal by a test as `EVAL_SEED` is.
+- **The report set v1** (the ladder and the targets): per kind with a player on both sides (a
+  hero battle, a siege a hero defends, a garrison's siege; `H3_ENCOUNTER_*` 2, 3, 4) a batch of
+  500 envs, seed `REPORT_V1_SEED + k`, the kind one-hot, each env's first episode played from
+  both sides: 500 games per (kind, side), 3 000 per opponent. The overall rate weighs the kinds
+  as the distribution does (4 : 2 : 1), the sides equally; its 95 % interval comes from the
+  stratified variance `¼ Σ Σ w² r (1 − r) / n`: ±0.9 points at 0.95, ±1.8 at 0.75, ±2.0 at
+  0.50 (one kind ±1.4, ±2.7, ±3.1). The first n envs of each kind are themselves a stratified
+  set: 250 give ±2.5 at 0.75 (the intermediate ladders, §7). The sampled policy's generator is
+  seeded per (kind, side) alike for every network (common random numbers). The neutral kinds
+  join as report set v2 with T7 (the player's seat only).
+- **The gate set v1** (the SPRT, T3b): the default kinds, `GATE_V1_SEED`, 500 envs × 8
+  episodes; pair j is episode ⌊j / 500⌋ of env j mod 500, 4 000 pairs at most, each played
+  twice (the candidate attacking, then the best). Separate from the report set, so the networks
+  the gate selects are not measured on the episodes that selected them. Its seeds are defined;
+  T3b plays it.
+- **v0** (E05's `EVAL_SEED`, 100 envs × 10 episodes, the default kinds) stays selectable, so
+  E05's numbers can be compared; the trainer's evaluation plays it until T3b's gate.
+- **Disjointness without a growing set** (T2a, T3a): every held-out episode's seed (v0's, the
+  report set's 1 500, the gate set's 4 000) is computed once and each training episode's seed
+  checked against them, a hit stops the run; a run's `seed` among the sets' batch seeds is
+  refused, and so is a ladder of a network trained on one.
 
 ## 6. The evaluation gate
 
@@ -197,18 +175,20 @@ pinned equal by a test as `EVAL_SEED` is.
   exists (T7), and the previous `ladder.promoted` (1) promoted networks of the lineage (both seats
   external). Earlier ones are compared through the records, not replayed.
 - **Set:** the report set v1, the first `ladder.episodes` (250) per kind for an intermediate
-  ladder, all 500 at the end and for any claim of a target.
+  ladder, all 500 at the end and for any claim of a target (built as a tool in T3a:
+  `evaluate.ladder`, `report`; T3b plays it inside a run).
 - **Per opponent:** the win rate per (kind, side), per kind and overall with the 95 % intervals
-  of §5.1, the value efficiency (mean reward v1, weighed alike), truncations, skipped episodes,
+  of §5, the value efficiency (mean reward v1, weighed alike), truncations, skipped episodes,
   games and seconds. One `ladder` record and the record's ladder table.
-- **The bots' table** on the report set: `h3 ai eval --set report-v1 --json <file>` (T3a) plays
-  every pair of bots on the same episodes; the bots are deterministic and Random draws from the
-  episode's seat stream, so the table is a function of the engine: committed once as
-  `python/records/bots-report-v1.json`, regenerated when the bots move (the lane's trap: the
-  battle's strike stages).
+- **The bots' table** on the report set — built (T3a): `h3 ai eval --set report-v1 --json
+  python/records/bots-report-v1.json` plays every pair of bots on the same episodes; the bots
+  are deterministic and Random draws from the episode's seat stream, so the table is a function
+  of the engine (its identity in the file, checked by a Python test): regenerated when the bots
+  or the rules move (the lane's trap). The ladder prints the bots' rates beside the network's.
 - **Ratings:** Glicko-2 stays in one place, `h3 ai eval` (`src/ai/rating.rs`). It is a report,
   not part of the promotion or the targets; when one is wanted, `h3 ai eval --games <file>`
-  merges the network games Python wrote (`ladder` records) with the bots' (optional, T3a).
+  merges the network games Python wrote (`ladder` records) with the bots' (optional; not built
+  in T3a).
 - **The targets** (decision 7) are judged on the lineage's latest promoted network's full ladder:
   each point estimate at or above its target, the interval reported. Never the best of many
   checkpoints on the same set (that selects on its noise).
@@ -266,10 +246,10 @@ Each with the user's checkpoint; only the next one refined (Q41's pattern).
   - Moved to T5: the observations written in place. It needs no ABI change: `h3_batch_step`
     takes its buffers per call, so the binding can pass the rollout's row (the read-only
     attributes stay); worth its code only if a profile shows the copy.
-- **Increment 2:** T3a (the held-out sets v1 in Python and `h3 ai eval --set`, the ladder on
-  them, the bots' table, the bots' fallback branches tested), T3b (the gate, the promotion, the
-  ladder per promotion, their state in the checkpoint and a pending one at the resume,
-  `--init-from`; an hour on the user's machine with gates).
+- **Increment 2:** T3a (done 2026-10-20, `E06-log.md`: the held-out sets v1 in Python and
+  `h3 ai eval --set`, the ladder on them, the bots' table, the bots' fallback branches tested),
+  T3b (the gate, the promotion, the ladder per promotion, their state in the checkpoint and a
+  pending one at the resume, `--init-from`; an hour on the user's machine with gates).
 - **Increment 3:** T4a (the league of §8), T4b (the first multi-hour run, its resume used for
   real).
 - **Increment 4:** T5's experiments, each a recorded run: the entity network against the MLP,

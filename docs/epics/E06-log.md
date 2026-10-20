@@ -131,3 +131,44 @@ entry only where a task builds on it.
   message), the C smoke test (the versions, the entries of its batch, the cap); Python:
   `test_abi.py` (the version, the versions, the layout's 32 bytes), `test_batch.py` (the
   entries, the cap through the binding). 62 Python tests with torch on the CPU, 49 without.
+
+## T3a — The held-out sets v1, the ladder on them, the bots' table (2026-10-20)
+
+- **Cut:** the user asked for a small increment; offered T3a in two pieces (Rust, then Python),
+  the user chose all of T3a in one pull request.
+- **Built** (design §5, §7; ADR-0026 points 4, 5, 7): `h3 ai eval --set report-v1|v0` (the
+  report set v1 the default; `--episodes` per kind, at most 500; `--envs`, `--seed` and
+  `--encounters` for v0 only) and `--json <file>`. A set is a list of strata (`eval::Stratum`):
+  the report set v1 one per kind with a player on both sides (hero, siege a hero defends, a
+  garrison's siege), batch seed `REPORT_V1_SEED + k` (`0x5EED_E7A1_0001_0000 + k`), the kind
+  one-hot, the first episode of each env; v0 E05's single stratum. Per pair: the overall win rate
+  (the kinds at the distribution's weights 4 : 2 : 1, the sides equally) with its 95 % interval
+  (the stratified variance), each kind's rates per side, the value efficiency, truncations; the
+  JSON adds the engine's identity (`ENCOUNTERS_VERSION`, the core, battle and adventure rulesets'
+  content hashes). `bench::sampler` and `encounters_of` share one compiled sampler across strata.
+- **Python** (`h3env.train.evaluate`): `REPORT_V1_SEED`, `REPORT_V1_ENVS`, `REPORT_V1_WEIGHTS`,
+  `GATE_V1_SEED` (`0x5EED_E7A1_0002_0000`, 500 envs × 8 episodes, for T3b), `report` (each
+  (kind, side) its own batch and its own generator seed: common random numbers per (kind, side)),
+  `stratified`, `bots_table`; `play` takes `sides`; `ladder(held_out="report-v1"|"v0")`;
+  `held_out_seeds` (v0's, the report set's 1 500 and the gate set's 4 000) in the trainer's
+  held-out check; `HELD_OUT_BATCH_SEEDS`: `run.resolve` refuses a run's `seed` among them, the
+  ladder a network trained on one. `python -m h3env.train.ladder --set`, `--json`; on the whole
+  report set each line ends with the bots' rates against the same opponent from their table.
+- **The bots' table** (`python/records/bots-report-v1.json`, `h3 ai eval --set report-v1 --json`,
+  13.5 s in release in the sandbox; 9 000 games, none truncated): Greedy 0.832 ± 0.013 and
+  Aggressor 0.810 ± 0.014 against Random, Greedy 0.533 ± 0.018 against Aggressor (v0: 0.828,
+  0.800, 0.519); value Greedy +0.275, Aggressor +0.249 against Random, Greedy +0.023 against
+  Aggressor; Glicko-2 Greedy 1659, Aggressor 1622, Random 1219 (± 13). The garrison's siege
+  favours the attacker strongly (Random attacking wins 0.796 against Aggressor's garrison, 0.756
+  against Greedy's); a hero battle the attacker too (Greedy attacking Aggressor 0.746, defending
+  0.330).
+- **Tests:** `h3-cli` (the seeds and the report set's size pinned to Python's; the runner on v0
+  as before plus its interval; the report set's strata, the 4 : 2 : 1 overall rate, design §5's
+  ±1.8 points at 0.75, the JSON, the command line's refusals and `--json`); `h3-sim` (the bots'
+  fallbacks, E05 T9b's inbox: both bots end the tactics phase, both shoot the walls with a
+  commanded Catapult); Python `test_evaluate.py` (new, no torch: the report set's batches and
+  seeds, every held-out set in the trainer's check, the stratified rates and interval, Random
+  against a bot on the report set reproducibly, the committed table's strata, engine identity
+  and rates recomputed by `stratified`), `test_run.py` (the seeds refused, the records' test skips
+  `bots-*.json`), `test_train.py` (the ladder on both sets, common random numbers, the command
+  line, the refusals). 69 Python tests with torch on the CPU (the GPU test skipped), 56 without.

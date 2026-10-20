@@ -109,9 +109,14 @@ rate keeps the horizon fixed at the start), `env.threads`, `[device]` and
 with a larger budget only. A resumed run is reproducible from its record (the segments' seeds),
 not bitwise equal to an uninterrupted one.
 
-A checkpoint against Random and the baseline bots (E05 T7), on the episodes of `h3 ai eval`'s
-table (`cargo run --release -p h3-cli -- ai eval`):
+A checkpoint against Random and the baseline bots (E05 T7), on a held-out set (E06 T3a): the
+report set v1 by default (500 battles per kind with a player on both sides, each played from both
+sides; the overall win rate weighs the kinds 4 : 2 : 1, with its 95 % interval; `--episodes n`
+plays the first n per kind), or E05's v0 (`--set v0`). The episodes are `h3 ai eval`'s
+(`cargo run --release -p h3-cli -- ai eval [--set v0]`); on the whole report set each line ends
+with the bots' rates against the same opponent from their table
+(`records/bots-report-v1.json`). `--json <file>` keeps the results.
 
 ```sh
-uv run --group train python -m h3env.train.ladder --checkpoint runs/pool/best.pt
+uv run --group train python -m h3env.train.ladder --checkpoint runs/pool/best.pt [--episodes 250]
 ```

@@ -1,5 +1,5 @@
 """A training run's lifecycle, free of torch (E06 T2a, T2b1; ADR-0026, `docs/epics/E06-design.md`
-§1 to §5.3): the config and its TOML file, the schedule in samples, atomic writes, the held-out
+§1 to §5): the config and its TOML file, the schedule in samples, atomic writes, the held-out
 check, the run's directory with its typed metrics and its record, and what a resume needs from
 them (the changes it allows, the segments' batch seeds, the metrics cut back to the save, Ctrl+C).
 
@@ -32,6 +32,8 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import IO, Any
+
+from .evaluate import HELD_OUT_BATCH_SEEDS
 
 #: The version of `record.json`'s layout (`check_record`); 2: its segments (T2b1); 3: the
 #: engine's identity (the encodings' and encounters' versions, the batch's entries, T2c).
@@ -253,8 +255,8 @@ def resolve(config: Config) -> Config:
         problems.append("`lr_schedule` is linear or constant")
     if not 0.0 <= c.lr_floor <= 1.0 or not 0.0 <= c.pool_share <= 1.0:
         problems.append("`lr_floor` and `pool_share` lie in [0, 1]")
-    if c.seed == c.eval_seed:
-        problems.append("`seed` is the held-out episodes' batch seed (`eval_seed`)")
+    if c.seed == c.eval_seed or c.seed in HELD_OUT_BATCH_SEEDS:
+        problems.append("`seed` is a held-out set's batch seed (`eval_seed`, v0, the v1 sets')")
     if problems:
         raise ConfigError("; ".join(problems))
     return c
@@ -376,7 +378,7 @@ def atomic_write_text(path: Path, text: str) -> None:
 
 
 class HeldOutError(RuntimeError):
-    """A training episode's seed is a held-out one: the run stops (design §5.3)."""
+    """A training episode's seed is a held-out one: the run stops (design §5)."""
 
 
 class HeldOut:

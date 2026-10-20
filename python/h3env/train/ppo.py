@@ -30,7 +30,7 @@ import torch
 from .. import _ffi
 from ..batch import BattleBatch
 from ..seats import SeatBook
-from .evaluate import episode_seeds, evaluate
+from .evaluate import evaluate, held_out_seeds
 from .policy import Choice, Policy
 from .run import (
     Cadence,
@@ -216,9 +216,9 @@ class Trainer:
             mana_price=c.mana_price,
         )
         self.batch.add_encounters(kinds=c.kinds)
-        #: The held-out episodes' seeds (the evaluation's, v0): every training episode's is
-        #: checked against them (design §5.3).
-        self.held_out = HeldOut(episode_seeds(c.eval_episodes, c.eval_envs, c.eval_seed))
+        #: The held-out episodes' seeds (the evaluation's, v0, and the report and gate sets v1):
+        #: every training episode's is checked against them (design §5).
+        self.held_out = HeldOut(held_out_seeds(c.eval_episodes, c.eval_envs, c.eval_seed))
         self.batch.reset()
         self.held_out.check(self.batch.episode_seed)
         self.policy = Policy.for_batch(self.batch, c.hidden, c.embed).to(self.device)
