@@ -1,5 +1,6 @@
-"""The smoke run's PPO (E05 T8, `docs/epics/E05-log.md` §8.3): self-play over a `BattleBatch`
-of the encounter distribution, one network for both sides, one trajectory per (env, side).
+"""The PPO (E05 T8, `docs/epics/E05-log.md` §8.3): self-play over a `BattleBatch` of the
+encounter distribution, one network for both sides, one trajectory per (env, side). A run's
+settings, schedule and records: `run` (E06 T2a, ADR-0026).
 
 Each call's sample is the acting side's decision (observation, masks, chosen heads, its
 log-probability and value). `SeatBook` closes a side's transition at its next decision or at the
@@ -13,12 +14,9 @@ yet and is left out of that update; the sample before it bootstraps from its val
 
 from __future__ import annotations
 
-import json
-import os
-import subprocess
 import time
 from collections.abc import Callable
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict
 from pathlib import Path
 
 import numpy as np
@@ -27,55 +25,19 @@ import torch
 from .. import _ffi
 from ..batch import BattleBatch
 from ..seats import SeatBook
-from .evaluate import EVAL_SEED, episode_seeds, evaluate
+from .evaluate import episode_seeds, evaluate
 from .policy import Choice, Policy
-
-
-@dataclass
-class Config:
-    """Every setting of a run (§8.3; provisional), written into its `config.json`."""
-
-    minutes: float = 60.0
-    #: Stop after this many updates instead (0: the wall time decides).
-    updates: int = 0
-    envs: int = 256
-    threads: int = field(default_factory=lambda: os.cpu_count() or 1)
-    seed: int = 1
-    max_steps: int = 2000
-    #: The family's kind weights (`H3_ENCOUNTER_*` order); None: the distribution's defaults.
-    kinds: list[int] | None = None
-    currency: str = "ai_value"
-    mana_price: int = 10
-    rollout: int = 128
-    gamma: float = 0.995
-    lam: float = 0.95
-    lr: float = 2.5e-4
-    epochs: int = 4
-    minibatches: int = 8
-    clip: float = 0.2
-    value_coef: float = 0.5
-    entropy_coef: float = 0.01
-    max_grad_norm: float = 0.5
-    hidden: int = 512
-    embed: int = 32
-    #: Minutes between evaluations (and at the end); 0: only at the end.
-    eval_every: float = 10.0
-    eval_episodes: int = 1000
-    eval_envs: int = 100
-    eval_seed: int = EVAL_SEED
-    #: Also evaluate greedy play (the criterion is the sampled policy's).
-    eval_greedy: bool = True
-    #: Evaluate the untrained network and Random itself on the same episodes first.
-    eval_start: bool = True
-    device: str = "auto"
-    torch_threads: int = 0
-    #: The share of episodes in which a frozen earlier network (from the pool) plays one side,
-    #: drawn per episode (self-play otherwise; design §8.2, T8c).
-    pool_share: float = 0.5
-    #: Snapshots the pool holds; when full, a new one replaces a random one (ages stay spread).
-    pool_size: int = 8
-    #: Updates between snapshots (the first after this many).
-    pool_every: int = 25
+from .run import (
+    Cadence,
+    Config,
+    HeldOut,
+    Run,
+    atomic_write,
+    learning_rate,
+    machine,
+    resolve,
+    source,
+)
 
 
 class Rollout:
@@ -221,16 +183,6 @@ def device_of(name: str) -> torch.device:
     return torch.device(name)
 
 
-def commit() -> str:
-    try:
-        out = subprocess.run(
-            ["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True, timeout=10
-        )
-        return out.stdout.strip()
-    except (OSError, subprocess.SubprocessError):
-        return "unknown"
-
-
 class Trainer:
     """One run's state: the batch, the network, the optimizer, the open transitions."""
 
@@ -249,7 +201,11 @@ class Trainer:
             mana_price=c.mana_price,
         )
         self.batch.add_encounters(kinds=c.kinds)
+        #: The held-out episodes' seeds (the evaluation's, v0): every training episode's is
+        #: checked against them (design §5.3).
+        self.held_out = HeldOut(episode_seeds(c.eval_episodes, c.eval_envs, c.eval_seed))
         self.batch.reset()
+        self.held_out.check(self.batch.episode_seed)
         self.policy = Policy.for_batch(self.batch, c.hidden, c.embed).to(self.device)
         self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=c.lr, eps=1e-5)
         self.generator = torch.Generator(device=self.device).manual_seed(c.seed)
@@ -258,8 +214,6 @@ class Trainer:
         self.staging = Staging(self.device)
         #: Where each (env, side)'s open transition sits in the rollout (-1: none, or earlier).
         self.opened = np.full((c.envs, 2), -1, np.int64)
-        self.train_seeds: set[int] = set(int(s) for s in self.batch.episode_seed)
-        self.held_out = episode_seeds(c.eval_episodes, c.eval_envs, c.eval_seed)
         self.samples = 0
         self.updates = 0
         self.episodes = 0
@@ -361,7 +315,7 @@ class Trainer:
                 pool_episodes += len(learner)
                 pool_won += int((b.result[done[pooled]] == learner).sum())
                 self.episodes += len(done)
-                self.train_seeds.update(int(x) for x in b.episode_seed[done])
+                self.held_out.check(b.episode_seed[done])
                 self.assign(done)
         elapsed = time.perf_counter() - start
         with torch.no_grad():
@@ -450,120 +404,116 @@ class Trainer:
         return stats
 
     def checkpoint(self, path: Path) -> None:
-        torch.save(
-            {
-                "policy": self.policy.state_dict(),
-                "optimizer": self.optimizer.state_dict(),
-                "config": asdict(self.config),
-                "updates": self.updates,
-                "samples": self.samples,
-            },
-            path,
-        )
+        """The network, the optimizer and the counters, written atomically (the full training
+        state is T2b's)."""
+        state = {
+            "policy": self.policy.state_dict(),
+            "optimizer": self.optimizer.state_dict(),
+            "config": asdict(self.config),
+            "updates": self.updates,
+            "samples": self.samples,
+        }
+        atomic_write(path, lambda f: torch.save(state, f))
 
-    def held_out_check(self) -> bool:
-        return self.held_out.isdisjoint(self.train_seeds)
+
+def identity(trainer: Trainer) -> dict:
+    """The record's identity (design §4.2): the source, the engine's ABI and sizes, torch and the
+    device, the machine. The rulesets' hashes and the encodings' versions come with C ABI v31
+    (T2c)."""
+    device = trainer.device
+    return {
+        "started": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        **source(),
+        "abi": _ffi.ABI_VERSION,
+        "observation_len": trainer.batch.observation_len,
+        "action_count": trainer.batch.action_count,
+        "parameters": sum(p.numel() for p in trainer.policy.parameters()),
+        "torch": torch.__version__,
+        "cuda": torch.version.cuda,
+        "device": str(device),
+        "gpu": torch.cuda.get_device_name(device) if device.type == "cuda" else None,
+        **machine(),
+    }
 
 
 def train(
     config: Config,
     out: Path | None = None,
     log: Callable[[dict], None] | None = None,
+    text: str = "",
 ) -> Trainer:
-    """Trains for `config.minutes` (or `config.updates`) with evaluations every
-    `config.eval_every` minutes and at the end; writes `config.json`, `metrics.jsonl`,
-    `checkpoint.pt` (the last evaluation's) and `best.pt` (the best sampled rate's) into `out`
-    when given. The final evaluation reuses the last one if no update came between."""
+    """Trains until `config.samples` (the first update boundary at or past it), with an
+    evaluation every `config.eval_every` samples and at the end. Into `out` when given: the run's
+    directory (`run.Run`: `config.toml` from `text`, `metrics.jsonl`, `record.json`),
+    `checkpoint.pt` (the last evaluation's) and `best.pt` (the best sampled rate's). The final
+    evaluation reuses the last one if no update came between."""
+    config = resolve(config)
     trainer = Trainer(config)
-    if out is not None:
-        out.mkdir(parents=True, exist_ok=True)
-        meta = {
-            "config": asdict(config),
-            "commit": commit(),
-            "abi": _ffi.ABI_VERSION,
-            "torch": torch.__version__,
-            "device": str(trainer.device),
-            "observation_len": trainer.batch.observation_len,
-            "parameters": sum(p.numel() for p in trainer.policy.parameters()),
-        }
-        (out / "config.json").write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
-    metrics = None if out is None else (out / "metrics.jsonl").open("a", encoding="utf-8")
-
-    def emit(record: dict) -> None:
-        if metrics is not None:
-            metrics.write(json.dumps(record) + "\n")
-            metrics.flush()
-        if log is not None:
-            log(record)
-
-    start = time.perf_counter()
-    budget = config.minutes * 60.0
-    last_eval = start
+    run = Run(out, config, identity(trainer), text, log)
+    snapshots = Cadence(config.pool_every if config.pool_share > 0 else 0)
+    evaluations = Cadence(config.eval_every)
     last_record: dict = {}
 
+    def counters() -> dict:
+        return {
+            "update": trainer.updates,
+            "samples": trainer.samples,
+            "episodes": trainer.episodes,
+            "minutes": run.minutes(),
+        }
+
     def run_eval(final: bool, baseline: bool = False) -> None:
-        nonlocal last_eval, last_record
-        held_out = trainer.held_out_check()
-        if not held_out:
-            raise RuntimeError("an evaluation episode's seed was played in training")
+        nonlocal last_record
         t0 = time.perf_counter()
         result = evaluate(trainer.policy, config, baseline=baseline)
         rate = result["sampled"]["win_rate"]
         improved = rate > trainer.best
         trainer.best = max(trainer.best, rate)
         last_record = {
-            "eval": True,
+            "type": "eval",
             "final": final,
-            "update": trainer.updates,
-            "samples": trainer.samples,
-            "minutes": (time.perf_counter() - start) / 60,
-            "held_out": held_out,
+            **counters(),
             "eval_s": time.perf_counter() - t0,
             "best": trainer.best,
             **result,
         }
-        emit(last_record)
+        run.emit(last_record)
         if out is not None:
             trainer.checkpoint(out / "checkpoint.pt")
             if improved:
                 trainer.checkpoint(out / "best.pt")
-        last_eval = time.perf_counter()
+        run.write_record()
 
-    if config.eval_start:
-        run_eval(final=False, baseline=True)
-        start = last_eval = time.perf_counter()
-    while True:
-        elapsed = time.perf_counter() - start
-        if config.updates:
-            if trainer.updates >= config.updates:
-                break
-            progress = trainer.updates / config.updates
+    try:
+        run.emit({"type": "start", "name": run.record.name, **counters()})
+        if config.eval_start:
+            run_eval(final=False, baseline=True)
+        while trainer.samples < config.samples:
+            lr = learning_rate(config, trainer.samples)
+            roll = trainer.collect()
+            stats = trainer.update(lr)
+            run.emit(
+                {
+                    "type": "update",
+                    **counters(),
+                    "lr": lr,
+                    "samples_per_s": stats["update_samples"]
+                    / (roll["rollout_s"] + stats["update_s"]),
+                    **roll,
+                    **stats,
+                }
+            )
+            if snapshots.due(trainer.samples):
+                trainer.snapshot()
+                run.emit({"type": "snapshot", **counters(), "pool": len(trainer.pool)})
+            if evaluations.due(trainer.samples):
+                run_eval(final=False)
+        if last_record.get("update") == trainer.updates:
+            run.emit({**last_record, "final": True, "repeated": True})
         else:
-            if elapsed >= budget:
-                break
-            progress = elapsed / budget
-        roll = trainer.collect()
-        stats = trainer.update(config.lr * max(1.0 - progress, 0.05))
-        now = time.perf_counter()
-        emit(
-            {
-                "update": trainer.updates,
-                "samples": trainer.samples,
-                "episodes": trainer.episodes,
-                "minutes": (now - start) / 60,
-                "samples_per_s": stats["update_samples"] / (roll["rollout_s"] + stats["update_s"]),
-                **roll,
-                **stats,
-            }
-        )
-        if config.pool_share > 0 and trainer.updates % config.pool_every == 0:
-            trainer.snapshot()
-        if config.eval_every and now - last_eval >= config.eval_every * 60:
-            run_eval(final=False)
-    if last_record.get("update") == trainer.updates:
-        emit({**last_record, "final": True, "repeated": True})
-    else:
-        run_eval(final=True)
-    if metrics is not None:
-        metrics.close()
+            run_eval(final=True)
+        run.emit({"type": "end", "reason": "budget", **counters()})
+        run.write_record()
+    finally:
+        run.close()
     return trainer

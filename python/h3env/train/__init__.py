@@ -1,14 +1,35 @@
-"""The smoke training (E05 T8, `docs/epics/E05-log.md` §8): an own PPO over the batch's
+"""The training (E05 T8, `docs/epics/E05-log.md` §8; E06, ADR-0026): an own PPO over the batch's
 factorized, conditioned heads, trained by self-play on the encounter distribution v1 and evaluated
-against the engine's Random on held-out episodes (the sampled policy: exit criterion 7).
+against the engine's Random on held-out episodes (the sampled policy).
 
-    uv run --group train python -m h3env.train --minutes 60 --out runs/smoke
+    uv run --group train python -m h3env.train --config configs/pool-smoke.toml --out runs/smoke
 
-It needs the group `train` (PyTorch); `import h3env` itself stays free of torch.
+It needs the group `train` (PyTorch); `import h3env` itself stays free of torch, and so does
+`h3env.train.run` (the config, the records): the torch modules load on first use.
 """
 
-from .evaluate import EVAL_SEED, evaluate
-from .policy import Choice, Policy
-from .ppo import Config, Rollout, gae, train
+from __future__ import annotations
 
-__all__ = ["EVAL_SEED", "Choice", "Config", "Policy", "Rollout", "evaluate", "gae", "train"]
+import importlib
+
+from .run import Config
+
+#: The names this package exports from its torch modules, loaded on first use (PEP 562).
+_LAZY = {
+    "EVAL_SEED": "evaluate",
+    "evaluate": "evaluate",
+    "Choice": "policy",
+    "Policy": "policy",
+    "Rollout": "ppo",
+    "gae": "ppo",
+    "train": "ppo",
+}
+
+__all__ = ["Config", *_LAZY]
+
+
+def __getattr__(name: str):
+    module = _LAZY.get(name)
+    if module is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    return getattr(importlib.import_module(f".{module}", __name__), name)

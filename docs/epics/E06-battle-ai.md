@@ -1,6 +1,6 @@
 # E06 — Battle AI v1 and the local training pipeline v0
 
-Status: **in progress**, refined 2026-10-20 (AI-Q8); T1 next · Lane: **ai** · Follows E05 (closed
+Status: **in progress**, refined 2026-10-20 (AI-Q8); T1, T2a done; T2b next · Lane: **ai** · Follows E05 (closed
 2026-10-20) · Runs beside E23 (the battle lane: the original's battle AI, the system actor's
 policy), whose neutral side opens E06's neutral share (decision 1)
 
@@ -91,27 +91,33 @@ new observation or action encoding, unless an increment's evidence asks for one 
 
 ## Tasks (outline; refine at the start of each increment; keep status current)
 
-**Increment 1:** T1, then the user's review, then T2.
+**Increment 1:** T1, then the user's review, then T2 in three small pull requests (design §10;
+the user, 2026-10-20: T1 and T2a in one).
 
-- [ ] **T1 Design and ADR draft** — a design note (`E06-design.md`) and an ADR draft
-  (`docs/lanes/ai/adr-drafts/`) for the training pipeline: the run's config file and its record;
-  the resumable training state and how often it is saved (decision 4; atomic writes, the budget
-  in samples, the training seeds' disjointness from the held-out set without E05's ever-growing
-  set); the held-out set v1 (per kind and side, its size for the targets' confidence); the gate's
-  SPRT bounds; the league's sampling; the ladder's run from Python and `h3 ai eval`; where the
-  committed records live; the increments after this one. Stops for the user's review.
-- [ ] **T2 Resumable, config-driven runs** — refined after T1's review: the config file, the
-  full checkpoint and `--resume` (a test that interrupts a run and resumes it), the committed
-  record; the batch writes observations in place (the inbox's copy); `h3_batch_create`'s N
-  range-checked.
+- [x] **T1 Design and ADR draft** — done 2026-10-20: `E06-design.md`, ADR-0026 accepted (every
+  point as proposed); the record in `E06-log.md`.
+- [x] **T2a Config and record** — done 2026-10-20: `h3env.train.run` (TOML configs, the
+  schedule in samples, typed metrics, `record.json`, the held-out check without a growing set),
+  `python/configs/`, `python/records/`; the record in `E06-log.md`.
+- [ ] **T2b The full checkpoint and `--resume`** — design §3: the state, the cadence, Ctrl+C,
+  segments with derived batch seeds, the records' truncation, a pending gate or ladder,
+  `--init-from`; the tests of §3.4 (a run stopped by the flag and resumed, a run killed hard, a
+  refused change).
+- [ ] **T2c C ABI v31** — the record's engine identity (the batch's rulesets' content hashes,
+  the observation and action encodings' versions, the encounter table's version) and
+  `h3_batch_create`'s N range-checked; `h3env`'s `ABI_VERSION`. The observations written in
+  place need no ABI change (`h3_batch_step` takes its buffers per call): moved to T5.
 
-**Later increments** (cut at each checkpoint):
+**Later increments** (cut at each checkpoint; proposed in design §10):
 
-- [ ] **T3 The evaluation gate** — the held-out set v1, the SPRT promotion, the ladder per
-  promoted checkpoint, the bots' fallback branches tested.
-- [ ] **T4 The league** — prioritized fictitious self-play; the first multi-hour run.
+- [ ] **T3 The evaluation gate** — T3a: the held-out sets v1 (report and gate) in Python and
+  `h3 ai eval --set`, the ladder on them, the bots' table committed, the bots' fallback branches
+  tested; T3b: the SPRT promotion, the ladder per promoted network, an hour with gates on the
+  user's machine (the evaluation's share of a run measured).
+- [ ] **T4 The league** — T4a: PFSP over snapshots and promoted networks with a live set (design
+  §8); T4b: the first multi-hour run, its resume used for real.
 - [ ] **T5 The network and the preview** — the entity network against the MLP; AI-Q7 (b); the
-  mana-price experiment; batch size and threads from T9c's table.
+  mana-price experiment; batch size and threads from T9c's table; the observations in place.
 - [ ] **T6 Toward the targets** — runs on the best configuration until decision 7's targets hold,
   or the evidence says PPO plateaus (then T8).
 - [ ] **T7 The neutral share** (after E23's neutral side) — `Policy::System` in the training mix,

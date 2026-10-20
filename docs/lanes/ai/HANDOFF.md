@@ -14,9 +14,10 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 - **E06 refined 2026-10-20** (AI-Q8; `docs/epics/E06-battle-ai.md`): it starts now beside E23
   with the kinds a player plays on both sides; the neutral share (T7) waits for E23's policy of a
   side without a hero (its T2 to T4). PPO and a league first, search last; runs of a few hours,
-  interruptible and resumable. **Next:** T1, the design and ADR draft (QUEUE), then the user's
-  review.
-- **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v30 (T7: the bots' seats) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q8, AI-QUIRK-1, AI-STUB-1.
+  interruptible and resumable. **T1 and T2a done:** #310 (open, the user's checkpoint; ADR-0026
+  merged in #306): the design note `docs/epics/E06-design.md`, the run's config and record
+  (`h3env.train.run`). **Next:** T2b, T2c (QUEUE).
+- **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v30 (T7: the bots' seats) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q9, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
 ## Standing traps
@@ -55,8 +56,10 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   addresses): copy or write into them, never rebind; its head arrays must be N long.
 
 **Python**
-- The trainer (`h3env.train`, `E05-log.md` §8): its tests are in the lane command (`uv run --group
-  train pytest`); a run's files go into `python/runs/` (ignored). In a background shell `cd`
+- The trainer (`h3env.train`, ADR-0026): its tests are in the lane command (`uv run --group
+  train pytest`); a run is a TOML config (`python/configs/`, `--set`), its budget and cadences in
+  samples; its files go into `python/runs/` (ignored). `h3env.train.run` stays free of torch
+  (the package loads its torch modules lazily); `tests/test_run.py` runs without torch. In a background shell `cd`
   may not hold: run `uv --directory python run …` (a plain `uv run` from the root takes the
   system Python). A run in the sandbox competes with a verify for the 4 cores: run one at a time.
 - `python/` is a uv project (`uv sync`, `uv run pytest`, `uv run python -m h3env.bench`); its
@@ -73,14 +76,22 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   while the environment's network access is **Custom** with `*.pytorch.org`: **Trusted** ignores
   the Allowed domains. The proxy's 403 says why in its body, which curl hides: send a raw
   `CONNECT host:443` to `$HTTPS_PROXY` ("no rule or allowlist entry allows host", 2026-10-19).
+  Reached on 2026-10-20: `uv --directory python sync --group train` took 25 minutes, 6 GB.
 
 ## Recent sessions
 
+### 2026-10-20 — E06 T1 (the design, ADR-0026) and T2a (config and record)
+
+- Offered a narrower seam; the user chose T1 as queued, accepted every point of the design
+  (ADR-0026, #306) and T1 with T2a in one pull request. CI's runs never start (minutes).
+- T2a: TOML configs, the schedule in samples, typed metrics and `record.json`, the held-out
+  check without a growing set; `requires-python >= 3.11` (`tomllib`). 55 Python tests with
+  torch on the CPU; the full verify before the pull request (`E06-log.md`).
+
 ### 2026-10-20 — E06's refinement
 
-- The user called it while E23 reads (T1a3); asked four questions (AI-Q8): start now with the
-  neutral share later, PPO and a league with search last, fixed targets, and runs of a few hours
-  that can be interrupted and resumed (the user's addition); the other proposals stand.
+- The user called it while E23 reads (T1a3); AI-Q8: start now (the neutral share later), PPO and
+  a league with search last, fixed targets, runs of hours that can be interrupted and resumed.
 - Wrote `docs/epics/E06-battle-ai.md` (decisions 1 to 12, increments T1 to T9, exit criteria),
   AI-Q8 answered, AI-Q7's plan (T5), T1 queued; #296 (`shared/`) and #297 merged.
 - Fixed `master`'s red case of `a_batch_is_n_single_envs` (the battle lane's note): T9b cut the
@@ -89,20 +100,8 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 
 ### 2026-10-20 — T9c and T9d, the closure
 
-- #286 merged; `master` at b2d2e56 (#288, docs only). The user ran QUEUE's commands as one
-  script (`target\t9c\t9c.ps1` in the repo, its logs read over the device link): the sweep, the
-  Rust and Python pair, the Windows verify with original data (green; the executable-map check
-  skipped, the system Python). The Linux verify with the user's files staged ran in the sandbox.
-- T9d: `shared/e05-closure` (BACKLOG, ADR-0025's line, docs/07 §1.1, the global HANDOFF's verify
-  line), then `ai/e05-closure` (the design note kept in the log, its 26 references repointed:
-  comments only, a full verify again; the battle queue's inbox for E23's references).
-
-### 2026-10-19/20 — Increment 6's cut; T9a, the audit, and T9b, the review
-
-- The user cut increment 6 (T9a to T9d; four reviewers; AI-Q7 to E06; the Linux verify with
-  original data in a later staged sandbox). T9a: criteria 1 to 7 met, the inbox by destination.
-- T9b: four fresh reviewers, 21 findings (`E05-log.md`); the user chose the Catapult as a placed
-  war machine and one Glicko-2 period per run. A tried fix of A3's growth broke A4's premise:
-  reverted, noted for E23.
-- Python's `h3env.train` tests need torch (`--group train`), absent in the sandbox: the
-  evaluation's skip count was checked ad hoc by loading `evaluate.py` without the package.
+- The user ran QUEUE's commands as one script (`target\t9c\t9c.ps1`, its logs read over the
+  device link): the sweep, the Rust and Python pair, the Windows verify with original data
+  (green). The Linux verify with the user's files staged ran in the sandbox.
+- T9d: `shared/e05-closure`, then `ai/e05-closure` (the design note kept in `E05-log.md`, its
+  references repointed; the battle queue's inbox for E23's).
