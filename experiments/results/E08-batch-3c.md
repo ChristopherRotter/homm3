@@ -1,5 +1,7 @@
 # E08 batch E3c — results
 
+> Played by the capture harness on 2026-10-20 (`clients/capture/h3adv.py batch clients/capture/batches/E08-batch-3c.toml`): the same Complete 4.0 `Heroes3.exe` under Wine, without the HD mod; hot seat, difficulty Normal, the starting bonus random, Show Route on; read from the game's memory.
+
 Map file: `E08-batch-3c.h3m`. Fill in the blanks below and keep this file; an agent records the results (`docs/experiments/README.md`).
 
 **Stamp `b026743c`.** The map's description in the scenario list starts with "Stamp b026743c.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
@@ -23,9 +25,9 @@ Map file: `E08-batch-3c.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- the heroes off the map: experience (how many, lowest to highest, how many at each): 
-- E3-7's experience: 
-- E3-7's level: 
+- the heroes off the map: experience (how many, lowest to highest, how many at each): 152 heroes: 40 to 90; 3 at 40, 1 at 90
+- E3-7's experience: 51
+- E3-7's level: 1
 - anything odd: 
 
 ## E3-6 — A hero with a custom experience of 5 000: its level and skills at the start (§6.3, GAM-HER-001)
@@ -37,20 +39,20 @@ Map file: `E08-batch-3c.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- E3-6's experience: 
-- E3-6's level: 
-- E3-6's primary skills (attack/defense/power/knowledge): 
+- E3-6's experience: 5000
+- E3-6's level: 5
+- E3-6's primary skills (attack/defense/power/knowledge): 3/6/1/1
 
 | skill (basic on the map) | its level at the start |
 |---|---|
-| Pathfinding |   |
-| Archery |   |
-| Logistics |   |
-| Scouting |   |
-| Navigation |   |
-| Mysticism |   |
-| Offense |   |
-| Armorer |   |
+| Pathfinding | advanced |
+| Archery | basic |
+| Logistics | expert |
+| Scouting | advanced |
+| Navigation | basic |
+| Mysticism | basic |
+| Offense | basic |
+| Armorer | basic |
 
 - anything odd: 
 
@@ -66,19 +68,19 @@ Map file: `E08-batch-3c.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- E3-8's primary skills (attack/defense/power/knowledge) before: 
-- E3-9's experience before: 
-- Red's gold before: 
-- Blue's gold before: 
-- the questions asked (none, …): 
-- the attacker's hexes at the start (Red, loose): 
-- the defender's hexes at the start (Blue, tight on the map): 
-- the stacks at the start: 
-- who surrendered (attacker, defender, none): 
-- the battle's winner: 
-- Red's gold after: 
-- Blue's gold after: 
-- E3-8 on the map after (yes/no): 
-- E3-8's army after: 
-- E3-9's experience after: 
+- E3-8's primary skills (attack/defense/power/knowledge) before: 0/0/1/1
+- E3-9's experience before: 0
+- Red's gold before: 20000
+- Blue's gold before: 20900
+- the questions asked (none, …): none
+- the attacker's hexes at the start (Red, loose): 1, 35, 86, 137, 171
+- the defender's hexes at the start (Blue, tight on the map): 15, 49, 100, 151, 185
+- the stacks at the start: attacker 10 Pikemen, 5 Archers, 2 Swordsmen, 1 Monk, 4 Halberdiers | defender 10 Gremlins, 5 Stone Gargoyles, 3 Stone Golems, 2 Magi, 5 Master Gremlins
+- who surrendered (attacker, defender, none): attacker
+- the battle's winner: defender
+- Red's gold after: 18800
+- Blue's gold after: 22100
+- E3-8 on the map after (yes/no): no
+- E3-8's army after: 10 Pikemen, 5 Archers, 2 Swordsmen, 1 Monk, 4 Halberdiers
+- E3-9's experience after: 0
 - anything odd: 

@@ -238,6 +238,7 @@ mod tests {
             },
             // A count box the layout's picture, font and its palette (M3 T4a).
             Draw::CountBox {
+                stack: 0,
                 x: 0,
                 y: 0,
                 count: 1,

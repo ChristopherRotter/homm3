@@ -3261,12 +3261,170 @@ out; unread unless named):
 | H, the hero | 0x43C800, 0x41E570 | 5.8 KB, 12 | 0x41E570, 0x43BB20 and 10 helpers | rests on C; the Catapult and the Tent are read (§7.29; 0x473EA0, §7.14) |
 | A, the adventure AI's routines | (from 0x420A80, 0x41E570) | 6.4 KB, 21 | | values the adventure map uses too (a hero's worth, an army's): the adventure lane's to read with its AI |
 
-About 45 KB of unread code in all. T1a2's checkpoint cuts the readings from this table.
+About 45 KB of unread code in all. T1a2's checkpoint cuts the readings from this table. **T1a2**
+(§7.35) read part S in full and 0x421680 with seven of its helpers (about 1 KB of part W; four
+more in part): part W keeps about 10 KB for T1a3.
 
 **Readings at risk** (for T1b's batch rows, Q57): the computer never surrenders (0x47815A;
 against the wiki and VCMI); no Wait below Hard (0x42201D); a computer's shooter in the tactics
 phase only above Easy, to the hex with the fewest free neighbours (0x422060; one placement in a
 batch); the hero's cast considered before every stack's action, not only once per round (the
-round's mark allows one). Not a risk but a difference in the rules (the battle queue's inbox): the
-surrender's price leaves out Basic Resurrection's temporary creatures (+0x54, 0x47502A to
-0x47503E), which BAT-FLE-002 counts.
+round's mark allows one); T1a2 adds §7.35's. Not a risk but a difference in the rules (the
+battle queue's inbox): the surrender's price leaves out Basic Resurrection's temporary creatures
+(+0x54, 0x47502A to 0x47503E), which BAT-FLE-002 counts.
+
+### 7.35 Code reading: the shooters' rest and the walker's choice (E23 T1a2, 2026-10-20)
+
+Read for E23 T1a2 (the battle queue; §7.34's parts S and W): part S in full, so every branch of
+the computer's shot (0x41F060, §7.33) is now read, and the walker's choice 0x421680 in full with
+its helpers named by role (the rest of part W is T1a3's). Insight only, nothing copied (Q29).
+
+**0x41EDA0, an area shooter's value at a hex** (Magogs, Liches, Power Liches; §7.33's target
+0x41EB80 asks it at the target's position and, for a two-hex target, also at its other hex,
+taking the other only when strictly higher, which also becomes the shot's hex). It collects the
+living stacks within one hex of the hex (0x5A46F0 with radius 1, the hex included; below) and
+sums over them, from the last collected to the first: for a stack of the shooter's own side,
+minus 0x435C70 (§7.31's strike value with the shot flag from both stacks' whole hit points,
+0x443080 flag 0; no turns divisor); for any other stack, plus 0x435CB0 (§7.33's shot value, with
+its divisors). An undead shooter (`0x40000`: the Liches) leaves out an undead stack unless
+the stack covers the hex itself. The estimate knows nothing of fire immunity (an Efreet beside a
+Magog's target counts as hit) nor of living creatures other than the undead (a Lich's cloud
+counts an elemental or a golem; the rule, BAT-RNG-004, spares both): the computer's estimate,
+not the shot's rule. In 0x41EB80 a candidate whose best area value is below 0 is no candidate
+at all (0x41ECAD); a single-target shot's value is never negative. So a Magog or Lich shoots
+past a target whose area would cost its own side more than it gains, and Defends when every
+target does (0x41F060: no target, action 3).
+
+**0x5A46F0, the stacks of an area** (radius, a flag for the centre; also the area spells'
+handler 0x5A4970 and two other callers). The hexes come from 0x5A4170: with the column `x` and
+row `y` it forms the axial pair `a = x − (y+1)/2`, `b = x + y/2`, walks `a'` from `a − r` to
+`a + r` and inside it `b'` from `b − r` to `b + r`, takes a pair whose distance (the larger of
+the two differences when they have the same sign, else their sum) is at most `r`, and keeps its
+hex when its column is 1 to 15 (**the side columns 0 and 16 are never part of an area**) and its
+row 0 to 10; the centre only with the flag. 0x5A46F0 then walks that list from the end, takes
+the living stack on each hex (0x4E7170; the dead skipped, `0x200000`) and keeps each stack once
+(the marks +0x547C, 20 per side).
+
+**0x41EEA0, the wall shot** (from 0x41F060 for a shooter with flag `0x20`, the Cyclops, right
+after the first choice of a target and before the desperate mode's second one, never in a
+prediction: 0x41F060's own flag is the context's +9). No wall shot for the defender (side 1),
+without a fort (+0x132F4), or when none of the four walls stands: the targets 1, 2, 4 and 5 of
+0x63BE60 (the upper, mid-upper, mid-lower and lower walls, listed at 0x63ABD0) with hit points
+above 0 (+0x13F60 by part). Else it takes the threat records (0x422B20) of the shooter's own
+side and sums 0x442E60 (§7.31's strength, the context's least attack and defense) over the
+side's records that recorded no enemy (+0x538 = 0: the war machines but the Ballista, a
+hypnotized or berserk stack, one blind or petrified for more than a round, a walker that reaches
+no enemy within 127; the dead count 0): call it `B`. It shoots a wall when, in doubles,
+`B / S₀ > 3.0 × best / S₁`, with `S₀` and `S₁` the context's strengths of the own and the other
+side (all records, +0xC and +0x10) and `best` the value of the target just chosen (0 without
+one). The wall: the lowest hit points among the standing four, one of the walls with them drawn
+uniformly (`random(1, n)`, 0x41EFFB, drawn also for `n` = 1), in that list's order. The action
+is 9 at the target's aim hex (0x63BE60), +0x40 = −1. So the Cyclops batters the weakest wall
+when much of its own side's strength is locked out, measured against the best shot it has.
+
+**The context's fields** (0x435EC0, for later readings): +0 and +4 the least attack and defense
+(§7.31), +8 the desperate mode, +9 the prediction flag (the caller's), +0xC and +0x14 the own
+side's strengths with flag 1 (every record) and 0 (the able ones), +0x10 and +0x18 the other
+side's, +0x20 and +0x24 the own and the other side, and +0x1C a balance class from the two able
+strengths: 1 when the smaller is 0 or at most a fifth of the larger, else 1 + the first `i` for
+which larger / smaller ≥ 0x63B798[i] (2.6, 1.9, 1.5, 1.31, 1.2, 1.13; doubles), 7 below them
+all. Nothing read so far uses +0x1C.
+
+**0x421680, the walker's choice** (`this` the battle manager; the stack, a flag, a pointer to
+its value, the context; true when it wrote an action). The flag is 0 on a stack's turn (§7.34);
+the hero's predictions (0x43AA60) call it once with 0 and once with 1.
+
+1. *Hex scores*, 187 integers from 0: 0x4214F0 subtracts at every hex with a Fire Wall (hex flag
+   `0x10`) the value (0x442FD0, its minimum attack bonus passed for the defense bonus too) of the
+   damage the wall would deal the stack (0x5A78E0 for spell 13 with the wall's power and its
+   caster side's hero); **under SoD rules only** (`[game]+0x1F698` ≥ 2, BAT-Q41) 0x421590 does
+   the same for the moat's hexes with the town's moat damage (0x63BD18; hex 95, and 94 for the
+   Fortress's second row, only while the gate is closed); on Normal and above, or for a human
+   side, 0x420260 subtracts each enemy's attack value at every hex it reaches (floored at the
+   stack's whole value); on Hard and above, or for a human side, 0x41FB60 weighs the enemy
+   hero's spell threat (0x41F920) around the side's stacks (both from their calls; T1a3).
+2. *The map*: the AI pathfinder for the stack (0x4B2DA0, range 127, 0 while blind, petrified or
+   paralysed, with the tactics flag), or with the flag 1 the destination map 0x4B2FF0.
+3. *Holding the walls* (0x4213F0, defender only): true at a fort when no destroyed wall or gate
+   leaves an open hex, the side is the stronger (0x420A80) and every living defender stack but the
+   arrow towers stands inside the walls (0x467460: at or right of its row's wall hex). Then only
+   enemies inside the walls (either hex) are candidates. **The open-hex test reads the wrong
+   records** (0x42142F): it holds the parts 6, 8, 9, 10, 12 (0x63ABE0: the four walls and the
+   gate), tests a part's hit points by its number, and then uses the same number as an index into
+   the eight targets of 0x63BE60 for the part's wall hex. Part 6 gives the lower tower's record
+   (no wall hex: −1, so `hex_blocked` reads a battle-manager byte below the hex table, not read),
+   parts 8 and 12 records past the table (the absolute obstacles 0x63BEC0) that give hex 12, which
+   always stays blocked, and parts 9 and 10 bytes past the wall-hex table that give hex 0, a side
+   column. So a destroyed mid-upper or lower wall never counts as a breach here, and a destroyed
+   gate or mid-lower wall makes the test fail unless hex 0 is blocked.
+4. *Each enemy record*, in record order. Not the dead, nor the arrow towers, nor in a prediction
+   an enemy whose hit points less the damage planned on it are 0. A stack without speed (a war
+   machine) or bound (+0x2B8) takes only enemies next to it (cost 0 in the map). The value `v`:
+   - on Hard and above or for a human side, when the enemy can be attacked this turn (its hex's
+     mark +0x4A, cost within the speed), the stack can act (not blind, petrified, paralysed or
+     dead, not the First Aid Tent or the Ammo Cart, 147 and 148) and the enemy has no multi-headed
+     attack (`0x80000`): 0x41F3B0, the side's gain when this stack takes the enemy's last
+     retaliation (+0x454 = 1) for the side's other stacks that recorded it (+0x538, +0x544);
+   - the plan (0x4360C0, 0x436840): the best hex to attack the enemy from (0x436300 around the
+     enemy's hexes; +0x20), its turns (+0x24) and its value `P` (+0x1C). Without a hex the enemy
+     is no candidate;
+   - if the stack can act (as above): plus 0x435C70, the melee value with the path's cost to the
+     plan's hex as the jousting distance when the plan takes one turn (else 0);
+   - `P`: when positive, the stack not summoned (`0x400000`) and the game not Easy for a computer
+     side, the Harpies and Harpy Hags (72, 73) take the larger of `v` and `P`, any other stack adds
+     it, but with `v` negative and the side the stronger (0x420A80) it takes `P` alone; else `P`
+     is added. Taking `P` marks the choice "the plan's hex only";
+   - a negative `v`, outside Easy for a computer side: the enemy is dropped when `P` is below its
+     plan's hex score;
+   - **the draw** (0x421B02): `v = trunc(v × random(75, 100) / 100)` (a 32-bit product), one
+     draw per candidate that gets this far.
+   The best: one that is not blind, petrified or paralysed over one that is; then fewer turns;
+   then the value, where the best is kept as its value over its turns but the candidate compared
+   undivided (the same only at one turn); then more hit points lost by the top creature (+0x58);
+   then the lower cost to the plan's hex; then the later record. The value written back is the
+   larger of the best's `v` and its drawn `P`, each over its turns.
+5. *The action*:
+   - with the flag 1: move and attack the best (6: +0x40 the plan's hex, +0x44 the enemy's
+     position) when there is one and the value is at least 0, else Defend (3);
+   - outside a prediction and the tactics phase, the creature's cast entry 0x421280 first (part
+     C) with that value; a cast ends the choice (0x421F80 asks it again after a choice of
+     nothing);
+   - the plan's hex only: nothing when the stack stands on it (false), else a walk towards it
+     (0x41F580);
+   - no candidate, a besieging stack (a fort, the acting side 0): it walks to its own row's wall:
+     from the row's wall hex (0x63BD00) leftwards to the stack, the first hex the map reaches
+     that is not a moat hex (for a two-hex stack neither hex): the open wall hex itself after a
+     breach in that row, else the hex before the moat. None, or the stack at or right of the wall:
+     Defend;
+   - a candidate whose value per turn is negative and below its drawn `P` per turn, the stack
+     not summoned, outside Easy for a computer side, the side the stronger: the fallback below;
+   - otherwise, the attack: one turn away and outside the tactics phase, move and attack (6);
+     further, or in the tactics phase, a walk towards the plan's hex (nothing when already on it);
+   - the fallback (no candidate and not besieging, or the case above): outside a prediction,
+     when the enemy hero's spell threat on the stack (0x41F920) is 0, 0x420760 may walk the stack
+     to guard one of its side's shooters (those that shoot now and have the melee penalty, not the
+     Catapult; from its head, T1a3); then a candidate is attacked after all; without one, on Hard
+     and above or for a human side, 0x4208F0 may step a stack whose hex scores below 0 to the
+     best-scored hex it reaches this turn (from its head); else nothing (false).
+
+**0x420A80, "the stronger side"** (read at its end): true when the side's total exceeds the
+other's (0x420CCE); a total sums its stacks' strengths (0x442E60), a value of its hero through the
+adventure AI's routines (0x526D40, 0x5275B0: part A) and, for the defender at a fort, its
+turrets (the keep's at a Citadel or Castle, the towers' halves at a Castle). It decides three
+branches above: taking the plan's value alone, holding the walls, and giving up a losing attack.
+
+**What it reads, beyond §7.34's list:** the game's version (the moat's scores), the Fire Walls
+and the moat, the walls' and the gate's hit points, the enemy's retaliations left, the stacks'
+wounds (+0x58), Bind; the enemy hero's spells and spell points (0x41F920); nothing hidden.
+**Draws:** 0x421B02 per candidate enemy and 0x41EFFB once per wall shot.
+
+**Not read here** (T1a3, part W): the scores' builders 0x420260 and 0x41FB60, the plan's hexes
+0x436300 and its three helpers, 0x41F3B0 beyond its loop, 0x420760, 0x4208F0 and 0x41F920 beyond
+their heads, 0x4B2FF0, the walk 0x41F580's end; 0x420A80's totals.
+
+**Readings at risk** (added to §7.34's list for T1b): the wall shot's test (a double comparison
+with 3.0) and its uniform draw among the weakest walls; the walls test's wrong records (a
+defender behind a destroyed mid-upper wall stays inside); the walker's draw of 75 to 100 % per
+candidate and the undivided comparison of a candidate several turns away; the Harpies' larger of
+the two values; a besieger without a target walking to its own row's wall; the moat's scores
+only under SoD rules.

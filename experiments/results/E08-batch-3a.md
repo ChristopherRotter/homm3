@@ -1,5 +1,7 @@
 # E08 batch E3a — results
 
+> Played by the capture harness on 2026-10-20 (`clients/capture/h3adv.py batch clients/capture/batches/E08-batch-3a.toml`): the same Complete 4.0 `Heroes3.exe` under Wine, without the HD mod; hot seat, difficulty Easy, the starting bonus random, Show Route on; read from the game's memory.
+
 Map file: `E08-batch-3a.h3m`. Fill in the blanks below and keep this file; an agent records the results (`docs/experiments/README.md`).
 
 **Stamp `786afe33`.** The map's description in the scenario list starts with "Stamp 786afe33.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
@@ -25,10 +27,10 @@ Map file: `E08-batch-3a.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- E3-1's primary skills (attack/defense/power/knowledge) before: 
-- the questions asked (none, flee, join, …): 
-- a battle (yes/no): 
-- the monster on its tile after: 
+- E3-1's primary skills (attack/defense/power/knowledge) before: 0/0/1/1
+- the questions asked (none, flee, join, …): flee
+- a battle (yes/no): no
+- the monster on its tile after: none
 - anything odd: 
 
 ## E3-1c — 36 Halberdiers against 10 savage Pikemen on Easy (D-10 alone) (D-10, ADV-MON-007)
@@ -42,10 +44,10 @@ Map file: `E08-batch-3a.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- E3-1c's primary skills (attack/defense/power/knowledge) before: 
-- the questions asked (none, flee, join, …): 
-- a battle (yes/no): 
-- the monster on its tile after: 
+- E3-1c's primary skills (attack/defense/power/knowledge) before: 0/0/1/1
+- the questions asked (none, flee, join, …): flee
+- a battle (yes/no): no
+- the monster on its tile after: none
 - anything odd: 
 
 ## E3-2 — 56 Pikemen against 10 savage Pikemen on Easy (D-9) (D-9, ADV-MON-007)
@@ -59,10 +61,10 @@ Map file: `E08-batch-3a.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- E3-2's primary skills (attack/defense/power/knowledge) before: 
-- the questions asked (none, flee, join, …): 
-- a battle (yes/no): 
-- the monster on its tile after: 
+- E3-2's primary skills (attack/defense/power/knowledge) before: 0/0/1/1
+- the questions asked (none, flee, join, …): flee
+- a battle (yes/no): no
+- the monster on its tile after: none
 - anything odd: 
 
 ## E3-2c — Control: 39 Halberdiers against 10 savage Pikemen on Easy (D-9, ADV-MON-007)
@@ -77,8 +79,8 @@ Map file: `E08-batch-3a.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- E3-2c's primary skills (attack/defense/power/knowledge) before: 
-- the questions asked (none, flee, join, …): 
-- a battle (yes/no): 
-- the monster on its tile after: 
+- E3-2c's primary skills (attack/defense/power/knowledge) before: 0/0/1/1
+- the questions asked (none, flee, join, …): flee
+- a battle (yes/no): no
+- the monster on its tile after: none
 - anything odd: 

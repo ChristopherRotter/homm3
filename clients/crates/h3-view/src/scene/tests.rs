@@ -208,9 +208,10 @@ fn the_battle_is_drawn_in_the_executables_order() {
         outline,
     };
     // Each stack's count box after it (M3 T4a): beside it, the hexes ahead free.
-    let counted = |row, column, [dx, dy]: [i32; 2]| {
+    let counted = |stack, row, column, [dx, dy]: [i32; 2]| {
         let [x, y] = layout.anchor(row, column);
         Draw::CountBox {
+            stack,
             x: x + dx,
             y: y + dy,
             count: 10,
@@ -242,10 +243,10 @@ fn the_battle_is_drawn_in_the_executables_order() {
             },
             // Row 1: a stack above the layer-1 obstacle's row, drawn after it all the same.
             creature("CPKMAN.DEF", 1, 2, false, None),
-            counted(1, 2, [22, -15]),
+            counted(4, 1, 2, [22, -15]),
             // Row 3: the defender's dragon, from its position (its rear hex).
             creature("CBDRGN.DEF", 3, 16, true, None),
-            counted(3, 16, [-52 - 44, -30]),
+            counted(2, 3, 16, [-52 - 44, -30]),
             // Row 4: the layer-0 obstacle in pass 2, raised by its second row; then the stacks
             // in pass 4, left to right, the attacker's dragon from its rear hex.
             Draw::Obstacle {
@@ -256,9 +257,9 @@ fn the_battle_is_drawn_in_the_executables_order() {
                 y: fy - 42
             },
             creature("CPKMAN.DEF", 4, 0, false, Some(0x60)),
-            counted(4, 0, [22, -15]),
+            counted(0, 4, 0, [22, -15]),
             creature("CBDRGN.DEF", 4, 9, false, None),
-            counted(4, 9, [22 + 44, -15]),
+            counted(1, 4, 9, [22 + 44, -15]),
             // Row 7: the layer-0 obstacle whose hexes are in the cleared set.
             Draw::Obstacle {
                 def: "Front.def".to_string(),
@@ -332,6 +333,20 @@ fn a_count_box_shows_by_its_stack_and_the_hex_ahead() {
             (at(9, 2, [22, -15]), 1234),
         ]
     );
+    // The moment's counts (E17 M3 T5b: a strike's kills from its end) override the snapshot's.
+    let moment = Moment {
+        counts: [(1, 7), (6, 1200)].into_iter().collect(),
+        ..moment
+    };
+    let list = battle_at(&o, &moment, &keys(), &tables(), &layout).unwrap();
+    let counts: Vec<_> = list
+        .iter()
+        .filter_map(|d| match d {
+            Draw::CountBox { stack, count, .. } => Some((*stack, *count)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(counts, [(0, 10), (1, 7), (2, 10), (6, 1200)]);
     // A stack on the field's edge: nothing ahead of hex 0 facing left.
     assert_eq!(ahead(0, false, 0), None);
     assert_eq!(ahead(255, true, 0), None);
@@ -446,6 +461,7 @@ fn a_moment_draws_each_stack_in_its_pose() {
             translucent: true,
             over: vec![(0, [7, 8], false), (9, [1, 1], true)],
         }),
+        counts: BTreeMap::new(),
     };
     let list = battle_at(&battle_view(), &moment, &keys(), &tables(), &layout).unwrap();
     // The magic animation right after its stack's sprite, once.

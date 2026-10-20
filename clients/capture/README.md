@@ -152,7 +152,10 @@ exit 1 on a change). An entry's `log_at` (M3 T4b-2b-2) compares the log's item f
 (`panel_beside_log` instead of `panel`), the viewer drawing its record's first strike's line
 there (design §9.6). An entry with `boxes = true` (M3 T5a) compares the count boxes; any other
 masks them where the drawn poses show them and where the viewer drew them (`ours.txt` lists the
-boxes it drew, ` box<x>,<y>`). Each line is `<ms> <differing> <artifacts>` (M3 T1c): the differing
+boxes it drew, ` box<x>,<y>n<count>@<side>.<record>`). With `boxes`, a box whose count is not the
+one the original's memory shows (`h3mem`'s `shown`, +0x50, while it is not −1, else its `count`;
+M3 T5b, design §4.3: the engine rolls its own damage) is masked and listed at the end of its
+frame's line, ` n<side>.<record>`. Each line is `<ms> <differing> <artifacts>` (M3 T1c): the differing
 pixels outside the masks and how many of them are the original's **redraw artifacts**
 (`h3cap.redraws`, design §7.11): its pixel is ours at that moment with one to five more
 shadows, or one we drew there at an earlier moment of the sequence with at least one more. The
@@ -281,7 +284,8 @@ dumps (Wine may draw a moment later).
 
 `h3mem.py` opens the game's `/proc/<pid>/mem` (Wine maps `Heroes3.exe` at its image base, so the
 map's addresses hold): the frame deadline and the idle step's time, the combat speed, and per
-stack its creature, hex, group, frame, facing, offsets and times (`docs/exe/structs.toml`). On
+stack its creature, hex, group, frame, facing, offsets, times, count and the count its box shows
+(`shown`, M3 T5b) (`docs/exe/structs.toml`). On
 the adventure map (M2 T6): the current player, each player's selected hero, hero list and
 resources, every hero's name, tile and points, the view's top-left tile, the tile under the
 mouse and the selected hero's path (design §6.3). It only reads. `python3 capture/h3mem.py`
@@ -304,8 +308,9 @@ design §7.1.
   (design §9.4, §9.6): compare the log's item only from a sequence's `log_at`.
 - A hero's reaction may be read a step late at its first frame: one of two runs of `strike`
   (M3 T5a) read the left hero standing at 3 730 ms while its screen showed its reaction (group 3)
-  (2 400 pixels); run again, as recorded. A `CHANGED` with differences only on a hero at the
-  frame its reaction starts is that, not a change of the viewer.
+  (2 400 pixels), one of two in T5b-1 its frame 0 while the screen showed frame 1 (2 152); run
+  again, as recorded. A `CHANGED` with differences only on a hero at the frame its reaction
+  starts is that, not a change of the viewer.
 - An XWD file's colour map holds bytes the X server leaves unset: compare pixels, never files.
 - The menus run in real time; only the battle runs on the stepped clock. Two runs still agree:
   the battle's setup does not depend on the clock (observed: the obstacles follow the tile).
@@ -334,6 +339,9 @@ design §7.1.
 - Auto combat plays a human side's creatures only with the setting `Combat Auto Creatures` on
   (`setup.sh` sets it; a new prefix holds 0, and then the button only sets a flag and the turn
   still waits: 0x474CDF). The capture set never turns auto combat on.
+- A game's first battle takes orders later than its later ones: a key before a stack's turn is
+  lost (E08 T22a3: batch E3b stalled at its first battle in every run). `fight`'s auto combat
+  waits for an active stack and presses again after a 10 s stall.
 - A player left without heroes and towns is out, and with one human left the game is won: the
   Hall of Fame shows and the batch stops (`neither the adventure map, a battle nor a dialog`). An
   experiment map keeps each player a hero after its battles (the check gives Blue a second one).

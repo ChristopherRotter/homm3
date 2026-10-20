@@ -583,8 +583,8 @@ fn the_shot_sequence_plays_as_recorded() {
 #[test]
 fn the_melee_sequence_plays_as_recorded() {
     // `seq-melee.toml`: the Angels fly to hex 43; the computer's Wolf Riders walk to 45 and
-    // strike them, the Angels strike back. The second command starts by default 100 ms after
-    // the first's last frame shows.
+    // strike them, the Angels strike back (to its end since T5b: 7 000 ms). The second command
+    // starts by default 100 ms after the first's last frame shows.
     let mut angels = at(0, Side::Attacker, ANGEL, 35, false);
     angels.flies = true;
     let o = snapshot(vec![
@@ -604,7 +604,7 @@ fn the_melee_sequence_plays_as_recorded() {
         Event::TurnStarted { stack: 3 },
     ];
     let t = play(&o, &[(None, fly), (None, attack)]);
-    assert_eq!(until(&t.lines(), 6000), MELEE);
+    assert_eq!(until(&t.lines(), 7000), MELEE);
     // T4b-1 (§7.9, the reference frames): the flight's point moves on before each frame by
     // f32 (352 / 3) / 7, truncated: the last of 21 frames is 351 pixels on, not 352.
     let offsets: Vec<[i32; 2]> = [300, 358, 1402, 1460].map(|t2| t.at(t2)[&0].offset).into();
@@ -993,9 +993,9 @@ fn strikes_react_by_direction_defence_and_death() {
         l
     };
     // T4b-2a (§7.9): the striker 6, then 5 for a later strike of the command; the struck 5;
-    // each back in 4 with the next frame that does not draw it otherwise, or the first idle step
-    // after its command (T5c: here before each later command; the last one's end restores it).
-    assert_eq!(layers(0), [6, 4, 6, 4, 6, 5, 4]);
+    // each back in 4 at the strike's end (T5b: `strike_animation` sets every stack's +0x8 to 4
+    // and redraws, 0x46934D, 0x46938A), before a later strike of the command takes its layer.
+    assert_eq!(layers(0), [6, 4, 6, 4, 6, 4, 5, 4]);
     assert_eq!(layers(1), [5, 4, 5, 4, 5, 4]);
     // The Goblins below: dead, their death's last frame stays among the corpses; the Angels too.
     let last = t.at(t.end);
@@ -1593,11 +1593,12 @@ fn a_breath_on_two_stacks_takes_its_own_groups() {
 }
 
 #[test]
-fn layer_changes_show_at_the_next_idle_step() {
+fn layer_changes_show_at_the_strikes_end() {
     // The reviewer (E17 M2 T5c): a command's last layer changes waited for the next command's
     // first frame, so a corpse lay in the struck stacks' pass through a player's wait, and a
-    // survivor's standing pose came back with another stack's walk. Both show with the first
-    // idle step after the strike now, as after the last command.
+    // survivor's standing pose came back with another stack's walk. Both showed with the first
+    // idle step after the strike then; since T5b at the strike's end, whose whole redraw shows
+    // them at once (`strike_animation` 0x46938A).
     let o = snapshot(vec![
         at(0, Side::Attacker, WOLF_RIDER, 52, true),
         at(1, Side::Defender, GOBLIN, 54, false),
@@ -1618,8 +1619,51 @@ fn layer_changes_show_at_the_next_idle_step() {
     );
     let corpse = t.keys.iter().rfind(|k| k.stack == 2).unwrap();
     assert_eq!(corpse.pose.layer, CORPSE);
-    assert!(corpse.shown < 9000);
-    assert!(t.steps.contains(&corpse.shown));
+    let dying = t
+        .keys
+        .iter()
+        .rfind(|k| k.stack == 2 && k.pose.layer != CORPSE)
+        .unwrap();
+    assert_eq!((corpse.drawn, corpse.shown), (dying.shown, dying.shown));
+}
+
+#[test]
+fn a_strikes_kills_show_in_the_count_box_at_its_end() {
+    // E17 M3 T5b (design §4.3): the box shows the count before the kills (+0x50) through the
+    // strike's iterations and the new one from its end, the whole redraw shown at once; a strike
+    // that kills none changes nothing. Two shots, then a strike back at the shooter.
+    let o = snapshot(vec![
+        at(0, Side::Attacker, MARKSMAN, 35, false),
+        at(1, Side::Defender, GOBLIN, 49, false),
+    ]);
+    let shot = flags(true, false, false);
+    let shots = vec![struck(0, 1, 6, shot), struck(0, 1, 5, shot)];
+    let back = vec![
+        struck(1, 0, 0, flags(false, false, false)),
+        struck(0, 1, 29, flags(false, true, false)),
+    ];
+    let t = play(&o, &[(Some(0), shots), (Some(9000), back)]);
+    let ends: Vec<u32> = t.counts.iter().map(|k| k.shown).collect();
+    assert_eq!(
+        t.counts
+            .iter()
+            .map(|k| (k.stack, k.count))
+            .collect::<Vec<_>>(),
+        [(1, 34), (1, 29), (1, 0)]
+    );
+    // Each as the strike's last frame shows (its reaction's standing frame, drawn a tick before).
+    for &end in &ends {
+        assert!(
+            t.keys
+                .iter()
+                .any(|k| k.stack == 1 && k.shown == end && k.drawn < end)
+        );
+    }
+    assert!(ends[1] < 9000 && ends[2] > 9000);
+    assert_eq!(t.counts(ends[0] - 1), BTreeMap::new());
+    assert_eq!(t.counts(ends[0]), BTreeMap::from([(1, 34)]));
+    assert_eq!(t.counts(ends[1]), BTreeMap::from([(1, 29)]));
+    assert!(t.changes(t.end).contains(&ends[1]));
 }
 
 #[test]

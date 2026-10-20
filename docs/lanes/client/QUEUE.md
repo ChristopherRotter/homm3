@@ -6,24 +6,21 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024). M3 (fidelity) below, refined at M2's closure (T5c) and agreed by the user there, each task about half a context; the exit: the reference set passes, or each difference is a listed fix or a classified quirk. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M3 T5b — The count boxes' numbers over time
+### E17 M3 T5b-2 — The count boxes in `behind`, `shots`, `fly` and `machines`
 
-- **Scope:** (T4a drew the boxes in the stills; T5a hid them through walks and flights and freed
-  a dead stack's hex: design §4.3; `walk`, `turn`, `climb` and `strike` compare their boxes,
-  `boxes = true`.) The number shown over time: +0x50 when not −1 (to read: who sets it and when
-  the box's number changes during and after a strike), the viewer's count taken from the
-  record's `Struck` kills at that moment (the scene draws the snapshot's counts so far). The
-  engine rolls damage differently from the original, so after a rolled strike the digits differ:
-  compare a box's digits only where the original's count (its memory, `h3mem`: +0x4C, +0x50)
-  equals the engine's, and list the rest. Then the boxes compared in the other six sequences
-  (`shot`, `melee`, `behind`, `shots`, `fly`, `machines`; they mask the boxes where the viewer
-  draws them so far, from `ours.txt`'s ` box<x>,<y>`); a stale box the original's partial redraw
-  leaves (design §7.11) listed with its count as T5a listed `strike`'s at 2 730 ms (design §4.3),
-  or classified by a rule that cannot pass a box the viewer moves too early (`melee`'s at
-  3 966 ms was none: the walker's +0x30, T5a). (The spells' tint moved to T7b, the user,
-  2026-10-20.)
+- **Scope:** (T5b-1 read +0x50 and built the number over time, design §4.3; `shot` and `melee`
+  compare their boxes, `boxes = true`, a box whose count is not the one the original's memory
+  shows masked and listed, ` n<side>.<record>`.) The boxes compared in the other four sequences,
+  which mask them where the viewer draws them so far: battles in progress with several strikes
+  and shots (`behind`, `shots`), a breath on two stacks and a strike back (`fly`), the war
+  machines (no box) and the First Aid Tent's heal (`machines`: whether a heal changes the box's
+  number, not read). A sequence may need its `ms` lengthened to show a strike's end (as `melee`
+  at T5b-1). A stale box the original's partial redraw leaves (design §7.11) listed with its
+  count as T5a listed `strike`'s at 2 730 ms (design §4.3), or classified by a rule that cannot
+  pass a box the viewer moves too early (`melee`'s at 3 966 ms was none: the walker's +0x30,
+  T5a).
 - **Acceptance:** the recorded sequences match with the count boxes drawn.
-- **Depends on:** nothing (T5a done). **Status:** ready.
+- **Depends on:** nothing (T5b-1 done). **Status:** ready.
 
 ### E17 M3 T6 — The battle interface
 
@@ -96,12 +93,13 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 - **Scope:** M3's review list with the user, a fresh reviewer agent over M3, the next milestone
   refined (sieges, live play, HD or the adventure map: the user's choice), M3 marked done.
 - **Acceptance:** M3's exit holds; the review list answered or carried on.
-- **Depends on:** T5b–T8 (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a
-  done).
+- **Depends on:** T5b-2–T8 (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2,
+  T5a, T5b-1 done).
   **Status:** waiting.
 
 ## Inbox
 
+- 2026-10-20 (the adventure lane, E08 T22a3, `adventure/e08-t22a3`, `cross-lane`, with the user's consent; for your information, review if you like): **a change to `capture/h3adv.py`'s auto combat.** Batch E3b stalled at its first battle in every run: `fight` sent `a` 0.5 s after the stacks appeared, before the game's first battle gave a stack its turn, and the key was lost (the attacker's stack stayed active; an `a` by hand then started auto combat; the later battles took the harness's key). The new `auto_combat` waits for an active stack (or the result's OK), presses `a`, and presses again when the same stack stays active with every stack unchanged for 10 s; the runbook's traps have a line. E3a, E3b and E3c then ran through (`experiments/results/E08-batch-3{a,b,c}.md`); the winner of -1 noted at T22a2b did not come up.
 - 2026-10-20 (the adventure lane, E08 T22a2b, `adventure/e08-t22a2b`, `cross-lane`, with the user's consent; for your information, nothing to do): **a third recipe in your folder**, `capture/batches/E08-batch-3c.toml` (Normal, 4 steps; spec `experiments/specs/E08-batch-3c.toml`), for batch E3's hero rows: two reads at the start (`heroes:experience`; a hero with 5 000 experience: `hero:level`, `hero:primary`, eight `hero:skill:<name>` rows of a table) and one of the defender's experience (`hero[E3-9]:experience`), then a hero battle the attacker surrenders (`battle = "surrender"`: Blue's stacks defend until Red's first acts) with both players' gold before and after, `hexes:start:attacker` and `:defender` (the defender tight on the map, five stacks, so both formations show), `surrendered`, `winner`, `hero:on_map`, `hero:army` and `hero[E3-9]:experience`. Only what H1 and H2 built; every record key checked against the compiled template's fields. Not run yet (T22a3). If a run shows a harness gap, the adventure lane's inbox. **One small thing for you** (found by the T22a2b review): `h3adv.value` prints `SIDES[fought["winner"]]`, and `h3mem.battle_outcome`'s winner is an `i32`, so a winner of -1 (none) would print `defender`; E3c reads it but decides by `surrendered` and the gold.
 - 2026-10-20 (the adventure lane, E08 T22a2a, `adventure/e08-t22a2a`, `cross-lane`, with the user's consent; for your information, nothing to do): **two recipes in your folder**, `capture/batches/E08-batch-3a.toml` (Easy, 4 steps) and `E08-batch-3b.toml` (Normal, 19 steps, both players' turns of day 1), for batch E3's monster rows (specs `experiments/specs/E08-batch-3{a,b}.toml`). They use only what H1 and H2 built: `answer = "no"` for every question (E3-5 B: `{ flee = "yes", other = "no" }`), `battle = "auto"` or `"retreat"`, a walk below (`[12, 27, 1]`), eight heroes for Red (the list scrolled), `before:hero:primary`, `aggression:` and `never_flees:` in a step without a walk, `stacks:start:defender`, `winner`, `monster:x,y[,level]`; every record key was checked against the compiled templates' fields. Not run yet (T22a3). If a run shows a harness gap, the adventure lane's inbox.
 - 2026-10-19 (the adventure lane, E08 T22a1, `adventure/e08-t22a1`, `cross-lane`): **the tools your harness check waited for are in.** `h3-experiment` places a monster of any disposition that may flee (`[encounter.opponent]` `disposition`, `flees`), guarded piles (`[[map.pile]]` `guards`, `question`: with a question the game asks, without one the guards fight at once) and an underground level (`[map.underground]`, an encounter's or a pile row's `level = 1`); `[map] difficulty` puts the difficulty into the template (`docs/experiments/README.md`, "Spec format"). Your item of 2026-10-19 above (the check's offers, a pile's question, a walk below) can go ahead. `h3_map::writer::Map` gained `underground` (your `situation.rs` got `underground: None` in this pull request). Batch E3's spec and its recipe come with E08 T22a2.

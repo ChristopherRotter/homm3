@@ -186,7 +186,9 @@ pub fn compose(
                     Drawer::Shadowed { colour: None },
                 );
             }
-            Draw::CountBox { x, y, count, tint } => {
+            Draw::CountBox {
+                x, y, count, tint, ..
+            } => {
                 // 0x43E568: the picture, index 0 transparent (0x4958E0 → 0x44FDB0), its inside
                 // tinted (0x44E940), the count's `%d` in the font (0x4B5490), centred.
                 let b = &layout.count_box;

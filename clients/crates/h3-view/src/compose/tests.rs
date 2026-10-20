@@ -462,6 +462,7 @@ fn boxed() -> (BattleLayout, Batch) {
 fn a_count_box_is_its_picture_tinted_with_the_count_over_it() {
     let (layout, batch) = boxed();
     let count = |tint| Draw::CountBox {
+        stack: 0,
         x: 2,
         y: 1,
         count: 12,

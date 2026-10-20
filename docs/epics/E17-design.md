@@ -330,8 +330,8 @@ pixels of the 800 × 600 frame; the battlefield takes its top 800 × 556.
   its inside is tinted (§3.7, 0x43E6A0: from (1, 1), 28 × 9) with the hue 0.75 and the
   saturation 0.8 when the stack has no active spell (+0x194 = 0); else the hue is
   f32((r + 1) × 0.1667) with r = Σ k / Σ |k| over its 81 spells' durations +0x198 that are not 0,
-  k the spell table's first field (0x43E6AA to 0x43E73E; not built: M3 T5). The count is `%d` of
-  +0x4C, or of +0x50 when it is not −1 (not read where it is set), written by `TextDraw` (§3.6)
+  k the spell table's first field (0x43E6AA to 0x43E73E; not built: M3 T7b). The count is `%d` of
+  +0x4C, or of +0x50 when it is not −1 (below, "The number"), written by `TextDraw` (§3.6)
   in `tiny.fnt` into (x, y, 30, 15) with colour 4 (`game.pal`'s entry 13, white) and alignment 1
   (centred, from the top). A count of seven digits or more shows its first five (the box's last
   line cut at the glyph that fits, §3.6).
@@ -340,8 +340,8 @@ pixels of the 800 × 600 frame; the battlefield takes its top 800 × 556.
   and facing; the hexes ahead taken by every living stack's poses and the blocked hexes; the
   layout's `[count_box]` holds the numbers. Every creature's troop-count offset is 0 in the
   harvested tables. Checked: the capture set without the count-box mask, 31 situations, all 57
-  frames exact (§6.2). Not yet: the count shown over time (+0x50; M3 T5b) and the spells' tint
-  (M3 T7b, with the first sequences that cast on stacks).
+  frames exact (§6.2). Not yet: the spells' tint (M3 T7b, with the first sequences that cast on
+  stacks).
 - **Over time** (M3 T5a). +0x30 is stored only by the walk and the flight (no other byte store to
   it found). `stack_walk` sets it before the path's first step, so before its turn (0x442145),
   and clears it at the end, after group 21, the standing frame, the turn back of a plain move and
@@ -370,6 +370,34 @@ pixels of the 800 × 600 frame; the battlefield takes its top 800 × 556.
   also pass a box the viewer moves too early, as the Pikemen's before this task. The other six
   sequences (boxes still masked, also where the viewer draws them) as recorded but `melee` at
   3 966, now artifacts only (§7.9).
+- **The number** (M3 T5b). +0x50 is −1 from the setup (0x43D69C). `stack_take_damage` (0x444090)
+  takes d = (the damage + the top creature's lost hit points +0x58) / the hit points +0xC0 (a
+  clone: all), keeps the rest in +0x58 and, when d > 0, stores the count before them in +0x50
+  (0x4440DB) before +0x4C loses them; a strike, a shot (and the other callers: spells, Fire
+  Shield, the moat) take their damage before `strike_animation` animates it (melee 0x441A19, shot
+  0x43FC3B). At `strike_animation`'s end, after the iterations and the pending spells' casts, the
+  dead die (0x4692C4), every stack's +0x8 is 4 again and its +0x50 −1 (0x469336 to 0x469379),
+  and the whole battle is redrawn and shown at once (`battle_redraw` 0x46938A, its first and
+  fifth arguments, no wait). So a box shows the count before a strike's kills through its
+  iterations (a target stands with it until its reaction, and after it in its standing frame)
+  and the new count from the moment the strike's last frame shows. A second damage before the
+  end would store the count after the first's kills (none in the sequences). Recorded (`h3mem`'s
+  `shown`): in `shot` the Goblins' +0x4C goes from 40 to 37 as the first shot lands (988 ms),
+  +0x50 holds 40 until 1 588 (the standing frame drawn at 1 488 shows), then −1.
+- **Built** (M3 T5b): the timeline's `counts` (`anim::CountKey`): each struck stack's count after
+  its kills from the strike's last frame shown; `Moment::counts` over the snapshot's in the
+  scene; the strike's end flushes the pending poses then (the striker standing, the struck back
+  in layer 4, the dead among the corpses: before T5b with the next frame drawn or the next idle
+  step, *provisional* since M2 T5c). The frame check of a sequence with `boxes` masks a box
+  only where its count is not the one the original's memory shows (+0x50, else +0x4C) and lists
+  it (` n<side>.<record>` after the frame's counts): the engine rolls its own damage.
+- **Checked** (M3 T5b-1; `shot` and `melee` with `boxes = true`): `shot` exact in all 50 frames
+  with the boxes compared (the Goblins' 40 until 1 588 ms, then 37: the engine's first shot
+  kills three too; the second shot's end lies beyond the sequence); `melee`, run to 7 000 ms,
+  artifacts only: the Wolf Riders' 30 until 6 466 ms, then 12 (the Angels' fixed damage, 18
+  kills in both), and at 3 966 ms 198 artifact pixels instead of 96: the Angel's shadow drawn
+  twice (§7.11's shadow rule) where the box mask covered it. No box masked for its count. The
+  other eight sequences as recorded with the strike's end shown at once.
 - VCMI's `showStackAmountBox` gives the same four positions (its hex centre is the anchor −
   (0, 16)) but leaves out t and counts every stack ahead as taking the hex, war machines included.
 
