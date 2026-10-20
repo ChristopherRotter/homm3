@@ -2806,3 +2806,43 @@ the light gates passed here).
 - **Re-tagged in the lane's docs** (decision 48): `docs/formats/h3m.md` (a monster's artifact),
   `docs/stubs.toml` (`ADV-STUB-2`), `docs/rules/quirks-adventure.md` (the formation command),
   ADV-MON-001, GAM-CAL-001 and GAM-BAT-004's summaries, `E08-design.md` §2 and §4.
+
+### Increment 4, round 1: T24a1, the progression survey's first part (2026-10-20, `adventure/e08-t24a1`)
+
+The user asked for a small increment with the seam confirmed first and cut T24a in two (decision
+51): **T24a1** the code reading of experience to levels and the level-up, compared with VCMI;
+**T24a2** the rest. Baseline `master` c4fe6b1 (engine code 08410436, verified on 6f7d601; the
+light gates passed here). Docs only: `docs/rules/surveys/E08-progression.md` §0–§2 (§3–§7 marked
+for T24a2), the address map and the record layouts.
+
+- **Experience to levels** (§1): the table to level 12, then steps trunc(1.2 × the last step)
+  (f64, `crt_ftol`); VCMI's table equals it through level 75. The original's thresholds are 32-bit
+  sums: level 74 is the last right level; from 1 810 034 207 experience the hero is level 88
+  (75–87 skipped), more gives wrapped levels, 2³¹ − 1 hangs the game, a gain past it makes the
+  experience negative and the level 0 (A-7). `crt_ftol` stores 64 bits and returns the low word
+  (its map entry corrected). The level limit (game +0x1F877) caps the experience and lowers
+  experience above it (VCMI keeps it, D-19); a limit above 75 caps at a wrapped threshold (A-8);
+  its setter was not found (a block copy of the map header, probably; the census reads the maps'
+  limits).
+- **The level-up** (§2, `hero_level_up` 0x4DA720): one level at a time, each reseeding the C
+  runtime's `rand` with 214 013 L + 156 823 S + 154 079 (S the hero's seed byte +0x8F, never
+  advanced; D-14, the recommendation as decision 26). The primary skill by the class's chances,
+  the second row by the new level ≥ 10 (VCMI the old, D-15), +1 unclamped (A-9). Two offers
+  (`hero_secondary_offer` 0x4DAD00): an advance of a known skill, then a new skill, each with a
+  fallback; Wisdom when due, then a school when due, then by the class's weights; due after 3/3
+  levels for the magic classes and 6/4 for the might ones, the Elementalist counted as might
+  (VCMI magic: D-16, A-10); weights of a due known school and a banned known skill differ from
+  VCMI's (D-17, D-18). A human at its own computer answers each level before the next is drawn;
+  a computer player's hero and any hero during the new game's setup (the global 0x698400) get
+  `ai_level_up_choice` (0x52BBD0) without a dialog: the lead for §3's levels at load.
+- Worked vectors (computed, to confirm with the batch): a Knight with basic Leadership reaching
+  level 2 with S = 1: seed 738 928, Attack, Leadership or Tactics; with S = 200: Knowledge,
+  Leadership or Sorcery.
+- **Map**: 12 entries (the level-up, the offer, learning, the dialog, the computer's choice and its
+  two value functions, two tables, three globals), three updated (`hero_gain_experience` read in
+  full, `new_game_heroes`, `crt_ftol`); `structs.toml`: the hero's class, the two counters, the
+  skill slots and count, experience and level signed; the game's level limit, banned skills and a
+  campaign field; a new `hero_class` record. `exe.py check` and `cited` clean.
+- **Not done here** (T24a2): the wiki, levels at load, what reads the level, the census, the
+  batch's plan, the proposed rule ids, a fresh agent's second reading, the ADV-Q for the
+  checkpoint.
