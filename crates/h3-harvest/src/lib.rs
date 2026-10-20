@@ -915,6 +915,7 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
          \"quirk.battle.clone_on_its_original\" = true, \
          \"quirk.battle.periodic_first_stack\" = true, \
          \"quirk.battle.no_defender_ballista_at_fort\" = true, \
+         \"quirk.battle.berserk_walks_to_position_hex\" = true, \
          \"quirk.content.roland_crusader_specialty\" = true, \
          \"quirk.content.elemental_levels\" = true, \
          \"quirk.adventure.diagonal_check_ignores_roads\" = true, \
@@ -922,7 +923,7 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
          \"quirk.adventure.native_skips_leading_neutrals\" = true, \
          \"quirk.adventure.fringe_shows_objects\" = true, \
          \"quirk.adventure.obstacles_from_tile\" = true, \
-         \"quirk.adventure.split_from_tile\" = true }    # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-3 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, BAT-QUIRK-23, ADV-QUIRK-1 to ADV-QUIRK-6\n",
+         \"quirk.adventure.split_from_tile\" = true }    # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-3 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, BAT-QUIRK-23, BAT-QUIRK-24, ADV-QUIRK-1 to ADV-QUIRK-6\n",
     );
     base.push_str(
         "\n[[profile]]\nid = \"strict-fixed\"    # all quirks fixed\n\
@@ -941,6 +942,7 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
          \"quirk.battle.clone_on_its_original\" = false, \
          \"quirk.battle.periodic_first_stack\" = false, \
          \"quirk.battle.no_defender_ballista_at_fort\" = false, \
+         \"quirk.battle.berserk_walks_to_position_hex\" = false, \
          \"quirk.content.roland_crusader_specialty\" = false, \
          \"quirk.content.elemental_levels\" = false, \
          \"quirk.adventure.diagonal_check_ignores_roads\" = false, \

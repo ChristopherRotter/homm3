@@ -1,4 +1,5 @@
-"""The library and the binding agree: the ABI version, the encodings' sizes, the layouts."""
+"""The library and the binding agree: the ABI version, the encodings' sizes and versions, the
+layouts."""
 
 from __future__ import annotations
 
@@ -11,12 +12,22 @@ from h3env import _ffi
 
 
 def test_the_library_speaks_the_bindings_abi() -> None:
-    assert _ffi.lib().h3_abi_version() == h3env.ABI_VERSION == 30
+    assert _ffi.lib().h3_abi_version() == h3env.ABI_VERSION == 31
 
 
 def test_a_library_of_another_version_is_refused() -> None:
-    with pytest.raises(ImportError, match="C ABI v30, this binding v29"):
-        _ffi.check_version(_ffi.lib(), expected=29)
+    with pytest.raises(ImportError, match="C ABI v31, this binding v30"):
+        _ffi.check_version(_ffi.lib(), expected=30)
+
+
+def test_the_versions_a_record_names() -> None:
+    # v31 (E06 T2c): observation encoding v21, action encoding v13, the encounter distribution v1.
+    assert _ffi.versions() == {
+        "abi": 31,
+        "observation_encoding": 21,
+        "action_encoding": 13,
+        "encounters": 1,
+    }
 
 
 def test_the_encodings_sizes() -> None:
@@ -34,6 +45,7 @@ def test_the_layouts_match_h3_h() -> None:
     assert ctypes.sizeof(_ffi.H3StepResult) == 16
     assert ctypes.sizeof(_ffi.H3BatchConfig) == 32
     assert ctypes.sizeof(_ffi.H3BatchBuffers) == 13 * ctypes.sizeof(ctypes.c_void_p)
+    assert ctypes.sizeof(_ffi.H3ScenarioInfo) == 32
 
 
 def test_episode_seeds_come_from_the_engine() -> None:

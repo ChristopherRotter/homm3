@@ -24,17 +24,18 @@ A run is a directory, `python/runs/<run>/` by default (git-ignored), named by th
 | `record.json` | the run's summary (§4.2) | at each gate, ladder, stop and the end |
 
 Every `.pt` and `record.json` is written atomically (§3.2). A crash leaves at most a stale `*.tmp`,
-removed at the next start. Built (T2a): `config.toml`, `metrics.jsonl`, `record.json`, the atomic
-writes; `checkpoint.pt` and `best.pt` still E05's (the network and the optimizer at each
-evaluation; T2b, T3); `promoted/`, `league/` to come (T3, T4).
+removed at the next start. Built (T2a, T2b1): `config.toml`, `metrics.jsonl`, `record.json`, the
+atomic writes, `checkpoint.pt` (the whole state, `Trainer.state`) and `best.pt` (the network, at
+the best evaluation against Random until the gate's promotion, T3); `promoted/`, `league/` to come
+(T3, T4).
 
 ### 1.2 The config file — built (T2a)
 
 `h3env.train.run` (`Config`, `load_config`; `python/README.md`, "Training runs"): TOML, the
 defaults in code, `--set table.key=value`, unknown keys refused, the resolved config in the
 record; configs in `python/configs/`. Its tables today: `[env]`, `[network]`, `[ppo]`, `[pool]`,
-`[evaluation]`, `[device]`. To come: `[checkpoint]` (`minutes`, T2b); `[gate]` (`every` in
-samples, `elo0`, `elo1`, `alpha`, `beta`, `max_pairs`, §6) and `[ladder]` (`opponents`,
+`[evaluation]`, `[checkpoint]` (`checkpoint_minutes`, T2b1), `[device]`. To come: `[gate]`
+(`every` in samples, `elo0`, `elo1`, `alpha`, `beta`, `max_pairs`, §6) and `[ladder]` (`opponents`,
 `episodes` per kind, `promoted`, §7) replacing `[evaluation]` (T3); `[league]` (`self_play`,
 `snapshot_every`, `size`, `live`, `pfsp_power`, `decay`, §8) replacing `[pool]` (T4);
 `network.kind` (`"mlp"`, `"entity"`, T5).
@@ -43,17 +44,19 @@ samples, `elo0`, `elo1`, `alpha`, `beta`, `max_pairs`, §6) and `[ladder]` (`opp
 
 ```
 uv run --group train python -m h3env.train --config configs/e06-t3.toml --out runs/t3-1
-uv run --group train python -m h3env.train --resume runs/t3-1 [--samples 400_000_000]
+uv run --group train python -m h3env.train --resume runs/t3-1 [--set samples=400_000_000]
 uv run --group train python -m h3env.train --config configs/e06-t4.toml --out runs/t4-1 \
     --init-from runs/t3-1/best.pt
 ```
 
-- `--resume` reads the config from the checkpoint. It may change only what does not change the
-  training: the budget (`samples`, extended or cut), `env.threads`, `[device]`,
-  `checkpoint.minutes`. Any other change is refused with the keys named: that is a new run.
-- `--init-from` starts a new run (fresh optimizer, counters, league) from another run's network;
-  the record names the parent (its run id and promoted index), and the parent's network is the
-  new run's best #0, so its gates continue the lineage (§6).
+- `--resume` — built (T2b1; `h3env.train.run.resumed`, `ppo.resume`): the config comes from the
+  checkpoint; its `--set`s may change only `run.RESUMABLE` (`samples`, extended or cut;
+  `env.threads`; `[device]`; `checkpoint.checkpoint_minutes`), any other change is refused with
+  its keys named (a new run). A finished run resumes only with a larger budget.
+- `--init-from` (T3, with the promoted list it names) starts a new run (fresh optimizer,
+  counters, league) from another run's network; the record names the parent (its run id and
+  promoted index), and the parent's network is the new run's best #0, so its gates continue the
+  lineage (§6).
 
 ## 2. The budget and the schedule, in samples — built (T2a)
 
@@ -61,87 +64,52 @@ uv run --group train python -m h3env.train --config configs/e06-t4.toml --out ru
 `lr · lr_floor` over `lr_horizon`, fixed at the start; or `constant`), the pool's snapshots and
 the evaluations (`Cadence`) count samples (`run.py`). E05's evaluation against Random stays, every
 `eval_every` samples, until the gate (§6) and the ladder (§7) replace it (T3). Left for later:
-the league's snapshots (T4) and the gates (T3) in samples too; wall time only for the checkpoints
-(T2b).
+the league's snapshots (T4) and the gates (T3) in samples too. Wall time sets only the
+checkpoints (T2b1).
 
-## 3. The resumable state
+## 3. The resumable state — built (T2b1), extended by T3, T4
 
-### 3.1 What the checkpoint holds
+Built (`ppo.Trainer.state`, `restore`, `ppo.resume`; `run.Run`, `Stop`, `resumed`,
+`segment_seed`; `E06-log.md`, T2b1): `checkpoint.pt` format 1 holds the resolved config, the
+segment, the counters (samples, updates, episodes, the run's seconds), the best rate, the
+cadences' next samples, the network, the optimizer, the pool's networks (E05's pool: inside the
+checkpoint, 8 networks at most), the generators (sampling, the pool's numpy one, torch's CPU and
+CUDA states), `metrics.jsonl`'s length and whether the run finished. It is taken at an update
+boundary only: at the start, every `checkpoint_minutes` (5) of wall time, after each evaluation, at
+a stop and at the end. Not saved: the batch's battles, `SeatBook`, the open transitions (a resume
+starts new episodes, decision 4). Ctrl+C: the first stops a rollout at its next call (discarded:
+no weight, no counter changed) or lets an update or an evaluation finish, then saves with a `stop`
+record; the second raises. `--resume` cuts `metrics.jsonl` back to the saved length (the
+`segment` record counts the records dropped), restores the state and opens a new segment on its
+own batch seed (SplitMix64 of the run's `seed`); every episode's seed is still checked against the
+held-out set's. Reproducible from the records, not bitwise equal to an uninterrupted run.
 
-`checkpoint.pt`, `format = 1`, a dict of:
+Still to come:
 
-- the resolved config; the run's id, its parent, its segments (§3.4);
-- the counters: samples, updates, episodes, decisions, seconds trained;
-- the network's and the optimizer's state (Adam's moments: about 72 MB at 6 M parameters);
-- the random generators: the sampling generator (torch, on the device), the league's (numpy),
-  torch's global CPU and CUDA states; the update's minibatch order is drawn from
-  `default_rng(updates)` as in E05, so it needs none;
-- the league: each member's id, kind (snapshot, promoted, later the system actor), file, birth
-  in samples and its decayed score counts (§8); the next snapshot in samples;
-- the gate: the best's promoted index, the promoted list, the next gate in samples, `pending`
-  (a gate began after this save and has no result yet, or a promoted network's ladder has none);
-- the records' position: `metrics.jsonl`'s length in bytes at the save.
+- **T3:** the gate's state in the checkpoint (the best's promoted index, the promoted list, the
+  next gate in samples, `pending`: a gate began after the save and has no result yet, or a
+  promoted network's ladder has none); a pending gate or ladder runs first at the resume, again,
+  on the saved candidate or promoted network; a gate or ladder stops at its next batch call on
+  Ctrl+C. A replace Windows refuses five times (a ladder holding `best.pt` open) keeps the old
+  file and goes on instead of failing the run (`run.atomic_write` raises today). `--init-from`
+  (§1.3).
+- **T4:** the league replaces the pool: each member's id, kind (snapshot, promoted, later the
+  system actor), file (`league/<id>.pt`, outside the checkpoint), birth in samples and its decayed
+  score counts (§8); the next snapshot in samples.
 
-Not saved: the batch (its envs' battles live in the engine; the episodes in flight are discarded,
-decision 4), `SeatBook` and the open transitions, the rollout's partial calls. A checkpoint is
-taken at an update boundary only, where no transition is part of a pending update.
+## 4. The record — built (T2a, T2b1, T2c), extended by T3, T4
 
-### 3.2 When, and how
+Built: `run.Run` and `run.Record` (typed `metrics.jsonl`: `start` with the identity, `update`,
+`snapshot`, `eval`, `stop`, `segment`, `end`; `record.json` schema 2, rebuilt from those records
+in order: its segments with their seeds, commits, changes, spans, how each ended and the records
+dropped), `python/records/` (README, `check_record` over every committed record in
+`tests/test_run.py`); schema 3 (T2c, C ABI v31): the identity's encodings' and encounter
+distribution's versions and the batch's `entries` (kind, weight, the core, battle and adventure
+rulesets' content hashes). Still to come:
 
-- Every `checkpoint.minutes` (5) of wall time at the next update boundary, before each gate
-  (`pending = true`), after a gate's result, at a requested stop and at the end. An update took 3
-  to 6 s on the user's machine (E05 T8c, without and with the pool), so a crash loses at most
-  about 5 minutes.
-- **Atomic writes:** into `<file>.tmp` in the same directory, flush, `os.fsync`, close, then
-  `os.replace` (atomic on one volume on Linux and Windows). Windows refuses the replace while
-  another process holds the target open (a ladder reading `best.pt`): retry five times over a
-  second, then keep the old file, report it and go on; the run never dies of it.
-- **Ctrl+C:** the first SIGINT (Windows delivers it to Python too) sets a flag. A rollout in
-  progress stops at its next call and is discarded (it changed no weights); an update in progress
-  finishes (seconds; a half-applied update would be saved as no state the run ever had); a gate or
-  a ladder stops at its next batch call, the save before it standing (`pending`). The run then
-  saves and exits with a `stop` record. A second SIGINT raises at once (losing what the first
-  would have saved). A closed console, a shutdown or a crash fall back on the last periodic save.
-
-### 3.3 Resume
-
-`--resume` loads the checkpoint, truncates `metrics.jsonl` to the saved length (the dropped
-records were of updates the resumed run plays again; their count goes into the `segment` record),
-restores the network, the optimizer, the generators and the league, opens a **new segment** and
-creates a fresh batch:
-
-- **Segment seeds:** segment 0's batch seed is `seed`; segment s's a 64-bit mix of (`seed`, s)
-  (SplitMix64, written in the record), so a resumed run does not replay the episodes it already
-  trained on. Every segment's batch seed is checked against the held-out sets' (§5.3).
-- **A pending gate or ladder** (the stop fell inside one) runs first, again, on the saved
-  candidate or promoted network.
-- The run is reproducible from its records (config, segments, seeds), not bitwise equal to an
-  uninterrupted one (decision 4; torch on a GPU is not bitwise anyway).
-
-### 3.4 Tests (T2b)
-
-The lifecycle (config, records, atomic writes, segments, the truncation, the disjointness check)
-is a torch-free module, `h3env.train.run`, tested in the sandbox; the trainer's state needs torch
-(the `train` group, absent in the sandbox while its network is not **Custom** with
-`*.pytorch.org`: the lane HANDOFF's trap), tested where torch is. Cases: a tiny run (8 envs,
-rollout 8, hidden 16, CPU) stopped by the flag after its third update resumes to its budget, the
-network, the optimizer and the generators equal to the saved ones at the load, the metrics'
-update numbers strictly increasing and the segment record present; a run killed hard
-(subprocess, SIGKILL) during an update resumes from the last save and ignores the `.tmp`; a
-resume that changes `ppo.lr` is refused; a pending gate or ladder runs at the resume.
-
-## 4. The record — built (T2a), extended by T2b, T2c, T3, T4
-
-Built: `run.Run` and `run.Record` (typed `metrics.jsonl`: `start`, `update`, `snapshot`, `eval`,
-`end`; `record.json` schema 1, rebuilt from those records in order), `python/records/` (README,
-`check_record` over every committed record in `tests/test_run.py`). Still to come:
-
-- **T2b:** `segment` (index, batch seed, the dropped records) and `stop` records; the record's
-  segments (batch seed, samples at start and end, wall time, how each ended) and its parent.
-- **T2c:** in the identity, the observation and action encodings' versions, the encounter
-  table's version and the content hash of each of the batch's rulesets (schema 2).
-- **T3:** `gate`, `promotion`, `ladder` records; every gate (candidate, pairs, LLR, the result),
-  promotion and ladder (§7, with its intervals) in the record; its curve per gate interval.
+- **T3:** the record's parent (`--init-from`); `gate`, `promotion`, `ladder` records; every gate
+  (candidate, pairs, LLR, the result), promotion and ladder (§7, with its intervals) in the
+  record; its curve per gate interval.
 - **T4:** the league's live set per update and its member table at the end.
 
 ## 5. The held-out sets
@@ -184,8 +152,8 @@ selects are not measured on the episodes that selected them.
 `run.HeldOut`: the held-out episodes' seeds fixed and computed once (`episode_seed(batch seed,
 env, episode)`), each training episode's seed checked against them (the reset's and every ended
 one's): a hit stops the run; `resolve` refuses `seed == eval_seed`. No state to checkpoint. Still
-to come: v1's 1 500 + 4 000 seeds beside v0's 1 000, and every segment's batch seed checked
-against the held-out sets' (T2b, T3a); the ladder refuses a network trained on a held-out batch
+to come: v1's 1 500 + 4 000 seeds beside v0's 1 000 (T3a; a resumed segment's episodes are
+checked as the first's, T2b1); the ladder refuses a network trained on a held-out batch
 seed, as E05's does for `EVAL_SEED`.
 
 E05's set (`EVAL_SEED`, 100 envs × 10 episodes, the default kinds) stays as **v0**, selectable in
@@ -289,20 +257,19 @@ Prioritized fictitious self-play (AlphaStar's PFSP) over the learner's past, gro
 
 Each with the user's checkpoint; only the next one refined (Q41's pattern).
 
-- **Increment 1** (now): T1, the user's review, then T2 in three small pull requests:
+- **Increment 1** (done 2026-10-20): T1, the user's review, then T2 in three small pull
+  requests:
   - **T2a — Config and record:** done 2026-10-20 (`E06-log.md`).
-  - **T2b — The full checkpoint and `--resume`:** §3 (the state, the cadence, Ctrl+C, segments,
-    the truncation, `--init-from`) and its tests (§3.4).
-  - **T2c — C ABI v31:** the record's engine identity (the batch's rulesets' content hashes, the
-    observation and action encodings' versions, the encounter table's version) and
-    `h3_batch_create`'s N range-checked (the binding already checks it); `h3env`'s
-    `ABI_VERSION`.
+  - **T2b1 — The full checkpoint and `--resume`:** done 2026-10-20 (`E06-log.md`; the user cut
+    T2b there: the pending gate or ladder and `--init-from` wait for T3's gate, §3).
+  - **T2c — C ABI v31:** done 2026-10-20 (`E06-log.md`).
   - Moved to T5: the observations written in place. It needs no ABI change: `h3_batch_step`
     takes its buffers per call, so the binding can pass the rollout's row (the read-only
     attributes stay); worth its code only if a profile shows the copy.
 - **Increment 2:** T3a (the held-out sets v1 in Python and `h3 ai eval --set`, the ladder on
   them, the bots' table, the bots' fallback branches tested), T3b (the gate, the promotion, the
-  ladder per promotion; an hour on the user's machine with gates).
+  ladder per promotion, their state in the checkpoint and a pending one at the resume,
+  `--init-from`; an hour on the user's machine with gates).
 - **Increment 3:** T4a (the league of §8), T4b (the first multi-hour run, its resume used for
   real).
 - **Increment 4:** T5's experiments, each a recorded run: the entity network against the MLP,

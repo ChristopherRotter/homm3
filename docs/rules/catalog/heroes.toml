@@ -679,7 +679,7 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "design"
-  ref        = "ADR-0013 point 2 (the hero model: contexts return typed hero changes the game applies), ADR-0017 point 11 (an outcome applies at once and infallibly); E08 decision 25, E08-design.md §2"
+  ref        = "ADR-0013 point 2 (the hero model: contexts return typed hero changes the game applies), ADR-0017 point 11 (an outcome applies at once and infallibly); E08 decision 25, E08-log.md T19a2a"
   confidence = "high"
 
 [[rule]]

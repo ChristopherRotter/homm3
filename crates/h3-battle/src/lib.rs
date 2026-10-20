@@ -45,6 +45,7 @@ mod movement;
 mod natural;
 mod observe;
 mod obstacles;
+mod pathfinder;
 mod raise;
 mod siege;
 mod state;

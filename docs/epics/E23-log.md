@@ -198,3 +198,94 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   an attack with what the berserk turn does on an empty path. It agreed on all three: a one-hex
   berserk walker that reaches only hexes next to a two-hex target's other hex never ends the
   search and does nothing.
+
+## T1c — pathfinding as the original's (2026-10-20, increment 1)
+
+- **The decisions** (BAT-Q54, the user at the start): T1c whole, over the walks first
+  (recommended); S-11 a fix-optional quirk, BAT-QUIRK-24 (`quirk.battle.berserk_walks_to_position_hex`,
+  registry position 26, on `shared/e23-t1c-quirk`, which merges first): faithful as the original,
+  strict-fixed as HD. Its consequences agreed: the faithful ruleset hashes move, so the adventure
+  lane's faithful replays' headers too (`cross-lane`).
+- **Read for it** (to settle the berserk turn's end, `installation.md` §7.41 and its catalog
+  source): 0x4222C0 compares the cost in the target's *position* cell, which the marks write
+  (0x4B3834–0x4B3850; a two-hex target's both hexes on any hit), with the speed, and attacks from
+  the path's second cell (the hex to attack from); 0x4B3A1D writes the blocked step's cell N into
+  the path's head; the move handler 0x445950 refuses a hex the stack does not fit on and the walk
+  0x441FA0 one out of its move, after which 0x478900 skips the strike. 0x445490 keeps the nearest
+  candidates and draws one (0x445688: the best cost follows each append).
+- **Built** (`crates/h3-battle/src/pathfinder.rs`): the search as §7.40 and §7.41 read it, for
+  three questions: a walk's path (`Goal::Reach`, range the speed; `movement::path`, BAT-MOV-003),
+  the berserk candidates' map (`Goal::Map`, range 127) and the berserk walk (`Goal::Attack`, the
+  target's position hex, or with the quirk off any of its hexes; the edge column's war machine by
+  its other hex, 0x4222E0). Cells share cost between reaching and marking as the original's do (a
+  flyer passing over a marked hex overwrites its mark). `control.rs` rewritten on it: the attack
+  from the search's end when the target's cell cost is within the speed (no move: the move fails,
+  `TurnPassed`), else the walk along the path, at most the speed in steps, ending after a stop, a
+  flyer landing where it did not pass over. Not modelled, as no engine caller meets it: the cap of
+  500 queued entries (a position is queued at most twice), the range-within-a-move refusal to mark
+  from a stop (0x4B378D: only the walks' searches, which read no marks), a side's own stacks as no
+  targets, the tactics phase's range. `aim.rs`'s threat records keep their own cost search (the
+  inbox).
+- **Equal for the walks** (the argument the module states): within one move a stop costs the whole
+  move and is a leaf, so the walk's search reaches the same positions as `movement::reachable`;
+  the paths differ at ties only. A walk's search skips positions reached at no more than one step
+  from the taken one, tests a step's stop only where the stack fits, and reads the neighbours once
+  per taken position (exact: no marks in it).
+- **Tests:** batch 3c's M2 and G4 (`sieges.rs`), the tie's directions (`obstacles.rs`), S-11 in both
+  settings with the three outcomes (round, nothing, the failed move), the war machine by its
+  front, a two-hex walker's front, a flyer passing rocks and failing to land on one, a walk beyond
+  its speed stopping in its side's pit; two siege tests moved to the new order (the outer bridge's
+  walk to (8, 4); the weak walker's moat test against a slow on (8, 1)). Coverage 100 % on the three
+  files.
+- **Replays and benchmarks:** `full-s3-a1367` and `full-s3-a2378` re-recorded (another game from
+  command 151 and 142); the other battle replays and the seven faithful adventure replays only
+  their headers' ruleset hash (`duel-s1` and `field-s5` are not re-run: since 17a0489b their spec
+  draws other obstacles; `fixtures/README.md`). `random-rollouts-full` 79.3 k Ir per step against
+  master's 78.7 k (+0.8 %), `random-rollouts-siege` +1.4 % per step (every walk at a town traces
+  its path); both re-baselined, profiles compared with master.
+- **Checks:** a fresh agent re-read three points blind (0x4222C0's cost cell, hex to attack from
+  and empty path; the marks' cell writes and the flyer's pass after them; the failed move in
+  0x478900 with 0x445950 and 0x441FA0) and agreed on all three. It found one gap, fixed: 0x41F580
+  searches anew for the position to attack from, which a flyer never reaches when it is a hex it
+  passes over, so such a walk beyond the speed does nothing (a test). Its other note, the
+  computer's stop avoidance in a walk's own search, changes no path within a move (the module's
+  note).
+- **Readings at risk** (for T1b's batch rows): S-11's three outcomes; a berserk flyer whose search
+  ends on a hex it passed over (rocks or stacks on the target's near side) does nothing; the war
+  machine's aim by its front; the walk beyond the speed into a seen pit of its own side.
+
+## T1a5a — the spell context and the predictions (2026-10-20, increment 1)
+
+- **The cut** (the user, 2026-10-20): part C (12.9 KB in 34 functions by T1a1's sweep, re-run
+  the same) in four parts of about 3.2 KB: T1a5a the context and the predictions, T1a5b the raise
+  and the Faerie Dragon, T1a5c the Ogre Mage's and the Master Genie's scan with the evaluation,
+  T1a5d the estimates. The context first (recommended; three of the four cast kinds, the hero's
+  cast and the retreat test read it), over the raise and the dragon first, or the estimates
+  first.
+- **Read** (`docs/formats/installation.md` §7.42), all in full: the context 0x4369C0 with the fill
+  0x43C040, the seed 0x43BF20 and the destructors 0x436C30, 0x436BF0; the predictions 0x422A40
+  with 0x4430D0, the side's run 0x422880, the melee prediction 0x4227A0 and the predicted strike
+  0x4224E0.
+- **Found:** by the cast entry's table only the Archangel, the Pit Lord, the Master Genie, the Ogre
+  Mage and the Faerie Dragon cast for the computer; its elementals never do (a reading at risk).
+  The context holds per stack of the side the largest strike it can meet this turn (melee, seeded
+  with the retaliation at its own target, or a shot), by the enemies' whole counts; the enemy's
+  arrow towers are no threat. It marks the enemy beaten when the side's predicted strikes leave
+  only war machines, and builds a second context for the other side. The predictions cover only
+  the side's run up to the other side's next stack in the predicted order (both runs for the
+  retreat test): shots, strikes, multi-headed strikes, breath, Fire Shield's reflection, the
+  second strike, and the retaliation only above Easy for a computer side. A predicted strike's
+  jousting distance comes from the pathfinder's last search, so a retaliating Cavalier or
+  Champion is predicted with the attacker's run-up. The predicted walkers draw their candidates'
+  values from the battle's generator. No rule of the engine changes.
+- **Map:** 13 entries (5 new: 0x4227A0, 0x4430D0, 0x43BF20, 0x436BF0, the pathfinder pointer
+  0x699284; 8 updated, 0x4224E0, 0x422880 and 0x422A40 renamed `ai_predict_strike`,
+  `ai_predict_run`, `ai_predictions`); structs: the stack's planned damage and threat record
+  (+0x534 to +0x544), the context's layout `ai_spell_context`.
+- **Checks:** a fresh agent re-read three findings blind, on a copy of the tool and the map made
+  before the edits: the cast entry's cases with every write of action 10 (the computer's three, the
+  player's three), the run's skips, its end by the controller and 0x4227A0's retaliation tests (on
+  Easy only for a human attacker), and the jousting distance's cell with the breath's missing side
+  test. It agreed on all three; its note that nothing asks whether the target survived the strike
+  is in §7.42 (a dead target strikes back by no hit points). The premise it left open, that the
+  cells hold the attacker's own map, rests on 0x421680's call at 0x4217BE.

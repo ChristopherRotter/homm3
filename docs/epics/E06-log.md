@@ -69,3 +69,65 @@ entry only where a task builds on it.
   (the GPU test skipped); with torch blocked the lifecycle tests pass and the trainer's skip. A
   tiny run through the command line (`--config configs/pool-smoke.toml` with `--set`s, 490
   samples) printed its lines and wrote a valid record.
+
+## T2b1 — The full checkpoint and `--resume` (2026-10-20)
+
+- **The seam:** offered T2b cut at the gate (the user chose "T2b1: resume core" over T2c and a
+  torch-free-only part): the pending gate or ladder at the resume and `--init-from` need T3's
+  gate and promoted list, so they moved to T3b (design §3, §10).
+- **Built** (design §1.3, §3; ADR-0026 point 3; decision 4): `h3env.train.run` (torch-free):
+  `[checkpoint]` (`checkpoint_minutes`, 5), `RESUMABLE` and `resumed` (the checkpoint's config
+  with `--set`s; only `samples`, `env.threads`, `[device]` and `checkpoint_minutes` change, any
+  other key refused with its path named; `lr_horizon` stays the start's), `segment_seed` (segment
+  0: `seed`; segment s: SplitMix64's s-th output from `seed`), `Stop` (the first SIGINT a flag,
+  the second `KeyboardInterrupt`; installed in the main thread only), `Run(…, resume=(length,
+  seconds))` (stale `*.tmp` removed, `metrics.jsonl` cut back to the checkpoint's length, the
+  records after it counted as dropped, the record rebuilt from the rest, the clock continued),
+  `Run.sync` (fsync before a checkpoint names the length), the `start` record with the identity,
+  `segment` and `stop` records, `record.json` schema 2 (`segments`: seed, start time, commit,
+  `dirty`, device, changed keys, start and end, how it ended: `budget`, `stop`, `lost`, dropped).
+- **The trainer** (`ppo.py`): `Trainer.state` (format 1: config, segment, counters, best rate,
+  the cadences' next samples, network, optimizer, the pool's networks, the generators: sampling,
+  the pool's numpy one, torch's CPU and CUDA states; the run's seconds, the metrics' length,
+  `finished`) and `restore` (the sampling generator restored on a device of the same type, else
+  seeded from the segment's batch seed); checkpoints at the start, every `checkpoint_minutes` at
+  the next update boundary, after each evaluation, at a stop and at the end; `best.pt` the network
+  alone. A stop discards a rollout in progress (its episodes no longer counted) and lets an update
+  or an evaluation finish. `resume` refuses a missing checkpoint, another format (E05's and
+  T2a's `checkpoint.pt` held the network and the optimizer only; the ladder still reads them) and
+  a finished run without a larger budget; it builds the trainer before it touches the directory,
+  so a refused resume changes nothing. `python -m h3env.train --resume <dir> [--set …]`
+  (`--config` and `--out` refused with it). Fixed in passing (T2a's): the update record's
+  `episodes` was the rollout's self-play count (`**roll` after the counters), so the record's
+  `progress.episodes` was the last rollout's; the rollout's count is `self_play_episodes` now.
+- **Tests:** `test_run.py` (+4, torch-free: the allowed and refused changes, SplitMix64's
+  reference outputs and 50 distinct segment seeds, Ctrl+C by `signal.raise_signal`, the cut-back
+  with a half-written line and a stale temporary, the record's segments); `test_train.py` (+2: a
+  run stopped by SIGINT after its third update, the next segment's trainer equal to the saved
+  state (network, optimizer, the pool's three networks, the generators), a refused `ppo.lr`
+  leaving the metrics untouched, the resume to an extended budget with update numbers strictly
+  increasing; a subprocess killed hard (SIGKILL, TerminateProcess on Windows) while writing its
+  fourth checkpoint, resumed from the third, the `.tmp` gone, one record dropped, its segment
+  `lost`). 61 tests pass with torch 2.14 on the CPU (the GPU test skipped), 48 with torch
+  blocked. Through the command line: a tiny run stopped by `kill -INT` after 16 updates, a
+  refused `ppo.lr`, the resume with a cut budget to its end, the record valid.
+
+## T2c — C ABI v31 (2026-10-20)
+
+- **Built** (design §4; ADR-0026 point 9; exit criterion 1): `h3_sim::MAX_ENVS` (65 536) and
+  `BatchError::TooManyEnvs` (`h3_batch_create` aborted on the allocation of an absurd N, which
+  no `catch_unwind` catches; now it returns the message), `h3_sim::ENCOUNTERS_VERSION` (1, the
+  table's parse checks it). C ABI v31: `h3_observation_encoding_version`,
+  `h3_action_encoding_version`, `h3_encounters_version`, `h3_batch_scenario_count`,
+  `h3_batch_scenario_info` (`H3ScenarioInfo`: the core and battle rulesets' content hashes, a
+  replay header's two, the encounter sampler's adventure ruleset's or 0, the weight, whether
+  the entry is the encounter distribution), `H3_BATCH_MAX_ENVS`; the encodings unchanged.
+- **The binding:** `ABI_VERSION` 31, `_ffi.versions()`, `BattleBatch.entries()` (hashes as 16
+  hex digits, so JSON readers keep them whole); `ppo.identity` puts both into the record:
+  schema 3, `check_record` requires the new keys.
+- **Tests:** `h3-ffi` (`each_entry_names_its_rulesets`: every function's null and range errors,
+  the hashes against the Rust batch's, the town and the encounters sharing the original packs'
+  ruleset; an N of `u32::MAX` refused with its message), `h3-sim` (the new error and its
+  message), the C smoke test (the versions, the entries of its batch, the cap); Python:
+  `test_abi.py` (the version, the versions, the layout's 32 bytes), `test_batch.py` (the
+  entries, the cap through the binding). 62 Python tests with torch on the CPU, 49 without.

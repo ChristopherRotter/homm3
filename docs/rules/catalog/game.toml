@@ -381,7 +381,7 @@ quirks   = ["Q-0005"]
 
   [[rule.source]]
   kind       = "observation"
-  ref        = "E04c batch 2d NE:7 (D-9): killed summoned stacks, clones and war machines count for Necromancy (survey E08-battles.md, E08-design.md §5)"
+  ref        = "E04c batch 2d NE:7 (D-9): killed summoned stacks, clones and war machines count for Necromancy (survey E08-battles.md, E08-log.md T19a2b)"
   confidence = "high"
 
   [[rule.source]]

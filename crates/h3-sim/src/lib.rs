@@ -36,9 +36,10 @@ pub use action::{
     TARGET_COUNT, TargetMask,
 };
 pub use batch::{
-    BatchConfig, BatchError, BattleBatch, EnvReport, Episode, Outputs, Policy, Scenario, Seat,
+    BatchConfig, BatchError, BattleBatch, EnvReport, Episode, MAX_ENVS, Outputs, Policy, Scenario,
+    Seat,
 };
-pub use encounter::{Encounter, EncounterTable, Kind, Sampler};
+pub use encounter::{ENCOUNTERS_VERSION, Encounter, EncounterTable, Kind, Sampler};
 pub use env::{BattleEnv, StepError, StepResult};
 pub use observation::{OBSERVATION_ENCODING_VERSION, OBSERVATION_LEN};
 pub use replay::{Replay, ReplayError, ReplayHeader};
