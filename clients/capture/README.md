@@ -26,11 +26,38 @@ enter git (they stay in the sandbox or `clients/out/`).
 | `batches/` | The batches' recipes: a spec's procedure as steps (`E08-batch-2.toml`), and the harness's own check (`harness-check.toml`, its spec in `checks/`). |
 | `../situations/` | The capture set: `set.toml` and its situations' scenario files; the recorded sequences, `sequences.toml`, their scenarios `seq-*.toml` and `timelines/`. |
 | `h3-view situation` | Writes the original's map for a scenario's battle (`cargo run --release -p h3-view -- help`). |
+| `../situations/kept/` | What the last capture of each sequence (`sequences/<id>.toml`) and situation (`set/<id>.toml`) kept: its frames' times and the fidgets and heroes the original's memory showed (numbers only), written by `frames` and `set`; and `drawn.txt`, the digests of the viewer's frames at those times (`drawn --record`). |
 
 Before the first run: stage the copy's files (`Heroes3.exe`, the five DLLs `BINKW32.DLL`,
 `IFC20.dll`, `MP3DEC.ASI`, `MSS32.DLL`, `SMACKW32.DLL`, `Data/` with the four LODs, `Heroes3.snd`,
 `H3ab_ahd.snd`, `H3ab_ahd.vid`; one large file per staging call), run `clients/capture/setup.sh`,
 and build `cargo build --release -p h3-view` in `clients/`. A run of the whole set (31 situations since M3 T4a) takes about 4 minutes.
+
+## Which captures a change needs
+
+Capturing the original is slow (all ten sequences and the set: about 80 minutes in a fresh
+sandbox, which keeps no frames of an earlier one), so a task captures only what its change can
+alter (the user, 2026-10-20):
+
+1. **Always, without the original:** from `clients/`, after `cargo build --release -p h3-view`,
+   `python3 capture/h3drive.py drawn` (about 3 minutes; no Wine, only the user's original files
+   for the assets). The viewer draws every sequence and situation at the times `kept/` holds and
+   compares each frame's digest with `kept/drawn.txt`; its timeline check (`h3-view sequences`)
+   runs with it. A frame whose digest is the same is the frame the last capture compared, so its
+   recorded count still holds.
+2. **Capture what changed:** `frames --only <id>` or `set --only <id>` for each one `drawn` lists
+   as `CHANGED` or `new`, and for each sequence or situation whose entry the task adds or
+   changes (scenario, actions, `ms`, `boxes`, masks: the kept times or the comparison change
+   with it). Record their counts as before.
+3. **Then** `drawn --record`, and commit `kept/` and `drawn.txt` with the task (the captures
+   refresh `kept/` themselves).
+4. **Everything** (`frames` and `set` without `--only`): at a milestone's closure, and after a
+   change to the harness (`capture/*.py`, `xdd.c`, `setup.sh`, `screens.toml`), which can change
+   the original's side.
+
+`drawn` reporting every one the same (a change that reaches no reference frame) needs no Wine
+setup at all. Its digests are of the PNG files: a change of the viewer's PNG encoder shows every
+frame as changed; then `drawn --record` once, after `frames` and `set` passed.
 
 ## Common uses
 

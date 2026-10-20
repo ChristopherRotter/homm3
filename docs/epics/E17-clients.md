@@ -410,143 +410,20 @@ client's options (volumes), the adventure map and the full game viewer, video.
 - **Checkpoint loading needs an engine change (CLT-Q2).** Until the battle lane's table-only
   reader lands, the client reads whole archives (212 MiB, about 0.2 s warm).
 
-## M1 review list
+## M1 and M2 review lists
 
-**Accepted by the user, 2026-10-13 (T8), every item as listed;** the *provisional* marks of these
-choices are lifted.
-
-- `proptest` as a dev-dependency of `h3-assets` (the engine's 1.11.0; T2).
-- `h3_assets::build`, encoders for synthetic assets, as public API of `h3-assets` (T2, T3).
-- The decoders' strictness: exact lengths, an overrunning run is an error (no original file has
-  one; `E17-design.md` §1; T2, T3); a DEF frame holds at most 2^20 pixels (T8).
-- `miniz_oxide` (already in the lockfile through `h3-formats`; the engine's version and features)
-  as a dependency of `h3-render` for the PNG encoder, instead of the `png` crate (T6).
-- `h3_assets::def::Frame::runs`, a public field: which pixels came from runs, which the drawers
-  need; the synthetic encoder follows it (T6).
-- A PNG widens each 16-bit channel by repeating its bits; comparisons stay in 565 (T6).
-- The asset tables' format (`clients/README.md`, "The asset tables"; T4): keys qualified at load;
-  `cranim.txt`'s times as the executable's scaled integers, angles in degrees; the special
-  battlefields keyed by VCMI's names and the 47 obstacle types no pack defines kept in
-  `base.toml`; only the three DEF groups read so far in `[battle]`; the fix entry's fields (its
-  flag and the `faithful`/`fixed` profile of ADR-0020 point 6 come with the first fix).
-- `toml` 1.1 (without std; the engine's 0.8 needs std) and `serde` (the engine's, without std) as
-  dependencies of `h3-view` for the pure loader (T4).
-- The harvester keys creatures by their `crtraits.txt` singular name, as `h3-harvest` does (T4).
-- `h3-protocol` as a dependency of `h3-view`'s library (ADR-0020 point 1), and `h3-pack-battle`,
-  `h3-battle`, `h3-kernel` (and, since T8, `h3-formats`) as dependencies of its binary only (the scenario adapter; checked by
-  `tests/purity.rs`), rather than `h3-cli`'s library, which builds the adventure crates too; the
-  client job now watches those crates (#152) (T7).
-- The layouts' format and place: `clients/layouts/<screen>.toml`, one file per screen and
-  resolution, apart from the asset tables (T7); an HD layout will need the battlefield's origin and
-  viewport (not in the format yet).
-- The record parser rejects a line over 16 MiB (the adapter reads a local file whole; a live
-  connection bounds each message, M2); the record format and protocol version must be the
-  client's own (T7).
-- ~~A natural obstacle is drawn until a removal clears every hex it blocks~~: dropped in T8 (the
-  reviewer: the engine drops a removed obstacle from the list; every listed one is drawn).
-- `harvest` writes to `clients/out/harvest` by default, never over the committed tables (T8).
-
-## M2 review list
-
-**Accepted by the user, 2026-10-14 (T5c), every item as listed.** The *provisional* marks stay
-where a recording is to check the rule (the flier's layer 8, the shot's loop: M3 T1b) or where the
-original cannot be matched (the fidgets' generator); the others are lifted.
-
-- The capture tooling (T8): Wine, Xvfb, xdotool, ImageMagick and mingw-w64 as sandbox tools;
-  Python with numpy for `h3cap.py` (as `scripts/exe.py` uses Python); our own `xdd.dll` forwarder.
-- The virtual clock in `xdd.dll` (T1): it rewrites the running game's import slot of
-  `timeGetTime` in memory (no byte of the executable changes), driven through two files.
-- `h3-map` and `h3-content-battle` as dependencies of `h3-view`'s binary (T1: `h3-view situation`
-  writes maps with `h3-map`'s writer; the scenario adapter names the ruleset's type); with them
-  `h3-adventure` and `h3-game` enter the client's build and its CI paths (#161).
-- The probes' file `capture/screens.toml` (positions and 5-6-5 values of the original's screens:
-  numbers only, ADR-0009) and the set's format `situations/set.toml` (T1).
-- The diff and the obstacle finder stay in Python, not `h3-view diff` (T1, design §6.1).
-- The scene's background: a terrain's third picture, an empty surrounding's (T1; CLT-Q4).
-- Reading the running original's memory (`capture/h3mem.py`, read only, under Wine) and the
-  recorded sequences' format (`situations/sequences.toml`, `timelines/`: numbers only) (T3).
-- `walk_step` (was `stack_layer_by_direction`) and `strike_animation` (was `cast_pending_spells`)
-  renamed in the address map after reading them whole (T3).
-- The viewer's fidgets from a generator of its own (the original draws them from its rules'
-  generator, design §7.2); reference frames compared against the original's poses (T3, for T4).
-- The asset tables' `groups` with every battle group the animations use, and the sequences'
-  engine commands (`[[sequence.command]]`: a seat and a wire command) (T4a).
-- The timeline's *provisional* choices (design §7.8): the next command's default start, at
-  least A + 1 iterations, the strike's group by rows, the flight's cycles' rounding, a dying stack
-  among the corpses (T4a; the shooter's frames and the flight's points corrected and the walk's
-  offsets confirmed by T4b-1's frame check).
-- The frame check (T4b-1, design §7.9): the viewer's own timeline drawn against the original's
-  screen (memory only for fidgets); the counts per frame as the recorded format
-  (`timelines/<id>-frames.txt`); the frames kept as compressed numpy arrays, local only; a command
-  without a time after the first counting as the computer's (its idle step and outline); f32
-  arithmetic emulated in fixed point and tangents by series in the pure crate; the layout's
-  `outline_ramp`.
-- `h3-view play` (T4b-2a): its bot (`bin/h3-view/bot.rs`: shoots, else strikes, else walks
-  toward the nearest enemy; the engine plays, the session replays the commands), its output
-  (`frames.txt`, one line per distinct frame; `f<ms>.png` with `--png`) and
-  `scenarios/battle.toml`.
-- The turns' and layers' model (T4b-2a, design §7.10): `Pose` carries the facing and the draw
-  layer; the asset tables' `turn_left` and `turn_right` groups; the struck stack's layer 5 from
-  the harness's reading (its writes not found), a shot's layers left at 4; a layer change without
-  a frame of its own shows with the next frame that does not draw that stack; a dying stack in
-  its layer's pass until the next frame, then among the corpses.
-- The fidgets (T4b-2a): the C library's `rand()` sequence seeded by the battle's seed, only for
-  stacks whose DEF has group 1, the stall draw also at a fidget's last step; the reference checks
-  without them.
-- A later command without a time starts as the previous one's last frame shows (T4b-2a: the
-  flight's second standing frame, 0x4B4A15, replaced T4a's extra tick).
-- The harness's adventure map (T6): `Show Route` on in `setup.sh`; the recipes' format
-  (`capture/batches/*.toml`: steps, `record`, `expect`) and the filled template with its note on
-  how it was played; every record read from the game's memory, not the screen; the adventure
-  map's reads from H3API's layouts confirmed by observation only (`inferred`); a dialog's OK
-  found by relative probes (`[button.ok]`); a walk over after 1.5 s at rest, in real time.
-- The window adapter's library (T2, the user's choice; ADR-0024, accepted): SDL 3
-  through `sdl3-sys` (not the `sdl3` wrapper), built from source and linked statically, the unused
-  subsystems left out; its defaults vsync off and the hardware cursor (the user, *provisional*);
-  `nanomp3` for MP3; the IMA ADPCM decoder in `h3-assets`.
-- The spikes stay on the branch `client/e17-m2-t2-spikes`, never merged (T2); their reel, cursor and
-  sound files are made from the user's files into `original-data/spikes/` (gitignored).
-- The platform adapter (T5a): one crate `h3-sdl` for the window, its input and the cursor and,
-  with T5b, the audio (named for what it holds, not `h3-window`); left out of the coverage gate
-  as an adapter (`check.sh`), exercised by `h3-view window --check`; SDL's joystick and HIDAPI
-  left out of its build too (no input but the keyboard and the mouse).
-- `h3-view window` (T5a, design §8.1): its keys (Space, →, R, F, V, C, Esc) and options; the
-  window sized to the display's usable area less 40 points; the frame widened on the CPU; the
-  next frame composed as soon as the one before shows; a battle timed 60 s at a time past its
-  end, waiting for input only after 10 minutes without a change; `--check` and `--measure`.
-- The cursor (T5a): `CRDEFLT.DEF`'s first frame, its hot spot top-left, drawn with the battle's
-  drawer without an outline; for the hardware cursor drawn over black and white (shadow pixels
-  as black with alpha; this cursor has none). The executable's cursor code is M3's.
-- A flier's cycles in layer 8, drawn after every row (T5a, design §7.10): from the code reading
-  only; a recorded flight across rows (T4b-2b) checks it against the original's frames
-  (confirmed in M3 T1b-2, sequence `fly`).
-- `h3_view::clock` and `Screen::xrgb` in the pure crates (T5a); `play` and `window` share
-  `bin/h3-view/battle.rs`; an executable copied into a checkout's `clients/` finds the tables,
-  layouts and packs from its own place (`assets::clients_dir`).
-- The decoder's length (T5b, design §8.2): every complete frame up to the `fact` chunk's count, as
-  SDL with `dropframe` and `truncate` (SDL's defaults drop a cut last block); the viewer searches
-  `Heroes3.snd` before `H3ab_ahd.snd` (their common entries are equal; the game's order not read).
-- The asset tables' `sounds` (T5b): each creature's sound entries by name, written by `h3-view
-  harvest` with `stack_load_graphics`' rules; the gate finds every one.
-- The cues (T5b): `anim::Sound` and `anim::Cue` in the timeline, at the frame each reading names;
-  `play` writes them to `cues.txt`.
-- The opening (T5b): the start sound and the track drawn from the viewer's own sequence seeded
-  with the battle's seed (as the fidgets); the start sound's volume 64 (not read); no volume
-  settings yet (the music 127, the effects 64, as at equal settings); a track always from its
-  start (the original resumes a track where it last stopped in the session).
-- The window's sound (T5b): ten SDL streams (the music, the start sound, eight creature channels
-  taken as `play_sample` takes them); loops and the music queued a second ahead without a flush;
-  Space pauses the audio device with the battle, R and → stop the creatures' sounds; the keys M
-  and E, `--mute`; the clock waits for the start sound only from the battle's start, and a key
-  that moves the battle ends the wait; volumes as SDL gains (the adapter's only float).
-- `nanomp3` with its default features off (`std` only: no SIMD `wide`, no MP1/MP2; T5b).
-- A shot's loop (T5b, the user's find, design §7.4): the reactions start as the projectile lands;
-  the shooter's frames left beyond the loop are cut, the loop one iteration longer than the
-  reactions' frames (*provisional* until a recorded Cyclops shot, T4b-2b).
+Accepted by the user (M1 2026-10-13, M2 2026-10-14); moved to the log,
+[`E17-log.md`](E17-log.md#accepted-review-lists-m1-m2), on 2026-10-20.
 
 ## M3 review list
 
 (Filled by the tasks: choices queued for the milestone review under the autonomy contract.)
+
+- The lane's process (2026-10-20, the user: scope the captures to the change): the committed
+  `situations/kept/` (each last capture's frames' times and the fidgets and heroes the original's
+  memory showed, numbers only) and `kept/drawn.txt` (the viewer's frames' PNG digests);
+  `h3drive.py drawn` and the rule (runbook, "Which captures a change needs"; a full recapture at
+  a milestone's closure, T9); `docs/lanes/client/NOTES.md` for the inbox's detail.
 
 - T5b-2b: the scene draws a magic animation after its stack's count box (0x43E568, 0x43E795; T3b
   had it before); a siege's second box (part 1 after the moat's parts) not built until sieges;

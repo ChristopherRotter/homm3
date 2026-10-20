@@ -1,0 +1,11 @@
+# The original's kept frames (h3drive.py frames): numbers only.
+
+[[frame]]
+t = 0
+file = "t00000.xwd"
+fidgets = []
+
+[[frame]]
+t = 400
+file = "t00400.xwd"
+fidgets = [[0, 1, 1, 1]]

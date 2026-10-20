@@ -19,6 +19,11 @@ export WINEDLLOVERRIDES="mscoree,mshtml="
 
 # 1. Packages: 32-bit Wine, the virtual display and input, mingw-w64 for the forwarder.
 if ! command -v wine > /dev/null || ! command -v Xvfb > /dev/null; then
+    # Another apt first (scripts/sandbox-setup.sh's, in the background): adding i386 between its
+    # update and its install failed that install (2026-10-20), so wait for it to end.
+    while pgrep -x apt-get > /dev/null || pgrep -x dpkg > /dev/null; do
+        sleep 3
+    done
     dpkg --add-architecture i386
     apt-get update -qq
     DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
