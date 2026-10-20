@@ -28,7 +28,7 @@ fn chance(r: &BattleRuleset, (hero, level): (&str, u8), skill: u8, worn: &[&str]
     let details = HeroDetails {
         hero_type: r.hero_type_by_key(hero).unwrap(),
         level,
-        experience: 0,
+        experience: h3_heroes::experience_for(r.hero_params().unwrap(), level),
         offered: Default::default(),
         primary: [0, 0, 1, 1],
         skills: vec![(r.skill_by_key("base:eagle_eye").unwrap(), skill)],

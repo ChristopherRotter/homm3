@@ -257,6 +257,7 @@ fn a_sorcery_specialists_product_is_stored_as_a_single_before_it_is_rounded_down
                 &["base:magic_arrow"],
             );
             sandro.level = level;
+            sandro.experience = h3_heroes::experience_for(r.hero_params().unwrap(), level);
             sandro.skills = vec![(r.skill_by_key("base:sorcery").unwrap(), 2)];
             let mut s = battle(&r, &sandro, &[("base:pikeman", 100)], &[]);
             let target = defenders_first(&s);

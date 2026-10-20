@@ -59,6 +59,7 @@ impl OriginalDraws {
 impl Draws for OriginalDraws {
     /// `random_between(low, high)`: `low` + `rand()` mod (`high` − `low` + 1).
     fn between(&mut self, low: u32, high: u32) -> u32 {
+        // rule: HER-LVL-002
         let span = high.saturating_sub(low).saturating_add(1);
         low.saturating_add(self.rand() % span)
     }

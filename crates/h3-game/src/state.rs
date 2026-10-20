@@ -597,14 +597,17 @@ impl CanonicalHash for GameState {
     }
 }
 
-/// A hero's details in the game state's hash (v5): hero type, level, experience, the primary
-/// skills, the secondary skills (length, then skill and level), the worn artifacts and the
+/// A hero's details in the game state's hash (v5; v9: the offers' levels after the experience):
+/// hero type, level, experience, the levels at which Wisdom and a school were last offered, the
+/// primary skills, the secondary skills (length, then skill and level), the worn artifacts and the
 /// backpack (each length, then artifact and spell, 0 for none, else 1 and the spell), the
 /// learned spells (length, then spell), the spell points.
 fn hash_details(details: &HeroDetails, h: &mut StateHasher) {
     details.hero_type.hash_into(h);
     h.write_u8(details.level);
     h.write_u32(details.experience);
+    h.write_u8(details.offered.wisdom);
+    h.write_u8(details.offered.school);
     h.write_bytes(&details.primary);
     h.write_len(details.skills.len());
     for (skill, level) in &details.skills {

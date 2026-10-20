@@ -30,6 +30,7 @@ pub fn experience_bound(params: &HeroParams) -> u32 {
 /// The level of `experience` (HER-EXP-002): the number of thresholds at or below it (the
 /// original's loop, 0x4DA743 to 0x4DA7C6), at most `max_level`.
 pub fn level_of(params: &HeroParams, experience: u32) -> u8 {
+    // rule: HER-EXP-002
     let reached = params
         .experience
         .iter()
@@ -45,6 +46,7 @@ pub fn level_of(params: &HeroParams, experience: u32) -> u8 {
 /// (A-8: the original computes a wrapped, often negative cap for a limit above 75,
 /// `ADV-QUIRK-12`, fixed), and the cap is then the bound.
 pub fn experience_cap(params: &HeroParams, level_limit: u8) -> u32 {
+    // rule: HER-EXP-003
     if (1..=params.max_level).contains(&level_limit) {
         experience_for(params, level_limit)
     } else {

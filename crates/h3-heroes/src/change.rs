@@ -186,7 +186,8 @@ pub fn apply_change_limited(
         } => {
             // rule: HER-LVL-005
             details.level = details.level.saturating_add(1);
-            // rule: HER-LVL-001 (A-9: saturating at `primary_max`)
+            // A-9: the gain saturates at `primary_max`.
+            // rule: HER-LVL-001
             let max = ruleset.hero_params().map_or(0, |params| params.primary_max);
             let base = &mut details.primary[primary.index()];
             *base = base.saturating_add(1).min(max);

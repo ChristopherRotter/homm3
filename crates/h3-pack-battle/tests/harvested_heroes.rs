@@ -27,13 +27,15 @@ fn pick(rng: &mut Rng, n: usize) -> usize {
     rng.below(u32::try_from(n).unwrap()) as usize
 }
 
-/// Valid details: a random hero type, level 1 to 255, primary skills 0 to 99, up to eight skills
+/// Valid details: a random hero type, level 1 to 74 with its experience (HER-EXP-002), primary skills 0 to 99, up to eight skills
 /// at random levels, and worn artifacts drawn at random, each kept if the details stay valid.
 fn details(r: &BattleRuleset, rng: &mut Rng) -> HeroDetails {
+    let hero_type = HeroTypeId::from_index(pick(rng, r.hero_types().len())).unwrap();
+    let level = u8::try_from(1 + rng.below(74)).unwrap();
     let mut d = HeroDetails {
-        hero_type: HeroTypeId::from_index(pick(rng, r.hero_types().len())).unwrap(),
-        level: u8::try_from(1 + rng.below(255)).unwrap(),
-        experience: 0,
+        hero_type,
+        level,
+        experience: h3_heroes::experience_for(r.hero_params().unwrap(), level),
         offered: Default::default(),
         primary: [0; 4].map(|_| u8::try_from(rng.below(100)).unwrap()),
         skills: vec![],
@@ -422,7 +424,7 @@ fn wearing(sod: &BattleRuleset, worn: &[ArtifactInstance], skills: &[(&str, u8)]
     HeroDetails {
         hero_type: sod.hero_type_by_key("base:solmyr").unwrap(),
         level: 10,
-        experience: 0,
+        experience: h3_heroes::experience_for(sod.hero_params().unwrap(), 10),
         offered: Default::default(),
         primary: [1, 1, 1, 1],
         skills: skills
