@@ -6,6 +6,14 @@ use crate::record::tests::observation;
 
 const RED_BLUE: [u8; 2] = [0, 1];
 
+/// What the panel keeps before any human turn: `side`'s colours, the scroll buttons as built.
+fn by(side: Side) -> Kept {
+    Kept {
+        colours: side,
+        scroll: false,
+    }
+}
+
 fn hero(spell_book: bool, casts: u8) -> Option<Hero> {
     Some(Hero {
         hero_type: 0,
@@ -47,7 +55,13 @@ fn battle() -> Observation {
 #[test]
 fn a_humans_turn_enables_what_the_battle_allows() {
     let o = battle();
-    let red = shown(&o, Some(Side::Attacker), Side::Attacker, "a\nb", RED_BLUE);
+    let red = shown(
+        &o,
+        Some(Side::Attacker),
+        by(Side::Attacker),
+        "a\nb",
+        RED_BLUE,
+    );
     // Every button enabled and the scroll buttons too (0x4786CA), none selected.
     assert!(disabled(&red).is_empty());
     assert!(red.states.values().all(|s| !s.selected && !s.hidden));
@@ -57,7 +71,13 @@ fn a_humans_turn_enables_what_the_battle_allows() {
     // without a book.
     let mut both = o.clone();
     both.sides[1].human = true;
-    let blue = shown(&both, Some(Side::Defender), Side::Defender, "", RED_BLUE);
+    let blue = shown(
+        &both,
+        Some(Side::Defender),
+        by(Side::Defender),
+        "",
+        RED_BLUE,
+    );
     assert_eq!(disabled(&blue), [AUTO_COMBAT, SPELL_BOOK]);
     assert_eq!(blue.players.get(&PICTURE), Some(&1));
     // A hero that cast this round; the wait phase.
@@ -68,7 +88,7 @@ fn a_humans_turn_enables_what_the_battle_allows() {
         disabled(&shown(
             &cast,
             Some(Side::Attacker),
-            Side::Attacker,
+            by(Side::Attacker),
             "",
             RED_BLUE
         )),
@@ -81,7 +101,7 @@ fn a_humans_turn_enables_what_the_battle_allows() {
         disabled(&shown(
             &alone,
             Some(Side::Attacker),
-            Side::Attacker,
+            by(Side::Attacker),
             "",
             RED_BLUE
         )),
@@ -92,7 +112,7 @@ fn a_humans_turn_enables_what_the_battle_allows() {
         disabled(&shown(
             &alone,
             Some(Side::Attacker),
-            Side::Attacker,
+            by(Side::Attacker),
             "",
             RED_BLUE
         )),
@@ -114,16 +134,16 @@ fn at_a_town_the_defender_neither_surrenders_nor_retreats_without_its_tunnel() {
     });
     o.sides[1].human = true;
     o.sides[1].may_retreat = false;
-    let defender = shown(&o, Some(Side::Defender), Side::Defender, "", RED_BLUE);
+    let defender = shown(&o, Some(Side::Defender), by(Side::Defender), "", RED_BLUE);
     assert_eq!(
         disabled(&defender),
         [SURRENDER, RETREAT, AUTO_COMBAT, SPELL_BOOK]
     );
     o.sides[1].may_retreat = true;
-    let tunnel = shown(&o, Some(Side::Defender), Side::Defender, "", RED_BLUE);
+    let tunnel = shown(&o, Some(Side::Defender), by(Side::Defender), "", RED_BLUE);
     assert_eq!(disabled(&tunnel), [SURRENDER, AUTO_COMBAT, SPELL_BOOK]);
     // The attacker may do both.
-    let attacker = shown(&o, Some(Side::Attacker), Side::Attacker, "", RED_BLUE);
+    let attacker = shown(&o, Some(Side::Attacker), by(Side::Attacker), "", RED_BLUE);
     assert_eq!(disabled(&attacker), [AUTO_COMBAT]);
 }
 
@@ -139,7 +159,7 @@ fn the_tactics_phase_disables_the_book_wait_and_defend() {
         disabled(&shown(
             &o,
             Some(Side::Attacker),
-            Side::Attacker,
+            by(Side::Attacker),
             "",
             RED_BLUE
         )),
@@ -151,7 +171,7 @@ fn the_tactics_phase_disables_the_book_wait_and_defend() {
 fn a_computers_turn_disables_the_seven_buttons() {
     let o = battle();
     // Red's colours kept from its turn (0x46BF90 leaves the picture).
-    let blue = shown(&o, Some(Side::Defender), Side::Attacker, "", RED_BLUE);
+    let blue = shown(&o, Some(Side::Defender), by(Side::Attacker), "", RED_BLUE);
     assert_eq!(
         disabled(&blue),
         [
@@ -172,12 +192,12 @@ fn a_computers_turn_disables_the_seven_buttons() {
 #[test]
 fn before_a_turn_the_panel_is_as_built() {
     let mut o = battle();
-    let built = shown(&o, None, Side::Attacker, "", RED_BLUE);
+    let built = shown(&o, None, by(Side::Attacker), "", RED_BLUE);
     assert_eq!(disabled(&built), [LOG_UP, LOG_DOWN]);
     assert_eq!(built.players.get(&PICTURE), Some(&0));
     o.sides[1].human = true;
     assert_eq!(
-        disabled(&shown(&o, None, Side::Attacker, "", RED_BLUE)),
+        disabled(&shown(&o, None, by(Side::Attacker), "", RED_BLUE)),
         [AUTO_COMBAT, LOG_UP, LOG_DOWN]
     );
 }
@@ -231,17 +251,34 @@ fn each_turn_finds_the_battle_its_events_left() {
 }
 
 #[test]
-fn the_picture_keeps_the_last_human_players_colours() {
+fn the_panel_keeps_the_last_human_turns_colours_and_scroll_buttons() {
     let o = battle();
     // Red human, Blue a computer.
+    let red_then_blue = [(Side::Attacker, false), (Side::Defender, false)];
     assert_eq!(
-        colours(&o, &[Side::Attacker, Side::Defender], Side::Defender),
-        Side::Attacker
+        kept(&o, &red_then_blue, Side::Defender),
+        Kept {
+            colours: Side::Attacker,
+            scroll: true
+        }
     );
-    // No human turn yet: the side it was built for.
+    // No human turn yet, or Red's in the tactics phase: the side it was built for; the scroll
+    // buttons as built.
     assert_eq!(
-        colours(&o, &[Side::Defender], Side::Defender),
-        Side::Defender
+        kept(&o, &[(Side::Defender, false)], Side::Defender),
+        by(Side::Defender)
     );
-    assert_eq!(colours(&o, &[], Side::Attacker), Side::Attacker);
+    assert_eq!(
+        kept(&o, &[(Side::Attacker, true)], Side::Defender),
+        by(Side::Attacker)
+    );
+    assert_eq!(kept(&o, &[], Side::Attacker), by(Side::Attacker));
+    // A computer's turn after Red's: the seven dimmed, the scroll buttons left enabled.
+    let after = Kept {
+        colours: Side::Attacker,
+        scroll: true,
+    };
+    let blue = shown(&o, Some(Side::Defender), after, "", RED_BLUE);
+    assert_eq!(disabled(&blue).len(), 7);
+    assert!(!disabled(&blue).contains(&LOG_UP));
 }

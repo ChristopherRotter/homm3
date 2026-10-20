@@ -427,6 +427,18 @@ Accepted by the user (M1 2026-10-13, M2 2026-10-14); moved to the log,
 
 (Filled by the tasks: choices queued for the milestone review under the autonomy contract.)
 
+- T6b: the harness keeps a frame where the panel changes (the parked cursor aside) and reads the
+  log's item and entries from memory (`h3mem.battle_log`; the text stays in the sandbox, ADR-0009);
+  the frame check lists the log's item (` log`) where the original's text is not the viewer's
+  and its pixels differ, the viewer's text per frame in `ours-log.json`; the sequences' fixed
+  mask the parked cursor (`log_at` gone). The library: the timeline's `log`
+  (`battle_log::Logged`), `battle_log::Log`, `word`, `texts`, `text_at`; `panel::turns`,
+  `panel::kept` (`Kept`); `scene::Panels` (replacing `scene::acting`); the keys
+  `battle.log.heal` (GENRLTXT:415) and `battle.log.round` (413). *Provisional:* the status line
+  empty at a human's turn (the mouse over nothing, until T6c's hints), morale's line at its event
+  (T7b), the panel built for the opening's side; the adapters read the text tables only when the
+  battle writes a line.
+
 - T6a (the user: reusable UI components): `h3_view::ui`, the executable's dialog items as
   components (`Dialog`, `Item` by `kind`: `picture`, `button` with its `frames` by state, `text`;
   `State`, `Shown` by control id) and the layout's `[panel]` with its `[[panel.items]]` in the

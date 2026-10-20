@@ -817,12 +817,15 @@ def run_frames(rest):
                          + [box for box, _, _ in boxed[k["t"]]])
                 listed = []
             # The log's item (E17 M3 T6b): compared where the original's shows the text the
-            # viewer drew (its memory: the item's string), else masked and listed (` log`): a
-            # status line's hint (T6c) or a line whose numbers the engine rolled otherwise.
+            # viewer drew (its memory: the item's string), else, where its pixels differ, masked
+            # and listed (` log`): a status line's hint (T6c) or a line whose numbers the engine
+            # rolled otherwise. (The memory can lag the screen by a step as a turn starts: the
+            # pixels then agree, and nothing is listed.)
             theirs_text = (k.get("log") or {}).get("text")
-            log_listed = texts.get(stem) is None or texts.get(stem) != theirs_text
+            x, y, w, h = h3cap.log_item()
+            log_listed = ((texts.get(stem) is None or texts.get(stem) != theirs_text)
+                          and bool((cap[y:y + h, x:x + w] != ours[y:y + h, x:x + w]).any()))
             if log_listed:
-                x, y, w, h = h3cap.log_item()
                 boxes = boxes + [(x, y, x + w, y + h)]
             for x0, y0, x1, y1 in boxes:
                 masked[max(y0, 0):max(y1, 0), max(x0, 0):max(x1, 0)] = True

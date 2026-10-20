@@ -1905,3 +1905,71 @@ text item) in `compose`.
   (618, 593): 35 pixels the viewer does not draw (the cursor rules are T6c's), masked as `cursor`
   (`CRDEFLT.DEF`'s 20 × 24 canvas there). The ten sequences compare no more of the panel than
   before (T6b): `drawn` now digests only what the comparisons see, so they stayed the same.
+
+### 9.8 The panel and the log over a battle (M3 T6b)
+
+T6b as one increment (the user, 2026-10-20, offered the panel and the log as two). Read: what sets
+the controls' states while a battle runs (the callers of 0x5FEED0 and 0x5FEF60 in the battle's
+code, the action dispatcher's head 0x478D80, `battle_controls_state`'s tail), the log's state
+over time (`battle_log_add` 0x472E90's two paths, `battle_log_settle` 0x472BF0 and its callers,
+`battle_log_show_from` 0x472C30 and its callers, the scroll 0x472DB0, 0x472DF0, 0x472E40, the
+panel's set-text 0x46BF50, the mouse posted again 0x4ECC00) and where each line is written
+(`melee_strike`, `stack_shot`, `first_aid_tent_action`, `round_start`). Built: the timeline's
+`log` (`battle_log::Logged`), `battle_log::Log`, `word`, `texts`; `panel::turns`, `panel::kept`;
+`scene::Panels` for the frame check, the stills and the window.
+
+- **The panel through a battle.** The battle's code sets control states only as the dialog is
+  built, at the tactics phase's start (Wait, 0x462EE0), at each stack's activation
+  (`battle_controls_state`) and when Auto Combat is switched (0x474E73, 0x474ED1): an action and
+  its animation leave the panel as its turn's start set it, and the Wait and Defend hotkeys are
+  the buttons' own (they are not in the battle's key switch 0x4758FB; not read further). A turn
+  no human plays (0x46BF90) dims the seven and leaves the picture's colours and the scroll
+  buttons as the last human turn set them: once a human's turn outside the tactics phase enabled
+  them, they stay enabled (`melee`'s computer turn: 539 pixels until this was built). Each turn's
+  battle is folded from the events (`panel::turns`: the wait phase is the stack having waited
+  this round, the heroes' casts this round, the tactics phase); `panel::kept` keeps the colours
+  and the scroll buttons; the panel at a time is its last turn's start's.
+- **The log's state** (the combat dialog's +0x54 to +0x6C; `h3mem`'s `battle_log` reads it): the
+  entries, the new entries' count +0x64, the first shown +0x68, the time it last showed them
+  +0x6C. An entry (second argument 1) sets +0x6C, adds its entries to the new count (at most 2)
+  and shows the log from the first new one. The status line (0) replaces the item's text unless
+  the new count is above 0, +0x6C less than 3 000 ms ago and the third argument 0; it leaves
+  +0x64 and +0x6C. **Settling** (0x472BF0): new entries shown 3 000 ms ago or more are new no
+  longer (+0x64 = 0) and the status line is emptied; as each action starts (0x478DB2), at a human
+  player's turn start (0x47884C) and at the actions' re-entries (0x479195, 0x479D6B; also
+  `move_and_attack` and two click handlers, not read). Showing from an entry past the last does
+  nothing; it sets +0x68, the text and +0x6C. The scroll buttons and the arrow keys (72, 80)
+  show from the first shown ∓ 1, at most the entries' count less 2 and at least 0.
+- **On the screen at once:** the panel's set-text (0x46BF50) redraws the item and shows its
+  rectangle (state 0x4000, 0x5FE5B5), so a line or a status line shows the moment it is set.
+- **The mouse at a turn's start:** a human player's turn posts a mouse move at the cursor
+  (0x4ECC00), so the status line becomes the hint where the mouse rests, over nothing an empty
+  one (observed: `walk`'s hover hint `Move Champions here.` gone at the next human turn, no line
+  written). The viewer has no mouse: at a human's turn it sets the status line empty, under the
+  3 000 ms rule (*provisional*: the hints are T6c's). The hover's own hint ignores the rule
+  (`behind` at 7 144 ms: `Attack Silver Pegasi` over two lines 0 ms old; T6c).
+- **Which event writes which line, and when** (the timeline's `log`, `battle_log::word`):
+
+  | Happening | When | Its line |
+  |---|---|---|
+  | a melee strike, a retaliation (`Struck`, not ranged) | after its animation, `strike_animation`'s loop (0x441C5D) | the target's (`Spread::Target`, a breath's stack behind added), a multi-headed striker's every hit's (`Around`, 0x4404ED) |
+  | a shot at one target | after its reactions' loop (0x43FDB4) | the target's |
+  | an area shot | as its reactions start (0x43FCE0, 0x4400DC) | every hit's |
+  | good luck (`lucky`) | before the strike's or shot's animation (0x4418A2, 0x43F9C0) | row 46 |
+  | Wait, Defend | at the action (0x479A88, 0x479892) | rows 137/138, 121/122; none in the tactics phase, none for a war machine's defend |
+  | the First Aid Tent's heal | between its sound and its magic animation (0x478D0A) | row 415: the tent and the patient each by its number, the hit points (`battle.log.heal`) |
+  | a round's start | outside the tactics phase, before the next activation (0x4761E9) | row 413 (`battle.log.round`); none at the opening |
+  | good, bad morale | at the event (*provisional*: their animations are T7b's) | rows 34, 35 |
+
+  Not built: the lines the engine's other events write in the original (regeneration, row 372 at
+  0x44707B; mana drain, 374 and 375 at 0x4657AD; the spells, Death Stare, Life Drain, Fire
+  Shield, the moat, fire walls, land mines, turrets: T7's). The striker is named by its number
+  before the strike (a retaliator's after the strike's kills), a defend's gain by the snapshot's
+  defense.
+- **Checked:** the line times against the original's memory: `shot`'s line at 1 588 ms, `melee`'s
+  at 5 266 and 6 466 (the unit tests pin them), `behind`'s nine changes as modelled. The harness
+  keeps a frame where the panel changes too (the parked cursor aside) and reads the log; the frame
+  check compares the whole panel, its log's item where the original's text is the viewer's, else,
+  where its pixels differ, listed (` log`): the hover's hints (T6c) and the lines of rolled
+  damage. The memory can lag the screen by a step as a turn starts: there the pixels agree and
+  nothing is listed.

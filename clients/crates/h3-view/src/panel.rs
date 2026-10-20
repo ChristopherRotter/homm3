@@ -10,11 +10,11 @@
 //! player is human the picture takes that player's colours and each button is enabled or disabled
 //! by the battle (below); for any other side 0x46BF90 disables the seven buttons and leaves the
 //! rest as they were. Nothing else sets them while the battle runs (E17 M3 T6b, design §9.8: an
-//! action and its animation leave the panel as its turn's start set it; a button's hotkey
-//! presses it only while its key is down): the panel at a moment is its last turn's start's, the
-//! battle as that turn found it ([`turns`]), the picture in the colours of the last human player
-//! whose turn started ([`colours`]). Not read: the tactics phase's panel 0x46C050 and Auto Combat
-//! switched on (the queue's inbox).
+//! action and its animation leave the panel as its turn's start set it; the hotkeys Wait and
+//! Defend are the buttons' own, outside the battle's key switch 0x4758FB, not read further): the
+//! panel at a moment is its last turn's start's, the battle as that turn found it ([`turns`]),
+//! with what it kept from the last human player's turn ([`kept`]). Not read: the tactics phase's
+//! panel 0x46C050 and Auto Combat switched on (the queue's inbox).
 
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::string::String;
@@ -97,30 +97,44 @@ pub fn turns(observation: &Observation, events: &[Event]) -> Vec<Observation> {
     out
 }
 
-/// The side whose player's colours the picture shows after the turns of `sides` started (in
-/// order), each the acting stack's controller: the last one a human plays (0x4782D0 colours it),
-/// else the side the panel was built for (`built`: 0x46B70F's side the manager holds then, not
-/// read; *provisional*: the first turn's side).
+/// What the panel keeps from turn to turn (E17 M3 T6b): a turn no human plays leaves the
+/// picture's colours and the scroll buttons as the last human player's turn set them (0x46BF90).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Kept {
+    /// The side whose player's colours the picture shows.
+    pub colours: Side,
+    /// The scroll buttons enabled: a human's turn outside the tactics phase enables them
+    /// (0x4786CA); else they are as built, disabled.
+    pub scroll: bool,
+}
+
+/// What the panel keeps after the turns `started` (in order: each one's acting side, the
+/// stack's controller, and whether the tactics phase ran), built for the side `built`
+/// (0x46B70F's side the manager holds then, not read; *provisional*: the opening's side): the
+/// colours of the last side a human plays (0x4782D0 colours it), else `built`'s; the scroll
+/// buttons enabled once a human's turn started outside the tactics phase.
 #[must_use]
-pub fn colours(observation: &Observation, sides: &[Side], built: Side) -> Side {
+pub fn kept(observation: &Observation, started: &[(Side, bool)], built: Side) -> Kept {
     let human = |s: Side| observation.sides[usize::from(s == Side::Defender)].human;
-    sides
+    let colours = started
         .iter()
         .rev()
-        .copied()
+        .map(|&(s, _)| s)
         .find(|&s| human(s))
-        .unwrap_or(built)
+        .unwrap_or(built);
+    let scroll = started.iter().any(|&(s, tactics)| human(s) && !tactics);
+    Kept { colours, scroll }
 }
 
 /// What the panel shows when the stacks of `side` (the active stack's controller; none before a
-/// turn starts) begin their turn in the battle `observation` shows, its picture in the colours
-/// of `colours`' player, its log showing `log`; each side's player's colour is `players`' entry
-/// (the record names none: CLT-Q6).
+/// turn starts) begin their turn in the battle `observation` shows, with what it `kept` from the
+/// turns before (the picture's colours, the scroll buttons), its log showing `log`; each side's
+/// player's colour is `players`' entry (the record names none: CLT-Q6).
 #[must_use]
 pub fn shown(
     observation: &Observation,
     side: Option<Side>,
-    colours: Side,
+    kept: Kept,
     log: &str,
     players: [u8; 2],
 ) -> Shown {
@@ -133,14 +147,14 @@ pub fn shown(
     let enabled = |on: bool| if on { State::default() } else { disabled };
     let mut states = BTreeMap::new();
     // As built (0x46BB40, 0x46BE64): Auto Combat disabled when both sides are human, the scroll
-    // buttons disabled.
+    // buttons disabled until a human's turn enables them.
     states.insert(
         AUTO_COMBAT,
         enabled(!(human(Side::Attacker) && human(Side::Defender))),
     );
-    states.insert(LOG_UP, disabled);
-    states.insert(LOG_DOWN, disabled);
-    let picture = players[index(colours)];
+    states.insert(LOG_UP, enabled(kept.scroll));
+    states.insert(LOG_DOWN, enabled(kept.scroll));
+    let picture = players[index(kept.colours)];
     match side {
         Some(s) if human(s) => {
             let view = &observation.sides[index(s)];

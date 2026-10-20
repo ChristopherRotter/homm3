@@ -21,7 +21,9 @@
 # frames. A box whose count is not the one the original's memory shows
 # (the engine rolls its own damage) is masked and listed after the frame's counts
 # (` n<side>.<record>`); `strike` at 2 730 ms differs in 134 pixels of the original's redraws
-# (design §4.3).
+# (design §4.3). The panel is compared since E17 M3 T6b (design §9.8), the game's parked cursor
+# masked; the log's item where the original's text (its memory) is not the viewer's and its
+# pixels differ is masked and listed (` log`: a status line's hint, M3 T6c, or a rolled line).
 
 [[sequence]]
 id = "walk"
@@ -190,10 +192,9 @@ timeline = "timelines/hover.txt"
 
 # E17 M3 T4b-2b-2: a strike's line in the log (`seq-strike.toml`, design §9.6). The Archangel
 # flies beside the Pikemen (its rear hex 47, the cursor left of their centre) and kills all ten
-# with its fixed damage; the defender's Goblins' turn starts at 3 730. From then on (`log_at`) the
-# original's log shows the strike's line, which the viewer composes from the record's `Struck`
-# (`battle_log::strike`) and the frame check compares with the log's item unmasked (before it the
-# status line shows the hint over the Pikemen: the panel's, M3 T6).
+# with its fixed damage; the line shows at the strike's end, as the defender's Goblins' turn
+# starts at 3 730 (before it the status line shows the hint over the Pikemen: M3 T6c). Since M3
+# T6b every sequence's log comes from its record's events (design §9.8).
 [[sequence]]
 id = "strike"
 scenario = "seq-strike.toml"
@@ -203,7 +204,6 @@ ms = 4300
 timeline = "timelines/strike.txt"
 frames = "timelines/strike-frames.txt"
 boxes = true
-log_at = 3730
 command = [
     { seat = "Attacker", command = { Attack = { target = 3, from = 47 } } },
 ]

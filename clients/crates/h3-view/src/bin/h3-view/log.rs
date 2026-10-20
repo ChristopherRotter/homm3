@@ -89,8 +89,9 @@ pub fn texts(
 }
 
 /// The panel over the record's battle as `timeline` plays it (E17 M3 T6b): its turns and its log's
-/// texts ([`texts`]) in the original's words from `archives`' text tables, measured in the log
-/// item's font of `layout`, drawn with the original's drawing bugs.
+/// texts ([`texts`]) in the original's words from `archives`' text tables (read only when the
+/// battle writes a line), measured in the log item's font of `layout`, drawn with the original's
+/// drawing bugs.
 pub fn panels(
     record: &Record,
     timeline: &Timeline,
@@ -101,7 +102,15 @@ pub fn panels(
     let snapshot = record
         .first_snapshot()
         .ok_or("the record holds no snapshot")?;
-    let catalogue = catalogue(tables, archives)?;
+    let writes = timeline
+        .log
+        .iter()
+        .any(|(_, l)| !matches!(l, battle_log::Logged::Action | battle_log::Logged::Turn(_)));
+    let catalogue = if writes {
+        catalogue(tables, archives)?
+    } else {
+        Catalogue::default()
+    };
     let item = layout.log().ok_or("the layout's panel has no log item")?;
     let font = h3_assets::fnt::decode_fnt(&lookup(archives, &item.font)?)
         .map_err(|e| format!("{}: {e:?}", item.font))?;

@@ -800,7 +800,11 @@ fn the_panel_draws_its_items_as_the_turn_sets_them() {
     let layout = layout();
     let mut o = battle_view();
     o.sides[0].human = true;
-    let list = panel(&o, Some(Side::Attacker), Side::Attacker, "a\nb", &layout);
+    let kept = crate::panel::Kept {
+        colours: Side::Attacker,
+        scroll: false,
+    };
+    let list = panel(&o, Some(Side::Attacker), kept, "a\nb", &layout);
     let button = |def: &str, frame, x| Draw::Button {
         def: def.to_string(),
         frame,
