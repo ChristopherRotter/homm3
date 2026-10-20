@@ -406,13 +406,25 @@ format adds an option that prevents those gains. Every custom experience in the 
 at least 1 000, so increment 3 (experience as a number, no levels) must either refuse such heroes
 (`Unsupported`, until increment 4) or import them at level 1 with their experience (wrong primary
 and secondary skills): a call for the user (§12), with experiment E3-6 (§13) for the original's
-behaviour.
+behaviour. **Observed** (batch E3c, E08 T22b): a Death Knight with 5 000 experience, 2/3/1/1 and
+eight basic skills started at level 5 with 3/6/1/1, Logistics expert, Pathfinding and Scouting
+advanced: four level-ups' gains at load (four primary points, four secondary advances), as VCMI's
+`levelUpAutomatically`; where the original gives them was not read (increment 4's levels).
 
 ### 6.4 Formation, patrol, presentation
 
 - **Formation**: the map's flag (loose or tight) is read (`vcmi` `readHero`) but `initHero` sets
-  every hero to loose afterwards (VCMI resets it); the original's handling was not read. One
-  shipped hero is tight. The battle takes it as `BattleSetup.formations` (BAT-SET-001).
+  every hero to loose afterwards (VCMI resets it). One shipped hero is tight. The battle takes it
+  as `BattleSetup.formations` (BAT-SET-001). **Observed** (batch E3c's E3-9, E08 T22b): Blue's
+  human hero with the map's tight flag defended in the loose formation (hexes 15, 49, 100, 151,
+  185). **Read** (E08 T22b): the formation is bit 0 of the hero's byte +0x48, which the hero
+  screen's buttons clear and set (0x4DD577, 0x4DD587); `map_hero_setup` (0x486590), which fills
+  every placed hero from the map's record, writes none of +0x48, so the map's flag reaches no
+  hero, whoever owns it (the engine keeps it: `ADV-QUIRK-8`, fixed). The battle places each
+  army (`battle_war_machine_stacks`, 0x463652 to 0x463740) on `battle_army_hexes` (0x63D0A8) by
+  `tight_formation_slots` (0x63D1DC) only when the side's hero has the bit **and** its player is
+  human (+0x54A4, 0x463679), else by `loose_formation_slots` (0x63D118): a computer player's
+  hero always fights loose. Both slot tables give BAT-SET-001's rows exactly.
 - **Patrol radius**: a computer player's hero stays within it (`vcmi` `patrol`); the engine has no
   human or computer player (decision 16): ignored.
 - Name, portrait, biography and sex: presentation.
@@ -503,7 +515,7 @@ shows more *(spells on the map, inc. 4 or later)*.
 
 | Id | Title | Impact | Suggested class | Confidence it exists in SoD | Confirmation |
 |---|---|---|---|---|---|
-| A-6 | After a battle a monster survives, its upgraded stack's survivors vanish (0x44ADC0 counts only the monster's own type) | gameplay-altering (small): a retreat or a lost battle shrinks the monster by those survivors | fix-optional (on in `faithful`, off in `strict-fixed`: the survivors stay, as base creatures as VCMI does) | high: the reading and the wiki | experiment E3-5 (optional) |
+| A-6 | After a battle a monster survives, its upgraded stack's survivors vanish (0x44ADC0 counts only the monster's own type) | gameplay-altering (small): a retreat or a lost battle shrinks the monster by those survivors | fix-optional (on in `faithful`, off in `strict-fixed`: the survivors stay, as base creatures as VCMI does) | high: the reading and the wiki | experiment E3-5 (optional); **classified** fix, no flag (decision 23, `ADV-QUIRK-7`); **confirmed by batch E3b** (E08 T22b: 30 Pikemen with 7 Halberdiers kept 23 after a retreat, three times; then 12 Pikemen and 11 Halberdiers) |
 
 Not a quirk flag: a monster count above 4 095 in a map (§1.2), suggested as an input bound of the
 import (refused, a typed error), since no shipped map has one.
@@ -565,17 +577,19 @@ heroes with custom primary and secondary skills and armies, and the game's diffi
 
 | Id | Question | Sources | Needed by | Settle by |
 |---|---|---|---|---|
-| D-8 | The strength step at r = 0.5 exactly: −2 (reading) or −1 | the reading against VCMI and the wiki | the decision | the user; recommended: the reading (impact: an exact ratio only). E3-3 optional, with a memory read of the monster's aggression |
-| D-9 | Does the monster's own type count for sympathy? | the reading and the wiki (yes) against VCMI 1.7.5 (only upgrades and downgrades) | the decision | the user; recommended: the reading. E3-2: a savage group of 10 Pikemen (AI value 80) against a hero (Attack and Defense 0, no Diplomacy) with 56 Pikemen (r = 5.6, St = 9) on Normal: the reading offers to flee (C = 11), VCMI fights (C = 9); a control hero with 39 Halberdiers (AI value 115, r ≈ 5.61): both offer to flee |
-| D-10 | Easy shifts Diplomacy up one level (at most expert) | the reading and the wiki against VCMI (no rule) | the decision | the user; recommended: the reading, for every player on Easy (as decision 16's starting resources). E3-1, read with E3-2: a savage group of 10 Pikemen against 52 Pikemen (r = 5.2, St = 8, Sy = 2, no Diplomacy): on Easy the flee offer (C = 11), on Normal a battle at once (C = 10); VCMI fights on both |
-| D-11 | The upgraded stack's draw: the second `rand()` after the tile's seed, or VCMI's approximation | the reading against VCMI (differ on 41 of 41 472 tiles) | the split | the user; recommended: the reading (VCMI approximates the same draw). E3-4: Pikemen at (12, 27, underground) on a 36 × 36 two-level map, n > 1: the reading gives an upgraded stack (d₂ = 50), VCMI none; the number of stacks checks the first draw too (d₁ = 44: no change to n) |
-| D-12 | The default experience: 40–90 or 40–89 | the reading against VCMI; the wiki not read | the setup | the user; recommended: the reading. E3-7: memory reads of the 156 heroes' experience after a new game (a 90 shows with 95 % if the reading is right) |
-| D-13 | A surrender's gold: to the enemy player or nowhere | the reading against VCMI; the wiki not read | hero against hero | the user, if hero battles come in; recommended: the reading. E3-8: a hot-seat battle, one side surrenders, the other's gold before and after |
+| D-8 | The strength step at r = 0.5 exactly: −2 (reading) or −1 | the reading against VCMI and the wiki | the decision | the user; recommended: the reading (impact: an exact ratio only). E3-3 optional, with a memory read of the monster's aggression **Confirmed by batch E3b** (E08 T22b): both friendly groups drew aggression 3 and offered to join at Diplomacy 3 only (VCMI: at 2 and 3); a hand-helped run's aggression 1 offered at 1 to 3 (VCMI: 0 to 3), its 6 at none. |
+| D-9 | Does the monster's own type count for sympathy? | the reading and the wiki (yes) against VCMI 1.7.5 (only upgrades and downgrades) | the decision | the user; recommended: the reading. E3-2: a savage group of 10 Pikemen (AI value 80) against a hero (Attack and Defense 0, no Diplomacy) with 56 Pikemen (r = 5.6, St = 9) on Normal: the reading offers to flee (C = 11), VCMI fights (C = 9); a control hero with 39 Halberdiers (AI value 115, r ≈ 5.61): both offer to flee **Confirmed by batch E3** (E08 T22b): E3-2 the flee offer on Easy and on Normal, its control too. |
+| D-10 | Easy shifts Diplomacy up one level (at most expert) | the reading and the wiki against VCMI (no rule) | the decision | the user; recommended: the reading, for every player on Easy (as decision 16's starting resources). E3-1, read with E3-2: a savage group of 10 Pikemen against 52 Pikemen (r = 5.2, St = 8, Sy = 2, no Diplomacy): on Easy the flee offer (C = 11), on Normal a battle at once (C = 10); VCMI fights on both **Confirmed by batch E3** (E08 T22b): E3-1 and E3-1c the flee offer on Easy, a battle at once on Normal. |
+| D-11 | The upgraded stack's draw: the second `rand()` after the tile's seed, or VCMI's approximation | the reading against VCMI (differ on 41 of 41 472 tiles) | the split | the user; recommended: the reading (VCMI approximates the same draw). E3-4: Pikemen at (12, 27, underground) on a 36 × 36 two-level map, n > 1: the reading gives an upgraded stack (d₂ = 50), VCMI none; the number of stacks checks the first draw too (d₁ = 44: no change to n) **Confirmed by batch E3b** (E08 T22b): 8, 8, 7 Halberdiers, 7 Pikemen at E3-4 (VCMI: no Halberdiers) and at its control E3-4c. |
+| D-12 | The default experience: 40–90 or 40–89 | the reading against VCMI; the wiki not read | the setup | the user; recommended: the reading. E3-7: memory reads of the 156 heroes' experience after a new game (a 90 shows with 95 % if the reading is right) **Confirmed by batch E3c** (E08 T22b): the 152 heroes off the map held 40 to 90, one at 90 (VCMI's 89 refuted). |
+| D-13 | A surrender's gold: to the enemy player or nowhere | the reading against VCMI; the wiki not read | hero against hero | the user, if hero battles come in; recommended: the reading. E3-8: a hot-seat battle, one side surrenders, the other's gold before and after **Confirmed by batch E3c** (E08 T22b): the attacker surrendered on its own turn and its player (Red) paid 1 200 gold to the winner's (Blue; VCMI: to nobody; the player whose turn it is would have been Red itself). |
 
 More planned checks without a dispute: **E3-5** (A-6): retreat from a monster with an upgraded
 stack, visit again and read the stacks' counts; **E3-6** (§6.3): a hero with a custom experience
 of 5 000: its level, primary and secondary skills at the start; **E3-9** (§6.4): a hero with the
-map's tight formation in the battle of E3-8.
+map's tight formation in the battle of E3-8. **Batch E3 scored** (E08 T22b,
+`docs/epics/E08-log.md`): every dispute as the reading; A-6 confirmed; E3-6 gained four
+level-ups at load (§6.3), E3-9 defended loose (§6.4).
 
 ## 14. Proposed rule ids (increment 3)
 

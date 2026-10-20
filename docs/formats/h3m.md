@@ -193,7 +193,8 @@ content and draws nothing; it rejects what the current increment cannot represen
   town's entrance, an "H3M format quirk", `CGameState::placeHeroesInTowns`; towns are E09).
   A hero on the visitable tile of an object visited from a neighbouring tile (a pile, a campfire,
   a border guard) imports but fails validation (ADV-MAP-001, E08 T14a); no shipped map has one.
-- **A placed hero's details** (v4, E08 T18b, GAM-HER-001): the formation (0 loose, 1 tight) and
+- **A placed hero's details** (v4, E08 T18b, GAM-HER-001): the formation (0 loose, 1 tight; the
+  original never applies it, every hero starts loose: kept here, `ADV-QUIRK-8`) and
   `h3_game::HeroDetailsSetup`, each field the body's, else its hero type's map-wide entry's
   (SoD's customised hero types), else none (the game's default): experience (before SoD 0 is
   the default; SoD's flag makes 0 an experience), primary skills (clamped to the hero
