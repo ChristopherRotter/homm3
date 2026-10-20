@@ -34,7 +34,7 @@ to the tasks that first use them:
 - **T20a2b** built (2026-10-15): the game passes its store (`&[Arc<HeroDetails>]` by `HeroId`)
   to `AdventureState::apply` and `reach`; the adventure reads the visiting hero's details only
   through `h3-heroes`' derivations (in increment 3 the two above; T20b's answer is the first
-  reader, through the guard's visit). Increment 4 adds movement and scouting.
+  reader, through the guard's visit). A later increment adds movement and scouting (decision 48).
 - Increment 3's adventure visits change no hero (a joining group changes the army only); the
   battle's outcome does (§5).
 
@@ -68,8 +68,8 @@ onto a guarded tile the path's last and `Reach` ending there (ADV-MON-006); the 
   entries serve all of them.
 - Joining: the group becomes one stack (merged with a stack of its creature, else the first free
   slot of seven); with neither the join offer is skipped as declined (**`ADV-STUB-2`** at the skip:
-  the original's army dialog, 0x5D11D0, not read; a feature to-do for increment 4's army
-  management). Then the treasure's resources to the owner (gains), the monster leaves the map.
+  the original's army dialog, 0x5D11D0, not read; a feature to-do for army management,
+  decision 48). Then the treasure's resources to the owner (gains), the monster leaves the map.
 - Events: the offers as increment 2's (`OfferOpened`, `OfferAnswered`) with the new kinds; a
   monster's flight and joining as removals (`ObjectRemoved`) seen where the tiles are.
 

@@ -16,10 +16,11 @@
 # (`h3drive.py frames`; the artifacts since M3 T1c, design §7.11). `boxes = true` (E17 M3 T5a,
 # design §4.3): the frame check compares the count boxes; without it they are masked where the
 # drawn poses show them and where the viewer drew them. Compared in the sequences whose counts
-# never change (no rolled strike: T5a) and in `shot` and `melee` (T5b, the numbers over time):
-# a box whose count is not the one the original's memory shows (the engine rolls its own damage)
-# is masked and listed after the frame's counts (` n<side>.<record>`); `strike` at 2 730 ms
-# differs in 134 pixels of the original's redraws (design §4.3).
+# never change (no rolled strike: T5a), in `shot` and `melee` (T5b-1, the numbers over time) and
+# in `behind` and `shots` (T5b-2a): a box whose count is not the one the original's memory shows
+# (the engine rolls its own damage) is masked and listed after the frame's counts
+# (` n<side>.<record>`); `strike` at 2 730 ms differs in 134 pixels of the original's redraws
+# (design §4.3).
 
 [[sequence]]
 id = "walk"
@@ -91,9 +92,10 @@ actions = [
     "key:w", "turn:0.0", "hex:42", "turn:0.1", "hex:143", "turn:1.1", "key:d", "turn:1.0",
     "hex:39", "turn:1.0", "key:w", "turn:0.0", "click:340,196", "turn:0.1", "hex:39",
 ]
-ms = 1000
+ms = 4000
 timeline = "timelines/behind.txt"
 frames = "timelines/behind-frames.txt"
+boxes = true
 command = [
     { seat = "Defender", command = { Wait = {} } },
     { seat = "Attacker", at = 0, command = { Move = { to = 41 } } },
@@ -120,6 +122,7 @@ actions = [
 ms = 3000
 timeline = "timelines/shots.txt"
 frames = "timelines/shots-frames.txt"
+boxes = true
 command = [
     { seat = "Attacker", command = { Shoot = { target = 2, at = 49 } } },
     { seat = "Attacker", at = 1517, command = { Shoot = { target = 3, at = 151 } } },

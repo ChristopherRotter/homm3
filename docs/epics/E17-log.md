@@ -1272,3 +1272,43 @@ that.
   frame late at 3 730 ms, 2 152 pixels, the runbook's trap; `machines`' timeline 1 ms later at
   2 222 and 5 846 ms, the runbook's known variance). The capture set: 31 situations as recorded.
 - **For later:** T5b-2 (`behind`, `shots`, `fly`, `machines`' boxes), T7b (the spells' tint).
+
+### M3 T5b-2a — The count boxes in `behind` and `shots` (2026-10-20)
+
+On `client/e17-m3-t5b-2a`, the user present: asked for a small increment, the agent proposed
+splitting T5b-2 into `behind` and `shots` (battles in progress with several strikes and shots,
+the mechanism T5b-1 built) and `fly` and `machines` (a breath on two stacks, the heal's reading:
+T5b-2b); the user chose that.
+
+- **Starting point:** master at `7ac0b91` (#289, the adventure lane's, after #290, T5b-1, and
+  #291), no client pull request open; the client gates' baseline (`check.sh`, `verify-once`)
+  passed on the sandbox.
+- **`behind`** runs 4 000 ms after its last action (1 000 before) to the Marksmen's second
+  shot's end (15 492 ms) and their turn back (15 892): its timeline 227 changes (203 before, the
+  same up to 13 499), the viewer's as recorded. With the boxes compared its first 194 frames are
+  as before (the Centaurs' 20 → 12 at 11 144 ms, the Pegasi's 10 → 9 at 9 844 and → 8 at
+  14 268: the engine's kills the original's); the second shot kills one Pegasus in the engine,
+  none in the original: their box masked and listed from 15 492 (` n1.0`).
+- **A shot's struck in layer 5** (design §7.10): the original's memory holds the struck stacks
+  of every shot and ray in layer 5, the shooter in 4 (`behind`, `shots`); the viewer had kept
+  them in 4, so the hit Pegasi's wings lay under the Centaurs beside them (242 to 14 pixels a
+  frame, 13 768 to 14 068 and 14 992 to 15 292 ms). Built: `shot` and `react_alone` take
+  `[STANDING, STRUCK]`; two tests' poses in layer 5.
+- **Listed, not classified** (design §7.11, "A projectile over the obstacles"): in the first shot
+  after the Marksmen's turn the arrow's earlier steps leave the terrain alone in the rocks
+  (13 636 to 13 735 ms, 1 036 to 1 913 pixels, no artifact by `h3cap.redraws`), not in the
+  second; the save-under's source is the likely cause, not read.
+- **`shots`** exact in all 139 frames with the boxes compared; the Gnolls' box listed from 3 471
+  to 5 479 ms (` n1.1`: the Cyclops' throw kills 6 in the engine, 7 in the original; after the
+  Arch Magi's ray both show 19).
+- **The harness:** `xwd_bytes` also retries a dump that is no 5-6-5 dump (two `set` runs stopped
+  on one, at different situations; the third, with the retry, ran through).
+- **Checked against the original** (all ten captured afresh): `walk`, `shot`, `melee`, `turn`,
+  `climb`, `fly`, `machines` as recorded; `strike` as recorded on its third run. The original's
+  rolls varied between runs (runbook "Traps", not explained: morale and luck are 0 in these
+  scenarios): one `strike` run left a Pikeman alive (9 killed, then their strike back), one gave
+  the Archangel good morale at 3 730 ms (magic 20); a `machines` timeline run played magic 18
+  over the Archers as they shot (its two frame runs as recorded); a `climb` timeline run had the
+  computer's stack walk at 2 396 ms (its frame run as recorded). The capture set: 31 situations,
+  57 frames as recorded.
+- **For later:** T5b-2b (`fly`, `machines`), T7b (the spells' tint).

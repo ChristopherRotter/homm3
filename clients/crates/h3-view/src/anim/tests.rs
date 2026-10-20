@@ -557,8 +557,9 @@ fn the_shot_sequence_plays_as_recorded() {
         )],
     );
     assert_eq!(t.lines(), SHOT);
-    // The hit's first frame never shows: at 988 the second does, the shooter standing.
-    assert_eq!(t.at(988)[&2], left(pose(3, 1, 49)));
+    // The hit's first frame never shows: at 988 the second does, the shooter standing; the
+    // struck in layer 5 as in a melee (E17 M3 T5b-2a).
+    assert_eq!(t.at(988)[&2], layered(left(pose(3, 1, 49)), STRUCK));
     assert_eq!(t.at(988)[&0], still(2, 35));
     // T4b-1 (§7.9, the reference frames): the arrow's 14 steps every 33 ms from the climax
     // frame, frame 4 (straight), its canvas centred on the start and moved by 40, 2 per step.
@@ -720,7 +721,8 @@ fn the_behind_sequence_plays_as_recorded() {
         ),
     ];
     let t = play(&o, &commands);
-    assert_eq!(until(&t.lines(), 13544), BEHIND);
+    // To the second shot's end and the Marksmen's turn back (E17 M3 T5b-2a: 4 000 ms).
+    assert_eq!(until(&t.lines(), 16544), BEHIND);
 }
 
 #[test]
@@ -1339,7 +1341,7 @@ fn a_shooter_without_a_projectile_waits_as_one_flies() {
     assert!(t.flights.is_empty());
     assert_eq!(t.projectile(600), None);
     // The hit still starts after the 14 steps.
-    assert_eq!(t.at(988)[&2], left(pose(3, 1, 49)));
+    assert_eq!(t.at(988)[&2], layered(left(pose(3, 1, 49)), STRUCK));
 }
 
 /// Each key of `stack` as (group, frame, hex, mirrored, layer).

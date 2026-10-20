@@ -109,7 +109,7 @@ id       = "GAM-CAL-001"
 title    = "The calendar counts days from 1"
 context  = "game"
 status   = "implemented"
-summary  = "A game starts on day 1, and each day advance adds one. Weeks of seven days and months of four come with the first rule that reads them (week events, increment 4). E08 T6b."
+summary  = "A game starts on day 1, and each day advance adds one. Weeks of seven days and months of four come with the first rule that reads them (week events: the week's increment). E08 T6b."
 numeric  = "integer"
 
   [[rule.source]]
@@ -307,7 +307,7 @@ id       = "GAM-BAT-004"
 title    = "Hero against hero: the visit is a battle both players own"
 context  = "game"
 status   = "implemented"
-summary  = "A step toward another player's hero visits it from the neighbouring tile at the step's price (as a neighbour-visited object, ADV-OBJ-003: the move ends, the hero stays on the tile before) and starts a battle at once, without a question, the visitor attacking at the defender's tile (GAM-BAT-001); the visit concerns the hero, whatever object lies under it (only leaving the visitor's tile across its top is refused, ADV-OBJ-004). An own hero's tile still blocks (meetings come with increment 4). The reachable-tiles query lists such a tile as a destination with the points the visit leaves. After a victory (not a retreat or a surrender) the winner's hero, if it stays on the map, gains 500 experience more for the defeated hero (GAM-BAT-002) and takes its artifacts, as HER-ART-004 yields them, each received (HER-CHG-002) and removed from the loser, until one finds no room: the rest stay with the loser (the original stops there). E08 T19a, T19a2a: `AdventureOutcome::battle`, `BattleStart`, `GameState::end_battle`."
+summary  = "A step toward another player's hero visits it from the neighbouring tile at the step's price (as a neighbour-visited object, ADV-OBJ-003: the move ends, the hero stays on the tile before) and starts a battle at once, without a question, the visitor attacking at the defender's tile (GAM-BAT-001); the visit concerns the hero, whatever object lies under it (only leaving the visitor's tile across its top is refused, ADV-OBJ-004). An own hero's tile still blocks (meetings come with army management, E08 decision 48). The reachable-tiles query lists such a tile as a destination with the points the visit leaves. After a victory (not a retreat or a surrender) the winner's hero, if it stays on the map, gains 500 experience more for the defeated hero (GAM-BAT-002) and takes its artifacts, as HER-ART-004 yields them, each received (HER-CHG-002) and removed from the loser, until one finds no room: the rest stay with the loser (the original stops there). E08 T19a, T19a2a: `AdventureOutcome::battle`, `BattleStart`, `GameState::end_battle`."
 numeric  = "integer"
 
   [[rule.source]]
