@@ -138,4 +138,8 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
 - **Map:** 16 entries (13 new; 0x526D40 and 0x5275B0 renamed `ai_caster_record` and
   `ai_best_spell_value` and read; 0x420A80 updated). The adventure lane's inbox has what of its AI
   is read; the seven other callers of 0x526D40 and their masks are not.
-- **Checks:** pending (a blind re-read, the light gates).
+- **Checks:** a fresh agent re-read three findings blind, on a copy of the tool and the map
+  made before the edits: the record's power and mana (the maximum, not the points left), the
+  best spell's tests (the range, the own hero's Cloak, the floor of 0) and the damage value's
+  formula (the base, `X`, the row at a threshold, the smaller product). It agreed on all three
+  and read the same table.
