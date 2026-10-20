@@ -47,7 +47,8 @@ entry only where a task builds on it.
   evaluation's fixed seeds, every training episode's checked: E05's growing set gone), `Run` and
   `Record` (typed `metrics.jsonl`: `start`, `update`, `snapshot`, `eval`, `end`; `record.json`
   schema 1: identity, config by table, progress, the curve per evaluation interval, the
-  evaluations, the best; `check_record`).
+  evaluations, the best; `check_record`); a directory that already holds a run's metrics is
+  refused (a new run never appends to another's records; resuming is T2b's).
 - **The trainer** (`ppo.py`): the budget in samples (E05's `minutes` and `updates` go), the
   snapshots (`pool_every` 600 000) and the evaluations (`eval_every` 5 M) in samples, checkpoints
   written atomically, the identity (commit and whether tracked files differed, ABI, sizes,

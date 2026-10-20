@@ -446,6 +446,19 @@ def check_record(record: Any) -> list[str]:
     return problems
 
 
+class RunExistsError(FileExistsError):
+    """The directory already holds a run's metrics: a new run would mix its records with them."""
+
+
+def check_new(out: Path | None) -> None:
+    """Refuses a directory whose `metrics.jsonl` holds records (resuming a run is T2b's
+    `--resume`)."""
+    if out is not None:
+        metrics = Path(out) / "metrics.jsonl"
+        if metrics.exists() and metrics.stat().st_size > 0:
+            raise RunExistsError(f"{out} already holds a run (its metrics.jsonl): choose another")
+
+
 class Run:
     """A run's directory (design §1.1): `config.toml` (the file as given), `metrics.jsonl` (one
     typed record per line, flushed), `record.json` (rewritten atomically by `write_record`).
@@ -466,6 +479,7 @@ class Run:
         self.metrics: IO[str] | None = None
         self.start = time.perf_counter()
         if self.out is not None:
+            check_new(self.out)
             self.out.mkdir(parents=True, exist_ok=True)
             for stale in self.out.glob("*.tmp"):
                 stale.unlink()

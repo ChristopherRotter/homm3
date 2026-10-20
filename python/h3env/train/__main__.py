@@ -14,7 +14,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from .run import Config, ConfigError, load_config
+from .run import Config, ConfigError, RunExistsError, check_new, load_config
 
 
 def parse(argv: list[str] | None = None) -> tuple[Config, Path | None, str]:
@@ -32,7 +32,8 @@ def parse(argv: list[str] | None = None) -> tuple[Config, Path | None, str]:
     text = "" if args.config is None else args.config.read_text(encoding="utf-8")
     try:
         config = load_config(text, args.set)
-    except ConfigError as e:
+        check_new(args.out)
+    except (ConfigError, RunExistsError) as e:
         parser.error(str(e))
     return config, args.out, text
 

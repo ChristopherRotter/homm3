@@ -20,6 +20,7 @@ from h3env.train.run import (
     HeldOut,
     HeldOutError,
     Run,
+    RunExistsError,
     atomic_write,
     atomic_write_text,
     by_table,
@@ -224,6 +225,11 @@ def test_a_run_writes_its_metrics_and_record(tmp_path: Path) -> None:
     assert record["evaluations"][0]["random"]["win_rate"] == 0.5
     assert record["best"] == {"samples": 20, "win_rate": 0.7}
     assert line(records[0]) is None and "budget" in line(records[-1])
+    # A new run never appends to another's records.
+    with pytest.raises(RunExistsError):
+        Run(out, load_config(""), identity)
+    with pytest.raises(SystemExit):
+        parse(["--out", str(out)])
 
 
 def test_check_record_names_what_is_missing() -> None:
