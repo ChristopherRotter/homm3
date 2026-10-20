@@ -10,8 +10,8 @@ E23, the original's battle AI, is in progress (refined 2026-10-19, BAT-Q52; `doc
 
 - **Scope:** E23 T1a2 as the epic file proposes it (T1a1's cut, `installation.md` §7.34's table): part S (the area shot value 0x41EDA0 with 0x5A46F0, the wall shot 0x41EEA0 and its draw) and the walker's choice 0x421680 itself: its branches (melee, a move, the Tent and the Ammo Cart, the arrow towers, the draw at 0x421B02), what decides each, its helpers named by role. Read with `scripts/exe.py` (stage `Heroes3.exe`); no code.
 - **Acceptance:** §7.34 (or a §7.35) holds the readings; the map's entries for S and 0x421680's helpers say their roles; the readings at risk added to §7.34's list; the epic file's later T1a parts adjusted if the reading moves a boundary.
-- **Depends on:** the user's checkpoint on T1a1's cut (T1a2 to T1a6, T1b after T1a5); `Heroes3.exe` staged.
-- **Status:** waiting for the checkpoint.
+- **Depends on:** `Heroes3.exe` staged. The user confirmed T1a1's cut on 2026-10-20 (T1a2 as queued; T1b after T1a5, T1a6 before T5).
+- **Status:** in progress (2026-10-20, `battle/e23-t1a2`).
 
 **Waiting on this lane** (found in the 2026-10-19 consolidation; never queued here):
 - **Open questions naming this lane:** CLT-Q4 (a battle's background variant in the setup) and CLT-Q6 (each side's player colour and a hero's sex for viewers): small setup fields, `cross-lane` with the server lane's wire; the client lane holds them.
