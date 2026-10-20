@@ -6,21 +6,21 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024). M3 (fidelity) below, refined at M2's closure (T5c) and agreed by the user there, each task about half a context; the exit: the reference set passes, or each difference is a listed fix or a classified quirk. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M3 T5b-2 — The count boxes in `behind`, `shots`, `fly` and `machines`
+### E17 M3 T5b-2b — The count boxes in `fly` and `machines`
 
-- **Scope:** (T5b-1 read +0x50 and built the number over time, design §4.3; `shot` and `melee`
-  compare their boxes, `boxes = true`, a box whose count is not the one the original's memory
-  shows masked and listed, ` n<side>.<record>`.) The boxes compared in the other four sequences,
-  which mask them where the viewer draws them so far: battles in progress with several strikes
-  and shots (`behind`, `shots`), a breath on two stacks and a strike back (`fly`), the war
-  machines (no box) and the First Aid Tent's heal (`machines`: whether a heal changes the box's
-  number, not read). A sequence may need its `ms` lengthened to show a strike's end (as `melee`
-  at T5b-1). A stale box the original's partial redraw leaves (design §7.11) listed with its
-  count as T5a listed `strike`'s at 2 730 ms (design §4.3), or classified by a rule that cannot
-  pass a box the viewer moves too early (`melee`'s at 3 966 ms was none: the walker's +0x30,
-  T5a).
+- **Scope:** (T5b-1 read +0x50 and built the number over time, design §4.3; `shot`, `melee`,
+  `behind` and `shots` compare their boxes, `boxes = true`, a box whose count is not the one the
+  original's memory shows masked and listed, ` n<side>.<record>`; T5b-2a: a shot's struck take
+  layer 5.) The boxes compared in the other two sequences, which mask them where the viewer
+  draws them so far: a breath on two stacks and a strike back (`fly`), the war machines (no box)
+  and the First Aid Tent's heal (`machines`: whether a heal changes the box's number, not read;
+  the Archers' and the Ballistas' shots now in layer 5). A sequence may need its `ms` lengthened
+  to show a strike's end (as `melee` at T5b-1, `behind` at T5b-2a). A stale box the original's
+  partial redraw leaves (design §7.11) listed with its count as T5a listed `strike`'s at
+  2 730 ms (design §4.3), or classified by a rule that cannot pass a box the viewer moves too
+  early.
 - **Acceptance:** the recorded sequences match with the count boxes drawn.
-- **Depends on:** nothing (T5b-1 done). **Status:** ready.
+- **Depends on:** nothing (T5b-2a done). **Status:** ready.
 
 ### E17 M3 T6 — The battle interface
 
@@ -93,8 +93,8 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 - **Scope:** M3's review list with the user, a fresh reviewer agent over M3, the next milestone
   refined (sieges, live play, HD or the adventure map: the user's choice), M3 marked done.
 - **Acceptance:** M3's exit holds; the review list answered or carried on.
-- **Depends on:** T5b-2–T8 (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2,
-  T5a, T5b-1 done).
+- **Depends on:** T5b-2b–T8 (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2,
+  T5a, T5b-1, T5b-2a done).
   **Status:** waiting.
 
 ## Inbox

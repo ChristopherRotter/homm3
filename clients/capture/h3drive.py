@@ -105,11 +105,15 @@ def run(*args, **kw):
 
 
 def xwd_bytes():
-    # A dump right after the display starts can fail once (seen in M3 T2's set runs): try again.
+    # A dump right after the display starts can fail once (seen in M3 T2's set runs), or come
+    # back as no 5-6-5 dump (twice in one set run in M3 T5b-2a, between two situations): try
+    # again.
     for attempt in range(5):
         try:
-            return run("xwd", "-root", "-silent", capture_output=True).stdout
-        except subprocess.CalledProcessError:
+            data = run("xwd", "-root", "-silent", capture_output=True).stdout
+            xwd565(data)
+            return data
+        except (subprocess.CalledProcessError, ValueError, struct.error):
             if attempt == 4:
                 raise
             time.sleep(0.5)

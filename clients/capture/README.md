@@ -123,11 +123,11 @@ read, until that stack's turn starts (the game names it the active stack), and t
 it act then; its time goes to `<out>/turns.txt` (`at:<ms>` steps so up to a time). Act as the turn
 starts: a player who waits lets fidgets start, which the viewer's timeline does not have. In the
 entry's `[[sequence.command]]`s, `at` gives each player's command its time from `turns.txt` (`ms`
-counts from the last one). `behind` (`seq-behind.toml`): two rounds, 8 commands, about 13 s;
-`shots` (`seq-shots.toml`, M3 T1b-1): two rounds, 6 commands, three rays, about 10 s; `fly`
-(`seq-fly.toml`, M3 T1b-2): two flights across rows and a breath, about 9 s; `machines`
-(`seq-machines.toml`, M3 T3b): the war machines act on their own after the Archers' shot (two
-Ballistas' shots and the tent's heal), about 8.5 s; `strike` (`seq-strike.toml`, M3 T4b-2b-2):
+counts from the last one). `behind` (`seq-behind.toml`): two rounds, 8 commands, about 16.5 s
+(to the Marksmen's second shot's end since M3 T5b-2a); `shots` (`seq-shots.toml`, M3 T1b-1): two
+rounds, 6 commands, three rays, about 10 s; `fly` (`seq-fly.toml`, M3 T1b-2): two flights
+across rows and a breath, about 9 s; `machines` (`seq-machines.toml`, M3 T3b): the war machines
+act on their own after the Archers' shot (two Ballistas' shots and the tent's heal), about 8.5 s; `strike` (`seq-strike.toml`, M3 T4b-2b-2):
 the Archangel's fixed damage kills the Pikemen, about 4.3 s, its log line compared (below). A war machine without Artillery or First Aid
 needs no action (the engine plays its turn inside the command before it). A two-hex striker
 stands where the cursor's slot inside the target's hex says (design §7.13): `click:x,y` with an
@@ -162,7 +162,7 @@ shadows, or one we drew there at an earlier moment of the sequence with at least
 diff PNG marks those yellow, any other difference red; a change in either count fails. The
 original's frames live only in the sandbox that captured them (`clients/out/`, never in git):
 a new sandbox captures them again (all nine with frames, about 60 minutes: `shots`, `fly` and `machines` about 9 each) before `--reuse` works. `--reuse` keeps the original's frames from an earlier run and only redraws
-and compares (after a change to the viewer). About 14 minutes for the first four sequences and 15
+and compares (after a change to the viewer). About 14 minutes for the first four sequences and 20
 more for `behind` (default `<dir>`: `clients/out/frames`). Only a fidget comes from the
 original's memory; everything else is the viewer's own timeline.
 
@@ -311,6 +311,12 @@ design §7.1.
   (2 400 pixels), one of two in T5b-1 its frame 0 while the screen showed frame 1 (2 152); run
   again, as recorded. A `CHANGED` with differences only on a hero at the frame its reaction
   starts is that, not a change of the viewer.
+- The original's rolls can differ between runs (M3 T5b-2a, not explained: the scenarios hold
+  morale and luck at 0): of three `strike` runs one left a Pikeman alive (9 killed, then their
+  strike back) and one gave the Archangel good morale at 3 730 ms (magic 20); one `machines`
+  run played magic 18 over the Archers as they shot; in one `climb` run the computer's stack
+  walked at 2 396 ms. Run again: a `CHANGED` whose timeline shows such a roll or move is that,
+  not a change of the viewer.
 - An XWD file's colour map holds bytes the X server leaves unset: compare pixels, never files.
 - The menus run in real time; only the battle runs on the stepped clock. Two runs still agree:
   the battle's setup does not depend on the clock (observed: the obstacles follow the tile).
