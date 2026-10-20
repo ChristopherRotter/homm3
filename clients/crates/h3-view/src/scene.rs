@@ -430,7 +430,10 @@ pub fn battle_at(
         .map(|s| {
             let pose = pose_of(s, moment, tables);
             let sprite = creature(s, pose, moment, manifest, tables, layout, at)?;
-            // A magic animation over the stack is drawn right after it (E17 M3 T3b).
+            // A magic animation over the stack is drawn after it and its count box (E17 M3 T3b,
+            // T5b-2b: `draw_battle_stack`'s part 0 runs on from the sprite into the box,
+            // 0x43E568, then draws the animation, 0x43E795; a siege's second call, part 1 after
+            // the moat, draws the box again: not built).
             let magic = moment.magic.as_ref().and_then(|m| {
                 let &(_, [x, y], mirrored) = m.over.iter().find(|o| o.0 == s.id)?;
                 Some(Draw::Magic {
@@ -444,7 +447,7 @@ pub fn battle_at(
             });
             let shown = moment.counts.get(&s.id).copied().unwrap_or(s.count);
             let count = count_box(s, pose, shown, &sprite, &taken, layout);
-            Ok((sprite.at, pose.layer, [Some(sprite.draw), magic, count]))
+            Ok((sprite.at, pose.layer, [Some(sprite.draw), count, magic]))
         })
         .collect::<Result<Vec<_>, SceneError>>()?;
     for row in 0..height {

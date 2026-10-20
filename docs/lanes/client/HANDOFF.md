@@ -4,12 +4,12 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E17 M0–M2 done; M3 T1a–T5b-2a done; H1, H2 done (2026-10-19: the adventure lane's harness); next: M3 T5b-2b–T8** (`QUEUE.md`; T9 closes M3). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
-- **Pull request (2026-10-20):** T5b-2a (`client/e17-m3-t5b-2a`) open.
+- **E17 M0–M2 done; M3 T1a–T5b-2b done; H1, H2 done (2026-10-19: the adventure lane's harness); next: M3 T6–T8** (`QUEUE.md`; T9 closes M3). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
+- **Pull request (2026-10-20):** T5b-2b (`client/e17-m3-t5b-2b`) open.
 - **The user's requirements**, epic "Decisions": a string catalogue (JSON packs, no committed translation: CLT-Q7); graphics options (`faithful` the default); exhaustive reference diffs.
 - The lane owns `clients/`, `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
 - **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does.
-- The lane needs the user's computer online (it may sleep: stage all first) for the original files, from `original-data/install/` into the clone's: the four LODs (one per staging call), `h3maped.exe`, the two `.snd` (sound: also `MP3/COMBAT01`–`04`); the captures also `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`. `sandbox-setup.sh` copies only the engine's few: `cp -rn` the staged `original-data/.` before `capture/setup.sh`. Frames live only in their sandbox.
+- The lane needs the user's computer online (it may sleep: stage all first) for the original files, from `original-data/install/` into the clone's: the four LODs (one per staging call), `h3maped.exe`, the two `.snd` (sound: also `MP3/COMBAT01`–`04`); the captures also `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`. `sandbox-setup.sh` copies only the engine's few: `cp -rn` the staged `original-data/.` before `capture/setup.sh`; SDL's deps (`clients.yml`). Frames stay in their sandbox.
 - **Open:** CLT-Q4 (the background variant); CLT-Q5 (boats in `h3-map`'s writer); CLT-Q6 (player colours, a hero's sex).
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
@@ -34,7 +34,7 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Standing traps
 
-- **CI may be out** (billing, since 2026-10-12): `clients/scripts/check.sh` stands in, its result in the pull request (needs `cargo-deny`, `cargo-llvm-cov`, the LLVM tools: `rustup component add llvm-tools-preview`; the sandbox's `/usr/bin` ones are too old).
+- **CI may be out** (billing, since 2026-10-12): `clients/scripts/check.sh` stands in, its result in the pull request (needs `cargo-deny`, `cargo-llvm-cov`, the LLVM tools: `rustup component add llvm-tools-preview`, `LLVM_COV`/`LLVM_PROFDATA` at its binaries without `/usr/lib/llvm-20`, 2026-10-20).
 - The coverage gate reads cargo-llvm-cov's summary; generic code can show false region misses there (the engine reads the merged view, `xtask/src/coverage.rs`): port that, or take a concrete type (T4b-1).
 - A new dependency of a pure crate goes into `h3-view/tests/purity.rs`'s allowlist deliberately; a window or audio crate belongs in an adapter crate, not in `h3-view`'s pure library.
 - Sound in a sandbox: `SDL_AUDIO_DRIVER=disk` (the mix in `./sdlaudio.raw`, S16 stereo, 44.1 kHz).
@@ -54,11 +54,10 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
-- **2026-10-20, E17 M3 T5b-2a (the user's slice of T5b-2: `behind`, `shots`).** Boxes
-  compared, `behind` to 4 000 ms; a shot's struck in layer 5; the first arrow's holes in the
-  rocks listed; T5b-2b queued. The original's rolls varied between runs (runbook "Traps").
-- **2026-10-20, E17 M3 T5b-1 (the user's slice of T5b: `shot`, `melee`).** +0x50 read and
-  built; `shot` and `melee` (7 000 ms) compare their boxes; a strike's end shows its pending
-  poses at once.
-- **2026-10-20, E17 M3 T5a (the user's slice of T5: boxes whose numbers never change).** +0x30
-  read and built; `walk`, `turn`, `climb`, `strike` compare their boxes.
+- **2026-10-20, E17 M3 T5b-2b (`fly`, `machines`).** Every sequence with frames compares its
+  boxes; a magic animation drawn after its stack's box (0x43E795); a heal keeps the count.
+- **2026-10-20, E17 M3 T5b-2a (`behind`, `shots`).** Boxes compared, `behind` to 4 000 ms; a
+  shot's struck in layer 5; the first arrow's holes in the rocks listed. The original's rolls
+  varied between runs (runbook "Traps").
+- **2026-10-20, E17 M3 T5b-1 (`shot`, `melee`).** +0x50 read and built; both compare their
+  boxes (`melee` 7 000 ms); a strike's end shows its pending poses at once.
