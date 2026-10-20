@@ -9,14 +9,17 @@
 //! At each turn's start `battle_controls_state` (0x4782D0) sets them again: for a side whose
 //! player is human the picture takes that player's colours and each button is enabled or disabled
 //! by the battle (below); for any other side 0x46BF90 disables the seven buttons and leaves the
-//! rest as they were. Only the turn's start is modelled here (*provisional*: what a click, an
-//! animation or the log's scrolling change, and the panel kept from an earlier turn, are M3 T6b's;
-//! the tactics phase's panel 0x46C050 and Auto Combat switched on are not read, the queue's
-//! inbox).
+//! rest as they were. Nothing else sets them while the battle runs (E17 M3 T6b, design §9.8: an
+//! action and its animation leave the panel as its turn's start set it; a button's hotkey
+//! presses it only while its key is down): the panel at a moment is its last turn's start's, the
+//! battle as that turn found it ([`turns`]), the picture in the colours of the last human player
+//! whose turn started ([`colours`]). Not read: the tactics phase's panel 0x46C050 and Auto Combat
+//! switched on (the queue's inbox).
 
-use alloc::collections::BTreeMap;
+use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::string::String;
-use h3_protocol::wire::{Observation, Side};
+use alloc::vec::Vec;
+use h3_protocol::wire::{Event, Observation, Side};
 
 use crate::ui::{Shown, State};
 
@@ -54,11 +57,73 @@ pub const BUTTONS: [u16; 7] = [
     DEFEND,
 ];
 
-/// What the panel shows when the stacks of `side` (the active stack's controller; none before a
-/// turn starts) begin their turn in the battle `observation` shows, its log showing `log`; each
-/// side's player's colour is `players`' entry (the record names none: CLT-Q6).
+/// The battle as each turn's start finds it (E17 M3 T6b): for each `TurnStarted` of `events` (a
+/// record's, in order), the opening's `observation` with the events before it applied as far as
+/// the panel reads them: the active stack, the round's wait phase (its stack waited this round:
+/// only waited stacks act then), the heroes' casts this round and the tactics phase.
 #[must_use]
-pub fn shown(observation: &Observation, side: Option<Side>, log: &str, players: [u8; 2]) -> Shown {
+pub fn turns(observation: &Observation, events: &[Event]) -> Vec<Observation> {
+    let mut now = observation.clone();
+    let mut waited = BTreeSet::new();
+    let mut out = Vec::new();
+    for event in events {
+        match *event {
+            Event::RoundStarted { round } => {
+                now.round = round;
+                waited.clear();
+                for side in &mut now.sides {
+                    if let Some(hero) = side.hero.as_mut() {
+                        hero.casts = 0;
+                    }
+                }
+            }
+            Event::Waited { stack } => {
+                waited.insert(stack);
+            }
+            Event::SpellCast { side, .. } => {
+                if let Some(hero) = now.sides[usize::from(side == Side::Defender)].hero.as_mut() {
+                    hero.casts = hero.casts.saturating_add(1);
+                }
+            }
+            Event::TacticsEnded {} => now.tactics = None,
+            Event::TurnStarted { stack } => {
+                now.active = Some(stack);
+                now.wait_phase = waited.contains(&stack);
+                out.push(now.clone());
+            }
+            _ => {}
+        }
+    }
+    out
+}
+
+/// The side whose player's colours the picture shows after the turns of `sides` started (in
+/// order), each the acting stack's controller: the last one a human plays (0x4782D0 colours it),
+/// else the side the panel was built for (`built`: 0x46B70F's side the manager holds then, not
+/// read; *provisional*: the first turn's side).
+#[must_use]
+pub fn colours(observation: &Observation, sides: &[Side], built: Side) -> Side {
+    let human = |s: Side| observation.sides[usize::from(s == Side::Defender)].human;
+    sides
+        .iter()
+        .rev()
+        .copied()
+        .find(|&s| human(s))
+        .unwrap_or(built)
+}
+
+/// What the panel shows when the stacks of `side` (the active stack's controller; none before a
+/// turn starts) begin their turn in the battle `observation` shows, its picture in the colours
+/// of `colours`' player, its log showing `log`; each side's player's colour is `players`' entry
+/// (the record names none: CLT-Q6).
+#[must_use]
+pub fn shown(
+    observation: &Observation,
+    side: Option<Side>,
+    colours: Side,
+    log: &str,
+    players: [u8; 2],
+) -> Shown {
     let index = |s: Side| usize::from(s == Side::Defender);
     let human = |s: Side| observation.sides[index(s)].human;
     let disabled = State {
@@ -75,13 +140,9 @@ pub fn shown(observation: &Observation, side: Option<Side>, log: &str, players: 
     );
     states.insert(LOG_UP, disabled);
     states.insert(LOG_DOWN, disabled);
-    // Built in the colours of the side it is built for (0x46B70F; *provisional*: the side the
-    // manager holds then is not read, taken as the one whose turn comes, else the attacker).
-    let built_for = side.unwrap_or(Side::Attacker);
-    let mut colours = players[index(built_for)];
+    let picture = players[index(colours)];
     match side {
         Some(s) if human(s) => {
-            colours = players[index(s)];
             let view = &observation.sides[index(s)];
             let other = &observation.sides[1 - index(s)];
             let at_town = observation.siege.is_some();
@@ -129,7 +190,7 @@ pub fn shown(observation: &Observation, side: Option<Side>, log: &str, players: 
     let mut texts = BTreeMap::new();
     texts.insert(LOG, String::from(log));
     let mut players_of = BTreeMap::new();
-    players_of.insert(PICTURE, colours);
+    players_of.insert(PICTURE, picture);
     Shown {
         states,
         players: players_of,

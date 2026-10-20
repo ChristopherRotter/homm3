@@ -800,7 +800,7 @@ fn the_panel_draws_its_items_as_the_turn_sets_them() {
     let layout = layout();
     let mut o = battle_view();
     o.sides[0].human = true;
-    let list = panel(&o, Some(Side::Attacker), "a\nb", &layout);
+    let list = panel(&o, Some(Side::Attacker), Side::Attacker, "a\nb", &layout);
     let button = |def: &str, frame, x| Draw::Button {
         def: def.to_string(),
         frame,
@@ -846,25 +846,42 @@ fn the_panel_draws_its_items_as_the_turn_sets_them() {
 }
 
 #[test]
-fn the_acting_side_is_the_active_stacks_controller() {
+fn the_panel_over_time_follows_the_turns_and_the_log() {
+    // E17 M3 T6b: stack 0 the attacker's (Red, human), stack 2 the defender's (a computer).
+    let layout = layout();
     let mut o = battle_view();
-    // The observation's active stack 0, the attacker's.
-    assert_eq!(acting(&o, &Moment::default()), Some(Side::Attacker));
-    // The moment's: stack 2, the defender's, hypnotized by the attacker.
-    o.stacks[2].controller = Side::Attacker;
-    let moment = Moment {
-        active: Some(2),
-        ..Moment::default()
+    o.sides[0].human = true;
+    let events = [
+        Event::TurnStarted { stack: 2 },
+        Event::TurnStarted { stack: 0 },
+    ];
+    let texts = vec![(0, String::new()), (150, "hit".to_string())];
+    let panels = Panels::new(&o, &events, texts);
+    let started = [(100, 2), (300, 0)];
+    let picture = |list: &[Draw]| match &list[0] {
+        Draw::Picture { player, .. } => player.as_ref().map(|p| p.player),
+        _ => None,
     };
-    assert_eq!(acting(&o, &moment), Some(Side::Attacker));
-    o.stacks[2].controller = Side::Defender;
-    assert_eq!(acting(&o, &moment), Some(Side::Defender));
-    // None, or a stack the observation lacks.
+    let wait = |list: &[Draw]| match &list[6] {
+        Draw::Button { frame, .. } => *frame,
+        _ => 9,
+    };
+    // Red's opening: lit; the computer's turn: dimmed in Red's colours, the log's line shown.
+    let opening = panels.at(&o, &started, 0, &layout);
+    assert_eq!((picture(&opening), wait(&opening)), (Some(0), 0));
+    let computer = panels.at(&o, &started, 200, &layout);
+    assert_eq!((picture(&computer), wait(&computer)), (Some(0), 2));
+    assert_eq!(panels.text(200), "hit");
+    assert!(matches!(&computer[8], Draw::Text { text, .. } if text == "hit"));
+    assert_eq!(wait(&panels.at(&o, &started, 300, &layout)), 0);
+    // More turns started than the events name: the last named; no opening stack: the attacker's
+    // colours.
+    assert_eq!(
+        wait(&panels.at(&o, &[(0, 2), (1, 0), (2, 2)], 5, &layout)),
+        0
+    );
     o.active = None;
-    assert_eq!(acting(&o, &Moment::default()), None);
-    let gone = Moment {
-        active: Some(9),
-        ..Moment::default()
-    };
-    assert_eq!(acting(&o, &gone), None);
+    let none = Panels::new(&o, &[], Vec::new());
+    assert_eq!(picture(&none.at(&o, &[], 0, &layout)), Some(0));
+    assert_eq!(none.text(0), "");
 }

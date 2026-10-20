@@ -1,6 +1,6 @@
 use super::*;
 use alloc::vec::Vec;
-use h3_protocol::wire::{Hero, Siege, Tactics};
+use h3_protocol::wire::{Event, Hero, Siege, Tactics, Target};
 
 use crate::record::tests::observation;
 
@@ -30,7 +30,7 @@ fn disabled(shown: &Shown) -> Vec<u16> {
         .chain(&[LOG_UP, LOG_DOWN])
         .copied()
         .filter(|id| shown.states.get(id).is_some_and(|s| s.disabled))
-        .collect::<alloc::collections::BTreeSet<_>>()
+        .collect::<BTreeSet<_>>()
         .into_iter()
         .collect()
 }
@@ -47,7 +47,7 @@ fn battle() -> Observation {
 #[test]
 fn a_humans_turn_enables_what_the_battle_allows() {
     let o = battle();
-    let red = shown(&o, Some(Side::Attacker), "a\nb", RED_BLUE);
+    let red = shown(&o, Some(Side::Attacker), Side::Attacker, "a\nb", RED_BLUE);
     // Every button enabled and the scroll buttons too (0x4786CA), none selected.
     assert!(disabled(&red).is_empty());
     assert!(red.states.values().all(|s| !s.selected && !s.hidden));
@@ -57,7 +57,7 @@ fn a_humans_turn_enables_what_the_battle_allows() {
     // without a book.
     let mut both = o.clone();
     both.sides[1].human = true;
-    let blue = shown(&both, Some(Side::Defender), "", RED_BLUE);
+    let blue = shown(&both, Some(Side::Defender), Side::Defender, "", RED_BLUE);
     assert_eq!(disabled(&blue), [AUTO_COMBAT, SPELL_BOOK]);
     assert_eq!(blue.players.get(&PICTURE), Some(&1));
     // A hero that cast this round; the wait phase.
@@ -65,19 +65,37 @@ fn a_humans_turn_enables_what_the_battle_allows() {
     cast.sides[0].hero = hero(true, 1);
     cast.wait_phase = true;
     assert_eq!(
-        disabled(&shown(&cast, Some(Side::Attacker), "", RED_BLUE)),
+        disabled(&shown(
+            &cast,
+            Some(Side::Attacker),
+            Side::Attacker,
+            "",
+            RED_BLUE
+        )),
         [SPELL_BOOK, WAIT]
     );
     // No hero on the other side: no surrender; none on Red's: no retreat, no book either.
     let mut alone = o.clone();
     alone.sides[1].hero = None;
     assert_eq!(
-        disabled(&shown(&alone, Some(Side::Attacker), "", RED_BLUE)),
+        disabled(&shown(
+            &alone,
+            Some(Side::Attacker),
+            Side::Attacker,
+            "",
+            RED_BLUE
+        )),
         [SURRENDER]
     );
     alone.sides[0].hero = None;
     assert_eq!(
-        disabled(&shown(&alone, Some(Side::Attacker), "", RED_BLUE)),
+        disabled(&shown(
+            &alone,
+            Some(Side::Attacker),
+            Side::Attacker,
+            "",
+            RED_BLUE
+        )),
         [SURRENDER, RETREAT, SPELL_BOOK]
     );
 }
@@ -96,16 +114,16 @@ fn at_a_town_the_defender_neither_surrenders_nor_retreats_without_its_tunnel() {
     });
     o.sides[1].human = true;
     o.sides[1].may_retreat = false;
-    let defender = shown(&o, Some(Side::Defender), "", RED_BLUE);
+    let defender = shown(&o, Some(Side::Defender), Side::Defender, "", RED_BLUE);
     assert_eq!(
         disabled(&defender),
         [SURRENDER, RETREAT, AUTO_COMBAT, SPELL_BOOK]
     );
     o.sides[1].may_retreat = true;
-    let tunnel = shown(&o, Some(Side::Defender), "", RED_BLUE);
+    let tunnel = shown(&o, Some(Side::Defender), Side::Defender, "", RED_BLUE);
     assert_eq!(disabled(&tunnel), [SURRENDER, AUTO_COMBAT, SPELL_BOOK]);
     // The attacker may do both.
-    let attacker = shown(&o, Some(Side::Attacker), "", RED_BLUE);
+    let attacker = shown(&o, Some(Side::Attacker), Side::Attacker, "", RED_BLUE);
     assert_eq!(disabled(&attacker), [AUTO_COMBAT]);
 }
 
@@ -118,7 +136,13 @@ fn the_tactics_phase_disables_the_book_wait_and_defend() {
     });
     // The scroll buttons stay as built.
     assert_eq!(
-        disabled(&shown(&o, Some(Side::Attacker), "", RED_BLUE)),
+        disabled(&shown(
+            &o,
+            Some(Side::Attacker),
+            Side::Attacker,
+            "",
+            RED_BLUE
+        )),
         [LOG_UP, LOG_DOWN, SPELL_BOOK, WAIT, DEFEND]
     );
 }
@@ -126,7 +150,8 @@ fn the_tactics_phase_disables_the_book_wait_and_defend() {
 #[test]
 fn a_computers_turn_disables_the_seven_buttons() {
     let o = battle();
-    let blue = shown(&o, Some(Side::Defender), "", RED_BLUE);
+    // Red's colours kept from its turn (0x46BF90 leaves the picture).
+    let blue = shown(&o, Some(Side::Defender), Side::Attacker, "", RED_BLUE);
     assert_eq!(
         disabled(&blue),
         [
@@ -141,19 +166,82 @@ fn a_computers_turn_disables_the_seven_buttons() {
             DEFEND
         ]
     );
-    // Built for the side whose turn comes (provisional).
-    assert_eq!(blue.players.get(&PICTURE), Some(&1));
+    assert_eq!(blue.players.get(&PICTURE), Some(&0));
 }
 
 #[test]
 fn before_a_turn_the_panel_is_as_built() {
     let mut o = battle();
-    let built = shown(&o, None, "", RED_BLUE);
+    let built = shown(&o, None, Side::Attacker, "", RED_BLUE);
     assert_eq!(disabled(&built), [LOG_UP, LOG_DOWN]);
     assert_eq!(built.players.get(&PICTURE), Some(&0));
     o.sides[1].human = true;
     assert_eq!(
-        disabled(&shown(&o, None, "", RED_BLUE)),
+        disabled(&shown(&o, None, Side::Attacker, "", RED_BLUE)),
         [AUTO_COMBAT, LOG_UP, LOG_DOWN]
     );
+}
+
+#[test]
+fn each_turn_finds_the_battle_its_events_left() {
+    let mut o = battle();
+    o.tactics = Some(Tactics {
+        side: Side::Attacker,
+        columns: 3,
+    });
+    let cast = Event::SpellCast {
+        side: Side::Attacker,
+        spell: 1,
+        target: Target::None {},
+        second: Target::None {},
+    };
+    let events = [
+        Event::TacticsEnded {},
+        Event::Waited { stack: 0 },
+        Event::TurnStarted { stack: 1 },
+        cast.clone(),
+        Event::SpellCast {
+            side: Side::Defender,
+            spell: 1,
+            target: Target::None {},
+            second: Target::None {},
+        },
+        Event::TurnStarted { stack: 0 },
+        Event::Defended { stack: 0 },
+        Event::RoundStarted { round: 2 },
+        Event::TurnStarted { stack: 0 },
+    ];
+    let turns = turns(&o, &events);
+    assert_eq!(turns.len(), 3);
+    // The tactics phase over; stack 1 did not wait.
+    assert_eq!(
+        (turns[0].active, turns[0].wait_phase, turns[0].tactics),
+        (Some(1), false, None)
+    );
+    // Stack 0 waited this round: the wait phase; Red's hero cast (Blue's has none to count).
+    assert_eq!((turns[1].active, turns[1].wait_phase), (Some(0), true));
+    assert_eq!(turns[1].sides[0].hero.as_ref().map(|h| h.casts), Some(1));
+    // A new round: no wait phase, no casts.
+    assert_eq!((turns[2].round, turns[2].wait_phase), (2, false));
+    assert_eq!(turns[2].sides[0].hero.as_ref().map(|h| h.casts), Some(0));
+    let mut heroless = battle();
+    heroless.sides[0].hero = None;
+    let after = super::turns(&heroless, &[cast, Event::TurnStarted { stack: 0 }]);
+    assert!(after[0].sides[0].hero.is_none());
+}
+
+#[test]
+fn the_picture_keeps_the_last_human_players_colours() {
+    let o = battle();
+    // Red human, Blue a computer.
+    assert_eq!(
+        colours(&o, &[Side::Attacker, Side::Defender], Side::Defender),
+        Side::Attacker
+    );
+    // No human turn yet: the side it was built for.
+    assert_eq!(
+        colours(&o, &[Side::Defender], Side::Defender),
+        Side::Defender
+    );
+    assert_eq!(colours(&o, &[], Side::Attacker), Side::Attacker);
 }

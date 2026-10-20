@@ -29,6 +29,7 @@ use core::fmt::Write as _;
 
 use h3_protocol::wire::{Event, Observation, ServerMessage, Side, Stack};
 
+use crate::battle_log::{Logged, Spread};
 use crate::hero::{Action, Happening, Heroes};
 use crate::layout::BattleLayout;
 use crate::ray::{self, Stroke};
@@ -493,6 +494,9 @@ pub struct Timeline {
     pub actions: Vec<Action>,
     /// The heroes beside the battlefield (none: none drawn; [`Timeline::with_heroes`]).
     pub heroes: Option<Heroes>,
+    /// What the battle writes into its log and does to it, with its time, in order (E17 M3 T6b,
+    /// design §9.8; `crate::battle_log::texts`).
+    pub log: Vec<(u32, Logged)>,
     /// When the last frame shows.
     pub end: u32,
 }
@@ -1044,6 +1048,8 @@ fn played(
         steps: Vec::new(),
         cues: Vec::new(),
         happenings: Vec::new(),
+        log: Vec::new(),
+        tactics: snapshot.tactics.is_some(),
     };
     let mut actions = Vec::new();
     let mut fidgets = seed.map(|rng| Fidgets {
@@ -1091,6 +1097,8 @@ fn played(
             }
         }
         let (before, turns) = (player.keys.len(), player.turns.len());
+        // The action starts (`action_dispatcher` 0x478D80's head, E17 M3 T6b).
+        player.log.push((player.clock.now, Logged::Action));
         player.command(command.events);
         // The outline goes with the command's first frame shown; a turn started brings its
         // stack's, unless the computer acts next.
@@ -1131,6 +1139,7 @@ fn played(
         cues: player.cues,
         actions,
         heroes: None,
+        log: player.log,
         end: player.clock.now,
     })
 }
@@ -1271,6 +1280,10 @@ struct Player<'a> {
     cues: Vec<Cue>,
     /// What the command so far did that the heroes answer (E17 M3 T3a).
     happenings: Vec<Happening>,
+    /// What the battle wrote into its log so far, with its time (E17 M3 T6b).
+    log: Vec<(u32, Logged)>,
+    /// The tactics phase runs (no wait's line, no round's).
+    tactics: bool,
 }
 
 /// A command's melee (`move_and_attack` 0x478900, `melee_attack` 0x441CB0): its striker, its
@@ -1411,31 +1424,57 @@ impl Player<'_> {
                 Event::Struck {
                     attacker,
                     target,
+                    ref damage,
                     kills,
                     flags,
-                    ..
                 } if !flags.secondary => {
                     let mut hit = vec![(target, kills)];
+                    let mut hits = vec![(target, damage.0, kills)];
                     while let Some(&Event::Struck {
                         attacker: a,
                         target: t,
+                        damage: ref d,
                         kills: k,
                         flags: f,
-                        ..
                     }) = events.get(i)
                     {
                         if a != attacker || !f.secondary {
                             break;
                         }
                         hit.push((t, k));
+                        hits.push((t, d.0, k));
                         i += 1;
+                    }
+                    // The line (E17 M3 T6b): the striker by its number before the strike; a
+                    // lucky roll's line before its animation (0x44187A, 0x43F998).
+                    let count = self.live(attacker).map_or(0, |l| l.count);
+                    if flags.lucky {
+                        let luck = Logged::Luck {
+                            stack: attacker,
+                            count,
+                        };
+                        self.log.push((self.clock.now, luck));
                     }
                     if flags.ranged {
                         if shooter.is_none() {
                             shooter = self.live(attacker).map(|l| (attacker, l.right));
                             self.face_shot(attacker, target);
                         }
-                        self.shot(attacker, &hit);
+                        let start = self.shot(attacker, &hit);
+                        // One target's line after its reactions (0x43FDB4), an area shot's of
+                        // every hit as they start (0x43FCE0, 0x4400DC).
+                        let (spread, at) = if hits.len() > 1 {
+                            (Spread::Around, start)
+                        } else {
+                            (Spread::Target, self.clock.now)
+                        };
+                        let line = Logged::Strike {
+                            attacker,
+                            count,
+                            spread,
+                            hits,
+                        };
+                        self.log.push((at, line));
                     } else {
                         if struck {
                             self.clock.wait(self.speed.scale(PAUSE));
@@ -1445,20 +1484,74 @@ impl Player<'_> {
                         if melee.is_none() && !flags.retaliation {
                             melee = self.melee(attacker, target, before_move);
                         }
+                        // A breath's line is its target's, a multi-headed striker's every hit's
+                        // (0x441B9B, 0x4404ED).
+                        let around = hit.len() > 1
+                            && !self.live(attacker).is_some_and(|l| self.breath(&l, &hit));
+                        let spread = if around {
+                            Spread::Around
+                        } else {
+                            Spread::Target
+                        };
                         self.strike(attacker, &hit, layer);
+                        // After the strike's animation (`melee_strike` 0x441C5D).
+                        let line = Logged::Strike {
+                            attacker,
+                            count,
+                            spread,
+                            hits,
+                        };
+                        self.log.push((self.clock.now, line));
                     }
                 }
                 Event::Struck { target, kills, .. } => {
                     self.reactions(&[(target, kills)]);
                 }
-                Event::Defended { stack } => self.defends(stack, true),
-                Event::Healed { healer, target, .. } => self.heal(healer, target),
-                Event::RoundStarted { .. } => self.happenings.push(Happening::Round),
+                Event::Defended { stack } => {
+                    self.defends(stack, true);
+                    // A war machine writes no line (0x479758).
+                    if let Some(live) = self.live(stack).filter(|l| !l.war_machine) {
+                        let line = Logged::Defend {
+                            stack,
+                            count: live.count,
+                        };
+                        self.log.push((self.clock.now, line));
+                    }
+                }
+                Event::Waited { stack } => {
+                    // None in the tactics phase (0x479918).
+                    if let Some(live) = self.live(stack).filter(|_| !self.tactics) {
+                        let line = Logged::Wait {
+                            stack,
+                            count: live.count,
+                        };
+                        self.log.push((self.clock.now, line));
+                    }
+                }
+                Event::Healed {
+                    healer,
+                    target,
+                    hit_points,
+                } => self.heal(healer, target, hit_points),
+                Event::GoodMorale { stack } | Event::BadMorale { stack } => {
+                    let good = matches!(*event, Event::GoodMorale { .. });
+                    let count = self.live(stack).map_or(0, |l| l.count);
+                    let line = Logged::Morale { stack, count, good };
+                    self.log.push((self.clock.now, line));
+                }
+                Event::TacticsEnded {} => self.tactics = false,
+                Event::RoundStarted { .. } => {
+                    self.happenings.push(Happening::Round);
+                    if !self.tactics {
+                        self.log.push((self.clock.now, Logged::Round));
+                    }
+                }
                 Event::TurnStarted { stack } => {
                     // The attack ends before the next turn starts (E17 M2 T5c, the reviewer).
                     self.attack_over(&mut melee, &mut shooter);
                     self.defends(stack, false);
                     self.turns.push((self.clock.now, stack));
+                    self.log.push((self.clock.now, Logged::Turn(stack)));
                     // A war machine's turn the command plays out (another turn follows in it):
                     // the battle loop ticks once as it acts, as for the computer's, which
                     // outlines it until its action's first frame shows (E17 M3 T3b, `machines`).
@@ -1485,9 +1578,18 @@ impl Player<'_> {
     /// (`PlayMagicAnimation` 0x496840 without the hit), and a last redraw that erases it. The
     /// battle then waits for the sound to end (`wait_for_sample` 0x59A4C0), which it has at
     /// speed 0 (`Regener`, 1 881 ms, against the animation's 2 100); not at the faster speeds
-    /// with the sound on (*provisional*: not built, the captures play without sound).
-    fn heal(&mut self, healer: u8, target: u8) {
+    /// with the sound on (*provisional*: not built, the captures play without sound). The log's
+    /// line comes between the sound and the animation (0x478D0A, E17 M3 T6b).
+    fn heal(&mut self, healer: u8, target: u8, hit_points: u32) {
         self.cue(target, Sound::Heal, false);
+        let count = |stack: u8| self.live(stack).map_or(0, |l| l.count);
+        let line = Logged::Heal {
+            healer,
+            target,
+            counts: [count(healer), count(target)],
+            hit_points,
+        };
+        self.log.push((self.clock.now, line));
         let Some(look) = self.stage.magic.get(&HEAL).cloned() else {
             return;
         };
@@ -1895,11 +1997,13 @@ impl Player<'_> {
         self.iterate(None, (0, 0, 0, 2), &reactions, layers);
     }
 
-    /// A shot of `shooter` at the stacks `hit` (`shot_animation` 0x43F2C0, §7.4).
-    fn shot(&mut self, shooter: u8, hit: &[(u8, u32)]) {
+    /// A shot of `shooter` at the stacks `hit` (`shot_animation` 0x43F2C0, §7.4); returns when
+    /// its reactions' loop (`strike_animation`) starts.
+    fn shot(&mut self, shooter: u8, hit: &[(u8, u32)]) -> u32 {
         let Some(live) = self.live(shooter) else {
+            let start = self.clock.now;
             self.react_alone(hit, [STANDING, STRUCK]);
-            return;
+            return start;
         };
         let target = hit.first().and_then(|(t, _)| self.live(*t));
         let aimed = target.is_some();
@@ -1920,6 +2024,7 @@ impl Player<'_> {
         if let Some(colours) = live.look.ray.clone().filter(|_| aimed) {
             self.beam((shooter, &live), &aim, colours, (group, climax, n));
             let reactions = self.reactions(hit);
+            let start = self.clock.now;
             // After the ray the shooter's group is over: it stands as the loop starts
             // (*provisional*, the recorded `shots`).
             self.iterate(
@@ -1928,7 +2033,7 @@ impl Player<'_> {
                 &reactions,
                 [STANDING, STRUCK],
             );
-            return;
+            return start;
         }
         let step = self.speed.scale(STEP);
         if let Some(missile) = live.look.missile.as_ref().filter(|_| aim.steps > 0) {
@@ -1961,12 +2066,14 @@ impl Player<'_> {
         // *provisional*); its first iterations show at once, the deadline being behind. The
         // shooter stays in its layer, the struck take 5 as in a melee (the original's memory in
         // `behind` and `shots`, E17 M3 T5b-2a: a hit Pegasus's wing over its neighbour).
+        let start = self.clock.now;
         self.iterate(
             Some((shooter, &live)),
             (group, climax, n - climax, 2),
             &reactions,
             [STANDING, STRUCK],
         );
+        start
     }
 
     /// A ray shooter's shot after its climax frames (0x43F51D, `DrawRay` 0x5A5C20, design
