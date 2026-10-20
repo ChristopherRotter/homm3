@@ -100,7 +100,8 @@ fn walk_and_attack<S: Sink>(
     } else {
         t.hex
     });
-    // rule: BAT-MAG-025 (BAT-QUIRK-24)
+    // BAT-QUIRK-24 (S-11): the original's test is the aimed hex alone.
+    // rule: BAT-MAG-025
     if !ruleset.quirks().is_enabled(BERSERK_WALKS_TO_POSITION_HEX) {
         fp.hexes().for_each(|h| ends.insert(h));
     }

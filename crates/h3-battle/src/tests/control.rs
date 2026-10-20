@@ -386,6 +386,18 @@ fn a_berserk_stack_out_of_reach_walks_towards_its_target_or_passes() {
     s.stacks.as_mut_slice()[1].count = 0;
     let events = berserk_now(&mut s, &r);
     assert!(events.contains(&Event::public(EventKind::TurnPassed { stack: StackId(0) })));
+    // A shooter too.
+    let mut s = arena(
+        &r,
+        [None, None],
+        &[("archer", 5, 2, 5)],
+        &[("fixed", 5, 12, 5)],
+        1,
+    );
+    give(&mut s, &r, (0, "berserk"), 1);
+    s.stacks.as_mut_slice()[1].count = 0;
+    let events = berserk_now(&mut s, &r);
+    assert!(events.contains(&Event::public(EventKind::TurnPassed { stack: StackId(0) })));
 }
 
 // covers: BAT-MAG-025, BAT-MAG-032
@@ -433,6 +445,165 @@ fn a_berserk_stack_does_not_attack_from_a_pit_its_side_sees() {
                 .any(|e| matches!(e.kind, EventKind::ObstacleRevealed { .. }))
         );
     }
+}
+
+/// The `Moved` events' destinations in `events`, as `(x, y)`.
+fn moves(r: &BattleRuleset, events: &[Event]) -> Vec<(i32, i32)> {
+    events
+        .iter()
+        .filter_map(|e| match e.kind {
+            EventKind::Moved { to, .. } => Some(field(r).coords(to)),
+            _ => None,
+        })
+        .collect()
+}
+
+/// Whether `events` hold the berserk stack 0's passed turn.
+fn passed(events: &[Event]) -> bool {
+    events.contains(&Event::public(EventKind::TurnPassed { stack: StackId(0) }))
+}
+
+// covers: BAT-MAG-025
+#[test]
+fn with_bat_quirk_24_a_berserk_walker_attacks_a_two_hex_stack_only_from_beside_its_position() {
+    // Survey S-11, `installation.md` §7.41: the pathfinder's search for the berserk walk ends
+    // only on a blocked step onto the target's position hex, though the candidates' marks count
+    // either hex. Ids: 0 the attacker's berserk walker on (11, 0); 1 the defender's wide, its
+    // position (15, 0) in the top row's corner, its front (14, 0); 2 another stack on (15, 1),
+    // the position's only other neighbour, or far off (2, 10).
+    let battle = |r: &BattleRuleset, walker: &'static str, other: (i32, i32)| {
+        let mut s = arena(
+            r,
+            [None, None],
+            &[(walker, 5, 11, 0), ("fixed", 1, other.0, other.1)],
+            &[("wide", 1, 15, 0)],
+            1,
+        );
+        give(&mut s, r, (0, "berserk"), 1);
+        s
+    };
+    let (fixed, quirk) = (ruleset(), ruleset_with("t:berserk_position", |_| {}));
+    // Fixed: the front's mark ends the search, two steps on (13, 0) (BAT-QUIRK-24 off).
+    let mut s = battle(&fixed, "fixed", (15, 1));
+    let events = berserk_now(&mut s, &fixed);
+    assert_eq!(moves(&fixed, &events), [(12, 0), (13, 0)]);
+    assert_eq!(strikes(&events).first(), Some(&(0, 2)));
+    // With the quirk: no position beside (15, 0) is free, so the search finds none and the
+    // walker does nothing, though the wide is its nearest candidate.
+    let mut s = battle(&quirk, "fixed", (15, 1));
+    let events = berserk_now(&mut s, &quirk);
+    assert!(passed(&events) && moves(&quirk, &events).is_empty());
+    assert!(strikes(&events).is_empty() && has(&s, 0, Status::BERSERK));
+    // With (15, 1) free it goes round there, four steps, and attacks.
+    let mut s = battle(&quirk, "fixed", (2, 10));
+    let events = berserk_now(&mut s, &quirk);
+    assert_eq!(moves(&quirk, &events), [(12, 0), (13, 0), (14, 1), (15, 1)]);
+    assert_eq!(strikes(&events).first(), Some(&(0, 2)));
+    // At speed 2 the front's mark (2) is within its move but (15, 1) is not: the original's move
+    // there fails (0x445950) and the walker does nothing; fixed, it attacks from (13, 0).
+    let mut s = battle(&quirk, "slow", (2, 10));
+    let events = berserk_now(&mut s, &quirk);
+    assert!(passed(&events) && moves(&quirk, &events).is_empty());
+    let mut s = battle(&fixed, "slow", (2, 10));
+    let events = berserk_now(&mut s, &fixed);
+    assert_eq!(strikes(&events).first(), Some(&(0, 2)));
+}
+
+// covers: BAT-MAG-025
+#[test]
+fn a_berserk_walker_aims_at_a_war_machines_hex_on_the_field() {
+    // 0x4222E0: a two-hex target whose position stands in an edge column (a war machine's, in
+    // the side column) is searched for by its other hex. The defender's First Aid Tent stands
+    // on (16, 9), its front on (15, 9): with BAT-QUIRK-24 the walker on (11, 9) attacks it from
+    // (14, 9), three steps, not from (15, 8) or (15, 10) beside the position.
+    let r = ruleset_with("t:berserk_position", |_| {});
+    let tent = r.creature_by_key("t:tent").unwrap();
+    let mut s = arena_on(
+        &r,
+        [None, None],
+        &[("fixed", 5, 11, 9)],
+        &[("slow", 1, 8, 0)],
+        1,
+        |setup| setup.war_machines = [vec![], vec![tent]],
+    );
+    assert_eq!(field(&r).coords(s.stacks()[2].hex), (16, 9));
+    give(&mut s, &r, (0, "berserk"), 1);
+    let events = berserk_now(&mut s, &r);
+    assert_eq!(moves(&r, &events), [(12, 9), (13, 9), (14, 9)]);
+    assert_eq!(strikes(&events).first(), Some(&(0, 2)));
+}
+
+// covers: BAT-MAG-025
+#[test]
+fn a_two_hex_berserk_walker_attacks_from_where_its_front_meets_the_target() {
+    // A two-hex walker's step is blocked by the stack beside the step's position (its front
+    // there): that stack is marked and ends the search. The wide on (3, 5) and (4, 5) attacks
+    // the fixed on (8, 5) from (6, 5), its front on (7, 5).
+    let r = ruleset();
+    let mut s = arena(
+        &r,
+        [None, None],
+        &[("wide", 5, 3, 5)],
+        &[("fixed", 1, 8, 5)],
+        1,
+    );
+    give(&mut s, &r, (0, "berserk"), 1);
+    let events = berserk_now(&mut s, &r);
+    assert_eq!(moves(&r, &events), [(4, 5), (5, 5), (6, 5)]);
+    assert_eq!(strikes(&events).first(), Some(&(0, 1)));
+}
+
+// covers: BAT-MAG-025, BAT-MOV-002
+#[test]
+fn a_berserk_flyer_passes_over_what_blocks_it_but_never_lands_there() {
+    // The pathfinder lets a flyer pass over a hex it does not fit on as a step of its path, which
+    // is no end (0x4B39C4, §7.40). Ids: 0 the flyer (speed 7) on (1, 5); 1 its target.
+    let r = ruleset();
+    let flight = |target: (i32, i32), rocks: &[(i32, i32)]| {
+        let hexes = rocks.iter().map(|&(x, y)| at(&r, x, y).0).collect();
+        let mut s = arena_on(
+            &r,
+            [None, None],
+            &[("flyer", 5, 1, 5)],
+            &[("fixed", 1, target.0, target.1)],
+            1,
+            |setup| setup.obstacles = blocked(hexes),
+        );
+        give(&mut s, &r, (0, "berserk"), 1);
+        s
+    };
+    // Towards a target out of its reach along row 5 over the rocks on (2, 5) and (8, 5): its
+    // seventh step is a rock, so it lands on the sixth.
+    let mut s = flight((14, 5), &[(2, 5), (8, 5)]);
+    let events = berserk_now(&mut s, &r);
+    assert_eq!(moves(&r, &events), [(7, 5)]);
+    // Rocks on the target's near side: the search reaches one of them first, three steps on,
+    // and marks the target from there; the flight to that rock fails and it does nothing.
+    let mut s = flight((5, 5), &[(4, 4), (4, 5), (4, 6)]);
+    let events = berserk_now(&mut s, &r);
+    assert!(passed(&events) && moves(&r, &events).is_empty() && strikes(&events).is_empty());
+}
+
+// covers: BAT-MAG-025, BAT-MAG-032
+#[test]
+fn a_berserk_walker_beyond_its_speed_stops_in_a_pit_on_its_path() {
+    // 0x41F580 without scores: the walk towards a target out of reach follows the pathfinder's
+    // path and ends after a stop it enters. From (2, 5) at speed 2 towards (12, 5) the path
+    // enters its own side's pit on (3, 5) first (a step that costs the rest of the turn, queued
+    // before the way round by (2, 4) and (3, 4)): it stops there.
+    let r = ruleset();
+    let mut s = arena(
+        &r,
+        [None, None],
+        &[("slow", 5, 2, 5)],
+        &[("fixed", 5, 12, 5)],
+        1,
+    );
+    pit(&mut s, &r, BattleSide::Attacker, (3, 5));
+    give(&mut s, &r, (0, "berserk"), 1);
+    let events = berserk_now(&mut s, &r);
+    assert_eq!(moves(&r, &events), [(3, 5)]);
+    assert!(strikes(&events).is_empty());
 }
 
 /// A Castle siege of a Citadel with a damaging moat (70), players `human`: the defender's
