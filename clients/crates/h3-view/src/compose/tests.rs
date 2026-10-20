@@ -23,7 +23,7 @@ const YELLOW: Rgb = Rgb {
     b: 0,
 };
 
-/// The compositor with the original's bugs fixed, as the client draws (no draw here differs).
+/// The compositor with the original's bugs fixed, as the client draws.
 fn compose(list: &[Draw], batch: &Batch, layout: &BattleLayout) -> Result<Screen, ComposeError> {
     super::compose(list, batch, layout, Bugs::Fixed)
 }
@@ -244,9 +244,30 @@ fn a_projectile_is_drawn_plain_and_mirrored_toward_the_left() {
         x: 0,
         y: 0,
     };
-    let screen = compose(&[background, shot(0, false), shot(2, true)], &b, &small()).unwrap();
+    let screen = compose(
+        &[background.clone(), shot(0, false), shot(2, true)],
+        &b,
+        &small(),
+    )
+    .unwrap();
     let [bl, r, w] = [BLUE, RED, WHITE].map(|c| FORMAT.pack(c));
     assert_eq!(screen.pixels()[..6], [r, w, w, r, bl, bl]);
+    // E17 M3 T6c-1: the cursor by the same drawer, its run skipped, its canvas at the mouse less
+    // the hot spot; the original's bug, the mouse's x rounded down to even first, only for the
+    // comparisons.
+    let cursor = |x| Draw::Cursor {
+        def: "PR.DEF".to_string(),
+        frame: 0,
+        x,
+        y: 0,
+        hot: [2, 0],
+    };
+    let screen = compose(&[background.clone(), cursor(3)], &b, &small()).unwrap();
+    assert_eq!(screen.pixels()[..4], [bl, r, w, bl]);
+    let original = super::compose(&[background, cursor(3)], &b, &small(), Bugs::Original).unwrap();
+    assert_eq!(original.pixels()[..4], [r, w, bl, bl]);
+    let missing = compose(&[cursor(3)], &batch(), &small()).unwrap_err();
+    assert_eq!(missing, ComposeError::Missing("PR.DEF".into()));
     // A frame the DEF lacks.
     let missing = compose(&[shot(0, false)], &batch(), &small()).unwrap_err();
     assert_eq!(missing, ComposeError::Missing("PR.DEF".into()));
@@ -514,6 +535,7 @@ fn a_text_item_is_its_picture_with_the_text_over_it() {
         font_palette: "text.pal".to_string(),
         colour: 1,
         align: 1,
+        hint: None,
     };
     let mut batch = batch();
     let picture = build::pcx_indexed(4, 2, &[1; 8], &palette(&[(1, BLUE)]));

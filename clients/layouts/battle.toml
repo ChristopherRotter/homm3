@@ -19,6 +19,9 @@ outline_palette = "game.pal"
 outline_active = 96
 # Its range's entries (96-103): each idle step rotates them by one (0x4960D0 via 0x522950, §4.2).
 outline_ramp = 8
+# The stack the mouse marks (0x43E23A, E17 M3 T6c-1): entry 0x70 (112-119), its range rotated as
+# the active one's; the active stack's outline wins (0x43E259).
+outline_mouse = 112
 # The heroes' and their flags' canvases, top-left corners, the left side's and the right side's
 # (§4.5, `battle_redraw` 0x494701): each flag, then its hero; the right hero mirrored in its
 # canvas (E17 M3 T3a).
@@ -48,12 +51,34 @@ text_size = [30, 15]
 text_colour = 4
 text_align = 1
 
+# The mouse over the battle (design §9.9; E17 M3 T6c-1).
+[mouse]
+# The battlefield's part of the screen (0x4753E4): below it the panel.
+field = [800, 556]
+# The heroes' rectangles, the attacker's and the defender's: left, top, right, bottom, inclusive
+# (`screen_to_hex` 0x4647A0, from 0x4626A0 and 0x4626D0).
+heroes = [[0, 16, 57, 127], [741, 16, 799, 127]]
+# A hex box's slanted top edge, its height: a point above it is the row above's (0x4648B6).
+slant = 10
+# A hex's centre from its box's corner: the attack's slot is the mouse's angle from it (0x474A54).
+centre = [22, 26]
+# The combat cursor (the mouse manager's type 2, 0x67FF38), its frames' hot spots (0x67FF50: the
+# canvas's corner is the mouse less these) and the frame over the panel (0x47551F).
+cursor = "CRCOMBAT.DEF"
+hot = [
+    [8, 9], [10, 11], [12, 10], [12, 12], [12, 10], [6, 9], [0, 0], [22, 0], [30, 6], [20, 21],
+    [0, 21], [0, 6], [0, 0], [6, 0], [6, 31], [14, 0], [12, 12], [12, 10], [12, 12], [12, 12],
+]
+panel_frame = 6
+
 # The panel below the battlefield (design §9.5, §9.7; E17 M3 T4b-2b-1, T6a): a dialog of the
 # executable's items, each `kind` drawn by its own drawer (h3_view::ui), in the order the
 # executable adds them (`battle_panel_base` 0x46B610, then `battle_panel_create` 0x46BC30), each
 # at the panel's corner plus its `at`; `id` is the executable's control id (h3_view::panel names
 # them). A button's frames default to the constructor's: 0 normal, 1 pressed, 2 disabled, 3
-# selected.
+# selected. A `hint` is the key of the status line's text while the mouse is over the item
+# (`SetHints` 0x5FE840, from `Help.txt`; E17 M3 T6c-1): the log's item and its scroll buttons have
+# none (their rows' first field is empty).
 [panel]
 place = [0, 556]
 
@@ -71,6 +96,7 @@ id = 2001
 def = "icm001.def"
 at = [54, 5]
 size = [48, 36]
+hint = "battle.control.surrender"
 
 [[panel.items]]
 kind = "button"
@@ -78,6 +104,7 @@ id = 2002
 def = "icm002.def"
 at = [105, 5]
 size = [48, 36]
+hint = "battle.control.retreat"
 
 [[panel.items]]
 kind = "button"
@@ -85,6 +112,7 @@ id = 2003
 def = "icm003.def"
 at = [3, 5]
 size = [48, 36]
+hint = "battle.control.options"
 
 [[panel.items]]
 kind = "button"
@@ -92,6 +120,7 @@ id = 2004
 def = "icm004.def"
 at = [156, 5]
 size = [48, 36]
+hint = "battle.control.auto"
 
 # The hero's spell book, Wait, Defend.
 [[panel.items]]
@@ -100,6 +129,7 @@ id = 2008
 def = "icm005.def"
 at = [645, 5]
 size = [48, 36]
+hint = "battle.control.spell-book"
 
 [[panel.items]]
 kind = "button"
@@ -107,6 +137,7 @@ id = 2009
 def = "icm006.def"
 at = [696, 5]
 size = [48, 36]
+hint = "battle.control.wait"
 
 [[panel.items]]
 kind = "button"
@@ -114,6 +145,7 @@ id = 2010
 def = "icm007.def"
 at = [747, 5]
 size = [48, 36]
+hint = "battle.control.defend"
 
 # The battle log's item (0x46BCBE; §9.5): its picture opaque, at most the item's 400 x 32 of it,
 # then the shown entries in the font over it, the text drawer's colour 1 and alignment 1

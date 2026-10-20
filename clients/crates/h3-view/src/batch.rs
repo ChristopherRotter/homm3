@@ -139,7 +139,7 @@ pub fn names(list: &[Draw], layout: &BattleLayout) -> BTreeSet<String> {
             names.extend(player.as_ref().map(|p| &p.palette));
             names
         }
-        Draw::Button { def, .. } => vec![def],
+        Draw::Button { def, .. } | Draw::Cursor { def, .. } => vec![def],
         Draw::Text { item, .. } => vec![&item.picture, &item.font, &item.font_palette],
         Draw::Ray(_) => Vec::new(),
     });
@@ -281,6 +281,13 @@ mod tests {
                 x: 0,
                 y: 0,
             },
+            Draw::Cursor {
+                def: "CrCombat.def".to_string(),
+                frame: 6,
+                x: 0,
+                y: 0,
+                hot: [0, 0],
+            },
         ];
         let names: Vec<String> = names(&list, &layout).into_iter().collect();
         assert_eq!(
@@ -293,6 +300,7 @@ mod tests {
                 "CMFLAGL.DEF",
                 "CMNUMWIN.PCX",
                 "CR.DEF",
+                "CRCOMBAT.DEF",
                 "CROLLOVR.PCX",
                 "GAME.PAL",
                 "ICM001.DEF",

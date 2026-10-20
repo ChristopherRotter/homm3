@@ -2,10 +2,10 @@
 # harness shows the original and compares with our renders, unattended
 # (`clients/capture/h3drive.py set`). Each names its scenario (beside this file; its map comes from
 # `h3-view situation`, Blue's hero on `tile`, default [11, 10]), the masks over what we do not draw
-# yet (`mask`, `h3cap.py diff`; since M3 T6a drew the panel only the game's cursor where the
-# recipes park the mouse, which the viewer draws with M3 T6c), and per frame (ms
-# after the opening, on the original's clock) the number of pixels that differ outside the masks,
-# with why. A run that counts another number fails: a change, to be fixed or recorded
+# yet (`mask`, `h3cap.py diff`; none since M3 T6c-1 drew the game's cursor where the recipes park
+# the mouse), where the mouse rests (`mouse`, default the parked point; M3 T6c-1), and per frame
+# (ms after the opening, on the original's clock) the number of pixels that differ outside the
+# masks, with why. A run that counts another number fails: a change, to be fixed or recorded
 # deliberately.
 #
 # The situations: every land terrain's battlefield (its third background: nothing around the
@@ -20,7 +20,6 @@
 [[situation]]
 id = "grass"
 scenario = "grass.toml"
-mask = ["cursor"]
 
 [[situation.frame]]
 at = 0
@@ -110,7 +109,6 @@ why = "exact: standing (M3 T3a)"
 [[situation]]
 id = "dirt"
 scenario = "dirt.toml"
-mask = ["cursor"]
 
 [[situation.frame]]
 at = 0
@@ -120,7 +118,6 @@ why = "exact: the outline's pulse on the original's clock (M3 T1b-2)"
 [[situation]]
 id = "sand"
 scenario = "sand.toml"
-mask = ["cursor"]
 
 [[situation.frame]]
 at = 0
@@ -130,7 +127,6 @@ why = "exact: the outline's pulse on the original's clock (M3 T1b-2)"
 [[situation]]
 id = "snow"
 scenario = "snow.toml"
-mask = ["cursor"]
 
 [[situation.frame]]
 at = 0
@@ -140,7 +136,6 @@ why = "exact: the outline's pulse on the original's clock (M3 T1b-2)"
 [[situation]]
 id = "swamp"
 scenario = "swamp.toml"
-mask = ["cursor"]
 
 [[situation.frame]]
 at = 0
@@ -150,7 +145,6 @@ why = "exact: the outline's pulse on the original's clock (M3 T1b-2)"
 [[situation]]
 id = "rough"
 scenario = "rough.toml"
-mask = ["cursor"]
 
 [[situation.frame]]
 at = 0
@@ -160,7 +154,6 @@ why = "exact: the outline's pulse on the original's clock (M3 T1b-2)"
 [[situation]]
 id = "subterranean"
 scenario = "subterranean.toml"
-mask = ["cursor"]
 
 [[situation.frame]]
 at = 0
@@ -170,7 +163,6 @@ why = "exact: the outline's pulse on the original's clock (M3 T1b-2)"
 [[situation]]
 id = "lava"
 scenario = "lava.toml"
-mask = ["cursor"]
 
 [[situation.frame]]
 at = 0
@@ -180,14 +172,12 @@ why = "exact: the outline's pulse on the original's clock (M3 T1b-2)"
 [[situation]]
 id = "dirt-absolute"
 scenario = "dirt-absolute.toml"
-mask = ["cursor"]
 tile = [20, 20]
 
 [[situation.frame]]
 at = 0
 differing = 0
 why = "exact: the outline's pulse on the original's clock (M3 T1b-2)"
-
 
 # The special battlefields (M3 T2): each as the original makes it on the defender's tile
 # (`h3-view situation`, design §5), its picture (0x4646D0) and its own obstacles. The ship's deck
@@ -196,7 +186,6 @@ why = "exact: the outline's pulse on the original's clock (M3 T1b-2)"
 [[situation]]
 id = "shore"
 scenario = "shore.toml"
-mask = ["cursor"]
 
 [[situation.frame]]
 at = 0
@@ -206,7 +195,6 @@ why = "exact: the shore (water beside the defender's tile, fought on sand), its 
 [[situation]]
 id = "magic-plains"
 scenario = "magic-plains.toml"
-mask = ["cursor"]
 
 [[situation.frame]]
 at = 0
@@ -216,7 +204,6 @@ why = "exact: Magic Plains (the ground, class 46), its picture and obstacles (M3
 [[situation]]
 id = "cursed-ground"
 scenario = "cursed-ground.toml"
-mask = ["cursor"]
 
 [[situation.frame]]
 at = 0
@@ -226,7 +213,6 @@ why = "exact: Cursed Ground (class 21), its picture and obstacles (M3 T2)"
 [[situation]]
 id = "holy-ground"
 scenario = "holy-ground.toml"
-mask = ["cursor"]
 
 [[situation.frame]]
 at = 0
@@ -236,7 +222,6 @@ why = "exact: Holy Ground (SoD, class 227), its picture and obstacles (M3 T2)"
 [[situation]]
 id = "evil-fog"
 scenario = "evil-fog.toml"
-mask = ["cursor"]
 
 [[situation.frame]]
 at = 0
@@ -246,7 +231,6 @@ why = "exact: Evil Fog (SoD, class 224), its picture and obstacles (M3 T2)"
 [[situation]]
 id = "clover-field"
 scenario = "clover-field.toml"
-mask = ["cursor"]
 
 [[situation.frame]]
 at = 0
@@ -256,7 +240,6 @@ why = "exact: Clover Field (SoD, class 222), its picture and obstacles (M3 T2)"
 [[situation]]
 id = "lucid-pools"
 scenario = "lucid-pools.toml"
-mask = ["cursor"]
 
 [[situation.frame]]
 at = 0
@@ -266,7 +249,6 @@ why = "exact: Lucid Pools (SoD, class 228), its picture and obstacles (M3 T2)"
 [[situation]]
 id = "fiery-fields"
 scenario = "fiery-fields.toml"
-mask = ["cursor"]
 
 [[situation.frame]]
 at = 0
@@ -276,7 +258,6 @@ why = "exact: Fiery Fields (SoD, class 226), its picture and obstacles (M3 T2)"
 [[situation]]
 id = "rocklands"
 scenario = "rocklands.toml"
-mask = ["cursor"]
 
 [[situation.frame]]
 at = 0
@@ -286,7 +267,6 @@ why = "exact: Rocklands (SoD, class 231), its picture and obstacles (M3 T2)"
 [[situation]]
 id = "magic-clouds"
 scenario = "magic-clouds.toml"
-mask = ["cursor"]
 
 [[situation.frame]]
 at = 0
@@ -296,7 +276,6 @@ why = "exact: Magic Clouds (SoD, class 229), its picture and obstacles (M3 T2)"
 [[situation]]
 id = "shore-absolute"
 scenario = "shore-absolute.toml"
-mask = ["cursor"]
 tile = [18, 5]
 
 [[situation.frame]]
@@ -310,7 +289,6 @@ why = "exact: the shore with its absolute obstacle 126 (M3 T2)"
 [[situation]]
 id = "heroes-castle-rampart"
 scenario = "heroes-castle-rampart.toml"
-mask = ["cursor"]
 
 [[situation.frame]]
 at = 0
@@ -320,7 +298,6 @@ why = "exact: Valeska (CH01, a female Knight), Ufretin (CH02, a male Ranger) (M3
 [[situation]]
 id = "heroes-rampart-tower"
 scenario = "heroes-rampart-tower.toml"
-mask = ["cursor"]
 
 [[situation.frame]]
 at = 0
@@ -330,7 +307,6 @@ why = "exact: Mephala (CH03, a female Ranger), Piquedram (CH05: Tower's male pic
 [[situation]]
 id = "heroes-tower-inferno"
 scenario = "heroes-tower-inferno.toml"
-mask = ["cursor"]
 
 [[situation.frame]]
 at = 0
@@ -340,7 +316,6 @@ why = "exact: Josephine (CH04: Tower's female picture), Rashka (CH06, a male Dem
 [[situation]]
 id = "heroes-inferno-necropolis"
 scenario = "heroes-inferno-necropolis.toml"
-mask = ["cursor"]
 
 [[situation.frame]]
 at = 0
@@ -350,7 +325,6 @@ why = "exact: Fiona (CH07, a female Demoniac), Straker (CH08, a male Death Knigh
 [[situation]]
 id = "heroes-necropolis-dungeon"
 scenario = "heroes-necropolis-dungeon.toml"
-mask = ["cursor"]
 
 [[situation.frame]]
 at = 0
@@ -360,7 +334,6 @@ why = "exact: Charna (CH09, a female Death Knight), Arlach (CH010, a male Overlo
 [[situation]]
 id = "heroes-dungeon-stronghold"
 scenario = "heroes-dungeon-stronghold.toml"
-mask = ["cursor"]
 
 [[situation.frame]]
 at = 0
@@ -370,7 +343,6 @@ why = "exact: Lorelei (CH11, a female Overlord), Shiva (CH012: Stronghold's fema
 [[situation]]
 id = "heroes-fortress"
 scenario = "heroes-fortress.toml"
-mask = ["cursor"]
 
 [[situation.frame]]
 at = 0
@@ -380,7 +352,6 @@ why = "exact: Bron (CH014, a male Beastmaster), Mirlanda (CH015, a female Witch)
 [[situation]]
 id = "heroes-conflux"
 scenario = "heroes-conflux.toml"
-mask = ["cursor"]
 
 [[situation.frame]]
 at = 0
@@ -391,7 +362,6 @@ why = "exact: Pasis, a female Planeswalker, CH17, and Inteus, a male Elementalis
 [[situation]]
 id = "war-machines"
 scenario = "war-machines.toml"
-mask = ["cursor"]
 
 [[situation.frame]]
 at = 0
@@ -444,7 +414,6 @@ why = "exact: the war machines stand still (the tent's group 2 has six frames: f
 [[situation]]
 id = "smoke"
 scenario = "../scenarios/smoke.toml"
-mask = ["cursor"]
 hot_seat = true
 
 [[situation.frame]]
@@ -463,7 +432,6 @@ why = "exact: the Pikemen's fidget in the original's poses, the flags four steps
 [[situation]]
 id = "counts"
 scenario = "counts.toml"
-mask = ["cursor"]
 
 [[situation.frame]]
 at = 0
@@ -474,3 +442,305 @@ why = "exact: counts of three to five digits centred in their boxes, each box ti
 at = 400
 differing = 0
 why = "exact: the Pikemen fidget (group 1) with their box, the outline four steps on (M3 T4a)"
+
+# The mouse (M3 T6c-1, design §9.9): the human's stack opens and the harness moves the mouse to
+# `mouse` at the opening (the clock frozen); the viewer draws the cursor there, the status line's
+# hint and the stack the mouse marks (its fidget in the original's poses). From 100 ms on: at the
+# opening itself the original shows the new cursor where the mouse was (its overlay moves at its
+# next frame), which a still cannot show.
+
+[[situation]]
+id = "mouse-attack-wolves"
+scenario = "mouse-dragons.toml"
+mouse = [654, 196]
+# the Black Dragons' cursor over the Wolf Riders' front hex from the left.
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: the cursor, the hint and the marked stack (M3 T6c-1)"
+
+[[situation]]
+id = "mouse-attack-above"
+scenario = "mouse-dragons.toml"
+mouse = [713, 428]
+# over the Goblins from above and left.
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: the cursor, the hint and the marked stack (M3 T6c-1)"
+
+[[situation]]
+id = "mouse-attack-below"
+scenario = "mouse-dragons.toml"
+mouse = [713, 468]
+# over the Goblins from below and left.
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: the cursor, the hint and the marked stack (M3 T6c-1)"
+
+[[situation]]
+id = "mouse-attack-edge"
+scenario = "mouse-dragons.toml"
+mouse = [733, 438]
+# over the Goblins from above and right, where no hex is (a slot copied).
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: the cursor, the hint and the marked stack (M3 T6c-1)"
+
+[[situation]]
+id = "mouse-wolves-above"
+scenario = "mouse-dragons.toml"
+mouse = [677, 176]
+# the Black Dragons over the Wolf Riders' front hex from above and right: only the position beside fits, the vertical sword from above.
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: the cursor, the hint and the marked stack (M3 T6c-1)"
+
+[[situation]]
+id = "mouse-wolves-below"
+scenario = "mouse-dragons.toml"
+mouse = [671, 216]
+# from below and left, steep: both positions fit, the vertical sword from below.
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: the cursor, the hint and the marked stack (M3 T6c-1)"
+
+[[situation]]
+id = "mouse-wolves-sw"
+scenario = "mouse-dragons.toml"
+mouse = [664, 206]
+# from below and left, slanted: the sword.
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: the cursor, the hint and the marked stack (M3 T6c-1)"
+
+[[situation]]
+id = "mouse-angel-wolves"
+scenario = "mouse-angels.toml"
+mouse = [677, 176]
+# the Archangels over the Wolf Riders' front hex from above and right.
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: the cursor, the hint and the marked stack (M3 T6c-1)"
+
+[[situation]]
+id = "mouse-devils-above"
+scenario = "mouse-devils.toml"
+mouse = [677, 176]
+# the Arch Devils (one hex) over the Wolf Riders' front hex from above and right.
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: the cursor, the hint and the marked stack (M3 T6c-1)"
+
+[[situation]]
+id = "mouse-devils-sw"
+scenario = "mouse-devils.toml"
+mouse = [664, 206]
+# from below and left.
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: the cursor, the hint and the marked stack (M3 T6c-1)"
+
+[[situation]]
+id = "mouse-fly"
+scenario = "mouse-dragons.toml"
+mouse = [168, 238]
+# an empty hex the Black Dragons reach.
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: the cursor, the hint and the marked stack (M3 T6c-1)"
+
+[[situation]]
+id = "mouse-obstacle"
+scenario = "mouse-dragons.toml"
+mouse = [410, 280]
+# an obstacle's hex.
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: the cursor, the hint and the marked stack (M3 T6c-1)"
+
+[[situation]]
+id = "mouse-own"
+scenario = "mouse-dragons.toml"
+mouse = [102, 448]
+# the human's Pikemen: looked at, marked, their fidget.
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: the cursor, the hint and the marked stack (M3 T6c-1)"
+
+[[situation.frame]]
+at = 200
+differing = 0
+why = "exact: the cursor, the hint and the marked stack (M3 T6c-1)"
+
+[[situation.frame]]
+at = 300
+differing = 0
+why = "exact: the cursor, the hint and the marked stack (M3 T6c-1)"
+
+[[situation]]
+id = "mouse-self"
+scenario = "mouse-dragons.toml"
+mouse = [146, 196]
+# the acting Black Dragons themselves.
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: the cursor, the hint and the marked stack (M3 T6c-1)"
+
+[[situation]]
+id = "mouse-side"
+scenario = "mouse-dragons.toml"
+mouse = [58, 364]
+# a side column's hex.
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: the cursor, the hint and the marked stack (M3 T6c-1)"
+
+[[situation]]
+id = "mouse-hero"
+scenario = "mouse-dragons.toml"
+mouse = [30, 80]
+# the human's hero.
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: the cursor, the hint and the marked stack (M3 T6c-1)"
+
+[[situation]]
+id = "mouse-enemy-hero"
+scenario = "mouse-dragons.toml"
+mouse = [770, 80]
+# the other side's hero.
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: the cursor, the hint and the marked stack (M3 T6c-1)"
+
+[[situation]]
+id = "mouse-surrender"
+scenario = "mouse-dragons.toml"
+mouse = [78, 579]
+# the panel's Surrender button.
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: the cursor, the hint and the marked stack (M3 T6c-1)"
+
+[[situation]]
+id = "mouse-book"
+scenario = "mouse-dragons.toml"
+mouse = [669, 579]
+# the panel's spell book, disabled.
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: the cursor, the hint and the marked stack (M3 T6c-1)"
+
+[[situation]]
+id = "mouse-defend"
+scenario = "mouse-dragons.toml"
+mouse = [771, 579]
+# the panel's Defend button.
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: the cursor, the hint and the marked stack (M3 T6c-1)"
+
+[[situation]]
+id = "mouse-log"
+scenario = "mouse-dragons.toml"
+mouse = [400, 580]
+# the panel's log.
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: the cursor, the hint and the marked stack (M3 T6c-1)"
+
+[[situation]]
+id = "mouse-angel"
+scenario = "mouse-angels.toml"
+mouse = [713, 428]
+# the Archangels' (two hexes) cursor over the Goblins from above and left.
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: the cursor, the hint and the marked stack (M3 T6c-1)"
+
+[[situation]]
+id = "mouse-angel-edge"
+scenario = "mouse-angels.toml"
+mouse = [733, 196]
+# over the Wolf Riders' rear hex from the right, where no hex is.
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: the cursor, the hint and the marked stack (M3 T6c-1)"
+
+[[situation]]
+id = "mouse-shot"
+scenario = "mouse-elves.toml"
+mouse = [718, 448]
+# the Grand Elves' cursor over the far Goblins: the broken arrow.
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: the cursor, the hint and the marked stack (M3 T6c-1)"
+
+[[situation]]
+id = "mouse-walk"
+scenario = "mouse-elves.toml"
+mouse = [168, 238]
+# an empty hex the Grand Elves reach.
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: the cursor, the hint and the marked stack (M3 T6c-1)"
+
+[[situation]]
+id = "mouse-walk-far"
+scenario = "mouse-elves.toml"
+mouse = [608, 238]
+# an empty hex beyond their reach.
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: the cursor, the hint and the marked stack (M3 T6c-1)"

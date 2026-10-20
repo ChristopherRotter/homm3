@@ -244,8 +244,19 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
         .map_err(|e| e.to_string())?
         .with_heroes(motion::heroes(&record, &tables, &archives, None)?);
         let panels = crate::log::panels(&record, &timeline, &tables, &layout, &archives)?;
+        // The acting stack's legal commands at the opening, for the mouse (E17 M3 T6c-1): the
+        // engine's, from the scenario; a record names none.
+        let legal = if options.scenario() {
+            crate::scenario::opening_legal(&options.input, &options.packs, options.seed)?
+        } else {
+            Vec::new()
+        };
+        let interface = crate::sequences::Interface {
+            panels: &panels,
+            legal: &h3_view::mouse::Legal::new(&legal),
+        };
         let drawn = crate::sequences::draw_frames(
-            dir, &record, &timeline, &tables, &layout, &archives, &panels,
+            dir, &record, &timeline, &tables, &layout, &archives, &interface,
         )?;
         lines.push(format!("{drawn} frames drawn in {}", dir.display()));
         return Ok(lines);

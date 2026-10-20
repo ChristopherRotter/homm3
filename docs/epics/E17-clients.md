@@ -1,11 +1,11 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1 done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
 [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
-are there). Next: M3 T6–T8 (`docs/lanes/client/QUEUE.md`).
+are there). Next: M3 T6c-2, T7–T8 (`docs/lanes/client/QUEUE.md`).
 
 ## Goal
 
@@ -61,7 +61,8 @@ viewer and playable clients. Everything with graphics, sound, input or a window 
   long word's break) is fixed in what the client draws; the comparisons with the original's
   captures (the capture set, the frame check) draw it as the original does, so that they stay
   exact. A development switch (`h3_render::Bugs`), neither a player's option nor a quirk
-  profile. Goes into the ADR-0020 point 9 amendment draft.
+  profile. Goes into the ADR-0020 point 9 amendment draft. The second (2026-10-20, M3 T6c-1):
+  the software cursor drawn at an even x (0x50CE04, design §9.9).
 - **The natural obstacles' types first** (2026-10-13, CLT-Q3): the engine dropped them at
   generation; a `cross-lane` change carries them to the wire before T7 draws obstacles.
 
@@ -365,6 +366,14 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   panel through the battle's turns (kept colours and scroll buttons). The harness keeps panel
   changes and reads the log: the ten sequences compare the panel, every count as recorded, the
   log's item exact in 228 frames, listed in 668 (hints, T6c; rolled lines).
+- **T6c-1 done 2026-10-20** ([log](E17-log.md#m3-t6c-1--the-mouses-still-2026-10-20),
+  [design §9.9](E17-design.md)): T6c split with the user (the still T6c-1, over time T6c-2). The
+  battle's mouse read (where it is, the cursor's kind and frame, the attack's twelve slots, the
+  hints over the field and the panel, the software cursor's hot spots; its even x a drawing bug
+  reproduced for the comparisons only, the user) and built as
+  `h3_view::mouse` over the legal commands; stills draw the cursor, the hint and the marked
+  stack's outline. 26 mouse situations exact from 100 ms; the set's parked cursor drawn, its
+  masks gone: 57 situations, 85 frames exact.
 
 ### The adventure lane's harness (H1, H2: its batch E3)
 
@@ -433,6 +442,18 @@ Accepted by the user (M1 2026-10-13, M2 2026-10-14); moved to the log,
 ## M3 review list
 
 (Filled by the tasks: choices queued for the milestone review under the autonomy contract.)
+
+- T6c-1: `h3_view::mouse` (the cursor's kind and frame, the hint, the marked stack from a point,
+  the observation and the server's legal commands, `mouse::Legal`; the cursor's own half-damage
+  test ported, from the side's facing: *provisional*), `Draw::Cursor`, `Moment::marked`; the
+  layout's `[mouse]` (the battlefield's area, the heroes' rectangles, the slanted edge, a hex's
+  centre, the combat cursor and its hot spots, the panel's frame) and `outline_mouse`; a dialog
+  item's `hint` (a key) and `Dialog::item_at` (the last item holding the point; a picture takes
+  none: *provisional*); the keys `battle.hint.*` (GENRLTXT 221, 295, 296, 298, 418–420) and
+  `battle.control.*` (`Help.txt` 379–387); `frames.toml`'s `mouse`, `set.toml`'s `mouse`, the
+  harness moving the mouse at the opening; the set's `cursor` masks gone. *Provisional:* the hint
+  replaces the log's item in a still (no lines there), the opening's legal commands, sieges,
+  casters and the army info not modelled.
 
 - T6b: the harness keeps a frame where the panel changes (the parked cursor aside) and reads the
   log's item and entries from memory (`h3mem.battle_log`; the text stays in the sandbox, ADR-0009);

@@ -370,7 +370,14 @@ def _promotion(update: int, samples: int, index: int, how: str = "gate") -> dict
 
 
 def _ladder(update: int, samples: int, index: int, final: bool = False) -> dict:
-    row = {"win_rate": 0.8, "interval": 0.02, "value": 0.2, "kinds": {"hero": 0.8}, "games": 6}
+    row = {
+        "win_rate": 0.8,
+        "interval": 0.02,
+        "value": 0.2,
+        "kinds": {"hero": 0.8},
+        "truncated": 0.05,
+        "games": 6,
+    }
     return {
         "type": "ladder",
         "update": update,
@@ -458,6 +465,7 @@ def test_a_run_writes_its_metrics_and_record(tmp_path: Path) -> None:
         "interval": 0.02,
         "value": 0.2,
         "kinds": {"hero": 0.8},
+        "truncated": 0.05,
     }
     assert record["best"] == {"index": 1, "samples": 20} and record["parent"] is None
     assert [(s["segment"], s["ended"]) for s in record["segments"]] == [(0, "budget")]

@@ -79,7 +79,11 @@ which, as `sequences --frames`, draws the original's drawing bugs the client oth
 that the comparison stays exact: M3 T4a, design §3.6;
 the outline's pulse on the original's clock, a fidget in the original's poses, as the frame check
 does), and the masked diff of each frame against the count `set.toml` records. One line per
-frame (`grass t=0: 0 differing (recorded 0) ok`); exit 1 if any count changed.
+frame (`grass t=0: 0 differing (recorded 0) ok`); exit 1 if any count changed. The mouse rests
+where the situation's `mouse` says (M3 T6c-1; the harness moves it there at the opening, the clock
+frozen; default the parked point): `frames.toml` names it, and the viewer draws its cursor, the
+status line's hint and the stack it marks (design §9.9). Take such frames from 100 ms: at the
+opening itself the original shows the new cursor where the mouse was.
 `<dir>/frames.sha1` holds the pixels' digests: two runs (say, one after a fresh `setup.sh`) agree
 when these files do. Each situation's folder keeps the frames (`t00000.xwd`, …), their
 `frames.toml`, ours (`ours/t00000.png`, …, and what it drew, `ours.txt`), its record
@@ -344,6 +348,9 @@ design §7.1.
   target) until a log line replaces it or a human's turn starts (the mouse posted again over
   nothing), and a line held there less than 3 000 ms keeps hints out (design §9.4, §9.8): the
   frame check lists the item (` log`) where the original's text is not the viewer's.
+- The game draws its cursor at an even x (0x50CE04): at an odd point the canvas is a pixel
+  left of the point less the hot spot (a drawing bug: the comparisons draw it so, the client
+  does not; design §9.9).
 - The game's memory can lag the screen by a step as a turn starts (below): the log's text read
   then may be the one before; the frame check lists the item only where its pixels differ too.
 - A hero's reaction may be read a step late at its first frame: one of two runs of `strike`
