@@ -6,7 +6,7 @@ Pre-refined tasks of the battle lane, in order, then the inbox of discovered wor
 
 E23, the original's battle AI, is in progress (refined 2026-10-19, BAT-Q52; `docs/epics/E23-original-battle-ai.md`). E04b closed on 2026-10-12, E04c on 2026-10-16 (their epic files and logs; their cuts: OPEN-QUESTIONS BAT-Q10 to BAT-Q27, BAT-Q37 to BAT-Q50).
 
-Next: T1a5 (part C, the creature casts and the spell evaluation; the epic's outline), cut and queued at its start with the user.
+T1c is done (#316, then #317, open for review). Next: T1a5 (part C, the creature casts and the spell evaluation; the epic's outline), cut and queued at its start with the user.
 
 **Waiting on this lane** (found in the 2026-10-19 consolidation; never queued here):
 - **Open questions naming this lane:** CLT-Q4 (a battle's background variant in the setup) and CLT-Q6 (each side's player colour and a hero's sex for viewers): small setup fields, `cross-lane` with the server lane's wire; the client lane holds them.
