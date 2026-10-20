@@ -23,7 +23,7 @@
 use h3_content_battle::MAX_FIELD_HEXES;
 
 use crate::binds;
-use crate::geometry::{Direction, Field, Hex, HexSet};
+use crate::geometry::{Field, Hex, HexSet};
 use crate::movement::{MAX_PATH, fits};
 use crate::obstacles;
 use crate::siege;
@@ -48,15 +48,12 @@ const ENTRIES: usize = 2 * HEXES;
 /// No entry.
 const NONE: u16 = u16::MAX;
 
-/// The neighbours' order (0x523D90's directions 0 to 5).
-const ORDER: [Direction; 6] = [
-    Direction::TopRight,
-    Direction::Right,
-    Direction::BottomRight,
-    Direction::BottomLeft,
-    Direction::Left,
-    Direction::TopLeft,
-];
+/// The cost of a cell neither reached nor marked (above every range).
+const UNTOUCHED: u16 = u16::MAX;
+
+/// The neighbours' order (0x523D90's directions 0 to 5: top right, right, bottom right, bottom
+/// left, left, top left), as indices into [`Field::neighbors`] ([`crate::geometry::Direction::ALL`]: right first).
+const ORDER: [usize; 6] = [5, 0, 1, 2, 3, 4];
 
 /// What a search ends on.
 #[derive(Debug, Clone, Copy)]
@@ -193,13 +190,13 @@ impl Search {
         };
         // A walk's search reads no marks (its target is a free position): none are made.
         let (ends, occupant) = match query.goal {
-            Goal::Attack(ends) => (ends, occupants(state, field)),
-            Goal::Map => (HexSet::new(), occupants(state, field)),
-            Goal::Reach(_) => (HexSet::new(), [None; HEXES]),
+            Goal::Attack(ends) => (ends, Some(occupants(state, field))),
+            Goal::Map => (HexSet::new(), Some(occupants(state, field))),
+            Goal::Reach(_) => (HexSet::new(), None),
         };
         let mut search = Self {
             start: mover.hex,
-            cost: [0; HEXES],
+            cost: [UNTOUCHED; HEXES],
             from: [mover.hex; HEXES],
             flown: [0; HEXES],
             reached: HexSet::new(),
@@ -207,6 +204,7 @@ impl Search {
             end: None,
         };
         search.reached.insert(mover.hex);
+        search.cost[mover.hex.index()] = 0;
         let mut queue = Queue::new();
         queue.push(mover.hex, 0, 0);
         'search: while let Some((at, c, flown)) = queue.pop() {
@@ -214,27 +212,39 @@ impl Search {
                 search.end = Some(at);
                 break;
             }
-            let at_beside = beside(at);
-            for dir in ORDER {
-                let Some(n) = field.neighbor(at, dir) else {
+            let around = field.neighbors(at);
+            // The hex beside a position is its neighbour towards the front (`Direction::ALL`'s
+            // order is `neighbors`').
+            let at_beside =
+                around[Field::front_direction(mover.side) as usize].filter(|_| mover.is_two_hex());
+            for i in ORDER {
+                let Some(n) = around[i] else {
                     continue;
                 };
-                let n_beside = beside(n);
+                // A walk's search (no marks: a cell's cost is its least cost, or none) passes
+                // over a position it reached at no more than a step from here: no step improves
+                // it (the original tests it and pushes none).
+                if occupant.is_none() && search.cost[n.index()] <= c + 1 {
+                    continue;
+                }
+                let free = fits(field, mover, n, blocked);
                 // A hex the stack covers before the step is entered by none (0x4B3701–0x4B3725).
-                let enters = (stops.contains(n) && Some(n) != at_beside)
-                    || n_beside.is_some_and(|b| b != at && stops.contains(b));
-                // Without speed (range 0) a step costs 1: the original divides only by a
-                // speed above 0 (0x4B373A).
-                let turn = speed.max(1);
-                let step = if enters { turn - c % turn } else { 1 };
-                if fits(field, mover, n, blocked) && !(query.avoid && enters) {
+                let enters = free
+                    && !stops.is_empty()
+                    && ((stops.contains(n) && Some(n) != at_beside)
+                        || beside(n).is_some_and(|b| b != at && stops.contains(b)));
+                if free && !(query.avoid && enters) {
+                    // Without speed (range 0) a step costs 1: the original divides only by a
+                    // speed above 0 (0x4B373A).
+                    let turn = speed.max(1);
+                    let step = if enters { turn - c % turn } else { 1 };
                     search.push(&mut queue, (n, at), c + step, 0, range);
                     continue;
                 }
                 // The attack marks (0x4B3772): from a stop a whole move more.
                 let a = c + if stops.contains(at) { speed } else { 0 };
-                if a <= range {
-                    for hit in [Some(n), n_beside].into_iter().flatten() {
+                if let Some(occupant) = occupant.as_ref().filter(|_| a <= range) {
+                    for hit in [Some(n), beside(n)].into_iter().flatten() {
                         if let Some(t) = occupant[hit.index()] {
                             for h in t.hexes() {
                                 search.mark(h, a);
@@ -246,9 +256,10 @@ impl Search {
                         }
                     }
                 }
+                // A flyer has no stops: its step costs 1.
                 // rule: BAT-MOV-002
                 if flies && u16::from(flown) + 1 < speed {
-                    search.push(&mut queue, (n, at), c + step, flown + 1, range);
+                    search.push(&mut queue, (n, at), c + 1, flown + 1, range);
                 }
             }
         }
@@ -283,7 +294,8 @@ impl Search {
     }
 
     /// The cost the original's cell of `hex` holds: its mark, or its least cost when reached
-    /// after it (a flyer passing over it); 0 if neither.
+    /// after it (a flyer passing over it); `u16::MAX` if neither (the original's 0: no caller
+    /// reads such a cell).
     pub(crate) fn cell_cost(&self, hex: Hex) -> u16 {
         self.cost[hex.index()]
     }
