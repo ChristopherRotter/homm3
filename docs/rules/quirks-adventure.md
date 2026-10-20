@@ -109,4 +109,4 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Defaults: faithful = fixed, strict-fixed = fixed
 - Regression test: `crates/h3-map/src/tests/import.rs`, `a_placed_heros_customisations_and_formation_carry_over`; `crates/h3-adventure/src/command/tests.rs`, `a_step_toward_another_players_hero_visits_it_and_starts_a_battle` (the defender's tight formation in the battle's start)
 - Decided by / date: the user, 2026-10-20 (decision 46; the reading E08 T22b)
-- Open with it: whether a computer player's side should fight loose whatever its hero's formation (0x463679) is decided when the game has computer players (E10) or a formation command (increment 4's army management).
+- Open with it: whether a computer player's side should fight loose whatever its hero's formation (0x463679) is decided when the game has computer players (E10) or a formation command (army management, E08 decision 48).

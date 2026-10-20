@@ -2774,3 +2774,35 @@ engine code changed only by T22a1 (the writer's underground and guards, `h3-expe
 other lanes, and #291's full local verify with the original data passed on that code
 (b4487432, all 16 steps). The batch is staged and scored; the HANDOFF, this log and `QUEUE.md`
 are current. Increment 4's refinement is next (QUEUE: T23).
+
+### Increment 4 refined: T23 (2026-10-20, `adventure/e08-t23`)
+
+The user merged T22b (#293) and asked for small increments, the seam confirmed first (ADV-Q14):
+increment 4 is **hero progression only** (decision 48), this session **T23 alone, docs only**
+(decision 49). The baseline was `master` 6f7d601 (engine code 08410436, verified on that commit;
+the light gates passed here).
+
+- **Increment 4** (decision 48): experience to levels (the table 0x679C88, the steps × 1.2 beyond
+  level 12, the level limit game +0x1F877), a level-up's primary draw and secondary offers as a
+  pending decision of the owner, the levels' gains at load (E3-6) lifting the import's refusal of a
+  custom experience (decision 22), the battle's experience reaching levels. The rest of the
+  former sketch (the movement profile, the objects that give experience, artifacts, spells or
+  skills, army management, treasures with an artifact) is the sketch's increment 5; the week's
+  increment becomes 6; the order is decided at each refinement.
+- **The first round** (decision 49): T24a the progression survey (the table and the level limit,
+  the level-up 0x4DA720 with the seed +0x8F, the levels at load, what reads the level, disputes and
+  quirk candidates, the census, the batch's plan), T24b the ADR amendment drafts (expected
+  ADR-0017 and ADR-0013), the design note and the cut, after T24a's checkpoint.
+- **The batch** (decision 50): on the harness (`level_up`, `heroes:experience`), with decision
+  45's four rows kept (the agent's call).
+- **The inbox sorted:** taken by T24a and removed or struck: E3-6's gains at load (T22b), the four
+  maps refused for a custom experience (T18b), the level limit (T19a2a), how a custom experience
+  becomes a level (T17a), the E04 refinement's progression. Re-tagged for the sketch's increment
+  5: the formation command (T22b), the grounds' movement effects (T20a2a), `Pandora's Box ` and the
+  artifacts (T20a2a, T19a2a), the army dialog (T17b), flying before a neighbour's visit (T11a), the
+  Scouting specialty (T8a), the step price's omissions (T7b); the computer players' daily bonus to
+  E10 (T11a); the week's events to the week's increment (T6b). New: where "increment 4" still
+  names what moved (two code comments, ADR-0013, ADR-0016).
+- **Re-tagged in the lane's docs** (decision 48): `docs/formats/h3m.md` (a monster's artifact),
+  `docs/stubs.toml` (`ADV-STUB-2`), `docs/rules/quirks-adventure.md` (the formation command),
+  ADV-MON-001, GAM-CAL-001 and GAM-BAT-004's summaries, `E08-design.md` §2 and §4.
