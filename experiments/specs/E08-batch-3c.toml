@@ -1,0 +1,197 @@
+# Experiment batch E3c (E08 T22a2b; decision 45): the heroes' rows of batch E3 on Normal: the
+# heroes off the map's experience (D-12), a custom experience of 5 000 at the start (§6.3), a
+# hot-seat surrender's gold (D-13) and the defender's tight formation in that battle (§6.4).
+# Batch E3's hero rows (survey docs/rules/surveys/E08-battles.md §13, E3-6 to E3-9); the monster
+# rows are batches 3a and 3b. The user chose the code reading for D-12 and D-13 (decision 23); the
+# batch confirms or refutes it. Build: see docs/experiments/README.md. Predictions are for the agent
+# who evaluates the results; the template never shows them.
+#
+# | row  | question                                  | the reading (the engine)        | VCMI 1.7.5            |
+# | E3-7 | the default experience (D-12)             | 40 to 90                        | 40 to 89              |
+# | E3-6 | 5 000 experience at the start             | level 5; the gains not read     | level 5, 4 level-ups' gains |
+# | E3-8 | a surrender's price (D-13)                | Red -1 200, Blue +1 200         | Red -1 200, Blue +0   |
+# | E3-8 | the map's tight formation (E3-9)          | Blue tight: rows 2, 4, 5, 6, 8  | reset: loose 0, 2, 5, 8, 10 |
+#
+# The early signs (the client lane's harness check, E17 H1 and H2, not this batch): 147 heroes off
+# the map held 40 to 90 in two runs (1 and 4 at 90); a hero with 5 000 experience, 2/3/1/1, basic
+# Diplomacy and advanced Logistics started at level 5 with 4 level-ups' gains (3/5/1/2 with both
+# expert, then 3/4/2/2 with Diplomacy advanced); a defender's surrender moved its 470 gold to the
+# attacker's player. The check's tight hero led one stack, which stands on row 5 in either
+# formation, so E3-9 is new.
+#
+# The engine: a throwaway run of the compiled map through h3-map's reader and import and h3-game
+# (base:faithful, difficulty 1; never committed, E08-log.md T22a2b) gave every prediction marked
+# "the reading" below; E3-6's hero was built with experience 0 for it, since the import refuses an
+# experience of 1 000 or more (Unsupported::HeroExperience, decision 22: increment 4's levels).
+# Over seeds 1 to 5: E3-7 at level 1 with 66, 43, 46, 57, 73 experience; E3-8's battle at once, the
+# hexes below, the attacker's Swordsmen first (grass is the Castle's native terrain: +1 speed, a
+# tie with the Stone Gargoyles' 6, which the attacker wins, BAT-TRN-001), Red 20 000 to 18 800,
+# Blue 20 000 to 21 200, E3-8 off the map, E3-9's army whole and its experience 0.
+#
+# The trap of the starting bonus: a hot-seat player's random starting bonus may give a hero an
+# artifact. A surrender discount's artifact (Statesman's Medal, Diplomat's Ring, Ambassador's Sash)
+# on E3-8 would lower the price (by 10 % each; HER-BAT-007): a price other than 1 200 with
+# Blue's gain equal to Red's loss still answers D-13. E3-8's primary skills are read before.
+
+[map]
+name = "E08 batch E3c"
+description = "Engine-generated experiment map (E08, batch E3c): the heroes' rows of batch E3. Hot seat, Red and Blue human, difficulty Normal; follow the results template."
+size = 36
+terrain = "grass"
+difficulty = "normal"
+instructions = [
+    "Copy `E08-batch-3c.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human, difficulty **Normal**. Before you start it, compare the stamp at the start of the map's description with the stamp above. Save right away (save 1).",
+    "Move only the hero an encounter names, and only as it says.",
+    "E3-7's heroes off the map and Blue's gold during Red's turn show only in the game's memory: the capture harness reads them (clients/capture/batches/E08-batch-3c.toml). Played by hand, leave the heroes off the map empty and read Blue's gold at the start of Blue's turn (save 1 for the gold before the battle: end Red's turn at once).",
+    "Order: day 1, Red's turn: E3-7, E3-6, then E3-8; end the turn. Blue does nothing. Then the map is done.",
+    "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
+]
+
+# --- D-12: the default experience -------------------------------------------------------------
+
+[[encounter]]
+id = "E3-7"
+title = "The heroes off the map's experience at the start"
+questions = ["D-12", "GAM-HER-001"]
+procedure = [
+    "Day 1, Red's turn, before anything else: select Red's hero E3-7 (the hero type's own army and skills). Read its experience and level (its portrait's window).",
+    "The heroes off the map (every hero type not placed on this map): their experience, lowest and highest, from the game's memory (the harness).",
+]
+record = [
+    { field = "the heroes off the map: experience (how many, lowest to highest, how many at each)" },
+    { field = "E3-7's experience" },
+    { field = "E3-7's level" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The reading** (new_game_heroes 0x4BFE94: random_between(0, 50) + 40 per hero record,
+  0x50B230 a + rand() mod (b - a + 1)); the engine's GAM-HER-001 for a hero without a custom
+  experience): every hero **40 to 90**, uniform over 51 values. Of the 156 hero records 4 stand on
+  this map: **152 heroes off the map**. P(at least one at 90) = 1 - (50/51)^152 = 95.1 %; at least
+  one at 40 the same.
+- **VCMI 1.7.5** (CGHeroInstance::initExp, rand.nextInt(40, 89)): 40 to 89: **never a 90**.
+- So a 90 confirms D-12 as the reading and refutes VCMI's bound; no 90 (4.9 % under the reading)
+  leaves it open: play the map again (each new game draws again). A value outside 40 to 90 refutes
+  both.
+- E3-7 is placed with its type's defaults, so its experience is one more draw of the same: **40 to
+  90**, **level 1**.
+"""
+[encounter.hero]
+type = "Damacon"
+specialty = "resource gold"
+at = [3, 3]
+defaults = true
+
+# --- §6.3: a custom experience at the start ---------------------------------------------------
+
+[[encounter]]
+id = "E3-6"
+title = "A hero with a custom experience of 5 000: its level and skills at the start"
+questions = ["§6.3", "GAM-HER-001"]
+procedure = [
+    "Day 1, Red's turn, after E3-7: select Red's hero E3-6 (a Death Knight, one Pikeman; the map gives it 5 000 experience, 2/3/1/1 and eight secondary skills, each basic). Read its details in its portrait's window.",
+    "Note its experience, level, primary skills and the level of each of its eight secondary skills.",
+]
+record = [
+    { field = "E3-6's experience" },
+    { field = "E3-6's level" },
+    { field = "E3-6's primary skills (attack/defense/power/knowledge)" },
+    { table = ["skill (basic on the map)", "its level at the start"], labels = ["Pathfinding", "Archery", "Logistics", "Scouting", "Navigation", "Mysticism", "Offense", "Armorer"] },
+    { field = "anything odd" },
+]
+predictions = """
+- **The level**: 5 000 lies between levels 5 (4 600) and 6 (6 200) of the experience table (the
+  executable's i16 table at 0x679C88, read by hero_gain_experience 0x4E33B0; VCMI 1.7.5's
+  CHeroHandler expPerLevel the same): **level 5**
+  for every source; the experience **stays 5 000**.
+- **The reading** (map_hero_setup 0x486624): a custom experience copies the experience and the
+  level (+0x55) from the map's hero; where the level is computed and whether the levels' skills
+  are given at load was not read.
+- **VCMI 1.7.5** (CGHeroInstance::initHero calls levelUpAutomatically for a set experience): 4
+  level-ups, each a primary skill rolled by the Death Knight's levels-2-to-9 chances (HCTRAITS:
+  Attack 30, Defense 25, Power 20, Knowledge 25) and the first of the offered secondary skills
+  raised by one; with eight skills no new one fits, so each raises one of the eight. So **primary skills summing to 11** (each at least 2/3/1/1) and **the
+  eight skills summing to 12 levels** (basic 1 to expert 3; each at least basic).
+- **The early sign** (E17 H1, H2): the gains came at the start in two runs (4 primary points;
+  three secondary advances seen of the two skills named, the fourth unread): VCMI's column.
+- **Only the level** (no gains: 2/3/1/1, all basic) or a level other than 5 is the finding to
+  look for. The engine refuses the hero until increment 4 (the import's
+  Unsupported::HeroExperience, decision 22); the row tells increment 4 what to build.
+"""
+[encounter.hero]
+type = "Clavius"
+specialty = "resource gold"
+at = [3, 7]
+experience = 5000
+primary = [2, 3, 1, 1]
+skills = [["Pathfinding", 1], ["Archery", 1], ["Logistics", 1], ["Scouting", 1], ["Navigation", 1], ["Mysticism", 1], ["Offense", 1], ["Armorer", 1]]
+army = [["Pikeman", 1]]
+
+# --- D-13 and §6.4: a hot-seat surrender and the defender's tight formation -------------------
+
+[[encounter]]
+id = "E3-8"
+title = "A hot-seat battle between heroes: the attacker surrenders; the defender's tight formation"
+questions = ["D-13", "E3-9", "GAM-BAT-005", "BAT-FLE-002", "BAT-SET-001"]
+procedure = [
+    "Day 1, Red's turn, after E3-6: select Red's hero E3-8 (10 Pikemen, 5 Archers, 2 Swordsmen, 1 Monk, 4 Halberdiers; loose formation). Read its primary skills and Red's gold. Blue's hero E3-9 (tight formation, five stacks) stands on the tile east of it.",
+    "Click E3-9 twice: the battle starts at once. Note each stack's hex at the start (the harness reads them).",
+    "Blue's stacks defend until a stack of Red's acts; then Red surrenders (the surrender button, then Yes).",
+    "Note Red's and Blue's gold after, whether E3-8 is still on the map, its army and E3-9's experience.",
+]
+record = [
+    { field = "E3-8's primary skills (attack/defense/power/knowledge) before" },
+    { field = "Red's gold before" },
+    { field = "Blue's gold before" },
+    { field = "the questions asked (none, …)" },
+    { field = "the attacker's hexes at the start (Red, loose)" },
+    { field = "the defender's hexes at the start (Blue, tight on the map)" },
+    { field = "the stacks at the start" },
+    { field = "who surrendered (attacker, defender, none)" },
+    { field = "the battle's winner" },
+    { field = "Red's gold after" },
+    { field = "Blue's gold after" },
+    { field = "E3-8 on the map after (yes/no)" },
+    { field = "E3-8's army after" },
+    { field = "E3-9's experience after" },
+    { field = "anything odd" },
+]
+predictions = """
+- **No question**: a hero visited by an enemy hero is attacked at once (survey §7.1, 0x4A2800;
+  GAM-BAT-001). The stacks at the start: attacker 10 Pikemen, 5 Archers, 2 Swordsmen, 1 Monk, 4
+  Halberdiers | defender 10 Gremlins, 5 Stone Gargoyles, 3 Stone Golems, 2 Magi, 5 Master
+  Gremlins (no war machines: the map lists no artifacts).
+- **The price** (BAT-FLE-002): 50 % of the living stacks' gold cost, 10 x 60 + 5 x 100 + 2 x 300 +
+  1 x 400 + 4 x 75 = 2 400: **1 200** (no Diplomacy, no discount).
+- **D-13, the reading** (action_dispatcher 0x479637 to 0x47966F; the engine's GAM-BAT-005): Red's
+  gold **-1 200**, Blue's **+1 200**. **VCMI 1.7.5** (doSurrenderAction): Red's -1 200, **Blue's
+  unchanged**. The early sign (E17 H1) moved a defender's 470 to the attacker's player; this row
+  asks the other direction.
+- **The outcome**: the defender wins (who surrendered: the attacker); **E3-8 leaves the map with
+  its whole army** (GAM-BAT-003); **E3-9's experience stays 0** (no creature killed; the +500 for a defeated
+  hero is taken off again after a surrender, battle_experience 0x46A350, GAM-BAT-002).
+- **E3-9, the formation** (BAT-SET-001, by slot: loose rows 0, 2, 5, 8, 10 and tight 2, 4, 5, 6,
+  8 for five stacks; hex = 17 x row + column, the attacker in column 1, the defender in column 15;
+  the engine keeps the map's flag, GAM-HER-001): **the attacker (loose) 1, 35, 86, 137, 171** for
+  every source; **the defender (tight) 49, 83, 100, 117, 151** under the reading. VCMI 1.7.5
+  resets every hero to loose at the start (initHero's setFormation(LOOSE)): the defender **15, 49,
+  100, 151, 185**. Only
+  83/117 against 15/185 tell them apart; both columns' 49, 100, 151 are shared.
+- The tight table rests on VCMI's layout and the wiki (BAT-SET-001), never observed in the
+  original: a defender other than these two answers both questions (record the hexes as read).
+"""
+[encounter.hero]
+type = "Octavia"
+specialty = "resource gold"
+at = [3, 11]
+primary = [0, 0, 1, 1]
+army = [["Pikeman", 10], ["Archer", 5], ["Swordsman", 2], ["Monk", 1], ["Halberdier", 4]]
+[encounter.opponent.hero]
+type = "Gelare"
+specialty = "resource gold"
+name = "E3-9"
+primary = [0, 0, 1, 1]
+army = [["Gremlin", 10], ["Stone Gargoyle", 5], ["Stone Golem", 3], ["Mage", 2], ["Master Gremlin", 5]]
+tight = true
