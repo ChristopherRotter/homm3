@@ -1,6 +1,7 @@
 # E23 — The original's battle AI
 
-Status: **in progress**, refined 2026-10-19 (BAT-Q52); increment 1 (T1a) next · Follows E05 (the
+Status: **in progress**, refined 2026-10-19 (BAT-Q52); T1a1 done, the rest of T1a's cut up for the
+user's checkpoint · Follows E05 (the
 AI lane, nearly done) · Followed by E06 (training: this policy holds the neutral seat; AI-Q1) ·
 The battle lane's, later the AI lane's (BACKLOG).
 
@@ -73,15 +74,34 @@ whose player is gone (the server lane, M5); auto-combat as a feature (the functi
 
 ## Tasks (outline; refine at the start of each increment; keep status current)
 
-**Increment 1:** T1a.
+**Increment 1:** T1a, split by size (the user, 2026-10-20: small increments; T1a1's map shows
+about 45 KB of unread code beyond the dispatch).
 
-- [ ] **T1a The reading's map** — the computer's battle turn in `Heroes3.exe`, from the battle
-  loop's call (0x4744C0 → 0x477EE0) down through 0x4221F0: the branch each stack takes (shoot,
-  melee, walk, wait, defend, a creature's cast) and what decides it; the hero's cast decision
-  (its entry, how it values a spell); the retreat and surrender test (0x41E570); the tactics
-  phase; the automatic Catapult and First Aid Tent; where it draws random numbers; what it reads
-  (difficulty, `human`, hidden information). A function map with sizes, recorded in
-  `installation.md` §7.34, that cuts the policy into increments. No code.
+- [x] **T1a1 The entries and the map** (2026-10-20) — the hero's cast at each activation
+  (0x422DA0), the stack's action with the retreat and surrender (0x477EE0: the computer never
+  surrenders), the stack's turn, a shooter's tactics placement, a walker's turn (no Wait below
+  Hard), the order of action; the rest mapped into parts S, O, W, P, C, H, A with sizes
+  (`installation.md` §7.34; the log).
+
+**Proposed for the user's checkpoint** (from §7.34's table; the neutral side first, each about
+one session's reading; the parts' names as there):
+
+- [ ] **T1a2 The shooters' rest and the walker's choice** — part S (the area value, the wall shot,
+  2.2 KB) and 0x421680 itself (2.3 KB): its branches (melee, move, the Tent and the Cart, the
+  arrow towers, its draw), its helpers named by role.
+- [ ] **T1a3 The walker's helpers** — the rest of part W and the order's sort, part O (about
+  10 KB): the melee targets and their values, the destinations, the odds (0x420A80, which reaches
+  the adventure AI's valuations, part A).
+- [ ] **T1a4 The AI pathfinder** — part P (4.6 KB): the walker's path among equally short ones
+  against BAT-MOV-003 (S-11, Q53).
+- [ ] **T1a5 The creature casts and the spell evaluation** — part C (12.9 KB): the cast entry's
+  kinds, the spell context 0x4369C0, the estimates, the predictions; shared with the hero's choice.
+- [ ] **T1a6 The hero** — part H (5.8 KB): the cast choice 0x43C800's candidates, the retreat test
+  0x41E570; part A (6.4 KB) only as far as the battle needs it (the adventure lane's to read with
+  its AI). The Catapult and the First Aid Tent are read (§7.29; §7.14, BAT-Q51).
+
+T1b may follow T1a5 (the neutral side's map complete), with T1a6 moved before T5: the seam's
+questions are the neutral side's. The user decides at the checkpoint.
 
 **Increment 2:** T1b, then the user's review.
 

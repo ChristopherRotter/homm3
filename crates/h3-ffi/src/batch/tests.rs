@@ -450,7 +450,7 @@ fn errors_are_codes_not_panics() {
         assert_eq!(h3_batch_second_mask(b, z, h, h, o, 1), H3_ERR_ARGUMENT);
     }
 
-    // Weights that overflow; then a refused action leaves only its env unchanged.
+    // Weights that overflow; then a refused action leaves its env unchanged while the other steps.
     assert_eq!(add(b, SKIRMISH, u32::MAX, EXTERNAL).0, H3_OK);
     let (code, message) = add(b, SKIRMISH, 1, EXTERNAL);
     assert!(
@@ -462,20 +462,40 @@ fn errors_are_codes_not_panics() {
         assert_eq!(h3_batch_reset(b, &buffers), H3_OK);
     }
     let mut rng = Rng::from_seed(2);
-    let mut chosen = actions(b, &arrays, 2, &mut rng);
-    chosen[0].entry = u32::MAX;
-    chosen[1] = H3Action {
-        entry: RETREAT as u32,
-        ..H3Action::default()
-    };
-    let episodes = arrays.episode.clone();
-    let buffers = arrays.buffers();
-    assert_eq!(
-        unsafe { h3_batch_step(b, chosen.as_ptr(), &buffers) },
-        H3_ERR_REJECTED
-    );
-    assert_eq!(arrays.status, [H3_ERR_INVALID_ACTION; 2]);
-    assert_eq!(arrays.episode, episodes);
+    for (refused, entry) in [(0, u32::MAX), (1, RETREAT as u32)] {
+        let mut chosen = actions(b, &arrays, 2, &mut rng);
+        chosen[refused] = H3Action {
+            entry,
+            ..H3Action::default()
+        };
+        let row = refused * OBSERVATION_LEN..(refused + 1) * OBSERVATION_LEN;
+        let obs = arrays.obs[row.clone()].to_vec();
+        let mask = arrays.mask[refused * ACTION_COUNT..(refused + 1) * ACTION_COUNT].to_vec();
+        let kept = (
+            arrays.to_move[refused],
+            arrays.episode[refused],
+            arrays.seed[refused],
+        );
+        let buffers = arrays.buffers();
+        assert_eq!(
+            unsafe { h3_batch_step(b, chosen.as_ptr(), &buffers) },
+            H3_ERR_REJECTED
+        );
+        let mut status = [H3_OK; 2];
+        status[refused] = H3_ERR_INVALID_ACTION;
+        assert_eq!(arrays.status, status);
+        assert_eq!(arrays.obs[row], obs[..]);
+        assert_eq!(
+            arrays.mask[refused * ACTION_COUNT..(refused + 1) * ACTION_COUNT],
+            mask[..]
+        );
+        let now = (
+            arrays.to_move[refused],
+            arrays.episode[refused],
+            arrays.seed[refused],
+        );
+        assert_eq!(now, kept);
+    }
     let chosen = actions(b, &arrays, 2, &mut rng);
     assert_eq!(
         unsafe { h3_batch_step(b, chosen.as_ptr(), std::ptr::null()) },

@@ -69,9 +69,11 @@ uv run --group train python -m h3env.train --minutes 60 --out runs/smoke   # --d
 Each update prints one line (samples, samples/s, self-play's attacker wins, truncations, the
 losses), each evaluation its win rates against Random (sampled and greedy, overall and per
 side); `--eval-every` minutes apart and at the end. Every `h3env.train.Config` field is an option
-(`python -m h3env.train --help`). The run's directory (`runs/` is git-ignored) gets `config.json`
-(the settings, the commit, the ABI), `metrics.jsonl` (one record per update and evaluation) and
-`checkpoint.pt` (the network and the optimizer at the last evaluation). The criterion of E05's
+(`python -m h3env.train --help`). Self-play keeps an opponent pool (design §8.2): in
+`--pool-share` of the episodes a frozen earlier network plays one side. The run's directory
+(`runs/` is git-ignored) gets `config.json` (the settings, the commit, the ABI), `metrics.jsonl`
+(one record per update and evaluation), `checkpoint.pt` (the network and the optimizer at the
+last evaluation) and `best.pt` (at the best sampled win rate). The criterion of E05's
 exit 7: the final evaluation's sampled `win_rate` at least 0.8 (greedy play can repeat itself
 against Random until the step limit).
 

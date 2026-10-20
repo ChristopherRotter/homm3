@@ -92,7 +92,10 @@ impl Pool {
 
     /// Runs `work` on each of `parts` (one per shard, [`shards`](Self::shards) of them), part k in
     /// worker k, and returns when every part is done. A worker's panic is resumed here once every
-    /// worker has finished.
+    /// worker has finished. What a panic leaves in the parts depends on the thread count (on the
+    /// caller's thread the one part stops where it panicked; workers finish the other parts), and
+    /// of several panics the one resumed on the scheduling: the batch is then broken (`h3-ffi`:
+    /// destroy it).
     pub(crate) fn run<T: Send>(&mut self, parts: Vec<T>, work: impl Fn(T) + Sync) {
         if self.workers.is_empty() {
             parts.into_iter().for_each(work);

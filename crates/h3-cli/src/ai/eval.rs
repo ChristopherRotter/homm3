@@ -10,7 +10,9 @@
 //!
 //! Reported per pair: each policy's win rate (both sides weighed equally; a draw or a truncation
 //! is no win) and value efficiency (its mean reward v1), and every policy's Glicko-2 rating
-//! (`rating`), each game one rating period, episode by episode in a fixed order of the pairs.
+//! (`rating`): the whole run one rating period, every game against the opponents' ratings at its
+//! start (the defaults), so that the ratings sum up every game and not the last few (E05 T9b, the
+//! user; one period per game held the deviation near 64 and remembered about 40 games).
 
 use std::fmt::Write as _;
 
@@ -155,7 +157,7 @@ pub fn run(source: &Scenario, options: &EvalOptions) -> Result<EvalReport, Strin
     let envs = options.envs.max(1);
     let per_env = options.episodes.div_ceil(envs);
     let mut pairs = vec![vec![PairResult::default(); n]; n];
-    let mut ratings = vec![Rating::default(); n];
+    let mut games: Vec<Vec<(Rating, Score)>> = vec![Vec::new(); n];
     let mut legal = LegalCommands::new();
     let reward = RewardConfig::default();
     for i in 0..per_env {
@@ -181,7 +183,8 @@ pub fn run(source: &Scenario, options: &EvalOptions) -> Result<EvalReport, Strin
                         }
                         None => Score::Draw,
                     };
-                    (ratings[a], ratings[b]) = rating::game(ratings[a], ratings[b], score);
+                    games[a].push((Rating::default(), score));
+                    games[b].push((Rating::default(), score.reversed()));
                 }
             }
         }
@@ -193,7 +196,10 @@ pub fn run(source: &Scenario, options: &EvalOptions) -> Result<EvalReport, Strin
             .map(|(name, _)| name.clone())
             .collect(),
         pairs,
-        ratings,
+        ratings: games
+            .iter()
+            .map(|games| rating::period(Rating::default(), games))
+            .collect(),
     })
 }
 
@@ -215,8 +221,10 @@ fn play(
     while let Some(side) = env.to_move() {
         let i = side.index();
         let command = seats[i].choose(&env, side, &mut rngs[i], legal);
-        // A policy plays legal commands, which always apply (property-tested in h3-battle).
-        let _ = rollout::step_command(&mut env, side, command);
+        // A policy plays legal commands, which always apply (property-tested in h3-battle); a
+        // refusal would repeat itself forever.
+        rollout::step_command(&mut env, side, command)
+            .map_err(|e| format!("episode {seed:#x}: {command:?} refused: {e:?}"))?;
     }
     let rewards = env.state().outcome().map_or([0.0; 2], |outcome| {
         h3_sim::reward::rewards(reward, env.ruleset(), env.setup(), &outcome)

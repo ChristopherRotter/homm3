@@ -4,6 +4,11 @@
  *
  * Handles are opaque. Functions return H3_OK (0) or a negative error code; they never unwind.
  * Sides: 0 = attacker, 1 = defender. A handle must not be used from two threads at once.
+ *
+ * Trusted tooling (ADR-0011, ADR-0025 point 12): h3_env_fork, h3_env_state_hash and the episode
+ * seeds (H3BatchBuffers.episode_seed, h3_batch_episode_seed) carry the full state or the battle's
+ * future draws. They are for training tools, replays and tests: never an agent's input, never
+ * forwarded to a client. An agent sees the projected observations only (h3_env_observe, obs).
  */
 #ifndef H3_H
 #define H3_H
@@ -71,7 +76,7 @@ H3Env *h3_env_create_synthetic(uint32_t scenario, uint64_t seed, uint32_t max_st
 H3Env *h3_env_create_scenario(const char *toml, size_t len, uint64_t seed, uint32_t max_steps,
                               char *error, size_t error_len);
 void h3_env_destroy(H3Env *env);
-H3Env *h3_env_fork(const H3Env *env);
+H3Env *h3_env_fork(const H3Env *env); /* trusted tooling: the full state */
 int32_t h3_env_reset(H3Env *env, uint64_t seed);
 int32_t h3_env_to_move(const H3Env *env);
 int32_t h3_env_legal_mask(H3Env *env, int32_t actor, uint8_t *out, size_t len);
@@ -82,7 +87,7 @@ int32_t h3_env_second_mask(H3Env *env, int32_t actor, uint32_t entry, uint16_t s
                            uint16_t target, uint8_t *out, size_t len);
 int32_t h3_env_observe(const H3Env *env, int32_t viewer, float *out, size_t len);
 int32_t h3_env_step(H3Env *env, int32_t actor, H3Action action, H3StepResult *out);
-uint64_t h3_env_state_hash(const H3Env *env);
+uint64_t h3_env_state_hash(const H3Env *env); /* trusted tooling: the full state's hash */
 
 /* The training batch (v27, ADR-0025): N envs per handle, stepped with one call on T worker
  * threads, each env's next episode started in the call that ends one (its outputs then show the
@@ -139,7 +144,9 @@ typedef struct H3BatchBuffers {
                                written only for the envs truncated in this call */
     uint32_t *episode;      /* the env's episode counter (0 the first) */
     uint32_t *scenario;     /* the index of its scenario, in the order added */
-    uint64_t *episode_seed; /* its seed: a single env with it plays the same battle */
+    uint64_t *episode_seed; /* its seed (trusted tooling): a single env of the episode's
+                               scenario with both sides human and this seed plays the same
+                               battle (an encounter's: Rust's Scenario::episode only) */
     int32_t *status;        /* H3_OK, or why the env refused this call's action (unchanged) */
     int8_t *encounter;      /* its episode's H3_ENCOUNTER_* kind (v28) */
 } H3BatchBuffers;
@@ -164,7 +171,8 @@ int32_t h3_batch_add_encounters(H3Batch *batch, uint32_t weight, const uint32_t 
 /* Every env's first episode (a later call replays the same episodes). */
 int32_t h3_batch_reset(H3Batch *batch, const H3BatchBuffers *out);
 /* The head masks for every env at once (len >= N * h3_spell_count() or h3_target_count()),
- * conditioned on each env's earlier choices; "0 only" for an entry that is no cast. */
+ * conditioned on each env's earlier choices; "0 only" for an entry that is no cast. The N-value
+ * input arrays must not overlap out. */
 int32_t h3_batch_spell_mask(H3Batch *batch, const uint32_t *entries, uint8_t *out, size_t len);
 int32_t h3_batch_target_mask(H3Batch *batch, const uint32_t *entries, const uint16_t *spells,
                              uint8_t *out, size_t len);
@@ -172,6 +180,7 @@ int32_t h3_batch_second_mask(H3Batch *batch, const uint32_t *entries, const uint
                              const uint16_t *targets, uint8_t *out, size_t len);
 /* actions[0..N]; H3_ERR_REJECTED if an env refused its action (see status), the others step. */
 int32_t h3_batch_step(H3Batch *batch, const H3Action *actions, const H3BatchBuffers *out);
+/* The seed of an env's episode (0 the first), as H3BatchBuffers.episode_seed (trusted tooling). */
 uint64_t h3_batch_episode_seed(uint64_t batch_seed, uint32_t env, uint32_t episode);
 
 #ifdef __cplusplus

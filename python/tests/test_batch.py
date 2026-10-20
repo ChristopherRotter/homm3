@@ -147,6 +147,33 @@ def test_escapes_are_refused_and_change_nothing() -> None:
     np.testing.assert_array_equal(bits(batch.obs[1]), obs[1])
 
 
+def test_the_binding_refuses_what_the_engine_would_misread() -> None:
+    # E05 T9b: the engine reads N values from each head array and writes into the arrays whose
+    # addresses it holds; ctypes would wrap a negative or oversized number silently.
+    batch = BattleBatch(3, seed=2)
+    batch.add_scenario(scenario("full"))
+    batch.reset()
+    entries = np.zeros(3, np.uint32)
+    with pytest.raises(ValueError, match="entries"):
+        batch.spell_mask(entries[:1])
+    with pytest.raises(ValueError, match="spells"):
+        batch.target_mask(entries, np.zeros(4, np.uint16))
+    with pytest.raises(ValueError, match="targets"):
+        batch.second_mask(entries, np.zeros(3, np.uint16), np.zeros((3, 1), np.uint16))
+    with pytest.raises(AttributeError):
+        batch.obs = batch.obs.copy()
+    batch.actions = batch.actions[:2]
+    with pytest.raises(ValueError, match="actions"):
+        batch.step()
+    for options in ({"mana_price": -1}, {"seed": -1}, {"max_steps": 1 << 32}):
+        with pytest.raises(ValueError, match="out of range"):
+            BattleBatch(1, **options)
+    with pytest.raises(ValueError, match="out of range"):
+        BattleBatch(-1)
+    with pytest.raises(ValueError, match="weight"):
+        batch.add_scenario(scenario("duel"), weight=-1)
+
+
 def test_encounters_are_an_episode_source() -> None:
     n = 16
     batch = BattleBatch(n, threads=2, seed=4, max_steps=400)

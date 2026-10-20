@@ -554,11 +554,20 @@ fn single_heads(
 #[test]
 fn the_head_calls_answer_as_the_single_envs() {
     // A non-cast entry's heads come from the entry mask the batch kept at the last call, a cast's
-    // from the env: both as the single env's, for every legal entry (the escapes the batch masks
-    // out included), the casts, illegal and out-of-range entries, and earlier heads other than 0.
+    // from the env: both as the single env's, for every legal entry, the casts, illegal and
+    // out-of-range entries, and earlier heads other than 0; an escape's are refused as the escape
+    // (ADR-0025 point 7), where the single env allows it too.
+    // On the caller's thread and on a worker per env.
+    for threads in [0, 2] {
+        head_calls_as_single_envs(threads);
+    }
+}
+
+/// [`the_head_calls_answer_as_the_single_envs`] with `threads` workers.
+fn head_calls_as_single_envs(threads: u32) {
     let config = BatchConfig {
         envs: 2,
-        threads: 0,
+        threads,
         seed: 4,
         max_steps: 0,
         reward: RewardConfig::default(),
@@ -571,6 +580,7 @@ fn the_head_calls_answer_as_the_single_envs() {
     let mut rng = Rng::from_seed(2);
     let mut legal = LegalCommands::new();
     let mut checked = 0;
+    let mut escapes = 0;
     for _ in 0..8 {
         let mut entries = std::collections::BTreeSet::from([
             0,
@@ -607,11 +617,12 @@ fn the_head_calls_answer_as_the_single_envs() {
                         &seconds[i * TARGET_COUNT..(i + 1) * TARGET_COUNT],
                     ]
                     .concat();
-                    assert_eq!(
-                        rows,
-                        single_heads(&batch, i, entry, earlier),
-                        "{entry} {earlier:?}"
-                    );
+                    let mut single = single_heads(&batch, i, entry, earlier);
+                    if [RETREAT, SURRENDER].contains(&entry) {
+                        escapes += usize::from(single.contains(&1));
+                        single.fill(0);
+                    }
+                    assert_eq!(rows, single, "{entry} {earlier:?}");
                 }
                 checked += 1;
             }
@@ -620,6 +631,7 @@ fn the_head_calls_answer_as_the_single_envs() {
         batch.step(&actions, &mut arrays.outputs()).unwrap();
     }
     assert!(checked > 100, "{checked}");
+    assert!(escapes > 0, "no escape the single env allows");
 }
 
 #[test]
@@ -689,7 +701,7 @@ fn an_episode_without_a_decision_is_skipped() {
     batch.reset(&mut arrays.outputs()).unwrap();
     for (i, r) in arrays.reports.iter().enumerate() {
         assert_eq!(r.to_move, None);
-        assert_eq!(r.episode, MAX_SKIPPED_EPISODES);
+        assert_eq!(r.episode, MAX_SKIPPED_EPISODES - 1);
         assert!(batch.env(i).is_none());
     }
     assert!(arrays.obs.iter().all(|v| *v == 0.0));

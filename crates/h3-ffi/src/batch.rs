@@ -115,7 +115,9 @@ pub struct H3BatchBuffers {
     pub episode: *mut u32,
     /// [N]: the index of its scenario, in the order they were added.
     pub scenario: *mut u32,
-    /// [N]: its seed (a single env with this seed plays the same battle).
+    /// [N]: its seed, trusted tooling (it decides the battle's draws: never an agent's input). A
+    /// single env of the episode's scenario with both sides human and this seed plays the same
+    /// battle; an encounter's episode is `h3_sim::batch::Scenario::episode`'s.
     pub episode_seed: *mut u64,
     /// [N]: `H3_OK`, or why the env refused this call's action (it is unchanged).
     pub status: *mut i32,
@@ -617,8 +619,8 @@ pub unsafe extern "C" fn h3_batch_second_mask(
     })
 }
 
-/// The seed of episode `episode` (0 the first) of env `env` in a batch with seed `batch_seed`: a
-/// single env created from the episode's scenario with this seed plays the same battle.
+/// The seed of episode `episode` (0 the first) of env `env` in a batch with seed `batch_seed`, as
+/// [`H3BatchBuffers::episode_seed`] (trusted tooling).
 #[unsafe(no_mangle)]
 pub extern "C" fn h3_batch_episode_seed(batch_seed: u64, env: u32, episode: u32) -> u64 {
     episode_seed(batch_seed, env, episode)
