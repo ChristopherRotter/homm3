@@ -229,6 +229,11 @@ Prioritized fictitious self-play (AlphaStar's PFSP) over the learner's past, gro
 
 ## 9. Costs on the user's machine (estimates; T2 to T4 measure them)
 
+Measured by T3b's hour (`t3b-1`, `E06-log.md`): about 5 100 samples/s; a gate 18 s to 162 s, a
+ladder of 250 per kind 50 s to 302 s, the final ladder 391 s; at a gate every 5 M samples the
+gates and ladders took 21.4 % of the run, the ladders three quarters of that. The estimates below
+stay for what is not measured yet.
+
 - **Training:** about 8 500 samples/s end to end with E05's pool and evaluations (T8c); the
   pool's frozen passes cost a third of the updates per minute, which §8's live set bounds.
 - **Checkpoint:** about 75 MB (the network, Adam's moments, the league table), under a second on

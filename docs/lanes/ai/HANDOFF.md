@@ -17,10 +17,10 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   interruptible and resumable. **Increment 1 done:** T1, T2a (#310; ADR-0026 in #306: the design
   note `docs/epics/E06-design.md`, the run's config and record), T2b1 (#315: the full checkpoint,
   Ctrl+C, `--resume`), T2c (#319: C ABI v31). **Increment 2 done:** T3a (#324: the held-out sets
-  v1, the bots' table), T3b (the SPRT gate, promotions, ladders, `--init-from`: the pull request
-  of `claude/pensive-maxwell-16n287`). **Next:** the user's hour with gates
-  (`configs/e06-t3b.toml`), then increment 3 (T4, the league) at the user's checkpoint.
-- **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v31 (E06 T2c: the record's identity, N capped) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q9, AI-QUIRK-1, AI-STUB-1.
+  v1, the bots' table), T3b (#328: the SPRT gate, promotions, ladders, `--init-from`); the
+  user's hour `t3b-1` (evaluation 21.4 %, the agent at the bots' level, stalling: AI-Q9).
+  **Next:** increment 3 (T4, the league) with AI-Q9 at the user's checkpoint.
+- **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v31 (E06 T2c: the record's identity, N capped) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q10, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
 ## Standing traps
@@ -91,13 +91,13 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 
 ## Recent sessions
 
+### 2026-10-20 — E06 T3b's hour (`t3b-1`)
+
+- The user ran `configs/e06-t3b.toml`: record committed, results in `E06-log.md`; AI-Q9
+  (stalling) for T4; the record keeps the ladders' truncations.
+
 ### 2026-10-20 — E06 T3b (the evaluation gate)
 
 - #324 merged; the user: "no need to cut" T3b. The SPRT gate, promotions, ladders, record schema
   4, checkpoint format 2, `--init-from`. 87 Python tests with torch (CPU), 69 without; the scoped
   verify (Python only); a real CLI run in the sandbox (`E06-log.md`).
-
-### 2026-10-20 — E06 T3a (the held-out sets v1, the bots' table)
-
-- Offered T3a in two pieces; the user chose one pull request. `h3 ai eval --set`, `--json`, the
-  report set in Python, the bots' table, the bots' fallbacks tested; the full verify.
