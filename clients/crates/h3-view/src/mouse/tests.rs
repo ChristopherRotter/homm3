@@ -212,6 +212,8 @@ fn slots_point_their_swords_at_the_hex_and_fill_the_rest() {
     );
     assert_eq!(slots(&o, &legal(&[(1, 89)]), 90), [8; 12]);
     assert_eq!(slots(&o, &legal(&[]), 90), [0; 12]);
+    // At the field's edge (hex 100, column 15): no hex right of it, its slots copied.
+    assert_eq!(slots(&o, &legal(&[(3, 99)]), 100), [8; 12]);
     // No target, no acting stack.
     assert_eq!(slots(&o, &legal(&[(1, 89)]), 91), [0; 12]);
     let mut idle = o.clone();
@@ -242,7 +244,11 @@ fn slots_point_their_swords_at_the_hex_and_fill_the_rest() {
 fn over_the_field_the_cursor_follows_the_hex() {
     let o = battle();
     let l = layout();
-    let moves = [Command::Move { to: 87 }, Command::Move { to: 103 }];
+    let moves = [
+        Command::Move { to: 87 },
+        Command::Move { to: 103 },
+        Command::Wait {},
+    ];
     // An empty hex in reach: walk; out of reach or in a side column: nothing.
     let walk = at(&o, &moves, centre(87));
     assert_eq!(

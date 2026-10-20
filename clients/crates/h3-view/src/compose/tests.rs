@@ -244,9 +244,25 @@ fn a_projectile_is_drawn_plain_and_mirrored_toward_the_left() {
         x: 0,
         y: 0,
     };
-    let screen = compose(&[background, shot(0, false), shot(2, true)], &b, &small()).unwrap();
+    let screen = compose(
+        &[background.clone(), shot(0, false), shot(2, true)],
+        &b,
+        &small(),
+    )
+    .unwrap();
     let [bl, r, w] = [BLUE, RED, WHITE].map(|c| FORMAT.pack(c));
     assert_eq!(screen.pixels()[..6], [r, w, w, r, bl, bl]);
+    // E17 M3 T6c-1: the cursor by the same drawer, its run skipped.
+    let cursor = Draw::Cursor {
+        def: "PR.DEF".to_string(),
+        frame: 0,
+        x: 1,
+        y: 0,
+    };
+    let screen = compose(&[background, cursor.clone()], &b, &small()).unwrap();
+    assert_eq!(screen.pixels()[..4], [bl, r, w, bl]);
+    let missing = compose(&[cursor], &batch(), &small()).unwrap_err();
+    assert_eq!(missing, ComposeError::Missing("PR.DEF".into()));
     // A frame the DEF lacks.
     let missing = compose(&[shot(0, false)], &batch(), &small()).unwrap_err();
     assert_eq!(missing, ComposeError::Missing("PR.DEF".into()));

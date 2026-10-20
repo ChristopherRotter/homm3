@@ -281,6 +281,12 @@ mod tests {
                 x: 0,
                 y: 0,
             },
+            Draw::Cursor {
+                def: "CrCombat.def".to_string(),
+                frame: 6,
+                x: 0,
+                y: 0,
+            },
         ];
         let names: Vec<String> = names(&list, &layout).into_iter().collect();
         assert_eq!(
@@ -293,6 +299,7 @@ mod tests {
                 "CMFLAGL.DEF",
                 "CMNUMWIN.PCX",
                 "CR.DEF",
+                "CRCOMBAT.DEF",
                 "CROLLOVR.PCX",
                 "GAME.PAL",
                 "ICM001.DEF",
