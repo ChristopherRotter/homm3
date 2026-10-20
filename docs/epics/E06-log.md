@@ -218,3 +218,29 @@ entry only where a task builds on it.
   envs of its 500-env batches play on into later episodes. On the CPU the network's passes over
   those rows dominate; the user's hour on the GPU measures what it costs there (the lane's
   inbox).
+
+## T3b — The hour with gates on the user's machine (2026-10-20)
+
+- **The run** `t3b-1` (`python/records/t3b-1.json`; `configs/e06-t3b.toml`, commit `c6797b7`,
+  GTX 1070, Windows, 24 threads, 256 envs): 30 M samples in 124.3 minutes, 1 164 updates.
+- **Evaluation share 21.4 %** (26.6 minutes): 6 gates 7.7 minutes (18 s to 162 s, 25 to 874
+  pairs, 4 153 to 7 836 games each), 6 ladders 18.9 minutes (50 s to 391 s, the later ones
+  slower for the same games: longer battles). Training 97.7 minutes, about 5 100 samples/s (the
+  curve 4 400 to 5 900), below E05's 8 500 (T5's batch size and threads).
+- **Gates:** promoted at 5 M (25 pairs, +288 Elo), 10 M (175, +20), 15 M (322, +16), 25 M (874,
+  +12); rejected at 20 M (207 pairs, +2) and at the end (193, +1). Between 85 and 92 % of the
+  pairs score ½ (each side's attacker won its game, or truncations), so a gate decides in a few
+  hundred pairs; its uncounted games cost little on the GPU (the inbox item closes).
+- **Ladders** (the report set; final: 500 per kind): Random 0.503 (#0), 0.800, 0.811, 0.794,
+  0.783 (#4), final 0.792 ± 0.014; Aggressor 0.195, 0.500, 0.521, 0.528, 0.524, final 0.527 ±
+  0.018; Greedy 0.175, 0.465, 0.494, 0.497, 0.507, final 0.505 ± 0.018; the promoted network
+  before: 0.800 (#1 against #0), 0.521, 0.499, 0.485, final 0.477 ± 0.019 (#4 against #3, value
+  +0.014). The agent reaches the bots' level by 10 M samples and stays there (the bots' table:
+  Greedy 0.832, Aggressor 0.810 against Random; Greedy 0.533 against Aggressor).
+- **Stalling** (AI-Q9): self-play's truncations rose from 0 to 11.9 % of the episodes, the
+  attacker's wins from 0.73 to 0.62 down, the learner won 0.46 against its own frozen past, the
+  entropy fell to 2.29 by 10 M and rose to 2.93. Reward v1 at the end only and discounted (γ
+  0.995) lets the losing side gain by delaying; a truncation counts as no win for either side in
+  the ladders, so #4's 0.477 against #3 can be even. The record keeps each ladder opponent's
+  truncations since (`Record`). Decided at T4's refinement.
+

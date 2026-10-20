@@ -116,8 +116,9 @@ the user, 2026-10-20: T1 and T2a in one).
   (`h3env.train.gate`), promotions (`promoted/<n>.pt`, `best.pt`), the ladder per promotion and
   the final best's, `[gate]` and `[ladder]` replacing `[evaluation]`, record schema 4, checkpoint
   format 2 with a pending gate or ladder at the resume, `--init-from`; the record in
-  `E06-log.md`. The hour with gates on the user's machine (`configs/e06-t3b.toml`) is the user's
-  to run: its evaluation share sets T4's cadences.
+  `E06-log.md`. The hour with gates on the user's machine (`t3b-1`, 2026-10-20): evaluation
+  21.4 % of 124 minutes, the agent at the bots' level from 10 M samples on, stalling suspected
+  (AI-Q9).
 
 **Later increments** (cut at each checkpoint; proposed in design §10):
 

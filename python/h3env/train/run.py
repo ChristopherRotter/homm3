@@ -583,7 +583,10 @@ class Record:
                     **at,
                     **{k: record[k] for k in ("index", "final", "per_kind", "seconds")},
                     "opponents": {
-                        name: {k: row[k] for k in ("win_rate", "interval", "value", "kinds")}
+                        name: {
+                            k: row[k]
+                            for k in ("win_rate", "interval", "value", "kinds", "truncated")
+                        }
                         for name, row in record["opponents"].items()
                     },
                 }
