@@ -1,7 +1,8 @@
 """A run's lifecycle without torch (E06 T2a, T2b1; ADR-0026, `docs/epics/E06-design.md` §1 to
 §5): the config file and `--set`, the schedule in samples, atomic writes, the held-out check,
 the run's directory and record, what a resume needs (its allowed changes, the segments' seeds,
-the metrics cut back, Ctrl+C), and every committed record and config."""
+the metrics cut back, Ctrl+C), the league's bookkeeping (E06 T4a), and every committed record
+and config."""
 
 from __future__ import annotations
 
@@ -20,6 +21,7 @@ from h3env.train.evaluate import (
     REPORT_V1_SEED,
     episode_seeds,
 )
+from h3env.train.league import League
 from h3env.train.run import (
     RECORD_SCHEMA,
     RESUMABLE,
@@ -100,7 +102,8 @@ lr_schedule = "constant"
     [
         ("[ppo]\nlearning_rate = 1e-4\n", [], "unknown key `learning_rate` in \\[ppo\\]"),
         ("[env]\nlr = 1e-4\n", [], "it belongs to \\[ppo\\]"),
-        ("[league]\nsize = 4\n", [], "unknown table \\[league\\]"),
+        ("[pool]\npool_share = 0.5\n", [], "unknown table \\[pool\\]"),
+        ("[league]\nsize = 4\n", [], "unknown key `size` in \\[league\\]"),
         ("envs = 8\n", [], "it belongs to \\[env\\]"),
         ("", ["env.envs=many"], "`envs` takes an integer"),
         ("", ["env.envs=8.0"], "`envs` takes an integer"),
@@ -354,6 +357,7 @@ def _gate(update: int, samples: int, result: str, seconds: float = 30.0) -> dict
         "elo": 70.4,
         "games": 200,
         "seconds": seconds,
+        "league": [{"id": 0, "kind": "promoted", "samples": 0, "p": 0.5, "games": 0.0}],
     }
 
 
@@ -511,3 +515,52 @@ def test_every_committed_record_and_config_is_valid() -> None:
     assert configs
     for path in configs:
         load_config(path.read_text(encoding="utf-8"))
+
+
+def test_the_league_draws_scores_and_retires() -> None:
+    # Design §8: PFSP's weights from the decayed scores, the live set and when it is drawn again,
+    # the episodes' opponents, the most beaten member retired, the state round-tripped.
+    c = load_config("[league]\nmax_members = 3\nlive = 2\nlive_every = 100\nretire_games = 4\n")
+    league = League(c, seed=7)
+    assert not league.draw(0) and league.opponent() is None  # empty: self-play
+    first, retired = league.join("promoted", "promoted/0.pt", 0, 0)
+    assert (first.id, first.p, retired) == (0, 0.5, None)
+    # Fewer live than it could hold: drawn at once, whatever the cadence.
+    assert league.draw(0) and league.live == [0]
+    league.join("snapshot", "league/1.pt", 10, 1)
+    assert league.draw(10) and sorted(league.live) == [0, 1]
+    assert not league.draw(50) and league.draw(100) and not league.draw(150)
+    # The learner beat #0 in 6 of 6 games (p 7/8) and #1 in 1 of 4 (p 1/3): decayed per update.
+    league.settle({0: [6.0, 6], 1: [1.0, 4], 9: [3.0, 3]})
+    assert (league.member(0).p, league.member(1).p) == (7 / 8, 2 / 6)
+    assert league.member(9) is None and [m.played for m in league.members] == [6, 4]
+    league.settle({})
+    assert league.member(0).games == pytest.approx(6 * c.decay) and league.member(0).played == 6
+    w = league.weights(league.members)
+    assert w.sum() == pytest.approx(1.0) and w[1] / w[0] == pytest.approx(
+        ((1 - league.member(1).p) / (1 - league.member(0).p)) ** 2
+    )
+    # Episodes: about half self-play, the rest mostly against the member that still wins.
+    drawn = [league.opponent() for _ in range(4000)]
+    against = [m.id for m in drawn if m is not None]
+    assert 1800 < len(against) < 2200 and against.count(1) > 0.9 * len(against)
+    assert {league.side() for _ in range(20)} == {0, 1}
+    # Full: the most beaten among those with 4 games or more retires (#0), and leaves the live set.
+    league.join("snapshot", "league/2.pt", 20, 2)
+    member, retired = league.join("snapshot", "league/3.pt", 30, 3)
+    assert (member.id, retired.id) == (3, 0) and 0 not in league.live
+    assert [m.id for m in league.members] == [1, 2, 3]
+    # None has enough games after #1 is beaten too: the highest p of all, the oldest of equals.
+    league.settle({1: [4.0, 4]})
+    league.member(1).played = 0
+    assert league.join("snapshot", "league/4.pt", 40, 4)[1].id == 1
+    assert league.join("snapshot", "league/5.pt", 50, 5)[1].id == 2
+    # The state round-trips: the same draws follow.
+    again = League(c, seed=1)
+    again.restore(json.loads(json.dumps(league.state())))
+    assert again.table() == league.table() and again.draws.next == league.draws.next
+    assert [again.opponent() for _ in range(50)] == [league.opponent() for _ in range(50)]
+    # Every rollout draws with `live_every` 0; self-play only with `self_play` 1.
+    every = League(load_config("[league]\nlive_every = 0\nself_play = 1.0\n"), seed=1)
+    every.join("promoted", "promoted/0.pt", 0, 0)
+    assert every.draw(0) and every.draw(0) and every.opponent() is None

@@ -37,8 +37,13 @@ from .evaluate import HELD_OUT_BATCH_SEEDS, OPPONENTS, REPORT_V1_ENVS
 
 #: The version of `record.json`'s layout (`check_record`); 2: its segments (T2b1); 3: the
 #: engine's identity (the encodings' and encounters' versions, the batch's entries, T2c); 4: the
-#: gates, promotions and ladders instead of the evaluations, the parent (T3b).
-RECORD_SCHEMA = 4
+#: gates, promotions and ladders instead of the evaluations, the parent (T3b); 5: the league
+#: instead of the pool, its member table per gate (T4a).
+RECORD_SCHEMA = 5
+
+#: The config's tables of the older schemas committed records keep (`check_record`): 4 before the
+#: league (`t3b-1`).
+OLDER_TABLES = {4: ("env", "network", "ppo", "pool", "gate", "ladder", "checkpoint", "device")}
 
 #: The identity's keys a record needs.
 IDENTITY = (
@@ -93,13 +98,24 @@ class Config:
     value_coef: float = field(default=0.5, metadata=_in("ppo"))
     entropy_coef: float = field(default=0.01, metadata=_in("ppo"))
     max_grad_norm: float = field(default=0.5, metadata=_in("ppo"))
-    #: The share of episodes in which a frozen earlier network (from the pool) plays one side,
-    #: drawn per episode (self-play otherwise; `E05-log.md` §8.2; the league replaces it, T4).
-    pool_share: float = field(default=0.5, metadata=_in("pool"))
-    #: Snapshots the pool holds; when full, a new one replaces a random one (ages stay spread).
-    pool_size: int = field(default=8, metadata=_in("pool"))
-    #: Samples between snapshots (the first after this many).
-    pool_every: int = field(default=600_000, metadata=_in("pool"))
+    #: The league (design §8, `league`): the share of self-play episodes (else a live member plays
+    #: one side, drawn per episode).
+    self_play: float = field(default=0.5, metadata=_in("league"))
+    #: Samples between the learner's snapshots (the first after this many; 0: none, only the
+    #: promoted networks join).
+    snapshot_every: int = field(default=1_000_000, metadata=_in("league"))
+    #: The members kept (each a network on the device); a new one retires the most beaten.
+    max_members: int = field(default=16, metadata=_in("league"))
+    #: The members a rollout's new episodes draw from (bounding a call's forward passes).
+    live: int = field(default=4, metadata=_in("league"))
+    #: Samples between the live set's draws (0: at every rollout).
+    live_every: int = field(default=250_000, metadata=_in("league"))
+    #: PFSP's weight of a member, `(1 − p)^pfsp_power` (0: uniform).
+    pfsp_power: float = field(default=2.0, metadata=_in("league"))
+    #: The decay of the learner's score sums against each member, per update.
+    decay: float = field(default=0.99, metadata=_in("league"))
+    #: The games (not decayed) a member must have played before it may retire.
+    retire_games: int = field(default=200, metadata=_in("league"))
     #: Samples between gates (design §6): the learner against the best on the gate set v1, an
     #: SPRT promotes it; 0: only at the end. A run also gates at its end if it trained since its
     #: last gate.
@@ -267,15 +283,26 @@ def resolve(config: Config) -> Config:
     for key in ("samples", "envs", "max_steps", "rollout", "epochs", "minibatches", "hidden"):
         if getattr(c, key) <= 0:
             problems.append(f"`{key}` must be positive")
-    for key in ("threads", "pool_every", "gate_every", "torch_threads", "ladder_promoted"):
+    for key in ("max_members", "live"):
+        if getattr(c, key) <= 0:
+            problems.append(f"`{key}` must be positive")
+    for key in (
+        "threads",
+        "snapshot_every",
+        "live_every",
+        "retire_games",
+        "gate_every",
+        "torch_threads",
+        "ladder_promoted",
+    ):
         if getattr(c, key) < 0:
             problems.append(f"`{key}` must not be negative")
-    if c.checkpoint_minutes < 0:
-        problems.append("`checkpoint_minutes` must not be negative")
+    if c.checkpoint_minutes < 0 or c.pfsp_power < 0:
+        problems.append("`checkpoint_minutes` and `pfsp_power` must not be negative")
     if c.lr_schedule not in ("linear", "constant"):
         problems.append("`lr_schedule` is linear or constant")
-    if not 0.0 <= c.lr_floor <= 1.0 or not 0.0 <= c.pool_share <= 1.0:
-        problems.append("`lr_floor` and `pool_share` lie in [0, 1]")
+    if not 0.0 <= c.lr_floor <= 1.0 or not 0.0 <= c.self_play <= 1.0 or not 0.0 < c.decay <= 1.0:
+        problems.append("`lr_floor` and `self_play` lie in [0, 1], `decay` in (0, 1]")
     if c.seed in HELD_OUT_BATCH_SEEDS:
         problems.append("`seed` is a held-out set's batch seed (v0's, the v1 sets')")
     if not (0.0 < c.alpha < 0.5 and 0.0 < c.beta < 0.5 and c.elo0 < c.elo1):
@@ -472,7 +499,8 @@ CURVE = (
     "samples_per_s",
     "attacker_won",
     "truncated",
-    "pool_won",
+    "league_score",
+    "frozen_passes",
     "policy_loss",
     "value_loss",
     "entropy",
@@ -501,8 +529,8 @@ def _segment(record: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-#: A gate record's fields the record keeps.
-GATE = ("best", "result", "pairs", "counts", "llr", "score", "elo", "games", "seconds")
+#: A gate record's fields the record keeps (`league`: the member table at the gate, schema 5).
+GATE = ("best", "result", "pairs", "counts", "llr", "score", "elo", "games", "seconds", "league")
 
 
 class Record:
@@ -620,8 +648,12 @@ def check_record(record: Any) -> list[str]:
     nothing."""
     if not isinstance(record, dict):
         return ["not a JSON object"]
-    if record.get("schema") != RECORD_SCHEMA:
-        return [f"schema {record.get('schema')!r} is not {RECORD_SCHEMA}"]
+    schema = record.get("schema")
+    if schema != RECORD_SCHEMA and schema not in OLDER_TABLES:
+        return [
+            f"schema {schema!r} is not {RECORD_SCHEMA} (nor an older one, {list(OLDER_TABLES)})"
+        ]
+    tables = OLDER_TABLES.get(schema, tuple(t for t in TABLES if t))
     problems = []
     shapes = {
         "id": str,
@@ -642,7 +674,7 @@ def check_record(record: Any) -> list[str]:
     for key in IDENTITY:
         if key not in record["identity"]:
             problems.append(f"`identity.{key}` is missing")
-    for key in ("seed", "samples", *(t for t in TABLES if t)):
+    for key in ("seed", "samples", *tables):
         if key not in record["config"]:
             problems.append(f"`config.{key}` is missing")
     for key in ("samples", "updates", "episodes", "minutes", "evaluation_minutes", "ended"):
@@ -657,8 +689,9 @@ def check_record(record: Any) -> list[str]:
             problems.append(f"segment {i} lacks `segment`, `seed`, `ended`, `start` or `end`")
     if "parent" not in record:
         problems.append("`parent` is missing")
+    gate = {"samples", "result", "pairs", "llr", "score"} | ({"league"} if schema >= 5 else set())
     for name, needs in (
-        ("gates", {"samples", "result", "pairs", "llr", "score"}),
+        ("gates", gate),
         ("promotions", {"samples", "index", "how"}),
         ("ladders", {"samples", "index", "final", "opponents"}),
     ):

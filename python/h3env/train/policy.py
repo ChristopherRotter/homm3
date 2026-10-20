@@ -220,7 +220,7 @@ class Policy(nn.Module):
         )
 
     def frozen(self) -> Policy:
-        """A copy for the opponent pool: evaluation mode, no gradients."""
+        """A copy for the league and the lineage: evaluation mode, no gradients."""
         twin = copy.deepcopy(self)
         twin.eval()
         twin.requires_grad_(False)
