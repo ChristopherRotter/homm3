@@ -113,3 +113,29 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   hex left unmarked. The desperate kills in 0x41F3B0 use the top creature's remaining hit points
   where its lost ones belong. No rule of the engine changes here.
 - **Map:** 14 entries (5 new: 0x4205D0, 0x4B3F20, 0x435980, 0x4466C0, 0x4674C0; 9 updated).
+
+## T1a3d — the hero's value in the odds (2026-10-20, increment 1)
+
+- **The seam** (the user, 2026-10-20): all of T1a3d in one session (about 4.4 KB, of it about
+  1.6 KB the library's vector and sort), over the record and the best spell's loop first
+  (recommended) or a spell's value first.
+- **Read** (`docs/formats/installation.md` §7.39), all in full: the caster record 0x526D40 with
+  the vector's insert 0x4347A0 and the sort's parts 0x434CE0, 0x435160, 0x435240, 0x435290,
+  0x52BD50 (Visual C++ 5/6's, recognised by shape); the best spell 0x5275B0; a spell's value
+  0x5273D0 with the damage value 0x5270E0 and its curve 0x640398, the other kinds 0x5271C0 and
+  0x527290; the hero's tile's field 0x4E4FA0 (H3API's `GetSpecialSpellTerrain` confirmed) with
+  0x4FCF40.
+- **Found:** in the battle only R+0, the power R+8 and the mana R+0x10 of the record count
+  (0x420A80 overwrites R+4 with the side's whole strength `S`; the list and R+0xC serve only the
+  other battle spells' value). The odds count the damage spells with the AI bit `0x8000` (Magic
+  Arrow, Ice Bolt, Lightning Bolt, Implosion, Frost Ring, Fireball, Meteor Shower; Titan's
+  Lightning Bolt 1), the best one worth `min(10 d φ_n', S × Y(10 d / S))`: `d` the spell's AI
+  value × (power + mastery) with the Orbs and Sorcery, `Y` a concave curve that reaches 4, so at
+  most four times `S`. The mana is the hero's maximum (HER-MAN-001's formula), not the points
+  left; the mastery takes the hero's own tile's field, the cost none; only the hero's own
+  Recanter's Cloak counts, Cursed Ground not. With `S` = 0 the value is 0 (a NaN product's
+  0x80000000 under the floor of 0). No rule of the engine changes.
+- **Map:** 16 entries (13 new; 0x526D40 and 0x5275B0 renamed `ai_caster_record` and
+  `ai_best_spell_value` and read; 0x420A80 updated). The adventure lane's inbox has what of its AI
+  is read; the seven other callers of 0x526D40 and their masks are not.
+- **Checks:** pending (a blind re-read, the light gates).
