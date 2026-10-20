@@ -145,6 +145,7 @@ actions = ["click:116,267", "turn:0.0", "hex:155"]
 ms = 3000
 timeline = "timelines/fly.txt"
 frames = "timelines/fly-frames.txt"
+boxes = true
 command = [
     { seat = "Defender", command = { Attack = { target = 2, from = 54 } } },
     { seat = "Attacker", at = 5900, command = { Move = { to = 155 } } },
@@ -162,6 +163,7 @@ actions = ["key:d", "turn:1.0", "hex:86", "turn:1.0", "key:d"]
 ms = 500
 timeline = "timelines/machines.txt"
 frames = "timelines/machines-frames.txt"
+boxes = true
 command = [
     { seat = "Attacker", command = { Defend = {} } },
     { seat = "Defender", at = 0, command = { Shoot = { target = 0, at = 86 } } },

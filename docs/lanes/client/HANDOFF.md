@@ -5,7 +5,7 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 ## Current state
 
 - **E17 M0–M2 done; M3 T1a–T5b-2a done; H1, H2 done (2026-10-19: the adventure lane's harness); next: M3 T5b-2b–T8** (`QUEUE.md`; T9 closes M3). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
-- **Pull request (2026-10-20):** T5b-2a (`client/e17-m3-t5b-2a`) open.
+- **In progress (2026-10-20):** T5b-2b on `client/e17-m3-t5b-2b` (the user: both sequences): boxes compared in `fly` and `machines`, the magic animation drawn after the box (0x43E568); docs, regression captures and the pull request left. T5b-2a's #299 merged.
 - **The user's requirements**, epic "Decisions": a string catalogue (JSON packs, no committed translation: CLT-Q7); graphics options (`faithful` the default); exhaustive reference diffs.
 - The lane owns `clients/`, `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
 - **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does.
