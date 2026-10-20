@@ -223,10 +223,14 @@ Refined with the user on 2026-10-20 (T23; ADV-Q14). Built like increments 1 to 3
 49. **The first round** is a survey and the ADR amendment drafts with the design note and the cut, as decision 20 (T24a, T24b in the queue); the user accepts the drafts before anything is built, and the building tasks are cut at that checkpoint. **This session** (the user's choice of three): T23 alone, docs only. Not chosen: T23 with the survey's first slice (the code reading of the table, the level-up and the seed), or T23 without the inbox's sort.
 50. **Experiments:** increment 4's batch runs on the client lane's harness (decision 21), which has `level_up` and `heroes:experience` since E17 H2; the survey plans its level-up rows. *Agent's call (change freely):* the four rows decision 45 moved here stay in increment 4's batch, although they check increment 3's rules (the topmost ground, the full army's upgrade with Skeleton Warriors, an attack on a hero standing on an object, HER-WAR-002); the topmost ground needs the harness to read the battlefield (the client lane's inbox).
 
+### Decisions at round 1's first session (2026-10-20, user)
+
+51. **T24a is cut in two** (the user's choice of four, for a small increment): **T24a1** the code reading of experience to levels (the rest of 0x4E33B0, the level limit) and the level-up (0x4DA720: the primary draw, the offers, the seed), compared with VCMI as D-rows, docs only; **T24a2** the rest (levels at load, what follows the level, the wiki, the census, the batch's plan, the rule ids, the second reading, the ADV-Q). Not chosen: the code reading without VCMI, all deciding code (with levels at load) first, or T24a whole.
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T23 Increment 4 refined.** Done (2026-10-20, `adventure/e08-t23`; decisions 48–50): progression only, the first round queued (T24a, T24b), the inbox sorted; docs only (log).
-- **T24a The progression survey.** Next (queue).
+- **T24a The progression survey.** Cut in two (decision 51): **T24a1** done (2026-10-20, `adventure/e08-t24a1`: survey §1–§2, experience to levels and the level-up, with VCMI; log); **T24a2** next (queue).
 - **T24b The ADR amendment drafts, the design note and the cut.** After T24a's checkpoint (queue).
 
 ## Later increments (sketch)
