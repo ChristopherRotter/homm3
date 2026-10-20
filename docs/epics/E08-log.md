@@ -2790,7 +2790,7 @@ the light gates passed here).
   skills, army management, treasures with an artifact) is the sketch's increment 5; the week's
   increment becomes 6; the order is decided at each refinement.
 - **The first round** (decision 49): T24a the progression survey (the table and the level limit,
-  the level-up 0x4DA720 with the seed +0x8F, the levels at load, what reads the level, disputes and
+  the level-up `hero_gain_experience` calls, with the seed +0x8F, the levels at load, what reads the level, disputes and
   quirk candidates, the census, the batch's plan), T24b the ADR amendment drafts (expected
   ADR-0017 and ADR-0013), the design note and the cut, after T24a's checkpoint.
 - **The batch** (decision 50): on the harness (`level_up`, `heroes:experience`), with decision
