@@ -26,7 +26,7 @@ Shared (own pull request, merged first): `h3-kernel`, `h3-contracts`, the core `
 - **Stop hook "… no remote branch"** after a push: nothing is lost, don't report it; fix: `08-work-process.md` "Cloud sandbox" 1.
 - Git on the user's machine: delete permission for the repo folder before *any* git command (even `git status` leaves `.git/index.lock`), `-c user.name -c user.email`; no GitHub credentials there. Cloud sessions open pull requests by the REST API (GraphQL is blocked).
 - The VM can restart (files stay, background jobs die): check `ps` first. A build's `Bus error` or `No space`: the disk allowance is spent (`08-work-process.md` "Cloud sandbox" 5).
-- `cargo xtask verify` outlasts a tool call: run `scripts/sandbox-verify.sh` in the background and poll its log, or `verify --summary` (full log `target/verify/verify.log`); the inner loop is `verify --scope <lane> --quick`.
+- `cargo xtask verify` outlasts a tool call: run `scripts/sandbox-verify.sh` in the background (it sets `LLVM_COV`, `LLVM_PROFDATA` from `/usr/lib/llvm-20/bin`) and poll its log; the inner loop is `verify --scope <lane> --quick`.
 - The background verify tests whatever is in the clone: try ad-hoc tests in a `git worktree` with a `CARGO_TARGET_DIR` of its own (never shared: `xtask` takes its root from its build; remove a finished one). Kill by pid: `pkill -f` matches the tool's own shell.
 - bench-check at 0 Ir: valgrind 3.22 found no symbols in the lld-linked `h3` (the gate links with `-z norelro`).
 
