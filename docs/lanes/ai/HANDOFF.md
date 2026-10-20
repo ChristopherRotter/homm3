@@ -8,9 +8,7 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 - **E05 closed 2026-10-20** (T1 to T9 in six increments, each with the user's checkpoint):
   the epic file, its record and the kept design note in `E05-log.md` (§1 to §9, cited as
   `E05-log.md` §n), the environment as built in `docs/07-simulation-and-ai.md` §1.1. Criteria
-  6 to 9 on the user's machine: the bots and `h3 ai eval`, the smoke run's 0.800 against Random,
-  the sweep (about 50 000 steps/s a thread, 497 000 on 24), the verifies with original data on
-  Linux and Windows.
+  6 to 9 met on the user's machine (the throughput: the epic file of E06, "Starting point").
 - **E06 refined 2026-10-20** (AI-Q8; `docs/epics/E06-battle-ai.md`): it starts now beside E23
   with the kinds a player plays on both sides; the neutral share (T7) waits for E23's policy of a
   side without a hero (its T2 to T4). PPO and a league first, search last; runs of a few hours,
