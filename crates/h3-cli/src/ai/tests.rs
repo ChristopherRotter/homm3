@@ -343,6 +343,19 @@ fn a_towns_fort_is_its_highest_fort_building() {
     assert_eq!(fort_level(&custom(0x38)), 3);
 }
 
+/// E05 T9b: `h3 ai eval`'s default episodes are the Python evaluation's (the ladder's row stands
+/// beside its table): the two seeds are one.
+#[test]
+fn the_eval_seed_is_the_python_evaluations() {
+    let python = include_str!("../../../../python/h3env/train/evaluate.py");
+    let line = python
+        .lines()
+        .find_map(|l| l.strip_prefix("EVAL_SEED = 0x"))
+        .unwrap();
+    let seed = u64::from_str_radix(&line.replace('_', ""), 16).unwrap();
+    assert_eq!(seed, super::eval::EVAL_SEED);
+}
+
 /// E05 T7: `h3 ai eval` plays every ordered pair on the same episodes, the same way twice; the
 /// bots win most games against Random; the ratings follow; its arguments are checked.
 #[test]
@@ -388,4 +401,5 @@ fn the_eval_runner_rates_the_policies() {
     assert!(main(&words(&["eval", "--policies", "nobody"])).is_err());
     assert!(main(&words(&["eval", "--seed", "0xZZ"])).is_err());
     assert!(main(&words(&["eval", "--colour", "red"])).is_err());
+    assert!(main(&words(&["eval", "--max-steps", "0"])).is_err());
 }

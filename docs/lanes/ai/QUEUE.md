@@ -8,34 +8,68 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 increment 3 done 2026-10-19 (#253, #255, #257, #258); increment 4 (T8) done 2026-10-19 (#260,
 #264; exit criterion 7 met).
 
-1. **Increment 6's cut** at the user's checkpoint of increment 5 (T7 done 2026-10-19, #271,
-   #274, #276): T9, the closure (the epic's outline: an independent review, the measurements
-   on the user's machine, the docs), refined then; AI-Q7 open, not blocking.
+Increment 6 (T9, the closure) cut 2026-10-19 (the epic: T9a to T9d; AI-Q7 moves to E06).
+
+T9a and T9b done 2026-10-20 (`claude/festive-brown-igukig`, its pull request).
+
+1. **T9c The user's machine**: the bench sweep and the Windows verify with original data; the
+   Linux verify with original data in a sandbox with the user's files staged (criteria 8, 9).
+   On `master` after this lane's T9 pull request, in PowerShell (the conda env of
+   `python/README.md` for the Python line):
+   ```powershell
+   cargo build --release -p h3-cli -p h3-ffi
+   foreach ($n in 64, 256, 1024) { foreach ($t in 1, 6, 12, 24) {
+     .\target\release\h3.exe ai bench --encounters default --envs $n --threads $t --calls (1048576 / $n) } }
+   .\target\release\h3.exe ai bench --encounters default --envs 256 --threads 12 --calls 4096
+   uv --directory python run python -m h3env.bench --encounters --envs 256 --threads 12 --calls 4096
+   cargo xtask verify --with-original-data --summary
+   ```
+   Record the 12 lines' two steps/s, the Rust/Python pair and the verify's steps in
+   `E05-log.md`. If another lane's step fails the full verify (E04c's precedent: `h3-server`'s
+   coverage on Windows), add `cargo xtask verify --scope ai --with-original-data --summary`.
+2. **T9d The closure**: the `shared/` pull request, the design note folded, the epic closed.
 
 ## Inbox
 
-- 2026-10-19 (the battle lane, its inbox's consolidation; for your information, nothing to do now): E04b's review (T11b, 2026-10-12) noted that `h3_sim::action::encode` answers without a viewer (the same root as F-sec-2's leak, which the sim's `step` closes); it leaks nothing today.
+Sorted by destination at E05's audit (T9a, 2026-10-19); the origin stays in brackets. Dropped as
+done: BAT-Q33's point for E05 (AI-Q3, ADR-0025 point 6), the `h3-game` coverage gap of a pending
+Pass offer (fixed by the adventure lane's fixed tests, #266).
 
-Taken over from the battle lane's inbox (2026-10-18; pruned there 2026-10-19):
-
-- 2026-10-11 (E04b T11a): the flat observation costs about a third of a step (`observe` ≈ 1 µs, `observe + encode` ≈ 3.5 µs; the buffer is zeroed and mostly rewritten zeros); `state_hash` ≈ 4.3 µs at 6.3 KB, too slow for per-node hashing; the `full` workload is lopsided (8 attacker victories in 2 399 agent seeds).
-- 2026-10-01 (E04 refinement): the VCMI oracle harness was never built; revisit with E06's evaluation needs.
-- 2026-10-11 (the adventure lane, E08 T9b): reading both of the adventure env's mask heads doubles its step; the current state's queries belong in the env (E13 with the adventure's ABI).
-- BAT-Q33's open point for E05 is answered (AI-Q3): the batch plays both sides as human players' (ADR-0025 point 6); the second morale roll stays the battle lane's question.
-- 2026-10-19 (T5b2): a sample costs 50 µs (two heroes derived, each artifact through `apply_change`'s checks; a `Vec` per level-up's skill draw), 2 % of an episode: worth a look if a profile of training shows it.
-- 2026-10-19 (T5b1's baseline): `master`'s coverage gate fails on the adventure lane's
-  `crates/h3-game/src/state.rs:569` (`OfferKind::Pass` in the open decisions' hash: no fixed
-  test hashes a pending Pass offer; 0 hits under `cargo llvm-cov -p h3-game`); #254's full verify
-  covered it, so a property test reaches it only now and then. The adventure lane's to fix with a
-  fixed test (suggested to the user as a task).
-- 2026-10-19 (T8b): greedy play (the most likely heads) repeats itself against Random until the
-  step limit (up to 17 % of the battles in the sandbox run); the sampled policy never. E06's
-  evaluation and any search agent need a rule for it (sampled play, or a tie-break / repetition
-  rule), and the 2 000-step limit is only a guard.
-- 2026-10-19 (T8b): the trainer copies each call's observations (9 MB at 256 envs) into the
-  rollout; the batch could write them there in place (`H3BatchBuffers.obs` per call) if a
-  profile on the user's machine shows the copy.
-- 2026-10-19 (T7c): Greedy value beats Aggressor only 0.519 on the held-out episodes: the
+**For E06** (training at scale, evaluation, search):
+- **Evaluation:** greedy play (the most likely heads) repeats itself against Random until the
+  step limit (up to 17 % of the battles in T8b's sandbox run); the sampled policy never. E06's
+  evaluation and any search agent need a rule for it (sampled play, or a tie-break or repetition
+  rule); the 2 000-step limit is only a guard (T8b). The VCMI oracle harness was never built:
+  revisit with E06's evaluation needs (E04 refinement, 2026-10-01).
+- **Baselines and AI-Q7:** Greedy value beats Aggressor only 0.519 on the held-out episodes: the
   preview of its own kills buys little without spells or a plan; a stronger baseline (casts, a
-  one-ply look at the opponent's reply) is E06's, AI-Q7 decides whether the agents get the
-  preview.
+  one-ply look at the opponent's reply) is E06's, and AI-Q7 (whether the agents get the preview)
+  moved there (T7c; the user, 2026-10-19). The bots' fallback branches (the tactics phase, a
+  commanded Catapult) have no targeted test (E05 T9b).
+- **Encodings:** `h3_sim::action::encode` answers without a viewer (the same root as F-sec-2's
+  leak, which the sim's `step` closes); it leaks nothing today (E04b T11b, the battle lane).
+- **Performance**, each worth a look when a profile of training shows it: the flat observation
+  costs about a third of a step (`observe` ≈ 1 µs, `observe + encode` ≈ 3.5 µs; the buffer is
+  zeroed and mostly rewritten zeros); `state_hash` ≈ 4.3 µs at 6.3 KB, too slow for per-node
+  hashing (E04b T11a); an encounter sample costs 50 µs (two heroes derived, each artifact through
+  `apply_change`'s checks; a `Vec` per level-up's skill draw), 2 % of an episode (T5b2); the
+  trainer copies each call's observations (9 MB at 256 envs) into the rollout, which the batch
+  could write in place (`H3BatchBuffers.obs` per call) (T8b). The battle lane's `full` workload
+  is lopsided (8 attacker victories in 2 399 agent seeds; E04b T11a): the encounter workload
+  (`batch-random-encounters-v1`) is the realistic one.
+
+- **Encounters v2** (with the adventure's logged encounters, decision 7; E05 T9b): A7's "+0.5 a
+  week" in weeks 9 to 16 is rounded down in `encounters-v1.toml` (odd weeks half a level low);
+  untested: A4's cap and redraws in weeks 1 to 6, the forts of weeks 2 to 6, A7's war-machine
+  chance and class split, A6's upgraded share, the guards' anti-magic share.
+- **The C ABI** (E05 T9b): `h3_batch_create` takes any N (an absurd one aborts on its
+  allocation, which no `catch_unwind` catches; the binding range-checks it, a trusted local
+  consumer, ADR-0011); `h3env.tools.Env` keeps its handle after `H3_ERR_PANIC` (tests only).
+
+**For E23** (the system actor; the neutral kinds' share): A3 grows a wandering stack by a tenth
+of its count, VCMI 1.7.5's `CGCreature::newTurn` a tenth of its power (a thousand per creature:
+5 creatures are 9 after seven weeks, the count's tenth leaves them 5); VCMI's growth makes
+late-week stacks pass A4's cap and be drawn again, so decide both together (E05 T9b).
+
+**For E13** (the adventure env's ABI): reading both of the adventure env's mask heads doubles
+its step; the current state's queries belong in the env (the adventure lane, E08 T9b).

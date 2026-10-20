@@ -26,11 +26,11 @@ agent's, provisional):
   caller's arrays through one `unsafe` lifetime erasure (`Pool::run`), sound because the call
   blocks until every worker finished; a worker's panic is caught and resumed in the caller after
   that. T = 0 runs in the caller's thread.
-- **Head calls (2026-10-19):** each env keeps the single env's entry mask of the last call
-  (escapes included; only the output row masks them out). A non-cast entry's later heads ("0
-  only" while it is legal) are answered from it; only casts ask the env. The answers equal the
-  single env's (a test over every legal entry, the escapes, illegal ones and non-zero earlier
-  heads); the three calls cost 0.11–0.15 ms for 64 envs on `full` instead of 1.4 ms.
+- **Head calls (2026-10-19):** each env keeps the entry mask of the last call (the single env's
+  without the escapes: E05 T9b). A non-cast entry's later heads ("0 only" while it is legal) are
+  answered from it; only casts ask the env. The answers equal the single env's but for the
+  escapes, refused in every head (a test over every legal entry, the escapes, illegal ones and
+  non-zero earlier heads); the three calls cost 0.11–0.15 ms for 64 envs on `full` instead of 1.4 ms.
 - **Scenarios (T3d):** parsed and compiled in `h3-ffi` (`src/scenario.rs`, as T2's); one ruleset
   per packs and profile per batch, reused through the first scenario that compiled it
   (`Scenario::ruleset`), so `h3-ffi` needs no new dependency.
@@ -212,7 +212,7 @@ as proposed. How T5b1 pins down what a row leaves open is marked *(T5b1)*.
 |---|---|---|---|
 | A1 | Encounter kind (of battles fought) | wandering 0.78, guards 0.02, hero 0.10, sieges 0.10: a hero defends 0.05, an owned town's garrison 0.025, a neutral town's 0.025 *(T5b1: A8's split as kinds, so A12 can weigh the neutral one 0)* | 87 monsters a map against 9 towns and a few heroes: a player clears most monsters on the way; each neutral or enemy town taken is a siege. Guards are the 274 piles and garrisons against 13 863 monsters (2 %). Creature banks (13 a map) wait for their battle layouts (the adventure lane's queue) |
 | A2 | Game week (1 to 16), per kind | wandering and guards ∝ 0.8^(w−1); hero rising to week 4, flat to 8, falling to 16 (1/9 of the peak); sieges ∝ 0.9^(w−1), a neutral town ∝ 0.7^(w−1) *(T5b1: tabulated in ‰)* | neutrals fall early (median week 3), enemy heroes meet mid-game, towns are taken throughout, neutral ones early |
-| A3 | A neutral stack | level: the census's (fixed and random; "any" spread evenly) × a ramp by week: 1–3 always, 4 half in week 1, 5 half in week 2, 6 and 7 from weeks 3 and 4 in quarters (full from weeks 6 and 7); the creature drawn among the level's (ADV-MON-003), the count from its adventure range (ADV-MON-004), grown each week by a tenth (integer) while below 4 000 (VCMI 1.7.5 `CGCreature::newTurn`: `weeklyGrowthPercent` 10, `weeklyGrowthCap` 4 000); split by the original's rule against the hero's army (`h3_adventure::split`, ADV-MON-009) | the map's own levels and the game's own draws; the adventure ranges already make low levels hordes and high ones few; strong stacks are fought later; growth makes late neutrals larger |
+| A3 | A neutral stack | level: the census's (fixed and random; "any" spread evenly) × a ramp by week: 1–3 always, 4 half in week 1, 5 half in week 2, 6 and 7 from weeks 3 and 4 in quarters (full from weeks 6 and 7); the creature drawn among the level's (ADV-MON-003), the count from its adventure range (ADV-MON-004), grown each week by a tenth (integer) while below 4 000 (VCMI 1.7.5 `CGCreature::newTurn`: `weeklyGrowthPercent` 10, `weeklyGrowthCap` 4 000; *T9b: VCMI grows the stack's power, a thousand per creature, so that 5 creatures are 9 after seven weeks where the count's tenth leaves them 5; the neutral kinds weigh 0 until E23, which decides*); split by the original's rule against the hero's army (`h3_adventure::split`, ADV-MON-009) | the map's own levels and the game's own draws; the adventure ranges already make low levels hordes and high ones few; strong stacks are fought later; growth makes late neutrals larger |
 | A4 | The army facing a neutral | value = the stack's × r, r normal (mean 1.8, standard deviation 0.5), at least 0.5; a stack whose army would exceed 2 × A5's value of the week is drawn again (r kept) | players attack what they beat, now and then a tough fight; the split's own table expects ratios 0.5 to 2 |
 | A5 | A hero's army (hero and siege kinds) | value = k × the sum over the weeks u ≤ w of the faction's growth value (growth × `ai_value`) of the levels A6 makes available in week u; k log-normal (median 1.0, ×/÷ 1.6); the attacker's over the defender's log-normal (median 1.3, ×/÷ 1.5). Castle's median: 6 500 in week 1, 43 000 in week 4, 111 000 in week 8, 246 000 in week 16 | one main army carries a kingdom's production (a castle's double growth and more towns against its losses); consistent with A6, where G × w × 0.7 gave week 1 1.8 weeks of levels 1–4 |
 | A6 | An army's creatures | the hero's faction; levels 1–4 from week 1, 5 from week 2, 6 from week 3, 7 from week 4; value split by each level's growth value; one stack a level, upgraded with the share (w − 1) / 6, at most 1 | a usual build order |
@@ -261,7 +261,9 @@ and written in place by the engine (zero copy). `_ffi.py` (the library from `$H3
 - The batch API serves only the acting seat's `observe` (and, at a truncation, both sides'), never
   the state, its hash or a fork. Full-state access stays in the single-env functions
   (`h3_env_state_hash`, `h3_env_fork`, `BattleEnv::state`), marked trusted tooling in `h3.h` and
-  in `h3env.tools` (exit criterion 3).
+  in `h3env.tools` (exit criterion 3). The batch's episode seeds (an output for bookkeeping and
+  replays, ADR-0025 point 1) decide the battle's draws: marked trusted tooling too, never an
+  agent's input (the trainer reads them only to keep its held-out episodes apart; E05 T9b).
 - The flat observation is the visible state now; a human also sees the battle's log. A fact that
   only history tells and that matters for play belongs in the observation (BAT-Q35 is one such
   corner, the battle lane's).
@@ -439,6 +441,7 @@ never of the retaliation; the ratings are the server's Glicko-2, copied.
   held-out encounters, the episode seeds of the Python evaluation (`EVAL_SEED`, 100 envs × 10);
   per pair the win rate (both sides weighed equally, a draw or truncation no win) and value
   efficiency (the mean reward v1); Glicko-2 ratings (`src/ai/rating.rs`, copied from
-  `h3-server`), each game one rating period, episode by episode in a fixed order of the pairs.
+  `h3-server`), the whole run one rating period against the defaults (E05 T9b, the user: one
+  period per game held the deviation near 64 and remembered only the last ~40 games).
 - **The network's row:** `python -m h3env.train.ladder --checkpoint <run>/best.pt` plays the
   sampled policy against `random`, `aggressor` and `greedy` on the same episodes.

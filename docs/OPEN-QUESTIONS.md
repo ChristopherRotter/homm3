@@ -88,9 +88,9 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### AI lane (`AI-Q<n>`)
 
-#### AI-Q7 — The damage preview in the agents' encodings (E05 T7's cut; later)
+#### AI-Q7 — The damage preview in the agents' encodings (E05 T7's cut; moved to E06)
 
-**Context.** The user (2026-10-19, AI-Q6): the engine's damage preview of one's own attack levels the field, "we may also attach the estimates to the observed state or to actions in the encoding for the RL agents". The bots read it from T7 on; the agents see only the flat observation v21. **Options:** (a) a per-target block in the observation (for the active stack: each enemy stack's least and greatest kills by a shot or a strike from where it stands; observation v22, the battle lane's encoding, `cross-lane`); (b) per-entry features beside the entry mask (the attack and shot entries' kills), a new output of the batch, the encodings unchanged; (c) leave it to the network. **Recommendation:** decide after T7's ladder shows how much the preview gives the Greedy bot over Aggressor; (b) first if it does, since it changes no encoding. Not blocking.
+**Context.** The user (2026-10-19, AI-Q6): the engine's damage preview of one's own attack levels the field, "we may also attach the estimates to the observed state or to actions in the encoding for the RL agents". The bots read it from T7 on; the agents see only the flat observation v21. **Options:** (a) a per-target block in the observation (for the active stack: each enemy stack's least and greatest kills by a shot or a strike from where it stands; observation v22, the battle lane's encoding, `cross-lane`); (b) per-entry features beside the entry mask (the attack and shot entries' kills), a new output of the batch, the encodings unchanged; (c) leave it to the network. **Recommendation:** decide after T7's ladder shows how much the preview gives the Greedy bot over Aggressor; (b) first if it does, since it changes no encoding. Not blocking. **Moved to E06** (the user, 2026-10-19, E05 T9's cut): on the held-out episodes Greedy beats Aggressor only 0.519 and the user's network plays at Aggressor's level (T7c, T7d); E06 decides with its stronger baselines, (b) still first.
 
 ### Client lane (`CLT-Q<n>`)
 

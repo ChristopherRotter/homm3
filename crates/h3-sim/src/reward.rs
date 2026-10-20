@@ -7,11 +7,13 @@
 //!
 //! * K, the value a side lost: its army at the start minus its survivors (army and raised
 //!   stacks, so a permanent resurrection or a Pit Lord's Demons offset the loss), plus its war
-//!   machines destroyed. Created stacks (summons, clones) count nothing on either side.
+//!   machines destroyed. The war machines are those the battle placed, as its records report them
+//!   (a siege's Catapult, which no setup lists, included; a listed Ballista the battle leaves out,
+//!   BAT-QUIRK-23, not: E05 T9b). Created stacks (summons, clones) count nothing on either side.
 //! * m, the mana the side's hero spent (negative if it gained some); p, the price per spell
 //!   point, in the currency.
-//! * S, both sides' army and war-machine value at the start (at least 1), so the battle's size
-//!   does not set the reward's.
+//! * S, both sides' army and placed war machines' value at the start (at least 1), so the
+//!   battle's size does not set the reward's.
 //!
 //! Nothing from the adventure counts (no hero, artifacts, treasure, town or gold). The sums are
 //! integers (`i128`: no overflow for any setup), divided once in `f64` and reported as `f32`, so
@@ -19,7 +21,7 @@
 
 use h3_content::CreatureTypeId;
 use h3_content_battle::BattleRuleset;
-use h3_contracts::{Army, BattleOutcome, BattleSetup};
+use h3_contracts::{Army, BattleOutcome, BattleSetup, StackOrigin, StackRecord};
 
 /// The default price of a spell point: 10 `ai_value` (provisional, tuned in E06).
 pub const DEFAULT_MANA_PRICE: u32 = 10;
@@ -80,14 +82,22 @@ impl Balance {
                 .map(|s| i128::from(s.count) * value(s.creature))
                 .sum()
         };
-        let machines = |list: &[CreatureTypeId]| -> i128 { list.iter().map(|&m| value(m)).sum() };
+        // The war machines the battle placed, at its start or its end.
+        let machines = |records: &[StackRecord], count: fn(&StackRecord) -> u32| -> i128 {
+            records
+                .iter()
+                .filter(|r| r.origin == StackOrigin::WarMachine)
+                .map(|r| i128::from(count(r)) * value(r.creature))
+                .sum()
+        };
         let mut lost = [0; 2];
         let mut mana = [0; 2];
         let mut scale = 0;
         for side in 0..2 {
-            let start = army([&setup.attacker, &setup.defender][side])
-                + machines(&setup.war_machines[side]);
-            let end = army(&outcome.survivors[side]) + machines(&outcome.war_machines[side]);
+            let records = &outcome.stacks[side];
+            let start =
+                army([&setup.attacker, &setup.defender][side]) + machines(records, |r| r.start);
+            let end = army(&outcome.survivors[side]) + machines(records, |r| r.end);
             lost[side] = start - end;
             scale += start;
             let spent = setup.heroes[side].as_ref().map_or(0, |hero| {

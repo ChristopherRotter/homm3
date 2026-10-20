@@ -1,9 +1,9 @@
 //! Glicko-2 for `h3 ai eval` (E05 T7): copied from the server lane's ladder (`h3-server`'s
 //! `src/rating.rs`, E16 M4 T1; ADR-0019 point 6; the user, 2026-10-19: "use what the server
 //! already built"), without the ladder's rows, seasons and serialization. Mark Glickman's
-//! "Example of the Glicko-2 system" (2013) with its published defaults; the runner rates each game
-//! as one rating period of one game for both policies, in a fixed order, as the ladder does; a
-//! draw or a truncation scores a half.
+//! "Example of the Glicko-2 system" (2013) with its published defaults; the runner rates its whole
+//! run as one rating period (E05 T9b), where the ladder rates each game as one; a draw or a
+//! truncation scores a half.
 //!
 //! Floats are allowed here: a tool's report, not game logic (ADR-0003 §3 bans the platform's
 //! transcendentals for game logic). A rating may differ in its last bits between platforms.
@@ -81,7 +81,9 @@ impl Score {
 }
 
 /// The two players' ratings after a game between them, `score` the first's: each updated against
-/// the other's rating before the game, one rating period of one game.
+/// the other's rating before the game, one rating period of one game (the server ladder's; kept
+/// for its worked tests).
+#[cfg(test)]
 pub fn game(first: Rating, second: Rating, score: Score) -> (Rating, Rating) {
     (
         period(first, &[(second, score)]),

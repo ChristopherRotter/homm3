@@ -8,7 +8,9 @@
 //! `h3_abi_version`. The C declarations live in `include/h3.h`.
 //!
 //! Server-mode note (ADR-0008): this ABI is for trusted local consumers (training, tools). It
-//! exposes the full-state hash; a server must not forward it to untrusted clients.
+//! exposes the full state (the fork, its hash) and the episode seeds, which decide a battle's
+//! draws: trusted tooling (`h3.h`), never an agent's input; a server must not forward them to
+//! untrusted clients.
 #![allow(unsafe_code)]
 
 use std::ffi::c_char;

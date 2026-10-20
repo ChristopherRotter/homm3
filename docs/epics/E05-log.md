@@ -454,3 +454,64 @@ The full record of done tasks (the epic file keeps one line each).
   Greedy play beat the sampled policy in this run (0.817 against 0.792), unlike the first runs.
   **Exit criterion 6 met**: the bots and the runner exist and are recorded as baselines.
   Increment 5 done; the user's checkpoint next (T9).
+
+## Increment 6's cut, T9a and T9b — The audit and the independent review (2026-10-19, 2026-10-20)
+
+- **The cut** (the user, at increment 5's checkpoint): T9 in four parts, T9a and T9b in the
+  sandbox now with four reviewers, T9c (the bench sweep, the verifies with original data) on the
+  user's machine and in a sandbox with the user's files staged, T9d the closure; AI-Q7 moves to
+  E06.
+- **T9a, exit criteria 1 to 7 against the code and tests:** 1 met (`h3-ffi`'s scenario tests: a
+  field on the shipped packs, the 12 special battlefields, the siege, the garrison;
+  `encounters-v1.toml` and `census-v1.toml` versioned, design §4; `encounter::tests`: 1 500
+  samples valid, every 50th played). 2 met (`batch::tests`: `a_batch_is_n_single_envs` over 1 to
+  6 envs and 0 to 7 threads, every masked action applies; the head calls; resets, truncations,
+  skipped episodes, refusals; `h3-ffi`'s `the_abi_batch_is_the_rust_batch`). 3 met after
+  review 2's F2 (below: `h3.h` marked nothing). 4 met (`reward::tests`, T1's examples, exactly
+  zero-sum; review 3's F1 and F2 fixed the war machines). 5, 6, 7 met (T6b, T7, T8c). The inbox
+  sorted by destination (E06, encounters v2, E23, E13; two items dropped as done); the Python
+  README gained the opponent pool and `best.pt`.
+- **T9b, four fresh reviewers** (each one slice, read-only, every finding with a failure path;
+  21 findings, 18 test gaps, 9 doubts), verified one by one, then fixed:
+  - **r1, the batch and its pool** (5, all nits but one): the head calls answered an escape's
+    heads that `step` refuses (ADR-0025 point 7; the kept entry mask now drops them, the
+    head-call test runs on 0 and 2 threads); the skip loop tried 65 episodes, not 64; a failed
+    setup left a stale encounter kind; two doc notes (a reset replays while no scenario was
+    added; what a panic leaves). Sound: `Pool::run`'s `unsafe`, no thread-count dependence,
+    distinct streams, refusals leave state, the same-step reset's outputs.
+  - **r2, the C ABI and the binding** (7): `h3env`'s head calls and `step` passed short arrays
+    the engine reads N values from (major; now refused), `h3.h` marked no trusted tooling
+    (major, criterion 3; the fork, the hash and the episode seeds, which decide a battle's draws,
+    are marked now), the binding's output arrays could be replaced under the engine's pointers
+    (read-only now), ctypes wrapped negative settings (range-checked), a panic left the handle
+    usable (closed), the seed's "same battle" claim needs both sides human, an ABI test
+    overclaimed. Sound: the layouts and the 30 signatures against `h3.h` and `_ffi.py`, the
+    error buffers, `catch_unwind` everywhere, the actor-scoped masks.
+  - **r3, reward, encounters, census** (5): the reward credited the attacker of every walled
+    siege with a hero with the Catapult's 500 (the battle places it, no setup lists it: about a
+    third of the default episodes), and charged a defender's Ballista the battle leaves out at a
+    fort (BAT-QUIRK-23) as destroyed (major, both): the war machines now come from the outcome's
+    records, so the Catapult counts at the start and when destroyed (the user: ADR-0025 point 8
+    read literally); tests by hand and on a sampled walled siege played to its end. The table
+    refused all-zero shares but not all-zero kind weights (fixed). Recorded, not changed: A3's
+    growth is the count's tenth where VCMI 1.7.5 grows a ×1000 power (5 creatures stay 5 over
+    seven weeks, VCMI's 9; the fix makes late stacks pass A4's cap: E23, with the neutral
+    share), A7's "+0.5 a week" rounded down in the table (encounters v2). Sound: the reward's
+    formula and zero-sum, the tables against A1 to A12 (recomputed), the census's sums.
+  - **r4, the bots, the evaluation, the trainer** (4): the Python evaluation dropped episodes an
+    engine seat ends before the agent acts and then ran to its call bound (major; none among
+    the default episodes: 0 of 1 000 per side and opponent, so T7d's and T8c's rates stand; now
+    counted as `skipped`, the ladder prints them), the ladder did not check its episodes against
+    the checkpoint's training seed (refused now), `h3 ai eval` looped on `--max-steps 0` or a
+    refusal (refused, an error), and one Glicko-2 period per game held the deviation near 64 and
+    remembered only the last ~40 games (the user: the whole run one period); a test pins the Rust
+    and Python `EVAL_SEED`. Sound: no bot can hang the batch (Defend is always listed but for the
+    Catapult, which acts only with a wall to shoot), no leak, PPO's masks, log-probabilities,
+    GAE and the pool's exclusion, Glicko-2 as the server's.
+- **`h3 ai eval` again** (the reward and the ratings fixed; 1 000 held-out episodes per pair,
+  8.6 s): the win rates unchanged (Greedy 0.828 and Aggressor 0.800 against Random, Greedy
+  0.519 against Aggressor); value against Random Greedy +0.276, Aggressor +0.247; Glicko-2 Greedy
+  1680, Aggressor 1646, Random 1174 (± 16 at two deviations).
+- **Left for later** (the lane's inbox): an N cap in `h3_batch_create`, `h3env.tools.Env` after a
+  panic, the sampler's untested dimensions (encounters v2), the bots' fallback branches without
+  a targeted test.

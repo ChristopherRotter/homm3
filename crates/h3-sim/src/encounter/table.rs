@@ -395,6 +395,7 @@ impl EncounterTable {
         }
         let kinds: [KindRow; 6] = kinds.try_into().map_err(|_| bad("kind", "wrong length"))?;
         drawable(kinds.iter().map(|k| k.share), "kind.share")?;
+        drawable(kinds.iter().map(|k| k.weight), "kind.weight")?;
 
         let level = |name: &str| {
             counts
