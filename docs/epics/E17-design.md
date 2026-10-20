@@ -2166,6 +2166,11 @@ callers), `battle_cursor`'s target (+0x10, +0x14 of the acting stack), `battle_m
   cursor then moves at 33 k ms in every run. The frame check draws the viewer's frame where the
   original's memory says the cursor is (`frames.toml`'s `cursor`); the viewer's own point is the
   mouse's.
+- **A ray hides the cursor** (`draw_ray` 0x5A5C20): `mouse_hide` (0x50D540) as it starts
+  (0x5A5C46) erases the cursor from the screen, `mouse_show` (0x50D5B0) after the shot group's
+  rest (0x5A61D4) draws it again: in `shots` the panel shows under the parked point from 655 to
+  879 ms, 4 086 to 4 267 and 5 293 to 5 479 (35 pixels a frame until the viewer hid it too:
+  `Beam::cursor_back`, `Timeline::cursor_hidden`; the window hides its cursor then too).
 - **The facing** the cursor asks (a two-hex stack's other hex, a shooter's front hex) is the
   timeline's at the turn's start (`Facing::Left`, the poses facing left), the opening's by side.
 - **The viewer** (`mouse::track::follow`): the log's entries and the inputs in time order (a move
