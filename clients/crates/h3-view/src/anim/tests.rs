@@ -789,6 +789,11 @@ fn the_shots_sequence_plays_as_recorded() {
     // tick shows for no time.
     let rays: Vec<(u32, usize)> = t.beams.iter().map(|b| (b.from, b.ticks.len())).collect();
     assert_eq!(rays, [(655, 11), (4086, 11), (5293, 11)]);
+    // E17 M3 T6c-2: the cursor hidden from the ray's start until the shot group's rest is
+    // over (the original's screen: back at 879).
+    assert_eq!(t.beams[0].cursor_back, 879);
+    let hidden = [654, 655, 878, 879].map(|ms| t.cursor_hidden(ms));
+    assert_eq!(hidden, [false, true, true, false]);
     assert!(t.ray(664).is_none());
     let first = t.ray(665).unwrap();
     assert_eq!(first.colours.len(), 5);
@@ -1088,6 +1093,10 @@ fn a_ray_without_a_climax_frame_or_a_target() {
     // hidden.
     assert_eq!(t.beams[0].from, 556 + 115);
     assert!(t.keys.iter().all(|k| k.shown != u32::MAX));
+    // Without a climax frame the cursor shows again as the ray's last tick is over.
+    let b = &t.beams[0];
+    let ticks = u32::try_from(b.ticks.len()).unwrap();
+    assert_eq!(b.cursor_back, b.from + ticks * b.step);
 }
 
 #[test]

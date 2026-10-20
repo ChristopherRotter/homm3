@@ -469,9 +469,10 @@ pub(crate) fn draw_frames(
         list.extend(panels.at_showing(snapshot, &timeline.turns, frame.t, layout, text));
         if let Some(shown) = interface.shown {
             // The cursor's frame now, drawn where the original's is (its memory), else at the
-            // mouse.
+            // mouse; none while a ray hides it.
             let point = frame.cursor.or_else(|| shown.point(frame.t));
-            if let (Some(f), Some(point)) = (shown.frame(frame.t), point) {
+            let visible = !timeline.cursor_hidden(frame.t);
+            if let (Some(f), Some(point), true) = (shown.frame(frame.t), point, visible) {
                 list.push(mouse::cursor(layout, f, point));
             }
         } else if let Some((point, p)) = &pointer {

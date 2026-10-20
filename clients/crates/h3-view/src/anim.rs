@@ -183,6 +183,9 @@ pub struct Beam {
     pub ticks: Vec<Vec<Stroke>>,
     /// The colours by the distance from the edge (R, G, B).
     pub colours: Vec<[u8; 3]>,
+    /// When the mouse's cursor shows again (E17 M3 T6c-2): `draw_ray` hides it as it starts
+    /// (0x5A5C46) and shows it after the shot group's rest (0x5A61D4).
+    pub cursor_back: u32,
 }
 
 /// A ray as it shows at a time: the strokes drawn so far, in order.
@@ -650,6 +653,15 @@ impl Timeline {
             idle.run(t, |now| poses.extend(fidgets.step(now)));
         }
         poses
+    }
+
+    /// Whether the mouse's cursor is hidden at `t`: from a ray's start until it shows again (E17
+    /// M3 T6c-2, [`Beam::cursor_back`]).
+    #[must_use]
+    pub fn cursor_hidden(&self, t: u32) -> bool {
+        self.beams
+            .iter()
+            .any(|b| (b.from..b.cursor_back).contains(&t))
     }
 
     /// The projectile showing at `t`, if one flies then.
@@ -2125,6 +2137,7 @@ impl Player<'_> {
             step,
             ticks,
             colours,
+            cursor_back: u32::MAX,
         });
         self.clock.wait(count * step);
         self.redraw();
@@ -2146,6 +2159,10 @@ impl Player<'_> {
                     });
                 }
             }
+        }
+        let back = self.clock.now;
+        if let Some(b) = self.beams.last_mut() {
+            b.cursor_back = back;
         }
     }
 

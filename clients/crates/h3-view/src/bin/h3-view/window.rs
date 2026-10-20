@@ -281,6 +281,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     // The combat cursor's frames as the mouse manager draws them (E17 M3 T6c-2), made as shown.
     let mut cursors = Cursors::default();
     let mut frame_now = battle.cursor_frame(options.from);
+    let mut cursor_visible = true;
     let (_, hardware) = cursors.get(&battle, frame_now)?;
     let [width, height] = battle.frame_size();
     let mut win = Window::open(&Config {
@@ -519,18 +520,25 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 shown = None;
             }
         }
-        // The cursor's frame now: the hardware cursor made again when it changes.
-        let frame = battle.cursor_frame(clock.ms(win.ticks_ns()));
-        if frame != frame_now {
-            frame_now = frame;
+        // The cursor's frame now, none while a ray hides it: the hardware cursor made again when
+        // it changes.
+        let ms = clock.ms(win.ticks_ns());
+        let frame = battle.cursor_frame(ms);
+        let visible = !battle.timeline.cursor_hidden(ms);
+        if (frame, visible) != (frame_now, cursor_visible) {
+            (frame_now, cursor_visible) = (frame, visible);
             if drawn_cursor {
                 redraw = true;
-            } else if win
-                .set_cursor(Some(cursors.get(&battle, frame)?.1))
-                .is_err()
-            {
-                drawn_cursor = true;
-                redraw = true;
+            } else {
+                let image = if visible {
+                    Some(cursors.get(&battle, frame)?.1)
+                } else {
+                    None
+                };
+                if win.set_cursor(image).is_err() {
+                    drawn_cursor = true;
+                    redraw = true;
+                }
             }
         }
         // A hardware cursor SDL could not remake (a new scale) is drawn instead.
@@ -584,7 +592,9 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             let back = show(
                 &mut win,
                 &due,
-                drawn_cursor.then_some(pointer).flatten(),
+                (drawn_cursor && cursor_visible)
+                    .then_some(pointer)
+                    .flatten(),
                 &cursors.get(&battle, frame_now)?.0,
                 read,
             )?;
@@ -600,7 +610,9 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             show(
                 &mut win,
                 f,
-                drawn_cursor.then_some(pointer).flatten(),
+                (drawn_cursor && cursor_visible)
+                    .then_some(pointer)
+                    .flatten(),
                 &cursors.get(&battle, frame_now)?.0,
                 false,
             )?;
