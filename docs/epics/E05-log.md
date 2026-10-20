@@ -565,13 +565,13 @@ The full record of done tasks (the epic file keeps one line each).
   sources, reward v1, the information boundary, Python, the smoke training, the baselines, the
   throughput) and its baselines and deferred items, the global HANDOFF's verify line (the
   script's LLVM variables, the lane's note since T8b). Docs only: the light gates.
-- **The design note at closure** (below): every section had stayed after its task built it, as
-  the record of the build's decisions, and the code and the Python package cited it by section.
-  Its text is kept below with its numbering, the note deleted, and the references (26 in
-  `h3-sim`, `h3-ffi`, `h3-cli`'s `src/ai/`, the two data files' headers, `python/`, the epic
-  file and OPEN-QUESTIONS) repointed to `E05-log.md` §n; comments only, so the branch's code
-  fingerprint changed and its full verify ran again (LANE_VERIFY_RESULT). E23's epic file (the
-  battle lane's) cites the note too: the battle queue's inbox says where to.
+- **The design note at closure** (below): every section had stayed after its task built it, as the
+  record of the build's decisions, and the code and the Python package cited it by section. Its text
+  is kept below with its numbering, the note deleted, and the references (26 in `h3-sim`, `h3-ffi`,
+  `h3-cli`'s `src/ai/`, the two data files' headers, `python/`, the epic file and OPEN-QUESTIONS)
+  repointed to `E05-log.md` §n; comments only, so the branch's code fingerprint changed and its full
+  verify ran again (with `master` at 7ac0b91 merged and the original data: all 16 steps passed).
+  E23's epic file (the battle lane's) cites the note too: the battle queue's inbox says where to.
 - **Exit criteria:** 1 to 7 (T9a, after T9b's fixes) and 8 and 9 (T9c) met.
 - **What later epics inherit:** the AI queue's inbox by destination (E06, encounters v2, E23,
   E13), AI-Q7 (E06), the neutral kinds weighed 0 until E23 (A12).
