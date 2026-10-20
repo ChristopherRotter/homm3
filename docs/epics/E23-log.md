@@ -192,4 +192,9 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
 - **Map:** 10 entries (3 new: the combat settings 0x69879C, 0x6987A0, 0x6987A4; 7 updated).
   BAT-Q53 answered in OPEN-QUESTIONS; the epic's T1c and the queue's task carry the alignment, the
   inbox's two items (BAT-MOV-003, BAT-MAG-025) folded into it.
-- **Checks:** pending (a blind re-read, the light gates).
+- **Checks:** a fresh agent re-read three findings blind, on a copy of the tool and the map
+  made before the edits: 0x474BF0's tests for the Ballista in order and the Ammo Cart's case (no
+  tactics or skill test), the range and speed a walk passes (its speed, −1), and which hex ends
+  an attack with what the berserk turn does on an empty path. It agreed on all three: a one-hex
+  berserk walker that reaches only hexes next to a two-hex target's other hex never ends the
+  search and does nothing.
