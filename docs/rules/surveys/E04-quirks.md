@@ -15,7 +15,7 @@ Sources: `wiki` = https://heroes.thelazy.net (retrieved 2026-10-03; pages named 
 | confirmed by original data | S-05 (the exe's creature table holds the bugged levels; ledger BAT-QUIRK-19, fix-optional, a data quirk since E04b T8e) |
 | exploit-fix, no confirmation needed (never implemented) | S-08 (confirmed by code reading and batch 3d, BAT-QUIRK-22), S-14, S-20 |
 | batch 1a (E04a), evaluated 2026-10-03 | confirmed: S-01 (ledger Q-0004), S-02 with Q23 (Q-0005, all damage rates), S-03 for Roland only (Q-0006); not reproduced in SoD: S-04 (dropped) |
-| to confirm in an E04b or E04c batch | S-11 (code reading incomplete, Q53), S-15, S-17 (Berserk's 255 rounds read, the data in every profile) (confirmed by code reading: S-19 as Q-0007, S-16 as Q-0009, S-10 as Q-0011, S-13 as Q-0012, S-12 as BAT-QUIRK-13; S-09 the rule in every profile, Q53) |
+| to confirm in an E04b or E04c batch | S-15, S-17 (Berserk's 255 rounds read, the data in every profile) (confirmed by code reading: S-11 as BAT-QUIRK-24 (a batch row in E23 T1b), S-19 as Q-0007, S-16 as Q-0009, S-10 as Q-0011, S-13 as Q-0012, S-12 as BAT-QUIRK-13; S-09 the rule in every profile, Q53) |
 | not reproducible in SoD by code reading | S-18 (E04b T7b2a, BAT-Q11: no caster's Magic Arrow is low enough) |
 | refuted in the user's version by code reading and batch 3e (E04c T7) | S-06, S-07 (the turret's shot: BAT-SIE-018, BAT-Q44) |
 | to confirm when the battle setup is derived from the map (E04c or E08) | S-22 |
@@ -34,7 +34,7 @@ Sources: `wiki` = https://heroes.thelazy.net (retrieved 2026-10-03; pages named 
 | S-08 | Earthquake can disable the first defending stack | E04c | soft-lock of a stack | exploit-fix | medium (wiki Earthquake) |
 | S-09 | Forgetfulness halves a shooter's melee damage | E04b | gameplay-altering | preserve | high (wiki Damage, Forgetfulness) |
 | S-10 | Advanced Forgetfulness affects all enemy shooters | E04b | gameplay-altering | fix-optional | high (wiki Forgetfulness) |
-| S-11 | Berserk: units fail to path around obstacles and pass | E04b | gameplay-altering | fix-optional | medium (wiki Berserk) |
+| S-11 | Berserk: units fail to path around obstacles and pass | E04b | gameplay-altering | fix-optional (BAT-QUIRK-24) | medium (wiki Berserk); code reading (§7.41) |
 | S-12 | Enchanters choose spells by the first stack's stats only | E04b | gameplay-altering (small) | fix-optional | high (wiki Enchanter) |
 | S-13 | Expert Cure cannot remove Hypnotize, Basic and Advanced can | E04b | gameplay-altering (small) | fix-optional | low ("may/may not be a bug", wiki Cure) |
 | S-14 | Harpies stay bound forever after Dendroid roots | E04b | soft-lock of a stack | exploit-fix | medium (wiki Harpy and Harpy Hag) |
@@ -108,6 +108,7 @@ Outside the E04 scope, listed so they are not lost (no classification needed now
 - Original: wiki Berserk: berserk units treat blocked hexes as unreachable and wait; two-hex units miscount positions and pass although a target is reachable (fixed in HD mod/HotA).
 - Suggested **fix-optional** (the berserk unit's automatic behaviour is a rule we must specify anyway).
 - **Partly read** (E04b T4, `installation.md` §7.14): the berserk turn picks its target from the AI pathfinder's map (0x4B3400); the bug would sit there and was not read. HD fixes it, so the user's setup cannot show it. **User (Q53): the engine's own pathfinding in every profile; S-11 stays unconfirmed.**
+- **Confirmed by code reading** (E23 T1a4b, `installation.md` §7.41): the pathfinder ends the berserk walk's search only on a blocked step onto the target's position hex, though the candidates' marks count either hex: a two-hex target reachable only by its other hex makes the walker go round, or do nothing (no free position beside the position hex, or one out of its move while the other hex's mark is within it). The first half of the wiki's text (blocked hexes treated as unreachable) is not what the search does: it goes round obstacles. Ledger **BAT-QUIRK-24**, fix-optional (user, 2026-10-20, BAT-Q54; built in E23 T1c, the engine's pathfinding now the original's, BAT-Q53). Its batch row (a berserk walker whose two-hex target is reachable only by its other hex) is T1b's.
 
 ### S-12 — Enchanters choose spells by the first stack's stats only (E04b)
 - Original: wiki Enchanter: "the spell relevance is calculated based on stats of the first stack only (fixed in HotA)".

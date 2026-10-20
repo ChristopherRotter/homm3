@@ -1,11 +1,15 @@
-"""The training (E05 T8b, `docs/epics/E05-log.md` §8; E06 T2a): the network's masked choices, its
-log-probabilities, GAE over two sides, an update, the held-out evaluation, a run's files and
-record, a checkpoint. They need the group `train` (`uv sync --group train`) and are skipped
-without it; `test_run.py` covers the run's lifecycle without torch."""
+"""The training (E05 T8b, `docs/epics/E05-log.md` §8; E06 T2a, T2b1): the network's masked
+choices, its log-probabilities, GAE over two sides, an update, the held-out evaluation, a run's
+files and record, the checkpoint and the resume. They need the group `train` (`uv sync --group
+train`) and are skipped without it; `test_run.py` covers the run's lifecycle without torch."""
 
 from __future__ import annotations
 
 import json
+import signal
+import subprocess
+import sys
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -15,10 +19,18 @@ from h3env import BattleBatch, _ffi
 
 torch = pytest.importorskip("torch")
 
-from h3env.train import EVAL_SEED, Config, Policy, Rollout, gae, train  # noqa: E402
+from h3env.train import EVAL_SEED, Config, Policy, Rollout, gae, resume, train  # noqa: E402
 from h3env.train.evaluate import episode_seeds, ladder, load, play, random_agent  # noqa: E402
 from h3env.train.ppo import Trainer  # noqa: E402
-from h3env.train.run import HeldOutError, check_record  # noqa: E402
+from h3env.train.run import (  # noqa: E402
+    ConfigError,
+    HeldOutError,
+    ResumeError,
+    check_record,
+    segment_seed,
+)
+
+PYTHON = Path(__file__).resolve().parents[1]
 
 #: A run small enough for a test.
 SMALL = dict(
@@ -225,7 +237,144 @@ def test_a_short_run_writes_its_files_and_round_trips_its_checkpoint(tmp_path) -
     restored_state = restored.state_dict()
     for name, weights in trainer.policy.state_dict().items():
         assert torch.equal(weights, restored_state[name]), name
-    assert saved["updates"] == n
+    assert saved["updates"] == n and saved["finished"] and len(saved["pool"]) == n
+    assert record["segments"][0]["seed"] == config.seed == trainer.batch_seed
+
+
+def _records(out: Path) -> list[dict]:
+    return [json.loads(x) for x in (out / "metrics.jsonl").read_text().splitlines()]
+
+
+def _same(a: dict, b: dict) -> None:
+    """Two (nested) state dicts hold equal tensors and values."""
+    assert a.keys() == b.keys()
+    for k in a:
+        if isinstance(a[k], dict):
+            _same(a[k], b[k])
+        elif torch.is_tensor(a[k]):
+            assert torch.equal(a[k], b[k]), k
+        else:
+            assert a[k] == b[k], k
+
+
+def test_a_stopped_run_resumes_to_its_budget(tmp_path) -> None:
+    # Ctrl+C after the third update: the run saves and stops. A trainer of the next segment takes
+    # the whole state over; a resume refuses a change to the training and continues to the budget.
+    config = Config(**SMALL, samples=4 * ONE_UPDATE, eval_every=0, eval_start=False, pool_every=1)
+
+    def interrupt(record: dict) -> None:
+        if record["type"] == "update" and record["update"] == 3:
+            signal.raise_signal(signal.SIGINT)
+
+    stopped = train(config, tmp_path, log=interrupt)
+    assert _records(tmp_path)[-1]["type"] == "stop" and stopped.updates == 3
+    state = torch.load(tmp_path / "checkpoint.pt", weights_only=True)
+    assert (state["format"], state["segment"], state["updates"], state["finished"]) == (
+        1,
+        0,
+        3,
+        False,
+    )
+    assert state["metrics_length"] == (tmp_path / "metrics.jsonl").stat().st_size
+    _same(stopped.policy.state_dict(), state["policy"])
+    again = Trainer(Config(**state["config"]), segment=1)
+    again.restore(state)
+    _same(again.policy.state_dict(), state["policy"])
+    _same(again.optimizer.state_dict()["state"], state["optimizer"]["state"])
+    assert len(again.pool) == len(state["pool"]) == 3
+    for net, weights in zip(again.pool, state["pool"], strict=True):
+        _same(net.state_dict(), weights)
+    assert torch.equal(again.generator.get_state(), state["rng"]["sampling"])
+    assert torch.equal(torch.get_rng_state(), state["rng"]["torch"])
+    assert again.pool_rng.bit_generator.state == state["rng"]["pool"]
+    assert (again.samples, again.episodes) == (stopped.samples, stopped.episodes)
+    assert again.snapshots.next == stopped.snapshots.next
+    assert again.batch_seed == segment_seed(config.seed, 1) != config.seed
+    again.batch.close()
+
+    before = (tmp_path / "metrics.jsonl").read_bytes()
+    with pytest.raises(ConfigError, match=r"ppo\.lr would change the training"):
+        resume(tmp_path, ["ppo.lr=1e-3"])
+    assert (tmp_path / "metrics.jsonl").read_bytes() == before
+
+    budget = 5 * ONE_UPDATE
+    finished = resume(tmp_path, [f"samples={budget}"])
+    records = _records(tmp_path)
+    updates = [r["update"] for r in records if r["type"] == "update"]
+    assert updates == list(range(1, len(updates) + 1)) and len(updates) > 3
+    # The run's episodes count on across the segments.
+    episodes = [r["episodes"] for r in records if r["type"] == "update"]
+    assert episodes == sorted(episodes) and episodes[-1] == finished.episodes >= stopped.episodes
+    segment = next(r for r in records if r["type"] == "segment")
+    assert (segment["segment"], segment["update"], segment["dropped"]) == (1, 3, 0)
+    assert segment["seed"] == segment_seed(config.seed, 1)
+    assert segment["changed"] == {"samples": [4 * ONE_UPDATE, budget]}
+    assert records[-1]["type"] == "end"
+    record = json.loads((tmp_path / "record.json").read_text())
+    assert check_record(record) == [] and record["progress"]["samples"] >= budget
+    assert [(s["segment"], s["ended"]) for s in record["segments"]] == [(0, "stop"), (1, "budget")]
+    assert record["config"]["samples"] == budget
+    assert record["progress"]["episodes"] == finished.episodes
+    # A finished run resumes only with a larger budget.
+    with pytest.raises(ResumeError, match="extend it"):
+        resume(tmp_path)
+
+
+#: A run that dies hard (SIGKILL; TerminateProcess on Windows) while it writes its fourth
+#: checkpoint, the one after its third update (`checkpoint_minutes` 0: one at every update).
+KILLED = """
+import json, os, signal, sys
+from pathlib import Path
+from h3env.train import ppo
+from h3env.train.run import Config
+
+saves = 0
+write = ppo.atomic_write
+
+def dying(path, data):
+    global saves
+    if path.name == "checkpoint.pt":
+        saves += 1
+        if saves == 4:
+            path.with_name(path.name + ".tmp").write_bytes(b"half")
+            os.kill(os.getpid(), getattr(signal, "SIGKILL", signal.SIGTERM))
+    write(path, data)
+
+ppo.atomic_write = dying
+ppo.train(Config(**json.loads(sys.argv[2])), Path(sys.argv[1]))
+"""
+
+
+def test_a_run_killed_hard_resumes_from_its_last_checkpoint(tmp_path) -> None:
+    settings = dict(SMALL, samples=6 * ONE_UPDATE, eval_every=0, eval_start=False)
+    child = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            KILLED,
+            str(tmp_path),
+            json.dumps({**settings, "checkpoint_minutes": 0}),
+        ],
+        cwd=PYTHON,
+        capture_output=True,
+        timeout=600,
+    )
+    assert child.returncode != 0, child.stderr.decode()
+    assert (tmp_path / "checkpoint.pt.tmp").exists()
+    assert [r["update"] for r in _records(tmp_path) if r["type"] == "update"] == [1, 2, 3]
+    assert torch.load(tmp_path / "checkpoint.pt", weights_only=True)["updates"] == 2
+    resume(tmp_path, ["checkpoint.checkpoint_minutes=5"])
+    assert not list(tmp_path.glob("*.tmp"))
+    records = _records(tmp_path)
+    updates = [r["update"] for r in records if r["type"] == "update"]
+    assert updates == list(range(1, len(updates) + 1)) and len(updates) >= 6
+    segment = next(r for r in records if r["type"] == "segment")
+    assert (segment["update"], segment["dropped"]) == (2, 1)
+    record = json.loads((tmp_path / "record.json").read_text())
+    assert [(s["segment"], s["ended"], s["dropped"]) for s in record["segments"]] == [
+        (0, "lost", 1),
+        (1, "budget", 0),
+    ]
 
 
 def test_a_training_episode_on_the_held_out_set_stops_the_run() -> None:

@@ -14,6 +14,7 @@ use h3_content_battle::MAX_FIELD_HEXES;
 use crate::binds;
 use crate::geometry::{Field, Hex, HexSet};
 use crate::obstacles;
+use crate::pathfinder::{Goal, Query, Search};
 use crate::siege;
 use crate::state::{BattleState, Stack, StackId, StackTraits};
 
@@ -45,18 +46,6 @@ impl Reach {
     /// (BAT-MAG-032): an attack ordered with that move would not happen.
     pub(crate) const fn stops_at(&self, hex: Hex) -> bool {
         self.stops.contains(hex)
-    }
-
-    /// This reach for a walker the computer keeps out of its stops (BAT-SIE-022; the original's
-    /// 0x4B3400 at 0x4B375C): the positions where its walk stops are not reached at all. The
-    /// others keep their steps, as a walk goes on from no stop; its starting hexes are none.
-    // rule: BAT-SIE-022
-    pub(crate) fn without_stops(mut self) -> Self {
-        for hex in self.stops.iter() {
-            self.dist[hex.index()] = UNREACHABLE;
-        }
-        self.stops = HexSet::new();
-        self
     }
 }
 
@@ -187,14 +176,16 @@ fn enters(field: Field, mover: &Stack, hex: Hex, pits: HexSet) -> bool {
 pub(crate) const MAX_PATH: usize = MAX_FIELD_HEXES;
 
 /// The positions a walker `mover` (stack `id`) passes on its way to the position `to`, in order,
-/// `to` last and its start left out (BAT-MOV-003): a shortest path between free positions,
-/// chosen from the end: each position's predecessor is its first neighbour, in
-/// [`crate::Direction::ALL`] order, one step nearer the start, never one where the walk stops (a
-/// seen pit, BAT-MAG-032). Empty if `to` is the start or out of its reach this turn (every walk is
-/// within the stack's speed, BAT-MOV-001, so the search stops there). Only spell obstacles
-/// that act on the hexes a stack enters (Fire Wall, BAT-MAG-028; an unseen pit, BAT-MAG-032) make
-/// the path matter. The original walks the path its pathfinder chose (0x4B3400, not read: survey
-/// S-11), so on ties it may pass other hexes.
+/// `to` last and its start left out (BAT-MOV-003): the path of the original's pathfinder within
+/// its move (the walk 0x441FA0 asks 0x5239D0, which asks 0x4B3400 with the range its speed:
+/// [`crate::pathfinder`], `installation.md` §7.40, §7.41). Among equally short paths between
+/// free positions, each position comes from the first position the search took next to it
+/// (cheapest, then queued first; each taken position queues its neighbours from top right
+/// clockwise). It passes no position where the walk stops (a pit its controller sees,
+/// BAT-MAG-032; a town's moat, BAT-SIE-004). Empty if `to` is the start or out of its reach this
+/// turn (every walk is within the stack's speed, BAT-MOV-001). Only the hexes a stack enters
+/// make the path matter: Fire Wall (BAT-MAG-028), an unseen pit (BAT-MAG-032), a mine
+/// (BAT-MAG-033), the moat and the gate (BAT-SIE-003, BAT-SIE-005).
 // rule: BAT-MOV-003
 pub(crate) fn path(
     state: &BattleState,
@@ -203,21 +194,10 @@ pub(crate) fn path(
     mover: &Stack,
     to: Hex,
 ) -> ([Hex; MAX_PATH], usize) {
-    let reach = reachable(state, field, id, mover);
-    let mut out = [Hex(0); MAX_PATH];
-    let Some(steps) = reach.steps(to).map(usize::from) else {
-        return (out, 0);
+    let query = Query {
+        goal: Goal::Reach(to),
+        range: u16::from(mover.speed_now()),
+        avoid: false,
     };
-    let mut at = to;
-    for i in (0..steps).rev() {
-        out[i] = at;
-        // A reached position other than the start has a neighbour one step nearer.
-        at = field
-            .neighbors(at)
-            .into_iter()
-            .flatten()
-            .find(|&n| reach.steps(n).is_some_and(|d| usize::from(d) == i) && !reach.stops_at(n))
-            .unwrap_or(at);
-    }
-    (out, steps)
+    Search::run(state, field, (id, mover), query).path()
 }

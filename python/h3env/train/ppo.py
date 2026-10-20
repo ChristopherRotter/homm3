@@ -10,14 +10,19 @@ next value is its side's next sample's, 0 after a decided battle, the value of `
 side]` after a truncation, and the value of the batch's current observation for the side to move
 when the rollout ends. A transition still open at the end (the side not to move) has no next value
 yet and is left out of that update; the sample before it bootstraps from its value.
+
+A run checkpoints its whole training state (`Trainer.state`, design §3.1) at update boundaries and
+continues from it with `resume` in a new segment (§3.3): a fresh batch on the segment's own seed,
+the episodes in flight at the stop discarded.
 """
 
 from __future__ import annotations
 
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import asdict
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import torch
@@ -31,13 +36,20 @@ from .run import (
     Cadence,
     Config,
     HeldOut,
+    ResumeError,
     Run,
+    Stop,
     atomic_write,
     learning_rate,
     machine,
     resolve,
+    resumed,
+    segment_seed,
     source,
 )
+
+#: The version of `checkpoint.pt`'s layout (`Trainer.state`).
+CHECKPOINT_FORMAT = 1
 
 
 class Rollout:
@@ -184,18 +196,21 @@ def device_of(name: str) -> torch.device:
 
 
 class Trainer:
-    """One run's state: the batch, the network, the optimizer, the open transitions."""
+    """One run's state: the batch, the network, the optimizer, the open transitions, the
+    schedule. `segment` (0 for a new run) chooses the batch's seed (`run.segment_seed`)."""
 
-    def __init__(self, config: Config) -> None:
+    def __init__(self, config: Config, segment: int = 0) -> None:
         self.config = c = config
         torch.manual_seed(c.seed)
         if c.torch_threads:
             torch.set_num_threads(c.torch_threads)
         self.device = device_of(c.device)
+        self.segment = segment
+        self.batch_seed = segment_seed(c.seed, segment)
         self.batch = BattleBatch(
             c.envs,
             threads=c.threads,
-            seed=c.seed,
+            seed=self.batch_seed,
             max_steps=c.max_steps,
             currency=c.currency,
             mana_price=c.mana_price,
@@ -224,6 +239,62 @@ class Trainer:
         self.pool_rng = np.random.default_rng(c.seed)
         self.frozen_side = np.full(c.envs, -1, np.int8)
         self.frozen_net: list[Policy | None] = [None] * c.envs
+        self.snapshots = Cadence(c.pool_every if c.pool_share > 0 else 0)
+        self.evaluations = Cadence(c.eval_every)
+
+    def state(self, **run: Any) -> dict[str, Any]:
+        """The whole training state at an update boundary (`checkpoint.pt`, design §3.1), with
+        the run's own entries (`run`: its clock, its metrics' length, whether it finished). Not
+        in it: the batch's battles and the open transitions (a resume starts new episodes). The
+        update's minibatch order needs no generator (`default_rng(updates)`)."""
+        cuda = torch.cuda.get_rng_state_all() if torch.cuda.is_available() else []
+        return {
+            "format": CHECKPOINT_FORMAT,
+            "config": asdict(self.config),
+            "segment": self.segment,
+            "updates": self.updates,
+            "samples": self.samples,
+            "episodes": self.episodes,
+            "best": self.best,
+            "next_snapshot": self.snapshots.next,
+            "next_eval": self.evaluations.next,
+            "policy": self.policy.state_dict(),
+            "optimizer": self.optimizer.state_dict(),
+            "pool": [net.state_dict() for net in self.pool],
+            "rng": {
+                "device": self.device.type,
+                "sampling": self.generator.get_state(),
+                "pool": self.pool_rng.bit_generator.state,
+                "torch": torch.get_rng_state(),
+                "cuda": cuda,
+            },
+            **run,
+        }
+
+    def restore(self, state: dict[str, Any]) -> None:
+        """Takes a checkpoint's training state over (`state`'s config is this trainer's). The
+        sampling generator's state fits only a device of the same type: resumed on another, the
+        generator starts from the segment's seed instead."""
+        c = self.config
+        self.policy.load_state_dict(state["policy"])
+        self.optimizer.load_state_dict(state["optimizer"])
+        self.updates, self.samples = state["updates"], state["samples"]
+        self.episodes, self.best = state["episodes"], state["best"]
+        self.snapshots.next, self.evaluations.next = state["next_snapshot"], state["next_eval"]
+        self.pool = []
+        for weights in state["pool"]:
+            net = Policy.for_batch(self.batch, c.hidden, c.embed).to(self.device)
+            net.load_state_dict(weights)
+            self.pool.append(net.frozen())
+        rng = state["rng"]
+        if rng["device"] == self.device.type:
+            self.generator.set_state(rng["sampling"])
+        else:
+            self.generator.manual_seed(self.batch_seed)
+        self.pool_rng.bit_generator.state = rng["pool"]
+        torch.set_rng_state(rng["torch"])
+        if rng["cuda"] and len(rng["cuda"]) == torch.cuda.device_count():
+            torch.cuda.set_rng_state_all(rng["cuda"])
 
     def assign(self, envs: np.ndarray) -> None:
         """Draws the opponent of each of `envs`' new episodes: a frozen network for one side with
@@ -264,8 +335,10 @@ class Trainer:
             choice.cast[rows] = False
         return choice, np.where(frozen, -1, to_move).astype(np.int8)
 
-    def collect(self) -> dict:
-        """Plays one rollout; returns its episodes' statistics."""
+    def collect(self, stop: Stop | None = None) -> dict | None:
+        """Plays one rollout; returns its episodes' statistics, or None when `stop` was
+        requested before one of its calls (the rollout is discarded: it changed no weights and
+        no counter, only the generators moved on)."""
         b, r, c = self.batch, self.rollout, self.config
         r.clear()
         self.opened.fill(-1)
@@ -273,9 +346,12 @@ class Trainer:
         results = np.zeros(_ffi.RESULT_DEFENDER_SURRENDERED + 1, np.int64)
         truncated = 0
         decisions = 0
+        episodes = 0
         start = time.perf_counter()
         pool_episodes = pool_won = 0
         for t in range(c.rollout):
+            if stop is not None and stop.requested:
+                return None
             choice, side = self.act()
             r.store(t, b, choice, side)
             live = side >= 0
@@ -314,9 +390,10 @@ class Trainer:
                 learner = 1 - self.frozen_side[done[pooled]]
                 pool_episodes += len(learner)
                 pool_won += int((b.result[done[pooled]] == learner).sum())
-                self.episodes += len(done)
+                episodes += len(done)
                 self.held_out.check(b.episode_seed[done])
                 self.assign(done)
+        self.episodes += episodes
         elapsed = time.perf_counter() - start
         with torch.no_grad():
             obs = torch.from_numpy(b.obs).to(self.device)
@@ -328,7 +405,9 @@ class Trainer:
         return {
             "decisions": decisions,
             "rollout_s": elapsed,
-            "episodes": ended,
+            # The self-play episodes that ended (the rates' denominator); not `episodes`, the
+            # run's count in the update record.
+            "self_play_episodes": ended,
             "attacker_won": int(results[_ffi.RESULT_ATTACKER]) / max(ended, 1),
             "truncated": truncated / max(ended, 1),
             "pool": len(self.pool),
@@ -403,17 +482,20 @@ class Trainer:
         self.updates += 1
         return stats
 
-    def checkpoint(self, path: Path) -> None:
-        """The network, the optimizer and the counters, written atomically (the full training
-        state is T2b's)."""
-        state = {
-            "policy": self.policy.state_dict(),
-            "optimizer": self.optimizer.state_dict(),
+    def network(self, **meta: Any) -> dict[str, Any]:
+        """The network alone (`best.pt`): its weights, the config that sizes it, `meta`."""
+        return {
+            "format": CHECKPOINT_FORMAT,
             "config": asdict(self.config),
+            "policy": self.policy.state_dict(),
             "updates": self.updates,
             "samples": self.samples,
+            **meta,
         }
-        atomic_write(path, lambda f: torch.save(state, f))
+
+
+def save(path: Path, state: dict[str, Any]) -> None:
+    atomic_write(path, lambda f: torch.save(state, f))
 
 
 def identity(trainer: Trainer) -> dict:
@@ -441,18 +523,70 @@ def train(
     out: Path | None = None,
     log: Callable[[dict], None] | None = None,
     text: str = "",
+    stop: Stop | None = None,
 ) -> Trainer:
     """Trains until `config.samples` (the first update boundary at or past it), with an
     evaluation every `config.eval_every` samples and at the end. Into `out` when given: the run's
     directory (`run.Run`: `config.toml` from `text`, `metrics.jsonl`, `record.json`),
-    `checkpoint.pt` (the last evaluation's) and `best.pt` (the best sampled rate's). The final
-    evaluation reuses the last one if no update came between."""
+    `checkpoint.pt` (the whole training state: at the start, every `checkpoint_minutes`, after
+    each evaluation, at a stop and at the end) and `best.pt` (the best sampled rate's network).
+    The final evaluation reuses the last one if no update came between. Ctrl+C (or `stop`'s
+    request) stops the run at the next batch call or update boundary, saved (`run.Stop`):
+    `resume` continues it."""
     config = resolve(config)
     trainer = Trainer(config)
-    run = Run(out, config, identity(trainer), text, log)
-    snapshots = Cadence(config.pool_every if config.pool_share > 0 else 0)
-    evaluations = Cadence(config.eval_every)
+    ident = identity(trainer)
+    run = Run(out, config, ident, text, log)
+    opening = {"type": "start", "name": run.record.name, "segment": 0, "seed": trainer.batch_seed}
+    return _go(trainer, run, stop, {**opening, "identity": ident})
+
+
+def resume(
+    out: Path,
+    sets: Iterable[str] = (),
+    log: Callable[[dict], None] | None = None,
+    stop: Stop | None = None,
+) -> Trainer:
+    """Continues the run in `out` from its checkpoint (design §3.3) in a new segment, to its
+    budget: `sets` (`--set table.key=value`) may change only `run.RESUMABLE`'s keys (extend or
+    cut the budget, move it to other threads or another device). Its metrics are cut back to the
+    save, its batch starts new episodes on the segment's seed."""
+    out = Path(out)
+    path = out / "checkpoint.pt"
+    if not path.exists():
+        raise ResumeError(f"{out} holds no checkpoint.pt to resume")
+    state = torch.load(path, map_location="cpu", weights_only=True)
+    if state.get("format") != CHECKPOINT_FORMAT:
+        raise ResumeError(
+            f"{path} is not a checkpoint of format {CHECKPOINT_FORMAT} (E05's held the network "
+            "and the optimizer only)"
+        )
+    config, changed = resumed(Config(**state["config"]), sets)
+    if state["finished"] and state["samples"] >= config.samples:
+        raise ResumeError(
+            f"the run in {out} reached its budget ({config.samples} samples): extend it with "
+            "--set samples=N"
+        )
+    trainer = Trainer(config, segment=state["segment"] + 1)
+    trainer.restore(state)
+    trainer.assign(np.arange(config.envs))
+    run = Run(out, config, {}, log=log, resume=(state["metrics_length"], state["seconds"]))
+    opening = {
+        "type": "segment",
+        "segment": trainer.segment,
+        "seed": trainer.batch_seed,
+        "dropped": run.dropped,
+        "changed": changed,
+    }
+    return _go(trainer, run, stop, {**opening, "identity": identity(trainer)})
+
+
+def _go(trainer: Trainer, run: Run, stop: Stop | None, opening: dict) -> Trainer:
+    """The run's loop from its opening record (`start` or `segment`) to its end or a stop."""
+    config = trainer.config
+    stop = Stop() if stop is None else stop
     last_record: dict = {}
+    last_save = time.monotonic()
 
     def counters() -> dict:
         return {
@@ -461,6 +595,17 @@ def train(
             "episodes": trainer.episodes,
             "minutes": run.minutes(),
         }
+
+    def checkpoint(finished: bool = False) -> None:
+        """The training state and then the record; the state names the metrics' length."""
+        nonlocal last_save
+        if run.out is not None:
+            state = trainer.state(
+                seconds=run.seconds(), metrics_length=run.sync(), finished=finished
+            )
+            save(run.out / "checkpoint.pt", state)
+            run.write_record()
+        last_save = time.monotonic()
 
     def run_eval(final: bool, baseline: bool = False) -> None:
         nonlocal last_record
@@ -478,42 +623,50 @@ def train(
             **result,
         }
         run.emit(last_record)
-        if out is not None:
-            trainer.checkpoint(out / "checkpoint.pt")
-            if improved:
-                trainer.checkpoint(out / "best.pt")
-        run.write_record()
+        if run.out is not None and improved:
+            save(run.out / "best.pt", trainer.network(win_rate=rate))
 
-    try:
-        run.emit({"type": "start", "name": run.record.name, **counters()})
-        if config.eval_start:
-            run_eval(final=False, baseline=True)
-        while trainer.samples < config.samples:
-            lr = learning_rate(config, trainer.samples)
-            roll = trainer.collect()
-            stats = trainer.update(lr)
-            run.emit(
-                {
-                    "type": "update",
-                    **counters(),
-                    "lr": lr,
-                    "samples_per_s": stats["update_samples"]
-                    / (roll["rollout_s"] + stats["update_s"]),
-                    **roll,
-                    **stats,
-                }
-            )
-            if snapshots.due(trainer.samples):
-                trainer.snapshot()
-                run.emit({"type": "snapshot", **counters(), "pool": len(trainer.pool)})
-            if evaluations.due(trainer.samples):
-                run_eval(final=False)
-        if last_record.get("update") == trainer.updates:
-            run.emit({**last_record, "final": True, "repeated": True})
-        else:
-            run_eval(final=True)
-        run.emit({"type": "end", "reason": "budget", **counters()})
-        run.write_record()
-    finally:
-        run.close()
+    with stop:
+        try:
+            run.emit({**opening, **counters()})
+            if opening["type"] == "start" and config.eval_start:
+                run_eval(final=False, baseline=True)
+            checkpoint()
+            while trainer.samples < config.samples and not stop.requested:
+                lr = learning_rate(config, trainer.samples)
+                roll = trainer.collect(stop)
+                if roll is None:
+                    break
+                stats = trainer.update(lr)
+                run.emit(
+                    {
+                        "type": "update",
+                        **counters(),
+                        "lr": lr,
+                        "samples_per_s": stats["update_samples"]
+                        / (roll["rollout_s"] + stats["update_s"]),
+                        **roll,
+                        **stats,
+                    }
+                )
+                if trainer.snapshots.due(trainer.samples):
+                    trainer.snapshot()
+                    run.emit({"type": "snapshot", **counters(), "pool": len(trainer.pool)})
+                if trainer.evaluations.due(trainer.samples):
+                    run_eval(final=False)
+                    checkpoint()
+                elif time.monotonic() - last_save >= 60 * config.checkpoint_minutes:
+                    checkpoint()
+            if stop.requested:
+                run.emit({"type": "stop", **counters()})
+                checkpoint()
+                return trainer
+            if last_record.get("update") == trainer.updates:
+                run.emit({**last_record, "final": True, "repeated": True})
+            else:
+                run_eval(final=True)
+            run.emit({"type": "end", "reason": "budget", **counters()})
+            checkpoint(finished=True)
+        finally:
+            run.close()
     return trainer
