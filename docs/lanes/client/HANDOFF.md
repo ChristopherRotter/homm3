@@ -4,7 +4,7 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E17 M0–M2 done; M3 T1a–T6c-1 done; H1, H2 done (2026-10-19: the adventure lane's harness); next: M3 T6c-2, T7a–T8** (`QUEUE.md`; T9 closes M3). Screens are built from the executable's dialog items (`h3_view::ui`, the user: reusable components; design §9.7). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
+- **E17 M0–M2 done; M3 T1a–T6c-2 done; H1, H2 done (2026-10-19: the adventure lane's harness); next: M3 T7a–T8** (`QUEUE.md`; T9 closes M3). Screens are built from the executable's dialog items (`h3_view::ui`, the user: reusable components; design §9.7). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
 - **Captures** (the user, 2026-10-20): `h3drive.py drawn` first (no Wine); capture only what it lists or the task changes, all at a milestone's closure or after a harness change (runbook, "Which captures a change needs"). Detail for later tasks: `NOTES.md`.
 - **The user's requirements** (epic, "Decisions"): a string catalogue (JSON packs, no committed translation: CLT-Q7); graphics options (`faithful` default); exhaustive reference diffs.
 - The lane owns `clients/`, `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
@@ -51,10 +51,10 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
-- **2026-10-20, E17 M3 T6c-1 (the mouse's still; #336 open).** T6c split with the user (the
-  still; over time T6c-2). The mouse read (`screen_to_hex`, `battle_cursor`, the slots, the
-  hints, the hot spots; the cursor's even x a drawing bug, `Bugs::Original` only, the user);
-  `h3_view::mouse`; 26 mouse situations exact from 100 ms, the parked cursor drawn.
-- **2026-10-20, E17 M3 T6b (panel and log over time; #333).** The log read; the timeline's
-  `log`, `battle_log::Log`, `scene::Panels`; the harness keeps panel changes and reads the log:
-  the item listed (` log`) where the original shows a hint (T6c) or a rolled line.
+- **2026-10-21, E17 M3 T6c-2 (the mouse over time; `client/e17-m3-t6c-2`).** Taken whole (the
+  user). `mouse::track` follows the harness's or the window's mouse through a record; entered
+  stacks fidget (`Timeline::enter`); the harness aligns the mouse poll's grid and records the
+  cursor's point; `hover` compared; the window's mouse, pressed buttons, hotkeys. *In progress:
+  the full recapture (`frames`, then `set`, `drawn --record`), the epic and its log.*
+- **2026-10-20, E17 M3 T6c-1 (the mouse's still; #336).** T6c split with the user. The mouse
+  read; `h3_view::mouse`; 26 mouse situations exact from 100 ms, the parked cursor drawn.
