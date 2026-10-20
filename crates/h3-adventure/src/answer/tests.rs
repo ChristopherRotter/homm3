@@ -86,6 +86,7 @@ fn details(attack: u8, defense: u8, diplomacy: Option<u8>) -> HeroDetails {
         hero_type: HeroTypeId::from_raw(0),
         level: 1,
         experience: 0,
+        offered: Default::default(),
         primary: [attack, defense, 1, 1],
         skills: diplomacy
             .map(|level| (DIPLOMACY, level))

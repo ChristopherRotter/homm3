@@ -4,10 +4,10 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 
 ## Current state
 
-- **E08**: increments 1, 2 and 3 **closed** (2026-10-12, -13, -20; increment 3: decisions 19–47). **Increment 4: hero progression only** (decisions 48–60). T24a, T24b done (survey `E08-progression.md`, `E08-design.md` §17; decisions 55, 58). **Round 1 closed** (decisions 59–61: T25 survey §10, T26a #325 the ADRs, T26b the data); **round 2 next** (T27 + T28, QUEUE). Records: `E08-log.md`.
+- **E08**: increments 1, 2 and 3 **closed** (2026-10-12, -13, -20; increment 3: decisions 19–47). **Increment 4: hero progression only** (decisions 48–60). T24a, T24b done (survey `E08-progression.md`, `E08-design.md` §17; decisions 55, 58). **Round 1 closed** (decisions 59–61: T25 survey §10, T26a #325 the ADRs, T26b #335 the data). **Round 2** (decision 62): T27 done (`h3-heroes`' progression), T28 next (QUEUE). Records: `E08-log.md`.
 - **Map reader and import** (`h3-map`): `read`/`parse` into `model::RawMap`; `import` into `h3_game::GameSetup`, `import_map` its static layer (`MAP_IMPORT_VERSION` 7, `docs/formats/h3m.md` "Import"). Every shipped map's static layer imports and validates; of the 160 shipped maps 2 import whole (`Race for Ardintinny`, `Tutorial.tut`), the rest are typed `Unsupported`. `verify --with-original-data` runs `crates/h3-map/examples/original_data.rs` on the shipped maps (with the monsters', grounds' and guarded piles' census).
 - **Monsters, grounds, guarded piles** (T20a2a): kinds `Monster`, `Ground`; `[params.monsters]`; `ObjectSetup.monster`/`.drawn` (ADV-MON-002 to -004); `army_left`; `battle_ground` (ADV-GRD-001); `ObjectView.monster`. T20a2b: `guard_of` (ADV-MON-005, -006). T20b1: `answer.rs` (ADV-MON-007), offers `Join`, `JoinForGold`, `Pursue` (ADV-MON-008). T20b2: `split` (ADV-MON-009, flag 24), `Defender::Monster`, `Actor::System`, `end_monster_battle` (ADV-MON-010). T20b3b1: `MonsterChanged`; fringe monsters in strict (decision 40). T21a (ADV-PIK-004, `state/piles.rs`): `Guards`, `guards_left`, `OfferKind::Fight`, `Defender::Guards`, `end_unowned_battle`.
-- **The store of heroes** (T18b, GAM-HER-001): `GameState` keeps `Arc<HeroDetails>` by `HeroId`, from `GameHeroSetup.details` or the defaults, validated by `h3-heroes`; `attack_defense`, `join_bonus` (T20a1); `GameObservation.heroes`. T26b: `HeroParams.experience` (to level 75), `wisdom`, `schools`; `HeroClass.offer_intervals`; flag 27 unread until T29.
+- **The store of heroes** (T18b, GAM-HER-001): `GameState` keeps `Arc<HeroDetails>` by `HeroId`, from `GameHeroSetup.details` or the defaults, validated by `h3-heroes`; `attack_defense`, `join_bonus` (T20a1); `GameObservation.heroes`. Progression (T26b data, T27 rules): `h3_heroes`' `level.rs`, `level_up.rs` (`draw_level_up` → `LevelUp`, `OriginalDraws`), `GainLevel`, `apply_change_limited`, `HeroDetails.offered`; a level above the experience's is invalid (decision 62); flag 27 unread until T29.
 - **Objects** (T12–T15): types (`ruleset/objects.rs`, ADV-OBJ-002); contents drawn at the build (ADV-PIK-001 to -003); removals (`state/occupancy.rs`); `ObjectView`s (no index). Visits (ADV-OBJ-003, -004; `visit_at`, `tile_object`); gains and offers in `AdventureOutcome` (ADV-OBJ-005). Purchases and keys (`state/flags.rs`; ADV-VIS-001 to -004); `offer_stands`.
 - **Battles** (T19a1, GAM-BAT-001 to -005; `h3_game::state::battle`): a step toward another player's hero visits it (`BattleStart`, `battle_ground`), `Decision::Battle(Arc<OpenBattle>)` both owners play (`GameCommand::Battle`), seeds under `ADV-QUIRK-5`, events and `GameObservation.battle` to the owners; the outcome's armies, `HeroRemoved`, a surrender's gold; the heroes' part (`heroes_after_battle`).
 - **Setups and state:** `h3_adventure::{AdventureSetup, AdventureState}` (static map behind an `Arc` with the coast bits, heroes by id with their movement points and formation, the difficulty, state hash v10; ADV-MAP-001, ADV-MOV-001/-002); `h3_game::{GameRuleset, GameSetup, GameState}`: the starting armies (GAM-SET-001), a stream per player, sequential turn groups, `apply` (GAM-TRN-001/002, GAM-CAL-001), treasuries (T13: GAM-RES-001/-002, `GameSetup.difficulty`), pending decisions (T14b: GAM-DEC-001, `Answer`, `OfferGone`). Game state hash v8; `GameRuleset` with the battle part. `GameSetup::validate` builds with seed 0.
@@ -16,10 +16,10 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 - **Commands** (T8b2): `h3_game::legal_commands` and `legal_moves` (a hero's `Reach`, the user), empty outside the turn.
 - **The env** (T9a, `h3-sim/src/adventure/`): `AdventureEnv` (reset, `to_move`, masks, steps, fork, hash, the view, a day limit), action encoding v3 since T19b1 (`Phase`; `MapAction`: `EndTurn`, eight hero slots, `Accept`, `Decline`, a tile; in a battle the battle's encoding; `to_move` yields `Seat`s, since T20b3a `Seat::Neutral` for an unowned side, played as `Actor::System` with `neutral_observation`), `random_rollout` (every seat).
 - **Replays and benchmarks** (T9b): `adventure::replay` (format v4 since T20b2), `h3 adventure run/verify/bench`, nine golden replays (since T20b3b2: monsters, guarded piles, hero battles; re-record with the options in `crates/h3-cli/tests/adventure_replays.rs`), the maps `fixtures/maps/e08-{duel-36,xl-144}.h3m` (`h3-map`'s `tests/fixtures.rs`; monsters, guarded piles, grounds since T20b3b2), three gated workloads in `benches/adventure/` (play, reach, fork with a battle open).
-- **Experiments**: `h3-experiment` (battle's) has the adventure shape (batch E3's since T22a1: difficulty, underground, dispositions, guarded piles); batches 1, 2 and E3 scored. **Agents run batches** on the client lane's harness (decision 21; E17 H1, H2: questions, battles from the map, the underground, `level_up`, `heroes:experience`).
+- **Experiments**: `h3-experiment` (battle's) has the adventure shape (batch E3's since T22a1); batches 1, 2 and E3 scored. **Agents run batches** on the client lane's harness (decision 21; E17 H1, H2).
 - **Adventure ruleset part** (v8 since T20b1): terrains, roads, rivers, the movement and setup parameters, the object types, the starting resources by difficulty, the battle terrains, the monsters' parameters (with the price resource).
-- **Properties** on generated playable maps (`h3-map`'s `play.rs`, `view.rs`; T8b2); since T19b2 `Step::Fight` runs (hero casts through `h3-battle`, a dev-dependency); since T20b3b1 monsters (`MONSTERS`), grounds and the system actor; since T21a guarded piles (`GUARDED`); `the_plans_play_battles_to_a_victory` counts 192 fixed cases.
-- **Next:** #335 (T26b, `shared/e08-t26b`, `cross-lane`) to merge; round 2's checkpoint.
+- **Properties** on generated playable maps (`h3-map`'s `play.rs`, `view.rs`): `Step::Fight` runs (hero casts through `h3-battle`, a dev-dependency), monsters, grounds, the system actor, guarded piles; `the_plans_play_battles_to_a_victory` counts 192 fixed cases.
+- **Next:** T27's pull request (`adventure/e08-t27`, `cross-lane`) to merge; then T28 (the choice ported).
 - **ADRs accepted**: ADR-0015 to -0017 (2026-10-10), their increment-2 amendments (#115), increment 3's (ADR-0013 too) applied by T18a (#185).
 - **Fuzzing is stable-only** (user, 2026-10-10).
 - **R01** (the content split): the core `h3-content` and `h3-pack` (`core.toml`) are shared; the writer is `h3_map::writer`.
@@ -40,14 +40,14 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 
 ## Recent sessions
 
+### 2026-10-20 — increment 4, tenth session: T27
+
+Baseline b989682. Decision 62 (T27 whole, the level check in `h3-heroes`): part A §2–§7, the other lanes' heroes carry their level's experience (`cross-lane`), game state hash v9.
+
 ### 2026-10-20 — increment 4, ninth session: T26b, round 1 closed
 
-Baseline 2d6838c. Decision 61 (T26b whole, `cross-lane`): the hero data in `h3-content` (pack format v44, core ruleset hash v46), the packs re-harvested, `ADV-QUIRK-10`'s entry, ADR-0007 point 4, 19 replay headers, the AI lane's bots table (identity only).
+Baseline 2d6838c. Decision 61 (T26b whole, `cross-lane`, #335): the hero data in `h3-content` (pack format v44, core ruleset hash v46), the packs re-harvested, `ADV-QUIRK-10`'s entry.
 
 ### 2026-10-20 — increment 4, eighth session: round 1, T25 and T26a
 
 Baseline 774ba0e. Decisions 59, 60 (ADV-Q17). T26a: ADRs amended (#325). T25: survey §10 (no draws; A-11; E3-6 fits).
-
-### 2026-10-20 — increment 4, seventh session: T24b2, T24b done
-
-Baseline ed4a213. Decisions 57, 58 (ADV-Q16: as recommended). ADR-0017's draft; design part B, the cut.

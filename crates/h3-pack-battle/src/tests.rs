@@ -1517,7 +1517,8 @@ fn harvested_magic_derives() {
     let details = |hero: &str, skills: &[(&str, u8)], worn: &[&str]| HeroDetails {
         hero_type: sod.hero_type_by_key(hero).unwrap(),
         level: 12,
-        experience: 0,
+        experience: h3_heroes::experience_for(sod.hero_params().unwrap(), 12),
+        offered: Default::default(),
         primary: [1, 1, 5, 5],
         skills: skills
             .iter()
@@ -1580,6 +1581,7 @@ fn harvested_magic_derives() {
     let armorer = |hero: &str, level: u8, mastery: u8| {
         let mut d = details(hero, &[("base:armorer", mastery)], &[]);
         d.level = level;
+        d.experience = h3_heroes::experience_for(sod.hero_params().unwrap(), level);
         derive_battle_hero(&d, &sod).unwrap().damage.reduction
     };
     assert_eq!(
@@ -1616,6 +1618,7 @@ fn hero_details_fit_the_harvested_slots() {
             hero_type: r.hero_type_by_key("base:orrin").unwrap(),
             level: 10,
             experience: 20_000,
+            offered: Default::default(),
             primary: [5, 4, 2, 2],
             skills: vec![(r.skill_by_key("base:archery").unwrap(), 3)],
             worn: worn.iter().map(art).map(Into::into).collect(),
@@ -1850,7 +1853,8 @@ fn the_data_quirks_are_fixed_in_strict_fixed() {
         let details = HeroDetails {
             hero_type: r.hero_type_by_key(hero).unwrap(),
             level: 4,
-            experience: 0,
+            experience: h3_heroes::experience_for(r.hero_params().unwrap(), 4),
+            offered: Default::default(),
             primary: [0, 0, 1, 1],
             skills: vec![],
             worn: vec![],
@@ -1915,7 +1919,8 @@ fn harvested_hero_effects_reproduce_the_experiments() {
         let details = HeroDetails {
             hero_type: sod.hero_type_by_key(hero).unwrap(),
             level,
-            experience: 0,
+            experience: h3_heroes::experience_for(sod.hero_params().unwrap(), level),
+            offered: Default::default(),
             primary,
             skills: vec![],
             worn: worn

@@ -254,6 +254,11 @@ fn spell_id(r: &Ruleset, k: &str) -> SpellId {
     r.spell_by_key(k).unwrap()
 }
 
+/// The experience of `level` (HER-EXP-002): details at a level carry at least it.
+fn xp(r: &Ruleset, level: u8) -> u32 {
+    experience_for(r.hero_params().unwrap(), level)
+}
+
 fn slot_id(r: &Ruleset, k: &str) -> ArtifactSlotId {
     r.artifact_slot_by_key(k).unwrap()
 }
@@ -266,6 +271,7 @@ fn details(r: &Ruleset) -> HeroDetails {
         hero_type: r.hero_type_by_key("t:orrin").unwrap(),
         level: 1,
         experience: 0,
+        offered: Default::default(),
         primary: [99, 0, 1, 0],
         skills: vec![(skill(r, "t:archery"), 1), (skill(r, "t:tactics"), 3)],
         worn: vec![
@@ -571,6 +577,7 @@ proptest! {
             hero_type: HeroTypeId::from_raw(0),
             level,
             experience: 0,
+            offered: Default::default(),
             primary,
             skills: skills.iter().map(|&(s, l)| (SkillId::from_raw(s), l)).collect(),
             worn: worn.iter().map(|&a| ArtifactTypeId::from_raw(a).into()).collect(),
@@ -597,4 +604,5 @@ proptest! {
 
 mod change;
 mod derive;
+mod level;
 mod outcome;

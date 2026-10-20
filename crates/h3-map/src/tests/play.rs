@@ -1792,6 +1792,8 @@ fn check_heroes_after_battle(
                     prop_assert!(after.adventure().hero(id).is_some(), "{:?} learned", id);
                     spells.push(spell);
                 }
+                // E08 T27: a battle tells no level; the game gives them (T30).
+                HeroChange::GainLevel { .. } => prop_assert!(false, "{:?} told a level", id),
             }
         }
         prop_assert_eq!((a.experience, a.mana), (experience, mana));

@@ -16,6 +16,12 @@ pub enum DetailsError {
     UnknownHeroType,
     /// The level is 0 (heroes start at level 1).
     LevelZero,
+    /// The experience exceeds the ruleset's bound (HER-EXP-002: level 75's threshold - 1).
+    ExperienceAboveBound,
+    /// The level exceeds the level of the experience (HER-EXP-002).
+    LevelAboveExperience,
+    /// A level at which Wisdom or a school was last offered exceeds the level (HER-LVL-004).
+    OfferedAboveLevel,
     /// A base primary skill exceeds the ruleset's limit.
     PrimaryAboveLimit(PrimarySkill),
     /// More secondary skills than a hero can have.
@@ -58,6 +64,9 @@ impl fmt::Display for DetailsError {
             Self::NoHeroParams => f.write_str("the ruleset has no hero parameters"),
             Self::UnknownHeroType => f.write_str("unknown hero type"),
             Self::LevelZero => f.write_str("the level must be at least 1"),
+            Self::ExperienceAboveBound => f.write_str("the experience exceeds the highest level's"),
+            Self::LevelAboveExperience => f.write_str("the level exceeds the experience's"),
+            Self::OfferedAboveLevel => f.write_str("an offer's level exceeds the level"),
             Self::PrimaryAboveLimit(skill) => {
                 write!(f, "{} above the ruleset's limit", skill.name())
             }
@@ -99,6 +108,13 @@ pub enum ChangeError {
     Spell(DetailsError),
     /// The hero has learned the spell already.
     KnownSpell(SpellId),
+    /// A level is gained, but none is pending: the level is the experience's (HER-LVL-005).
+    NoLevelPending,
+    /// A level's learned skill is not the ruleset's, is at Expert, or is new to a hero who knows
+    /// the most skills (HER-LVL-005).
+    CannotLearn(SkillId),
+    /// A level sets an offer's level above the new level (HER-LVL-005).
+    OfferedAboveLevel,
 }
 
 impl fmt::Display for ChangeError {
@@ -112,6 +128,9 @@ impl fmt::Display for ChangeError {
             }
             Self::Spell(error) => write!(f, "the spell does not fit the ruleset: {error}"),
             Self::KnownSpell(id) => write!(f, "spell {} is learned already", id.raw()),
+            Self::NoLevelPending => f.write_str("no level is pending"),
+            Self::CannotLearn(id) => write!(f, "secondary skill {} cannot be learned", id.raw()),
+            Self::OfferedAboveLevel => f.write_str("an offer's level exceeds the new level"),
         }
     }
 }

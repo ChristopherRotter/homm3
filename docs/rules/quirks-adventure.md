@@ -121,5 +121,44 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Sources: code reading 0x4DAD74 (E08 T24a1, survey `E08-progression.md` §2.4), confirmed by the second reading (§9); wiki Secondary skill (https://heroes.thelazy.net/index.php/Secondary_skill), Hero class (https://heroes.thelazy.net/index.php/Hero_class); VCMI 1.7.5 `lib/mapObjects/CGHeroInstance.cpp` (`maxlevelsToWisdom`, `maxlevelsToMagicSchool`).
 - Flag: `quirk.content.elementalist_offer_intervals` (flag 28 in `h3_content`'s registry, E08 T26b), a data quirk: the `ab` pack keeps the executable's `offer_intervals = [6, 4]` and a `[[hero_class_override]]` gated by the flag gives `[3, 3]` (the harvester's gap-fill `data_quirks.class_intervals`)
 - Defaults: faithful = on (6 and 4), strict-fixed = off (3 and 3)
-- Regression test: `crates/h3-pack/src/tests.rs`, `the_harvested_level_data_and_the_elementalists_intervals`; `crates/h3-harvest/src/tests.rs`, `harvests_data_quirk_fixes`; the offers that read the intervals with E08 T27
+- Regression test: `crates/h3-pack/src/tests.rs`, `the_harvested_level_data_and_the_elementalists_intervals`; `crates/h3-harvest/src/tests.rs`, `harvests_data_quirk_fixes`; the offers that read the intervals (E08 T27): `crates/h3-heroes/src/tests/level.rs`, `wisdom_and_a_school_are_offered_after_the_class_intervals`
 - Decided by / date: classified by the user 2026-10-20 (ADV-Q15; the epic's decision 55)
+
+### ADV-QUIRK-11 — Levels past 74 wrap, and the experience overflows
+- Class: exploit-fix (no flag: the user, 2026-10-20, ADV-Q15, A-7 always fixed as HotA's fix; the epic's decision 55)
+- Context / rules affected: heroes, HER-EXP-002 (E08 T27)
+- Original behavior: the thresholds beyond level 12 grow by a truncated × 1.2 in 32-bit sums: level 76's wraps negative, so from level 75's threshold (1 810 034 207) a hero is level 88 at once, then 100, 108, … 6 424; at 2³¹ − 1 experience no threshold exceeds it and the level loop never ends (the game hangs); the gain adds without a bound, so past 2³¹ − 1 the experience turns negative and the level-up lowers the hero to level 0.
+- Intended/expected behavior: level 74 is the highest; the experience is at most level 75's threshold − 1 (1 810 034 206), where every gain saturates.
+- Impact: state-corrupting (wrapped levels, a hang, negative experience); reachable only by huge experience (no shipped map's hero starts near it, survey §6.4).
+- Community status: known: the wiki (Experience: level 88 after 75, "the final usable level is level 6424"); HotA fixed it at 74.
+- Sources: code reading (E08 T24a1, confirmed by the second reading T24a2b2; survey `E08-progression.md` §1.2, §9); wiki Experience (https://heroes.thelazy.net/index.php/Experience).
+- Flag: none (always fixed)
+- Defaults: fixed in every profile
+- Regression test: `crates/h3-heroes/src/tests/level.rs`, `experience_gives_the_originals_levels_up_to_74`, `a_gain_stops_at_the_bound_and_the_scenarios_level_limit`
+- Decided by / date: the user 2026-10-20 (ADV-Q15; the epic's decision 55)
+
+### ADV-QUIRK-12 — A level limit above 75 caps at a wrapped threshold
+- Class: exploit-fix (no flag: the user, 2026-10-20, ADV-Q15, A-8 always fixed; the epic's decision 55)
+- Context / rules affected: heroes, HER-EXP-003 (E08 T27)
+- Original behavior: `hero_gain_experience` (0x4E33B0) computes the cap of the scenario's level limit as the level loop does; for a limit above 75 the 32-bit sums wrap, so 92 of the limits 76 to 255 give a negative cap (any gain then sets the experience to that negative number and gives no level) and the others a threshold unrelated to the limit (80: level 63's).
+- Intended/expected behavior: a limit of 0 or above the highest level (74) is no limit; the cap is then the bound (ADV-QUIRK-11).
+- Impact: state-corrupting (negative experience); no shipped map has a level limit (survey §6.2).
+- Community status: not documented (the wiki has no page on the level limit).
+- Sources: code reading (E08 T24a1, confirmed by T24a2b2; survey `E08-progression.md` §1.3, §9).
+- Flag: none (always fixed)
+- Defaults: fixed in every profile
+- Regression test: `crates/h3-heroes/src/tests/level.rs`, `a_gain_stops_at_the_bound_and_the_scenarios_level_limit`
+- Decided by / date: the user 2026-10-20 (ADV-Q15; the epic's decision 55)
+
+### ADV-QUIRK-13 — A primary skill wraps at 128
+- Class: exploit-fix (no flag: the user, 2026-10-20, ADV-Q15, A-9 always fixed; the epic's decision 55)
+- Context / rules affected: heroes, HER-LVL-001 (E08 T27)
+- Original behavior: a level-up adds 1 to the signed byte of the primary skill (+0x476 + skill, 0x4DA8F7), which holds the worn artifacts' bonuses too and has no upper bound: 127 + 1 becomes −128; the readers clamp to 0–99.
+- Intended/expected behavior: the gain saturates at the ruleset's `primary_max` (99) on the base the engine keeps without artifacts; the effective skill (base + artifacts, clamped by its readers) is the original's at every value below the wrap.
+- Impact: state-corrupting past 127 (a skill turning negative); reachable only past 99 with artifacts (no shipped map's hero starts near it, survey §6).
+- Community status: known in part: the wiki (Primary skill: "The upper limit is 99. At 129 the skill value is reset to 0", which does not fit the byte's wrap at 128, survey §5.1).
+- Sources: code reading (E08 T24a1, confirmed by T24a2b2; survey `E08-progression.md` §2.3, §9); wiki Primary skill (https://heroes.thelazy.net/index.php/Primary_skill).
+- Flag: none (always fixed)
+- Defaults: fixed in every profile
+- Regression test: `crates/h3-heroes/src/tests/level.rs`, `a_level_is_checked_and_applied`
+- Decided by / date: the user 2026-10-20 (ADV-Q15; the epic's decision 55)

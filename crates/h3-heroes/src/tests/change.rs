@@ -28,11 +28,11 @@ fn refused(r: &Ruleset, d: &HeroDetails, change: HeroChange, error: ChangeError)
 fn changes_are_checked_and_applied() {
     let r = ruleset();
     let d = details(&r);
-    // Experience adds, saturating; spell points are set.
+    // Experience adds, at most the bound (HER-EXP-002); spell points are set.
     let gained = applied(&r, d.clone(), HeroChange::GainExperience(70));
     assert_eq!(gained.experience, 70);
     let gained = applied(&r, gained, HeroChange::GainExperience(u32::MAX));
-    assert_eq!(gained.experience, u32::MAX);
+    assert_eq!(gained.experience, 1_810_034_206);
     assert_eq!(
         applied(&r, d.clone(), HeroChange::SetSpellPoints(12)).mana,
         12
