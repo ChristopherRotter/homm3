@@ -8,14 +8,14 @@ E23, the original's battle AI, is in progress (refined 2026-10-19, BAT-Q52; `doc
 
 ### E23 T1a3b — The plan's hexes and the order's sort
 
-- **Scope:** E23 T1a3b as the epic file names it (the user's cut of T1a3, 2026-10-20; §7.36's "Not read here"): the plan's hexes 0x436300 with its helpers 0x436180, 0x436620 (it calls 0x448AB0, read in §7.36), 0x436760 and 0x445840; part O, the order's sort 0x423340 with 0x423630 and its small helpers (about 3.1 KB in all). Read with `scripts/exe.py` (stage `Heroes3.exe`); no code.
+- **Scope:** E23 T1a3b as the epic file names it (the user's cut of T1a3, 2026-10-20; §7.36's "Not read here"): the plan's hexes 0x436300 with its helpers 0x436180, 0x436620 (it calls 0x448AB0, read in §7.36), 0x436760 and a small one; part O, the order's sort 0x423340 with 0x423630 and its small helpers (about 3.1 KB in all). Read with `scripts/exe.py` (stage `Heroes3.exe`); no code.
 - **Acceptance:** a §7.37 holds the readings (the plan's hex choice and its tie order; the sort's order and whether its ties are stable); the map's entries for these are `read`; the readings at risk added.
 - **Depends on:** the user's review of T1a3a's pull request; `Heroes3.exe` staged.
 - **Status:** queued.
 
 ### E23 T1a3c — The fallbacks and the ends
 
-- **Scope:** E23 T1a3c: the fallbacks 0x420760 (with 0x4205D0, 0x4B3F20) and 0x4208F0 beyond their heads, 0x41F3B0 beyond its loop, the destination map 0x4B2FF0, the walk 0x41F580's end, 0x420A80's totals as far as the battle needs (part A's share named for the adventure lane); about 4 KB.
+- **Scope:** E23 T1a3c: the fallbacks 0x420760 (with its two helpers) and 0x4208F0 beyond their heads, 0x41F3B0 beyond its loop, the destination map 0x4B2FF0, the walk 0x41F580's end, 0x420A80's totals as far as the battle needs (part A's share named for the adventure lane); about 4 KB.
 - **Acceptance:** as T1a3b's; with it part W is read and the map's entries for W and O are `read` or say what was not.
 - **Depends on:** T1a3b.
 - **Status:** queued.
