@@ -699,7 +699,9 @@ def run_frames(rest):
     """The frame check (M2 T4b-1, design §7.9): for each recorded sequence, every distinct
     battlefield the original shows (its frames kept by `sequence`), the viewer's frame at the
     same time (`h3-view sequences --frames`) and the masked diff of each pair against the counts
-    recorded in the sequence's `frames` file; exits 1 when one changed."""
+    recorded in the sequence's `frames` file (a line `<ms> <differing> <redraw artifacts>`, then
+    ` n<side>.<record>` for each count box masked as its count is not the original's: T5b);
+    exits 1 when one changed."""
     import json
 
     import h3cap
@@ -750,10 +752,13 @@ def run_frames(rest):
             drawn[int(line.split()[0])] = {int(i): (int(g), int(h), m == "m")
                                            for i, g, h, m in poses}
             # The count boxes it drew (E17 M3 T5a: hidden through walks and flights, placed by the
-            # stacks holding their hexes then), each (x0, y0, x1, y1).
+            # stacks holding their hexes then), each (x0, y0, x1, y1), its count and its stack's
+            # `<side>.<record>` (T5b).
             boxed[int(line.split()[0])] = [
-                (int(x), int(y), int(x) + h3cap.COUNT_BOX[0], int(y) + h3cap.COUNT_BOX[1])
-                for x, y in re.findall(r" box(-?\d+),(-?\d+)", line)]
+                ((int(x), int(y), int(x) + h3cap.COUNT_BOX[0], int(y) + h3cap.COUNT_BOX[1]),
+                 int(n), record)
+                for x, y, n, record in re.findall(r" box(-?\d+),(-?\d+)n(\d+)@?(\d+\.\d+)?",
+                                                  line)]
         shutil.rmtree(here / "diff", ignore_errors=True)
         (here / "diff").mkdir()
         # Each line `<ms> <differing> <redraw artifacts among them>` (M3 T1c, h3cap.redraws).
@@ -767,9 +772,21 @@ def run_frames(rest):
             masks = ["panel_beside_log" if log_at is not None and k["t"] >= log_at else "panel"]
             masked = h3cap.mask(masks, shape=cap.shape)
             # The count boxes masked where the drawn poses show them and where the viewer drew
-            # them, unless the entry compares them (`boxes`, E17 M3 T5a).
-            boxes = [] if e.get("boxes") else (h3cap.boxes_at(observation, drawn[k["t"]])
-                                                + boxed[k["t"]])
+            # them, unless the entry compares them (`boxes`, E17 M3 T5a): then only those whose
+            # count is not the one the original shows (its memory: +0x50 while it is not -1,
+            # else +0x4C; design §4.3), the engine's damage being rolled otherwise; listed
+            # (` n<side>.<record>`, T5b).
+            if e.get("boxes"):
+                theirs = {f"{st['side']}.{st['record']}":
+                          st["count"] if st.get("shown", -1) == -1 else st["shown"]
+                          for st in k["stacks"]}
+                other = [(box, record) for box, n, record in boxed[k["t"]]
+                         if theirs.get(record) != n]
+                boxes, listed = [box for box, _ in other], [record for _, record in other]
+            else:
+                boxes = (h3cap.boxes_at(observation, drawn[k["t"]])
+                         + [box for box, _, _ in boxed[k["t"]]])
+                listed = []
             for x0, y0, x1, y1 in boxes:
                 masked[max(y0, 0):max(y1, 0), max(x0, 0):max(x1, 0)] = True
             differ = (cap != ours) & ~masked
@@ -779,7 +796,7 @@ def run_frames(rest):
                 h3cap.compare(cap, ours, masked, here / "diff" / f"{stem}.png", redrawn)
                 differing += 1
                 only_redraws += a == n
-            lines.append(f"{k['t']} {n} {a}")
+            lines.append(f"{k['t']} {n} {a}" + "".join(f" n{r}" for r in listed))
             earlier.append(ours)
         got = "\n".join(lines) + "\n"
         (here / "frames.txt").write_text(got)

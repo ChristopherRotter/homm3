@@ -1240,3 +1240,35 @@ during the session, after the original files were staged.
   The ten sequences' timelines as recorded.
 - **For later:** T5b (the numbers over time, the other six sequences' boxes compared), T7b (the
   spells' tint).
+
+### M3 T5b-1 — The count box's number over time (2026-10-20)
+
+On `client/e17-m3-t5b-1`, the user present: asked for a small increment, the agent proposed
+splitting T5b into the reading and the build checked in `shot` and `melee` (one shot, one melee
+with a fixed-damage strike back) and the other four sequences' boxes (T5b-2); the user chose
+that.
+
+- **Starting point:** master at `fee5b69` (#285, T5a, merged on 2026-10-20), no client pull
+  request open; the client gates' baseline (`check.sh`, `verify-once`) passed on the sandbox.
+- **Code reading** (design §4.3; the map's `stack_take_damage`, `strike_animation`, the stack's
+  +0x50): +0x50 is −1 from the setup; `stack_take_damage` stores the count before a damage's
+  deaths there (0x4440DB) before +0x4C loses them; strikes and shots take their damage before
+  `strike_animation`, whose end (after the pending spells' casts and the deaths) sets every
+  stack's +0x8 to 4 and its +0x50 to −1 and redraws the whole battle, shown at once (0x46935A,
+  0x46938A). Confirmed in the original's memory (`h3mem`'s new `shown`): `shot`'s Goblins 40 →
+  37 in +0x4C as the first shot lands (988 ms), +0x50 40 until 1 588.
+- **Built:** `anim::CountKey` and `Timeline::counts` (each struck stack's count after its kills,
+  from the strike's last frame shown), `Moment::counts` over the snapshot's count in the scene,
+  `Draw::CountBox::stack`; the strike's end flushes its pending poses at once (a test of the
+  layers changed: a later strike of the command now follows a layer 4). The harness: `ours.txt`
+  lists each box's count and stack (` box<x>,<y>n<count>@<side>.<record>`); with `boxes`, the
+  frame check masks a box only where its count is not the original's (+0x50, else +0x4C) and
+  lists it (` n<side>.<record>`). `melee` runs 7 000 ms (6 000 before) to the strike back's end.
+- **Checked against the original** (all ten captured afresh): `shot` exact in all 50 frames with
+  the boxes compared (37 from 1 588 ms, the engine's kills the original's); `melee` artifacts
+  only in its 85 frames (30 → 12 at 6 466 ms; at 3 966 ms 198 artifact pixels instead of 96, the
+  Angel's shadow drawn twice where the box mask covered it); no box masked for its count. The
+  other eight as recorded (`strike` on its second run: the first read the left hero's reaction a
+  frame late at 3 730 ms, 2 152 pixels, the runbook's trap; `machines`' timeline 1 ms later at
+  2 222 and 5 846 ms, the runbook's known variance). The capture set: 31 situations as recorded.
+- **For later:** T5b-2 (`behind`, `shots`, `fly`, `machines`' boxes), T7b (the spells' tint).

@@ -248,6 +248,18 @@ pub struct MagicLook {
 /// 0x4F over the patient, 100 ms a frame, without the patient's hit).
 pub const HEAL: u8 = 79;
 
+/// The count a stack's box shows from `shown` on (E17 M3 T5b, design §4.3): a strike's kills
+/// show at its end.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CountKey {
+    /// The stack's id.
+    pub stack: u8,
+    /// When it shows.
+    pub shown: u32,
+    /// The count.
+    pub count: u32,
+}
+
 /// A frame of a magic animation drawn over stacks, or (`frame` none) its erasure: drawn at
 /// `drawn`, shown from `shown` (E17 M3 T3b).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -462,6 +474,9 @@ pub struct Timeline {
     pub beams: Vec<Beam>,
     /// The magic animations' frames and erasures, in order (E17 M3 T3b).
     pub magics: Vec<MagicKey>,
+    /// The counts the stacks' boxes show from a time on, in order (E17 M3 T5b); before its
+    /// first, a stack's box shows the snapshot's count.
+    pub counts: Vec<CountKey>,
     /// The stack outlined as active from a time on (none: no outline), in order (§7.9).
     pub outlines: Vec<(u32, Option<u8>)>,
     /// When each idle step ran, up to the last command's start (none runs while a command
@@ -671,6 +686,16 @@ impl Timeline {
         })
     }
 
+    /// The counts the stacks' boxes show at `t`, by id, of the stacks whose count changed by then
+    /// (E17 M3 T5b).
+    pub fn counts(&self, t: u32) -> BTreeMap<u8, u32> {
+        self.counts
+            .iter()
+            .filter(|k| k.shown <= t)
+            .map(|k| (k.stack, k.count))
+            .collect()
+    }
+
     /// The stack outlined as active at `t` (§7.9): the snapshot's active stack until the first
     /// command's first frame shows; none while a command plays; a turn's stack from its start
     /// when a player acts next, none when the computer does (*provisional*).
@@ -710,8 +735,9 @@ impl Timeline {
 
     /// Every time up to `until` at which what shows may change (E17 M2 T4b-2a, `h3-view
     /// play`): 0, each pose's, each projectile step's and its erasure's, each ray tick's and its
-    /// erasure's, each magic animation's frame and erasure, each outline's and each idle step's
-    /// (the outline's colour), and the last frame's; in order, each once.
+    /// erasure's, each magic animation's frame and erasure, each count shown (T5b), each
+    /// outline's and each idle step's (the outline's colour), and the last frame's; in order,
+    /// each once.
     pub fn changes(&self, until: u32) -> Vec<u32> {
         let mut times = vec![0, self.end];
         times.extend(self.keys.iter().map(|k| k.shown));
@@ -723,6 +749,7 @@ impl Timeline {
             times.extend((1..=ticks).map(|k| b.from + k * b.step));
         }
         times.extend(self.magics.iter().map(|k| k.shown));
+        times.extend(self.counts.iter().map(|k| k.shown));
         times.extend(self.outlines.iter().map(|(t, _)| *t));
         times.extend(&self.steps);
         let mut idle = self.idle;
@@ -1010,6 +1037,7 @@ fn played(
         flights: Vec::new(),
         beams: Vec::new(),
         magics: Vec::new(),
+        counts: Vec::new(),
         outlined: Vec::new(),
         machine: None,
         idle: Idle::default(),
@@ -1095,6 +1123,7 @@ fn played(
         flights: player.flights,
         beams: player.beams,
         magics: player.magics,
+        counts: player.counts,
         outlines,
         steps: player.steps,
         idle: player.idle,
@@ -1144,14 +1173,16 @@ fn share(whole: i32, part: u32, of: u32) -> i32 {
     i32::try_from(v).unwrap_or(0)
 }
 
-/// A struck stack and how it reacts: its reaction's group and frames, whether it died, and its
-/// standing pose (its position and facing).
+/// A struck stack and how it reacts: its reaction's group and frames, whether it died, its count
+/// after the strike's kills if any (its box shows it from the strike's end), and its standing
+/// pose (its position and facing).
 #[derive(Debug, Clone, Copy)]
 struct Reaction {
     stack: u8,
     group: u8,
     frames: u32,
     died: bool,
+    count: Option<u32>,
     sound: Sound,
     base: Pose,
 }
@@ -1227,6 +1258,8 @@ struct Player<'a> {
     beams: Vec<Beam>,
     /// The magic animations' frames (E17 M3 T3b).
     magics: Vec<MagicKey>,
+    /// The counts the boxes show from a time on (E17 M3 T5b).
+    counts: Vec<CountKey>,
     /// The outline's changes inside the command so far: a war machine's turn that plays out
     /// in it (E17 M3 T3b).
     outlined: Vec<(u32, Option<u8>)>,
@@ -1797,6 +1830,7 @@ impl Player<'_> {
                 group,
                 frames,
                 died,
+                count: (kills > 0).then_some(live.count),
                 sound,
                 base: self.standing(&live, live.hex),
             });
@@ -2098,9 +2132,21 @@ impl Player<'_> {
             }
             self.frame(&poses, tick);
         }
+        // The strike's end (`strike_animation` 0x4692A4 to 0x46938A, design §4.3; E17 M3 T5b):
+        // the dead leave their hexes for the corpses, every stack's layer is 4 again and its
+        // count box's number +0x4C (+0x50, the count before the kills, back to −1), and the
+        // whole battle is redrawn and shown at once, the deadline as it is.
         if let Some((id, _, standing)) = striker {
             self.pending.push((id, standing));
         }
+        let shown = self.clock.now;
+        self.counts.extend(reactions.iter().filter_map(|r| {
+            r.count.map(|count| CountKey {
+                stack: r.stack,
+                shown,
+                count,
+            })
+        }));
         for r in reactions {
             let pose = match (r.died, r.frames.checked_sub(1)) {
                 (true, Some(last)) => Pose {
@@ -2120,6 +2166,7 @@ impl Player<'_> {
                 self.stacks.remove(&r.stack);
             }
         }
+        self.redraw();
     }
 }
 

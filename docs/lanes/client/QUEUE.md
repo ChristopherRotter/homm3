@@ -6,24 +6,21 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024). M3 (fidelity) below, refined at M2's closure (T5c) and agreed by the user there, each task about half a context; the exit: the reference set passes, or each difference is a listed fix or a classified quirk. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M3 T5b — The count boxes' numbers over time
+### E17 M3 T5b-2 — The count boxes in `behind`, `shots`, `fly` and `machines`
 
-- **Scope:** (T4a drew the boxes in the stills; T5a hid them through walks and flights and freed
-  a dead stack's hex: design §4.3; `walk`, `turn`, `climb` and `strike` compare their boxes,
-  `boxes = true`.) The number shown over time: +0x50 when not −1 (to read: who sets it and when
-  the box's number changes during and after a strike), the viewer's count taken from the
-  record's `Struck` kills at that moment (the scene draws the snapshot's counts so far). The
-  engine rolls damage differently from the original, so after a rolled strike the digits differ:
-  compare a box's digits only where the original's count (its memory, `h3mem`: +0x4C, +0x50)
-  equals the engine's, and list the rest. Then the boxes compared in the other six sequences
-  (`shot`, `melee`, `behind`, `shots`, `fly`, `machines`; they mask the boxes where the viewer
-  draws them so far, from `ours.txt`'s ` box<x>,<y>`); a stale box the original's partial redraw
-  leaves (design §7.11) listed with its count as T5a listed `strike`'s at 2 730 ms (design §4.3),
-  or classified by a rule that cannot pass a box the viewer moves too early (`melee`'s at
-  3 966 ms was none: the walker's +0x30, T5a). (The spells' tint moved to T7b, the user,
-  2026-10-20.)
+- **Scope:** (T5b-1 read +0x50 and built the number over time, design §4.3; `shot` and `melee`
+  compare their boxes, `boxes = true`, a box whose count is not the one the original's memory
+  shows masked and listed, ` n<side>.<record>`.) The boxes compared in the other four sequences,
+  which mask them where the viewer draws them so far: battles in progress with several strikes
+  and shots (`behind`, `shots`), a breath on two stacks and a strike back (`fly`), the war
+  machines (no box) and the First Aid Tent's heal (`machines`: whether a heal changes the box's
+  number, not read). A sequence may need its `ms` lengthened to show a strike's end (as `melee`
+  at T5b-1). A stale box the original's partial redraw leaves (design §7.11) listed with its
+  count as T5a listed `strike`'s at 2 730 ms (design §4.3), or classified by a rule that cannot
+  pass a box the viewer moves too early (`melee`'s at 3 966 ms was none: the walker's +0x30,
+  T5a).
 - **Acceptance:** the recorded sequences match with the count boxes drawn.
-- **Depends on:** nothing (T5a done). **Status:** ready.
+- **Depends on:** nothing (T5b-1 done). **Status:** ready.
 
 ### E17 M3 T6 — The battle interface
 
@@ -96,8 +93,8 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 - **Scope:** M3's review list with the user, a fresh reviewer agent over M3, the next milestone
   refined (sieges, live play, HD or the adventure map: the user's choice), M3 marked done.
 - **Acceptance:** M3's exit holds; the review list answered or carried on.
-- **Depends on:** T5b–T8 (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a
-  done).
+- **Depends on:** T5b-2–T8 (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2,
+  T5a, T5b-1 done).
   **Status:** waiting.
 
 ## Inbox
