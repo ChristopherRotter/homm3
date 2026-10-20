@@ -4,7 +4,7 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 
 ## Current state
 
-- **E08**: increments 1 and 2 **closed** (2026-10-12, -13). **Increment 3** (monsters and battles, decisions 19–43): rounds 1 to 4 **done**. Round 5: **T21b done** (the audit: all but batch E3 holds); **T22a1** (decision 43: the tools) and **T22a2a done** (decision 44: batches E3a, E3b, their recipes); next T22a2b (the hero rows), T22a3 (the run), T22b (scored, the closure). Design and cut: `E08-design.md`. Records: `E08-log.md`.
+- **E08**: increments 1 and 2 **closed** (2026-10-12, -13). **Increment 3** (monsters and battles, decisions 19–43): rounds 1 to 4 **done**. Round 5: T21b (the audit), T22a1 (decision 43: the tools), T22a2a and T22a2b (decisions 44, 45: batches E3a, E3b, E3c with recipes) **done**; next T22a3 (the run), T22b (scored, the closure). Design and cut: `E08-design.md`. Records: `E08-log.md`.
 - **Map reader and import** (`h3-map`): `read`/`parse` into `model::RawMap`; `import` into `h3_game::GameSetup`, `import_map` its static layer (`MAP_IMPORT_VERSION` 7, `docs/formats/h3m.md` "Import"). Every shipped map's static layer imports and validates; of the 160 shipped maps 2 import whole (`Race for Ardintinny`, `Tutorial.tut`), the rest are typed `Unsupported`. `verify --with-original-data` runs `crates/h3-map/examples/original_data.rs` on the shipped maps (with the monsters', grounds' and guarded piles' census).
 - **Monsters, grounds, guarded piles** (T20a2a): kinds `Monster`, `Ground`; `[params.monsters]`; `ObjectSetup.monster`/`.drawn` (ADV-MON-002 to -004); `army_left`; `battle_ground` (ADV-GRD-001); `ObjectView.monster`. T20a2b: `guard_of` (ADV-MON-005, -006). T20b1: `answer.rs` (ADV-MON-007), offers `Join`, `JoinForGold`, `Pursue` (ADV-MON-008). T20b2: `split` (ADV-MON-009, flag 24), `Defender::Monster`, `Actor::System`, `end_monster_battle` (ADV-MON-010). T20b3b1: `MonsterChanged`; fringe monsters in strict (decision 40). T21a (ADV-PIK-004, `state/piles.rs`): `Guards`, `guards_left`, `OfferKind::Fight`, `Defender::Guards`, `end_unowned_battle`.
 - **The store of heroes** (T18b, GAM-HER-001): `GameState` keeps `Arc<HeroDetails>` by `HeroId`, from `GameHeroSetup.details` or the defaults, validated by `h3-heroes`; `attack_defense`, `join_bonus` (T20a1); `GameObservation.heroes`.
@@ -16,10 +16,10 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 - **Commands** (T8b2): `h3_game::legal_commands` and `legal_moves` (a hero's `Reach`, the user), empty outside the turn.
 - **The env** (T9a, `h3-sim/src/adventure/`): `AdventureEnv` (reset, `to_move`, masks, steps, fork, hash, the view, a day limit), action encoding v3 since T19b1 (`Phase`; `MapAction`: `EndTurn`, eight hero slots, `Accept`, `Decline`, a tile; in a battle the battle's encoding; `to_move` yields `Seat`s, since T20b3a `Seat::Neutral` for an unowned side, played as `Actor::System` with `neutral_observation`), `random_rollout` (every seat).
 - **Replays and benchmarks** (T9b): `adventure::replay` (format v4 since T20b2), `h3 adventure run/verify/bench`, nine golden replays (since T20b3b2: monsters, guarded piles, hero battles; re-record with the options in `crates/h3-cli/tests/adventure_replays.rs`), the maps `fixtures/maps/e08-{duel-36,xl-144}.h3m` (`h3-map`'s `tests/fixtures.rs`; monsters, guarded piles, grounds since T20b3b2), three gated workloads in `benches/adventure/` (play, reach, fork with a battle open).
-- **Experiments**: `h3-experiment` (battle-owned) has the adventure shape, batch E3's since T22a1 (difficulty, underground, any disposition, fleeing, guarded piles; the writer's `Underground`, `Guards`); batches 1, 2 scored; E3a, E3b staged (T22a2a). **Agents run batches** on the client lane's harness (decision 21; since E17 H1, H2: questions, battles from the map, the difficulty, the underground).
+- **Experiments**: `h3-experiment` (battle-owned) has the adventure shape, batch E3's since T22a1 (difficulty, underground, any disposition, fleeing, guarded piles; the writer's `Underground`, `Guards`); batches 1, 2 scored; E3a, E3b, E3c staged with recipes, not run yet. **Agents run batches** on the client lane's harness (decision 21; since E17 H1, H2: questions, battles from the map, the difficulty, the underground).
 - **Adventure ruleset part** (v8 since T20b1): terrains, roads, rivers, the movement and setup parameters, the object types, the starting resources by difficulty, the battle terrains, the monsters' parameters (with the price resource).
 - **Properties** on generated playable maps (`h3-map`'s `play.rs`, `view.rs`; T8b2); since T19b2 `Step::Fight` runs (hero casts through `h3-battle`, a dev-dependency); since T20b3b1 monsters (`MONSTERS`), grounds and the system actor; since T21a guarded piles (`GUARDED`); `the_plans_play_battles_to_a_victory` counts 192 fixed cases.
-- **Next:** T22a2a's pull request (`adventure/e08-t22a2a`, `cross-lane`) to merge, then T22a2b (QUEUE).
+- **Next:** T22a2b's pull request (`adventure/e08-t22a2b`, `cross-lane`) to merge, then T22a3 (QUEUE; its seam to confirm).
 - **ADRs accepted**: ADR-0015 to -0017 (2026-10-10), their increment-2 amendments (#115), increment 3's (ADR-0013 too) applied by T18a (#185).
 - **Fuzzing is stable-only** (user, 2026-10-10).
 - **R01** (the content split): the core `h3-content` and `h3-pack` (`core.toml`) are shared; the writer is `h3_map::writer`.
@@ -39,14 +39,14 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 
 ## Recent sessions
 
+### 2026-10-20 — round 5, fourth session: T22a2b, batch E3's hero rows
+
+Baseline fee5b69 green (full, original data). Decision 45: the hero rows as batch E3c (Normal), recipe here (`cross-lane`); the inbox's four rows to increment 4; engine outcomes by a throwaway run; no code.
+
 ### 2026-10-20 — round 5, third session: T22a2a, batch E3's monster rows
 
-Baseline 818dd7e green (full). Decision 44: T22a2 by rows, recipes here (`cross-lane`). E3a (Easy), E3b (Normal): E3-1 to E3-5, controls E3-1c (D-10), E3-4c (D-11, the review's finding); the engine's outcomes by a throwaway run; no code.
+Baseline 818dd7e green (full). Decision 44: T22a2 by rows, recipes here (`cross-lane`). E3a (Easy), E3b (Normal): E3-1 to E3-5 with controls E3-1c, E3-4c (the review's); no code.
 
 ### 2026-10-19 — round 5, second session: T22a1, the tools for batch E3
 
-Baseline 7fd92d2 green. Decision 43 split T22a in three. T22a1: the writer's underground and guarded piles; the spec's difficulty, levels, dispositions, fleeing (`cross-lane`).
-
-### 2026-10-19 — round 5, first session: T21b, the audit
-
-Decision 42: T21b plus `shared/e08-t21b-docs`. The audit held all but batch E3; two proptest-only lines got fixed tests; the 160 maps' census.
+Baseline 7fd92d2 green. Decision 43: T22a in three; T22a1 the writer's underground and guarded piles, the spec's monsters and difficulty (`cross-lane`).
