@@ -1,6 +1,6 @@
 # ADR draft: The original's battle AI: a policy crate beside the battle
 
-- Status: Proposed (E23 T1b, 2026-10-20; for the user's review, BAT-Q55)
+- Status: Proposed (E23 T1b, 2026-10-20; for the user's review, BAT-Q55; point 9 decided by the user)
 - Date: 2026-10-20
 - Deciders: the user (pending); drafted by the battle lane's agent
 
@@ -46,10 +46,14 @@ computer's numbers its rules use (BAT-Q52). Layers forbid a domain crate to depe
 8. **The difficulty and `human`**: the policy reads `BattleSetup.difficulty`. It plays its side as
    the computer's whatever `human` says (AI-Q3), and reads the other side's `human` where the
    original reads the acting side's player (the predictions' retaliations on Easy).
-9. **The original's slips are ported as read** (survey §4): its estimates' departures from the
-   rules they estimate. Each one is named in its rule's text, with no quirk flag. They change a
-   choice, never a rule's outcome. The same goes for its orders and ties: the library sort of the
-   order of action above 16 stacks (§7.37), the later record and the first of equal hexes.
+9. **The original's slips behind one fix-optional flag** (the user, BAT-Q55): where its estimate
+   reads a wrong record, argument, spell, side, mastery or test compared with the rule it
+   estimates (survey §4), BAT-QUIRK-25 `quirk.battle.original_ai_slips` keeps the slip in
+   `faithful` and estimates as the rule in `strict-fixed`; a later slip joins the same flag. Each
+   slip's rule names both variants and its tests cover both. Not slips, ported as read in every
+   profile: its orders and ties (the library sort of the order of action above 16 stacks, §7.37;
+   the later record, the first of equal hexes) and its draws. The flag is registered (`h3-content`,
+   `shared/`) right before the battle pull request that builds the first slip.
 10. **Rule ids `BAT-AI-nnn`** in `docs/rules/catalog/battle.toml`, one per routine of the reading:
     the dispatch, the shooter, the hex scores, the walker's choice, the walk, the fallbacks, each
     cast kind, the context, the evaluators by family, and later the hero's cast and the retreat
@@ -76,7 +80,11 @@ computer's numbers its rules use (BAT-Q52). Layers forbid a domain crate to depe
   that the battle lane changes together with `h3-battle-ai`.
 - A change to a rule the computer estimates moves the shared numbers once. A choice drifts only if
   the policy's own code changes.
-- New pack data (the spells' AI values) bumps the pack format and the core ruleset hash.
+- New pack data (the spells' AI values) bumps the pack format and the core ruleset hash; the new
+  quirk flag changes the faithful ruleset hashes (the golden and the adventure lane's faithful
+  replays' headers, `cross-lane`).
+- In `strict-fixed` the `System` seat is not the original's computer but its corrected estimate:
+  a training run that wants the original's opponent uses `faithful`.
 
 ## Alternatives considered
 
@@ -85,8 +93,8 @@ computer's numbers its rules use (BAT-Q52). Layers forbid a domain crate to depe
 - **The policy on observations**: the original reads everything. An observation-only policy would
   not be the original's.
 - **Predicting by applying commands to a forked state**: costlier, and not what the original does.
-  Its estimates differ from the rules on purpose (point 9).
-- **Fixing the slips, or flagging them as quirks**: the result would not be the original's
-  computer, and the quirks ledger is for the game's rules, not for an actor's choices.
+  Its estimates are not the rules' outcomes, slips included (point 9).
+- **The slips ported as read without a flag** (the draft's first proposal), **a flag per slip**, or
+  **fixed in every profile**: the user chose one flag for all (BAT-Q55).
 - **The battle's stream for the policy's draws**: it would couple a seat's choices to the battle's
   rolls. ADR-0017 point 4 keeps agents' choices off the game's streams.

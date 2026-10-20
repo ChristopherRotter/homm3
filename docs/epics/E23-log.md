@@ -412,3 +412,8 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   values into the battle pack before T3 (the neutral side reads the enemy hero's value in the odds).
 - **For the user (BAT-Q55):** accept or change the draft; the slips ported as read without quirk
   flags (recommended) or as quirks or fixed; the batch rows. T2 waits for the review.
+- **The user's answer on the slips (2026-10-20, BAT-Q55):** one fix-optional flag for all the
+  fixes related to the original AI: BAT-QUIRK-25 `quirk.battle.original_ai_slips` (faithful on,
+  strict-fixed off), registered with the first slip built. The survey's §4 lists the 17 slips
+  with their fixes (a slip: a wrong record, argument, spell, side, mastery or test; tie orders,
+  the library sort and the draws are no slips); the draft's point 9 says so.

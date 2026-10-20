@@ -133,15 +133,36 @@ replays of the built rules already cover (the walks' paths, the automatic machin
 
 ## 4. The original's slips in its own estimates
 
-The reading found places where the computer's estimate departs from the rule it estimates: the
-walls test's wrong records (§7.35); the multi-headed reach's untested sign (§7.36); the desperate
-kills' top-creature term (§7.38); the protections' caster bonuses from the own hero and the cost
-from the caster's own army, Magic Mirror's doubled chance, Anti-Magic's helpful spells and level,
-the morale and luck rise from below 0, Paralyze's Blind record and resistance, Disease's
-resistance to Weakness, Frenzy without its value, the exchange's shot flag, the removals'
-Disrupting Ray (§7.46). They decide the computer's choices, never a rule's outcome: a command the
-policy picks is validated and played by the engine's rules. The ADR draft proposes porting them as
-read, each named in its rule's text, without quirk flags (the user decides at the review).
+Places where the computer's estimate reads a wrong record, argument, spell, side, mastery or test
+compared with the rule it estimates. They decide the computer's choices, never a rule's outcome: a
+command the policy picks is validated and played by the engine's rules. A simplification (an
+expectation in place of a roll, a resistance as a factor, the draws) is no slip. **The user
+(2026-10-20, BAT-Q55): one fix-optional flag for all of them**, BAT-QUIRK-25
+(`quirk.battle.original_ai_slips`): on in `faithful`, the slips as read; off in `strict-fixed`,
+each estimate as the rule it estimates:
+
+| # | The slip (where) | Fixed |
+|---|---|---|
+| 1 | the area shot's estimate ignores fire immunity and counts a Lich's cloud on the living but undead (§7.35) | the shot's rule's immunities (BAT-RNG-004) |
+| 2 | the walls test reads the wrong records for the walls and the gate (§7.35) | each part's own hex |
+| 3 | the multi-headed reach's value is subtracted with its sign untested (§7.36) | only a positive value, as the other branch |
+| 4 | the desperate kills count the top creature's remaining hit points where its lost ones belong (§7.38) | the lost hit points |
+| 5 | the destination map marks a two-hex enemy's position hex twice, its other hex never (§7.38) | both hexes |
+| 6 | the hero's value takes the mastery on the hero's adventure tile (§7.39) | the battlefield's |
+| 7 | the Faerie Dragon's estimate: Expert on its school's field, the side's hero's bonuses on its bolts (§7.43) | the rules' mastery for a creature, no hero bonus |
+| 8 | the Ogre Mage's Bloodlust valued at Expert on Fiery Fields (§7.44) | Advanced, as the rules cast it |
+| 9 | the protections take the caster bonuses of the context's own hero and the caster's own army for the cost (§7.46) | the casting hero's, the target side's army |
+| 10 | Magic Mirror keeps `2 × (50 − c)` % (§7.46) | `100 − c` % |
+| 11 | Anti-Magic's estimate removes helpful spells too and counts level `v` (§7.46) | harmful spells below `v`; spells below `v` |
+| 12 | a morale or luck rise from below 0 is valued as if it crossed 0 (§7.46) | `−c × N` while below 0 (`N` < 0) |
+| 13 | Paralyze is valued with Blind's record and resistance (§7.46) | its own (74) |
+| 14 | Disease asks the resistance to Weakness (§7.46) | its own (73) |
+| 15 | Frenzy is valued as a second strike, without its value (§7.46) | 0x437800 with its attack gain less 0x438910 with the defense it loses |
+| 16 | the exchange gives B's attack and kill values A's shot flag (§7.46) | B's own |
+| 17 | the removals count Disrupting Ray, which none ends, and Cure removes every harmful spell (§7.46) | the spells each rule ends (§7.10, §7.13) |
+
+The ledger entry lists them; a slip found later joins the same flag. The tie orders, the library
+sort (§7.37) and the draws are the original's behaviour, not slips: no flag.
 
 ## 5. For the ADR draft
 

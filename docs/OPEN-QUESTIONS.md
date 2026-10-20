@@ -94,7 +94,10 @@ for the user:** the original's slips in its own estimates (the survey's §4: the
 wrong records, Magic Mirror's doubled chance, Paralyze reading Blind's record, …) decide only the
 computer's choices. **Options:** (a) port them as read, each named in its rule, no quirk flags;
 (b) quirk flags (fix-optional) per slip; (c) fix them. **Recommendation:** (a): they are the
-original's computer, and the ledger is for the game's rules. Also for review: the survey's
+original's computer, and the ledger is for the game's rules. **The user (2026-10-20): one
+fix-optional flag for all the fixes related to the original AI** (BAT-QUIRK-25,
+`quirk.battle.original_ai_slips`; the draft's point 9 and the survey's §4 now say so; still open:
+the draft's acceptance). Also for review: the survey's
 batch rows (4a for the neutral side with T2 to T4, 4b for the hero's with T5 and T6). **Blocked:**
 T2 (the crate's registration and the shooters) waits for the review.
 
