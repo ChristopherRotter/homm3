@@ -1898,7 +1898,7 @@ impl Player<'_> {
     /// A shot of `shooter` at the stacks `hit` (`shot_animation` 0x43F2C0, §7.4).
     fn shot(&mut self, shooter: u8, hit: &[(u8, u32)]) {
         let Some(live) = self.live(shooter) else {
-            self.react_alone(hit, [STANDING, STANDING]);
+            self.react_alone(hit, [STANDING, STRUCK]);
             return;
         };
         let target = hit.first().and_then(|(t, _)| self.live(*t));
@@ -1926,7 +1926,7 @@ impl Player<'_> {
                 Some((shooter, &live)),
                 (group, n, 0, 2),
                 &reactions,
-                [STANDING, STANDING],
+                [STANDING, STRUCK],
             );
             return;
         }
@@ -1958,13 +1958,14 @@ impl Player<'_> {
         // going on until it has (the Cyclops, sequence `shots`). The reactions' part counts two
         // striker frames, so it has one iteration more than the longest reaction's frames
         // (L = R + 1: the Marksmen's recorded sequence, §7.9; the reading's L = R,
-        // *provisional*); its first iterations show at once, the deadline being behind. A shot's
-        // layers stay (not read).
+        // *provisional*); its first iterations show at once, the deadline being behind. The
+        // shooter stays in its layer, the struck take 5 as in a melee (the original's memory in
+        // `behind` and `shots`, E17 M3 T5b-2a: a hit Pegasus's wing over its neighbour).
         self.iterate(
             Some((shooter, &live)),
             (group, climax, n - climax, 2),
             &reactions,
-            [STANDING, STANDING],
+            [STANDING, STRUCK],
         );
     }
 
