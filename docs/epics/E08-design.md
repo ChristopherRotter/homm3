@@ -193,7 +193,7 @@ the source, it returns a skill or none.
   (A-10; fix-optional, the data quirk `quirk.content.elementalist_offer_intervals`, §1);
   **ADV-QUIRK-11** the levels past 74 wrap (A-7), **ADV-QUIRK-12** a limit above 75 caps at a
   wrapped threshold (A-8), **ADV-QUIRK-13** a primary skill wraps at 128 (A-9): fixed, no flag.
-  The two flags take the registry's next free positions (after 25).
+  The two flags take the registry's next free positions (after 26, BAT-QUIRK-24's since E23 T1c).
 
 ### 10. The hero side's shared and `cross-lane` needs (for the cut, §17)
 

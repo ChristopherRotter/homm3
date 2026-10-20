@@ -19,7 +19,7 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 - **Experiments**: `h3-experiment` (battle's) has the adventure shape (batch E3's since T22a1: difficulty, underground, dispositions, guarded piles); batches 1, 2 and E3 scored. **Agents run batches** on the client lane's harness (decision 21; E17 H1, H2: questions, battles from the map, the underground, `level_up`, `heroes:experience`).
 - **Adventure ruleset part** (v8 since T20b1): terrains, roads, rivers, the movement and setup parameters, the object types, the starting resources by difficulty, the battle terrains, the monsters' parameters (with the price resource).
 - **Properties** on generated playable maps (`h3-map`'s `play.rs`, `view.rs`; T8b2); since T19b2 `Step::Fight` runs (hero casts through `h3-battle`, a dev-dependency); since T20b3b1 monsters (`MONSTERS`), grounds and the system actor; since T21a guarded piles (`GUARDED`); `the_plans_play_battles_to_a_victory` counts 192 fixed cases.
-- **Next:** T24b1's pull request to merge; then T24b2.
+- **Next:** T24b1's pull request #318 to merge; then T24b2.
 - **ADRs accepted**: ADR-0015 to -0017 (2026-10-10), their increment-2 amendments (#115), increment 3's (ADR-0013 too) applied by T18a (#185).
 - **Fuzzing is stable-only** (user, 2026-10-10).
 - **R01** (the content split): the core `h3-content` and `h3-pack` (`core.toml`) are shared; the writer is `h3_map::writer`.
