@@ -6,7 +6,7 @@ Pre-refined tasks of the battle lane, in order, then the inbox of discovered wor
 
 E23, the original's battle AI, is in progress (refined 2026-10-19, BAT-Q52; `docs/epics/E23-original-battle-ai.md`). E04b closed on 2026-10-12, E04c on 2026-10-16 (their epic files and logs; their cuts: OPEN-QUESTIONS BAT-Q10 to BAT-Q27, BAT-Q37 to BAT-Q50).
 
-T1c is done (#316, #317 merged). T1a5 is cut in four (the user, 2026-10-20; the epic file), T1a5 is done as cut (§7.42 to §7.45). Found in T1a5c: T1a5e, the 36 spell evaluators of 0x43B690's table (about 11.6 KB; the Master Genie's 21 spells about 7.3 KB), for the user to cut and place. Then T1b.
+T1c is done (#316, #317 merged). T1a5 is cut in four (the user, 2026-10-20; the epic file), T1a5 is done as cut (§7.42 to §7.45); T1a5e, the 36 spell evaluators found in T1a5c, is done in one part (the user, 2026-10-20; §7.46). Next: T1b.
 
 **Waiting on this lane** (found in the 2026-10-19 consolidation; never queued here):
 - **Open questions naming this lane:** CLT-Q4 (a battle's background variant in the setup) and CLT-Q6 (each side's player colour and a hero's sex for viewers): small setup fields, `cross-lane` with the server lane's wire; the client lane holds them.

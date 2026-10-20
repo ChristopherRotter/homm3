@@ -344,3 +344,35 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   evaluator and the Magic Mirror scaling; the attack bonus's value with 0x437A00 as the record's
   copy. It agreed on all three; its note that the strength floor also applies after a candidate
   taken in the loop (the value read anew) is in §7.44.
+
+## T1a5e — the spell evaluators (2026-10-20, increment 1)
+
+- **Scope:** found in T1a5c (§7.44: 0x43B690's evaluators, reached only through its table). The
+  session proposed four parts by shared helper (the defenses; attack and speed; luck, morale and
+  retaliation; the disabling spells and the removals); the user chose one part, before T1b.
+- **Read** (`docs/formats/installation.md` §7.46), all in full: the 36 evaluators (§7.44's list)
+  and nine helpers, the protection's value 0x4387C0, the defense bonus's value 0x438910 (renamed
+  `ai_defense_bonus_value`), the spell protection's value 0x4396E0 (renamed
+  `ai_spell_protection_value`; "creature cast value" was a guess), the removal 0x439A80, the speed
+  bonus's value 0x439550, the exchange's value 0x435DC0, the damage per creature 0x4426F0, the
+  morale or luck change 0x435850 and the berserk attack's value 0x43A340.
+- **Found, a correction to T1a5c's sizing:** Cure, Anti-Magic and Dispel value what they would
+  remove through 0x439A80, which calls each lasting spell's own evaluator, so the Genie's value
+  (through Cure and Anti-Magic) reaches the evaluators of every spell that can last on a stack:
+  the neutral side needs 34 of the 36 (only Dispel's and Clone's serve the hero alone), not the
+  Genie's 21 (7.3 KB).
+- **Found:** most values are the attack bonus's form `(√g − 1) × strength × the rounds' share`
+  with `g` a factor on a strike (Bless, Fire Shield, Frenzy, Counterstrike, Fortune) or on the
+  damage taken (Shield, Air Shield, Stone Skin through 0x4387C0); the protections take the best
+  kill value of the damage they save from the enemy hero's damage spells; speed is valued as
+  overtaking the threat (an exchange) and rounds of fighting won; morale and luck by fixed factors
+  per point (0.0173 above 0, −0.0833 or −0.0122 below), Fortune as one chance in 24 per point of a
+  doubled strike; the disabling spells by the stack's strength. As read, not rule quirks (for T1b
+  and T4): the protections take the caster bonuses of the context's own hero and the caster's own
+  army for the cost; Magic Mirror keeps `2 × (50 − c)` %; Anti-Magic's estimate removes helpful
+  spells and counts level `v`; a morale or luck rise from below 0 is always valued as crossing 0;
+  Paralyze reads Blind's record and resistance; Disease asks the resistance to Weakness; Frenzy is
+  valued as a second strike without its own value. No rule of the engine changes.
+- **Map:** 48 entries (10 new: 0x4387C0, 0x435850, 0x435DC0, 0x4426F0, 0x439550, 0x439A80,
+  0x43A340 and the tables 0x63B780, 0x63B790, 0x660858; 38 updated: the 36 evaluators, 0x4396E0,
+  0x438910).
