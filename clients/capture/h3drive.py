@@ -374,12 +374,14 @@ def write_screens(screens):
     SCREENS.write_text("\n".join(lines) + "\n")
 
 
-def capture(game, map_path, out, frames, key="Right", stacks=None, hot_seat=False):
+def capture(game, map_path, out, frames, key="Right", stacks=None, hot_seat=False, mouse=None):
     """The battle of the map: its opening, then a dump at each time in `frames` (ms after the
     opening, ascending); returns the dumps' paths. With `stacks` (a list; M3 T1b-2) the stacks
     the game's memory holds at each dump (h3mem: the fidgets) are appended to it. With
     `hot_seat` (M3 T3b) the map starts in hot seat, Red and Blue both humans, so that a faster
-    stack of Blue's opens idle."""
+    stack of Blue's opens idle. With `mouse` (M3 T6c-1) the mouse moves there at the opening, the
+    clock frozen, after the first turn started (its cursor, the status line's hint, a stack it
+    marks: design §9.9)."""
     game.start(map_path)
     if hot_seat:
         import h3adv
@@ -388,6 +390,9 @@ def capture(game, map_path, out, frames, key="Right", stacks=None, hot_seat=Fals
     else:
         to_scenario(game)
     t0 = into_battle(game, key)
+    if mouse is not None:
+        game.move(*mouse)
+        time.sleep(0.3)
     mem = None
     if stacks is not None:
         import h3mem
@@ -435,17 +440,20 @@ def run_set(rest):
         subprocess.run([h3view, "situation", str(scenario), "--out", str(map_path), *tile,
                         *hot_seat], check=True, capture_output=True)
         frames = {f["at"]: f for f in sit.get("frame", [])} or {0: {"at": 0}}
+        # Where the mouse rests (M3 T6c-1): the situation's point, else the parked one; the
+        # viewer draws its cursor and hint there.
+        mouse = tuple(sit.get("mouse", PARK))
         game, stacks = Game(here), []
         try:
             paths = capture(game, map_path, here, list(frames), stacks=stacks,
-                            hot_seat=bool(hot_seat))
+                            hot_seat=bool(hot_seat), mouse=mouse)
         finally:
             game.stop()
         # Our frame at each time (M3 T1b-2): the battle's idle steps (the outline's pulse) on the
         # original's clock, the original's fidgets taken from its memory, as the frame check does.
         kept = [{"t": at, "frame": p.name, "stacks": st}
                 for at, p, st in zip(sorted(frames), paths, stacks)]
-        (here / "frames.toml").write_text(frames_toml(kept))
+        (here / "frames.toml").write_text(frames_toml(kept, mouse))
         keep(set_path, "set", sid, here / "frames.toml")
         ours = here / "ours.png"  # its record: ours.jsonl (the count boxes' masks)
         subprocess.run([h3view, "render", str(scenario), "--out", str(ours), "--frames",
@@ -705,13 +713,16 @@ def run_sequences(rest):
     return 1 if failed else 0
 
 
-def frames_toml(kept):
+def frames_toml(kept, mouse=None):
     """The kept frames for `h3-view sequences --frames`: each one's time, file and the stacks the
     original shows fidgeting (group 1: the viewer draws none of its own in a check), and, where
     the original's memory was read for them (the frame check, M3 T3a), its heroes' groups and
     frames (their defeats and victories are drawn from its generator; the flags are the
-    viewer's)."""
+    viewer's); a situation's mouse first (M3 T6c-1: `h3-view render --frames` draws its cursor,
+    hint and marked stack)."""
     out = ["# The original's kept frames (h3drive.py frames): numbers only.", ""]
+    if mouse is not None:
+        out += [f"mouse = [{mouse[0]}, {mouse[1]}]", ""]
     for k in kept:
         fidgets = ", ".join(f"[{st['side']}, {st['record']}, {st['group']}, {st['frame']}]"
                             for st in k["stacks"] if st["group"] == 1 and st["count"] > 0)

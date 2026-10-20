@@ -50,6 +50,9 @@ pub struct Moment {
     /// The counts the boxes show, by id, of the stacks whose count changed since the snapshot
     /// (E17 M3 T5b); the others show the snapshot's.
     pub counts: BTreeMap<u8, u32>,
+    /// The stack the mouse marks (E17 M3 T6c-1, `crate::mouse`): its outline the mouse's unless
+    /// it is the active stack (0x43E23A to 0x43E261, §4.2).
+    pub marked: Option<u8>,
 }
 
 impl Moment {
@@ -67,6 +70,7 @@ impl Moment {
                 .map_or([None; 2], |h| h.at(timeline, t)),
             magic: timeline.magic(t),
             counts: timeline.counts(t),
+            marked: None,
         }
     }
 }
@@ -224,6 +228,22 @@ pub enum Draw {
         /// The canvas's top edge.
         y: i32,
     },
+    /// The mouse's cursor, over everything (E17 M3 T6c-1, design §9.9): a frame of its DEF's group
+    /// 0, its canvas's corner at the mouse less the frame's hot spot, by the plain drawer with runs
+    /// skipped (0x50D8B0 → 0x47BEB0 → 0x47C570). The original's drawing bug, the mouse's x
+    /// rounded down to even first (0x50CE04), is the compositor's (`h3_render::Bugs`).
+    Cursor {
+        /// The DEF.
+        def: String,
+        /// The frame in group 0.
+        frame: u32,
+        /// The mouse's x.
+        x: i32,
+        /// The mouse's y.
+        y: i32,
+        /// The frame's hot spot in its canvas.
+        hot: [i32; 2],
+    },
     /// A dialog's text over a picture (`H3DlgTextPcx`; the battle log's item, §9.5; E17 M3
     /// T4b-2b-1, T6a): the item's picture, then the text in its font over it.
     Text {
@@ -306,6 +326,19 @@ impl Panels {
         t: u32,
         layout: &BattleLayout,
     ) -> Vec<Draw> {
+        self.at_showing(snapshot, started, t, layout, self.text(t))
+    }
+
+    /// As [`Panels::at`], its log's item showing `text` (the status line's hint, E17 M3 T6c-1).
+    #[must_use]
+    pub fn at_showing(
+        &self,
+        snapshot: &Observation,
+        started: &[(u32, u8)],
+        t: u32,
+        layout: &BattleLayout,
+        text: &str,
+    ) -> Vec<Draw> {
         let controller = |o: &Observation| {
             o.active
                 .and_then(|id| snapshot.stacks.iter().find(|s| s.id == id))
@@ -320,7 +353,7 @@ impl Panels {
         let built = controller(snapshot).unwrap_or(Side::Attacker);
         let kept = crate::panel::kept(snapshot, &sides, built);
         let now = turns.last().unwrap_or(snapshot);
-        panel(now, controller(now), kept, self.text(t), layout)
+        panel(now, controller(now), kept, text, layout)
     }
 }
 
@@ -689,7 +722,11 @@ fn creature(
         frame: pose.frame,
         anchor,
         mirrored: pose.mirrored,
-        outline: (moment.active == Some(stack.id)).then(|| layout.outline_after(moment.pulse)),
+        outline: if moment.active == Some(stack.id) {
+            Some(layout.outline_after(moment.pulse))
+        } else {
+            (moment.marked == Some(stack.id)).then(|| layout.mouse_outline_after(moment.pulse))
+        },
     };
     let groups = tables.battle.groups;
     Ok(Sprite {
