@@ -2679,3 +2679,41 @@ the original data). No engine code changes: the spec, template and recipe, one a
   `surrendered` and the gold). Left: no final `end_turn` (harmless).
 - Stamp: E3c `b026743c`. **Next:** T22a3 runs E3a, E3b and E3c on the harness (its seam to confirm);
   T22b scores batch E3 and closes increment 3.
+
+### Round 5 of increment 3: T22a3, batch E3's run (2026-10-20, `adventure/e08-t22a3`, `cross-lane`)
+
+Decision 46: the three batches in one run, scored by T22b. The baseline was `master` dd89029
+(its engine code b4487432 verified there; the light gates passed). The changes: the three filled
+templates and one function of the harness (`clients/capture/h3adv.py`, the user's consent).
+
+- **The setup.** The user's copy staged from `original-data/install` (`Heroes3.exe`, the five
+  DLLs, the four LODs, `Heroes3.snd`, `H3ab_ahd.snd`, `H3ab_ahd.vid`; about 280 MB in five
+  staging calls), `scripts/sandbox-setup.sh --lane adventure` (it copies only the code-reading
+  files: the others copied by hand), `clients/capture/setup.sh`; `h3-experiment` built in release
+  first. Each batch compiled its spec (the stamps matched the committed templates).
+- **The runs.** E3a (Easy, 4 steps) and E3c (Normal, 4 steps) ran at once. E3b (Normal, 19
+  steps) stalled at E3-1's battle in two runs: the battle showed the attacker's Pikemen active,
+  waiting for orders, after `h3adv.py`'s auto-combat key (sent 0.5 s after the stacks appear),
+  and an `a` sent by hand then started auto combat. The game's first battle takes orders later
+  than the later ones (the hand-helped run's other battles took the harness's key). The fix
+  (`auto_combat`): the key waits for an active stack, and goes again when the same stack stays
+  active with every stack unchanged for 10 s (a second key during auto combat would stop it). The
+  third E3b run went through by the harness alone. E3a and E3c never reach that path: their runs
+  stand. The client lane's inbox is told, and the runbook's traps have the line.
+- **Every recipe's `expect` held** (no "anything odd" line in the three templates). The starting
+  bonus: E3-1 on Normal showed 1/1/1/1 (an artifact, within the spec's +2); every E3-3 visit 0/0.
+- **The raw values T22b scores** (the predictions are in the specs; not judged here). E3a: all
+  four a flee offer, declined, no battle, the tile empty. E3b: E3-1 and E3-1c a battle at once,
+  E3-2 and E3-2c a flee offer; E3-3r and E3-3b both drew aggression 3, a join offer at L3 only,
+  32 Halberdiers kept; E3-4, E3-4c and E3-5 A: the defender 8 Pikemen, 8 Pikemen, 7 Halberdiers,
+  7 Pikemen, **23 Pikemen** on the tile after the retreat; E3-5 B: 12 Pikemen and 11
+  Halberdiers, won, the tile empty. E3c: 152 heroes off the map at 40 to 90 (3 at 40, 1 at 90);
+  E3-7 51, level 1; E3-6 at 5 000 and level 5 with 3/6/1/1 and Pathfinding advanced, Logistics
+  expert, Scouting advanced (the other five basic); E3-8 surrendered at once, Red's gold 20 000
+  to 18 800, Blue's 20 900 to 22 100, E3-8 off the map with its army whole, E3-9's experience 0
+  before and after; the defender's hexes 15, 49, 100, 151, 185.
+- **The hand-helped run's E3-3** (kept in the sandbox only, not the batch's record; its one hand
+  key came at E3-1's battle, before E3-3): aggression 1 offered to join at L1, L2 and L3;
+  aggression 6 at none; every hero 0/0. Its other 43 of 48 records matched the batch's.
+- **Next:** T22b scores batch E3 (with the hand-helped run's E3-3 as two extra aggressions) and
+  closes increment 3.

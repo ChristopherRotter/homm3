@@ -334,6 +334,9 @@ design §7.1.
 - Auto combat plays a human side's creatures only with the setting `Combat Auto Creatures` on
   (`setup.sh` sets it; a new prefix holds 0, and then the button only sets a flag and the turn
   still waits: 0x474CDF). The capture set never turns auto combat on.
+- A game's first battle takes orders later than its later ones: a key before a stack's turn is
+  lost (E08 T22a3: batch E3b stalled at its first battle in every run). `fight`'s auto combat
+  waits for an active stack and presses again after a 10 s stall.
 - A player left without heroes and towns is out, and with one human left the game is won: the
   Hall of Fame shows and the batch stops (`neither the adventure map, a battle nor a dialog`). An
   experiment map keeps each player a hero after its battles (the check gives Blue a second one).
