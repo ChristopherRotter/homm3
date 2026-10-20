@@ -377,8 +377,9 @@ mod tests {
         );
     }
 
-    /// The committed catalogue parses over the committed asset tables, and every key it names in
-    /// GENRLTXT and CRTRAITS stays within those tables' rows (the real check is the gate's).
+    /// The committed catalogue parses over the committed asset tables, and names its keys in
+    /// GENRLTXT, CRTRAITS and HELP (the panel's hints, E17 M3 T6c-1) only (the real check, that
+    /// each stays within its table's rows, is the gate's).
     #[test]
     fn the_committed_catalogue_parses() {
         let assets = assets::load(&assets::default_dir(), assets::ALL).unwrap();
@@ -390,7 +391,7 @@ mod tests {
             .values()
             .flat_map(|k| k.original.iter().map(|(_, s, _)| s.table.as_str()))
             .collect();
-        assert_eq!(names, BTreeSet::from(["CRTRAITS", "GENRLTXT"]));
+        assert_eq!(names, BTreeSet::from(["CRTRAITS", "GENRLTXT", "HELP"]));
     }
 
     #[test]

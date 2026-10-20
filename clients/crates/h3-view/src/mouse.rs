@@ -292,9 +292,11 @@ pub struct Pointer {
 
 impl Pointer {
     /// The cursor at `point` (`SetCursor(frame, 2)`, 0x50CCA0): the combat cursor's frame, its
-    /// canvas's corner at the point less the frame's hot spot (0x50CEE0).
+    /// canvas's corner at the point less the frame's hot spot (0x50CEE0), the point's x first
+    /// rounded down to even (0x50CE04: the software cursor's x is even).
     #[must_use]
     pub fn cursor(&self, layout: &BattleLayout, [x, y]: [i32; 2]) -> Draw {
+        let x = x & !1;
         let hot: [i32; 2] = usize::try_from(self.frame)
             .ok()
             .and_then(|f| layout.mouse.hot.get(f).copied())
@@ -533,7 +535,11 @@ pub fn slots(observation: &Observation, legal: &Legal, hex: u8) -> [u32; 12] {
         } else {
             (first, second)
         };
-        let vertical = if direction == 2 || direction == 3 { 13 } else { 14 };
+        let vertical = if direction == 2 || direction == 3 {
+            13
+        } else {
+            14
+        };
         if !preferred || (other && matches!(s, 0 | 5 | 6 | 11)) {
             *frame = vertical;
         }

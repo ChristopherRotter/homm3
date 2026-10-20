@@ -1,6 +1,6 @@
 # E17 M3 T6c-1: the mouse's situations (situations/set.toml): the grass situation with the
-# human's Archangels (one hex, flying, speed 18) opening, so that they reach every enemy: a one-hex
-# stack's attack slots (design §9.9). The obstacles are the grass situation's.
+# human's Archangels (two hexes, flying, speed 18) opening, so that they reach every enemy: more
+# of a two-hex stack's attack slots (design §9.9). The obstacles are the grass situation's.
 
 [scenario]
 id = "situation-mouse-angels"

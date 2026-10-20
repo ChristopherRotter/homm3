@@ -231,7 +231,8 @@ impl Dialog {
         let [x, y] = [point[0] - self.place[0], point[1] - self.place[1]];
         self.items.iter().rev().find(|item| {
             item.area().is_some_and(|([left, top], [w, h])| {
-                (left..left.saturating_add(w)).contains(&x) && (top..top.saturating_add(h)).contains(&y)
+                (left..left.saturating_add(w)).contains(&x)
+                    && (top..top.saturating_add(h)).contains(&y)
             })
         })
     }

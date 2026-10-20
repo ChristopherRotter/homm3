@@ -7,9 +7,7 @@ use alloc::vec::Vec;
 
 use h3_protocol::wire::{Command, Hero, Observation, Side, Stack, Tactics};
 
-use super::{
-    Hint, Kind, Legal, Pointer, Spot, distance, neighbour, pointer, slot, slots, spot,
-};
+use super::{Hint, Kind, Legal, Pointer, Spot, distance, neighbour, pointer, slot, slots, spot};
 use crate::layout::{BattleLayout, parse_battle};
 use crate::record::tests::observation;
 use crate::scene::Draw;
@@ -132,7 +130,10 @@ fn neighbours_follow_the_executables_table() {
     // is none.
     assert_eq!(around(68), [Some(52), Some(69), Some(86), None, None, None]);
     assert_eq!(around(85), [None, Some(86), None, None, None, None]);
-    assert_eq!(around(101), [None, None, None, Some(117), Some(100), Some(83)]);
+    assert_eq!(
+        around(101),
+        [None, None, None, Some(117), Some(100), Some(83)]
+    );
     assert_eq!(around(86)[3..5], [None, None]);
     assert_eq!(around(1)[0], None);
     assert_eq!(around(180)[2], None);
@@ -180,11 +181,17 @@ fn the_slot_is_the_mouses_angle_from_the_hexs_centre() {
     // The right's lower half (and dy 0), the lower right, right of the bottom.
     assert_eq!([at(20, 0), at(10, 10), at(1, 20), at(0, 0)], [3, 4, 5, 3]);
     // Left of the bottom, the lower left, the left's lower half.
-    assert_eq!([at(-1, 20), at(-10, 10), at(-20, 1), at(-20, 0)], [6, 7, 8, 8]);
+    assert_eq!(
+        [at(-1, 20), at(-10, 10), at(-20, 1), at(-20, 0)],
+        [6, 7, 8, 8]
+    );
     // The left's upper half, the upper left, left of the top.
     assert_eq!([at(-20, -1), at(-10, -10), at(-1, -20)], [9, 10, 11]);
     // The thresholds: 0.58 and 1.73 (29/50 and 173/100).
-    assert_eq!([at(29, -50), at(30, -50), at(173, -100), at(174, -100)], [0, 1, 1, 2]);
+    assert_eq!(
+        [at(29, -50), at(30, -50), at(173, -100), at(174, -100)],
+        [0, 1, 1, 2]
+    );
 }
 
 #[test]
@@ -238,13 +245,19 @@ fn over_the_field_the_cursor_follows_the_hex() {
     let moves = [Command::Move { to: 87 }, Command::Move { to: 103 }];
     // An empty hex in reach: walk; out of reach or in a side column: nothing.
     let walk = at(&o, &moves, centre(87));
-    assert_eq!((walk.kind, walk.frame, &walk.hint), (Kind::Move, 1, &Hint::Move(0)));
+    assert_eq!(
+        (walk.kind, walk.frame, &walk.hint),
+        (Kind::Move, 1, &Hint::Move(0))
+    );
     assert_eq!(at(&o, &moves, centre(88)).kind, Kind::Nothing);
     assert_eq!(at(&o, &moves, centre(85)).kind, Kind::Nothing);
     let mut flier = o.clone();
     flier.stacks[0].flies = true;
     let fly = at(&flier, &moves, centre(103));
-    assert_eq!((fly.kind, fly.frame, &fly.hint), (Kind::Fly, 2, &Hint::Fly(0)));
+    assert_eq!(
+        (fly.kind, fly.frame, &fly.hint),
+        (Kind::Fly, 2, &Hint::Fly(0))
+    );
     // A two-hex stack: a reached position's front hex too.
     let mut wide = o.clone();
     wide.stacks[0].two_hex = true;
@@ -256,13 +269,22 @@ fn over_the_field_the_cursor_follows_the_hex() {
     assert_eq!(me.hint, Hint::View(0));
     assert_eq!(at(&o, &moves, centre(120)).hint, Hint::View(2));
     // An enemy: struck with the slot's sword, shot, at half damage far away; else nothing.
-    let strike = [Command::Attack { target: 1, from: 89 }];
+    let strike = [Command::Attack {
+        target: 1,
+        from: 89,
+    }];
     let hit = at(&o, &strike, centre(90));
-    assert_eq!((hit.kind, hit.frame, hit.marked), (Kind::Attack, 8, Some(1)));
+    assert_eq!(
+        (hit.kind, hit.frame, hit.marked),
+        (Kind::Attack, 8, Some(1))
+    );
     assert_eq!(hit.hint, Hint::Attack(1));
     assert!(hit.hint.forced());
     let unreached = at(&o, &strike, centre(100));
-    assert_eq!((unreached.kind, unreached.hint), (Kind::Nothing, Hint::Empty));
+    assert_eq!(
+        (unreached.kind, unreached.hint),
+        (Kind::Nothing, Hint::Empty)
+    );
     assert_eq!(unreached.marked, Some(3));
     let shots = [
         Command::Shoot { target: 1, at: 90 },
@@ -270,7 +292,10 @@ fn over_the_field_the_cursor_follows_the_hex() {
     ];
     assert_eq!(at(&o, &shots, centre(90)).kind, Kind::Shoot);
     let far = at(&o, &shots, centre(100));
-    assert_eq!((far.kind, far.frame, far.hint), (Kind::BrokenArrow, 15, Hint::Attack(3)));
+    assert_eq!(
+        (far.kind, far.frame, far.hint),
+        (Kind::BrokenArrow, 15, Hint::Attack(3))
+    );
     let mut sharp = o.clone();
     sharp.stacks[0].no_distance_penalty = true;
     assert_eq!(at(&sharp, &shots, centre(100)).kind, Kind::Shoot);
@@ -284,7 +309,10 @@ fn over_the_field_the_cursor_follows_the_hex() {
     assert_eq!(at(&near, &shots, centre(96)).kind, Kind::Shoot);
     // The tent's patient; the tactics phase looks at every stack.
     let heal = at(&o, &[Command::Heal { target: 2 }], centre(120));
-    assert_eq!((heal.kind, heal.frame, heal.hint), (Kind::Heal, 17, Hint::Heal(2)));
+    assert_eq!(
+        (heal.kind, heal.frame, heal.hint),
+        (Kind::Heal, 17, Hint::Heal(2))
+    );
     let mut tactics = o.clone();
     tactics.tactics = Some(Tactics {
         side: Side::Attacker,
@@ -295,7 +323,10 @@ fn over_the_field_the_cursor_follows_the_hex() {
     let own = at(&o, &[], [20, 60]);
     assert_eq!((own.kind, own.frame, own.hint), (Kind::Hero, 4, Hint::Hero));
     let foe = at(&o, &[], [760, 60]);
-    assert_eq!((foe.kind, foe.frame, foe.hint), (Kind::EnemyHero, 5, Hint::EnemyHero));
+    assert_eq!(
+        (foe.kind, foe.frame, foe.hint),
+        (Kind::EnemyHero, 5, Hint::EnemyHero)
+    );
     let mut alone = o.clone();
     alone.sides[1].hero = None;
     assert_eq!(at(&alone, &[], [760, 60]).kind, Kind::Nothing);
@@ -306,7 +337,10 @@ fn over_the_field_the_cursor_follows_the_hex() {
     assert_eq!(at(&idle, &moves, centre(87)).kind, Kind::Nothing);
     let mut dead = o.clone();
     dead.stacks[1].alive = false;
-    assert_eq!(at(&dead, &[Command::Move { to: 90 }], centre(90)).kind, Kind::Move);
+    assert_eq!(
+        at(&dead, &[Command::Move { to: 90 }], centre(90)).kind,
+        Kind::Move
+    );
     // The cursor's canvas at the mouse less its hot spot.
     assert_eq!(
         hit.cursor(&l, [300, 200]),
@@ -317,11 +351,16 @@ fn over_the_field_the_cursor_follows_the_hex() {
             y: 194
         }
     );
-    let beyond = Pointer {
-        frame: 99,
-        ..hit
-    };
-    assert!(matches!(beyond.cursor(&l, [300, 200]), Draw::Cursor { x: 300, y: 200, .. }));
+    let beyond = Pointer { frame: 99, ..hit };
+    assert!(matches!(
+        beyond.cursor(&l, [300, 200]),
+        Draw::Cursor { x: 300, y: 200, .. }
+    ));
+    // The software cursor's x is even (0x50CE04).
+    assert!(matches!(
+        beyond.cursor(&l, [301, 200]),
+        Draw::Cursor { x: 300, y: 200, .. }
+    ));
 }
 
 #[test]

@@ -342,9 +342,12 @@ pub(crate) fn draw_frames(
     let mut drawn = String::new();
     let mut texts = serde_json::Map::new();
     // The mouse where the harness left it, at the opening (E17 M3 T6c-1; over time: T6c-2).
-    let pointer = kept
-        .mouse
-        .map(|point| (point, mouse::pointer(snapshot, interface.legal, layout, point)));
+    let pointer = kept.mouse.map(|point| {
+        (
+            point,
+            mouse::pointer(snapshot, interface.legal, layout, point),
+        )
+    });
     let status = match &pointer {
         Some((_, p)) => {
             let catalogue = log::catalogue(tables, archives)?;

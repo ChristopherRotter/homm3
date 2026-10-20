@@ -3,11 +3,6 @@
 mouse = [654, 196]
 
 [[frame]]
-t = 0
-file = "t00000.xwd"
-fidgets = [[1, 0, 1, 0]]
-
-[[frame]]
 t = 100
 file = "t00100.xwd"
 fidgets = [[1, 0, 1, 1]]

@@ -1422,6 +1422,38 @@ over time), the user chose it whole.
   as recorded. One `set` run failed on a screen dump (not a 5-6-5 dump); run again: 31 situations,
   57 frames exact. `drawn --record`, then `drawn` all 41 the same.
 
+### M3 T6c-1 — The mouse's still (2026-10-20)
+
+On `client/e17-m3-t6c-1`, the user present: T6c split with the user into the still (T6c-1) and
+the mouse over time (T6c-2, which also takes the window's mouse).
+
+- **Starting point:** `master` at `59eda2c` (#333 merged); no client pull request open; the
+  client gates' code verified on `master` before (`verify-once`: the light gates only).
+- **The reading** (design §9.9): `battle_buttons`' mouse move, `screen_to_hex` and the heroes'
+  rectangles, the neighbour table, `battle_cursor` in full, the attack's slots in full,
+  `battle_status_line` for the modelled kinds, `hex_distance`, the mouse manager (`SetCursor`,
+  the cursor's frame drawer, its hot spots and its even x), the panel's hints (`SetHints`,
+  `Help.txt`'s loader). Fifteen map entries, three summaries extended.
+- **Built:** `h3_view::mouse` (where the mouse is, the neighbours, the distance, the legal
+  commands as the cursor asks them, the kind, the slot and the twelve slots' frames with the
+  executable's copy measure, the hint and its text, the pointer and its cursor draw);
+  `Draw::Cursor` (plain, runs skipped); `Moment::marked` (the mouse's outline, the active one's
+  winning); `ui::Item::hint`, `Dialog::item_at`; the layout's `[mouse]` and `outline_mouse`; the
+  keys `battle.hint.*` and `battle.control.*`; `render --frames` draws a `frames.toml`'s mouse
+  with the scenario's legal commands at the opening (`scenario::opening_legal`;
+  `sequences::Interface`).
+- **The harness:** a situation's `mouse` (default the parked point): moved there at the opening,
+  the clock frozen; `frames.toml` names it. 26 `mouse-*` situations over four scenarios.
+- **Found on the way:** at the opening itself the original shows the new cursor where the mouse
+  was (its overlay moves at its next frame): the mouse frames start at 100 ms. The software
+  cursor's x is even (0x50CE04): a one-pixel shift at odd points (144 pixels a sword, 101 the
+  pointer) until built. Archangels are two hexes wide (the one-hex swords from Arch Devils).
+  `h3lod` counts `Help.txt` one record fewer than `h3-formats` and the executable from the
+  Multiplayer Selection group on (NOTES). The parked cursor is the combat cursor's frame 6.
+- **Checked against the original:** the 26 mouse situations' 28 frames exact; the whole set
+  captured afresh with the parked cursor drawn and the `cursor` masks gone: 57 situations, 85
+  frames exact. `drawn --record`.
+
 ## Accepted review lists (M1, M2)
 
 Moved from the epic file on 2026-10-20 (less start-up reading), unchanged.
