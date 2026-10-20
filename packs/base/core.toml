@@ -2998,6 +2998,7 @@ faction = "castle"
 primary = [2, 2, 1, 1]
 primary_gain = [[35, 45, 10, 10], [30, 30, 20, 20]]
 skill_weights = { "pathfinding" = 4, "archery" = 5, "logistics" = 5, "scouting" = 4, "diplomacy" = 4, "navigation" = 8, "leadership" = 10, "wisdom" = 3, "mysticism" = 2, "luck" = 3, "ballistics" = 8, "eagle_eye" = 2, "estates" = 6, "fire_magic" = 1, "air_magic" = 3, "water_magic" = 4, "earth_magic" = 2, "scholar" = 1, "tactics" = 7, "artillery" = 5, "learning" = 4, "offense" = 7, "armorer" = 5, "intelligence" = 1, "sorcery" = 1, "resistance" = 5, "first_aid" = 2 }
+offer_intervals = [6, 4]
 
 [[hero_class]]
 id = "cleric"
@@ -3006,6 +3007,7 @@ faction = "castle"
 primary = [1, 0, 2, 2]
 primary_gain = [[20, 15, 30, 35], [20, 20, 30, 30]]
 skill_weights = { "pathfinding" = 2, "archery" = 3, "logistics" = 4, "scouting" = 3, "diplomacy" = 7, "navigation" = 5, "leadership" = 2, "wisdom" = 7, "mysticism" = 4, "luck" = 5, "ballistics" = 4, "eagle_eye" = 6, "estates" = 3, "fire_magic" = 2, "air_magic" = 4, "water_magic" = 4, "earth_magic" = 3, "scholar" = 6, "tactics" = 2, "artillery" = 2, "learning" = 4, "offense" = 4, "armorer" = 3, "intelligence" = 6, "sorcery" = 5, "resistance" = 2, "first_aid" = 10 }
+offer_intervals = [3, 3]
 
 [[hero_class]]
 id = "ranger"
@@ -3014,6 +3016,7 @@ faction = "rampart"
 primary = [1, 3, 1, 1]
 primary_gain = [[35, 45, 10, 10], [30, 30, 20, 20]]
 skill_weights = { "pathfinding" = 7, "archery" = 8, "logistics" = 5, "scouting" = 7, "diplomacy" = 4, "navigation" = 3, "leadership" = 6, "wisdom" = 3, "mysticism" = 3, "luck" = 6, "ballistics" = 4, "eagle_eye" = 2, "estates" = 2, "air_magic" = 1, "water_magic" = 3, "earth_magic" = 3, "scholar" = 1, "tactics" = 5, "artillery" = 6, "learning" = 4, "offense" = 5, "armorer" = 8, "intelligence" = 2, "sorcery" = 2, "resistance" = 9, "first_aid" = 3 }
+offer_intervals = [6, 4]
 
 [[hero_class]]
 id = "druid"
@@ -3022,6 +3025,7 @@ faction = "rampart"
 primary = [0, 2, 1, 2]
 primary_gain = [[10, 20, 35, 35], [20, 20, 30, 30]]
 skill_weights = { "pathfinding" = 5, "archery" = 5, "logistics" = 5, "scouting" = 2, "diplomacy" = 4, "navigation" = 2, "leadership" = 2, "wisdom" = 8, "mysticism" = 6, "luck" = 9, "ballistics" = 4, "eagle_eye" = 7, "estates" = 3, "fire_magic" = 1, "air_magic" = 2, "water_magic" = 4, "earth_magic" = 4, "scholar" = 8, "tactics" = 1, "artillery" = 1, "learning" = 4, "offense" = 1, "armorer" = 3, "intelligence" = 7, "sorcery" = 6, "resistance" = 1, "first_aid" = 7 }
+offer_intervals = [3, 3]
 
 [[hero_class]]
 id = "alchemist"
@@ -3030,6 +3034,7 @@ faction = "tower"
 primary = [1, 1, 2, 2]
 primary_gain = [[30, 30, 20, 20], [30, 30, 20, 20]]
 skill_weights = { "pathfinding" = 4, "archery" = 5, "logistics" = 6, "scouting" = 4, "diplomacy" = 3, "navigation" = 3, "leadership" = 3, "wisdom" = 6, "mysticism" = 4, "luck" = 2, "ballistics" = 6, "eagle_eye" = 3, "estates" = 4, "fire_magic" = 1, "air_magic" = 4, "water_magic" = 2, "earth_magic" = 3, "scholar" = 3, "tactics" = 4, "artillery" = 4, "learning" = 10, "offense" = 6, "armorer" = 8, "intelligence" = 4, "sorcery" = 3, "resistance" = 5, "first_aid" = 2 }
+offer_intervals = [6, 4]
 
 [[hero_class]]
 id = "wizard"
@@ -3038,6 +3043,7 @@ faction = "tower"
 primary = [0, 0, 2, 3]
 primary_gain = [[10, 10, 40, 40], [30, 20, 20, 30]]
 skill_weights = { "pathfinding" = 2, "archery" = 2, "logistics" = 2, "scouting" = 2, "diplomacy" = 4, "navigation" = 1, "leadership" = 4, "wisdom" = 10, "mysticism" = 8, "luck" = 4, "ballistics" = 4, "eagle_eye" = 8, "estates" = 5, "fire_magic" = 2, "air_magic" = 6, "water_magic" = 3, "earth_magic" = 3, "scholar" = 9, "tactics" = 1, "artillery" = 1, "learning" = 4, "offense" = 1, "armorer" = 1, "intelligence" = 10, "sorcery" = 8, "first_aid" = 7 }
+offer_intervals = [3, 3]
 
 [[hero_class]]
 id = "demoniac"
@@ -3046,6 +3052,7 @@ faction = "inferno"
 primary = [2, 2, 1, 1]
 primary_gain = [[35, 35, 15, 15], [30, 30, 20, 20]]
 skill_weights = { "pathfinding" = 4, "archery" = 6, "logistics" = 10, "scouting" = 5, "diplomacy" = 4, "navigation" = 4, "leadership" = 3, "wisdom" = 4, "mysticism" = 2, "luck" = 2, "ballistics" = 7, "eagle_eye" = 3, "estates" = 3, "fire_magic" = 4, "air_magic" = 2, "water_magic" = 1, "earth_magic" = 3, "scholar" = 2, "tactics" = 6, "artillery" = 5, "learning" = 4, "offense" = 8, "armorer" = 7, "intelligence" = 2, "sorcery" = 3, "resistance" = 6, "first_aid" = 2 }
+offer_intervals = [6, 4]
 
 [[hero_class]]
 id = "heretic"
@@ -3054,6 +3061,7 @@ faction = "inferno"
 primary = [1, 1, 2, 1]
 primary_gain = [[15, 15, 35, 35], [20, 20, 30, 30]]
 skill_weights = { "pathfinding" = 4, "archery" = 4, "logistics" = 3, "scouting" = 3, "diplomacy" = 3, "navigation" = 2, "leadership" = 2, "wisdom" = 8, "mysticism" = 10, "luck" = 2, "ballistics" = 6, "eagle_eye" = 4, "estates" = 2, "fire_magic" = 5, "air_magic" = 3, "water_magic" = 2, "earth_magic" = 4, "scholar" = 5, "tactics" = 4, "artillery" = 4, "learning" = 4, "offense" = 4, "armorer" = 4, "intelligence" = 6, "sorcery" = 6, "resistance" = 3, "first_aid" = 5 }
+offer_intervals = [3, 3]
 
 [[hero_class]]
 id = "death_knight"
@@ -3062,6 +3070,7 @@ faction = "necropolis"
 primary = [1, 2, 2, 1]
 primary_gain = [[30, 25, 20, 25], [25, 25, 25, 25]]
 skill_weights = { "pathfinding" = 4, "archery" = 5, "logistics" = 5, "scouting" = 4, "diplomacy" = 2, "navigation" = 8, "wisdom" = 6, "mysticism" = 4, "luck" = 1, "ballistics" = 7, "eagle_eye" = 4, "necromancy" = 10, "fire_magic" = 1, "air_magic" = 2, "water_magic" = 3, "earth_magic" = 4, "scholar" = 2, "tactics" = 5, "artillery" = 5, "learning" = 4, "offense" = 7, "armorer" = 5, "intelligence" = 5, "sorcery" = 4, "resistance" = 5 }
+offer_intervals = [6, 4]
 
 [[hero_class]]
 id = "necromancer"
@@ -3070,6 +3079,7 @@ faction = "necropolis"
 primary = [1, 0, 2, 2]
 primary_gain = [[15, 15, 35, 35], [25, 25, 25, 25]]
 skill_weights = { "pathfinding" = 6, "archery" = 2, "logistics" = 4, "scouting" = 2, "diplomacy" = 4, "navigation" = 5, "wisdom" = 8, "mysticism" = 6, "luck" = 1, "ballistics" = 5, "eagle_eye" = 7, "necromancy" = 10, "estates" = 3, "fire_magic" = 2, "air_magic" = 3, "water_magic" = 3, "earth_magic" = 8, "scholar" = 6, "tactics" = 2, "artillery" = 3, "learning" = 4, "offense" = 3, "armorer" = 2, "intelligence" = 6, "sorcery" = 6, "resistance" = 1 }
+offer_intervals = [3, 3]
 
 [[hero_class]]
 id = "overlord"
@@ -3078,6 +3088,7 @@ faction = "dungeon"
 primary = [2, 2, 1, 1]
 primary_gain = [[35, 35, 15, 15], [30, 30, 20, 20]]
 skill_weights = { "pathfinding" = 5, "archery" = 6, "logistics" = 8, "scouting" = 5, "diplomacy" = 3, "navigation" = 4, "leadership" = 8, "wisdom" = 3, "mysticism" = 3, "luck" = 1, "ballistics" = 7, "eagle_eye" = 2, "estates" = 4, "fire_magic" = 2, "air_magic" = 1, "earth_magic" = 3, "scholar" = 1, "tactics" = 10, "artillery" = 8, "learning" = 4, "offense" = 8, "armorer" = 6, "intelligence" = 1, "sorcery" = 2, "resistance" = 6, "first_aid" = 1 }
+offer_intervals = [6, 4]
 
 [[hero_class]]
 id = "warlock"
@@ -3086,6 +3097,7 @@ faction = "dungeon"
 primary = [0, 0, 3, 2]
 primary_gain = [[10, 10, 50, 30], [20, 20, 30, 30]]
 skill_weights = { "pathfinding" = 2, "archery" = 2, "logistics" = 2, "scouting" = 2, "diplomacy" = 4, "navigation" = 4, "leadership" = 3, "wisdom" = 10, "mysticism" = 8, "luck" = 2, "ballistics" = 6, "eagle_eye" = 8, "estates" = 5, "fire_magic" = 5, "air_magic" = 2, "water_magic" = 2, "earth_magic" = 5, "scholar" = 8, "tactics" = 1, "artillery" = 1, "learning" = 4, "offense" = 1, "armorer" = 1, "intelligence" = 8, "sorcery" = 10, "first_aid" = 6 }
+offer_intervals = [3, 3]
 
 [[hero_class]]
 id = "barbarian"
@@ -3094,6 +3106,7 @@ faction = "stronghold"
 primary = [4, 0, 1, 1]
 primary_gain = [[55, 35, 5, 5], [30, 30, 20, 20]]
 skill_weights = { "pathfinding" = 8, "archery" = 7, "logistics" = 7, "scouting" = 8, "diplomacy" = 1, "navigation" = 2, "leadership" = 5, "wisdom" = 2, "mysticism" = 3, "luck" = 3, "ballistics" = 8, "eagle_eye" = 2, "estates" = 2, "fire_magic" = 2, "air_magic" = 3, "earth_magic" = 3, "scholar" = 1, "tactics" = 8, "artillery" = 8, "learning" = 4, "offense" = 10, "armorer" = 6, "intelligence" = 1, "sorcery" = 1, "resistance" = 6, "first_aid" = 1 }
+offer_intervals = [6, 4]
 
 [[hero_class]]
 id = "battle_mage"
@@ -3102,6 +3115,7 @@ faction = "stronghold"
 primary = [2, 1, 1, 1]
 primary_gain = [[30, 20, 25, 25], [25, 25, 25, 25]]
 skill_weights = { "pathfinding" = 4, "archery" = 4, "logistics" = 9, "scouting" = 4, "diplomacy" = 3, "leadership" = 4, "wisdom" = 6, "mysticism" = 4, "luck" = 2, "ballistics" = 6, "eagle_eye" = 5, "estates" = 1, "fire_magic" = 3, "air_magic" = 3, "water_magic" = 3, "earth_magic" = 3, "scholar" = 4, "tactics" = 5, "artillery" = 4, "learning" = 4, "offense" = 8, "armorer" = 4, "intelligence" = 5, "sorcery" = 6, "resistance" = 4, "first_aid" = 4 }
+offer_intervals = [3, 3]
 
 [[hero_class]]
 id = "beastmaster"
@@ -3110,6 +3124,7 @@ faction = "fortress"
 primary = [0, 4, 1, 1]
 primary_gain = [[30, 50, 10, 10], [30, 30, 20, 20]]
 skill_weights = { "pathfinding" = 8, "archery" = 7, "logistics" = 8, "scouting" = 7, "diplomacy" = 1, "navigation" = 8, "leadership" = 5, "wisdom" = 2, "mysticism" = 2, "luck" = 2, "ballistics" = 7, "eagle_eye" = 1, "estates" = 1, "air_magic" = 1, "water_magic" = 2, "earth_magic" = 3, "scholar" = 1, "tactics" = 6, "artillery" = 8, "learning" = 4, "offense" = 5, "armorer" = 10, "intelligence" = 1, "sorcery" = 1, "resistance" = 5, "first_aid" = 6 }
+offer_intervals = [6, 4]
 
 [[hero_class]]
 id = "witch"
@@ -3118,6 +3133,7 @@ faction = "fortress"
 primary = [0, 1, 2, 2]
 primary_gain = [[5, 15, 40, 40], [20, 20, 30, 30]]
 skill_weights = { "pathfinding" = 2, "archery" = 3, "logistics" = 3, "scouting" = 2, "diplomacy" = 2, "navigation" = 6, "leadership" = 1, "wisdom" = 8, "mysticism" = 8, "luck" = 4, "ballistics" = 8, "eagle_eye" = 10, "estates" = 1, "fire_magic" = 3, "air_magic" = 3, "water_magic" = 3, "earth_magic" = 3, "scholar" = 7, "tactics" = 1, "artillery" = 1, "learning" = 4, "offense" = 2, "armorer" = 4, "intelligence" = 7, "sorcery" = 8, "first_aid" = 8 }
+offer_intervals = [3, 3]
 
 [[hero]]
 id = "orrin"  # original id 0
@@ -5379,11 +5395,15 @@ primary_min = [0, 0, 1, 1]
 primary_max = 99
 backpack = 64
 learn_level = 2
+experience = [0, 1000, 2000, 3200, 4600, 6200, 8000, 10000, 12200, 14700, 17500, 20600]
+max_level = 74
+wisdom = "wisdom"
+schools = ["fire_magic", "air_magic", "water_magic", "earth_magic"]
 
 [[profile]]
 id = "faithful"        # default: preserve/fix-optional quirks on
-quirks = { "quirk.battle.no_luck_without_hero" = true, "quirk.battle.single_precision_rates" = true, "quirk.battle.unlimited_ballista_shots" = true, "quirk.battle.first_protection" = true, "quirk.battle.counterstrike_extra_round" = true, "quirk.battle.frenzy_reduced_defense" = true, "quirk.battle.fire_shield_first_stage" = true, "quirk.battle.early_mass_version" = true, "quirk.battle.mass_cure_skips_hypnotized" = true, "quirk.battle.obstacle_anchors" = true, "quirk.battle.draws_avoid_hidden" = true, "quirk.battle.sacrifice_tests_as_resurrection" = true, "quirk.battle.clone_on_its_original" = true, "quirk.battle.periodic_first_stack" = true, "quirk.battle.no_defender_ballista_at_fort" = true, "quirk.battle.berserk_walks_to_position_hex" = true, "quirk.content.roland_crusader_specialty" = true, "quirk.content.elemental_levels" = true, "quirk.adventure.diagonal_check_ignores_roads" = true, "quirk.adventure.diagonal_check_ignores_native" = true, "quirk.adventure.native_skips_leading_neutrals" = true, "quirk.adventure.fringe_shows_objects" = true, "quirk.adventure.obstacles_from_tile" = true, "quirk.adventure.split_from_tile" = true }    # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-3 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, BAT-QUIRK-23, BAT-QUIRK-24, ADV-QUIRK-1 to ADV-QUIRK-6
+quirks = { "quirk.battle.no_luck_without_hero" = true, "quirk.battle.single_precision_rates" = true, "quirk.battle.unlimited_ballista_shots" = true, "quirk.battle.first_protection" = true, "quirk.battle.counterstrike_extra_round" = true, "quirk.battle.frenzy_reduced_defense" = true, "quirk.battle.fire_shield_first_stage" = true, "quirk.battle.early_mass_version" = true, "quirk.battle.mass_cure_skips_hypnotized" = true, "quirk.battle.obstacle_anchors" = true, "quirk.battle.draws_avoid_hidden" = true, "quirk.battle.sacrifice_tests_as_resurrection" = true, "quirk.battle.clone_on_its_original" = true, "quirk.battle.periodic_first_stack" = true, "quirk.battle.no_defender_ballista_at_fort" = true, "quirk.battle.berserk_walks_to_position_hex" = true, "quirk.content.roland_crusader_specialty" = true, "quirk.content.elemental_levels" = true, "quirk.content.elementalist_offer_intervals" = true, "quirk.adventure.diagonal_check_ignores_roads" = true, "quirk.adventure.diagonal_check_ignores_native" = true, "quirk.adventure.native_skips_leading_neutrals" = true, "quirk.adventure.fringe_shows_objects" = true, "quirk.adventure.obstacles_from_tile" = true, "quirk.adventure.split_from_tile" = true, "quirk.adventure.level_up_from_seed" = true }    # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-3 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, BAT-QUIRK-23, BAT-QUIRK-24, ADV-QUIRK-1 to ADV-QUIRK-6, ADV-QUIRK-9, ADV-QUIRK-10
 
 [[profile]]
 id = "strict-fixed"    # all quirks fixed
-quirks = { "quirk.battle.no_luck_without_hero" = false, "quirk.battle.single_precision_rates" = false, "quirk.battle.unlimited_ballista_shots" = false, "quirk.battle.first_protection" = false, "quirk.battle.counterstrike_extra_round" = false, "quirk.battle.frenzy_reduced_defense" = false, "quirk.battle.fire_shield_first_stage" = false, "quirk.battle.early_mass_version" = false, "quirk.battle.mass_cure_skips_hypnotized" = false, "quirk.battle.obstacle_anchors" = false, "quirk.battle.draws_avoid_hidden" = false, "quirk.battle.sacrifice_tests_as_resurrection" = false, "quirk.battle.clone_on_its_original" = false, "quirk.battle.periodic_first_stack" = false, "quirk.battle.no_defender_ballista_at_fort" = false, "quirk.battle.berserk_walks_to_position_hex" = false, "quirk.content.roland_crusader_specialty" = false, "quirk.content.elemental_levels" = false, "quirk.adventure.diagonal_check_ignores_roads" = false, "quirk.adventure.diagonal_check_ignores_native" = false, "quirk.adventure.native_skips_leading_neutrals" = false, "quirk.adventure.fringe_shows_objects" = false, "quirk.adventure.obstacles_from_tile" = false, "quirk.adventure.split_from_tile" = false }   # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-3 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, BAT-QUIRK-23, ADV-QUIRK-1 to ADV-QUIRK-6
+quirks = { "quirk.battle.no_luck_without_hero" = false, "quirk.battle.single_precision_rates" = false, "quirk.battle.unlimited_ballista_shots" = false, "quirk.battle.first_protection" = false, "quirk.battle.counterstrike_extra_round" = false, "quirk.battle.frenzy_reduced_defense" = false, "quirk.battle.fire_shield_first_stage" = false, "quirk.battle.early_mass_version" = false, "quirk.battle.mass_cure_skips_hypnotized" = false, "quirk.battle.obstacle_anchors" = false, "quirk.battle.draws_avoid_hidden" = false, "quirk.battle.sacrifice_tests_as_resurrection" = false, "quirk.battle.clone_on_its_original" = false, "quirk.battle.periodic_first_stack" = false, "quirk.battle.no_defender_ballista_at_fort" = false, "quirk.battle.berserk_walks_to_position_hex" = false, "quirk.content.roland_crusader_specialty" = false, "quirk.content.elemental_levels" = false, "quirk.content.elementalist_offer_intervals" = false, "quirk.adventure.diagonal_check_ignores_roads" = false, "quirk.adventure.diagonal_check_ignores_native" = false, "quirk.adventure.native_skips_leading_neutrals" = false, "quirk.adventure.fringe_shows_objects" = false, "quirk.adventure.obstacles_from_tile" = false, "quirk.adventure.split_from_tile" = false, "quirk.adventure.level_up_from_seed" = false }   # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-3 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, BAT-QUIRK-23, BAT-QUIRK-24, ADV-QUIRK-1 to ADV-QUIRK-6, ADV-QUIRK-9, ADV-QUIRK-10

@@ -897,7 +897,7 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
     base.push_str(&sieges.base);
     write_battle(&mut base, gap);
     base.push_str(&sieges.field);
-    write_hero_params(&mut base, gap);
+    write_hero_params(&mut base, gap, &hero_packs.skills)?;
     base.push_str(
         "\n[[profile]]\nid = \"faithful\"        # default: preserve/fix-optional quirks on\n\
          quirks = { \"quirk.battle.no_luck_without_hero\" = true, \
@@ -918,12 +918,14 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
          \"quirk.battle.berserk_walks_to_position_hex\" = true, \
          \"quirk.content.roland_crusader_specialty\" = true, \
          \"quirk.content.elemental_levels\" = true, \
+         \"quirk.content.elementalist_offer_intervals\" = true, \
          \"quirk.adventure.diagonal_check_ignores_roads\" = true, \
          \"quirk.adventure.diagonal_check_ignores_native\" = true, \
          \"quirk.adventure.native_skips_leading_neutrals\" = true, \
          \"quirk.adventure.fringe_shows_objects\" = true, \
          \"quirk.adventure.obstacles_from_tile\" = true, \
-         \"quirk.adventure.split_from_tile\" = true }    # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-3 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, BAT-QUIRK-23, BAT-QUIRK-24, ADV-QUIRK-1 to ADV-QUIRK-6\n",
+         \"quirk.adventure.split_from_tile\" = true, \
+         \"quirk.adventure.level_up_from_seed\" = true }    # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-3 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, BAT-QUIRK-23, BAT-QUIRK-24, ADV-QUIRK-1 to ADV-QUIRK-6, ADV-QUIRK-9, ADV-QUIRK-10\n",
     );
     base.push_str(
         "\n[[profile]]\nid = \"strict-fixed\"    # all quirks fixed\n\
@@ -945,12 +947,14 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
          \"quirk.battle.berserk_walks_to_position_hex\" = false, \
          \"quirk.content.roland_crusader_specialty\" = false, \
          \"quirk.content.elemental_levels\" = false, \
+         \"quirk.content.elementalist_offer_intervals\" = false, \
          \"quirk.adventure.diagonal_check_ignores_roads\" = false, \
          \"quirk.adventure.diagonal_check_ignores_native\" = false, \
          \"quirk.adventure.native_skips_leading_neutrals\" = false, \
          \"quirk.adventure.fringe_shows_objects\" = false, \
          \"quirk.adventure.obstacles_from_tile\" = false, \
-         \"quirk.adventure.split_from_tile\" = false }   # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-3 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, BAT-QUIRK-23, ADV-QUIRK-1 to ADV-QUIRK-6\n",
+         \"quirk.adventure.split_from_tile\" = false, \
+         \"quirk.adventure.level_up_from_seed\" = false }   # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-3 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, BAT-QUIRK-23, BAT-QUIRK-24, ADV-QUIRK-1 to ADV-QUIRK-6, ADV-QUIRK-9, ADV-QUIRK-10\n",
     );
 
     // ab
@@ -1167,16 +1171,43 @@ fn write_row_diff(out: &mut String, old: &Row, new: &Row, resources: &[String]) 
     }
 }
 
-fn write_hero_params(out: &mut String, gap: &GapFill) {
+/// Writes `[hero_params]`; the offered skills are named in the gap-fill file and written as
+/// the keys of `skills` (key, name).
+fn write_hero_params(
+    out: &mut String,
+    gap: &GapFill,
+    skills: &[(String, String)],
+) -> Result<(), String> {
     let p = &gap.heroes.params;
     let [a, d, s, k] = p.primary_min;
+    let skill = |name: &str| {
+        skills
+            .iter()
+            .find(|(_, n)| n == name)
+            .map(|(key, _)| format!("\"{key}\""))
+            .ok_or_else(|| format!("gapfill: hero params: unknown skill `{name}`"))
+    };
+    let experience: Vec<String> = p.experience.iter().map(u32::to_string).collect();
+    let schools = p
+        .schools
+        .iter()
+        .map(|n| skill(n))
+        .collect::<Result<Vec<_>, _>>()?;
     let _ = write!(
         out,
         "\n# Hero parameters (Tier 2): rule ids in docs/rules/catalog/heroes.toml (sources in the\n\
          # gap-fill file).\n[hero_params]\nprimary_min = [{a}, {d}, {s}, {k}]\nprimary_max = {}\n\
-         backpack = {}\nlearn_level = {}\n",
-        p.primary_max, p.backpack, p.learn_level
+         backpack = {}\nlearn_level = {}\nexperience = [{}]\nmax_level = {}\nwisdom = {}\n\
+         schools = [{}]\n",
+        p.primary_max,
+        p.backpack,
+        p.learn_level,
+        experience.join(", "),
+        p.max_level,
+        skill(&p.wisdom)?,
+        schools.join(", ")
     );
+    Ok(())
 }
 
 fn write_battle(out: &mut String, gap: &GapFill) {

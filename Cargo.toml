@@ -9,6 +9,7 @@ members = [
     "crates/h3-content-battle",
     "crates/h3-contracts",
     "crates/h3-battle",
+    "crates/h3-battle-ai",
     "crates/h3-heroes",
     "crates/h3-adventure",
     "crates/h3-game",
@@ -32,6 +33,7 @@ default-members = [
     "crates/h3-content-battle",
     "crates/h3-contracts",
     "crates/h3-battle",
+    "crates/h3-battle-ai",
     "crates/h3-heroes",
     "crates/h3-adventure",
     "crates/h3-game",
@@ -63,6 +65,7 @@ h3-content = { path = "crates/h3-content" }
 h3-content-battle = { path = "crates/h3-content-battle" }
 h3-contracts = { path = "crates/h3-contracts" }
 h3-battle = { path = "crates/h3-battle" }
+h3-battle-ai = { path = "crates/h3-battle-ai" }
 h3-heroes = { path = "crates/h3-heroes" }
 h3-pack = { path = "crates/h3-pack" }
 h3-pack-battle = { path = "crates/h3-pack-battle" }

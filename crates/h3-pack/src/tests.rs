@@ -225,7 +225,7 @@ fn wisdom_and_the_skill_condition_of_a_share_parse() {
          [[artifact]]\nid = \"a\"\nname = \"A\"\nclass = \"relic\"\n\
          effects = [{{ kind = \"necromancy\", bp = 3000, unless_skill = \"s\" }}]\n\
          [hero_params]\nprimary_min = [0, 0, 1, 1]\nprimary_max = 99\nbackpack = 64\n\
-         learn_level = 2\n"
+         learn_level = 2\nexperience = [0, 10]\nmax_level = 1\nwisdom = \"s\"\nschools = []\n"
     ))
     .unwrap();
     assert_eq!(
@@ -262,4 +262,113 @@ fn wisdom_and_the_skill_condition_of_a_share_parse() {
             .contains("learn_level levels must be 1..=5"),
         "{error}"
     );
+}
+
+#[test]
+fn the_level_data_and_class_overrides_parse() {
+    // E08 T26b (pack format v44): the experience of the first levels, the highest level, the
+    // skills offered when due, the class's intervals and a gated class override.
+    let manifest = "[pack]\nid = \"x\"\nversion = \"1\"\n";
+    let class = "[[hero_class]]\nid = \"c\"\nfaction = \"f\"\nprimary = [1, 1, 1, 1]\n\
+                 primary_gain = [[25, 25, 25, 25], [25, 25, 25, 25]]\n";
+    let params = "[hero_params]\nprimary_min = [0, 0, 1, 1]\nprimary_max = 99\nbackpack = 64\n\
+                  learn_level = 2\nexperience = [0, 1000, 2000]\nmax_level = 74\n";
+    let pack = parse_pack(&format!(
+        "{manifest}{params}wisdom = \"w\"\nschools = [\"base:fire\", \"air\"]\n\
+         {class}offer_intervals = [6, 4]\n\
+         [[hero_class_override]]\ntarget = \"x:c\"\nfixes = \"quirk.content.q\"\n\
+         offer_intervals = [3, 3]\n"
+    ))
+    .unwrap();
+    let p = pack.hero_params.as_ref().unwrap();
+    assert_eq!(
+        (p.experience.as_slice(), p.max_level),
+        (&[0, 1000, 2000][..], 74)
+    );
+    assert_eq!(p.wisdom.as_str(), "x:w");
+    assert_eq!(
+        p.schools.iter().map(ContentKey::as_str).collect::<Vec<_>>(),
+        ["base:fire", "x:air"]
+    );
+    assert_eq!(pack.hero_classes[0].offer_intervals, [6, 4]);
+    let o = &pack.hero_class_overrides[0];
+    assert_eq!(
+        (o.target.as_str(), o.fixes.as_deref()),
+        ("x:c", Some("quirk.content.q"))
+    );
+    assert_eq!(o.patch.offer_intervals, Some([3, 3]));
+    // A class needs its intervals; the parameters need the level data; keys are checked.
+    let syntax = |text: &str| matches!(parse_pack(text), Err(PackError::Syntax(_)));
+    assert!(syntax(&format!("{manifest}{class}")));
+    assert!(syntax(&format!("{manifest}{params}wisdom = \"w\"\n")));
+    let key = |text: &str| matches!(parse_pack(text), Err(PackError::Key(_)));
+    assert!(key(&format!(
+        "{manifest}{params}wisdom = \"W\"\nschools = []\n"
+    )));
+    assert!(key(&format!(
+        "{manifest}{params}wisdom = \"w\"\nschools = [\"A\"]\n"
+    )));
+    assert!(key(&format!(
+        "{manifest}[[hero_class_override]]\ntarget = \"c\"\noffer_intervals = [3, 3]\n"
+    )));
+}
+
+/// E08 T26b: the harvested packs' level data (HER-EXP-002, HER-LVL-004) and the Elementalist's
+/// intervals, the executable's in `faithful` and the magic classes' in `strict-fixed`
+/// (ADV-QUIRK-10), with and without SoD.
+#[test]
+fn the_harvested_level_data_and_the_elementalists_intervals() {
+    for packs in [&[SOD_CORE, AB_CORE, BASE_CORE][..], &[AB_CORE, BASE_CORE]] {
+        for (profile, elementalist) in [("base:faithful", [6, 4]), ("base:strict-fixed", [3, 3])] {
+            let r = compile(packs, profile).unwrap();
+            let p = r.hero_params().unwrap();
+            assert_eq!((p.max_level, p.experience.len()), (74, 75));
+            assert_eq!(
+                [
+                    p.experience[1],
+                    p.experience[11],
+                    p.experience[12],
+                    p.experience[74]
+                ],
+                [1000, 20_600, 24_320, 1_810_034_207]
+            );
+            let skill = |k: &str| r.skill_by_key(k).unwrap();
+            assert_eq!(p.wisdom, skill("base:wisdom"));
+            assert_eq!(
+                p.schools,
+                [
+                    "base:fire_magic",
+                    "base:air_magic",
+                    "base:water_magic",
+                    "base:earth_magic"
+                ]
+                .map(skill)
+            );
+            let intervals = |k: &str| {
+                r.hero_classes()
+                    .iter()
+                    .find(|c| c.key.as_str() == k)
+                    .unwrap()
+                    .offer_intervals
+            };
+            assert_eq!(
+                [
+                    "base:knight",
+                    "base:cleric",
+                    "base:witch",
+                    "ab:planeswalker",
+                    "ab:elementalist"
+                ]
+                .map(intervals),
+                [[6, 4], [3, 3], [3, 3], [6, 4], elementalist],
+                "{profile}"
+            );
+            let short = r
+                .hero_classes()
+                .iter()
+                .filter(|c| c.offer_intervals == [3, 3])
+                .count();
+            assert_eq!(short, if elementalist == [3, 3] { 9 } else { 8 });
+        }
+    }
 }

@@ -1724,7 +1724,58 @@ primary_min = [0, 0, 1, 1]      # attack, defense, power, knowledge: lower total
 primary_max = 99
 backpack = 64                   # VCMI: unlimited (dispute D7, decided with the outcome, T9)
 learn_level = 2                 # E08 T19a2b (pack format v40): spells up to level 2 without Wisdom
-sources = ["wiki-primary-skill", "vcmi-game-config", "wiki-artifact", "exe-wisdom", "wiki-wisdom", "vcmi-wisdom"]
+# E08 T26b (pack format v44): levels 1-12 (0x679C88), later steps +1/5 each (HER-EXP-002); 74 the
+# highest level (A-7 fixed, as HotA); the skills offered when the class's intervals are due
+# (HER-LVL-004: Wisdom, skill 7; the schools, 14 to 17 at 0x679CBC, in that order).
+experience = [0, 1000, 2000, 3200, 4600, 6200, 8000, 10000, 12200, 14700, 17500, 20600]
+max_level = 74
+wisdom = "Wisdom"
+schools = ["Fire Magic", "Air Magic", "Water Magic", "Earth Magic"]
+sources = ["wiki-primary-skill", "vcmi-game-config", "wiki-artifact", "exe-wisdom", "wiki-wisdom", "vcmi-wisdom", "exe-experience", "wiki-experience", "exe-offers"]
+
+# The level-up's intervals (E08 T26b, pack format v44; HER-LVL-004): the levels after which Wisdom
+# and a magic school are offered, `[wisdom, school]`. The executable lists the classes on the short
+# ones (0x4DAD74: the RoE magic classes); the Elementalist is not among them (A-10, below).
+[heroes.offer_intervals]
+short = [3, 3]
+long = [6, 4]
+short_classes = ["Cleric", "Druid", "Wizard", "Heretic", "Necromancer", "Warlock", "Battle Mage", "Witch"]
+sources = ["exe-offers", "wiki-secondary-skill", "vcmi-level-up"]
+
+[[source]]
+id = "exe-experience"
+kind = "original-data"
+ref = "Heroes3.exe code reading (E08 T24a1, survey docs/rules/surveys/E08-progression.md §1.1-§1.2; docs/exe/map.toml 0x679C88, 0x4E33B0): experience_by_level holds the thresholds of levels 1 to 12; beyond level 12 each step is the previous one times 1.2, truncated, which equals step + step / 5 up to the overflow; the levels past 74 wrap (A-7, fixed: 74 the highest level, as HotA)"
+url = "docs/rules/surveys/E08-progression.md"
+retrieved = "2026-10-20"
+
+[[source]]
+id = "wiki-experience"
+kind = "wiki"
+ref = "Experience - Heroes 3 wiki: the experience of levels 1 to 20 and 70 to 75 (13 = 24 320, 20 = 81 961, 74 = 1 508 362 195); after level 75 a hero gets level 88 at once; HotA: at most level 74, the overflow fixed (survey E08-progression.md §5)"
+url = "https://heroes.thelazy.net/index.php/Experience"
+retrieved = "2026-10-20"
+
+[[source]]
+id = "exe-offers"
+kind = "original-data"
+ref = "Heroes3.exe code reading (E08 T24a1, survey E08-progression.md §2.4; docs/exe/map.toml 0x4DAD00, 0x679CBC): hero_secondary_offer offers Wisdom (skill 7) outright when its interval is due and draws among the magic schools (14 Fire, 15 Air, 16 Water, 17 Earth: 0x679CBC) when theirs is; the intervals (0x4DAD74): Wisdom 3 and schools 3 for the classes 1, 3, 5, 7, 9, 11, 13 and 15 (Cleric to Witch), else 6 and 4, so the Elementalist (17) levels as a might class (A-10)"
+url = "docs/rules/surveys/E08-progression.md"
+retrieved = "2026-10-20"
+
+[[source]]
+id = "wiki-secondary-skill"
+kind = "wiki"
+ref = "Secondary skill - Heroes 3 wiki, Secondary skill advancement rules: Wisdom is due every 3 levels for magic classes and 6 for might, a school every 3 and 4, a counter reset whenever its skill is offered; 'The only exception is the Elementalist class, to which are considered Might heroes by the levelling system'; HotA made it level as a magic class (survey E08-progression.md §5)"
+url = "https://heroes.thelazy.net/index.php/Secondary_skill"
+retrieved = "2026-10-20"
+
+[[source]]
+id = "vcmi-level-up"
+kind = "vcmi"
+ref = "VCMI 1.7.5 lib/mapObjects/CGHeroInstance.cpp (maxlevelsToWisdom, maxlevelsToMagicSchool) and lib/callback/GameRandomizer.cpp (rollSecondarySkills; survey E08-progression.md §2.6): Wisdom and the schools are forced every 3 levels for a class whose affinity is magic, else every 6 and 4; the Elementalist's affinity is magic (3 and 3, D-16)"
+url = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGHeroInstance.cpp"
+retrieved = "2026-10-20"
 
 [[source]]
 id = "exe-wisdom"
@@ -3375,3 +3426,12 @@ flag = "quirk.content.roland_crusader_specialty"
 hero = "Roland"
 creature = "Swordsman"
 sources = ["wiki-swordsman-specialty"]
+
+# ADV-QUIRK-10 (A-10, E08 T26b): the Elementalist, a magic class, levels on the might classes'
+# intervals (the executable's list stops at the RoE classes); the fix gives it the magic ones.
+[[data_quirks.class_intervals]]
+flag = "quirk.content.elementalist_offer_intervals"
+quirk = "ADV-QUIRK-10"
+class = "Elementalist"
+intervals = [3, 3]
+sources = ["exe-offers", "wiki-secondary-skill"]

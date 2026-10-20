@@ -85,6 +85,7 @@ fn pack() -> Pack {
         primary: [2, 2, 1, 1],
         primary_gain: [[35, 45, 10, 10], [30, 30, 20, 20]],
         skill_weights: vec![(key("t:tactics"), 3)],
+        offer_intervals: [6, 4],
     }];
     p.core.heroes = vec![HeroTypeDef {
         key: key("t:orrin"),
