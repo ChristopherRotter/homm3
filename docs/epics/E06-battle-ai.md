@@ -1,6 +1,6 @@
 # E06 — Battle AI v1 and the local training pipeline v0
 
-Status: **in progress**, refined 2026-10-20 (AI-Q8); T1 in review · Lane: **ai** · Follows E05 (closed
+Status: **in progress**, refined 2026-10-20 (AI-Q8); T1 done (ADR-0026), T2a next · Lane: **ai** · Follows E05 (closed
 2026-10-20) · Runs beside E23 (the battle lane: the original's battle AI, the system actor's
 policy), whose neutral side opens E06's neutral share (decision 1)
 
@@ -91,14 +91,11 @@ new observation or action encoding, unless an increment's evidence asks for one 
 
 ## Tasks (outline; refine at the start of each increment; keep status current)
 
-**Increment 1:** T1, then the user's review, then T2 in three small pull requests (the cut
-proposed in `E06-design.md` §10; the user reviews it with T1).
+**Increment 1:** T1, then the user's review, then T2 in three small pull requests (design §10;
+the user, 2026-10-20: T1 and T2a in one).
 
-- [ ] **T1 Design and ADR draft** — drafted 2026-10-20, **in the user's review**: the design
-  note `E06-design.md` (§1 to §11; §11 the points to review) and the ADR draft
-  `docs/lanes/ai/adr-drafts/training-pipeline.md` (nine decisions: the run and its config, the
-  schedule in samples, the full checkpoint and resume, the held-out sets v0 and v1, the sampled
-  evaluation, the SPRT gate, the ladder and the targets, the league, the committed records).
+- [x] **T1 Design and ADR draft** — done 2026-10-20: `E06-design.md`, ADR-0026 accepted (every
+  point as proposed); the record in `E06-log.md`.
 - [ ] **T2a Config and record** — `h3env.train.run`, torch-free: the TOML config (defaults in
   code, `--set`, unknown keys refused), the run directory, typed `metrics.jsonl`, `record.json`,
   atomic writes, the held-out check against v0's fixed seeds instead of the growing set (design

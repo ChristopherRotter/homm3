@@ -1,12 +1,11 @@
 # E06 — Design note (working detail; not binding; pruned by the tasks that implement it)
 
-Companion to `docs/epics/E06-battle-ai.md` and the ADR draft
-`docs/lanes/ai/adr-drafts/training-pipeline.md` (E06 T1, 2026-10-20). The training pipeline on the
-user's machine: a run, its config and records (§1, §4), its budget and schedule (§2), the
-resumable state (§3), the held-out sets (§5), the evaluation gate (§6), the ladder (§7), the
-league (§8), the costs (§9), the increments (§10) and the points for the user's review (§11). Each
-task turns its section into code and docs and deletes it here. Starting point: E05's trainer
-(`python/h3env/train/`, `E05-log.md` §8 and §9).
+Companion to `docs/epics/E06-battle-ai.md` and ADR-0026 (E06 T1; accepted by the user 2026-10-20,
+every point as proposed: `E06-log.md`, T1). The training pipeline on the user's machine: a run, its
+config and records (§1, §4), its budget and schedule (§2), the resumable state (§3), the held-out
+sets (§5), the evaluation gate (§6), the ladder (§7), the league (§8), the costs (§9) and the
+increments (§10). Each task turns its section into code and docs and deletes it here. Starting
+point: E05's trainer (`python/h3env/train/`, `E05-log.md` §8 and §9).
 
 ## 1. A run
 
@@ -257,7 +256,7 @@ pinned equal by a test as `EVAL_SEED` is.
 - **A promotion:** the candidate becomes `promoted/<n>.pt` and `best.pt`, joins the league (§8),
   and the ladder plays it (§7). A rejection changes nothing. No second condition: a candidate
   that wins the gate but loses ground against the bots is still promoted; the ladder shows it, and
-  a guard follows only if it happens (§11).
+  a guard follows only if it happens.
 
 ## 7. The ladder
 
@@ -350,23 +349,3 @@ Each with the user's checkpoint; only the next one refined (Q41's pattern).
 - **Increment 4:** T5's experiments, each a recorded run: the entity network against the MLP,
   AI-Q7 (b), the mana price, the batch size and threads (T9c's table), the observations in place.
 - **Then** T6, T7 (after E23's T2 to T4), T8 (only if PPO plateaus), T9.
-
-## 11. Points for the user's review
-
-1. TOML configs in, JSON records out; committed records in `python/records/`, configs in
-   `python/configs/` (§1, §4).
-2. On resume only the budget, threads, device and checkpoint cadence may change; anything else
-   is a new run (`--init-from`) (§1.3).
-3. The learning rate's horizon fixed at the start; an extended budget runs at the floor (§2).
-4. Checkpoints every 5 minutes of wall time (they change no training); every training cadence in
-   samples (§2, §3.2).
-5. The report set v1: 500 per (kind, side), stratified; 250 per kind for intermediate ladders
-   (§5.1). A separate gate set (§5.2).
-6. The SPRT: elo0 0, elo1 20, α = β = 0.05, at most 4 000 pairs, no promotion at the cap, no
-   second condition against the bots (§6).
-7. The targets judged on the latest promoted network, point estimates against the targets
-   (§7).
-8. Ratings only in `h3 ai eval`, outside the promotion (§7).
-9. The league: self-play 0.5, PFSP "hard" (power 2), 16 members, 4 live per rollout, a
-   snapshot every 1 M samples (§8).
-10. T2 in three pull requests (T2a to T2c); the observations in place moved to T5 (§10).

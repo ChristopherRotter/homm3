@@ -8,32 +8,20 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 record in `E05-log.md`, the environment as built in `docs/07-simulation-and-ai.md` §1.1).
 
 **E06** (`docs/epics/E06-battle-ai.md`) refined 2026-10-20 (AI-Q8): it starts beside E23, the
-neutral share waits for E23's side without a hero.
+neutral share waits for E23's side without a hero. T1 done (ADR-0026, design `E06-design.md`).
 
-1. **E06 T1 Design and ADR draft** — **Scope:** the epic's T1: `docs/epics/E06-design.md` and an
-   ADR draft in `docs/lanes/ai/adr-drafts/` for the training pipeline (decisions 3, 4, 8, 9, 11):
-   the run's config file and record (where committed records live), the resumable training state
-   and its save cadence (atomic writes, the schedule in samples not wall time, the held-out set's
-   disjointness without E05's set of every training seed), the held-out set v1 (per kind and
-   side, sized for the targets' 95 % intervals), the SPRT's bounds, the league's sampling, the
-   ladder from Python and `h3 ai eval`, the cut of the next increments. Read first: the epic file,
-   `E05-log.md` §8 and §9, `python/h3env/train/`. **Acceptance:** the note and the draft
-   committed; T2 refined in the epic file; stops for the user's review (no code). **Depends on:**
-   nothing. **Status:** waiting (the user's review of `docs/epics/E06-design.md`, its §11, and the
-   ADR draft `docs/lanes/ai/adr-drafts/training-pipeline.md`; drafted 2026-10-20 on
-   `claude/nice-knuth-ekooly`). After the review: the answers into the note and the draft, the
-   draft to a `shared/` pull request for its number, T1 into `E06-log.md`.
-2. **E06 T2a Config and record** — **Scope:** the epic's T2a (design §1, §2, §4, §5.3 against
+1. **E06 T2a Config and record** — **Scope:** the epic's T2a (design §1, §2, §4, §5.3 against
    v0). **Acceptance:** a run from a TOML config writes its typed metrics and `record.json`
    atomically; the held-out check needs no growing set; `python/records/` with the schema test;
    the torch-free tests pass in the sandbox, the torch ones on the user's machine (a lane
-   command). **Depends on:** T1's review. **Status:** waiting (T1's review).
-3. **E06 T2b The full checkpoint and `--resume`** — **Scope:** the epic's T2b (design §3).
-   **Acceptance:** §3.4's tests. **Depends on:** T2a. **Status:** waiting (T1's review).
-4. **E06 T2c C ABI v31** — **Scope:** the epic's T2c (the record's engine identity, N
+   command). **Depends on:** nothing. **Status:** in progress (`claude/nice-knuth-ekooly`,
+   2026-10-20 13:14 UTC; one pull request with T1's closure, the user).
+2. **E06 T2b The full checkpoint and `--resume`** — **Scope:** the epic's T2b (design §3).
+   **Acceptance:** §3.4's tests. **Depends on:** T2a. **Status:** waiting (T2a).
+3. **E06 T2c C ABI v31** — **Scope:** the epic's T2c (the record's engine identity, N
    range-checked). **Acceptance:** the ABI's tests and the C smoke test, `h3env`'s
-   `ABI_VERSION` 31, the full verify. **Depends on:** T1's review (independent of T2a, T2b).
-   **Status:** waiting (T1's review).
+   `ABI_VERSION` 31, the full verify. **Depends on:** nothing (independent of T2a, T2b).
+   **Status:** ready.
 
 ## Inbox
 
