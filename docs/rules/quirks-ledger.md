@@ -490,3 +490,16 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Defaults: faithful = on, strict-fixed = off
 - Regression test: `crates/h3-battle/src/tests/control.rs`, `with_bat_quirk_24_a_berserk_walker_attacks_a_two_hex_stack_only_from_beside_its_position` (both settings)
 - Decided by / date: user, 2026-10-20 (E23 T1c, BAT-Q54)
+
+### BAT-QUIRK-25 — The original computer's slips in its own estimates (E23 T1b; survey E23 §4)
+- Class: fix-optional (user, 2026-10-20, BAT-Q55: one flag for all the fixes of the original's AI)
+- Context / rules affected: battle, the computer's choices (ADR-0027 point 9; `BAT-AI-nnn`, E23 T2 onwards; the policy crate `h3-battle-ai` and the computer's numbers in `h3-battle`)
+- Original behavior: where the computer estimates a rule's outcome, it sometimes reads a wrong record, argument, spell, side, mastery or test: the walls test's records, Magic Mirror's doubled chance, Paralyze with Blind's record, Disease with Weakness's resistance, the protections with the own hero's bonuses, and the rest of `docs/rules/surveys/E23-battle-ai.md` §4 (17 so far; `docs/formats/installation.md` §7.35 to §7.46). They change which command the computer picks, never a rule's outcome.
+- Intended/expected behavior: each estimate as the rule it estimates (the survey's "Fixed" column; strict-fixed).
+- Impact: gameplay-altering (the computer side's choices)
+- Community status: unknown (the wiki describes none of them)
+- Sources: original-data (`installation.md` §7.35 to §7.46; the blind re-reads of T1a5e)
+- Flag: `quirk.battle.original_ai_slips` (registered with the first slip built, E23 T2 or later; a slip found later joins it)
+- Defaults: faithful = on, strict-fixed = off
+- Regression test: each slip's rule tests both settings (with its task)
+- Decided by / date: user, 2026-10-20 (E23 T1b, BAT-Q55)

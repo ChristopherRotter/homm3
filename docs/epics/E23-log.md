@@ -385,4 +385,39 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   agreed on all three.
 - **Tooling:** the reading ran on the user's computer through the device shell (Python 3.10
   there): `uv run -q --no-project --python 3.11 --with capstone --with pefile python
-  scripts/exe.py …` with the repo's own `original-data/install/Heroes3.exe`, no staging.
+  scripts/exe.py …` with the repo's own `original-data/install/Heroes3.exe`, no staging. Not to
+  repeat (the user, 2026-10-20; #330): the computer may go offline mid-reading; read in the sandbox.
+
+## T1b — the survey and the ADR draft (2026-10-20, increment 2)
+
+- **Scope:** the session proposed three parts (the ADR draft, the survey for the turn and the
+  walkers, the survey for the casts); the user: no split.
+- **The survey** (`docs/rules/surveys/E23-battle-ai.md`): the reading in one place (two decisions
+  per activation, the shooter, the walker, the casts, the difficulty's branches, the draws), the
+  wiki and VCMI compared, 18 planned batch rows (4a for the neutral side, 4b for a computer hero's
+  side), the original's slips, the ADR's questions. The wiki (read with the summarising fetch):
+  "enemy AI heroes … never surrender" (Combat) agrees with the reading, so that reading is no
+  longer at risk; Difficulty level: on Easy the AI does not wait and uses no creature tactics, on
+  Hard it keeps out of the enemies' reach (the reading: Wait from Hard, the reach from Normal:
+  rows W1, W2); the retreat conditions (never on Easy, half the time on Normal, the siege's four)
+  go to T1a6. VCMI 1.7.5 plays every side with its own `BattleAI` (default for neutrals too), waits
+  by evaluation, casts with every caster creature, and its adventure AI only retreats.
+- **The ADR draft** (then `docs/lanes/battle/adr-drafts/original-battle-ai.md`, now ADR-0027): `h3-battle-ai` in the
+  **application** layer (arch.toml: a domain crate may not depend on another; the callers are
+  adapters); `choose(&BattleState, &BattleRuleset, BattleSide, &mut Rng) -> Command`, one command
+  per call (the hero's cast and the stack's action two calls, the round's mark skipping the hero),
+  validated with a Defend fallback; the whole state, the caller's stream; `h3-battle`'s public
+  `computer` module (aim.rs, the pathfinder) as the one implementation; destinations only;
+  `BAT-AI-nnn`; the budget measured at T2 (provisional 1 ms); `POLICY_VERSION`; the spells' AI
+  values into the battle pack before T3 (the neutral side reads the enemy hero's value in the odds).
+- **For the user (BAT-Q55):** accept or change the draft; the slips ported as read without quirk
+  flags (recommended) or as quirks or fixed; the batch rows. T2 waits for the review.
+- **The user's answer on the slips (2026-10-20, BAT-Q55):** one fix-optional flag for all the
+  fixes related to the original AI: BAT-QUIRK-25 `quirk.battle.original_ai_slips` (faithful on,
+  strict-fixed off), registered with the first slip built. The survey's §4 lists the 17 slips
+  with their fixes (a slip: a wrong record, argument, spell, side, mastery or test; tie orders,
+  the library sort and the draws are no slips); the draft's point 9 says so.
+- **Accepted (the user, 2026-10-20, BAT-Q55):** the ADR draft as amended and the survey's batch
+  rows, "all accepted now": ADR-0027 (`docs/adr/0027-original-battle-ai.md`, `shared/` #332, merged
+  before this task's #331, which drops the draft). T2's cut (the user): whole, as the epic says; the
+  session proposed three parts and the wall shot in T6. Not started in this session.
