@@ -1,6 +1,6 @@
 # E06 — Battle AI v1 and the local training pipeline v0
 
-Status: **in progress**, refined 2026-10-20 (AI-Q8); T1 done (ADR-0026), T2a next · Lane: **ai** · Follows E05 (closed
+Status: **in progress**, refined 2026-10-20 (AI-Q8); T1, T2a done; T2b next · Lane: **ai** · Follows E05 (closed
 2026-10-20) · Runs beside E23 (the battle lane: the original's battle AI, the system actor's
 policy), whose neutral side opens E06's neutral share (decision 1)
 
@@ -96,12 +96,9 @@ the user, 2026-10-20: T1 and T2a in one).
 
 - [x] **T1 Design and ADR draft** — done 2026-10-20: `E06-design.md`, ADR-0026 accepted (every
   point as proposed); the record in `E06-log.md`.
-- [ ] **T2a Config and record** — `h3env.train.run`, torch-free: the TOML config (defaults in
-  code, `--set`, unknown keys refused), the run directory, typed `metrics.jsonl`, `record.json`,
-  atomic writes, the held-out check against v0's fixed seeds instead of the growing set (design
-  §5.3); the budget and the learning rate in samples (§2); `python/records/` (README, the schema
-  test) and `python/configs/` (the first config). E05's `--minutes`, `--updates`,
-  `--eval-every` go. Tests in the sandbox (torch-free) and with torch on the user's machine.
+- [x] **T2a Config and record** — done 2026-10-20: `h3env.train.run` (TOML configs, the
+  schedule in samples, typed metrics, `record.json`, the held-out check without a growing set),
+  `python/configs/`, `python/records/`; the record in `E06-log.md`.
 - [ ] **T2b The full checkpoint and `--resume`** — design §3: the state, the cadence, Ctrl+C,
   segments with derived batch seeds, the records' truncation, a pending gate or ladder,
   `--init-from`; the tests of §3.4 (a run stopped by the flag and resumed, a run killed hard, a

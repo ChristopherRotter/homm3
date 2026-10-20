@@ -8,17 +8,13 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 record in `E05-log.md`, the environment as built in `docs/07-simulation-and-ai.md` §1.1).
 
 **E06** (`docs/epics/E06-battle-ai.md`) refined 2026-10-20 (AI-Q8): it starts beside E23, the
-neutral share waits for E23's side without a hero. T1 done (ADR-0026, design `E06-design.md`).
+neutral share waits for E23's side without a hero. T1 and T2a done (ADR-0026, design
+`E06-design.md`; one pull request).
 
-1. **E06 T2a Config and record** — **Scope:** the epic's T2a (design §1, §2, §4, §5.3 against
-   v0). **Acceptance:** a run from a TOML config writes its typed metrics and `record.json`
-   atomically; the held-out check needs no growing set; `python/records/` with the schema test;
-   the torch-free tests pass in the sandbox, the torch ones on the user's machine (a lane
-   command). **Depends on:** nothing. **Status:** in progress (`claude/nice-knuth-ekooly`,
-   2026-10-20 13:14 UTC; one pull request with T1's closure, the user).
-2. **E06 T2b The full checkpoint and `--resume`** — **Scope:** the epic's T2b (design §3).
-   **Acceptance:** §3.4's tests. **Depends on:** T2a. **Status:** waiting (T2a).
-3. **E06 T2c C ABI v31** — **Scope:** the epic's T2c (the record's engine identity, N
+1. **E06 T2b The full checkpoint and `--resume`** — **Scope:** the epic's T2b (design §3).
+   **Acceptance:** §3.4's tests (the torch ones run in the sandbox while it reaches PyTorch's
+   index). **Depends on:** T2a (done). **Status:** ready.
+2. **E06 T2c C ABI v31** — **Scope:** the epic's T2c (the record's engine identity, N
    range-checked). **Acceptance:** the ABI's tests and the C smoke test, `h3env`'s
    `ABI_VERSION` 31, the full verify. **Depends on:** nothing (independent of T2a, T2b).
    **Status:** ready.

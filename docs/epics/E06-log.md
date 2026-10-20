@@ -34,3 +34,37 @@ entry only where a task builds on it.
 - **Verify:** the sandbox's full verify on engine code `d95c95dd` (no original data) green; the
   scoped verify of the docs change with no failing step. CI's runs on `master` never started
   (minutes).
+
+## T2a — Config and record (2026-10-20)
+
+- **Built** (design §1.2, §2, §4, §5.3; ADR-0026 points 1, 2, 4, 9): `h3env.train.run`, free of
+  torch: `Config` (E05's settings, its keys grouped in tables: `[env]`, `[network]`, `[ppo]`,
+  `[pool]`, `[evaluation]`, `[device]`), `load_config` (TOML, `--set table.key=value`, unknown
+  tables and keys refused with the table a key belongs to, wrong types refused), `resolve`
+  (`lr_horizon` 0 fixed at the budget, `seed == eval_seed` refused), `learning_rate` (linear to
+  the floor over the horizon, or constant), `Cadence` (due once per multiple of so many samples),
+  `atomic_write` (a temporary file, fsync, replace; five tries on Windows), `HeldOut` (the
+  evaluation's fixed seeds, every training episode's checked: E05's growing set gone), `Run` and
+  `Record` (typed `metrics.jsonl`: `start`, `update`, `snapshot`, `eval`, `end`; `record.json`
+  schema 1: identity, config by table, progress, the curve per evaluation interval, the
+  evaluations, the best; `check_record`).
+- **The trainer** (`ppo.py`): the budget in samples (E05's `minutes` and `updates` go), the
+  snapshots (`pool_every` 600 000) and the evaluations (`eval_every` 5 M) in samples, checkpoints
+  written atomically, the identity (commit and whether tracked files differed, ABI, sizes,
+  parameters, torch, CUDA, device and GPU, OS, CPU, cores, Python, numpy). `python -m
+  h3env.train --config <file> --set … --out <dir>`; `config.json` gave way to `config.toml` (the
+  file as given) and `record.json`. The package loads its torch modules lazily (PEP 562), so
+  `h3env.train.run` needs no torch.
+- **Files:** `python/configs/pool-smoke.toml` (E05's pool run in samples, about 40 minutes on the
+  user's machine), `python/records/README.md` (the schema, how to commit a record, the lineage).
+  `requires-python >= 3.11` (`tomllib`): the lock dropped only 3.10's entries.
+- **Tests:** `tests/test_run.py` (23 cases, torch-free: the file and `--set`, thirteen refused
+  configs, tables and the record's config, the command line, the learning rate, the cadence,
+  atomic writes and a stale temporary, the held-out check, a run's metrics and record from
+  synthetic records, `check_record`, every committed record and config); `test_train.py` on the
+  new config (a budget just past one update's samples: two updates, the learning rate decaying,
+  a snapshot per update, the record valid; a held-out hit at the reset stops the trainer). The
+  sandbox reached PyTorch's index this session: 55 tests pass with torch 2.14.1+cu126 on the CPU
+  (the GPU test skipped); with torch blocked the lifecycle tests pass and the trainer's skip. A
+  tiny run through the command line (`--config configs/pool-smoke.toml` with `--set`s, 490
+  samples) printed its lines and wrote a valid record.
