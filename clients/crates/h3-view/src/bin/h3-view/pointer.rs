@@ -35,7 +35,8 @@ pub fn hex_point(layout: &BattleLayout, hex: u8) -> [i32; 2] {
 /// ms after the opening, the mouse parked before the battle: `hex:<n>` and `click:<x>,<y>` move
 /// the mouse there, click (the command's action starts) and park it again; `move:<x>,<y>` moves
 /// it; `key:<k>` gives a command; `at:<ms>` acts then, `turn:<side>.<record>` when that stack's
-/// next turn starts (the timeline's), `step:<ms>` that much later.
+/// next turn starts (the timeline's, after the turn the last `turn:` named), `step:<ms>` that
+/// much later.
 pub fn inputs(
     actions: &[String],
     pre: u32,
@@ -43,7 +44,7 @@ pub fn inputs(
     timeline: &Timeline,
 ) -> Result<Vec<Input>, String> {
     let mut out = vec![Input::Move { at: 0, to: PARK }];
-    let mut now = pre;
+    let (mut now, mut turns) = (pre, 0);
     let point = |arg: &str| -> Result<[i32; 2], String> {
         let (x, y) = arg
             .split_once(',')
@@ -90,12 +91,10 @@ pub fn inputs(
                     .find(|m| m.side == side && m.record == record)
                     .map(|m| m.stack)
                     .ok_or_else(|| format!("`{action}`: no such stack"))?;
-                now = timeline
-                    .turns
-                    .iter()
-                    .find(|&&(t, s)| s == stack && t >= now)
-                    .map(|&(t, _)| t)
+                let i = (turns..timeline.turns.len())
+                    .find(|&i| timeline.turns[i].1 == stack && timeline.turns[i].0 >= now)
                     .ok_or_else(|| format!("`{action}`: no such turn after {now} ms"))?;
+                (now, turns) = (timeline.turns[i].0, i + 1);
             }
             _ => return Err(format!("`{action}`: an unknown action")),
         }

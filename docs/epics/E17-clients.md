@@ -1,11 +1,11 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1 done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2 done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
 [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
-are there). Next: M3 T6c-2, T7–T8 (`docs/lanes/client/QUEUE.md`).
+are there). Next: M3 T7–T8 (`docs/lanes/client/QUEUE.md`).
 
 ## Goal
 
@@ -374,6 +374,14 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   `h3_view::mouse` over the legal commands; stills draw the cursor, the hint and the marked
   stack's outline. 26 mouse situations exact from 100 ms; the set's parked cursor drawn, its
   masks gone: 57 situations, 85 frames exact.
+- **T6c-2 done 2026-10-21** ([log](E17-log.md#m3-t6c-2--the-mouse-over-time-2026-10-21),
+  [design §9.10](E17-design.md)): taken whole (the user). When the battle takes the mouse (a
+  human's waiting turn; queued through actions, posted again at a human's turn), the hints in
+  the log (forced or not, the hex-change rule, the target left over), entering a stack (its
+  group 1 on the idle steps, stood by an action, its partial redraw), the software cursor's
+  33 ms poll; built as `mouse::track` over each turn's battle from the engine, played through the
+  sequences (their hint listings gone, the cursor drawn, `hover` compared) and the window (the
+  mouse, pressed buttons, the hotkeys, the log's scroll). FRAMES_SUMMARY
 
 ### The adventure lane's harness (H1, H2: its batch E3)
 
@@ -442,6 +450,25 @@ Accepted by the user (M1 2026-10-13, M2 2026-10-14); moved to the log,
 ## M3 review list
 
 (Filled by the tasks: choices queued for the milestone review under the autonomy contract.)
+
+- T6c-2: `h3_view::mouse::track` (`follow` over the log, the turns and the inputs; `Turn`,
+  `Start`, `Input`, `Shown`), `mouse::Facing` and `Field` (the facing from the timeline's poses),
+  `pointer_in` (the target left over: `Hint::NoShots`, `battle.hint.no-shots`, GENRLTXT:299);
+  `Timeline::enter` (no stalls: *provisional*) and `anim::unfidgeted` (the timeline check leaves
+  out the original's own fidgets); `hero::Action`'s `start`, `stands`, `unmarks`;
+  `battle_log::Logged::Status` and `Scroll` (a human's turn no longer empties the status line by
+  itself: the mouse's posted move writes it); `ui::Button::keys` (the layout's hotkeys by name:
+  the format), `Dialog::button_at`, `button_for_key`, `Panels::at_pressed`; `Cursor::read`. The
+  harness: the mouse's state read from memory, a sequence's screen digest takes the cursor (no
+  fixed masks), `frames.toml`'s per-frame `cursor` (the original's drawn point), the mouse poll's
+  next time **written into the game's memory** at a sequence's opening (a timer of the mouse
+  manager's, so that the kept frames' times repeat; the harness's only write), `hover` captured;
+  `h3lod` reads the base archive's tables first (as the executable), `h3adv`'s winner of -1. The
+  adapters: `pointer` (the harness's actions as inputs, its parked point and hex points as
+  constants), `scenario::turned`, `log::Writer`; the window's keys moved (P, Home, H:
+  *provisional*), its mouse, pressed buttons, hotkeys and scrolls. *Not modelled:* a mouse
+  fidget's stalls, the leftover pixels of the mouse's partial redraw (listed in `hover`'s counts),
+  a hero's cast's return to its stack's turn, the viewer's own fidgets meeting the mouse's.
 
 - T6c-1: `h3_view::mouse` (the cursor's kind and frame, the hint, the marked stack from a point,
   the observation and the server's legal commands, `mouse::Legal`; the cursor's own half-damage
