@@ -12,13 +12,16 @@
 #    commits as unpushed (docs/08-work-process.md, "Cloud sandbox"). Fetches stay explicit.
 # 1. Links the image's `stable` toolchain as the pinned one (static.rust-lang.org is blocked).
 # 2. Copies the staged original-data files into this clone's gitignored original-data/.
-# 3. In the background: installs llvm-20 (coverage), cargo-deny and cargo-llvm-cov (their release
-#    binaries from GitHub, pinned below; `cargo install` if the download fails), capstone and
+# 3. In the background: installs the toolchain's llvm-tools-preview and llvm-20 (coverage, picked
+#    by scripts/llvm-tools.sh), cargo-deny and cargo-llvm-cov (their release binaries from
+#    GitHub, pinned below; `cargo install` if the download fails), capstone and
 #    pefile (scripts/exe.py, docs/exe/README.md), then the baseline through
 #    scripts/verify-once.sh, which runs the full gates only for code no run has verified yet
 #    (docs/05-testing.md, "Each code state once"): `engine -- --with-original-data`, or for the
-#    client lane `clients` (with SDL's build dependencies, clients.yml's list). Logs in
-#    target/sandbox/.
+#    client lane `clients` (with SDL's build dependencies, clients.yml's list). The apt step runs
+#    a second time when the first fails (2026-10-20: clients/capture/setup.sh, started beside it,
+#    added the i386 architecture between its update and its install, and nothing was installed);
+#    apt.log ends with `apt: installed` or `apt: FAILED`. Logs in target/sandbox/.
 # Prints one line per step; the full output stays in the logs.
 set -euo pipefail
 
@@ -95,7 +98,10 @@ else
     log=target/sandbox/verify.log
 fi
 nohup bash -c "
-    (apt-get update -qq && apt-get install -y -qq ${packages[*]}) > '$logs/apt.log' 2>&1 &
+    (for try in 1 2; do
+        apt-get update -qq && apt-get install -y -qq ${packages[*]} && echo 'apt: installed' && exit 0
+        sleep 20
+    done; echo 'apt: FAILED') > '$logs/apt.log' 2>&1 &
     apt=\$!
     bin=\$HOME/.cargo/bin
     for tool in 'cargo-deny $deny_url' 'cargo-llvm-cov $llvm_cov_url'; do
@@ -111,6 +117,7 @@ nohup bash -c "
         rm -rf \"\$tmp\"
     done > '$logs/cargo-install.log' 2>&1
     pip install --break-system-packages -q capstone pefile > '$logs/pip.log' 2>&1
+    (cd '$root' && rustup component add llvm-tools-preview) > '$logs/llvm-tools.log' 2>&1
     wait \$apt
     '$root/scripts/verify-once.sh' ${baseline[*]}
 " > "$logs/setup.log" 2>&1 &
