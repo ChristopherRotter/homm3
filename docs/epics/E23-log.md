@@ -172,3 +172,24 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   the neighbours' order and when a cell is replaced (only by a strictly lower cost), the trace and
   the result for a walk. It agreed on all three; its one addition (a target at the start gives
   false) is in §7.40.
+
+## T1a4b — the pathfinder's head, its callers and S-11 (2026-10-20, increment 1)
+
+- **The decision** (BAT-Q53, the user, after #307): "pathfinding must work exactly as in the
+  original". The cut (the user): T1a4b first, then the walks and the berserk turn aligned together
+  (T1c, queued), over the walks first (recommended) or both at once.
+- **Read** (`docs/formats/installation.md` §7.41), all in full: 0x4B3400's head; the automatic
+  test 0x474BF0 (renamed `stack_automatic`: the war machines' cases with the tactics phase, auto
+  combat and the four combat settings, now named, then the player's test); the nodes' allocation
+  0x4B1460; the walk's call `walker_path` 0x5239D0 and the cursor's 0x523A70 (renamed
+  `cursor_path`): range the speed, so a walk's search stays within one turn.
+- **Found: S-11 placed.** In an attack the search ends only on a blocked step at the target hex
+  itself, and the berserk turn gives the target's position: a two-hex target reached only by its
+  other hex is a candidate (its marks) the walk never reaches, so the berserk stack goes round or,
+  with no hex next to the position within 127, does nothing (action 12). §7.40's "S-11 is not in
+  the search" (T1a4a, #307) is corrected here. The harness plays without HD, which fixes it: a
+  batch row for T1b.
+- **Map:** 10 entries (3 new: the combat settings 0x69879C, 0x6987A0, 0x6987A4; 7 updated).
+  BAT-Q53 answered in OPEN-QUESTIONS; the epic's T1c and the queue's task carry the alignment, the
+  inbox's two items (BAT-MOV-003, BAT-MAG-025) folded into it.
+- **Checks:** pending (a blind re-read, the light gates).

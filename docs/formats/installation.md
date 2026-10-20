@@ -890,9 +890,10 @@ duration at 255 (quirk S-17) and ends Hypnotize first. While active:
   within its speed, else only walks as far as it can (action 6, or a plain move);
 - after its own attack (the melee attack routine 0x441F55, the shot routine 0x4402F7) it ends; a
   retaliation does not end it. Cure, Dispel and an Anti-Magic of level 5 or more end it.
-The wiki's pathing bug (S-11) is not in the pathfinder's search (§7.40, which gives up on no
-reachable target); its head is T1a4b's. Q53: the engine uses its own pathfinding; S-11 stays
-unconfirmed.
+The wiki's pathing bug (S-11) is placed by §7.40 and §7.41: the pathfinder's search ends an
+attack only on the target's position hex, so a two-hex target reached only by its other hex is a
+candidate the walk never reaches. BAT-Q53 (2026-10-20): pathfinding as the original's; S-11's
+class waits for its batch row.
 
 **Hypnotize** (spell 60; power factor 25, effect 10, 10, 20, 50; one target). Target test
 (0x5A8090 case 60, after the general tests): 0 if the stack has Magic Mirror active (§7.13);
@@ -3935,12 +3936,66 @@ inbox has the alignment.
 
 **A berserk stack's attack position** (0x42232C: T its target's hex, range 127): the first hex
 the search takes from which T is a blocked neighbour (for a two-hex walker also through the hex
-beside N). The loop gives up on no target it can reach within the range, apart from the 500
-entries' bound. S-11's failure, if the original has it, lies elsewhere: the target's choice
-(§7.14) or the head (T1a4b).
+beside N). It ends only at the target's position hex, not at a two-hex target's other hex:
+S-11, §7.41.
 
 **What these read**: S's position, facing, flags (two-hex, flying), creature and +0x10; the
 stops; the field's stacks and their sides; the hex records' attack marks. **Draws:** none.
 
 **Readings at risk** (for T1b): the tie order (batch 3c's M2 and G4 agree, as simulated); the
 stop's cost as the rest of the turn; the flown count's bound; the attack mark's cost from a stop.
+
+### 7.41 Code reading: the pathfinder's head, its callers and S-11 (E23 T1a4b, 2026-10-20)
+
+Read for E23 T1a4b (the second part of T1a4, after §7.40): 0x4B3400's head, the automatic test
+0x474BF0 and the cells' allocation 0x4B1460 in full; the walk's and the cursor's calls (0x5239D0,
+0x523A70); the berserk turn's use of the result (0x4222C0, read in §7.14) once more. Insight only,
+nothing copied (Q29). With it part P is read.
+
+**The head** (0x4B3400 to 0x4B3533). Without a stack: false. The flag that keeps a walker out of
+its stops is set only at a town for a stack 0x474BF0 calls automatic, with its hit points as
+§7.31's re-read gives them. The attack marks of all 187 hex records (+0x4A, +0x4B) are cleared.
+In the tactics phase the range and the speed are both 1000. Otherwise the speed is the one given
+or, at −1, the stack's (0x448CD0); a speed of 0 or Bind (+0x2B8) makes the range 0. Without cells
+0x4B1460 allocates them: the map's node array (the levels × width × height × 2 nodes of 30 bytes,
+which the battle's 187 reuse) and the 187 bytes of stops (+0x68).
+
+**0x474BF0, whether a stack acts on its own** (this = the battle manager; the stack). In a hidden
+battle (0x46A4A0): yes. Then by its creature:
+- **The Catapult (145), the Ballista (146) and an arrow tower (149), the First Aid Tent (147).**
+  In the tactics phase: no. With auto combat on (+0x132C4) and the machine's own setting set
+  (Combat Catapult 0x69879C, Combat Ballista 0x6987A0, Combat First Aid Tent 0x6987A4; the
+  registry's names): yes. Without its controlling hero's skill (Ballistics +0xD3, Artillery +0xDD,
+  First Aid +0xE4; the Ballista and the tower also without a hero; the Catapult's case tests no
+  hero): yes. Otherwise the player's test.
+- **Any other creature, the Ammo Cart included.** With auto combat on and Combat Auto Creatures
+  (0x698794) set: yes. Otherwise the player's test.
+- **The player's test.** On a remote network turn with +0x132B4 set: yes. Otherwise no when the
+  controlling side's player (+0x54A8 per side; the other side while hypnotized, +0x288) is human,
+  and yes without a player or for a computer one.
+
+**The callers.** A walk (0x441FA0) asks `walker_path` 0x5239D0 for the stack's path to a hex,
+and the battle cursor (0x476490) asks 0x523A70 whether the stack can move to the hex under it,
+which then becomes the stack's destination (+0x1C). Both search with the controlling side and
+speed −1. The range is the stack's speed, or 99 in the tactics phase (and for 0x5239D0 with its
+third argument, which the walk leaves 0), and 0 when bound. So a walk's search stays within one
+turn, a stop costs the whole range and ends a path, and with speed equal to the range the
+order of §7.40 decides the path.
+
+**S-11 placed.** In an attack the search ends only on a blocked step **at the target hex T
+itself** (0x4B38A6), or for a two-hex walker at the hex beside the blocked one (0x4B39BB). The
+berserk turn gives T as the target's position (0x4222E0). A two-hex target reached only by its
+other hex still gets its marks on both hexes, so the berserk candidates (0x445490, which read the
+position's mark, §7.14) take it. But the walk's search goes on to a hex next to the target's
+position. When none lies within 127 the path stays empty and the berserk stack does nothing
+(action 12, 0x42234A). This fits the wiki's "two-hex units miscount positions and pass although a
+target is reachable" (survey S-11) as a reading. The batch harness plays without the HD mod,
+which fixes it, so a batch row can show it (T1b).
+
+**What these read**: the town, the gate and the hit points (the flag); the tactics phase, auto
+combat, the four combat settings, the network turn, the controlling side's player, hero and
+skills; Bind, the speed. **Draws:** none.
+
+**Readings at risk** (for T1b): S-11's ending on the target's position only (a batch row: a
+berserk walker whose two-hex target is reachable only by its other hex); the war machines' cases
+of 0x474BF0 against the engine's automatic Ballista and Tent (BAT-WAR-008, BAT-Q51).
