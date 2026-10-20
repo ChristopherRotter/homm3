@@ -590,4 +590,68 @@ above 99 and nothing near A-7 among them. The other cases (the limit, A-7 to A-9
 ban) need other maps or long play: T24b decides whether increment 4 builds them or bounds them
 (A-7, A-8 are state-corrupting, always fixed).
 
-## 7. The batch's plan *(T24a2b2)*
+## 7. The batch's plan (T24a2b2)
+
+Increment 4's batch, **batch E4**, runs on the client lane's harness (decision 50) in SoD on
+Easy, hot seat, from a map `h3-experiment` writes (`docs/experiments/README.md`). Its spec and
+recipe are T24b's building tasks; this is the plan. Each row names what it settles, what to
+record and how it is scored.
+
+**The key to most rows: read the hero's seed byte S (+0x8F)** and its two counters (+0x90 the
+level Wisdom was last offered, +0x3F a school's) at the start of the game. S is drawn by the new
+game and never advanced (§2.2), so with S, the level, the class and the hero's skills, §2's
+draws predict every level's primary skill and both offers: each row becomes a prediction, not
+a count. A scorer script follows §2 (a throwaway at first, as §3.3's; the batch's scoring task
+decides whether it is kept) and computes each row's predictions **under each source's rule**
+(the reading, VCMI, the wiki where it differs); the observed values pick one. A row whose S
+gives the same prediction under both rules is inconclusive: each row places several heroes,
+each with its own S.
+
+| Row | Settles | Setup | Record | The reading predicts |
+|---|---|---|---|---|
+| E4-1 | D-20 (§5.2), D-14 | levels at load: per run four heroes of a might class (Knights) with one known skill at Basic and 3 200 experience (level 4, three level-ups at load); and E3-6's Death Knight again (5 000, 2/3/1/1, its eight Basic skills) | S and the counters at day 1; each hero's level, primary skills, secondary skills | with S: each level's offers; the skills then name each choice of 0x52BBD0. **Without S already**: the wiki's always-left gives the known skill Expert and exactly one new skill (levels 2 and 3 advance it, level 4's first offer falls back to a new skill); any other outcome refutes always-left |
+| E4-2 | D-15, D-14 | a Knight (its rows differ: 35/45/10/10 and 30/30/20/20) at 14 699 experience (level 9 at load) fights a weak monster: the first level-up in play is level 10 | S; the level-10 dialog's primary skill and its two offers; the skill chosen (left) | the second row (the new level 10); VCMI the first (the old level 9) |
+| E4-3 | D-16, A-10 | an Elementalist without Wisdom at 1 999 experience (level 2 at load) fights a weak monster: level 3 in play | S, +0x90 before; level 3's two offers | Wisdom offered only by chance at level 3 (might intervals; due at 6); VCMI and HotA force it at 3 |
+| E4-4 | §2.1, §4.1, D-14 | a hero at 999 experience wins a battle worth three levels or more; the dialogs answered right, left, right | S; each dialog's primary skill and offers, in order; the skills after | one dialog per level after the battle's screen, each level's offers drawn after the previous answer (the answer changes the next level's candidates) |
+| E4-5 | D-17 | a might hero knowing two schools at Basic reaches level 4 in play (a school due) | S; level 4's offers | the due school drawn among the candidates with a known school weighing 1; VCMI its class weight |
+| E4-6 | D-19, D-21 | a map with the level limit 5; a hero with 10 000 experience (level 8 without the limit); then a battle's gain | at day 1 the level and the experience; after the battle both again | at load level 5 and 4 600 (the limit's threshold); VCMI level 8 and 10 000. After the gain the experience stays at 4 600 (lowered, §1.3) |
+| E4-7 | decision 45: the topmost ground | a monster on a tile two special grounds cover (`Carpe Diem`'s kind of overlap) | the battle's field | the topmost ground (the last in map order; VCMI the first) |
+| E4-8 | decision 45: the full army's upgrade with Skeleton Warriors | a Necromancer with seven stacks, one of them Skeleton Warriors, no Skeletons, wins a battle | the army after the battle | the reading's T19a2b rule (the QUEUE inbox, 2026-10-14) against VCMI's full-army rule |
+| E4-9 | decision 45: HER-WAR-002 | a hero with a Ballista loses it in a battle it wins | the hero's artifacts after the battle | the destroyed machine takes its artifact (VCMI; the original's place not read) |
+| E4-10 | decision 45: an attack on a hero on an object | an enemy hero stands on an object not visited from above; the attacker steps at it from a tile above | battle yes or no | the engine attacks (the visit is the hero's, ADV-OBJ-004) |
+
+Not planned: D-18's map-banned known skill (the census, §6.3: no shipped hero reaches it; a row
+needs the spec to ban skills); A-7 (a hang, always fixed); A-9 (a primary skill past 127 needs
+artifacts and many levels: always fixed or fix-optional at the checkpoint, no row).
+
+**What the harness lacks** (the client lane's inbox, with this pull request): the hero details
+`seed` (+0x8F), `wisdom_offer` (+0x90) and `school_offer` (+0x3F), one byte each; a record of
+every level-up dialog passed (the level, the primary skill gained, the offered skills left and
+right, the one taken), and `level_up` as a list for several dialogs in one step (E4-4); the
+hero's artifacts (worn and in the backpack: E4-9); the battle's field (E4-7). **What the spec
+lacks** (`h3-experiment`, battle-owned: `cross-lane` with T24b's batch task): the map's level
+limit (E4-6) and two grounds on one tile (E4-7, if the writer refuses it); everything else
+(heroes with experience, skills and armies; monsters; Easy) it has since batch E3.
+
+## 8. The proposed rule ids (T24a2b2)
+
+For T24b's cut; ids follow the catalogs' prefixes (`HER-` `heroes.toml`, `GAM-` `game.toml`;
+`check-rules` ties a prefix to its context), each written when its rule is built.
+
+| Id | Rule | Survey | Open points |
+|---|---|---|---|
+| HER-EXP-002 | Experience to levels: the table of levels 1–12, then each step the previous × 1.2, truncated; the level the count of thresholds at or below the experience; the experience bounded (A-7's fix) | §1.1, §1.2 | A-7's bound (level 74's range, or VCMI's table) |
+| HER-EXP-003 | The scenario's level limit caps a gain at the limit's threshold; experience above it is lowered at the next gain | §1.3 | D-19; A-8 (a limit above 75) |
+| HER-LVL-001 | A level-up gives one level at a time; its primary skill is drawn from the class's chances, the first row up to level 9, the second from level 10 (the new level); +1 | §2.1, §2.3 | D-15; A-9 (the bound) |
+| HER-LVL-002 | A level's draws come from the hero's seed and the new level (the original's generator reseeded per level, or the owner's stream) | §2.2 | D-14 (a fix-optional flag recommended) |
+| HER-LVL-003 | The two offers: an advance of a known skill, then a new skill, each with its fallback; the class's weights, a known skill at least 1, a banned skill 0 unless known | §2.4 | D-17, D-18 |
+| HER-LVL-004 | Wisdom and a magic school are due after their class's interval since last offered (3 and 3 for the magic classes, 6 and 4 else); Wisdom first; an offer by chance resets the counter too | §2.4 | D-16, A-10 (the Elementalist) |
+| HER-LVL-005 | Learning the answer: a known skill rises one level, a new one is learned at Basic, at most eight skills | §2.5 | — |
+| GAM-HER-002 | Each hero's seed byte is drawn when the game is built (1–255, from the game's stream, server-only; decision 9) and never shown | §2.2, §4.3 | with D-14 |
+| GAM-DEC-002 | A level-up with two offers is a pending decision of the hero's owner, levels queued in order, each level drawn after the previous answer; one offer is learned without a decision, none gives the primary skill only | §2.1, §2.5 | the env's encoding and the replay format (ADR-0017, T24b) |
+| GAM-SET-002 | A placed hero with a custom experience gets its levels at load, after its custom skills, army and artifacts and before its spell points; the choice of each two-offer level; the level limit applies | §3.2 | D-20, D-21 |
+| GAM-BAT-008 | A battle's winner turns its gained experience into levels after the battle (its level-ups as above) | §4.1 | — |
+
+HER-EXP-001 (the gain grown by Learning) and the specialties that read the level (HER-BAT-004,
+HER-BAT-005, HER-MAN-001) keep their ids; only the level's source changes (§4.2). The view of
+another player's hero shows no level (ADV-FOG-006 unchanged).

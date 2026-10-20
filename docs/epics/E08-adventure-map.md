@@ -235,6 +235,10 @@ Refined with the user on 2026-10-20 (T23; ADV-Q14). Built like increments 1 to 3
 
 53. **T24a2b is cut** (the user's choice of four): **T24a2b1** the wiki on the survey's §1–§4 and the census of the shipped maps (survey §5, §6), docs only; **T24a2b2** the batch's plan, the rule ids, the second reading and the ADV-Q. Not chosen: the census alone, the second reading alone, or the wiki alone.
 
+### Decisions at round 1's fourth session (2026-10-20, user)
+
+54. **T24a2b2 whole** (the user's choice of four): the batch's plan, the proposed rule ids, a fresh agent's second reading and the ADV-Q for the checkpoint, docs only. Not chosen: the second reading alone, the second reading with the batch's plan, or the batch's plan alone.
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T23 Increment 4 refined.** Done (2026-10-20, `adventure/e08-t23`; decisions 48–50): progression only, the first round queued (T24a, T24b), the inbox sorted; docs only (log).
