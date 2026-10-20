@@ -3071,4 +3071,8 @@ the light gates only, green).
   both profiles); `duel-s2-d7` and `duel-s5-strict-d7` re-recorded with their options differed
   in that line only. The AI lane's `bots-report-v1.json` regenerated: only `engine.core` moved.
 - **Inboxes**: battle (what moved in its paths), AI (the bots' table), the lane's own (the flag
-  without a reader until T29).
+  without a reader until T29), server (the lockfile bump below).
+- **Verify**: the full run with the original data passed on 6979105 (every step; benchmarks within
+  0.2 %). After merging `master` (eight commits, docs and the AI lane's Python) the second run
+  failed only `deny`: RUSTSEC-2026-0382 (`rustls-webpki` 0.103.15, `h3-server`'s TLS), published
+  between the two runs. The user chose to bump it here: 0.103.16 in `Cargo.lock`.
