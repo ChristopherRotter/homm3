@@ -1,4 +1,4 @@
-"""The smoke run from the command line (E05 T8, `docs/epics/E05-design.md` §8):
+"""The smoke run from the command line (E05 T8, `docs/epics/E05-log.md` §8):
 
     uv run --group train python -m h3env.train --minutes 60 --out runs/smoke [--device cuda]
 

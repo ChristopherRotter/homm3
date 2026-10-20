@@ -3263,7 +3263,8 @@ out; unread unless named):
 
 About 45 KB of unread code in all. T1a2's checkpoint cuts the readings from this table. **T1a2**
 (§7.35) read part S in full and 0x421680 with seven of its helpers (about 1 KB of part W; four
-more in part): part W keeps about 10 KB for T1a3.
+more in part): part W keeps about 10 KB for T1a3. **T1a3a** (§7.36) read the hex scores (about
+3.6 KB); T1a3b and T1a3c keep the rest of part W and part O.
 
 **Readings at risk** (for T1b's batch rows, Q57): the computer never surrenders (0x47815A;
 against the wiki and VCMI); no Wait below Hard (0x42201D); a computer's shooter in the tactics
@@ -3340,9 +3341,11 @@ the hero's predictions (0x43AA60) call it once with 0 and once with 1.
    caster side's hero); **under SoD rules only** (`[game]+0x1F698` ≥ 2, BAT-Q41) 0x421590 does
    the same for the moat's hexes with the town's moat damage (0x63BD18; hex 95, and 94 for the
    Fortress's second row, only while the gate is closed); on Normal and above, or for a human
-   side, 0x420260 subtracts each enemy's attack value at every hex it reaches (floored at the
-   stack's whole value); on Hard and above, or for a human side, 0x41FB60 weighs the enemy
-   hero's spell threat (0x41F920) around the side's stacks (both from their calls; T1a3).
+   side, 0x420260 subtracts an enemy's strike value at every hex it reaches, for the enemies
+   that can strike none of the side's stacks yet (floored at the stack's whole value); on Hard
+   and above, or for a human side, 0x41FB60 subtracts the area threat on the stack (0x41F920)
+   beside the side's stacks and the value of its own breath attackers' strike in their lines
+   (both read in §7.36).
 2. *The map*: the AI pathfinder for the stack (0x4B2DA0, range 127, 0 while blind, petrified or
    paralysed, with the tactics flag), or with the flag 1 the destination map 0x4B2FF0.
 3. *Holding the walls* (0x4213F0, defender only): true at a fort when no destroyed wall or gate
@@ -3401,7 +3404,7 @@ the hero's predictions (0x43AA60) call it once with 0 and once with 1.
    - otherwise, the attack: one turn away and outside the tactics phase, move and attack (6);
      further, or in the tactics phase, a walk towards the plan's hex (nothing when already on it);
    - the fallback (no candidate and not besieging, or the case above): outside a prediction,
-     when the enemy hero's spell threat on the stack (0x41F920) is 0, 0x420760 may walk the stack
+     when the area threat on the stack (0x41F920, §7.36) is 0, 0x420760 may walk the stack
      to guard one of its side's shooters (those that shoot now and have the melee penalty, not the
      Catapult; from its head, T1a3); then a candidate is attacked after all; without one, on Hard
      and above or for a human side, 0x4208F0 may step a stack whose hex scores below 0 to the
@@ -3415,11 +3418,12 @@ branches above: taking the plan's value alone, holding the walls, and giving up 
 
 **What it reads, beyond §7.34's list:** the game's version (the moat's scores), the Fire Walls
 and the moat, the walls' and the gate's hit points, the enemy's retaliations left, the stacks'
-wounds (+0x58), Bind; the enemy hero's spells and spell points (0x41F920); nothing hidden.
+wounds (+0x58), Bind; the enemy hero's spells and spell points (0x41F920). Nothing hidden here
+but what the scores read (§7.36: the enemy hero's available spells, the enemy side's stops).
 **Draws:** 0x421B02 per candidate enemy and 0x41EFFB once per wall shot.
 
-**Not read here** (T1a3, part W): the scores' builders 0x420260 and 0x41FB60, the plan's hexes
-0x436300 and its three helpers, 0x41F3B0 beyond its loop, 0x420760, 0x4208F0 and 0x41F920 beyond
+**Not read here** (T1a3, part W): the scores' builders 0x420260 and 0x41FB60 (read in §7.36),
+the plan's hexes 0x436300 and its three helpers, 0x41F3B0 beyond its loop, 0x420760, 0x4208F0 and 0x41F920 beyond
 their heads, 0x4B2FF0, the walk 0x41F580's end; 0x420A80's totals.
 
 **Readings at risk** (added to §7.34's list for T1b): the wall shot's test (a double comparison
@@ -3428,3 +3432,106 @@ defender behind a destroyed mid-upper wall stays inside); the walker's draw of 7
 candidate and the undivided comparison of a candidate several turns away; the Harpies' larger of
 the two values; a besieger without a target walking to its own row's wall; the moat's scores
 only under SoD rules.
+
+### 7.36 Code reading: the walker's hex scores (E23 T1a3a, 2026-10-20)
+
+Read for E23 T1a3a (the user's cut of T1a3, 2026-10-20: the hex scores first): the two builders
+0x421680 runs after the Fire Walls and the moat (§7.35, step 1), with their helpers, all in full.
+Insight only, nothing copied (Q29).
+
+**The floor.** Both builders clamp every score they lower at `F`, minus the value of killing the
+stack outright: 0x442FD0 for the stack with the context's least attack and defense, the shot
+flag when it can shoot now, its hit points left (0x443080 with the context's prediction flag: in
+a prediction less the damage planned on it) and no desperate mode. A score at `F` stays there.
+
+**0x420260, the enemies' reach** (from 0x421680 at 0x421735 on Normal and above or for a human
+side; the stack S, the scores, a mask it writes, the context). It clears the mask and walks the
+other side's records in record order, leaving out the dead, the blind, petrified and paralysed
+(+0x290, +0x2B0, +0x2C0), the First Aid Tent, the Ammo Cart and the arrow towers (147 to 149);
+the Catapult and the Ballista stay. For each enemy E:
+
+- E can shoot now (0x4428F0): its bit (its record index +0xF8) goes into the mask, nothing more.
+- Otherwise E's map (0x4B2DA0) with **its speed + 1 as both the range and the turn's speed** (so
+  a stop costs the rest of a turn of speed + 1; a bound E reaches nothing). S's side is then
+  scanned in record order (the living but the arrow towers, S included) for a stack whose
+  position hex the map marked (+0x4A: next to a reached position) at a cost (+0x18) within E's
+  own speed, that is a stack E can strike this turn.
+  - Found: E's bit goes into the mask, and **E adds nothing to the scores**, unless it is
+    multi-headed (`0x80000`), the game is on Hard or above and S's side is a computer's
+    (+0x54A4 of S's side 0; this branch alone leaves a human side out): then 0x41FD60 below.
+  - None found: `t` = 0x435C70 for E striking S (whole hit points, no jousting; §7.31, the
+    retaliation included). When `t` > 0, every hex E's map reached (the cell's byte +4, bit
+    `0x1`; within speed + 1: where S would stand next to a hex E reaches within its speed) loses
+    `t`; for a two-hex E also the hex beside each reached hex in E's facing (direction 1 when
+    +0x44 is set, else 4: its other hex there), when that hex was not reached itself and the
+    reached one is not a stop (the stops map, the pathfinder's +0x68, 0x4B3290).
+
+So the scores count the reach only of enemies that cannot yet strike any of the side's stacks:
+an enemy within a turn of one of them is taken to strike it and adds no danger anywhere, the
+stack's own hex included. The mask, the enemies that can strike the side this turn (shooters and
+those walkers), goes on to 0x41F920.
+
+**0x41FD60, a multi-headed enemy's strike** (S, E, the scores, `F`, the pathfinder, the context).
+`t` as above, **its sign not tested**. For each record O of S's side but S, the dead and the arrow
+towers (in a prediction also one without hit points left after the planned damage) that E can
+strike this turn (as above): the positions E strikes O from that its map reaches within its speed
+(0x420060: O's neighbours through 0x523DF0, 6 or for a two-hex O 8; for a two-hex E also the
+positions one hex further out whose front hex touches O, on the side E faces it from); from
+each, from the last found to the first, the hexes E's strike hits (0x448AB0) lose `t` the first
+time any O reaches them and 1 when an earlier O did, each hex once per O. So S keeps out of the
+hexes around a stack of its side that a Hydra is about to strike; with `t` below 0 (the strike on
+S would cost E more than it gains) those hexes gain instead.
+
+**0x448AB0, the multi-headed pattern** (E; a position, the struck stack, its hex; also from
+0x4224E0, part C, and 0x436620, the plan's): a mask of E's directions at the position. Every
+neighbour (6, or 8 for a two-hex E), but for the Cerberi (creature 47, by number, not by a flag)
+the direction that touches the struck stack (its hex or its other hex, the first in direction
+order) and the two beside it clockwise (for a two-hex E through 0x660878 and 0x660898, which
+order its eight directions 0, 1, 2, 7, 3, 4, 5, 6 around it).
+
+**0x41FB60, crowding and breath lines** (from 0x421680 at 0x421766 on Hard and above or for a
+human side; S, the scores, 0x420260's mask, the context). `T` = 0x41F920 for S (below). For each
+record O of S's side but S, the dead and the arrow towers, in record order, its neighbours (6, or
+8 for a two-hex O, the last direction first, 0x523DF0):
+
+- each loses `T` the first time and 1 at every later O (one set of marks for all O), clamped at
+  `F`;
+- for a breath attacker O (`0x8`), the hex one further in the same direction (0x523D90) loses
+  `K`, the value (0x442FD0) to S of O's own strike on S (0x442780: its count, no shot, capped at
+  S's hit points), clamped at `F`, again at every O whose line reaches it: the hex behind a
+  target O may strike, where its breath would hit S.
+
+An O with `T` and `K` both 0 is skipped. So S keeps away from its own side's stacks by what an
+area attack on it is worth, and out of its own dragons' breath.
+
+**0x41F920, the area threat on a stack** (the other side, S, the mask, the context; also from
+0x421680's fallback at 0x421E94, §7.35, where 0 lets the stack go to guard a shooter). It sums a
+damage `D`: each record of the other side whose bit the mask holds adds, as a ball shooter
+(`0x100000`: Magogs, Liches, Power Liches) that can shoot now, 0x442780 of its shot on S, and as
+a breath attacker (`0x8`) that of its strike (both by its count, capped at S's hit points); the
+multi-headed are not counted here. Then the other side's hero's best area spell: none in an
+anti-magic garrison (+0x53C4), without a hero or its spell book (0x4D91F0 with 0), or with the
+Orb of Inhibition (126) on either hero. Of its available spells (+0x430) only **Frost Ring,
+Fireball, Inferno and Meteor Shower (20 to 23)** count, each when its cost (0x4E5240, against
+S's side's army, on the battlefield) is within the hero's spell points (+0x18): `trunc(f32(base)
+× factor)`, the base 0x5A7890 (the hero's power for the battle +0x53D4, the mastery 0x4E5080 on
+the battlefield, both heroes, S) and the factor 0x5A8090 for S (0 for an immune S); the largest,
+from 0, is added. Not tested: whether the hero has cast this round. It returns 0x442FD0 of `D` on
+S (the least bonuses, S's shot flag, no desperate mode) when `D` > 0, else 0. So §7.35's "the
+enemy hero's spell threat" is this area threat: the area attackers that can strike this turn and
+the hero's area spells.
+
+**What the scores read** (beyond §7.35): the enemies' speeds, flags and counts and their
+pathfinder maps, with the stops of the enemy's side (Quicksand that side sees, which S's side may
+not); the enemy hero's spell book, available spells and spell points, which a player does not see
+(the epic's policy may read the whole state). **Draws:** none.
+
+**Readings at risk** (for T1b): an enemy within a turn of any of the side's stacks adds no reach
+to the scores (only the multi-headed branch); the reach's speed + 1 as both range and turn speed
+(a stop in the way); the multi-headed branch on Hard and above for a computer side only, its
+value's sign untested; the area threat's four spells and its attackers by the mask; the breath
+line's hex.
+
+**Not read here** (T1a3b and T1a3c, part W and O): the plan's hexes 0x436300 and its three
+helpers, the order's sort 0x423340 (T1a3b); 0x41F3B0 beyond its loop, 0x420760 and 0x4208F0
+beyond their heads, 0x4B2FF0, the walk 0x41F580's end and 0x420A80's totals (T1a3c).

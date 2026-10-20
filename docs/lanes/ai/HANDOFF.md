@@ -5,16 +5,12 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 ## Current state
 
 - **Opened 2026-10-18** with E05's refinement (AI-Q1): the lane owns `h3-sim` (its `src/adventure/` stays the adventure lane's until E13), `h3-ffi`, `h3-cli`'s `src/ai/`, `python/`, `benches/ai/`, E05 and E06 (`lanes.toml`).
-- **E05** (`docs/epics/E05-battle-env.md`): in progress. Increments 1 (T1, T2), 2 (T3a–T3d,
-  T4; #252) and 3 (T5a #253, T5b1 and T5b2 #255, T6a #257, T6b and the head calls #258) done.
-  **Increment 4** done 2026-10-19: T8 (design §8, AI-Q5; `python/h3env/train/`, C ABI v29,
-  #260; the opponent pool, #264): exit criterion 7 met on the user's GTX 1070 (0.800 against
-  Random after 40 minutes, best 0.811). **Increment 5** done 2026-10-19 (T7, design §9;
-  AI-Q6): the preview (#274), ADR-0025 point 5 (#271), the bots, `h3 ai eval`, C ABI v30
-  (#276), the user's network at Aggressor's level: exit criterion 6 met. **Increment 6**
-  (T9, the closure) cut 2026-10-19: T9a (the audit) and T9b (the review) done 2026-10-20 on
-  `claude/festive-brown-igukig`, #286 open (watch it until it merges). **Next:** T9c on the user's
-  machine (QUEUE: the commands), then T9d.
+- **E05 closed 2026-10-20** (T1 to T9 in six increments, each with the user's checkpoint):
+  the epic file, its record and the kept design note in `E05-log.md` (§1 to §9, cited as
+  `E05-log.md` §n), the environment as built in `docs/07-simulation-and-ai.md` §1.1. Criteria
+  6 to 9 on the user's machine: the bots and `h3 ai eval`, the smoke run's 0.800 against Random,
+  the sweep (about 50 000 steps/s a thread, 497 000 on 24), the verifies with original data on
+  Linux and Windows. **Next:** E06's refinement when the user calls it (QUEUE).
 - **Order** (BACKLOG): E05, then E23 (the battle lane: the system actor's policy), then E06.
 - **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v30 (T7: the bots' seats) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q8, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
@@ -55,7 +51,7 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   addresses): copy or write into them, never rebind; its head arrays must be N long.
 
 **Python**
-- The trainer (`h3env.train`, design §8): its tests are in the lane command (`uv run --group
+- The trainer (`h3env.train`, `E05-log.md` §8): its tests are in the lane command (`uv run --group
   train pytest`); a run's files go into `python/runs/` (ignored). In a background shell `cd`
   may not hold: run `uv --directory python run …` (a plain `uv run` from the root takes the
   system Python). A run in the sandbox competes with a verify for the 4 cores: run one at a time.
@@ -75,6 +71,16 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   `CONNECT host:443` to `$HTTPS_PROXY` ("no rule or allowlist entry allows host", 2026-10-19).
 
 ## Recent sessions
+
+### 2026-10-20 — T9c and T9d, the closure
+
+- #286 merged; `master` at b2d2e56 (#288, docs only). The user ran QUEUE's commands as one
+  script (`target\t9c\t9c.ps1` in the repo, its logs read over the device link): the sweep, the
+  Rust and Python pair, the Windows verify with original data (green; the executable-map check
+  skipped, the system Python). The Linux verify with the user's files staged ran in the sandbox.
+- T9d: `shared/e05-closure` (BACKLOG, ADR-0025's line, docs/07 §1.1, the global HANDOFF's verify
+  line), then `ai/e05-closure` (the design note kept in the log, its 26 references repointed:
+  comments only, a full verify again; the battle queue's inbox for E23's references).
 
 ### 2026-10-19/20 — Increment 6's cut; T9a, the audit, and T9b, the review
 
@@ -96,8 +102,3 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   against Random, 0.498 against Aggressor, 0.479 against Greedy (T7d).
 - For the global HANDOFF (a `shared/` change, kept from T8b): `cargo xtask verify` outside
   `scripts/sandbox-verify.sh` needs `LLVM_COV`, `LLVM_PROFDATA` on `/usr/lib/llvm-20/bin`.
-
-### 2026-10-19 — T8c: two hours on the user's machine; the opponent pool
-
-- Naive self-play regressed on the user's GTX 1070 (0.779 peak, 0.721 final); with the opponent
-  pool (#264) 0.800 final, 0.811 best: criterion 7 met (`E05-log.md`).

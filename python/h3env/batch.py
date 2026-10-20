@@ -1,4 +1,4 @@
-"""The training batch (E05 T6a; C ABI `h3_batch_*`, ADR-0025, `docs/epics/E05-design.md` §1, §5).
+"""The training batch (E05 T6a; C ABI `h3_batch_*`, ADR-0025, `docs/epics/E05-log.md` §1, §5).
 
 `BattleBatch` owns an `H3Batch` handle and numpy arrays the engine writes in place at each call
 (zero copy): the binding allocates them once and passes their data pointers. Agents see only the

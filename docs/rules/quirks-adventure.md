@@ -91,8 +91,22 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Intended/expected behavior: every survivor counts as the monster's creature (as VCMI turns upgraded survivors back into the base creature and keeps them); the next battle splits the whole count again.
 - Impact: gameplay-altering (small): a lost or fled battle shrinks the monster by the upgraded stack's survivors.
 - Community status: known: the wiki ("A bug removes troops equal to the upgraded stack's size from the wandering army when a hero is defeated or retreats").
-- Sources: code reading 0x4AC580 (E08 T17a, survey `E08-battles.md` §4.3, A-6); wiki Wandering creature (https://heroes.thelazy.net/index.php/Wandering_creature); VCMI 1.7.5 `lib/mapObjects/CGCreature.cpp` `battleFinished`.
+- Sources: code reading 0x4AC580 (E08 T17a, survey `E08-battles.md` §4.3, A-6); observation `experiments/results/E08-batch-3b.md` E3-4, E3-4c, E3-5 (E08 T22b: 30 Pikemen split with 7 Halberdiers left 23 Pikemen after a retreat, three times; the next battle split the 23 into 12 Pikemen and 11 Halberdiers); wiki Wandering creature (https://heroes.thelazy.net/index.php/Wandering_creature); VCMI 1.7.5 `lib/mapObjects/CGCreature.cpp` `battleFinished`.
 - Flag: none (fixed in every profile)
 - Defaults: faithful = fixed, strict-fixed = fixed
 - Regression test: `crates/h3-adventure/src/state/tests/answers.rs`, `a_monsters_battle_leaves_its_survivors_or_removes_it_with_its_treasure`
 - Decided by / date: the user, 2026-10-13 (ADV-Q12; decision 23)
+
+### ADV-QUIRK-8 — A map's tight formation reaches no hero
+- Class: fix, no flag (the user, 2026-10-20, at E08 T22a3's end, decision 46: once a code reading confirms the reset for every hero; confirmed by E08 T22b's reading)
+- Context / rules affected: game, GAM-BAT-001 (each side's formation in a battle's setup); the import's formation (`docs/formats/h3m.md`, "Import"); BAT-SET-001 places the armies by it
+- Original behavior: the map file gives each placed hero a formation (loose or tight), but `map_hero_setup` (0x486590), which fills every placed hero from the map's record, never writes the hero's formation bit (bit 0 of +0x48), so every hero starts loose, whoever owns it, until its player changes it on the hero screen (whose buttons clear and set the bit, 0x4DD577, 0x4DD587). Observed in batch E3c (E3-9): Blue's human hero, tight in the map, defended loose (hexes 15, 49, 100, 151, 185). Besides, the battle reads the bit only for a human player's side (0x463679): a computer player's hero always fights loose.
+- Intended/expected behavior: the hero keeps the map's formation and fights in it (the engine's import and battle setup, unchanged).
+- Impact: gameplay-altering (small): a map maker's tight hero fights loose until its player changes it; one shipped hero is tight (survey `E08-battles.md` §6.4).
+- Community status: not found on the wiki; VCMI 1.7.5 resets every hero to loose at the start (`CGHeroInstance::initHero`, `setFormation(LOOSE)`), as the original behaves.
+- Sources: code reading 0x486590, 0x463600 (0x463652 to 0x463740), 0x4DD2D0 (E08 T22b, survey `E08-battles.md` §6.4); observation `experiments/results/E08-batch-3c.md` E3-8 (E3-9's formation); VCMI 1.7.5 `lib/mapObjects/CGHeroInstance.cpp` `initHero`.
+- Flag: none (fixed in every profile)
+- Defaults: faithful = fixed, strict-fixed = fixed
+- Regression test: `crates/h3-map/src/tests/import.rs`, `a_placed_heros_customisations_and_formation_carry_over`; `crates/h3-adventure/src/command/tests.rs`, `a_step_toward_another_players_hero_visits_it_and_starts_a_battle` (the defender's tight formation in the battle's start)
+- Decided by / date: the user, 2026-10-20 (decision 46; the reading E08 T22b)
+- Open with it: whether a computer player's side should fight loose whatever its hero's formation (0x463679) is decided when the game has computer players (E10) or a formation command (increment 4's army management).

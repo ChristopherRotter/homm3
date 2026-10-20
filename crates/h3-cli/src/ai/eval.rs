@@ -1,4 +1,4 @@
-//! `h3 ai eval` (E05 T7, `docs/epics/E05-design.md` §9): the engine's policies against each other
+//! `h3 ai eval` (E05 T7, `docs/epics/E05-log.md` §9): the engine's policies against each other
 //! on held-out encounters, the baselines' table.
 //!
 //! Every ordered pair of distinct policies plays the same episodes, the first attacking and the
