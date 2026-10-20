@@ -68,3 +68,24 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   the hexes around gain; it alone leaves a human side out. The scores read the enemy hero's
   available spells and the stops of the enemy's side (hidden from a player).
 - **Map:** 8 entries (4 new: 0x420060, 0x448AB0 and the tables 0x660878, 0x660898; 4 updated).
+
+## T1a3b — the strike hexes and the order's sort (2026-10-20, increment 1)
+
+- **The seam** (the user, 2026-10-20): T1a3b as queued (both parts, about 3.1 KB), over the
+  strike hexes alone (recommended) or the sort alone.
+- **Read** (`docs/formats/installation.md` §7.37), all in full: the hexes around a hex 0x436300
+  (turns with a stop's extra turn; the value from the shooters blocked 0x436180, the multi-headed
+  and breath strikes 0x436620 and 0x436760 with 0x445840, less the enemy's retaliation by the same
+  two, and the hex scores; the best by turns, value, cost, order) and the order's sort 0x423340
+  with 0x423630, 0x4235C0, 0x4237C0, 0x423820: the shape of Visual C++ 5/6's `std::sort`, the
+  predicate the higher key, then the lower record index.
+- **Found:** at an equal value the Cavaliers and Champions on Normal and above (or for a human
+  side) take the hex with the longer path, every other stack the shorter; a shooter the walker
+  already blocks counts 1 (the worth's own blocked test leaves no blocker out); the breath line
+  uses the desperate mode and counts the walker's own hexes as a friend's, the multi-headed
+  strike neither; the retaliation is tested by Stone Gaze alone. The sort orders two stacks of
+  the two sides with an equal key and record index only up to 16 stacks (as listed); above, the
+  partitions decide, and 0x41F140's alternation does not cancel it. No rule of the engine changes.
+- **Map:** 12 entries (5 new: 0x4235C0, 0x4237C0, 0x423820, 0x4429F0, 0x445840; 7 updated;
+  the three helpers named `ai_blocked_shooters_value`, `ai_multi_headed_strike_value`,
+  `ai_breath_strike_value`).

@@ -3223,7 +3223,7 @@ sides but the arrow towers, a key: the First Aid Tent and the Ammo Cart (147, 14
 stack with +0x290 or +0x2B0 above 1 −10 000; a stack that has acted (`0x4000000`) or is disabled
 (0x41F380: +0x290, +0x2B0 or +0x2C0 set, §7.33's test) its speed − 1000; one that has waited
 (`0x2000000`), or any in the wait phase, minus its speed; else its speed. The list is sorted
-(0x423340, recursive 0x423630; not read). Walking it from the start, the side expected first is
+(0x423340, recursive 0x423630; read in §7.37). Walking it from the start, the side expected first is
 +0x132B8's (the side activated last); when the stack at a place is of the other side, the next
 stack with the same key of the expected side is swapped in, and the side expected next is the
 other one: equal keys alternate between the sides (the record's side +0xF4). Each record's +0x190
@@ -3423,7 +3423,7 @@ but what the scores read (§7.36: the enemy hero's available spells, the enemy s
 **Draws:** 0x421B02 per candidate enemy and 0x41EFFB once per wall shot.
 
 **Not read here** (T1a3, part W): the scores' builders 0x420260 and 0x41FB60 (read in §7.36),
-the plan's hexes 0x436300 and its three helpers, 0x41F3B0 beyond its loop, 0x420760, 0x4208F0 and 0x41F920 beyond
+the plan's hexes 0x436300 and its three helpers (§7.37), 0x41F3B0 beyond its loop, 0x420760, 0x4208F0 and 0x41F920 beyond
 their heads, 0x4B2FF0, the walk 0x41F580's end; 0x420A80's totals.
 
 **Readings at risk** (added to §7.34's list for T1b): the wall shot's test (a double comparison
@@ -3533,5 +3533,105 @@ value's sign untested; the area threat's four spells and its attackers by the ma
 line's hex.
 
 **Not read here** (T1a3b and T1a3c, part W and O): the plan's hexes 0x436300 and its three
-helpers, the order's sort 0x423340 (T1a3b); 0x41F3B0 beyond its loop, 0x420760 and 0x4208F0
+helpers, the order's sort 0x423340 (T1a3b, read in §7.37); 0x41F3B0 beyond its loop, 0x420760 and 0x4208F0
 beyond their heads, 0x4B2FF0, the walk 0x41F580's end and 0x420A80's totals (T1a3c).
+
+### 7.37 Code reading: the walker's strike hexes and the order's sort (E23 T1a3b, 2026-10-20)
+
+Read for E23 T1a3b (the user's cut of T1a3, 2026-10-20): the hexes 0x436840 tries around an
+enemy (§7.35) with their helpers, and the sort of 0x41F140's order of action (§7.34), all in full.
+Insight only, nothing copied (Q29).
+
+**The plan's fields** (0x4360C0): +0 the stack, +4 its speed (0x448CD0), +8 the enemy, +0xC the
+pathfinder, +0x10 the hex scores (§7.36), +0x14 the enemy's count after the stack's strike and
++0x18 the stack's count (each rounded up from the hit points left, 0x443080 with the context's
+prediction flag; the strike 0x442780 by the stack's count, capped), +0x1C the best's value, +0x20
+its hex (−1 at the start), +0x24 its turns, +0x28 the context.
+
+**0x436300, the hexes around a hex** (the plan; a hex `H`, a first and an end direction). 0x436840
+calls it for the enemy's position (directions 0 to 5), a two-hex enemy's other hex (0 to 5) and,
+for a two-hex stack, three more (§7.35); the best carries over between the calls. Each neighbour
+`N` of `H` on the field (the battle's table +0x13468) is a candidate when the pathfinder reached
+it (its 30-byte cell's byte +4, bit `0x1`) with the cell's top six bits (`0xFC000000`) clear, as
+the map's own marking asks (0x4B2E35). Its turns `t`: with a speed `s`, `ceil(c / s)` for the
+cell's cost `c` (+0x18), one more when `N` is a stop (the pathfinder's +0x68, §7.36: the walk ends
+there and the strike comes a turn later), at least 1; without speed 1 at cost 0, else 100. A
+candidate with more turns than the kept best is passed over. Its value `P`:
+
+- `B(N)` (0x436180), the shooters it would block;
+- on Normal and above or for a human side (+0x54A4 of the context's side): for a multi-headed
+  stack (`0x80000`) plus `M` (0x436620) of its strike from `N` on the enemy, for a breath attacker
+  (`0x8`) plus `L` (0x436760); then, when the enemy will retaliate (the stack's flag `0x10000`
+  clear, the enemy not turned to stone, Stone Gaze +0x2B0 = 0, and retaliations left, +0x454 > 0),
+  minus `M` and `L` of the enemy's retaliation on the stack at `N` as the enemy's own flags allow
+  (the enemy the striker from its position, by its count after the strike, +0x14). Blindness and
+  paralysis are not tested;
+- for a two-hex stack (`0x1`) plus `B` of its other hex there (`N` + 1 when its facing +0x44 is
+  set, else `N` − 1; one mask for both, so a shooter counts once) and the lower of the two hexes'
+  scores; for any other stack the score of `N`.
+
+**The best**: fewer turns; at equal turns the higher `P`; at an equal `P` the lower cost, but **the
+Cavaliers and Champions (10, 11) on Normal and above or for a human side the higher cost** (a
+longer run-up: 0x421680 passes the path's cost to 0x435C70 as the jousting distance, §7.35); at an
+equal cost the earlier candidate. The first candidate is taken whatever its value. The plan's `P`
+holds the hex's extras and dangers; the strike's own value (0x435C70) is 0x421680's.
+
+**0x436180, `B`, the shooters blocked** (the plan, a hex, a mask of record bits). 0 on Easy for a
+computer side. Otherwise each of the hex's six neighbours on the field holding a stack not of the
+acting side (+0x132C0), not the plan's stack and not yet in the mask (its record bit +0xF8 is set
+now, whatever follows) counts when it can shoot now with the plan's stack left out as a blocker
+(0x4428F0 and 0x469600 with it) and has hit points left (0x443080, the prediction flag):
+`max(1, trunc(h × (w₁ − w₀) / hp))`, `h` its hit points left, `hp` per creature (+0xC0), `w₁` and
+`w₀` its worth (0x442A50, the context's least bonuses) with and without the shot flag. So a
+shooter is worth blocking by what its shot adds over its melee. **A shooter the stack already
+blocks counts 1**: the worth's own test (0x4429F0 with 0, its fourth argument unused) leaves no
+blocker out, so beside the stack the shot flag falls in `w₁` as well and `w₁ − w₀` keeps only the
+protections' and Precision's difference, as a rule nothing (the side's hero with the Bow of the
+Sharpshooter, artifact 137, keeps the full gain).
+
+**0x436620, `M`, a multi-headed strike** (the striker's side, the striker, its position, its
+count, the struck stack T, T's hex, the context; the first two in `ecx` and `edx`). The directions
+its strike hits from there (0x448AB0, §7.36: every neighbour, the Cerberi three); each neighbour
+(0x523DF0 of the striker) on the field holding a stack not of the striker's side, not T and not
+counted yet (record bits, T's first) adds the value to it (0x442FD0: the least bonuses, no shot,
+no desperate mode) of the strike's damage on it (0x442780: the count, no shot, capped at its hit
+points; in a prediction also at its hit points left less the planned damage). A count of 0 still
+deals the estimate's least damage of 1.
+
+**0x436760, `L`, a breath strike** (the same arguments). The direction from the striker to T
+(0x445840: the first of 0 to 5, 0 to 7 for a two-hex striker, whose neighbour is T's hex or a two-hex
+T's other hex by T's facing; −1 for none), the hex one further from T's touched hex that way
+(0x523D90), and the stack there unless it is T: the value as in `M`, but **with the context's
+desperate mode** (+8: the worth 1000 per creature, §7.31), negative when that stack is of the
+striker's side. Only T is left out: in the stack's own strike, **its own hexes count**, so a
+stack that stands now where its breath from `N` would reach counts itself as a friend hit.
+
+**What the strike hexes read**: the pathfinder's map with the side's stops (§7.36), the stacks'
+flags, counts, shots, facings and retaliations, the heroes' Bow of the Sharpshooter. **Draws:**
+none.
+
+**0x423340, the order's sort** (0x27F bytes, from 0x41F140 only: `ecx`, `edx` the list of stack
+pointers, side 0's records then side 1's in record order, each key in +0x190; the predicate by
+value, unused). It has the shape, step by step, of the C++ library's `sort` of the time (the
+Dinkumware library of Visual C++ 5 and 6): above 16 elements a quicksort around the median of the
+first, middle and last element (0x423820 the partition; 0x423630 recursing into the part not
+larger and looping on the other, down to 16), then an insertion sort of the first 16 and an
+unguarded insertion of each further one (0x4237C0); 16 or fewer, an insertion sort alone. The
+predicate (0x4235C0, also inlined): the higher key first, at an equal key the lower record index
+(+0xF8). The side is not compared, so two stacks of the two sides with the same key and record
+index are equivalent. **Up to 16 stacks** the insertion sort keeps them as listed, the attacker's
+first. **With more** (seven stacks a side and war machines, summoned, cloned or raised stacks)
+the partitions may exchange such a pair, an order only that algorithm reproduces, and 0x41F140's
+alternation (§7.34) does not cancel it: it swaps the next stack of the expected side into place,
+so the pair's order can move a third stack of the same key (a check over random lists). The ranks
+(+0x190) then follow the library's partitions.
+
+**Readings at risk** (for T1b): the Cavaliers' and Champions' longer run-up at an equal value;
+the shooter already blocked at 1; the breath line with the desperate mode and the stack's own
+hexes; the retaliation's test by Stone Gaze alone; the turns' extra turn on a stop. For T1b's ADR
+draft: the order for more than 16 stacks needs the library sort's own steps (or a recorded
+difference).
+
+**Not read here** (T1a3c, part W): 0x41F3B0 beyond its loop, 0x420760 (with its two helpers) and
+0x4208F0 beyond their heads, the destination map 0x4B2FF0, the walk 0x41F580's end and
+0x420A80's totals.
