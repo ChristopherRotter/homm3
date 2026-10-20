@@ -26,6 +26,7 @@
 //! (the frame's, not the DEF's: design §3.4). Pixels outside the canvas or the screen are clipped.
 
 use h3_assets::def::{Encoding, Frame};
+use h3_assets::palette::Palette;
 use h3_assets::pcx::Pcx;
 
 use crate::palette::ScreenPalette;
@@ -164,17 +165,31 @@ pub fn draw_frame(
 /// the executable draws images (whether an index is ever transparent) is not read yet
 /// (*provisional*, design §3.5).
 pub fn draw_image(screen: &mut Screen, image: &Pcx, x: i32, y: i32) {
-    put_image(screen, image, x, y, false);
+    put_image(screen, image, None, x, y, false);
 }
 
 /// Draws an image as [`draw_image`] does, but an 8-bit one's index 0 is transparent: the battle's
 /// absolute obstacle goes into the background so (0x44FC70, design §4.4). A 24-bit image has no
 /// index and is drawn opaque (*provisional*: no absolute obstacle is one).
 pub fn draw_image_keyed(screen: &mut Screen, image: &Pcx, x: i32, y: i32) {
-    put_image(screen, image, x, y, true);
+    put_image(screen, image, None, x, y, true);
 }
 
-fn put_image(screen: &mut Screen, image: &Pcx, x: i32, y: i32, keyed: bool) {
+/// Draws an image as [`draw_image_keyed`] does, an 8-bit one through `palette` instead of its own:
+/// a dialog's picture in a player's colours (`H3DlgPcx`, 0x450520 then 0x44FC70; E17 M3 T6a,
+/// design §9.7). A 24-bit image has no palette and is drawn as it is.
+pub fn draw_image_keyed_in(screen: &mut Screen, image: &Pcx, palette: &Palette, x: i32, y: i32) {
+    put_image(screen, image, Some(palette), x, y, true);
+}
+
+fn put_image(
+    screen: &mut Screen,
+    image: &Pcx,
+    palette: Option<&Palette>,
+    x: i32,
+    y: i32,
+    keyed: bool,
+) {
     let format = screen.format();
     let width = index(image.width()).max(1);
     let mut put = |i: usize, pixel: u16| {
@@ -185,7 +200,7 @@ fn put_image(screen: &mut Screen, image: &Pcx, x: i32, y: i32, keyed: bool) {
     };
     match image {
         Pcx::Indexed(image) => {
-            let palette = ScreenPalette::new(&image.palette, format);
+            let palette = ScreenPalette::new(palette.unwrap_or(&image.palette), format);
             for (i, &v) in image.pixels.iter().enumerate() {
                 if !(keyed && v == 0) {
                     put(i, palette.get(v));

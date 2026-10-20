@@ -4,6 +4,9 @@
 
 [scenario]
 id = "situation-snow"
+# Red human, Blue a computer, as the original's map (`h3-view situation`): the panel's buttons
+# lit on the human's turn (E17 M3 T6a).
+human = ["attacker"]
 packs = ["base"]
 profile = "base:faithful"
 terrain = "base:snow"

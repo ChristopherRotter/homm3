@@ -248,6 +248,10 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
         lines.push(format!("{drawn} frames drawn in {}", dir.display()));
         return Ok(lines);
     }
+    let mut moment = scene::Moment {
+        active: observation.active,
+        ..scene::Moment::default()
+    };
     let list = match options.at {
         None => scene::battle(observation, manifest, &tables, &layout),
         Some(t) => {
@@ -270,15 +274,20 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
             .map_err(|e| e.to_string())?
             .with_heroes(motion::heroes(&record, &tables, &archives, Some(seed))?);
             lines.push(format!("the timeline ends at {} ms", timeline.end));
-            let moment = scene::Moment::at(&timeline, t);
+            moment = scene::Moment::at(&timeline, t);
             scene::battle_at(observation, &moment, manifest, &tables, &layout)
         }
     }
     .map_err(|e| e.to_string())?;
-    // The panel's draws after the battlefield: its log empty, as at a battle's start (E17 M3
-    // T4b-2b-1; a record's lines come with M3 T6).
+    // The panel's draws after the battlefield as the turn's start sets them, its log empty, as at
+    // a battle's start (E17 M3 T4b-2b-1, T6a; a record's lines come with M3 T6b).
     let mut list = list;
-    list.extend(scene::panel(""));
+    list.extend(scene::panel(
+        observation,
+        scene::acting(observation, &moment),
+        "",
+        &layout,
+    ));
     let names = batch::names(&list, &layout);
     let (batch, loaded) = timed(|| {
         let mut batch = Batch::default();
@@ -431,14 +440,47 @@ mod tests {
             y_offset: 0,
             glyphs: Vec::new(),
         });
+        // The panel's picture and buttons (E17 M3 T6a): one-pixel pictures and DEFs.
+        let frame = h3_assets::def::Frame {
+            encoding: h3_assets::def::Encoding::Raw,
+            full_width: 1,
+            full_height: 1,
+            left: 0,
+            top: 0,
+            width: 1,
+            height: 1,
+            pixels: vec![1],
+            runs: vec![false],
+            short_header: false,
+        };
+        let button = build::def(
+            0x47,
+            (1, 1),
+            &Palette::default(),
+            &[(0, &[("a", 0)])],
+            &[frame],
+        );
+        let buttons = [
+            "ICM001.DEF",
+            "ICM002.DEF",
+            "ICM003.DEF",
+            "ICM004.DEF",
+            "ICM005.DEF",
+            "ICM006.DEF",
+            "ICM007.DEF",
+            "COMSLIDE.DEF",
+        ]
+        .map(|name| (name, &button[..], true));
         for (name, items) in [
-            ("H3sprite.lod", vec![]),
+            ("H3sprite.lod", buttons.to_vec()),
             ("H3ab_spr.lod", vec![]),
             (
                 "H3bitmap.lod",
                 vec![
                     ("CROLLOVR.PCX", &picture[..], true),
                     ("SMALFONT.FNT", &font[..], true),
+                    ("CBAR.PCX", &picture[..], true),
+                    ("PLAYERS.PAL", &pal[..], true),
                 ],
             ),
             ("h3ab_bmp.lod", vec![("GAME.PAL", &pal[..], true)]),
@@ -456,7 +498,7 @@ mod tests {
         let lines = render(&options).unwrap();
         assert_eq!(lines[0], root.join("out/still.png").display().to_string());
         assert!(
-            lines[1].starts_with("1 draws; batch of 3 assets"),
+            lines[1].starts_with("11 draws; batch of 13 assets"),
             "{lines:?}"
         );
         let png = fs::read(root.join("out/still.png")).unwrap();

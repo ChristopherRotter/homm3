@@ -499,17 +499,22 @@ fn a_count_box_is_its_picture_tinted_with_the_count_over_it() {
     assert_eq!(compose(&list, &batch, &no_picture), gone("no.pcx"));
 }
 
-/// The log's item (M3 T4b-2b-1): a 4 x 2 picture at (2, 1) of an 8 x 4 frame, the text in a 4 x 3
-/// box from the same corner, colour 1 (entry 10), centred.
+/// A text item (the log's, M3 T4b-2b-1; T6a: any dialog's): a 4 x 2 picture at (2, 1) of an 8 x 4
+/// frame, the text in a 4 x 3 box from the same corner, colour 1 (entry 10), centred.
 #[test]
-fn the_log_is_its_picture_with_the_text_over_it() {
+fn a_text_item_is_its_picture_with_the_text_over_it() {
     let mut layout = small();
     layout.frame = [8, 4];
-    layout.log.picture = "Roll.pcx".to_string();
-    layout.log.font = "Small.fnt".to_string();
-    layout.log.font_palette = "text.pal".to_string();
-    layout.log.place = [2, 1];
-    layout.log.size = [4, 3];
+    let item = crate::ui::Text {
+        id: 1,
+        picture: "Roll.pcx".to_string(),
+        at: [0, 0],
+        size: [4, 3],
+        font: "Small.fnt".to_string(),
+        font_palette: "text.pal".to_string(),
+        colour: 1,
+        align: 1,
+    };
     let mut batch = batch();
     let picture = build::pcx_indexed(4, 2, &[1; 8], &palette(&[(1, BLUE)]));
     batch.add("Roll.pcx", &picture).unwrap();
@@ -527,8 +532,13 @@ fn the_log_is_its_picture_with_the_text_over_it() {
         glyphs,
     };
     batch.add("Small.fnt", &build::fnt(&font)).unwrap();
-    let log = |text: &str| Draw::Log { text: text.into() };
-    let screen = compose(&[log("a\u{e9}")], &batch, &layout).unwrap();
+    let draw = |item: &crate::ui::Text, text: &str| Draw::Text {
+        item: item.clone(),
+        x: 2,
+        y: 1,
+        text: text.into(),
+    };
+    let screen = compose(&[draw(&item, "a\u{e9}")], &batch, &layout).unwrap();
     let [b, w, g] = [BLUE, WHITE, GREEN].map(|c| FORMAT.pack(c));
     assert_eq!(
         screen.pixels(),
@@ -541,18 +551,112 @@ fn the_log_is_its_picture_with_the_text_over_it() {
         .concat()
     );
     // Empty: the picture alone.
-    let empty = compose(&[log("")], &batch, &layout).unwrap();
+    let empty = compose(&[draw(&item, "")], &batch, &layout).unwrap();
     assert_eq!(empty.pixel(3, 3), Some(0));
     // What the batch lacks: the font, its palette, the picture.
     let gone = |what: &str| Err(ComposeError::Missing(what.to_string()));
-    let list = [log("a")];
-    let mut no_font = layout.clone();
-    no_font.log.font = "no.fnt".to_string();
-    assert_eq!(compose(&list, &batch, &no_font), gone("no.fnt"));
-    let mut no_palette = layout.clone();
-    no_palette.log.font_palette = "no.pal".to_string();
-    assert_eq!(compose(&list, &batch, &no_palette), gone("no.pal"));
-    let mut no_picture = layout;
-    no_picture.log.picture = "no.pcx".to_string();
-    assert_eq!(compose(&list, &batch, &no_picture), gone("no.pcx"));
+    let lacking = |change: fn(&mut crate::ui::Text)| {
+        let mut other = item.clone();
+        change(&mut other);
+        compose(&[draw(&other, "a")], &batch, &layout)
+    };
+    assert_eq!(lacking(|i| i.font = "no.fnt".to_string()), gone("no.fnt"));
+    assert_eq!(
+        lacking(|i| i.font_palette = "no.pal".to_string()),
+        gone("no.pal")
+    );
+    assert_eq!(
+        lacking(|i| i.picture = "no.pcx".to_string()),
+        gone("no.pcx")
+    );
+}
+
+/// A dialog's picture (M3 T6a): index 0 transparent; with a player its entries 224-255 take the
+/// player's 32 of the players' palette; a 24-bit picture keeps its colours.
+#[test]
+fn a_picture_is_keyed_and_takes_its_players_colours() {
+    let mut batch = batch();
+    let own = palette(&[(224, RED), (225, RED)]);
+    batch
+        .add("bar.pcx", &build::pcx_indexed(3, 1, &[0, 224, 225], &own))
+        .unwrap();
+    batch
+        .add("rgb.pcx", &build::pcx_rgb(1, 1, &[GREEN]))
+        .unwrap();
+    // The players' palette: player 1's entries 32 and 33 yellow and white.
+    let players = build::pal(&palette(&[(32, YELLOW), (33, WHITE)]), &[0; 256], 0, &[]);
+    batch.add("Players.pal", &players).unwrap();
+    let picture = |name: &str, player: Option<u8>| Draw::Picture {
+        picture: name.to_string(),
+        x: 1,
+        y: 0,
+        player: player.map(|player| crate::scene::PlayerColours {
+            palette: "Players.pal".to_string(),
+            player,
+        }),
+    };
+    let [bg, r, y, w, g] = [BLUE, RED, YELLOW, WHITE, GREEN].map(|c| FORMAT.pack(c));
+    let list = [Draw::Background {
+        picture: "Bg.pcx".to_string(),
+        x: 0,
+        y: 0,
+    }];
+    let drawn = |more: Draw| {
+        let mut l = list.to_vec();
+        l.push(more);
+        compose(&l, &batch, &small()).unwrap().pixels()[..6].to_vec()
+    };
+    assert_eq!(drawn(picture("bar.pcx", None)), [bg, bg, r, r, bg, bg]);
+    assert_eq!(drawn(picture("bar.pcx", Some(1))), [bg, bg, y, w, bg, bg]);
+    assert_eq!(drawn(picture("rgb.pcx", Some(1))), [bg, g, bg, bg, bg, bg]);
+    let gone = |what: &str| Err(ComposeError::Missing(what.to_string()));
+    assert_eq!(
+        compose(&[picture("no.pcx", None)], &batch, &small()),
+        gone("no.pcx")
+    );
+    let mut no_players = picture("bar.pcx", Some(0));
+    if let Draw::Picture {
+        player: Some(p), ..
+    } = &mut no_players
+    {
+        p.palette = "no.pal".to_string();
+    }
+    assert_eq!(compose(&[no_players], &batch, &small()), gone("no.pal"));
+}
+
+/// A dialog's button (M3 T6a): its frame of group 0 by the plain drawer, runs skipped; a frame the
+/// group lacks drawn as frame 0.
+#[test]
+fn a_button_draws_its_frame_or_frame_0() {
+    let mut batch = batch();
+    let p = palette(&[(3, RED), (4, WHITE)]);
+    let frames = [row(&[3, 0], &[false, true]), row(&[4, 4], &[false, false])];
+    let def = build::def(0x47, (2, 1), &p, &[(0, &[("a", 0), ("b", 1)])], &frames);
+    batch.add("btn.def", &def).unwrap();
+    let button = |frame| Draw::Button {
+        def: "btn.def".to_string(),
+        frame,
+        x: 1,
+        y: 0,
+    };
+    let [r, w] = [RED, WHITE].map(|c| FORMAT.pack(c));
+    let first = compose(&[button(0)], &batch, &small()).unwrap();
+    assert_eq!(first.pixels()[..6], [0, r, 0, 0, 0, 0]);
+    let second = compose(&[button(1)], &batch, &small()).unwrap();
+    assert_eq!(second.pixels()[..6], [0, w, w, 0, 0, 0]);
+    let beyond = compose(&[button(7)], &batch, &small()).unwrap();
+    assert_eq!(beyond, first);
+    assert_eq!(
+        compose(
+            &[Draw::Button {
+                def: "no.def".to_string(),
+                frame: 0,
+                x: 0,
+                y: 0
+            }],
+            &batch,
+            &small()
+        ),
+        Err(ComposeError::Missing("no.def".to_string()))
+    );
 }
