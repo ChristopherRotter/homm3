@@ -24,7 +24,7 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 ### E17 M3 T6c — The status line, the cursors and the mouse
 
 - **Scope:** the status line (the hint over a stack, `Attack Pikemen` in `strike`; a control's
-  hints, 0x5FE840), the cursor rules of the executable (which cursor over which hex; T5a's
+  hints, H3API's `SetHints`), the cursor rules of the executable (which cursor over which hex; T5a's
   `CRDEFLT.DEF` frame 0 is provisional), the mouse over a stack in the window (group 1 and the
   outline 0x70, read and recorded in T1b-2: `NOTES.md`), a button pressed and the panel's
   hotkeys in the window (design §9.7); the harness's mouse over the field and the panel as
