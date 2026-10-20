@@ -24,21 +24,21 @@ A run is a directory, `python/runs/<run>/` by default (git-ignored), named by th
 | `record.json` | the run's summary (§4.2) | at each gate, ladder, stop and the end |
 
 Every `.pt` and `record.json` is written atomically (§3.2). A crash leaves at most a stale `*.tmp`,
-removed at the next start. Built (T2a, T2b1): `config.toml`, `metrics.jsonl`, `record.json`, the
-atomic writes, `checkpoint.pt` (the whole state, `Trainer.state`) and `best.pt` (the network, at
-the best evaluation against Random until the gate's promotion, T3); `promoted/`, `league/` to come
-(T3, T4).
+removed at the next start. Built (T2a, T2b1, T3b): `config.toml`, `metrics.jsonl`, `record.json`,
+the atomic writes, `checkpoint.pt` (the whole state, `Trainer.state`), `promoted/<n>.pt` and
+`best.pt` (each promotion's network with its index, how, run and parent); `league/` to come (T4).
 
 ### 1.2 The config file — built (T2a)
 
 `h3env.train.run` (`Config`, `load_config`; `python/README.md`, "Training runs"): TOML, the
 defaults in code, `--set table.key=value`, unknown keys refused, the resolved config in the
 record; configs in `python/configs/`. Its tables today: `[env]`, `[network]`, `[ppo]`, `[pool]`,
-`[evaluation]`, `[checkpoint]` (`checkpoint_minutes`, T2b1), `[device]`. To come: `[gate]`
-(`every` in samples, `elo0`, `elo1`, `alpha`, `beta`, `max_pairs`, §6) and `[ladder]` (`opponents`,
-`episodes` per kind, `promoted`, §7) replacing `[evaluation]` (T3); `[league]` (`self_play`,
-`snapshot_every`, `size`, `live`, `pfsp_power`, `decay`, §8) replacing `[pool]` (T4);
-`network.kind` (`"mlp"`, `"entity"`, T5).
+`[checkpoint]` (`checkpoint_minutes`, T2b1), `[device]`, and since T3b `[gate]` (`gate_every`
+in samples, `elo0`, `elo1`, `alpha`, `beta`, `max_pairs`, §6) and `[ladder]`
+(`ladder_opponents`, `ladder_episodes` and `ladder_final_episodes` per kind, `ladder_promoted`,
+§7), which replaced `[evaluation]` (a key belongs to one table, hence the prefixes). To come:
+`[league]` (`self_play`, `snapshot_every`, `size`, `live`, `pfsp_power`, `decay`, §8) replacing
+`[pool]` (T4); `network.kind` (`"mlp"`, `"entity"`, T5).
 
 ### 1.3 Commands
 
@@ -53,19 +53,17 @@ uv run --group train python -m h3env.train --config configs/e06-t4.toml --out ru
   checkpoint; its `--set`s may change only `run.RESUMABLE` (`samples`, extended or cut;
   `env.threads`; `[device]`; `checkpoint.checkpoint_minutes`), any other change is refused with
   its keys named (a new run). A finished run resumes only with a larger budget.
-- `--init-from` (T3, with the promoted list it names) starts a new run (fresh optimizer,
-  counters, league) from another run's network; the record names the parent (its run id and
-  promoted index), and the parent's network is the new run's best #0, so its gates continue the
-  lineage (§6).
+- `--init-from` — built (T3b; `Trainer.init_from`): a new run (fresh optimizer, counters,
+  pool) from a saved network of the same size (`best.pt`, `promoted/<n>.pt`, `checkpoint.pt`);
+  the record's `parent` names its file, run, promoted index, samples and updates, and the
+  parent's network is the new run's best #0 (`how` `init`), so its gates continue the lineage.
 
 ## 2. The budget and the schedule, in samples — built (T2a)
 
 `samples` (the budget: the first update boundary at or past it), the learning rate (`linear` to
 `lr · lr_floor` over `lr_horizon`, fixed at the start; or `constant`), the pool's snapshots and
-the evaluations (`Cadence`) count samples (`run.py`). E05's evaluation against Random stays, every
-`eval_every` samples, until the gate (§6) and the ladder (§7) replace it (T3). Left for later:
-the league's snapshots (T4) and the gates (T3) in samples too. Wall time sets only the
-checkpoints (T2b1).
+the gates (`Cadence`, T3b; E05's evaluation against Random is gone) count samples (`run.py`).
+Left for later: the league's snapshots (T4). Wall time sets only the checkpoints (T2b1).
 
 ## 3. The resumable state — built (T2b1), extended by T3, T4
 
@@ -84,15 +82,17 @@ record; the second raises. `--resume` cuts `metrics.jsonl` back to the saved len
 own batch seed (SplitMix64 of the run's `seed`); every episode's seed is still checked against the
 held-out set's. Reproducible from the records, not bitwise equal to an uninterrupted run.
 
+Built in T3b (`checkpoint.pt` format 2; format 1 is refused at a resume, its `best.pt` can seed a
+new run `--init-from`): the gate's state (the promoted entries, the next gate in samples, the
+last gate's update, the last final ladder, `pending`: a gate or ladder that began after the save
+and has no result). A checkpoint is taken before and after each gate and ladder; a pending one
+runs first at the resume, again, the gate on the saved learner, the ladder on the promoted network
+read from `promoted/` (with the ones before it its ladder plays: the networks stay outside the
+checkpoint); a gate or ladder stops at its next batch call on Ctrl+C (`evaluate.Stopped`). A
+replace Windows refuses five times keeps the old file, warns and goes on (`run.atomic_write`).
+
 Still to come:
 
-- **T3:** the gate's state in the checkpoint (the best's promoted index, the promoted list, the
-  next gate in samples, `pending`: a gate began after the save and has no result yet, or a
-  promoted network's ladder has none); a pending gate or ladder runs first at the resume, again,
-  on the saved candidate or promoted network; a gate or ladder stops at its next batch call on
-  Ctrl+C. A replace Windows refuses five times (a ladder holding `best.pt` open) keeps the old
-  file and goes on instead of failing the run (`run.atomic_write` raises today). `--init-from`
-  (§1.3).
 - **T4:** the league replaces the pool: each member's id, kind (snapshot, promoted, later the
   system actor), file (`league/<id>.pt`, outside the checkpoint), birth in samples and its decayed
   score counts (§8); the next snapshot in samples.
@@ -105,11 +105,11 @@ in order: its segments with their seeds, commits, changes, spans, how each ended
 dropped), `python/records/` (README, `check_record` over every committed record in
 `tests/test_run.py`); schema 3 (T2c, C ABI v31): the identity's encodings' and encounter
 distribution's versions and the batch's `entries` (kind, weight, the core, battle and adventure
-rulesets' content hashes). Still to come:
+rulesets' content hashes); schema 4 (T3b): `parent`, the `gate`, `promotion` and `ladder`
+records and the record's `gates`, `promotions`, `ladders`, `best` (the latest promotion), its
+curve per gate interval and `progress.evaluation_minutes` (`python/records/README.md`). Still to
+come:
 
-- **T3:** the record's parent (`--init-from`); `gate`, `promotion`, `ladder` records; every gate
-  (candidate, pairs, LLR, the result), promotion and ladder (§7, with its intervals) in the
-  record; its curve per gate interval.
 - **T4:** the league's live set per update and its member table at the end.
 
 ## 5. The held-out sets — built (T3a)
@@ -139,9 +139,15 @@ Built (`h3env.train.evaluate`, `h3 ai eval --set`, `python -m h3env.train.ladder
   checked against them, a hit stops the run; a run's `seed` among the sets' batch seeds is
   refused, and so is a ladder of a network trained on one.
 
-## 6. The evaluation gate
+## 6. The evaluation gate — built (T3b)
 
-- **When:** every `gate.every` samples (10 M, about 20 minutes at E05's rate), the learner's
+Built as below (`h3env.train.gate`: `Sprt`, `play_gate`, `gate`, `python -m h3env.train.gate`;
+in the run `ppo._go`); the end of a run gates the learner if it trained since its last gate, and
+`gate_every` 0 gates only there. The SPRT's error rates and pair counts were checked by simulation
+(`tests/test_gate.py`: about 590 pairs at either hypothesis, 64 at +100 Elo). The first
+min(500, `max_pairs`) envs of each batch play (a smaller cap needs fewer).
+
+- **When:** every `gate.gate_every` samples (10 M, about 20 minutes at E05's rate), the learner's
   current network is the candidate. The run starts with best #0: the untrained network, or the
   parent's for `--init-from`.
 - **Play:** the gate set's pairs in order; two batches of 500 envs, both seats external (in one
@@ -167,14 +173,18 @@ Built (`h3env.train.evaluate`, `h3 ai eval --set`, `python -m h3env.train.ladder
   that wins the gate but loses ground against the bots is still promoted; the ladder shows it, and
   a guard follows only if it happens.
 
-## 7. The ladder
+## 7. The ladder — built (T3a, T3b)
+
+Built: the report set's ladder (`evaluate.ladder`, `report`; T3a) with network opponents (both
+seats external, `evaluate.duel`; T3b), played in the run for best #0, every promotion and the
+final best (`Trainer.ladder`), each a `ladder` record. Not built: `h3 ai eval --games`.
 
 - **When:** for best #0 at the start, for every promoted network, and at the run's end for the
   final best on the full set. In the run's process, between updates (the GPU is the run's).
 - **Opponents:** Random, Aggressor, Greedy (the engine's seats), E23's policy once its seat
-  exists (T7), and the previous `ladder.promoted` (1) promoted networks of the lineage (both seats
+  exists (T7), and the previous `ladder.ladder_promoted` (1) promoted networks of the lineage (both seats
   external). Earlier ones are compared through the records, not replayed.
-- **Set:** the report set v1, the first `ladder.episodes` (250) per kind for an intermediate
+- **Set:** the report set v1, the first `ladder.ladder_episodes` (250) per kind for an intermediate
   ladder, all 500 at the end and for any claim of a target (built as a tool in T3a:
   `evaluate.ladder`, `report`; T3b plays it inside a run).
 - **Per opponent:** the win rate per (kind, side), per kind and overall with the 95 % intervals
@@ -230,8 +240,9 @@ Prioritized fictitious self-play (AlphaStar's PFSP) over the learner's past, gro
 - **A ladder:** intermediate, 3 bots and 1 promoted × 1 500 games = 6 000 games (3 to 7
   minutes); the final one twice that.
 - At a gate every 10 M samples (about 20 minutes), gates and ladders could take a quarter to a
-  third of a run's time while most gates promote (early). T3b measures it and sets `gate.every`
-  and `ladder.episodes` so evaluation stays under about 20 %.
+  third of a run's time while most gates promote (early). The user's hour with gates
+  (`configs/e06-t3b.toml`, T3b) measures it (the record's `progress.evaluation_minutes`); T4's
+  configs set `gate_every` and `ladder_episodes` from it so evaluation stays under about 20 %.
 
 ## 10. The increments
 
@@ -246,10 +257,12 @@ Each with the user's checkpoint; only the next one refined (Q41's pattern).
   - Moved to T5: the observations written in place. It needs no ABI change: `h3_batch_step`
     takes its buffers per call, so the binding can pass the rollout's row (the read-only
     attributes stay); worth its code only if a profile shows the copy.
-- **Increment 2:** T3a (done 2026-10-20, `E06-log.md`: the held-out sets v1 in Python and
+- **Increment 2** (done 2026-10-20, `E06-log.md`): T3a (the held-out sets v1 in Python and
   `h3 ai eval --set`, the ladder on them, the bots' table, the bots' fallback branches tested),
   T3b (the gate, the promotion, the ladder per promotion, their state in the checkpoint and a
-  pending one at the resume, `--init-from`; an hour on the user's machine with gates).
+  pending one at the resume, `--init-from`; the user one pull request). The hour on the user's
+  machine with gates (`python/configs/e06-t3b.toml`) measures §9's evaluation share; its result
+  sets T4's cadences.
 - **Increment 3:** T4a (the league of §8), T4b (the first multi-hour run, its resume used for
   real).
 - **Increment 4:** T5's experiments, each a recorded run: the entity network against the MLP,

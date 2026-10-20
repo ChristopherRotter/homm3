@@ -75,7 +75,7 @@ def test_the_report_rates_are_stratified_by_kind_and_side() -> None:
 
 
 def test_random_plays_the_report_set_against_a_bot() -> None:
-    def make(seed: int):
+    def make(seed: int, side: str):
         return random_agent(np.random.default_rng(seed))
 
     first = report(make, opponent="aggressor", per_kind=2, max_steps=300)

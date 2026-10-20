@@ -5,7 +5,7 @@ criterion 1): `<run>.json`, a copy of the run directory's final `record.json`
 (`python/runs/<run>/`, git-ignored). Checkpoints and networks stay on the machine that trained
 them.
 
-A record (schema 3, `h3env.train.run.Record`; `docs/epics/E06-design.md` §4):
+A record (schema 4, `h3env.train.run.Record`; `docs/epics/E06-design.md` §4):
 
 - `id`: the run's name (its config's `name`, else its directory's).
 - `identity`: when it started, the commit and whether tracked files differed from it (`dirty`),
@@ -13,16 +13,23 @@ A record (schema 3, `h3env.train.run.Record`; `docs/epics/E06-design.md` §4):
   distribution's version, the batch's `entries` (each one's kind, weight and the content hashes
   of its core, battle and adventure rulesets; schema 3, E06 T2c), the network's parameters,
   torch, CUDA, the device and GPU, the OS, CPU, cores, Python and numpy.
+- `parent` (schema 4, E06 T3b): the network the run started from (`--init-from`: its file, run,
+  promoted index, samples and updates), or null.
 - `config`: every setting, resolved, by table (as the config file groups them).
-- `progress`: samples, updates, episodes, minutes and how it ended (`budget`, `stop`).
+- `progress`: samples, updates, episodes, minutes, the gates' and ladders' minutes
+  (`evaluation_minutes`, their share of the run) and how it ended (`budget`, `stop`).
 - `segments` (schema 2, E06 T2b1): the run's first part and each `--resume`'s, in order: its batch
   seed, when it started, the commit and `dirty`, the device, the config keys it changed, its
   samples, updates and minutes at its start and end, how it ended (`budget`, `stop`, or `lost`: no
   record of its end, a kill or a crash) and its records dropped after its last checkpoint.
-- `curve`: per evaluation interval, the means of its updates' losses, entropy, KL, clip
-  fraction, explained variance, samples per second and training rates.
-- `evaluations`: each evaluation against Random on the held-out set v0 (the sampled policy's
-  rates per side and kind; greedy play's and Random's own), and `best`.
+- `curve`: per gate interval, the means of its updates' losses, entropy, KL, clip fraction,
+  explained variance, samples per second and training rates.
+- `gates` (schema 4): each gate's samples, update, the best it played, its result (`promoted`,
+  `rejected`, `inconclusive`), pairs, the pairs' counts per score, LLR, mean score, Elo, games and
+  seconds; `promotions`: each promoted network's index, how (`start`, `init`, `gate`), samples
+  and update; `ladders`: each ladder's promoted network, whether final, episodes per kind, and per
+  opponent the win rate, its 95 % interval, the value efficiency and each kind's rate; `best`: the
+  latest promotion's index and samples.
 
 `tests/test_run.py` checks every record here against its schema (and every config in
 `python/configs/`). To commit a run's record: copy `runs/<run>/record.json` to
@@ -44,4 +51,6 @@ cargo run --release -p h3-cli -- ai eval --set report-v1 --json python/records/b
 
 ## Lineage
 
-The promoted networks (from E06 T3) and the run that holds the current best. None yet.
+The promoted networks (from E06 T3b: a run's `promoted/<n>.pt`, its record's `promotions`) and
+the run that holds the current best; a run started `--init-from` another's network names it as
+its `parent`. None committed yet.

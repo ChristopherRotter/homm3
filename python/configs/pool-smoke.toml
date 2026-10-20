@@ -12,5 +12,5 @@ pool_share = 0.5
 pool_size = 8
 pool_every = 600_000
 
-[evaluation]
-eval_every = 5_000_000
+[gate]
+gate_every = 5_000_000

@@ -1,17 +1,18 @@
 """The evaluation (E05 T8, `docs/epics/E05-log.md` §8.2; the held-out sets v1, E06 T3a,
-`docs/epics/E06-design.md` §5): the agent against an engine seat (Random or a baseline bot) on
-held-out episodes of the encounter distribution, once as the attacker and once as the defender of
-the same battles.
+`docs/epics/E06-design.md` §5): the agent against an engine seat (Random or a baseline bot) or
+another network on held-out episodes of the encounter distribution, once as the attacker and once
+as the defender of the same battles.
 
 Each side's batch plays the distribution with the agent's seat external and the opponent's
-internal (C ABI v29's seats), from a fixed batch seed; the episodes counted are the first
+internal (C ABI v29's seats), or both external with the two networks acting on their own rows
+(`duel`, E06 T3b), from a fixed batch seed; the episodes counted are the first
 `ceil(episodes / envs)` of each env, so every evaluation plays the same battles however long they
 last. The held-out sets: v0 (E05's, `EVAL_SEED`: 1 000 episodes over 100 envs, the default kinds;
-the trainer's evaluation until T3b's gate), the report set v1 (`report`: per kind with a player on
-both sides, batch seed `REPORT_V1_SEED + k`, the kind one-hot, the first episode of each of 500
-envs; the ladder's and the targets') and the gate set v1 (`GATE_V1_SEED`: 500 envs × 8 episodes of
-the default kinds; T3b's gate). `h3 ai eval --set` plays the bots on the same episodes (its
-constants pinned to these by an `h3-cli` test); its table is `python/records/bots-report-v1.json`
+kept for comparisons), the report set v1 (`report`: per kind with a player on both sides, batch
+seed `REPORT_V1_SEED + k`, the kind one-hot, the first episode of each of 500 envs; the ladder's
+and the targets') and the gate set v1 (`GATE_V1_SEED`: 500 envs × 8 episodes of the default
+kinds; `gate.play_gate`). `h3 ai eval --set` plays the bots on the same episodes (its constants
+pinned to these by an `h3-cli` test); its table is `python/records/bots-report-v1.json`
 (`bots_table`). Every held-out seed (`held_out_seeds`) is checked against training's by the
 trainer. An episode the engine's seat ends before the agent could act is skipped by the batch
 (design §1): it is reported as `skipped`, not counted (none among v0's episodes, E05 T9b).
@@ -22,8 +23,9 @@ from __future__ import annotations
 import json
 import math
 import time
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -78,6 +80,11 @@ OPPONENTS = ("random", "aggressor", "greedy")
 Agent = Callable[[BattleBatch], None]
 
 
+class Stopped(Exception):
+    """A stop requested (Ctrl+C, `run.Stop`) during an evaluation, a gate or a ladder: its games
+    are discarded, it has no result."""
+
+
 def episodes_per_env(episodes: int, envs: int) -> int:
     return math.ceil(episodes / envs)
 
@@ -100,7 +107,7 @@ def gate_seeds() -> set[int]:
     return episode_seeds(GATE_V1_ENVS * GATE_V1_EPISODES, GATE_V1_ENVS, GATE_V1_SEED)
 
 
-def held_out_seeds(episodes: int, envs: int, seed: int = EVAL_SEED) -> set[int]:
+def held_out_seeds(episodes: int = 1000, envs: int = 100, seed: int = EVAL_SEED) -> set[int]:
     """Every held-out episode's seed (design §5): the evaluation's (v0, as `episode_seeds`), the
     report set v1's and the gate set v1's."""
     return episode_seeds(episodes, envs, seed) | report_seeds() | gate_seeds()
@@ -112,6 +119,28 @@ def random_agent(rng: np.random.Generator) -> Agent:
 
     def agent(batch: BattleBatch) -> None:
         batch.random_actions(rng)
+
+    return agent
+
+
+def duel(learner, opponent, side: str, seed: int) -> Agent:
+    """Two networks in one batch whose seats are both external: `learner` acts on the rows where
+    `side` is to move, `opponent` on the others, each sampling from its own generator (seeded
+    `seed` and `seed + 1`, alike for every network: common random numbers)."""
+    import torch
+
+    mine = 0 if side == "attacker" else 1
+    generators = [
+        torch.Generator(device=next(net.parameters()).device).manual_seed(seed + k)
+        for k, net in enumerate((learner, opponent))
+    ]
+
+    def agent(batch: BattleBatch) -> None:
+        to_move = batch.to_move
+        for k, (net, who) in enumerate(((learner, mine), (opponent, 1 - mine))):
+            rows = np.nonzero(to_move == who)[0]
+            if len(rows):
+                _fill(batch, net.act(batch, generators[k], rows=rows), rows)
 
     return agent
 
@@ -129,13 +158,15 @@ def play(
     mana_price: int = 10,
     opponent: str = "random",
     sides: Iterable[str] = ("attacker", "defender"),
+    stop=None,
 ) -> dict:
     """Plays the evaluation's episodes with `agent` on each of `sides` against `opponent` (an
-    engine seat: Random by default, or a baseline bot); returns the rates per side, per kind and,
-    with both sides, overall (both sides weighed equally), the agent's mean reward v1, the
-    truncations and the episodes the batch skipped (ended before the agent could act: counted in
-    no rate)."""
-    if opponent not in OPPONENTS:
+    engine seat: Random by default, or a baseline bot; `external`: both seats external, `agent`
+    plays both, as `duel`'s); returns the rates per side, per kind and, with both sides, overall
+    (both sides weighed equally), the agent's mean reward v1, the truncations and the episodes the
+    batch skipped (ended before the agent could act: counted in no rate). Raises `Stopped` when
+    `stop` (`run.Stop`) was requested before one of its batch calls."""
+    if opponent not in (*OPPONENTS, "external"):
         raise ValueError(f"unknown opponent {opponent!r} (one of {OPPONENTS})")
     k = episodes_per_env(episodes, envs)
     kinds = None if kinds is None else list(kinds)
@@ -166,27 +197,31 @@ def play(
         wins = truncated = 0
         reward = 0.0
         by_kind: dict[str, list[int]] = {}
-        # A generous bound on the calls: Random's battles last under 1 000 decisions (§8.1).
-        for _ in range(k * (max_steps or 10_000) + 1):
-            live = (batch.episode < k) & (batch.to_move >= 0)
-            if not live.any():
-                break
-            before = batch.episode.astype(np.int64)
-            kind = batch.encounter.copy()
-            agent(batch)
-            batch.step()
-            after = np.minimum(batch.episode, k).astype(np.int64)
-            skipped += int((after - np.minimum(before + batch.done, k)).sum())
-            for e in np.nonzero(batch.done.astype(bool) & (before < k))[0]:
-                won = int(batch.result[e]) == winning
-                wins += won
-                truncated += int(batch.truncated[e])
-                reward += float(batch.reward[e, side])
-                counted[e] += 1
-                row = by_kind.setdefault(_ffi.ENCOUNTER_KINDS[int(kind[e])], [0, 0])
-                row[0] += won
-                row[1] += 1
-        batch.close()
+        try:
+            # A generous bound on the calls: Random's battles last under 1 000 decisions (§8.1).
+            for _ in range(k * (max_steps or 10_000) + 1):
+                live = (batch.episode < k) & (batch.to_move >= 0)
+                if not live.any():
+                    break
+                if stop is not None and stop.requested:
+                    raise Stopped
+                before = batch.episode.astype(np.int64)
+                kind = batch.encounter.copy()
+                agent(batch)
+                batch.step()
+                after = np.minimum(batch.episode, k).astype(np.int64)
+                skipped += int((after - np.minimum(before + batch.done, k)).sum())
+                for e in np.nonzero(batch.done.astype(bool) & (before < k))[0]:
+                    won = int(batch.result[e]) == winning
+                    wins += won
+                    truncated += int(batch.truncated[e])
+                    reward += float(batch.reward[e, side])
+                    counted[e] += 1
+                    row = by_kind.setdefault(_ffi.ENCOUNTER_KINDS[int(kind[e])], [0, 0])
+                    row[0] += won
+                    row[1] += 1
+        finally:
+            batch.close()
         played = int(counted.sum())
         report[name] = {
             "episodes": played,
@@ -204,7 +239,7 @@ def play(
 
 
 def report(
-    make_agent: Callable[[int], Agent],
+    make_agent: Callable[[int, str], Agent],
     *,
     opponent: str = "random",
     per_kind: int = REPORT_V1_ENVS,
@@ -213,11 +248,12 @@ def report(
     max_steps: int = 2000,
     currency: str = "ai_value",
     mana_price: int = 10,
+    stop=None,
 ) -> dict:
     """Plays the report set v1 (design §5), its first `per_kind` episodes of each kind, against
-    `opponent`, an agent per (kind, side) from `make_agent(seed)` (its draws seeded alike for every
-    network: common random numbers); returns `stratified`'s rates, per kind each side's `play`
-    report, and the games, skipped episodes, truncations and seconds."""
+    `opponent` (`play`'s), an agent per (kind, side) from `make_agent(seed, side)` (its draws
+    seeded alike for every network: common random numbers); returns `stratified`'s rates, per kind
+    each side's `play` report, and the games, skipped episodes, truncations and seconds."""
     if not 1 <= per_kind <= REPORT_V1_ENVS:
         raise ValueError(f"the report set v1 has 1 to {REPORT_V1_ENVS} episodes per kind")
     start = time.monotonic()
@@ -226,7 +262,7 @@ def report(
         one_hot = [int(i == k) for i in range(len(_ffi.ENCOUNTER_KINDS))]
         by_kind[_ffi.ENCOUNTER_KINDS[k]] = {
             side: play(
-                make_agent(rng_seed + 2 * k + j),
+                make_agent(rng_seed + 2 * (2 * k + j), side),
                 episodes=per_kind,
                 envs=per_kind,
                 threads=threads,
@@ -237,6 +273,7 @@ def report(
                 mana_price=mana_price,
                 opponent=opponent,
                 sides=(side,),
+                stop=stop,
             )[side]
             for j, (side, _) in enumerate(SIDES)
         }
@@ -291,74 +328,44 @@ def bots_table(path: Path = BOTS_TABLE) -> dict:
     return table
 
 
-def evaluate(policy, config, rng_seed: int = 0, baseline: bool = False) -> dict:
-    """The policy's evaluation with `config`'s settings (`ppo.Config`): the sampled policy (exit
-    criterion 7's; its draws from a generator seeded with `rng_seed`, so every evaluation plays
-    alike), greedy (with `config.eval_greedy`) and, with `baseline`, Random's own rates on the
-    same episodes. Greedy play can repeat itself against Random until the step limit (T8b's
-    sandbox run: up to 17 % truncated), hence the sampled policy as the criterion (the user,
-    2026-10-19)."""
-    import torch
-
-    policy.eval()
-
-    def greedy(batch: BattleBatch) -> None:
-        c = policy.act(batch, greedy=True)
-        _fill(batch, c)
-
-    generator = torch.Generator(device=next(policy.parameters()).device).manual_seed(rng_seed)
-
-    def sampled(batch: BattleBatch) -> None:
-        _fill(batch, policy.act(batch, generator=generator))
-
-    settings = dict(
-        episodes=config.eval_episodes,
-        envs=config.eval_envs,
-        threads=config.threads,
-        seed=config.eval_seed,
-        max_steps=config.max_steps,
-        kinds=config.kinds,
-        currency=config.currency,
-        mana_price=config.mana_price,
-    )
-    out = {"sampled": play(sampled, **settings)}
-    if config.eval_greedy:
-        out["greedy"] = play(greedy, **settings)
-    if baseline:
-        out["random"] = play(random_agent(np.random.default_rng(rng_seed)), **settings)
-    policy.train()
-    return out
-
-
-def _fill(batch: BattleBatch, choice) -> None:
+def _fill(batch: BattleBatch, choice, rows: np.ndarray | None = None) -> None:
+    """`choice`'s heads into the batch's actions: every row's, or `rows`' (`choice` theirs)."""
     a = batch.actions
-    a["entry"] = choice.entry
-    a["spell"] = choice.spell
-    a["target"] = choice.target
-    a["second"] = choice.second
+    where = slice(None) if rows is None else rows
+    a["entry"][where] = choice.entry
+    a["spell"][where] = choice.spell
+    a["target"][where] = choice.target
+    a["second"][where] = choice.second
 
 
 def ladder(
     policy,
     *,
     opponents: Iterable[str] = OPPONENTS,
+    networks: Mapping[str, Any] | None = None,
     held_out: str = "report-v1",
     per_kind: int = REPORT_V1_ENVS,
     rng_seed: int = 0,
+    stop=None,
     **settings,
 ) -> dict[str, dict]:
-    """The sampled policy against each engine seat in `opponents` (E05 T7) on a held-out set: the
-    report set v1's first `per_kind` episodes of each kind (`report`; E06 T3a), or v0's episodes
-    `settings` give (as `play`'s): the network's row beside `h3 ai eval`'s table on the same
-    episodes."""
+    """The sampled policy against each engine seat in `opponents` (E05 T7) and each network of
+    `networks` (by name; both seats external, E06 T3b) on a held-out set: the report set v1's first
+    `per_kind` episodes of each kind (`report`; E06 T3a), or v0's episodes `settings` give (as
+    `play`'s; the engine seats only): the network's row beside `h3 ai eval`'s table on the same
+    episodes. Each network's mode is restored after."""
     import torch
 
     if held_out not in SETS:
         raise ValueError(f"unknown held-out set {held_out!r} (one of {SETS})")
-    policy.eval()
+    networks = dict(networks or {})
+    nets = [policy, *networks.values()]
+    modes = [net.training for net in nets]
+    for net in nets:
+        net.eval()
     device = next(policy.parameters()).device
 
-    def sampled(seed: int) -> Agent:
+    def sampled(seed: int, side: str = "attacker") -> Agent:
         generator = torch.Generator(device=device).manual_seed(seed)
 
         def agent(batch: BattleBatch) -> None:
@@ -367,15 +374,53 @@ def ladder(
         return agent
 
     out = {}
-    for opponent in opponents:
-        if held_out == "v0":
-            out[opponent] = play(sampled(rng_seed), opponent=opponent, **settings)
-        else:
-            out[opponent] = report(
-                sampled, opponent=opponent, per_kind=per_kind, rng_seed=rng_seed, **settings
+    try:
+        for opponent in opponents:
+            if held_out == "v0":
+                out[opponent] = play(sampled(rng_seed), opponent=opponent, stop=stop, **settings)
+            else:
+                out[opponent] = report(
+                    sampled,
+                    opponent=opponent,
+                    per_kind=per_kind,
+                    rng_seed=rng_seed,
+                    stop=stop,
+                    **settings,
+                )
+        for name, net in networks.items():
+            if held_out == "v0":
+                raise ValueError("the held-out set v0 has no network opponents")
+            out[name] = report(
+                lambda seed, side, net=net: duel(policy, net, side, seed),
+                opponent="external",
+                per_kind=per_kind,
+                rng_seed=rng_seed,
+                stop=stop,
+                **settings,
             )
-    policy.train()
+    finally:
+        for net, mode in zip(nets, modes, strict=True):
+            net.train(mode)
     return out
+
+
+def compact(row: dict) -> dict:
+    """A report set's row (`report`) as a record keeps it: the rates, each kind's per side, the
+    games, skipped episodes, truncations and seconds."""
+    return {
+        "win_rate": row["win_rate"],
+        "interval": row["interval"],
+        "value": row["value"],
+        "kinds": row["kinds"],
+        "sides": {
+            kind: [sides["attacker"]["win_rate"], sides["defender"]["win_rate"]]
+            for kind, sides in row["by_kind"].items()
+        },
+        "games": row["games"],
+        "skipped": row["skipped"],
+        "truncated": row["truncated"],
+        "seconds": row["seconds"],
+    }
 
 
 def trained_seed(path) -> int:

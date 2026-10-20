@@ -14,6 +14,13 @@ yet and is left out of that update; the sample before it bootstraps from its val
 A run checkpoints its whole training state (`Trainer.state`, design §3.1) at update boundaries and
 continues from it with `resume` in a new segment (§3.3): a fresh batch on the segment's own seed,
 the episodes in flight at the stop discarded.
+
+The gate (E06 T3b, design §6): the run starts with best #0 (the untrained network, or the parent's
+with `--init-from`); every `gate_every` samples, and at the end if it trained since, the learner
+plays the best on the gate set v1 and an SPRT decides (`gate`). A promoted learner becomes
+`promoted/<n>.pt` and `best.pt`, and its ladder plays it against the engine's seats and the
+promoted networks before it on the report set v1 (§7); at the end the final best's on the whole
+set. A gate or ladder that began after the last checkpoint is pending: a resume runs it first.
 """
 
 from __future__ import annotations
@@ -30,11 +37,13 @@ import torch
 from .. import _ffi
 from ..batch import BattleBatch
 from ..seats import SeatBook
-from .evaluate import evaluate, held_out_seeds
+from .evaluate import Stopped, compact, held_out_seeds, ladder, load
+from .gate import Bounds, gate
 from .policy import Choice, Policy
 from .run import (
     Cadence,
     Config,
+    ConfigError,
     HeldOut,
     ResumeError,
     Run,
@@ -48,8 +57,9 @@ from .run import (
     source,
 )
 
-#: The version of `checkpoint.pt`'s layout (`Trainer.state`).
-CHECKPOINT_FORMAT = 1
+#: The version of `checkpoint.pt`'s layout (`Trainer.state`); 2: the gate's state instead of the
+#: evaluations' (T3b).
+CHECKPOINT_FORMAT = 2
 
 
 class Rollout:
@@ -216,9 +226,9 @@ class Trainer:
             mana_price=c.mana_price,
         )
         self.batch.add_encounters(kinds=c.kinds)
-        #: The held-out episodes' seeds (the evaluation's, v0, and the report and gate sets v1):
-        #: every training episode's is checked against them (design §5).
-        self.held_out = HeldOut(held_out_seeds(c.eval_episodes, c.eval_envs, c.eval_seed))
+        #: The held-out episodes' seeds (v0's, the report and gate sets v1's): every training
+        #: episode's is checked against them (design §5).
+        self.held_out = HeldOut(held_out_seeds())
         self.batch.reset()
         self.held_out.check(self.batch.episode_seed)
         self.policy = Policy.for_batch(self.batch, c.hidden, c.embed).to(self.device)
@@ -232,7 +242,6 @@ class Trainer:
         self.samples = 0
         self.updates = 0
         self.episodes = 0
-        self.best = -1.0
         #: The opponent pool (frozen snapshots) and, per env, the side its current episode's
         #: frozen network plays (-1: self-play) and that network.
         self.pool: list[Policy] = []
@@ -240,7 +249,19 @@ class Trainer:
         self.frozen_side = np.full(c.envs, -1, np.int8)
         self.frozen_net: list[Policy | None] = [None] * c.envs
         self.snapshots = Cadence(c.pool_every if c.pool_share > 0 else 0)
-        self.evaluations = Cadence(c.eval_every)
+        self.gates = Cadence(c.gate_every)
+        #: The update of the last gate (-1: none yet).
+        self.last_gate = -1
+        #: The promoted network and update of the last final ladder (none yet).
+        self.last_final: list[int] | None = None
+        #: Each promoted network's entry (index, how, samples, update, minutes), in order.
+        self.promoted: list[dict[str, Any]] = []
+        #: The latest promoted networks (index, frozen network): the best last, before it the
+        #: ones its ladder plays (`ladder_promoted`).
+        self.lineage: list[tuple[int, Policy]] = []
+        #: What runs before the training goes on (design §3): `{"kind": "gate"}` (the learner
+        #: against the best), `{"kind": "ladder", "final": bool}` (the best's), or None.
+        self.pending: dict[str, Any] | None = None
 
     def state(self, **run: Any) -> dict[str, Any]:
         """The whole training state at an update boundary (`checkpoint.pt`, design §3.1), with
@@ -255,9 +276,12 @@ class Trainer:
             "updates": self.updates,
             "samples": self.samples,
             "episodes": self.episodes,
-            "best": self.best,
             "next_snapshot": self.snapshots.next,
-            "next_eval": self.evaluations.next,
+            "next_gate": self.gates.next,
+            "last_gate": self.last_gate,
+            "last_final": self.last_final,
+            "promoted": self.promoted,
+            "pending": self.pending,
             "policy": self.policy.state_dict(),
             "optimizer": self.optimizer.state_dict(),
             "pool": [net.state_dict() for net in self.pool],
@@ -271,16 +295,27 @@ class Trainer:
             **run,
         }
 
-    def restore(self, state: dict[str, Any]) -> None:
-        """Takes a checkpoint's training state over (`state`'s config is this trainer's). The
-        sampling generator's state fits only a device of the same type: resumed on another, the
-        generator starts from the segment's seed instead."""
+    def restore(self, state: dict[str, Any], out: Path | None = None) -> None:
+        """Takes a checkpoint's training state over (`state`'s config is this trainer's), and
+        from the run's directory `out` the latest promoted networks (`promoted/<n>.pt`, outside
+        the checkpoint). The sampling generator's state fits only a device of the same type:
+        resumed on another, the generator starts from the segment's seed instead."""
         c = self.config
         self.policy.load_state_dict(state["policy"])
         self.optimizer.load_state_dict(state["optimizer"])
         self.updates, self.samples = state["updates"], state["samples"]
-        self.episodes, self.best = state["episodes"], state["best"]
-        self.snapshots.next, self.evaluations.next = state["next_snapshot"], state["next_eval"]
+        self.episodes = state["episodes"]
+        self.snapshots.next, self.gates.next = state["next_snapshot"], state["next_gate"]
+        self.last_gate, self.last_final = state["last_gate"], state["last_final"]
+        self.promoted, self.pending = list(state["promoted"]), state["pending"]
+        if out is not None:
+            self.lineage = [
+                (
+                    e["index"],
+                    load(Path(out) / "promoted" / f"{e['index']}.pt", self.device).frozen(),
+                )
+                for e in self.promoted[-(c.ladder_promoted + 1) :]
+            ]
         self.pool = []
         for weights in state["pool"]:
             net = Policy.for_batch(self.batch, c.hidden, c.embed).to(self.device)
@@ -307,6 +342,75 @@ class Trainer:
             else:
                 self.frozen_side[e] = -1
                 self.frozen_net[e] = None
+
+    def init_from(self, path: Path) -> dict[str, Any]:
+        """The learner starts from a saved network (`--init-from`: a run's `best.pt`,
+        `promoted/<n>.pt` or `checkpoint.pt`, of this network's size); returns the parent's entry
+        for the record (its file, run, promoted index, samples and updates)."""
+        saved = torch.load(path, map_location=self.device, weights_only=True)
+        try:
+            self.policy.load_state_dict(saved["policy"])
+        except (KeyError, RuntimeError) as e:
+            raise ConfigError(
+                f"--init-from {path}: not a network of this run's size ({e})"
+            ) from None
+        return {
+            "path": str(path),
+            **{k: saved.get(k) for k in ("run", "index", "samples", "updates")},
+        }
+
+    def promote(self) -> int:
+        """The learner's network becomes the next promoted one and the best (frozen); returns
+        its index. The caller records its entry (`promoted`)."""
+        index = len(self.promoted)
+        keep = self.config.ladder_promoted + 1
+        self.lineage = [*self.lineage, (index, self.policy.frozen())][-keep:]
+        return index
+
+    def gate(self, stop: Stop | None = None) -> dict[str, Any]:
+        """The learner against the best on the gate set v1 (`gate.gate`); raises `Stopped` on a
+        stop."""
+        c = self.config
+        result = gate(
+            self.policy,
+            self.lineage[-1][1],
+            Bounds(c.elo0, c.elo1, c.alpha, c.beta, c.max_pairs),
+            threads=c.threads,
+            max_steps=c.max_steps,
+            currency=c.currency,
+            mana_price=c.mana_price,
+            stop=stop,
+        )
+        self.last_gate = self.updates
+        return {"best": self.lineage[-1][0], **result}
+
+    def ladder(self, final: bool, stop: Stop | None = None) -> dict[str, Any]:
+        """The best's ladder (design §7): against the config's engine seats and the promoted
+        networks before it, on the report set v1's first `ladder_episodes` per kind (the final
+        one: `ladder_final_episodes`); raises `Stopped` on a stop."""
+        c = self.config
+        index, best = self.lineage[-1]
+        per_kind = c.ladder_final_episodes if final else c.ladder_episodes
+        rows = ladder(
+            best,
+            opponents=c.ladder_opponents,
+            networks={f"promoted-{i}": net for i, net in self.lineage[:-1]},
+            per_kind=per_kind,
+            threads=c.threads,
+            max_steps=c.max_steps,
+            currency=c.currency,
+            mana_price=c.mana_price,
+            stop=stop,
+        )
+        if final:
+            self.last_final = [index, self.updates]
+        return {
+            "index": index,
+            "final": final,
+            "per_kind": per_kind,
+            "opponents": {name: compact(row) for name, row in rows.items()},
+            "seconds": sum(row["seconds"] for row in rows.values()),
+        }
 
     def snapshot(self) -> None:
         """Adds the current network to the pool (replacing a random one when it is full)."""
@@ -525,20 +629,29 @@ def train(
     log: Callable[[dict], None] | None = None,
     text: str = "",
     stop: Stop | None = None,
+    init_from: Path | None = None,
 ) -> Trainer:
-    """Trains until `config.samples` (the first update boundary at or past it), with an
-    evaluation every `config.eval_every` samples and at the end. Into `out` when given: the run's
-    directory (`run.Run`: `config.toml` from `text`, `metrics.jsonl`, `record.json`),
-    `checkpoint.pt` (the whole training state: at the start, every `checkpoint_minutes`, after
-    each evaluation, at a stop and at the end) and `best.pt` (the best sampled rate's network).
-    The final evaluation reuses the last one if no update came between. Ctrl+C (or `stop`'s
-    request) stops the run at the next batch call or update boundary, saved (`run.Stop`):
-    `resume` continues it."""
+    """Trains until `config.samples` (the first update boundary at or past it), gating the learner
+    every `config.gate_every` samples and at the end (see the module's documentation). Into `out`
+    when given: the run's directory (`run.Run`: `config.toml` from `text`, `metrics.jsonl`,
+    `record.json`), `checkpoint.pt` (the whole training state: at the start, every
+    `checkpoint_minutes`, before and after each gate and ladder, at a stop and at the end),
+    `promoted/<n>.pt` and `best.pt`. `init_from`: a saved network the learner and best #0 start
+    from (a new run: fresh optimizer, counters and pool), named in the record as its parent.
+    Ctrl+C (or `stop`'s request) stops the run at the next batch call (of a rollout, a gate or a
+    ladder) or update boundary, saved (`run.Stop`): `resume` continues it."""
     config = resolve(config)
     trainer = Trainer(config)
+    parent = None if init_from is None else trainer.init_from(Path(init_from))
     ident = identity(trainer)
     run = Run(out, config, ident, text, log)
-    opening = {"type": "start", "name": run.record.name, "segment": 0, "seed": trainer.batch_seed}
+    opening = {
+        "type": "start",
+        "name": run.record.name,
+        "segment": 0,
+        "seed": trainer.batch_seed,
+        "parent": parent,
+    }
     return _go(trainer, run, stop, {**opening, "identity": ident})
 
 
@@ -551,7 +664,8 @@ def resume(
     """Continues the run in `out` from its checkpoint (design §3.3) in a new segment, to its
     budget: `sets` (`--set table.key=value`) may change only `run.RESUMABLE`'s keys (extend or
     cut the budget, move it to other threads or another device). Its metrics are cut back to the
-    save, its batch starts new episodes on the segment's seed."""
+    save, its batch starts new episodes on the segment's seed; a pending gate or ladder runs
+    first."""
     out = Path(out)
     path = out / "checkpoint.pt"
     if not path.exists():
@@ -559,8 +673,8 @@ def resume(
     state = torch.load(path, map_location="cpu", weights_only=True)
     if state.get("format") != CHECKPOINT_FORMAT:
         raise ResumeError(
-            f"{path} is not a checkpoint of format {CHECKPOINT_FORMAT} (E05's held the network "
-            "and the optimizer only)"
+            f"{path} is not a checkpoint of format {CHECKPOINT_FORMAT} (format 1, before the "
+            "gate, E06 T3b: start a new run, --init-from its best.pt)"
         )
     config, changed = resumed(Config(**state["config"]), sets)
     if state["finished"] and state["samples"] >= config.samples:
@@ -569,7 +683,7 @@ def resume(
             "--set samples=N"
         )
     trainer = Trainer(config, segment=state["segment"] + 1)
-    trainer.restore(state)
+    trainer.restore(state, out)
     trainer.assign(np.arange(config.envs))
     run = Run(out, config, {}, log=log, resume=(state["metrics_length"], state["seconds"]))
     opening = {
@@ -578,6 +692,7 @@ def resume(
         "seed": trainer.batch_seed,
         "dropped": run.dropped,
         "changed": changed,
+        "pending": trainer.pending,
     }
     return _go(trainer, run, stop, {**opening, "identity": identity(trainer)})
 
@@ -586,7 +701,6 @@ def _go(trainer: Trainer, run: Run, stop: Stop | None, opening: dict) -> Trainer
     """The run's loop from its opening record (`start` or `segment`) to its end or a stop."""
     config = trainer.config
     stop = Stop() if stop is None else stop
-    last_record: dict = {}
     last_save = time.monotonic()
 
     def counters() -> dict:
@@ -608,31 +722,44 @@ def _go(trainer: Trainer, run: Run, stop: Stop | None, opening: dict) -> Trainer
             run.write_record()
         last_save = time.monotonic()
 
-    def run_eval(final: bool, baseline: bool = False) -> None:
-        nonlocal last_record
-        t0 = time.perf_counter()
-        result = evaluate(trainer.policy, config, baseline=baseline)
-        rate = result["sampled"]["win_rate"]
-        improved = rate > trainer.best
-        trainer.best = max(trainer.best, rate)
-        last_record = {
-            "type": "eval",
-            "final": final,
-            **counters(),
-            "eval_s": time.perf_counter() - t0,
-            "best": trainer.best,
-            **result,
-        }
-        run.emit(last_record)
-        if run.out is not None and improved:
-            save(run.out / "best.pt", trainer.network(win_rate=rate))
+    def promote(how: str) -> None:
+        """The learner becomes the next promoted network and the best; its ladder is pending."""
+        index = trainer.promote()
+        record = {"type": "promotion", "index": index, "how": how, **counters()}
+        trainer.promoted.append({k: record[k] for k in ("index", "how", "samples", "update")})
+        if run.out is not None:
+            network = trainer.network(
+                index=index, how=how, run=run.record.name, parent=run.record.parent
+            )
+            (run.out / "promoted").mkdir(exist_ok=True)
+            save(run.out / "promoted" / f"{index}.pt", network)
+            save(run.out / "best.pt", network)
+        run.emit(record)
+        trainer.pending = {"kind": "ladder", "final": False}
+
+    def settle() -> None:
+        """Runs what is pending, each saved before it starts and after it ends: a gate (the
+        learner against the best; a promotion adds its ladder), a ladder."""
+        while trainer.pending is not None:
+            checkpoint()
+            if trainer.pending["kind"] == "gate":
+                result = trainer.gate(stop)
+                run.emit({"type": "gate", **counters(), **result})
+                trainer.pending = None
+                if result["result"] == "promoted":
+                    promote("gate")
+            else:
+                result = trainer.ladder(trainer.pending["final"], stop)
+                run.emit({"type": "ladder", **counters(), **result})
+                trainer.pending = None
+        checkpoint()
 
     with stop:
         try:
             run.emit({**opening, **counters()})
-            if opening["type"] == "start" and config.eval_start:
-                run_eval(final=False, baseline=True)
-            checkpoint()
+            if opening["type"] == "start":
+                promote("init" if run.record.parent else "start")
+            settle()
             while trainer.samples < config.samples and not stop.requested:
                 lr = learning_rate(config, trainer.samples)
                 roll = trainer.collect(stop)
@@ -653,21 +780,26 @@ def _go(trainer: Trainer, run: Run, stop: Stop | None, opening: dict) -> Trainer
                 if trainer.snapshots.due(trainer.samples):
                     trainer.snapshot()
                     run.emit({"type": "snapshot", **counters(), "pool": len(trainer.pool)})
-                if trainer.evaluations.due(trainer.samples):
-                    run_eval(final=False)
-                    checkpoint()
+                if trainer.gates.due(trainer.samples):
+                    trainer.pending = {"kind": "gate"}
+                    settle()
                 elif time.monotonic() - last_save >= 60 * config.checkpoint_minutes:
                     checkpoint()
             if stop.requested:
-                run.emit({"type": "stop", **counters()})
-                checkpoint()
-                return trainer
-            if last_record.get("update") == trainer.updates:
-                run.emit({**last_record, "final": True, "repeated": True})
-            else:
-                run_eval(final=True)
+                raise Stopped
+            # The end: a gate if the learner trained since the last, then the best's final ladder.
+            if trainer.last_gate != trainer.updates:
+                trainer.pending = {"kind": "gate"}
+                settle()
+            best = trainer.lineage[-1][0]
+            if config.ladder_final_episodes and trainer.last_final != [best, trainer.updates]:
+                trainer.pending = {"kind": "ladder", "final": True}
+                settle()
             run.emit({"type": "end", "reason": "budget", **counters()})
             checkpoint(finished=True)
+        except Stopped:
+            run.emit({"type": "stop", **counters()})
+            checkpoint()
         finally:
             run.close()
     return trainer

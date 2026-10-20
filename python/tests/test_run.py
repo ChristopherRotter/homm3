@@ -13,7 +13,13 @@ import pytest
 
 from h3env.train import Config
 from h3env.train.__main__ import line, parse
-from h3env.train.evaluate import EVAL_SEED, GATE_V1_SEED, REPORT_V1_SEED, episode_seeds
+from h3env.train.evaluate import (
+    EVAL_SEED,
+    GATE_V1_SEED,
+    HELD_OUT_BATCH_SEEDS,
+    REPORT_V1_SEED,
+    episode_seeds,
+)
 from h3env.train.run import (
     RECORD_SCHEMA,
     RESUMABLE,
@@ -65,14 +71,21 @@ kinds = [0, 0, 1, 0, 0, 0]
 lr = 1e-4
 lr_schedule = "constant"
 """
-    c = load_config(text, ["ppo.gamma=0.99", "device.device=cpu", "evaluation.eval_greedy=false"])
+    sets = [
+        "ppo.gamma=0.99",
+        "device.device=cpu",
+        "gate.elo1=10",
+        'ladder.ladder_opponents=["greedy"]',
+    ]
+    c = load_config(text, sets)
     assert (c.seed, c.samples, c.envs, c.kinds) == (3, 2_000_000, 64, [0, 0, 1, 0, 0, 0])
-    assert (c.lr, c.lr_schedule, c.gamma, c.device, c.eval_greedy) == (
+    assert (c.lr, c.lr_schedule, c.gamma, c.device, c.elo1, c.ladder_opponents) == (
         1e-4,
         "constant",
         0.99,
         "cpu",
-        False,
+        10.0,
+        ["greedy"],
     )
     # Everything else keeps its default; the horizon resolves to the budget at the start.
     assert c.hidden == Config().hidden and c.lr_horizon == 2_000_000
@@ -91,7 +104,15 @@ lr_schedule = "constant"
         ("envs = 8\n", [], "it belongs to \\[env\\]"),
         ("", ["env.envs=many"], "`envs` takes an integer"),
         ("", ["env.envs=8.0"], "`envs` takes an integer"),
-        ("", ["evaluation.eval_start=1"], "`eval_start` takes true or false"),
+        ("", ["gate.max_pairs=1.5"], "`max_pairs` takes an integer"),
+        ("[evaluation]\neval_every = 1\n", [], "unknown table \\[evaluation\\]"),
+        ("", ['ladder.ladder_opponents=["minimax"]'], "distinct names"),
+        ("", ['ladder.ladder_opponents=["random", "random"]'], "distinct names"),
+        ("", ["gate.alpha=0.5"], "`alpha` and `beta` lie in"),
+        ("", ["gate.elo1=0"], "`elo0` below `elo1`"),
+        ("", ["gate.max_pairs=4001"], "`max_pairs` lies in"),
+        ("", ["ladder.ladder_episodes=0"], "`ladder_episodes` lies in"),
+        ("", ["ladder.ladder_final_episodes=501"], "`ladder_episodes` lies in"),
         ("", ["env.kinds=[1, 2]"], "six weights"),
         ("", ["ppo.lr"], "table.key=value"),
         ("seed = [", [], "not TOML"),
@@ -113,8 +134,8 @@ def test_every_key_has_one_table_and_the_record_shows_them() -> None:
     shown = by_table(Config())
     assert shown["seed"] == Config().seed and shown["ppo"]["lr"] == Config().lr
     assert set(shown) == set(TABLES[""]) | {t for t in TABLES if t}
-    # The held-out set v0's seed is E05's (`h3env.train.evaluate.EVAL_SEED`, `h3 ai eval`'s).
-    assert Config().eval_seed == EVAL_SEED
+    # The held-out set v0's seed (E05's, `h3 ai eval --set v0`'s) is refused for training.
+    assert EVAL_SEED in HELD_OUT_BATCH_SEEDS and Config().seed not in HELD_OUT_BATCH_SEEDS
 
 
 def test_the_command_line_reads_the_file_and_the_overrides(tmp_path: Path) -> None:
@@ -130,9 +151,26 @@ def test_the_command_line_reads_the_file_and_the_overrides(tmp_path: Path) -> No
     command = parse(["--resume", str(tmp_path / "r"), "--set", "samples=9000"])
     assert command.resume and command.out == tmp_path / "r" and command.config is None
     assert command.sets == ["samples=9000"]
-    for wrong in (["--config", str(path)], ["--out", str(tmp_path / "s")]):
+    for wrong in (["--config", str(path)], ["--out", str(tmp_path / "s")], ["--init-from", path]):
         with pytest.raises(SystemExit):
-            parse(["--resume", str(tmp_path / "r"), *wrong])
+            parse(["--resume", str(tmp_path / "r"), *map(str, wrong)])
+    # A new run from a parent network (E06 T3b): the file must exist.
+    command = parse(["--out", str(tmp_path / "c"), "--init-from", str(path)])
+    assert command.init_from == path and not command.resume
+    with pytest.raises(SystemExit):
+        parse(["--out", str(tmp_path / "c"), "--init-from", str(tmp_path / "none.pt")])
+
+
+def test_the_gates_promotions_and_ladders_print_one_line_each() -> None:
+    gate, promotion, ladder = _gate(4, 40, "promoted"), _promotion(4, 40, 2), _ladder(4, 40, 2)
+    assert line(gate) == (
+        "gate update    4          40 samples against best #0: promoted after 100 pairs, score "
+        "0.600 (+70 Elo), LLR +3.00 [30 s]"
+    )
+    assert "Elo" not in line({**gate, "elo": None})
+    assert line(promotion) == "promoted #2 (gate) at update 4"
+    assert line(ladder) == "ladder #2 (250 per kind): random 0.800 ± 0.020 [90 s]"
+    assert line({**ladder, "final": True}).startswith("ladder final #2")
 
 
 def test_the_learning_rate_follows_samples() -> None:
@@ -176,6 +214,24 @@ def test_an_atomic_write_replaces_whole_or_not_at_all(tmp_path: Path) -> None:
     assert not list(tmp_path.glob("*.tmp"))
 
 
+def test_a_refused_replace_keeps_the_old_file_and_goes_on(tmp_path: Path, monkeypatch, capsys):
+    # Windows refuses a replace while another process holds the file open (a ladder reading
+    # best.pt): five tries, then the old file stays and the run goes on (design §3).
+    path = tmp_path / "best.pt"
+    atomic_write_text(path, "old")
+    tries = []
+
+    def refused(src, dst) -> None:
+        tries.append(dst)
+        raise PermissionError("in use")
+
+    monkeypatch.setattr("h3env.train.run.os.replace", refused)
+    monkeypatch.setattr("h3env.train.run.time.sleep", lambda s: None)
+    assert atomic_write(path, lambda f: f.write(b"new")) is False
+    assert len(tries) == 5 and path.read_text() == "old" and not list(tmp_path.glob("*.tmp"))
+    assert "best.pt kept" in capsys.readouterr().err
+
+
 def test_a_resume_changes_only_what_leaves_the_training_as_it_is() -> None:
     saved = load_config("samples = 1000\n[ppo]\nlr = 1e-3\n")
     config, changed = resumed(
@@ -207,7 +263,7 @@ def test_each_segment_has_its_own_batch_seed() -> None:
     ]
     seeds = [segment_seed(Config().seed, s) for s in range(50)]
     assert len(set(seeds)) == 50 and all(0 <= s < 2**64 for s in seeds)
-    assert Config().eval_seed not in seeds
+    assert not HELD_OUT_BATCH_SEEDS.intersection(seeds)
 
 
 def test_the_first_ctrl_c_requests_a_stop_and_the_second_raises() -> None:
@@ -281,17 +337,51 @@ def test_the_held_out_check_needs_no_growing_set() -> None:
         held.check([5, next(iter(held.seeds))])
 
 
-def _eval(samples: int, rate: float) -> dict:
-    side = {"win_rate": rate}
+def _gate(update: int, samples: int, result: str, seconds: float = 30.0) -> dict:
     return {
-        "type": "eval",
-        "final": False,
-        "update": samples // 10,
+        "type": "gate",
+        "update": update,
         "samples": samples,
         "episodes": 0,
-        "minutes": 0.0,
-        "sampled": {"win_rate": rate, "attacker": side, "defender": side},
-        "random": {"win_rate": 0.5, "attacker": side, "defender": side},
+        "minutes": update / 10,
+        "best": 0,
+        "result": result,
+        "pairs": 100,
+        "counts": [10, 20, 40, 20, 10],
+        "llr": 3.0 if result == "promoted" else -3.0,
+        "bounds": [-2.94, 2.94],
+        "score": 0.6,
+        "elo": 70.4,
+        "games": 200,
+        "seconds": seconds,
+    }
+
+
+def _promotion(update: int, samples: int, index: int, how: str = "gate") -> dict:
+    return {
+        "type": "promotion",
+        "index": index,
+        "how": how,
+        "update": update,
+        "samples": samples,
+        "episodes": 0,
+        "minutes": update / 10,
+    }
+
+
+def _ladder(update: int, samples: int, index: int, final: bool = False) -> dict:
+    row = {"win_rate": 0.8, "interval": 0.02, "value": 0.2, "kinds": {"hero": 0.8}, "games": 6}
+    return {
+        "type": "ladder",
+        "update": update,
+        "samples": samples,
+        "episodes": 0,
+        "minutes": update / 10,
+        "index": index,
+        "final": final,
+        "per_kind": 500 if final else 250,
+        "opponents": {"random": row},
+        "seconds": 90.0,
     }
 
 
@@ -315,13 +405,16 @@ def test_a_run_writes_its_metrics_and_record(tmp_path: Path) -> None:
     )
     records = [
         {"type": "start", "name": "r", "update": 0, "samples": 0, "episodes": 0, "minutes": 0.0},
-        _eval(0, 0.5),
+        _promotion(0, 0, 0, "start"),
+        _ladder(0, 0, 0),
         _update(1, 10, 1.0),
         _update(2, 20, 3.0),
-        _eval(20, 0.7),
+        _gate(2, 20, "promoted"),
+        _promotion(2, 20, 1),
+        _ladder(2, 20, 1),
         _update(3, 30, 5.0),
-        {**_eval(30, 0.6), "final": True},
-        {**_eval(30, 0.6), "final": True, "repeated": True},
+        _gate(3, 30, "rejected"),
+        _ladder(3, 30, 1, final=True),
         {"type": "end", "reason": "budget", "update": 3, "samples": 30, "minutes": 0.5},
     ]
     for r in records:
@@ -335,20 +428,38 @@ def test_a_run_writes_its_metrics_and_record(tmp_path: Path) -> None:
     record = json.loads((out / "record.json").read_text())
     assert check_record(record) == []
     assert record["id"] == "r" and record["config"]["samples"] == 30
+    # The gates' and ladders' minutes: two gates of 30 s, three ladders of 90 s.
     assert record["progress"] == {
         "samples": 30,
         "updates": 3,
         "episodes": 9,
         "minutes": 0.5,
+        "evaluation_minutes": 5.5,
         "ended": "budget",
     }
-    # One curve point per evaluation interval, the means of its updates (a NaN counts nothing).
+    # One curve point per gate interval, the means of its updates (a NaN counts nothing).
     assert [(p["samples"], p["policy_loss"]) for p in record["curve"]] == [(20, 2.0), (30, 5.0)]
     assert all("explained_variance" not in p for p in record["curve"])
-    # The repeated final evaluation is not a second one.
-    assert [e["samples"] for e in record["evaluations"]] == [0, 20, 30]
-    assert record["evaluations"][0]["random"]["win_rate"] == 0.5
-    assert record["best"] == {"samples": 20, "win_rate": 0.7}
+    assert [(g["samples"], g["result"]) for g in record["gates"]] == [
+        (20, "promoted"),
+        (30, "rejected"),
+    ]
+    assert [(p["index"], p["how"], p["samples"]) for p in record["promotions"]] == [
+        (0, "start", 0),
+        (1, "gate", 20),
+    ]
+    assert [(x["index"], x["final"]) for x in record["ladders"]] == [
+        (0, False),
+        (1, False),
+        (1, True),
+    ]
+    assert record["ladders"][0]["opponents"]["random"] == {
+        "win_rate": 0.8,
+        "interval": 0.02,
+        "value": 0.2,
+        "kinds": {"hero": 0.8},
+    }
+    assert record["best"] == {"index": 1, "samples": 20} and record["parent"] is None
     assert [(s["segment"], s["ended"]) for s in record["segments"]] == [(0, "budget")]
     assert line(records[0]) is None and "budget" in line(records[-1])
     # A new run never appends to another's records.
@@ -370,13 +481,16 @@ def test_check_record_names_what_is_missing() -> None:
             "progress": {},
             "segments": [],
             "curve": [],
-            "evaluations": [{}],
+            "gates": [{}],
+            "promotions": [],
+            "ladders": [{"index": 0}],
         }
     )
     assert "`identity.commit` is missing" in problems and "`id` is empty" in problems
-    assert "`identity.entries` is missing" in problems
-    assert "`segments` is empty" in problems
-    assert "`config.ppo` is missing" in problems and "evaluation 0 lacks" in problems[-1]
+    assert "`identity.entries` is missing" in problems and "`parent` is missing" in problems
+    assert "`segments` is empty" in problems and "`config.gate` is missing" in problems
+    assert "`progress.evaluation_minutes` is missing" in problems
+    assert problems[-2].startswith("gates 0 lacks") and problems[-1].startswith("ladders 0 lacks")
 
 
 def test_every_committed_record_and_config_is_valid() -> None:

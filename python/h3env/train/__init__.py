@@ -1,6 +1,7 @@
 """The training (E05 T8, `docs/epics/E05-log.md` §8; E06, ADR-0026): an own PPO over the batch's
-factorized, conditioned heads, trained by self-play on the encounter distribution v1 and evaluated
-against the engine's Random on held-out episodes (the sampled policy).
+factorized, conditioned heads, trained by self-play on the encounter distribution v1, promoted by
+an SPRT gate against its best and measured by ladders against the engine's bots on held-out
+episodes (the sampled policy).
 
     uv run --group train python -m h3env.train --config configs/pool-smoke.toml --out runs/smoke
 
@@ -17,7 +18,8 @@ from .run import Config
 #: The names this package exports from its torch modules, loaded on first use (PEP 562).
 _LAZY = {
     "EVAL_SEED": "evaluate",
-    "evaluate": "evaluate",
+    "ladder": "evaluate",
+    "gate": "gate",
     "Choice": "policy",
     "Policy": "policy",
     "Rollout": "ppo",
