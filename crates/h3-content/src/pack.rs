@@ -230,6 +230,28 @@ pub struct HeroClassDef {
     pub primary_gain: [[u8; 4]; 2],
     /// Relative weights of the secondary skills offered on level-ups; unlisted skills weigh 0.
     pub skill_weights: Vec<(ContentKey, u8)>,
+    /// The levels after which a level-up offers Wisdom and a magic school if it may (each at
+    /// least 1): `[wisdom, school]` (pack format v44, E08 T26b; HER-LVL-004).
+    pub offer_intervals: [u8; 2],
+}
+
+/// A partial change to a hero class of the overriding pack's closure (pack format v44, E08 T26b:
+/// the Elementalist's intervals, ADV-QUIRK-10).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HeroClassOverride {
+    /// Key of the hero class to change (`pack:name`).
+    pub target: ContentKey,
+    /// The data quirk this override fixes, if it is gated (as [`CreatureOverride::fixes`]).
+    pub fixes: Option<String>,
+    /// The fields to change.
+    pub patch: HeroClassPatch,
+}
+
+/// The changed fields of a [`HeroClassOverride`]. `None` fields stay as they are.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct HeroClassPatch {
+    /// New offer intervals.
+    pub offer_intervals: Option<[u8; 2]>,
 }
 
 /// One stack of a hero type's starting army.
@@ -333,8 +355,9 @@ pub struct ArtifactDef {
     pub parts: Vec<ContentKey>,
 }
 
-/// Hero parameters (Tier 2, E04a T4a): the limits of a hero's details.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Hero parameters (Tier 2, E04a T4a): the limits of a hero's details; since pack format v44
+/// (E08 T26b) the experience of the levels and the skills a level-up offers when due.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HeroParamsDef {
     /// Lowest effective primary skills (attack, defense, power, knowledge); lower totals count
     /// as these (HER-DET-001).
@@ -345,6 +368,16 @@ pub struct HeroParamsDef {
     pub backpack: u16,
     /// The highest spell level a hero may learn without a `learn_level` effect (E08 T19a2b).
     pub learn_level: u8,
+    /// The experience of levels 1 to n (at least two, the first 0, rising strictly); the later
+    /// levels' follow by the original's steps (pack format v44, E08 T26b; HER-EXP-002).
+    pub experience: Vec<u32>,
+    /// The highest level (pack format v44; 74, A-7's fix).
+    pub max_level: u8,
+    /// The skill a level-up offers when the class's Wisdom interval is due (pack format v44).
+    pub wisdom: ContentKey,
+    /// The skills a level-up draws from when the class's school interval is due (pack format
+    /// v44; distinct).
+    pub schools: Vec<ContentKey>,
 }
 
 /// A profile: a named selection of quirk flags (ADR-0007).
@@ -383,6 +416,8 @@ pub struct ContentPack {
     pub heroes: Vec<HeroTypeDef>,
     /// Changes to hero types of the closure (E04b T8e).
     pub hero_overrides: Vec<HeroOverride>,
+    /// Changes to hero classes of the closure (E08 T26b).
+    pub hero_class_overrides: Vec<HeroClassOverride>,
     /// Artifact slots (E04a T3b).
     pub artifact_slots: Vec<ArtifactSlotDef>,
     /// Changes to artifact slots of the closure.
@@ -411,6 +446,7 @@ impl ContentPack {
             hero_classes: Vec::new(),
             heroes: Vec::new(),
             hero_overrides: Vec::new(),
+            hero_class_overrides: Vec::new(),
             artifact_slots: Vec::new(),
             artifact_slot_overrides: Vec::new(),
             artifacts: Vec::new(),

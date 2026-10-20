@@ -50,6 +50,7 @@ fn class(k: &str) -> HeroClassDef {
         primary: [2, 2, 1, 1],
         primary_gain: [[35, 45, 10, 10], [30, 30, 20, 20]],
         skill_weights: vec![(key("t:archery"), 5), (key("t:tactics"), 3)],
+        offer_intervals: [6, 4],
     }
 }
 
@@ -321,12 +322,13 @@ fn every_effect_kind_resolves_and_the_hash_sees_all_content() {
     assert!(SpellGrant::Spell(bolt).gives(&n, bolt));
 
     // Every kind of entry contributes to the hash.
-    let changes: [fn(&mut ContentPack); 7] = [
+    let changes: [fn(&mut ContentPack); 8] = [
         |p| p.spell_schools[0].name = "X".into(),
         |p| p.spells[0].effect[3] = 31,
         |p| p.spells[0].granted_by_name_only = true,
         |p| p.skills[0].levels[0] = vec![HeroEffect::RangedDamage { bp: 999 }],
         |p| p.hero_classes[0].skill_weights[0].1 = 6,
+        |p| p.hero_classes[0].offer_intervals[1] = 3,
         |p| p.heroes[0].army[0].count = [10, 21],
         |p| p.creatures[0].info.upgrades.clear(),
     ];
@@ -705,6 +707,14 @@ fn invalid_entries_are_rejected() {
             ),
         ),
         (
+            |p| p.hero_classes[0].offer_intervals = [6, 0],
+            invalid(
+                "hero class",
+                "t:knight",
+                "offer_intervals must be at least 1",
+            ),
+        ),
+        (
             |p| {
                 p.heroes[0].skills = (0..9).map(|i| (key(&std::format!("t:s{i}")), 1)).collect();
                 for i in 0..9 {
@@ -862,37 +872,65 @@ fn a_later_override_can_invalidate_a_hero() {
     );
 }
 
+/// The original's experience of levels 1 to 12 (`experience_by_level` 0x679C88).
+const EXPERIENCE: [u32; 12] = [
+    0, 1000, 2000, 3200, 4600, 6200, 8000, 10000, 12200, 14700, 17500, 20600,
+];
+
 fn params() -> HeroParamsDef {
     HeroParamsDef {
         primary_min: [0, 0, 1, 1],
         primary_max: 99,
         backpack: 64,
         learn_level: 2,
+        experience: EXPERIENCE.to_vec(),
+        max_level: 74,
+        wisdom: key("t:tactics"),
+        schools: vec![key("t:archery")],
     }
+}
+
+/// The test pack with `def` as its hero parameters.
+fn with_params(def: HeroParamsDef) -> ContentPack {
+    let mut p = pack();
+    p.hero_params = Some(def);
+    p
 }
 
 #[test]
 fn hero_params_are_optional_unique_and_checked() {
     let without = compile(&[pack()]).unwrap();
     assert_eq!(without.hero_params(), None);
-    let mut p = pack();
-    p.hero_params = Some(params());
-    let with = compile(&[p.clone()]).unwrap();
+    let p = with_params(params());
+    let with = compile(std::slice::from_ref(&p)).unwrap();
+    let compiled = with.hero_params().unwrap();
     assert_eq!(
-        with.hero_params(),
-        Some(&HeroParams {
-            primary_min: [0, 0, 1, 1],
-            primary_max: 99,
-            backpack: 64,
-            learn_level: 2,
-        })
+        (
+            compiled.primary_min,
+            compiled.primary_max,
+            compiled.backpack,
+            compiled.learn_level
+        ),
+        ([0, 0, 1, 1], 99, 64, 2)
+    );
+    assert_eq!(compiled.max_level, 74);
+    assert_eq!(compiled.experience.len(), 75);
+    assert_eq!(compiled.experience[..12], EXPERIENCE);
+    assert_eq!(compiled.wisdom, with.skill_by_key("t:tactics").unwrap());
+    assert_eq!(
+        compiled.schools,
+        vec![with.skill_by_key("t:archery").unwrap()]
     );
     // The hash sees presence and every field.
-    let changes: [fn(&mut HeroParamsDef); 4] = [
+    let changes: [fn(&mut HeroParamsDef); 8] = [
         |d| d.primary_min[3] = 2,
         |d| d.primary_max = 98,
         |d| d.backpack = 0,
         |d| d.learn_level = 3,
+        |d| d.experience[11] = 20601,
+        |d| d.max_level = 73,
+        |d| d.wisdom = key("t:archery"),
+        |d| d.schools.clear(),
     ];
     let hash = with.content_hash();
     assert_ne!(without.content_hash(), hash);
@@ -936,6 +974,91 @@ fn hero_params_are_optional_unique_and_checked() {
         compile(&[p, ext]).unwrap_err(),
         CompileError::DuplicateHeroParams("x".into())
     );
+}
+
+#[test]
+fn the_experience_table_continues_with_the_originals_steps() {
+    // HER-EXP-002's vectors (survey `E08-progression.md` §1.1): from level 13 each step is the
+    // previous one + a fifth of it, rounded down.
+    let r = compile(&[with_params(params())]).unwrap();
+    let table = &r.hero_params().unwrap().experience;
+    for (level, threshold) in [
+        (13, 24_320),
+        (14, 28_784),
+        (15, 34_140),
+        (16, 40_567),
+        (20, 81_961),
+        (30, 496_963),
+        (40, 3_066_455),
+        (50, 18_975_933),
+        (60, 117_483_099),
+        (70, 727_413_425),
+        (74, 1_508_362_195),
+        (75, 1_810_034_207),
+    ] {
+        assert_eq!(table[level - 1], threshold, "level {level}");
+    }
+    // The highest level whose bound fits 32 bits is 78 (level 79's threshold 3 753 284 634).
+    let r = compile(&[with_params(HeroParamsDef {
+        max_level: 78,
+        ..params()
+    })])
+    .unwrap();
+    assert_eq!(
+        r.hero_params().unwrap().experience.last(),
+        Some(&3_753_284_634)
+    );
+    // A table as long as max_level + 1 is kept as it is.
+    let r = compile(&[with_params(HeroParamsDef {
+        experience: vec![0, 10],
+        max_level: 1,
+        ..params()
+    })])
+    .unwrap();
+    assert_eq!(r.hero_params().unwrap().experience, vec![0, 10]);
+}
+
+/// A change to the test pack's hero parameters and the error it causes.
+type ParamsCase = (fn(&mut HeroParamsDef), CompileError);
+
+#[test]
+fn the_experience_table_and_the_offered_skills_are_checked() {
+    let rising = CompileError::InvalidHeroParams(
+        "experience must start at 0 and rise strictly over at least two levels",
+    );
+    let cases: Vec<ParamsCase> = vec![
+        (|d| d.experience = vec![0], rising.clone()),
+        (|d| d.experience = vec![5, 10], rising.clone()),
+        (|d| d.experience = vec![0, 10, 10], rising.clone()),
+        (|d| d.experience = vec![0, 10, 5], rising.clone()),
+        (
+            |d| {
+                d.experience = vec![0, 10, 20];
+                d.max_level = 1;
+            },
+            CompileError::InvalidHeroParams("experience must list at most max_level + 1 levels"),
+        ),
+        (
+            |d| d.max_level = 79,
+            CompileError::InvalidHeroParams("experience must fit 32 bits up to max_level + 1"),
+        ),
+        (
+            |d| d.wisdom = key("t:nope"),
+            CompileError::UnknownReference {
+                kind: "secondary skill",
+                key: "t:nope".into(),
+            },
+        ),
+        (
+            |d| d.schools = vec![key("t:archery"), key("t:archery")],
+            CompileError::DuplicateKey("t:archery".into()),
+        ),
+    ];
+    for (change, err) in cases {
+        let mut def = params();
+        change(&mut def);
+        assert_eq!(fails(with_params(def)), err);
+    }
 }
 
 // ---- E04b T8e: data quirks through gated overrides (ADR-0007, amendment E04b T8e) ----
@@ -1110,4 +1233,71 @@ fn gated_and_ungated_overrides_apply_in_load_order() {
         (level(&packs, "t:faithful"), level(&packs, "t:fixed")),
         (6, 5)
     );
+}
+
+// ---- E08 T26b: hero class overrides (the Elementalist's intervals, ADV-QUIRK-10) ----
+
+/// [`data_quirk_packs`] with a class override in `x`, gated by the `levels` data quirk.
+fn class_override_packs() -> [ContentPack; 2] {
+    let [t, mut x] = data_quirk_packs();
+    x.hero_class_overrides.push(crate::HeroClassOverride {
+        target: key("t:knight"),
+        fixes: Some("quirk.content.levels".into()),
+        patch: crate::HeroClassPatch {
+            offer_intervals: Some([3, 3]),
+        },
+    });
+    [t, x]
+}
+
+fn intervals(packs: &[ContentPack], profile: &str) -> [u8; 2] {
+    let r = compile_data(packs, profile).unwrap();
+    r.hero_class(Handle::from_raw(0)).unwrap().offer_intervals
+}
+
+#[test]
+fn a_gated_class_override_applies_only_where_the_profile_fixes_the_quirk() {
+    let packs = class_override_packs();
+    assert_eq!(intervals(&packs, "t:faithful"), [6, 4]);
+    assert_eq!(intervals(&packs, "t:fixed"), [3, 3]);
+    // Ungated, it applies in every profile; a patch without intervals changes nothing.
+    let [t, mut x] = class_override_packs();
+    x.hero_class_overrides[0].fixes = None;
+    assert_eq!(intervals(&[t.clone(), x.clone()], "t:faithful"), [3, 3]);
+    x.hero_class_overrides[0].patch.offer_intervals = None;
+    assert_eq!(intervals(&[t, x], "t:fixed"), [6, 4]);
+}
+
+#[test]
+fn class_overrides_are_checked_in_every_profile() {
+    let cases: Vec<Case> = vec![
+        (
+            |x| x.hero_class_overrides[0].fixes = Some("quirk.battle.x".into()),
+            CompileError::NotADataQuirk("quirk.battle.x".into()),
+        ),
+        (
+            |x| x.hero_class_overrides[0].target = key("t:nobody"),
+            CompileError::UnknownReference {
+                kind: "hero class",
+                key: "t:nobody".into(),
+            },
+        ),
+        // An applied override's intervals are validated with the class.
+        (
+            |x| {
+                x.hero_class_overrides[0].fixes = None;
+                x.hero_class_overrides[0].patch.offer_intervals = Some([0, 3]);
+            },
+            invalid(
+                "hero class",
+                "t:knight",
+                "offer_intervals must be at least 1",
+            ),
+        ),
+    ];
+    for (change, err) in cases {
+        let [t, mut x] = class_override_packs();
+        change(&mut x);
+        assert_eq!(compile_data(&[t, x], "t:faithful").unwrap_err(), err);
+    }
 }
