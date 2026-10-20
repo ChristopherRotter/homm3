@@ -1,4 +1,4 @@
-"""A trained network against the engine's seats (E05 T7, `docs/epics/E05-design.md` §9):
+"""A trained network against the engine's seats (E05 T7, `docs/epics/E05-log.md` §9):
 
     uv run --group train python -m h3env.train.ladder --checkpoint runs/pool/best.pt
 

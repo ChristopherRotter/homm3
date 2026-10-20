@@ -99,7 +99,8 @@ in E05 needs it.
 
 - [x] **T1 Design and ADR draft** — ADR-0025 accepted 2026-10-18 with the user's review (the
   reward without the adventure, no escapes, both sides human: AI-Q2, AI-Q3; (f): the projection is
-  a human player's view); the detail in `E05-design.md`; record in `E05-log.md`.
+  a human player's view); the detail in the design note (`E05-log.md` §1 to §9); record in
+  `E05-log.md`.
 - [x] **T2 Scenarios through the C ABI** — `h3_env_create_scenario` (C ABI v26, 2026-10-18): any
   battle from a scenario's text on the built-in packs, sieges included; tests per place on the
   shipped packs, the C smoke test plays a siege; F-robust-2 closed. Record in `E05-log.md`.

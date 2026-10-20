@@ -1,4 +1,4 @@
-//! The encounter distribution v1 (E05 T5b1, decision 7; `docs/epics/E05-design.md` §4.2 to §4.4):
+//! The encounter distribution v1 (E05 T5b1, decision 7; `docs/epics/E05-log.md` §4.2 to §4.4):
 //! a sampler that turns a seed into a battle as the adventure would bring it, its kind, game
 //! week, place, armies, heroes and town drawn by the census of the shipped maps
 //! (`data/census-v1.toml`) and the stated assumptions A1 to A12 (`data/encounters-v1.toml`).
