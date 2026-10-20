@@ -398,6 +398,18 @@ pixels of the 800 × 600 frame; the battlefield takes its top 800 × 556.
   kills in both), and at 3 966 ms 198 artifact pixels instead of 96: the Angel's shadow drawn
   twice (§7.11's shadow rule) where the box mask covered it. No box masked for its count. The
   other eight sequences as recorded with the strike's end shown at once.
+- **Checked** (M3 T5b-2a; `behind` and `shots` with `boxes = true`): `behind`, run to 4 000 ms
+  after its last action (1 000 before) to the Marksmen's second shot's end and their turn back,
+  matches as before up to 13 544 ms (its boxes unmasked: the Centaurs' 20 → 12 at 11 144, the
+  Pegasi's 10 → 9 at 9 844 and → 8 at 14 268, the engine's kills the original's); its second
+  shot kills one Pegasus in the engine and none in the original, so their box is masked and
+  listed from 15 492 (` n1.0`, 7 against 8). The struck stacks of a shot take layer 5 (§7.10):
+  before, the hit Pegasi's wings lay under the Centaurs beside them (242 to 14 pixels a frame,
+  13 768 to 14 068 and 14 992 to 15 292 ms). Left, listed: the first arrow's steps over the
+  rocks (13 636 to 13 735, §7.11's "A projectile over the obstacles"). `shots` exact in all 139
+  frames with the boxes compared; the Gnolls' box listed from 3 471 to 5 479 ms (` n1.1`: the
+  Cyclops' throw kills 6 in the engine, 7 in the original; the Arch Magi's ray then leaves 19 in
+  both), the Beholders' 2 → 1 → none as in the original.
 - VCMI's `showStackAmountBox` gives the same four positions (its hex centre is the anchor −
   (0, 16)) but leaves out t and counts every stack ahead as taking the hex, war machines included.
 
@@ -1066,7 +1078,9 @@ lets it idle. Read in `Heroes3.exe` for it:
 - **Draw layers in the scene.** Each pose carries its layer, the pass of its position's row that
   draws it (§4.6): the striker 6 in a command's first melee strike, 5 in a later one (the
   retaliation, a second strike); the struck stacks 5 (the harness's reading, §7.9; their writes
-  were not found); a shot's 4 (not observed otherwise). A layer change without a frame of its own
+  were not found), a shot's and a ray's too, the shooter staying in 4 (observed in `behind` and
+  `shots`, M3 T5b-2a: the viewer had kept a shot's target in 4, under the Centaurs beside the
+  hit Pegasi). A layer change without a frame of its own
   (the striker's 6 before the target turns, back to 4 after a strike) shows with the next frame
   that does not draw that stack, or with the first idle step after its command if one comes
   first (*provisional*; T5c, the reviewer: a corpse lay in pass 5 through a player's wait, and a
@@ -1181,6 +1195,16 @@ rectangle and shows only that. Read for the walk-by difference (§7.9); every ad
   `behind`, of which 0.2 % fit it; a misplacement still fails. Since the heroes are drawn (M3
   T3a) the left hero's shadow under a walker's redrawn rectangles shows such artifacts too, five
   shadows deep at most (`turn`, `climb`: black pixels).
+- **A projectile over the obstacles** (M3 T5b-2a; `behind` run on to the Marksmen's shots, not
+  read). In the first shot after the Marksmen's turn the arrow climbs over the rocks (obstacles
+  19 and 20): the rectangles its earlier steps leave show the terrain alone, a hole growing in
+  the rocks along its path (13 636 to 13 735 ms, 1 036 to 1 913 pixels, none an artifact by the
+  rule above), until the strike's first iteration redraws them (13 768). In the second shot,
+  the same path without a turn before it, the rocks stay as the viewer draws them. Each step of
+  `shot_animation` (0x43F2C0) restores what its save-under took from the back buffer; that the
+  turn left the composed background there (the "three pictures" above) is the likely cause, not
+  read.
+  Listed, not classified, not copied.
 
 ### 7.12 The ray (M3 T1b-1)
 

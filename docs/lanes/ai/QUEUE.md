@@ -27,6 +27,18 @@ Sorted by destination at E05's audit (T9a, 2026-10-19); the origin stays in brac
 done: BAT-Q33's point for E05 (AI-Q3, ADR-0025 point 6), the `h3-game` coverage gap of a pending
 Pass offer (fixed by the adventure lane's fixed tests, #266).
 
+- **From the battle lane (2026-10-20, E23 T1a3a's full verify; a failing case on `master`):**
+  `h3_sim::batch::tests::a_batch_is_n_single_envs` fails for the case proptest saved as
+  `cc 83d5f74827e788e3204c331da6a52a58d06c1f6372af40f47cc75742792cdd8c # shrinks to envs = 2,
+  threads = 0, seed = 858137567051331881, max_steps = 3, currency = Gold, mana_price = 12,
+  picks = [(2, 1, 2)], play = 12906565122113746474` (put the line into
+  `crates/h3-sim/proptest-regressions/batch/tests.txt` to replay it; it fails in a plain
+  `cargo test -p h3-sim --lib` too). At call 0, env 1 of the batch reports episode 69 and the
+  single-env reference episode 70 (both done and truncated, different episode seeds). Found on
+  `master` 7ac0b91 (engine code b448743222e1), again on 6f7d6013 (after #293, #294); earlier
+  full runs passed on other random cases. The
+  battle lane's branch is docs only and changed nothing there.
+
 **For E06** (training at scale, evaluation, search; the epic's T2 to T5 take them up):
 - **Evaluation:** greedy play (the most likely heads) repeats itself against Random until the
   step limit (up to 17 % of the battles in T8b's sandbox run); the sampled policy never. E06's

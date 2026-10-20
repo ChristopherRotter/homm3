@@ -4,8 +4,8 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E17 M0–M2 done; M3 T1a–T5b-1 done; H1, H2 done (2026-10-19: the adventure lane's harness); next: M3 T5b-2–T8** (`QUEUE.md`; T9 closes M3). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
-- **Pull request (2026-10-20):** T5b-1 (`client/e17-m3-t5b-1`) open.
+- **E17 M0–M2 done; M3 T1a–T5b-2a done; H1, H2 done (2026-10-19: the adventure lane's harness); next: M3 T5b-2b–T8** (`QUEUE.md`; T9 closes M3). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
+- **Pull request (2026-10-20):** T5b-2a (`client/e17-m3-t5b-2a`) open.
 - **The user's requirements**, epic "Decisions": a string catalogue (JSON packs, no committed translation: CLT-Q7); graphics options (`faithful` the default); exhaustive reference diffs.
 - The lane owns `clients/`, `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
 - **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does.
@@ -45,8 +45,8 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - Never run the original game from the installation: it writes saves, settings and DDrawCompat's log into its folder. Captures run the copy under `original-data/wine/` (`clients/capture/README.md`, its "Traps"); a Wine prefix must sit in a directory the shell's user owns (`/root/...` in a sandbox). Captures never enter git (ADR-0009).
 - The original's memory (`capture/h3mem.py`) holds the frame drawn, the screen the one shown, a step behind after an animation (design §7.1, §7.9): never render memory's poses as the screen. `Combat Speed` (the prefix's registry, 0): reset it after a run at another.
 - No float arithmetic or platform transcendental in the client's drawing and timing, the binary included (`clippy.toml`): f32 behaviour in fixed point (`anim::f32_round`), tangents by series; SDL's floats only at the adapter's edge (coordinates, `audio::gain`).
-- A log line matches the original's only with a fixed damage (Angels, Archangels, Nagas: design
-  §9.6); a box's number is compared only where the counts agree (T5b-1).
+- A log line matches the original's only with a fixed damage (design §9.6); a box's number
+  is compared only where the counts agree (T5b-1).
 - A battle in progress: act as the stack's turn starts (`turn:`, runbook): a click before is lost, one after lets fidgets in.
 - A capture's scenario names both heroes; the set's clock steps ≤ 100 ms; a computer that would
   act first: `hot_seat` (runbook). Timelines' records: army, then war machines (design §7.15).
@@ -54,10 +54,11 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
+- **2026-10-20, E17 M3 T5b-2a (the user's slice of T5b-2: `behind`, `shots`).** Boxes
+  compared, `behind` to 4 000 ms; a shot's struck in layer 5; the first arrow's holes in the
+  rocks listed; T5b-2b queued. The original's rolls varied between runs (runbook "Traps").
 - **2026-10-20, E17 M3 T5b-1 (the user's slice of T5b: `shot`, `melee`).** +0x50 read and
-  built (the count before a strike's kills until its end); `shot` and `melee` (7 000 ms now)
-  compare their boxes; the strike's end shows its pending poses at once; T5b-2 queued.
+  built; `shot` and `melee` (7 000 ms) compare their boxes; a strike's end shows its pending
+  poses at once.
 - **2026-10-20, E17 M3 T5a (the user's slice of T5: boxes whose numbers never change).** +0x30
   read and built; `walk`, `turn`, `climb`, `strike` compare their boxes.
-- **2026-10-19, E17 M3 T4b-2b-2 (the user present; one line in a still).** The sequence
-  `strike`, its log line exact from `log_at`.

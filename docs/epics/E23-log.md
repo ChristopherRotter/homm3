@@ -46,3 +46,25 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   comparison divides only the kept best's value by its turns. Both are the computer's own
   behaviour for E23 to model (T1b's survey decides how); no rule of the engine changes.
 - **Map:** 28 entries (21 new, 7 updated; `ai_walker_target_scan` renamed `ai_danger_scores`).
+
+## T1a3a — the hex scores (2026-10-20, increment 1)
+
+- **The cut** (the user, 2026-10-20): T1a3 had about 10.7 KB left (a sweep of the calls from its
+  roots); the user chose "the hex scores only" over the enemies' reach alone, the scores with the
+  plan, and the plan with the order's sort first. T1a3b (the plan's hexes and the order's sort,
+  about 3.1 KB) and T1a3c (the fallbacks and the ends, about 4 KB) follow.
+- **Read** (`docs/formats/installation.md` §7.36), all in full: the enemies' reach 0x420260 (a
+  shooter only marks the mask; a walker's map with its speed + 1 as range and turn speed; an
+  enemy that can strike any of the side's stacks this turn adds nothing to the scores, else its
+  strike value on the stack at every hex it reaches), the multi-headed branch 0x41FD60 with
+  0x420060 and the pattern 0x448AB0 (Hard and above for a computer side only), the crowding and
+  breath scores 0x41FB60, and the area threat 0x41F920 (the area attackers in the mask and the
+  enemy hero's best of Frost Ring, Fireball, Inferno and Meteor Shower).
+- **Corrected:** §7.35 called 0x41F920 "the enemy hero's spell threat"; it is the area threat
+  (§7.35's step 1 and fallback reworded). Three map names follow the reading:
+  `ai_spell_damage_threat` → `ai_area_threat`, `ai_spell_threat_scores` →
+  `ai_crowding_scores`, `ai_attack_position_value` → `ai_multi_headed_danger`.
+- **Found:** the multi-headed branch never tests its strike value's sign, so with a value below 0
+  the hexes around gain; it alone leaves a human side out. The scores read the enemy hero's
+  available spells and the stops of the enemy's side (hidden from a player).
+- **Map:** 8 entries (4 new: 0x420060, 0x448AB0 and the tables 0x660878, 0x660898; 4 updated).

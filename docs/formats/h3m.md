@@ -172,7 +172,7 @@ content and draws nothing; it rejects what the current increment cannot represen
   disposition code (0 compliant to 4 savage, a row of the monsters' aggression, ADV-MON-002),
   never flees and does not grow; the treasure's resources above 0 in resource order (its text is
   presentation; no shipped map has one below 0). Unsupported: a treasure with an artifact
-  (increment 4, E08 decision 22); `import_map` keeps the monster without it.
+  (the artifacts' increment, E08 decisions 22 and 48); `import_map` keeps the monster without it.
 - **Special grounds** (v6, E08 T20a2a, ADV-GRD-001): 21 → `base:cursed_ground`, 46 →
   `base:magic_plains`, 222–224 and 226–231 → `sod:clover_field`, `sod:cursed_ground`,
   `sod:evil_fog`, `sod:fiery_fields`, `sod:holy_ground`, `sod:lucid_pools`, `sod:magic_clouds`,
