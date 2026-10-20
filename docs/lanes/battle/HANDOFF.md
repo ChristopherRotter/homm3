@@ -45,7 +45,7 @@ Area traps live where they are used: experiments in `docs/experiments/README.md`
 
 ### 2026-10-20 (seventy-sixth) — E23 T1a2, the shooters' rest and the walker's choice
 
-The user confirmed T1a1's cut (T1a2 as queued, over "part S only"; T1b after T1a5). Read (§7.35): part S in full (the area value 0x41EDA0, the area's hexes 0x5A4170 without the side columns, the Cyclops' wall shot 0x41EEA0) and 0x421680 in full (hex scores, the plan per enemy, the draw of 75 to 100 %, the best's keys, the actions) with its helpers by role; 28 map entries. Found: the defender's walls test misreads its records (0x42142F); the best's comparison divides only the kept best by its turns. A fresh agent re-read three readings blind (the pull request has its result).
+The user confirmed T1a1's cut (T1a2 as queued, over "part S only"; T1b after T1a5). Read (§7.35): part S in full (the area value 0x41EDA0, the area's hexes 0x5A4170 without the side columns, the Cyclops' wall shot 0x41EEA0) and 0x421680 in full (hex scores, the plan per enemy, the draw of 75 to 100 %, the best's keys, the actions) with its helpers by role; 28 map entries. Found: the defender's walls test misreads its records (0x42142F); the best's comparison divides only the kept best by its turns. A fresh agent re-read three readings blind and agreed on all three.
 
 ### 2026-10-20 (seventy-fifth) — E23 T1a1, the entries and the map
 
