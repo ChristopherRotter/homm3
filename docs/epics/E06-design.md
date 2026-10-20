@@ -111,8 +111,9 @@ taken at an update boundary only, where no transition is part of a pending updat
 ### 3.2 When, and how
 
 - Every `checkpoint.minutes` (5) of wall time at the next update boundary, before each gate
-  (`pending = true`), after a gate's result, at a requested stop and at the end. At E05's rate an
-  update takes about 4 s on the user's machine, so a crash loses at most about 5 minutes.
+  (`pending = true`), after a gate's result, at a requested stop and at the end. An update took 3
+  to 6 s on the user's machine (E05 T8c, without and with the pool), so a crash loses at most
+  about 5 minutes.
 - **Atomic writes:** into `<file>.tmp` in the same directory, flush, `os.fsync`, close, then
   `os.replace` (atomic on one volume on Linux and Windows). Windows refuses the replace while
   another process holds the target open (a ladder reading `best.pt`): retry five times over a
