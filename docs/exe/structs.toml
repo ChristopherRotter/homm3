@@ -347,6 +347,8 @@ fields = [
   { offset = 0x112, name = "fly_power", type = "i32", summary = "-1 unless flying by a spell; with Angel Wings a guard attacks only at the move's destination (H3API flyPower)", confidence = "inferred", refs = ["rules/surveys/E08-battles.md §2.2"] },
   { offset = 0x12D, name = "worn_artifacts", type = "artifact[19]", summary = "the worn artifacts by slot, 8 bytes each (id, -1 for none; then a subtype, a scroll's spell); 0x4D91F0 walks them", confidence = "read", refs = ["installation.md §7.26"] },
   { offset = 0x476, name = "primary_skills", type = "i8[4]", summary = "Attack, Defense, Spell Power, Knowledge with the worn artifacts' bonuses: equipping adds them, taking off subtracts them (0x4E2A00, 0x4E2BD0; E08 T20a1), unclamped; readers clamp (0x4E5400: 0-99)", confidence = "read", refs = ["rules/surveys/E08-battles.md §3.1", "rules/catalog/heroes.toml HER-ADV-001"] },
+  { offset = 0x47E, name = "ai_spell_power_effectiveness", type = "u32", summary = "H3API's aiSpellPowerEffectiveness: the computer's Wisdom, Eagle Eye, Scholar and Sorcery values scale by it with ai_secondary_skill_value's flag set (0x524690); written after battles (0x4ADCEC) and elsewhere, not read", confidence = "inferred", refs = ["rules/surveys/E08-progression.md §10"] },
+  { offset = 0x486, name = "ai_knowledge_effectiveness", type = "u32", summary = "H3API's aiKnowledgeEffectiveness: the computer's Mysticism and Intelligence values scale by it with ai_secondary_skill_value's flag set (0x524690); written after battles (0x4ADD04) and elsewhere, not read", confidence = "inferred", refs = ["rules/surveys/E08-progression.md §10"] },
 ]
 
 [[struct]]
