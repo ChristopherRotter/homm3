@@ -18,7 +18,11 @@ through typed hero changes, and foresees that increment 4 adds skills, primary s
 (point 2). Other contexts reach the same rules later: map objects and town buildings give
 experience (the levels then follow as after a battle), teach skills (Witch Huts, Scholars,
 Universities: the same learning bound) and primary skills (the same saturation); prisons and
-tavern heroes get levels at load; E10's computer players choose among the same offers.
+tavern heroes get levels at load; E10's computer players choose among the same offers. None of
+them writes a hero: an object or a building only *describes* its effect, a context reads the
+details through `h3-heroes`' derivations and returns typed hero changes in its outcome, and the
+game (the orchestrator) applies them and gives the levels that follow (point 1, ADR-0017
+point 10); the contexts never call each other.
 
 ## Decision
 

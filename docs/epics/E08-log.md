@@ -2998,3 +2998,7 @@ battle lane's E23 T1c merged since T24b1; this change is docs only). Docs only.
   tavern heroes, the computer players' choices), so the draft's context and consequences were
   tightened to say so. Both drafts marked accepted (T26's `shared/` pull request applies them);
   T25 and T26 ready. Applied to #321 before its merge.
+  The user then stated the expectation that experience sources and map objects do not
+  manipulate a hero through its interface but are linked up by the orchestrator, so they do not
+  get entangled: confirmed as the design (ADR-0013 point 1, ADR-0017 point 10: contexts read by
+  reference, return typed hero changes, the game applies them), and said in the draft's context.
