@@ -1,4 +1,4 @@
-"""Each seat's bookkeeping for self-play (E05 T6a, `docs/epics/E05-design.md` §3, §5).
+"""Each seat's bookkeeping for self-play (E05 T6a, `docs/epics/E05-log.md` §3, §5).
 
 In a batch both sides of an env may be the caller's (self-play), and they do not alternate: a
 side may act several times in a row (morale, the wait phase, a stack per turn). A side's

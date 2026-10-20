@@ -1,4 +1,4 @@
-//! The training batch through the C ABI (E05 T3d; ADR-0025, `docs/epics/E05-design.md` §1):
+//! The training batch through the C ABI (E05 T3d; ADR-0025, `docs/epics/E05-log.md` §1):
 //! `h3_batch_*`. A handle owns an [`h3_sim::BattleBatch`]; every call writes into the caller's
 //! arrays (numpy arrays in the Python binding, ADR-0025 point 11): the observations, entry masks
 //! and final observations directly from the batch's workers, the small per-env values converted
@@ -395,7 +395,7 @@ pub unsafe extern "C" fn h3_batch_add_scenario(
     }
 }
 
-/// Adds the encounter distribution v1 (E05 T5b2, `docs/epics/E05-design.md` §4.2) as an episode
+/// Adds the encounter distribution v1 (E05 T5b2, `docs/epics/E05-log.md` §4.2) as an episode
 /// source entry with `weight` (at least 1): each episode's battle and seats are drawn from its
 /// seed (a neutral defender is played inside the call). `kinds` is null for the distribution's
 /// weights (the neutral kinds 0 until E23) or points to six weights in `H3_ENCOUNTER_*` order (a

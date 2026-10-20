@@ -1,4 +1,4 @@
-# The encounter distribution v1 (E05 T5b1; docs/epics/E05-design.md §4.2, the assumptions A1 to
+# The encounter distribution v1 (E05 T5b1; docs/epics/E05-log.md §4.2, the assumptions A1 to
 # A12 in §4.4, decided with the user on 2026-10-19, AI-Q4). The census's numbers come from
 # census-v1.toml (derived from the shipped maps); everything here is a stated assumption where the
 # maps say nothing, each with its row of §4.4. Every number is provisional: the adventure's logged

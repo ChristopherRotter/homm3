@@ -1,5 +1,5 @@
 //! `h3 ai census`: the statistics of a set of maps that the encounter distribution v1 is derived
-//! from (E05 T5a, `docs/epics/E05-design.md` §4.2). It reads each map through `h3-map` (the raw
+//! from (E05 T5a, `docs/epics/E05-log.md` §4.2). It reads each map through `h3-map` (the raw
 //! model and the static layer's import) and adds up **aggregate numbers only** (ADR-0009: counts,
 //! no map content, no per-map rows): the maps' versions and sizes, the tiles by passage, every
 //! battle place (terrain and battlefield) with the open land tiles, the wandering monsters and the
@@ -319,7 +319,7 @@ pub fn to_toml(census: &Census) -> Result<String, String> {
     let body = toml::to_string(census).map_err(|e| e.to_string())?;
     Ok(format!(
         "# The census of the maps the encounter distribution is derived from (E05 T5a,\n\
-         # docs/epics/E05-design.md §4.2), written by `h3 ai census`: aggregate counts only\n\
+         # docs/epics/E05-log.md §4.2), written by `h3 ai census`: aggregate counts only\n\
          # (ADR-0009), no map content. Regenerate it, never edit it by hand.\n\n{body}"
     ))
 }

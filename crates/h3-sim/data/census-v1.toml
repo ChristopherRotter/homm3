@@ -1,5 +1,5 @@
 # The census of the maps the encounter distribution is derived from (E05 T5a,
-# docs/epics/E05-design.md §4.2), written by `h3 ai census`: aggregate counts only
+# docs/epics/E05-log.md §4.2), written by `h3 ai census`: aggregate counts only
 # (ADR-0009), no map content. Regenerate it, never edit it by hand.
 
 [census]

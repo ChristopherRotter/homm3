@@ -1,4 +1,4 @@
-//! Reward v1 (E05 T4; ADR-0025 point 8, `docs/epics/E05-design.md` §3): kill the most, lose the
+//! Reward v1 (E05 T4; ADR-0025 point 8, `docs/epics/E05-log.md` §3): kill the most, lose the
 //! least, spend mana sparingly, in one currency. For side s and its opponent o:
 //!
 //! ```text

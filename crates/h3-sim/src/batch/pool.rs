@@ -1,4 +1,4 @@
-//! The batch's threads (ADR-0025 point 3; `docs/epics/E05-design.md` §1): T std threads, parked
+//! The batch's threads (ADR-0025 point 3; `docs/epics/E05-log.md` §1): T std threads, parked
 //! between calls, each running one contiguous shard of the envs per call; with T = 0 the caller's
 //! thread runs the only shard. Env i is in shard `i * T / N`; T is at most N. What an env does
 //! never depends on the shard it is in: a shard's part of a call touches only its own envs and

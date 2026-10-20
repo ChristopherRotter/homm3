@@ -1,4 +1,4 @@
-//! The baseline bots (E05 T7, ADR-0025 point 5; `docs/epics/E05-design.md` §9): heuristic seats
+//! The baseline bots (E05 T7, ADR-0025 point 5; `docs/epics/E05-log.md` §9): heuristic seats
 //! for the evaluation runner and the agents' ladder, never training opponents (decision 8).
 //!
 //! A bot reads its side's observation (the public stack records), the ruleset's creature data and
