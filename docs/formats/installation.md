@@ -3284,9 +3284,9 @@ its helpers named by role (the rest of part W is T1a3's). Insight only, nothing 
 taking the other only when strictly higher, which also becomes the shot's hex). It collects the
 living stacks within one hex of the hex (0x5A46F0 with radius 1, the hex included; below) and
 sums over them, from the last collected to the first: for a stack of the shooter's own side,
-minus 0x435C70 (§7.31's strike value with the shot flag, both stacks at their whole hit points:
-no turns divisor, no planned damage); for any other stack, plus 0x435CB0 (§7.33's shot value,
-with its divisors). An undead shooter (`0x40000`: the Liches) leaves out an undead stack unless
+minus 0x435C70 (§7.31's strike value with the shot flag from both stacks' whole hit points,
+0x443080 flag 0; no turns divisor); for any other stack, plus 0x435CB0 (§7.33's shot value, with
+its divisors). An undead shooter (`0x40000`: the Liches) leaves out an undead stack unless
 the stack covers the hex itself. The estimate knows nothing of fire immunity (an Efreet beside a
 Magog's target counts as hit) nor of living creatures other than the undead (a Lich's cloud
 counts an elemental or a golem; the rule, BAT-RNG-004, spares both): the computer's estimate,
