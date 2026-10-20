@@ -29,7 +29,10 @@ from pathlib import Path
 import numpy as np
 
 #: The C ABI version this binding speaks (`h3_abi_version()`).
-ABI_VERSION = 30
+ABI_VERSION = 31
+
+#: The most envs a batch holds (`H3_BATCH_MAX_ENVS`, v31): the engine refuses more.
+BATCH_MAX_ENVS = 1 << 16
 
 OK = 0
 ERR_NULL = -1
@@ -143,6 +146,18 @@ class H3Seats(ctypes.Structure):
     _fields_ = [("attacker", c_int32), ("defender", c_int32)]
 
 
+class H3ScenarioInfo(ctypes.Structure):
+    """An episode source entry's engine identity (v31)."""
+
+    _fields_ = [
+        ("ruleset_hash", c_uint64),
+        ("battle_ruleset_hash", c_uint64),
+        ("adventure_ruleset_hash", c_uint64),
+        ("weight", c_uint32),
+        ("encounters", c_uint32),
+    ]
+
+
 class H3BatchBuffers(ctypes.Structure):
     _fields_ = [
         ("obs", c_void_p),
@@ -174,6 +189,9 @@ _SIGNATURES = {
     "h3_spell_count": (c_uint32, []),
     "h3_target_count": (c_uint32, []),
     "h3_observation_len": (c_uint32, []),
+    "h3_observation_encoding_version": (c_uint32, []),
+    "h3_action_encoding_version": (c_uint32, []),
+    "h3_encounters_version": (c_uint32, []),
     "h3_env_create_synthetic": (_env, [c_uint32, c_uint64, c_uint32]),
     "h3_env_create_scenario": (
         _env,
@@ -209,6 +227,8 @@ _SIGNATURES = {
     "h3_batch_second_mask": (c_int32, [_batch, _u32p, _u16p, _u16p, _u8p, c_size_t]),
     "h3_batch_step": (c_int32, [_batch, c_void_p, POINTER(H3BatchBuffers)]),
     "h3_batch_episode_seed": (c_uint64, [c_uint64, c_uint32, c_uint32]),
+    "h3_batch_scenario_count": (c_uint32, [_batch]),
+    "h3_batch_scenario_info": (c_int32, [_batch, c_uint32, POINTER(H3ScenarioInfo)]),
 }
 
 
@@ -287,6 +307,18 @@ def check(code: int, error: ctypes.Array | None = None) -> int:
 def ptr(array: np.ndarray, ctype):
     """`array`'s data as a ctypes pointer to `ctype` (the array must stay alive meanwhile)."""
     return array.ctypes.data_as(POINTER(ctype))
+
+
+def versions() -> dict[str, int]:
+    """The versions a run's record names (v31): the C ABI's, the observation and action
+    encodings' and the encounter distribution's."""
+    h = lib()
+    return {
+        "abi": h.h3_abi_version(),
+        "observation_encoding": h.h3_observation_encoding_version(),
+        "action_encoding": h.h3_action_encoding_version(),
+        "encounters": h.h3_encounters_version(),
+    }
 
 
 def sizes() -> tuple[int, int, int, int]:

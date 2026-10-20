@@ -1,5 +1,5 @@
 //! E05 T3d: the batch through the C ABI against the Rust batch, the shared rulesets, the shipped
-//! packs, and every function's errors.
+//! packs, and every function's errors; E06 T2c: each entry's engine identity.
 
 use std::sync::Arc;
 
@@ -369,6 +369,14 @@ fn errors_are_codes_not_panics() {
         create(&config(0, 0, 1, 0)).unwrap_err(),
         "a batch needs at least one env"
     );
+    // v31: an absurd N is refused, not an abort on its allocation.
+    assert_eq!(
+        create(&config(u32::MAX, 0, 1, 0)).unwrap_err(),
+        format!(
+            "{} envs: a batch holds at most {H3_BATCH_MAX_ENVS}",
+            u32::MAX
+        )
+    );
     let mut odd = config(1, 0, 1, 0);
     odd.reward.currency = 9;
     assert_eq!(create(&odd).unwrap_err(), "unknown currency");
@@ -558,6 +566,61 @@ fn add_encounters_seated(
 
 /// E05 T5b2: the encounter distribution through the C ABI: its kinds in the reports, its
 /// ruleset shared with a scenario on the original packs, its weights and errors.
+/// `h3_batch_scenario_info` of entry `index`, with its code.
+fn info(b: *const H3Batch, index: u32) -> (i32, H3ScenarioInfo) {
+    let mut out = H3ScenarioInfo::default();
+    let code = unsafe { h3_batch_scenario_info(b, index, &mut out) };
+    (code, out)
+}
+
+#[test]
+fn each_entry_names_its_rulesets() {
+    // E06 T2c (v31): a training run's record names the content its batch plays.
+    assert_eq!(h3_encounters_version(), h3_sim::ENCOUNTERS_VERSION);
+    let null: *const H3Batch = std::ptr::null();
+    assert_eq!(unsafe { h3_batch_scenario_count(null) }, 0);
+    assert_eq!(info(null, 0).0, H3_ERR_NULL);
+    let b = create(&config(2, 0, 1, 0)).unwrap();
+    let nowhere = std::ptr::null_mut();
+    assert_eq!(
+        unsafe { h3_batch_scenario_info(b, 0, nowhere) },
+        H3_ERR_NULL
+    );
+    assert_eq!(info(b, 0).0, H3_ERR_ARGUMENT);
+    assert_eq!(add(b, DUEL, 2, EXTERNAL).0, H3_OK);
+    assert_eq!(add(b, TOWN, 1, EXTERNAL).0, H3_OK);
+    assert_eq!(add_encounters(b, 3, None).0, H3_OK);
+    assert_eq!(unsafe { h3_batch_scenario_count(b) }, 3);
+    let infos: Vec<H3ScenarioInfo> = (0..3)
+        .map(|i| {
+            let (code, out) = info(b, i);
+            assert_eq!(code, H3_OK);
+            out
+        })
+        .collect();
+    assert_eq!(info(b, 3).0, H3_ERR_ARGUMENT);
+    let scenarios = unsafe { &*b }.batch.scenarios();
+    for (s, i) in scenarios.iter().zip(&infos) {
+        assert_eq!(i.ruleset_hash, s.ruleset().core_hash());
+        assert_eq!(i.battle_ruleset_hash, s.ruleset().content_hash());
+    }
+    let (duel, town, encounters) = (infos[0], infos[1], infos[2]);
+    assert_eq!(
+        (duel.weight, duel.encounters, duel.adventure_ruleset_hash),
+        (2, 0, 0)
+    );
+    // The town and the encounters run on the original packs' one ruleset, the encounters with
+    // their adventure part too.
+    assert_ne!(duel.battle_ruleset_hash, town.battle_ruleset_hash);
+    assert_eq!(town.battle_ruleset_hash, encounters.battle_ruleset_hash);
+    assert_eq!((town.encounters, town.adventure_ruleset_hash), (0, 0));
+    assert_eq!((encounters.weight, encounters.encounters), (3, 1));
+    let adventure = scenarios[2].sampler().unwrap().adventure().content_hash();
+    assert_eq!(encounters.adventure_ruleset_hash, adventure);
+    assert_ne!(adventure, 0);
+    unsafe { h3_batch_destroy(b) };
+}
+
 #[test]
 fn encounters_are_an_episode_source() {
     let n = 12;

@@ -8,14 +8,10 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 record in `E05-log.md`, the environment as built in `docs/07-simulation-and-ai.md` §1.1).
 
 **E06** (`docs/epics/E06-battle-ai.md`) refined 2026-10-20 (AI-Q8): it starts beside E23, the
-neutral share waits for E23's side without a hero. T1 and T2a done (ADR-0026, design
-`E06-design.md`; one pull request), T2b1 done (the full checkpoint and `--resume`; its pending gate
-and `--init-from` moved to T3b).
-
-1. **E06 T2c C ABI v31** — **Scope:** the epic's T2c (the record's engine identity, N
-   range-checked; `record.json` schema 3). **Acceptance:** the ABI's tests and the C smoke test,
-   `h3env`'s `ABI_VERSION` 31, the full verify. **Depends on:** nothing (independent of T2b1).
-   **Status:** ready.
+neutral share waits for E23's side without a hero. Increment 1 done 2026-10-20: T1 and T2a
+(ADR-0026, design `E06-design.md`), T2b1 (the full checkpoint and `--resume`; its pending gate and
+`--init-from` moved to T3b), T2c (C ABI v31). **Next:** increment 2 (T3a, T3b; design §10), refined
+at the user's checkpoint: no task is ready until then.
 
 ## Inbox
 
@@ -52,9 +48,8 @@ Pass offer (fixed by the adventure lane's fixed tests, #266).
   week" in weeks 9 to 16 is rounded down in `encounters-v1.toml` (odd weeks half a level low);
   untested: A4's cap and redraws in weeks 1 to 6, the forts of weeks 2 to 6, A7's war-machine
   chance and class split, A6's upgraded share, the guards' anti-magic share.
-- **The C ABI** (E05 T9b): `h3_batch_create` takes any N (an absurd one aborts on its
-  allocation, which no `catch_unwind` catches; the binding range-checks it, a trusted local
-  consumer, ADR-0011; E06 T2c); `h3env.tools.Env` keeps its handle after `H3_ERR_PANIC` (tests only).
+- **The C ABI** (E05 T9b): `h3env.tools.Env` keeps its handle after `H3_ERR_PANIC` (tests only;
+  `h3_batch_create`'s unchecked N closed by E06 T2c).
 
 **For E23** (the system actor; the neutral kinds' share): A3 grows a wandering stack by a tenth
 of its count, VCMI 1.7.5's `CGCreature::newTurn` a tenth of its power (a thousand per creature:

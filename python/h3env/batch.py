@@ -251,6 +251,29 @@ class BattleBatch:
         )
         self._check(code, error)
 
+    def entries(self) -> list[dict]:
+        """The episode source entries in the order added, each one's engine identity (v31, E06
+        T2c): `kind` ("scenario" or "encounters"), `weight`, and the content hashes of its core,
+        battle and (for the encounters) adventure rulesets as 16 hex digits (None: no adventure
+        ruleset)."""
+        h, live = self._lib, self._live()
+        out = []
+        for index in range(h.h3_batch_scenario_count(live)):
+            info = _ffi.H3ScenarioInfo()
+            self._check(h.h3_batch_scenario_info(live, index, byref(info)))
+            out.append(
+                {
+                    "kind": "encounters" if info.encounters else "scenario",
+                    "weight": info.weight,
+                    "ruleset_hash": f"{info.ruleset_hash:016x}",
+                    "battle_ruleset_hash": f"{info.battle_ruleset_hash:016x}",
+                    "adventure_ruleset_hash": f"{info.adventure_ruleset_hash:016x}"
+                    if info.encounters
+                    else None,
+                }
+            )
+        return out
+
     # Calls.
 
     def reset(self) -> None:

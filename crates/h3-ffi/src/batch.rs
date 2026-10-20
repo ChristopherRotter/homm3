@@ -3,15 +3,17 @@
 //! arrays (numpy arrays in the Python binding, ADR-0025 point 11): the observations, entry masks
 //! and final observations directly from the batch's workers, the small per-env values converted
 //! from the batch's reports after the call. Since v28 (E05 T5b2) an episode source entry may be
-//! the encounter distribution (`h3_batch_add_encounters`).
+//! the encounter distribution (`h3_batch_add_encounters`); since v31 (E06 T2c) each entry's
+//! engine identity reads back (`h3_batch_scenario_info`) for a training run's record.
 
 use std::ffi::c_char;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
 use h3_sim::batch::episode_seed;
 use h3_sim::{
-    ACTION_COUNT, Action, BatchConfig, BatchError, BattleBatch, Currency, EnvReport,
-    OBSERVATION_LEN, Outputs, Policy, RewardConfig, SPELL_COUNT, Seat, StepError, TARGET_COUNT,
+    ACTION_COUNT, Action, BatchConfig, BatchError, BattleBatch, Currency, ENCOUNTERS_VERSION,
+    EnvReport, MAX_ENVS, OBSERVATION_LEN, Outputs, Policy, RewardConfig, SPELL_COUNT, Seat,
+    StepError, TARGET_COUNT,
 };
 
 use crate::{
@@ -48,6 +50,10 @@ pub const H3_ENCOUNTER_SIEGE_GARRISON: i32 = 4;
 /// A hero attacks a neutral town (its garrison).
 pub const H3_ENCOUNTER_SIEGE_NEUTRAL: i32 = 5;
 
+/// The most envs `h3_batch_create` accepts (`h3_sim::MAX_ENVS`, v31): a larger N is refused with
+/// a message instead of aborting on its allocation.
+pub const H3_BATCH_MAX_ENVS: u32 = MAX_ENVS;
+
 /// `H3RewardConfig.currency`: the creatures' `ai_value`.
 pub const H3_CURRENCY_AI_VALUE: u32 = 0;
 /// `H3RewardConfig.currency`: the creatures' cost in the ruleset's money (gold).
@@ -67,7 +73,7 @@ pub struct H3RewardConfig {
 #[repr(C)]
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct H3BatchConfig {
-    /// The number of envs, N (at least 1).
+    /// The number of envs, N (1 to `H3_BATCH_MAX_ENVS`).
     pub envs: u32,
     /// Worker threads, T (at most N are started); 0 runs every call in the caller's thread.
     pub threads: u32,
@@ -124,6 +130,25 @@ pub struct H3BatchBuffers {
     /// [N]: the current episode's encounter kind (`H3_ENCOUNTER_*`), `H3_ENCOUNTER_NONE` for a
     /// scenario's episode (C ABI v28).
     pub encounter: *mut i8,
+}
+
+/// An episode source entry's engine identity (v31, E06 T2c): what a training run's record names,
+/// so that its results tie to the content they were trained on.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct H3ScenarioInfo {
+    /// The content hash of the core ruleset its battles run on (a replay header's
+    /// `ruleset_hash`).
+    pub ruleset_hash: u64,
+    /// The content hash of the battle ruleset (a replay header's `battle_ruleset_hash`).
+    pub battle_ruleset_hash: u64,
+    /// The content hash of the encounter distribution's adventure ruleset (its random monsters,
+    /// the heroes' derivation); 0 for a scenario.
+    pub adventure_ruleset_hash: u64,
+    /// Its weight among the batch's entries.
+    pub weight: u32,
+    /// 1 for the encounter distribution (`h3_batch_add_encounters`), 0 for a scenario.
+    pub encounters: u32,
 }
 
 /// Opaque batch handle.
@@ -624,6 +649,54 @@ pub unsafe extern "C" fn h3_batch_second_mask(
 #[unsafe(no_mangle)]
 pub extern "C" fn h3_batch_episode_seed(batch_seed: u64, env: u32, episode: u32) -> u64 {
     episode_seed(batch_seed, env, episode)
+}
+
+/// The number of episode source entries the batch holds, in the order added (0 for null; v31).
+///
+/// # Safety
+/// `batch` must be null or a live handle not used concurrently.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn h3_batch_scenario_count(batch: *const H3Batch) -> u32 {
+    // SAFETY: per the contract.
+    unsafe { batch.as_ref() }.map_or(0, |h| h.batch.scenarios().len() as u32)
+}
+
+/// Writes entry `index`'s engine identity (in the order added) into `out` (v31, E06 T2c).
+/// `H3_ERR_NULL` for a null pointer, `H3_ERR_ARGUMENT` for an index past the entries.
+///
+/// # Safety
+/// `batch` must be null or a live handle not used concurrently; `out` must be null or valid for
+/// one write.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn h3_batch_scenario_info(
+    batch: *const H3Batch,
+    index: u32,
+    out: *mut H3ScenarioInfo,
+) -> i32 {
+    // SAFETY: per the contract.
+    let (Some(h), Some(out)) = (unsafe { batch.as_ref() }, unsafe { out.as_mut() }) else {
+        return H3_ERR_NULL;
+    };
+    let Some(scenario) = h.batch.scenarios().get(index as usize) else {
+        return H3_ERR_ARGUMENT;
+    };
+    let ruleset = scenario.ruleset();
+    let sampler = scenario.sampler();
+    *out = H3ScenarioInfo {
+        ruleset_hash: ruleset.core_hash(),
+        battle_ruleset_hash: ruleset.content_hash(),
+        adventure_ruleset_hash: sampler.map_or(0, |s| s.adventure().content_hash()),
+        weight: scenario.weight(),
+        encounters: u32::from(sampler.is_some()),
+    };
+    H3_OK
+}
+
+/// The version of the encounter distribution `h3_batch_add_encounters` plays
+/// (`h3_sim::ENCOUNTERS_VERSION`; v31).
+#[unsafe(no_mangle)]
+pub extern "C" fn h3_encounters_version() -> u32 {
+    ENCOUNTERS_VERSION
 }
 
 #[cfg(test)]

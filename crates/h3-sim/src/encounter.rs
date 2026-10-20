@@ -41,6 +41,10 @@ pub use table::{EncounterTable, KindRow, LEVELS, Place, QUANTILES, Quantiles, WE
 /// The shipped distribution's text (`data/encounters-v1.toml`).
 pub const ENCOUNTERS_V1: &str = include_str!("../data/encounters-v1.toml");
 
+/// The version of the encounter distribution this build plays (its file's
+/// `distribution.version`, on the census it names); a run's record shows it (E06 T2c).
+pub const ENCOUNTERS_VERSION: u32 = 1;
+
 /// The shipped census's text (`data/census-v1.toml`), written by `h3 ai census`.
 pub const CENSUS_V1: &str = include_str!("../data/census-v1.toml");
 

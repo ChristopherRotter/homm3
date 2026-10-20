@@ -96,6 +96,8 @@ pub enum Seat {
 pub enum BatchError {
     /// A batch needs at least one env.
     NoEnvs,
+    /// More envs than [`MAX_ENVS`] (an absurd N would abort on its allocation, E06 T2c).
+    TooManyEnvs(u32),
     /// A scenario's seats are both internal: nobody would act for the caller.
     NoExternalSeat,
     /// A scenario's weight is 0.
@@ -125,6 +127,7 @@ impl std::fmt::Display for BatchError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::NoEnvs => f.write_str("a batch needs at least one env"),
+            Self::TooManyEnvs(n) => write!(f, "{n} envs: a batch holds at most {MAX_ENVS}"),
             Self::NoExternalSeat => f.write_str("a scenario needs an external seat"),
             Self::ZeroWeight => f.write_str("a scenario's weight must be positive"),
             Self::WeightOverflow => f.write_str("the scenarios' weights exceed u32::MAX"),
@@ -349,10 +352,14 @@ pub fn draw_scenario(scenarios: &[Scenario], total: u32, seed: u64) -> usize {
         .unwrap_or(0)
 }
 
+/// The most envs a batch holds: far past the 1 024 that scale best on the user's 24 threads
+/// (E05 T9c), well below what would exhaust a machine's memory at its allocation (E06 T2c).
+pub const MAX_ENVS: u32 = 1 << 16;
+
 /// The settings of a batch.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BatchConfig {
-    /// The number of envs, N.
+    /// The number of envs, N (1 to [`MAX_ENVS`]).
     pub envs: u32,
     /// The number of worker threads, T (at most N are started); 0 runs every call in the
     /// caller's thread.
@@ -468,10 +475,13 @@ impl BattleBatch {
     /// A batch of `config.envs` envs without scenarios; add them, then [`reset`](Self::reset).
     ///
     /// # Errors
-    /// [`BatchError::NoEnvs`], or [`BatchError::Threads`].
+    /// [`BatchError::NoEnvs`], [`BatchError::TooManyEnvs`], or [`BatchError::Threads`].
     pub fn new(config: BatchConfig) -> Result<Self, BatchError> {
         if config.envs == 0 {
             return Err(BatchError::NoEnvs);
+        }
+        if config.envs > MAX_ENVS {
+            return Err(BatchError::TooManyEnvs(config.envs));
         }
         let envs = config.envs as usize;
         let pool = Pool::new((config.threads as usize).min(envs))

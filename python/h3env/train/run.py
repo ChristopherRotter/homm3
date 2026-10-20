@@ -33,8 +33,22 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import IO, Any
 
-#: The version of `record.json`'s layout (`check_record`); 2: its segments (T2b1).
-RECORD_SCHEMA = 2
+#: The version of `record.json`'s layout (`check_record`); 2: its segments (T2b1); 3: the
+#: engine's identity (the encodings' and encounters' versions, the batch's entries, T2c).
+RECORD_SCHEMA = 3
+
+#: The identity's keys a record needs.
+IDENTITY = (
+    "commit",
+    "dirty",
+    "abi",
+    "observation_encoding",
+    "action_encoding",
+    "encounters",
+    "entries",
+    "torch",
+    "device",
+)
 
 
 def _in(table: str) -> dict:
@@ -575,7 +589,7 @@ def check_record(record: Any) -> list[str]:
             problems.append(f"`{key}` is not a {kind.__name__}")
     if problems:
         return problems
-    for key in ("commit", "dirty", "abi", "torch", "device"):
+    for key in IDENTITY:
         if key not in record["identity"]:
             problems.append(f"`identity.{key}` is missing")
     for key in ("seed", "samples", *(t for t in TABLES if t)):

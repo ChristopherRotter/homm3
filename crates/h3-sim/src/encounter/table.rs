@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 
 use serde::Deserialize;
 
-use super::{EncounterError, Kind};
+use super::{ENCOUNTERS_VERSION, EncounterError, Kind};
 
 /// The game weeks the distribution covers (1 to `WEEKS`).
 pub const WEEKS: usize = 16;
@@ -368,7 +368,7 @@ impl EncounterTable {
             toml::from_str(encounters).map_err(|e| EncounterError::Toml(e.message().to_owned()))?;
         let counts: CensusFile =
             toml::from_str(census).map_err(|e| EncounterError::Toml(e.message().to_owned()))?;
-        if file.distribution.id != "encounters" || file.distribution.version != 1 {
+        if file.distribution.id != "encounters" || file.distribution.version != ENCOUNTERS_VERSION {
             return Err(bad("distribution", "not encounters v1"));
         }
         let named = format!("{}-v{}", counts.census.id, counts.census.version);
