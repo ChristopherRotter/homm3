@@ -1447,7 +1447,8 @@ the mouse over time (T6c-2, which also takes the window's mouse).
 - **Found on the way:** at the opening itself the original shows the new cursor where the mouse
   was (its overlay moves at its next frame): the mouse frames start at 100 ms. The software
   cursor's x is even (0x50CE04): a one-pixel shift at odd points (144 pixels a sword, 101 the
-  pointer) until built. Archangels are two hexes wide (the one-hex swords from Arch Devils).
+  pointer); after review the user called it a drawing bug: the client draws the cursor at the
+  mouse, the comparisons round it (`Bugs::Original`). Archangels are two hexes wide (the one-hex swords from Arch Devils).
   `h3lod` counts `Help.txt` one record fewer than `h3-formats` and the executable from the
   Multiplayer Selection group on (NOTES). The parked cursor is the combat cursor's frame 6.
 - **Checked against the original:** the 26 mouse situations' 28 frames exact; the whole set

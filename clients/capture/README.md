@@ -349,7 +349,8 @@ design §7.1.
   nothing), and a line held there less than 3 000 ms keeps hints out (design §9.4, §9.8): the
   frame check lists the item (` log`) where the original's text is not the viewer's.
 - The game draws its cursor at an even x (0x50CE04): at an odd point the canvas is a pixel
-  left of the point less the hot spot (the viewer draws it so, design §9.9).
+  left of the point less the hot spot (a drawing bug: the comparisons draw it so, the client
+  does not; design §9.9).
 - The game's memory can lag the screen by a step as a turn starts (below): the log's text read
   then may be the one before; the frame check lists the item only where its pixels differ too.
 - A hero's reaction may be read a step late at its first frame: one of two runs of `strike`

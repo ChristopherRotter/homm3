@@ -1990,7 +1990,8 @@ heroes' rectangles (0x4626A0, 0x4626D0), the neighbour table (0x4640A0), `battle
 the mouse manager's `SetCursor` (0x50CCA0), its frame drawer (0x50D8B0) and position (0x50CD90,
 its hot spots 0x67FF50), the panel's hints (`SetHints` 0x5FE840 from 0x6A6968 on; `Help.txt`'s
 loader 0x5B98B0). Built: `h3_view::mouse` (`spot`, `neighbour`, `distance`, `Legal`, `Kind`,
-`Hint`, `Pointer`, `pointer`, `slot`, `slots`), `Draw::Cursor`, the marked stack's outline
+`Hint`, `Pointer`, `pointer`, `slot`, `slots`), `Draw::Cursor` (the even x under
+`Bugs::Original` only), the marked stack's outline
 (`Moment::marked`), `ui::Item::hint` and `Dialog::item_at`, the layout's `[mouse]` and
 `outline_mouse`, the keys `battle.hint.*` and `battle.control.*`.
 
@@ -2034,8 +2035,11 @@ loader 0x5B98B0). Built: `h3_view::mouse` (`spot`, `neighbour`, `distance`, `Leg
   animated: not read) and 21 and 22 (frame 5). The types' DEFs (0x67FF38): 0 `crdeflt.DEF`, 1
   `cradvntr.DEF`, 2 `crcombat.DEF`, 3 `crspell.DEF`, 4 `artifact.DEF`. Each type's frame has a hot
   spot (0x67FF50 + (type × 144 + frame) × 8, x then y): the cursor's canvas is drawn with its top
-  left at the mouse less the hot spot, **the mouse's x first rounded down to even** (0x50CE04,
-  from `GetCursorPos`; the game's logic takes the message's x as it is). The frame is drawn by the
+  left at the mouse less the hot spot, the mouse's x first rounded down to even (0x50CE04, from
+  `GetCursorPos`; the game's logic takes the message's x as it is). **That rounding is a drawing
+  bug** (the user, 2026-10-20): the client draws the cursor at the mouse, and only the
+  comparisons with the captures round it (`h3_render::Bugs::Original`, the compositor's; the
+  epic's Decisions). The frame is drawn by the
   plain drawer with runs skipped (0x47BEB0 → 0x47C570, flag 1) into a surface first filled with
   the colour key (the screen's green and blue masks: 0x07FF in 5-6-5), which the screen's cursor
   overlay leaves out.
@@ -2096,6 +2100,6 @@ loader 0x5B98B0). Built: `h3_view::mouse` (`spot`, `neighbour`, `distance`, `Leg
   of reach, a side column), the broken arrow, the query over the acting and another stack (the
   Pikemen's outline and fidget at 100 to 300 ms), both heroes; over the panel Surrender, the
   disabled spell book, Defend and the log; the hints. The even x showed as a one-pixel shift of
-  the cursor at odd points (144 pixels a sword, 101 the pointer) until built. The set's other 31
+  the cursor at odd points (144 pixels a sword, 101 the pointer) until the comparisons drew it. The set's other 31
   situations draw the parked cursor (frame 6 at (618, 593)), their `cursor` masks gone: all 57
   situations' 85 frames exact.

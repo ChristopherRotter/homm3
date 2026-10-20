@@ -286,6 +286,7 @@ mod tests {
                 frame: 6,
                 x: 0,
                 y: 0,
+                hot: [0, 0],
             },
         ];
         let names: Vec<String> = names(&list, &layout).into_iter().collect();

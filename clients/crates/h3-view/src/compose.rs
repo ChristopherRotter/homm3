@@ -255,10 +255,31 @@ pub fn compose(
                 };
                 plain(&mut screen, batch, def, (0, frame), *x, *y, false)?;
             }
-            Draw::Cursor { def, frame, x, y } => {
+            Draw::Cursor {
+                def,
+                frame,
+                x,
+                y,
+                hot,
+            } => {
                 // 0x50D8B0: group 0's frame into the cursor's surface by the plain drawer with runs
-                // skipped (0x47BEB0 → 0x47C570), which the screen's overlay draws over all.
-                plain(&mut screen, batch, def, (0, *frame), *x, *y, false)?;
+                // skipped (0x47BEB0 → 0x47C570), which the screen's overlay draws over all, its
+                // canvas at the mouse less the hot spot. The original's bug: the mouse's x
+                // rounded down to even first (0x50CE04, design §9.9; the user, 2026-10-20: fixed,
+                // reproduced for the comparisons only).
+                let x = match bugs {
+                    Bugs::Original => *x & !1,
+                    Bugs::Fixed => *x,
+                };
+                plain(
+                    &mut screen,
+                    batch,
+                    def,
+                    (0, *frame),
+                    x - hot[0],
+                    *y - hot[1],
+                    false,
+                )?;
             }
             Draw::Text { item, x, y, text } => {
                 // 0x5BC7F0: the item's picture, opaque (0x44FDB0), then its text (0x5BC5F0 →

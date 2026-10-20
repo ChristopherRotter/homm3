@@ -347,25 +347,21 @@ fn over_the_field_the_cursor_follows_the_hex() {
         at(&dead, &[Command::Move { to: 90 }], centre(90)).kind,
         Kind::Move
     );
-    // The cursor's canvas at the mouse less its hot spot.
+    // The cursor at the mouse with its frame's hot spot; none beyond the table.
     assert_eq!(
-        hit.cursor(&l, [300, 200]),
+        hit.cursor(&l, [301, 200]),
         Draw::Cursor {
             def: "CRCOMBAT.DEF".to_string(),
             frame: 8,
-            x: 270,
-            y: 194
+            x: 301,
+            y: 200,
+            hot: [30, 6],
         }
     );
     let beyond = Pointer { frame: 99, ..hit };
     assert!(matches!(
         beyond.cursor(&l, [300, 200]),
-        Draw::Cursor { x: 300, y: 200, .. }
-    ));
-    // The software cursor's x is even (0x50CE04).
-    assert!(matches!(
-        beyond.cursor(&l, [301, 200]),
-        Draw::Cursor { x: 300, y: 200, .. }
+        Draw::Cursor { hot: [0, 0], .. }
     ));
 }
 

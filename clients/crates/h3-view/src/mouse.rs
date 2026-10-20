@@ -291,21 +291,20 @@ pub struct Pointer {
 }
 
 impl Pointer {
-    /// The cursor at `point` (`SetCursor(frame, 2)`, 0x50CCA0): the combat cursor's frame, its
-    /// canvas's corner at the point less the frame's hot spot (0x50CEE0), the point's x first
-    /// rounded down to even (0x50CE04: the software cursor's x is even).
+    /// The cursor at `point` (`SetCursor(frame, 2)`, 0x50CCA0): the combat cursor's frame with
+    /// its hot spot (0x50CEE0; none beyond the table), its canvas's corner the point less it.
     #[must_use]
     pub fn cursor(&self, layout: &BattleLayout, [x, y]: [i32; 2]) -> Draw {
-        let x = x & !1;
-        let hot: [i32; 2] = usize::try_from(self.frame)
+        let hot = usize::try_from(self.frame)
             .ok()
             .and_then(|f| layout.mouse.hot.get(f).copied())
             .unwrap_or_default();
         Draw::Cursor {
             def: layout.mouse.cursor.clone(),
             frame: self.frame,
-            x: x - hot[0],
-            y: y - hot[1],
+            x,
+            y,
+            hot,
         }
     }
 }

@@ -230,16 +230,19 @@ pub enum Draw {
     },
     /// The mouse's cursor, over everything (E17 M3 T6c-1, design §9.9): a frame of its DEF's group
     /// 0, its canvas's corner at the mouse less the frame's hot spot, by the plain drawer with runs
-    /// skipped (0x50D8B0 → 0x47BEB0 → 0x47C570).
+    /// skipped (0x50D8B0 → 0x47BEB0 → 0x47C570). The original's drawing bug, the mouse's x
+    /// rounded down to even first (0x50CE04), is the compositor's (`h3_render::Bugs`).
     Cursor {
         /// The DEF.
         def: String,
         /// The frame in group 0.
         frame: u32,
-        /// The canvas's left edge.
+        /// The mouse's x.
         x: i32,
-        /// The canvas's top edge.
+        /// The mouse's y.
         y: i32,
+        /// The frame's hot spot in its canvas.
+        hot: [i32; 2],
     },
     /// A dialog's text over a picture (`H3DlgTextPcx`; the battle log's item, §9.5; E17 M3
     /// T4b-2b-1, T6a): the item's picture, then the text in its font over it.

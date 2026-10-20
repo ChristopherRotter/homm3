@@ -51,10 +51,10 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
-- **2026-10-20, E17 M3 T6c-1 (the mouse's still; #336 open).** T6c split with the user (the still;
-  over time T6c-2). The mouse read (`screen_to_hex`, `battle_cursor`, the slots, the hints, the
-  cursor's hot spots, its even x); `h3_view::mouse` over the legal commands; 26 mouse situations
-  exact from 100 ms, the set's parked cursor drawn (masks gone).
+- **2026-10-20, E17 M3 T6c-1 (the mouse's still; #336 open).** T6c split with the user (the
+  still; over time T6c-2). The mouse read (`screen_to_hex`, `battle_cursor`, the slots, the
+  hints, the hot spots; the cursor's even x a drawing bug, `Bugs::Original` only, the user);
+  `h3_view::mouse`; 26 mouse situations exact from 100 ms, the parked cursor drawn.
 - **2026-10-20, E17 M3 T6b (panel and log over time; #333).** The log read; the timeline's
   `log`, `battle_log::Log`, `scene::Panels`; the harness keeps panel changes and reads the log:
   the item listed (` log`) where the original shows a hint (T6c) or a rolled line.

@@ -61,7 +61,8 @@ viewer and playable clients. Everything with graphics, sound, input or a window 
   long word's break) is fixed in what the client draws; the comparisons with the original's
   captures (the capture set, the frame check) draw it as the original does, so that they stay
   exact. A development switch (`h3_render::Bugs`), neither a player's option nor a quirk
-  profile. Goes into the ADR-0020 point 9 amendment draft.
+  profile. Goes into the ADR-0020 point 9 amendment draft. The second (2026-10-20, M3 T6c-1):
+  the software cursor drawn at an even x (0x50CE04, design §9.9).
 - **The natural obstacles' types first** (2026-10-13, CLT-Q3): the engine dropped them at
   generation; a `cross-lane` change carries them to the wire before T7 draws obstacles.
 
@@ -368,7 +369,8 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
 - **T6c-1 done 2026-10-20** ([log](E17-log.md#m3-t6c-1--the-mouses-still-2026-10-20),
   [design §9.9](E17-design.md)): T6c split with the user (the still T6c-1, over time T6c-2). The
   battle's mouse read (where it is, the cursor's kind and frame, the attack's twelve slots, the
-  hints over the field and the panel, the software cursor's hot spots and even x) and built as
+  hints over the field and the panel, the software cursor's hot spots; its even x a drawing bug
+  reproduced for the comparisons only, the user) and built as
   `h3_view::mouse` over the legal commands; stills draw the cursor, the hint and the marked
   stack's outline. 26 mouse situations exact from 100 ms; the set's parked cursor drawn, its
   masks gone: 57 situations, 85 frames exact.
