@@ -78,6 +78,26 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 **Options:** (a) keep BAT-WAR-003 (the wiki, VCMI); (b) follow the reading (the most hit points lost; an idle machine defends); (c) (b) after a batch row confirms it. **Recommendation:** (c): one row with an automatic tent and two wounded stacks settles it. **Blocked:** nothing.
 
+#### BAT-Q55 — E23's seam: the policy crate, and the original's slips (E23 T1b; the user's review)
+
+**Context.** T1b wrote the survey (`docs/rules/surveys/E23-battle-ai.md`) and the ADR draft
+(`docs/lanes/battle/adr-drafts/original-battle-ai.md`); the epic stops here for the user's review
+(BAT-Q52). The draft's main points: `h3-battle-ai` as an **application-layer** logic crate (a
+domain crate may not depend on `h3-battle`); `choose(&BattleState, &BattleRuleset, BattleSide,
+&mut Rng) -> Command`, one command per call, validated with a Defend fallback that a property
+test keeps from firing; the whole state read, draws from the caller's stream; `h3-battle` exposes
+its computer's numbers (`aim.rs`, the pathfinder) as a public `computer` module, one
+implementation; a move carries a destination only (T1c's paths); rule ids `BAT-AI-nnn`; the cost
+budget set at T2's checkpoint from a gated benchmark (provisional 1 ms per decision); a
+`POLICY_VERSION`; the spells' AI values harvested into the battle pack before T3. **One call
+for the user:** the original's slips in its own estimates (the survey's §4: the walls test's
+wrong records, Magic Mirror's doubled chance, Paralyze reading Blind's record, …) decide only the
+computer's choices. **Options:** (a) port them as read, each named in its rule, no quirk flags;
+(b) quirk flags (fix-optional) per slip; (c) fix them. **Recommendation:** (a): they are the
+original's computer, and the ledger is for the game's rules. Also for review: the survey's
+batch rows (4a for the neutral side with T2 to T4, 4b for the hero's with T5 and T6). **Blocked:**
+T2 (the crate's registration and the shooters) waits for the review.
+
 ### Adventure lane (`ADV-Q<n>`)
 
 (no open questions)
