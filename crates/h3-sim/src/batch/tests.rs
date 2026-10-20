@@ -188,7 +188,7 @@ impl<'a> Reference<'a> {
     }
 
     fn begin(&self, single: &mut Single) {
-        for _ in 0..=MAX_SKIPPED_EPISODES {
+        for _ in 0..MAX_SKIPPED_EPISODES {
             single.seed = episode_seed(self.config.seed, single.index, single.started);
             single.started += 1;
             single.scenario = draw_scenario(self.scenarios, self.total, single.seed);

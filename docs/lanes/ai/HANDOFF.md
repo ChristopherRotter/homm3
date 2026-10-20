@@ -82,8 +82,10 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   neutral share later, PPO and a league with search last, fixed targets, and runs of a few hours
   that can be interrupted and resumed (the user's addition); the other proposals stand.
 - Wrote `docs/epics/E06-battle-ai.md` (decisions 1 to 12, increments T1 to T9, exit criteria),
-  AI-Q8 answered, AI-Q7's plan (T5), T1 queued. Open: #296 (`shared/e06-refined`: BACKLOG's
-  E06 row, docs/07 §7; merges first) and #297 (this lane's).
+  AI-Q8 answered, AI-Q7's plan (T5), T1 queued; #296 (`shared/`) and #297 merged.
+- Fixed `master`'s red case of `a_batch_is_n_single_envs` (the battle lane's note): T9b cut the
+  skip loop to 64 episodes, the test's reference still tried 65; the case kept in
+  `proptest-regressions/`.
 
 ### 2026-10-20 — T9c and T9d, the closure
 

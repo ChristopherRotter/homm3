@@ -1,10 +1,10 @@
 # E08 progression survey (E08 T24a): experience, levels, level-ups
 
 Date: 2026-10-20. Scope: E08 increment 4 (decision 48: hero progression only), input for T24b's
-ADR drafts and the cut. Written in two parts (decision 51): **T24a1** (this session) §1
-experience to levels and §2 the level-up, from the code and VCMI; **T24a2** the rest (§3 levels
-at load, §4 what follows the level, the wiki on every section, §5's further disputes, §6 the
-census, §7 the batch's plan, the proposed rule ids, a fresh agent's second reading, the
+ADR drafts and the cut. Written in parts (decisions 51, 52): **T24a1** §1 experience to levels
+and §2 the level-up, from the code and VCMI; **T24a2a** §3 levels at load and §4 what follows the
+level, the same way; **T24a2b** the rest (the wiki on every section, §5's further disputes, §6
+the census, §7 the batch's plan, the proposed rule ids, a fresh agent's second reading, the
 questions for the user's checkpoint). Input, not rules (`README.md`).
 
 **Sources** (retrieved 2026-10-20):
@@ -24,11 +24,15 @@ questions for the user's checkpoint). Input, not rules (`README.md`).
   `rollSecondarySkillForLevelup`, `rollSecondarySkills`), `server/CGameHandler.cpp`
   (`levelUpHero`, `giveExperience`), `lib/mapping/MapFormatH3M.cpp` (the level limit); links
   `https://github.com/vcmi/vcmi/blob/1.7.5/<file>`.
-- `wiki`: not read in T24a1 (T24a2, with the user's approval).
+  T24a2a follows the new game's setup of the map's placed heroes (`placed_heroes_setup`
+  0x4CAE10, `placed_hero_setup` 0x4D8B30) and the battle's end into the levels (`battle_end`
+  0x477470, `adventure_battle` 0x4AD470); H3API's names for the game's `heroSetup` and
+  `campaignInfo` decide which setup is which (§3.1).
+- `wiki`: not read in T24a1 and T24a2a (T24a2b, with the user's approval).
 - `computed`: the tables and the worked level-up below come from a throwaway script that
   follows the reading (not committed); test vectors to confirm, not facts.
 
-## 0. Findings in short (T24a1)
+## 0. Findings in short
 
 - **Experience to levels** (§1): levels 1 to 12 from the table (0 to 20 600), beyond it each step
   is the previous one × 1.2, truncated (24 320, 28 784, 34 140, …); VCMI's table is the same
@@ -56,6 +60,22 @@ questions for the user's checkpoint). Input, not rules (`README.md`).
   level is drawn (left: the first offer, right: the second; one offer is learned without a
   choice). A computer player's hero, and **any hero while the new game's setup runs**, never
   asks: 0x52BBD0 chooses (the lead for §3's levels at load).
+
+- **Levels at load** (§3, T24a2a): a placed hero with a custom experience is set up from its
+  record in the game's `heroSetup` (0x4D8B30): its custom skills, army, spells and artifacts
+  first, then the experience is gained from 0 with the levels given, during the new game's
+  setup, so **the computer's evaluation chooses every offer** (VCMI takes the first, D-20) and
+  the scenario's level limit caps it (VCMI ignores the limit at load, D-21). Batch E3c's E3-6 is
+  consistent with it: one seed byte of 255 (75) gives its primary gains and offers that allow
+  its advances. **The function earlier E08 work read as the placed hero's setup,
+  `map_hero_setup` 0x486590, sets up a campaign's carried-over hero** (H3API's
+  `keepExperience` to `keepArtifacts`): the rules that cite it hold on the real path, their
+  citations are stale (QUEUE inbox).
+- **What follows the level** (§4): the battle's experience reaches the levels at once for a
+  winner not played at this computer, and after the battle's screen for one played here
+  (0x4AE324, 0x4AE42C); the engine's rules that read the level (`h3-heroes`' specialties, the
+  spell points) need no change but the level's source; VCMI shows another player's hero
+  without its level.
 
 ## 1. Experience to levels
 
@@ -284,10 +304,9 @@ Quirk candidates (for the user to classify; §6's census sizes A-7, A-8):
 ### 2.8 Leads for T24a2
 
 - §3: during the new game's setup every level-up takes the computer's path (§2.5), with 0x52BBD0's
-  argument clear; the counters are 0 there, so a hero placed at a level L gets Wisdom or a school
-  forced at its first level-ups unless offered during the load. Find where the setup gives a map
-  hero its levels (`map_hero_setup` 0x486590 copies the experience and the level only) and
-  compare batch E3c's E3-6 with the two offers each level would make.
+  argument clear; the counters are 0 there. Find where the setup gives a map hero its levels and
+  compare batch E3c's E3-6 with the two offers each level would make. *(Done in §3: the
+  function named here, 0x486590, turned out to be a campaign's carried-over hero's setup.)*
 - §7: the harness can read a hero's seed byte (+0x8F) and counters from memory: the primary skill
   and both offers of every level then follow from §2.2–§2.4, a strong test of the whole draw
   (the worked example above is a first vector).
@@ -295,9 +314,144 @@ Quirk candidates (for the user to classify; §6's census sizes A-7, A-8):
   5), the computer's two value functions (E10), a campaign case that gives a hero experience
   during the new game's setup (the call at 0x4C004D in `new_game_heroes`).
 
-## 3. Levels at load *(T24a2)*
+## 3. Levels at load (T24a2a)
 
-## 4. What follows the level *(T24a2)*
+### 3.1 Which setup is the placed hero's
+
+`new_game_heroes` (0x4BFE70) first gives all 156 hero records their defaults (the experience
+40–90, the starting army, the movement points, the seed byte S, the counters at 0: §2.2), then
+calls two setups (0x4C0037, 0x4C0042):
+
+- **`placed_heroes_setup`** (0x4CAE10): for each hero type, its record of 0x334 bytes in the
+  game's array at +0xA4 (H3API's `heroSetup`, `H3SetupHero[156]`, "to read data from h3m file";
+  `structs.toml` `hero_setup`), `placed_hero_setup` (0x4D8B30) sets the hero up from it; a
+  record with a position (+0x301 not negative) is the map's placed hero: it joins its owner's
+  heroes and the map is revealed around it (0x4CAF74). The record holds the placed hero's body of
+  the map file in its order: owner, type, name, custom experience (+0x1A, +0x1C), portrait,
+  custom secondary skills (+0x22), army (+0x38), artifacts (+0x67), patrol, biography, spells
+  (+0x31C), custom primary skills (+0x32C).
+- **`carried_heroes_setup`** (0x487290, earlier `map_heroes_setup`), only when
+  `new_game_heroes` has its third argument (one of its two callers passes one; not read
+  further): it walks the game's `campaignInfo` (+0x1F458) `crossoverHeroes`
+  (+0x3C) and calls **`carried_hero_setup`** (0x486590, earlier `map_hero_setup`) per carried
+  hero, which tests the scenario header's five flags at +0x44 to +0x48 (H3API's
+  `keepExperience`, `keepPrimarySkills`, `keepSecondarySkills`, `keepSpells`, `keepArtifacts`;
+  VCMI's `whatHeroKeeps` in the same order): with the first set it copies the experience and the
+  level from the earlier scenario's hero (0x486624).
+
+So the reading E08 T6b to T22b made of 0x486590 as "the placed hero's setup" was the campaign's.
+What those tasks concluded holds on the real path, which does the same where they looked: the
+starting army is drawn for every hero first (`new_game_heroes` 0x4BFEA6) and a custom army
+replaces it (0x4D8C6B, GAM-SET-001); 0x4CAE10 reveals around a placed hero (ADV-FOG-003); the
+spell points come from Knowledge clamped to 1–99 and the Intelligence getter's arithmetic,
+after the artifacts are equipped and the levels given (0x4D8EAE to 0x4D8F38, HER-MAN-001); no
+write of the formation byte +0x48 and no read of the body's formation (ADV-QUIRK-8). One
+difference: the placed hero's custom primary skills are copied as they are (0x4D8BFD), the
+clamp to 0–99 T17a read (Spell Power and Knowledge at least 1) is the carried-over hero's. The
+stale citations (rule refs, ADV-QUIRK-8, a code comment): the lane's QUEUE inbox.
+
+### 3.2 The placed hero's levels (`placed_hero_setup` 0x4D8B30)
+
+In order: owner, type, class, position and patrol; the custom name; the portrait; **custom
+primary skills** (+0x32C: the four bytes copied, 0x4D8BF1); **custom secondary skills** (+0x22:
+all cleared, then each learned at its level through 0x4E22D0, 0x4D8C59); the custom army; the
+custom spells; the artifacts (the worn ones removed, the record's equipped with their bonuses,
+the backpack); the biography. Then, **with a custom experience** (+0x1A): the experience is set
+to 0 (0x4D8E02) and `hero_gain_experience(the record's experience, give the levels, quiet)`
+runs (0x4D8EA2), then the level-up once more (0x4D8EA9, nothing left to give); last the spell
+points and the movement points. Without a custom experience the hero keeps the default 40–90
+(below level 2's 1 000).
+
+So the levels' gains land on the custom skills and the worn artifacts' bonuses; the draws
+follow §2 with the S the setup drew a moment before and the counters at 0; **every two-offer
+level is chosen by `ai_level_up_choice` (0x52BBD0) with its flag clear**, since
+`new_game_setup_running` (0x698400) is set throughout (§2.5); a one-offer level learns it. The
+scenario's level limit caps the experience as in §1.3 (the levels end at the limit, the
+experience is lowered to its threshold). A campaign case replaces the experience (campaign 8,
+scenario index 3: the experience of a level from the campaign's state, 0x4D8E19 to 0x4D8E99).
+
+### 3.3 Batch E3c's E3-6 against the reading
+
+E3-6's hero (a Death Knight, class 8: might, intervals 6 and 4) had 5 000 experience, 2/3/1/1
+and eight basic skills (Pathfinding, Archery, Logistics, Scouting, Navigation, Mysticism,
+Offense, Armorer): no Wisdom, no school, eight skills, so every offer at levels 2 to 5 is a
+plain draw among the known skills by the Death Knight's weights, both offers advances. It
+started at level 5 with 3/6/1/1 (Attack +1, Defense +3), Pathfinding and Scouting advanced,
+Logistics expert. Computed from §2 for every S of 1 to 255: 3 seeds give those primary gains (75,
+86, 247; about 4.8 expected by chance); of them only S = 75 offers pairs from which those
+advances can be chosen (Pathfinding or Navigation, Archery or Logistics, Navigation or
+Scouting, Mysticism or Logistics: chosen left, right, right, right). **Consistent, not a
+confirmation**: the run did not read S; a run that does (§7) predicts the gains and offers
+before the choice, and then tests 0x52BBD0's choice as well.
+
+### 3.4 VCMI
+
+`CGHeroInstance::initHero`: a set experience calls `levelUpAutomatically`, which while
+`gainsLevel` (the next level's threshold reached and below VCMI's highest level; **the map's
+level limit is not consulted**) rolls the primary skill and the offers as at a level-up (§2.6)
+and takes **the first offer**. The formation is reset to loose (as the reading's, which never
+copies it).
+
+### 3.5 Disputes (T24a2a's)
+
+| Id | Question | Sources | Needed by | Settle by |
+|---|---|---|---|---|
+| D-20 | At load, which offer is learned: the computer's evaluation (0x52BBD0; the reading) or the first (VCMI) | the reading against VCMI | the import's levels (decision 48) | the user at T24a2b's checkpoint; the evaluation (0x524690, 0x524DD0) is unread: E10's computer players need it as well. Options for T24b: read and port it, or the first offer (VCMI) as a documented stand-in |
+| D-21 | At load, a custom experience above the scenario's level limit: capped and lowered to the limit's threshold (the reading) or levelled to its own level (VCMI) | the reading against VCMI | the import | the user; recommended: the reading (§6's census: does a shipped map have such a hero?) |
+
+## 4. What follows the level (T24a2a)
+
+### 4.1 The battle's experience
+
+`battle_end` (0x477470) computes the winner's experience (`battle_experience` 0x46A350) and
+gains it in one of two exclusive places: **a winner whose player is not a human at this
+computer** (the side's byte +0x54A6 clear: a computer player, another computer's player),
+`hero_gain_experience` with the levels given and the owner told (0x477766), before Necromancy and
+Eagle Eye, so the levels follow the computer's path at once (§2.5); **a winner whose player is a
+human here** (tested at 0x47789A to 0x4778B8), after the victory's music, `hero_gain_experience`
+with the levels given only if that byte is clear, so not (0x477948), then the Eagle Eye
+message. `adventure_battle` (0x4AD470) then gives both heroes'
+levels after the battle's screen (0x4AE324, 0x4AE42C; in network play the remote hero's through
+the network, 0x4AE37C, 0x4AE405): the human's level-up dialogs come on the map, one level after
+another (§2.1). The loser leaves the map (increment 3), so only the winner levels. VCMI
+(`BattleResultProcessor` → `CGameHandler::giveExperience` → `expGiven` → `levelUpHero`): the
+winner's experience, then the levels one at a time, a query to the owner for each two-offer
+level.
+
+For the engine: increment 3's outcome already gives the winner experience (`heroes_after_battle`,
+HER-EXP-001); increment 4 turns the gained experience into levels after the battle: the level-ups
+as the winner's owner's pending decisions (T24b), one level at a time, each level's offers drawn
+after the previous answer (§2.1).
+
+### 4.2 The rules that read the level
+
+`h3-heroes` reads `HeroDetails.level` (a `u8`, at least 1; its experience "not checked against
+the level" until this increment) in: the skill specialties' growth (`bp_per_level` basis points
+per level, `grown_effects`: HER-BAT-004, HER-BAT-005, and through it HER-EXP-001's Learning and
+HER-MAN-001's Intelligence), the creature specialties (`bp_per_step` × hero level ÷ creature
+level), the spell specialties (the level passed to the battle). The original's
+getters read hero +0x55 the same way (`hero_learning` 0x4E4840, `hero_intelligence` 0x4E48B0,
+`hero_necromancy_power` 0x4E3CD0, `hero_scouting_radius` 0x4E4070, `hero_surrender_factor`
+0x4E4580). Nothing in them changes with increment 4 but the level's source: the level comes from
+the experience (§1) instead of the details' field alone, and the spell points of a hero
+levelled at load are computed after its levels (§3.2). Not read: the Logistics specialty's
+growth in `hero_max_land_movement` (the battle lane's lead, QUEUE inbox; increment 5's movement
+profile).
+
+The engine keeps a hero's base primary skills without the artifacts (`HeroDetails.primary`,
+at most the ruleset's `primary_max`), where the original adds the worn artifacts' bonuses into the
+same byte (`structs.toml` hero +0x476): a level-up's +1 is to the base, and A-9's wrap is the
+original's byte, not the engine's.
+
+### 4.3 What another player sees
+
+VCMI 1.7.5's view of a hero (`InfoAboutHero`): name, portrait, class and army, with details
+(primary skills, mana, luck, morale) only at its detailed and in-battle levels: **no level** at
+any. The original's right-click view was not read (survey `E08-battles.md`
+§9). The engine shows another player's hero by tile, owner and identity (ADV-FOG-006). A
+level-up's draws and offers are the owner's: the offers and the seed byte are hidden information
+for every other player (decision 9); the gains show to others only as far as primary skills do
+(in a battle against the hero, §9 of `E08-battles.md`).
 
 ## 5. Disputes against the wiki *(T24a2)*
 
