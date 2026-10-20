@@ -4,7 +4,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E23, the original's battle AI, in progress** (`docs/epics/E23-original-battle-ai.md`; refined 2026-10-19, BAT-Q52): the neutral side first, a battle-lane crate of its own, the code reading first with batch rows only for readings at risk. **T1a1 done** (2026-10-20, #288 merged): the entries, the dispatch and the map of the rest (`installation.md` §7.34). The user confirmed the cut T1a2 to T1a6 (T1b after T1a5, T1a6 before T5). **In progress:** T1a2 (`battle/e23-t1a2`; QUEUE; stage `Heroes3.exe`): part S, then 0x421680.
+- **E23, the original's battle AI, in progress** (`docs/epics/E23-original-battle-ai.md`; refined 2026-10-19, BAT-Q52): the neutral side first, a battle-lane crate of its own, the code reading first with batch rows only for readings at risk. **T1a1 done** (#288 merged): the entries, the dispatch and the map of the rest (`installation.md` §7.34). The user confirmed the cut T1a2 to T1a6 (T1b after T1a5, T1a6 before T5). **T1a2 done** (2026-10-20, `battle/e23-t1a2`, docs only; its pull request open for the user's review): part S and the walker's choice 0x421680 (§7.35). **Next:** T1a3, the walker's helpers (QUEUE; stage `Heroes3.exe`).
 - Since E04c's closure (2026-10-16): #265, #267, #268, #273, #277, #282, #283 merged. E05, `h3-sim` and `h3-ffi` are the AI lane's (AI-Q1), `h3-heroes` the adventure lane's.
 - **Open:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35, BAT-Q51 (none blocks; BAT-Q33 and BAT-Q51 settle with E23's T6), BAT-STUB-1, the inbox (by kind since 2026-10-19), Q43; S-23, S-24, batch 2g.
 - **Versions** (unchanged since T10b): battle state hash v51, battle part hash v6 (the encodings, replay format and C ABI are the AI lane's); shared: core ruleset hash v45, pack format v43, protocol v33. Next ids: BAT-Q53, BAT-QUIRK-24, BAT-STUB-4, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-24, S-30.
@@ -43,6 +43,10 @@ Area traps live where they are used: experiments in `docs/experiments/README.md`
 
 ## Recent sessions
 
+### 2026-10-20 (seventy-sixth) — E23 T1a2, the shooters' rest and the walker's choice
+
+The user confirmed T1a1's cut (T1a2 as queued, over "part S only"; T1b after T1a5). Read (§7.35): part S in full (the area value 0x41EDA0, the area's hexes 0x5A4170 without the side columns, the Cyclops' wall shot 0x41EEA0) and 0x421680 in full (hex scores, the plan per enemy, the draw of 75 to 100 %, the best's keys, the actions) with its helpers by role; 28 map entries. Found: the defender's walls test misreads its records (0x42142F); the best's comparison divides only the kept best by its turns. A fresh agent re-read three readings blind (the pull request has its result).
+
 ### 2026-10-20 (seventy-fifth) — E23 T1a1, the entries and the map
 
 T1a was too large for one small increment; the user chose T1a1, the inventory and the dispatch. Read (§7.34): the hero's cast at every activation (0x422DA0, from the controls 0x4782D0), the stack's action 0x477EE0 (the computer always retreats, never surrenders; the human's auto-combat questions), the stack's turn, a shooter's tactics placement, a walker's turn (no Wait below Hard), the order of action 0x41F140. A sweep of the calls mapped the rest into seven parts (about 45 KB unread); 29 map entries. Found: the surrender's price leaves out temporary creatures (inbox); `exe.py switch` is one off at the dispatcher (inbox, a shared fix). Proposed cut T1a2 to T1a6, T1b after T1a5: the user's checkpoint.
@@ -50,7 +54,3 @@ T1a was too large for one small increment; the user chose T1a1, the inventory an
 ### 2026-10-20 (seventy-fourth) — E23 refined
 
 The user chose E23's epic file as the next small increment (after #277 merged). The agent proposed four refinement questions; the user decided (BAT-Q52): the neutral side first; a crate of its own (the agent had recommended a module of `h3-battle`); the reading first with spot checks (the agent had recommended capturing every decision); T1 split into T1a and T1b. `shared/e23-refinement` (lanes.toml's `docs/epics/E23*`, BACKLOG, 08's ownership line) merges first; `battle/e23-refinement` stacks on it (the epic file, BAT-Q52, this HANDOFF, the QUEUE).
-
-### 2026-10-19 (seventy-third) — CLT-Q2's LOD reader; three test gaps
-
-Small increments at the user's choice. #273 (merged), CLT-Q2: `h3_formats::lod`: `MAX_TABLE_BYTES`, `LodTable::parse(head, file_len)`, `LodEntry::stored_range`, `read_entry`; `LodArchive` rests on them, unchanged for the harvester and `h3-view`. A property: a table from any prefix of a mutated archive agrees with the whole parse. On the four real LODs both readers agree on every entry (an ad-hoc test, not committed; `installation.md` §3). CLT-Q2 answered; the switch is the client lane's (its inbox). Then `battle/test-gaps` (tests only, no behaviour changed, none failed): BAT-QUIRK-21's second half (a mutation to the original's listing fails only it), Bind released by a flying and a teleporting binder, and no attack from a seen Quicksand pit on the harvested packs (seeds 1 to 40 pick the draws; 8 cases per profile).

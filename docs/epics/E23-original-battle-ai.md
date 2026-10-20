@@ -1,7 +1,7 @@
 # E23 — The original's battle AI
 
-Status: **in progress**, refined 2026-10-19 (BAT-Q52); T1a1 done, T1a2 in progress (the cut
-confirmed 2026-10-20) · Follows E05 (the
+Status: **in progress**, refined 2026-10-19 (BAT-Q52); T1a1 and T1a2 done (the cut confirmed
+2026-10-20), T1a3 next · Follows E05 (the
 AI lane, nearly done) · Followed by E06 (training: this policy holds the neutral seat; AI-Q1) ·
 The battle lane's, later the AI lane's (BACKLOG).
 
@@ -87,12 +87,13 @@ about 45 KB of unread code beyond the dispatch).
 §7.34's table; the neutral side first, each about one session's reading; the parts' names as
 there):
 
-- [ ] **T1a2 The shooters' rest and the walker's choice** — part S (the area value, the wall shot,
-  2.2 KB) and 0x421680 itself (2.3 KB): its branches (melee, move, the Tent and the Cart, the
-  arrow towers, its draw), its helpers named by role.
+- [x] **T1a2 The shooters' rest and the walker's choice** (2026-10-20) — part S in full (the area
+  value, the area's hexes, the wall shot) and 0x421680 with its branches, draw and helpers by
+  role (`installation.md` §7.35; the log).
 - [ ] **T1a3 The walker's helpers** — the rest of part W and the order's sort, part O (about
-  10 KB): the melee targets and their values, the destinations, the odds (0x420A80, which reaches
-  the adventure AI's valuations, part A).
+  11 KB after T1a2): the hex scores (0x420260, 0x41FB60), the plan's hexes 0x436300, the
+  fallbacks (0x420760, 0x4208F0), 0x41F3B0, 0x41F920, the walk 0x41F580's end, the odds' totals
+  (0x420A80, which reaches the adventure AI's valuations, part A).
 - [ ] **T1a4 The AI pathfinder** — part P (4.6 KB): the walker's path among equally short ones
   against BAT-MOV-003 (S-11, Q53).
 - [ ] **T1a5 The creature casts and the spell evaluation** — part C (12.9 KB): the cast entry's
