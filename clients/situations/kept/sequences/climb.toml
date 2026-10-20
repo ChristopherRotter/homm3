@@ -2,7 +2,7 @@
 
 [[frame]]
 t = 0
-file = "t00000.npz"
+file = "t00000b.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
 
