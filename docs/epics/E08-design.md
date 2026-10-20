@@ -2,14 +2,15 @@
 
 A handover, not binding (`docs/adr/README.md`): the working detail behind increment 4's
 amendments of ADR-0013 (`docs/lanes/adventure/adr-drafts/0013-increment-4.md`, T24b1) and
-ADR-0017 (T24b2), from the user's answers at ADV-Q15 (the epic's decision 55). The task that
-builds a section deletes it; the file goes when the epic closes. Facts and sources: survey
-`docs/rules/surveys/E08-progression.md` (§ numbers are the survey's unless they name this note).
+ADR-0017 (`adr-drafts/0017-increment-4.md`, T24b2), from the user's answers at ADV-Q15 (the
+epic's decision 55). The task that builds a section deletes it; the file goes when the epic
+closes. Facts and sources: survey `docs/rules/surveys/E08-progression.md` (§ numbers are the
+survey's unless they name this note).
 Increment 3's note was pruned by T24b1: every section was built, its records are in `E08-log.md`
 (T18a to T22b) and its last versions in §15 below.
 
 Written in two parts (decision 56): **part A**, the hero side (`h3-heroes`), by T24b1; **part B**,
-the game side and the cut, by T24b2 (headings only until then).
+the game side and the cut, by T24b2 (decision 57).
 
 ## Part A — the hero side (`h3-heroes`; T24b1)
 
@@ -42,7 +43,7 @@ player sees is the game's (part B).
   skills 0x4DAD00 and 0x679CBC); the values are not in the text tables, so they are gap-filled
   (the harvester's gap-fill or the packs directly).
 - **Not data**: the scenario's level limit and banned skills are the map's (`RawMap::level_limit`,
-  `banned_skills`), inputs from the game (§11).
+  `banned_skills`), inputs from the game (§12).
 
 ### 2. Experience to levels and its bound (HER-EXP-002; A-7)
 
@@ -71,8 +72,9 @@ player sees is the game's (part B).
 - **At load** (D-21): a placed hero's custom experience is gained from 0 (§8), so it is capped at
   the limit and the hero gets the limit's levels, as the original's; a custom experience above
   the bound is capped the same way, not refused (the census found none near it, §6.4).
-- The original's message that a hero can gain no more (a human owner here) is an event for the
-  game (§13). No shipped map has a limit (§6.2): the rule is tested by unit tests and batch E4.
+- The original's message that a hero can gain no more (a human owner here) gets no event: the
+  owner sees its experience (§13). No shipped map has a limit (§6.2): the rule is tested by unit
+  tests and batch E4.
 
 ### 4. The draws (HER-LVL-002; D-14)
 
@@ -208,22 +210,151 @@ the source, it returns a skill or none.
 
 ## Part B — the game side (T24b2)
 
-Headings only until T24b2 writes them (ADR-0017's draft; QUEUE's T24b2 entry).
+Rules of `h3-game` (and the import's, the env's) around part A's: what the game keeps, when it
+calls `h3-heroes`, who answers, what a player sees. ADR-0017's draft holds the decisions.
 
-### 11. The seed byte and the stream (GAM-HER-002; D-14's flag)
+### 11. The level seed and the streams (GAM-HER-002; D-14, `ADV-QUIRK-9`)
+
+- **The level seed**: when the store is built (`GameState::new`), each hero's seed byte is drawn
+  from the setup stream, `range_inclusive(1, 255)` as the original's `random_between(1, 255)`
+  (0x4BFEC2), in hero id order after the hero's own defaults (the experience 40–90 when not
+  custom), before the levels at load (§12); the setup stream's later draws move with it (the
+  replays are re-recorded once, §14). Kept beside the details in an `Arc<[u8]>` by
+  `HeroId` (never written after the build, so a fork shares it), in the state hash, in no
+  observation or event. Not in `HeroDetails` (part A §7).
+- **The source of a level's draws** (part A §4): with the flag `quirk.adventure.level_up_from_seed`
+  on (`faithful`) the original's generator from the seed and the new level, at load and in play
+  alike; off (`strict-fixed`) the setup stream at load and the owner's stream in play. Registered
+  with T26's data (the registry's next free position); `ADV-QUIRK-9`'s ledger entry with T29.
+- **Hygiene and isolation** (the properties, §14): the seeds and a level's offers never reach
+  another player's observation or events; in `strict-fixed` a level-up draws only from its
+  owner's stream.
 
 ### 12. The map's level limit and banned skills; the import; levels at load (GAM-SET-002; D-21)
 
-### 13. A level-up as a pending decision (GAM-DEC-002); the battle's experience into levels (GAM-BAT-008); events and what a player sees
+- **The setup**: `GameSetup` gains `level_limit` (0 none; the map header's byte, AB and SoD) and
+  `banned_skills` (the map's set, SoD; `RawMap::banned_skills`); `GameState` keeps both, static,
+  in the state hash. The import maps the header's bits to the ruleset's skills by the original's
+  ids (the pack order, part A §6).
+- **The import** (`h3-map`, `MAP_IMPORT_VERSION` 8): `Unsupported::HeroExperience` goes; a
+  placed hero's custom experience passes as it is (`HeroDetailsSetup.experience`), so the
+  census's 3 maps more import whole (`Adventures of Jared Haret`, `Faeries`, `Knee Deep in the
+  Dead`; 5 in all, survey §6.5). With the next change to `import::details` and `state.rs`, the
+  stale 0x486590 citations are re-pointed to 0x4D8B30 (the QUEUE inbox); the import's clamp of
+  custom primary skills stays (no shipped map has one above 9; the placed hero's are unclamped,
+  0x4D8BF1: the engine's details bound them at `primary_max`).
+- **Levels at load** (GAM-SET-002, survey §3.2): in `hero_details`, after the skills, spells,
+  artifacts and the war machines' artifacts and before the spell points (HER-MAN-001): a hero
+  with a custom experience starts at level 1 and experience 0 and gains its experience with the
+  limit (part A §3: capped, D-21); then each pending level is drawn (§11) and given: two offers
+  chosen by the original's choice with the setup's defaults (part A §8), one learned, none the
+  primary skill only. No events (building a game emits none). A hero without a custom experience
+  keeps its default 40–90 at level 1.
+- **The shipped maps**: `verify --with-original-data` (`crates/h3-map/examples/original_data.rs`)
+  imports the 5 maps and builds them, so the 9 heroes' 41 level-ups at load run on real data; the
+  census line counts them.
+
+### 13. A level-up as a pending decision (GAM-DEC-002); the battle's levels (GAM-BAT-008)
+
+- **When**: after a change raises a hero's experience above its given level's range, the game
+  gives its pending levels (GAM-BAT-008: the winner's after the battle's outcome, Necromancy and
+  Eagle Eye included, as the original's human path 0x4AE324; later increments' gains the same
+  way). One level at a time: the level is drawn (§11); with two offers a decision opens, owned by
+  the hero's owner (`Decision::LevelUp { owner, hero, drawn }`, the drawn level kept for its
+  answer); with one or none `GainLevel` applies at once and the next level is drawn. A hero
+  without an owner (none in increment 4) levels as at load.
+- **The answer**: `GameCommand::Answer(Answer::First | Answer::Second)` (the left and right
+  offers), from the owner, in its turn or not; `Accept` and `Decline` are rejected for a level-up
+  and the new answers for an offer (`GameCommandError::WrongAnswer`, name the building task's).
+  The game checks nothing more (the offers are the drawn level's) and applies `GainLevel`; then the
+  next pending level of the hero, if any. A player's queue keeps at most one open decision: a
+  level-up opens after the battle closes, and a visit's chain that would follow a battle (none in
+  increment 4: a beaten monster's treasure is applied with the outcome) waits behind it.
+- **The system actor's default** (ADR-0017 point 2's closed set): the original's choice with the
+  hero's army's worth (the original's timeout: 0x52BBD0 with its flag set); if the reading (T25)
+  finds the army's path needs more than the army's creature values, the first offer as a stand-in
+  until E10 (`ADV-STUB-<n>` then).
+- **Events** (to the owner only): `LevelGained { player, hero, level, primary, skill }` for every
+  level given in play (with one offer, none or after an answer), and `LevelUpOpened { player,
+  hero, level, primary, offers }` when a decision opens (names the building task's); the existing
+  `HeroChanged` carries `GainExperience` as before.
+- **What a player sees**: `GameObservation.decision` becomes a choice of kinds,
+  `Option<DecisionView>` with `Offer(Offer)` and `LevelUp { hero, level, primary, offers }` (the
+  owner's only, as the offers are); `legal_commands` lists `First` and `Second` while a level-up is
+  open. Another player sees nothing of it (ADV-FOG-006: no level in the view of another's hero).
 
 ### 14. The env, replays and properties
+
+- **The env** (`h3-sim/src/adventure/`): action encoding v4 appends `FIRST` (11) and `SECOND`
+  (12), each with tile 0 alone, legal only while a level-up is the player's open decision;
+  `ACCEPT` and `DECLINE` only while an offer is. `random_rollout` answers a level-up at random.
+  The observation is `h3_game`'s view (§13).
+- **Replays** (format v5): the new answers in the command list (`<player> answer first|second` in
+  the CLI's file, `crates/h3-cli/src/adventure/`); the nine golden replays re-recorded once, with
+  their options (`crates/h3-cli/tests/adventure_replays.rs`), now answering the level-ups their
+  battles give; one replay at least with a level-up answered each way and a hero levelled at load.
+- **Fixtures**: the duel's and the XL map's heroes gain experience near a threshold and one a
+  custom experience (levels at load), so the replays, the plans and the benchmarks meet
+  level-ups (`h3-map`'s `tests/fixtures.rs` writes them).
+- **Properties** (`crates/h3-map/src/tests/play.rs`): the driver answers level-ups; the plans
+  check after every command that a hero's level is at most its experience's level and that an
+  open level-up's hero has a pending level; the hygiene property covers the seeds and the offers;
+  a fixed test per profile for the draws' source.
+- **Benchmarks**: the three workloads re-baselined if the fixtures move them; the fork shares
+  the seeds (no per-fork copy).
 
 ### 15. Versions
 
 Increment 3's last: core ruleset hash v45 (the battle lane's since), game state hash v8,
 adventure state hash v10, adventure ruleset part v8, map import v7, action encoding v3, adventure
-replay format v4. Each bumps once in the increment, in the task that first changes it.
+replay format v4. Increment 4: the core ruleset hash and the pack format (T26: hero parameters,
+the class field, the override kind, two flags), the game state hash v9 (T27 or T29, whichever
+first changes what it hashes: the details' counters, the seeds, the limit and banned skills), the
+map import v8 (T29), the action encoding v4 and the replay format v5 (T30 or T31, with the
+answers). The adventure state hash and ruleset part do not change. Each bumps once, in the task
+that first changes it.
 
 ### 16. Batch E4
 
+The plan is the survey's §7 (ten rows; E4-1 settles D-20 in SoD, most rows predict from the seed
+byte). Its tasks: the **spec** (`h3-experiment`, battle-owned: `cross-lane`) gains the map's level
+limit (E4-6) and two grounds on one tile (E4-7, if the writer refuses it); the **recipe**
+(`clients/capture/batches/`, client-owned) follows the harness's new reads (the client lane's
+inbox since T24a2b2: the seed byte and counters, every level-up dialog, `level_up` as a list,
+artifacts, the battlefield); a **scorer** script computes each row's predictions under each
+source's rule (kept or thrown away at the scoring). The run is on the harness (decision 50).
+
 ### 17. Shared and `cross-lane` work; the building tasks
+
+**Shared and `cross-lane`**: T26's `shared/` pull request (the accepted ADR amendments applied,
+`h3-content`'s data model and registry, part A §10), with the packs and the harvester's gap-fill
+(battle-owned) as `cross-lane` in it or beside it and the golden replays' headers of both lanes
+re-recorded; T32a's spec (`h3-experiment`, `cross-lane`); the client lane's harness and recipe
+(its inbox). Everything else is the lane's own (`h3-heroes`, `h3-game`, `h3-map`, the env's and
+the CLI's adventure sub-paths, the fixtures, replays and benchmarks).
+
+**The building tasks**, in rounds of one or two (task ids continue the epic's; each round's cut
+confirmed at its checkpoint):
+
+| Round | Tasks | Content |
+|---|---|---|
+| 1 | **T25** + **T26** | T25: the evaluation's reading (0x524690, 0x524DD0 and what they reach; with VCMI and the wiki; survey §10; whether it draws, its inputs, the army's path for §13's default), docs only. T26: the shared groundwork: ADR-0013 and -0017 amended, the hero parameters (table, highest level, forced skills), the class's `offer_intervals`, `[[hero_class_override]]`, the two flags, the packs and the gap-fill, the bumps and the re-recordings (part A §1, §10) |
+| 2 | **T27** + **T28** | T27: `h3-heroes`' progression (part A §2–§7: levels, the bound, the limit's cap, the draw source and the original's generator, the primary skill, the offers, `GainLevel`, the counters, the checks; HER-EXP-002, -003, HER-LVL-001 to -005; `ADV-QUIRK-10` to `-13`). T28: the original's choice ported (part A §8, HER-LVL-006; after T25) |
+| 3 | **T29** + **T30** | T29: the game's setup and build (§11, §12: the seeds, the limit and banned skills, levels at load, the import's refusal lifted, the 5 shipped maps; GAM-HER-002, GAM-SET-002; `ADV-QUIRK-9`). T30: the level-up as a decision (§13: the answers, the events, the observation, the system actor's default, the battle's levels; GAM-DEC-002, GAM-BAT-008) |
+| 4 | **T31** + **T32a** | T31: the env, replays, fixtures, properties and benchmarks (§14). T32a: batch E4's spec and recipe (§16; `cross-lane`) |
+| 5 | **T32b** + **T33** | T32b: batch E4 run on the harness. T33: the scoring (the rules it covers `verified` or reopened), the audit against the exit criteria, increment 4 closed, the next increment refined |
+
+**Increment 4's exit criteria**:
+1. A hero's experience gives the original's levels, at most 74, capped by the scenario's limit
+   (HER-EXP-002, -003); the import keeps the map's limit and banned skills.
+2. A level-up draws the original's primary skill and offers from the seed byte and the level in
+   `faithful` (the survey's vectors), from the owner's stream in `strict-fixed`; the
+   Elementalist's intervals follow the profile.
+3. Two offers are a pending decision of the owner, levels in order, each drawn after the previous
+   answer; the battle's winner levels; the env, the replays and the plans play them.
+4. Placed heroes with a custom experience get their levels at load, chosen by the ported
+   evaluation; 5 shipped maps import whole and their 9 heroes get 41 level-ups at load
+   (`verify --with-original-data`).
+5. Every new rule has its id, source and tests; `ADV-QUIRK-9` to `-13` are in the ledger; the
+   gates pass (coverage, determinism with the re-recorded replays, benchmarks).
+6. Batch E4 run and scored; the disputes it covers (D-14 to D-21) `verified` or reopened.
