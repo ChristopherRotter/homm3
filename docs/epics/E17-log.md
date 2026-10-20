@@ -1344,6 +1344,49 @@ On `client/e17-m3-t5b-2b`, the user present: asked for a small increment; the ag
 - **For later:** sieges draw the box a second time after the moat's parts (part 1); T7b (the
   spells' tint).
 
+### M3 T6a — The panel's still (2026-10-20)
+
+On `client/e17-m3-t6a`, the user present: asked for a small increment and to confirm the seam;
+the agent proposed T6 split in three (the panel's still, the log over time, the status line with
+the cursors and the mouse), the user chose the first and asked for reusable UI components ("there
+are just a few types of buttons that are used in lots of places in the entire game").
+
+- **Starting point:** master at `c4fbe58` (#312, after #313 and #314), no client pull request
+  open; the client gates' baseline (`verify-once`: not verified yet, the full `check.sh`) passed
+  on the sandbox.
+- **The reading** (design §9.7): `battle_panel_base` (0x46B610) builds the picture and the seven
+  48 × 36 buttons both panels share, `battle_panel_create` (0x46BC30) the log's item and its
+  scroll buttons; the picture item (0x4502D0: keyed, in a player's colours by 0x450520), the DEF
+  button (0x455EF0, its drawer 0x456940: a frame of group 0 by its state bits, frame 0 beyond the
+  group), the custom button sharing its drawer (0x456D30), the control states (0x5FEED0,
+  0x5FEF60, 0x5FE7C0 into 0x5FE4F0: subtype 5 sets, 6 clears, 0x1000 is bit 8, disabled);
+  `battle_controls_state` (0x4782D0) in full and 0x46BF90 (a computer's turn disables the seven
+  buttons). Thirteen map entries, two summaries extended.
+- **Built:** `h3_view::ui` (the item kinds as components: `Dialog`, `Item` by `kind`, a button's
+  `Frames` and `State`, `Shown` by control id, `Dialog::draws`); `h3_view::panel` (the controls'
+  states at a turn's start from the observation: `human`, the heroes, the spell book and casts,
+  the wait and tactics phases, the town; the acting stack's controller, `scene::acting`); the
+  layout's `[panel]` with its eleven `[[panel.items]]` (replacing `[log]`); `Draw::Picture`,
+  `Draw::Button`, `Draw::Text` (replacing `Draw::Log`); `h3_render::blit::draw_image_keyed_in`.
+  The scenarios of the situations and sequences name their human sides (`human`; the smoke battle
+  both, as its hot-seat map), and `h3-view situation` refuses a scenario whose `human` is not its
+  map's: before, every record had two computer players, so the panel would have been dimmed.
+- **`drawn` and the captures:** drawing the panel changes every frame, the ten sequences' too,
+  though they mask the panel. `drawn` now digests each frame's pixels outside the fixed masks its
+  comparison applies (`png_digest`, `compared_masks`, shared with `frames`); the digests were
+  recorded again from `master`'s viewer in a worktree (the old digests there: all 41 the same, so
+  the frames are the ones last compared), before this change. With the panel: the ten sequences
+  the same, the 31 situations changed; `set` in full.
+- **Checked against the original:** the first `set` run differed by 35 pixels in every frame, the
+  game's own cursor where the harness parks the mouse (618, 593), which `panel_beside_log` had
+  hidden; masked as `cursor` (`CRDEFLT.DEF`'s canvas there, h3cap), the second run: all 31
+  situations' 57 frames exact with the whole panel compared (the human's opening in red with the
+  spell book disabled and the scroll buttons enabled; the smoke battle on Blue's turn in blue);
+  `drawn --record`.
+- **For later:** the panel over time and the log (T6b), the status line, the cursors (the parked
+  cursor's mask goes with them) and the mouse (T6c); the tactics phase's panel (0x46C050) and
+  Auto Combat switched on (the queue's inbox).
+
 ## Accepted review lists (M1, M2)
 
 Moved from the epic file on 2026-10-20 (less start-up reading), unchanged.

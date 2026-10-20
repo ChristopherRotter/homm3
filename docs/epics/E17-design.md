@@ -1802,7 +1802,8 @@ battlefield (`scene::panel`), drawn by `compose`.
   frame the original shows the picture without text, as ours, all 31 situations exact. The
   harness parked the game's cursor at (420, 580), inside the item; it parks it at (618, 593) now,
   in the panel right of the item and below the scroll buttons, where it covers no probe and
-  hovers nothing that shows a hint.
+  hovers nothing that shows a hint. (Since T6a the item is the panel's text item 2005, drawn as
+  `Draw::Text`, and the whole panel is compared: §9.7.)
 
 
 ### 9.6 A strike's line against a capture (M3 T4b-2b-2)
@@ -1838,3 +1839,69 @@ one line entered an empty log; `h3-view sequences --frames` draws it from a sequ
   drew it while the Archangel lands (2 330 to 2 730 ms, with stale pieces), the Archangel's box
   moved in front of it at the Goblins' turn once the Pikemen's hex is free (from 3 730 ms: 324
   pixels, 6 redraw artifacts); ours places both by the opening's stacks.
+
+### 9.7 The panel and the dialog items (M3 T6a)
+
+T6 split with the user on 2026-10-20 (the log over time T6b; the status line, the cursors and the
+mouse over a stack T6c), who asked for reusable UI components: the executable draws every
+screen's controls with a few kinds of dialog item. Read: the panel's base (`battle_panel_base`
+0x46B610) and `battle_panel_create` (0x46BC30) in full, the picture item (0x4502D0, its drawer
+0x450450, its player colours 0x450520), the DEF button (0x455EF0, its drawer 0x456940, the frame
+drawer 0x47BF00; the button with a callback 0x456D30), how a control's state is set
+(0x5FEED0, 0x5FEF60, 0x5FE7C0 into the items' message handler 0x5FE4F0), `battle_controls_state`
+(0x4782D0) in full and 0x46BF90. Built: `h3_view::ui` (the item kinds, their states and draws;
+the layout's `[panel]` lists the items), `h3_view::panel` (the controls' states at a turn's
+start), `Draw::Picture`, `Draw::Button` and `Draw::Text` (the log's item since T4b-2b-1 as a
+text item) in `compose`.
+
+- **The items.** A picture (H3API's `H3DlgPcx`) is drawn from its corner with index 0 transparent
+  (0x44FDB0 with its last argument 1), at most the item's size of it; 0x450520 gives it a player's
+  colours (entries 224–255, as a flag's, §4.5). A DEF button (`H3DlgDefButton`, 281 callers; the
+  callback and caption buttons share its drawer) draws one frame of its DEF's group 0 at its
+  corner by the plain drawer, runs skipped: the selected frame (+0x40, 3) when its state has bit
+  0x10 and not bit 1 (pressed); else the disabled frame (+0x3C, 2) with bit 8 or 0x20; else the
+  click frame (+0x38) when pressed; else its frame (+0x34); a frame beyond the group's count is
+  frame 0; nothing without bit 4 (shown). The constructor takes the frame and the click frame and
+  sets 2 and 3; a caller may change them. A text over a picture (`H3DlgTextPcx`): §9.5.
+- **States.** `AddControlState` and `RemoveControlState` (0x5FEED0, 0x5FEF60) and an item's own
+  `SendCommand` (0x5FE7C0) send a message of type 0x200 whose subtype 5 sets and 6 clears state
+  bits of the item with the control id; the value 0x1000 stands for bit 8, disabled (0x5FE560,
+  0x5FE608).
+- **The panel** (800 × 44 at (0, 556)), in the executable's order: the picture `cbar.pcx` (id
+  2000) in the colours of the player of the side the manager holds then (the game's player when it
+  has none); the 48 × 36 buttons at y 5: Surrender (2001, `icm001.def`, x 54), Retreat (2002,
+  `icm002.def`, 105), the options (2003, `icm003.def`, 3), Auto Combat (2004, `icm004.def`, 156),
+  the spell book (2008, `icm005.def`, 645), Wait (2009, `icm006.def`, 696), Defend (2010,
+  `icm007.def`, 747); then the log's item (2005, §9.5) and its scroll buttons, 18 × 17 of
+  `ComSlide.def` at (624, 5) and (624, 24): up (2006) frames 0 and 1, down (2007) 2 and 3, each
+  disabled showing its click frame. Built, Auto Combat is disabled when both sides are human and
+  the scroll buttons are disabled. The hotkeys (S, R, O, A, C, W, D and space, the arrows) and the
+  hints are the window's (T6c).
+- **A turn's start** (`battle_controls_state`, from every stack's activation): for a side whose
+  player is a human on this computer, the picture takes that player's colours; Surrender needs a
+  hero on both sides and is refused to a town's defender; Retreat needs the side's hero and, for
+  a town's defender, a Stronghold's Escape Tunnel; the options enabled; Auto Combat no longer
+  selected, disabled when both sides are human; the scroll buttons enabled (whatever the log
+  holds: the log does not set them, the panel's vtable +8 is an empty function); the spell book
+  needs the side's hero to wear one and not to have cast this round (+0x54B4; +0x13D74, not read,
+  overrides it); Wait outside the round's wait phase; Defend. Outside the tactics phase only; in
+  it the dialog was built with the spell book, Wait and Defend disabled and its own panel
+  (0x46C050, not read). For any other side 0x46BF90 disables the seven buttons and leaves the
+  picture's colours and the scroll buttons as they were (the computer's turn: buttons dimmed,
+  §6.2). With Auto Combat on, a stack that plays itself dims the panel too, and a human's Auto
+  Combat shows selected.
+- **The viewer** (`h3_view::panel::shown`, *provisional* where marked): the turn's start from the
+  observation (each side's `human`, hero, spell book and casts, the wait and tactics phases, the
+  town) and the acting stack's controller; a record names no player colours, so red and blue
+  (CLT-Q6). Not modelled: what a click, an animation or the log's scrolling change, the panel kept
+  from an earlier turn (T6b), the side the panel is built for (taken as the acting side), the
+  tactics phase's panel, Auto Combat switched on. The situations' and sequences' scenarios name
+  their human sides (`human`), as the original's maps have them; `h3-view situation` refuses a
+  scenario whose `human` is not its map's.
+- **Checked:** the capture set compares the whole panel (its `panel_beside_log` masks gone): all
+  31 situations' 57 frames exact, the human's opening (red, the spell book disabled: the maps'
+  heroes carry none; the scroll buttons enabled with the log empty) and the smoke battle's hot-seat
+  opening on Blue's turn (blue). The game draws its own cursor where the harness parks the mouse
+  (618, 593): 35 pixels the viewer does not draw (the cursor rules are T6c's), masked as `cursor`
+  (`CRDEFLT.DEF`'s 20 × 24 canvas there). The ten sequences compare no more of the panel than
+  before (T6b): `drawn` now digests only what the comparisons see, so they stayed the same.

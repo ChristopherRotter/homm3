@@ -132,8 +132,8 @@ impl Battle {
         })
     }
 
-    /// The draw list of the battle at `moment`, the panel's after it (its log empty: the
-    /// events' lines come with M3 T6).
+    /// The draw list of the battle at `moment`, the panel's after it as the turn's start sets it
+    /// (its log empty: the events' lines come with M3 T6b).
     pub fn list(&self, t: u32, moment: &Moment) -> Result<Vec<Draw>, String> {
         let snapshot = self
             .record
@@ -147,7 +147,12 @@ impl Battle {
             &self.layout,
         )
         .map_err(|e| format!("{t} ms: {e}"))?;
-        list.extend(scene::panel(""));
+        list.extend(scene::panel(
+            snapshot,
+            scene::acting(snapshot, moment),
+            "",
+            &self.layout,
+        ));
         Ok(list)
     }
 

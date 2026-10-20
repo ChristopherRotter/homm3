@@ -267,9 +267,10 @@ fn sequences(options: &Options) -> Result<usize, String> {
                         .as_ref()
                         .and_then(|c| log::first_strike(&record, c))
                         .ok_or_else(|| format!("{}: `log_at` without a strike", sequence.id))?;
-                    let font = h3_assets::fnt::decode_fnt(&lookup(&archives, &layout.log.font)?)
-                        .map_err(|e| format!("{}: {e:?}", layout.log.font))?;
-                    let text = log::after_one(&line, &font, layout.log.size[0], Bugs::Original);
+                    let item = layout.log().ok_or("the layout's panel has no log item")?;
+                    let font = h3_assets::fnt::decode_fnt(&lookup(&archives, &item.font)?)
+                        .map_err(|e| format!("{}: {e:?}", item.font))?;
+                    let text = log::after_one(&line, &font, item.size[0], Bugs::Original);
                     Some((at, text))
                 }
             };
@@ -408,7 +409,12 @@ pub(crate) fn draw_frames(
         let text = log
             .filter(|(at, _)| frame.t >= *at)
             .map_or("", |(_, text)| text);
-        list.extend(scene::panel(text));
+        list.extend(scene::panel(
+            snapshot,
+            scene::acting(snapshot, &moment),
+            text,
+            layout,
+        ));
         lists.push((frame, list));
     }
     let mut names = std::collections::BTreeSet::new();

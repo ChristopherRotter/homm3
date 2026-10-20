@@ -350,6 +350,14 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   the patient's box in `machines`, now exact in all 106 frames); the heal never changes a box's
   number (it lowers +0x58 only); `fly`'s breath kills differ from the original's (8 and 13
   against 9 and 16): both boxes listed from 4 300 ms.
+- **T6a done 2026-10-20** ([log](E17-log.md#m3-t6a--the-panels-still-2026-10-20),
+  [design §9.7](E17-design.md)): T6 split with the user (the panel and the log over time T6b; the
+  status line, the cursors and the mouse T6c), who asked for reusable UI components. The
+  executable's dialog items read (a picture, a DEF button and its states, a text over a picture)
+  and built as components (`h3_view::ui`, the layout's `[panel]` as a list of items), the panel's
+  base and `battle_controls_state` read in full and the controls' states at a turn's start built
+  (`h3_view::panel`); the capture set compares the whole panel: 31 situations, 57 frames exact
+  (the game's parked cursor masked); `drawn` digests what the comparisons see.
 
 ### The adventure lane's harness (H1, H2: its batch E3)
 
@@ -418,6 +426,18 @@ Accepted by the user (M1 2026-10-13, M2 2026-10-14); moved to the log,
 ## M3 review list
 
 (Filled by the tasks: choices queued for the milestone review under the autonomy contract.)
+
+- T6a (the user: reusable UI components): `h3_view::ui`, the executable's dialog items as
+  components (`Dialog`, `Item` by `kind`: `picture`, `button` with its `frames` by state, `text`;
+  `State`, `Shown` by control id) and the layout's `[panel]` with its `[[panel.items]]` in the
+  executable's order (replacing `[log]`; the format); `h3_view::panel` (the controls' states at a
+  turn's start from the observation, the executable's control ids as constants, the panel's
+  colours red and blue by side, CLT-Q6); `Draw::Picture`, `Draw::Button` and `Draw::Text`
+  (replacing `Draw::Log`); `h3_render::blit::draw_image_keyed_in`; the scenarios' `human` and
+  `h3-view situation`'s check of it; `drawn`'s digests of the pixels outside the comparisons'
+  fixed masks, recorded again from `master`'s viewer before the change (the runbook's rule for a
+  change to `drawn` alone); not modelled: the panel over time (T6b), the tactics phase's panel
+  and Auto Combat switched on (the queue's inbox).
 
 - The lane's process (2026-10-20, the user: scope the captures to the change): the committed
   `situations/kept/` (each last capture's frames' times and the fidgets and heroes the original's

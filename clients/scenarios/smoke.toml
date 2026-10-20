@@ -13,6 +13,9 @@
 
 [scenario]
 id = "capture-smoke"
+# Both players human, as the capture set's hot-seat map of it (`hot_seat` in set.toml): the
+# panel's buttons lit on either side's turn (E17 M3 T6a).
+human = ["attacker", "defender"]
 packs = ["base"]
 profile = "base:faithful"
 terrain = "base:grass"

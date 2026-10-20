@@ -6,6 +6,9 @@
 
 [scenario]
 id = "situation-lucid-pools"
+# Red human, Blue a computer, as the original's map (`h3-view situation`): the panel's buttons
+# lit on the human's turn (E17 M3 T6a).
+human = ["attacker"]
 packs = ["base", "ab", "sod"]
 profile = "base:faithful"
 terrain = "base:grass"

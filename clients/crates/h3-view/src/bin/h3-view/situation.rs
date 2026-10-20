@@ -154,6 +154,25 @@ fn situation(options: &Options) -> Result<(), String> {
             ));
         }
     }
+    // The map's players (below): Red human, Blue a computer or, in hot seat, a human too; the
+    // scenario's record says the same, so that the viewer's panel shows what the original's does
+    // (E17 M3 T6a).
+    let human = [true, options.hot_seat];
+    if battle.human != human {
+        let names = |h: [bool; 2]| {
+            let list: Vec<&str> = ["attacker", "defender"]
+                .into_iter()
+                .zip(h)
+                .filter_map(|(side, on)| on.then_some(side))
+                .collect();
+            format!("{list:?}")
+        };
+        return Err(format!(
+            "{id}: the scenario's `human` is {}, the original's map has {} (--hot-seat: both)",
+            names(battle.human),
+            names(human)
+        ));
+    }
     let mut map = map(&id, &battle, &ids, options.tile, options.hot_seat)?;
     let (patches, ground) = special(battle.battlefield.as_deref(), &objects, options.tile)?;
     map.patches = patches;
@@ -396,6 +415,7 @@ mod tests {
             stacks: [stacks(attacker), stacks(&[(0, "Goblin", 30)])],
             tight: [false, true],
             heroes: [hero(0, 0, "Orrin"), hero(102, 12, "Crag Hack")],
+            human: [true, false],
             machines: [vec![(13, 4), (15, 6)], Vec::new()],
         }
     }

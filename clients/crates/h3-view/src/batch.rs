@@ -118,12 +118,11 @@ impl Batch {
     }
 }
 
-/// The batch a draw list needs: every name in it (a flag's palette too), the layout's count box's
-/// picture, font and font palette when it draws a count box, its log's when it draws the log, and
-/// the outline palette, upper-cased.
+/// The batch a draw list needs: every name in it (a flag's palette too, a picture's players'
+/// palette, a text's picture, font and font palette), the layout's count box's picture, font and
+/// font palette when it draws a count box, and the outline palette, upper-cased.
 pub fn names(list: &[Draw], layout: &BattleLayout) -> BTreeSet<String> {
     let boxes = &layout.count_box;
-    let log = &layout.log;
     let named = list.iter().flat_map(|d| match d {
         Draw::Background { picture, .. } | Draw::AbsoluteObstacle { picture, .. } => vec![picture],
         Draw::Obstacle { def, .. }
@@ -133,7 +132,15 @@ pub fn names(list: &[Draw], layout: &BattleLayout) -> BTreeSet<String> {
         | Draw::Magic { def, .. } => vec![def],
         Draw::Flag { def, palette, .. } => vec![def, palette],
         Draw::CountBox { .. } => vec![&boxes.picture, &boxes.font, &boxes.font_palette],
-        Draw::Log { .. } => vec![&log.picture, &log.font, &log.font_palette],
+        Draw::Picture {
+            picture, player, ..
+        } => {
+            let mut names = vec![picture];
+            names.extend(player.as_ref().map(|p| &p.palette));
+            names
+        }
+        Draw::Button { def, .. } => vec![def],
+        Draw::Text { item, .. } => vec![&item.picture, &item.font, &item.font_palette],
         Draw::Ray(_) => Vec::new(),
     });
     named
@@ -170,6 +177,7 @@ mod tests {
 
     #[test]
     fn a_draw_list_names_its_batch() {
+        let layout = crate::scene::tests::layout();
         let picture = |picture: &str| Draw::Background {
             picture: picture.to_string(),
             x: 0,
@@ -244,25 +252,52 @@ mod tests {
                 count: 1,
                 tint: [0, 0],
             },
-            // The log the layout's picture, font and its palette (M3 T4b-2b-1).
-            Draw::Log {
+            // A dialog's text item its picture, font and its palette (M3 T4b-2b-1, T6a).
+            Draw::Text {
+                item: layout.log().unwrap().clone(),
+                x: 0,
+                y: 0,
                 text: "x".to_string(),
             },
+            // A picture its own name and the players' palette; a button its DEF (M3 T6a).
+            Draw::Picture {
+                picture: "cbar.pcx".to_string(),
+                x: 0,
+                y: 0,
+                player: Some(crate::scene::PlayerColours {
+                    palette: "Players.pal".to_string(),
+                    player: 0,
+                }),
+            },
+            Draw::Picture {
+                picture: "other.pcx".to_string(),
+                x: 0,
+                y: 0,
+                player: None,
+            },
+            Draw::Button {
+                def: "icm001.def".to_string(),
+                frame: 0,
+                x: 0,
+                y: 0,
+            },
         ];
-        let layout = crate::scene::tests::layout();
         let names: Vec<String> = names(&list, &layout).into_iter().collect();
         assert_eq!(
             names,
             [
                 "ABS.PCX",
                 "BG.PCX",
+                "CBAR.PCX",
                 "CH00.DEF",
                 "CMFLAGL.DEF",
                 "CMNUMWIN.PCX",
                 "CR.DEF",
                 "CROLLOVR.PCX",
                 "GAME.PAL",
+                "ICM001.DEF",
                 "OB.DEF",
+                "OTHER.PCX",
                 "PLAYERS.PAL",
                 "PLCBOWX.DEF",
                 "SMALFONT.FNT",

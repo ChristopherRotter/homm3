@@ -795,11 +795,76 @@ fn each_hero_and_its_flag_are_drawn_after_the_layer_1_obstacles() {
 }
 
 #[test]
-fn the_panel_draws_its_log() {
+fn the_panel_draws_its_items_as_the_turn_sets_them() {
+    // E17 M3 T6a: the layout's panel, the attacker (red, human) acting, its log's text.
+    let layout = layout();
+    let mut o = battle_view();
+    o.sides[0].human = true;
+    let list = panel(&o, Some(Side::Attacker), "a\nb", &layout);
+    let button = |def: &str, frame, x| Draw::Button {
+        def: def.to_string(),
+        frame,
+        x,
+        y: 561,
+    };
+    let scroll = |frame, y| Draw::Button {
+        def: "ComSlide.def".to_string(),
+        frame,
+        x: 624,
+        y,
+    };
     assert_eq!(
-        panel("a\nb"),
-        [Draw::Log {
-            text: "a\nb".to_string()
-        }]
+        list,
+        [
+            Draw::Picture {
+                picture: "cbar.pcx".to_string(),
+                x: 0,
+                y: 556,
+                player: Some(PlayerColours {
+                    palette: "PLAYERS.PAL".to_string(),
+                    player: 0
+                })
+            },
+            // No heroes: no surrender, no retreat, no book.
+            button("icm001.def", 2, 54),
+            button("icm002.def", 2, 105),
+            button("icm003.def", 0, 3),
+            button("icm004.def", 0, 156),
+            button("icm005.def", 2, 645),
+            button("icm006.def", 0, 696),
+            button("icm007.def", 0, 747),
+            Draw::Text {
+                item: layout.log().unwrap().clone(),
+                x: 214,
+                y: 563,
+                text: "a\nb".to_string()
+            },
+            scroll(0, 561),
+            scroll(2, 580),
+        ]
     );
+}
+
+#[test]
+fn the_acting_side_is_the_active_stacks_controller() {
+    let mut o = battle_view();
+    // The observation's active stack 0, the attacker's.
+    assert_eq!(acting(&o, &Moment::default()), Some(Side::Attacker));
+    // The moment's: stack 2, the defender's, hypnotized by the attacker.
+    o.stacks[2].controller = Side::Attacker;
+    let moment = Moment {
+        active: Some(2),
+        ..Moment::default()
+    };
+    assert_eq!(acting(&o, &moment), Some(Side::Attacker));
+    o.stacks[2].controller = Side::Defender;
+    assert_eq!(acting(&o, &moment), Some(Side::Defender));
+    // None, or a stack the observation lacks.
+    o.active = None;
+    assert_eq!(acting(&o, &Moment::default()), None);
+    let gone = Moment {
+        active: Some(9),
+        ..Moment::default()
+    };
+    assert_eq!(acting(&o, &gone), None);
 }
