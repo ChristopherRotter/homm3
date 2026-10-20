@@ -383,13 +383,21 @@ pub(crate) fn draw_frames(
         }
         let mut list = scene::battle_at(snapshot, &moment, manifest, tables, layout)
             .map_err(|e| e.to_string())?;
-        // The moment, then the count boxes drawn (` box<x>,<y>`, their top-left corners: a
-        // sequence that does not compare them masks them where they show, E17 M3 T5a).
+        // The moment, then the count boxes drawn (` box<x>,<y>n<count>@<side>.<record>`, their
+        // top-left corners: a sequence that does not compare them masks them where they show,
+        // E17 M3 T5a; one that does masks those whose count is not the original's, T5b).
         let mut line = describe(frame.t, &moment);
         line.pop();
         for d in &list {
-            if let scene::Draw::CountBox { x, y, .. } = d {
-                let _ = write!(line, " box{x},{y}");
+            if let scene::Draw::CountBox {
+                stack, x, y, count, ..
+            } = d
+            {
+                let _ = write!(line, " box{x},{y}n{count}");
+                if let Some(m) = timeline.members.iter().find(|m| m.stack == *stack) {
+                    let side = u8::from(m.side == Side::Defender);
+                    let _ = write!(line, "@{side}.{}", m.record);
+                }
             }
         }
         line.push('\n');
@@ -505,8 +513,8 @@ mod tests {
                 from: 45
             }
         );
-        assert_eq!((melee.pre, melee.ms), (0, 6000));
-        assert_eq!((melee.until(), melee.command[0].at), (6000, None));
+        assert_eq!((melee.pre, melee.ms), (0, 7000));
+        assert_eq!((melee.until(), melee.command[0].at), (7000, None));
         // The log's item compared from a time on (E17 M3 T4b-2b-2).
         let strike = file.sequence.iter().find(|s| s.id == "strike").unwrap();
         assert_eq!((melee.log_at, strike.log_at), (None, Some(3730)));

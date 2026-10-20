@@ -152,7 +152,10 @@ exit 1 on a change). An entry's `log_at` (M3 T4b-2b-2) compares the log's item f
 (`panel_beside_log` instead of `panel`), the viewer drawing its record's first strike's line
 there (design §9.6). An entry with `boxes = true` (M3 T5a) compares the count boxes; any other
 masks them where the drawn poses show them and where the viewer drew them (`ours.txt` lists the
-boxes it drew, ` box<x>,<y>`). Each line is `<ms> <differing> <artifacts>` (M3 T1c): the differing
+boxes it drew, ` box<x>,<y>n<count>@<side>.<record>`). With `boxes`, a box whose count is not the
+one the original's memory shows (`h3mem`'s `shown`, +0x50, while it is not −1, else its `count`;
+M3 T5b, design §4.3: the engine rolls its own damage) is masked and listed at the end of its
+frame's line, ` n<side>.<record>`. Each line is `<ms> <differing> <artifacts>` (M3 T1c): the differing
 pixels outside the masks and how many of them are the original's **redraw artifacts**
 (`h3cap.redraws`, design §7.11): its pixel is ours at that moment with one to five more
 shadows, or one we drew there at an earlier moment of the sequence with at least one more. The
@@ -281,7 +284,8 @@ dumps (Wine may draw a moment later).
 
 `h3mem.py` opens the game's `/proc/<pid>/mem` (Wine maps `Heroes3.exe` at its image base, so the
 map's addresses hold): the frame deadline and the idle step's time, the combat speed, and per
-stack its creature, hex, group, frame, facing, offsets and times (`docs/exe/structs.toml`). On
+stack its creature, hex, group, frame, facing, offsets, times, count and the count its box shows
+(`shown`, M3 T5b) (`docs/exe/structs.toml`). On
 the adventure map (M2 T6): the current player, each player's selected hero, hero list and
 resources, every hero's name, tile and points, the view's top-left tile, the tile under the
 mouse and the selected hero's path (design §6.3). It only reads. `python3 capture/h3mem.py`

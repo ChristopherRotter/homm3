@@ -95,6 +95,10 @@ FIELDS = {
     "frame": 0x40,
     "facing": 0x44,
     "count": 0x4C,
+    # The count the box shows while it is not -1 (E17 M3 T5b, design §4.3): the count before a
+    # strike's kills, set by `stack_take_damage` (0x4440DB), -1 again at the end of
+    # `strike_animation` (0x46935A).
+    "shown": 0x50,
     "y_offset": 0x100,
     "x_offset": 0x104,
     "fidget_clock": 0xFC,

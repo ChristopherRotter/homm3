@@ -47,6 +47,9 @@ pub struct Moment {
     pub heroes: [Option<HeroPose>; 2],
     /// The magic animation drawn over stacks (E17 M3 T3b).
     pub magic: Option<Magic>,
+    /// The counts the boxes show, by id, of the stacks whose count changed since the snapshot
+    /// (E17 M3 T5b); the others show the snapshot's.
+    pub counts: BTreeMap<u8, u32>,
 }
 
 impl Moment {
@@ -63,6 +66,7 @@ impl Moment {
                 .as_ref()
                 .map_or([None; 2], |h| h.at(timeline, t)),
             magic: timeline.magic(t),
+            counts: timeline.counts(t),
         }
     }
 }
@@ -169,11 +173,13 @@ pub enum Draw {
     /// (`draw_battle_stack`'s part 1 0x43E568, §4.3; E17 M3 T4a): the layout's picture with index
     /// 0 transparent, its inside tinted, the count written over it in the layout's font.
     CountBox {
+        /// Whose box it is (the stack's id).
+        stack: u8,
         /// The box's left edge.
         x: i32,
         /// Its top edge.
         y: i32,
-        /// The count written (`%d` of the stack's +0x4C).
+        /// The count written (`%d` of the stack's +0x50 while it is not −1, else +0x4C: §4.3).
         count: u32,
         /// The tint's hue and saturation, the bits of the f32 values (the layout's without
         /// spells; by the stack's spells not yet).
@@ -436,7 +442,8 @@ pub fn battle_at(
                     translucent: m.translucent,
                 })
             });
-            let count = count_box(s, pose, &sprite, &taken, layout);
+            let shown = moment.counts.get(&s.id).copied().unwrap_or(s.count);
+            let count = count_box(s, pose, shown, &sprite, &taken, layout);
             Ok((sprite.at, pose.layer, [Some(sprite.draw), magic, count]))
         })
         .collect::<Result<Vec<_>, SceneError>>()?;
@@ -504,10 +511,12 @@ fn ahead(hex: u8, right: bool, extra: u8) -> Option<u8> {
 /// A stack's count box, if it shows one (§4.3, 0x43E568): a living stack, not a war machine,
 /// standing or under the mouse (groups 2 and 1), its box not hidden by a walk or a flight (its
 /// +0x30, [`Pose::boxless`]: E17 M3 T5a). Beside its sprite's anchor by its facing, its width and
-/// whether the hex ahead is `taken`.
+/// whether the hex ahead is `taken`; its number the count `shown` (E17 M3 T5b: the snapshot's,
+/// then each strike's from its end).
 fn count_box(
     stack: &Stack,
     pose: Pose,
+    shown: u32,
     sprite: &Sprite,
     taken: &BTreeSet<u8>,
     layout: &BattleLayout,
@@ -522,9 +531,10 @@ fn count_box(
         .count_box
         .corner(sprite.anchor, right, wide, blocked, sprite.troop_offset);
     Some(Draw::CountBox {
+        stack: stack.id,
         x,
         y,
-        count: stack.count,
+        count: shown,
         tint: layout.count_box.tint,
     })
 }

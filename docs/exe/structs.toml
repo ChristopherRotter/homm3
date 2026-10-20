@@ -30,6 +30,7 @@ fields = [
   { offset = 0x44, name = "facing", type = "i32", summary = "where a two-hex stack's other hex lies (position +- 1); 1 - side at the setup (0x43D846): 1 drawn as stored, 0 mirrored", confidence = "read", refs = ["installation.md §7.19"] },
   { offset = 0x48, name = "direction", type = "i32", summary = "a move's direction (the walking offsets, 0x43E1FE; 0x43F0B0)", confidence = "inferred", refs = ["epics/E17-design.md §4"] },
   { offset = 0x4C, name = "count", type = "i32", summary = "creatures alive", confidence = "read", refs = ["installation.md §7.9"] },
+  { offset = 0x50, name = "shown_count", type = "i32", summary = "the count the box shows while it is not -1: the count before a damage's deaths (stack_take_damage 0x4440DB), -1 at the setup (0x43D69C) and at strike_animation's end (0x46935A)", confidence = "read", refs = ["epics/E17-design.md §4.3"] },
   { offset = 0x54, name = "temporary_creatures", type = "i32", summary = "creatures raised temporarily (Basic Resurrection); capped at the start count, never lowered in battle", confidence = "read", refs = ["installation.md §7.18"] },
   { offset = 0x58, name = "top_lost_hit_points", type = "i32", summary = "hit points the top creature lost", confidence = "read", refs = ["installation.md §7.20", "installation.md §7.21"] },
   { offset = 0x5C, name = "army_slot", type = "i32", summary = "army slot; Pit Lord's Demons take the corpse's", confidence = "inferred", refs = ["installation.md §7.21"] },
