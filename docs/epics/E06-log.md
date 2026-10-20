@@ -207,4 +207,14 @@ entry only where a task builds on it.
   refused replace keeping its file); `test_train.py` (a run's gate and ladders, a stand-in gate
   that promotes each time: every promoted network kept, each ladder against the one before; the
   end gating only after training; a gate and a ladder cut short by Ctrl+C run first at the
-  resume; `--init-from`, and a network of another size refused).
+  resume; `--init-from`, and a network of another size refused). 87 Python tests with torch on
+  the CPU (the GPU test skipped), 69 without; the scoped verify (Python only: the engine code is
+  #324's, verified there).
+- **A real run in the sandbox** (the CLI, the default network, `samples=1`, 64 envs, ladders of
+  10 per kind, CPU): best #0's ladder (16 s), one update, the end gate rejected the learner after
+  150 pairs (140 of them ½: each side's attacker won its game; LLR −3.36) in 353 s, the final
+  ladder repeated best #0's rates exactly (common random numbers). The gate played 5 006 games
+  for its 150 pairs: while it waits for the slowest battle among the pairs it needs, the other
+  envs of its 500-env batches play on into later episodes. On the CPU the network's passes over
+  those rows dominate; the user's hour on the GPU measures what it costs there (the lane's
+  inbox).

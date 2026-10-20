@@ -46,6 +46,12 @@ Pass offer (fixed by the adventure lane's fixed tests, #266).
   scales to 9.9 × at 1 024 envs on 24 threads but only 3.8 × at 64 envs (`E05-log.md`, T9c's
   table): E06's batch size and thread count from there.
 
+- **The gate's uncounted games** (E06 T3b): its batches step all of their envs while it waits for
+  the slowest battle among the pairs it needs (5 006 games for 150 pairs in the sandbox, 353 s on
+  the CPU). If the user's hour shows the gates' share too high, play the gate set in rounds that
+  stop an env past the episode the next pairs need (a C ABI change: start or pause an env at a
+  given episode), or shrink `max_pairs`.
+
 - **Encounters v2** (with the adventure's logged encounters, decision 7; E05 T9b): A7's "+0.5 a
   week" in weeks 9 to 16 is rounded down in `encounters-v1.toml` (odd weeks half a level low);
   untested: A4's cap and redraws in weeks 1 to 6, the forts of weeks 2 to 6, A7's war-machine

@@ -77,10 +77,6 @@ design note kept in `docs/epics/E05-log.md` (§1 to §9).
   the trainer checks every training episode against both and the gate set v1. The bots' table on
   the report set is committed (`python/records/bots-report-v1.json`): Greedy 0.832 ± 0.013 and
   Aggressor 0.810 ± 0.014 against Random, Greedy 0.533 ± 0.018 against Aggressor.
-- **Training runs** (E06, ADR-0026; `python/README.md`, "Training runs"): TOML configs, budgets
-  and cadences in samples, records committed in `python/records/`, checkpoints that resume after
-  any stop; an SPRT gate on the gate set promotes the learner over its best, and each promoted
-  network's ladder plays the bots and the network before it on the report set (E06 T3b).
 - **Throughput** (wall time, not gated; the gates count instructions in `benches/ai/`):
   on the user's Ryzen 9 3900X (Windows, release, the encounter distribution) about 50 000 steps/s
   on one thread whatever the batch size, and inside the step 387 000 on 12 threads and 497 000 on

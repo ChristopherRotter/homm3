@@ -27,6 +27,7 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 
 **Ownership**
 - The battle lane still writes rules the encodings show: a new observation feature or action entry comes as a `cross-lane` pull request from the battle lane with this lane's version bumps (`docs/08-work-process.md`, "Lanes"). This lane's own changes to `h3-battle` (an engine query the env needs) are `cross-lane` the other way.
+- `docs/07-simulation-and-ai.md` is shared: only `--scope ai` checks it (T3a's edit slipped in).
 - `h3-cli` is the battle lane's except `src/ai/`; its golden replays (`fixtures/`) and `benches/battle/` stay with battle, and change when the encodings or the replay format change: regenerate them deliberately (`fixtures/README.md`) in the same pull request.
 
 **Environment**
@@ -86,19 +87,17 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   while the environment's network access is **Custom** with `*.pytorch.org`: **Trusted** ignores
   the Allowed domains. The proxy's 403 says why in its body, which curl hides: send a raw
   `CONNECT host:443` to `$HTTPS_PROXY` ("no rule or allowlist entry allows host", 2026-10-19).
-  `uv --directory python sync --group train`: 3 to 25 minutes, 6 GB.
+  `uv --directory python sync --group train`: 3 to 25 minutes.
 
 ## Recent sessions
 
 ### 2026-10-20 — E06 T3b (the evaluation gate)
 
-- #324 merged; the user: "no need to cut" T3b. The SPRT gate, promotions, ladders in the run,
-  record schema 4, checkpoint format 2 with pending work, `--init-from`. 86 Python tests with
-  torch (CPU), 61 without; Python only: the scoped verify (`E06-log.md`).
+- #324 merged; the user: "no need to cut" T3b. The SPRT gate, promotions, ladders, record schema
+  4, checkpoint format 2, `--init-from`. 87 Python tests with torch (CPU), 69 without; the scoped
+  verify (Python only); a real CLI run in the sandbox (`E06-log.md`).
 
 ### 2026-10-20 — E06 T3a (the held-out sets v1, the bots' table)
 
-- #319 had merged. The user asked for a small increment; offered T3a in two pieces, the user
-  chose all of T3a in one pull request. `h3 ai eval --set`, `--json`; `evaluate.report`,
-  `stratified`, the gate set's seeds; the bots' table committed; the bots' fallbacks tested.
-  69 Python tests with torch (CPU), 56 without; the full verify (`E06-log.md`).
+- Offered T3a in two pieces; the user chose one pull request. `h3 ai eval --set`, `--json`, the
+  report set in Python, the bots' table, the bots' fallbacks tested; the full verify.
