@@ -1,6 +1,6 @@
 # E05 — Battle environment v1
 
-Status: **in progress** 2026-10-18 (AI-Q1; increment 1 done: T1, ADR-0025 accepted; T2; increment 2 done: T3 and T4; increment 3 done: T5 and T6; increment 4 done: T8, exit criterion 7 met; increment 5 done: T7, exit criterion 6 met; increment 6, T9, in progress) · Lane: **ai**
+Status: **in progress** 2026-10-18 (AI-Q1; increment 1 done: T1, ADR-0025 accepted; T2; increment 2 done: T3 and T4; increment 3 done: T5 and T6; increment 4 done: T8, exit criterion 7 met; increment 5 done: T7, exit criterion 6 met; increment 6, T9, in progress: T9a and T9b done) · Lane: **ai**
 (opened with this epic) · Follows E04c (closed 2026-10-16) · Followed by E23 (the original's battle
 AI, the system actor) and E06 (training and proficiency)
 
@@ -173,12 +173,12 @@ next (increment 5: T7).
 **Increment 6** (cut 2026-10-19 at the user's checkpoint of increment 5): **T9 Closure** (exit
 criteria 8 and 9), in four parts; AI-Q7 moves to E06 (the user).
 
-- [ ] **T9a The audit** — exit criteria 1 to 7 against the code and tests, the lane's inbox sorted
-  (E06, E13, E23, done), stale docs.
-- [ ] **T9b The independent review** — four fresh reviewers, one slice each (the batch, its pool
-  and determinism; the C ABI and the binding: robustness and the information boundary; reward,
-  encounters and census against ADR-0025 and their sources; the bots, `h3 ai eval`, the trainer
-  and the ladder); the fixes.
+- [x] **T9a The audit** — exit criteria 1 to 7 met (3 after T9b's fix), the inbox by
+  destination, 2026-10-19. Record in `E05-log.md`.
+- [x] **T9b The independent review** — four fresh reviewers, 21 findings verified and fixed or
+  recorded (reward v1's war machines as the battle placed them, the trusted tooling marked in
+  `h3.h`, the binding's arrays guarded, the evaluation's skipped episodes, one Glicko-2 period
+  per run), 2026-10-20. Record in `E05-log.md`.
 - [ ] **T9c The user's machine** — `h3 ai bench` over threads and batch sizes (design §7, moved
   from T3c; criterion 8), the Python binding's steps/s; `cargo xtask verify --with-original-data`
   on Windows, and on Linux in a sandbox with the user's files staged (criterion 9).

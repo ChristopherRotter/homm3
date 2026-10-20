@@ -12,7 +12,9 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   Random after 40 minutes, best 0.811). **Increment 5** done 2026-10-19 (T7, design §9;
   AI-Q6): the preview (#274), ADR-0025 point 5 (#271), the bots, `h3 ai eval`, C ABI v30
   (#276), the user's network at Aggressor's level: exit criterion 6 met. **Increment 6**
-  (T9, the closure) cut 2026-10-19: T9a and T9b in progress on `claude/festive-brown-igukig`.
+  (T9, the closure) cut 2026-10-19: T9a (the audit) and T9b (the review) done 2026-10-20 on
+  `claude/festive-brown-igukig`, its pull request open (watch it). **Next:** T9c on the user's
+  machine (QUEUE: the commands), then T9d.
 - **Order** (BACKLOG): E05, then E23 (the battle lane: the system actor's policy), then E06.
 - **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v30 (T7: the bots' seats) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q8, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
@@ -46,7 +48,11 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 
 - The bots (`h3_sim::bots`) read the engine's preview (`h3_battle::preview`, BAT-DMG-011): a
   change to the battle's strike stages moves them and `h3 ai eval`'s table; its default episodes
-  are the Python evaluation's (`EVAL_SEED`): keep both seeds equal.
+  are the Python evaluation's (`EVAL_SEED`, both literals pinned by an `h3-cli` test).
+- Reward v1 reads the war machines from the outcome's records (what the battle placed: a
+  siege's Catapult in, a Ballista BAT-QUIRK-23 leaves out not), never `setup.war_machines`.
+- `h3env.BattleBatch`'s output arrays are read-only attributes (the engine holds their
+  addresses): copy or write into them, never rebind; its head arrays must be N long.
 
 **Python**
 - The trainer (`h3env.train`, design §8): its tests are in the lane command (`uv run --group
@@ -70,6 +76,16 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 
 ## Recent sessions
 
+### 2026-10-19/20 — Increment 6's cut; T9a, the audit, and T9b, the review
+
+- The user cut increment 6 (T9a to T9d; four reviewers; AI-Q7 to E06; the Linux verify with
+  original data in a later staged sandbox). T9a: criteria 1 to 7 met, the inbox by destination.
+- T9b: four fresh reviewers, 21 findings (`E05-log.md`); the user chose the Catapult as a placed
+  war machine and one Glicko-2 period per run. A tried fix of A3's growth broke A4's premise:
+  reverted, noted for E23.
+- Python's `h3env.train` tests need torch (`--group train`), absent in the sandbox: the
+  evaluation's skip count was checked ad hoc by loading `evaluate.py` without the package.
+
 ### 2026-10-19 — Increment 5: T7, the baselines (AI-Q6), and the network's row
 
 - #270 merged. The user cut increment 5 (T7) and decided AI-Q6 (the bots read the engine's
@@ -83,9 +99,5 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 
 ### 2026-10-19 — T8c: two hours on the user's machine; the opponent pool
 
-- The user's hour (GTX 1070) with naive self-play: 0.779 at 12 minutes, 0.721 at the end; the
-  defender regressed (0.63 → 0.52), the attacker held at 0.93 (`E05-log.md`). The user chose an
-  opponent pool (design §8.2); built with `best.pt` and the double final evaluation fixed
-  (#264). The second run (40 minutes): 0.800 final, 0.811 best: criterion 7 met (the user).
-- #260 merged and its remote branch was deleted: the follow-up restarted the branch from
-  `master` (a plain push recreates it; `--force-with-lease` fails on the stale ref).
+- Naive self-play regressed on the user's GTX 1070 (0.779 peak, 0.721 final); with the opponent
+  pool (#264) 0.800 final, 0.811 best: criterion 7 met (`E05-log.md`).

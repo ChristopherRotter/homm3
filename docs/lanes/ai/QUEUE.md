@@ -10,9 +10,9 @@ increment 3 done 2026-10-19 (#253, #255, #257, #258); increment 4 (T8) done 2026
 
 Increment 6 (T9, the closure) cut 2026-10-19 (the epic: T9a to T9d; AI-Q7 moves to E06).
 
-1. **T9a The audit** and **T9b The independent review** (in the sandbox): `in progress`
-   2026-10-19 (`claude/festive-brown-igukig`).
-2. **T9c The user's machine**: the bench sweep and the Windows verify with original data; the
+T9a and T9b done 2026-10-20 (`claude/festive-brown-igukig`, its pull request).
+
+1. **T9c The user's machine**: the bench sweep and the Windows verify with original data; the
    Linux verify with original data in a sandbox with the user's files staged (criteria 8, 9).
    On `master` after this lane's T9 pull request, in PowerShell (the conda env of
    `python/README.md` for the Python line):
@@ -27,7 +27,7 @@ Increment 6 (T9, the closure) cut 2026-10-19 (the epic: T9a to T9d; AI-Q7 moves 
    Record the 12 lines' two steps/s, the Rust/Python pair and the verify's steps in
    `E05-log.md`. If another lane's step fails the full verify (E04c's precedent: `h3-server`'s
    coverage on Windows), add `cargo xtask verify --scope ai --with-original-data --summary`.
-3. **T9d The closure**: the `shared/` pull request, the design note folded, the epic closed.
+2. **T9d The closure**: the `shared/` pull request, the design note folded, the epic closed.
 
 ## Inbox
 
@@ -44,7 +44,8 @@ Pass offer (fixed by the adventure lane's fixed tests, #266).
 - **Baselines and AI-Q7:** Greedy value beats Aggressor only 0.519 on the held-out episodes: the
   preview of its own kills buys little without spells or a plan; a stronger baseline (casts, a
   one-ply look at the opponent's reply) is E06's, and AI-Q7 (whether the agents get the preview)
-  moved there (T7c; the user, 2026-10-19).
+  moved there (T7c; the user, 2026-10-19). The bots' fallback branches (the tactics phase, a
+  commanded Catapult) have no targeted test (E05 T9b).
 - **Encodings:** `h3_sim::action::encode` answers without a viewer (the same root as F-sec-2's
   leak, which the sim's `step` closes); it leaks nothing today (E04b T11b, the battle lane).
 - **Performance**, each worth a look when a profile of training shows it: the flat observation
