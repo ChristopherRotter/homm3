@@ -441,6 +441,7 @@ never of the retaliation; the ratings are the server's Glicko-2, copied.
   held-out encounters, the episode seeds of the Python evaluation (`EVAL_SEED`, 100 envs × 10);
   per pair the win rate (both sides weighed equally, a draw or truncation no win) and value
   efficiency (the mean reward v1); Glicko-2 ratings (`src/ai/rating.rs`, copied from
-  `h3-server`), each game one rating period, episode by episode in a fixed order of the pairs.
+  `h3-server`), the whole run one rating period against the defaults (E05 T9b, the user: one
+  period per game held the deviation near 64 and remembered only the last ~40 games).
 - **The network's row:** `python -m h3env.train.ladder --checkpoint <run>/best.pt` plays the
   sampled policy against `random`, `aggressor` and `greedy` on the same episodes.
