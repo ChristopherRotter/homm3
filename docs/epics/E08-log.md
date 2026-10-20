@@ -3002,3 +3002,29 @@ battle lane's E23 T1c merged since T24b1; this change is docs only). Docs only.
   manipulate a hero through its interface but are linked up by the orchestrator, so they do not
   get entangled: confirmed as the design (ADR-0013 point 1, ADR-0017 point 10: contexts read by
   reference, return typed hero changes, the game applies them), and said in the draft's context.
+
+### Increment 4, round 1: T25, the computer's evaluation; T26a, the ADRs (2026-10-20, `adventure/e08-t25`, `shared/e08-t26a` #325)
+
+The user merged T24b2 (#321) and cut round 1 (decision 59): T25 with T26a, both docs only; T26b
+next. Baseline `master` 774ba0e.
+
+- **T26a** (`shared/e08-t26a`, #325): the accepted amendments applied to ADR-0013 (points 1, 2,
+  3, 11, new 12) and ADR-0017 (points 1, 4, 5, 6, 8, 9, 11), the index's "Read when"; after
+  ADV-Q17 the system default and the choice's inputs (the map's shares). The drafts leave the
+  lane folder in T25's pull request.
+- **T25** (survey §10): the executable staged from the user's folder. 0x524690 read whole (a
+  switch over the 28 skills; the flag counts the army and the computer's state), 0x524DD0 (a
+  ranking of the unknown skills against the free slots), 0x52BBD0 re-read; **no draws**. Found
+  on the way: Pathfinding's and Navigation's values read two globals that `ai_map_terrain_shares`
+  (0x52B9C0) computes at the new game before the heroes' setups, over the coast-flagged tiles
+  only (A-11: Navigation always 0, a map without a coast a NaN that `crt_ftol` makes 0); the file's
+  1.0 in them had first looked like constants. With that, batch E3c's E3-6 (S = 75, a grass map)
+  gets all four of its observed choices from the evaluation (always-left and the constants each
+  miss one). The flag-set path reads the hero's AI effectiveness words, a per-player AI value and
+  the schools through the caster record (0x524D20): E10's. VCMI has no counterpart (its
+  Nullkiller scores by role). Ten map entries (two functions upgraded to read, `ai_school_value`,
+  `ai_map_terrain_shares`, two tables, two globals, `ai_player_values`) and two hero fields.
+- **ADV-Q17** (asked interactively with context; decision 60): A-11 reproduced in every profile
+  (no flag, `ADV-QUIRK-14` with T28); the system default chooses with the setup's inputs until
+  E10; the adventure part's terrains gain their cost by Pathfinding level now (T29). Applied to
+  #325, the design note (§1, §8, §9, §12, §13, §15, §17) and the queue (T26b).

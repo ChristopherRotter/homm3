@@ -772,7 +772,8 @@ worth nothing at load. A map without a coast divides 0 by 0: both shares are NaN
 and Navigation are worth 0 there too. Quirk candidate **A-11**: the computer's terrain shares
 count only coastal land tiles (probably meant all tiles), so Navigation is always worth 0 and
 Pathfinding by the coast's terrain. Harmless to the rules (it moves only the computer's choices:
-the levels at load, later E10's players); a faithful choice needs it reproduced.
+the levels at load, later E10's players); a faithful choice needs it reproduced. **The user at
+ADV-Q17: reproduced in every profile, no flag** (what a fix would count is a guess).
 
 ### 10.4 The flag-set path (E10)
 
@@ -829,5 +830,8 @@ to 0x524690.
   only).
 - The shares' arithmetic is f64 (counts to f64, a division, × A, / 4 or / 2, truncated): through
   `kernel::num` as the original's, or an integer form tested equal; a NaN gives 0.
-- **ADV-Q17** (for the user): A-11's class; the system actor's default (ADR-0017 point 6),
-  since the flag-set path needs E10's computer-player state; where the Pathfinding costs live.
+- **ADV-Q17** (the user, decision 60): A-11 reproduced in every profile (no flag); the system
+  actor's default (ADR-0017 point 6) chooses with the setup's inputs until E10, since the
+  flag-set path needs E10's computer-player state; the adventure part's terrains gain their
+  cost by Pathfinding level now (the original's `step_cost_table`), which increment 5's movement
+  reuses.

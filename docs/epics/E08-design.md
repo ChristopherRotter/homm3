@@ -1,9 +1,9 @@
 # E08 design note: increment 4
 
 A handover, not binding (`docs/adr/README.md`): the working detail behind increment 4's
-amendments of ADR-0013 (`docs/lanes/adventure/adr-drafts/0013-increment-4.md`, T24b1) and
-ADR-0017 (`adr-drafts/0017-increment-4.md`, T24b2), from the user's answers at ADV-Q15 (the
-epic's decision 55). The task that builds a section deletes it; the file goes when the epic
+amendments of ADR-0013 (point 12; drafted in T24b1) and ADR-0017 (drafted in T24b2), accepted
+at ADV-Q16 (the epic's decision 58) and applied by T26a (#325), from the answers at ADV-Q15 and
+ADV-Q17 (decisions 55, 60). The task that builds a section deletes it; the file goes when the epic
 closes. Facts and sources: survey `docs/rules/surveys/E08-progression.md` (§ numbers are the
 survey's unless they name this note).
 Increment 3's note was pruned by T24b1: every section was built, its records are in `E08-log.md`
@@ -42,6 +42,11 @@ player sees is the game's (part B).
 - Sources: `original-data` (code reading: the table 0x679C88, the intervals 0x4DAD74, the forced
   skills 0x4DAD00 and 0x679CBC); the values are not in the text tables, so they are gap-filled
   (the harvester's gap-fill or the packs directly).
+- **The adventure part's terrains** (`packs/*/adventure.toml`, adventure-owned; decision 60) gain
+  their straight step's cost by Pathfinding level 1–3 beside the cost without it (the original's
+  `step_cost_table` 0x63E510: sand and snow 125, 100, 100; swamp 150, 125, 100; rough 100, 100,
+  100; the others as without), for the evaluation's shares (§8, §12) now and increment 5's
+  movement later; the adventure ruleset part's version moves (T29).
 - **Not data**: the scenario's level limit and banned skills are the map's (`RawMap::level_limit`,
   `banned_skills`), inputs from the game (§12).
 
@@ -162,20 +167,22 @@ the source, it returns a skill or none.
   `ai_secondary_skill_value` (0x524690, 0x684 bytes) and `ai_takes_new_secondary_skill` (0x524DD0,
   0xF3 bytes): both offers known or both new, the higher of the two values, the first on a tie;
   otherwise 0x524DD0 decides whether the new skill is taken (§2.5, §9).
-- **Not read yet**: the first building task reads 0x524690 and 0x524DD0 (and what they call) with
-  VCMI's `CGHeroInstance` counterpart and the wiki, as a survey section (§10 of the survey), before
-  the rule is built. Known: the flag argument, clear at load and for a hero without an owner,
-  replaces the army's summed creature values by the defaults 1 000 and 500 (0x5246D5–0x524722).
+- **Read by T25** (survey §10): no draws; a skill's value (§10.2, the flag-clear column at
+  load) from the hero's skills, Wisdom, its primary skills with the worn artifacts (Spell Power
+  and Knowledge held to 1–99, Attack to 0–99), two tables (Archery's, Estates'), the army's
+  worth A = 1 000 and B = 500 and **the map's terrain shares** (§10.3: water share and the rough
+  share per Pathfinding level, over the coast-flagged tiles only: A-11, reproduced in every
+  profile, decision 60); a new skill against an advance by 0x524DD0's ranking (§10.5). E3-6's four
+  choices follow from it (§10.6).
 - **Its place**: an `h3-heroes` rule (the hero model beneath the contexts), so the game's levels at
-  load and E10's computer players call the same function. **Its inputs**: the hero's details, the
-  two offers, the army's worth (the setup's defaults, or a computer player's army: an argument,
-  since the army is not part of the details) and the level's draw source, if the reading finds
-  that 0x524DD0 draws (the survey's open point, §9); only the setup's path is built in
-  increment 4.
-- **A risk the reading settles**: if 0x524690 reaches the adventure AI's spell values (0x5275B0
-  and its helpers, read by the battle lane, E23, `installation.md` §7.39) or other game state, those
-  inputs come from the caller or move beneath the contexts too; the reading's task says which and
-  the cut's later tasks adapt.
+  load, the system actor's default (§13) and later E10's computer players call the same function.
+  **Its inputs**: the hero's details and class, the two offers, the army's worth (the setup's
+  1 000 and 500; E10 passes its own with the flag-set path) and the map's shares, which the game
+  computes once from the static map at the build (§12) and passes in. Only the flag-clear path is
+  built in increment 4; the flag-set one reads E10's computer-player state (§10.4).
+- **The shares' arithmetic** is the original's f64 (counts to f64, a division, × A, / 4 or / 2,
+  truncated; a NaN, on a map without a coast, gives 0): through `kernel::num`, or an integer form
+  a test shows equal for every count the maps can have.
 - **The levels at load** seen from the hero (the game's sequence is GAM-SET-002, §12): after the
   custom skills, army, spells and artifacts, the experience set to 0 and the custom experience
   gained (§3), then each pending level drawn with the original's source and S (§4), two offers
@@ -194,7 +201,9 @@ the source, it returns a skill or none.
   fix-optional, its flag the game's: §11); **ADV-QUIRK-10** the Elementalist's might intervals
   (A-10; fix-optional, the data quirk `quirk.content.elementalist_offer_intervals`, §1);
   **ADV-QUIRK-11** the levels past 74 wrap (A-7), **ADV-QUIRK-12** a limit above 75 caps at a
-  wrapped threshold (A-8), **ADV-QUIRK-13** a primary skill wraps at 128 (A-9): fixed, no flag.
+  wrapped threshold (A-8), **ADV-QUIRK-13** a primary skill wraps at 128 (A-9): fixed, no flag;
+  **ADV-QUIRK-14** the computer's terrain shares count only coast-flagged tiles (A-11, survey
+  §10.3): the original's in every profile, no flag (decision 60), written with T28.
   The two flags take the registry's next free positions (after 26, BAT-QUIRK-24's since E23 T1c).
 
 ### 10. The hero side's shared and `cross-lane` needs (for the cut, §17)
@@ -250,6 +259,12 @@ calls `h3-heroes`, who answers, what a player sees. ADR-0017's draft holds the d
   chosen by the original's choice with the setup's defaults (part A §8), one learned, none the
   primary skill only. No events (building a game emits none). A hero without a custom experience
   keeps its default 40–90 at level 1.
+- **The map's terrain shares** (survey §10.3, A-11): computed once at the build, before the levels
+  at load, from the static map (the coast flag, the terrain, the terrains' costs by Pathfinding
+  level): over the coast-flagged tiles that are not rock, the water share and the rough share per
+  Pathfinding level 0–2 (cost above 100); an `h3-adventure` query the game calls, the result
+  passed to the evaluation (§8). Static, so kept beside the limit (or recomputed: the building
+  task measures) and in the state hash if kept.
 - **The shipped maps**: `verify --with-original-data` (`crates/h3-map/examples/original_data.rs`)
   imports the 5 maps and builds them, so the 9 heroes' 41 level-ups at load run on real data; the
   census line counts them.
@@ -270,10 +285,10 @@ calls `h3-heroes`, who answers, what a player sees. ADR-0017's draft holds the d
   next pending level of the hero, if any. A player's queue keeps at most one open decision: a
   level-up opens after the battle closes, and a visit's chain that would follow a battle (none in
   increment 4: a beaten monster's treasure is applied with the outcome) waits behind it.
-- **The system actor's default** (ADR-0017 point 2's closed set): the original's choice with the
-  hero's army's worth (the original's timeout: 0x52BBD0 with its flag set); if the reading (T25)
-  finds the army's path needs more than the army's creature values, the first offer as a stand-in
-  until E10 (`ADV-STUB-<n>` then).
+- **The system actor's default** (ADR-0017 point 6's closed set): the original's choice; its
+  flag-set path (the original's timeout) reads E10's computer-player state (survey §10.4), so
+  until E10 it chooses with the setup's inputs, as at load (decision 60; an `ADV-STUB-<n>` at the
+  call, closed by E10).
 - **Events** (to the owner only): `LevelGained { player, hero, level, primary, skill }` for every
   level given in play (with one offer, none or after an answer), and `LevelUpOpened { player,
   hero, level, primary, offers }` when a decision opens (names the building task's); the existing
@@ -311,8 +326,8 @@ replay format v4. Increment 4: the core ruleset hash and the pack format (T26: h
 the class field, the override kind, two flags), the game state hash v9 (T27 or T29, whichever
 first changes what it hashes: the details' counters, the seeds, the limit and banned skills), the
 map import v8 (T29), the action encoding v4 and the replay format v5 (T30 or T31, with the
-answers). The adventure state hash and ruleset part do not change. Each bumps once, in the task
-that first changes it.
+answers), the adventure ruleset part v9 (T29: the terrains' costs by Pathfinding level). The
+adventure state hash does not change. Each bumps once, in the task that first changes it.
 
 ### 16. Batch E4
 
@@ -338,9 +353,9 @@ confirmed at its checkpoint):
 
 | Round | Tasks | Content |
 |---|---|---|
-| 1 | **T25** + **T26** | T25: the evaluation's reading (0x524690, 0x524DD0 and what they reach; with VCMI and the wiki; survey §10; whether it draws, its inputs, the army's path for §13's default), docs only. T26: the shared groundwork: ADR-0013 and -0017 amended, the hero parameters (table, highest level, forced skills), the class's `offer_intervals`, `[[hero_class_override]]`, the two flags, the packs and the gap-fill, the bumps and the re-recordings (part A §1, §10) |
-| 2 | **T27** + **T28** | T27: `h3-heroes`' progression (part A §2–§7: levels, the bound, the limit's cap, the draw source and the original's generator, the primary skill, the offers, `GainLevel`, the counters, the checks; HER-EXP-002, -003, HER-LVL-001 to -005; `ADV-QUIRK-10` to `-13`). T28: the original's choice ported (part A §8, HER-LVL-006; after T25) |
-| 3 | **T29** + **T30** | T29: the game's setup and build (§11, §12: the seeds, the limit and banned skills, levels at load, the import's refusal lifted, the 5 shipped maps; GAM-HER-002, GAM-SET-002; `ADV-QUIRK-9`). T30: the level-up as a decision (§13: the answers, the events, the observation, the system actor's default, the battle's levels; GAM-DEC-002, GAM-BAT-008) |
+| 1 | **T25** + **T26** | Cut (decision 59): **T25** done (2026-10-20: survey §10; ADV-Q17, decision 60) and **T26a** done (2026-10-20, #325: ADR-0013 and -0017 amended); **T26b**: the hero parameters (table, highest level, forced skills), the class's `offer_intervals`, `[[hero_class_override]]`, the two flags, the packs and the gap-fill, the bumps and the re-recordings (part A §1, §10) |
+| 2 | **T27** + **T28** | T27: `h3-heroes`' progression (part A §2–§7: levels, the bound, the limit's cap, the draw source and the original's generator, the primary skill, the offers, `GainLevel`, the counters, the checks; HER-EXP-002, -003, HER-LVL-001 to -005; `ADV-QUIRK-10` to `-13`). T28: the original's choice ported, its flag-clear path (part A §8, HER-LVL-006; survey §10; `ADV-QUIRK-14`) |
+| 3 | **T29** + **T30** | T29: the game's setup and build (§11, §12: the seeds, the limit and banned skills, the terrains' costs by Pathfinding level and the map's shares, levels at load, the import's refusal lifted, the 5 shipped maps; GAM-HER-002, GAM-SET-002; `ADV-QUIRK-9`). T30: the level-up as a decision (§13: the answers, the events, the observation, the system actor's default, the battle's levels; GAM-DEC-002, GAM-BAT-008) |
 | 4 | **T31** + **T32a** | T31: the env, replays, fixtures, properties and benchmarks (§14). T32a: batch E4's spec and recipe (§16; `cross-lane`) |
 | 5 | **T32b** + **T33** | T32b: batch E4 run on the harness. T33: the scoring (the rules it covers `verified` or reopened), the audit against the exit criteria, increment 4 closed, the next increment refined |
 
