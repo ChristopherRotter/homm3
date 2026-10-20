@@ -358,6 +358,13 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   base and `battle_controls_state` read in full and the controls' states at a turn's start built
   (`h3_view::panel`); the capture set compares the whole panel: 31 situations, 57 frames exact
   (the game's parked cursor masked); `drawn` digests what the comparisons see.
+- **T6b done 2026-10-20** ([log](E17-log.md#m3-t6b--the-panel-and-the-log-over-a-battle-2026-10-20),
+  [design §9.8](E17-design.md)): the user took it whole. The log's state read (new entries,
+  the 3 000 ms status rule, settling, the scroll) and where each line is written; the timeline
+  records what the battle writes and when, `battle_log::Log` keeps it, `scene::Panels` draws the
+  panel through the battle's turns (kept colours and scroll buttons). The harness keeps panel
+  changes and reads the log: the ten sequences compare the panel, every count as recorded, the
+  log's item exact in 228 frames, listed in 668 (hints, T6c; rolled lines).
 
 ### The adventure lane's harness (H1, H2: its batch E3)
 

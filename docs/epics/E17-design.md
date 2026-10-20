@@ -1967,9 +1967,15 @@ panel's set-text 0x46BF50, the mouse posted again 0x4ECC00) and where each line 
   before the strike (a retaliator's after the strike's kills), a defend's gain by the snapshot's
   defense.
 - **Checked:** the line times against the original's memory: `shot`'s line at 1 588 ms, `melee`'s
-  at 5 266 and 6 466 (the unit tests pin them), `behind`'s nine changes as modelled. The harness
-  keeps a frame where the panel changes too (the parked cursor aside) and reads the log; the frame
-  check compares the whole panel, its log's item where the original's text is the viewer's, else,
-  where its pixels differ, listed (` log`): the hover's hints (T6c) and the lines of rolled
-  damage. The memory can lag the screen by a step as a turn starts: there the pixels agree and
-  nothing is listed.
+  at 5 266 and 6 466 (the unit tests pin them), `behind`'s, `shots`' and `machines`' sequences of
+  lines, the round's line and the settling as modelled. The harness keeps a frame where the
+  panel changes too (the parked cursor aside: no new frame in the ten, the panel's changes fall
+  on kept ones) and reads the log; the frame check compares the whole panel, its log's item
+  where the original's text is the viewer's, else, where its pixels differ, listed (` log`). All
+  ten sequences captured afresh: every count as recorded (896 frames: the panel's buttons,
+  colours and scroll buttons as the original's in all), the log's item exact in the 228 frames
+  that show the viewer's text (`strike`'s line from 3 730 ms, `machines`' defend, shot and heal
+  lines), listed in 668: the hover's hints (T6c) and lines whose numbers the engine rolled
+  (`behind`'s second shot also kills one Pegasus in the engine, none in the original). The memory
+  can lag the screen by a step as a turn starts: there the pixels agree and nothing is listed.
+  The set (31 situations, 57 frames) exact.
