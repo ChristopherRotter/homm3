@@ -28,8 +28,8 @@ A record (schema 4, `h3env.train.run.Record`; `docs/epics/E06-design.md` §4):
   `rejected`, `inconclusive`), pairs, the pairs' counts per score, LLR, mean score, Elo, games and
   seconds; `promotions`: each promoted network's index, how (`start`, `init`, `gate`), samples
   and update; `ladders`: each ladder's promoted network, whether final, episodes per kind, and per
-  opponent the win rate, its 95 % interval, the value efficiency and each kind's rate; `best`: the
-  latest promotion's index and samples.
+  opponent the win rate, its 95 % interval, the value efficiency, each kind's rate and (after
+  `t3b-1`) its truncations' share; `best`: the latest promotion's index and samples.
 
 `tests/test_run.py` checks every record here against its schema (and every config in
 `python/configs/`). To commit a run's record: copy `runs/<run>/record.json` to
@@ -53,4 +53,8 @@ cargo run --release -p h3-cli -- ai eval --set report-v1 --json python/records/b
 
 The promoted networks (from E06 T3b: a run's `promoted/<n>.pt`, its record's `promotions`) and
 the run that holds the current best; a run started `--init-from` another's network names it as
-its `parent`. None committed yet.
+its `parent`.
+
+- `t3b-1` (E06 T3b's hour, 2026-10-20): promoted #0 to #4; its best #4 (25 M samples) at the
+  bots' level (`docs/epics/E06-log.md`). Its networks are on the user's machine
+  (`python/runs/t3b-1/`).
