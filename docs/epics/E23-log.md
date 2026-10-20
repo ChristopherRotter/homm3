@@ -376,3 +376,13 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
 - **Map:** 48 entries (10 new: 0x4387C0, 0x435850, 0x435DC0, 0x4426F0, 0x439550, 0x439A80,
   0x43A340 and the tables 0x63B780, 0x63B790, 0x660858; 38 updated: the 36 evaluators, 0x4396E0,
   0x438910).
+- **Checks:** a fresh agent re-read three findings blind, on the tool and the map as they were
+  before the edits (the user's `master`): the removal 0x439A80 (the ids it visits, Poison skipped
+  without the flag, the spell ended before its evaluator, the context and sign by the side and the
+  polarity, its three callers and their flags); 0x4396E0's spell tests, the own hero in 0x5A78E0's
+  caster slot and the caster's army in the cost, Magic Mirror's `2 × (50 − c)`; 0x435850's rise
+  test with the constants, Blind's record and resistance in 0x439100 and Weakness's in 0x438A10. It
+  agreed on all three.
+- **Tooling:** the reading ran on the user's computer through the device shell (Python 3.10
+  there): `uv run -q --no-project --python 3.11 --with capstone --with pefile python
+  scripts/exe.py …` with the repo's own `original-data/install/Heroes3.exe`, no staging.
