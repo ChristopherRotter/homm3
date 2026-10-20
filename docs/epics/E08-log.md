@@ -2631,3 +2631,51 @@ the original data's steps). No code changes; the specs, templates and recipes on
   one left (no final `end_turn`: harmless).
 - Stamps: E3a `786afe33`, E3b `a2586e5b`. **Next:** T22a2b (the hero rows E3-6 to E3-9 and the
   inbox's rows), then T22a3 runs E3a, E3b and E3c on the harness.
+
+### Round 5 of increment 3: T22a2b, batch E3's hero rows (2026-10-20, `adventure/e08-t22a2b`, `cross-lane`)
+
+Decision 45: the hero rows only, as batch E3c; the inbox's four rows go to increment 4's batch.
+The baseline was `master` fee5b69 (its engine code 6f711e8b verified in full in the sandbox, with
+the original data). No engine code changes: the spec, template and recipe, one address map entry.
+
+- **One batch on Normal.** `experiments/specs/E08-batch-3c.toml`, three encounters in hot seat:
+  E3-7 (a read at the start: the 152 heroes off the map's experience through the harness's
+  `heroes:experience`, and E3-7's own, placed with its type's defaults), E3-6 (Clavius with 5 000
+  experience, 2/3/1/1 and eight secondary skills at basic, so every level-up's secondary gain
+  raises a named one: the harness reads skills by name only), E3-8 (Red's Octavia with five
+  Castle stacks attacks Blue's Gelare with five Tower stacks in tight formation; Blue's stacks
+  defend until Red's first acts, which surrenders). E3-9 is the defender's formation in E3-8's
+  battle (five stacks: loose rows 0, 2, 5, 8, 10 against tight 2, 4, 5, 6, 8, so 83 and 117
+  against 15 and 185 tell them apart; the harness check's tight hero had led one stack, which
+  stands on row 5 in either).
+- **What each row tells.** D-12: a 90 among the 152 confirms the reading's 40 to 90 and refutes
+  VCMI's `rand.nextInt(40, 89)` (95.1 % under the reading). E3-6: level 5 for every source (the
+  executable's i16 table at 0x679C88, a new map entry; VCMI's `expPerLevel`); VCMI levels up at
+  the start (4 primary points, 4 secondary advances: sums 11 and 12), the reading never read
+  whether the original does; the early sign (E17 H1, H2) says it does. D-13: the attacker pays
+  1 200 (half of 2 400), Blue gains it under the reading, nothing under VCMI's
+  `doSurrenderAction`; the early sign had a defender pay, this asks the other direction. E3-9:
+  the map's tight flag kept (the reading, the engine) or reset to loose (VCMI's `initHero`).
+- **The engine's outcomes.** A throwaway test in `crates/h3-cli/tests` (never committed) read
+  the compiled map with E3-6's experience set to 0 (the import refuses 5 000:
+  `Unsupported::HeroExperience`, decision 22) and played E3-8 over seeds 1 to 5: E3-7 at level 1
+  with 43 to 73, a battle at once, the hexes above (Castle creatures +1 speed on grass, their
+  native terrain: the attacker's Swordsmen first), Red 20 000 to 18 800, Blue 20 000 to 21 200,
+  E3-8 off the map, E3-9's army whole and its experience 0.
+- **The recipe** (`clients/capture/batches/E08-batch-3c.toml`, 4 steps; `cross-lane`, the client
+  lane's inbox told): three reads without a walk, then `battle = "surrender"`; `expect` the
+  reading's outcome. All 29 record keys fill the compiled template's fields (checked with the
+  harness's own `fill`).
+- **The review** (a second agent, the spec, template and recipe against the survey, the
+  catalog, the packs, HCTRAITS, VCMI 1.7.5 and the harness's code): every number recomputed and
+  matching (95.07 %, 1 200, the hexes from the base pack's and VCMI's layouts, level 5, the sums,
+  the speed tie), every address and rule id found, the harness able to play it. Taken: E3-6's
+  primary sum spoiled by a starting bonus's artifact (the hero's primary skills hold the worn
+  artifacts' bonuses: the secondary sum decides); E3-9's experience read before the battle too
+  (VCMI predicts 0 as well: a confirmation); D-13's third reading, the gold to the player whose
+  turn it is, which E3-8 tells apart (both golds unchanged) where E17 H1's defender's surrender
+  could not; E3-9's tight column labelled the engine's (the original's handling not read); a
+  harness bug for the client lane's inbox (a winner of -1 prints `defender`, so E3-8 decides by
+  `surrendered` and the gold). Left: no final `end_turn` (harmless).
+- Stamp: E3c `b026743c`. **Next:** T22a3 runs E3a, E3b and E3c on the harness (its seam to confirm);
+  T22b scores batch E3 and closes increment 3.
