@@ -547,12 +547,14 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
     step read, until `<ms>` after the opening, and the actions after it act then: a battle in
     progress; an action `turn:<side>.<record>` steps so until that stack's turn starts (the game
     names it the active stack), the times written to `<out>/turns.txt`. With `hot_seat` the map starts in hot seat, Red and Blue both humans, so the
-    actions play both sides. With `frames` (M2 T4b-1) every distinct battlefield the steps show
-    is kept: `<out>/frames/t<ms>.npz` (the whole screen, 5-6-5), its first time and its state in
-    `<out>/frames.jsonl`."""
+    actions play both sides. With `frames` (M2 T4b-1) every distinct screen the steps show is
+    kept: `<out>/frames/t<ms>.npz` (the whole screen, 5-6-5), its first time and its state in
+    `<out>/frames.jsonl`. A screen is distinct by its battlefield and, since M3 T6b, its panel
+    (the log's lines and the buttons change there alone), the game's parked cursor left out."""
     import hashlib
     import json
 
+    import h3cap
     import h3mem
 
     game.start(map_path)
@@ -576,9 +578,16 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
         for k in ("frame_deadline", "idle_step_time"):
             clocks[k] -= t0
         s = {"t": t - t0, "clocks": clocks, "stacks": mem.stacks(), "heroes": mem.battle_heroes()}
+        # The log's item and entries (M3 T6b): what the frame check compares the viewer's with.
+        s["log"] = mem.battle_log()
+        if s["log"] is not None:
+            s["log"]["at"] -= t0
         if screen or frames:
             pix = game.settled()
-            s["screen"] = hashlib.sha1(pix[:556].tobytes()).hexdigest()[:12]
+            seen = pix.copy()
+            x0, y0, x1, y1 = h3cap.CURSOR_BOX
+            seen[y0:y1, x0:x1] = 0
+            s["screen"] = hashlib.sha1(seen.tobytes()).hexdigest()[:12]
             if frames and s["screen"] != last[0]:
                 name = f"t{t - t0:05d}.npz"
                 if (kept / name).exists():  # the actions changed it at the same time
@@ -779,6 +788,9 @@ def run_frames(rest):
                  int(n), record)
                 for x, y, n, record in re.findall(r" box(-?\d+),(-?\d+)n(\d+)@?(\d+\.\d+)?",
                                                   line)]
+        # The log item's text the viewer drew into each frame (E17 M3 T6b), by the frame's name.
+        ours_log = here / "ours-log.json"
+        texts = json.loads(ours_log.read_text()) if ours_log.exists() else {}
         shutil.rmtree(here / "diff", ignore_errors=True)
         (here / "diff").mkdir()
         # Each line `<ms> <differing> <redraw artifacts among them>` (M3 T1c, h3cap.redraws).
@@ -804,6 +816,14 @@ def run_frames(rest):
                 boxes = (h3cap.boxes_at(observation, drawn[k["t"]])
                          + [box for box, _, _ in boxed[k["t"]]])
                 listed = []
+            # The log's item (E17 M3 T6b): compared where the original's shows the text the
+            # viewer drew (its memory: the item's string), else masked and listed (` log`): a
+            # status line's hint (T6c) or a line whose numbers the engine rolled otherwise.
+            theirs_text = (k.get("log") or {}).get("text")
+            log_listed = texts.get(stem) is None or texts.get(stem) != theirs_text
+            if log_listed:
+                x, y, w, h = h3cap.log_item()
+                boxes = boxes + [(x, y, x + w, y + h)]
             for x0, y0, x1, y1 in boxes:
                 masked[max(y0, 0):max(y1, 0), max(x0, 0):max(x1, 0)] = True
             differ = (cap != ours) & ~masked
@@ -813,7 +833,8 @@ def run_frames(rest):
                 h3cap.compare(cap, ours, masked, here / "diff" / f"{stem}.png", redrawn)
                 differing += 1
                 only_redraws += a == n
-            lines.append(f"{k['t']} {n} {a}" + "".join(f" n{r}" for r in listed))
+            lines.append(f"{k['t']} {n} {a}" + "".join(f" n{r}" for r in listed)
+                         + (" log" if log_listed else ""))
             earlier.append(ours)
         got = "\n".join(lines) + "\n"
         (here / "frames.txt").write_text(got)
@@ -830,12 +851,12 @@ def run_frames(rest):
 
 
 def compared_masks(kind, entry, t):
-    """The fixed masks a comparison applies to a frame at `t` ms: a sequence's the panel, but its
-    log's item from the entry's `log_at` on (E17 M3 T4b-2b-2); a situation's its `mask` list. (A
-    sequence's count boxes are masked besides, by the original's counts: not fixed.)"""
+    """The fixed masks a comparison applies to a frame at `t` ms: a sequence's the game's parked
+    cursor (its panel compared since E17 M3 T6b), a situation's its `mask` list. (A sequence's
+    count boxes and its log's item are masked besides, by the original's counts and text: not
+    fixed.)"""
     if kind == "sequences":
-        log_at = entry.get("log_at")
-        return ["panel_beside_log" if log_at is not None and t >= log_at else "panel"]
+        return ["cursor"]
     return entry.get("mask", [])
 
 
