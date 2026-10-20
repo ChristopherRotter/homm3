@@ -130,8 +130,10 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    right offer). A hero's pending levels are given in order, one at a time: a level with one offer
    learns it and one with none gives the primary skill only, at once, with an event to the
    owner; a level with two opens the decision, and its answer gives the level and draws the next.
-   The system actor's default answer to a level-up is the original's choice (ADR-0013 point 12)
-   with the hero's army, as the original's when the dialog's time runs out.
+   The system actor's default answer to a level-up is the original's choice (ADR-0013 point 12),
+   as the original's when the dialog's time runs out; until E10 gives the engine the computer
+   player's state that choice reads with the army counted, it chooses with the setup's inputs, as
+   at load (ADV-Q17).
 7. **Simultaneous play is designed for, not built.** Built now: turn groups, streams per player,
    pending decisions. **Not decided** (deferred to the increment that builds it): the target
    that commands of the players of one group commute (any interleaving, the same state hash; a
@@ -278,5 +280,6 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   and banned skills, levels at load instead of the import's refusal, a level's draws by the
   profile (`ADV-QUIRK-9`), the seeds server-only, a two-offer level-up as the owner's pending
   decision answered `First` or `Second` one level at a time with the original's choice as the
-  system default, action encoding v4 and the observation's level-up, the versions, the battle's
-  winner levelling after the outcome. Drafted in E08 T24b2 (#321; survey `E08-progression.md`).
+  system default (with the setup's inputs until E10, ADV-Q17), action encoding v4 and the
+  observation's level-up, the versions, the battle's winner levelling after the outcome. Drafted
+  in E08 T24b2 (#321; survey `E08-progression.md` §10 for the evaluation).

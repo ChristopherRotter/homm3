@@ -102,7 +102,8 @@ are computed before the seam (03-domain). The seam must change once for E04a and
     6. **The original's choice between two offers** (the computer's evaluation, 0x52BBD0 with
        0x524690 and 0x524DD0) is ported as a rule here, read first: it chooses at load (D-20) and
        for the system actor's default, and will for E10's computer players; what it needs beyond
-       the details (the army's worth, the setup's defaults) is an argument.
+       the details is an argument: the army's worth (the setup's defaults at load) and the map's
+       terrain shares, which the game computes from the static map (E08 T25, ADV-Q17).
 
 ## Consequences
 
