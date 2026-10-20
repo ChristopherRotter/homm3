@@ -123,4 +123,4 @@ Local PC: Ryzen 9 3900-class CPU (12 cores / 24 threads), GTX 1070 (8 GB, Pascal
 
 ## 7. Deferred
 
-RL algorithm selection, network architectures, the reward's weights beyond v1 (its mana price is provisional), the exact opponent ladder, league management, multi-agent (>2 players) handling. E05's smoke run chose nothing here for good: its PPO, network and settings only show the environment trainable (E06 decides).
+RL algorithm selection, network architectures, the reward's weights beyond v1 (its mana price is provisional), the exact opponent ladder, league management, multi-agent (>2 players) handling. E05's smoke run chose nothing here for good: its PPO, network and settings only show the environment trainable (E06 decides). E06 (refined 2026-10-20, AI-Q8) chose PPO with a league of past checkpoints (prioritized fictitious self-play), search only if PPO plateaus, and its targets and evaluation gate (`docs/epics/E06-battle-ai.md`).
