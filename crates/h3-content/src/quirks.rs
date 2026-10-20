@@ -109,6 +109,7 @@ pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&[
     "quirk.adventure.obstacles_from_tile",
     "quirk.adventure.split_from_tile",
     "quirk.battle.no_defender_ballista_at_fort",
+    "quirk.battle.berserk_walks_to_position_hex",
 ]);
 
 /// Q-0003: creatures of a side without a hero never get lucky strikes (BAT-LCK-002).
@@ -224,6 +225,13 @@ pub const SPLIT_FROM_TILE: QuirkFlag = QuirkFlag(24);
 /// defender's Ballista is set up at every town, whatever its fort.
 pub const NO_DEFENDER_BALLISTA_AT_FORT: QuirkFlag = QuirkFlag(25);
 
+/// BAT-QUIRK-24 (survey S-11): a berserk walker's walk to its target ends only next to the
+/// target's position hex, though the target is chosen as reached by either of its hexes
+/// (BAT-MAG-025; the original's pathfinder 0x4B3400, `installation.md` §7.41): a two-hex target
+/// reached only by its other hex makes the walker go round to its position, or do nothing. Off:
+/// the walk ends next to either of the target's hexes.
+pub const BERSERK_WALKS_TO_POSITION_HEX: QuirkFlag = QuirkFlag(26);
+
 /// The prefix of the flags of data quirks: a gated override names one of them (`fixes`), and
 /// rule code never reads them (ADR-0007, amendment E04b T8e).
 pub const DATA_QUIRK_PREFIX: &str = "quirk.content.";
@@ -266,7 +274,11 @@ mod tests {
 
     #[test]
     fn registry_lookup_and_bitset() {
-        assert_eq!(REGISTRY.len(), 26);
+        assert_eq!(REGISTRY.len(), 27);
+        assert_eq!(
+            REGISTRY.lookup("quirk.battle.berserk_walks_to_position_hex"),
+            Some(BERSERK_WALKS_TO_POSITION_HEX)
+        );
         assert_eq!(
             REGISTRY.lookup("quirk.battle.no_defender_ballista_at_fort"),
             Some(NO_DEFENDER_BALLISTA_AT_FORT)
@@ -393,7 +405,7 @@ mod tests {
         }
         // The positions stay taken, so the flags after them keep their indices
         // (`registry_lookup_and_bitset`), and the flags that exist are every other position.
-        assert_eq!(REGISTRY.len(), 26);
+        assert_eq!(REGISTRY.len(), 27);
         assert_eq!(
             [REGISTRY.names[9], REGISTRY.names[10], REGISTRY.names[14]],
             [RETIRED; 3]
@@ -402,7 +414,7 @@ mod tests {
             REGISTRY
                 .flags()
                 .map(QuirkFlag::index)
-                .eq((0..26).filter(|i| ![9, 10, 14].contains(i)))
+                .eq((0..27).filter(|i| ![9, 10, 14].contains(i)))
         );
         // A registry without retired flags has them all.
         assert!(TEST.flags().map(QuirkFlag::index).eq(0..2));
