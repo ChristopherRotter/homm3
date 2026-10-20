@@ -3331,7 +3331,7 @@ side's strengths with flag 1 (every record) and 0 (the able ones), +0x10 and +0x
 side's, +0x20 and +0x24 the own and the other side, and +0x1C a balance class from the two able
 strengths: 1 when the smaller is 0 or at most a fifth of the larger, else 1 + the first `i` for
 which larger / smaller ≥ 0x63B798[i] (2.6, 1.9, 1.5, 1.31, 1.2, 1.13; doubles), 7 below them
-all. Nothing read so far uses +0x1C.
+all. The raise (0x421000, §7.43) uses +0x1C.
 
 **0x421680, the walker's choice** (`this` the battle manager; the stack, a flag, a pointer to
 its value, the context; true when it wrote an action). The flag is 0 on a stack's turn (§7.34);
@@ -4138,3 +4138,101 @@ computer's Storm Elementals beside a stack they could protect). The rest shows o
 casts that the context values (T1a5b to T1a5d), whose rows cover it. For the model: the run's end
 at the other side's next stack; no retaliation predicted on Easy; the jousting distance from the
 last search; the arrow towers no threat; the first of equal threats kept.
+
+### 7.43 Code reading: the raise and the Faerie Dragon's casts (E23 T1a5b, 2026-10-20)
+
+Read for E23 T1a5b (the second of T1a5's four parts, §7.42): the computer's raise 0x421000 for
+the Archangel and the Pit Lord, the Faerie Dragon's loop 0x420F00 with its value per hex 0x43C620,
+the damage spell's value 0x436E30, Chain Lightning's 0x437190 and an area's 0x437040, with
+0x5A66B0, 0x5A4920 and the count 0x447330. All in full; the stack record's constructor 0x43D250
+and destructor 0x43D400 by their shape (container code: the record's lists set up and freed).
+Insight only, nothing copied (Q29). The three kinds take the caster, a pointer to the value so far
+(the walker's choice's, §7.35; 0 at the start of 0x421F80) and the battle context (§7.31), and
+write the creature's cast (action 10) at the chosen hex (+0x44).
+
+**0x421000, the raise** (0x275 bytes; the Archangel and the Pit Lord with casts left (+0xDC),
+else false). A local stack record (0x43D250) set up, for a Pit Lord, as one Demon (48) of the
+side with its hero (0x43D730). Over the side's records from the last to the first, but the caster
+and the arrow towers (149), a candidate R and its hex:
+
+- a Pit Lord's: R is the corpse the Pit Lord's cast would take at R's position (0x5A3E40 for the
+  side), or for a two-hex R at its other hex, and R is dead;
+- an Archangel's: R is the stack Resurrection's test takes at R's position (0x5A3CC0 for the side
+  with flag 1), or for a two-hex R at its other hex; R need not be dead.
+
+The count `n` (0x447330, the rules' own): an Archangel's `min(start count − count,
+trunc(100 × Archangels / R's hit points))`, whole creatures only (the top creature's lost hit
+points left out); a Pit Lord's Demons, `min(R's start count, min(50 × Pit Lords, R's start count
+× R's hit points) div the Demon's hit points)` (§7.21). `n` = 0: no candidate. The value is
+`trunc(n × w)` (x87), `w` one creature's worth (0x442A50 with the context's least attack and
+defense bonuses): a Pit Lord's Demon's without the shot flag, an Archangel's R's with its own
+(0x4428F0); **doubled when the side's able strength exceeds the other's and the balance class
+(+0x1C, §7.35) is 1**, the other side's at most a fifth of the side's. A value above the value so
+far replaces it and takes R's hex (the one that matched): **the raise must beat the walker's
+value**, and at a tie the later record stays.
+
+**0x420F00, the Faerie Dragon** (0xFB bytes). It builds the spell context for the side (0x4369C0
+with flag 1, §7.42), then over the hexes 0 to 186 but the side columns (column 0 and 16) takes the
+value of its drawn spell (+0x4E0) at the hex with the power `5 × count` (0x43C620, below). **The
+first hex with a value above 0 is taken whatever the value so far**; a later one only with a larger
+value (the lowest hex at a tie). So a dragon with casts left and a spell that is worth anything
+anywhere always casts, before any attack (the creature-cast entry comes first in 0x421680,
+§7.35). Its value reads only the context's heroes, side, flag and battle context, none of its
+tables: building the context costs its predictions, which draw (§7.42).
+
+**0x43C620, a damage spell's value at a hex** (0x1DD bytes; the hex, the power, the spell). The
+mastery is 2 (the creature's, §7.21), 3 on Magic Plains (field 1) and **also on the field of the
+spell's school** (6 water, 7 fire, 8 earth, 9 air; the spell's school bits +0x1C, as 0x4E5100 for a
+hero), where the rules give a creature's cast Advanced (§7.26). The damage is the spell's factor
+(+0x30) × the power + its value at the mastery (+0x34). By spell:
+
+- Magic Arrow, Ice Bolt, Lightning Bolt, Implosion (15 to 18): the stack on the hex, by 0x436E30
+  with the other side's hero; none: 0;
+- Chain Lightning (19): a living stack on the hex that 0x5A3C80 accepts for the side (the creature
+  flag set), by 0x437190;
+- Frost Ring, Fireball, Inferno, Meteor Shower (20 to 23): any hex, a free one too, by 0x437040;
+- any other spell: 0.
+
+**0x436E30, one stack's damage value** (0x125 bytes; the spell, the damage, the target's hero, the
+stack). 0 for a dead stack or an arrow tower. The damage takes the modifiers 0x5A78E0 with **the
+side's hero as the caster's** (its bonuses: the rules give a creature's bolt none, its area spells
+and chain the side's hero's, §7.21) and the given hero as the target's; then × the effect factor
+0x5A8090 for the side (the creature flag set: immunities, the polarity test, which leaves an own
+stack out of a negative spell, resistance as a factor, §7.8, though a creature's aimed stack never
+rolls), truncated; 0 when not above 0. Capped at the stack's hit points (0x443080 without the
+planned damage), its value is the kill value 0x442FD0 (the context's least bonuses, the stack's
+shot flag, the desperate mode, §7.31). A blind, petrified or paralysed stack, the Tent or the Cart,
+whose strength (0x442E60) exceeds that value `v`, is worth `2v − strength` (below 0 when `v` is
+under half the strength).
+
+**0x437190, Chain Lightning** (0x17D bytes; the power, the mastery, the first stack). The marks
+cleared (0x5A66B0: the manager's +0x547C, 20 per side), the strikes from its own table (0x63B7C8:
+4, 4, 5, 5 by mastery, as the rules' 0x642274), the damage halved (truncated) after each: each
+stack struck adds 0x436E30 to the own side's sum (by its side +0xF4, with the side's hero as the
+target's) or the other's, is marked, and the next comes from the rules' search 0x5A61F0 not for
+real (no resistance roll; §7.8); the chain stops where it finds none.
+
+**0x437040, an area spell** (0x141 bytes; the spell, the damage, the mastery, the hex). The area's
+living stacks (0x5A4920: the rules' area 0x5A46F0 at radius 2 for Inferno, else 1, the centre left
+out for Frost Ring; for Berserk, 59, by mastery through 0x5A4810), each by 0x436E30 into the own
+or the other side's sum, as for the chain.
+
+**The sums' value** (both): 0 unless the other side's sum `E` is above 0 and above the own side's
+`O` (taken as at least 0), the own side's share of its strength is below the other's (`f32(O) /
+f32(S_own) < f32(E) / f32(S_other)`, the strengths of every record, context +0xC and +0x10), and `O`
+is below the side's whole strength; then `E − O`. So friendly damage counts against the cast, and a
+cast that would cost the side a larger part of its strength than the enemy's is never taken.
+
+**What these read**: the side's records, corpses and casts left; the stacks on the hexes and
+their counts, hit points, spells and immunities; both heroes (the damage's bonuses and the
+resistance); the battlefield's field; the strengths and the balance class. Nothing hidden from the
+side.
+
+**Draws:** none of their own; the dragon's context draws through its predictions (§7.42).
+
+**Readings at risk** (for T1b): the dragon casting whenever its spell is worth anything (a batch
+row: a computer's Faerie Dragons beside an attackable enemy stack, a damage spell drawn); an area
+spell at a free hex (the same rows); the raise against the walker's value (a computer's Archangels
+or Pit Lords with a dead stack beside an enemy). For the model: the dragon's Expert on its school's
+field and its bolts with the hero's bonuses (estimates only: the cast follows the rules); the
+raise's doubling; the hex and record orders at ties.
