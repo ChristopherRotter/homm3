@@ -3998,3 +3998,143 @@ skills; Bind, the speed. **Draws:** none.
 **Readings at risk** (for T1b): S-11's ending on the target's position only (a batch row: a
 berserk walker whose two-hex target is reachable only by its other hex); the war machines' cases
 of 0x474BF0 against the engine's automatic Ballista and Tent (BAT-WAR-008, BAT-Q51).
+
+### 7.42 Code reading: the spell context and the predictions (E23 T1a5a, 2026-10-20)
+
+Read for E23 T1a5a (the user's cut of T1a5, 2026-10-20: part C in four parts of about 3.2 KB,
+the context first): the computer's spell context 0x4369C0 with its fill 0x43C040 and seed
+0x43BF20 and its destructors 0x436C30 and 0x436BF0; the predictions 0x422A40 with 0x4430D0, the
+side's run 0x422880, the melee prediction 0x4227A0 and the predicted strike 0x4224E0. All in
+full. Insight only, nothing copied (Q29).
+
+**The creature-cast entry's kinds** (0x421280, §7.23; its table covers creatures 13 to 134):
+case 0, the Archangel and the Pit Lord (13, 51), the raise 0x421000; case 1, the Master Genie and
+the Ogre Mage (37, 91), the scan 0x420D20; case 2, the Faerie Dragon (134), 0x420F00; every other
+creature, nothing. The computer writes a creature's cast (action 10) only in these three routines
+(0x420ECB, 0x420FD7, 0x421254). So **by this table the computer's Ice, Magma, Storm and Energy
+Elementals (123, 125, 127, 129) never cast their protection.** The context below serves the scan,
+the dragon and the hero's cast 0x422DA0, not the raise. Part C's other parts (§7.34's table):
+T1a5b the raise 0x421000 and the dragon 0x420F00 with their helpers; T1a5c the scan 0x420D20 with
+Bloodlust's value 0x43C330, the Genie's value and the evaluation 0x43A670; T1a5d the estimates
+0x437800 and 0x437A00 with 0x43CB20.
+
+**0x4369C0, the context** (0x22B bytes; `this` the context, 0x410 bytes; the battle manager, the
+side, a flag). +4 and +8 the side's and the other side's hero (+0x53CC), +0xC the side, +0x10 the
+other side, +0x1D the flag (1 from the creature casts, 0 from the hero's cast; its use lies in
+T1a5b to T1a5d), +0x20 the side's battle context 0x435EC0 (§7.31). In order:
+
+1. the order of action's ranks (0x41F140 without a list, §7.34);
+2. the predictions for the side alone (0x422A40 with flag 0, below);
+3. +0x1C, **the enemy beaten**: 1 when no record of the other side but a war machine (`0x40`) is
+   left with hit points after the planned damage (0x443080 with flag 1), the dead passed over;
+4. the threat records of both sides (0x422B20, §7.31, each with this battle context), which the
+   predicted turns had overwritten;
+5. the fill 0x43C040;
+6. a second context for the other side, on the heap (+0x48; +0x4C = 1 makes it the first's to
+   free): its own battle context and fields for the other side, its +0x48 pointing back with
+   +0x4C = 0, no order, predictions or threat records of its own, its +0x1C for the side's own
+   records (whose planned damage comes only from predicted retaliations and Fire Shields) and
+   its fill. A failed allocation leaves +0x48 at 0.
+
+The destructor 0x436C30 deletes an owned second context through its deleting destructor 0x436BF0.
+
+**0x43C040, the fill** (0x2E6 bytes) **and 0x43BF20, its seed** (0x119 bytes). Three tables of 20
+entries (a side uses at most 20 records, §7.7), one per record of the side by its index, each
+{the stack, its damage, how many, their sum}: +0x50 the melee threats, +0x190 the shots, +0x2D0
+the worse of the two; +0x14 and +0x18 two masks by the other side's record index.
+
+- 0x43BF20 clears the melee table and seeds it. A record of the side that can act (not blind
+  +0x290, petrified +0x2B0 or paralysed +0x2C0, not dead, not the First Aid Tent or the Ammo Cart,
+  147 and 148, not hypnotized +0x288), cannot shoot now (0x4428F0) and has a nearest enemy in its
+  threat record (+0x538) that it attacks within a turn (0x448BD0 at its speed: at most 1) gets that
+  enemy, the enemy's damage on it (0x442780: the enemy's whole count, melee, no jousting,
+  uncapped), 1 and the same damage: **the retaliation it meets at its target**.
+- 0x43C040 clears the masks and the other two tables and calls 0x43BF20. Then, for each record of
+  the side but the dead and the arrow towers (149), over each record of the other side that can
+  act (as above, and not an arrow tower) and has hit points after the planned damage:
+  - an enemy that can shoot now adds its shot on the record (0x442780 with the shot flag, its
+    whole count, uncapped) to the shot table: one more, the sum, and the enemy with its damage
+    when larger than the largest so far (the first of equals stays); it sets the enemy's bit in
+    +0x14;
+  - another enemy, when it is not the record's seeded target and has the record in its one-turn
+    mask (+0x544, its own threat record), sets its bit in +0x18 and +0x14 and adds its melee
+    damage to the melee table alike.
+- Last, each record's worse threat: the melee entry, or the shot entry when its largest damage is
+  larger (an equal one keeps the melee).
+
+So the context holds, per stack of the side, the largest single strike it can meet this turn and
+the number and sum of such strikes, by the enemies' whole counts: the planned damage leaves out an
+enemy it kills but does not lower one it wounds. **The enemy's arrow towers are no threat here**,
+nor its war machines but one that can shoot now (the Ballista): the threat records give the
+others no mask (§7.31).
+
+**0x422A40, the predictions** (0xD8 bytes; the battle manager; the side, a flag). It keeps the
+manager's action fields (+0x3C to +0x48) and puts them back at the end; lists the order of action
+(0x41F140 with a list: every living stack of both sides but the arrow towers, §7.34); sets each
+listed stack's planned damage (+0x534) to 0 (0x4430D0: +0x534 = the smaller of the value and the
+stack's hit points, +0xC0 × count − +0x58, 1 for a clone); predicts the side's run from the list's
+start (0x422880) and, with the flag, the other side's run from where the first ended. The context
+passes 0, the retreat test 0x41E570 passes 1. The planned damage stays on the stacks until the
+next prediction; the choices subtract it only with the context's prediction flag (§7.35, §7.36),
+0x4369C0 and its fill always.
+
+**0x422880, a side's run** (0x1B5 bytes; the list, the start, the side). From the start, a stack
+that is blind, petrified or paralysed, dead, the Tent or the Cart, berserk (+0x284), the Catapult
+(145) or without hit points after the planned damage is passed over, of either side. The first
+other stack whose controller (its side, the other while hypnotized) is not the side ends the run,
+and its index is returned (the list's length at its end). So **only the side's stacks that act
+before the other side's next one are predicted**, in the predicted order. For each:
+
+- a stack that can shoot now: the shooter's turn 0x41F060 as a prediction (its flag 1: no wall
+  shot, §7.35). A shot (7) at a hex with a stack adds the shooter's shot by its hit points left
+  (0x435980: the count they give, the shot flag, capped) to that stack's planned damage, at most
+  its hit points (0x4430D0);
+- another: the walker's turn 0x421F80 as a prediction, casts skipped (§7.34). A move and attack
+  (6) at a hex with a stack goes to 0x4227A0 with the plan's hex (+0x40).
+
+Any other action plans nothing.
+
+**0x4227A0, a melee prediction** (0xDB bytes; S, its target T, the side; S's hex the manager's
++0x40, nothing when off the field): T's hit points (0x443080 without the planned damage); S's
+strike (0x4224E0); T's retaliation on S at that hex when S's creature allows one (no `0x10000`), T
+is not petrified and has retaliations left (+0x454), and the game is above Easy or the side human
+(+0x54A4): **on Easy a computer side predicts no retaliation**; then a second strike for a creature
+that strikes twice (`0x8000`) while T's planned damage is below its hit points (T not predicted
+dead). Nothing asks whether T survived S's strike: a T predicted dead strikes back by no hit points,
+so not at all. A blind or paralysed T is not tested.
+
+**0x4224E0, a predicted strike** (0x2B4 bytes; S, its hex, T, T's hex, the side). Each strike
+happens only while S has hit points after the planned damage, is by those (0x435980: the count
+they give, melee, capped), and adds to the struck stack's planned damage:
+
+- a multi-headed S (`0x80000`): the directions of its pattern from its hex (0x448AB0, §7.36),
+  from 7 down to 0; each stack on such a neighbour (0x523DF0) once, when not of the given side (its
+  side +0xF4, not its controller), without jousting; Fire Shield's reflection of each strike
+  (0x422440, §7.11) goes onto S's planned damage. No breath;
+- else T, with the cost (+0x18) of S's hex in the cells of the pathfinder at 0x699284 as the
+  jousting distance; Fire Shield on T (the spell or an Efreet Sultan's own) reflects onto S, the
+  steps of 0x422440 written out inline. Then a breathing S (`0x8`): the stack on the second hex in
+  the strike's direction (0x445840, then 0x523DF0 and 0x523D90), when it is not T, of either side,
+  without jousting or Fire Shield.
+
+The pathfinder's cells hold the last search. For a predicted walker that is its own map (0x421680
+builds it on that pathfinder, 0x4217BE), so its strike's distance is the cost to the plan's hex,
+the run-up 0x421680 itself counts (§7.35). For T's retaliation the cell is T's own hex in that map,
+which holds the attack mark's cost (§7.40). So **a retaliating Cavalier or Champion is predicted
+with a run-up of the attacker's cost**, which no retaliation has in the rules.
+
+**What these read**: the stacks' counts, hit points, creature flags, spells (Blind, Stone Gaze,
+Paralyze, Hypnotize, Berserk, Fire Shield) and retaliations left; the heroes (Fire Shield's
+modifiers); the difficulty and `human`; the pathfinder's last search. Nothing hidden from the
+side.
+
+**Draws:** none of their own. The predicted walkers' turns draw their candidates' values
+(0x421B02, §7.35) from the battle's generator: each context that the hero's cast or a creature
+cast builds moves the stream by its run's candidates, the retreat test by both runs'. A predicted
+shooter draws nothing (no wall shot).
+
+**Readings at risk** (for T1b): the computer's elementals that never cast (a batch row: a
+computer's Storm Elementals beside a stack they could protect). The rest shows only through the
+casts that the context values (T1a5b to T1a5d), whose rows cover it. For the model: the run's end
+at the other side's next stack; no retaliation predicted on Easy; the jousting distance from the
+last search; the arrow towers no threat; the first of equal threats kept.
