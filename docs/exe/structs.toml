@@ -350,7 +350,9 @@ summary = "The game (pointer at 0x6994E8; H3API's H3Main, whose size is used her
 refs = ["rules/surveys/E08-objects.md"]
 h3api = "H3Main"
 fields = [
-  { offset = 0x1F45C, name = "campaign_scenario", type = "i32", summary = "compared with 14 (with 0x69774C and hero 45) by the level-up's campaign branch and with 8 by a campaign case of the new game (called at 0x4C004D); by those uses a campaign's scenario, not read", confidence = "inferred", refs = ["rules/surveys/E08-progression.md §2.3"] },
+  { offset = 0xA4, name = "hero_setup", type = "hero_setup[156]", summary = "per hero type the map file's placed hero (H3API heroSetup, H3SetupHero[156]): placed_heroes_setup (0x4CAE10) sets each hero up from it", confidence = "read", refs = ["rules/surveys/E08-progression.md §3.1"] },
+  { offset = 0x1F458, name = "campaign_info", type = "bytes[0x7C]", summary = "H3API's campaignInfo (H3CmpInfo): +0x2 the scenario's index (campaignMapIndex), +0x4 the campaign (bigCampaignIndex), +0x3C the carried-over heroes (crossoverHeroes, walked by carried_heroes_setup 0x487290)", confidence = "inferred", refs = ["rules/surveys/E08-progression.md §3.1"] },
+  { offset = 0x1F45C, name = "campaign_index", type = "i32", summary = "H3API's campaignInfo.bigCampaignIndex, the campaign's number (E08 T24a2a; T24a1 guessed a scenario): compared with 14 (with 0x69774C and hero 45) by the level-up's campaign branch and with 8 by a campaign case of the new game (called at 0x4C004D) and of placed_hero_setup", confidence = "inferred", refs = ["rules/surveys/E08-progression.md §2.3"] },
   { offset = 0x1F698, name = "map_kind", type = "i32", summary = "H3API's mapKind, 0 RoE, 1 AB, 2 SoD: the game's version for the rules that test it (the siege's moat and its damage, the Tower's mines, the elementals' faction); restored by the saved-game loader (0x4BCDA0), the new game's setter not read", confidence = "inferred", refs = ["installation.md §7.27"] },
   { offset = 0x1F69D, name = "flagged_start", type = "u8", summary = "read by the end-turn button and the battle start; set, a human starts with 0x6779C8's resources (probably the tutorial)", confidence = "inferred", refs = ["rules/surveys/E08-objects.md §7.2"] },
   { offset = 0x1F6D8, name = "difficulty", type = "i8", summary = "the game's difficulty, 0 easy to 4 impossible: the starting resources' row", confidence = "read", refs = ["rules/surveys/E08-objects.md §7.2"] },
@@ -376,6 +378,24 @@ fields = [
   { offset = 0x10, name = "primary_gain_low", type = "u8[4]", summary = "the chances of Attack, Defense, Spell Power, Knowledge at a level-up to a level up to 9 (the packs' primary_gain[0])", confidence = "read", refs = ["rules/surveys/E08-progression.md §2.3"] },
   { offset = 0x14, name = "primary_gain_high", type = "u8[4]", summary = "the same from level 10 on, by the new level (primary_gain[1])", confidence = "read", refs = ["rules/surveys/E08-progression.md §2.3"] },
   { offset = 0x18, name = "skill_weights", type = "u8[28]", summary = "per secondary skill id the weight of the level-up's draws (skill_weights; 0 for a skill the class never gets new)", confidence = "read", refs = ["rules/surveys/E08-progression.md §2.4"] },
+]
+
+[[struct]]
+name = "hero_setup"
+size = 0x334
+summary = "A placed hero of the map file, per hero type in the game's heroSetup (+0xA4; H3API's H3SetupHero); placed_hero_setup (0x4D8B30) reads it. Only what the docs cite."
+refs = ["rules/surveys/E08-progression.md §3.1"]
+fields = [
+  { offset = 0x0, name = "owner", type = "i8", summary = "the owner's colour", confidence = "read", refs = ["rules/surveys/E08-progression.md §3.1"] },
+  { offset = 0x4, name = "hero_type", type = "i32", summary = "the hero type", confidence = "read", refs = ["rules/surveys/E08-progression.md §3.1"] },
+  { offset = 0x1A, name = "has_experience", type = "u8", summary = "set: a custom experience, gained from 0 with the levels given (0x4D8DF7)", confidence = "read", refs = ["rules/surveys/E08-progression.md §3.2"] },
+  { offset = 0x1C, name = "experience", type = "i32", summary = "the custom experience", confidence = "read", refs = ["rules/surveys/E08-progression.md §3.2"] },
+  { offset = 0x22, name = "has_secondary_skills", type = "u8", summary = "set: the hero's secondary skills are cleared and the record's learned (+0x24 the count, +0x28 the ids, +0x30 the levels)", confidence = "read", refs = ["rules/surveys/E08-progression.md §3.2"] },
+  { offset = 0x38, name = "has_army", type = "u8", summary = "set: the record's army replaces the starting army (+0x3C the types, +0x58 the counts)", confidence = "read", refs = ["rules/surveys/E08-progression.md §3.1"] },
+  { offset = 0x67, name = "has_artifacts", type = "u8", summary = "set: the worn artifacts are replaced by the record's (+0x68), the backpack's added (+0x100)", confidence = "read", refs = ["rules/surveys/E08-progression.md §3.2"] },
+  { offset = 0x301, name = "position", type = "u8[4]", summary = "the map position, packed (x and y in 10 bits each, the level above); negative: not placed", confidence = "read", refs = ["rules/surveys/E08-progression.md §3.1"] },
+  { offset = 0x31C, name = "has_spells", type = "u8", summary = "set: the hero's spells are the record's bits (+0x320)", confidence = "read", refs = ["rules/surveys/E08-progression.md §3.2"] },
+  { offset = 0x32C, name = "has_primary_skills", type = "u8", summary = "set: the four primary skills (+0x32D) are copied unclamped (0x4D8BF1)", confidence = "read", refs = ["rules/surveys/E08-progression.md §3.2"] },
 ]
 
 [[struct]]
