@@ -2140,14 +2140,13 @@ impl Player<'_> {
             self.pending.push((id, standing));
         }
         let shown = self.clock.now;
-        self.counts
-            .extend(reactions.iter().filter_map(|r| {
-                r.count.map(|count| CountKey {
-                    stack: r.stack,
-                    shown,
-                    count,
-                })
-            }));
+        self.counts.extend(reactions.iter().filter_map(|r| {
+            r.count.map(|count| CountKey {
+                stack: r.stack,
+                shown,
+                count,
+            })
+        }));
         for r in reactions {
             let pose = match (r.died, r.frames.checked_sub(1)) {
                 (true, Some(last)) => Pose {
