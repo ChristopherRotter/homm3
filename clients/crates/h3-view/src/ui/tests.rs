@@ -19,6 +19,7 @@ id = 2
 def = "b.def"
 at = [3, 4]
 size = [48, 36]
+hint = "k.two"
 
 [[items]]
 kind = "button"
@@ -80,6 +81,23 @@ fn a_dialog_reads_its_items_in_order() {
     assert_eq!(d.text(1), None);
     assert_eq!(d.text(9), None);
     assert_eq!(d.item(9), None);
+}
+
+#[test]
+fn the_item_under_the_mouse_gives_its_hint() {
+    // E17 M3 T6c-1: the last item in order whose area holds the point; a picture takes none.
+    let d = dialog();
+    let at = |x, y| d.item_at([x, y]).map(Item::id);
+    assert_eq!(at(13, 24), Some(2));
+    assert_eq!(at(20, 30), Some(4));
+    assert_eq!(at(15, 26), Some(3));
+    assert_eq!(at(40, 50), Some(4));
+    assert_eq!(at(60, 59), Some(2));
+    assert_eq!(at(61, 59), None);
+    assert_eq!(at(10, 20), None);
+    let hints: Vec<Option<&str>> = d.items.iter().map(Item::hint).collect();
+    assert_eq!(hints, [None, Some("k.two"), None, None]);
+    assert_eq!(d.items[0].area(), None);
 }
 
 #[test]

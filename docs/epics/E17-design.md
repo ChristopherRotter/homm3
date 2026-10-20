@@ -1979,3 +1979,127 @@ panel's set-text 0x46BF50, the mouse posted again 0x4ECC00) and where each line 
   (`behind`'s second shot also kills one Pegasus in the engine, none in the original). The memory
   can lag the screen by a step as a turn starts: there the pixels agree and nothing is listed.
   The set (31 situations, 57 frames) exact.
+
+### 9.9 The mouse's still: the cursor and the status line (M3 T6c-1)
+
+T6c split with the user on 2026-10-20 (the still T6c-1, over time T6c-2). Read: the battle's
+mouse-move branch of `battle_buttons` (0x4753A4 to 0x4758E1), `screen_to_hex` (0x4647A0) and the
+heroes' rectangles (0x4626A0, 0x4626D0), the neighbour table (0x4640A0), `battle_cursor`
+(0x476490) in full, the attack's slots (`cursor_attack_slots` 0x474690, `cursor_attack_from_hex`
+0x474A00) in full, `battle_status_line` (0x492840) for the cases below, `hex_distance` (0x469670),
+the mouse manager's `SetCursor` (0x50CCA0), its frame drawer (0x50D8B0) and position (0x50CD90,
+its hot spots 0x67FF50), the panel's hints (`SetHints` 0x5FE840 from 0x6A6968 on; `Help.txt`'s
+loader 0x5B98B0). Built: `h3_view::mouse` (`spot`, `neighbour`, `distance`, `Legal`, `Kind`,
+`Hint`, `Pointer`, `pointer`, `slot`, `slots`), `Draw::Cursor` (the even x under
+`Bugs::Original` only), the marked stack's outline
+(`Moment::marked`), `ui::Item::hint` and `Dialog::item_at`, the layout's `[mouse]` and
+`outline_mouse`, the keys `battle.hint.*` and `battle.control.*`.
+
+- **Where the mouse is** (`screen_to_hex`): first four rectangles, bounds inclusive: the
+  attacker's hero (x 0–57, y 16–127) is "hex" 0xFC, the defender's (741–799, 16–127) 0xFD (both
+  static), two siege ones 0xFE and 0xFF (not read). Else sx = x − 14, sy = y − 86, row = sy / 42,
+  on an even row sx −= 22, column = sx / 44 (C division); outside 0 ≤ sx < 748, 0 ≤ sy < 472
+  none (−1). In a cell's top 10 pixels a point above the hex's slanted edge, sy mod 42 <
+  |sx mod 44 − 22| / 2, is the row above's: row − 1, and on the left half (sx mod 44 < 22)
+  column − 1 when that row is even, on the right half column + 1 when it is odd. A row outside
+  0–10 or a column outside 0–16 is none; else row × 17 + column.
+- **The mouse move** (0x4753A4): outside the battlefield (x outside 0–799 or y outside 0–555)
+  the marked stack is unmarked (redrawn), the dialog's items get the message (their hints,
+  below), the cursor becomes the combat cursor's frame 6 and the mouse's hex (+0x132D4) none.
+  Inside, on a new hex the hex's stack is marked (`battle_mouse_stack`, §7.13; its outline is the
+  mouse's, entry 0x70, unless it is the active stack, whose 0x60 wins: 0x43E23A to 0x43E261),
+  the kind is `battle_cursor(hex)` (+0x132E0), the cursor set by it, and the status line written
+  for it (`battle_status_line`); on the same hex only an attack's slot is computed again, so a
+  turn's posted mouse move (0x4ECC00) over the same hex writes no hint (T6c-2). The army info
+  windows (+0x132FC's six, shown when "Combat Army Info Level" 0x6987C8 is set) stay hidden at
+  its default 0, which the harness keeps.
+- **The kind** (`battle_cursor`, the acting stack's view; the battle lane read its rules,
+  `installation.md` §7.14, §7.21): none (−1) or a side column (column 0 or 16) 0; a hero's
+  rectangle with its hero 4 (the acting side's) or 21 (the other's), without one 0; in a network
+  game on a turn not played here 5 over a stack, 6 elsewhere (0x69954C, inferred); sieges'
+  catapult targets 16 and the arrow towers 22 (not modelled). A stack's hex: 5 (query) in the
+  tactics phase (+0x13D68) and over the acting stack itself; a Faerie Dragon's cast 20 (not
+  modelled); the acting side's own stack 17 for the First Aid Tent over a damaged patient, else
+  5; an enemy (its side +0xF4 not the acting side): 3 (shoot) if the stack can shoot now and is
+  the arrow tower or the shot is not halved, 15 (the broken arrow) when `shot_wall_test` or
+  `shot_full_damage_distance` says halved (the latter from the shooter's front hex by its
+  facing now, not turned: 0x4767E6); without a shot 7 (attack) if `cursor_path` reaches it (3 for
+  the Ballista), else 0. An empty hex: the Catapult's wall targets 16 (sieges), a caster's
+  empty-hex spell 20 (not modelled), else 2 (fly, the stack's flag 2) or 1 (move) when the reach
+  map marks the hex as a position (+0x20E) or as a two-hex stack's front hex (+0x20F,
+  0x4B2EF4), else 0. The viewer asks the legal commands the server lists for what the reach map,
+  `stack_can_shoot_now` and the tent's test answer (`mouse::Legal`); the cursor's own distance
+  test it ports (the shooter's `no_distance_penalty` for the bows and the Sharpshooters).
+- **The cursor** (0x47587C, 0x474B85): the kind's frame of the combat cursor (`SetCursor(frame,
+  2)`, `crcombat.DEF`), except 7, whose frame is its slot's, 20 (frame 0 of `crspell.DEF`, type 3,
+  animated: not read) and 21 and 22 (frame 5). The types' DEFs (0x67FF38): 0 `crdeflt.DEF`, 1
+  `cradvntr.DEF`, 2 `crcombat.DEF`, 3 `crspell.DEF`, 4 `artifact.DEF`. Each type's frame has a hot
+  spot (0x67FF50 + (type × 144 + frame) × 8, x then y): the cursor's canvas is drawn with its top
+  left at the mouse less the hot spot, the mouse's x first rounded down to even (0x50CE04, from
+  `GetCursorPos`; the game's logic takes the message's x as it is). **That rounding is a drawing
+  bug** (the user, 2026-10-20): the client draws the cursor at the mouse, and only the
+  comparisons with the captures round it (`h3_render::Bugs::Original`, the compositor's; the
+  epic's Decisions). The frame is drawn by the
+  plain drawer with runs skipped (0x47BEB0 → 0x47C570, flag 1) into a surface first filled with
+  the colour key (the screen's green and blue masks: 0x07FF in 5-6-5), which the screen's cursor
+  overlay leaves out.
+- **The attack's slot** (`cursor_attack_from_hex`): dx = x − (44 × column + 36, 22 more on an
+  even row), dy = y − (42 × row + 112), r = |dx| / |dy| as f32 (100 when dy = 0), against the f64
+  constants 0.58 and 1.73 (exact in integers here: 50 |dx| against 29 |dy|, 100 |dx| against
+  173 |dy|; no point of a hex is at either). Clockwise from the top: dx ≥ 0, dy < 0 slots 0 (r up
+  to 0.58), 1, 2 (above 1.73); dx ≥ 0, dy ≥ 0 slots 3 (r at least 1.73), 4, 5 (below 0.58); then
+  6 to 8 and 9 to 11 on the left the same way from the bottom up. Each slot has a from-hex
+  (+0x133FC, the attack's +0x132D8) and a frame (+0x133CC) from `cursor_attack_slots`; the
+  cursor changes only with the frame.
+- **The slots** (`cursor_attack_slots`): slot s looks at the hovered hex's neighbour s / 2 (the
+  manager's table at +0x13468, built by 0x4640A0: up right, right, down right, down left, left, up
+  left; none off the field or in a side column, and a side column's hex has only its inner three)
+  as the acting stack's position: taken when the reach map marks it (+0x20E), the stack fits there
+  (`stack_fits_at_hex`) and none of its hexes is a stop (a seen pit); the frame, a sword pointing
+  at the hex, is then 7 + (s / 2 + 3) mod 6. A two-hex stack also tries the position beside it,
+  the neighbour − 1 facing right, + 1 facing left (+0x44); with either taken the frame is the
+  sword, and beside the target (s / 2 = 1 or 4) the position beside wins when it fits. Above or
+  below it one is preferred: the one beside when "faces left" equals "s / 2 ≤ 2", else the
+  neighbour; the other one with the vertical sword (13 below, 14 above: s / 2 = 2 or 3 is 13)
+  is taken when the preferred does not fit, or when both fit and s is 0, 5, 6 or 11. A slot left
+  without a frame then copies, in slot order, the first slot j with one at the least d(|s − j|),
+  d(n) = n up to 6 and 6 − n above (so 11 beats 1 for slot 0, and 7 beats 1 too: the
+  executable's measure), the copies made earlier counting for later slots.
+- **The status line** (`battle_status_line`, written by `battle_log_add(text, 0, forced)`,
+  §9.8): 0 "No shots left!" (GENRLTXT:299) for a shooter (flag 4) with no shots left and a target
+  still set (+0x10, +0x14, which a hex outside the field or a side column leaves as the last one
+  set: T6c-2), else empty; 1 "Move %s here." (295) and 2 "Fly %s here." (296), the acting stack's
+  name by its count; 3 and 15 "Attack %s" (221) with the target's name by its count, forced,
+  while the army info is off (else 297 or 38 with the damage: not modelled); 4 "View Hero Stats"
+  (418), 21 "View Enemy Hero Stats" (419); 5 "View %s info." (298) with the hex's stack's singular
+  name, empty over no stack; 7 "Attack %s" (221), forced (with the army info 37 and the damage:
+  not modelled); 17 "Apply first aid to the %s" (420); 16, 20 and 22 sieges' and casters' (not
+  modelled); every other kind empty. After 0, 1, 2 and 5 an acting Archangel, Pit Lord or Ogre
+  Mage may replace it and force it (0x4922F0, not read further: not modelled).
+- **The panel's hints:** each control's pair (its hint, its right-click text) from `Help.txt`,
+  whose loader (0x5B98B0) copies records group by group: records 379 to 389 to 0x6A6968, in the
+  panel's order Surrender, Retreat, the options, Auto Combat, the log's item, its scroll buttons
+  (one pair for both), the spell book, Wait, Defend. The log's item and the scroll buttons' hints
+  are empty. Over the panel the status line shows the hint of the control under the mouse, a
+  disabled one's too (the spell book); the viewer takes the last item in the dialog's order whose
+  area holds the mouse (`Dialog::item_at`; the picture takes none: *provisional*, the dialog's
+  search not read). The records count as `h3-formats` reads `Help.txt`; the harness's `h3lod`
+  counts one fewer from the Multiplayer Selection group on (NOTES).
+- **The viewer** (*provisional* where marked): `h3-view render --frames` draws, where the
+  `frames.toml` names a mouse, its cursor, the marked stack's outline and the status line's hint
+  in the log's item (the situations' battles write no lines: the hint over the log's lines is
+  T6c-2's), the legal commands from the scenario's engine at the opening; the facing is the
+  side's. Not modelled: the window's mouse (T6c-2), a turn's mouse move, the stale target,
+  sieges, casters, the army info, network play.
+- **Checked:** the capture set's 26 `mouse-*` situations (the harness moves the mouse at the
+  opening, the clock frozen, `set.toml`'s `mouse`; scenarios `mouse-dragons`, `mouse-angels`,
+  `mouse-devils`, `mouse-elves`): 28 frames, every one exact from 100 ms (at the opening itself
+  the original shows the new cursor where the mouse was: its overlay moves at its next frame).
+  Over the field the attack's swords 7, 8, 9, 10, 13 and 14 (one-hex Arch Devils, two-hex Black
+  Dragons and Archangels; slots copied at the field's edge), fly, walk, nothing (an obstacle, out
+  of reach, a side column), the broken arrow, the query over the acting and another stack (the
+  Pikemen's outline and fidget at 100 to 300 ms), both heroes; over the panel Surrender, the
+  disabled spell book, Defend and the log; the hints. The even x showed as a one-pixel shift of
+  the cursor at odd points (144 pixels a sword, 101 the pointer) until the comparisons drew it. The set's other 31
+  situations draw the parked cursor (frame 6 at (618, 593)), their `cursor` masks gone: all 57
+  situations' 85 frames exact.

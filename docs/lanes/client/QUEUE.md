@@ -6,19 +6,18 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024). M3 (fidelity) below, refined at M2's closure (T5c) and agreed by the user there, each task about half a context; the exit: the reference set passes, or each difference is a listed fix or a classified quirk. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M3 T6c — The status line, the cursors and the mouse
+### E17 M3 T6c-2 — The mouse over time
 
-- **Scope:** the status line (the hint over a stack, `Attack Pikemen` in `strike`; a control's
-  hints, H3API's `SetHints`), the cursor rules of the executable (which cursor over which hex; T5a's
-  `CRDEFLT.DEF` frame 0 is provisional), the mouse over a stack in the window (group 1 and the
-  outline 0x70, read and recorded in T1b-2: `NOTES.md`), a button pressed and the panel's
-  hotkeys in the window (design §9.7); the harness's mouse over the field and the panel as
-  situations. The hover's hint forces the status line, a turn's posted mouse move does not
-  (T6b, design §9.8, `NOTES.md`): the sequences' ` log` listings of hints go with them. May
-  split when refined.
-- **Acceptance:** the hover situations' frames match the original's outside the listed
+- **Scope:** the harness's mouse moves in the viewer's timeline (the cursor and the hint after
+  each move and at a turn's start, 0x4ECC00; an attack's and a shot's hint force the status line
+  over new lines, the others do not; the stale target; the legal commands at each turn: T6b,
+  design §9.8, §9.9, `NOTES.md`; group 1 as a fidget after a stack is marked), so the sequences'
+  ` log` listings of hints go, their parked cursor is drawn and `hover` is compared; in the window
+  the mouse's cursor, hint and marked stack (T6c-1's model, re-composed on a move), a button
+  pressed (its click frame) and the panel's hotkeys (design §9.7).
+- **Acceptance:** the sequences' hint listings gone, `hover`'s frames matched outside the listed
   differences.
-- **Depends on:** nothing (T6a, T6b done). **Status:** ready.
+- **Depends on:** nothing (T6c-1 done). **Status:** ready.
 
 ### E17 M3 T7a — Code reading: the magic animations
 
@@ -78,8 +77,8 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
   user, a fresh reviewer agent over M3, the next milestone
   refined (sieges, live play, HD or the adventure map: the user's choice), M3 marked done.
 - **Acceptance:** M3's exit holds; the review list answered or carried on.
-- **Depends on:** T6c, T7a–T8 (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1,
-  T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b done).
+- **Depends on:** T6c-2, T7a–T8 (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1,
+  T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1 done).
   **Status:** waiting.
 
 ## Inbox
@@ -97,9 +96,8 @@ Other lanes add entries here. The client lane turns each into a task, or moves i
 - CLT-Q2 (2026-10-12, 2026-10-19): the table-only LOD reader is in `h3-formats`: switch the
   archive set to the directories and a batch's ranges, `h3-view gate` measuring it. NOTES,
   "Assets and archives".
-- For T6c: the mouse over a stack (T1b-2), the shot cursor's half damage without the shooter's
-  turn (0x4767E6); for T7c: the message when no hex is free for a created stack; for T8: the
-  battle waits for the heal's sound (T3b). NOTES, "The battle screen".
+- For T6c-2: the mouse over time (T6c-1's list); for T7c: the message when no hex is free for a
+  created stack; for T8: the battle waits for the heal's sound (T3b). NOTES, "The battle screen".
 - 2026-10-20 (T6a): the tactics phase's panel (0x46C050, not read) and Auto Combat switched on
   (its button selected, the panel dimmed while stacks play themselves) wait for a record with a
   tactics phase and for live play. Design §9.7.

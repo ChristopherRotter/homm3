@@ -100,6 +100,74 @@ original = [{ at = "GENRLTXT:415", printf = ["healer", "creature", "hit_points"]
 id = "battle.log.round"
 original = [{ at = "GENRLTXT:413" }]
 
+# The status line's hints over the battlefield (`battle_status_line` 0x492840; E17 M3 T6c-1,
+# docs/epics/E17-design.md §9.9): `creature` the acting stack's or the target's name by its number
+# (the stack looked at: its singular), as the cursor's kind says. A strike's and, while the army
+# info is off, a shot's are the same row.
+[[key]]
+id = "battle.hint.move"
+args = { creature = "text" }
+original = [{ at = "GENRLTXT:295", printf = ["creature"] }]
+
+[[key]]
+id = "battle.hint.fly"
+args = { creature = "text" }
+original = [{ at = "GENRLTXT:296", printf = ["creature"] }]
+
+[[key]]
+id = "battle.hint.attack"
+args = { creature = "text" }
+original = [{ at = "GENRLTXT:221", printf = ["creature"] }]
+
+[[key]]
+id = "battle.hint.view"
+args = { creature = "text" }
+original = [{ at = "GENRLTXT:298", printf = ["creature"] }]
+
+[[key]]
+id = "battle.hint.heal"
+args = { creature = "text" }
+original = [{ at = "GENRLTXT:420", printf = ["creature"] }]
+
+[[key]]
+id = "battle.hint.hero"
+original = [{ at = "GENRLTXT:418" }]
+
+[[key]]
+id = "battle.hint.enemy-hero"
+original = [{ at = "GENRLTXT:419" }]
+
+# The panel's controls' hints (`battle_panel_base` 0x46B7A3 on, `SetHints` from the pairs at
+# 0x6A6968; E17 M3 T6c-1): `Help.txt`'s first column, records 379 to 387 (its loader 0x5B98B0
+# copies them there in order); the log's item (383) and its scroll buttons (384) have empty hints.
+[[key]]
+id = "battle.control.surrender"
+original = [{ at = "HELP:379" }]
+
+[[key]]
+id = "battle.control.retreat"
+original = [{ at = "HELP:380" }]
+
+[[key]]
+id = "battle.control.options"
+original = [{ at = "HELP:381" }]
+
+[[key]]
+id = "battle.control.auto"
+original = [{ at = "HELP:382" }]
+
+[[key]]
+id = "battle.control.spell-book"
+original = [{ at = "HELP:385" }]
+
+[[key]]
+id = "battle.control.wait"
+original = [{ at = "HELP:386" }]
+
+[[key]]
+id = "battle.control.defend"
+original = [{ at = "HELP:387" }]
+
 # The word for a creature, by `count`: a strike's perish row names it when the strike killed
 # several kinds.
 [[key]]

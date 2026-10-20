@@ -493,6 +493,8 @@ fn a_moment_draws_each_stack_in_its_pose() {
             over: vec![(0, [7, 8], false), (9, [1, 1], true)],
         }),
         counts: BTreeMap::new(),
+        // E17 M3 T6c-1: the mouse marks the walking Pikemen.
+        marked: Some(0),
     };
     let list = battle_at(&battle_view(), &moment, &keys(), &tables(), &layout).unwrap();
     // The magic animation right after its stack's sprite, once.
@@ -546,6 +548,16 @@ fn a_moment_draws_each_stack_in_its_pose() {
             ..
         }
     )));
+    // The stack the mouse marks: the mouse's range, three steps on (0x70 + 5).
+    assert!(list.iter().any(|d| matches!(
+        d,
+        Draw::Creature {
+            group: 0,
+            frame: 3,
+            outline: Some(0x75),
+            ..
+        }
+    )));
     let creatures: Vec<(String, u32, u32, [i32; 2], bool)> = list
         .iter()
         .filter_map(|d| match d {
@@ -567,7 +579,7 @@ fn a_moment_draws_each_stack_in_its_pose() {
             ("CPKMAN.DEF".to_string(), 2, 0, layout.anchor(1, 2), false),
             ("CBDRGN.DEF".to_string(), 2, 0, layout.anchor(3, 16), true),
             ("CBDRGN.DEF".to_string(), 5, 7, layout.anchor(4, 9), false),
-            ("CPKMAN.DEF".to_string(), 0, 3, [x + 16, y], false),
+            ("CPKMAN.DEF".to_string(), 0, 3, [x + 16, y], true),
             ("CPKMAN.DEF".to_string(), 5, 8, layout.anchor(5, 16), false),
         ]
     );

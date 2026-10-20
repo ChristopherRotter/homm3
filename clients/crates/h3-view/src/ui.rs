@@ -38,6 +38,27 @@ pub enum Item {
 }
 
 impl Item {
+    /// Where the item takes the mouse, from the dialog's corner: its corner and size (a picture
+    /// takes none: *provisional*, design §9.9).
+    #[must_use]
+    pub const fn area(&self) -> Option<([i32; 2], [i32; 2])> {
+        match self {
+            Self::Picture(_) => None,
+            Self::Button(b) => Some((b.at, b.size)),
+            Self::Text(t) => Some((t.at, t.size)),
+        }
+    }
+
+    /// The key of the item's hint, if it has one.
+    #[must_use]
+    pub fn hint(&self) -> Option<&str> {
+        match self {
+            Self::Picture(_) => None,
+            Self::Button(b) => b.hint.as_deref(),
+            Self::Text(t) => t.hint.as_deref(),
+        }
+    }
+
     /// The item's control id.
     #[must_use]
     pub const fn id(&self) -> u16 {
@@ -80,6 +101,10 @@ pub struct Button {
     /// The frames of its states.
     #[serde(default)]
     pub frames: Frames,
+    /// The key of the status line's text while the mouse is over it (`SetHints` 0x5FE840; E17
+    /// M3 T6c-1), none for none.
+    #[serde(default)]
+    pub hint: Option<String>,
 }
 
 /// A button's frame in each state: the constructor's frame (+0x34) and click frame (+0x38), the
@@ -130,6 +155,9 @@ pub struct Text {
     pub colour: u32,
     /// The text drawer's alignment.
     pub align: u32,
+    /// The key of the status line's text while the mouse is over it, none for none.
+    #[serde(default)]
+    pub hint: Option<String>,
 }
 
 /// A control's state, the flags of the item's +0x16 its drawer reads: shown (bit 4), pressed
@@ -194,6 +222,19 @@ impl Dialog {
             Some(Item::Text(t)) => Some(t),
             _ => None,
         }
+    }
+
+    /// The item under the mouse at `point` (on the screen): the last in the executable's order
+    /// whose area holds it (*provisional*: the dialog's search was not read; design §9.9).
+    #[must_use]
+    pub fn item_at(&self, point: [i32; 2]) -> Option<&Item> {
+        let [x, y] = [point[0] - self.place[0], point[1] - self.place[1]];
+        self.items.iter().rev().find(|item| {
+            item.area().is_some_and(|([left, top], [w, h])| {
+                (left..left.saturating_add(w)).contains(&x)
+                    && (top..top.saturating_add(h)).contains(&y)
+            })
+        })
     }
 
     /// The draw list of the dialog's items as `shown`, in their order; a player's colours come
