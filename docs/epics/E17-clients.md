@@ -1,11 +1,11 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1 done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
 [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
-are there). Next: M3 T5b-2–T8 (`docs/lanes/client/QUEUE.md`).
+are there). Next: M3 T5b-2b–T8 (`docs/lanes/client/QUEUE.md`).
 
 ## Goal
 
@@ -338,6 +338,11 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   `Moment::counts`; the strike's end shows its pending poses at once); the frame check masks and
   lists a box only where its count is not the original's; `shot` and `melee` (run to the strike
   back's end, 7 000 ms) compare their boxes: 40 to 37 and 30 to 12 exact, artifacts only.
+- **T5b-2a done 2026-10-20** ([log](E17-log.md#m3-t5b-2a--the-count-boxes-in-behind-and-shots-2026-10-20),
+  [design §4.3](E17-design.md)): T5b-2 split with the user (`behind` and `shots` first; `fly`
+  and `machines` T5b-2b). Both compare their boxes; `behind` runs to the Marksmen's second
+  shot's end (4 000 ms); a shot's struck stacks take layer 5 as in a melee (the original's
+  memory); listed: the first arrow's steps over the rocks (the original's redraws, §7.11).
 
 ### The adventure lane's harness (H1, H2: its batch E3)
 
@@ -535,6 +540,10 @@ original cannot be matched (the fidgets' generator); the others are lifted.
 ## M3 review list
 
 (Filled by the tasks: choices queued for the milestone review under the autonomy contract.)
+
+- T5b-2a: `behind` lengthened to 4 000 ms; the first arrow's holes in the rocks (13 636 to
+  13 735 ms, design §7.11) listed with their counts, not classified (a rule "the terrain where
+  the viewer drew an obstacle" needs the background alone from the viewer).
 
 - T5b-1: the frame check's ` n<side>.<record>` (a box masked and listed as its count is not
   the one the original's memory shows: the engine rolls its own damage); the strike's end
