@@ -76,6 +76,16 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 
 ## Recent sessions
 
+### 2026-10-20 — T9c and T9d, the closure (in progress)
+
+- The user chose to finish E05 this session. #286 merged; `master` at b2d2e56 (#288, docs only:
+  the same code). The Linux verify with the user's original data runs in the sandbox (staged
+  from the device link); the Windows run is the user's script `target\t9c\t9c.ps1` in the
+  repo (QUEUE's commands, logs next to it, read over the link).
+- T9d drafted on `shared/e05-closure` (docs/07 §1.1, ADR-0025's line; BACKLOG and the
+  throughput wait for T9c) and `ai/e05-closure` (the design note moved into `E05-log.md`, its
+  references repointed: code comments, so the branch needs its own full verify).
+
 ### 2026-10-19/20 — Increment 6's cut; T9a, the audit, and T9b, the review
 
 - The user cut increment 6 (T9a to T9d; four reviewers; AI-Q7 to E06; the Linux verify with
@@ -96,8 +106,3 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   against Random, 0.498 against Aggressor, 0.479 against Greedy (T7d).
 - For the global HANDOFF (a `shared/` change, kept from T8b): `cargo xtask verify` outside
   `scripts/sandbox-verify.sh` needs `LLVM_COV`, `LLVM_PROFDATA` on `/usr/lib/llvm-20/bin`.
-
-### 2026-10-19 — T8c: two hours on the user's machine; the opponent pool
-
-- Naive self-play regressed on the user's GTX 1070 (0.779 peak, 0.721 final); with the opponent
-  pool (#264) 0.800 final, 0.811 best: criterion 7 met (`E05-log.md`).
