@@ -1,0 +1,55 @@
+# E17 M3 T6c-1: the mouse's situations (situations/set.toml, `mouse-*`): the grass situation with
+# the human's Black Dragons (two hexes, flying, speed 15) opening in the Royal Griffins' place, so
+# that they reach every enemy: the cursor's attack slots of a two-hex stack (design §9.9), flying,
+# looking at a stack, the heroes, the panel's controls. The obstacles are the grass situation's
+# (the same tile and terrain).
+
+[scenario]
+id = "situation-mouse-dragons"
+# Red human, Blue a computer, as the original's map (`h3-view situation`): the panel's buttons
+# lit on the human's turn (E17 M3 T6a).
+human = ["attacker"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:black_dragon"
+count = 2
+
+[[attacker]]
+slot = 2
+creature = "base:pikeman"
+count = 12
+
+[[defender]]
+slot = 0
+creature = "base:wolf_rider"
+count = 8
+
+[[defender]]
+slot = 2
+creature = "base:goblin"
+count = 15
+
+# The heroes (E17 M3 T3a), as the original's map gets them (`h3-view situation`): Orrin, a
+# Knight, and Crag Hack, a Barbarian, each with 1 in every primary skill.
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1

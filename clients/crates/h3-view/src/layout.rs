@@ -4,6 +4,7 @@
 //! file of the same format. The format is *provisional* until the M1 review.
 
 use alloc::string::{String, ToString};
+use alloc::vec::Vec;
 use serde::Deserialize;
 
 use crate::ui::{Dialog, Text};
@@ -36,6 +37,9 @@ pub struct BattleLayout {
     /// The entries of the active outline's range, from `outline_active` on (8): each idle step
     /// rotates them by one, each taking its lower neighbour's colour (0x522950, §4.2).
     pub outline_ramp: u8,
+    /// The outline of the stack the mouse marks: the palette's entry (0x70) before its range, as
+    /// long as the active one's, rotates (0x43E23A; E17 M3 T6c-1).
+    pub outline_mouse: u8,
     /// The heroes' canvases' top-left corners, the left side's and the right side's, which is
     /// mirrored (−43, −19; 693, −19; `battle_redraw` 0x494740, §4.5; E17 M3 T3a).
     pub hero_canvas: [[i32; 2]; 2],
@@ -46,10 +50,35 @@ pub struct BattleLayout {
     pub player_palette: String,
     /// A stack's count box (§4.3; E17 M3 T4a).
     pub count_box: CountBox,
+    /// The mouse over the battle (E17 M3 T6c-1; design §9.9).
+    pub mouse: Mouse,
     /// The panel below the battlefield, a dialog of the executable's items (§9.5, §9.7; E17 M3
     /// T4b-2b-1, T6a): its picture, buttons and the battle log's item (`crate::panel` names
     /// them).
     pub panel: Dialog,
+}
+
+/// The mouse over the battle (`battle_buttons`' mouse move 0x4753A4; design §9.9): where it finds
+/// a hex or a hero, and the combat cursor.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Mouse {
+    /// The battlefield's part of the screen from its corner (800 × 556, 0x4753E4): the panel below.
+    pub field: [i32; 2],
+    /// The heroes' rectangles, the attacker's and the defender's: left, top, right and bottom,
+    /// inclusive (`screen_to_hex` 0x4647A0, from 0x4626A0 and 0x4626D0).
+    pub heroes: [[i32; 4]; 2],
+    /// The height of a hex box's slanted top edge (10, 0x4648B6).
+    pub slant: i32,
+    /// A hex's centre from its box's corner (22, 26): the attack's slot is the mouse's angle from
+    /// it (0x474A54).
+    pub centre: [i32; 2],
+    /// The combat cursor's DEF (`crcombat.DEF`, the mouse manager's type 2, 0x67FF38).
+    pub cursor: String,
+    /// Its frames' hot spots (0x67FF50): the canvas's corner is the mouse less its frame's.
+    pub hot: Vec<[i32; 2]>,
+    /// The frame over the panel (6, 0x47551F).
+    pub panel_frame: u32,
 }
 
 /// A stack's count box (`draw_battle_stack`'s part 1, 0x43E568; design §4.3): its picture beside
@@ -146,6 +175,15 @@ impl BattleLayout {
             .saturating_add(u8::try_from(back).unwrap_or(0))
     }
 
+    /// The palette entry whose colour the outline of the stack the mouse marks shows after `steps`
+    /// idle steps: its range rotated as the active one's (E17 M3 T6c-1).
+    pub fn mouse_outline_after(&self, steps: u32) -> u8 {
+        let ramp = u32::from(self.outline_ramp.max(1));
+        let back = (ramp - steps % ramp) % ramp;
+        self.outline_mouse
+            .saturating_add(u8::try_from(back).unwrap_or(0))
+    }
+
     /// Where a sprite on the hex in `row` and `column` stands (the hex record's anchor).
     pub fn anchor(&self, row: u8, column: u8) -> [i32; 2] {
         let [x, y] = self.hex_box(row, column);
@@ -209,11 +247,18 @@ mod tests {
         assert_eq!((log.at, log.size), ([214, 7], [400, 32]));
         assert_eq!((log.colour, log.align), (1, 1));
         assert_eq!(layout.panel.items.len(), 11);
+        // §9.9: the mouse's outline from 0x70, rotated as the active one's; the mouse.
+        assert_eq!(layout.mouse_outline_after(1), 0x77);
+        let m = &layout.mouse;
+        assert_eq!((m.field, m.slant, m.centre), ([800, 556], 10, [22, 26]));
+        assert_eq!(m.heroes, [[0, 16, 57, 127], [741, 16, 799, 127]]);
+        assert_eq!((m.hot.len(), m.hot[7], m.panel_frame), (20, [22, 0], 6));
         let flat = BattleLayout {
             outline_ramp: 0,
             ..layout
         };
         assert_eq!(flat.outline_after(5), 0x60);
+        assert_eq!(flat.mouse_outline_after(5), 0x70);
     }
 
     #[test]

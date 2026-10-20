@@ -514,6 +514,7 @@ fn a_text_item_is_its_picture_with_the_text_over_it() {
         font_palette: "text.pal".to_string(),
         colour: 1,
         align: 1,
+        hint: None,
     };
     let mut batch = batch();
     let picture = build::pcx_indexed(4, 2, &[1; 8], &palette(&[(1, BLUE)]));

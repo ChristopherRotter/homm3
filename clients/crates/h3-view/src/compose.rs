@@ -255,6 +255,11 @@ pub fn compose(
                 };
                 plain(&mut screen, batch, def, (0, frame), *x, *y, false)?;
             }
+            Draw::Cursor { def, frame, x, y } => {
+                // 0x50D8B0: group 0's frame into the cursor's surface by the plain drawer with runs
+                // skipped (0x47BEB0 → 0x47C570), which the screen's overlay draws over all.
+                plain(&mut screen, batch, def, (0, *frame), *x, *y, false)?;
+            }
             Draw::Text { item, x, y, text } => {
                 // 0x5BC7F0: the item's picture, opaque (0x44FDB0), then its text (0x5BC5F0 →
                 // 0x4B5490) in the item's box, the colour and alignment it was made with.

@@ -139,7 +139,7 @@ pub fn names(list: &[Draw], layout: &BattleLayout) -> BTreeSet<String> {
             names.extend(player.as_ref().map(|p| &p.palette));
             names
         }
-        Draw::Button { def, .. } => vec![def],
+        Draw::Button { def, .. } | Draw::Cursor { def, .. } => vec![def],
         Draw::Text { item, .. } => vec![&item.picture, &item.font, &item.font_palette],
         Draw::Ray(_) => Vec::new(),
     });

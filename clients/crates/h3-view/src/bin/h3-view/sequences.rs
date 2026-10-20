@@ -13,13 +13,14 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use h3_formats::lod::LodArchive;
-use h3_protocol::wire::{Command, Seat, ServerMessage, Side};
+use h3_protocol::wire::{Command, Seat, ServerMessage, Side, Stack};
 use h3_render::Bugs;
 use h3_view::anim::{self, Pose, Speed, Timeline};
 use h3_view::batch::{self, Batch};
 use h3_view::compose::compose;
 use h3_view::hero::HeroPose;
 use h3_view::layout::BattleLayout;
+use h3_view::mouse::{self, Legal};
 use h3_view::record::Record;
 use h3_view::scene::Panels;
 use h3_view::tables::Tables;
@@ -73,10 +74,24 @@ struct Step {
     at: Option<u32>,
 }
 
-/// The frames the harness kept of a sequence in the original (`h3drive.py frames`).
+/// The frames the harness kept of a sequence in the original (`h3drive.py frames`), or of a
+/// situation (`h3drive.py set`).
 #[derive(Debug, Deserialize)]
 struct Frames {
     frame: Vec<Kept>,
+    /// Where the harness left the mouse (E17 M3 T6c-1: a situation's, drawn with its cursor, hint
+    /// and marked stack; none for a sequence, whose parked cursor the frame check masks).
+    #[serde(default)]
+    mouse: Option<[i32; 2]>,
+}
+
+/// What the frames draw below and over the battlefield: the panel over the battle and the acting
+/// stack's legal commands at the opening, which the mouse's cursor and hint ask (E17 M3 T6c-1).
+pub(crate) struct Interface<'a> {
+    /// The panel.
+    pub panels: &'a Panels,
+    /// The legal commands.
+    pub legal: &'a Legal,
 }
 
 /// One kept frame: its time, the stacks the original shows fidgeting then (the viewer draws
@@ -253,8 +268,12 @@ fn sequences(options: &Options) -> Result<usize, String> {
         if let Some(dir) = &options.frames {
             let here = dir.join(&sequence.id);
             let panels = log::panels(&record, &timeline, &tables, &layout, &archives)?;
+            let interface = Interface {
+                panels: &panels,
+                legal: &Legal::default(),
+            };
             let drawn = draw_frames(
-                &here, &record, &timeline, &tables, &layout, &archives, &panels,
+                &here, &record, &timeline, &tables, &layout, &archives, &interface,
             )?;
             println!(
                 "{}: {drawn} frames drawn in {}",
@@ -309,8 +328,9 @@ pub(crate) fn draw_frames(
     tables: &Tables,
     layout: &BattleLayout,
     archives: &[(&str, LodArchive<'_>)],
-    panels: &Panels,
+    interface: &Interface<'_>,
 ) -> Result<usize, String> {
+    let panels = interface.panels;
     let path = here.join("frames.toml");
     let text = fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
     let kept: Frames = toml::from_str(&text).map_err(|e| format!("{}: {e}", path.display()))?;
@@ -321,8 +341,24 @@ pub(crate) fn draw_frames(
     let mut lists = Vec::new();
     let mut drawn = String::new();
     let mut texts = serde_json::Map::new();
+    // The mouse where the harness left it, at the opening (E17 M3 T6c-1; over time: T6c-2).
+    let pointer = kept
+        .mouse
+        .map(|point| (point, mouse::pointer(snapshot, interface.legal, layout, point)));
+    let status = match &pointer {
+        Some((_, p)) => {
+            let catalogue = log::catalogue(tables, archives)?;
+            let name = |s: &Stack| {
+                let key = manifest.keys.creatures.get(usize::from(s.creature))?;
+                Some(format!("creature.{key}"))
+            };
+            Some(p.hint.text(&catalogue, snapshot, &name))
+        }
+        None => None,
+    };
     for frame in &kept.frame {
         let mut moment = scene::Moment::at(timeline, frame.t);
+        moment.marked = pointer.as_ref().and_then(|(_, p)| p.marked);
         for &[side, index, group, f] in &frame.fidgets {
             let side = if side == 0 {
                 Side::Attacker
@@ -379,12 +415,17 @@ pub(crate) fn draw_frames(
         line.push('\n');
         drawn.push_str(&line);
         // The panel as its last turn's start set it, its log's item as the battle's lines and
-        // turns left it (E17 M3 T6b).
-        list.extend(panels.at(snapshot, &timeline.turns, frame.t, layout));
+        // turns left it (E17 M3 T6b), or the status line's hint where the mouse is (T6c-1:
+        // *provisional*, the situations' battles write no lines; T6c-2 times it).
+        let text = status.as_deref().unwrap_or_else(|| panels.text(frame.t));
+        list.extend(panels.at_showing(snapshot, &timeline.turns, frame.t, layout, text));
+        if let Some((point, p)) = &pointer {
+            list.push(p.cursor(layout, *point));
+        }
         let stem = Path::new(&frame.file).with_extension("");
         texts.insert(
             stem.to_string_lossy().into_owned(),
-            serde_json::Value::String(panels.text(frame.t).to_owned()),
+            serde_json::Value::String(text.to_owned()),
         );
         lists.push((frame, list));
     }

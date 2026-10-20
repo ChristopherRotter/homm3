@@ -188,7 +188,6 @@ at = 0
 differing = 0
 why = "exact: the outline's pulse on the original's clock (M3 T1b-2)"
 
-
 # The special battlefields (M3 T2): each as the original makes it on the defender's tile
 # (`h3-view situation`, design §5), its picture (0x4646D0) and its own obstacles. The ship's deck
 # and the two boats need boats on the map, which h3-map's writer lacks (CLT-Q5).
@@ -474,3 +473,195 @@ why = "exact: counts of three to five digits centred in their boxes, each box ti
 at = 400
 differing = 0
 why = "exact: the Pikemen fidget (group 1) with their box, the outline four steps on (M3 T4a)"
+
+# The mouse (M3 T6c-1, design §9.9): the human's stack opens and the harness moves the mouse to
+# `mouse` at the opening (the clock frozen); the viewer draws the cursor there, the status line's
+# hint and the stack the mouse marks (its fidget in the original's poses). From 100 ms on: at the
+# opening itself the original shows the new cursor where the mouse was (its overlay moves at its
+# next frame), which a still cannot show.
+
+[[situation]]
+id = "mouse-attack-wolves"
+scenario = "mouse-dragons.toml"
+mouse = [654, 196]
+# the Black Dragons' cursor over the Wolf Riders' front hex from the left.
+
+[[situation.frame]]
+at = 100
+
+[[situation]]
+id = "mouse-attack-above"
+scenario = "mouse-dragons.toml"
+mouse = [713, 428]
+# over the Goblins from above and left.
+
+[[situation.frame]]
+at = 100
+
+[[situation]]
+id = "mouse-attack-below"
+scenario = "mouse-dragons.toml"
+mouse = [713, 468]
+# over the Goblins from below and left.
+
+[[situation.frame]]
+at = 100
+
+[[situation]]
+id = "mouse-attack-edge"
+scenario = "mouse-dragons.toml"
+mouse = [733, 438]
+# over the Goblins from above and right, where no hex is (a slot copied).
+
+[[situation.frame]]
+at = 100
+
+[[situation]]
+id = "mouse-fly"
+scenario = "mouse-dragons.toml"
+mouse = [168, 238]
+# an empty hex the Black Dragons reach.
+
+[[situation.frame]]
+at = 100
+
+[[situation]]
+id = "mouse-obstacle"
+scenario = "mouse-dragons.toml"
+mouse = [410, 280]
+# an obstacle's hex.
+
+[[situation.frame]]
+at = 100
+
+[[situation]]
+id = "mouse-own"
+scenario = "mouse-dragons.toml"
+mouse = [102, 448]
+# the human's Pikemen: looked at, marked, their fidget.
+
+[[situation.frame]]
+at = 100
+
+[[situation.frame]]
+at = 200
+
+[[situation.frame]]
+at = 300
+
+[[situation]]
+id = "mouse-self"
+scenario = "mouse-dragons.toml"
+mouse = [146, 196]
+# the acting Black Dragons themselves.
+
+[[situation.frame]]
+at = 100
+
+[[situation]]
+id = "mouse-side"
+scenario = "mouse-dragons.toml"
+mouse = [58, 364]
+# a side column's hex.
+
+[[situation.frame]]
+at = 100
+
+[[situation]]
+id = "mouse-hero"
+scenario = "mouse-dragons.toml"
+mouse = [30, 80]
+# the human's hero.
+
+[[situation.frame]]
+at = 100
+
+[[situation]]
+id = "mouse-enemy-hero"
+scenario = "mouse-dragons.toml"
+mouse = [770, 80]
+# the other side's hero.
+
+[[situation.frame]]
+at = 100
+
+[[situation]]
+id = "mouse-surrender"
+scenario = "mouse-dragons.toml"
+mouse = [78, 579]
+# the panel's Surrender button.
+
+[[situation.frame]]
+at = 100
+
+[[situation]]
+id = "mouse-book"
+scenario = "mouse-dragons.toml"
+mouse = [669, 579]
+# the panel's spell book, disabled.
+
+[[situation.frame]]
+at = 100
+
+[[situation]]
+id = "mouse-defend"
+scenario = "mouse-dragons.toml"
+mouse = [771, 579]
+# the panel's Defend button.
+
+[[situation.frame]]
+at = 100
+
+[[situation]]
+id = "mouse-log"
+scenario = "mouse-dragons.toml"
+mouse = [400, 580]
+# the panel's log.
+
+[[situation.frame]]
+at = 100
+
+[[situation]]
+id = "mouse-angel"
+scenario = "mouse-angels.toml"
+mouse = [713, 428]
+# the Archangels' (one hex) cursor over the Goblins from above and left.
+
+[[situation.frame]]
+at = 100
+
+[[situation]]
+id = "mouse-angel-edge"
+scenario = "mouse-angels.toml"
+mouse = [733, 196]
+# over the Wolf Riders' rear hex from the right, where no hex is.
+
+[[situation.frame]]
+at = 100
+
+[[situation]]
+id = "mouse-shot"
+scenario = "mouse-elves.toml"
+mouse = [718, 448]
+# the Grand Elves' cursor over the far Goblins: the broken arrow.
+
+[[situation.frame]]
+at = 100
+
+[[situation]]
+id = "mouse-walk"
+scenario = "mouse-elves.toml"
+mouse = [168, 238]
+# an empty hex the Grand Elves reach.
+
+[[situation.frame]]
+at = 100
+
+[[situation]]
+id = "mouse-walk-far"
+scenario = "mouse-elves.toml"
+mouse = [608, 238]
+# an empty hex beyond their reach.
+
+[[situation.frame]]
+at = 100

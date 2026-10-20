@@ -174,6 +174,23 @@ pub fn record(scenario: &Path, packs: &Path, seed: u64) -> Result<String, String
     played(scenario, packs, seed, &[])
 }
 
+/// The legal commands of the side to act at the opening of the battle `scenario` sets up with
+/// `seed`, its packs read from `packs` (E17 M3 T6c-1: what the mouse's cursor asks in a still);
+/// none when no side acts.
+pub fn opening_legal(
+    scenario: &Path,
+    packs: &Path,
+    seed: u64,
+) -> Result<Vec<Command>, String> {
+    let (ruleset, setup) = battle(scenario, packs, seed)?;
+    let state =
+        BattleState::new(&ruleset, &setup, seed).map_err(|e| format!("the setup: {e:?}"))?;
+    Ok(state
+        .side_to_act()
+        .map(|side| map::legal_commands(&state, &ruleset, side))
+        .unwrap_or_default())
+}
+
 /// The most commands a fought battle may take.
 const FOUGHT_LIMIT: usize = 5_000;
 
