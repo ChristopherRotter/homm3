@@ -6,11 +6,18 @@ Pre-refined tasks of the battle lane, in order, then the inbox of discovered wor
 
 E23, the original's battle AI, is in progress (refined 2026-10-19, BAT-Q52; `docs/epics/E23-original-battle-ai.md`). E04b closed on 2026-10-12, E04c on 2026-10-16 (their epic files and logs; their cuts: OPEN-QUESTIONS BAT-Q10 to BAT-Q27, BAT-Q37 to BAT-Q50).
 
-### E23 T1a3 — The walker's helpers
+### E23 T1a3b — The plan's hexes and the order's sort
 
-- **Scope:** E23 T1a3 as the epic file names it (§7.34's table, §7.35's "Not read here"): the rest of part W behind 0x421680 (the hex scores 0x420260 and 0x41FB60 with 0x41FD60, the plan's hexes 0x436300 and its helpers 0x436180, 0x436620, 0x436760, the fallbacks 0x420760 and 0x4208F0, 0x41F3B0 to its end, 0x41F920, the walk 0x41F580's end, 0x420A80's totals as far as the battle needs) and part O, the order's sort 0x423340. Read with `scripts/exe.py` (stage `Heroes3.exe`); no code. If it proves larger than a session, cut it at the user's checkpoint (the scores and the plan first).
-- **Acceptance:** §7.35 (or a §7.36) holds the readings; the map's entries for W and O are `read` or say what was not; the readings at risk added; part A's share named for the adventure lane.
-- **Depends on:** the user's review of T1a2's pull request; `Heroes3.exe` staged.
+- **Scope:** E23 T1a3b as the epic file names it (the user's cut of T1a3, 2026-10-20; §7.36's "Not read here"): the plan's hexes 0x436300 with its helpers 0x436180, 0x436620 (it calls 0x448AB0, read in §7.36), 0x436760 and a small one; part O, the order's sort 0x423340 with 0x423630 and its small helpers (about 3.1 KB in all). Read with `scripts/exe.py` (stage `Heroes3.exe`); no code.
+- **Acceptance:** a §7.37 holds the readings (the plan's hex choice and its tie order; the sort's order and whether its ties are stable); the map's entries for these are `read`; the readings at risk added.
+- **Depends on:** the user's review of T1a3a's pull request; `Heroes3.exe` staged.
+- **Status:** queued.
+
+### E23 T1a3c — The fallbacks and the ends
+
+- **Scope:** E23 T1a3c: the fallbacks 0x420760 (with its two helpers) and 0x4208F0 beyond their heads, 0x41F3B0 beyond its loop, the destination map 0x4B2FF0, the walk 0x41F580's end, 0x420A80's totals as far as the battle needs (part A's share named for the adventure lane); about 4 KB.
+- **Acceptance:** as T1a3b's; with it part W is read and the map's entries for W and O are `read` or say what was not.
+- **Depends on:** T1a3b.
 - **Status:** queued.
 
 **Waiting on this lane** (found in the 2026-10-19 consolidation; never queued here):
