@@ -186,6 +186,9 @@ pub fn query(
             (SpellId::from_raw(spell), target_to_engine(target)),
             &mut out,
         ),
+        Query::CreatureCastTargets {} => {
+            h3_battle::creature_cast_targets(state, ruleset, actor, &mut out);
+        }
     }
     out.iter().map(|&t| target(t)).collect()
 }

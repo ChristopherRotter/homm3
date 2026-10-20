@@ -72,7 +72,7 @@ time per lane**. A lane owns paths; everything else it may not change in its own
   `h3-pack-battle` (since R01; the core `h3-content` and `h3-pack` are shared), `h3-cli` (its
   `src/ai/` the AI lane's), the formats/tools crates `h3-formats`, `h3-harvest`, `h3-experiment`
   and `docs/formats/` (until a formats/tools lane opens), packs, fixtures, experiments,
-  `benches/battle/`, the BAT rules, the quirks ledger, the surveys, the epics E01–E04c.
+  `benches/battle/`, the BAT rules, the quirks ledger, the surveys, the epics E01–E04c and E23.
   `h3-heroes` moved to adventure when E04c closed (ADV-Q13).
 - **adventure:** `h3-adventure`, `h3-game`, `h3-map` and `h3-pack-adventure` (E08; later the
   town), adventure-owned sub-paths of the battle lane's crates and folders (`h3-sim`'s and

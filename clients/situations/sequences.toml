@@ -13,7 +13,11 @@
 # `h3-view sequences` plays them and checks the viewer's timeline against the recorded one.
 # `frames` (E17 M2 T4b-1, design §7.9): the frame check's recorded counts, `<ms> <differing
 # pixels> <redraw artifacts among them>` for every distinct battlefield the original showed
-# (`h3drive.py frames`; the artifacts since M3 T1c, design §7.11).
+# (`h3drive.py frames`; the artifacts since M3 T1c, design §7.11). `boxes = true` (E17 M3 T5a,
+# design §4.3): the frame check compares the count boxes; without it they are masked where the
+# drawn poses show them and where the viewer drew them. Compared so far in the sequences whose
+# counts never change (no rolled strike); `strike` at 2 730 ms differs in 134 pixels of the
+# original's redraws (design §4.3).
 
 [[sequence]]
 id = "walk"
@@ -22,6 +26,7 @@ actions = ["hex:40"]
 ms = 2700
 timeline = "timelines/walk.txt"
 frames = "timelines/walk-frames.txt"
+boxes = true
 command = [{ seat = "Attacker", command = { Move = { to = 39 } } }]
 
 [[sequence]]
@@ -52,6 +57,7 @@ actions = ["hex:19"]
 ms = 3500
 timeline = "timelines/turn.txt"
 frames = "timelines/turn-frames.txt"
+boxes = true
 command = [{ seat = "Attacker", command = { Move = { to = 18 } } }]
 
 # E17 M3 T1a: a two-hex walker climbs two rows (35 to 1, clicking its front hex 2): a turn on the
@@ -63,6 +69,7 @@ actions = ["hex:2"]
 ms = 3500
 timeline = "timelines/climb.txt"
 frames = "timelines/climb-frames.txt"
+boxes = true
 command = [{ seat = "Attacker", command = { Move = { to = 1 } } }]
 
 # E17 M3 T1a: a battle in progress in hot seat (the harness's actions play both sides, each as its
@@ -179,6 +186,7 @@ actions = ["click:700,196"]
 ms = 4300
 timeline = "timelines/strike.txt"
 frames = "timelines/strike-frames.txt"
+boxes = true
 log_at = 3730
 command = [
     { seat = "Attacker", command = { Attack = { target = 3, from = 47 } } },

@@ -88,9 +88,11 @@ fn config(limits: Limits) -> Config {
     }
 }
 
-/// A client that said hello.
+/// A client that said hello (at the loopback address for a server bound to an unspecified one).
 async fn greeted(running: &Running) -> Client {
-    let mut client = Client::connect(running.address).await.unwrap();
+    let mut client = Client::connect(crate::reachable(running.address))
+        .await
+        .unwrap();
     let welcome = client.hello("test").await.unwrap();
     assert!(
         matches!(welcome, Some(ServerMessage::Welcome { .. })),

@@ -405,10 +405,13 @@ pub fn battle_at(
         });
     }
     // The hexes a count box cannot take (0x43E605): a living stack's (each of its poses' hexes)
-    // and the blocked ones.
+    // while it holds them (not dead since, its box not hidden: E17 M3 T5a), and the blocked ones.
     let mut taken: BTreeSet<u8> = observation.obstacles.iter().copied().collect();
     for s in observation.stacks.iter().filter(|s| s.alive) {
         let pose = pose_of(s, moment, tables);
+        if !pose.holds_hex() {
+            continue;
+        }
         taken.insert(pose.hex);
         if s.two_hex {
             taken.extend(ahead(pose.hex, !pose.mirrored, 0));
@@ -484,6 +487,7 @@ fn pose_of(stack: &Stack, moment: &Moment, tables: &Tables) -> Pose {
         offset: [0, 0],
         mirrored: stack.side == Side::Defender,
         layer: STANDING,
+        boxless: false,
     })
 }
 
@@ -498,9 +502,9 @@ fn ahead(hex: u8, right: bool, extra: u8) -> Option<u8> {
 }
 
 /// A stack's count box, if it shows one (§4.3, 0x43E568): a living stack, not a war machine,
-/// standing or under the mouse (groups 2 and 1); not yet the moments when the executable hides it
-/// (its +0x30, set by a walk or a flight: M3 T5). Beside its sprite's anchor by its facing, its
-/// width and whether the hex ahead is `taken`.
+/// standing or under the mouse (groups 2 and 1), its box not hidden by a walk or a flight (its
+/// +0x30, [`Pose::boxless`]: E17 M3 T5a). Beside its sprite's anchor by its facing, its width and
+/// whether the hex ahead is `taken`.
 fn count_box(
     stack: &Stack,
     pose: Pose,
@@ -508,7 +512,7 @@ fn count_box(
     taken: &BTreeSet<u8>,
     layout: &BattleLayout,
 ) -> Option<Draw> {
-    if !stack.alive || stack.war_machine || !sprite.boxed {
+    if !stack.alive || stack.war_machine || !sprite.boxed || pose.boxless {
         return None;
     }
     let right = !pose.mirrored;

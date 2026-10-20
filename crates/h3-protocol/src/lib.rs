@@ -70,7 +70,10 @@ pub mod wire;
 /// `NoSuchPart`, the town's wall parts, a hero's command of its Catapult. v32 (E04c T7d, ADR-0023
 /// point 7): the observation names the game's difficulty and, per side, whether its player is
 /// human. v33 (E04c T7e, ADR-0013 point 4): the own hero's Ballista names its Artillery level.
-pub const PROTOCOL_VERSION: u32 = 33;
+/// v34 (the server lane's inbox, 2026-10-19): the query `CreatureCastTargets`; a side's
+/// `may_retreat` is as the viewer knows it (a town's Escape Tunnel shows to its defender only,
+/// BAT-Q50 (4)): the field is unchanged, its meaning is new.
+pub const PROTOCOL_VERSION: u32 = 34;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes.

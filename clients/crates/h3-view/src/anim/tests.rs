@@ -521,7 +521,14 @@ fn the_walk_sequence_plays_as_recorded() {
     assert_eq!(t.lines(), WALK);
     // What shows: the walk's first frame from 100 ms, standing from 2592; the next turn then.
     assert_eq!(t.at(99)[&0], still(2, 35));
-    assert_eq!(t.at(100)[&0], pose(20, 0, 35));
+    // Its count box hidden through the walk (E17 M3 T5a).
+    assert_eq!(
+        t.at(100)[&0],
+        Pose {
+            boxless: true,
+            ..pose(20, 0, 35)
+        }
+    );
     let mid = t.at(500)[&0];
     assert_eq!(
         (mid.group, mid.frame, mid.hex, mid.offset),
@@ -1378,6 +1385,8 @@ fn a_walk_faces_each_step_and_a_plain_move_turns_back() {
     want.extend((0..3).map(|f| (7, f, 40, false, 4)));
     want.extend((0..3).map(|f| (10, f, 41, true, 4)));
     want.push((2, 0, 41, true, 4));
+    // The box shown again: the whole battle redrawn (E17 M3 T5a).
+    want.push((2, 0, 41, true, 4));
     assert_eq!(keys_of(&t, 1), want);
     // A later step the other way flips at once (0x43F0E5 without its flag): down and left from
     // 41 in layer 7, from the position facing left again; then left in layer 4, and no turn at
@@ -1429,6 +1438,55 @@ fn a_flight_turns_by_columns() {
     assert!(k.contains(&(21, 0, 69, true, 4)));
     let standing = k.iter().filter(|k| k.0 == 2).count();
     assert_eq!(standing, 4);
+}
+
+/// `stack`'s keys as (group, whether its box is hidden, when it shows).
+fn boxless(t: &Timeline, stack: u8) -> Vec<(u32, bool, u32)> {
+    t.keys
+        .iter()
+        .filter(|k| k.stack == stack)
+        .map(|k| (k.pose.group, k.pose.boxless, k.shown))
+        .collect()
+}
+
+#[test]
+fn a_walk_and_a_flight_hide_their_count_box() {
+    // E17 M3 T5a (design §4.3): `stack_walk` sets +0x30 before its first turn (0x442145) and
+    // clears it after the turn back, redrawing the whole battle at once (0x4423D9, 0x4423E7).
+    // The Wolf Riders turn, walk, stand, turn back and stand: every frame hidden, then the
+    // redraw shows the box with the last frame.
+    let o = snapshot(vec![
+        at(0, Side::Attacker, PIKEMAN, 137, false),
+        at(1, Side::Defender, WOLF_RIDER, 40, true),
+    ]);
+    let t = play(&o, &[(None, vec![moved(1, 40, 41)])]);
+    let k = boxless(&t, 1);
+    let (last, frames) = k.split_last().unwrap();
+    assert!(frames.iter().all(|&(_, hidden, _)| hidden));
+    assert_eq!(*last, (2, false, frames.last().unwrap().2));
+    assert!(t.at(t.end)[&1].holds_hex());
+    // A flight (0x4B4BD8, 0x4B4E73): its turn and group 20 shown, hidden from the cycles to the
+    // standing frame after group 21; the turn back and the last standing frame shown.
+    let mut angels = at(0, Side::Attacker, ANGEL, 83, false);
+    angels.flies = true;
+    let t = play(&snapshot(vec![angels]), &[(None, vec![moved(0, 83, 69)])]);
+    let mut hidden: Vec<(u32, bool)> = boxless(&t, 0).iter().map(|k| (k.0, k.1)).collect();
+    hidden.dedup();
+    assert_eq!(
+        hidden,
+        [
+            (7, false),
+            (10, false),
+            (2, false),
+            (20, false),
+            (0, true),
+            (21, true),
+            (2, true),
+            (9, false),
+            (8, false),
+            (2, false)
+        ]
+    );
 }
 
 #[test]

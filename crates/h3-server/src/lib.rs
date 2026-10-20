@@ -395,19 +395,12 @@ pub async fn card(config: &Config) -> Result<String, Error> {
     let key = key::ServerKey::existing(&config.server.data)?.key();
     let bind = &config.server.bind;
     let failed = |e: &dyn fmt::Display| Error(format!("the server at {bind}: {e}"));
-    let mut address = (tokio::net::lookup_host(bind)
+    let address = (tokio::net::lookup_host(bind)
         .await
         .map_err(|e| failed(&e))?)
     .next()
     .ok_or_else(|| failed(&"no address"))?;
-    if address.ip().is_unspecified() {
-        let loopback = match address {
-            SocketAddr::V4(_) => std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST),
-            SocketAddr::V6(_) => std::net::IpAddr::V6(std::net::Ipv6Addr::LOCALHOST),
-        };
-        address.set_ip(loopback);
-    }
-    let mut client = client::Client::connect(address)
+    let mut client = client::Client::connect(reachable(address))
         .await
         .map_err(|e| failed(&e))?;
     client.pin(key);
@@ -424,6 +417,20 @@ pub async fn card(config: &Config) -> Result<String, Error> {
     let (_, signed) = client.describe(1).await.map_err(|e| failed(&e))?;
     client.close().await;
     Ok(h3_protocol::codec::encode_text(&signed))
+}
+
+/// Where a client on this machine reaches a server bound to `address`: the loopback address for an
+/// unspecified one (Windows refuses a connect to `0.0.0.0`; the battle lane's Windows verify,
+/// 2026-10-16), else `address`.
+pub(crate) fn reachable(mut address: SocketAddr) -> SocketAddr {
+    if address.ip().is_unspecified() {
+        let loopback = match address {
+            SocketAddr::V4(_) => std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST),
+            SocketAddr::V6(_) => std::net::IpAddr::V6(std::net::Ipv6Addr::LOCALHOST),
+        };
+        address.set_ip(loopback);
+    }
+    address
 }
 
 /// The operator binds the account `login` to the public key `key` (64 hex digits) while no server

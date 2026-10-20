@@ -295,6 +295,7 @@ mod tests {
         // A crash cut the next line short: it is dropped, and the file continues after it.
         let mut file = OpenOptions::new().append(true).open(path(&data)).unwrap();
         file.write_all(b"{\"Registered\":{\"login\":\"car").unwrap();
+        drop(file);
         let mut players = Players::open(&data).unwrap();
         assert_eq!(players.get("alice"), Some(&alice));
         assert_eq!(players.get("bob").map(|a| a.key), Some(Some([2; 32])));

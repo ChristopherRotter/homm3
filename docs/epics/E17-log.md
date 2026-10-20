@@ -1197,3 +1197,46 @@ entries and the scroll left to T6; the user chose that.
   the ten sequences' timelines as recorded.
 - **For later:** T5 (the two boxes), T6 (when the line appears, the hint in the status line,
   several entries and the first shown, the event mapping that replaces `first_strike`).
+
+### M3 T5a — The count boxes through walks and flights (2026-10-20)
+
+On `client/e17-m3-t5a`, the user present: asked for a small increment, the agent proposed
+splitting T5 by whether a box's number changes (the engine rolls damage differently from the
+original, so after a rolled strike the digits differ): first the boxes of the four sequences
+whose counts never change (`walk`, `turn`, `climb`, `strike`); the user chose that and moved the
+spells' tint to T7b (no sequence casts on a stack before T7a). The user's computer went offline
+during the session, after the original files were staged.
+
+- **Starting point:** master at `5c4fc0b` (#280, T4b-2b-2, merged on 2026-10-19, and the adventure
+  lane's #279 after it), no client pull request open; the client gates' baseline (`check.sh`,
+  `verify-once`) passed on the sandbox.
+- **Code reading** (design §4.3; the map's `stack_walk` and `stack_death`, the stack's +0x30):
+  +0x30 is stored only by the walk (set before the path's first turn, 0x442145; cleared at the
+  end, then the whole battle redrawn and shown, 0x4423D9) and the flight (set as the cycles start,
+  0x4B4BD8; cleared after group 21 and the standing frame, 0x4B4E73, with no redraw); the box
+  test (0x43E605) reads the hex's occupant and its +0x30; a stack killed by a strike leaves the
+  hex records after the strike's iterations (`stack_death` 0x444400 from 0x4692C4).
+- **Built:** `Pose::boxless` (the walk's and the flight's poses carry it; the walk's last pose
+  shown again unhidden by the redraw at the same moment), `Pose::holds_hex` (not hidden, not
+  among the corpses); the scene places the boxes by the stacks holding their hexes at the moment
+  and draws none for a hidden one. The harness: a sequence's `boxes = true` compares the count
+  boxes; the others mask them also where the viewer drew them (`ours.txt` lists them,
+  ` box<x>,<y>`), so their counts stay as recorded.
+- **Checked against the original** (the four captured afresh): `walk`, `turn` and `climb`
+  artifacts only with the boxes compared (in `turn` and `climb` the standing frame after the
+  first turn hides the box; `climb` at 1 696 ms 16 more artifact pixels, a box under a shadow);
+  `strike` artifacts only but 134 pixels at 2 730 ms (a piece of the Pikemen's earlier box from
+  the saved screen, 123, and the new box's last column outside the rectangle shown, 11): listed,
+  not classified (a rule by a box's earlier place would pass a box moved too early, as the
+  Pikemen's was before). Before this, with the boxes unmasked, 574 to 872 pixels in each frame
+  of the landing and 606 in each from the Goblins' turn. One of two `strike` runs read the left
+  hero standing at the first frame of its reaction (2 400 pixels at 3 730 ms; the runbook's
+  "Traps"); the other, used, as recorded.
+- **The other six sequences** captured again (their boxes masked): `shot`, `behind`, `shots`,
+  `fly` and `machines` as recorded; `melee` at 3 966 ms now artifacts only (96): the box T1c
+  listed as stale is the Angels' beside them, the Wolf Riders' hex free while they walk, which
+  the viewer now draws exactly (its 330 pixels equal); recorded. The capture set: 31 situations,
+  57 frames as recorded (a first run stopped on a broken screen dump; the second ran through).
+  The ten sequences' timelines as recorded.
+- **For later:** T5b (the numbers over time, the other six sequences' boxes compared), T7b (the
+  spells' tint).

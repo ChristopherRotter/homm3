@@ -6,21 +6,24 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024). M3 (fidelity) below, refined at M2's closure (T5c) and agreed by the user there, each task about half a context; the exit: the reference set passes, or each difference is a listed fix or a classified quirk. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M3 T5 — The count boxes
+### E17 M3 T5b — The count boxes' numbers over time
 
-- **Scope:** (T4a drew the boxes in the stills: place, picture, tint without spells, digits;
-  design §4.3, §3.6, §3.7.) The boxes over time: when the original hides them (+0x30, set by a
-  walk 0x442145 and a flight 0x4B4BD8; who clears it to read), the count shown (+0x50 when not
-  −1: to read), the tint by the stack's spells (read: design §4.3; the spell table's first field
-  to harvest); their masks removed from the frame check; a stale box the original's partial
-  redraw leaves under a walker (design §7.11) is a redraw artifact, not copied: T1c lists it
-  (`melee` at 3 966 ms: 231 pixels, the frame check's other count); then classified (the box's
-  earlier place) or masked. `strike` (T4b-2b-2, design §9.6): the Pikemen's box where the
-  original last drew it while the Archangel lands (2 330 to 2 730 ms), the Archangel's moved in
-  front of it at the next turn once the Pikemen's hex is free (from 3 730 ms: 324 pixels); ours
-  places both by the opening's stacks.
+- **Scope:** (T4a drew the boxes in the stills; T5a hid them through walks and flights and freed
+  a dead stack's hex: design §4.3; `walk`, `turn`, `climb` and `strike` compare their boxes,
+  `boxes = true`.) The number shown over time: +0x50 when not −1 (to read: who sets it and when
+  the box's number changes during and after a strike), the viewer's count taken from the
+  record's `Struck` kills at that moment (the scene draws the snapshot's counts so far). The
+  engine rolls damage differently from the original, so after a rolled strike the digits differ:
+  compare a box's digits only where the original's count (its memory, `h3mem`: +0x4C, +0x50)
+  equals the engine's, and list the rest. Then the boxes compared in the other six sequences
+  (`shot`, `melee`, `behind`, `shots`, `fly`, `machines`; they mask the boxes where the viewer
+  draws them so far, from `ours.txt`'s ` box<x>,<y>`); a stale box the original's partial redraw
+  leaves (design §7.11) listed with its count as T5a listed `strike`'s at 2 730 ms (design §4.3),
+  or classified by a rule that cannot pass a box the viewer moves too early (`melee`'s at
+  3 966 ms was none: the walker's +0x30, T5a). (The spells' tint moved to T7b, the user,
+  2026-10-20.)
 - **Acceptance:** the recorded sequences match with the count boxes drawn.
-- **Depends on:** nothing (T4a done). **Status:** ready.
+- **Depends on:** nothing (T5a done). **Status:** ready.
 
 ### E17 M3 T6 — The battle interface
 
@@ -60,7 +63,9 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
   `SpellCast`, `StackCast`, `EffectApplied`, `SpellResisted`), Haste and Slow's walk time (from T1b
   at its re-cut: the harness casts from T7a's spell book), good and bad morale (`GoodMorale`,
   `BadMorale`: the user at T5b, the Marksmen's second shot showed nothing) and luck (the strike's
-  `lucky`), their sounds, a magic animation lengthening a strike's loop.
+  `lucky`), their sounds, a magic animation lengthening a strike's loop; the count box's tint by
+  the stack's spells (moved from T5, the user, 2026-10-20: design §4.3, 0x43E6AA to 0x43E73E,
+  the spell table's first field to harvest).
 - **Acceptance:** their recorded sequences as recorded and their frames match.
 - **Depends on:** T7a. **Status:** ready.
 
@@ -91,11 +96,13 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 - **Scope:** M3's review list with the user, a fresh reviewer agent over M3, the next milestone
   refined (sieges, live play, HD or the adventure map: the user's choice), M3 marked done.
 - **Acceptance:** M3's exit holds; the review list answered or carried on.
-- **Depends on:** T5–T8 (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2 done).
+- **Depends on:** T5b–T8 (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a
+  done).
   **Status:** waiting.
 
 ## Inbox
 
+- 2026-10-20 (the adventure lane, E08 T22a2a, `adventure/e08-t22a2a`, `cross-lane`, with the user's consent; for your information, nothing to do): **two recipes in your folder**, `capture/batches/E08-batch-3a.toml` (Easy, 4 steps) and `E08-batch-3b.toml` (Normal, 19 steps, both players' turns of day 1), for batch E3's monster rows (specs `experiments/specs/E08-batch-3{a,b}.toml`). They use only what H1 and H2 built: `answer = "no"` for every question (E3-5 B: `{ flee = "yes", other = "no" }`), `battle = "auto"` or `"retreat"`, a walk below (`[12, 27, 1]`), eight heroes for Red (the list scrolled), `before:hero:primary`, `aggression:` and `never_flees:` in a step without a walk, `stacks:start:defender`, `winner`, `monster:x,y[,level]`; every record key was checked against the compiled templates' fields. Not run yet (T22a3). If a run shows a harness gap, the adventure lane's inbox.
 - 2026-10-19 (the adventure lane, E08 T22a1, `adventure/e08-t22a1`, `cross-lane`): **the tools your harness check waited for are in.** `h3-experiment` places a monster of any disposition that may flee (`[encounter.opponent]` `disposition`, `flees`), guarded piles (`[[map.pile]]` `guards`, `question`: with a question the game asks, without one the guards fight at once) and an underground level (`[map.underground]`, an encounter's or a pile row's `level = 1`); `[map] difficulty` puts the difficulty into the template (`docs/experiments/README.md`, "Spec format"). Your item of 2026-10-19 above (the check's offers, a pile's question, a walk below) can go ahead. `h3_map::writer::Map` gained `underground` (your `situation.rs` got `underground: None` in this pull request). Batch E3's spec and its recipe come with E08 T22a2.
 - 2026-10-19 (the battle lane, CLT-Q2; for your information): **the table-only LOD reader is in `h3-formats`** (`battle/clt-q2-lod-table`; OPEN-QUESTIONS CLT-Q2, answered). Read `min(file length, lod::MAX_TABLE_BYTES)` (320 092) bytes once, `lod::LodTable::parse(head, file_len)` lists the entries (`find` ignores case) with every range checked against the file's length, `LodEntry::stored_range()` (`u64`) is what to read for an entry (sort a batch's entries by it), and `lod::read_entry(entry, stored)` inflates exactly those bytes with today's checks. `LodArchive` is unchanged (plus `table()`), so nothing of yours had to change; switching the archive set from whole reads to the directories and a batch's ranges, and `h3-view gate`'s measurement of it, are yours. `.snd` and `.vid` have no reader yet.
 - 2026-10-19 (E17 H1, H2, done): **the harness's check grows with the adventure lane's tools**: once `h3-experiment` places monsters of other dispositions and guarded piles (E08 T22a), the check spec (`capture/checks/harness-check.toml`) gains a monster's offers (join, join for gold, flee) and a pile's question, which H1 checked only on a local map; once `h3-map`'s writer has the underground, a walk on level 1 (H2 showed it on the shipped `Arrogance`). A batch E3 recipe comes with T22a's spec (`capture/batches/`).

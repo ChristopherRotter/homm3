@@ -442,6 +442,10 @@ list's key; mDNS later.
   and the client lane's inbox (`cross-lane`), the threat table's rows, the exit criteria shown, the
   reviewer agent (two major findings and four minor fixed: the roots for a listed `wss://` server,
   a listed card naming its address); the user's checkpoint (passed, SRV-Q24).
+- **The inbox after M6** (done 2026-10-19; `E16-log.md`): `h3-server`'s three Windows test
+  failures, the query `CreatureCastTargets`, a side's `may_retreat` as its viewer knows it and
+  `last_side_acted`'s doc (wire 34), a siege's frames over the wire, the example's ladder on
+  `strict-fixed` (BAT-QUIRK-4, the user's choice).
 
 ## Exit criteria (M6)
 

@@ -4,7 +4,14 @@ Pre-refined tasks of the battle lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-None queued. E04b closed on 2026-10-12, E04c on 2026-10-16 (their epic files and logs; their cuts: OPEN-QUESTIONS BAT-Q10 to BAT-Q27, BAT-Q37 to BAT-Q50). **Next:** this lane's next epic is the user's choice: E23, the original's battle AI (BACKLOG: after E05, before E06), or E11's battle part.
+E23, the original's battle AI, is in progress (refined 2026-10-19, BAT-Q52; `docs/epics/E23-original-battle-ai.md`). E04b closed on 2026-10-12, E04c on 2026-10-16 (their epic files and logs; their cuts: OPEN-QUESTIONS BAT-Q10 to BAT-Q27, BAT-Q37 to BAT-Q50).
+
+### E23 T1a — The reading's map of the computer's battle turn
+
+- **Scope:** E23 T1a. Read `Heroes3.exe` (`docs/exe/README.md`; `scripts/exe.py`) from the battle loop's call (0x4744C0 → 0x477EE0) through the choice for the active stack 0x4221F0: the branch each stack takes (shoot, melee, walk, wait, defend, a creature's cast) and what decides it; the hero's cast decision (its entry, how it values a spell); the retreat and surrender test 0x41E570; the tactics phase; the automatic Catapult and First Aid Tent (BAT-Q51); where it draws random numbers; what it reads (difficulty, `human`, hidden information). Start from what `aim.rs` and `installation.md` §7.31, §7.33 already read, and the inbox's "For E23" leads. No code.
+- **Acceptance:** `installation.md` §7.34 holds the map: each function with its address, size, callers and what it decides; the readings at risk named for T1b; `docs/exe/map.toml` has the new functions (`check-exe-map`); the epic file's later increments cut from the map (proposed for the user's checkpoint).
+- **Depends on:** `Heroes3.exe` staged from the user's computer.
+- **Status:** ready.
 
 **Waiting on this lane** (found in the 2026-10-19 consolidation; never queued here):
 - **Open questions naming this lane:** CLT-Q4 (a battle's background variant in the setup) and CLT-Q6 (each side's player colour and a hero's sex for viewers): small setup fields, `cross-lane` with the server lane's wire; the client lane holds them.
