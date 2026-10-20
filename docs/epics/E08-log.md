@@ -2846,3 +2846,34 @@ for T24a2), the address map and the record layouts.
 - **Not done here** (T24a2): the wiki, levels at load, what reads the level, the census, the
   batch's plan, the proposed rule ids, a fresh agent's second reading, the ADV-Q for the
   checkpoint.
+
+### Increment 4, round 1: T24a2a, levels at load and what follows the level (2026-10-20, `adventure/e08-t24a2a`)
+
+The user merged T24a1 (#301) and cut T24a2 again (decision 52): **T24a2a** the rest of the code
+reading with VCMI; **T24a2b** the wiki, the census, the batch's plan, the rule ids, the second
+reading and the ADV-Q. Baseline `master` 810c584 (engine code 08410436, verified on 6f7d601; the
+light gates passed here). Docs only: survey `E08-progression.md` §3–§4, §0 updated.
+
+- **Which setup is the placed hero's** (§3.1): `new_game_heroes` calls `placed_heroes_setup`
+  (0x4CAE10: per hero type the game's `heroSetup` record, H3API's `H3SetupHero`, the map file's
+  placed hero) and, only with a campaign's state, the function E08 T6b to T22b read as the placed
+  hero's setup: 0x486590 tests the scenario header's `keepExperience` to `keepArtifacts` and walks
+  `campaignInfo`'s `crossoverHeroes`, so it sets up a **campaign's carried-over hero**; renamed
+  `carried_hero_setup` (0x487290 `carried_heroes_setup`). The conclusions drawn from it hold on
+  the real path (the starting army, the reveal, HER-MAN-001's spell points, no formation): the
+  stale citations are in the inbox; one difference, the placed hero's custom primary skills are
+  copied unclamped (the import clamps them).
+- **Levels at load** (§3.2, `placed_hero_setup` 0x4D8B30): custom skills, army, spells and
+  artifacts first, then the experience gained from 0 with the levels given, during the new game's
+  setup: the computer's evaluation (0x52BBD0) chooses each two-offer level, the level limit caps
+  (VCMI: the first offer, D-20; the limit ignored, D-21).
+- **E3-6 against the reading** (§3.3, computed): of the 255 seed bytes, 3 give its primary gains
+  and only 75 offers pairs that allow its advances (chosen left, right, right, right):
+  consistent, not a confirmation; a run that reads S makes it a prediction (T24a2b's plan).
+- **What follows the level** (§4): the battle's winner gains its levels at once when its player
+  is not a human at this computer (0x477766), else after the battle's screen
+  (`adventure_battle` 0x4AE324, 0x4AE42C); `h3-heroes`' level readers need only the level's new
+  source; VCMI's view of another player's hero has no level.
+- **Map**: `placed_heroes_setup`, `placed_hero_setup` new; 0x486590 and 0x487290 renamed and
+  rewritten; `structs.toml`: `hero_setup` (0x334), the game's `hero_setup` and `campaign_info`,
+  +0x1F45C corrected to H3API's `bigCampaignIndex` (T24a1's guess was a scenario).
