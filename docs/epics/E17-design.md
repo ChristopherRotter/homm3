@@ -391,6 +391,13 @@ pixels of the 800 × 600 frame; the battlefield takes its top 800 × 556.
   step, *provisional* since M2 T5c). The frame check of a sequence with `boxes` masks a box
   only where its count is not the one the original's memory shows (+0x50, else +0x4C) and lists
   it (` n<side>.<record>` after the frame's counts): the engine rolls its own damage.
+- **Checked** (M3 T5b-1; `shot` and `melee` with `boxes = true`): `shot` exact in all 50 frames
+  with the boxes compared (the Goblins' 40 until 1 588 ms, then 37: the engine's first shot
+  kills three too; the second shot's end lies beyond the sequence); `melee`, run to 7 000 ms,
+  artifacts only: the Wolf Riders' 30 until 6 466 ms, then 12 (the Angels' fixed damage, 18
+  kills in both), and at 3 966 ms 198 artifact pixels instead of 96: the Angel's shadow drawn
+  twice (§7.11's shadow rule) where the box mask covered it. No box masked for its count. The
+  other eight sequences as recorded with the strike's end shown at once.
 - VCMI's `showStackAmountBox` gives the same four positions (its hex centre is the anchor −
   (0, 16)) but leaves out t and counts every stack ahead as taking the hex, war machines included.
 

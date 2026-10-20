@@ -308,8 +308,9 @@ design §7.1.
   (design §9.4, §9.6): compare the log's item only from a sequence's `log_at`.
 - A hero's reaction may be read a step late at its first frame: one of two runs of `strike`
   (M3 T5a) read the left hero standing at 3 730 ms while its screen showed its reaction (group 3)
-  (2 400 pixels); run again, as recorded. A `CHANGED` with differences only on a hero at the
-  frame its reaction starts is that, not a change of the viewer.
+  (2 400 pixels), one of two in T5b-1 its frame 0 while the screen showed frame 1 (2 152); run
+  again, as recorded. A `CHANGED` with differences only on a hero at the frame its reaction
+  starts is that, not a change of the viewer.
 - An XWD file's colour map holds bytes the X server leaves unset: compare pixels, never files.
 - The menus run in real time; only the battle runs on the stepped clock. Two runs still agree:
   the battle's setup does not depend on the clock (observed: the obstacles follow the tile).
