@@ -6,11 +6,11 @@ Pre-refined tasks of the battle lane, in order, then the inbox of discovered wor
 
 E23, the original's battle AI, is in progress (refined 2026-10-19, BAT-Q52; `docs/epics/E23-original-battle-ai.md`). E04b closed on 2026-10-12, E04c on 2026-10-16 (their epic files and logs; their cuts: OPEN-QUESTIONS BAT-Q10 to BAT-Q27, BAT-Q37 to BAT-Q50).
 
-### E23 T1a3d — The hero's value in the odds
+### E23 T1a4 — The AI pathfinder
 
-- **Scope:** E23 T1a3d (the user, 2026-10-20: its own task before T1a4; §7.38's "Not read here"): the hero's value 0x420A80 adds to a side's strength at range, the adventure AI's 0x526D40 (with the hero and the side's whole strength) and 0x5275B0 (with `0x8000`) with their ten helpers (about 4 KB in all; `scripts/exe.py callees` from the two), as far as the battle needs; what else of part A they serve named for the adventure lane. Read with `scripts/exe.py` (stage `Heroes3.exe`); no code.
-- **Acceptance:** a §7.39 holds the reading; the map's entries for these are `read` or say what was not; the readings at risk added; the adventure lane's inbox told what of its AI is read.
-- **Depends on:** the user's review of T1a3c's pull request; `Heroes3.exe` staged.
+- **Scope:** E23 T1a4 (the epic's outline; `installation.md` §7.34's part P, about 3.8 KB with the walk 0x41F580 read in §7.38): the AI pathfinder 0x4B3400 and its helpers, as far as the walker's path among equally short ones (BAT-MOV-003's tie order, S-11, Q53; batch 3c's M2 and G4 walks in the inbox's "For E23") and a berserk stack's target. Read with `scripts/exe.py` (stage `Heroes3.exe`); no code. Cut it by size at its start if it is larger (the user, 2026-10-19: small increments, the seam confirmed).
+- **Acceptance:** a §7.40 holds the reading; the map's entries for these are `read` or say what was not; the readings at risk added; BAT-MOV-003's tie order against the reading stated (a batch row planned for T1b where they differ).
+- **Depends on:** the user's review of T1a3d's pull request; `Heroes3.exe` staged.
 - **Status:** queued.
 
 **Waiting on this lane** (found in the 2026-10-19 consolidation; never queued here):
