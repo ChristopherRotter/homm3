@@ -288,8 +288,8 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
             lines.push(format!("the timeline ends at {} ms", timeline.end));
             let moment = scene::Moment::at(&timeline, t);
             // The mouse parked as the harness parks it (E17 M3 T6c-2): a human's turn writes the
-            // hint there, none.
-            let catalogue = crate::log::catalogue(&tables, &archives)?;
+            // hint there, none, which needs no words (an installation without text tables).
+            let catalogue = crate::log::catalogue(&tables, &archives).unwrap_or_default();
             let parked = [h3_view::mouse::track::Input::Move {
                 at: 0,
                 to: crate::pointer::PARK,
