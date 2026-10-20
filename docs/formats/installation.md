@@ -3266,7 +3266,9 @@ out; unread unless named):
 About 45 KB of unread code in all. T1a2's checkpoint cuts the readings from this table. **T1a2**
 (§7.35) read part S in full and 0x421680 with seven of its helpers (about 1 KB of part W; four
 more in part): part W keeps about 10 KB for T1a3. **T1a3a** (§7.36) read the hex scores (about
-3.6 KB); T1a3b and T1a3c keep the rest of part W and part O.
+3.6 KB); T1a3b and T1a3c keep the rest of part W and part O. **T1a5** (§7.42 to §7.45) read part C;
+the per-spell evaluators that 0x43B690 hands out (§7.44, about 11.6 KB) are reached only through
+that table, so this sweep of calls did not count them.
 
 **Readings at risk** (for T1b's batch rows, Q57): the computer never surrenders (0x47815A;
 against the wiki and VCMI); no Wait below Hard (0x42201D); a computer's shooter in the tactics
@@ -4236,3 +4238,128 @@ spell at a free hex (the same rows); the raise against the walker's value (a com
 or Pit Lords with a dead stack beside an enemy). For the model: the dragon's Expert on its school's
 field and its bolts with the hero's bonuses (estimates only: the cast follows the rules); the
 raise's doubling; the hex and record orders at ties.
+
+### 7.44 Code reading: the Ogre Mage's and the Master Genie's casts, the evaluation (E23 T1a5c, 2026-10-20)
+
+Read for E23 T1a5c (the third of T1a5's four parts, §7.42): the scan 0x420D20, Bloodlust's value
+0x43C330, the Genie's value 0x43C4A0 with 0x447EB0, the evaluation 0x43A910 and 0x43A670 with
+0x436C60, the evaluators' table 0x43B690, the bolts' evaluator 0x436F60 and the empty one 0x43B680.
+All in full. Insight only, nothing copied (Q29).
+
+**0x420D20, the scan** (0x1D5 bytes; the Master Genie and the Ogre Mage: the caster, the value so
+far, the battle context). It takes the caster's strength (0x442E60) and builds the spell context
+(0x4369C0 with flag 1, §7.42). **When the value so far is not 0 it draws `random(1, 100)`
+(0x420D98) and casts nothing on 30 or less**; at 0 it draws nothing. Then, over the side's records
+from the last to the first, but the caster and the arrow towers, a record R whose position the
+creature's cast test accepts (0x4476C0, §7.21), with a value so far above 0 only one whose
+strength is at least the caster's: its value, the Ogre Mage's by 0x43C330, the Genie's by
+0x43C4A0. One above 0 and above the value so far replaces it and takes R's position, where the
+cast (action 10) goes. **So the Ogre Mage's and the Genie's casts must beat the walker's value; with
+one to beat they are skipped three times in ten and go only to a stack at least as strong as the
+caster.** At a tie the later record stays.
+
+**The cast candidate** (a record on the stack; the hero's choice writes its cast from one, §7.13):
++0 the spell, +4 the mastery, +8 the power and +0xC the rounds (6 and 6 for a creature), +0x10 a
+flag (1), +0x14 and +0x18 the target hex and the second hex (−1), +0x1C the value (0), +0x20 "now"
+(0; below).
+
+**0x43C330, Bloodlust's value** (0x16C bytes; R). 0 when R has Bloodlust (+0x244). The mastery is
+2, 3 on Magic Plains or on Bloodlust's school field (Fiery Fields, 7), as the dragon's (§7.43;
+the rules cast it at Advanced but on Magic Plains, §7.21). When Bloodlust at that mastery takes a
+target stack (0x59E060: below Expert): 0 for an R that can shoot now, has no nearest enemy in its
+threat record (+0x538) or needs more than a turn to attack it (0x448BD0); else the attack bonus's
+value 0x437800 (§7.45) of R against that enemy for 6 rounds with Bloodlust's value at the mastery
+(the spell's +0x34). At Expert, the mass version: the evaluation 0x43A910 over the side.
+
+**0x43C4A0, the Master Genie's value** (0x180 bytes; R). Over the spells 10 to 69 that 0x447EB0
+accepts (the spell flag `0x800`, then the rules' usefulness test 0x447A80: the Genie's own candidate
+set, §7.21), each counted: the mastery as above by the spell's school, its evaluator (0x43B690),
+and the value of a candidate with power and rounds 6 on R by that evaluator when the spell takes a
+target stack at that mastery, else by 0x43A910 over the side. The result is the sum divided by the
+count (integer division): **the mean value of the spell the cast draws**, as the rules draw evenly
+among the same spells (§7.21).
+
+**0x43A910, the evaluation** (0x150 bytes; the candidate, a side). A spell that takes a target
+stack at its mastery goes to 0x43A670. Else, over the given side's records that can act (not blind,
+petrified or paralysed, not dead, not the Tent or the Cart) and lack the spell, those 0x5A3C80
+accepts for the context's side: the sum of the evaluator's values is the candidate's value, and
+"now" is set.
+
+**0x43A670, one target** (0x291 bytes; the candidate, a side). Over the given side's records in
+record order with the same tests, each value by the evaluator. On a stack of the other side with
+Magic Mirror (+0x228), a positive value of any spell but Dispel (35) becomes `trunc(2v(50 − c) /
+100)`, `c` the mirror's chance (0x4487F0; the site of §7.13). A value above the candidate's replaces
+it and takes the stack's position as the target hex (the first of equals). Then "now" (+0x20):
+
+- an own target: 1 when it is the active stack, when no other stack of the side can still act this
+  round (not dead, not a war machine, not blind, petrified or paralysed, not acted), or for a
+  protective spell (`0x4000`); else 0;
+- an enemy: 0x436C60;
+- Haste (53) always 1; the mass path too.
+
+The creature casts read only the value; "now" serves the hero's choice (T1a6).
+
+**0x436C60, "now" on an enemy** (0x1C4 bytes; the enemy E): 1 in the desperate mode (§7.31) or
+when no other stack of the side can still act this round (as above); 1 when the active stack is the
+side's, its threat record's enemy is E within a turn (0x448BD0), and it cannot shoot now and lacks
+`0x10000` (E would strike back); else 0 unless E threatens the side (the context's +0x14, §7.42),
+and then 0 when another able stack of the side, not an arrow tower, acts before E by the order's
+ranks (+0x190, §7.34), else 1.
+
+**0x43B690, the evaluators** (0x251 bytes; the spell): a function per spell, each called with the
+context as `this`, the stack, then the candidate's spell, mastery, power, rounds and flag by value:
+the bolts and Titan's Lightning Bolt (15 to 18, 57) 0x436F60 (read: the damage, factor × power +
+the value at the mastery, by 0x436E30 with the other side's hero, §7.43); Shield (27) 0x438C60; Air Shield (28) 0x438BC0; Fire Shield (29) 0x43A110; Protection from Air (30) 0x4399A0; Protection from Fire (31) 0x4399D0; Protection from Water (32) 0x439A40; Protection from Earth (33) 0x439A00; Anti-Magic (34) 0x439D40; Dispel (35) 0x439BC0; Magic Mirror (36) 0x439DE0; Cure (37) 0x439C30; Bless (41) 0x437430; Curse (42) 0x43B370; Bloodlust (43) 0x438100; Precision (44) 0x438B50; Weakness (45) 0x438ED0; Stone Skin (46) 0x438D90; Disrupting Ray (47) 0x438DC0; Prayer (48) 0x438AC0; Mirth (49) 0x438170; Sorrow (50) 0x4382C0; Fortune (51) 0x438490; Misfortune (52) 0x438F60; Haste (53) 0x4396B0; Slow (54) 0x439270; Slayer (55) 0x438D00; Frenzy (56) 0x4375D0; Counterstrike (58) 0x439E80; Berserk (59) 0x43A400; Hypnotize (60) 0x43A500; Forgetfulness (61) 0x43B500; Blind and Paralyze (62, 74) 0x439100; Clone (65) 0x43B2E0; Poison (71) 0x439500; Disease (73) 0x438A10; Age (75) 0x4373F0. Every other
+spell takes 0x43B680, which answers 0: Chain Lightning, the area spells, Death Ripple, Destroy
+Undead, Armageddon, Resurrection, Animate Dead, Sacrifice, Teleport, Remove Obstacle, the four
+summons, Stone Gaze and Bind. **These evaluators are reached only through this table**, so T1a1's
+sweep (§7.34) did not count them: 36 unread, with 9 helpers about 11.6 KB, shared with the hero's
+choice; the Genie's 21 spells take about 7.3 KB of it. Until they are read, the Genie's value is
+known only in its frame.
+
+**What these read**: the side's stacks, their spells, threat records and strengths; Magic Mirror on
+the targets; the active stack and the order's ranks; the field. Nothing hidden from the side.
+
+**Draws:** the scan's `random(1, 100)` when the value so far is not 0 (0x420D98); the context's
+predictions (§7.42).
+
+**Readings at risk** (for T1b): the scan's skip in three turns of ten and its strength floor when
+the walker has a value (a batch row: a computer's Ogre Mages beside a weaker and a stronger own
+stack, an enemy in reach); the Genie's mean. For the model: Bloodlust's Expert estimate on Fiery
+Fields; the targets' ties (the later record, the first of equals).
+
+### 7.45 Code reading: the estimates (E23 T1a5d, 2026-10-20)
+
+Read for E23 T1a5d (the last of T1a5's four parts, §7.42): the attack bonus's value 0x437800 and the
+damage of a base 0x443E30 in full; 0x437A00, 0x43CB20, 0x43CDF0 and 0x5586D0 by their shape.
+Insight only, nothing copied (Q29). With it part C is read (§7.42 to §7.45) but for its
+evaluators (§7.44).
+
+**0x437A00 is the stack record's copy** (0x6FA bytes, part C's largest): field by field, its lists
+and deques copied (0x43CB20 a deque's push at the back, 0x43CDF0 its map's growth, 0x5586D0 a
+deque iterator's node), up to the threat record (+0x534 to +0x544). Its callers (0x437800, 0x438910
+and the evaluators of Dispel, Cure, Anti-Magic and Magic Mirror) change a copy of a stack and
+compare. No estimate of its own: §7.34's table named it by its size.
+
+**0x443E30, the damage of a base** (0x101 bytes; the striker; the target, the base, the shot flag,
+the jousting distance): 0 without a target; the base plus stage 1's bonus (0x443320, §7.10), × stage
+2's factor (0x443B90), truncated; × Air Shield's factor for a shot or Shield's in melee when active,
+× 0.5 on a petrified target, × the Armorer of the target's controlling hero (0x4E4310), truncated,
+at least 1: the physical damage's stages (0x443F40) without Fire Shield's value.
+
+**0x437800, an attack bonus's value** (0x1F5 bytes; `this` the spell context; the stack S, its enemy
+E, the rounds `r`, the bonus `b`). 0 when the enemy is beaten (+0x1C, §7.42). A copy of S with `b`
+added to its attack (+0xC8); the gain `g = D' / D`, `D` and `D'` the damage of a base of 100 on E
+(0x443E30, S's shot flag, no jousting) for S and the copy; S's strike `d` (0x442780: its count,
+capped at E's hit points). The bonus's strike `d' = trunc(d × g)`; when it exceeds E's hit points
+`h` it is `h` and `g = h / d`. 0 unless `d'` exceeds `d`. The rounds' share `t = min(1, r / k)`, `k` the balance class
+(§7.35, the context's +0x3C), less `1 / k` (at least 0) for an S that has acted this round. The
+value is `trunc((√g − 1) × strength(S) × t)` (0x442E60 with the context's least bonuses; x87
+doubles). So an attack spell is worth the rise of S's worth, whose offense enters under a square
+root (§7.31), for the share of the battle's expected length it lasts (the class: 1 for a one-sided
+battle, 7 for an even one). Its other callers are the evaluators of Bloodlust, Prayer, Precision,
+Slayer and Weakness (§7.44).
+
+**What these read**: the stacks' attack, defense, spells and counts; the heroes' Armorer; the
+context. **Draws:** none. **Readings at risk:** none of their own (they show through the casts).
+
