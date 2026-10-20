@@ -3914,7 +3914,7 @@ the hex to attack from; for any other only T reached counts (the nearest hex kep
 dropped: false). The trace goes from that hex back to S's position, appending each cell's
 pointer to the path and stepping against its direction (0x523EC0: `(k + 3) mod 6`). So the path
 holds the cells from the end (in an attack, T's mark first) to the first step, without the start,
-and the result is whether it is non-empty.
+and the result is whether it is non-empty (false for T at the start).
 
 **So a path among equally short ones** takes, for each hex, the first hex the search took
 (cheapest, then first discovered) from which a step reaches it at its lowest cost. Discovery

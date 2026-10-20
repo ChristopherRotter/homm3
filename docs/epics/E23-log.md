@@ -167,4 +167,8 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
 - **Map:** 14 entries (13 new; 0x4B3400 read, `pathfinder_push` and the rest named) and two
   struct records (`pathfinder`, `pathfinder_cell`) with the hex record's +0x4A. The battle queue's
   inbox has BAT-MOV-003's alignment for the user's call.
-- **Checks:** pending (a blind re-read, the light gates).
+- **Checks:** a fresh agent re-read three findings blind, on a copy of the tool and the map
+  made before the edits: the push's tests and the queue's order at a tie (first in, first out),
+  the neighbours' order and when a cell is replaced (only by a strictly lower cost), the trace and
+  the result for a walk. It agreed on all three; its one addition (a target at the start gives
+  false) is in §7.40.
