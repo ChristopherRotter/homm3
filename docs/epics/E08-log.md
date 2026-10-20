@@ -2908,3 +2908,28 @@ Docs only: survey `E08-progression.md` §5–§6, §0 and the dispute and quirk 
   `Faeries`, `Knee Deep in the Dead` besides today's two; `Unholy Quest` is refused for a
   monster's artifact since T20a2a): 9 heroes, 41 level-ups at load.
 - **Not done here** (T24a2b2): the batch's plan, the rule ids, the second reading, the ADV-Q.
+
+### Increment 4, round 1: T24a2b2, the batch's plan, the rule ids, the second reading; T24a done (2026-10-20, `adventure/e08-t24a2b2`)
+
+The user merged T24a2b1 (#309) and took T24a2b2 whole (decision 54). Baseline `master` 3bea0c6
+(engine code d95c95dd, unchanged since the full verify on 49df46d). Docs only: survey
+`E08-progression.md` §7–§9 and §0, ADV-Q15, the client lane's inbox.
+
+- **The second reading** (§9): a fresh agent, from questions per function and without the
+  survey, confirmed §1–§3 point by point (the steps, the limit's cap, the reseed with the new
+  level and S, the primary row from level 10, the windows, the intervals with the Elementalist at
+  6 and 4, the weights, the counters, the dialog's conditions, the setup flag, the placed hero's
+  order, 0x486590 as the campaign's). It adds D-20's code side: 0x52BBD0 never takes the left
+  offer by default; at load its clear flag only makes 0x524690 use the defaults 1 000 and 500
+  for the army's value. Not settled: whether 0x524DD0 or 0x4E22D0 draw, the x87 precision.
+- **Batch E4's plan** (§7): ten rows, most of them predictions from S read in memory (E4-1 levels
+  at load, which settles D-20 even without S; E4-2 D-15; E4-3 D-16; E4-4 several levels after a
+  battle; E4-5 D-17; E4-6 the level limit, D-19 and D-21; E4-7 to E4-10 decision 45's four rows).
+  The harness's needs (S and the counters, the level-up dialogs' offers, `level_up` as a list,
+  artifacts, the battlefield) went into the client lane's inbox; the spec's level limit is a
+  `cross-lane` change with T24b's batch task.
+- **The proposed rule ids** (§8): HER-EXP-002, -003; HER-LVL-001 to -005; GAM-HER-002; GAM-DEC-002;
+  GAM-SET-002; GAM-BAT-008 (006 and 007 are taken).
+- **ADV-Q15**: thirteen points for the checkpoint (D-14 to D-21, A-7 to A-10, T24b's scope, the
+  batch's rows), each with options and a recommendation. **T24a is done**; T24b waits for the
+  answers.
