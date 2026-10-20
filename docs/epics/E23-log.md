@@ -314,3 +314,33 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   far; 0x43C620's mastery by field, its routing and the caster's hero in 0x436E30 with the sums'
   tests in 0x437040; the raise's candidates (dead only for the Pit Lord), its value, doubling and
   strict comparison with the entry value. It agreed on all three.
+
+## T1a5c and T1a5d — the Ogre Mage's and the Master Genie's casts, the evaluation, the estimates (2026-10-20, increment 1)
+
+- **Scope:** T1a5's last two parts as cut (the user: "complete T1a5", after #323), one branch.
+- **Read** (`docs/formats/installation.md` §7.44, §7.45), all in full: the scan 0x420D20,
+  Bloodlust's value 0x43C330 (renamed `ai_bloodlust_value`), the Genie's value 0x43C4A0 with
+  0x447EB0, the evaluation 0x43A910 and 0x43A670 with "now" 0x436C60, the evaluators' table
+  0x43B690 with the bolts' 0x436F60 and the empty 0x43B680; the attack bonus's value 0x437800
+  (renamed `ai_attack_bonus_value`) and the damage of a base 0x443E30 (`damage_of_base`). By their
+  shape: 0x437A00, the stack record's copy (`battle_stack_copy`; §7.34's table had it as the
+  largest estimate), and the deque's helpers 0x43CB20, 0x43CDF0, 0x5586D0.
+- **Found:** the Ogre Mage and the Genie must beat the walker's value; with one to beat, a draw of
+  `random(1, 100)` skips the cast at 30 or less and only targets at least as strong as the caster
+  count. The Genie's value is the mean over the spells it may draw (the rules' own candidate set).
+  Bloodlust's value is the attack bonus's value: the rise of the stack's worth (√ of the damage's
+  gain) for the share of the battle's expected length (the balance class) its rounds cover. The
+  evaluation scales a value under Magic Mirror by `(50 − c) / 50` and sets "now" for the hero's
+  choice. No rule of the engine changes.
+- **Found, a gap in T1a1's map:** 0x43B690 hands out a function per spell, 36 of them unread (about
+  11.6 KB with their helpers), reached only through its table, so the sweep of calls never counted
+  them. The Genie's 21 spells take about 7.3 KB; the rest serve the hero. Proposed as T1a5e for the
+  user to cut and place (the Genie's before T1b or T4, the hero's with T1a6).
+- **Map:** 52 entries (45 new: the 36 evaluators unread, 0x43C4A0, 0x447EB0, 0x43A910, 0x43B690,
+  0x436C60, 0x43CDF0, 0x5586D0, 0x436F60, 0x43B680; 7 updated: 0x420D20, 0x43C330, 0x43A670,
+  0x437800, 0x437A00, 0x43CB20, 0x443E30).
+- **Checks:** a fresh agent re-read three findings blind, on a copy of the tool and the map made
+  before the edits: the scan's draw, order and strength floor; the Genie's mean, the empty
+  evaluator and the Magic Mirror scaling; the attack bonus's value with 0x437A00 as the record's
+  copy. It agreed on all three; its note that the strength floor also applies after a candidate
+  taken in the loop (the value read anew) is in §7.44.

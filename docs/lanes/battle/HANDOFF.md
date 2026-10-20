@@ -4,7 +4,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E23, the original's battle AI, in progress** (`docs/epics/E23-original-battle-ai.md`; refined 2026-10-19, BAT-Q52): the neutral side first, a battle-lane crate of its own, the code reading first with batch rows only for readings at risk. **T1a1 to T1a4b done** (#288 to #311 merged; `installation.md` §7.34 to §7.41). **T1c done** (BAT-Q53, BAT-Q54; #316, #317 merged): `pathfinder.rs` ports 0x4B3400 for the walks and the berserk turn, S-11 as the fix-optional BAT-QUIRK-24. **T1a5 cut in four** (the user, 2026-10-20: the context first); **T1a5a done** (§7.42, #320 merged), **T1a5b done** (§7.43), its pull request on `battle/e23-t1a5b` (docs only). **Next:** T1a5c (the Ogre Mage's and the Master Genie's scan, the evaluation), T1a5d, then T1b; T1a6 before T5.
+- **E23, the original's battle AI, in progress** (`docs/epics/E23-original-battle-ai.md`; refined 2026-10-19, BAT-Q52): the neutral side first, a battle-lane crate of its own, the code reading first with batch rows only for readings at risk. **T1a1 to T1a4b done** (#288 to #311 merged; `installation.md` §7.34 to §7.41). **T1c done** (BAT-Q53, BAT-Q54; #316, #317 merged): `pathfinder.rs` ports 0x4B3400 for the walks and the berserk turn, S-11 as the fix-optional BAT-QUIRK-24. **T1a5 cut in four** (the user, 2026-10-20: the context first); **T1a5 done as cut** (§7.42 to §7.45; #320, #323 merged; T1a5c and T1a5d's pull request on `battle/e23-t1a5cd`, docs only). Found: 36 per-spell evaluators (0x43B690's table, about 11.6 KB, the Genie's 7.3 KB) outside T1a1's map: **T1a5e, for the user to cut and place**. **Next:** T1a5e or T1b; T1a6 before T5.
 - Since E04c's closure (2026-10-16): #265, #267, #268, #273, #277, #282, #283 merged. E05, `h3-sim` and `h3-ffi` are the AI lane's (AI-Q1), `h3-heroes` the adventure lane's.
 - **Open:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35, BAT-Q51 (none blocks; BAT-Q33 and BAT-Q51 settle with E23's T6), BAT-STUB-1, the inbox (by kind since 2026-10-19), Q43; S-23, S-24, batch 2g.
 - **Versions** (unchanged since T10b): battle state hash v51, battle part hash v6 (the encodings, replay format and C ABI are the AI lane's); shared: core ruleset hash v45, pack format v43, protocol v33. Next ids: BAT-Q55, BAT-QUIRK-25, BAT-STUB-4, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-24, S-30.
@@ -44,6 +44,10 @@ Area traps live where they are used: experiments in `docs/experiments/README.md`
 
 ## Recent sessions
 
+### 2026-10-20 (eighty-sixth) — E23 T1a5c and T1a5d, T1a5 done as cut
+
+#323 had merged; the user: "complete T1a5". Read in full (§7.44, §7.45): the Ogre Mage's and the Genie's scan (a draw skips three casts in ten when the walker has a value), Bloodlust's and the Genie's values (the mean over its spells), the evaluation with "now" for the hero, the attack bonus's value (the worth's rise for the rounds' share of the battle). 0x437A00 is the stack record's copy. Found: 0x43B690's 36 evaluators, reached only by its table, missing from T1a1's map (T1a5e, proposed). 52 map entries. A fresh agent re-read three findings blind.
+
 ### 2026-10-20 (eighty-fifth) — E23 T1a5b, the raise and the Faerie Dragon
 
 #320 had merged. Read in full (§7.43): the raise 0x421000 (the side's dead or raisable stack worth the most; it must beat the walker's value; doubled when the side is overwhelmingly stronger) and the dragon 0x420F00 with its spell values (it casts whenever its spell is worth anything, an area spell at a free hex too; friendly damage against it; Expert on its school's field and the hero's bonuses for the bolts, estimates only). 12 map entries. A fresh agent re-read three findings blind.
@@ -51,7 +55,3 @@ Area traps live where they are used: experiments in `docs/experiments/README.md`
 ### 2026-10-20 (eighty-fourth) — E23 T1a5a, the spell context and the predictions
 
 #316 and #317 had merged. Part C swept again (12.9 KB, 34 functions); the user cut T1a5 in four of about 3.2 KB, the context first. Read in full (§7.42): the context 0x4369C0 with its fill and seed (per stack the largest strike it meets; the enemy beaten; a second context for the other side) and the predictions 0x422A40 (the side's run up to the other side's next stack; no retaliation on Easy; a strike's jousting distance from the pathfinder's last search). Found: the computer's elementals never cast (the entry's table). 13 map entries, the context's struct. A fresh agent re-read three findings blind.
-
-### 2026-10-20 (eighty-third) — E23 T1c, pathfinding as the original's
-
-#307 and #311 had merged. The user: T1c whole (over the walks first), S-11 a fix-optional quirk (BAT-QUIRK-24, BAT-Q54; the flag on `shared/e23-t1c-quirk`, merged into this branch; the adventure lane's faithful replays' headers re-hashed, `cross-lane`, agreed). Read for it: 0x4222C0 compares the target's position cell's cost (the marks write it) and attacks from the path's second cell; the move 0x445950 fails off its move or on a hex it does not fit on. Built `pathfinder.rs` (the search, its marks and a flyer's passes; three goals) and the berserk turn on it; batch 3c's M2 and G4 as tests; two replays re-recorded, the rest re-hashed; benchmarks re-baselined (+0.8 % and +1.4 % per step against master). A blind re-read agreed and found a flyer's case, fixed. The full verify with original data passed (#317).
