@@ -24,35 +24,20 @@ A run is a directory, `python/runs/<run>/` by default (git-ignored), named by th
 | `record.json` | the run's summary (§4.2) | at each gate, ladder, stop and the end |
 
 Every `.pt` and `record.json` is written atomically (§3.2). A crash leaves at most a stale `*.tmp`,
-removed at the next start.
+removed at the next start. Built (T2a): `config.toml`, `metrics.jsonl`, `record.json`, the atomic
+writes; `checkpoint.pt` and `best.pt` still E05's (the network and the optimizer at each
+evaluation; T2b, T3); `promoted/`, `league/` to come (T3, T4).
 
-### 1.2 The config file
+### 1.2 The config file — built (T2a)
 
-TOML (stdlib `tomllib`, no dependency; the repo's data are TOML), read once. Defaults stay in code
-(one dataclass per section, as E05's `Config`); the file states what differs, `--set
-ppo.lr=1e-4` overrides one key, an unknown key is an error. The resolved config (every value)
-goes into the record, so a run never depends on the defaults of a later commit. Sections:
-
-```toml
-name = "e06-league-1"   # the record's id; the directory's name by default
-seed = 1
-samples = 200_000_000   # the budget (§2)
-
-[env]        # envs, threads (0: the cores), max_steps, kinds ("default" or six weights),
-             # currency, mana_price
-[network]    # kind = "mlp" (T5 adds "entity"), hidden, embed
-[ppo]        # rollout, gamma, lam, lr, lr_schedule ("linear" | "constant"), lr_floor,
-             # lr_horizon (samples; 0: the budget at the start), epochs, minibatches, clip,
-             # value_coef, entropy_coef, max_grad_norm
-[league]     # self_play, snapshot_every (samples), size, live, pfsp_power, decay (§8)
-[gate]       # every (samples), elo0, elo1, alpha, beta, max_pairs (§6)
-[ladder]     # opponents, episodes (per kind), promoted (§7)
-[checkpoint] # minutes
-[device]     # device ("auto" | "cuda" | "cpu"), torch_threads
-```
-
-Committed configs live in `python/configs/` (the runs the epic plans, so a command line names a
-file, not twenty options).
+`h3env.train.run` (`Config`, `load_config`; `python/README.md`, "Training runs"): TOML, the
+defaults in code, `--set table.key=value`, unknown keys refused, the resolved config in the
+record; configs in `python/configs/`. Its tables today: `[env]`, `[network]`, `[ppo]`, `[pool]`,
+`[evaluation]`, `[device]`. To come: `[checkpoint]` (`minutes`, T2b); `[gate]` (`every` in
+samples, `elo0`, `elo1`, `alpha`, `beta`, `max_pairs`, §6) and `[ladder]` (`opponents`,
+`episodes` per kind, `promoted`, §7) replacing `[evaluation]` (T3); `[league]` (`self_play`,
+`snapshot_every`, `size`, `live`, `pfsp_power`, `decay`, §8) replacing `[pool]` (T4);
+`network.kind` (`"mlp"`, `"entity"`, T5).
 
 ### 1.3 Commands
 
@@ -70,20 +55,14 @@ uv run --group train python -m h3env.train --config configs/e06-t4.toml --out ru
   the record names the parent (its run id and promoted index), and the parent's network is the
   new run's best #0, so its gates continue the lineage (§6).
 
-## 2. The budget and the schedule, in samples
+## 2. The budget and the schedule, in samples — built (T2a)
 
-A sample is a learner decision that trained (E05: an update holds about 24 000 of a rollout's
-32 768 rows with the pool). Every cadence that changes the training counts samples: the budget,
-the learning rate, the league's snapshots, the gates. Wall time decides only the checkpoints and
-the console, which change nothing (§3.2). The run stops at the first update boundary at or past
-the budget.
-
-- **The learning rate:** `linear` decays from `lr` to `lr · lr_floor` over `lr_horizon` samples,
-  then stays; `lr_horizon = 0` resolves to the budget at the run's start and is frozen there
-  (extending the budget on resume continues at the floor; a new horizon is a new run).
-  `constant` for the long league runs if the decay proves unhelpful (T4).
-- E05's `minutes`, `updates` and `eval_every` go; its periodic evaluation against Random is
-  replaced by the gate (§6) and the ladder (§7).
+`samples` (the budget: the first update boundary at or past it), the learning rate (`linear` to
+`lr · lr_floor` over `lr_horizon`, fixed at the start; or `constant`), the pool's snapshots and
+the evaluations (`Cadence`) count samples (`run.py`). E05's evaluation against Random stays, every
+`eval_every` samples, until the gate (§6) and the ladder (§7) replace it (T3). Left for later:
+the league's snapshots (T4) and the gates (T3) in samples too; wall time only for the checkpoints
+(T2b).
 
 ## 3. The resumable state
 
@@ -151,33 +130,19 @@ update numbers strictly increasing and the segment record present; a run killed 
 (subprocess, SIGKILL) during an update resumes from the last save and ignores the `.tmp`; a
 resume that changes `ppo.lr` is refused; a pending gate or ladder runs at the resume.
 
-## 4. The record
+## 4. The record — built (T2a), extended by T2b, T2c, T3, T4
 
-### 4.1 `metrics.jsonl`
+Built: `run.Run` and `run.Record` (typed `metrics.jsonl`: `start`, `update`, `snapshot`, `eval`,
+`end`; `record.json` schema 1, rebuilt from those records in order), `python/records/` (README,
+`check_record` over every committed record in `tests/test_run.py`). Still to come:
 
-One JSON object per line with a `type`: `start`, `segment` (index, batch seed, the dropped
-records), `update` (E05's fields: samples, episodes, rates, losses, entropy, KL, clip fraction,
-explained variance, samples per second; plus the league's live set), `snapshot`, `gate` (§6),
-`promotion`, `ladder` (§7), `stop` (requested, budget), `end`.
-
-### 4.2 `record.json` and the committed records
-
-The summary, rebuilt from the state and `metrics.jsonl` at each gate, ladder, stop and end:
-
-- **Identity:** the run id, parent, the resolved config, the commit and whether the tree was
-  dirty, the C ABI version, the observation and action encodings' versions, the encounter
-  table's version, the content hash of each of the batch's rulesets (T2c), torch and CUDA
-  versions, the device's and the CPU's names, the OS.
-- **Progress:** the segments (batch seed, samples at start and end, wall time, how it ended);
-  per gate interval, the means of the update records (losses, entropy, KL, explained variance,
-  samples per second, the training rates) as a short curve; the totals.
-- **Evaluation:** every gate (candidate, pairs, LLR, the result), every promotion, every ladder
-  (§7) with its intervals; the league's member table at the end.
-
-About 20 to 50 KB for a run of hours. **Committed** (decision 11) as `python/records/<run>.json`,
-a copy of the final `record.json`; `python/records/README.md` gives the schema and the lineage
-(which promoted network is the current best). A test (torch-free) checks every committed record
-against the schema version. Checkpoints and networks stay on the user's machine.
+- **T2b:** `segment` (index, batch seed, the dropped records) and `stop` records; the record's
+  segments (batch seed, samples at start and end, wall time, how each ended) and its parent.
+- **T2c:** in the identity, the observation and action encodings' versions, the encounter
+  table's version and the content hash of each of the batch's rulesets (schema 2).
+- **T3:** `gate`, `promotion`, `ladder` records; every gate (candidate, pairs, LLR, the result),
+  promotion and ladder (§7, with its intervals) in the record; its curve per gate interval.
+- **T4:** the league's live set per update and its member table at the end.
 
 ## 5. The held-out sets
 
@@ -214,16 +179,14 @@ episodes: pair j is episode ⌊j / 500⌋ of env j mod 500, 4 000 pairs at most,
 (the candidate attacking, then the best). Separate from the report set, so the networks the gate
 selects are not measured on the episodes that selected them.
 
-### 5.3 Disjointness without E05's growing set
+### 5.3 Disjointness without E05's growing set — built against v0 (T2a)
 
-E05's trainer kept every training episode's seed in a set and compared it with the evaluation's;
-over hours it grows by millions and would have to be checkpointed. Instead the held-out side is
-fixed and small: the run computes the episode seeds of every held-out set (`episode_seed(batch
-seed, env, episode)`: v1's 1 500 + 4 000, E05's 1 000) once, refuses a segment whose batch seed is
-a held-out set's, and checks each training episode's seed (`episode_seed[done]`, and the reset's)
-against them: a hit stops the run with an error. No state; the same guarantee (disjoint unless
-two 64-bit hashes meet). The ladder refuses a network trained on a held-out batch seed, as E05's
-does for `EVAL_SEED`.
+`run.HeldOut`: the held-out episodes' seeds fixed and computed once (`episode_seed(batch seed,
+env, episode)`), each training episode's seed checked against them (the reset's and every ended
+one's): a hit stops the run; `resolve` refuses `seed == eval_seed`. No state to checkpoint. Still
+to come: v1's 1 500 + 4 000 seeds beside v0's 1 000, and every segment's batch seed checked
+against the held-out sets' (T2b, T3a); the ladder refuses a network trained on a held-out batch
+seed, as E05's does for `EVAL_SEED`.
 
 E05's set (`EVAL_SEED`, 100 envs × 10 episodes, the default kinds) stays as **v0**, selectable in
 `h3 ai eval` and the Python ladder, so E05's numbers can be compared; v1 becomes both tools'
@@ -327,11 +290,7 @@ Prioritized fictitious self-play (AlphaStar's PFSP) over the learner's past, gro
 Each with the user's checkpoint; only the next one refined (Q41's pattern).
 
 - **Increment 1** (now): T1, the user's review, then T2 in three small pull requests:
-  - **T2a — Config and record:** `h3env.train.run` (torch-free: the TOML config with defaults in
-    code and `--set`, the run directory, typed `metrics.jsonl`, `record.json`, atomic writes,
-    the disjointness check of §5.3 against v0), the budget and the learning rate in samples
-    (§2), `python/records/` with its README and the schema test, `python/configs/` with the
-    first config. E05's `--minutes` options go.
+  - **T2a — Config and record:** done 2026-10-20 (`E06-log.md`).
   - **T2b — The full checkpoint and `--resume`:** §3 (the state, the cadence, Ctrl+C, segments,
     the truncation, `--init-from`) and its tests (§3.4).
   - **T2c — C ABI v31:** the record's engine identity (the batch's rulesets' content hashes, the

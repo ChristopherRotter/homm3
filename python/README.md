@@ -8,8 +8,9 @@ place.
   distribution v1 as episode sources, the head calls for casts, automatic reset.
 - `h3env.SeatBook` — each seat's transitions in self-play (a side's rewards between its moves).
 - `h3env.tools.Env` — single envs, `fork`, `state_hash`: trusted tooling, never an agent's input.
-- `h3env.train` — the smoke training (E05 T8, design §8): an own PPO, self-play on the encounter
-  distribution, evaluated against the engine's Random on held-out episodes (group `train`).
+- `h3env.train` — the training (E05 T8, `E05-log.md` §8; E06, ADR-0026): an own PPO, self-play on
+  the encounter distribution, evaluated against the engine's Random on held-out episodes (group
+  `train`); `h3env.train.run`, the run's config and records, needs no torch.
 
 ## Use
 
@@ -59,23 +60,34 @@ Linux; without it `tests/test_torch.py` is skipped, and its GPU test runs only w
 a device. `torch.from_numpy(batch.obs)` and the other arrays share the engine's memory: the
 tensors show each call's results without a copy.
 
-## The smoke training
+## Training runs
 
 ```sh
 uv sync --group train
-uv run --group train python -m h3env.train --minutes 60 --out runs/smoke   # --device cuda|cpu
+uv run --group train python -m h3env.train --config configs/pool-smoke.toml --out runs/smoke
+uv run --group train python -m h3env.train --out runs/x --set samples=2_000_000 --set device.device=cpu
 ```
 
+A run's settings come from a TOML config (E06 T2a, ADR-0026; `docs/epics/E06-design.md` §1): the
+file states only what differs from `h3env.train.run.Config`'s defaults, grouped in tables (`[env]`,
+`[network]`, `[ppo]`, `[pool]`, `[evaluation]`, `[device]`); `--set table.key=value` overrides one
+key; an unknown key is an error. Committed configs live in `configs/`. The budget and every cadence
+that changes the training count **samples** (learner decisions that trained): `samples`, the
+learning rate's linear decay over `lr_horizon` (the budget by default), the pool's snapshots
+(`pool_every`), the evaluations (`eval_every`).
+
 Each update prints one line (samples, samples/s, self-play's attacker wins, truncations, the
-losses), each evaluation its win rates against Random (sampled and greedy, overall and per
-side); `--eval-every` minutes apart and at the end. Every `h3env.train.Config` field is an option
-(`python -m h3env.train --help`). Self-play keeps an opponent pool (design §8.2): in
-`--pool-share` of the episodes a frozen earlier network plays one side. The run's directory
-(`runs/` is git-ignored) gets `config.json` (the settings, the commit, the ABI), `metrics.jsonl`
-(one record per update and evaluation), `checkpoint.pt` (the network and the optimizer at the
-last evaluation) and `best.pt` (at the best sampled win rate). The criterion of E05's
-exit 7: the final evaluation's sampled `win_rate` at least 0.8 (greedy play can repeat itself
-against Random until the step limit).
+losses), each evaluation its win rates against Random on the held-out set v0 (sampled and greedy,
+overall and per side). Self-play keeps an opponent pool (`E05-log.md` §8.2): in `pool_share` of
+the episodes a frozen earlier network plays one side. Every training episode's seed is checked
+against the held-out episodes' (a hit stops the run). The run's directory (`runs/` is
+git-ignored) gets `config.toml` (the file as given), `metrics.jsonl` (one typed record per line:
+`start`, `update`, `snapshot`, `eval`, `end`), `record.json` (the run's summary: identity, the
+resolved config, progress, a curve, the evaluations; rewritten atomically),
+`checkpoint.pt` (the network and the optimizer at the last evaluation) and `best.pt` (at the best
+sampled win rate). A record a result cites is committed as `records/<run>.json`
+(`records/README.md`). E05's criterion of exit 7: the final evaluation's sampled `win_rate` at
+least 0.8 (greedy play can repeat itself against Random until the step limit).
 
 A checkpoint against Random and the baseline bots (E05 T7), on the episodes of `h3 ai eval`'s
 table (`cargo run --release -p h3-cli -- ai eval`):

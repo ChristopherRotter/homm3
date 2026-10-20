@@ -1,6 +1,7 @@
-"""The smoke training (E05 T8b, `docs/epics/E05-log.md` §8): the network's masked choices, its
-log-probabilities, GAE over two sides, an update, the held-out evaluation and a checkpoint. They
-need the group `train` (`uv sync --group train`) and are skipped without it."""
+"""The training (E05 T8b, `docs/epics/E05-log.md` §8; E06 T2a): the network's masked choices, its
+log-probabilities, GAE over two sides, an update, the held-out evaluation, a run's files and
+record, a checkpoint. They need the group `train` (`uv sync --group train`) and are skipped
+without it; `test_run.py` covers the run's lifecycle without torch."""
 
 from __future__ import annotations
 
@@ -17,6 +18,7 @@ torch = pytest.importorskip("torch")
 from h3env.train import EVAL_SEED, Config, Policy, Rollout, gae, train  # noqa: E402
 from h3env.train.evaluate import episode_seeds, ladder, load, play, random_agent  # noqa: E402
 from h3env.train.ppo import Trainer  # noqa: E402
+from h3env.train.run import HeldOutError, check_record  # noqa: E402
 
 #: A run small enough for a test.
 SMALL = dict(
@@ -33,6 +35,8 @@ SMALL = dict(
     eval_greedy=False,
     device="cpu",
 )
+#: The most samples one update of `SMALL` holds (its rollout's rows).
+ONE_UPDATE = 16 * 8
 
 
 def casting_policy(batch: BattleBatch) -> Policy:
@@ -181,31 +185,54 @@ def test_the_evaluation_plays_fixed_held_out_episodes() -> None:
 
 
 def test_a_short_run_writes_its_files_and_round_trips_its_checkpoint(tmp_path) -> None:
-    config = Config(**SMALL, updates=2, eval_every=0, pool_every=1)
-    trainer = train(config, tmp_path)
+    # A budget just past one update's samples: two updates (or more, if they hold few).
+    config = Config(**SMALL, samples=ONE_UPDATE + 1, eval_every=0, pool_every=1)
+    trainer = train(config, tmp_path, text="samples = 129\n")
     records = [json.loads(line) for line in (tmp_path / "metrics.jsonl").read_text().splitlines()]
-    updates = [r for r in records if not r.get("eval")]
-    evals = [r for r in records if r.get("eval")]
+    assert records[0]["type"] == "start" and records[-1]["type"] == "end"
+    assert records[-1]["reason"] == "budget"
+    updates = [r for r in records if r["type"] == "update"]
+    evals = [r for r in records if r["type"] == "eval"]
+    n = len(updates)
+    # The budget in samples: the run stops at the first update boundary at or past it.
+    assert n >= 2 and updates[-2]["samples"] < config.samples <= updates[-1]["samples"]
     # The untrained network with Random's own rates first, then the final evaluation.
-    assert len(updates) == 2 and [e["update"] for e in evals] == [0, 2]
+    assert [e["update"] for e in evals] == [0, n]
     assert "random" in evals[0] and not evals[0]["final"] and evals[1]["final"]
-    assert all(e["held_out"] for e in evals)
     for r in updates:
         assert all(np.isfinite(r[k]) for k in ("policy_loss", "value_loss", "entropy", "kl"))
         assert r["update_samples"] > 0
     assert updates[1]["samples"] == updates[0]["samples"] + updates[1]["update_samples"]
-    # A snapshot after each update: the second rollout drew from a pool of one.
-    assert [r["pool"] for r in updates] == [0, 1] and len(trainer.pool) == 2
+    # The learning rate decays over the samples (the horizon: the budget).
+    assert updates[0]["lr"] == config.lr > updates[1]["lr"]
+    # A snapshot after each update (every sample is a multiple of 1): each rollout drew from
+    # the pool the snapshots before it made.
+    assert [r["pool"] for r in updates] == list(range(n)) and len(trainer.pool) == n
+    assert sum(r["type"] == "snapshot" for r in records) == n
     assert (tmp_path / "best.pt").exists() and evals[-1]["best"] >= evals[0]["best"]
-    meta = json.loads((tmp_path / "config.json").read_text())
-    assert meta["abi"] == _ffi.ABI_VERSION and meta["config"]["hidden"] == 32
+    assert (tmp_path / "config.toml").read_text() == "samples = 129\n"
+    assert not list(tmp_path.glob("*.tmp"))
+    record = json.loads((tmp_path / "record.json").read_text())
+    assert check_record(record) == []
+    assert record["identity"]["abi"] == _ffi.ABI_VERSION and record["identity"]["device"] == "cpu"
+    assert record["config"]["network"]["hidden"] == 32
+    assert record["config"]["ppo"]["lr_horizon"] == ONE_UPDATE + 1
+    assert record["progress"]["ended"] == "budget" and record["progress"]["updates"] == n
+    assert len(record["evaluations"]) == 2 and len(record["curve"]) == 1
     saved = torch.load(tmp_path / "checkpoint.pt", weights_only=True)
     restored = Policy.for_batch(trainer.batch, hidden=32, embed=8)
     restored.load_state_dict(saved["policy"])
     restored_state = restored.state_dict()
     for name, weights in trainer.policy.state_dict().items():
         assert torch.equal(weights, restored_state[name]), name
-    assert saved["updates"] == 2
+    assert saved["updates"] == n
+
+
+def test_a_training_episode_on_the_held_out_set_stops_the_run() -> None:
+    # The config refuses the evaluation's seed for training; past that check, the batch's first
+    # episodes are the held-out ones and the trainer stops at its reset.
+    with pytest.raises(HeldOutError):
+        Trainer(Config(**SMALL, seed=5, eval_seed=5))
 
 
 def test_a_frozen_network_plays_its_side_and_only_the_learner_trains() -> None:
@@ -237,10 +264,10 @@ def test_a_frozen_network_plays_its_side_and_only_the_learner_trains() -> None:
 
 
 def test_the_final_evaluation_reuses_the_last_when_nothing_changed(tmp_path) -> None:
-    # An evaluation after every update: the final one is the last one's record again.
-    train(Config(**SMALL, updates=1, eval_every=1e-9), tmp_path)
+    # An evaluation after the update: the final one is the last one's record again.
+    train(Config(**SMALL, samples=1, eval_every=1), tmp_path)
     records = [json.loads(line) for line in (tmp_path / "metrics.jsonl").read_text().splitlines()]
-    evals = [r for r in records if r.get("eval")]
+    evals = [r for r in records if r["type"] == "eval"]
     assert [(e["update"], e["final"], e.get("repeated", False)) for e in evals] == [
         (0, False, False),
         (1, False, False),
@@ -250,7 +277,7 @@ def test_the_final_evaluation_reuses_the_last_when_nothing_changed(tmp_path) -> 
 
 def test_a_checkpoint_plays_the_ladder(tmp_path, capsys) -> None:
     # E05 T7: a saved network against Random and both bots, as `h3 ai eval`'s table's row.
-    train(Config(**SMALL, updates=1, eval_every=0, eval_start=False), tmp_path)
+    train(Config(**SMALL, samples=1, eval_every=0, eval_start=False), tmp_path)
     policy = load(tmp_path / "checkpoint.pt")
     rows = ladder(policy, episodes=4, envs=2, max_steps=300)
     assert list(rows) == ["random", "aggressor", "greedy"]
