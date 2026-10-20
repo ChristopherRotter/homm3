@@ -164,7 +164,7 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   (from the end, right first): simulated on batch 3c's fields, the reading gives M2's walk along
   row 5 and G4's through 94, as observed, the engine's not; batch 2c's F2 agrees with both. The
   queue holds at most 500 entries. S-11 is not in the search.
-- **Map:** 13 entries (12 new; 0x4B3400 read, `pathfinder_push` and the rest named) and two
+- **Map:** 14 entries (13 new; 0x4B3400 read, `pathfinder_push` and the rest named) and two
   struct records (`pathfinder`, `pathfinder_cell`) with the hex record's +0x4A. The battle queue's
   inbox has BAT-MOV-003's alignment for the user's call.
 - **Checks:** pending (a blind re-read, the light gates).
