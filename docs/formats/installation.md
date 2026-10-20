@@ -1117,7 +1117,7 @@ original. One corner was not read to its end. The berserk turn asks the pathfind
 above the stack's speed (127; 0x445582, 0x42232C), and for such a query a position on a stop does
 count as a place to attack from, one whole move dearer (0x4B378A to 0x4B3792), where the cursor's
 query within one move counts none (the re-read above). The walk then attacks only if the target's
-cost is within the stack's speed (0x4223E1) and otherwise walks towards it (0x41F580, not read): a berserk stack whose attack position lies on a pit its side sees does not strike that turn, and whether it ends its walk on that pit is not known; the engine's takes no such position and goes for another stack or passes (BAT-MAG-025; the flag of BAT-QUIRK-2, under which it walked into the pit, is retired, BAT-Q30).
+cost is within the stack's speed (0x4223E1) and otherwise walks towards it (0x41F580, §7.38): a berserk stack whose attack position lies on a pit its side sees does not strike that turn, and its walk towards the target ends on a seen pit its path enters within its speed (the walk stops after a stop it enters, §7.38); the engine's takes no such position and goes for another stack or passes (BAT-MAG-025; the flag of BAT-QUIRK-2, under which it walked into the pit, is retired, BAT-Q30).
 The user decided on 2026-10-12 to keep the engine as the original here, in every profile (BAT-Q31; noted in the ledger beside BAT-QUIRK-4).
 
 ### 7.17 Code reading: Land Mine (E04b T5c2, 2026-10-07)
@@ -2955,7 +2955,8 @@ only the gate decides the 40 times: such a walker keeps out of its stops with `h
 The engine's berserk walk takes no position on a stop then, neither as a place to attack from (it
 takes none anyway) nor as the end of a walk towards a farther target, where it could otherwise
 end on a moat hex among equally short paths (BAT-MAG-025). How the original's walk beyond the
-stack's speed continues (0x41F580) stays unread.
+stack's speed continues (0x41F580) is read in §7.38: along the path up to its speed in steps,
+ending after a stop it enters.
 
 ### 7.32 Code reading: the siege's other rules (E04c T8, 2026-10-15)
 
@@ -3410,11 +3411,12 @@ the hero's predictions (0x43AA60) call it once with 0 and once with 1.
      and above or for a human side, 0x4208F0 may step a stack whose hex scores below 0 to the
      best-scored hex it reaches this turn (from its head); else nothing (false).
 
-**0x420A80, "the stronger side"** (read at its end): true when the side's total exceeds the
-other's (0x420CCE); a total sums its stacks' strengths (0x442E60), a value of its hero through the
-adventure AI's routines (0x526D40, 0x5275B0: part A) and, for the defender at a fort, its
-turrets (the keep's at a Citadel or Castle, the towers' halves at a Castle). It decides three
-branches above: taking the plan's value alone, holding the walls, and giving up a losing attack.
+**0x420A80, "the stronger side"** (read at its end; **corrected in §7.38**: it compares the
+sides' strength at range, not their whole strength): true when the side's stacks that can shoot
+now, a value of its hero through the adventure AI's routines (0x526D40, 0x5275B0: part A) and,
+for the defender at a fort, its turrets (the keep's at a Citadel or Castle, the towers' halves at
+a Castle) exceed the other's (0x420CCE). It decides three branches above: taking the plan's value
+alone, holding the walls, and giving up a losing attack.
 
 **What it reads, beyond §7.34's list:** the game's version (the moat's scores), the Fire Walls
 and the moat, the walls' and the gate's hit points, the enemy's retaliations left, the stacks'
@@ -3424,7 +3426,7 @@ but what the scores read (§7.36: the enemy hero's available spells, the enemy s
 
 **Not read here** (T1a3, part W): the scores' builders 0x420260 and 0x41FB60 (read in §7.36),
 the plan's hexes 0x436300 and its three helpers (§7.37), 0x41F3B0 beyond its loop, 0x420760, 0x4208F0 and 0x41F920 beyond
-their heads, 0x4B2FF0, the walk 0x41F580's end; 0x420A80's totals.
+their heads, 0x4B2FF0, the walk 0x41F580's end; 0x420A80's totals (all read in §7.38).
 
 **Readings at risk** (added to §7.34's list for T1b): the wall shot's test (a double comparison
 with 3.0) and its uniform draw among the weakest walls; the walls test's wrong records (a
@@ -3534,7 +3536,7 @@ line's hex.
 
 **Not read here** (T1a3b and T1a3c, part W and O): the plan's hexes 0x436300 and its three
 helpers, the order's sort 0x423340 (T1a3b, read in §7.37); 0x41F3B0 beyond its loop, 0x420760 and 0x4208F0
-beyond their heads, 0x4B2FF0, the walk 0x41F580's end and 0x420A80's totals (T1a3c).
+beyond their heads, 0x4B2FF0, the walk 0x41F580's end and 0x420A80's totals (T1a3c, read in §7.38).
 
 ### 7.37 Code reading: the walker's strike hexes and the order's sort (E23 T1a3b, 2026-10-20)
 
@@ -3634,4 +3636,105 @@ difference).
 
 **Not read here** (T1a3c, part W): 0x41F3B0 beyond its loop, 0x420760 (with its two helpers) and
 0x4208F0 beyond their heads, the destination map 0x4B2FF0, the walk 0x41F580's end and
-0x420A80's totals.
+0x420A80's totals (all read in §7.38).
+
+### 7.38 Code reading: the walker's fallbacks, its walk and the odds (E23 T1a3c, 2026-10-20)
+
+Read for E23 T1a3c (the user's cut, 2026-10-20: all of T1a3c in one part; the hero's value its
+own task, T1a3d): the walk 0x41F580 from its head (§7.16) to its end, 0x421680's two fallbacks
+with their helpers, the destination map, the last retaliation's gain and the odds' totals, all in
+full but for the hero's value. Insight only, nothing copied (Q29). With it part W is read.
+
+**0x41F580, the walk** (the battle manager; the stack S, a hex, hex scores or none, a flag).
+Nothing (false) for a bound stack (+0x2B8), one without speed, or without a path: the battle
+pathfinder (0x4B3400, the acting side's view, range 127, the tactics flag) gives the path's `n`
+cells (+0x4C to +0x50, the first step last), each with its step's direction (the cell's +4, bits
+12 to 15). Otherwise the action is a move (2, +0x3C) and S walks the path from its position, one
+hex per step, at most its speed `s` in steps (the whole path in the tactics phase). Each hex on
+the field whose cell has none of its top six bits (`0xFC000000`) set may become the end (the
+action hex +0x44): in the tactics phase only inside the side's zone (0x4763F0); with scores,
+under a test that it scores no lower than the last end (both hexes of a two-hex S; the start's
+score at first). The test applies to every step when the flag holds; without it only after the
+first end and from the step that leaves fewer than `L = s × ⌊(n − 1) / s⌋` steps of the path, so
+S first reaches the hex from which the rest takes whole turns. A refused hex is walked on. The
+walk ends after a stop S enters (the moat, Quicksand its side knows: the pathfinder's +0x68, at
+either of its hexes), whether that hex became the end or not, unless S flies. **The flag** holds only on Hard and above or for a human side (+0x54A4 of S's
+side), outside the tactics and the wait phase, with scores. Then a walk whose end is not the last
+hex reached (a later one refused) becomes **Wait** (8). An end at S's own position is Wait with
+the flag, else Defend (3). True. The callers: 0x421680's walk to the plan's hex (0x421D36) and its
+attack from further away (0x421F69), with the scores and the flag outside a prediction when the
+best is more than one turn away (§7.35); the besieger's walk to its row's wall (0x421E0E) with
+the scores; 0x4208F0 with the scores; 0x420760 and the berserk walk (0x4223F9, §7.14) with
+neither. So **a computer walker on Hard and above holds back** rather than step onto a hex that
+scores worse, and waits for the wait phase, where the test lapses.
+
+**0x420760, guarding a shooter** (§7.35's fallback; S, the pathfinder, the context). Over the
+acting side's living records R in record order, but the arrow towers and the Catapult (145), that
+can shoot now (0x4428F0, no blocker left out) and have the melee penalty (`0x1000` clear): R's
+guard hex (0x4205D0). Among R's neighbours on the field (6, 8 for a two-hex R; 0x523DF0) that are
+free or hold S, `c` their number (R's open sides), those S's map reached: the fewest turns
+(0x4B3F20: `max(1, ceil(cost / speed))`; 1 in the tactics phase), then more of S's hexes touching
+R (2 for a two-hex S whose other hex there touches R too, 0x4466C0), then the hex further the way
+R faces (its anchor's x, +0 of the hex record: the larger for R's facing 1, the smaller for 0), the
+later direction at an equal x. R's value: its strength (0x442E60, the context's least bonuses),
+divided by `c` when `c` > 1. The best R: the fewest turns, then the higher value, then the later
+record. None: false. A guard hex where S stands: Defend (3); else the walk there (no scores):
+true either way. So S goes to the side of the strongest, least exposed shooter it reaches
+soonest, in front of it.
+
+**0x4208F0, the step to safety** (S, the scores, the pathfinder). False below Hard for a
+computer side, when S's own score (the lower of its two hexes) is 0 or more, or S is blind,
+petrified, paralysed or bound (+0x290, +0x2B0, +0x2C0, +0x2B8). Otherwise, over the 187 hexes
+the map reached at a cost within S's speed (top six bits clear): the highest score (a two-hex S
+the lower of its hexes), which must exceed its own; at an equal score the lower cost, then the
+later hex. None, or S's own hex: false; else the walk with the scores (no flag) and its answer.
+
+**0x4B2FF0, the destination map** (from 0x421680 with its flag 1, the hero's predictions 0x43AA60,
+§7.34; S, its side). Every hex but the side columns where S fits (0x446C40) and Teleport's
+destination test passes (0x5A3700, the acting side's hero's mastery, §7.21) is reached at cost 1,
+its hex record's mark +0x4A set; the rest is cleared. Each record of the other side but S, the
+dead and the arrow towers with a neighbour among them gets its position hex marked at cost 1. **A
+two-hex enemy's other hex stays unmarked**: its branch marks the position hex a second time. So
+the flag-1 choice asks whom S would strike from anywhere Teleport could put it, as one turn: the
+hero's Teleport, presumably (T1a6 reads 0x43AA60).
+
+**0x41F3B0, the last retaliation's gain** (S, the enemy E, the context; §7.35, step 4). 0 unless E
+is not turned to stone (+0x2B0) and has one retaliation left (+0x454 = 1; the signed test lets a
+negative count through too). `r`: E's hit
+points left less S's strike on it (0x435980: the damage 0x442780 by the count its hit points left
+give, no shot, capped; both 0x443080 with the prediction flag); 0 when `r` ≤ 0, as S's strike
+would kill E. Then each record O of the acting side but the arrow towers whose mask of enemies
+within a turn (+0x544, §7.31) holds E's bit: `D`, O's strike on E (0x435980), at most `r`; `w`,
+E's worth (0x442A50, no shot); `g = trunc(D × w / hp) − v_O` with `hp` E's hit points per
+creature and `v_O` O's recorded value (+0x53C), or in desperate mode `trunc(⌊(r mod hp + D) /
+hp⌋ × w) − v_O`. **The kills there count the top creature's remaining hit points where its lost
+ones belong** (`r mod hp` is what it has left), so a strike must cover the top creature's loss
+rather than its rest. The gain: the sum of the positive `g` of the records whose nearest enemy
+(+0x538) is E, plus the largest `g` (from 0) of the others. So S is worth more against E by what
+the side's other stacks within reach gain when E can no longer strike back.
+
+**0x420A80, the stronger at range** (the context). Per side, over its records but the dead,
+blind, petrified, paralysed and the arrow towers: two sums of strength (0x442E60, the context's
+least bonuses), every record's and those that can shoot now (0x4428F0, the Ballista included).
+The latter gains the side's hero's value (0x526D40 with the hero and the first sum, then
+0x5275B0 with `0x8000`; part A, T1a3d) when the hero has its spell book and neither hero wears
+the Orb of Inhibition (126), outside an anti-magic garrison (+0x53C4); and, for the defender at a
+fort (+0x132F4 at least 2), its turrets in Archers' AI values (creature 2's +0x40, 0x5BF4F0's count
+`a`): the keep's `a` times it while it stands (+0x13F98), at a Castle (3) each standing tower
+(+0x13F94, +0x13F74) `trunc((a + 1) × value / 2)`. **It compares only the latter: true when the
+own side's shooters, hero and turrets exceed the other's** (0x420CCE). The first sum feeds only
+the hero's value. **§7.35 read it as the whole strength; corrected here**: where 0x421680 and
+0x4213F0 ask for "the stronger side", they ask for the stronger at range.
+
+**What these read**: the pathfinder's path and map with the side's stops (§7.36), the threat
+records (§7.31), the stacks' flags, counts, effects and retaliations, the hex anchors, Teleport's
+rules with the hero's mastery, the turrets; the hero's spell book and, through the hero's value,
+what part A reads (T1a3d). **Draws:** none.
+
+**Readings at risk** (for T1b): the walk's score test and its Wait on Hard and above (a walker
+that holds back); the free part of the walk without the flag; the guard hex's order; the step to
+safety's strict improvement; the destination map as Teleport's; the desperate kills' top-creature
+term; the odds by ranged strength with the turrets as Archers.
+
+**Not read here** (T1a3d, part A's share): the hero's value 0x526D40 and 0x5275B0 with their ten
+helpers (about 4 KB of the adventure AI).
