@@ -49,7 +49,7 @@ Several agents work in parallel, **one agent at a time per lane** (`docs/08-work
 
 | Lane | Read | When the task touches it |
 |---|---|---|
-| battle | the current epic file (the lane HANDOFF names it), ADR-0014 | ADR-0003 (numbers), ADR-0012/0013, `docs/04-rules-and-sources.md`, the quirks ledger, `docs/exe/README.md` and `docs/formats/installation.md` §7 (code reading), `docs/experiments/README.md` |
+| battle | the current epic file (the lane HANDOFF names it), ADR-0014; ADR-0027 while E23 runs | ADR-0003 (numbers), ADR-0012/0013, `docs/04-rules-and-sources.md`, the quirks ledger, `docs/exe/README.md` and `docs/formats/installation.md` §7 (code reading), `docs/experiments/README.md` |
 | adventure | `docs/03-domain.md`, the adventure epic file once refined | `docs/02-architecture.md`, ADR-0003/0004/0005/0006, `docs/04-rules-and-sources.md`, `docs/formats/h3m.md`, `docs/exe/README.md` (code reading) |
 | ai | `docs/07-simulation-and-ai.md`, the current epic file (`docs/epics/E06-battle-ai.md`), ADR-0026 | ADR-0025 (the env), ADR-0011, ADR-0014 point 9, ADR-0003 (determinism), `docs/06-security.md` (projections), ADR-0023 point 7, `h3-sim`'s encodings |
 | server | `docs/06-security.md`, ADR-0004, ADR-0008, ADR-0018 | ADR-0011 (encodings), `docs/02-architecture.md`, `h3-sim`'s action and observation encodings |
