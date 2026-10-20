@@ -302,6 +302,7 @@ fn a_count_box_shows_by_its_stack_and_the_hex_ahead() {
         offset: [0, 0],
         mirrored: false,
         layer: STANDING,
+        boxless: false,
     };
     let moment = Moment {
         poses: [(3, pose(11, hex(7, 2))), (6, pose(1, hex(9, 2)))]
@@ -338,6 +339,62 @@ fn a_count_box_shows_by_its_stack_and_the_hex_ahead() {
 }
 
 #[test]
+fn a_count_box_follows_the_moments_stacks() {
+    // E17 M3 T5a (§4.3): a stack whose box a walk or a flight hides shows none and leaves its
+    // hex free for another's box (0x43E61C); a stack that died since the snapshot (among the
+    // corpses) has left its hexes (`stack_death` 0x444400).
+    let layout = layout();
+    let mut o = observation();
+    o.terrain = Some(0);
+    o.stacks = vec![
+        stack(0, Side::Attacker, 0, hex(4, 2), false),
+        stack(1, Side::Attacker, 0, hex(4, 3), false),
+    ];
+    let boxes = |one: Option<Pose>| {
+        let moment = Moment {
+            poses: one.map(|p| (1, p)).into_iter().collect(),
+            ..Moment::default()
+        };
+        let list = battle_at(&o, &moment, &keys(), &tables(), &layout).unwrap();
+        list.iter()
+            .filter_map(|d| match d {
+                Draw::CountBox { x, y, .. } => Some([*x, *y]),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+    };
+    let at = |row, column, [dx, dy]: [i32; 2]| {
+        let [x, y] = layout.anchor(row, column);
+        [x + dx, y + dy]
+    };
+    let standing = Pose {
+        group: 2,
+        frame: 0,
+        hex: hex(4, 3),
+        offset: [0, 0],
+        mirrored: false,
+        layer: STANDING,
+        boxless: false,
+    };
+    assert_eq!(
+        boxes(Some(standing)),
+        [at(4, 2, [-15, -15]), at(4, 3, [22, -15])]
+    );
+    let hidden = Pose {
+        boxless: true,
+        ..standing
+    };
+    assert_eq!(boxes(Some(hidden)), [at(4, 2, [22, -15])]);
+    let dead = Pose {
+        group: 5,
+        layer: 1,
+        ..standing
+    };
+    assert!(!dead.holds_hex() && !hidden.holds_hex() && standing.holds_hex());
+    assert_eq!(boxes(Some(dead)), [at(4, 2, [22, -15])]);
+}
+
+#[test]
 fn a_moment_draws_each_stack_in_its_pose() {
     // E17 M2 T4a: the poses of a timeline. In row 4 the Pikemen walk (frame 3 of group 0, moved
     // by their offset) and lose the outline to the active defender; the dragon on 4/9 died: its
@@ -351,6 +408,7 @@ fn a_moment_draws_each_stack_in_its_pose() {
         offset,
         mirrored: false,
         layer,
+        boxless: false,
     };
     let ray = Ray {
         strokes: vec![Stroke {
@@ -494,6 +552,7 @@ fn a_flier_between_its_hexes_is_drawn_over_every_row() {
         offset: [5, 90],
         mirrored: false,
         layer: crate::anim::FLYING,
+        boxless: true,
     };
     let moment = Moment {
         poses: [(0, flying)].into_iter().collect(),

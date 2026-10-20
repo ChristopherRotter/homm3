@@ -6,21 +6,24 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024). M3 (fidelity) below, refined at M2's closure (T5c) and agreed by the user there, each task about half a context; the exit: the reference set passes, or each difference is a listed fix or a classified quirk. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M3 T5 — The count boxes
+### E17 M3 T5b — The count boxes' numbers over time
 
-- **Scope:** (T4a drew the boxes in the stills: place, picture, tint without spells, digits;
-  design §4.3, §3.6, §3.7.) The boxes over time: when the original hides them (+0x30, set by a
-  walk 0x442145 and a flight 0x4B4BD8; who clears it to read), the count shown (+0x50 when not
-  −1: to read), the tint by the stack's spells (read: design §4.3; the spell table's first field
-  to harvest); their masks removed from the frame check; a stale box the original's partial
-  redraw leaves under a walker (design §7.11) is a redraw artifact, not copied: T1c lists it
-  (`melee` at 3 966 ms: 231 pixels, the frame check's other count); then classified (the box's
-  earlier place) or masked. `strike` (T4b-2b-2, design §9.6): the Pikemen's box where the
-  original last drew it while the Archangel lands (2 330 to 2 730 ms), the Archangel's moved in
-  front of it at the next turn once the Pikemen's hex is free (from 3 730 ms: 324 pixels); ours
-  places both by the opening's stacks.
+- **Scope:** (T4a drew the boxes in the stills; T5a hid them through walks and flights and freed
+  a dead stack's hex: design §4.3; `walk`, `turn`, `climb` and `strike` compare their boxes,
+  `boxes = true`.) The number shown over time: +0x50 when not −1 (to read: who sets it and when
+  the box's number changes during and after a strike), the viewer's count taken from the
+  record's `Struck` kills at that moment (the scene draws the snapshot's counts so far). The
+  engine rolls damage differently from the original, so after a rolled strike the digits differ:
+  compare a box's digits only where the original's count (its memory, `h3mem`: +0x4C, +0x50)
+  equals the engine's, and list the rest. Then the boxes compared in the other six sequences
+  (`shot`, `melee`, `behind`, `shots`, `fly`, `machines`; they mask the boxes where the viewer
+  draws them so far, from `ours.txt`'s ` box<x>,<y>`); a stale box the original's partial redraw
+  leaves (design §7.11) listed with its count as T5a listed `strike`'s at 2 730 ms (design §4.3),
+  or classified by a rule that cannot pass a box the viewer moves too early (`melee`'s at
+  3 966 ms was none: the walker's +0x30, T5a). (The spells' tint moved to T7b, the user,
+  2026-10-20.)
 - **Acceptance:** the recorded sequences match with the count boxes drawn.
-- **Depends on:** nothing (T4a done). **Status:** ready.
+- **Depends on:** nothing (T5a done). **Status:** ready.
 
 ### E17 M3 T6 — The battle interface
 
@@ -60,7 +63,9 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
   `SpellCast`, `StackCast`, `EffectApplied`, `SpellResisted`), Haste and Slow's walk time (from T1b
   at its re-cut: the harness casts from T7a's spell book), good and bad morale (`GoodMorale`,
   `BadMorale`: the user at T5b, the Marksmen's second shot showed nothing) and luck (the strike's
-  `lucky`), their sounds, a magic animation lengthening a strike's loop.
+  `lucky`), their sounds, a magic animation lengthening a strike's loop; the count box's tint by
+  the stack's spells (moved from T5, the user, 2026-10-20: design §4.3, 0x43E6AA to 0x43E73E,
+  the spell table's first field to harvest).
 - **Acceptance:** their recorded sequences as recorded and their frames match.
 - **Depends on:** T7a. **Status:** ready.
 
@@ -91,7 +96,8 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 - **Scope:** M3's review list with the user, a fresh reviewer agent over M3, the next milestone
   refined (sieges, live play, HD or the adventure map: the user's choice), M3 marked done.
 - **Acceptance:** M3's exit holds; the review list answered or carried on.
-- **Depends on:** T5–T8 (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2 done).
+- **Depends on:** T5b–T8 (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a
+  done).
   **Status:** waiting.
 
 ## Inbox

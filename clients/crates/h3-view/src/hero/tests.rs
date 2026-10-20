@@ -49,6 +49,7 @@ fn idle(turns: &[(u32, u8)], actions: Vec<Action>) -> Timeline {
         offset: [0, 0],
         mirrored: false,
         layer: 4,
+        boxless: false,
     };
     timeline.members = [(0, Side::Attacker), (1, Side::Defender)]
         .map(|(stack, side)| Member {

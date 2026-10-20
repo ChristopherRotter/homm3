@@ -1,11 +1,11 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2 done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
 [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
-are there). Next: M3 T5–T8 (`docs/lanes/client/QUEUE.md`).
+are there). Next: M3 T5b–T8 (`docs/lanes/client/QUEUE.md`).
 
 ## Goal
 
@@ -325,6 +325,12 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   fixed damage kills all ten Pikemen, so the engine's line is the original's; the viewer draws
   the record's first strike's line (`battle_log::shown`, the small font's line count) from the
   sequence's `log_at`, the frame check compares the log's item from then on: exact.
+- **T5a done 2026-10-20** ([log](E17-log.md#m3-t5a--the-count-boxes-through-walks-and-flights-2026-10-20),
+  [design §4.3](E17-design.md)): T5 split with the user (the boxes whose numbers never change
+  first; the numbers over time T5b; the spells' tint to T7b). +0x30 read (set through a walk and
+  a flight) and built (`Pose::boxless`), a dead stack's hex freed at the strike's end; `walk`,
+  `turn`, `climb` and `strike` compare their boxes (`boxes = true`): artifacts only, but 134
+  pixels of the original's redraws at `strike`'s 2 730 ms, listed.
 
 ### The adventure lane's harness (H1, H2: its batch E3)
 
@@ -522,6 +528,12 @@ original cannot be matched (the fidgets' generator); the others are lifted.
 ## M3 review list
 
 (Filled by the tasks: choices queued for the milestone review under the autonomy contract.)
+
+- T5a: a sequence's `boxes` (the frame check compares its count boxes; the others mask them also
+  where the viewer drew them, from the boxes `ours.txt` now lists); a stale box of the original's
+  redraws listed with its pixel count rather than classified (design §4.3: a rule by a box's
+  earlier place would pass a box the viewer moves too early); `Pose::boxless` and
+  `Pose::holds_hex` in the timeline's poses.
 
 - T4b-2b-2: a sequence's `log_at` (the frame check compares the log's item from a time observed
   in the original, until T6 times the line); `h3-view`'s `log` module (one strike's line from a
