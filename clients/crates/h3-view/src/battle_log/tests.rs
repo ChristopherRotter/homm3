@@ -427,3 +427,38 @@ fn the_item_follows_the_lines_and_turns() {
     assert_eq!(text_at(&got, 4000), "Round.");
     assert_eq!(text_at(&[], 4000), "");
 }
+
+#[test]
+fn the_mouses_hints_and_the_scrolls_enter_the_item() {
+    // E17 M3 T6c-2: a hint replaces the item unless new entries showed less than 3 000 ms ago
+    // and it is not forced; a human's turn only settles; a scroll shows the entries again.
+    let human = |stack: u8| stack == 1;
+    let status = |text: &str, forced| Logged::Status {
+        text: text.into(),
+        forced,
+    };
+    let logged = [
+        (0, Logged::Turn(1)),
+        (0, status("Walk here.", false)),
+        (10, Logged::Wait { stack: 1, count: 1 }),
+        (20, status("Walk here.", false)),
+        (30, status("Hit them", true)),
+        (40, Logged::Scroll(-1)),
+        (3100, Logged::Turn(1)),
+        (3100, status("", false)),
+    ];
+    let got = texts(&logged, &worded, &tens, &human);
+    assert_eq!(
+        got,
+        [
+            (0, String::new()),
+            (0, "Walk here.".into()),
+            (10, "Ant holds.".into()),
+            (30, "Hit them".into()),
+            (40, "Ant holds.".into()),
+            (3100, String::new()),
+        ]
+    );
+    assert_eq!(worded(&status("x", true)), None);
+    assert_eq!(worded(&Logged::Scroll(1)), None);
+}

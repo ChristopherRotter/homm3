@@ -225,7 +225,13 @@ const FOUGHT_LIMIT: usize = 5_000;
 /// The record of a spectator of the battle `scenario` sets up with `seed`, fought to its end by
 /// [`Greedy`] for both sides (E17 M2 T4b-2a, `h3-view play`): the engine plays the battle, then
 /// the session replays its commands from the seats, as [`played`] does.
-pub fn fought(scenario: &Path, packs: &Path, seed: u64) -> Result<String, String> {
+/// With it the commands each seat sent (E17 M3 T6c-2: the window asks the battle at each turn,
+/// [`turned`]).
+pub fn fought(
+    scenario: &Path,
+    packs: &Path,
+    seed: u64,
+) -> Result<(String, Vec<(Seat, Command)>), String> {
     let (ruleset, setup) = battle(scenario, packs, seed)?;
     let mut state =
         BattleState::new(&ruleset, &setup, seed).map_err(|e| format!("the setup: {e:?}"))?;
@@ -244,7 +250,8 @@ pub fn fought(scenario: &Path, packs: &Path, seed: u64) -> Result<String, String
         };
         commands.push((seat, map::command(choice)));
     }
-    played(scenario, packs, seed, &commands)
+    let text = played(scenario, packs, seed, &commands)?;
+    Ok((text, commands))
 }
 
 /// The host's configuration of a game of `setup` with `seed`: one spectator, every message
