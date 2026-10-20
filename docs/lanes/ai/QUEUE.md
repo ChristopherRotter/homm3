@@ -20,6 +20,13 @@ Sorted by destination at E05's audit (T9a, 2026-10-19); the origin stays in brac
 done: BAT-Q33's point for E05 (AI-Q3, ADR-0025 point 6), the `h3-game` coverage gap of a pending
 Pass offer (fixed by the adventure lane's fixed tests, #266).
 
+- 2026-10-20 (the adventure lane, E08 T26b, `shared/e08-t26b`, `cross-lane` with the user's
+  consent; for your information, nothing to do): the core ruleset hash moved (v46: the hero
+  parameters' level data, the classes' offer intervals, two quirk flags), so
+  `python/records/bots-report-v1.json` was regenerated in that pull request (`h3 ai eval --set
+  report-v1`, `python/records/README.md`): only `engine.core` moved (`6384653ed1e4c038`), every
+  rate is the same. A run record made before it names the old core hash.
+
 **For E06** (training at scale, evaluation, search; the epic's T2 to T5 take them up):
 - **Evaluation:** greedy play (the most likely heads) repeats itself against Random until the
   step limit (up to 17 % of the battles in T8b's sandbox run); the sampled policy never. E06's

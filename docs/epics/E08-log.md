@@ -3028,3 +3028,47 @@ next. Baseline `master` 774ba0e.
   (no flag, `ADV-QUIRK-14` with T28); the system default chooses with the setup's inputs until
   E10; the adventure part's terrains gain their cost by Pathfinding level now (T29). Applied to
   #325, the design note (§1, §8, §9, §12, §13, §15, §17) and the queue (T26b).
+
+### Increment 4, round 1: T26b, the shared groundwork's data; round 1 closed (2026-10-20, `shared/e08-t26b`)
+
+The user took T26b whole (decision 61) after T25's #327 merged; one `shared/` pull request,
+`cross-lane` with the user's consent. Baseline `master` 2d6838c (its engine code verified before:
+the light gates only, green).
+
+- **`h3-content`** (part A §1): `HeroParamsDef`/`HeroParams` gain `experience` (the pack's first
+  levels), `max_level`, `wisdom` and `schools` (keys resolved in the pack's closure, the schools
+  distinct). `thresholds` continues the table to `max_level + 1` entries, each step + step / 5
+  (in `u64`, every threshold checked into `u32`), and refuses a table with fewer than two levels,
+  not starting at 0, not rising strictly, longer than `max_level + 1` or above 32 bits (78 is the
+  highest `max_level` with the original's levels: level 79's threshold 3 753 284 634). The
+  survey's vectors (§1.1: 13 → 24 320 … 75 → 1 810 034 207) are a test. `HeroParams` lost `Copy`.
+  `HeroClassDef`/`HeroClass` gain `offer_intervals` (`[wisdom, school]`, each at least 1, checked
+  with the class); `HeroClassOverride` with `HeroClassPatch { offer_intervals }`, applied in
+  `add_overrides` after the hero overrides (a gated one resolved in every profile, validated with
+  the class). The hash: the classes' intervals, the compiled table, `max_level`, Wisdom, the
+  schools; **core ruleset hash v46** (the golden base hash moved). The registry gains
+  `quirk.adventure.level_up_from_seed` (27, `LEVEL_UP_FROM_SEED`, no reader until T29) and
+  `quirk.content.elementalist_offer_intervals` (28, `ELEMENTALIST_OFFER_INTERVALS`). No new error
+  variant (`InvalidHeroParams`, `InvalidContent`). Coverage: every new branch has a fixed test.
+- **`h3-pack`**: **pack format v44** (`[hero_params]`'s four fields, `[[hero_class]]`'s
+  `offer_intervals`, `[[hero_class_override]]`), a syntax test, and a test on the harvested packs
+  (`the_harvested_level_data_and_the_elementalists_intervals`: the table, Wisdom and the schools,
+  eight classes on 3 and 3 in `faithful`, nine in `strict-fixed`, with and without SoD).
+- **The harvester** (battle-owned): the gap-fill's `[heroes.params]` names Wisdom and the four
+  schools (keys from `HeroPacks.skills`, a skill's key and name by id), `[heroes.offer_intervals]`
+  lists the eight classes 0x4DAD74 puts on 3 and 3, `[[data_quirks.class_intervals]]` writes the
+  Elementalist's gated `[[hero_class_override]]` after its class (comment from the entry's
+  `quirk`); unknown class or skill names are errors. Five sources (`exe-experience`,
+  `wiki-experience`, `exe-offers`, `wiki-secondary-skill`, `vcmi-level-up`). Both new flags in
+  the harvested profiles (the strict profile's comment gained the BAT-QUIRK-24 it lacked). The
+  packs re-harvested from the staged installation: `base` and `ab` changed only by the new lines;
+  `synthetic` by hand (invented levels 1–4, `max_level` 20, `channeling` and `stormcraft`).
+- **Elsewhere**: the test packs' new fields (`h3-battle`, `h3-content-battle`, `h3-game`,
+  `h3-heroes`); `ADV-QUIRK-10`'s ledger entry (its data quirk complete; `ADV-QUIRK-9`'s with T29,
+  design §11); ADR-0007 point 4's scope names the class override (decided with ADR-0013 point 12);
+  `packs/README.md`. **Replays**: the 19 golden replays (10 battle, 9 adventure) keep commands and
+  state hashes, only `ruleset_hash` moved (three values: synthetic faithful, the base packs in
+  both profiles); `duel-s2-d7` and `duel-s5-strict-d7` re-recorded with their options differed
+  in that line only. The AI lane's `bots-report-v1.json` regenerated: only `engine.core` moved.
+- **Inboxes**: battle (what moved in its paths), AI (the bots' table), the lane's own (the flag
+  without a reader until T29).
