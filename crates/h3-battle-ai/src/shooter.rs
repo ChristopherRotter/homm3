@@ -2,8 +2,7 @@
 //! a stack that can shoot now shoots the stack the computer picks for it (0x41EB80), the
 //! automatic Ballista's choice (BAT-WAR-008), and defends without one (action 3).
 
-use h3_battle::BattleState;
-use h3_battle::{Command, Field, StackId, computer};
+use h3_battle::{BattleState, Command, Field, StackId, computer};
 use h3_content_battle::BattleRuleset;
 
 /// The shot of the computer's shooter `id`: at [`computer::shot_target`]'s stack, aimed at its

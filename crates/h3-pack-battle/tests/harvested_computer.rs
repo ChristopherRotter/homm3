@@ -140,7 +140,7 @@ fn the_computers_choice_is_legal_in_random_battles_of_the_harvested_creatures() 
             let details = [details(&sod, &mut rng), details(&sod, &mut rng)];
             let heroes = details
                 .clone()
-                .map(|d| Some(derive_battle_hero(&d, &sod).unwrap()).filter(|_| rng.below(3) != 0));
+                .map(|d| (rng.below(3) != 0).then(|| derive_battle_hero(&d, &sod).unwrap()));
             // Half the games at a town, a quarter on a special battlefield.
             let (siege, battlefield) = match game % 4 {
                 0 | 1 => {
