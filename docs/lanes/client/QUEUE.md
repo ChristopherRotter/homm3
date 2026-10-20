@@ -6,19 +6,32 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024). M3 (fidelity) below, refined at M2's closure (T5c) and agreed by the user there, each task about half a context; the exit: the reference set passes, or each difference is a listed fix or a classified quirk. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M3 T6c — The status line, the cursors and the mouse
+### E17 M3 T6c-1 — The mouse's still: the field and the panel
 
-- **Scope:** the status line (the hint over a stack, `Attack Pikemen` in `strike`; a control's
-  hints, H3API's `SetHints`), the cursor rules of the executable (which cursor over which hex; T5a's
-  `CRDEFLT.DEF` frame 0 is provisional), the mouse over a stack in the window (group 1 and the
-  outline 0x70, read and recorded in T1b-2: `NOTES.md`), a button pressed and the panel's
-  hotkeys in the window (design §9.7); the harness's mouse over the field and the panel as
-  situations. The hover's hint forces the status line, a turn's posted mouse move does not
-  (T6b, design §9.8, `NOTES.md`): the sequences' ` log` listings of hints go with them. May
-  split when refined.
-- **Acceptance:** the hover situations' frames match the original's outside the listed
+- **Scope:** T6c split with the user on 2026-10-20 (the still T6c-1; over time T6c-2). The
+  cursor rules of the executable (`battle_cursor` 0x476490's presentation: which frame of
+  which cursor DEF over which hex; the attack's direction by the slot, 0x474A00; how the game
+  draws its cursor, its hot spots; T5a's `CRDEFLT.DEF` frame 0 is provisional), the status line's
+  hints over the field (`battle_status_line` 0x492840: the cases the engine's battles reach) and
+  over the panel's controls (H3API's `SetHints`), the stack under the mouse in a still (its
+  outline 0x70 and group 1's frame 0, read at T1b-2: `NOTES.md`); a still and the window draw
+  them from a mouse point; the harness parks the mouse over the field and the panel as
+  situations.
+- **Acceptance:** the mouse situations' frames match the original's outside the listed
   differences.
 - **Depends on:** nothing (T6a, T6b done). **Status:** ready.
+
+### E17 M3 T6c-2 — The mouse over time
+
+- **Scope:** the harness's mouse moves in the viewer's timeline (the cursor and the hint after
+  each move and at a turn's start, 0x4ECC00; the hover's hint forces the status line over new
+  lines, a turn's posted mouse move does not: T6b, design §9.8, `NOTES.md`; group 1 as a fidget
+  after a stack is marked), so the sequences' ` log` listings of hints go and `hover` is
+  compared; in the window a button pressed (its click frame) and the panel's hotkeys (design
+  §9.7).
+- **Acceptance:** the sequences' hint listings gone, `hover`'s frames matched outside the listed
+  differences.
+- **Depends on:** T6c-1. **Status:** waiting.
 
 ### E17 M3 T7a — Code reading: the magic animations
 
@@ -78,7 +91,7 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
   user, a fresh reviewer agent over M3, the next milestone
   refined (sieges, live play, HD or the adventure map: the user's choice), M3 marked done.
 - **Acceptance:** M3's exit holds; the review list answered or carried on.
-- **Depends on:** T6c, T7a–T8 (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1,
+- **Depends on:** T6c-1, T6c-2, T7a–T8 (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1,
   T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b done).
   **Status:** waiting.
 
