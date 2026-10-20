@@ -892,8 +892,8 @@ duration at 255 (quirk S-17) and ends Hypnotize first. While active:
   retaliation does not end it. Cure, Dispel and an Anti-Magic of level 5 or more end it.
 The wiki's pathing bug (S-11) is placed by §7.40 and §7.41: the pathfinder's search ends an
 attack only on the target's position hex, so a two-hex target reached only by its other hex is a
-candidate the walk never reaches. BAT-Q53 (2026-10-20): pathfinding as the original's; S-11's
-class waits for its batch row.
+candidate the walk never reaches. BAT-Q53 (2026-10-20): pathfinding as the original's; S-11 is
+the fix-optional BAT-QUIRK-24 (BAT-Q54), built with the walks in E23 T1c.
 
 **Hypnotize** (spell 60; power factor 25, effect 10, 10, 20, 50; one target). Target test
 (0x5A8090 case 60, after the general tests): 0 if the stack has Magic Mirror active (§7.13);
@@ -1119,7 +1119,7 @@ original. One corner was not read to its end. The berserk turn asks the pathfind
 above the stack's speed (127; 0x445582, 0x42232C), and for such a query a position on a stop does
 count as a place to attack from, one whole move dearer (0x4B378A to 0x4B3792), where the cursor's
 query within one move counts none (the re-read above). The walk then attacks only if the target's
-cost is within the stack's speed (0x4223E1) and otherwise walks towards it (0x41F580, §7.38): a berserk stack whose attack position lies on a pit its side sees does not strike that turn, and its walk towards the target ends on a seen pit its path enters within its speed (the walk stops after a stop it enters, §7.38); the engine's takes no such position and goes for another stack or passes (BAT-MAG-025; the flag of BAT-QUIRK-2, under which it walked into the pit, is retired, BAT-Q30).
+cost is within the stack's speed (0x4223E1) and otherwise walks towards it (0x41F580, §7.38): a berserk stack whose attack position lies on a pit its side sees does not strike that turn, and its walk towards the target ends on a seen pit its path enters within its speed (the walk stops after a stop it enters, §7.38); the engine follows this since E23 T1c (BAT-MAG-025: until then it took no such position and went for another stack or passed; the flag of BAT-QUIRK-2, under which it walked into the pit, is retired, BAT-Q30).
 The user decided on 2026-10-12 to keep the engine as the original here, in every profile (BAT-Q31; noted in the ledger beside BAT-QUIRK-4).
 
 ### 7.17 Code reading: Land Mine (E04b T5c2, 2026-10-07)
@@ -2954,11 +2954,10 @@ side -1, which it passes on to 0x4B3400 at 0x4B2DF4–0x4B2E00) and the walk to 
 only the gate decides the 40 times: such a walker keeps out of its stops with `h ≤ 4d`, or with
 `h ≤ 40d` while the gate is not 3. 0x474BF0 flips the controlling side for Hypnotize alone
 (+0x288; Berserk's duration is +0x284), so a berserk stack is automatic as its owner's player is.
-The engine's berserk walk takes no position on a stop then, neither as a place to attack from (it
-takes none anyway) nor as the end of a walk towards a farther target, where it could otherwise
-end on a moat hex among equally short paths (BAT-MAG-025). How the original's walk beyond the
-stack's speed continues (0x41F580) is read in §7.38: along the path up to its speed in steps,
-ending after a stop it enters.
+The engine's berserk walk then treats a step into a stop as blocked in both searches, as the
+original's (BAT-MAG-025; since E23 T1c on the original's search, §7.40). How the original's walk
+beyond the stack's speed continues (0x41F580) is read in §7.38: along the path up to its speed in
+steps, ending after a stop it enters.
 
 ### 7.32 Code reading: the siege's other rules (E04c T8, 2026-10-15)
 
@@ -3931,8 +3930,8 @@ and the engine does not:
 - G4, the Minotaur Kings 96 → 76: the reading gives 96, 95, 94, 76, as observed; the engine 96,
   95, 77, 76.
 
-Batch 2c's F2 (two rows straight up through the top-right neighbour) agrees with both rules. The
-inbox has the alignment.
+Batch 2c's F2 (two rows straight up through the top-right neighbour) agrees with both rules. E23
+T1c aligned the engine (BAT-MOV-003, BAT-MAG-025: `crates/h3-battle/src/pathfinder.rs`).
 
 **A berserk stack's attack position** (0x42232C: T its target's hex, range 127): the first hex
 the search takes from which T is a blocked neighbour (for a two-hex walker also through the hex

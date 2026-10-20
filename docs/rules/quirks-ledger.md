@@ -477,3 +477,16 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Defaults: faithful = on, strict-fixed = off
 - Regression test: `crates/h3-battle/src/tests/sieges.rs`, `with_bat_quirk_23_a_town_with_a_fort_sets_up_no_ballista_for_its_defender` (both settings); the invariant properties mix it into half their games
 - Decided by / date: user, 2026-10-15 (E04c T9, BAT-Q48)
+
+### BAT-QUIRK-24 — A berserk walk ends only beside the target's position hex (E23 T1c; survey S-11)
+- Class: fix-optional (user, 2026-10-20, BAT-Q54)
+- Context / rules affected: battle, BAT-MAG-025 (with BAT-MOV-003)
+- Original behavior: the berserk turn (0x4222C0) searches with its pathfinder (0x4B3400) for the target's position hex, and the search ends only on a blocked step onto that hex (0x4B38A6; for a two-hex walker onto the hex beside its step, 0x4B39BB), though the candidates' marks count both hexes of a two-hex target (`docs/formats/installation.md` §7.41). So a two-hex target reachable only by its other hex is still chosen, but the walker goes round to a position beside its position hex, or does nothing: when no such position is free within the search's range, or when the target's mark (through its other hex) is within its speed and that position is not (the move to it fails, 0x445950).
+- Intended/expected behavior: the walk ends next to either of the target's hexes, as HD and HotA do (strict-fixed).
+- Impact: gameplay-altering (a berserk two-hex fight's turns)
+- Community status: the wiki's Berserk page lists it ("two-hex units miscount positions and pass although a target is reachable"; fixed in the HD mod and HotA)
+- Sources: original-data (`installation.md` §7.41), wiki (Berserk; survey S-11)
+- Flag: `quirk.battle.berserk_walks_to_position_hex` (registry position 26; E23 T1c)
+- Defaults: faithful = on, strict-fixed = off
+- Regression test: `crates/h3-battle/src/tests/control.rs`, `with_bat_quirk_24_a_berserk_walker_attacks_a_two_hex_stack_only_from_beside_its_position` (both settings)
+- Decided by / date: user, 2026-10-20 (E23 T1c, BAT-Q54)
