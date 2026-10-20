@@ -70,7 +70,10 @@ design note kept in `docs/epics/E05-log.md` (§1 to §9).
   0.800 against Random, Greedy 0.519 against Aggressor; the smoke network 0.802 against Random,
   0.498 against Aggressor, 0.479 against Greedy.
 - **Throughput** (wall time, not gated; the gates count instructions in `benches/ai/`):
-  T9C_THROUGHPUT
+  on the user's Ryzen 9 3900X (Windows, release, the encounter distribution) about 50 000 steps/s
+  on one thread whatever the batch size, and inside the step 387 000 on 12 threads and 497 000 on
+  24 at 1 024 envs (233 000 on 6); Python's binding is within 2 to 7 % of Rust inside the step
+  (`E05-log.md`, T9c).
 
 ## 2. Baselines (needed before RL)
 
