@@ -89,3 +89,27 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
 - **Map:** 12 entries (5 new: 0x4235C0, 0x4237C0, 0x423820, 0x4429F0, 0x445840; 7 updated;
   the three helpers named `ai_blocked_shooters_value`, `ai_multi_headed_strike_value`,
   `ai_breath_strike_value`).
+
+## T1a3c — the fallbacks and the ends (2026-10-20, increment 1)
+
+- **The seam** (the user, 2026-10-20): all of T1a3c in one session (about 3.4 KB), over the
+  fallbacks and the walk first (recommended) or the odds and the retaliation first. The hero's
+  value inside the odds (0x526D40, 0x5275B0 and ten helpers, about 4 KB of the adventure AI)
+  became its own task, T1a3d, before T1a4 (recommended; over keeping it in T1a6 or folding it
+  into T1a5): the neutral side has no hero but its odds weigh the player's.
+- **Read** (`docs/formats/installation.md` §7.38), all in full but for the hero's value: the walk
+  0x41F580, the guard 0x420760 with 0x4205D0, 0x4B3F20, 0x4466C0, 0x4674C0, the step to safety
+  0x4208F0, the destination map 0x4B2FF0, the last retaliation's gain 0x41F3B0 with 0x435980, and
+  the odds 0x420A80.
+- **Corrected:** §7.35 read 0x420A80 as the sides' whole strength; it compares their strength at
+  range (the stacks that can shoot now, the hero's value, the defender's turrets as Archers), the
+  whole strength feeding only the hero's value. `ai_walker_odds` renamed `ai_stronger_at_range`;
+  §7.35 and 0x4213F0's entry reworded.
+- **Found:** with the scores and its flag (Hard and above or a human side, the target more than a
+  turn away) the walk takes only hexes that score no lower than the last and waits when it falls
+  short; without the flag it first reaches the hex from which the rest takes whole turns. The
+  walk ends after a stop it enters, so a berserk stack's walk ends on a pit it sees when it gets that far (§7.14
+  updated; the inbox for BAT-MAG-025). The destination map is Teleport's, a two-hex enemy's other
+  hex left unmarked. The desperate kills in 0x41F3B0 use the top creature's remaining hit points
+  where its lost ones belong. No rule of the engine changes here.
+- **Map:** 14 entries (5 new: 0x4205D0, 0x4B3F20, 0x435980, 0x4466C0, 0x4674C0; 9 updated).
