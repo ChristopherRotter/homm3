@@ -80,7 +80,17 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### Adventure lane (`ADV-Q<n>`)
 
-(no open questions)
+#### ADV-Q16 — Increment 4's ADR amendment drafts and the cut (E08 T24b2)
+
+T24b is done (decisions 56, 57): the drafts `docs/lanes/adventure/adr-drafts/0013-increment-4.md` (T24b1, #318: progression as `h3-heroes`' rules) and `0017-increment-4.md` (T24b2: the level seed, the limit and banned skills, levels at load, the level-up as a decision, the env, replays, versions, the battle's levels), the detail in `docs/epics/E08-design.md` (part A the hero side, part B the game side and the cut, §17). Each point: the options, **recommended** first.
+
+1. **ADR-0013's draft**: **accept as drafted**; or with changes.
+2. **ADR-0017's draft**: **accept as drafted**; or with changes.
+3. **The level-up's answers**: **`Answer::First` and `Second`, two new env entries (action encoding v4)**; or `Accept` and `Decline` read as left and right (no new entries, a meaning by the decision's kind).
+4. **The system actor's default answer to a level-up** (a gone player, the server's timeout): **the original's choice with the hero's army** (the dialog's timeout hands it to 0x52BBD0 with its flag set), the first offer as a stand-in only if T25's reading finds the army's path costly; or the first offer.
+5. **`strict-fixed`'s draws at load**: **the setup stream** (the setup's randomness, ADR-0017 point 4); or the owner's stream. The level seeds themselves are drawn from the setup stream too (the build's: decision 55's "the game's stream" read so).
+6. **The Elementalist's intervals as data**: **a per-class `offer_intervals` field, A-10 a data quirk overriding the Elementalist's in `strict-fixed`**; or a might/magic affinity per class with the intervals by affinity (the Elementalist's level-up affinity then overridden).
+7. **The cut** (design §17): **five rounds, T25 (the evaluation's reading) + T26 (the shared groundwork: the ADRs applied, the data, the flags, `cross-lane` packs) first**, then T27 + T28 (`h3-heroes`' rules; the choice ported), T29 + T30 (the game's build and levels at load with the import; the level-up as a decision), T31 + T32a (env, replays, fixtures, properties, benchmarks; batch E4's spec and recipe), T32b + T33 (the run; scoring and closure), with the exit criteria in §17; or T25 alone first (its findings may change T28 and §13's default).
 
 ### Server lane (`SRV-Q<n>`)
 

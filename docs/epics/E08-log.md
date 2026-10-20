@@ -2963,3 +2963,31 @@ c4faca92, verified on 6f84c54; light gates in the sandbox). CI on `master` still
 - **Stale references** to the pruned sections repointed to this log: three refs in
   `docs/exe/map.toml`, a ref each in `heroes.toml` and `game.toml`; the battle lane's inbox has
   `gapfill.toml`'s source url (battle-owned) and the coming gap-fill of hero data.
+
+### Increment 4, round 1: T24b2, the game side and the cut; T24b done (2026-10-20, `adventure/e08-t24b2`)
+
+The user merged T24b1 (#318) and took T24b2 whole (decision 57). Baseline `master` ed4a213 (the
+battle lane's E23 T1c merged since T24b1; this change is docs only). Docs only.
+
+- **ADR-0017's amendment draft** (`docs/lanes/adventure/adr-drafts/0017-increment-4.md`): points
+  1, 4, 5, 6, 8, 9, 11 amended. The store keeps each hero's level seed (setup stream, 1–255,
+  server-only) and the game the scenario's limit and banned skills; the custom experience's
+  refusal goes, the build gives levels at load (the original's choice with the setup's defaults);
+  a level's draws from the seed and the level in `faithful` (`ADV-QUIRK-9`), the owner's stream in
+  play and the setup stream at load in `strict-fixed`; a two-offer level is the owner's pending
+  decision answered `First` or `Second`, levels one at a time, one or no offer given at once; the
+  system actor's default the original's choice with the army; action encoding v4, replay format
+  v5, game state hash v9, map import v8; the battle's winner levels after the outcome (the
+  original's human path).
+- **`E08-design.md` part B** (§11–§17): the seed's draw and where it lives; the setup's limit and
+  banned skills, the import (v8, the refusal lifted, the stale citations with it), levels at
+  load in `hero_details`, the shipped maps' 41 level-ups in `--with-original-data`; the decision,
+  its answers, events and the observation's decision kinds; the env's two entries, replays,
+  fixtures, properties, benchmarks; versions; batch E4's tasks; shared and `cross-lane` work.
+  Part A's references to part B corrected (§12 for the map's inputs; no event for the cap).
+- **The cut** (§17): five rounds, T25 + T26 (the evaluation's reading; the shared groundwork),
+  T27 + T28, T29 + T30, T31 + T32a, T32b + T33, with increment 4's six exit criteria. T25 and T26
+  are in the QUEUE, waiting for ADV-Q16. The battle lane's inbox has T26's and T32a's
+  `cross-lane` parts.
+- **ADV-Q16**: seven points (the two drafts, the answers' shape, the system actor's default,
+  `strict-fixed` at load, the intervals as data, the cut). **T24b is done.**
