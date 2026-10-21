@@ -1793,6 +1793,30 @@ staging only (24 files, every hash the user's).
   `walk`, `strike`, `shot` and `resist` replayed with the redirected calls: all as recorded.
   `scripts/exe.py check` and `cited`; the client gates (`clients/scripts/check.sh`).
 
+### M3 T7b-2b-2a — A hero's luck and morale on the original's map (2026-10-21)
+
+On `client/e17-m3-t7b-2b-2a`, the user present: after T7b-2b-1 the user asked to make luck
+forceable as well (the hero given the skill or an artifact); T7b-2b-2 split so (T7b-2b-2a this,
+T7b-2b-2b the morale, luck and fear animations and recordings). The sandbox and its staged files
+were T7b-2b-1's.
+
+- **Starting point:** `master` at `7812798` (#366 merged); no client pull request open.
+- **The route:** a scenario's hero already carries its derived morale and luck as battle
+  `effects` (`{ kind = "luck", amount = 3 }`, the engine's BAT-HER-003); only the original's map
+  lacked them. The packs record each secondary skill level's effects (Leadership `morale` 1 to 3,
+  Luck `luck` 1 to 3), so the writer gives the hero the skill level whose effects are the change
+  alone, data-driven; artifacts not needed (a skill gives exactly 1 to 3, one source).
+- **The viewer:** `scenario::effect_skills` (an effect no level gives alone, another kind, or two
+  of one skill: refused), `SideHero::skills`, written after the book's school skills
+  (`situation`); the binary depends on `h3-content` and `h3-contracts` (binary-only in
+  `purity.rs`; `clients/Cargo.lock`). `h3mem`: a stack's `morale` (+0x4E8) and `luck` (+0x4EC).
+- **Checked:** `seq-shot.toml` with Orrin's `effects` luck 3 and morale 2 (an ad-hoc copy): the
+  original's Marksmen and Pikemen at luck 3 and morale 3 (Expert Luck; Advanced Leadership and one
+  town), the defenders 0; the engine's record the same. `roll:shot_luck` with `fail` on
+  `shot_luck` and `good_morale`: magic 18 over the Marksmen from 0 ms, 100 ms a frame, the log
+  "Good luck shines on the Marksmen"; failed, the timeline was the recorded `shot`'s line for
+  line. The binary's tests (33, two new), the client gates (`clients/scripts/check.sh`).
+
 ## Accepted review lists (M1, M2)
 
 Moved from the epic file on 2026-10-20 (less start-up reading), unchanged.

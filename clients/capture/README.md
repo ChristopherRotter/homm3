@@ -109,8 +109,11 @@ them, run again, and record each frame's count with why. Situations need the hum
 open (speed above every enemy's; the original's AI acts at once) and armies of one faction or
 without Leadership's morale. Each side's hero is the scenario's (`attacker_hero`,
 `defender_hero`, with their primary skills; M3 T3a) with the scenario's war machines as
-artifacts (`attacker_war_machines`, `defender_war_machines`; M3 T3b), without skills or other
-artifacts; an entry's `hot_seat = true` (M3 T3b) starts it in hot seat, so that a faster stack of
+artifacts (`attacker_war_machines`, `defender_war_machines`; M3 T3b), without other artifacts;
+its skills only the school skills of its masteries (below) and those behind its `effects` (M3
+T7b-2b-2a: a morale or luck change of 1 to 3 to its own stacks becomes Leadership or Luck at that
+level, the pack's skill level whose effects are that change alone; any other effect is refused);
+an entry's `hot_seat = true` (M3 T3b) starts it in hot seat, so that a faster stack of
 Blue's opens idle instead of acting (`smoke`);
 the packs in their order (base, ab, sod) give the original's hero types. A scenario's
 `battlefield` (M3 T2) is set up on the defender's (Blue's) tile: water east of it for the shore
@@ -403,7 +406,7 @@ calls redirected.
 | `good_morale` | `random(1, 24) <= morale` (1, 24) | 0x4649D3, after a walk, attack, shot or creature cast |
 | `bad_morale` | `random(1, 12) <= -morale` (1, 12) | 0x464BC7, at a pick (none at the battle's first); a computer side's let-off draw is not forced: hot seat has none |
 | `fear` | `rand() mod 10 = 0` (0, 1) | 0x464DF1, at a pick, beside Azure Dragons |
-| `luck`, `shot_luck` | `random(1, 24) <= luck` (1, 24) | 0x441837 as a melee strike starts, 0x43F955 a shot; only with luck above 0 |
+| `luck`, `shot_luck` | `random(1, 24) <= luck` (1, 24) | 0x441837 as a melee strike starts, 0x43F955 a shot; only with luck above 0: the hero's `effects = [{ kind = "luck", amount = 3 }]` (Expert Luck on the map, T7b-2b-2a) |
 | `death_stare` | `random(1, 100) <= 10` (1, 100) | 0x440EE0, once per Mighty Gorgon: a creature killed each |
 | `thunderbird` | `random(1, 100) <= 20` (1, 100) | 0x44119D, the Thunderbird's bolt |
 | `acid` | `random(1, 100) <= 20` (1, 100) | 0x4414B7, the Rust Dragon's acid damage (its amount drawn after, not forced) |
@@ -420,15 +423,20 @@ untaken at its end. The viewer's mouse (`pointer::inputs`) takes `roll:` as no i
 own rolls follow its `seed`. Checked at T7b-2b-1: the Champions' walk (`seq-walk.toml`) with
 `roll:good_morale` got another turn and animation 20 at 2 592 ms, failed they gave the Marksmen
 theirs; an Azure Dragon's fear (`rand`) forced over the Champions (animation 15) and failed;
-`walk`, `strike`, `shot` and `resist` replayed with the redirected calls as recorded.
+`walk`, `strike`, `shot` and `resist` replayed with the redirected calls as recorded. Checked at
+T7b-2b-2a: `seq-shot.toml` with Orrin's `effects` luck 3 and morale 2 (Expert Luck, Advanced
+Leadership on the map): the original's Marksmen and Pikemen at luck 3 and morale 3 (the one town's
+1 too; `h3mem`'s `luck`, `morale`), as the engine gives them; `roll:shot_luck` played good luck's
+animation 18 over the Marksmen before their shot and its line, failed (with `good_morale`) the
+shot's timeline was the recorded `shot`'s.
 
 ## The original's state
 
 `h3mem.py` opens the game's `/proc/<pid>/mem` (Wine maps `Heroes3.exe` at its image base, so the
 map's addresses hold): the frame deadline and the idle step's time, the combat speed, the mouse
 (its hex, the cursor's kind, type, frame and the point it is drawn at: M3 T6c-2), and per
-stack its creature, hex, group, frame, facing, offsets, times, count and the count its box shows
-(`shown`, M3 T5b) (`docs/exe/structs.toml`). On
+stack its creature, hex, group, frame, facing, offsets, times, count, the count its box shows
+(`shown`, M3 T5b), its morale and luck (M3 T7b-2b-2a) (`docs/exe/structs.toml`). On
 the adventure map (M2 T6): the current player, each player's selected hero, hero list and
 resources, every hero's name, tile and points, the view's top-left tile, the tile under the
 mouse and the selected hero's path (design §6.3). It only reads, but for the mouse poll's timer

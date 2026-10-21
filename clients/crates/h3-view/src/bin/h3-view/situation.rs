@@ -4,10 +4,10 @@
 //! the scenario's terrain, the scenario's heroes (E17 M3 T3a: each side names one, with its
 //! primary skills), each with the scenario's stacks in their slots and its formation and its war
 //! machines (E17 M3 T3b: their artifacts) and its spell book (M3 T7a-2a: the book in its slot,
-//! its spells, and the school skills behind its masteries, M3 T7a-2b), no other secondary
-//! skills or artifacts (no morale from Leadership, no Tactics phase); stepping Red's hero east
-//! starts the
-//! battle (`h3drive.py`). With `--hot-seat` (E17 M3 T1a) Blue may be a human too, so that the
+//! its spells, and the school skills behind its masteries, M3 T7a-2b), the secondary skills
+//! behind its battle effects (M3 T7b-2b-2a: Leadership for its morale, Luck for its luck), no
+//! other skills or artifacts (no Tactics phase); stepping Red's hero east starts the battle
+//! (`h3drive.py`). With `--hot-seat` (E17 M3 T1a) Blue may be a human too, so that the
 //! harness plays both sides of a hot-seat battle (`hot_seat` in `sequences.toml`). A special
 //! battlefield (E17 M3 T2) is set up as the original makes it, on the defender's tile: water
 //! beside Blue for the shore, a special ground under both heroes for the others. The creatures'
@@ -381,8 +381,15 @@ fn map(
             class,
             name: None,
             experience: Some(0),
-            // The school skills behind the masteries (E17 M3 T7a-2b); none without a book.
-            skills: Some(h.book.as_ref().map_or_else(Vec::new, |b| b.skills.clone())),
+            // The school skills behind the masteries (E17 M3 T7a-2b; none without a book), then
+            // those behind the battle effects (T7b-2b-2a).
+            skills: Some(
+                h.book
+                    .iter()
+                    .flat_map(|b| b.skills.iter().copied())
+                    .chain(h.skills.iter().copied())
+                    .collect(),
+            ),
             army: Some(army(&battle.stacks[owner], &numbers.creatures)?),
             tight_formation: battle.tight[owner],
             artifacts: Some(HeroArtifacts {
@@ -464,6 +471,7 @@ mod tests {
                 name: name.to_owned(),
                 primary: [1, 2, 3, 4],
                 book: None,
+                skills: Vec::new(),
             })
         };
         Sides {
@@ -539,6 +547,22 @@ mod tests {
             (0, 0, 102, 12)
         );
         assert_eq!(red.primary, Some([1, 2, 3, 4]));
+        // The skills behind the battle effects after the book's (E17 M3 T7b-2b-2a).
+        let mut lucky = sides_of(Some("base:desert"), &[]);
+        lucky.heroes[0] = lucky.heroes[0].clone().map(|h| SideHero {
+            book: Some(Book {
+                artifact: 0,
+                spells: vec!["Slow".to_owned()],
+                skills: vec![(17, 3)],
+            }),
+            skills: vec![(6, 1), (9, 3)],
+            ..h
+        });
+        let lucky = super::map("t", &lucky, &ids(), BLUE_TILE, false).unwrap();
+        let MapObject::Hero(lucky) = &lucky.objects[0] else {
+            panic!("a hero");
+        };
+        assert_eq!(lucky.skills, Some(vec![(17, 3), (6, 1), (9, 3)]));
         // Each side needs a hero, of a number the map holds.
         let mut alone = sides_of(Some("base:desert"), &[]);
         alone.heroes[1] = None;
