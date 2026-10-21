@@ -58,7 +58,7 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
-- **2026-10-21, E17 M3 T7b-2b-2a (a hero's luck and morale on the map; #PR, open).** At the
+- **2026-10-21, E17 M3 T7b-2b-2a (a hero's luck and morale on the map; #368, open).** At the
   user's word: `effects` become Leadership and Luck; a forced lucky shot checked.
 - **2026-10-21, E17 M3 T7b-2b-1 (forced rolls; #366, merged).** Split with the user (T7b-2b-2
   morale, luck, fear; T7b-2b-3 abilities); nine roll calls redirected.
