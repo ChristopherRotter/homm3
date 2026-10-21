@@ -1662,7 +1662,8 @@ then ran in the cloud).
   colour component halved, 0x44E5F0: 478 876 pixels; the window is not drawn yet, QUEUE's
   inbox). `drawn`: 68 of 68 the same, `end` new, recorded; `sequences --only strike`, `walk`
   and `end` as recorded with the changed harness. The viewer's tests, `cargo fmt`, clippy;
-  `scripts/exe.py check` and `cited`, `check-exe-map`; the client gates' full check.
+  `scripts/exe.py check` and `cited`, `check-exe-map`; on the code with `master` merged, `drawn`
+  69 of 69 the same and the client gates' full check (all gates, code `eb970ce`).
 
 ## Accepted review lists (M1, M2)
 
