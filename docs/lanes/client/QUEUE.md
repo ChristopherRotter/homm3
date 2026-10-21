@@ -55,26 +55,23 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
-- 2026-10-21 (the adventure lane, E08 T32a, `adventure/e08-t32a`, decision 67; your inbox's
-  request of 2026-10-20 below, now with the specs): **batch E4's three recipes wait for these.**
-  The specs and templates are committed: `experiments/specs/E08-batch-4a.toml` (sixteen heroes:
-  levels at load and in play), `-4b.toml` (the map's level limit) and `-4c.toml` (grounds,
-  Necromancy, a Ballista, a Cartographer); the recipes (`clients/capture/batches/E08-batch-4{a,b,c}.toml`)
-  are yours or E08 T32b's, as you prefer. Each template's fields say what is read; beyond the
-  2026-10-20 list (the seed byte +0x8F and the levels last offered +0x90, +0x3F; every level-up
-  dialog's level, primary skill, left and right offers and the one taken, the template's
-  `dialog N, …` fields; `level_up` as a list, E4-4's `right, left, right`; the hero's artifacts
-  worn by slot and in the backpack; the battlefield): (6) a hero's **secondary skills as a
-  list** (`Leadership expert, Wisdom basic`, in the hero's order: the skills learned at load are
-  not known in advance), for the hero stepping and for another hero (`hero[E4-1a]:…`, E4-1's
-  heroes never move); (7) **E4-9's battle played by plan** in hot seat (Red's Archangels defend
-  until Blue's Thunderbirds have destroyed Red's Ballista, then attack; as the battle lane's
-  `experiments/agent/siege.py` plans), and whether the Ballista was destroyed; (8) the messages
-  after a battle (E4-6: "can gain no more"), as text or yes/no. The scorer that reads the filled
-  templates is `crates/h3-map/examples/e4_score.rs` (it parses `- label: value` lines: numbers,
-  `a/d/p/k`, skill names with `basic`/`advanced`/`expert`, a taken offer by its name or as
-  `left`/`right`).
-
+- 2026-10-21 (the adventure lane, E08 T32b1, `adventure/e08-t32b1`, `cross-lane` with the
+  user's consent, decision 68; **your harness changed**, nothing to do but read): the adventure
+  lane built batch E4's reads itself, so its two requests (2026-10-20, -21) are done and gone from
+  this inbox, and so is your T7a-2a note (`h3adv` now knows the battle screen in its
+  `battle_book` state too; the check's Gear hero carries a book). In `capture/`: `h3mem` reads a
+  hero's seed byte and offer counters, its skills in order, its artifacts worn and in the backpack
+  (names from the artifact table), the dialog's items and the level-up dialog (`level_up_dialog`
+  0x4F8880's DEF pictures 2009 to 2011, read for them), the battlefield, the hex records (stack,
+  flags, attack mark) and a stack's speed; `h3adv` records every level-up dialog (one or no offer
+  too), takes `level_up` as a list, notes other dialogs' records (`messages`), has the
+  observations of the runbook's table and plays battles by `attack` or a plan (`{ attack =
+  "Ballista", by = "defender", then = "attack" }`): **auto combat does not play a battle between
+  two human players in hot seat** (the runbook's traps), so the plans click like a player, the
+  mouse resting until the combat cursor shows a melee attack. Fixed on the way: a local `value`
+  in `value()` (your T6c-2 winner fix) made every `before:` read fail. `checks/harness-check.toml`
+  gained Exp's and Lvl's new reads and the encounter Gear; the check passes (about four minutes).
+  The recipes for batch E4 come with E08 T32b2 (`cross-lane` again).
 - 2026-10-21 (the adventure lane, E08 T30, decision 65, ADR-0017 point 6 amended in #353; for
   the hot-seat client, when it plays whole games): **a level-up holds the game.** While a hero's
   level-up with two offers is open, the engine accepts no command but its owner's answer
@@ -100,12 +97,6 @@ Other lanes add entries here. The client lane turns each into a task, or moves i
   (0x5996C0) and a track resuming where it stopped (0x59AA82) with the client's options and a
   second battle (later); the network's `remote_turn` in the end's choice with live play.
 
-- 2026-10-21 (T7a-2a): `h3adv.py` knows a battle by the `battle` probes alone, which lie on the
-  panel's spell-book button: a battle whose acting human hero has a book shows `battle_book`
-  (`screens.toml`) and would stall a batch. Accept both when the adventure harness next changes
-  (then its check, `capture/checks/harness-check.toml`).
-
-- 2026-10-20 (the adventure lane, E08 T24a2b2, `adventure/e08-t24a2b2`; a request for increment 4's batch E4, survey `docs/rules/surveys/E08-progression.md` §7): **level-ups on the harness.** Batch E4 predicts each level's primary skill and offers from a hero's seed byte, so it needs: (1) the hero details `seed` (hero +0x8F), `wisdom_offer` (+0x90) and `school_offer` (+0x3F), one byte each (`docs/exe/structs.toml`); (2) a record of every level-up dialog passed (the hero, the new level, the primary skill gained, the offered skills left and right, the one taken); where the dialog keeps its offers was not read on our side (the dialog 0x4F8880 is called from `hero_level_up` 0x4DA720 after both offers are drawn); (3) `level_up` as a list, one answer per dialog, for a step whose battle gives several levels (row E4-4); (4) the hero's artifacts, worn and in the backpack (row E4-9: a destroyed Ballista's artifact); (5) the battle's field, read from memory as the stacks are (row E4-7: two special grounds on one tile). Rows and the predictions: the survey's §7; the spec and recipe follow with E08 T24b's batch task, after the user's checkpoint (ADV-Q15), so nothing is urgent.
 - 2026-10-20 (the adventure lane, E08 T22a2b): its three recipes, its auto combat's change, for
   information (NOTES, "The adventure lane's harness"; the winner of −1 fixed in E17 M3 T6c-2).
 - 2026-10-19 (E17 H1, H2; the adventure lane, E08 T22a1): the harness's check

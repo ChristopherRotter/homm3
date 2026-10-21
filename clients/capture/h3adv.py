@@ -530,6 +530,13 @@ def fight(game, mem, plan, limit=300.0):
     return record
 
 
+def in_battle(game, pix):
+    """The battle screen, whether the acting human hero has a spell book or not: the `battle`
+    probes lie on the panel's book button, which a hero with a book lights (`battle_book`, E17
+    M3 T7a-2a; accepted since E08 T32b1: batch E4's magic heroes carry books)."""
+    return game.matches("battle", pix) or game.matches("battle_book", pix)
+
+
 def level_up_record(mem, shown):
     """A level-up dialog's record (E08 T32b1): the hero whose name its text holds (the longest
     such name of the heroes on the map) with its level (the new one: hero_level_up 0x4DA720
@@ -566,14 +573,14 @@ def settle(game, mem, index, answer=None, battle=None, level_up="left"):
     end = time.monotonic() + 600
     while time.monotonic() < end:
         pix = game.pixels()
-        if game.matches("adventure", pix) or game.matches("battle", pix):
+        if game.matches("adventure", pix) or in_battle(game, pix):
             known = time.monotonic()
         elif time.monotonic() - known > STRANGE:
             bad = game.out / "not-adventure.xwd"
             game.dump(bad)
             raise TimeoutError(f"neither the adventure map, a battle nor a dialog for {STRANGE} s "
                                f"(the game over?; the display: {bad})")
-        if game.matches("battle", pix):
+        if in_battle(game, pix):
             events["battles"].append(fight(game, mem, battle))
             last, since = None, time.monotonic()
             continue

@@ -7,7 +7,8 @@
 # h3-experiment places from E08 T22a on: the recipe's question steps wait for it. E08 T32b1 (batch
 # E4's reads, `cross-lane`): Exp's skills in order, seed byte and offer counters, Lvl's level-up
 # dialogs and messages, and Gear: a hero's artifacts and backpack, a battle on a Clover Field
-# played by plan (Blue's Thunderbirds destroy Red's Ballista first, as batch E4's E4-9).
+# played by plan (Blue's Thunderbirds destroy Red's Ballista first, as batch E4's E4-9), Red's
+# hero with a spell book (the battle screen's `battle_book` state, E17 M3 T7a-2a).
 
 [map]
 name = "Harness check"
@@ -250,7 +251,7 @@ title = "Artifacts worn and carried; a battle on a Clover Field played by plan (
 questions = []
 procedure = [
     "Read the hero's artifacts (worn, by slot) and backpack; click Blue's hero east of it twice.",
-    "In the battle: Red's Archangels defend and Blue's Thunderbirds attack Red's Ballista until it is destroyed; then auto combat. Answer the level-ups left, then right.",
+    "In the battle: Red's Archangels defend and Blue's Thunderbirds attack Red's Ballista until it is destroyed; then every stack attacks (two human sides: no auto combat). Answer the level-ups left, then right.",
 ]
 [encounter.hero]
 type = "Orrin"
@@ -258,7 +259,7 @@ specialty = "skill Archery"
 at = [10, 13]
 primary = [0, 0, 1, 1]
 army = [["Archangel", 10]]
-artifacts = { "war machine 1" = "Ballista", "head" = "Helm of the Alabaster Unicorn" }
+artifacts = { "war machine 1" = "Ballista", "head" = "Helm of the Alabaster Unicorn", "spell book" = "Spell Book" }
 backpack = ["Centaurs Axe"]
 [encounter.opponent.hero]
 type = "Valeska"
