@@ -22,11 +22,12 @@ use h3_contracts::{BattleSide, FortLevel};
 use h3_kernel::arith::{DOUBLE_BITS, X87};
 
 use crate::binds;
-use crate::combat::{can_shoot, shot_damage, spares};
+use crate::combat::{can_shoot, can_shoot_without, melee_damage, shot_damage, spares};
 use crate::damage::{Strike, effective_defense, frenzied};
 use crate::effects::{DamageRoll, Status};
 use crate::geometry::{Field, Hex, HexSet};
 use crate::hero;
+use crate::magic;
 use crate::movement::fits;
 use crate::obstacles;
 use crate::siege;
@@ -65,6 +66,7 @@ const DISABLED: i32 = 10;
 /// the side and of the other side over all their records (+0xC, +0x10).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Context {
+    pub(crate) side: BattleSide,
     pub(crate) min_attack: i64,
     pub(crate) min_defense: i64,
     pub(crate) desperate: bool,
@@ -76,6 +78,11 @@ impl Context {
     /// their living stacks but the turrets, as 32-bit sums).
     pub const fn strengths(&self) -> (i32, i32) {
         self.strengths
+    }
+
+    /// Whether the side is desperate (+8; BAT-SIE-023): its values take every creature at 1000.
+    pub const fn desperate(&self) -> bool {
+        self.desperate
     }
 }
 
@@ -359,6 +366,7 @@ pub(crate) fn context(
     }
     let (min_attack, min_defense) = least.unwrap_or_default();
     let mut ctx = Context {
+        side,
         min_attack,
         min_defense,
         desperate: false,
@@ -407,12 +415,22 @@ pub(crate) fn avoids_stops(
     mover: &Stack,
     records: Option<BattleSide>,
 ) -> bool {
+    !state.human[mover.controller().index()] && fears_moat(state, ruleset, mover, records)
+}
+
+/// Whether the moat's damage keeps `mover` out of its stops when the computer plays it
+/// ([`avoids_stops`] without the player's test: a stack the original's battle AI moves is one
+/// it plays, 0x474BF0; E23 T3a).
+// rule: BAT-SIE-022
+pub(crate) fn fears_moat(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    mover: &Stack,
+    records: Option<BattleSide>,
+) -> bool {
     let Some(town) = state.siege else {
         return false;
     };
-    if state.human[mover.controller().index()] {
-        return false;
-    }
     let damage = ruleset
         .siege(town.faction)
         .map_or(0, |record| u64::from(record.moat_damage));
@@ -694,12 +712,8 @@ pub(crate) fn turret_target(
 }
 
 /// The computer's estimate of the damage a shot of `shooter` deals to `target` (0x4359B0,
-/// 0x442780; BAT-WAR-008): the shooter's creatures by its hit points (rounded up) times one
-/// creature's damage as its record holds it ([`damage`]: a Ballista's 2–3 without its hero's
-/// multiplier; the maximum and Bless's bonus while blessed, the minimum less Curse's penalty but at
-/// least 1 while cursed, else the mean, a double), truncated, through every stage of a real shot
-/// without its draws ([`shot_damage`]); at least 1, doubled for a creature that shoots twice, at
-/// most the target's hit points (1 for a clone).
+/// 0x442780; BAT-WAR-008): [`damage_estimate`] of the shooter's creatures by its hit points
+/// (rounded up), with the shot flag, at most the target's hit points.
 pub(crate) fn estimate(
     state: &BattleState,
     ruleset: &BattleRuleset,
@@ -707,6 +721,27 @@ pub(crate) fn estimate(
 ) -> u64 {
     let s = state.at(shooter);
     let count = hit_points(s).div_ceil(u64::from(s.max_hp.max(1)));
+    damage_estimate(state, ruleset, (shooter, target), count, true, 0)
+}
+
+/// The computer's damage of `count` creatures of `attacker` on `target` (0x442780; BAT-WAR-008,
+/// BAT-AI-005): `count` times one creature's damage as its record holds it ([`damage`]: a
+/// Ballista's 2–3 without its hero's multiplier; the maximum and Bless's bonus while blessed, the
+/// minimum less Curse's penalty but at least 1 while cursed, else the mean, a double), truncated,
+/// through every stage of a real shot (`shot`) or of a melee strike after `jousting` hexes, without
+/// their draws ([`shot_damage`], [`melee_damage`]); at least 1 (a count of 0 too); a shot doubled
+/// for a creature that strikes twice; at most the target's hit points (1 for a clone): the
+/// original's cap flag, which every caller so far sets (the spell context's uncapped strike: E23
+/// T4).
+pub(crate) fn damage_estimate(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    (attacker, target): (StackId, StackId),
+    count: u64,
+    shot: bool,
+    jousting: u8,
+) -> u64 {
+    let s = state.at(attacker);
     let (min, max) = damage(state, ruleset, s);
     let each = match s.spells.damage {
         DamageRoll::Maximum(bonus) => double(max + u64::from(bonus)),
@@ -714,11 +749,152 @@ pub(crate) fn estimate(
         DamageRoll::Random => double(min + max).over(X87::int(2)).unwrap_or(X87::ZERO),
     };
     let base = u64::try_from(ftol(double(count).times(each))).unwrap_or(0);
-    let mut damage = shot_damage(state, ruleset, (shooter, target), base).max(1);
-    if s.has(StackTraits::STRIKES_TWICE) {
+    let mut damage = if shot {
+        shot_damage(state, ruleset, (attacker, target), base)
+    } else {
+        melee_damage(state, ruleset, (attacker, target), (base, jousting))
+    }
+    .max(1);
+    if shot && s.has(StackTraits::STRIKES_TWICE) {
         damage = damage.saturating_mul(2);
     }
     damage.min(hit_points(state.at(target)))
+}
+
+/// The computer's estimate of what Fire Shield on `struck` reflects onto `striker` from a strike
+/// estimated at `damage` on `struck` with `left` hit points (0x422440): the rule's reflection
+/// ([`magic::reflection`]: none for a fire-immune striker or without a shield) of the lesser of
+/// the two.
+fn reflection_estimate(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    (striker, struck): (StackId, StackId),
+    damage: u64,
+    left: u64,
+) -> u64 {
+    magic::reflection(
+        state,
+        ruleset,
+        (state.at(striker), struck),
+        damage.min(left),
+    )
+}
+
+/// The computer's estimate of a strike's exchange (0x4359B0 without the shot flag; BAT-AI-005):
+/// `a` with `hit_points.0` strikes `t` with `hit_points.1` after `jousting` hexes, and the hit
+/// points both have left. Its creatures by its hit points (rounded up) deal [`damage_estimate`]
+/// to `t`, and Fire Shield's reflection ([`reflection_estimate`]) comes off `a`. Then, while both
+/// live: `t`'s retaliation by its creatures left, unless `a`'s strikes are not retaliated, `t` is
+/// turned to stone or has none left, or the game is on Easy for the context's computer side
+/// (`side`), with its own reflection onto `t`; and while both still live, `a`'s second strike for
+/// a creature that strikes twice, by its creatures left, without a run-up. Hit points never fall
+/// below 0. (A shot's exchange, 0x435CB0's, is [`kill_shot_value`]'s.)
+// rule: BAT-AI-005
+fn exchange(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    side: BattleSide,
+    ((a, mut a_hp), (t, mut t_hp)): ((StackId, u64), (StackId, u64)),
+    jousting: u8,
+) -> (u64, u64) {
+    let (sa, st) = (state.at(a), state.at(t));
+    let per = |s: &Stack, hp: u64| hp.div_ceil(u64::from(s.max_hp.max(1)));
+    let dealt = damage_estimate(state, ruleset, (a, t), per(sa, a_hp), false, jousting);
+    a_hp = a_hp.saturating_sub(reflection_estimate(state, ruleset, (a, t), dealt, t_hp));
+    t_hp = t_hp.saturating_sub(dealt);
+    if a_hp == 0 || t_hp == 0 {
+        return (a_hp, t_hp);
+    }
+    let retaliates = !sa.has(StackTraits::NO_ENEMY_RETALIATION)
+        && !st.spells.status.contains(Status::PETRIFIED)
+        && st.retaliations_left > 0
+        && (state.difficulty > 0 || state.human[side.index()]);
+    if retaliates {
+        let back = damage_estimate(state, ruleset, (t, a), per(st, t_hp), false, 0);
+        t_hp = t_hp.saturating_sub(reflection_estimate(state, ruleset, (t, a), back, a_hp));
+        a_hp = a_hp.saturating_sub(back);
+        if a_hp == 0 || t_hp == 0 {
+            return (a_hp, t_hp);
+        }
+    }
+    if sa.has(StackTraits::STRIKES_TWICE) {
+        let again = damage_estimate(state, ruleset, (a, t), per(sa, a_hp), false, 0);
+        a_hp = a_hp.saturating_sub(reflection_estimate(state, ruleset, (a, t), again, t_hp));
+        t_hp = t_hp.saturating_sub(again);
+    }
+    (a_hp, t_hp)
+}
+
+/// The value of `damage` to stack `id` for the computer (0x442FD0): [`kill_value`] at its worth
+/// in the context's least bonuses (with the shot flag `shot`), or at 1000 per creature when
+/// `desperate` (a clone keeps its worth).
+pub(crate) fn damage_value(
+    state: &BattleState,
+    (ruleset, field): (&BattleRuleset, Field),
+    ctx: &Context,
+    (id, damage): (StackId, u64),
+    (shot, desperate): (bool, bool),
+) -> i32 {
+    let s = state.at(id);
+    let v = if desperate && !s.has(StackTraits::CLONE) {
+        X87::int(DESPERATE_WORTH)
+    } else {
+        worth(state, (ruleset, field), ctx, id, shot)
+    };
+    kill_value(s, i64::try_from(damage).unwrap_or(i64::MAX), v)
+}
+
+/// The computer's value of `a` striking `t` after `jousting` hexes (0x435C70, 0x435B90 without the
+/// shot flag, the walker's; BAT-AI-005): with both stacks' whole hit points, the [`exchange`]'s
+/// damage to `t` valued at `t`'s worth (1000 per creature in desperate mode), less the hit points
+/// `a` loses at `a`'s worth (never desperate), both without the shot flag; as the original's
+/// 32-bit integers.
+// rule: BAT-AI-005
+pub(crate) fn strike_value(
+    state: &BattleState,
+    (ruleset, field): (&BattleRuleset, Field),
+    ctx: &Context,
+    (a, t): (StackId, StackId),
+    jousting: u8,
+) -> i32 {
+    let (a0, t0) = (hit_points(state.at(a)), hit_points(state.at(t)));
+    let (a1, t1) = exchange(state, ruleset, ctx.side, ((a, a0), (t, t0)), jousting);
+    let gain = damage_value(
+        state,
+        (ruleset, field),
+        ctx,
+        (t, t0 - t1),
+        (false, ctx.desperate),
+    );
+    if a0 > a1 {
+        gain.wrapping_sub(damage_value(
+            state,
+            (ruleset, field),
+            ctx,
+            (a, a0 - a1),
+            (false, false),
+        ))
+    } else {
+        gain
+    }
+}
+
+/// Whether stack `id` can shoot now for the computer with `blocker` left out of its blockers
+/// (0x4428F0 with it): the Ballista and a turret always.
+pub(crate) fn shoots_without(
+    state: &BattleState,
+    field: Field,
+    id: StackId,
+    blocker: StackId,
+) -> bool {
+    let s = state.at(id);
+    is_ballista(s) || s.is_turret() || can_shoot_without(state, field, id, blocker)
+}
+
+/// The total hit points of stack `id` for the computer (0x443080 without the planned damage): 1
+/// for a clone.
+pub(crate) fn total_hit_points(state: &BattleState, id: StackId) -> u64 {
+    hit_points(state.at(id))
 }
 
 /// The computer's value of a shot of `shooter` at `target` before any divisor (0x435B90 with the

@@ -574,3 +574,61 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
 - **Not here:** `h3-harvest` keeps the kinds' names in its own table (`SPELL_AI_KINDS`, a test
   compares it with `SpellAiKind::ALL`): a normal dependency on `h3-content-battle` would be an
   `arch.toml` change.
+
+## T3a — the walker's plan, choice and walk (2026-10-21, increment 4)
+
+- **The reading** (`installation.md` §7.47): the melee half of the exchange 0x4359B0 (E04c left it
+  unread): Fire Shield's estimate 0x422440 of each strike, the retaliation by the survivors (none on
+  Easy for a computer side, none for a creature whose strikes are not retaliated, a petrified
+  enemy or one without a retaliation left) and a second strike for `0x8000`, also when no
+  retaliation came; 0x442780 doubles only shots; 0x435B90 and 0x435C70. And the call sites the
+  port needs: the map's side (its own stacks unmarked, 0x4B3801 by the record's side), the melee
+  value's flag 0 and run-up, the plan's value and the draw's arithmetic, the comparison's order,
+  the action; 0x436840's three hexes for a two-hex walker; 0x436300's stop by the position hex
+  alone; 0x436180's doubles; 0x436620 and 0x436760's arguments; 0x448AB0 corrected (one
+  direction on each side, not two clockwise; §7.36 and the map fixed); 0x523DF0, 0x523D90;
+  0x41F580's own-side player test and the Wait's score condition; 0x421F80's Wait.
+- **The port.** `h3-battle`'s `computer` gains the context, worth, the damage estimate (0x442780,
+  any count, shot or strike with a run-up: `combat::melee_damage`), the damage value (0x442FD0),
+  the strike value (0x435C70 with the exchange), the blocker-aware shot test (0x4428F0 with a
+  stack left out: `combat::can_shoot_without`, beside the hot `can_shoot`), the walker's map
+  (`pathfinder::Search` with a spared side, its stops) and the walk's path, `bound`, `ftol`, the
+  difficulty, `human`, the wait phase; `aim::avoids_stops` splits off `fears_moat` (the
+  computer's own walker is always automatic, 0x474BF0). `h3-battle-ai`: `hexes.rs` (the original's
+  directions, 0x523D90, 0x523DF0, 0x445840, 0x448AB0) and `walker.rs` (0x421F80, 0x421680 outside a
+  prediction, 0x4360C0, 0x436840, 0x436300, 0x436180, 0x436620, 0x436760, 0x41F580). By the engine's
+  data, not the original's numbers: the multi-headed are `attacks_all_adjacent` and
+  `three_headed_attack` (the Cerberi), the Harpies `strike_and_return`, the jousters the Jousting
+  ability. `POLICY_VERSION` 3; the First Aid Tent keeps its stand-in (BAT-STUB-5).
+- **A difference the property found** (the harvested packs, a Castle's moat): a two-hex walker
+  plans a one-turn attack from a position whose other hex is in the moat (0x436300 counts a stop
+  by the position hex alone); the engine refuses that attack (no attack from where the walk stops,
+  BAT-MAG-032's rule). The original's walker stops there and the move and attack skips the
+  attack (0x441FA0, 0x478971; §7.16), so the policy gives the move: the same outcome.
+- **Not built here** (BAT-STUB-4): the hex scores (T3b; 0 meanwhile: the walk's score tests then
+  never refuse, but its other rules hold), the stronger side and with it `P` alone for a negative
+  value, the last retaliation's gain, holding the walls, a besieger's walk, the fallbacks (T3c),
+  the creature casts (T4). Dead in the engine and left out: the plan's turns for a stack without
+  speed (only war machines have none, and none walks), the walk's guard for a bound walker (its
+  plan's hex is its own), the map's range 0 for a disabled stack (no turn).
+- **Cost** (the budget: the count re-set on purpose, at most 1 ms for the slowest decision):
+  `computer-decisions` counts 133 069 578 instructions over 589 decisions, **about 226 000 per
+  decision** (T2b's walkers defended: 37 600), the battles shorter now that walkers fight; the
+  other battle workloads within 0.02 % (`estimate` goes through the general estimate). Release on
+  a quiet sandbox (`h3 bench-computer`, 400 battles, seeds 4 to 7): 24 to 37 µs per decision on
+  average, the slowest 0.17 to 0.27 ms in most runs, up to 6.5 ms in others: the same
+  deterministic decision varies run to run (the sandbox's two cores). Timed as each decision's
+  best of five (a local patch, not kept), 2 000 battles of five seeds: 18 to 20 µs on average, the
+  slowest 0.13 to 0.22 ms. Within the budget.
+- **A blind check** (a fresh agent, the disassembly against the port): no discrepancy in 0x421680
+  (outside a prediction), 0x421F80, 0x4360C0, 0x436840, 0x436300, 0x436180, 0x436620, 0x436760,
+  0x448AB0, 0x445840, 0x523DF0, 0x523D90, 0x41F580, 0x4359B0, 0x435B90, 0x435C70, 0x442780 and
+  0x422440; the stopped attack's move found sound (0x478971 jumps past the strike when the walk
+  returns false). Three differences it names cannot arise: no direction to the struck stack (the
+  original's mask 0x80000011 or a read just before the table 0x660878; the port 0), the turns without speed, the
+  walk of a bound walker (the original's stale action; the port nothing).
+- **Tests:** the runner attacks the archers and the blocked archers strike back from their hex;
+  a Harpy flies to fifty archers without striking (`P` alone), then strikes once it blocks them
+  (worth 1), and with its hex scored high stays; the walk with scores by hand (holding back on
+  Hard, the whole-turns rule without the flag, no path); the hex geometry; the property over
+  random battles with Harpies; on the harvested packs the Cyclopes blocked by a defender walk.

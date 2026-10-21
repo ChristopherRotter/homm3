@@ -59,6 +59,7 @@ pub(crate) fn berserk<S: Sink>(
         goal: Goal::Map,
         range: AI_RANGE,
         avoid,
+        spare: None,
     };
     let map = Search::run(state, field, (id, &me), query);
     let nearest =
@@ -111,6 +112,7 @@ fn walk_and_attack<S: Sink>(
         goal: Goal::Attack(ends),
         range: AI_RANGE,
         avoid,
+        spare: None,
     };
     let walk = Search::run(state, field, (id, me), query);
     let Some(from) = walk.end() else {

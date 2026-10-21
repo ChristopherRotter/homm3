@@ -21,14 +21,14 @@ epic   = "E05"
 
 [[stub]]
 id     = "BAT-STUB-4"
-where  = "crates/h3-battle-ai/src/lib.rs::unchecked"
-reason = "The computer's walker (0x421F80, 0x421680; installation.md §7.35 to §7.38) is not built: a stack that cannot shoot defends, the original's default action, and draws nothing (BAT-AI-001). The First Aid Tent's patient (§7.14, BAT-Q51) waits for E23 T6"
+where  = "crates/h3-battle-ai/src/walker.rs"
+reason = "The computer's walker is built in part (E23 T3a: the plan, the choice with its draw, the walk; BAT-AI-005, BAT-AI-006). Not yet: the hex scores (0x4214F0, 0x421590, 0x420260, 0x41FB60; §7.36) stand at 0 (T3b); the stronger at range (0x420A80) and with it P alone for a negative value, the last retaliation's gain (0x41F3B0), a defender holding the walls (0x4213F0), a besieger's walk to its wall and the fallbacks (0x41F920, 0x420760, 0x4208F0) are T3c's; the creature casts (0x421280, before and after the choice) are T4's"
 epic   = "E23"
 
 [[stub]]
 id     = "BAT-STUB-5"
 where  = "crates/h3-battle-ai/src/lib.rs::unchecked"
-reason = "The hero's side of the computer (E23 T5, T6): no hero's cast (0x422DA0, T1a6's reading) and no retreat test (0x41E570); the tactics phase ends at once instead of the shooters' placement and the walkers' choice in the zone (§7.34); a commanded Catapult shoots the first wall the engine lists instead of the computer's aim (§7.29, the gate first) (BAT-AI-001)"
+reason = "The hero's side of the computer (E23 T5, T6): no hero's cast (0x422DA0, T1a6's reading) and no retreat test (0x41E570); the tactics phase ends at once instead of the shooters' placement and the walkers' choice in the zone (§7.34); a commanded Catapult shoots the first wall the engine lists instead of the computer's aim (§7.29, the gate first); a commanded First Aid Tent defends instead of healing the computer's patient (§7.14, BAT-Q51) (BAT-AI-001)"
 epic   = "E23"
 
 # --- adventure (ADV-STUB-<n>) ---

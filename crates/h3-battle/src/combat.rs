@@ -60,6 +60,30 @@ pub(crate) fn can_shoot(state: &BattleState, field: Field, id: StackId) -> bool 
             || !is_blocked(state, field, id))
 }
 
+/// Whether stack `id` could shoot now with `ignore` left out of its blockers ([`can_shoot`]
+/// otherwise): the computer's test of a shooter that a walker would block from a hex beside it
+/// (0x4428F0 with the walker, 0x469600; E23 T3a). Kept apart from [`can_shoot`], a hot path.
+pub(crate) fn can_shoot_without(
+    state: &BattleState,
+    field: Field,
+    id: StackId,
+    ignore: StackId,
+) -> bool {
+    let s = state.at(id);
+    let fp = s.footprint(field);
+    let blocked = (0u8..).zip(state.stacks.iter()).any(|(i, t)| {
+        i != id.0
+            && i != ignore.0
+            && t.is_alive()
+            && s.is_hostile_to(t)
+            && field.touches(fp, t.footprint(field))
+    });
+    s.has(StackTraits::SHOOTER)
+        && !s.spells.status.contains(Status::NO_SHOOTING)
+        && has_ammunition(s)
+        && (s.has(StackTraits::WAR_MACHINE) || s.has(StackTraits::SHOOTS_WHEN_ADJACENT) || !blocked)
+}
+
 /// Whether `stack` has a shot to use: shots left, or none needed (quirk Q-0004, BAT-WAR-002).
 fn has_ammunition(stack: &Stack) -> bool {
     stack.shots > 0 || stack.has(StackTraits::UNLIMITED_SHOTS)
@@ -399,6 +423,34 @@ pub(crate) fn shot_damage(
         state,
         (state.at(attacker), state.at(target)),
         (StrikeFlags::RANGED, terms),
+        blow,
+    );
+    inputs.damage(base, ruleset.battle(), staged(ruleset))
+}
+
+/// The damage a melee strike of `attacker` would deal to `target` now from the base damage
+/// `base` after a run-up of `charge` hexes: every stage of a real strike, without luck, death
+/// blows and double damage. The computer's damage estimate of a strike (0x442780 → 0x443F40 with
+/// its estimate flag and no shot flag; E23 T3a).
+pub(crate) fn melee_damage(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    (attacker, target): (StackId, StackId),
+    (base, charge): (u64, u8),
+) -> u64 {
+    let blow = Blow {
+        charge,
+        death_blow: false,
+        lucky: false,
+        double_damage: false,
+        retaliation_percent: 100,
+    };
+    let terms = specialist_terms(state, ruleset, attacker);
+    let (inputs, _) = strike_inputs(
+        ruleset,
+        state,
+        (state.at(attacker), state.at(target)),
+        (StrikeFlags::NONE, terms),
         blow,
     );
     inputs.damage(base, ruleset.battle(), staged(ruleset))
