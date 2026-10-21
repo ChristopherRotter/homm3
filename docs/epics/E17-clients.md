@@ -453,8 +453,10 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   design §7.16, §9.8): not split, at the user's word. Good luck (18) and good morale (20) over
   their stack, bad morale (30) and Fear (15) with its hit group beside them, their sounds (the
   asset tables' `[battle]` names, harvested), good morale's line after its animation and Fear's
-  (GENRLTXT 729); a frozen stack never becomes the active one. `luck`, `morale`, `bad` and `fear`
-  recorded with forced rolls, their engine seeds searched: played as recorded, frames exact.
+  (GENRLTXT 729); a frozen stack never becomes the active one; the stack that acted last stays
+  outlined through good morale and a freeze (found by the frame check). `luck`, `morale`, `bad`
+  and `fear` recorded with forced rolls, their engine seeds searched: played as recorded, frames
+  exact.
 
 ### The adventure lane's harness (H1, H2: its batch E3)
 

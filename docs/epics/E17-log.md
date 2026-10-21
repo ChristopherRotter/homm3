@@ -1844,7 +1844,20 @@ the five DLLs, the combat and end tunes, `maps.tar`, `extracted.tar`).
   minutes. The engine's seeds searched (a loop over `h3-view sequences <id>` reading the
   record's events): `luck` 7, `morale` 73, `bad` 9, `fear` 7. All 21 sequences as recorded
   (the original's own fidgets left out).
-- **Checked:** in progress (the frame check of the four).
+- **Found by the frame check** (first run: `luck` as `strike`'s, `morale` 36 frames off, `bad` 35,
+  `fear` 31): the outline. The original outlines manager +0x132C8's stack, which the move's,
+  strike's and shot's handlers clear while they play and set again at their end, a Defend leaves,
+  a round's start clears and a turn's start sets: the stack that acted last shows outlined through
+  good morale and through a freeze, and a good luck's first frame takes it away. Built
+  (`Player::acting`, the command's first frame may be a magic animation's); `bad` also showed the
+  panel's turns paired by index with the timeline's (`panel::turns` now skips a frozen turn,
+  `anim::freezes`).
+- **Checked:** `frames --only` for the four (`--reuse` after the fix): `luck` 75 frames as
+  recorded (as `strike`'s to the landing), `morale` 94, `bad` 36 and `fear` 46 exact (`morale`'s
+  box and log's line listed from the shot: the engine's lucky shot kills 4 Goblins, the
+  original's 5); `drawn` (78, only the four new), then `drawn --record`. The viewer's tests (186
+  in the library), `scripts/exe.py check` and `cited`, the full `clients/scripts/check.sh`:
+  CHECK_RESULT.
 
 ## Accepted review lists (M1, M2)
 

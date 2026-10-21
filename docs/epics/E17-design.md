@@ -1746,7 +1746,8 @@ resistance roll, if any (category 3, 0x5A0331); Curse's is named `Curse`, withou
   conditions (0x464A04 to 0x464A66; not read further).
 - **Built (T7b-2b-2b, `anim`):** `Player::over_one` with the hit; `luck`, `good_morale` (after
   the attack is over: the shooter or striker turned back), `frozen` (bad morale, Fear: the
-  `TurnStarted` before them neither makes the stack active nor writes the turn's log entry);
+  `TurnStarted` before them neither makes the stack active nor writes the turn's log entry, and
+  the panel skips that turn too);
   `Sound::GoodMorale`, `BadMorale`, `Fear` (category 2) and `Luck` (category 3 at the file
   volume), their names the asset tables' `[battle]` ones; `Logged::Fear` by the frightening
   creatures the ruleset names (`Casts::frighteners`). Not built: the sound's wait (as the
@@ -1755,7 +1756,18 @@ resistance roll, if any (category 3, 0x5A0331); Curse's is named `Curse`, withou
   strike 1 600 ms later than `strike`'s), `morale` (18 from 0 ms before the first shot, 20 from
   4 776 ms, 100 ms after the second shot's reaction ends, erased at 6 776), `bad` (the Goblins'
   seven hit frames beside 30's first seven from 0 ms, standing at 700, erased at 2 000) and
-  `fear` (the Champions' eight beside 15's, erased at 3 100); all four as recorded. The frame check: in progress.
+  `fear` (the Champions' eight beside 15's, erased at 3 100); all four as recorded. The frame
+  check found the outline (manager +0x132C8, `draw_battle_stack` 0x43E259): the move's, strike's
+  and shot's handlers clear it while they play and set it again to their stack at their end
+  (`stack_move_handler` 0x445996, 0x4459ED; `strike_action` 0x445AC4, 0x445CA6), a Defend leaves
+  it, a round's start clears it (0x4761EE) and a turn's start sets it (0x47837A). So the stack
+  that acted last is outlined through good morale's animation (the Marksmen from 4 876 ms) and a
+  freeze's (`bad`'s Champions, who defended; `fear`'s Azure Dragon), and a good luck's first
+  frame shown takes the outline away like the shot's own (`Player::acting`; the command's first
+  frame shown may be a magic animation's). Then all four exact: `luck` 75 frames as `strike`'s to
+  the landing (its 134 pixels at 2 730 ms, §4.3) and exact from the animation on, `morale` 94
+  (from the shot on the Goblins' box and the log's line listed: the original's lucky shot
+  killed 5, the engine's 4), `bad` 36, `fear` 46.
 - **Not read:** the dissolve's blend; Chain Lightning's rays beyond `draw_ray`'s call (colour
   0x131, 0x5A64EF; T7c); how the glows are painted; the summons' and the Pit Lord's creation
   beyond the dissolve; Earthquake (sieges); the force-feedback effects (IFC20, nothing drawn).
