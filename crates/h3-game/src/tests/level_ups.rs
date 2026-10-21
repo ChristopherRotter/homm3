@@ -150,14 +150,14 @@ fn a_won_battle_opens_the_winners_level_up_which_its_answer_gives() {
     assert_eq!(project(&event, Viewer::Player(RED)), Some(event));
     assert_eq!(project(&event, Viewer::Player(BLUE)), None);
     assert_eq!(ended.hero(RED_HERO), Some(&details));
-    let GameEvent::LevelUpOpened { offers, .. } = event else {
-        unreachable!()
+    let Offers::Two(first, second) = drawn.offers else {
+        panic!("{drawn:?} has no two offers");
     };
     let view = LevelUpView {
         hero: RED_HERO,
         level: 2,
         primary: drawn.primary,
-        offers,
+        offers: [first, second],
     };
     assert_eq!(ended.level_up(RED), Some(view));
     assert_eq!((ended.level_up(BLUE), ended.decision(RED)), (None, None));

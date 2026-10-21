@@ -356,9 +356,7 @@ fn check_told(
                 changed.push(hero);
                 // E08 T30: a level gained closes its open level-up, if it was one.
                 if let GameEvent::LevelGained { level, .. } = *event {
-                    let answered = |open: &Open| {
-                        matches!(open, Open::LevelUp(v) if (v.hero, v.level) == (hero, level))
-                    };
+                    let answered = |open: &Open| matches!(open, Open::LevelUp(v) if (v.hero, v.level) == (hero, level));
                     if decision.as_ref().is_some_and(answered) {
                         decision = None;
                     }

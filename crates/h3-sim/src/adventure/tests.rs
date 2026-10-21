@@ -165,7 +165,10 @@ fn tiles_and_actions_encode_as_documented() {
     assert_eq!(Action::move_to(2, 9), map(3, 9));
     assert_eq!(Action::accept(), map(9, 0));
     assert_eq!(Action::decline(), map(10, 0));
-    assert_eq!((Action::first(), Action::second()), (map(11, 0), map(12, 0)));
+    assert_eq!(
+        (Action::first(), Action::second()),
+        (map(11, 0), map(12, 0))
+    );
     assert_eq!(hero_in_slot(state, PlayerId::new(0), HERO_SLOTS), None);
     assert_eq!(hero_in_slot(state, PlayerId::new(1), 2), None);
     assert!(hero_in_slot(state, PlayerId::new(1), 1).is_some());
