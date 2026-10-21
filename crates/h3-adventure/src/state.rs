@@ -1587,16 +1587,25 @@ impl AdventureState {
         if self.map.tile(pos).is_some() && !self.is_explored(player, pos) {
             return Err(AdventureCommandError::Unexplored { step });
         }
+        // A step down enters `pos` from above; a step up leaves `from` across its top
+        // (ADV-OBJ-004). The tile's object decides, a hero standing on it or not: the original's
+        // test from above reads the object under a hero (0x4FCBD0; batch E4's E4-10, E08 T33).
+        let across = match DIRECTIONS[direction].1 {
+            1 => Some(pos),
+            -1 => Some(from),
+            _ => None,
+        };
+        let closed = || across.is_some_and(|at| self.closed_above(part, at));
         // ADR-0016 point 4: another player's hero is visited from the neighbouring tile, and the
-        // visit is a battle at once (E08 T19a). The visit concerns the hero, not an object under
-        // it: only leaving `from` across its top is checked (ADV-OBJ-004).
+        // visit is a battle at once (E08 T19a); not across the top of an object's tile it stands
+        // on or the visitor stands on.
         // rule: GAM-BAT-004
         if let Some(other) = self
             .heroes
             .iter()
             .position(|h| h.pos == pos && h.owner != player)
         {
-            if DIRECTIONS[direction].1 == -1 && self.closed_above(part, from) {
+            if closed() {
                 return Err(AdventureCommandError::FromAbove { step });
             }
             return Ok((self.live(pos, self.map.at(pos)), Some(Meets::Hero(other))));
@@ -1604,13 +1613,7 @@ impl AdventureState {
         let tile = self
             .check_tile(part, pos, Some(mover))
             .map_err(|error| AdventureCommandError::Blocked { step, error })?;
-        // A step down enters `pos` from above; a step up leaves `from` across its top.
-        let across = match DIRECTIONS[direction].1 {
-            1 => Some(pos),
-            -1 => Some(from),
-            _ => None,
-        };
-        if across.is_some_and(|at| self.closed_above(part, at)) {
+        if closed() {
             return Err(AdventureCommandError::FromAbove { step });
         }
         if !tile.visitable {

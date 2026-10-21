@@ -336,7 +336,6 @@ numeric  = "integer"
   ref        = "Heroes3.exe: the First Aid values 0/1/2/3 and the specialty getter 1 + table x (1 + 0.05 x level) (docs/formats/installation.md sections 7.4, 7.5)"
   confidence = "high"
 
-
 [[rule]]
 id       = "HER-BAT-006"
 title    = "The battle hero's NoRetreat effect"
@@ -673,7 +672,7 @@ quirks   = ["Q-0005"]
 id       = "HER-EXP-002"
 title    = "Experience gives the original's levels, at most 74"
 context  = "heroes"
-status   = "implemented"
+status   = "verified"
 summary  = "A hero's level is the number of the ruleset's thresholds at or below its experience, at most max_level (74): levels 1 to 12 from the table (0, 1 000, 2 000, 3 200, 4 600, 6 200, 8 000, 10 000, 12 200, 14 700, 17 500, 20 600), then each step the previous one + a fifth of it, rounded down (the original's truncated x 1.2: 13 = 24 320, 20 = 81 961, 74 = 1 508 362 195, 75 = 1 810 034 207). The experience is at most level 75's threshold - 1 = 1 810 034 206 (A-7, ADV-QUIRK-11, always fixed: the original's levels wrap past 74 and it hangs at 2^31 - 1); every gain saturates there. The details' level is the levels given so far, at most the experience's; fewer are pending level-ups (design E08-design.md §7). E08 T27: `h3_heroes::{experience_for, experience_bound, level_of, pending_levels}`."
 numeric  = "integer"
 quirks   = ["ADV-QUIRK-11"]
@@ -697,11 +696,17 @@ quirks   = ["ADV-QUIRK-11"]
   retrieved  = "2026-10-20"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-4a.md and its runs 2 to 4 (-run2.md to -run4.md), each with e4_score's report beside it (stamp e9f2ca7f, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-21; the seed bytes read from the game's memory), experiments/results/E08-batch-4b.md with its report (stamp 8d4a4c2d, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-21) and experiments/results/E08-batch-4c.md (stamp 6fbb8f2b, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-21): every hero's level at load and after its battles was the one its experience gives (E4-1 3 200: level 4; E4-2 14 699: 9, then 10 in play; E4-3 1 999: 2; E4-9 2 300: 3)"
+  retrieved  = "2026-10-21"
+  confidence = "high"
+
 [[rule]]
 id       = "HER-EXP-003"
 title    = "The scenario's level limit caps a gain"
 context  = "heroes"
-status   = "implemented"
+status   = "verified"
 summary  = "Under the scenario's level limit L (the map's; 0 none) a gain of n points makes the experience min(experience + n, cap), the cap level L's threshold when 1 <= L <= max_level, else the bound (HER-EXP-002): a limit above 74 is none (A-8, ADV-QUIRK-12, always fixed: the original computes a wrapped, often negative cap). Experience above the cap is lowered to it by any gain, 0 included (D-19, the original's 0x4E347E); the engine lowers it no further than the threshold of the hero's level, which the game's setup keeps at most the limit's (D-21: a custom experience is gained from 0 under the limit; built with E08 T29). The original's message that the hero can gain no more has no event. E08 T27: `h3_heroes::{experience_cap, gained_under_limit, apply_change_limited}`; no shipped map has a limit (survey §6.2)."
 numeric  = "integer"
 quirks   = ["ADV-QUIRK-12"]
@@ -718,11 +723,17 @@ quirks   = ["ADV-QUIRK-12"]
   retrieved  = "2026-10-20"
   confidence = "medium"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-4b.md with its report (stamp 8d4a4c2d, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-21) E4-6 (D-19): under the limit 5 a hero at the cap (4 600) gained a battle's experience: 4 600 kept, no dialog, the message that it can gain no more (GENRLTXT:2); a hero at 4 000 gaining 700 reached 4 600 and level 5 with one dialog"
+  retrieved  = "2026-10-21"
+  confidence = "high"
+
 [[rule]]
 id       = "HER-LVL-001"
 title    = "A level-up raises a primary skill by the class's chances"
 context  = "heroes"
-status   = "implemented"
+status   = "verified"
 summary  = "A level-up's first draw is r from 1 to 100; r walks the class's primary_gain chances (Attack, Defense, Spell Power, Knowledge), subtracting each until it is at or below 0, and that skill gains 1. The first row counts for a new level of 2 to 9, the second from the level-up to level 10 (D-15). The gain saturates at the ruleset's primary_max on the base without artifacts (A-9, ADV-QUIRK-13, always fixed: the original's byte, holding the artifacts' bonuses too, wraps at 128). E08 T27: `h3_heroes::draw_level_up` (`LevelUp::primary`), applied by `HeroChange::GainLevel`."
 numeric  = "integer"
 quirks   = ["ADV-QUIRK-13"]
@@ -739,11 +750,17 @@ quirks   = ["ADV-QUIRK-13"]
   retrieved  = "2026-10-20"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-4a.md and its runs 2 to 4 (-run2.md to -run4.md), each with e4_score's report beside it (stamp e9f2ca7f, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-21; the seed bytes read from the game's memory) E4-2 (D-15): three Knights at 14 699 experience per run, the first level-up in play level 10: its primary skill from the second row, 7 of the 12 heroes conclusive against VCMI's row by the old level, none against; every other level's primary skill as the seed byte predicts (E4-1 to E4-6)"
+  retrieved  = "2026-10-21"
+  confidence = "high"
+
 [[rule]]
 id       = "HER-LVL-002"
 title    = "A level-up's draws come from a source the caller gives; the original's reseeds per level"
 context  = "heroes"
-status   = "implemented"
+status   = "verified"
 summary  = "A level-up draws its numbers (the primary skill, then the first offer, then the second: 1 to 3 numbers) through a draw source the caller gives (between(low, high), inclusive; ADR-0013 point 12.3). The original's source (faithful, ADV-QUIRK-9; which source a game uses is the game's, GAM-HER-002 with E08 T29): the C runtime's rand (state x 214 013 + 2 531 011, bits 16 to 30) seeded per level with 214 013 L + 156 823 S + 154 079 in 32 bits, L the new level and S the hero's seed byte (1 to 255), between(a, b) = a + rand() mod (b - a + 1): the Knight's level 2 with S = 1 seeds 738 928 and draws 3, with S = 200 seeds 31 946 705 and draws 91. The owner's stream (strict-fixed): `kernel::Rng::range_inclusive`. E08 T27: `h3_heroes::{Draws, OriginalDraws}`."
 numeric  = "integer"
 
@@ -759,11 +776,17 @@ numeric  = "integer"
   retrieved  = "2026-10-20"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-4a.md and its runs 2 to 4 (-run2.md to -run4.md), each with e4_score's report beside it (stamp e9f2ca7f, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-21; the seed bytes read from the game's memory) and experiments/results/E08-batch-4b.md with its report (stamp 8d4a4c2d, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-21) (D-14): every level's primary skill and offers, at load and in play, were those the original's generator seeded from the hero's seed byte and the new level gives (e4_score): 65 of the 66 heroes fit whole, the 66th (run 2's E4-1a) in its skills, its attack 2 higher for a starting bonus's Centaur's Axe"
+  retrieved  = "2026-10-21"
+  confidence = "high"
+
 [[rule]]
 id       = "HER-LVL-003"
 title    = "A level-up offers an advance and a new skill"
 context  = "heroes"
-status   = "implemented"
+status   = "verified"
 summary  = "A level-up offers up to two skills (hero_secondary_offer): the first an advance of a known skill below Expert, else any skill below Expert (then a new one); the second a new skill other than the first, else any skill below Expert other than the first. With eight skills only advances are candidates. Beyond Wisdom and the schools (HER-LVL-004) an offer is a draw by weight among its candidates in the ruleset's skill order: between(1, total), each subtracting its weight until the rest is at or below 0; the class's weight (0 when absent), a known skill at least 1, a skill the map bans 0, or 1 if the hero knows it (D-18); no weight at all, no offer. No offer: the level brings the primary skill only; one: it is learned without a choice; two: the first (left) or the second (right). E08 T27: `h3_heroes::{draw_level_up, Offers, Choice}`."
 numeric  = "integer"
 
@@ -784,11 +807,17 @@ numeric  = "integer"
   ref        = "E08 batch E3c's E3-6 (E17 H2 harness, 2026-10-19): a placed Death Knight with eight basic skills levelled 2 to 5 at load; only seed byte 75 gives its primary gains and offers from which its advances are taken (survey E08-progression.md §3.3; S unread, batch E4's E4-1 reads it); a test vector"
   confidence = "medium"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-4a.md and its runs 2 to 4 (-run2.md to -run4.md), each with e4_score's report beside it (stamp e9f2ca7f, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-21; the seed bytes read from the game's memory) E4-5 (D-17): of twelve Demoniacs knowing Fire and Water Magic at Basic, levelled to 4 in play with a school due, one told the weights apart (run 1's E4-5c, seed byte 6): Water Magic offered, as a known school weighing 1 gives, where VCMI's class weights give Fire Magic; the eleven others fit both. The user (ADV-Q18): one hero settles D-17. D-18 (a banned known skill) was not in the batch"
+  retrieved  = "2026-10-21"
+  confidence = "high"
+
 [[rule]]
 id       = "HER-LVL-004"
 title    = "Wisdom and a magic school are offered after the class's intervals"
 context  = "heroes"
-status   = "implemented"
+status   = "verified"
 summary  = "Within an offer (HER-LVL-003): Wisdom is offered outright, without a draw, when the new level reaches the level at which it was last offered plus the class's Wisdom interval, it is a candidate, not excluded and not banned; else a magic school, when the new level reaches the school's last offer plus the class's school interval and the excluded skill is no school, drawn among the candidate schools the map does not ban, a known school weighing 1 (D-17), an unknown one its class weight. A school as the first offer sets the school's level before the second is drawn; after both, an offered Wisdom or school sets its level to the new one, whatever the answer. The intervals are the class's offer_intervals (3 and 3 for the magic classes, 6 and 4 for the others; the Elementalist's by ADV-QUIRK-10). E08 T27: `HeroDetails::offered`, `LevelUp::offered`."
 numeric  = "integer"
 quirks   = ["ADV-QUIRK-10"]
@@ -805,11 +834,17 @@ quirks   = ["ADV-QUIRK-10"]
   retrieved  = "2026-10-20"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-4a.md and its runs 2 to 4 (-run2.md to -run4.md), each with e4_score's report beside it (stamp e9f2ca7f, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-21; the seed bytes read from the game's memory) E4-3 (D-16, A-10): twelve Elementalists without Wisdom at level 2, levelled to 3 in play: none was offered Wisdom outright, every offer as SoD's intervals 6 and 4 give, 12 of 12 conclusive against VCMI's and HotA's 3 and 3"
+  retrieved  = "2026-10-21"
+  confidence = "high"
+
 [[rule]]
 id       = "HER-LVL-005"
 title    = "The answer to a level-up is one atomic change"
 context  = "heroes"
-status   = "implemented"
+status   = "verified"
 summary  = "The answer to a level-up is HeroChange::GainLevel: one more level, the drawn primary skill + 1 (HER-LVL-001), the learned skill if any (a known one a level up, at most Expert; a new one at Basic after the others, at most eight) and the levels of the offers (HER-LVL-004). It is checked first (HER-CHG-001): a level must be pending (the experience's level above the details' level), the learned skill the ruleset's and learnable, the offers' levels at most the new level; whether the skill was one of the level's offers is the caller's check. E08 T27: `h3_heroes::{LevelUp::change, HeroChange::GainLevel}`; the game turns pending levels into decisions (GAM-DEC-002, E08 T30)."
 numeric  = "integer"
 
@@ -818,11 +853,17 @@ numeric  = "integer"
   ref        = "Heroes3.exe code reading (E08 T24a1, confirmed by T24a2b2; survey E08-progression.md §2.1, §2.5, §9): hero_level_up 0x4DA720 gives one level at a time, the answer learned by hero_learn_secondary_skill 0x4E22D0 (a known skill + 1 at most Expert, a new one at the count + 1 below eight)"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-4a.md and its runs 2 to 4 (-run2.md to -run4.md), each with e4_score's report beside it (stamp e9f2ca7f, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-21; the seed bytes read from the game's memory) E4-4: three level-ups after one battle answered right, left and right: after each the hero had the skill taken (a known one a level up, a new one at Basic), and the next level's offers followed from it"
+  retrieved  = "2026-10-21"
+  confidence = "high"
+
 [[rule]]
 id       = "HER-LVL-006"
 title    = "The original's choice between two offers"
 context  = "heroes"
-status   = "implemented"
+status   = "verified"
 summary  = "The computer's evaluation chooses between a level-up's two offers, as the original does for every hero while a new game is set up, for a hero without an owner and for a computer player's (D-20: the evaluation, not the left offer). The hero is seen after the level's primary skill is raised. Both offers known or both new: the one of the higher value, the first on a tie. An advance and a new skill: the new one when it ranks among the hero's best unknown skills its free slots could still take, else the advance: every skill of the ruleset is valued (a known one 0; an unknown one 0 when its class weight is 0, unless it is the offered one), ranked by the original's exchange sort (ascending, an entry swapped with each later one of a lower value: its own tie order) and walked from the highest; a known skill is passed, the offered one is taken, each other unknown one uses up one of the 8 - known free slots, and none left refuses it. A skill's value with the original's flag clear (the setup's; the flag-set path reads computer-player state, E10): 0 at Expert, and for an unknown skill when the hero knows eight; else with A = 1 000 and B = 500 (the army's worth, an argument) and L its level: Pathfinding trunc(A x rough share[L] / 4), Archery {16, 7, 11}[L] x B / 100, Logistics A / 10, Scouting, Necromancy, Learning A / 20, Diplomacy A / 100, Navigation trunc(A x water share / 2), Leadership, Luck, Tactics A / 50, Wisdom Spell Power x 25, Mysticism 1, Ballistics A / 8, Eagle Eye 2 with Wisdom, Estates {725, 725, 1 550}[L], a school Spell Power x 10 with Wisdom (Fire 0, Air 25, Water 3, Earth 30 without), Scholar Spell Power x 5 with Wisdom, Artillery Attack x 10, Offense and Armorer 7A / 100, Intelligence Knowledge x 10, Sorcery Spell Power x 2, Resistance A / 40, First Aid 250; divisions truncate; the primary skills effective (base and worn artifacts, HER-BAT-001), Spell Power and Knowledge held to 1-99, Attack to 0-99; skills by the original's id (the ruleset's order), one past the 28th worth 0. The shares are the map's (ADV-QUIRK-14: over its coast-flagged tiles that are not rock, the water tiles and per Pathfinding level 0-2 the tiles whose step costs more than 100), each count / tiles as an f64, the product at 53 bits, truncated; none without tiles (the original's NaN gives 0). No draws. E08 T28: `h3_heroes::{original_choice, ArmyWorth, TerrainShares}`; the game counts the shares and chooses with it at load and for the system actor (GAM-SET-002, GAM-DEC-002: E08 T29, T30)."
 numeric  = "integer"
 quirks   = ["ADV-QUIRK-14"]
@@ -850,6 +891,12 @@ quirks   = ["ADV-QUIRK-14"]
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/AI/Nullkiller/Analyzers/HeroManager.cpp"
   retrieved  = "2026-10-20"
   confidence = "low"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-4a.md and its runs 2 to 4 (-run2.md to -run4.md), each with e4_score's report beside it (stamp e9f2ca7f, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-21; the seed bytes read from the game's memory) E4-1 (D-20): of twenty heroes levelled at load (per run four Knights with one Basic skill at 3 200 and E3-6's Death Knight at 5 000) every skill set was the evaluation's choice; 16 conclusive against always-left (17 with run 2's E4-1a), none for it, and 19 more of the other rows' 36 heroes levelled at load: the wiki's always-left refuted in SoD"
+  retrieved  = "2026-10-21"
+  confidence = "high"
 
 [[rule]]
 id       = "HER-CHG-001"
@@ -915,8 +962,8 @@ numeric  = "integer"
 id       = "HER-WAR-002"
 title    = "A destroyed war machine takes its artifact"
 context  = "heroes"
-status   = "implemented"
-summary  = "A hero whose war machine was destroyed in battle loses the first worn artifact that places that machine (HER-WAR-001), whatever the battle's result; a machine with the catapult flag stays. The original's handling was not read (VCMI's rule; with batch E3 or a code reading). E08 T19a2a: `h3_heroes::lost_war_machine` (GAM-BAT-002)."
+status   = "verified"
+summary  = "A hero whose war machine was destroyed in battle loses the first worn artifact that places that machine (HER-WAR-001), whatever the battle's result; a machine with the catapult flag stays. The original's handling was not read; batch E4's E4-9 shows it (E08 T33: the Ballista's slot empty after a victory). E08 T19a2a: `h3_heroes::lost_war_machine` (GAM-BAT-002)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -932,6 +979,12 @@ numeric  = "integer"
   url        = "https://heroes.thelazy.net/index.php/War_Machine"
   retrieved  = "2026-10-03"
   confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-4c.md (stamp 6fbb8f2b, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-21) E4-9: a hero whose Ballista was destroyed won the battle; afterwards its war machine 1 slot was empty, its Catapult kept, nothing in the backpack"
+  retrieved  = "2026-10-21"
+  confidence = "high"
 
 [[rule]]
 id       = "HER-SPL-005"
@@ -1001,7 +1054,7 @@ numeric  = "integer"
 id       = "HER-NEC-001"
 title    = "A hero's Necromancy share"
 context  = "heroes"
-status   = "implemented"
+status   = "verified"
 summary  = "A hero's Necromancy share is the sum of its necromancy effects: the skill's (10/20/30 %), grown by a Necromancy specialty by 5 % of itself per level, then each worn artifact type once (a combination's parts included; an artifact that needs the skill only with it, a share with unless_skill only without that skill), at most 100 %. With the harvested packs: the Amulet of the Undertaker, the Vampire's Cowl and Dead Man's Boots +5/+10/+15 % with the skill, so the Cloak of the Undead King through its parts +30 % with it, and its own +30 % without it (a hero without the skill raises 30 % with the Cloak, a rule of the original's, not a bug: its own branch in the code, the wiki and VCMI agree). Under quirk Q-0005 the original's single-precision sum, each source added and stored in order (HER-BAT-004's). The Necropolis buildings' +10/+20 % come with towns (E09). E08 T19a2b: `h3_heroes::necromancy`."
 numeric  = "float"
 quirks   = ["Q-0005"]
@@ -1025,11 +1078,17 @@ quirks   = ["Q-0005"]
   retrieved  = "2026-10-14"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-4c.md (stamp 6fbb8f2b, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-21) E4-8: a hero with Basic Necromancy (10 %) beat 90 Pikemen (30 Pikemen, 30 Halberdiers, 30 Pikemen, 10 hit points each): 9 Skeletons raised (90 x 6 x 10 % / 6)"
+  retrieved  = "2026-10-21"
+  confidence = "high"
+
 [[rule]]
 id       = "HER-NEC-002"
 title    = "The creature a hero's Necromancy raises"
 context  = "heroes"
-status   = "implemented"
+status   = "verified"
 summary  = "A hero's Necromancy raises the creature of its raises effect of the highest priority (E08 decision 30): the Necromancy skill's Skeletons at priority 0, the Cloak of the Undead King's at 1 by the hero's Necromancy level (none: Skeletons, Basic: Walking Dead, Advanced: Wights, Expert: Liches). Among equal priorities, if every one comes from an artifact, the lowest artifact id (that of the artifact or combination part whose list holds it), then the lowest creature id; otherwise the lowest creature id. Without a raises effect nothing is raised. E08 T19a2b: `h3_heroes::necromancy`."
 numeric  = "integer"
 
@@ -1048,6 +1107,12 @@ numeric  = "integer"
   [[rule.source]]
   kind       = "design"
   ref        = "E08 decision 30 (the raises kind and its tie rule, the user, 2026-10-14)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-4c.md (stamp 6fbb8f2b, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-21) E4-8: Basic Necromancy without an artifact raised Skeletons (9, joined as Skeleton Warriors in a full army, GAM-BAT-006)"
+  retrieved  = "2026-10-21"
   confidence = "high"
 
 [[rule]]

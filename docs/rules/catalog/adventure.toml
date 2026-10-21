@@ -519,13 +519,19 @@ numeric  = "integer"
 id       = "ADV-OBJ-004"
 title    = "Not from above: no step onto or off an object's visitable tile across its top"
 context  = "adventure"
-status   = "implemented"
-summary  = "An object whose type is not visited from above (`from_above` false; in the packs the entered Cartographers, observatories and Keymaster's tents, the original's classes 10, 13, 58 and 60) is not entered from the three tiles above its visitable tile (a step down, down-left or down-right onto it), and a walking hero standing on that tile does not step up, up-left or up-right off it. The object is the one a visit of the tile concerns (ADV-OBJ-003: the last in map order still on the map); an untyped blocker has no setting and closes nothing. `MoveHero` rejects such a step (`FromAbove`), the reachable-tiles query neither reaches the tile from above nor leaves it upward. Flying (which may leave upward) comes with increment 3. E08 T14a. E08 T15b: the ruleset part requires a key gate's type to be visited from above (its key's holders cross it; the original's class 212 is on the list), so a path never goes on from a tile that closes upward but the hero's own."
+status   = "verified"
+summary  = "An object whose type is not visited from above (`from_above` false; in the packs the entered Cartographers, observatories and Keymaster's tents, the original's classes 10, 13, 58 and 60) is not entered from the three tiles above its visitable tile (a step down, down-left or down-right onto it), and a walking hero standing on that tile does not step up, up-left or up-right off it. The object is the one a visit of the tile concerns (ADV-OBJ-003: the last in map order still on the map); an untyped blocker has no setting and closes nothing. Another player's hero standing on the tile does not open it: a step down onto that hero from the three tiles above is refused too, so the hero is attacked only from the tiles the object is visited from (GAM-BAT-004; E08 T33, batch E4's E4-10, the user at ADV-Q18: the original's rule in every profile, no flag). `MoveHero` rejects such a step (`FromAbove`), the reachable-tiles query neither reaches the tile from above nor leaves it upward. Flying (which may leave upward) comes with increment 3. E08 T14a. E08 T15b: the ruleset part requires a key gate's type to be visited from above (its key's holders cross it; the original's class 212 is on the list), so a path never goes on from a tile that closes upward but the hero's own."
 numeric  = "integer"
 
   [[rule.source]]
   kind       = "original-data"
-  ref        = "Heroes3.exe code reading (E08 T11a, survey docs/rules/surveys/E08-objects.md §2.3): pathfinder_expand (0x4B2300) skips a step in directions 3-5 of step_directions (0x678150) onto a tile whose class is not on the 'visitable from above' list (0x63AB00; settings +0x1 at 0x4B26B1) and sets the 'walking blocked' flag for directions 7, 0 and 1 off such a tile (0x4B2682); the list holds 9, 12, 76, 79 and 212, not 10, 13, 58 or 60. E08 T14a: both tests read the tile's one recorded class (tile_object_class 0x4FCBD0)"
+  ref        = "Heroes3.exe code reading (E08 T11a, survey docs/rules/surveys/E08-objects.md §2.3): pathfinder_expand (0x4B2300) skips a step in directions 3-5 of step_directions (0x678150) onto a tile whose class is not on the 'visitable from above' list (0x63AB00; settings +0x1 at 0x4B26B1) and sets the 'walking blocked' flag for directions 7, 0 and 1 off such a tile (0x4B2682); the list holds 9, 12, 76, 79 and 212, not 10, 13, 58 or 60. E08 T14a: both tests read the tile's one recorded class (tile_object_class 0x4FCBD0), which for a hero (34) or a boat (8) standing there is the class of the object under it"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-4c.md E4-10 (stamp 6fbb8f2b, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-21): Blue's hero stepped onto a land Cartographer's entrance (18, 18) from below and declined its offer; on day 2 Red's hero on (18, 17), directly above, clicked it: no path, no battle, Red's hero stayed on (18, 17), in all three runs that reached it (the engine before E08 T33 attacked)"
+  retrieved  = "2026-10-21"
   confidence = "high"
 
   [[rule.source]]
@@ -534,7 +540,7 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapping/CMap.cpp"
   retrieved  = "2026-10-13"
   confidence = "high"
-  note       = "Agrees for a walking hero; VCMI tests every blocking visitable object of the tile, the original the tile's one."
+  note       = "Agrees for a walking hero on an empty tile; VCMI tests every blocking visitable object of the tile, the original the tile's one. With another hero standing on the tile VCMI tests the hero (visited from every side) and attacks from above; the original does not (E4-10)."
 
 [[rule]]
 id       = "ADV-OBJ-005"
@@ -904,7 +910,7 @@ numeric  = "integer"
 id       = "ADV-GRD-001"
 title    = "Special grounds"
 context  = "adventure"
-status   = "implemented"
+status   = "verified"
 summary  = "A special ground (Cursed Ground, Magic Plains and SoD's Clover Field, Evil Fog, Fiery Fields, Holy Ground, Lucid Pools, Magic Clouds, Rocklands) is an object of a ground type, never visited and never removed, that lies on its picture's width x height tiles to the left of and above its anchor (the picture's .msk; 1 x 1 for a picture without one). A battle on a tile a ground lies on is fought on the ground's battlefield, which replaces the coast's shore and keeps the terrain the tile gives (GAM-BAT-001); where several lie, the last in map order (the topmost drawn). Favorable Winds (225) changes no battle and stays a blocker without tiles. Grounds of one type may share an anchor (nothing names them). Their other effects (Cursed Ground's step cost, Favorable Winds at sea) come with the increments that build them. E08 T20a2a: the ground kind, `MapObject::drawn`, `AdventureState::battle_ground`."
 numeric  = "integer"
 
@@ -931,6 +937,12 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/gameState/CGameState.cpp"
   retrieved  = "2026-10-15"
   confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-4c.md (stamp 6fbb8f2b, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-21) E4-7a and E4-7b: a monster under a Clover Field and an Evil Fog fought on the Evil Fog when the Evil Fog was written last, on the Clover Field when the Clover Field was: the topmost, the last in map order (VCMI's first refuted)"
+  retrieved  = "2026-10-21"
+  confidence = "high"
 
 [[rule]]
 id       = "ADV-MON-005"

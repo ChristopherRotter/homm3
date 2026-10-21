@@ -70,7 +70,7 @@ numeric  = "integer"
 id       = "GAM-HER-002"
 title    = "The heroes' level seeds, and where a level's draws come from"
 context  = "game"
-status   = "implemented"
+status   = "verified"
 summary  = "When the game is built, each hero gets a level seed of 1 to 255, drawn from the setup stream in hero id order as the stream's last draws (after the starting armies, the default experiences and the map objects' contents, so those do not move with it), and never changed; the game keeps the seeds beside the store of heroes with the scenario's level limit and banned skills (GAM-SET-002), in the state hash, shared by forks, in no observation or event (ADR-0017 point 5). A level's draws (HER-LVL-002): with ADV-QUIRK-9's flag on (faithful) the original's generator seeded from the hero's seed and the new level, so a level's offers are the same whenever and however it is reached; off (strict-fixed) the setup stream at load and the owner's stream in play (E08 T30). E08 T29: `h3_game::GameState::new`."
 numeric  = "integer"
 quirks   = ["ADV-QUIRK-9"]
@@ -101,11 +101,17 @@ quirks   = ["ADV-QUIRK-9"]
   ref        = "ADR-0017 points 1, 4 and 5 (increment 4's amendment: the level seed beside each hero, a level's draws by the profile, the seeds server-only); E08 design note §11; the seeds' place in the setup stream (last, so the earlier draws keep their order): E08 T29 (E08-log.md)"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-4a.md and its runs 2 to 4 (-run2.md to -run4.md), each with e4_score's report beside it (stamp e9f2ca7f, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-21; the seed bytes read from the game's memory) and experiments/results/E08-batch-4b.md with its report (stamp 8d4a4c2d, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-21): the seed bytes read at day 1 (6 to 254) and every level's draws from them as the faithful source gives (HER-LVL-002), at load and in play"
+  retrieved  = "2026-10-21"
+  confidence = "high"
+
 [[rule]]
 id       = "GAM-SET-002"
 title    = "The scenario's level limit and banned skills; a placed hero's levels at load"
 context  = "game"
-status   = "implemented"
+status   = "verified"
 summary  = "The setup carries the scenario's level limit (the map header's byte, AB and SoD; 0 none, as is a limit above the highest level, ADV-QUIRK-12) and its banned skills (SoD's set, the skills of the set bits' codes; each the ruleset's, a set in any order); the game keeps both, static. A hero with a custom experience gets its levels when the game is built, after its custom skills, army, spells and artifacts and its war machines' artifacts: it starts at level 1 and experience 0 and gains the custom experience under the limit (HER-EXP-003; D-21: capped at the limit's threshold, so no hero starts above it), then each pending level is drawn (GAM-HER-002) and given in hero id order: two offers chosen by the original's choice with the setup's army worth (1 000 and 500) and the map's terrain shares (HER-LVL-006, ADV-MAP-002; D-20: not the left offer), one learned, none the primary skill only; never a banned skill (HER-LVL-003); last the spell points full (HER-MAN-001). Building a game emits no events. A hero without a custom experience keeps its default 40-90 at level 1. Every level the battle's experience gives is under the limit too (GAM-BAT-002); in play a level-up is GAM-DEC-002's (E08 T30). The import passes a placed hero's custom experience as it is (MAP_IMPORT_VERSION 8): the five shipped maps that import whole give 9 heroes 41 levels at load. E08 T29: `h3_game::GameState::new`."
 numeric  = "integer"
 quirks   = ["ADV-QUIRK-9", "ADV-QUIRK-12", "ADV-QUIRK-14"]
@@ -133,6 +139,12 @@ quirks   = ["ADV-QUIRK-9", "ADV-QUIRK-12", "ADV-QUIRK-14"]
   [[rule.source]]
   kind       = "original-data"
   ref        = "the shipped maps (verify --with-original-data, crates/h3-map/examples/original_data.rs; survey E08-progression.md §6): none has a level limit, 19 SoD maps ban skills (none past the 28 codes), 5 import whole, their 9 heroes get 41 levels at load"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-4a.md and its runs 2 to 4 (-run2.md to -run4.md), each with e4_score's report beside it (stamp e9f2ca7f, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-21; the seed bytes read from the game's memory) E4-1 to E4-5 and experiments/results/E08-batch-4b.md with its report (stamp 8d4a4c2d, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-21) E4-6: every hero with a custom experience started with the levels the original's choice gives (D-20, HER-LVL-006); under the limit 5 a custom 10 000 started at 4 600 and level 5 (D-21; VCMI's 10 000 and level 8 refuted)"
+  retrieved  = "2026-10-21"
   confidence = "high"
 
 [[rule]]
@@ -263,7 +275,7 @@ numeric  = "integer"
 id       = "GAM-DEC-002"
 title    = "A level-up with two offers: a pending decision of the hero's owner"
 context  = "game"
-status   = "implemented"
+status   = "verified"
 summary  = "A hero's pending levels in play (GAM-BAT-008) are given one at a time, in order, each drawn when it is given or its decision opens (GAM-HER-002: in faithful from the hero's level seed and the new level, in strict-fixed from the owner's stream). A level with no offer raises its primary skill only and one with one offer learns it, at once; a level with two offers opens a pending decision of the hero's owner (GAM-DEC-001: its only legal commands are the answers, in its turn or not), answered `First` (the dialog's left offer) or `Second` (the right): the answer gives the level with that offer (HER-LVL-005) and draws the next, whose own decision takes the answered one's place in the owner's queue. `Accept` or `Decline` for a level-up, and `First` or `Second` for an offer, are rejected (`WrongAnswer`) and change nothing. Every level given in play is told to the owner alone as `LevelGained` (the level, the primary skill, the skill learned or advanced), every decision opened as `LevelUpOpened` (the level, the primary skill, the two offers); the owner's observation shows an open level-up as `DecisionView::LevelUp` (`GameState::level_up`), no other player sees it, and the hero's level seed never shows. Unlike the other decisions, an open level-up holds the game until its owner answers, as the original's modal dialog (ADR-0017 point 6, E08 decision 65): every other actor's command is rejected (`WaitingForLevelUp`, naming the owner) and lists no legal command, so a battle's defender that won answers outside its turn before the player whose turn runs goes on; `GameState::waiting_for` names the owner to the hosting layer (hot seat: the client's handover; online: the server pauses the turn timer and answers after a time limit); other players learn only that the game waits. The system actor's default answer (`default_answer`, ADR-0017 point 6) is the original's choice (HER-LVL-006) with the setup's inputs until E10 (ADV-STUB-8), `Decline` for an offer. E08 T30: `GameState::give_levels`, `GameState::answer`."
 numeric  = "integer"
 quirks   = ["ADV-QUIRK-9"]
@@ -285,6 +297,12 @@ quirks   = ["ADV-QUIRK-9"]
   retrieved  = "2026-10-20"
   confidence = "high"
   note       = "Agrees on the levels one at a time and the two offers' question. The original's dialog is modal: the game holds until it is answered, as the engine's level-up does (E08 decision 65)."
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-4a.md and its runs 2 to 4 (-run2.md to -run4.md), each with e4_score's report beside it (stamp e9f2ca7f, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-21; the seed bytes read from the game's memory) E4-4 (survey E08-progression.md section 2.1): three level-up dialogs after one battle, answered right, left, right; each level's offers were drawn after the previous answer, 8 of 8 conclusive against the levels drawn up front"
+  retrieved  = "2026-10-21"
+  confidence = "high"
 
 [[rule]]
 id       = "GAM-BAT-001"
@@ -328,7 +346,7 @@ quirks   = ["ADV-QUIRK-5", "ADV-QUIRK-8"]
 id       = "GAM-BAT-002"
 title    = "Applying a battle's outcome: the armies and the heroes"
 context  = "game"
-status   = "implemented"
+status   = "verified"
 summary  = "When a battle on the map ends, its outcome applies at once and infallibly, told first as its end (`BattleEnded`, the heroes and the result) to its owners, one context after the other: in the adventure a hero that stays on the map (GAM-BAT-003) keeps its army survivors (BattleOutcome::survivors: each stack's count its survivors, a damaged top creature forgotten, a raised stack in its dead stack's slot) as its army; then the heroes' part, each a change of `h3_heroes` (HER-CHG-001) told to the hero's owner (`HeroChanged`): each side's hero keeps the spell points it has left (HeroOutcome::mana) and loses the artifact of each war machine destroyed (HER-WAR-002), whatever the result; the hero of the side that won and stays on the map gains the battle's experience: the hit points the loser's army and raised stacks lost (start - end of each record, at its type's hit points without artifacts; not the loser's war machines nor the stacks the battle created), plus 500 after a victory over a hero (GAM-BAT-004), grown by its Learning (HER-EXP-001), gained under the scenario's level limit (HER-EXP-003, E08 T29; the event tells the points gained); nothing after a draw; then its Necromancy's creatures (GAM-BAT-006) and its Eagle Eye's spells (GAM-BAT-007). E08 T19a, T19a2a, T19a2b: `GameState::end_battle`, `AdventureState::end_battle`."
 numeric  = "integer"
 
@@ -373,6 +391,12 @@ numeric  = "integer"
   confidence = "high"
   note       = "Confirms that the +500 for a defeated hero is taken off again after a surrender (no creature died). E08 T22b."
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-4c.md (stamp 6fbb8f2b, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-21) E4-8 and E4-9: 900 experience for 90 Pikemen (their hit points), 2 300 for 30 Thunderbirds and their hero (1 800 + 500)"
+  retrieved  = "2026-10-21"
+  confidence = "high"
+
 [[rule]]
 id       = "GAM-BAT-003"
 title    = "A hero that loses, retreats or surrenders leaves the map"
@@ -402,8 +426,8 @@ numeric  = "integer"
 id       = "GAM-BAT-004"
 title    = "Hero against hero: the visit is a battle both players own"
 context  = "game"
-status   = "implemented"
-summary  = "A step toward another player's hero visits it from the neighbouring tile at the step's price (as a neighbour-visited object, ADV-OBJ-003: the move ends, the hero stays on the tile before) and starts a battle at once, without a question, the visitor attacking at the defender's tile (GAM-BAT-001); the visit concerns the hero, whatever object lies under it (only leaving the visitor's tile across its top is refused, ADV-OBJ-004). An own hero's tile still blocks (meetings come with army management, E08 decision 48). The reachable-tiles query lists such a tile as a destination with the points the visit leaves. After a victory (not a retreat or a surrender) the winner's hero, if it stays on the map, gains 500 experience more for the defeated hero (GAM-BAT-002) and takes its artifacts, as HER-ART-004 yields them, each received (HER-CHG-002) and removed from the loser, until one finds no room: the rest stay with the loser (the original stops there). E08 T19a, T19a2a: `AdventureOutcome::battle`, `BattleStart`, `GameState::end_battle`."
+status   = "verified"
+summary  = "A step toward another player's hero visits it from the neighbouring tile at the step's price (as a neighbour-visited object, ADV-OBJ-003: the move ends, the hero stays on the tile before) and starts a battle at once, without a question, the visitor attacking at the defender's tile (GAM-BAT-001); the visit concerns the hero, whatever object lies under it, but not across the top of an object's tile not visited from above, the visitor's or the defender's (ADV-OBJ-004: a hero standing on such an object's tile is attacked only from the tiles the object is visited from; E08 T33, batch E4's E4-10). An own hero's tile still blocks (meetings come with army management, E08 decision 48). The reachable-tiles query lists such a tile as a destination with the points the visit leaves. After a victory (not a retreat or a surrender) the winner's hero, if it stays on the map, gains 500 experience more for the defeated hero (GAM-BAT-002) and takes its artifacts, as HER-ART-004 yields them, each received (HER-CHG-002) and removed from the loser, until one finds no room: the rest stay with the loser (the original stops there). E08 T19a, T19a2a: `AdventureOutcome::battle`, `BattleStart`, `GameState::end_battle`."
 numeric  = "integer"
 
   [[rule.source]]
@@ -431,6 +455,12 @@ numeric  = "integer"
   [[rule.source]]
   kind       = "observation"
   ref        = "E04a batch 1b R5 (E04a-log.md): the loser's war machines are not captured"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-4c.md (stamp 6fbb8f2b, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-21) E4-9 and E4-10: a click on Blue's hero from the neighbouring tile started the battle at once, without a question (run 1: the winner took the loser's starting bonus, a Pendant of Death; E08-log.md T32b2); from above onto a hero on a Cartographer's entrance no path and no battle (ADV-OBJ-004)"
+  retrieved  = "2026-10-21"
   confidence = "high"
 
 [[rule]]
@@ -465,7 +495,7 @@ numeric  = "integer"
 id       = "GAM-BAT-006"
 title    = "Necromancy after a battle: the creatures raised join the winner's army"
 context  = "game"
-status   = "implemented"
+status   = "verified"
 summary  = "When a battle on the map ends with a winner whose hero stays on the map (GAM-BAT-002; after a victory, a retreat or a surrender of the loser, not a draw), its hero's Necromancy (HER-NEC-001, HER-NEC-002, taken before the experience is given, as the original's) raises, after the experience: for each record of the loser that lost creatures (start - end; every record: army stacks, raised and summoned stacks, clones and war machines), killed x min(its type's hit points, the raised creature's) x the share / the raised creature's hit points, rounded down, at most the record's killed (hit points without artifacts); the sum, at least 1 if anything was killed. Under quirk Q-0005 the original's arithmetic: per record trunc(f32(min(hp, raised hp) x killed) x share / f32(raised hp)) in its x87 arithmetic, with the share in single precision (10 imps at 70 %: 6, not 7); its 32-bit product, which wraps above 2^31, is not modelled. They join the hero's stack of that creature, else a new stack in its first free slot; in a full army without one, (2c + 2) / 3 of the creature's first upgrade join its stack of the upgrade, if it has one, else none join. Told to the hero's owner only (`CreaturesRaised`: the creature and the count that joined). The original's elementals exception (no upgrade for 112 to 115 while a game flag is off) is not modelled: no hero raises them. E08 T19a2b: `GameState::heroes_after_battle`, `AdventureState::raise`."
 numeric  = "float"
 quirks   = ["Q-0005"]
@@ -494,6 +524,12 @@ quirks   = ["Q-0005"]
   retrieved  = "2026-10-14"
   confidence = "medium"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-4c.md (stamp 6fbb8f2b, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-21) E4-8: a Necromancer with seven stacks, 10 Skeleton Warriors among them, raised 9 Skeletons: 6 Skeleton Warriors joined ((2 x 9 + 2) / 3; 10 to 16), VCMI's 9 refuted"
+  retrieved  = "2026-10-21"
+  confidence = "high"
+
 [[rule]]
 id       = "GAM-BAT-007"
 title    = "Eagle Eye after a battle: the winner learns its picks"
@@ -516,7 +552,7 @@ numeric  = "integer"
 id       = "GAM-BAT-008"
 title    = "A battle's winner levels after the outcome"
 context  = "game"
-status   = "implemented"
+status   = "verified"
 summary  = "When a battle on the map ends with a winner whose hero stays on the map, its hero's pending levels (the experience it gained under the scenario's level limit, GAM-BAT-002, HER-EXP-003) are given after the whole outcome, Necromancy, Eagle Eye and the capture included (GAM-BAT-006, GAM-BAT-007, GAM-BAT-004), and after a surrender's price and an unowned battle's end (GAM-BAT-005, ADV-MON-010, ADV-PIK-004): as GAM-DEC-002 gives them, one at a time, a level with two offers a pending decision of the hero's owner, also when the owner is the defender outside its turn. The loser leaves the map and gains nothing. E08 T30: `GameState::end_battle`."
 numeric  = "integer"
 
@@ -530,4 +566,10 @@ numeric  = "integer"
   ref        = "server/CGameHandler.cpp giveExperience → expGiven → levelUpHero, called from the battle's result (BattleResultProcessor): the winner's experience, then its levels one at a time, a query to the owner for each two-offer level (survey E08-progression.md §4.1)"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/CGameHandler.cpp"
   retrieved  = "2026-10-20"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-4a.md and its runs 2 to 4 (-run2.md to -run4.md), each with e4_score's report beside it (stamp e9f2ca7f, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-21; the seed bytes read from the game's memory) E4-2 to E4-5, experiments/results/E08-batch-4b.md with its report (stamp 8d4a4c2d, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-21) E4-6 and experiments/results/E08-batch-4c.md (stamp 6fbb8f2b, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-21) E4-9: each battle's winner levelled after the battle, one dialog per level in order, each drawn after the previous answer (E4-4); at the level limit's cap none (E4-6a)"
+  retrieved  = "2026-10-21"
   confidence = "high"

@@ -181,15 +181,17 @@ impl Reach {
             if !state.is_explored(search.owner, pos) || !enterable_terrain(part, &to) {
                 continue;
             }
-            // Another player's hero is a visit whatever lies under it (GAM-BAT-004), an own hero
-            // blocks. Else what objects still on the map cover there (the occupancy layer): a
-            // visit ends the path (ADV-OBJ-003), a blocked tile, a visit not built yet or one
-            // entered from above against ADV-OBJ-004 stops it, and a gate the owner holds the key
-            // of is crossed (ADV-VIS-005): `visit_at` with the owner, as `MoveHero`'s step.
+            // Another player's hero is a visit (GAM-BAT-004), but not from above onto the tile of
+            // an object not visited from above (ADV-OBJ-004: the object under it decides, E08
+            // T33); an own hero blocks. Else what objects still on the map cover there (the
+            // occupancy layer): a visit ends the path (ADV-OBJ-003), a blocked tile, a visit not
+            // built yet or one entered from above against ADV-OBJ-004 stops it, and a gate the
+            // owner holds the key of is crossed (ADV-VIS-005): `visit_at` with the owner, as
+            // `MoveHero`'s step. Directions 3 to 5 step down (DIRECTIONS).
             let mut visit = false;
             let occupied = search.occupied[next];
             if occupied != FREE {
-                if occupied == OWN {
+                if occupied == OWN || ((3..=5).contains(&dir) && state.closed_above(part, pos)) {
                     continue;
                 }
                 visit = true;
@@ -197,7 +199,6 @@ impl Reach {
                 let live = state.live(pos, to);
                 if live.visitable {
                     match state.visit_at(part, search.owner, pos) {
-                        // Directions 3 to 5 step down (DIRECTIONS).
                         Some(v) if v.from_above || !(3..=5).contains(&dir) => visit = !v.pass,
                         _ => continue,
                     }
@@ -290,7 +291,7 @@ impl AdventureState {
     /// The tiles `hero` can reach today over the tiles its owner has explored (ADV-MOV-008), if it
     /// is on the map (see [`Reach`]). The caller decides whose hero it may ask about. `heroes` is
     /// the game's store of heroes' details, as for [`Self::apply`] (E08 T20a2b): the hero's
-    /// movement skills and artifacts read it from increment 4 on.
+    /// movement skills and artifacts read it from increment 5 on (E08 decision 71).
     // rule: ADV-MOV-008
     pub fn reach(
         &self,
