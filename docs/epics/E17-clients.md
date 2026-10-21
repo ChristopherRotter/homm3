@@ -1,11 +1,11 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2 done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1 done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
 [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
-are there). Next: M3 T7–T8 (`docs/lanes/client/QUEUE.md`).
+are there). Next: M3 T7a-2–T8 (`docs/lanes/client/QUEUE.md`).
 
 ## Goal
 
@@ -242,8 +242,10 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   the language packs (T4b-1, an ADR-0020 amendment; T4b-2a the log's lines read and composed,
   T4b-2b a line drawn), and the battle interface (T5, T6: the boxes over time, the panel, the
   log, the cursors). T4 split with the user on 2026-10-15, T4b and T4b-2 on 2026-10-19.
-- The **spell animations** (the user, at T5c: their plethora; T7a the code reading, T7b on
-  stacks with morale and luck, T7c area spells, rays and spell obstacles) and their sounds.
+- The **spell animations** (the user, at T5c: their plethora; T7a the code reading, split with
+  the user on 2026-10-21 into T7a-1, the reading, and T7a-2, the harness's casts and the
+  recordings; T7b on stacks with morale and luck, T7c area spells, rays and spell obstacles) and
+  their sounds.
 - The sound's remainder (T8: the battle's end; the volume settings later).
 - **Exit:** the reference set passes, or each difference is a listed fix or a classified quirk.
 - **T1a done 2026-10-14** ([log](E17-log.md#m3-t1a--turns-and-the-walk-by-2026-10-14),
@@ -385,6 +387,14 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   timeline as recorded; the sequences captured afresh with the cursor compared: 922 frames, the
   recorded counts unchanged, the hint listings gone (173 rolled lines left of 668), `hover` 16
   of 20 frames exact (four with the mouse's partial redraw's leftover pixels).
+- **T7a-1 done 2026-10-21** ([log](E17-log.md#m3-t7a-1--the-magic-animations-read-2026-10-21),
+  [design §7.16](E17-design.md)): T7a split with the user (the reading; the harness's casts and
+  the recordings T7a-2). Which of seven players draws each spell's and creature's animation (one
+  stack, the marked stacks, several, a raise, a hex, the field, their own drawers), each
+  player's timing, the hero's cast frames around the spell, a creature caster's group, morale,
+  fear and luck with their sounds and log lines; 16 map entries added. Candidates for T7a-2's
+  recordings: animations a call names but never draws, a mass animation's missing last frame, a
+  caster's group by an angle unlike the shot's.
 
 ### The adventure lane's harness (H1, H2: its batch E3)
 
@@ -453,6 +463,14 @@ Accepted by the user (M1 2026-10-13, M2 2026-10-14); moved to the log,
 ## M3 review list
 
 (Filled by the tasks: choices queued for the milestone review under the autonomy contract.)
+
+- T7a-1: T7a split (the user, 2026-10-21: the reading T7a-1, the harness's casts and the
+  recordings T7a-2). The reading's surprises, each *provisional* until T7a-2 records it (design
+  §7.16): Chain Lightning's 38 and Fire Shield's return 11 never drawn (no stack marked);
+  Animate Dead plays Resurrection's 50; a mass animation's last frame never shown; the Liches'
+  cloud drawn plain; a creature caster's group by its own angle (VCMI: the shot's). A
+  difference a recording confirms is the original's behaviour to copy unless it is a drawing bug
+  the user wants fixed (the `faithful`/`fixed` profiles, ADR-0020 point 6).
 
 - T6c-2: `h3_view::mouse::track` (`follow` over the log, the turns and the inputs; `Turn`,
   `Start`, `Input`, `Shown`), `mouse::Facing` and `Field` (the facing from the timeline's poses),

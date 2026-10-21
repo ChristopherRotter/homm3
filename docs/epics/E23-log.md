@@ -470,3 +470,76 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
 - **Master's `deny` gate** failed on a new advisory (RUSTSEC-2026-0382, `rustls-webpki` 0.103.15,
   through `h3-server`'s `rustls`); the adventure lane's #335 bumped the lockfile to 0.103.16 (the
   advisory's fix) before this pull request, which was rebased onto it.
+
+## T2b — the area value, the wall shot, the benchmark (2026-10-21, increment 3)
+
+- **The cut** (the user, 2026-10-21): T2b whole, as T2a's session proposed, with the battle
+  inbox's failing property in the same session (#340: it fixed `master`'s test build too, which
+  #338 and #339 had broken together: `harvested_computer.rs` built `HeroDetails` without T27's
+  `offered`; the stack-limit invariant now bounds a side by the larger of the limit and its
+  stacks at the start, since seven stacks, three war machines and three turrets pass the
+  property's 12).
+- **The flag** (`shared/e23-t2b`, `cross-lane` with the user's consent): `quirk.battle.original_ai_slips`
+  at registry position 29 (`ORIGINAL_AI_SLIPS`), and `arch.toml` lets `h3-cli` depend on
+  `h3-battle-ai` (the benchmark). A flag cannot be registered alone: `h3-pack-battle`'s
+  `the_profiles_differ_exactly_by_the_quirk_flags` wants every flag on in faithful and off in
+  strict-fixed, so the same pull request turns it on in the faithful profiles (`packs/base`,
+  `packs/synthetic`, `h3-harvest`'s profile text): the faithful core ruleset hashes moved
+  (synthetic `0x62e9ef353e1342b0` → `0x203012933e60e190`, base `0x6384653ed1e4c038` →
+  `0xe6839bfb42ebe118`; strict-fixed unchanged), so the ten golden replays' and the adventure
+  lane's seven faithful replays' headers were patched and the AI lane's `bots-report-v1.json`
+  regenerated (only `engine.core` moved). No code reads the flag before the battle PR.
+- **The area value** (BAT-AI-003; 0x41EDA0, slip 1): in `h3-battle`'s `aim.rs`, because the
+  target choice 0x41EB80 it scores is the automatic Ballista's too (one implementation, ADR-0027
+  point 6): `pick` scores an area shooter's target at its position and, for a two-hex stack, at
+  its other hex when strictly higher (the shot aimed there), and skips one below 0; `area_value`
+  sums `shot_value` for the other side's stacks within one hex and subtracts the undivided
+  `kill_shot_value` (0x435C70) for the acting side's. Slip 1 behind BAT-QUIRK-25: faithful, an
+  undead shooter leaves out the undead not covering the hex, nothing else; strict-fixed, the
+  stacks the rule spares but the target (`combat::spares`, factored out of BAT-RNG-004's area).
+  The side columns, which 0x5A4170 leaves out, hold only a war machine's rear hex, whose other
+  hex is beside the aimed hex whenever the rear is: the estimate's stacks are the rule's. Re-read for the port: the side test is the record's side against the acting side; the
+  area is asked for creatures 45, 64, 65 by number (the engine: the `area_shot` ability).
+- **The frame and the wall shot** (BAT-AI-004; 0x41F060, 0x41EEA0): `aim::shot` is 0x41F060
+  with the wall test as its caller's closure (the Ballista passes none; the policy passes
+  0x41EEA0, which draws from its stream): the first choice (desperate mode first), the wall test
+  for a `wall_shots` stack with the first choice's value, then no target gives Defend at once, a
+  value of 0 in desperate mode a second choice (one that finds none, the original's action 7 at
+  hex −1, gives nothing). The wall test in `h3-battle-ai`'s `shooter.rs`: not for the defender
+  (the controller), not without a standing wall (`computer::walls`, kind wall in index order);
+  `B` sums `computer::strength` (0x442E60) over the side's living stacks with no threat record
+  (`computer::records_no_enemy`: `aim::turns` now also leaves out a stack blind or stone for more
+  than a round, 0x422BD0, which its other callers never reach); `B / S₀ > 3 × best / S₁` as the
+  FPU compares two rounded quotients (a NaN on either side counts as above, `fcompp`'s C0); the
+  weakest standing wall, `random(1, n)` among equals in index order. `computer` exposes
+  `Context` (its strengths), `Shot`, `shot`, `records_no_enemy`, `strength`, `walls`.
+  `POLICY_VERSION` 2; BAT-STUB-6 closed.
+- **Tests:** the AI crate's ruleset gained a magog, an undead lich, fast fire-immune, lifeless and
+  undead walkers and a two-hex cavalier, and the profiles `t:faithful` (the flag) and `t:fixed`:
+  own runners beside the target make the magogs shoot past it or defend (both profiles); the
+  slip's three cases (efreets beside a magog's target, golems beside a lich's: faithful defends,
+  fixed shoots; zombies: both shoot; a zombie target is shot); a two-hex target aimed at its
+  position, or at its front when the runners stand beside the position only; the FPU comparison
+  table; the property over random battles with the new creatures in both profiles. On the
+  harvested packs: cyclopes and pikemen outside a Fort's walls draw every wall over 40 streams,
+  then batter the weakest one (alone once a wall lost hit points) until they shoot; a lone
+  cyclops, the open field and the defender's cyclopes shoot. `h3-battle`'s aim test: blind or
+  stone for two rounds, no target; blind for one or paralysed, a target.
+- **Cost** (ADR-0027 point 11): the gated workload `benches/battle/computer-decisions.toml`
+  (`h3 bench-computer --games 40 --seed 1`: random harvested SoD armies without heroes, every
+  difficulty; on the open field the defender is the computer against random commands, at a Fort
+  both sides) counts 274 292 359 instructions inside `choose` over 7 301 decisions: **about 37 600
+  instructions per decision**, most of them the walkers' Defend stand-in (T3 will move it). The
+  shot values first ran a search for a target's turns at every call (an area shooter asks one
+  per stack of each area, twice for a two-hex target, again in desperate mode's second choice):
+  `aim::Threats` now computes each target's turns once per choice and only when a value needs
+  them (eagerly, the workload fell by 20 % but the synthetic siege rollouts rose by 47 %: on Easy
+  no value needs them). Release, on a quiet sandbox (`h3 bench-computer`, three
+  workloads of 40 and one of 400 battles): 2.7 to 5.3 µs per decision on average, the slowest
+  0.15 to 0.68 ms, within the 1 ms ceiling (with a full verify running beside it a decision took
+  up to 4.8 ms: the sandbox's scheduling, as in T2a). The budget is the user's at this checkpoint
+  (ADR-0027 point 11).
+- **A blind check** (a fresh agent, the disassembly against the port, ON-branch only): no
+  discrepancy in 0x41EB80, 0x41EDA0, 0x41F060, 0x41EEA0 or 0x422B20's skips; it noted the plain
+  shot's front hex (the original aims at the position; the engine's validation wants the front,
+  the same stack is hit) and the side columns' war machines (above).

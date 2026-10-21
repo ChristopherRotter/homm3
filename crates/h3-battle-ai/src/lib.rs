@@ -6,13 +6,18 @@
 //! Its callers are the AI lane's batch (`Policy::System`) and the adventure's neutral seat; they
 //! get it once a side without a hero is complete (E23 T4).
 //!
-//! So far (E23 T2a): the stack's action of the original's dispatch (0x477EE0, 0x4221F0;
+//! So far (E23 T2): the stack's action of the original's dispatch (0x477EE0, 0x4221F0;
 //! `docs/formats/installation.md` §7.34) for a stack that can shoot now, which shoots the
-//! computer's target (0x41F060, 0x41EB80; §7.33, the automatic Ballista's). The rest stands in
-//! with a legal command until its task builds it: a walker defends (BAT-STUB-4, T3); the hero's
-//! side casts nothing, ends the tactics phase at once and shoots the first wall with a commanded
-//! Catapult (BAT-STUB-5, T5 and T6); an area shooter and the Cyclops shoot as the others
-//! (BAT-STUB-6, T2b).
+//! computer's target (0x41F060, 0x41EB80; §7.33, the automatic Ballista's), an area shooter by
+//! its value at a hex (0x41EDA0; §7.35), and the Cyclops batters the weakest wall when much of
+//! its side's strength is locked out (0x41EEA0). The rest stands in with a legal command until
+//! its task builds it: a walker defends (BAT-STUB-4, T3); the hero's side casts nothing, ends the
+//! tactics phase at once and shoots the first wall with a commanded Catapult (BAT-STUB-5, T5 and
+//! T6).
+//!
+//! The original's slips in its own estimates (survey `E23-battle-ai.md` §4) follow the quirk
+//! BAT-QUIRK-25 (`quirk.battle.original_ai_slips`, ADR-0027 point 9): on in `faithful`, off in
+//! `strict-fixed`.
 //!
 //! Logic crate: pure, deterministic, `no_std` + `alloc` (ADR-0003, ADR-0005). The lint header
 //! below is required and checked by `cargo xtask check-arch`.
@@ -32,6 +37,8 @@
 )]
 #![warn(missing_docs)]
 
+extern crate alloc;
+
 #[cfg(test)]
 extern crate std;
 
@@ -47,7 +54,7 @@ use h3_kernel::Rng;
 /// The policy's behaviour version (ADR-0027 point 12): bumped with every change of a choice, so
 /// that a training record names its opponent (the AI lane's engine identity includes it).
 /// Replays store commands and do not change with it.
-pub const POLICY_VERSION: u32 = 1;
+pub const POLICY_VERSION: u32 = 2;
 
 /// The command the original's computer gives for `side`, the side to act in `state` (the active
 /// stack's controller, BAT-MAG-026), whatever `BattleSetup.human` says (ADR-0027 point 8):
@@ -56,6 +63,8 @@ pub const POLICY_VERSION: u32 = 1;
 /// stream, never the battle's (point 5); the same state and stream give the same command. For a
 /// side not to act, or a battle that is over, it gives Defend, which the engine refuses.
 // rule: BAT-AI-001
+// Never inlined: the gated benchmark counts the instructions inside it (ADR-0027 point 11).
+#[inline(never)]
 pub fn choose(
     state: &BattleState,
     ruleset: &BattleRuleset,
@@ -68,14 +77,14 @@ pub fn choose(
 /// The original's computer's choice for `side` before validation (the property tests assert the
 /// engine accepts it): the stack's action (0x477EE0, 0x4221F0; BAT-AI-001). A stack that can shoot
 /// now ([`computer::shoots`]; the original's Ballista always can) shoots ([`shooter::shoot`],
-/// BAT-AI-002); any other is a walker, which defends until E23 T3 builds its choice. The stream is
-/// not drawn from yet (the walker's draw, T3).
+/// BAT-AI-002 to BAT-AI-004: the Cyclops's wall shot draws from `rng`); any other is a walker,
+/// which defends until E23 T3 builds its choice.
 // rule: BAT-AI-001
 pub fn unchecked(
     state: &BattleState,
     ruleset: &BattleRuleset,
     side: BattleSide,
-    _rng: &mut Rng,
+    rng: &mut Rng,
 ) -> Command {
     let Some(id) = state.active().filter(|_| state.side_to_act() == Some(side)) else {
         return Command::Defend;
@@ -86,7 +95,7 @@ pub fn unchecked(
         return Command::EndTactics;
     }
     if computer::shoots(state, ruleset, id) {
-        return shooter::shoot(state, ruleset, id);
+        return shooter::shoot(state, ruleset, id, rng);
     }
     if state.stack(id).is_some_and(Stack::is_catapult) {
         // stub: BAT-STUB-5

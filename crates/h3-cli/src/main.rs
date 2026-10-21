@@ -5,6 +5,7 @@
 //!        [--checkpoint-every N] [--record <out.toml>]
 //! h3 verify [--packs-dir packs] <replay.toml>...
 //! h3 bench [--scenario <file>] [--packs-dir packs] [--games N] [--seed N] [--observe 0|1]
+//! h3 bench-computer [--games N] [--seed N] [--max-steps N]
 //! h3 adventure run|verify|bench …   (h3_cli::adventure::cli)
 //! h3 ai bench …                      (h3_cli::ai, the AI lane's)
 //! ```
@@ -15,10 +16,12 @@ use std::hint::black_box;
 use std::path::PathBuf;
 use std::process::ExitCode;
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
-use h3_battle::LegalCommands;
+use h3_battle::{BattleState, Command, LegalCommands, NoopSink, apply, legal_commands};
 use h3_cli::{CliError, RunOptions, load_scenario, run_random, verify_file};
+use h3_content::{CreatureFlag, CreatureTypeId, Formation};
+use h3_contracts::{Army, ArmyStack, BattleSetup, BattleSide, FortLevel, Moat, Siege};
 use h3_kernel::{Rng, StreamId};
 use h3_sim::rollout::{pick, step_command};
 use h3_sim::{BattleEnv, OBSERVATION_LEN, random_rollout};
@@ -28,6 +31,7 @@ const USAGE: &str = "usage:
          [--checkpoint-every N] [--record <out.toml>]
   h3 verify [--packs-dir packs] <replay.toml>...
   h3 bench [--scenario <file>] [--packs-dir packs] [--games N] [--seed N] [--observe 0|1]
+  h3 bench-computer [--games N] [--seed N] [--max-steps N]
   h3 adventure run|verify|bench …   (`h3 adventure` lists them)
   h3 ai bench …                      (`h3 ai` lists them)";
 
@@ -172,7 +176,7 @@ fn bench(args: &Args) -> Result<(), String> {
     println!("games: {games}, steps: {steps}, time: {secs:.3}s");
     println!(
         "size of BattleState: {} bytes, BattleEnv: {} bytes",
-        size_of::<h3_battle::BattleState>(),
+        size_of::<BattleState>(),
         size_of::<BattleEnv>()
     );
     println!(
@@ -183,6 +187,106 @@ fn bench(args: &Args) -> Result<(), String> {
             ""
         },
         steps as f64 / secs
+    );
+    Ok(())
+}
+
+/// `h3 bench-computer`: the original's battle AI's cost per decision (ADR-0027 point 11, E23 T2b;
+/// the gated workload `benches/battle/computer-decisions.toml` counts the instructions inside
+/// `h3_battle_ai::choose`). `--games` battles of random armies of the harvested SoD creatures in
+/// `base:faithful` (one to seven stacks of 1 to 200 creatures, no war machines and no heroes),
+/// every difficulty in turn: on the open field the defender is the computer and the attacker
+/// plays random legal commands that stay in the battle; every second battle is at a random town's
+/// Fort, where both sides are the computer (the Cyclops's wall shot). Each battle stops after
+/// `--max-steps`.
+fn bench_computer(args: &Args) -> Result<(), String> {
+    args.check_known(&["games", "seed", "max-steps"])?;
+    let games: u64 = args.num("games", 40)?;
+    let seed: u64 = args.num("seed", 1)?;
+    let max_steps: u32 = args.num("max-steps", 300)?;
+    let r = h3_pack_battle::compile(
+        &[
+            h3_pack_battle::SOD_PACK,
+            h3_pack_battle::AB_PACK,
+            h3_pack_battle::BASE_PACK,
+        ],
+        "base:faithful",
+    )
+    .map_err(|e| e.to_string())?;
+    let pool: Vec<CreatureTypeId> = (0..r.creature_count())
+        .filter_map(CreatureTypeId::from_index)
+        .filter(|&c| {
+            r.creature(c)
+                .is_some_and(|t| !t.flags.contains(CreatureFlag::WarMachine))
+        })
+        .collect();
+    let below = |rng: &mut Rng, n: usize| rng.below(u32::try_from(n).unwrap_or(1)) as usize;
+    let army = |rng: &mut Rng| Army {
+        stacks: (0..=rng.below(7))
+            .map(|slot| ArmyStack {
+                slot: u8::try_from(slot).unwrap_or(0),
+                creature: pool[below(rng, pool.len())],
+                count: 1 + rng.below(200),
+            })
+            .collect(),
+    };
+    let mut rng = Rng::from_seed(seed);
+    let mut legal = LegalCommands::new();
+    let (mut steps, mut decisions, mut time) = (0u64, 0u64, Duration::ZERO);
+    let mut slowest = Duration::ZERO;
+    for game in 0..games {
+        let walled = game % 2 == 1;
+        let siege = walled.then(|| Siege {
+            faction: r.sieges()[below(&mut rng, r.sieges().len())].faction,
+            fort: FortLevel::Fort,
+            moat: Moat::Absent,
+            structures: 0,
+            escape_tunnel: false,
+            morale: 0,
+            luck: 0,
+        });
+        let setup = BattleSetup {
+            attacker: army(&mut rng),
+            defender: army(&mut rng),
+            siege,
+            formations: [Formation::Loose, Formation::Loose],
+            difficulty: u8::try_from(game % 5).unwrap_or(0),
+            ..BattleSetup::default()
+        };
+        let mut state = BattleState::new(&r, &setup, seed.wrapping_add(game))
+            .map_err(|e| format!("game {game}: {e:?}"))?;
+        let mut seat = Rng::from_seed(seed ^ game);
+        for _ in 0..max_steps {
+            let Some(side) = state.side_to_act() else {
+                break;
+            };
+            let command = if walled || side == BattleSide::Defender {
+                let start = Instant::now();
+                let command = h3_battle_ai::choose(&state, &r, side, &mut seat);
+                let took = start.elapsed();
+                time += took;
+                slowest = slowest.max(took);
+                decisions += 1;
+                command
+            } else {
+                legal_commands(&state, &r, side, &mut legal);
+                let staying: Vec<Command> = legal
+                    .iter()
+                    .copied()
+                    .filter(|c| !c.leaves_battle())
+                    .collect();
+                staying[below(&mut rng, staying.len())]
+            };
+            apply(&mut state, &r, side, command, &mut NoopSink)
+                .map_err(|e| format!("game {game}: {command:?}: {e:?}"))?;
+            steps += 1;
+        }
+    }
+    let per = time.as_secs_f64() * 1e6 / decisions.max(1) as f64;
+    println!(
+        "games: {games}, steps: {steps}, decisions: {decisions}, time in choose: {:.3}s, {per:.2} µs per decision, the slowest {:.1} µs",
+        time.as_secs_f64(),
+        slowest.as_secs_f64() * 1e6
     );
     Ok(())
 }
@@ -223,6 +327,7 @@ fn main() -> ExitCode {
             "run" => run(&args),
             "verify" => verify(&args),
             "bench" => bench(&args),
+            "bench-computer" => bench_computer(&args),
             _ => Err(format!("unknown command `{command}`\n{USAGE}")),
         })
     };
