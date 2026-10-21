@@ -6,7 +6,7 @@
 //! Its callers are the AI lane's batch (`Policy::System`) and the adventure's neutral seat; they
 //! get it once a side without a hero is complete (E23 T4).
 //!
-//! So far (E23 T2, T3): the stack's action of the original's dispatch (0x477EE0, 0x4221F0;
+//! So far (E23 T2, T3, T4a): the stack's action of the original's dispatch (0x477EE0, 0x4221F0;
 //! `docs/formats/installation.md` §7.34). A stack that can shoot now shoots the computer's target
 //! (0x41F060, 0x41EB80; §7.33, the automatic Ballista's), an area shooter by its value at a hex
 //! (0x41EDA0; §7.35), and the Cyclops batters the weakest wall when much of its side's strength
@@ -18,9 +18,13 @@
 //! (0x420A80: the stronger at range, the hero's best damage spell and the turrets included, §7.39)
 //! let a defender hold its walls and send a losing walker to the fallbacks; without a candidate
 //! a besieger walks to its wall, any other guards a shooter or steps to safety (§7.38), and else
-//! waits (Hard and up) or defends. The rest stands in until its task builds it: the creature
-//! casts (T4) (BAT-STUB-4); the hero's side casts nothing, ends the tactics phase at once, its
-//! First Aid Tent defends and a commanded Catapult shoots the first wall (BAT-STUB-5, T5 and T6).
+//! waits (Hard and up) or defends. Before its action and after a choice of nothing a walker
+//! asks the creature cast entry (0x421280; §7.42, §7.43): the Archangel's and the Pit Lord's
+//! raise when it beats the walker's value, the Faerie Dragon's drawn spell wherever it is worth
+//! anything. The rest stands in until its task builds it: the Ogre Mage's and the Master Genie's
+//! casts (T4b, T4c) (BAT-STUB-4); the hero's side casts nothing, ends the tactics phase at once,
+//! its First Aid Tent defends and a commanded Catapult shoots the first wall (BAT-STUB-5, T5 and
+//! T6).
 //!
 //! The original's slips in its own estimates (survey `E23-battle-ai.md` §4) follow the quirk
 //! BAT-QUIRK-25 (`quirk.battle.original_ai_slips`, ADR-0027 point 9): on in `faithful`, off in
@@ -49,6 +53,7 @@ extern crate alloc;
 #[cfg(test)]
 extern crate std;
 
+mod casts;
 mod ends;
 mod gain;
 mod hexes;
@@ -70,7 +75,7 @@ use h3_kernel::Rng;
 /// The policy's behaviour version (ADR-0027 point 12): bumped with every change of a choice, so
 /// that a training record names its opponent (the AI lane's engine identity includes it).
 /// Replays store commands and do not change with it.
-pub const POLICY_VERSION: u32 = 5;
+pub const POLICY_VERSION: u32 = 6;
 
 /// The command the original's computer gives for `side`, the side to act in `state` (the active
 /// stack's controller, BAT-MAG-026), whatever `BattleSetup.human` says (ADR-0027 point 8):
