@@ -3587,4 +3587,4 @@ The HotA/SoD template prints each value before its icon; the summariser took the
 twice (Logistics 5/10/20 %, Boots of Speed +400) and was corrected by the Movement page's own
 Logistics sentence and the executable's `movement.txt`.
 
-**The second reading:** in progress (a fresh agent; survey §11 follows).
+**The second reading** (survey §11; a fresh agent, nine questions, without the survey): §1 to §3 confirmed point by point; it settled D-25 (the click's path needs the destination's "may stop" node, 0x56A0D0: a move ends only on a tile a hero may stop on, as the wiki and VCMI have it), and added the two nodes per tile and the flyer's visit only at its destination. ADV-Q20's point on D-25 was dropped.

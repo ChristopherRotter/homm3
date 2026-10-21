@@ -17,7 +17,7 @@ with its sources and tests.
   `hero_flight_tile_test` 0x4E5CE0; the reveal's callers (`hero_scouting_radius` 0x4E4070,
   `reveal_disk` 0x49D160). Not followed: the computer's planning mode 4 (the Dimension Door,
   Fly and Water Walk options, `pathfinder` +0x15 to +0x17), boats (embarking, landing, sailing),
-  network play, the cursor's choice of a path's end (§3.4).
+  network play, the click handler's own test of an empty path (§3.4).
 - `vcmi`: VCMI 1.7.5 (`git clone --depth 1 --branch 1.7.5`): `lib/pathfinder/TurnInfo.cpp`,
   `lib/pathfinder/CPathfinder.cpp` (`getMovementCost`, `getTileMovementCost`,
   `passOneTurnLimitCheck`), `lib/pathfinder/PathfindingRules.cpp`,
@@ -63,10 +63,10 @@ with its sources and tests.
 - **The pathfinder** (§3): a flying hero passes over blocked tiles, water, guarded tiles (the
   zone of control is ignored, the move attacks it only at its destination) and **unexplored tiles**
   (A-13, an information leak), never over rock; a water-walking hero passes over water that holds
-  no object. Neither may wait for the next day on such a tile, nor visit a neighbour's object
-  that is visited from the neighbouring tile, nor enter a town, from it. Where a move may *end*
-  (on a tree, on water) was not read: the wiki says "an unoccupied location (on land)", VCMI lands
-  only on free tiles (D-25, a batch row). A flying hero standing inland has its start node marked
+  no object. Neither may stop on such a tile (a move's end and the next day's start need the
+  tile's "may stop" node: the second reading, §3.4), nor visit a neighbour's object that is visited
+  from the neighbouring tile, nor enter a town, from it: the wiki ("an unoccupied location (on
+  land)") and VCMI agree (D-25 settled). A flying hero standing inland has its start node marked
   like a tile it flies over (`hero_flight_tile_test` 0x4E5CE0 passes only on coastal land), and the
   move's step refuses a flyer's visit from the neighbouring tile there: either a misreading or a
   quirk of the original (A-14, a batch row).
@@ -177,8 +177,8 @@ Without the specialty the f32 rates give exactly ⌊points × (10 + level) / 10�
 - **Set at the owner's turn start** (`next_player_turn` 0x4C6FE0, E08 T6b, ADV-MOV-002): the maximum
   (+0x49) and the points left (+0x4D) to `hero_max_movement` 0x4E4D90 (land or sea by the boat
   flag +0x105 bit 18). A placed hero's setup does the same.
-- **Nothing in the day adds to the points left.** Every write of +0x4D in the executable was
-  listed (57 sites): the turn starts, the setups, the move's step and its visits from a neighbouring
+- **Nothing in the day adds to the points left.** Every instruction that writes a dword at
+  +0x4D was listed (57 sites, a hero's points left among them): the turn starts, the setups, the move's step and its visits from a neighbouring
   tile, objects' visits (Stables and other objects, later), boarding and landing (proportional with
   the Admiral's Hat 136, else 0: `hero_boards_boat` 0x4A1010, `hero_lands_from_boat` 0x49E670),
   battles, a cheat. `hero_level_up` 0x4DA720, `hero_learn_secondary_skill` 0x4E22D0,
@@ -293,7 +293,9 @@ hero wears Angel Wings (§7).
 
 The search keeps one node per tile and kind (`pathfinder_cells_alloc`: two per tile) with a flags
 word (+4): bit 2 in a boat, bit 4 flying, bit 5 water walking, bit 7 the computer's Dimension Door,
-**bit 10 "may wait here"** (a node from which the next day may start). The start node takes bit 4
+**bit 10 "may stop here"**: a node a move may end on and the next day may start from. A tile
+has two nodes per level (`pathfinder_relax` stores a node at level × 2 + 1 when bit 10 is clear,
+0x4B1C4B), so a tile flown over without stopping and the same tile stopped on are kept apart. The start node takes bit 4
 and bit 5 from the pathfinder's fly and water-walk levels (`pathfinder` +0x1C, +0x18; set as in
 §2.1) and bit 10, which it loses when the hero flies or water-walks and `hero_flight_tile_test`
 fails (§3.3). Each neighbour of a popped node, in the eight directions (`pathfinder_expand`, the
@@ -314,13 +316,17 @@ human player's modes 0–2):
 5. **A step down onto an entrance** not visitable from above: never (flying too).
 6. From a node **without bit 10** (over a blocked tile, water, an unexplored tile, or a start node as
    in §3.3) no step enters an entrance of a class visited from the neighbouring tile ("cannot be
-   entered", `object_settings` +0) or a town (98): no visit from up there.
+   entered", `object_settings` +0) or a town (98) as a stop: no visit from up there; a flying node
+   still passes over it (point 7).
 7. A flying node reaching an entrance is also stored without bit 10 (a second relax, 0x4B2D3D):
    the flight may go on over it without the visit.
 
 `pathfinder_run` skips the guard test for a popped flying node (0x56BBCE: flags bits 4 or 7): a
 flying hero's path goes on past guarded tiles, where a walking hero's ends (E08-battles §2.2); the
-move attacks a flying hero only at its destination (`hero_move_step`, read in T19).
+move attacks a flying hero only at its destination (`hero_move_step`, read in T19), and visits an
+object only there: a flying hero not in a boat takes no object on a tile that is not its
+destination (0x48147D to 0x4814E1, the second reading). A walking hero's step onto plain water
+whose map item has +0xD bit 0x08 makes a separate boat node (0x4B2B01): boats', not read.
 
 ### 3.2 VCMI and the wiki
 
@@ -345,7 +351,7 @@ land".
   information leak in the legal moves (ADV-MOV-008: "the legal moves never depend on hidden tiles").
   Suggested class: **always fixed** (the engine's moves stay on explored tiles; ADR-0017 point 8's
   mask leaks nothing). Row E5-9 confirms the original's path.
-- **D-25, where a move may end**: §3.4.
+- **D-25, where a move may end**: settled, §3.4.
 
 ### 3.3 `hero_flight_tile_test` (0x4E5CE0) and A-14
 
@@ -366,15 +372,18 @@ test pass there. **A-14**: a candidate until row E5-8 shows the original (an Ang
 inland beside a resource pile, then beside a town's gate; and on the coast). If it holds, suggested
 class: fix-optional; else the reading is corrected.
 
-### 3.4 Where a move may end (D-25)
+### 3.4 Where a move may end (D-25, settled)
 
-Not read: the cursor's and the click's test of a path's end node (the path's builder 0x56A0D0
-walks back from any reached node; the cursor function was not found). Bit 10 marks the nodes
-from which the next day may start, not necessarily the tiles a move may end on. The wiki: a flying
-hero ends "to an unoccupied map location", a water-walking one "on land"; VCMI lands a flying hero
-only on a free tile and keeps a water walker's path off a turn on water. Rows E5-7 (an Angel Wings
-hero clicks a tree; Boots of Levitation, a water tile) settle what the original does; the engine's
-`MoveHero` and its reach follow the answer.
+Read by the second reading (§11): the click's path (`make_hero_path` 0x418DD0 →
+`pathfinder_build_path` 0x56A0D0) looks up the destination tile's bit-10 node (level × 2 + 0,
+0x56A12E) and needs it reached (bit 0, 0x56A275); without it the path is emptied (0x56A2FF). The
+steps before follow each node's predecessor, whose bit 10 the node keeps in its bit 11 (0x4B1B15,
+0x56A2D8). So **a move ends only on a tile a hero may stop on**: never over a blocked tile, an
+unexplored tile or water (flying), nor on water (water walking); a tile that holds an entered
+object or a free land tile can be the end. The wiki ("to an unoccupied map location", "an
+unoccupied location on land") and VCMI (a flying hero lands on free tiles; never a turn on water)
+agree. Not read: whether the click handler shows a refusal for the empty path (presentation).
+Row E5-7 stays as a check.
 
 ## 4. The scouting radius and its reveal
 
@@ -449,16 +458,16 @@ Counted on 2026-10-21 over the 160 shipped maps with `h3-map`'s reader. Heroes (
 prisoners (62) with the hero object's own skills and artifacts, else the map's custom hero's (SoD),
 else the hero type's (random heroes, class 70, not counted).
 
-| What | Count | Maps |
+| What | Count | Maps (per kind) |
 |---|---|---|
-| a hero with Logistics: Basic, Expert; a prisoner with Advanced | 7, 1; 1 | 9 |
-| with Pathfinding: Basic, Advanced, Expert; prisoners Advanced | 7, 3, 1; 3 | 14 |
-| with Scouting: Basic, Advanced; prisoners Basic, Advanced | 5, 3; 4, 1 | 13 |
-| a hero wearing Boots of Speed, Equestrian's Gloves, Boots of Levitation | 2, 1, 1 | 3 |
-| Boots of Speed, Spyglass in a hero's backpack | 1, 1 | 2 |
+| a hero with Logistics: Basic, Expert; a prisoner with Advanced | 7, 1; 1 | 7, 1; 1 |
+| with Pathfinding: Basic, Advanced, Expert; prisoners Advanced | 7, 3, 1; 3 | 7, 3, 1; 3 |
+| with Scouting: Basic, Advanced; prisoners Basic, Advanced | 5, 3; 4, 1 | 5, 3; 4, 1 |
+| a hero wearing Boots of Speed, Equestrian's Gloves, Boots of Levitation | 2, 1, 1 | 2, 1, 1 |
+| Boots of Speed, Spyglass in a hero's backpack | 1, 1 | 1, 1 |
 | a hero wearing Angel Wings, the Speculum or the Spyglass | 0 | 0 |
-| artifacts on the map (class 5): Equestrian's Gloves, Boots of Levitation, Speculum, Spyglass, Necklace of Ocean Guidance, Boots of Speed | 5, 5, 4, 4, 3, 1 | 16 |
-| placed Logistics specialists: Kyrre, Gunnar (Dessa none) | 2, 2 | 4 |
+| artifacts on the map (class 5): Equestrian's Gloves, Boots of Levitation, Speculum, Spyglass, Necklace of Ocean Guidance, Boots of Speed | 5, 5, 4, 4, 3, 1 | 5, 2, 4, 2, 2, 1 |
+| placed Logistics specialists: Kyrre, Gunnar (Dessa none) | 2, 2 | 2, 2 |
 | a custom army with Nomads | 0 | 0 |
 | Cursed Ground objects (class 21) | 386 | 54 |
 | maps with water | — | 131 |
@@ -478,7 +487,7 @@ move; their import is unchanged (`MAP_IMPORT_VERSION` stays unless the import ga
 | D-22 | a Logistics specialist's rate: single precision against exact or integer arithmetic | code (f32, Q-0005's kind), VCMI (integer percent), wiki (silent on rounding) | Q-0005's flag: faithful the code, strict-fixed exact; row E5-2 |
 | D-23 | Cursed Ground takes away the native terrain's 100 | code; VCMI none; wiki silent | the code; row E5-6 |
 | D-24 | flying's price: the fly price from inland tiles (roads 100), the lesser only from the coast | code against the wiki and VCMI (the lesser everywhere) | a conflict of sources: row E5-4 decides; until then the code |
-| D-25 | where a flying or water-walking move may end | code not read; wiki and VCMI: free land tiles | rows E5-7 |
+| D-25 | where a flying or water-walking move may end | code (the second reading), wiki and VCMI: a tile a hero may stop on | settled; row E5-7 a check |
 | D-26 | a radius grown in the day shows at the next step or day | code; VCMI at once for a skill; wiki silent | the code; row E5-10 |
 | A-12 | the drop to 0 prices the cheapest step without the artifacts' flying and water walking | code | fix-optional |
 | A-13 | a flying path crosses unexplored tiles | code; VCMI never | always fixed (an information leak); row E5-9 shows the original |
@@ -499,7 +508,7 @@ recipe are T34b's cut's tasks; this is the plan. Each row names what it settles 
 | E5-4 | D-24 | an Angel Wings hero on an inland cobblestone road, one straight step along it; on grass; on swamp; from a coastal tile along a road | points before and after each step | 100 each inland (the wiki and VCMI: 50, 100, 100); the coast's 50 |
 | E5-5 | §2.1 water walking (consensus, a check) | a Boots of Levitation hero: land → water, water → water, water → land, a diagonal on water | points after each step | the land tile's price, 100, 100, 141 |
 | E5-6 | D-23 | a Fortress army (native swamp) on swamp: a straight step from plain swamp and one from swamp under Cursed Ground | points after each step | 100 off it, 175 from it (VCMI 100) |
-| E5-7 | D-25 | an Angel Wings hero clicks a tree beyond a tree line; a Boots of Levitation hero clicks a water tile | the mark (green, red, none); arrived; the hero's tile | not read (the wiki: no end on the tree or the water) |
+| E5-7 | D-25 (a check) | an Angel Wings hero clicks a tree beyond a tree line; a Boots of Levitation hero clicks a water tile | the mark (green, red, none); arrived; the hero's tile | no path to either (§3.4) |
 | E5-8 | A-14 | an Angel Wings hero inland beside a resource pile, then beside a town's gate; the same on a coastal tile | the resource before and after; the hero's tile; a visit | the reading: no visit inland, a visit on the coast |
 | E5-9 | A-13 | an Angel Wings hero facing a strip of unexplored land between it and an explored tile | the target's mark at the first click | the reading: a green path through the strip |
 | E5-10 | D-26, ADV-FOG-003 | a hero that gains Scouting at a level-up (battle), then no step; a second hero with the Spyglass in the backpack (if the harness can equip it; else a skip) | the explored tiles around both after the battle and at day 2 | nothing new after the battle; at day 2 the radius 6 around the hero |
@@ -531,20 +540,36 @@ each written when its rule is built.
 | ADV-MOV-001 (amended) | the day's land points: the table at the slowest speed (HER-ADV-004) × (1 + the rate) + the flat bonuses | §1.1 | — |
 | ADV-MOV-002 (amended) | the points are set at the owner's turn start only; a gain in the day changes nothing until then | §1.4 | — |
 | ADV-MOV-003 (amended) | the step's price by the hero's Pathfinding level; Cursed Ground; Nomads | §2.1, §2.2 | D-23 |
-| ADV-MOV-009 | flying: the price (§2.1 point 5) and the passage (§3.1) | §2.1, §3.1 | D-24, D-25, A-13 |
-| ADV-MOV-010 | water walking: the price and the passage | §2.1, §3.1 | D-25 |
+| ADV-MOV-009 | flying: the price (§2.1 point 5), the passage (§3.1) and the end of a move (§3.4) | §2.1, §3.1, §3.4 | D-24, A-13, A-14 |
+| ADV-MOV-010 | water walking: the price, the passage and the end of a move | §2.1, §3.1, §3.4 | — |
 | ADV-MOV-006 (amended) | the drop to 0 after a step, with A-12's flag | §2.5 | A-12 |
 | ADV-FOG-001, -003 (amended) | the radius from HER-ADV-006; a grown radius shows at the next step or the new day's reveal | §4 | D-26 |
 
 ## 11. The second reading
 
-*(Filled in by the second reading's step of T34a.)*
+A fresh agent re-read the deciding code without this survey (2026-10-21), from nine questions,
+and **confirmed §1 to §3 point by point**: 0x4E4990's order (the cheat flag, the slowest speed with
+the specialty's creature and upgrade, the table, the rate grown on the x87 and rounded once to f32
+at 0x4E4CBB, the truncated product, then the boots, the gloves and the Stables) and the computer's
+bonus with its players 0 to 5 (§1.1); 0x4B1740 with flying at level 3 (100 inland on a road, the
+lesser 50 from the coast, 100 on water), water walking by the source tile, the diagonal's bound
+from the terrain's price after Nomads (§2.1); `hero_flight_tile_test`'s three conditions (§3.3);
+the start node's bits and the guard test skipped for flying nodes (§3.1); the expansion's table for
+blocked, unexplored, water and rock tiles by walking, flying and water walking, every new node
+starting with bit 10 and losing it on those tiles, a new day clearing bits 4 and 5, no stop entry
+from a node without bit 10 (§3.1); the move passing the raw spell fields to the drop's cheapest step
+(A-12, §2.5); and that the level-up, the skill learned and the artifacts' changes neither reprice
+nor reveal (§1.4).
+
+**What it adds:** where a move may end (§3.4, D-25 settled), the two nodes per tile, the flyer's
+visit only at its destination and the walking hero's boat node (§3.1). Not traced by it: the move's
+class switch after 0x48152B, which can also drop the visit (0x48167B), and whether the click
+handler refuses an empty path on screen.
 
 ## 12. For T34b and the checkpoint
 
 The checkpoint's questions are **ADV-Q20** (`docs/OPEN-QUESTIONS.md`): the quirk candidates' classes
-(A-12, A-13, A-14 after its row), the conflicts' interim rules (D-24's code until batch E5, D-25's
-end of a move until E5-7), the scope's edges (Cursed Ground and Nomads in; the Scouting specialty
+(A-12, A-13, A-14 after its row), the conflicts' interim rules (D-24's code until batch E5), the scope's edges (Cursed Ground and Nomads in; the Scouting specialty
 out; the new day's reveal built for D-26), and batch E5 as planned (its harness reads and spec fields
 `cross-lane`). T34b then drafts ADR-0013's effect kinds and properties (the land bonus, the speed,
 the flying and water-walking levels, the radius), ADR-0016's or -0017's amendment where the points,
