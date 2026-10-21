@@ -316,6 +316,19 @@ fn skills() -> impl Strategy<Value = Option<Vec<(u8, u8)>>> {
     )
 }
 
+/// A hero's custom experience (E08 T31): mostly up to 300 below the threshold of a level 2 to 20,
+/// so that its levels at load stop one short of that level and its first battle gives the next
+/// ones; sometimes any amount, the bound and past it (its levels at load then reach the highest).
+pub(super) fn experience() -> impl Strategy<Value = u32> {
+    prop_oneof![
+        4 => (2usize..=20, 1u32..=300).prop_map(|(level, below)| {
+            let thresholds = &FAITHFUL.core().hero_params().unwrap().experience;
+            thresholds[level - 1] - below
+        }),
+        1 => any::<u32>(),
+    ]
+}
+
 pub(super) fn plan() -> impl Strategy<Value = Plan> {
     let tiles = 2 * usize::from(MAX_SIDE) * usize::from(MAX_SIDE);
     (
@@ -589,6 +602,20 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
 /// The plan's map written, read back and imported, and a game started on it with `seed`.
 fn start(plan: &Plan, rules: &GameRuleset, seed: u64) -> GameState {
     start_on(&lay_out(plan), rules, seed)
+}
+
+/// The plan's map with `experience`, if any, as its heroes' custom experience, by the hero's index
+/// in the map's order (E08 T31: their levels at load, GAM-SET-002).
+pub(super) fn experienced(plan: &Plan, experience: Option<&[u32]>) -> RawMap {
+    let mut m = lay_out(plan);
+    let heroes = m.objects.iter_mut().filter_map(|o| match &mut o.body {
+        Body::Hero(hero) => Some(hero),
+        _ => None,
+    });
+    for (hero, &amount) in heroes.zip(experience.unwrap_or_default()) {
+        hero.experience = Some(amount);
+    }
+    m
 }
 
 /// The map written, read back and imported, and a game started on it with `seed` at the map's
@@ -1842,6 +1869,83 @@ fn check_levels(
     Ok(())
 }
 
+/// The heroes' levels by their experience, in every state the plans reach (E08 T31, design §14;
+/// HER-EXP-002, HER-EXP-003, GAM-DEC-002), against an oracle of the ruleset's thresholds (a
+/// level is the number of thresholds at or below the experience, at most the highest level): no
+/// hero's level is above its experience's, nor its experience above the bound (the threshold after
+/// the highest level, less one) or the scenario's level limit's threshold (or its own level's,
+/// if higher); a hero has a pending level only while a level-up of its owner is open for it, of
+/// the level after its own. At most one level-up is open, its hero on the map, and the game waits
+/// for its owner (ADR-0017 point 6) and for no one else.
+fn check_progression(rules: &GameRuleset, state: &GameState) -> Result<(), TestCaseError> {
+    let params = rules.core().hero_params().unwrap();
+    let thresholds = &params.experience;
+    let max = params.max_level;
+    let waiting = state.waiting_for();
+    let open = waiting.and_then(|player| state.level_up(player));
+    prop_assert_eq!(
+        waiting.is_some(),
+        open.is_some(),
+        "waiting for {:?}",
+        waiting
+    );
+    for player in (0..state.players()).map(|p| PlayerId::new(u8::try_from(p).unwrap())) {
+        prop_assert!(Some(player) == waiting || state.level_up(player).is_none());
+    }
+    if let Some(view) = open {
+        let owner = state.adventure().hero(view.hero).map(|h| h.owner);
+        prop_assert_eq!(owner, waiting, "{:?}", view);
+    }
+    for (index, details) in state.heroes().iter().enumerate() {
+        let id = HeroId::new(u16::try_from(index).unwrap());
+        let (level, experience) = (details.level, details.experience);
+        let reached = thresholds.iter().filter(|&&t| t <= experience).count();
+        let reached = u8::try_from(reached).unwrap().min(max);
+        prop_assert!(
+            experience <= experience_cap(rules, state, level),
+            "{:?}: {} experience",
+            id,
+            experience
+        );
+        prop_assert!(
+            level <= reached,
+            "{:?}: level {} at {} experience",
+            id,
+            level,
+            experience
+        );
+        match open.filter(|view| view.hero == id) {
+            Some(view) => {
+                prop_assert!(reached > level, "{:?} without a pending level", view);
+                prop_assert_eq!(view.level, level + 1);
+            }
+            None => prop_assert_eq!(
+                reached,
+                level,
+                "{:?}: a pending level at {} experience",
+                id,
+                experience
+            ),
+        }
+    }
+    Ok(())
+}
+
+/// The most experience a hero at `level` may have in `state` (HER-EXP-002, HER-EXP-003; E08 T31,
+/// an oracle of the ruleset's thresholds): the threshold of the scenario's level limit, or without
+/// one the bound (the threshold after the highest level, less one); its own level's if higher.
+fn experience_cap(rules: &GameRuleset, state: &GameState, level: u8) -> u32 {
+    let params = rules.core().hero_params().unwrap();
+    let threshold = |level: u8| params.experience[usize::from(level.max(1)) - 1];
+    let (limit, max) = (state.level_limit(), params.max_level);
+    let cap = if (1..=max).contains(&limit) {
+        threshold(limit)
+    } else {
+        threshold(max + 1) - 1
+    };
+    cap.max(threshold(level))
+}
+
 fn check_heroes_after_battle(
     rules: &GameRuleset,
     (before, after): (&GameState, &GameState),
@@ -1880,9 +1984,11 @@ fn check_heroes_after_battle(
         let mut spells = b.spells.clone();
         for change in told {
             match change {
+                // E08 T31: under the bound and the scenario's level limit (HER-EXP-002, -003).
                 HeroChange::GainExperience(points) => {
                     prop_assert!(after.adventure().hero(id).is_some(), "{:?} gained", id);
-                    experience = experience.saturating_add(points);
+                    let cap = experience_cap(rules, before, b.level);
+                    experience = experience.saturating_add(points).min(cap);
                 }
                 HeroChange::SetSpellPoints(points) => mana = points,
                 HeroChange::AddArtifact(_) => items += 1,
@@ -2209,17 +2315,22 @@ proptest! {
     #![proptest_config(ProptestConfig { cases: 48, ..ProptestConfig::default() })]
 
     /// Atomicity, legality consistency, ownership isolation and conservation at every step of
-    /// random play on imported maps, in both profiles.
+    /// random play on imported maps, in both profiles; since E08 T31 the heroes' levels by their
+    /// experience in every state ([`check_progression`]), in half the cases with heroes of a
+    /// custom experience ([`experience`]: levels at load, and level-ups in play from the first
+    /// battle).
     #[test]
     fn every_step_keeps_the_commands_invariants(
         plan in plan(),
         strict in any::<bool>(),
         seed in any::<u64>(),
         steps in steps(),
+        experience in proptest::option::weighted(0.5, vec(experience(), 6)),
     ) {
         let rules = if strict { &*STRICT } else { &*FAITHFUL };
-        let mut state = start(&plan, rules, seed);
+        let mut state = start_on(&experienced(&plan, experience.as_deref()), rules, seed);
         for step in &steps {
+            check_progression(rules, &state)?;
             let legal = options(&state, rules);
             let reaches = reaches(&state, rules);
             check_legal(&state, rules, &legal, &reaches)?;
@@ -2251,6 +2362,7 @@ proptest! {
             check_isolation(&before, &state, player, &events)?;
             check_conservation(rules, &before, &state, &events)?;
         }
+        check_progression(rules, &state)?;
     }
 
     /// Clone equivalence: a fork playing other commands leaves its parent as it was, and a fork
@@ -2302,7 +2414,8 @@ proptest! {
 /// What a set of games played: the battles started and how they ended, and the heroes' part of
 /// their outcomes (E08 T19b2); (E08 T20b3b1) the monsters' battles, those on a special ground,
 /// how they ended for the visitor, the monsters' offers by kind, and the groups that joined; (E08
-/// T21a) the guarded piles' questions and battles, and how those ended.
+/// T21a) the guarded piles' questions and battles, and how those ended; (E08 T31) the level-ups
+/// opened and the levels gained in play.
 #[derive(Debug, Default)]
 struct Fought {
     started: usize,
@@ -2328,6 +2441,8 @@ struct Fought {
     guard_battles: usize,
     piles_won: usize,
     guards_held: usize,
+    level_ups: usize,
+    levels: usize,
     /// The visitors of the guarded piles' battles in progress.
     at_piles: Vec<HeroId>,
 }
@@ -2338,6 +2453,9 @@ impl Fought {
         let part = rules.adventure();
         for event in events {
             match *event {
+                // E08 T31: the levels in play, opened as a decision or given at once.
+                GameEvent::LevelUpOpened { .. } => self.level_ups += 1,
+                GameEvent::LevelGained { .. } => self.levels += 1,
                 GameEvent::BattleStarted { heroes, tile, .. }
                     if heroes[1].is_none() && Self::at_pile(after, tile) =>
                 {
@@ -2449,7 +2567,9 @@ impl Fought {
 /// creatures and learn Eagle Eye's picks, so the properties above see each. Since E08 T20b3b1 it
 /// meets monsters too: their battles, the system playing their side, some on a special ground,
 /// won and lost; their offers to join, to join for gold and to flee, and groups that join. Since
-/// E08 T21a guarded piles too: their questions, and their battles won and lost.
+/// E08 T21a guarded piles too: their questions, and their battles won and lost. Since E08 T31 the
+/// winners' level-ups too, opened and answered, and levels given at once, the heroes' levels
+/// checked after every command ([`check_progression`]).
 #[test]
 fn the_plans_play_battles_to_a_victory() {
     use proptest::strategy::ValueTree;
@@ -2469,6 +2589,7 @@ fn the_plans_play_battles_to_a_victory() {
                 fought.system_commands += usize::from(system);
             }
             fought.count(rules, &state, &events);
+            check_progression(rules, &state).unwrap();
         }
     }
     let f = &fought;
@@ -2490,4 +2611,48 @@ fn the_plans_play_battles_to_a_victory() {
         "{f:?}"
     );
     assert!(f.gold_offered > 0, "{f:?}");
+    assert!(f.level_ups > 0 && f.levels > 0, "{f:?}");
+}
+
+/// The draws' source by the profile, on the original packs (E08 T31, design §14; GAM-HER-002,
+/// GAM-SET-002, `ADV-QUIRK-9`): in `faithful` a hero's levels at load come from its own level seed
+/// and the level (the original's generator), so the levels another hero gains at load before it
+/// (in hero id order) leave its own as they are; in `strict-fixed` they come from the setup stream,
+/// which the other hero's levels draw from first, so they change with those for some seeds.
+// covers: GAM-HER-002, GAM-SET-002
+#[test]
+fn the_levels_at_load_follow_the_seed_in_faithful_and_the_stream_in_strict_fixed() {
+    let plan = Plan {
+        version: Version::RoE,
+        side: 8,
+        two_levels: false,
+        tiles: vec![(0, 0, 0); 64],
+        players: vec![(0, true), (1, true)],
+        heroes: vec![((1, 1, 0), None), ((6, 6, 0), None)],
+        hero_types: 0,
+        backpacks: vec![],
+        skills: vec![],
+        blockers: vec![],
+        difficulty: 1,
+    };
+    // The second hero's levels at load, at 12 000 experience (level 8), after the first hero's
+    // at `first` experience.
+    let second = |rules: &GameRuleset, seed: u64, first: u32| {
+        let game = start_on(&experienced(&plan, Some(&[first, 12_000])), rules, seed);
+        let details = game.hero(HeroId::new(1)).unwrap();
+        assert_eq!(details.level, 8);
+        (details.primary, details.skills.clone())
+    };
+    let mut changed = 0;
+    for seed in 0..16 {
+        // At 1 experience the first hero gains no level (0 would be RoE's default, drawn from
+        // the setup stream before the seeds), at 20 000 levels 2 to 11.
+        assert_eq!(
+            second(&FAITHFUL, seed, 1),
+            second(&FAITHFUL, seed, 20_000),
+            "seed {seed}"
+        );
+        changed += usize::from(second(&STRICT, seed, 1) != second(&STRICT, seed, 20_000));
+    }
+    assert!(changed > 0);
 }
