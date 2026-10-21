@@ -1857,7 +1857,8 @@ the five DLLs, the combat and end tunes, `maps.tar`, `extracted.tar`).
   box and log's line listed from the shot: the engine's lucky shot kills 4 Goblins, the
   original's 5); `drawn` (78, only the four new), then `drawn --record`. The viewer's tests (186
   in the library), `scripts/exe.py check` and `cited`, the full `clients/scripts/check.sh`:
-  CHECK_RESULT.
+  all gates passed (`verify-once clients`, code `a48bee9`), and `verify --scope client` no failing
+  step. Pull request #371.
 
 ## Accepted review lists (M1, M2)
 

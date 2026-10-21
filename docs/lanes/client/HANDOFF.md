@@ -58,7 +58,7 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
-- **2026-10-21, E17 M3 T7b-2b-2b (morale, luck, fear; PR_NUMBER).** Not split (the user):
+- **2026-10-21, E17 M3 T7b-2b-2b (morale, luck, fear; #371).** Not split (the user):
   four sequences recorded, seeds searched; the outline found; frames exact.
 - **2026-10-21, E17 M3 T7b-2b-2a (hero luck and morale on the map; #368, merged).** At the
   user's word: `effects` become Leadership and Luck; a forced lucky shot checked.
