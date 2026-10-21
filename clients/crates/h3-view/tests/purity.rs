@@ -31,12 +31,15 @@ const PURE: [(&str, &[&str]); 3] = [
 /// T7: the headless renderer's scenario adapter; T8: `h3-formats`, whose archive and executable
 /// readers only the adapters use; M2 T1: the capture harness's map writer `h3-map` and the
 /// ruleset's type `h3-content-battle`; M2 T5a: the platform adapter `h3-sdl`, the window; T5b:
-/// `nanomp3`, the music).
+/// `nanomp3`, the music; M3 T7b-2b-2a: `h3-content` and `h3-contracts`, a hero's battle effects
+/// and the skills behind them for the original's map).
 const BINARY_ONLY: [(&str, &[&str]); 1] = [(
     "h3-view",
     &[
         "h3-battle",
+        "h3-content",
         "h3-content-battle",
+        "h3-contracts",
         "h3-formats",
         "h3-kernel",
         "h3-map",

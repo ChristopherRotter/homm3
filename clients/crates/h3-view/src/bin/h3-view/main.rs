@@ -88,7 +88,8 @@ commands:
           (clients/capture/README.md): Red's hero (human) just west of Blue's (computer) on the
           scenario's terrain, each with the scenario's stacks in their slots, its formation and its
           war machines (as artifacts), its spell book and the school skills behind its
-          masteries, no other skills or artifacts; stepping Red's hero east
+          masteries, Leadership and Luck for its morale and luck effects, no other skills or
+          artifacts; stepping Red's hero east
           starts the battle (--hot-seat: Blue a human too). The
           creatures' original ids from the installation's crtraits.txt; the map defaults to
           clients/out/situation/<stem>.h3m.
