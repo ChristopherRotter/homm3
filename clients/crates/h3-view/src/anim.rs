@@ -1267,16 +1267,14 @@ fn played(
     if let Some(f) = fidgets.as_mut() {
         f.reset(0, &player.bases(), &[]);
     }
-    // The snapshot's spells tint their boxes from the start.
-    let spelled: Vec<u8> = player
+    // The snapshot's spells tint their boxes from the start (E17 M3 T7b-2a).
+    let casts = player.stage.casts;
+    player.pending_tints = player
         .stacks
         .iter()
         .filter(|(_, l)| !l.spells.is_empty())
-        .map(|(&id, _)| id)
+        .map(|(&id, l)| (id, hue(l, casts)))
         .collect();
-    for stack in spelled {
-        player.retint(stack);
-    }
     player.flush(0, 0);
     let mut outlines = vec![(0, snapshot.active)];
     let mut waiting = snapshot.active;
@@ -1389,6 +1387,18 @@ fn played(
         log: player.log,
         ended,
         end: player.clock.now,
+    })
+}
+
+/// The hue of `live`'s box by its active spells' signs in `casts` (none: no spell active, the
+/// layout's tint; `draw_battle_stack` 0x43E6AA, design §4.3; E17 M3 T7b-2a).
+fn hue(live: &Live, casts: &Casts) -> Option<u32> {
+    (!live.spells.is_empty()).then(|| {
+        crate::scene::spell_hue(
+            live.spells
+                .iter()
+                .map(|h| casts.spells.get(h).map_or(0, |l| l.sign)),
+        )
     })
 }
 
@@ -2113,9 +2123,9 @@ impl Player<'_> {
                         }
                         // 0x5A1A8C to 0x5A1ACB: its defense lowered by the value, to 0 at least.
                         let lowered = live.defense.min(i32::from(look.value[usize::from(s)]));
-                        if let Some(l) = self.stacks.get_mut(&t) {
-                            l.defense -= lowered.max(0);
-                        }
+                        self.stacks
+                            .entry(t)
+                            .and_modify(|l| l.defense -= lowered.max(0));
                         over(self);
                         self.effects(effects);
                         let line = Logged::Disrupted {
@@ -2185,6 +2195,7 @@ impl Player<'_> {
             Event::EffectEnded { target, spell } => (target, spell, false),
             _ => return,
         };
+        let casts = self.stage.casts;
         let Some(live) = self.stacks.get_mut(&stack) else {
             return;
         };
@@ -2194,25 +2205,8 @@ impl Player<'_> {
             live.spells.remove(&spell)
         };
         if changed {
-            self.retint(stack);
+            self.pending_tints.push((stack, hue(live, casts)));
         }
-    }
-
-    /// `stack`'s box takes the hue of its active spells (none: the layout's) with the next frame
-    /// drawn (`draw_battle_stack` 0x43E6AA, design §4.3; E17 M3 T7b-2a).
-    fn retint(&mut self, stack: u8) {
-        let Some(live) = self.stacks.get(&stack) else {
-            return;
-        };
-        let spells = self.stage.casts;
-        let hue = (!live.spells.is_empty()).then(|| {
-            crate::scene::spell_hue(
-                live.spells
-                    .iter()
-                    .map(|h| spells.spells.get(h).map_or(0, |l| l.sign)),
-            )
-        });
-        self.pending_tints.push((stack, hue));
     }
 
     /// A stack's walk time W, ms a hex (+0x158; design §7.3): its creature's, trunc(W × 0.65)

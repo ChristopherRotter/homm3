@@ -335,20 +335,34 @@ fn a_count_box_shows_by_its_stack_and_the_hex_ahead() {
             (at(9, 2, [22, -15]), 1234),
         ]
     );
-    // The moment's counts (E17 M3 T5b: a strike's kills from its end) override the snapshot's.
+    // The moment's counts (E17 M3 T5b: a strike's kills from its end) override the snapshot's;
+    // its hues (E17 M3 T7b-2a: a stack's spells) the layout's, its saturation kept.
     let moment = Moment {
         counts: [(1, 7), (6, 1200)].into_iter().collect(),
+        hues: [(2, 0x3EAA_B368)].into_iter().collect(),
         ..moment
     };
     let list = battle_at(&o, &moment, &keys(), &tables(), &layout).unwrap();
     let counts: Vec<_> = list
         .iter()
         .filter_map(|d| match d {
-            Draw::CountBox { stack, count, .. } => Some((*stack, *count)),
+            Draw::CountBox {
+                stack, count, tint, ..
+            } => Some((*stack, *count, *tint)),
             _ => None,
         })
         .collect();
-    assert_eq!(counts, [(0, 10), (1, 7), (2, 10), (6, 1200)]);
+    let plain = layout.count_box.tint;
+    let green = [0x3EAA_B368, plain[1]];
+    assert_eq!(
+        counts,
+        [
+            (0, 10, plain),
+            (1, 7, plain),
+            (2, 10, green),
+            (6, 1200, plain)
+        ]
+    );
     // A stack on the field's edge: nothing ahead of hex 0 facing left.
     assert_eq!(ahead(0, false, 0), None);
     assert_eq!(ahead(255, true, 0), None);

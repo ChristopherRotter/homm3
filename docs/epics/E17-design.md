@@ -334,7 +334,10 @@ pixels of the 800 × 600 frame; the battlefield takes its top 800 × 556.
   its inside is tinted (§3.7, 0x43E6A0: from (1, 1), 28 × 9) with the hue 0.75 and the
   saturation 0.8 when the stack has no active spell (+0x194 = 0); else the hue is
   f32((r + 1) × 0.1667) with r = Σ k / Σ |k| over its 81 spells' durations +0x198 that are not 0,
-  k the spell table's first field (0x43E6AA to 0x43E73E; not built: M3 T7b). The count is `%d` of
+  k the spell table's first field (0x43E6AA to 0x43E73E; read at M3 T7b-2a: the record's +0, 1
+  positive, −1 negative, 0 neither; r = 0 when Σ |k| is 0, so neutral spells alone give 0.1667;
+  r, r + 1 and the product by the f64 constant f32(0.1667) each at the x87's 53 bits, the hue
+  stored as an f32). The count is `%d` of
   +0x4C, or of +0x50 when it is not −1 (below, "The number"), written by `TextDraw` (§3.6)
   in `tiny.fnt` into (x, y, 30, 15) with colour 4 (`game.pal`'s entry 13, white) and alignment 1
   (centred, from the top). A count of seven digits or more shows its first five (the box's last
@@ -344,8 +347,14 @@ pixels of the 800 × 600 frame; the battlefield takes its top 800 × 556.
   2, by its pose's hex and facing; the hexes ahead taken by every living stack's poses and the blocked hexes; the
   layout's `[count_box]` holds the numbers. Every creature's troop-count offset is 0 in the
   harvested tables. Checked: the capture set without the count-box mask, 31 situations, all 57
-  frames exact (§6.2). Not yet: the spells' tint (M3 T7b, with the first sequences that cast on
-  stacks).
+  frames exact (§6.2). The spells' tint (M3 T7b-2a): the timeline's `tints` (`anim::TintKey`):
+  a stack's active spells follow the record's `EffectApplied` and `EffectEnded` (the snapshot's
+  effects at the start), and its box takes `scene::spell_hue` of their signs (the asset tables'
+  `[[spell]]` `sign`, harvested from the record's +0; computed exactly in integers, checked
+  against the executable's arithmetic run in floats for every sum of up to 81 signs) with the
+  first frame drawn after the change: a timed spell's with its animation's first frame, Cure's
+  likewise (its effect first), Dispel's and Disrupting Ray's with the redraw after their
+  animation (their effect after it), a round's expiry with the next frame.
 - **Over time** (M3 T5a). +0x30 is stored only by the walk and the flight (no other byte store to
   it found). `stack_walk` sets it before the path's first step, so before its turn (0x442145),
   and clears it at the end, after group 21, the standing frame, the turn back of a plain move and
@@ -851,7 +860,11 @@ A frame of group 0 lasts trunc(f32 W x F / f32 n); every other group trunc(100 F
   in one command are one walk; the engine's path may differ from the original's on ties (Q53).
   Confirmed (sequence `walk`): the Champions (W 450, n 8) show group 20's three frames at 100,
   200 and 300 ms, group 0 every 56 ms from 400 over four hexes, group 21 at 2192 to 2492, standing
-  at 2592; at speed 1 the frames are 62 and 35 ms apart, at speed 2 40 and 22.
+  at 2592; at speed 1 the frames are 62 and 35 ms apart, at speed 2 40 and 22. Haste and Slow
+  (M3 T7b-2a, sequence `haste`): the products of the integer W0 and the doubles fall on an integer
+  or at least 0.05 from one, so W is W0 × 65 / 100 and W0 × 3 / 2 in integers (the viewer's
+  `walk_time` by the stack's active spells); the Pikemen (W0 575, n 6) walk hasted at 62 ms a
+  frame (W 373) and slowed at 143 (W 862), as recorded on the first run.
 - **A flight** (`stack_flight_animation` 0x4B4A40): group 20, then k = (d + D/2) / D cycles of
   group 0 at the walk's frame time along the straight line between the hexes (d their distance
   in pixels, D the flight distance +0x160, `cranim.txt` x 115), the hex taken at the end; group
@@ -1690,8 +1703,28 @@ resistance roll, if any (category 3, 0x5A0331); Curse's is named `Curse`, withou
   after a cast acts at the cast's end. `arrow`: all 168 frames exact (the projectile's DEF by the
   angle, its frames cycling, its 22 steps; the marked loop). Not built: the aiming cursor
   (`crspell.DEF`, animated: not read; the harness clicks within the millisecond, so no capture
-  shows it), the count box's tint by the stack's spells (T7b-2: `cast` 238 pixels from 600,
-  `resist` until Slow ends), the other handlers (T7b-2, T7c).
+  shows it), the count box's tint by the stack's spells (T7b-2a, below), the other handlers
+  (T7b-2a, T7c).
+- **Read at T7b-2a** (`cast_spell`'s handlers): Dispel on one stack plays its animation (the
+  record's +8, 41) over the target at 100 ms, then ends every spell but Poison and writes the
+  cast's line (0x5A15E0 to 0x5A1605); Cure (`stack_cure` 0x446500) takes effect, then plays 39 and
+  writes the line (0x5A17F5 to 0x5A1816, the spell 0x25 named); Disrupting Ray flies its
+  projectile (`c07spA0`, one DEF at 0°, 0x64225C, 0x642260) from the cast point to the target's
+  centre unless the battle is hidden, lowers the defense +0xCC by the value (the specialty's
+  bonus too) to 0 at least, plays 14 (translucent) at 100 ms, applies the spell (0x5A1AF7) and
+  writes GENRLTXT 92 with the defense taken, no cast line (0x5A1A53 to 0x5A1B43).
+- **Built (T7b-2a, `anim`):** `Player::cast` by the spell's number (`SpellLook::original`):
+  Dispel, Cure and Disrupting Ray as read, a timed spell as before; the effects (`EffectApplied`,
+  `EffectEnded`) applied at the handler's point, so the count box's hue (§4.3) changes with the
+  next frame drawn; a stack's active spells from the snapshot on; the walk time under Haste and
+  Slow (§7.3); a stack's defense lowered by Disrupting Ray (`Logged::Disrupted`, the defend line's
+  gain). Disrupting Ray's value: the record's ruleset (the viewer's binary compiles it from the
+  record's packs) at the caster's mastery, the record's own hero's (the other's book is hidden:
+  none, *provisional*). Recorded (`casts.toml`'s way, then `sequences.toml`): `haste` (Haste,
+  a hasted walk, Crag Hack's Slow ending it, a slowed walk) and `dispel` (Slow, Disrupting Ray at
+  the Vampire Lords, Cure, Slow, Dispel), both as recorded on the first run; the projectile's
+  last position at 4 093 and the animation from its third frame at 4 126 (the flight's 726 ms
+  outside the deadline: frames 0 to 2 drawn at once, as the clock's lateness rule gives).
 - **Not read:** the dissolve's blend; Chain Lightning's rays beyond `draw_ray`'s call (colour
   0x131, 0x5A64EF; T7c); how the glows are painted; the summons' and the Pit Lord's creation
   beyond the dissolve; Earthquake (sieges); the force-feedback effects (IFC20, nothing drawn).
@@ -2263,12 +2296,15 @@ panel's set-text 0x46BF50, the mouse posted again 0x4ECC00) and where each line 
   | the First Aid Tent's heal | between its sound and its magic animation (0x478D0A) | row 415: the tent and the patient each by its number, the hit points (`battle.log.heal`) |
   | a round's start | outside the tactics phase, before the next activation (0x4761E9) | row 413 (`battle.log.round`); none at the opening |
   | good, bad morale | at the event (*provisional*: their animations are T7b's) | rows 34, 35 |
+  | a hero's spell on one stack (M3 T7b-1, T7b-2a) | a timed spell's after its effect, before its animation (0x5A109F); Cure's and Dispel's after their animation (0x5A1816, 0x5A1605) | row 196 (`battle.log.cast-on`) |
+  | Disrupting Ray (M3 T7b-2a) | after its animation and effect (0x5A1B43); no cast line | row 92, the defense it took (`battle.log.disrupted`) |
 
   Not built: the lines the engine's other events write in the original (regeneration, row 372 at
   0x44707B; mana drain, 374 and 375 at 0x4657AD; the spells, Death Stare, Life Drain, Fire
   Shield, the moat, fire walls, land mines, turrets: T7's). The striker is named by its number
-  before the strike (a retaliator's after the strike's kills), a defend's gain by the snapshot's
-  defense.
+  before the strike (a retaliator's after the strike's kills), a defend's gain by the stack's
+  defense then (the snapshot's, lowered by Disrupting Ray since M3 T7b-2a; other changes to it,
+  Stone Skin's, a Behemoth's, not followed: *provisional*).
 - **Checked:** the line times against the original's memory: `shot`'s line at 1 588 ms, `melee`'s
   at 5 266 and 6 466 (the unit tests pin them), `behind`'s, `shots`' and `machines`' sequences of
   lines, the round's line and the settling as modelled. The harness keeps a frame where the

@@ -23,6 +23,7 @@ const CAST: &str = include_str!("../../../../situations/timelines/cast.txt");
 const RESIST: &str = include_str!("../../../../situations/timelines/resist.txt");
 const ARROW: &str = include_str!("../../../../situations/timelines/arrow.txt");
 const HASTE: &str = include_str!("../../../../situations/timelines/haste.txt");
+const DISPEL: &str = include_str!("../../../../situations/timelines/dispel.txt");
 
 /// Creature handles of the tests.
 const CHAMPION: u16 = 0;
@@ -335,7 +336,16 @@ fn looks() -> BTreeMap<u16, Look> {
             VAMPIRE_LORD,
             look(
                 [9000, 500, 500, 115],
-                &[(0, 6), (1, 9), (2, 8), (3, 7), (4, 9), (5, 8), (20, 5), (21, 5)],
+                &[
+                    (0, 6),
+                    (1, 9),
+                    (2, 8),
+                    (3, 7),
+                    (4, 9),
+                    (5, 8),
+                    (20, 5),
+                    (21, 5),
+                ],
                 160,
             ),
         ),
@@ -3335,4 +3345,161 @@ fn the_haste_sequence_plays_as_recorded() {
     assert_eq!(hue(3843), Some(0x3EAA_B368));
     assert_eq!(hue(3844), Some(0));
     assert_eq!(t.hues(9000).get(&1), None);
+}
+
+#[test]
+fn the_dispel_sequence_plays_as_recorded() {
+    // E17 M3 T7b-2a (`seq-dispel.toml`): Crag Hack slows the Pikemen; Orrin's Disrupting Ray
+    // flies at the Vampire Lords (its projectile, its animation 14 from its third frame, as the
+    // flight left the deadline behind), Cure (its effect, then 39), Slow again, Dispel (41, then
+    // its effect).
+    let mut lords = at(1, Side::Defender, VAMPIRE_LORD, 100, false);
+    lords.defense = 10;
+    let o = snapshot(vec![lords, at(0, Side::Attacker, PIKEMAN, 86, false)]);
+    let turn = |stack| Event::TurnStarted { stack };
+    let ended = |target| Event::EffectEnded { target, spell: 54 };
+    let ray = Event::EffectApplied {
+        target: 1,
+        spell: 47,
+        rounds: None,
+    };
+    let commands = [
+        (Some(0), vec![defender_cast(54, 0), applied(0, 54)]),
+        (Some(2900), vec![Event::Defended { stack: 1 }, turn(0)]),
+        (Some(2900), vec![cast(47, 1), ray]),
+        (
+            Some(5926),
+            vec![
+                Event::Defended { stack: 0 },
+                Event::RoundStarted { round: 2 },
+                turn(1),
+            ],
+        ),
+        (Some(5926), vec![Event::Defended { stack: 1 }, turn(0)]),
+        (Some(5926), vec![cast(37, 0), ended(0)]),
+        (
+            Some(8326),
+            vec![
+                Event::Defended { stack: 0 },
+                Event::RoundStarted { round: 3 },
+                turn(1),
+            ],
+        ),
+        (Some(8326), vec![defender_cast(54, 0), applied(0, 54)]),
+        (Some(11226), vec![Event::Defended { stack: 1 }, turn(0)]),
+        (Some(11226), vec![cast(35, 0), ended(0)]),
+    ];
+    let t = play_casts_both(&o, &commands);
+    assert_eq!(
+        t.lines_with_heroes(13726),
+        until(&screenless(DISPEL), 13726)
+    );
+    // Disrupting Ray's line after its animation, the defense it took (3 of 10); the Vampire
+    // Lords' defend gains 1 of their 7 since.
+    let disrupted = (
+        5626,
+        Logged::Disrupted {
+            stack: 1,
+            lowered: 3,
+        },
+    );
+    assert!(t.log.contains(&disrupted));
+    let defends: Vec<i32> = t
+        .log
+        .iter()
+        .filter_map(|(_, l)| match *l {
+            Logged::Defend {
+                stack: 1, defense, ..
+            } => Some(defense),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(defends, [10, 7, 7]);
+    // The lines of Cure and Dispel after their animations.
+    let cast_line = |spell| Logged::Cast {
+        side: 0,
+        spell,
+        target: 0,
+        count: 40,
+    };
+    assert!(t.log.contains(&(8026, cast_line(37))));
+    assert!(t.log.contains(&(13326, cast_line(35))));
+    // The hues: the Pikemen's red under Slow from its animation's first frame, gone with Cure's
+    // first and Dispel's next redraw after its animation; the Vampire Lords' red from the redraw
+    // after Disrupting Ray's animation.
+    let hue = |stack, at| t.hues(at).get(&stack).copied();
+    assert_eq!(hue(0, 599), None);
+    assert_eq!(hue(0, 600), Some(0));
+    assert_eq!(hue(0, 6525), Some(0));
+    assert_eq!(hue(0, 6526), None);
+    assert_eq!(hue(0, 8926), Some(0));
+    assert_eq!(hue(0, 13425), Some(0));
+    assert_eq!(hue(0, 13426), None);
+    assert_eq!(hue(1, 5725), None);
+    assert_eq!(hue(1, 5726), Some(0));
+}
+
+#[test]
+fn spells_tint_boxes_from_the_snapshot_on_and_disrupting_ray_flies_only_from_a_caster() {
+    // E17 M3 T7b-2a: a stack slowed in the snapshot shows Slow's hue from the start; Haste on it
+    // too gives a mixed one; a spell renewed changes nothing; an effect on a stack gone does
+    // nothing; the defender's Disrupting Ray without a caster plays its animation and its line
+    // without a projectile, its defense lowered to 0 at least.
+    let mut slowed = at(0, Side::Attacker, PIKEMAN, 86, false);
+    slowed.effects = vec![h3_protocol::wire::Effect {
+        spell: 54,
+        rounds: Some(2),
+        mastery: 0,
+        value: 0,
+        attack: 0,
+        defense: 0,
+        speed: 0,
+    }];
+    let o = snapshot(vec![
+        slowed,
+        at(1, Side::Defender, VAMPIRE_LORD, 100, false),
+    ]);
+    let commands = [
+        (
+            Some(0),
+            vec![
+                applied(0, 54),
+                applied(9, 54),
+                Event::EffectEnded {
+                    target: 9,
+                    spell: 54,
+                },
+                applied(0, 53),
+            ],
+        ),
+        (
+            Some(1000),
+            vec![
+                defender_cast(47, 0),
+                Event::EffectApplied {
+                    target: 0,
+                    spell: 47,
+                    rounds: None,
+                },
+            ],
+        ),
+    ];
+    let t = play_casts(&o, &commands);
+    let hue = |at| t.hues(at).get(&0).copied();
+    assert_eq!(hue(0), Some(0));
+    // Haste and Slow: r = 0, the hue f32(0.1667), from the next frame drawn (the ray's first).
+    assert_eq!(t.tints.len(), 3);
+    assert_eq!(hue(1000), Some(0x3E2A_B368));
+    assert!(t.flights.is_empty());
+    let lowered: Vec<i32> = t
+        .log
+        .iter()
+        .filter_map(|(_, l)| match *l {
+            Logged::Disrupted { lowered, .. } => Some(lowered),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(lowered, [1]);
+    // Disrupting Ray (negative) with Haste and Slow: r = −1/3.
+    assert_eq!(hue(4000), Some(0x3DE3_99E0));
 }
