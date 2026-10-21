@@ -53,7 +53,7 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
-- **2026-10-21, E17 M3 T7a-2a (the harness casts; PR open).** T7a-2 split with the user. The
+- **2026-10-21, E17 M3 T7a-2a (the harness casts; #348 open).** T7a-2 split with the user. The
   book read; `cast:`; heroes' books; `battle_book`; `casts.toml`: the hero's cast as read, the
   Faerie Dragon's group by its own angle confirmed (review list).
 - **2026-10-21, E17 M3 T7a-1 (the magic animations read; #344, merged).** Seven players,
