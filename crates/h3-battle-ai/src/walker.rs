@@ -119,7 +119,7 @@ pub(crate) fn turn(
     let mut value = 0;
     let chosen = walker.choose(rng, &mut value);
     chosen
-        .or_else(|| casts::entry(&walker, &mut value))
+        .or_else(|| casts::entry(&walker, &mut value, rng))
         .unwrap_or_else(|| {
             let hard = computer::difficulty(state) >= 2 || computer::human(state, side);
             if hard && !computer::wait_phase(state) {
@@ -309,7 +309,7 @@ impl<'a> Walker<'a> {
             });
         }
         *value = best.map_or(0, |b| b.value.max(b.plan_value));
-        if let Some(cast) = casts::entry(self, value) {
+        if let Some(cast) = casts::entry(self, value, rng) {
             return Some(cast);
         }
         let Some(b) = best else {

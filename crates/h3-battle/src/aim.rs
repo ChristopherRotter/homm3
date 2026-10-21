@@ -25,9 +25,12 @@ use h3_contracts::{BattleSide, FortLevel};
 use h3_kernel::arith::{DOUBLE_BITS, SINGLE_BITS, X87};
 
 use crate::binds;
-use crate::combat::{can_shoot, can_shoot_without, melee_damage, shot_damage, spares};
+use crate::combat::{
+    can_shoot, can_shoot_without, estimated_damage, melee_damage, shot_damage, spares,
+};
 use crate::damage::{Strike, effective_defense, frenzied};
 use crate::effects::{DamageRoll, Status};
+use crate::event::StrikeFlags;
 use crate::geometry::{Field, Hex, HexSet};
 use crate::hero;
 use crate::magic;
@@ -667,6 +670,77 @@ impl Threats {
     }
 }
 
+/// A stack's threat record as the spell context builds it (0x422B20 with flag 0; E23 T4b1): its
+/// nearest enemy and the turns it needs to attack it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Threat {
+    /// The enemy (+0x538).
+    pub enemy: StackId,
+    /// The turns to attack it (0x448BD0 from the record's cost +0x540: at least 1).
+    pub turns: u32,
+}
+
+/// The threat record of stack `id` in the context `ctx` (0x422B20 with flag 0, 0x448840; E23
+/// T4b1): none for a dead stack, a war machine but the Ballista, one blind or turned to stone for
+/// more than a round ([`kept_out`]), a hypnotized or berserk one. A stack that can shoot now takes
+/// every living enemy but the turrets at one turn, valued by its shot ([`kill_shot_value`]);
+/// another searches the walker's map ([`computer::map`](crate::computer::map): range 127, its
+/// side not marked) and takes the living enemies but the turrets whose position hex is marked, at
+/// that mark's cost `c`, none at a cost above 0 for a stack without speed, valued by its strike
+/// ([`strike_value`]) with `c` as the run-up when within its speed `s`, `max(1, ⌈c / s⌉)` turns.
+/// Over the other side's stacks in record order the first is kept, then one with fewer turns or,
+/// at equal turns, a strictly higher value. The original also records a dead enemy (a shooter
+/// every one, a walker one whose place it stands on within its speed); the port records none, as
+/// the walker's threat records do (`h3-battle-ai`'s `gain.rs`).
+pub(crate) fn threat(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    ctx: &Context,
+    id: StackId,
+) -> Option<Threat> {
+    let field = Field::new(ruleset.battle().field);
+    let me = state.at(id);
+    let status = me.spells.status;
+    if !me.is_alive()
+        || (me.has(StackTraits::WAR_MACHINE) && !is_ballista(me))
+        || status.contains(Status::HYPNOTIZED)
+        || status.contains(Status::BERSERK)
+        || kept_out(state, ruleset, id)
+    {
+        return None;
+    }
+    let shooter = shoots(state, field, id);
+    let map = (!shooter).then(|| crate::computer::map(state, ruleset, id, me.side));
+    let speed = u16::from(me.speed_now());
+    let mut best: Option<(Threat, i32)> = None;
+    for (j, t) in (0u8..).zip(state.stacks.iter()) {
+        if t.side == me.side || !t.is_alive() || t.is_turret() {
+            continue;
+        }
+        let enemy = StackId(j);
+        let (turns, value) = match &map {
+            None => (
+                1,
+                kill_shot_value(state, (ruleset, field), ctx, (id, enemy), ctx.desperate),
+            ),
+            Some(map) => {
+                let Some(c) = map.mark(t.hex).filter(|&c| speed > 0 || c == 0) else {
+                    continue;
+                };
+                let run_up = if c <= speed { c } else { 0 };
+                let run_up = u8::try_from(run_up).unwrap_or(u8::MAX);
+                let value = strike_value(state, (ruleset, field), ctx, (id, enemy), run_up);
+                (u32::from(c).div_ceil(u32::from(speed.max(1))).max(1), value)
+            }
+        };
+        let better = best.is_none_or(|(b, v)| turns < b.turns || (turns == b.turns && value > v));
+        if better {
+            best = Some((Threat { enemy, turns }, value));
+        }
+    }
+    best.map(|(t, _)| t)
+}
+
 /// The score of attacker stack `id` for a turret of damage `mean` (the turret's `3n`; 0x41E190;
 /// BAT-SIE-020): the value of the damage through its protection at worth `v` (in desperate mode
 /// 1000 per creature), divided by its turns (5 when disabled, a tent or a cart, without a target
@@ -787,6 +861,28 @@ pub(crate) fn damage_estimate(
         damage = damage.saturating_mul(2);
     }
     damage.min(hit_points(state.at(target)))
+}
+
+/// The computer's damage of the base `base` of `striker` on `target` with `bonus` more attack
+/// (0x443E30; on a copy of the striker's record with `bonus` added to its attack, 0x437800; E23
+/// T4b1): every stage of a real shot (`shot`) or of a melee strike without a run-up, without
+/// their draws ([`estimated_damage`]: 0x443E30 runs the stages 0x443F40 runs with its estimate
+/// flag, without Fire Shield's value), at least 1.
+pub(crate) fn base_damage(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    (striker, target): (StackId, StackId),
+    (base, shot): (u64, bool),
+    bonus: i16,
+) -> u64 {
+    let mut copy = *state.at(striker);
+    copy.spells.attack = copy.spells.attack.saturating_add(bonus);
+    let flags = if shot {
+        StrikeFlags::RANGED
+    } else {
+        StrikeFlags::NONE
+    };
+    estimated_damage(state, ruleset, (&copy, striker, target), (base, 0), flags).max(1)
 }
 
 /// The computer's estimate of what Fire Shield on `struck` reflects onto `striker` from a strike

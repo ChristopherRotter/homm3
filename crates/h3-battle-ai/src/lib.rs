@@ -61,6 +61,7 @@ mod odds;
 mod order;
 mod scores;
 mod shooter;
+mod spells;
 mod walker;
 
 #[cfg(test)]

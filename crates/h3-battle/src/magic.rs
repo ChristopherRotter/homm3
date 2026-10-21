@@ -1322,7 +1322,7 @@ fn hex_targets(ruleset: &BattleRuleset) -> impl Iterator<Item = CastTarget> + us
 /// What a cast of `spell` at `mastery` is aimed at (BAT-MAG-003): nothing for its mass version,
 /// which starts at the original's earlier mastery with quirk Q-0011 (BAT-MAG-023: Forgetfulness
 /// from Advanced), else at the fixed one.
-fn target_at(ruleset: &BattleRuleset, spell: &BattleSpell, mastery: u8) -> SpellTarget {
+pub(crate) fn target_at(ruleset: &BattleRuleset, spell: &BattleSpell, mastery: u8) -> SpellTarget {
     let early = ruleset.quirks().is_enabled(EARLY_MASS_VERSION);
     spell.magic.target_at(mastery, early)
 }

@@ -3,16 +3,19 @@
 //! nothing, with the value its choice found (the best candidate's value or plan value per turn,
 //! 0 without one). Nothing while the creatures may not cast; then by the caster's kind (by
 //! creature in the original's table 0x42136C, by ability here): the raise of the Archangel and
-//! the Pit Lord ([`raise`]), which must beat that value, and the Faerie Dragon's drawn spell
-//! ([`dragon`]), cast at the first hex where it is worth anything whatever that value. Every
-//! other creature casts nothing: the computer's elementals never protect (§7.42).
+//! the Pit Lord ([`raise`]), which must beat that value, the Faerie Dragon's drawn spell
+//! ([`dragon`]), cast at the first hex where it is worth anything whatever that value, and the
+//! Ogre Mage's Bloodlust ([`scan`], [`bloodlust`]), which must beat that value. Every other
+//! creature casts nothing: the computer's elementals never protect (§7.42, BAT-Q57). The engine
+//! gives the Ogre Mage and the elementals one ability, a creature's cast of a fixed spell: the
+//! policy tells the Ogre Mage by its spell, the only one that raises the melee attack (the user,
+//! E23 T4b1).
 //!
 //! The policy casts only at the targets the engine accepts (ADR-0027 point 3; the user, E23
 //! T4a): the original's dragon may also aim an area spell at a free hex, its own or an immune
 //! stack's, which the rules' cursor refuses (BAT-MAG-049; BAT-STUB-8, BAT-Q32).
 //!
-//! Not built yet (BAT-STUB-4): the Ogre Mage's and the Master Genie's scan (0x420D20), E23 T4b and
-//! T4c.
+//! Not built yet (BAT-STUB-4): the Master Genie's value in the scan (0x43C4A0), E23 T4c.
 
 use h3_battle::computer::{self, Context};
 use h3_battle::{
@@ -21,11 +24,16 @@ use h3_battle::{
 };
 use h3_content::{CreatureTypeId, ORIGINAL_AI_SLIPS, SpellId};
 use h3_content_battle::{
-    Ability, BattleRuleset, BattleSpell, MAX_MASTERY, SpellEffect, SpellTarget,
+    Ability, BattleRuleset, BattleSpell, MAX_MASTERY, SpellEffect, SpellTarget, TimedChange,
 };
+use h3_kernel::Rng;
 use h3_kernel::arith::{DOUBLE_BITS, SINGLE_BITS, X87};
 
+use crate::spells::{Candidate, SpellContext, has_spell};
 use crate::walker::Walker;
+
+/// The scan's draw (0x420D98: `random(1, 100)`) and the share that casts nothing (30 or less).
+const SKIP: (u32, u32, u32) = (1, 100, 30);
 
 /// The balance class's thresholds (0x63B798, doubles): the larger able strength over the smaller,
 /// in thousandths.
@@ -37,10 +45,11 @@ const EVEN: u8 = 7;
 /// The creature cast entry (0x421280; BAT-AI-012): nothing while the creatures may not cast
 /// (Cursed Ground, an anti-magic garrison, the Orb of Inhibition; [`computer::creature_casts_blocked`],
 /// whatever a creature's `ignores_magic_block`) or without a cast left; a raiser's raise
-/// ([`raise`]); a random caster's drawn spell ([`dragon`]); any other stack nothing. `value` is
-/// the value so far, which a cast's candidate replaces.
+/// ([`raise`]); a random caster's drawn spell ([`dragon`]); the Ogre Mage's scan ([`scan`], its
+/// draw from `rng`); any other stack nothing. `value` is the value so far, which a cast's
+/// candidate replaces.
 // rule: BAT-AI-012
-pub(crate) fn entry(w: &Walker<'_>, value: &mut i32) -> Option<Command> {
+pub(crate) fn entry(w: &Walker<'_>, value: &mut i32, rng: &mut Rng) -> Option<Command> {
     if computer::creature_casts_blocked(w.state) || w.state.casts_left(w.id) == 0 {
         return None;
     }
@@ -54,11 +63,108 @@ pub(crate) fn entry(w: &Walker<'_>, value: &mut i32) -> Option<Command> {
                 mastery,
                 power_per_creature,
             } => Some(dragon(w, (mastery, power_per_creature), value)),
+            Ability::SpellCaster {
+                spell,
+                mastery,
+                power,
+            } => raises_melee_attack(w.ruleset, spell)
+                .then(|| scan(w, (spell, mastery, power), value, rng)),
             // stub: BAT-STUB-4
-            // The Ogre Mage's and the Master Genie's scan (0x420D20): T4b and T4c.
+            // The Master Genie's value in the scan (0x43C4A0): T4c.
             _ => None,
         })
         .flatten()
+}
+
+/// Whether `spell` raises the melee attack (Bloodlust's timed change): the Ogre Mage's spell
+/// among the creatures' fixed casts, which the computer's table sends to the scan (0x42136C's
+/// case 1, creature 91); the elementals' Protections do not (BAT-Q57).
+fn raises_melee_attack(ruleset: &BattleRuleset, spell: SpellId) -> bool {
+    ruleset.spell(spell).is_some_and(|s| {
+        s.magic
+            .effects
+            .contains(&SpellEffect::Timed(TimedChange::MeleeAttack))
+    })
+}
+
+/// The Ogre Mage's scan (0x420D20; BAT-AI-014), for a caster of `spell` at `mastery` with `power`
+/// (its rounds): with a value so far that is not 0 (a negative one too) a draw of 1 to 100
+/// ([`SKIP`]) casts nothing on 30 or less. Then over the walker's side's stacks from the last to
+/// the first, but the caster and the turrets, each that the engine accepts as the cast's target,
+/// and once the value so far is above 0 only one at least as strong as the caster (0x442E60 in the
+/// walker's context): its [`bloodlust`] value; one above 0 and above `value` replaces it and takes
+/// the stack, so the cast must beat the walker's value, and the later stack stays at a tie.
+// rule: BAT-AI-014
+fn scan(
+    w: &Walker<'_>,
+    (spell, mastery, power): (SpellId, u8, u8),
+    value: &mut i32,
+    rng: &mut Rng,
+) -> Option<Command> {
+    let (state, ruleset, side) = (w.state, w.ruleset, w.side);
+    let strength = computer::strength(state, ruleset, &w.ctx, w.id);
+    let sc = SpellContext::new(state, ruleset, &w.ctx, side);
+    if *value != 0 && rng.range_inclusive(SKIP.0, SKIP.1) <= SKIP.2 {
+        return None;
+    }
+    let mut targets = CastTargets::new();
+    creature_cast_targets(state, ruleset, side, &mut targets);
+    let caster = (spell, mastery, u32::from(power));
+    let mut best = None;
+    for (i, s) in state.stacks().iter().enumerate().rev() {
+        let id = StackId(u8::try_from(i).unwrap_or(u8::MAX));
+        let target = CastTarget::Stack(id);
+        if s.side != side
+            || id == w.id
+            || s.is_turret()
+            || !targets.as_slice().contains(&target)
+            || (*value > 0 && strength > computer::strength(state, ruleset, &w.ctx, id))
+        {
+            continue;
+        }
+        let v = bloodlust(w, &sc, caster, id);
+        if v > 0 && v > *value {
+            *value = v;
+            best = Some(target);
+        }
+    }
+    best.map(|target| Command::CreatureCast { target })
+}
+
+/// The computer's value of an Ogre Mage's Bloodlust on stack `id` (0x43C330; BAT-AI-014), the
+/// caster's `spell` at its `mastery` lasting `rounds`: 0 while Bloodlust lasts on the stack. The
+/// estimate's mastery is the creature's, Expert on Magic Plains; with BAT-QUIRK-25 also on the
+/// spell's school's field (survey slip 8: Fiery Fields), where the rules keep the creature's.
+/// Aimed at a stack at that mastery, Bloodlust's evaluator on the stack
+/// ([`SpellContext::bloodlust`]); its mass version, the value on the side's whole army
+/// ([`SpellContext::on_side`]).
+// rule: BAT-AI-014, BAT-TER-005
+fn bloodlust(
+    w: &Walker<'_>,
+    sc: &SpellContext<'_>,
+    (spell, mastery, rounds): (SpellId, u8, u32),
+    id: StackId,
+) -> i32 {
+    let state = w.state;
+    if has_spell(state, id, spell) {
+        return 0;
+    }
+    let slips = w.ruleset.quirks().is_enabled(ORIGINAL_AI_SLIPS);
+    let mastery = if slips && computer::field_raises(state, w.ruleset, spell) {
+        MAX_MASTERY
+    } else {
+        computer::creature_mastery(state, mastery)
+    };
+    let c = Candidate {
+        spell,
+        mastery,
+        rounds,
+    };
+    if computer::takes_stack(w.ruleset, spell, mastery) {
+        sc.bloodlust(id, c)
+    } else {
+        sc.on_side(c, |sc, s, c| sc.bloodlust(s, c))
+    }
 }
 
 /// The two sides' able strengths and their balance class (0x435EC0's +0x14, +0x18 and +0x1C).
