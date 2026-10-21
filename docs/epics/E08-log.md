@@ -3364,3 +3364,52 @@ the server lane's inbox has it).
   lacks the reads (the client lane's inbox lists them: the seed byte and counters, the skills as a
   list, each dialog, `level_up` as a list, the artifacts, the battlefield, E4-9's battle by plan,
   E4-6's message). They and the run are T32b (round 5, with T33).
+
+### Increment 4, round 5: T32b1, the harness's reads for batch E4 (2026-10-21, `adventure/e08-t32b1`)
+
+Baseline: `master` at 3cc8ba0 (T32a merged, #360); the sandbox's full baseline died with the VM
+(a restart), and the branch changes no engine code, so its verify is the light gates (exit 0)
+and the client workspace's gate. Decision 68: the user cut T32b, this lane building the reads the
+client lane had in its inbox (busy with E17 M3), `cross-lane` into `clients/capture/` with the
+user's consent; T32b2 (the recipes and the run) next.
+
+- **The reading** (`level_up_dialog` 0x4F8880, its items; map entry `read` for them): the dialog
+  shows the primary skill raised as DEF picture 2009 (`pskil42.def`, frame 0-3) and the offers as
+  pictures 2010 (left, or the only one) and 2011 (right), `secskill.def` frame 3 × skill + 3 +
+  the hero's level of it before (`hero_level_up` 0x4DAABD); the DEF picture's constructor
+  0x4EA720 (new entry, H3API's `H3DlgDef`) keeps the frame at +0x34. The hero's backpack (+0x1D4,
+  64 entries, the count +0x3D4; 0x4E2F90) and the artifact setup record's name (+0x0, stride
+  0x20) went into `structs.toml`.
+- **`h3mem`**: the hero's seed byte, offer counters, skills in the hero's order (+0xE5), worn
+  artifacts and backpack; artifact names; the dialog's items and the level-up dialog; the
+  battlefield (+0x5394, +0x53C0); the hex records (stack, flags, the attack mark +0x4A); a stack's
+  speed (+0xC4).
+- **`h3adv`**: every level-up dialog recorded (hero, level, primary skill, offers, the one taken),
+  one or none offered included, once per hero and level (the dialog is the same local for each
+  level); `level_up` as a list; the other dialogs' records (`messages`); the observations
+  `level_up:<n>:<part>`, `messages`, `battlefield`, `battlefield:terrain`, `destroyed:<creature>`
+  and the hero details `skills`, `seed`, `wisdom_offer`, `school_offer`, `artifacts`, `backpack`;
+  battles played by `attack` (every stack attacks the nearest enemy) or a plan (`{ attack =
+  "Ballista", by = "defender", then = "attack" }`, E4-9). **Auto combat does not play a battle
+  between two human players in hot seat** (its key and button did nothing on a human stack's turn;
+  E4-9 and E4-10 are such battles): the plans click like a player, the mouse resting over the
+  target until the combat cursor shows a melee attack (frames 7 to 14), and a target out of reach
+  this turn (the attack mark) makes the stack fly to the free hex nearest it within its speed (the
+  Thunderbirds, 13 hexes from the Ballista with speed 11, take two turns). Fixed on the way: a
+  local named `value` in `value()` (E17 M3 T6c-2's winner fix) made every `before:` read fail;
+  and the battle screen is known in its `battle_book` state too (the client lane's note of
+  T7a-2a: a human hero with a spell book lights the probes' button; batch E4's magic heroes).
+- **The harness check** (`capture/checks/harness-check.toml` and its recipe) gained Exp's skills
+  in order, seed byte and counters; Lvl's start, dialog, skills after, battlefield and messages;
+  and **Gear**, E4-9's shape (Orrin with a Ballista, a helm, a spell book and a backpack axe
+  against Valeska's 30 Thunderbirds on a Clover Field). It passed in full under Wine (two full
+  runs and four of Gear alone). **Checked against the engine** with `e4_score` on the filled
+  templates: every recorded dialog (Lvl's one and Gear's two, seed bytes 242 and 117, then 109
+  and 133 in an earlier game) fits the reading's draws, and Exp's levels at load are the ported
+  evaluation's in both games (seed 239: 4/3/2/2, Diplomacy basic, Logistics expert, Ballistics
+  expert, the counters 2 and 4; seed 216: 3/4/2/2, Diplomacy basic, Logistics advanced, Offense
+  expert, Ballistics basic, 0 and 4), not always-left's. Gear's battle read the Clover
+  Field and grass; its destroyed Ballista left war machine 1 empty (HER-WAR-002's way: E4-9 in
+  T32b2 decides it); 2 300 experience, two dialogs answered left, then right.
+- **Not built**: batch E4's recipes and run (T32b2). E4-6's "can gain no more" shows under
+  `messages` as its record (GENRLTXT, not yet seen).

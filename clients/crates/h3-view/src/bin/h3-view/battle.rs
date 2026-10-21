@@ -11,7 +11,7 @@ use h3_formats::lod::LodArchive;
 use h3_protocol::wire::{Command, Observation};
 use h3_render::Bugs;
 use h3_render::screen::Screen;
-use h3_view::anim::{self, Speed, Timeline};
+use h3_view::anim::{self, Sound, Speed, Timeline};
 use h3_view::batch::{self, Batch, Sprite};
 use h3_view::battle_log::Logged;
 use h3_view::compose::compose;
@@ -136,7 +136,8 @@ impl Battle {
         let parsed = parse(&archives)?;
         let looks = motion::looks(&record, &tables, &parsed)?;
         let magic = motion::magic(&record, &tables, &parsed)?;
-        let stage = motion::stage(&record, &tables, &layout, &magic);
+        let casts = motion::casts(&record, &tables, &parsed)?;
+        let stage = motion::stage(&record, &tables, &layout, (&magic, &casts));
         let commands = anim::commands(&record.messages);
         // The viewer's own fidgets, from the battle's seed (`h3_view::anim::Fidgets`).
         let seed = u32::try_from(source.seed & u64::from(u32::MAX)).unwrap_or(1);
@@ -323,6 +324,28 @@ impl Battle {
                 let key = keys.get(usize::from(s.creature))?;
                 let creature = self.tables.creatures.get(key)?;
                 Some((s.id, creature.sounds.clone()))
+            })
+            .collect()
+    }
+
+    /// The battle's own sounds its cues name, by cue (not a creature's; design §8.2): the tent's
+    /// heal (E17 M3 T3b), a resisted spell's and each cast spell's (E17 M3 T7b-1).
+    pub fn battle_sounds(&self) -> BTreeMap<Sound, String> {
+        let spells = &self.record.header.manifest.keys.spells;
+        let battle = &self.tables.battle;
+        self.timeline
+            .cues
+            .iter()
+            .filter_map(|c| {
+                let name = match c.sound {
+                    Sound::Heal => Some(&battle.heal_sound),
+                    Sound::Resisted => battle.resist_sound.as_ref(),
+                    Sound::Spell(handle) => spells
+                        .get(usize::from(handle))
+                        .and_then(|key| self.tables.spells.get(key)?.sound.as_ref()),
+                    _ => None,
+                };
+                Some((c.sound, name?.clone()))
             })
             .collect()
     }

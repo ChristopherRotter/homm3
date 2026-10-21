@@ -176,9 +176,11 @@ scenario's `masteries` become the hero's school skills on the original's map (`s
 Air, Water, Earth Magic at the level the masteries ask; a mass spell at Expert). A Fire Wall or
 Force Field beside an obstacle is refused (the book closes, no cast): aim at open ground. The
 casts' sequences wait in `situations/casts.toml` (`sequences situations/casts.toml` replays them)
-until the viewer's timeline plays them (T7b, T7c): `cast`, `dragon` (T7a-2a), `resist`, `arrow`,
-`bolt`, `mass`, `raise`, `obstacles`, `creatures` (T7a-2b, design §7.16, "Recorded"; about 75
-minutes for all with their screens).
+until the viewer's timeline plays them (T7b, T7c): `dragon` (T7a-2a), `bolt`, `mass`, `raise`,
+`obstacles`, `creatures` (T7a-2b, design §7.16, "Recorded"; about 75 minutes for all with their
+screens, `cast`, `resist` and `arrow` included). `cast`, `resist` and `arrow` moved into
+`sequences.toml` at T7b-1 with their engine commands and frames; a recorded timeline's `screen`
+lines are left out of the timing check (they are the frame check's).
 
 **A battle in progress** (M3 T1a): `--hot-seat` (an entry's `hot_seat = true`) starts the map in
 hot seat with Blue a human too (`h3-view situation --hot-seat`), so the actions play both sides and
@@ -257,7 +259,7 @@ map compiled before, after checking its stamp), starts it in hot seat with the r
 `difficulty` (`easy` to `impossible`, default `normal`, checked in memory), plays the steps and
 writes `<out>/<batch>.md`, the batch's results template filled in (a note at its top says how it
 was played), and `<out>/steps.jsonl`, each step's observation. E08 batch 2 (41 steps) takes about
-three minutes, the check about two.
+three minutes, the check about four (E08 T32b1).
 
 A recipe is the spec's procedure as `[[step]]`s. A hero's step selects the hero (`hero`, its name
 on the map; from the hero list, scrolled when the player has more than five) and, with `walk =
@@ -278,8 +280,24 @@ waits until the hero, its points and the players' resources rest, on the way:
   confirmation's OK clicked). The result window's OK (`[button.battle_ok]`) ends it. A battle the
   step does not plan stops the batch.
 - **choosing a level-up's skill**: the dialog whose OK stays disabled (`[button.ok_disabled]`)
-  until one of its two offered skills is clicked: `level_up = "left"` (the default) or `"right"`.
-- clicking any other dialog's OK.
+  until one of its two offered skills is clicked: `level_up = "left"` (the default) or `"right"`,
+  or a list of them, one per such dialog in order (the last one repeated; E08 T32b1). Every
+  level-up dialog, with two offers, one or none, is recorded from the game's memory (E08 T32b1):
+  the hero (its name in the dialog's text), its new level, the primary skill raised and the
+  offers, read from the dialog's picture items (`level_up_dialog` 0x4F8880: item 2009 the primary
+  skill's frame, 2010 the left offer or the only one, 2011 the right one, a skill's frame 3 ×
+  skill + 3 + the hero's level of it before), and the one taken.
+- clicking any other dialog's OK, its text's record noted (`messages`; E08 T32b1).
+
+Since E08 T32b1 `battle` may also be `attack`: every stack attacks the other side's nearest one
+(creatures before war machines) until the battle ends, as a player would: the mouse rests over the
+target's hexes, off their centre toward each free neighbour in turn, until the combat cursor shows
+a melee attack (its sword frames 7 to 14), and clicks there; a target out of reach this turn (the
+hex records' attack mark, +0x4A) makes the stack move to the free hex nearest it within its speed
+(a flyer's reach). The war machines act by themselves. Or a plan (batch E4's E4-9): `{ attack =
+"Ballista", by = "defender", then = "attack" }`: while the other side has a living stack of that
+creature, each stack of the side named attacks it and every other stack defends; then `then`
+(`attack` or `auto`) plays the rest. The battle's record holds its field (`battlefield`).
 
 A step without `walk` only reads. `record` fills the template's fields and table rows from the
 observation; `before:<observation>` reads the same before the step:
@@ -292,11 +310,15 @@ observation; `before:<observation>` reads the same before the step:
 | `difficulty`, `date` | the game's difficulty; the date (`month 1, week 1, day 2`) |
 | `heroes:experience` | the heroes off the map (E3-7): `147 heroes: 40 to 90; 2 at 40, 1 at 90` |
 | `level_ups` | the level-up dialogs passed |
+| `level_up:<n>:<part>` | the step's n-th level-up dialog (from 1): `level`, `primary` (attack, defense, power, knowledge), `left`, `right` (a skill's name, `none`), `taken` (`left (Wisdom)`, or the only offer), `hero` (E08 T32b1) |
+| `messages` | the records of the other dialogs closed with their OK (`GENRLTXT:79, …`, `?` for a text not identified, `none`) |
+| `battlefield`, `battlefield:terrain` | the last battle's special field (`Clover Field`, `none`) and its terrain (`grass`) (battle manager +0x53C0, +0x5394) |
+| `destroyed:<creature>` | yes or no: no stack of that creature that was in the last battle at its start stands at its end (`destroyed:Ballista`) |
 | `question`, `questions` | the questions' kinds (`join, flee`; `none`), their records |
 | `battle`, `winner`, `retreated`, `surrendered` | yes or no; the side (`attacker`, `defender`, `none`) |
 | `stacks:start`, `stacks:end[:<side>]` | the battle's stacks (`attacker 20 Archangels \| defender 3 Pikemen, 2 Halberdiers`) |
 | `hexes:start[:<side>]` | their hexes at the start (the formation) |
-| `hero:<detail>`, `hero[<name>]:<detail>` | the step's hero after the step, or another by name: `experience`, `level`, `primary` (`3/5/1/2`), `army`, `skill:<name>` (none, basic, advanced, expert), `on_map`, `tile` |
+| `hero:<detail>`, `hero[<name>]:<detail>` | the step's hero after the step, or another by name: `experience`, `level`, `primary` (`3/5/1/2`), `army`, `skill:<name>` (none, basic, advanced, expert), `on_map`, `tile`; since E08 T32b1 `skills` (`Leadership expert, Wisdom basic`, in the hero's order), `seed` (the level seed, hero +0x8F), `wisdom_offer` and `school_offer` (the levels Wisdom and a school were last offered at, +0x90, +0x3F), `artifacts` (worn: `Ballista (war machine 1), …` in slot order) and `backpack` |
 | `monster:x,y`, `aggression:x,y`, `never_flees:x,y` | the monster on a tile (`30 Pikemen`, `none`), its aggression (−4 to 10) and flag, from the tile's word |
 
 `expect = { marks = <n>, path = "green", question = "join, flee", battle = true, dialogs = true }`
@@ -437,6 +459,9 @@ design §7.1.
 - Auto combat plays a human side's creatures only with the setting `Combat Auto Creatures` on
   (`setup.sh` sets it; a new prefix holds 0, and then the button only sets a flag and the turn
   still waits: 0x474CDF). The capture set never turns auto combat on.
+- Auto combat does not play a battle between two human players in hot seat (E08 T32b1: neither
+  its key nor its button did anything on a human stack's turn): a hero against another player's
+  hero is played by `attack` or a plan.
 - A game's first battle takes orders later than its later ones: a key before a stack's turn is
   lost (E08 T22a3: batch E3b stalled at its first battle in every run). `fight`'s auto combat
   waits for an active stack and presses again after a 10 s stall.

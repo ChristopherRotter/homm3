@@ -33,6 +33,7 @@ fn idle(turns: &[(u32, u8)], actions: Vec<Action>) -> Timeline {
         width: 17,
         groups: tables().battle.groups,
         magic: &magic(),
+        casts: &anim::Casts::default(),
     };
     let mut timeline = anim::timeline(
         &observation(),

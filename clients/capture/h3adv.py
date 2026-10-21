@@ -291,10 +291,170 @@ def auto_combat(game, mem, end, stall=10.0):
             if time.monotonic() > quiet:
                 break  # the key was lost: press it again
             if time.monotonic() > end:
+                game.dump(game.out / "auto-stalled.xwd")
                 raise TimeoutError("auto combat does not start")
             time.sleep(0.2)
         else:
             return
+
+
+# The war machines (145 Catapult to 149 Arrow Tower): they act by themselves (no Artillery, no
+# Ballistics, no First Aid: the computer aims them), so the plans never give them orders.
+MACHINES = range(145, 150)
+# Where an attack on a hex is clicked: right of its centre (h3drive.hex_point), so the attacker
+# comes from the right (E4-9: the Ballista stands on the attacker's first two columns).
+ATTACK_FROM_RIGHT = 14
+TURN_SETTLE = 0.5  # seconds between a stack's turn showing in memory and its order
+
+
+def hex_distance(a, b):
+    """Steps between two battle hexes (17 a row, the even rows half a hex to the right)."""
+    def cube(h):
+        row, col = divmod(h, 17)
+        q = col - (row + (row & 1)) // 2
+        return q, row, -q - row
+    return max(abs(u - v) for u, v in zip(cube(a), cube(b)))
+
+
+def approach(game, mem, board, goal, active):
+    """The active stack cannot attack its target this turn: it moves to the free hex nearest
+    `goal` within its speed (hex steps: a flyer's reach; the first and last columns hold no
+    creature; a two-hex stack's other hex, behind it, free too). Returns what it did."""
+    stack = next(s for s in mem.stacks() if [s["side"], s["record"]] == active)
+    own = {h["hex"] for h in board if h["stack"] == active}
+    free = {h["hex"] for h in board if (h["stack"] is None or h["hex"] in own)
+            and not h["flags"] & 0x2 and h["hex"] % 17 not in (0, 16)}
+    behind = (1 if active[0] == 1 else -1) if len(own) == 2 else 0
+    reach = [h for h in free if (h + behind) in free and h // 17 == (h + behind) // 17
+             and h not in own and hex_distance(stack["hex"], h) <= stack["speed"]]
+    if not reach:
+        raise RuntimeError(f"no free hex in reach of {stack['hex']} (speed {stack['speed']})")
+    to = min(reach, key=lambda h: (hex_distance(h, goal), h))
+    game.click(*h3drive.hex_point(to), 0.5)
+    return f"moves to hex {to} (toward hex {goal}; speed {stack['speed']})"
+
+
+def neighbour(h, direction):
+    """The hex next to `h` in a direction (right, left, up-right, up-left, down-right,
+    down-left), None off the field (the even rows lie half a hex right of the odd ones)."""
+    row, col = divmod(h, 17)
+    shift = 1 if row % 2 == 0 else 0
+    dr, dc = {"right": (0, 1), "left": (0, -1), "up-right": (-1, shift),
+              "up-left": (-1, shift - 1), "down-right": (1, shift),
+              "down-left": (1, shift - 1)}[direction]
+    row, col = row + dr, col + dc
+    return row * 17 + col if 0 <= row < 11 and 0 <= col < 17 else None
+
+
+# Where a click on a hex points the attack: off its centre toward the side the attacker comes
+# from (the game's cursor takes the direction from the mouse's place in the hex).
+# The combat cursor (the mouse manager's type 2, design §9.9) shows a melee attack as one of
+# its sword frames, each a direction (CRCOMBAT.DEF's frames 7 to 14): an attack is clicked only
+# where it shows one, after the mouse rested over the point (the game reads the mouse on a 33 ms
+# grid of its clock).
+COMBAT_CURSOR, MELEE_FRAMES, HOVER = 2, range(7, 15), 0.25
+STRIKE_OFFSETS = {"right": (14, 0), "left": (-14, 0), "up-right": (8, -14), "up-left": (-8, -14),
+                  "down-right": (8, 14), "down-left": (-8, 14)}
+
+
+def strike(game, mem, active, aim):
+    """The active stack attacks the stack `aim` if it can this turn (the pathfinder's mark on
+    the target's hexes): the mouse over the target's hexes, off the centre toward each free
+    neighbour in turn (nearest first), until the cursor shows a melee attack, clicked there; else
+    it moves toward it (approach). Returns what it did."""
+    board = mem.hexes()
+    stack = next(s for s in mem.stacks() if [s["side"], s["record"]] == active)
+    own = {h["hex"] for h in board if h["stack"] == active}
+    hexes = [h["hex"] for h in board if h["stack"] == [aim["side"], aim["record"]]]
+    nearest = min(hexes, key=lambda h: (hex_distance(stack["hex"], h), h))
+    if not any(board[h]["attackable"] for h in hexes):
+        return approach(game, mem, board, nearest, active)
+    sides = []
+    for target in hexes:
+        for direction in STRIKE_OFFSETS:
+            n = neighbour(target, direction)
+            if n is not None and n % 17 not in (0, 16) and (board[n]["stack"] is None or n in own) \
+                    and not board[n]["flags"] & 0x2:
+                sides.append((hex_distance(stack["hex"], n), target, direction))
+    seen = []
+    for _, target, direction in sorted(sides):
+        x, y = h3drive.hex_point(target)
+        dx, dy = STRIKE_OFFSETS[direction]
+        game.move(x + dx, y + dy)
+        time.sleep(HOVER)
+        cursor = mem.globals()["cursor"]
+        seen.append(cursor[1] if cursor else None)
+        if cursor and cursor[0] == COMBAT_CURSOR and cursor[1] in MELEE_FRAMES:
+            game.click(x + dx, y + dy, 0.2)
+            return (f"attacks {mem.creature_name(aim['creature'])} at hex {target} from the "
+                    f"{direction} (cursor frame {cursor[1]})")
+    raise RuntimeError(f"no attack cursor over hexes {hexes} (cursor frames {seen})")
+
+
+def play_turns(game, mem, order, done, end, what):
+    """E08 T32b1 (E4-9): plays the battle's turns until `done()` or its end: on each turn of a
+    stack that is not a war machine (they act by themselves), `order(stack)` names the stack to
+    attack (strike) or None to defend. `what` names the phase in the errors."""
+    while not done():
+        if time.monotonic() > end:
+            raise TimeoutError(f"{what}: the battle goes on")
+        if find_button(game, "battle_ok"):
+            return
+        active = mem.globals()["active"]
+        if active is None:
+            time.sleep(0.1)
+            continue
+        stack = next((s for s in mem.stacks() if [s["side"], s["record"]] == active), None)
+        if stack is None or stack["creature"] in MACHINES:
+            time.sleep(0.1)
+            continue
+        time.sleep(TURN_SETTLE)  # an order right at the turn's start may be lost
+        aim = order(stack)
+        if aim is None:
+            game.key("d", 0.3)
+            action = "defends"
+        else:
+            action = strike(game, mem, active, aim)
+        print(f"plan: {SIDES[active[0]]} {mem.creature_name(stack['creature'])} (hex "
+              f"{stack['hex']}) {action}", file=sys.stderr, flush=True)
+        game.move(*BATTLE_PARK)
+        try:
+            wait_for(lambda a=active: mem.globals()["active"] != a or find_button(game, "battle_ok"),
+                     "the next stack's turn", 30)
+        except TimeoutError:
+            game.dump(game.out / "plan-stalled.xwd")
+            raise
+
+
+def living(mem, side=None, creature=None):
+    """The living stacks (of a side, of a creature by name)."""
+    return [s for s in mem.stacks() if s["count"] > 0 and (side is None or s["side"] == side)
+            and (creature is None or mem.creature_name(s["creature"]) == creature)]
+
+
+def nearest_enemy(mem, stack):
+    """The other side's living stack nearest to `stack`, creatures before war machines."""
+    enemies = living(mem, 1 - stack["side"])
+    return min(enemies, key=lambda s: (s["creature"] in MACHINES,
+                                       hex_distance(stack["hex"], s["hex"]), s["record"]),
+               default=None)
+
+
+def attack_until_gone(game, mem, side, creature, end):
+    """E4-9's first phase: while the other side has a living stack of `creature`, each of
+    `side`'s stacks attacks it on its turn and every other stack defends."""
+    if not living(mem, 1 - side, creature):
+        raise RuntimeError(f"no stack of {creature} on the other side")
+    play_turns(game, mem,
+               lambda s: (living(mem, 1 - side, creature) or [None])[0] if s["side"] == side
+               else None,
+               lambda: not living(mem, 1 - side, creature), end, f"{creature} still stands")
+
+
+def attack_to_the_end(game, mem, end):
+    """Every stack attacks the other side's nearest one until the battle ends (two human sides:
+    auto combat does not play a battle between two human players in hot seat, E08 T32b1)."""
+    play_turns(game, mem, lambda s: nearest_enemy(mem, s), lambda: False, end, "attack")
 
 
 def fight(game, mem, plan, limit=300.0):
@@ -303,19 +463,41 @@ def fight(game, mem, plan, limit=300.0):
     computer plays every human side; setup.sh's `Combat Auto Creatures`), or "retreat" or
     "surrender", optionally "defender retreat" or "defender surrender" (default the attacker):
     every other stack defends until one of that side's stacks acts, which then retreats or
-    surrenders; the confirmation's OK is clicked."""
+    surrenders; the confirmation's OK is clicked. Since E08 T32b1: "attack" (every stack attacks
+    the other side's nearest stack, moving toward it when out of reach, until the battle ends:
+    auto combat does not play a battle between two human players in hot seat), or a table `{
+    attack = "<creature>", by = "attacker" | "defender", then = "attack" | "auto" }` (E4-9): each
+    stack of that side attacks the other side's stack of that creature while it stands and every
+    other stack defends, then `then` plays the rest; the war machines act by themselves. The
+    record holds the battlefield at the start (`field`: h3mem.battlefield)."""
     if plan is None:
         raise RuntimeError("a battle the step does not plan (`battle`)")
-    words = plan.split()
-    action, side = words[-1], SIDES.index(words[0]) if len(words) == 2 else 0
-    if action not in ("auto", *BATTLE_KEYS) or len(words) > 2:
-        raise ValueError(f"unknown battle plan `{plan}`")
+    if isinstance(plan, dict):
+        if set(plan) != {"attack", "by", "then"} or plan["by"] not in SIDES \
+                or plan["then"] not in ("auto", "attack"):
+            raise ValueError(f"unknown battle plan `{plan}`")
+        action, side = "first", SIDES.index(plan["by"])
+    else:
+        words = plan.split()
+        action, side = words[-1], SIDES.index(words[0]) if len(words) == 2 else 0
+        if action not in ("auto", "attack", *BATTLE_KEYS) or len(words) > 2:
+            raise ValueError(f"unknown battle plan `{plan}`")
     game.move(*BATTLE_PARK)
     wait_for(lambda: mem.stacks(), "the battle's stacks", 10)
     time.sleep(0.5)
-    record = {"plan": plan, "start": stacks(mem)}
+    record = {"plan": plan, "field": mem.battlefield(), "start": stacks(mem)}
     end = time.monotonic() + limit
-    if action == "auto":
+    if action == "first":
+        attack_until_gone(game, mem, side, plan["attack"], end)
+        if find_button(game, "battle_ok"):
+            pass
+        elif plan["then"] == "auto":
+            auto_combat(game, mem, end)
+        else:
+            attack_to_the_end(game, mem, end)
+    elif action == "attack":
+        attack_to_the_end(game, mem, end)
+    elif action == "auto":
         auto_combat(game, mem, end)
     else:
         while True:
@@ -348,37 +530,90 @@ def fight(game, mem, plan, limit=300.0):
     return record
 
 
+def in_battle(game, pix):
+    """The battle screen, whether the acting human hero has a spell book or not: the `battle`
+    probes lie on the panel's book button, which a hero with a book lights (`battle_book`, E17
+    M3 T7a-2a; accepted since E08 T32b1: batch E4's magic heroes carry books)."""
+    return game.matches("battle", pix) or game.matches("battle_book", pix)
+
+
+def level_up_record(mem, shown):
+    """A level-up dialog's record (E08 T32b1): the hero whose name its text holds (the longest
+    such name of the heroes on the map) with its level (the new one: hero_level_up 0x4DA720
+    raises it before the dialog), the primary skill raised and the offers left and right
+    (h3mem.level_up_dialog)."""
+    text = mem.dialog_text()
+    named = sorted((h for h in mem.heroes() if h["name"] and h["name"] in text),
+                   key=lambda h: -len(h["name"]))
+    hero = named[0] if named else None
+    return {"hero": hero["name"] if hero else None, "level": hero["hero_level"] if hero else None,
+            **shown}
+
+
+def offer_text(offer):
+    """An offer as the templates take it: the skill's name (the level it would reach follows from
+    the hero's skills), "none" for none."""
+    return offer[0] if offer else "none"
+
+
 def settle(game, mem, index, answer=None, battle=None, level_up="left"):
     """Waits until the hero, its points and the players' resources stay the same for QUIET
     seconds on the adventure map (the walk and any visit over), on the way answering each question
     as `answer` says, playing each battle as `battle` says and clicking any other dialog's OK;
     returns the observation and what happened: the dialogs passed, the questions (record, kind,
-    answer), the battles (fight's records) and the level-ups (the skill chosen: `level_up`)."""
-    events = {"dialogs": 0, "questions": [], "battles": [], "level_ups": []}
+    answer), the battles (fight's records), the level-ups (the choice made, for each dialog with
+    two offers: `level_up`, one choice or a list of them in order, the last one repeated) and
+    since E08 T32b1 every level-up dialog's record (`level_up_dialogs`: hero, level, primary skill,
+    offers, the one taken) and the records of the other dialogs closed with their OK
+    (`messages`: `GENRLTXT:<n>` from h3lod, `?` for a text not identified)."""
+    events = {"dialogs": 0, "questions": [], "battles": [], "level_ups": [],
+              "level_up_dialogs": [], "messages": []}
+    choices = [level_up] if isinstance(level_up, str) else list(level_up)
     last, since, known = None, time.monotonic(), time.monotonic()
     end = time.monotonic() + 600
     while time.monotonic() < end:
         pix = game.pixels()
-        if game.matches("adventure", pix) or game.matches("battle", pix):
+        if game.matches("adventure", pix) or in_battle(game, pix):
             known = time.monotonic()
         elif time.monotonic() - known > STRANGE:
             bad = game.out / "not-adventure.xwd"
             game.dump(bad)
             raise TimeoutError(f"neither the adventure map, a battle nor a dialog for {STRANGE} s "
                                f"(the game over?; the display: {bad})")
-        if game.matches("battle", pix):
+        if in_battle(game, pix):
             events["battles"].append(fight(game, mem, battle))
             last, since = None, time.monotonic()
             continue
         waiting = find_button(game, "ok_disabled", pix)
-        if waiting:
-            dx, dy = LEVEL_UP_CHOICES[level_up]
-            game.click(waiting[0][0] + dx, waiting[0][1] + dy, 0.5)
-            game.move(*PARK)
-            events["level_ups"].append(level_up)
+        oks = find_button(game, "ok", pix)
+        shown = mem.level_up_dialog() if waiting or oks else None
+        if shown is not None:
+            # A level-up dialog (E08 T32b1): two offers wait for a choice (the OK disabled), one
+            # or none only for the OK. Recorded once: the dialog object is the same local of
+            # hero_level_up for each level, so a dialog is known by its hero and level.
+            record = level_up_record(mem, shown)
+            known_dialogs = events["level_up_dialogs"]
+            if not known_dialogs or (known_dialogs[-1]["hero"], known_dialogs[-1]["level"]) != (
+                    record["hero"], record["level"]):
+                if waiting:
+                    choice = choices[min(len(events["level_ups"]), len(choices) - 1)]
+                    dx, dy = LEVEL_UP_CHOICES[choice]
+                    game.click(waiting[0][0] + dx, waiting[0][1] + dy, 0.5)
+                    game.move(*PARK)
+                    events["level_ups"].append(choice)
+                    record["taken"] = f"{choice} ({offer_text(shown[choice])})"
+                else:
+                    record["taken"] = offer_text(shown["left"])
+                known_dialogs.append(record)
+            elif oks and not waiting:
+                click_button(game, "ok", oks[0])
+                events["dialogs"] += 1
             last, since, known = None, time.monotonic(), time.monotonic()
             continue
-        oks, cancels = find_button(game, "ok", pix), find_button(game, "cancel", pix)
+        if waiting:
+            # A dialog waiting for a choice that is not a level-up's (none known).
+            raise RuntimeError("a dialog whose OK waits for a choice, not a level-up's")
+        cancels = find_button(game, "cancel", pix)
         if oks or cancels:
             known = time.monotonic()
         if oks and cancels:
@@ -393,6 +628,7 @@ def settle(game, mem, index, answer=None, battle=None, level_up="left"):
             last, since = None, time.monotonic()
             continue
         if oks:
+            events["messages"].append(h3lod.identify(mem.dialog_text()) or "?")
             click_button(game, "ok", oks[0])
             events["dialogs"] += 1
             last, since = None, time.monotonic()
@@ -459,7 +695,10 @@ def army_text(mem, army):
 
 def hero_value(mem, hero, field):
     """A hero's detail (`hero:<field>`): experience, level, primary (attack/defense/power/
-    knowledge), army, skill:<name> (none, basic, advanced, expert), on_map (yes/no), tile."""
+    knowledge), army, skill:<name> (none, basic, advanced, expert), on_map (yes/no), tile; since
+    E08 T32b1 skills (`Leadership expert, Wisdom basic` in the hero's order, `none`), seed,
+    wisdom_offer, school_offer (hero +0x8F, +0x90, +0x3F), artifacts (worn: `Ballista (war
+    machine 1), …` in slot order, `none`) and backpack (in its order, `none`)."""
     if field == "experience":
         return str(hero["experience"])
     if field == "level":
@@ -477,6 +716,17 @@ def hero_value(mem, hero, field):
         return {True: "yes", False: "no"}[hero["owner"] >= 0]
     if field == "tile":
         return ",".join(map(str, hero["tile"]))
+    # E08 T32b1 (batch E4).
+    if field == "skills":
+        return ", ".join(f"{name} {LEVELS[level]}" for name, level in hero["skill_order"]) \
+            or "none"
+    if field in ("seed", "wisdom_offer", "school_offer"):
+        return str(hero[field])
+    if field == "artifacts":
+        return ", ".join(f"{mem.artifact_name(a)} ({slot})" for slot, a in hero["worn"].items()) \
+            or "none"
+    if field == "backpack":
+        return ", ".join(mem.artifact_name(a) for a in hero["backpack"]) or "none"
     raise ValueError(f"unknown hero detail `{field}`")
 
 
@@ -526,7 +776,19 @@ def value(obs, what, mem):
     if what == "date":
         return "month {}, week {}, day {}".format(*mem.date())
     if what == "level_ups":
-        return str(len(obs.get("level_ups", [])))
+        return str(len(obs.get("level_up_dialogs", [])))
+    # E08 T32b1: the n-th level-up dialog of the step (from 1): level, primary, left, right, taken.
+    if m := re.match(r"level_up:(\d+):(level|primary|left|right|taken|hero)$", what):
+        dialogs = obs.get("level_up_dialogs", [])
+        n, part = int(m.group(1)), m.group(2)
+        if not 1 <= n <= len(dialogs):
+            return "no dialog"
+        dialog = dialogs[n - 1]
+        if part in ("left", "right"):
+            return offer_text(dialog[part])
+        return str(dialog[part])
+    if what == "messages":
+        return ", ".join(obs.get("messages", [])) or "none"
     if what == "heroes:experience":
         return pool_experience(mem)
     if what == "question":
@@ -536,6 +798,22 @@ def value(obs, what, mem):
     battles = obs.get("battles", [])
     if what == "battle":
         return yes[bool(battles)]
+    # E08 T32b1: the last battle's field (its special field, `none`; or its terrain) and whether
+    # a creature's stack that was there at its start was gone at its end (a destroyed machine).
+    if what in ("battlefield", "battlefield:terrain"):
+        if not battles:
+            return "no battle"
+        field = battles[-1]["field"]
+        return field["terrain"] if what.endswith("terrain") else field["special"] or "none"
+    if m := re.match(r"destroyed:(.+)$", what):
+        if not battles:
+            return "no battle"
+        fought = battles[-1]
+        names = {c for _, c, _, _ in fought["start"] if mem.creature_name(c) == m.group(1)}
+        if not names:
+            return "not there"
+        alive = any(c in names and n > 0 for _, c, n, _ in fought["end"])
+        return yes[not alive]
     if what.split(":")[0] in ("stacks", "hexes", "winner", "retreated", "surrendered"):
         if not battles:
             return "no battle"
@@ -543,8 +821,10 @@ def value(obs, what, mem):
         kind, *rest = what.split(":")
         if kind in ("winner", "retreated", "surrendered"):
             # A winner of -1 is none (E17 M3 T6c-2: it read `defender`, SIDES[-1]).
-            value = fought[kind]
-            return "none" if value is None or value < 0 else SIDES[value]
+            # Not named `value`: a local of that name made every `before:` read above fail
+            # (UnboundLocalError; E08 T32b1).
+            got = fought[kind]
+            return "none" if got is None or got < 0 else SIDES[got]
         moment, side = rest[0], SIDES.index(rest[1]) if len(rest) > 1 else None
         if kind == "stacks":
             return stacks_text(mem, fought[moment], side)

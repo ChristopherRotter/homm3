@@ -1665,6 +1665,57 @@ then ran in the cloud).
   `scripts/exe.py check` and `cited`, `check-exe-map`; on the code with `master` merged, `drawn`
   69 of 69 the same and the client gates' full check (all gates, code `eb970ce`).
 
+### M3 T7b-1 — A hero's cast on one stack (2026-10-21)
+
+On `client/e17-m3-t7b-1`, the user present at the start: T7b split with the user (T7b-1 a hero's
+cast on one stack, checked against `cast`, `resist` and `arrow`; morale, luck, Haste and Slow's
+walk, the count box's tint, the strike-lengthening animations T7b-2). The user's computer was
+linked for the staging only (all files staged once, the session then ran in the cloud).
+
+- **Starting point:** `master` at `d77815a` (#356 merged); no client pull request open; the
+  client gates' full check on that code (`verify-once clients`: all gates); `drawn` 69 of 69 the
+  same.
+- **The reading** (design §7.16, "The cast's log lines", §8.2; 2 map entries): the cast's line
+  (`battle_log_cast` 0x5A8950: GENRLTXT 196 with the hero, the spell and the target by its
+  number, 197 without a target), a resisted one's (190, the verb 145 or 144), Magic Arrow's and
+  Ice Bolt's (`battle_log_damage` named by the spell); the projectile's loop (n positions, not
+  n + 1; the DEF by the first midpoint below the angle); the cast point (`hero_battle_defs` +4,
+  +8: (x − 43, y − 19) left, (693 + W − x, y − 19) right); place 3 (the standing frame's +0x38
+  and +0x30); a spell's sound through `play_sound_async` 0x59A590 (category 3, 127).
+- **Harvested** (`h3-view harvest`, the three tables regenerated; every earlier line as it was):
+  `[[spell]]` per pack spell (its number by `sptraits.txt`'s name, the record's sound and
+  animation, Magic Arrow's and Ice Bolt's five projectile DEFs and angles), `[[hero]]`'s
+  `original`, `cast`, `cast_frames`, `[battle]`'s `resist_sound`. The catalogue: the families
+  `spell` and `hero` (single forms, `column`; `by` counts the records whose second column is
+  filled), `battle.log.cast-on`, `battle.log.resisted`, `word.resist`.
+- **The viewer:** `anim` plays `SpellCast` with its effects (`Player::cast`: the hero's frames as
+  `HeroKey`s, `over_one` for player 1, `spell_projectile` and `marked` riding `iterate`'s loop for
+  players 7 and 2, `Logged::{Cast, Resisted, SpellDamage}`, `Sound::{Spell, Resisted}`);
+  `Timeline::lines_with_heroes`; `Heroes::drawn_at` and the cast frames between the idle steps;
+  `Flight::cycle`; place 3 in `magic_at`; the outline cleared at a cast's click, back as the hero
+  stands; `Panels::with_casts` (the book disabled from the click); the window's `Library` loads
+  the battle's own sounds by cue (`Battle::battle_sounds`), a spell's at 127 on a creature
+  channel, `MagicRes` on the start sound's stream. `h3-view sequences`: `heroes` compared, a
+  `seed` per sequence, the recorded `screen` lines left out; `pointer::inputs`: a first `turn:`
+  naming the opening's active stack acts at once, a `key:` right after a cast acts at the cast's
+  end (the runbook's rule; before it, `arrow`'s round 2 posted the mouse over the Archangel as the
+  Pikemen's turn started: "Attack" forced over the log), `cast:` aims the record's next cast
+  (`Input::Aim`: the status line's "Cast %s on %s", GENRLTXT 28, not forced, *provisional*).
+- **Checked:** `cast`, `resist` (seed 3) and `arrow` moved into `sequences.toml`: their timelines
+  as recorded on the first try (35, 62 and 140 changes); every other sequence as recorded.
+  Captured (`frames --only`, count boxes compared): `cast` 36 frames, all exact but 0 (71
+  pixels: the original's one-frame restore over a rock's top at the click) and the count box from
+  600 (238 pixels: Slow's tint, T7b-2); `resist` 61 frames, all exact but the count box while
+  Slow lasts (197 to 228 pixels); `arrow` 168 frames, all exact (the projectile's DEFs, frames and
+  steps, the marked loop, the lines). Before the fixes the frame check found the outline (cleared
+  at the click), the spell book (disabled), the hero's frames (memory a deadline ahead), the
+  aiming status line (`cast` 0 to 400) and the key after a cast (`arrow`'s log item in round 2).
+  `drawn --record`: 72, the three new. The window on `resist`'s
+  record with the `disk` driver: 131 of 131 frames read back exact; `Muckmire` and `MagicRes`
+  once each in the mix (correlation 0.62 and 0.47 over the music), 2 879 ms apart against 2 900.
+  `play` on the three records: the cues' sounds named. The viewer's tests (100 % of the library),
+  `cargo fmt`, clippy; `scripts/exe.py check` and `cited`.
+
 ## Accepted review lists (M1, M2)
 
 Moved from the epic file on 2026-10-20 (less start-up reading), unchanged.

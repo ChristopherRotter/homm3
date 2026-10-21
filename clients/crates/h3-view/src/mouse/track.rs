@@ -33,6 +33,14 @@ pub enum Input {
         /// When.
         at: u32,
     },
+    /// The hero's spell book closed on a spell (E17 M3 T7b-1): the mouse aims it until the next
+    /// `Act`, its hint the cast's ([`Hint::Cast`]).
+    Aim {
+        /// When.
+        at: u32,
+        /// The spell's handle.
+        spell: u16,
+    },
 }
 
 impl Input {
@@ -40,7 +48,7 @@ impl Input {
     #[must_use]
     pub const fn at(&self) -> u32 {
         match *self {
-            Self::Move { at, .. } | Self::Act { at } => at,
+            Self::Move { at, .. } | Self::Act { at } | Self::Aim { at, .. } => at,
         }
     }
 }
@@ -128,6 +136,8 @@ struct Handler<'l> {
     /// The moves waiting while an action plays.
     queued: Vec<[i32; 2]>,
     busy: bool,
+    /// The hero's spell being aimed (E17 M3 T7b-1).
+    aiming: Option<u16>,
     shown: Shown,
 }
 
@@ -189,6 +199,18 @@ impl Handler<'_> {
             Spot::Nothing => None,
             other => Some(other),
         };
+        if let Some(spell) = self.aiming {
+            // Aiming a hero's spell (E17 M3 T7b-1, *provisional*): its hint over the battlefield,
+            // the cursor and the marked stack as they were (not read).
+            let hint = match at {
+                Some(Spot::Hex(hex)) => Hint::Cast(spell, field.at(hex).map(|s| s.id)),
+                _ => Hint::Empty,
+            };
+            self.write(now, &hint, Some(field), name);
+            self.hex = None;
+            self.written = None;
+            return;
+        }
         if at.is_some() && at == self.hex {
             // The same hex: only an attack's slot again (0x475553).
             let mut changed = false;
@@ -257,6 +279,7 @@ pub fn follow(
         aims: BTreeMap::new(),
         queued: Vec::new(),
         busy: false,
+        aiming: None,
         shown: Shown::default(),
     };
     let mut at = Cursor::default();
@@ -279,7 +302,9 @@ pub fn follow(
         let Some(input) = input else { break };
         j += 1;
         match *input {
+            Input::Aim { spell, .. } => h.aiming = Some(spell),
             Input::Act { at: now } => {
+                h.aiming = None;
                 // The action it gives starts now (none: a key that gives nothing).
                 if let Some((t, entry @ Logged::Action)) = log.get(i)
                     && *t == now

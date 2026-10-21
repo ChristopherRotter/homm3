@@ -67,7 +67,9 @@ search the parent directories).
   CLT-Q4), the obstacles, every living stack standing on its hex, the active stack's outline, the
   heroes and their flags (M3 T3a), the war machines and the heal's magic animation (M3 T3b), the
   count boxes (M3 T4a; hidden through walks and flights, M3 T5a; a strike's kills from its end,
-  M3 T5b-1; not yet tinted by spells), the
+  M3 T5b-1; not yet tinted by spells), a hero's cast on one stack (M3 T7b-1: the hero's casting
+  frames, the spell's animation over its target, a resisted cast's, Magic Arrow's and Ice Bolt's
+  projectile and hit, their sounds and log lines), the
   panel (M3 T6a: its picture in the acting player's colours and its buttons as the turn's start
   sets them, `h3_view::panel`; since M3 T6b through the battle's turns and with its log's lines,
   `scene::Panels`); not yet
@@ -146,7 +148,7 @@ viewer on the real assets; a full game record/replay viewer follows.
 One table per rule pack, `clients/assets/<pack>.toml` (ADR-0020 point 5), generated once by
 `cargo run --release -p h3-view -- harvest [--install <dir>] [--packs <dir>] [--out <dir>]` from
 the installation copy's `Heroes3.exe` and `H3bitmap.lod` (`cranim.txt`, `crtraits.txt`,
-`hotraits.txt`), keyed by
+`hotraits.txt`, `sptraits.txt`), keyed by
 the committed packs (its default `--out` is `clients/out/harvest`, so a fresh harvest is diffed
 against the committed tables, never written over them); afterwards they are source, edited by hand
 and reviewed as diffs. The client
@@ -164,7 +166,8 @@ on the M1 review list):
   hero's: `standing`, `idle`, `defeat`, `victory`, `cast`; M3 T3a), `flags` (the left and the
   right side's flag DEFs), `magic` (M3 T3b: the magic animations by number, each `def`, `place`,
   where it is drawn over a stack, 0 on the hex, 1 centred, 2 above, 3 beside, higher not over a
-  stack, and `translucent`; design §7.15) and `heal_sound` (the First Aid Tent's heal).
+  stack, and `translucent`; design §7.15), `heal_sound` (the First Aid Tent's heal) and
+  `resist_sound` (a spell resisted by the stack it was aimed at; M3 T7b-1).
 - `[[creature]]`: `key`, `original` (its original id, the executable's creature number: its
   record among `crtraits.txt`'s creature rows; M3 T4b-1), `def` (the battle sprite), `times` (`cranim.txt`'s fidget interval, walk,
   attack and flight distance as the executable keeps them: scaled by 9000, 500, 500, 115 and
@@ -173,8 +176,15 @@ on the M1 review list):
   (a ray shooter's five colours, R, G, B from the ray's edge inward, M3 T1b-1) and `sounds`
   (T5b: the sound archives' entries of `move`, `attack`, `wince`, `shot`, `death`, `defend`,
   `start`, `end`; one the creature lacks is left out; `h3-view harvest` writes them).
-- `[[hero]]`: `key` (a hero type's) and `def`, its battle picture (by its class's town and its
-  sex, design §4.5; M3 T3a).
+- `[[hero]]`: `key` (a hero type's), `original` (its hero type, its record among
+  `hotraits.txt`'s; M3 T7b-1), `def`, its battle picture (by its class's town and its sex, design
+  §4.5; M3 T3a), and from the same record `cast` (its cast point in the DEF's frame, x, y) and
+  `cast_frames` (the casting group's frames played before the spell; M3 T7b-1, design §7.16).
+- `[[spell]]` (M3 T7b-1): `key`, `original` (its spell number, its record among `sptraits.txt`'s
+  spell rows), optional `animation` (its magic animation's number, the spell record's +8),
+  `sound` (the record's +4, an entry name without its extension) and `projectile` with
+  `projectile_angles` (the DEFs a handler flies and their angles in degrees: Magic Arrow's and Ice
+  Bolt's).
 - `[[battlefield]]`: `key` (a terrain's, or a special battlefield's: the packs' `[[battlefield]]`
   of `battle.toml`, M3 T2) and `backgrounds` (the pictures by the variant the adventure map
   picks; a special battlefield has one, which wins over the terrain's).
@@ -210,8 +220,10 @@ log's lines over the battle.
   user's text tables: `form` (the suffix: `one`, `other`, a context; none for the only form),
   `at = "<TABLE>:<record>[:<column>]"` (records from 0 with the header rows) and `printf` (the
   arguments the row's `%s` and `%d` stand for, in order); `[[family]]`: a key per asset-table
-  entry (`creature`: `creature.<table>:<key>`, a creature's names), its row the non-blank record
-  of its original id from `first`, its forms' columns in `forms`. Unknown fields are errors.
+  entry (`creature`: `creature.<table>:<key>`, a creature's names; `spell` and `hero`, M3 T7b-1),
+  its row the non-blank record of its original id from `first` (with `by`, the records whose
+  column `by` is filled: `sptraits.txt`'s group rows fill only their first), its forms' columns in
+  `forms`, or its one form's in `column`. Unknown fields are errors.
 - **A language pack** is nested JSON with i18next's conventions: objects nest a key's segments,
   a string is a message, `{{name}}` a placeholder (any other brace is text: the original's
   highlight braces stay), the suffixes `_<context>` and `_<category>` its forms (`_one`, `_few`,
