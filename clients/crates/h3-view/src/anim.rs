@@ -1289,6 +1289,7 @@ fn played(
         log: Vec::new(),
         outcome: None,
         tactics: snapshot.tactics.is_some(),
+        acting: snapshot.active,
     };
     let mut actions = Vec::new();
     let mut fidgets = seed.map(|rng| Fidgets {
@@ -1346,7 +1347,7 @@ fn played(
             }
         }
         let (before, turns) = (player.keys.len(), player.turns.len());
-        let heroes_before = player.hero_keys.len();
+        let (heroes_before, magics_before) = (player.hero_keys.len(), player.magics.len());
         // The action starts (`action_dispatcher` 0x478D80's head, E17 M3 T6b).
         let started = player.clock.now;
         player.log.push((started, Logged::Action));
@@ -1362,11 +1363,13 @@ fn played(
             outlines.push((started, None));
         }
         player.command(command.events);
-        // The outline goes with the command's first frame shown (a stack's, or a hero's as it
-        // casts, E17 M3 T7b-1); a turn started brings its stack's, unless the computer acts next.
+        // The outline goes with the command's first frame shown (a stack's, a hero's as it
+        // casts, E17 M3 T7b-1, or a magic animation's, T7b-2b-2b: good luck before a shot); a
+        // turn started brings its stack's, unless the computer acts next.
         let first = [
             player.keys.get(before).map(|k| k.shown),
             player.hero_keys.get(heroes_before).map(|k| k.shown),
+            player.magics.get(magics_before).map(|k| k.shown),
         ];
         if let Some(first) = first.into_iter().flatten().min() {
             outlines.push((first, None));
@@ -1478,6 +1481,15 @@ const fn still(group: u32, hex: u8) -> Pose {
         layer: STANDING,
         boxless: false,
     }
+}
+
+/// Whether the `TurnStarted` of `stack` followed by `next` is a turn its pick freezes (bad morale,
+/// Fear: `next_stack_to_act` 0x465283; E17 M3 T7b-2b-2b): the stack never becomes the active one.
+#[must_use]
+pub fn freezes(next: Option<&Event>, stack: u8) -> bool {
+    next.is_some_and(|e| {
+        matches!(*e, Event::BadMorale { stack: s } | Event::Frightened { stack: s } if s == stack)
+    })
 }
 
 /// A frame of `group` on `hex`, facing right, standing's layer.
@@ -1629,6 +1641,11 @@ struct Player<'a> {
     outcome: Option<Outcome>,
     /// The tactics phase runs (no wait's line, no round's).
     tactics: bool,
+    /// The stack the battle outlines between actions (manager +0x132C8; E17 M3 T7b-2b-2b): the
+    /// last turn's, which a move's, strike's or shot's handler clears while it plays and sets
+    /// again at its end (0x445996, 0x4459ED; a Defend leaves it); none from a round's start
+    /// (0x4761EE). Shown by the redraws of good morale and of a freeze before the next turn.
+    acting: Option<u8>,
 }
 
 /// A command's melee (`move_and_attack` 0x478900, `melee_attack` 0x441CB0): its striker, its
@@ -1916,6 +1933,7 @@ impl Player<'_> {
                 Event::TacticsEnded {} => self.tactics = false,
                 Event::BattleEnded { result } => self.outcome = Some(result),
                 Event::RoundStarted { .. } => {
+                    self.acting = None;
                     self.happenings.push(Happening::Round);
                     if !self.tactics {
                         self.log.push((self.clock.now, Logged::Round));
@@ -1931,13 +1949,11 @@ impl Player<'_> {
                     // A stack its pick freezes (bad morale, Fear) never becomes the active one:
                     // the pick goes on to the next (`next_stack_to_act` 0x465283; E17 M3
                     // T7b-2b-2b).
-                    let frozen = events.get(i).is_some_and(|e| {
-                        matches!(*e, Event::BadMorale { stack: s } | Event::Frightened { stack: s }
-                            if s == stack)
-                    });
+                    let frozen = freezes(events.get(i), stack);
                     if !frozen {
                         self.turns.push((self.clock.now, stack));
                         self.log.push((self.clock.now, Logged::Turn(stack)));
+                        self.acting = Some(stack);
                     }
                     // A war machine's turn the command plays out (another turn follows in it):
                     // the battle loop ticks once as it acts, as for the computer's, which
@@ -2132,13 +2148,17 @@ impl Player<'_> {
     /// §7.16): its sound starts, animation [`GOOD_MORALE`] over it without its hit, the log's line
     /// after it (0x464AD5), then the sound waited for (`wait_for_sample` 0x59A4C0: not with the
     /// sound off, as the captures play; *provisional* with it on, as the heal's) and a redraw
-    /// shown at once (0x464B23).
+    /// shown at once (0x464B23). The stack that acted is outlined again from the animation's
+    /// first frame ([`Player::acting`], the recorded `morale`).
     fn good_morale(&mut self, stack: u8) {
         let Some(live) = self.live(stack) else {
             return;
         };
         self.cue(stack, Sound::GoodMorale, false);
-        self.over_one(GOOD_MORALE, (stack, &live), self.speed.scale(TICK), false);
+        let first = self.over_one(GOOD_MORALE, (stack, &live), self.speed.scale(TICK), false);
+        if let Some(first) = first {
+            self.outlined.push((first, self.acting));
+        }
         let line = Logged::Morale {
             stack,
             count: live.count,
@@ -2185,7 +2205,10 @@ impl Player<'_> {
         };
         self.cue(stack, sound, false);
         self.log.push((self.clock.now, line));
-        self.over_one(number, (stack, &live), self.speed.scale(TICK), true);
+        // The stack that acted last stays outlined ([`Player::acting`], the recorded `bad`).
+        if let Some(first) = self.over_one(number, (stack, &live), self.speed.scale(TICK), true) {
+            self.outlined.push((first, self.acting));
+        }
     }
 
     /// A frame of the hero of `side` (0 the attacker's): drawn now and shown at the deadline,

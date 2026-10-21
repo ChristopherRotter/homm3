@@ -3651,6 +3651,12 @@ fn the_morale_sequence_plays_as_recorded() {
     assert!(cued.contains(&(0, 0, Sound::Luck, false)));
     assert!(cued.contains(&(4776, 0, Sound::GoodMorale, false)));
     assert_eq!([t.active(6875), t.active(6876)], [None, Some(0)]);
+    // No outline from the luck's first frame (the shot's handler); the Marksmen's again from good
+    // morale's first frame (`morale`'s frames).
+    assert_eq!(
+        [0, 4875, 4876].map(|ms| t.outlined(ms)),
+        [None, None, Some(0)]
+    );
 }
 
 #[test]
@@ -3681,15 +3687,18 @@ fn the_bad_morale_and_fear_sequences_play_as_recorded() {
     assert!(!t.log.contains(&(0, Logged::Turn(1))));
     assert!(cues(&t).contains(&(0, 1, Sound::BadMorale, false)));
     assert_eq!([t.active(2099), t.active(2100)], [None, Some(3)]);
+    // The Champions, who defended, stay outlined through the freeze (`bad`'s frames).
+    assert_eq!([t.outlined(1000), t.outlined(2100)], [Some(0), Some(3)]);
     // `seq-fear.toml`: the Azure Dragon defends; the Champions' pick frightens them: `Fear.wav`,
     // the line (the Dragon by its number), animation 15 with their hit; the Marksmen's turn.
     let mut dragon = at(2, Side::Defender, BLACK_DRAGON, 100, true);
     dragon.count = 1;
-    let o = snapshot(vec![
+    let mut o = snapshot(vec![
         at(0, Side::Attacker, CHAMPION, 35, true),
         at(1, Side::Attacker, MARKSMAN, 137, false),
         dragon,
     ]);
+    o.active = Some(2);
     let events = vec![
         Event::Defended { stack: 2 },
         Event::TurnStarted { stack: 0 },
@@ -3707,6 +3716,7 @@ fn the_bad_morale_and_fear_sequences_play_as_recorded() {
     assert!(t.log.contains(&(0, fear)));
     assert!(cues(&t).contains(&(0, 0, Sound::Fear, false)));
     assert_eq!([t.active(3199), t.active(3200)], [None, Some(1)]);
+    assert_eq!([t.outlined(1000), t.outlined(3200)], [Some(2), Some(1)]);
 }
 
 #[test]
@@ -3725,6 +3735,8 @@ fn rolled_effects_without_their_stack_or_a_long_enough_animation() {
     }
     let events = vec![
         Event::Frightened { stack: 0 },
+        // A round's start: no stack outlined during the next freeze.
+        Event::RoundStarted { round: 2 },
         Event::BadMorale { stack: 0 },
         // Stacks the timeline does not follow.
         Event::GoodMorale { stack: 9 },
@@ -3771,6 +3783,7 @@ fn rolled_effects_without_their_stack_or_a_long_enough_animation() {
     // deadline later, the last at 4 000 with the standing frame at once.
     assert_eq!(t.at(3999)[&0], pose(3, 6, 35));
     assert_eq!(t.at(4000)[&0], still(2, 35));
+    assert_eq!([t.outlined(100), t.outlined(3300)], [Some(0), None]);
     assert!(t.log.iter().all(|(_, l)| !matches!(
         l,
         Logged::Morale { stack: 9, .. }
