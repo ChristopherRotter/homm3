@@ -353,6 +353,7 @@ def neighbour(h, direction):
 # where it shows one, after the mouse rested over the point (the game reads the mouse on a 33 ms
 # grid of its clock).
 COMBAT_CURSOR, MELEE_FRAMES, HOVER = 2, range(7, 15), 0.25
+STRIKE_PASSES, STRIKE_PAUSE = 4, 1.0
 STRIKE_OFFSETS = {"right": (14, 0), "left": (-14, 0), "up-right": (8, -14), "up-left": (-8, -14),
                   "down-right": (8, 14), "down-left": (-8, 14)}
 
@@ -377,17 +378,24 @@ def strike(game, mem, active, aim):
                     and not board[n]["flags"] & 0x2:
                 sides.append((hex_distance(stack["hex"], n), target, direction))
     seen = []
-    for _, target, direction in sorted(sides):
-        x, y = h3drive.hex_point(target)
-        dx, dy = STRIKE_OFFSETS[direction]
-        game.move(x + dx, y + dy)
-        time.sleep(HOVER)
-        cursor = mem.globals()["cursor"]
-        seen.append(cursor[1] if cursor else None)
-        if cursor and cursor[0] == COMBAT_CURSOR and cursor[1] in MELEE_FRAMES:
-            game.click(x + dx, y + dy, 0.2)
-            return (f"attacks {mem.creature_name(aim['creature'])} at hex {target} from the "
-                    f"{direction} (cursor frame {cursor[1]})")
+    # Several passes (E08 T32b2): a turn the memory already gives a stack may not take input yet
+    # (seen once in E4-9, every position the plain pointer, frame 6: a good morale's extra turn
+    # shows its animation first).
+    for attempt in range(STRIKE_PASSES):
+        if attempt:
+            time.sleep(STRIKE_PAUSE)
+        for _, target, direction in sorted(sides):
+            x, y = h3drive.hex_point(target)
+            dx, dy = STRIKE_OFFSETS[direction]
+            game.move(x + dx, y + dy)
+            time.sleep(HOVER)
+            cursor = mem.globals()["cursor"]
+            seen.append(cursor[1] if cursor else None)
+            if cursor and cursor[0] == COMBAT_CURSOR and cursor[1] in MELEE_FRAMES:
+                game.click(x + dx, y + dy, 0.2)
+                late = f", pass {attempt + 1}" if attempt else ""
+                return (f"attacks {mem.creature_name(aim['creature'])} at hex {target} from the "
+                        f"{direction} (cursor frame {cursor[1]}{late})")
     raise RuntimeError(f"no attack cursor over hexes {hexes} (cursor frames {seen})")
 
 
@@ -698,7 +706,8 @@ def hero_value(mem, hero, field):
     knowledge), army, skill:<name> (none, basic, advanced, expert), on_map (yes/no), tile; since
     E08 T32b1 skills (`Leadership expert, Wisdom basic` in the hero's order, `none`), seed,
     wisdom_offer, school_offer (hero +0x8F, +0x90, +0x3F), artifacts (worn: `Ballista (war
-    machine 1), …` in slot order, `none`) and backpack (in its order, `none`)."""
+    machine 1), …` in slot order, `none`) and backpack (in its order, `none`); since E08 T32b2
+    equipment (the worn artifacts but the war machines and the spell book)."""
     if field == "experience":
         return str(hero["experience"])
     if field == "level":
@@ -727,6 +736,11 @@ def hero_value(mem, hero, field):
             or "none"
     if field == "backpack":
         return ", ".join(mem.artifact_name(a) for a in hero["backpack"]) or "none"
+    # E08 T32b2: the worn artifacts but the war machines and the spell book (every hero wears a
+    # Catapult): what a starting bonus can give.
+    if field == "equipment":
+        return ", ".join(f"{mem.artifact_name(a)} ({slot})" for slot, a in hero["worn"].items()
+                         if not slot.startswith("war machine") and slot != "spell book") or "none"
     raise ValueError(f"unknown hero detail `{field}`")
 
 
@@ -953,6 +967,11 @@ def batch(recipe_path, map_path=None, out=None):
                 values[(step["encounter"], field)] = got
             for note in oddities(obs, step.get("expect", {})):
                 notes.setdefault(step["encounter"], []).append(note)
+            # E08 T32b2: `note` reads like `record`, under "anything odd" unless it reads `none`
+            # (batch E4: a worn artifact, the starting bonus's trap).
+            for label, what in step.get("note", {}).items():
+                if (got := value(obs, what, mem)) != "none":
+                    notes.setdefault(step["encounter"], []).append(f"{label}: {got}")
     finally:
         game.stop()
         log.close()

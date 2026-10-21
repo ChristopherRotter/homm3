@@ -1,5 +1,9 @@
 # E08 batch E4b — results
 
+> Played by the capture harness on 2026-10-21 (`clients/capture/h3adv.py batch clients/capture/batches/E08-batch-4b.toml`): the same Complete 4.0 `Heroes3.exe` under Wine, without the HD mod; hot seat, difficulty Easy, the starting bonus random, Show Route on; read from the game's memory.
+>
+> One run (E08 T32b2); the scorer's report beside it, `E08-batch-4b-score.md` (`crates/h3-map/examples/e4_score.rs`).
+
 Map file: `E08-batch-4b.h3m`. Fill in the blanks below and keep this file; an agent records the results (`docs/experiments/README.md`).
 
 **Stamp `8d4a4c2d`.** The map's description in the scenario list starts with "Stamp 8d4a4c2d.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
@@ -24,23 +28,23 @@ Map file: `E08-batch-4b.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- seed byte (hero +0x8F): 
-- Wisdom last offered (hero +0x90): 
-- a school last offered (hero +0x3F): 
-- experience at the start: 
-- level at the start: 
-- primary skills at the start (attack/defense/power/knowledge): 
-- secondary skills at the start (in the hero's order, each with its level): 
-- the messages after the battle: 
-- dialog 1, level: 
-- dialog 1, primary skill raised: 
-- dialog 1, left offer (or the only one): 
-- dialog 1, right offer: 
-- dialog 1, taken: 
-- experience after: 
-- level after: 
-- primary skills after (attack/defense/power/knowledge): 
-- secondary skills after (in the hero's order, each with its level): 
+- seed byte (hero +0x8F): 71
+- Wisdom last offered (hero +0x90): 0
+- a school last offered (hero +0x3F): 5
+- experience at the start: 4600
+- level at the start: 5
+- primary skills at the start (attack/defense/power/knowledge): 3/4/1/2
+- secondary skills at the start (in the hero's order, each with its level): Leadership expert, Ballistics advanced
+- the messages after the battle: GENRLTXT:2, GENRLTXT:7
+- dialog 1, level: no dialog
+- dialog 1, primary skill raised: no dialog
+- dialog 1, left offer (or the only one): no dialog
+- dialog 1, right offer: no dialog
+- dialog 1, taken: no dialog
+- experience after: 4600
+- level after: 5
+- primary skills after (attack/defense/power/knowledge): 3/4/1/2
+- secondary skills after (in the hero's order, each with its level): Leadership expert, Ballistics advanced
 - anything odd: 
 
 ## E4-6b — A level limit of 5: a hero with 4 000 experience gains 700 (HER-EXP-003, D-19)
@@ -54,21 +58,21 @@ Map file: `E08-batch-4b.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- seed byte (hero +0x8F): 
-- Wisdom last offered (hero +0x90): 
-- a school last offered (hero +0x3F): 
-- experience at the start: 
-- level at the start: 
-- primary skills at the start (attack/defense/power/knowledge): 
-- secondary skills at the start (in the hero's order, each with its level): 
-- the messages after the battle: 
-- dialog 1, level: 
-- dialog 1, primary skill raised: 
-- dialog 1, left offer (or the only one): 
-- dialog 1, right offer: 
-- dialog 1, taken: 
-- experience after: 
-- level after: 
-- primary skills after (attack/defense/power/knowledge): 
-- secondary skills after (in the hero's order, each with its level): 
-- anything odd: 
+- seed byte (hero +0x8F): 107
+- Wisdom last offered (hero +0x90): 0
+- a school last offered (hero +0x3F): 4
+- experience at the start: 4000
+- level at the start: 4
+- primary skills at the start (attack/defense/power/knowledge): 4/3/1/1
+- secondary skills at the start (in the hero's order, each with its level): Leadership expert, Artillery basic
+- the messages after the battle: GENRLTXT:2
+- dialog 1, level: 5
+- dialog 1, primary skill raised: attack
+- dialog 1, left offer (or the only one): Artillery
+- dialog 1, right offer: Offense
+- dialog 1, taken: left (Artillery)
+- experience after: 4600
+- level after: 5
+- primary skills after (attack/defense/power/knowledge): 5/3/1/1
+- secondary skills after (in the hero's order, each with its level): Leadership expert, Artillery advanced
+- anything odd: worn artifacts at the start but the war machines (the starting bonus): Pendant of Dispassion (neck)

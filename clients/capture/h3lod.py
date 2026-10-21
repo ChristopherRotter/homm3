@@ -10,7 +10,7 @@ the harness names a record by its number, never by its text (ADR-0009).
 
 Library use: `table(name)` (records of fields, header rows included, from 0), `matches(name,
 text)` (the records whose first field formats to `text`, or two neighbours' together: "89+90"),
-`identify(text)` (the first match in ADVEVENT.TXT or GENRLTXT.TXT: "ADVEVENT:86").
+`identify(text)` (the most specific match in ADVEVENT.TXT or GENRLTXT.TXT: "ADVEVENT:86").
 """
 
 import re
@@ -133,13 +133,28 @@ def matches(name, text):
 TABLES = ("ADVEVENT.TXT", "GENRLTXT.TXT")
 
 
+def literal(name, record):
+    """How much of a record's text (or two neighbours' together: "89+90") is literal, its
+    conversions left out."""
+    rows = table(name)
+    text = "".join(rows[int(n)][0] for n in record.split("+"))
+    return len(re.sub(r"%[-+ #0]*\d*(?:\.\d+)?[a-zA-Z]|\s+", "", text))
+
+
 def identify(text):
-    """`<TABLE>:<record>` of the first table that formats `text`, None for none."""
-    for name in TABLES:
-        found = matches(name, text)
-        if found:
-            return f"{name.split('.')[0]}:{found[0]}"
-    return None
+    """`<TABLE>:<record>` of the most specific record that formats `text` or a run of its lines (a
+    dialog's text items, h3mem.dialog_text: a picture's caption is an item of its own), None for
+    none: the most literal text; at a tie the whole text before a part, the first table's, the
+    first record. Since E08 T32b2: the first match of the whole text before, and `%s the %s`
+    (GENRLTXT 16) formats every text with " the " in it."""
+    lines = text.strip().split("\n")
+    runs = sorted({"\n".join(lines[i:j]) for i in range(len(lines))
+                   for j in range(i + 1, len(lines) + 1)}, key=len, reverse=True)
+    found = [(name, n, run) for run in runs for name in TABLES for n in matches(name, run)]
+    if not found:
+        return None
+    name, record, _ = max(found, key=lambda f: (literal(f[0], f[1]), len(f[2]), -found.index(f)))
+    return f"{name.split('.')[0]}:{record}"
 
 
 if __name__ == "__main__":

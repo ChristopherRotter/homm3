@@ -1,0 +1,38 @@
+# E08 batch E4b played by the capture harness (E08 T32b2, `cross-lane`; h3adv.py batch): the
+# procedure of experiments/specs/E08-batch-4b.toml as steps, on Easy, the scenario's level limit 5.
+# Hot seat, Red and Blue human; h3-experiment's grid (as batch E4a's recipe): E4-6a on (3, 3), its
+# Pikeman on (4, 3); E4-6b on (9, 3), its 20 Swordsmen on (10, 3). Day 1, Red: E4-6a (10 000
+# experience at load) beats the Pikeman; Blue: E4-6b (4 000) beats the Swordsmen. The dialogs
+# closed with their OK after each battle are the messages (a hero who can gain no more, D-19);
+# `note` as batch E4a's. The scorer (crates/h3-map/examples/e4_score.rs) predicts both heroes.
+
+spec = "experiments/specs/E08-batch-4b.toml"
+players = ["Red", "Blue"]
+difficulty = "easy"
+
+# --- Day 1, Red: E4-6a (D-21 at load, D-19 at the gain) ----------------------------------------
+
+[[step]]
+encounter = "E4-6a"
+hero = "E4-6a"
+walk = [4, 3]
+battle = "auto"
+level_up = "left"
+expect = { question = "none", battle = true, dialogs = true }
+note = { "worn artifacts at the start but the war machines (the starting bonus)" = "before:hero:equipment" }
+record = { "seed byte (hero +0x8F)" = "before:hero:seed", "Wisdom last offered (hero +0x90)" = "before:hero:wisdom_offer", "a school last offered (hero +0x3F)" = "before:hero:school_offer", "experience at the start" = "before:hero:experience", "level at the start" = "before:hero:level", "primary skills at the start (attack/defense/power/knowledge)" = "before:hero:primary", "secondary skills at the start (in the hero's order, each with its level)" = "before:hero:skills", "the messages after the battle" = "messages", "dialog 1, level" = "level_up:1:level", "dialog 1, primary skill raised" = "level_up:1:primary", "dialog 1, left offer (or the only one)" = "level_up:1:left", "dialog 1, right offer" = "level_up:1:right", "dialog 1, taken" = "level_up:1:taken", "experience after" = "hero:experience", "level after" = "hero:level", "primary skills after (attack/defense/power/knowledge)" = "hero:primary", "secondary skills after (in the hero's order, each with its level)" = "hero:skills" }
+
+[[step]]
+end_turn = true
+
+# --- Day 1, Blue: E4-6b (a gain across the limit) ----------------------------------------------
+
+[[step]]
+encounter = "E4-6b"
+hero = "E4-6b"
+walk = [10, 3]
+battle = "auto"
+level_up = "left"
+expect = { question = "none", battle = true, dialogs = true }
+note = { "worn artifacts at the start but the war machines (the starting bonus)" = "before:hero:equipment" }
+record = { "seed byte (hero +0x8F)" = "before:hero:seed", "Wisdom last offered (hero +0x90)" = "before:hero:wisdom_offer", "a school last offered (hero +0x3F)" = "before:hero:school_offer", "experience at the start" = "before:hero:experience", "level at the start" = "before:hero:level", "primary skills at the start (attack/defense/power/knowledge)" = "before:hero:primary", "secondary skills at the start (in the hero's order, each with its level)" = "before:hero:skills", "the messages after the battle" = "messages", "dialog 1, level" = "level_up:1:level", "dialog 1, primary skill raised" = "level_up:1:primary", "dialog 1, left offer (or the only one)" = "level_up:1:left", "dialog 1, right offer" = "level_up:1:right", "dialog 1, taken" = "level_up:1:taken", "experience after" = "hero:experience", "level after" = "hero:level", "primary skills after (attack/defense/power/knowledge)" = "hero:primary", "secondary skills after (in the hero's order, each with its level)" = "hero:skills" }

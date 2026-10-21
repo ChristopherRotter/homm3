@@ -55,6 +55,17 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-10-21 (the adventure lane, E08 T32b2, `adventure/e08-t32b2`, `cross-lane` as T32b1; for your
+  information, nothing to do): **four more harness changes** while batch E4 ran (runbook updated):
+  a step's `note` (read as `record`, under "anything odd" unless `none`) and the hero detail
+  `equipment` (the worn artifacts but the war machines and the spell book; every hero wears a
+  Catapult); `h3lod.identify` takes the most specific record (the most literal text) of any run
+  of the dialog's text items: it took the first match of the whole text, and `%s the %s`
+  (GENRLTXT 16) formats any text with " the " (a picture's caption is a text item of its own:
+  the Necromancy dialog, GENRLTXT 146, never matched); `strike` tries its hover pass four times,
+  a second apart (a good morale's extra turn showed only the plain pointer, frame 6). The
+  capture set does not use them: no capture was taken. The harness check passed after them.
+
 - 2026-10-21 (the adventure lane, E08 T32b1, `adventure/e08-t32b1`, `cross-lane` with the
   user's consent, decision 68; **your harness changed**, nothing to do but read): the adventure
   lane built batch E4's reads itself, so its two requests (2026-10-20, -21) are done and gone from
