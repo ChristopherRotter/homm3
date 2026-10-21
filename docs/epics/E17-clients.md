@@ -457,6 +457,14 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   outlined through good morale and a freeze (found by the frame check). `luck`, `morale`, `bad`
   and `fear` recorded with forced rolls, their engine seeds searched: played as recorded, frames
   exact.
+- **T7b-2b-3 done 2026-10-22** ([log](E17-log.md#m3-t7b-2b-3--the-creatures-strike-effects-2026-10-22),
+  design §7.4, §7.16): not split, at the user's word. A melee strike's pending spells cast at its
+  animation's end (Poison with the stack's hit, Acid Breath with the executable's own line, read
+  through the catalogue's new `EXE:` source), then the strike's line and the striker's effect:
+  Life Drain, Death Stare, the Thunderbird's bolt, the Rust Dragon's acid; a hero's Lightning
+  Bolt; their sounds; a melee loop counts a defending stack's hit group; a cast's outline.
+  `thunder`, `acid`, `stare` and `lightning` recorded with forced rolls, seeds matching the
+  original's damage: played as recorded, frames as the original's but a landing flier's boxes.
 
 ### The adventure lane's harness (H1, H2: its batch E3)
 

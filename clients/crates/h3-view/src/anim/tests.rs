@@ -3949,6 +3949,18 @@ fn spells_after_a_strike_are_cast_at_its_end_and_the_acid_after_its_line() {
     assert_eq!(t.hues(20_000), p.hues(20_000));
     // The kill shows once the acid's reaction is over.
     assert_eq!(t.counts(20_000)[&1], 39);
+    // Each cast outlines the turn's stack at its end (`cast_spell`'s tail), the second clearing
+    // it as it starts: outlined as Acid Breath's line is written, not while it plays.
+    let written = t.log.iter().find(|(_, l)| *l == acid).map(|(at, _)| *at);
+    let written = written.unwrap_or_default();
+    let started = t
+        .magics
+        .iter()
+        .filter(|k| k.animation == ACID)
+        .map(|k| k.shown)
+        .min();
+    assert_eq!(t.outlined(written), Some(0));
+    assert_eq!(t.outlined(started.unwrap_or_default()), None);
 }
 
 #[test]

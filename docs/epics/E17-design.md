@@ -1811,6 +1811,11 @@ resistance roll, if any (category 3, 0x5A0331); Curse's is named `Curse`, withou
     81 without the hit at 100 ms, the sound waited for, then the stack's reaction.
   - `strike_animation`'s second argument (1 for the effects, 0 for the strike) resets the dirty
     rectangles (0x493710) before and after its loop.
+  - Every cast, a creature's too, clears the outline as it starts (0x5A004C, `sub_477B60`: the
+    outlined stack's hexes redrawn, a redraw shown at once) and outlines the stack whose turn it
+    is as it ends (0x5A216B, `sub_477AC0`: standing if it is not, a redraw shown at once); found
+    by the frame check (`acid`: the Rust Dragon outlined from Acid Breath's end, 6 300 ms, to the
+    Wyvern Monarchs' Poison's start, 10 900).
 - **Built (T7b-2b-3, `anim`):** the pending spells of a melee strike (`Player::pending_casts`,
   played by `iterate` before its tail: `strike_cast`): Poison and Acid Breath as read, the others
   their effects at once (not built: Blind, Curse, Disease, Age, Paralyze, Stone Gaze's glow,
@@ -1828,9 +1833,15 @@ resistance roll, if any (category 3, 0x5A0331); Curse's is named `Curse`, withou
   5 890 ms, 49 from 6 000, the drain's 74 from 8 410; seed 110: one Vampire Lord killed, 50
   drained, one raised, as the original), `acid` (Acid Breath's 81 from 4 200 ms, the acid's from
   6 300, Poison's 67 on the Rust Dragon from 10 900; seed 55: the strike back's 49 damage),
-  `stare` (two rounds: the Royal Griffins strike the defending Gorgons, the strike back kills
-  two, Death Stare one; seed 5) and `lightning` (`bolt`'s round 1 with the Marksmen for the
-  Pikemen); all four as recorded on the first run.
+  `stare` (two rounds: the Royal Griffins strike the defending Gorgons for 37, the strike back
+  kills two, Death Stare one; seed 39) and `lightning` (`bolt`'s round 1 with the Marksmen for
+  the Pikemen); all four as recorded on the first run. The frame check (`frames --only`, then
+  `--reuse` after the fixes): `thunder` 121 frames, `acid` 153, `stare` 98, `lightning` 34, all
+  as the original's but the original's redraw artifacts and, where a two-hex flier lands beside
+  its target, the boxes' frame (§4.3, as `luck`'s at 2 730 ms: 86 pixels at 4 490 in `thunder`,
+  273 at 2 200 in `acid`, 433 at 4 620 in `stare`; not copied, listed); `thunder`'s drinkers' box
+  listed at 8 410 (memory holds the raised number a frame before the screen shows it). Found on
+  the way: the outline of the casts (above), and the loop's hit group (§7.4).
 - **Not read:** the dissolve's blend; Chain Lightning's rays beyond `draw_ray`'s call (colour
   0x131, 0x5A64EF; T7c); how the glows are painted; the summons' and the Pit Lord's creation
   beyond the dissolve; Earthquake (sieges); the force-feedback effects (IFC20, nothing drawn).

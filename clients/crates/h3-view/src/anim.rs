@@ -2371,7 +2371,11 @@ impl Player<'_> {
     /// line (`battle_log_cast` 0x5A8EFC) and its animation over the stack with the stack's hit
     /// (0x5A15AF); Acid Breath its animation, the defense lowered by 3 (to 0 at least) and the
     /// executable's own line (0x5A1E70 to 0x5A1F53), no spell set; the others' effects at once
-    /// (not built: their handlers and lines). The common tail draws nothing for a creature.
+    /// (not built: their handlers and lines). A cast clears the outline as it starts (0x5A004C,
+    /// 0x477B60) and outlines the stack whose turn it is at its end (`cast_spell`'s tail
+    /// 0x5A216B, 0x477B16), each in a redraw shown at once (the recorded `acid`: the
+    /// Rust Dragon outlined from Acid Breath's end, not from the Wyvern Monarchs' Poison's start
+    /// to its end); the tail draws nothing else for a creature.
     fn strike_cast(
         &mut self,
         StrikeCast {
@@ -2395,32 +2399,39 @@ impl Player<'_> {
             return;
         };
         let time = self.speed.scale(TICK);
+        // The outline cleared as the cast starts, in a redraw shown at once, if a cast set it.
+        if self.outlined.last().is_some_and(|(_, s)| s.is_some()) {
+            self.outlined.push((self.clock.now, None));
+        }
         self.cue(target, Sound::Spell(spell), false);
-        if look.original == POISON {
+        let poison = look.original == POISON;
+        // Acid Breath's defense lowered (none for Poison).
+        let lowered = (!poison).then(|| live.defense.clamp(0, ACID_DEFENSE));
+        if let Some(lowered) = lowered {
+            self.stacks
+                .entry(target)
+                .and_modify(|l| l.defense -= lowered);
+        } else {
             self.effects(&effects);
             let line = Logged::Poisoned {
                 stack: target,
                 count: live.count,
             };
             self.log.push((self.clock.now, line));
-            if let Some(number) = look.animation {
-                self.over_one(number, (target, &live), time, true);
-            }
-            return;
         }
-        let lowered = live.defense.clamp(0, ACID_DEFENSE);
-        self.stacks
-            .entry(target)
-            .and_modify(|l| l.defense -= lowered);
         if let Some(number) = look.animation {
-            self.over_one(number, (target, &live), time, false);
+            self.over_one(number, (target, &live), time, poison);
         }
-        let line = Logged::AcidBreath {
-            stack: target,
-            count: live.count,
-            lowered,
-        };
-        self.log.push((self.clock.now, line));
+        if let Some(lowered) = lowered {
+            let line = Logged::AcidBreath {
+                stack: target,
+                count: live.count,
+                lowered,
+            };
+            self.log.push((self.clock.now, line));
+        }
+        // The outline: the turn's stack's from the cast's end.
+        self.outlined.push((self.clock.now, self.acting));
     }
 
     /// A spell after a strike that is the striker's own effect (`striker_effects` 0x440BC0; E17
