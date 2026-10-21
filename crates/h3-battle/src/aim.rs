@@ -17,9 +17,9 @@
 use core::cell::Cell;
 
 use h3_content::{CreatureFlag, ORIGINAL_AI_SLIPS};
-use h3_content_battle::{BattleRuleset, TimedChange, WallKind};
+use h3_content_battle::{BattleRuleset, SpellEffect, SpellTarget, TimedChange, WallKind};
 use h3_contracts::{BattleSide, FortLevel};
-use h3_kernel::arith::{DOUBLE_BITS, X87};
+use h3_kernel::arith::{DOUBLE_BITS, SINGLE_BITS, X87};
 
 use crate::binds;
 use crate::combat::{can_shoot, can_shoot_without, melee_damage, shot_damage, spares};
@@ -83,6 +83,18 @@ impl Context {
     /// Whether the side is desperate (+8; BAT-SIE-023): its values take every creature at 1000.
     pub const fn desperate(&self) -> bool {
         self.desperate
+    }
+
+    /// The context with its least attack bonus also as its least defense bonus: the Fire Wall's
+    /// and the moat's hex scores pass the one for both to the kill value (0x42155B, 0x4215EC; the
+    /// walker's, E23 T3b: with quirk BAT-QUIRK-25 the original's slip 19, else the context as it
+    /// is).
+    #[must_use]
+    pub const fn attack_for_both(self) -> Self {
+        Self {
+            min_defense: self.min_attack,
+            ..self
+        }
     }
 }
 
@@ -842,6 +854,56 @@ pub(crate) fn damage_value(
         worth(state, (ruleset, field), ctx, id, shot)
     };
     kill_value(s, i64::try_from(damage).unwrap_or(i64::MAX), v)
+}
+
+/// The best damage of `caster`'s hero's area spells on stack `s` as the computer's area threat
+/// estimates it (0x41F920's loop; E23 T3b): none while casting is forbidden (an anti-magic
+/// garrison, the Orb of Inhibition on either hero, BAT-MAG-061), without a hero or a spell in its
+/// book; else over the spells of its book aimed at a hex with an area and a damage effect (the
+/// original's Frost Ring, Fireball, Inferno and Meteor Shower, 20 to 23 by number: the same set in
+/// the packs) whose cost at its mastery (BAT-MAG-054, the battlefield's) its mana pays, the
+/// largest `trunc(f32(d) × f)`: `d` the spell's value with the hero's bonuses and the stack's
+/// reductions and protection (BAT-MAG-004, 0x5A7890), `f` the effect test's factor
+/// ([`magic::effect_factor`], 0x5A8090), at 53 bits; at least 0. Whether the hero has cast this
+/// round is not asked.
+pub(crate) fn best_area_spell(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    caster: BattleSide,
+    s: StackId,
+) -> i32 {
+    let Some(hero) = state.heroes[caster.index()]
+        .as_ref()
+        .filter(|_| !magic::casting_forbidden(state))
+    else {
+        return 0;
+    };
+    let target = state.at(s);
+    hero.magic
+        .book
+        .iter()
+        .filter_map(|id| ruleset.spell(id).map(|spell| (id, spell)))
+        .filter(|(_, spell)| {
+            spell.magic.target == SpellTarget::Hex
+                && spell.magic.area.is_some()
+                && spell.magic.effects.contains(&SpellEffect::Damage)
+        })
+        .filter_map(|(id, spell)| {
+            let mastery = magic::mastery(state, ruleset, hero, id);
+            let cost = crate::mana::cost(spell, mastery, hero.magic.cost_change);
+            (cost <= hero.view.mana).then(|| {
+                let value = magic::base_value(hero, spell, mastery);
+                let (_, damage) = magic::spell_damage(
+                    ruleset,
+                    ((id, spell), Some(&hero.magic.bonuses)),
+                    value,
+                    (target.creature, &target.spells.school_protection),
+                );
+                let f = magic::effect_factor(state, ruleset, caster, (id, spell), s);
+                ftol(X87::int(damage).round(SINGLE_BITS).times(f))
+            })
+        })
+        .fold(0, i32::max)
 }
 
 /// The computer's value of `a` striking `t` after `jousting` hexes (0x435C70, 0x435B90 without the

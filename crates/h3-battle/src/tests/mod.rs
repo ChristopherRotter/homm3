@@ -7,6 +7,7 @@ mod aim;
 mod battlefields;
 mod casters;
 mod commands;
+mod computer;
 mod control;
 mod created;
 mod creature_defences;

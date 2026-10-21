@@ -4,8 +4,9 @@
 //! the scenario's terrain, the scenario's heroes (E17 M3 T3a: each side names one, with its
 //! primary skills), each with the scenario's stacks in their slots and its formation and its war
 //! machines (E17 M3 T3b: their artifacts) and its spell book (M3 T7a-2a: the book in its slot,
-//! its spells), no secondary skills or other artifacts (no morale from Leadership, no Tactics
-//! phase); stepping Red's hero east starts the
+//! its spells, and the school skills behind its masteries, M3 T7a-2b), no other secondary
+//! skills or artifacts (no morale from Leadership, no Tactics phase); stepping Red's hero east
+//! starts the
 //! battle (`h3drive.py`). With `--hot-seat` (E17 M3 T1a) Blue may be a human too, so that the
 //! harness plays both sides of a hot-seat battle (`hot_seat` in `sequences.toml`). A special
 //! battlefield (E17 M3 T2) is set up as the original makes it, on the defender's tile: water
@@ -380,7 +381,8 @@ fn map(
             class,
             name: None,
             experience: Some(0),
-            skills: Some(Vec::new()),
+            // The school skills behind the masteries (E17 M3 T7a-2b); none without a book.
+            skills: Some(h.book.as_ref().map_or_else(Vec::new, |b| b.skills.clone())),
             army: Some(army(&battle.stacks[owner], &numbers.creatures)?),
             tight_formation: battle.tight[owner],
             artifacts: Some(HeroArtifacts {
@@ -571,6 +573,7 @@ mod tests {
             Some(Book {
                 artifact: 0,
                 spells: spells.iter().map(|s| (*s).to_owned()).collect(),
+                skills: vec![(17, 3)],
             })
         };
         if let Some(h) = read.heroes[0].as_mut() {
@@ -582,6 +585,8 @@ mod tests {
         };
         assert_eq!(reader.artifacts.as_ref().unwrap().worn[17], Some(0));
         assert_eq!(reader.spells, Some([1, 0x80, 0, 0, 0, 0, 0x40, 0, 0x20]));
+        // Its school skills (E17 M3 T7a-2b): Expert Earth Magic.
+        assert_eq!(reader.skills, Some(vec![(17, 3)]));
         assert!(write(&booked).is_ok());
         // A spell the book cannot hold (70 on: the creatures' abilities), or one not in the table.
         for bad in ["Stone Gaze", "Fly Away"] {

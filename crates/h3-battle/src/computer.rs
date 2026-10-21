@@ -11,8 +11,10 @@ use h3_kernel::arith::X87;
 use crate::aim;
 use crate::combat::can_shoot;
 use crate::geometry::{Field, Hex, HexSet};
+use crate::magic;
 use crate::movement::MAX_PATH;
 use crate::pathfinder::{AI_RANGE, Goal, Query, Search};
+use crate::siege;
 use crate::state::{BattleState, StackId};
 
 pub use crate::aim::{Context, Shot};
@@ -207,6 +209,18 @@ impl Map {
     pub fn is_stop(&self, hex: Hex) -> bool {
         self.0.is_stop(hex)
     }
+
+    /// Whether the search reached `hex` (the cell's bit 0): a position or a hex flown over, the
+    /// start included.
+    pub fn reached(&self, hex: Hex) -> bool {
+        self.0.reached(hex)
+    }
+
+    /// The cost at which the stack on `hex` can be attacked (the hex record's mark +0x4A and the
+    /// cell's cost), or `None` when it is not marked.
+    pub fn mark(&self, hex: Hex) -> Option<u16> {
+        self.0.mark_of(hex)
+    }
 }
 
 /// The walker's map of stack `id` for the computer's `side` (0x421680's 0x4B2DA0, 0x4217BE;
@@ -223,8 +237,71 @@ pub fn map(state: &BattleState, ruleset: &BattleRuleset, id: StackId, side: Batt
         range: AI_RANGE,
         avoid: aim::fears_moat(state, ruleset, me, Some(side)),
         spare: Some(side),
+        speed: None,
     };
     Map(Search::run(state, field, (id, me), query))
+}
+
+/// The map of an enemy's reach for the walker's hex scores (0x420260's 0x4B2DA0; BAT-AI-007): the
+/// computer's pathfinder for stack `id` with its speed + 1 as both the range and the turn's speed
+/// (a stop costs up to the next multiple of speed + 1, nothing is marked from a stop), the stacks
+/// of its own side not marked; at a town a weak stack its controller's computer plays keeps out of
+/// its stops (BAT-SIE-022, with the player's test: the enemy may be a human's).
+// rule: BAT-AI-007, BAT-SIE-022
+pub fn reach_map(state: &BattleState, ruleset: &BattleRuleset, id: StackId) -> Map {
+    let field = Field::new(ruleset.battle().field);
+    let me = state.at(id);
+    let speed = u16::from(me.speed_now()) + 1;
+    let query = Query {
+        goal: Goal::Map,
+        range: speed,
+        avoid: aim::avoids_stops(state, ruleset, me, Some(me.side)),
+        spare: Some(me.side),
+        speed: Some(speed),
+    };
+    Map(Search::run(state, field, (id, me), query))
+}
+
+/// The damage of the Fire Wall on `hex` to stack `id` (BAT-MAG-028: its value with the bonuses of
+/// the hero of the side that cast it, the stack's reductions and protection; the original's
+/// 0x5A78E0) and whether its spell hurts the stack at all (the rule's immunities and resistance);
+/// `None` without a Fire Wall there.
+// rule: BAT-MAG-028
+pub fn fire_wall_damage(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    hex: Hex,
+    id: StackId,
+) -> Option<(u64, bool)> {
+    state.spell_obstacles.fire_at(hex).and_then(|fire| {
+        ruleset.spell(fire.spell).map(|spell| {
+            let (_, damage) = magic::obstacle_damage(state, ruleset, (&fire, spell), id);
+            (damage, magic::hurts(state, ruleset, &fire, id))
+        })
+    })
+}
+
+/// The hexes of a moat that damages a stack entering it now and its damage (BAT-SIE-005: under
+/// SoD rules; the drawbridge's not while the gate is open); `None` without one.
+// rule: BAT-SIE-005
+pub fn damaging_moat(state: &BattleState) -> Option<(HexSet, u64)> {
+    siege::damaging_moat(state)
+}
+
+/// The computer's estimate of the best damage `caster`'s hero deals stack `id` with an area spell
+/// it can pay (0x41F920's hero part; BAT-AI-007): none while casting is forbidden (an anti-magic
+/// garrison, the Orb of Inhibition on either hero), without a hero or such a spell; else the
+/// largest `trunc(f32(d) × f)` over the spells of its book aimed at a hex with an area and a damage
+/// effect whose cost at its mastery its mana pays, `d` the damage (BAT-MAG-004) and `f` the
+/// effect test's factor (BAT-MAG-008), at least 0.
+// rule: BAT-AI-007
+pub fn area_spell_damage(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    caster: BattleSide,
+    id: StackId,
+) -> i32 {
+    aim::best_area_spell(state, ruleset, caster, id)
 }
 
 /// The path of the computer's walk (0x41F580's 0x4B3400): the positions from the first step to
@@ -265,6 +342,7 @@ pub fn path(
         range: AI_RANGE,
         avoid: aim::fears_moat(state, ruleset, me, Some(side)),
         spare: Some(side),
+        speed: None,
     };
     let search = Search::run(state, field, (id, me), query);
     let (hexes, len) = search.path();

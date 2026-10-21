@@ -4,7 +4,11 @@
 # sequences.toml with its engine commands and its frames. `cast:<k>[:<hex>]` casts the hero's
 # spell at its book's place k (design §7.16, "The spell book"); a Faerie Dragon casts by a click
 # on its target. `heroes = true`: the timeline has the heroes' changes too
-# (`<ms> hero <side> g<group> f<frame>`).
+# (`<ms> hero <side> g<group> f<frame>`); `screens = true` (T7a-2b) the screen's changes
+# (`<ms> screen <x0>,<y0>,<x1>,<y1>`, the box that differs from the step before), for what memory
+# does not show (the at-hex and Armageddon players, the projectiles, the rays, design §7.16).
+# A key pressed at the frozen clock right after a hero's cast acts once the cast has played
+# (`resist`: its stack defends as the hero stands).
 
 # A hero's timed spell on one stack (§7.16, player 1): Orrin's Slow at the Wolf Riders.
 [[sequence]]
@@ -30,4 +34,116 @@ actions = [
     "turn:0.0", "hex:117",
 ]
 ms = 4000
+screens = true
 timeline = "timelines/dragon.txt"
+
+# A hero's spell resisted (§7.16, player 1): Orrin's Slow at the Battle Dwarves, applied in round 1
+# (its animation 19), resisted in round 2 (`MagicRes.wav`, the log's line, then 78 over the
+# target), the Battle Dwarves and the Pikemen defending.
+[[sequence]]
+id = "resist"
+scenario = "seq-resist.toml"
+hot_seat = true
+actions = ["turn:1.0", "key:d", "turn:0.0", "cast:0:100", "key:d", "turn:1.0", "key:d", "turn:0.0", "cast:0:100"]
+ms = 3100
+heroes = true
+screens = true
+timeline = "timelines/resist.txt"
+
+# Magic Arrow from the hero's cast point (§7.16, player 7, then player 2) at a target nearly level
+# (round 1, the Swordsmen at row 0), steep (round 2, the Archangel flown beside the Pikemen) and
+# about 35° below (round 3, the Swordsmen at row 10).
+[[sequence]]
+id = "arrow"
+scenario = "seq-arrow.toml"
+hot_seat = true
+actions = [
+    "turn:1.1", "hex:173", "turn:1.0", "key:d", "turn:1.2", "key:d", "turn:1.3", "key:d",
+    "turn:0.0", "cast:0:15", "key:d",
+    "turn:1.1", "key:d", "turn:1.0", "key:d", "turn:1.2", "key:d", "turn:1.3", "key:d",
+    "turn:0.0", "cast:0:173", "key:d",
+    "turn:1.1", "key:d", "turn:1.0", "key:d", "turn:1.2", "key:d", "turn:1.3", "key:d",
+    "turn:0.0", "cast:0:185",
+]
+ms = 3058
+heroes = true
+screens = true
+timeline = "timelines/arrow.txt"
+
+# Lightning Bolt (round 1) and Chain Lightning (round 2) at the Swordsmen at row 4 (§7.16: the bolt
+# from the sky, the rays, the marked target; Chain Lightning's own animation never drawn).
+[[sequence]]
+id = "bolt"
+scenario = "seq-bolt.toml"
+hot_seat = true
+actions = [
+    "turn:1.0", "key:d", "turn:1.1", "key:d", "turn:1.2", "key:d", "turn:1.3", "key:d",
+    "turn:0.0", "cast:0:83", "key:d",
+    "turn:1.0", "key:d", "turn:1.1", "key:d", "turn:1.2", "key:d", "turn:1.3", "key:d",
+    "turn:0.0", "cast:1:83",
+]
+ms = 2400
+heroes = true
+screens = true
+timeline = "timelines/bolt.txt"
+
+# The mass animation (§7.16, player 3): Slow at Expert on every enemy (round 1), Death Ripple with
+# its reactions (round 2), each as the Marksmen's turn starts.
+[[sequence]]
+id = "mass"
+scenario = "seq-mass.toml"
+hot_seat = true
+actions = [
+    "turn:0.0", "cast:0", "key:d",
+    "turn:1.0", "key:d", "turn:1.1", "key:d", "turn:1.2", "key:d", "turn:1.3", "key:d",
+    "turn:0.0", "cast:1",
+]
+ms = 2500
+heroes = true
+screens = true
+timeline = "timelines/mass.txt"
+
+# The raise (§7.16, player 4): Resurrection on the Pikeman the Grand Elves shot (round 1; the
+# raised Pikeman then takes its turn), Animate Dead on the Skeleton the Marksmen shot (round 2).
+[[sequence]]
+id = "raise"
+scenario = "seq-raise.toml"
+hot_seat = true
+actions = [
+    "turn:1.0", "hex:35", "turn:1.1", "hex:86", "turn:0.2", "cast:1:35", "key:d",
+    "turn:0.0", "key:d",
+    "turn:1.0", "key:d", "turn:1.1", "key:d", "turn:0.2", "cast:0:86",
+]
+ms = 3000
+heroes = true
+screens = true
+timeline = "timelines/raise.txt"
+
+# The at-hex player and the whole field (§7.16, players 5 and 6): a Fire Wall (round 1),
+# Quicksand (round 2), a Force Field (round 3), Armageddon (round 4).
+[[sequence]]
+id = "obstacles"
+scenario = "seq-obstacles.toml"
+hot_seat = true
+actions = [
+    "turn:1.0", "key:d", "turn:1.1", "key:d", "turn:0.0", "cast:0:146", "key:d",
+    "turn:1.0", "key:d", "turn:1.1", "key:d", "turn:0.0", "cast:1", "key:d",
+    "turn:1.0", "key:d", "turn:1.1", "key:d", "turn:0.0", "cast:2:63", "key:d",
+    "turn:1.0", "key:d", "turn:1.1", "key:d", "turn:0.0", "cast:3",
+]
+ms = 3000
+heroes = true
+screens = true
+timeline = "timelines/obstacles.txt"
+
+# Two creatures' animations (§7.16): the Archangels strike the Efreet Sultans from hex 31 (their
+# Fire Shield's return), the Sultans defend, the Power Liches shoot the Archangels (their cloud).
+[[sequence]]
+id = "creatures"
+scenario = "seq-creatures.toml"
+hot_seat = true
+actions = ["turn:0.0", "hex:49", "turn:1.0", "key:d", "turn:1.1", "hex:31"]
+ms = 3340
+heroes = true
+screens = true
+timeline = "timelines/creatures.txt"

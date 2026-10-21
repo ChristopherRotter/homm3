@@ -494,12 +494,12 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 ### BAT-QUIRK-25 — The original computer's slips in its own estimates (E23 T1b; survey E23 §4)
 - Class: fix-optional (user, 2026-10-20, BAT-Q55: one flag for all the fixes of the original's AI)
 - Context / rules affected: battle, the computer's choices (ADR-0027 point 9; `BAT-AI-nnn`, E23 T2 onwards; the policy crate `h3-battle-ai` and the computer's numbers in `h3-battle`)
-- Original behavior: where the computer estimates a rule's outcome, it sometimes reads a wrong record, argument, spell, side, mastery or test: the walls test's records, Magic Mirror's doubled chance, Paralyze with Blind's record, Disease with Weakness's resistance, the protections with the own hero's bonuses, and the rest of `docs/rules/surveys/E23-battle-ai.md` §4 (17 so far; `docs/formats/installation.md` §7.35 to §7.46). They change which command the computer picks, never a rule's outcome.
+- Original behavior: where the computer estimates a rule's outcome, it sometimes reads a wrong record, argument, spell, side, mastery or test: the walls test's records, Magic Mirror's doubled chance, Paralyze with Blind's record, Disease with Weakness's resistance, the protections with the own hero's bonuses, and the rest of `docs/rules/surveys/E23-battle-ai.md` §4 (19 so far; `docs/formats/installation.md` §7.35 to §7.48). They change which command the computer picks, never a rule's outcome.
 - Intended/expected behavior: each estimate as the rule it estimates (the survey's "Fixed" column; strict-fixed).
 - Impact: gameplay-altering (the computer side's choices)
 - Community status: unknown (the wiki describes none of them)
 - Sources: original-data (`installation.md` §7.35 to §7.46; the blind re-reads of T1a5e)
-- Flag: `quirk.battle.original_ai_slips` (registry position 29, registered with the first slip built, E23 T2b; a slip found later joins it). Built: slip 1, the area shot's estimate (BAT-AI-003, E23 T2b)
+- Flag: `quirk.battle.original_ai_slips` (registry position 29, registered with the first slip built, E23 T2b; a slip found later joins it). Built: slip 1, the area shot's estimate (BAT-AI-003, E23 T2b); slips 3, 18 and 19, the walker's hex scores (BAT-AI-007, E23 T3b: the multi-headed strike's sign, the Fire Wall's missing immunity test, the hazards' least attack bonus for both)
 - Defaults: faithful = on, strict-fixed = off
-- Regression test: each slip's rule tests both settings (with its task); slip 1: `h3-battle-ai`'s `the_original_estimates_an_area_shot_without_the_immunities`
+- Regression test: each slip's rule tests both settings (with its task); slip 1: `h3-battle-ai`'s `the_original_estimates_an_area_shot_without_the_immunities`; slip 3: `a_multi_headed_strike_that_costs_the_enemy_raises_the_hexes_with_the_slip`; slips 18 and 19: `a_fire_wall_is_valued_with_the_slips_or_as_the_rule` (and on the harvested packs `a_walker_strikes_from_a_hex_off_the_fire_wall`)
 - Decided by / date: user, 2026-10-20 (E23 T1b, BAT-Q55)

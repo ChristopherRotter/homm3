@@ -199,6 +199,7 @@ pub(crate) fn path(
         range: u16::from(mover.speed_now()),
         avoid: false,
         spare: None,
+        speed: None,
     };
     Search::run(state, field, (id, mover), query).path()
 }

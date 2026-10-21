@@ -169,7 +169,7 @@ impl SpellObstacles {
     }
 
     /// The first Fire Wall obstacle on `hex`.
-    fn fire_at(&self, hex: Hex) -> Option<SpellObstacle> {
+    pub(crate) fn fire_at(&self, hex: Hex) -> Option<SpellObstacle> {
         self.list
             .iter()
             .find(|o| o.kind == ObstacleKind::Fire && o.hexes.contains(hex))

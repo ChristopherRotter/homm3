@@ -162,16 +162,30 @@ situation` refuses other mana, writes the book into slot 17 and numbers its spel
 schools, sorted by level, then school, then name) and then the target hex if the spell takes one.
 A Faerie Dragon casts its drawn spell by a click on its target (`hex:<n>`: the cursor's cast).
 `--heroes` (an entry's `heroes = true`) adds each change of a hero's group or frame to the
-timeline (`<ms> hero <side> g<group> f<frame>`): a hero's cast. The casts' sequences wait in
-`situations/casts.toml` (`sequences situations/casts.toml` replays them) until the viewer's
-timeline plays them (T7b, T7c).
+timeline (`<ms> hero <side> g<group> f<frame>`): a hero's cast. `--screens` (an entry's
+`screens = true`, M3 T7a-2b) ends each time whose screen differs from the step before with
+`<ms> screen <x0>,<y0>,<x1>,<y1>`, the box of the pixels that changed (x1, y1 exclusive; numbers
+only): the magic animations memory does not show (the at-hex and Armageddon players, the
+projectiles, the rays, the Liches' cloud). The screen shows a frame a deadline after memory
+holds it (design §7.1: a 100 ms animation's frame drawn at 3 400 shows at 3 500). Such a run
+dumps every step, about 25 ms a step (a 9 s sequence takes 6 minutes). A key pressed at the
+frozen clock right after a hero's cast acts once the cast has played (its stack defends as the
+hero stands). A
+scenario's `masteries` become the hero's school skills on the original's map (`situation`: Fire,
+Air, Water, Earth Magic at the level the masteries ask; a mass spell at Expert). A Fire Wall or
+Force Field beside an obstacle is refused (the book closes, no cast): aim at open ground. The
+casts' sequences wait in `situations/casts.toml` (`sequences situations/casts.toml` replays them)
+until the viewer's timeline plays them (T7b, T7c): `cast`, `dragon` (T7a-2a), `resist`, `arrow`,
+`bolt`, `mass`, `raise`, `obstacles`, `creatures` (T7a-2b, design §7.16, "Recorded"; about 75
+minutes for all with their screens).
 
 **A battle in progress** (M3 T1a): `--hot-seat` (an entry's `hot_seat = true`) starts the map in
 hot seat with Blue a human too (`h3-view situation --hot-seat`), so the actions play both sides and
 nothing acts on its own. Among the actions, `turn:<side>.<record>` steps 1 ms at a time, each step
 read, until that stack's turn starts (the game names it the active stack), and the actions after
 it act then; its time goes to `<out>/turns.txt` (`at:<ms>` steps so up to a time; since M3 T7a-2a
-a `turn:` that waits more than 30 s of game time fails, naming the active stack). Act as the turn
+a `turn:` that waits more than 30 s of game time fails, naming the active stack; since M3 T7a-2b
+it first writes the states and the timeline so far). Act as the turn
 starts: a player who waits lets fidgets start, which the viewer's timeline does not have. In the
 entry's `[[sequence.command]]`s, `at` gives each player's command its time from `turns.txt` (`ms`
 counts from the last one). `behind` (`seq-behind.toml`): two rounds, 8 commands, about 16.5 s

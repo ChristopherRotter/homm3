@@ -3,6 +3,7 @@
 //! when it asks), hosted by `h3-protocol`'s session in-process, and the record of a spectator who
 //! joined it: the manifest and the snapshot at the battle's start. An adapter: it reads files.
 
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
 
@@ -107,12 +108,86 @@ pub struct SideHero {
 /// 17, and its spells' names (the core ruleset's; `situation` numbers them by `sptraits.txt`:
 /// the SoD pack adds 57, Titan's Lightning Bolt, after the base pack's others, so a handle is
 /// the original's number only below 57). The original's hero
-/// starts the map with 10 spell points per knowledge (no skills), so `sides` refuses a scenario
-/// whose hero's `mana` differs.
+/// starts the map with 10 spell points per knowledge (no Intelligence), so `sides` refuses a
+/// scenario whose hero's `mana` differs. `skills` (E17 M3 T7a-2b): the school skills that give
+/// the hero the scenario's masteries in the original ([`school_skills`]), each the skill's
+/// number and level.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Book {
     pub artifact: u16,
     pub spells: Vec<String>,
+    pub skills: Vec<(u8, u8)>,
+}
+
+/// The school skills behind a hero's masteries on the original's map (E17 M3 T7a-2b,
+/// *provisional*): the original takes a spell's mastery from the hero's best skill among the
+/// spell's schools (HER-SPL-003), so each school gets the level the scenario's `masteries` ask of
+/// it, the spells of one school first (a spell of several raises its first school only when none
+/// of them gives it yet). Checked against every mastery named and every spell of the book (none
+/// named: none given). The skill of school `<pack>:<name>` is `<pack>:<name>_magic`, its number
+/// the ruleset's, which is the original's (`sstraits.txt`'s order). `masteries` and `book` by the
+/// spells' indices; the skills' numbers and levels, by number.
+pub fn school_skills(
+    ruleset: &BattleRuleset,
+    masteries: &[(usize, u8)],
+    book: &[usize],
+) -> Result<Vec<(u8, u8)>, String> {
+    let core = &**ruleset;
+    let schools = |spell: usize| -> Vec<usize> {
+        core.spells()
+            .get(spell)
+            .map_or_else(Vec::new, |s| s.schools.iter().map(|l| l.index()).collect())
+    };
+    let best = |levels: &BTreeMap<usize, u8>, spell: usize| {
+        schools(spell)
+            .iter()
+            .map(|l| levels.get(l).copied().unwrap_or(0))
+            .max()
+            .unwrap_or(0)
+    };
+    let mut asked = masteries.to_vec();
+    asked.sort_by_key(|&(spell, _)| (schools(spell).len(), spell));
+    let mut levels = BTreeMap::new();
+    for &(spell, level) in &asked {
+        if let Some(&first) = schools(spell)
+            .first()
+            .filter(|_| best(&levels, spell) < level)
+        {
+            levels.insert(first, level);
+        }
+    }
+    for spell in masteries
+        .iter()
+        .map(|&(s, _)| s)
+        .chain(book.iter().copied())
+    {
+        let wanted = masteries
+            .iter()
+            .find(|&&(s, _)| s == spell)
+            .map_or(0, |&(_, l)| l);
+        if best(&levels, spell) != wanted {
+            let name = core.spells().get(spell).map_or("?", |s| s.name.as_str());
+            return Err(format!(
+                "{name}: mastery {wanted}, but the school skills give {}",
+                best(&levels, spell)
+            ));
+        }
+    }
+    levels
+        .into_iter()
+        .map(|(school, level)| {
+            let key = core
+                .spell_schools()
+                .get(school)
+                .map_or("", |s| s.key.as_str());
+            let skill = format!("{key}_magic");
+            let id = core
+                .skill_by_key(&skill)
+                .ok_or_else(|| format!("no skill `{skill}` for school `{key}`"))?;
+            let number = u8::try_from(id.index()).map_err(|_| format!("{skill}: number"))?;
+            Ok((number, level))
+        })
+        .collect()
 }
 
 /// The [`Sides`] of the battle `scenario` sets up, its packs read from `packs`.
@@ -163,6 +238,7 @@ pub fn sides(scenario: &Path, packs: &Path) -> Result<Sides, String> {
                         t.name, h.magic.mana
                     ));
                 }
+                let indices: Vec<usize> = spells.iter().map(|s| s.index()).collect();
                 // The core ruleset's spell (its name), as the stacks' creatures.
                 let spells = spells
                     .iter()
@@ -172,9 +248,16 @@ pub fn sides(scenario: &Path, packs: &Path) -> Result<Sides, String> {
                             .map_or(String::new(), |s| s.name.clone())
                     })
                     .collect();
+                let masteries: Vec<(usize, u8)> = h
+                    .magic
+                    .masteries
+                    .iter()
+                    .map(|&(s, l)| (s.index(), l))
+                    .collect();
                 Some(Book {
                     artifact: book_artifact()?,
                     spells,
+                    skills: school_skills(&ruleset, &masteries, &indices)?,
                 })
             }
         };
@@ -441,6 +524,7 @@ mod tests {
         let slow = Book {
             artifact: 0,
             spells: vec!["Slow".to_owned()],
+            skills: Vec::new(),
         };
         assert_eq!(books, [Some(slow), None]);
         // The original's hero starts with 10 spell points per knowledge: other mana is refused.
@@ -451,6 +535,46 @@ mod tests {
         fs::write(&wrong, text.replace("mana = 10\nmax", "mana = 9\nmax")).unwrap();
         assert!(super::sides(&wrong, &packs).unwrap_err().contains("mana 9"));
         fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn masteries_become_school_skills() {
+        // E17 M3 T7a-2b: the original's mastery is the best of the spell's school skills.
+        let packs = repo().join("packs");
+        let (ruleset, _) =
+            battle(&repo().join("clients/situations/seq-cast.toml"), &packs, 1).unwrap();
+        let spell = |key: &str| (*ruleset).spell_by_key(key).unwrap().index();
+        let (slow, arrow, ripple) = (
+            spell("base:slow"),
+            spell("base:magic_arrow"),
+            spell("base:death_ripple"),
+        );
+        let fire = spell("base:fireball");
+        // Expert Earth Magic (17) for Slow; Death Ripple, an earth spell, follows it.
+        assert_eq!(
+            school_skills(&ruleset, &[(slow, 3), (ripple, 3)], &[slow, ripple]),
+            Ok(vec![(17, 3)])
+        );
+        // Magic Arrow (all four schools, earth first in the pack) alone raises Earth Magic to
+        // Basic; with Slow at Expert Earth it already is Expert.
+        assert_eq!(
+            school_skills(&ruleset, &[(arrow, 1)], &[arrow]),
+            Ok(vec![(17, 1)])
+        );
+        assert_eq!(
+            school_skills(&ruleset, &[(arrow, 3), (slow, 3)], &[arrow, slow]),
+            Ok(vec![(17, 3)])
+        );
+        // None named, none given; masteries no school skills give are refused: Death Ripple
+        // unnamed under Expert Earth, Magic Arrow below Slow's school.
+        assert_eq!(school_skills(&ruleset, &[], &[slow, fire]), Ok(Vec::new()));
+        for (masteries, book, name) in [
+            (vec![(slow, 3)], vec![slow, ripple], "Death Ripple"),
+            (vec![(slow, 3), (arrow, 1)], vec![arrow], "Magic Arrow"),
+        ] {
+            let error = school_skills(&ruleset, &masteries, &book).unwrap_err();
+            assert!(error.contains(name), "{error}");
+        }
     }
 
     #[test]
