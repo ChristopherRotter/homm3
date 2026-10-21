@@ -1811,11 +1811,11 @@ resistance roll, if any (category 3, 0x5A0331); Curse's is named `Curse`, withou
     81 without the hit at 100 ms, the sound waited for, then the stack's reaction.
   - `strike_animation`'s second argument (1 for the effects, 0 for the strike) resets the dirty
     rectangles (0x493710) before and after its loop.
-  - Every cast, a creature's too, clears the outline as it starts (0x5A004C, `sub_477B60`: the
-    outlined stack's hexes redrawn, a redraw shown at once) and outlines the stack whose turn it
-    is as it ends (0x5A216B, `sub_477AC0`: standing if it is not, a redraw shown at once); found
-    by the frame check (`acid`: the Rust Dragon outlined from Acid Breath's end, 6 300 ms, to the
-    Wyvern Monarchs' Poison's start, 10 900).
+  - Every cast, a creature's too, clears the outline as it starts (0x5A004C, `clear_outline`
+    0x477B60: the outlined stack's hexes redrawn, a redraw shown at once) and outlines the stack
+    whose turn it is as it ends (0x5A216B, `outline_turn_stack` 0x477AC0: standing if it is not,
+    a redraw shown at once); found by the frame check (`acid`: the Rust Dragon outlined from Acid
+    Breath's end, 6 300 ms, to the Wyvern Monarchs' Poison's start, 10 900).
 - **Built (T7b-2b-3, `anim`):** the pending spells of a melee strike (`Player::pending_casts`,
   played by `iterate` before its tail: `strike_cast`): Poison and Acid Breath as read, the others
   their effects at once (not built: Blind, Curse, Disease, Age, Paralyze, Stone Gaze's glow,
