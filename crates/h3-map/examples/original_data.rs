@@ -7,7 +7,8 @@
 //! tile that is the visitable tile of two or more objects (E08 T14a: which object a step there
 //! visits, ADV-OBJ-003) and the typed objects of one type on one anchor (E08 T15a: what a player
 //! sees names a typed object by its type and anchor, ADR-0016 point 6); since E08 T20a2a the
-//! monsters' and the special grounds' counts and since E08 T21a the guarded piles'
+//! monsters' and the special grounds' counts, since E08 T21a the guarded piles' and since E08 T29
+//! the level limits, the banned skills and the levels at load of the maps that import whole
 //! (`docs/formats/h3m.md`, "Import").
 //!
 //! `cargo run -p h3-map --example original_data -- original-data/install`
@@ -21,7 +22,7 @@ use std::process::ExitCode;
 use std::sync::Arc;
 
 use h3_adventure::MapSetup;
-use h3_game::{DEFAULT_DIFFICULTY, GameRuleset, GameSetup, PlayerSetup};
+use h3_game::{DEFAULT_DIFFICULTY, GameRuleset, GameSetup, GameState, PlayerSetup};
 use h3_map::model::{Artifacts, Body, Player, RawMap, SeerTask, Text, Version};
 use h3_map::{ImportError, Limits, gunzip, import, import_map};
 use h3_pack_adventure::{ORIGINAL_PACKS, compile};
@@ -218,9 +219,16 @@ fn check(
     census(&map, &setup.map, &mut peaks.5);
     let outcome = match import(&map, rules) {
         Ok(setup) => {
-            setup
-                .validate(rules)
+            let game = GameState::new(rules, &setup, 0)
                 .map_err(|e| format!("imported, but invalid: {e}"))?;
+            // E08 T29: the placed heroes' levels at load (GAM-SET-002; survey
+            // E08-progression.md §6.5: 9 heroes, 41 level-ups on the 5 maps that import whole).
+            let levels: Vec<u8> = game.heroes().iter().map(|h| h.level).collect();
+            let counts = &mut peaks.5;
+            let mut add = |what, n: usize| *counts.entry(what).or_default() += n;
+            add("heroes levelled at load", levels.iter().filter(|&&l| l > 1).count());
+            let ups: usize = levels.iter().map(|&l| usize::from(l - 1)).sum();
+            add("level-ups at load", ups);
             IMPORTED.to_owned()
         }
         Err(ImportError::Unsupported(what)) => format!("not supported: {}", what.reason()),
@@ -237,6 +245,13 @@ fn check(
 /// import reads as plain (no stack) or leaves unguarded (a random stack).
 fn census(map: &RawMap, setup: &MapSetup, counts: &mut BTreeMap<&'static str, usize>) {
     let mut add = |what, n: usize| *counts.entry(what).or_default() += n;
+    // E08 T29: the scenario's level limit and banned skills (survey E08-progression.md §6.2,
+    // §6.3: none has a limit, 19 SoD maps ban skills, none past the 28 skills' codes).
+    add("maps with a level limit", usize::from(map.header.level_limit > 0));
+    let banned = map.banned_skills.bytes().iter().any(|&b| b != 0);
+    add("maps banning skills", usize::from(banned));
+    let past = (28..map.banned_skills.bytes().len() * 8).any(|code| map.banned_skills.get(code));
+    add("maps banning a skill past the 28 codes", usize::from(past));
     for object in &map.objects {
         if let Body::Monster(m) = &object.body {
             add("monsters", 1);
