@@ -1576,9 +1576,29 @@ resistance roll, if any (category 3, 0x5A0331); Curse's is named `Curse`, withou
 - **For the harness** (T7a-2): `h3mem` reads +0x132EC, +0x132F0 and each stack's +0x20
   (§7.15), the heroes' and stacks' groups and frames. That shows players 1 to 4 and the casters,
   not the frames of players 5 to 7 (+0x132EC names the at-hex and Armageddon animations, not
-  their frames): their times come from the frame check's screens. The spell book's dialog
-  (0x59BDF0, behind `hero_book_button` 0x59E900), through which the harness will cast, was not
-  read.
+  their frames): their times come from the frame check's screens.
+- **The spell book** (read at T7a-2a: `spell_book_dialog` 0x59BDF0, its page 0x59C9A0, its
+  handler 0x59D040), through which the harness casts: a 620 × 595 dialog at (90, 2), opened in
+  battle by the spell-book button or its key C (`hero_book_button` 0x59E900). Twelve spell
+  places of 78 × 65, the dialog's (117 + 86 c, 89 + 96 r) on the left page and (333 + 86 c,
+  89 + 96 r) on the right (c 0 or 1, r 0 to 2), numbered row by row, the left page first: place
+  k's centre on the screen is (246 + 86 (k mod 2) + 216 ⌊k / 6⌋, 123 + 96 ⌊(k mod 6) / 2⌋).
+  Each holds the school's mastery ribbon (`SPLEVA`, `SPLEVF`, `SPLEVW`, `SPLEVE.def`, its frame
+  the mastery) under the spell's icon (`spells.def`, its frame the spell) and the name, level and
+  cost below (`tiny.fnt`, greyed above the hero's mana). The page lists the hero's spells of the
+  tab's schools and the bookmark's kind (combat or adventure), sorted by level, then school, then
+  name (case-insensitive; 0x59DBE0); the school is the hero's best known of the spell's
+  (`hero_best_school` 0x4E51C0: ties to air, fire, earth, water) compared as its bit (air 1, fire
+  2, water 4, earth 8). Twelve a page on the all-schools tab; a school's tab shows its emblem
+  over places 0 and 1 of its first page. The book keeps its page, tab and kind for the same hero
+  (0x684B40, 0x6A34F4): the first opening of a battle's hero shows its combat spells of all
+  schools, page 0. A left click on a place (0x59D3E3) closes the book and returns the spell when
+  it costs at most the hero's mana (else a message); the battle then asks for its target
+  (`enter_player_cast` 0x59EC50). So `cast:<k>[:<hex>]` in the harness (`h3drive.py`: the key
+  C, place k, then the target hex if the spell takes one).
+- **A Faerie Dragon's cast** needs no key: over any stack but itself that its drawn spell may
+  target, the cursor is the cast's (`battle_cursor`, 0x4766FC: kind 20), so a click on the
+  target (`hex:<n>`) casts it (action 10); the F key enters the same cast (0x475CD8).
 - **Not read:** the dissolve's blend; Chain Lightning's rays beyond `draw_ray`'s call (colour
   0x131, 0x5A64EF; T7c); how the glows are painted; the summons' and the Pit Lord's creation
   beyond the dissolve; Earthquake (sieges); the force-feedback effects (IFC20, nothing drawn).
