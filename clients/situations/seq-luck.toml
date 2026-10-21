@@ -1,8 +1,8 @@
 # E17 M3 T7b-2b-2b: good luck on a melee strike (design §7.16, player 1): `strike`'s battle with
 # Orrin's luck 3 (Expert Luck on the original's map, T7b-2b-2a). The Archangel flies to the
 # Pikemen; as its strike starts the luck roll (`roll:luck`, 0x441837) falls: `goodluck.82m`, the
-# log's line, then animation 18 (`C09spA0`) over the Archangel, and the strike (its damage, doubled
-# twice over, still the Pikemen's 100 hit points). Three factions and the Archangel's +1 make the
+# log's line, then animation 18 (`C09spA0`) over the Archangel, and the strike (its luck doubles
+# a damage that already kills all ten). Three factions and the Archangel's +1 make the
 # attacker's morale 0, so no good morale follows. On grass at the capture set's tile.
 
 [scenario]

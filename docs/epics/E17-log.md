@@ -1817,6 +1817,35 @@ were T7b-2b-1's.
   "Good luck shines on the Marksmen"; failed, the timeline was the recorded `shot`'s line for
   line. The binary's tests (33, two new), the client gates (`clients/scripts/check.sh`).
 
+### M3 T7b-2b-2b — Morale, luck and fear (2026-10-21)
+
+On `client/e17-m3-t7b-2b-2b`, the user present at the start: offered a split (good luck and good
+morale, then bad morale and Fear), the user chose all four in one go. The user's computer was
+linked for the staging only (the four LODs, both sound archives, `H3ab_ahd.vid`, the executables,
+the five DLLs, the combat and end tunes, `maps.tar`, `extracted.tar`).
+
+- **Starting point:** `master` at `c970a58` (#368 merged); no client pull request open; CI on
+  `master` not started (billing); the client gates' full check on that code (`verify-once
+  clients`: all gates passed).
+- **The reading** (design §7.16, "Read at T7b-2b-2b"; `docs/exe/map.toml`'s three functions):
+  good morale's sound, animation 20 without the hit, line, sound wait and redraw; bad morale's
+  and Fear's sound, line, animation with the hit and sound wait, inside the pick before the
+  active stack is set; good luck's sound (category 3), line and animation 18 before the strike's
+  or shot's; `play_magic_animation`'s `show_hit` read whole; Fear's line GENRLTXT 729.
+- **The viewer:** `Player::over_one` with the hit, `luck`, `good_morale`, `frozen`; a frozen
+  stack's `TurnStarted` neither active nor logged; `Sound::GoodMorale`, `BadMorale`, `Fear`,
+  `Luck`; `Logged::Fear` and `battle.log.fear`; the asset tables' `[battle]` sound names
+  (harvested: `ROLL_SOUNDS`); `motion::magic` loads 15, 18, 20, 30 when the record needs them,
+  `motion::casts` the frightening creatures from the ruleset (`Casts::frighteners`).
+- **Recorded** (`sequences.toml`, forced rolls with `fail`, hot seat but `morale`): `luck`
+  (`seq-luck.toml`, 73 changes), `morale` (`seq-morale.toml`, 69), `bad` (`seq-bad.toml`, 42;
+  three towns, morale −1; the Dwarves, speed 4 on their native grass, win the tie against the
+  Gnolls and act next) and `fear` (`seq-fear.toml`, 52), each recorded once, about 3 to 5
+  minutes. The engine's seeds searched (a loop over `h3-view sequences <id>` reading the
+  record's events): `luck` 7, `morale` 73, `bad` 9, `fear` 7. All 21 sequences as recorded
+  (the original's own fidgets left out).
+- **Checked:** in progress (the frame check of the four).
+
 ## Accepted review lists (M1, M2)
 
 Moved from the epic file on 2026-10-20 (less start-up reading), unchanged.

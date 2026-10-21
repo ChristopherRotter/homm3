@@ -415,8 +415,8 @@ command = [{ seat = "Attacker", command = { Shoot = { target = 2, at = 49 } } }]
 
 # E17 M3 T7b-2b-2b: bad morale (`seq-bad.toml`, hot seat; design §7.16, player 1): Orrin's army of
 # three towns (morale -1); the Champions defend, the Goblins' pick freezes them (`roll:bad_morale`:
-# `BadMrle.wav`, the log's line, animation 30 over them with their hit group), the Gnolls' turn
-# starts.
+# `BadMrle.wav`, the log's line, animation 30 over them with their hit group), the Dwarves' turn
+# starts (speed 4 on their native grass, the tie theirs).
 [[sequence]]
 id = "bad"
 scenario = "seq-bad.toml"

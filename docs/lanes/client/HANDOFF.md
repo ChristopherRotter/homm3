@@ -4,12 +4,12 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E17 M0–M2 done; M3 T1a–T7a-2b, T7b-1, T7b-2a, T7b-2b-1, T7b-2b-2a, T8 done; H1, H2 done (2026-10-19: the adventure lane's harness); next: M3 T7b-2b-2b, T7b-2b-3, T7c** (`QUEUE.md`; T9 closes M3). Screens from the executable's dialog items (`h3_view::ui`; design §9.7). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
+- **E17 M0–M2 done; M3 T1a–T7a-2b, T7b-1, T7b-2a, T7b-2b-1, T7b-2b-2a, T7b-2b-2b, T8 done; H1, H2 done (2026-10-19: the adventure lane's harness); next: M3 T7b-2b-3, T7c** (`QUEUE.md`; T9 closes M3). Screens from the executable's dialog items (`h3_view::ui`; design §9.7). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
 - **Captures** (the user, 2026-10-20): `h3drive.py drawn` first (no Wine); capture only what it lists or the task changes, all at a milestone's closure or after a harness change (runbook, "Which captures a change needs"); later tasks' detail in `NOTES.md`.
 - **The user's requirements** (epic, "Decisions"): a string catalogue (JSON packs, no committed translation, CLT-Q7); graphics options (`faithful` default); exhaustive diffs.
 - The lane owns `clients/`, `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
 - **Checkpoints** per milestone (the autonomy contract below), a fresh reviewer agent first.
-- Stage first (the user's computer online) from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the four end tunes; for captures `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`; `cp -rn` the staged `original-data/.` into the clone before `capture/setup.sh`. Frames stay in their sandbox (`kept/` keeps numbers).
+- Stage first (the user's computer online) from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the four end tunes; for captures `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`; `cp -rn` the staged `original-data/.` into the clone first. Frames stay in their sandbox (`kept/` keeps numbers).
 - **Open:** CLT-Q4 (the background variant); CLT-Q5 (boats in `h3-map`'s writer); CLT-Q6 (player colours, a hero's sex).
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
@@ -51,16 +51,16 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
   kind needs both; `hex_point` and `PARK` mirror `h3drive.py`'s; a `key:` right after a `cast:`
   acts at the cast's end in both (T7b-1).
 - The original's rolls: forced (`roll:`, `fail`; runbook), luck and morale by the hero's
-  `effects`; the engine's by a `seed` (`resist`: 3). The frame check takes the heroes from memory but cast frames.
+  `effects`; the engine's by a searched `seed`. The frame check takes heroes from memory, not casts.
 - `turn:` naming the active stack passes at once: after its hero's cast a stack acts by `key:`
   only (pick speeds so turns alternate, T7b-2a). A spell's handler: `Player::cast` by
   `SpellLook::original`, its effects at the handler's point (the box's tint follows them).
 
 ## Recent sessions
 
-- **2026-10-21, E17 M3 T7b-2b-2a (a hero's luck and morale on the map; #368, open).** At the
+- **2026-10-21, E17 M3 T7b-2b-2b (morale, luck, fear; in progress).** Not split (the user):
+  `luck`, `morale`, `bad`, `fear` recorded, seeds searched, frames exact.
+- **2026-10-21, E17 M3 T7b-2b-2a (hero luck and morale on the map; #368, merged).** At the
   user's word: `effects` become Leadership and Luck; a forced lucky shot checked.
 - **2026-10-21, E17 M3 T7b-2b-1 (forced rolls; #366, merged).** Split with the user (T7b-2b-2
   morale, luck, fear; T7b-2b-3 abilities); nine roll calls redirected.
-- **2026-10-21, E17 M3 T7b-2a (tint, Haste/Slow, Dispel, Cure, Ray; #363, merged).** `haste`,
-  `dispel` recorded, frames exact.

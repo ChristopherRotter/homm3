@@ -1727,6 +1727,35 @@ resistance roll, if any (category 3, 0x5A0331); Curse's is named `Curse`, withou
   exact (91 and 153); the projectile's last position at 4 093 and the animation from its third
   frame at 4 126 (the flight's 726 ms outside the deadline: frames 0 to 2 drawn at 4 126, as the
   clock's lateness rule gives). With the tint, `cast`'s and `resist`'s boxes exact.
+- **Read at T7b-2b-2b** (the rolled effects over one stack, player 1): good morale
+  (`good_morale_roll` 0x4649D3 to 0x464B23) plays `GoodMrle.wav` (category 2), 20 over the stack
+  without its hit at 100 ms, writes its line, waits for the sound (`wait_for_sample`, at most 4 s)
+  and redraws at once; bad morale and Fear (`bad_morale_check` 0x464BFE to 0x464D1D, `fear_check`
+  0x464E0D to 0x464F3D, both inside the pick, `next_stack_to_act` 0x465283, 0x465293, before it
+  sets the active stack) play their sound, write their line, play 30 or 15 *with* the stack's
+  hit, then wait for the sound; good luck (0x441837 to 0x4418B3 in `melee_strike`, after the
+  attack's pause and turns; 0x43F955 to 0x43F9D1 in `stack_shot`, after the shooter's turn)
+  starts `goodluck.82m` (the archive's `GOODLUCK`; category 3), writes its line and plays 18
+  without the hit. Fear's line (GENRLTXT 729, "Fear of the %s causes the %s to freeze.") names
+  creature 132 by the count of its records on the other side, then the frozen stack.
+  `play_magic_animation` with `show_hit` (unless the stack already shows group 3): the hit
+  group's frames from 0, each a redraw at 100 ms on the deadline with the animation's frame of
+  that number beside it (+0x132F0 at the frame count past its last), then the standing frame,
+  shown at once by a redraw when the hit had at least as many frames; no wince sound. Each of
+  the four is skipped while the battle is hidden, and morale and Fear in a network game's
+  conditions (0x464A04 to 0x464A66; not read further).
+- **Built (T7b-2b-2b, `anim`):** `Player::over_one` with the hit; `luck`, `good_morale` (after
+  the attack is over: the shooter or striker turned back), `frozen` (bad morale, Fear: the
+  `TurnStarted` before them neither makes the stack active nor writes the turn's log entry);
+  `Sound::GoodMorale`, `BadMorale`, `Fear` (category 2) and `Luck` (category 3 at the file
+  volume), their names the asset tables' `[battle]` ones; `Logged::Fear` by the frightening
+  creatures the ruleset names (`Casts::frighteners`). Not built: the sound's wait (as the
+  heal's, *provisional*: the captures play without sound). Recorded (`sequences.toml`, forced
+  rolls, the engine's seeds searched): `luck` (the Archangel's flight, then 18 from 2 730 ms, the
+  strike 1 600 ms later than `strike`'s), `morale` (18 from 0 ms before the first shot, 20 from
+  4 776 ms, 100 ms after the second shot's reaction ends, erased at 6 776), `bad` (the Goblins'
+  seven hit frames beside 30's first seven from 0 ms, standing at 700, erased at 2 000) and
+  `fear` (the Champions' eight beside 15's, erased at 3 100); all four as recorded. The frame check: in progress.
 - **Not read:** the dissolve's blend; Chain Lightning's rays beyond `draw_ray`'s call (colour
   0x131, 0x5A64EF; T7c); how the glows are painted; the summons' and the Pit Lord's creation
   beyond the dissolve; Earthquake (sieges); the force-feedback effects (IFC20, nothing drawn).
@@ -2297,7 +2326,8 @@ panel's set-text 0x46BF50, the mouse posted again 0x4ECC00) and where each line 
   | Wait, Defend | at the action (0x479A88, 0x479892) | rows 137/138, 121/122; none in the tactics phase, none for a war machine's defend |
   | the First Aid Tent's heal | between its sound and its magic animation (0x478D0A) | row 415: the tent and the patient each by its number, the hit points (`battle.log.heal`) |
   | a round's start | outside the tactics phase, before the next activation (0x4761E9) | row 413 (`battle.log.round`); none at the opening |
-  | good, bad morale | at the event (*provisional*: their animations are T7b's) | rows 34, 35 |
+  | good morale (M3 T7b-2b-2b) | after its animation, once the erasing redraw shows (0x464AD5) | row 34 |
+  | bad morale, Fear (M3 T7b-2b-2b) | at the pick, after the sound, before the animation (0x464CDF, 0x464EFF) | row 35; row 729 (`battle.log.fear`): the frightening creature by their number on that side, then the frozen stack |
   | a hero's spell on one stack (M3 T7b-1, T7b-2a) | a timed spell's after its effect, before its animation (0x5A109F); Cure's and Dispel's after their animation (0x5A1816, 0x5A1605) | row 196 (`battle.log.cast-on`) |
   | Disrupting Ray (M3 T7b-2a) | after its animation and effect (0x5A1B43); no cast line | row 92, the defense it took (`battle.log.disrupted`) |
 

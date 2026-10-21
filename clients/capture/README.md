@@ -430,7 +430,16 @@ T7b-2b-2a: `seq-shot.toml` with Orrin's `effects` luck 3 and morale 2 (Expert Lu
 Leadership on the map): the original's Marksmen and Pikemen at luck 3 and morale 3 (the one town's
 1 too; `h3mem`'s `luck`, `morale`), as the engine gives them; `roll:shot_luck` played good luck's
 animation 18 over the Marksmen before their shot and its line, failed (with `good_morale`) the
-shot's timeline was the recorded `shot`'s.
+shot's timeline was the recorded `shot`'s. Recorded at T7b-2b-2b (`sequences.toml`, each with
+`fail` on the rolls it forces): `luck` (`strike` with Orrin's luck 3: a lucky melee strike after
+the Archangel's flight), `morale` (`shot` with luck 3 and morale 2: the first shot lucky, good
+morale after the second), `bad` (bad morale in an army of three towns, at the pick after the
+Champions' defend) and `fear` (an Azure Dragon's Fear at the Champions' pick); about 3 to 5
+minutes each. Their `seed`s were searched so the engine's own rolls fall as the forced ones did:
+for each seed, `h3-view sequences <id>` and its record's events (`out/sequences/<id>.jsonl`:
+`lucky` strikes, `GoodMorale`, `BadMorale`, `Frightened`), the first seed that matches kept. The
+original's idle fidgets go on after a freeze (`bad`'s Goblins, `fear`'s Marksmen): the timeline
+check leaves them out as any.
 
 ## The original's state
 
