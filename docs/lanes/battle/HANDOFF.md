@@ -25,6 +25,7 @@ Area traps live where they are used: experiments in `docs/experiments/README.md`
 - The first activation skips the freezing checks (`turn::activate_first`); good morale goes through `turn::morale_turn`.
 - Hidden information leaks through public events too: a hidden obstacle that does nothing must not change them. A new state field a rule reads goes into `observe_as` (ADR-0014 point 8) and, `cross-lane`, the AI lane's encoding; `h3-protocol`'s hygiene tests fail on a draw a viewer sees before the first hidden cast.
 - The computer's walker (`walker.rs`): an attack the engine refuses because its walk stops at the hex (a moat or seen pit under a two-hex walker's other hex) is the original's move without the attack (0x478971): give `Move`. Its map spares its own side and fears the moat without the player test (`computer::map`, `aim::fears_moat`).
+- The walker's hex scores (`scores.rs`) search each enemy's reach (`computer::reach_map`: speed + 1 as range and turn speed, `Query::speed`); `hexes::stack_neighbor_at` takes a hex index ± 1 as the original's arithmetic.
 - At a town the computer's choices (`aim.rs`: turrets, the automatic Ballista, a weak walker's moat avoidance) read `BattleSetup.human` and Fight Values, which test creatures lack (`fighting_turret_ruleset`); `BattleState::new` has fired the keep's first shot.
 
 **Tests**
@@ -46,14 +47,14 @@ Area traps live where they are used: experiments in `docs/experiments/README.md`
 
 ## Recent sessions
 
+### 2026-10-21 (ninety-second) — E23 T3b, the walker's hex scores
+
+The user: T3b whole. `scores.rs` (BAT-AI-007, §7.48); `h3-battle`: `Query::speed`, `computer::reach_map`, `fire_wall_damage`, `damaging_moat`, `area_spell_damage`, `Context::attack_for_both`. Slips 18, 19 new, slip 3 built (BAT-QUIRK-25). `POLICY_VERSION` 4; `computer-decisions` re-set (the log).
+
 ### 2026-10-21 (ninety-first) — E23 T3-0 and T3a, the spells' AI values, the plan and the attack
 
-The user: the budget as proposed (the count +2 %, re-set per T3 part; ≤ 1 ms for the slowest decision), T3 cut in four, T3-0 and T3a this session. T3-0 (#350): each spell's `ai` (`SpellAi`: the executable's AI categories, `SPTRAITS.TXT`'s four AI values; pack format v45, battle part hash v7), the golden replays' headers, the AI lane's bots report (`cross-lane`; regenerated again after the adventure lane's T29 merged); `h3-game`'s test constructor too. T3a: the walker (`walker.rs`, `hexes.rs`; `computer` gains the context, worth, damage estimate and value, the strike value, the walker's map and path), the melee half of 0x4359B0 read (§7.47); a planned attack whose walk stops there becomes a move (the original skips the attack, 0x478971). A fresh agent re-read the port against the disassembly. CI cannot start (billing): the full local verify stands in.
+The user: the budget (+2 %, re-set per T3 part; ≤ 1 ms), T3 cut in four. T3-0 (#350, `cross-lane`): each spell's `ai` (pack format v45, battle part hash v7), the replays' headers, the bots report. T3a (#351): `walker.rs`, `hexes.rs`, the melee half of 0x4359B0 (§7.47); a planned attack whose walk stops early becomes a move (0x478971). A fresh agent re-read the port.
 
 ### 2026-10-21 (ninetieth) — E23 T2b, the area value, the wall shot, the benchmark
 
 The user: T2b whole. #340 fixed `master`'s tests (#338 and #339 merged together) and the stack-limit invariant. `shared/e23-t2b` (the flag needs the faithful profiles in the same PR: the replays' hashes, the bots' report; `cross-lane`); the battle PR: `aim::shot` with the wall test as a closure, the area value, `h3 bench-computer` (the log).
-
-### 2026-10-20 (eighty-ninth) — E23 T2a, the crate and the plain shooters
-
-The user: T2a now, T2b's shape later. `shared/` #334 (the registration); the battle PR: `computer` (`shoots`, `shot_target`), `choose`/`unchecked`, the shooter, the stand-ins, two property tests (the log).

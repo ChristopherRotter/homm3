@@ -662,6 +662,25 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   `area_shot`, the area spells by a hex target with an area and a damage effect (Frost Ring,
   Fireball, Inferno, Meteor Shower in the packs). `POLICY_VERSION` 4. The mask goes to the area
   threat only; the fallback's own call (0x421E94) is T3c's.
+- **Cost** (the budget: the count re-set on purpose, at most 1 ms for the slowest decision):
+  `computer-decisions` counts 274 968 963 instructions over 831 decisions, **about 331 000 per
+  decision** (T3a: 226 000; each walker now searches every enemy's reach), the battles longer again;
+  the other workloads within +0.8 % (`random-rollouts-full` +0.05 %, `-siege` +0.36 %; the
+  adventure lane's +0.5 to +0.8 %, under their gate). Release, each decision's best of five (a local
+  patch of `h3 bench-computer`, not kept), 2 000 battles of seeds 4 to 8: 30 to 37 µs per decision on
+  average, the slowest 0.16 to 0.28 ms; single timings up to 3.5 ms (the sandbox's scheduling, as in
+  T3a). Within the budget.
+- **Tests:** the reach (Easy none, a clamp at the floor for desperate imps, two enemies' values
+  adding up, an enemy within a turn of the side adding nothing, a two-hex enemy's beside hexes), the
+  multi-headed strike (Hard for a computer side only, the Cerberi's fewer hexes, a second struck
+  stack's 1, slip 3 both ways), the crowding (the area threat around two friends, the breath line,
+  an enemy dragon in the mask), the Fire Wall with slips 18 and 19 both ways on the test ruleset
+  (a Fire Wall spell and the efreet's fire immunity added to it) and on the harvested packs (the
+  minotaurs strike from a hex off the wall, the efreet only with the slip); `h3-battle`'s
+  `tests/computer.rs` for the new surface (the reach map's speed + 1, a stop's cost and refused
+  marks, the Fire Wall's damage and hurt test, the moat, the area spell with costs, immunity,
+  resistance, an aura and the Orb of Vulnerability in both precisions). The harvested property's
+  shot count floor went from 500 to 300 (415 shots now: the walkers' choices changed the games).
 - **Not built here** (BAT-STUB-4, T3c): the stronger at range, the last retaliation's gain,
   holding the walls, a besieger's walk, the fallbacks. Predictions only (T4, T5): a struck stack
   without hit points after the planned damage (0x41FE2E), the hit points left after it (0x443080
