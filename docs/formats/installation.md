@@ -5095,6 +5095,24 @@ values itself as a candidate. One without retaliation (a Harpy) finds its own st
 a move and attack on itself, which the engine refuses (`NotAnEnemy`); the port leaves the walker
 out (the user, BAT-STUB-10, BAT-Q58).
 
+**A walk that writes nothing.** 0x41F580 returns false without an action when the walker is
+bound (+0x2B8), has no speed or finds no path (0x41F598, 0x41F5A7, 0x41F5DA), but 0x421680 returns
+true after every walk (0x421D3D, 0x421E15, 0x421F6E): the run then reads the action fields as they
+were, which 0x422A40 saved but did not clear (the last predicted move and attack, or the battle's
+last action), and a 6 there would plan a phantom melee. No run reaches it as far as read: a bound
+walker's map holds only its own position, so its plan is there (nothing, then Wait or Defend) or
+its attack within a turn, and no besieger's wall hex lies above it; the stacks without speed are
+passed over or shoot; the walk finds a path to every hex the walker's map reaches. The port plans
+nothing (not modelled).
+
+**The pathfinder after a spell context** (found in T4b2's blind re-read; not T4b2's). 0x4369C0's
+threat records run 0x422B20 with no pathfinder of their own (0x436AB2), so the global one
+(0x699284) then holds the last record's search. A walker whose cast entry built a context (the
+Ogre Mage's scan, the Faerie Dragon) and cast nothing goes on in 0x421680 with those cells: the
+besieger's wall hex (0x421DA5) and the fallbacks' guard and step to safety (0x420760, 0x4208F0 get
+that pathfinder, 0x421EA9, 0x421ECF) read another stack's map; the walk 0x41F580 searches afresh.
+The port reads the walker's own map (BAT-Q59).
+
 **For the port:** the planned damage is a table by stack id that each predicted turn's context
 copies (`h3_battle::computer::Planned`), the decision's own: the original keeps it on the records
 until the next prediction resets the listed ones, and only a prediction's readers, the context and

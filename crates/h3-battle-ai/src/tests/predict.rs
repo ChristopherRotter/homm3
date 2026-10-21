@@ -285,6 +285,34 @@ fn a_multi_headed_strike_hits_each_enemy_beside_it_once() {
 
 // covers: BAT-AI-015
 #[test]
+fn a_multi_headed_retaliation_strikes_the_stacks_beside_it_now() {
+    // The runners stand next to the hydra (at 15 and 14), and so do the hydra's own imps: the
+    // runners' strike kills it, and its predicted retaliation strikes from where it stands, at
+    // the stacks beside it on the field: its own side's imps never, the runners not without hit
+    // points left.
+    let r = ruleset();
+    let s = on(1, setup(&[(RUNNER, 150)], &[(HYDRA, 1), (IMP, 10)]));
+    let mut state = BattleState::new(&r, &s, 16).unwrap();
+    assert_eq!(active(&state), RUNNER);
+    play(&mut state, &r, Command::Move { to: Hex(13) });
+    assert_eq!(active(&state), IMP);
+    let field = Field::new(r.battle().field);
+    let beside = field
+        .neighbors(Hex(14))
+        .into_iter()
+        .flatten()
+        .find(|&n| n.0 > 16 && n.0 % 17 != 16)
+        .unwrap();
+    play(&mut state, &r, Command::Move { to: beside });
+    play(&mut state, &r, Command::Defend);
+    assert_eq!(active(&state), RUNNER);
+    let (runners, hydra, imps) = (StackId(0), StackId(1), StackId(2));
+    let p = plan(&state, &r);
+    assert_eq!((p.on(hydra), p.on(runners), p.on(imps)), (175, 0, 0));
+}
+
+// covers: BAT-AI-015
+#[test]
 fn the_breath_strikes_the_stack_behind() {
     // Fifty runners next to the dragon (at 1) and a golem behind them: the dragon strikes the
     // runners from where it stands, and its breath kills the golem.
@@ -295,6 +323,11 @@ fn the_breath_strikes_the_stack_behind() {
     let p = plan(&state, &r);
     assert_eq!(p.on(runners), hit(&state, &r, (dragon, runners), 1));
     assert_eq!(p.on(golem), 10);
+    // Nothing behind the runners: the strike alone.
+    let s = on(1, setup(&[(DRAGON, 1)], &[(RUNNER, 50)]));
+    let state = met(&r, &s, &[2], DRAGON);
+    let p = plan(&state, &r);
+    assert_eq!(p.on(runners), hit(&state, &r, (dragon, runners), 1));
 }
 
 // covers: BAT-AI-015
