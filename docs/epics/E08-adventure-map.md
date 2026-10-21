@@ -320,6 +320,17 @@ Refined with the user on 2026-10-20 (T23; ADV-Q14). Built like increments 1 to 3
     needs `h3-heroes` among `h3-map`'s dev-dependencies (`arch.toml`, `shared/e08-t32a`, merged
     first).
 
+### Decisions at round 5 (2026-10-21, user)
+
+68. **T32b is cut, and this lane builds the harness's reads** (the user's choice of four; not
+    chosen: T32b1 cut smaller, the plain memory reads first and the level-up dialog's offers and
+    E4-9's battle by plan after; waiting for the client lane, busy with E17 M3, with small inbox
+    work meanwhile; or increment 5 refined while batch E4 waits). **T32b1**: the eight reads batch
+    E4's recipes need (the client lane's inbox, 2026-10-20 and -21) added to the harness
+    (`clients/capture/`, client-owned: **`cross-lane` with the user's consent**, as T22a3's
+    change), checked under Wine on the harness's own check map; **T32b2**: batch E4's three
+    recipes and their run; then T33.
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T23 Increment 4 refined.** Done (2026-10-20, `adventure/e08-t23`; decisions 48–50): progression only, the first round queued (T24a, T24b), the inbox sorted; docs only (log).
@@ -330,6 +341,7 @@ Refined with the user on 2026-10-20 (T23; ADV-Q14). Built like increments 1 to 3
 - **Round 2: T27 + T28** (decision 62). **T27** done (2026-10-20, `adventure/e08-t27`, `cross-lane`: `h3-heroes`' levels, the bound, the limit's cap, the draws, the primary skill, the offers, `GainLevel`, the offers' levels in the details; HER-EXP-002, -003, HER-LVL-001 to -005; `ADV-QUIRK-11` to `-13`; game state hash v9; log). **T28** done (2026-10-21, `adventure/e08-t28`: the original's choice ported, its flag-clear path: `h3_heroes::original_choice` with `ArmyWorth` and `TerrainShares`; HER-LVL-006; `ADV-QUIRK-14`; E3-6 reproduced; log). **Round 2 closed**.
 - **Round 3: T29 + T30** (decision 63). **T29** done (2026-10-21, `adventure/e08-t29`, `cross-lane`: the scenario's level limit and banned skills, the level seeds and the draws' source, the levels at load through the original's choice, the battle's experience under the limit, the terrains' costs by Pathfinding level and the map's shares, the import's refusal lifted; GAM-HER-002, GAM-SET-002, ADV-MAP-002; `ADV-QUIRK-9`; game state hash v10, adventure ruleset part v9, map import v8; the 5 shipped maps' 9 heroes get 41 levels at load; log). **T30** done (2026-10-21, `adventure/e08-t30`, decision 64: the battle's winner levels after the outcome, a level with two offers a pending decision of the owner answered `First` or `Second`, one or none given at once, the events, the observation's `DecisionView`, the legal commands, the system actor's default (`ADV-STUB-8`), the level-up holding the game (decision 65, #353), the env's answers and the CLI's words; GAM-DEC-002, GAM-BAT-008; game state hash v11, action encoding v4, replay format v5; log). **Round 3 closed**.
 - **Round 4: T31 + T32a** (decision 66). **T31** done (2026-10-21, `adventure/e08-t31`: the fixtures' heroes near a level, red's underground hero levelled at load; the nine golden replays re-recorded, the five searched ones replaced, seven answering level-ups; the plans' level checks after every command, the hygiene property's other heroes' experience, another player's level-up unseen, the levels at load by profile; two workloads re-baselined; log). **T32a** done (2026-10-21, `adventure/e08-t32a`, `cross-lane`, decision 67: whole; `shared/e08-t32a` #358 first: batch E4 as three specs, E4a (E4-1 to E4-5), E4b (E4-6, the level limit), E4c (E4-7 to E4-10), with the writer's level limit and Cartographers and the spec's `level_limit` and `[[map.object]]`; the scorer `e4_score`, checked against the engine; the recipes wait for the harness's reads; log). **Round 4 closed**; round 5 (T32b + T33) next.
+- **Round 5: T32b + T33** (decision 68). **T32b1** done (2026-10-21, `adventure/e08-t32b1`, `cross-lane`: the harness's reads for batch E4 in `clients/capture/`: the seed byte and counters, the skills in order, every level-up dialog from its picture items (0x4F8880 read for them), `level_up` as a list, artifacts and backpack, the battlefield, the messages' records, battles between two human players played by `attack` or a plan (auto combat does not play them); the harness check passed under Wine and its three dialogs and one hero levelled at load fit the engine's reading; log). **T32b2** (the recipes and the run) next, then T33.
 
 ## Later increments (sketch)
 
