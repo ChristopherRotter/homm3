@@ -106,7 +106,7 @@ id       = "GAM-SET-002"
 title    = "The scenario's level limit and banned skills; a placed hero's levels at load"
 context  = "game"
 status   = "implemented"
-summary  = "The setup carries the scenario's level limit (the map header's byte, AB and SoD; 0 none, as is a limit above the highest level, ADV-QUIRK-12) and its banned skills (SoD's set, the skills of the set bits' codes; each the ruleset's, a set in any order); the game keeps both, static. A hero with a custom experience gets its levels when the game is built, after its custom skills, army, spells and artifacts and its war machines' artifacts: it starts at level 1 and experience 0 and gains the custom experience under the limit (HER-EXP-003; D-21: capped at the limit's threshold, so no hero starts above it), then each pending level is drawn (GAM-HER-002) and given in hero id order: two offers chosen by the original's choice with the setup's army worth (1 000 and 500) and the map's terrain shares (HER-LVL-006, ADV-MAP-002; D-20: not the left offer), one learned, none the primary skill only; never a banned skill (HER-LVL-003); last the spell points full (HER-MAN-001). Building a game emits no events. A hero without a custom experience keeps its default 40-90 at level 1. Every level the battle's experience gives is under the limit too (GAM-BAT-002); in play a level-up is E08 T30's. The import passes a placed hero's custom experience as it is (MAP_IMPORT_VERSION 8): the five shipped maps that import whole give 9 heroes 41 levels at load. E08 T29: `h3_game::GameState::new`."
+summary  = "The setup carries the scenario's level limit (the map header's byte, AB and SoD; 0 none, as is a limit above the highest level, ADV-QUIRK-12) and its banned skills (SoD's set, the skills of the set bits' codes; each the ruleset's, a set in any order); the game keeps both, static. A hero with a custom experience gets its levels when the game is built, after its custom skills, army, spells and artifacts and its war machines' artifacts: it starts at level 1 and experience 0 and gains the custom experience under the limit (HER-EXP-003; D-21: capped at the limit's threshold, so no hero starts above it), then each pending level is drawn (GAM-HER-002) and given in hero id order: two offers chosen by the original's choice with the setup's army worth (1 000 and 500) and the map's terrain shares (HER-LVL-006, ADV-MAP-002; D-20: not the left offer), one learned, none the primary skill only; never a banned skill (HER-LVL-003); last the spell points full (HER-MAN-001). Building a game emits no events. A hero without a custom experience keeps its default 40-90 at level 1. Every level the battle's experience gives is under the limit too (GAM-BAT-002); in play a level-up is GAM-DEC-002's (E08 T30). The import passes a placed hero's custom experience as it is (MAP_IMPORT_VERSION 8): the five shipped maps that import whole give 9 heroes 41 levels at load. E08 T29: `h3_game::GameState::new`."
 numeric  = "integer"
 quirks   = ["ADV-QUIRK-9", "ADV-QUIRK-12", "ADV-QUIRK-14"]
 
@@ -258,6 +258,33 @@ numeric  = "integer"
   kind       = "original-data"
   ref        = "Heroes3.exe: the Cartographer's visit (0x4A8A14) asks a yes/no question (a message box of mode 2) that the player answers before play goes on, and shows a message instead when the gold is short; survey E08-objects.md §4 and §10"
   confidence = "high"
+
+[[rule]]
+id       = "GAM-DEC-002"
+title    = "A level-up with two offers: a pending decision of the hero's owner"
+context  = "game"
+status   = "implemented"
+summary  = "A hero's pending levels in play (GAM-BAT-008) are given one at a time, in order, each drawn when it is given or its decision opens (GAM-HER-002: in faithful from the hero's level seed and the new level, in strict-fixed from the owner's stream). A level with no offer raises its primary skill only and one with one offer learns it, at once; a level with two offers opens a pending decision of the hero's owner (GAM-DEC-001: its only legal commands are the answers, in its turn or not; it blocks no one else), answered `First` (the dialog's left offer) or `Second` (the right): the answer gives the level with that offer (HER-LVL-005) and draws the next, whose own decision takes the answered one's place in the owner's queue. `Accept` or `Decline` for a level-up, and `First` or `Second` for an offer, are rejected (`WrongAnswer`) and change nothing. Every level given in play is told to the owner alone as `LevelGained` (the level, the primary skill, the skill learned or advanced), every decision opened as `LevelUpOpened` (the level, the primary skill, the two offers); the owner's observation shows an open level-up as `DecisionView::LevelUp` (`GameState::level_up`), no other player sees it, and the hero's level seed never shows. While a hero has a level-up open its later gains draw nothing: the answer gives the rest. A battle against a hero whose owner has a level-up open (a defender that won outside its turn, attacked again) waits behind it in the owner's queue; the observation shows it. The system actor's default answer (`default_answer`, ADR-0017 point 6) is the original's choice (HER-LVL-006) with the setup's inputs until E10 (ADV-STUB-8), `Decline` for an offer. E08 T30: `GameState::give_levels`, `GameState::answer`."
+numeric  = "integer"
+quirks   = ["ADV-QUIRK-9"]
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0017 point 6 (a level-up with two offers is a pending decision of the hero's owner, answered First or Second; the levels given in order, one at a time; one offer or none at once with an event; the system actor's default the original's choice) and point 4 (a level's draws come from the seed in faithful, the owner's stream in strict-fixed, drawn when given or opened)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T24a1, survey E08-progression.md §2.1, §2.5): hero_level_up 0x4DA720 gives the levels one at a time (the loop back at 0x4DACA2), each level's draws after the previous answer; a human owner at its computer gets the modal level-up dialog (0x4F8880): no offer shows the primary skill, one offer is learned without a choice (0x4DAB12), two are answered left (the first, result 2010) or right (the second, 2011); a result of 9999 (a network game's timer running out) hands the choice to ai_level_up_choice 0x52BBD0"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/CGameHandler.cpp levelUpHero: a hero with one offer, or without an owner, takes the first; two offers ask the owner (CHeroLevelUpDialogQuery), level by level (survey E08-progression.md §2.6)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/CGameHandler.cpp"
+  retrieved  = "2026-10-20"
+  confidence = "high"
+  note       = "Agrees on the levels one at a time and the two offers' question; the original's modal dialog blocks the game until it is answered, where the engine's decision blocks only its owner (ADR-0017 point 6), so another player may act (and attack) before a defender that won answers."
 
 [[rule]]
 id       = "GAM-BAT-001"
@@ -483,4 +510,24 @@ numeric  = "integer"
   [[rule.source]]
   kind       = "observation"
   ref        = "E04b batch 2f (BAT-Q24): the winner learned its picks as HER-SPL-006 allows"
+  confidence = "high"
+
+[[rule]]
+id       = "GAM-BAT-008"
+title    = "A battle's winner levels after the outcome"
+context  = "game"
+status   = "implemented"
+summary  = "When a battle on the map ends with a winner whose hero stays on the map, its hero's pending levels (the experience it gained under the scenario's level limit, GAM-BAT-002, HER-EXP-003) are given after the whole outcome, Necromancy, Eagle Eye and the capture included (GAM-BAT-006, GAM-BAT-007, GAM-BAT-004), and after a surrender's price and an unowned battle's end (GAM-BAT-005, ADV-MON-010, ADV-PIK-004): as GAM-DEC-002 gives them, one at a time, a level with two offers a pending decision of the hero's owner, also when the owner is the defender outside its turn. The loser leaves the map and gains nothing. E08 T30: `GameState::end_battle`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T24a2a, survey E08-progression.md §4.1): battle_end 0x477470 gains the winner's experience; a winner whose player is a human at this computer gets its levels after the battle's screen, adventure_battle 0x4AD470 giving both heroes' levels at 0x4AE324 and 0x4AE42C (a computer's winner levels at once, 0x477766, before Necromancy and Eagle Eye); only the winner gains"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/CGameHandler.cpp giveExperience → expGiven → levelUpHero, called from the battle's result (BattleResultProcessor): the winner's experience, then its levels one at a time, a query to the owner for each two-offer level (survey E08-progression.md §4.1)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/CGameHandler.cpp"
+  retrieved  = "2026-10-20"
   confidence = "high"

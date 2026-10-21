@@ -3207,3 +3207,49 @@ Decision 63: T29 whole, one pull request, `cross-lane` with the user's consent (
   limit and bans. The test pack's knight class gained skill weights and a `t:seeded` profile.
 - **Rules and quirks**: GAM-HER-002, GAM-SET-002 (`implemented`), ADV-MAP-002 (`implemented`);
   `ADV-QUIRK-9` written (fix-optional, flag 27); `ADV-QUIRK-14`'s count test named.
+
+### Increment 4, round 3: T30, the level-up as a pending decision (2026-10-21, `adventure/e08-t30`)
+
+Decision 64: T30 whole, one pull request, with the env's answers and the CLI's words from T31.
+Baseline `master` 2518a92 (#349 merged): its code verified by T29's run, the sandbox's light
+gates green. Before the cut, the nine golden replays were played with a probe: none reaches a
+level (the highest experience any of their heroes ends with is 788), so T30 needs no recorded
+answers.
+
+- **The game** (`h3-game`): `Decision::LevelUp { owner, view: LevelUpView, offered }` (game state
+  hash v11: kind 2, the owner, hero, level, primary skill, two offers, the offers' levels);
+  `state/levels.rs`' `give_levels` (GAM-DEC-002: each level drawn by `Progression::draw` with the
+  owner's stream, one offer or none given at once as `LevelGained`, two a decision told as
+  `LevelUpOpened`; nothing while the hero has a level-up open), `answer_level_up` (the level
+  given, the next level-up in the answered one's place, else the decision closed),
+  `update_hero` (shared with the battle's `change_hero`); `end_battle` gives the winner's levels
+  last (GAM-BAT-008); `answer` split into the level-up's and the offer's (`answer_offer`), with
+  `WrongAnswer` after `BattleOpen`; `GameState::level_up`, `battle_seen` (the observation's
+  battle wherever it waits: behind a level-up when a defender that won is attacked again before
+  it answers); `observe`'s `decision: Option<DecisionView>`; `legal_commands` lists `First` and
+  `Second`; `project` gives the two events to the owner only; `default_answer` (`Decline` for an
+  offer, the original's choice with the setup's inputs for a level-up, `ADV-STUB-8`).
+- **The env and the CLI**: action encoding v4 (`FIRST` 11, `SECOND` 12, `Action::first`,
+  `second`); `to_move` yields a level-up's owner outside its turn; the random agent answers at
+  even odds through `legal_commands`; replay format v5 (`<player> answer first|second`).
+- **The properties** (`h3-map`): random play met level-ups at once (the generated maps' heroes
+  gain levels in their battles: the first runs after the game's change failed on them), so the driver
+  answers them (`seek`), `check_legal` lists a level-up's answers for its owner in its turn or
+  not, `check_isolation` keeps other players' level-ups, `check_conservation` and the battle's
+  heroes check follow the levels told (`check_levels`), and the view's event model knows both
+  events. The two failing cases were kept in the regression files. T31 adds the plans' checks
+  of §14.
+- **Tests**: `h3-game`'s `tests/level_ups.rs` (the open level-up and each answer against a draw
+  of the hero model with the owner's stream, the observation, the legal commands, wrong answers;
+  two levels one at a time, each drawn after the previous answer; one offer and none by banned
+  skills; faithful's seed; a defender that wins answers outside its turn; the limit; a fork; a
+  battle waiting behind a level-up whose next one comes first; a second win before the answer);
+  the offer's wrong answers and default, a battle's none; the env's two entries, their masks,
+  decode and encode, the random agent; the CLI's words.
+- **Rules**: GAM-DEC-002, GAM-BAT-008 (`implemented`); GAM-DEC-001, GAM-SET-002, ADV-MAP-002 and
+  `ADV-QUIRK-9`'s context point to GAM-DEC-002. `docs/07-simulation-and-ai.md`'s env line (a
+  shared doc) still names encoding v3: for the next `shared/` pull request (QUEUE inbox).
+- **Versions**: game state hash v11, action encoding v4, replay format v5; the nine golden
+  replays re-recorded with their options, their commands unchanged.
+- **Housekeeping**: T29's merge of `master` had left conflict markers in the adventure and AI
+  lanes' `QUEUE.md` inboxes (both sides kept; the adventure's T27-T29 notes for T30 consumed).

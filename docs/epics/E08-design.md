@@ -123,49 +123,47 @@ hero, details, stream)` draws a level from the seed or from the stream given (th
 play); the shares are `state.adventure().map().terrain_shares()`; `Progression::level_limit()`
 for every gain.
 
-### 13. A level-up as a pending decision (GAM-DEC-002); the battle's levels (GAM-BAT-008)
+### 13. Built by T30: a level-up as a pending decision (GAM-DEC-002); the battle's levels (GAM-BAT-008)
 
-- **When**: after a change raises a hero's experience above its given level's range, the game
-  gives its pending levels (GAM-BAT-008: the winner's after the battle's outcome, Necromancy and
-  Eagle Eye included, as the original's human path 0x4AE324; later increments' gains the same
-  way). One level at a time: the level is drawn (§11); with two offers a decision opens, owned by
-  the hero's owner (`Decision::LevelUp { owner, hero, drawn }`, the drawn level kept for its
-  answer); with one or none `GainLevel` applies at once and the next level is drawn. A hero
-  without an owner (none in increment 4) levels as at load.
-- **The answer**: `GameCommand::Answer(Answer::First | Answer::Second)` (the left and right
-  offers), from the owner, in its turn or not; `Accept` and `Decline` are rejected for a level-up
-  and the new answers for an offer (`GameCommandError::WrongAnswer`, name the building task's).
-  The game checks nothing more (the offers are the drawn level's) and applies `GainLevel`; then the
-  next pending level of the hero, if any. A player's queue keeps at most one open decision: a
-  level-up opens after the battle closes, and a visit's chain that would follow a battle (none in
-  increment 4: a beaten monster's treasure is applied with the outcome) waits behind it.
-- **The system actor's default** (ADR-0017 point 6's closed set): the original's choice; its
-  flag-set path (the original's timeout) reads E10's computer-player state (survey §10.4), so
-  until E10 it chooses with the setup's inputs, as at load (decision 60; an `ADV-STUB-<n>` at the
-  call, closed by E10).
-- **Events** (to the owner only): `LevelGained { player, hero, level, primary, skill }` for every
-  level given in play (with one offer, none or after an answer), and `LevelUpOpened { player,
-  hero, level, primary, offers }` when a decision opens (names the building task's); the existing
-  `HeroChanged` carries `GainExperience` as before.
-- **What a player sees**: `GameObservation.decision` becomes a choice of kinds,
-  `Option<DecisionView>` with `Offer(Offer)` and `LevelUp { hero, level, primary, offers }` (the
-  owner's only, as the offers are); `legal_commands` lists `First` and `Second` while a level-up is
-  open. Another player sees nothing of it (ADV-FOG-006: no level in the view of another's hero).
+Built by T30 (2026-10-21, `adventure/e08-t30`, decision 64: whole, one pull request, with §14's
+env answers and the CLI's words; `E08-log.md`) as planned: the winner's pending levels after the
+whole outcome (`end_battle`, GAM-BAT-008), given one at a time (`state/levels.rs`'
+`give_levels`): each drawn when given or opened (`Progression::draw` with the owner's stream), one
+offer or none at once (`LevelGained`), two a `Decision::LevelUp { owner, view, offered }`
+(`LevelUpOpened`); `Answer::First`/`Second`, `GameCommandError::WrongAnswer` (after
+`BattleOpen`, before `OfferGone`); the observation's `decision` an `Option<DecisionView>`
+(`Offer(Offer)`, `LevelUp(LevelUpView { hero, level, primary, offers })`; `GameState::level_up`);
+`legal_commands` lists `First` and `Second`; the events to the owner only (`HeroChanged` tells no
+level); the system actor's default `h3_game::default_answer` (a query the hosting layer gives as
+the player's answer, the server lane's M5: `Decline` for an offer, the original's choice with
+`ArmyWorth::SETUP` and the map's shares for a level-up, `ADV-STUB-8` until E10, none for a
+battle); game state hash v11. **Four refinements** the plan left open: (1) a hero with a level-up
+open draws nothing more until its answer (a defender that won outside its turn and won again);
+(2) the answer's next level-up takes the answered decision's place in the owner's queue; (3) a
+battle against a hero whose owner has a level-up open waits behind it (the decision blocks only
+its owner, where the original's dialog is modal), and the observation shows a player's battle
+wherever it waits (`battle_seen`); (4) the env lets a level-up's owner act outside its turn
+(`to_move`), as the original's dialogs follow the battle's screen. A hero without an owner does
+not exist in increment 4: `give_levels` takes the owner.
 
 ### 14. The env, replays and properties
 
-- **The env** (`h3-sim/src/adventure/`): action encoding v4 appends `FIRST` (11) and `SECOND`
-  (12), each with tile 0 alone, legal only while a level-up is the player's open decision;
-  `ACCEPT` and `DECLINE` only while an offer is. `random_rollout` answers a level-up at random.
-  The observation is `h3_game`'s view (§13).
+- **The env** (`h3-sim/src/adventure/`; **built by T30**, decision 64): action encoding v4
+  appends `FIRST` (11) and `SECOND` (12), each with tile 0 alone, legal only while a level-up is
+  the player's open decision; `ACCEPT` and `DECLINE` only while an offer is. `random_rollout`
+  answers a level-up at random. The observation is `h3_game`'s view (§13).
 - **Replays** (format v5): the new answers in the command list (`<player> answer first|second` in
-  the CLI's file, `crates/h3-cli/src/adventure/`); the nine golden replays re-recorded once, with
+  the CLI's file, `crates/h3-cli/src/adventure/`; **built by T30**, which re-recorded the nine
+  golden replays with their commands unchanged: none of their battles reaches a level, the
+  highest experience any of their heroes ends with being 788); T31 re-records them once more, with
   their options (`crates/h3-cli/tests/adventure_replays.rs`), now answering the level-ups their
   battles give; one replay at least with a level-up answered each way and a hero levelled at load.
 - **Fixtures**: the duel's and the XL map's heroes gain experience near a threshold and one a
   custom experience (levels at load), so the replays, the plans and the benchmarks meet
   level-ups (`h3-map`'s `tests/fixtures.rs` writes them).
-- **Properties** (`crates/h3-map/src/tests/play.rs`): the driver answers level-ups; the plans
+- **Properties** (`crates/h3-map/src/tests/play.rs`; T30 made the existing ones follow the
+  level-ups random play meets: the driver answers them, the legality, isolation and conservation
+  checks and the view's event model know them): the driver answers level-ups; the plans
   check after every command that a hero's level is at most its experience's level and that an
   open level-up's hero has a pending level; the hygiene property covers the seeds and the offers;
   a fixed test per profile for the draws' source.
@@ -179,8 +177,9 @@ adventure state hash v10, adventure ruleset part v8, map import v7, action encod
 replay format v4. Increment 4: the core ruleset hash v46 and the pack format v44 (T26b, done:
 hero parameters, the class field, the override kind, two flags), the game state hash v9 (T27,
 done: the details' counters) and v10 (T29: the seeds, the limit and banned skills), the map
-import v8 (T29), the action encoding v4 and the replay format v5 (T30 or T31, with the
-answers), the adventure ruleset part v9 (T29: the terrains' costs by Pathfinding level). The
+import v8 (T29), the game state hash v11, the action encoding v4 and the replay format v5 (T30:
+the level-up decision, its answers), the adventure ruleset part v9 (T29: the terrains' costs by
+Pathfinding level). The
 adventure state hash does not change. The others bump once, in the task that first changes them.
 
 ### 16. Batch E4
@@ -209,8 +208,8 @@ confirmed at its checkpoint):
 |---|---|---|
 | 1 | **T25** + **T26** | Done. Cut (decision 59): **T25** (2026-10-20: survey §10; ADV-Q17, decision 60), **T26a** (2026-10-20, #325: ADR-0013 and -0017 amended), **T26b** (2026-10-20, `shared/e08-t26b`, decision 61: the hero parameters' level data and offered skills, the class's `offer_intervals`, `[[hero_class_override]]`, the two flags, the packs and the gap-fill, the bumps and the replays' headers; part A §1, §10) |
 | 2 | **T27** + **T28** | Done: T27 (2026-10-20, `adventure/e08-t27`, decision 62), T28 (2026-10-21, `adventure/e08-t28`). T27: `h3-heroes`' progression (part A §2–§7: levels, the bound, the limit's cap, the draw source and the original's generator, the primary skill, the offers, `GainLevel`, the counters, the checks; HER-EXP-002, -003, HER-LVL-001 to -005; `ADV-QUIRK-10` to `-13`). T28: the original's choice ported, its flag-clear path (part A §8, HER-LVL-006; survey §10; `ADV-QUIRK-14`) |
-| 3 | **T29** + **T30** | T29 done (2026-10-21, `adventure/e08-t29`, `cross-lane`, decision 63: whole, one pull request; §11 and §12 built). T29: the game's setup and build (§11, §12: the seeds, the limit and banned skills, the terrains' costs by Pathfinding level and the map's shares, levels at load, the import's refusal lifted, the 5 shipped maps; GAM-HER-002, GAM-SET-002; `ADV-QUIRK-9`). T30: the level-up as a decision (§13: the answers, the events, the observation, the system actor's default, the battle's levels; GAM-DEC-002, GAM-BAT-008) |
-| 4 | **T31** + **T32a** | T31: the env, replays, fixtures, properties and benchmarks (§14). T32a: batch E4's spec and recipe (§16; `cross-lane`) |
+| 3 | **T29** + **T30** | Done: T29 (2026-10-21, `adventure/e08-t29`, `cross-lane`, decision 63: whole, one pull request; §11 and §12 built), T30 (2026-10-21, `adventure/e08-t30`, decision 64: whole, one pull request, with §14's env answers and replay format; §13 built). T29: the game's setup and build (§11, §12: the seeds, the limit and banned skills, the terrains' costs by Pathfinding level and the map's shares, levels at load, the import's refusal lifted, the 5 shipped maps; GAM-HER-002, GAM-SET-002; `ADV-QUIRK-9`). T30: the level-up as a decision (§13: the answers, the events, the observation, the system actor's default, the battle's levels; GAM-DEC-002, GAM-BAT-008) |
+| 4 | **T31** + **T32a** | T31: the replays, fixtures, properties and benchmarks (§14; the env's answers and the replay format v5 came with T30). T32a: batch E4's spec and recipe (§16; `cross-lane`) |
 | 5 | **T32b** + **T33** | T32b: batch E4 run on the harness. T33: the scoring (the rules it covers `verified` or reopened), the audit against the exit criteria, increment 4 closed, the next increment refined |
 
 **Increment 4's exit criteria**:
