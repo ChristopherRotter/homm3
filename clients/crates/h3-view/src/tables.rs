@@ -79,6 +79,33 @@ pub struct Battle {
     /// M3 T7b-1).
     #[serde(default)]
     pub resist_sound: Option<String>,
+    /// The sounds of the rolled effects over a stack (E17 M3 T7b-2b-2b, design §7.16): good
+    /// morale's (`good_morale_roll` 0x464A6C), bad morale's (`bad_morale_check` 0x464C84),
+    /// Fear's (`fear_check` 0x464E93), each category 2 as the heal's, and good luck's (as a strike
+    /// or a shot starts, 0x44185B, 0x43F979: `goodluck.82m`, its stem the entry; category 3).
+    #[serde(default)]
+    pub good_morale_sound: Option<String>,
+    /// Bad morale's ([`Battle::good_morale_sound`]).
+    #[serde(default)]
+    pub bad_morale_sound: Option<String>,
+    /// Fear's ([`Battle::good_morale_sound`]).
+    #[serde(default)]
+    pub fear_sound: Option<String>,
+    /// Good luck's ([`Battle::good_morale_sound`]).
+    #[serde(default)]
+    pub luck_sound: Option<String>,
+}
+
+impl Battle {
+    /// The battle's own sounds by name: the heal's, then each optional one given.
+    pub fn sounds(&self) -> impl Iterator<Item = &String> {
+        core::iter::once(&self.heal_sound)
+            .chain(&self.resist_sound)
+            .chain(&self.good_morale_sound)
+            .chain(&self.bad_morale_sound)
+            .chain(&self.fear_sound)
+            .chain(&self.luck_sound)
+    }
 }
 
 /// A magic animation (`docs/epics/E17-design.md` §7.15; E17 M3 T3b): its DEF (group 0), where it
@@ -282,9 +309,14 @@ impl Sounds {
             Sound::Defend => self.defend.as_deref(),
             Sound::Start => self.start.as_deref(),
             Sound::End => self.end.as_deref(),
-            // The battle's, not the creature's ([`Battle::heal_sound`], [`Battle::resist_sound`],
-            // a spell's [`Spell::sound`]).
-            Sound::Heal | Sound::Resisted | Sound::Spell(_) => None,
+            // The battle's, not the creature's ([`Battle::sounds`], a spell's [`Spell::sound`]).
+            Sound::Heal
+            | Sound::Resisted
+            | Sound::Spell(_)
+            | Sound::GoodMorale
+            | Sound::BadMorale
+            | Sound::Fear
+            | Sound::Luck => None,
         }
     }
 
@@ -403,8 +435,7 @@ impl Tables {
         self.creatures
             .values()
             .flat_map(|c| c.sounds.names())
-            .chain(core::iter::once(&self.battle.heal_sound))
-            .chain(&self.battle.resist_sound)
+            .chain(self.battle.sounds())
             .chain(self.spells.values().filter_map(|s| s.sound.as_ref()))
             .map(|n| n.to_ascii_uppercase())
             .collect()
@@ -502,8 +533,7 @@ pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
     for magic in &battle.magic {
         names("[battle]", &[(&magic.def, ".DEF")])?;
     }
-    let sounds = core::iter::once(&battle.heal_sound).chain(&battle.resist_sound);
-    if sounds.into_iter().any(|s| s.is_empty() || s.contains('.')) {
+    if battle.sounds().any(|s| s.is_empty() || s.contains('.')) {
         return Err(entry(
             "[battle]",
             "a sound is an entry's name, without an extension",
@@ -696,6 +726,10 @@ flags = ["CmFlagL.def", "CmFlagR.def"]
 magic = [{ def = "C10spW.def", place = 0, translucent = true }, { def = "sp12_.def", place = 1 }]
 heal_sound = "Regener"
 resist_sound = "MagicRes"
+good_morale_sound = "GoodMrle"
+bad_morale_sound = "BadMrle"
+fear_sound = "Fear"
+luck_sound = "goodluck"
 
 [[hero]]
 key = "orrin"
@@ -817,6 +851,12 @@ at = [124, 254]
         assert_eq!(t.spells["base:slow"].animation, Some(1));
         assert_eq!(t.spells["base:slow"].sound.as_deref(), Some("Slow"));
         assert_eq!(t.battle.resist_sound.as_deref(), Some("MagicRes"));
+        assert_eq!(
+            t.battle.sounds().collect::<Vec<_>>(),
+            [
+                "Regener", "MagicRes", "GoodMrle", "BadMrle", "Fear", "goodluck"
+            ]
+        );
         assert_eq!(
             t.creatures.keys().collect::<Vec<_>>(),
             ["ab:pikeman", "base:archer", "base:pikeman"]
@@ -1096,6 +1136,12 @@ at = [124, 254]
             rule(&[b], "base").to_string(),
             "`[battle]`: a sound is an entry's name, without an extension"
         );
+        let mut b = base();
+        b.battle.as_mut().unwrap().luck_sound = Some("goodluck.82m".to_string());
+        assert_eq!(
+            rule(&[b], "base").to_string(),
+            "`[battle]`: a sound is an entry's name, without an extension"
+        );
         for sound in ["", "Slow.wav"] {
             let mut b = base();
             b.spell[0].sound = Some(sound.to_string());
@@ -1133,7 +1179,16 @@ at = [124, 254]
         assert_eq!(pikeman.name(Sound::Wince), Some("pikewnce"));
         assert_eq!(pikeman.name(Sound::Death), Some("pikekill"));
         assert_eq!(pikeman.name(Sound::Defend), Some("pikedfnd"));
-        for none in [Sound::Shot, Sound::Start, Sound::End, Sound::Heal] {
+        for none in [
+            Sound::Shot,
+            Sound::Start,
+            Sound::End,
+            Sound::Heal,
+            Sound::GoodMorale,
+            Sound::BadMorale,
+            Sound::Fear,
+            Sound::Luck,
+        ] {
             assert_eq!(pikeman.name(none), None);
         }
         let all = Sounds {
@@ -1145,13 +1200,14 @@ at = [124, 254]
         assert_eq!(all.name(Sound::Shot), Some("s"));
         assert_eq!(all.name(Sound::Start), Some("a"));
         assert_eq!(all.name(Sound::End), Some("e"));
-        // The archer has none; the tent's heal sound is the battle's (E17 M3 T3b).
+        // The archer has none; the tent's heal sound is the battle's (E17 M3 T3b), and so are
+        // morale's, Fear's and good luck's (E17 M3 T7b-2b-2b).
         let names: Vec<String> = tables.sound_names().into_iter().collect();
         assert_eq!(
             names,
             [
-                "MAGICRES", "PIKEATTK", "PIKEDFND", "PIKEKILL", "PIKEMOVE", "PIKEWNCE", "REGENER",
-                "SLOW"
+                "BADMRLE", "FEAR", "GOODLUCK", "GOODMRLE", "MAGICRES", "PIKEATTK", "PIKEDFND",
+                "PIKEKILL", "PIKEMOVE", "PIKEWNCE", "REGENER", "SLOW"
             ]
         );
     }

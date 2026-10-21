@@ -329,7 +329,8 @@ impl Battle {
     }
 
     /// The battle's own sounds its cues name, by cue (not a creature's; design §8.2): the tent's
-    /// heal (E17 M3 T3b), a resisted spell's and each cast spell's (E17 M3 T7b-1).
+    /// heal (E17 M3 T3b), a resisted spell's and each cast spell's (E17 M3 T7b-1), morale's, Fear's
+    /// and good luck's (E17 M3 T7b-2b-2b).
     pub fn battle_sounds(&self) -> BTreeMap<Sound, String> {
         let spells = &self.record.header.manifest.keys.spells;
         let battle = &self.tables.battle;
@@ -340,6 +341,10 @@ impl Battle {
                 let name = match c.sound {
                     Sound::Heal => Some(&battle.heal_sound),
                     Sound::Resisted => battle.resist_sound.as_ref(),
+                    Sound::GoodMorale => battle.good_morale_sound.as_ref(),
+                    Sound::BadMorale => battle.bad_morale_sound.as_ref(),
+                    Sound::Fear => battle.fear_sound.as_ref(),
+                    Sound::Luck => battle.luck_sound.as_ref(),
                     Sound::Spell(handle) => spells
                         .get(usize::from(handle))
                         .and_then(|key| self.tables.spells.get(key)?.sound.as_ref()),

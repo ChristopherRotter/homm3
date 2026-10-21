@@ -316,8 +316,12 @@ impl Player {
         let Some(clip) = library.clip(cue.stack, cue.sound) else {
             return;
         };
-        if matches!(cue.sound, Sound::Heal | Sound::Resisted) {
-            // Category 2, the start sound's (`play_sound_file` 0x59A470; E17 M3 T3b, T7b-1).
+        if matches!(
+            cue.sound,
+            Sound::Heal | Sound::Resisted | Sound::GoodMorale | Sound::BadMorale | Sound::Fear
+        ) {
+            // Category 2, the start sound's (`play_sound_file` 0x59A470; E17 M3 T3b, T7b-1,
+            // T7b-2b-2b).
             self.out.clear(self.start_stream);
             self.out
                 .set_format(self.start_stream, clip.rate, clip.channels);
@@ -337,9 +341,10 @@ impl Player {
             return;
         };
         self.out.clear(channel.stream);
-        // A spell's sound at its loader's volume, a creature's at the effects' (E17 M3 T7b-1).
+        // A spell's sound and good luck's at their loader's volume, a creature's at the effects'
+        // (E17 M3 T7b-1, T7b-2b-2b).
         let volume = match cue.sound {
-            Sound::Spell(_) => FILE_VOLUME,
+            Sound::Spell(_) | Sound::Luck => FILE_VOLUME,
             _ => EFFECT_VOLUME,
         };
         self.out.set_gain(channel.stream, gain(volume));

@@ -1,0 +1,55 @@
+# E17 M3 T7b-2b-2b: bad morale (design §7.16, player 1), in hot seat (`hot_seat` in sequences.toml:
+# the harness plays both sides). Orrin's army of three towns (Castle, Stronghold, Fortress) has
+# morale -1. The Champions (speed 9, the battle's first turn: no morale check) defend; at the next
+# pick the Goblins' bad-morale roll (`roll:bad_morale`, 0x464BC7) falls: `BadMrle.wav`, the log's
+# line, then animation 30 (`C14spE0`) over them with their hit group; they lose the turn. Crag
+# Hack's Dwarves (one town, morale 1; speed 4 on their native grass) win the tie against the
+# Gnolls (4: the attacker acted last) and act next. On grass at the capture set's tile
+# (grass.toml's obstacles).
+
+[scenario]
+id = "sequence-bad"
+# Both players human, as the original's hot-seat map (`h3-view situation --hot-seat`).
+human = ["attacker", "defender"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:champion"
+count = 5
+
+[[attacker]]
+slot = 2
+creature = "base:goblin"
+count = 15
+
+[[attacker]]
+slot = 4
+creature = "base:gnoll"
+count = 10
+
+[[defender]]
+slot = 0
+creature = "base:dwarf"
+count = 10
+
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1

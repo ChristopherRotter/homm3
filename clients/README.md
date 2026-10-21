@@ -69,7 +69,8 @@ search the parent directories).
   count boxes (M3 T4a; hidden through walks and flights, M3 T5a; a strike's kills from its end,
   M3 T5b-1; not yet tinted by spells), a hero's cast on one stack (M3 T7b-1: the hero's casting
   frames, the spell's animation over its target, a resisted cast's, Magic Arrow's and Ice Bolt's
-  projectile and hit, their sounds and log lines), the
+  projectile and hit, their sounds and log lines), good luck, good and bad morale and Fear over
+  their stack (M3 T7b-2b-2b: the last two with its hit, their sounds and lines), the
   panel (M3 T6a: its picture in the acting player's colours and its buttons as the turn's start
   sets them, `h3_view::panel`; since M3 T6b through the battle's turns and with its log's lines,
   `scene::Panels`); not yet
@@ -166,8 +167,10 @@ on the M1 review list):
   hero's: `standing`, `idle`, `defeat`, `victory`, `cast`; M3 T3a), `flags` (the left and the
   right side's flag DEFs), `magic` (M3 T3b: the magic animations by number, each `def`, `place`,
   where it is drawn over a stack, 0 on the hex, 1 centred, 2 above, 3 beside, higher not over a
-  stack, and `translucent`; design §7.15), `heal_sound` (the First Aid Tent's heal) and
-  `resist_sound` (a spell resisted by the stack it was aimed at; M3 T7b-1).
+  stack, and `translucent`; design §7.15), `heal_sound` (the First Aid Tent's heal),
+  `resist_sound` (a spell resisted by the stack it was aimed at; M3 T7b-1) and
+  `good_morale_sound`, `bad_morale_sound`, `fear_sound`, `luck_sound` (the rolled effects over a
+  stack; M3 T7b-2b-2b, optional, entry names without an extension).
 - `[[creature]]`: `key`, `original` (its original id, the executable's creature number: its
   record among `crtraits.txt`'s creature rows; M3 T4b-1), `def` (the battle sprite), `times` (`cranim.txt`'s fidget interval, walk,
   attack and flight distance as the executable keeps them: scaled by 9000, 500, 500, 115 and
@@ -207,7 +210,8 @@ player's pack, the client's own, the original's (E17 M3 T4b-1; the user, 2026-10
 prints every key's forms from the installation, or one key's text (`h3-view text
 battle.log.damage attacker=Imps damage=4 count=2 [--pack de.json]`). The battle log's lines are
 composed from the keys as the executable composes them from its rows (`h3_view::battle_log`, M3
-T4b-2a, design §9.4: a strike's damage and perish rows, wait, defend, morale, luck, and the log
+T4b-2a, design §9.4: a strike's damage and perish rows, wait, defend, morale, luck, Fear (M3
+T7b-2b-2b), and the log
 entries a line becomes; the text the log's item shows, M3 T4b-2b-2; the heal's and the round's
 lines, which event writes which line and when, and the log kept as the executable keeps it, M3
 T6b, design §9.8); `h3-view text --log` prints sample lines, and the viewer's frames show the

@@ -1,0 +1,58 @@
+# E17 M3 T7b-2b-2b: good luck on a shot and good morale after it (design §7.16, player 1):
+# `shot`'s battle with Orrin's luck 3 and morale 2 (Expert Luck and Advanced Leadership on the
+# original's map, T7b-2b-2a; the one town's +1 makes the Marksmen's morale 3). The Marksmen shoot
+# the Goblins: the shot's luck roll (`roll:shot_luck`, 0x43F955) falls, `goodluck.82m`, the log's
+# line, animation 18 over them, then the shot; after it the good-morale roll (`roll:good_morale`,
+# 0x4649D3) falls: `GoodMrle.wav`, animation 20 (`C09spW0`) over them, its line after it, and
+# they act again. On grass at the capture set's tile (grass.toml's obstacles).
+
+[scenario]
+id = "sequence-morale"
+# Red human, Blue a computer, as the original's map (`h3-view situation`): the panel's buttons
+# lit on the human's turn (E17 M3 T6a).
+human = ["attacker"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:marksman"
+count = 10
+
+[[attacker]]
+slot = 2
+creature = "base:pikeman"
+count = 10
+
+[[defender]]
+slot = 0
+creature = "base:goblin"
+count = 40
+
+[[defender]]
+slot = 2
+creature = "base:gnoll"
+count = 10
+
+# The heroes (E17 M3 T3a), as the original's map gets them (`h3-view situation`): Orrin, a
+# Knight, and Crag Hack, a Barbarian, each with 1 in every primary skill.
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+effects = [{ kind = "luck", amount = 3 }, { kind = "morale", amount = 2 }]
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1

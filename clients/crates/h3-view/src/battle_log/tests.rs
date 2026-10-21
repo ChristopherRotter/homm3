@@ -6,7 +6,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use super::{
-    Hit, Log, Logged, NEW_FOR, Name, Named, Spread, Stack, defend, entries, heal, luck_good,
+    Hit, Log, Logged, NEW_FOR, Name, Named, Spread, Stack, defend, entries, fear, heal, luck_good,
     morale_bad, morale_good, shown, strike, text_at, texts, wait, word,
 };
 use crate::text::Catalogue;
@@ -26,6 +26,7 @@ const PACK: &str = r#"{
         "morale-good": "{{creature}}: again.",
         "morale-bad": "{{creature}}: frozen.",
         "luck-good": "{{creature}}: lucky.",
+        "fear": "{{frightener}} scare {{creature}}.",
         "heal": "{{healer}} mends {{creature}}\nfor {{hit_points}}.",
         "round": "Round.",
         "cast-on": "{{hero}}: {{spell}} on {{creature}}.",
@@ -177,6 +178,10 @@ fn turns_morale_and_luck() {
     assert_eq!(morale_good(&c, many), "Bees: again.");
     assert_eq!(morale_bad(&c, one), "Bee: frozen.");
     assert_eq!(luck_good(&c, many), "Bees: lucky.");
+    // E17 M3 T7b-2b-2b: the frightening creature by its own number.
+    let ant = stack("creature.t:ant", 1);
+    assert_eq!(fear(&c, ant, many), "Ant scare Bees.");
+    assert_eq!(fear(&c, stack("creature.t:ant", 2), one), "Ants scare Bee.");
 }
 
 #[test]
@@ -356,6 +361,13 @@ fn each_happening_has_its_line() {
     assert_eq!(worded(&bad).as_deref(), Some("Bees: frozen."));
     let luck = Logged::Luck { stack: 1, count: 3 };
     assert_eq!(worded(&luck).as_deref(), Some("Ants: lucky."));
+    let fear = Logged::Fear {
+        stack: 2,
+        count: 1,
+        by: 1,
+        number: 2,
+    };
+    assert_eq!(worded(&fear).as_deref(), Some("Ants scare Bee."));
     assert_eq!(worded(&Logged::Round).as_deref(), Some("Round."));
     // What writes no line, and a stack the names lack.
     assert_eq!(worded(&Logged::Action), None);
@@ -397,6 +409,18 @@ fn each_happening_has_its_line() {
             good: true,
         },
         Logged::Luck { stack: 9, count: 1 },
+        Logged::Fear {
+            stack: 1,
+            count: 1,
+            by: 9,
+            number: 1,
+        },
+        Logged::Fear {
+            stack: 9,
+            count: 1,
+            by: 1,
+            number: 1,
+        },
     ] {
         assert_eq!(worded(&ghost), None);
     }
