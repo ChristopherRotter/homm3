@@ -99,6 +99,10 @@ magic = [
 ]
 heal_sound = "Regener"
 resist_sound = "MagicRes"
+good_morale_sound = "GoodMrle"
+bad_morale_sound = "BadMrle"
+fear_sound = "Fear"
+luck_sound = "goodluck"
 
 [[creature]]
 key = "pikeman"

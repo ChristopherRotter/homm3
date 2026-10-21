@@ -376,3 +376,72 @@ command = [
     { seat = "Defender", at = 11226, command = { Defend = {} } },
     { seat = "Attacker", at = 11226, command = { Cast = { spell = 35, target = { Stack = { stack = 0 } }, second = { None = {} } } } },
 ]
+
+# E17 M3 T7b-2b-2b: good luck on a melee strike (`seq-luck.toml`, hot seat; design §7.16, player
+# 1): `strike` with Orrin's luck 3; the luck roll forced to fall as the Archangel's strike starts
+# (`roll:luck`, the runbook's "Forced rolls"), its other draws failed: `goodluck.82m`, the log's
+# line, animation 18 over the Archangel after its flight, then the strike, 1 600 ms later than
+# `strike`'s. `seed`: the engine's seed whose rolls are as forced.
+[[sequence]]
+id = "luck"
+scenario = "seq-luck.toml"
+hot_seat = true
+seed = 7
+actions = ["roll:luck", "click:700,196"]
+fail = ["luck"]
+ms = 6000
+timeline = "timelines/luck.txt"
+frames = "timelines/luck-frames.txt"
+boxes = true
+command = [
+    { seat = "Attacker", command = { Attack = { target = 3, from = 47 } } },
+]
+
+# E17 M3 T7b-2b-2b: good luck on a shot and good morale after it (`seq-morale.toml`; design §7.16,
+# player 1): `shot` with Orrin's luck 3 and morale 2; the Marksmen's first shot lucky (`roll:
+# shot_luck`: animation 18 before it), their second not, then good morale (`roll:good_morale`:
+# `GoodMrle.wav`, animation 20 over them, the log's line after it) and their turn again.
+[[sequence]]
+id = "morale"
+scenario = "seq-morale.toml"
+seed = 73
+actions = ["roll:shot_luck", "roll:good_morale", "hex:49"]
+fail = ["shot_luck", "good_morale"]
+ms = 7500
+timeline = "timelines/morale.txt"
+frames = "timelines/morale-frames.txt"
+boxes = true
+command = [{ seat = "Attacker", command = { Shoot = { target = 2, at = 49 } } }]
+
+# E17 M3 T7b-2b-2b: bad morale (`seq-bad.toml`, hot seat; design §7.16, player 1): Orrin's army of
+# three towns (morale -1); the Champions defend, the Goblins' pick freezes them (`roll:bad_morale`:
+# `BadMrle.wav`, the log's line, animation 30 over them with their hit group), the Gnolls' turn
+# starts.
+[[sequence]]
+id = "bad"
+scenario = "seq-bad.toml"
+hot_seat = true
+seed = 9
+actions = ["roll:bad_morale", "key:d"]
+fail = ["bad_morale"]
+ms = 3500
+timeline = "timelines/bad.txt"
+frames = "timelines/bad-frames.txt"
+boxes = true
+command = [{ seat = "Attacker", command = { Defend = {} } }]
+
+# E17 M3 T7b-2b-2b: Fear (`seq-fear.toml`, hot seat; design §7.16, player 1): Crag Hack's Azure
+# Dragon defends, the Champions' pick freezes them (`roll:fear`: `Fear.wav`, the log's line,
+# animation 15 over them with their hit group), the Marksmen's turn starts.
+[[sequence]]
+id = "fear"
+scenario = "seq-fear.toml"
+hot_seat = true
+seed = 7
+actions = ["roll:fear", "key:d"]
+fail = ["fear"]
+ms = 4500
+timeline = "timelines/fear.txt"
+frames = "timelines/fear-frames.txt"
+boxes = true
+command = [{ seat = "Defender", command = { Defend = {} } }]

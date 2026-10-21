@@ -105,6 +105,10 @@ const HEAL_SOUND: u32 = 0x66_0A94;
 /// The sound of a spell resisted by its aimed stack (`cast_spell` 0x5A1F98, `MagicRes.wav`; E17 M3
 /// T7b-1).
 const RESIST_SOUND: u32 = 0x68_8440;
+/// The sounds of the rolled effects over a stack (E17 M3 T7b-2b-2b): good morale's
+/// (`good_morale_roll`, `GoodMrle.wav`), bad morale's (`bad_morale_check`, `BadMrle.wav`), Fear's
+/// (`fear_check`, `Fear.wav`) and good luck's (`melee_strike` and `stack_shot`, `goodluck.82m`).
+const ROLL_SOUNDS: [u32; 4] = [0x66_FF6C, 0x66_FF7C, 0x66_FF88, 0x66_0A20];
 /// The spell records (`spell_table`, 81 records of 0x88 bytes; E17 M3 T7b-1): +0 the spell's sign
 /// (1 positive, −1 negative, 0 neither; the count box's tint sums it, 0x43E6C7, E17 M3 T7b-2a),
 /// +4 the sound's name (none: 0), +8 the magic animation's number (−1: none).
@@ -226,6 +230,8 @@ struct Harvest {
     magic: Vec<(String, u8, bool)>,
     heal_sound: String,
     resist_sound: String,
+    /// Good morale's, bad morale's, Fear's and good luck's sounds.
+    roll_sounds: [String; 4],
     /// The spells' sounds and animations by original id, their projectiles' DEFs and angles,
     /// and `sptraits.txt`'s numbers by name.
     spells: Vec<(Option<String>, Option<u8>, i8)>,
@@ -423,6 +429,13 @@ fn read_harvest(
     }
     let heal_sound = stem(&string(HEAL_SOUND)?);
     let resist_sound = stem(&string(RESIST_SOUND)?);
+    let [good, bad, fear, luck] = ROLL_SOUNDS;
+    let roll_sounds = [
+        stem(&string(good)?),
+        stem(&string(bad)?),
+        stem(&string(fear)?),
+        stem(&string(luck)?),
+    ];
     let mut spells = Vec::new();
     for k in 0..SPELLS.1 {
         let record = bytes(&image, exe, SPELLS.0 + to_u32(k * SPELLS.2), 12)?;
@@ -474,6 +487,7 @@ fn read_harvest(
         magic,
         heal_sound,
         resist_sound,
+        roll_sounds,
         spells,
         projectiles,
         spell_numbers: spell_numbers(sptraits),
@@ -713,6 +727,15 @@ fn write_table(
             "]\nheal_sound = \"{}\"\nresist_sound = \"{}\"",
             plain(&h.heal_sound)?,
             plain(&h.resist_sound)?
+        );
+        let [good, bad, fear, luck] = &h.roll_sounds;
+        let _ = writeln!(
+            t,
+            "good_morale_sound = \"{}\"\nbad_morale_sound = \"{}\"\nfear_sound = \"{}\"\nluck_sound = \"{}\"",
+            plain(good)?,
+            plain(bad)?,
+            plain(fear)?,
+            plain(luck)?
         );
     }
     for c in &pack.creature {

@@ -242,7 +242,8 @@ pub struct Stage<'a> {
 }
 
 /// What a battle's casts draw (E17 M3 T7b-1, design §7.16): each spell the record casts by its
-/// handle, each side's hero as it casts, and the heroes' groups for it.
+/// handle, each side's hero as it casts, and the heroes' groups for it; and the creatures whose
+/// Fear a frightened stack's line names (E17 M3 T7b-2b-2b).
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Casts {
     /// The spells, by handle.
@@ -251,6 +252,9 @@ pub struct Casts {
     pub casters: [Option<Caster>; 2],
     /// The heroes' casting group (4) and standing group (0).
     pub groups: [u8; 2],
+    /// The creatures that frighten, by handle (the ruleset's `fear`; the original's creature 132,
+    /// the Azure Dragon, `fear_check` 0x464D40).
+    pub frighteners: BTreeSet<u16>,
 }
 
 /// A spell as its cast draws it (E17 M3 T7b-1): its magic animation (the spell record's +8; the
@@ -367,6 +371,18 @@ pub struct TintKey {
 /// The magic animation of a spell resisted by the stack it was aimed at (`cast_spell` 0x5A2043:
 /// number 0x4E over it, 100 ms a frame, without its hit; E17 M3 T7b-1).
 pub const RESISTED: u8 = 78;
+
+/// The magic animations of the rolled effects over one stack (design §7.16, player 1; E17 M3
+/// T7b-2b-2b), 100 ms a frame each: good morale 0x14 without the stack's hit (`good_morale_roll`
+/// 0x464A84), bad morale 0x1E and Fear 0xF with it (`bad_morale_check` 0x464D10, `fear_check`
+/// 0x464F33), good luck 0x12 without it (`melee_strike` 0x4418B3, `stack_shot` 0x43F9D1).
+pub const GOOD_MORALE: u8 = 20;
+/// Bad morale's ([`GOOD_MORALE`]).
+pub const BAD_MORALE: u8 = 30;
+/// Fear's ([`GOOD_MORALE`]).
+pub const FEAR: u8 = 15;
+/// Good luck's ([`GOOD_MORALE`]).
+pub const GOOD_LUCK: u8 = 18;
 
 /// The count a stack's box shows from `shown` on (E17 M3 T5b, design §4.3): a strike's kills
 /// show at its end.
@@ -570,6 +586,19 @@ pub enum Sound {
     /// A spell's own sound (its handle), cued on its target: the spell record's (the asset
     /// tables' spell `sound`, started after the resistance roll, 0x5A0331; E17 M3 T7b-1).
     Spell(u16),
+    /// Good morale, cued on its stack: the battle's sound (the asset tables' `good_morale_sound`,
+    /// category 2 as the heal's: `play_sound_file` from `good_morale_roll` 0x464A71; E17 M3
+    /// T7b-2b-2b).
+    GoodMorale,
+    /// Bad morale, cued on its stack (`bad_morale_sound`, `play_sound_file` from
+    /// `bad_morale_check` 0x464C89).
+    BadMorale,
+    /// Fear, cued on the frightened stack (`fear_sound`, `play_sound_file` from `fear_check`
+    /// 0x464E98).
+    Fear,
+    /// Good luck, cued on the striker or shooter (`luck_sound`, category 3 as a spell's:
+    /// `play_sound_async` from `melee_strike` 0x441860 and `stack_shot` 0x43F97E).
+    Luck,
 }
 
 /// A sound a stack starts at a time, or (`stop`) the move sound it ends then (E17 M2 T5b; the
@@ -1077,6 +1106,8 @@ struct Live {
     /// Its defense skill (the snapshot's, lowered by Disrupting Ray; E17 M3 T7b-2a): a defend's
     /// gain and Disrupting Ray's line.
     defense: i32,
+    /// Its creature frightens ([`Casts::frighteners`]; E17 M3 T7b-2b-2b).
+    frightens: bool,
 }
 
 impl Live {
@@ -1225,6 +1256,7 @@ fn played(
                 look: look.clone(),
                 spells: s.effects.iter().map(|e| e.spell).collect(),
                 defense: s.defense,
+                frightens: stage.casts.frighteners.contains(&s.creature),
             },
         );
     }
@@ -1759,20 +1791,16 @@ impl Player<'_> {
                         hits.push((t, d.0, k));
                         i += 1;
                     }
-                    // The line (E17 M3 T6b): the striker by its number before the strike; a
-                    // lucky roll's line before its animation (0x44187A, 0x43F998).
+                    // The line (E17 M3 T6b): the striker by its number before the strike.
                     let count = self.live(attacker).map_or(0, |l| l.count);
-                    if flags.lucky {
-                        let luck = Logged::Luck {
-                            stack: attacker,
-                            count,
-                        };
-                        self.log.push((self.clock.now, luck));
-                    }
                     if flags.ranged {
                         if shooter.is_none() {
                             shooter = self.live(attacker).map(|l| (attacker, l.right));
                             self.face_shot(attacker, target);
+                        }
+                        // Good luck as the shot starts (E17 M3 T7b-2b-2b).
+                        if flags.lucky {
+                            self.luck(attacker);
                         }
                         let start = self.shot(attacker, &hit);
                         // One target's line after its reactions (0x43FDB4), an area shot's of
@@ -1797,6 +1825,10 @@ impl Player<'_> {
                         struck = true;
                         if melee.is_none() && !flags.retaliation {
                             melee = self.melee(attacker, target, before_move);
+                        }
+                        // Good luck as the strike starts (E17 M3 T7b-2b-2b).
+                        if flags.lucky {
+                            self.luck(attacker);
                         }
                         // A breath's line is its target's, a multi-headed striker's every hit's
                         // (0x441B9B, 0x4404ED).
@@ -1873,12 +1905,14 @@ impl Player<'_> {
                 // An effect's start or end outside a hero's cast: a round's start ends the spells
                 // that ran out (0x447120), a creature's ability or cast adds one (E17 M3 T7b-2a).
                 Event::EffectApplied { .. } | Event::EffectEnded { .. } => self.effect(event),
-                Event::GoodMorale { stack } | Event::BadMorale { stack } => {
-                    let good = matches!(*event, Event::GoodMorale { .. });
-                    let count = self.live(stack).map_or(0, |l| l.count);
-                    let line = Logged::Morale { stack, count, good };
-                    self.log.push((self.clock.now, line));
+                // Good morale once the action is over (E17 M3 T7b-2b-2b): its shooter or striker
+                // turned back.
+                Event::GoodMorale { stack } => {
+                    self.attack_over(&mut melee, &mut shooter);
+                    self.good_morale(stack);
                 }
+                Event::BadMorale { stack } => self.frozen(stack, false),
+                Event::Frightened { stack } => self.frozen(stack, true),
                 Event::TacticsEnded {} => self.tactics = false,
                 Event::BattleEnded { result } => self.outcome = Some(result),
                 Event::RoundStarted { .. } => {
@@ -1894,8 +1928,17 @@ impl Player<'_> {
                     // changed show (E17 M3 T7b-2a, `resist` at 2 900: Slow's end).
                     self.show_tints(self.clock.now);
                     self.defends(stack, false);
-                    self.turns.push((self.clock.now, stack));
-                    self.log.push((self.clock.now, Logged::Turn(stack)));
+                    // A stack its pick freezes (bad morale, Fear) never becomes the active one:
+                    // the pick goes on to the next (`next_stack_to_act` 0x465283; E17 M3
+                    // T7b-2b-2b).
+                    let frozen = events.get(i).is_some_and(|e| {
+                        matches!(*e, Event::BadMorale { stack: s } | Event::Frightened { stack: s }
+                            if s == stack)
+                    });
+                    if !frozen {
+                        self.turns.push((self.clock.now, stack));
+                        self.log.push((self.clock.now, Logged::Turn(stack)));
+                    }
                     // A war machine's turn the command plays out (another turn follows in it):
                     // the battle loop ticks once as it acts, as for the computer's, which
                     // outlines it until its action's first frame shows (E17 M3 T3b, `machines`).
@@ -2001,29 +2044,148 @@ impl Player<'_> {
         [x + middle - w / 2, top]
     }
 
-    /// A magic animation over one stack (`play_magic_animation` 0x496840 without the hit,
-    /// design §7.15, §7.16): its frames at `time` each on the deadline, then a last redraw that
-    /// erases it; returns when its first frame shows (none: the stage has no such animation).
-    fn over_one(&mut self, number: u8, (target, live): (u8, &Live), time: u32) -> Option<u32> {
+    /// A magic animation over one stack (`play_magic_animation` 0x496840, design §7.15, §7.16):
+    /// with `hit` (E17 M3 T7b-2b-2b: bad morale, Fear) the stack first plays its hit group from
+    /// frame 0, a redraw at trunc(100 F) on the deadline each, the animation's frame i beside it
+    /// (none past its last: a hit longer than the animation, not met, *provisional*), then stands,
+    /// shown at once when the hit had at least as many frames (0x49697D); then the animation's
+    /// frames left at `time` each on the deadline, and a last redraw that erases it. Returns when
+    /// its first frame shows (none: the stage has no such animation).
+    fn over_one(
+        &mut self,
+        number: u8,
+        (target, live): (u8, &Live),
+        time: u32,
+        hit: bool,
+    ) -> Option<u32> {
         let look = self.stage.magic.get(&number).cloned()?;
         let over = vec![(target, self.magic_at(live, &look), !live.right)];
         let mut first = None;
-        for frame in (0..look.frames).map(Some).chain([None]) {
-            let drawn = self.clock.now;
-            let shown = self.clock.show(time);
-            self.flush(drawn, shown);
+        let mut left = 0;
+        if hit {
+            let group = self.stage.groups.hit;
+            let frames = live.look.count(group);
+            let tick = self.speed.scale(TICK);
+            for f in 0..frames {
+                let pose = Self::posed(live, group, f, live.hex);
+                self.pending.push((target, pose));
+                let frame = (f < look.frames).then_some(f);
+                let shown = self.magic_frame((number, &look), &over, frame, tick);
+                first = first.or(Some(shown));
+            }
+            self.pending.push((target, self.standing(live, live.hex)));
+            if frames >= look.frames {
+                self.redraw();
+            }
+            left = frames;
+        }
+        for frame in (left..look.frames).map(Some).chain([None]) {
+            let shown = self.magic_frame((number, &look), &over, frame, time);
             first = first.or(Some(shown));
-            self.magics.push(MagicKey {
-                animation: number,
-                drawn,
-                shown,
-                frame,
-                def: look.def.clone(),
-                translucent: look.translucent,
-                over: over.clone(),
-            });
         }
         first
+    }
+
+    /// One redraw of a magic animation over its stacks (`battle_redraw` 0x494440 waiting `time`
+    /// on the deadline): `frame` (none: erased) drawn now and shown at the deadline; returns
+    /// when it shows.
+    fn magic_frame(
+        &mut self,
+        (number, look): (u8, &MagicLook),
+        over: &[(u8, [i32; 2], bool)],
+        frame: Option<u32>,
+        time: u32,
+    ) -> u32 {
+        let drawn = self.clock.now;
+        let shown = self.clock.show(time);
+        self.flush(drawn, shown);
+        self.magics.push(MagicKey {
+            animation: number,
+            drawn,
+            shown,
+            frame,
+            def: look.def.clone(),
+            translucent: look.translucent,
+            over: over.to_vec(),
+        });
+        shown
+    }
+
+    /// Good luck on `stack`'s strike or shot (`melee_strike` 0x441837, `stack_shot` 0x43F955;
+    /// E17 M3 T7b-2b-2b, design §7.16): its sound starts, the log's line, then animation
+    /// [`GOOD_LUCK`] over the striker or shooter without its hit, before the strike's or the
+    /// shot's own animation (after the shooter's turn and a melee's pause and turns).
+    fn luck(&mut self, stack: u8) {
+        let Some(live) = self.live(stack) else {
+            return;
+        };
+        self.cue(stack, Sound::Luck, false);
+        let line = Logged::Luck {
+            stack,
+            count: live.count,
+        };
+        self.log.push((self.clock.now, line));
+        self.over_one(GOOD_LUCK, (stack, &live), self.speed.scale(TICK), false);
+    }
+
+    /// Good morale after `stack`'s action (`good_morale_roll` 0x4649D3; E17 M3 T7b-2b-2b, design
+    /// §7.16): its sound starts, animation [`GOOD_MORALE`] over it without its hit, the log's line
+    /// after it (0x464AD5), then the sound waited for (`wait_for_sample` 0x59A4C0: not with the
+    /// sound off, as the captures play; *provisional* with it on, as the heal's) and a redraw
+    /// shown at once (0x464B23).
+    fn good_morale(&mut self, stack: u8) {
+        let Some(live) = self.live(stack) else {
+            return;
+        };
+        self.cue(stack, Sound::GoodMorale, false);
+        self.over_one(GOOD_MORALE, (stack, &live), self.speed.scale(TICK), false);
+        let line = Logged::Morale {
+            stack,
+            count: live.count,
+            good: true,
+        };
+        self.log.push((self.clock.now, line));
+        self.redraw();
+    }
+
+    /// `stack` frozen as its pick asks (`next_stack_to_act` 0x465283, 0x465293; E17 M3
+    /// T7b-2b-2b, design §7.16): bad morale's or (`fear`) Fear's sound starts, the log's line,
+    /// then animation [`BAD_MORALE`] or [`FEAR`] over it with its hit (`bad_morale_check`
+    /// 0x464D10, `fear_check` 0x464F33), the sound waited for as good morale's. Fear's line names
+    /// the frightening creature by the number of those on the other side (0x464EE0): the first
+    /// such stack's, their numbers summed (*provisional*: one creature frightens, the original's
+    /// 132; the stack's side, not a hypnotized stack's controller).
+    fn frozen(&mut self, stack: u8, fear: bool) {
+        let Some(live) = self.live(stack) else {
+            return;
+        };
+        let count = live.count;
+        let (sound, number, line) = if fear {
+            let mut frighteners = self
+                .stacks
+                .iter()
+                .filter(|(_, l)| l.frightens && l.side != live.side && l.count > 0);
+            let by = frighteners.next().map(|(&id, l)| (id, l.count));
+            let (by, first) = by.unwrap_or((stack, 0));
+            let number = first + frighteners.map(|(_, l)| l.count).sum::<u32>();
+            let line = Logged::Fear {
+                stack,
+                count,
+                by,
+                number,
+            };
+            (Sound::Fear, FEAR, line)
+        } else {
+            let line = Logged::Morale {
+                stack,
+                count,
+                good: false,
+            };
+            (Sound::BadMorale, BAD_MORALE, line)
+        };
+        self.cue(stack, sound, false);
+        self.log.push((self.clock.now, line));
+        self.over_one(number, (stack, &live), self.speed.scale(TICK), true);
     }
 
     /// A frame of the hero of `side` (0 the attacker's): drawn now and shown at the deadline,
@@ -2088,7 +2250,7 @@ impl Player<'_> {
                     count: live.count,
                 };
                 self.log.push((self.clock.now, line));
-                self.over_one(RESISTED, (t, &live), time);
+                self.over_one(RESISTED, (t, &live), time, false);
             }
             Some((t, live)) => {
                 self.cue(t, Sound::Spell(spell), false);
@@ -2100,7 +2262,7 @@ impl Player<'_> {
                 };
                 let over = |player: &mut Self| {
                     if let Some(number) = look.animation {
-                        player.over_one(number, (t, &live), time);
+                        player.over_one(number, (t, &live), time, false);
                     }
                 };
                 done = true;

@@ -87,6 +87,13 @@ id = "battle.log.luck-good"
 args = { creature = "text" }
 original = [{ at = "GENRLTXT:46", printf = ["creature"] }]
 
+# Fear freezes a stack (E17 M3 T7b-2b-2b): the frightening creature's name by the number of them on
+# the other side (0x464EE0), then the frozen stack's by its own.
+[[key]]
+id = "battle.log.fear"
+args = { frightener = "text", creature = "text" }
+original = [{ at = "GENRLTXT:729", printf = ["frightener", "creature"] }]
+
 # The First Aid Tent heals a stack (0x478CE4, E17 M3 T6b): the tent's name and the patient's, each
 # by its own number; `hit_points`: the hit points healed. Its row's line break joins or splits it
 # as any line's (0x472E90).
