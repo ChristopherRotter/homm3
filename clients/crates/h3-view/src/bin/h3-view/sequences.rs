@@ -216,7 +216,8 @@ fn sequences(options: &Options) -> Result<usize, String> {
     )
     .map_err(|e| format!("{}: {e}", layout_path.display()))?;
     let bytes = read_archives(&options.install)?;
-    let exe = crate::text::executable(&options.install)?;
+    // The executable's own strings: read only when a line needs them.
+    let exe = crate::text::executable(&options.install).unwrap_or_default();
     let archives = bytes
         .iter()
         .map(|(name, b)| {

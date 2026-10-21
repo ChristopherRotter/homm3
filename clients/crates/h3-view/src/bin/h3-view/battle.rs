@@ -134,7 +134,8 @@ impl Battle {
         .map_err(|e| format!("{}: {e}", layout_path.display()))?;
         let archives = read_archives(&source.install)?;
         let parsed = parse(&archives)?;
-        let exe = crate::text::executable(&source.install)?;
+        // The executable's own strings: read only when a line needs them.
+        let exe = crate::text::executable(&source.install).unwrap_or_default();
         let looks = motion::looks(&record, &tables, &parsed)?;
         let magic = motion::magic(&record, &tables, &parsed)?;
         let casts = motion::casts(&record, &tables, &parsed, &source.packs)?;

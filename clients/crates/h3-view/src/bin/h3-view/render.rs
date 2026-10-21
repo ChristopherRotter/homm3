@@ -218,7 +218,9 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
     // The checkpoint: the archives (whole, CLT-Q2), then the batch.
     let (bytes, read) = timed(|| read_archives(&options.install));
     let bytes = bytes?;
-    let exe = crate::text::executable(&options.install)?;
+    // The executable's own strings: read only when a line needs them (none in an installation
+    // without it, as the synthetic one of the tests).
+    let exe = crate::text::executable(&options.install).unwrap_or_default();
     let archives = bytes
         .iter()
         .map(|(name, b)| {

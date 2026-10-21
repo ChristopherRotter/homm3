@@ -463,7 +463,10 @@ mod tests {
             .values()
             .flat_map(|k| k.original.iter().map(|(_, s, _)| s.table.as_str()))
             .collect();
-        let tables = ["CRTRAITS", "GENRLTXT", "HELP", "HOTRAITS", "SPTRAITS"];
+        // E17 M3 T7b-2b-3: the executable's own strings too (Acid Breath's line).
+        let tables = [
+            "CRTRAITS", "EXE", "GENRLTXT", "HELP", "HOTRAITS", "SPTRAITS",
+        ];
         assert_eq!(names, BTreeSet::from(tables));
     }
 
