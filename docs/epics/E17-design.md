@@ -1683,11 +1683,15 @@ resistance roll, if any (category 3, 0x5A0331); Curse's is named `Curse`, withou
   check: the action clears the active stack's outline at the click and the hero standing brings it
   back (the turn goes on); the panel's spell book is disabled from the click (the hero has cast
   this round); the original's memory holds a cast frame a deadline before the screen, so the
-  frame check keeps the viewer's own cast frames (`h3-view sequences`). Not built: the aiming
-  cursor and its status line ("Cast %s on %s" while the mouse is over a target, `enter_player_cast`
-  0x59EC50's loop, not read: `cast`'s log item masked at 0 to 400), the count box's tint by the
-  stack's spells (T7b-2: `cast` 238 pixels from 600, `resist` until Slow ends), the other
-  handlers (T7b-2, T7c).
+  frame check keeps the viewer's own cast frames (`h3-view sequences`); the aimed spell's status
+  line (GENRLTXT 28 "Cast %s on %s" over a stack by its number, 27 elsewhere; `enter_player_cast`
+  0x59EC50's loop not read) is not forced: `arrow`'s rounds keep the log's new lines, `cast`
+  shows it over an empty log (`mouse::track`'s `Input::Aim`, *provisional*); a key pressed right
+  after a cast acts at the cast's end. `arrow`: all 168 frames exact (the projectile's DEF by the
+  angle, its frames cycling, its 22 steps; the marked loop). Not built: the aiming cursor
+  (`crspell.DEF`, animated: not read; the harness clicks within the millisecond, so no capture
+  shows it), the count box's tint by the stack's spells (T7b-2: `cast` 238 pixels from 600,
+  `resist` until Slow ends), the other handlers (T7b-2, T7c).
 - **Not read:** the dissolve's blend; Chain Lightning's rays beyond `draw_ray`'s call (colour
   0x131, 0x5A64EF; T7c); how the glows are painted; the summons' and the Pit Lord's creation
   beyond the dissolve; Earthquake (sieges); the force-feedback effects (IFC20, nothing drawn).

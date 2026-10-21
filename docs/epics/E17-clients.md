@@ -421,9 +421,10 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   cast: its casting frames, a timed spell's line and animation (player 1), a resisted cast's
   sound, line and 78 beside the target, Magic Arrow's projectile and its animation over the struck
   stack's loop (players 7 and 2), their sounds; the outline cleared at the click, the spell book
-  disabled from it. Harvested: the spells' sounds, animations and projectiles, the heroes' cast
-  points; the spells' and heroes' names in the catalogue. `cast`, `resist`, `arrow` moved into
-  `sequences.toml`: their timelines as recorded, their frames exact but the listed differences
+  disabled from it, the aimed spell's status line. Harvested: the spells' sounds, animations and
+  projectiles, the heroes' cast points; the spells' and heroes' names in the catalogue. `cast`,
+  `resist`, `arrow` moved into `sequences.toml`: their timelines as recorded, `arrow`'s 168 frames
+  exact, `cast`'s and `resist`'s but the count box's spell tint (T7b-2) and one frame of `cast`
   (the review list).
 
 ### The adventure lane's harness (H1, H2: its batch E3)
@@ -500,14 +501,15 @@ Accepted by the user (M1 2026-10-13, M2 2026-10-14); moved to the log,
   records a column fills (`by`: `sptraits.txt`'s group rows). **The checks:** a sequence's `seed`
   (the engine's rolls: `resist` resists only the second cast with 3), the recorded `screen` lines
   left out of the timing check, a first `turn:` naming the opening's active stack acting at once
-  (as the harness does), the frame check keeping the viewer's own cast frames (the original's
-  memory a deadline ahead of its screen). **Found by the frames, kept** (*provisional* until more
-  casts): the outline cleared at a cast's click and back as the hero stands; the spell book
-  disabled from the click. **Listed differences:** `cast`'s log item at 0 to 400 (the aiming
-  status line "Cast … on …", not modelled), `cast`'s 71 pixels at 0 (the original redraws the
-  battlefield over a rock's top for that one frame at the click: not read), the count boxes'
-  spell tint (T7b-2: `cast` 238 pixels from 600, `resist` 197 to 228 while Slow lasts). The
-  window plays a spell's sound at 127 on the creature channels (category 3).
+  and a `key:` right after a cast acting at its end (as the harness does), the frame check keeping
+  the viewer's own cast frames (the original's memory a deadline ahead of its screen). **Found by
+  the frames, kept** (*provisional* until more casts): the outline cleared at a cast's click and
+  back as the hero stands; the spell book disabled from the click; the aimed spell's status line
+  "Cast %s on %s" not forced (the aiming loop not read; the cursor while aiming left as it was).
+  **Listed differences:** `cast`'s 71 pixels at 0 (the original redraws the battlefield over a
+  rock's top for that one frame at the click: not read), the count boxes' spell tint (T7b-2:
+  `cast` 238 pixels from 600, `resist` 197 to 228 while Slow lasts). The window plays a spell's
+  sound at 127 on the creature channels (category 3).
 
 - T8: the end's tune by the snapshot's human sides (the original's "human here"; a record of two
   computers shows the loser's side, as the original would), no town until sieges are drawn

@@ -67,11 +67,12 @@ Other lanes add entries here. The client lane turns each into a task, or moves i
   turn runs the same way, so no one sees another player's view.
 
 - 2026-10-21 (T7b-1): **a hero's aim.** Between the book's place and the target's click the
-  cursor is the spell's (`crspell.DEF`, animated: not read) and the status line says "Cast %s on
-  %s" over a target (GENRLTXT 28; `enter_player_cast` 0x59EC50's loop, not read): `cast`'s log
-  item is masked at 0 to 400 for it. With the mouse's model when T7c's area spells aim at hexes.
-  And `cast`'s 71 pixels at 0: the original redraws the battlefield over a rock's top (obstacle
-  22) for the one frame of the click (0x479038's path, not read).
+  cursor is the spell's (`crspell.DEF`, animated: not read; the viewer leaves it as it was) and the
+  status line says "Cast %s on %s" (GENRLTXT 28, built *provisional*, not forced; 27 elsewhere);
+  `enter_player_cast` 0x59EC50's loop is not read (which targets it offers, the cursor's frames):
+  with the mouse's model when T7c's area spells aim at hexes, and for live play. And `cast`'s 71
+  pixels at 0: the original redraws the battlefield over a rock's top (obstacle 22) for the one
+  frame of the click (0x479038's path, not read).
 
 - 2026-10-21 (T8): the battle's result window (`battle_result_dialog` 0x4702D0, not read beyond
   its tune: the heroes, the texts, the casualties, OK) and the whole screen darkened under it

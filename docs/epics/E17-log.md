@@ -1697,15 +1697,20 @@ linked for the staging only (all files staged once, the session then ran in the 
   the battle's own sounds by cue (`Battle::battle_sounds`), a spell's at 127 on a creature
   channel, `MagicRes` on the start sound's stream. `h3-view sequences`: `heroes` compared, a
   `seed` per sequence, the recorded `screen` lines left out; `pointer::inputs`: a first `turn:`
-  naming the opening's active stack acts at once.
+  naming the opening's active stack acts at once, a `key:` right after a cast acts at the cast's
+  end (the runbook's rule; before it, `arrow`'s round 2 posted the mouse over the Archangel as the
+  Pikemen's turn started: "Attack" forced over the log), `cast:` aims the record's next cast
+  (`Input::Aim`: the status line's "Cast %s on %s", GENRLTXT 28, not forced, *provisional*).
 - **Checked:** `cast`, `resist` (seed 3) and `arrow` moved into `sequences.toml`: their timelines
   as recorded on the first try (35, 62 and 140 changes); every other sequence as recorded.
-  Captured (`frames --only`): `cast` 36 frames, all exact but 0 to 400 (the log's item masked:
-  the aiming status line, not modelled), 0 (71 pixels: the original's one-frame restore over a
-  rock's top at the click) and the count box from 600 (238 pixels: Slow's tint, T7b-2); `resist`
-  61 frames, all exact but the count box while Slow lasts (197 to 228 pixels); `arrow`
-  ARROW_FRAMES. Before the fixes the frame check found the outline (cleared at the click), the
-  spell book (disabled) and the hero's frames (memory a deadline ahead). The window on `resist`'s
+  Captured (`frames --only`, count boxes compared): `cast` 36 frames, all exact but 0 (71
+  pixels: the original's one-frame restore over a rock's top at the click) and the count box from
+  600 (238 pixels: Slow's tint, T7b-2); `resist` 61 frames, all exact but the count box while
+  Slow lasts (197 to 228 pixels); `arrow` 168 frames, all exact (the projectile's DEFs, frames and
+  steps, the marked loop, the lines). Before the fixes the frame check found the outline (cleared
+  at the click), the spell book (disabled), the hero's frames (memory a deadline ahead), the
+  aiming status line (`cast` 0 to 400) and the key after a cast (`arrow`'s log item in round 2).
+  `drawn --record`: 72, the three new. The window on `resist`'s
   record with the `disk` driver: 131 of 131 frames read back exact; `Muckmire` and `MagicRes`
   once each in the mix (correlation 0.62 and 0.47 over the music), 2 879 ms apart against 2 900.
   `play` on the three records: the cues' sounds named. The viewer's tests (100 % of the library),
