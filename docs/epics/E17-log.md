@@ -1753,6 +1753,70 @@ The user's computer was linked for the staging only.
   `clients/scripts/check.sh` (all gates, the library at 100 %); `scripts/exe.py check` and
   `cited`.
 
+### M3 T7b-2b-1 — The harness forces the original's rolls (2026-10-21)
+
+On `client/e17-m3-t7b-2b-1`, the user present at the start: T7b-2b split with the user, who asked
+first for a way to reproduce the rolled effects reliably (the generator's state in the running
+game's memory, altered: feasible?), then morale, luck and fear (fear added at the user's word,
+T7b-2b-2) and the creatures' rolled animations (T7b-2b-3). The user's computer was linked for the
+staging only (24 files, every hash the user's).
+
+- **Starting point:** `master` at `8519f7a` (#363 merged); no client pull request open; the
+  client gates' full check on that code (`verify-once clients`: all gates).
+- **The reading** (`docs/exe/map.toml`, nine `*_draw` sites): every roll T7b-2b needs is one call
+  of `random_between` 0x50B230 (`a + rand() mod (b − a + 1)`, fastcall) or of the C library's
+  `rand` 0x617E5C: good morale `random(1, 24) <= morale` (0x4649D3), bad morale
+  `random(1, 12) <= -morale` (0x464BC7; a computer side's let-off draw 0x464BF0 after it), fear
+  `rand() mod 10 = 0` (0x464DF1), luck `random(1, 24) <= luck` as a melee strike starts
+  (0x441837) and for a shot (0x43F955), Death Stare `random(1, 100) <= 10` per Mighty Gorgon
+  (0x440EE0), the Thunderbird's bolt and the Rust Dragon's acid `<= 20` (0x44119D, 0x4414B7),
+  Poison `<= 30` (0x440839). Acid Breath's lowered defense and Life Drain draw nothing. Both
+  morale draws are made for every stack asked, whatever its morale.
+- **Why not the generator's state:** `rand` keeps its seed per thread (+0x14 of the C library's
+  thread data), and the draws before a roll vary (one per creature of a damage roll, the fidget
+  clocks after every action, the cosmetic draws of the idle step), so no state written at a step
+  aims at one roll. Redirecting the roll's call does, and leaves the sequence of draws as it was.
+- **The harness** (the runbook's "Forced rolls"): `xdd.dll` redirects the nine calls at its load
+  (each only if its bytes are the call named) to `forced_between` or `forced_rand`, which draw
+  as the call would and return a forced draw where the harness asks (`ctl`: `roll <name> <value>
+  <count>`, `rolls <name> <value>|natural`; `ack` adds the draws forced, those pending, the calls
+  redirected). `h3drive.py`: `ROLLS` (each roll's falling and failing draw), the action
+  `roll:<name>[:fail]`, a sequence's `fail` (`--fail`); a sequence fails when fewer calls were
+  redirected or a forced draw stayed untaken. `sequences` drops a recorded timeline's `screen`
+  lines for an entry that does not record them (`resist` was `CHANGED` for them alone). The
+  viewer's mouse takes `roll:` as no input (`pointer::inputs`).
+- **Checked:** in the original, the Champions' walk (`seq-walk.toml`, morale 1 by one town) with
+  `roll:good_morale` and `fail = good_morale`: active again at 2 592 ms, animation 20 over them
+  at 100 ms a frame; with `fail` alone the Marksmen's turn at 2 592 ms. An Azure Dragon against
+  them (an ad-hoc scenario): `roll:fear` played animation 15 over the Champions at 5 400 ms and
+  skipped their turn, failed they took it. Every run's `ack`: 9 calls redirected, none pending.
+  `walk`, `strike`, `shot` and `resist` replayed with the redirected calls: all as recorded.
+  `scripts/exe.py check` and `cited`; the client gates (`clients/scripts/check.sh`).
+
+### M3 T7b-2b-2a — A hero's luck and morale on the original's map (2026-10-21)
+
+On `client/e17-m3-t7b-2b-2a`, the user present: after T7b-2b-1 the user asked to make luck
+forceable as well (the hero given the skill or an artifact); T7b-2b-2 split so (T7b-2b-2a this,
+T7b-2b-2b the morale, luck and fear animations and recordings). The sandbox and its staged files
+were T7b-2b-1's.
+
+- **Starting point:** `master` at `7812798` (#366 merged); no client pull request open.
+- **The route:** a scenario's hero already carries its derived morale and luck as battle
+  `effects` (`{ kind = "luck", amount = 3 }`, the engine's BAT-HER-003); only the original's map
+  lacked them. The packs record each secondary skill level's effects (Leadership `morale` 1 to 3,
+  Luck `luck` 1 to 3), so the writer gives the hero the skill level whose effects are the change
+  alone, data-driven; artifacts not needed (a skill gives exactly 1 to 3, one source).
+- **The viewer:** `scenario::effect_skills` (an effect no level gives alone, another kind, or two
+  of one skill: refused), `SideHero::skills`, written after the book's school skills
+  (`situation`); the binary depends on `h3-content` and `h3-contracts` (binary-only in
+  `purity.rs`; `clients/Cargo.lock`). `h3mem`: a stack's `morale` (+0x4E8) and `luck` (+0x4EC).
+- **Checked:** `seq-shot.toml` with Orrin's `effects` luck 3 and morale 2 (an ad-hoc copy): the
+  original's Marksmen and Pikemen at luck 3 and morale 3 (Expert Luck; Advanced Leadership and one
+  town), the defenders 0; the engine's record the same. `roll:shot_luck` with `fail` on
+  `shot_luck` and `good_morale`: magic 18 over the Marksmen from 0 ms, 100 ms a frame, the log
+  "Good luck shines on the Marksmen"; failed, the timeline was the recorded `shot`'s line for
+  line. The binary's tests (33, two new), the client gates (`clients/scripts/check.sh`).
+
 ## Accepted review lists (M1, M2)
 
 Moved from the epic file on 2026-10-20 (less start-up reading), unchanged.

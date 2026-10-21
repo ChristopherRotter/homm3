@@ -1,0 +1,84 @@
+# E08 batch E4c played by the capture harness (E08 T32b2, `cross-lane`; h3adv.py batch): the
+# procedure of experiments/specs/E08-batch-4c.toml as steps, on Easy. Hot seat, Red and Blue
+# human; every hero stands where the spec puts it (`at`), each Pikeman one column east. Day 1,
+# Red: E4-7a and E4-7b (the topmost ground: the battlefield's special field), E4-8 (a full army's
+# raised Skeletons: the army before and after), E4-9 by plan (Blue's Thunderbirds attack Red's
+# Ballista while Red's Archangels defend, then every stack attacks: auto combat does not play two
+# human sides, E08 T32b1); Blue: E4-10b onto the Cartographer's entrance, its offer declined; day
+# 2, Red: E4-10 clicks Blue's hero from the tile above, a battle played by `attack`. `note` as
+# batch E4a's.
+
+spec = "experiments/specs/E08-batch-4c.toml"
+players = ["Red", "Blue"]
+difficulty = "easy"
+
+# --- Day 1, Red: E4-7 (the topmost of two grounds) ---------------------------------------------
+
+[[step]]
+encounter = "E4-7a"
+hero = "E4-7a"
+walk = [10, 6]
+battle = "auto"
+expect = { question = "none", battle = true, dialogs = true }
+note = { "worn artifacts at the start but the war machines (the starting bonus)" = "before:hero:equipment" }
+record = { "the battlefield" = "battlefield", "the battle's winner" = "winner" }
+
+[[step]]
+encounter = "E4-7b"
+hero = "E4-7b"
+walk = [22, 6]
+battle = "auto"
+expect = { question = "none", battle = true, dialogs = true }
+note = { "worn artifacts at the start but the war machines (the starting bonus)" = "before:hero:equipment" }
+record = { "the battlefield" = "battlefield", "the battle's winner" = "winner" }
+
+# --- Day 1, Red: E4-8 (a full army's raised Skeletons) -----------------------------------------
+
+[[step]]
+encounter = "E4-8"
+hero = "E4-8"
+walk = [4, 12]
+battle = "auto"
+expect = { question = "none", battle = true, dialogs = true }
+note = { "worn artifacts at the start but the war machines (the starting bonus)" = "before:hero:equipment" }
+record = { "E4-8's army before" = "before:hero:army", "the stacks at the start" = "stacks:start", "the battle's winner" = "winner", "the creatures raised (the message)" = "messages", "E4-8's army after" = "hero:army", "E4-8's experience after" = "hero:experience" }
+
+# --- Day 1, Red: E4-9 (a destroyed Ballista's artifact) ----------------------------------------
+
+[[step]]
+encounter = "E4-9"
+hero = "E4-9"
+walk = [10, 12]
+battle = { attack = "Ballista", by = "defender", then = "attack" }
+level_up = "left"
+expect = { question = "none", battle = true, dialogs = true }
+record = { "E4-9's artifacts before (worn, by slot)" = "before:hero:artifacts", "the Ballista destroyed (yes/no)" = "destroyed:Ballista", "the battle's winner" = "winner", "E4-9's artifacts after (worn, by slot)" = "hero:artifacts", "E4-9's backpack after" = "hero:backpack", "E4-9's experience after" = "hero:experience", "E4-9's level after" = "hero:level" }
+
+[[step]]
+end_turn = true
+
+# --- Day 1, Blue: E4-10b onto the Cartographer's entrance, its offer declined -------------------
+# The question's record (`questions`) stands for "asked": `none` if no question showed.
+
+[[step]]
+encounter = "E4-10"
+hero = "E4-10b"
+walk = [18, 18]
+answer = "no"
+expect = { question = "other", battle = false }
+note = { "E4-10b's worn artifacts at the start but the war machines (the starting bonus)" = "before:hero:equipment" }
+record = { "E4-10b's tile after day 1" = "hero:tile", "the Cartographer's question asked (yes/no)" = "questions" }
+
+[[step]]
+end_turn = true
+
+# --- Day 2, Red: E4-10 attacks Blue's hero on the entrance from the tile above ------------------
+
+[[step]]
+encounter = "E4-10"
+hero = "E4-10"
+walk = [18, 18]
+battle = "attack"
+expect = { question = "none", battle = true, dialogs = true }
+note = { "E4-10's worn artifacts at the start but the war machines (the starting bonus)" = "before:hero:equipment" }
+record = { "a battle (yes/no)" = "battle", "E4-10's tile after the click" = "hero:tile", "the battle's winner" = "winner" }

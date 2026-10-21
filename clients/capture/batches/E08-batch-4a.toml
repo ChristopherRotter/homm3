@@ -1,0 +1,164 @@
+# E08 batch E4a played by the capture harness (E08 T32b2, `cross-lane`; h3adv.py batch): the
+# procedure of experiments/specs/E08-batch-4a.toml as steps, on Easy. Hot seat, Red and Blue
+# human. The encounters' tiles are h3-experiment's grid (size 36: heroes at (3 + 6 (i mod 6),
+# 3 + 5 (i div 6)) by the encounter's index i, each Pikeman or Swordsman one column east).
+# Day 1, Red: the five E4-1 heroes are Blue's and never move: each is read by name (`hero[..]`)
+# while Red's E4-2a is selected, before anything moves; then E4-2a to E4-4b fight in the spec's
+# order, the start read before each walk (`before:`), each level-up dialog recorded. Blue: E4-5a
+# to E4-5c. `note` puts a hero's artifacts besides the war machines (`equipment`: every hero
+# wears a Catapult) under "anything odd" when it wears any (the starting bonus's trap: an
+# artifact's primary skills show in the hero's); the scorer
+# (crates/h3-map/examples/e4_score.rs) predicts the rest from each seed byte.
+
+spec = "experiments/specs/E08-batch-4a.toml"
+players = ["Red", "Blue"]
+difficulty = "easy"
+
+# --- Day 1, Red: E4-1's levels at load (Blue's heroes, read by name) ---------------------------
+
+[[step]]
+encounter = "E4-1a"
+hero = "E4-2a"
+note = { "worn artifacts but the war machines (the starting bonus)" = "hero[E4-1a]:equipment" }
+record = { "seed byte (hero +0x8F)" = "hero[E4-1a]:seed", "Wisdom last offered (hero +0x90)" = "hero[E4-1a]:wisdom_offer", "a school last offered (hero +0x3F)" = "hero[E4-1a]:school_offer", "experience at the start" = "hero[E4-1a]:experience", "level at the start" = "hero[E4-1a]:level", "primary skills at the start (attack/defense/power/knowledge)" = "hero[E4-1a]:primary", "secondary skills at the start (in the hero's order, each with its level)" = "hero[E4-1a]:skills" }
+
+[[step]]
+encounter = "E4-1b"
+hero = "E4-2a"
+note = { "worn artifacts but the war machines (the starting bonus)" = "hero[E4-1b]:equipment" }
+record = { "seed byte (hero +0x8F)" = "hero[E4-1b]:seed", "Wisdom last offered (hero +0x90)" = "hero[E4-1b]:wisdom_offer", "a school last offered (hero +0x3F)" = "hero[E4-1b]:school_offer", "experience at the start" = "hero[E4-1b]:experience", "level at the start" = "hero[E4-1b]:level", "primary skills at the start (attack/defense/power/knowledge)" = "hero[E4-1b]:primary", "secondary skills at the start (in the hero's order, each with its level)" = "hero[E4-1b]:skills" }
+
+[[step]]
+encounter = "E4-1c"
+hero = "E4-2a"
+note = { "worn artifacts but the war machines (the starting bonus)" = "hero[E4-1c]:equipment" }
+record = { "seed byte (hero +0x8F)" = "hero[E4-1c]:seed", "Wisdom last offered (hero +0x90)" = "hero[E4-1c]:wisdom_offer", "a school last offered (hero +0x3F)" = "hero[E4-1c]:school_offer", "experience at the start" = "hero[E4-1c]:experience", "level at the start" = "hero[E4-1c]:level", "primary skills at the start (attack/defense/power/knowledge)" = "hero[E4-1c]:primary", "secondary skills at the start (in the hero's order, each with its level)" = "hero[E4-1c]:skills" }
+
+[[step]]
+encounter = "E4-1d"
+hero = "E4-2a"
+note = { "worn artifacts but the war machines (the starting bonus)" = "hero[E4-1d]:equipment" }
+record = { "seed byte (hero +0x8F)" = "hero[E4-1d]:seed", "Wisdom last offered (hero +0x90)" = "hero[E4-1d]:wisdom_offer", "a school last offered (hero +0x3F)" = "hero[E4-1d]:school_offer", "experience at the start" = "hero[E4-1d]:experience", "level at the start" = "hero[E4-1d]:level", "primary skills at the start (attack/defense/power/knowledge)" = "hero[E4-1d]:primary", "secondary skills at the start (in the hero's order, each with its level)" = "hero[E4-1d]:skills" }
+
+[[step]]
+encounter = "E4-1e"
+hero = "E4-2a"
+note = { "worn artifacts but the war machines (the starting bonus)" = "hero[E4-1e]:equipment" }
+record = { "seed byte (hero +0x8F)" = "hero[E4-1e]:seed", "Wisdom last offered (hero +0x90)" = "hero[E4-1e]:wisdom_offer", "a school last offered (hero +0x3F)" = "hero[E4-1e]:school_offer", "experience at the start" = "hero[E4-1e]:experience", "level at the start" = "hero[E4-1e]:level", "primary skills at the start (attack/defense/power/knowledge)" = "hero[E4-1e]:primary", "secondary skills at the start (in the hero's order, each with its level)" = "hero[E4-1e]:skills" }
+
+# --- Day 1, Red: E4-2 (level 10), E4-3 (Wisdom at 3), E4-4 (three dialogs: right, left, right) --
+
+[[step]]
+encounter = "E4-2a"
+hero = "E4-2a"
+walk = [34, 3]
+battle = "auto"
+level_up = "left"
+expect = { question = "none", battle = true, dialogs = true }
+note = { "worn artifacts at the start but the war machines (the starting bonus)" = "before:hero:equipment" }
+record = { "seed byte (hero +0x8F)" = "before:hero:seed", "Wisdom last offered (hero +0x90)" = "before:hero:wisdom_offer", "a school last offered (hero +0x3F)" = "before:hero:school_offer", "experience at the start" = "before:hero:experience", "level at the start" = "before:hero:level", "primary skills at the start (attack/defense/power/knowledge)" = "before:hero:primary", "secondary skills at the start (in the hero's order, each with its level)" = "before:hero:skills", "dialog 1, level" = "level_up:1:level", "dialog 1, primary skill raised" = "level_up:1:primary", "dialog 1, left offer (or the only one)" = "level_up:1:left", "dialog 1, right offer" = "level_up:1:right", "dialog 1, taken" = "level_up:1:taken", "experience after" = "hero:experience", "level after" = "hero:level", "primary skills after (attack/defense/power/knowledge)" = "hero:primary", "secondary skills after (in the hero's order, each with its level)" = "hero:skills" }
+
+[[step]]
+encounter = "E4-2b"
+hero = "E4-2b"
+walk = [4, 8]
+battle = "auto"
+level_up = "left"
+expect = { question = "none", battle = true, dialogs = true }
+note = { "worn artifacts at the start but the war machines (the starting bonus)" = "before:hero:equipment" }
+record = { "seed byte (hero +0x8F)" = "before:hero:seed", "Wisdom last offered (hero +0x90)" = "before:hero:wisdom_offer", "a school last offered (hero +0x3F)" = "before:hero:school_offer", "experience at the start" = "before:hero:experience", "level at the start" = "before:hero:level", "primary skills at the start (attack/defense/power/knowledge)" = "before:hero:primary", "secondary skills at the start (in the hero's order, each with its level)" = "before:hero:skills", "dialog 1, level" = "level_up:1:level", "dialog 1, primary skill raised" = "level_up:1:primary", "dialog 1, left offer (or the only one)" = "level_up:1:left", "dialog 1, right offer" = "level_up:1:right", "dialog 1, taken" = "level_up:1:taken", "experience after" = "hero:experience", "level after" = "hero:level", "primary skills after (attack/defense/power/knowledge)" = "hero:primary", "secondary skills after (in the hero's order, each with its level)" = "hero:skills" }
+
+[[step]]
+encounter = "E4-2c"
+hero = "E4-2c"
+walk = [10, 8]
+battle = "auto"
+level_up = "left"
+expect = { question = "none", battle = true, dialogs = true }
+note = { "worn artifacts at the start but the war machines (the starting bonus)" = "before:hero:equipment" }
+record = { "seed byte (hero +0x8F)" = "before:hero:seed", "Wisdom last offered (hero +0x90)" = "before:hero:wisdom_offer", "a school last offered (hero +0x3F)" = "before:hero:school_offer", "experience at the start" = "before:hero:experience", "level at the start" = "before:hero:level", "primary skills at the start (attack/defense/power/knowledge)" = "before:hero:primary", "secondary skills at the start (in the hero's order, each with its level)" = "before:hero:skills", "dialog 1, level" = "level_up:1:level", "dialog 1, primary skill raised" = "level_up:1:primary", "dialog 1, left offer (or the only one)" = "level_up:1:left", "dialog 1, right offer" = "level_up:1:right", "dialog 1, taken" = "level_up:1:taken", "experience after" = "hero:experience", "level after" = "hero:level", "primary skills after (attack/defense/power/knowledge)" = "hero:primary", "secondary skills after (in the hero's order, each with its level)" = "hero:skills" }
+
+[[step]]
+encounter = "E4-3a"
+hero = "E4-3a"
+walk = [16, 8]
+battle = "auto"
+level_up = "left"
+expect = { question = "none", battle = true, dialogs = true }
+note = { "worn artifacts at the start but the war machines (the starting bonus)" = "before:hero:equipment" }
+record = { "seed byte (hero +0x8F)" = "before:hero:seed", "Wisdom last offered (hero +0x90)" = "before:hero:wisdom_offer", "a school last offered (hero +0x3F)" = "before:hero:school_offer", "experience at the start" = "before:hero:experience", "level at the start" = "before:hero:level", "primary skills at the start (attack/defense/power/knowledge)" = "before:hero:primary", "secondary skills at the start (in the hero's order, each with its level)" = "before:hero:skills", "dialog 1, level" = "level_up:1:level", "dialog 1, primary skill raised" = "level_up:1:primary", "dialog 1, left offer (or the only one)" = "level_up:1:left", "dialog 1, right offer" = "level_up:1:right", "dialog 1, taken" = "level_up:1:taken", "experience after" = "hero:experience", "level after" = "hero:level", "primary skills after (attack/defense/power/knowledge)" = "hero:primary", "secondary skills after (in the hero's order, each with its level)" = "hero:skills" }
+
+[[step]]
+encounter = "E4-3b"
+hero = "E4-3b"
+walk = [22, 8]
+battle = "auto"
+level_up = "left"
+expect = { question = "none", battle = true, dialogs = true }
+note = { "worn artifacts at the start but the war machines (the starting bonus)" = "before:hero:equipment" }
+record = { "seed byte (hero +0x8F)" = "before:hero:seed", "Wisdom last offered (hero +0x90)" = "before:hero:wisdom_offer", "a school last offered (hero +0x3F)" = "before:hero:school_offer", "experience at the start" = "before:hero:experience", "level at the start" = "before:hero:level", "primary skills at the start (attack/defense/power/knowledge)" = "before:hero:primary", "secondary skills at the start (in the hero's order, each with its level)" = "before:hero:skills", "dialog 1, level" = "level_up:1:level", "dialog 1, primary skill raised" = "level_up:1:primary", "dialog 1, left offer (or the only one)" = "level_up:1:left", "dialog 1, right offer" = "level_up:1:right", "dialog 1, taken" = "level_up:1:taken", "experience after" = "hero:experience", "level after" = "hero:level", "primary skills after (attack/defense/power/knowledge)" = "hero:primary", "secondary skills after (in the hero's order, each with its level)" = "hero:skills" }
+
+[[step]]
+encounter = "E4-3c"
+hero = "E4-3c"
+walk = [28, 8]
+battle = "auto"
+level_up = "left"
+expect = { question = "none", battle = true, dialogs = true }
+note = { "worn artifacts at the start but the war machines (the starting bonus)" = "before:hero:equipment" }
+record = { "seed byte (hero +0x8F)" = "before:hero:seed", "Wisdom last offered (hero +0x90)" = "before:hero:wisdom_offer", "a school last offered (hero +0x3F)" = "before:hero:school_offer", "experience at the start" = "before:hero:experience", "level at the start" = "before:hero:level", "primary skills at the start (attack/defense/power/knowledge)" = "before:hero:primary", "secondary skills at the start (in the hero's order, each with its level)" = "before:hero:skills", "dialog 1, level" = "level_up:1:level", "dialog 1, primary skill raised" = "level_up:1:primary", "dialog 1, left offer (or the only one)" = "level_up:1:left", "dialog 1, right offer" = "level_up:1:right", "dialog 1, taken" = "level_up:1:taken", "experience after" = "hero:experience", "level after" = "hero:level", "primary skills after (attack/defense/power/knowledge)" = "hero:primary", "secondary skills after (in the hero's order, each with its level)" = "hero:skills" }
+
+[[step]]
+encounter = "E4-4a"
+hero = "E4-4a"
+walk = [34, 8]
+battle = "auto"
+level_up = ["right", "left", "right"]
+expect = { question = "none", battle = true, dialogs = true }
+note = { "worn artifacts at the start but the war machines (the starting bonus)" = "before:hero:equipment" }
+record = { "seed byte (hero +0x8F)" = "before:hero:seed", "Wisdom last offered (hero +0x90)" = "before:hero:wisdom_offer", "a school last offered (hero +0x3F)" = "before:hero:school_offer", "experience at the start" = "before:hero:experience", "level at the start" = "before:hero:level", "primary skills at the start (attack/defense/power/knowledge)" = "before:hero:primary", "secondary skills at the start (in the hero's order, each with its level)" = "before:hero:skills", "dialog 1, level" = "level_up:1:level", "dialog 1, primary skill raised" = "level_up:1:primary", "dialog 1, left offer (or the only one)" = "level_up:1:left", "dialog 1, right offer" = "level_up:1:right", "dialog 1, taken" = "level_up:1:taken", "dialog 2, level" = "level_up:2:level", "dialog 2, primary skill raised" = "level_up:2:primary", "dialog 2, left offer (or the only one)" = "level_up:2:left", "dialog 2, right offer" = "level_up:2:right", "dialog 2, taken" = "level_up:2:taken", "dialog 3, level" = "level_up:3:level", "dialog 3, primary skill raised" = "level_up:3:primary", "dialog 3, left offer (or the only one)" = "level_up:3:left", "dialog 3, right offer" = "level_up:3:right", "dialog 3, taken" = "level_up:3:taken", "experience after" = "hero:experience", "level after" = "hero:level", "primary skills after (attack/defense/power/knowledge)" = "hero:primary", "secondary skills after (in the hero's order, each with its level)" = "hero:skills" }
+
+[[step]]
+encounter = "E4-4b"
+hero = "E4-4b"
+walk = [4, 13]
+battle = "auto"
+level_up = ["right", "left", "right"]
+expect = { question = "none", battle = true, dialogs = true }
+note = { "worn artifacts at the start but the war machines (the starting bonus)" = "before:hero:equipment" }
+record = { "seed byte (hero +0x8F)" = "before:hero:seed", "Wisdom last offered (hero +0x90)" = "before:hero:wisdom_offer", "a school last offered (hero +0x3F)" = "before:hero:school_offer", "experience at the start" = "before:hero:experience", "level at the start" = "before:hero:level", "primary skills at the start (attack/defense/power/knowledge)" = "before:hero:primary", "secondary skills at the start (in the hero's order, each with its level)" = "before:hero:skills", "dialog 1, level" = "level_up:1:level", "dialog 1, primary skill raised" = "level_up:1:primary", "dialog 1, left offer (or the only one)" = "level_up:1:left", "dialog 1, right offer" = "level_up:1:right", "dialog 1, taken" = "level_up:1:taken", "dialog 2, level" = "level_up:2:level", "dialog 2, primary skill raised" = "level_up:2:primary", "dialog 2, left offer (or the only one)" = "level_up:2:left", "dialog 2, right offer" = "level_up:2:right", "dialog 2, taken" = "level_up:2:taken", "dialog 3, level" = "level_up:3:level", "dialog 3, primary skill raised" = "level_up:3:primary", "dialog 3, left offer (or the only one)" = "level_up:3:left", "dialog 3, right offer" = "level_up:3:right", "dialog 3, taken" = "level_up:3:taken", "experience after" = "hero:experience", "level after" = "hero:level", "primary skills after (attack/defense/power/knowledge)" = "hero:primary", "secondary skills after (in the hero's order, each with its level)" = "hero:skills" }
+
+[[step]]
+end_turn = true
+
+# --- Day 1, Blue: E4-5 (a known school's weight) -----------------------------------------------
+
+[[step]]
+encounter = "E4-5a"
+hero = "E4-5a"
+walk = [10, 13]
+battle = "auto"
+level_up = "left"
+expect = { question = "none", battle = true, dialogs = true }
+note = { "worn artifacts at the start but the war machines (the starting bonus)" = "before:hero:equipment" }
+record = { "seed byte (hero +0x8F)" = "before:hero:seed", "Wisdom last offered (hero +0x90)" = "before:hero:wisdom_offer", "a school last offered (hero +0x3F)" = "before:hero:school_offer", "experience at the start" = "before:hero:experience", "level at the start" = "before:hero:level", "primary skills at the start (attack/defense/power/knowledge)" = "before:hero:primary", "secondary skills at the start (in the hero's order, each with its level)" = "before:hero:skills", "dialog 1, level" = "level_up:1:level", "dialog 1, primary skill raised" = "level_up:1:primary", "dialog 1, left offer (or the only one)" = "level_up:1:left", "dialog 1, right offer" = "level_up:1:right", "dialog 1, taken" = "level_up:1:taken", "experience after" = "hero:experience", "level after" = "hero:level", "primary skills after (attack/defense/power/knowledge)" = "hero:primary", "secondary skills after (in the hero's order, each with its level)" = "hero:skills" }
+
+[[step]]
+encounter = "E4-5b"
+hero = "E4-5b"
+walk = [16, 13]
+battle = "auto"
+level_up = "left"
+expect = { question = "none", battle = true, dialogs = true }
+note = { "worn artifacts at the start but the war machines (the starting bonus)" = "before:hero:equipment" }
+record = { "seed byte (hero +0x8F)" = "before:hero:seed", "Wisdom last offered (hero +0x90)" = "before:hero:wisdom_offer", "a school last offered (hero +0x3F)" = "before:hero:school_offer", "experience at the start" = "before:hero:experience", "level at the start" = "before:hero:level", "primary skills at the start (attack/defense/power/knowledge)" = "before:hero:primary", "secondary skills at the start (in the hero's order, each with its level)" = "before:hero:skills", "dialog 1, level" = "level_up:1:level", "dialog 1, primary skill raised" = "level_up:1:primary", "dialog 1, left offer (or the only one)" = "level_up:1:left", "dialog 1, right offer" = "level_up:1:right", "dialog 1, taken" = "level_up:1:taken", "experience after" = "hero:experience", "level after" = "hero:level", "primary skills after (attack/defense/power/knowledge)" = "hero:primary", "secondary skills after (in the hero's order, each with its level)" = "hero:skills" }
+
+[[step]]
+encounter = "E4-5c"
+hero = "E4-5c"
+walk = [22, 13]
+battle = "auto"
+level_up = "left"
+expect = { question = "none", battle = true, dialogs = true }
+note = { "worn artifacts at the start but the war machines (the starting bonus)" = "before:hero:equipment" }
+record = { "seed byte (hero +0x8F)" = "before:hero:seed", "Wisdom last offered (hero +0x90)" = "before:hero:wisdom_offer", "a school last offered (hero +0x3F)" = "before:hero:school_offer", "experience at the start" = "before:hero:experience", "level at the start" = "before:hero:level", "primary skills at the start (attack/defense/power/knowledge)" = "before:hero:primary", "secondary skills at the start (in the hero's order, each with its level)" = "before:hero:skills", "dialog 1, level" = "level_up:1:level", "dialog 1, primary skill raised" = "level_up:1:primary", "dialog 1, left offer (or the only one)" = "level_up:1:left", "dialog 1, right offer" = "level_up:1:right", "dialog 1, taken" = "level_up:1:taken", "experience after" = "hero:experience", "level after" = "hero:level", "primary skills after (attack/defense/power/knowledge)" = "hero:primary", "secondary skills after (in the hero's order, each with its level)" = "hero:skills" }

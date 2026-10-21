@@ -29,13 +29,15 @@ xdd.dll (xdd.c: freeze, step, run), so that every frame is taken at an exact gam
                                             after the opening, default 0)
 
   h3drive.py sequence <map.h3m> <out-dir> [--pre <ms>] [--action <a>]... [--ms <n>] [--screen]
-                    [--hot-seat] [--heroes] [--screens]
+                    [--hot-seat] [--heroes] [--screens] [--fail <roll>]...
                                             a sequence frame by frame (M2 T3): the opening, the
                                             clock stepped <pre> ms, the actions at the frozen
                                             clock (hex:<n> clicks a hex, click:x,y, move:x,y,
                                             key:<name>, step:<ms>, cast:<k>[:<hex>] casts the
                                             spell at the hero's book's place k, M3 T7a-2a;
-                                            at:<ms> steps 1 ms at a time,
+                                            roll:<roll>[:fail] forces the roll's next draw to
+                                            make it fall or fail, M3 T7b-2b-1, the runbook's
+                                            "Forced rolls"; at:<ms> steps 1 ms at a time,
                                             each step read, up to <ms> after the opening before
                                             the actions after it: a battle in progress, M3 T1a;
                                             turn:<side>.<record> steps so until that stack's turn
@@ -50,7 +52,8 @@ xdd.dll (xdd.c: freeze, step, run), so that every frame is taken at an exact gam
                                             (a hero's cast, M3 T7a-2a); --screens the screen's
                                             changes (where the screen differs from the step
                                             before: the magic animations memory does not show,
-                                            M3 T7a-2b)
+                                            M3 T7a-2b); --fail makes every other draw of the
+                                            roll fail it (M3 T7b-2b-1)
   h3drive.py sequences [<sequences.toml>] [--out <dir>] [--only <id>]
                                             the recorded sequences (default
                                             clients/situations/sequences.toml) unattended: each
@@ -96,6 +99,20 @@ WIDTH, HEIGHT = 800, 600
 # the battlefield, beside the log's item (the layout's [log], compared since M3 T4b-2b-1) and
 # below its scroll arrows, more than 50 px from the probes; hovering nothing that shows a hint.
 PARK = (618, 593)
+# The rolls the harness forces (M3 T7b-2b-1; xdd.c's `sites`, the runbook's "Forced rolls"): by
+# name, the draw that makes the roll fall and the one that makes it fail. Each draw happens for
+# every stack at its moment, whatever its morale or luck: a forced one goes to the next.
+ROLLS = {
+    "good_morale": (1, 24),  # random(1, 24) <= morale after an action: another turn
+    "bad_morale": (1, 12),   # random(1, 12) <= -morale at a pick: the stack freezes
+    "fear": (0, 1),          # rand() mod 10 = 0 at a pick, beside Azure Dragons: frightened
+    "luck": (1, 24),         # random(1, 24) <= luck as a melee strike starts: a lucky strike
+    "shot_luck": (1, 24),    # the same for a shot
+    "death_stare": (1, 100),  # random(1, 100) <= 10 per Mighty Gorgon: one creature killed
+    "thunderbird": (1, 100),  # random(1, 100) <= 20: the Thunderbird's bolt
+    "acid": (1, 100),        # random(1, 100) <= 20: the Rust Dragon's acid damage
+    "poison": (1, 100),      # random(1, 100) <= 30: the Wyvern Monarch's Poison
+}
 # How long `turn:` waits for the stack's turn (M3 T7a-2a): a human's stack waiting for an action
 # would keep the clock stepping for ever.
 TURN_LIMIT = 30000
@@ -230,11 +247,22 @@ class Game:
 
     # -- the clock ----------------------------------------------------------------------------
     def ack(self):
+        """xdd.dll's acknowledgement: the command's seq, the clock's time, the game's reads since,
+        and (M3 T7b-2b-1) the draws forced, the forced draws pending and the calls redirected."""
         try:
-            seq, t, reads = (self.clock_dir / "ack").read_text().split()
-            return int(seq), int(t), int(reads)
+            fields = [int(v) for v in (self.clock_dir / "ack").read_text().split()]
         except (OSError, ValueError):
             return None
+        return tuple(fields + [0] * (6 - len(fields))) if len(fields) >= 3 else None
+
+    def roll(self, name, falls=True, count=1):
+        """Forces the next `count` draws of the roll `name` (ROLLS) to make it fall, or fail (M3
+        T7b-2b-1)."""
+        self.clock(f"roll {name} {ROLLS[name][0 if falls else 1]} {count}")
+
+    def rolls_fail(self, name):
+        """Every other draw of the roll `name` fails it (M3 T7b-2b-1)."""
+        self.clock(f"rolls {name} {ROLLS[name][1]}")
 
     def clock(self, command, settle_reads=20, timeout=10.0):
         """Sends a clock command and waits until the game read the clock `settle_reads` times
@@ -519,9 +547,15 @@ def book_place(k):
 def act(game, action):
     """One action at the frozen clock: hex:<n>, click:x,y, move:x,y, key:<name>, step:<ms>,
     cast:<k>[:<hex>] (M3 T7a-2a: the hero's spell book by its key C, its place k, then the target
-    hex if the spell takes one)."""
+    hex if the spell takes one), roll:<name>[:fail] (M3 T7b-2b-1: the roll's next draw falls, or
+    fails; ROLLS)."""
     kind, _, arg = action.partition(":")
-    if kind == "cast":
+    if kind == "roll":
+        name, _, how = arg.partition(":")
+        if name not in ROLLS or how not in ("", "fail"):
+            raise ValueError(f"`{action}`: the rolls are {', '.join(ROLLS)}, `:fail` or nothing")
+        game.roll(name, falls=how != "fail")
+    elif kind == "cast":
         place, _, target = arg.partition(":")
         if not 0 <= int(place) < 12:
             raise ValueError(f"`{action}`: the book has the places 0 to 11")
@@ -617,7 +651,7 @@ def timeline(states, heroes=False):
 
 
 def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, frames=False,
-             hot_seat=False, heroes=False, screens=False):
+             hot_seat=False, heroes=False, screens=False, fail=()):
     """The battle of the map: its opening, `pre` ms on, the actions, then `ms` steps of 1 ms,
     each followed by the game's state (h3mem); returns the states (times in ms after the
     opening, the clocks relative to it). An action `at:<ms>` (M3 T1a) steps 1 ms at a time, each
@@ -630,7 +664,9 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
     (the log's lines and the buttons change there alone), since M3 T6c-2 its cursor too (the
     viewer draws it). With `heroes` (M3 T7a-2a) the timeline has the heroes' changes too; with
     `screens` (M3 T7a-2b) each state the box where the screen changed since the step before
-    (`changed`), which the timeline lists."""
+    (`changed`), which the timeline lists. With `fail` (M3 T7b-2b-1) every draw of those rolls
+    (ROLLS) fails them but those a `roll:` action forces; a forced draw no roll took fails the
+    sequence."""
     import hashlib
     import json
 
@@ -648,6 +684,15 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
     # The mouse poll's grid from the opening (M3 T6c-2): the cursor moves at the same times in
     # every run.
     mem.align_mouse_poll(t0)
+    # The forced rolls (M3 T7b-2b-1): xdd.dll redirected every roll's call, or none is forced.
+    rolls = bool(fail) or any(a.startswith("roll:") for a in actions)
+    if rolls and game.ack()[5] != len(ROLLS):
+        raise RuntimeError(f"xdd.dll redirected {game.ack()[5]} of the {len(ROLLS)} rolls' "
+                           "calls (another Heroes3.exe?)")
+    for name in fail:
+        if name not in ROLLS:
+            raise ValueError(f"`fail`: {name}: the rolls are {', '.join(ROLLS)}")
+        game.rolls_fail(name)
     now = game.clock(f"step {pre}") if pre else t0
     kept = Path(out) / "frames"
     if frames:
@@ -724,15 +769,22 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
     (out / "turns.txt").write_text("".join(f"{t}\n" for t in turns))
     if stalled:  # M3 T7a-2b: the files above show how far it came
         raise RuntimeError(f"{stalled} (the states so far: {out / 'states.jsonl'})")
+    if rolls and game.ack()[4]:
+        raise RuntimeError(f"{game.ack()[4]} forced draws no roll took (the states: "
+                           f"{out / 'states.jsonl'})")
     return states
 
 
 def sequence_command(map_path, out, rest):
     opts = {"--pre": "0", "--ms": "1000"}
     actions, screen, frames, hot_seat, heroes, screens, i = [], False, False, False, False, False, 0
+    fail = []
     while i < len(rest):
         if rest[i] == "--action":
             actions.append(rest[i + 1])
+            i += 2
+        elif rest[i] == "--fail":
+            fail.append(rest[i + 1])
             i += 2
         elif rest[i] == "--screen":
             screen, i = True, i + 1
@@ -753,7 +805,7 @@ def sequence_command(map_path, out, rest):
     game = Game(out)
     try:
         sequence(game, map_path, out, int(opts["--pre"]), actions, int(opts["--ms"]), screen,
-                 frames, hot_seat, heroes, screens)
+                 frames, hot_seat, heroes, screens, fail)
     finally:
         game.stop()
     print(f"sequence: {out}/timeline.txt")
@@ -787,7 +839,7 @@ def run_sequences(rest):
         try:
             sequence(game, map_path, here, e.get("pre", 0), e.get("actions", []), e["ms"],
                      hot_seat=e.get("hot_seat", False), heroes=e.get("heroes", False),
-                     screens=e.get("screens", False))
+                     screens=e.get("screens", False), fail=e.get("fail", ()))
         finally:
             game.stop()
         recorded = set_path.parent / e["timeline"]
@@ -795,7 +847,11 @@ def run_sequences(rest):
         if not recorded.exists():
             verdict = "new"
         else:
-            verdict = "ok" if got == recorded.read_text() else "CHANGED"
+            want = recorded.read_text()
+            if not e.get("screens"):  # recorded with them in casts.toml (M3 T7b-2b-1: `resist`)
+                want = "".join(line for line in want.splitlines(keepends=True)
+                               if " screen " not in line)
+            verdict = "ok" if got == want else "CHANGED"
         failed += verdict != "ok"
         print(f"{e['id']}: {len(got.splitlines())} changes in {e['ms']} ms {verdict}", flush=True)
     print(f"sequences: {len(entries)}, {failed} not as recorded; timelines under {out}")
@@ -864,7 +920,7 @@ def run_frames(rest):
             game = Game(here)
             try:
                 sequence(game, map_path, here, e.get("pre", 0), e.get("actions", []), e["ms"],
-                         frames=True, hot_seat=e.get("hot_seat", False))
+                         frames=True, hot_seat=e.get("hot_seat", False), fail=e.get("fail", ()))
             finally:
                 game.stop()
         kept = [json.loads(line) for line in (here / "frames.jsonl").read_text().splitlines()]

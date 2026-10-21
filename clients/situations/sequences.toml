@@ -1,11 +1,13 @@
 # The recorded sequences (E17 M2 T3, *provisional*; clients/capture/README.md, "Sequences"): each
 # runs its scenario's battle in the original (its map from `h3-view situation`), steps the clock
-# `pre` ms after the opening, performs its actions at the frozen clock (`hex:<n>` clicks a hex)
-# and steps 1 ms at a time for `ms` ms, reading the stacks' animation state from the game's
-# memory (h3mem.py). `timeline` holds what it recorded: one line per change of a stack's group,
-# frame or hex, `<ms after the opening> <side>.<record> g<group> f<frame> h<hex>`, numbers only
-# (ADR-0009). Inside an animation a change at t is the frame the game drew at t, shown from the
-# next frame deadline; a change by the idle step (a fidget) shows at t (design §7.1).
+# `pre` ms after the opening, performs its actions at the frozen clock (`hex:<n>` clicks a hex;
+# `roll:<name>` and the key `fail`, E17 M3 T7b-2b-1: the original's forced rolls, the runbook's
+# "Forced rolls") and steps 1 ms at a time for `ms` ms, reading the stacks' animation state from
+# the game's memory (h3mem.py). `timeline` holds what it recorded: one line per change of a
+# stack's group, frame or hex, `<ms after the opening> <side>.<record> g<group> f<frame> h<hex>`,
+# numbers only (ADR-0009). Inside an animation a change at t is the frame the game drew at t,
+# shown from the next frame deadline; a change by the idle step (a fidget) shows at t (design
+# §7.1).
 # `h3drive.py sequences` fails when a timeline changes. The timings these confirm:
 # docs/epics/E17-design.md §7. `[[sequence.command]]` (E17 M2 T4a): the engine's commands for what
 # the actions did in the original, each a seat and a wire command (stack ids: the attacker's

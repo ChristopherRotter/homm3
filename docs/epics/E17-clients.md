@@ -1,11 +1,11 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b, T8, T7b-1, T7b-2a done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b, T8, T7b-1, T7b-2a, T7b-2b-1, T7b-2b-2a done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
 [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
-are there). Next: M3 T7b-2b, T7c (`docs/lanes/client/QUEUE.md`).
+are there). Next: M3 T7b-2b-2b, T7b-2b-3, T7c (`docs/lanes/client/QUEUE.md`).
 
 ## Goal
 
@@ -247,7 +247,10 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   recordings; T7b on stacks with morale and luck, split with the user on 2026-10-21 into
   T7b-1, a hero's cast on one stack, and T7b-2, the rest, which the user split on 2026-10-21
   into T7b-2a, the parts without the original's rolls, and T7b-2b, morale, luck and the
-  creatures' rolled animations; T7c area spells, rays and spell obstacles) and their sounds.
+  creatures' rolled animations, which the user split on 2026-10-21 into T7b-2b-1, the harness
+  forcing the original's rolls (the user's wish), T7b-2b-2, morale, luck and fear (its first part
+  T7b-2b-2a, a scenario's hero's luck and morale on the original's map, at the user's word), and
+  T7b-2b-3, the creatures' rolled animations; T7c area spells, rays and spell obstacles) and their sounds.
 - The sound's remainder (T8: the battle's end; the volume settings later).
 - **Exit:** the reference set passes, or each difference is a listed fix or a classified quirk.
 - **T1a done 2026-10-14** ([log](E17-log.md#m3-t1a--turns-and-the-walk-by-2026-10-14),
@@ -433,6 +436,19 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   tint by its stack's spells (the spell records' sign harvested), Haste and Slow's walk time,
   Dispel, Cure and Disrupting Ray on one stack with their lines. `haste` and `dispel` recorded,
   played as recorded and their frames exact; `cast`'s and `resist`'s boxes exact.
+- **T7b-2b-1 done 2026-10-21** ([log](E17-log.md#m3-t7b-2b-1--the-harness-forces-the-originals-rolls-2026-10-21),
+  the runbook's "Forced rolls"): T7b-2b split with the user, who asked for the original's rolls
+  reproduced at will first. `xdd.dll` redirects the calls of nine rolls (good and bad morale,
+  fear, melee and shot luck, Death Stare, the Thunderbird's bolt, the Rust Dragon's acid, Poison)
+  to a function that draws as the call would and returns a forced draw where the harness asks
+  (`roll:<name>`, a sequence's `fail`); checked on good morale and fear in the original, four
+  sequences replayed as recorded.
+- **T7b-2b-2a done 2026-10-21** ([log](E17-log.md#m3-t7b-2b-2a--a-heros-luck-and-morale-on-the-originals-map-2026-10-21),
+  the runbook's "Forced rolls"): at the user's word, luck made forceable. `h3-view situation`
+  gives a scenario's hero the skill level behind each of its morale and luck `effects`
+  (Leadership, Luck: the pack's level whose effects are that change alone); `h3mem` reads a
+  stack's morale and luck. Checked in the original: the Marksmen at luck 3 and morale 3 as in
+  the engine, a forced lucky shot (animation 18, its line), a failed one as the recorded `shot`.
 
 ### The adventure lane's harness (H1, H2: its batch E3)
 
@@ -501,6 +517,24 @@ Accepted by the user (M1 2026-10-13, M2 2026-10-14); moved to the log,
 ## M3 review list
 
 (Filled by the tasks: choices queued for the milestone review under the autonomy contract.)
+
+- T7b-2b-2a: **a scenario's hero effects on the original's map** (*provisional*): each morale or
+  luck change becomes the secondary skill level whose effects are that change alone (Leadership,
+  Luck, 1 to 3, own stacks); other effects are refused, and no artifact gives them. The viewer's
+  binary depends on the engine's `h3-content` and `h3-contracts` (binary-only, `purity.rs`) to
+  name the effects.
+
+- T7b-2b-1: T7b-2b split with the user (2026-10-21: T7b-2b-1 the forced rolls, at the user's
+  word; T7b-2b-2 morale, luck and fear, fear added at the user's word; T7b-2b-3 the creatures'
+  rolled animations). **The harness changes the running copy's code**, where it changed only the
+  clock's import slot before: nine call instructions (5 bytes each, checked against the call they
+  must be) redirected to `xdd.dll`, which draws as they would; files never change, a draw not
+  forced is the original's, so the generator's sequence stays the same (*provisional*). Forcing
+  the generator's state was the user's idea and was not taken: the C library keeps it per thread,
+  and the draws before a roll vary (damage per creature, fidgets, cosmetic draws), so a state
+  cannot aim at one roll. `h3drive.py sequences` drops the recorded `screen` lines of an entry
+  that does not record them (`resist`, recorded in `casts.toml` with them, reported `CHANGED`
+  before).
 
 - T7b-2a: T7b-2 split with the user (2026-10-21: T7b-2a the parts without the original's rolls,
   T7b-2b morale, luck and the creatures' rolled animations). **Formats** (lasting): the asset

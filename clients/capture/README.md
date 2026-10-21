@@ -16,7 +16,7 @@ enter git (they stay in the sandbox or `clients/out/`).
 | File | What it does |
 |---|---|
 | `setup.sh [copy]` | Installs 32-bit Wine, Xvfb, xdotool, ImageMagick and mingw-w64; makes the run directory `original-data/wine/game` from the copy (default `original-data/install`); builds `xdd.dll`; writes the game's settings (no intro, no grid, no sound, full screen, a hero's path shown before it walks, auto combat playing the creatures) into the Wine prefix (`$WINEPREFIX`, default `~/.wine-h3`, in a directory the shell's user owns). |
-| `xdd.c`, `xdd.def` | Our `xdd.dll`: forwards the GOG executable's `DirectDrawCreate` to Wine's ddraw, and the **virtual clock** (below). |
+| `xdd.c`, `xdd.def` | Our `xdd.dll`: forwards the GOG executable's `DirectDrawCreate` to Wine's ddraw, the **virtual clock** and the **forced rolls** (below). |
 | `h3drive.py` | The driver: starts the game, the recipes (fixed coordinates, screens by probes), the clock, dumps; the commands `battle`, `set`, `learn`, `shot`, `sequence`, `sequences`, `frames`. |
 | `screens.toml` | The screens the driver recognises: 12 probes `[x, y, 5-6-5 value]` each (numbers only). |
 | `h3cap.py` | `diff` (our render against a capture, with masks) and `find` (the original's obstacles in a capture); `compare` and `boxes_at` for the frame check. |
@@ -109,8 +109,11 @@ them, run again, and record each frame's count with why. Situations need the hum
 open (speed above every enemy's; the original's AI acts at once) and armies of one faction or
 without Leadership's morale. Each side's hero is the scenario's (`attacker_hero`,
 `defender_hero`, with their primary skills; M3 T3a) with the scenario's war machines as
-artifacts (`attacker_war_machines`, `defender_war_machines`; M3 T3b), without skills or other
-artifacts; an entry's `hot_seat = true` (M3 T3b) starts it in hot seat, so that a faster stack of
+artifacts (`attacker_war_machines`, `defender_war_machines`; M3 T3b), without other artifacts;
+its skills only the school skills of its masteries (below) and those behind its `effects` (M3
+T7b-2b-2a: a morale or luck change of 1 to 3 to its own stacks becomes Leadership or Luck at that
+level, the pack's skill level whose effects are that change alone; any other effect is refused);
+an entry's `hot_seat = true` (M3 T3b) starts it in hot seat, so that a faster stack of
 Blue's opens idle instead of acting (`smoke`);
 the packs in their order (base, ab, sod) give the original's hero types. A scenario's
 `battlefield` (M3 T2) is set up on the defender's (Blue's) tile: water east of it for the shore
@@ -321,12 +324,14 @@ observation; `before:<observation>` reads the same before the step:
 | `battle`, `winner`, `retreated`, `surrendered` | yes or no; the side (`attacker`, `defender`, `none`) |
 | `stacks:start`, `stacks:end[:<side>]` | the battle's stacks (`attacker 20 Archangels \| defender 3 Pikemen, 2 Halberdiers`) |
 | `hexes:start[:<side>]` | their hexes at the start (the formation) |
-| `hero:<detail>`, `hero[<name>]:<detail>` | the step's hero after the step, or another by name: `experience`, `level`, `primary` (`3/5/1/2`), `army`, `skill:<name>` (none, basic, advanced, expert), `on_map`, `tile`; since E08 T32b1 `skills` (`Leadership expert, Wisdom basic`, in the hero's order), `seed` (the level seed, hero +0x8F), `wisdom_offer` and `school_offer` (the levels Wisdom and a school were last offered at, +0x90, +0x3F), `artifacts` (worn: `Ballista (war machine 1), …` in slot order) and `backpack` |
+| `hero:<detail>`, `hero[<name>]:<detail>` | the step's hero after the step, or another by name: `experience`, `level`, `primary` (`3/5/1/2`), `army`, `skill:<name>` (none, basic, advanced, expert), `on_map`, `tile`; since E08 T32b1 `skills` (`Leadership expert, Wisdom basic`, in the hero's order), `seed` (the level seed, hero +0x8F), `wisdom_offer` and `school_offer` (the levels Wisdom and a school were last offered at, +0x90, +0x3F), `artifacts` (worn: `Ballista (war machine 1), …` in slot order) and `backpack`; since E08 T32b2 `equipment` (the worn artifacts but the war machines and the spell book: a starting bonus's) |
 | `monster:x,y`, `aggression:x,y`, `never_flees:x,y` | the monster on a tile (`30 Pikemen`, `none`), its aggression (−4 to 10) and flag, from the tile's word |
 
 `expect = { marks = <n>, path = "green", question = "join, flee", battle = true, dialogs = true }`
 notes a difference under the encounter's "anything odd" (`dialogs = true`: dialogs passed after
-the walk are expected). `end_turn = true` ends the turn. Everything the record holds comes from
+the walk are expected). `note = { <label> = <observation> }` (E08 T32b2) reads as `record` does
+and adds `<label>: <value>` under "anything odd" unless it reads `none` (batch E4: a hero's
+`equipment`, the starting bonus's trap). `end_turn = true` ends the turn. Everything the record holds comes from
 the game's memory, not from the screen. `compare` prints each record line of two filled templates
 as the same or different (random amounts differ by nature: judge them by their ranges).
 
@@ -379,17 +384,61 @@ executable imports no other clock or timer), at a virtual clock; the executable'
 they are. With `H3CLOCK` set to a directory (a Windows path; the driver uses `Z:` + its output
 folder's `clock/`), it runs in real time until a command arrives in `ctl`, one line
 `<seq> freeze | step <ms> | run`; a new `<seq>` applies once. Every 2 ms it writes `ack`:
-`<seq> <time> <reads>`, the reads of the clock since the command. A game that keeps reading a
-stopped clock is idle at that time: `Game.clock` waits for 20 reads, `Game.settled` for two equal
-dumps (Wine may draw a moment later).
+`<seq> <time> <reads>`, the reads of the clock since the command (then the forced rolls'
+three numbers, below). A game that keeps reading a stopped clock is idle at that time:
+`Game.clock` waits for 20 reads, `Game.settled` for two equal dumps (Wine may draw a moment
+later).
+
+## Forced rolls
+
+*Provisional* (E17 M3 T7b-2b-1, the user's wish: the effects that need a roll of the original's,
+reproduced at will). At its load `xdd.dll` redirects the call of each roll in its table
+(`sites`; `docs/exe/map.toml`'s `*_draw` entries) to its own function, which draws as the call
+would (`random_between` 0x50B230 or the C library's `rand` 0x617E5C: the generator's sequence
+stays the original's) and returns that draw unless the harness forced it. Only a call whose bytes
+are the one named is redirected; that and the clock's import slot are the only bytes of the
+running copy that change, never a file. Commands in `ctl`: `<seq> roll <name> <value> <count>`
+(the next `<count>` draws return `<value>`), `<seq> rolls <name> <value>` (every other draw does)
+and `<seq> rolls <name> natural` (they are drawn again, as at the start). `ack` goes on with
+`<forced> <pending> <sites>`: the draws forced so far, the forced draws still waiting and the
+calls redirected.
+
+| Roll (`ROLLS`) | Draw (falls, fails) | Where, when |
+|---|---|---|
+| `good_morale` | `random(1, 24) <= morale` (1, 24) | 0x4649D3, after a walk, attack, shot or creature cast |
+| `bad_morale` | `random(1, 12) <= -morale` (1, 12) | 0x464BC7, at a pick (none at the battle's first); a computer side's let-off draw is not forced: hot seat has none |
+| `fear` | `rand() mod 10 = 0` (0, 1) | 0x464DF1, at a pick, beside Azure Dragons |
+| `luck`, `shot_luck` | `random(1, 24) <= luck` (1, 24) | 0x441837 as a melee strike starts, 0x43F955 a shot; only with luck above 0: the hero's `effects = [{ kind = "luck", amount = 3 }]` (Expert Luck on the map, T7b-2b-2a) |
+| `death_stare` | `random(1, 100) <= 10` (1, 100) | 0x440EE0, once per Mighty Gorgon: a creature killed each |
+| `thunderbird` | `random(1, 100) <= 20` (1, 100) | 0x44119D, the Thunderbird's bolt |
+| `acid` | `random(1, 100) <= 20` (1, 100) | 0x4414B7, the Rust Dragon's acid damage (its amount drawn after, not forced) |
+| `poison` | `random(1, 100) <= 30` (1, 100) | 0x440839, the Wyvern Monarch's Poison |
+
+A sequence's action `roll:<name>` forces the roll's next draw to fall, `roll:<name>:fail` to fail;
+its key `fail = ["<name>", …]` (`--fail <name>` for `sequence`) fails every other draw of those
+rolls, so nothing falls the sequence did not ask for (the runs' differences in "Traps" among
+them). Each draw is made for every stack at its moment whatever its morale or luck (a morale of 0
+draws and never falls): a forced draw goes to the next stack that rolls, so `roll:` comes right
+before the action it is for (a pick's: before the action that ends the turn before). A sequence
+fails when xdd.dll redirected fewer calls than the table has, or when a forced draw was left
+untaken at its end. The viewer's mouse (`pointer::inputs`) takes `roll:` as no input; the engine's
+own rolls follow its `seed`. Checked at T7b-2b-1: the Champions' walk (`seq-walk.toml`) with
+`roll:good_morale` got another turn and animation 20 at 2 592 ms, failed they gave the Marksmen
+theirs; an Azure Dragon's fear (`rand`) forced over the Champions (animation 15) and failed;
+`walk`, `strike`, `shot` and `resist` replayed with the redirected calls as recorded. Checked at
+T7b-2b-2a: `seq-shot.toml` with Orrin's `effects` luck 3 and morale 2 (Expert Luck, Advanced
+Leadership on the map): the original's Marksmen and Pikemen at luck 3 and morale 3 (the one town's
+1 too; `h3mem`'s `luck`, `morale`), as the engine gives them; `roll:shot_luck` played good luck's
+animation 18 over the Marksmen before their shot and its line, failed (with `good_morale`) the
+shot's timeline was the recorded `shot`'s.
 
 ## The original's state
 
 `h3mem.py` opens the game's `/proc/<pid>/mem` (Wine maps `Heroes3.exe` at its image base, so the
 map's addresses hold): the frame deadline and the idle step's time, the combat speed, the mouse
 (its hex, the cursor's kind, type, frame and the point it is drawn at: M3 T6c-2), and per
-stack its creature, hex, group, frame, facing, offsets, times, count and the count its box shows
-(`shown`, M3 T5b) (`docs/exe/structs.toml`). On
+stack its creature, hex, group, frame, facing, offsets, times, count, the count its box shows
+(`shown`, M3 T5b), its morale and luck (M3 T7b-2b-2a) (`docs/exe/structs.toml`). On
 the adventure map (M2 T6): the current player, each player's selected hero, hero list and
 resources, every hero's name, tile and points, the view's top-left tile, the tile under the
 mouse and the selected hero's path (design §6.3). It only reads, but for the mouse poll's timer
@@ -433,7 +482,8 @@ design §7.1.
   strike back) and one gave the Archangel good morale at 3 730 ms (magic 20); one `machines`
   run played magic 18 over the Archers as they shot; in one `climb` run the computer's stack
   walked at 2 396 ms. Run again: a `CHANGED` whose timeline shows such a roll or move is that,
-  not a change of the viewer.
+  not a change of the viewer. A sequence's `fail` (M3 T7b-2b-1, "Forced rolls") keeps morale,
+  luck and the abilities' rolls from falling; the damage rolls stay free.
 - An XWD file's colour map holds bytes the X server leaves unset: compare pixels, never files.
 - The menus run in real time; only the battle runs on the stepped clock. Two runs still agree:
   the battle's setup does not depend on the clock (observed: the obstacles follow the tile).

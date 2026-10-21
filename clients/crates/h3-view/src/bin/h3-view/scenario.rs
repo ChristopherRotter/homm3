@@ -8,7 +8,9 @@ use std::fs;
 use std::path::Path;
 
 use h3_battle::{BattleSetup, BattleSide, BattleState, LegalCommands, NoopSink, Viewer};
+use h3_content::{CompiledHeroEffect, HeroEffect};
 use h3_content_battle::BattleRuleset;
+use h3_contracts::BattleEffect;
 use h3_kernel::{Rng, StreamId};
 use h3_protocol::session::Bot as _;
 use h3_protocol::session::{ConnId, GameConfig, SeatKind, Session};
@@ -106,7 +108,9 @@ pub struct Sides {
 /// A side's hero for the original's map (E17 M3 T3a): its hero type's and class's numbers in
 /// the ruleset, which are the original's when its packs come in their order (base, ab, sod, as
 /// `harvest` keys the heroes; `situation` checks the name against `hotraits.txt`), its name, its
-/// attack, defense, power and knowledge, and its spell book (M3 T7a-2a).
+/// attack, defense, power and knowledge, its spell book (M3 T7a-2a) and the secondary skills
+/// behind its battle effects (M3 T7b-2b-2a: [`effect_skills`], each the skill's number and
+/// level).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SideHero {
     pub hero_type: usize,
@@ -114,6 +118,7 @@ pub struct SideHero {
     pub name: String,
     pub primary: [u8; 4],
     pub book: Option<Book>,
+    pub skills: Vec<(u8, u8)>,
 }
 
 /// A hero's spell book for the original's map (E17 M3 T7a-2a): the book's artifact number
@@ -203,6 +208,48 @@ pub fn school_skills(
         .collect()
 }
 
+/// The secondary skills behind a hero's battle effects on the original's map (E17 M3 T7b-2b-2a,
+/// *provisional*; the scenario's `effects`, a derived hero's morale and luck): for each effect the
+/// skill and level whose effects are that effect alone (the packs' Leadership for a morale change
+/// of 1 to 3 to the own stacks, Luck for a luck change), the skill's number the ruleset's, which
+/// is the original's (`sstraits.txt`'s order). An effect no skill level gives alone, or two of one
+/// skill, the map cannot give the hero: an error. By number.
+pub fn effect_skills(
+    ruleset: &BattleRuleset,
+    effects: &[BattleEffect],
+) -> Result<Vec<(u8, u8)>, String> {
+    let core = &**ruleset;
+    let mut skills: Vec<(u8, u8)> = Vec::new();
+    for effect in effects {
+        let wanted: CompiledHeroEffect = match *effect {
+            BattleEffect::Morale { amount, affects } => HeroEffect::Morale { amount, affects },
+            BattleEffect::Luck { amount, affects } => HeroEffect::Luck { amount, affects },
+            ref other => {
+                return Err(format!(
+                    "{other:?}: no skill gives it on the original's map"
+                ));
+            }
+        };
+        let (number, level) = core
+            .skills()
+            .iter()
+            .enumerate()
+            .find_map(|(i, skill)| {
+                (1..=3)
+                    .find(|&l| skill.effects(l) == [wanted.clone()])
+                    .map(|l| (i, l))
+            })
+            .ok_or_else(|| format!("{effect:?}: no skill level gives it alone"))?;
+        let number = u8::try_from(number).map_err(|_| format!("skill number {number}"))?;
+        if skills.iter().any(|&(n, _)| n == number) {
+            return Err(format!("{effect:?}: a second effect of skill {number}"));
+        }
+        skills.push((number, level));
+    }
+    skills.sort_unstable();
+    Ok(skills)
+}
+
 /// The [`Sides`] of the battle `scenario` sets up, its packs read from `packs`.
 pub fn sides(scenario: &Path, packs: &Path) -> Result<Sides, String> {
     let (ruleset, setup) = battle(scenario, packs, 1)?;
@@ -274,12 +321,14 @@ pub fn sides(scenario: &Path, packs: &Path) -> Result<Sides, String> {
                 })
             }
         };
+        let skills = effect_skills(&ruleset, &h.effects).map_err(|e| format!("{}: {e}", t.name))?;
         Ok(Some(SideHero {
             hero_type: h.hero_type.index(),
             class: t.class.index(),
             name: t.name.clone(),
             primary: [h.attack, h.defense, h.power, h.knowledge],
             book,
+            skills,
         }))
     };
     let heroes = [hero(0)?, hero(1)?];
@@ -547,6 +596,53 @@ mod tests {
         let text = fs::read_to_string(&cast).unwrap();
         fs::write(&wrong, text.replace("mana = 10\nmax", "mana = 9\nmax")).unwrap();
         assert!(super::sides(&wrong, &packs).unwrap_err().contains("mana 9"));
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn battle_effects_become_leadership_and_luck() {
+        // E17 M3 T7b-2b-2a: Leadership (6) and Luck (9) at the level of the morale and luck asked.
+        use h3_content::Affects;
+        let packs = repo().join("packs");
+        let (ruleset, _) =
+            battle(&repo().join("clients/situations/seq-walk.toml"), &packs, 1).unwrap();
+        let luck = |amount, affects| BattleEffect::Luck { amount, affects };
+        let morale = BattleEffect::Morale {
+            amount: 2,
+            affects: Affects::Own,
+        };
+        assert_eq!(
+            effect_skills(&ruleset, &[luck(3, Affects::Own), morale]),
+            Ok(vec![(6, 2), (9, 3)])
+        );
+        assert_eq!(effect_skills(&ruleset, &[]), Ok(Vec::new()));
+        // No skill level gives these alone, or one skill twice.
+        let capped = BattleEffect::LuckAtMost {
+            value: 0,
+            affects: Affects::Enemy,
+        };
+        for bad in [
+            vec![luck(4, Affects::Own)],
+            vec![luck(1, Affects::Enemy)],
+            vec![luck(1, Affects::Own), luck(2, Affects::Own)],
+            vec![capped],
+        ] {
+            assert!(effect_skills(&ruleset, &bad).is_err(), "{bad:?}");
+        }
+        // A scenario's hero effects reach its hero.
+        let dir = std::env::temp_dir().join(format!("h3-view-effects-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let lucky = dir.join("lucky.toml");
+        let text = fs::read_to_string(repo().join("clients/situations/seq-walk.toml")).unwrap();
+        let text = text.replacen(
+            "knowledge = 1\n",
+            "knowledge = 1\neffects = [{ kind = \"luck\", amount = 3 }, { kind = \"morale\", amount = 1 }]\n",
+            1,
+        );
+        fs::write(&lucky, text).unwrap();
+        let heroes = sides(&lucky, &packs).unwrap().heroes;
+        let skills = heroes.map(|h| h.map(|h| h.skills));
+        assert_eq!(skills, [Some(vec![(6, 1), (9, 3)]), Some(Vec::new())]);
         fs::remove_dir_all(&dir).unwrap();
     }
 

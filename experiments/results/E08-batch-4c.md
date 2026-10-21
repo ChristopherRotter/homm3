@@ -1,5 +1,9 @@
 # E08 batch E4c — results
 
+> Played by the capture harness on 2026-10-21 (`clients/capture/h3adv.py batch clients/capture/batches/E08-batch-4c.toml`): the same Complete 4.0 `Heroes3.exe` under Wine, without the HD mod; hot seat, difficulty Easy, the starting bonus random, Show Route on; read from the game's memory.
+>
+> The fourth run (E08 T32b2): runs 1 and 2 recorded the same, but for the dialog after E4-8's battle, named `GENRLTXT:16` (`%s the %s`: the harness took the first record that formats a text, and a picture's caption is a text item of its own; since this run the most specific record of any run of the dialog's text items); run 3 stopped in E4-9's battle (a stack's turn not yet taking input; the harness retries since). No scorer's report: the spec's predictions score this batch by hand (T33).
+
 Map file: `E08-batch-4c.h3m`. Fill in the blanks below and keep this file; an agent records the results (`docs/experiments/README.md`).
 
 **Stamp `6fbb8f2b`.** The map's description in the scenario list starts with "Stamp 6fbb8f2b.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
@@ -23,8 +27,8 @@ Map file: `E08-batch-4c.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- the battlefield: 
-- the battle's winner: 
+- the battlefield: Evil Fog
+- the battle's winner: attacker
 - anything odd: 
 
 ## E4-7b — A monster under an Evil Fog and a Clover Field (the Clover Field written last) (ADV-GRD-001, decision 45)
@@ -36,8 +40,8 @@ Map file: `E08-batch-4c.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- the battlefield: 
-- the battle's winner: 
+- the battlefield: Clover Field
+- the battle's winner: attacker
 - anything odd: 
 
 ## E4-8 — A Necromancer with seven stacks, Skeleton Warriors among them, beats 90 Pikemen (GAM-BAT-006, HER-NEC-001, decision 45)
@@ -50,12 +54,12 @@ Map file: `E08-batch-4c.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- E4-8's army before: 
-- the stacks at the start: 
-- the battle's winner: 
-- the creatures raised (the message): 
-- E4-8's army after: 
-- E4-8's experience after: 
+- E4-8's army before: 10 Skeleton Warriors, 10 Zombies, 5 Wights, 4 Vampire Lords, 3 Power Liches, 3 Dread Knights, 2 Ghost Dragons
+- the stacks at the start: attacker 10 Skeleton Warriors, 10 Zombies, 5 Wights, 4 Vampire Lords, 3 Power Liches, 3 Dread Knights, 2 Ghost Dragons | defender 30 Pikemen, 30 Halberdiers, 30 Pikemen
+- the battle's winner: attacker
+- the creatures raised (the message): GENRLTXT:146
+- E4-8's army after: 16 Skeleton Warriors, 10 Zombies, 5 Wights, 4 Vampire Lords, 3 Power Liches, 3 Dread Knights, 2 Ghost Dragons
+- E4-8's experience after: 900
 - anything odd: 
 
 ## E4-9 — A hero whose Ballista is destroyed wins the battle (HER-WAR-002, decision 45)
@@ -69,13 +73,13 @@ Map file: `E08-batch-4c.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- E4-9's artifacts before (worn, by slot): 
-- the Ballista destroyed (yes/no): 
-- the battle's winner: 
-- E4-9's artifacts after (worn, by slot): 
-- E4-9's backpack after: 
-- E4-9's experience after: 
-- E4-9's level after: 
+- E4-9's artifacts before (worn, by slot): Ballista (war machine 1), Catapult (war machine 4)
+- the Ballista destroyed (yes/no): yes
+- the battle's winner: attacker
+- E4-9's artifacts after (worn, by slot): Catapult (war machine 4)
+- E4-9's backpack after: none
+- E4-9's experience after: 2300
+- E4-9's level after: 3
 - anything odd: 
 
 ## E4-10 — Red attacks Blue's hero on a Cartographer from the tile above (ADV-OBJ-004, GAM-BAT-001, decision 45)
@@ -88,9 +92,9 @@ Map file: `E08-batch-4c.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- E4-10b's tile after day 1: 
-- the Cartographer's question asked (yes/no): 
-- a battle (yes/no): 
-- E4-10's tile after the click: 
-- the battle's winner: 
-- anything odd: 
+- E4-10b's tile after day 1: 18,18,0
+- the Cartographer's question asked (yes/no): ADVEVENT:26
+- a battle (yes/no): no
+- E4-10's tile after the click: 18,17,0
+- the battle's winner: no battle
+- anything odd: no battle
