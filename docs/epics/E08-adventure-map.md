@@ -81,6 +81,14 @@ Refined with the user on 2026-10-12 (T10c; ADV-Q9). Built like increment 1: comm
 
 **Exit criteria (increment 2):** the ADR amendments accepted; full verify green in CI with the adventure logic crates at 100 %; the property tests hold with objects: atomicity, legality consistency (pending decisions included), ownership isolation (treasuries, and the streams if a command draws), conservation (an army changes by no accepted command of increment 2; a treasury only by a visit's rule), observation hygiene (typed objects, treasuries), clone equivalence, determinism; golden replays on a duel map with objects in the determinism matrix; the benchmarks re-baselined; every new `ADV-*`/`GAM-*` rule `implemented` with sources; batch 2 staged and scored; the lane HANDOFF, the epic log and `QUEUE.md` current.
 
+### Decisions at round 4 (2026-10-21, user)
+
+66. **T31 whole, one pull request** (the user's choice of four; not chosen: T31a, the property
+    checks first, then T31b, the fixtures, replays and benchmarks, in two sessions or as two pull
+    requests in one; or T31b first). T32a follows in its own session: its recipe waits for the
+    harness's new reads (the client lane's inbox since T24a2b2), so only its spec and scorer can
+    be built before them.
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T11a Survey.** Done (2026-10-12): `docs/rules/surveys/E08-objects.md` from a code reading and VCMI (the wiki not reached): visit modes per class, all draws at setup, D-5 to D-7, A-5, starting resources as VCMI (log).
