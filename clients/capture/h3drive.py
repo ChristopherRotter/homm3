@@ -260,13 +260,16 @@ class Game:
         raise TimeoutError("the display does not settle")
 
     def step_until(self, name, step_ms=10, limit_ms=20000):
-        """Steps the frozen clock by `step_ms` until the screen `name` shows; returns its time."""
+        """Steps the frozen clock by `step_ms` until the screen `name` (or one of a tuple of
+        names) shows; returns its time."""
+        names = (name,) if isinstance(name, str) else name
         t = None
         for _ in range(limit_ms // step_ms):
             t = self.clock(f"step {step_ms}")
-            if self.matches(name, self.settled()):
+            pix = self.settled()
+            if any(self.matches(n, pix) for n in names):
                 return t
-        bad = self.out / f"not-{name}.xwd"
+        bad = self.out / f"not-{names[0]}.xwd"
         self.dump(bad)
         raise TimeoutError(f"the screen `{name}` did not appear within {limit_ms} ms (the display: {bad})")
 
@@ -293,11 +296,12 @@ def hex_point(hex_id):
 
 def into_battle(game, key="Right"):
     """From the adventure map: freezes the clock, moves the selected hero with `key` into the
-    enemy, and steps the clock to the battle screen. Returns the clock's time at the opening."""
+    enemy, and steps the clock to the battle screen (`battle_book` when the acting hero's spell
+    book lights its button, M3 T7a-2a). Returns the clock's time at the opening."""
     game.clock("freeze")
     game.key(key)
     game.move(*PARK)
-    return game.step_until("battle", 10)
+    return game.step_until(("battle", "battle_book"), 10)
 
 
 def main(args):
