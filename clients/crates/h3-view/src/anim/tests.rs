@@ -1794,7 +1794,7 @@ fn a_timeline_lists_its_changes() {
         },
         ServerMessage::GameEnded {
             n: 3,
-            result: h3_protocol::wire::Outcome::Draw {},
+            result: Outcome::Draw {},
         },
     ];
     let commands = commands(&messages);
@@ -2594,4 +2594,38 @@ fn an_actions_start_stands_and_unmarks_by_what_it_does() {
     assert_eq!(calms(&later), (false, false));
     let round = [Event::RoundStarted { round: 2 }, creature];
     assert_eq!(calms(&round), (false, false));
+}
+
+#[test]
+fn the_battle_ends_with_the_command_that_decides_it() {
+    // E17 M3 T8 (`end`, design §8.2): the Wolf Riders kill the lone Goblins; the battle is
+    // decided as the strike's command ends, where the next turn would start, and `lines`
+    // writes the harness's `end` then. The commands before it decide nothing.
+    let o = snapshot(vec![
+        at(0, Side::Attacker, WOLF_RIDER, 52, true),
+        at(1, Side::Defender, GOBLIN, 36, false),
+    ]);
+    let won = Outcome::Victory {
+        side: Side::Attacker,
+    };
+    let commands = [
+        (None, vec![Event::Defended { stack: 0 }]),
+        (
+            Some(1000),
+            vec![
+                struck(0, 1, 40, flags(false, false, false)),
+                Event::BattleEnded { result: won },
+            ],
+        ),
+    ];
+    let t = play(&o, &commands);
+    let (at, outcome) = t.ended.unwrap();
+    assert_eq!(outcome, won);
+    assert_eq!(at, t.actions[1].end);
+    assert!(at > 1000);
+    assert_eq!(t.lines().lines().last(), Some(format!("{at} end").as_str()));
+    // Without its event, no end.
+    let t = play(&o, &commands[..1]);
+    assert_eq!(t.ended, None);
+    assert!(!t.lines().contains("end"));
 }

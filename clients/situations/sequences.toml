@@ -213,3 +213,23 @@ boxes = true
 command = [
     { seat = "Attacker", command = { Attack = { target = 3, from = 47 } } },
 ]
+
+# E17 M3 T8: the battle's end (`seq-end.toml`, design §8.2, "The battle's end"): `strike`'s
+# battle without the defender's Goblins, so the lone Pikemen stand at hex 100 (a one-stack army's
+# place); the Archangel flies beside them (its rear hex 98, the cursor left of their centre) and
+# kills all ten. The battle is decided as the strike ends, when the next turn would start
+# (`<ms> end`: the harness reads the manager's +0x132F8): `battle_end` darkens the screen, opens
+# the result's window and plays its tune then, hot seat's winner a human: `win battle`. The frame
+# at the end differs by the result's window, which the viewer does not draw yet.
+[[sequence]]
+id = "end"
+scenario = "seq-end.toml"
+hot_seat = true
+actions = ["click:678,322"]
+ms = 3800
+timeline = "timelines/end.txt"
+frames = "timelines/end-frames.txt"
+boxes = true
+command = [
+    { seat = "Attacker", command = { Attack = { target = 3, from = 98 } } },
+]

@@ -11,20 +11,31 @@
 //! generator (the C library's `rand()`); the viewer draws them from a sequence of its own seeded
 //! with the battle's seed (*provisional*, as its fidgets).
 //!
+//! The end (E17 M3 T8): once the battle is decided (`battle_winner` 0x4762F0), `battle_end`
+//! 0x477470 darkens the screen, builds the result's window and, before the window runs, plays the
+//! result's [`Tune`] once (`play_music` with a loop count of 1, the effects ended first: 0x477905,
+//! 0x4779B4), with no clock step between. Which tune the window picks ([`end_tune`]).
+//!
 //! Volumes are Miles' (0 to 127): the music's 127 and every creature sound's 64 (0x43DCEB), each
 //! scaled alike by its volume setting (0x5996C0), so an effect plays at about half the music's
-//! level when the two settings are equal. The start sound's volume is not read (its loader's
-//! default; the viewer takes 64, *provisional*).
+//! level when the two settings are equal. A sound played by its name (`play_sound_file`
+//! 0x59A470: the start sound, the tent's heal) keeps its loader's default, 127 (the WAV's
+//! constructor 0x566DA0 from 0x55C48A and 0x55C6DC: volume 127, played once).
 
 use alloc::format;
 use alloc::string::String;
+
+use h3_protocol::wire::{Outcome, Side};
 
 /// The longest the battle waits for its start sound, in ms (0x463045).
 pub const START_WAIT: u32 = 10_000;
 /// The music's volume.
 pub const MUSIC_VOLUME: u8 = 127;
-/// A creature sound's volume (and the start sound's, *provisional*).
+/// A creature sound's volume (0x43DCEB).
 pub const EFFECT_VOLUME: u8 = 64;
+/// The volume of a sound played by its name, the start sound and the tent's heal: its loader's
+/// default (0x566DA0).
+pub const FILE_VOLUME: u8 = 127;
 /// The music's fade-in (0x59AB5D): it starts silent and at once takes the first of these, then
 /// the next every [`FADE_STEP`] ms (a tenth of [`MUSIC_VOLUME`] more each, added up in f32 and
 /// truncated), then the whole volume.
@@ -78,6 +89,84 @@ pub fn opening(seed: u32) -> Opening {
     }
 }
 
+/// A tune the battle's end plays once, the result's window's choice (`battle_end`'s 0x4702D0 sets
+/// 0x695014, the index into the names 0x6701A8).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Tune {
+    /// The side shown won (0).
+    Win,
+    /// The side shown lost (1).
+    Lose,
+    /// The side shown defended its town and won (2).
+    DefendCastle,
+    /// The side shown lost, and a side retreated (3).
+    Retreat,
+    /// The side shown lost, and a side surrendered (4).
+    Surrender,
+    /// The side shown lost at its town (5).
+    LoseCastle,
+}
+
+impl Tune {
+    /// The tune's file stem in the installation's `MP3` folder (`mp3\%s.mp3`; the executable's
+    /// names, found ignoring case).
+    #[must_use]
+    pub const fn file(self) -> &'static str {
+        match self {
+            Self::Win => "win battle",
+            Self::Lose => "losecombat",
+            Self::DefendCastle => "defend castle",
+            Self::Retreat => "retreat battle",
+            Self::Surrender => "surrender battle",
+            Self::LoseCastle => "losecastle",
+        }
+    }
+}
+
+/// The tune a battle's end plays, as `battle_end` 0x477470 and its result's window 0x4702D0 pick
+/// it. `human`: whether each side's player is a human on this computer (0x4CE970); `town`:
+/// whether the battle is at a town (the manager's +0x53C8, a siege or not).
+///
+/// The window shows the winner's side when its player is human here (0x4778B1), else the other
+/// one (a draw: the defender's). Shown the winner, it plays [`Tune::Win`], or
+/// [`Tune::DefendCastle`] for the town's defender (0x470B68); shown the loser, it plays
+/// [`Tune::LoseCastle`] for the town's defender, else [`Tune::Surrender`] or [`Tune::Retreat`] when
+/// a side gave up so (the flags 0x697744 and 0x6985A3, set by either side), else [`Tune::Lose`]
+/// (0x470BFE to 0x470CFF). Not distinguished: an opponent of a side that retreated or
+/// surrendered left with only stacks created in the battle loses too (BAT-Q7; the window then
+/// shows the defender's side), which the outcome does not say; the viewer takes it as the
+/// winner.
+#[must_use]
+pub fn end_tune(outcome: Outcome, human: [bool; 2], town: bool) -> Tune {
+    let index = |side: Side| usize::from(side == Side::Defender);
+    let other = |side: Side| 1 - index(side);
+    let (winner, gave_up) = match outcome {
+        Outcome::Victory { side } => (Some(index(side)), None),
+        // A ranked game's ends (only in `GameEnded`, never a battle's event): its winner, or none.
+        Outcome::Forfeit { side } => (Some(other(side)), None),
+        Outcome::Draw {} | Outcome::NoShow {} | Outcome::Unverified {} => (None, None),
+        Outcome::Retreat { side } => (Some(other(side)), Some(Tune::Retreat)),
+        Outcome::Surrender { side } => (Some(other(side)), Some(Tune::Surrender)),
+    };
+    match winner {
+        Some(w) if human.get(w).copied().unwrap_or(false) => {
+            if town && w == 1 {
+                Tune::DefendCastle
+            } else {
+                Tune::Win
+            }
+        }
+        // The loser's side shown, or the defender's after a draw.
+        winner => {
+            if town && winner.is_none_or(|w| w == 0) {
+                Tune::LoseCastle
+            } else {
+                gave_up.unwrap_or(Tune::Lose)
+            }
+        }
+    }
+}
+
 /// The C library's `rand()`: 15 bits of a linear congruential sequence.
 fn rand(state: &mut u32) -> u32 {
     *state = state.wrapping_mul(214_013).wrapping_add(2_531_011);
@@ -100,6 +189,108 @@ mod tests {
         for (i, &v) in FADE.iter().enumerate() {
             assert_eq!(u32::from(v), (u32::try_from(i).unwrap() + 1) * 127 / 10);
         }
+    }
+
+    #[test]
+    fn the_end_plays_the_shown_sides_tune() {
+        use Side::{Attacker as A, Defender as D};
+        let both = [true, true];
+        let red = [true, false];
+        let blue = [false, true];
+        let none = [false, false];
+        // A human winner is shown: hot seat always so.
+        assert_eq!(
+            end_tune(Outcome::Victory { side: A }, both, false),
+            Tune::Win
+        );
+        assert_eq!(
+            end_tune(Outcome::Victory { side: D }, blue, false),
+            Tune::Win
+        );
+        assert_eq!(
+            end_tune(Outcome::Retreat { side: D }, both, false),
+            Tune::Win
+        );
+        assert_eq!(
+            end_tune(Outcome::Surrender { side: A }, blue, false),
+            Tune::Win
+        );
+        // Else the loser is: how it lost.
+        assert_eq!(
+            end_tune(Outcome::Victory { side: D }, red, false),
+            Tune::Lose
+        );
+        assert_eq!(
+            end_tune(Outcome::Victory { side: A }, none, false),
+            Tune::Lose
+        );
+        assert_eq!(
+            end_tune(Outcome::Retreat { side: A }, red, false),
+            Tune::Retreat
+        );
+        assert_eq!(
+            end_tune(Outcome::Surrender { side: A }, red, false),
+            Tune::Surrender
+        );
+        // A draw shows the defender's side, the loser's.
+        assert_eq!(end_tune(Outcome::Draw {}, both, false), Tune::Lose);
+        // The ranked game's ends, which no battle's event carries.
+        assert_eq!(
+            end_tune(Outcome::Forfeit { side: D }, red, false),
+            Tune::Win
+        );
+        assert_eq!(end_tune(Outcome::NoShow {}, both, false), Tune::Lose);
+        assert_eq!(end_tune(Outcome::Unverified {}, both, false), Tune::Lose);
+        // At a town: its defender's own tunes.
+        assert_eq!(
+            end_tune(Outcome::Victory { side: D }, both, true),
+            Tune::DefendCastle
+        );
+        assert_eq!(
+            end_tune(Outcome::Victory { side: A }, both, true),
+            Tune::Win
+        );
+        assert_eq!(
+            end_tune(Outcome::Victory { side: A }, blue, true),
+            Tune::LoseCastle
+        );
+        assert_eq!(
+            end_tune(Outcome::Surrender { side: D }, blue, true),
+            Tune::LoseCastle
+        );
+        assert_eq!(end_tune(Outcome::Draw {}, none, true), Tune::LoseCastle);
+        assert_eq!(
+            end_tune(Outcome::Victory { side: D }, red, true),
+            Tune::Lose
+        );
+        assert_eq!(
+            end_tune(Outcome::Retreat { side: A }, red, true),
+            Tune::Retreat
+        );
+    }
+
+    #[test]
+    fn the_tunes_are_the_executables_names() {
+        let all = [
+            Tune::Win,
+            Tune::Lose,
+            Tune::DefendCastle,
+            Tune::Retreat,
+            Tune::Surrender,
+            Tune::LoseCastle,
+        ];
+        let names: alloc::vec::Vec<&str> = all.iter().map(|t| t.file()).collect();
+        assert_eq!(
+            names,
+            [
+                "win battle",
+                "losecombat",
+                "defend castle",
+                "retreat battle",
+                "surrender battle",
+                "losecastle"
+            ]
+        );
     }
 
     #[test]

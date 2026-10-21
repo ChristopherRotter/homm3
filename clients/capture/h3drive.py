@@ -580,8 +580,9 @@ def timeline(states, heroes=False):
     a hero's group or frame, `<ms> hero <side> g<group> f<frame>`. A state read with the screen's
     changes (`screens`, M3 T7a-2b) ends its time with `<ms> screen <x0>,<y0>,<x1>,<y1>`, the box
     of the pixels that differ from the step before (x1, y1 exclusive): what memory does not show
-    (the at-hex and Armageddon players, the projectiles, design §7.16), numbers only."""
-    lines, last, magic, box = [], {}, None, None
+    (the at-hex and Armageddon players, the projectiles, design §7.16), numbers only. Before it,
+    `<ms> end` once the battle is decided (M3 T8, design §8.2: the result's tune starts then)."""
+    lines, last, magic, box, ended = [], {}, None, None, False
     for i, state in enumerate(states):
         box = union(box, state.get("changed"))
         if i + 1 < len(states) and states[i + 1]["t"] == state["t"]:
@@ -606,6 +607,9 @@ def timeline(states, heroes=False):
         if line != magic:
             lines.append(f"{state['t']} {line}")
             magic = line
+        if state["clocks"].get("decided") and not ended:
+            lines.append(f"{state['t']} end")
+            ended = True
         if box is not None:
             lines.append(f"{state['t']} screen " + ",".join(map(str, box)))
             box = None

@@ -91,6 +91,10 @@ MOUSE_POLL_NEXT = 0x69CA18  # the mouse poll's next time (0x50D680, a 33 ms grid
 # the last loaded) and the frame drawn (+0x132F0); a stack shows it while its byte +0x20 is set
 # (`PlayMagicAnimation` 0x496840, `draw_battle_stack`'s tail 0x43E795).
 MAGIC_ANIMATION, MAGIC_FRAME, MAGIC_SHOWN = 0x132EC, 0x132F0, 0x20
+# The battle decided (E17 M3 T8, design §8.2: i32 +0x132F8, 0 from the battle's start, 1 once
+# `battle_winner` 0x4762F0 finds it over, right before `battle_end` 0x477470 plays the result's
+# tune; no clock step between).
+DECIDED = 0x132F8
 # The battle's outcome (E17 H1; structs.toml, battle_manager): each side retreated (u8 +0x132B0)
 # or surrendered (u8 +0x132B2), the winner (i32 +0x13D48: 0 the attacker, 1 the defender).
 RETREATED, SURRENDERED, WINNER = 0x132B0, 0x132B2, 0x13D48
@@ -172,9 +176,11 @@ class Mem:
         """The battle's clocks (absolute game times, ms), the combat speed, the idle steps
         taken, the active stack (`[side, record]` or None), the hex the mouse highlights
         (None: none), the hex under the mouse and the cursor's kind there (M3 T6c-2) and the
-        cursor's type, frame and the point it is drawn at."""
+        cursor's type, frame and the point it is drawn at; whether the battle is decided (M3
+        T8)."""
         manager = self.manager()
         found = {
+            "decided": None,
             "frame_deadline": self.u32(FRAME_DEADLINE),
             "idle_step_time": self.u32(IDLE_STEP_TIME),
             "idle_steps": None,
@@ -192,6 +198,7 @@ class Mem:
             found["cursor"] = [self.i32(pointer + CURSOR_TYPE), self.i32(pointer + CURSOR_FRAME)]
             found["cursor_at"] = [self.i32(pointer + CURSOR_X), self.i32(pointer + CURSOR_Y)]
         if manager:
+            found["decided"] = self.i32(manager + DECIDED) != 0
             found["idle_steps"] = self.i32(manager + STEP_COUNTER)
             found["active"] = self.stack_at(manager, self.u32(manager + ACTIVE_STACK))
             if self.read(manager + MOUSE_HIGHLIGHT, 1) != b"\0":

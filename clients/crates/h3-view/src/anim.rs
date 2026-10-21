@@ -27,7 +27,7 @@ use alloc::vec::Vec;
 use core::cmp::Ordering;
 use core::fmt::Write as _;
 
-use h3_protocol::wire::{Event, Observation, ServerMessage, Side, Stack};
+use h3_protocol::wire::{Event, Observation, Outcome, ServerMessage, Side, Stack};
 
 use crate::battle_log::{Logged, Spread};
 use crate::hero::{Action, Happening, Heroes};
@@ -500,6 +500,9 @@ pub struct Timeline {
     /// What the battle writes into its log and does to it, with its time, in order (E17 M3 T6b,
     /// design §9.8; `crate::battle_log::texts`).
     pub log: Vec<(u32, Logged)>,
+    /// When the battle is decided and how (E17 M3 T8, design §8.2): the end of the command whose
+    /// events end it, when `battle_end` plays the result's tune ([`crate::sound::end_tune`]).
+    pub ended: Option<(u32, Outcome)>,
     /// When the last frame shows.
     pub end: u32,
 }
@@ -789,13 +792,15 @@ impl Timeline {
     /// stack's group, frame or hex, `<ms> <side>.<record> g<group> f<frame> h<hex>`, every stack
     /// at 0; a change at a time is the last pose drawn then. After a time's stacks, a change of
     /// the magic animation drawn (E17 M3 T3b): `<ms> magic <number> f<frame> <side>.<record>…`
-    /// over its stacks, `<ms> magic -` once erased.
+    /// over its stacks, `<ms> magic -` once erased. Then `<ms> end` when the battle is decided
+    /// (E17 M3 T8).
     pub fn lines(&self) -> String {
         let mut now: BTreeMap<u8, Pose> = self.members.iter().map(|m| (m.stack, m.start)).collect();
         let mut printed: BTreeMap<u8, (u32, u32, u8)> = BTreeMap::new();
         let mut out = String::new();
         let mut times: Vec<u32> = self.keys.iter().map(|k| k.drawn).collect();
         times.extend(self.magics.iter().map(|k| k.drawn));
+        times.extend(self.ended.map(|(t, _)| t));
         times.push(0);
         times.sort_unstable();
         times.dedup();
@@ -830,6 +835,10 @@ impl Timeline {
                     }
                     None => writeln!(out, "{t} magic -"),
                 };
+            }
+            // The harness's `end`: the battle decided (E17 M3 T8).
+            if self.ended.is_some_and(|(at, _)| at == t) {
+                let _ = writeln!(out, "{t} end");
             }
         }
         out
@@ -1061,6 +1070,7 @@ fn played(
         cues: Vec::new(),
         happenings: Vec::new(),
         log: Vec::new(),
+        outcome: None,
         tactics: snapshot.tactics.is_some(),
     };
     let mut actions = Vec::new();
@@ -1074,6 +1084,7 @@ fn played(
     }
     let mut outlines = vec![(0, snapshot.active)];
     let mut waiting = snapshot.active;
+    let mut ended = None;
     for (i, command) in commands.iter().enumerate() {
         let default = if i == 0 { 0 } else { player.clock.now };
         player.clock.start(command.at.unwrap_or(default));
@@ -1125,6 +1136,9 @@ fn played(
             waiting = Some(stack);
         }
         player.idle.from = player.clock.now;
+        // The battle decided: `battle_end` follows the action's last frame (design §8.2).
+        let now = player.clock.now;
+        ended = ended.or_else(|| player.outcome.map(|o| (now, o)));
         let (stands, unmarks) = calms(command.events);
         actions.push(Action {
             start: started,
@@ -1157,6 +1171,7 @@ fn played(
         actions,
         heroes: None,
         log: player.log,
+        ended,
         end: player.clock.now,
     })
 }
@@ -1322,6 +1337,8 @@ struct Player<'a> {
     happenings: Vec<Happening>,
     /// What the battle wrote into its log so far, with its time (E17 M3 T6b).
     log: Vec<(u32, Logged)>,
+    /// How the battle ended, once a command's events say so (E17 M3 T8).
+    outcome: Option<Outcome>,
     /// The tactics phase runs (no wait's line, no round's).
     tactics: bool,
 }
@@ -1580,6 +1597,7 @@ impl Player<'_> {
                     self.log.push((self.clock.now, line));
                 }
                 Event::TacticsEnded {} => self.tactics = false,
+                Event::BattleEnded { result } => self.outcome = Some(result),
                 Event::RoundStarted { .. } => {
                     self.happenings.push(Happening::Round);
                     if !self.tactics {
