@@ -257,7 +257,7 @@ map compiled before, after checking its stamp), starts it in hot seat with the r
 `difficulty` (`easy` to `impossible`, default `normal`, checked in memory), plays the steps and
 writes `<out>/<batch>.md`, the batch's results template filled in (a note at its top says how it
 was played), and `<out>/steps.jsonl`, each step's observation. E08 batch 2 (41 steps) takes about
-three minutes, the check about two.
+three minutes, the check about four (E08 T32b1).
 
 A recipe is the spec's procedure as `[[step]]`s. A hero's step selects the hero (`hero`, its name
 on the map; from the hero list, scrolled when the player has more than five) and, with `walk =
@@ -287,10 +287,15 @@ waits until the hero, its points and the players' resources rest, on the way:
   skill + 3 + the hero's level of it before), and the one taken.
 - clicking any other dialog's OK, its text's record noted (`messages`; E08 T32b1).
 
-A battle's `battle` may also be a plan (E08 T32b1, batch E4's E4-9): `{ attack = "Ballista", by =
-"defender", then = "auto" }`: while the other side has a living stack of that creature, each stack
-of the side named clicks its hex on its turn (right of the hex's centre) and every other stack
-defends (the war machines act by themselves); then auto combat plays the rest.
+Since E08 T32b1 `battle` may also be `attack`: every stack attacks the other side's nearest one
+(creatures before war machines) until the battle ends, as a player would: the mouse rests over the
+target's hexes, off their centre toward each free neighbour in turn, until the combat cursor shows
+a melee attack (its sword frames 7 to 14), and clicks there; a target out of reach this turn (the
+hex records' attack mark, +0x4A) makes the stack move to the free hex nearest it within its speed
+(a flyer's reach). The war machines act by themselves. Or a plan (batch E4's E4-9): `{ attack =
+"Ballista", by = "defender", then = "attack" }`: while the other side has a living stack of that
+creature, each stack of the side named attacks it and every other stack defends; then `then`
+(`attack` or `auto`) plays the rest. The battle's record holds its field (`battlefield`).
 
 A step without `walk` only reads. `record` fills the template's fields and table rows from the
 observation; `before:<observation>` reads the same before the step:
@@ -452,6 +457,9 @@ design §7.1.
 - Auto combat plays a human side's creatures only with the setting `Combat Auto Creatures` on
   (`setup.sh` sets it; a new prefix holds 0, and then the button only sets a flag and the turn
   still waits: 0x474CDF). The capture set never turns auto combat on.
+- Auto combat does not play a battle between two human players in hot seat (E08 T32b1: neither
+  its key nor its button did anything on a human stack's turn): a hero against another player's
+  hero is played by `attack` or a plan.
 - A game's first battle takes orders later than its later ones: a key before a stack's turn is
   lost (E08 T22a3: batch E3b stalled at its first battle in every run). `fight`'s auto combat
   waits for an active stack and presses again after a 10 s stall.
