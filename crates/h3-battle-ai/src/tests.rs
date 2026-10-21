@@ -22,7 +22,8 @@ use h3_content::{
 use h3_content_battle::{
     AbilityDef, AreaShot, BallisticsRecord, BattleCreatureDef, BattlePack, BattleParamsDef,
     BattleRuleset, BattleSpellDef, HexStep, ObstacleKind, ObstacleShape, SiegeDef, SiegeFieldDef,
-    SpellAi, SpellEffect, SpellMagic, SpellPolarity, SpellTarget, WallKind, WallTarget,
+    SpellAi, SpellEffect, SpellMagic, SpellPolarity, SpellTarget, TimedChange, WallKind,
+    WallTarget,
 };
 use h3_contracts::{
     Army, ArmyStack, BallistaControl, BattleHero, BattleSetup, BattleSide, FortLevel, Moat, Rate,
@@ -40,6 +41,7 @@ mod ends;
 mod gain;
 mod odds;
 mod order;
+mod predict;
 mod spells;
 
 fn key(text: &str) -> ContentKey {
@@ -78,8 +80,9 @@ const HEALS: Option<AbilityDef> = Some(AbilityDef::FirstAid {
 /// fireball, the undead lich's death cloud); fast walkers that are fire-immune (the efreet),
 /// lifeless (the golem) and undead (the zombie); a slow two-hex walker (the cavalier); a flyer
 /// that strikes and returns (the harpy); the multi-headed (the two-hex hydra, the cerberus), a
-/// breath attacker (the dragon) and a town's turret (the tower, BAT-SIE-016).
-const CREATURES: [Creature; 17] = [
+/// breath attacker (the dragon), a town's turret (the tower, BAT-SIE-016), a walker with an innate
+/// Fire Shield (the sultan) and one that strikes twice (the crusader).
+const CREATURES: [Creature; 19] = [
     ("imp", 5, 100, &[], [2, 3, 1, 2], 4, 0, None),
     ("gog", 3, 900, &[], [4, 4, 2, 3], 13, 0, None),
     ("runner", 20, 300, &["alive"], [5, 5, 2, 4], 10, 0, None),
@@ -200,6 +203,26 @@ const CREATURES: [Creature; 17] = [
         99,
         Some(AbilityDef::Turret),
     ),
+    (
+        "sultan",
+        13,
+        1000,
+        &["alive", "fire_immune"],
+        [16, 14, 14, 20],
+        90,
+        0,
+        None,
+    ),
+    (
+        "crusader",
+        6,
+        1500,
+        &["alive", "strikes_twice"],
+        [12, 12, 7, 10],
+        35,
+        0,
+        None,
+    ),
 ];
 
 const IMP: usize = 0;
@@ -219,6 +242,8 @@ const HYDRA: usize = 13;
 const CERBERUS: usize = 14;
 const DRAGON: usize = 15;
 const TOWER: usize = 16;
+const SULTAN: usize = 17;
+const CRUSADER: usize = 18;
 
 /// The test creatures' AI values (the others have none): the runner's stands for the Archers'
 /// (creature 2), which the odds give a turret under BAT-QUIRK-25 (slip 20), the tower's own.
@@ -286,17 +311,31 @@ fn core(profile: &str) -> Ruleset {
         protection_rank: 0,
     }];
     // Fire Wall: power × 10 + 10 at Basic, two hexes.
-    pack.spells = vec![SpellDef {
-        key: key("t:firewall"),
-        name: "Fire Wall".into(),
-        category: SpellCategory::Combat,
-        level: 2,
-        schools: vec![key("t:fire")],
-        cost: [5; 4],
-        power: 10,
-        effect: [10, 10, 20, 50],
-        granted_by_name_only: false,
-    }];
+    pack.spells = vec![
+        SpellDef {
+            key: key("t:firewall"),
+            name: "Fire Wall".into(),
+            category: SpellCategory::Combat,
+            level: 2,
+            schools: vec![key("t:fire")],
+            cost: [5; 4],
+            power: 10,
+            effect: [10, 10, 20, 50],
+            granted_by_name_only: false,
+        },
+        // Fire Shield: the sultan's own (its value 20 %).
+        SpellDef {
+            key: key("t:fireshield"),
+            name: "Fire Shield".into(),
+            category: SpellCategory::Combat,
+            level: 4,
+            schools: vec![key("t:fire")],
+            cost: [16; 4],
+            power: 0,
+            effect: [20, 20, 25, 30],
+            granted_by_name_only: false,
+        },
+    ];
     pack.profiles = vec![
         ProfileDef {
             key: key("t:faithful"),
@@ -343,6 +382,25 @@ fn ruleset_as(profile: &str) -> BattleRuleset {
         .push(AbilityDef::SchoolImmunity {
             school: key("t:fire"),
         });
+    creatures[SULTAN].abilities.push(AbilityDef::InnateSpell {
+        spell: key("t:fireshield"),
+        value: 20,
+    });
+    let fireshield = BattleSpellDef {
+        key: key("t:fireshield"),
+        polarity: SpellPolarity::Positive,
+        magic: SpellMagic {
+            target: SpellTarget::Stack,
+            effects: vec![SpellEffect::Timed(TimedChange::FireShield)],
+            ..SpellMagic::default()
+        },
+        counters: vec![],
+        dispels: vec![],
+        spares: vec![],
+        tests_as: None,
+        summons: None,
+        ai: SpellAi::default(),
+    };
     let firewall = BattleSpellDef {
         key: key("t:firewall"),
         polarity: SpellPolarity::Neutral,
@@ -368,7 +426,7 @@ fn ruleset_as(profile: &str) -> BattleRuleset {
     };
     let pack = BattlePack {
         creatures,
-        spells: vec![firewall],
+        spells: vec![firewall, fireshield],
         battle: Some(BattleParamsDef {
             field_width: 17,
             field_height: 11,
@@ -855,7 +913,7 @@ fn a_refused_choice_falls_back_to_defend() {
     assert!(validate(&state, &r, side, refused).is_err());
     assert_eq!(checked(&state, &r, side, refused), Command::Defend);
     assert_eq!(checked(&state, &r, side, Command::Wait), Command::Wait);
-    assert_eq!(POLICY_VERSION, 7);
+    assert_eq!(POLICY_VERSION, 8);
 }
 
 /// The setup of `setup` on `difficulty`.

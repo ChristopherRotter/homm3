@@ -64,15 +64,32 @@ fn key(state: &BattleState, ruleset: &BattleRuleset, (id, s): (StackId, &Stack))
 }
 
 /// The ranks of the computer's order of action (0x41F140 without a list; BAT-AI-009), by stack
-/// id: the number of stacks less the stack's place, `first`'s stack first among equal keys (the
-/// side of the stack activated last, +0x132B8: the active stack's); 0 for the dead and the
-/// turrets, which are left out.
+/// id: the number of stacks less the stack's place in [`list`]; 0 for the dead and the turrets,
+/// which are left out.
 // rule: BAT-AI-009
 pub(crate) fn ranks(
     state: &BattleState,
     ruleset: &BattleRuleset,
     first: BattleSide,
 ) -> [u8; STACK_CAPACITY] {
+    let (list, n) = list(state, ruleset, first);
+    let mut ranks = [0; STACK_CAPACITY];
+    for (i, id) in list.iter().take(n).enumerate() {
+        ranks[id.index()] = u8::try_from(n - i).unwrap_or(u8::MAX);
+    }
+    ranks
+}
+
+/// The computer's order of action (0x41F140 with a list; BAT-AI-009, E23 T4b2): the living
+/// stacks of both sides but the turrets, the first to act first, `first`'s stack first among
+/// equal keys (the side of the stack activated last, +0x132B8: the active stack's); the stacks
+/// and their number.
+// rule: BAT-AI-009
+pub(crate) fn list(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    first: BattleSide,
+) -> ([StackId; STACK_CAPACITY], usize) {
     let mut list = [Entry {
         id: StackId(0),
         key: 0,
@@ -112,11 +129,11 @@ pub(crate) fn ranks(
         }
         expected = list[i].side.opponent();
     }
-    let mut ranks = [0; STACK_CAPACITY];
-    for (i, e) in list.iter().enumerate() {
-        ranks[e.id.index()] = u8::try_from(n - i).unwrap_or(u8::MAX);
+    let mut ids = [StackId(0); STACK_CAPACITY];
+    for (id, e) in ids.iter_mut().zip(list.iter()) {
+        *id = e.id;
     }
-    ranks
+    (ids, n)
 }
 
 /// Visual C++ 5/6's `std::sort` as the original's 0x423340 runs it (`installation.md` §7.37): more

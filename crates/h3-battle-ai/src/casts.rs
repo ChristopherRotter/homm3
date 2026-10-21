@@ -29,6 +29,7 @@ use h3_content_battle::{
 use h3_kernel::Rng;
 use h3_kernel::arith::{DOUBLE_BITS, SINGLE_BITS, X87};
 
+use crate::predict;
 use crate::spells::{Candidate, SpellContext, has_spell};
 use crate::walker::Walker;
 
@@ -62,7 +63,7 @@ pub(crate) fn entry(w: &Walker<'_>, value: &mut i32, rng: &mut Rng) -> Option<Co
             Ability::RandomSpellCaster {
                 mastery,
                 power_per_creature,
-            } => Some(dragon(w, (mastery, power_per_creature), value)),
+            } => Some(dragon(w, (mastery, power_per_creature), value, rng)),
             Ability::SpellCaster {
                 spell,
                 mastery,
@@ -106,7 +107,7 @@ fn scan(
 ) -> Option<Command> {
     let (state, ruleset, side) = (w.state, w.ruleset, w.side);
     let strength = computer::strength(state, ruleset, &w.ctx, w.id);
-    let sc = SpellContext::new(state, ruleset, &w.ctx, side);
+    let sc = SpellContext::new(state, ruleset, (&w.ctx, side), rng);
     if *value != 0 && rng.range_inclusive(SKIP.0, SKIP.1) <= SKIP.2 {
         return None;
     }
@@ -326,11 +327,18 @@ impl Kind {
 /// the other's ([`pays`]). The first hex worth above 0 is taken whatever `value`, a later one only
 /// when worth more (the lowest hex at a tie), and `value` becomes its worth: a dragon with a cast
 /// left casts whenever its spell is worth anything, before any attack. The original builds the
-/// spell context first (0x4369C0) and reads none of it but its battle context: the policy skips
-/// its predictions and their draws, which decide nothing here (E23 T4a).
+/// spell context first (0x4369C0) and reads none of it but its battle context: the policy runs
+/// only its predictions, for their draws from `rng` ([`predict::plan`]; BAT-AI-015).
 // rule: BAT-AI-013
-fn dragon(w: &Walker<'_>, (mastery, per_creature): (u8, u8), value: &mut i32) -> Option<Command> {
+fn dragon(
+    w: &Walker<'_>,
+    (mastery, per_creature): (u8, u8),
+    value: &mut i32,
+    rng: &mut Rng,
+) -> Option<Command> {
     let (state, ruleset, side) = (w.state, w.ruleset, w.side);
+    // rule: BAT-AI-015
+    predict::plan(state, ruleset, side, rng);
     let mut targets = CastTargets::new();
     // stub: BAT-STUB-8
     // Only the targets the engine accepts (ADR-0027 point 3; the user, E23 T4a).

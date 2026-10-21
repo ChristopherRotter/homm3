@@ -6,6 +6,7 @@ use std::vec;
 
 use h3_battle::{BattleSetup, BattleState, Command, StackId, computer};
 use h3_contracts::{BattleSide, FortLevel, Moat};
+use h3_kernel::Rng;
 
 use super::{BALLISTA, GOG, IMP, TENT, active, at_town, creature, hero, play, ruleset, setup};
 use crate::spells::SpellContext;
@@ -28,7 +29,7 @@ fn the_attack_bonus_lasts_six_rounds_of_an_even_battle() {
         14
     );
     assert_eq!(computer::strength(&state, &r, &ctx, imps), 1000);
-    let sc = SpellContext::new(&state, &r, &ctx, side);
+    let sc = SpellContext::new(&state, &r, (&ctx, side), &mut Rng::from_seed(0));
     assert_eq!(sc.attack_bonus((imps, enemy), 6, 6), 115);
     // Seven rounds count it whole; no bonus, nothing.
     assert_eq!(sc.attack_bonus((imps, enemy), 7, 6), 135);
@@ -36,7 +37,7 @@ fn the_attack_bonus_lasts_six_rounds_of_an_even_battle() {
     // Once they have acted (defending: their strength 1 024) a round less: 5 / 7, 98.
     play(&mut state, &r, Command::Defend);
     assert_eq!(computer::strength(&state, &r, &ctx, imps), 1024);
-    let sc = SpellContext::new(&state, &r, &ctx, side);
+    let sc = SpellContext::new(&state, &r, (&ctx, side), &mut Rng::from_seed(0));
     assert_eq!(sc.attack_bonus((imps, enemy), 6, 6), 98);
 }
 

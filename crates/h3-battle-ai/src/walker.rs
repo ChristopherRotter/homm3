@@ -20,10 +20,17 @@
 //! The creature cast entry ([`casts::entry`], 0x421280; BAT-AI-012, BAT-AI-013) comes before the
 //! action, with the best's value per turn (0 without a candidate), and again after a choice of
 //! nothing. Not built yet: the walker's turn in the tactics phase is T6's (BAT-STUB-5).
+//!
+//! The spell context's predictions (E23 T4b2, [`predict`](crate::predict)) run a stack's turn as a
+//! prediction ([`Walker::predicting`]: 0x421F80 with its flag): its context reads each stack's
+//! hit points less the damage planned so far, an enemy without any left is no candidate, no cast
+//! is asked, and of the actions only the attack within a turn counts, the original's move and
+//! attack even where its walk would stop short (the fallbacks but the attack after all, the
+//! walks and the waits plan nothing and are not built).
 
 use core::cell::{Cell, OnceCell};
 
-use h3_battle::computer::{self, Context, Map};
+use h3_battle::computer::{self, Context, Map, Planned};
 use h3_battle::{
     BattleSide, BattleState, Command, Field, Hex, Stack, StackId, StackTraits, Status,
 };
@@ -136,6 +143,26 @@ impl<'a> Walker<'a> {
         ruleset: &'a BattleRuleset,
         (id, side): (StackId, BattleSide),
     ) -> Self {
+        Self::with(state, ruleset, (id, side), None)
+    }
+
+    /// The walker `id` of `side` on a predicted turn with the damage `planned` so far (0x421F80
+    /// with its prediction flag; E23 T4b2): its context predicts ([`Context::predicting`]).
+    pub(crate) fn predicting(
+        state: &'a BattleState,
+        ruleset: &'a BattleRuleset,
+        (id, side): (StackId, BattleSide),
+        planned: &Planned,
+    ) -> Self {
+        Self::with(state, ruleset, (id, side), Some(planned))
+    }
+
+    fn with(
+        state: &'a BattleState,
+        ruleset: &'a BattleRuleset,
+        (id, side): (StackId, BattleSide),
+        planned: Option<&Planned>,
+    ) -> Self {
         let field = Field::new(ruleset.battle().field);
         let mut on = [None; HEXES];
         for (i, s) in (0u8..).zip(state.stacks()) {
@@ -146,6 +173,7 @@ impl<'a> Walker<'a> {
             }
         }
         let ctx = computer::context(state, ruleset, side);
+        let ctx = planned.map_or(ctx, |p| ctx.predicting(p));
         let (scores, mask) = scores::build(state, ruleset, (id, side), &ctx);
         Self {
             state,
@@ -163,6 +191,11 @@ impl<'a> Walker<'a> {
             stronger: Cell::new(None),
             records: OnceCell::new(),
         }
+    }
+
+    /// Whether the walker's turn is a prediction (its context's +9).
+    pub(crate) fn predicts(&self) -> bool {
+        self.ctx.predicts()
     }
 
     /// Whether the walker's side is the stronger at range (0x420A80; BAT-AI-008).
@@ -200,7 +233,7 @@ impl<'a> Walker<'a> {
     }
 
     /// The record index of stack `id` among its side's (+0xF8): the bit the computer's masks set.
-    fn record(&self, id: StackId) -> u32 {
+    pub(crate) fn record(&self, id: StackId) -> u32 {
         let side = self.stack(id).side;
         let before = self.state.stacks().iter().take(id.index());
         let n = before.filter(|s| s.side == side).count();
@@ -244,17 +277,24 @@ impl<'a> Walker<'a> {
         for (i, t) in (0u8..).zip(self.state.stacks()) {
             let enemy = StackId(i);
             // A bound walker or one without speed only those next to it (its map's marks at 0).
+            // In a prediction not an enemy without hit points left after the planned damage.
+            // stub: BAT-STUB-10
+            // Not the walker itself: the original's loop over the other side's records holds a
+            // hypnotized walker too and has no test for it (BAT-Q58); the engine refuses the
+            // attack on itself (ADR-0027 point 3; the user, E23 T4b2).
             if t.side != other
+                || enemy == self.id
                 || !t.is_alive()
                 || t.is_turret()
+                || self.ctx.spent(self.state, enemy)
                 || (still && self.map.cost(t.hex) > 0)
                 || (holds && !self.inside_walls(t))
             {
                 continue;
             }
-            // The last retaliation's gain (a walker on its turn can act: the original also asks
-            // whether it is blind, petrified or paralysed, or the First Aid Tent or the Ammo Cart,
-            // for the predictions' stacks, T4).
+            // The last retaliation's gain (a walker on its turn can act, a predicted one too: the
+            // original also asks whether it is blind, petrified or paralysed, or the First Aid
+            // Tent or the Ammo Cart, which the predictions pass over).
             let gains = hard
                 && self.map.mark(t.hex).is_some_and(|c| c <= speed)
                 && !t.has(StackTraits::ALL_ADJACENT)
@@ -309,11 +349,16 @@ impl<'a> Walker<'a> {
             });
         }
         *value = best.map_or(0, |b| b.value.max(b.plan_value));
-        if let Some(cast) = casts::entry(self, value, rng) {
+        if !self.predicts()
+            && let Some(cast) = casts::entry(self, value, rng)
+        {
             return Some(cast);
         }
         let Some(b) = best else {
-            return if self.besieging() {
+            // A predicted walker without a candidate plans nothing (its walks and fallbacks).
+            return if self.predicts() {
+                None
+            } else if self.besieging() {
                 Some(self.besiege())
             } else {
                 self.fallback(None)
@@ -339,16 +384,17 @@ impl<'a> Walker<'a> {
     }
 
     /// The attack on the best candidate `b` (0x421EF8): within one turn a move and attack (a move
-    /// alone where the original's walk stops early); further, a careful walk towards the plan's
-    /// hex (never the walker's own: its own hexes are no stops, so a plan there takes one turn;
-    /// the original's test for it, 0x421F39, finds none).
+    /// alone where the original's walk stops early, but the move and attack in a prediction, which
+    /// predicts the original's action); further, a careful walk towards the plan's hex (never the
+    /// walker's own: its own hexes are no stops, so a plan there takes one turn; the original's
+    /// test for it, 0x421F39, finds none).
     pub(crate) fn attack(&self, b: &Best) -> Option<Command> {
         if b.plan.turns <= 1 {
             // The original's move and attack stops where a step enters a stop and then skips the
             // attack (0x441FA0, 0x478971; §7.16): a two-hex walker whose other hex lies on one
             // at the plan's hex (the plan counts a stop by the position hex alone) only moves.
             let other = Shape::of(self.me).other(self.field, b.plan.hex);
-            return Some(if self.map.is_stop(other) {
+            return Some(if self.map.is_stop(other) && !self.predicts() {
                 Command::Move { to: b.plan.hex }
             } else {
                 Command::Attack {
@@ -384,13 +430,10 @@ impl<'a> Walker<'a> {
     fn plan(&self, enemy: StackId) -> Option<Plan> {
         let (me, t) = (self.me, self.stack(enemy));
         let per = |s: &Stack, hp: u64| hp.div_ceil(u64::from(s.max_hp.max(1)));
-        let own = per(me, computer::hit_points(self.state, self.id));
+        let own = per(me, self.ctx.left(self.state, self.id));
         let pair = (self.id, enemy);
         let dealt = computer::damage_estimate(self.state, self.ruleset, pair, own, false, 0);
-        let left = per(
-            t,
-            computer::hit_points(self.state, enemy).saturating_sub(dealt),
-        );
+        let left = per(t, self.ctx.left(self.state, enemy).saturating_sub(dealt));
         let mut best = None;
         let (shape, t_shape) = (Shape::of(me), Shape::of(t));
         let job = (enemy, own, left);
@@ -528,12 +571,14 @@ impl<'a> Walker<'a> {
                     return sum;
                 }
                 *mask |= bit;
-                if !computer::shoots_without(self.state, self.ruleset, x, self.id) {
+                // In a prediction not one without hit points left after the planned damage.
+                let left = self.ctx.left(self.state, x);
+                if !computer::shoots_without(self.state, self.ruleset, x, self.id) || left == 0 {
                     return sum;
                 }
                 let w1 = computer::worth(self.state, self.ruleset, &self.ctx, x, true);
                 let w0 = computer::worth(self.state, self.ruleset, &self.ctx, x, false);
-                let gain = double(computer::hit_points(self.state, x))
+                let gain = double(left)
                     .times(w1.minus(w0))
                     .over(double(s.max_hp.into()))
                     .unwrap_or(X87::ZERO);
@@ -566,15 +611,7 @@ impl<'a> Walker<'a> {
                     return sum;
                 }
                 counted |= bit;
-                let pair = (striker.id, x);
-                let damage = computer::damage_estimate(
-                    self.state,
-                    self.ruleset,
-                    pair,
-                    striker.count,
-                    false,
-                    0,
-                );
+                let damage = self.capped(striker, x);
                 let value = computer::damage_value(
                     self.state,
                     self.ruleset,
@@ -605,15 +642,7 @@ impl<'a> Walker<'a> {
             .and_then(|h| self.on[h.index()])
             .filter(|&x| x != t)
             .map_or(0, |x| {
-                let pair = (striker.id, x);
-                let damage = computer::damage_estimate(
-                    self.state,
-                    self.ruleset,
-                    pair,
-                    striker.count,
-                    false,
-                    0,
-                );
+                let damage = self.capped(striker, x);
                 let desperate = self.ctx.desperate();
                 let value = computer::damage_value(
                     self.state,
@@ -628,6 +657,19 @@ impl<'a> Walker<'a> {
                     value
                 }
             })
+    }
+
+    /// The damage of `striker`'s strike on `x` (0x442780 by its creatures, no shot, capped; in a
+    /// prediction at most `x`'s hit points left after the planned damage, 0x4366F7, 0x4367F0).
+    fn capped(&self, striker: Striker, x: StackId) -> u64 {
+        let pair = (striker.id, x);
+        let damage =
+            computer::damage_estimate(self.state, self.ruleset, pair, striker.count, false, 0);
+        if self.predicts() {
+            damage.min(self.ctx.left(self.state, x))
+        } else {
+            damage
+        }
     }
 
     /// The computer's walk towards the position `to` with the hex scores ([`Walker::walk_with`]).
@@ -646,9 +688,13 @@ impl<'a> Walker<'a> {
     /// the path's `n` steps once an end was found, so it first reaches the hex from which the rest
     /// takes whole turns. Then, careful: an end short of the last hex reached with a score no
     /// lower than the start's is Wait; an end at its own position Wait, else Defend; any other end
-    /// a move there.
+    /// a move there. Nothing in a prediction.
     // rule: BAT-AI-006
     pub(crate) fn walk_with(&self, to: Hex, careful: bool, scored: bool) -> Option<Command> {
+        // A predicted walk plans nothing and draws nothing (ADR-0027 point 11: not built).
+        if self.predicts() {
+            return None;
+        }
         let me = self.me;
         let speed = usize::from(me.speed_now());
         let path = computer::path(self.state, self.ruleset, (self.id, self.side), to);
