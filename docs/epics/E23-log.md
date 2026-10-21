@@ -912,3 +912,17 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   the records until the next prediction, read only by a prediction, the context and its fill); a
   predicted walk, wait or fallback other than the attack after all is not built (it plans and
   draws nothing, ADR-0027 point 11); the run's own battle context (0x422893) is unused.
+- **Cost** (measured 2026-10-22, before the stop): `computer-decisions` 477 885 393 instructions,
+  +0.14 % (no re-set). Release, each decision's best of five (a local patch of `h3 bench-computer`,
+  not kept), 400 battles each of seeds 4 to 8: 34.0 to 38.8 µs per decision on average, the slowest
+  0.41 to 0.75 ms; `master` on the same sandbox 32.1 to 38.7 µs, 0.19 to 0.26 ms. An Ogre Mage
+  whose context predicts six more of its stacks (seven a side, the enemy slower): 0.24 ms on Easy,
+  0.49 ms above (`master` 0.03, 0.06); a Faerie Dragon alike: 0.16 to 0.72 ms (`master` 0.03 to
+  0.08). Within the budget, the dragon's the nearest to it.
+- **A blind check** (a fresh agent, the disassembly against the port): every function and every
+  reader of the prediction flag agrees. Its notes: a walk that writes no action leaves the run
+  reading stale action fields (no run reaches it; not modelled, §7.52); the pathfinder after a
+  spell context (BAT-Q59, outside T4b2).
+- **Stopped here** (the user, 2026-10-22: T4b2 in a new session): the branch `battle/e23-t4b2`
+  holds the port, its tests and these docs; the scoped verify passed but for a coverage gap since
+  closed. Left: the full verify with the original data, the pull request.
