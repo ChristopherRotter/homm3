@@ -59,6 +59,9 @@ pub fn inputs(
 ) -> Result<Vec<Input>, String> {
     let mut out = vec![Input::Move { at: 0, to: PARK }];
     let (mut now, mut turns) = (pre, 0);
+    // The stack whose turn the battle opens with (E17 M3 T7b-1): a first `turn:` naming it acts
+    // at once, as the harness's does (the game names it the active stack already).
+    let mut opening = timeline.outlines.first().and_then(|(_, stack)| *stack);
     let point = |arg: &str| -> Result<[i32; 2], String> {
         let (x, y) = arg
             .split_once(',')
@@ -106,6 +109,9 @@ pub fn inputs(
                     .find(|m| m.side == side && m.record == record)
                     .map(|m| m.stack)
                     .ok_or_else(|| format!("`{action}`: no such stack"))?;
+                if opening.take() == Some(stack) && turns == 0 {
+                    continue;
+                }
                 let i = (turns..timeline.turns.len())
                     .find(|&i| timeline.turns[i].1 == stack && timeline.turns[i].0 >= now)
                     .ok_or_else(|| format!("`{action}`: no such turn after {now} ms"))?;

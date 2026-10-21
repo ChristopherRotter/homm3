@@ -45,6 +45,7 @@ fn look(times: [u32; 4], frames: &[(u32, u32)], top: i32) -> Look {
         climax: 0,
         missile_offsets: [[0, 0]; 3],
         top,
+        front: 0,
         missile: None,
         ray: None,
     }
@@ -438,6 +439,7 @@ fn play(snapshot: &Observation, commands: &[(Option<u32>, Vec<Event>)]) -> Timel
         width: 17,
         groups: tables().battle.groups,
         magic: &magic(),
+        casts: &Casts::default(),
     };
     let commands: Vec<Command<'_>> = commands
         .iter()
@@ -871,6 +873,7 @@ fn a_creature_without_numbers_is_an_error() {
         width: 0,
         groups: tables().battle.groups,
         magic: &magic(),
+        casts: &Casts::default(),
     };
     let err = timeline(&o, &[], &looks(), stage, Speed::default()).unwrap_err();
     assert_eq!(err, AnimError::Look(99));
@@ -927,6 +930,7 @@ fn a_flight_without_a_distance_is_one_cycle() {
         width: 17,
         groups: tables().battle.groups,
         magic: &magic(),
+        casts: &Casts::default(),
     };
     let o = snapshot(vec![angels]);
     let events = [moved(0, 35, 37)];
@@ -1043,6 +1047,7 @@ fn a_reaction_without_frames_and_a_strike_at_nothing() {
         width: 17,
         groups: tables().battle.groups,
         magic: &magic(),
+        casts: &Casts::default(),
     };
     let o = snapshot(vec![
         at(0, Side::Attacker, WOLF_RIDER, 52, true),
@@ -1076,6 +1081,7 @@ fn a_ray_without_a_climax_frame_or_a_target() {
         width: 17,
         groups: tables().battle.groups,
         magic: &magic(),
+        casts: &Casts::default(),
     };
     let o = snapshot(vec![
         at(0, Side::Attacker, ARCH_MAGE, 137, false),
@@ -1152,6 +1158,7 @@ fn shots_aim_up_straight_and_down() {
         width: 17,
         groups: tables().battle.groups,
         magic: &magic(),
+        casts: &Casts::default(),
     };
     let column = |target: u8| {
         let o = snapshot(vec![
@@ -1185,6 +1192,7 @@ fn shots_without_a_climax_or_a_target() {
         width: 17,
         groups: tables().battle.groups,
         magic: &magic(),
+        casts: &Casts::default(),
     };
     let o = snapshot(vec![
         at(0, Side::Attacker, MARKSMAN, 35, false),
@@ -1349,6 +1357,7 @@ fn a_shooter_without_a_projectile_waits_as_one_flies() {
         width: 17,
         groups: tables().battle.groups,
         magic: &magic(),
+        casts: &Casts::default(),
     };
     let o = snapshot(vec![
         at(0, Side::Attacker, MARKSMAN, 35, false),
@@ -1592,6 +1601,7 @@ fn a_breath_on_two_stacks_takes_its_own_groups() {
         width: 17,
         groups: tables().battle.groups,
         magic: &magic(),
+        casts: &Casts::default(),
     };
     let o = snapshot(vec![
         at(0, Side::Attacker, ANGEL, 52, false),
@@ -1745,6 +1755,7 @@ fn neighbours_follow_the_layout() {
         width: 17,
         groups: tables().battle.groups,
         magic: &magic(),
+        casts: &Casts::default(),
     };
     // Hex 83 (row 4, even, shifted right): up-right 67, right 84, down-right 101, down-left 100,
     // left 82, up-left 66; row 5 (odd): up-right of 100 is 83.
@@ -1815,6 +1826,7 @@ fn fidgeting_play(
         width: 17,
         groups: tables().battle.groups,
         magic: &magic(),
+        casts: &Casts::default(),
     };
     let commands: Vec<Command<'_>> = commands
         .iter()
@@ -2040,6 +2052,7 @@ fn a_target_reacts_as_the_projectile_lands() {
         width: 17,
         groups: tables().battle.groups,
         magic: &magic(),
+        casts: &Casts::default(),
     };
     let o = snapshot(vec![
         at(0, Side::Attacker, MARKSMAN, 35, false),
@@ -2194,6 +2207,7 @@ fn a_heal_without_its_animation_plays_its_sound_only() {
         width: 17,
         groups: tables().battle.groups,
         magic: &none,
+        casts: &Casts::default(),
     };
     let events = [healed(1, 0), Event::TurnStarted { stack: 2 }];
     let commands = [Command {
@@ -2229,7 +2243,8 @@ fn a_heal_without_its_animation_plays_its_sound_only() {
 
 #[test]
 fn magic_animations_stand_where_their_place_says() {
-    // Place 0 on the anchor, 2 above the creature, 1 centred; 3 is not built: on the anchor.
+    // Place 0 on the anchor, 2 above the creature, 1 centred; 3 beside its standing frame's front
+    // (E17 M3 T7b-1: the anchor + the front − 196 facing right, the test's front 0), as high as 1.
     let o = snapshot(vec![
         machine(1, Side::Attacker, TENT, 153, 18),
         at(0, Side::Attacker, PIKEMAN, 86, false),
@@ -2243,6 +2258,7 @@ fn magic_animations_stand_where_their_place_says() {
             width: 17,
             groups: tables().battle.groups,
             magic: &magic,
+            casts: &Casts::default(),
         };
         let events = [healed(1, 0)];
         let commands = [Command {
@@ -2255,7 +2271,7 @@ fn magic_animations_stand_where_their_place_says() {
     assert_eq!(place(0), [32, 338 - 94]);
     assert_eq!(place(1), [32, 338 - 47 - 48]);
     assert_eq!(place(2), [32, 338 - 94 - 96]);
-    assert_eq!(place(3), place(0));
+    assert_eq!(place(3), [80 - 196, 338 - 47 - 48]);
 }
 
 #[test]
@@ -2429,6 +2445,7 @@ fn the_log_records_what_the_battle_writes_and_when() {
             Logged::Round => "round",
             Logged::Status { .. } => "status",
             Logged::Scroll(_) => "scroll",
+            Logged::Cast { .. } | Logged::Resisted { .. } | Logged::SpellDamage { .. } => "spell",
         })
         .collect();
     // E17 M3 T6c-2: a wait, two strikes, a defend's command.

@@ -151,10 +151,13 @@ fn cell<'t>(source: &Source, tables: &'t Tables) -> Result<&'t str, String> {
         .ok_or_else(|| format!("no table {name}.TXT"))?;
     let row = match source.row {
         Row::Record(r) => records.get(r),
-        Row::Id { first, id } => records
+        Row::Id { first, id, by } => records
             .iter()
             .skip(first)
-            .filter(|r| !r.iter().all(|f| f.trim().is_empty()))
+            .filter(|r| match by {
+                Some(column) => r.get(column).is_some_and(|f| !f.trim().is_empty()),
+                None => !r.iter().all(|f| f.trim().is_empty()),
+            })
             .nth(id),
     };
     let row = row.ok_or_else(|| format!("{name}.TXT has no such record ({:?})", source.row))?;

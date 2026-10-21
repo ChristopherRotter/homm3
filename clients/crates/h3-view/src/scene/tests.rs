@@ -22,10 +22,12 @@ heal_sound = "Regener"
 
 [[hero]]
 key = "orrin"
+original = 0
 def = "CH00.DEF"
 
 [[hero]]
 key = "crag_hack"
+original = 102
 def = "CH013.DEF"
 
 [[creature]]

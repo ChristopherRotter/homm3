@@ -573,7 +573,7 @@ pub fn battle_at(
             player: PLAYERS[side],
         });
         list.push(Draw::Hero {
-            def: def.clone(),
+            def: def.def.clone(),
             group: pose.group,
             frame: pose.frame,
             x: hx,

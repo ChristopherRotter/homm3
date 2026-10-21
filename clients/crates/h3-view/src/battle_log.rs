@@ -86,6 +86,34 @@ pub enum Logged {
     },
     /// A round starts outside the tactics phase (`round_start` 0x4761E9).
     Round,
+    /// A hero's spell on a stack (`battle_log_cast` 0x5A8950 for the caster kind 0 with a target;
+    /// E17 M3 T7b-1): written after the spell's effect, before its animation (0x5A109F).
+    Cast {
+        /// The caster's side (0 the attacker's).
+        side: u8,
+        /// The spell's handle.
+        spell: u16,
+        /// The stack it took effect on.
+        target: u8,
+        /// Its number, which picks its name.
+        count: u32,
+    },
+    /// A spell resisted by the stack it was aimed at (`cast_spell` 0x5A1FB0 to 0x5A2035; E17 M3
+    /// T7b-1): written after the resistance's sound, before its animation.
+    Resisted {
+        /// The stack.
+        stack: u8,
+        /// Its number, which picks its name and the verb.
+        count: u32,
+    },
+    /// A spell's damage on one stack (`battle_log_damage` 0x469A90 named by the spell, its number
+    /// 1: Magic Arrow 0x5A0A1F, Ice Bolt 0x5A0AEB; E17 M3 T7b-1), after its animation.
+    SpellDamage {
+        /// The spell's handle.
+        spell: u16,
+        /// The stack, its damage and its kills.
+        hit: (u8, u64, u32),
+    },
     /// The status line written (0x472E90 with its second argument 0; E17 M3 T6c-2): the mouse's
     /// hint, forced over new entries or not (`crate::mouse::track`).
     Status {
@@ -111,12 +139,24 @@ pub struct Named {
     pub defense: i32,
 }
 
-/// The line `logged` writes (none for what writes none, or a stack `stack` does not name).
+/// What else than a stack a line names (E17 M3 T7b-1): a spell by its handle, a side's hero
+/// (0 the attacker's).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Name {
+    /// A spell.
+    Spell(u16),
+    /// A side's hero.
+    Hero(u8),
+}
+
+/// The line `logged` writes (none for what writes none, or a stack `stack` or a spell or hero
+/// `key` does not name; `key` gives a [`Name`]'s key in the catalogue).
 #[must_use]
 pub fn word(
     catalogue: &Catalogue,
     logged: &Logged,
     stack: &dyn Fn(u8) -> Option<Named>,
+    key: &dyn Fn(Name) -> Option<String>,
 ) -> Option<String> {
     let named = |id: u8, count: u32| stack(id).map(|n| (n, count));
     match logged {
@@ -182,6 +222,39 @@ pub fn word(
             Some(luck_good(catalogue, n.stack(count)))
         }
         Logged::Round => Some(catalogue.text("battle.log.round", &Args::new())),
+        Logged::Cast {
+            side,
+            spell,
+            target,
+            count,
+        } => {
+            let (n, count) = named(*target, *count)?;
+            let hero = catalogue.text(&key(Name::Hero(*side))?, &Args::new());
+            let spell = catalogue.text(&key(Name::Spell(*spell))?, &Args::new());
+            Some(cast_on(catalogue, &hero, &spell, n.stack(count)))
+        }
+        Logged::Resisted { stack, count } => {
+            let (n, count) = named(*stack, *count)?;
+            Some(resisted(catalogue, n.stack(count)))
+        }
+        Logged::SpellDamage {
+            spell,
+            hit: (target, damage, kills),
+        } => {
+            let spell = key(Name::Spell(*spell))?;
+            let struck = stack(*target)?;
+            let hit = Hit {
+                creature: &struck.creature,
+                war_machine: struck.war_machine,
+                damage: *damage,
+                kills: *kills,
+            };
+            let attacker = Stack {
+                creature: &spell,
+                count: 1,
+            };
+            Some(strike(catalogue, attacker, Spread::Target, &[hit]))
+        }
     }
 }
 
@@ -436,6 +509,32 @@ pub fn heal(
             .text("healer", &name(catalogue, healer))
             .text("creature", &name(catalogue, patient))
             .number("hit_points", i64::from(hit_points)),
+    )
+}
+
+/// A hero's spell on a stack (`battle_log_cast` 0x5A8950, E17 M3 T7b-1): the hero's name, the
+/// spell's and the stack's by its number.
+#[must_use]
+pub fn cast_on(catalogue: &Catalogue, hero: &str, spell: &str, stack: Stack<'_>) -> String {
+    catalogue.text(
+        "battle.log.cast-on",
+        &Args::new()
+            .text("hero", hero)
+            .text("spell", spell)
+            .text("creature", &name(catalogue, stack)),
+    )
+}
+
+/// A spell resisted by the stack it was aimed at (0x5A1FB0, E17 M3 T7b-1): its name and the verb
+/// by its number.
+#[must_use]
+pub fn resisted(catalogue: &Catalogue, stack: Stack<'_>) -> String {
+    let verb = catalogue.text("word.resist", &Args::new().count(i64::from(stack.count)));
+    catalogue.text(
+        "battle.log.resisted",
+        &Args::new()
+            .text("creature", &name(catalogue, stack))
+            .text("verb", &verb),
     )
 }
 

@@ -75,7 +75,20 @@ pub fn texts(
             defense: s.defense,
         })
     };
-    let word = |logged: &battle_log::Logged| battle_log::word(catalogue, logged, &named);
+    // A spell's and a side's hero's keys (E17 M3 T7b-1).
+    let manifest = &record.header.manifest.keys;
+    let key = |name: battle_log::Name| match name {
+        battle_log::Name::Spell(handle) => manifest
+            .spells
+            .get(usize::from(handle))
+            .map(|k| format!("spell.{k}")),
+        battle_log::Name::Hero(side) => {
+            let hero = snapshot.sides.get(usize::from(side))?.hero.as_ref()?;
+            let k = manifest.hero_types.get(usize::from(hero.hero_type))?;
+            Some(format!("hero.{k}"))
+        }
+    };
+    let word = |logged: &battle_log::Logged| battle_log::word(catalogue, logged, &named, &key);
     let lines = |text: &str| {
         h3_render::text::line_count(font, &encode_1252(text).0, i64::from(width), bugs)
     };

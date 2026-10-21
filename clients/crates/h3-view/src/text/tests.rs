@@ -264,7 +264,11 @@ fn keys_resolve_forms_and_families() {
             s("one"),
             Source {
                 table: s("C"),
-                row: Row::Id { first: 1, id: 1 },
+                row: Row::Id {
+                    first: 1,
+                    id: 1,
+                    by: None
+                },
                 column: 0
             },
             Vec::new()
@@ -466,7 +470,7 @@ forms = { one = 0 }
             "`a`: no table NONE.TXT",
             "`b`: T.TXT has no such record (Record(99))",
             "`c`: T.TXT's record has no column 5",
-            "`creature.base:x_one`: C.TXT has no such record (Id { first: 1, id: 7 })",
+            "`creature.base:x_one`: C.TXT has no such record (Id { first: 1, id: 7, by: None })",
             "`d`: TooMany(1, 0) in \"%s hits for %d!\"",
         ]
     );
@@ -611,5 +615,40 @@ fn windows_1252_encoding() {
         };
         let text = String::from(c);
         assert_eq!(encode_1252(&text), (vec![byte], vec![]), "{byte:#x}");
+    }
+}
+
+#[test]
+fn a_single_form_family_counts_the_records_its_column_fills() {
+    // E17 M3 T7b-1: SPTRAITS.TXT's group rows fill only their first column, so `by` counts the
+    // records whose second is filled; `column` gives the keys' one form.
+    let catalogue = "[[family]]\nid = \"spell\"\ntable = \"S\"\nfirst = 1\nby = 1\ncolumn = 0\n";
+    let entry = |key: &str, id| Entry { key: s(key), id };
+    let list = vec![entry("base:arrow", 0), entry("base:bolt", 1)];
+    let entries = BTreeMap::from([(s("spell"), list)]);
+    let keys = Keys::parse(catalogue, &entries).unwrap();
+    let bolt = &keys.keys["spell.base:bolt"];
+    assert!(!bolt.plural);
+    assert!(bolt.args.is_empty());
+    let row = |fields: &[&str]| fields.iter().map(|f| s(f)).collect::<Vec<_>>();
+    let rows = vec![
+        row(&["head"]),
+        row(&["Group"]),
+        row(&["Arrow", "A"]),
+        row(&["Group 2", ""]),
+        row(&["Bolt", "B"]),
+    ];
+    let tables = BTreeMap::from([(s("S"), rows)]);
+    let (pack, problems) = Pack::original(&keys, &tables);
+    assert_eq!(problems, Vec::<Problem>::new());
+    assert_eq!(pack.messages["spell.base:arrow"].segments, vec![lit("Arrow")]);
+    assert_eq!(pack.messages["spell.base:bolt"].segments, vec![lit("Bolt")]);
+    // Forms and a column, or neither: refused.
+    for body in ["forms = { one = 0 }\ncolumn = 0", ""] {
+        let text = format!("[[family]]\nid = \"spell\"\ntable = \"S\"\nfirst = 1\n{body}\n");
+        assert_eq!(
+            Keys::parse(&text, &entries).unwrap_err(),
+            KeysError::Form(s("spell"), s("a family has forms or a column, not both"))
+        );
     }
 }

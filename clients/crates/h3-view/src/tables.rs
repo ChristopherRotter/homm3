@@ -35,6 +35,9 @@ pub struct TableFile {
     /// The heroes' battle pictures, by hero type key (E17 M3 T3a).
     #[serde(default)]
     pub hero: Vec<Hero>,
+    /// The spells' sounds and magic animations, by spell key (E17 M3 T7b-1).
+    #[serde(default)]
+    pub spell: Vec<Spell>,
     /// Battlefield backgrounds, by a terrain's or a special battlefield's key.
     #[serde(default)]
     pub battlefield: Vec<Battlefield>,
@@ -72,6 +75,10 @@ pub struct Battle {
     pub magic: Vec<Magic>,
     /// The sound the First Aid Tent's heal plays (`first_aid_tent_action` 0x478C46; E17 M3 T3b).
     pub heal_sound: String,
+    /// The sound of a spell resisted by the stack it was aimed at (`cast_spell` 0x5A1F98; E17
+    /// M3 T7b-1).
+    #[serde(default)]
+    pub resist_sound: Option<String>,
 }
 
 /// A magic animation (`docs/epics/E17-design.md` §7.15; E17 M3 T3b): its DEF (group 0), where it
@@ -107,14 +114,51 @@ pub struct HeroGroups {
 }
 
 /// A hero type's battle picture (`battle_load_heroes` 0x463370: by its class's town and its
-/// sex; E17 M3 T3a).
+/// sex; E17 M3 T3a) and its cast (`hero_battle_defs` 0x63BD40, the same record's +4 to +0xC; E17
+/// M3 T7b-1, design §7.16).
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Hero {
     /// The hero type's key.
     pub key: String,
+    /// Its original id: the executable's hero type, its record among `hotraits.txt`'s (the key
+    /// catalogue's family `hero`; E17 M3 T7b-1).
+    pub original: u16,
     /// Its battle DEF.
     pub def: String,
+    /// Its cast point in the DEF's frame (x, y): where a spell's projectile starts.
+    #[serde(default)]
+    pub cast: [i16; 2],
+    /// The frames of its cast group played before the spell.
+    #[serde(default)]
+    pub cast_frames: u8,
+}
+
+/// A spell's sound and magic animation (`spell_table` 0x685450, its records' +4 and +8; E17 M3
+/// T7b-1, design §7.16): what a cast plays over its target when the spell's handler plays the
+/// record's animation.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Spell {
+    /// The spell's key.
+    pub key: String,
+    /// Its original id: the executable's spell number, its record among `sptraits.txt`'s spell
+    /// rows (the key catalogue's family `spell`).
+    pub original: u16,
+    /// Its magic animation's number (none: the record's −1).
+    #[serde(default)]
+    pub animation: Option<u8>,
+    /// Its sound, an entry of the sound archives without its extension (none: the record has
+    /// none).
+    #[serde(default)]
+    pub sound: Option<String>,
+    /// The DEFs of its projectile, if its handler flies one (`spell_projectile` 0x467DB0: Magic
+    /// Arrow's, Ice Bolt's), from the level one to the one pointing down.
+    #[serde(default)]
+    pub projectile: Vec<String>,
+    /// Each projectile DEF's angle in degrees (0 level, negative down).
+    #[serde(default)]
+    pub projectile_angles: Vec<i16>,
 }
 
 /// The creature DEF groups the battle uses (`docs/epics/E17-design.md` §4.2, §4.3, §7).
@@ -234,8 +278,9 @@ impl Sounds {
             Sound::Defend => self.defend.as_deref(),
             Sound::Start => self.start.as_deref(),
             Sound::End => self.end.as_deref(),
-            // The battle's, not the creature's ([`Battle::heal_sound`]).
-            Sound::Heal => None,
+            // The battle's, not the creature's ([`Battle::heal_sound`], [`Battle::resist_sound`],
+            // a spell's [`Spell::sound`]).
+            Sound::Heal | Sound::Resisted | Sound::Spell(_) => None,
         }
     }
 
@@ -336,8 +381,10 @@ pub struct Tables {
     pub battle: Battle,
     /// Creatures.
     pub creatures: BTreeMap<String, Creature>,
-    /// The heroes' battle DEFs, by hero type.
-    pub heroes: BTreeMap<String, String>,
+    /// The heroes' battle pictures and casts, by hero type.
+    pub heroes: BTreeMap<String, Hero>,
+    /// The spells' sounds and animations (E17 M3 T7b-1).
+    pub spells: BTreeMap<String, Spell>,
     /// Battlefields.
     pub battlefields: BTreeMap<String, Battlefield>,
     /// Obstacles.
@@ -353,6 +400,8 @@ impl Tables {
             .values()
             .flat_map(|c| c.sounds.names())
             .chain(core::iter::once(&self.battle.heal_sound))
+            .chain(&self.battle.resist_sound)
+            .chain(self.spells.values().filter_map(|s| s.sound.as_ref()))
             .map(|n| n.to_ascii_uppercase())
             .collect()
     }
@@ -363,9 +412,10 @@ impl Tables {
             .creatures
             .values()
             .flat_map(|c| core::iter::once(&c.def).chain(&c.missile))
-            .chain(self.heroes.values())
+            .chain(self.heroes.values().map(|h| &h.def))
             .chain(&self.battle.flags)
-            .chain(self.battle.magic.iter().map(|m| &m.def));
+            .chain(self.battle.magic.iter().map(|m| &m.def))
+            .chain(self.spells.values().flat_map(|s| &s.projectile));
         let fields = self.battlefields.values().flat_map(|b| &b.backgrounds);
         let obstacles = self.obstacles.values().map(|o| match o {
             ObstacleArt::Usual { def, .. } => def,
@@ -448,7 +498,8 @@ pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
     for magic in &battle.magic {
         names("[battle]", &[(&magic.def, ".DEF")])?;
     }
-    if battle.heal_sound.is_empty() || battle.heal_sound.contains('.') {
+    let sounds = core::iter::once(&battle.heal_sound).chain(&battle.resist_sound);
+    if sounds.into_iter().any(|s| s.is_empty() || s.contains('.')) {
         return Err(entry(
             "[battle]",
             "a sound is an entry's name, without an extension",
@@ -460,6 +511,7 @@ pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
         battle,
         creatures: BTreeMap::new(),
         heroes: BTreeMap::new(),
+        spells: BTreeMap::new(),
         battlefields: BTreeMap::new(),
         obstacles: BTreeMap::new(),
         fixes: BTreeMap::new(),
@@ -483,7 +535,33 @@ pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
         for h in &file.hero {
             let key = qualify(id, &h.key)?;
             names(&key, &[(&h.def, ".DEF")])?;
-            insert(&mut tables.heroes, key, h.def.clone())?;
+            insert(&mut tables.heroes, key, h.clone())?;
+        }
+        for spell in &file.spell {
+            let key = qualify(id, &spell.key)?;
+            if spell
+                .sound
+                .as_ref()
+                .is_some_and(|n| n.is_empty() || n.contains('.'))
+            {
+                return Err(entry(
+                    &key,
+                    "a sound is an entry's name, without an extension",
+                ));
+            }
+            if spell
+                .animation
+                .is_some_and(|a| usize::from(a) >= tables.battle.magic.len())
+            {
+                return Err(entry(&key, "no such magic animation"));
+            }
+            if spell.projectile.len() != spell.projectile_angles.len() {
+                return Err(entry(&key, "an angle for each projectile DEF"));
+            }
+            for def in &spell.projectile {
+                names(&key, &[(def, ".DEF")])?;
+            }
+            insert(&mut tables.spells, key, spell.clone())?;
         }
         for b in &file.battlefield {
             let key = qualify(id, &b.key)?;
@@ -613,10 +691,26 @@ hero_groups = { standing = 0, idle = 1, defeat = 2, victory = 3, cast = 4 }
 flags = ["CmFlagL.def", "CmFlagR.def"]
 magic = [{ def = "C10spW.def", place = 0, translucent = true }, { def = "sp12_.def", place = 1 }]
 heal_sound = "Regener"
+resist_sound = "MagicRes"
 
 [[hero]]
 key = "orrin"
+original = 0
 def = "CH00.DEF"
+cast = [92, 67]
+cast_frames = 5
+
+[[spell]]
+key = "slow"
+original = 54
+animation = 1
+sound = "Slow"
+
+[[spell]]
+key = "magic_arrow"
+original = 15
+projectile = ["c20spx0.def", "c20spx1.def"]
+projectile_angles = [0, -16]
 
 [[creature]]
 key = "pikeman"
@@ -661,6 +755,7 @@ at = [124, 254]
             battle: None,
             creature: Vec::new(),
             hero: Vec::new(),
+            spell: Vec::new(),
             battlefield: Vec::new(),
             obstacle: Vec::new(),
             fix: Vec::new(),
@@ -712,7 +807,12 @@ at = [124, 254]
         assert_eq!(t.order, ["base", "ab", "sod"]);
         assert_eq!(t.battle.groups.standing, 2);
         assert_eq!(t.battle.hero_groups.idle, 1);
-        assert_eq!(t.heroes["base:orrin"], "CH00.DEF");
+        assert_eq!(t.heroes["base:orrin"].def, "CH00.DEF");
+        assert_eq!(t.heroes["base:orrin"].cast, [92, 67]);
+        assert_eq!(t.heroes["base:orrin"].cast_frames, 5);
+        assert_eq!(t.spells["base:slow"].animation, Some(1));
+        assert_eq!(t.spells["base:slow"].sound.as_deref(), Some("Slow"));
+        assert_eq!(t.battle.resist_sound.as_deref(), Some("MagicRes"));
         assert_eq!(
             t.creatures.keys().collect::<Vec<_>>(),
             ["ab:pikeman", "base:archer", "base:pikeman"]
@@ -758,6 +858,8 @@ at = [124, 254]
             names,
             [
                 "C10SPW.DEF",
+                "C20SPX0.DEF",
+                "C20SPX1.DEF",
                 "CH00.DEF",
                 "CLCBOW.DEF",
                 "CMBKDRDD.PCX",
@@ -977,6 +1079,36 @@ at = [124, 254]
                 "`[battle]`: a sound is an entry's name, without an extension"
             );
         }
+        let mut b = base();
+        b.battle.as_mut().unwrap().resist_sound = Some("MagicRes.wav".to_string());
+        assert_eq!(
+            rule(&[b], "base").to_string(),
+            "`[battle]`: a sound is an entry's name, without an extension"
+        );
+        let mut b = base();
+        b.spell[0].sound = Some("Slow.wav".to_string());
+        assert_eq!(
+            rule(&[b], "base").to_string(),
+            "`base:slow`: a sound is an entry's name, without an extension"
+        );
+        let mut b = base();
+        b.spell[0].animation = Some(2);
+        assert_eq!(
+            rule(&[b], "base").to_string(),
+            "`base:slow`: no such magic animation"
+        );
+        let mut b = base();
+        b.spell[1].projectile_angles.pop();
+        assert_eq!(
+            rule(&[b], "base").to_string(),
+            "`base:magic_arrow`: an angle for each projectile DEF"
+        );
+        let mut b = base();
+        b.spell[1].projectile[0] = "c20spx0.pcx".to_string();
+        assert_eq!(
+            rule(&[b], "base").to_string(),
+            "`base:magic_arrow`: `c20spx0.pcx` is not a DEF name"
+        );
     }
 
     #[test]
@@ -1005,7 +1137,8 @@ at = [124, 254]
         assert_eq!(
             names,
             [
-                "PIKEATTK", "PIKEDFND", "PIKEKILL", "PIKEMOVE", "PIKEWNCE", "REGENER"
+                "MAGICRES", "PIKEATTK", "PIKEDFND", "PIKEKILL", "PIKEMOVE", "PIKEWNCE", "REGENER",
+                "SLOW"
             ]
         );
     }
