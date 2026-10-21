@@ -2,7 +2,7 @@
 
 Status: **in progress**, refined 2026-10-19 (BAT-Q52); T1a1 to T1a4 done (the cuts confirmed
 2026-10-20), T1c done (BAT-Q53, BAT-Q54); T1a5 done as cut (part C, §7.42 to §7.45); T1a5e (the spell evaluators) done (§7.46); T1b done, ADR-0027 accepted (BAT-Q55); T2 done (T2a the crate and the plain shooters, T2b the area value, the wall shot, the benchmark), the budget
-set; T3 done (cut in four: T3-0, T3a, T3b, T3c); T4 cut in three, T4a done, T4b cut in two, T4b1 next · Follows E05 (the
+set; T3 done (cut in four: T3-0, T3a, T3b, T3c); T4 cut in three, T4a done, T4b cut in two, T4b1 done, T4b2 next · Follows E05 (the
 AI lane, done) · Followed by E06 (training: this policy holds the neutral seat; AI-Q1) ·
 The battle lane's, later the AI lane's (BACKLOG).
 
@@ -206,10 +206,10 @@ found after that decision) belong to the neutral side's map too and are read (§
   - **T4b The spell context and the Ogre Mage**, cut in two (the user, 2026-10-21: the Ogre Mage
     first; the context's threat tables and its second context, which only the Genie's evaluators
     read on the neutral side, move to T4c; the Ogre Mage is told from the elementals by its spell):
-    - [ ] **T4b1 The Ogre Mage** — the scan 0x420D20 (its draw, the strength floor), Bloodlust's
-      value 0x43C330 with its Expert mass path (0x43A910 with Bloodlust's evaluator 0x438100), the
-      attack bonus's value 0x437800 with 0x443E30 (§7.44, §7.45; slip 8); "the enemy beaten" from
-      the state until T4b2.
+    - [x] **T4b1 The Ogre Mage** (2026-10-21) — the scan 0x420D20 (its draw, the strength floor),
+      Bloodlust's value 0x43C330 with its mass version (0x43A910 with the evaluator 0x438100), the
+      attack bonus's value 0x437800 and the context's threat records (BAT-AI-014, slip 8; "the
+      enemy beaten" and the predictions' draws BAT-STUB-9); §7.51; the log.
     - [ ] **T4b2 The predictions** — 0x422A40 with the side's run, the predicted shooters' and
       walkers' turns, the melee prediction and the predicted strike (§7.42) and the draws they
       take; "the enemy beaten" from them.

@@ -4,10 +4,10 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E23, the original's battle AI, in progress** (`docs/epics/E23-original-battle-ai.md`; refined 2026-10-19, BAT-Q52): the neutral side first, a battle-lane crate of its own, the code reading first with batch rows only for readings at risk. **T1 done** (#288 to #331): the reading §7.34 to §7.46, `pathfinder.rs` (BAT-QUIRK-24), the survey `E23-battle-ai.md`, **ADR-0027** (BAT-Q55). **T2 done** (#334 to #347): `h3_battle_ai::choose`, the shooters, BAT-QUIRK-25's flag, the benchmark `computer-decisions`. **The budget** (the user, 2026-10-21): the gated count +2 %, re-set on purpose per part, and ≤ 1 ms for the slowest decision on a quiet sandbox, recorded per task. **T3 done** (T3-0 to T3c; #350 to #359): the walker, BAT-AI-005 to 011, slips 2 to 4 and 18 to 21; slip 6 a gap (BAT-STUB-7, BAT-Q56). **T4 cut in three** (the user, 2026-10-21): **T4a done** (#364, #365): the creature cast entry and the raise (BAT-AI-012), the Faerie Dragon (BAT-AI-013, slip 7) at the engine's targets (BAT-STUB-8, BAT-Q32); §7.50; `POLICY_VERSION` 6; the count re-set (414 600 per decision). **T4b cut in two** (the user, 2026-10-21): **T4b1 in progress** (`battle/e23-t4b1`: the Ogre Mage, told from the elementals by its spell; "the enemy beaten" from the state), then T4b2 (the predictions), then T4c (the context's tables and second context, the Master Genie). T1a6 before T5.
-- Since E04c's closure (2026-10-16): #265, #267, #268, #273, #277, #282, #283 merged. E05, `h3-sim` and `h3-ffi` are the AI lane's (AI-Q1), `h3-heroes` the adventure lane's.
+- **E23, the original's battle AI, in progress** (`docs/epics/E23-original-battle-ai.md`; refined 2026-10-19, BAT-Q52): the neutral side first, a crate of its own, the code reading first, batch rows only for readings at risk. **T1 done** (#288 to #331): §7.34 to §7.46, `pathfinder.rs` (BAT-QUIRK-24), the survey `E23-battle-ai.md`, **ADR-0027** (BAT-Q55). **T2 done** (#334 to #347): `h3_battle_ai::choose`, the shooters, BAT-QUIRK-25, the benchmark `computer-decisions`. **The budget** (the user, 2026-10-21): the gated count +2 %, re-set on purpose per part; ≤ 1 ms for the slowest decision on a quiet sandbox, recorded per task. **T3 done** (#350 to #359): the walker, BAT-AI-005 to 011, slips 2 to 4, 18 to 21; slip 6 a gap (BAT-STUB-7, BAT-Q56). **T4 cut in three**: **T4a done** (#364, #365: the entry, the raise, the Faerie Dragon; BAT-AI-012, 013, slip 7, BAT-STUB-8). **T4b cut in two** (the user, 2026-10-21): **T4b1 done** (`battle/e23-t4b1`, pull request below: the Ogre Mage, told from the elementals by its spell; BAT-AI-014, slip 8, §7.51; "the enemy beaten" and the predictions' draws BAT-STUB-9; `POLICY_VERSION` 7; the count unchanged). **Next:** T4b2 (the predictions, §7.42), then T4c (the context's tables and second context, the Master Genie). T1a6 before T5.
+- E05, `h3-sim` and `h3-ffi` are the AI lane's (AI-Q1), `h3-heroes` the adventure lane's.
 - **Open:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35, BAT-Q51, BAT-Q56, BAT-Q57 (none blocks; BAT-Q33 and BAT-Q51 settle with E23's T6), BAT-STUB-1, the inbox (by kind since 2026-10-19), Q43; S-23, S-24, batch 2g.
-- **Versions:** battle state hash v51, battle part hash v7 (E23 T3-0; the encodings, replay format and C ABI are the AI lane's); shared: core ruleset hash v46, pack format v45 (E23 T3-0), protocol v34. Next ids: BAT-Q58, BAT-QUIRK-26, BAT-STUB-9, BAT-AI-014, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-24, S-30.
+- **Versions:** battle state hash v51, battle part hash v7 (E23 T3-0; the encodings, replay format and C ABI are the AI lane's); shared: core ruleset hash v46, pack format v45 (E23 T3-0), protocol v34. Next ids: BAT-Q58, BAT-QUIRK-26, BAT-STUB-10, BAT-AI-015, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-24, S-30.
 - Working agreement: increments with a user checkpoint (Q41); the user confirms seams and ADRs; batches by the user or an agent; small increments (the user, 2026-10-19).
 
 ## Standing traps
@@ -27,7 +27,8 @@ Area traps live where they are used: experiments in `docs/experiments/README.md`
 - The computer's walker (`walker.rs`): an attack the engine refuses because its walk stops at the hex (a moat or seen pit under a two-hex walker's other hex) is the original's move without the attack (0x478971): give `Move`. Its map spares its own side and fears the moat without the player test (`computer::map`, `aim::fears_moat`).
 - The walker's hex scores (`scores.rs`) search each enemy's reach (`computer::reach_map`: speed + 1 as range and turn speed, `Query::speed`); `hexes::stack_neighbor_at` takes a hex index ± 1 as the original's arithmetic.
 - The walker's odds (`odds.rs`) and threat records (`gain.rs`) are computed once per decision when first asked (a cell, a once-cell): they must read nothing the choice changes. The flag-1 records need the order of action's ranks (`order.rs`, the library sort above 16 stacks).
-- The creature cast entry (`casts.rs`) comes after the walker's loop, before its branches, even without a candidate: `choose` writes the value first; `turn` asks again after nothing. Casts take only the engine's targets (`creature_cast_targets`).
+- The creature cast entry (`casts.rs`) comes after the walker's loop, before its branches, even without a candidate: `choose` writes the value first; `turn` asks again after nothing. Casts take only the engine's targets (`creature_cast_targets`), but that listing leaves out a creature's mass version (the Ogre Mage on Magic Plains: target `None`; the inbox): `casts::scan` handles it.
+- The spell context's threat records (`computer::threat`, 0x422B20 flag 0: range 127, no rank test, a shooter every enemy at one turn) are not the walker's (`gain.rs`, flag 1). `spells.rs` caches them per decision.
 - At a town the computer's choices (`aim.rs`: turrets, the automatic Ballista, a weak walker's moat avoidance) read `BattleSetup.human` and Fight Values, which test creatures lack (`fighting_turret_ruleset`); `BattleState::new` has fired the keep's first shot.
 
 **Tests**
@@ -49,14 +50,14 @@ Area traps live where they are used: experiments in `docs/experiments/README.md`
 
 ## Recent sessions
 
+### 2026-10-21 (ninety-fifth) — E23 T4b1, the Ogre Mage
+
+The user: T4b in two (the Ogre Mage, then the predictions; the tables to T4c); the Ogre Mage told by its spell. §7.51. `spells.rs`, `casts::scan`; `computer::threat`, `base_damage`, `spell_affects`, `takes_stack`. The mass version casts without a target (the listing's gap: the inbox). The count −0.02 %: no re-set.
+
 ### 2026-10-21 (ninety-fourth) — E23 T4a, the entry, the raise and the Faerie Dragon
 
-The user: T4 cut in three; the dragon at the engine's targets only (BAT-STUB-8, under BAT-Q32 (1)); its predictions skipped (no preference). §7.50: the entry is asked even without a candidate. `casts.rs`; `h3-battle`: `computer::spell_damage_value`, `raise_count`, `created_worth`, `chain` (the rules' search split from its rolls), `area_stacks`. `POLICY_VERSION` 6; the count re-set (shorter battles); timing as `master`.
+The user: T4 in three; the dragon at the engine's targets (BAT-STUB-8, BAT-Q32 (1)); its predictions skipped. §7.50. `casts.rs`; `computer::spell_damage_value`, `raise_count`, `created_worth`, `chain`, `area_stacks`. The count re-set (shorter battles).
 
 ### 2026-10-21 (ninety-third) — E23 T3c, the odds and the ends
 
-The user: T3c whole; slip 6 a gap (the seam has no attacking hero's tile; BAT-STUB-7, BAT-Q56); the turrets as creature 2 a slip (20). §7.49 (0x4213F0's part 6 reads a display byte: a breach in a hidden battle). `order.rs`, `gain.rs`, `odds.rs`, `ends.rs`; `computer::turn_map`, `hero_value`, `siege`, `kept_out`. `POLICY_VERSION` 5; `computer-decisions` re-set (the log). A fresh agent re-read the port: three differences fixed, one a new slip (21, the guard's Defend test).
-
-### 2026-10-21 (ninety-second) — E23 T3b, the walker's hex scores
-
-The user: T3b whole. `scores.rs` (BAT-AI-007, §7.48); `h3-battle`: `Query::speed`, `computer::reach_map`, `fire_wall_damage`, `damaging_moat`, `area_spell_damage`, `Context::attack_for_both`. Slips 18, 19 new, slip 3 built (BAT-QUIRK-25). `POLICY_VERSION` 4; `computer-decisions` re-set (the log). A fresh agent re-read the port: no discrepancy.
+The user: T3c whole; slip 6 a gap (BAT-STUB-7, BAT-Q56); the turrets as creature 2 a slip (20). §7.49. `order.rs`, `gain.rs`, `odds.rs`, `ends.rs`. The count re-set. A fresh agent's re-read: three differences fixed, one a new slip (21).

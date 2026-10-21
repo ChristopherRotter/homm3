@@ -40,6 +40,7 @@ mod ends;
 mod gain;
 mod odds;
 mod order;
+mod spells;
 
 fn key(text: &str) -> ContentKey {
     ContentKey::parse(text).unwrap()

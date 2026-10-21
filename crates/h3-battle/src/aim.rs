@@ -686,8 +686,9 @@ pub struct Threat {
 /// every living enemy but the turrets at one turn, valued by its shot ([`kill_shot_value`]);
 /// another searches the walker's map ([`computer::map`](crate::computer::map): range 127, its
 /// side not marked) and takes the living enemies but the turrets whose position hex is marked, at
-/// that mark's cost `c`, none at a cost above 0 for a stack without speed, valued by its strike
-/// ([`strike_value`]) with `c` as the run-up when within its speed `s`, `max(1, ⌈c / s⌉)` turns.
+/// that mark's cost `c`, valued by its strike ([`strike_value`]) with `c` as the run-up when
+/// within its speed `s`, `max(1, ⌈c / s⌉)` turns (the original passes over a cost above 0 for a
+/// stack of speed 0: none searches here, the war machines left out and the Ballista shooting).
 /// Over the other side's stacks in record order the first is kept, then one with fewer turns or,
 /// at equal turns, a strictly higher value. The original also records a dead enemy (a shooter
 /// every one, a walker one whose place it stands on within its speed); the port records none, as
@@ -724,7 +725,7 @@ pub(crate) fn threat(
                 kill_shot_value(state, (ruleset, field), ctx, (id, enemy), ctx.desperate),
             ),
             Some(map) => {
-                let Some(c) = map.mark(t.hex).filter(|&c| speed > 0 || c == 0) else {
+                let Some(c) = map.mark(t.hex) else {
                     continue;
                 };
                 let run_up = if c <= speed { c } else { 0 };
