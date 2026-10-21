@@ -5,7 +5,7 @@ done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at t
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
 [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
-are there). Next: M3 T7b-2, T7c (`docs/lanes/client/QUEUE.md`).
+are there). Next: M3 T7b-2a, T7b-2b, T7c (`docs/lanes/client/QUEUE.md`).
 
 ## Goal
 
@@ -245,8 +245,9 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
 - The **spell animations** (the user, at T5c: their plethora; T7a the code reading, split with
   the user on 2026-10-21 into T7a-1, the reading, and T7a-2, the harness's casts and the
   recordings; T7b on stacks with morale and luck, split with the user on 2026-10-21 into
-  T7b-1, a hero's cast on one stack, and T7b-2, the rest; T7c area spells, rays and spell
-  obstacles) and their sounds.
+  T7b-1, a hero's cast on one stack, and T7b-2, the rest, which the user split on 2026-10-21
+  into T7b-2a, the parts without the original's rolls, and T7b-2b, morale, luck and the
+  creatures' rolled animations; T7c area spells, rays and spell obstacles) and their sounds.
 - The sound's remainder (T8: the battle's end; the volume settings later).
 - **Exit:** the reference set passes, or each difference is a listed fix or a classified quirk.
 - **T1a done 2026-10-14** ([log](E17-log.md#m3-t1a--turns-and-the-walk-by-2026-10-14),

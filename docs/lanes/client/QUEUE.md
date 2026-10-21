@@ -6,23 +6,35 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024). M3 (fidelity) below, refined at M2's closure (T5c) and agreed by the user there, each task about half a context; the exit: the reference set passes, or each difference is a listed fix or a classified quirk. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M3 T7b-2 — Morale, luck, Haste and Slow, the count box's tint
+### E17 M3 T7b-2a — The count box's tint, Haste and Slow's walk, Dispel, Cure, Disrupting Ray
 
-- **Scope:** the rest of T7b (split with the user, 2026-10-21; T7b-1 built a hero's cast on one
-  stack: `anim::Player::cast`, design §7.16 "Built"): good and bad morale (`GoodMorale`,
-  `BadMorale`: the user at T5b, the Marksmen's second shot showed nothing) and luck (the strike's
-  `lucky`), their sounds and their log lines' times (T6b writes morale's at the event,
-  *provisional*; design §9.8); Haste and Slow's walk time (from T1b at its re-cut; `cast` and
-  `resist` slow the Wolf Riders and the Battle Dwarves: a walk of a slowed stack); the count box's
+- **Scope:** T7b-2 split with the user (2026-10-21: the parts without the original's rolls; T7b-1
+  built a hero's cast on one stack: `anim::Player::cast`, design §7.16 "Built"): the count box's
   tint by the stack's spells (moved from T5, the user, 2026-10-20: design §4.3, 0x43E6AA to
   0x43E73E, the spell table's first field to harvest; `cast`'s and `resist`'s frames list it now:
-  238 and 197 to 228 pixels, which it brings to 0); the other single-stack handlers' animations
-  (Dispel, Cure, Disrupting Ray's projectile, Poison's hit; Lightning Bolt's bolt from the sky with
-  T7c's `bolt`) and a magic animation lengthening a creature's strike (Death Stare, Acid Breath,
-  Life Drain, the Thunderbird's bolt; player 1 and 2 of §7.16) as recordings allow.
-- **Acceptance:** their recorded sequences as recorded and their frames match (new recordings where
-  none exists, `casts.toml`'s way).
-- **Depends on:** T7b-1 (done). **Status:** ready.
+  238 and 197 to 228 pixels, which it brings to 0); Haste and Slow's walk time (from T1b at its
+  re-cut: W trunc(W0 x 0.65), trunc(W0 x 1.5), design §7.3); Dispel (41 before its effect), Cure
+  (39 after) and Disrupting Ray (its projectile `c07spA0`, then 14) on one stack, their sounds
+  and log lines. Two new recordings: `haste` (Haste, a hasted walk, Slow ending it, a slowed walk)
+  and `dispel` (Slow, Disrupting Ray, Cure, Slow again, Dispel), both hot seat.
+- **Acceptance:** `cast`'s and `resist`'s boxes exact; `haste` and `dispel` recorded, then played
+  as recorded and their frames matched (in `sequences.toml` with their commands, frames and
+  boxes).
+- **Depends on:** T7b-1 (done). **Status:** in progress (2026-10-21, `client/e17-m3-t7b-2a`).
+
+### E17 M3 T7b-2b — Morale, luck and the creatures' rolled animations
+
+- **Scope:** the rest of T7b-2 (split 2026-10-21; each needs a roll of the original's, which the
+  harness cannot force: a scenario that gives many chances, or runs repeated until the roll
+  falls): good and bad morale (`GoodMorale`, `BadMorale`: the user at T5b, the Marksmen's second
+  shot showed nothing) and luck (the strike's `lucky`), their sounds and their log lines' times
+  (T6b writes morale's at the event, *provisional*; design §9.8); Poison's hit, and a magic
+  animation lengthening a creature's strike (Death Stare, Acid Breath, Life Drain, the
+  Thunderbird's bolt; player 1 and 2 of §7.16); Lightning Bolt's bolt from the sky with T7c's
+  `bolt`.
+- **Acceptance:** their recorded sequences as recorded and their frames match (new recordings
+  where none exists, `casts.toml`'s way).
+- **Depends on:** T7b-2a. **Status:** ready once T7b-2a is done.
 
 ### E17 M3 T7c — Area spells, rays and spell obstacles
 
@@ -36,7 +48,7 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
   sounds. T7a-2b's recordings (`casts.toml`, design §7.16 "Recorded") are the references: `bolt`,
   `mass`, `raise`, `obstacles` (its Fire Wall's second hex placed at the first's: confirm by the
   frame check), `creatures` (the Liches' cloud), `dragon` (at a hex). May split when refined.
-- **Acceptance:** as T7b-2.
+- **Acceptance:** as T7b-2b.
 - **Depends on:** T7a-2b (done). **Status:** ready.
 
 ### E17 M3 T9 — M3's closure
@@ -46,7 +58,7 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
   user, a fresh reviewer agent over M3, the next milestone
   refined (sieges, live play, HD or the adventure map: the user's choice), M3 marked done.
 - **Acceptance:** M3's exit holds; the review list answered or carried on.
-- **Depends on:** T7b-2, T7c (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2,
+- **Depends on:** T7b-2b, T7c (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2,
   T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b, T8, T7b-1 done).
   **Status:** waiting.
 
