@@ -13,6 +13,12 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1
 
 ## Inbox
 
+- 2026-10-21 (the battle lane, E23 T2b, `shared/e23-t2b`, `cross-lane` with the user's consent;
+  for your information, nothing to do): BAT-QUIRK-25 (`quirk.battle.original_ai_slips`, registry
+  position 29) is on in `base:faithful` (and `synthetic:faithful`), off in strict-fixed: the
+  faithful core ruleset hash moved to `0xe6839bfb42ebe118`, so your seven faithful replays in
+  `fixtures/replays/adventure/` got it in their headers (commands and state hashes unchanged; the
+  two strict ones keep theirs). The flag changes only the original's battle AI's estimates.
 - 2026-10-21 (the client lane, E17 M3 T6c-2; for your information, nothing to do): **two harness fixes you asked for or may meet.** `h3adv.value` prints a winner of -1 as `none` (your T22a2b note). `h3lod` now reads the base archive's text tables before the AB ones, as the executable searches them (E17 design §3.1): the AB copies' GENRLTXT differs from record 79 on (ADVEVENT's first 190 records are the same, the base copy has one more), so a dialog identified as `GENRLTXT:<n>` from 79 on names the record the game showed; no recorded batch cites one.
 - 2026-10-20 (T27, for T29 and T30): the game still applies the battle's experience with `apply_change` (no limit): T29 passes the map's limit to `h3_heroes::apply_change_limited` wherever the game applies a hero change. `gained_under_limit` lowers experience no further than the hero's level's threshold (a hero above the limit stays valid; the original keeps its level with less experience): the setup's levels at load gain every custom experience from 0 under the limit (D-21), so no hero starts above it. A told `GainLevel` is refused by `h3-map`'s play property until T30 makes level-ups decisions.
 - 2026-10-20 (T26b, for T29): the flag `quirk.adventure.level_up_from_seed` (registry position 27) is registered and on in `faithful`, but no code reads it yet: its rule (GAM-HER-002) and `ADV-QUIRK-9`'s ledger entry come with T29 (design §11). `h3_content::Ruleset` has no `hero_class_by_key`; T26b's tests find a class through `hero_classes()`.
