@@ -373,7 +373,8 @@ Refined with the user on 2026-10-21 (T33; ADV-Q19). Built like increments 1 to 4
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T33 Increment 5 refined** (with increment 4's closure). Done (2026-10-21, `adventure/e08-t33`; decisions 71, 72): movement and scouting, the first round queued (T34a, T34b).
-- **T34a The movement and scouting survey** (next). **T34b The ADR amendment drafts, the design note and the cut.**
+- **T34a The movement and scouting survey.** Done (2026-10-21, `adventure/e08-t34a`; decisions 73, 74): survey `docs/rules/surveys/E08-hero-movement.md`, the checkpoint's questions ADV-Q20.
+- **T34b The ADR amendment drafts, the design note and the cut** (next, after ADV-Q20).
 
 ## Later increments (sketch)
 

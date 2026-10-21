@@ -3549,3 +3549,42 @@ inbox re-tagged: the Scouting specialty (T8a), the step price's omissions (T7b),
 step cost (T20a2a) and flying's visit test (T11a) for T34a's survey; the artifacts' increment
 (T19a2a, T20a2a), army management (T17b, T22b) and ADR-0016's line (T23) for increment 6; the
 `reach.rs` comment updated.
+
+### Increment 5, round 1: T34a, the movement and scouting survey (2026-10-21, `adventure/e08-t34a`)
+
+**The cut** (decisions 73, 74; asked before starting, `AskUserQuestion`): T34a whole (not three
+parts as recommended, two parts, or the code reading split), and flying and water walking in
+(Angel Wings and Boots of Levitation, not out with the spells and the sea as recommended, flying
+only, or decided at the checkpoint).
+
+**Baseline:** `master` 5c5c3d0 (#370 merged), engine code e17ebcf6, the full verify with the
+original data in the sandbox: green.
+
+**The survey** (`docs/rules/surveys/E08-hero-movement.md`, docs only): the code reading of the
+day's land points (0x4E4990 whole, the table loader's item bonuses, every write of a hero's points
+left), the step's price (0x4B1740 whole, its callers), the pathfinder's set-up, loop and expansion
+for the human player's modes, `hero_flight_tile_test` 0x4E5CE0 and the reveal's callers; VCMI
+1.7.5 and the wiki for each; the census of the 160 shipped maps (a throwaway example, not
+committed); batch E5's plan (ten rows); the proposed rule ids; a fresh agent's second reading
+(below). The address map gained 9 entries and 6 rewritten summaries (`docs/exe/map.toml`), the
+struct map the hero's status flags (+0x105) and water-walk field (+0x116), the tile's flags (+0xC)
+and the pathfinder's adventure fields.
+
+**Findings** (survey §0): Logistics scales the table's points only, the artifacts' +600 and +300
+after it (consensus); a Logistics specialist's rate in single precision (D-22, Q-0005's kind); a
+gain in the day changes nothing until the owner's next turn start (consensus); Pathfinding as the
+part's table (consensus); Cursed Ground takes away the native 100 (D-23, the code alone); flying's
+price 100 from every inland tile, roads included, the lesser only from the coast (D-24, the code
+against the wiki and VCMI); water walking at level 3 agrees; the move's drop to 0 forgets the
+artifacts (A-12); a flying path crosses unexplored tiles (A-13, an information leak); a flying
+hero inland may not visit from its tile (A-14, unconfirmed); where a flying or water-walking move
+may end not read (D-25); a grown radius shows at the next step or day (D-26, VCMI at once for a
+skill); no SoD hero has the Scouting specialty (HotA's). The checkpoint's questions: ADV-Q20.
+
+**The wiki** needed the user's approval per fetch: the first (an `index.php?title=…&action=raw`
+URL) was withdrawn unanswered; page URLs that a search returned were fetched without a prompt.
+The HotA/SoD template prints each value before its icon; the summariser took the first for SoD
+twice (Logistics 5/10/20 %, Boots of Speed +400) and was corrected by the Movement page's own
+Logistics sentence and the executable's `movement.txt`.
+
+**The second reading:** in progress (a fresh agent; survey §11 follows).

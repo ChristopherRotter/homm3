@@ -88,7 +88,53 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### Adventure lane (`ADV-Q<n>`)
 
-(no open questions)
+#### ADV-Q20 — Increment 5's checkpoint: the movement survey's quirks, conflicts and scope (E08 T34a)
+
+**Context.** T34a's survey (`docs/rules/surveys/E08-hero-movement.md`; decisions 73, 74) read the
+day's points, the step's price, flying, water walking and the scouting radius in the code and
+compared them with VCMI 1.7.5 and the wiki. Most of it is consensus (§0). Open for the user,
+each with a recommendation; T34b drafts the ADR amendments and the cut from the answers.
+
+1. **A-12** (§2.5): the move's drop to 0 after a step prices the cheapest next step without the
+   artifacts' flying and water walking; with Angel Wings on Cursed Ground it can drop points an
+   affordable flying step needed. Options: **fix-optional** (faithful drops as the original,
+   strict-fixed prices it with the hero's flying; recommended), always as the original, always
+   fixed.
+2. **A-13** (§3.2): the original's pathfinder lets a flying hero's path cross unexplored tiles.
+   Options: **always fixed** (moves stay on explored tiles, ADV-MOV-008: the legal moves never
+   depend on hidden tiles; recommended), fix-optional (faithful would leak hidden tiles into the
+   mask).
+3. **A-14** (§3.3): read as it stands, a flying hero standing inland can neither visit a
+   neighbour's object visited from the neighbouring tile nor enter a town from its tile. Options:
+   **decide after batch E5's row E5-8** (build the walking rule meanwhile; recommended), build it as
+   a fix-optional quirk now.
+4. **D-24** (§2.3, a conflict of sources): flying's price. The code: 100 from every inland tile,
+   roads included (Angel Wings make a road dearer), the lesser of 100 and the walking price only
+   from the coast; the wiki and VCMI: the lesser everywhere. Options: **build the code's rule, row
+   E5-4 confirms** (recommended: the code is the original; two secondary sources may copy one
+   another), the wiki's and VCMI's rule until a row says otherwise.
+5. **D-25** (§3.4): where a flying or water-walking move may end (on a tree, on water); not read.
+   Options: **the wiki's and VCMI's rule until row E5-7** (a move ends only on a tile a walking
+   hero could stand on; recommended), allow any reached tile.
+6. **D-22** (§1.2): a Logistics specialist's rate in single precision. Options: **under Q-0005's
+   flag as the battle's specialties** (faithful single precision, strict-fixed exact; recommended),
+   always single, always exact.
+7. **D-23** (§2.2): Cursed Ground takes away the native terrain's 100 (the code; VCMI and the wiki
+   without it). Options: **the code in every profile, row E5-6 confirms** (recommended), leave it
+   out.
+8. **D-26** (§4.2): a radius that grows in the day shows only at the next step or the new day's
+   reveal (the code; VCMI reveals at once for a skill). Options: **the code, with the new day's
+   reveal around every owned hero built** (recommended), reveal at once.
+9. **Scope** (§5, §6): **in**: the six artifacts, Logistics, Pathfinding, Scouting, the Logistics
+   specialists, the creature specialists' speed, Cursed Ground and Nomads in the price; **out**:
+   the Scouting specialty (no SoD hero has it), the sea, Stables, the spells' levels 0 to 2, the
+   computer players' bonus (E10). Recommended as listed; or leave Cursed Ground and Nomads for
+   later.
+10. **Batch E5** (§9, ten rows): as planned (recommended), with the harness's new read (a tile's
+    explored bit for a player) built by this lane `cross-lane` as in T32b1 (recommended) or asked
+    of the client lane, and the spec's fields `cross-lane` with its task.
+
+**Blocked:** T34b (the ADR amendment drafts, the design note and the cut).
 
 ### Server lane (`SRV-Q<n>`)
 
