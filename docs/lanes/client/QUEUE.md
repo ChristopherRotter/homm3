@@ -6,26 +6,33 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024). M3 (fidelity) below, refined at M2's closure (T5c) and agreed by the user there, each task about half a context; the exit: the reference set passes, or each difference is a listed fix or a classified quirk. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M3 T7a-2 — The harness casts; the magic animations recorded
+### E17 M3 T7a-2a — The harness casts (in progress, `client/e17-m3-t7a-2a`)
 
-- **Scope:** T7a split with the user (2026-10-21); T7a-1 read the executable (design §7.16). The
-  harness casts from a hero's spell book (the scenarios' heroes get a spell book, spells and
-  mana: `h3-map`'s writer has `spells` and slot 17; the book's dialog 0x59BDF0 behind
-  `hero_book_button` 0x59E900: its spells' places, its pages and school tabs to read or probe; a
-  `cast:` action in `h3drive.py` and the viewer's `pointer::inputs`, which a new action kind
-  needs both), and a creature caster's cast (a Faerie Dragon's: the F key or the cursor). Record
-  a sequence of each player of §7.16 (one stack: a timed spell, a resisted one; marked stacks:
-  Magic Arrow or Lightning Bolt; several: a mass spell, Death Ripple; a raise; a hex: an area
-  spell, a spell obstacle; the field: Armageddon; a projectile), and the hero's and a Faerie
-  Dragon's cast at targets above, level and below. `h3mem` sees only the first four players'
-  frames: the rest by the frame check's screens. Check §7.16's candidates (Chain Lightning's and
-  Fire Shield's undrawn animations, Animate Dead's, a mass animation's last frame, the Liches'
-  plain cloud, the caster's angle) and correct the design where a recording disagrees. The
-  sequences go into `sequences.toml` only with the viewer's timeline (T7b, T7c): until then
-  their timelines are kept beside them, outside the timeline check.
+- **Scope:** T7a-2 split with the user (2026-10-21: the harness first). The scenarios' heroes
+  get a spell book, spells and mana (`h3-view situation`: `h3-map`'s writer's `spells` and the
+  book in slot 17); the book's dialog read (0x59BDF0: its spells' places, pages, sort, school
+  tabs, how a click returns the spell); a `cast:` action in `h3drive.py` and the viewer's
+  `pointer::inputs`; a creature caster's cast (a Faerie Dragon's: the cursor over its target).
+  Two proofs recorded: a hero's timed spell on one stack (player 1 of §7.16, the hero's group 4),
+  a Faerie Dragon's cast at targets above, level and below (§7.16's caster's angle). Their
+  timelines kept beside `sequences.toml`, outside the timeline check (T7b, T7c add them).
+- **Acceptance:** the harness casts from a hero's book and a Faerie Dragon's cursor; the two
+  proofs recorded; the angle candidate confirmed or the reading corrected.
+- **Depends on:** T7a-1 (done). **Status:** in progress.
+
+### E17 M3 T7a-2b — The magic animations recorded
+
+- **Scope:** with T7a-2a's casts, a sequence of each remaining player of §7.16 (one stack: a
+  resisted spell; marked stacks: Magic Arrow or Lightning Bolt; several: a mass spell, Death
+  Ripple; a raise; a hex: an area spell, a spell obstacle; the field: Armageddon; a projectile)
+  and the hero's cast at targets above, level and below (its cast point). `h3mem` sees only the
+  first four players' frames: the rest by the frame check's screens. Check §7.16's remaining
+  candidates (Chain Lightning's and Fire Shield's undrawn animations, Animate Dead's, a mass
+  animation's last frame, the Liches' plain cloud) and correct the design where a recording
+  disagrees. The timelines kept as T7a-2a's.
 - **Acceptance:** each player of §7.16 has a recorded sequence; every candidate confirmed or the
   reading corrected.
-- **Depends on:** T7a-1 (done). **Status:** ready.
+- **Depends on:** T7a-2a. **Status:** ready.
 
 ### E17 M3 T7b — Spells on stacks, morale and luck
 
@@ -38,7 +45,7 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
   the stack's spells (moved from T5, the user, 2026-10-20: design §4.3, 0x43E6AA to 0x43E73E,
   the spell table's first field to harvest).
 - **Acceptance:** their recorded sequences as recorded and their frames match.
-- **Depends on:** T7a-2. **Status:** ready.
+- **Depends on:** T7a-2b. **Status:** ready.
 
 ### E17 M3 T7c — Area spells, rays and spell obstacles
 
@@ -51,7 +58,7 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
   stacks (`StackCreated`, `SpellRaised`, `Reborn`: drawn once the snapshot lacks them), their
   sounds. May split when refined.
 - **Acceptance:** as T7b.
-- **Depends on:** T7a-2. **Status:** ready.
+- **Depends on:** T7a-2b. **Status:** ready.
 
 ### E17 M3 T8 — The sound's remainder
 
@@ -69,7 +76,7 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
   user, a fresh reviewer agent over M3, the next milestone
   refined (sieges, live play, HD or the adventure map: the user's choice), M3 marked done.
 - **Acceptance:** M3's exit holds; the review list answered or carried on.
-- **Depends on:** T7a-2–T8 (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2,
+- **Depends on:** T7a-2a–T8 (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2,
   T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1 done).
   **Status:** waiting.
 
