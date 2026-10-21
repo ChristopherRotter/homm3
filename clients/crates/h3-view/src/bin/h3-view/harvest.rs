@@ -566,6 +566,24 @@ pub fn creature_names(table: &TextTable) -> Result<BTreeMap<String, usize>, Stri
     Ok(names)
 }
 
+/// `sptraits.txt`'s spells' numbers by name (E17 M3 T7a-2a): its rows from record 2 but the
+/// group rows (`Adventure Spells`, `Combat Spells`, `Creature Abilities`) and the blank ones, as
+/// `h3-harvest` reads it for the packs; a name twice (the Titans' Lightning Bolt, 57) keeps its
+/// first number.
+pub fn spell_numbers(table: &TextTable) -> BTreeMap<String, usize> {
+    const GROUPS: [&str; 3] = ["Adventure Spells", "Combat Spells", "Creature Abilities"];
+    let mut numbers = BTreeMap::new();
+    let rows = table.records.iter().skip(2).filter(|r| {
+        let name = r.first().map_or("", |n| n.trim());
+        !name.is_empty() && !GROUPS.contains(&name)
+    });
+    for (id, row) in rows.enumerate() {
+        let name = row.first().map_or("", |n| n.trim()).to_owned();
+        numbers.entry(name).or_insert(id);
+    }
+    numbers
+}
+
 /// `hotraits.txt`'s names by hero type (from record 2, blank records skipped, as `h3-harvest`
 /// reads it for the packs). Not unique: two heroes are called Lord Haart.
 pub fn hero_names(table: &TextTable) -> Vec<String> {
@@ -815,4 +833,29 @@ fn u32_at(bytes: &[u8], at: usize) -> u32 {
 
 fn to_u32(n: usize) -> u32 {
     u32::try_from(n).unwrap_or(u32::MAX)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn spells_are_numbered_past_their_group_rows() {
+        // E17 M3 T7a-2a: two header records, the group rows and blank ones left out, a name
+        // twice keeping its first number.
+        let text = "Spell Traits\r\nName\tAbbr\r\nAdventure Spells\r\nSummon Boat\tx\r\n\t\r\n\
+                    Combat Spells\r\nLightning Bolt\tx\r\nSlow\tx\r\nCreature Abilities\r\n\
+                    Lightning Bolt\tx\r\nStone Gaze\tx\r\n";
+        let numbers = spell_numbers(&TextTable::parse(text.as_bytes()).unwrap());
+        let got: Vec<(&str, usize)> = numbers.iter().map(|(n, &i)| (n.as_str(), i)).collect();
+        assert_eq!(
+            got,
+            [
+                ("Lightning Bolt", 1),
+                ("Slow", 2),
+                ("Stone Gaze", 4),
+                ("Summon Boat", 0)
+            ]
+        );
+    }
 }

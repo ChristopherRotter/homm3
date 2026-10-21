@@ -91,14 +91,27 @@ pub struct Sides {
 
 /// A side's hero for the original's map (E17 M3 T3a): its hero type's and class's numbers in
 /// the ruleset, which are the original's when its packs come in their order (base, ab, sod, as
-/// `harvest` keys the heroes; `situation` checks the name against `hotraits.txt`), its name, and
-/// its attack, defense, power and knowledge.
+/// `harvest` keys the heroes; `situation` checks the name against `hotraits.txt`), its name, its
+/// attack, defense, power and knowledge, and its spell book (M3 T7a-2a).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SideHero {
     pub hero_type: usize,
     pub class: usize,
     pub name: String,
     pub primary: [u8; 4],
+    pub book: Option<Book>,
+}
+
+/// A hero's spell book for the original's map (E17 M3 T7a-2a): the book's artifact number
+/// (the original's when the packs come in their order, base first: 0), worn in the map's slot
+/// 17, and its spells' names (the core ruleset's; `situation` numbers them by `sptraits.txt`,
+/// whose order the packs' spell handles leave at the Titans' bolt, 57). The original's hero
+/// starts the map with 10 spell points per knowledge (no skills), so `sides` refuses a scenario
+/// whose hero's `mana` differs.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Book {
+    pub artifact: u16,
+    pub spells: Vec<String>,
 }
 
 /// The [`Sides`] of the battle `scenario` sets up, its packs read from `packs`.
@@ -119,16 +132,60 @@ pub fn sides(scenario: &Path, packs: &Path) -> Result<Sides, String> {
             .collect()
     });
     let tight = h3_pack_battle::tight_sides(setup.formations);
-    let heroes = setup.heroes.map(|h| {
-        let h = h?;
-        let t = (*ruleset).hero_type(h.hero_type)?;
-        Some(SideHero {
+    // The spell book's artifact (E17 M3 T7a-2a): the one worn in the `spell_book` slot.
+    let book_artifact = || -> Result<u16, String> {
+        let id = ruleset
+            .artifacts()
+            .iter()
+            .position(|a| {
+                a.slot
+                    .and_then(|s| ruleset.artifact_slot(s))
+                    .is_some_and(|s| s.key.as_str().rsplit(':').next() == Some("spell_book"))
+            })
+            .ok_or("no artifact is worn in the `spell_book` slot")?;
+        u16::try_from(id).map_err(|_| format!("the spell book: number {id}"))
+    };
+    let hero = |side: usize| -> Result<Option<SideHero>, String> {
+        let Some(h) = &setup.heroes[side] else {
+            return Ok(None);
+        };
+        let Some(t) = (*ruleset).hero_type(h.hero_type) else {
+            return Ok(None);
+        };
+        let book = match &h.magic.spell_book {
+            None => None,
+            Some(spells) => {
+                let mana = 10 * u16::from(h.knowledge);
+                if h.magic.mana != mana {
+                    return Err(format!(
+                        "{}: mana {}, but the original's hero starts with {mana} (10 per knowledge)",
+                        t.name, h.magic.mana
+                    ));
+                }
+                // The core ruleset's spell (its name), as the stacks' creatures.
+                let spells = spells
+                    .iter()
+                    .map(|&s| {
+                        (*ruleset)
+                            .spell(s)
+                            .map_or(String::new(), |s| s.name.clone())
+                    })
+                    .collect();
+                Some(Book {
+                    artifact: book_artifact()?,
+                    spells,
+                })
+            }
+        };
+        Ok(Some(SideHero {
             hero_type: h.hero_type.index(),
             class: t.class.index(),
             name: t.name.clone(),
             primary: [h.attack, h.defense, h.power, h.knowledge],
-        })
-    });
+            book,
+        }))
+    };
+    let heroes = [hero(0)?, hero(1)?];
     // Each war machine's artifact (E17 M3 T3b): the one that places the machine, worn in its
     // `war_machine_<n>` slot, the map's slot 12 + n.
     let artifact = |machine| -> Result<(usize, u16), String> {
@@ -371,6 +428,28 @@ mod tests {
         let grass = repo().join("clients/situations/grass.toml");
         let sides = super::sides(&grass, &repo().join("packs")).unwrap();
         assert_eq!(sides.machines, [Vec::new(), Vec::new()]);
+    }
+
+    #[test]
+    fn a_spell_book_becomes_its_artifact_and_spells() {
+        // E17 M3 T7a-2a: Orrin's book of Slow (54), the Spell Book artifact 0; Crag Hack without.
+        let packs = repo().join("packs");
+        let cast = repo().join("clients/situations/seq-cast.toml");
+        let sides = sides(&cast, &packs).unwrap();
+        let books = sides.heroes.map(|h| h.and_then(|h| h.book));
+        let slow = Book {
+            artifact: 0,
+            spells: vec!["Slow".to_owned()],
+        };
+        assert_eq!(books, [Some(slow), None]);
+        // The original's hero starts with 10 spell points per knowledge: other mana is refused.
+        let dir = std::env::temp_dir().join(format!("h3-view-book-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let wrong = dir.join("wrong.toml");
+        let text = fs::read_to_string(&cast).unwrap();
+        fs::write(&wrong, text.replace("mana = 10\nmax", "mana = 9\nmax")).unwrap();
+        assert!(super::sides(&wrong, &packs).unwrap_err().contains("mana 9"));
+        fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]

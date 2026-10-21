@@ -1,0 +1,64 @@
+# E17 M3 T7a-2a: a Faerie Dragon's casts at targets level, above and below (casts.toml's
+# `dragon`; design §7.16, a creature caster's group by its angle). Hot seat, so that the harness
+# plays both sides. Round 1: the Faerie Dragon (speed 15, the fastest) flies from row 5 to hex 82
+# (row 4, column 14, its rear at 81); the Swordsmen (rows 0, 4, 6, 10 at column 15: hexes 15, 83,
+# 117, 185) defend. Rounds 2 to 4: the dragon casts its drawn spell (BAT-MAG-049) at the level one
+# beside it (83), the one four rows above (15) and the one two rows below (117), a click on the
+# target (the cursor's cast), and the Swordsmen defend. The reading (0x44840C) measures from the
+# dragon's centre (between its hexes, half its height above its anchor) to the target's anchor,
+# y down: level 17 (if its half height exceeds 31), above 19, below 17; VCMI's shot-like angle
+# 18, 17, 19. On grass at the capture set's tile (grass.toml's obstacles).
+
+[scenario]
+id = "sequence-dragon"
+# Both players human, as the original's hot-seat map (`h3-view situation --hot-seat`).
+human = ["attacker", "defender"]
+packs = ["base", "ab"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "ab:faerie_dragon"
+count = 1
+
+[[defender]]
+slot = 0
+creature = "base:swordsman"
+count = 20
+
+[[defender]]
+slot = 1
+creature = "base:swordsman"
+count = 20
+
+[[defender]]
+slot = 2
+creature = "base:swordsman"
+count = 20
+
+[[defender]]
+slot = 3
+creature = "base:swordsman"
+count = 20
+
+# The heroes (E17 M3 T3a): Orrin, a Knight, and Crag Hack, a Barbarian, each with 1 in every
+# primary skill.
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1

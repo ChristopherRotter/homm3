@@ -1,0 +1,33 @@
+# The casts' sequences (E17 M3 T7a-2a; T7a-2b adds the others): recorded as sequences.toml's
+# (`h3drive.py sequences situations/casts.toml` replays them and fails when a timeline changes),
+# kept beside it until the viewer's timeline plays them (T7b, T7c): then each moves into
+# sequences.toml with its engine commands and its frames. `cast:<k>[:<hex>]` casts the hero's
+# spell at its book's place k (design §7.16, "The spell book"); a Faerie Dragon casts by a click
+# on its target. `heroes = true`: the timeline has the heroes' changes too
+# (`<ms> hero <side> g<group> f<frame>`).
+
+# A hero's timed spell on one stack (§7.16, player 1): Orrin's Slow at the Wolf Riders.
+[[sequence]]
+id = "cast"
+scenario = "seq-cast.toml"
+actions = ["cast:0:49"]
+ms = 3500
+heroes = true
+timeline = "timelines/cast.txt"
+
+# A Faerie Dragon's casts at targets level, above and below (§7.16, a creature caster's angle):
+# round 1 its flight and the Swordsmen's defence, rounds 2 to 4 a cast each.
+[[sequence]]
+id = "dragon"
+scenario = "seq-dragon.toml"
+hot_seat = true
+actions = [
+    "hex:82", "turn:1.0", "key:d", "turn:1.1", "key:d", "turn:1.2", "key:d", "turn:1.3", "key:d",
+    "turn:0.0", "hex:83", "turn:1.0", "key:d", "turn:1.1", "key:d", "turn:1.2", "key:d",
+    "turn:1.3", "key:d",
+    "turn:0.0", "hex:15", "turn:1.0", "key:d", "turn:1.1", "key:d", "turn:1.2", "key:d",
+    "turn:1.3", "key:d",
+    "turn:0.0", "hex:117",
+]
+ms = 4000
+timeline = "timelines/dragon.txt"
