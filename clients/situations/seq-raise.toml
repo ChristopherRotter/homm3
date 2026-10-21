@@ -1,0 +1,64 @@
+# E17 M3 T7a-2b: the raise (casts.toml's `raise`; design §7.16, player 4): Resurrection and Animate
+# Dead (whose own animation 4 never plays: both play Resurrection's 50, the candidate) on stacks
+# killed whole, so the raise plays each lying stack's death group backwards. Hot seat: round 1 the
+# Grand Elves (speed 7) shoot the lone Pikeman (row 2), the Marksmen (6) the lone Skeleton (row
+# 5), and on the Swordsmen's turn Orrin resurrects the Pikeman (place 1, its corpse at hex 35);
+# round 2 the shooters defend and Orrin animates the Skeleton (place 0, hex 86). On grass at the
+# capture set's tile.
+
+[scenario]
+id = "sequence-raise"
+# Both players human, as the original's hot-seat map (`h3-view situation --hot-seat`).
+human = ["attacker", "defender"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:pikeman"
+count = 1
+
+[[attacker]]
+slot = 1
+creature = "base:skeleton"
+count = 1
+
+[[attacker]]
+slot = 2
+creature = "base:swordsman"
+count = 20
+
+[[defender]]
+slot = 0
+creature = "base:grand_elf"
+count = 10
+
+[[defender]]
+slot = 1
+creature = "base:marksman"
+count = 10
+
+# The heroes (E17 M3 T3a) with 1 in every primary skill but Orrin's knowledge: 40 spell points,
+# Resurrection (20) and Animate Dead (15).
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 4
+mana = 40
+max_mana = 40
+spell_book = ["base:animate_dead", "base:resurrection"]
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
