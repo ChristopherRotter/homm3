@@ -5,7 +5,7 @@
 //! §3.2.
 
 use alloc::boxed::Box;
-use alloc::vec::Vec;
+use alloc::collections::BTreeSet;
 
 use h3_content::{LEVEL_UP_FROM_SEED, Ruleset, SkillId};
 use h3_contracts::HeroId;
@@ -43,12 +43,11 @@ impl Progression {
                 u8::try_from(draws.range_inclusive(low, high)).unwrap_or(u8::MAX)
             })
             .collect();
-        let mut banned: Vec<SkillId> = banned.to_vec();
-        banned.sort_unstable();
-        banned.dedup();
+        // In id order, each once.
+        let banned: BTreeSet<SkillId> = banned.iter().copied().collect();
         Self {
             level_limit,
-            banned: banned.into(),
+            banned: banned.into_iter().collect(),
             seeds,
         }
     }

@@ -226,7 +226,10 @@ fn check(
             let levels: Vec<u8> = game.heroes().iter().map(|h| h.level).collect();
             let counts = &mut peaks.5;
             let mut add = |what, n: usize| *counts.entry(what).or_default() += n;
-            add("heroes levelled at load", levels.iter().filter(|&&l| l > 1).count());
+            add(
+                "heroes levelled at load",
+                levels.iter().filter(|&&l| l > 1).count(),
+            );
             let ups: usize = levels.iter().map(|&l| usize::from(l - 1)).sum();
             add("level-ups at load", ups);
             IMPORTED.to_owned()
@@ -247,7 +250,10 @@ fn census(map: &RawMap, setup: &MapSetup, counts: &mut BTreeMap<&'static str, us
     let mut add = |what, n: usize| *counts.entry(what).or_default() += n;
     // E08 T29: the scenario's level limit and banned skills (survey E08-progression.md §6.2,
     // §6.3: none has a limit, 19 SoD maps ban skills, none past the 28 skills' codes).
-    add("maps with a level limit", usize::from(map.header.level_limit > 0));
+    add(
+        "maps with a level limit",
+        usize::from(map.header.level_limit > 0),
+    );
     let banned = map.banned_skills.bytes().iter().any(|&b| b != 0);
     add("maps banning skills", usize::from(banned));
     let past = (28..map.banned_skills.bytes().len() * 8).any(|code| map.banned_skills.get(code));

@@ -32,7 +32,7 @@ player sees is the game's (part B).
   their straight step's cost by Pathfinding level 1–3 beside the cost without it (the original's
   `step_cost_table` 0x63E510: sand and snow 125, 100, 100; swamp 150, 125, 100; rough 100, 100,
   100; the others as without), for the evaluation's shares (§8, §12) now and increment 5's
-  movement later; the adventure ruleset part's version moves (T29).
+  movement later. Built by T29 (adventure ruleset part v9; §11 and §12).
 - **Not data**: the scenario's level limit and banned skills are the map's (`RawMap::level_limit`,
   `banned_skills`), inputs from the game (§12).
 
@@ -91,7 +91,7 @@ computer-player state: the army's AI values, the effectiveness words, `ai_school
   §10.3): the original's in every profile, no flag (decision 60), written by T28.
   The two flags are registered (T26b): 27 `quirk.adventure.level_up_from_seed`, 28
   `quirk.content.elementalist_offer_intervals`; `ADV-QUIRK-10`'s entry is written (its data
-  quirk is complete), `ADV-QUIRK-9`'s waits for its rule (T29).
+  quirk is complete), `ADV-QUIRK-9`'s is written with its rule (GAM-HER-002, T29).
 
 ### 10. The hero side's shared and `cross-lane` needs (for the cut, §17)
 
@@ -104,53 +104,24 @@ the packs and the harvester's gap-fill, both lanes' replay headers. What remains
 Rules of `h3-game` (and the import's, the env's) around part A's: what the game keeps, when it
 calls `h3-heroes`, who answers, what a player sees. ADR-0017's draft holds the decisions.
 
-### 11. The level seed and the streams (GAM-HER-002; D-14, `ADV-QUIRK-9`)
+### 11. and 12. Built by T29
 
-- **The level seed**: when the store is built (`GameState::new`), each hero's seed byte is drawn
-  from the setup stream, `range_inclusive(1, 255)` as the original's `random_between(1, 255)`
-  (0x4BFEC2), in hero id order after the hero's own defaults (the experience 40–90 when not
-  custom), before the levels at load (§12); the setup stream's later draws move with it (the
-  replays are re-recorded once, §14). Kept beside the details in an `Arc<[u8]>` by
-  `HeroId` (never written after the build, so a fork shares it), in the state hash, in no
-  observation or event. Not in `HeroDetails` (part A §7).
-- **The source of a level's draws** (part A §4): with the flag `quirk.adventure.level_up_from_seed`
-  on (`faithful`) the original's generator from the seed and the new level, at load and in play
-  alike; off (`strict-fixed`) the setup stream at load and the owner's stream in play. Registered
-  by T26b (position 27, on in `faithful`; no code reads it yet); `ADV-QUIRK-9`'s ledger entry
-  with T29.
-- **Hygiene and isolation** (the properties, §14): the seeds and a level's offers never reach
-  another player's observation or events; in `strict-fixed` a level-up draws only from its
-  owner's stream.
-
-### 12. The map's level limit and banned skills; the import; levels at load (GAM-SET-002; D-21)
-
-- **The setup**: `GameSetup` gains `level_limit` (0 none; the map header's byte, AB and SoD) and
-  `banned_skills` (the map's set, SoD; `RawMap::banned_skills`); `GameState` keeps both, static,
-  in the state hash. The import maps the header's bits to the ruleset's skills by the original's
-  ids (the pack order, part A §6).
-- **The import** (`h3-map`, `MAP_IMPORT_VERSION` 8): `Unsupported::HeroExperience` goes; a
-  placed hero's custom experience passes as it is (`HeroDetailsSetup.experience`), so the
-  census's 3 maps more import whole (`Adventures of Jared Haret`, `Faeries`, `Knee Deep in the
-  Dead`; 5 in all, survey §6.5). With the next change to `import::details` and `state.rs`, the
-  stale 0x486590 citations are re-pointed to 0x4D8B30 (the QUEUE inbox); the import's clamp of
-  custom primary skills stays (no shipped map has one above 9; the placed hero's are unclamped,
-  0x4D8BF1: the engine's details bound them at `primary_max`).
-- **Levels at load** (GAM-SET-002, survey §3.2): in `hero_details`, after the skills, spells,
-  artifacts and the war machines' artifacts and before the spell points (HER-MAN-001): a hero
-  with a custom experience starts at level 1 and experience 0 and gains its experience with the
-  limit (part A §3: capped, D-21); then each pending level is drawn (§11) and given: two offers
-  chosen by the original's choice with the setup's defaults (part A §8), one learned, none the
-  primary skill only. No events (building a game emits none). A hero without a custom experience
-  keeps its default 40–90 at level 1.
-- **The map's terrain shares** (survey §10.3, A-11): computed once at the build, before the levels
-  at load, from the static map (the coast flag, the terrain, the terrains' costs by Pathfinding
-  level): over the coast-flagged tiles that are not rock, the water share and the rough share per
-  Pathfinding level 0–2 (cost above 100); an `h3-adventure` query the game calls, the result
-  passed to the evaluation (§8). Static, so kept beside the limit (or recomputed: the building
-  task measures) and in the state hash if kept.
-- **The shipped maps**: `verify --with-original-data` (`crates/h3-map/examples/original_data.rs`)
-  imports the 5 maps and builds them, so the 9 heroes' 41 level-ups at load run on real data; the
-  census line counts them.
+Built by T29 (2026-10-21, `adventure/e08-t29`, `cross-lane`, decision 63; `E08-log.md`):
+`GameSetup.level_limit` and `.banned_skills` (validated: `GameSetupError::BannedSkill`), kept by
+`GameState` with each hero's level seed in one shared `Progression` (`state/levels.rs`; game
+state hash v10; `level_limit()`, `banned_skills()`); GAM-HER-002 (the seeds, the draws' source
+by `ADV-QUIRK-9`'s flag) and GAM-SET-002 (the limit, the bans, the levels at load through
+`original_choice` with `ArmyWorth::SETUP`); the battle's experience under the limit
+(`apply_change_limited`); the terrains' costs by Pathfinding level (`TerrainMovementDef::
+pathfinding`, `AdventureRuleset::step_cost`; adventure ruleset part v9) and the map's shares
+counted once by the static map (`StaticMap::terrain_shares`, ADV-MAP-002, not hashed: they follow
+from the tiles); the import (v8: the limit, the bans, the refusal lifted; the five shipped maps'
+9 heroes get 41 levels at load). **One change from §11**: the seeds are the setup stream's
+*last* draws (after the map objects' contents), not each after its hero's defaults, so no earlier
+draw moved and the golden replays kept their commands. What T30 needs: `Progression::draw(core,
+hero, details, stream)` draws a level from the seed or from the stream given (the owner's in
+play); the shares are `state.adventure().map().terrain_shares()`; `Progression::level_limit()`
+for every gain.
 
 ### 13. A level-up as a pending decision (GAM-DEC-002); the battle's levels (GAM-BAT-008)
 
@@ -238,7 +209,7 @@ confirmed at its checkpoint):
 |---|---|---|
 | 1 | **T25** + **T26** | Done. Cut (decision 59): **T25** (2026-10-20: survey §10; ADV-Q17, decision 60), **T26a** (2026-10-20, #325: ADR-0013 and -0017 amended), **T26b** (2026-10-20, `shared/e08-t26b`, decision 61: the hero parameters' level data and offered skills, the class's `offer_intervals`, `[[hero_class_override]]`, the two flags, the packs and the gap-fill, the bumps and the replays' headers; part A §1, §10) |
 | 2 | **T27** + **T28** | Done: T27 (2026-10-20, `adventure/e08-t27`, decision 62), T28 (2026-10-21, `adventure/e08-t28`). T27: `h3-heroes`' progression (part A §2–§7: levels, the bound, the limit's cap, the draw source and the original's generator, the primary skill, the offers, `GainLevel`, the counters, the checks; HER-EXP-002, -003, HER-LVL-001 to -005; `ADV-QUIRK-10` to `-13`). T28: the original's choice ported, its flag-clear path (part A §8, HER-LVL-006; survey §10; `ADV-QUIRK-14`) |
-| 3 | **T29** + **T30** | T29: the game's setup and build (§11, §12: the seeds, the limit and banned skills, the terrains' costs by Pathfinding level and the map's shares, levels at load, the import's refusal lifted, the 5 shipped maps; GAM-HER-002, GAM-SET-002; `ADV-QUIRK-9`). T30: the level-up as a decision (§13: the answers, the events, the observation, the system actor's default, the battle's levels; GAM-DEC-002, GAM-BAT-008) |
+| 3 | **T29** + **T30** | T29 done (2026-10-21, `adventure/e08-t29`, `cross-lane`, decision 63: whole, one pull request; §11 and §12 built). T29: the game's setup and build (§11, §12: the seeds, the limit and banned skills, the terrains' costs by Pathfinding level and the map's shares, levels at load, the import's refusal lifted, the 5 shipped maps; GAM-HER-002, GAM-SET-002; `ADV-QUIRK-9`). T30: the level-up as a decision (§13: the answers, the events, the observation, the system actor's default, the battle's levels; GAM-DEC-002, GAM-BAT-008) |
 | 4 | **T31** + **T32a** | T31: the env, replays, fixtures, properties and benchmarks (§14). T32a: batch E4's spec and recipe (§16; `cross-lane`) |
 | 5 | **T32b** + **T33** | T32b: batch E4 run on the harness. T33: the scoring (the rules it covers `verified` or reopened), the audit against the exit criteria, increment 4 closed, the next increment refined |
 
