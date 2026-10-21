@@ -31,12 +31,26 @@ pub fn hex_point(layout: &BattleLayout, hex: u8) -> [i32; 2] {
     ]
 }
 
+/// The screen's centre of the spell book's place `k` (`h3drive.py`'s `book_place`; E17 M3
+/// T7a-2a, design §7.16): twelve places of 78 × 65, row by row, the left page first, from the
+/// dialog's (117, 89) and (333, 89) with the dialog at (90, 2). *Provisional:* constants until
+/// the book has a layout of its own.
+pub fn book_place(k: u8) -> [i32; 2] {
+    let k = i32::from(k);
+    [246 + 86 * (k % 2) + 216 * (k / 6), 123 + 96 * (k % 6 / 2)]
+}
+
+/// The spell book's places.
+const BOOK_PLACES: u8 = 12;
+
 /// The mouse's inputs for the harness's `actions` (`h3drive.py`'s `act`), the first acting `pre`
 /// ms after the opening, the mouse parked before the battle: `hex:<n>` and `click:<x>,<y>` move
 /// the mouse there, click (the command's action starts) and park it again; `move:<x>,<y>` moves
-/// it; `key:<k>` gives a command; `at:<ms>` acts then, `turn:<side>.<record>` when that stack's
-/// next turn starts (the timeline's, after the turn the last `turn:` named), `step:<ms>` that
-/// much later.
+/// it; `key:<k>` gives a command; `cast:<k>[:<hex>]` (E17 M3 T7a-2a) moves it to the spell
+/// book's place `k` (the book opened by its key) and then to the target hex, if any, where the
+/// click starts the cast, and parks it; `at:<ms>` acts then, `turn:<side>.<record>` when that
+/// stack's next turn starts (the timeline's, after the turn the last `turn:` named),
+/// `step:<ms>` that much later. *Not modelled:* the book over the battlefield.
 pub fn inputs(
     actions: &[String],
     pre: u32,
@@ -71,6 +85,7 @@ pub fn inputs(
                 to: point(arg)?,
             }),
             "key" => out.push(Input::Act { at: now }),
+            "cast" => out.extend(cast(arg, now, layout).map_err(|e| format!("`{action}`: {e}"))?),
             "at" => now = arg.parse().map_err(|e| format!("`{action}`: {e}"))?,
             "step" => {
                 now += arg.parse::<u32>().map_err(|e| format!("`{action}`: {e}"))?;
@@ -99,6 +114,31 @@ pub fn inputs(
             _ => return Err(format!("`{action}`: an unknown action")),
         }
     }
+    Ok(out)
+}
+
+/// The mouse's inputs of a hero's cast `<k>[:<hex>]` at `now` (`inputs`).
+fn cast(arg: &str, now: u32, layout: &BattleLayout) -> Result<Vec<Input>, String> {
+    let (place, target) = arg
+        .split_once(':')
+        .map_or((arg, None), |(p, t)| (p, Some(t)));
+    let place = place
+        .parse::<u8>()
+        .ok()
+        .filter(|&k| k < BOOK_PLACES)
+        .ok_or("the book has the places 0 to 11")?;
+    let mut out = vec![Input::Move {
+        at: now,
+        to: book_place(place),
+    }];
+    if let Some(target) = target {
+        let hex = target.parse::<u8>().map_err(|e| e.to_string())?;
+        out.push(Input::Move {
+            at: now,
+            to: hex_point(layout, hex),
+        });
+    }
+    out.extend([Input::Act { at: now }, Input::Move { at: now, to: PARK }]);
     Ok(out)
 }
 
@@ -208,4 +248,45 @@ fn human(observation: &Observation) -> bool {
     };
     let side = usize::from(stack.controller == Side::Defender);
     observation.sides.get(side).is_some_and(|s| s.human)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use h3_view::layout::parse_battle;
+
+    fn layout() -> BattleLayout {
+        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../layouts/battle.toml");
+        parse_battle(&std::fs::read_to_string(path).unwrap()).unwrap()
+    }
+
+    #[test]
+    fn a_cast_moves_through_the_book_to_its_target() {
+        // E17 M3 T7a-2a: the places' centres, the left page first (design §7.16).
+        assert_eq!(book_place(0), [246, 123]);
+        assert_eq!(book_place(5), [332, 315]);
+        assert_eq!(book_place(6), [462, 123]);
+        assert_eq!(book_place(11), [548, 315]);
+        let layout = layout();
+        assert_eq!(
+            cast("3:49", 7, &layout).unwrap(),
+            vec![
+                Input::Move {
+                    at: 7,
+                    to: [332, 219]
+                },
+                Input::Move {
+                    at: 7,
+                    to: hex_point(&layout, 49)
+                },
+                Input::Act { at: 7 },
+                Input::Move { at: 7, to: PARK },
+            ]
+        );
+        // A spell without a target is cast at its place.
+        assert_eq!(cast("0", 0, &layout).unwrap().len(), 3);
+        for bad in ["12", "x", "0:x", "-1:4"] {
+            assert!(cast(bad, 0, &layout).is_err(), "{bad}");
+        }
+    }
 }

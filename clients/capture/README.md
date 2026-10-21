@@ -144,7 +144,8 @@ python3 capture/h3drive.py sequences [--only walk]
 ```
 
 `sequence` opens the battle, steps the clock `--pre` ms, performs the actions at the frozen clock
-(`hex:<n>` clicks a hex at `hex_point`, `key:d` defends, `click:x,y`, `move:x,y`, `step:<ms>`) and
+(`hex:<n>` clicks a hex at `hex_point`, `key:d` defends, `click:x,y`, `move:x,y`, `step:<ms>`,
+`cast:<k>[:<hex>]` casts a spell from the hero's book, below) and
 then steps 1 ms at a time, reading the game's state after each step: `<out>/states.jsonl` (every
 state, with `--screen` a digest of the battlefield's pixels) and `<out>/timeline.txt` (one line per
 change of a stack's group, frame or hex, by the original's records: each side's army, then its
@@ -153,11 +154,24 @@ war machines; after them a change of the magic animation drawn, `<ms> magic <num
 timeline changes; add one like a situation (its entry, `new`, then copy its timeline into
 `timelines/`).
 
+**Casts** (M3 T7a-2a, design §7.16): a scenario's hero gets a spell book with `spell_book`
+(the engine's keys) and `mana` 10 per `knowledge` (the original's hero starts so; `h3-view
+situation` refuses other mana, writes the book into slot 17 and numbers its spells by
+`sptraits.txt`'s names). `cast:<k>[:<hex>]` opens the book by its key C, clicks its place `k`
+(0 to 11: row by row, the left page first; the first opening shows the combat spells of all
+schools, sorted by level, then school, then name) and then the target hex if the spell takes one.
+A Faerie Dragon casts its drawn spell by a click on its target (`hex:<n>`: the cursor's cast).
+`--heroes` (an entry's `heroes = true`) adds each change of a hero's group or frame to the
+timeline (`<ms> hero <side> g<group> f<frame>`): a hero's cast. The casts' sequences wait in
+`situations/casts.toml` (`sequences situations/casts.toml` replays them) until the viewer's
+timeline plays them (T7b, T7c).
+
 **A battle in progress** (M3 T1a): `--hot-seat` (an entry's `hot_seat = true`) starts the map in
 hot seat with Blue a human too (`h3-view situation --hot-seat`), so the actions play both sides and
 nothing acts on its own. Among the actions, `turn:<side>.<record>` steps 1 ms at a time, each step
 read, until that stack's turn starts (the game names it the active stack), and the actions after
-it act then; its time goes to `<out>/turns.txt` (`at:<ms>` steps so up to a time). Act as the turn
+it act then; its time goes to `<out>/turns.txt` (`at:<ms>` steps so up to a time; since M3 T7a-2a
+a `turn:` that waits more than 30 s of game time fails, naming the active stack). Act as the turn
 starts: a player who waits lets fidgets start, which the viewer's timeline does not have. In the
 entry's `[[sequence.command]]`s, `at` gives each player's command its time from `turns.txt` (`ms`
 counts from the last one). `behind` (`seq-behind.toml`): two rounds, 8 commands, about 16.5 s
@@ -298,6 +312,8 @@ button that shows in more than one place (a dialog's OK): `python3 capture/h3adv
 | Battle | a hex *h* (row r, column c): move, shoot, attack from the side the cursor points | (36 + 44c + 22 if r is even, 112 + 42r): `hex:<h>` |
 | Battle | attack hex *h* from its right neighbour (M3 T1a) | its point + (18, 0): `click:x,y` |
 | Battle | wait, defend | keys `w`, `d` |
+| Battle | the hero's spell book (M3 T7a-2a) | key `c` |
+| Spell book | its place *k* (0 to 11) | (246 + 86 (k mod 2) + 216 ⌊k / 6⌋, 123 + 96 ⌊(k mod 6) / 2⌋): `cast:<k>[:<hex>]` |
 | New game menu | Multiplayer | (640, 185) |
 | Multiplayer dialog | Hot Seat | (580, 152) |
 | Hot-seat names | name *i* (0 to 7; the first has the focus) | (400, 186 + 30 *i*) |

@@ -29,11 +29,13 @@ xdd.dll (xdd.c: freeze, step, run), so that every frame is taken at an exact gam
                                             after the opening, default 0)
 
   h3drive.py sequence <map.h3m> <out-dir> [--pre <ms>] [--action <a>]... [--ms <n>] [--screen]
-                    [--hot-seat]
+                    [--hot-seat] [--heroes]
                                             a sequence frame by frame (M2 T3): the opening, the
                                             clock stepped <pre> ms, the actions at the frozen
                                             clock (hex:<n> clicks a hex, click:x,y, move:x,y,
-                                            key:<name>, step:<ms>; at:<ms> steps 1 ms at a time,
+                                            key:<name>, step:<ms>, cast:<k>[:<hex>] casts the
+                                            spell at the hero's book's place k, M3 T7a-2a;
+                                            at:<ms> steps 1 ms at a time,
                                             each step read, up to <ms> after the opening before
                                             the actions after it: a battle in progress, M3 T1a;
                                             turn:<side>.<record> steps so until that stack's turn
@@ -43,7 +45,9 @@ xdd.dll (xdd.c: freeze, step, run), so that every frame is taken at an exact gam
                                             (h3mem.py) and with --screen a digest of the screen;
                                             writes <out>/states.jsonl and the changes,
                                             <out>/timeline.txt; --hot-seat starts the map in hot
-                                            seat (both sides played by the actions, M3 T1a)
+                                            seat (both sides played by the actions, M3 T1a);
+                                            --heroes adds the heroes' changes to the timeline
+                                            (a hero's cast, M3 T7a-2a)
   h3drive.py sequences [<sequences.toml>] [--out <dir>] [--only <id>]
                                             the recorded sequences (default
                                             clients/situations/sequences.toml) unattended: each
@@ -89,6 +93,9 @@ WIDTH, HEIGHT = 800, 600
 # the battlefield, beside the log's item (the layout's [log], compared since M3 T4b-2b-1) and
 # below its scroll arrows, more than 50 px from the probes; hovering nothing that shows a hint.
 PARK = (618, 593)
+# How long `turn:` waits for the stack's turn (M3 T7a-2a): a human's stack waiting for an action
+# would keep the clock stepping for ever.
+TURN_LIMIT = 30000
 
 
 def xwd565(data):
@@ -253,13 +260,16 @@ class Game:
         raise TimeoutError("the display does not settle")
 
     def step_until(self, name, step_ms=10, limit_ms=20000):
-        """Steps the frozen clock by `step_ms` until the screen `name` shows; returns its time."""
+        """Steps the frozen clock by `step_ms` until the screen `name` (or one of a tuple of
+        names) shows; returns its time."""
+        names = (name,) if isinstance(name, str) else name
         t = None
         for _ in range(limit_ms // step_ms):
             t = self.clock(f"step {step_ms}")
-            if self.matches(name, self.settled()):
+            pix = self.settled()
+            if any(self.matches(n, pix) for n in names):
                 return t
-        bad = self.out / f"not-{name}.xwd"
+        bad = self.out / f"not-{names[0]}.xwd"
         self.dump(bad)
         raise TimeoutError(f"the screen `{name}` did not appear within {limit_ms} ms (the display: {bad})")
 
@@ -286,11 +296,12 @@ def hex_point(hex_id):
 
 def into_battle(game, key="Right"):
     """From the adventure map: freezes the clock, moves the selected hero with `key` into the
-    enemy, and steps the clock to the battle screen. Returns the clock's time at the opening."""
+    enemy, and steps the clock to the battle screen (`battle_book` when the acting hero's spell
+    book lights its button, M3 T7a-2a). Returns the clock's time at the opening."""
     game.clock("freeze")
     game.key(key)
     game.move(*PARK)
-    return game.step_until("battle", 10)
+    return game.step_until(("battle", "battle_book"), 10)
 
 
 def main(args):
@@ -496,10 +507,32 @@ def battle(map_path, out, rest):
             game.stop()
 
 
+def book_place(k):
+    """The screen's centre of the spell book's place k (0 to 11; M3 T7a-2a, design §7.16): row by
+    row, the left page first, 78 x 65 each from the dialog's (117, 89) and (333, 89) at (90, 2)."""
+    return (246 + 86 * (k % 2) + 216 * (k // 6), 123 + 96 * (k % 6 // 2))
+
+
 def act(game, action):
-    """One action at the frozen clock: hex:<n>, click:x,y, move:x,y, key:<name>, step:<ms>."""
+    """One action at the frozen clock: hex:<n>, click:x,y, move:x,y, key:<name>, step:<ms>,
+    cast:<k>[:<hex>] (M3 T7a-2a: the hero's spell book by its key C, its place k, then the target
+    hex if the spell takes one)."""
     kind, _, arg = action.partition(":")
-    if kind == "hex":
+    if kind == "cast":
+        place, _, target = arg.partition(":")
+        if not 0 <= int(place) < 12:
+            raise ValueError(f"`{action}`: the book has the places 0 to 11")
+        game.key("c", 0.5)
+        game.move(*book_place(int(place)))
+        time.sleep(0.3)
+        game.click(*book_place(int(place)), settle=0.5)
+        if target:
+            game.move(*hex_point(int(target)))
+            time.sleep(0.3)
+            game.click(*hex_point(int(target)))
+        game.move(*PARK)
+        time.sleep(0.3)
+    elif kind == "hex":
         game.move(*hex_point(int(arg)))
         time.sleep(0.3)
         game.click(*hex_point(int(arg)))
@@ -520,11 +553,13 @@ def act(game, action):
         raise ValueError(f"unknown action `{action}`")
 
 
-def timeline(states):
+def timeline(states, heroes=False):
     """The changes of the stacks' group, frame and hex: lines `<ms> <side>.<record> g<group>
     f<frame> h<hex>`, the first state of each stack at the sequence's start; after a time's
     stacks, a change of the magic animation drawn (M3 T3b, design §7.15): `<ms> magic <number>
-    f<frame> <side>.<record>...` over the stacks that show it, `<ms> magic -` once none does."""
+    f<frame> <side>.<record>...` over the stacks that show it, `<ms> magic -` once none does.
+    With `heroes` (M3 T7a-2a: a hero's cast, design §7.16) before the magic line each change of
+    a hero's group or frame, `<ms> hero <side> g<group> f<frame>`."""
     lines, last, magic = [], {}, None
     for i, state in enumerate(states):
         if i + 1 < len(states) and states[i + 1]["t"] == state["t"]:
@@ -534,6 +569,11 @@ def timeline(states):
             now = (st["group"], st["frame"], st["hex"])
             if last.get(key) != now:
                 lines.append(f"{state['t']} {key[0]}.{key[1]} g{now[0]} f{now[1]} h{now[2]}")
+                last[key] = now
+        for hero in state["heroes"] if heroes else ():
+            key, now = ("hero", hero["side"]), (hero["group"], hero["frame"])
+            if last.get(key) != now:
+                lines.append(f"{state['t']} hero {hero['side']} g{now[0]} f{now[1]}")
                 last[key] = now
         over = [f"{st['side']}.{st['record']}" for st in state["stacks"] if st.get("magic")]
         drawn = state["clocks"].get("magic")
@@ -548,7 +588,7 @@ def timeline(states):
 
 
 def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, frames=False,
-             hot_seat=False):
+             hot_seat=False, heroes=False):
     """The battle of the map: its opening, `pre` ms on, the actions, then `ms` steps of 1 ms,
     each followed by the game's state (h3mem); returns the states (times in ms after the
     opening, the clocks relative to it). An action `at:<ms>` (M3 T1a) steps 1 ms at a time, each
@@ -559,7 +599,7 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
     kept: `<out>/frames/t<ms>.npz` (the whole screen, 5-6-5), its first time and its state in
     `<out>/frames.jsonl`. A screen is distinct by its battlefield and, since M3 T6b, its panel
     (the log's lines and the buttons change there alone), since M3 T6c-2 its cursor too (the
-    viewer draws it)."""
+    viewer draws it). With `heroes` (M3 T7a-2a) the timeline has the heroes' changes too."""
     import hashlib
     import json
 
@@ -618,8 +658,12 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
             # A turn: the stack named is the active one. (The game names a striker again while
             # it turns back after its attack, before the next stack's turn: M3 T1a.)
             whose = [int(n) for n in arg.split(".")] if kind == "turn" else None
+            since = now
             while (states[-1]["clocks"]["active"] != whose if whose
                    else now - t0 < int(arg)):
+                if whose and now - since > TURN_LIMIT:  # M3 T7a-2a: another stack waits
+                    raise RuntimeError(f"`{a}`: no such turn in {TURN_LIMIT} ms; the active "
+                                       f"stack {states[-1]['clocks']['active']}")
                 now = step()
                 states.append(state(now))
             turns.append(now - t0)
@@ -638,14 +682,14 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
     with open(out / "states.jsonl", "w") as f:
         for s in states:
             f.write(json.dumps(s) + "\n")
-    (out / "timeline.txt").write_text("\n".join(timeline(states[1:])) + "\n")
+    (out / "timeline.txt").write_text("\n".join(timeline(states[1:], heroes)) + "\n")
     (out / "turns.txt").write_text("".join(f"{t}\n" for t in turns))
     return states
 
 
 def sequence_command(map_path, out, rest):
     opts = {"--pre": "0", "--ms": "1000"}
-    actions, screen, frames, hot_seat, i = [], False, False, False, 0
+    actions, screen, frames, hot_seat, heroes, i = [], False, False, False, False, 0
     while i < len(rest):
         if rest[i] == "--action":
             actions.append(rest[i + 1])
@@ -654,6 +698,8 @@ def sequence_command(map_path, out, rest):
             screen, i = True, i + 1
         elif rest[i] == "--hot-seat":
             hot_seat, i = True, i + 1
+        elif rest[i] == "--heroes":
+            heroes, i = True, i + 1
         elif rest[i] == "--frames":
             frames, i = True, i + 1
         elif rest[i] in opts:
@@ -665,7 +711,7 @@ def sequence_command(map_path, out, rest):
     game = Game(out)
     try:
         sequence(game, map_path, out, int(opts["--pre"]), actions, int(opts["--ms"]), screen,
-                 frames, hot_seat)
+                 frames, hot_seat, heroes)
     finally:
         game.stop()
     print(f"sequence: {out}/timeline.txt")
@@ -698,7 +744,7 @@ def run_sequences(rest):
         game = Game(here)
         try:
             sequence(game, map_path, here, e.get("pre", 0), e.get("actions", []), e["ms"],
-                     hot_seat=e.get("hot_seat", False))
+                     hot_seat=e.get("hot_seat", False), heroes=e.get("heroes", False))
         finally:
             game.stop()
         recorded = set_path.parent / e["timeline"]
