@@ -53,7 +53,7 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
-- **2026-10-21, E17 M3 T7a-1 (the magic animations read; design §7.16).** T7a split with the
+- **2026-10-21, E17 M3 T7a-1 (the magic animations read; #344 open).** T7a split with the
   user (the reading; T7a-2 the harness's casts and recordings). Seven players, their timing, the
   casters' frames; candidates for T7a-2 in the epic's review list.
 - **2026-10-21, E17 M3 T6c-2 (the mouse over time; #341, merged).** `mouse::track` follows the
