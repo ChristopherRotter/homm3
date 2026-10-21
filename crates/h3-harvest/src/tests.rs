@@ -1820,3 +1820,13 @@ fn data_quirk_fixes_are_checked() {
         "gapfill: hero params: unknown skill `Skill 98`",
     );
 }
+
+#[test]
+fn the_ai_categories_are_the_battle_packs_kinds() {
+    // The flag word's bits from 0x8000 name the battle pack's AI kinds in order (E23 T3-0).
+    let names: Vec<&str> = h3_content_battle::SpellAiKind::ALL
+        .into_iter()
+        .map(|k| k.name())
+        .collect();
+    assert_eq!(names, heroes::SPELL_AI_KINDS);
+}

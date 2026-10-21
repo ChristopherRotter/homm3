@@ -60,6 +60,7 @@ pub use siege::{
 pub use spell::{
     EffectDuration, EffectEnd, HexStep, MASTERY_NAMES, MAX_AREA_RADIUS, MAX_CHAIN_TARGETS,
     MAX_MASTERY, MAX_OBSTACLE_HEXES, MAX_SPELL_EFFECTS, ObstacleKind, ObstacleShape,
-    SPECIALIST_LEVELS, SpecialistBonus, SpellArea, SpellChain, SpellEffect, SpellMagic,
-    SpellPolarity, SpellTarget, TargetConditions, TargetSide, TimedChange, Usefulness,
+    SPECIALIST_LEVELS, SpecialistBonus, SpellAi, SpellAiKind, SpellAiKinds, SpellArea, SpellChain,
+    SpellEffect, SpellMagic, SpellPolarity, SpellTarget, TargetConditions, TargetSide, TimedChange,
+    Usefulness,
 };

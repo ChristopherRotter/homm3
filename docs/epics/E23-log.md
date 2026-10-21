@@ -543,3 +543,34 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   discrepancy in 0x41EB80, 0x41EDA0, 0x41F060, 0x41EEA0 or 0x422B20's skips; it noted the plain
   shot's front hex (the original aims at the position; the engine's validation wants the front,
   the same stack is hit) and the side columns' war machines (above).
+
+## T3-0 — the spells' AI values (2026-10-21, increment 4)
+
+- **The checkpoint** (the user, 2026-10-21). **The budget** (ADR-0027 point 11): the gated count
+  of `computer-decisions` with its +2 %, re-set on purpose at each part of T3 (the walkers cost
+  more), and at most 1 ms for the slowest decision on a quiet sandbox (`h3 bench-computer`),
+  measured and recorded per task. **T3's cut**: T3-0 the pack data (ADR-0027 point 13), T3a the
+  plan and the attack, T3b the hex scores and the hold-back, T3c the odds and the ends; this
+  session T3-0 and T3a.
+- **The data** (pack format v45): a spell's `ai = { kinds = [...], values = [none, basic,
+  advanced, expert] }` in `battle.toml` (`h3_content_battle::SpellAi`, `BattleSpell.ai`; default no
+  kind, values 0). The kinds are the executable's AI category bits `0x8000` to `0x100000`
+  (`SpellAiKind`: `damage`, `damage_once`, `damage_all`, `effect`, `stacks`, `special`), a set:
+  Titan's Lightning Bolt has `damage` and `special`, which the original values at 1
+  (`SpellAiKinds::only`, §7.39). The values are `SPTRAITS.TXT`'s columns 25 to 28 (the harvester
+  wrote "AI values not harvested" before). The battle part's hash takes both (v7); no rule reads
+  them, so no behaviour moved. `installation.md` §7.6: the categories' meaning is confirmed by
+  §7.39's reading (0x5273D0 dispatches on exactly these bits).
+- **Harvested** (SoD's executable, the AB-era table): 81 spells, the seven damage spells the odds
+  count with §7.39's values (Magic Arrow 10, Ice Bolt 20, Lightning Bolt 25, Implosion 75, Frost
+  Ring 12, Fireball 15, Meteor Shower 37, the same at every mastery); `special` Summon Boat, Fly,
+  Water Walk, Dimension Door, Town Portal and Earthquake; no category the other adventure spells,
+  the four battlefield spells (10 to 13) and the creature abilities (70 to 80). The synthetic
+  pack's spark, cinders, arc, blight and ward carry values for the tests.
+- **Hashes:** the ten golden replays' `battle_ruleset_hash` `0x827992c874254045` →
+  `0x7504e0bf2b62c97c` (headers patched, `h3 verify`); the AI lane's `bots-report-v1.json`
+  regenerated (only `engine.battle` moved, `dd49b3f029b159bb` → `c14c573e9d2ee26f`; `cross-lane`,
+  as #345). The adventure lane's replays store no battle hash.
+- **Not here:** `h3-harvest` keeps the kinds' names in its own table (`SPELL_AI_KINDS`, a test
+  compares it with `SpellAiKind::ALL`): a normal dependency on `h3-content-battle` would be an
+  `arch.toml` change.

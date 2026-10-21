@@ -285,6 +285,11 @@ area = { inner = 0, radius = [1, 1, 1, 2] }  # v4, target hex: hexes at distance
 side = "any"                       # v4: whose stacks it reaches: any (default) | enemy | own
 excludes = ["war_machine"]         # v4: creature flags a reached stack may not have (`requires`: must have)
 effects = [{ kind = "damage" }]    # v4: what it does to each stack reached (default none: not castable)
+ai = { kinds = ["damage"], values = [10, 10, 10, 10] }  # v45 (E23 T3-0): what the original's computer
+                                   # reads, no rule: its AI categories (each once; default none:
+                                   # damage | damage_once | damage_all | effect | stacks | special,
+                                   # the executable's flag bits 0x8000 to 0x100000) and its AI value
+                                   # by mastery, none to expert (SPTRAITS.TXT); default none and 0
 
 [[spell]]                          # a timed spell (pack format v5, E04b T3a)
 id = "hasten"

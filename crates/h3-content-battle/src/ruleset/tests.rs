@@ -375,6 +375,7 @@ fn an_adventure_spell_may_have_no_battle_row() {
             spares: vec![],
             tests_as: None,
             summons: None,
+            ai: SpellAi::default(),
         },
     };
     let mut p = base();
@@ -536,7 +537,7 @@ fn hash_is_stable_and_sensitive() {
     );
 }
 
-const GOLDEN_BASE_HASH: u64 = 0x7dad_6797_22dd_7bac;
+const GOLDEN_BASE_HASH: u64 = 0xdaba_83eb_c3a9_8163;
 
 #[test]
 fn battle_params_are_unique_and_required() {

@@ -323,6 +323,7 @@ polarity = "negative"
 target = "stack"                    # none (default) | stack | hex
 side = "enemy"                      # whose stacks it reaches: any (default) | enemy | own
 effects = [{ kind = "damage" }]     # none: not castable yet
+ai = { kinds = ["damage"], values = [10, 10, 10, 10] }  # the computer's categories and values by mastery
 
 [[spell]]
 id = "cinders"
@@ -331,6 +332,7 @@ target = "hex"
 area = { radius = [1, 1, 1, 2] }    # hexes at distance inner (default 0) to radius[mastery]
 excludes = ["war_machine"]          # creature flags a stack may not have
 effects = [{ kind = "damage" }]
+ai = { kinds = ["damage"], values = [15, 15, 15, 15] }
 
 [[spell]]
 id = "arc"
@@ -338,16 +340,19 @@ polarity = "negative"
 target = "stack"
 chain = { targets = [3, 3, 4, 4], factor_bp = 5000 }  # stacks struck by mastery; each next takes half
 effects = [{ kind = "damage" }]
+ai = { kinds = ["damage_once"], values = [75, 75, 75, 75] }
 
 [[spell]]
 id = "blight"
 polarity = "negative"
 requires = ["alive"]                # creature flags a stack needs; target none: every such stack
 effects = [{ kind = "damage" }]
+ai = { kinds = ["damage_all"], values = [20, 20, 20, 20] }
 
 [[spell]]
 id = "ward"
 polarity = "positive"
+ai = { values = [1, 1, 2, 2] }      # no category (default kinds = [])
 
 [[spell]]
 id = "farsight"
