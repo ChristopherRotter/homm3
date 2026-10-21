@@ -12,8 +12,17 @@ neutral share waits for E23's side without a hero. Increment 1 done 2026-10-20: 
 (ADR-0026, design `E06-design.md`), T2b1 (the full checkpoint and `--resume`; its pending gate and
 `--init-from` moved to T3b), T2c (C ABI v31). Increment 2 done 2026-10-20: T3a (the held-out
 sets v1, the bots' table), T3b (the SPRT gate, promotions, ladders, `--init-from`; the user's
-hour `t3b-1`: evaluation 21.4 %, stalling suspected, AI-Q9). **Next:** increment 3 (T4a, T4b;
-design §8, §10) with AI-Q9, refined at the user's checkpoint: no task is ready until then.
+hour `t3b-1`: evaluation 21.4 %, stalling suspected, AI-Q9). Increment 3 refined 2026-10-20
+(AI-Q9 answered): T4a done 2026-10-20 (the league, `E06-log.md`), then T4b.
+
+### E06 T4b — The first league runs
+
+- **Scope:** the user runs `configs/e06-t4.toml` twice (AI-Q9): at γ 0.995 and with `--set
+  ppo.gamma=1.0`, 60 M samples each, one stopped and resumed for real; both records committed,
+  the results in `E06-log.md` (the truncations, the ladders, the league's table).
+- **Acceptance:** both records pass `check_record`; increment 3's checkpoint with the user.
+- **Depends on:** T4a merged (its pull request). **Status:** waiting (T4a's merge, then the
+  user's two runs).
 
 ## Inbox
 

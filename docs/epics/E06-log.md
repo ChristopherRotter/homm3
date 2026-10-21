@@ -244,3 +244,55 @@ entry only where a task builds on it.
   the ladders, so #4's 0.477 against #3 can be even. The record keeps each ladder opponent's
   truncations since (`Record`). Decided at T4's refinement.
 
+
+## Increment 3's refinement (2026-10-20, AI-Q9)
+
+- The agent proposed T4a (the league) in one pull request, then T4b, and for AI-Q9 an A/B hour
+  on T3b's config at γ 1.0 against `t3b-1` while T4a was built (GAE checked first: a truncation
+  bootstraps from the final value, no advantage crosses an episode, so the stalling is the
+  incentive, not a bug). **User:** two league runs in T4b, γ 1.0 beside 0.995; T4a in one pull
+  request; 60 M samples a run (extendable on resume).
+
+## T4a — The league (2026-10-20)
+
+- **`h3env.train.league`** (torch-free): `Member` (id, kind `snapshot` or `promoted`, file,
+  birth, the decayed score and games, the plain games), `League` (`join` with the retirement,
+  `draw`, `opponent`, `side`, `settle`, `table`, `state`, `restore`). The trainer holds the
+  members' networks (`Trainer.nets`; a promoted member shares the lineage's copy) and per env its
+  episode's member (`frozen_id`); `join` replaces `snapshot`, every promotion joins (best #0 from
+  the start). An episode's result counts for its member by the gate's `game_score` (a draw or a
+  truncation ½), settled once per update; a retired member's results are dropped.
+- **One change from design §8's outline:** the live set is drawn every `live_every` samples
+  (250 000) and when it is stale (a retired member, fewer than it could hold), not at every
+  rollout: an episode outlasts a rollout (`t3b-1`: about 147 calls against 128) and keeps its
+  opponent, so the sandbox run below, drawing at every rollout with `live` 2, passed up to 3.9
+  frozen networks a call (a rollout's mean; retired members' too, while their episodes ran). The update record's `frozen_passes` measures it for T4b.
+- **Config:** `[league]` (`self_play` 0.5, `snapshot_every` 1 M, `max_members` 16, `live` 4,
+  `live_every` 250 000, `pfsp_power` 2, `decay` 0.99, `retire_games` 200) replaces `[pool]`;
+  `configs/e06-t4.toml` (60 M samples, a gate every 10 M, ladders of 250 per kind) replaces
+  `pool-smoke.toml` and `e06-t3b.toml` (their keys are gone; `t3b-1`'s record keeps its resolved
+  config and commit).
+- **Checkpoint format 3:** the league's state (members, next id, live set, next draw, its
+  generator) instead of the pool's networks; the networks come from the members' files at the
+  resume (`league/<id>.pt`, `promoted/<n>.pt`). A retired snapshot's file is deleted after the
+  next checkpoint (the last one still names it); a resume removes the files of `league/` its
+  checkpoint does not name. Formats 1 and 2 are refused (`--init-from` their `best.pt`).
+- **Record schema 5:** each `update` record's `league`, `live`, `drawn`, `league_episodes`,
+  `league_score` (the learner's mean score against members, a truncation ½: the pool's
+  `pool_won` counted wins only, which hid even matches in AI-Q9's reading), `frozen_passes`;
+  `snapshot` and `promotion` records name the member and the one it retired; each gate's member
+  table (the record's `gates[i].league`); the curve's `league_score` and `frozen_passes`.
+  `check_record` still accepts schema 4 (`OLDER_TABLES`: `t3b-1`'s `[pool]`).
+- **Tests:** `test_run.py` (the league's weights, scores, decay, draws and their cadence, the
+  episodes' opponents and sides, the retirement with and without enough games, the state round
+  trip, the refused `[pool]`); `test_train.py` (the league in a short run with its files, the
+  checkpoint's league and its networks restored from the files, a member playing its side,
+  retirement with the files deleted after the checkpoint, a stray file removed at the resume).
+  90 Python tests with torch on the CPU (the GPU test skipped), 71 without.
+- **A real run in the sandbox** (the CLI, `configs/e06-t4.toml` with the default network, 64
+  envs, a snapshot every 5 000 samples, 3 members, `live` 2 drawn at every rollout, no games
+  needed to retire, a 50-pair gate at the end, ladders of 4 per kind; CPU): 5 updates (about
+  950 samples/s), Ctrl+C, saved; `--resume` to the budget (10 updates, 64 487 samples) in a
+  second segment. Snapshots 1 to 10 joined, eight members retired in turn (best #0 among them:
+  no games were needed), `league/` kept only the members' files (8, 9, 10), the record passed `check_record` with both segments; the end gate was
+  inconclusive at its cap (50 pairs, +63 Elo).
