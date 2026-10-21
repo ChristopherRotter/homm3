@@ -381,7 +381,10 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   group 1 on the idle steps, stood by an action, its partial redraw), the software cursor's
   33 ms poll; built as `mouse::track` over each turn's battle from the engine, played through the
   sequences (their hint listings gone, the cursor drawn, `hover` compared) and the window (the
-  mouse, pressed buttons, the hotkeys, the log's scroll). FRAMES_SUMMARY
+  mouse, pressed buttons, the hotkeys, the log's scroll); a ray hides the cursor. Every
+  timeline as recorded; the sequences captured afresh with the cursor compared: 922 frames, the
+  recorded counts unchanged, the hint listings gone (173 rolled lines left of 668), `hover` 16
+  of 20 frames exact (four with the mouse's partial redraw's leftover pixels).
 
 ### The adventure lane's harness (H1, H2: its batch E3)
 
@@ -468,7 +471,8 @@ Accepted by the user (M1 2026-10-13, M2 2026-10-14); moved to the log,
   constants), `scenario::turned`, `log::Writer`; the window's keys moved (P, Home, H:
   *provisional*), its mouse, pressed buttons, hotkeys and scrolls. *Not modelled:* a mouse
   fidget's stalls, the leftover pixels of the mouse's partial redraw (listed in `hover`'s counts),
-  a hero's cast's return to its stack's turn, the viewer's own fidgets meeting the mouse's.
+  a hero's cast's return to its stack's turn, the viewer's own fidgets meeting the mouse's. A ray
+  hides the cursor (`Beam::cursor_back`, `Timeline::cursor_hidden`).
 
 - T6c-1: `h3_view::mouse` (the cursor's kind and frame, the hint, the marked stack from a point,
   the observation and the server's legal commands, `mouse::Legal`; the cursor's own half-damage

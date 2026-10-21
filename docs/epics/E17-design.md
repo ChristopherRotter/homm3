@@ -2169,8 +2169,9 @@ callers), `battle_cursor`'s target (+0x10, +0x14 of the acting stack), `battle_m
 - **A ray hides the cursor** (`draw_ray` 0x5A5C20): `mouse_hide` (0x50D540) as it starts
   (0x5A5C46) erases the cursor from the screen, `mouse_show` (0x50D5B0) after the shot group's
   rest (0x5A61D4) draws it again: in `shots` the panel shows under the parked point from 655 to
-  879 ms, 4 086 to 4 267 and 5 293 to 5 479 (35 pixels a frame until the viewer hid it too:
-  `Beam::cursor_back`, `Timeline::cursor_hidden`; the window hides its cursor then too).
+  879 ms, 4 086 to 4 267 and 5 293 to 5 517 (35 pixels in each of 40 frames until the viewer
+  hid it too: `Beam::cursor_back`, `Timeline::cursor_hidden`; the window hides its cursor then
+  too).
 - **The facing** the cursor asks (a two-hex stack's other hex, a shooter's front hex) is the
   timeline's at the turn's start (`Facing::Left`, the poses facing left), the opening's by side.
 - **The viewer** (`mouse::track::follow`): the log's entries and the inputs in time order (a move
@@ -2199,6 +2200,14 @@ callers), `battle_cursor`'s target (+0x10, +0x14 of the acting stack), `battle_m
   screen digest takes the cursor) and masks nothing fixed (the parked cursor drawn, the panel
   compared since T6b); `hover` is captured and compared (no engine command: the opening's
   battle); 0x69CA18 set at a sequence's opening.
+- **Checked:** every sequence's timeline as recorded (eleven: `hover`'s with the original's own
+  fidgets left out). All eleven sequences captured afresh with the cursor compared and nothing
+  fixed masked: 922 frames, every count the ten sequences recorded before unchanged (the
+  ` log` listings from 668 to 173, each a line whose numbers the engine rolled: the hints are
+  the viewer's), `shots` six frames more where the cursor hides and shows (exact), `hover` new:
+  20 frames, 16 exact, four with the leftover pixels above. The set not captured (its capture
+  unchanged): `drawn`, every situation the same. The window under Xvfb with the mouse moved and
+  clicked over the field and the panel: every frame read back exact.
 - **Not modelled:** a stall of a mouse fidget, a hero's cast's return to the same stack's turn
   (0x479195: the mouse posted again), the army info windows, the hex shade under the mouse
   (the option "Show Combat Mouse Hex", off in the harness; its call on every move not read),

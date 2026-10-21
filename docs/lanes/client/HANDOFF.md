@@ -48,13 +48,14 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - The engine rolls its own damage: the frame check lists a box (` n…`, T5b-1) or the log's item
   (` log`, T6b) whose number or text is not the original's.
 - Timelines' records: army, then war machines (design §7.15).
+- The harness's `actions` are the viewer's mouse (`pointer::inputs`, design §9.10): a new action
+  kind needs both; `hex_point` and `PARK` mirror `h3drive.py`'s.
 
 ## Recent sessions
 
-- **2026-10-21, E17 M3 T6c-2 (the mouse over time; `client/e17-m3-t6c-2`).** Taken whole (the
-  user). `mouse::track` follows the harness's or the window's mouse through a record; entered
-  stacks fidget (`Timeline::enter`); the harness aligns the mouse poll's grid and records the
-  cursor's point; `hover` compared; the window's mouse, pressed buttons, hotkeys. *In progress:
-  the full recapture (`frames`, then `set`, `drawn --record`), the epic and its log.*
+- **2026-10-21, E17 M3 T6c-2 (the mouse over time; PR_PLACEHOLDER).** Taken whole (the user).
+  `mouse::track` follows the harness's or the window's mouse; entered stacks fidget
+  (`Timeline::enter`); a ray hides the cursor; the harness aligns the mouse poll's grid, records
+  the cursor's point; the sequences recaptured (hints gone, `hover` compared); the window's mouse.
 - **2026-10-20, E17 M3 T6c-1 (the mouse's still; #336).** T6c split with the user. The mouse
   read; `h3_view::mouse`; 26 mouse situations exact from 100 ms, the parked cursor drawn.
