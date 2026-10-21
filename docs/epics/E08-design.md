@@ -148,29 +148,17 @@ owner's time limit and the default answer online the server's (their inboxes). T
 next level-up takes the answered decision's place. A hero without an owner does not exist in
 increment 4: `give_levels` takes the owner.
 
-### 14. The env, replays and properties
+### 14. Built by T30 and T31: the env, replays, fixtures, properties and benchmarks
 
-- **The env** (`h3-sim/src/adventure/`; **built by T30**, decision 64): action encoding v4
-  appends `FIRST` (11) and `SECOND` (12), each with tile 0 alone, legal only while a level-up is
-  the player's open decision; `ACCEPT` and `DECLINE` only while an offer is. `random_rollout`
-  answers a level-up at random. The observation is `h3_game`'s view (§13).
-- **Replays** (format v5): the new answers in the command list (`<player> answer first|second` in
-  the CLI's file, `crates/h3-cli/src/adventure/`; **built by T30**, which re-recorded the nine
-  golden replays with their commands unchanged: none of their battles reaches a level, the
-  highest experience any of their heroes ends with being 788); T31 re-records them once more, with
-  their options (`crates/h3-cli/tests/adventure_replays.rs`), now answering the level-ups their
-  battles give; one replay at least with a level-up answered each way and a hero levelled at load.
-- **Fixtures**: the duel's and the XL map's heroes gain experience near a threshold and one a
-  custom experience (levels at load), so the replays, the plans and the benchmarks meet
-  level-ups (`h3-map`'s `tests/fixtures.rs` writes them).
-- **Properties** (`crates/h3-map/src/tests/play.rs`; T30 made the existing ones follow the
-  level-ups random play meets: the driver answers them, the legality, isolation and conservation
-  checks and the view's event model know them): the driver answers level-ups; the plans
-  check after every command that a hero's level is at most its experience's level and that an
-  open level-up's hero has a pending level; the hygiene property covers the seeds and the offers;
-  a fixed test per profile for the draws' source.
-- **Benchmarks**: the three workloads re-baselined if the fixtures move them; the fork shares
-  the seeds (no per-fork copy).
+The env's answers (action encoding v4) and the replay format v5 came with T30 (decision 64).
+Built by T31 (2026-10-21, `adventure/e08-t31`, decision 66: whole, one pull request; `E08-log.md`)
+as planned: the fixtures' heroes near a level and red's underground hero levelled at load, the
+nine golden replays re-recorded (the five searched ones replaced; seven answer level-ups, five
+with both offers), the plans' level checks after every command (`check_progression`), the
+hygiene property's other heroes' experience and whom the game waits for, a fixed test of
+another player's level-up, the levels at load by profile through the original packs, two
+workloads re-baselined. The draws' source in play per profile stays `h3-game`'s fixed tests
+(T30): `h3-map` reaches no level seed.
 
 ### 15. Versions
 
@@ -211,7 +199,7 @@ confirmed at its checkpoint):
 | 1 | **T25** + **T26** | Done. Cut (decision 59): **T25** (2026-10-20: survey §10; ADV-Q17, decision 60), **T26a** (2026-10-20, #325: ADR-0013 and -0017 amended), **T26b** (2026-10-20, `shared/e08-t26b`, decision 61: the hero parameters' level data and offered skills, the class's `offer_intervals`, `[[hero_class_override]]`, the two flags, the packs and the gap-fill, the bumps and the replays' headers; part A §1, §10) |
 | 2 | **T27** + **T28** | Done: T27 (2026-10-20, `adventure/e08-t27`, decision 62), T28 (2026-10-21, `adventure/e08-t28`). T27: `h3-heroes`' progression (part A §2–§7: levels, the bound, the limit's cap, the draw source and the original's generator, the primary skill, the offers, `GainLevel`, the counters, the checks; HER-EXP-002, -003, HER-LVL-001 to -005; `ADV-QUIRK-10` to `-13`). T28: the original's choice ported, its flag-clear path (part A §8, HER-LVL-006; survey §10; `ADV-QUIRK-14`) |
 | 3 | **T29** + **T30** | Done: T29 (2026-10-21, `adventure/e08-t29`, `cross-lane`, decision 63: whole, one pull request; §11 and §12 built), T30 (2026-10-21, `adventure/e08-t30`, decision 64: whole, one pull request, with §14's env answers and replay format; §13 built). T29: the game's setup and build (§11, §12: the seeds, the limit and banned skills, the terrains' costs by Pathfinding level and the map's shares, levels at load, the import's refusal lifted, the 5 shipped maps; GAM-HER-002, GAM-SET-002; `ADV-QUIRK-9`). T30: the level-up as a decision (§13: the answers, the events, the observation, the system actor's default, the battle's levels; GAM-DEC-002, GAM-BAT-008) |
-| 4 | **T31** + **T32a** | T31: the replays, fixtures, properties and benchmarks (§14; the env's answers and the replay format v5 came with T30). T32a: batch E4's spec and recipe (§16; `cross-lane`) |
+| 4 | **T31** + **T32a** | T31 done (2026-10-21, `adventure/e08-t31`, decision 66: whole, one pull request; §14 built): the replays, fixtures, properties and benchmarks. T32a: batch E4's spec and recipe (§16; `cross-lane`; its recipe waits for the harness's new reads) |
 | 5 | **T32b** + **T33** | T32b: batch E4 run on the harness. T33: the scoring (the rules it covers `verified` or reopened), the audit against the exit criteria, increment 4 closed, the next increment refined |
 
 **Increment 4's exit criteria**:

@@ -3261,3 +3261,51 @@ answers.
   replays re-recorded with their options, their commands unchanged.
 - **Housekeeping**: T29's merge of `master` had left conflict markers in the adventure and AI
   lanes' `QUEUE.md` inboxes (both sides kept; the adventure's T27-T29 notes for T30 consumed).
+
+### Increment 4, round 4: T31, the replays, fixtures, properties and benchmarks (2026-10-21, `adventure/e08-t31`)
+
+Decision 66: T31 whole, one pull request (the user's choice of four; T32a in its own session,
+its recipe waiting for the harness's new reads). Baseline `master` 1284596 (#353 and #352
+merged): its code verified by T30's run, the sandbox's light gates green.
+
+- **The properties** (`h3-map`'s `play.rs`, `view.rs`): `check_progression` after every command
+  of `every_step_keeps_the_commands_invariants` and of the plans' 192 fixed cases (a level at
+  most the experience's by an oracle of the thresholds, the experience under the bound and the
+  limit's cap, a pending level only for the open level-up's hero, at the level after its own, at
+  most one level-up open and the game waiting for its owner alone); the first test's cases get
+  a custom experience in half the cases (`experience()`: mostly just below a threshold of levels
+  2 to 20, sometimes any amount), drawn last so the regression seeds keep their plans. Its first
+  run found the battle heroes' check adding a gain past the bound (the game caps it, HER-EXP-002;
+  the event tells the gain asked): the test model caps it now (`experience_cap`), the case kept
+  in the regression file. The fixed cases count level-ups opened and levels gained.
+- **The draws' source by profile** through the original packs and a map: in `faithful` a
+  hero's levels at load stay the same whatever another hero gains at load before it, in
+  `strict-fixed` they change with it for some seeds (RoE's experience 0 is the default, drawn
+  from the setup stream: the first try used it and moved every seed, so the test uses 1). In
+  play the source per profile stays `h3-game`'s fixed tests (T30): `h3-map` has no access to
+  the level seeds, and `h3-heroes` is not its dependency (`arch.toml`).
+- **Hygiene**: `Unseen.experience` gives the other players' heroes that have a custom experience
+  (RoE's and AB's plans) another one, so their levels at load differ unseen (55 of 207 cases in
+  a probe run); `outcome` compares whom the game waits for, which every player learns. A probe
+  found random play never reaching the end of another player's battle out of sight while the
+  comparison runs, so `another_players_level_up_shows_nothing_of_its_offers` plays one: red's
+  hero beats savage wolf riders out of blue's sight, Scholar known in one game only, and blue
+  sees and is told the same at every step while red's offers differ (most seeds in `faithful`,
+  2 of 16 in `strict-fixed`).
+- **Fixtures**: the duel's heroes 970, 950, 4 570 (red's underground hero: levels 2 to 4 at load)
+  and 930; the XL map's the duel's, then 980, 940, 960, 920 (`fixtures.rs`, `DUEL_EXPERIENCE`,
+  `XL_EXPERIENCE`); both regenerated. `h3-sim`'s battle replay test answers the winner's
+  level-up before its end of turn.
+- **Replays**: every command changed (the setup stream no longer draws the heroes' default
+  experience, and the levels change the battles). The four with fixed options re-recorded; the
+  five searched ones replaced from a search of 5 000 games per profile with a scratch probe (not
+  committed): `duel-s767-d28` (a hero battle won with a capture), `duel-s2626-d28` (a passage),
+  `duel-s236-d28` (a pile's guards beating the visitor, a question declined), `duel-s12-d28` (a
+  monster's battle lost, a Cartographer declined), `duel-s929-strict-d28` (a hero battle lost in
+  strict-fixed, the winner capturing). Seven answer level-ups, five with both offers; in all nine
+  red's underground hero levels at load. Of the 5 000 faithful games 32 have a hero battle (1 500
+  of E04c T10b's had 11), 4 725 a level in play. `duel-s5-strict-d7` now meets no battle.
+- **Benchmarks**: `random-play-duel-36` 523.5 M → 567.1 M Ir (2 956 → 2 858 steps),
+  `reach-xl-144` 525.7 M → 477.5 M (4 608 → 4 728 queries), both re-baselined; `fork-xl-144`
+  +0.22 %, kept (the progression behind its `Arc`, shared by the forks).
+- No version bump: tests, data and replays only.
