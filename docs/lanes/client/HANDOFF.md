@@ -58,7 +58,7 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
-- **2026-10-21, E17 M3 T7b-2b-1 (the harness forces the original's rolls).** Split with the user
+- **2026-10-21, E17 M3 T7b-2b-1 (the harness forces the original's rolls; #366, open).** Split with the user
   (T7b-2b-2 morale, luck, fear; T7b-2b-3 abilities); nine roll calls redirected in `xdd.dll`.
 - **2026-10-21, E17 M3 T7b-2a (tint, Haste/Slow walks, Dispel, Cure, Ray; #363, merged).**
   Split with the user; `haste`, `dispel` recorded, frames exact.
