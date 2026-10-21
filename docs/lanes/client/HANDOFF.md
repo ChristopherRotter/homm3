@@ -53,9 +53,9 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
-- **2026-10-21, E17 M3 T7a-2b (the magic animations recorded; in progress).** Seven casts
+- **2026-10-21, E17 M3 T7a-2b (the magic animations recorded; its PR open).** Seven casts
   sequences and `dragon` with `screens` (`casts.toml`, all replayed); four readings corrected;
-  quirks to the review list. Left: the client gates' full check, then the PR from the branch.
+  quirks to the review list; the client gates' full check in a second session (all gates).
 - **2026-10-21, E17 M3 T7a-2a (the harness casts; #348, merged).** The book read; `cast:`;
   heroes' books; `battle_book`; the hero's and the Faerie Dragon's casts recorded.
 - **2026-10-21, E17 M3 T7a-1 (the magic animations read; #344, merged).** Seven players,

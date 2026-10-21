@@ -1622,7 +1622,8 @@ task at once). The user's computer was linked for the staging only.
   `cast` and `dragon` replayed with the changed harness, so it drives and reads the original as
   before (the whole set is captured afresh at T9); `h3drive.py drawn` 68 of 68 the same; the
   viewer's `scenario` and `situation` tests, `cargo fmt`, clippy; `scripts/exe.py check` and
-  `cited`. **Not yet:** the client gates' full check (`verify-once clients`), then the PR.
+  `cited`; the client gates' full check (`verify-once clients`, a later session: all gates, code
+  `3972a75`).
 
 ## Accepted review lists (M1, M2)
 
