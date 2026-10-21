@@ -1625,6 +1625,41 @@ task at once). The user's computer was linked for the staging only.
   `cited`; the client gates' full check (`verify-once clients`, a later session: all gates, code
   `3972a75`).
 
+### M3 T8 — The battle's end tune (2026-10-21)
+
+On `client/e17-m3-t8` (branched from `client/e17-m3-t7a-2b`, #355 open), the user present at the
+start. The user's computer was linked for the staging only (all files staged once, the session
+then ran in the cloud).
+
+- **Starting point:** T7a-2b's branch, the client gates' full check on its code (`verify-once
+  clients`: all gates); its pull request #355 opened in the same session.
+- **The reading** (design §8.2, "The battle's end", "A sound played by its name"; 8 map entries,
+  `battle_end` extended, the manager's +0x132F8 in `structs.toml`): `battle_winner` decides the
+  battle once an action's last frame showed and calls `battle_end`, which darkens the screen,
+  builds the result's window (0x4702D0) and plays its tune once with the effects ended, no clock
+  step between. The window shows the winner's side when its player is a human here, else the
+  other (a draw: the defender's); the tune: `win battle` or `defend castle` (a town's defender)
+  for the winner; `losecastle`, `surrender battle`, `retreat battle` or `losecombat` for the
+  loser. The start sound's volume: its loader's default, 127 (the WAV's constructor 0x566DA0),
+  as the tent's heal.
+- **Recorded** (`sequences.toml`, `end`, `seq-end.toml`: `strike`'s battle without the
+  defender's Goblins, the lone Pikemen at hex 100): the harness's `<ms> end` (h3mem's `decided`,
+  the manager's +0x132F8) at 3 730 ms, when the next turn would start; with `--screens` the
+  whole screen changes in that step (the darkening and the window), then nothing. Two runs the
+  same. The viewer's timeline (`Timeline::ended`, `lines`' `end`): 57 changes, as recorded.
+- **The viewer:** `h3_view::sound::{Tune, end_tune, FILE_VOLUME}` (the choice, the six names,
+  the ranked game's outcomes, which no battle's event carries, as their winner or none); the
+  window: `Battle::end_tune` (the snapshot's `human`, no town: *provisional*), `Library` decodes
+  the tune, `Player::end` (every effect and the start sound's stream ended, the tune on the
+  music's stream once at 127, no fade-in), Home brings the music back; the start sound's and
+  the heal's stream at 127.
+- **Checked:** the window on `end`'s record under Xvfb with the `disk` driver (`--check 20`,
+  158 of 158 frames read back exact): the tune alone in the mix (correlation 1.0 with
+  `Win Battle.mp3` decoded by ffmpeg), whole and once, then silence; 3 692 ms after the music's
+  start against the cue's 3 730 (the disk driver's pacing, as the effects' 10–100 ms at M2 T5b).
+  FRAMES_LINE The viewer's tests, `cargo fmt`, clippy; `scripts/exe.py check` and `cited`,
+  `check-exe-map`; `h3drive.py drawn`; the client gates' full check.
+
 ## Accepted review lists (M1, M2)
 
 Moved from the epic file on 2026-10-20 (less start-up reading), unchanged.

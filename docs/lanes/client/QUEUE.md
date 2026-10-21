@@ -35,15 +35,6 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 - **Acceptance:** as T7b.
 - **Depends on:** T7a-2b (done). **Status:** ready.
 
-### E17 M3 T8 — The sound's remainder
-
-- **Scope:** the battle's end (`battle_end` 0x477470 calls `play_music` twice: the victory and
-  defeat tunes, with the results), the start sound's volume (its loader's default, not read);
-  the volume settings (0x5996C0) and a track resuming where it last stopped (0x59AA82) wait for
-  the client's options and a second battle (later).
-- **Acceptance:** the end's tunes play at the times the executable plays them.
-- **Depends on:** nothing. **Status:** ready.
-
 ### E17 M3 T9 — M3's closure
 
 - **Scope:** every sequence and situation captured afresh (the runbook, "Which captures a
@@ -51,14 +42,20 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
   user, a fresh reviewer agent over M3, the next milestone
   refined (sieges, live play, HD or the adventure map: the user's choice), M3 marked done.
 - **Acceptance:** M3's exit holds; the review list answered or carried on.
-- **Depends on:** T7b–T8 (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2,
-  T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b done).
+- **Depends on:** T7b, T7c (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2,
+  T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b, T8 done).
   **Status:** waiting.
 
 ## Inbox
 
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
+
+- 2026-10-21 (T8): the battle's result window (`battle_result_dialog` 0x4702D0, not read beyond
+  its tune: the heroes, the texts, the casualties, OK) and the whole screen darkened under it
+  (0x44E5F0 from 0x47782C): `end`'s last frame differs by them (its counts). The volume settings
+  (0x5996C0) and a track resuming where it stopped (0x59AA82) with the client's options and a
+  second battle (later); the network's `remote_turn` in the end's choice with live play.
 
 - 2026-10-21 (T7a-2a): `h3adv.py` knows a battle by the `battle` probes alone, which lie on the
   panel's spell-book button: a battle whose acting human hero has a book shows `battle_book`

@@ -150,9 +150,10 @@ then steps 1 ms at a time, reading the game's state after each step: `<out>/stat
 state, with `--screen` a digest of the battlefield's pixels) and `<out>/timeline.txt` (one line per
 change of a stack's group, frame or hex, by the original's records: each side's army, then its
 war machines; after them a change of the magic animation drawn, `<ms> magic <number> f<frame>
-<side>.<record>…` or `<ms> magic -`, M3 T3b). `sequences` replays the recorded ones and fails when a
-timeline changes; add one like a situation (its entry, `new`, then copy its timeline into
-`timelines/`).
+<side>.<record>…` or `<ms> magic -`, M3 T3b; then `<ms> end` once the battle is decided, M3 T8:
+the manager's +0x132F8, when the result's window opens and its tune starts, `end`). `sequences`
+replays the recorded ones and fails when a timeline changes; add one like a situation (its
+entry, `new`, then copy its timeline into `timelines/`).
 
 **Casts** (M3 T7a-2a, design §7.16): a scenario's hero gets a spell book with `spell_book`
 (the engine's keys) and `mana` 10 per `knowledge` (the original's hero starts so; `h3-view

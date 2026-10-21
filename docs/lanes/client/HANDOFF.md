@@ -4,7 +4,7 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E17 M0–M2 done; M3 T1a–T7a-2b done; H1, H2 done (2026-10-19: the adventure lane's harness); next: M3 T7b–T8** (`QUEUE.md`; T9 closes M3). Screens are built from the executable's dialog items (`h3_view::ui`, the user: reusable components; design §9.7). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
+- **E17 M0–M2 done; M3 T1a–T7a-2b, T8 done; H1, H2 done (2026-10-19: the adventure lane's harness); next: M3 T7b, T7c** (`QUEUE.md`; T9 closes M3). Screens are built from the executable's dialog items (`h3_view::ui`, the user: reusable components; design §9.7). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
 - **Captures** (the user, 2026-10-20): `h3drive.py drawn` first (no Wine); capture only what it lists or the task changes, all at a milestone's closure or after a harness change (runbook, "Which captures a change needs"). Detail for later tasks: `NOTES.md`.
 - **The user's requirements** (epic, "Decisions"): a string catalogue (JSON packs, no committed translation: CLT-Q7); graphics options (`faithful` default); exhaustive reference diffs.
 - The lane owns `clients/`, `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
@@ -53,10 +53,10 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
-- **2026-10-21, E17 M3 T7a-2b (the magic animations recorded; its PR open).** Seven casts
+- **2026-10-21, E17 M3 T8 (the battle's end tune; its PR open, on #355's branch).** The end
+  read and recorded (`end`), the window plays the tune; the start sound at 127.
+- **2026-10-21, E17 M3 T7a-2b (the magic animations recorded; #355 open).** Seven casts
   sequences and `dragon` with `screens` (`casts.toml`, all replayed); four readings corrected;
   quirks to the review list; the client gates' full check in a second session (all gates).
 - **2026-10-21, E17 M3 T7a-2a (the harness casts; #348, merged).** The book read; `cast:`;
   heroes' books; `battle_book`; the hero's and the Faerie Dragon's casts recorded.
-- **2026-10-21, E17 M3 T7a-1 (the magic animations read; #344, merged).** Seven players,
-  their timing, the casters' frames.
