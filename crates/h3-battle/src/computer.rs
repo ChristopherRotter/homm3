@@ -10,7 +10,6 @@ use h3_kernel::arith::X87;
 
 use crate::aim;
 use crate::combat::can_shoot;
-use crate::effects::Status;
 use crate::geometry::{Field, Hex, HexSet};
 use crate::movement::MAX_PATH;
 use crate::pathfinder::{AI_RANGE, Goal, Query, Search};
@@ -216,11 +215,6 @@ impl Map {
         if c == u16::MAX { 0 } else { c }
     }
 
-    /// The mark of `hex` when a stack on it can be attacked (the hex record's +0x4A): its cost.
-    pub fn mark(&self, hex: Hex) -> Option<u16> {
-        self.0.mark_of(hex)
-    }
-
     /// Whether `hex` is a stop of the stack's walk (the pathfinder's +0x68).
     pub fn is_stop(&self, hex: Hex) -> bool {
         self.0.is_stop(hex)
@@ -228,20 +222,17 @@ impl Map {
 }
 
 /// The walker's map of stack `id` for the computer's `side` (0x421680's 0x4B2DA0, 0x4217BE;
-/// BAT-AI-005): range 127, or 0 while it loses its turns (or is bound, or has no speed); the
-/// stacks of `side` are not marked; at a town the moat's damage may keep it out of its stops
-/// (BAT-SIE-022, the computer's).
+/// BAT-AI-005): range 127 (0 for a bound stack or one without speed); the stacks of `side` are not
+/// marked; at a town the moat's damage may keep it out of its stops (BAT-SIE-022, the
+/// computer's). (The original's range 0 for a stack blind, petrified or paralysed matters only for
+/// the predictions' stacks, E23 T4: such a stack has no turn.)
 // rule: BAT-AI-005, BAT-SIE-022
 pub fn map(state: &BattleState, ruleset: &BattleRuleset, id: StackId, side: BattleSide) -> Map {
     let field = Field::new(ruleset.battle().field);
     let me = state.at(id);
     let query = Query {
         goal: Goal::Map,
-        range: if me.spells.status.contains(Status::NO_TURNS) {
-            0
-        } else {
-            AI_RANGE
-        },
+        range: AI_RANGE,
         avoid: aim::fears_moat(state, ruleset, me, Some(side)),
         spare: Some(side),
     };

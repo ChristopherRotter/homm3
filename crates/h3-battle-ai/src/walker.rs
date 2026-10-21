@@ -28,11 +28,8 @@ const HEXES: usize = 256;
 /// The draw of a candidate's value, percent (0x421B02: `random(75, 100)`).
 const DRAW: (u32, u32) = (75, 100);
 
-/// The turns to a hex that costs anything for a stack without speed (0x436300).
-const NO_SPEED_TURNS: u32 = 100;
-
 /// The walker's hex scores (0x421680's 187 integers): what standing on a hex costs or gains.
-type Scores = [i32; HEXES];
+pub(crate) type Scores = [i32; HEXES];
 
 /// The best hex to strike an enemy from (0x4360C0's +0x1C to +0x24): the hex, the turns to it and
 /// the value of the hex's extras and dangers.
@@ -65,7 +62,7 @@ struct Striker {
 }
 
 /// One walker's choice: its battle, side, context, map and scores.
-struct Walker<'a> {
+pub(crate) struct Walker<'a> {
     state: &'a BattleState,
     ruleset: &'a BattleRuleset,
     field: Field,
@@ -106,7 +103,7 @@ pub(crate) fn turn(
 }
 
 impl<'a> Walker<'a> {
-    fn new(
+    pub(crate) fn new(
         state: &'a BattleState,
         ruleset: &'a BattleRuleset,
         (id, side): (StackId, BattleSide),
@@ -135,6 +132,12 @@ impl<'a> Walker<'a> {
             on,
             normal: computer::difficulty(state) > 0 || computer::human(state, side),
         }
+    }
+
+    /// The walker with the hex scores `scores` (the tests' stand-in for T3b's).
+    #[cfg(test)]
+    pub(crate) fn scored(self, scores: Scores) -> Self {
+        Self { scores, ..self }
     }
 
     fn stack(&self, id: StackId) -> &'a Stack {
@@ -166,7 +169,7 @@ impl<'a> Walker<'a> {
     /// plan's hex when `P` was taken (a walk there, nothing on it); an attack within one turn; a
     /// walk towards the plan's hex (nothing on it). No candidate: nothing.
     // rule: BAT-AI-005
-    fn choose(&self, rng: &mut Rng) -> Option<Command> {
+    pub(crate) fn choose(&self, rng: &mut Rng) -> Option<Command> {
         let me = self.me;
         let still = me.speed_now() == 0 || computer::bound(self.state, self.id);
         let other = self.side.opponent();
@@ -313,8 +316,7 @@ impl<'a> Walker<'a> {
     /// The hexes around `h` in the original's directions `dirs` as the plan's candidates against
     /// `enemy` (0x436300; BAT-AI-005), the walker striking by `own` creatures and the enemy by
     /// `left` after it: a position the walker's map reaches standing there; its turns `⌈cost /
-    /// speed⌉`, one more on a stop, at least 1 (without speed 1 at cost 0, else 100), no more than
-    /// the best's. Its value `P`: the shooters it would block ([`Walker::blocked`]); outside Easy
+    /// speed⌉`, one more on a stop, at least 1, no more than the best's. Its value `P`: the shooters it would block ([`Walker::blocked`]); outside Easy
     /// for a computer side the multi-headed and breath strikes' values ([`Walker::heads`],
     /// [`Walker::breath`]) less those of the enemy's retaliation while it has one (the walker's
     /// strikes retaliated, the enemy not turned to stone); a two-hex walker's other hex's blocked
@@ -345,11 +347,8 @@ impl<'a> Walker<'a> {
             let Some(cost) = self.map.position(n).map(u32::from) else {
                 continue;
             };
-            let turns = if speed == 0 {
-                if cost == 0 { 1 } else { NO_SPEED_TURNS }
-            } else {
-                (cost.div_ceil(speed) + u32::from(self.map.is_stop(n))).max(1)
-            };
+            // Without speed 1 at cost 0, else 100: only a war machine has none, and none walks.
+            let turns = (cost.div_ceil(speed.max(1)) + u32::from(self.map.is_stop(n))).max(1);
             if best.is_some_and(|b| b.turns < turns) {
                 continue;
             }
@@ -528,8 +527,9 @@ impl<'a> Walker<'a> {
             })
     }
 
-    /// The computer's walk towards the position `to` (0x41F580; BAT-AI-006): nothing for a bound
-    /// walker, one without speed or without a path ([`computer::path`]). Along the path, at most
+    /// The computer's walk towards the position `to` (0x41F580; BAT-AI-006): nothing without a
+    /// path ([`computer::path`]; for a bound walker or one without speed: T3c's callers, the
+    /// plan's hex of such a walker is its own). Along the path, at most
     /// its speed in steps and ending after a stop it enters (a flyer has none), each position it
     /// stands on may become the end. With `careful` on Hard and above or for a human side
     /// (the walker's own side), outside the wait phase, every end must score no lower than the
@@ -539,25 +539,19 @@ impl<'a> Walker<'a> {
     /// the last hex reached with a score no lower than the start's is Wait; an end at its own
     /// position Wait, else Defend; any other end a move there.
     // rule: BAT-AI-006
-    fn walk(&self, to: Hex, careful: bool) -> Option<Command> {
+    pub(crate) fn walk(&self, to: Hex, careful: bool) -> Option<Command> {
         let me = self.me;
         let speed = usize::from(me.speed_now());
-        if speed == 0 || computer::bound(self.state, self.id) {
-            return None;
-        }
         let path = computer::path(self.state, self.ruleset, (self.id, self.side), to);
         let steps = path.steps();
         let n = steps.len();
-        if n == 0 {
-            return None;
-        }
         let hard = computer::difficulty(self.state) >= 2 || computer::human(self.state, me.side);
         let careful = careful && hard && !computer::wait_phase(self.state);
         let shape = Shape::of(me);
         let start = self
             .score(me.hex)
             .min(self.score(shape.other(self.field, me.hex)));
-        let whole = speed * ((n - 1) / speed);
+        let whole = speed * (n.saturating_sub(1) / speed.max(1));
         let (mut end, mut found, mut kept, mut last) = (me.hex, false, start, me.hex);
         for (k, &(hex, flown)) in steps.iter().take(speed).enumerate() {
             last = hex;
@@ -573,7 +567,7 @@ impl<'a> Walker<'a> {
                 break;
             }
         }
-        Some(if end == me.hex {
+        let command = if end == me.hex {
             if careful {
                 Command::Wait
             } else {
@@ -583,6 +577,8 @@ impl<'a> Walker<'a> {
             Command::Wait
         } else {
             Command::Move { to: end }
-        })
+        };
+        // No path (the walker's map reaches the plan's hex, so its walk finds one): nothing.
+        (n > 0).then_some(command)
     }
 }

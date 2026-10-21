@@ -80,11 +80,6 @@ impl Context {
         self.strengths
     }
 
-    /// The side it is the context of (+0x20).
-    pub const fn side(&self) -> BattleSide {
-        self.side
-    }
-
     /// Whether the side is desperate (+8; BAT-SIE-023): its values take every creature at 1000.
     pub const fn desperate(&self) -> bool {
         self.desperate

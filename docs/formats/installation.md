@@ -3503,8 +3503,9 @@ S would cost E more than it gains) those hexes gain instead.
 0x4224E0, part C, and 0x436620, the plan's): a mask of E's directions at the position. Every
 neighbour (6, or 8 for a two-hex E), but for the Cerberi (creature 47, by number, not by a flag)
 the direction that touches the struck stack (its hex or its other hex, the first in direction
-order) and the two beside it clockwise (for a two-hex E through 0x660878 and 0x660898, which
-order its eight directions 0, 1, 2, 7, 3, 4, 5, 6 around it).
+order) and the one on each side of it around E (for a two-hex E through 0x660878 and 0x660898,
+which order its eight directions 0, 1, 2, 7, 3, 4, 5, 6 around it; corrected in §7.47: not two
+clockwise).
 
 **0x41FB60, crowding and breath lines** (from 0x421680 at 0x421766 on Hard and above or for a
 human side; S, the scores, 0x420260's mask, the context). `T` = 0x41F920 for S (below). For each
@@ -4570,3 +4571,134 @@ Disease's resistance to Weakness; Frenzy valued without its effect; the exchange
 (0x435DC0); the removals' Disrupting Ray. A port follows them as read unless T1b decides
 otherwise. **Readings at risk:** none of their own (they show through the Genie's cast, §7.44's
 row, and the hero's choice, T1a6).
+
+### 7.47 Code reading: the melee estimate and the walker's call sites (E23 T3a, 2026-10-21)
+
+Read for E23 T3a (the walker's plan and attack): the melee half of the exchange estimate 0x4359B0,
+which E04c left unread (§7.33), its value 0x435B90 and 0x435C70, and the details the port needs at
+the walker's call sites (0x421F80, 0x421680, 0x436840, 0x436300, 0x436180, 0x436620, 0x436760,
+0x448AB0, 0x445840, 0x523DF0, 0x523D90, 0x41F580). Insight only, nothing copied (Q29).
+
+**0x442780, the damage estimate** (§7.33; `this` the striker; T, the shot flag, a count, a cap flag,
+the jousting hexes). The count is the caller's (no longer only from the striker's hit points); the
+base `trunc(count × d)` goes through 0x443F40 with the shot flag, the estimate flag and the
+jousting hexes; at least 1 (a count of 0 too); doubled for `0x8000` **only with the shot flag**
+(a melee strike's second blow is the exchange's); with the cap flag at most T's total hit points
+(1 for a clone).
+
+**0x4359B0, the exchange** (the context; A, A's hit points, T, T's hit points, the shot flag, the
+jousting hexes; both hit points by pointer). The shot flag holds only while A can shoot now
+(0x4428F0). A's count from its hit points (rounded up) deals 0x442780 (capped) to T; for a
+strike first Fire Shield's estimate 0x422440 of that damage comes off A's hit points; then T's
+(each floored at 0). It ends when A or T has none left, or for a shot. Otherwise **T
+retaliates** unless A has `0x10000`, T is turned to stone (+0x2B0), has no retaliation left
+(+0x454 ≤ 0) or the game is on Easy for a computer side (the context's +0x20, +0x54A4): by its
+count from its hit points left, without the shot flag or a run-up, capped; Fire Shield's estimate
+of it comes off T, then the damage off A; it ends when either has none left. Then, for A with
+`0x8000`, **a second strike** by its count from its hit points left, without a run-up, with its
+reflection, also when T could not retaliate.
+
+**0x422440, Fire Shield's estimate** (the damage, the striker, the struck stack, its hit points):
+0 unless the struck stack has the spell (+0x20C) or is an Efreet Sultan (53), or for a fire-immune
+striker (`0x4000`); else `trunc(f32(min(damage, hit points)) × 0x443130)` through 0x5A78E0 for
+spell 29 with the struck stack's hero as the caster: the rule's reflection (§7.11) of the lesser.
+
+**0x435B90, the value** (the context; A, A's hit points, T, T's hit points, the shot flag, the
+jousting hexes): the shot flag kept while A can shoot now; in a prediction (+9) each less its
+planned damage (+0x534), 0 when either has none left; the exchange on copies; 0x442FD0 of T for
+T's loss (the context's least bonuses, the shot flag, its desperate mode +8) less, when A lost
+any, 0x442FD0 of A for A's loss (the same flag, never desperate). **0x435C70** passes both
+stacks' total hit points (0x443080 flag 0).
+
+**0x421F80, the walker's turn** (the stack, the prediction flag, the side). The context
+(0x435EC0), the order (0x41F140), the threat records (0x422B20 with flag 1), 0x421680; nothing
+chosen: outside a prediction the creature cast entry 0x421280; nothing: **Wait (8) when not in the
+wait phase (+0x13DE4) and on Hard and above or for a human side (the side's +0x54A4)**, else the
+default action (Defend).
+
+**0x421680's call sites.** The map is 0x4B2DA0 with the stack, **the acting side** (+0x20 of the
+context), range 127 (0 while blind, petrified or paralysed), the tactics flag and speed −1
+(0x4217BE): a stack of the acting side is not marked (0x4B3801 compares the record's side +0xF4).
+A walker without speed (a war machine: 0x448CD0) or bound takes an enemy only when its position's
+cell costs 0. On Hard and above or for a human side, when the enemy's position is marked (the hex
+record's +0x4A), the stack can act and the enemy is not multi-headed, the last retaliation's gain
+(0x41F3B0) starts `v` only when **the cell's cost is within the walker's speed** (0x421992). The
+melee value is 0x435C70 with **the shot flag 0** and the plan's hex's cell cost as the jousting
+hexes when the plan takes one turn (0x421A1A to 0x421A4E). The plan's value (0x421A55 to
+0x421AC2): `P > 0`, not summoned (`0x400000`), not Easy for a computer side: the Harpies (72, 73)
+take `P` when `v < P` (marking the plan's hex alone), else `v` stays; any other with `v < 0`
+takes `P` alone (marking it) when the side is the stronger at range (0x420A80), else adds it;
+otherwise `P` is added. Outside Easy for a computer side a negative `v` drops the enemy when `P`
+is below the score of the plan's hex (0x421AEB). The draw: `random_between(75, 100)`, `v = (r ×
+v) / 100` as a 32-bit product and a signed division (0x421B07 to 0x421B20); the drawn `P` per turn
+is `(P × r) / (100 × turns)`, one division (0x421C2D to 0x421C3D). The comparison (0x421B2F to
+0x421C16): a candidate not blind, petrified or paralysed replaces a best that is, never the other
+way; then fewer turns, then a higher value (the best's value per turn against the candidate's
+whole), then more hit points lost by the top creature (+0x58), then a cost to the plan's hex no
+higher than the best's (an equal cost replaces: the later record). The action (0x421C89 on):
+the plan's hex alone gives the drawn `P` per turn as the value and a walk there (the flag when
+outside a prediction and more than one turn away), nothing when the walker stands on it; no
+best: a besieger's walk to its row's wall, else the fallbacks; a best whose value per turn is
+negative and below its drawn `P` per turn, not summoned, outside Easy for a computer side, the
+side the stronger: the fallbacks first, then the attack after all; the attack: within one turn
+outside the tactics phase move and attack (6: +0x40 the plan's hex, +0x44 the enemy's position),
+else a walk towards the plan's hex (nothing when on it).
+
+**0x436840's three hexes for a two-hex walker** (0x436880 to 0x43690B). With the walker's
+direction `−1` facing right (+0x44 = 1) and `+1` facing left, the enemy's position, or its other
+hex when the enemy is two-hex and faces the other way: its neighbour in direction 4 (facing right)
+or 1 (facing left), and around that hex the directions 3 to 5 or 0 to 2. So a two-hex walker tries
+the positions whose front hex touches the enemy's side that faces it.
+
+**0x436300's details.** Each neighbour in the directions from first to before end (0x13468's six
+words per hex); the turns `ceil(cost / s)` and one more **when the position hex is a stop** (the
+pathfinder's +0x68 at it, not at a two-hex walker's other hex); without speed 1 at cost 0, else
+100; the multi-headed and breath values with the acting side (+0x132C0) and the walker's count
+(+0x18), the retaliation's with the enemy's side (+0xF4) and its count after the strike (+0x14);
+the mask of blocked shooters reset per candidate and shared by a two-hex walker's two hexes; at an
+equal `P` the cost decides (the jousters, 10 and 11, outside Easy: a higher cost replaces; else a
+lower one), an equal cost keeps the earlier. **So a two-hex walker may plan a one-turn attack from
+a position whose other hex enters a stop** (the moat, a pit its side sees): the walker 0x441FA0
+then stops there and the move and attack 0x478971 skips the attack (§7.16), a plain move.
+
+**0x436180's arithmetic.** `w₁ − w₀` in the FPU (`fsubr`) stored as a double; the hit points
+(0x443080 with the prediction flag) loaded and stored as a double, times it, over the hit points
+per creature stored as a double, truncated (0x6179D4); at least 1. A difference below 0 gives 1
+too.
+
+**0x436620 and 0x436760** take (the striker's side in `ecx`, the striker in `edx`) the position, the
+count, the struck stack and its hex, the context. 0x436620 counts a stack once per call by its
+record index (+0xF8; the struck stack's index first), compares its side (+0xF4) with the side
+passed, and values the damage (0x442780: the count, no shot, capped; in a prediction at most the
+hit points left after the planned damage) by 0x442FD0 with the least bonuses, no shot, not
+desperate. 0x436760: the direction 0x445840 from the striker at the position to the struck stack
+(its hex, or a two-hex one's other hex by its facing; the first of 0 to 5, 0 to 7 for a two-hex
+striker), the hex in that direction from the striker's hex there (0x523DF0) and one further
+(0x523D90 with the striker's facing for 6 and 7); the stack there, unless the struck one, valued
+as in 0x436620 but with the context's desperate mode, negative when of the side passed.
+
+**0x448AB0, corrected** (§7.36 said "the two beside it clockwise"): from the direction `d` that
+touches the struck stack, the Cerberi hit `d` and the one on each side: `(d + 5) mod 6` and `(d +
+1) mod 6` for a one-hex striker, and for a two-hex one the places 0x660878[d] ± 1 (mod 8) turned
+back into directions by 0x660898. Without such a direction `d` is −1 (not reached: the plan's
+striker always touches the stack it strikes).
+
+**0x523DF0 and 0x523D90.** A two-hex stack's directions 0 to 2 and 6, 7 are taken from its right
+hex, 3 to 5 from its left hex, whichever is its position (+0x44: the position + 1 facing right, − 1
+facing left); 6 and 7 are the hexes above and below its middle (0x523D90: 5 or 0 and 3 or 2 by the
+facing).
+
+**0x41F580's details** (beyond §7.38). The search is 0x4B3400 with the acting side (+0x132C0),
+the target hex, the tactics flag, range 127 and speed −1. **The flag's player test reads the
+walker's own side** (+0xF4 + +0x54A4), not the acting side. The steps' counter starts at the
+path's length `n` and the test applies from the step with at most `s × ⌊(n − 1) / s⌋` of it left
+once an end was found (0x41F762); a hex flown over is skipped before the stop test. **Wait (8)
+needs the last end's score no lower than the start's** (0x41F848: an end short of the last hex
+reached, with the flag); then an end at the walker's own position is 8 with the flag, else 3.
+
+**What these read**: the stacks' counts, hit points, flags, spells (Fire Shield, the Sultan's),
+retaliations left, wounds and facings; the heroes' bonuses for Fire Shield; the pathfinder's
+cells, marks and stops; the difficulty and `human`. **Draws:** 0x421B02 per candidate.
+**Readings at risk:** none beyond §7.35 to §7.38's (the walker's draw and its comparisons,
+batch rows W1 to W3).
+
