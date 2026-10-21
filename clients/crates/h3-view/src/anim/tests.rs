@@ -3651,11 +3651,11 @@ fn the_morale_sequence_plays_as_recorded() {
     assert!(cued.contains(&(0, 0, Sound::Luck, false)));
     assert!(cued.contains(&(4776, 0, Sound::GoodMorale, false)));
     assert_eq!([t.active(6875), t.active(6876)], [None, Some(0)]);
-    // No outline from the luck's first frame (the shot's handler); the Marksmen's again from good
-    // morale's first frame (`morale`'s frames).
+    // No outline from the luck's first frame shown (the shot's handler); the Marksmen's again
+    // from good morale's first frame (`morale`'s frames).
     assert_eq!(
-        [0, 4875, 4876].map(|ms| t.outlined(ms)),
-        [None, None, Some(0)]
+        [0, 100, 4875, 4876].map(|ms| t.outlined(ms)),
+        [Some(0), None, None, Some(0)]
     );
 }
 
