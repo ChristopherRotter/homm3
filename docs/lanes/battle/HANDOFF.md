@@ -5,7 +5,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 ## Current state
 
 - **E23, the original's battle AI, in progress** (`docs/epics/E23-original-battle-ai.md`; refined 2026-10-19, BAT-Q52): the neutral side first, a crate of its own, the code reading first, batch rows only for readings at risk. **T1 done** (#288 to #331): §7.34 to §7.46, `pathfinder.rs` (BAT-QUIRK-24), the survey `E23-battle-ai.md`, **ADR-0027** (BAT-Q55). **T2 done** (#334 to #347): `h3_battle_ai::choose`, the shooters, BAT-QUIRK-25, the benchmark `computer-decisions`. **The budget** (the user, 2026-10-21): the gated count +2 %, re-set on purpose per part; ≤ 1 ms for the slowest decision on a quiet sandbox, recorded per task. **T3 done** (#350 to #359): the walker, BAT-AI-005 to 011, slips 2 to 4, 18 to 21; slip 6 a gap (BAT-STUB-7, BAT-Q56). **T4a done** (#364, #365), **T4b1 done** (#369). **T4b2 done** (#T4B2: watch it until it merges; the predictions whole, BAT-AI-015, §7.52, BAT-STUB-9 retired; a hypnotized walker leaves itself out, BAT-STUB-10, BAT-Q58; `POLICY_VERSION` 8). **Next:** T4c (the context's tables and second context, the Master Genie; cut at its checkpoint). T1a6 before T5.
-- **#MASS** (`cross-lane`, watch it until it merges): `creature_cast_targets` lists `None` for a creature's mass version (the Ogre Mage on Magic Plains); the AI lane's mask gains it.
+- **#373** (`cross-lane`, watch it until it merges): `creature_cast_targets` lists `None` for a creature's mass version (the Ogre Mage on Magic Plains); the AI lane's mask gains it.
 - E05, `h3-sim` and `h3-ffi` are the AI lane's (AI-Q1), `h3-heroes` the adventure lane's.
 - **Open:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35, BAT-Q51, BAT-Q56 to BAT-Q58 (none blocks; BAT-Q33 and BAT-Q51 settle with E23's T6), BAT-STUB-1, the inbox (by kind since 2026-10-19), Q43; S-23, S-24, batch 2g.
 - **Versions:** battle state hash v51, battle part hash v7 (E23 T3-0; the encodings, replay format and C ABI are the AI lane's); shared: core ruleset hash v46, pack format v45 (E23 T3-0), protocol v34. Next ids: BAT-Q59, BAT-QUIRK-26, BAT-STUB-11, BAT-AI-016, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-24, S-30.
@@ -54,7 +54,7 @@ Area traps live where they are used: experiments in `docs/experiments/README.md`
 
 ### 2026-10-22 (ninety-sixth) — E23 T4b2, the predictions; the mass-cast listing
 
-The user: T4b2 whole; the listing's fix now (#MASS); a hypnotized walker leaves itself out (BAT-STUB-10, BAT-Q58: the property found a Harpy attacking itself). §7.52. `predict.rs`; `h3-battle`: `computer::Planned`, `Context::predicting`/`left`/`spent`, `predicted_shot`, `fire_shield_estimate`. The count +0.14 %: no re-set.
+The user: T4b2 whole; the listing's fix now (#373); a hypnotized walker leaves itself out (BAT-STUB-10, BAT-Q58: the property found a Harpy attacking itself). §7.52. `predict.rs`; `h3-battle`: `computer::Planned`, `Context::predicting`/`left`/`spent`, `predicted_shot`, `fire_shield_estimate`. The count +0.14 %: no re-set.
 
 ### 2026-10-21 (ninety-fifth) — E23 T4b1, the Ogre Mage
 

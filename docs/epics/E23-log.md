@@ -883,7 +883,7 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
 
 - **The checkpoint** (the user, 2026-10-21): T4b2 whole (a cut into the shooters' predictions
   first, or the prediction mode first, was offered and declined). The creature cast listing's gap
-  that T4b1 found was fixed first in a PR of its own (#MASS, `cross-lane`: `creature_cast_targets`
+  that T4b1 found was fixed first in a PR of its own (#373, `cross-lane`: `creature_cast_targets`
   lists `None` for a creature's mass version; the AI lane's mask gains it).
 - **The reading** (`installation.md` §7.52): the run's pass-over tests (any duration of Blind,
   Stone Gaze, Paralyze; the Catapult by creature), its controller test, only actions 7 and 6
