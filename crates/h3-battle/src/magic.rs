@@ -1486,8 +1486,9 @@ fn drawn_target(
 }
 
 /// Fills `out` with the targets of stack `caster`'s cast of `spell` for `side` (BAT-MAG-048,
-/// BAT-MAG-049): stacks by id, or for a drawn spell that takes a hex the hexes of its stacks by
-/// index.
+/// BAT-MAG-049): none first when the cast takes no target (a fixed spell its mastery raises to
+/// the mass version, BAT-TER-005: the Ogre Mage's Bloodlust on Magic Plains), then stacks by id,
+/// or for a drawn spell that takes a hex the hexes of its stacks by index.
 pub(crate) fn creature_targets(
     state: &BattleState,
     ruleset: &BattleRuleset,
@@ -1517,9 +1518,10 @@ pub(crate) fn creature_targets(
         }
         return;
     }
-    for target in stack_ids(state).map(CastTarget::Stack) {
+    // A cast without a target takes no stack (`first_target`): at most `STACK_CAPACITY` targets.
+    let stacks = stack_ids(state).map(CastTarget::Stack);
+    for target in core::iter::once(CastTarget::None).chain(stacks) {
         if creature_target(state, ruleset, side, (caster, spell), target) {
-            // At most `STACK_CAPACITY` targets.
             let _ = out.push(target);
         }
     }
