@@ -38,7 +38,7 @@ use h3_content::{
 };
 use h3_content_battle::{
     AbilityDef, BattleCreatureDef, BattlePack, BattleParamsDef, BattleRuleset, BattleSpellDef,
-    BattlefieldDef, ObstacleDef, SpellMagic, SpellPolarity, SurrenderDef,
+    BattlefieldDef, ObstacleDef, SpellAi, SpellMagic, SpellPolarity, SurrenderDef,
 };
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
 
@@ -526,6 +526,7 @@ fn battle_part_with(
             spares: vec![],
             tests_as: None,
             summons: None,
+            ai: SpellAi::default(),
         }],
         battle: Some(BattleParamsDef {
             field_width: 17,

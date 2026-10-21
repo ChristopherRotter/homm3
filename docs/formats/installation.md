@@ -278,7 +278,10 @@ schools, costs, power, effects, chances, AI values, texts) are zero in the file 
 `SPTRAITS.TXT`. The harvester (E04a T3) writes the type as the spell's `polarity`; since E04b T2a
 it also reads the flag word (`h3_formats::exe::HeroData::spell_flags`): it checks the category bits
 (`0x1`, `0x2`, `0x8`) against the table's group and writes the damage spells' `target` (`0x10` a
-stack, `0x80` a hex, neither: none) and `damage` effect (`0x200`).
+stack, `0x80` a hex, neither: none) and `damage` effect (`0x200`). Since E23 T3-0 it writes the AI
+categories (`0x8000` to `0x100000`, below) with `SPTRAITS.TXT`'s four "AI value" columns (25 to
+28, none to expert) as the spell's `ai` (pack format v45; ADR-0027 point 13): what the computer's
+odds read of the enemy hero's spells (§7.39).
 
 **Flag bits** (decoded in E04b T1, 2026-10-05, by matching the 81 values against the spells' known
 behaviour and VCMI 1.7.5's `config/spells/*.json`; no code was read). *Confirmed*: consistent with
@@ -301,7 +304,7 @@ every row and with VCMI; *probable*: a consistent pattern whose meaning is not p
 | `0x1000` | war machines are not affected | 18, 24, 38–40, 43, 53, 54, 58–63, 65, 70–75 | **confirmed** by code reading (§7.8, E04b T2d): the spell-effect test returns 0 for a war machine against a spell with this bit. VCMI also spares war machines from Bless, Curse, Mirth, Sorrow and Frenzy, which lack the bit; Bloodlust (43), Haste (53), Slow (54) and Counterstrike (58) have it, as in VCMI (list corrected in E04b T3b1 prep, 2026-10-06: it had left out 43, 53, 54, 58; the values below and the packs were right) |
 | `0x2000` | granted by an artifact | 57 (Titan's Lightning Bolt) | probable (one row) |
 | `0x4000` | protective spell | 27–34, 36, 46, 58 | probable |
-| `0x8000`–`0x100000` | AI categories: `0x8000` damage to one target or area, `0x10000` damage that can hit own stacks, `0x20000` damage to every stack, `0x40000` other battle spells, `0x80000` new or raised stacks, `0x100000` special (map movement spells, Earthquake, Titan's Lightning Bolt) | see the values | probable; no rule reads them |
+| `0x8000`–`0x100000` | AI categories: `0x8000` damage to one target or area, `0x10000` damage that can hit own stacks, `0x20000` damage to every stack, `0x40000` other battle spells, `0x80000` new or raised stacks, `0x100000` special (map movement spells, Earthquake, Titan's Lightning Bolt) | see the values | **confirmed** by code reading (§7.39, E23 T1a3d): the adventure AI's spell value 0x5273D0 dispatches on exactly these bits, 0x5275B0 filters by them; no battle rule reads them, the computer's odds do (the spell's `ai`, E23 T3-0) |
 
 Values (`id:flags`, hexadecimal; SoD copy of the executable):
 

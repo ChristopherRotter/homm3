@@ -1203,6 +1203,111 @@ impl CanonicalHash for SpellMagic {
     }
 }
 
+/// An AI category of a spell: how the original's computer values it for a hero (the
+/// executable's flag bits `0x8000` to `0x100000`, `docs/formats/installation.md` §7.6; the
+/// value 0x5273D0 dispatches on them, §7.39). No battle rule reads them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum SpellAiKind {
+    /// Damage to one target or an area, valued by the casts the mana allows (`0x8000`; Magic
+    /// Arrow, Fireball …): the only kind the battle's odds count (0x420A80).
+    Damage,
+    /// Damage that can hit the caster's own stacks, valued as one cast (`0x10000`; Chain
+    /// Lightning, Inferno).
+    DamageOnce,
+    /// Damage to every stack (`0x20000`; Death Ripple, Destroy Undead, Armageddon).
+    DamageAll,
+    /// Any other battle spell, valued by the army it helps or harms (`0x40000`).
+    Effect,
+    /// New or raised stacks (`0x80000`; the raises, Hypnotize, the summons).
+    Stacks,
+    /// The map's spells and Earthquake (`0x100000`; with `Damage` on Titan's Lightning Bolt).
+    Special,
+}
+
+impl SpellAiKind {
+    /// All values, in code order (the flag bits' order).
+    pub const ALL: [Self; 6] = [
+        Self::Damage,
+        Self::DamageOnce,
+        Self::DamageAll,
+        Self::Effect,
+        Self::Stacks,
+        Self::Special,
+    ];
+
+    /// Pack name.
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Damage => "damage",
+            Self::DamageOnce => "damage_once",
+            Self::DamageAll => "damage_all",
+            Self::Effect => "effect",
+            Self::Stacks => "stacks",
+            Self::Special => "special",
+        }
+    }
+
+    /// Looks a value up by its pack name.
+    pub fn from_name(name: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|k| k.name() == name)
+    }
+
+    /// The kind's bit in [`SpellAiKinds`].
+    const fn bit(self) -> u8 {
+        1 << self as u8
+    }
+}
+
+/// A set of [`SpellAiKind`]s.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct SpellAiKinds(u8);
+
+impl SpellAiKinds {
+    /// The set with `kind` added.
+    pub const fn with(self, kind: SpellAiKind) -> Self {
+        Self(self.0 | kind.bit())
+    }
+
+    /// Whether the set holds `kind`.
+    pub const fn contains(self, kind: SpellAiKind) -> bool {
+        self.0 & kind.bit() != 0
+    }
+
+    /// The only kind of the set, if it holds exactly one: the original values a spell of
+    /// several kinds at 1 (Titan's Lightning Bolt, §7.39).
+    pub fn only(self) -> Option<SpellAiKind> {
+        SpellAiKind::ALL.into_iter().find(|&k| k.bit() == self.0)
+    }
+
+    /// The bits, in [`SpellAiKind::ALL`]'s order (the hash).
+    pub const fn bits(self) -> u8 {
+        self.0
+    }
+}
+
+/// What the original's computer reads of a spell besides its rules (pack format v45, E23 T3-0,
+/// ADR-0027 point 13): its AI categories and its AI values. The battle's odds weigh the enemy
+/// hero's best damage spell by them (0x420A80, 0x5270E0; `installation.md` §7.39); no battle
+/// rule reads them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct SpellAi {
+    /// Its AI categories (the executable's flag word).
+    pub kinds: SpellAiKinds,
+    /// Its AI value by mastery: none, basic, advanced, expert (`SPTRAITS.TXT`'s four "AI
+    /// value" columns).
+    pub values: [u16; 4],
+}
+
+impl CanonicalHash for SpellAi {
+    /// The kinds' bits, then the four values.
+    fn hash_into(&self, h: &mut StateHasher) {
+        h.write_u8(self.kinds.bits());
+        for v in self.values {
+            h.write_u16(v);
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     extern crate std;
@@ -1211,6 +1316,35 @@ mod tests {
 
     use super::*;
     use h3_content::CreatureFlag;
+
+    #[test]
+    fn ai_kinds_are_a_set_with_one_kind_or_several() {
+        for (i, k) in SpellAiKind::ALL.into_iter().enumerate() {
+            assert_eq!(SpellAiKind::from_name(k.name()), Some(k));
+            let one = SpellAiKinds::default().with(k);
+            assert_eq!(one.bits(), 1 << i);
+            assert!(one.contains(k) && one.with(k) == one);
+            assert_eq!(one.only(), Some(k));
+        }
+        assert_eq!(SpellAiKind::from_name("damages"), None);
+        let titans = SpellAiKinds::default()
+            .with(SpellAiKind::Damage)
+            .with(SpellAiKind::Special);
+        assert!(titans.contains(SpellAiKind::Damage) && !titans.contains(SpellAiKind::Effect));
+        assert_eq!(
+            (titans.only(), SpellAiKinds::default().only()),
+            (None, None)
+        );
+        let mut a = StateHasher::new();
+        let mut b = StateHasher::new();
+        SpellAi::default().hash_into(&mut a);
+        SpellAi {
+            kinds: titans,
+            values: [75; 4],
+        }
+        .hash_into(&mut b);
+        assert_ne!(a.finish(), b.finish());
+    }
 
     #[test]
     fn names_round_trip() {

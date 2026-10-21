@@ -553,7 +553,7 @@ packs = [[
 ]]
 profile = "synthetic:faithful"
 ruleset_hash = "0x203012933e60e190"
-battle_ruleset_hash = "0x827992c874254045"
+battle_ruleset_hash = "0x7504e0bf2b62c97c"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
