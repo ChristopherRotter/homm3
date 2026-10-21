@@ -3535,7 +3535,7 @@ otherwise):
 6. Batch E4 run (T32b2) and scored (above): D-14 to D-17 and D-19 to D-21 `verified`, none
    reopened; D-18 had no row.
 
-VERIFY_PLACEHOLDER
+**The full local verify** (CI cannot run): `scripts/verify-once.sh engine --base origin/master -- --with-original-data` on engine code ad0034e3 (commit 332a806, 2026-10-21, the sandbox, Linux x86_64): all 16 steps passed, the golden replays unchanged by E4-10's rule; `original-data`: every shipped map's static layer imports and validates, 5 import whole (*Adventures of Jared Haret*, *Faeries*, *Knee Deep in the Dead*, *Race for Ardintinny*, `Tutorial.tut`), 9 heroes levelled at load with 41 level-ups.
 
 **Increment 4 closed** (2026-10-21).
 
