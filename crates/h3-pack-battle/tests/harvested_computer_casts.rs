@@ -610,6 +610,10 @@ fn on_magic_plains_the_ogre_mages_cast_the_mass_version() {
         let mass = Command::CreatureCast {
             target: CastTarget::None,
         };
+        // The listing offers the cast without a target, and no stack (BAT-MAG-048).
+        let mut targets = h3_battle::CastTargets::new();
+        creature_cast_targets(&state, &r, BattleSide::Defender, &mut targets);
+        assert_eq!(targets.as_slice(), &[CastTarget::None], "{profile}");
         assert!(
             choices(&r, &state, 20).iter().all(|&c| c == mass),
             "{profile}"
