@@ -1,0 +1,64 @@
+# E17 M3 T7a-2b: Lightning Bolt and Chain Lightning (casts.toml's `bolt`; design §7.16): Lightning
+# Bolt's bolt from the sky (animation 1, player 1 at 10 ms) and its ray, then 49 over the marked
+# target (player 2); Chain Lightning's first 37 at 0 ms, its rays, and its own 38 never drawn (no
+# stack marked: only the reactions, the candidate). Hot seat: the Swordsmen (rows 0, 4, 6, 10 at
+# column 15) and the Pikemen defend; Orrin casts Lightning Bolt (place 0) at the Swordsmen at row 4
+# (hex 83) in round 1, Chain Lightning (place 1) there in round 2. On grass at the capture set's
+# tile.
+
+[scenario]
+id = "sequence-bolt"
+# Both players human, as the original's hot-seat map (`h3-view situation --hot-seat`).
+human = ["attacker", "defender"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:pikeman"
+count = 10
+
+[[defender]]
+slot = 0
+creature = "base:swordsman"
+count = 20
+
+[[defender]]
+slot = 1
+creature = "base:swordsman"
+count = 20
+
+[[defender]]
+slot = 2
+creature = "base:swordsman"
+count = 20
+
+[[defender]]
+slot = 3
+creature = "base:swordsman"
+count = 20
+
+# The heroes (E17 M3 T3a) with 1 in every primary skill but Orrin's knowledge: 40 spell points,
+# Lightning Bolt (10) and Chain Lightning (24).
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 4
+mana = 40
+max_mana = 40
+spell_book = ["base:lightning_bolt", "base:chain_lightning"]
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1

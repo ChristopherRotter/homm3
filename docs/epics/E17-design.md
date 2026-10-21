@@ -1430,8 +1430,9 @@ Read in `play_magic_animation` (whole), `play_magic_animation_at_hex` (0x496A10)
 0x5A7867, 0x5A4CED to 0x5A50C6), `strike_animation`'s magic part, `spell_projectile` (0x467DB0),
 `cast_spell`'s opening and tail and every handler's drawing, `creature_cast_action` and every
 call site of these players (22, 11, 6 and 21), with the spell records' static fields (0x685450:
-+4 the sound, +8 the animation, −1 none). Nothing was recorded yet (T7a-2): every time below is
-the code's, *provisional* until a recording shows it.
++4 the sound, +8 the animation, −1 none). Each player was recorded at T7a-2a and T7a-2b
+(**Recorded**, below): the times read held; four readings were corrected by the recordings (Chain
+Lightning's and Fire Shield's marks, the projectile's angle, a mass reaction's hit running on).
 
 **Which player plays what.** The handler decides, not the animation's place (the asset tables'
 `[battle] magic`, §7.15):
@@ -1443,7 +1444,7 @@ the code's, *provisional* until a recording shows it.
    own sound unplayed (0x5A1F89); a cast Magic Mirror redirected: Magic Mirror's 3 over the
    mirroring stack before the new target is taken (0x5A0275); Lightning Bolt's (17, 57) bolt
    from the sky 1 (`C11spA0`, place 2) at 10 ms; Chain Lightning's first 37 at 0 ms (each frame
-   waits only for the deadline the last redraw set). The creatures': good luck 18 over the
+   waits only for the deadline the last redraw set; recorded: drawn but never on the screen). The creatures': good luck 18 over the
    striker or shooter before its strike or shot (`goodluck.82m` started, the log, then the
    animation; 0x4418B3, 0x43F9D1), good morale 20 (`GoodMrle.wav`; the log's line *after* the
    animation, 0x464A84), bad morale 30 and fear 15 with the hit (`BadMrle.wav`, `Fear.wav`; the
@@ -1458,8 +1459,11 @@ the code's, *provisional* until a recording shows it.
    and Ice Bolt 46 after their projectiles, Lightning Bolt and the Thunderbird's bolt 49 after
    the bolt from the sky, Implosion 10, Sacrifice's victim 51, a Land Mine's blast 57 over the
    stack that stepped on it (0x59FC6D), Poison's damage at a round's start 67 (0x4472AB). Chain
-   Lightning (38), Fire Shield's return damage (11, 0x440B6F) and the Magogs' and Liches' shots
-   name an animation but mark no stack: only the reactions play.
+   Lightning's 38 over every stack it struck (its marks, the manager's +0x547C, copied into each
+   stack's +0x20 before the animation, 0x5A65D1 to 0x5A6620), Fire Shield's return 11 over each
+   stack whose shield struck back (its +0x20 set at 0x440AA9; 0x440B6F) with the striker's hit
+   (both recorded at T7a-2b; T7a-1 had read them unmarked). The Magogs' and Liches' shots name an
+   animation but mark no stack: only the reactions play (their explosions are their own, below).
 3. *Over several stacks*, `mass_spell_animation` (H3API's AnimateMassSpell; the stacks marked in
    the manager's +0x547C): a timed spell cast on all (Expert or a mass spell; its own
    animation), Dispel and Cure at Expert, Berserk 35 (the stacks in its area), all without
@@ -1507,9 +1511,11 @@ resistance roll, if any (category 3, 0x5A0331); Curse's is named `Curse`, withou
   +0x132EC; nothing while hidden) and sets every target's +0x20; with reactions each target not
   already in group 3 takes death 5 (no count left) or hit 3 at frame 0 and its death or wince
   sound (`stack_play_sound` 4, 2); L = max(n, the longest such group). Iteration i: the
-  reactions advance first (frame 0 never shows; a hit ends standing, a death on its last
-  frame), the animation's frame i is set only while i + 1 < n, so its last frame never shows
-  and n − 2 shows twice (*a candidate quirk*, for T7a-2's recording), then a redraw at
+  reactions advance first (frame 0 never shows; a hit runs on into the standing group 2, a frame
+  an iteration, to its last frame, where the stack stays until its next animation; a death on
+  its last frame), the animation's frame i is set only while i + 1 < n, so its last frame never
+  shows and n − 2 shows twice (both recorded at T7a-2b: a drawing quirk of the original's, for
+  the review list), then a redraw at
   trunc(100 F), shown. Then +0x20 cleared, the dead die (`stack_death`), a redraw shown at
   once, the Phoenix check.
 - **`raise_stack`**: L = max(n, the death group's frames d); iteration i sets frame i (none
@@ -1529,17 +1535,22 @@ resistance roll, if any (category 3, 0x5A0331); Curse's is named `Curse`, withou
   plain; the battlefield shown each time (`battle_show_field` 0x493780).
 - **The projectiles** (`spell_projectile`: start, end, the DEFs and their angles): d the distance,
   n = trunc((trunc(d) + 15) / 31) steps of (trunc(Δx / n), trunc(Δy / n)); the DEF whose angle
-  (0°, −16°, −34°, −56°, −83°; tables 0x6421EC to 0x642263) is nearest atan(Δy / |Δx|) in degrees
-  (screen y down: a target below takes the first), mirrored for a target to the left. A redraw
+  (0°, −16°, −34°, −56°, −83°; tables 0x6421EC to 0x642263) is nearest atan(−Δy / |Δx|) in degrees
+  (0x467E5D to 0x467F14: Δy over −|Δx|, screen y down), so a target below takes the steeper ones,
+  whose pictures point down, one level or above the first, one straight below (Δx = 0) the last;
+  mirrored for a target to the left (T7a-1 read the sign the other way; recorded at T7a-2b). A redraw
   neither shown nor waited, then per step: the last position's background restored, group 0's
   next frame (cycling) drawn plain, centred, the union shown clipped to the battlefield, a wait
   until trunc(33 F) after the step's start (outside the deadline, as a shot's, §7.4); at the end
-  the background restored and shown. From a hero's cast point (below) or a creature's centre
+  the background restored and shown (recorded: n + 1 positions 33 ms apart, the first shown with
+  the hero's last cast frame; the restore shows with the next animation, 33 ms after the last). From a hero's cast point (below) or a creature's centre
   (`stack_screen_x`, `stack_screen_y`) to the target's centre.
 - **The Magogs and the Liches** (after their projectile): the explosion centred on the target
   creature (as place 1), each frame a redraw waiting trunc(50 F) (Magogs) or trunc(100 F)
   (Liches), not shown, the frame through `battle_draw_magic_frame` plain (the Liches' `sp04_` too,
-  though the table marks it translucent), shown; a redraw shown at once; then the reactions.
+  though the table marks it translucent), shown; a redraw shown at once; then the reactions
+  (recorded for the Liches at T7a-2b: all 20 frames, the first two at once after the
+  projectile, every changed pixel one of the DEF's colours: plain).
 - **Glows** (0x5A122B to 0x5A1311, 0x5A1121 to 0x5A11D1): the stack's flag 0x20000000
   (Bloodlust) or 0x40000000 (Stone Gaze) and its f32 +0x450: Bloodlust 0.0 to 0.9, then 1.0 to
   0.1 (20 redraws), Stone Gaze 1.0 to 0.1 (10), each at trunc(100 F), shown; then the flag
@@ -1588,10 +1599,42 @@ resistance roll, if any (category 3, 0x5A0331); Curse's is named `Curse`, withou
   after it; not struck, it stood 600 ms into the reactions (round 3, the Swordsmen's defending
   hit, 11 frames, still playing). The Enchanters (`enchanter_cast`): every able one of the side marked a
   striker in group 15, its shot sound, `strike_animation` without an animation, then the mass cast.
+- **Recorded** (T7a-2b, `casts.toml`: hot seat, Combat Speed 0, times from each cast's click;
+  memory holds a frame when drawn, the screen shows it a deadline later, the at-hex and
+  Armageddon frames when drawn; the screens' boxes in the timelines):
+  - `resist`: Slow resisted by the Battle Dwarves: the hero's frames 0 to 4, then the log's line
+    and 78 (`sp09_`, 20 frames, 100 ms, the target marked) from 500, erased at 2 500, frames 5 to
+    7, standing at 2 900; as read (place 3 beside the stack's front).
+  - `arrow`: Magic Arrow's flight from the hero's cast point, then 64 (14 frames) over the marked
+    target, its first two frames at once (§7.1), with the target's reaction (a defending stack's
+    group 4). The DEF by the corrected angle: to row 0 (2° below) the first, to the Archangel
+    beside the hero (about 72°) the last, to row 10 (35°) the third. The hero plays group 4
+    whatever the target (no target is above its cast point).
+  - `bolt`: Lightning Bolt's 1 (one frame) on the screen 10 ms, then 49 (12 frames) over the
+    marked target; no ray. Chain Lightning: 37 drawn but not shown, three rays of 100 ms (§7.12)
+    from each target to the next, each replacing the last, the deadline untouched; then 38 (12
+    frames) over all four struck stacks, its first two at once.
+  - `mass`: Slow at Expert: 19's frames 0 to 18 over the four Swordsmen, 18 twice, 19 never
+    (n = 20); Death Ripple: 8's frames 0 to 13, 13 twice (n = 15), the reactions from their frame
+    1 with it, on into standing.
+  - `raise`: Resurrection and Animate Dead both play 50 (20 frames) over the stack raised, its
+    death group backwards from its second-to-last frame, a frame a redraw, standing after frame
+    0; the log's line with frame 0.
+  - `obstacles`: at a hex each frame 100 ms: a Fire Wall's two hexes 65 (3 frames each) both at
+    the target hex's place (the second hex's at the first's: for T7c's frame check), the wall
+    shown with its last frame and the log's line; Quicksand's four pits 55 (3 frames) each at its
+    own place; a Force Field's 32 (3 frames). The Fire Wall gone at round 3's start: 66 at each
+    hex's own place (3 frames and an erase each). Armageddon's 12 tiled, all 20 frames at 100 ms,
+    with every stack's hit (on into standing).
+  - `creatures`: Fire Shield's 11 (10 frames) over the Efreet Sultans with the Archangel's hit,
+    before the Sultans' retaliation; the Power Liches' cloud, plain (above).
+  - `dragon` again with its screens: Fireball's 53 (13 frames) and Inferno's 9 (16) at their hex,
+    each frame 100 ms from the deadline the dragon's last frame set, erased with the reactions;
+    memory as recorded at T7a-2a.
 - **For the harness** (T7a-2): `h3mem` reads +0x132EC, +0x132F0 and each stack's +0x20
   (§7.15), the heroes' and stacks' groups and frames. That shows players 1 to 4 and the casters,
   not the frames of players 5 to 7 (+0x132EC names the at-hex and Armageddon animations, not
-  their frames): their times come from the frame check's screens.
+  their frames): their times come from the screens (`screens`, T7a-2b).
 - **The spell book** (read at T7a-2a: `spell_book_dialog` 0x59BDF0, its page 0x59C9A0, its
   handler 0x59D040), through which the harness casts: a 620 × 595 dialog at (90, 2), opened in
   battle by the spell-book button or its key C (`hero_book_button` 0x59E900). Twelve spell

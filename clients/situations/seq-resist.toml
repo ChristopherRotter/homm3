@@ -1,0 +1,47 @@
+# E17 M3 T7a-2b: a hero's spell resisted (casts.toml's `resist`; design §7.16, player 1): the
+# Battle Dwarves (40% magic resistance) at row 5 resist one of Orrin's casts of Slow (place 0), each
+# round one; a resisted cast plays `MagicRes.wav`, the log's line, then animation 78 (`sp09_`,
+# place 3) over the target, its own sound unplayed (0x5A1F89). Hot seat: the Battle Dwarves
+# (speed 5) and the Pikemen (4) defend each round. On grass at the capture set's tile.
+
+[scenario]
+id = "sequence-resist"
+# Both players human, as the original's hot-seat map (`h3-view situation --hot-seat`).
+human = ["attacker", "defender"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:pikeman"
+count = 10
+
+[[defender]]
+slot = 0
+creature = "base:battle_dwarf"
+count = 10
+
+# The heroes (E17 M3 T3a) with 1 in every primary skill but Orrin's knowledge: 30 spell points,
+# five casts of Slow (6 each).
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 3
+mana = 30
+max_mana = 30
+spell_book = ["base:slow"]
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1

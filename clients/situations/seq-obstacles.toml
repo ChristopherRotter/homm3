@@ -1,0 +1,54 @@
+# E17 M3 T7a-2b: the at-hex player and the whole field (casts.toml's `obstacles`; design §7.16,
+# players 5 and 6, seen only on the screen): a Fire Wall (place 0, 65 at each hex) at hex 146
+# (row 8, column 10) in round 1, Quicksand (place 1, 55 at each pit with its sound) in round 2, a
+# Force Field (place 2, 32) at hex 63 (row 3, column 12) in round 3, Armageddon (place 3, 12
+# tiled over the field) in round 4, away from the obstacles (a wall beside one is refused); an
+# obstacle's vanish animation as it expires at a round's start. Hot seat: the Swordsmen (rows 2
+# and 8 at column 15) and the Pikemen defend. On grass at the capture set's tile.
+
+[scenario]
+id = "sequence-obstacles"
+# Both players human, as the original's hot-seat map (`h3-view situation --hot-seat`).
+human = ["attacker", "defender"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:pikeman"
+count = 10
+
+[[defender]]
+slot = 0
+creature = "base:swordsman"
+count = 20
+
+[[defender]]
+slot = 1
+creature = "base:swordsman"
+count = 20
+
+# The heroes (E17 M3 T3a) with 1 in every primary skill but Orrin's knowledge: 60 spell points,
+# Fire Wall (8), Quicksand (8), Force Field (12) and Armageddon (24).
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 6
+mana = 60
+max_mana = 60
+spell_book = ["base:fire_wall", "base:quicksand", "base:force_field", "base:armageddon"]
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1

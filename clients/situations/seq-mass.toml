@@ -1,0 +1,66 @@
+# E17 M3 T7a-2b: the mass animation (casts.toml's `mass`; design §7.16, player 3): Slow at Expert
+# (all enemies, its own animation, no reactions) and Death Ripple (every living stack, with
+# reactions); the reading never shows the animation's last frame and shows n - 2 twice (the
+# candidate). Orrin's masteries need Expert Earth Magic on the original's map (`situation`'s
+# school skills). Hot seat: the Marksmen (speed 6) act first in both rounds: in round 1 Orrin
+# casts Slow (place 0, no target at Expert) and the Marksmen and the Swordsmen (rows 0, 4, 6, 10
+# at column 15) defend; in round 2 Orrin casts Death Ripple (place 1). On grass at the capture
+# set's tile.
+
+[scenario]
+id = "sequence-mass"
+# Both players human, as the original's hot-seat map (`h3-view situation --hot-seat`).
+human = ["attacker", "defender"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:marksman"
+count = 10
+
+[[defender]]
+slot = 0
+creature = "base:swordsman"
+count = 20
+
+[[defender]]
+slot = 1
+creature = "base:swordsman"
+count = 20
+
+[[defender]]
+slot = 2
+creature = "base:swordsman"
+count = 20
+
+[[defender]]
+slot = 3
+creature = "base:swordsman"
+count = 20
+
+# The heroes (E17 M3 T3a) with 1 in every primary skill but Orrin's knowledge (30 spell points),
+# Orrin at Expert in both spells (Expert Earth Magic).
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 3
+mana = 30
+max_mana = 30
+spell_book = ["base:slow", "base:death_ripple"]
+masteries = { "base:slow" = 3, "base:death_ripple" = 3 }
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
