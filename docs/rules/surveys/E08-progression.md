@@ -809,9 +809,9 @@ taken, chosen left, right, right, right: (Pathfinding, Navigation), (Archery, Lo
 evaluation then chooses: 0 against 0, the first (Pathfinding); 35 against 100 (Logistics); 0
 against 50 (Scouting); 1 against 100 (Logistics): **all four as observed**. Always-left (the wiki,
 VCMI) would have taken Archery at level 3, and the shares' file values (1.0) would have taken
-Navigation at level 2. So the run, the reading's draws (S = 75 from the primary gains alone) and
-this evaluation agree on all eight facts of E3-6; still unconfirmed in memory (S was not read):
-batch E4's E4-1 reads it.
+Navigation at level 2 *(T28: and at level 4, 500 against Scouting's 50)*. So the run, the
+reading's draws (S = 75 from the primary gains alone) and this evaluation agree on all eight
+facts of E3-6; still unconfirmed in memory (S was not read): batch E4's E4-1 reads it.
 
 ### 10.7 VCMI
 

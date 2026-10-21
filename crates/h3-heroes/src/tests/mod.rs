@@ -603,6 +603,7 @@ proptest! {
 }
 
 mod change;
+mod choice;
 mod derive;
 mod level;
 mod outcome;
