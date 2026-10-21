@@ -161,9 +161,8 @@ impl Heroes {
         let mut actions = timeline.actions.iter().peekable();
         let mut keys = timeline.hero_keys.iter().peekable();
         let keyed = |states: &mut [State; 2], key: &crate::anim::HeroKey| {
-            if let Some(state) = states.get_mut(usize::from(key.side)) {
-                (state.group, state.frame) = (key.group, key.frame);
-            }
+            let state = &mut states[usize::from(key.side != 0)];
+            (state.group, state.frame) = (key.group, key.frame);
         };
         let mut steps = 0u32;
         {

@@ -935,11 +935,12 @@ at = [124, 254]
             TableError::DuplicateKey("base:pikeman".to_string())
         );
         type Rekey = fn(&mut TableFile, &str);
-        let lists: [Rekey; 4] = [
+        let lists: [Rekey; 5] = [
             |b, k| b.creature[0].key = k.to_string(),
             |b, k| b.hero[0].key = k.to_string(),
             |b, k| b.battlefield[0].key = k.to_string(),
             |b, k| b.obstacle[0].key = k.to_string(),
+            |b, k| b.spell[0].key = k.to_string(),
         ];
         for rekey in lists {
             for (key, shown) in [("", "base:"), ("base:x", "base:base:x")] {
@@ -956,6 +957,12 @@ at = [124, 254]
         assert_eq!(
             rule(&[b], "base"),
             TableError::DuplicateKey("base:orrin".to_string())
+        );
+        let mut b = base();
+        b.spell.push(b.spell[0].clone());
+        assert_eq!(
+            rule(&[b], "base"),
+            TableError::DuplicateKey("base:slow".to_string())
         );
         let mut b = base();
         b.battlefield.push(b.battlefield[0].clone());
@@ -1085,12 +1092,14 @@ at = [124, 254]
             rule(&[b], "base").to_string(),
             "`[battle]`: a sound is an entry's name, without an extension"
         );
-        let mut b = base();
-        b.spell[0].sound = Some("Slow.wav".to_string());
-        assert_eq!(
-            rule(&[b], "base").to_string(),
-            "`base:slow`: a sound is an entry's name, without an extension"
-        );
+        for sound in ["", "Slow.wav"] {
+            let mut b = base();
+            b.spell[0].sound = Some(sound.to_string());
+            assert_eq!(
+                rule(&[b], "base").to_string(),
+                "`base:slow`: a sound is an entry's name, without an extension"
+            );
+        }
         let mut b = base();
         b.spell[0].animation = Some(2);
         assert_eq!(

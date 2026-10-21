@@ -245,6 +245,8 @@ actions = ["cast:0:49"]
 ms = 3500
 heroes = true
 timeline = "timelines/cast.txt"
+frames = "timelines/cast-frames.txt"
+boxes = true
 command = [
     { seat = "Attacker", command = { Cast = { spell = 54, target = { Stack = { stack = 2 } }, second = { None = {} } } } },
 ]
@@ -262,6 +264,8 @@ actions = ["turn:1.0", "key:d", "turn:0.0", "cast:0:100", "key:d", "turn:1.0", "
 ms = 3100
 heroes = true
 timeline = "timelines/resist.txt"
+frames = "timelines/resist-frames.txt"
+boxes = true
 command = [
     { seat = "Defender", at = 0, command = { Defend = {} } },
     { seat = "Attacker", at = 0, command = { Cast = { spell = 54, target = { Stack = { stack = 1 } }, second = { None = {} } } } },
@@ -289,6 +293,8 @@ actions = [
 ms = 3058
 heroes = true
 timeline = "timelines/arrow.txt"
+frames = "timelines/arrow-frames.txt"
+boxes = true
 command = [
     { seat = "Defender", at = 0, command = { Move = { to = 174 } } },
     { seat = "Defender", at = 2730, command = { Defend = {} } },

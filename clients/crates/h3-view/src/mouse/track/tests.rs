@@ -397,3 +397,65 @@ fn a_two_hex_stack_stays_marked_across_its_hexes() {
     );
     assert_eq!(shown.log.last(), Some(&(20, Logged::Turn(3))));
 }
+
+#[test]
+fn an_aimed_spell_hints_its_cast() {
+    // E17 M3 T7b-1: from the book's spell to the click, the cast's hint over the battlefield,
+    // not forced (`arrow`'s frames: the log's new lines stay), the marked stack and the cursor
+    // left as they were; the click ends the aim.
+    let (o, legal) = (battle(), legal());
+    let field = Field {
+        observation: &o,
+        legal: &legal,
+        facing: &Facing::Sides,
+    };
+    let turns = [Turn { field, human: true }];
+    let inputs = [
+        Input::Move { at: 0, to: PARK },
+        Input::Aim { at: 0, spell: 54 },
+        Input::Move {
+            at: 0,
+            to: centre(90),
+        },
+        Input::Move {
+            at: 0,
+            to: centre(87),
+        },
+        Input::Move {
+            at: 0,
+            to: [700, 570],
+        },
+        Input::Move {
+            at: 0,
+            to: [400, 3],
+        },
+        Input::Act { at: 0 },
+        Input::Move {
+            at: 10,
+            to: centre(90),
+        },
+    ];
+    let shown = run(&[], &[], &turns, &inputs);
+    let texts: Vec<(String, bool)> = shown
+        .log
+        .iter()
+        .filter_map(|(_, l)| match l {
+            Logged::Status { text, forced } => Some((text.clone(), *forced)),
+            _ => None,
+        })
+        .collect();
+    let s = |t: &str, f| (String::from(t), f);
+    assert_eq!(
+        texts,
+        [
+            s("Empty", false),
+            s("Cast(54, Some(1))", false),
+            s("Cast(54, None)", false),
+            s("Control(\"battle.control.wait\")", false),
+            s("Empty", false),
+            s("Attack(1)", true),
+        ]
+    );
+    assert_eq!(shown.marked, [(10, Some(1))]);
+    assert_eq!(Input::Aim { at: 3, spell: 1 }.at(), 3);
+}

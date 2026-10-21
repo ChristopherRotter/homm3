@@ -641,7 +641,10 @@ fn a_single_form_family_counts_the_records_its_column_fills() {
     let tables = BTreeMap::from([(s("S"), rows)]);
     let (pack, problems) = Pack::original(&keys, &tables);
     assert_eq!(problems, Vec::<Problem>::new());
-    assert_eq!(pack.messages["spell.base:arrow"].segments, vec![lit("Arrow")]);
+    assert_eq!(
+        pack.messages["spell.base:arrow"].segments,
+        vec![lit("Arrow")]
+    );
     assert_eq!(pack.messages["spell.base:bolt"].segments, vec![lit("Bolt")]);
     // Forms and a column, or neither: refused.
     for body in ["forms = { one = 0 }\ncolumn = 0", ""] {

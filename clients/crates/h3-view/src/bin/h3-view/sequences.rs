@@ -286,10 +286,30 @@ fn sequences(options: &Options) -> Result<usize, String> {
         let scenario_path = dir.join(&sequence.scenario);
         let turned = scenario::turned(&scenario_path, &options.packs, sequence.seed, &steps)
             .map_err(|e| format!("{}: {e}", sequence.id))?;
-        let inputs = pointer::inputs(&sequence.actions, sequence.pre, &layout, &timeline)
-            .map_err(|e| format!("{}: {e}", sequence.id))?;
+        // The heroes' casts in order, which the `cast:` actions aim (E17 M3 T7b-1).
+        let spells: Vec<u16> = record
+            .messages
+            .iter()
+            .filter_map(|m| match m {
+                ServerMessage::Events { events, .. } => Some(events),
+                _ => None,
+            })
+            .flatten()
+            .filter_map(|e| match *e {
+                h3_protocol::wire::Event::SpellCast { spell, .. } => Some(spell),
+                _ => None,
+            })
+            .collect();
+        let inputs = pointer::inputs(
+            &sequence.actions,
+            sequence.pre,
+            &layout,
+            (&timeline, &spells),
+        )
+        .map_err(|e| format!("{}: {e}", sequence.id))?;
         let catalogue = log::catalogue(&tables, &archives)?;
         let shown = pointer::shown(&record, &timeline, &turned, &inputs, &layout, &catalogue);
+
         pointer::entered(
             &mut timeline,
             &shown,
@@ -418,7 +438,7 @@ pub(crate) fn draw_frames(
                 let key = manifest.keys.creatures.get(usize::from(s.creature))?;
                 Some(format!("creature.{key}"))
             };
-            Some(p.hint.text(&catalogue, snapshot, &name))
+            Some(p.hint.text(&catalogue, snapshot, (&name, &|_| None)))
         }
         None => None,
     };
@@ -456,12 +476,18 @@ pub(crate) fn draw_frames(
                 moment.poses.insert(m.stack, pose);
             }
         }
+        let casting = u32::from(tables.battle.hero_groups.cast);
         for &[side, group, f] in &frame.heroes {
             if let Some(hero) = moment
                 .heroes
                 .get_mut(side as usize)
                 .and_then(Option::as_mut)
             {
+                // A cast's frames as the viewer's timeline shows them (E17 M3 T7b-1): the
+                // original's memory holds each a deadline before its screen shows it.
+                if group == casting || hero.group == casting {
+                    continue;
+                }
                 *hero = HeroPose {
                     group,
                     frame: f,

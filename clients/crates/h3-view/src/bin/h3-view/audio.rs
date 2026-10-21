@@ -7,9 +7,10 @@
 //! As the executable plays them (`play_sample` 0x59A210): creature sounds share eight channels
 //! (their category's, 0x684AB8): a sound takes a free channel, else the next one in turn,
 //! cutting what that one played; a move's sound loops until its stop; a sound a creature lacks
-//! plays nothing. The tent's heal sound plays in category 2, on the start sound's stream (E17
-//! M3 T3b; *provisional*: the category's other three channels are not built), as the start sound
-//! at its loader's volume (127, E17 M3 T8). The battle's end (T8) ends every effect and plays its
+//! plays nothing. The tent's heal sound and a resisted spell's (E17 M3 T7b-1) play in category 2,
+//! on the start sound's stream (E17 M3 T3b; *provisional*: the category's other three channels
+//! are not built), as the start sound at its loader's volume (127, E17 M3 T8); a spell's own sound
+//! in the creatures' category 3 at that volume (`play_sound_async` 0x59A590 from 0x5A0331). The battle's end (T8) ends every effect and plays its
 //! tune once on the music's stream, at the music's volume, from its start. An adapter: it reads
 //! files and drives the audio device.
 
@@ -60,24 +61,24 @@ pub struct Library {
     took: u128,
     /// Each stack's sounds.
     stacks: BTreeMap<u8, Sounds>,
-    /// The tent's heal sound, upper-cased, if the battle heals (E17 M3 T3b).
-    heal: Option<String>,
+    /// The battle's own sounds by cue, upper-cased: the tent's heal (E17 M3 T3b), a resisted
+    /// spell's and the cast spells' (E17 M3 T7b-1).
+    named: BTreeMap<Sound, String>,
 }
 
 impl Library {
-    /// Decodes the start sound and every sound of `stacks` from the sound archives of `install`,
-    /// and the music and the end's `tune` from its `MP3` folder. A missing or undecodable sound
-    /// costs that sound, noted in `lines`.
+    /// Decodes the start sound, every sound of `stacks` and the battle's own sounds `named` by cue
+    /// from the sound archives of `install`, and the music and the end's `tune` from its `MP3`
+    /// folder. A missing or undecodable sound costs that sound, noted in `lines`.
     pub fn load(
         install: &Path,
         opening: Opening,
-        stacks: BTreeMap<u8, Sounds>,
-        heal: Option<&str>,
+        (stacks, named): (BTreeMap<u8, Sounds>, BTreeMap<Sound, String>),
         tune: Option<Tune>,
         lines: &mut Vec<String>,
     ) -> Result<Self, String> {
         let (result, took) =
-            crate::gate::timed(|| Self::decode(install, opening, stacks, heal, tune, lines));
+            crate::gate::timed(|| Self::decode(install, opening, (stacks, named), tune, lines));
         let mut library = result?;
         library.took = took.as_millis();
         Ok(library)
@@ -87,18 +88,20 @@ impl Library {
     fn decode(
         install: &Path,
         opening: Opening,
-        stacks: BTreeMap<u8, Sounds>,
-        heal: Option<&str>,
+        (stacks, named): (BTreeMap<u8, Sounds>, BTreeMap<Sound, String>),
         tune: Option<Tune>,
         lines: &mut Vec<String>,
     ) -> Result<Self, String> {
         let start = opening.start_sound();
-        let heal = heal.map(str::to_ascii_uppercase);
+        let named: BTreeMap<Sound, String> = named
+            .into_iter()
+            .map(|(cue, name)| (cue, name.to_ascii_uppercase()))
+            .collect();
         let mut wanted: Vec<String> = stacks
             .values()
             .flat_map(Sounds::names)
             .chain(std::iter::once(&start))
-            .chain(&heal)
+            .chain(named.values())
             .map(|n| n.to_ascii_uppercase())
             .collect();
         wanted.sort_unstable();
@@ -146,14 +149,14 @@ impl Library {
             start: start.to_ascii_uppercase(),
             took: 0,
             stacks,
-            heal,
+            named,
         })
     }
 
     /// The clip of `stack`'s `sound`, if the creature has it and it was found.
     fn clip(&self, stack: u8, sound: Sound) -> Option<&Pcm> {
-        if sound == Sound::Heal {
-            return self.clips.get(self.heal.as_ref()?);
+        if let Some(name) = self.named.get(&sound) {
+            return self.clips.get(name);
         }
         let name = self.stacks.get(&stack)?.name(sound)?;
         self.clips.get(&name.to_ascii_uppercase())
@@ -313,8 +316,8 @@ impl Player {
         let Some(clip) = library.clip(cue.stack, cue.sound) else {
             return;
         };
-        if cue.sound == Sound::Heal {
-            // Category 2, the start sound's (`play_sound_file` 0x59A470; E17 M3 T3b).
+        if matches!(cue.sound, Sound::Heal | Sound::Resisted) {
+            // Category 2, the start sound's (`play_sound_file` 0x59A470; E17 M3 T3b, T7b-1).
             self.out.clear(self.start_stream);
             self.out
                 .set_format(self.start_stream, clip.rate, clip.channels);
@@ -334,6 +337,12 @@ impl Player {
             return;
         };
         self.out.clear(channel.stream);
+        // A spell's sound at its loader's volume, a creature's at the effects' (E17 M3 T7b-1).
+        let volume = match cue.sound {
+            Sound::Spell(_) => FILE_VOLUME,
+            _ => EFFECT_VOLUME,
+        };
+        self.out.set_gain(channel.stream, gain(volume));
         if channel.format != (clip.rate, clip.channels) {
             self.out
                 .set_format(channel.stream, clip.rate, clip.channels);

@@ -182,7 +182,25 @@ impl Writer {
             Bugs::Original,
         )
         .ok_or("the record holds no snapshot")?;
-        Ok(Panels::new(snapshot, &events(record), texts))
+        // Each command's action starts at its `Action` (E17 M3 T7b-1: a hero's cast's).
+        let starts = logged
+            .iter()
+            .filter(|(_, l)| matches!(l, battle_log::Logged::Action))
+            .map(|(at, _)| *at);
+        let commands = record.messages.iter().filter_map(|m| match m {
+            ServerMessage::Events { events, .. } => Some(events),
+            _ => None,
+        });
+        let casts = starts
+            .zip(commands)
+            .filter_map(|(at, events)| {
+                events.iter().find_map(|e| match *e {
+                    Event::SpellCast { side, .. } => Some((at, side)),
+                    _ => None,
+                })
+            })
+            .collect();
+        Ok(Panels::new(snapshot, &events(record), texts).with_casts(casts))
     }
 }
 

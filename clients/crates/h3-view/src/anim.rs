@@ -907,7 +907,7 @@ impl Timeline {
         times.extend(self.magics.iter().map(|k| k.drawn));
         times.extend(self.ended.map(|(t, _)| t));
         times.push(0);
-        let shown_heroes = heroes.and_then(|until| self.heroes.as_ref().map(|h| (h, until)));
+        let shown_heroes = self.heroes.as_ref().zip(heroes);
         if let Some((_, until)) = shown_heroes {
             times.extend(self.hero_keys.iter().map(|k| k.drawn));
             times.extend(self.steps.iter().copied());
@@ -1251,6 +1251,17 @@ fn played(
         // The action starts (`action_dispatcher` 0x478D80's head, E17 M3 T6b).
         let started = player.clock.now;
         player.log.push((started, Logged::Action));
+        // A hero's cast (E17 M3 T7b-1, the recorded `cast`): its action clears the outline at
+        // once (no stack active while it plays); its stack's turn goes on after it, outlined
+        // again as the hero stands.
+        let cast = command
+            .events
+            .iter()
+            .take_while(|e| !matches!(e, Event::TurnStarted { .. }))
+            .any(|e| matches!(e, Event::SpellCast { .. }));
+        if cast {
+            outlines.push((started, None));
+        }
         player.command(command.events);
         // The outline goes with the command's first frame shown (a stack's, or a hero's as it
         // casts, E17 M3 T7b-1); a turn started brings its stack's, unless the computer acts next.
@@ -1266,6 +1277,8 @@ fn played(
             let computer = commands.get(i + 1).is_some_and(|c| c.at.is_none());
             outlines.push((at, (!computer).then_some(stack)));
             waiting = Some(stack);
+        } else if cast {
+            outlines.push((player.clock.now, waiting));
         }
         player.idle.from = player.clock.now;
         // The battle decided: `battle_end` follows the action's last frame (design §8.2).
@@ -1898,11 +1911,10 @@ impl Player<'_> {
 
     /// A magic animation over one stack (`play_magic_animation` 0x496840 without the hit,
     /// design §7.15, §7.16): its frames at `time` each on the deadline, then a last redraw that
-    /// erases it; returns when its first frame shows (none: no such animation or stack).
-    fn over_one(&mut self, number: u8, target: u8, time: u32) -> Option<u32> {
+    /// erases it; returns when its first frame shows (none: the stage has no such animation).
+    fn over_one(&mut self, number: u8, (target, live): (u8, &Live), time: u32) -> Option<u32> {
         let look = self.stage.magic.get(&number).cloned()?;
-        let live = self.live(target)?;
-        let over = vec![(target, self.magic_at(&live, &look), !live.right)];
+        let over = vec![(target, self.magic_at(live, &look), !live.right)];
         let mut first = None;
         for frame in (0..look.frames).map(Some).chain([None]) {
             let drawn = self.clock.now;
@@ -1963,7 +1975,7 @@ impl Player<'_> {
             }
         }
         let aimed = match target {
-            Target::Stack { stack } => self.live(stack).map(|l| (stack, l.count)),
+            Target::Stack { stack } => self.live(stack).map(|l| (stack, l)),
             _ => None,
         };
         let look = casts.spells.get(&spell).cloned().unwrap_or_default();
@@ -1973,13 +1985,16 @@ impl Player<'_> {
                 .any(|e| matches!(*e, Event::SpellResisted { target } if target == t))
         };
         match aimed {
-            Some((t, count)) if resisted(t) => {
+            Some((t, live)) if resisted(t) => {
                 self.cue(t, Sound::Resisted, false);
-                let line = Logged::Resisted { stack: t, count };
+                let line = Logged::Resisted {
+                    stack: t,
+                    count: live.count,
+                };
                 self.log.push((self.clock.now, line));
-                self.over_one(RESISTED, t, time);
+                self.over_one(RESISTED, (t, &live), time);
             }
-            Some((t, count)) => {
+            Some((t, live)) => {
                 self.cue(t, Sound::Spell(spell), false);
                 let damage = effects.iter().find_map(|e| match *e {
                     Event::SpellDamage {
@@ -1995,8 +2010,8 @@ impl Player<'_> {
                     .any(|e| matches!(*e, Event::EffectApplied { target, .. } if target == t));
                 match (damage, caster) {
                     (Some((damage, kills)), Some(c)) if !look.projectile.is_empty() => {
-                        self.spell_projectile(c.point, t, &look.projectile);
-                        self.marked(t, kills, look.animation);
+                        self.spell_projectile(c.point, &live, &look.projectile);
+                        self.marked((t, &live), kills, look.animation);
                         let line = Logged::SpellDamage {
                             spell,
                             hit: (t, damage, kills),
@@ -2008,11 +2023,11 @@ impl Player<'_> {
                             side: s,
                             spell,
                             target: t,
-                            count,
+                            count: live.count,
                         };
                         self.log.push((self.clock.now, line));
                         if let Some(number) = look.animation {
-                            self.over_one(number, t, time);
+                            self.over_one(number, (t, &live), time);
                         }
                     }
                     _ => {}
@@ -2035,11 +2050,8 @@ impl Player<'_> {
     /// midpoint between consecutive angles below it ends the count; Δx = 0: the last for a
     /// target below, else the first), mirrored for a target to the left, its group 0's frames
     /// cycling; erased as the next frame shows, n × trunc(33 F) after the start.
-    fn spell_projectile(&mut self, from: [i32; 2], target: u8, shells: &[Shell]) {
-        let Some(live) = self.live(target) else {
-            return;
-        };
-        let to = self.centre(&live);
+    fn spell_projectile(&mut self, from: [i32; 2], target: &Live, shells: &[Shell]) {
+        let to = self.centre(target);
         let [dx, dy] = [to[0] - from[0], to[1] - from[1]];
         let d = isqrt(i64::from(dx).pow(2) + i64::from(dy).pow(2));
         let n = u32::try_from((d + 15) / 31).unwrap_or(0);
@@ -2082,11 +2094,10 @@ impl Player<'_> {
     /// the animation's frame i while it has one, then keeps its last; the reaction from frame 0 at
     /// once, as after a projectile (L = R + 1, §7.4), the loop at least as long as the animation;
     /// at its end the mark is cleared, the dead die and the battle is redrawn at once.
-    fn marked(&mut self, target: u8, kills: u32, number: Option<u8>) {
+    fn marked(&mut self, (target, live): (u8, &Live), kills: u32, number: Option<u8>) {
         let riding = number.and_then(|number| {
             let look = self.stage.magic.get(&number).cloned()?;
-            let live = self.live(target)?;
-            let over = vec![(target, self.magic_at(&live, &look), !live.right)];
+            let over = vec![(target, self.magic_at(live, &look), !live.right)];
             Some(Riding { number, look, over })
         });
         let reactions = self.reactions(&[(target, kills)]);

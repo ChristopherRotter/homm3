@@ -25,11 +25,14 @@ const PACK: &str = r#"{
             "hero": "Hero.",
             "enemy-hero": "Foe.",
             "heal": "Mend {{creature}}",
-            "no-shots": "Empty!"
+            "no-shots": "Empty!",
+            "cast-on": "Zap {{creature}} with {{spell}}",
+            "cast": "Zap {{spell}}"
         },
         "control": { "wait": "Hold" }
     },
-    "creature": { "t:ant_one": "Ant", "t:ant_other": "Ants" }
+    "creature": { "t:ant_one": "Ant", "t:ant_other": "Ants" },
+    "spell": { "t:slow": "Slow" }
 }"#;
 
 pub(super) fn layout() -> BattleLayout {
@@ -385,7 +388,13 @@ fn hints_are_worded_by_the_catalogue() {
     let o = battle();
     let c = catalogue();
     let name = |s: &Stack| (s.id != 2).then(|| "creature.t:ant".to_string());
-    let text = |h: Hint| h.text(&c, &o, &name);
+    let spell = |h: u16| (h == 54).then(|| "spell.t:slow".to_string());
+    let text = |h: Hint| h.text(&c, &o, (&name, &spell));
+    // E17 M3 T7b-1: a spell aimed at a stack, at no stack; an unknown spell named by nothing.
+    assert_eq!(text(Hint::Cast(54, Some(1))), "Zap Ants with Slow");
+    assert_eq!(text(Hint::Cast(54, None)), "Zap Slow");
+    assert_eq!(text(Hint::Cast(7, None)), "Zap ");
+    assert!(!Hint::Cast(54, Some(1)).forced());
     assert_eq!(text(Hint::Move(0)), "Walk Ants.");
     assert_eq!(text(Hint::Fly(0)), "Fly Ants.");
     assert_eq!(text(Hint::Attack(1)), "Hit Ants");

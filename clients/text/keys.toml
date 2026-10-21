@@ -115,6 +115,18 @@ id = "battle.log.resisted"
 args = { creature = "text", verb = "text" }
 original = [{ at = "GENRLTXT:190", printf = ["creature", "verb"] }]
 
+# A hero's spell aimed over a stack (E17 M3 T7b-1, *provisional*: the aiming loop is not read):
+# the spell's name and the stack's by its number; elsewhere on the battlefield the spell's alone.
+[[key]]
+id = "battle.hint.cast-on"
+args = { spell = "text", creature = "text" }
+original = [{ at = "GENRLTXT:28", printf = ["spell", "creature"] }]
+
+[[key]]
+id = "battle.hint.cast"
+args = { spell = "text" }
+original = [{ at = "GENRLTXT:27", printf = ["spell"] }]
+
 # The status line's hints over the battlefield (`battle_status_line` 0x492840; E17 M3 T6c-1,
 # docs/epics/E17-design.md §9.9): `creature` the acting stack's or the target's name by its number
 # (the stack looked at: its singular), as the cursor's kind says. A strike's and, while the army

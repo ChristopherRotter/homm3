@@ -55,8 +55,10 @@ pub fn inputs(
     actions: &[String],
     pre: u32,
     layout: &BattleLayout,
-    timeline: &Timeline,
+    (timeline, spells): (&Timeline, &[u16]),
 ) -> Result<Vec<Input>, String> {
+    let mut spells = spells.iter().copied();
+    let mut cast_pending = false;
     let mut out = vec![Input::Move { at: 0, to: PARK }];
     let (mut now, mut turns) = (pre, 0);
     // The stack whose turn the battle opens with (E17 M3 T7b-1): a first `turn:` naming it acts
@@ -71,6 +73,7 @@ pub fn inputs(
     };
     for action in actions {
         let (kind, arg) = action.split_once(':').unwrap_or((action, ""));
+        let after_cast = core::mem::take(&mut cast_pending);
         match kind {
             "hex" | "click" => {
                 let to = if kind == "hex" {
@@ -87,8 +90,23 @@ pub fn inputs(
                 at: now,
                 to: point(arg)?,
             }),
-            "key" => out.push(Input::Act { at: now }),
-            "cast" => out.extend(cast(arg, now, layout).map_err(|e| format!("`{action}`: {e}"))?),
+            "key" => {
+                // A key pressed at the frozen clock right after a hero's cast acts once the cast
+                // has played (the harness's runbook; E17 M3 T7b-1): at the end of the action the
+                // cast started then.
+                if after_cast {
+                    let end = timeline.actions.iter().filter(|a| a.start == now);
+                    now = end.map(|a| a.end).max().unwrap_or(now);
+                }
+                out.push(Input::Act { at: now });
+            }
+            "cast" => {
+                cast_pending = true;
+                let spell = spells.next().unwrap_or(u16::MAX);
+                let aimed =
+                    cast(arg, (now, spell), layout).map_err(|e| format!("`{action}`: {e}"))?;
+                out.extend(aimed);
+            }
             "at" => now = arg.parse().map_err(|e| format!("`{action}`: {e}"))?,
             "step" => {
                 now += arg.parse::<u32>().map_err(|e| format!("`{action}`: {e}"))?;
@@ -123,8 +141,9 @@ pub fn inputs(
     Ok(out)
 }
 
-/// The mouse's inputs of a hero's cast `<k>[:<hex>]` at `now` (`inputs`).
-fn cast(arg: &str, now: u32, layout: &BattleLayout) -> Result<Vec<Input>, String> {
+/// The mouse's inputs of a hero's cast `<k>[:<hex>]` of `spell` at `now` (`inputs`): the book's
+/// place, the spell aimed (E17 M3 T7b-1), the target.
+fn cast(arg: &str, (now, spell): (u32, u16), layout: &BattleLayout) -> Result<Vec<Input>, String> {
     let (place, target) = arg
         .split_once(':')
         .map_or((arg, None), |(p, t)| (p, Some(t)));
@@ -133,10 +152,13 @@ fn cast(arg: &str, now: u32, layout: &BattleLayout) -> Result<Vec<Input>, String
         .ok()
         .filter(|&k| k < BOOK_PLACES)
         .ok_or("the book has the places 0 to 11")?;
-    let mut out = vec![Input::Move {
-        at: now,
-        to: book_place(place),
-    }];
+    let mut out = vec![
+        Input::Move {
+            at: now,
+            to: book_place(place),
+        },
+        Input::Aim { at: now, spell },
+    ];
     if let Some(target) = target {
         let hex = target.parse::<u8>().map_err(|e| e.to_string())?;
         out.push(Input::Move {
@@ -214,8 +236,14 @@ pub fn shown(
         let key = keys.get(usize::from(s.creature))?;
         Some(format!("creature.{key}"))
     };
-    let name =
-        |hint: &Hint, observation: &Observation| hint.text(catalogue, observation, &creature);
+    let spells = &record.header.manifest.keys.spells;
+    let spell = |handle: u16| {
+        let key = spells.get(usize::from(handle))?;
+        Some(format!("spell.{key}"))
+    };
+    let name = |hint: &Hint, observation: &Observation| {
+        hint.text(catalogue, observation, (&creature, &spell))
+    };
     track::follow(&timeline.log, &starts, &turns, inputs, layout, &name)
 }
 
@@ -275,12 +303,13 @@ mod tests {
         assert_eq!(book_place(11), [548, 315]);
         let layout = layout();
         assert_eq!(
-            cast("3:49", 7, &layout).unwrap(),
+            cast("3:49", (7, 54), &layout).unwrap(),
             vec![
                 Input::Move {
                     at: 7,
                     to: [332, 219]
                 },
+                Input::Aim { at: 7, spell: 54 },
                 Input::Move {
                     at: 7,
                     to: hex_point(&layout, 49)
@@ -290,9 +319,9 @@ mod tests {
             ]
         );
         // A spell without a target is cast at its place.
-        assert_eq!(cast("0", 0, &layout).unwrap().len(), 3);
+        assert_eq!(cast("0", (0, 54), &layout).unwrap().len(), 4);
         for bad in ["12", "x", "0:x", "-1:4"] {
-            assert!(cast(bad, 0, &layout).is_err(), "{bad}");
+            assert!(cast(bad, (0, 54), &layout).is_err(), "{bad}");
         }
     }
 }

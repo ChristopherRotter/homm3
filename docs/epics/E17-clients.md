@@ -1,11 +1,11 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b, T8 done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b, T8, T7b-1 done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
 [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
-are there). Next: M3 T7b, T7c (`docs/lanes/client/QUEUE.md`).
+are there). Next: M3 T7b-2, T7c (`docs/lanes/client/QUEUE.md`).
 
 ## Goal
 
@@ -244,8 +244,9 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   log, the cursors). T4 split with the user on 2026-10-15, T4b and T4b-2 on 2026-10-19.
 - The **spell animations** (the user, at T5c: their plethora; T7a the code reading, split with
   the user on 2026-10-21 into T7a-1, the reading, and T7a-2, the harness's casts and the
-  recordings; T7b on stacks with morale and luck, T7c area spells, rays and spell obstacles) and
-  their sounds.
+  recordings; T7b on stacks with morale and luck, split with the user on 2026-10-21 into
+  T7b-1, a hero's cast on one stack, and T7b-2, the rest; T7c area spells, rays and spell
+  obstacles) and their sounds.
 - The sound's remainder (T8: the battle's end; the volume settings later).
 - **Exit:** the reference set passes, or each difference is a listed fix or a classified quirk.
 - **T1a done 2026-10-14** ([log](E17-log.md#m3-t1a--turns-and-the-walk-by-2026-10-14),
@@ -414,6 +415,16 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   turn would start) and recorded (`end`: decided at 3 730 ms, the viewer's timeline as recorded);
   the window plays the tune; the start sound and the heal at their loader's volume, 127. The
   volume settings and a track resuming wait for the client's options (later).
+- **T7b-1 done 2026-10-21** ([log](E17-log.md#m3-t7b-1--a-heros-cast-on-one-stack-2026-10-21),
+  [design §7.16](E17-design.md)): T7b split with the user (a hero's cast on one stack; morale,
+  luck, Haste and Slow's walk, the count box's tint and the rest T7b-2). The viewer plays a hero's
+  cast: its casting frames, a timed spell's line and animation (player 1), a resisted cast's
+  sound, line and 78 beside the target, Magic Arrow's projectile and its animation over the struck
+  stack's loop (players 7 and 2), their sounds; the outline cleared at the click, the spell book
+  disabled from it. Harvested: the spells' sounds, animations and projectiles, the heroes' cast
+  points; the spells' and heroes' names in the catalogue. `cast`, `resist`, `arrow` moved into
+  `sequences.toml`: their timelines as recorded, their frames exact but the listed differences
+  (the review list).
 
 ### The adventure lane's harness (H1, H2: its batch E3)
 
@@ -482,6 +493,21 @@ Accepted by the user (M1 2026-10-13, M2 2026-10-14); moved to the log,
 ## M3 review list
 
 (Filled by the tasks: choices queued for the milestone review under the autonomy contract.)
+
+- T7b-1: **formats** (lasting): the asset tables' `[[spell]]` (`original`, `animation`, `sound`,
+  `projectile`, `projectile_angles`), `[[hero]]`'s `original`, `cast` and `cast_frames`,
+  `[battle]`'s `resist_sound`; the key catalogue's single-form families (`column`) counting the
+  records a column fills (`by`: `sptraits.txt`'s group rows). **The checks:** a sequence's `seed`
+  (the engine's rolls: `resist` resists only the second cast with 3), the recorded `screen` lines
+  left out of the timing check, a first `turn:` naming the opening's active stack acting at once
+  (as the harness does), the frame check keeping the viewer's own cast frames (the original's
+  memory a deadline ahead of its screen). **Found by the frames, kept** (*provisional* until more
+  casts): the outline cleared at a cast's click and back as the hero stands; the spell book
+  disabled from the click. **Listed differences:** `cast`'s log item at 0 to 400 (the aiming
+  status line "Cast … on …", not modelled), `cast`'s 71 pixels at 0 (the original redraws the
+  battlefield over a rock's top for that one frame at the click: not read), the count boxes'
+  spell tint (T7b-2: `cast` 238 pixels from 600, `resist` 197 to 228 while Slow lasts). The
+  window plays a spell's sound at 127 on the creature channels (category 3).
 
 - T8: the end's tune by the snapshot's human sides (the original's "human here"; a record of two
   computers shows the loser's side, as the original would), no town until sieges are drawn
