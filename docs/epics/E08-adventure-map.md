@@ -370,11 +370,15 @@ Refined with the user on 2026-10-21 (T33; ADV-Q19). Built like increments 1 to 4
 73. **T34a whole** (the user's choice of four): the code reading with VCMI 1.7.5, the wiki, the census, batch E5's plan, the rule ids, the second reading and the checkpoint's ADV-Q in one session. Not chosen: three parts (the reading; the wiki and the census; the rest), two parts, or the code reading split by the day's points and the price with the reveal.
 74. **Flying and water walking are in** (the user's choice of four): Angel Wings (flying) and Boots of Levitation (water walking) are read and built with the artifacts. Not chosen: both out with the spells and the sea, flying only, or decided at T34a's checkpoint. The spells Fly and Water Walk stay with the adventure spells; boats and the sea stay out (decision 71).
 
+### Decisions at T34a's checkpoint (2026-10-22, user; ADV-Q20)
+
+75. **Increment 5's rules, quirks and scope** (survey `docs/rules/surveys/E08-hero-movement.md`). **A-13** (a flying path through unexplored tiles): fixed, the moves stay on explored tiles; the user notes the gameplay cost (wide obstacle ranges become impassable to a flyer) and a possible trade-off (routing to the nearest unexplored but free tile), to be designed later. **A-14** (a flyer standing inland does not visit from its tile): withdrawn, "definitely wrong" (the user): a flyer visits as a walker; the reading's gap stays open (survey §3.3), row E5-8 dropped. **D-24** (flying's price 100 from every inland tile, roads included): the original's rule, a **fix-optional** quirk (strict-fixed takes the lesser of 100 and the walking price everywhere, as the wiki and VCMI); a significant debuff, and a flyer is drawn as a walker anyway; row E5-4 confirms the original. **D-22**: under Q-0005's flag (faithful single precision, strict-fixed exact). **D-23** (Cursed Ground cancels the native terrain's 100): **built only if row E5-6 confirms it in SoD** (the user took it for a battle-only effect). **A-12** (the drop to 0 prices a walking step): **fix-optional**; it matters only on Cursed Ground. **D-26**: the original's way (a grown radius shows at the next step or the new day; else it rewards swapping artifacts), the new day's reveal around every owned hero built. **Scope** and **batch E5** as recommended (the harness's explored-tile read built by this lane, `cross-lane`). D-25 was settled by the second reading.
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T33 Increment 5 refined** (with increment 4's closure). Done (2026-10-21, `adventure/e08-t33`; decisions 71, 72): movement and scouting, the first round queued (T34a, T34b).
 - **T34a The movement and scouting survey.** Done (2026-10-21, `adventure/e08-t34a`; decisions 73, 74): survey `docs/rules/surveys/E08-hero-movement.md`, the checkpoint's questions ADV-Q20.
-- **T34b The ADR amendment drafts, the design note and the cut** (next, after ADV-Q20).
+- **T34b The ADR amendment drafts, the design note and the cut** (next; ADV-Q20 answered, decision 75).
 
 ## Later increments (sketch)
 

@@ -88,50 +88,7 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### Adventure lane (`ADV-Q<n>`)
 
-#### ADV-Q20 — Increment 5's checkpoint: the movement survey's quirks, conflicts and scope (E08 T34a)
-
-**Context.** T34a's survey (`docs/rules/surveys/E08-hero-movement.md`; decisions 73, 74) read the
-day's points, the step's price, flying, water walking and the scouting radius in the code and
-compared them with VCMI 1.7.5 and the wiki. Most of it is consensus (§0), D-25 (where a flying or water-walking move may end: only on a tile a hero may stop on) included since the second reading (§3.4). Open for the user,
-each with a recommendation; T34b drafts the ADR amendments and the cut from the answers.
-
-1. **A-12** (§2.5): the move's drop to 0 after a step prices the cheapest next step without the
-   artifacts' flying and water walking; with Angel Wings on Cursed Ground it can drop points an
-   affordable flying step needed. Options: **fix-optional** (faithful drops as the original,
-   strict-fixed prices it with the hero's flying; recommended), always as the original, always
-   fixed.
-2. **A-13** (§3.2): the original's pathfinder lets a flying hero's path cross unexplored tiles.
-   Options: **always fixed** (moves stay on explored tiles, ADV-MOV-008: the legal moves never
-   depend on hidden tiles; recommended), fix-optional (faithful would leak hidden tiles into the
-   mask).
-3. **A-14** (§3.3): read as it stands, a flying hero standing inland can neither visit a
-   neighbour's object visited from the neighbouring tile nor enter a town from its tile. Options:
-   **decide after batch E5's row E5-8** (build the walking rule meanwhile; recommended), build it as
-   a fix-optional quirk now.
-4. **D-24** (§2.3, a conflict of sources): flying's price. The code: 100 from every inland tile,
-   roads included (Angel Wings make a road dearer), the lesser of 100 and the walking price only
-   from the coast; the wiki and VCMI: the lesser everywhere. Options: **build the code's rule, row
-   E5-4 confirms** (recommended: the code is the original; two secondary sources may copy one
-   another), the wiki's and VCMI's rule until a row says otherwise.
-5. **D-22** (§1.2): a Logistics specialist's rate in single precision. Options: **under Q-0005's
-   flag as the battle's specialties** (faithful single precision, strict-fixed exact; recommended),
-   always single, always exact.
-6. **D-23** (§2.2): Cursed Ground takes away the native terrain's 100 (the code; VCMI and the wiki
-   without it). Options: **the code in every profile, row E5-6 confirms** (recommended), leave it
-   out.
-7. **D-26** (§4.2): a radius that grows in the day shows only at the next step or the new day's
-   reveal (the code; VCMI reveals at once for a skill). Options: **the code, with the new day's
-   reveal around every owned hero built** (recommended), reveal at once.
-8. **Scope** (§5, §6): **in**: the six artifacts, Logistics, Pathfinding, Scouting, the Logistics
-   specialists, the creature specialists' speed, Cursed Ground and Nomads in the price; **out**:
-   the Scouting specialty (no SoD hero has it), the sea, Stables, the spells' levels 0 to 2, the
-   computer players' bonus (E10). Recommended as listed; or leave Cursed Ground and Nomads for
-   later.
-9. **Batch E5** (§9, ten rows): as planned (recommended), with the harness's new read (a tile's
-    explored bit for a player) built by this lane `cross-lane` as in T32b1 (recommended) or asked
-    of the client lane, and the spec's fields `cross-lane` with its task.
-
-**Blocked:** T34b (the ADR amendment drafts, the design note and the cut).
+(no open questions)
 
 ### Server lane (`SRV-Q<n>`)
 
@@ -216,6 +173,7 @@ Newest first in each block. A lane adds an answered question at the top of its o
 
 ### Adventure lane (`ADV-Q<n>`)
 
+- *(2026-10-22, ADV-Q20, E08 T34a)* **Increment 5's checkpoint.** Asked after T34a's survey (`docs/rules/surveys/E08-hero-movement.md`; the epic's decision 75), nine points with recommendations, two of them asked again with context. **A-13** (a flying path through unexplored tiles): **fixed**, with the gameplay cost noted (wide obstacle ranges impassable to a flyer) and a trade-off to design later (routing to the nearest unexplored but free tile). **A-14** (a flyer inland does not visit from its tile): **withdrawn, "definitely wrong"**: a flyer visits as a walker; the reading's gap stays open. **D-24** (flying's price, roads 100): **the original's rule, fix-optional** (recommended: the code's rule, a batch row). **D-22**: Q-0005's flag (recommended). **D-23** (Cursed Ground cancels the native terrain's 100; the user asked whether it was confirmed: no, the code alone): **only if row E5-6 confirms** (recommended). **A-12** (the drop to 0 prices a walking step; asked again: it matters only on Cursed Ground): **fix-optional** (recommended). **D-26**: **the original's way** (recommended; else artifact swapping pays). Scope and batch E5: as recommended. D-25 had been settled by the second reading.
 - *(2026-10-21, ADV-Q19, E08 T33)* **Increment 5 refined.** Asked interactively after a summary of the sketch's item 5 in three parts (the epic's decisions 71 and 72). (Scope) Which part increment 5 holds, the rest moving to later increments: **movement and scouting** (Logistics, Pathfinding and Scouting on the map, the movement and scouting artifacts the heroes wear, the specialties that touch them, derived once in `h3-heroes`; recommended: the skills the heroes now gain at a level-up do nothing on the map yet), rewards on the map (treasure chests and the objects that give experience, spells, skills or primary skills; artifacts as pickups, the treasures with an artifact), army management (the army dialog of `ADV-STUB-2`, meetings and exchanges, dismissing, merging and splitting, the formation command), or the whole sketch: **user: movement and scouting.** (Round 1) A survey, then the ADR amendment drafts with the design note and the cut, accepted before anything is built (recommended, as increments 3 and 4), or the survey alone first: **user: survey + ADR drafts** (T34a, T34b in the queue).
 - *(2026-10-21, ADV-Q18, E08 T33)* **Batch E4's two findings; T33's seam.** Asked interactively with context after reading T32b2's results (the epic's decision 70). (1) **E4-10**: from the tile directly above, Red's click on Blue's hero standing on a land Cartographer's entrance found no path and started no battle in all three runs that reached it; the engine attacked (T19a1: the visit is the hero's, ADV-OBJ-004 checking only the visitor's tile). The code reading explains it: the pathfinder's test from above (0x4B26AC) reads the tile's class through 0x4FCBD0, which for a hero standing there returns the object under it, one lookup for both directions; VCMI 1.7.5 attacks (`canMoveBetween` tests the tile's blocking objects, the hero). Options: the original's rule in every profile, no flag (recommended: consistent, a hero on an entrance is attacked from exactly the tiles the object is visited from, nothing exploitable); a fix-optional quirk; keep the engine. **User: the original's rule, no flag** (built in T33: `check_step` and the reachable-tiles query). (2) **D-17**: 1 of 12 heroes conclusive (run 1's E4-5c: Water Magic, the reading's, where VCMI's class weights give Fire Magic); the draw is deterministic and every other prediction from the same seed bytes held. Options: one hero settles it (recommended), more E4a runs (about four per conclusive hero), a targeted batch later. **User: one hero settles it** (HER-LVL-003 `verified`). (3) The seam: T33a (the scoring with (1) and (2)) then T33b (the audit, the closure, increment 5's refinement; recommended), the scoring only, or **T33 whole: user's choice.**
 - *(2026-10-20, ADV-Q17, E08 T25)* **The computer's evaluation: a map-reading quirk, the system default, the Pathfinding costs** (survey `E08-progression.md` §10; asked interactively with context, answered at once; the epic's decision 60). (1) A-11: the evaluation's terrain shares (0x52B9C0) count only tiles with the map file's coast flag, which the editor sets on land beside water alone, so Navigation is worth 0 at load and Pathfinding follows the coast's terrain; batch E3c's E3-6 fits it in all four choices. **User: reproduce in every profile, no flag** (recommended; a fix would be a guess at the intent, and it steers only the computer's preferences), not fix-optional. (2) The system actor's default answer to a level-up: the flag-set path reads computer-player state the engine lacks (per-hero AI effectiveness, per-player AI values, the adventure AI's spell values for the schools: E10), so ADV-Q16's stand-in applies; **user: the evaluation with the setup's inputs** (1 000 and 500, the map's shares) until E10 (recommended), not the first offer. (3) The shares need each terrain's cost by Pathfinding level: **user: add it to the adventure part's terrains now** (the original's `step_cost_table`; increment 5's movement reuses it), not Pathfinding worth 0 at load until then.

@@ -3,7 +3,8 @@
 Date: 2026-10-21. Scope: E08 increment 5 (decisions 71, 72; T34a whole and flying and water
 walking in: decisions 73, 74), input for T34b's ADR amendment drafts, the design note and the cut.
 Input, not rules (`README.md`): a fact becomes binding when a task writes it into the catalog
-with its sources and tests.
+with its sources and tests. **The checkpoint** (ADV-Q20, 2026-10-22: the epic's decision 75) decided
+the open points; §8 and §9 carry its answers.
 
 **Sources** (retrieved 2026-10-21):
 - `original-data`: a code reading of the user's `Heroes3.exe` (SoD 4.0 Complete); every address
@@ -69,7 +70,7 @@ with its sources and tests.
   land)") and VCMI agree (D-25 settled). A flying hero standing inland has its start node marked
   like a tile it flies over (`hero_flight_tile_test` 0x4E5CE0 passes only on coastal land), and the
   move's step refuses a flyer's visit from the neighbouring tile there: either a misreading or a
-  quirk of the original (A-14, a batch row).
+  quirk of the original (A-14: withdrawn at the checkpoint, the user: a flyer visits as a walker).
 - **The scouting radius** (§4): 5, 6, 7, 8 by Scouting level, +1 for the Speculum and +1 for the
   Spyglass (worn or in a worn combination), as read in T8a. The Scouting specialty's 1 + 0.05 ×
   level is in the code, but **no SoD hero has the specialty** (the wiki: HotA's Beatrice, Miriam,
@@ -368,9 +369,10 @@ entrance of a class visited from the neighbouring tile. H3API calls it `CanFlyOn
 
 Read as it stands, a hero wearing Angel Wings on an inland tile could not pick up a resource pile
 beside it, a gameplay effect the wiki would hardly leave out; the reading may miss what makes the
-test pass there. **A-14**: a candidate until row E5-8 shows the original (an Angel Wings hero
-inland beside a resource pile, then beside a town's gate; and on the coast). If it holds, suggested
-class: fix-optional; else the reading is corrected.
+test pass there. **A-14** was withdrawn at the checkpoint (decision 75): "definitely wrong", the
+user says, a flying hero visits from its tile as a walking hero does. The engine builds the
+walker's visits for a flyer; what the reading misses here (which callers reach these tests, or
+what the tile's bit 0x40 holds in memory) stays open for a later re-read, and row E5-8 is dropped.
 
 ### 3.4 Where a move may end (D-25, settled)
 
@@ -484,14 +486,14 @@ move; their import is unchanged (`MAP_IMPORT_VERSION` stays unless the import ga
 
 | Id | What | Sources | Suggested |
 |---|---|---|---|
-| D-22 | a Logistics specialist's rate: single precision against exact or integer arithmetic | code (f32, Q-0005's kind), VCMI (integer percent), wiki (silent on rounding) | Q-0005's flag: faithful the code, strict-fixed exact; row E5-2 |
-| D-23 | Cursed Ground takes away the native terrain's 100 | code; VCMI none; wiki silent | the code; row E5-6 |
-| D-24 | flying's price: the fly price from inland tiles (roads 100), the lesser only from the coast | code against the wiki and VCMI (the lesser everywhere) | a conflict of sources: row E5-4 decides; until then the code |
+| D-22 | a Logistics specialist's rate: single precision against exact or integer arithmetic | code (f32, Q-0005's kind), VCMI (integer percent), wiki (silent on rounding) | **decided**: Q-0005's flag (faithful the code, strict-fixed exact); row E5-2 |
+| D-23 | Cursed Ground takes away the native terrain's 100 | code; VCMI none; wiki silent | **decided**: built only if row E5-6 confirms it |
+| D-24 | flying's price: the fly price from inland tiles (roads 100), the lesser only from the coast | code against the wiki and VCMI (the lesser everywhere) | **decided**: the original's rule, a fix-optional quirk (strict-fixed the lesser everywhere); row E5-4 confirms |
 | D-25 | where a flying or water-walking move may end | code (the second reading), wiki and VCMI: a tile a hero may stop on | settled; row E5-7 a check |
-| D-26 | a radius grown in the day shows at the next step or day | code; VCMI at once for a skill; wiki silent | the code; row E5-10 |
-| A-12 | the drop to 0 prices the cheapest step without the artifacts' flying and water walking | code | fix-optional |
-| A-13 | a flying path crosses unexplored tiles | code; VCMI never | always fixed (an information leak); row E5-9 shows the original |
-| A-14 | a flying hero standing inland neither visits a neighbour's "cannot be entered" object nor enters a town from its tile | code, unconfirmed | a batch row first (E5-8) |
+| D-26 | a radius grown in the day shows at the next step or day | code; VCMI at once for a skill; wiki silent | **decided**: the code, the new day's reveal built; row E5-10 |
+| A-12 | the drop to 0 prices the cheapest step without the artifacts' flying and water walking | code | **decided**: fix-optional (it matters only on Cursed Ground, D-23) |
+| A-13 | a flying path crosses unexplored tiles | code; VCMI never | **decided**: fixed (moves on explored tiles); a trade-off for wide obstacle ranges (routing to the nearest unexplored but free tile) to design later; row E5-9 shows the original |
+| A-14 | a flying hero standing inland neither visits a neighbour's "cannot be entered" object nor enters a town from its tile | code, unconfirmed | **withdrawn** (the user: a flyer visits as a walker) |
 | — | players 6 and 7 get no computer bonus | code | E10's |
 
 ## 9. Batch E5's plan
@@ -505,11 +507,11 @@ recipe are T34b's cut's tasks; this is the plan. Each row names what it settles 
 | E5-1 | ADV-MOV-001's bonuses (consensus, a check) | heroes of speed-4 armies (1560): no Logistics; Basic, Advanced, Expert; Boots of Speed; Equestrian's Gloves; both with Expert Logistics; a creature specialist with its creature as the slowest stack | each hero's points at the turn start of day 2 | 1560, 1716, 1872, 2028; 2160; 1860; 2928; the next table entry |
 | E5-2 | D-22 | Gunnar and Kyrre with Basic Logistics and a speed-3 army at levels 2, 6 and 12 (where the code and exact arithmetic part, §1.3), one at level 3 (where they agree) | points at day 2's turn start | 1664, 1694, 1739 (exact: one more each); 1672 |
 | E5-3 | §1.4 (consensus, a check) | a hero without Logistics one battle short of a level with Logistics offered (a level-up answered with it), then a step; a second hero receives Boots of Speed from a pile (if the spec can place one; else a skip) | points before and after the battle and the step; at day 2 | today's points unchanged by the gain; day 2 with the bonus |
-| E5-4 | D-24 | an Angel Wings hero on an inland cobblestone road, one straight step along it; on grass; on swamp; from a coastal tile along a road | points before and after each step | 100 each inland (the wiki and VCMI: 50, 100, 100); the coast's 50 |
+| E5-4 | D-24 | an Angel Wings hero on an inland cobblestone road, one straight step along it; on grass; on swamp; from a coastal tile along a road | points before and after each step | 100 each inland (faithful; the wiki, VCMI and strict-fixed: 50, 100, 100); the coast's 50 |
 | E5-5 | §2.1 water walking (consensus, a check) | a Boots of Levitation hero: land → water, water → water, water → land, a diagonal on water | points after each step | the land tile's price, 100, 100, 141 |
 | E5-6 | D-23 | a Fortress army (native swamp) on swamp: a straight step from plain swamp and one from swamp under Cursed Ground | points after each step | 100 off it, 175 from it (VCMI 100) |
 | E5-7 | D-25 (a check) | an Angel Wings hero clicks a tree beyond a tree line; a Boots of Levitation hero clicks a water tile | the mark (green, red, none); arrived; the hero's tile | no path to either (§3.4) |
-| E5-8 | A-14 | an Angel Wings hero inland beside a resource pile, then beside a town's gate; the same on a coastal tile | the resource before and after; the hero's tile; a visit | the reading: no visit inland, a visit on the coast |
+| E5-8 | — | dropped at the checkpoint (A-14 withdrawn) | — | — |
 | E5-9 | A-13 | an Angel Wings hero facing a strip of unexplored land between it and an explored tile | the target's mark at the first click | the reading: a green path through the strip |
 | E5-10 | D-26, ADV-FOG-003 | a hero that gains Scouting at a level-up (battle), then no step; a second hero with the Spyglass in the backpack (if the harness can equip it; else a skip) | the explored tiles around both after the battle and at day 2 | nothing new after the battle; at day 2 the radius 6 around the hero |
 
@@ -566,12 +568,11 @@ visit only at its destination and the walking hero's boat node (§3.1). Not trac
 class switch after 0x48152B, which can also drop the visit (0x48167B), and whether the click
 handler refuses an empty path on screen.
 
-## 12. For T34b and the checkpoint
+## 12. For T34b
 
-The checkpoint's questions are **ADV-Q20** (`docs/OPEN-QUESTIONS.md`): the quirk candidates' classes
-(A-12, A-13, A-14 after its row), the conflicts' interim rules (D-24's code until batch E5), the scope's edges (Cursed Ground and Nomads in; the Scouting specialty
-out; the new day's reveal built for D-26), and batch E5 as planned (its harness reads and spec fields
-`cross-lane`). T34b then drafts ADR-0013's effect kinds and properties (the land bonus, the speed,
-the flying and water-walking levels, the radius), ADR-0016's or -0017's amendment where the points,
-the passage and the reveal change (the reach's layers, the end of a move), and the design note's
-increment 5 with the cut.
+The checkpoint (ADV-Q20) is answered (the epic's decision 75; §8). T34b drafts ADR-0013's effect
+kinds and properties (the land bonus, the speed, the flying and water-walking levels, the radius),
+ADR-0016's or -0017's amendment where the points, the passage, the end of a move and the reveal
+change (the reach's two kinds of node, the new day's reveal), the quirks (D-24's flying price and
+A-12 fix-optional, A-13 fixed, Q-0005 for D-22), and the design note's increment 5 with the cut;
+D-23 waits for row E5-6.

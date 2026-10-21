@@ -3588,3 +3588,11 @@ twice (Logistics 5/10/20 %, Boots of Speed +400) and was corrected by the Moveme
 Logistics sentence and the executable's `movement.txt`.
 
 **The second reading** (survey §11; a fresh agent, nine questions, without the survey): §1 to §3 confirmed point by point; it settled D-25 (the click's path needs the destination's "may stop" node, 0x56A0D0: a move ends only on a tile a hero may stop on, as the wiki and VCMI have it), and added the two nodes per tile and the flyer's visit only at its destination. ADV-Q20's point on D-25 was dropped.
+
+**The checkpoint** (ADV-Q20, 2026-10-22; decision 75): A-13 fixed (a trade-off for wide obstacle
+ranges to design later), A-14 withdrawn (the user: a flyer visits as a walker; the reading's gap
+open), D-24 the original's flying price as a fix-optional quirk, D-22 under Q-0005, D-23 built only
+if row E5-6 confirms (the user took Cursed Ground for a battle-only effect: the code alone says
+otherwise), A-12 fix-optional, D-26 the original's way, the scope and batch E5 as recommended.
+Asked again with context: Cursed Ground's place in movement and A-12's tie to it. The survey's §8,
+§9 and §12, the queue (T34b ready) and the handoff record it on the same branch (#372).
