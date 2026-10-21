@@ -612,7 +612,7 @@ mod tests {
             affects: Affects::Own,
         };
         assert_eq!(
-            effect_skills(&ruleset, &[luck(3, Affects::Own), morale.clone()]),
+            effect_skills(&ruleset, &[luck(3, Affects::Own), morale]),
             Ok(vec![(6, 2), (9, 3)])
         );
         assert_eq!(effect_skills(&ruleset, &[]), Ok(Vec::new()));
