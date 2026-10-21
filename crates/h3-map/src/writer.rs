@@ -76,6 +76,10 @@ const RESOURCE_COUNT: u32 = 7;
 /// (225), Fiery Fields (226), Holy Ground (227), Lucid Pools (228), Magic Clouds (229),
 /// Rocklands (231); `Objects.txt` lists their pictures.
 pub const GROUND_OBJECTS: [u32; 12] = [21, 46, 222, 223, 224, 225, 226, 227, 228, 229, 230, 231];
+/// Object classes of the visitable objects without a body the writer places (E08 T32a: batch
+/// E4's attack on a hero standing on one): the Cartographers (13; subclass 0 water, 1 land, 2
+/// subterranean), entered and not visited from above (`packs/base/adventure.toml`).
+pub const PLAIN_OBJECTS: [u32; 1] = [13];
 /// Object class of a town of a fixed faction (subclass = faction, `TOWNTYPE.TXT` order: Castle 0
 /// … Conflux 8; E04c T5b).
 pub const TOWN_OBJECT: u32 = 98;
@@ -383,6 +387,16 @@ pub struct Ground {
     pub template: ObjectTemplate,
 }
 
+/// A visitable object without a body placed on the map (E08 T32a): its template alone.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Plain {
+    /// The object's position: the bottom-right tile of its picture (its masks say which tiles it
+    /// blocks and where it is visited).
+    pub tile: (u8, u8),
+    /// Template (a class of [`PLAIN_OBJECTS`], from `Objects.txt`).
+    pub template: ObjectTemplate,
+}
+
 /// A town of a fixed faction placed on the map (E04c T5b: siege experiments), without a name,
 /// events or required and banned spells.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -432,6 +446,8 @@ pub enum MapObject {
     Pile(Pile),
     /// A special ground.
     Ground(Ground),
+    /// A visitable object without a body (E08 T32a).
+    Plain(Plain),
     /// A town.
     Town(Town),
 }
@@ -521,6 +537,9 @@ pub struct Map {
     pub objects: Vec<MapObject>,
     /// The underground level (E08 T22a1); `None`: the map has one level.
     pub underground: Option<Underground>,
+    /// The scenario's level limit (E08 T32a; 0: none): no hero gains a level past it (HER-EXP-003;
+    /// the engine counts a limit above 74 as none, A-8).
+    pub level_limit: u8,
 }
 
 impl Map {
@@ -550,7 +569,7 @@ pub fn write(map: &Map) -> Result<Vec<u8>, WriteError> {
     out.string(&map.name)?;
     out.string(&map.description)?;
     out.u8(1); // difficulty: normal
-    out.u8(0); // no level limit
+    out.u8(map.level_limit);
     for (colour, player) in map.players.iter().enumerate() {
         write_player(&mut out, map, colour, player.as_ref())?;
     }
@@ -594,7 +613,7 @@ pub fn write(map: &Map) -> Result<Vec<u8>, WriteError> {
             MapObject::Hero(hero) => write_hero(&mut out, hero, identifier)?,
             MapObject::Monster(monster) => write_monster(&mut out, monster, identifier),
             MapObject::Pile(pile) => write_pile(&mut out, pile)?,
-            MapObject::Ground(_) => {} // no body
+            MapObject::Ground(_) | MapObject::Plain(_) => {} // no body
             MapObject::Town(town) => write_town(&mut out, town, identifier),
         }
     }
@@ -651,6 +670,7 @@ fn validate(map: &Map) -> Result<(), WriteError> {
             MapObject::Monster(monster) => monster.tile,
             MapObject::Pile(pile) => pile.tile,
             MapObject::Ground(ground) => ground.tile,
+            MapObject::Plain(plain) => plain.tile,
             MapObject::Town(town) => town.tile,
         };
         if x >= map.size || y >= map.size {
@@ -664,6 +684,7 @@ fn validate(map: &Map) -> Result<(), WriteError> {
             MapObject::Monster(monster) => validate_monster(monster)?,
             MapObject::Pile(pile) => validate_pile(pile)?,
             MapObject::Ground(ground) => validate_ground(ground)?,
+            MapObject::Plain(plain) => validate_plain(plain)?,
             MapObject::Town(town) => validate_town(map, town)?,
         }
     }
@@ -766,6 +787,14 @@ fn validate_ground(ground: &Ground) -> Result<(), WriteError> {
         Ok(())
     } else {
         Err(out_of_range("ground object class", ground.template.class))
+    }
+}
+
+fn validate_plain(plain: &Plain) -> Result<(), WriteError> {
+    if PLAIN_OBJECTS.contains(&plain.template.class) {
+        Ok(())
+    } else {
+        Err(out_of_range("plain object class", plain.template.class))
     }
 }
 
@@ -888,6 +917,7 @@ fn object_template(object: &MapObject) -> ObjectTemplate {
         MapObject::Monster(monster) => monster.template.clone(),
         MapObject::Pile(pile) => pile.template.clone(),
         MapObject::Ground(ground) => ground.template.clone(),
+        MapObject::Plain(plain) => plain.template.clone(),
         MapObject::Town(town) => town.template.clone(),
     }
 }
@@ -912,6 +942,7 @@ fn position(object: &MapObject) -> (u8, u8) {
         MapObject::Monster(monster) => monster.tile,
         MapObject::Pile(pile) => pile.tile,
         MapObject::Ground(ground) => ground.tile,
+        MapObject::Plain(plain) => plain.tile,
         MapObject::Town(town) => town.tile,
     }
 }
@@ -1142,6 +1173,7 @@ mod tests {
                 }),
             ],
             underground: None,
+            level_limit: 0,
         }
     }
 
@@ -1174,6 +1206,42 @@ mod tests {
             Err(WriteError::OutOfRange {
                 what: "ground object class",
                 value: 79
+            })
+        );
+    }
+
+    #[test]
+    fn a_plain_object_needs_a_plain_class_and_writes_no_body() {
+        let template = ObjectTemplate::from_objects_txt(
+            "AVXmaps0.def 001111111111111111111111111111111111111111111111 \
+             010000000000000000000000000000000000000000000000 111111111 010111111 13 1 0 0",
+        )
+        .unwrap();
+        let mut map = smoke_like_map();
+        map.level_limit = 7;
+        map.objects = vec![MapObject::Plain(Plain {
+            tile: (5, 5),
+            template: template.clone(),
+        })];
+        let bytes = write(&map).unwrap();
+        let tail = [1, 0, 0, 0, 5, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        assert_eq!(&bytes[bytes.len() - tail.len()..], &tail[..]);
+        // The header: the format, whether anyone plays, the size, the levels, two strings, then
+        // the difficulty (normal) and the level limit.
+        let at = 10 + 4 + map.name.len() + 4 + map.description.len();
+        assert_eq!(bytes[at..at + 2], [1, 7]);
+        map.objects = vec![MapObject::Plain(Plain {
+            tile: (5, 5),
+            template: ObjectTemplate {
+                class: 222,
+                ..template
+            },
+        })];
+        assert_eq!(
+            write(&map),
+            Err(WriteError::OutOfRange {
+                what: "plain object class",
+                value: 222
             })
         );
     }

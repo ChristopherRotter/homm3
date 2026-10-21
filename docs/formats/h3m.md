@@ -265,7 +265,7 @@ codes.
 | version | u32 | `0x1C` |
 | any players, size, underground | u8, u32, u8 | 1, 36/72/108/144, 0 or (E08 T22a1) 1 |
 | name, description | string, string | |
-| difficulty, level limit | u8, u8 | 1 (normal), 0 |
+| difficulty, level limit | u8, u8 | 1 (normal), 0 or (E08 T32a) the map's limit |
 | 8 players | see below | |
 | victory, loss condition | u8, u8 | `0xFF`, `0xFF` (standard) |
 | teams | u8 | 0 |
@@ -330,7 +330,8 @@ towns of a fixed faction (class 98, the template from `Objects.txt`: its entranc
 of its position; no name, no events, no required or banned spells, the owner's alignment). Since
 E08 T22a1 an underground level may follow: its own base terrain and rectangles (no roads), its
 objects after the surface's (z = 1), a player's heroes on it in its hero list after the
-surface's. `h3-map`'s read-back test reads both back and imports them.
+surface's. Since E08 T32a the scenario's level limit and the Cartographers (class 13, no body,
+the template from `Objects.txt`). `h3-map`'s read-back test reads both back and imports them.
 
 **Town buildings** (a town's custom `built` and `forbidden` bits; VCMI 1.7.5's
 `config/gameConfig.json`, `mapFormat.restorationOfErathia`): 0 Town Hall, 1 City Hall, 2 Capitol,

@@ -3314,3 +3314,53 @@ merged): its code verified by T30's run, the sandbox's light gates green.
   `reach-xl-144` 525.7 M → 477.5 M (4 608 → 4 728 queries), both re-baselined; `fork-xl-144`
   +0.22 %, kept (the progression behind its `Arc`, shared by the forks).
 - No version bump: tests, data and replays only.
+
+### Increment 4, round 4: T32a, batch E4's specs and scorer; round 4 closed (2026-10-21, `adventure/e08-t32a`)
+
+Baseline: `master` at a618c3e (T31 merged, #357), its code verified by T31's full run (the
+sandbox's baseline ran only the light gates). The user took T32a whole (decision 67; not chosen:
+the E4a spec alone, the spec with the scorer, the scorer first) and agreed to `cross-lane` for
+`h3-experiment` and, asked again when the writer's new field broke it, for one line of the AI
+lane's test map. `shared/e08-t32a` (#358) first: `h3-heroes` among `h3-map`'s dev-dependencies
+in `arch.toml`, for the scorer (its full verify passed every step but coverage, which failed on
+`h3-server`'s ladder test timing out under the sandbox's load and passed when run again alone;
+the server lane's inbox has it).
+
+- **The writer** (`h3_map::writer`): `Map.level_limit` (the header's byte after the difficulty)
+  and `MapObject::Plain` (a visitable object without a body; `PLAIN_OBJECTS`, the Cartographers,
+  class 13). The read-back test reads both back and imports them: the land Cartographer typed
+  `base:cartographer_land`, the setup's limit 5.
+- **The spec** (`h3-experiment`, `cross-lane`): `[map] level_limit` and `[[map.object]]`
+  (`picture`, `at`; `Tables.plains`); a plain object counts with every tile it covers (its block
+  and visit masks) in the check that no two objects share a tile. Two grounds on one tile it had.
+  `docs/experiments/README.md` documents both and lists batch E4.
+- **Batch E4 split in three** (the level limit binds every hero on its map, so E4-6 could not
+  share E4a's map: E4-2's level 10 and E4-1e's 5 000 would be capped; the agent's call, decision
+  67 updated): `E08-batch-4a` (E4-1 to E4-5: four Knights and E3-6's Death Knight levelled at
+  load, three Barbarians at level 10, three Elementalists at level 3, two Rangers through three
+  dialogs after one battle, three Demoniacs knowing two schools at level 4; Red and Blue eight
+  heroes each), `-4b` (E4-6: limit 5, 10 000 experience at load and a gain; 4 000 gaining 700),
+  `-4c` (E4-7: two pairs of overlapping grounds in both orders; E4-8: a Necromancer's full army
+  with Skeleton Warriors beating 90 Pikemen; E4-9: Blue's Thunderbirds destroying Red's Ballista
+  by plan, Red winning; E4-10: a water row leaving the land Cartographer's entrance the only way
+  between Red above and Blue below). Classes chosen for conclusive rows: the Barbarian's rows
+  differ for 60 of 100 draws at level 10 (the Knight's 35); the Demoniac's known Fire and Water
+  Magic weigh 4 and 1 under VCMI against 1 and 1 (half the draws). Each spec compiled and imported
+  whole through the engine (`original_data` on the three maps: 16 heroes and 56 level-ups at load,
+  E4-6a's four under the limit; 24 tiles under two grounds); E4-10 played in the engine by a
+  throwaway example (not committed): Blue declines the Cartographer and stays on its entrance,
+  Red's step at it from above starts a battle.
+- **The scorer** (`crates/h3-map/examples/e4_score.rs`, `test = true`): a batch map and its filled
+  template; per hero from its seed byte the levels at load (the reading: the evaluation under the
+  limit; always-left; VCMI without the limit, experience and level only) and the dialogs in play
+  (the reading; per row VCMI's row by the old level, intervals 3 and 3, a known school by its
+  class weight, or every level drawn up front), the record beside them and which fit. Its draws
+  are a copy of `h3_heroes::draw_level_up` with each rule a switch; its tests check the reading
+  against the engine (400 random heroes of every class at 7 seed bytes each; the levels at load
+  against `GameState::new` under limits 0 and 5) and a record of the reading fitting it. It
+  reproduces batch E3c's E3-6 (3/6/1/1, Pathfinding and Scouting advanced, Logistics expert) with
+  seed byte 75 alone of the 255, as survey §3.3 found.
+- **Not built**: the recipes (`clients/capture/batches/E08-batch-4{a,b,c}.toml`): the harness
+  lacks the reads (the client lane's inbox lists them: the seed byte and counters, the skills as a
+  list, each dialog, `level_up` as a list, the artifacts, the battlefield, E4-9's battle by plan,
+  E4-6's message). They and the run are T32b (round 5, with T33).

@@ -6,7 +6,7 @@ use std::path::Path;
 use h3_formats::exe;
 use h3_formats::lod::LodArchive;
 use h3_formats::text::{TextTable, decode_windows_1252};
-use h3_map::writer::{ARTIFACT_SLOTS, GROUND_OBJECTS, ObjectTemplate, TOWN_OBJECT};
+use h3_map::writer::{ARTIFACT_SLOTS, GROUND_OBJECTS, ObjectTemplate, PLAIN_OBJECTS, TOWN_OBJECT};
 
 /// Object class of a fixed wandering monster (subclass = creature id).
 const MONSTER_CLASS: u32 = 54;
@@ -78,6 +78,9 @@ pub struct Tables {
     /// Special-ground templates (`Objects.txt`, the classes of [`GROUND_OBJECTS`]; E04c T3), in
     /// the file's order.
     pub grounds: Vec<ObjectTemplate>,
+    /// Templates of the visitable objects without a body (`Objects.txt`, the classes of
+    /// [`PLAIN_OBJECTS`]: the Cartographers; E08 T32a), in the file's order.
+    pub plains: Vec<ObjectTemplate>,
     /// Town templates (`Objects.txt`, class [`TOWN_OBJECT`]) as (faction, template; E04c T5b).
     pub towns: Vec<(u32, ObjectTemplate)>,
 }
@@ -199,6 +202,11 @@ impl Tables {
             .filter(|t| GROUND_OBJECTS.contains(&t.class))
             .cloned()
             .collect();
+        let plains = templates
+            .iter()
+            .filter(|t| PLAIN_OBJECTS.contains(&t.class))
+            .cloned()
+            .collect();
         Ok(Self {
             creatures: names(creatures),
             heroes,
@@ -213,6 +221,7 @@ impl Tables {
             monsters,
             piles,
             grounds,
+            plains,
             towns,
         })
     }
@@ -287,7 +296,8 @@ mod tests {
             "header\nAvWPike.def {mask} 54 0 2 0\nAVTwood0.def {mask} 79 0 5 0\n\
              AVTmerc0.def {mask} 79 1 5 0\nAVA0079.def {mask} 5 79 4 0\nbroken line\n\
              AVXcf0.def {mask} 222 0 0 1\nAVXcg5.def {mask} 223 0 0 1\n\
-             AVCstrx0.def {mask} 98 6 1 0\nAVCranx0.def {mask} 77 0 1 0\n"
+             AVCstrx0.def {mask} 98 6 1 0\nAVCranx0.def {mask} 77 0 1 0\n\
+             AVXmaps0.def {mask} 13 1 0 0\n"
         );
         let (heroes, creatures) = (table(&["Orrin"]), table(&["Pikeman"]));
         let (skills, spells) = (table(&["Archery"]), table(&["Combat Spells", "Bless"]));
@@ -319,6 +329,9 @@ mod tests {
             .map(|g| (g.def.as_str(), g.class))
             .collect();
         assert_eq!(grounds, [("AVXcf0.def", 222), ("AVXcg5.def", 223)]);
+        // The Cartographers (E08 T32a).
+        let plains: Vec<_> = t.plains.iter().map(|p| (p.def.as_str(), p.class)).collect();
+        assert_eq!(plains, [("AVXmaps0.def", 13)]);
         // Towns of a fixed faction only (E04c T5b), not the random town (77).
         assert_eq!(ids(&t.towns), [(6, "AVCstrx0.def".to_owned())]);
         assert_eq!(t.spells, ["Bless"]);
