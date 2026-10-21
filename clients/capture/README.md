@@ -179,8 +179,11 @@ casts' sequences wait in `situations/casts.toml` (`sequences situations/casts.to
 until the viewer's timeline plays them (T7b, T7c): `dragon` (T7a-2a), `bolt`, `mass`, `raise`,
 `obstacles`, `creatures` (T7a-2b, design §7.16, "Recorded"; about 75 minutes for all with their
 screens, `cast`, `resist` and `arrow` included). `cast`, `resist` and `arrow` moved into
-`sequences.toml` at T7b-1 with their engine commands and frames; a recorded timeline's `screen`
-lines are left out of the timing check (they are the frame check's).
+`sequences.toml` at T7b-1 with their engine commands and frames, `haste` and `dispel` (recorded
+at T7b-2a, about 9 and 11 minutes with their screens) at T7b-2a; a recorded timeline's `screen`
+lines are left out of the timing check (they are the frame check's). A stack whose hero just
+cast acts by `key:` only: a `turn:` naming the stack already active passes at once, so pick the
+speeds so the turns alternate (`haste`'s Vampire Lords, speed 9).
 
 **A battle in progress** (M3 T1a): `--hot-seat` (an entry's `hot_seat = true`) starts the map in
 hot seat with Blue a human too (`h3-view situation --hot-seat`), so the actions play both sides and

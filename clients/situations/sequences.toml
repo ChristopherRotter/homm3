@@ -360,6 +360,7 @@ actions = [
 ms = 2500
 heroes = true
 timeline = "timelines/dispel.txt"
+frames = "timelines/dispel-frames.txt"
 boxes = true
 command = [
     { seat = "Defender", at = 0, command = { Cast = { spell = 54, target = { Stack = { stack = 0 } }, second = { None = {} } } } },
