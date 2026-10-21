@@ -106,23 +106,6 @@ heroes = true
 screens = true
 timeline = "timelines/creatures.txt"
 
-# E17 M3 T7b-2a: Haste and Slow's walk time (§7.3): Orrin's Haste on the Pikemen (round 1), their
-# hasted walk (round 2), Crag Hack's Slow on them and their slowed walk (round 3); the Vampire
-# Lords defend.
-[[sequence]]
-id = "haste"
-scenario = "seq-haste.toml"
-hot_seat = true
-actions = [
-    "turn:1.0", "key:d", "turn:0.0", "cast:0:86", "key:d",
-    "turn:1.0", "key:d", "turn:0.0", "hex:88",
-    "turn:1.0", "cast:0:88", "key:d", "turn:0.0", "hex:90",
-]
-ms = 3000
-heroes = true
-screens = true
-timeline = "timelines/haste.txt"
-
 # E17 M3 T7b-2a: Disrupting Ray, Cure and Dispel on one stack (§7.16, players 1 and 7): Crag
 # Hack's Slow on the Pikemen and Orrin's Disrupting Ray at the Vampire Lords (round 1), Orrin's
 # Cure on the Pikemen (round 2), Crag Hack's Slow again and Orrin's Dispel (round 3).

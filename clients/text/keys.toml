@@ -115,6 +115,12 @@ id = "battle.log.resisted"
 args = { creature = "text", verb = "text" }
 original = [{ at = "GENRLTXT:190", printf = ["creature", "verb"] }]
 
+# Disrupting Ray's line (`cast_spell` 0x5A1B0B, E17 M3 T7b-2a): the defense it took from the stack.
+[[key]]
+id = "battle.log.disrupted"
+args = { defense = "number" }
+original = [{ at = "GENRLTXT:92", printf = ["defense"] }]
+
 # A hero's spell aimed over a stack (E17 M3 T7b-1, *provisional*: the aiming loop is not read):
 # the spell's name and the stack's by its number; elsewhere on the battlefield the spell's alone.
 [[key]]

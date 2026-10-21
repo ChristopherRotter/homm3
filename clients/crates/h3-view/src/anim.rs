@@ -19,7 +19,7 @@
 //! by a strike, created stacks (a strike by a stack the timeline does not know plays its
 //! reactions alone).
 
-use alloc::collections::BTreeMap;
+use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::format;
 use alloc::string::String;
 use alloc::vec;
@@ -254,9 +254,17 @@ pub struct Casts {
 }
 
 /// A spell as its cast draws it (E17 M3 T7b-1): its magic animation (the spell record's +8; the
-/// stage's `magic` holds its numbers) and its projectile's DEFs, if its handler flies one.
+/// stage's `magic` holds its numbers) and its projectile's DEFs, if its handler flies one; its
+/// number and its sign (E17 M3 T7b-2a: the handler, the count box's tint, a walk's time).
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct SpellLook {
+    /// The executable's spell number (its handler, [`HASTE`], [`SLOW`], …).
+    pub original: u16,
+    /// The spell record's +0: 1 positive, −1 negative, 0 neither ([`crate::scene::spell_hue`]).
+    pub sign: i8,
+    /// Its effect at each side's hero's mastery (the attacker's first): Disrupting Ray's lowered
+    /// defense (E17 M3 T7b-2a).
+    pub value: [u16; 2],
     /// Its magic animation's number.
     pub animation: Option<u8>,
     /// Its projectile's DEFs from the level one to the one pointing down, none for most spells.
@@ -328,6 +336,33 @@ pub struct MagicLook {
 /// The magic animation of the First Aid Tent's heal (`first_aid_tent_action` 0x478D14: number
 /// 0x4F over the patient, 100 ms a frame, without the patient's hit).
 pub const HEAL: u8 = 79;
+
+/// The executable's numbers of the spells whose handlers the viewer tells apart (E17 M3 T7b-2a,
+/// design §7.16): Dispel plays its animation before its effect (0x5A15E0), Cure after its effect
+/// (0x5A1808), Disrupting Ray flies its projectile, then its animation (0x5A1A84); Haste and Slow
+/// change the walk time (0x444CE5, 0x444D3A).
+pub const DISPEL: u16 = 35;
+/// Cure ([`DISPEL`]).
+pub const CURE: u16 = 37;
+/// Disrupting Ray ([`DISPEL`]).
+pub const DISRUPTING_RAY: u16 = 47;
+/// Haste ([`DISPEL`]): the walk time W trunc(W0 × 0.65) while it lasts.
+pub const HASTE: u16 = 53;
+/// Slow ([`DISPEL`]): the walk time W trunc(W0 × 1.5) while it lasts.
+pub const SLOW: u16 = 54;
+
+/// The hue a stack's count box takes from a time on (E17 M3 T7b-2a, design §4.3): none, the
+/// layout's (no spell active), else [`crate::scene::spell_hue`] of its spells' signs; it shows
+/// with the first frame drawn after the change.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TintKey {
+    /// The stack's id.
+    pub stack: u8,
+    /// When it shows.
+    pub shown: u32,
+    /// The hue's f32 bits (none: the layout's tint).
+    pub hue: Option<u32>,
+}
 
 /// The magic animation of a spell resisted by the stack it was aimed at (`cast_spell` 0x5A2043:
 /// number 0x4E over it, 100 ms a frame, without its hit; E17 M3 T7b-1).
@@ -571,6 +606,8 @@ pub struct Timeline {
     /// The counts the stacks' boxes show from a time on, in order (E17 M3 T5b); before its
     /// first, a stack's box shows the snapshot's count.
     pub counts: Vec<CountKey>,
+    /// The hues the stacks' boxes take from a time on by their spells, in order (E17 M3 T7b-2a).
+    pub tints: Vec<TintKey>,
     /// The stack outlined as active from a time on (none: no outline), in order (§7.9).
     pub outlines: Vec<(u32, Option<u8>)>,
     /// When each idle step ran, up to the last command's start (none runs while a command
@@ -809,6 +846,18 @@ impl Timeline {
             .collect()
     }
 
+    /// The hues of the boxes of the stacks with active spells at `t`, by id (E17 M3 T7b-2a).
+    pub fn hues(&self, t: u32) -> BTreeMap<u8, u32> {
+        let mut hues = BTreeMap::new();
+        for k in self.tints.iter().filter(|k| k.shown <= t) {
+            match k.hue {
+                Some(hue) => hues.insert(k.stack, hue),
+                None => hues.remove(&k.stack),
+            };
+        }
+        hues
+    }
+
     /// The stack outlined as active at `t` (§7.9): the snapshot's active stack until the first
     /// command's first frame shows; none while a command plays; a turn's stack from its start
     /// when a player acts next, none when the computer does (*provisional*).
@@ -1023,6 +1072,11 @@ struct Live {
     /// Its count box hidden: a walk or a flight under way ([`Pose::boxless`]).
     boxless: bool,
     look: Look,
+    /// Its active spells, by handle (E17 M3 T7b-2a).
+    spells: BTreeSet<u16>,
+    /// Its defense skill (the snapshot's, lowered by Disrupting Ray; E17 M3 T7b-2a): a defend's
+    /// gain and Disrupting Ray's line.
+    defense: i32,
 }
 
 impl Live {
@@ -1169,6 +1223,8 @@ fn played(
                 right: s.side == Side::Attacker,
                 boxless: false,
                 look: look.clone(),
+                spells: s.effects.iter().map(|e| e.spell).collect(),
+                defense: s.defense,
             },
         );
     }
@@ -1190,6 +1246,8 @@ fn played(
         magics: Vec::new(),
         hero_keys: Vec::new(),
         counts: Vec::new(),
+        tints: Vec::new(),
+        pending_tints: Vec::new(),
         outlined: Vec::new(),
         machine: None,
         idle: Idle::default(),
@@ -1209,6 +1267,17 @@ fn played(
     if let Some(f) = fidgets.as_mut() {
         f.reset(0, &player.bases(), &[]);
     }
+    // The snapshot's spells tint their boxes from the start.
+    let spelled: Vec<u8> = player
+        .stacks
+        .iter()
+        .filter(|(_, l)| !l.spells.is_empty())
+        .map(|(&id, _)| id)
+        .collect();
+    for stack in spelled {
+        player.retint(stack);
+    }
+    player.flush(0, 0);
     let mut outlines = vec![(0, snapshot.active)];
     let mut waiting = snapshot.active;
     let mut ended = None;
@@ -1309,6 +1378,7 @@ fn played(
         magics: player.magics,
         hero_keys: player.hero_keys,
         counts: player.counts,
+        tints: player.tints,
         outlines,
         steps: player.steps,
         idle: player.idle,
@@ -1496,6 +1566,10 @@ struct Player<'a> {
     hero_keys: Vec<HeroKey>,
     /// The counts the boxes show from a time on (E17 M3 T5b).
     counts: Vec<CountKey>,
+    /// The hues the boxes take from a time on (E17 M3 T7b-2a).
+    tints: Vec<TintKey>,
+    /// The hues changed since the last frame drawn: they show with the next.
+    pending_tints: Vec<(u8, Option<u32>)>,
     /// The outline's changes inside the command so far: a war machine's turn that plays out
     /// in it (E17 M3 T3b).
     outlined: Vec<(u32, Option<u8>)>,
@@ -1564,8 +1638,14 @@ impl Player<'_> {
         });
     }
 
-    /// The pending poses, drawn at `drawn` and shown at `shown`.
+    /// The pending poses, drawn at `drawn` and shown at `shown`, and the pending hues with them.
     fn flush(&mut self, drawn: u32, shown: u32) {
+        let tints = core::mem::take(&mut self.pending_tints);
+        self.tints.extend(
+            tints
+                .into_iter()
+                .map(|(stack, hue)| TintKey { stack, shown, hue }),
+        );
         let pending = core::mem::take(&mut self.pending);
         self.keys
             .extend(pending.into_iter().map(|(stack, pose)| Key {
@@ -1743,6 +1823,7 @@ impl Player<'_> {
                         let line = Logged::Defend {
                             stack,
                             count: live.count,
+                            defense: live.defense,
                         };
                         self.log.push((self.clock.now, line));
                     }
@@ -1784,6 +1865,9 @@ impl Player<'_> {
                     }
                     self.cast(side, spell, target, &events[from..i]);
                 }
+                // An effect's start or end outside a hero's cast: a round's start ends the spells
+                // that ran out (0x447120), a creature's ability or cast adds one (E17 M3 T7b-2a).
+                Event::EffectApplied { .. } | Event::EffectEnded { .. } => self.effect(event),
                 Event::GoodMorale { stack } | Event::BadMorale { stack } => {
                     let good = matches!(*event, Event::GoodMorale { .. });
                     let count = self.live(stack).map_or(0, |l| l.count);
@@ -1955,14 +2039,17 @@ impl Player<'_> {
     }
 
     /// A hero's cast of `spell` at `target` with its `effects` (`cast_spell` 0x59FE30, design
-    /// §7.16; E17 M3 T7b-1): the hero's casting frames before the spell, a redraw at trunc(100 F)
-    /// each; then, if the stack it was aimed at resisted, the resistance's sound, the log's line
-    /// and animation [`RESISTED`] over it (0x5A1F89), else the spell's own sound (0x5A0331) and
-    /// its handler: a timed spell on one stack its line, then its animation over it (0x5A107F;
-    /// player 1), Magic Arrow and Ice Bolt their projectile, then their animation over the
-    /// struck stack with its reaction and their damage's line (0x5A098A; player 2). The common
-    /// tail (0x5A2058): the rest of the casting group at trunc(100 F) each, then the hero stands
-    /// in a redraw shown at once. Other spells play the hero's frames alone (T7b-2, T7c).
+    /// §7.16; E17 M3 T7b-1, T7b-2a): the hero's casting frames before the spell, a redraw at
+    /// trunc(100 F) each; then, if the stack it was aimed at resisted, the resistance's sound, the
+    /// log's line and animation [`RESISTED`] over it (0x5A1F89), else the spell's own sound
+    /// (0x5A0331) and its handler: a timed spell on one stack its effect and line, then its
+    /// animation over it (0x5A107F; player 1); Magic Arrow and Ice Bolt their projectile, then
+    /// their animation over the struck stack with its reaction and their damage's line
+    /// (0x5A098A; player 2); Dispel its animation, then its effect and line (0x5A15E0); Cure its
+    /// effect, then its animation and line (0x5A17F5); Disrupting Ray its projectile, its
+    /// animation, then its effect and its own line (0x5A1A84). The common tail (0x5A2058): the
+    /// rest of the casting group at trunc(100 F) each, then the hero stands in a redraw shown at
+    /// once. Other spells play the hero's frames alone and take effect at the cast's end (T7c).
     fn cast(&mut self, side: Side, spell: u16, target: Target, effects: &[Event]) {
         let s = u8::from(side == Side::Defender);
         let casts = self.stage.casts;
@@ -1984,6 +2071,7 @@ impl Player<'_> {
                 .iter()
                 .any(|e| matches!(*e, Event::SpellResisted { target } if target == t))
         };
+        let mut done = false;
         match aimed {
             Some((t, live)) if resisted(t) => {
                 self.cue(t, Sound::Resisted, false);
@@ -1996,50 +2084,158 @@ impl Player<'_> {
             }
             Some((t, live)) => {
                 self.cue(t, Sound::Spell(spell), false);
-                let damage = effects.iter().find_map(|e| match *e {
-                    Event::SpellDamage {
-                        target,
-                        ref damage,
-                        kills,
-                        ..
-                    } if target == t => Some((damage.0, kills)),
-                    _ => None,
-                });
-                let applied = effects
-                    .iter()
-                    .any(|e| matches!(*e, Event::EffectApplied { target, .. } if target == t));
-                match (damage, caster) {
-                    (Some((damage, kills)), Some(c)) if !look.projectile.is_empty() => {
-                        self.spell_projectile(c.point, &live, &look.projectile);
-                        self.marked((t, &live), kills, look.animation);
-                        let line = Logged::SpellDamage {
-                            spell,
-                            hit: (t, damage, kills),
+                let line = Logged::Cast {
+                    side: s,
+                    spell,
+                    target: t,
+                    count: live.count,
+                };
+                let over = |player: &mut Self| {
+                    if let Some(number) = look.animation {
+                        player.over_one(number, (t, &live), time);
+                    }
+                };
+                done = true;
+                match look.original {
+                    DISPEL => {
+                        over(self);
+                        self.effects(effects);
+                        self.log.push((self.clock.now, line));
+                    }
+                    CURE => {
+                        self.effects(effects);
+                        over(self);
+                        self.log.push((self.clock.now, line));
+                    }
+                    DISRUPTING_RAY => {
+                        if let Some(c) = caster.filter(|_| !look.projectile.is_empty()) {
+                            self.spell_projectile(c.point, &live, &look.projectile);
+                        }
+                        // 0x5A1A8C to 0x5A1ACB: its defense lowered by the value, to 0 at least.
+                        let lowered = live.defense.min(i32::from(look.value[usize::from(s)]));
+                        if let Some(l) = self.stacks.get_mut(&t) {
+                            l.defense -= lowered.max(0);
+                        }
+                        over(self);
+                        self.effects(effects);
+                        let line = Logged::Disrupted {
+                            stack: t,
+                            lowered: lowered.max(0),
                         };
                         self.log.push((self.clock.now, line));
                     }
-                    _ if applied => {
-                        let line = Logged::Cast {
-                            side: s,
-                            spell,
-                            target: t,
-                            count: live.count,
-                        };
-                        self.log.push((self.clock.now, line));
-                        if let Some(number) = look.animation {
-                            self.over_one(number, (t, &live), time);
+                    _ => {
+                        let damage = effects.iter().find_map(|e| match *e {
+                            Event::SpellDamage {
+                                target,
+                                ref damage,
+                                kills,
+                                ..
+                            } if target == t => Some((damage.0, kills)),
+                            _ => None,
+                        });
+                        let applied = effects.iter().any(
+                            |e| matches!(*e, Event::EffectApplied { target, .. } if target == t),
+                        );
+                        match (damage, caster) {
+                            (Some((damage, kills)), Some(c)) if !look.projectile.is_empty() => {
+                                self.spell_projectile(c.point, &live, &look.projectile);
+                                self.marked((t, &live), kills, look.animation);
+                                let line = Logged::SpellDamage {
+                                    spell,
+                                    hit: (t, damage, kills),
+                                };
+                                self.log.push((self.clock.now, line));
+                            }
+                            _ if applied => {
+                                self.effects(effects);
+                                self.log.push((self.clock.now, line));
+                                over(self);
+                            }
+                            _ => done = false,
                         }
                     }
-                    _ => {}
                 }
             }
             None => {}
+        }
+        if !done {
+            self.effects(effects);
         }
         if let Some(c) = caster {
             for f in c.before..c.frames {
                 self.hero_frame(s, (casting, f), time, false);
             }
             self.hero_frame(s, (standing, 0), time, true);
+        }
+    }
+
+    /// The spells `events` start and end on stacks: each stack's active spells, and its box's
+    /// hue with the next frame drawn (E17 M3 T7b-2a, design §4.3).
+    fn effects(&mut self, events: &[Event]) {
+        for event in events {
+            self.effect(event);
+        }
+    }
+
+    /// A spell started or ended on a stack ([`Self::effects`]); any other event does nothing.
+    fn effect(&mut self, event: &Event) {
+        let (stack, spell, on) = match *event {
+            Event::EffectApplied { target, spell, .. } => (target, spell, true),
+            Event::EffectEnded { target, spell } => (target, spell, false),
+            _ => return,
+        };
+        let Some(live) = self.stacks.get_mut(&stack) else {
+            return;
+        };
+        let changed = if on {
+            live.spells.insert(spell)
+        } else {
+            live.spells.remove(&spell)
+        };
+        if changed {
+            self.retint(stack);
+        }
+    }
+
+    /// `stack`'s box takes the hue of its active spells (none: the layout's) with the next frame
+    /// drawn (`draw_battle_stack` 0x43E6AA, design §4.3; E17 M3 T7b-2a).
+    fn retint(&mut self, stack: u8) {
+        let Some(live) = self.stacks.get(&stack) else {
+            return;
+        };
+        let spells = self.stage.casts;
+        let hue = (!live.spells.is_empty()).then(|| {
+            crate::scene::spell_hue(
+                live.spells
+                    .iter()
+                    .map(|h| spells.spells.get(h).map_or(0, |l| l.sign)),
+            )
+        });
+        self.pending_tints.push((stack, hue));
+    }
+
+    /// A stack's walk time W, ms a hex (+0x158; design §7.3): its creature's, trunc(W × 0.65)
+    /// under Haste (0x444CE5), trunc(W × 1.5) under Slow (0x444D3A), as the x87 rounds the
+    /// products of the integer and the doubles (exactly these fractions: the products of W and
+    /// the doubles fall at least 0.05 from the next integer or on it).
+    fn walk_time(&self, live: &Live) -> u32 {
+        let w = live.look.times[1];
+        let has = |number: u16| {
+            live.spells.iter().any(|h| {
+                self.stage
+                    .casts
+                    .spells
+                    .get(h)
+                    .is_some_and(|l| l.original == number)
+            })
+        };
+        if has(HASTE) {
+            w * 65 / 100
+        } else if has(SLOW) {
+            w * 3 / 2
+        } else {
+            w
         }
     }
 
@@ -2239,7 +2435,7 @@ impl Player<'_> {
         let g = self.stage.groups;
         let tick = self.speed.scale(TICK);
         let n = live.look.count(g.moving);
-        let step = self.speed.ratio(live.look.times[1], n);
+        let step = self.speed.ratio(self.walk_time(&live), n);
         let start = path.first().copied().unwrap_or(live.hex);
         let end = path.last().copied().unwrap_or(live.hex);
         if live.flies {
@@ -2856,8 +3052,8 @@ fn isqrt(n: i64) -> u64 {
 /// to the next not in it (the stand), included. The viewer draws no fidgets of its own in a check
 /// (§7.2), but the stacks the mouse entered fidget as the original's do.
 #[must_use]
-pub fn unfidgeted(recorded: &str, kept: &alloc::collections::BTreeSet<String>) -> String {
-    let mut fidgeting = alloc::collections::BTreeSet::new();
+pub fn unfidgeted(recorded: &str, kept: &BTreeSet<String>) -> String {
+    let mut fidgeting = BTreeSet::new();
     let mut out = String::new();
     for line in recorded.lines() {
         let mut words = line.split(' ');

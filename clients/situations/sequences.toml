@@ -314,3 +314,31 @@ command = [
     { seat = "Defender", at = 7951, command = { Defend = {} } },
     { seat = "Attacker", at = 7951, command = { Cast = { spell = 15, target = { Stack = { stack = 4 } }, second = { None = {} } } } },
 ]
+
+# E17 M3 T7b-2a (recorded in `casts.toml`): Haste and Slow's walk time (design §7.3, §7.16) and
+# the count box's tint by its stack's spells (§4.3): Orrin hastes the Pikemen (round 1), they
+# walk two hexes hasted (round 2), Crag Hack slows them (Slow ends Haste) and they walk two hexes
+# slowed (round 3); the Vampire Lords defend.
+[[sequence]]
+id = "haste"
+scenario = "seq-haste.toml"
+hot_seat = true
+actions = [
+    "turn:1.0", "key:d", "turn:0.0", "cast:0:86", "key:d",
+    "turn:1.0", "key:d", "turn:0.0", "hex:88",
+    "turn:1.0", "cast:0:88", "key:d", "turn:0.0", "hex:90",
+]
+ms = 3000
+heroes = true
+timeline = "timelines/haste.txt"
+boxes = true
+command = [
+    { seat = "Defender", at = 0, command = { Defend = {} } },
+    { seat = "Attacker", at = 0, command = { Cast = { spell = 53, target = { Stack = { stack = 0 } }, second = { None = {} } } } },
+    { seat = "Attacker", at = 2400, command = { Defend = {} } },
+    { seat = "Defender", at = 2400, command = { Defend = {} } },
+    { seat = "Attacker", at = 2400, command = { Move = { to = 88 } } },
+    { seat = "Defender", at = 3244, command = { Cast = { spell = 54, target = { Stack = { stack = 0 } }, second = { None = {} } } } },
+    { seat = "Defender", at = 6144, command = { Defend = {} } },
+    { seat = "Attacker", at = 6144, command = { Move = { to = 90 } } },
+]

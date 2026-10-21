@@ -2528,6 +2528,7 @@ fn the_log_records_what_the_battle_writes_and_when() {
             Logged::Strike { .. } => "around",
             Logged::Wait { .. } => "wait",
             Logged::Defend { .. } => "defend",
+            Logged::Disrupted { .. } => "disrupted",
             Logged::Heal { .. } => "heal",
             Logged::Morale { good: true, .. } => "good",
             Logged::Morale { .. } => "bad",
@@ -2663,7 +2664,7 @@ fn the_originals_own_fidgets_are_left_out() {
     let recorded = "0 0.1 g2 f0 h35\n0 0.2 g1 f0 h69\n100 0.2 g1 f1 h69\n200 0.1 g1 f0 h35\n\
                     200 0.2 g2 f0 h69\n300 0.1 g1 f1 h35\n400 0.1 g2 f0 h35\n400 magic 3 f0 0.1\n\
                     500 0.1 g3 f0 h35\n";
-    let kept: alloc::collections::BTreeSet<String> = ["0.2".to_string()].into_iter().collect();
+    let kept: BTreeSet<String> = ["0.2".to_string()].into_iter().collect();
     assert_eq!(
         unfidgeted(recorded, &kept),
         "0 0.1 g2 f0 h35\n0 0.2 g1 f0 h69\n100 0.2 g1 f1 h69\n200 0.2 g2 f0 h69\n\
@@ -2767,6 +2768,9 @@ fn casts() -> Casts {
         angle,
     };
     let arrow = SpellLook {
+        original: 15,
+        sign: -1,
+        value: [0; 2],
         animation: Some(64),
         projectile: vec![
             shell(0, [123, 47], 14, 0),
@@ -2777,6 +2781,9 @@ fn casts() -> Casts {
         ],
     };
     let slow = SpellLook {
+        original: 54,
+        sign: -1,
+        value: [0; 2],
         animation: Some(19),
         projectile: Vec::new(),
     };

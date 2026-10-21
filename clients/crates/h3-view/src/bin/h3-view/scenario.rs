@@ -12,7 +12,7 @@ use h3_content_battle::BattleRuleset;
 use h3_kernel::{Rng, StreamId};
 use h3_protocol::session::Bot as _;
 use h3_protocol::session::{ConnId, GameConfig, SeatKind, Session};
-use h3_protocol::wire::{ClientMessage, Command, Observation, Seat, ServerMessage};
+use h3_protocol::wire::{ClientMessage, Command, Manifest, Observation, Seat, ServerMessage};
 use h3_protocol::{codec, map};
 
 use crate::bot::Greedy;
@@ -42,6 +42,19 @@ fn pack_texts(packs: &Path, ids: &[String]) -> Result<Vec<(String, String)>, Str
         texts.push((read(&dir.join("core.toml"))?, battle));
     }
     Ok(texts)
+}
+
+/// The ruleset a record's `manifest` names, its packs read from `packs` (E17 M3 T7b-2a: what a
+/// spell's effect is).
+pub fn ruleset(packs: &Path, manifest: &Manifest) -> Result<BattleRuleset, String> {
+    let ids: Vec<String> = manifest.packs.iter().map(|p| p.id.clone()).collect();
+    let texts = pack_texts(packs, &ids)?;
+    let refs: Vec<(&str, &str)> = texts
+        .iter()
+        .map(|(c, b)| (c.as_str(), b.as_str()))
+        .collect();
+    h3_pack_battle::compile(&refs, &manifest.profile)
+        .map_err(|e| format!("{}: {e}", packs.display()))
 }
 
 /// The battle `scenario` sets up with `seed`, its packs read from `packs`: the ruleset its packs
