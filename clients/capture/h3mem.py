@@ -34,6 +34,20 @@ MAP_SIDE, PLAYERS, PLAYER_SIZE, HEROES, HERO_COUNT, HERO_SIZE = (
 # counts), the secondary skills' levels by skill id (u8[28] +0xC9), the primary skills (i8[4]
 # +0x476, with the worn artifacts' bonuses).
 EXPERIENCE, HERO_LEVEL, ARMY, SECONDARY, PRIMARY = 0x51, 0x55, 0x91, 0xC9, 0x476
+# E08 T32b1 (batch E4; structs.toml, hero): the level seed (u8 +0x8F) and the levels a magic
+# school (i16 +0x3F) and Wisdom (u8 +0x90) were last offered at; each secondary skill's slot in
+# the hero's list (u8[28] +0xE5, 1-8 in the order learned); the worn artifacts by slot (19
+# entries +0x12D) and the backpack (64 entries +0x1D4, their number u8 +0x3D4), 8 bytes an entry:
+# the artifact's id (i32, -1 none), then its subtype (hero_give_backpack_artifact 0x4E2F90).
+SEED, SCHOOL_OFFER, WISDOM_OFFER, SLOTS = 0x8F, 0x3F, 0x90, 0xE5
+WORN, WORN_SLOTS, BACKPACK, BACKPACK_SLOTS, BACKPACK_COUNT = 0x12D, 19, 0x1D4, 64, 0x3D4
+# The artifact setup table (a pointer at 0x660B68, 0x20 bytes a record, filled from ARTRAITS.TXT
+# by 0x44CD50): the name (char* +0x0, H3API's H3ArtifactSetup).
+ARTIFACT_TABLE_POINTER, ARTIFACT_SIZE = 0x660B68, 0x20
+# The worn slots' names (h3-experiment's SLOT_NAMES: the map's order is the game's).
+ARTIFACT_SLOTS = ("head", "shoulders", "neck", "right hand", "left hand", "torso", "right ring",
+                  "left ring", "feet", "misc 1", "misc 2", "misc 3", "misc 4", "war machine 1",
+                  "war machine 2", "war machine 3", "war machine 4", "spell book", "misc 5")
 # The secondary skills by id (SSTRAITS.TXT's order; names as the packs harvest them).
 SKILLS = ("Pathfinding", "Archery", "Logistics", "Scouting", "Diplomacy", "Navigation",
           "Leadership", "Wisdom", "Mysticism", "Luck", "Ballistics", "Eagle Eye", "Necromancy",
@@ -58,6 +72,16 @@ CREATURE_TABLE_POINTER, CREATURE_SIZE = 0x6747B0, 0x74
 # holds its text as a string record at +0x30 (the characters' pointer +0x34, the length +0x38).
 WINDOW_MANAGER_POINTER, TOP_DIALOG, FIRST_ITEM, NEXT_ITEM, ITEM_ID, ITEM_TEXT = (
     0x699280, 0x54, 0x2C, 0x8, 0x10, 0x34)
+# A picture item (H3API's H3DlgDef, 0x48 bytes; its constructor 0x4EA720): the vtable 0x63EC48 at
+# +0x0, the loaded DEF (+0x30, its name at +0x4) and the frame shown (i32 +0x34, the same place
+# as a text item's characters). The level-up dialog (`level_up_dialog` 0x4F8880, E08 T32b1) shows
+# the primary skill raised as item 2009 (pskil42.def, frame 0-3: attack, defense, power,
+# knowledge) and the offered skills as items 2010 (left, or the only one) and 2011 (right),
+# secskill.def frame 3 x skill + 3 + the hero's level of it before (hero_level_up 0x4DAABD): the
+# skill and the level it would reach; an item is missing for a missing offer.
+PICTURE_VTABLE, PICTURE_DEF, PICTURE_FRAME, DEF_NAME = 0x63EC48, 0x30, 0x34, 0x4
+LEVEL_UP_PRIMARY, LEVEL_UP_LEFT, LEVEL_UP_RIGHT = 2009, 2010, 2011
+PRIMARY_SKILLS = ("attack", "defense", "power", "knowledge")
 # Player: the selected hero (i32 +0x4, -1 none), the hero count (i8 +0x1) and the heroes (i32[8]
 # +0x8, the hero list's order), the resources (i32[7] +0x9C).
 RESOURCES = ("wood", "mercury", "ore", "sulfur", "crystal", "gems", "gold")
@@ -73,6 +97,13 @@ COMBAT_SPEED = 0x6987EC  # the setting, 0 to 2 (factors 0x63CF7C)
 # Battle manager: records per side +0x54BC, the stacks from +0x54CC (21 per side, 0x6EE8 apart,
 # 0x548 each), the idle step's counter +0x13FFC.
 SIDE_COUNTS, STACKS, SIDE_STRIDE, STACK_SIZE, STEP_COUNTER = 0x54BC, 0x54CC, 0x6EE8, 0x548, 0x13FFC
+# The battlefield (E08 T32b1; structs.toml, battle_manager): the terrain (i32 +0x5394, set by
+# 0x4643B0) and the special field (i32 +0x53C0, -1 none).
+BATTLE_TERRAIN, SPECIAL_FIELD = 0x5394, 0x53C0
+TERRAINS = ("dirt", "sand", "grass", "snow", "swamp", "rough", "subterranean", "lava", "water",
+            "rock")
+SPECIAL_FIELDS = ("shore", "Magic Plains", "Cursed Ground", "Holy Ground", "Evil Fog",
+                  "Clover Field", "Lucid Pools", "Fiery Fields", "Rocklands", "Magic Clouds")
 # The heroes (E17 M3 T3a, design §4.5, §7.14): each side's hero (a pointer, 0: none) +0x53CC, its
 # DEF group +0x53E4 and frame +0x53EC, its flag's frame +0x5414 (i32 per side).
 HERO_POINTERS, HERO_GROUPS, HERO_FRAMES, FLAG_FRAMES = 0x53CC, 0x53E4, 0x53EC, 0x5414
@@ -242,6 +273,17 @@ class Mem:
                 "retreated": side(self.read(manager + RETREATED, 2)),
                 "surrendered": side(self.read(manager + SURRENDERED, 2))}
 
+    def battlefield(self):
+        """The battle's terrain and special field by name (E08 T32b1; the special field None for
+        none); None outside a battle."""
+        manager = self.manager()
+        if not manager:
+            return None
+        terrain, special = self.i32(manager + BATTLE_TERRAIN), self.i32(manager + SPECIAL_FIELD)
+        return {"terrain": TERRAINS[terrain] if 0 <= terrain < len(TERRAINS) else str(terrain),
+                "special": (SPECIAL_FIELDS[special] if 0 <= special < len(SPECIAL_FIELDS)
+                            else None if special < 0 else str(special))}
+
     def battle_heroes(self):
         """Each side's hero as drawn (E17 M3 T3a): side, DEF group, frame and the flag's frame;
         a side without a hero is left out; [] outside a battle."""
@@ -295,10 +337,13 @@ class Mem:
         }
 
     def hero(self, index):
-        raw = self.read(self.game() + HEROES + HERO_SIZE * index, PRIMARY + 4)
+        raw = self.read(self.game() + HEROES + HERO_SIZE * index, HERO_SIZE)
         x, y, level = struct.unpack_from("<3h", raw, 0)
         types = struct.unpack_from("<7i", raw, ARMY)
         counts = struct.unpack_from("<7i", raw, ARMY + 28)
+        levels, slots = raw[SECONDARY:SECONDARY + 28], raw[SLOTS:SLOTS + 28]
+        worn = struct.unpack_from(f"<{2 * WORN_SLOTS}i", raw, WORN)[::2]
+        packed = struct.unpack_from(f"<{2 * BACKPACK_SLOTS}i", raw, BACKPACK)[::2]
         return {
             "index": index,
             "name": raw[0x23:0x30].split(b"\0")[0].decode("latin-1"),
@@ -309,9 +354,62 @@ class Mem:
             "experience": struct.unpack_from("<I", raw, EXPERIENCE)[0],
             "hero_level": struct.unpack_from("<H", raw, HERO_LEVEL)[0],
             "army": [[t, c] for t, c in zip(types, counts) if t >= 0],
-            "skills": {SKILLS[i]: v for i, v in enumerate(raw[SECONDARY:SECONDARY + 28]) if v},
+            "skills": {SKILLS[i]: v for i, v in enumerate(levels) if v},
+            # E08 T32b1: the skills in the hero's list (by slot), the seed and offer counters, the
+            # artifacts (worn: {slot name: id}; the backpack's ids in its order).
+            "skill_order": [[SKILLS[i], levels[i]]
+                            for i in sorted((i for i in range(28) if levels[i]),
+                                            key=lambda i: (slots[i], i))],
+            "seed": raw[SEED],
+            "wisdom_offer": raw[WISDOM_OFFER],
+            "school_offer": struct.unpack_from("<h", raw, SCHOOL_OFFER)[0],
+            "worn": {ARTIFACT_SLOTS[s]: a for s, a in enumerate(worn) if a >= 0},
+            "backpack": [a for a in packed if a >= 0],
+            "backpack_count": raw[BACKPACK_COUNT],
             "primary": list(struct.unpack_from("<4b", raw, PRIMARY)),
         }
+
+    def artifact_name(self, artifact):
+        """An artifact's name from the game's artifact setup table (E08 T32b1)."""
+        record = self.u32(ARTIFACT_TABLE_POINTER) + ARTIFACT_SIZE * artifact
+        return self.c_string(self.u32(record), 64)
+
+    def dialog_items(self):
+        """The topmost dialog's items (E08 T32b1): id, vtable and the i32 at +0x34 (a picture's
+        frame); [] for none."""
+        dialog = self.u32(self.u32(WINDOW_MANAGER_POINTER) + TOP_DIALOG)
+        items, item, seen = [], self.u32(dialog + FIRST_ITEM) if dialog else 0, set()
+        while item and item not in seen and len(seen) < 256:
+            seen.add(item)
+            raw = self.read(item, PICTURE_FRAME + 4)
+            items.append({"at": item, "id": struct.unpack_from("<H", raw, ITEM_ID)[0],
+                          "vtable": struct.unpack_from("<I", raw, 0)[0],
+                          "def": struct.unpack_from("<I", raw, PICTURE_DEF)[0],
+                          "frame": struct.unpack_from("<i", raw, PICTURE_FRAME)[0]})
+            item = struct.unpack_from("<I", raw, NEXT_ITEM)[0]
+        return items
+
+    def level_up_dialog(self):
+        """The level-up dialog on top (E08 T32b1), None if another or none shows: the primary
+        skill raised (its name) and the offers left (or the only one) and right, each
+        [skill name, the level it would reach (1 basic to 3 expert)] or None."""
+        pictures = {i["id"]: i for i in self.dialog_items() if i["vtable"] == PICTURE_VTABLE}
+        primary = pictures.get(LEVEL_UP_PRIMARY)
+        if primary is None or not primary["def"]:
+            return None
+        if self.c_string(primary["def"] + DEF_NAME, 13).lower() != "pskil42.def":
+            return None
+
+        def offer(item_id):
+            item = pictures.get(item_id)
+            if item is None or item["frame"] < 3:
+                return None
+            skill, level = divmod(item["frame"] - 3, 3)
+            return [SKILLS[skill], level + 1] if skill < len(SKILLS) else None
+
+        frame = primary["frame"]
+        return {"primary": PRIMARY_SKILLS[frame] if 0 <= frame < 4 else str(frame),
+                "left": offer(LEVEL_UP_LEFT), "right": offer(LEVEL_UP_RIGHT)}
 
     def heroes(self):
         """Every hero a player owns."""
