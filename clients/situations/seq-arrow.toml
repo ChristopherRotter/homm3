@@ -1,0 +1,65 @@
+# E17 M3 T7a-2b: Magic Arrow from the hero's cast point (casts.toml's `arrow`; design §7.16,
+# player 7, the projectile, then player 2 over the marked target). Orrin's cast point is (49, 48)
+# on the screen (CH00's (92, 67) less (43, 19)), above the battlefield: the reading picks the
+# projectile's DEF by atan(dy / |dx|) with y down, so every target below takes the first (0°);
+# VCMI by the flight's angle. Hot seat. Round 1: the Archangel (speed 18, row 4) flies to row 10,
+# column 3, near Orrin; the Swordsmen (rows 0, 6, 10 at column 15: hexes 15, 117, 185) and the
+# Pikemen defend, Orrin casts at the Swordsmen at row 0 (nearly level). Round 2 at the Archangel
+# (steep), round 3 at the Swordsmen at row 10 (about 35°). On grass at the capture set's tile.
+
+[scenario]
+id = "sequence-arrow"
+# Both players human, as the original's hot-seat map (`h3-view situation --hot-seat`).
+human = ["attacker", "defender"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:pikeman"
+count = 10
+
+[[defender]]
+slot = 0
+creature = "base:swordsman"
+count = 20
+
+[[defender]]
+slot = 1
+creature = "base:archangel"
+count = 1
+
+[[defender]]
+slot = 2
+creature = "base:swordsman"
+count = 20
+
+[[defender]]
+slot = 3
+creature = "base:swordsman"
+count = 20
+
+# The heroes (E17 M3 T3a) with 1 in every primary skill but Orrin's knowledge: 20 spell points,
+# four casts of Magic Arrow (5 each).
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 2
+mana = 20
+max_mana = 20
+spell_book = ["base:magic_arrow"]
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1

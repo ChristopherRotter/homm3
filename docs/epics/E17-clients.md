@@ -1,11 +1,11 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b, T8 done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
 [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
-are there). Next: M3 T7a-2b–T8 (`docs/lanes/client/QUEUE.md`).
+are there). Next: M3 T7b, T7c (`docs/lanes/client/QUEUE.md`).
 
 ## Goal
 
@@ -400,6 +400,20 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   recordings T7a-2b). The spell book read; the scenarios' heroes carry books; `cast:` in the
   harness and the viewer; two proofs recorded (`situations/casts.toml`): a hero's cast as read,
   a Faerie Dragon's group by its own angle confirmed (review list).
+- **T7a-2b done 2026-10-21** ([log](E17-log.md#m3-t7a-2b--the-magic-animations-recorded-2026-10-21),
+  [design §7.16](E17-design.md)): every player of §7.16 recorded (seven sequences in
+  `casts.toml`, `dragon` again with its screens: the harness's `screens`, the box where the screen
+  changed). The times read held; corrected by the recordings: Chain Lightning's 38 and Fire
+  Shield's 11 drawn over marked stacks, the projectile's DEF by the opposite angle, a mass
+  reaction's hit running on into standing. Confirmed: a mass animation's last frame never shown,
+  Animate Dead's 50, the Liches' plain cloud; new: Chain Lightning's 37 never on the screen, a
+  Fire Wall's second hex placed at the first's (review list).
+- **T8 done 2026-10-21** ([log](E17-log.md#m3-t8--the-battles-end-tune-2026-10-21),
+  [design §8.2](E17-design.md)): the battle's end read (the result's window picks one of six
+  tunes by the side shown, the outcome and a town; played once, the effects ended, when the next
+  turn would start) and recorded (`end`: decided at 3 730 ms, the viewer's timeline as recorded);
+  the window plays the tune; the start sound and the heal at their loader's volume, 127. The
+  volume settings and a track resuming wait for the client's options (later).
 
 ### The adventure lane's harness (H1, H2: its batch E3)
 
@@ -468,6 +482,24 @@ Accepted by the user (M1 2026-10-13, M2 2026-10-14); moved to the log,
 ## M3 review list
 
 (Filled by the tasks: choices queued for the milestone review under the autonomy contract.)
+
+- T8: the end's tune by the snapshot's human sides (the original's "human here"; a record of two
+  computers shows the loser's side, as the original would), no town until sieges are drawn
+  (*provisional*); Home after the end brings the battle's music back (the viewer's control). The
+  result's window and the darkened screen are not drawn: `end`'s last frame differs by them (its
+  frame counts), listed for a later task (QUEUE's inbox). The harness: `<ms> end` from the
+  manager's +0x132F8.
+
+- T7a-2b: **confirmed or found by recording** (design §7.16, "Recorded"), each the original's
+  drawing to copy (`faithful`) or fix (`fixed`)? A mass animation (Slow at Expert, Death Ripple)
+  never shows its last frame and shows the one before twice; Chain Lightning's opening bolt (37)
+  is drawn but never on the screen; a Fire Wall's two placement animations play at the target
+  hex's place (the second hex's too; T7c's frame check to confirm); a mass reaction's hit runs on
+  through the standing group and stays on its last frame. Kept as read: Animate Dead plays
+  Resurrection's 50, the Liches' cloud is drawn plain (the table's translucency ignored). The
+  harness: `screens` (`<ms> screen x0,y0,x1,y1`, numbers only), a stalled `turn:` writes its
+  states first; `situation` writes school skills from a scenario's `masteries`
+  (`school_skills`: the first school of a several-school spell, *provisional*).
 
 - T7a-2a: T7a-2 split (the user, 2026-10-21: the harness first, T7a-2a; the other recordings
   T7a-2b). **Confirmed by recording** (design §7.16): a creature caster's group by its own angle,

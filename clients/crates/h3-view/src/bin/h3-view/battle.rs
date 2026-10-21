@@ -20,6 +20,7 @@ use h3_view::mouse::track::{Input, Shown};
 use h3_view::record::{self, Record};
 use h3_view::scene::Panels;
 use h3_view::scene::{self, Draw, Moment};
+use h3_view::sound::Tune;
 use h3_view::tables::{Sounds, Tables};
 
 use crate::gate::timed;
@@ -324,6 +325,17 @@ impl Battle {
                 Some((s.id, creature.sounds.clone()))
             })
             .collect()
+    }
+
+    /// When the battle is decided and the tune its end plays then (E17 M3 T8, design §8.2): the
+    /// result's window shows the human side's view by the snapshot's `human`; the battle is at no
+    /// town (*provisional*: sieges are not drawn yet).
+    pub fn end_tune(&self) -> Option<(u32, Tune)> {
+        let (at, outcome) = self.timeline.ended?;
+        let human = self.record.first_snapshot().map_or([false; 2], |s| {
+            [0, 1].map(|i| s.sides.get(i).is_some_and(|d| d.human))
+        });
+        Some((at, h3_view::sound::end_tune(outcome, human, false)))
     }
 
     /// The frame's size, as the layout gives it.

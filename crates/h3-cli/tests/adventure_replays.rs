@@ -6,58 +6,60 @@
 //! `h3 adventure run … --record` when a rule or an encoding changes on purpose; the commit says
 //! why), recorded with `--map fixtures/maps/e08-duel-36.h3m` and the options below. Since E08
 //! T20b3b2 the duel holds increment 3's monsters, guarded piles and special grounds, a monster and
-//! a guarded pile beside each hero, so random play meets them in every game; what each replay
-//! meets (from the E04c T10b recording):
+//! a guarded pile beside each hero, so random play meets them in every game, and since E08 T31 its
+//! heroes' custom experience brings their first battles to a level-up; what each replay meets
+//! (from the E08 T31 recording):
 //!
-//! - `duel-s1-d28` (`--seed 1 --agent-seed 1 --days 28`): a key; twice a declined offer to join,
-//!   then the flight pursued and its battle won.
+//! - `duel-s1-d28` (`--seed 1 --agent-seed 1 --days 28`): a key; twice a declined offer to join
+//!   and an accepted one (the group joins), two flights pursued and their battles won, a level-up
+//!   answered with the second offer.
 //! - `duel-s2-d7` (`--seed 2 --agent-seed 3 --days 7`): a Cartographer's offer accepted, a
-//!   monster's battle won.
+//!   monster's battle won and its level-up answered with the second offer.
 //! - `duel-s5-strict-d7` (`--seed 5 --agent-seed 8 --days 7 --profile base:strict-fixed`): in
-//!   strict-fixed (the split and the obstacles from the stream) a monster's battle won, two
-//!   pursuits won (one after a declined join), a guarded pile fought at once and picked up, a key.
-//! - `duel-s3-easy-d7` (`--seed 3 --agent-seed 4 --days 7 --difficulty 0`): a monster's battle won
-//!   at the easy difficulty (E08 T14b: the replay's difficulty, which `verify` plays at).
-//! - `duel-s1279-d28` (`--seed 1279 --agent-seed 1279 --days 28`): two monsters' battles won, a
-//!   declined join and a declined flight (the monster leaves), a hero battle won with a capture.
-//! - `duel-s810-d28` (`--seed 810 --agent-seed 810 --days 28`): a key, three monsters' battles
-//!   won, a group joining, a border guard's passage accepted (the guard removed).
-//! - `duel-s328-d28` (`--seed 328 --agent-seed 328 --days 28`): a Cartographer accepted, a group
-//!   joining, a key, a pile's guards beating the visitor (their survivors stay, the hero leaves
-//!   the map), a pursuit won.
-//! - `duel-s1122-d28` (`--seed 1122 --agent-seed 1122 --days 28`): a monster's battle lost, a
-//!   declined join and a declined flight (the monster leaves), a group joining, a pile's question
-//!   accepted and its guards beaten.
-//! - `duel-s307-strict-d28` (`--seed 307 --agent-seed 307 --days 28 --profile
-//!   base:strict-fixed`): a guarded pile fought at once and picked up, a Cartographer accepted,
-//!   monsters' battles won, a hero battle lost in strict-fixed, the winner capturing.
+//!   strict-fixed (the split, the obstacles and the levels from the streams) a key and two declined
+//!   flights (the monsters leave); no battle.
+//! - `duel-s3-easy-d7` (`--seed 3 --agent-seed 4 --days 7 --difficulty 0`): at the easy difficulty
+//!   (E08 T14b: the replay's difficulty, which `verify` plays at) an offer to join for gold
+//!   accepted, the group joining.
+//! - `duel-s767-d28` (`--seed 767 --agent-seed 767 --days 28`): a hero battle won with a capture,
+//!   four monsters' battles won, a guarded pile fought at once and picked up, a key, four
+//!   level-ups answered with both offers.
+//! - `duel-s2626-d28` (`--seed 2626 --agent-seed 2626 --days 28`): a border guard's passage
+//!   accepted with its key (the guard removed), a declined join and a group joining, a declined
+//!   flight (the monster leaves) and a pursuit won, a pile fought at once and picked up, two
+//!   level-ups answered with the second offer.
+//! - `duel-s236-d28` (`--seed 236 --agent-seed 236 --days 28`): a Cartographer accepted, a group
+//!   joining, a pile's question declined, another pile's guards beating the visitor (their
+//!   survivors stay, the hero leaves the map), a pursuit won, level-ups answered with each offer.
+//! - `duel-s12-d28` (`--seed 12 --agent-seed 12 --days 28`): a monster's battle lost, a declined
+//!   join and a declined flight, a group joining, a pursuit won, a Cartographer declined, a pile's
+//!   question accepted and its guards beaten, a key, level-ups answered with each offer.
+//! - `duel-s929-strict-d28` (`--seed 929 --agent-seed 929 --days 28 --profile
+//!   base:strict-fixed`): in strict-fixed a Cartographer accepted, a group joining, a pursuit won,
+//!   monsters' battles won and one lost, a hero battle lost, the winner capturing, three level-ups
+//!   answered with each offer.
 //!
-//! The last five came from a search over seeds (`--seed N --agent-seed N --days 28` for N up to
-//! 1 500, `strict-fixed` up to 800; E08 T20b3b2, again E04c T10b): of the 1 500 faithful games of
-//! E04c T10b 11 have a hero battle (one with a capture), 1 a guard's passage, 62 a pile's guards
-//! beating the visitor; of the 800 strict-fixed ones 6 a hero battle (two with a capture).
+//! In every one red's underground hero gains levels 2 to 4 at load (E08 T31: the duel's custom
+//! experience, `fixtures/maps/README.md`; from its level seed in faithful, from the setup stream in
+//! strict-fixed). The last five came from a search over seeds (E08 T31: `--seed N --agent-seed N
+//! --days 28` for N up to 5 000 in each profile, with a scratch probe replaying each game's
+//! commands and noting its offers, answers, battles and their ends and its levels, not committed):
+//! of the 5 000 faithful games 32 have a hero battle (5 with a capture), 11 a guard's passage, 139
+//! a pile's guards beating the visitor, 4 725 a level in play and 2 311 answers with both offers;
+//! of the strict-fixed ones 34 a hero battle (8 with a capture). Each stands for one of the five
+//! it replaced (`duel-s1279-d28`, `duel-s810-d28`, `duel-s328-d28`, `duel-s1122-d28`,
+//! `duel-s307-strict-d28`, E04c T10b's) with the closest game: `duel-s767-d28` lacks the declined
+//! join and flight of the hero battle's, `duel-s236-d28` the key, `duel-s929-strict-d28` the pile
+//! fought at once (none of the five strict-fixed games with a lost hero battle and a capture has
+//! one); `duel-s2626-d28` was taken over `duel-s2348-d28`, which has the whole of the passage's
+//! set, for its declined join and flight.
 //! History: E08 T16a re-recorded the first four when the duel got increment 2's objects and added
-//! two searched ones (a Cartographer's offer, a key and a guard's passage; a declined and an
-//! accepted offer), E08 T19b1 two with hero battles (format v3), and every later version bump
-//! (T20a1, T20a2a, T20b1, `shared/e08-t20b2`, E04c T9, T21a) re-recorded them all with their
-//! options, their commands unchanged. E08 T20b3b2 changed the duel, so every command changed: the
-//! first four were re-recorded with their options and the four searched ones (`duel-s892-d28`,
-//! `duel-s988-d28`, `duel-s792-d28`, `duel-s120-strict-d28`), which no longer met what they were
-//! chosen for, were replaced by five (`duel-s535-d28`, `duel-s1218-d28`, `duel-s6-d28`,
-//! `duel-s1429-d28`, `duel-s100-strict-d28`). E04c T10b re-recorded them for the original's
-//! obstacle placement and draw (BAT-Q50 (1), `cross-lane`): the obstacles of every battle changed,
-//! so its commands did; the first four kept their options, and the five searched ones, which no
-//! longer met what they were chosen for, were replaced by the five above, the closest where no game
-//! met the whole set: `duel-s1279-d28` (the one faithful game with a capture) lacks the
-//! Cartographer, the pile fought at once and the declined question, `duel-s810-d28` (the one with a
-//! passage) the pursuit and the declined question, `duel-s328-d28` the accepted question
-//! (`duel-s1122-d28` has it), `duel-s1122-d28` the declined Cartographer; no replay now declines a
-//! pile's question or a Cartographer. E08 T29 re-recorded them all with their options for the game
-//! state hash v10, the adventure part v9 and the import v8, their commands unchanged (the level
-//! seeds are the setup stream's last draws, and the duel's heroes have no custom experience). E08
-//! T30 re-recorded them for the game state hash v11 and the replay format v5, their commands
-//! unchanged: no battle of theirs reaches a level (the highest experience any of their heroes ends
-//! with is 788), so none answers a level-up yet (E08 T31).
+//! two searched ones, E08 T19b1 two with hero battles (format v3); every version bump since (T20a1,
+//! T20a2a, T20b1, `shared/e08-t20b2`, E04c T9, T21a, T29, T30) re-recorded them all with their
+//! options, their commands unchanged; a change of the duel changes every command: E08 T20b3b2
+//! (monsters, guarded piles, grounds), E04c T10b (the original's obstacles, `cross-lane`) and E08
+//! T31 (the heroes' experience) re-recorded the first four with their options and replaced the
+//! searched ones, which no longer met what they were chosen for.
 
 use std::path::PathBuf;
 

@@ -10,7 +10,8 @@ use std::path::PathBuf;
 
 use super::gzip_with;
 use super::play::{
-    BLOCKERS, FAITHFUL, GROUND_OBJECTS, GUARDED, KINDS, MONSTER_OBJECTS, Plan, Spot, lay_out, masks,
+    BLOCKERS, FAITHFUL, GROUND_OBJECTS, GUARDED, KINDS, MONSTER_OBJECTS, Plan, Spot, experienced,
+    masks,
 };
 use crate::model::Version;
 use crate::{Limits, import, read};
@@ -435,8 +436,9 @@ fn encounters(placer: &mut Placer<'_>, mix: &mut Mix, heroes: &[Spot], scale: us
 
 /// `e08-duel-36.h3m`: decision 11's random-play map. SoD, 36 × 36 with an underground, red and
 /// blue with two heroes each (one on each level, red's in the west, blue's in the east; their
-/// types' starting armies), [`patchwork`] terrain, 72 blockers, then (E08 T16a) increment 2's 66
-/// typed objects ([`objects`], a guard and a gate on each road).
+/// types' starting armies; since E08 T31 [`DUEL_EXPERIENCE`]), [`patchwork`] terrain, 72
+/// blockers, then (E08 T16a) increment 2's 66 typed objects ([`objects`], a guard and a gate on
+/// each road).
 fn duel() -> Plan {
     let mut mix = Mix(36);
     let (tiles, mut blockers) = patchwork(36, &mut mix, 72);
@@ -461,7 +463,8 @@ fn duel() -> Plan {
 
 /// `e08-xl-144.h3m`: decision 11's pathfinding and fork map (E08 T9b). SoD, 144 × 144 with an
 /// underground (the largest map, 41 472 tiles), red and blue with four heroes each (two on each
-/// level, red's in the west, blue's in the east), [`patchwork`] terrain, 1 152 blockers (the
+/// level, red's in the west, blue's in the east; since E08 T31 [`XL_EXPERIENCE`]), [`patchwork`]
+/// terrain, 1 152 blockers (the
 /// duel's density), then (E08 T16a) 1 056 typed objects (the duel's density: [`objects`] 16 times
 /// the duel's, four guards and four gates on each road).
 fn xl() -> Plan {
@@ -495,17 +498,27 @@ fn xl() -> Plan {
     }
 }
 
-/// A committed generated map: its file name and plan.
-type Fixture = (&'static str, fn() -> Plan);
+/// The duel's heroes' custom experience, in the map's order (E08 T31, design §14): each a little
+/// below the threshold of level 2 (1 000), so that its first battle gives it a level-up, but red's
+/// underground hero's, 4 570: levels 2 to 4 at load (GAM-SET-002), 30 below level 5.
+const DUEL_EXPERIENCE: [u32; 4] = [970, 950, 4_570, 930];
+/// The XL map's heroes' (E08 T31): the duel's, then each a little below level 2 again.
+const XL_EXPERIENCE: [u32; 8] = [970, 950, 4_570, 930, 980, 940, 960, 920];
+
+/// A committed generated map: its file name, plan and its heroes' custom experience (E08 T31).
+type Fixture = (&'static str, fn() -> Plan, &'static [u32]);
 
 /// The committed generated maps.
-const FIXTURES: [Fixture; 2] = [("e08-duel-36.h3m", duel), ("e08-xl-144.h3m", xl)];
+const FIXTURES: [Fixture; 2] = [
+    ("e08-duel-36.h3m", duel, &DUEL_EXPERIENCE),
+    ("e08-xl-144.h3m", xl, &XL_EXPERIENCE),
+];
 
 #[test]
 fn generated_maps_are_committed_as_generated() {
     let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/maps");
-    for (name, plan) in FIXTURES {
-        let m = lay_out(&plan());
+    for (name, plan, experience) in FIXTURES {
+        let m = experienced(&plan(), Some(experience));
         let path = dir.join(name);
         if std::env::var_os("H3_WRITE_FIXTURES").is_some() {
             std::fs::create_dir_all(&dir).unwrap();
@@ -519,5 +532,10 @@ fn generated_maps_are_committed_as_generated() {
         );
         let setup = import(&read, &FAITHFUL).unwrap();
         assert_eq!(setup.heroes.len(), plan().heroes.len(), "{name}");
+        let custom: Vec<_> = setup.heroes.iter().map(|h| h.details.experience).collect();
+        assert_eq!(
+            custom,
+            experience.iter().copied().map(Some).collect::<Vec<_>>()
+        );
     }
 }

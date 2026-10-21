@@ -1,0 +1,57 @@
+# E17 M3 T8: the battle's end, in hot seat (`hot_seat` in sequences.toml: the harness plays both
+# sides). `strike`'s battle without the defender's Goblins: the Archangel (speed 18, the first
+# turn) flies to the Pikemen and kills all ten with its fixed damage (100 against their 100 hit
+# points, as in `strike`), which leaves the defender without stacks: the battle is decided as the
+# strike ends (`battle_winner` 0x4762F0, `battle_end` 0x477470), the screen darkens and the
+# result's window opens with its tune (design §8.2, "The battle's end"). On grass at the capture
+# set's tile (grass.toml's obstacles).
+
+[scenario]
+id = "sequence-end"
+# Both players human, as the original's hot-seat map (`h3-view situation --hot-seat`): the
+# panel's buttons lit on either side's turn (E17 M3 T6a).
+human = ["attacker", "defender"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:archangel"
+count = 1
+
+[[attacker]]
+slot = 2
+creature = "base:goblin"
+count = 10
+
+[[attacker]]
+slot = 4
+creature = "base:gnoll"
+count = 10
+
+[[defender]]
+slot = 0
+creature = "base:pikeman"
+count = 10
+
+# The heroes (E17 M3 T3a), as the original's map gets them (`h3-view situation`): Orrin, a
+# Knight, with 1 in every primary skill, and Crag Hack, a Barbarian, with defense 6.
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 6
+power = 1
+knowledge = 1

@@ -1,0 +1,51 @@
+# E17 M3 T7a-2b: two creatures' animations (casts.toml's `creatures`; design §7.16): Fire Shield's
+# return damage (11, never drawn: no stack marked, only the reactions, the candidate) and the
+# Power Liches' cloud (Death Cloud's 72 after their projectile, drawn plain though the table marks
+# it translucent, the candidate). Hot seat. Round 1: the Archangels (speed 18) strike the Efreet
+# Sultans (row 2, column 15; their own Fire Shield) from hex 31 above them (a click on the
+# Sultans' hex), the Sultans defend, the Power Liches (row 8) shoot the Archangels. On grass at
+# the capture set's tile.
+
+[scenario]
+id = "sequence-creatures"
+# Both players human, as the original's hot-seat map (`h3-view situation --hot-seat`).
+human = ["attacker", "defender"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:archangel"
+count = 2
+
+[[defender]]
+slot = 0
+creature = "base:efreet_sultan"
+count = 5
+
+[[defender]]
+slot = 1
+creature = "base:power_lich"
+count = 5
+
+# The heroes (E17 M3 T3a): Orrin, a Knight, and Crag Hack, a Barbarian, each with 1 in every
+# primary skill.
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1

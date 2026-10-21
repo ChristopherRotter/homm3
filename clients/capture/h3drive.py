@@ -29,7 +29,7 @@ xdd.dll (xdd.c: freeze, step, run), so that every frame is taken at an exact gam
                                             after the opening, default 0)
 
   h3drive.py sequence <map.h3m> <out-dir> [--pre <ms>] [--action <a>]... [--ms <n>] [--screen]
-                    [--hot-seat] [--heroes]
+                    [--hot-seat] [--heroes] [--screens]
                                             a sequence frame by frame (M2 T3): the opening, the
                                             clock stepped <pre> ms, the actions at the frozen
                                             clock (hex:<n> clicks a hex, click:x,y, move:x,y,
@@ -47,7 +47,10 @@ xdd.dll (xdd.c: freeze, step, run), so that every frame is taken at an exact gam
                                             <out>/timeline.txt; --hot-seat starts the map in hot
                                             seat (both sides played by the actions, M3 T1a);
                                             --heroes adds the heroes' changes to the timeline
-                                            (a hero's cast, M3 T7a-2a)
+                                            (a hero's cast, M3 T7a-2a); --screens the screen's
+                                            changes (where the screen differs from the step
+                                            before: the magic animations memory does not show,
+                                            M3 T7a-2b)
   h3drive.py sequences [<sequences.toml>] [--out <dir>] [--only <id>]
                                             the recorded sequences (default
                                             clients/situations/sequences.toml) unattended: each
@@ -553,15 +556,35 @@ def act(game, action):
         raise ValueError(f"unknown action `{action}`")
 
 
+def union(a, b):
+    """The smallest box `[x0, y0, x1, y1]` (x1, y1 exclusive) holding boxes a and b (None: none)."""
+    if a is None or b is None:
+        return a or b
+    return [min(a[0], b[0]), min(a[1], b[1]), max(a[2], b[2]), max(a[3], b[3])]
+
+
+def changed_box(before, after):
+    """The box of the pixels that differ between two screens (None: none)."""
+    ys, xs = np.nonzero(before != after)
+    if len(xs) == 0:
+        return None
+    return [int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1]
+
+
 def timeline(states, heroes=False):
     """The changes of the stacks' group, frame and hex: lines `<ms> <side>.<record> g<group>
     f<frame> h<hex>`, the first state of each stack at the sequence's start; after a time's
     stacks, a change of the magic animation drawn (M3 T3b, design §7.15): `<ms> magic <number>
     f<frame> <side>.<record>...` over the stacks that show it, `<ms> magic -` once none does.
     With `heroes` (M3 T7a-2a: a hero's cast, design §7.16) before the magic line each change of
-    a hero's group or frame, `<ms> hero <side> g<group> f<frame>`."""
-    lines, last, magic = [], {}, None
+    a hero's group or frame, `<ms> hero <side> g<group> f<frame>`. A state read with the screen's
+    changes (`screens`, M3 T7a-2b) ends its time with `<ms> screen <x0>,<y0>,<x1>,<y1>`, the box
+    of the pixels that differ from the step before (x1, y1 exclusive): what memory does not show
+    (the at-hex and Armageddon players, the projectiles, design §7.16), numbers only. Before it,
+    `<ms> end` once the battle is decided (M3 T8, design §8.2: the result's tune starts then)."""
+    lines, last, magic, box, ended = [], {}, None, None, False
     for i, state in enumerate(states):
+        box = union(box, state.get("changed"))
         if i + 1 < len(states) and states[i + 1]["t"] == state["t"]:
             continue  # a later state at the same time (actions between them) shows instead
         for st in state["stacks"]:
@@ -584,11 +607,17 @@ def timeline(states, heroes=False):
         if line != magic:
             lines.append(f"{state['t']} {line}")
             magic = line
+        if state["clocks"].get("decided") and not ended:
+            lines.append(f"{state['t']} end")
+            ended = True
+        if box is not None:
+            lines.append(f"{state['t']} screen " + ",".join(map(str, box)))
+            box = None
     return lines
 
 
 def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, frames=False,
-             hot_seat=False, heroes=False):
+             hot_seat=False, heroes=False, screens=False):
     """The battle of the map: its opening, `pre` ms on, the actions, then `ms` steps of 1 ms,
     each followed by the game's state (h3mem); returns the states (times in ms after the
     opening, the clocks relative to it). An action `at:<ms>` (M3 T1a) steps 1 ms at a time, each
@@ -599,7 +628,9 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
     kept: `<out>/frames/t<ms>.npz` (the whole screen, 5-6-5), its first time and its state in
     `<out>/frames.jsonl`. A screen is distinct by its battlefield and, since M3 T6b, its panel
     (the log's lines and the buttons change there alone), since M3 T6c-2 its cursor too (the
-    viewer draws it). With `heroes` (M3 T7a-2a) the timeline has the heroes' changes too."""
+    viewer draws it). With `heroes` (M3 T7a-2a) the timeline has the heroes' changes too; with
+    `screens` (M3 T7a-2b) each state the box where the screen changed since the step before
+    (`changed`), which the timeline lists."""
     import hashlib
     import json
 
@@ -622,7 +653,7 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
     if frames:
         shutil.rmtree(kept, ignore_errors=True)
         kept.mkdir(parents=True)
-    last = [None]
+    last, before = [None], [None]
 
     def state(t):
         clocks = mem.globals()
@@ -633,9 +664,12 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
         s["log"] = mem.battle_log()
         if s["log"] is not None:
             s["log"]["at"] -= t0
-        if screen or frames:
+        if screen or frames or screens:
             pix = game.settled()
             s["screen"] = hashlib.sha1(pix.tobytes()).hexdigest()[:12]
+            if screens:
+                s["changed"] = None if before[0] is None else changed_box(before[0], pix)
+                before[0] = pix
             if frames and s["screen"] != last[0]:
                 name = f"t{t - t0:05d}.npz"
                 if (kept / name).exists():  # the actions changed it at the same time
@@ -650,7 +684,7 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
         # time (its draw read a step late, the runbook's "Traps"); 500 cost about 3 ms a step.
         return game.clock("step 1", settle_reads=500)
 
-    states, turns = [state(now)], []
+    states, turns, stalled = [state(now)], [], None
     for a in actions:
         kind, _, arg = a.partition(":")
         if kind in ("at", "turn"):
@@ -662,17 +696,21 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
             while (states[-1]["clocks"]["active"] != whose if whose
                    else now - t0 < int(arg)):
                 if whose and now - since > TURN_LIMIT:  # M3 T7a-2a: another stack waits
-                    raise RuntimeError(f"`{a}`: no such turn in {TURN_LIMIT} ms; the active "
-                                       f"stack {states[-1]['clocks']['active']}")
+                    stalled = (f"`{a}`: no such turn in {TURN_LIMIT} ms; the active stack "
+                               f"{states[-1]['clocks']['active']}")
+                    break
                 now = step()
                 states.append(state(now))
+            if stalled:
+                break
             turns.append(now - t0)
         else:
             act(game, a)
-    states.append(state(now))
-    for _ in range(ms):
-        now = step()
+    if not stalled:
         states.append(state(now))
+        for _ in range(ms):
+            now = step()
+            states.append(state(now))
     if frames:
         with open(Path(out) / "frames.jsonl", "w") as f:
             for s in states:
@@ -684,12 +722,14 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
             f.write(json.dumps(s) + "\n")
     (out / "timeline.txt").write_text("\n".join(timeline(states[1:], heroes)) + "\n")
     (out / "turns.txt").write_text("".join(f"{t}\n" for t in turns))
+    if stalled:  # M3 T7a-2b: the files above show how far it came
+        raise RuntimeError(f"{stalled} (the states so far: {out / 'states.jsonl'})")
     return states
 
 
 def sequence_command(map_path, out, rest):
     opts = {"--pre": "0", "--ms": "1000"}
-    actions, screen, frames, hot_seat, heroes, i = [], False, False, False, False, 0
+    actions, screen, frames, hot_seat, heroes, screens, i = [], False, False, False, False, False, 0
     while i < len(rest):
         if rest[i] == "--action":
             actions.append(rest[i + 1])
@@ -700,6 +740,8 @@ def sequence_command(map_path, out, rest):
             hot_seat, i = True, i + 1
         elif rest[i] == "--heroes":
             heroes, i = True, i + 1
+        elif rest[i] == "--screens":
+            screens, i = True, i + 1
         elif rest[i] == "--frames":
             frames, i = True, i + 1
         elif rest[i] in opts:
@@ -711,7 +753,7 @@ def sequence_command(map_path, out, rest):
     game = Game(out)
     try:
         sequence(game, map_path, out, int(opts["--pre"]), actions, int(opts["--ms"]), screen,
-                 frames, hot_seat, heroes)
+                 frames, hot_seat, heroes, screens)
     finally:
         game.stop()
     print(f"sequence: {out}/timeline.txt")
@@ -744,7 +786,8 @@ def run_sequences(rest):
         game = Game(here)
         try:
             sequence(game, map_path, here, e.get("pre", 0), e.get("actions", []), e["ms"],
-                     hot_seat=e.get("hot_seat", False), heroes=e.get("heroes", False))
+                     hot_seat=e.get("hot_seat", False), heroes=e.get("heroes", False),
+                     screens=e.get("screens", False))
         finally:
             game.stop()
         recorded = set_path.parent / e["timeline"]
