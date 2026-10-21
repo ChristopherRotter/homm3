@@ -315,12 +315,12 @@ Disputes (the wiki, a code confirmation and the batch's rows: T24a2):
 
 | Id | Question | Sources | Needed by | Settle by |
 |---|---|---|---|---|
-| D-14 | A level's draws: reseeded from (S, L) with the C runtime's `rand` (the reading), or a hero's own stream (VCMI) | the reading against VCMI | the level-up's draws, ADR-0017's seeds (decision 9) | the user at T24a2's checkpoint; recommended: as decision 26, the reading's seed and generator in `faithful` (the offers follow S and L, as the original's), the owner's stream in `strict-fixed` (a fix-optional quirk flag); S drawn at the build from the game's stream, server-only |
-| D-15 | The primary's second row from the new level 10 (the reading) or from the old level 10, i.e. new level 11 (VCMI) | the reading against VCMI | the primary draw | the user; recommended: the reading (one level's row; a batch row reading S could confirm it, §7) |
-| D-16 | The Elementalist's intervals: 6 and 4 (the reading) or 3 and 3 (VCMI) | the reading against VCMI | the offers | the user, with A-10 |
-| D-17 | A due school among known schools: each weighs 1 (the reading) or its class weight (VCMI) | the reading against VCMI | the offers | the user; recommended: the reading |
-| D-18 | A banned skill the hero knows weighs 1 (the reading) or its class weight (VCMI) | the reading against VCMI | the offers (maps that ban skills: §6) | the user; recommended: the reading |
-| D-19 | Experience above the level limit's cap: lowered at the next gain (the reading) or kept (VCMI); beyond level 74 the wrapped levels of A-7 (the reading) or levels to 197 (VCMI, a limit at most 100) | the reading against VCMI | the experience's bound | the user, with A-7 and A-8 |
+| D-14 | A level's draws: reseeded from (S, L) with the C runtime's `rand` (the reading), or a hero's own stream (VCMI) | the reading against VCMI | the level-up's draws, ADR-0017's seeds (decision 9) | the user at T24a2's checkpoint; recommended: as decision 26, the reading's seed and generator in `faithful` (the offers follow S and L, as the original's), the owner's stream in `strict-fixed` (a fix-optional quirk flag); S drawn at the build from the game's stream, server-only **Confirmed by batch E4** (E08 T33): 65 of 66 heroes' levels, at load and in play, as the seed byte S read from memory predicts (the 66th in its skills; a starting bonus's Centaur's Axe in its attack). |
+| D-15 | The primary's second row from the new level 10 (the reading) or from the old level 10, i.e. new level 11 (VCMI) | the reading against VCMI | the primary draw | the user; recommended: the reading (one level's row; a batch row reading S could confirm it, §7) **Confirmed by batch E4's E4-2** (E08 T33): 7 of 12 Barbarians conclusive for the new level 10's row, none against. |
+| D-16 | The Elementalist's intervals: 6 and 4 (the reading) or 3 and 3 (VCMI) | the reading against VCMI | the offers | the user, with A-10 **Confirmed by batch E4's E4-3** (E08 T33): 12 of 12 Elementalists conclusive for 6 and 4. |
+| D-17 | A due school among known schools: each weighs 1 (the reading) or its class weight (VCMI) | the reading against VCMI | the offers | the user; recommended: the reading **Confirmed by batch E4's E4-5** (E08 T33): 1 of 12 heroes conclusive, for the reading (Water Magic where VCMI's weights give Fire); the user (ADV-Q18): one settles it. |
+| D-18 | A banned skill the hero knows weighs 1 (the reading) or its class weight (VCMI) | the reading against VCMI | the offers (maps that ban skills: §6) | the user; recommended: the reading Not in batch E4 (no row: §7). |
+| D-19 | Experience above the level limit's cap: lowered at the next gain (the reading) or kept (VCMI); beyond level 74 the wrapped levels of A-7 (the reading) or levels to 197 (VCMI, a limit at most 100) | the reading against VCMI | the experience's bound | the user, with A-7 and A-8 **Confirmed by batch E4's E4-6** (E08 T33): a gain at the cap keeps 4 600, no dialog. |
 
 Quirk candidates (for the user to classify; §6's census sizes A-7, A-8):
 
@@ -426,8 +426,8 @@ copies it).
 
 | Id | Question | Sources | Needed by | Settle by |
 |---|---|---|---|---|
-| D-20 | At load, which offer is learned: the computer's evaluation (0x52BBD0; the reading) or the first (VCMI) | the reading against VCMI and the wiki (always the left offer; §5.2: E3-6 fits the reading) | the import's levels (decision 48) | the user at T24a2b2's checkpoint; the evaluation (0x524690, 0x524DD0) is unread: E10's computer players need it as well. Options for T24b: read and port it, or the first offer (VCMI) as a documented stand-in |
-| D-21 | At load, a custom experience above the scenario's level limit: capped and lowered to the limit's threshold (the reading) or levelled to its own level (VCMI) | the reading against VCMI | the import | the user; recommended: the reading (§6's census: does a shipped map have such a hero?) |
+| D-20 | At load, which offer is learned: the computer's evaluation (0x52BBD0; the reading) or the first (VCMI) | the reading against VCMI and the wiki (always the left offer; §5.2: E3-6 fits the reading) | the import's levels (decision 48) | the user at T24a2b2's checkpoint; the evaluation (0x524690, 0x524DD0) is unread: E10's computer players need it as well. Options for T24b: read and port it, or the first offer (VCMI) as a documented stand-in **Confirmed by batch E4's E4-1** (E08 T33): 16 of 20 heroes conclusive against always-left (and 19 of the other rows' 36), none for it. |
+| D-21 | At load, a custom experience above the scenario's level limit: capped and lowered to the limit's threshold (the reading) or levelled to its own level (VCMI) | the reading against VCMI | the import | the user; recommended: the reading (§6's census: does a shipped map have such a hero?) **Confirmed by batch E4's E4-6** (E08 T33): 10 000 at load became 4 600, level 5 (VCMI's level 8 refuted). |
 
 ## 4. What follows the level (T24a2a)
 
@@ -631,7 +631,7 @@ each with its own S.
 | E4-7 | decision 45: the topmost ground | a monster on a tile two special grounds cover (`Carpe Diem`'s kind of overlap) | the battle's field | the topmost ground (the last in map order; VCMI the first) |
 | E4-8 | decision 45: the full army's upgrade with Skeleton Warriors | a Necromancer with seven stacks, one of them Skeleton Warriors, no Skeletons, wins a battle | the army after the battle | the reading's T19a2b rule (the QUEUE inbox, 2026-10-14) against VCMI's full-army rule |
 | E4-9 | decision 45: HER-WAR-002 | a hero with a Ballista loses it in a battle it wins | the hero's artifacts after the battle | the destroyed machine takes its artifact (VCMI; the original's place not read) |
-| E4-10 | decision 45: an attack on a hero on an object | an enemy hero stands on an object not visited from above; the attacker steps at it from a tile above | battle yes or no | the engine attacks (the visit is the hero's, ADV-OBJ-004) |
+| E4-10 | decision 45: an attack on a hero on an object | an enemy hero stands on an object not visited from above; the attacker steps at it from a tile above | battle yes or no | the engine attacks (the visit is the hero's, ADV-OBJ-004). **Observed against it** (batch E4c, E08 T33): no path, no battle; the original's test from above reads the object under the hero (0x4FCBD0), and the engine follows it since T33 (the user, ADV-Q18) |
 
 Not planned: D-18's map-banned known skill (the census, §6.3: no shipped hero reaches it; a row
 needs the spec to ban skills); A-7 (a hang, always fixed); A-9 (a primary skill past 127 needs

@@ -3463,3 +3463,89 @@ and E4c; one batch per task). The original's files were staged from the user's P
   (18, 18) from below, its question ADVEVENT:26 declined; **Red's click from (18, 17) found no
   path (no marks) and started no battle, in all three runs that reached it**: the spec's "other
   outcome", **against the engine's prediction** (a battle; ADV-OBJ-004, GAM-BAT-001). For T33.
+
+### Increment 4, round 5: T33, batch E4 scored; increment 4 closed; increment 5 refined (2026-10-21, `adventure/e08-t33`, `cross-lane`)
+
+Baseline: `master` at 9eb496b (T32b2 merged, #367); its engine code (79015dc2) was verified on
+32061cc, so the sandbox ran the light gates (passed). The original's sixteen files were staged
+from the user's PC at the start. Decision 70 (ADV-Q18): the user took T33 whole (not chosen:
+T33a the scoring then T33b the closure and refinement, or the scoring alone), **E4-10 by the
+original's rule in every profile, no flag**, and **D-17 settled by its one conclusive hero**.
+`cross-lane` for the status row in `docs/experiments/README.md` (battle-owned), as T22b.
+
+**Batch E4 scored** (each hero's predictions by `e4_score` from its seed byte, and E4c's from its
+spec, against `experiments/results/E08-batch-4a.md`, `-run2` to `-run4`, `-4b.md` and `-4c.md`,
+played by the harness in T32b2; the stamps matched; "conclusive": the other source predicted
+otherwise):
+
+| Row | Observed | Reading (engine) | Other source | Verdict |
+|---|---|---|---|---|
+| E4-1 (D-20, D-14), 20 heroes levelled at load (per run four Knights at 3 200 with one Basic skill, E3-6's Death Knight at 5 000) | each skill set the evaluation's; 16 conclusive (17 with run 2's E4-1a, its attack +2 from a Centaur's Axe), and 19 of the other rows' 36 heroes levelled at load | the computer's evaluation (0x52BBD0) | always-left (the wiki): none fits it alone | the reading: D-20 |
+| E4-2 (D-15), level 10 in play, 12 Barbarians at 14 699 | the primary skill from the second row; 7 conclusive | the new level 10's row | VCMI: the old level 9's | the reading |
+| E4-3 (D-16, A-10), level 3 in play, 12 Elementalists without Wisdom | no Wisdom offered outright; 12 conclusive | 6 and 4 (SoD) | VCMI and HotA: 3 and 3 | the reading (`ADV-QUIRK-10` observed) |
+| E4-4 (§2.1), three levels after one battle, answered right, left, right, 8 heroes | each level's offers followed the previous answer; 8 conclusive | drawn after each answer | drawn up front | the reading |
+| E4-5 (D-17), level 4 in play with a school due, 12 Demoniacs knowing Fire and Water Magic | 1 conclusive (run 1's E4-5c, seed byte 6: Water Magic), 11 the same under both | a known school weighs 1 | VCMI: its class weight (Fire Magic) | the reading; the user: one settles it |
+| E4-6a (D-21, D-19), limit 5, a custom 10 000 | 4 600 and level 5 at load; a battle's gain at the cap: no dialog, 4 600 kept, GENRLTXT:2 (no more experience) | the same | VCMI: 10 000, level 8 | the reading |
+| E4-6b (D-19), 4 000 + 700 under the limit 5 | 4 600, level 5, one dialog (the reading's offers) | the same | — | the reading |
+| E4-7a, E4-7b, two grounds on one tile | Evil Fog, then Clover Field: the one written last | the topmost (the last in map order) | VCMI: the first | the reading (ADV-GRD-001) |
+| E4-8, a full army with 10 Skeleton Warriors beats 90 Pikemen | split 30 Pikemen, 30 Halberdiers, 30 Pikemen; 10 → 16 Skeleton Warriors; 900 experience | 9 Skeletons raised, (2 × 9 + 2) / 3 = 6 join as the upgrade | VCMI: 9 | the reading (GAM-BAT-006) |
+| E4-9, a destroyed Ballista, a victory | war machine 1 empty, the Catapult kept, the backpack empty; 2 300 experience (1 800 + 500), level 3 | the same (HER-WAR-002, VCMI's rule) | — | the engine (HER-WAR-002 observed) |
+| E4-10, Red above Blue's hero on a Cartographer's entrance | no path, no battle, in three runs | a battle (T19a1: the visit is the hero's) | VCMI: a battle | **the original, against the engine: built in T33** |
+
+- **E4-10's rule** (decision 70): the code reading had it since T14a: the pathfinder's test from
+  above (0x4B26AC entering, 0x4B267D leaving) reads the tile's class through 0x4FCBD0, which for
+  a hero (34) or boat (8) standing there returns the object under it. T19a1 checked only the
+  visitor's own tile. Now `check_step` refuses a step down onto another player's hero on a tile
+  closed above (`FromAbove`), and the reachable-tiles query skips it (directions 3 to 5, only at
+  an enemy hero's tile, so the hot loop gains no test elsewhere); a hero there is attacked from
+  the tiles the object is visited from. VCMI 1.7.5's `canMoveBetween` tests the tile's blocking
+  objects (the hero, visited from every side) and attacks. The test
+  `a_hero_visit_ends_the_move_and_an_own_hero_blocks` checks the three steps down, the query's
+  path round and the battle from the side. ADV-OBJ-004 and GAM-BAT-004 say so.
+- **The catalog:** `verified`, an `observation` source each: HER-EXP-002, -003, HER-LVL-001 to
+  -006, HER-NEC-001, -002, HER-WAR-002, GAM-HER-002, GAM-SET-002, GAM-DEC-002, GAM-BAT-002,
+  -004, -006, -008, ADV-GRD-001, ADV-OBJ-004; `ADV-QUIRK-9` and `-10` gained the observation.
+  Nothing reopened. D-18 (a banned known skill) had no row (survey §7) and stays the reading's.
+  The survey's dispute rows and E4-10's batch row say so; `docs/experiments/README.md`'s row is
+  `evaluated`.
+- **The scorer** `crates/h3-map/examples/e4_score.rs` is **kept** (design §16): it reproduces
+  the reports beside the results, its tests keep checking the reading against the engine, and a
+  later batch's scorer can start from it.
+- **The inbox:** three items batch E4 settled removed (the topmost ground, T20a2a; HER-WAR-002's
+  source, T19a2a; the attack on a hero on an object, T19a1); the items of the sketch's former
+  increment 5 re-tagged (below).
+
+**The audit of increment 4's exit criteria** (design §17), on this branch's code:
+
+1. Levels from experience, at most 74, capped by the scenario's limit (HER-EXP-002, -003: T27);
+   the import keeps the limit and the banned skills (GAM-SET-002, T29). Observed: E4-1 to E4-6.
+2. A level's draws from the seed byte and the level in `faithful`, from the owner's stream in
+   `strict-fixed` (HER-LVL-002, GAM-HER-002, `ADV-QUIRK-9`: T27, T29, T30); the Elementalist's
+   intervals by profile (`ADV-QUIRK-10`: T26b, T27). Observed in SoD: 65 of 66 heroes whole.
+3. Two offers a pending decision of the owner, levels in order, each drawn after the previous
+   answer, the battle's winner levelling (GAM-DEC-002, GAM-BAT-008: T30); the env (encoding v4),
+   the replays (format v5, seven answer level-ups) and the plans (`check_progression`) play them
+   (T30, T31). Observed: E4-4 8 of 8.
+4. Levels at load by the ported evaluation (HER-LVL-006, GAM-SET-002: T28, T29); the full verify
+   with the original data (below) imports the 5 shipped maps whole, their 9 heroes 41 levels at
+   load (`crates/h3-map/examples/original_data.rs`).
+5. Every new rule has its id, source and tests (`check-rules`); `ADV-QUIRK-9` to `-14` are in
+   the ledger; the gates pass (the full verify below: coverage, determinism with the golden
+   replays, benchmarks).
+6. Batch E4 run (T32b2) and scored (above): D-14 to D-17 and D-19 to D-21 `verified`, none
+   reopened; D-18 had no row.
+
+VERIFY_PLACEHOLDER
+
+**Increment 4 closed** (2026-10-21).
+
+**Increment 5 refined** (ADV-Q19; decisions 71, 72): the user chose **the hero's movement and
+scouting** of the sketch's item 5 cut in three (Logistics, Pathfinding and Scouting on the map,
+the movement and scouting artifacts, the specialties; derived once in `h3-heroes`), not rewards
+on the map, army management or the whole sketch; Navigation and the sea wait for boats. The
+first round is a survey and the ADR amendment drafts with the design note and the cut (T34a,
+T34b), not the survey alone. The rest of item 5 is the sketch's increment 6, the week's 7. The
+inbox re-tagged: the Scouting specialty (T8a), the step price's omissions (T7b), Cursed Ground's
+step cost (T20a2a) and flying's visit test (T11a) for T34a's survey; the artifacts' increment
+(T19a2a, T20a2a), army management (T17b, T22b) and ADR-0016's line (T23) for increment 6; the
+`reach.rs` comment updated.

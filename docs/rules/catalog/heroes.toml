@@ -752,7 +752,7 @@ quirks   = ["ADV-QUIRK-13"]
 
   [[rule.source]]
   kind       = "observation"
-  ref        = "experiments/results/E08-batch-4a.md and its runs 2 to 4 (-run2.md to -run4.md), each with e4_score's report beside it (stamp e9f2ca7f, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-21; the seed bytes read from the game's memory) E4-2 (D-15): three Knights at 14 699 experience per run, the first level-up in play level 10: its primary skill from the second row, 7 of the 12 heroes conclusive against VCMI's row by the old level, none against; every other level's primary skill as the seed byte predicts (E4-1 to E4-6)"
+  ref        = "experiments/results/E08-batch-4a.md and its runs 2 to 4 (-run2.md to -run4.md), each with e4_score's report beside it (stamp e9f2ca7f, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-21; the seed bytes read from the game's memory) E4-2 (D-15): three Barbarians at 14 699 experience per run, the first level-up in play level 10: its primary skill from the second row, 7 of the 12 heroes conclusive against VCMI's row by the old level, none against; every other level's primary skill as the seed byte predicts (E4-1 to E4-6)"
   retrieved  = "2026-10-21"
   confidence = "high"
 
