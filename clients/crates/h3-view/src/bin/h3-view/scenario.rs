@@ -104,8 +104,9 @@ pub struct SideHero {
 
 /// A hero's spell book for the original's map (E17 M3 T7a-2a): the book's artifact number
 /// (the original's when the packs come in their order, base first: 0), worn in the map's slot
-/// 17, and its spells' names (the core ruleset's; `situation` numbers them by `sptraits.txt`,
-/// whose order the packs' spell handles leave at the Titans' bolt, 57). The original's hero
+/// 17, and its spells' names (the core ruleset's; `situation` numbers them by `sptraits.txt`:
+/// the SoD pack adds 57, Titan's Lightning Bolt, after the base pack's others, so a handle is
+/// the original's number only below 57). The original's hero
 /// starts the map with 10 spell points per knowledge (no skills), so `sides` refuses a scenario
 /// whose hero's `mana` differs.
 #[derive(Debug, Clone, PartialEq, Eq)]

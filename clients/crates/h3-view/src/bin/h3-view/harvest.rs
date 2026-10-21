@@ -568,8 +568,8 @@ pub fn creature_names(table: &TextTable) -> Result<BTreeMap<String, usize>, Stri
 
 /// `sptraits.txt`'s spells' numbers by name (E17 M3 T7a-2a): its rows from record 2 but the
 /// group rows (`Adventure Spells`, `Combat Spells`, `Creature Abilities`) and the blank ones, as
-/// `h3-harvest` reads it for the packs; a name twice (the Titans' Lightning Bolt, 57) keeps its
-/// first number.
+/// `h3-harvest` reads it for the packs; a name twice (none in SoD's) would keep its first
+/// number.
 pub fn spell_numbers(table: &TextTable) -> BTreeMap<String, usize> {
     const GROUPS: [&str; 3] = ["Adventure Spells", "Combat Spells", "Creature Abilities"];
     let mut numbers = BTreeMap::new();
