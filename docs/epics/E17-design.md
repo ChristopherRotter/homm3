@@ -1559,19 +1559,34 @@ resistance roll, if any (category 3, 0x5A0331); Curse's is named `Curse`, withou
   rest of group 4 (frames c to 7, 0x5A20B8) at trunc(100 F), and it stands (group 0) in a
   redraw shown at once. Its cast point, where projectiles and rays start: the record's +4, +8
   in the hero's frame, (x − 43, y − 19) on the left, (693 + W − x, y − 19) on the right.
+  **Recorded** (T7a-2a, `casts.toml`'s `cast`: Orrin's Slow at the Wolf Riders, Combat Speed 0,
+  memory's frames drawn): the hero's frames 0 to 4 at 0, 100, …, 400 ms from the click; Slow's
+  animation 19 over the Wolf Riders, its 20 frames at 500 to 2 400 (player 1, 100 ms a frame, no
+  hit group), erased at 2 500; frames 5 to 7 at 2 600 to 2 800; standing at 2 900. As read.
 - **A creature's cast** (`creature_cast_action`: Faerie Dragon, Archangel, Pit Lord, Master
   Genie, Ogre Mage), after its turn toward the target: the angle atan(Δy / |Δx|) in degrees from
   its centre (its anchor ±22 for two hexes, its anchor's y − h / 2) to the target hex's anchor,
-  Δy the target's y less its own (Δx = 0: ±90); above 25° group 17, above −25° 18, else 19; a
+  Δy the target's y less its own (Δx = 0: 90 for Δy ≤ 0, else −90, 0x4483CA); above 25° group
+  17, above −25° 18, else 19; a
   missing or empty group 11, 12 or 13 by the same angle (0x44840C to 0x4484BB). Its shot sound
   (+0x17C) starts, its frames play at trunc(trunc(A / n) F) each (A the attack time +0x15C, as a
   shot's, §7.4), shown, and its last frame stays (0x44851C) through the cast (`cast_spell` caster
-  kind 1: no hero frames); then the sound's end (0x4486E2) and its turn back. When it stands
-  again was not read. *The sign:* a shot's angle is atan(−Δy / |Δx|) (`shot_angle_group`), the
-  cast's not, and Δy starts at the caster's centre but ends at the target's anchor: a level target
-  one hex away takes group 17; VCMI 1.7.5 picks a cast's group by the shot's angle
-  (`CastAnimation`), 17 for a target above: for T7a-2's recording (a Faerie Dragon at targets
-  above, level and below). The Enchanters (`enchanter_cast`): every able one of the side marked a
+  kind 1: no hero frames); then the sound's end (0x4486E2) and its turn back. *The sign:* a
+  shot's angle is atan(−Δy / |Δx|) (`shot_angle_group`), the cast's not (but for Δx = 0, which
+  gives a target above 17, as a shot), and Δy starts at the caster's centre but ends at the
+  target's anchor: a level target one hex away takes group 17; VCMI 1.7.5 picks a cast's group by
+  the shot's angle (`CastAnimation`), 17 for a target above. **Recorded** (T7a-2a, `casts.toml`'s
+  `dragon`: a Faerie Dragon, rear at hex 81, front 82, casting its drawn spell at Swordsmen,
+  Combat Speed 0): beside it (83, level) group 17, four rows above (15) 19, two rows below (117)
+  17, as read; VCMI's would be 18, 17, 19. By VCMI's names (17 up, 19 down) the original turns
+  the caster up toward a target below and down toward one above: a drawing quirk of the
+  original's, for the review list. Each cast: frame 0 at the click, held 100 ms (the deadline the
+  last redraw set), then frames 1 to 11 at trunc(500 / 12) = 41 ms (its attack time 500); the
+  last kept through the spell (here Fireball at 83 and 15, Inferno at 117: at a hex, player 5,
+  unseen in memory) until the reactions, 1 382 ms (Fireball) or 1 682 ms (Inferno) after frame 11
+  was drawn; struck itself (in the area), it plays its hit (group 3) with the others and stands
+  after it; not struck, it stood 600 ms into the reactions (round 3, the Swordsmen's defending
+  hit, 11 frames, still playing). The Enchanters (`enchanter_cast`): every able one of the side marked a
   striker in group 15, its shot sound, `strike_animation` without an animation, then the mass cast.
 - **For the harness** (T7a-2): `h3mem` reads +0x132EC, +0x132F0 and each stack's +0x20
   (§7.15), the heroes' and stacks' groups and frames. That shows players 1 to 4 and the casters,

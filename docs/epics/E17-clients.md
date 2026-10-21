@@ -464,11 +464,24 @@ Accepted by the user (M1 2026-10-13, M2 2026-10-14); moved to the log,
 
 (Filled by the tasks: choices queued for the milestone review under the autonomy contract.)
 
+- T7a-2a: T7a-2 split (the user, 2026-10-21: the harness first, T7a-2a; the other recordings
+  T7a-2b). **Confirmed by recording** (design §7.16): a creature caster's group by its own angle,
+  not the shot's: a Faerie Dragon beside a level target plays group 17, toward one above 19,
+  toward one below 17 (VCMI: 18, 17, 19), so by VCMI's names it turns up toward a target below:
+  copy it (`faithful`) or fix it (`fixed`)? The harness: the scenarios' heroes carry a spell book
+  (`spell_book`, mana 10 per knowledge, checked; the book's spells numbered by `sptraits.txt`'s
+  names, since the packs' spell handles skip the Titans' bolt, 57); `cast:<k>[:<hex>]` (the
+  book's place k, `pointer::book_place`'s constants until the book has a layout:
+  *provisional*); `heroes = true` adds the heroes' changes to a timeline; `battle_book`, the
+  battle screen with the book's button lit (the `battle` probes lie on it); `turn:` fails after
+  30 s; the casts' sequences wait in `situations/casts.toml` until the viewer plays them.
+
 - T7a-1: T7a split (the user, 2026-10-21: the reading T7a-1, the harness's casts and the
   recordings T7a-2). The reading's surprises, each *provisional* until T7a-2 records it (design
   §7.16): Chain Lightning's 38 and Fire Shield's return 11 never drawn (no stack marked);
   Animate Dead plays Resurrection's 50; a mass animation's last frame never shown; the Liches'
-  cloud drawn plain; a creature caster's group by its own angle (VCMI: the shot's). A
+  cloud drawn plain; a creature caster's group by its own angle (VCMI: the shot's; recorded at
+  T7a-2a, above). A
   difference a recording confirms is the original's behaviour to copy unless it is a drawing bug
   the user wants fixed (the `faithful`/`fixed` profiles, ADR-0020 point 6).
 
