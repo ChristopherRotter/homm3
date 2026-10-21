@@ -9,7 +9,7 @@
 //!
 //! The policy casts only at the targets the engine accepts (ADR-0027 point 3; the user, E23
 //! T4a): the original's dragon may also aim an area spell at a free hex, its own or an immune
-//! stack's, which the rules' cursor refuses (BAT-MAG-049; BAT-STUB-8, BAT-Q57).
+//! stack's, which the rules' cursor refuses (BAT-MAG-049; BAT-STUB-8, BAT-Q32).
 //!
 //! Not built yet (BAT-STUB-4): the Ogre Mage's and the Master Genie's scan (0x420D20), E23 T4b and
 //! T4c.
@@ -136,6 +136,8 @@ pub(crate) fn balance(
 fn raise(w: &Walker<'_>, created: Option<CreatureTypeId>, value: &mut i32) -> Option<Command> {
     let (state, ruleset, side) = (w.state, w.ruleset, w.side);
     let mut targets = CastTargets::new();
+    // stub: BAT-STUB-8
+    // Only the targets the engine accepts (ADR-0027 point 3; the user, E23 T4a).
     creature_cast_targets(state, ruleset, side, &mut targets);
     if targets.is_empty() {
         return None;
@@ -211,6 +213,8 @@ impl Kind {
 fn dragon(w: &Walker<'_>, (mastery, per_creature): (u8, u8), value: &mut i32) -> Option<Command> {
     let (state, ruleset, side) = (w.state, w.ruleset, w.side);
     let mut targets = CastTargets::new();
+    // stub: BAT-STUB-8
+    // Only the targets the engine accepts (ADR-0027 point 3; the user, E23 T4a).
     creature_cast_targets(state, ruleset, side, &mut targets);
     let drawn = creature_cast_spell(state, ruleset, side)
         .and_then(CastSpell::named)

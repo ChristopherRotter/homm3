@@ -755,3 +755,60 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   = 0, Sorcery 9016 in both precisions, the level limit, no book, casting forbidden, neither the Mages
   nor the enemy's Pegasi, the kinds), the turn's map; slip 21 both ways; the attacker's two-hex
   multi-headed enemy in the hex scores (a fixed test for a branch the property had reached).
+
+## T4a — the creature cast entry, the raise and the Faerie Dragon (2026-10-21, increment 5)
+
+- **The checkpoint** (the user, 2026-10-21): T4 is a port of readings done in T1a5 (§7.42 to
+  §7.46), cut in three: T4a the parts without the spell context (the entry, the raise, the
+  Faerie Dragon), T4b the context's predictions and the Ogre Mage, T4c the Master Genie (cut again
+  at its checkpoint). Two calls during the session: **the dragon's targets** follow the engine's
+  (the original's dragon values every hex outside the side columns, a free one, its own and an
+  immune stack's included, and casts at the best; the rules' cursor, BAT-MAG-049, offers only
+  stacks the spell affects): the policy picks the best of the engine's targets, the difference a
+  stub (BAT-STUB-8) noted under BAT-Q32 (1), which already asks whether the dragon's area spells
+  may go to any hex; **the dragon's predictions** (no preference): the original builds the spell
+  context and reads only its battle context, so the port skips the predictions and their draws.
+- **The reading** (`installation.md` §7.50): 0x421680 writes the caller's value (the larger of the
+  best's two per turn values, 0 without a best) before the entry, which it asks **whether or not
+  there is a best**; the plan's hex alone writes its plan value then; 0x421F80 asks again with the
+  value 0x421680 left. 0x421280's table (0 at 13 and 51, 1 at 37 and 91, 2 at 134); 0x421000's
+  order, test and doubling; 0x435EC0's balance class; 0x43C620's mastery and spell jumps;
+  0x436E30's arguments to 0x5A78E0 and 0x5A8090 (the creature flag reaches only the raise spells);
+  0x437190's estimate branch of 0x5A61F0 (the factor above 0, no roll). No new slip; slip 7 built.
+- **The port.** `h3-battle`'s `computer`: `spell_damage_value` (0x436E30, in `aim.rs` beside the
+  hero's area spell), `raise_count` (0x447330, `casters::raise_count`), `created_worth` (the
+  side's template of the raised creature: `aim::worth` split into `worth_of` for a stack off the
+  field), `chain` (`magic::ChainEstimate`: the rules' chain search split into the rolls and
+  `nearest`, the estimate without rolls), `area_stacks`, `creature_casts_blocked`,
+  `creature_mastery`, `field_raises`; `CastSpell::named`. `h3-battle-ai`: `casts.rs` (the entry by
+  ability: raisers, random casters, the rest nothing; the balance; the raise; the dragon with
+  `Kind`, the per-stack value cache of the area spells and `pays`); the walker threads the value
+  (`choose(rng, &mut value)`, the entry before its branches and again in `turn`).
+  `POLICY_VERSION` 6.
+- **Kept apart** (documented): the original's raise ignores the engine's slot test for the raised
+  Demons (BAT-STUB-8); Titan's Lightning Bolt would be a bolt by its data (the original gives 57
+  nothing; no random caster draws it); the estimate's area is the rules' (the original's
+  0x5A46F0 never takes a side column).
+- **Cost** (the budget: ≤ 1 ms for the slowest decision; the gated count re-set): the workload's
+  battles run shorter now that the casters cast (1 151 decisions, 1 718 steps; T3c 1 784 and
+  2 272), so `computer-decisions` fell to 477 211 553 instructions, **about 414 600 per decision**
+  (T3c: 383 500, +8 %); `random-rollouts-full` +0.08 %, `-siege` +0.38 % (as on `master`).
+  Release, each decision's best of five (a local patch of `h3 bench-computer`, not kept), 2 000
+  battles of seeds 4 to 8: 50.2 to 57.8 µs per decision on average, the slowest 0.34 to 0.43 ms;
+  `master` on the same sandbox 50.6 to 59.3 µs, the slowest 0.34 to 0.46 ms (this sandbox is
+  slower than T3c's). Within the budget.
+- **Tests:** `h3-battle`'s `tests/computer.rs`: the spell damage value (the kills, the cap, the
+  immune stack, the hero's bonuses only with the flag, a disabled stack's `2v − w` and its whole
+  hit points, a dead stack, a spell the ruleset lacks), the raise count (both raisers, whole
+  creatures, nothing for another stack) and the raised imp's worth as an imp's on the field, the
+  estimated chain against a real cast (the same stacks and values; four from Advanced; none for a
+  bolt) and the nova's area, the casts' battlefields (Magic Plains, an elemental field, Cursed
+  Ground, a ban) and `named`. `h3-battle-ai`'s `tests/casts.rs`: the balance classes 7, 5, 2, 1, 1
+  from either side. The harvested `harvested_computer_casts.rs`: the Archangels raise the bolted
+  Pikemen rather than strike a Peasant (both profiles; no target at their first turn; no cast
+  left after it), the raise loses to a strike on Marksmen, the Pit Lords raise 11 Demons from the
+  Imps' corpse, the Faerie Dragons cast every drawn spell at an enemy (Frost Ring at a stack's
+  hex hits nothing among stacks far apart: no cast), no cast on Cursed Ground, slip 7 both ways on
+  Lucid Pools (a Naga Queen worth more at Advanced, a Behemoth at Expert), no chain or area spell
+  that hurts the side's Archangels more than a Peasant beside them. The random-battle property
+  (`harvested_computer.rs`) now plays the casts.

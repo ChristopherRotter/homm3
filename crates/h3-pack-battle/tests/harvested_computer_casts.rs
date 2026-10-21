@@ -62,11 +62,14 @@ fn mage(r: &BattleRuleset, spells: &[&str], power: u8) -> BattleHero {
     derive_battle_hero(&d, r).unwrap()
 }
 
+/// An army's stacks: the creatures' keys and counts.
+type Stacks<'a> = &'a [(&'a str, u32)];
+
 /// A battle of `attacker` against `defender` on Normal with the heroes `heroes`, on the special
 /// battlefield `battlefield` if any, from `seed`.
 fn battle(
     r: &BattleRuleset,
-    (attacker, defender): (&[(&str, u32)], &[(&str, u32)]),
+    (attacker, defender): (Stacks<'_>, Stacks<'_>),
     heroes: [Option<BattleHero>; 2],
     battlefield: Option<&str>,
     seed: u64,
@@ -319,7 +322,7 @@ fn no_creature_casts_on_cursed_ground() {
     }
 }
 
-// covers: BAT-AI-013, BAT-QUIRK-25
+// covers: BAT-AI-013
 #[test]
 fn the_dragons_estimate_takes_expert_on_its_schools_field_with_the_slip() {
     // One dragon's Ice Bolt (power 5) on Lucid Pools: a naga queen (110 hit points, capped

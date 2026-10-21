@@ -501,11 +501,12 @@ fn the_computers_raise_count_and_a_raised_creatures_worth() {
     let count = |s: &BattleState, caster, target| {
         computer::raise_count(s, &r, StackId(caster), StackId(target))
     };
-    // The herald: min(5 lost, 300 / 10) whole creatures; one herald min(5, 100 / 10).
+    // The heralds: min(5 lost, 300 / 10) whole creatures; one herald with seven lost min(7,
+    // 100 / 10).
     assert_eq!(count(&s, 2, 4), 5);
     s.stacks.as_mut_slice()[2].count = 1;
     s.stacks.as_mut_slice()[4].count = 1;
-    assert_eq!(count(&s, 2, 4), 7.min(10));
+    assert_eq!(count(&s, 2, 4), 7);
     // A target of 30 hit points per creature: 100 / 30 = 3 whole ones.
     s.stacks.as_mut_slice()[4].max_hp = 30;
     s.stacks.as_mut_slice()[4].top_hp = 30;

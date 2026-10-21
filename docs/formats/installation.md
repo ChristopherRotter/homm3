@@ -4878,3 +4878,76 @@ the attacking hero's adventure tile, which the seam does not carry (BAT-STUB-7, 
 none new. **Readings at risk** (added for T7): the Upper Wall's breach through the display overlay
 (a shown battle with the movement shadow may differ); a dead enemy recorded by its stale rank; the
 besieger's walk to a hex it cannot stand on (a flyer's flown-over wall hex) leaving the last action.
+
+### 7.50 Code reading: the creature casts re-read for the port (E23 T4a, 2026-10-21)
+
+Read again for E23 T4a (the user's cut of T4: the entry, the raise and the Faerie Dragon first;
+the Ogre Mage in T4b, the Master Genie in T4c): 0x421F80, 0x421680's value and the entry's call,
+0x421280 with its table, 0x421000 with 0x447330, 0x435EC0's balance class, 0x420F00, 0x43C620 with
+its tables, 0x436E30, 0x437190 with 0x5A61F0's estimate branch, and 0x437040. §7.42 and §7.43
+stand; these are the details the port needs. Insight only, nothing copied (Q29).
+
+**The value the entry gets.** 0x421680 writes the caller's value at 0x421C87 once its loop over
+the enemies ends: the larger of the best's drawn value per turn and its drawn plan value per turn,
+both 0 without a best (initialised at 0x4216AD, 0x4216B3). The creature cast entry follows at
+0x421CE4 outside a prediction (the context's +9) and the tactics phase, **whether or not there is
+a best**; a cast ends the choice. Only then the branches: the plan's hex alone writes its plan
+value per turn into the value (0x421D01) and returns false when the stack stands on it; no best,
+the besieger's walk or the fallbacks; else the losing attack or the attack. 0x421F80 starts the
+value at 0 (0x421FCA) and, when 0x421680 returns false, asks the entry again (0x421FF8) with the
+value as 0x421680 left it; the entry's own test of +0x13D68 covers the tactics phase there. The
+raise and the dragon write the value only when they take a candidate, and then cast: a false
+entry leaves it as it was.
+
+**0x421280.** As §7.42 and the map: no cast with +0x13D68 set, on battlefield 2 (+0x53C0), with
++0x53C4 set, or while either hero (+0x53CC, +0x53D0) wears artifact 126; none without a cast left
+(+0xDC). The byte table 0x42136C over creatures 13 to 134 (122 bytes) holds 0 at 13 and 51, 1 at
+37 and 91, 2 at 134 and 3 everywhere else, through the jumps 0x42135C. No creature's own exception
+to the block is asked (the engine's `ignores_magic_block`, which no harvested creature has).
+
+**0x421000.** The side is the battle context's +0x20 (the acting side). Its records from the last
+(+0x54BC − 1) to the first, the caster and creature 149 skipped; a Pit Lord's R must be the corpse
+0x5A3E40 finds at R's position or, for a two-hex R (+0x84 bit 0), at its other hex (0x4466A0), and
+dead (bit 21, tested after the hex); an Archangel's the stack 0x5A3CC0 (flag 1) finds there. The
+count 0x447330 (5 sites; the Archangel's branch hard-codes 100 hit points per creature, the Pit
+Lord's 50 and the Demon's hit points from the creature table, +0x160C); the worth 0x442A50 with
+the context's +0 and +4, shot 0 for the local Demon, 0x4428F0's flag for R; `fild n; fstp qword;
+fmul qword` and `_ftol`; `add eax, eax` when +0x14 > +0x18 and +0x1C ≤ 1 (signed); strictly above
+the value so far, which it overwrites (so the later record stays at a tie). The local record is
+set up once before the loop (0x43D730 with creature 48, one, the side's hero and the side).
+
+**0x435EC0's class** (0x436034 to 0x4360B4): with `L` the larger and `S` the smaller of +0x14 and
++0x18 (signed), 1 when `5S ≤ L` in 32-bit arithmetic (`lea`) or `L` is 0; else the ratio `L / S`
+(two `fild`s, `fdiv`, stored as a double) against 0x63B798's six doubles in turn: the first it
+reaches (not below) gives its index + 1, none 7.
+
+**0x420F00 and 0x43C620.** The hexes 0 to 186 but `hex mod 17` in {0, 16}; the power 5 × count
+(`lea`). The mastery's jumps 0x43C7C4 by battlefield − 1: 0 (Magic Plains) 3; 1 to 4 keep 2; 5 to
+8 (fields 6 to 9) 3 when the spell's school bits +0x1C have bit 2, 1, 3 or 0 (water, fire, earth,
+air). The damage `[+0x30] × power + [+0x34 + 4 × mastery]`. The spell's case by the bytes
+0x43C7F4 for spells 15 to 23 (0, 0, 0, 0, 1, 2, 2, 2, 2) through the jumps 0x43C7E8; any other
+spell 0. Case 0 needs a stack on the hex (0x4E7170) and passes the context's +8 hero; case 1 a
+stack that is not dead and that 0x5A3C80 (spell 19, the context's side, 1, the context's creature
+flag) accepts.
+
+**0x436E30.** 0x5A78E0 takes (damage, spell, the context's +4 hero as the caster's, the given
+hero, the stack, 0): the given hero reaches only the log, which is off. 0x5A8090 takes (spell,
+the context's side, the stack, 0, 1, the creature flag +0x1D): its fourth argument 0 keeps the
+polarity tests, its fifth 1 takes the stack's real side (+0xF4) for them, and its sixth reaches
+only Resurrection's and Animate Dead's case (0x5A8467): for a damage spell it changes nothing.
+The damage through `fild`, `fstp dword`, `fmul` of the factor, `_ftol`; at most 0x443080 (flag
+0); 0x442FD0 with the context's +0x20, +0x24, 0x4428F0's flag and +0x28; the disabled test reads
++0x290, +0x2B0, +0x2C0, bit 21 and creatures 147, 148.
+
+**0x437190.** The damage `[spell 19 +0x30] × power + [+0x34 + 4 × mastery]`, the strikes 0x63B7C8
+by mastery, the marks cleared first and set per strike; the next stack from 0x5A61F0 with its flag
+0, whose candidate test is then the factor above 0 (0x5A6299: `fcomp 0.0`, `test ah, 0x41`) with
+no roll; the damage halved by `cdq; sub; sar 1` after a found next stack. The sums' test (0x437283
+to 0x437304) as §7.43, the same code as 0x437040's (0x437103 to 0x437161).
+
+**Slips:** none new; slip 7 (survey §4) is built under BAT-QUIRK-25. **Draws:** none of their own;
+the dragon's context draws through its predictions (§7.42), which its value never reads (the port
+skips them). **For the port:** the policy casts only at targets the engine accepts (the user, E23
+T4a): the original's dragon may aim an area spell at a free hex, its own or an immune stack's (the
+cast routine tests nothing for a creature's cast, §7.21), and its raise ignores the engine's slot
+test for the raised stack (BAT-STUB-8, BAT-Q32).
