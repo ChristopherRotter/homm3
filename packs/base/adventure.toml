@@ -31,7 +31,8 @@ max_players = 8
 army_slots = 7
 # GAM-SET-001 (E08 T6b): a hero placed without an army of its own gets its type's first starting
 # stack always, the second slot's with 88 % and the third's with 25 %, each its own roll of 1-100.
-# Code reading: 0x4C9730 (placed heroes: 0x487290 -> 0x486590 when the map gives no stacks) rolls
+# Code reading: 0x4C9730 (new_game_heroes 0x4BFEA6 for every hero, before a placed hero's custom
+# army replaces it in placed_hero_setup 0x4D8C6B; survey E08-progression.md §3.1) rolls
 # random_between(1, 100) <= 88 for the second slot (a war machine there needs the same roll) and
 # then <= 25 for the third. The wiki's hero template has 88 % and 25 % for SoD; VCMI 1.7.5
 # config/gameConfig.json startingStackChances [100, 88, 25] uses one roll for both (ADV-Q6).
@@ -99,6 +100,12 @@ computer = { wood = 15, ore = 15, mercury = 7, sulfur = 7, crystal = 7, gems = 7
 # ADV-MOV-003, ADV-MOV-007: the straight cost of a step on each terrain (the .h3m terrain codes 0-9
 # in this order). Wiki (Movement) and VCMI 1.7.5 config/terrains.json agree. Water is sailed by
 # boat only (VCMI type WATER); rock is never entered (VCMI moveCost -1, type ROCK).
+# E08 T29: `pathfinding` is a step's cost with Pathfinding at Basic, Advanced and Expert, read
+# for the map's terrain shares (ADV-MAP-002) until the hero's movement skills come; left out, the
+# cost at every level. Code reading: step_cost_table 0x63E510 (survey E08-progression.md §10.3:
+# sand and snow 125, 100, 100; swamp 150, 125, 100; rough 100 at every level). The wiki
+# (Pathfinding: 25, 50 or 75 points less per tile, at least 100) and VCMI 1.7.5 config/skills.json
+# (ROUGH_TERRAIN_DISCOUNT 25, 50, 75) agree (survey E04-skills.md, row 0).
 [[terrain]]
 terrain = "dirt"
 cost = 100
@@ -106,6 +113,7 @@ cost = 100
 [[terrain]]
 terrain = "desert"
 cost = 150
+pathfinding = [125, 100, 100]
 
 [[terrain]]
 terrain = "grass"
@@ -114,14 +122,17 @@ cost = 100
 [[terrain]]
 terrain = "snow"
 cost = 150
+pathfinding = [125, 100, 100]
 
 [[terrain]]
 terrain = "swamp"
 cost = 175
+pathfinding = [150, 125, 100]
 
 [[terrain]]
 terrain = "rough"
 cost = 125
+pathfinding = [100, 100, 100]
 
 [[terrain]]
 terrain = "subterranean"

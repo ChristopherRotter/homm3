@@ -57,7 +57,9 @@ pub struct GameHeroSetup {
 /// `None` for the default the game builds when the game is built.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct HeroDetailsSetup {
-    /// Experience; `None`: 40 to 90, drawn from the setup stream (a placeholder).
+    /// Experience; `None`: 40 to 90, drawn from the setup stream (a placeholder). A custom
+    /// experience is gained when the game is built, from level 1 and experience 0 under the
+    /// scenario's level limit, with the levels it gives (GAM-SET-002, E08 T29).
     pub experience: Option<u32>,
     /// Base primary skills (attack, defense, power, knowledge); `None`: the class's.
     pub primary: Option<[u8; 4]>,
@@ -95,6 +97,13 @@ pub struct GameSetup {
     pub map: MapSetup,
     /// The heroes on the map; a hero's [`HeroId`] is its index here (the game's store of heroes).
     pub heroes: Vec<GameHeroSetup>,
+    /// The scenario's level limit (HER-EXP-003; the map header's byte, AB and SoD): no hero gains
+    /// experience beyond its threshold; 0 none, as is a limit above the ruleset's highest level
+    /// (`ADV-QUIRK-12`). E08 T29.
+    pub level_limit: u8,
+    /// The secondary skills the scenario bans (HER-LVL-003; the map's set, SoD): no level offers
+    /// them. Each must be the ruleset's; their order and repeats do not matter. E08 T29.
+    pub banned_skills: Vec<SkillId>,
 }
 
 /// Why a [`GameSetup`] cannot start a game.
@@ -116,6 +125,8 @@ pub enum GameSetupError {
     StartingArmy(HeroId),
     /// The hero's details break a rule of the hero model (`h3_heroes::validate`).
     Hero(HeroId, DetailsError),
+    /// A banned skill is not the ruleset's (E08 T29).
+    BannedSkill(SkillId),
     /// The adventure context rejects its part.
     Adventure(SetupError),
 }
@@ -138,6 +149,9 @@ impl fmt::Display for GameSetupError {
                 )
             }
             Self::Hero(hero, error) => write!(f, "hero {}: {error}", hero.raw()),
+            Self::BannedSkill(skill) => {
+                write!(f, "banned skill {} is not the ruleset's", skill.raw())
+            }
             Self::Adventure(error) => write!(f, "adventure: {error}"),
         }
     }
@@ -147,13 +161,16 @@ impl core::error::Error for GameSetupError {}
 
 impl GameSetup {
     /// Checks the setup: the game's part (a difficulty the ruleset has, players in colour order
-    /// within the ruleset's players, known hero types, starting armies that can be drawn, the
-    /// heroes' details by the hero model, E08 T18b), then the adventure context's part with its
-    /// own checks. It builds the game as [`GameState::new`] does: whether a setup is valid does
-    /// not depend on the seed, since every starting army it can draw is valid when its hero
-    /// type's army has a first stack and no more stacks than the army's slots (the core checks
-    /// each stack's counts), and neither a drawn experience nor a war machine's artifact (worn
-    /// only where its slot is free) makes the details invalid.
+    /// within the ruleset's players, banned skills of the ruleset (E08 T29), known hero types,
+    /// starting armies that can be drawn, the heroes' details by the hero model, E08 T18b), then
+    /// the adventure context's part with its own checks. It builds the game as
+    /// [`GameState::new`] does: whether a setup is valid does not depend on the seed, since every
+    /// starting army it can draw is valid when its hero type's army has a first stack and no more
+    /// stacks than the army's slots (the core checks each stack's counts), and neither a drawn
+    /// experience nor a war machine's artifact (worn only where its slot is free) makes the
+    /// details invalid, nor do the levels at load (the details are checked at experience 0 before
+    /// a custom experience is gained under the bound, and every level the hero model gives keeps
+    /// them valid, GAM-SET-002).
     ///
     /// # Errors
     ///
@@ -163,7 +180,9 @@ impl GameSetup {
     }
 
     /// The adventure context's setup and the heroes' details: each starting army drawn from
-    /// `draws` in hero order, then each default experience in hero order (GAM-HER-001).
+    /// `draws` in hero order, then each default experience in hero order (GAM-HER-001); a hero
+    /// with a custom experience at experience 0, which [`GameState::new`] gives it with its
+    /// levels (GAM-SET-002).
     pub(crate) fn adventure_setup(
         &self,
         rules: &GameRuleset,
@@ -179,6 +198,13 @@ impl GameSetup {
             if !(after_previous && player.colour < params.max_players()) {
                 return Err(GameSetupError::Colour(index));
             }
+        }
+        if let Some(&skill) = self
+            .banned_skills
+            .iter()
+            .find(|&&skill| rules.core().skill(skill).is_none())
+        {
+            return Err(GameSetupError::BannedSkill(skill));
         }
         if self.heroes.len() > usize::from(u16::MAX) + 1 {
             return Err(GameSetupError::Heroes(self.heroes.len()));
@@ -235,7 +261,8 @@ const DEFAULT_EXPERIENCE: (u32, u32) = (40, 50);
 
 /// A hero's details when the game is built (GAM-HER-001): the setup's customisations, else the
 /// defaults (survey `E08-battles.md` §6.2): level 1; an experience of 40 + a draw of 0 to 50
-/// from the setup stream; the class's primary skills; the hero type's secondary skills and
+/// from the setup stream, or 0 with a custom experience, which the levels at load give later
+/// (GAM-SET-002, E08 T29); the class's primary skills; the hero type's secondary skills and
 /// spells; worn, the spell book when the type starts with one (the first artifact type with the
 /// `spell_book` effect); then the artifact of each war machine its starting army gave
 /// (GAM-SET-001), where no worn artifact takes that slot; the maximum spell points
@@ -267,10 +294,13 @@ fn hero_details(
     let mut details = HeroDetails {
         hero_type: hero.hero_type,
         level: 1,
-        experience: custom.experience.unwrap_or_else(|| {
-            let (low, width) = DEFAULT_EXPERIENCE;
-            low + draws.range_inclusive(0, width)
-        }),
+        experience: custom.experience.map_or_else(
+            || {
+                let (low, width) = DEFAULT_EXPERIENCE;
+                low + draws.range_inclusive(0, width)
+            },
+            |_| 0,
+        ),
         offered: OfferLevels::default(),
         primary: custom.primary.unwrap_or_else(|| {
             core.hero_class(hero_type.class)

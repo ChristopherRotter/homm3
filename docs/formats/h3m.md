@@ -126,7 +126,7 @@ every one reads to its padding, and every body kind but the hero placeholder occ
 Versions the reader rejects: Heroes Chronicles (`0x1D`), HotA (`0x20`), WoG (`0x33`) and every
 other code.
 
-## Import (E08 T5a, T6a, T12a, T13a, T18b, T19a, T20a2a, T21a; `MAP_IMPORT_VERSION` 7)
+## Import (E08 T5a, T6a, T12a, T13a, T18b, T19a, T20a2a, T21a, T29; `MAP_IMPORT_VERSION` 8)
 
 `h3_map::import` turns a raw map and the game's rules into `h3_game::GameSetup`, which the game
 then validates (ADR-0015 point 4); `import_map` is its static layer. The import maps codes to
@@ -137,6 +137,10 @@ content and draws nothing; it rejects what the current increment cannot represen
 - **Players:** the colours whose human or computer flag is set, in colour order; a player's
   `PlayerId` is its index there. Unsupported: a playing colour whose main town generates its hero
   (RoE always does; towns are E09).
+- **The scenario's level limit and banned skills** (v8, E08 T29, GAM-SET-002): the header's level
+  limit (AB and SoD; 0 none, always 0 in RoE) and SoD's banned skills, each set bit the skill of
+  its code (`SSTRAITS.TXT` order; a set bit past the 28 codes is an unknown code; none in the
+  shipped maps).
 - **Difficulty** (v3): `h3_game::DEFAULT_DIFFICULTY`, normal. The game's difficulty is chosen when a
   game starts; the header's difficulty byte is the map's rating and is not read into the setup
   (survey `E08-objects.md` §7.2).
@@ -197,16 +201,19 @@ content and draws nothing; it rejects what the current increment cannot represen
   original never applies it, every hero starts loose: kept here, `ADV-QUIRK-8`) and
   `h3_game::HeroDetailsSetup`, each field the body's, else its hero type's map-wide entry's
   (SoD's customised hero types), else none (the game's default): experience (before SoD 0 is
-  the default; SoD's flag makes 0 an experience), primary skills (clamped to the hero
-  parameters' bounds, 0–99 with Spell Power and Knowledge at least 1, as the original's load),
+  the default; SoD's flag makes 0 an experience; since v8 passed as it is, the game gives its
+  levels at load, GAM-SET-002), primary skills (clamped to the hero parameters' bounds, 0–99 with
+  Spell Power and Knowledge at least 1, as the original's carried-over hero's setup 0x486590;
+  the placed hero's, `placed_hero_setup` 0x4D8B30, copies them as they are, and no shipped map has
+  one above 9: survey `E08-progression.md` §3.1, §6.1),
   secondary skills (skill code by `SSTRAITS.TXT` order, the level as stored, 1–3), artifacts (each
   worn slot's code, the position not kept, ADR-0013; the backpack in order; codes by the packs'
   `# original id`, 141–143 unused), spells (SoD's 9-byte set, spell `i` at bit `i mod 8` of byte
   `i / 8`; AB's one byte: `0xFF` none, `0xFE` the type's own, else that spell beside the type's).
   The validation (`h3_heroes::validate`) checks the rest, so a war machine in the backpack or a
-  scroll without its spell fails it (no shipped map that imports has one). Unsupported: an
-  experience of 1 000 or more, the body's or the map-wide entry's (level 2: increment 4's levels,
-  E08 decision 22). Ignored: name, portrait, patrol (a computer player's), biography, sex.
+  scroll without its spell fails it (no shipped map that imports has one). Until v8 an experience
+  of 1 000 or more was unsupported (E08 decision 22). Ignored: name, portrait, patrol (a computer
+  player's), biography, sex.
 
 The maps of the user's installation (`crates/h3-map/examples/original_data.rs`): until
 2026-10-18 the folder held 164, four of them the user's own (`experiment`, `Untitled` and edited
@@ -242,7 +249,12 @@ beyond savage; 1 861 special grounds, every picture in the table, 10 771 tiles u
 (the 142 tiles under grounds of different battlefields are T20a2a's count over the 164); 7 typed
 objects of one type on one anchor in 5 maps, all grounds (`Back For Revenge`, `Carpe Diem` and
 their allied versions, `Deluge`); no tile visited from two objects (0 of 100 311 visitable tiles);
-the 39 guards records as T21a's.
+the 39 guards records as T21a's. E08 T29's run (import v8): 5 import and validate whole
+(`Adventures of Jared Haret`, `Faeries`, `Knee Deep in the Dead`, `Race for Ardintinny`,
+`Tutorial.tut`; survey `E08-progression.md` §6.5), their 9 heroes levelled at load with 41 levels;
+128 are unsupported for a hero generated at a main town, 18 for a random hero, 8 for a monster with
+an artifact, 1 for a hero in a town. No map has a level limit; 19 ban skills, none past the 28
+codes.
 
 ## The subset we write (E04a T2)
 

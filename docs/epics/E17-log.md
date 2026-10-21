@@ -1544,6 +1544,44 @@ book and the recorded sequences against the reading).
 - **Checked:** `scripts/exe.py check` and `cited` (every cited address covered), `cargo xtask
   check-exe-map` and `check-docs`; `verify --scope client`. No code changed: no capture needed.
 
+### M3 T7a-2a — The harness casts (2026-10-21)
+
+On `client/e17-m3-t7a-2a`, the user present: T7a-2 split with the user (the harness first,
+T7a-2a; the other recordings and candidates T7a-2b). The user's computer was linked for the
+staging only (all files staged once, the session then ran in the cloud).
+
+- **Starting point:** `master` at `71411b0` (#344 merged); no client pull request open; the
+  client gates' full check on that code (`verify-once clients`: all gates).
+- **The reading** (design §7.16, "The spell book"): `spell_book_dialog` 0x59BDF0 (its twelve
+  places, tabs, bookmarks, close), its page 0x59C9A0 (the spells listed, their sort 0x59DBE0 by
+  level, school bit, name; the school `hero_best_school` 0x4E51C0), its handler 0x59D040 (a
+  click on a place returns the spell when the mana suffices), its memory of page and tab
+  (0x684B40, 0x6A34F4); the Faerie Dragon's cast through the cursor (`battle_cursor`
+  0x4766FC: kind 20 over any stack its drawn spell accepts). 7 map entries.
+- **The harness:** `h3-view situation` writes a hero's spell book (slot 17, its spells by
+  `sptraits.txt`'s names: the SoD pack adds 57, Titan's Lightning Bolt, after the base pack's
+  others, so a handle is the original's number only below 57) and checks the mana (10 per knowledge, the original's start);
+  `h3drive.py`'s `cast:<k>[:<hex>]` (the key C, the place, the target), `--heroes` / `heroes =
+  true` (the heroes' changes in the timeline), `battle_book` (the battle screen's probes lie on
+  the spell-book button, lit when the acting hero has a book; the existing scenarios never light
+  it at their opening, so their openings stay: `drawn` all the same, a spot capture as recorded),
+  `turn:` failing after 30 s; the viewer's `pointer::inputs` takes `cast:`. The book opens and
+  casts at the frozen clock (first try, the screens looked at).
+- **Recorded** (`situations/casts.toml`, kept beside `sequences.toml` until the viewer plays
+  them; both replayed as recorded): `cast`, Orrin's Slow at the Wolf Riders: the hero's frames
+  0–4 at 100 ms, Slow's animation 19 (20 frames, 100 ms) over the target after its effect, its
+  erasure, frames 5–7, standing: as read. `dragon` (hot seat, the dragon flies beside the
+  Swordsmen, then casts three rounds): group 17 at the level target beside it, 19 at one four rows
+  above, 17 at one two rows below, as read (VCMI 18, 17, 19); frame 0 held 100 ms, then 41 ms
+  (attack time 500 / 12 frames), the last kept through the spell; its drawn spells (the log's
+  lines, kept in the sandbox): Fireball, Fireball, Inferno, at a hex (player 5, not in memory).
+- **For the review list:** the caster's group by its own angle confirmed (faithful or fixed?);
+  the harness's choices (above), *provisional*.
+- **Checked:** the viewer's tests (`situation`, `scenario`, `pointer`, `harvest`), `cargo fmt`,
+  clippy; `scripts/exe.py check` and `cited`; `h3drive.py drawn` (68 of 68 the same);
+  `sequences situations/casts.toml` (2 of 2 as recorded); `set --only heroes-tower-inferno` and
+  `frames --only walk` with the new harness (as recorded); the client gates' full check.
+
 ## Accepted review lists (M1, M2)
 
 Moved from the epic file on 2026-10-20 (less start-up reading), unchanged.

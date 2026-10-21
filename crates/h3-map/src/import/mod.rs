@@ -51,12 +51,8 @@ pub enum Unsupported {
     /// (towns: E09; VCMI 1.7.5 `CGameState::placeHeroesInTowns` moves it to its own town's
     /// entrance, an "H3M format quirk").
     HeroInTown(usize),
-    /// The hero object at this index has an experience of at least 1 000, its own or its hero
-    /// type's map-wide entry's: level 2 or more, which needs increment 4's levels (E08 decision
-    /// 22).
-    HeroExperience(usize),
     /// The monster at this index holds an artifact in its treasure (artifacts on the map:
-    /// increment 4, E08 decision 22). Its static layer keeps it without the artifact.
+    /// increment 5's sketch, E08 decisions 22 and 48). Its static layer keeps it without the artifact.
     MonsterArtifact(usize),
 }
 
@@ -69,7 +65,6 @@ impl Unsupported {
             Self::HeroPlaceholder(_) => "a campaign hero placeholder",
             Self::RandomStack(_) => "a random stack in a hero's army or a pile's guards",
             Self::HeroInTown(_) => "a hero standing in a town",
-            Self::HeroExperience(_) => "a hero with an experience of 1 000 or more",
             Self::MonsterArtifact(_) => "a monster with an artifact in its treasure",
         }
     }
@@ -188,7 +183,20 @@ pub fn import(map: &RawMap, rules: &GameRuleset) -> Result<GameSetup, ImportErro
         difficulty: DEFAULT_DIFFICULTY,
         map: static_map,
         heroes,
+        level_limit: map.header.level_limit,
+        banned_skills: banned_skills(map, rules)?,
     })
+}
+
+/// The secondary skills the map bans (SoD's set, `docs/formats/h3m.md`; E08 T29): the skill of
+/// each set bit's code, the original's skill ids (the pack order, HER-LVL-003); a set bit past
+/// them is an unknown code.
+fn banned_skills(map: &RawMap, rules: &GameRuleset) -> Result<Vec<SkillId>, ImportError> {
+    let bits = &map.banned_skills;
+    (0..bits.bytes().len().saturating_mul(8))
+        .filter(|&code| bits.get(code))
+        .map(|code| skill(rules, u8::try_from(code).unwrap_or(u8::MAX)))
+        .collect()
 }
 
 /// Imports the static map (E08 T5a, T12a): the size, every tile's terrain, road and river, and
@@ -511,7 +519,7 @@ fn hero(
         .core()
         .hero_type_by_key(key)
         .ok_or(ImportError::MissingContent(key))?;
-    let details = details(version, rules, index, hero_type, (body, custom))?;
+    let details = details(version, rules, hero_type, (body, custom))?;
     Ok(GameHeroSetup {
         hero_type,
         owner,
@@ -526,22 +534,21 @@ fn hero(
     })
 }
 
-/// The least experience of level 2: the import refuses a hero with it (increment 4's levels).
-const LEVEL_2_EXPERIENCE: u32 = 1000;
-
 /// AB's one spell byte: no spell (the spell book empty), or the hero type's own.
 const NO_SPELL: u8 = 0xFF;
 const TYPE_SPELL: u8 = 0xFE;
 
 /// The customisations of a placed hero's details (E08 T18b; `docs/formats/h3m.md`, "Import"):
-/// experience (before SoD 0 is the default), primary skills (clamped to the hero parameters'
-/// bounds, as the original's load does, survey `E08-battles.md` §6.3), secondary skills,
+/// experience (before SoD 0 is the default; passed as it is since E08 T29, the game gives its
+/// levels at load, GAM-SET-002), primary skills (clamped to the hero parameters' bounds, the
+/// clamp of the original's carried-over hero, `carried_hero_setup` 0x486590, survey
+/// `E08-battles.md` §6.3: the placed hero's are copied as they are, `placed_hero_setup` 0x4D8BF1,
+/// survey `E08-progression.md` §3.1, and no shipped map has one above 9, §6.1), secondary skills,
 /// artifacts worn and in the backpack, spells (SoD's set; AB's one spell beside the type's,
 /// `0xFF` none, `0xFE` the type's); the body's field over the map-wide entry's.
 fn details(
     version: Version,
     rules: &GameRuleset,
-    index: usize,
     hero_type: h3_content::HeroTypeId,
     (body, custom): (&HeroBody, Option<&CustomHero>),
 ) -> Result<HeroDetailsSetup, ImportError> {
@@ -549,9 +556,6 @@ fn details(
         .experience
         .filter(|&e| version == Version::Sod || e != 0)
         .or_else(|| custom.and_then(|c| c.experience));
-    if experience.is_some_and(|e| e >= LEVEL_2_EXPERIENCE) {
-        return Err(Unsupported::HeroExperience(index).into());
-    }
     let params = rules.core().hero_params();
     let primary = body
         .primary_skills

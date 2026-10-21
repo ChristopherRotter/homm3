@@ -16,8 +16,9 @@ use h3_contracts::{
     PlayerId, StackOrigin, StackRecord,
 };
 use h3_heroes::{
-    HeroChange, Necromancy, apply_change, check_change, derive_battle_hero, gained_experience,
-    learns_spell, lost_war_machine, max_mana, necromancy, next_capture, war_machines,
+    HeroChange, Necromancy, apply_change_limited, check_change, derive_battle_hero,
+    gained_experience, learns_spell, lost_war_machine, max_mana, necromancy, next_capture,
+    war_machines,
 };
 use h3_kernel::arith::{SINGLE_BITS, X87, mul_div_floor};
 use h3_kernel::{CanonicalHash, Rng, StateHasher};
@@ -590,12 +591,14 @@ impl GameState {
         change: HeroChange,
         sink: &mut S,
     ) {
+        let limit = self.progression.level_limit();
         let store = Arc::make_mut(&mut self.heroes);
-        // Every hero of a battle is in the store (GAM-HER-001).
+        // Every hero of a battle is in the store (GAM-HER-001). Experience is gained under the
+        // scenario's level limit (HER-EXP-003, E08 T29).
         store
             .get_mut(usize::from(hero.raw()))
             .into_iter()
-            .for_each(|details| apply_change(Arc::make_mut(details), core, change));
+            .for_each(|details| apply_change_limited(Arc::make_mut(details), core, limit, change));
         owner.into_iter().for_each(|player| {
             sink.emit(GameEvent::HeroChanged {
                 player,

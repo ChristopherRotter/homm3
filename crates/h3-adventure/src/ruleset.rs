@@ -85,6 +85,12 @@ pub struct TerrainMovementDef {
     pub terrain: ContentKey,
     /// How it is crossed.
     pub passage: Passage,
+    /// A land terrain's straight step cost for a hero with Pathfinding at Basic, Advanced and
+    /// Expert (the original's `step_cost_table` 0x63E510; E08 T29), each at most the one below
+    /// it, the first at most the cost without; `None`: the cost without at every level. Only a
+    /// land terrain may have them. Read for the map's terrain shares (ADV-MAP-002) until the
+    /// hero's movement skills come (increment 5's sketch).
+    pub pathfinding: Option<[NonZeroU16; 3]>,
 }
 
 /// A road kind in a pack.
@@ -238,6 +244,9 @@ pub struct TerrainMovement {
     pub key: ContentKey,
     /// How it is crossed.
     pub passage: Passage,
+    /// A land terrain's costs by Pathfinding level 1 to 3 as the pack gives them
+    /// ([`TerrainMovementDef::pathfinding`]); [`AdventureRuleset::step_cost`] reads them.
+    pub pathfinding: Option<[NonZeroU16; 3]>,
 }
 
 /// A compiled road kind.
@@ -404,6 +413,9 @@ pub enum AdventureCompileError {
     DuplicateTerrain(String),
     /// A core terrain has no movement data.
     MissingTerrain(String),
+    /// A terrain's costs by Pathfinding level are given for a terrain not crossed on land, or
+    /// one of them is above the cost below it (E08 T29).
+    PathfindingCosts(String),
     /// No enabled pack provides the adventure parameters.
     MissingParams,
     /// A second pack provides the adventure parameters.
@@ -457,6 +469,10 @@ impl fmt::Display for AdventureCompileError {
             }
             Self::DuplicateTerrain(k) => write!(f, "terrain `{k}` has movement data twice"),
             Self::MissingTerrain(k) => write!(f, "terrain `{k}` has no movement data"),
+            Self::PathfindingCosts(k) => write!(
+                f,
+                "terrain `{k}`: costs by Pathfinding level need a land terrain and must not rise"
+            ),
             Self::MissingParams => f.write_str("no pack provides the adventure parameters"),
             Self::DuplicateParams(p) => {
                 write!(
@@ -498,7 +514,7 @@ pub struct AdventureRuleset {
 /// The tables being filled while the packs compile.
 #[derive(Default)]
 struct Tables {
-    terrains: BTreeMap<usize, Passage>,
+    terrains: BTreeMap<usize, (Passage, Option<[NonZeroU16; 3]>)>,
     roads: Vec<RoadKind>,
     road_index: BTreeMap<String, RoadId>,
     rivers: Vec<RiverKind>,
@@ -530,9 +546,10 @@ impl AdventureRuleset {
                 tables
                     .terrains
                     .get(&index)
-                    .map(|&passage| TerrainMovement {
+                    .map(|&(passage, pathfinding)| TerrainMovement {
                         key: info.key.clone(),
                         passage,
+                        pathfinding,
                     })
                     .ok_or_else(|| {
                         AdventureCompileError::MissingTerrain(String::from(info.key.as_str()))
@@ -584,6 +601,24 @@ impl AdventureRuleset {
         self.terrains
             .get(usize::from(terrain.raw()))
             .map(|t| t.passage)
+    }
+
+    /// The straight cost of a step on `terrain` for a hero with Pathfinding at `pathfinding` (0
+    /// none to 3 Expert; a higher level counts as Expert), without a road or the army's native
+    /// terrain (ADV-MOV-003, the original's `step_cost_table` 0x63E510; E08 T29): a land
+    /// terrain's cost at that level, the cost without where the pack gives none, a water
+    /// terrain's cost at every level; `None` for an impassable or unknown terrain. Increment 4
+    /// reads it for the map's terrain shares only (ADV-MAP-002).
+    pub fn step_cost(&self, terrain: TerrainId, pathfinding: u8) -> Option<NonZeroU16> {
+        let movement = self.terrains.get(usize::from(terrain.raw()))?;
+        let at_level = usize::from(pathfinding.min(3))
+            .checked_sub(1)
+            .and_then(|i| movement.pathfinding.and_then(|costs| costs.get(i).copied()));
+        match movement.passage {
+            Passage::Land(cost) => Some(at_level.unwrap_or(cost)),
+            Passage::Water(cost) => Some(cost),
+            Passage::Impassable => None,
+        }
     }
 
     /// The road kinds.
@@ -655,8 +690,10 @@ impl AdventureRuleset {
 }
 
 impl CanonicalHash for AdventureRuleset {
-    /// Encoding v4 (E08 T12a; v1 was T4's, v2 T5a's, v3 T6b's): version; the terrains in the
-    /// core's order (key, passage: 0 land, 1 water with the cost, 2 impassable); the road kinds
+    /// Encoding v9 (E08 T29; v1 was T4's, v2 T5a's, v3 T6b's, v4 T12a's, v5 T13a's, v6 T19a's, v7
+    /// T20a2a's, v8 T20b1's): version; the terrains in the
+    /// core's order (key, passage: 0 land, 1 water with the cost, 2 impassable; since v9 the
+    /// costs by Pathfinding level, 0 for none, else 1 and the three costs); the road kinds
     /// (key, name, cost); the river kinds (key, name); the parameters (native cost, the land
     /// table as its length and entries, scouting radius; since v2 the largest map size, levels,
     /// players and the army slots; since v3 the starting stack chances as their length and
@@ -674,6 +711,13 @@ impl CanonicalHash for AdventureRuleset {
         for t in &self.terrains {
             t.key.as_str().hash_into(h);
             t.passage.hash_into(h);
+            match t.pathfinding {
+                None => h.write_u8(0),
+                Some(costs) => {
+                    h.write_u8(1);
+                    costs.iter().for_each(|cost| h.write_u16(cost.get()));
+                }
+            }
         }
         h.write_len(self.roads.len());
         for r in &self.roads {
@@ -808,9 +852,12 @@ fn compile_pack(
     for def in &pack.terrains {
         let key = def.terrain.as_str();
         let terrain = core_terrain(core, id, closure, &def.terrain)?;
+        if !pathfinding_fits(def) {
+            return Err(AdventureCompileError::PathfindingCosts(String::from(key)));
+        }
         if tables
             .terrains
-            .insert(usize::from(terrain.raw()), def.passage)
+            .insert(usize::from(terrain.raw()), (def.passage, def.pathfinding))
             .is_some()
         {
             return Err(AdventureCompileError::DuplicateTerrain(String::from(key)));
@@ -879,6 +926,19 @@ fn compile_pack(
 }
 
 /// The core terrain `key` names, which `pack` (with dependency closure `closure`) may reference.
+/// Whether a terrain's costs by Pathfinding level fit (E08 T29): none, or a land terrain's, each
+/// at most the cost below it.
+fn pathfinding_fits(def: &TerrainMovementDef) -> bool {
+    match (def.passage, def.pathfinding) {
+        (_, None) => true,
+        (Passage::Land(cost), Some(costs)) => core::iter::once(cost)
+            .chain(costs)
+            .zip(costs)
+            .all(|(below, at)| at <= below),
+        (Passage::Water(_) | Passage::Impassable, Some(_)) => false,
+    }
+}
+
 fn core_terrain(
     core: &Ruleset,
     pack: &str,

@@ -3,8 +3,9 @@
 //! compare its frames with ours. Red's hero (a human) stands just west of Blue's (the computer) on
 //! the scenario's terrain, the scenario's heroes (E17 M3 T3a: each side names one, with its
 //! primary skills), each with the scenario's stacks in their slots and its formation and its war
-//! machines (E17 M3 T3b: their artifacts), no secondary skills or other artifacts (no morale from
-//! Leadership, no Tactics phase); stepping Red's hero east starts the
+//! machines (E17 M3 T3b: their artifacts) and its spell book (M3 T7a-2a: the book in its slot,
+//! its spells), no secondary skills or other artifacts (no morale from Leadership, no Tactics
+//! phase); stepping Red's hero east starts the
 //! battle (`h3drive.py`). With `--hot-seat` (E17 M3 T1a) Blue may be a human too, so that the
 //! harness plays both sides of a hot-seat battle (`hot_seat` in `sequences.toml`). A special
 //! battlefield (E17 M3 T2) is set up as the original makes it, on the defender's tile: water
@@ -27,8 +28,8 @@ use h3_map::writer::{
 };
 
 use crate::gate::find_ci;
-use crate::harvest::{creature_names, hero_names};
-use crate::scenario::{Sides, sides};
+use crate::harvest::{creature_names, hero_names, spell_numbers};
+use crate::scenario::{Book, Sides, sides};
 /// Where Blue stands on the 36 × 36 map by default; Red stands one tile west. The original's
 /// obstacles depend on the battle's tile (`--tile`: the capture set's other battlefields).
 const BLUE_TILE: (u8, u8) = (11, 10);
@@ -141,7 +142,7 @@ pub fn run(options: &Options) -> ExitCode {
 fn situation(options: &Options) -> Result<(), String> {
     let battle = sides(&options.scenario, &options.packs)?;
     let Originals {
-        creatures: ids,
+        numbers,
         heroes,
         objects,
     } = original_tables(&options.install)?;
@@ -173,7 +174,7 @@ fn situation(options: &Options) -> Result<(), String> {
             names(human)
         ));
     }
-    let mut map = map(&id, &battle, &ids, options.tile, options.hot_seat)?;
+    let mut map = map(&id, &battle, &numbers, options.tile, options.hot_seat)?;
     let (patches, ground) = special(battle.battlefield.as_deref(), &objects, options.tile)?;
     map.patches = patches;
     map.objects.extend(ground);
@@ -186,13 +187,20 @@ fn situation(options: &Options) -> Result<(), String> {
     Ok(())
 }
 
-/// What the map takes from the installation's `H3bitmap.lod`: `crtraits.txt`'s creature ids by
-/// singular name, `hotraits.txt`'s hero names by hero type, and `Objects.txt` (the map objects'
-/// templates).
+/// What the map takes from the installation's `H3bitmap.lod`: `crtraits.txt`'s creature ids and
+/// `sptraits.txt`'s spell numbers by name, `hotraits.txt`'s hero names by hero type, and
+/// `Objects.txt` (the map objects' templates).
 struct Originals {
-    creatures: BTreeMap<String, usize>,
+    numbers: Numbers,
     heroes: Vec<String>,
     objects: String,
+}
+
+/// The original's numbers by name: the creatures' (singular names) and the spells' (E17 M3
+/// T7a-2a).
+struct Numbers {
+    creatures: BTreeMap<String, usize>,
+    spells: BTreeMap<String, usize>,
 }
 
 /// The installation's [`Originals`].
@@ -209,12 +217,18 @@ fn original_tables(install: &Path) -> Result<Originals, String> {
     let table = entry("CRTRAITS.TXT")?;
     let ids =
         creature_names(&TextTable::parse(&table).map_err(|e| format!("CRTRAITS.TXT: {e:?}"))?)?;
+    let table = entry("SPTRAITS.TXT")?;
+    let spells =
+        spell_numbers(&TextTable::parse(&table).map_err(|e| format!("SPTRAITS.TXT: {e:?}"))?);
     let table = entry("HOTRAITS.TXT")?;
     let heroes = hero_names(&TextTable::parse(&table).map_err(|e| format!("HOTRAITS.TXT: {e:?}"))?);
     // Latin-1, one byte a character.
     let objects = entry("OBJECTS.TXT")?.into_iter().map(char::from).collect();
     Ok(Originals {
-        creatures: ids,
+        numbers: Numbers {
+            creatures: ids,
+            spells,
+        },
         heroes,
         objects,
     })
@@ -305,9 +319,13 @@ fn army(
 }
 
 /// A hero's worn artifacts: its war machines only (E17 M3 T3b), each in its slot.
-fn worn(machines: &[(usize, u16)]) -> Result<[Option<u16>; ARTIFACT_SLOTS], String> {
+fn worn(
+    machines: &[(usize, u16)],
+    book: Option<&Book>,
+) -> Result<[Option<u16>; ARTIFACT_SLOTS], String> {
     let mut worn = [None; ARTIFACT_SLOTS];
-    for &(slot, artifact) in machines {
+    let book = book.map(|b| (BOOK_SLOT, b.artifact));
+    for &(slot, artifact) in machines.iter().chain(&book) {
         *worn
             .get_mut(slot)
             .ok_or_else(|| format!("artifact {artifact}: no slot {slot}"))? = Some(artifact);
@@ -315,12 +333,30 @@ fn worn(machines: &[(usize, u16)]) -> Result<[Option<u16>; ARTIFACT_SLOTS], Stri
     Ok(worn)
 }
 
+/// The map's worn slot of the spell book (`ArtSlots.txt`'s order; E17 M3 T7a-2a).
+const BOOK_SLOT: usize = 17;
+
+/// A spell book's 9 bytes, its spells numbered by name by `numbers` (`sptraits.txt`): spell `i`
+/// at bit `i mod 8` of byte `i / 8` (docs/formats/h3m.md); only the first 70 fit a book.
+fn spell_bits(spells: &[String], numbers: &BTreeMap<String, usize>) -> Result<[u8; 9], String> {
+    let mut bits = [0; 9];
+    for name in spells {
+        let spell = numbers
+            .get(name)
+            .copied()
+            .filter(|&n| n < 8 * bits.len() - 2)
+            .ok_or_else(|| format!("spell `{name}`: no book's spell of sptraits.txt"))?;
+        bits[spell / 8] |= 1 << (spell % 8);
+    }
+    Ok(bits)
+}
+
 /// The map of the battle `battle` (`id` names it in the scenario list), Blue on `tile`; Blue may
 /// be a human with `hot_seat`.
 fn map(
     id: &str,
     battle: &Sides,
-    ids: &BTreeMap<String, usize>,
+    numbers: &Numbers,
     tile: (u8, u8),
     hot_seat: bool,
 ) -> Result<Map, String> {
@@ -345,13 +381,18 @@ fn map(
             name: None,
             experience: Some(0),
             skills: Some(Vec::new()),
-            army: Some(army(&battle.stacks[owner], ids)?),
+            army: Some(army(&battle.stacks[owner], &numbers.creatures)?),
             tight_formation: battle.tight[owner],
             artifacts: Some(HeroArtifacts {
-                worn: worn(&battle.machines[owner])?,
+                worn: worn(&battle.machines[owner], h.book.as_ref())?,
                 backpack: Vec::new(),
             }),
-            spells: None,
+            // A hero without a book keeps its type's spells (none for the scenarios' heroes).
+            spells: h
+                .book
+                .as_ref()
+                .map(|b| spell_bits(&b.spells, &numbers.spells))
+                .transpose()?,
             primary: Some(h.primary),
         }))
     };
@@ -388,11 +429,22 @@ mod tests {
         list.iter().map(|s| (*s).to_owned()).collect()
     }
 
-    fn ids() -> BTreeMap<String, usize> {
-        [("Pikeman", 0), ("Archer", 2), ("Goblin", 84)]
-            .into_iter()
-            .map(|(n, i)| (n.to_owned(), i))
-            .collect()
+    fn ids() -> Numbers {
+        let named = |list: &[(&str, usize)]| {
+            list.iter()
+                .map(|&(n, i)| (n.to_owned(), i))
+                .collect::<BTreeMap<_, _>>()
+        };
+        Numbers {
+            creatures: named(&[("Pikeman", 0), ("Archer", 2), ("Goblin", 84)]),
+            spells: named(&[
+                ("Summon Boat", 0),
+                ("Magic Arrow", 15),
+                ("Slow", 54),
+                ("Air Elemental", 69),
+                ("Stone Gaze", 70),
+            ]),
+        }
     }
 
     fn sides_of(terrain: Option<&str>, attacker: &[(u8, &str, u32)]) -> Sides {
@@ -407,6 +459,7 @@ mod tests {
                 class,
                 name: name.to_owned(),
                 primary: [1, 2, 3, 4],
+                book: None,
             })
         };
         Sides {
@@ -510,6 +563,34 @@ mod tests {
                 .unwrap_err()
                 .contains("slot 19")
         );
+        // Without a book the heroes keep their types' spells (E17 M3 T7a-2a).
+        assert_eq!((red.spells, blue.spells), (None, None));
+        // A book: worn in slot 17, its spells as bits.
+        let mut read = sides_of(Some("base:desert"), &[]);
+        let book = |spells: &[&str]| {
+            Some(Book {
+                artifact: 0,
+                spells: spells.iter().map(|s| (*s).to_owned()).collect(),
+            })
+        };
+        if let Some(h) = read.heroes[0].as_mut() {
+            h.book = book(&["Summon Boat", "Magic Arrow", "Slow", "Air Elemental"]);
+        }
+        let booked = super::map("t", &read, &ids(), BLUE_TILE, false).unwrap();
+        let MapObject::Hero(reader) = &booked.objects[0] else {
+            panic!("a hero");
+        };
+        assert_eq!(reader.artifacts.as_ref().unwrap().worn[17], Some(0));
+        assert_eq!(reader.spells, Some([1, 0x80, 0, 0, 0, 0, 0x40, 0, 0x20]));
+        assert!(write(&booked).is_ok());
+        // A spell the book cannot hold (70 on: the creatures' abilities), or one not in the table.
+        for bad in ["Stone Gaze", "Fly Away"] {
+            if let Some(h) = read.heroes[0].as_mut() {
+                h.book = book(&[bad]);
+            }
+            let error = super::map("t", &read, &ids(), BLUE_TILE, false).unwrap_err();
+            assert!(error.contains(bad), "{error}");
+        }
         assert!(!map.players[1].as_ref().unwrap().human);
         // The writer accepts it.
         assert!(write(&map).is_ok());

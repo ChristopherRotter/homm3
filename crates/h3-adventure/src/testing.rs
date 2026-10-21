@@ -228,6 +228,7 @@ pub(crate) fn rules() -> (Ruleset, AdventureRuleset) {
     let movement = |k: &str, passage| TerrainMovementDef {
         terrain: key(k),
         passage,
+        pathfinding: None,
     };
     let part = AdventurePack {
         terrains: vec![
@@ -291,8 +292,8 @@ fn faction_creature(k: &str, speed: u8, faction: Option<&str>) -> CreatureDef {
 }
 
 /// The rules the movement tests use, under the profile `t:faithful` (the adventure quirks
-/// ADV-QUIRK-1 to -4 on) or `t:strict` (all off): the terrains grass (100), sand (150), swamp
-/// (175), sea (water) and rock; a dirt road (75) and a cobblestone road (50); the native cost
+/// ADV-QUIRK-1 to -4 on) or `t:strict` (all off): the terrains grass (100), sand (150; 125, 100,
+/// 100 by Pathfinding level), swamp (175; 150, 125, 100), sea (water) and rock; a dirt road (75) and a cobblestone road (50); the native cost
 /// 100; the creatures above (speeds 4, 4, 3, 6); the land table 1000, 1100, 1200, 1300, 1500 for
 /// speeds 0 to 4; maps up to 16 × 16 on two levels, two players, armies of seven slots; the
 /// resources and object types of [`rules`].
@@ -368,6 +369,7 @@ pub(crate) fn movement_rules_edited(
     let movement = |k: &str, passage| TerrainMovementDef {
         terrain: key(k),
         passage,
+        pathfinding: None,
     };
     let road = |k: &str, c| RoadDef {
         key: key(k),
@@ -377,8 +379,15 @@ pub(crate) fn movement_rules_edited(
     let part = AdventurePack {
         terrains: vec![
             movement("t:grass", Passage::Land(cost(100))),
-            movement("t:sand", Passage::Land(cost(150))),
-            movement("t:swamp", Passage::Land(cost(175))),
+            // The original's sand and swamp by Pathfinding level (E08 T29).
+            TerrainMovementDef {
+                pathfinding: Some([cost(125), cost(100), cost(100)]),
+                ..movement("t:sand", Passage::Land(cost(150)))
+            },
+            TerrainMovementDef {
+                pathfinding: Some([cost(150), cost(125), cost(100)]),
+                ..movement("t:swamp", Passage::Land(cost(175)))
+            },
             movement("t:sea", Passage::Water(cost(100))),
             movement("t:rock", Passage::Impassable),
         ],

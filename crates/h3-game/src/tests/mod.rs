@@ -9,6 +9,7 @@ mod battles;
 mod decisions;
 mod heroes;
 mod legal;
+mod levels;
 mod monsters;
 mod moves;
 mod observe;
@@ -32,7 +33,7 @@ use h3_content::{
     ArtifactClass, ArtifactDef, ArtifactSlotDef, ContentKey, ContentPack, CreatureDef,
     CreatureInfoDef, CreatureTypeId, FactionDef, Formation, HeroClassDef, HeroEffect,
     HeroParamsDef, HeroTypeDef, HeroTypeId, PackManifest, ProfileDef, RaisedCreature, ResourceDef,
-    Ruleset, SecondarySkillDef, SpellCategory, SpellDef, SpellSchoolDef, StartingStackDef,
+    Ruleset, SecondarySkillDef, SkillId, SpellCategory, SpellDef, SpellSchoolDef, StartingStackDef,
     TerrainDef, TerrainId,
 };
 use h3_content_battle::{
@@ -146,7 +147,13 @@ fn core_pack(extra: bool) -> ContentPack {
             faction: key("t:town"),
             primary: [1, 1, 1, 1],
             primary_gain: [[25, 25, 25, 25], [25, 25, 25, 25]],
-            skill_weights: vec![],
+            // E08 T29: every skill may be offered at a level-up.
+            skill_weights: vec![
+                (key("t:wits"), 4),
+                (key("t:lore"), 3),
+                (key("t:dark"), 2),
+                (key("t:sense"), 1),
+            ],
             offer_intervals: [6, 4],
         }],
         heroes: vec![
@@ -191,6 +198,11 @@ fn core_pack(extra: bool) -> ContentPack {
             ProfileDef {
                 key: key("t:split"),
                 quirks: vec![("quirk.adventure.split_from_tile".to_string(), true)],
+            },
+            // A level's draws from the hero's seed, ADV-QUIRK-9 (E08 T29).
+            ProfileDef {
+                key: key("t:seeded"),
+                quirks: vec![("quirk.adventure.level_up_from_seed".to_string(), true)],
             },
         ],
         // The hero model's content (E08 T18b): a book and a machine slot, the spell book, the
@@ -340,10 +352,12 @@ fn part_with(core: &Ruleset, chances: Vec<u8>, slots: u8) -> AdventureRuleset {
             TerrainMovementDef {
                 terrain: key("t:grass"),
                 passage: Passage::Land(cost),
+                pathfinding: None,
             },
             TerrainMovementDef {
                 terrain: key("t:rock"),
                 passage: Passage::Impassable,
+                pathfinding: None,
             },
         ],
         // A gold pile, and a Cartographer of grass for 2 500 gold (E08 T14b).
@@ -617,6 +631,8 @@ fn setup() -> GameSetup {
                 details: HeroDetailsSetup::default(),
             },
         ],
+        level_limit: 0,
+        banned_skills: vec![],
     }
 }
 
@@ -658,6 +674,15 @@ fn the_game_checks_its_part_before_the_adventure() {
     assert_eq!(
         error(|s| s.players[1].colour = 3),
         GameSetupError::Colour(1)
+    );
+    // The banned skills after the players (E08 T29): the test pack has four.
+    let unknown = SkillId::from_raw(4);
+    assert_eq!(
+        error(|s| {
+            s.banned_skills = vec![SkillId::from_raw(0), unknown];
+            s.heroes[1].hero_type = HeroTypeId::from_raw(5);
+        }),
+        GameSetupError::BannedSkill(unknown)
     );
     let many = (usize::from(u16::MAX) + 2, usize::from(u16::MAX) + 1);
     let hero = setup().heroes[0].clone();
@@ -795,6 +820,10 @@ fn the_errors_read_well() {
         (
             GameSetupError::Hero(hero, h3_heroes::DetailsError::LevelZero),
             "hero 2: the level must be at least 1",
+        ),
+        (
+            GameSetupError::BannedSkill(SkillId::from_raw(4)),
+            "banned skill 4 is not the ruleset's",
         ),
         (
             GameSetupError::Adventure(SetupError::Players(0)),

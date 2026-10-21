@@ -109,10 +109,10 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0xffa3eb3fcd417463",
-    "0x73c7f8447a03b399",
-    "0x11de8558b176a641",
-    "0x28158b347f3b07c8",
+    "0xea0ebbe9a3e8da6c",
+    "0xf4f1cf18ada700e8",
+    "0x54b842cd7a8bc178",
+    "0xfd32284e7d35de5b",
 ]
 
 [replay]
@@ -136,20 +136,20 @@ packs = [
 ]
 profile = "base:faithful"
 ruleset_hash = "0xe6839bfb42ebe118"
-adventure_ruleset_hash = "0xd8aaed1ab8f1742f"
+adventure_ruleset_hash = "0x5db17335c993551f"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 9
+game_state_hash_version = 10
 adventure_state_hash_version = 10
 checkpoint_every = 25
 
 [map]
 path = "fixtures/maps/e08-duel-36.h3m"
 hash = "0x32a05ae71f1167fe"
-import_version = 7
+import_version = 8
 
 [result]
 day = 8
-final_hash = "0x8ef6346ecb75c9ac"
+final_hash = "0x21eb8fabf179a5a3"

@@ -100,16 +100,29 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 ### ADV-QUIRK-8 — A map's tight formation reaches no hero
 - Class: fix, no flag (the user, 2026-10-20, at E08 T22a3's end, decision 46: once a code reading confirms the reset for every hero; confirmed by E08 T22b's reading)
 - Context / rules affected: game, GAM-BAT-001 (each side's formation in a battle's setup); the import's formation (`docs/formats/h3m.md`, "Import"); BAT-SET-001 places the armies by it
-- Original behavior: the map file gives each placed hero a formation (loose or tight), but `map_hero_setup` (0x486590), which fills every placed hero from the map's record, never writes the hero's formation bit (bit 0 of +0x48), so every hero starts loose, whoever owns it, until its player changes it on the hero screen (whose buttons clear and set the bit, 0x4DD577, 0x4DD587). Observed in batch E3c (E3-9): Blue's human hero, tight in the map, defended loose (hexes 15, 49, 100, 151, 185). Besides, the battle reads the bit only for a human player's side (0x463679): a computer player's hero always fights loose.
+- Original behavior: the map file gives each placed hero a formation (loose or tight), but the placed hero's setup (`placed_hero_setup` 0x4D8B30; read as 0x486590, `carried_hero_setup`, a campaign's carried-over hero's, until E08 T24a2a: survey `E08-progression.md` §3.1, which found the same on the placed hero's path), which fills every placed hero from the map's record, never writes the hero's formation bit (bit 0 of +0x48), so every hero starts loose, whoever owns it, until its player changes it on the hero screen (whose buttons clear and set the bit, 0x4DD577, 0x4DD587). Observed in batch E3c (E3-9): Blue's human hero, tight in the map, defended loose (hexes 15, 49, 100, 151, 185). Besides, the battle reads the bit only for a human player's side (0x463679): a computer player's hero always fights loose.
 - Intended/expected behavior: the hero keeps the map's formation and fights in it (the engine's import and battle setup, unchanged).
 - Impact: gameplay-altering (small): a map maker's tight hero fights loose until its player changes it; one shipped hero is tight (survey `E08-battles.md` §6.4).
 - Community status: not found on the wiki; VCMI 1.7.5 resets every hero to loose at the start (`CGHeroInstance::initHero`, `setFormation(LOOSE)`), as the original behaves.
-- Sources: code reading 0x486590, 0x463600 (0x463652 to 0x463740), 0x4DD2D0 (E08 T22b, survey `E08-battles.md` §6.4); observation `experiments/results/E08-batch-3c.md` E3-8 (E3-9's formation); VCMI 1.7.5 `lib/mapObjects/CGHeroInstance.cpp` `initHero`.
+- Sources: code reading 0x4D8B30 (survey `E08-progression.md` §3.1; first read at 0x486590), 0x463600 (0x463652 to 0x463740), 0x4DD2D0 (E08 T22b, survey `E08-battles.md` §6.4); observation `experiments/results/E08-batch-3c.md` E3-8 (E3-9's formation); VCMI 1.7.5 `lib/mapObjects/CGHeroInstance.cpp` `initHero`.
 - Flag: none (fixed in every profile)
 - Defaults: faithful = fixed, strict-fixed = fixed
 - Regression test: `crates/h3-map/src/tests/import.rs`, `a_placed_heros_customisations_and_formation_carry_over`; `crates/h3-adventure/src/command/tests.rs`, `a_step_toward_another_players_hero_visits_it_and_starts_a_battle` (the defender's tight formation in the battle's start)
 - Decided by / date: the user, 2026-10-20 (decision 46; the reading E08 T22b)
 - Open with it: whether a computer player's side should fight loose whatever its hero's formation (0x463679) is decided when the game has computer players (E10) or a formation command (army management, E08 decision 48).
+
+### ADV-QUIRK-9 — A level's draws follow the hero's seed byte and the level
+- Class: fix-optional (the user, 2026-10-20, ADV-Q15, D-14: `faithful` reseeds the original's generator per level, `strict-fixed` draws from the owner's stream; the epic's decision 55)
+- Context / rules affected: game, GAM-HER-002 (the level seed and where a level's draws come from; E08 T29); heroes, HER-LVL-002 (the original's generator, E08 T27); the levels at load (GAM-SET-002) and, with E08 T30, a level-up in play
+- Original behavior: `hero_level_up` (0x4DA720) reseeds the C runtime's `rand` for every level with 214 013 L + 156 823 S + 154 079 (0x4DA801 to 0x4DA830), L the new level and S the hero's seed byte (+0x8F), which `new_game_heroes` draws once per hero with `random_between(1, 255)` (0x4BFEC2) and no code of the level-up writes. A level's primary skill and offers are a function of S, L, the class, the hero's skills and the two offer counters: reloading a game, or reaching the level by another gain, gives the same offers, and whoever knows S predicts every level.
+- Intended/expected behavior: unclear; a fixed sequence per hero is how the wiki states the rule. For self-play it makes the offers predictable from a hidden byte: `strict-fixed` draws a level from the owner's stream in play and from the setup stream at load.
+- Impact: gameplay-altering in what can be predicted (the offers follow S); harmless to the state. S is server-only in every profile (ADR-0017 point 5): never in an observation or event.
+- Community status: known: the wiki ("The random seed for offering skills is separate for every hero and is fixed at the start of the scenario", https://heroes.thelazy.net/index.php/Secondary_skill; survey `E08-progression.md` §5.1); VCMI 1.7.5 draws from a randomizer per hero type seeded from the game's generator at its first use, which repeats on a reload but not when other draws change its order (survey §2.6).
+- Sources: code reading (E08 T24a1, confirmed by T24a2b2; survey `E08-progression.md` §2.2, §9); the wiki and VCMI as above.
+- Flag: `quirk.adventure.level_up_from_seed` (flag 27 in `h3_content`'s registry, E08 T26b), read by the game (E08 T29)
+- Defaults: faithful = on (the original's draws), strict-fixed = off (the streams)
+- Regression test: `crates/h3-heroes/src/tests/level.rs`, `batch_e3c_e3_6_levels_a_death_knight_from_its_seed` (the generator); `crates/h3-game/src/tests/levels.rs`, `in_faithful_the_levels_at_load_follow_the_heros_seed` and `in_strict_fixed_the_levels_at_load_draw_from_the_setup_stream` (the game's source, E08 T29)
+- Decided by / date: the user 2026-10-20 (ADV-Q15; the epic's decision 55)
 
 ### ADV-QUIRK-10 — The Elementalist levels as a might class
 - Class: fix-optional (the user, 2026-10-20, ADV-Q15: `faithful` keeps SoD's 6 and 4, `strict-fixed` gives the magic classes' 3 and 3; the epic's decision 55)
@@ -165,7 +178,7 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 
 ### ADV-QUIRK-14 — The computer's terrain shares count only the coast
 - Class: preserve, no flag: the rule in every profile (the user, 2026-10-20, ADV-Q17, A-11; the epic's decision 60)
-- Context / rules affected: heroes, HER-LVL-006 (E08 T28); the game's count of the shares with E08 T29 (GAM-SET-002)
+- Context / rules affected: heroes, HER-LVL-006 (E08 T28); adventure, ADV-MAP-002, the count of the shares from the static map, which the levels at load read (GAM-SET-002; E08 T29)
 - Original behavior: `ai_map_terrain_shares` (0x52B9C0), which weighs Pathfinding and Navigation for the computer's choice of skills, counts only the tiles of both levels with the tile flag `0x40` that are not rock: the map file's coast flag, which the editor sets on land beside water and on no other tile. So the water share is 0 on every map with a coast (Navigation worth nothing), Pathfinding is weighed by the coast's terrain alone, and a map without a coast divides 0 by 0: a NaN, which `_ftol` turns into 0 (both worth nothing).
 - Intended/expected behavior: probably the map's tiles (what a fix would count is a guess, ADV-Q17).
 - Impact: AI-only (which offer the computer takes: the levels at load, an unowned hero's default, later E10's computer players); harmless to the rules.
@@ -173,5 +186,5 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Sources: code reading (E08 T25, survey `E08-progression.md` §10.3; re-read by T28: the flag test at the tile's +0xC and the rock test before the counts); `docs/formats/h3m.md`, "Tile" (the coast flag).
 - Flag: none
 - Defaults: the original's in every profile
-- Regression test: `crates/h3-heroes/src/tests/choice.rs`, `the_shares_are_the_originals_doubles` (the evaluation on the counts); the count from the static map with E08 T29
+- Regression test: `crates/h3-heroes/src/tests/choice.rs`, `the_shares_are_the_originals_doubles` (the evaluation on the counts); `crates/h3-adventure/src/state/tests.rs`, `the_terrain_shares_count_the_coast_alone` (the count from the static map, ADV-MAP-002, E08 T29)
 - Decided by / date: the user 2026-10-20 (ADV-Q17; the epic's decision 60)
