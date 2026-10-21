@@ -1423,6 +1423,164 @@ tail (0x43E795) and the drawers behind it; recorded in the capture set's `war-ma
   frames) exact; `machines`' timeline as recorded on the first run (after the records' order)
   and its 106 frames exact, the heal's translucent frames and the tent's outline included.
 
+### 7.16 The magic animations (M3 T7a-1)
+
+Read in `play_magic_animation` (whole), `play_magic_animation_at_hex` (0x496A10),
+`mass_spell_animation` (0x5A67C0), `raise_stack`'s and Armageddon's drawing (0x5A7740 to
+0x5A7867, 0x5A4CED to 0x5A50C6), `strike_animation`'s magic part, `spell_projectile` (0x467DB0),
+`cast_spell`'s opening and tail and every handler's drawing, `creature_cast_action` and every
+call site of these players (22, 11, 6 and 21), with the spell records' static fields (0x685450:
++4 the sound, +8 the animation, −1 none). Nothing was recorded yet (T7a-2): every time below is
+the code's, *provisional* until a recording shows it.
+
+**Which player plays what.** The handler decides, not the animation's place (the asset tables'
+`[battle] magic`, §7.15):
+
+1. *Over one stack*, `play_magic_animation` (100 ms a frame unless named): a timed spell's single
+   target (its own animation, after the effect; Poison with `show_hit`), Dispel 41 (before its
+   effect), Cure 39 (after), Disrupting Ray 14 (after its projectile), Acid Breath 81; a cast
+   resisted: `MagicRes.wav`, the log's line, then 78 (`sp09_`, place 3) and the cast ends, its
+   own sound unplayed (0x5A1F89); a cast Magic Mirror redirected: Magic Mirror's 3 over the
+   mirroring stack before the new target is taken (0x5A0275); Lightning Bolt's (17, 57) bolt
+   from the sky 1 (`C11spA0`, place 2) at 10 ms; Chain Lightning's first 37 at 0 ms (each frame
+   waits only for the deadline the last redraw set). The creatures': good luck 18 over the
+   striker or shooter before its strike or shot (`goodluck.82m` started, the log, then the
+   animation; 0x4418B3, 0x43F9D1), good morale 20 (`GoodMrle.wav`; the log's line *after* the
+   animation, 0x464A84), bad morale 30 and fear 15 with the hit (`BadMrle.wav`, `Fear.wav`; the
+   line before; 0x464D10, 0x464F33), Death Stare 80 (spell 79's `Deathstr.wav`, 0x44113F), the
+   Rust Dragon's acid 81 (spell 80's sound, 0x44156A), Life Drain 74 over the drinker
+   (`DrainLif.wav`, 0x440E83), the Thunderbird's bolt 1 at 10 ms (`LightBlt.wav`, 0x441315),
+   Death Blow 73 (`Deathblo.wav`, 0x443B3C, over the stack of its caller's third argument, not
+   read which), regeneration 79 (`Regener.wav`, 0x44708D), the tent's 79 (§7.15), the Wraith's
+   mana drain 77 (`ManaDrai.wav`, 0x4657BD). With a sample the battle then waits for its end.
+   SoD has no bad luck: nothing plays for it.
+2. *Over the marked stacks*, `strike_animation` (the stacks whose +0x20 is set): Magic Arrow 64
+   and Ice Bolt 46 after their projectiles, Lightning Bolt and the Thunderbird's bolt 49 after
+   the bolt from the sky, Implosion 10, Sacrifice's victim 51, a Land Mine's blast 57 over the
+   stack that stepped on it (0x59FC6D), Poison's damage at a round's start 67 (0x4472AB). Chain
+   Lightning (38), Fire Shield's return damage (11, 0x440B6F) and the Magogs' and Liches' shots
+   name an animation but mark no stack: only the reactions play.
+3. *Over several stacks*, `mass_spell_animation` (H3API's AnimateMassSpell; the stacks marked in
+   the manager's +0x547C): a timed spell cast on all (Expert or a mass spell; its own
+   animation), Dispel and Cure at Expert, Berserk 35 (the stacks in its area), all without
+   reactions; Death Ripple 8 and Destroy Undead 29 with them.
+4. *A raise*, `raise_stack`: always Resurrection's 50 (`C12spE0`, translucent): Resurrection,
+   Animate Dead (its own 4 never plays), Sacrifice's target, the Archangel (0x4485BE), a
+   Phoenix's rebirth (0x4695AD).
+5. *At a hex*, `play_magic_animation_at_hex` (`id`, hex, `time`, `keep`): the area spells at their
+   target hex before the damage (Frost Ring 45, Fireball 53, Inferno 9, Meteor Shower 16;
+   0x5A49B8; the reactions follow in `strike_animation` without an animation); the spell
+   obstacles' placement, kept until the object is placed and shown (each Quicksand pit 55 with
+   `Quiksand.wav`, each Land Mine 47 with `landmine.wav`, each Fire Wall hex 65, Force Field 32
+   or, from Advanced, 33); a removal, by the object's vanish animation (battle object +0x14:
+   Quicksand 58, Land Mine 59, Force Field 60 or 61, Fire Wall 66; −1 for the battlefield's own
+   obstacles) at its anchor: expiring at a round's start (0x4761A9), Dispel at Expert
+   (0x5A1767), Remove Obstacle after its own 34 at the hex aimed at (0x5A1C35; an obstacle
+   without one dissolves instead, below); the Familiars' channel after a hero's cast (76
+   `sp07_B` at the caster's corner, hex 0 for the attacker or 16, with `MagChDrn.wav`, then 75
+   `sp07_A` at the other with `MagChFil.wav`, 0x5A2709).
+6. *The whole field*: Armageddon 12 (`C06spF0`), tiled (below).
+7. *Their own drawers*: the projectiles (Magic Arrow `c20spx0`–`4`, Ice Bolt `c08spw0`–`4`,
+   Disrupting Ray `c07spA0`; the Enchanters' shot flies Magic Arrow's, 0x59FDE0), the Magogs'
+   fireball (Fireball's 53 and sound, 0x43FA15), the Liches' cloud (Death Cloud's 72 and sound,
+   0x43FE07), Bloodlust's and Stone Gaze's glows, Clone's slide, the dissolves.
+
+Not met on any path read: 4, 13 (its DEF is Disrupting Ray's projectile), 38, 43, 44, 52, 62,
+63, 82 (`poof.def`). The town's code reads another table through an index offset from
+0x641E08's address. Every cast's spell sound (+4) starts asynchronously after the
+resistance roll, if any (category 3, 0x5A0331); Curse's is named `Curse`, without `.wav`.
+
+**The players.**
+
+- **`play_magic_animation`** (§7.15, completed): with `show_hit` (ignored when the target already
+  shows group 3) the target plays its hit group from frame 0, one frame a redraw at
+  trunc(100 F) whatever `time` is, the animation's frame i beside it while it has one; then it
+  stands (group 2, frame 0) and, if the hit had at least as many frames, a redraw shows it at
+  once. The animation's frames left (from the hit's count on) follow at `time`, then a last
+  redraw at `time` erases it. Its place 3 (0x43E906): beside the standing frame's front, x = the
+  stack's hex's anchor + (the frame's +0x38 + its width − 196) facing right, the anchor − that −
+  W facing left; y as place 1; no two-hex shift.
+- **`strike_animation`**: frame i at iteration i while i < n, then its last frame stays until
+  the loop ends and every +0x20 is cleared (0x46905A); L = max(n, A + R − 1) (§7.4) with no
+  striker (A = 0) for a spell, so the reactions end with the loop.
+- **`mass_spell_animation`** (targets, `id`, reactions): loads the DEF itself (+0x132E8,
+  +0x132EC; nothing while hidden) and sets every target's +0x20; with reactions each target not
+  already in group 3 takes death 5 (no count left) or hit 3 at frame 0 and its death or wince
+  sound (`stack_play_sound` 4, 2); L = max(n, the longest such group). Iteration i: the
+  reactions advance first (frame 0 never shows; a hit ends standing, a death on its last
+  frame), the animation's frame i is set only while i + 1 < n, so its last frame never shows
+  and n − 2 shows twice (*a candidate quirk*, for T7a-2's recording), then a redraw at
+  trunc(100 F), shown. Then +0x20 cleared, the dead die (`stack_death`), a redraw shown at
+  once, the Phoenix check.
+- **`raise_stack`**: L = max(n, the death group's frames d); iteration i sets frame i (none
+  after n) and plays a lying stack's death group backwards (frame d − 1 − i) until it stands; a
+  redraw at trunc(100 F) each, then the dead bit cleared and a redraw.
+- **At a hex** (0x496A10): the DEF through `battle_load_magic_animation` (so +0x132EC names it),
+  the frame counted locally (+0x132F0 untouched, no +0x20). Its place by the kind's low nibble at
+  hex h: 0 x = h's anchor − W / 2, y = h's top + 52 − H (the cell's lower edge); 1 x as 0, y = the
+  anchor's y − H / 2 − 37; 4 x = h's left, y as 0; any other at (`keep`, `keep`), which no caller
+  uses. Each frame: a redraw restoring the background and waiting `time` on the deadline, not
+  shown; the frame over everything on the screen buffer (through 0x47C170, translucent by bit 8,
+  not clipped to the battlefield); the battlefield's rectangle shown while the battle screen is
+  up (+0x13300). Without `keep` a last redraw at `time`, shown, erases it.
+- **Armageddon** (its handler's own loop): L and the reactions as in the mass animation; each
+  iteration a redraw at trunc(100 F), not shown, then while i < n the frame tiled from (0, 0)
+  over the 800 × 556 battle area (ceil(800 / W) columns, ceil(600 / H) rows, each clipped),
+  plain, and the battlefield shown (`battle_show_field` 0x493780).
+- **The projectiles** (`spell_projectile`: start, end, the DEFs and their angles): d the distance,
+  n = trunc((trunc(d) + 15) / 31) steps of (trunc(Δx / n), trunc(Δy / n)); the DEF whose angle
+  (0°, −16°, −34°, −56°, −83°; tables 0x6421EC to 0x642263) is nearest atan(Δy / |Δx|) in degrees
+  (screen y down: a target below takes the first), mirrored for a target to the left. A redraw
+  neither shown nor waited, then per step: the last position's background restored, group 0's
+  next frame (cycling) drawn plain, centred, the union shown clipped to the battlefield, a wait
+  until trunc(33 F) after the step's start (outside the deadline, as a shot's, §7.4); at the end
+  the background restored and shown. From a hero's cast point (below) or a creature's centre
+  (`stack_screen_x`, `stack_screen_y`) to the target's centre.
+- **The Magogs and the Liches** (after their projectile): the explosion centred on the target
+  creature (as place 1), each frame a redraw waiting trunc(50 F) (Magogs) or trunc(100 F)
+  (Liches), not shown, the frame through `battle_draw_magic_frame` plain (the Liches' `sp04_` too,
+  though the table marks it translucent), shown; a redraw shown at once; then the reactions.
+- **Glows** (0x5A122B to 0x5A1311, 0x5A1121 to 0x5A11D1): the stack's flag 0x20000000
+  (Bloodlust) or 0x40000000 (Stone Gaze) and its f32 +0x450: Bloodlust 0.0 to 0.9, then 1.0 to
+  0.1 (20 redraws), Stone Gaze 1.0 to 0.1 (10), each at trunc(100 F), shown; then the flag
+  cleared and a redraw shown at once (how `draw_battle_stack` paints them: not read). A mass
+  Bloodlust glows every stack it reached together.
+- **Clone** slides from the original's place to its own in 16 redraws at trunc(50 F) (offsets
+  +0x100, +0x104; 0x5A6FDE). **Dissolves**: `screen_save_rect` 0x602CC0 saves a rectangle,
+  `screen_dissolve` 0x602DC0 blends it into the new picture in 8 steps (weight k / 8), each held
+  until its start plus the step (33 ms by default, 75 for a created stack, 0x47A2BD; the blend not
+  read): Teleport (the 800 × 556 area, 0x5A1B6C, 0x5A1BFA), a created stack
+  (`create_battle_stack`), Remove Obstacle on a battlefield obstacle.
+- **The hero's cast** (caster kinds 0 and 2, the latter the artifacts' opening spells): the
+  acting side's hero takes group 4 (+0x53E4) and plays frames 0 to c − 1 (c the hero DEF
+  record's +0xC, 5 in all 18, `hero_battle_defs`), a redraw at trunc(100 F) each, shown, before
+  anything else of the cast (0x5A01CF); then the cast (a redirection, the resistance roll, the
+  sound, the handler); then every stack's flags cleared (as at `strike_animation`'s end), the
+  rest of group 4 (frames c to 7, 0x5A20B8) at trunc(100 F), and it stands (group 0) in a
+  redraw shown at once. Its cast point, where projectiles and rays start: the record's +4, +8
+  in the hero's frame, (x − 43, y − 19) on the left, (693 + W − x, y − 19) on the right.
+- **A creature's cast** (`creature_cast_action`: Faerie Dragon, Archangel, Pit Lord, Master
+  Genie, Ogre Mage), after its turn toward the target: the angle atan(Δy / |Δx|) in degrees from
+  its centre (its anchor ±22 for two hexes, its anchor's y − h / 2) to the target hex's anchor,
+  Δy the target's y less its own (Δx = 0: ±90); above 25° group 17, above −25° 18, else 19; a
+  missing or empty group 11, 12 or 13 by the same angle (0x44840C to 0x4484BB). Its shot sound
+  (+0x17C) starts, its frames play at trunc(trunc(A / n) F) each (A the attack time +0x15C, as a
+  shot's, §7.4), shown, and its last frame stays (0x44851C) through the cast (`cast_spell` caster
+  kind 1: no hero frames); then the sound's end (0x4486E2) and its turn back. When it stands
+  again was not read. *The sign:* a shot's angle is atan(−Δy / |Δx|) (`shot_angle_group`), the
+  cast's not, and Δy starts at the caster's centre but ends at the target's anchor: a level target
+  one hex away takes group 17; VCMI 1.7.5 picks a cast's group by the shot's angle
+  (`CastAnimation`), 17 for a target above: for T7a-2's recording (a Faerie Dragon at targets
+  above, level and below). The Enchanters (`enchanter_cast`): every able one of the side marked a
+  striker in group 15, its shot sound, `strike_animation` without an animation, then the mass cast.
+- **For the harness** (T7a-2): `h3mem` reads +0x132EC, +0x132F0 and each stack's +0x20
+  (§7.15), the heroes' and stacks' groups and frames. That shows players 1 to 4 and the casters,
+  not the frames of players 5 to 7 (+0x132EC names the at-hex and Armageddon animations, not
+  their frames): their times come from the frame check's screens.
+- **Not read:** the dissolve's blend; Chain Lightning's rays beyond `draw_ray`'s call (colour
+  0x131, 0x5A64EF; T7c); how the glows are painted; the summons' and the Pit Lord's creation
+  beyond the dissolve; Earthquake (sieges); the force-feedback effects (IFC20, nothing drawn).
+
 ## 8. The window, input and audio evaluation (M2 T2)
 
 ADR-0020 point 4 left the library to a measured evaluation at M2; the choice, the user's
