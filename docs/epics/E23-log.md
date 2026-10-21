@@ -923,6 +923,7 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   reader of the prediction flag agrees. Its notes: a walk that writes no action leaves the run
   reading stale action fields (no run reaches it; not modelled, §7.52); the pathfinder after a
   spell context (BAT-Q59, outside T4b2).
-- **Stopped here** (the user, 2026-10-22: T4b2 in a new session): the branch `battle/e23-t4b2`
-  holds the port, its tests and these docs; the scoped verify passed but for a coverage gap since
-  closed. Left: the full verify with the original data, the pull request.
+- **Stopped, then finished** (the user, 2026-10-22: T4b2 in a new session): the next session
+  merged `master` (#373 merged by then) without a conflict and ran the full verify with the
+  original data: every step passed (code 22188e09 on 42aeffd, 2026-10-22); `computer-decisions`
+  477 815 842 instructions, +0.13 %, the other workloads +0.06 to +0.68 % (no re-set). #374.

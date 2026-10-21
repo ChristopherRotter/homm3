@@ -4,8 +4,8 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E23, the original's battle AI, in progress** (`docs/epics/E23-original-battle-ai.md`; refined 2026-10-19, BAT-Q52): the neutral side first, a crate of its own, the code reading first, batch rows only for readings at risk. **T1 done** (#288 to #331): §7.34 to §7.46, `pathfinder.rs` (BAT-QUIRK-24), the survey `E23-battle-ai.md`, **ADR-0027** (BAT-Q55). **T2 done** (#334 to #347): `h3_battle_ai::choose`, the shooters, BAT-QUIRK-25, the benchmark `computer-decisions`. **The budget** (the user, 2026-10-21): the gated count +2 %, re-set on purpose per part; ≤ 1 ms for the slowest decision on a quiet sandbox, recorded per task. **T3 done** (#350 to #359): the walker, BAT-AI-005 to 011, slips 2 to 4, 18 to 21; slip 6 a gap (BAT-STUB-7, BAT-Q56). **T4a done** (#364, #365), **T4b1 done** (#369). **T4b2 built, not merged** (`battle/e23-t4b2`, no PR: the full verify and the PR left; the predictions whole, BAT-AI-015, §7.52, BAT-STUB-9 retired; a hypnotized walker leaves itself out, BAT-STUB-10, BAT-Q58; `POLICY_VERSION` 8). **Next:** T4c (the context's tables and second context, the Master Genie; cut at its checkpoint). T1a6 before T5.
-- **#373** (`cross-lane`, watch it until it merges): `creature_cast_targets` lists `None` for a creature's mass version (the Ogre Mage on Magic Plains); the AI lane's mask gains it.
+- **E23, the original's battle AI, in progress** (`docs/epics/E23-original-battle-ai.md`; refined 2026-10-19, BAT-Q52): the neutral side first, a crate of its own, the code reading first, batch rows only for readings at risk. **T1 done** (#288 to #331): §7.34 to §7.46, `pathfinder.rs` (BAT-QUIRK-24), the survey `E23-battle-ai.md`, **ADR-0027** (BAT-Q55). **T2 done** (#334 to #347): `h3_battle_ai::choose`, the shooters, BAT-QUIRK-25, the benchmark `computer-decisions`. **The budget** (the user, 2026-10-21): the gated count +2 %, re-set on purpose per part; ≤ 1 ms for the slowest decision on a quiet sandbox, recorded per task. **T3 done** (#350 to #359): the walker, BAT-AI-005 to 011, slips 2 to 4, 18 to 21; slip 6 a gap (BAT-STUB-7, BAT-Q56). **T4a done** (#364, #365), **T4b1 done** (#369), **T4b2 done** (#374: the predictions whole, BAT-AI-015, §7.52, BAT-STUB-9 retired; a hypnotized walker leaves itself out, BAT-STUB-10, BAT-Q58; `POLICY_VERSION` 8). **Next:** T4c (the context's tables and second context, the Master Genie; cut at its checkpoint). T1a6 before T5.
+- **#374** (T4b2): watch it until it merges. #373 merged (`creature_cast_targets` lists `None` for a creature's mass version; the AI lane's mask gains it).
 - E05, `h3-sim` and `h3-ffi` are the AI lane's (AI-Q1), `h3-heroes` the adventure lane's.
 - **Open:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35, BAT-Q51, BAT-Q56 to BAT-Q59 (none blocks; BAT-Q33 and BAT-Q51 settle with E23's T6), BAT-STUB-1, the inbox (by kind since 2026-10-19), Q43; S-23, S-24, batch 2g.
 - **Versions:** battle state hash v51, battle part hash v7 (E23 T3-0; the encodings, replay format and C ABI are the AI lane's); shared: core ruleset hash v46, pack format v45 (E23 T3-0), protocol v34. Next ids: BAT-Q60, BAT-QUIRK-26, BAT-STUB-11, BAT-AI-016, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-24, S-30.
@@ -52,14 +52,14 @@ Area traps live where they are used: experiments in `docs/experiments/README.md`
 
 ## Recent sessions
 
+### 2026-10-22 (ninety-seventh) — E23 T4b2 finished
+
+`master` merged (#373 in); the full verify with the original data passed (the log); #374 opened. No code change.
+
 ### 2026-10-22 (ninety-sixth) — E23 T4b2, the predictions; the mass-cast listing
 
-**In progress, stopped by the user (T4b2 in a new session):** T4b2 built on `battle/e23-t4b2` (no PR; the log's T4b2 entry: cost, blind check). Left: the full verify, the PR. #373 open. The user: T4b2 whole; a hypnotized walker leaves itself out (BAT-STUB-10, BAT-Q58). §7.52; BAT-Q59 for T4c.
+T4b2 built, stopped by the user before the PR (the log: cost, blind check). The user: T4b2 whole; a hypnotized walker leaves itself out (BAT-STUB-10, BAT-Q58). §7.52; BAT-Q59 for T4c.
 
 ### 2026-10-21 (ninety-fifth) — E23 T4b1, the Ogre Mage
 
 The user: T4b in two; the Ogre Mage told by its spell. §7.51. `spells.rs`, `casts::scan`; `computer::threat`, `base_damage`, `spell_affects`, `takes_stack`. The count +0.00 %.
-
-### 2026-10-21 (ninety-fourth) — E23 T4a, the entry, the raise and the Faerie Dragon
-
-The user: T4 in three; the dragon at the engine's targets (BAT-STUB-8). §7.50. `casts.rs`; `computer::spell_damage_value`, `raise_count`, `created_worth`, `chain`, `area_stacks`. The count re-set.
