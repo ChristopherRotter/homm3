@@ -1524,9 +1524,9 @@ resistance roll, if any (category 3, 0x5A0331); Curse's is named `Curse`, withou
   not clipped to the battlefield); the battlefield's rectangle shown while the battle screen is
   up (+0x13300). Without `keep` a last redraw at `time`, shown, erases it.
 - **Armageddon** (its handler's own loop): L and the reactions as in the mass animation; each
-  iteration a redraw at trunc(100 F), not shown, then while i < n the frame tiled from (0, 0)
+  iteration a redraw at trunc(100 F), not shown, then (while i < n) the frame tiled from (0, 0)
   over the 800 × 556 battle area (ceil(800 / W) columns, ceil(600 / H) rows, each clipped),
-  plain, and the battlefield shown (`battle_show_field` 0x493780).
+  plain; the battlefield shown each time (`battle_show_field` 0x493780).
 - **The projectiles** (`spell_projectile`: start, end, the DEFs and their angles): d the distance,
   n = trunc((trunc(d) + 15) / 31) steps of (trunc(Δx / n), trunc(Δy / n)); the DEF whose angle
   (0°, −16°, −34°, −56°, −83°; tables 0x6421EC to 0x642263) is nearest atan(Δy / |Δx|) in degrees
@@ -1576,7 +1576,9 @@ resistance roll, if any (category 3, 0x5A0331); Curse's is named `Curse`, withou
 - **For the harness** (T7a-2): `h3mem` reads +0x132EC, +0x132F0 and each stack's +0x20
   (§7.15), the heroes' and stacks' groups and frames. That shows players 1 to 4 and the casters,
   not the frames of players 5 to 7 (+0x132EC names the at-hex and Armageddon animations, not
-  their frames): their times come from the frame check's screens.
+  their frames): their times come from the frame check's screens. The spell book's dialog
+  (0x59BDF0, behind `hero_book_button` 0x59E900), through which the harness will cast, was not
+  read.
 - **Not read:** the dissolve's blend; Chain Lightning's rays beyond `draw_ray`'s call (colour
   0x131, 0x5A64EF; T7c); how the glows are painted; the summons' and the Pit Lord's creation
   beyond the dissolve; Earthquake (sieges); the force-feedback effects (IFC20, nothing drawn).
