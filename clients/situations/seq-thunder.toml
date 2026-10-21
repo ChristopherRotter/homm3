@@ -1,0 +1,45 @@
+# E17 M3 T7b-2b-3: the Thunderbird's bolt and Life Drain (design §7.16, players 1 and 2), in hot
+# seat (`hot_seat` in sequences.toml: the harness plays both sides). Round 1: the Thunderbirds
+# (speed 11) fly to row 6, the Vampire Lords (twelve hexes away at the start) defend. Round 2: the
+# Thunderbirds strike them from the left; the bolt's roll (`roll:thunderbird`, 0x44119D) falls: the
+# log's line, `LightBlt.wav`, animation 1 from the sky at 10 ms, the damage's line, then 49 over the
+# marked Vampire Lords with their reaction. The Vampire Lords strike back and drain the
+# Thunderbirds (`DrainLif.wav`, the log's line, animation 74 over the drinkers). On grass at the
+# capture set's tile (grass.toml's obstacles).
+
+[scenario]
+id = "sequence-thunder"
+# Both players human, as the original's hot-seat map (`h3-view situation --hot-seat`).
+human = ["attacker", "defender"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:thunderbird"
+count = 2
+
+[[defender]]
+slot = 0
+creature = "base:vampire_lord"
+count = 10
+
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1

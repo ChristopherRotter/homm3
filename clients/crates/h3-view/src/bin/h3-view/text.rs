@@ -11,7 +11,7 @@ use h3_formats::lod::LodArchive;
 use h3_formats::text::TextTable;
 use h3_view::battle_log::{self, Hit, Spread, Stack};
 use h3_view::tables::Tables as AssetTables;
-use h3_view::text::keys::{Entry, Keys};
+use h3_view::text::keys::{EXECUTABLE, Entry, Keys, Row, address_field};
 use h3_view::text::pack::{Pack, Problem, Tables};
 use h3_view::text::{Args, Catalogue};
 
@@ -58,22 +58,45 @@ pub fn read_keys(path: &Path, tables: &AssetTables) -> Result<Keys, String> {
     Keys::parse(&text, &entries(tables)).map_err(|e| format!("{}: {e}", path.display()))
 }
 
-/// The text tables the keys name, each entry's bytes from `entry` (by its name, `GENRLTXT.TXT`).
+/// The user's `Heroes3.exe` in the installation `install`, whose own strings some keys name (the
+/// table [`EXECUTABLE`], E17 M3 T7b-2b-3).
+pub fn executable(install: &Path) -> Result<Vec<u8>, String> {
+    let path = find_ci(install, "Heroes3.exe")
+        .map_err(|e| format!("{}: Heroes3.exe: {e}", install.display()))?;
+    fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))
+}
+
+/// The text tables the keys name, each entry's bytes from `entry` (by its name, `GENRLTXT.TXT`);
+/// the executable's strings they name from `exe`'s bytes (the table [`EXECUTABLE`]: a record of
+/// each string's address and its text; a build `h3_formats::exe` knows).
 pub fn tables(
     keys: &Keys,
     entry: impl Fn(&str) -> Result<Vec<u8>, String>,
+    exe: &[u8],
 ) -> Result<Tables, String> {
-    let names: BTreeSet<&str> = keys
-        .keys
-        .values()
-        .flat_map(|k| {
-            k.original
-                .iter()
-                .map(|(_, source, _)| source.table.as_str())
-        })
-        .collect();
+    let sources = || {
+        keys.keys
+            .values()
+            .flat_map(|k| k.original.iter().map(|(_, source, _)| source))
+    };
+    let names: BTreeSet<&str> = sources().map(|source| source.table.as_str()).collect();
     let mut tables = Tables::new();
     for name in names {
+        if name == EXECUTABLE {
+            let (_, image) =
+                h3_formats::exe::identify(exe).map_err(|e| format!("Heroes3.exe: {e:?}"))?;
+            let mut records = Vec::new();
+            for source in sources() {
+                if let Row::Address(va) = source.row {
+                    let text = image
+                        .c_string(va)
+                        .map_err(|e| format!("Heroes3.exe: 0x{va:X}: {e:?}"))?;
+                    records.push(vec![address_field(va), text]);
+                }
+            }
+            tables.insert(name.to_owned(), records);
+            continue;
+        }
         let file = format!("{name}.TXT");
         let table = TextTable::parse(&entry(&file)?).map_err(|e| format!("{file}: {e:?}"))?;
         tables.insert(name.to_owned(), table.records);
@@ -220,7 +243,8 @@ fn text(options: &Options) -> Result<Vec<String>, String> {
             LodArchive::parse(b).map_err(|e| format!("{name}: {e:?}"))?,
         ));
     }
-    let texts = tables(&keys, |name| first_holding(&archives, name))?;
+    let exe = executable(&options.install)?;
+    let texts = tables(&keys, |name| first_holding(&archives, name), &exe)?;
     let (original, problems) = Pack::original(&keys, &texts);
     let mut lines: Vec<String> = problems.iter().map(|p| format!("original: {p}")).collect();
     let mut catalogue = Catalogue::default();

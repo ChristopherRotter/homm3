@@ -134,6 +134,7 @@ impl Battle {
         .map_err(|e| format!("{}: {e}", layout_path.display()))?;
         let archives = read_archives(&source.install)?;
         let parsed = parse(&archives)?;
+        let exe = crate::text::executable(&source.install)?;
         let looks = motion::looks(&record, &tables, &parsed)?;
         let magic = motion::magic(&record, &tables, &parsed)?;
         let casts = motion::casts(&record, &tables, &parsed, &source.packs)?;
@@ -145,7 +146,7 @@ impl Battle {
             .map_err(|e| e.to_string())?
             .with_heroes(motion::heroes(&record, &tables, &parsed, Some(seed))?);
         let commands = commands.len();
-        let panels = crate::log::panels(&record, &timeline.log, &tables, &layout, &parsed)?;
+        let panels = crate::log::panels(&record, &timeline.log, &tables, &layout, (&parsed, &exe))?;
         // The mouse (E17 M3 T6c-2): each turn's battle from the engine, the words of its hints,
         // the stacks' fidgets' frames.
         let turned = if source.scenario() {
@@ -153,7 +154,7 @@ impl Battle {
         } else {
             Vec::new()
         };
-        let writer = crate::log::Writer::new(&tables, &layout, &parsed).ok();
+        let writer = crate::log::Writer::new(&tables, &layout, (&parsed, &exe)).ok();
         let group = tables.battle.groups.mouse_over;
         let fidget_frames = snapshot
             .stacks
@@ -330,7 +331,8 @@ impl Battle {
 
     /// The battle's own sounds its cues name, by cue (not a creature's; design §8.2): the tent's
     /// heal (E17 M3 T3b), a resisted spell's and each cast spell's (E17 M3 T7b-1), morale's, Fear's
-    /// and good luck's (E17 M3 T7b-2b-2b).
+    /// and good luck's (E17 M3 T7b-2b-2b), Life Drain's, the Thunderbird's bolt's and the spells'
+    /// the striker's effects play (E17 M3 T7b-2b-3).
     pub fn battle_sounds(&self) -> BTreeMap<Sound, String> {
         let spells = &self.record.header.manifest.keys.spells;
         let battle = &self.tables.battle;
@@ -345,7 +347,9 @@ impl Battle {
                     Sound::BadMorale => battle.bad_morale_sound.as_ref(),
                     Sound::Fear => battle.fear_sound.as_ref(),
                     Sound::Luck => battle.luck_sound.as_ref(),
-                    Sound::Spell(handle) => spells
+                    Sound::Drain => battle.drain_sound.as_ref(),
+                    Sound::Thunderbolt => battle.thunderbolt_sound.as_ref(),
+                    Sound::Spell(handle) | Sound::SpellFile(handle) => spells
                         .get(usize::from(handle))
                         .and_then(|key| self.tables.spells.get(key)?.sound.as_ref()),
                     _ => None,

@@ -8,8 +8,9 @@
 # the number `count`; `contexts`, forms by the argument `context`; `original`, its forms in the
 # original's tables: `form` (its suffix: a plural category, a context, none for the only form),
 # `at = "<TABLE>:<record>[:<column>]"` (records from 0 with the header rows, as the parser reads
-# them; VCMI's `core.genrltxt.<n>` is GENRLTXT's record n + 1) and `printf`, the arguments its `%s`
-# and `%d` stand for in order. A family: a key per entry of the asset tables (`creature`:
+# them; VCMI's `core.genrltxt.<n>` is GENRLTXT's record n + 1), or `at = "EXE:0x<address>"` for a
+# string of the user's `Heroes3.exe` itself (E17 M3 T7b-2b-3: a line the executable writes from its
+# own text), and `printf`, the arguments its `%s` and `%d` (or `%i`) stand for in order. A family: a key per entry of the asset tables (`creature`:
 # `creature.<table>:<key>`, the creature's names; `spell` and `hero` since E17 M3 T7b-1), its row
 # the `first`-based non-blank record of its original id (with `by`, the records whose column `by`
 # is filled), its forms' columns in `forms`, or a single form's in `column`.
@@ -127,6 +128,65 @@ original = [{ at = "GENRLTXT:190", printf = ["creature", "verb"] }]
 id = "battle.log.disrupted"
 args = { defense = "number" }
 original = [{ at = "GENRLTXT:92", printf = ["defense"] }]
+
+# Life Drain (`striker_effects` 0x440D1F, E17 M3 T7b-2b-3): the drinkers' name and verb by their
+# number before the creatures it raised (`count`), the hit points drained, then the struck stack's
+# name by its number before the strike's kills.
+[[key]]
+id = "battle.log.drain"
+args = { creature = "text", hit_points = "number", target = "text" }
+plural = true
+original = [
+    { form = "one", at = "GENRLTXT:362", printf = ["creature", "hit_points", "target"] },
+    { form = "other", at = "GENRLTXT:363", printf = ["creature", "hit_points", "target"] },
+]
+
+# The drinkers Life Drain raised, after its line (0x440DD1, 0x440DF8); `count`: how many. Its
+# row's line break joins or splits it as any line's (0x472E90).
+[[key]]
+id = "battle.log.drain-raised"
+plural = true
+original = [
+    { form = "one", at = "GENRLTXT:364" },
+    { form = "other", at = "GENRLTXT:365", printf = ["count"] },
+]
+
+# Death Stare (`striker_effects` 0x440FD3, 0x441086; E17 M3 T7b-2b-3): `count` the creatures it
+# killed, which picks the struck creature's name; the Gorgons' by their number.
+[[key]]
+id = "battle.log.death-stare"
+args = { creature = "text", starer = "text" }
+plural = true
+original = [
+    { form = "one", at = "GENRLTXT:119", printf = ["creature", "starer"] },
+    { form = "other", at = "GENRLTXT:120", printf = ["count", "creature", "starer"] },
+]
+
+# The Thunderbird's bolt (`striker_effects` 0x441276, E17 M3 T7b-2b-3): the struck stack's name by
+# its number; the bolt's damage is a spell's line after it (`battle_log_damage`, named by Lightning
+# Bolt).
+[[key]]
+id = "battle.log.thunderbolt"
+args = { creature = "text" }
+original = [{ at = "GENRLTXT:368", printf = ["creature"] }]
+
+# Poison taking hold after a strike (`battle_log_cast` 0x5A8EFC, a creature's cast of Poison; E17 M3
+# T7b-2b-3): the stack's name, verb and pronoun by its number.
+[[key]]
+id = "battle.log.poisoned"
+args = { creature = "text" }
+plural = true
+original = [
+    { form = "one", at = "GENRLTXT:562", printf = ["creature"] },
+    { form = "other", at = "GENRLTXT:563", printf = ["creature"] },
+]
+
+# Acid Breath lowers a stack's defense (`cast_spell` 0x5A1F27, E17 M3 T7b-2b-3): the executable's
+# own text, not a table's (`EXE:<address>`): the stack's name by its number, the defense lowered.
+[[key]]
+id = "battle.log.acid-breath"
+args = { creature = "text", defense = "number" }
+original = [{ at = "EXE:0x688450", printf = ["creature", "defense"] }]
 
 # A hero's spell aimed over a stack (E17 M3 T7b-1, *provisional*: the aiming loop is not read):
 # the spell's name and the stack's by its number; elsewhere on the battlefield the spell's alone.

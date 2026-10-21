@@ -11,8 +11,9 @@ use h3_content_battle::Ability;
 use h3_formats::lod::LodArchive;
 use h3_protocol::wire::{Event, ServerMessage, Side};
 use h3_view::anim::{
-    BAD_MORALE, Caster, Casts, FEAR, GOOD_LUCK, GOOD_MORALE, HEAL, Look, MagicLook, Missile,
-    RESISTED, Shell, SpellLook, Stage,
+    ACID, ACID_BREATH, BAD_MORALE, BOLT, Caster, Casts, DEATH_STARE, DEATH_STARE_SPELL, FEAR,
+    GOOD_LUCK, GOOD_MORALE, HEAL, LIFE_DRAIN, LIGHTNING_BOLT, Look, MagicLook, Missile, RESISTED,
+    Shell, SpellLook, Stage, THUNDERBOLT, TITAN_BOLT,
 };
 use h3_view::batch::Batch;
 use h3_view::hero::{HeroLook, Heroes};
@@ -160,8 +161,10 @@ fn missile(
 /// The magic animations the record's events call for, by number (E17 M3 T3b): the heal's when a
 /// stack is healed ([`HEAL`]); since E17 M3 T7b-1 each cast spell's and the resisted one's
 /// ([`RESISTED`]); since E17 M3 T7b-2b-2b good and bad morale's, Fear's and good luck's
-/// ([`GOOD_MORALE`], [`BAD_MORALE`], [`FEAR`], [`GOOD_LUCK`]); each with its DEF's frames and
-/// size.
+/// ([`GOOD_MORALE`], [`BAD_MORALE`], [`FEAR`], [`GOOD_LUCK`]); since E17 M3 T7b-2b-3 each spell
+/// after a strike's, the bolt from the sky ([`BOLT`], the Thunderbird's [`THUNDERBOLT`] after it),
+/// Life Drain's, Death Stare's and the acid's ([`LIFE_DRAIN`], [`DEATH_STARE`], [`ACID`]); each
+/// with its DEF's frames and size.
 pub fn magic(
     record: &Record,
     tables: &Tables,
@@ -188,10 +191,28 @@ pub fn magic(
             Event::Struck { flags, .. } if flags.lucky => {
                 numbers.insert(GOOD_LUCK);
             }
-            Event::SpellCast { spell, .. } => {
-                if let Some(a) = spell_entry(record, tables, *spell).and_then(|e| e.animation) {
+            Event::SpellCast { spell, .. } | Event::StrikeSpell { spell, .. } => {
+                let entry = spell_entry(record, tables, *spell);
+                if let Some(a) = entry.and_then(|e| e.animation) {
                     numbers.insert(a);
                 }
+                // The bolt from the sky first (E17 M3 T7b-2b-3), the Thunderbird's own after it.
+                if entry.is_some_and(|e| matches!(e.original, LIGHTNING_BOLT | TITAN_BOLT)) {
+                    numbers.insert(BOLT);
+                    if matches!(event, Event::StrikeSpell { .. }) {
+                        numbers.insert(THUNDERBOLT);
+                    }
+                }
+            }
+            // The striker's effects (E17 M3 T7b-2b-3).
+            Event::LifeDrained { .. } => {
+                numbers.insert(LIFE_DRAIN);
+            }
+            Event::DeathStared { .. } => {
+                numbers.insert(DEATH_STARE);
+            }
+            Event::StrikeDamage { .. } => {
+                numbers.insert(ACID);
             }
             _ => {}
         }
@@ -246,14 +267,24 @@ pub fn casts(
         .iter()
         .flat_map(|s| s.effects.iter().map(|e| e.spell))
         .collect();
+    // A spell by its number in the executable, for the striker's effects that play one's sound
+    // or name it (E17 M3 T7b-2b-3: Death Stare, the Rust Dragon's acid).
+    let numbered = |original: u16| {
+        let count = u16::try_from(record.header.manifest.keys.spells.len()).unwrap_or(u16::MAX);
+        (0..count).find(|&h| spell_entry(record, tables, h).is_some_and(|e| e.original == original))
+    };
     for event in events(record) {
         match *event {
             Event::SpellCast { spell, .. } => {
                 cast = true;
                 spells.push(spell);
             }
-            Event::EffectApplied { spell, .. } => spells.push(spell),
+            Event::EffectApplied { spell, .. } | Event::StrikeSpell { spell, .. } => {
+                spells.push(spell);
+            }
             Event::Frightened { .. } => frightened = true,
+            Event::DeathStared { .. } => spells.extend(numbered(DEATH_STARE_SPELL)),
+            Event::StrikeDamage { .. } => spells.extend(numbered(ACID_BREATH)),
             _ => {}
         }
     }

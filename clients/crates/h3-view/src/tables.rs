@@ -94,6 +94,14 @@ pub struct Battle {
     /// Good luck's ([`Battle::good_morale_sound`]).
     #[serde(default)]
     pub luck_sound: Option<String>,
+    /// The sounds of the striker's effects (E17 M3 T7b-2b-3, design §7.16), each category 2 as the
+    /// heal's: Life Drain's (`striker_effects` 0x440E68, `DrainLif.wav`) and the Thunderbird's bolt
+    /// (0x4412FA, `LightBlt.wav`); Death Stare and the Rust Dragon's acid play their spell's.
+    #[serde(default)]
+    pub drain_sound: Option<String>,
+    /// The Thunderbird's bolt's ([`Battle::drain_sound`]).
+    #[serde(default)]
+    pub thunderbolt_sound: Option<String>,
 }
 
 impl Battle {
@@ -105,6 +113,8 @@ impl Battle {
             .chain(&self.bad_morale_sound)
             .chain(&self.fear_sound)
             .chain(&self.luck_sound)
+            .chain(&self.drain_sound)
+            .chain(&self.thunderbolt_sound)
     }
 }
 
@@ -316,7 +326,10 @@ impl Sounds {
             | Sound::GoodMorale
             | Sound::BadMorale
             | Sound::Fear
-            | Sound::Luck => None,
+            | Sound::Luck
+            | Sound::Drain
+            | Sound::Thunderbolt
+            | Sound::SpellFile(_) => None,
         }
     }
 
@@ -730,6 +743,8 @@ good_morale_sound = "GoodMrle"
 bad_morale_sound = "BadMrle"
 fear_sound = "Fear"
 luck_sound = "goodluck"
+drain_sound = "DrainLif"
+thunderbolt_sound = "LightBlt"
 
 [[hero]]
 key = "orrin"
@@ -1188,6 +1203,9 @@ at = [124, 254]
             Sound::BadMorale,
             Sound::Fear,
             Sound::Luck,
+            Sound::Drain,
+            Sound::Thunderbolt,
+            Sound::SpellFile(79),
         ] {
             assert_eq!(pikeman.name(none), None);
         }
