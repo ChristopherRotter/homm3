@@ -39,6 +39,17 @@ fn commands_round_trip_through_their_text() {
             GameCommand::Answer(Answer::Decline),
             "3 decline",
         ),
+        // Format v5 (E08 T30): a level-up's answers.
+        (
+            PlayerId::new(1),
+            GameCommand::Answer(Answer::First),
+            "1 answer first",
+        ),
+        (
+            PlayerId::new(0),
+            GameCommand::Answer(Answer::Second),
+            "0 answer second",
+        ),
         (
             PlayerId::new(7),
             GameCommand::Adventure(AdventureCommand::MoveHero {
@@ -99,6 +110,9 @@ fn commands_round_trip_through_their_text() {
         "0",
         "0 end-turn extra",
         "0 accept now",
+        "0 answer",
+        "0 answer third",
+        "0 answer first now",
         "0 move",
         "0 move h1",
         "0 move 1 3,4",
@@ -207,7 +221,7 @@ fn the_difficulty_and_the_answers_round_trip_through_the_file() {
     };
     let (replay, text) = run_random(&packs, &dir, &easy).unwrap();
     assert_eq!(replay.difficulty, 0);
-    assert!(text.contains("format = 4\n"), "{text}");
+    assert!(text.contains("format = 5\n"), "{text}");
     assert!(text.contains("difficulty = 0\n"), "{text}");
     let (normal, _) = run_random(&packs, &dir, &options(1)).unwrap();
     assert_eq!(normal.difficulty, h3_game::DEFAULT_DIFFICULTY);
@@ -236,7 +250,7 @@ fn the_difficulty_and_the_answers_round_trip_through_the_file() {
     assert!(matches!(e, AdventureCliError::Format(_)), "{e}");
     // A v1 file: no difficulty, refused by its version before its map is read.
     let v1 = text
-        .replacen("format = 4", "format = 1", 1)
+        .replacen("format = 5", "format = 1", 1)
         .replacen("difficulty = 0\n", "", 1);
     assert_eq!(
         parse_replay(&v1).unwrap().difficulty,
@@ -253,7 +267,7 @@ fn the_difficulty_and_the_answers_round_trip_through_the_file() {
     // A later file without its difficulty is malformed, not a game at normal difficulty.
     let e = verify(&text.replacen("difficulty = 0\n", "", 1)).unwrap_err();
     assert!(matches!(e, AdventureCliError::Format(_)), "{e}");
-    assert!(e.to_string().contains("format 4 needs a difficulty"), "{e}");
+    assert!(e.to_string().contains("format 5 needs a difficulty"), "{e}");
     std::fs::remove_dir_all(&tmp).unwrap();
     // Answers round-trip through the file.
     let mut answered = replay.clone();

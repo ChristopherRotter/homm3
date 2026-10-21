@@ -3,16 +3,16 @@
 //! checks turn and phase, the context its rules (E08 T6b: `EndTurn`; T7b: the adventure's
 //! `MoveHero`; `observe` and `project` are in `observe.rs`, T8b1; `legal_commands` in
 //! `legal.rs`, T8b2a; T14b: the pending decisions and their answers, in `state.rs`; T19a: battles,
-//! in `state/battle.rs`).
+//! in `state/battle.rs`; T30: the level-ups, in `state/levels.rs`).
 
 use core::fmt;
 
 use h3_adventure::{
     AdventureCommand, AdventureCommandError, AdventureEvent, ObjectTypeId, Pos, Viewers,
 };
-use h3_content::{CreatureTypeId, ResourceId};
+use h3_content::{CreatureTypeId, ResourceId, SkillId};
 use h3_contracts::{BattleResult, HeroId, PlayerId};
-use h3_heroes::HeroChange;
+use h3_heroes::{Choice, HeroChange, PrimarySkill};
 
 use crate::{GameRuleset, GameState};
 
@@ -45,7 +45,8 @@ pub enum GameCommand {
 }
 
 /// An answer to a pending decision (ADR-0017 point 6): increments 2's and 3's decisions are
-/// offers, answered yes or no; later kinds add variants.
+/// offers, answered yes or no; increment 4's level-ups (GAM-DEC-002, E08 T30) one of two offers.
+/// An answer of the other kind is rejected (`WrongAnswer`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Answer {
     /// Yes: the offer's price is paid and the offer carried out.
@@ -54,6 +55,29 @@ pub enum Answer {
     /// goes on (its next offer or a fight after a declined join, its leaving after a declined
     /// flight; ADV-MON-007, ADV-MON-008). A later visit asks again.
     Decline,
+    /// A level-up's first offer (the original's dialog's left; E08 T30).
+    First,
+    /// A level-up's second offer (the dialog's right; E08 T30).
+    Second,
+}
+
+impl Answer {
+    /// The offer a level-up's answer takes; none for an offer's answer.
+    pub(crate) const fn choice(self) -> Option<Choice> {
+        match self {
+            Self::First => Some(Choice::First),
+            Self::Second => Some(Choice::Second),
+            Self::Accept | Self::Decline => None,
+        }
+    }
+
+    /// The answer that takes `choice`'s offer of a level-up.
+    pub(crate) const fn of(choice: Choice) -> Self {
+        match choice {
+            Choice::First => Self::First,
+            Choice::Second => Self::Second,
+        }
+    }
 }
 
 /// Why a command was rejected; a rejected command changes nothing.
@@ -84,6 +108,9 @@ pub enum GameCommandError {
     /// A command the system actor does not issue: its commands are an unowned side's battle
     /// commands (E08 T20b2).
     NotForSystem,
+    /// An answer of the wrong kind for the actor's first open decision (E08 T30): `First` or
+    /// `Second` for an offer, `Accept` or `Decline` for a level-up.
+    WrongAnswer,
 }
 
 impl fmt::Display for GameCommandError {
@@ -102,6 +129,7 @@ impl fmt::Display for GameCommandError {
             Self::NotForSystem => {
                 f.write_str("the system actor issues only an unowned side's commands")
             }
+            Self::WrongAnswer => f.write_str("the answer does not fit the open decision"),
         }
     }
 }
@@ -228,6 +256,35 @@ pub enum GameEvent {
         creature: CreatureTypeId,
         /// How many joined.
         count: u32,
+    },
+    /// A hero's level-up with two offers opened as a pending decision of its owner (GAM-DEC-002,
+    /// E08 T30): the new level, the primary skill it raises and the two offers, answered `First`
+    /// or `Second`. Seen by the owner.
+    LevelUpOpened {
+        /// The hero's owner.
+        player: PlayerId,
+        /// The hero.
+        hero: HeroId,
+        /// The new level.
+        level: u8,
+        /// The primary skill it raises by 1.
+        primary: PrimarySkill,
+        /// The offers, the dialog's left and right.
+        offers: [SkillId; 2],
+    },
+    /// A hero gained a level in play (GAM-DEC-002, GAM-BAT-008; E08 T30): at once with one offer
+    /// or none, or after its decision's answer. Seen by the owner.
+    LevelGained {
+        /// The hero's owner.
+        player: PlayerId,
+        /// The hero.
+        hero: HeroId,
+        /// The new level.
+        level: u8,
+        /// The primary skill it raised by 1.
+        primary: PrimarySkill,
+        /// The secondary skill it learned or advanced; none when the level offered none.
+        skill: Option<SkillId>,
     },
     /// A player's treasury paid a resource of an accepted offer's price (GAM-RES-001): one event
     /// per resource of the price, in its order; or a surrender's price (GAM-BAT-005, E08 T19a).

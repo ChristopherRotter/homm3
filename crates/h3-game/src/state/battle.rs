@@ -16,9 +16,8 @@ use h3_contracts::{
     PlayerId, StackOrigin, StackRecord,
 };
 use h3_heroes::{
-    HeroChange, Necromancy, apply_change_limited, check_change, derive_battle_hero,
-    gained_experience, learns_spell, lost_war_machine, max_mana, necromancy, next_capture,
-    war_machines,
+    HeroChange, Necromancy, check_change, derive_battle_hero, gained_experience, learns_spell,
+    lost_war_machine, max_mana, necromancy, next_capture, war_machines,
 };
 use h3_kernel::arith::{SINGLE_BITS, X87, mul_div_floor};
 use h3_kernel::{CanonicalHash, Rng, StateHasher};
@@ -151,6 +150,19 @@ impl GameState {
     pub fn battle(&self, player: PlayerId) -> Option<&OpenBattle> {
         self.decisions.as_deref().unwrap_or_default()[self.first(player)?]
             .battle()
+            .map(|battle| &**battle)
+    }
+
+    /// The battle among `player`'s open decisions, if it has one: its first decision, or one
+    /// waiting behind its level-up (E08 T30: a defender that won levels outside its turn and is
+    /// attacked again before it answers), what its observation shows.
+    pub(crate) fn battle_seen(&self, player: PlayerId) -> Option<&OpenBattle> {
+        self.decisions
+            .as_deref()
+            .unwrap_or_default()
+            .iter()
+            .filter(|d| d.owned_by(player))
+            .find_map(Decision::battle)
             .map(|battle| &**battle)
     }
 
@@ -411,8 +423,10 @@ impl GameState {
     /// its count, or it leaves the map, and after the visitor's victory its treasure's resources
     /// enter the visitor's owner's treasury (ADV-MON-010); the guards' survivors stay with the
     /// pile, or after the visitor's victory the pile is picked up, its contents entering the
-    /// treasury (ADV-PIK-004).
-    // rule: GAM-BAT-002, GAM-BAT-003, GAM-BAT-005, ADV-MON-010, ADV-PIK-004
+    /// treasury (ADV-PIK-004). Last (E08 T30) the winner's hero gets its pending levels
+    /// ([`Self::give_levels`], GAM-BAT-008): after the whole outcome, Necromancy and Eagle Eye
+    /// included, as the original gives a human player's after the battle's screen (0x4AE324).
+    // rule: GAM-BAT-002, GAM-BAT-003, GAM-BAT-005, GAM-BAT-008, ADV-MON-010, ADV-PIK-004
     pub(crate) fn end_battle<S: Sink>(
         &mut self,
         rules: &GameRuleset,
@@ -472,6 +486,11 @@ impl GameState {
                 &mut AdventureSink(&mut *sink),
             );
             self.gain(visitor, &gains, sink);
+        }
+        // rule: GAM-BAT-008
+        let levelled = winner.and_then(|w| heroes[w.index()].zip(owners[w.index()]));
+        if let Some(hero) = levelled {
+            self.give_levels(rules, hero, sink);
         }
     }
 
@@ -591,14 +610,8 @@ impl GameState {
         change: HeroChange,
         sink: &mut S,
     ) {
-        let limit = self.progression.level_limit();
-        let store = Arc::make_mut(&mut self.heroes);
-        // Every hero of a battle is in the store (GAM-HER-001). Experience is gained under the
-        // scenario's level limit (HER-EXP-003, E08 T29).
-        store
-            .get_mut(usize::from(hero.raw()))
-            .into_iter()
-            .for_each(|details| apply_change_limited(Arc::make_mut(details), core, limit, change));
+        // Experience is gained under the scenario's level limit (HER-EXP-003, E08 T29).
+        self.update_hero(core, hero, change);
         owner.into_iter().for_each(|player| {
             sink.emit(GameEvent::HeroChanged {
                 player,

@@ -4,13 +4,13 @@
 //! it cannot see) and the observation's consistency with the events it is told.
 
 use h3_adventure::{
-    AdventureEvent, AdventureEventKind, ObjectKind, ObjectView, Offer, OfferKind, Pos as TilePos,
+    AdventureEvent, AdventureEventKind, ObjectKind, ObjectView, OfferKind, Pos as TilePos,
     TileMask, TileView, Viewers,
 };
 use h3_contracts::{HeroId, PlayerId};
 use h3_game::{
-    Actor, GameEvent, GameObservation, GameRuleset, GameState, Viewer, apply, legal_commands,
-    legal_moves, observe, project,
+    Actor, DecisionView, GameEvent, GameObservation, GameRuleset, GameState, LevelUpView, Viewer,
+    apply, legal_commands, legal_moves, observe, project,
 };
 use proptest::collection::vec;
 use proptest::prelude::*;
@@ -292,10 +292,18 @@ fn depth(view: &TileView) -> u8 {
 /// T20b3b1); its treasury changes only by the gains and payments it is told,
 /// which are its own. Its open decision and its purchases change only as its offers' events say:
 /// an offer it is told opened is its decision, an answer closes it, an accepted Cartographer's
-/// adds the type to its purchases (E08 T14b); a reveal it is told explores at least that many
+/// adds the type to its purchases (E08 T14b); a level-up it is told opened is its decision, and
+/// the level it is told it gained closes it (E08 T30); a reveal it is told explores at least that many
 /// more tiles; its keys change only by the keys it is told it gained (T15a); its heroes' details
 /// only by the changes it is told, each of a hero it saw as its own (T19a2a). Its planes change
 /// only by its own command (`own`).
+/// An open decision as [`check_told`] follows it: an offer by its hero and object, or a level-up.
+#[derive(Debug, PartialEq)]
+enum Open {
+    Offer(HeroId, h3_adventure::ObjectTypeId, TilePos),
+    LevelUp(LevelUpView),
+}
+
 fn check_told(
     viewer: PlayerId,
     (before, after): (&GameObservation, &GameObservation),
@@ -317,7 +325,10 @@ fn check_told(
     let mut removed = Vec::new();
     let mut words = Vec::new();
     let mut treasury = before.treasury.clone();
-    let named = |o: &Offer| (o.hero, o.object_type, o.anchor);
+    let named = |d: &DecisionView| match d {
+        DecisionView::Offer(o) => Open::Offer(o.hero, o.object_type, o.anchor),
+        DecisionView::LevelUp(view) => Open::LevelUp(*view),
+    };
     let mut decision = before.decision.as_ref().map(named);
     let mut bought = before.adventure.bought.clone();
     let mut keys = before.adventure.keys;
@@ -330,7 +341,8 @@ fn check_told(
     for event in told {
         match *event {
             GameEvent::HeroChanged { player, hero, .. }
-            | GameEvent::CreaturesRaised { player, hero, .. } => {
+            | GameEvent::CreaturesRaised { player, hero, .. }
+            | GameEvent::LevelGained { player, hero, .. } => {
                 prop_assert_eq!(player, viewer);
                 let own = before
                     .heroes
@@ -342,6 +354,32 @@ fn check_told(
                     event
                 );
                 changed.push(hero);
+                // E08 T30: a level gained closes its open level-up, if it was one.
+                if let GameEvent::LevelGained { level, .. } = *event {
+                    let answered = |open: &Open| {
+                        matches!(open, Open::LevelUp(v) if (v.hero, v.level) == (hero, level))
+                    };
+                    if decision.as_ref().is_some_and(answered) {
+                        decision = None;
+                    }
+                }
+            }
+            GameEvent::LevelUpOpened {
+                player,
+                hero,
+                level,
+                primary,
+                offers,
+            } => {
+                prop_assert_eq!(player, viewer);
+                prop_assert!(decision.is_none());
+                let view = LevelUpView {
+                    hero,
+                    level,
+                    primary,
+                    offers,
+                };
+                decision = Some(Open::LevelUp(view));
             }
             GameEvent::BattleStarted { seen_by, .. } => {
                 prop_assert_eq!(seen_by, alone);
@@ -390,7 +428,7 @@ fn check_told(
             } => {
                 prop_assert_eq!(player, viewer);
                 prop_assert!(decision.is_none());
-                decision = Some((hero, object_type, anchor));
+                decision = Some(Open::Offer(hero, object_type, anchor));
             }
             GameEvent::OfferRefused { player, .. } => prop_assert_eq!(player, viewer),
             GameEvent::OfferAnswered {
@@ -400,10 +438,16 @@ fn check_told(
                 accepted,
             } => {
                 prop_assert_eq!(player, viewer);
-                let (_, ty, at) = decision.take().unwrap();
-                prop_assert_eq!((ty, at), (object_type, anchor));
+                let open = decision.take();
+                prop_assert!(
+                    matches!(open, Some(Open::Offer(_, ty, at)) if (ty, at) == (object_type, anchor))
+                );
                 // The offer was open before the answer: the observation showed its kind.
-                let kind = before.decision.as_ref().map(|o| &o.kind);
+                let kind = before
+                    .decision
+                    .as_ref()
+                    .and_then(DecisionView::offer)
+                    .map(|o| &o.kind);
                 if accepted && matches!(kind, Some(OfferKind::Reveal { .. })) {
                     bought.push(object_type);
                     bought.sort();

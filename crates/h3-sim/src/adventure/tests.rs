@@ -123,7 +123,7 @@ fn the_duel_starts_with_red_to_move_and_both_its_heroes_free() {
     assert_eq!(
         mask,
         [
-            true, true, true, false, false, false, false, false, false, false, false
+            true, true, true, false, false, false, false, false, false, false, false, false, false
         ]
     );
     env.legal_mask(PlayerId::new(1), &mut mask);
@@ -157,13 +157,15 @@ fn tiles_and_actions_encode_as_documented() {
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 36, 0)), None);
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 0, 2)), None);
     assert_eq!(tile_pos(state, 36 * 36 * 2), None);
-    assert_eq!(ACTION_ENCODING_VERSION, 3);
-    assert_eq!((ACCEPT, DECLINE, ENTRY_COUNT), (9, 10, 11));
+    assert_eq!(ACTION_ENCODING_VERSION, 4);
+    assert_eq!((ACCEPT, DECLINE, ENTRY_COUNT), (9, 10, 13));
+    assert_eq!((FIRST, SECOND), (11, 12));
     assert_eq!(Action::end_turn(), Action::Adventure(MapAction::default()));
     let map = |entry, tile| Action::Adventure(MapAction { entry, tile });
     assert_eq!(Action::move_to(2, 9), map(3, 9));
     assert_eq!(Action::accept(), map(9, 0));
     assert_eq!(Action::decline(), map(10, 0));
+    assert_eq!((Action::first(), Action::second()), (map(11, 0), map(12, 0)));
     assert_eq!(hero_in_slot(state, PlayerId::new(0), HERO_SLOTS), None);
     assert_eq!(hero_in_slot(state, PlayerId::new(1), 2), None);
     assert!(hero_in_slot(state, PlayerId::new(1), 1).is_some());
@@ -225,7 +227,8 @@ fn is_move(entry: usize) -> bool {
 
 /// The masks of `seat` agree with the game. In the map phase: an entry is legal exactly when its
 /// tile mask has a tile; the entries without a tile are the commands [`legal_commands`] lists
-/// (with an open decision its answers alone: `Decline`, and `Accept` while the offer stands), tile
+/// (with an open decision its answers alone: `Decline`, and `Accept` while the offer stands; a
+/// level-up's `First` and `Second`, E08 T30), tile
 /// 0 alone their tile mask and the only tile they decode with; a move's tiles are the hero's legal
 /// moves but its own tile (since encoding v3 other players' heroes' too, E08 T19b1), each decoding
 /// to the query's path. In the battle phase (the neutral seat's only phase) every map mask is
@@ -254,6 +257,11 @@ fn check_masks(env: &AdventureEnv, seat: impl Into<Seat>) -> Result<(), TestCase
             "{:?}",
             legal
         );
+    }
+    // E08 T30: a level-up's answers alone.
+    if state.level_up(player).is_some() {
+        let legal: Vec<usize> = (0..ENTRY_COUNT).filter(|&e| entries[e]).collect();
+        prop_assert_eq!(legal, [FIRST, SECOND]);
     }
     for (entry, &legal) in entries.iter().enumerate() {
         env.tile_mask(player, entry, &mut tiles);

@@ -1,19 +1,26 @@
 //! A hero's levels in the game (E08 T29): what they read that never changes after the build (the
 //! scenario's level limit and banned skills, each hero's level seed; GAM-HER-002), where a level's
-//! draws come from by the profile (`ADV-QUIRK-9`), and the levels at load (GAM-SET-002). Design
-//! `docs/epics/E08-design.md` §11 and §12; survey `docs/rules/surveys/E08-progression.md` §2.2,
-//! §3.2.
+//! draws come from by the profile (`ADV-QUIRK-9`), and the levels at load (GAM-SET-002). Since E08
+//! T30 the levels in play: given one at a time, a level with two offers a pending decision of the
+//! hero's owner (GAM-DEC-002). Design `docs/epics/E08-design.md` §11 to §13; survey
+//! `docs/rules/surveys/E08-progression.md` §2.2, §3.2, §4.1.
 
 use alloc::boxed::Box;
 use alloc::collections::BTreeSet;
+use alloc::sync::Arc;
 
 use h3_content::{LEVEL_UP_FROM_SEED, Ruleset, SkillId};
-use h3_contracts::HeroId;
+use h3_contracts::{HeroId, PlayerId};
 use h3_heroes::{
-    ArmyWorth, HeroChange, HeroDetails, LevelUp, OriginalDraws, TerrainShares,
+    ArmyWorth, Choice, HeroChange, HeroDetails, LevelUp, Offers, OriginalDraws, TerrainShares,
     apply_change_limited, draw_level_up, max_mana, original_choice, pending_levels,
 };
 use h3_kernel::{CanonicalHash, Rng, StateHasher};
+
+use super::{Decision, GameState};
+use crate::GameRuleset;
+use crate::command::{GameEvent, Sink};
+use crate::observe::LevelUpView;
 
 /// The lowest and the highest level seed: the original's `random_between(1, 255)` (0x4BFEC2).
 const SEEDS: (u32, u32) = (1, 255);
@@ -73,8 +80,8 @@ impl Progression {
     /// The next level of `hero` with `details`, if one is pending (HER-LVL-001 to HER-LVL-004):
     /// with `ADV-QUIRK-9` on (`quirk.adventure.level_up_from_seed`, `faithful`) drawn by the
     /// original's generator from the hero's level seed and the new level, the same whenever it is
-    /// drawn; off (`strict-fixed`) from `stream`, the setup stream at load (in play the owner's,
-    /// E08 T30).
+    /// drawn; off (`strict-fixed`) from `stream`, the setup stream at load and the owner's in play
+    /// (E08 T30).
     pub(crate) fn draw(
         &self,
         core: &Ruleset,
@@ -135,5 +142,135 @@ impl CanonicalHash for Progression {
         }
         h.write_len(self.seeds.len());
         h.write_bytes(&self.seeds);
+    }
+}
+
+impl GameState {
+    /// Gives `hero`'s pending levels in play (GAM-DEC-002, E08 T30; ADR-0017 point 6), one at a
+    /// time, in order: each is drawn when it is given or its decision opens ([`Progression::draw`]:
+    /// from the hero's level seed in `faithful`, from the owner's stream in `strict-fixed`;
+    /// GAM-HER-002). A level with two offers opens a pending decision of the hero's `owner` after
+    /// its open ones, told to it alone (`LevelUpOpened`), and the next level waits for its answer
+    /// ([`Self::answer_level_up`]); one with one offer learns it and one with none raises the
+    /// primary skill only, at once (`LevelGained`), and the next is drawn. Nothing while the hero
+    /// has a level-up open (a defender that won levels outside its turn and won again before it
+    /// answered): its answer gives the rest.
+    // rule: GAM-DEC-002
+    pub(crate) fn give_levels<S: Sink>(
+        &mut self,
+        rules: &GameRuleset,
+        hero: (HeroId, PlayerId),
+        sink: &mut S,
+    ) {
+        if self.levelling(hero.0) {
+            return;
+        }
+        let open = self.next_level_up(rules, hero, sink);
+        open.into_iter()
+            .for_each(|decision| self.push_decision(decision));
+    }
+
+    /// A level-up's answer (GAM-DEC-002, E08 T30): the drawn `level_up` given with the `choice`n
+    /// offer, then the hero's next pending levels as [`Self::give_levels`] gives them; a next one
+    /// with two offers takes the answered decision's place `at` in its owner's queue (before a
+    /// battle waiting behind it), else the decision closes.
+    pub(super) fn answer_level_up<S: Sink>(
+        &mut self,
+        rules: &GameRuleset,
+        (hero, at): ((HeroId, PlayerId), usize),
+        (level_up, choice): (&LevelUp, Choice),
+        sink: &mut S,
+    ) {
+        self.gain_level(rules.core(), hero, level_up, choice, sink);
+        match self.next_level_up(rules, hero, sink) {
+            Some(decision) => self.replace(at, decision),
+            None => self.close(at),
+        }
+    }
+
+    /// Gives `hero`'s pending levels with one offer or none at once, until one with two offers,
+    /// whose decision is returned, told to the owner (`LevelUpOpened`); none when no level is
+    /// pending.
+    fn next_level_up<S: Sink>(
+        &mut self,
+        rules: &GameRuleset,
+        (hero, owner): (HeroId, PlayerId),
+        sink: &mut S,
+    ) -> Option<Decision> {
+        let core = rules.core();
+        while let Some(level_up) = self.draw_level(core, hero, owner) {
+            if let Offers::Two(first, second) = level_up.offers {
+                let view = LevelUpView {
+                    hero,
+                    level: level_up.level,
+                    primary: level_up.primary,
+                    offers: [first, second],
+                };
+                sink.emit(GameEvent::LevelUpOpened {
+                    player: owner,
+                    hero,
+                    level: view.level,
+                    primary: view.primary,
+                    offers: view.offers,
+                });
+                return Some(Decision::LevelUp {
+                    owner,
+                    view,
+                    offered: level_up.offered,
+                });
+            }
+            self.gain_level(core, (hero, owner), &level_up, Choice::First, sink);
+        }
+        None
+    }
+
+    /// Whether `hero` has a level-up open.
+    fn levelling(&self, hero: HeroId) -> bool {
+        self.decisions
+            .as_deref()
+            .unwrap_or_default()
+            .iter()
+            .any(|d| matches!(d, Decision::LevelUp { view, .. } if view.hero == hero))
+    }
+
+    /// The next pending level of `hero`, drawn ([`Progression::draw`]) with `owner`'s stream.
+    fn draw_level(&mut self, core: &Ruleset, hero: HeroId, owner: PlayerId) -> Option<LevelUp> {
+        let stream = &mut self.players[owner.index()].rng;
+        let progression = &self.progression;
+        self.heroes
+            .get(usize::from(hero.raw()))
+            .and_then(|details| progression.draw(core, hero, details, stream))
+    }
+
+    /// Gives `level_up` to `hero` with the `choice`n offer (HER-LVL-005: `GainLevel`) and tells its
+    /// `owner` (`LevelGained`).
+    fn gain_level<S: Sink>(
+        &mut self,
+        core: &Ruleset,
+        (hero, owner): (HeroId, PlayerId),
+        level_up: &LevelUp,
+        choice: Choice,
+        sink: &mut S,
+    ) {
+        self.update_hero(core, hero, level_up.change(choice));
+        sink.emit(GameEvent::LevelGained {
+            player: owner,
+            hero,
+            level: level_up.level,
+            primary: level_up.primary,
+            skill: level_up.learned(choice),
+        });
+    }
+
+    /// Applies `change` to the details of `hero` in the store (copied on its first write when a
+    /// fork shares it), experience under the scenario's level limit (HER-EXP-003, E08 T29).
+    pub(super) fn update_hero(&mut self, core: &Ruleset, hero: HeroId, change: HeroChange) {
+        let limit = self.progression.level_limit();
+        let store = Arc::make_mut(&mut self.heroes);
+        // Every hero of a battle or a level-up is in the store (GAM-HER-001).
+        store
+            .get_mut(usize::from(hero.raw()))
+            .into_iter()
+            .for_each(|details| apply_change_limited(Arc::make_mut(details), core, limit, change));
     }
 }

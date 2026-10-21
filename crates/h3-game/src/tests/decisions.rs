@@ -105,11 +105,21 @@ fn an_open_offer_leaves_its_owner_its_answers_only() {
     };
     assert_eq!(state.decision(RED), Some(&offer));
     assert_eq!(state.decision(BLUE), None);
-    assert_eq!(
-        observe(&state, &rules, Viewer::Player(RED)).decision,
-        Some(offer)
-    );
+    let seen = observe(&state, &rules, Viewer::Player(RED))
+        .decision
+        .unwrap();
+    assert_eq!((seen.offer(), seen.level_up()), (Some(&offer), None));
+    assert_eq!(seen, DecisionView::Offer(offer));
     assert_eq!(observe(&state, &rules, Viewer::Player(BLUE)).decision, None);
+    // E08 T30: the system actor's default is to decline; a level-up's answers are wrong here.
+    assert_eq!(default_answer(&state, &rules, RED), Some(Answer::Decline));
+    assert_eq!(default_answer(&state, &rules, BLUE), None);
+    let unanswered = state.state_hash();
+    for answer in [Answer::First, Answer::Second] {
+        let wrong = play(&mut state, &rules, RED, GameCommand::Answer(answer));
+        assert_eq!(wrong, Err(GameCommandError::WrongAnswer));
+    }
+    assert_eq!(state.state_hash(), unanswered);
     // Its answers only: no move, no end of the turn.
     assert_eq!(legal_commands(&state, &rules, red), [ACCEPT, DECLINE]);
     assert_eq!(legal_moves(&state, &rules, red, HeroId::new(0)), None);
@@ -238,7 +248,7 @@ fn a_decision_blocks_no_one_else() {
         (Pos::new(2, 0, 0), Pos::new(3, 2, 0))
     );
     let seen = observe(&state, &rules, Viewer::Player(BLUE)).decision;
-    assert_eq!(seen.as_ref(), Some(blue));
+    assert_eq!(seen.as_ref().and_then(DecisionView::offer), Some(blue));
     // Each answers its own; red's answer leaves blue's open.
     play(&mut state, &rules, RED, ACCEPT).unwrap();
     assert!(state.decision(RED).is_none() && state.decision(BLUE).is_some());
@@ -290,6 +300,10 @@ fn the_decision_errors_read_well() {
     assert_eq!(
         GameCommandError::OfferGone.to_string(),
         "the offer no longer stands"
+    );
+    assert_eq!(
+        GameCommandError::WrongAnswer.to_string(),
+        "the answer does not fit the open decision"
     );
 }
 
@@ -369,7 +383,7 @@ fn a_guard_offers_its_key_s_holders_to_pass_without_a_price() {
     assert_eq!(state.decision(RED), Some(&offer));
     assert_eq!(
         observe(&state, &rules, Viewer::Player(RED)).decision,
-        Some(offer)
+        Some(DecisionView::Offer(offer))
     );
     assert_eq!(legal_commands(&state, &rules, red), [ACCEPT, DECLINE]);
     // Declined, the guard stays; accepted, it leaves the map for everyone, and nothing is paid.
@@ -442,7 +456,7 @@ fn an_offer_another_player_s_acceptance_withdrew_may_only_be_declined() {
     );
     assert_eq!(
         observe(&state, &rules, Viewer::Player(BLUE)).decision,
-        Some(offer)
+        Some(DecisionView::Offer(offer))
     );
     // Declining closes it; blue then walks over the guard's tile.
     let events = play(&mut state, &rules, BLUE, DECLINE).unwrap();

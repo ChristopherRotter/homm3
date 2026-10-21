@@ -53,8 +53,8 @@ pub fn random_rollout(env: &mut AdventureEnv, agent_seed: u64, max_steps: u32) -
 /// uniform tile of the hero's tile mask (its reachable tiles, other players' heroes' included:
 /// such a move starts a battle, E08 T19b1), as an agent samples the factorized action head by
 /// head. The entries without a tile are the commands [`legal_commands`] lists: `EndTurn`, or with
-/// an open decision its answers alone (`Decline`, and `Accept` while the offer stands), each at
-/// even odds (GAM-DEC-001; E08 T14b, T15a). `EndTurn` when the seat has no legal entry (the
+/// an open decision its answers alone (`Decline`, and `Accept` while the offer stands; a level-up's
+/// `First` and `Second`, E08 T30), each at even odds (GAM-DEC-001, GAM-DEC-002; E08 T14b, T15a). `EndTurn` when the seat has no legal entry (the
 /// neutral seat while no battle waits for it). In the battle phase: the battle's random agent for
 /// the seat's side (`crate::rollout::choose`: a uniform entry among the commands that stay in the
 /// battle and the casts, never a retreat or a surrender, so a battle ends by a victory or a draw;
