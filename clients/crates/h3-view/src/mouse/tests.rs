@@ -24,18 +24,19 @@ const PACK: &str = r#"{
             "view": "See {{creature}}.",
             "hero": "Hero.",
             "enemy-hero": "Foe.",
-            "heal": "Mend {{creature}}"
+            "heal": "Mend {{creature}}",
+            "no-shots": "Empty!"
         },
         "control": { "wait": "Hold" }
     },
     "creature": { "t:ant_one": "Ant", "t:ant_other": "Ants" }
 }"#;
 
-fn layout() -> BattleLayout {
+pub(super) fn layout() -> BattleLayout {
     parse_battle(include_str!("../../../../layouts/battle.toml")).unwrap()
 }
 
-fn catalogue() -> Catalogue {
+pub(super) fn catalogue() -> Catalogue {
     Catalogue {
         packs: vec![Pack::from_json("en", PACK).unwrap()],
     }
@@ -60,7 +61,7 @@ fn hero() -> Option<Hero> {
 
 /// The attacker's stack 0 acting on hex 86 (row 5, column 1), the defender's 1 on 90, the
 /// attacker's 2 on 120, the defender's 3 far away on 100; both heroes.
-fn battle() -> Observation {
+pub(super) fn battle() -> Observation {
     let mut o = observation();
     o.stacks = vec![
         stack(0, Side::Attacker, 0, 86, false),
@@ -75,7 +76,7 @@ fn battle() -> Observation {
 }
 
 /// A hex's centre on the screen.
-fn centre(hex: u8) -> [i32; 2] {
+pub(super) fn centre(hex: u8) -> [i32; 2] {
     let [x, y] = layout().hex_box(hex / 17, hex % 17);
     [x + 22, y + 26]
 }
@@ -394,6 +395,7 @@ fn hints_are_worded_by_the_catalogue() {
     assert_eq!(text(Hint::EnemyHero), "Foe.");
     assert_eq!(text(Hint::Control("battle.control.wait".into())), "Hold");
     assert_eq!(text(Hint::Empty), "");
+    assert_eq!(text(Hint::NoShots), "Empty!");
     // A stack without a name, or none.
     assert_eq!(text(Hint::View(2)), "See .");
     assert_eq!(text(Hint::View(9)), "See .");

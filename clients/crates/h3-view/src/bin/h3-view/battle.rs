@@ -8,12 +8,15 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use h3_formats::lod::LodArchive;
+use h3_protocol::wire::{Command, Observation};
 use h3_render::Bugs;
 use h3_render::screen::Screen;
 use h3_view::anim::{self, Speed, Timeline};
 use h3_view::batch::{self, Batch, Sprite};
+use h3_view::battle_log::Logged;
 use h3_view::compose::compose;
 use h3_view::layout::{self, BattleLayout};
+use h3_view::mouse::track::{Input, Shown};
 use h3_view::record::{self, Record};
 use h3_view::scene::Panels;
 use h3_view::scene::{self, Draw, Moment};
@@ -68,6 +71,20 @@ pub struct Battle {
     /// The archives' bytes until the batch is loaded (CLT-Q2: whole archives).
     archives: Vec<(&'static str, Vec<u8>)>,
     batch: Batch,
+    /// The battle at the original's timing before the mouse entered stacks (E17 M3 T6c-2).
+    base: Timeline,
+    /// The battle and its legal commands at each turn (a fought scenario's; none for a record).
+    turned: Vec<(Observation, Vec<Command>)>,
+    /// What words the log's lines and the mouse's hints (none without the text tables).
+    writer: Option<crate::log::Writer>,
+    /// Each stack's frames of the fidget's group, by id.
+    fidget_frames: BTreeMap<u8, u32>,
+    /// The mouse over the battle.
+    pub shown: Shown,
+    /// The log scrolled (each at a time, by entries).
+    scrolls: Vec<(u32, i64)>,
+    /// The panel's button pressed (the mouse's or a hotkey's).
+    pub pressed: Option<u16>,
 }
 
 impl Battle {
@@ -78,10 +95,12 @@ impl Battle {
         record_to: Option<&Path>,
         lines: &mut Vec<String>,
     ) -> Result<Self, String> {
+        let mut sent = Vec::new();
         let text = if source.scenario() {
             let (text, took) =
                 timed(|| crate::scenario::fought(&source.input, &source.packs, source.seed));
-            let text = text?;
+            let (text, commands) = text?;
+            sent = commands;
             if let Some(path) = record_to {
                 write(path, text.as_bytes())?;
                 lines.push(format!(
@@ -124,17 +143,89 @@ impl Battle {
             .map_err(|e| e.to_string())?
             .with_heroes(motion::heroes(&record, &tables, &parsed, Some(seed))?);
         let commands = commands.len();
-        let panels = crate::log::panels(&record, &timeline, &tables, &layout, &parsed)?;
+        let panels = crate::log::panels(&record, &timeline.log, &tables, &layout, &parsed)?;
+        // The mouse (E17 M3 T6c-2): each turn's battle from the engine, the words of its hints,
+        // the stacks' fidgets' frames.
+        let turned = if source.scenario() {
+            crate::scenario::turned(&source.input, &source.packs, source.seed, &sent)?
+        } else {
+            Vec::new()
+        };
+        let writer = crate::log::Writer::new(&tables, &layout, &parsed).ok();
+        let group = tables.battle.groups.mouse_over;
+        let fidget_frames = snapshot
+            .stacks
+            .iter()
+            .filter_map(|s| {
+                let frames = looks.get(&s.creature)?.frames.get(&u32::from(group))?;
+                Some((s.id, *frames))
+            })
+            .collect();
+        drop(parsed);
         Ok(Self {
             record,
             tables,
             layout,
+            base: timeline.clone(),
             timeline,
             panels,
             commands,
             archives,
             batch: Batch::default(),
+            turned,
+            writer,
+            fidget_frames,
+            shown: Shown::default(),
+            scrolls: Vec::new(),
+            pressed: None,
         })
+    }
+
+    /// Follows the mouse's `inputs` and the log's `scrolls` (each at a time, in time order; E17
+    /// M3 T6c-2): the cursor, the stack it marks, the stacks it enters fidgeting, its hints in
+    /// the log; whether anything shown changed. Nothing without the text tables.
+    pub fn mouse(&mut self, inputs: &[Input], scrolls: &[(u32, i64)]) -> Result<bool, String> {
+        let Some(writer) = &self.writer else {
+            return Ok(false);
+        };
+        let shown = crate::pointer::shown(
+            &self.record,
+            &self.base,
+            &self.turned,
+            inputs,
+            &self.layout,
+            &writer.catalogue,
+        );
+        if shown == self.shown && scrolls == self.scrolls.as_slice() {
+            return Ok(false);
+        }
+        if shown.entered != self.shown.entered {
+            let mut timeline = self.base.clone();
+            let group = self.tables.battle.groups.mouse_over;
+            let frames = |id: u8| self.fidget_frames.get(&id).copied().unwrap_or(0);
+            timeline.enter(&shown.entered, u32::from(group), &frames);
+            self.timeline = timeline;
+        }
+        // The scrolls after the log's entries at their time.
+        let mut logged = shown.log.clone();
+        for &(at, by) in scrolls {
+            let i = logged.partition_point(|(t, _)| *t <= at);
+            logged.insert(i, (at, Logged::Scroll(by)));
+        }
+        self.panels = writer.panels(&self.record, &logged)?;
+        self.shown = shown;
+        self.scrolls = scrolls.to_vec();
+        Ok(true)
+    }
+
+    /// The combat cursor's frame at `t` (the panel's pointer before the mouse is anywhere).
+    pub fn cursor_frame(&self, t: u32) -> u32 {
+        self.shown.frame(t).unwrap_or(self.layout.mouse.panel_frame)
+    }
+
+    /// The battle's layout.
+    pub fn layout(&self) -> &BattleLayout {
+        &self.layout
     }
 
     /// The draw list of the battle at `moment` (at `t`), the panel's after it as the battle's
@@ -144,18 +235,26 @@ impl Battle {
             .record
             .first_snapshot()
             .ok_or("the record holds no snapshot")?;
+        // The stack the mouse marks (E17 M3 T6c-2).
+        let mut moment = moment.clone();
+        moment.marked = self.shown.marked(t);
         let mut list = scene::battle_at(
             snapshot,
-            moment,
+            &moment,
             &self.record.header.manifest,
             &self.tables,
             &self.layout,
         )
         .map_err(|e| format!("{t} ms: {e}"))?;
-        list.extend(
-            self.panels
-                .at(snapshot, &self.timeline.turns, t, &self.layout),
-        );
+        let text = self.panels.text(t);
+        list.extend(self.panels.at_pressed(
+            snapshot,
+            &self.timeline.turns,
+            t,
+            &self.layout,
+            text,
+            self.pressed,
+        ));
         Ok(list)
     }
 

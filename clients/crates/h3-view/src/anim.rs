@@ -183,6 +183,9 @@ pub struct Beam {
     pub ticks: Vec<Vec<Stroke>>,
     /// The colours by the distance from the edge (R, G, B).
     pub colours: Vec<[u8; 3]>,
+    /// When the mouse's cursor shows again (E17 M3 T6c-2): `draw_ray` hides it as it starts
+    /// (0x5A5C46) and shows it after the shot group's rest (0x5A61D4).
+    pub cursor_back: u32,
 }
 
 /// A ray as it shows at a time: the strokes drawn so far, in order.
@@ -652,6 +655,15 @@ impl Timeline {
         poses
     }
 
+    /// Whether the mouse's cursor is hidden at `t`: from a ray's start until it shows again (E17
+    /// M3 T6c-2, [`Beam::cursor_back`]).
+    #[must_use]
+    pub fn cursor_hidden(&self, t: u32) -> bool {
+        self.beams
+            .iter()
+            .any(|b| (b.from..b.cursor_back).contains(&t))
+    }
+
     /// The projectile showing at `t`, if one flies then.
     pub fn projectile(&self, t: u32) -> Option<Projectile> {
         self.flights.iter().find_map(|f| {
@@ -1098,7 +1110,8 @@ fn played(
         }
         let (before, turns) = (player.keys.len(), player.turns.len());
         // The action starts (`action_dispatcher` 0x478D80's head, E17 M3 T6b).
-        player.log.push((player.clock.now, Logged::Action));
+        let started = player.clock.now;
+        player.log.push((started, Logged::Action));
         player.command(command.events);
         // The outline goes with the command's first frame shown; a turn started brings its
         // stack's, unless the computer acts next.
@@ -1112,9 +1125,13 @@ fn played(
             waiting = Some(stack);
         }
         player.idle.from = player.clock.now;
+        let (stands, unmarks) = calms(command.events);
         actions.push(Action {
+            start: started,
             end: player.clock.now,
             happenings: core::mem::take(&mut player.happenings),
+            stands,
+            unmarks,
         });
         if let Some(f) = fidgets.as_mut() {
             let drawn: Vec<u8> = player.keys[before..].iter().map(|k| k.stack).collect();
@@ -1142,6 +1159,29 @@ fn played(
         log: player.log,
         end: player.clock.now,
     })
+}
+
+/// What a command's action does at its start to the stacks in group 1 and to the mouse's stack
+/// (E17 M3 T6c-2), by what it does before the next turn: a walk, a strike or a shot, a cast or the
+/// Catapult's shot stands the fidgeting stacks (`battle_stand_fidgets` 0x479DE0) and unmarks the
+/// mouse's (`battle_clear_highlight` 0x477E10); a creature's cast only stands them; a defend, a
+/// wait or the First Aid Tent's heal does neither.
+fn calms(events: &[Event]) -> (bool, bool) {
+    let own = events
+        .iter()
+        .take_while(|e| !matches!(e, Event::TurnStarted { .. } | Event::RoundStarted { .. }));
+    let (mut stands, mut unmarks) = (false, false);
+    for e in own {
+        match e {
+            Event::Moved { .. }
+            | Event::Struck { .. }
+            | Event::SpellCast { .. }
+            | Event::WallShot { .. } => (stands, unmarks) = (true, true),
+            Event::StackCast { .. } => stands = true,
+            _ => {}
+        }
+    }
+    (stands, unmarks)
 }
 
 /// Where a war machine of army slot `slot` comes in the original's setup (`battle_war_machine_
@@ -2092,11 +2132,13 @@ impl Player<'_> {
         let ticks = ray::trace(aim.from, aim.to);
         let step = self.speed.scale(RAY_TICK);
         let count = u32::try_from(ticks.len()).unwrap_or(0);
+        let beam = self.beams.len();
         self.beams.push(Beam {
             from: self.clock.now,
             step,
             ticks,
             colours,
+            cursor_back: u32::MAX,
         });
         self.clock.wait(count * step);
         self.redraw();
@@ -2119,6 +2161,7 @@ impl Player<'_> {
                 }
             }
         }
+        self.beams[beam].cursor_back = self.clock.now;
     }
 
     /// The shot's group (0 up, 1 straight, 2 down), its start and target points and its
@@ -2341,6 +2384,36 @@ fn isqrt(n: i64) -> u64 {
     u64::try_from(n).unwrap_or(0).isqrt()
 }
 
+/// The harness's timeline `recorded` without the original's own fidgets (E17 M3 T6c-2): each run
+/// of group 1 of a stack (`<side>.<record>`) not in `kept`, its lines from the first in group 1
+/// to the next not in it (the stand), included. The viewer draws no fidgets of its own in a check
+/// (§7.2), but the stacks the mouse entered fidget as the original's do.
+#[must_use]
+pub fn unfidgeted(recorded: &str, kept: &alloc::collections::BTreeSet<String>) -> String {
+    let mut fidgeting = alloc::collections::BTreeSet::new();
+    let mut out = String::new();
+    for line in recorded.lines() {
+        let mut words = line.split(' ');
+        let (_, who, group) = (words.next(), words.next(), words.next());
+        let skip = match (who, group) {
+            (Some(who), Some(group)) if !kept.contains(who) && !who.starts_with("magic") => {
+                if group == "g1" {
+                    fidgeting.insert(String::from(who));
+                    true
+                } else {
+                    fidgeting.remove(who)
+                }
+            }
+            _ => false,
+        };
+        if !skip {
+            out.push_str(line);
+            out.push('\n');
+        }
+    }
+    out
+}
+
 /// A timeline's lines that differ from `expected`'s (the harness's format): each differing
 /// line with `-` for the expected and `+` for ours.
 pub fn differences(ours: &str, expected: &str) -> Vec<String> {
@@ -2357,6 +2430,8 @@ pub fn differences(ours: &str, expected: &str) -> Vec<String> {
     }
     out
 }
+
+mod entered;
 
 #[cfg(test)]
 pub(crate) mod tests;

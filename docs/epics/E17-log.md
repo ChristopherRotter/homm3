@@ -1455,6 +1455,62 @@ the mouse over time (T6c-2, which also takes the window's mouse).
   captured afresh with the parked cursor drawn and the `cursor` masks gone: 57 situations, 85
   frames exact. `drawn --record`.
 
+### M3 T6c-2 — The mouse over time (2026-10-21)
+
+On `client/e17-m3-t6c-2`, the user present at the start: offered a split (the record, then the
+window), the user took T6c-2 whole.
+
+- **Starting point:** `master` at `f86af41` (#336 merged); no client pull request open; the
+  client gates' full check on that code (`verify-once`: all gates, coverage 100 %).
+- **Explored first** (the harness reading the mouse's state from memory: hex, kind, cursor type
+  and frame): in `strike`, `walk` and `machines` the cursor is the pointer from the click on
+  (every action shows it), the hint written at the click stays until a line or the next human
+  turn, the mark goes as the action starts; `hover` showed the cursor moving to the mouse 19 ms
+  after the opening in one run and 10 ms in another (the mouse poll's 33 ms grid, its phase
+  left by the run before the battle).
+- **The reading** (design §9.10): the mouse move on the same hex and the status line's rewrite
+  (0x475544 to 0x4758D1), a human's turn start (0x47883E to 0x478873), the dispatcher's head
+  and switch, the unmarking callers of `battle_clear_highlight`, `battle_stand_fidgets`
+  (0x479DE0), `battle_cursor`'s target, `battle_mouse_stack`'s tail, `mouse_draw_cursor` and
+  `mouse_poll` (0x50D680, 0x69CA18), the DEF button's handler (0x456190), the panel's hotkeys.
+  Five map entries, four summaries extended, `structs.toml`'s mouse fields and the mouse manager.
+- **Built:** `h3_view::mouse::track` (`follow`: the log's entries and the inputs in time order,
+  the moves queued through actions and taken at a human's turn with the posted one, the hints
+  into the log as `Logged::Status`, the marks and the entered stacks, the cursor's frames);
+  `mouse::Facing`, `Field`, `pointer_in` (the target left over: "No shots left!"), `slots_in`,
+  `cursor`; `Timeline::enter` (`anim/entered.rs`: group 1 on the idle steps, stood by a standing
+  action, a step at the entry's time first), `anim::unfidgeted`; `hero::Action`'s `start`,
+  `stands`, `unmarks`; `Logged::Scroll`; `ui::Button::keys`, `Dialog::button_at`,
+  `button_for_key`, `Panels::at_pressed`; `Cursor::read`; the layout's `keys`; the key
+  `battle.hint.no-shots`. Adapters: `pointer` (the harness's actions as inputs, `PARK`,
+  `hex_point`), `scenario::turned` and `fought`'s commands, `log::Writer`, the sequences'
+  mouse, `render --at` with the parked mouse, the window's mouse (cursor frames, hints, marks,
+  entered stacks re-made on a move), pressed buttons, hotkeys, the log's scroll; the window's own
+  keys moved (P, Home, H); `h3-sdl` reports key-ups and the left button.
+- **The harness:** `h3mem`'s battle state gains the mouse (hex, kind, cursor type, frame and
+  drawn point); a sequence's screen digest takes the cursor, no fixed mask; `frames.toml`'s
+  per-frame `cursor`; the mouse poll's next time set at a sequence's opening
+  (`Mem.align_mouse_poll`, its only write); `hover` captured and compared; `h3lod` reads the base
+  archive's tables first (the AB copies' GENRLTXT differs from record 79, Help.txt from 96: the
+  count T6c-1 found); `h3adv` prints a winner of -1 as none (the adventure lane's inbox).
+- **Found on the way:** entering a stack redraws only its new frame's rectangle: in `hover` one
+  pixel of the standing Pikemen (0 and 33 ms) and thirteen of their frame 2 (200 and 231 ms) stay,
+  each equal to the original's screen just before (listed: the viewer composes whole frames);
+  a war machine's turn in hot seat is a human's to the mouse (its hex forgotten, `machines` at
+  2 221 ms); `strike`'s Pikemen, entered by the click, stand as the strike starts
+  (`battle_stand_fidgets`); in `shots` the panel showed under the parked point while each ray
+  plays (`draw_ray` hides the cursor, 0x5A5C46 to 0x5A61D4: built as `Beam::cursor_back`); the
+  `turn:` action names the stack's next turn after the last one named (`machines`' second).
+- **Checked:** every timeline as recorded (eleven, `hover`'s with the original's own fidgets left
+  out); the frame check captured afresh (all eleven, the cursor compared, nothing fixed masked):
+  922 frames, every count the ten sequences recorded before unchanged, their ` log` listings
+  668 to 173 (each a rolled line), `shots` six frames more (the cursor hidden and shown, exact),
+  `hover` 20 frames (16 exact, four with the leftover pixels); the set not captured (its capture
+  did not change; `drawn`: every situation the same); `drawn --record`; the window under Xvfb
+  with the mouse moved and clicked over the field and the panel: every frame read back exact;
+  `master` merged in (E08 T27, E23 T2a); `check.sh` all gates (coverage 100 %); the real-asset
+  gate passes.
+
 ## Accepted review lists (M1, M2)
 
 Moved from the epic file on 2026-10-20 (less start-up reading), unchanged.

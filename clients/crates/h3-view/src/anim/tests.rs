@@ -789,6 +789,11 @@ fn the_shots_sequence_plays_as_recorded() {
     // tick shows for no time.
     let rays: Vec<(u32, usize)> = t.beams.iter().map(|b| (b.from, b.ticks.len())).collect();
     assert_eq!(rays, [(655, 11), (4086, 11), (5293, 11)]);
+    // E17 M3 T6c-2: the cursor hidden from the ray's start until the shot group's rest is
+    // over (the original's screen: back at 879).
+    assert_eq!(t.beams[0].cursor_back, 879);
+    let hidden = [654, 655, 878, 879].map(|ms| t.cursor_hidden(ms));
+    assert_eq!(hidden, [false, true, true, false]);
     assert!(t.ray(664).is_none());
     let first = t.ray(665).unwrap();
     assert_eq!(first.colours.len(), 5);
@@ -1088,6 +1093,10 @@ fn a_ray_without_a_climax_frame_or_a_target() {
     // hidden.
     assert_eq!(t.beams[0].from, 556 + 115);
     assert!(t.keys.iter().all(|k| k.shown != u32::MAX));
+    // Without a climax frame the cursor shows again as the ray's last tick is over.
+    let b = &t.beams[0];
+    let ticks = u32::try_from(b.ticks.len()).unwrap();
+    assert_eq!(b.cursor_back, b.from + ticks * b.step);
 }
 
 #[test]
@@ -2418,8 +2427,17 @@ fn the_log_records_what_the_battle_writes_and_when() {
             Logged::Morale { .. } => "bad",
             Logged::Luck { .. } => "luck",
             Logged::Round => "round",
+            Logged::Status { .. } => "status",
+            Logged::Scroll(_) => "scroll",
         })
         .collect();
+    // E17 M3 T6c-2: a wait, two strikes, a defend's command.
+    let calm: Vec<(bool, bool)> = t.actions.iter().map(|a| (a.stands, a.unmarks)).collect();
+    assert_eq!(
+        calm,
+        [(false, false), (true, true), (true, true), (false, false)]
+    );
+    assert_eq!(t.actions[1].start, 100);
     assert_eq!(
         kinds,
         [
@@ -2463,4 +2481,117 @@ fn the_log_records_what_the_battle_writes_and_when() {
             hit_points: 6
         })
     );
+}
+
+#[test]
+fn the_stacks_the_mouse_enters_fidget_on_the_idle_steps() {
+    // E17 M3 T6c-2 (design §9.10): the Gnolls (stack 1) have three frames of group 1.
+    let o = snapshot(vec![
+        at(0, Side::Attacker, PIKEMAN, 35, false),
+        at(1, Side::Defender, GNOLL, 49, false),
+    ]);
+    let fidget = |id: u8| if id == 1 { 3 } else { 0 };
+    let pose = |t: &Timeline, id: u8, ms: u32| {
+        let p = t.at(ms)[&id];
+        (p.group, p.frame)
+    };
+    // Entered at 50 while the battle idles: frame 0 at once, one frame a step, then standing.
+    let mut t = play(&o, &[]);
+    t.enter(&[], 1, &fidget);
+    t.enter(&[(50, 1)], 1, &fidget);
+    let seen = [0, 50, 100, 200, 300].map(|ms| pose(&t, 1, ms));
+    assert_eq!(seen, [(2, 0), (1, 0), (1, 1), (1, 2), (2, 0)]);
+    let lines = t.lines();
+    assert!(
+        lines.contains("50 1.0 g1 f0 h49\n100 1.0 g1 f1 h49\n"),
+        "{lines}"
+    );
+    // Entered again while it shows group 1: it stands; then again: group 1 anew. A stack
+    // without the group that stands: nothing.
+    let mut t = play(&o, &[]);
+    t.enter(&[(50, 1), (150, 1), (160, 0), (400, 1)], 1, &fidget);
+    assert_eq!(pose(&t, 1, 100), (1, 1));
+    assert_eq!(pose(&t, 1, 150), (2, 0));
+    assert_eq!(pose(&t, 1, 350), (2, 0));
+    assert_eq!(pose(&t, 1, 450), (1, 0));
+    assert_eq!(pose(&t, 1, 500), (1, 1));
+    assert_eq!(pose(&t, 0, 200), (2, 0));
+    // Entered again at a step's time (200): the step comes first, then it stands.
+    let mut t = play(&o, &[]);
+    t.enter(&[(50, 1), (200, 1)], 1, &fidget);
+    assert!(t.lines().contains("200 1.0 g2 f0 h49\n"));
+    assert_eq!(pose(&t, 1, 250), (2, 0));
+    assert_eq!(t.keys.iter().filter(|k| k.stack == 1).count(), 4);
+    // A walk starting at 250 stands it at its start.
+    let mut t = play(&o, &[(Some(250), vec![moved(0, 35, 36)])]);
+    t.enter(&[(50, 1)], 1, &fidget);
+    assert_eq!(pose(&t, 1, 249), (1, 2));
+    assert_eq!(pose(&t, 1, 250), (2, 0));
+    // Its own walk at 150 ends it: the walk's poses from then.
+    let walk = play(&o, &[(Some(150), vec![moved(1, 49, 48)])]);
+    let mut t = walk.clone();
+    t.enter(&[(50, 1)], 1, &fidget);
+    assert_eq!(pose(&t, 1, 100), (1, 1));
+    assert_eq!(t.at(150)[&1], walk.at(150)[&1]);
+    assert_eq!(t.at(2000)[&1], walk.at(2000)[&1]);
+    // Played whole between two commands: the steps before the next one.
+    let later = play(&o, &[(Some(2000), vec![moved(0, 35, 36)])]);
+    let mut t = later.clone();
+    t.enter(&[(50, 1)], 1, &fidget);
+    assert_eq!(pose(&t, 1, 200), (1, 2));
+    assert_eq!(pose(&t, 1, 300), (2, 0));
+    // Entered after its own walk: the mouse's keys after the walk's.
+    let mut t = walk.clone();
+    t.enter(&[(9000, 1)], 1, &fidget);
+    assert_eq!(pose(&t, 1, 9000), (1, 0));
+    assert_eq!(t.at(8000)[&1], walk.at(8000)[&1]);
+    // An entered stack that is not the battle's: nothing.
+    let mut t = play(&o, &[]);
+    t.enter(&[(50, 9)], 1, &fidget);
+    assert_eq!(t, play(&o, &[]));
+}
+
+#[test]
+fn the_originals_own_fidgets_are_left_out() {
+    let recorded = "0 0.1 g2 f0 h35\n0 0.2 g1 f0 h69\n100 0.2 g1 f1 h69\n200 0.1 g1 f0 h35\n\
+                    200 0.2 g2 f0 h69\n300 0.1 g1 f1 h35\n400 0.1 g2 f0 h35\n400 magic 3 f0 0.1\n\
+                    500 0.1 g3 f0 h35\n";
+    let kept: alloc::collections::BTreeSet<String> = ["0.2".to_string()].into_iter().collect();
+    assert_eq!(
+        unfidgeted(recorded, &kept),
+        "0 0.1 g2 f0 h35\n0 0.2 g1 f0 h69\n100 0.2 g1 f1 h69\n200 0.2 g2 f0 h69\n\
+         400 magic 3 f0 0.1\n500 0.1 g3 f0 h35\n"
+    );
+}
+
+#[test]
+fn an_actions_start_stands_and_unmarks_by_what_it_does() {
+    // E17 M3 T6c-2: up to the next turn; a creature's cast only stands.
+    use h3_protocol::wire::Target;
+    let none = Target::None {};
+    let cast = Event::SpellCast {
+        side: Side::Attacker,
+        spell: 1,
+        target: none,
+        second: none,
+    };
+    let creature = Event::StackCast {
+        stack: 0,
+        spell: 1,
+        target: none,
+    };
+    let wall = Event::WallShot {
+        stack: 0,
+        aimed: 1,
+        part: 1,
+        damage: 1,
+    };
+    assert_eq!(calms(&[cast]), (true, true));
+    assert_eq!(calms(core::slice::from_ref(&creature)), (true, false));
+    assert_eq!(calms(&[wall]), (true, true));
+    assert_eq!(calms(&[moved(0, 1, 2)]), (true, true));
+    let later = [Event::TurnStarted { stack: 1 }, moved(1, 2, 3)];
+    assert_eq!(calms(&later), (false, false));
+    let round = [Event::RoundStarted { round: 2 }, creature];
+    assert_eq!(calms(&round), (false, false));
 }

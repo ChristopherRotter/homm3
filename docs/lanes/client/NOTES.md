@@ -28,36 +28,13 @@ a line there while the work waits.
 
 ## The battle screen (T6–T8)
 
-- 2026-10-15 (E17 M3 T1b-2): **for T6, the mouse over a stack** (design §7.13; read,
-  `battle_mouse_stack` 0x477C20, and recorded: the sequence `hover`): the stack the mouse enters
-  starts group 1 at frame 0 at once (unless it shows it: then it stands), the idle step plays it
-  as a fidget (stalls, the fidget clock drawn again at its end), and the stack takes the mouse's
-  outline (entry 0x70, the cyan ramp) until the mouse leaves it. The window (`h3-view window`)
-  has a mouse but no such state yet; with the cursor rules, the hover's timeline (`hover.txt`)
-  checks it. Also there: where a two-hex striker stands by the cursor's slot inside the target's
-  hex (`cursor_attack_from_hex` 0x474A00, not read further; the harness's offsets in §7.13).
-- 2026-10-19 (the battle lane, its inbox's consolidation; for your information): two presentation points from the battle lane's readings that never reached this queue. (1) The original's shot cursor tests the half damage without the shooter's turn (0x4767E6), so it may show the broken arrow over a target the shot then strikes in full (the wiki checks, 2026-10-13; the turn itself, 0x446720, is in `E17-design.md`). (2) The original shows a message when no hex is free for a created stack (E04b T11a; the engine creates nothing and reports nothing).
-- 2026-10-20 (E17 M3 T6b): **for T6c-2, the status line's hints** (design §9.8): the hover's hint
-  replaces the log's new lines at once (`behind` at 7 144 ms: `Attack Silver Pegasi` over two
-  lines 0 ms old), so the battle's mouse handler forces it, unlike a turn's posted mouse move
-  (0x4ECC00), which the 3 000 ms rule holds back; over the parked cursor the hint is empty. The
-  frame check lists the log's item (` log`) wherever the original shows a hint: those listings
-  go once the viewer draws them (the harness reads the item's text, `h3mem.battle_log`).
-- 2026-10-20 (E17 M3 T6c-1, design §9.9): **for T6c-2, the mouse over time.** Built for a still:
-  the cursor, the hint and the marked stack from a point and the opening's legal commands. Left:
-  (1) the hint against the log's new lines: an attack's and a shot's are forced, a move's, a
-  fly's, a look's and a hero's are not (`battle_status_line`'s third argument); (2) the battle
-  writes the hint only when the mouse's hex changes, so a turn's posted move (0x4ECC00) over the
-  same hex writes none, and an attack's slot is recomputed on the same hex; (3) a hex outside
-  the field or a side column leaves the last target set (+0x10, +0x14): a shooter without shots
-  then shows "No shots left!" (GENRLTXT:299); (4) a marked stack's group 1 played as a fidget
-  (the stills take the original's poses), the facing turned in the battle (the broken arrow's
-  front hex, the two-hex stacks' hexes); (5) the window: the legal commands per turn (`fought`
-  computes them), the cursor by kind (the hardware cursor per frame), the hint and the outline
-  re-composed on a move; (6) at the opening the original shows the new cursor at the old point
-  until its next frame (the set's mouse frames start at 100 ms). The harness's `h3lod` reads
-  `Help.txt` with one record fewer than `h3-formats` from the Multiplayer Selection group on (the
-  executable's loader agrees with `h3-formats`): fix with the harness's next change.
+- 2026-10-19 (the battle lane, its inbox's consolidation; for your information): two presentation points from the battle lane's readings that never reached this queue. (1) The original's shot cursor tests the half damage without the shooter's turn (0x4767E6), so it may show the broken arrow over a target the shot then strikes in full (the wiki checks, 2026-10-13; the turn itself, 0x446720, is in `E17-design.md`; built in T6c-1). (2) The original shows a message when no hex is free for a created stack (E04b T11a; the engine creates nothing and reports nothing).
+- 2026-10-21 (E17 M3 T6c-2, done; design §9.10): the mouse over time and the window's mouse
+  are built. Left for later tasks: a mouse fidget's stalls (the viewer draws none in a check), a
+  hero's cast's return to the same stack's turn (0x479195), the redraw's leftover pixels as the
+  mouse enters a stack (`hover`'s four frames), the viewer's own fidgets meeting the mouse's in
+  the window, sieges' and casters' cursors, the army info. The harness's `h3lod` now reads the
+  base archive's text tables first, as the game does (its GENRLTXT and Help.txt differed).
 - 2026-10-15 (E17 M3 T3b): **for T8**: the battle waits for the heal's sound to end
   (`wait_for_sample` after `first_aid_tent_action`'s animation, design §7.15): at speed 0 the
   animation outlasts `Regener` (2 100 against 1 881 ms), at speeds 1 and 2 with the sound on the
