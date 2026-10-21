@@ -88,7 +88,46 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### Adventure lane (`ADV-Q<n>`)
 
-(no open questions)
+#### ADV-Q21 — Increment 5's ADR amendment drafts and the cut (E08 T34b)
+
+T34b drafted the amendments the survey (`docs/rules/surveys/E08-hero-movement.md`) and the
+checkpoint (ADV-Q20, the epic's decision 75; D-26 revised at T34b, decision 77) call for, with the
+design note `docs/epics/E08-design.md` and a cut into building tasks. Nothing is built until they
+are accepted. Blocks T35 and T36. Recommendations marked.
+
+1. **ADR-0013's draft** (`docs/lanes/adventure/adr-drafts/0013-increment-5.md`): movement and
+   scouting as `h3-heroes`' derivations on bases the adventure gives (the land table's entry, the
+   base radius); six effect kinds (the Pathfinding level, a land movement rate, land movement
+   points, the flying and water-walking levels, a radius bonus); D-22 under Q-0005; no Scouting
+   specialty. *Recommended: accept.*
+2. **ADR-0016's draft** (`0016-increment-5.md`): the points and radius through the store, set after
+   the levels at load; the passage of a flying and a water-walking hero (design §7's table),
+   moves on explored tiles only (A-13, `ADV-QUIRK-15`), a move ending only where a hero may stop
+   (D-25), two kinds of node in the reach for them alone; the price's quirks D-24 and A-12
+   (`ADV-QUIRK-16`, `-17`), Cursed Ground after E5-6; a grown radius at the next step,
+   `strict-fixed` also at each new day (`ADV-QUIRK-18`). *Recommended: accept.*
+3. **ADR-0017's draft** (`0017-increment-5.md`): the build gives the day's points and the reveal
+   after the levels at load (the original's order); the start of a day's first rule
+   (`strict-fixed`'s reveal); the versions (no game or adventure state hash, import, encoding or
+   replay format change). *Recommended: accept.*
+4. **The diagonal exception's check for a flyer** (design §6 point 5; the agent's call): under
+   `ADV-QUIRK-2` or `-3` (faithful) the check stays the walking terrain's price, as the original;
+   with both off (strict-fixed) it is the step's own straight price, the fly price included, as
+   ADV-Q3's fix ("the step's own straight cost") extended. Only a flight from rough terrain tells
+   them apart (a swamp's diagonal at 175 to 247 points: 100 faithful, 141 strict). *Recommended:
+   as proposed;* alternative: the walking check in both profiles.
+5. **Batch E5's row E5-11** (the agent's call): an Angel Wings hero facing a border gate it lacks
+   the key of; the reading predicts a flight over the gate, which no other source states.
+   *Recommended: add it;* alternative: a fixed test of the reading only.
+6. **The cut** (design §12): five rounds, **batch E5 first** — round 1 T35 (the shared groundwork:
+   the drafts applied, the six kinds, three flags, the packs, pack format v46, core ruleset hash
+   v47; `shared/`, `cross-lane`) + T36 (batch E5's specs and scorer, `cross-lane`); round 2 T37 (the
+   harness's reads and the run) + T38 (the scoring; D-23 decided by E5-6); round 3 T39 (the
+   derivations) + T40 (the points, radius and walking price, Nomads, Cursed Ground if confirmed);
+   round 4 T41 (flying and water walking: price, drop, passage, reach, `MoveHero`); round 5 T42 (env,
+   fixtures, replays, benchmarks) + T43 (closure). *Recommended: as proposed;* alternative: the
+   batch at the end, as in increment 4 (the build first; a built rule may reopen and Cursed Ground
+   comes late).
 
 ### Server lane (`SRV-Q<n>`)
 
