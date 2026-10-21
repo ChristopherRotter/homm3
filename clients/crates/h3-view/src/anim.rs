@@ -2132,6 +2132,7 @@ impl Player<'_> {
         let ticks = ray::trace(aim.from, aim.to);
         let step = self.speed.scale(RAY_TICK);
         let count = u32::try_from(ticks.len()).unwrap_or(0);
+        let beam = self.beams.len();
         self.beams.push(Beam {
             from: self.clock.now,
             step,
@@ -2160,10 +2161,7 @@ impl Player<'_> {
                 }
             }
         }
-        let back = self.clock.now;
-        if let Some(b) = self.beams.last_mut() {
-            b.cursor_back = back;
-        }
+        self.beams[beam].cursor_back = self.clock.now;
     }
 
     /// The shot's group (0 up, 1 straight, 2 down), its start and target points and its
