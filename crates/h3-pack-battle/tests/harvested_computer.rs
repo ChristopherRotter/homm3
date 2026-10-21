@@ -5,11 +5,14 @@
 //! Aid, Ballistics, spells), the computer's choice for the side to act is a command the engine
 //! accepts at every step (no fallback fires), and the same state and stream give the same
 //! command. Most steps play it; the others play a random legal command or a hero's cast, so the
-//! games reach effects and stand-ins (`h3_battle_ai`'s stubs) the policy alone would not.
+//! games reach effects and stand-ins (`h3_battle_ai`'s stubs) the policy alone would not. The
+//! Cyclops's wall shot (E23 T2b, BAT-AI-004) at a town's walls, below.
+
+use std::collections::BTreeSet;
 
 use h3_battle::{
     BattleState, CastTargets, Command, LegalCommands, NoopSink, apply, cast_targets,
-    castable_spells, legal_commands, second_targets, validate,
+    castable_spells, computer, legal_commands, second_targets, validate,
 };
 use h3_content::{CreatureFlag, CreatureTypeId, Formation, HeroTypeId, SpellCategory, SpellId};
 use h3_content_battle::BattleRuleset;
@@ -250,4 +253,173 @@ fn the_computers_choice_is_legal_in_random_battles_of_the_harvested_creatures() 
             && reach.over > 30,
         "{reach:?}"
     );
+}
+
+/// The SoD packs' ruleset in `profile`.
+fn sod(profile: &str) -> BattleRuleset {
+    h3_pack_battle::compile(
+        &[
+            h3_pack_battle::SOD_PACK,
+            h3_pack_battle::AB_PACK,
+            h3_pack_battle::BASE_PACK,
+        ],
+        profile,
+    )
+    .unwrap()
+}
+
+/// An army of the harvested creatures `stacks` (keys and counts).
+fn harvested(r: &BattleRuleset, stacks: &[(&str, u32)]) -> Army {
+    Army {
+        stacks: (0u8..)
+            .zip(stacks)
+            .map(|(slot, &(key, count))| ArmyStack {
+                slot,
+                creature: r.creature_by_key(key).unwrap(),
+                count,
+            })
+            .collect(),
+    }
+}
+
+/// A battle without heroes at the Castle town's Fort (its walls and gate, no moat or turrets),
+/// or on the open field without `fort`, on Normal.
+fn walled(
+    r: &BattleRuleset,
+    attacker: &[(&str, u32)],
+    defender: &[(&str, u32)],
+    fort: bool,
+) -> BattleState {
+    let setup = BattleSetup {
+        attacker: harvested(r, attacker),
+        defender: harvested(r, defender),
+        siege: fort.then(|| Siege {
+            faction: r.sieges()[0].faction,
+            fort: FortLevel::Fort,
+            moat: Moat::Absent,
+            structures: 0,
+            escape_tunnel: false,
+            morale: 0,
+            luck: 0,
+        }),
+        formations: [Formation::Loose, Formation::Loose],
+        difficulty: 1,
+        ..BattleSetup::default()
+    };
+    BattleState::new(r, &setup, 3).unwrap()
+}
+
+/// Whether the active stack is of the creature `key`.
+fn acting(r: &BattleRuleset, state: &BattleState, key: &str) -> bool {
+    let id = state.active().unwrap();
+    Some(state.stack(id).unwrap().creature) == r.creature_by_key(key)
+}
+
+// covers: BAT-AI-004
+#[test]
+fn the_cyclopes_batter_the_weakest_wall_while_their_army_is_locked_out() {
+    for profile in ["base:faithful", "base:strict-fixed"] {
+        let r = sod(profile);
+        // Behind the closed gate the pikemen outside reach no defender: most of the attacker's
+        // strength is locked out, against the little the cyclopes' best shot is worth.
+        let state = walled(
+            &r,
+            &[("base:cyclops", 5), ("base:pikeman", 200)],
+            &[("base:pikeman", 300)],
+            true,
+        );
+        assert!(acting(&r, &state, "base:cyclops"));
+        // Every wall stands with the same hit points: each is drawn (random(1, 4)).
+        let walls: BTreeSet<u8> = computer::walls(&state).map(|(part, _)| part).collect();
+        assert_eq!(walls, BTreeSet::from([1, 2, 4, 5]));
+        let drawn: BTreeSet<u8> = (0..40)
+            .map(|seed| {
+                let command = h3_battle_ai::choose(
+                    &state,
+                    &r,
+                    BattleSide::Attacker,
+                    &mut Rng::from_seed(seed),
+                );
+                let Command::ShootWall { part } = command else {
+                    panic!("{profile}: {command:?}");
+                };
+                part
+            })
+            .collect();
+        assert_eq!(drawn, walls, "{profile}");
+        // Played on: the cyclopes batter the weakest standing wall, the only one once a wall
+        // has lost hit points, until a breach lets the pikemen in and they shoot instead (or,
+        // blocked by a defender, defend).
+        let mut state = state;
+        let mut seat = Rng::from_seed(11);
+        let (mut alone, mut shots) = (0, 0);
+        for _ in 0..80 {
+            let Some(side) = state.side_to_act() else {
+                break;
+            };
+            let command = if acting(&r, &state, "base:cyclops") {
+                let walls: Vec<(u8, u8)> = computer::walls(&state).collect();
+                let least = walls.iter().map(|&(_, hp)| hp).min();
+                let command = h3_battle_ai::choose(&state, &r, side, &mut seat);
+                match command {
+                    Command::ShootWall { part } => {
+                        let weakest: Vec<u8> = walls
+                            .iter()
+                            .filter(|w| Some(w.1) == least)
+                            .map(|w| w.0)
+                            .collect();
+                        assert!(weakest.contains(&part), "{profile}: {part} of {walls:?}");
+                        alone += u32::from(weakest.len() == 1);
+                    }
+                    Command::Shoot { .. } => shots += 1,
+                    // Blocked by a defender that came out, they are walkers (BAT-STUB-4).
+                    Command::Defend => {
+                        assert!(!computer::shoots(&state, &r, state.active().unwrap()));
+                    }
+                    other => panic!("{profile}: {other:?}"),
+                }
+                command
+            } else {
+                Command::Defend
+            };
+            apply(&mut state, &r, side, command, &mut NoopSink).unwrap();
+        }
+        assert!(alone > 0 && shots > 0, "{profile}: {alone} {shots}");
+    }
+}
+
+// covers: BAT-AI-004
+#[test]
+fn the_cyclopes_shoot_a_stack_without_walls_to_batter_or_with_their_army_free() {
+    let r = sod("base:faithful");
+    // Alone outside the walls, the cyclopes record their enemies (they can shoot): nothing is
+    // locked out, so they shoot.
+    let shoots = |state: &BattleState, side| {
+        matches!(
+            h3_battle_ai::choose(state, &r, side, &mut Rng::from_seed(1)),
+            Command::Shoot { .. }
+        )
+    };
+    let state = walled(&r, &[("base:cyclops", 5)], &[("base:pikeman", 300)], true);
+    assert!(shoots(&state, BattleSide::Attacker));
+    // On the open field there is no wall.
+    let state = walled(
+        &r,
+        &[("base:cyclops", 5), ("base:pikeman", 200)],
+        &[("base:pikeman", 300)],
+        false,
+    );
+    assert!(shoots(&state, BattleSide::Attacker));
+    // The defender's cyclopes never batter their own walls.
+    let mut state = walled(
+        &r,
+        &[("base:pikeman", 200)],
+        &[("base:cyclops", 5), ("base:pikeman", 300)],
+        true,
+    );
+    while !acting(&r, &state, "base:cyclops") {
+        let side = state.side_to_act().unwrap();
+        apply(&mut state, &r, side, Command::Defend, &mut NoopSink).unwrap();
+    }
+    assert!(shoots(&state, BattleSide::Defender));
 }

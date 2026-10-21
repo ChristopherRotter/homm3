@@ -3070,7 +3070,10 @@ Ballista and every computer-controlled shooter share it; the arrow towers do not
 **0x41F060, the shot.** The context (0x435EC0) for the acting side, the threat records (0x422B20)
 of the other side, both as for the turret (§7.31); then the target (0x41EB80). A shooter that can
 shoot walls (flag `0x20`, the Cyclops) may shoot them instead (0x41EEA0, not read). In the
-context's desperate mode (+8), if the best value is 0, the target is chosen again without it. A
+context's desperate mode (+8), if the best value is 0, the target is chosen again without it
+(after the wall shot's test, and only when the first choice found a target: none gives action 3
+at once; a second choice that finds none, which an area shooter's values below 0 allow, gives
+action 7 at hex −1, not followed: the battle AI defends; E23 T2b re-read). A
 target hex gives action 7 there (the target record's position +0x38, the rear hex of a two-hex
 stack); none gives action 3 (Defend).
 
@@ -3289,11 +3292,14 @@ its helpers named by role (the rest of part W is T1a3's). Insight only, nothing 
 0x41EB80 asks it at the target's position and, for a two-hex target, also at its other hex,
 taking the other only when strictly higher, which also becomes the shot's hex). It collects the
 living stacks within one hex of the hex (0x5A46F0 with radius 1, the hex included; below) and
-sums over them, from the last collected to the first: for a stack of the shooter's own side,
-minus 0x435C70 (§7.31's strike value with the shot flag from both stacks' whole hit points,
+sums over them, from the last collected to the first: for a stack of the shooter's own side
+(the record's side +0xF4 equal to the acting side 0x41EB80 passes: a stack its side hypnotized
+counts as the other side's; E23 T2b re-read), minus 0x435C70 (§7.31's strike value with the shot flag from both stacks' whole hit points,
 0x443080 flag 0; no turns divisor); for any other stack, plus 0x435CB0 (§7.33's shot value, with
 its divisors). An undead shooter (`0x40000`: the Liches) leaves out an undead stack unless
-the stack covers the hex itself. The estimate knows nothing of fire immunity (an Efreet beside a
+the stack covers the hex itself (its position +0x38 or its other hex 0x4466A0 is the hex). The
+area value is asked for the creatures 45, 64 and 65 by number (0x41EBDA), not by a flag. The
+estimate knows nothing of fire immunity (an Efreet beside a
 Magog's target counts as hit) nor of living creatures other than the undead (a Lich's cloud
 counts an elemental or a golem; the rule, BAT-RNG-004, spares both): the computer's estimate,
 not the shot's rule. In 0x41EB80 a candidate whose best area value is below 0 is no candidate
@@ -3323,7 +3329,9 @@ hypnotized or berserk stack, one blind or petrified for more than a round, a wal
 no enemy within 127; the dead count 0): call it `B`. It shoots a wall when, in doubles,
 `B / S₀ > 3.0 × best / S₁`, with `S₀` and `S₁` the context's strengths of the own and the other
 side (all records, +0xC and +0x10) and `best` the value of the target just chosen (0 without
-one). The wall: the lowest hit points among the standing four, one of the walls with them drawn
+one; in desperate mode its value with every creature worth 1000). The comparison (0x41EFA9,
+`fcompp`, C0 tested at 0x41EFAD) holds when the right quotient is below the left one or either
+is a NaN (0 / 0): an infinity is not above an equal one (E23 T2b re-read). The wall: the lowest hit points among the standing four, one of the walls with them drawn
 uniformly (`random(1, n)`, 0x41EFFB, drawn also for `n` = 1), in that list's order. The action
 is 9 at the target's aim hex (0x63BE60), +0x40 = −1. So the Cyclops batters the weakest wall
 when much of its own side's strength is locked out, measured against the best shot it has.

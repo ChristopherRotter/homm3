@@ -502,6 +502,7 @@ version = "0.1.0"
 dependencies = [
  "h3-adventure",
  "h3-battle",
+ "h3-battle-ai",
  "h3-content",
  "h3-content-battle",
  "h3-contracts",
