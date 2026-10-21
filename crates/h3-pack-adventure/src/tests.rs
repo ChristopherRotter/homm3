@@ -104,6 +104,33 @@ fn the_base_pack_holds_the_sourced_values() {
         ]
     );
     assert_eq!(part.terrains().len(), core.terrains().len());
+    // E08 T29: the straight step by Pathfinding level 0 to 3 (the original's step_cost_table
+    // 0x63E510: sand and snow 125, 100, 100; swamp 150, 125, 100; rough 100 at every level).
+    let by_level: Vec<(&str, [Option<u16>; 4])> = core
+        .terrains()
+        .iter()
+        .map(|info| {
+            let t = terrain(info.key.as_str());
+            let at = |level| part.step_cost(t, level).map(NonZeroU16::get);
+            (info.key.as_str(), [at(0), at(1), at(2), at(3)])
+        })
+        .collect();
+    let all = |c| [Some(c); 4];
+    assert_eq!(
+        by_level,
+        [
+            ("base:dirt", all(100)),
+            ("base:desert", [Some(150), Some(125), Some(100), Some(100)]),
+            ("base:grass", all(100)),
+            ("base:snow", [Some(150), Some(125), Some(100), Some(100)]),
+            ("base:swamp", [Some(175), Some(150), Some(125), Some(100)]),
+            ("base:rough", [Some(125), Some(100), Some(100), Some(100)]),
+            ("base:subterranean", all(100)),
+            ("base:lava", all(100)),
+            ("base:water", all(100)),
+            ("base:rock", [None; 4]),
+        ]
+    );
     let roads: Vec<(&str, u16)> = part
         .roads()
         .iter()
@@ -458,6 +485,7 @@ fn parses_every_field() {
         [[terrain]]
         terrain = "plain"
         cost = 110
+        pathfinding = [100, 100, 90]
 
         [[terrain]]
         terrain = "other:sea"
@@ -587,6 +615,11 @@ fn parses_every_field() {
             ("other:sea", Passage::Water(cost(120))),
             ("p:cliff", Passage::Impassable),
         ]
+    );
+    let pathfinding: Vec<_> = pack.terrains.iter().map(|t| t.pathfinding).collect();
+    assert_eq!(
+        pathfinding,
+        [Some([cost(100), cost(100), cost(90)]), None, None]
     );
     assert_eq!(pack.roads[0].key.as_str(), "p:path");
     assert_eq!(

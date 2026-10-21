@@ -116,6 +116,7 @@ fn movement(k: &str, passage: Passage) -> TerrainMovementDef {
     TerrainMovementDef {
         terrain: key(k),
         passage,
+        pathfinding: None,
     }
 }
 
@@ -323,6 +324,8 @@ fn the_hash_is_stable_and_sees_every_part() {
         edit(|p| pack(p, "t").terrains[1].passage = Passage::Land(cost(100))),
         edit(|p| pack(p, "t").terrains[1].passage = Passage::Water(cost(101))),
         edit(|p| pack(p, "t").terrains[2].passage = Passage::Land(cost(100))),
+        edit(|p| pack(p, "u").terrains[0].pathfinding = Some([cost(150), cost(125), cost(100)])),
+        edit(|p| pack(p, "u").terrains[0].pathfinding = Some([cost(175); 3])),
         edit(|p| pack(p, "t").roads[0].cost = cost(76)),
         edit(|p| pack(p, "t").roads[0].name = "Other".into()),
         edit(|p| pack(p, "t").rivers[0].name = "Other".into()),
@@ -813,6 +816,51 @@ fn handles_run_out_after_u16_max_entries() {
     );
 }
 
+// covers: ADV-MOV-003, ADV-MAP-002
+#[test]
+fn a_steps_cost_by_pathfinding_level() {
+    let core = core();
+    let swamp = core.terrain_by_key("u:swamp").unwrap();
+    let costs = |levels: Option<[u16; 3]>| {
+        let packs = edit(|p| pack(p, "u").terrains[0].pathfinding = levels.map(|l| l.map(cost)));
+        let part = AdventureRuleset::compile(&core, &packs).unwrap();
+        (0..=4)
+            .map(|level| part.step_cost(swamp, level).unwrap().get())
+            .collect::<Vec<_>>()
+    };
+    // The original's swamp; above Expert counts as Expert.
+    assert_eq!(costs(Some([150, 125, 100])), [175, 150, 125, 100, 100]);
+    // Without the pack's costs, the cost without at every level; equal costs are allowed.
+    assert_eq!(costs(None), [175; 5]);
+    assert_eq!(costs(Some([175, 175, 175])), [175; 5]);
+    let part = AdventureRuleset::compile(&core, &packs()).unwrap();
+    let at = |k: &str, level| part.step_cost(core.terrain_by_key(k).unwrap(), level);
+    // Water's cost holds at every level; rock and an unknown terrain have none.
+    assert_eq!(
+        (at("t:sea", 0), at("t:sea", 3)),
+        (Some(cost(100)), Some(cost(100)))
+    );
+    assert_eq!(at("t:rock", 0), None);
+    assert_eq!(part.step_cost(TerrainId::from_raw(4), 0), None);
+    // Only a land terrain has costs by level, and none rises above the one below it.
+    let refused = |index: usize, levels: [u16; 3]| {
+        compile_err(&edit(|p| {
+            let terrains = if index < 3 {
+                &mut pack(p, "t").terrains
+            } else {
+                &mut pack(p, "u").terrains
+            };
+            terrains[index % 3].pathfinding = Some(levels.map(cost));
+        }))
+    };
+    let error = |k: &str| AdventureCompileError::PathfindingCosts(k.into());
+    assert_eq!(refused(3, [176, 150, 100]), error("u:swamp"));
+    assert_eq!(refused(3, [150, 160, 100]), error("u:swamp"));
+    assert_eq!(refused(3, [150, 125, 126]), error("u:swamp"));
+    assert_eq!(refused(1, [100, 100, 100]), error("t:sea"));
+    assert_eq!(refused(2, [100, 100, 100]), error("t:rock"));
+}
+
 // covers: ADV-MOV-007
 #[test]
 fn every_core_terrain_has_movement_data_once() {
@@ -1069,6 +1117,10 @@ fn errors_explain_themselves() {
         (
             AdventureCompileError::MissingTerrain("t:x".into()),
             "terrain `t:x` has no movement data",
+        ),
+        (
+            AdventureCompileError::PathfindingCosts("t:x".into()),
+            "terrain `t:x`: costs by Pathfinding level need a land terrain and must not rise",
         ),
         (
             AdventureCompileError::MissingParams,

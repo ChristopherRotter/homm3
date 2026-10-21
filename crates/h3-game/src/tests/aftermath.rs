@@ -208,6 +208,31 @@ fn a_victory_over_a_hero_gives_experience_and_its_artifacts() {
     assert_eq!(project(&event, Viewer::Player(BLUE)), None);
 }
 
+// covers: GAM-BAT-002, HER-EXP-003
+#[test]
+fn the_battles_experience_stops_at_the_scenarios_limit() {
+    // E08 T29: the winner gains under the level limit; the event tells the points gained.
+    let rules = rules();
+    let outcome = outcome(BattleResult::Victory(BattleSide::Attacker));
+    let gained = |limit| {
+        let mut setup = equipped(&rules);
+        setup.level_limit = limit;
+        let game = GameState::new(&rules, &setup, 5).unwrap();
+        let (ended, changes) = end(&game, &rules, SIDES, &outcome);
+        let told = changes.iter().any(|&(_, hero, change)| {
+            hero == RED_HERO && matches!(change, HeroChange::GainExperience(p) if p > 500)
+        });
+        assert!(told, "limit {limit}");
+        ended.hero(RED_HERO).unwrap().experience
+    };
+    // Level 1's threshold, 0: the experience is lowered to it (D-19); level 2's, 1 000, is not
+    // reached, as without a limit.
+    assert_eq!(gained(1), 0);
+    let free = gained(0);
+    assert!((500..1000).contains(&free));
+    assert_eq!(gained(2), free);
+}
+
 // covers: GAM-BAT-002, GAM-BAT-004
 #[test]
 fn a_retreat_or_a_surrender_gives_no_artifacts_and_no_500() {

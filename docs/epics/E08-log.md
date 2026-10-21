@@ -3159,3 +3159,51 @@ lane's own paths only.
   and VCMI against it); `ADV-QUIRK-14` written (preserve, no flag; its count's test with T29).
   No version moves (nothing calls the rule yet): T29 counts the shares and chooses at load, T30
   for the system actor.
+
+### Increment 4, round 3: T29, the game's setup and build (2026-10-21, `adventure/e08-t29`)
+
+Decision 63: T29 whole, one pull request, `cross-lane` with the user's consent (the AI lane's
+`crates/h3-cli/src/ai/census.rs` sets the two new `GameSetup` fields to none). Baseline `master`
+528b602 (#343 merged): the full verify with the original data green in the sandbox.
+
+- **The adventure part** (`h3-adventure`, `h3-pack-adventure`, `packs/base/adventure.toml`):
+  `TerrainMovementDef::pathfinding` (Basic, Advanced, Expert; land only, none above the one
+  below: `AdventureCompileError::PathfindingCosts`), `AdventureRuleset::step_cost(terrain,
+  level)` (water its cost at every level, none for an impassable terrain); the base pack's sand,
+  snow, swamp and rough by the original's `step_cost_table` (the wiki and VCMI agree, survey
+  `E04-skills.md` row 0); adventure ruleset part v9. The static map counts the terrain shares once
+  (`StaticMap::terrain_shares`, ADV-MAP-002: the coast-flagged tiles not impassable, the water
+  ones, per Pathfinding level 0-2 those above a native step); not hashed (they follow from the
+  tiles and the part), so the adventure state hash stays v10 and a fork shares them with the map.
+- **The game** (`h3-game`, `state/levels.rs`): `GameSetup.level_limit` and `.banned_skills`
+  (`GameSetupError::BannedSkill`, checked after the players); `Progression` (the limit, the bans
+  in id order once each, a seed per hero) behind one `Arc` in `GameState`, hashed (game state hash
+  v10), never observed; `GameState::level_limit()`, `banned_skills()`. GAM-HER-002: the seeds
+  (1-255) are the setup stream's **last** draws, after the map objects' contents (design §11 had
+  each after its hero's defaults: drawn last, no earlier draw moved, so the nine golden replays
+  were re-recorded with their commands unchanged); `Progression::draw` takes the original's
+  generator from the seed and the new level with `ADV-QUIRK-9`'s flag on, the stream given off.
+  GAM-SET-002: a custom experience is built at experience 0 (so the details' check passes for
+  any amount), then gained under the limit with each pending level drawn and given (two offers by
+  `original_choice` with `ArmyWorth::SETUP` and the shares; at most as many draws as levels
+  pending), the spell points full after; in hero id order after the seeds, in `strict-fixed`
+  from the setup stream. The battle's experience goes through `apply_change_limited` with the
+  limit (GAM-BAT-002's summary).
+- **The import** (v8): the header's level limit, SoD's banned skills by their codes (a bit past
+  the 28 codes refused as an unknown code; none in the shipped maps), a custom experience passed
+  as it is (`Unsupported::HeroExperience` gone). The original data (`original_data.rs`'s new
+  census lines): 5 maps import whole, their 9 heroes levelled at load with 41 levels (survey §6.5
+  exactly); no map has a level limit; 19 ban skills, none past the 28 codes.
+- **Stale citations** (the inbox's 0x486590 entry, closed): re-pointed to `placed_hero_setup`
+  0x4D8B30 or `placed_heroes_setup` 0x4CAE10 in ADV-MOV-002, ADV-FOG-003, GAM-SET-001,
+  GAM-HER-001, HER-MAN-001, `ADV-QUIRK-8`, the two comments in `h3-adventure`'s `state.rs` and
+  `packs/base/adventure.toml`; the import's clamp of custom primary skills stays, its comment
+  now naming the carried-over hero's clamp.
+- **Tests**: `h3-game`'s `tests/levels.rs` (the seeded levels equal an oracle of the hero model's
+  functions for 40 games; strict-fixed's do not follow the seed byte; the limit, the bound and
+  level 74 from `u32::MAX`; bans in any order; the hash and the forks), the limit in the battle's
+  aftermath, the error; `h3-adventure`'s step costs, the compile check, the hash, the shares'
+  regression test for `ADV-QUIRK-14`; the pack's parse and the base pack's costs; the import's
+  limit and bans. The test pack's knight class gained skill weights and a `t:seeded` profile.
+- **Rules and quirks**: GAM-HER-002, GAM-SET-002 (`implemented`), ADV-MAP-002 (`implemented`);
+  `ADV-QUIRK-9` written (fix-optional, flag 27); `ADV-QUIRK-14`'s count test named.

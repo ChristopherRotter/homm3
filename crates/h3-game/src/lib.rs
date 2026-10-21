@@ -64,5 +64,6 @@ pub use state::{GameState, OpenBattle};
 /// v3 (E08 T14b): the pending decisions. v4 (E08 T15a): an offer's kind. v5 (E08 T18b): the
 /// store of heroes. v6 (E08 T19a): the battles among the decisions. v7 (E08 T20b1): the
 /// wandering monsters' offer kinds and whether a guard's visit waits for an offer's answer. v8
-/// (E08 T21a): a guarded pile's offer to fight. v9 (E08 T27): a hero's offers' levels.
-pub const GAME_STATE_HASH_VERSION: u32 = 9;
+/// (E08 T21a): a guarded pile's offer to fight. v9 (E08 T27): a hero's offers' levels. v10 (E08
+/// T29): the heroes' progression (the scenario's level limit and banned skills, the level seeds).
+pub const GAME_STATE_HASH_VERSION: u32 = 10;

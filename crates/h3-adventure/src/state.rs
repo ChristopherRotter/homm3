@@ -16,7 +16,7 @@ use h3_content::{
     TerrainId,
 };
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
-use h3_heroes::HeroDetails;
+use h3_heroes::{HeroDetails, TerrainShares};
 use h3_kernel::hash::hash_of;
 use h3_kernel::{CanonicalHash, Rng, StateHasher};
 
@@ -34,7 +34,7 @@ use crate::ruleset::{
 };
 use crate::setup::{
     AdventureSetup, ArmyError, Guards, HeroSetup, MapSetup, MonsterSetup, ObjectSetup, Pos,
-    SetupError, StandError, TileMask,
+    SetupError, StandError, TileMask, TileSetup,
 };
 
 /// A tile of the static map.
@@ -184,6 +184,9 @@ pub struct StaticMap {
     near_monsters: Vec<u64>,
     /// Whether any object is a monster ([`Self::any_monster`]). Follows from the objects too.
     any_monster: bool,
+    /// The map's terrain shares (ADV-MAP-002, E08 T29), counted once from the tiles and the
+    /// part's costs: they follow from the tiles, so the hash leaves them out.
+    shares: TerrainShares,
     hash: u64,
 }
 
@@ -248,6 +251,7 @@ impl StaticMap {
             coast,
             near_monsters: vec![0; setup.tiles.len().div_ceil(64)],
             any_monster: false,
+            shares: terrain_shares(part, &setup.tiles),
             hash: 0,
         };
         if u16::try_from(setup.objects.len().div_ceil(Occupancy::ROW)).is_err() {
@@ -578,6 +582,12 @@ impl StaticMap {
         &self.tiles
     }
 
+    /// The map's terrain shares the original's choice between two offers weighs Pathfinding and
+    /// Navigation by (ADV-MAP-002, HER-LVL-006; E08 T29).
+    pub const fn terrain_shares(&self) -> TerrainShares {
+        self.shares
+    }
+
     /// Whether the tile at `pos` is land on the coast (the map's flag; E08 T19a); a tile off the
     /// map is not.
     pub fn is_coast(&self, pos: Pos) -> bool {
@@ -805,7 +815,8 @@ impl AdventureState {
     }
 
     /// The start of the game: each hero reveals the tiles around it to its owner (ADV-FOG-003;
-    /// the original when it sets a placed hero up, 0x486590, and again around everything a
+    /// the original when it sets the placed heroes up, `placed_heroes_setup` 0x4CAE10 at
+    /// 0x4CAF74 (survey `E08-progression.md` §3.1), and again around everything a
     /// player owns at each new day, 0x4C7C50, which adds nothing while no rule hides a tile).
     /// Increment 1 has no owned objects: a game opens with only its heroes' surroundings
     /// explored.
@@ -822,7 +833,8 @@ impl AdventureState {
     }
 
     /// Checks and places one hero of the setup, with the day's movement points for its army
-    /// (the original computes them when it sets a placed hero up, 0x486590; its owner's turn
+    /// (the original computes them when it sets a placed hero up, `placed_hero_setup` 0x4D8B30,
+    /// survey `E08-progression.md` §3.2; its owner's turn
     /// sets them again, [`Self::start_turn`]).
     fn place(
         &mut self,
@@ -1831,6 +1843,35 @@ impl AdventureState {
 /// rock is never entered).
 pub(crate) fn enterable_terrain(part: &AdventureRuleset, tile: &StaticTile) -> bool {
     matches!(part.passage(tile.terrain), Some(Passage::Land(_)))
+}
+
+/// The map's terrain shares (ADV-MAP-002, E08 T29; the original's `ai_map_terrain_shares`
+/// 0x52B9C0, survey `E08-progression.md` §10.3): over the tiles of every level that carry the map
+/// file's coast flag and are not impassable (only those: `ADV-QUIRK-14`), how many there are, the
+/// water tiles among them, and per Pathfinding level 0 to 2 the tiles whose straight step costs
+/// more than a step on native terrain ([`AdventureRuleset::step_cost`] without a road; the
+/// original's 100). Known terrains only: the static map checks them first.
+fn terrain_shares(part: &AdventureRuleset, tiles: &[TileSetup]) -> TerrainShares {
+    // rule: ADV-MAP-002
+    let native = part.params().native_cost();
+    let mut shares = TerrainShares::default();
+    let counted = tiles
+        .iter()
+        .filter(|tile| tile.coast)
+        .filter_map(|tile| part.passage(tile.terrain).map(|p| (tile.terrain, p)))
+        .filter(|&(_, passage)| passage != Passage::Impassable);
+    for (terrain, passage) in counted {
+        shares.tiles = shares.tiles.saturating_add(1);
+        let water = u32::from(matches!(passage, Passage::Water(_)));
+        shares.water = shares.water.saturating_add(water);
+        for (level, rough) in (0..).zip(&mut shares.rough) {
+            let costly = part
+                .step_cost(terrain, level)
+                .is_some_and(|cost| cost > native);
+            *rough = rough.saturating_add(u32::from(costly));
+        }
+    }
+    shares
 }
 
 #[cfg(test)]

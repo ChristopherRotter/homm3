@@ -52,7 +52,9 @@
 //! Cartographer, the pile fought at once and the declined question, `duel-s810-d28` (the one with a
 //! passage) the pursuit and the declined question, `duel-s328-d28` the accepted question
 //! (`duel-s1122-d28` has it), `duel-s1122-d28` the declined Cartographer; no replay now declines a
-//! pile's question or a Cartographer.
+//! pile's question or a Cartographer. E08 T29 re-recorded them all with their options for the game
+//! state hash v10, the adventure part v9 and the import v8, their commands unchanged (the level
+//! seeds are the setup stream's last draws, and the duel's heroes have no custom experience).
 
 use std::path::PathBuf;
 
