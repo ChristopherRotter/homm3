@@ -170,6 +170,35 @@ fn builds_the_static_map_with_the_objects_footprints() {
     assert_eq!(map.objects()[0].visitable, mask(&[(1, 1)]));
 }
 
+// covers: ADV-MAP-002
+#[test]
+fn the_terrain_shares_count_the_coast_alone() {
+    // ADV-QUIRK-14's regression test (E08 T29): only the tiles with the coast flag count, rock
+    // not among them; grass 100, sand 150 (125, 100, 100 by Pathfinding level) and swamp 175
+    // (150, 125, 100) in the movement rules.
+    let rules = crate::testing::movement_rules(true);
+    let mut setup = crate::testing::world(&["gsw~", "#gsw", "gggg"], 1, vec![]);
+    let build = |setup: &AdventureSetup| {
+        AdventureState::new(&rules.0, &rules.1, setup, &mut draws())
+            .unwrap()
+            .map()
+            .terrain_shares()
+    };
+    // A map without a coast counts nothing (the original's 0 / 0: both skills worth 0).
+    assert_eq!(build(&setup), TerrainShares::default());
+    for index in [0, 1, 2, 3, 4, 6] {
+        setup.map.tiles[index].coast = true;
+    }
+    // Grass, sand, swamp, sea and sand; the rock left out. Above 100: both sands and the swamp
+    // without Pathfinding and at Basic, the swamp alone at Advanced.
+    let shares = TerrainShares {
+        tiles: 5,
+        water: 1,
+        rough: [3, 3, 1],
+    };
+    assert_eq!(build(&setup), shares);
+}
+
 // covers: ADV-OBJ-001
 #[test]
 fn an_object_may_stick_out_past_the_right_and_bottom_edges() {

@@ -340,10 +340,12 @@ fn part_with(core: &Ruleset, chances: Vec<u8>, slots: u8) -> AdventureRuleset {
             TerrainMovementDef {
                 terrain: key("t:grass"),
                 passage: Passage::Land(cost),
+                pathfinding: None,
             },
             TerrainMovementDef {
                 terrain: key("t:rock"),
                 passage: Passage::Impassable,
+                pathfinding: None,
             },
         ],
         // A gold pile, and a Cartographer of grass for 2 500 gold (E08 T14b).

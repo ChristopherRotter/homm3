@@ -93,5 +93,6 @@ pub const ADVENTURE_STATE_HASH_VERSION: u32 = 10;
 /// stack chances. v4 (E08 T12a): the object types. v5 (E08 T13a): the starting resources by
 /// difficulty. v6 (E08 T19a): the battle terrains by tile. v7 (E08 T20a2a): the monster and
 /// ground kinds, the monsters' parameters and the creatures no random monster becomes. v8 (E08
-/// T20b1): the resource a monster's price to join is paid in.
-pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 8;
+/// T20b1): the resource a monster's price to join is paid in. v9 (E08 T29): the terrains' costs
+/// by Pathfinding level.
+pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 9;
