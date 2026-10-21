@@ -1,0 +1,57 @@
+# E17 M3 T7a-2a: a hero's timed spell on one stack (casts.toml's `cast`; design §7.16, player 1):
+# at the opening the Champions' turn (speed 9, as `walk`), and Orrin casts Slow from his spell
+# book (place 0, its only spell) at the Wolf Riders (hex 49): his cast group 4, frames 0 to 4,
+# Slow's animation over the Wolf Riders after its effect, frames 5 to 7, standing again. On grass
+# at the capture set's tile (grass.toml's obstacles).
+
+[scenario]
+id = "sequence-cast"
+# Red human, Blue a computer, as the original's map (`h3-view situation`).
+human = ["attacker"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:champion"
+count = 5
+
+[[attacker]]
+slot = 2
+creature = "base:marksman"
+count = 10
+
+[[defender]]
+slot = 0
+creature = "base:wolf_rider"
+count = 8
+
+[[defender]]
+slot = 2
+creature = "base:goblin"
+count = 15
+
+# The heroes (E17 M3 T3a) with 1 in every primary skill; Orrin with a spell book of Slow (M3
+# T7a-2a): the original's hero starts with 10 spell points per knowledge.
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+mana = 10
+max_mana = 10
+spell_book = ["base:slow"]
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1

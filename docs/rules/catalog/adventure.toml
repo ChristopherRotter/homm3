@@ -48,7 +48,7 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "original-data"
-  ref        = "Heroes3.exe code reading (E08 T6b; survey §1.1, CR-2): the End Turn handler 0x409A70 (a human's action) calls the next-player step 0x4C6FE0, which moves the current player 0x69CCA8 on, calls the new day 0x4C7FE0 when the last player has played (it sets no movement within two calls), then for the new current player's heroes (on the map, its two tavern heroes, the heroes in its towns) sets maximum (+0x49) and current (+0x4D) points (H3API maxMovement, movement) to 0x4E4D90's value. 0x4F4C00 does the same in the network branch. Placed heroes get them at setup in 0x486590"
+  ref        = "Heroes3.exe code reading (E08 T6b; survey §1.1, CR-2): the End Turn handler 0x409A70 (a human's action) calls the next-player step 0x4C6FE0, which moves the current player 0x69CCA8 on, calls the new day 0x4C7FE0 when the last player has played (it sets no movement within two calls), then for the new current player's heroes (on the map, its two tavern heroes, the heroes in its towns) sets maximum (+0x49) and current (+0x4D) points (H3API maxMovement, movement) to 0x4E4D90's value. 0x4F4C00 does the same in the network branch. Placed heroes get them at setup in placed_hero_setup 0x4D8B30 (survey E08-progression.md §3.2; first read in 0x486590, a campaign's carried-over hero's setup, which does the same)"
   confidence = "medium"
 
   [[rule.source]]
@@ -306,7 +306,7 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "original-data"
-  ref        = "Heroes3.exe code reading (E08 T8a): hero_move_step (0x4805E0) calls reveal_disk at the step's destination before the hero's position changes (0x48106B); a placed hero's setup (0x486590) reveals around it (0x486E25); reveal_owned (0x4C7C50) around every owned hero at a new day (survey E08-adventure-core.md §2)"
+  ref        = "Heroes3.exe code reading (E08 T8a): hero_move_step (0x4805E0) calls reveal_disk at the step's destination before the hero's position changes (0x48106B); the placed heroes' setup (placed_heroes_setup 0x4CAE10) reveals around each placed hero (0x4CAF74; survey E08-progression.md §3.1, first read in a campaign's carried-over hero's setup 0x486590 at 0x486E25); reveal_owned (0x4C7C50) around every owned hero at a new day (survey E08-adventure-core.md §2)"
   confidence = "high"
 
   [[rule.source]]
@@ -433,6 +433,36 @@ numeric  = "integer"
   url        = "https://heroes.thelazy.net/index.php/Movement"
   retrieved  = "2026-10-09"
   confidence = "medium"
+
+[[rule]]
+id       = "ADV-MAP-002"
+title    = "The map's terrain shares the original's choice of skills weighs"
+context  = "adventure"
+status   = "implemented"
+summary  = "Counted once from the static map when it is built: over the tiles of every level that carry the map file's coast flag and are not impassable (only those, ADV-QUIRK-14), how many there are, the water tiles among them, and per Pathfinding level 0 to 2 the tiles whose straight step without a road or the native terrain costs more than a native step (100). A terrain's step cost by Pathfinding level is data of the adventure part (Basic, Advanced, Expert; the original's: sand and snow 125, 100, 100, swamp 150, 125, 100, rough 100 at every level, the other land as without, water its cost); none for an impassable terrain. A map without a coast counts nothing (Pathfinding and Navigation are then worth 0 to the choice). The original's choice between two offers weighs Pathfinding and Navigation by them (HER-LVL-006): the levels at load (GAM-SET-002), later an unowned hero's default (E08 T30). E08 T29: `h3_adventure::StaticMap::terrain_shares`, `AdventureRuleset::step_cost`."
+numeric  = "integer"
+quirks   = ["ADV-QUIRK-14"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T25, re-read by T28; survey E08-progression.md §10.3): ai_map_terrain_shares 0x52B9C0, called by new_game_heroes before the heroes' setups (0x4C0018) and when a saved game loads, counts the tiles of both levels with the tile flag 0x40 that are not rock, the water ones, and per Pathfinding level 0-2 those whose step_cost (no road, no native terrain; step_cost_table 0x63E510) is above 100; the shares are the counts over the tiles, as f64"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Pathfinding: the rough terrain's penalty 25, 50 or 75 points less per tile at Basic, Advanced and Expert, at least 100 (survey E04-skills.md, row 0)"
+  url        = "https://heroes.thelazy.net/index.php/Pathfinding"
+  retrieved  = "2026-10-03"
+  confidence = "medium"
+  note       = "Agrees on the costs by level; says nothing of the computer's shares (VCMI does not reproduce the evaluation, survey E08-progression.md §10.7)."
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/skills.json pathfinding: ROUGH_TERRAIN_DISCOUNT 25/50/75 (survey E04-skills.md, row 0)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/skills.json"
+  retrieved  = "2026-10-03"
+  confidence = "medium"
+  note       = "Agrees on the costs by level."
 
 # Increment 2 (E08 T12a; survey docs/rules/surveys/E08-objects.md). The object types' data is in
 # packs/base/adventure.toml and packs/ab/adventure.toml; a rule stays `specified` until the task

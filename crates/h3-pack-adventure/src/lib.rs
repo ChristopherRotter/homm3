@@ -38,6 +38,9 @@
 //! terrain = "grass"                # its closure; `name` means `<own pack>:name`
 //! cost = 100                       # a straight step (ADV-MOV-003)
 //! # passage = "land"               # land (default) or water need a cost; impassable has none
+//! # pathfinding = [125, 100, 100]  # E08 T29, land only: the cost with Pathfinding at Basic,
+//!                                  # Advanced and Expert, none above the one below; left out:
+//!                                  # the cost at every level
 //!
 //! [[road]]
 //! id = "dirt_road"
@@ -231,6 +234,7 @@ struct TerrainDto {
     #[serde(default)]
     passage: PassageDto,
     cost: Option<NonZeroU16>,
+    pathfinding: Option<[NonZeroU16; 3]>,
 }
 
 #[derive(Deserialize)]
@@ -421,6 +425,7 @@ pub fn parse_adventure(
             Ok(TerrainMovementDef {
                 terrain: reference(pack, &t.terrain)?,
                 passage,
+                pathfinding: t.pathfinding,
             })
         })
         .collect::<Result<_, AdventurePackError>>()?;

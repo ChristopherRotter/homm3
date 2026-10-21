@@ -1,11 +1,11 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1 done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
 [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
-are there). Next: M3 T7a-2–T8 (`docs/lanes/client/QUEUE.md`).
+are there). Next: M3 T7a-2b–T8 (`docs/lanes/client/QUEUE.md`).
 
 ## Goal
 
@@ -395,6 +395,11 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   fear and luck with their sounds and log lines; 16 map entries added. Candidates for T7a-2's
   recordings: animations a call names but never draws, a mass animation's missing last frame, a
   caster's group by an angle unlike the shot's.
+- **T7a-2a done 2026-10-21** ([log](E17-log.md#m3-t7a-2a--the-harness-casts-2026-10-21),
+  [design §7.16](E17-design.md)): T7a-2 split with the user (the harness first; the other
+  recordings T7a-2b). The spell book read; the scenarios' heroes carry books; `cast:` in the
+  harness and the viewer; two proofs recorded (`situations/casts.toml`): a hero's cast as read,
+  a Faerie Dragon's group by its own angle confirmed (review list).
 
 ### The adventure lane's harness (H1, H2: its batch E3)
 
@@ -464,11 +469,25 @@ Accepted by the user (M1 2026-10-13, M2 2026-10-14); moved to the log,
 
 (Filled by the tasks: choices queued for the milestone review under the autonomy contract.)
 
+- T7a-2a: T7a-2 split (the user, 2026-10-21: the harness first, T7a-2a; the other recordings
+  T7a-2b). **Confirmed by recording** (design §7.16): a creature caster's group by its own angle,
+  not the shot's: a Faerie Dragon beside a level target plays group 17, toward one above 19,
+  toward one below 17 (VCMI: 18, 17, 19), so by VCMI's names it turns up toward a target below:
+  copy it (`faithful`) or fix it (`fixed`)? The harness: the scenarios' heroes carry a spell book
+  (`spell_book`, mana 10 per knowledge, checked; the book's spells numbered by `sptraits.txt`'s
+  names: the SoD pack adds 57, Titan's Lightning Bolt, after the base pack's others);
+  `cast:<k>[:<hex>]` (the
+  book's place k, `pointer::book_place`'s constants until the book has a layout:
+  *provisional*); `heroes = true` adds the heroes' changes to a timeline; `battle_book`, the
+  battle screen with the book's button lit (the `battle` probes lie on it); `turn:` fails after
+  30 s; the casts' sequences wait in `situations/casts.toml` until the viewer plays them.
+
 - T7a-1: T7a split (the user, 2026-10-21: the reading T7a-1, the harness's casts and the
   recordings T7a-2). The reading's surprises, each *provisional* until T7a-2 records it (design
   §7.16): Chain Lightning's 38 and Fire Shield's return 11 never drawn (no stack marked);
   Animate Dead plays Resurrection's 50; a mass animation's last frame never shown; the Liches'
-  cloud drawn plain; a creature caster's group by its own angle (VCMI: the shot's). A
+  cloud drawn plain; a creature caster's group by its own angle (VCMI: the shot's; recorded at
+  T7a-2a, above). A
   difference a recording confirms is the original's behaviour to copy unless it is a drawing bug
   the user wants fixed (the `faithful`/`fixed` profiles, ADR-0020 point 6).
 

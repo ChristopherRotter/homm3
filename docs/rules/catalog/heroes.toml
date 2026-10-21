@@ -633,7 +633,7 @@ numeric  = "float"
 
   [[rule.source]]
   kind       = "original-data"
-  ref        = "Heroes3.exe code reading (E08 T18b; survey E08-battles.md §6.2): map_hero_setup 0x486C5C to 0x486C98 clamps Knowledge (+0x479, with the worn artifacts' bonuses: the setup equips them first, 0x4866D5 and 0x48675C, and hero_equip_artifact adds their primary skills, 0x4E2B7E; E08 T20a1) to 1-99 and sets the spell points (+0x18) to crt_ftol(0x4E48B0() x f32(10 x K)); the Intelligence getter 0x4E48B0 returns 1 + f32(table[level] x (1 + 0.05f x level)) for a skill specialist of skill 24, else 1 + table[level], the table 0x63EA88 holding 0, 0.25, 0.50, 1.00 (installation.md §7.4)"
+  ref        = "Heroes3.exe code reading (E08 T18b; survey E08-battles.md §6.2): map_hero_setup 0x486C5C to 0x486C98 (a campaign's carried-over hero's setup, carried_hero_setup; the placed hero's, placed_hero_setup 0x4D8B30, does the same at 0x4D8EAE to 0x4D8F38 after the artifacts and the levels at load: survey E08-progression.md §3.1, §3.2, E08 T29) clamps Knowledge (+0x479, with the worn artifacts' bonuses: the setup equips them first, 0x4866D5 and 0x48675C, and hero_equip_artifact adds their primary skills, 0x4E2B7E; E08 T20a1) to 1-99 and sets the spell points (+0x18) to crt_ftol(0x4E48B0() x f32(10 x K)); the Intelligence getter 0x4E48B0 returns 1 + f32(table[level] x (1 + 0.05f x level)) for a skill specialist of skill 24, else 1 + table[level], the table 0x63EA88 holding 0, 0.25, 0.50, 1.00 (installation.md §7.4)"
   confidence = "high"
 
   [[rule.source]]

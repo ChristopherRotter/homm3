@@ -278,6 +278,14 @@ Refined with the user on 2026-10-20 (T23; ADV-Q14). Built like increments 1 to 3
     those heroes carry their level's experience (the battle lane's random test heroes at levels 1
     to 74). Not chosen: the check in the game only.
 
+### Decisions at round 3 (2026-10-21, user)
+
+63. **T29 whole, one pull request** (the user's choice of three; not chosen: T29a, the inputs
+    of a level at load (the seeds, the limit and banned skills, the costs by Pathfinding level
+    and the shares), then T29b, the levels at load and the import; or T29 and T30 together in
+    this round). **`cross-lane` with the user's consent**: the AI lane's
+    `crates/h3-cli/src/ai/census.rs` builds a `GameSetup` and sets the two new fields to none.
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T23 Increment 4 refined.** Done (2026-10-20, `adventure/e08-t23`; decisions 48–50): progression only, the first round queued (T24a, T24b), the inbox sorted; docs only (log).
@@ -285,7 +293,8 @@ Refined with the user on 2026-10-20 (T23; ADV-Q14). Built like increments 1 to 3
 - **T24b The ADR amendment drafts, the design note and the cut.** Cut by crate (decision 56): **T24b1** done (2026-10-20, `adventure/e08-t24b1`: ADR-0013's amendment draft, `E08-design.md` rewritten with part A, the hero side; log); **T24b2** done (2026-10-20, `adventure/e08-t24b2`, decision 57: ADR-0017's amendment draft, `E08-design.md` part B with the cut in five rounds and the exit criteria; ADV-Q16; log). **T24b done**; its checkpoint ADV-Q16 answered (decision 58).
 - **T25 to T33 The building tasks**, proposed by T24b2 in five rounds (`E08-design.md` §17, with increment 4's exit criteria): T25 + T26 (the evaluation's reading; the shared groundwork), T27 + T28 (`h3-heroes`' progression; the choice ported), T29 + T30 (the game's build, levels at load and the import; the level-up as a decision), T31 + T32a (env, replays, fixtures, properties, benchmarks; batch E4's spec and recipe), T32b + T33 (the run; the scoring and the closure). **Confirmed** at ADV-Q16 (decision 58); round 1 is next.
 - **Round 1: T25 + T26a** (decision 59). **T25** done (2026-10-20, `adventure/e08-t25`: survey §10, the evaluation read, no draws, the map's terrain shares, E3-6's four choices fit; ADV-Q17, decision 60; log). **T26a** done (2026-10-20, `shared/e08-t26a` #325: ADR-0013 and ADR-0017 amended). **T26b** done (2026-10-20, `shared/e08-t26b`, `cross-lane`, decision 61: the level data, the offered skills, the class's intervals, the class override, two flags, the packs; pack format v44, core ruleset hash v46; log). **Round 1 closed**.
-- **Round 2: T27 + T28** (decision 62). **T27** done (2026-10-20, `adventure/e08-t27`, `cross-lane`: `h3-heroes`' levels, the bound, the limit's cap, the draws, the primary skill, the offers, `GainLevel`, the offers' levels in the details; HER-EXP-002, -003, HER-LVL-001 to -005; `ADV-QUIRK-11` to `-13`; game state hash v9; log). **T28** done (2026-10-21, `adventure/e08-t28`: the original's choice ported, its flag-clear path: `h3_heroes::original_choice` with `ArmyWorth` and `TerrainShares`; HER-LVL-006; `ADV-QUIRK-14`; E3-6 reproduced; log). **Round 2 closed**; round 3 (T29 + T30) waits for its cut.
+- **Round 2: T27 + T28** (decision 62). **T27** done (2026-10-20, `adventure/e08-t27`, `cross-lane`: `h3-heroes`' levels, the bound, the limit's cap, the draws, the primary skill, the offers, `GainLevel`, the offers' levels in the details; HER-EXP-002, -003, HER-LVL-001 to -005; `ADV-QUIRK-11` to `-13`; game state hash v9; log). **T28** done (2026-10-21, `adventure/e08-t28`: the original's choice ported, its flag-clear path: `h3_heroes::original_choice` with `ArmyWorth` and `TerrainShares`; HER-LVL-006; `ADV-QUIRK-14`; E3-6 reproduced; log). **Round 2 closed**.
+- **Round 3: T29 + T30** (decision 63). **T29** done (2026-10-21, `adventure/e08-t29`, `cross-lane`: the scenario's level limit and banned skills, the level seeds and the draws' source, the levels at load through the original's choice, the battle's experience under the limit, the terrains' costs by Pathfinding level and the map's shares, the import's refusal lifted; GAM-HER-002, GAM-SET-002, ADV-MAP-002; `ADV-QUIRK-9`; game state hash v10, adventure ruleset part v9, map import v8; the 5 shipped maps' 9 heroes get 41 levels at load; log). T30 next (its cut first).
 
 ## Later increments (sketch)
 

@@ -12,7 +12,7 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "original-data"
-  ref        = "Heroes3.exe code reading (E08 T6b; survey §3.1): 0x4C9730 (a hero id, an unused argument, a one-creature flag), called with the flag clear by 0x486590 (from 0x487290; it fills a hero from the map's hero record, inferred from what it reads) when the hero has no creatures after its custom army: clears the seven slots, sets slot 0 to the hero table's first type (0x679DD0 + 0x24) and a count by random_between(low, high) from +0x44; then random_between(1, 100) <= 88 gives the second type (+0x28) with its count from +0x4C, or for the Ballista (146) and the First Aid Tent (147) the war-machine artifact (4, 6) and no stack; then a new random_between(1, 100) <= 25 gives the third type (+0x2C) with its count from +0x54 in the next free slot. With the flag set (by the callers 0x4C86A0 and 0x4D9EC0, not read) only one creature of the first stack comes. The hero table holds the war machines of the nine heroes that have one in the second of three slots"
+  ref        = "Heroes3.exe code reading (E08 T6b; survey §3.1): 0x4C9730 (a hero id, an unused argument, a one-creature flag), called with the flag clear by new_game_heroes for every hero (0x4BFEA6), before a placed hero's custom army replaces it in placed_hero_setup 0x4D8C6B (survey E08-progression.md §3.1; first read in 0x486590 from 0x487290, a campaign's carried-over hero's setup, which calls it when the hero has no creatures after its custom army): clears the seven slots, sets slot 0 to the hero table's first type (0x679DD0 + 0x24) and a count by random_between(low, high) from +0x44; then random_between(1, 100) <= 88 gives the second type (+0x28) with its count from +0x4C, or for the Ballista (146) and the First Aid Tent (147) the war-machine artifact (4, 6) and no stack; then a new random_between(1, 100) <= 25 gives the third type (+0x2C) with its count from +0x54 in the next free slot. With the flag set (by the callers 0x4C86A0 and 0x4D9EC0, not read) only one creature of the first stack comes. The hero table holds the war machines of the nine heroes that have one in the second of three slots"
   confidence = "high"
 
   [[rule.source]]
@@ -43,12 +43,12 @@ id       = "GAM-HER-001"
 title    = "The store of heroes: a hero's details when the game is built"
 context  = "game"
 status   = "verified"
-summary  = "The game keeps every hero's details by id, built when the game is built (ADR-0017 point 1): each field the setup customises (the map's hero body over its hero type's map-wide entry: experience, primary and secondary skills, artifacts worn and in the backpack, learned spells), else the default: level 1; an experience of 40 + a draw of 0-50 from the setup stream (a placeholder, drawn in hero order after every starting army; D-12, the original's rand() bias not kept); the class's primary skills; the hero type's secondary skills and spells; worn, the spell book when the type starts with one (only without custom artifacts) and the artifact of each war machine its starting army's roll gave (GAM-SET-001), where no worn artifact takes its slot. Then the spell points full (HER-MAN-001). The hero model validates them (h3_heroes::validate); a hero above level 1's experience (1 000 or more) is refused by the import until increment 4's levels. The owner sees its heroes' details, every viewer the type of the heroes it sees. E08 T18b: `h3_game::GameState::new`."
+summary  = "The game keeps every hero's details by id, built when the game is built (ADR-0017 point 1): each field the setup customises (the map's hero body over its hero type's map-wide entry: experience, primary and secondary skills, artifacts worn and in the backpack, learned spells), else the default: level 1; an experience of 40 + a draw of 0-50 from the setup stream (a placeholder, drawn in hero order after every starting army; D-12, the original's rand() bias not kept); the class's primary skills; the hero type's secondary skills and spells; worn, the spell book when the type starts with one (only without custom artifacts) and the artifact of each war machine its starting army's roll gave (GAM-SET-001), where no worn artifact takes its slot. Then the spell points full (HER-MAN-001). The hero model validates them (h3_heroes::validate); a custom experience is gained from experience 0 with its levels at load (GAM-SET-002, E08 T29). The owner sees its heroes' details, every viewer the type of the heroes it sees. E08 T18b: `h3_game::GameState::new`."
 numeric  = "integer"
 
   [[rule.source]]
   kind       = "original-data"
-  ref        = "Heroes3.exe code reading (E08 T17a, survey E08-battles.md §6.2, §6.3): new_game_heroes 0x4BFE94 gives each of the 156 hero records random_between(0, 50) + 40 experience (0x50B230: a + rand() mod (b - a + 1)); map_hero_setup 0x486590 copies a custom experience with its level and custom primary skills clamped to 0-99 (Power and Knowledge at least 1), then sets the spell points (HER-MAN-001); 0x4C9730 gives a rolled war machine as its artifact (GAM-SET-001's source)"
+  ref        = "Heroes3.exe code reading (E08 T17a, survey E08-battles.md §6.2, §6.3): new_game_heroes 0x4BFE94 gives each of the 156 hero records random_between(0, 50) + 40 experience (0x50B230: a + rand() mod (b - a + 1)); the placed hero's setup placed_hero_setup 0x4D8B30 copies its custom primary skills as they are (0x4D8BF1), gives a custom experience with its levels (GAM-SET-002), then sets the spell points (HER-MAN-001; survey E08-progression.md §3.1, §3.2: what T17a read in 0x486590, with its clamp of the primary skills to 0-99, is a campaign's carried-over hero's setup); 0x4C9730 gives a rolled war machine as its artifact (GAM-SET-001's source)"
   confidence = "high"
 
   [[rule.source]]
@@ -65,6 +65,75 @@ numeric  = "integer"
   retrieved  = "2026-10-20"
   confidence = "high"
   note       = "Confirms D-12 as the reading (40 to 90; VCMI's 40 to 89 refuted by the 90). E3-6 (a custom 5 000) started at level 5 with four level-ups' gains (3/6/1/1 from 2/3/1/1, four secondary advances), as VCMI: the import refuses such a hero until increment 4's levels. E08 T22b."
+
+[[rule]]
+id       = "GAM-HER-002"
+title    = "The heroes' level seeds, and where a level's draws come from"
+context  = "game"
+status   = "implemented"
+summary  = "When the game is built, each hero gets a level seed of 1 to 255, drawn from the setup stream in hero id order as the stream's last draws (after the starting armies, the default experiences and the map objects' contents, so those do not move with it), and never changed; the game keeps the seeds beside the store of heroes with the scenario's level limit and banned skills (GAM-SET-002), in the state hash, shared by forks, in no observation or event (ADR-0017 point 5). A level's draws (HER-LVL-002): with ADV-QUIRK-9's flag on (faithful) the original's generator seeded from the hero's seed and the new level, so a level's offers are the same whenever and however it is reached; off (strict-fixed) the setup stream at load and the owner's stream in play (E08 T30). E08 T29: `h3_game::GameState::new`."
+numeric  = "integer"
+quirks   = ["ADV-QUIRK-9"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T24a1, confirmed by T24a2b2; survey E08-progression.md §2.2, §9): new_game_heroes draws each hero record's seed byte +0x8F with random_between(1, 255) at 0x4BFEC2 beside its other defaults, and sets the two offer counters to 0 (0x4BFECD, 0x4BFED4); no code of the level-up writes the byte; hero_level_up reseeds per level from it (0x4DA801-0x4DA830)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Secondary skill, 'Secondary skill advancement rules': 'The random seed for offering skills is separate for every hero and is fixed at the start of the scenario' (survey E08-progression.md §5.1)"
+  url        = "https://heroes.thelazy.net/index.php/Secondary_skill"
+  retrieved  = "2026-10-20"
+  confidence = "high"
+  note       = "Agrees with the reading: a seed per hero from the start of the scenario, the offers repeating on a reload."
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapObjects/CGHeroInstance.cpp: a HeroSkillRandomizer per hero type seeded from the game's generator at its first use, its stream advancing with every draw (survey E08-progression.md §2.6)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGHeroInstance.cpp"
+  retrieved  = "2026-10-20"
+  confidence = "medium"
+  note       = "Disagrees (D-14): a stream per hero, not a reseed per level; the user's choice (ADV-Q15, decision 55): the reading in faithful, a stream in strict-fixed (the setup stream here, as the engine's placeholders)."
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0017 points 1, 4 and 5 (increment 4's amendment: the level seed beside each hero, a level's draws by the profile, the seeds server-only); E08 design note §11; the seeds' place in the setup stream (last, so the earlier draws keep their order): E08 T29 (E08-log.md)"
+  confidence = "high"
+
+[[rule]]
+id       = "GAM-SET-002"
+title    = "The scenario's level limit and banned skills; a placed hero's levels at load"
+context  = "game"
+status   = "implemented"
+summary  = "The setup carries the scenario's level limit (the map header's byte, AB and SoD; 0 none, as is a limit above the highest level, ADV-QUIRK-12) and its banned skills (SoD's set, the skills of the set bits' codes; each the ruleset's, a set in any order); the game keeps both, static. A hero with a custom experience gets its levels when the game is built, after its custom skills, army, spells and artifacts and its war machines' artifacts: it starts at level 1 and experience 0 and gains the custom experience under the limit (HER-EXP-003; D-21: capped at the limit's threshold, so no hero starts above it), then each pending level is drawn (GAM-HER-002) and given in hero id order: two offers chosen by the original's choice with the setup's army worth (1 000 and 500) and the map's terrain shares (HER-LVL-006, ADV-MAP-002; D-20: not the left offer), one learned, none the primary skill only; never a banned skill (HER-LVL-003); last the spell points full (HER-MAN-001). Building a game emits no events. A hero without a custom experience keeps its default 40-90 at level 1. Every level the battle's experience gives is under the limit too (GAM-BAT-002); in play a level-up is E08 T30's. The import passes a placed hero's custom experience as it is (MAP_IMPORT_VERSION 8): the five shipped maps that import whole give 9 heroes 41 levels at load. E08 T29: `h3_game::GameState::new`."
+numeric  = "integer"
+quirks   = ["ADV-QUIRK-9", "ADV-QUIRK-12", "ADV-QUIRK-14"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T24a2a; survey E08-progression.md §3.1, §3.2): placed_heroes_setup 0x4CAE10 sets every placed hero up through placed_hero_setup 0x4D8B30: the custom primary skills (0x4D8BF1), secondary skills (0x4D8C59), army, spells and artifacts, then with a custom experience the experience set to 0 (0x4D8E02) and hero_gain_experience(the record's experience, give the levels, quiet) (0x4D8EA2), the level-up once more (0x4D8EA9), last the spell points and the movement points; every two-offer level chosen by ai_level_up_choice 0x52BBD0 with its flag clear (new_game_setup_running 0x698400 set throughout); the map's shares computed right before the setups (0x4C0018); the header's level limit and banned skills (docs/formats/h3m.md)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapObjects/CGHeroInstance.cpp initHero: a set experience calls levelUpAutomatically, which rolls each level as a level-up and takes the first offer, without the map's level limit (survey E08-progression.md §3.4)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGHeroInstance.cpp"
+  retrieved  = "2026-10-20"
+  confidence = "medium"
+  note       = "Disagrees on the choice (D-20) and the limit (D-21); the user's choice at ADV-Q15 (decision 55) and ADV-Q17 (decision 60): the reading, with the original's evaluation ported (E08 T28)."
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-3c.md E3-6 (stamp b026743c, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, 2026-10-20): a Death Knight with a custom 5 000 experience, 2/3/1/1 and eight basic skills started at level 5 with 3/6/1/1, Pathfinding and Scouting advanced and Logistics expert"
+  retrieved  = "2026-10-20"
+  confidence = "high"
+  note       = "Fits the reading and the ported choice with the seed byte 75, the only byte of 255 whose primary gains and offers give it (survey §3.3, §10.6; HER-LVL-006's test); the run did not read the byte: batch E4 (E4-1) confirms."
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "the shipped maps (verify --with-original-data, crates/h3-map/examples/original_data.rs; survey E08-progression.md §6): none has a level limit, 19 SoD maps ban skills (none past the 28 codes), 5 import whole, their 9 heroes get 41 levels at load"
+  confidence = "high"
 
 [[rule]]
 id       = "GAM-TRN-001"
@@ -233,7 +302,7 @@ id       = "GAM-BAT-002"
 title    = "Applying a battle's outcome: the armies and the heroes"
 context  = "game"
 status   = "implemented"
-summary  = "When a battle on the map ends, its outcome applies at once and infallibly, told first as its end (`BattleEnded`, the heroes and the result) to its owners, one context after the other: in the adventure a hero that stays on the map (GAM-BAT-003) keeps its army survivors (BattleOutcome::survivors: each stack's count its survivors, a damaged top creature forgotten, a raised stack in its dead stack's slot) as its army; then the heroes' part, each a change of `h3_heroes` (HER-CHG-001) told to the hero's owner (`HeroChanged`): each side's hero keeps the spell points it has left (HeroOutcome::mana) and loses the artifact of each war machine destroyed (HER-WAR-002), whatever the result; the hero of the side that won and stays on the map gains the battle's experience: the hit points the loser's army and raised stacks lost (start - end of each record, at its type's hit points without artifacts; not the loser's war machines nor the stacks the battle created), plus 500 after a victory over a hero (GAM-BAT-004), grown by its Learning (HER-EXP-001); nothing after a draw; then its Necromancy's creatures (GAM-BAT-006) and its Eagle Eye's spells (GAM-BAT-007). E08 T19a, T19a2a, T19a2b: `GameState::end_battle`, `AdventureState::end_battle`."
+summary  = "When a battle on the map ends, its outcome applies at once and infallibly, told first as its end (`BattleEnded`, the heroes and the result) to its owners, one context after the other: in the adventure a hero that stays on the map (GAM-BAT-003) keeps its army survivors (BattleOutcome::survivors: each stack's count its survivors, a damaged top creature forgotten, a raised stack in its dead stack's slot) as its army; then the heroes' part, each a change of `h3_heroes` (HER-CHG-001) told to the hero's owner (`HeroChanged`): each side's hero keeps the spell points it has left (HeroOutcome::mana) and loses the artifact of each war machine destroyed (HER-WAR-002), whatever the result; the hero of the side that won and stays on the map gains the battle's experience: the hit points the loser's army and raised stacks lost (start - end of each record, at its type's hit points without artifacts; not the loser's war machines nor the stacks the battle created), plus 500 after a victory over a hero (GAM-BAT-004), grown by its Learning (HER-EXP-001), gained under the scenario's level limit (HER-EXP-003, E08 T29; the event tells the points gained); nothing after a draw; then its Necromancy's creatures (GAM-BAT-006) and its Eagle Eye's spells (GAM-BAT-007). E08 T19a, T19a2a, T19a2b: `GameState::end_battle`, `AdventureState::end_battle`."
 numeric  = "integer"
 
   [[rule.source]]
