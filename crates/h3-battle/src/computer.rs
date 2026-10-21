@@ -141,43 +141,31 @@ pub fn damage_value(
     )
 }
 
-/// The computer's damage of `count` creatures of `attacker` on `target` (0x442780): a shot with
-/// `shot`, else a strike after `jousting` hexes, at least 1, with `cap` at most the target's hit
-/// points.
+/// The computer's damage of `count` creatures of `attacker` on `target` (0x442780 with the cap
+/// flag): a shot with `shot`, else a strike after `jousting` hexes, at least 1, at most the
+/// target's hit points.
 pub fn damage_estimate(
     state: &BattleState,
     ruleset: &BattleRuleset,
     (attacker, target): (StackId, StackId),
     count: u64,
-    (shot, cap): (bool, bool),
+    shot: bool,
     jousting: u8,
 ) -> u64 {
-    aim::damage_estimate(
-        state,
-        ruleset,
-        (attacker, target),
-        count,
-        (shot, cap),
-        jousting,
-    )
+    aim::damage_estimate(state, ruleset, (attacker, target), count, shot, jousting)
 }
 
-/// The computer's value of `a` striking (or with `shot` shooting) `t` after `jousting` hexes
-/// (0x435C70; BAT-AI-005): the exchange's damage to `t` less `a`'s losses, valued in `ctx`.
+/// The computer's value of `a` striking `t` after `jousting` hexes (0x435C70 without the shot
+/// flag; BAT-AI-005): the exchange's damage to `t` less `a`'s losses, valued in `ctx`.
 pub fn strike_value(
     state: &BattleState,
     ruleset: &BattleRuleset,
     ctx: &Context,
     (a, t): (StackId, StackId),
-    (shot, jousting): (bool, u8),
+    jousting: u8,
 ) -> i32 {
-    aim::strike_value(
-        state,
-        (ruleset, Field::new(ruleset.battle().field)),
-        ctx,
-        (a, t),
-        (shot, jousting),
-    )
+    let field = Field::new(ruleset.battle().field);
+    aim::strike_value(state, (ruleset, field), ctx, (a, t), jousting)
 }
 
 /// Whether stack `id` can shoot now for the computer with `blocker` left out of its blockers

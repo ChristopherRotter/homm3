@@ -625,7 +625,7 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   0x448AB0, 0x445840, 0x523DF0, 0x523D90, 0x41F580, 0x4359B0, 0x435B90, 0x435C70, 0x442780 and
   0x422440; the stopped attack's move found sound (0x478971 jumps past the strike when the walk
   returns false). Three differences it names cannot arise: no direction to the struck stack (the
-  original's mask 0x80000011 or a read before 0x660874; the port 0), the turns without speed, the
+  original's mask 0x80000011 or a read just before the table 0x660878; the port 0), the turns without speed, the
   walk of a bound walker (the original's stale action; the port nothing).
 - **Tests:** the runner attacks the archers and the blocked archers strike back from their hex;
   a Harpy flies to fifty archers without striking (`P` alone), then strikes once it blocks them

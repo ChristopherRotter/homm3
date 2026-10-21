@@ -785,7 +785,10 @@ fn the_walk_holds_back_from_worse_hexes_on_hard() {
     let Some(Command::Move { to: short }) = walk(scores, false) else {
         panic!("no walk");
     };
-    assert_eq!((field.distance(start, short), field.distance(short, to)), (4, 1));
+    assert_eq!(
+        (field.distance(start, short), field.distance(short, to)),
+        (4, 1)
+    );
     // No path (the gogs' own hex): nothing.
     assert_eq!(walk([0; 256], false), Some(Command::Move { to }));
     assert_eq!(Walker::new(&state, &r, (me, side)).walk(far, false), None);

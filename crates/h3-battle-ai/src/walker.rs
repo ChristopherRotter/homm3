@@ -197,8 +197,7 @@ impl<'a> Walker<'a> {
                 .unwrap_or(u8::MAX);
             let pair = (self.id, enemy);
             let ctx = &self.ctx;
-            let mut v =
-                computer::strike_value(self.state, self.ruleset, ctx, pair, (false, run_up));
+            let mut v = computer::strike_value(self.state, self.ruleset, ctx, pair, run_up);
             let p = plan.value;
             let mut only = false;
             // stub: BAT-STUB-4
@@ -283,8 +282,7 @@ impl<'a> Walker<'a> {
         let per = |s: &Stack, hp: u64| hp.div_ceil(u64::from(s.max_hp.max(1)));
         let own = per(me, computer::hit_points(self.state, self.id));
         let pair = (self.id, enemy);
-        let dealt =
-            computer::damage_estimate(self.state, self.ruleset, pair, own, (false, true), 0);
+        let dealt = computer::damage_estimate(self.state, self.ruleset, pair, own, false, 0);
         let left = per(
             t,
             computer::hit_points(self.state, enemy).saturating_sub(dealt),
@@ -306,9 +304,10 @@ impl<'a> Walker<'a> {
                 t.hex
             };
             let (d, dirs) = if right { (4, 3..6) } else { (1, 0..3) };
-            if let Some(beyond) = hexes::neighbor(self.field, shape, at, d) {
-                self.around(&mut best, job, (beyond, dirs));
-            }
+            // Off the field there is no such hex (0x4368D8): no more candidates.
+            hexes::neighbor(self.field, shape, at, d)
+                .into_iter()
+                .for_each(|beyond| self.around(&mut best, job, (beyond, dirs.clone())));
         }
         best
     }
@@ -469,7 +468,7 @@ impl<'a> Walker<'a> {
                     self.ruleset,
                     pair,
                     striker.count,
-                    (false, true),
+                    false,
                     0,
                 );
                 let value = computer::damage_value(
@@ -496,8 +495,8 @@ impl<'a> Walker<'a> {
         let target = (Shape::of(self.stack(t)), t_hex);
         hexes::direction_to(self.field, (striker.shape, striker.at), target)
             .and_then(|d| {
-                let first = hexes::stack_neighbor(self.field, striker.shape, striker.at, d)?;
-                hexes::neighbor(self.field, striker.shape, first, d)
+                hexes::stack_neighbor(self.field, striker.shape, striker.at, d)
+                    .and_then(|first| hexes::neighbor(self.field, striker.shape, first, d))
             })
             .and_then(|h| self.on[h.index()])
             .filter(|&x| x != t)
@@ -508,7 +507,7 @@ impl<'a> Walker<'a> {
                     self.ruleset,
                     pair,
                     striker.count,
-                    (false, true),
+                    false,
                     0,
                 );
                 let desperate = self.ctx.desperate();
