@@ -144,11 +144,11 @@ each estimate as the rule it estimates:
 | # | The slip (where) | Fixed |
 |---|---|---|
 | 1 | the area shot's estimate ignores fire immunity and counts a Lich's cloud on the lifeless stacks that are not undead (§7.35; built, BAT-AI-003, E23 T2b) | the shot's rule's immunities (BAT-RNG-004) |
-| 2 | the walls test reads the wrong records for the walls and the gate (§7.35) | each part's own hex |
+| 2 | the walls test reads the wrong records for the walls and the gate (§7.35; built, BAT-AI-011, E23 T3c: the Upper Wall's record reads a display byte, §7.49) | each part's own hex |
 | 3 | the multi-headed reach's value is subtracted with its sign untested (§7.36; built, BAT-AI-007, E23 T3b) | only a positive value, as the other branch |
-| 4 | the desperate kills count the top creature's remaining hit points where its lost ones belong (§7.38) | the lost hit points |
+| 4 | the desperate kills count the top creature's remaining hit points where its lost ones belong (§7.38; built, BAT-AI-009, E23 T3c) | the lost hit points |
 | 5 | the destination map marks a two-hex enemy's position hex twice, its other hex never (§7.38) | both hexes |
-| 6 | the hero's value takes the mastery on the hero's adventure tile (§7.39) | the battlefield's |
+| 6 | the hero's value takes the mastery on the hero's adventure tile (§7.39; not built, E23 T3c: the seam has no tile for the attacking hero, both settings take the battlefield's, BAT-STUB-7, BAT-Q56) | the battlefield's |
 | 7 | the Faerie Dragon's estimate: Expert on its school's field, the side's hero's bonuses on its bolts (§7.43) | the rules' mastery for a creature, no hero bonus |
 | 8 | the Ogre Mage's Bloodlust valued at Expert on Fiery Fields (§7.44) | Advanced, as the rules cast it |
 | 9 | the protections take the caster bonuses of the context's own hero and the caster's own army for the cost (§7.46) | the casting hero's, the target side's army |
@@ -162,6 +162,8 @@ each estimate as the rule it estimates:
 | 17 | the removals count Disrupting Ray, which none ends, and Cure removes every harmful spell (§7.46) | the spells each rule ends (§7.10, §7.13) |
 | 18 | the Fire Wall's hex scores value its damage without the spell's immunity test (§7.48; built, BAT-AI-007, E23 T3b; found in T3b) | only a wall whose spell hurts the stack (BAT-MAG-028's test) |
 | 19 | the Fire Wall's and the moat's hex scores value the damage with the least attack bonus for both bonuses (§7.48; built, BAT-AI-007, E23 T3b; found in T3b) | the least attack and the least defense bonus, as every other value |
+| 20 | the odds value the turrets at creature 2's AI value (the Archers), not the turret's own (§7.38, §7.49; built, BAT-AI-008, E23 T3c; the user's call, 2026-10-21) | the turret creature's AI value |
+| 21 | guarding a shooter defends when the walker stands on the guard hex of the last shooter asked, not the best's (§7.49; built, BAT-AI-010, E23 T3c; found by the blind re-read) | the best's guard hex |
 
 The ledger entry lists them; a slip found later joins the same flag. The tie orders, the library
 sort (§7.37) and the draws are the original's behaviour, not slips: no flag.

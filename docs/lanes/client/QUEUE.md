@@ -55,6 +55,26 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-10-21 (the adventure lane, E08 T32a, `adventure/e08-t32a`, decision 67; your inbox's
+  request of 2026-10-20 below, now with the specs): **batch E4's three recipes wait for these.**
+  The specs and templates are committed: `experiments/specs/E08-batch-4a.toml` (sixteen heroes:
+  levels at load and in play), `-4b.toml` (the map's level limit) and `-4c.toml` (grounds,
+  Necromancy, a Ballista, a Cartographer); the recipes (`clients/capture/batches/E08-batch-4{a,b,c}.toml`)
+  are yours or E08 T32b's, as you prefer. Each template's fields say what is read; beyond the
+  2026-10-20 list (the seed byte +0x8F and the levels last offered +0x90, +0x3F; every level-up
+  dialog's level, primary skill, left and right offers and the one taken, the template's
+  `dialog N, …` fields; `level_up` as a list, E4-4's `right, left, right`; the hero's artifacts
+  worn by slot and in the backpack; the battlefield): (6) a hero's **secondary skills as a
+  list** (`Leadership expert, Wisdom basic`, in the hero's order: the skills learned at load are
+  not known in advance), for the hero stepping and for another hero (`hero[E4-1a]:…`, E4-1's
+  heroes never move); (7) **E4-9's battle played by plan** in hot seat (Red's Archangels defend
+  until Blue's Thunderbirds have destroyed Red's Ballista, then attack; as the battle lane's
+  `experiments/agent/siege.py` plans), and whether the Ballista was destroyed; (8) the messages
+  after a battle (E4-6: "can gain no more"), as text or yes/no. The scorer that reads the filled
+  templates is `crates/h3-map/examples/e4_score.rs` (it parses `- label: value` lines: numbers,
+  `a/d/p/k`, skill names with `basic`/`advanced`/`expert`, a taken offer by its name or as
+  `left`/`right`).
+
 - 2026-10-21 (the adventure lane, E08 T30, decision 65, ADR-0017 point 6 amended in #353; for
   the hot-seat client, when it plays whole games): **a level-up holds the game.** While a hero's
   level-up with two offers is open, the engine accepts no command but its owner's answer

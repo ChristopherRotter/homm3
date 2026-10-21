@@ -100,6 +100,11 @@ fn sample(v: Version) -> RawMap {
 const CLOVER_FIELD: &str = "AVXcf0.def 111111111111111111111111111111111111111111111111 \
      000000000000000000000000000000000000000000000000 111111111 011111111 222 0 0 1";
 
+/// The land Cartographer's picture in `Objects.txt` (E08 T32a): it blocks its tile and the one
+/// west of it, which is visited.
+const CARTOGRAPHER: &str = "AVXmaps0.def 001111111111111111111111111111111111111111111111 \
+     010000000000000000000000000000000000000000000000 111111111 010111111 13 1 0 0";
+
 fn limits() -> Limits {
     Limits::default()
 }
@@ -669,6 +674,7 @@ fn the_experiment_writer_marks_the_coast() {
         players,
         objects: vec![],
         underground: None,
+        level_limit: 0,
     };
     let m = read(&w::gzip(&w::write(&map).unwrap()), &limits()).unwrap();
     for (index, t) in m.terrain.tiles.iter().enumerate() {
@@ -742,6 +748,7 @@ fn towns_from_the_experiment_writer_read_back() {
             hero((10, 9), 1, 1),
         ],
         underground: None,
+        level_limit: 0,
     };
     let m = read(&w::gzip(&w::write(&map).unwrap()), &limits()).unwrap();
     let template = &m.templates[m.objects[1].template as usize];
@@ -880,14 +887,22 @@ fn maps_from_the_experiment_writer_read_back() {
                 tile: (30, 30),
                 template: w::ObjectTemplate::from_objects_txt(CLOVER_FIELD).unwrap(),
             }),
+            // A land Cartographer (E08 T32a: batch E4b's E4-10), without a body.
+            w::MapObject::Plain(w::Plain {
+                tile: (25, 25),
+                template: w::ObjectTemplate::from_objects_txt(CARTOGRAPHER).unwrap(),
+            }),
         ],
         underground: None,
+        // The scenario's level limit (E08 T32a: batch E4a's E4-6).
+        level_limit: 5,
     };
     let m = read(&w::gzip(&w::write(&map).unwrap()), &limits()).unwrap();
     assert_eq!(m.header.version, Version::Sod);
     assert_eq!((m.header.size, m.header.two_levels), (36, false));
     assert_eq!(m.header.name.as_bytes(), b"Writer");
     assert_eq!(m.header.description.as_bytes(), b"Read back");
+    assert_eq!(m.header.level_limit, 5);
     let red = m.players[0].details.as_ref().unwrap();
     assert_eq!(red.allowed_towns, 0x1FF);
     assert_eq!(red.main_hero.as_ref().map(|h| h.hero_type), Some(0));
@@ -928,8 +943,8 @@ fn maps_from_the_experiment_writer_read_back() {
         assert_eq!((t.river, t.river_dir), (0, 0));
     }
     // The heroes (written one column right of their tiles, docs/formats/h3m.md), the monster, the
-    // pile and the ground.
-    assert_eq!(m.objects.len(), 5);
+    // pile, the ground and the Cartographer.
+    assert_eq!(m.objects.len(), 6);
     let hero_template = &m.templates[m.objects[0].template as usize];
     assert_eq!((hero_template.class, hero_template.subclass), (34, 0));
     assert_eq!(m.objects[0].pos, Pos { x: 4, y: 4, z: 0 });
@@ -979,11 +994,23 @@ fn maps_from_the_experiment_writer_read_back() {
     assert_eq!((ground_template.class, ground_template.subclass), (222, 0));
     assert_eq!(m.objects[4].pos, Pos { x: 30, y: 30, z: 0 });
     assert_eq!(m.objects[4].body, Body::None);
+    let plain_template = &m.templates[m.objects[5].template as usize];
+    assert_eq!((plain_template.class, plain_template.subclass), (13, 1));
+    assert_eq!(m.objects[5].pos, Pos { x: 25, y: 25, z: 0 });
+    assert_eq!(m.objects[5].body, Body::None);
     assert!(m.events.is_empty());
     // The import types the pile as random mercury: no fixed amount, drawn when the game starts.
-    // Heroes leave the objects for the setup's heroes: the monster, the pile, then the ground.
+    // Heroes leave the objects for the setup's heroes: the monster, the pile, the ground, then the
+    // Cartographer; the setup keeps the level limit.
     let setup = crate::import(&m, &import::SOD).unwrap();
-    assert_eq!(setup.map.objects.len(), 3);
+    assert_eq!(setup.map.objects.len(), 4);
+    assert_eq!(
+        setup.map.objects[3].object_type,
+        import::SOD
+            .adventure()
+            .object_type_by_key("base:cartographer_land")
+    );
+    assert_eq!(setup.level_limit, 5);
     let pile = &setup.map.objects[1];
     assert_eq!(
         pile.object_type,
@@ -1075,6 +1102,7 @@ fn the_writer_s_underground_and_guarded_piles_read_back() {
             }],
             objects: vec![hero((5, 5), 1), monster],
         }),
+        level_limit: 0,
     };
     let m = read(&w::gzip(&w::write(&map).unwrap()), &limits()).unwrap();
     assert!(m.header.two_levels);

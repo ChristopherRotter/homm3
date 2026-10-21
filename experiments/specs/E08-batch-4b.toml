@@ -1,0 +1,132 @@
+# Experiment batch E4b (E08 T32a; decision 67): row E4-6 of increment 4's batch (survey
+# docs/rules/surveys/E08-progression.md §7), the scenario's level limit, on a map of its own (the
+# limit binds every hero on its map), in SoD on Easy, hot seat. Rows E4-1 to E4-5: batch E4a;
+# E4-7 to E4-10: batch E4c. Build: docs/experiments/README.md.
+#
+# | row   | settles              | the reading (the engine, faithful)        | VCMI 1.7.5                   |
+# | E4-6a | D-21: a limit at load | level 5, 4 600 (capped at load)           | level 8, 10 000 (ignored)    |
+# | E4-6a | D-19: the next gain  | 4 600, level 5 (lowered to the cap)       | 10 000 kept, the gain cut    |
+# | E4-6b | HER-EXP-003          | 4 000 + 700 → 4 600, level 5: one dialog  | the same                     |
+#
+# E4-6a's levels at load are D-20's too (the scorer, as batch E4a's E4-1:
+#   cargo run -p h3-map --example e4_score -- experiments/out/E08-batch-4b.h3m experiments/results/E08-batch-4b.md).
+# The trap of the starting bonus: as batch E4a.
+
+[map]
+name = "E08 batch E4b"
+description = "Engine-generated experiment map (E08, batch E4b): the scenario's level limit 5. Hot seat, Red and Blue human, difficulty Easy; follow the results template."
+size = 36
+terrain = "grass"
+difficulty = "easy"
+level_limit = 5
+instructions = [
+    "Copy `E08-batch-4b.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human, difficulty **Easy**. Before you start it, compare the stamp at the start of the map's description with the stamp above. The scenario's information shows its level limit, 5. Save right away (save 1).",
+    "The heroes' seed bytes (hero +0x8F) and the levels Wisdom (+0x90) and a magic school (+0x3F) were last offered show only in the game's memory: the capture harness reads them (clients/capture/batches/E08-batch-4b.toml). Played by hand, leave them empty.",
+    "Order: day 1, Red's turn: E4-6a; end the turn. Blue's turn: E4-6b; end the turn. Then the map is done.",
+    "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
+]
+
+# --- D-21, D-19: a limit of 5 at load and at a gain ----------------------------------------------
+
+[[encounter]]
+id = "E4-6a"
+title = "A level limit of 5: a hero with 10 000 experience at the start, then a gain"
+questions = ["D-21", "D-19", "D-20", "HER-EXP-003", "GAM-SET-002"]
+procedure = [
+    "Day 1, Red's turn, before anything moves: read E4-6a's seed byte and the two levels last offered (the harness), its experience, level, primary and secondary skills.",
+    "Click the Pikeman east of E4-6a twice; the battle by auto combat. Note any message after it and any level-up dialog (answer left).",
+    "Note the hero's experience, level, primary and secondary skills after.",
+]
+record = [
+    { field = "seed byte (hero +0x8F)" },
+    { field = "Wisdom last offered (hero +0x90)" },
+    { field = "a school last offered (hero +0x3F)" },
+    { field = "experience at the start" },
+    { field = "level at the start" },
+    { field = "primary skills at the start (attack/defense/power/knowledge)" },
+    { field = "secondary skills at the start (in the hero's order, each with its level)" },
+    { field = "the messages after the battle" },
+    { field = "dialog 1, level" },
+    { field = "dialog 1, primary skill raised" },
+    { field = "dialog 1, left offer (or the only one)" },
+    { field = "dialog 1, right offer" },
+    { field = "dialog 1, taken" },
+    { field = "experience after" },
+    { field = "level after" },
+    { field = "primary skills after (attack/defense/power/knowledge)" },
+    { field = "secondary skills after (in the hero's order, each with its level)" },
+    { field = "anything odd" },
+]
+predictions = """
+- **D-21, at load**: 10 000 experience is level 8 without the limit. **The reading** (survey
+  §3.2: the levels at load gain the experience from 0 through hero_gain_experience 0x4E33B0,
+  which caps it at the limit's threshold; the engine's GAM-SET-002, HER-EXP-003): **4 600, level
+  5**, four level-ups at load (2 to 5, chosen as batch E4a's E4-1: the scorer prints them from
+  S). **VCMI 1.7.5** (the limit not applied at load): **10 000, level 8**.
+- **D-19, the next gain** (the Pikeman's 10 hit points): **the reading** (0x4E347E: experience
+  above the cap is lowered to it at a gain; at the cap nothing is added): **4 600, level 5, no
+  dialog**; a message that the hero can gain no more may show (a human owner at its own computer,
+  §1.3). **VCMI 1.7.5** (giveExperience: the gain cut at the cap, experience above it kept):
+  **10 000, level 8**.
+"""
+[encounter.hero]
+type = "Tyris"
+specialty = "creature Cavalier"
+experience = 10000
+primary = [2, 2, 1, 1]
+skills = [["Leadership", 1]]
+army = [["Archangel", 2]]
+[encounter.opponent]
+monster = "Pikeman"
+count = 1
+
+# --- HER-EXP-003: a gain across the limit --------------------------------------------------------
+
+[[encounter]]
+id = "E4-6b"
+title = "A level limit of 5: a hero with 4 000 experience gains 700"
+questions = ["HER-EXP-003", "D-19"]
+procedure = [
+    "Day 1, Blue's turn: read E4-6b's seed byte and the two levels last offered (the harness), its experience, level, primary and secondary skills.",
+    "Click the 20 Swordsmen east of E4-6b twice; the battle by auto combat. Answer the level-up dialog left and note it; note any message.",
+    "Note the hero's experience, level, primary and secondary skills after.",
+]
+record = [
+    { field = "seed byte (hero +0x8F)" },
+    { field = "Wisdom last offered (hero +0x90)" },
+    { field = "a school last offered (hero +0x3F)" },
+    { field = "experience at the start" },
+    { field = "level at the start" },
+    { field = "primary skills at the start (attack/defense/power/knowledge)" },
+    { field = "secondary skills at the start (in the hero's order, each with its level)" },
+    { field = "the messages after the battle" },
+    { field = "dialog 1, level" },
+    { field = "dialog 1, primary skill raised" },
+    { field = "dialog 1, left offer (or the only one)" },
+    { field = "dialog 1, right offer" },
+    { field = "dialog 1, taken" },
+    { field = "experience after" },
+    { field = "level after" },
+    { field = "primary skills after (attack/defense/power/knowledge)" },
+    { field = "secondary skills after (in the hero's order, each with its level)" },
+    { field = "anything odd" },
+]
+predictions = """
+- **HER-EXP-003** (every source): 4 000 is level 4; the 20 Swordsmen's 700 hit points would make
+  4 700, above level 5's 4 600: the gain stops at the cap, **4 600, level 5: one dialog**,
+  answered **left** (survey §1.3: from below the cap the experience becomes the cap and the
+  level-up runs). Level 5's offers and primary skill: the scorer, from S.
+"""
+[encounter.hero]
+type = "Sorsha"
+specialty = "creature Swordsman"
+owner = "blue"
+experience = 4000
+primary = [2, 2, 1, 1]
+skills = [["Leadership", 1]]
+army = [["Archangel", 5]]
+[encounter.opponent]
+monster = "Swordsman"
+count = 20

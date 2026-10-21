@@ -30,6 +30,10 @@ Sorted by destination at E05's audit (T9a, 2026-10-19); the origin stays in brac
 done: BAT-Q33's point for E05 (AI-Q3, ADR-0025 point 6), the `h3-game` coverage gap of a pending
 Pass offer (fixed by the adventure lane's fixed tests, #266).
 
+- 2026-10-21 (the adventure lane, E08 T32a, `adventure/e08-t32a`, `cross-lane` with the user's
+  consent, E08 decision 67; for your information, nothing to do): `h3_map::writer::Map` gained
+  `level_limit` (the scenario's, 0 none) and `MapObject::Plain` (a Cartographer), so the test map
+  in `crates/h3-cli/src/ai/tests.rs` sets `level_limit: 0`; nothing it counts moves.
 - 2026-10-21 (the adventure lane, E08 T29, `adventure/e08-t29`, `cross-lane` with the user's
   consent, E08 decision 63; for your information, nothing to do): `h3_game::GameSetup` gained
   `level_limit` and `banned_skills` (the scenario's), so `crates/h3-cli/src/ai/census.rs` sets

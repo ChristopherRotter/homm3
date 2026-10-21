@@ -17,8 +17,8 @@ use std::fmt::Write as _;
 
 use h3_map::writer::{
     ARMY_SLOTS, ARTIFACT_SLOTS, Ground, Guards, Hero, HeroArtifacts, Map, MapObject, Monster,
-    ObjectTemplate, PLAYERS, Patch, Pile, Player, Road, RoadKind, Terrain, Town, TownBuildings,
-    Underground,
+    ObjectTemplate, PLAYERS, Patch, Pile, Plain, Player, Road, RoadKind, Terrain, Town,
+    TownBuildings, Underground,
 };
 use serde::Deserialize;
 
@@ -203,6 +203,12 @@ pub struct MapSpec {
     /// The underground level (`[map.underground]`, E08 T22a1); none: the map has one level.
     #[serde(default)]
     pub underground: Option<UndergroundSpec>,
+    /// Visitable objects without a body (`[[map.object]]`, E08 T32a): the Cartographers.
+    #[serde(default)]
+    pub object: Vec<ObjectSpec>,
+    /// The scenario's level limit (E08 T32a; 0, the default: none).
+    #[serde(default)]
+    pub level_limit: u8,
 }
 
 /// The underground level: its own terrain and rectangles; encounters and piles with `level = 1`
@@ -227,6 +233,21 @@ pub struct GroundSpec {
     /// The object's position, `[column, row]`: the picture's bottom-right tile. The picture covers
     /// its width to the left and its height upwards (its `.msk`: the `0` pictures 6 x 4, the SoD
     /// pictures `AVXcg5` and `AVXmp5` 3 x 3).
+    pub at: [u8; 2],
+}
+
+/// A visitable object without a body (E08 T32a): one of its pictures, placed with its bottom-right
+/// tile on `at`, on the surface. No hero, monster, pile or town may stand on a tile it blocks or
+/// is visited from: a hero comes to it in play.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ObjectSpec {
+    /// The picture's name in `Objects.txt` (`AVXmaps0` or `AVXmaps0.def`, any case), which names
+    /// the class ([`h3_map::writer::PLAIN_OBJECTS`]: the Cartographers, water `AVXmapw0`, land `AVXmaps0`,
+    /// subterranean `AVXmapu0`).
+    pub picture: String,
+    /// The object's position, `[column, row]`: the picture's bottom-right tile (the land
+    /// Cartographer covers it and the tile west of it, its entrance).
     pub at: [u8; 2],
 }
 
@@ -575,6 +596,9 @@ pub fn build_only(
         .iter()
         .map(|g| Ok((0, ground(g, tables, size)?)))
         .collect::<Result<Vec<_>, String>>()?;
+    for o in &spec.map.object {
+        objects.push((0, plain(o, tables, size)?));
+    }
     let mut used_types = Vec::new();
     let mut heroes_per_player = [0usize; PLAYERS];
     let mut blue_towns = 0usize;
@@ -755,15 +779,20 @@ pub fn build_only(
         }
         objects.extend(piles(p, tables, size)?.into_iter().map(|o| (p.level, o)));
     }
-    // Heroes and monsters stand on grounds; two grounds may overlap (the game takes the last).
+    // Heroes and monsters stand on grounds; two grounds may overlap (the game takes the last). A
+    // plain object counts with every tile it covers.
     let mut tiles: Vec<(u8, (u8, u8))> = objects
         .iter()
-        .filter_map(|(level, o)| match o {
-            MapObject::Hero(h) => Some((*level, h.tile)),
-            MapObject::Monster(m) => Some((*level, m.tile)),
-            MapObject::Pile(p) => Some((*level, p.tile)),
-            MapObject::Town(t) => Some((*level, t.tile)),
-            MapObject::Ground(_) => None,
+        .flat_map(|(level, o)| match o {
+            MapObject::Hero(h) => vec![(*level, h.tile)],
+            MapObject::Monster(m) => vec![(*level, m.tile)],
+            MapObject::Pile(p) => vec![(*level, p.tile)],
+            MapObject::Town(t) => vec![(*level, t.tile)],
+            MapObject::Plain(p) => covered(&p.template, p.tile)
+                .into_iter()
+                .map(|tile| (*level, tile))
+                .collect(),
+            MapObject::Ground(_) => vec![],
         })
         .collect();
     tiles.sort_unstable();
@@ -803,6 +832,7 @@ pub fn build_only(
             patches,
             objects: on_level(&mut objects, 1),
         }),
+        level_limit: spec.map.level_limit,
     };
     Ok((map, text))
 }
@@ -921,6 +951,43 @@ fn ground(g: &GroundSpec, tables: &Tables, size: u8) -> Result<MapObject, String
         tile: (x, y),
         template,
     }))
+}
+
+/// A visitable object without a body by its picture's name (E08 T32a).
+fn plain(o: &ObjectSpec, tables: &Tables, size: u8) -> Result<MapObject, String> {
+    let name = o.picture.to_ascii_lowercase();
+    let name = name.strip_suffix(".def").unwrap_or(&name);
+    let template = tables
+        .plains
+        .iter()
+        .find(|t| t.def.to_ascii_lowercase().strip_suffix(".def") == Some(name))
+        .cloned()
+        .ok_or_else(|| format!("no plain-object picture `{}`", o.picture))?;
+    let [x, y] = o.at;
+    if x >= size || y >= size {
+        return Err(format!("object `{}` at {:?}: off the map", o.picture, o.at));
+    }
+    Ok(MapObject::Plain(Plain {
+        tile: (x, y),
+        template,
+    }))
+}
+
+/// The tiles a template covers with its anchor on `anchor`: those it blocks or is visited from
+/// (bit `j` of mask byte `i` is the tile `7 - j` columns left of and `5 - i` rows above the
+/// anchor; `docs/formats/h3m.md`), the ones off the map left out.
+fn covered(template: &ObjectTemplate, anchor: (u8, u8)) -> Vec<(u8, u8)> {
+    let mut tiles = Vec::new();
+    let rows = template.passable.iter().zip(&template.visitable).zip(0u8..);
+    for ((&passable, &visitable), i) in rows {
+        for j in 0..8u8 {
+            let bit = 1 << j;
+            let open = passable & bit != 0 && visitable & bit == 0;
+            let tile = anchor.0.checked_sub(7 - j).zip(anchor.1.checked_sub(5 - i));
+            tiles.extend(tile.filter(|_| !open));
+        }
+    }
+    tiles
 }
 
 /// A town with its entrance on `entrance`, and the line that describes it in the template.
@@ -1392,6 +1459,14 @@ mod tests {
                 )
                 .expect("template"),
             ],
+            // The land Cartographer (E08 T32a), the game's line.
+            plains: vec![
+                ObjectTemplate::from_objects_txt(
+                    "AVXmaps0.def 001111111111111111111111111111111111111111111111 \
+                     010000000000000000000000000000000000000000000000 111111111 010111111 13 1 0 0",
+                )
+                .expect("template"),
+            ],
             // A Stronghold (E04c T5b), the game's line; no Castle template, to see the error.
             towns: vec![(
                 6,
@@ -1666,6 +1741,52 @@ mod tests {
     }
 
     #[test]
+    fn the_level_limit_and_a_plain_object_are_written() {
+        let with = |extra: &str| {
+            let text = SPEC.replace(
+                "instructions = [\"Start it.\"]",
+                &format!("instructions = [\"Start it.\"]\n{extra}"),
+            );
+            build(&parse(&text).expect("spec"), &tables(), "t.h3m")
+        };
+        let (map, _) =
+            with("level_limit = 5\n[[map.object]]\npicture = \"avxMAPS0.def\"\nat = [20, 20]")
+                .expect("build");
+        assert_eq!(map.level_limit, 5);
+        let MapObject::Plain(plain) = &map.objects[0] else {
+            panic!("not a plain object: {:?}", map.objects[0])
+        };
+        let template = &plain.template;
+        assert_eq!(
+            (plain.tile, template.class, template.subclass),
+            ((20, 20), 13, 1)
+        );
+        // It covers its tile and its entrance west of it; the map's edge leaves tiles out.
+        assert_eq!(covered(template, (20, 20)), [(19, 20), (20, 20)]);
+        assert_eq!(covered(template, (0, 0)), [(0, 0)]);
+        let (map, _) = build(&parse(SPEC).expect("spec"), &tables(), "t.h3m").expect("build");
+        assert_eq!(map.level_limit, 0);
+        for (picture, at, error) in [
+            ("AVXzz0", "[1, 1]", "no plain-object picture `AVXzz0`"),
+            (
+                "AVXmaps0",
+                "[36, 1]",
+                "object `AVXmaps0` at [36, 1]: off the map",
+            ),
+            (
+                "AVXmaps0",
+                "[1, 36]",
+                "object `AVXmaps0` at [1, 36]: off the map",
+            ),
+            // R1's hero stands on (3, 3), the Cartographer's entrance.
+            ("AVXmaps0", "[4, 3]", "two objects on the tile (3, 3)"),
+        ] {
+            let object = format!("[[map.object]]\npicture = \"{picture}\"\nat = {at}");
+            assert_eq!(with(&object).unwrap_err(), error);
+        }
+    }
+
+    #[test]
     fn builds_map_and_template() {
         let spec = parse(SPEC).expect("spec");
         let (map, text) = build(&spec, &tables(), "t.h3m").expect("build");
@@ -1894,7 +2015,10 @@ mod tests {
             .filter_map(|o| match o {
                 MapObject::Hero(h) => Some(h),
                 MapObject::Monster(_) => panic!("no monsters"),
-                MapObject::Pile(_) | MapObject::Ground(_) | MapObject::Town(_) => None,
+                MapObject::Pile(_)
+                | MapObject::Ground(_)
+                | MapObject::Plain(_)
+                | MapObject::Town(_) => None,
             })
             .collect();
         // The encounter's hero, its `also` heroes, then the opponent beside the hero.

@@ -81,14 +81,6 @@ Refined with the user on 2026-10-12 (T10c; ADV-Q9). Built like increment 1: comm
 
 **Exit criteria (increment 2):** the ADR amendments accepted; full verify green in CI with the adventure logic crates at 100 %; the property tests hold with objects: atomicity, legality consistency (pending decisions included), ownership isolation (treasuries, and the streams if a command draws), conservation (an army changes by no accepted command of increment 2; a treasury only by a visit's rule), observation hygiene (typed objects, treasuries), clone equivalence, determinism; golden replays on a duel map with objects in the determinism matrix; the benchmarks re-baselined; every new `ADV-*`/`GAM-*` rule `implemented` with sources; batch 2 staged and scored; the lane HANDOFF, the epic log and `QUEUE.md` current.
 
-### Decisions at round 4 (2026-10-21, user)
-
-66. **T31 whole, one pull request** (the user's choice of four; not chosen: T31a, the property
-    checks first, then T31b, the fixtures, replays and benchmarks, in two sessions or as two pull
-    requests in one; or T31b first). T32a follows in its own session: its recipe waits for the
-    harness's new reads (the client lane's inbox since T24a2b2), so only its spec and scorer can
-    be built before them.
-
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T11a Survey.** Done (2026-10-12): `docs/rules/surveys/E08-objects.md` from a code reading and VCMI (the wiki not reached): visit modes per class, all draws at setup, D-5 to D-7, A-5, starting resources as VCMI (log).
@@ -308,6 +300,26 @@ Refined with the user on 2026-10-20 (T23; ADV-Q14). Built like increments 1 to 3
     who waits and gives the owner a limited time, then answers with the system actor's default.
     ADR-0017 point 6 amended in `shared/e08-t30-adr` (#353), merged before #352.
 
+### Decisions at round 4 (2026-10-21, user)
+
+66. **T31 whole, one pull request** (the user's choice of four; not chosen: T31a, the property
+    checks first, then T31b, the fixtures, replays and benchmarks, in two sessions or as two pull
+    requests in one; or T31b first). T32a follows in its own session: its recipe waits for the
+    harness's new reads (the client lane's inbox since T24a2b2), so only its spec and scorer can
+    be built before them.
+67. **T32a whole** (the user's choice of four; not chosen: T32a1, batch E4a's spec alone; T32a1
+    with T32a2, the spec and the scorer; or the scorer first). Batch E4 is split by rows, as
+    batch E3 (decision 44): **E4a** the progression rows E4-1 to E4-5, **E4b** E4-6 alone (the
+    map's level limit binds every hero on its map: E4-2's level 10 and E4-1's 5 000 would be
+    capped; the agent's call), **E4c** decision 45's four rows E4-7 to E4-10 (a placed
+    Cartographer for E4-10; the harness's artifacts and battlefield). The recipes wait for the
+    harness's new reads (the client lane's inbox). The spec's level limit and placed object change
+    `h3-experiment` and `docs/experiments/` **`cross-lane` with the user's consent**, and so does
+    the line the writer's new field adds to the AI lane's test map (`crates/h3-cli/src/ai/`; the
+    user's consent); the scorer, an example of `h3-map` on `h3-heroes`' draws and evaluation,
+    needs `h3-heroes` among `h3-map`'s dev-dependencies (`arch.toml`, `shared/e08-t32a`, merged
+    first).
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T23 Increment 4 refined.** Done (2026-10-20, `adventure/e08-t23`; decisions 48–50): progression only, the first round queued (T24a, T24b), the inbox sorted; docs only (log).
@@ -317,7 +329,7 @@ Refined with the user on 2026-10-20 (T23; ADV-Q14). Built like increments 1 to 3
 - **Round 1: T25 + T26a** (decision 59). **T25** done (2026-10-20, `adventure/e08-t25`: survey §10, the evaluation read, no draws, the map's terrain shares, E3-6's four choices fit; ADV-Q17, decision 60; log). **T26a** done (2026-10-20, `shared/e08-t26a` #325: ADR-0013 and ADR-0017 amended). **T26b** done (2026-10-20, `shared/e08-t26b`, `cross-lane`, decision 61: the level data, the offered skills, the class's intervals, the class override, two flags, the packs; pack format v44, core ruleset hash v46; log). **Round 1 closed**.
 - **Round 2: T27 + T28** (decision 62). **T27** done (2026-10-20, `adventure/e08-t27`, `cross-lane`: `h3-heroes`' levels, the bound, the limit's cap, the draws, the primary skill, the offers, `GainLevel`, the offers' levels in the details; HER-EXP-002, -003, HER-LVL-001 to -005; `ADV-QUIRK-11` to `-13`; game state hash v9; log). **T28** done (2026-10-21, `adventure/e08-t28`: the original's choice ported, its flag-clear path: `h3_heroes::original_choice` with `ArmyWorth` and `TerrainShares`; HER-LVL-006; `ADV-QUIRK-14`; E3-6 reproduced; log). **Round 2 closed**.
 - **Round 3: T29 + T30** (decision 63). **T29** done (2026-10-21, `adventure/e08-t29`, `cross-lane`: the scenario's level limit and banned skills, the level seeds and the draws' source, the levels at load through the original's choice, the battle's experience under the limit, the terrains' costs by Pathfinding level and the map's shares, the import's refusal lifted; GAM-HER-002, GAM-SET-002, ADV-MAP-002; `ADV-QUIRK-9`; game state hash v10, adventure ruleset part v9, map import v8; the 5 shipped maps' 9 heroes get 41 levels at load; log). **T30** done (2026-10-21, `adventure/e08-t30`, decision 64: the battle's winner levels after the outcome, a level with two offers a pending decision of the owner answered `First` or `Second`, one or none given at once, the events, the observation's `DecisionView`, the legal commands, the system actor's default (`ADV-STUB-8`), the level-up holding the game (decision 65, #353), the env's answers and the CLI's words; GAM-DEC-002, GAM-BAT-008; game state hash v11, action encoding v4, replay format v5; log). **Round 3 closed**.
-- **Round 4: T31 + T32a** (decision 66). **T31** done (2026-10-21, `adventure/e08-t31`: the fixtures' heroes near a level, red's underground hero levelled at load; the nine golden replays re-recorded, the five searched ones replaced, seven answering level-ups; the plans' level checks after every command, the hygiene property's other heroes' experience, another player's level-up unseen, the levels at load by profile; two workloads re-baselined; log). T32a next, in its own session.
+- **Round 4: T31 + T32a** (decision 66). **T31** done (2026-10-21, `adventure/e08-t31`: the fixtures' heroes near a level, red's underground hero levelled at load; the nine golden replays re-recorded, the five searched ones replaced, seven answering level-ups; the plans' level checks after every command, the hygiene property's other heroes' experience, another player's level-up unseen, the levels at load by profile; two workloads re-baselined; log). **T32a** done (2026-10-21, `adventure/e08-t32a`, `cross-lane`, decision 67: whole; `shared/e08-t32a` #358 first: batch E4 as three specs, E4a (E4-1 to E4-5), E4b (E4-6, the level limit), E4c (E4-7 to E4-10), with the writer's level limit and Cartographers and the spec's `level_limit` and `[[map.object]]`; the scorer `e4_score`, checked against the engine; the recipes wait for the harness's reads; log). **Round 4 closed**; round 5 (T32b + T33) next.
 
 ## Later increments (sketch)
 

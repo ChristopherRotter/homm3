@@ -12,6 +12,10 @@ M4's checkpoint passed 2026-10-12 (SRV-Q22); T8 and M4's review items done the s
 
 ## Inbox
 
+- 2026-10-21 (the adventure lane, E08 T32a; for your information): `tests::ladders::a_decline_an_expiry_or_a_departure_puts_the_other_back`
+  failed once in a cloud sandbox's coverage run (`Goodbye { reason: IdleTimeout }` where
+  `Queued { seq: 2, .. }` was expected, `ladders.rs:463`) while a build shared the two CPUs; it
+  passed alone and in the coverage gate run again. A timing margin to widen, if it recurs.
 - 2026-10-21 (the adventure lane, E08 T30, decision 65, ADR-0017 point 6 amended in #353; for
   M5, when the server hosts whole games): **a level-up holds the game.** While a hero's level-up
   is open the engine rejects every other actor's command (`GameCommandError::WaitingForLevelUp

@@ -36,27 +36,18 @@ use crate::walker::{HEXES, Scores};
 const STRIKE_POSITIONS: usize = 11;
 
 /// The scores of the walker `id` of `side` with its context `ctx` (0x421680's 0x4214F0, 0x421590,
-/// 0x420260, 0x41FB60; BAT-AI-007). The reach's mask of the enemies that can strike the side this
-/// turn (by record bit: those that can shoot now and those within a turn of one of its stacks)
-/// goes to the area threat (0x41F920; the fallback's own call is E23 T3c's).
+/// 0x420260, 0x41FB60; BAT-AI-007), with the reach's mask of the enemies that can strike the side
+/// this turn (by record bit: those that can shoot now and those within a turn of one of its
+/// stacks; 0 on Easy for a computer side), which the area threat reads (0x41F920, here and in
+/// the fallbacks, BAT-AI-010).
 // rule: BAT-AI-007
 pub(crate) fn build(
     state: &BattleState,
     ruleset: &BattleRuleset,
     (id, side): (StackId, BattleSide),
     ctx: &Context,
-) -> Scores {
-    let mut s = Scorer {
-        state,
-        ruleset,
-        field: Field::new(ruleset.battle().field),
-        id,
-        side,
-        ctx,
-        slips: ruleset.quirks().is_enabled(ORIGINAL_AI_SLIPS),
-        shoots: computer::shoots(state, ruleset, id),
-        floor: 0,
-    };
+) -> (Scores, u32) {
+    let mut s = Scorer::new(state, ruleset, (id, side), ctx);
     let mut scores = [0; HEXES];
     s.fire_walls(&mut scores);
     s.moat(&mut scores);
@@ -70,7 +61,20 @@ pub(crate) fn build(
     if difficulty >= 2 || human {
         s.crowding(&mut scores, mask);
     }
-    scores
+    (scores, mask)
+}
+
+/// The area threat on the walker `id` of `side` with its context `ctx` and the reach's `mask`
+/// (0x41F920; the fallbacks' test at 0x421E94, BAT-AI-010): see [`Scorer::area_threat`].
+// rule: BAT-AI-010
+pub(crate) fn area_threat(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    (id, side): (StackId, BattleSide),
+    ctx: &Context,
+    mask: u32,
+) -> i32 {
+    Scorer::new(state, ruleset, (id, side), ctx).area_threat(mask)
 }
 
 /// The score builders' inputs.
@@ -100,7 +104,27 @@ fn multi_headed(s: &Stack) -> bool {
     s.has(StackTraits::ALL_ADJACENT) || s.has(StackTraits::THREE_HEADED)
 }
 
-impl Scorer<'_> {
+impl<'a> Scorer<'a> {
+    /// The score builders of the walker `id` of `side` in the context `ctx`, the floor 0.
+    fn new(
+        state: &'a BattleState,
+        ruleset: &'a BattleRuleset,
+        (id, side): (StackId, BattleSide),
+        ctx: &'a Context,
+    ) -> Self {
+        Self {
+            state,
+            ruleset,
+            field: Field::new(ruleset.battle().field),
+            id,
+            side,
+            ctx,
+            slips: ruleset.quirks().is_enabled(ORIGINAL_AI_SLIPS),
+            shoots: computer::shoots(state, ruleset, id),
+            floor: 0,
+        }
+    }
+
     /// The hexes of the field.
     fn hexes(&self) -> impl Iterator<Item = Hex> + use<> {
         (0u8..).take(self.field.hex_count()).map(Hex)

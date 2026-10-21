@@ -14,7 +14,7 @@ use crate::geometry::{Field, Hex, HexSet};
 use crate::magic;
 use crate::movement::MAX_PATH;
 use crate::pathfinder::{AI_RANGE, Goal, Query, Search};
-use crate::siege;
+use crate::siege::{self, SiegeState};
 use crate::state::{BattleState, StackId};
 
 pub use crate::aim::{Context, Shot};
@@ -359,6 +359,57 @@ pub fn path(
             set
         });
     Path { steps, len, stops }
+}
+
+/// A walker's map for its side's threat records on its turn (0x421F80's 0x422B20 with flag 1,
+/// 0x4B2DA0 at 0x422C51; BAT-AI-009): the computer's pathfinder for stack `id` of the computer's
+/// `side` with its speed as the range (0 for a bound stack or one without speed), so a stop
+/// marks nothing; the stacks of `side` are not marked; at a town the moat avoided by a weak
+/// stack (BAT-SIE-022, the computer's).
+// rule: BAT-AI-009, BAT-SIE-022
+pub fn turn_map(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    id: StackId,
+    side: BattleSide,
+) -> Map {
+    let field = Field::new(ruleset.battle().field);
+    let me = state.at(id);
+    let query = Query {
+        goal: Goal::Map,
+        range: u16::from(me.speed_now()),
+        avoid: aim::fears_moat(state, ruleset, me, Some(side)),
+        spare: Some(side),
+        speed: None,
+    };
+    Map(Search::run(state, field, (id, me), query))
+}
+
+/// Whether stack `id` is blind or turned to stone for more than one round (the durations above 1,
+/// 0x422BD0 to 0x422BE9, 0x41F1CE to 0x41F1E3): the computer records no enemy for it and puts it
+/// late in its order of action.
+pub fn kept_out(state: &BattleState, ruleset: &BattleRuleset, id: StackId) -> bool {
+    aim::kept_out(state, ruleset, id)
+}
+
+/// The computer's value of `side`'s hero in its odds (0x420A80 with 0x526D40 and 0x5275B0;
+/// BAT-AI-008, `installation.md` §7.39), `strength` its side's whole strength: its best damage
+/// spell valued by the casts its maximum mana allows against that strength, at most four times
+/// it; 0 without a hero, a spell book, or while casting is forbidden.
+// rule: BAT-AI-008
+pub fn hero_value(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    side: BattleSide,
+    strength: i32,
+) -> i32 {
+    aim::hero_value(state, ruleset, side, strength)
+}
+
+/// The battle's town (ADR-0023), which the computer reads whole: its fort, walls, gate, moat and
+/// turrets; `None` outside a town.
+pub fn siege(state: &BattleState) -> Option<&SiegeState> {
+    state.siege.as_ref()
 }
 
 /// A double as the original's `_ftol` gives it to its callers (0x6179D4): truncated toward 0, the

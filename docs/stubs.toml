@@ -22,13 +22,19 @@ epic   = "E05"
 [[stub]]
 id     = "BAT-STUB-4"
 where  = "crates/h3-battle-ai/src/walker.rs"
-reason = "The computer's walker is built in part (E23 T3a: the plan, the choice with its draw, the walk; BAT-AI-005, BAT-AI-006; T3b: the hex scores, BAT-AI-007). Not yet: the stronger at range (0x420A80) and with it P alone for a negative value, the last retaliation's gain (0x41F3B0), a defender holding the walls (0x4213F0), a besieger's walk to its wall and the fallbacks (0x41F920, 0x420760, 0x4208F0) are T3c's; the creature casts (0x421280, before and after the choice) are T4's"
+reason = "The computer's walker is built but its creature casts (E23 T3a: the plan, the choice with its draw, the walk; T3b: the hex scores; T3c: the odds, the last retaliation's gain, holding the walls, the besieger's walk, the fallbacks; BAT-AI-005 to BAT-AI-011). Not yet: the creature cast entry 0x421280, before the action and after a choice of nothing (T4)"
 epic   = "E23"
 
 [[stub]]
 id     = "BAT-STUB-5"
 where  = "crates/h3-battle-ai/src/lib.rs::unchecked"
 reason = "The hero's side of the computer (E23 T5, T6): no hero's cast (0x422DA0, T1a6's reading) and no retreat test (0x41E570); the tactics phase ends at once instead of the shooters' placement and the walkers' choice in the zone (§7.34); a commanded Catapult shoots the first wall the engine lists instead of the computer's aim (§7.29, the gate first); a commanded First Aid Tent defends instead of healing the computer's patient (§7.14, BAT-Q51) (BAT-AI-001)"
+epic   = "E23"
+
+[[stub]]
+id     = "BAT-STUB-7"
+where  = "crates/h3-battle/src/aim.rs::spell_value"
+reason = "The computer's odds value the hero's spells at the mastery of the special ground of the hero's own adventure tile (0x5273D0 with 0x4E4FA0; survey E23-battle-ai.md slip 6). The battle's tile is the defender's, so for a defending hero that is the battlefield's; the attacking hero's tile is not in the seam (BattleSetup has no field for it): both profiles take the battlefield's (the user, 2026-10-21: a gap; BAT-Q56 for a seam field later) (BAT-AI-008)"
 epic   = "E23"
 
 # --- adventure (ADV-STUB-<n>) ---

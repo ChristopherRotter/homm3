@@ -1871,14 +1871,7 @@ fn caster_stage(
     value: u64,
     creature: CreatureTypeId,
 ) -> u64 {
-    let single = ruleset.quirks().is_enabled(SINGLE_PRECISION_RATES);
-    let school = spell
-        .schools
-        .iter()
-        .map(|l| hero_rate(single, b.school[l.index().min(MAX_SPELL_SCHOOLS - 1)]))
-        .max()
-        .unwrap_or(0);
-    let all = hero_rate(single, b.all);
+    let (single, school, all) = caster_rates(ruleset, spell, b);
     let own = b.spell(id);
     // The specialist's bonus (it may lower a value) and the spell's own, below 2^96, of `t`.
     let bonuses = |t: u64| {
@@ -1906,6 +1899,50 @@ fn caster_stage(
         });
         let (specialty, fixed) = bonuses(t);
         u64::try_from(u128::from(t.saturating_add_signed(specialty)) + fixed).unwrap_or(u64::MAX)
+    }
+}
+
+/// Whether the rates are single precision (quirk Q-0005), the best Orb's rate among `spell`'s
+/// schools and Sorcery's, of the bonuses `b` ([`caster_stage`], [`untargeted_bonus`]).
+fn caster_rates(
+    ruleset: &BattleRuleset,
+    spell: &BattleSpell,
+    b: &SpellBonuses,
+) -> (bool, u64, u64) {
+    let single = ruleset.quirks().is_enabled(SINGLE_PRECISION_RATES);
+    let school = spell
+        .schools
+        .iter()
+        .map(|l| hero_rate(single, b.school[l.index().min(MAX_SPELL_SCHOOLS - 1)]))
+        .max()
+        .unwrap_or(0);
+    (single, school, hero_rate(single, b.all))
+}
+
+/// The value `value` of `spell` after the bonuses `b` of its caster's hero without a target stack
+/// (the original's 0x4E5760 given no stack, `installation.md` §7.8 step 1; the computer's odds,
+/// §7.39): × (1 + the best Orb among the spell's schools) × (1 + Sorcery), rounded down once; no
+/// single spell's or specialist's bonus, which need a stack. The rates exact, or with quirk
+/// Q-0005 each product stored as an `f32`, as [`caster_stage`]. Saturates.
+// rule: BAT-AI-008
+pub(crate) fn untargeted_bonus(
+    ruleset: &BattleRuleset,
+    spell: &BattleSpell,
+    b: &SpellBonuses,
+    value: u64,
+) -> u64 {
+    let (single, school, all) = caster_rates(ruleset, spell, b);
+    if single {
+        let stored = |v: X87| v.round(SINGLE_BITS);
+        let v = stored(X87::int(value));
+        let v = stored(v.times(X87::ONE.plus(X87::fixed(school))));
+        stored(X87::ONE.plus(X87::fixed(all)).times(v)).trunc()
+    } else {
+        let one = u128::from(FULL_BP);
+        let factor = (one + u128::from(school)) * (one + u128::from(all));
+        u128::from(value).checked_mul(factor).map_or(u64::MAX, |p| {
+            u64::try_from(p / (one * one)).unwrap_or(u64::MAX)
+        })
     }
 }
 

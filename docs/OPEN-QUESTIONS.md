@@ -78,6 +78,10 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 **Options:** (a) keep BAT-WAR-003 (the wiki, VCMI); (b) follow the reading (the most hit points lost; an idle machine defends); (c) (b) after a batch row confirms it. **Recommendation:** (c): one row with an automatic tent and two wounded stacks settles it. **Blocked:** nothing.
 
+#### BAT-Q56 — The attacking hero's adventure tile in the odds (E23 T3c; survey `E23-battle-ai.md` §4, slip 6)
+
+**Context.** The computer's odds (0x420A80, BAT-AI-008) value a side's hero by its best damage spell at its mastery on the special ground of **the hero's own adventure tile** (0x5273D0 with 0x4E4FA0; `installation.md` §7.39), not on the battlefield. The battle's tile is the defender's (survey `E04c-battlefields.md` §4), so for a defending hero the two agree; an attacking hero stands on the tile beside it, which `BattleSetup` does not carry. **Built (the user, 2026-10-21):** both profiles take the battlefield's (BAT-STUB-7). **Options:** (a) keep the gap (it matters only when an attacking hero stands on a different magic ground, Magic Plains or the four school grounds); (b) a seam field, the attacking hero's ground (`BattleHero` or `BattleSetup`; a `shared/` contract change, the adventure lane's derivation fills it, the server lane's wire), then slip 6 as read in `faithful`. **Recommendation:** (a) until the adventure's neutral seat plays real maps (E08, E06); then (b) with the other setup fields of CLT-Q4 and CLT-Q6. **Blocked:** nothing.
+
 ### Adventure lane (`ADV-Q<n>`)
 
 (no open questions)
