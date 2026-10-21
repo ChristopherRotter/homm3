@@ -1,5 +1,6 @@
 /* xdd.dll for the reference captures (clients/capture/README.md). Built by setup.sh with
-   mingw-w64; our own code, no byte of the original changes.
+   mingw-w64; our own code. The original's files never change; in its memory only the import
+   slot of 2 and the roll calls of 3.
 
    1. A forwarder (E17 M1 T8): the GOG Heroes3.exe imports DirectDrawCreate from xdd.dll, its
       DDrawCompat wrapper, which does not run under Wine; this xdd.dll hands the call to Wine's own
@@ -15,11 +16,66 @@
       A new <seq> applies its command once. Every few milliseconds the DLL writes
       <H3CLOCK>\ack as "<seq> <time> <calls>": the last applied command, the clock's time and how
       many times the game read the clock since that command (a game that keeps reading a stopped
-      clock is idle: it has drawn everything up to that time). Without H3CLOCK nothing changes. */
+      clock is idle: it has drawn everything up to that time). Without H3CLOCK nothing changes.
+   3. Forced rolls (E17 M3 T7b-2b-1, *provisional*; the runbook, "Forced rolls"): with H3CLOCK
+      set, the calls of the battle's rolls in `sites` (morale, fear, luck, the creatures'
+      strike abilities) go through
+      forced_between or forced_rand, which draw as the call would (random_between 0x50B230 or the
+      C library's rand 0x617E5C, so the generator's sequence stays the original's) and return
+      that draw unless the harness forced the site:
+        <seq> roll <site> <value> <count>   the site's next <count> draws return <value>
+        <seq> rolls <site> <value>          its other draws return <value> ...
+        <seq> rolls <site> natural          ... or the generator's again (as at the start)
+      A call is redirected only where its bytes are the call the table names. The ack goes on
+      with "<forced> <pending> <sites>": the draws forced so far, the forced draws still waiting
+      for their roll and the calls redirected. */
 #include <windows.h>
 #include <stdio.h>
+#include <string.h>
 
 typedef DWORD(WINAPI *time_fn)(void);
+typedef int(__fastcall *between_fn)(int, int);
+typedef int(__cdecl *rand_fn)(void);
+
+#define RANDOM_BETWEEN 0x50B230u
+#define CRT_RAND 0x617E5Cu
+
+/* The rolls' calls (docs/exe/map.toml): each a call of `target` returning the draw. */
+struct site {
+    const char *name;
+    DWORD call;       /* the call instruction */
+    DWORD target;     /* what it calls */
+    int redirected;
+    long count;       /* forced draws left */
+    long value;       /* what they return */
+    int fixed;        /* the site's other draws return `otherwise` */
+    long otherwise;
+};
+
+static struct site sites[] = {
+    /* good_morale_roll 0x464920: random_between(1, 24) <= morale gives another turn */
+    {"good_morale", 0x4649D3, RANDOM_BETWEEN, 0, 0, 0, 0, 0},
+    /* bad_morale_check 0x464B40: random_between(1, 12) <= -morale freezes the stack (a computer
+       side's second draw, 0x464BF0, may let it off: not redirected, hot seat has none) */
+    {"bad_morale", 0x464BC7, RANDOM_BETWEEN, 0, 0, 0, 0, 0},
+    /* fear_check 0x464D40: rand() mod 10 = 0 frightens the stack */
+    {"fear", 0x464DF1, CRT_RAND, 0, 0, 0, 0, 0},
+    /* melee_strike 0x441610: random_between(1, 24) <= luck, a lucky strike */
+    {"luck", 0x441837, RANDOM_BETWEEN, 0, 0, 0, 0, 0},
+    /* stack_shot 0x43F900: the same for a shot */
+    {"shot_luck", 0x43F955, RANDOM_BETWEEN, 0, 0, 0, 0, 0},
+    /* striker_effects 0x440BC0: per Mighty Gorgon random_between(1, 100) <= 10 kills one */
+    {"death_stare", 0x440EE0, RANDOM_BETWEEN, 0, 0, 0, 0, 0},
+    /* the Thunderbird's bolt: random_between(1, 100) <= 20 */
+    {"thunderbird", 0x44119D, RANDOM_BETWEEN, 0, 0, 0, 0, 0},
+    /* the Rust Dragon's acid damage: random_between(1, 100) <= 20 (its amount drawn next) */
+    {"acid", 0x4414B7, RANDOM_BETWEEN, 0, 0, 0, 0, 0},
+    /* strike_spell_choice 0x440500: the Wyvern Monarch's Poison, random_between(1, 100) <= 30 */
+    {"poison", 0x440839, RANDOM_BETWEEN, 0, 0, 0, 0, 0},
+};
+#define SITES (sizeof sites / sizeof *sites)
+
+static volatile LONG forced_draws;
 
 static time_fn real_time;
 static CRITICAL_SECTION lock;
@@ -61,31 +117,137 @@ static void apply(const char *command, long ms)
     LeaveCriticalSection(&lock);
 }
 
+/* A redirected call's draw `draw`, returning to `back` (the call + 5): forced or as drawn. */
+static int forced(DWORD back, int draw)
+{
+    size_t i;
+    EnterCriticalSection(&lock);
+    for (i = 0; i < SITES; i++) {
+        struct site *s = &sites[i];
+        if (s->call + 5 != back)
+            continue;
+        if (s->count > 0) {
+            s->count--;
+            draw = (int)s->value;
+            forced_draws++;
+        } else if (s->fixed) {
+            draw = (int)s->otherwise;
+            forced_draws++;
+        }
+        break;
+    }
+    LeaveCriticalSection(&lock);
+    return draw;
+}
+
+static int __fastcall forced_between(int a, int b)
+{
+    int draw = ((between_fn)RANDOM_BETWEEN)(a, b);
+    return forced((DWORD)__builtin_return_address(0), draw);
+}
+
+static int __cdecl forced_rand(void)
+{
+    int draw = ((rand_fn)CRT_RAND)();
+    return forced((DWORD)__builtin_return_address(0), draw);
+}
+
+/* `roll <site> <value> <count>` or `rolls <site> <value>|natural`. */
+static void force(const char *command, const char *name, const char *value, long count)
+{
+    size_t i;
+    char *end;
+    long v = strtol(value, &end, 10);
+    int natural = !strcmp(value, "natural");
+    if (!natural && (*value == 0 || *end != 0))
+        return;
+    EnterCriticalSection(&lock);
+    for (i = 0; i < SITES; i++) {
+        struct site *s = &sites[i];
+        if (strcmp(s->name, name))
+            continue;
+        if (!strcmp(command, "roll") && !natural && count >= 0) {
+            s->value = v;
+            s->count = count;
+        } else if (!strcmp(command, "rolls")) {
+            s->fixed = !natural;
+            s->otherwise = natural ? 0 : v;
+        }
+    }
+    InterlockedExchange(&reads, 0);
+    LeaveCriticalSection(&lock);
+}
+
+/* The forced draws still waiting for their roll. */
+static long pending(void)
+{
+    size_t i;
+    long n = 0;
+    for (i = 0; i < SITES; i++)
+        n += sites[i].count;
+    return n;
+}
+
+/* Points each site's call at forced_between or forced_rand; returns how many it redirected. */
+static int redirect(void)
+{
+    size_t i;
+    int n = 0;
+    for (i = 0; i < SITES; i++) {
+        struct site *s = &sites[i];
+        BYTE *at = (BYTE *)s->call;
+        DWORD rel, old;
+        DWORD hook = s->target == CRT_RAND ? (DWORD)forced_rand : (DWORD)forced_between;
+        memcpy(&rel, at + 1, sizeof rel);
+        if (at[0] != 0xE8 || s->call + 5 + rel != s->target)
+            continue;
+        if (!VirtualProtect(at, 5, PAGE_EXECUTE_READWRITE, &old))
+            continue;
+        rel = hook - (s->call + 5);
+        memcpy(at + 1, &rel, sizeof rel);
+        VirtualProtect(at, 5, old, &old);
+        s->redirected = 1;
+        n++;
+    }
+    FlushInstructionCache(GetCurrentProcess(), NULL, 0);
+    return n;
+}
+
+static int redirected;
+
 /* Polls the command file and writes the acknowledgement, every 2 ms. */
 static DWORD WINAPI control(LPVOID unused)
 {
     unsigned long applied = 0;
     (void)unused;
     for (;;) {
-        char line[128] = {0}, command[32] = {0};
+        char line[128] = {0}, command[32] = {0}, name[32] = {0}, value[32] = {0};
         unsigned long seq = 0;
-        long ms = -1;
+        long ms = -1, count = 1, waiting;
         DWORD t;
         FILE *f = fopen(ctl_path, "r");
         if (f) {
             if (fgets(line, sizeof line, f)
-                && sscanf(line, "%lu %31s %ld", &seq, command, &ms) >= 2 && seq != applied) {
-                apply(command, ms);
+                && sscanf(line, "%lu %31s", &seq, command) == 2 && seq != applied) {
+                if (!strcmp(command, "roll") || !strcmp(command, "rolls")) {
+                    if (sscanf(line, "%lu %31s %31s %31s %ld", &seq, command, name, value, &count) >= 4)
+                        force(command, name, value, count);
+                } else {
+                    sscanf(line, "%lu %31s %ld", &seq, command, &ms);
+                    apply(command, ms);
+                }
                 applied = seq;
             }
             fclose(f);
         }
         EnterCriticalSection(&lock);
         t = now();
+        waiting = pending();
         LeaveCriticalSection(&lock);
         f = fopen(tmp_path, "w");
         if (f) {
-            fprintf(f, "%lu %lu %ld\n", applied, (unsigned long)t, (long)reads);
+            fprintf(f, "%lu %lu %ld %ld %ld %d\n", applied, (unsigned long)t, (long)reads,
+                    (long)forced_draws, waiting, redirected);
             fclose(f);
             MoveFileExA(tmp_path, ack_path, MOVEFILE_REPLACE_EXISTING);
         }
@@ -138,7 +300,9 @@ BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved)
     snprintf(ack_path, sizeof ack_path, "%s\\ack", dir);
     snprintf(tmp_path, sizeof tmp_path, "%s\\ack.tmp", dir);
     InitializeCriticalSection(&lock);
-    if (hook())
+    if (hook()) {
+        redirected = redirect();
         CreateThread(NULL, 0, control, NULL, 0, NULL);
+    }
     return TRUE;
 }

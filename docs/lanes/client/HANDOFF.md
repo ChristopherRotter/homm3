@@ -4,12 +4,12 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E17 M0–M2 done; M3 T1a–T7a-2b, T7b-1, T7b-2a, T8 done; H1, H2 done (2026-10-19: the adventure lane's harness); next: M3 T7b-2b, T7c** (`QUEUE.md`; T9 closes M3). Screens from the executable's dialog items (`h3_view::ui`, reusable components; design §9.7). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
+- **E17 M0–M2 done; M3 T1a–T7a-2b, T7b-1, T7b-2a, T7b-2b-1, T8 done; H1, H2 done (2026-10-19: the adventure lane's harness); next: M3 T7b-2b-2, T7b-2b-3, T7c** (`QUEUE.md`; T9 closes M3). Screens from the executable's dialog items (`h3_view::ui`; design §9.7). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
 - **Captures** (the user, 2026-10-20): `h3drive.py drawn` first (no Wine); capture only what it lists or the task changes, all at a milestone's closure or after a harness change (runbook, "Which captures a change needs"). Detail for later tasks: `NOTES.md`.
 - **The user's requirements** (epic, "Decisions"): a string catalogue (JSON packs, no committed translation, CLT-Q7); graphics options (`faithful` default); exhaustive diffs.
 - The lane owns `clients/`, `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
-- **Checkpoints** per milestone (the autonomy contract below); a fresh reviewer agent checks each one before the user.
-- Stage first (the user's computer online) from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04`; for captures `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`; `cp -rn` the staged `original-data/.` into the clone before `capture/setup.sh`. The original's frames stay in their sandbox (`situations/kept/` keeps their numbers).
+- **Checkpoints** per milestone (the autonomy contract below), a fresh reviewer agent first.
+- Stage first (the user's computer online) from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the four end tunes; for captures `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`; `cp -rn` the staged `original-data/.` into the clone before `capture/setup.sh`. Frames stay in their sandbox (`kept/` keeps numbers).
 - **Open:** CLT-Q4 (the background variant); CLT-Q5 (boats in `h3-map`'s writer); CLT-Q6 (player colours, a hero's sex).
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
@@ -40,9 +40,8 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - Sound in a sandbox: `SDL_AUDIO_DRIVER=disk` (the mix in `./sdlaudio.raw`, S16 stereo, 44.1 kHz).
 - `winit`, `cpal`, `hound` (and Bevy, eframe, `rodio`) are Apache-2.0-only (`deny.toml`, ADR-0009): the window is SDL 3 (`h3-sdl`; building it: CMake, a C compiler, `clients.yml`'s apt list). Windows exes: target `x86_64-pc-windows-gnu`, `mingw-w64`; the user's `clients/out/win/`.
 - `clients/Cargo.lock` is a common path: the verify's `clients-lock` gate (#202) fails when an engine crate's dependencies change it; fix: `cargo update --workspace --manifest-path clients/Cargo.toml`.
-- `ci.yml` ignores `clients/**`; the client's job `clients.yml` watches `clients/` and the engine crates the client builds, which `check.sh` keeps complete ("ci paths").
-- `h3-protocol` builds `h3-battle`, `h3-content`, `h3-contracts`, `h3-kernel`: they can break the client.
-- Never run the original game from the installation: it writes saves, settings and DDrawCompat's log into its folder. Captures run the copy under `original-data/wine/` (`clients/capture/README.md`, its "Traps"); a Wine prefix must sit in a directory the shell's user owns (`/root/...` in a sandbox). Captures never enter git (ADR-0009).
+- `ci.yml` ignores `clients/**`; `clients.yml` watches `clients/` and the engine crates the client builds (`h3-protocol` builds `h3-battle`, `h3-content`, `h3-contracts`, `h3-kernel`: they can break it), which `check.sh` keeps complete ("ci paths").
+- Never run the original game from the installation: it writes saves, settings and DDrawCompat's log into its folder. Captures run the copy under `original-data/wine/` (the runbook's "Traps"); a Wine prefix sits in a directory the shell's user owns (`/root/...` in a sandbox). Captures never enter git (ADR-0009).
 - The original's memory holds the frame drawn, the screen the one shown (design §7.1, §7.9): never render memory's poses as the screen. More in the runbook (`Combat Speed`, acting as a turn starts, both heroes named, steps ≤ 100 ms, `hot_seat`, the adventure harness's settings).
 - No float arithmetic or platform transcendental in the client's drawing and timing, the binary included (`clippy.toml`): f32 behaviour in fixed point (`anim::f32_round`), tangents by series; SDL's floats only at the adapter's edge (coordinates, `audio::gain`).
 - The engine rolls its own damage: the frame check lists a box (` n…`, T5b-1) or the log's item
@@ -51,16 +50,17 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - The harness's `actions` are the viewer's mouse (`pointer::inputs`, design §9.10): a new action
   kind needs both; `hex_point` and `PARK` mirror `h3drive.py`'s; a `key:` right after a `cast:`
   acts at the cast's end in both (T7b-1).
-- A roll the original made needs a sequence's `seed` (`resist`: 3). The frame check takes the
-  heroes from memory but cast frames (memory a deadline early).
+- The original's rolls: forced (`roll:<name>`, `fail`; runbook); the engine's by a sequence's
+  `seed` (`resist`: 3). The frame check takes the heroes from memory but cast frames.
 - `turn:` naming the active stack passes at once: after its hero's cast a stack acts by `key:`
   only (pick speeds so turns alternate, T7b-2a). A spell's handler: `Player::cast` by
   `SpellLook::original`, its effects at the handler's point (the box's tint follows them).
 
 ## Recent sessions
 
-- **2026-10-21, E17 M3 T7b-2a (tint, Haste/Slow walks, Dispel, Cure, Ray; #363, open).**
+- **2026-10-21, E17 M3 T7b-2b-1 (the harness forces the original's rolls).** Split with the user
+  (T7b-2b-2 morale, luck, fear; T7b-2b-3 abilities); nine roll calls redirected in `xdd.dll`.
+- **2026-10-21, E17 M3 T7b-2a (tint, Haste/Slow walks, Dispel, Cure, Ray; #363, merged).**
   Split with the user; `haste`, `dispel` recorded, frames exact.
 - **2026-10-21, E17 M3 T7b-1 (a hero's cast on one stack; #361, merged).** `cast`, `resist`,
-  `arrow` played as recorded, their frames exact but the spell tint (T7b-2a).
-- **2026-10-21, E17 M3 T8 (the battle's end tune; #356, merged).** `end` recorded; its tune.
+  `arrow` recorded, frames exact.
