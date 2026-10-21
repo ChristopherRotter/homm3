@@ -16,7 +16,7 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   note `docs/epics/E06-design.md`, config and record, the checkpoint and `--resume`, C ABI v31,
   the held-out sets v1, the bots' table, the SPRT gate, promotions, ladders, `--init-from`); the
   user's hour `t3b-1` (evaluation 21.4 %, the agent at the bots' level, stalling: AI-Q9).
-  **Increment 3 refined** (AI-Q9 answered): T4a done (the league, `h3env.train.league`;
+  **Increment 3 refined** (AI-Q9 answered): T4a done (#342, open: the league, `h3env.train.league`;
   checkpoint format 3, record schema 5), then T4b (the user's two league runs of 60 M samples,
   `configs/e06-t4.toml` at γ 0.995 and 1.0).
 - **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v31 (E06 T2c: the record's identity, N capped) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q10, AI-QUIRK-1, AI-STUB-1.
