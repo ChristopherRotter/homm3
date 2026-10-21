@@ -52,7 +52,7 @@ pub enum Unsupported {
     /// entrance, an "H3M format quirk").
     HeroInTown(usize),
     /// The monster at this index holds an artifact in its treasure (artifacts on the map:
-    /// increment 4, E08 decision 22). Its static layer keeps it without the artifact.
+    /// increment 5's sketch, E08 decisions 22 and 48). Its static layer keeps it without the artifact.
     MonsterArtifact(usize),
 }
 
