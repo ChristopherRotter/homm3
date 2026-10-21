@@ -1,0 +1,252 @@
+# Experiment batch E4c (E08 T32a; decision 67): decision 45's four rows of increment 4's batch
+# (survey docs/rules/surveys/E08-progression.md §7, E4-7 to E4-10), which check increment 3's
+# rules, in SoD on Easy, hot seat. Rows E4-1 to E4-5: batch E4a; E4-6: batch E4b. Build:
+# docs/experiments/README.md.
+#
+# | row   | settles                                 | the reading (the engine)          | VCMI 1.7.5 / other    |
+# | E4-7  | the topmost of two grounds (ADV-GRD-001) | the last in map order             | VCMI: the first        |
+# | E4-8  | a full army's raised Skeletons          | (2c + 2) / 3 Skeleton Warriors     | VCMI: c (by hit points) |
+# | E4-9  | HER-WAR-002: a destroyed Ballista       | its artifact taken (VCMI's rule)  | kept                   |
+# | E4-10 | an attack on a hero on a Cartographer   | from above: a battle (ADV-OBJ-004) | no step, no battle     |
+#
+# E4-9 needs Blue's army commanded in the battle (hot seat: both players human); the other
+# battles are played by auto combat. The trap of the starting bonus: a worn artifact changes
+# E4-9's artifacts (note it under "anything odd").
+
+[map]
+name = "E08 batch E4c"
+description = "Engine-generated experiment map (E08, batch E4c): two grounds on one tile, a full army's Necromancy, a destroyed Ballista, an attack on a hero on a Cartographer. Hot seat, Red and Blue human, difficulty Easy; follow the results template."
+size = 36
+terrain = "grass"
+difficulty = "easy"
+instructions = [
+    "Copy `E08-batch-4c.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human, difficulty **Easy**. Before you start it, compare the stamp at the start of the map's description with the stamp above. Save right away (save 1).",
+    "The battlefield and the heroes' artifacts show in the game's memory (the capture harness reads them: clients/capture/batches/E08-batch-4c.toml); by hand, the battle screen's background and the hero's window.",
+    "Order: day 1, Red's turn: E4-7a, E4-7b, E4-8, E4-9; end the turn. Blue's turn: E4-10's Blue hero; end the turn. Day 2, Red's turn: E4-10. Then the map is done.",
+    "A level-up dialog after a battle: answer left.",
+    "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
+]
+
+# E4-7: two pairs of grounds, each 6 x 4 to the left of and above its anchor; E4-7a's monster
+# (10, 6) lies under both of the first pair, E4-7b's (22, 6) under both of the second, listed the
+# other way round. The grounds are written in this order: the last of a pair is the topmost.
+[[map.ground]]
+picture = "AVXcf0"
+at = [12, 7]
+
+[[map.ground]]
+picture = "AVXef0"
+at = [14, 8]
+
+[[map.ground]]
+picture = "AVXef0"
+at = [24, 7]
+
+[[map.ground]]
+picture = "AVXcf0"
+at = [26, 8]
+
+# E4-10: a row of water at row 18 but for the land Cartographer (its entrance (18, 18), its
+# anchor (19, 18)): above it Red's E4-10 on (18, 17), below it Blue's on (18, 20). The only way
+# between the two halves is through the entrance.
+[[map.patch]]
+terrain = "water"
+from = [0, 18]
+to = [17, 18]
+
+[[map.patch]]
+terrain = "water"
+from = [20, 18]
+to = [35, 18]
+
+[[map.object]]
+picture = "AVXmaps0"
+at = [19, 18]
+
+# --- ADV-GRD-001: the topmost of two grounds -----------------------------------------------------
+
+[[encounter]]
+id = "E4-7a"
+title = "A monster under a Clover Field and an Evil Fog (the Evil Fog written last)"
+questions = ["ADV-GRD-001", "decision 45"]
+procedure = [
+    "Day 1, Red's turn: click the Pikeman east of E4-7a twice; note the battlefield (the harness reads it; by hand, the battle screen's background) and win by auto combat.",
+]
+record = [
+    { field = "the battlefield" },
+    { field = "the battle's winner" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The reading** (0x505230: the topmost ground, the last in map order; the engine's
+  ADV-GRD-001): the monster's tile (10, 6) lies under the Clover Field (written first) and the
+  Evil Fog (written second): the battle is fought on **Evil Fog** (the battlefield is the
+  defender's tile, E04c batch 3b). **VCMI 1.7.5** (the first special ground covering the tile):
+  **Clover Field**. The battlefield's terrain stays grass either way.
+"""
+[encounter.hero]
+type = "Edric"
+specialty = "creature Griffin"
+at = [9, 6]
+primary = [2, 2, 1, 1]
+army = [["Archangel", 2]]
+[encounter.opponent]
+monster = "Pikeman"
+count = 1
+
+[[encounter]]
+id = "E4-7b"
+title = "A monster under an Evil Fog and a Clover Field (the Clover Field written last)"
+questions = ["ADV-GRD-001", "decision 45"]
+procedure = [
+    "Day 1, Red's turn, after E4-7a: as E4-7a, with the Pikeman east of E4-7b.",
+]
+record = [
+    { field = "the battlefield" },
+    { field = "the battle's winner" },
+    { field = "anything odd" },
+]
+predictions = """
+- The other order: the Evil Fog first, the Clover Field second. **The reading**: **Clover
+  Field**; **VCMI 1.7.5**: **Evil Fog**. With E4-7a, a field by its class (one field always
+  winning) shows as the same field in both.
+"""
+[encounter.hero]
+type = "Sylvia"
+specialty = "skill Navigation"
+at = [21, 6]
+primary = [2, 2, 1, 1]
+army = [["Archangel", 2]]
+[encounter.opponent]
+monster = "Pikeman"
+count = 1
+
+# --- decision 45: a full army's raised Skeletons -------------------------------------------------
+
+[[encounter]]
+id = "E4-8"
+title = "A Necromancer with seven stacks, Skeleton Warriors among them, beats 90 Pikemen"
+questions = ["GAM-BAT-006", "HER-NEC-001", "decision 45"]
+procedure = [
+    "Day 1, Red's turn, after E4-7b: note E4-8's army. Click the 90 Pikemen east of it twice; note the stacks at the start; win by auto combat.",
+    "Note the army after, the creatures raised (the message) and the experience.",
+]
+record = [
+    { field = "E4-8's army before" },
+    { field = "the stacks at the start" },
+    { field = "the battle's winner" },
+    { field = "the creatures raised (the message)" },
+    { field = "E4-8's army after" },
+    { field = "E4-8's experience after" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The battle**: the 90 Pikemen (split into stacks by the game, ADV-MON-009) all die; their
+  10 hit points each give **900 experience: level 1, no dialog**.
+- **Raised** (HER-NEC-001: Basic Necromancy, 10 %; GAM-BAT-006 under Q-0005): per stack of n
+  Pikemen killed, trunc(f32(min(10, 6) n) x 0.1 / 6), summed: c. Three stacks of 30 give 9, five
+  of 18 give 5 (the split decides; the scorer computes c from the stacks at the start).
+- **The full army** (seven stacks, Skeleton Warriors among them, no Skeletons): **the reading**
+  (necromancy_add_raised 0x469F20: once the upgrade 0x47B1A0, (2c + 2) / 3 of the first upgrade
+  into its stack; the engine): the Skeleton Warriors grow by **(2c + 2) / 3** (9: 6). **VCMI
+  1.7.5** (any upgrade in the army, by hit points: the Skeleton Warrior's 6 as the Skeleton's):
+  by **c**. Neither adds a stack.
+"""
+[encounter.hero]
+type = "Nagash"
+specialty = "resource gold"
+at = [3, 12]
+primary = [1, 0, 2, 2]
+skills = [["Necromancy", 1]]
+army = [["Skeleton Warrior", 10], ["Zombie", 10], ["Wight", 5], ["Vampire Lord", 4], ["Power Lich", 3], ["Dread Knight", 3], ["Ghost Dragon", 2]]
+[encounter.opponent]
+monster = "Pikeman"
+count = 90
+
+# --- HER-WAR-002: a destroyed Ballista's artifact ------------------------------------------------
+
+[[encounter]]
+id = "E4-9"
+title = "A hero whose Ballista is destroyed wins the battle"
+questions = ["HER-WAR-002", "decision 45"]
+procedure = [
+    "Day 1, Red's turn, after E4-8: note E4-9's artifacts (worn, by slot, and the backpack). Click Blue's hero E4-9b east of it twice: the battle starts at once.",
+    "In the battle: Red's Archangels defend and Blue's Thunderbirds attack Red's Ballista until it is destroyed; then Red's Archangels attack the Thunderbirds until Red wins (Blue's Thunderbirds attack the Archangels).",
+    "After the battle answer the level-up dialogs left; note E4-9's artifacts again.",
+]
+record = [
+    { field = "E4-9's artifacts before (worn, by slot)" },
+    { field = "the Ballista destroyed (yes/no)" },
+    { field = "the battle's winner" },
+    { field = "E4-9's artifacts after (worn, by slot)" },
+    { field = "E4-9's backpack after" },
+    { field = "E4-9's experience after" },
+    { field = "E4-9's level after" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The battle**: Blue's 30 Thunderbirds (60 hit points each, 10 to 20 damage) destroy Red's
+  Ballista (250 hit points) with their first attack; Red's Archangels then win. Red's hero gains
+  the Thunderbirds' 1 800 hit points and 500 for the defeated hero: **2 300, level 3: two
+  dialogs** (answer left). Blue's hero leaves the map.
+- **HER-WAR-002** (VCMI 1.7.5's rule, the engine's; the original's place was not read): the
+  destroyed Ballista takes its artifact: **war machine 1 empty** after the battle (the Catapult
+  stays). **The alternative**: the Ballista artifact stays (the machine back for the next battle).
+"""
+[encounter.hero]
+type = "Orrin"
+specialty = "skill Archery"
+at = [9, 12]
+primary = [0, 0, 1, 1]
+army = [["Archangel", 10]]
+artifacts = { "war machine 1" = "Ballista" }
+[encounter.opponent.hero]
+type = "Valeska"
+specialty = "creature Archer"
+name = "E4-9b"
+primary = [0, 0, 1, 1]
+army = [["Thunderbird", 30]]
+
+# --- decision 45: an attack on a hero on an object not visited from above ------------------------
+
+[[encounter]]
+id = "E4-10"
+title = "Red attacks Blue's hero on a Cartographer from the tile above"
+questions = ["ADV-OBJ-004", "GAM-BAT-001", "decision 45"]
+procedure = [
+    "Day 1, Blue's turn: move E4-10b (on (18, 20)) north twice, onto the Cartographer's entrance (18, 18); answer the Cartographer's offer **no**. End the turn.",
+    "Day 2, Red's turn: E4-10 stands on (18, 17), directly above Blue's hero. Click Blue's hero twice. Note whether a battle starts and where E4-10 stands; a battle by auto combat.",
+]
+record = [
+    { field = "E4-10b's tile after day 1" },
+    { field = "the Cartographer's question asked (yes/no)" },
+    { field = "a battle (yes/no)" },
+    { field = "E4-10's tile after the click" },
+    { field = "the battle's winner" },
+    { field = "anything odd" },
+]
+predictions = """
+- **Day 1, Blue**: E4-10b steps from (18, 20) to (18, 19), then onto the Cartographer's entrance
+  (18, 18) from below (allowed: ADV-OBJ-004 closes only the three tiles above). The Cartographer
+  asks for 1 000 gold (ADV-VIS-001): **answer no**; E4-10b stays on the entrance.
+- **Day 2, Red**: E4-10 on (18, 17), directly above the entrance, clicks Blue's hero. The water
+  row leaves no other way to it. **The engine** (the step at a hero is a visit of the hero; ADV-OBJ-004
+  checks only leaving the visitor's tile; E08 T19a1): **a battle**. **The other outcome** (the
+  Cartographer's tile is not entered from above, whoever stands on it): no path, no battle,
+  E4-10 stays on (18, 17). The battle itself is played by auto combat (Red's Archangels win).
+"""
+[encounter.hero]
+type = "Sorsha"
+specialty = "creature Swordsman"
+at = [18, 17]
+primary = [2, 2, 1, 1]
+army = [["Archangel", 5]]
+[encounter.opponent.hero]
+type = "Tyris"
+specialty = "creature Cavalier"
+name = "E4-10b"
+at = [18, 20]
+primary = [2, 2, 1, 1]
+army = [["Pikeman", 1]]
