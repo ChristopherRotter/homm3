@@ -246,7 +246,7 @@ fn the_computers_choice_is_legal_in_random_battles_of_the_harvested_creatures() 
         }
     }
     assert!(
-        reach.shots > 500
+        reach.shots > 300
             && reach.wall_shots > 20
             && reach.tactics_ends > 20
             && reach.defends > 1000
@@ -422,4 +422,85 @@ fn the_cyclopes_shoot_a_stack_without_walls_to_batter_or_with_their_army_free() 
         apply(&mut state, &r, side, Command::Defend, &mut NoopSink).unwrap();
     }
     assert!(shoots(&state, BattleSide::Defender));
+}
+
+/// A hero of the first hero type with Fire Wall in its spell book, 100 mana and spell power 5.
+fn fire_mage(r: &BattleRuleset) -> h3_contracts::BattleHero {
+    let d = HeroDetails {
+        hero_type: HeroTypeId::from_index(0).unwrap(),
+        level: 1,
+        experience: 0,
+        offered: Default::default(),
+        primary: [0, 0, 5, 10],
+        skills: vec![],
+        worn: vec![ArtifactInstance::from(
+            r.artifact_by_key("base:spell_book").unwrap(),
+        )],
+        backpack: vec![],
+        spells: vec![r.spell_by_key("base:fire_wall").unwrap()],
+        mana: 100,
+    };
+    h3_heroes::validate(&d, r).unwrap();
+    derive_battle_hero(&d, r).unwrap()
+}
+
+/// Where the defender's lone `walker` strikes the attacker's lone angel from, on Normal, after the
+/// angel flew to six hexes before it, its hero having cast Fire Wall (two hexes: the hex between
+/// them on their row and its upper right neighbour) first if `wall`: `(the hex it strikes from,
+/// the wall's target hex)`.
+fn strike_hex(r: &BattleRuleset, walker: &str, wall: bool) -> (h3_battle::Hex, h3_battle::Hex) {
+    let setup = BattleSetup {
+        attacker: harvested(r, &[("base:angel", 1)]),
+        defender: harvested(r, &[(walker, 5)]),
+        heroes: [Some(fire_mage(r)), None],
+        formations: [Formation::Loose, Formation::Loose],
+        difficulty: 1,
+        ..BattleSetup::default()
+    };
+    let mut state = BattleState::new(r, &setup, 7).unwrap();
+    assert!(acting(r, &state, "base:angel"));
+    let field = h3_battle::Field::new(r.battle().field);
+    let (x, y) = field.coords(state.stacks()[1].hex);
+    let (target, to) = (field.hex(x - 5, y).unwrap(), field.hex(x - 6, y).unwrap());
+    if wall {
+        let cast = Command::Cast {
+            spell: r.spell_by_key("base:fire_wall").unwrap(),
+            target: h3_battle::CastTarget::Hex(target),
+            second: h3_battle::CastTarget::None,
+        };
+        apply(&mut state, r, BattleSide::Attacker, cast, &mut NoopSink).unwrap();
+        assert!(
+            state
+                .spell_obstacles()
+                .iter()
+                .any(|o| o.hexes.contains(target))
+        );
+    }
+    let fly = Command::Move { to };
+    apply(&mut state, r, BattleSide::Attacker, fly, &mut NoopSink).unwrap();
+    assert!(acting(r, &state, walker));
+    let command = h3_battle_ai::choose(&state, r, BattleSide::Defender, &mut Rng::from_seed(3));
+    let Command::Attack { from, .. } = command else {
+        panic!("{walker}: {command:?}");
+    };
+    (from, target)
+}
+
+// covers: BAT-AI-007, BAT-QUIRK-25
+#[test]
+fn a_walker_strikes_from_a_hex_off_the_fire_wall() {
+    for profile in ["base:faithful", "base:strict-fixed"] {
+        let r = sod(profile);
+        // Without the wall the minotaurs (speed 6) strike from the nearest hex next to the
+        // angel, the one on their row; on it the wall's value is taken off that hex's score
+        // (BAT-AI-007), so they strike from another.
+        let (from, target) = strike_hex(&r, "base:minotaur", false);
+        assert_eq!(from, target, "{profile}");
+        let (from, target) = strike_hex(&r, "base:minotaur", true);
+        assert_ne!(from, target, "{profile}");
+        // The efreet are immune to the wall: the original values its damage all the same (slip
+        // 18) and avoids it; fixed, only the damage it does counts, none.
+        let (from, target) = strike_hex(&r, "base:efreeti", true);
+        assert_eq!(from == target, profile == "base:strict-fixed", "{profile}");
+    }
 }

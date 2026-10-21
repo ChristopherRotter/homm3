@@ -42,7 +42,7 @@ impl Shape {
     }
 
     /// Whether it faces right (the original's facing 1).
-    fn faces_right(self) -> bool {
+    pub(crate) fn faces_right(self) -> bool {
         self.side == BattleSide::Attacker
     }
 
@@ -77,16 +77,27 @@ pub(crate) fn neighbor(field: Field, shape: Shape, hex: Hex, d: u8) -> Option<He
 /// The neighbour of a stack of `shape` at the position `pos` in direction `d` (0x523DF0): a
 /// two-hex stack's directions 0 to 2 and 6, 7 from its right hex, 3 to 5 from its left hex.
 pub(crate) fn stack_neighbor(field: Field, shape: Shape, pos: Hex, d: u8) -> Option<Hex> {
+    stack_neighbor_at(field, shape, i32::from(pos.0), d)
+}
+
+/// [`stack_neighbor`] at any hex index `hex` (0x523DF0 takes a hex number, not a position: the
+/// hex scores ask it one hex beside a stack, 0x41FEF8): a two-hex stack's other hex is the index
+/// ± 1 by its facing, as the original's arithmetic gives it (beyond a row's end the next row's
+/// first hex); `None` for an index off the field.
+pub(crate) fn stack_neighbor_at(field: Field, shape: Shape, hex: i32, d: u8) -> Option<Hex> {
     let from = match (shape.two_hex, shape.faces_right()) {
-        (true, true) if d <= 2 || d >= 6 => shape.other(field, pos),
-        (true, false) if d >= 3 => shape.other(field, pos),
-        _ => pos,
+        (true, true) if d <= 2 || d >= 6 => hex + 1,
+        (true, false) if d >= 3 => hex - 1,
+        _ => hex,
     };
-    neighbor(field, shape, from, d)
+    u8::try_from(from)
+        .ok()
+        .filter(|&h| usize::from(h) < field.hex_count())
+        .and_then(|h| neighbor(field, shape, Hex(h), d))
 }
 
 /// How many directions a stack of `shape` has (six, eight for a two-hex one).
-const fn directions(shape: Shape) -> u8 {
+pub(crate) const fn directions(shape: Shape) -> u8 {
     if shape.two_hex { 8 } else { 6 }
 }
 
