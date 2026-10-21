@@ -56,7 +56,7 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
-- **2026-10-21, E17 M3 T7b-1 (a hero's cast on one stack; PR PRNUM).** T7b split with the
+- **2026-10-21, E17 M3 T7b-1 (a hero's cast on one stack; #361, open).** T7b split with the
   user; `cast`, `resist`, `arrow` played as recorded, their frames exact but the spell tint (T7b-2).
 - **2026-10-21, E17 M3 T8 (the battle's end tune; #356, merged).** `end` recorded; its tune.
 - **2026-10-21, E17 M3 T7a-2b (#355, merged).** Seven casts sequences recorded (`casts.toml`).
