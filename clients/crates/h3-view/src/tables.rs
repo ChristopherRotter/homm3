@@ -134,8 +134,8 @@ pub struct Hero {
     pub cast_frames: u8,
 }
 
-/// A spell's sound and magic animation (`spell_table` 0x685450, its records' +4 and +8; E17 M3
-/// T7b-1, design §7.16): what a cast plays over its target when the spell's handler plays the
+/// A spell's sign, sound and magic animation (`spell_table` 0x685450, its records' +0, +4 and +8;
+/// E17 M3 T7b-1, T7b-2a, design §7.16): what a cast plays over its target when the spell's handler plays the
 /// record's animation.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -152,8 +152,12 @@ pub struct Spell {
     /// none).
     #[serde(default)]
     pub sound: Option<String>,
+    /// Its sign, the record's +0: 1 positive, −1 negative, 0 neither (the count box's tint sums
+    /// the signs of a stack's spells, 0x43E6C7; E17 M3 T7b-2a, design §4.3).
+    #[serde(default)]
+    pub sign: i8,
     /// The DEFs of its projectile, if its handler flies one (`spell_projectile` 0x467DB0: Magic
-    /// Arrow's, Ice Bolt's), from the level one to the one pointing down.
+    /// Arrow's, Ice Bolt's, Disrupting Ray's one), from the level one to the one pointing down.
     #[serde(default)]
     pub projectile: Vec<String>,
     /// Each projectile DEF's angle in degrees (0 level, negative down).

@@ -1,11 +1,13 @@
 # The recorded sequences (E17 M2 T3, *provisional*; clients/capture/README.md, "Sequences"): each
 # runs its scenario's battle in the original (its map from `h3-view situation`), steps the clock
-# `pre` ms after the opening, performs its actions at the frozen clock (`hex:<n>` clicks a hex)
-# and steps 1 ms at a time for `ms` ms, reading the stacks' animation state from the game's
-# memory (h3mem.py). `timeline` holds what it recorded: one line per change of a stack's group,
-# frame or hex, `<ms after the opening> <side>.<record> g<group> f<frame> h<hex>`, numbers only
-# (ADR-0009). Inside an animation a change at t is the frame the game drew at t, shown from the
-# next frame deadline; a change by the idle step (a fidget) shows at t (design §7.1).
+# `pre` ms after the opening, performs its actions at the frozen clock (`hex:<n>` clicks a hex;
+# `roll:<name>` and the key `fail`, E17 M3 T7b-2b-1: the original's forced rolls, the runbook's
+# "Forced rolls") and steps 1 ms at a time for `ms` ms, reading the stacks' animation state from
+# the game's memory (h3mem.py). `timeline` holds what it recorded: one line per change of a
+# stack's group, frame or hex, `<ms after the opening> <side>.<record> g<group> f<frame> h<hex>`,
+# numbers only (ADR-0009). Inside an animation a change at t is the frame the game drew at t,
+# shown from the next frame deadline; a change by the idle step (a fidget) shows at t (design
+# §7.1).
 # `h3drive.py sequences` fails when a timeline changes. The timings these confirm:
 # docs/epics/E17-design.md §7. `[[sequence.command]]` (E17 M2 T4a): the engine's commands for what
 # the actions did in the original, each a seat and a wire command (stack ids: the attacker's
@@ -313,4 +315,64 @@ command = [
     { seat = "Defender", at = 7951, command = { Defend = {} } },
     { seat = "Defender", at = 7951, command = { Defend = {} } },
     { seat = "Attacker", at = 7951, command = { Cast = { spell = 15, target = { Stack = { stack = 4 } }, second = { None = {} } } } },
+]
+
+# E17 M3 T7b-2a (recorded in `casts.toml`): Haste and Slow's walk time (design §7.3, §7.16) and
+# the count box's tint by its stack's spells (§4.3): Orrin hastes the Pikemen (round 1), they
+# walk two hexes hasted (round 2), Crag Hack slows them (Slow ends Haste) and they walk two hexes
+# slowed (round 3); the Vampire Lords defend.
+[[sequence]]
+id = "haste"
+scenario = "seq-haste.toml"
+hot_seat = true
+actions = [
+    "turn:1.0", "key:d", "turn:0.0", "cast:0:86", "key:d",
+    "turn:1.0", "key:d", "turn:0.0", "hex:88",
+    "turn:1.0", "cast:0:88", "key:d", "turn:0.0", "hex:90",
+]
+ms = 3000
+heroes = true
+timeline = "timelines/haste.txt"
+frames = "timelines/haste-frames.txt"
+boxes = true
+command = [
+    { seat = "Defender", at = 0, command = { Defend = {} } },
+    { seat = "Attacker", at = 0, command = { Cast = { spell = 53, target = { Stack = { stack = 0 } }, second = { None = {} } } } },
+    { seat = "Attacker", at = 2400, command = { Defend = {} } },
+    { seat = "Defender", at = 2400, command = { Defend = {} } },
+    { seat = "Attacker", at = 2400, command = { Move = { to = 88 } } },
+    { seat = "Defender", at = 3244, command = { Cast = { spell = 54, target = { Stack = { stack = 0 } }, second = { None = {} } } } },
+    { seat = "Defender", at = 6144, command = { Defend = {} } },
+    { seat = "Attacker", at = 6144, command = { Move = { to = 90 } } },
+]
+
+# E17 M3 T7b-2a (recorded in `casts.toml`): Disrupting Ray, Cure and Dispel on one stack (design
+# §7.16, players 1 and 7) and the count boxes' tints (§4.3): Crag Hack slows the Pikemen and
+# Orrin's Disrupting Ray flies at the Vampire Lords (round 1), Orrin cures the Pikemen (round 2),
+# Crag Hack slows them again and Orrin dispels them (round 3); the stacks defend.
+[[sequence]]
+id = "dispel"
+scenario = "seq-dispel.toml"
+hot_seat = true
+actions = [
+    "turn:1.0", "cast:0:86", "key:d", "turn:0.0", "cast:2:100", "key:d",
+    "turn:1.0", "key:d", "turn:0.0", "cast:0:86", "key:d",
+    "turn:1.0", "cast:0:86", "key:d", "turn:0.0", "cast:1:86",
+]
+ms = 2500
+heroes = true
+timeline = "timelines/dispel.txt"
+frames = "timelines/dispel-frames.txt"
+boxes = true
+command = [
+    { seat = "Defender", at = 0, command = { Cast = { spell = 54, target = { Stack = { stack = 0 } }, second = { None = {} } } } },
+    { seat = "Defender", at = 2900, command = { Defend = {} } },
+    { seat = "Attacker", at = 2900, command = { Cast = { spell = 47, target = { Stack = { stack = 1 } }, second = { None = {} } } } },
+    { seat = "Attacker", at = 5926, command = { Defend = {} } },
+    { seat = "Defender", at = 5926, command = { Defend = {} } },
+    { seat = "Attacker", at = 5926, command = { Cast = { spell = 37, target = { Stack = { stack = 0 } }, second = { None = {} } } } },
+    { seat = "Attacker", at = 8326, command = { Defend = {} } },
+    { seat = "Defender", at = 8326, command = { Cast = { spell = 54, target = { Stack = { stack = 0 } }, second = { None = {} } } } },
+    { seat = "Defender", at = 11226, command = { Defend = {} } },
+    { seat = "Attacker", at = 11226, command = { Cast = { spell = 35, target = { Stack = { stack = 0 } }, second = { None = {} } } } },
 ]

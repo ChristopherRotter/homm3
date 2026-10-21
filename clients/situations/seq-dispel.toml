@@ -1,0 +1,54 @@
+# E17 M3 T7b-2a: the other hero spells on one stack (casts.toml's `dispel`; design §7.16, players
+# 1 and 7): round 1 Crag Hack slows the Pikemen (hex 86; his place 0, Slow alone) and the Vampire
+# Lords (speed 9) defend, then Orrin's Disrupting Ray at the Vampire Lords (hex 100; his place 2:
+# its projectile `c07spA0`, then animation 14 over them) and the Pikemen defend; round 2 Orrin's
+# Cure on the Pikemen (place 0: it ends Slow, then animation 39); round 3 Crag Hack slows the
+# Pikemen again and Orrin dispels them (place 1: animation 41 before its effect). Orrin's book
+# by level, then school, then name: Cure and Dispel (water, level 1), Disrupting Ray (air, level 2).
+# The count boxes' tints by the stacks' spells (§4.3). Hot seat; on grass at the capture set's
+# tile (grass.toml's obstacles).
+
+[scenario]
+id = "sequence-dispel"
+# Both players human, as the original's hot-seat map (`h3-view situation --hot-seat`).
+human = ["attacker", "defender"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:pikeman"
+count = 10
+
+[[defender]]
+slot = 0
+creature = "base:vampire_lord"
+count = 5
+
+# The heroes (E17 M3 T3a) with 1 in attack and defense and 3 in power (Slow lasts three rounds):
+# Orrin 30 spell points (Disrupting Ray 10, Cure 6, Dispel 5), Crag Hack 20 (Slow twice, 6 each).
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 3
+knowledge = 3
+mana = 30
+max_mana = 30
+spell_book = ["base:cure", "base:dispel", "base:disrupting_ray"]
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 3
+knowledge = 2
+mana = 20
+max_mana = 20
+spell_book = ["base:slow"]

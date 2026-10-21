@@ -1716,6 +1716,83 @@ linked for the staging only (all files staged once, the session then ran in the 
   `play` on the three records: the cues' sounds named. The viewer's tests (100 % of the library),
   `cargo fmt`, clippy; `scripts/exe.py check` and `cited`.
 
+### M3 T7b-2a — The count box's tint, Haste and Slow's walk, Dispel, Cure, Disrupting Ray (2026-10-21)
+
+On `client/e17-m3-t7b-2a`, the user present at the start: T7b-2 split with the user (T7b-2a the
+parts without the original's rolls; morale, luck and the creatures' rolled animations T7b-2b).
+The user's computer was linked for the staging only.
+
+- **Starting point:** `master` at `a6b6c55` (#361 merged); no client pull request open; the
+  client gates on that code verified once (`verify-once clients`: the light gates).
+- **The reading** (design §4.3, §7.16 "Read at T7b-2a"; one map entry, `count_box_spell_hue`
+  0x43E6AA): the box's hue r = Σ k / Σ |k| over the stack's active spells, k the spell record's +0
+  (polarity), at the x87's 53 bits; Dispel's, Cure's and Disrupting Ray's handlers (the order of
+  animation, effect and line; Disrupting Ray's projectile, its defense taken, GENRLTXT 92); Haste
+  and Slow's W (0x444CE5, 0x444D3A: integer W0 × 65 / 100, W0 × 3 / 2 exactly).
+- **Harvested:** `[[spell]]`'s `sign` (the record's +0) and Disrupting Ray's one-DEF projectile;
+  every earlier line as it was. The catalogue: `battle.log.disrupted`.
+- **The viewer:** `scene::spell_hue` (exact in integers; checked against the executable's
+  arithmetic run in floats for all 6 722 sums of up to 81 signs), `Moment::hues`, the box's tint
+  by them; `anim`'s `TintKey`, `Timeline::hues`, a stack's active spells from the snapshot and the
+  effects at the handler's point, `walk_time`, Dispel, Cure and Disrupting Ray in `Player::cast`
+  (`SpellLook::original`, `sign`, `value`), a stack's defense lowered by Disrupting Ray
+  (`Logged::Disrupted`; `Logged::Defend` carries the defense); `motion::casts` compiles the
+  record's ruleset (`--packs`) for a spell's value at the caster's mastery.
+- **Recorded** (`casts.toml`'s way, `h3drive.py sequences`; hot seat, Pikemen against Vampire
+  Lords): `haste` (175 changes with the screens, about 9 minutes) and `dispel` (289, about 11).
+  Both moved into `sequences.toml` with their commands: their timelines as recorded on the first
+  run (84 and 136 changes); every other sequence as recorded.
+- **Checked:** captured (`frames --only`, count boxes compared): `cast` 36 frames, all exact but
+  0 (its 71 pixels, listed at T7b-1), the box's tint from 600 exact; `resist` 61 frames, all
+  exact (the tint's end at 2 900 found by the frame check: a round's start ends Slow and the next
+  turn's start redraws the box, so the hues a round's start changes show at the turn's start);
+  `haste` 91 frames and `dispel` 153 frames, all exact (both heroes' casts, the walks, the
+  projectile and animation 14 from its third frame, Disrupting Ray's line, the Vampire Lords'
+  defend gaining 1 of their 7 since, Cure's and Dispel's lines after their animations, the
+  tints). `drawn`: the four listed, then `drawn --record` (74). The viewer's tests, the full
+  `clients/scripts/check.sh` (all gates, the library at 100 %); `scripts/exe.py check` and
+  `cited`.
+
+### M3 T7b-2b-1 — The harness forces the original's rolls (2026-10-21)
+
+On `client/e17-m3-t7b-2b-1`, the user present at the start: T7b-2b split with the user, who asked
+first for a way to reproduce the rolled effects reliably (the generator's state in the running
+game's memory, altered: feasible?), then morale, luck and fear (fear added at the user's word,
+T7b-2b-2) and the creatures' rolled animations (T7b-2b-3). The user's computer was linked for the
+staging only (24 files, every hash the user's).
+
+- **Starting point:** `master` at `8519f7a` (#363 merged); no client pull request open; the
+  client gates' full check on that code (`verify-once clients`: all gates).
+- **The reading** (`docs/exe/map.toml`, nine `*_draw` sites): every roll T7b-2b needs is one call
+  of `random_between` 0x50B230 (`a + rand() mod (b − a + 1)`, fastcall) or of the C library's
+  `rand` 0x617E5C: good morale `random(1, 24) <= morale` (0x4649D3), bad morale
+  `random(1, 12) <= -morale` (0x464BC7; a computer side's let-off draw 0x464BF0 after it), fear
+  `rand() mod 10 = 0` (0x464DF1), luck `random(1, 24) <= luck` as a melee strike starts
+  (0x441837) and for a shot (0x43F955), Death Stare `random(1, 100) <= 10` per Mighty Gorgon
+  (0x440EE0), the Thunderbird's bolt and the Rust Dragon's acid `<= 20` (0x44119D, 0x4414B7),
+  Poison `<= 30` (0x440839). Acid Breath's lowered defense and Life Drain draw nothing. Both
+  morale draws are made for every stack asked, whatever its morale.
+- **Why not the generator's state:** `rand` keeps its seed per thread (+0x14 of the C library's
+  thread data), and the draws before a roll vary (one per creature of a damage roll, the fidget
+  clocks after every action, the cosmetic draws of the idle step), so no state written at a step
+  aims at one roll. Redirecting the roll's call does, and leaves the sequence of draws as it was.
+- **The harness** (the runbook's "Forced rolls"): `xdd.dll` redirects the nine calls at its load
+  (each only if its bytes are the call named) to `forced_between` or `forced_rand`, which draw
+  as the call would and return a forced draw where the harness asks (`ctl`: `roll <name> <value>
+  <count>`, `rolls <name> <value>|natural`; `ack` adds the draws forced, those pending, the calls
+  redirected). `h3drive.py`: `ROLLS` (each roll's falling and failing draw), the action
+  `roll:<name>[:fail]`, a sequence's `fail` (`--fail`); a sequence fails when fewer calls were
+  redirected or a forced draw stayed untaken. `sequences` drops a recorded timeline's `screen`
+  lines for an entry that does not record them (`resist` was `CHANGED` for them alone). The
+  viewer's mouse takes `roll:` as no input (`pointer::inputs`).
+- **Checked:** in the original, the Champions' walk (`seq-walk.toml`, morale 1 by one town) with
+  `roll:good_morale` and `fail = good_morale`: active again at 2 592 ms, animation 20 over them
+  at 100 ms a frame; with `fail` alone the Marksmen's turn at 2 592 ms. An Azure Dragon against
+  them (an ad-hoc scenario): `roll:fear` played animation 15 over the Champions at 5 400 ms and
+  skipped their turn, failed they took it. Every run's `ack`: 9 calls redirected, none pending.
+  `walk`, `strike`, `shot` and `resist` replayed with the redirected calls: all as recorded.
+  `scripts/exe.py check` and `cited`; the client gates (`clients/scripts/check.sh`).
+
 ## Accepted review lists (M1, M2)
 
 Moved from the epic file on 2026-10-20 (less start-up reading), unchanged.

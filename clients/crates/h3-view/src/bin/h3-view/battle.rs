@@ -136,7 +136,7 @@ impl Battle {
         let parsed = parse(&archives)?;
         let looks = motion::looks(&record, &tables, &parsed)?;
         let magic = motion::magic(&record, &tables, &parsed)?;
-        let casts = motion::casts(&record, &tables, &parsed)?;
+        let casts = motion::casts(&record, &tables, &parsed, &source.packs)?;
         let stage = motion::stage(&record, &tables, &layout, (&magic, &casts));
         let commands = anim::commands(&record.messages);
         // The viewer's own fidgets, from the battle's seed (`h3_view::anim::Fidgets`).

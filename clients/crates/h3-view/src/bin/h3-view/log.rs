@@ -72,7 +72,6 @@ pub fn texts(
         Some(Named {
             creature: format!("creature.{key}"),
             war_machine: s.war_machine,
-            defense: s.defense,
         })
     };
     // A spell's and a side's hero's keys (E17 M3 T7b-1).

@@ -1,20 +1,26 @@
 //! The computer's numbers the walker's hex scores read (E23 T3b, BAT-AI-007; `docs/formats/
 //! installation.md` §7.36): an enemy's reach with its speed + 1 (0x420260's map), a Fire Wall's
 //! damage, a damaging moat, and the enemy hero's best area spell (0x41F920), on the test
-//! ruleset. The policy's use of them: `h3-battle-ai`'s tests and the harvested
-//! `harvested_computer.rs`.
+//! ruleset; the creature casts' (E23 T4a, BAT-AI-012, BAT-AI-013; §7.43): a damage spell's
+//! value on a stack (0x436E30), the raise's count and a raised creature's worth, the estimated
+//! chain and area, the casts' battlefield. The policy's use of them: `h3-battle-ai`'s tests and
+//! the harvested `harvested_computer.rs` and `harvested_computer_casts.rs`.
 
 use std::vec;
 use std::vec::Vec;
 
 use h3_content::SpellId;
 use h3_content_battle::{BattleRuleset, ObstacleKind, SpellAi, SpellAiKind, SpellAiKinds};
-use h3_contracts::{BattleEffect, BattleHero, BattleSetup, BattleSide, FortLevel, Moat, Siege};
+use h3_contracts::{
+    BattleEffect, BattleHero, BattleSetup, BattleSide, FortLevel, Moat, Rate, Siege,
+};
 
-use super::spells::{arena, mage, spell};
+use super::spells::{arena, arena_on, mage, spell};
 use super::support::*;
 use crate::geometry::{Field, Hex};
-use crate::{BattleState, Event, StackId, computer};
+use crate::{
+    BattleState, CastSpell, CastTarget, Command, Event, EventKind, StackId, Status, computer,
+};
 
 /// Places `side`'s obstacles of `kind` (the spell `name`'s) on `cells` with `value`, as a cast
 /// would (test setup).
@@ -409,4 +415,239 @@ fn a_turns_map_reaches_within_the_speed() {
     assert_eq!(map.mark(at(&r, 14, 5)), None);
     assert!(!computer::kept_out(&s, &r, StackId(0)));
     assert!(computer::siege(&s).is_none());
+}
+
+/// The test ruleset with a Fight Value of 100 for every creature (the computer's worth; the test
+/// creatures have none).
+fn fighting() -> BattleRuleset {
+    ruleset_from(
+        "t:faithful",
+        |_| {},
+        |core, _| {
+            for def in &mut core.creatures {
+                def.info.fight_value = 100;
+            }
+        },
+    )
+}
+
+// covers: BAT-AI-013
+#[test]
+fn the_computers_value_of_a_spells_damage_on_a_stack() {
+    let r = fighting();
+    let bolt = spell(&r, "bolt");
+    // The attacker's mage against five `fixed` (10 hit points each) and a troglo, immune to the
+    // bolt.
+    let mut s = arena(
+        &r,
+        [Some(mage(&r, &["bolt"])), None],
+        &[("fixed", 1, 2, 5)],
+        &[("fixed", 5, 10, 5), ("troglo", 1, 10, 3)],
+        1,
+    );
+    let ctx = computer::context(&s, &r, BattleSide::Attacker);
+    let value = |s: &BattleState, damage, bonuses, id| {
+        computer::spell_damage_value(s, &r, &ctx, (bolt, damage), bonuses, StackId(id))
+    };
+    let kills = |s: &BattleState, damage| {
+        computer::damage_value(s, &r, &ctx, (StackId(1), damage), (false, false))
+    };
+    // 30 kills three of the five: their value; 100 is capped at their 50 hit points.
+    assert!(kills(&s, 30) > 0);
+    assert_eq!(value(&s, 30, false, 1), kills(&s, 30));
+    assert_eq!(value(&s, 100, false, 1), kills(&s, 50));
+    // The immune troglo: the effect test's factor 0, nothing; a spell the ruleset lacks, nothing.
+    assert_eq!(value(&s, 30, false, 2), 0);
+    let missing = SpellId::from_index(r.spells().len()).unwrap();
+    assert_eq!(
+        computer::spell_damage_value(&s, &r, &ctx, (missing, 30), false, StackId(1)),
+        0
+    );
+    // The side's hero's bonuses with `bonuses` only: 50 % on every spell makes 20 into 30.
+    s.heroes[0].as_mut().unwrap().magic.bonuses.all = Rate::bp(5000);
+    assert_eq!(value(&s, 20, true, 1), kills(&s, 30));
+    assert_eq!(value(&s, 20, false, 1), kills(&s, 20));
+    // A stack that loses its turns, worth `w`: a value `v` below it is `2v − w`; its whole hit
+    // points are worth `w` itself.
+    let fixed = &mut s.stacks.as_mut_slice()[1];
+    fixed.spells.status = fixed.spells.status.with(Status::NO_TURNS, true);
+    let w = computer::strength(&s, &r, &ctx, StackId(1));
+    assert_eq!(value(&s, 20, false, 1), 2 * kills(&s, 20) - w);
+    assert_eq!(value(&s, 50, false, 1), w);
+    // A dead stack: nothing.
+    s.stacks.as_mut_slice()[1].count = 0;
+    assert_eq!(value(&s, 30, false, 1), 0);
+}
+
+// covers: BAT-AI-012
+#[test]
+fn the_computers_raise_count_and_a_raised_creatures_worth() {
+    let r = fighting();
+    // The defender's three heralds (100 hit points each, an Archangel's), two fiends (50, a Pit
+    // Lord's, raising imps of 10) and eight `fixed` (10 each) that lost five; the attacker's
+    // `fixed` and an imp.
+    let mut s = arena(
+        &r,
+        [None, None],
+        &[("fixed", 1, 2, 5), ("imp", 1, 2, 7)],
+        &[
+            ("herald", 3, 10, 1),
+            ("fiend", 2, 10, 3),
+            ("fixed", 8, 10, 5),
+        ],
+        1,
+    );
+    s.stacks.as_mut_slice()[4].count = 3;
+    let count = |s: &BattleState, caster, target| {
+        computer::raise_count(s, &r, StackId(caster), StackId(target))
+    };
+    // The heralds: min(5 lost, 300 / 10) whole creatures; one herald with seven lost min(7,
+    // 100 / 10).
+    assert_eq!(count(&s, 2, 4), 5);
+    s.stacks.as_mut_slice()[2].count = 1;
+    s.stacks.as_mut_slice()[4].count = 1;
+    assert_eq!(count(&s, 2, 4), 7);
+    // A target of 30 hit points per creature: 100 / 30 = 3 whole ones.
+    s.stacks.as_mut_slice()[4].max_hp = 30;
+    s.stacks.as_mut_slice()[4].top_hp = 30;
+    assert_eq!(count(&s, 2, 4), 3);
+    // The fiends from the dead `fixed`: min(8, min(100, 8 × 30) div 10) = 8; one fiend 5.
+    s.stacks.as_mut_slice()[4].count = 0;
+    assert_eq!(count(&s, 3, 4), 8);
+    s.stacks.as_mut_slice()[3].count = 1;
+    assert_eq!(count(&s, 3, 4), 5);
+    // A stack that raises nothing.
+    assert_eq!(count(&s, 0, 4), 0);
+    // A raised imp is worth what an imp of the side on the field is (the same hero's bonuses);
+    // a creature the battle creates for nobody, nothing.
+    let ctx = computer::context(&s, &r, BattleSide::Attacker);
+    let imp = r.creature_by_key("t:imp").unwrap();
+    let raised = computer::created_worth(&s, &r, &ctx, BattleSide::Attacker, imp);
+    assert!(raised > h3_kernel::arith::X87::ZERO);
+    assert_eq!(raised, computer::worth(&s, &r, &ctx, StackId(1), false));
+    let fixed = r.creature_by_key("t:fixed").unwrap();
+    assert_eq!(
+        computer::created_worth(&s, &r, &ctx, BattleSide::Attacker, fixed),
+        h3_kernel::arith::X87::ZERO
+    );
+}
+
+// covers: BAT-AI-013, BAT-MAG-006, BAT-MAG-007
+#[test]
+fn the_computers_chain_and_area_are_the_rules_without_rolls() {
+    let r = ruleset();
+    let chain = spell(&r, "chain");
+    let nova = spell(&r, "nova");
+    let attacker = &[("fixed", 1, 2, 5)];
+    let defender = &[
+        ("fixed", 9, 10, 5),
+        ("fixed", 9, 11, 3),
+        ("fixed", 9, 12, 7),
+        ("fixed", 9, 14, 5),
+    ];
+    let mut s = arena(
+        &r,
+        [Some(mage(&r, &["chain"])), None],
+        attacker,
+        defender,
+        1,
+    );
+    // The chain at mastery 0 (three stacks) from (10, 5), each next taking half: the stacks and
+    // values the cast strikes.
+    let estimate: Vec<(StackId, u64)> =
+        computer::chain(&s, &r, BattleSide::Attacker, (chain, 0), (StackId(1), 40)).collect();
+    assert_eq!(estimate.len(), 3);
+    assert_eq!(
+        estimate.iter().map(|&(_, v)| v).collect::<Vec<_>>(),
+        vec![40, 20, 10]
+    );
+    let cast = Command::Cast {
+        spell: chain,
+        target: CastTarget::Stack(StackId(1)),
+        second: CastTarget::None,
+    };
+    let struck: Vec<(StackId, u64)> = act(&mut s, &r, cast)
+        .unwrap()
+        .iter()
+        .filter_map(|e| match e.kind {
+            EventKind::SpellDamage { target, value, .. } => Some((target, value)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(estimate, struck);
+    // From Advanced four, the first stack's value kept; a spell without a chain strikes only its
+    // stack, a spell the ruleset lacks none.
+    let s = arena(&r, [None, None], attacker, defender, 1);
+    assert_eq!(
+        computer::chain(&s, &r, BattleSide::Attacker, (chain, 2), (StackId(1), 40)).count(),
+        4
+    );
+    let bolt = spell(&r, "bolt");
+    assert_eq!(
+        computer::chain(&s, &r, BattleSide::Attacker, (bolt, 2), (StackId(1), 40)).count(),
+        0
+    );
+    let missing = SpellId::from_index(r.spells().len()).unwrap();
+    assert_eq!(
+        computer::chain(&s, &r, BattleSide::Attacker, (missing, 2), (StackId(1), 40)).count(),
+        0
+    );
+    // The nova reaches the stacks within a hex of its centre: at (11, 4) those at (10, 5) or
+    // (11, 3) beside it, by id.
+    let field = Field::new(r.battle().field);
+    let centre = at(&r, 11, 4);
+    let reached: Vec<StackId> =
+        computer::area_stacks(&s, &r, BattleSide::Attacker, (nova, 0), centre).collect();
+    let near: Vec<StackId> = (0u8..)
+        .zip(s.stacks())
+        .filter(|(_, st)| field.distance(st.hex, centre) <= 1)
+        .map(|(i, _)| StackId(i))
+        .collect();
+    assert!(!reached.is_empty());
+    assert_eq!(reached, near);
+    assert_eq!(
+        computer::area_stacks(&s, &r, BattleSide::Attacker, (missing, 0), at(&r, 11, 4)).count(),
+        0
+    );
+}
+
+// covers: BAT-AI-012, BAT-AI-013, BAT-TER-004, BAT-TER-005
+#[test]
+fn the_creature_casts_on_the_battlefields() {
+    let r = ruleset();
+    let on = |field: Option<&str>| {
+        arena_on(
+            &r,
+            [None, None],
+            &[("fixed", 1, 2, 5)],
+            &[("fixed", 1, 10, 5)],
+            1,
+            |s| {
+                s.battlefield = field.map(|f| h3_content::ContentKey::new("t", f).unwrap());
+            },
+        )
+    };
+    let (bolt, nova) = (spell(&r, "bolt"), spell(&r, "nova"));
+    // Magic Plains: every creature cast at Expert, and the air and fire schools for a hero.
+    let plains = on(Some("plains"));
+    assert_eq!(computer::creature_mastery(&plains, 2), 3);
+    assert!(computer::field_raises(&plains, &r, bolt));
+    assert!(!computer::creature_casts_blocked(&plains));
+    // An elemental field raises its school only: fire, not the air bolt.
+    let fiery = on(Some("fiery"));
+    assert_eq!(computer::creature_mastery(&fiery, 2), 2);
+    assert!(computer::field_raises(&fiery, &r, nova));
+    assert!(!computer::field_raises(&fiery, &r, bolt));
+    // Ordinary ground raises nothing.
+    let plain = on(None);
+    assert!(!computer::field_raises(&plain, &r, nova));
+    // Cursed Ground, and a hero's or a garrison's ban, block the creature casts.
+    assert!(computer::creature_casts_blocked(&on(Some("cursed"))));
+    let mut banned = on(None);
+    banned.limits.no_casting = true;
+    assert!(computer::creature_casts_blocked(&banned));
+    // A cast names its spell only when drawn or its own.
+    assert_eq!(CastSpell::Named(bolt).named(), Some(bolt));
+    assert_eq!(CastSpell::AtResolution.named(), None);
+    assert_eq!(CastSpell::Raise.named(), None);
 }

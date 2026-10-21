@@ -2037,6 +2037,7 @@ key = "magic_arrow"
 original = 15
 animation = 64
 sound = "MagicBlt"
+sign = -1
 projectile = ["c20spx0.def", "c20spx1.def", "c20spx2.def", "c20spx3.def", "c20spx4.def"]
 projectile_angles = [0, -16, -34, -56, -83]
 
@@ -2045,6 +2046,7 @@ key = "ice_bolt"
 original = 16
 animation = 46
 sound = "IceRay"
+sign = -1
 projectile = ["c08spw0.def", "c08spw1.def", "c08spw2.def", "c08spw3.def", "c08spw4.def"]
 projectile_angles = [0, -16, -34, -56, -83]
 
@@ -2053,12 +2055,14 @@ key = "lightning_bolt"
 original = 17
 animation = 49
 sound = "LightBlt"
+sign = -1
 
 [[spell]]
 key = "implosion"
 original = 18
 animation = 10
 sound = "Decay"
+sign = -1
 
 [[spell]]
 key = "chain_lightning"
@@ -2113,48 +2117,56 @@ key = "shield"
 original = 27
 animation = 27
 sound = "Shield"
+sign = 1
 
 [[spell]]
 key = "air_shield"
 original = 28
 animation = 2
 sound = "Airsheld"
+sign = 1
 
 [[spell]]
 key = "fire_shield"
 original = 29
 animation = 11
 sound = "Fireshld"
+sign = 1
 
 [[spell]]
 key = "protection_from_air"
 original = 30
 animation = 22
 sound = "Protecta"
+sign = 1
 
 [[spell]]
 key = "protection_from_fire"
 original = 31
 animation = 24
 sound = "Protectf"
+sign = 1
 
 [[spell]]
 key = "prot_from_water"
 original = 32
 animation = 23
 sound = "Protectw"
+sign = 1
 
 [[spell]]
 key = "prot_from_earth"
 original = 33
 animation = 26
 sound = "Protecte"
+sign = 1
 
 [[spell]]
 key = "anti_magic"
 original = 34
 animation = 5
 sound = "Antimagk"
+sign = 1
 
 [[spell]]
 key = "dispel"
@@ -2167,160 +2179,189 @@ key = "magic_mirror"
 original = 36
 animation = 3
 sound = "Backlash"
+sign = 1
 
 [[spell]]
 key = "cure"
 original = 37
 animation = 39
 sound = "Cure"
+sign = 1
 
 [[spell]]
 key = "resurrection"
 original = 38
 animation = 50
 sound = "Resurect"
+sign = 1
 
 [[spell]]
 key = "animate_dead"
 original = 39
 animation = 4
 sound = "Animdead"
+sign = 1
 
 [[spell]]
 key = "sacrifice"
 original = 40
 animation = 52
 sound = "Sacrif1"
+sign = 1
 
 [[spell]]
 key = "bless"
 original = 41
 animation = 36
 sound = "Bless"
+sign = 1
 
 [[spell]]
 key = "curse"
 original = 42
 animation = 40
 sound = "Curse"
+sign = -1
 
 [[spell]]
 key = "bloodlust"
 original = 43
 sound = "BloodLus"
+sign = 1
 
 [[spell]]
 key = "precision"
 original = 44
 animation = 25
 sound = "Precison"
+sign = 1
 
 [[spell]]
 key = "weakness"
 original = 45
 animation = 56
 sound = "Weakness"
+sign = -1
 
 [[spell]]
 key = "stone_skin"
 original = 46
 animation = 54
 sound = "Tuffskin"
+sign = 1
 
 [[spell]]
 key = "disrupting_ray"
 original = 47
 animation = 14
 sound = "Disruptr"
+sign = -1
+projectile = ["c07spA0.def"]
+projectile_angles = [0]
 
 [[spell]]
 key = "prayer"
 original = 48
 animation = 0
 sound = "Prayer"
+sign = 1
 
 [[spell]]
 key = "mirth"
 original = 49
 animation = 20
 sound = "Mirth"
+sign = 1
 
 [[spell]]
 key = "sorrow"
 original = 50
 animation = 30
 sound = "Sorrow"
+sign = -1
 
 [[spell]]
 key = "fortune"
 original = 51
 animation = 18
 sound = "Fortune"
+sign = 1
 
 [[spell]]
 key = "misfortune"
 original = 52
 animation = 48
 sound = "Misfort"
+sign = -1
 
 [[spell]]
 key = "haste"
 original = 53
 animation = 31
 sound = "Tailwind"
+sign = 1
 
 [[spell]]
 key = "slow"
 original = 54
 animation = 19
 sound = "Muckmire"
+sign = -1
 
 [[spell]]
 key = "slayer"
 original = 55
 animation = 28
 sound = "Slayer"
+sign = 1
 
 [[spell]]
 key = "frenzy"
 original = 56
 animation = 17
 sound = "Frenzy"
+sign = 1
 
 [[spell]]
 key = "counterstrike"
 original = 58
 animation = 7
 sound = "Cntrstrk"
+sign = 1
 
 [[spell]]
 key = "berserk"
 original = 59
 animation = 35
 sound = "Berserk"
+sign = -1
 
 [[spell]]
 key = "hypnotize"
 original = 60
 animation = 21
 sound = "Hypnotiz"
+sign = -1
 
 [[spell]]
 key = "forgetfulness"
 original = 61
 animation = 42
 sound = "Forget"
+sign = -1
 
 [[spell]]
 key = "blind"
 original = 62
 animation = 6
 sound = "Blind"
+sign = -1
 
 [[spell]]
 key = "teleport"
 original = 63
 sound = "TelptOut"
+sign = 1
 
 [[spell]]
 key = "remove_obstacle"
@@ -2332,6 +2373,7 @@ sound = "Removeob"
 key = "clone"
 original = 65
 sound = "Clone"
+sign = 1
 
 [[spell]]
 key = "fire_elemental"
@@ -2357,36 +2399,42 @@ sound = "SumnElm"
 key = "stone_gaze"
 original = 70
 sound = "Paralyze"
+sign = -1
 
 [[spell]]
 key = "poison"
 original = 71
 animation = 67
 sound = "Poison"
+sign = -1
 
 [[spell]]
 key = "bind"
 original = 72
 animation = 68
 sound = "Bind"
+sign = -1
 
 [[spell]]
 key = "disease"
 original = 73
 animation = 69
 sound = "Disease"
+sign = -1
 
 [[spell]]
 key = "paralyze"
 original = 74
 animation = 70
 sound = "Paralyze"
+sign = -1
 
 [[spell]]
 key = "age"
 original = 75
 animation = 71
 sound = "Age"
+sign = -1
 
 [[spell]]
 key = "death_cloud"
@@ -2399,24 +2447,28 @@ key = "thunderbolt"
 original = 77
 animation = 49
 sound = "LightBlt"
+sign = -1
 
 [[spell]]
 key = "dispel_helpful_spells"
 original = 78
 animation = 41
 sound = "Dispell"
+sign = -1
 
 [[spell]]
 key = "death_stare"
 original = 79
 animation = 80
 sound = "Deathstr"
+sign = -1
 
 [[spell]]
 key = "acid_breath"
 original = 80
 animation = 81
 sound = "Acid"
+sign = -1
 
 [[battlefield]]
 key = "dirt"

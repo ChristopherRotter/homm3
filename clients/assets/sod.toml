@@ -13,6 +13,7 @@ key = "titans_lightning_bolt"
 original = 57
 animation = 49
 sound = "LightBlt"
+sign = -1
 
 [[battlefield]]
 key = "holy_ground"

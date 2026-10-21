@@ -113,7 +113,7 @@ an agent where the harness allows (`experiments/README.md`), else by the user.
 | 4a W3 | the walker's 75–100 % draw (§7.35) | two targets whose values differ by under a quarter, the same battle replayed with ten seeds | both targets chosen across the seeds | always the same |
 | 4a W4 | holding back on Hard (§7.38) | a neutral walker two turns from its target whose path crosses an enemy's reach, Hard | it stops short and waits | it walks into the reach |
 | 4a W5 | the several-turn comparison undivided (§7.35) and the Harpies' larger value | a near weak and a far strong target; Harpies beside it | as the reading's value per turn | another order |
-| 4a C1 | the elementals never cast (§7.42) | neutral Storm Elementals beside an own stack they could protect, an enemy shooter on the field | no Protection cast | a cast |
+| 4a C1 | the elementals never cast (§7.42; built in both profiles, BAT-Q57) | neutral Storm Elementals beside an own stack they could protect, an enemy shooter on the field | no Protection cast | a cast |
 | 4a C2 | the Faerie Dragon casts whenever its spell is worth anything; an area spell at a free hex (§7.43) | neutral Faerie Dragons beside an attackable enemy, ten seeds | a cast at every damage spell drawn, a free hex when it pays | an attack instead |
 | 4a C3 | the raise against the walker's value (§7.43) | neutral Archangels with a dead own stack and an enemy in reach | as the values compare | always raise |
 | 4a C4 | the Ogre Mages' skip and strength floor (§7.44) | neutral Ogre Mages beside a weaker and a stronger own stack, an enemy in reach, twenty seeds | about three in ten skip; only the stronger stack is blessed | other rates or targets |
@@ -149,7 +149,7 @@ each estimate as the rule it estimates:
 | 4 | the desperate kills count the top creature's remaining hit points where its lost ones belong (§7.38; built, BAT-AI-009, E23 T3c) | the lost hit points |
 | 5 | the destination map marks a two-hex enemy's position hex twice, its other hex never (§7.38) | both hexes |
 | 6 | the hero's value takes the mastery on the hero's adventure tile (§7.39; not built, E23 T3c: the seam has no tile for the attacking hero, both settings take the battlefield's, BAT-STUB-7, BAT-Q56) | the battlefield's |
-| 7 | the Faerie Dragon's estimate: Expert on its school's field, the side's hero's bonuses on its bolts (§7.43) | the rules' mastery for a creature, no hero bonus |
+| 7 | the Faerie Dragon's estimate: Expert on its school's field, the side's hero's bonuses on its bolts (§7.43; built, BAT-AI-013, E23 T4a) | the rules' mastery for a creature, no hero bonus |
 | 8 | the Ogre Mage's Bloodlust valued at Expert on Fiery Fields (§7.44) | Advanced, as the rules cast it |
 | 9 | the protections take the caster bonuses of the context's own hero and the caster's own army for the cost (§7.46) | the casting hero's, the target side's army |
 | 10 | Magic Mirror keeps `2 × (50 − c)` % (§7.46) | `100 − c` % |

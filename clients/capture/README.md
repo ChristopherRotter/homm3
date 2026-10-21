@@ -16,7 +16,7 @@ enter git (they stay in the sandbox or `clients/out/`).
 | File | What it does |
 |---|---|
 | `setup.sh [copy]` | Installs 32-bit Wine, Xvfb, xdotool, ImageMagick and mingw-w64; makes the run directory `original-data/wine/game` from the copy (default `original-data/install`); builds `xdd.dll`; writes the game's settings (no intro, no grid, no sound, full screen, a hero's path shown before it walks, auto combat playing the creatures) into the Wine prefix (`$WINEPREFIX`, default `~/.wine-h3`, in a directory the shell's user owns). |
-| `xdd.c`, `xdd.def` | Our `xdd.dll`: forwards the GOG executable's `DirectDrawCreate` to Wine's ddraw, and the **virtual clock** (below). |
+| `xdd.c`, `xdd.def` | Our `xdd.dll`: forwards the GOG executable's `DirectDrawCreate` to Wine's ddraw, the **virtual clock** and the **forced rolls** (below). |
 | `h3drive.py` | The driver: starts the game, the recipes (fixed coordinates, screens by probes), the clock, dumps; the commands `battle`, `set`, `learn`, `shot`, `sequence`, `sequences`, `frames`. |
 | `screens.toml` | The screens the driver recognises: 12 probes `[x, y, 5-6-5 value]` each (numbers only). |
 | `h3cap.py` | `diff` (our render against a capture, with masks) and `find` (the original's obstacles in a capture); `compare` and `boxes_at` for the frame check. |
@@ -179,8 +179,11 @@ casts' sequences wait in `situations/casts.toml` (`sequences situations/casts.to
 until the viewer's timeline plays them (T7b, T7c): `dragon` (T7a-2a), `bolt`, `mass`, `raise`,
 `obstacles`, `creatures` (T7a-2b, design §7.16, "Recorded"; about 75 minutes for all with their
 screens, `cast`, `resist` and `arrow` included). `cast`, `resist` and `arrow` moved into
-`sequences.toml` at T7b-1 with their engine commands and frames; a recorded timeline's `screen`
-lines are left out of the timing check (they are the frame check's).
+`sequences.toml` at T7b-1 with their engine commands and frames, `haste` and `dispel` (recorded
+at T7b-2a, about 9 and 11 minutes with their screens) at T7b-2a; a recorded timeline's `screen`
+lines are left out of the timing check (they are the frame check's). A stack whose hero just
+cast acts by `key:` only: a `turn:` naming the stack already active passes at once, so pick the
+speeds so the turns alternate (`haste`'s Vampire Lords, speed 9).
 
 **A battle in progress** (M3 T1a): `--hot-seat` (an entry's `hot_seat = true`) starts the map in
 hot seat with Blue a human too (`h3-view situation --hot-seat`), so the actions play both sides and
@@ -378,9 +381,48 @@ executable imports no other clock or timer), at a virtual clock; the executable'
 they are. With `H3CLOCK` set to a directory (a Windows path; the driver uses `Z:` + its output
 folder's `clock/`), it runs in real time until a command arrives in `ctl`, one line
 `<seq> freeze | step <ms> | run`; a new `<seq>` applies once. Every 2 ms it writes `ack`:
-`<seq> <time> <reads>`, the reads of the clock since the command. A game that keeps reading a
-stopped clock is idle at that time: `Game.clock` waits for 20 reads, `Game.settled` for two equal
-dumps (Wine may draw a moment later).
+`<seq> <time> <reads>`, the reads of the clock since the command (then the forced rolls'
+three numbers, below). A game that keeps reading a stopped clock is idle at that time:
+`Game.clock` waits for 20 reads, `Game.settled` for two equal dumps (Wine may draw a moment
+later).
+
+## Forced rolls
+
+*Provisional* (E17 M3 T7b-2b-1, the user's wish: the effects that need a roll of the original's,
+reproduced at will). At its load `xdd.dll` redirects the call of each roll in its table
+(`sites`; `docs/exe/map.toml`'s `*_draw` entries) to its own function, which draws as the call
+would (`random_between` 0x50B230 or the C library's `rand` 0x617E5C: the generator's sequence
+stays the original's) and returns that draw unless the harness forced it. Only a call whose bytes
+are the one named is redirected; that and the clock's import slot are the only bytes of the
+running copy that change, never a file. Commands in `ctl`: `<seq> roll <name> <value> <count>`
+(the next `<count>` draws return `<value>`), `<seq> rolls <name> <value>` (every other draw does)
+and `<seq> rolls <name> natural` (they are drawn again, as at the start). `ack` goes on with
+`<forced> <pending> <sites>`: the draws forced so far, the forced draws still waiting and the
+calls redirected.
+
+| Roll (`ROLLS`) | Draw (falls, fails) | Where, when |
+|---|---|---|
+| `good_morale` | `random(1, 24) <= morale` (1, 24) | 0x4649D3, after a walk, attack, shot or creature cast |
+| `bad_morale` | `random(1, 12) <= -morale` (1, 12) | 0x464BC7, at a pick (none at the battle's first); a computer side's let-off draw is not forced: hot seat has none |
+| `fear` | `rand() mod 10 = 0` (0, 1) | 0x464DF1, at a pick, beside Azure Dragons |
+| `luck`, `shot_luck` | `random(1, 24) <= luck` (1, 24) | 0x441837 as a melee strike starts, 0x43F955 a shot; only with luck above 0 |
+| `death_stare` | `random(1, 100) <= 10` (1, 100) | 0x440EE0, once per Mighty Gorgon: a creature killed each |
+| `thunderbird` | `random(1, 100) <= 20` (1, 100) | 0x44119D, the Thunderbird's bolt |
+| `acid` | `random(1, 100) <= 20` (1, 100) | 0x4414B7, the Rust Dragon's acid damage (its amount drawn after, not forced) |
+| `poison` | `random(1, 100) <= 30` (1, 100) | 0x440839, the Wyvern Monarch's Poison |
+
+A sequence's action `roll:<name>` forces the roll's next draw to fall, `roll:<name>:fail` to fail;
+its key `fail = ["<name>", …]` (`--fail <name>` for `sequence`) fails every other draw of those
+rolls, so nothing falls the sequence did not ask for (the runs' differences in "Traps" among
+them). Each draw is made for every stack at its moment whatever its morale or luck (a morale of 0
+draws and never falls): a forced draw goes to the next stack that rolls, so `roll:` comes right
+before the action it is for (a pick's: before the action that ends the turn before). A sequence
+fails when xdd.dll redirected fewer calls than the table has, or when a forced draw was left
+untaken at its end. The viewer's mouse (`pointer::inputs`) takes `roll:` as no input; the engine's
+own rolls follow its `seed`. Checked at T7b-2b-1: the Champions' walk (`seq-walk.toml`) with
+`roll:good_morale` got another turn and animation 20 at 2 592 ms, failed they gave the Marksmen
+theirs; an Azure Dragon's fear (`rand`) forced over the Champions (animation 15) and failed;
+`walk`, `strike`, `shot` and `resist` replayed with the redirected calls as recorded.
 
 ## The original's state
 
@@ -432,7 +474,8 @@ design §7.1.
   strike back) and one gave the Archangel good morale at 3 730 ms (magic 20); one `machines`
   run played magic 18 over the Archers as they shot; in one `climb` run the computer's stack
   walked at 2 396 ms. Run again: a `CHANGED` whose timeline shows such a roll or move is that,
-  not a change of the viewer.
+  not a change of the viewer. A sequence's `fail` (M3 T7b-2b-1, "Forced rolls") keeps morale,
+  luck and the abilities' rolls from falling; the damage rolls stay free.
 - An XWD file's colour map holds bytes the X server leaves unset: compare pixels, never files.
 - The menus run in real time; only the battle runs on the stepped clock. Two runs still agree:
   the battle's setup does not depend on the clock (observed: the obstacles follow the tile).

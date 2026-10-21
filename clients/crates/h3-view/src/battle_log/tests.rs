@@ -29,7 +29,8 @@ const PACK: &str = r#"{
         "heal": "{{healer}} mends {{creature}}\nfor {{hit_points}}.",
         "round": "Round.",
         "cast-on": "{{hero}}: {{spell}} on {{creature}}.",
-        "resisted": "{{creature}} {{verb}} it."
+        "resisted": "{{creature}} {{verb}} it.",
+        "disrupted": "Ray takes {{defense}}."
     } },
     "word": {
         "creature_one": "beast", "creature_other": "beasts",
@@ -207,18 +208,17 @@ fn the_item_shows_two_entries_from_the_first() {
     assert_eq!(shown(&[], 0), "");
 }
 
-/// The stacks [`word`] names: 1 an Ant, 2 a Bee (defense 7), 3 a Cart (a war machine).
+/// The stacks [`word`] names: 1 an Ant, 2 a Bee, 3 a Cart (a war machine).
 fn named(id: u8) -> Option<Named> {
-    let (creature, war_machine, defense) = match id {
-        1 => ("creature.t:ant", false, 0),
-        2 => ("creature.t:bee", false, 7),
-        3 => ("creature.t:cart", true, 0),
+    let (creature, war_machine) = match id {
+        1 => ("creature.t:ant", false),
+        2 => ("creature.t:bee", false),
+        3 => ("creature.t:cart", true),
         _ => return None,
     };
     Some(Named {
         creature: creature.into(),
         war_machine,
-        defense,
     })
 }
 
@@ -310,9 +310,31 @@ fn each_happening_has_its_line() {
     );
     let wait = Logged::Wait { stack: 1, count: 1 };
     assert_eq!(worded(&wait).as_deref(), Some("Ant holds."));
-    // A defend's gain: max(1, defense × 20 / 100), 7 → 1, 0 → 1.
-    let defend = Logged::Defend { stack: 2, count: 4 };
+    // A defend's gain: max(1, defense × 20 / 100), 7 → 1, 0 → 1, 10 → 2 (E17 M3 T7b-2a: the
+    // defense the line carries, Disrupting Ray's lowered one).
+    let defend = Logged::Defend {
+        stack: 2,
+        count: 4,
+        defense: 7,
+    };
     assert_eq!(worded(&defend).as_deref(), Some("Bees brace,\n+1."));
+    let zero = Logged::Defend {
+        stack: 2,
+        count: 1,
+        defense: 0,
+    };
+    assert_eq!(worded(&zero).as_deref(), Some("Bee braces,\n+1."));
+    let ten = Logged::Defend {
+        stack: 1,
+        count: 1,
+        defense: 10,
+    };
+    assert_eq!(worded(&ten).as_deref(), Some("Ant braces,\n+2."));
+    let disrupted = Logged::Disrupted {
+        stack: 1,
+        lowered: 3,
+    };
+    assert_eq!(worded(&disrupted).as_deref(), Some("Ray takes 3."));
     let heal = Logged::Heal {
         healer: 3,
         target: 1,
@@ -352,7 +374,11 @@ fn each_happening_has_its_line() {
             hits: vec![(9, 1, 0)],
         },
         Logged::Wait { stack: 9, count: 1 },
-        Logged::Defend { stack: 9, count: 1 },
+        Logged::Defend {
+            stack: 9,
+            count: 1,
+            defense: 1,
+        },
         Logged::Heal {
             healer: 9,
             target: 1,

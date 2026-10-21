@@ -58,6 +58,13 @@ impl Created {
         self.summoned
     }
 
+    /// `side`'s template of `creature`, if the battle may create such a stack for it.
+    pub(crate) fn template(&self, side: BattleSide, creature: CreatureTypeId) -> Option<&Stack> {
+        self.templates[side.index()]
+            .iter()
+            .find(|t| t.creature == creature)
+    }
+
     /// Nothing created yet; the sides' summon `templates`.
     pub(crate) const fn new(templates: [FixedVec<Stack, TEMPLATES>; 2]) -> Self {
         Self {

@@ -2,7 +2,7 @@
 
 Status: **in progress**, refined 2026-10-19 (BAT-Q52); T1a1 to T1a4 done (the cuts confirmed
 2026-10-20), T1c done (BAT-Q53, BAT-Q54); T1a5 done as cut (part C, §7.42 to §7.45); T1a5e (the spell evaluators) done (§7.46); T1b done, ADR-0027 accepted (BAT-Q55); T2 done (T2a the crate and the plain shooters, T2b the area value, the wall shot, the benchmark), the budget
-set; T3 done (cut in four: T3-0, T3a, T3b, T3c), T4 next · Follows E05 (the
+set; T3 done (cut in four: T3-0, T3a, T3b, T3c); T4 cut in three, T4a done, T4b next · Follows E05 (the
 AI lane, done) · Followed by E06 (training: this policy holds the neutral seat; AI-Q1) ·
 The battle lane's, later the AI lane's (BACKLOG).
 
@@ -194,9 +194,19 @@ found after that decision) belong to the neutral side's map too and are read (§
     BAT-Q56), the last retaliation's gain 0x41F3B0 with the order of action and the walker's
     side's threat records (BAT-AI-009, slip 4), the fallbacks (BAT-AI-010, slip 21), holding the walls
     (BAT-AI-011, slip 2), the besieger's walk to its wall (BAT-AI-005; §7.49; the log).
-- [ ] **T4 Creature casts** — the abilities a computer stack chooses to use, per T1a's map. With
-  T2 to T4 a side without a hero is complete: the AI lane's and the adventure lane's inboxes get
-  the function (`Policy::System`, the neutral seat, A12's weights are theirs).
+- **T4 Creature casts** — the abilities a computer stack chooses to use, per T1a's map, cut in
+  three (the user, 2026-10-21: the parts without the spell context first; T4c cut again at its
+  checkpoint). With T2 to T4 a side without a hero is complete: the AI lane's and the adventure
+  lane's inboxes get the function (`Policy::System`, the neutral seat, A12's weights are theirs).
+  - [x] **T4a The entry, the raise and the Faerie Dragon** (2026-10-21) — the creature cast entry
+    0x421280 before the action and after a choice of nothing (BAT-AI-012), the Archangel's and the
+    Pit Lord's raise 0x421000 against the walker's value, the Faerie Dragon 0x420F00 with its
+    values (BAT-AI-013, slip 7), at the targets the engine accepts (the user; BAT-STUB-8, BAT-Q32);
+    §7.50; the log.
+  - [ ] **T4b The spell context and the Ogre Mage** — the context 0x4369C0 with its predictions
+    and fill (§7.42), the scan 0x420D20 and Bloodlust's value with 0x437800 (§7.44, §7.45; slip 8).
+  - [ ] **T4c The Master Genie** — its mean over the 34 evaluators and the removals (§7.44, §7.46;
+    slips 9 to 17); cut again at its checkpoint.
 - [ ] **T5 The hero's spells** (T1a6's reading first).
 - [ ] **T6 The hero's other choices** — retreat and surrender, the tactics phase, the Catapult's
   aim, the First Aid Tent's patient (BAT-Q51); BAT-Q33's rule.
