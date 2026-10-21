@@ -443,6 +443,16 @@ fields = [
 ]
 
 [[struct]]
+name = "artifact_setup"
+size = 0x20
+summary = "An artifact's setup record (the table at artifact_setup_pointer 0x660B68, filled from ARTRAITS.TXT by 0x44CD50 at a stride of 0x20); only what the capture harness reads."
+refs = ["epics/E08-log.md T32b1"]
+h3api = "H3ArtifactSetup"
+fields = [
+  { offset = 0x0, name = "name", type = "char*", summary = "the artifact's name; observed in the running game (h3mem.py: Ballista, Catapult, Centaurs Axe), not read", confidence = "inferred", refs = ["epics/E08-log.md T32b1"] },
+]
+
+[[struct]]
 name = "map_item"
 size = 0x26
 summary = "A tile of the adventure map (game +0x1FC40; H3API's H3MapItem); only what the docs cite."

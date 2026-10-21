@@ -291,6 +291,7 @@ def auto_combat(game, mem, end, stall=10.0):
             if time.monotonic() > quiet:
                 break  # the key was lost: press it again
             if time.monotonic() > end:
+                game.dump(game.out / "auto-stalled.xwd")
                 raise TimeoutError("auto combat does not start")
             time.sleep(0.2)
         else:
@@ -301,47 +302,159 @@ def auto_combat(game, mem, end, stall=10.0):
 # Ballistics, no First Aid: the computer aims them), so the plans never give them orders.
 MACHINES = range(145, 150)
 # Where an attack on a hex is clicked: right of its centre (h3drive.hex_point), so the attacker
-# comes from the right (E4-9: the Ballista stands in the attacker's second column, the first one
-# closed to creatures).
+# comes from the right (E4-9: the Ballista stands on the attacker's first two columns).
 ATTACK_FROM_RIGHT = 14
+TURN_SETTLE = 0.5  # seconds between a stack's turn showing in memory and its order
 
 
-def attack_until_gone(game, mem, side, creature, end):
-    """E08 T32b1 (E4-9): while the other side has a living stack of `creature`, each of `side`'s
-    stacks clicks its hex on its turn and every other stack of a human side defends; returns when
-    none stands or the battle ends."""
-    def target():
-        for s in mem.stacks():
-            if s["side"] != side and s["count"] > 0 and mem.creature_name(s["creature"]) == creature:
-                return s
-        return None
+def hex_distance(a, b):
+    """Steps between two battle hexes (17 a row, the even rows half a hex to the right)."""
+    def cube(h):
+        row, col = divmod(h, 17)
+        q = col - (row + (row & 1)) // 2
+        return q, row, -q - row
+    return max(abs(u - v) for u, v in zip(cube(a), cube(b)))
 
-    if target() is None:
-        raise RuntimeError(f"no stack of {creature} on the other side")
-    acted = None
-    while target() is not None:
+
+def approach(game, mem, board, goal, active):
+    """The active stack cannot attack its target this turn: it moves to the free hex nearest
+    `goal` within its speed (hex steps: a flyer's reach; the first and last columns hold no
+    creature; a two-hex stack's other hex, behind it, free too). Returns what it did."""
+    stack = next(s for s in mem.stacks() if [s["side"], s["record"]] == active)
+    own = {h["hex"] for h in board if h["stack"] == active}
+    free = {h["hex"] for h in board if (h["stack"] is None or h["hex"] in own)
+            and not h["flags"] & 0x2 and h["hex"] % 17 not in (0, 16)}
+    behind = (1 if active[0] == 1 else -1) if len(own) == 2 else 0
+    reach = [h for h in free if (h + behind) in free and h // 17 == (h + behind) // 17
+             and h not in own and hex_distance(stack["hex"], h) <= stack["speed"]]
+    if not reach:
+        raise RuntimeError(f"no free hex in reach of {stack['hex']} (speed {stack['speed']})")
+    to = min(reach, key=lambda h: (hex_distance(h, goal), h))
+    game.click(*h3drive.hex_point(to), 0.5)
+    return f"moves to hex {to} (toward hex {goal}; speed {stack['speed']})"
+
+
+def neighbour(h, direction):
+    """The hex next to `h` in a direction (right, left, up-right, up-left, down-right,
+    down-left), None off the field (the even rows lie half a hex right of the odd ones)."""
+    row, col = divmod(h, 17)
+    shift = 1 if row % 2 == 0 else 0
+    dr, dc = {"right": (0, 1), "left": (0, -1), "up-right": (-1, shift),
+              "up-left": (-1, shift - 1), "down-right": (1, shift),
+              "down-left": (1, shift - 1)}[direction]
+    row, col = row + dr, col + dc
+    return row * 17 + col if 0 <= row < 11 and 0 <= col < 17 else None
+
+
+# Where a click on a hex points the attack: off its centre toward the side the attacker comes
+# from (the game's cursor takes the direction from the mouse's place in the hex).
+# The combat cursor (the mouse manager's type 2, design §9.9) shows a melee attack as one of
+# its sword frames, each a direction (CRCOMBAT.DEF's frames 7 to 14): an attack is clicked only
+# where it shows one, after the mouse rested over the point (the game reads the mouse on a 33 ms
+# grid of its clock).
+COMBAT_CURSOR, MELEE_FRAMES, HOVER = 2, range(7, 15), 0.25
+STRIKE_OFFSETS = {"right": (14, 0), "left": (-14, 0), "up-right": (8, -14), "up-left": (-8, -14),
+                  "down-right": (8, 14), "down-left": (-8, 14)}
+
+
+def strike(game, mem, active, aim):
+    """The active stack attacks the stack `aim` if it can this turn (the pathfinder's mark on
+    the target's hexes): the mouse over the target's hexes, off the centre toward each free
+    neighbour in turn (nearest first), until the cursor shows a melee attack, clicked there; else
+    it moves toward it (approach). Returns what it did."""
+    board = mem.hexes()
+    stack = next(s for s in mem.stacks() if [s["side"], s["record"]] == active)
+    own = {h["hex"] for h in board if h["stack"] == active}
+    hexes = [h["hex"] for h in board if h["stack"] == [aim["side"], aim["record"]]]
+    nearest = min(hexes, key=lambda h: (hex_distance(stack["hex"], h), h))
+    if not any(board[h]["attackable"] for h in hexes):
+        return approach(game, mem, board, nearest, active)
+    sides = []
+    for target in hexes:
+        for direction in STRIKE_OFFSETS:
+            n = neighbour(target, direction)
+            if n is not None and n % 17 not in (0, 16) and (board[n]["stack"] is None or n in own) \
+                    and not board[n]["flags"] & 0x2:
+                sides.append((hex_distance(stack["hex"], n), target, direction))
+    seen = []
+    for _, target, direction in sorted(sides):
+        x, y = h3drive.hex_point(target)
+        dx, dy = STRIKE_OFFSETS[direction]
+        game.move(x + dx, y + dy)
+        time.sleep(HOVER)
+        cursor = mem.globals()["cursor"]
+        seen.append(cursor[1] if cursor else None)
+        if cursor and cursor[0] == COMBAT_CURSOR and cursor[1] in MELEE_FRAMES:
+            game.click(x + dx, y + dy, 0.2)
+            return (f"attacks {mem.creature_name(aim['creature'])} at hex {target} from the "
+                    f"{direction} (cursor frame {cursor[1]})")
+    raise RuntimeError(f"no attack cursor over hexes {hexes} (cursor frames {seen})")
+
+
+def play_turns(game, mem, order, done, end, what):
+    """E08 T32b1 (E4-9): plays the battle's turns until `done()` or its end: on each turn of a
+    stack that is not a war machine (they act by themselves), `order(stack)` names the stack to
+    attack (strike) or None to defend. `what` names the phase in the errors."""
+    while not done():
         if time.monotonic() > end:
-            raise TimeoutError(f"{creature} still stands")
+            raise TimeoutError(f"{what}: the battle goes on")
         if find_button(game, "battle_ok"):
             return
         active = mem.globals()["active"]
-        if active is None or active == acted:
+        if active is None:
             time.sleep(0.1)
             continue
-        stack = next((s for s in mem.stacks()
-                      if [s["side"], s["record"]] == active), None)
+        stack = next((s for s in mem.stacks() if [s["side"], s["record"]] == active), None)
         if stack is None or stack["creature"] in MACHINES:
             time.sleep(0.1)
             continue
-        if active[0] == side:
-            x, y = h3drive.hex_point(target()["hex"])
-            game.click(x + ATTACK_FROM_RIGHT, y, 1.0)
-        else:
+        time.sleep(TURN_SETTLE)  # an order right at the turn's start may be lost
+        aim = order(stack)
+        if aim is None:
             game.key("d", 0.3)
+            action = "defends"
+        else:
+            action = strike(game, mem, active, aim)
+        print(f"plan: {SIDES[active[0]]} {mem.creature_name(stack['creature'])} (hex "
+              f"{stack['hex']}) {action}", file=sys.stderr, flush=True)
         game.move(*BATTLE_PARK)
-        acted = active
-        wait_for(lambda a=active: mem.globals()["active"] != a, "the next stack's turn", 30)
-        acted = None
+        try:
+            wait_for(lambda a=active: mem.globals()["active"] != a or find_button(game, "battle_ok"),
+                     "the next stack's turn", 30)
+        except TimeoutError:
+            game.dump(game.out / "plan-stalled.xwd")
+            raise
+
+
+def living(mem, side=None, creature=None):
+    """The living stacks (of a side, of a creature by name)."""
+    return [s for s in mem.stacks() if s["count"] > 0 and (side is None or s["side"] == side)
+            and (creature is None or mem.creature_name(s["creature"]) == creature)]
+
+
+def nearest_enemy(mem, stack):
+    """The other side's living stack nearest to `stack`, creatures before war machines."""
+    enemies = living(mem, 1 - stack["side"])
+    return min(enemies, key=lambda s: (s["creature"] in MACHINES,
+                                       hex_distance(stack["hex"], s["hex"]), s["record"]),
+               default=None)
+
+
+def attack_until_gone(game, mem, side, creature, end):
+    """E4-9's first phase: while the other side has a living stack of `creature`, each of
+    `side`'s stacks attacks it on its turn and every other stack defends."""
+    if not living(mem, 1 - side, creature):
+        raise RuntimeError(f"no stack of {creature} on the other side")
+    play_turns(game, mem,
+               lambda s: (living(mem, 1 - side, creature) or [None])[0] if s["side"] == side
+               else None,
+               lambda: not living(mem, 1 - side, creature), end, f"{creature} still stands")
+
+
+def attack_to_the_end(game, mem, end):
+    """Every stack attacks the other side's nearest one until the battle ends (two human sides:
+    auto combat does not play a battle between two human players in hot seat, E08 T32b1)."""
+    play_turns(game, mem, lambda s: nearest_enemy(mem, s), lambda: False, end, "attack")
 
 
 def fight(game, mem, plan, limit=300.0):
@@ -350,32 +463,40 @@ def fight(game, mem, plan, limit=300.0):
     computer plays every human side; setup.sh's `Combat Auto Creatures`), or "retreat" or
     "surrender", optionally "defender retreat" or "defender surrender" (default the attacker):
     every other stack defends until one of that side's stacks acts, which then retreats or
-    surrenders; the confirmation's OK is clicked. Or (E08 T32b1, E4-9) a table `{ attack =
-    "<creature>", by = "attacker" | "defender", then = "auto" }`: each stack of that side attacks
-    the other side's stack of that creature (a click on its hex) while it stands, every other
-    stack defends, the machines act themselves; then `then` plays the rest (`auto` only). The
+    surrenders; the confirmation's OK is clicked. Since E08 T32b1: "attack" (every stack attacks
+    the other side's nearest stack, moving toward it when out of reach, until the battle ends:
+    auto combat does not play a battle between two human players in hot seat), or a table `{
+    attack = "<creature>", by = "attacker" | "defender", then = "attack" | "auto" }` (E4-9): each
+    stack of that side attacks the other side's stack of that creature while it stands and every
+    other stack defends, then `then` plays the rest; the war machines act by themselves. The
     record holds the battlefield at the start (`field`: h3mem.battlefield)."""
     if plan is None:
         raise RuntimeError("a battle the step does not plan (`battle`)")
     if isinstance(plan, dict):
         if set(plan) != {"attack", "by", "then"} or plan["by"] not in SIDES \
-                or plan["then"] != "auto":
+                or plan["then"] not in ("auto", "attack"):
             raise ValueError(f"unknown battle plan `{plan}`")
-        action, side = "attack", SIDES.index(plan["by"])
+        action, side = "first", SIDES.index(plan["by"])
     else:
         words = plan.split()
         action, side = words[-1], SIDES.index(words[0]) if len(words) == 2 else 0
-        if action not in ("auto", *BATTLE_KEYS) or len(words) > 2:
+        if action not in ("auto", "attack", *BATTLE_KEYS) or len(words) > 2:
             raise ValueError(f"unknown battle plan `{plan}`")
     game.move(*BATTLE_PARK)
     wait_for(lambda: mem.stacks(), "the battle's stacks", 10)
     time.sleep(0.5)
     record = {"plan": plan, "field": mem.battlefield(), "start": stacks(mem)}
     end = time.monotonic() + limit
-    if action == "attack":
+    if action == "first":
         attack_until_gone(game, mem, side, plan["attack"], end)
-        if not find_button(game, "battle_ok"):
+        if find_button(game, "battle_ok"):
+            pass
+        elif plan["then"] == "auto":
             auto_combat(game, mem, end)
+        else:
+            attack_to_the_end(game, mem, end)
+    elif action == "attack":
+        attack_to_the_end(game, mem, end)
     elif action == "auto":
         auto_combat(game, mem, end)
     else:
@@ -693,8 +814,10 @@ def value(obs, what, mem):
         kind, *rest = what.split(":")
         if kind in ("winner", "retreated", "surrendered"):
             # A winner of -1 is none (E17 M3 T6c-2: it read `defender`, SIDES[-1]).
-            value = fought[kind]
-            return "none" if value is None or value < 0 else SIDES[value]
+            # Not named `value`: a local of that name made every `before:` read above fail
+            # (UnboundLocalError; E08 T32b1).
+            got = fought[kind]
+            return "none" if got is None or got < 0 else SIDES[got]
         moment, side = rest[0], SIDES.index(rest[1]) if len(rest) > 1 else None
         if kind == "stacks":
             return stacks_text(mem, fought[moment], side)

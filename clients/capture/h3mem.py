@@ -9,9 +9,10 @@ nothing is written into the game.
   h3mem.py adventure  print the adventure map's state as JSON: the current player, the view,
                       each player's selected hero and resources, every hero on the map
 
-Library use: `Mem` (globals, stacks, battle_heroes, battle_outcome; current_player, player, heroes,
-all_heroes, hero, hero_named, view, mouse_tile, path, difficulty, tile, monster, creature_name,
-message). Needs a running game (h3drive.py) and the rights to read its memory (root in a sandbox).
+Library use: `Mem` (globals, stacks, battle_heroes, battle_outcome, battlefield; current_player,
+player, heroes, all_heroes, hero, hero_named, view, mouse_tile, path, difficulty, tile, monster,
+creature_name, artifact_name, dialog_text, dialog_items, level_up_dialog). Needs a running game
+(h3drive.py) and the rights to read its memory (root in a sandbox).
 """
 
 import json
@@ -100,6 +101,11 @@ SIDE_COUNTS, STACKS, SIDE_STRIDE, STACK_SIZE, STEP_COUNTER = 0x54BC, 0x54CC, 0x6
 # The battlefield (E08 T32b1; structs.toml, battle_manager): the terrain (i32 +0x5394, set by
 # 0x4643B0) and the special field (i32 +0x53C0, -1 none).
 BATTLE_TERRAIN, SPECIAL_FIELD = 0x5394, 0x53C0
+# The hex records (structs.toml, hex_record; H3API's H3CombatSquare): 187 from +0x1C4, 0x70 bytes
+# each: the flags (u8 +0x10, 0x2 blocked), the stack on it (+0x18: side, record; -1 none), the
+# pathfinder's attack mark for the active stack (u8 +0x4A).
+HEXES, HEX_COUNT, HEX_SIZE, HEX_FLAGS, HEX_STACK, HEX_ATTACKABLE = (
+    0x1C4, 187, 0x70, 0x10, 0x18, 0x4A)
 TERRAINS = ("dirt", "sand", "grass", "snow", "swamp", "rough", "subterranean", "lava", "water",
             "rock")
 SPECIAL_FIELDS = ("shore", "Magic Plains", "Cursed Ground", "Holy Ground", "Evil Fog",
@@ -145,6 +151,7 @@ FIELDS = {
     "frame": 0x40,
     "facing": 0x44,
     "count": 0x4C,
+    "speed": 0xC4,  # E08 T32b1: a plan's move in reach
     # The count the box shows while it is not -1 (E17 M3 T5b, design §4.3): the count before a
     # strike's kills, set by `stack_take_damage` (0x4440DB), -1 again at the end of
     # `strike_animation` (0x46935A).
@@ -272,6 +279,29 @@ class Mem:
         return {"winner": self.i32(manager + WINNER),
                 "retreated": side(self.read(manager + RETREATED, 2)),
                 "surrendered": side(self.read(manager + SURRENDERED, 2))}
+
+    def hexes(self):
+        """Every hex record (E08 T32b1): its flags (0x2 blocked), the stack on it ([side, record]
+        or None) and the attack mark the pathfinder sets for the active stack (+0x4A: the stack
+        there can be attacked this turn)."""
+        manager = self.manager()
+        raw = self.read(manager + HEXES, HEX_COUNT * HEX_SIZE)
+        found = []
+        for h in range(HEX_COUNT):
+            side, record = struct.unpack_from("<2b", raw, h * HEX_SIZE + HEX_STACK)
+            found.append({"hex": h, "flags": raw[h * HEX_SIZE + HEX_FLAGS],
+                          "stack": [side, record] if side >= 0 else None,
+                          "attackable": bool(raw[h * HEX_SIZE + HEX_ATTACKABLE])})
+        return found
+
+    def stack_hexes(self, side, record):
+        """The hexes a living stack covers (E08 T32b1): the hex records (battle manager +0x1C4,
+        0x70 bytes each) whose stack reference (side i8 +0x18, record i8 +0x19) names it; a
+        two-hex stack's two, whichever its own hex field holds (a war machine's is its left one)."""
+        manager = self.manager()
+        raw = self.read(manager + HEXES, HEX_COUNT * HEX_SIZE)
+        return [h for h in range(HEX_COUNT)
+                if struct.unpack_from("<2b", raw, h * HEX_SIZE + HEX_STACK) == (side, record)]
 
     def battlefield(self):
         """The battle's terrain and special field by name (E08 T32b1; the special field None for

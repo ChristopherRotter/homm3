@@ -168,6 +168,20 @@ army = [["Archangel", 20]]
 monster = "Pikeman"
 count = 150
 [[encounter.record]]
+field = "seed byte (hero +0x8F)"
+[[encounter.record]]
+field = "Wisdom last offered (hero +0x90)"
+[[encounter.record]]
+field = "a school last offered (hero +0x3F)"
+[[encounter.record]]
+field = "experience at the start"
+[[encounter.record]]
+field = "level at the start"
+[[encounter.record]]
+field = "primary skills at the start (attack/defense/power/knowledge)"
+[[encounter.record]]
+field = "secondary skills at the start (in the hero's order)"
+[[encounter.record]]
 field = "level after"
 [[encounter.record]]
 field = "experience after"
@@ -245,13 +259,27 @@ at = [10, 13]
 primary = [0, 0, 1, 1]
 army = [["Archangel", 10]]
 artifacts = { "war machine 1" = "Ballista", "head" = "Helm of the Alabaster Unicorn" }
-backpack = ["Centaur's Axe"]
+backpack = ["Centaurs Axe"]
 [encounter.opponent.hero]
 type = "Valeska"
 specialty = "creature Archer"
 name = "Gear B"
 primary = [0, 0, 1, 1]
 army = [["Thunderbird", 30]]
+[[encounter.record]]
+field = "seed byte (hero +0x8F)"
+[[encounter.record]]
+field = "Wisdom last offered (hero +0x90)"
+[[encounter.record]]
+field = "a school last offered (hero +0x3F)"
+[[encounter.record]]
+field = "experience at the start"
+[[encounter.record]]
+field = "level at the start"
+[[encounter.record]]
+field = "primary skills at the start (attack/defense/power/knowledge)"
+[[encounter.record]]
+field = "secondary skills at the start (in the hero's order)"
 [[encounter.record]]
 field = "artifacts before (worn, by slot)"
 [[encounter.record]]
@@ -268,6 +296,8 @@ field = "the battle's winner"
 field = "artifacts after (worn, by slot)"
 [[encounter.record]]
 field = "backpack after"
+[[encounter.record]]
+field = "experience after"
 [[encounter.record]]
 field = "level-up dialogs"
 [[encounter.record]]

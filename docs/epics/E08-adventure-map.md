@@ -320,6 +320,17 @@ Refined with the user on 2026-10-20 (T23; ADV-Q14). Built like increments 1 to 3
     needs `h3-heroes` among `h3-map`'s dev-dependencies (`arch.toml`, `shared/e08-t32a`, merged
     first).
 
+### Decisions at round 5 (2026-10-21, user)
+
+68. **T32b is cut, and this lane builds the harness's reads** (the user's choice of four; not
+    chosen: T32b1 cut smaller, the plain memory reads first and the level-up dialog's offers and
+    E4-9's battle by plan after; waiting for the client lane, busy with E17 M3, with small inbox
+    work meanwhile; or increment 5 refined while batch E4 waits). **T32b1**: the eight reads batch
+    E4's recipes need (the client lane's inbox, 2026-10-20 and -21) added to the harness
+    (`clients/capture/`, client-owned: **`cross-lane` with the user's consent**, as T22a3's
+    change), checked under Wine on the harness's own check map; **T32b2**: batch E4's three
+    recipes and their run; then T33.
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T23 Increment 4 refined.** Done (2026-10-20, `adventure/e08-t23`; decisions 48–50): progression only, the first round queued (T24a, T24b), the inbox sorted; docs only (log).

@@ -278,8 +278,19 @@ waits until the hero, its points and the players' resources rest, on the way:
   confirmation's OK clicked). The result window's OK (`[button.battle_ok]`) ends it. A battle the
   step does not plan stops the batch.
 - **choosing a level-up's skill**: the dialog whose OK stays disabled (`[button.ok_disabled]`)
-  until one of its two offered skills is clicked: `level_up = "left"` (the default) or `"right"`.
-- clicking any other dialog's OK.
+  until one of its two offered skills is clicked: `level_up = "left"` (the default) or `"right"`,
+  or a list of them, one per such dialog in order (the last one repeated; E08 T32b1). Every
+  level-up dialog, with two offers, one or none, is recorded from the game's memory (E08 T32b1):
+  the hero (its name in the dialog's text), its new level, the primary skill raised and the
+  offers, read from the dialog's picture items (`level_up_dialog` 0x4F8880: item 2009 the primary
+  skill's frame, 2010 the left offer or the only one, 2011 the right one, a skill's frame 3 ×
+  skill + 3 + the hero's level of it before), and the one taken.
+- clicking any other dialog's OK, its text's record noted (`messages`; E08 T32b1).
+
+A battle's `battle` may also be a plan (E08 T32b1, batch E4's E4-9): `{ attack = "Ballista", by =
+"defender", then = "auto" }`: while the other side has a living stack of that creature, each stack
+of the side named clicks its hex on its turn (right of the hex's centre) and every other stack
+defends (the war machines act by themselves); then auto combat plays the rest.
 
 A step without `walk` only reads. `record` fills the template's fields and table rows from the
 observation; `before:<observation>` reads the same before the step:
@@ -292,11 +303,15 @@ observation; `before:<observation>` reads the same before the step:
 | `difficulty`, `date` | the game's difficulty; the date (`month 1, week 1, day 2`) |
 | `heroes:experience` | the heroes off the map (E3-7): `147 heroes: 40 to 90; 2 at 40, 1 at 90` |
 | `level_ups` | the level-up dialogs passed |
+| `level_up:<n>:<part>` | the step's n-th level-up dialog (from 1): `level`, `primary` (attack, defense, power, knowledge), `left`, `right` (a skill's name, `none`), `taken` (`left (Wisdom)`, or the only offer), `hero` (E08 T32b1) |
+| `messages` | the records of the other dialogs closed with their OK (`GENRLTXT:79, …`, `?` for a text not identified, `none`) |
+| `battlefield`, `battlefield:terrain` | the last battle's special field (`Clover Field`, `none`) and its terrain (`grass`) (battle manager +0x53C0, +0x5394) |
+| `destroyed:<creature>` | yes or no: no stack of that creature that was in the last battle at its start stands at its end (`destroyed:Ballista`) |
 | `question`, `questions` | the questions' kinds (`join, flee`; `none`), their records |
 | `battle`, `winner`, `retreated`, `surrendered` | yes or no; the side (`attacker`, `defender`, `none`) |
 | `stacks:start`, `stacks:end[:<side>]` | the battle's stacks (`attacker 20 Archangels \| defender 3 Pikemen, 2 Halberdiers`) |
 | `hexes:start[:<side>]` | their hexes at the start (the formation) |
-| `hero:<detail>`, `hero[<name>]:<detail>` | the step's hero after the step, or another by name: `experience`, `level`, `primary` (`3/5/1/2`), `army`, `skill:<name>` (none, basic, advanced, expert), `on_map`, `tile` |
+| `hero:<detail>`, `hero[<name>]:<detail>` | the step's hero after the step, or another by name: `experience`, `level`, `primary` (`3/5/1/2`), `army`, `skill:<name>` (none, basic, advanced, expert), `on_map`, `tile`; since E08 T32b1 `skills` (`Leadership expert, Wisdom basic`, in the hero's order), `seed` (the level seed, hero +0x8F), `wisdom_offer` and `school_offer` (the levels Wisdom and a school were last offered at, +0x90, +0x3F), `artifacts` (worn: `Ballista (war machine 1), …` in slot order) and `backpack` |
 | `monster:x,y`, `aggression:x,y`, `never_flees:x,y` | the monster on a tile (`30 Pikemen`, `none`), its aggression (−4 to 10) and flag, from the tile's word |
 
 `expect = { marks = <n>, path = "green", question = "join, flee", battle = true, dialogs = true }`
