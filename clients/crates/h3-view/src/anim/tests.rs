@@ -22,6 +22,7 @@ const FLY: &str = include_str!("../../../../situations/timelines/fly.txt");
 const CAST: &str = include_str!("../../../../situations/timelines/cast.txt");
 const RESIST: &str = include_str!("../../../../situations/timelines/resist.txt");
 const ARROW: &str = include_str!("../../../../situations/timelines/arrow.txt");
+const HASTE: &str = include_str!("../../../../situations/timelines/haste.txt");
 
 /// Creature handles of the tests.
 const CHAMPION: u16 = 0;
@@ -43,6 +44,7 @@ const TENT: u16 = 13;
 const SWORDSMAN: u16 = 14;
 const ARCHANGEL: u16 = 15;
 const BATTLE_DWARF: u16 = 16;
+const VAMPIRE_LORD: u16 = 17;
 
 /// A look: `times` and the frames of each group.
 fn look(times: [u32; 4], frames: &[(u32, u32)], top: i32) -> Look {
@@ -328,6 +330,14 @@ fn looks() -> BTreeMap<u16, Look> {
                     196,
                 )
             },
+        ),
+        (
+            VAMPIRE_LORD,
+            look(
+                [9000, 500, 500, 115],
+                &[(0, 6), (1, 9), (2, 8), (3, 7), (4, 9), (5, 8), (20, 5), (21, 5)],
+                160,
+            ),
         ),
     ];
     base.into_iter().collect()
@@ -2753,13 +2763,25 @@ fn spell_magic() -> BTreeMap<u8, MagicLook> {
     all.insert(19, entry("C09spE0.def", 20, [74, 54], 0));
     all.insert(RESISTED, entry("sp09_.def", 20, [91, 86], 3));
     all.insert(64, entry("C20SPX.DEF", 14, [133, 116], 1));
+    // E17 M3 T7b-2a: Disrupting Ray's (translucent), Haste's, Cure's and Dispel's.
+    all.insert(
+        14,
+        MagicLook {
+            translucent: true,
+            ..entry("C07spA1.def", 16, [176, 148], 1)
+        },
+    );
+    all.insert(31, entry("C15spA0.def", 15, [113, 106], 0));
+    all.insert(39, entry("C03spW0.def", 15, [94, 119], 1));
+    all.insert(41, entry("C05spW0.def", 15, [199, 201], 1));
     all
 }
 
 /// What the casts' tests cast (E17 M3 T7b-1): Slow (54) with its animation 19, Magic Arrow (15)
-/// with 64 and its five projectile DEFs (`c20spx0`–`4.def`); Orrin on the left (`CH00.DEF`'s
-/// cast point (92, 67): (49, 48) on the screen, five of its eight casting frames before the
-/// spell), no caster on the right.
+/// with 64 and its five projectile DEFs (`c20spx0`–`4.def`); since T7b-2a Haste (53, 31), Cure
+/// (37, 39), Dispel (35, 41) and Disrupting Ray (47, 14 and its projectile); Orrin on the left
+/// (`CH00.DEF`'s cast point (92, 67): (49, 48) on the screen, five of its eight casting frames
+/// before the spell), no caster on the right.
 fn casts() -> Casts {
     let shell = |k: usize, size, frames, angle| Shell {
         def: format!("c20spx{k}.def"),
@@ -2780,15 +2802,33 @@ fn casts() -> Casts {
             shell(4, [50, 119], 15, -83),
         ],
     };
-    let slow = SpellLook {
-        original: 54,
-        sign: -1,
+    let timed = |original, sign, animation| SpellLook {
+        original,
+        sign,
         value: [0; 2],
-        animation: Some(19),
+        animation: Some(animation),
         projectile: Vec::new(),
     };
+    // E17 M3 T7b-2a: Disrupting Ray (47) lowers the defense by 3 for either side's hero.
+    let ray = SpellLook {
+        value: [3; 2],
+        projectile: vec![Shell {
+            def: "c07spA0.def".to_string(),
+            size: [79, 43],
+            frames: 8,
+            angle: 0,
+        }],
+        ..timed(47, -1, 14)
+    };
     Casts {
-        spells: BTreeMap::from([(15, arrow), (54, slow)]),
+        spells: BTreeMap::from([
+            (15, arrow),
+            (35, timed(35, 0, 41)),
+            (37, timed(37, 1, 39)),
+            (47, ray),
+            (53, timed(53, 1, 31)),
+            (54, timed(54, -1, 19)),
+        ]),
         casters: [
             Some(Caster {
                 point: [49, 48],
@@ -2818,8 +2858,29 @@ fn cast_heroes() -> Heroes {
 
 /// The timeline of `snapshot` and `commands` with the casts' stage, and the casts' heroes.
 fn play_casts(snapshot: &Observation, commands: &[(Option<u32>, Vec<Event>)]) -> Timeline {
+    play_casts_with(snapshot, commands, casts())
+}
+
+/// [`play_casts`] with Crag Hack casting on the right too (E17 M3 T7b-2a: `CH013.DEF`, five of
+/// eight frames before the spell; his cast point not measured, as no projectile of his flies).
+fn play_casts_both(snapshot: &Observation, commands: &[(Option<u32>, Vec<Event>)]) -> Timeline {
+    let mut casts = casts();
+    casts.casters[1] = Some(Caster {
+        point: [751, 48],
+        before: 5,
+        frames: 8,
+    });
+    play_casts_with(snapshot, commands, casts)
+}
+
+/// [`play_casts`] with `casts`.
+fn play_casts_with(
+    snapshot: &Observation,
+    commands: &[(Option<u32>, Vec<Event>)],
+    casts: Casts,
+) -> Timeline {
     let layout = layout();
-    let (magic, casts) = (spell_magic(), casts());
+    let magic = spell_magic();
     let stage = Stage {
         layout: &layout,
         width: 17,
@@ -3205,4 +3266,73 @@ fn hero_lines_leave_out_a_side_without_a_hero() {
     };
     assert!(!none.lines_with_heroes(3000).contains("hero"));
     assert_eq!(t.lines(), none.lines_with_heroes(3000));
+}
+
+/// Crag Hack's cast (the defender's hero; the casts' tests have no caster on the right).
+fn defender_cast(spell: u16, target: u8) -> Event {
+    Event::SpellCast {
+        side: Side::Defender,
+        spell,
+        target: Target::Stack { stack: target },
+        second: Target::None {},
+    }
+}
+
+#[test]
+fn the_haste_sequence_plays_as_recorded() {
+    // E17 M3 T7b-2a (`seq-haste.toml`): Orrin hastes the Pikemen (round 1), they walk hasted
+    // (round 2: W trunc(575 × 0.65) = 373, 62 ms a frame), Crag Hack slows them (Slow ends
+    // Haste) and they walk slowed (round 3: 862, 143 ms a frame).
+    let o = snapshot(vec![
+        at(1, Side::Defender, VAMPIRE_LORD, 100, false),
+        at(0, Side::Attacker, PIKEMAN, 86, false),
+    ]);
+    let turn = |stack| Event::TurnStarted { stack };
+    let commands = [
+        (Some(0), vec![Event::Defended { stack: 1 }, turn(0)]),
+        (Some(0), vec![cast(53, 0), applied(0, 53)]),
+        (
+            Some(2400),
+            vec![
+                Event::Defended { stack: 0 },
+                Event::RoundStarted { round: 2 },
+                turn(1),
+            ],
+        ),
+        (Some(2400), vec![Event::Defended { stack: 1 }, turn(0)]),
+        (
+            Some(2400),
+            vec![moved(0, 86, 87), moved(0, 87, 88), turn(1)],
+        ),
+        (
+            Some(3244),
+            vec![
+                defender_cast(54, 0),
+                Event::EffectEnded {
+                    target: 0,
+                    spell: 53,
+                },
+                applied(0, 54),
+            ],
+        ),
+        (
+            Some(6144),
+            vec![
+                Event::Defended { stack: 1 },
+                Event::RoundStarted { round: 3 },
+                turn(0),
+            ],
+        ),
+        (Some(6144), vec![moved(0, 88, 89), moved(0, 89, 90)]),
+    ];
+    let t = play_casts_both(&o, &commands);
+    assert_eq!(t.lines_with_heroes(9144), until(&screenless(HASTE), 9144));
+    // The box's hue: none before the cast, Haste's green from its animation's first frame
+    // (drawn at 500), Slow's red from its first (3 744), each spell's sign summed (§4.3).
+    let hue = |at| t.hues(at).get(&0).copied();
+    assert_eq!(hue(599), None);
+    assert_eq!(hue(600), Some(0x3EAA_B368));
+    assert_eq!(hue(3843), Some(0x3EAA_B368));
+    assert_eq!(hue(3844), Some(0));
+    assert_eq!(t.hues(9000).get(&1), None);
 }

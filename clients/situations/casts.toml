@@ -105,20 +105,3 @@ ms = 3340
 heroes = true
 screens = true
 timeline = "timelines/creatures.txt"
-
-# E17 M3 T7b-2a: Disrupting Ray, Cure and Dispel on one stack (§7.16, players 1 and 7): Crag
-# Hack's Slow on the Pikemen and Orrin's Disrupting Ray at the Vampire Lords (round 1), Orrin's
-# Cure on the Pikemen (round 2), Crag Hack's Slow again and Orrin's Dispel (round 3).
-[[sequence]]
-id = "dispel"
-scenario = "seq-dispel.toml"
-hot_seat = true
-actions = [
-    "turn:1.0", "cast:0:86", "key:d", "turn:0.0", "cast:2:100", "key:d",
-    "turn:1.0", "key:d", "turn:0.0", "cast:0:86", "key:d",
-    "turn:1.0", "cast:0:86", "key:d", "turn:0.0", "cast:1:86",
-]
-ms = 2500
-heroes = true
-screens = true
-timeline = "timelines/dispel.txt"
