@@ -681,6 +681,12 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   marks, the Fire Wall's damage and hurt test, the moat, the area spell with costs, immunity,
   resistance, an aura and the Orb of Vulnerability in both precisions). The harvested property's
   shot count floor went from 500 to 300 (415 shots now: the walkers' choices changed the games).
+- **A blind check** (a fresh agent, the disassembly against the port with the slips on): no
+  discrepancy in 0x421680's head, 0x4214F0, 0x421590, 0x420260, 0x41FD60, 0x420060, 0x41FB60,
+  0x41F920 or 0x4B3400's uses of its speed argument; 0x5A78E0's defending hero, which the Fire
+  Wall's call passes as the acting side's, is never read. Not in its brief: the queue's push
+  0x4B3BB0 and the stops 0x4B3290 (T1c's port), the estimates' insides (T2, T3a's), the record
+  order (`state::RECORD_ORDER`).
 - **Not built here** (BAT-STUB-4, T3c): the stronger at range, the last retaliation's gain,
   holding the walls, a besieger's walk, the fallbacks. Predictions only (T4, T5): a struck stack
   without hit points after the planned damage (0x41FE2E), the hit points left after it (0x443080

@@ -49,7 +49,7 @@ Area traps live where they are used: experiments in `docs/experiments/README.md`
 
 ### 2026-10-21 (ninety-second) — E23 T3b, the walker's hex scores
 
-The user: T3b whole. `scores.rs` (BAT-AI-007, §7.48); `h3-battle`: `Query::speed`, `computer::reach_map`, `fire_wall_damage`, `damaging_moat`, `area_spell_damage`, `Context::attack_for_both`. Slips 18, 19 new, slip 3 built (BAT-QUIRK-25). `POLICY_VERSION` 4; `computer-decisions` re-set (the log).
+The user: T3b whole. `scores.rs` (BAT-AI-007, §7.48); `h3-battle`: `Query::speed`, `computer::reach_map`, `fire_wall_damage`, `damaging_moat`, `area_spell_damage`, `Context::attack_for_both`. Slips 18, 19 new, slip 3 built (BAT-QUIRK-25). `POLICY_VERSION` 4; `computer-decisions` re-set (the log). A fresh agent re-read the port: no discrepancy.
 
 ### 2026-10-21 (ninety-first) — E23 T3-0 and T3a, the spells' AI values, the plan and the attack
 
