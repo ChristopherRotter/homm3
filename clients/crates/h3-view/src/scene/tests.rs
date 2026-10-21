@@ -22,10 +22,12 @@ heal_sound = "Regener"
 
 [[hero]]
 key = "orrin"
+original = 0
 def = "CH00.DEF"
 
 [[hero]]
 key = "crag_hack"
+original = 102
 def = "CH013.DEF"
 
 [[creature]]
@@ -905,4 +907,26 @@ fn the_panel_over_time_follows_the_turns_and_the_log() {
     let none = Panels::new(&o, &[], Vec::new());
     assert_eq!(picture(&none.at(&o, &[], 0, &layout)), Some(0));
     assert_eq!(none.text(0), "");
+}
+
+#[test]
+fn a_heros_cast_disables_its_spell_book_for_the_turn() {
+    // E17 M3 T7b-1 (the recorded `cast`): from the cast's start, the side's hero has cast this
+    // round; the other side's cast leaves this turn's book as it is.
+    let layout = layout();
+    let mut o = battle_view();
+    o.sides[0].human = true;
+    o.sides[0].hero = led(0).map(|h| h3_protocol::wire::Hero {
+        spell_book: true,
+        ..h
+    });
+    let events = [Event::TurnStarted { stack: 0 }];
+    let casts = vec![(150, Side::Defender), (200, Side::Attacker)];
+    let panels = Panels::new(&o, &events, Vec::new()).with_casts(casts);
+    let started = [(100, 0)];
+    let book = |t| match &panels.at(&o, &started, t, &layout)[5] {
+        Draw::Button { frame, .. } => *frame,
+        _ => 9,
+    };
+    assert_eq!([book(100), book(199), book(200)], [0, 0, 2]);
 }

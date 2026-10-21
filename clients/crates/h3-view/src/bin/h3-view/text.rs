@@ -23,17 +23,33 @@ pub fn default_keys() -> PathBuf {
     assets::clients_dir().join("text").join("keys.toml")
 }
 
-/// The families' entries: the asset tables' creatures, by qualified key, with their original ids.
+/// The families' entries: the asset tables' creatures, spells and heroes (E17 M3 T7b-1), by
+/// qualified key, with their original ids.
 pub fn entries(tables: &AssetTables) -> BTreeMap<String, Vec<Entry>> {
+    let entry = |key: &String, original: u16| Entry {
+        key: key.clone(),
+        id: usize::from(original),
+    };
     let creatures = tables
         .creatures
         .iter()
-        .map(|(key, c)| Entry {
-            key: key.clone(),
-            id: usize::from(c.original),
-        })
+        .map(|(key, c)| entry(key, c.original))
         .collect();
-    BTreeMap::from([(String::from("creature"), creatures)])
+    let spells = tables
+        .spells
+        .iter()
+        .map(|(key, s)| entry(key, s.original))
+        .collect();
+    let heroes = tables
+        .heroes
+        .iter()
+        .map(|(key, h)| entry(key, h.original))
+        .collect();
+    BTreeMap::from([
+        (String::from("creature"), creatures),
+        (String::from("hero"), heroes),
+        (String::from("spell"), spells),
+    ])
 }
 
 /// Reads the key catalogue at `path`, its families over `tables`.
@@ -301,6 +317,26 @@ pub fn log_samples(catalogue: &Catalogue) -> Vec<(&'static str, String)> {
             battle_log::heal(c, stack(tent, 1), stack(pikemen, 12), 17),
         ),
         ("round", c.text("battle.log.round", &Args::new())),
+        // E17 M3 T7b-1: a hero's cast on a stack, a resisted one, a spell's damage.
+        (
+            "cast-on",
+            battle_log::cast_on(
+                c,
+                &c.text("hero.base:orrin", &Args::new()),
+                &c.text("spell.base:slow", &Args::new()),
+                stack(wolves, 8),
+            ),
+        ),
+        ("resisted", battle_log::resisted(c, stack(pikemen, 1))),
+        ("resisted", battle_log::resisted(c, stack(wolves, 8))),
+        (
+            "strike",
+            strike(
+                stack("spell.base:magic_arrow", 1),
+                Spread::Target,
+                &[hit(wolves, 20, 2)],
+            ),
+        ),
     ]
 }
 
@@ -378,20 +414,24 @@ mod tests {
     }
 
     /// The committed catalogue parses over the committed asset tables, and names its keys in
-    /// GENRLTXT, CRTRAITS and HELP (the panel's hints, E17 M3 T6c-1) only (the real check, that
-    /// each stays within its table's rows, is the gate's).
+    /// GENRLTXT, CRTRAITS, HELP (the panel's hints, E17 M3 T6c-1), HOTRAITS and SPTRAITS (the
+    /// casts' lines, T7b-1) only (the real check, that each stays within its table's rows, is the
+    /// gate's).
     #[test]
     fn the_committed_catalogue_parses() {
         let assets = assets::load(&assets::default_dir(), assets::ALL).unwrap();
         let keys = read_keys(&default_keys(), &assets).unwrap();
         assert!(keys.keys.contains_key("battle.log.damage"));
         assert!(keys.keys.contains_key("creature.base:pikeman"));
+        assert!(keys.keys.contains_key("spell.sod:titans_lightning_bolt"));
+        assert!(keys.keys.contains_key("hero.base:orrin"));
         let names: BTreeSet<&str> = keys
             .keys
             .values()
             .flat_map(|k| k.original.iter().map(|(_, s, _)| s.table.as_str()))
             .collect();
-        assert_eq!(names, BTreeSet::from(["CRTRAITS", "GENRLTXT", "HELP"]));
+        let tables = ["CRTRAITS", "GENRLTXT", "HELP", "HOTRAITS", "SPTRAITS"];
+        assert_eq!(names, BTreeSet::from(tables));
     }
 
     #[test]
@@ -428,9 +468,13 @@ mod tests {
                 "destroyed": " {{creature}}", "wait": "{{creature}}",
                 "defend": "{{creature}} {{defense}}", "morale-good": "{{creature}}",
                 "morale-bad": "{{creature}}", "luck-good": "{{creature}}",
-                "heal": "{{healer}} {{creature}} {{hit_points}}", "round": "R" } },
-                "word": { "creature": "w" }, "creature": { "base:wolf_rider": "W",
-                "base:pikeman": "P", "base:ballista": "B", "base:first_aid_tent": "T" } }"#,
+                "heal": "{{healer}} {{creature}} {{hit_points}}", "round": "R",
+                "cast-on": "{{hero}} {{spell}} {{creature}}", "resisted": "{{creature}} {{verb}}"
+                } },
+                "word": { "creature": "w", "resist": "r" }, "creature": { "base:wolf_rider": "W",
+                "base:pikeman": "P", "base:ballista": "B", "base:first_aid_tent": "T" },
+                "spell": { "base:slow": "S", "base:magic_arrow": "A" },
+                "hero": { "base:orrin": "O" } }"#,
         )
         .unwrap();
         let catalogue = Catalogue { packs: vec![pack] };

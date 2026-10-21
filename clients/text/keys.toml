@@ -10,8 +10,9 @@
 # `at = "<TABLE>:<record>[:<column>]"` (records from 0 with the header rows, as the parser reads
 # them; VCMI's `core.genrltxt.<n>` is GENRLTXT's record n + 1) and `printf`, the arguments its `%s`
 # and `%d` stand for in order. A family: a key per entry of the asset tables (`creature`:
-# `creature.<table>:<key>`, the creature's names), its row the `first`-based non-blank record of
-# its original id, its forms' columns in `forms`.
+# `creature.<table>:<key>`, the creature's names; `spell` and `hero` since E17 M3 T7b-1), its row
+# the `first`-based non-blank record of its original id (with `by`, the records whose column `by`
+# is filled), its forms' columns in `forms`, or a single form's in `column`.
 #
 # The battle log's lines, as the executable writes them (read in M3 T4b-2a; docs/epics/E17-design.md
 # §9.4; composed by `h3_view::battle_log`). The executable's row n of a table is its record n here,
@@ -100,6 +101,32 @@ original = [{ at = "GENRLTXT:415", printf = ["healer", "creature", "hit_points"]
 id = "battle.log.round"
 original = [{ at = "GENRLTXT:413" }]
 
+# A hero casts a spell on a stack (`battle_log_cast` 0x5A8950, the caster kind 0 with a target;
+# E17 M3 T7b-1): the hero's name, the spell's and the stack's by its number.
+[[key]]
+id = "battle.log.cast-on"
+args = { hero = "text", spell = "text", creature = "text" }
+original = [{ at = "GENRLTXT:196", printf = ["hero", "spell", "creature"] }]
+
+# A spell resisted by the stack it was aimed at (`cast_spell` 0x5A1FB0, E17 M3 T7b-1): the stack's
+# name by its number, and the verb `word.resist` by it.
+[[key]]
+id = "battle.log.resisted"
+args = { creature = "text", verb = "text" }
+original = [{ at = "GENRLTXT:190", printf = ["creature", "verb"] }]
+
+# A hero's spell aimed over a stack (E17 M3 T7b-1, *provisional*: the aiming loop is not read):
+# the spell's name and the stack's by its number; elsewhere on the battlefield the spell's alone.
+[[key]]
+id = "battle.hint.cast-on"
+args = { spell = "text", creature = "text" }
+original = [{ at = "GENRLTXT:28", printf = ["spell", "creature"] }]
+
+[[key]]
+id = "battle.hint.cast"
+args = { spell = "text" }
+original = [{ at = "GENRLTXT:27", printf = ["spell"] }]
+
 # The status line's hints over the battlefield (`battle_status_line` 0x492840; E17 M3 T6c-1,
 # docs/epics/E17-design.md §9.9): `creature` the acting stack's or the target's name by its number
 # (the stack looked at: its singular), as the cursor's kind says. A strike's and, while the army
@@ -184,6 +211,15 @@ original = [
     { form = "other", at = "GENRLTXT:44" },
 ]
 
+# The verb of a resisted spell's line, by the stack's number (0x5A1FA8: its row for exactly 1).
+[[key]]
+id = "word.resist"
+plural = true
+original = [
+    { form = "one", at = "GENRLTXT:145" },
+    { form = "other", at = "GENRLTXT:144" },
+]
+
 # A hero's possessive pronoun, by the hero's sex as `context`.
 [[key]]
 id = "word.possessive"
@@ -200,3 +236,21 @@ id = "creature"
 table = "CRTRAITS"
 first = 2
 forms = { one = 0, other = 1 }
+
+# A spell's name (SPTRAITS.TXT's first column; E17 M3 T7b-1): its records from record 2 whose
+# second column is filled are the original ids in order (the group rows fill only their first, as
+# the harvesters read them).
+[[family]]
+id = "spell"
+table = "SPTRAITS"
+first = 2
+by = 1
+column = 0
+
+# A hero type's name (HOTRAITS.TXT's first column; E17 M3 T7b-1): its non-blank records from
+# record 2 are the hero types in order. A hero on a map may carry a name of its own (not read).
+[[family]]
+id = "hero"
+table = "HOTRAITS"
+first = 2
+column = 0

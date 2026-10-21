@@ -1543,8 +1543,13 @@ resistance roll, if any (category 3, 0x5A0331); Curse's is named `Curse`, withou
   next frame (cycling) drawn plain, centred, the union shown clipped to the battlefield, a wait
   until trunc(33 F) after the step's start (outside the deadline, as a shot's, §7.4); at the end
   the background restored and shown (recorded: n + 1 positions 33 ms apart, the first shown with
-  the hero's last cast frame; the restore shows with the next animation, 33 ms after the last). From a hero's cast point (below) or a creature's centre
-  (`stack_screen_x`, `stack_screen_y`) to the target's centre.
+  the hero's last cast frame; the restore shows with the next animation, 33 ms after the last;
+  T7b-1 read the loop: n positions, the first at the start, k = 0 to n − 1, so `arrow`'s 22
+  positions are n = 22, not n + 1). From a hero's cast point (below) or a creature's centre
+  (`stack_screen_x`, `stack_screen_y`: the position's anchor, a two-hex stack's middle 22 toward
+  its front, up by half its height) to the target's centre. The DEF: the angle against the
+  midpoints of consecutive table angles as f32, the first midpoint below the angle ends the count
+  (0x467F46).
 - **The Magogs and the Liches** (after their projectile): the explosion centred on the target
   creature (as place 1), each frame a redraw waiting trunc(50 F) (Magogs) or trunc(100 F)
   (Liches), not shown, the frame through `battle_draw_magic_frame` plain (the Liches' `sp04_` too,
@@ -1657,6 +1662,36 @@ resistance roll, if any (category 3, 0x5A0331); Curse's is named `Curse`, withou
 - **A Faerie Dragon's cast** needs no key: over any stack but itself that its drawn spell may
   target, the cursor is the cast's (`battle_cursor`, 0x4766FC: kind 20), so a click on the
   target (`hex:<n>`) casts it (action 10); the F key enters the same cast (0x475CD8).
+- **The cast's log lines** (read at T7b-1): `battle_log_cast` 0x5A8950 (caster kind, spell,
+  target) writes a hero's cast with a target as GENRLTXT row 196 (the hero's name +0x23, the
+  spell's record +0x10, the target's name by its number), without one row 197, an opening
+  spell's row 197 with the artifact's name; a creature's its own rows (not read). The timed
+  handler writes it after the effect, before the animation (0x5A109F). A resisted cast: row 190
+  with the name by the number and the verb row 145 for exactly 1, else 144 (0x5A1FB0). Magic
+  Arrow's and Ice Bolt's: `battle_log_damage` named by the spell with a number of 1, after their
+  `strike_animation` (0x5A0A1F, 0x5A0AEB). The text and its time held in the frame check
+  (`cast`, `resist`).
+- **Built (T7b-1, `anim`):** a hero's `SpellCast` with its effects: the hero's casting frames (the
+  asset tables' `[[hero]]` `cast_frames`), then a resisted cast (`MagicRes` in category 2, the
+  line, 78 at place 3) or the spell's sound (category 3 at 127, `play_sound_async` 0x59A590) and
+  its handler: a timed spell's line and its animation over the target (player 1), Magic Arrow's
+  and Ice Bolt's projectile (player 7) and their animation riding the marked target's loop with
+  its reaction (player 2: L = max(n, R + 1), the reaction from frame 0, as after a shot), their
+  line at the loop's end; then the rest of the casting group and the hero standing at once.
+  Recorded and as recorded (`sequences.toml`): `cast`, `resist`, `arrow`, their timelines with
+  the heroes' changes (`lines_with_heroes`; the screens' boxes left out). Found by the frame
+  check: the action clears the active stack's outline at the click and the hero standing brings it
+  back (the turn goes on); the panel's spell book is disabled from the click (the hero has cast
+  this round); the original's memory holds a cast frame a deadline before the screen, so the
+  frame check keeps the viewer's own cast frames (`h3-view sequences`); the aimed spell's status
+  line (GENRLTXT 28 "Cast %s on %s" over a stack by its number, 27 elsewhere; `enter_player_cast`
+  0x59EC50's loop not read) is not forced: `arrow`'s rounds keep the log's new lines, `cast`
+  shows it over an empty log (`mouse::track`'s `Input::Aim`, *provisional*); a key pressed right
+  after a cast acts at the cast's end. `arrow`: all 168 frames exact (the projectile's DEF by the
+  angle, its frames cycling, its 22 steps; the marked loop). Not built: the aiming cursor
+  (`crspell.DEF`, animated: not read; the harness clicks within the millisecond, so no capture
+  shows it), the count box's tint by the stack's spells (T7b-2: `cast` 238 pixels from 600,
+  `resist` until Slow ends), the other handlers (T7b-2, T7c).
 - **Not read:** the dissolve's blend; Chain Lightning's rays beyond `draw_ray`'s call (colour
   0x131, 0x5A64EF; T7c); how the glows are painted; the summons' and the Pit Lord's creation
   beyond the dissolve; Earthquake (sieges); the force-feedback effects (IFC20, nothing drawn).
@@ -1861,7 +1896,12 @@ is hidden, 0x46A4A0):
 - *A sound played by its name* (M3 T8; `play_sound_file` 0x59A470: the start sound, the tent's
   heal): its loader (0x55C720, the object 0x55C3C0) builds the WAV with category 0, volume 127
   and one play (the constructor 0x566DA0, from 0x55C48A and 0x55C6DC); `play_sound_file` sets
-  category 2 and keeps the volume, so both play at 127, the music's level.
+  category 2 and keeps the volume, so both play at 127, the music's level. A resisted spell's
+  `MagicRes` the same (0x5A1F98; M3 T7b-1). A spell's own sound (the spell record's +4, after the
+  resistance roll, 0x5A0331) goes through `play_sound_async` 0x59A590: loaded the same way (127),
+  category 3, the creature channels, in a thread of its own (M3 T7b-1). Checked in the window
+  with the `disk` driver on `resist`'s record: `Muckmire` (Slow's) and `MagicRes` once each,
+  2 879 ms apart against the timeline's 2 900 (the driver's pacing, as at M2 T5b and T8).
 - *The battle's end* (M3 T8): once an action's last frame has shown, `battle_winner` 0x4762F0
   finds the battle over (both sides tested, 0x465830, 0x4658B0), sets the manager's +0x132F8
   (0 from the battle's start, 0x463C85), the winner (+0x13D48, −1 none) and the retreat's and

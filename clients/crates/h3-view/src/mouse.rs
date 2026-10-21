@@ -219,7 +219,7 @@ impl Field<'_> {
     }
 
     /// The living stack on `hex`.
-    fn at(&self, hex: u8) -> Option<&Stack> {
+    pub(crate) fn at(&self, hex: u8) -> Option<&Stack> {
         self.observation
             .stacks
             .iter()
@@ -300,24 +300,29 @@ pub enum Hint {
     NoShots,
     /// A control's hint: its key.
     Control(String),
+    /// A hero's spell aimed (E17 M3 T7b-1, *provisional*: `enter_player_cast` 0x59EC50's loop
+    /// is not read): "Cast %s on %s" (28) over a stack by its number, "Cast %s" (27) elsewhere on
+    /// the battlefield; the spell by its handle.
+    Cast(u16, Option<u8>),
 }
 
 impl Hint {
     /// Whether it replaces the status line over the log's new lines (`battle_log_add`'s third
-    /// argument: an attack's or a shot's; design §9.8).
+    /// argument: an attack's or a shot's; design §9.8; a cast's not, as `arrow`'s frames show).
     #[must_use]
     pub const fn forced(&self) -> bool {
         matches!(self, Self::Attack(_))
     }
 
     /// The hint's text in `catalogue`'s words, the stacks of `observation` named by `creature`
-    /// (a stack's creature key in the catalogue: `creature.base:pikeman`).
+    /// (a stack's creature key in the catalogue: `creature.base:pikeman`), a spell by `spell`
+    /// (its key: `spell.base:slow`).
     #[must_use]
     pub fn text(
         &self,
         catalogue: &Catalogue,
         observation: &Observation,
-        creature: &dyn Fn(&Stack) -> Option<String>,
+        (creature, spell): Namers<'_>,
     ) -> String {
         let stack = |id: u8| observation.stacks.iter().find(|s| s.id == id);
         let name = |id: u8, single: bool| {
@@ -342,9 +347,33 @@ impl Hint {
             Self::EnemyHero => catalogue.text("battle.hint.enemy-hero", &Args::new()),
             Self::NoShots => catalogue.text("battle.hint.no-shots", &Args::new()),
             Self::Control(key) => catalogue.text(key, &Args::new()),
+            Self::Cast(handle, target) => {
+                let spell = spell(*handle)
+                    .map_or_else(String::new, |key| catalogue.text(&key, &Args::new()));
+                match target {
+                    Some(id) => {
+                        let creature = name(*id, false).unwrap_or_default();
+                        let args = Args::new()
+                            .text("spell", &spell)
+                            .text("creature", &creature);
+                        catalogue.text("battle.hint.cast-on", &args)
+                    }
+                    None => {
+                        let args = Args::new().text("spell", &spell);
+                        catalogue.text("battle.hint.cast", &args)
+                    }
+                }
+            }
         }
     }
 }
+
+/// What names a hint's stacks and spells (E17 M3 T7b-1): a stack's creature key in the catalogue
+/// (`creature.base:pikeman`), a spell's by its handle (`spell.base:slow`).
+pub type Namers<'a> = (
+    &'a dyn Fn(&Stack) -> Option<String>,
+    &'a dyn Fn(u16) -> Option<String>,
+);
 
 /// The mouse at a point: the cursor, the status line's hint and the stack the mouse marks.
 #[derive(Debug, Clone, PartialEq, Eq)]

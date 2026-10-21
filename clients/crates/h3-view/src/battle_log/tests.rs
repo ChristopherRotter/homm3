@@ -6,8 +6,8 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use super::{
-    Hit, Log, Logged, NEW_FOR, Named, Spread, Stack, defend, entries, heal, luck_good, morale_bad,
-    morale_good, shown, strike, text_at, texts, wait, word,
+    Hit, Log, Logged, NEW_FOR, Name, Named, Spread, Stack, defend, entries, heal, luck_good,
+    morale_bad, morale_good, shown, strike, text_at, texts, wait, word,
 };
 use crate::text::Catalogue;
 use crate::text::pack::Pack;
@@ -27,9 +27,16 @@ const PACK: &str = r#"{
         "morale-bad": "{{creature}}: frozen.",
         "luck-good": "{{creature}}: lucky.",
         "heal": "{{healer}} mends {{creature}}\nfor {{hit_points}}.",
-        "round": "Round."
+        "round": "Round.",
+        "cast-on": "{{hero}}: {{spell}} on {{creature}}.",
+        "resisted": "{{creature}} {{verb}} it."
     } },
-    "word": { "creature_one": "beast", "creature_other": "beasts" },
+    "word": {
+        "creature_one": "beast", "creature_other": "beasts",
+        "resist_one": "shrugs", "resist_other": "shrug"
+    },
+    "spell": { "t:arrow": "Dart" },
+    "hero": { "t:mage": "Mage" },
     "creature": {
         "t:ant_one": "Ant", "t:ant_other": "Ants",
         "t:bee_one": "Bee", "t:bee_other": "Bees",
@@ -215,8 +222,53 @@ fn named(id: u8) -> Option<Named> {
     })
 }
 
+/// The spell 15 and the attacker's hero [`word`] names (E17 M3 T7b-1).
+fn key(name: Name) -> Option<String> {
+    match name {
+        Name::Spell(15) => Some("spell.t:arrow".into()),
+        Name::Hero(0) => Some("hero.t:mage".into()),
+        _ => None,
+    }
+}
+
 fn worded(logged: &Logged) -> Option<String> {
-    word(&catalogue(), logged, &named)
+    word(&catalogue(), logged, &named, &key)
+}
+
+#[test]
+fn a_cast_names_its_hero_spell_and_target() {
+    let cast = |side, spell, target, count| Logged::Cast {
+        side,
+        spell,
+        target,
+        count,
+    };
+    assert_eq!(
+        worded(&cast(0, 15, 1, 3)).as_deref(),
+        Some("Mage: Dart on Ants.")
+    );
+    assert_eq!(
+        worded(&cast(0, 15, 2, 1)).as_deref(),
+        Some("Mage: Dart on Bee.")
+    );
+    for unnamed in [cast(1, 15, 1, 3), cast(0, 16, 1, 3), cast(0, 15, 9, 3)] {
+        assert_eq!(worded(&unnamed), None);
+    }
+    let resisted = |stack, count| Logged::Resisted { stack, count };
+    assert_eq!(worded(&resisted(2, 1)).as_deref(), Some("Bee shrugs it."));
+    assert_eq!(worded(&resisted(1, 4)).as_deref(), Some("Ants shrug it."));
+    assert_eq!(worded(&resisted(9, 4)), None);
+    let damage = |spell, hit| Logged::SpellDamage { spell, hit };
+    assert_eq!(
+        worded(&damage(15, (1, 20, 0))).as_deref(),
+        Some("Dart hits for 20.")
+    );
+    assert_eq!(
+        worded(&damage(15, (3, 40, 1))).as_deref(),
+        Some("Dart hits for 40.\nCart wrecked.")
+    );
+    assert_eq!(worded(&damage(16, (1, 20, 0))), None);
+    assert_eq!(worded(&damage(15, (9, 20, 0))), None);
 }
 
 #[test]

@@ -53,6 +53,18 @@ struct Sequence {
     /// `crate::pointer::inputs`).
     #[serde(default)]
     actions: Vec<String>,
+    /// The timeline holds the heroes' changes (E17 M3 T7a-2a; compared since T7b-1).
+    #[serde(default)]
+    heroes: bool,
+    /// The engine's seed (E17 M3 T7b-1: a roll the original made, a resistance, the engine's own
+    /// generator makes the same way with it; default 1).
+    #[serde(default = "first_seed")]
+    seed: u64,
+}
+
+/// The engine's seed unless a sequence names one.
+const fn first_seed() -> u64 {
+    1
 }
 
 impl Sequence {
@@ -222,8 +234,13 @@ fn sequences(options: &Options) -> Result<usize, String> {
             .iter()
             .map(|s| (s.seat, s.command))
             .collect();
-        let text = scenario::played(&dir.join(&sequence.scenario), &options.packs, 1, &steps)
-            .map_err(|e| format!("{}: {e}", sequence.id))?;
+        let text = scenario::played(
+            &dir.join(&sequence.scenario),
+            &options.packs,
+            sequence.seed,
+            &steps,
+        )
+        .map_err(|e| format!("{}: {e}", sequence.id))?;
         write(
             &options.out.join(format!("{}.jsonl", sequence.id)),
             text.as_bytes(),
@@ -238,7 +255,8 @@ fn sequences(options: &Options) -> Result<usize, String> {
         let tables = assets::load(&assets::default_dir(), top)?;
         let looks = motion::looks(&record, &tables, &archives)?;
         let magic = motion::magic(&record, &tables, &archives)?;
-        let stage = motion::stage(&record, &tables, &layout, &magic);
+        let casts = motion::casts(&record, &tables, &archives)?;
+        let stage = motion::stage(&record, &tables, &layout, (&magic, &casts));
         // The harness acts `pre` ms after the opening, and then at each command's `at`.
         let commands: Vec<anim::Command<'_>> = record
             .messages
@@ -266,12 +284,32 @@ fn sequences(options: &Options) -> Result<usize, String> {
         // The mouse as the harness moved it (E17 M3 T6c-2): its cursor, the stack it marks and
         // enters, the status line's hints, each turn's battle from the engine.
         let scenario_path = dir.join(&sequence.scenario);
-        let turned = scenario::turned(&scenario_path, &options.packs, 1, &steps)
+        let turned = scenario::turned(&scenario_path, &options.packs, sequence.seed, &steps)
             .map_err(|e| format!("{}: {e}", sequence.id))?;
-        let inputs = pointer::inputs(&sequence.actions, sequence.pre, &layout, &timeline)
-            .map_err(|e| format!("{}: {e}", sequence.id))?;
+        // The heroes' casts in order, which the `cast:` actions aim (E17 M3 T7b-1).
+        let spells: Vec<u16> = record
+            .messages
+            .iter()
+            .filter_map(|m| match m {
+                ServerMessage::Events { events, .. } => Some(events),
+                _ => None,
+            })
+            .flatten()
+            .filter_map(|e| match *e {
+                h3_protocol::wire::Event::SpellCast { spell, .. } => Some(spell),
+                _ => None,
+            })
+            .collect();
+        let inputs = pointer::inputs(
+            &sequence.actions,
+            sequence.pre,
+            &layout,
+            (&timeline, &spells),
+        )
+        .map_err(|e| format!("{}: {e}", sequence.id))?;
         let catalogue = log::catalogue(&tables, &archives)?;
         let shown = pointer::shown(&record, &timeline, &turned, &inputs, &layout, &catalogue);
+
         pointer::entered(
             &mut timeline,
             &shown,
@@ -281,8 +319,12 @@ fn sequences(options: &Options) -> Result<usize, String> {
         );
         // What the harness saw: its recording ends `ms` after the actions.
         let until = sequence.until();
-        let ours: String = timeline
-            .lines()
+        let lines = if sequence.heroes {
+            timeline.lines_with_heroes(until)
+        } else {
+            timeline.lines()
+        };
+        let ours: String = lines
             .lines()
             .filter(|l| l.split(' ').next().and_then(|t| t.parse::<u32>().ok()) <= Some(until))
             .map(|l| format!("{l}\n"))
@@ -325,6 +367,12 @@ fn sequences(options: &Options) -> Result<usize, String> {
             .iter()
             .filter_map(|(_, id)| timeline.members.iter().find(|m| m.stack == *id))
             .map(|m| format!("{}.{}", u8::from(m.side == Side::Defender), m.record))
+            .collect();
+        // The screens' boxes (`screens`, E17 M3 T7a-2b) are the frame check's, not the timeline's.
+        let recorded: String = recorded
+            .lines()
+            .filter(|l| l.split(' ').nth(1) != Some("screen"))
+            .map(|l| format!("{l}\n"))
             .collect();
         let recorded = anim::unfidgeted(&recorded, &entered);
         let diff = anim::differences(&ours, &recorded);
@@ -390,7 +438,7 @@ pub(crate) fn draw_frames(
                 let key = manifest.keys.creatures.get(usize::from(s.creature))?;
                 Some(format!("creature.{key}"))
             };
-            Some(p.hint.text(&catalogue, snapshot, &name))
+            Some(p.hint.text(&catalogue, snapshot, (&name, &|_| None)))
         }
         None => None,
     };
@@ -428,12 +476,18 @@ pub(crate) fn draw_frames(
                 moment.poses.insert(m.stack, pose);
             }
         }
+        let casting = u32::from(tables.battle.hero_groups.cast);
         for &[side, group, f] in &frame.heroes {
             if let Some(hero) = moment
                 .heroes
                 .get_mut(side as usize)
                 .and_then(Option::as_mut)
             {
+                // A cast's frames as the viewer's timeline shows them (E17 M3 T7b-1): the
+                // original's memory holds each a deadline before its screen shows it.
+                if group == casting || hero.group == casting {
+                    continue;
+                }
                 *hero = HeroPose {
                     group,
                     frame: f,

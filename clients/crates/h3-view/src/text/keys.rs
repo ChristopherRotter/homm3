@@ -7,6 +7,7 @@
 use alloc::collections::BTreeMap;
 use alloc::format;
 use alloc::string::{String, ToString};
+use alloc::vec;
 use alloc::vec::Vec;
 
 use serde::Deserialize;
@@ -95,8 +96,17 @@ pub struct Family {
     /// The first record of those: the table's non-blank records from it are the original ids in
     /// order (the harvesters' reading).
     pub first: usize,
-    /// The columns of the forms (`one = 0`, `other = 1`); a family's keys are plural.
+    /// The columns of the forms (`one = 0`, `other = 1`): the family's keys are plural; or none,
+    /// and [`Family::column`] holds its keys' only form (E17 M3 T7b-1).
+    #[serde(default)]
     pub forms: BTreeMap<String, usize>,
+    /// The column of a single-form family's keys (the spells' and heroes' names).
+    #[serde(default)]
+    pub column: Option<usize>,
+    /// Which records count as ids: those whose column `by` is not blank (`SPTRAITS.TXT`'s group
+    /// rows fill only their first); none: every non-blank record.
+    #[serde(default)]
+    pub by: Option<usize>,
 }
 
 /// A family's entry: its key's last part and its original id.
@@ -138,12 +148,15 @@ pub struct Source {
 pub enum Row {
     /// A record, from 0 with the header rows.
     Record(usize),
-    /// A family's: the `id`-th non-blank record from `first`.
+    /// A family's: the `id`-th non-blank record from `first` (with `by`, the `id`-th whose column
+    /// `by` is not blank).
     Id {
         /// The first record of the id-ordered ones.
         first: usize,
         /// The original id.
         id: usize,
+        /// The column that tells an id's record, if not every non-blank one.
+        by: Option<usize>,
     },
 }
 
@@ -198,27 +211,42 @@ impl Keys {
             let list = entries
                 .get(&family.id)
                 .ok_or_else(|| KeysError::Family(family.id.clone()))?;
+            let single = match (family.forms.is_empty(), family.column) {
+                (true, Some(column)) => Some(column),
+                (false, None) => None,
+                _ => return form_error(&family.id, "a family has forms or a column, not both"),
+            };
             for entry in list {
                 let id = format!("{}.{}", family.id, entry.key);
-                let mut original = Vec::new();
-                for (form, &column) in &family.forms {
-                    plural_form(&id, form)?;
-                    let source = Source {
-                        table: family.table.clone(),
-                        row: Row::Id {
-                            first: family.first,
-                            id: entry.id,
-                        },
-                        column,
-                    };
-                    original.push((form.clone(), source, Vec::new()));
-                }
-                let args = BTreeMap::from([("count".to_string(), Kind::Number)]);
-                let resolved = Resolved {
-                    args,
-                    plural: true,
-                    contexts: Vec::new(),
-                    original,
+                let source = |column: usize| Source {
+                    table: family.table.clone(),
+                    row: Row::Id {
+                        first: family.first,
+                        id: entry.id,
+                        by: family.by,
+                    },
+                    column,
+                };
+                let resolved = match single {
+                    Some(column) => Resolved {
+                        args: BTreeMap::new(),
+                        plural: false,
+                        contexts: Vec::new(),
+                        original: vec![(String::new(), source(column), Vec::new())],
+                    },
+                    None => {
+                        let mut original = Vec::new();
+                        for (form, &column) in &family.forms {
+                            plural_form(&id, form)?;
+                            original.push((form.clone(), source(column), Vec::new()));
+                        }
+                        Resolved {
+                            args: BTreeMap::from([("count".to_string(), Kind::Number)]),
+                            plural: true,
+                            contexts: Vec::new(),
+                            original,
+                        }
+                    }
                 };
                 keys.insert(id, resolved)?;
             }
@@ -293,7 +321,7 @@ fn resolve(key: &Key) -> Result<Resolved, KeysError> {
     })
 }
 
-/// A family's form must be a category (a family's keys are plural).
+/// A plural family's form must be a category.
 fn plural_form(id: &str, form: &str) -> Result<(), KeysError> {
     match Category::from_name(form) {
         Some(_) => Ok(()),

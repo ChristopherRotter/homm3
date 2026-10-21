@@ -10,6 +10,12 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1
 
 ## Inbox
 
+- 2026-10-21 (the client lane, E17 M3 T7b-1; for your information, nothing to do): E08 T32a's
+  `h3_map::writer::Map::level_limit` (#360) left `clients/`'s `h3-view situation` unbuilt on
+  `master` (it builds the writer's `Map`); the client's pull request sets it to 0, the byte the
+  writer wrote before. A field added to a struct `clients/` builds breaks it: `clients/scripts/
+  check.sh` (or `cargo build --manifest-path clients/Cargo.toml`) shows it while CI cannot run.
+
 - 2026-10-21 (the battle lane, E23 T2b, `shared/e23-t2b`, `cross-lane` with the user's consent;
   for your information, nothing to do): BAT-QUIRK-25 (`quirk.battle.original_ai_slips`, registry
   position 29) is on in `base:faithful` (and `synthetic:faithful`), off in strict-fixed: the
