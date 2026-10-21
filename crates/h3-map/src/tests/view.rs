@@ -170,9 +170,26 @@ fn vary(
             tile.river = river;
         }
     }
+    // The tiles of the monsters the viewer sees (where it sees the ground, decision 40), which no
+    // object added or removed may cover (E08 T31: random cases found one): the last object on a
+    // tile takes its visits (ADV-OBJ-003), so the monster would stop guarding (ADV-MON-005), and
+    // the viewer's paths would show it.
+    let seen_monsters: Vec<Spot> = m
+        .objects
+        .iter()
+        .filter(|o| o.template != HERO_TEMPLATE)
+        .flat_map(|o| {
+            let template = usize::try_from(o.template - 1).unwrap();
+            let monster = KINDS[template / BLOCKERS.len()].0 == 54;
+            covers((o.pos.x, o.pos.y, o.pos.z), template, side).filter(move |_| monster)
+        })
+        .filter(|&spot| !ground(spot))
+        .collect();
     let unseen_blocker = |anchor: Spot, template: usize| {
         let monster = KINDS[template / BLOCKERS.len()].0 == 54;
-        covers(anchor, template, side).all(|spot| objects(spot) && (!monster || ground(spot)))
+        covers(anchor, template, side).all(|spot| {
+            objects(spot) && (!monster || ground(spot)) && !seen_monsters.contains(&spot)
+        })
     };
     let mut blocker = 0;
     m.objects.retain(|o| {

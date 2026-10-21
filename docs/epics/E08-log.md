@@ -3291,7 +3291,12 @@ merged): its code verified by T30's run, the sandbox's light gates green.
   comparison runs, so `another_players_level_up_shows_nothing_of_its_offers` plays one: red's
   hero beats savage wolf riders out of blue's sight, Scholar known in one game only, and blue
   sees and is told the same at every step while red's offers differ (most seeds in `faithful`,
-  2 of 16 in `strict-fixed`).
+  2 of 16 in `strict-fixed`). The full verify's coverage run then found a case of the test's own
+  (`vary`): an unseen blocker added over the tile of a monster the viewer sees on its fringe
+  took the tile's visits from it (ADV-OBJ-003), so the monster stopped guarding and the viewer's
+  paths changed. `vary` keeps added and removed objects off the monsters the viewer sees (the
+  case kept in the regression file); 10 000 cases each of the hygiene and invariant properties
+  passed after it.
 - **Fixtures**: the duel's heroes 970, 950, 4 570 (red's underground hero: levels 2 to 4 at load)
   and 930; the XL map's the duel's, then 980, 940, 960, 920 (`fixtures.rs`, `DUEL_EXPERIENCE`,
   `XL_EXPERIENCE`); both regenerated. `h3-sim`'s battle replay test answers the winner's
