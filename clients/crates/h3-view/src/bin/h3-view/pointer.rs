@@ -52,7 +52,9 @@ const BOOK_PLACES: u8 = 12;
 /// any, where the click starts the cast, and parks it; `at:<ms>` acts then,
 /// `turn:<side>.<record>` when that stack's next turn starts (the timeline's, after the turn the
 /// last `turn:` named; a first one naming the opening's active stack at once, T7b-1),
-/// `step:<ms>` that much later. *Not modelled:* the book over the battlefield.
+/// `step:<ms>` that much later; `roll:<name>[:fail]` (E17 M3 T7b-2b-1) forces the original's
+/// next draw of a roll and moves nothing (the engine's rolls are its seed's). *Not modelled:* the
+/// book over the battlefield.
 pub fn inputs(
     actions: &[String],
     pre: u32,
@@ -113,6 +115,9 @@ pub fn inputs(
             "step" => {
                 now += arg.parse::<u32>().map_err(|e| format!("`{action}`: {e}"))?;
             }
+            // The harness's forced roll (E17 M3 T7b-2b-1): no input; a key after a cast keeps
+            // acting at the cast's end.
+            "roll" => cast_pending = after_cast,
             "turn" => {
                 let (side, record) = arg
                     .split_once('.')
