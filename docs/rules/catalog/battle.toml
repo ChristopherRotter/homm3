@@ -4939,7 +4939,7 @@ id       = "BAT-AI-002"
 title    = "The original's battle AI: the computer's shooter"
 context  = "battle"
 status   = "implemented"
-summary  = "A computer stack that can shoot now (BAT-AI-001) shoots the stack the original's computer picks for a shooter (0x41F060, 0x41EB80), the automatic Ballista's choice (BAT-WAR-008, built there and shared through h3_battle::computer::shot_target): among the living stacks of the side its controller fights but the turrets, a stack that keeps its turns before one that loses them, then the best computer's shot value, ties to the later stack, with the desperate mode's rerun; the shot is aimed at the target's front hex (the original aims at its position; a single target is hit whichever of its hexes is aimed at). Without a target it defends (action 3). Its numbers are the original's x87 arithmetic in every profile (ADR-0027 point 6). Scope (E23 T2a): the Magogs', Liches' and Power Liches' value at a hex with their own side's losses subtracted (0x41EDA0) and the Cyclops's wall shot (0x41EEA0) are not built: they shoot as the others (BAT-STUB-6, E23 T2b)."
+summary  = "A computer stack that can shoot now (BAT-AI-001) shoots the stack the original's computer picks for a shooter (0x41F060, 0x41EB80), the automatic Ballista's choice (BAT-WAR-008, built there and shared through h3_battle::computer::shot): among the living stacks of the side its controller fights but the turrets, a stack that keeps its turns before one that loses them, then the best computer's shot value, ties to the later stack; in desperate mode (BAT-SIE-023) first with every creature worth 1000, and a target of value 0 chosen again without it. The shot is aimed at the target's front hex (the original aims at its position; a single target is hit whichever of its hexes is aimed at). An area shooter values a target at a hex instead (BAT-AI-003); a Cyclops may batter a wall instead (BAT-AI-004, between the two choices). Without a target it defends (action 3), also in desperate mode. Its numbers are the original's x87 arithmetic in every profile (ADR-0027 point 6)."
 numeric  = "float"
 
   [[rule.source]]
@@ -4950,4 +4950,35 @@ numeric  = "float"
   [[rule.source]]
   kind       = "observation"
   ref        = "experiments/results/E04c-batch-3h.md (agent run under Wine, 2026-10-15): the automatic Ballista's targets in six encounters as the reading of 0x41F060 and 0x41EB80 (BAT-WAR-008), the routine every computer shooter takes"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-AI-003"
+title    = "The original's battle AI: an area shooter's value at a hex"
+context  = "battle"
+status   = "implemented"
+summary  = "A computer area shooter (the area_shot ability: the Magogs, Liches and Power Liches, the original's creatures 45, 64, 65) values a target at a hex (0x41EDA0) instead of by its shot value (BAT-AI-002): over the living stacks with a hex at it or next to it (the original's area 0x5A46F0 of radius 1 never takes a side column, but a war machine with its rear hex there beside the hex has its other hex beside it too: the same stacks), minus the computer's value of the shot at each stack of the acting side (0x435C70: its estimated kills times its worth, no turns divisor; 1000 per creature in desperate mode) and plus the shot value (0x435CB0, with its divisors) of each other stack, summed as 32-bit integers. A stack is valued at its position and, for a two-hex stack, at its other hex, which is taken (and the shot aimed there) when strictly higher; a stack whose value is below 0 is no target, so an area shooter shoots past a target whose area would cost its own side more than it gains, and defends when every target does. The estimate's stacks: with quirk BAT-QUIRK-25 (faithful, the original's slip 1) an undead shooter leaves out the undead stacks that do not cover the hex and no other immunity counts (an Efreet beside a Magog's target counts as hit, a golem beside a Lich's); without it (strict-fixed) the stacks the shot's area spares are left out, the target excepted (BAT-RNG-004: a fireball the fire-immune, a death cloud the lifeless). The engine tests the area_shot ability where the original tests the three creatures, the same set in the packs."
+numeric  = "float"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.33, §7.35; E23 T1a2, the side test and the two hexes re-read in T2b): 0x41EB80 (creatures 0x2D, 0x40, 0x41 to the area value at the record's position +0x38 and, with the two-hex flag, at its other hex 0x4466A0 when greater; below 0: no candidate, 0x41ECAD) → 0x41EDA0 (0x5A46F0 radius 1 with the hex; from the last stack to the first: the record's side +0xF4 equal to the acting side, minus 0x435C70 with the shot flag; else plus 0x435CB0; an undead shooter, flag 0x40000, skips an undead stack whose position and other hex both differ from the hex) → 0x5A4170 (the hexes, columns 1 to 15)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0027 point 9 (BAT-Q55): the original's slips behind BAT-QUIRK-25; survey docs/rules/surveys/E23-battle-ai.md §4, slip 1"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-AI-004"
+title    = "The original's battle AI: the Cyclops's wall shot"
+context  = "battle"
+status   = "implemented"
+summary  = "A computer wall shooter that can shoot now (the wall_shots ability: the Cyclopes, the original's flag 0x20) may batter a wall instead of shooting its target (0x41EEA0), right after the first choice of a target (BAT-AI-002, in desperate mode with every creature worth 1000) and before the desperate mode's second one: not for the defender (its controller), nor without a standing wall (the wall-shot targets of kind wall, BAT-SIE-010: the upper, mid-upper, mid-lower and lower walls). It batters one when B / S0 > 3.0 × best / S1 as the original's doubles compare it (each quotient of two integers rounded at 53 bits; a 0 / 0 counts as above, an infinity is not above an equal one): B the computer's strength (0x442E60, the context's least attack and defense) summed over its side's living stacks for which the computer records no enemy (0x422B20's +0x538 = 0: a war machine but the Ballista, a hypnotized or berserk stack, one blind or turned to stone for more than a round, a walker that reaches no enemy within 127), S0 and S1 the context's strengths of its side and the other (every stack but the turrets), best the chosen target's value (0 without one). The wall: of the standing walls with the fewest hit points, one drawn uniformly from the policy's stream (random(1, n), drawn also for one, as range_inclusive) in index order; the command ShootWall at it."
+numeric  = "float"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.35; E23 T1a2, the comparison and the frame re-read in T2b): 0x41F060 (the target 0x41EB80, then 0x41EEA0 with the best value for flag 0x20 outside a prediction, then no target: action 3, else the desperate rerun) → 0x41EEA0 (side 1 or no fort or no wall of 0x63ABD0 with hit points: none; the own side's threat records 0x422B20, the sum of 0x442E60 over those with +0x538 = 0; fild, fdiv, fmul 3.0 (0x63AC28), fcompp, C0 tested at 0x41EFAD; the least hit points from 100 down, random_between(1, n) 0x41EFFB, the n-th such wall in the list; action 9 at its aim hex 0x63BE60); 0x422BD0 to 0x422BE9 (no record while Stone's or Blind's duration is above 1)"
   confidence = "high"

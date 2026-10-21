@@ -8,13 +8,21 @@
 //! computer's estimate of its shot times the same worth, divided by its turns, by 5 or by 10; a
 //! stack that keeps its turns first, then the best score, a tie the later stack. Their numbers are
 //! the original's x87 arithmetic in every profile: they decide a choice, not an amount.
+//!
+//! The computer's shooter (0x41F060) is also the original's battle AI's (`h3-battle-ai`, E23):
+//! [`shot`] takes the target the same way for every computer shooter, an area shooter by its
+//! value at a hex ([`area_value`], E23 T2b), and asks its caller whether a wall shooter batters
+//! the walls instead (the Cyclops, 0x41EEA0: the policy's, with its draw).
 
-use h3_content_battle::BattleRuleset;
+use core::cell::Cell;
+
+use h3_content::{CreatureFlag, ORIGINAL_AI_SLIPS};
+use h3_content_battle::{BattleRuleset, TimedChange, WallKind};
 use h3_contracts::{BattleSide, FortLevel};
 use h3_kernel::arith::{DOUBLE_BITS, X87};
 
 use crate::binds;
-use crate::combat::{can_shoot, shot_damage};
+use crate::combat::{can_shoot, shot_damage, spares};
 use crate::damage::{Strike, effective_defense, frenzied};
 use crate::effects::{DamageRoll, Status};
 use crate::geometry::{Field, Hex, HexSet};
@@ -22,7 +30,7 @@ use crate::hero;
 use crate::movement::fits;
 use crate::obstacles;
 use crate::siege;
-use crate::state::{BattleState, Stack, StackId, StackTraits};
+use crate::state::{BattleState, STACK_CAPACITY, Stack, StackId, StackTraits};
 
 /// The pathfinder's range (0x422B20 asks 0x4B2DA0 for 127 steps).
 const AI_RANGE: u32 = 127;
@@ -53,12 +61,22 @@ const ARTILLERY: [(u32, u32); 4] = [(1, 1), (3, 2), (3, 2), (2, 1)];
 const DISABLED: i32 = 10;
 
 /// The computer's battle context for a side (0x435EC0): the least attack and defense bonus of
-/// the stacks on the field, and whether the side is desperate (BAT-SIE-023).
-#[derive(Debug, Clone, Copy)]
-pub(crate) struct Context {
+/// the stacks on the field, whether the side is desperate (BAT-SIE-023), and the strengths of
+/// the side and of the other side over all their records (+0xC, +0x10).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Context {
     pub(crate) min_attack: i64,
     pub(crate) min_defense: i64,
     pub(crate) desperate: bool,
+    pub(crate) strengths: (i32, i32),
+}
+
+impl Context {
+    /// The side's own strength and the other side's (+0xC, +0x10: 0x41EAC0 with flag 1 over
+    /// their living stacks but the turrets, as 32-bit sums).
+    pub const fn strengths(&self) -> (i32, i32) {
+        self.strengths
+    }
 }
 
 /// The value `x` an `_ftol` gives its callers (0x6179D4): truncated toward 0 into 64 bits
@@ -277,10 +295,32 @@ pub(crate) fn kill_value(s: &Stack, damage: i64, v: X87) -> i32 {
     )
 }
 
+/// The strength of stack `id` for the computer (0x442E60): its worth (with its own shot flag)
+/// times its total hit points over its hit points per creature, truncated (a clone's creatures
+/// times its worth over 5).
+pub(crate) fn stack_strength(
+    state: &BattleState,
+    (ruleset, field): (&BattleRuleset, Field),
+    ctx: &Context,
+    id: StackId,
+) -> i32 {
+    let s = state.at(id);
+    let v = worth(state, (ruleset, field), ctx, id, shoots(state, field, id));
+    if s.has(StackTraits::CLONE) {
+        kill_value(s, 0, v)
+    } else {
+        ftol(
+            double(s.total_hp())
+                .times(v)
+                .over(double(s.max_hp.max(1).into()))
+                .unwrap_or(X87::ZERO),
+        )
+    }
+}
+
 /// A side's strength for the computer (0x41EAC0 with flag 1 over 0x442E60): over its living
-/// stacks but the turrets, each stack's worth (with its own shot flag) times its total hit points
-/// over its hit points per creature, truncated (a clone's creatures times its worth over 5);
-/// summed as the original's 32-bit integers.
+/// stacks but the turrets, each stack's [`stack_strength`], summed as the original's 32-bit
+/// integers.
 fn strength(
     state: &BattleState,
     (ruleset, field): (&BattleRuleset, Field),
@@ -292,19 +332,7 @@ fn strength(
         if s.side != side || !s.is_alive() || s.is_turret() {
             continue;
         }
-        let id = StackId(i);
-        let v = worth(state, (ruleset, field), ctx, id, shoots(state, field, id));
-        let term = if s.has(StackTraits::CLONE) {
-            kill_value(s, 0, v)
-        } else {
-            ftol(
-                double(s.total_hp())
-                    .times(v)
-                    .over(double(s.max_hp.max(1).into()))
-                    .unwrap_or(X87::ZERO),
-            )
-        };
-        sum = sum.wrapping_add(term);
+        sum = sum.wrapping_add(stack_strength(state, (ruleset, field), ctx, StackId(i)));
     }
     sum
 }
@@ -334,9 +362,11 @@ pub(crate) fn context(
         min_attack,
         min_defense,
         desperate: false,
+        strengths: (0, 0),
     };
     let own = strength(state, (ruleset, field), &ctx, side);
     let other = strength(state, (ruleset, field), &ctx, side.opponent());
+    ctx.strengths = (own, other);
     ctx.desperate =
         own.wrapping_mul(2) < other && (state.difficulty > 0 || state.human[side.index()]);
     ctx
@@ -488,12 +518,29 @@ fn costs(
     (cost, stops)
 }
 
+/// Whether stack `id` is blind or turned to stone for more than one round (0x422BD0 to 0x422BE9:
+/// the durations of Blind and of the Medusas' stone above 1): the computer records no enemy for
+/// it. Only a stack that loses its turns can be.
+fn kept_out(state: &BattleState, ruleset: &BattleRuleset, id: StackId) -> bool {
+    state.at(id).spells.status.contains(Status::NO_TURNS)
+        && state.effects.of(id).iter().any(|e| {
+            e.rounds.is_none_or(|r| r > 1)
+                && ruleset.spell(e.spell).is_some_and(|sp| {
+                    sp.magic
+                        .effects
+                        .iter()
+                        .filter_map(|c| c.timed())
+                        .any(|c| matches!(c, TimedChange::Blind | TimedChange::Petrify))
+                })
+        })
+}
+
 /// The turns attacker stack `id` needs before it can attack, for the computer (0x422B20,
 /// 0x448840, 0x448BD0; BAT-SIE-022): 1 while it can shoot; else from the least cost of a
 /// position next to a defender (a full move more from a stop), or of a dead defender's place
 /// within its speed: that cost over its speed, rounded up, at least 1. `None` for a stack the
-/// computer gives no target (a war machine but the Ballista, a hypnotized or berserk stack) or
-/// that reaches none within the range.
+/// computer gives no target (a war machine but the Ballista, a hypnotized or berserk stack, one
+/// blind or turned to stone for more than a round) or that reaches none within the range.
 pub(crate) fn turns(
     state: &BattleState,
     (ruleset, field): (&BattleRuleset, Field),
@@ -504,6 +551,7 @@ pub(crate) fn turns(
     if (me.has(StackTraits::WAR_MACHINE) && !is_ballista(me))
         || status.contains(Status::HYPNOTIZED)
         || status.contains(Status::BERSERK)
+        || kept_out(state, ruleset, id)
     {
         return None;
     }
@@ -542,6 +590,35 @@ pub(crate) fn turns(
     // A stack that does not shoot has a speed of at least 1 (the original records no target
     // at a distance for one of speed 0, 0x422D1C, and counts its turns as 1, 0x448CA6).
     least.map(|c| c.div_ceil(speed.max(1)).max(1))
+}
+
+/// The [`turns`] of the stacks a shooter's choice values, each computed at most once per choice:
+/// the original builds its threat records (0x422B20) once before the shooter's choice (0x41F060),
+/// and the shot values of every target, area and desperate mode's second choice read them
+/// (ADR-0027 point 11: an optimisation that changes no choice). Computed when first asked, so a
+/// value that needs no turns (on Easy, at a disabled stack) runs no search.
+pub(crate) struct Threats([Cell<Option<Option<u32>>>; STACK_CAPACITY]);
+
+impl Threats {
+    /// No turns computed yet.
+    pub(crate) fn new() -> Self {
+        Self([const { Cell::new(None) }; STACK_CAPACITY])
+    }
+
+    /// The [`turns`] of stack `id`, computed the first time.
+    fn turns(
+        &self,
+        state: &BattleState,
+        (ruleset, field): (&BattleRuleset, Field),
+        id: StackId,
+    ) -> Option<u32> {
+        let cell = &self.0[id.index()];
+        cell.get().unwrap_or_else(|| {
+            let t = turns(state, (ruleset, field), id);
+            cell.set(Some(t));
+            t
+        })
+    }
 }
 
 /// The score of attacker stack `id` for a turret of damage `mean` (the turret's `3n`; 0x41E190;
@@ -644,13 +721,11 @@ pub(crate) fn estimate(
     damage.min(hit_points(state.at(target)))
 }
 
-/// The computer's value of a shot of `shooter` at `target` (0x435CB0, 0x435B90; BAT-WAR-008): the
-/// kills of its estimated damage ([`estimate`]) times the worth of one of the target's creatures
-/// with the shot flag ([`kill_value`]; 1000 in `desperate` mode). Whole on Easy for a computer side;
-/// else divided by 10 for a stack that loses its turns, by 5 for a First Aid Tent or an Ammo Cart,
-/// a stack without a target ([`turns`]) or one more than 5 turns away, else by its turns.
-// rule: BAT-WAR-008
-pub(crate) fn shot_value(
+/// The computer's value of a shot of `shooter` at `target` before any divisor (0x435B90 with the
+/// shot flag; as 0x435C70 gives it): the kills of its estimated damage ([`estimate`]) times the
+/// worth of one of the target's creatures with the shot flag ([`kill_value`]; 1000 in `desperate`
+/// mode).
+fn kill_shot_value(
     state: &BattleState,
     (ruleset, field): (&BattleRuleset, Field),
     ctx: &Context,
@@ -664,7 +739,23 @@ pub(crate) fn shot_value(
     } else {
         worth(state, (ruleset, field), ctx, target, true)
     };
-    let value = kill_value(t, i64::try_from(dealt).unwrap_or(i64::MAX), v);
+    kill_value(t, i64::try_from(dealt).unwrap_or(i64::MAX), v)
+}
+
+/// The computer's value of a shot of `shooter` at `target` (0x435CB0, 0x435B90; BAT-WAR-008): its
+/// [`kill_shot_value`], whole on Easy for a computer side; else divided by 10 for a stack that
+/// loses its turns, by 5 for a First Aid Tent or an Ammo Cart, a stack without a target
+/// ([`turns`], through `threats`) or one more than 5 turns away, else by its turns.
+// rule: BAT-WAR-008
+pub(crate) fn shot_value(
+    state: &BattleState,
+    (ruleset, field): (&BattleRuleset, Field),
+    (ctx, threats): (&Context, &Threats),
+    (shooter, target): (StackId, StackId),
+    desperate: bool,
+) -> i32 {
+    let t = state.at(target);
+    let value = kill_shot_value(state, (ruleset, field), ctx, (shooter, target), desperate);
     let side = state.at(shooter).controller();
     if state.difficulty == 0 && !state.human[side.index()] {
         return value;
@@ -674,18 +765,213 @@ pub(crate) fn shot_value(
     } else if t.has(StackTraits::FIRST_AID) || t.has(StackTraits::AMMO_SUPPLY) {
         MAX_TURNS
     } else {
-        turns(state, (ruleset, field), target).map_or(MAX_TURNS, |n| {
-            i32::try_from(n).unwrap_or(MAX_TURNS).min(MAX_TURNS)
-        })
+        threats
+            .turns(state, (ruleset, field), target)
+            .map_or(MAX_TURNS, |n| {
+                i32::try_from(n).unwrap_or(MAX_TURNS).min(MAX_TURNS)
+            })
     };
     value / divisor
 }
 
-/// The stack the automatic Ballista `shooter` shoots (0x41F060, 0x41EB80; BAT-WAR-008): of the
-/// living stacks it may shoot (the other side's, whoever controls them, but the turrets), a stack
-/// that keeps its turns before one that loses them, then the best [`shot_value`], ties to the later
-/// stack; in desperate mode (BAT-SIE-023) chosen again without it when the best value is 0. `None`
-/// without a stack to shoot.
+/// The value of an area shot of `shooter` aimed at `at` for the computer (0x41EDA0, the Magogs',
+/// Liches' and Power Liches'; BAT-AI-003): over the living stacks with a hex at `at` or next to it
+/// (0x5A46F0, whose area never takes a side column: a war machine's hex there beside `at` has
+/// its other hex beside `at` too, so the stacks are the same), minus the
+/// [`kill_shot_value`] of each stack of the acting side and plus the [`shot_value`] of each
+/// other, summed as the original's 32-bit integers. With BAT-QUIRK-25 (survey E23 §4, slip 1) an
+/// undead shooter leaves out the undead stacks that do not cover `at` and no other immunity
+/// counts, as the original estimates; without it every stack but `target` that the shot's area
+/// spares is left out (BAT-RNG-004: a fireball the fire-immune, a death cloud the lifeless).
+// rule: BAT-AI-003
+fn area_value(
+    state: &BattleState,
+    (ruleset, field): (&BattleRuleset, Field),
+    (ctx, threats): (&Context, &Threats),
+    (shooter, target, at): (StackId, StackId, Hex),
+    desperate: bool,
+) -> i32 {
+    let me = state.at(shooter);
+    let side = me.controller();
+    let slips = ruleset.quirks().is_enabled(ORIGINAL_AI_SLIPS);
+    let undead = |s: &Stack| {
+        ruleset
+            .creature_info(s.creature)
+            .is_some_and(|info| info.flags.contains(CreatureFlag::Undead))
+    };
+    let undead_shooter = undead(me);
+    let mut sum = 0i32;
+    for (i, s) in (0u8..).zip(state.stacks.iter()) {
+        if !s.is_alive() || s.is_turret() {
+            continue;
+        }
+        let fp = s.footprint(field);
+        if !fp.hexes().any(|h| field.distance(h, at) <= 1) {
+            continue;
+        }
+        let id = StackId(i);
+        // BAT-QUIRK-25 (slip 1): the original's estimate, or the shot's rule.
+        let left_out = if slips {
+            undead_shooter && undead(s) && !fp.covers(at)
+        } else {
+            id != target && spares(me, s)
+        };
+        if left_out {
+            continue;
+        }
+        let pair = (shooter, id);
+        sum = if s.side == side {
+            sum.wrapping_sub(kill_shot_value(
+                state,
+                (ruleset, field),
+                ctx,
+                pair,
+                desperate,
+            ))
+        } else {
+            sum.wrapping_add(shot_value(
+                state,
+                (ruleset, field),
+                (ctx, threats),
+                pair,
+                desperate,
+            ))
+        };
+    }
+    sum
+}
+
+/// A target the computer's shooter picks (0x41EB80): the stack, the hex the shot is aimed at and
+/// its value.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Pick {
+    value: i32,
+    target: StackId,
+    at: Hex,
+}
+
+/// The target of the computer's shooter `shooter` (0x41EB80; BAT-WAR-008, BAT-AI-002, BAT-AI-003):
+/// of the living stacks it may shoot (the other side's, whoever controls them, but the turrets),
+/// a stack that keeps its turns before one that loses them, then the best value, ties to the later
+/// stack. A stack's value is its [`shot_value`], the shot aimed at its front hex; an area
+/// shooter's is its [`area_value`] at the stack's position and, for a two-hex stack, at its other
+/// hex when strictly higher there (the shot then aimed there), and a stack whose value is below 0
+/// is no target. `None` without a target.
+// rule: BAT-WAR-008, BAT-AI-002, BAT-AI-003
+fn pick(
+    state: &BattleState,
+    (ruleset, field): (&BattleRuleset, Field),
+    (ctx, threats): (&Context, &Threats),
+    shooter: StackId,
+    desperate: bool,
+) -> Option<Pick> {
+    let me = state.at(shooter);
+    let mut best: Option<(bool, Pick)> = None;
+    for (i, t) in (0u8..).zip(state.stacks.iter()) {
+        if !t.is_alive() || !me.may_attack(t) {
+            continue;
+        }
+        let target = StackId(i);
+        let fp = t.footprint(field);
+        let (value, at) = if me.has(StackTraits::AREA_SHOT) {
+            let area = |at| {
+                area_value(
+                    state,
+                    (ruleset, field),
+                    (ctx, threats),
+                    (shooter, target, at),
+                    desperate,
+                )
+            };
+            let mut aim = (area(t.hex), t.hex);
+            if fp.rear.is_some() {
+                let other = area(fp.front);
+                if other > aim.0 {
+                    aim = (other, fp.front);
+                }
+            }
+            if aim.0 < 0 {
+                continue;
+            }
+            aim
+        } else {
+            let pair = (shooter, target);
+            (
+                shot_value(state, (ruleset, field), (ctx, threats), pair, desperate),
+                fp.front,
+            )
+        };
+        let keeps = !t.spells.status.contains(Status::NO_TURNS);
+        if best.is_none_or(|(k, b)| (keeps, value) >= (k, b.value)) {
+            best = Some((keeps, Pick { value, target, at }));
+        }
+    }
+    best.map(|(_, p)| p)
+}
+
+/// What the computer's shooter does (0x41F060): shoot a stack, batter a wall, or nothing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Shot {
+    /// A shot at `target` aimed at `at`.
+    Stack {
+        /// The stack shot at.
+        target: StackId,
+        /// The hex the shot is aimed at: the target's front hex, or an area shot's best hex.
+        at: Hex,
+    },
+    /// A wall shot at wall-shot target `part` (the Cyclops's, BAT-SIE-013).
+    Wall {
+        /// The wall-shot target.
+        part: u8,
+    },
+    /// No target: the original's Defend (action 3).
+    Nothing,
+}
+
+/// What the computer's shooter `shooter` does (0x41F060): the context for its controller, its
+/// target ([`pick`]; in desperate mode, BAT-SIE-023, first with every creature worth 1000); a wall
+/// shooter (the ability `wall_shots`, the original's flag 0x20: the Cyclops) then asks `wall` with
+/// the context and the target's value (0 without one) for a wall to batter (0x41EEA0, the battle
+/// AI's); without a target nothing; in desperate mode a target of value 0 is chosen again without
+/// it (when the area values then leave none, the original aims at hex −1: nothing here).
+pub(crate) fn shot(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    field: Field,
+    shooter: StackId,
+    wall: impl FnOnce(&Context, i32) -> Option<u8>,
+) -> Shot {
+    let side = state.at(shooter).controller();
+    let ctx = context(state, ruleset, field, side);
+    let threats = Threats::new();
+    let first = pick(
+        state,
+        (ruleset, field),
+        (&ctx, &threats),
+        shooter,
+        ctx.desperate,
+    );
+    if siege::shooter_level(state, ruleset, shooter).is_some()
+        && let Some(part) = wall(&ctx, first.map_or(0, |p| p.value))
+    {
+        return Shot::Wall { part };
+    }
+    let Some(first) = first else {
+        return Shot::Nothing;
+    };
+    let chosen = if ctx.desperate && first.value == 0 {
+        pick(state, (ruleset, field), (&ctx, &threats), shooter, false)
+    } else {
+        Some(first)
+    };
+    chosen.map_or(Shot::Nothing, |p| Shot::Stack {
+        target: p.target,
+        at: p.at,
+    })
+}
+
+/// The stack the automatic Ballista `shooter` shoots (0x41F060, 0x41EB80; BAT-WAR-008): the
+/// computer's [`shot`] without a wall shot, its target; `None` without a stack to shoot.
 // rule: BAT-WAR-008, BAT-SIE-023
 pub(crate) fn ballista_target(
     state: &BattleState,
@@ -693,28 +979,19 @@ pub(crate) fn ballista_target(
     field: Field,
     shooter: StackId,
 ) -> Option<StackId> {
-    let me = state.at(shooter);
-    let ctx = context(state, ruleset, field, me.controller());
-    let pick = |desperate: bool| {
-        let mut best: Option<((bool, i32), StackId)> = None;
-        for (i, t) in (0u8..).zip(state.stacks.iter()) {
-            if !t.is_alive() || !me.may_attack(t) {
-                continue;
-            }
-            let id = StackId(i);
-            let keeps = !t.spells.status.contains(Status::NO_TURNS);
-            let value = shot_value(state, (ruleset, field), &ctx, (shooter, id), desperate);
-            if best.is_none_or(|(b, _)| (keeps, value) >= b) {
-                best = Some(((keeps, value), id));
-            }
-        }
-        best
-    };
-    let best = pick(ctx.desperate);
-    let best = if ctx.desperate && best.is_some_and(|((_, v), _)| v == 0) {
-        pick(false)
-    } else {
-        best
-    };
-    best.map(|(_, id)| id)
+    match shot(state, ruleset, field, shooter, |_, _| None) {
+        Shot::Stack { target, .. } => Some(target),
+        Shot::Wall { .. } | Shot::Nothing => None,
+    }
+}
+
+/// The standing walls of a siege with their hit points, in index order (the wall-shot targets of
+/// kind wall, BAT-SIE-010: the original's list 0x63ABD0 of the upper, mid-upper, mid-lower and
+/// lower walls); none outside a siege.
+pub(crate) fn walls(state: &BattleState) -> impl Iterator<Item = (u8, u8)> + '_ {
+    state.siege.iter().flat_map(|s| {
+        (0..s.targets)
+            .filter(move |&t| s.kind(t) == Some(WallKind::Wall) && s.stands(t))
+            .map(move |t| (t, s.parts[usize::from(t)]))
+    })
 }

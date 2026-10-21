@@ -17,8 +17,8 @@ use h3_kernel::arith::{DOUBLE_BITS, X87};
 
 use super::support::*;
 use crate::aim::{
-    advantage, avoids_stops, ballista_target, context, estimate, ftol, kill_value, shot_value,
-    turns, turret_target, worth,
+    Threats, advantage, avoids_stops, ballista_target, context, estimate, ftol, kill_value,
+    shot_value, turns, turret_target, worth,
 };
 use crate::effects::{DamageRoll, Status};
 use crate::geometry::{Field, Hex};
@@ -354,6 +354,43 @@ fn the_turns_until_a_stack_can_attack() {
     assert!(at(&shot, 0).is_some_and(|t| t >= 2), "{:?}", at(&shot, 0));
 }
 
+// covers: BAT-SIE-022, BAT-AI-004
+#[test]
+fn a_stack_blind_or_stone_for_more_than_a_round_has_no_target() {
+    let r = rules();
+    let s = fresh(&r, &setup(&r, &[(0, "flyer", 10)], &[(0, "slow", 10)]));
+    let f = field(&r);
+    assert!(turns(&s, (&r, f), StackId(0)).is_some());
+    // The original records no enemy for a stack blind or stone for more than a round (0x422BD0),
+    // whatever else makes it lose its turns.
+    for (name, rounds, kept_out) in [
+        ("blind", 2, true),
+        ("blind", 1, false),
+        ("petrify", 3, true),
+        ("paralysis", 3, false),
+    ] {
+        let mut t = s.clone();
+        let id = super::spells::spell(&r, name);
+        let cast = crate::effects::TimedCast {
+            id,
+            spell: r.spell(id).unwrap(),
+            mastery: 1,
+            rounds,
+            own: crate::magic::SpellBonus::default(),
+        };
+        crate::effects::apply(&mut t, &r, cast, StackId(0), &mut Vec::<Event>::new());
+        assert!(
+            t.at(StackId(0)).spells.status.contains(Status::NO_TURNS),
+            "{name}"
+        );
+        assert_eq!(
+            turns(&t, (&r, f), StackId(0)).is_none(),
+            kept_out,
+            "{name} {rounds}"
+        );
+    }
+}
+
 // covers: BAT-SIE-022
 #[test]
 fn a_dead_defender_s_place_counts_within_one_turn() {
@@ -613,7 +650,14 @@ fn aimed(r: &BattleRuleset, s: &BattleState) -> Option<u8> {
 /// The value of a shot of the attacker's Ballista at `target`, out of desperate mode.
 fn value(r: &BattleRuleset, s: &BattleState, target: u8) -> i32 {
     let ctx = context(s, r, field(r), BattleSide::Attacker);
-    shot_value(s, (r, field(r)), &ctx, (gun(s), StackId(target)), false)
+    let threats = Threats::new();
+    shot_value(
+        s,
+        (r, field(r)),
+        (&ctx, &threats),
+        (gun(s), StackId(target)),
+        false,
+    )
 }
 
 // covers: BAT-WAR-008
@@ -863,7 +907,14 @@ fn a_desperate_ballista_counts_every_creature_1000() {
         .with(StackTraits::SUMMONED, true);
     let ctx = context(&s, &r, field(&r), BattleSide::Attacker);
     assert!(ctx.desperate);
-    let desperate = shot_value(&s, (&r, field(&r)), &ctx, (gun(&s), StackId(3)), true);
+    let threats = Threats::new();
+    let desperate = shot_value(
+        &s,
+        (&r, field(&r)),
+        (&ctx, &threats),
+        (gun(&s), StackId(3)),
+        true,
+    );
     let real = worth(&s, (&r, field(&r)), &ctx, StackId(3), true);
     assert_eq!(desperate, kill_value(s.at(StackId(3)), 0, real));
     assert_eq!(desperate, 277);

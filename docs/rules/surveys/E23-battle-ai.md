@@ -143,7 +143,7 @@ each estimate as the rule it estimates:
 
 | # | The slip (where) | Fixed |
 |---|---|---|
-| 1 | the area shot's estimate ignores fire immunity and counts a Lich's cloud on the living but undead (§7.35) | the shot's rule's immunities (BAT-RNG-004) |
+| 1 | the area shot's estimate ignores fire immunity and counts a Lich's cloud on the lifeless stacks that are not undead (§7.35; built, BAT-AI-003, E23 T2b) | the shot's rule's immunities (BAT-RNG-004) |
 | 2 | the walls test reads the wrong records for the walls and the gate (§7.35) | each part's own hex |
 | 3 | the multi-headed reach's value is subtracted with its sign untested (§7.36) | only a positive value, as the other branch |
 | 4 | the desperate kills count the top creature's remaining hit points where its lost ones belong (§7.38) | the lost hit points |

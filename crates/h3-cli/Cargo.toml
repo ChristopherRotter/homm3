@@ -21,6 +21,8 @@ h3-content.workspace = true
 h3-content-battle.workspace = true
 h3-contracts.workspace = true
 h3-battle.workspace = true
+# The battle AI's gated benchmark, `h3 bench-computer` (E23 T2b).
+h3-battle-ai.workspace = true
 h3-pack-battle.workspace = true
 h3-sim.workspace = true
 # The adventure commands (adventure-owned src/adventure/, E08 T9b).
