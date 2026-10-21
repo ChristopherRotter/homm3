@@ -881,7 +881,10 @@ A frame of group 0 lasts trunc(f32 W x F / f32 n); every other group trunc(100 F
 
 - **A strike's animation** (`strike_animation` 0x468990, H3API's ApplyAnimationToLastHitArmy):
   L iterations of trunc(100 F) on the frame deadline, L = max(a magic animation's frames,
-  A + R - 1), A the striker's group's frames, R the longest reaction's. The striker plays its
+  A + R - 1), A the striker's group's frames, R the longest reaction's: a death's group 5, any
+  other stack struck its hit group 3, a defending one's too, which draws group 4 (0x468BD7 to
+  0x468C84; M3 T7b-2b-3, `thunder`'s Vampire Lords: hit 7, defend 9, L = 8 + 7 − 1, the defend
+  group from iteration 4). The striker plays its
   group from iteration 0: by the strike's direction 11 (up), 12 (straight), 13 (down); 17-19 for
   a breath on two stacks where the DEF has the group, else 11-13 (`melee_strike` 0x441ACA to
   0x441B66; its second stack, [ebp − 8] at 0x441A35, is set only for a creature with flag 0x8,
@@ -891,7 +894,8 @@ A frame of group 0 lasts trunc(f32 W x F / f32 n); every other group trunc(100 F
   once the iterations left are no more than its reaction's frames, so the reactions end with the
   loop (with one striker they start at its second-to-last frame, iteration L - 1 - R = A - 2): death 5 (its last
   frame stays: the corpse), defend 4 (a defending stack), else hit 3; then they stand. The
-  pending spells are cast afterwards. Before a retaliation and before a second strike
+  pending spells are cast afterwards, before the dead die (0x469102; §7.16, T7b-2b-3). Before a
+  retaliation and before a second strike
   `melee_attack` waits trunc(150 F) (0x441E05, 0x441EB6) outside the deadline, so the next
   strike's first iteration shows at once.
   Confirmed (sequence `melee`, times shown): the Wolf Riders walk four hexes and strike (group
@@ -913,7 +917,10 @@ A frame of group 0 lasts trunc(f32 W x F / f32 n); every other group trunc(100 F
   (Until E17 M2 T5b the viewer counted the shooter's frames left in the loop, which delayed a
   Cyclops' target by 0.7 s: the user saw it; the Marksmen's recorded shot cannot tell the two
   apart. The reactions' part of the loop has one iteration more than their frames, as the
-  Marksmen's sequence shows; the reading's L = R: *provisional*.) The shooter plays its group
+  Marksmen's sequence shows; the reading's L = R: *provisional*. A defending stack's group 4
+  counts here, not its hit group as after a melee strike: `machines`' Pikemen, hit 6, defend 13,
+  play all 13 after the Archers' shot, as `arrow`'s defending targets after Magic Arrow; T7b-2b-3,
+  *provisional*.) The shooter plays its group
   out beyond it and stands after its last frame (M3 T1b-1, sequence `shots`: the Cyclops' 10
   frames after its climax run on 400 ms past the Gnolls' 6-frame hit, and past the Beholders'
   5-frame death; until then the viewer cut them, T5b's rule): L = max(R + 1, the
@@ -1768,6 +1775,62 @@ resistance roll, if any (category 3, 0x5A0331); Curse's is named `Curse`, withou
   the landing (its 134 pixels at 2 730 ms, §4.3) and exact from the animation on, `morale` 94
   (from the shot on the Goblins' box and the log's line listed: the original's lucky shot
   killed 5, the engine's 4), `bad` 36, `fear` 46.
+- **Read at T7b-2b-3** (the strikes' effects; `melee_strike` 0x441610, `striker_effects`
+  0x440BC0, `strike_spell_choice` 0x440500, `cast_spell`'s Poison, Acid Breath and Lightning Bolt
+  handlers, `battle_log_cast`'s creature rows). A melee strike first chooses its spell
+  (`strike_spell_choice`: Curse, Blind, Stone Gaze, Poison, Bind, Disease, Paralyze, Age, Acid
+  Breath after their draws, into the target's pending +0xEC), then plays its animation; at the
+  animation's end, before the dead die, each living stack's pending spell is cast as a creature's
+  (`strike_animation` 0x469102: mastery 0, power 3; no hero frames, no resistance roll, the
+  spell's sound async, category 3); only then the strike's line (0x441C5D), then the striker's
+  own effect (`striker_effects`, one per creature), then Fire Shield. Recorded: `acid`'s
+  "… writhes in pain …" before "The Wyvern Monarchs do 49 damage."
+  - Poison (0x5A1590): the effect, the line (GENRLTXT 562 or 563 by the stack's number,
+    0x5A8EFC), then 67 with the stack's hit (`show_hit`) at 100 ms.
+  - Acid Breath (0x5A1E70): the defense lowered by 3 (to 0 at least; no spell set, so no tint),
+    81 without the hit at 100 ms, then the executable's own line, not a table's: "Acid breath
+    reduces the defense of the %s by %i" (0x688450; GENRLTXT 92 is formatted first and
+    overwritten).
+  - Life Drain (the Vampire Lords, 0x440C01): the hit points drained (at most the damage and the
+    drinkers' loss), the creatures raised, the line (GENRLTXT 362 or 363 by the drinkers' number
+    before the raise, the struck stack's name by its number before the strike; then 364 or 365
+    when any rose, its line break its own), `DrainLif.wav` (category 2), 74 over the drinkers
+    without the hit at 100 ms, the sound waited for.
+  - Death Stare (the Mighty Gorgons, 0x440EB6): one draw per Gorgon, at most ceil(Gorgons / 10)
+    killed; the line (GENRLTXT 119 for one, else 120), spell 79's sound (category 2), 80 over the
+    struck stack without its hit at 100 ms, the damage, then `strike_animation(-1, 1)`: its
+    reaction alone; the sound waited for.
+  - The Thunderbird's bolt (0x441185): its draw, Lightning Bolt's test and damage (10 per
+    Thunderbird, the target's modifiers), the line (GENRLTXT 368), `LightBlt.wav` (category 2),
+    the bolt from the sky 1 at 10 ms, the damage and its line (`battle_log_damage` named by
+    Lightning Bolt), then 49 over the marked stack with its reaction (`strike_animation(49, 1)`),
+    the sound waited for. A hero's Lightning Bolt (0x5A0B0C) plays 1 at 10 ms, then 49 over the
+    marked stack, its line *after* it.
+  - The Rust Dragon's acid (0x44149F): its draw, the damage (a roll of the damage range × the
+    Dragons / 2), spell 80's sound (category 2), the damage and its line (named by Acid Breath),
+    81 without the hit at 100 ms, the sound waited for, then the stack's reaction.
+  - `strike_animation`'s second argument (1 for the effects, 0 for the strike) resets the dirty
+    rectangles (0x493710) before and after its loop.
+- **Built (T7b-2b-3, `anim`):** the pending spells of a melee strike (`Player::pending_casts`,
+  played by `iterate` before its tail: `strike_cast`): Poison and Acid Breath as read, the others
+  their effects at once (not built: Blind, Curse, Disease, Age, Paralyze, Stone Gaze's glow,
+  Bind); the striker's effects after the strike's line (`strike_spell`: the Thunderbird's bolt;
+  `acid`, `drain`, `death_stare`); a hero's Lightning Bolt in `Player::cast`; Acid Breath sets no
+  spell (`effect`); `Sound::Drain`, `Thunderbolt` (category 2, the asset tables' `drain_sound`,
+  `thunderbolt_sound`, harvested from 0x660A40 and 0x660A30) and `SpellFile` (a spell's sound
+  as a file, category 2); `Logged::Drain`, `DeathStare`, `Thunderbolt`, `Poisoned`,
+  `AcidBreath`; the catalogue's `EXE:<address>` source for the executable's own text (the user's
+  `Heroes3.exe`, read at run time; `%i` as `%d`). The loop of a melee strike counts a defending
+  reaction's hit group (§7.4). Not built: the sounds' waits (as the heal's, *provisional*: the
+  captures play without sound). Recorded (`sequences.toml`, forced rolls, the engine's seeds
+  searched so its own rolls and damage fall as the original's): `thunder` (two rounds: the
+  Thunderbirds fly within reach, the Vampire Lords defend; then the strike, the bolt at
+  5 890 ms, 49 from 6 000, the drain's 74 from 8 410; seed 110: one Vampire Lord killed, 50
+  drained, one raised, as the original), `acid` (Acid Breath's 81 from 4 200 ms, the acid's from
+  6 300, Poison's 67 on the Rust Dragon from 10 900; seed 55: the strike back's 49 damage),
+  `stare` (two rounds: the Royal Griffins strike the defending Gorgons, the strike back kills
+  two, Death Stare one; seed 5) and `lightning` (`bolt`'s round 1 with the Marksmen for the
+  Pikemen); all four as recorded on the first run.
 - **Not read:** the dissolve's blend; Chain Lightning's rays beyond `draw_ray`'s call (colour
   0x131, 0x5A64EF; T7c); how the glows are painted; the summons' and the Pit Lord's creation
   beyond the dissolve; Earthquake (sieges); the force-feedback effects (IFC20, nothing drawn).

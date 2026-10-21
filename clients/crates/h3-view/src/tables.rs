@@ -869,7 +869,8 @@ at = [124, 254]
         assert_eq!(
             t.battle.sounds().collect::<Vec<_>>(),
             [
-                "Regener", "MagicRes", "GoodMrle", "BadMrle", "Fear", "goodluck"
+                "Regener", "MagicRes", "GoodMrle", "BadMrle", "Fear", "goodluck", "DrainLif",
+                "LightBlt"
             ]
         );
         assert_eq!(
@@ -1219,13 +1220,14 @@ at = [124, 254]
         assert_eq!(all.name(Sound::Start), Some("a"));
         assert_eq!(all.name(Sound::End), Some("e"));
         // The archer has none; the tent's heal sound is the battle's (E17 M3 T3b), and so are
-        // morale's, Fear's and good luck's (E17 M3 T7b-2b-2b).
+        // morale's, Fear's and good luck's (E17 M3 T7b-2b-2b), Life Drain's and the Thunderbird's
+        // bolt's (E17 M3 T7b-2b-3).
         let names: Vec<String> = tables.sound_names().into_iter().collect();
         assert_eq!(
             names,
             [
-                "BADMRLE", "FEAR", "GOODLUCK", "GOODMRLE", "MAGICRES", "PIKEATTK", "PIKEDFND",
-                "PIKEKILL", "PIKEMOVE", "PIKEWNCE", "REGENER", "SLOW"
+                "BADMRLE", "DRAINLIF", "FEAR", "GOODLUCK", "GOODMRLE", "LIGHTBLT", "MAGICRES",
+                "PIKEATTK", "PIKEDFND", "PIKEKILL", "PIKEMOVE", "PIKEWNCE", "REGENER", "SLOW"
             ]
         );
     }

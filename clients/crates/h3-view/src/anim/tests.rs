@@ -2562,6 +2562,11 @@ fn the_log_records_what_the_battle_writes_and_when() {
             Logged::Status { .. } => "status",
             Logged::Scroll(_) => "scroll",
             Logged::Cast { .. } | Logged::Resisted { .. } | Logged::SpellDamage { .. } => "spell",
+            Logged::Drain { .. }
+            | Logged::DeathStare { .. }
+            | Logged::Thunderbolt { .. }
+            | Logged::Poisoned { .. }
+            | Logged::AcidBreath { .. } => "striker",
         })
         .collect();
     // E17 M3 T6c-2: a wait, two strikes, a defend's command.
@@ -3790,4 +3795,390 @@ fn rolled_effects_without_their_stack_or_a_long_enough_animation() {
             | Logged::Fear { stack: 9, .. }
             | Logged::Luck { stack: 9, .. }
     )));
+}
+
+/// The magic animations of the striker's effects and the spells after a strike (E17 M3
+/// T7b-2b-3): the bolt from the sky (one frame, above the creature), 49 (12 frames), Poison's 67
+/// (5), Life Drain's 74 (4, translucent), Death Stare's 80 (3) and the acid's 81 (4).
+fn strike_magic() -> BTreeMap<u8, MagicLook> {
+    let entry = |def: &str, frames, place| MagicLook {
+        def: def.to_string(),
+        frames,
+        size: [80, 90],
+        place,
+        translucent: false,
+    };
+    let mut all = spell_magic();
+    all.insert(BOLT, entry("C11spA0.def", 1, 2));
+    all.insert(THUNDERBOLT, entry("C11spA1.def", 12, 0));
+    all.insert(67, entry("sp11_.def", 5, 1));
+    all.insert(
+        LIFE_DRAIN,
+        MagicLook {
+            translucent: true,
+            ..entry("sp06_.def", 4, 1)
+        },
+    );
+    all.insert(DEATH_STARE, entry("c07spe0.def", 3, 1));
+    all.insert(ACID, entry("c0acid.def", 4, 1));
+    all
+}
+
+/// The casts' spells and the strikes': Lightning Bolt (17, its 49), Poison (71, 67), Blind (62,
+/// pending but not built), Death Stare (79, 80) and Acid Breath (80, 81) by their own numbers.
+fn strike_casts() -> Casts {
+    let mut casts = casts();
+    let spell = |original, animation| SpellLook {
+        original,
+        sign: -1,
+        value: [0; 2],
+        animation: Some(animation),
+        projectile: Vec::new(),
+    };
+    for (original, animation) in [(17, 49), (71, 67), (62, 12), (79, 80), (80, 81)] {
+        casts.spells.insert(original, spell(original, animation));
+    }
+    casts
+}
+
+/// The timeline of `snapshot` and `commands` with the strikes' spells and animations.
+fn play_strikes(
+    snapshot: &Observation,
+    commands: &[(Option<u32>, Vec<Event>)],
+    casts: &Casts,
+) -> Timeline {
+    let layout = layout();
+    let magic = strike_magic();
+    let stage = Stage {
+        layout: &layout,
+        width: 17,
+        groups: tables().battle.groups,
+        magic: &magic,
+        casts,
+    };
+    let commands: Vec<Command<'_>> = commands
+        .iter()
+        .map(|(at, events)| Command { at: *at, events })
+        .collect();
+    timeline(snapshot, &commands, &looks(), stage, Speed::default()).unwrap()
+}
+
+/// The animations `t` drew, each by its number as its frame 0 is drawn, in order.
+fn animations(t: &Timeline) -> Vec<u8> {
+    t.magics
+        .iter()
+        .filter(|k| k.frame == Some(0))
+        .map(|k| k.animation)
+        .collect()
+}
+
+fn strike_spell(striker: u8, target: u8, spell: u16) -> Event {
+    Event::StrikeSpell {
+        striker,
+        target,
+        spell,
+    }
+}
+
+#[test]
+fn spells_after_a_strike_are_cast_at_its_end_and_the_acid_after_its_line() {
+    // E17 M3 T7b-2b-3 (`acid`): the Pikemen strike the Vampire Lords; Poison and Acid Breath,
+    // pending, are cast at the strike's animation's end: Poison's sound, effect, line, then 67
+    // with the stack's hit; Acid Breath's sound, 81, the defense lowered by 3 and its line, no
+    // spell set (the box's hue Poison's alone); then the strike's line; then the acid: its sound,
+    // its damage's line, 81 again, the stack's reaction.
+    let mut lords = at(1, Side::Defender, VAMPIRE_LORD, 100, false);
+    lords.defense = 10;
+    let o = snapshot(vec![at(0, Side::Attacker, PIKEMAN, 99, false), lords]);
+    let melee = flags(false, false, false);
+    let both = vec![
+        struck(0, 1, 0, melee),
+        strike_spell(0, 1, 71),
+        applied(1, 71),
+        strike_spell(0, 1, 80),
+        applied(1, 80),
+        Event::StrikeDamage {
+            striker: 0,
+            target: 1,
+            damage: WireU64(25),
+            kills: 1,
+        },
+        // Acid Breath outside its strike: no spell the hue counts either.
+        strike_spell(1, 0, 80),
+        applied(0, 80),
+    ];
+    let t = play_strikes(&o, &[(None, both)], &strike_casts());
+    let kinds: Vec<&Logged> = t.log.iter().map(|(_, l)| l).collect();
+    let poisoned = Logged::Poisoned {
+        stack: 1,
+        count: 40,
+    };
+    let acid = Logged::AcidBreath {
+        stack: 1,
+        count: 40,
+        lowered: 3,
+    };
+    let damage = Logged::SpellDamage {
+        spell: 80,
+        hit: (1, 25, 1),
+    };
+    let at_poison = kinds.iter().position(|l| **l == poisoned);
+    let at_acid = kinds.iter().position(|l| **l == acid);
+    let at_strike = kinds
+        .iter()
+        .position(|l| matches!(l, Logged::Strike { .. }));
+    let at_damage = kinds.iter().position(|l| **l == damage);
+    assert!(at_poison < at_acid && at_acid < at_strike && at_strike < at_damage);
+    assert!(at_poison.is_some(), "{:?}", t.log);
+    assert_eq!(animations(&t), [67, ACID, ACID]);
+    // Poison's first frame beside the stack's hit group's frame 0.
+    let first = t.magics.iter().find(|k| k.animation == 67).map(|k| k.shown);
+    let first = first.unwrap_or_default();
+    assert_eq!(t.at(first)[&1].group, 3);
+    let sounds: Vec<Sound> = cues(&t).iter().map(|c| c.2).collect();
+    for s in [Sound::Spell(71), Sound::Spell(80), Sound::SpellFile(80)] {
+        assert!(sounds.contains(&s), "{sounds:?}");
+    }
+    // The hue: Poison's alone, as without Acid Breath.
+    let poison_only = vec![
+        struck(0, 1, 0, melee),
+        strike_spell(0, 1, 71),
+        applied(1, 71),
+    ];
+    let p = play_strikes(&o, &[(None, poison_only)], &strike_casts());
+    assert_eq!(t.hues(20_000), p.hues(20_000));
+    // The kill shows once the acid's reaction is over.
+    assert_eq!(t.counts(20_000)[&1], 39);
+}
+
+#[test]
+fn the_thunderbirds_bolt_and_a_heros_lightning_bolt_fall_from_the_sky() {
+    // E17 M3 T7b-2b-3 (`thunder`, `lightning`): after the strike's line, the Thunderbird's bolt:
+    // its line, its sound, 1 for 10 ms, the damage's line, then 49 over the marked stack. A
+    // hero's Lightning Bolt: 1, then 49, its line after it.
+    let o = snapshot(vec![
+        at(0, Side::Attacker, PIKEMAN, 99, false),
+        at(1, Side::Defender, VAMPIRE_LORD, 100, false),
+    ]);
+    let events = vec![
+        struck(0, 1, 0, flags(false, false, false)),
+        strike_spell(0, 1, 17),
+        spell_damage(1, 20, 1),
+    ];
+    let t = play_strikes(&o, &[(None, events)], &strike_casts());
+    assert_eq!(animations(&t), [BOLT, THUNDERBOLT]);
+    let bolt: Vec<(u32, u32)> = t
+        .magics
+        .iter()
+        .filter(|k| k.animation == BOLT)
+        .map(|k| (k.drawn, k.shown))
+        .collect();
+    let (drawn, shown) = bolt[0];
+    assert_eq!(bolt[1].1, shown + BOLT_TIME);
+    let line = Logged::Thunderbolt {
+        stack: 1,
+        count: 40,
+    };
+    assert!(t.log.contains(&(drawn, line)), "{:?}", t.log);
+    // Its damage's line once the erasing redraw shows.
+    let damage = (
+        bolt[1].1,
+        Logged::SpellDamage {
+            spell: 17,
+            hit: (1, 20, 1),
+        },
+    );
+    assert!(t.log.contains(&damage), "{:?}", t.log);
+    assert!(cues(&t).contains(&(drawn, 1, Sound::Thunderbolt, false)));
+    // The hero's.
+    let o = snapshot(vec![
+        at(0, Side::Attacker, MARKSMAN, 86, false),
+        at(1, Side::Defender, SWORDSMAN, 83, false),
+    ]);
+    let events = vec![cast(17, 1), spell_damage(1, 35, 1)];
+    let t = play_strikes(&o, &[(None, events)], &strike_casts());
+    assert_eq!(animations(&t), [BOLT, THUNDERBOLT]);
+    let last = t.magics.iter().rfind(|k| k.animation == THUNDERBOLT);
+    let erased = last.map(|k| k.shown).unwrap_or_default();
+    let line = Logged::SpellDamage {
+        spell: 17,
+        hit: (1, 35, 1),
+    };
+    assert!(
+        t.log.iter().any(|(at, l)| *l == line && *at >= erased),
+        "{:?}",
+        t.log
+    );
+}
+
+#[test]
+fn life_drain_and_death_stare_follow_the_strike() {
+    // E17 M3 T7b-2b-3 (`thunder`, `stare`): the Vampire Lords strike back and drain the Pikemen:
+    // the line by their number before the raised and the Pikemen's before the strike, the sound,
+    // 74 over the drinkers, their box their new number from its first frame; then Death Stare
+    // (as if theirs): the line, Death Stare's sound, 80 over the Pikemen, then their reaction.
+    let o = snapshot(vec![
+        at(0, Side::Attacker, PIKEMAN, 99, false),
+        at(1, Side::Defender, VAMPIRE_LORD, 100, false),
+    ]);
+    let events = vec![
+        struck(0, 1, 1, flags(false, false, false)),
+        struck(1, 0, 2, flags(false, true, false)),
+        Event::LifeDrained {
+            stack: 1,
+            hit_points: WireU64(50),
+            resurrected: 1,
+        },
+        Event::DeathStared {
+            attacker: 1,
+            target: 0,
+            kills: 1,
+        },
+    ];
+    let t = play_strikes(&o, &[(None, events)], &strike_casts());
+    let drain = Logged::Drain {
+        stack: 1,
+        count: 39,
+        hit_points: 50,
+        raised: 1,
+        target: 0,
+        target_count: 40,
+    };
+    let stare = Logged::DeathStare {
+        stack: 1,
+        count: 40,
+        target: 0,
+        kills: 1,
+    };
+    assert!(t.log.iter().any(|(_, l)| *l == drain), "{:?}", t.log);
+    assert!(t.log.iter().any(|(_, l)| *l == stare), "{:?}", t.log);
+    assert_eq!(animations(&t), [LIFE_DRAIN, DEATH_STARE]);
+    let first = |n: u8| t.magics.iter().find(|k| k.animation == n).map(|k| k.shown);
+    let drink = first(LIFE_DRAIN).unwrap_or_default();
+    assert_eq!(t.counts(drink - 1)[&1], 39);
+    assert_eq!(t.counts(drink)[&1], 40);
+    let sounds: Vec<Sound> = cues(&t).iter().map(|c| c.2).collect();
+    assert!(sounds.contains(&Sound::Drain) && sounds.contains(&Sound::SpellFile(79)));
+    assert_eq!(t.counts(20_000)[&0], 37);
+}
+
+#[test]
+fn strike_effects_without_their_spell_or_stack_do_what_they_can() {
+    // E17 M3 T7b-2b-3: a pending spell not built (Blind) and one on a stack the timeline does
+    // not follow take effect without animations; another striker's pending spell, a spell that
+    // is no strike's and a bolt without its damage wait for the event loop; the acid and Death
+    // Stare without their spells in the record play their animations without a sound or line;
+    // Life Drain without a melee strike before it, or by a stack the timeline does not follow,
+    // does nothing.
+    let o = snapshot(vec![
+        at(0, Side::Attacker, PIKEMAN, 99, false),
+        at(1, Side::Defender, VAMPIRE_LORD, 100, false),
+    ]);
+    let drained = Event::LifeDrained {
+        stack: 1,
+        hit_points: WireU64(5),
+        resurrected: 0,
+    };
+    let melee = flags(false, false, false);
+    let commands = [
+        (None, vec![drained.clone()]),
+        (
+            Some(0),
+            vec![
+                struck(0, 1, 0, melee),
+                strike_spell(0, 1, 62),
+                applied(1, 62),
+                strike_spell(0, 9, 71),
+                strike_spell(1, 0, 71),
+                applied(0, 71),
+                strike_spell(0, 1, 45),
+                strike_spell(0, 1, 17),
+                strike_spell(0, 9, 17),
+                spell_damage(9, 20, 1),
+                Event::StrikeDamage {
+                    striker: 0,
+                    target: 1,
+                    damage: WireU64(25),
+                    kills: 0,
+                },
+                Event::StrikeDamage {
+                    striker: 0,
+                    target: 9,
+                    damage: WireU64(25),
+                    kills: 0,
+                },
+                Event::DeathStared {
+                    attacker: 1,
+                    target: 0,
+                    kills: 1,
+                },
+                Event::DeathStared {
+                    attacker: 9,
+                    target: 0,
+                    kills: 1,
+                },
+                Event::LifeDrained {
+                    stack: 9,
+                    hit_points: WireU64(5),
+                    resurrected: 0,
+                },
+            ],
+        ),
+    ];
+    let mut casts = strike_casts();
+    casts.spells.remove(&79);
+    casts.spells.remove(&80);
+    let t = play_strikes(&o, &commands, &casts);
+    assert_eq!(animations(&t), [ACID, DEATH_STARE]);
+    assert!(
+        t.log.iter().all(|(_, l)| !matches!(
+            l,
+            Logged::Drain { .. }
+                | Logged::Thunderbolt { .. }
+                | Logged::SpellDamage { .. }
+                | Logged::Poisoned { stack: 9, .. }
+        )),
+        "{:?}",
+        t.log
+    );
+    let sounds: Vec<Sound> = cues(&t).iter().map(|c| c.2).collect();
+    assert!(!sounds.iter().any(|s| matches!(
+        s,
+        Sound::SpellFile(_) | Sound::Drain | Sound::Spell(_) | Sound::Thunderbolt
+    )));
+    // Blind's and the other striker's Poison took effect: the boxes' hues changed.
+    assert_ne!(t.hues(20_000), BTreeMap::new());
+}
+
+#[test]
+fn spells_after_a_strike_without_animations_and_a_drain_raising_none() {
+    // E17 M3 T7b-2b-3: Poison and Acid Breath whose records name no animation write their lines
+    // all the same; a drain that raises nobody leaves the box's number as it is.
+    let o = snapshot(vec![
+        at(0, Side::Attacker, PIKEMAN, 99, false),
+        at(1, Side::Defender, VAMPIRE_LORD, 100, false),
+    ]);
+    let mut casts = strike_casts();
+    for spell in [71, 80] {
+        if let Some(look) = casts.spells.get_mut(&spell) {
+            look.animation = None;
+        }
+    }
+    let events = vec![
+        struck(0, 1, 0, flags(false, false, false)),
+        strike_spell(0, 1, 71),
+        strike_spell(0, 1, 80),
+        struck(1, 0, 0, flags(false, true, false)),
+        Event::LifeDrained {
+            stack: 1,
+            hit_points: WireU64(3),
+            resurrected: 0,
+        },
+    ];
+    let t = play_strikes(&o, &[(None, events)], &casts);
+    assert_eq!(animations(&t), [LIFE_DRAIN]);
+    let lines: Vec<&Logged> = t.log.iter().map(|(_, l)| l).collect();
+    assert!(lines.iter().any(|l| matches!(l, Logged::Poisoned { .. })));
+    assert!(lines.iter().any(|l| matches!(l, Logged::AcidBreath { .. })));
+    assert!(t.counts.iter().all(|k| k.stack != 1));
 }
