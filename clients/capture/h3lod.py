@@ -21,9 +21,10 @@ from functools import lru_cache
 from pathlib import Path
 
 DATA = Path(__file__).resolve().parent.parent.parent / "original-data" / "wine" / "game" / "Data"
-# The archives in the order the game searches them for a name: the AB/SoD ones first (an
-# assumption, research item 1 of the asset notes; the text tables the harness reads are in one).
-ARCHIVES = ("H3ab_bmp.lod", "H3bitmap.lod")
+# The archives in the order the game searches them for a bitmap's name (its row 3: the base
+# archive first, the AB one for the names it lacks; design §3.1, 0x559320). Until E17 M3 T6c-2 the
+# harness took the AB copies first, whose GENRLTXT differs from record 79 on and Help.txt from 96.
+ARCHIVES = ("H3bitmap.lod", "H3ab_bmp.lod")
 
 
 @lru_cache(maxsize=None)

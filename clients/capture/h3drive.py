@@ -558,11 +558,11 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
     actions play both sides. With `frames` (M2 T4b-1) every distinct screen the steps show is
     kept: `<out>/frames/t<ms>.npz` (the whole screen, 5-6-5), its first time and its state in
     `<out>/frames.jsonl`. A screen is distinct by its battlefield and, since M3 T6b, its panel
-    (the log's lines and the buttons change there alone), the game's parked cursor left out."""
+    (the log's lines and the buttons change there alone), since M3 T6c-2 its cursor too (the
+    viewer draws it)."""
     import hashlib
     import json
 
-    import h3cap
     import h3mem
 
     game.start(map_path)
@@ -574,6 +574,9 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
         to_scenario(game)
     t0 = into_battle(game)
     mem = h3mem.Mem()
+    # The mouse poll's grid from the opening (M3 T6c-2): the cursor moves at the same times in
+    # every run.
+    mem.align_mouse_poll(t0)
     now = game.clock(f"step {pre}") if pre else t0
     kept = Path(out) / "frames"
     if frames:
@@ -592,10 +595,7 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
             s["log"]["at"] -= t0
         if screen or frames:
             pix = game.settled()
-            seen = pix.copy()
-            x0, y0, x1, y1 = h3cap.CURSOR_BOX
-            seen[y0:y1, x0:x1] = 0
-            s["screen"] = hashlib.sha1(seen.tobytes()).hexdigest()[:12]
+            s["screen"] = hashlib.sha1(pix.tobytes()).hexdigest()[:12]
             if frames and s["screen"] != last[0]:
                 name = f"t{t - t0:05d}.npz"
                 if (kept / name).exists():  # the actions changed it at the same time
@@ -719,7 +719,9 @@ def frames_toml(kept, mouse=None):
     the original's memory was read for them (the frame check, M3 T3a), its heroes' groups and
     frames (their defeats and victories are drawn from its generator; the flags are the
     viewer's); a situation's mouse first (M3 T6c-1: `h3-view render --frames` draws its cursor,
-    hint and marked stack)."""
+    hint and marked stack); a sequence's frame the point the original's cursor is drawn at (M3
+    T6c-2: its memory, `cursor_at`; the game reads the mouse on a 33 ms grid of its own, design
+    §9.10)."""
     out = ["# The original's kept frames (h3drive.py frames): numbers only.", ""]
     if mouse is not None:
         out += [f"mouse = [{mouse[0]}, {mouse[1]}]", ""]
@@ -730,6 +732,9 @@ def frames_toml(kept, mouse=None):
         if "heroes" in k:
             heroes = ", ".join(f"[{h['side']}, {h['group']}, {h['frame']}]" for h in k["heroes"])
             out.append(f"heroes = [{heroes}]")
+        at = (k.get("clocks") or {}).get("cursor_at")
+        if at is not None:
+            out.append(f"cursor = [{at[0]}, {at[1]}]")
         out.append("")
     return "\n".join(out)
 
@@ -759,10 +764,8 @@ def run_frames(rest):
     h3view = str(ROOT / "clients" / "target" / "release" / "h3-view")
     failed = 0
     for e in entries:
-        if not e.get("command"):
-            # The viewer cannot play it (a hover, M3 T1b-2: no engine command): its timeline only.
-            print(f"{e['id']}: no engine commands, no frames", flush=True)
-            continue
+        # A sequence without engine commands (`hover`) is the opening's battle with the mouse
+        # over it (M3 T6c-2: the viewer plays it too).
         here = out / e["id"]
         here.mkdir(parents=True, exist_ok=True)
         if not (reuse and (here / "frames.jsonl").exists()):
@@ -865,12 +868,12 @@ def run_frames(rest):
 
 
 def compared_masks(kind, entry, t):
-    """The fixed masks a comparison applies to a frame at `t` ms: a sequence's the game's parked
-    cursor (its panel compared since E17 M3 T6b), a situation's its `mask` list. (A sequence's
-    count boxes and its log's item are masked besides, by the original's counts and text: not
-    fixed.)"""
+    """The fixed masks a comparison applies to a frame at `t` ms: a sequence's none (its panel
+    compared since E17 M3 T6b, its cursor since T6c-2), a situation's its `mask` list. (A
+    sequence's count boxes and its log's item are masked besides, by the original's counts and
+    text: not fixed.)"""
     if kind == "sequences":
-        return ["cursor"]
+        return []
     return entry.get("mask", [])
 
 
@@ -913,7 +916,7 @@ def keep(set_path, kind, ident, frames):
 
 def run_drawn(rest):
     """The viewer's frames without the original (runbook, "Which captures a change needs"): for
-    each recorded sequence with engine commands and each situation of the capture set, the
+    each recorded sequence and each situation of the capture set, the
     viewer draws its frames at the times the harness last kept frames of the original
     (`situations/kept/`, written by `frames` and `set`); each frame's digest (of its pixels
     outside the fixed masks its comparison applies, `compared_masks`: a change only under them
@@ -932,8 +935,7 @@ def run_drawn(rest):
     out = Path(opts.get("--out", ROOT / "clients" / "out" / "drawn"))
     h3view = str(ROOT / "clients" / "target" / "release" / "h3-view")
     items = [("sequences", e["id"], e)
-             for e in tomllib.loads((situations / "sequences.toml").read_text())["sequence"]
-             if e.get("command")]
+             for e in tomllib.loads((situations / "sequences.toml").read_text())["sequence"]]
     items += [("set", s["id"], s)
               for s in tomllib.loads((situations / "set.toml").read_text())["situation"]]
     if "--only" in opts:

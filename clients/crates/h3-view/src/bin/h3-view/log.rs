@@ -8,7 +8,6 @@ use h3_assets::fnt::Font;
 use h3_formats::lod::LodArchive;
 use h3_protocol::wire::{Event, ServerMessage};
 use h3_render::Bugs;
-use h3_view::anim::Timeline;
 use h3_view::battle_log::{self, Named};
 use h3_view::layout::BattleLayout;
 use h3_view::record::Record;
@@ -88,42 +87,90 @@ pub fn texts(
     Some(battle_log::texts(logged, &word, &lines, &human))
 }
 
-/// The panel over the record's battle as `timeline` plays it (E17 M3 T6b): its turns and its log's
-/// texts ([`texts`]) in the original's words from `archives`' text tables (read only when the
-/// battle writes a line), measured in the log item's font of `layout`, drawn with the original's
-/// drawing bugs.
+/// The panel over the record's battle (E17 M3 T6b): its turns and its log's texts ([`texts`])
+/// through `logged` (the timeline's log, with the mouse's hints since T6c-2:
+/// `crate::pointer::shown`) in the original's words from `archives`' text tables (read only when
+/// the battle writes a line), measured in the log item's font of `layout`, drawn with the
+/// original's drawing bugs.
 pub fn panels(
     record: &Record,
-    timeline: &Timeline,
+    logged: &[(u32, battle_log::Logged)],
     tables: &Tables,
     layout: &BattleLayout,
     archives: &[(&str, LodArchive<'_>)],
 ) -> Result<Panels, String> {
-    let snapshot = record
-        .first_snapshot()
-        .ok_or("the record holds no snapshot")?;
-    let writes = timeline
-        .log
-        .iter()
-        .any(|(_, l)| !matches!(l, battle_log::Logged::Action | battle_log::Logged::Turn(_)));
+    let writes = logged.iter().any(|(_, l)| {
+        !matches!(
+            l,
+            battle_log::Logged::Action
+                | battle_log::Logged::Turn(_)
+                | battle_log::Logged::Status { .. }
+                | battle_log::Logged::Scroll(_)
+        )
+    });
     let catalogue = if writes {
         catalogue(tables, archives)?
     } else {
         Catalogue::default()
     };
-    let item = layout.log().ok_or("the layout's panel has no log item")?;
-    let font = h3_assets::fnt::decode_fnt(&lookup(archives, &item.font)?)
-        .map_err(|e| format!("{}: {e:?}", item.font))?;
-    let texts = texts(
-        record,
-        &timeline.log,
-        &catalogue,
-        &font,
-        item.size[0],
-        Bugs::Original,
-    )
-    .ok_or("the record holds no snapshot")?;
-    Ok(Panels::new(snapshot, &events(record), texts))
+    Writer::with(catalogue, layout, archives)?.panels(record, logged)
+}
+
+/// What words the log's lines and measures them, kept once the archives are gone (E17 M3
+/// T6c-2: the window makes its panel again as the mouse writes hints).
+#[derive(Debug)]
+pub struct Writer {
+    /// The original's words.
+    pub catalogue: Catalogue,
+    font: Font,
+    width: i32,
+}
+
+impl Writer {
+    /// The original's words from `archives`' text tables, the log item's font of `layout`.
+    pub fn new(
+        tables: &Tables,
+        layout: &BattleLayout,
+        archives: &[(&str, LodArchive<'_>)],
+    ) -> Result<Self, String> {
+        Self::with(catalogue(tables, archives)?, layout, archives)
+    }
+
+    fn with(
+        catalogue: Catalogue,
+        layout: &BattleLayout,
+        archives: &[(&str, LodArchive<'_>)],
+    ) -> Result<Self, String> {
+        let item = layout.log().ok_or("the layout's panel has no log item")?;
+        let font = h3_assets::fnt::decode_fnt(&lookup(archives, &item.font)?)
+            .map_err(|e| format!("{}: {e:?}", item.font))?;
+        Ok(Self {
+            catalogue,
+            font,
+            width: item.size[0],
+        })
+    }
+
+    /// The panel over the record's battle through `logged` ([`panels`]).
+    pub fn panels(
+        &self,
+        record: &Record,
+        logged: &[(u32, battle_log::Logged)],
+    ) -> Result<Panels, String> {
+        let snapshot = record
+            .first_snapshot()
+            .ok_or("the record holds no snapshot")?;
+        let texts = texts(
+            record,
+            logged,
+            &self.catalogue,
+            &self.font,
+            self.width,
+            Bugs::Original,
+        )
+        .ok_or("the record holds no snapshot")?;
+        Ok(Panels::new(snapshot, &events(record), texts))
+    }
 }
 
 #[cfg(test)]

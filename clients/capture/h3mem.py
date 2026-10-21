@@ -79,6 +79,14 @@ HERO_POINTERS, HERO_GROUPS, HERO_FRAMES, FLAG_FRAMES = 0x53CC, 0x53E4, 0x53EC, 0
 # The active stack (a pointer: outline 0x60) and the mouse's highlight (+0x132CC set: the stack on
 # the hex +0x132D0 gets outline 0x70) (M2 T4b-1; structs.toml, design §4.2).
 ACTIVE_STACK, MOUSE_HIGHLIGHT, MOUSE_HEX = 0x132C8, 0x132CC, 0x132D0
+# The mouse over the battle (E17 M3 T6c-2, design §9.9, §9.10): the hex under it (i32 +0x132D4,
+# -1 none) and the cursor's kind there (i32 +0x132E0, `battle_cursor`); the mouse manager (a
+# pointer at 0x699260) holds the cursor's type (i32 +0x4C: 2 the combat cursor) and frame (+0x50)
+# and the point it is drawn at (i32 +0x6C, +0x70: the mouse's, its x even, read on a 33 ms grid of
+# the game's clock, `mouse_poll` 0x50D680; design §9.10).
+MOUSE_AT, CURSOR_KIND, MOUSE_MANAGER, CURSOR_TYPE, CURSOR_FRAME, CURSOR_X, CURSOR_Y = (
+    0x132D4, 0x132E0, 0x699260, 0x4C, 0x50, 0x6C, 0x70)
+MOUSE_POLL_NEXT = 0x69CA18  # the mouse poll's next time (0x50D680, a 33 ms grid)
 # The magic animation (E17 M3 T3b, design §7.15): its number in the table 0x641E08 (+0x132EC,
 # the last loaded) and the frame drawn (+0x132F0); a stack shows it while its byte +0x20 is set
 # (`PlayMagicAnimation` 0x496840, `draw_battle_stack`'s tail 0x43E795).
@@ -130,11 +138,26 @@ def game_pid():
 
 class Mem:
     def __init__(self, pid=None):
-        self.file = open(f"/proc/{pid or game_pid()}/mem", "rb", buffering=0)
+        self.pid = pid or game_pid()
+        self.file = open(f"/proc/{self.pid}/mem", "rb", buffering=0)
 
     def read(self, address, size):
         self.file.seek(address)
         return self.file.read(size)
+
+    def write_u32(self, address, value):
+        """Writes a u32 into the game's memory: only the harness's own timers (M3 T6c-2,
+        `align_mouse_poll`), never the game's state."""
+        with open(f"/proc/{self.pid}/mem", "r+b", buffering=0) as f:
+            f.seek(address)
+            f.write(struct.pack("<I", value))
+
+    def align_mouse_poll(self, now):
+        """The mouse manager reads the mouse on a 33 ms grid of the game's clock (`mouse_poll`
+        0x50D680: its next time 0x69CA18), whose phase the menus before a battle leave at random:
+        set to `now` (the opening), the grid runs from the opening in every run (M3 T6c-2,
+        design §9.10), so the frames a sequence keeps where the cursor moves keep their times."""
+        self.write_u32(MOUSE_POLL_NEXT, now)
 
     def u32(self, address):
         return struct.unpack("<I", self.read(address, 4))[0]
@@ -147,8 +170,9 @@ class Mem:
 
     def globals(self):
         """The battle's clocks (absolute game times, ms), the combat speed, the idle steps
-        taken, the active stack (`[side, record]` or None) and the hex the mouse highlights
-        (None: none)."""
+        taken, the active stack (`[side, record]` or None), the hex the mouse highlights
+        (None: none), the hex under the mouse and the cursor's kind there (M3 T6c-2) and the
+        cursor's type, frame and the point it is drawn at."""
         manager = self.manager()
         found = {
             "frame_deadline": self.u32(FRAME_DEADLINE),
@@ -158,12 +182,22 @@ class Mem:
             "active": None,
             "mouse_hex": None,
             "magic": None,
+            "mouse": None,
+            "kind": None,
+            "cursor": None,
+            "cursor_at": None,
         }
+        pointer = self.u32(MOUSE_MANAGER)
+        if pointer:
+            found["cursor"] = [self.i32(pointer + CURSOR_TYPE), self.i32(pointer + CURSOR_FRAME)]
+            found["cursor_at"] = [self.i32(pointer + CURSOR_X), self.i32(pointer + CURSOR_Y)]
         if manager:
             found["idle_steps"] = self.i32(manager + STEP_COUNTER)
             found["active"] = self.stack_at(manager, self.u32(manager + ACTIVE_STACK))
             if self.read(manager + MOUSE_HIGHLIGHT, 1) != b"\0":
                 found["mouse_hex"] = self.i32(manager + MOUSE_HEX)
+            found["mouse"] = self.i32(manager + MOUSE_AT)
+            found["kind"] = self.i32(manager + CURSOR_KIND)
             found["magic"] = [self.i32(manager + MAGIC_ANIMATION),
                               self.i32(manager + MAGIC_FRAME)]
         return found

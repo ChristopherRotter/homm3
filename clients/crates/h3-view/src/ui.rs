@@ -105,6 +105,10 @@ pub struct Button {
     /// M3 T6c-1), none for none.
     #[serde(default)]
     pub hint: Option<String>,
+    /// Its hotkeys, by name (`S`, `Space`; its +0x48, the screens' scan codes, E17 M3 T6c-2): a
+    /// key down presses it, the key up releases it and clicks (0x45659F, 0x4564D6).
+    #[serde(default)]
+    pub keys: Vec<String>,
 }
 
 /// A button's frame in each state: the constructor's frame (+0x34) and click frame (+0x38), the
@@ -234,6 +238,25 @@ impl Dialog {
                 (left..left.saturating_add(w)).contains(&x)
                     && (top..top.saturating_add(h)).contains(&y)
             })
+        })
+    }
+
+    /// The button under the mouse at `point` ([`Dialog::item_at`]), if a button is there (E17
+    /// M3 T6c-2: the one a click presses).
+    #[must_use]
+    pub fn button_at(&self, point: [i32; 2]) -> Option<u16> {
+        match self.item_at(point)? {
+            Item::Button(b) => Some(b.id),
+            _ => None,
+        }
+    }
+
+    /// The first button whose hotkeys hold `key` (E17 M3 T6c-2).
+    #[must_use]
+    pub fn button_for_key(&self, key: &str) -> Option<u16> {
+        self.items.iter().find_map(|item| match item {
+            Item::Button(b) if b.keys.iter().any(|k| k == key) => Some(b.id),
+            _ => None,
         })
     }
 

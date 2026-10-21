@@ -5,609 +5,711 @@ t = 0
 file = "t00000b.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 100
 file = "t00100.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 200
 file = "t00200.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 300
 file = "t00300.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 400
 file = "t00400.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 500
 file = "t00500.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 575
 file = "t00575.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 650
 file = "t00650.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 725
 file = "t00725.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 800
 file = "t00800.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 875
 file = "t00875.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 950
 file = "t00950.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 1025
 file = "t01025.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 1100
 file = "t01100.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 1175
 file = "t01175.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 1250
 file = "t01250.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 1325
 file = "t01325.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 1400
 file = "t01400.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 1475
 file = "t01475.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 1550
 file = "t01550.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 1625
 file = "t01625.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 1700
 file = "t01700.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 1775
 file = "t01775.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 1850
 file = "t01850.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 1925
 file = "t01925.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 2000
 file = "t02000.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 2100
 file = "t02100.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 2200
 file = "t02200.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 2300
 file = "t02300.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 2400
 file = "t02400.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 2500
 file = "t02500.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 2700
 file = "t02700.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 2800
 file = "t02800.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 2900
 file = "t02900.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 3000
 file = "t03000.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 3100
 file = "t03100.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 3200
 file = "t03200.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 3300
 file = "t03300.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 3400
 file = "t03400.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 3500
 file = "t03500.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 3600
 file = "t03600.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 3700
 file = "t03700.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 3800
 file = "t03800.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 3900
 file = "t03900.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 4000
 file = "t04000.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 4100
 file = "t04100.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 4200
 file = "t04200.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 4300
 file = "t04300.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 4450
 file = "t04450.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 4500
 file = "t04500.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 4600
 file = "t04600.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 4700
 file = "t04700.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 4800
 file = "t04800.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 4900
 file = "t04900.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 5000
 file = "t05000.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 5100
 file = "t05100.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 5200
 file = "t05200.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 5300
 file = "t05300.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 5400
 file = "t05400.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 5500
 file = "t05500.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 5600
 file = "t05600.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 5700
 file = "t05700.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 5800
 file = "t05800.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 5900
 file = "t05900.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 6000
 file = "t06000.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 6100
 file = "t06100.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 6200
 file = "t06200.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 6258
 file = "t06258.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 6316
 file = "t06316.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 6374
 file = "t06374.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 6432
 file = "t06432.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 6490
 file = "t06490.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 6548
 file = "t06548.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 6606
 file = "t06606.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 6664
 file = "t06664.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 6722
 file = "t06722.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 6780
 file = "t06780.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 6838
 file = "t06838.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 6896
 file = "t06896.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 6954
 file = "t06954.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 7012
 file = "t07012.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 7070
 file = "t07070.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 7128
 file = "t07128.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 7186
 file = "t07186.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 7244
 file = "t07244.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 7302
 file = "t07302.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 7360
 file = "t07360.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 7418
 file = "t07418.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 7518
 file = "t07518.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 7618
 file = "t07618.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 7718
 file = "t07718.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 7818
 file = "t07818.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 7918
 file = "t07918.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 8018
 file = "t08018.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 8118
 file = "t08118.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 8218
 file = "t08218.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 8318
 file = "t08318.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 8418
 file = "t08418.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 8518
 file = "t08518.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 8618
 file = "t08618.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 8718
 file = "t08718.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]
 
 [[frame]]
 t = 8818
 file = "t08818.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+cursor = [618, 593]

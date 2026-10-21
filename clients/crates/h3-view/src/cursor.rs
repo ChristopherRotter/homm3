@@ -28,6 +28,7 @@ pub struct Cursor {
     frame: Frame,
     palette: ScreenPalette,
     hot: (i32, i32),
+    drawer: Drawer,
 }
 
 /// A cursor as an image over nothing, for the window: straight RGBA, 8 bits per channel, row by
@@ -56,6 +57,20 @@ impl Cursor {
             frame,
             palette: ScreenPalette::new(&sprite.def.palette, format),
             hot: (coordinate(hot.0), coordinate(hot.1)),
+            drawer: DRAWER,
+        })
+    }
+
+    /// As [`Cursor::new`], drawn as the mouse manager draws a cursor's frame (0x50D8B0: the plain
+    /// drawer with runs skipped, E17 M3 T6c-1): the battle's cursors (`crcombat.def`, T6c-2).
+    #[must_use]
+    pub fn read(sprite: &Sprite, index: u32, hot: (u32, u32), format: PixelFormat) -> Option<Self> {
+        Some(Self {
+            drawer: Drawer::Plain {
+                skip_runs: true,
+                colour: None,
+            },
+            ..Self::new(sprite, index, hot, format)?
         })
     }
 
@@ -66,7 +81,7 @@ impl Cursor {
             y: y.saturating_sub(self.hot.1),
             mirrored: false,
         };
-        draw_frame(screen, &self.frame, &self.palette, at, DRAWER);
+        draw_frame(screen, &self.frame, &self.palette, at, self.drawer);
     }
 
     /// The cursor as an image over nothing: drawn once over black and once over white. A pixel
@@ -187,6 +202,17 @@ mod tests {
         // The shadow's body halves white: 0x7BEF, green 31 of 63 widened to 125.
         assert_eq!(pixel(5), [0, 0, 0, 130]);
         assert_eq!(image.rgba.len(), 24);
+    }
+
+    #[test]
+    fn the_read_drawer_skips_the_runs() {
+        let format = PixelFormat::RGB565;
+        let cursor = Cursor::read(&sprite(), 0, (0, 0), format).unwrap();
+        let image = cursor.image(format);
+        // The literal pixel opaque, both runs skipped (transparent).
+        assert_eq!(image.rgba[12..16], [255, 0, 0, 255]);
+        assert_eq!(image.rgba[16..24], [0; 8]);
+        assert!(Cursor::read(&sprite(), 5, (0, 0), format).is_none());
     }
 
     #[test]

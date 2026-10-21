@@ -44,9 +44,9 @@ alter (the user, 2026-10-20):
    for the assets). The viewer draws every sequence and situation at the times `kept/` holds and
    compares each frame's digest with `kept/drawn.txt`; its timeline check (`h3-view sequences`)
    runs with it. The digest is of the frame's pixels outside the fixed masks its comparison
-   applies (a sequence's parked cursor since M3 T6b, its panel before; a situation's `mask`; E17
-   M3 T6a): a frame whose digest is the same shows the comparison what the last capture
-   compared, so its recorded count still holds.
+   applies (a situation's `mask`; a sequence's none since M3 T6c-2, its parked cursor from T6b,
+   its panel before; E17 M3 T6a): a frame whose digest is the same shows the comparison what the
+   last capture compared, so its recorded count still holds.
 2. **Capture what changed:** `frames --only <id>` or `set --only <id>` for each one `drawn` lists
    as `CHANGED` or `new`, and for each sequence or situation whose entry the task adds or
    changes (scenario, actions, `ms`, `boxes`, masks: the kept times or the comparison change
@@ -169,8 +169,11 @@ the Archangel's fixed damage kills the Pikemen, about 4.3 s, its log line compar
 needs no action (the engine plays its turn inside the command before it). A two-hex striker
 stands where the cursor's slot inside the target's hex says (design §7.13): `click:x,y` with an
 offset from the hex's point picks it. `hover` (M3 T1b-2) moves the mouse over a stack
-(`move:x,y`) and away; it has no engine command (the viewer draws no mouse in a record), so
-`h3-view sequences` and the frame check skip it.
+(`move:x,y`) and away; it has no engine command: since M3 T6c-2 the viewer plays the opening's
+battle with the harness's mouse over it (design §9.10), and the timeline check leaves out the
+original's own fidgets (those of the stacks the mouse did not enter). Every sequence's actions
+are the viewer's mouse too (`h3-view sequences` reads `actions`: the mouse parked first, `hex:`
+and `click:` move, click and park it again, `move:` moves it, `key:` acts).
 
 **The frame check** (M2 T4b-1, design §7.9): from `clients/`,
 
@@ -179,19 +182,22 @@ python3 capture/h3drive.py frames [--only <id>] [--out <dir>] [--reuse]
 ```
 
 For each recorded sequence: its battle in the original, stepped 1 ms at a time, keeping every
-distinct screen (its battlefield and, since M3 T6b, its panel, the parked cursor left out;
+distinct screen (its battlefield and, since M3 T6b, its panel, since T6c-2 its cursor: the
+mouse poll's next time 0x69CA18 set to the opening's, so the cursor moves on the same 33 ms grid
+in every run, design §9.10;
 `<dir>/<id>/frames/t<ms>.npz` and their states in `frames.jsonl`, the log's item and entries
 among them: `h3mem`'s `battle_log`); the viewer's frame at each of those times (`h3-view
 sequences <id> --frames <dir>`: `ours/`, what it drew in `ours.txt` and its log item's text in
 `ours-log.json`, with the heroes the original showed: their defeat and victory come from its
-generator; the flags are the viewer's own); the masked diff of each pair (the parked cursor, the
-count boxes where the drawn poses show them; the heroes are compared since M3 T3a, the panel
-since T6b), written to `frames.txt` and, for a frame that differs, `diff/t<ms>.png`; each line
+generator; the flags are the viewer's own; its cursor where the original's memory says the
+cursor is drawn, `frames.toml`'s `cursor`, M3 T6c-2); the masked diff of each pair (the count
+boxes where the drawn poses show them; the heroes are compared since M3 T3a, the panel since
+T6b, the cursor since T6c-2), written to `frames.txt` and, for a frame that differs, `diff/t<ms>.png`; each line
 compared with the sequence's recorded `timelines/<id>-frames.txt` (`ok`, `new`, `CHANGED`; exit 1
 on a change). The log's item (M3 T6b, design §9.8) is compared where the original's shows the
-text the viewer drew; where it shows another (a status line's hint, T6c, or a line whose numbers
-the engine rolled otherwise) and its pixels differ, the item is masked and listed at the end of
-the frame's line, ` log`. An entry with `boxes = true` (M3 T5a) compares the count boxes; any other
+text the viewer drew; where it shows another (a line whose numbers the engine rolled otherwise;
+the status line's hints are the viewer's since M3 T6c-2) and its pixels differ, the item is
+masked and listed at the end of the frame's line, ` log`. An entry with `boxes = true` (M3 T5a) compares the count boxes; any other
 masks them where the drawn poses show them and where the viewer drew them (`ours.txt` lists the
 boxes it drew, ` box<x>,<y>n<count>@<side>.<record>`). With `boxes`, a box whose count is not the
 one the original's memory shows (`h3mem`'s `shown`, +0x50, while it is not −1, else its `count`;
@@ -324,12 +330,14 @@ dumps (Wine may draw a moment later).
 ## The original's state
 
 `h3mem.py` opens the game's `/proc/<pid>/mem` (Wine maps `Heroes3.exe` at its image base, so the
-map's addresses hold): the frame deadline and the idle step's time, the combat speed, and per
+map's addresses hold): the frame deadline and the idle step's time, the combat speed, the mouse
+(its hex, the cursor's kind, type, frame and the point it is drawn at: M3 T6c-2), and per
 stack its creature, hex, group, frame, facing, offsets, times, count and the count its box shows
 (`shown`, M3 T5b) (`docs/exe/structs.toml`). On
 the adventure map (M2 T6): the current player, each player's selected hero, hero list and
 resources, every hero's name, tile and points, the view's top-left tile, the tile under the
-mouse and the selected hero's path (design §6.3). It only reads. `python3 capture/h3mem.py`
+mouse and the selected hero's path (design §6.3). It only reads, but for the mouse poll's timer
+a sequence's opening sets (M3 T6c-2). `python3 capture/h3mem.py`
 prints the battle's state as JSON while a battle runs, `h3mem.py adventure` the adventure map's;
 `Mem` is the library. How to read a battle's state (drawn now, shown at the next deadline):
 design §7.1.
@@ -346,8 +354,14 @@ design §7.1.
   in both states.
 - A click's hover leaves the status line's hint in the log's item (`Attack Pikemen` over a
   target) until a log line replaces it or a human's turn starts (the mouse posted again over
-  nothing), and a line held there less than 3 000 ms keeps hints out (design §9.4, §9.8): the
-  frame check lists the item (` log`) where the original's text is not the viewer's.
+  nothing), and a line held there less than 3 000 ms keeps hints out but an attack's (design
+  §9.8, §9.10): the viewer follows the harness's mouse since M3 T6c-2.
+- The game reads the mouse on a 33 ms grid of its clock and draws a new cursor frame where it
+  last read it (design §9.10): the harness sets the grid's next time at a sequence's opening
+  (`h3mem.Mem.align_mouse_poll`, its only write into the game's memory, a timer of the mouse
+  manager); without it the frames kept where the cursor moves change their times between runs.
+- Entering a stack redraws only its new frame's rectangle: the old frame's pixels outside it
+  stay until the next idle step (`hover`'s four frames of 1 and 13 pixels, design §9.10).
 - The game draws its cursor at an even x (0x50CE04): at an odd point the canvas is a pixel
   left of the point less the hot spot (a drawing bug: the comparisons draw it so, the client
   does not; design §9.9).
