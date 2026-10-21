@@ -2,7 +2,7 @@
 
 Status: **in progress**, refined 2026-10-19 (BAT-Q52); T1a1 to T1a4 done (the cuts confirmed
 2026-10-20), T1c done (BAT-Q53, BAT-Q54); T1a5 done as cut (part C, §7.42 to §7.45); T1a5e (the spell evaluators) done (§7.46); T1b done, ADR-0027 accepted (BAT-Q55); T2 done (T2a the crate and the plain shooters, T2b the area value, the wall shot, the benchmark), the budget
-set; T3 cut in four, T3-0, T3a and T3b done, T3c next · Follows E05 (the
+set; T3 done (cut in four: T3-0, T3a, T3b, T3c), T4 next · Follows E05 (the
 AI lane, done) · Followed by E06 (training: this policy holds the neutral seat; AI-Q1) ·
 The battle lane's, later the AI lane's (BACKLOG).
 
@@ -189,10 +189,11 @@ found after that decision) belong to the neutral side's map too and are read (§
     the moat under SoD rules, the enemies' reach with speed + 1 and the multi-headed strike, the
     crowding and breath lines with the area threat and the enemy hero's area spell (BAT-AI-007,
     §7.48; slips 3, 18, 19); the walk's hold-back now reads them (the log).
-  - [ ] **T3c The odds and the ends** — the stronger at range 0x420A80 with the hero's value
-    (§7.39), the last retaliation's gain 0x41F3B0, the fallbacks (guarding a shooter, the step to
-    safety), the besieger's walk to its wall, holding the walls with the walls test's slip
-    (BAT-QUIRK-25).
+  - [x] **T3c The odds and the ends** (2026-10-21; the user: whole) — the stronger at range
+    0x420A80 with the hero's value and the turrets (BAT-AI-008, slip 20; slip 6 a gap, BAT-STUB-7,
+    BAT-Q56), the last retaliation's gain 0x41F3B0 with the order of action and the walker's
+    side's threat records (BAT-AI-009, slip 4), the fallbacks (BAT-AI-010), holding the walls
+    (BAT-AI-011, slip 2), the besieger's walk to its wall (BAT-AI-005; §7.49; the log).
 - [ ] **T4 Creature casts** — the abilities a computer stack chooses to use, per T1a's map. With
   T2 to T4 a side without a hero is complete: the AI lane's and the adventure lane's inboxes get
   the function (`Policy::System`, the neutral seat, A12's weights are theirs).
