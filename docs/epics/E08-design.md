@@ -137,14 +137,16 @@ offer or none at once (`LevelGained`), two a `Decision::LevelUp { owner, view, o
 level); the system actor's default `h3_game::default_answer` (a query the hosting layer gives as
 the player's answer, the server lane's M5: `Decline` for an offer, the original's choice with
 `ArmyWorth::SETUP` and the map's shares for a level-up, `ADV-STUB-8` until E10, none for a
-battle); game state hash v11. **Four refinements** the plan left open: (1) a hero with a level-up
-open draws nothing more until its answer (a defender that won outside its turn and won again);
-(2) the answer's next level-up takes the answered decision's place in the owner's queue; (3) a
-battle against a hero whose owner has a level-up open waits behind it (the decision blocks only
-its owner, where the original's dialog is modal), and the observation shows a player's battle
-wherever it waits (`battle_seen`); (4) the env lets a level-up's owner act outside its turn
-(`to_move`), as the original's dialogs follow the battle's screen. A hero without an owner does
-not exist in increment 4: `give_levels` takes the owner.
+battle); game state hash v11. **An open level-up holds the game** (decision 65, ADR-0017 point 6
+amended by `shared/e08-t30-adr`): T30's first build let the other players act on, as the ADR
+then said, which allowed a battle against a hero whose level-up was still open; now every
+other actor's command is rejected (`WaitingForLevelUp(owner)`, `GameState::check_held`) and
+lists no legal command, `GameState::waiting_for` names the owner, and the env's `to_move` yields
+the owner alone, in its turn or not (a battle's defender that won answers before the player
+whose turn runs goes on). The hot-seat handover is the client's, the paused turn timer, the
+owner's time limit and the default answer online the server's (their inboxes). The answer's
+next level-up takes the answered decision's place. A hero without an owner does not exist in
+increment 4: `give_levels` takes the owner.
 
 ### 14. The env, replays and properties
 

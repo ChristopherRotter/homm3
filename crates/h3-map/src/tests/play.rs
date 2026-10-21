@@ -945,19 +945,22 @@ fn landing(
 
 /// The player who acts: the one whose turn is running (sequential play: one at a time), or, while
 /// its battle's other side is to act, that side's owner (E08 T19a); while the other side is a
-/// monster's, still the player whose battle it is ([`actor`] is then the system).
+/// monster's, still the player whose battle it is ([`actor`] is then the system); while the game
+/// waits for a level-up, its owner (E08 T30).
 pub(super) fn acting(state: &GameState) -> PlayerId {
     let player = state.turn_group()[0];
-    state
-        .battle(player)
-        .and_then(OpenBattle::owner_to_act)
-        .unwrap_or(player)
+    state.waiting_for().unwrap_or_else(|| {
+        state
+            .battle(player)
+            .and_then(OpenBattle::owner_to_act)
+            .unwrap_or(player)
+    })
 }
 
 /// Who acts (E08 T20b3b1): the system actor while a battle's side to act is a monster's (no
 /// player owns it: `GameState::unowned_battle`), else the acting player ([`acting`]).
 pub(super) fn actor(state: &GameState) -> Actor {
-    if state.unowned_battle().is_some() {
+    if state.waiting_for().is_none() && state.unowned_battle().is_some() {
         Actor::System
     } else {
         Actor::Player(acting(state))
@@ -1203,8 +1206,9 @@ const LEVEL_ANSWERS: [GameCommand; 2] = [
 /// nobody has any for another player's; every listed answer applies and closes the decision;
 /// every option's move applies and leaves the hero on its last tile (on the tile before for a
 /// visit from a neighbour) with the points the query reports there, one event per step. A
-/// level-up (E08 T30) is a decision too, its answers `First` and `Second`, each of which applies,
-/// and any player who has one lists them, in its turn or not (a battle's defender that won).
+/// level-up (E08 T30) is a decision too, its answers `First` and `Second`, each of which applies;
+/// it holds the game, so its owner acts (in its turn or not: a battle's defender that won) and no
+/// one else lists a command.
 fn check_legal(
     state: &GameState,
     rules: &GameRuleset,

@@ -188,8 +188,9 @@ fn a_won_battle_opens_the_winners_level_up_which_its_answer_gives() {
     }
     let open = Err(GameCommandError::DecisionOpen);
     assert_eq!(play(&mut state, &rules, RED, GameCommand::EndTurn), open);
-    let none = Err(GameCommandError::NoDecision);
-    assert_eq!(play(&mut state, &rules, BLUE, FIRST), none);
+    assert_eq!(state.waiting_for(), Some(RED));
+    let held = Err(GameCommandError::WaitingForLevelUp(RED));
+    assert_eq!(play(&mut state, &rules, BLUE, FIRST), held);
     // Each answer gives the level with its offer, told to the owner alone; the decision closes.
     let mut hashes = vec![ended.state_hash()];
     for (command, choice) in [(FIRST, Choice::First), (SECOND, Choice::Second)] {
@@ -303,9 +304,10 @@ fn in_faithful_a_level_in_play_follows_the_heros_seed() {
 
 // covers: GAM-BAT-008, GAM-DEC-002
 #[test]
-fn a_defender_that_wins_answers_its_level_up_outside_its_turn() {
+fn a_defender_that_wins_holds_the_game_until_it_answers_outside_its_turn() {
     let rules = rules();
-    let game = game(&rules, 950, &[]);
+    // Red's second hero (id 2) stays on the map while its first loses to blue's.
+    let game = with_second_red(&rules, 950);
     let (ended, events) = end(&game, &rules, &won_by(BattleSide::Defender, 2));
     let details = experienced(&rules, &game, BLUE_HERO, 2);
     let mut stream = game.stream(BLUE);
@@ -315,16 +317,34 @@ fn a_defender_that_wins_answers_its_level_up_outside_its_turn() {
         (ended.stream(RED), ended.stream(BLUE)),
         (game.stream(RED), stream)
     );
-    // Red's turn runs; blue answers outside it, red's commands go on.
+    // Red's turn runs, but the game waits for blue's answer: red has no command, no move.
     let (red, blue) = (Actor::Player(RED), Actor::Player(BLUE));
     assert!(ended.is_acting(RED) && !ended.is_acting(BLUE));
-    assert_eq!(legal_commands(&ended, &rules, red), [GameCommand::EndTurn]);
+    assert_eq!(ended.waiting_for(), Some(BLUE));
+    assert_eq!(legal_commands(&ended, &rules, red), []);
+    assert_eq!(legal_commands(&ended, &rules, Actor::System), []);
+    assert_eq!(legal_moves(&ended, &rules, red, HeroId::new(2)), None);
     assert_eq!(legal_commands(&ended, &rules, blue), [FIRST, SECOND]);
     let mut state = ended;
+    let held = Err(GameCommandError::WaitingForLevelUp(BLUE));
+    let step = decisions::move_hero(2, &[Pos::new(3, 1, 0)]);
+    for command in [GameCommand::EndTurn, step.clone(), FIRST] {
+        assert_eq!(play(&mut state, &rules, RED, command), held);
+    }
+    let wait = GameCommand::Battle(h3_battle::Command::Wait);
+    let mut events = Vec::new();
+    let system = apply(&mut state, &rules, Actor::System, wait, &mut events);
+    let refused = Err(GameCommandError::WaitingForLevelUp(BLUE));
+    assert_eq!((system, events.len()), (refused, 0));
+    // Blue answers outside its turn; then red's turn goes on.
     let events = play(&mut state, &rules, BLUE, FIRST).unwrap();
     assert_eq!(levels(&events).len(), 1);
     assert_eq!(state.hero(BLUE_HERO).unwrap().level, 2);
+    assert_eq!(state.waiting_for(), None);
     assert_eq!(legal_commands(&state, &rules, blue), []);
+    assert_eq!(legal_commands(&state, &rules, red), [GameCommand::EndTurn]);
+    assert!(legal_moves(&state, &rules, red, HeroId::new(2)).is_some());
+    play(&mut state, &rules, RED, step).unwrap();
 }
 
 // covers: GAM-BAT-008, HER-EXP-003
@@ -357,8 +377,7 @@ fn a_fork_shares_an_open_level_up_and_answers_apart() {
     assert!(fork.level_up(RED).is_none());
 }
 
-/// [`game`] with red's second hero (id 2) at (3, 0), a battle of which against blue's hero
-/// `defended` stands for one blue won before red's first hero attacks it from (0, 0).
+/// [`game`] with both heroes at `experience` and red's second hero (id 2) at (3, 0).
 fn with_second_red(rules: &GameRuleset, experience: u32) -> GameState {
     let mut setup = setup();
     for hero in &mut setup.heroes {
@@ -368,90 +387,6 @@ fn with_second_red(rules: &GameRuleset, experience: u32) -> GameState {
     second.pos = Pos::new(3, 0, 0);
     setup.heroes.push(second);
     GameState::new(rules, &setup, 5).unwrap()
-}
-
-/// Red's second hero's battle against blue's.
-const DEFENDED: ([Option<PlayerId>; 2], [Option<HeroId>; 2], Pos) = (
-    [Some(RED), Some(BLUE)],
-    [Some(HeroId::new(2)), Some(BLUE_HERO)],
-    Pos::new(2, 2, 0),
-);
-
-// covers: GAM-DEC-002, GAM-BAT-008
-#[test]
-fn a_battle_waits_behind_its_defenders_level_up_whose_next_one_comes_first() {
-    let rules = rules();
-    // 950 + 500 + 50 × 13 = 2 100: blue's levels 2 and 3.
-    let mut state = with_second_red(&rules, 950);
-    let mut events = Vec::new();
-    state.end_battle(
-        &rules,
-        DEFENDED,
-        &won_by(BattleSide::Defender, 50),
-        &mut events,
-    );
-    assert_eq!(state.level_up(BLUE).map(|v| v.level), Some(2));
-    // Red's first hero attacks blue's: the battle opens behind blue's level-up.
-    let attack = decisions::move_hero(0, &[Pos::new(1, 1, 0), Pos::new(2, 2, 0)]);
-    play(&mut state, &rules, RED, attack).unwrap();
-    assert!(state.battle(RED).is_some());
-    assert!(state.battle(BLUE).is_none());
-    let seen = observe(&state, &rules, Viewer::Player(BLUE));
-    assert!(seen.battle.is_some());
-    assert_eq!(
-        seen.decision.and_then(|d| d.level_up().map(|v| v.level)),
-        Some(2)
-    );
-    let blue = Actor::Player(BLUE);
-    assert_eq!(legal_commands(&state, &rules, blue), [FIRST, SECOND]);
-    // The answer's next level-up takes its place, before the battle.
-    play(&mut state, &rules, BLUE, FIRST).unwrap();
-    assert_eq!(state.level_up(BLUE).map(|v| v.level), Some(3));
-    assert!(
-        observe(&state, &rules, Viewer::Player(BLUE))
-            .battle
-            .is_some()
-    );
-    play(&mut state, &rules, BLUE, SECOND).unwrap();
-    assert_eq!(state.level_up(BLUE), None);
-    assert!(state.battle(BLUE).is_some());
-    assert_eq!(state.hero(BLUE_HERO).unwrap().level, 3);
-}
-
-// covers: GAM-DEC-002, GAM-BAT-008
-#[test]
-fn a_hero_that_wins_again_before_it_answers_draws_nothing_more_until_then() {
-    let rules = rules();
-    let mut state = with_second_red(&rules, 950);
-    let mut events = Vec::new();
-    state.end_battle(&rules, SIDES, &won_by(BattleSide::Defender, 2), &mut events);
-    let open = state.level_up(BLUE).unwrap();
-    assert_eq!(open.level, 2);
-    // Blue wins again (red's second hero, 50 gogs): its experience grows, no level is drawn.
-    let stream = state.stream(BLUE);
-    let mut events = Vec::new();
-    state.end_battle(
-        &rules,
-        DEFENDED,
-        &won_by(BattleSide::Defender, 50),
-        &mut events,
-    );
-    assert!(state.hero(BLUE_HERO).unwrap().experience >= 2000);
-    assert!(levels(&events).is_empty());
-    assert_eq!(
-        (state.level_up(BLUE), state.stream(BLUE)),
-        (Some(open), stream)
-    );
-    // Its answer gives the level and then the next one.
-    let events = play(&mut state, &rules, BLUE, FIRST).unwrap();
-    let levels: Vec<u8> = levels(&events)
-        .iter()
-        .map(|e| match *e {
-            GameEvent::LevelGained { level, .. } | GameEvent::LevelUpOpened { level, .. } => level,
-            _ => 0,
-        })
-        .collect();
-    assert_eq!(levels, [2, 3]);
 }
 
 // covers: GAM-DEC-002, HER-LVL-006

@@ -129,28 +129,31 @@ impl AdventureEnv {
     /// The seats that may act now (ADR-0017 point 8): the players in id order, those of the turn
     /// group whose turn is running (one in sequential play) and who are in no battle, and for each
     /// open battle the owner of its side to act (E08 T19b1: an attacked player acts in its battle
-    /// outside its turn), and the owner of an open level-up (E08 T30: a defender that won a battle
-    /// answers its level-ups outside its turn, as the original's dialogs follow the battle's
-    /// screen); then the neutral seat while a battle's side to act is owned by no player
+    /// outside its turn); then the neutral seat while a battle's side to act is owned by no player
     /// (a wandering monster's, E08 T20b3a: the caller plays it with a policy of its choice, the
     /// random agent until the battle lane ports the original's battle AI, decision 27); none once
-    /// the episode is over.
+    /// the episode is over. While a level-up is open the game waits for it (ADR-0017 point 6,
+    /// E08 T30): its owner alone, in its turn or not (a defender that won a battle answers before
+    /// the player whose turn runs goes on).
     pub fn to_move(&self) -> impl Iterator<Item = Seat> + '_ {
         let done = self.is_done();
-        let neutral = !done && self.state.unowned_battle().is_some();
+        let waiting = self.state.waiting_for();
+        let neutral = !done && waiting.is_none() && self.state.unowned_battle().is_some();
         (0..=u8::MAX)
             .take(self.state.players())
             .map(PlayerId::new)
-            .filter(move |&player| !done && self.may_act(player))
+            .filter(move |&player| {
+                !done && waiting.map_or_else(|| self.may_act(player), |owner| owner == player)
+            })
             .map(Seat::Player)
             .chain(neutral.then_some(Seat::Neutral))
     }
 
     /// Whether `player` may act now: the owner of its battle's side to act, or with no battle a
-    /// player whose turn is running or who has an open level-up.
+    /// player whose turn is running.
     fn may_act(&self, player: PlayerId) -> bool {
         self.state.battle(player).map_or_else(
-            || self.state.is_acting(player) || self.state.level_up(player).is_some(),
+            || self.state.is_acting(player),
             |battle| battle.owner_to_act() == Some(player),
         )
     }

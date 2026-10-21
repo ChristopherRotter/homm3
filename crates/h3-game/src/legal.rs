@@ -25,11 +25,15 @@ use crate::{GameRuleset, GameState, OpenBattle};
 /// then `Decline`, in its turn or not, and nothing else (GAM-DEC-001); `Decline` alone when the
 /// offer no longer stands (ADR-0017 point 10: a border guard another player of the group passed,
 /// E08 T15a); with an open level-up its answers, `First` then `Second`, in its turn or not, and
-/// nothing else (GAM-DEC-002, E08 T30); otherwise `EndTurn`. Empty for a player whose turn is not
+/// nothing else, and none for any other actor while the game waits for it (GAM-DEC-002, E08
+/// T30); otherwise `EndTurn`. Empty for a player whose turn is not
 /// running or who is not in the game, by `apply`'s own checks (ADR-0017's consequence). The moves
 /// are [`legal_moves`].
 // rule: GAM-DEC-001, GAM-DEC-002, GAM-BAT-001
 pub fn legal_commands(state: &GameState, rules: &GameRuleset, actor: Actor) -> Vec<GameCommand> {
+    if state.check_held(actor).is_err() {
+        return Vec::new();
+    }
     let player = match actor {
         // E08 T20b2: the system actor's are the unowned side's of the first battle it waits for.
         Actor::System => {

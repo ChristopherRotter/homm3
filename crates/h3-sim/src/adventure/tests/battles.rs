@@ -302,8 +302,10 @@ fn a_level_up_is_answered_by_its_two_entries() {
         .find(|&p| env.state().level_up(p).is_some())
         .unwrap();
     let view = env.state().level_up(winner).unwrap();
-    // Its owner acts, in its turn or not; its answers are its only entries, each with tile 0.
-    assert!(env.to_move().any(|seat| seat == Seat::Player(winner)));
+    // The game waits for it: its owner alone acts, in its turn or not; its answers are its only
+    // entries, each with tile 0.
+    assert_eq!(env.state().waiting_for(), Some(winner));
+    assert_eq!(env.to_move().collect::<Vec<_>>(), [Seat::Player(winner)]);
     assert_eq!(env.phase(winner), Phase::Adventure);
     let observed = env.observation(winner).decision;
     assert_eq!(observed, Some(DecisionView::LevelUp(view)));

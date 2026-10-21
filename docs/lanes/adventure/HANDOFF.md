@@ -19,7 +19,7 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 - **Experiments**: `h3-experiment` (battle's) has the adventure shape (T22a1); batches 1, 2, E3 scored. **Agents run batches** on the client lane's harness (decision 21).
 - **Adventure ruleset part** (v9 since T29: the costs by Pathfinding level): terrains, roads, rivers, the movement and setup parameters, the object types, the starting resources by difficulty, the battle terrains, the monsters' parameters (with the price resource).
 - **Properties** on generated playable maps (`h3-map`'s `play.rs`, `view.rs`): `Step::Fight` runs (hero casts via `h3-battle`, a dev-dependency), monsters, grounds, the system actor, guarded piles, level-ups (T30); `the_plans_play_battles_to_a_victory`: 192 fixed cases.
-- **Next:** T30's pull request (`adventure/e08-t30`) to merge; then round 4's cut (T31 + T32a, design §14, §16).
+- **Next:** #353 (ADR-0017) then #352 (T30) to merge; then round 4's cut (T31 + T32a, design §14, §16).
 - **ADRs accepted**: ADR-0015 to -0017 (2026-10-10), amended for increments 2 (#115), 3 (T18a, #185, with ADR-0013) and 4 (T26a, #325).
 - **R01** (the content split): the core `h3-content` and `h3-pack` (`core.toml`) are shared; the writer is `h3_map::writer`.
 - **Ownership:** the four crates and `h3-heroes` (since E04c), `src/adventure/` in `h3-sim` and `h3-cli` (their `Cargo.toml`, `lib.rs` and `h3-cli`'s `main.rs` are battle's: `cross-lane`), `crates/h3-cli/tests/adventure_replays.rs`, `fixtures/replays/adventure/`, `fixtures/maps/`, `benches/adventure/`, each pack's `adventure.toml`, `docs/formats/h3m.md`, `docs/rules/catalog/{adventure,game,town}.toml`.
@@ -41,7 +41,7 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 
 ### 2026-10-21 — increment 4, thirteenth session: T30
 
-Baseline 2518a92. Decision 64 (whole; the env's answers from T31). No golden replay reaches a level. Design §13's four refinements.
+Baseline 2518a92. Decisions 64 (whole; the env's answers from T31), 65 (a level-up holds the game; ADR-0017: #353). No replay reaches a level.
 
 ### 2026-10-21 — increment 4, twelfth session: T29
 

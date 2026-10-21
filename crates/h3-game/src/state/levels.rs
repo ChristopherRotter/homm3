@@ -152,9 +152,9 @@ impl GameState {
     /// GAM-HER-002). A level with two offers opens a pending decision of the hero's `owner` after
     /// its open ones, told to it alone (`LevelUpOpened`), and the next level waits for its answer
     /// ([`Self::answer_level_up`]); one with one offer learns it and one with none raises the
-    /// primary skill only, at once (`LevelGained`), and the next is drawn. Nothing while the hero
-    /// has a level-up open (a defender that won levels outside its turn and won again before it
-    /// answered): its answer gives the rest.
+    /// primary skill only, at once (`LevelGained`), and the next is drawn. The decision holds
+    /// the game until its answer ([`Self::check_held`]), so no other gain reaches the hero
+    /// meanwhile.
     // rule: GAM-DEC-002
     pub(crate) fn give_levels<S: Sink>(
         &mut self,
@@ -162,9 +162,6 @@ impl GameState {
         hero: (HeroId, PlayerId),
         sink: &mut S,
     ) {
-        if self.levelling(hero.0) {
-            return;
-        }
         let open = self.next_level_up(rules, hero, sink);
         open.into_iter()
             .for_each(|decision| self.push_decision(decision));
@@ -172,8 +169,7 @@ impl GameState {
 
     /// A level-up's answer (GAM-DEC-002, E08 T30): the drawn `level_up` given with the `choice`n
     /// offer, then the hero's next pending levels as [`Self::give_levels`] gives them; a next one
-    /// with two offers takes the answered decision's place `at` in its owner's queue (before a
-    /// battle waiting behind it), else the decision closes.
+    /// with two offers takes the answered decision's place `at`, else the decision closes.
     pub(super) fn answer_level_up<S: Sink>(
         &mut self,
         rules: &GameRuleset,
@@ -222,15 +218,6 @@ impl GameState {
             self.gain_level(core, (hero, owner), &level_up, Choice::First, sink);
         }
         None
-    }
-
-    /// Whether `hero` has a level-up open.
-    fn levelling(&self, hero: HeroId) -> bool {
-        self.decisions
-            .as_deref()
-            .unwrap_or_default()
-            .iter()
-            .any(|d| matches!(d, Decision::LevelUp { view, .. } if view.hero == hero))
     }
 
     /// The next pending level of `hero`, drawn ([`Progression::draw`]) with `owner`'s stream.

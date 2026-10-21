@@ -305,6 +305,10 @@ fn the_decision_errors_read_well() {
         GameCommandError::WrongAnswer.to_string(),
         "the answer does not fit the open decision"
     );
+    assert_eq!(
+        GameCommandError::WaitingForLevelUp(PlayerId::new(1)).to_string(),
+        "the game waits for player 1's level-up"
+    );
 }
 
 /// [`setup`] with a tent at (1, 0) and a guard at (3, 0), both of key 0 and blocking their tile;

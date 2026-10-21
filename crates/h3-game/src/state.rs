@@ -16,7 +16,7 @@ use h3_heroes::{ArtifactInstance, HeroDetails, LevelUp, OfferLevels, Offers};
 use h3_kernel::hash::hash_of;
 use h3_kernel::{CanonicalHash, Rng, StateHasher, StreamId};
 
-use crate::command::{AdventureSink, Answer, GameCommandError, GameEvent, NoopSink, Sink};
+use crate::command::{Actor, AdventureSink, Answer, GameCommandError, GameEvent, NoopSink, Sink};
 use crate::observe::LevelUpView;
 use crate::treasury::Treasuries;
 use crate::{GAME_STATE_HASH_VERSION, GameRuleset, GameSetup, GameSetupError};
@@ -254,15 +254,44 @@ impl GameState {
     }
 
     /// Checks that `player` may give a command other than an answer: its turn is running
-    /// ([`Self::check_acting`]) and it has no open decision, whose answers are then its only legal
-    /// commands (ADR-0017 point 6).
-    // rule: GAM-DEC-001
+    /// ([`Self::check_acting`]), it has no open decision, whose answers are then its only legal
+    /// commands (ADR-0017 point 6), and the game waits for no other player's level-up
+    /// ([`Self::check_held`]).
+    // rule: GAM-DEC-001, GAM-DEC-002
     pub(crate) fn check_ready(&self, player: PlayerId) -> Result<(), GameCommandError> {
         self.check_acting(player)?;
         if self.has_decision(player) {
             return Err(GameCommandError::DecisionOpen);
         }
-        Ok(())
+        self.check_held(Actor::Player(player))
+    }
+
+    /// Checks that the game waits for no level-up but `actor`'s own (ADR-0017 point 6,
+    /// GAM-DEC-002; E08 T30): an open level-up holds the game, as the original's modal dialog,
+    /// so until its owner answers no other actor's command is accepted.
+    // rule: GAM-DEC-002
+    pub(crate) fn check_held(&self, actor: Actor) -> Result<(), GameCommandError> {
+        match self.waiting_for() {
+            Some(owner) if actor != Actor::Player(owner) => {
+                Err(GameCommandError::WaitingForLevelUp(owner))
+            }
+            _ => Ok(()),
+        }
+    }
+
+    /// The player whose level-up the game waits for, if one is open (ADR-0017 point 6,
+    /// GAM-DEC-002; E08 T30): the hosting layer hands the game to it (hot seat) or pauses the
+    /// other players' turn timers and answers for it with [`crate::default_answer`] after its
+    /// time (online). Another player learns only this, never the level-up.
+    pub fn waiting_for(&self) -> Option<PlayerId> {
+        self.decisions
+            .as_deref()
+            .unwrap_or_default()
+            .iter()
+            .find_map(|d| match d {
+                Decision::LevelUp { owner, .. } => Some(*owner),
+                Decision::Offer { .. } | Decision::Battle(_) => None,
+            })
     }
 
     /// Applies what the adventure left of a command of `player` or of its answer (ADR-0017

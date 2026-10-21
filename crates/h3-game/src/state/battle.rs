@@ -153,19 +153,6 @@ impl GameState {
             .map(|battle| &**battle)
     }
 
-    /// The battle among `player`'s open decisions, if it has one: its first decision, or one
-    /// waiting behind its level-up (E08 T30: a defender that won levels outside its turn and is
-    /// attacked again before it answers), what its observation shows.
-    pub(crate) fn battle_seen(&self, player: PlayerId) -> Option<&OpenBattle> {
-        self.decisions
-            .as_deref()
-            .unwrap_or_default()
-            .iter()
-            .filter(|d| d.owned_by(player))
-            .find_map(Decision::battle)
-            .map(|battle| &**battle)
-    }
-
     /// A hero's battle hero (`BattleSetup.heroes`): the hero model's translation of its details
     /// (ADR-0013 point 2) with its maximum spell points (HER-MAN-001).
     fn battle_hero(&self, core: &Ruleset, hero: HeroId) -> Option<BattleHero> {

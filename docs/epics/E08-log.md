@@ -3210,7 +3210,8 @@ Decision 63: T29 whole, one pull request, `cross-lane` with the user's consent (
 
 ### Increment 4, round 3: T30, the level-up as a pending decision (2026-10-21, `adventure/e08-t30`)
 
-Decision 64: T30 whole, one pull request, with the env's answers and the CLI's words from T31.
+Decision 64: T30 whole, one pull request, with the env's answers and the CLI's words from T31;
+decision 65 at its checkpoint: an open level-up holds the game (below).
 Baseline `master` 2518a92 (#349 merged): its code verified by T29's run, the sandbox's light
 gates green. Before the cut, the nine golden replays were played with a probe: none reaches a
 level (the highest experience any of their heroes ends with is 788), so T30 needs no recorded
@@ -3220,35 +3221,42 @@ answers.
   hash v11: kind 2, the owner, hero, level, primary skill, two offers, the offers' levels);
   `state/levels.rs`' `give_levels` (GAM-DEC-002: each level drawn by `Progression::draw` with the
   owner's stream, one offer or none given at once as `LevelGained`, two a decision told as
-  `LevelUpOpened`; nothing while the hero has a level-up open), `answer_level_up` (the level
+  `LevelUpOpened`), `answer_level_up` (the level
   given, the next level-up in the answered one's place, else the decision closed),
   `update_hero` (shared with the battle's `change_hero`); `end_battle` gives the winner's levels
   last (GAM-BAT-008); `answer` split into the level-up's and the offer's (`answer_offer`), with
-  `WrongAnswer` after `BattleOpen`; `GameState::level_up`, `battle_seen` (the observation's
-  battle wherever it waits: behind a level-up when a defender that won is attacked again before
-  it answers); `observe`'s `decision: Option<DecisionView>`; `legal_commands` lists `First` and
+  `WrongAnswer` after `BattleOpen`; `GameState::level_up`; `observe`'s
+  `decision: Option<DecisionView>`; `legal_commands` lists `First` and
   `Second`; `project` gives the two events to the owner only; `default_answer` (`Decline` for an
   offer, the original's choice with the setup's inputs for a level-up, `ADV-STUB-8`).
+- **The level-up holds the game** (decision 65; ADR-0017 point 6 amended in #353): the first
+  build let the other players act on, as the ADR then said, so a defender that won could be
+  attacked again before answering (it needed a guard against drawing a level twice and a
+  battle waiting behind the level-up, both dropped). Now `apply` checks `check_held` first:
+  every other actor's command is `WaitingForLevelUp(owner)`, `legal_commands` and `legal_moves`
+  give it nothing, and `GameState::waiting_for` names the owner for the hosting layer.
 - **The env and the CLI**: action encoding v4 (`FIRST` 11, `SECOND` 12, `Action::first`,
-  `second`); `to_move` yields a level-up's owner outside its turn; the random agent answers at
-  even odds through `legal_commands`; replay format v5 (`<player> answer first|second`).
+  `second`); while the game waits `to_move` yields the level-up's owner alone, in its turn or
+  not; the random agent answers at even odds through `legal_commands`; replay format v5
+  (`<player> answer first|second`).
 - **The properties** (`h3-map`): random play met level-ups at once (the generated maps' heroes
   gain levels in their battles: the first runs after the game's change failed on them), so the driver
-  answers them (`seek`), `check_legal` lists a level-up's answers for its owner in its turn or
-  not, `check_isolation` keeps other players' level-ups, `check_conservation` and the battle's
+  answers them (`seek`, `acting`: the owner while the game waits), `check_legal` lists a
+  level-up's answers for its owner and nothing for the others, `check_isolation` keeps other
+  players' level-ups, `check_conservation` and the battle's
   heroes check follow the levels told (`check_levels`), and the view's event model knows both
   events. The two failing cases were kept in the regression files. T31 adds the plans' checks
   of §14.
 - **Tests**: `h3-game`'s `tests/level_ups.rs` (the open level-up and each answer against a draw
   of the hero model with the owner's stream, the observation, the legal commands, wrong answers;
   two levels one at a time, each drawn after the previous answer; one offer and none by banned
-  skills; faithful's seed; a defender that wins answers outside its turn; the limit; a fork; a
-  battle waiting behind a level-up whose next one comes first; a second win before the answer);
+  skills; faithful's seed; a defender that wins holds the game, the player whose turn runs and
+  the system actor refused until it answers outside its turn; the limit; a fork; the system
+  actor's default taking either offer over 40 seeds);
   the offer's wrong answers and default, a battle's none; the env's two entries, their masks,
   decode and encode, the random agent; the CLI's words.
 - **Rules**: GAM-DEC-002, GAM-BAT-008 (`implemented`); GAM-DEC-001, GAM-SET-002, ADV-MAP-002 and
-  `ADV-QUIRK-9`'s context point to GAM-DEC-002. `docs/07-simulation-and-ai.md`'s env line (a
-  shared doc) still names encoding v3: for the next `shared/` pull request (QUEUE inbox).
+  `ADV-QUIRK-9`'s context point to GAM-DEC-002. `docs/07-simulation-and-ai.md`'s env line (a shared doc) gained encoding v4 and replay format v5 in #353.
 - **Versions**: game state hash v11, action encoding v4, replay format v5; the nine golden
   replays re-recorded with their options, their commands unchanged.
 - **Housekeeping**: T29's merge of `master` had left conflict markers in the adventure and AI

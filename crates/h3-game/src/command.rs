@@ -111,6 +111,9 @@ pub enum GameCommandError {
     /// An answer of the wrong kind for the actor's first open decision (E08 T30): `First` or
     /// `Second` for an offer, `Accept` or `Decline` for a level-up.
     WrongAnswer,
+    /// The game waits for this player's answer to its level-up (ADR-0017 point 6, GAM-DEC-002;
+    /// E08 T30): until it answers, no other actor's command is accepted.
+    WaitingForLevelUp(PlayerId),
 }
 
 impl fmt::Display for GameCommandError {
@@ -130,6 +133,9 @@ impl fmt::Display for GameCommandError {
                 f.write_str("the system actor issues only an unowned side's commands")
             }
             Self::WrongAnswer => f.write_str("the answer does not fit the open decision"),
+            Self::WaitingForLevelUp(p) => {
+                write!(f, "the game waits for player {}'s level-up", p.raw())
+            }
         }
     }
 }
@@ -337,7 +343,9 @@ impl<S: Sink> h3_adventure::Sink for AdventureSink<'_, S> {
 
 /// Applies a command of `actor` to the game (ADR-0017 point 1): validated against the state and
 /// the trusted actor, then applied; the events go to `sink`. The system actor issues only an
-/// unowned side's battle commands ([`Actor::System`], E08 T20b2).
+/// unowned side's battle commands ([`Actor::System`], E08 T20b2). While a level-up is open the
+/// game waits for its owner: every other actor's command is rejected (E08 T30, GAM-DEC-002).
+// rule: GAM-DEC-002
 ///
 /// # Errors
 ///
@@ -349,6 +357,7 @@ pub fn apply<S: Sink>(
     command: GameCommand,
     sink: &mut S,
 ) -> Result<(), GameCommandError> {
+    state.check_held(actor)?;
     let (player, command) = match (actor, command) {
         (Actor::System, GameCommand::Battle(command)) => {
             return state.system_battle_command(rules, command, sink);

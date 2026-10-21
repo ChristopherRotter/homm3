@@ -50,9 +50,9 @@ pub struct GameObservation {
     pub heroes: Vec<HeroInfo>,
     /// The adventure map as the viewer sees it.
     pub adventure: AdventureObservation,
-    /// The viewer's battle, as the viewer's side sees it (`h3_battle::observe`, ADR-0013 point
-    /// 9; GAM-BAT-001, E08 T19a): its first open decision's, or since E08 T30 one waiting behind
-    /// its level-up, whose answer comes first; other players' battles never show.
+    /// The battle of the viewer's first open decision, as the viewer's side sees it
+    /// (`h3_battle::observe`, ADR-0013 point 9; GAM-BAT-001, E08 T19a); other players' battles
+    /// never show.
     pub battle: Option<h3_battle::Observation>,
 }
 
@@ -160,7 +160,7 @@ pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameOb
             })
             .collect(),
         adventure,
-        battle: state.battle_seen(player).and_then(|open| {
+        battle: state.battle(player).and_then(|open| {
             open.side_of(player)
                 .map(|side| h3_battle::observe(open.state(), rules.battle(), side))
         }),
