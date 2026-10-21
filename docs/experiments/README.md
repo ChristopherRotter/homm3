@@ -143,7 +143,13 @@ last activated stack, printed one line per shot. Batch 3h ran so.
   `AVXlp0`, `AVXmc0`, `AVXrk0` the other fields, `AVXfw0` Favorable Winds) and `at = [column,
   row]`, its bottom-right tile. The picture covers its width leftwards and its height upwards, every
   tile of it (its `.msk`): the `0` pictures 6 × 4, `AVXcg5` and `AVXmp5` 3 × 3. Heroes and
-  monsters stand on it; the grounds are written first, so they are drawn below.
+  monsters stand on it; the grounds are written first, so they are drawn below; two may overlap
+  (the game takes the last, E08 T32a's batch E4b checks it).
+  `[[map.object]]` (E08 T32a): a visitable object without a body, `picture` (the Cartographers:
+  `AVXmapw0` water, `AVXmaps0` land, `AVXmapu0` subterranean) and `at`, its bottom-right tile, on
+  the surface (the land Cartographer covers `at` and its entrance, the tile west of it). No
+  hero, monster, pile or town stands on a tile it covers: a hero comes to it in play.
+  `level_limit` (E08 T32a): the scenario's level limit (0, the default: none).
   `difficulty` (E08 T22a1: `easy`, `normal`, `hard`, `expert` or `impossible`): the template
   says to choose it in the scenario list (the map does not hold it; the harness's recipe names
   it too). `[map.underground]` (E08 T22a1): a second level, `terrain` (a land terrain) and its

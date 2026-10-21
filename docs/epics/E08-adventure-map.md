@@ -309,13 +309,16 @@ Refined with the user on 2026-10-20 (T23; ADV-Q14). Built like increments 1 to 3
     be built before them.
 67. **T32a whole** (the user's choice of four; not chosen: T32a1, batch E4a's spec alone; T32a1
     with T32a2, the spec and the scorer; or the scorer first). Batch E4 is split by rows, as
-    batch E3 (decision 44): **E4a** the progression rows E4-1 to E4-6 (the map's level limit),
-    **E4b** decision 45's four rows E4-7 to E4-10 (a placed Cartographer for E4-10; the
-    harness's artifacts and battlefield). Both recipes wait for the harness's new reads (the
-    client lane's inbox). The spec's level limit and placed object change `h3-experiment` and
-    `docs/experiments/` **`cross-lane` with the user's consent**; the scorer, an example of
-    `h3-map` on `h3-heroes`' draws and evaluation, needs `h3-heroes` among `h3-map`'s
-    dev-dependencies (`arch.toml`, `shared/e08-t32a`, merged first).
+    batch E3 (decision 44): **E4a** the progression rows E4-1 to E4-5, **E4b** E4-6 alone (the
+    map's level limit binds every hero on its map: E4-2's level 10 and E4-1's 5 000 would be
+    capped; the agent's call), **E4c** decision 45's four rows E4-7 to E4-10 (a placed
+    Cartographer for E4-10; the harness's artifacts and battlefield). The recipes wait for the
+    harness's new reads (the client lane's inbox). The spec's level limit and placed object change
+    `h3-experiment` and `docs/experiments/` **`cross-lane` with the user's consent**, and so does
+    the line the writer's new field adds to the AI lane's test map (`crates/h3-cli/src/ai/`; the
+    user's consent); the scorer, an example of `h3-map` on `h3-heroes`' draws and evaluation,
+    needs `h3-heroes` among `h3-map`'s dev-dependencies (`arch.toml`, `shared/e08-t32a`, merged
+    first).
 
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
