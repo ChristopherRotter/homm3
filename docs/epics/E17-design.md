@@ -354,7 +354,8 @@ pixels of the 800 × 600 frame; the battlefield takes its top 800 × 556.
   against the executable's arithmetic run in floats for every sum of up to 81 signs) with the
   first frame drawn after the change: a timed spell's with its animation's first frame, Cure's
   likewise (its effect first), Dispel's and Disrupting Ray's with the redraw after their
-  animation (their effect after it), a round's expiry with the next frame.
+  animation (their effect after it), a round's expiry with the next turn's start (its redraw;
+  `resist` at 2 900 ms).
 - **Over time** (M3 T5a). +0x30 is stored only by the walk and the flight (no other byte store to
   it found). `stack_walk` sets it before the path's first step, so before its turn (0x442145),
   and clears it at the end, after group 21, the standing frame, the turn back of a plain move and

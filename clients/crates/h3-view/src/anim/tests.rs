@@ -3048,6 +3048,13 @@ fn the_resist_sequence_plays_as_recorded() {
         stop: false,
     };
     assert_eq!(t.cues.last(), Some(&resisted));
+    // Slow's red on the Battle Dwarves' box from its animation's first frame to the next turn's
+    // start after the round's start ends it (E17 M3 T7b-2a).
+    let hue = |at| t.hues(at).get(&1).copied();
+    assert_eq!(
+        [hue(599), hue(600), hue(2899), hue(2900)],
+        [None, Some(0), Some(0), None]
+    );
     let magic = t.magic(3500).unwrap();
     // Hex 100 (column 15, row 5): its anchor 696; the Battle Dwarves' front 215.
     assert_eq!(magic.over[0].1[0], 696 - (215 - 196) - 91);

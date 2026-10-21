@@ -1650,12 +1650,7 @@ impl Player<'_> {
 
     /// The pending poses, drawn at `drawn` and shown at `shown`, and the pending hues with them.
     fn flush(&mut self, drawn: u32, shown: u32) {
-        let tints = core::mem::take(&mut self.pending_tints);
-        self.tints.extend(
-            tints
-                .into_iter()
-                .map(|(stack, hue)| TintKey { stack, shown, hue }),
-        );
+        self.show_tints(shown);
         let pending = core::mem::take(&mut self.pending);
         self.keys
             .extend(pending.into_iter().map(|(stack, pose)| Key {
@@ -1895,6 +1890,9 @@ impl Player<'_> {
                 Event::TurnStarted { stack } => {
                     // The attack ends before the next turn starts (E17 M2 T5c, the reviewer).
                     self.attack_over(&mut melee, &mut shooter);
+                    // The turn's start redraws the battle (its outline): the hues a round's start
+                    // changed show (E17 M3 T7b-2a, `resist` at 2 900: Slow's end).
+                    self.show_tints(self.clock.now);
                     self.defends(stack, false);
                     self.turns.push((self.clock.now, stack));
                     self.log.push((self.clock.now, Logged::Turn(stack)));
@@ -2178,6 +2176,16 @@ impl Player<'_> {
             }
             self.hero_frame(s, (standing, 0), time, true);
         }
+    }
+
+    /// The pending hues show from `shown` (E17 M3 T7b-2a).
+    fn show_tints(&mut self, shown: u32) {
+        let tints = core::mem::take(&mut self.pending_tints);
+        self.tints.extend(
+            tints
+                .into_iter()
+                .map(|(stack, hue)| TintKey { stack, shown, hue }),
+        );
     }
 
     /// The spells `events` start and end on stacks: each stack's active spells, and its box's
