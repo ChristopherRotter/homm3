@@ -3,7 +3,7 @@
 //! tile 0 alone, the answers step through the env, a fork carries the open decision, the
 //! random agent answers, and a replay records the answers and the game's difficulty.
 
-use h3_game::{Answer, GameEvent, GameSetupError};
+use h3_game::{Answer, DecisionView, GameEvent, GameSetupError};
 
 use super::*;
 
@@ -115,7 +115,13 @@ fn an_open_offer_is_answered_through_the_env() {
             .any(|e| matches!(e, GameEvent::OfferOpened { player: RED, .. })),
         "{events:?}"
     );
-    let offer = env.observation(RED).decision.unwrap();
+    let offer = env
+        .observation(RED)
+        .decision
+        .unwrap()
+        .offer()
+        .unwrap()
+        .clone();
     assert_eq!(offer.price().len(), 1);
     assert_eq!(env.observation(BLUE).decision, None);
     assert_eq!(legal_entries(&env, RED), [ACCEPT, DECLINE]);
@@ -143,7 +149,10 @@ fn an_open_offer_is_answered_through_the_env() {
     assert_eq!((env.state_hash(), env.steps()), (hash, steps));
     // A fork during the decision: it declines, its parent is still asked, then accepts.
     let mut fork = env.fork();
-    assert_eq!(fork.observation(RED).decision, Some(offer.clone()));
+    assert_eq!(
+        fork.observation(RED).decision,
+        Some(DecisionView::Offer(offer.clone()))
+    );
     let mut declined = Vec::new();
     fork.step_with(RED, Action::decline(), &mut declined)
         .unwrap();
@@ -155,7 +164,10 @@ fn an_open_offer_is_answered_through_the_env() {
         }
     )));
     assert_eq!(env.state_hash(), hash);
-    assert_eq!(env.observation(RED).decision, Some(offer.clone()));
+    assert_eq!(
+        env.observation(RED).decision,
+        Some(DecisionView::Offer(offer.clone()))
+    );
     let gold = offer.price()[0].0.index();
     let before = env.observation(RED).treasury[gold];
     let mut accepted = Vec::new();

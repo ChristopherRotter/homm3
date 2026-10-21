@@ -132,14 +132,19 @@ impl AdventureEnv {
     /// outside its turn); then the neutral seat while a battle's side to act is owned by no player
     /// (a wandering monster's, E08 T20b3a: the caller plays it with a policy of its choice, the
     /// random agent until the battle lane ports the original's battle AI, decision 27); none once
-    /// the episode is over.
+    /// the episode is over. While a level-up is open the game waits for it (ADR-0017 point 6,
+    /// E08 T30): its owner alone, in its turn or not (a defender that won a battle answers before
+    /// the player whose turn runs goes on).
     pub fn to_move(&self) -> impl Iterator<Item = Seat> + '_ {
         let done = self.is_done();
-        let neutral = !done && self.state.unowned_battle().is_some();
+        let waiting = self.state.waiting_for();
+        let neutral = !done && waiting.is_none() && self.state.unowned_battle().is_some();
         (0..=u8::MAX)
             .take(self.state.players())
             .map(PlayerId::new)
-            .filter(move |&player| !done && self.may_act(player))
+            .filter(move |&player| {
+                !done && waiting.map_or_else(|| self.may_act(player), |owner| owner == player)
+            })
             .map(Seat::Player)
             .chain(neutral.then_some(Seat::Neutral))
     }

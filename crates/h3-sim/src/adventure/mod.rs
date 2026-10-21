@@ -8,15 +8,15 @@
 //!   the system actor, E08 T20b3a), step, masks, fork, state hash, a player's observation
 //!   (`h3_game`'s view as it is: a flat encoding waits for E13's macro-actions) and the neutral
 //!   seat's (its battle).
-//! * [`action`]: the factorized action in two phases (encoding v3, E08 T19b1): on the map an
-//!   entry and a destination tile, with masks built from the reachable-tiles query and the open
-//!   decision's answers (provisional until E13's macro-actions); in a battle the battle lane's
-//!   encoding for the side the player owns.
+//! * [`action`]: the factorized action in two phases (encoding v4: v3 E08 T19b1, v4 T30's
+//!   level-up answers): on the map an entry and a destination tile, with masks built from the
+//!   reachable-tiles query and the open decision's answers (provisional until E13's
+//!   macro-actions); in a battle the battle lane's encoding for the side the player owns.
 //! * [`rollout`]: the uniformly random legal agent, the battle's random agent in its battles and
 //!   the neutral seat's.
 //! * [`replay`]: the adventure replay model (T9b): the rules' identity, the map by content hash,
-//!   the seed, the game commands with their actors (battle commands since format v3) and state
-//!   hashes.
+//!   the seed, the game commands with their actors (battle commands since format v3, a level-up's
+//!   answers since v5) and state hashes.
 
 pub mod action;
 pub mod env;
@@ -24,8 +24,8 @@ pub mod replay;
 pub mod rollout;
 
 pub use action::{
-    ACCEPT, ACTION_ENCODING_VERSION, Action, DECLINE, END_TURN, ENTRY_COUNT, EntryMask, HERO_SLOTS,
-    MOVE_BASE, MapAction, Phase, Seat,
+    ACCEPT, ACTION_ENCODING_VERSION, Action, DECLINE, END_TURN, ENTRY_COUNT, EntryMask, FIRST,
+    HERO_SLOTS, MOVE_BASE, MapAction, Phase, SECOND, Seat,
 };
 pub use env::{AdventureEnv, StepError, StepResult};
 pub use rollout::{RolloutResult, random_rollout};

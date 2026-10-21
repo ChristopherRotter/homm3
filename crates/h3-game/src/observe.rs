@@ -1,7 +1,7 @@
 //! What a viewer may know of the whole game (ADR-0017 points 1 and 2, E08 T8b1;
 //! `docs/06-security.md`, "Information hiding"): the game's public facts (the day, the players'
 //! colours, whose turn is running), the viewer's own treasury (E08 T13a; other players' never
-//! show) and open decision (T14b), the heroes it sees with their types and its own heroes'
+//! show) and open decision (T14b; since T30 an offer or a level-up), the heroes it sees with their types and its own heroes'
 //! details (T18b, GAM-HER-001), each context's observation for the viewer (since T19a its
 //! battle's, as its side sees it), and the projection of the game's events. The seed, the streams and the state hash never show
 //! (ADR-0017 point 5).
@@ -10,9 +10,9 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use h3_adventure::{AdventureObservation, Offer, Viewers};
-use h3_content::HeroTypeId;
+use h3_content::{HeroTypeId, SkillId};
 use h3_contracts::{HeroId, PlayerId};
-use h3_heroes::HeroDetails;
+use h3_heroes::{HeroDetails, PrimarySkill};
 
 use crate::command::GameEvent;
 use crate::{GameRuleset, GameState};
@@ -39,10 +39,11 @@ pub struct GameObservation {
     /// The viewer's treasury, by resource in the core's order (GAM-RES-001); empty for a viewer
     /// that is not a player of the game.
     pub treasury: Vec<u32>,
-    /// The viewer's first open decision (GAM-DEC-001, E08 T14b): an offer, its object named by
-    /// type and anchor, with its price; other players' never show. While it is open the
-    /// viewer's only legal commands are its answers.
-    pub decision: Option<Offer>,
+    /// The viewer's first open decision but a battle (GAM-DEC-001, E08 T14b; GAM-DEC-002, T30):
+    /// an offer, its object named by type and anchor, with its price, or a level-up with its
+    /// offers; other players' never show. While it is open the viewer's only legal commands are
+    /// its answers.
+    pub decision: Option<DecisionView>,
     /// The heroes the viewer sees on the adventure map (its own and the others its explored tiles
     /// show), by id: each hero's type (and so its class), and the details of its own only
     /// (GAM-HER-001, E08 T18b; survey `E08-battles.md` §9).
@@ -53,6 +54,47 @@ pub struct GameObservation {
     /// (`h3_battle::observe`, ADR-0013 point 9; GAM-BAT-001, E08 T19a); other players' battles
     /// never show.
     pub battle: Option<h3_battle::Observation>,
+}
+
+/// An open decision as its owner sees it (E08 T30): a battle is [`GameObservation::battle`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DecisionView {
+    /// An offer (GAM-DEC-001), answered `Accept` or `Decline`.
+    Offer(Offer),
+    /// A level-up with two offers (GAM-DEC-002), answered `First` or `Second`.
+    LevelUp(LevelUpView),
+}
+
+impl DecisionView {
+    /// The offer, if the decision is one.
+    pub const fn offer(&self) -> Option<&Offer> {
+        match self {
+            Self::Offer(offer) => Some(offer),
+            Self::LevelUp(_) => None,
+        }
+    }
+
+    /// The level-up, if the decision is one.
+    pub const fn level_up(&self) -> Option<&LevelUpView> {
+        match self {
+            Self::LevelUp(level_up) => Some(level_up),
+            Self::Offer(_) => None,
+        }
+    }
+}
+
+/// A level-up with two offers as its owner sees it (GAM-DEC-002, E08 T30): what the original's
+/// dialog shows. The hero's level seed never shows (ADR-0017 point 5).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LevelUpView {
+    /// The hero.
+    pub hero: HeroId,
+    /// The new level.
+    pub level: u8,
+    /// The primary skill it raises by 1.
+    pub primary: PrimarySkill,
+    /// The offers, the dialog's left (`First`) and right (`Second`).
+    pub offers: [SkillId; 2],
 }
 
 /// What a viewer knows of a hero beyond the adventure map's view of it.
@@ -99,7 +141,11 @@ pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameOb
         treasury: state
             .treasury(player)
             .map_or_else(Vec::new, <[u32]>::to_vec),
-        decision: state.decision(player).cloned(),
+        decision: state
+            .decision(player)
+            .cloned()
+            .map(DecisionView::Offer)
+            .or_else(|| state.level_up(player).map(DecisionView::LevelUp)),
         heroes: adventure
             .heroes
             .iter()
@@ -122,8 +168,8 @@ pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameOb
 }
 
 /// The event as `viewer` may see it, or `None` if it is hidden from it: the game's own events are
-/// public but a treasury's change, an offer's and a hero's change, which show to their owner only
-/// (E08 T13b, T14b, T19a2a), and a battle's, which show to the owners that see them (E08 T19a); an adventure or a
+/// public but a treasury's change, an offer's, a hero's change and its level-ups, which show to
+/// their owner only (E08 T13b, T14b, T19a2a, T30), and a battle's, which show to the owners that see them (E08 T19a); an adventure or a
 /// battle event shows to the players who see it, naming the viewer alone among them
 /// ([`h3_adventure::AdventureEvent::project`]).
 pub fn project(event: &GameEvent, viewer: Viewer) -> Option<GameEvent> {
@@ -163,7 +209,9 @@ pub fn project(event: &GameEvent, viewer: Viewer) -> Option<GameEvent> {
         | GameEvent::CreaturesRaised { player: owner, .. }
         | GameEvent::OfferOpened { player: owner, .. }
         | GameEvent::OfferRefused { player: owner, .. }
-        | GameEvent::OfferAnswered { player: owner, .. } => (owner == player).then_some(*event),
+        | GameEvent::OfferAnswered { player: owner, .. }
+        | GameEvent::LevelUpOpened { player: owner, .. }
+        | GameEvent::LevelGained { player: owner, .. } => (owner == player).then_some(*event),
         GameEvent::TurnEnded { .. }
         | GameEvent::DayStarted { .. }
         | GameEvent::TurnStarted { .. } => Some(*event),

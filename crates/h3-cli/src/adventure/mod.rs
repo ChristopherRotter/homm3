@@ -2,24 +2,26 @@
 //! with their adventure files and `.h3m` maps from disk, recording random games and the adventure
 //! replay file format (TOML). The commands themselves are in [`cli`].
 //!
-//! Replay file format v4 (`fixtures/replays/adventure/*.toml` are examples; v2 added the
+//! Replay file format v5 (`fixtures/replays/adventure/*.toml` are examples; v2 added the
 //! difficulty and the answers, E08 T14b: a v1 file has no difficulty, reads as normal and is
 //! refused by its format version; a later file without one is malformed; v3 added the battle
 //! commands, E08 T19b1, and names each command's actor: a player by its number; v4 the system
-//! actor, `system`, whose commands are a battle's unowned side's, E08 T20b2):
+//! actor, `system`, whose commands are a battle's unowned side's, E08 T20b2; v5 a level-up's
+//! answers, `answer first` and `answer second`, E08 T30):
 //!
 //! ```toml
 //! commands = [                        # the game commands in order, each after its actor:
 //!     "0 move 1 5,7,0 6,8,0",         #   `<player> move <hero> <x>,<y>,<level> …` (the path
 //!     "0 end-turn",                   #   without the hero's own tile), `<player> end-turn`
-//!     "1 accept",                     #   `<player> accept` or `decline`: an answer
+//!     "1 accept",                     #   `<player> accept` or `decline`: an offer's answer
+//!     "1 answer first",               #   `<player> answer first` or `second`: a level-up's
 //!     "1 battle attack 3 41",         #   `<player> battle <command>`: a command in its battle,
 //!     "system battle wait",           #   the battle replays' text without the side letter;
 //! ]                                   #   `system battle …`: the unowned side's
 //! checkpoints = ["0x…"]               # state hash after every `checkpoint_every` commands
 //!
 //! [replay]
-//! format = 4
+//! format = 5
 //! engine = "0.1.0"
 //! seed = "1"                          # u64 as a decimal string
 //! difficulty = 1                      # the game's (GameSetup::difficulty), 1 the import's
@@ -243,7 +245,7 @@ fn parse_hex64(s: &str) -> Result<u64> {
         .ok_or_else(|| AdventureCliError::Format(format!("bad hash `{s}`")))
 }
 
-/// A command as a replay file writes it (format v4, the module's docs): its actor, then the
+/// A command as a replay file writes it (format v5, the module's docs): its actor, then the
 /// command; a battle command (E08 T19b1) as the battle replays write it ([`crate::format_command`])
 /// without the side, which is the actor's in its battle.
 pub fn format_command(actor: Actor, command: &GameCommand) -> String {
@@ -262,6 +264,9 @@ pub fn format_command(actor: Actor, command: &GameCommand) -> String {
         // E08 T14b: an answer to the player's open decision (format v2).
         GameCommand::Answer(Answer::Accept) => format!("{player} accept"),
         GameCommand::Answer(Answer::Decline) => format!("{player} decline"),
+        // E08 T30: a level-up's answer (format v5).
+        GameCommand::Answer(Answer::First) => format!("{player} answer first"),
+        GameCommand::Answer(Answer::Second) => format!("{player} answer second"),
         GameCommand::Adventure(AdventureCommand::MoveHero { hero, path }) => {
             let mut text = format!("{player} move {}", hero.raw());
             for pos in path {
@@ -291,6 +296,11 @@ pub fn parse_command(text: &str) -> Result<(Actor, GameCommand)> {
         Some("end-turn") => GameCommand::EndTurn,
         Some("accept") => GameCommand::Answer(Answer::Accept),
         Some("decline") => GameCommand::Answer(Answer::Decline),
+        Some("answer") => match words.next() {
+            Some("first") => GameCommand::Answer(Answer::First),
+            Some("second") => GameCommand::Answer(Answer::Second),
+            _ => return Err(bad()),
+        },
         Some("battle") => {
             let rest: Vec<&str> = words.by_ref().collect();
             let (_, command) =
