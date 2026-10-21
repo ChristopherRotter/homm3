@@ -372,8 +372,8 @@ fn the_cyclopes_batter_the_weakest_wall_while_their_army_is_locked_out() {
                         alone += u32::from(weakest.len() == 1);
                     }
                     Command::Shoot { .. } => shots += 1,
-                    // Blocked by a defender that came out, they are walkers (BAT-STUB-4).
-                    Command::Defend => {
+                    // Blocked by a defender that came out, they are walkers (BAT-AI-005).
+                    Command::Attack { .. } | Command::Move { .. } | Command::Defend => {
                         assert!(!computer::shoots(&state, &r, state.active().unwrap()));
                     }
                     other => panic!("{profile}: {other:?}"),

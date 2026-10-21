@@ -5,10 +5,15 @@
 //! battle's private state is added here by the battle lane.
 
 use h3_content_battle::BattleRuleset;
+use h3_contracts::BattleSide;
+use h3_kernel::arith::X87;
 
 use crate::aim;
 use crate::combat::can_shoot;
-use crate::geometry::Field;
+use crate::effects::Status;
+use crate::geometry::{Field, Hex, HexSet};
+use crate::movement::MAX_PATH;
+use crate::pathfinder::{AI_RANGE, Goal, Query, Search};
 use crate::state::{BattleState, StackId};
 
 pub use crate::aim::{Context, Shot};
@@ -76,4 +81,237 @@ pub fn strength(state: &BattleState, ruleset: &BattleRuleset, ctx: &Context, id:
 /// outside a siege.
 pub fn walls(state: &BattleState) -> impl Iterator<Item = (u8, u8)> + '_ {
     aim::walls(state)
+}
+
+/// The game's difficulty, 0 (Easy) to 4 (Impossible), which the computer reads (`[game]+0x1F6D8`;
+/// `BattleSetup.difficulty`).
+pub fn difficulty(state: &BattleState) -> u8 {
+    state.difficulty
+}
+
+/// Whether `side`'s player is human (the side's +0x54A4; `BattleSetup.human`): the computer's
+/// branches marked for Hard and above take such a side as Hard (ADR-0027 point 8).
+pub fn human(state: &BattleState, side: BattleSide) -> bool {
+    state.human[side.index()]
+}
+
+/// Whether the round is in its wait phase (+0x13DE4), where a stack cannot wait again.
+pub fn wait_phase(state: &BattleState) -> bool {
+    state.wait_phase
+}
+
+/// The computer's context for `side` (0x435EC0; BAT-SIE-023): the least attack and defense
+/// bonus on the field, the desperate mode and both sides' strengths.
+pub fn context(state: &BattleState, ruleset: &BattleRuleset, side: BattleSide) -> Context {
+    aim::context(state, ruleset, Field::new(ruleset.battle().field), side)
+}
+
+/// The computer's worth of one creature of stack `id` in the context `ctx` (0x442A50), with the
+/// shot flag `shot` (kept only for a stack that can shoot now, the Ballista and a turret).
+pub fn worth(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    ctx: &Context,
+    id: StackId,
+    shot: bool,
+) -> X87 {
+    aim::worth(
+        state,
+        (ruleset, Field::new(ruleset.battle().field)),
+        ctx,
+        id,
+        shot,
+    )
+}
+
+/// The computer's value of `damage` to stack `id` (0x442FD0): its kills at the worth in `ctx`
+/// with the shot flag `shot`, or at 1000 per creature when `desperate`.
+pub fn damage_value(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    ctx: &Context,
+    (id, damage): (StackId, u64),
+    (shot, desperate): (bool, bool),
+) -> i32 {
+    aim::damage_value(
+        state,
+        (ruleset, Field::new(ruleset.battle().field)),
+        ctx,
+        (id, damage),
+        (shot, desperate),
+    )
+}
+
+/// The computer's damage of `count` creatures of `attacker` on `target` (0x442780): a shot with
+/// `shot`, else a strike after `jousting` hexes, at least 1, with `cap` at most the target's hit
+/// points.
+pub fn damage_estimate(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    (attacker, target): (StackId, StackId),
+    count: u64,
+    (shot, cap): (bool, bool),
+    jousting: u8,
+) -> u64 {
+    aim::damage_estimate(
+        state,
+        ruleset,
+        (attacker, target),
+        count,
+        (shot, cap),
+        jousting,
+    )
+}
+
+/// The computer's value of `a` striking (or with `shot` shooting) `t` after `jousting` hexes
+/// (0x435C70; BAT-AI-005): the exchange's damage to `t` less `a`'s losses, valued in `ctx`.
+pub fn strike_value(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    ctx: &Context,
+    (a, t): (StackId, StackId),
+    (shot, jousting): (bool, u8),
+) -> i32 {
+    aim::strike_value(
+        state,
+        (ruleset, Field::new(ruleset.battle().field)),
+        ctx,
+        (a, t),
+        (shot, jousting),
+    )
+}
+
+/// Whether stack `id` can shoot now for the computer with `blocker` left out of its blockers
+/// (0x4428F0 with it): whether a walker beside it would block it.
+pub fn shoots_without(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    id: StackId,
+    blocker: StackId,
+) -> bool {
+    aim::shoots_without(state, Field::new(ruleset.battle().field), id, blocker)
+}
+
+/// The total hit points of stack `id` for the computer (0x443080): 1 for a clone.
+pub fn hit_points(state: &BattleState, id: StackId) -> u64 {
+    aim::total_hit_points(state, id)
+}
+
+/// A map of the computer's pathfinder over the whole field for one stack (0x4B2DA0, 0x4B3400):
+/// the positions it reaches and at what cost, the stacks it can attack (marked) and the walk's
+/// stops. Cells the search never touched hold cost 0, as the original's zeroed cells.
+#[derive(Debug, Clone)]
+pub struct Map(Search);
+
+impl Map {
+    /// The cost of the position `hex` when the stack reaches it standing there (the cell's bit 0
+    /// with none of its top six bits: no hex flown over), or `None`.
+    pub fn position(&self, hex: Hex) -> Option<u16> {
+        (self.0.reached(hex) && self.0.flown(hex) == 0).then(|| self.0.cell_cost(hex))
+    }
+
+    /// The cost the cell of `hex` holds (+0x18): a position's or a mark's, 0 when untouched.
+    pub fn cost(&self, hex: Hex) -> u16 {
+        let c = self.0.cell_cost(hex);
+        if c == u16::MAX { 0 } else { c }
+    }
+
+    /// The mark of `hex` when a stack on it can be attacked (the hex record's +0x4A): its cost.
+    pub fn mark(&self, hex: Hex) -> Option<u16> {
+        self.0.mark_of(hex)
+    }
+
+    /// Whether `hex` is a stop of the stack's walk (the pathfinder's +0x68).
+    pub fn is_stop(&self, hex: Hex) -> bool {
+        self.0.is_stop(hex)
+    }
+}
+
+/// The walker's map of stack `id` for the computer's `side` (0x421680's 0x4B2DA0, 0x4217BE;
+/// BAT-AI-005): range 127, or 0 while it loses its turns (or is bound, or has no speed); the
+/// stacks of `side` are not marked; at a town the moat's damage may keep it out of its stops
+/// (BAT-SIE-022, the computer's).
+// rule: BAT-AI-005, BAT-SIE-022
+pub fn map(state: &BattleState, ruleset: &BattleRuleset, id: StackId, side: BattleSide) -> Map {
+    let field = Field::new(ruleset.battle().field);
+    let me = state.at(id);
+    let query = Query {
+        goal: Goal::Map,
+        range: if me.spells.status.contains(Status::NO_TURNS) {
+            0
+        } else {
+            AI_RANGE
+        },
+        avoid: aim::fears_moat(state, ruleset, me, Some(side)),
+        spare: Some(side),
+    };
+    Map(Search::run(state, field, (id, me), query))
+}
+
+/// The path of the computer's walk (0x41F580's 0x4B3400): the positions from the first step to
+/// the end, each with whether it is flown over (no end), and the walk's stops.
+#[derive(Debug, Clone)]
+pub struct Path {
+    steps: [(Hex, bool); MAX_PATH],
+    len: usize,
+    stops: HexSet,
+}
+
+impl Path {
+    /// The positions from the first step on, each with whether it is flown over.
+    pub fn steps(&self) -> &[(Hex, bool)] {
+        self.steps.get(..self.len).unwrap_or(&[])
+    }
+
+    /// Whether `hex` is a stop of the walk (the pathfinder's +0x68).
+    pub fn is_stop(&self, hex: Hex) -> bool {
+        self.stops.contains(hex)
+    }
+}
+
+/// The computer's path for stack `id` of the computer's `side` to the position `to` (0x41F580's
+/// search: 0x4B3400 with `side`, range 127; BAT-AI-006): empty without one or for its own
+/// position; at a town the moat's damage may keep it out of its stops (BAT-SIE-022).
+// rule: BAT-AI-006
+pub fn path(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    (id, side): (StackId, BattleSide),
+    to: Hex,
+) -> Path {
+    let field = Field::new(ruleset.battle().field);
+    let me = state.at(id);
+    let query = Query {
+        goal: Goal::Reach(to),
+        range: AI_RANGE,
+        avoid: aim::fears_moat(state, ruleset, me, Some(side)),
+        spare: Some(side),
+    };
+    let search = Search::run(state, field, (id, me), query);
+    let (hexes, len) = search.path();
+    let mut steps = [(Hex(0), false); MAX_PATH];
+    for (step, &hex) in steps.iter_mut().zip(hexes.get(..len).unwrap_or(&[])) {
+        *step = (hex, search.flown(hex) > 0);
+    }
+    let stops = (0u8..)
+        .take(field.hex_count())
+        .map(Hex)
+        .filter(|&h| search.is_stop(h))
+        .fold(HexSet::new(), |mut set, h| {
+            set.insert(h);
+            set
+        });
+    Path { steps, len, stops }
+}
+
+/// A double as the original's `_ftol` gives it to its callers (0x6179D4): truncated toward 0, the
+/// low 32 bits kept.
+pub fn ftol(x: X87) -> i32 {
+    aim::ftol(x)
+}
+
+/// Whether stack `id` is bound (+0x2B8; the Dendroids' Bind, BAT-MAG-045): the computer's walker
+/// then takes only the enemies next to it and does not walk.
+pub fn bound(state: &BattleState, id: StackId) -> bool {
+    crate::binds::is_bound(state, id)
 }

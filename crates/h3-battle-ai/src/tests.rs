@@ -519,26 +519,39 @@ fn an_area_shot_at_a_two_hex_stack_takes_its_better_hex() {
     assert_eq!(decide(&state, &r), shot(StackId(0), cavalier.front));
 }
 
-// covers: BAT-AI-001
+// covers: BAT-AI-001, BAT-AI-005
 #[test]
-fn a_walker_and_a_blocked_shooter_defend() {
+fn a_walker_attacks_and_a_blocked_shooter_strikes_back() {
     let r = ruleset();
     // The runner (speed 20) reaches the archers in its first turn and attacks them.
     let mut state = BattleState::new(&r, &setup(&[(RUNNER, 1)], &[(ARCHER, 5)]), 3).unwrap();
     assert_eq!(active(&state), RUNNER);
-    assert_eq!(decide(&state, &r), Command::Defend);
-    let mut legal = LegalCommands::new();
-    legal_commands(&state, &r, BattleSide::Attacker, &mut legal);
-    let attack = legal
-        .iter()
-        .copied()
-        .find(|c| matches!(c, Command::Attack { .. }))
-        .unwrap();
+    let attack = decide(&state, &r);
+    assert!(
+        matches!(
+            attack,
+            Command::Attack {
+                target: StackId(1),
+                ..
+            }
+        ),
+        "{attack:?}"
+    );
+    assert!(validate(&state, &r, BattleSide::Attacker, attack).is_ok());
     play(&mut state, &r, attack);
-    // Blocked by the runner beside them, the archers cannot shoot: a walker's turn.
+    // Blocked by the runner beside them, the archers cannot shoot: a walker's turn, which strikes
+    // the runner from where they stand.
     assert_eq!(active(&state), ARCHER);
-    assert!(!computer::shoots(&state, &r, state.active().unwrap()));
-    assert_eq!(decide(&state, &r), Command::Defend);
+    let archers = state.active().unwrap();
+    assert!(!computer::shoots(&state, &r, archers));
+    let from = state.stack(archers).unwrap().hex;
+    assert_eq!(
+        decide(&state, &r),
+        Command::Attack {
+            target: StackId(0),
+            from
+        }
+    );
 }
 
 // covers: BAT-AI-001, BAT-AI-002
@@ -546,7 +559,7 @@ fn a_walker_and_a_blocked_shooter_defend() {
 fn the_commanded_ballista_shoots_and_the_tent_defends() {
     let r = ruleset();
     // The runner wounds the gogs in its first turn, so that the commanded tent has a patient and
-    // takes its turns (BAT-WAR-007).
+    // takes its turns (BAT-WAR-007); the gogs defend (the walker is not under test here).
     let mut setup = setup(&[(GOG, 2)], &[(RUNNER, 1)]);
     setup.heroes = [Some(hero(0)), None];
     setup.war_machines = [vec![creature(BALLISTA), creature(TENT)], vec![]];
@@ -572,6 +585,8 @@ fn the_commanded_ballista_shoots_and_the_tent_defends() {
                     )
                 })
                 .unwrap_or(Command::Defend)
+        } else if active(&state) == GOG {
+            Command::Defend
         } else {
             decide(&state, &r)
         };
@@ -643,7 +658,7 @@ fn a_refused_choice_falls_back_to_defend() {
     assert!(validate(&state, &r, side, refused).is_err());
     assert_eq!(checked(&state, &r, side, refused), Command::Defend);
     assert_eq!(checked(&state, &r, side, Command::Wait), Command::Wait);
-    assert_eq!(POLICY_VERSION, 2);
+    assert_eq!(POLICY_VERSION, 3);
 }
 
 /// The handles an army draws from: every creature but the war machines.
