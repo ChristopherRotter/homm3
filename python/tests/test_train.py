@@ -9,6 +9,7 @@ import json
 import signal
 import subprocess
 import sys
+from dataclasses import asdict
 from pathlib import Path
 
 import numpy as np
@@ -210,7 +211,7 @@ def test_the_evaluation_plays_fixed_held_out_episodes() -> None:
 
 def test_a_short_run_writes_its_files_and_round_trips_its_checkpoint(tmp_path) -> None:
     # A budget just past one update's samples: two updates (or more, if they hold few).
-    config = Config(**SMALL, samples=ONE_UPDATE + 1, pool_every=1)
+    config = Config(**SMALL, samples=ONE_UPDATE + 1, snapshot_every=1)
     trainer = train(config, tmp_path, text="samples = 129\n")
     records = [json.loads(line) for line in (tmp_path / "metrics.jsonl").read_text().splitlines()]
     assert records[0]["type"] == "start" and records[-1]["type"] == "end"
@@ -235,10 +236,19 @@ def test_a_short_run_writes_its_files_and_round_trips_its_checkpoint(tmp_path) -
     assert updates[1]["samples"] == updates[0]["samples"] + updates[1]["update_samples"]
     # The learning rate decays over the samples (the horizon: the budget).
     assert updates[0]["lr"] == config.lr > updates[1]["lr"]
-    # A snapshot after each update (every sample is a multiple of 1): each rollout drew from
-    # the pool the snapshots before it made.
-    assert [r["pool"] for r in updates] == list(range(n)) and len(trainer.pool) == n
-    assert sum(r["type"] == "snapshot" for r in records) == n
+    # The league: best #0 from the start, a snapshot after each update (every sample is a
+    # multiple of 1), so each rollout drew from #0 and the snapshots before it; a promotion at
+    # the end joins too. Each snapshot's network is in its file.
+    assert [r["league"] for r in updates] == list(range(1, n + 1))
+    snapshots = [r for r in records if r["type"] == "snapshot"]
+    assert [(r["member"], r["retired"]) for r in snapshots] == [(i, None) for i in range(1, n + 1)]
+    members = trainer.league.members
+    assert [m.kind for m in members] == ["promoted", *["snapshot"] * n, *["promoted"] * promoted]
+    assert [m.file for m in members][:2] == ["promoted/0.pt", "league/1.pt"]
+    assert len(trainer.nets) == len(members) and all(r["frozen_passes"] >= 0 for r in updates)
+    _same(load(tmp_path / "league" / "1.pt").state_dict(), trainer.nets[1].state_dict())
+    # The end's gate's member table: before its promotion joined.
+    assert record_gate_league(tmp_path) == list(range(n + 1))
     best = torch.load(tmp_path / "best.pt", weights_only=True)
     assert best["index"] == (1 if promoted else 0) and best["run"] == tmp_path.name
     assert (tmp_path / "config.toml").read_text() == "samples = 129\n"
@@ -257,12 +267,19 @@ def test_a_short_run_writes_its_files_and_round_trips_its_checkpoint(tmp_path) -
     restored_state = restored.state_dict()
     for name, weights in trainer.policy.state_dict().items():
         assert torch.equal(weights, restored_state[name]), name
-    assert saved["updates"] == n and saved["finished"] and len(saved["pool"]) == n
+    assert saved["updates"] == n and saved["finished"]
+    assert saved["league"]["members"] == [asdict(m) for m in members]
     assert record["segments"][0]["seed"] == config.seed == trainer.batch_seed
 
 
 def _records(out: Path) -> list[dict]:
     return [json.loads(x) for x in (out / "metrics.jsonl").read_text().splitlines()]
+
+
+def record_gate_league(out: Path) -> list[int]:
+    """The member ids of the record's last gate's table."""
+    record = json.loads((out / "record.json").read_text())
+    return [m["id"] for m in record["gates"][-1]["league"]]
 
 
 def _same(a: dict, b: dict) -> None:
@@ -280,7 +297,7 @@ def _same(a: dict, b: dict) -> None:
 def test_a_stopped_run_resumes_to_its_budget(tmp_path) -> None:
     # Ctrl+C after the third update: the run saves and stops. A trainer of the next segment takes
     # the whole state over; a resume refuses a change to the training and continues to the budget.
-    config = Config(**SMALL, samples=4 * ONE_UPDATE, pool_every=1)
+    config = Config(**SMALL, samples=4 * ONE_UPDATE, snapshot_every=1)
 
     def interrupt(record: dict) -> None:
         if record["type"] == "update" and record["update"] == 3:
@@ -290,7 +307,7 @@ def test_a_stopped_run_resumes_to_its_budget(tmp_path) -> None:
     assert _records(tmp_path)[-1]["type"] == "stop" and stopped.updates == 3
     state = torch.load(tmp_path / "checkpoint.pt", weights_only=True)
     assert (state["format"], state["segment"], state["updates"], state["finished"]) == (
-        2,
+        3,
         0,
         3,
         False,
@@ -298,15 +315,15 @@ def test_a_stopped_run_resumes_to_its_budget(tmp_path) -> None:
     assert state["metrics_length"] == (tmp_path / "metrics.jsonl").stat().st_size
     _same(stopped.policy.state_dict(), state["policy"])
     again = Trainer(Config(**state["config"]), segment=1)
-    again.restore(state)
+    again.restore(state, tmp_path)
     _same(again.policy.state_dict(), state["policy"])
     _same(again.optimizer.state_dict()["state"], state["optimizer"]["state"])
-    assert len(again.pool) == len(state["pool"]) == 3
-    for net, weights in zip(again.pool, state["pool"], strict=True):
-        _same(net.state_dict(), weights)
+    # The league: best #0 and three snapshots, their networks from their files.
+    assert again.league.state() == state["league"] and len(again.nets) == 4
+    for member in stopped.league.members:
+        _same(again.nets[member.id].state_dict(), stopped.nets[member.id].state_dict())
     assert torch.equal(again.generator.get_state(), state["rng"]["sampling"])
     assert torch.equal(torch.get_rng_state(), state["rng"]["torch"])
-    assert again.pool_rng.bit_generator.state == state["rng"]["pool"]
     assert (again.samples, again.episodes) == (stopped.samples, stopped.episodes)
     assert again.snapshots.next == stopped.snapshots.next
     assert again.batch_seed == segment_seed(config.seed, 1) != config.seed
@@ -338,6 +355,38 @@ def test_a_stopped_run_resumes_to_its_budget(tmp_path) -> None:
     # A finished run resumes only with a larger budget.
     with pytest.raises(ResumeError, match="extend it"):
         resume(tmp_path)
+
+
+def test_the_league_retires_its_most_beaten_and_a_resume_keeps_its_files(tmp_path) -> None:
+    # Two members at most, a snapshot after every update: each retires one (retirement needs no
+    # games here). A retired snapshot's file goes after the next checkpoint; the resume removes
+    # files its checkpoint does not name and plays on with the members it names.
+    settings = dict(snapshot_every=1, max_members=2, retire_games=0, checkpoint_minutes=0)
+    config = Config(**SMALL, samples=4 * ONE_UPDATE, **settings)
+
+    def interrupt(record: dict) -> None:
+        if record["type"] == "update" and record["update"] == 3:
+            signal.raise_signal(signal.SIGINT)
+
+    stopped = train(config, tmp_path, log=interrupt)
+    records = _records(tmp_path)
+    snapshots = [(r["member"], r["retired"]) for r in records if r["type"] == "snapshot"]
+    assert len(snapshots) == 3 and all(retired is not None for _, retired in snapshots[1:])
+    assert all(r["league"] <= 2 for r in records if r["type"] == "update")
+    members = stopped.league.members
+    assert len(members) == 2 and set(stopped.nets) == {m.id for m in members}
+    named = {m.file for m in members}
+    assert {f"league/{f.name}" for f in (tmp_path / "league").glob("*.pt")} <= named
+    # A snapshot taken after the checkpoint (here: a stray file) is removed at the resume.
+    (tmp_path / "league" / "99.pt").write_bytes(b"stray")
+    finished = resume(tmp_path, [f"samples={5 * ONE_UPDATE}"])
+    assert not (tmp_path / "league" / "99.pt").exists()
+    assert {f"league/{f.name}" for f in (tmp_path / "league").glob("*.pt")} <= {
+        m.file for m in finished.league.members
+    }
+    assert finished.league.next_id > stopped.league.next_id
+    record = json.loads((tmp_path / "record.json").read_text())
+    assert check_record(record) == [] and len(record["gates"][-1]["league"]) == 2
 
 
 #: A run that dies hard (SIGKILL; TerminateProcess on Windows) while it writes its fifth
@@ -406,15 +455,15 @@ def test_a_training_episode_on_the_held_out_set_stops_the_run() -> None:
 
 
 def test_a_frozen_network_plays_its_side_and_only_the_learner_trains() -> None:
-    trainer = Trainer(Config(**{**SMALL, "max_steps": 10}, pool_share=1.0))
-    trainer.snapshot()
+    trainer = Trainer(Config(**{**SMALL, "max_steps": 10}, self_play=0.0))
+    member, _ = trainer.join()
+    assert trainer.league.draw(0) and trainer.league.live == [member.id]
     with torch.no_grad():
         # The learner now prefers Defend everywhere it is legal, the frozen copy does not.
         trainer.policy.entry_head.bias[1] = 50.0
     trainer.assign(np.arange(trainer.config.envs))
-    assert (trainer.frozen_side >= 0).all() and all(
-        n is trainer.pool[0] for n in trainer.frozen_net
-    )
+    assert (trainer.frozen_side >= 0).all() and (trainer.frozen_id == member.id).all()
+    assert all(n is trainer.nets[member.id] for n in trainer.frozen_net)
     batch = trainer.batch
     choice, side = trainer.act()
     frozen = (batch.to_move >= 0) & (batch.to_move == trainer.frozen_side)
@@ -428,7 +477,10 @@ def test_a_frozen_network_plays_its_side_and_only_the_learner_trains() -> None:
     roll = trainer.collect()
     assert (trainer.rollout.side >= 0).sum() == roll["decisions"]
     assert 0 < roll["decisions"] < 0.8 * trainer.config.rollout * trainer.config.envs
-    assert roll["pool_episodes"] > 0
+    # Every episode against the member; its score counts the learner's results.
+    assert roll["league_episodes"] > 0 and roll["self_play_episodes"] == 0
+    assert 0.0 < roll["frozen_passes"] <= 1.0 and roll["live"] == [member.id]
+    assert trainer.league.member(member.id).played == roll["league_episodes"]
     stats = trainer.update(1e-4)
     assert stats["update_samples"] > 0 and np.isfinite(stats["policy_loss"])
 

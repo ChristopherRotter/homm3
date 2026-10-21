@@ -1,20 +1,20 @@
 """A training run from the command line (E06 T2a, T2b1, T3b; ADR-0026, `docs/epics/E06-design.md`
 §1.3):
 
-    uv run --group train python -m h3env.train --config configs/pool-smoke.toml --out runs/smoke
+    uv run --group train python -m h3env.train --config configs/e06-t4.toml --out runs/t4-1
     uv run --group train python -m h3env.train --out runs/x --set samples=2_000_000
-    uv run --group train python -m h3env.train --resume runs/smoke --set samples=40_000_000
-    uv run --group train python -m h3env.train --config configs/e06-t3b.toml --out runs/t3b-2 \
-        --init-from runs/t3b-1/best.pt
+    uv run --group train python -m h3env.train --resume runs/t4-1 --set samples=80_000_000
+    uv run --group train python -m h3env.train --config configs/e06-t4.toml --out runs/t4-3 \
+        --init-from runs/t4-1/best.pt
 
 The config file states what differs from the defaults (`h3env.train.run.Config`); each `--set
 table.key=value` overrides one key. Each update, gate, promotion and ladder prints one line; the
 run's files go into `--out` (`config.toml`, `metrics.jsonl`, `record.json`, `checkpoint.pt`,
-`promoted/<n>.pt`, `best.pt`). `--init-from` starts a new run from a saved network (its parent,
-best #0). Ctrl+C saves and stops the run (a second Ctrl+C aborts it, losing what the first would
-have saved); `--resume` continues it from its checkpoint (a gate or ladder the stop cut short
-first), the config the checkpoint's: its `--set`s may change only the budget, the threads, the
-device and the checkpoints' cadence.
+`promoted/<n>.pt`, `best.pt`, `league/<id>.pt`). `--init-from` starts a new run from a saved
+network (its parent, best #0). Ctrl+C saves and stops the run (a second Ctrl+C aborts it,
+losing what the first would have saved); `--resume` continues it from its checkpoint (a gate or
+ladder the stop cut short first), the config the checkpoint's: its `--set`s may change only the
+budget, the threads, the device and the checkpoints' cadence.
 """
 
 from __future__ import annotations
@@ -103,7 +103,8 @@ def line(record: dict) -> str | None:
             f"update {record['update']:>4} {record['minutes']:6.1f} min {record['samples']:>11} "
             f"samples {record['samples_per_s']:8.0f}/s episodes {record['episodes']:>7} "
             f"attacker {record['attacker_won']:.2f} trunc {record['truncated']:.2f} "
-            f"pool {record['pool']} won {record['pool_won']:.2f} "
+            f"league {record['league']} score {record['league_score']:.2f} "
+            f"passes {record['frozen_passes']:.1f} "
             f"pg {record['policy_loss']:+.4f} v {record['value_loss']:.4f} "
             f"ent {record['entropy']:.3f} kl {record['kl']:.4f} "
             f"ev {record['explained_variance']:+.2f}"

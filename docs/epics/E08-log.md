@@ -3120,3 +3120,42 @@ designed; one pull request, `cross-lane` with the user's consent. Baseline `mast
   sources the code reading, the wiki, VCMI, E3-6), HER-DET-001 and HER-CHG-001 amended;
   `ADV-QUIRK-11` to `-13` written (exploit-fix, no flag), `ADV-QUIRK-10`'s regression test named.
 - **Inboxes**: battle and AI (their tests' and sampler's heroes), the lane's own (T29's limit).
+
+### Increment 4, round 2: T28, the original's choice ported; round 2 closed (2026-10-21, `adventure/e08-t28`)
+
+T28 as queued (design part A §8, survey §10). Baseline `master` 79551a5 (#339 merged); the
+lane's own paths only.
+
+- **The re-reading** (the sandbox, `scripts/exe.py`): 0x52BBD0, 0x524690's 28 cases, 0x524DD0
+  and 0x52B9C0 read whole; the survey's §10.2 table holds case by case. Settled beyond it: the
+  ranking's slot count drops before its test (the offered skill must rank among the top
+  8 − count unknown skills; the map entry says so), and every unknown skill takes part in the
+  walk (one the class never offers, valued 0, still uses up a slot); the exchange sort's tie
+  order varies with the whole array (one hero walks Offense before Armorer, another Armorer
+  first: a stable sort would differ). The level's primary skill is raised (0x4DA8F7) before
+  0x52BBD0 runs, so the evaluation sees it raised. The flag-set path keeps the flag in `dl`
+  across the army loop (E10's).
+- **`h3-heroes`** (`choice.rs`): `original_choice(details, ruleset, level_up, worth, shares) ->
+  Choice` (HER-LVL-006): one offer or none `First`; both known or both new the higher value, the
+  first on a tie; else `takes_new` for the new one. `ArmyWorth { army, shooters }` (`SETUP`:
+  1 000 and 500, ADR-0013 point 12.6's argument), `TerrainShares { tiles, water, rough: [u32;
+  3] }` (the map's counts, integers so the game can keep and hash them, T29). The values by the
+  original's id = the ruleset's order (as the offers' draws assume; a skill past the 28th is
+  worth 0, the switch's default), Wisdom known by position too; exact in `u64` (the original's
+  32-bit products overflow only past an army worth 306 million, E10's). The shares through
+  `h3_kernel::arith::X87` (`ratio` at 53 bits for the stored f64, `times`, `over`, `trunc`), 0
+  without tiles; a scratch scan of every count ≤ tiles ≤ 41 472 (144 × 144 × 2) for both
+  divisors, 1.72 billion cases, found it equal to IEEE doubles and to the exact integer floor.
+  `derive::effective_primary_from` (the base given) for the raised primary skill.
+- **Tests** (`tests/choice.rs`; vectors from a Python model of the listing written apart from
+  the code): every skill's value unknown, with Wisdom, by level and at Expert, a full hero, a
+  29th skill; the raised primary skill with a worn artifact and the clamps (Wisdom 75 → 100 flips
+  a choice); the shares (none without tiles, near-integer counts, a scaled army); alike offers
+  and ties; the survey's worked Knight (Tactics refused after seven slots), the tie-split
+  boundary cases. E3-6 in `tests/level.rs` now asserts the evaluation's four choices on the
+  batch's coastless map; with the file's 1.0 shares levels 2 and 4 would take Navigation (the
+  survey named level 2 only; corrected). 100 % coverage.
+- **Rules and quirks**: HER-LVL-006 written (`implemented`; sources the reading, E3-6, the wiki
+  and VCMI against it); `ADV-QUIRK-14` written (preserve, no flag; its count's test with T29).
+  No version moves (nothing calls the rule yet): T29 counts the shares and chooses at load, T30
+  for the system actor.

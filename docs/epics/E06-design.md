@@ -24,9 +24,10 @@ A run is a directory, `python/runs/<run>/` by default (git-ignored), named by th
 | `record.json` | the run's summary (§4.2) | at each gate, ladder, stop and the end |
 
 Every `.pt` and `record.json` is written atomically (§3.2). A crash leaves at most a stale `*.tmp`,
-removed at the next start. Built (T2a, T2b1, T3b): `config.toml`, `metrics.jsonl`, `record.json`,
-the atomic writes, `checkpoint.pt` (the whole state, `Trainer.state`), `promoted/<n>.pt` and
-`best.pt` (each promotion's network with its index, how, run and parent); `league/` to come (T4).
+removed at the next start. Built (T2a, T2b1, T3b, T4a): `config.toml`, `metrics.jsonl`,
+`record.json`, the atomic writes, `checkpoint.pt` (the whole state, `Trainer.state`),
+`promoted/<n>.pt` and `best.pt` (each promotion's network with its index, how, run and parent),
+`league/<id>.pt` (each snapshot's network; a retired one's deleted after the next checkpoint).
 
 ### 1.2 The config file — built (T2a)
 
@@ -36,9 +37,10 @@ record; configs in `python/configs/`. Its tables today: `[env]`, `[network]`, `[
 `[checkpoint]` (`checkpoint_minutes`, T2b1), `[device]`, and since T3b `[gate]` (`gate_every`
 in samples, `elo0`, `elo1`, `alpha`, `beta`, `max_pairs`, §6) and `[ladder]`
 (`ladder_opponents`, `ladder_episodes` and `ladder_final_episodes` per kind, `ladder_promoted`,
-§7), which replaced `[evaluation]` (a key belongs to one table, hence the prefixes). To come:
-`[league]` (`self_play`, `snapshot_every`, `size`, `live`, `pfsp_power`, `decay`, §8) replacing
-`[pool]` (T4); `network.kind` (`"mlp"`, `"entity"`, T5).
+§7), which replaced `[evaluation]` (a key belongs to one table, hence the prefixes), and since
+T4a `[league]` (`self_play`, `snapshot_every`, `max_members`, `live`, `live_every`, `pfsp_power`,
+`decay`, `retire_games`, §8) replacing `[pool]`. To come: `network.kind` (`"mlp"`, `"entity"`,
+T5).
 
 ### 1.3 Commands
 
@@ -61,11 +63,11 @@ uv run --group train python -m h3env.train --config configs/e06-t4.toml --out ru
 ## 2. The budget and the schedule, in samples — built (T2a)
 
 `samples` (the budget: the first update boundary at or past it), the learning rate (`linear` to
-`lr · lr_floor` over `lr_horizon`, fixed at the start; or `constant`), the pool's snapshots and
-the gates (`Cadence`, T3b; E05's evaluation against Random is gone) count samples (`run.py`).
-Left for later: the league's snapshots (T4). Wall time sets only the checkpoints (T2b1).
+`lr · lr_floor` over `lr_horizon`, fixed at the start; or `constant`), the league's snapshots and
+live draws (T4a) and the gates (`Cadence`, T3b; E05's evaluation against Random is gone) count
+samples (`run.py`). Wall time sets only the checkpoints (T2b1).
 
-## 3. The resumable state — built (T2b1), extended by T3, T4
+## 3. The resumable state — built (T2b1, T3b, T4a)
 
 Built (`ppo.Trainer.state`, `restore`, `ppo.resume`; `run.Run`, `Stop`, `resumed`,
 `segment_seed`; `E06-log.md`, T2b1): `checkpoint.pt` format 1 holds the resolved config, the
@@ -91,13 +93,14 @@ read from `promoted/` (with the ones before it its ladder plays: the networks st
 checkpoint); a gate or ladder stops at its next batch call on Ctrl+C (`evaluate.Stopped`). A
 replace Windows refuses five times keeps the old file, warns and goes on (`run.atomic_write`).
 
-Still to come:
+Built in T4a (format 3; format 2 is refused at a resume): the league replaces the pool, each
+member's id, kind (snapshot, promoted; later the system actor), file (`league/<id>.pt` or its
+`promoted/<n>.pt`, outside the checkpoint), birth and its decayed and plain score counts, the live
+set, the next draw and the league's generator (`League.state`); the members' networks come from
+their files at the resume. A retired snapshot's file is deleted after the next checkpoint (the
+last one still names it); a resume removes the files of `league/` its checkpoint does not name.
 
-- **T4:** the league replaces the pool: each member's id, kind (snapshot, promoted, later the
-  system actor), file (`league/<id>.pt`, outside the checkpoint), birth in samples and its decayed
-  score counts (§8); the next snapshot in samples.
-
-## 4. The record — built (T2a, T2b1, T2c), extended by T3, T4
+## 4. The record — built (T2a, T2b1, T2c, T3b, T4a)
 
 Built: `run.Run` and `run.Record` (typed `metrics.jsonl`: `start` with the identity, `update`,
 `snapshot`, `eval`, `stop`, `segment`, `end`; `record.json` schema 2, rebuilt from those records
@@ -107,10 +110,12 @@ dropped), `python/records/` (README, `check_record` over every committed record 
 distribution's versions and the batch's `entries` (kind, weight, the core, battle and adventure
 rulesets' content hashes); schema 4 (T3b): `parent`, the `gate`, `promotion` and `ladder`
 records and the record's `gates`, `promotions`, `ladders`, `best` (the latest promotion), its
-curve per gate interval and `progress.evaluation_minutes` (`python/records/README.md`). Still to
-come:
-
-- **T4:** the league's live set per update and its member table at the end.
+curve per gate interval and `progress.evaluation_minutes` (`python/records/README.md`); schema 5 (T4a): the league's
+fields in each `update` record (its size, the live set, whether it was drawn, the episodes against
+members and the learner's mean score in them, the frozen networks a call passed), `snapshot`
+records (the member, the one it retired), the member table in each gate (id, kind, birth, `p`,
+games, whether live; the last gate's is the end's), the curve's `league_score` and
+`frozen_passes`. Schema 4 records stay valid (`t3b-1`).
 
 ## 5. The held-out sets — built (T3a)
 
@@ -203,29 +208,26 @@ final best (`Trainer.ladder`), each a `ladder` record. Not built: `h3 ai eval --
   each point estimate at or above its target, the interval reported. Never the best of many
   checkpoints on the same set (that selects on its noise).
 
-## 8. The league (T4)
+## 8. The league — built (T4a)
 
-Prioritized fictitious self-play (AlphaStar's PFSP) over the learner's past, grown from E05's pool:
+Built (`h3env.train.league`, the trainer's `join`, `assign`, `collect`; `[league]`): PFSP over a
+snapshot every `snapshot_every` samples (1 M; E05's pool: 600 000) and every promoted network
+(best #0 from the start), at most `max_members` (16) on the device; an episode is self-play with
+`self_play` (0.5), else a live member on a uniformly drawn side (only the learner's decisions
+train); `p_m = (score + 1) / (games + 2)` (a win 1, a draw or truncation ½, decayed by `decay`
+0.99 per update); `live` (4) members drawn without replacement by `(1 − p_m)^pfsp_power` (2),
+each new episode's member among them by the same weights; a new member retires the highest
+`p_m` among those with `retire_games` (200) games, or of all, the oldest of equals; a retired
+promoted network's file stays. One change from the outline: the live set is drawn again every
+`live_every` samples (250 000, about ten updates at `t3b-1`'s size) and when it holds a retired
+member or fewer than it could, not at every rollout: an episode lasts longer than a rollout
+(`t3b-1`: about 147 calls against 128) and keeps its opponent, so a draw per rollout would have a
+call pass two or three sets' networks; the update record's `frozen_passes` measures it (T4b).
 
-- **Members:** a snapshot of the learner every `league.snapshot_every` samples (1 M; E05: about
-  600 000), every promoted network, and in T7 the system actor (a member that plays only the side
-  its encounter gives it). Heuristic bots never train (decision 9).
-- **An episode's opponent:** self-play with probability `self_play` (0.5), else a member on a
-  uniformly drawn side (E05's rule: only the learner's decisions train).
-- **Which member:** each member m carries the learner's score against it, `p_m = (w_m + 1) /
-  (g_m + 2)` (wins and games of the learner's training episodes against m, a draw half, both
-  decayed by `decay` (0.99) per update: recent form; a new member at ½). At each rollout's start
-  `live` (4) members are drawn without replacement with weights `(1 − p_m)^pfsp_power` (power 2:
-  "hard", the opponents the learner still loses to); the rollout's pooled episodes draw among them
-  by the same weights. So a call makes at most 1 + `live` forward passes, however large the
-  league (E05's pool of 8 could make 9 and cost a third of the updates per minute).
-- **Size:** at most `size` (16) members on the device (24 MB each); a new one replaces the member
-  with the highest `p_m` among those with at least 200 games (the most beaten). A retired
-  snapshot's file is deleted; promoted networks' files stay (the ladder and the lineage).
-- **Exploiters** (decision 9) only if a check shows the agent exploitable: a fresh learner
-  trained against the frozen best alone for a fixed budget; if it beats the best at least 0.70 on
-  the gate set, main exploiters join (designed then, T6).
-- Recorded: per update the live set; per gate the member table (id, kind, birth, `p_m`, games).
+Still to come: the system actor as a member (T7: it plays only the side its encounter gives it);
+exploiters (decision 9) only if a check shows the agent exploitable: a fresh learner trained
+against the frozen best alone for a fixed budget; if it beats the best at least 0.70 on the gate
+set, main exploiters join (designed then, T6).
 
 ## 9. Costs on the user's machine (estimates; T2 to T4 measure them)
 
@@ -268,8 +270,10 @@ Each with the user's checkpoint; only the next one refined (Q41's pattern).
   pending one at the resume, `--init-from`; the user one pull request). The hour on the user's
   machine with gates (`python/configs/e06-t3b.toml`) measures §9's evaluation share; its result
   sets T4's cadences.
-- **Increment 3:** T4a (the league of §8), T4b (the first multi-hour run, its resume used for
-  real).
+- **Increment 3** (refined 2026-10-20, AI-Q9): T4a (done 2026-10-20: the league of §8; with
+  `configs/e06-t4.toml`: a gate every 10 M samples and ladders of 250 per kind, about 12 % of a
+  run by `t3b-1`'s costs), T4b (two league runs of 60 M samples, about 3.5 hours each, at γ 0.995
+  and γ 1.0 against the stalling; one of them stopped and resumed for real).
 - **Increment 4:** T5's experiments, each a recorded run: the entity network against the MLP,
   AI-Q7 (b), the mana price, the batch size and threads (T9c's table), the observations in place.
 - **Then** T6, T7 (after E23's T2 to T4), T8 (only if PPO plateaus), T9.

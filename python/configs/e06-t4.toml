@@ -1,0 +1,31 @@
+# E06 T4b's league runs on the user's machine (design §8, §10; AI-Q9): the league over the
+# learner's snapshots and promoted networks (PFSP, its defaults shown), a gate every 10 M samples,
+# each promotion's ladder on the first 250 episodes per kind of the report set v1 (about 12 % of
+# the run by `t3b-1`'s costs) and 60 M samples (about 3.5 hours at `t3b-1`'s 5 100 samples/s).
+# Run twice against the stalling (AI-Q9), on the same seed: at γ 0.995 and at γ 1.0; stop one
+# with Ctrl+C and resume it.
+#
+#   uv run --group train python -m h3env.train --config configs/e06-t4.toml --out runs/t4-1
+#   uv run --group train python -m h3env.train --config configs/e06-t4.toml --out runs/t4-2 \
+#       --set ppo.gamma=1.0
+#   uv run --group train python -m h3env.train --resume runs/t4-2
+
+seed = 1
+samples = 60_000_000
+
+[ppo]
+gamma = 0.995
+
+[league]
+self_play = 0.5
+snapshot_every = 1_000_000
+max_members = 16
+live = 4
+live_every = 250_000
+
+[gate]
+gate_every = 10_000_000
+
+[ladder]
+ladder_episodes = 250
+ladder_final_episodes = 500

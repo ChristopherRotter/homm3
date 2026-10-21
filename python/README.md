@@ -68,25 +68,35 @@ tensors show each call's results without a copy.
 
 ```sh
 uv sync --group train
-uv run --group train python -m h3env.train --config configs/pool-smoke.toml --out runs/smoke
+uv run --group train python -m h3env.train --config configs/e06-t4.toml --out runs/t4-1
 uv run --group train python -m h3env.train --out runs/x --set samples=2_000_000 --set device.device=cpu
-uv run --group train python -m h3env.train --resume runs/smoke --set samples=40_000_000
-uv run --group train python -m h3env.train --config configs/e06-t3b.toml --out runs/t3b-2 --init-from runs/t3b-1/best.pt
+uv run --group train python -m h3env.train --resume runs/t4-1 --set samples=80_000_000
+uv run --group train python -m h3env.train --config configs/e06-t4.toml --out runs/t4-3 --init-from runs/t4-1/best.pt
 ```
 
 A run's settings come from a TOML config (E06 T2a, ADR-0026; `docs/epics/E06-design.md` §1): the
 file states only what differs from `h3env.train.run.Config`'s defaults, grouped in tables (`[env]`,
-`[network]`, `[ppo]`, `[pool]`, `[gate]`, `[ladder]`, `[checkpoint]`, `[device]`); `--set
+`[network]`, `[ppo]`, `[league]`, `[gate]`, `[ladder]`, `[checkpoint]`, `[device]`); `--set
 table.key=value` overrides one key; an unknown key is an error. Committed configs live in
 `configs/`. The budget and every cadence that changes the training count **samples** (learner
 decisions that trained): `samples`, the learning rate's linear decay over `lr_horizon` (the budget
-by default), the pool's snapshots (`pool_every`), the gates (`gate_every`); wall time sets only
-the checkpoints.
+by default), the league's snapshots and live draws (`snapshot_every`, `live_every`), the gates
+(`gate_every`); wall time sets only the checkpoints.
 
 Each update prints one line (samples, samples/s, self-play's attacker wins, truncations, the
-losses). Self-play keeps an opponent pool (`E05-log.md` §8.2): in `pool_share` of the episodes a
-frozen earlier network plays one side. Every training episode's seed is checked against the
-held-out sets' (a hit stops the run).
+league's size, the learner's score against its members, the frozen networks a call passed, the
+losses). Every training episode's seed is checked against the held-out sets' (a hit stops the
+run).
+
+**The league** (E06 T4a, ADR-0026 point 8, design §8; `h3env.train.league`): prioritized
+fictitious self-play over the learner's past. Its members are a snapshot of the learner every
+`league.snapshot_every` samples (1 M; `league/<id>.pt`) and every promoted network (best #0 from
+the start), at most `max_members` (16). An episode is self-play with `self_play` (0.5), else a
+member of the live set plays one side (only the learner's decisions train): `live` (4) members
+drawn every `live_every` samples (250 000) by `(1 − p)^pfsp_power` (2), `p` the learner's score
+against the member (a draw or truncation ½, decayed by `decay` 0.99 per update), so the members
+it still loses to play most. A new member retires the most beaten (the highest `p` among those
+with `retire_games` 200 games); a retired snapshot's file is deleted.
 
 **The gate, the promotions, the ladders** (E06 T3b, ADR-0026 points 6 and 7, design §6 and §7):
 the run starts with best #0 (the untrained network, or the parent's with `--init-from`). Every
@@ -99,34 +109,37 @@ and the `ladder_promoted` (1) promoted networks before it, on the report set v1'
 `ladder_episodes` (250) per kind; at the end the final best's ladder plays all
 `ladder_final_episodes` (500). Each gate, promotion and ladder prints one line;
 `python -m h3env.train.gate --candidate b.pt --best a.pt` plays the same gate between any two saved
-networks. `--init-from <file>` starts a new run (fresh optimizer, counters and pool) from a saved
+networks. `--init-from <file>` starts a new run (fresh optimizer, counters and league) from a saved
 network (a `best.pt`, `promoted/<n>.pt` or `checkpoint.pt` of the same size), its parent.
 
 The run's directory (`runs/` is git-ignored) gets `config.toml` (the file as given),
 `metrics.jsonl` (one typed record per line: `start`, `update`, `snapshot`, `gate`, `promotion`,
 `ladder`, `stop`, `segment`, `end`), `record.json` (the run's summary: identity, parent, the
 resolved config, progress with the gates' and ladders' minutes, its segments, a curve per gate
-interval, the gates, promotions and ladders; rewritten atomically), `checkpoint.pt` (the whole
-training state, E06 T2b1), `promoted/<n>.pt` (each promoted network, kept) and `best.pt` (the
-latest). A record a result cites is committed as `records/<run>.json` (`records/README.md`).
+interval, the gates with the league's member table, promotions and ladders; rewritten
+atomically), `checkpoint.pt` (the whole training state, E06 T2b1), `promoted/<n>.pt` (each
+promoted network, kept), `best.pt` (the latest) and `league/<id>.pt` (the league's snapshots).
+A record a result cites is committed as `records/<run>.json` (`records/README.md`).
 
-**Interrupting and resuming** (E06 T2b1, T3b; `docs/epics/E06-design.md` §3): the checkpoint
-(format 2: the network, the optimizer, the pool, the counters, the schedule, the promoted
-networks' entries, what is pending, the random generators, the metrics' length) is written
-atomically at the start, every `checkpoint.checkpoint_minutes` (5) of wall time at the next
+**Interrupting and resuming** (E06 T2b1, T3b, T4a; `docs/epics/E06-design.md` §3): the
+checkpoint (format 3: the network, the optimizer, the league's members (their networks stay in
+their files), the counters, the schedule, the promoted networks' entries, what is pending, the
+random generators, the metrics' length) is written atomically at the start, every `checkpoint.checkpoint_minutes` (5) of wall time at the next
 update, before and after each gate and ladder, at a stop and at the end. Ctrl+C stops the run at
 its next batch call (the rollout, gate or ladder in progress is discarded) or after the update in
 progress, saved, with a `stop` record; a second Ctrl+C aborts at once (back to the last save). A
 crash, a kill or a shutdown lose the time since the last save. `--resume <dir>` continues from
 the checkpoint in a new **segment**: `metrics.jsonl` is cut back to the save, a gate or ladder the
 stop cut short runs first (the gate on the checkpoint's learner, the ladder on its promoted
-network, read from `promoted/`), the batch starts new episodes on the segment's own seed
+network, read from `promoted/`; the league's networks from their files, those of `league/` it
+does not name removed), the batch starts new episodes on the segment's own seed
 (SplitMix64 of `seed`), and the config is the checkpoint's; its `--set`s may change only the
 budget (`samples`, extended or cut; the learning rate keeps the horizon fixed at the start),
 `env.threads`, `[device]` and `checkpoint.checkpoint_minutes`, any other key is refused (a new
 run, or `--init-from`). A finished run resumes with a larger budget only. A resumed run is
 reproducible from its record (the segments' seeds), not bitwise equal to an uninterrupted one.
-Format-1 checkpoints (before T3b) do not resume: start a new run `--init-from` their `best.pt`.
+Older checkpoints (formats 1 and 2, before T4a's league) do not resume: start a new run
+`--init-from` their `best.pt`.
 On Windows a file another process holds open (a ladder reading `best.pt`) is kept as it was after
 five refused replaces, with a warning; the run goes on.
 
@@ -139,5 +152,5 @@ with the bots' rates against the same opponent from their table
 (`records/bots-report-v1.json`). `--json <file>` keeps the results.
 
 ```sh
-uv run --group train python -m h3env.train.ladder --checkpoint runs/pool/best.pt [--episodes 250]
+uv run --group train python -m h3env.train.ladder --checkpoint runs/t4-1/best.pt [--episodes 250]
 ```

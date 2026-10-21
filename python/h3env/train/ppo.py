@@ -21,6 +21,13 @@ plays the best on the gate set v1 and an SPRT decides (`gate`). A promoted learn
 `promoted/<n>.pt` and `best.pt`, and its ladder plays it against the engine's seats and the
 promoted networks before it on the report set v1 (§7); at the end the final best's on the whole
 set. A gate or ladder that began after the last checkpoint is pending: a resume runs it first.
+
+The league (E06 T4a, design §8; `league`): a snapshot of the learner every `snapshot_every`
+samples and every promoted network join it; an episode is self-play or against a live member,
+which plays one side (only the learner's decisions train), and its result counts towards that
+member's score. A member's network sits on the device and in its file (`league/<id>.pt`, or its
+`promoted/<n>.pt`), outside the checkpoint, which names the members; a retired snapshot's file is
+deleted after the next checkpoint, and a resume removes the files its checkpoint does not name.
 """
 
 from __future__ import annotations
@@ -38,7 +45,8 @@ from .. import _ffi
 from ..batch import BattleBatch
 from ..seats import SeatBook
 from .evaluate import Stopped, compact, held_out_seeds, ladder, load
-from .gate import Bounds, gate
+from .gate import Bounds, game_score, gate
+from .league import League, Member
 from .policy import Choice, Policy
 from .run import (
     Cadence,
@@ -58,8 +66,8 @@ from .run import (
 )
 
 #: The version of `checkpoint.pt`'s layout (`Trainer.state`); 2: the gate's state instead of the
-#: evaluations' (T3b).
-CHECKPOINT_FORMAT = 2
+#: evaluations' (T3b); 3: the league instead of the pool, its networks outside (T4a).
+CHECKPOINT_FORMAT = 3
 
 
 class Rollout:
@@ -242,13 +250,16 @@ class Trainer:
         self.samples = 0
         self.updates = 0
         self.episodes = 0
-        #: The opponent pool (frozen snapshots) and, per env, the side its current episode's
-        #: frozen network plays (-1: self-play) and that network.
-        self.pool: list[Policy] = []
-        self.pool_rng = np.random.default_rng(c.seed)
+        #: The league (`league`), its members' frozen networks by id, and per env the side its
+        #: current episode's member plays (-1: self-play), that member's id (-1) and network.
+        self.league = League(c, seed=c.seed)
+        self.nets: dict[int, Policy] = {}
         self.frozen_side = np.full(c.envs, -1, np.int8)
+        self.frozen_id = np.full(c.envs, -1, np.int64)
         self.frozen_net: list[Policy | None] = [None] * c.envs
-        self.snapshots = Cadence(c.pool_every if c.pool_share > 0 else 0)
+        #: The frozen networks the last call passed (`act`).
+        self.passes = 0
+        self.snapshots = Cadence(c.snapshot_every)
         self.gates = Cadence(c.gate_every)
         #: The update of the last gate (-1: none yet).
         self.last_gate = -1
@@ -284,23 +295,23 @@ class Trainer:
             "pending": self.pending,
             "policy": self.policy.state_dict(),
             "optimizer": self.optimizer.state_dict(),
-            "pool": [net.state_dict() for net in self.pool],
+            "league": self.league.state(),
             "rng": {
                 "device": self.device.type,
                 "sampling": self.generator.get_state(),
-                "pool": self.pool_rng.bit_generator.state,
                 "torch": torch.get_rng_state(),
                 "cuda": cuda,
             },
             **run,
         }
 
-    def restore(self, state: dict[str, Any], out: Path | None = None) -> None:
+    def restore(self, state: dict[str, Any], out: Path) -> None:
         """Takes a checkpoint's training state over (`state`'s config is this trainer's), and
-        from the run's directory `out` the latest promoted networks (`promoted/<n>.pt`, outside
-        the checkpoint). The sampling generator's state fits only a device of the same type:
-        resumed on another, the generator starts from the segment's seed instead."""
-        c = self.config
+        from the run's directory `out` the networks outside the checkpoint: the latest promoted
+        ones (`promoted/<n>.pt`) and the league's members (their files). The sampling generator's
+        state fits only a device of the same type: resumed on another, the generator starts from
+        the segment's seed instead."""
+        c, out = self.config, Path(out)
         self.policy.load_state_dict(state["policy"])
         self.optimizer.load_state_dict(state["optimizer"])
         self.updates, self.samples = state["updates"], state["samples"]
@@ -308,40 +319,32 @@ class Trainer:
         self.snapshots.next, self.gates.next = state["next_snapshot"], state["next_gate"]
         self.last_gate, self.last_final = state["last_gate"], state["last_final"]
         self.promoted, self.pending = list(state["promoted"]), state["pending"]
-        if out is not None:
-            self.lineage = [
-                (
-                    e["index"],
-                    load(Path(out) / "promoted" / f"{e['index']}.pt", self.device).frozen(),
-                )
-                for e in self.promoted[-(c.ladder_promoted + 1) :]
-            ]
-        self.pool = []
-        for weights in state["pool"]:
-            net = Policy.for_batch(self.batch, c.hidden, c.embed).to(self.device)
-            net.load_state_dict(weights)
-            self.pool.append(net.frozen())
+        self.lineage = [
+            (e["index"], load(out / "promoted" / f"{e['index']}.pt", self.device).frozen())
+            for e in self.promoted[-(c.ladder_promoted + 1) :]
+        ]
+        self.league.restore(state["league"])
+        self.nets = {m.id: load(out / m.file, self.device).frozen() for m in self.league.members}
         rng = state["rng"]
         if rng["device"] == self.device.type:
             self.generator.set_state(rng["sampling"])
         else:
             self.generator.manual_seed(self.batch_seed)
-        self.pool_rng.bit_generator.state = rng["pool"]
         torch.set_rng_state(rng["torch"])
         if rng["cuda"] and len(rng["cuda"]) == torch.cuda.device_count():
             torch.cuda.set_rng_state_all(rng["cuda"])
 
     def assign(self, envs: np.ndarray) -> None:
-        """Draws the opponent of each of `envs`' new episodes: a frozen network for one side with
-        `pool_share` once the pool holds one, else self-play."""
-        rng, c = self.pool_rng, self.config
+        """Draws the opponent of each of `envs`' new episodes (`League.opponent`): a live member
+        on a uniformly drawn side, or self-play."""
         for e in envs:
-            if self.pool and rng.random() < c.pool_share:
-                self.frozen_side[e] = rng.integers(2)
-                self.frozen_net[e] = self.pool[rng.integers(len(self.pool))]
+            member = self.league.opponent()
+            if member is None:
+                self.frozen_side[e], self.frozen_id[e], self.frozen_net[e] = -1, -1, None
             else:
-                self.frozen_side[e] = -1
-                self.frozen_net[e] = None
+                self.frozen_side[e] = self.league.side()
+                self.frozen_id[e] = member.id
+                self.frozen_net[e] = self.nets[member.id]
 
     def init_from(self, path: Path) -> dict[str, Any]:
         """The learner starts from a saved network (`--init-from`: a run's `best.pt`,
@@ -412,17 +415,25 @@ class Trainer:
             "seconds": sum(row["seconds"] for row in rows.values()),
         }
 
-    def snapshot(self) -> None:
-        """Adds the current network to the pool (replacing a random one when it is full)."""
-        twin = self.policy.frozen()
-        if len(self.pool) < self.config.pool_size:
-            self.pool.append(twin)
+    def join(self, index: int | None = None) -> tuple[Member, Member | None]:
+        """The learner's network joins the league: a snapshot (`league/<id>.pt`), or with
+        `index` the promoted network it just became (`promoted/<index>.pt`, the lineage's copy).
+        Returns the member and the one it retired (its network dropped). The caller writes the
+        files."""
+        if index is None:
+            kind, file, net = "snapshot", f"league/{self.league.next_id}.pt", self.policy.frozen()
         else:
-            self.pool[self.pool_rng.integers(len(self.pool))] = twin
+            kind, file, net = "promoted", f"promoted/{index}.pt", self.lineage[-1][1]
+        member, retired = self.league.join(kind, file, self.samples, self.updates)
+        self.nets[member.id] = net
+        if retired is not None:
+            del self.nets[retired.id]
+        return member, retired
 
     def act(self) -> tuple[Choice, np.ndarray]:
         """Every row's action, the frozen networks' rows overwritten by theirs; and each row's
-        learning side (-1 for no side to move or a frozen network's move)."""
+        learning side (-1 for no side to move or a frozen network's move). `passes`: the frozen
+        networks this call passed."""
         b = self.batch
         choice = self.policy.act(b, self.generator)
         to_move = b.to_move
@@ -437,6 +448,7 @@ class Trainer:
             for name in ("entry", "spell", "target", "second"):
                 getattr(choice, name)[rows] = getattr(c, name)
             choice.cast[rows] = False
+        self.passes = len(groups)
         return choice, np.where(frozen, -1, to_move).astype(np.int8)
 
     def collect(self, stop: Stop | None = None) -> dict | None:
@@ -452,11 +464,15 @@ class Trainer:
         decisions = 0
         episodes = 0
         start = time.perf_counter()
-        pool_episodes = pool_won = 0
+        drawn = self.league.draw(self.samples)
+        #: Per member id: the learner's score sum and games in this rollout.
+        tally: dict[int, list[float]] = {}
+        passes = 0
         for t in range(c.rollout):
             if stop is not None and stop.requested:
                 return None
             choice, side = self.act()
+            passes += self.passes
             r.store(t, b, choice, side)
             live = side >= 0
             decisions += int(live.sum())
@@ -484,20 +500,23 @@ class Trainer:
             self.opened[e, s] = -1
             done = np.nonzero(b.done)[0]
             if len(done):
-                pooled = self.frozen_side[done] >= 0
-                own = done[~pooled]
+                against = self.frozen_side[done] >= 0
+                own = done[~against]
                 res = b.result[own]
                 for value in res[res >= 0]:
                     results[int(value)] += 1
                 truncated += int(b.truncated[own].sum())
-                # The learner's side is the one the frozen network does not play.
-                learner = 1 - self.frozen_side[done[pooled]]
-                pool_episodes += len(learner)
-                pool_won += int((b.result[done[pooled]] == learner).sum())
+                # The learner's side is the one the member does not play.
+                for env in done[against]:
+                    entry = tally.setdefault(int(self.frozen_id[env]), [0.0, 0])
+                    entry[0] += game_score(int(b.result[env]), 1 - int(self.frozen_side[env]))
+                    entry[1] += 1
                 episodes += len(done)
                 self.held_out.check(b.episode_seed[done])
                 self.assign(done)
         self.episodes += episodes
+        # A retired member's episodes count no more (`settle` skips ids it lacks).
+        self.league.settle(tally)
         elapsed = time.perf_counter() - start
         with torch.no_grad():
             obs = torch.from_numpy(b.obs).to(self.device)
@@ -506,6 +525,7 @@ class Trainer:
         frozen = (b.to_move >= 0) & (self.frozen_side == b.to_move)
         self.last_side = np.where(frozen, -1, b.to_move).astype(np.int8)
         ended = int(results.sum()) + truncated
+        games = sum(g for _, g in tally.values())
         return {
             "decisions": decisions,
             "rollout_s": elapsed,
@@ -514,9 +534,14 @@ class Trainer:
             "self_play_episodes": ended,
             "attacker_won": int(results[_ffi.RESULT_ATTACKER]) / max(ended, 1),
             "truncated": truncated / max(ended, 1),
-            "pool": len(self.pool),
-            "pool_episodes": pool_episodes,
-            "pool_won": pool_won / max(pool_episodes, 1),
+            "league": len(self.league.members),
+            "live": list(self.league.live),
+            "drawn": drawn,
+            # The learner's episodes against members and its mean score in them (a draw or a
+            # truncation ½), and the frozen networks a call passed on average.
+            "league_episodes": int(games),
+            "league_score": sum(s for s, _ in tally.values()) / max(games, 1),
+            "frozen_passes": passes / c.rollout,
         }
 
     def update(self, lr: float) -> dict:
@@ -587,7 +612,8 @@ class Trainer:
         return stats
 
     def network(self, **meta: Any) -> dict[str, Any]:
-        """The network alone (`best.pt`): its weights, the config that sizes it, `meta`."""
+        """The network alone (`best.pt`, `promoted/<n>.pt`, a snapshot's `league/<id>.pt`): its
+        weights, the config that sizes it, `meta`."""
         return {
             "format": CHECKPOINT_FORMAT,
             "config": asdict(self.config),
@@ -637,7 +663,7 @@ def train(
     `record.json`), `checkpoint.pt` (the whole training state: at the start, every
     `checkpoint_minutes`, before and after each gate and ladder, at a stop and at the end),
     `promoted/<n>.pt` and `best.pt`. `init_from`: a saved network the learner and best #0 start
-    from (a new run: fresh optimizer, counters and pool), named in the record as its parent.
+    from (a new run: fresh optimizer, counters and league), named in the record as its parent.
     Ctrl+C (or `stop`'s request) stops the run at the next batch call (of a rollout, a gate or a
     ladder) or update boundary, saved (`run.Stop`): `resume` continues it."""
     config = resolve(config)
@@ -673,8 +699,8 @@ def resume(
     state = torch.load(path, map_location="cpu", weights_only=True)
     if state.get("format") != CHECKPOINT_FORMAT:
         raise ResumeError(
-            f"{path} is not a checkpoint of format {CHECKPOINT_FORMAT} (format 1, before the "
-            "gate, E06 T3b: start a new run, --init-from its best.pt)"
+            f"{path} is not a checkpoint of format {CHECKPOINT_FORMAT} (an older one, before the "
+            "league, E06 T4a: start a new run, --init-from its best.pt)"
         )
     config, changed = resumed(Config(**state["config"]), sets)
     if state["finished"] and state["samples"] >= config.samples:
@@ -684,6 +710,12 @@ def resume(
         )
     trainer = Trainer(config, segment=state["segment"] + 1)
     trainer.restore(state, out)
+    # The league's files the checkpoint does not name: snapshots taken after it, or retired
+    # before it (deleted only after the next checkpoint).
+    named = {m.file for m in trainer.league.members}
+    for stale in (out / "league").glob("*.pt"):
+        if f"league/{stale.name}" not in named:
+            stale.unlink()
     trainer.assign(np.arange(config.envs))
     run = Run(out, config, {}, log=log, resume=(state["metrics_length"], state["seconds"]))
     opening = {
@@ -702,6 +734,8 @@ def _go(trainer: Trainer, run: Run, stop: Stop | None, opening: dict) -> Trainer
     config = trainer.config
     stop = Stop() if stop is None else stop
     last_save = time.monotonic()
+    #: Retired snapshots' files, deleted after the next checkpoint (the last one names them).
+    doomed: list[Path] = []
 
     def counters() -> dict:
         return {
@@ -720,10 +754,30 @@ def _go(trainer: Trainer, run: Run, stop: Stop | None, opening: dict) -> Trainer
             )
             save(run.out / "checkpoint.pt", state)
             run.write_record()
+            for path in doomed:
+                path.unlink(missing_ok=True)
+            doomed.clear()
         last_save = time.monotonic()
 
+    def join(index: int | None = None) -> dict:
+        """The learner's network joins the league (`Trainer.join`), a snapshot's file written;
+        returns the record's fields."""
+        member, retired = trainer.join(index)
+        if run.out is not None:
+            if member.kind == "snapshot":
+                (run.out / "league").mkdir(exist_ok=True)
+                save(run.out / member.file, trainer.network(member=member.id, run=run.record.name))
+            if retired is not None and retired.kind == "snapshot":
+                doomed.append(run.out / retired.file)
+        return {
+            "member": member.id,
+            "retired": None if retired is None else retired.id,
+            "league": len(trainer.league.members),
+        }
+
     def promote(how: str) -> None:
-        """The learner becomes the next promoted network and the best; its ladder is pending."""
+        """The learner becomes the next promoted network, the best and a league member; its
+        ladder is pending."""
         index = trainer.promote()
         record = {"type": "promotion", "index": index, "how": how, **counters()}
         trainer.promoted.append({k: record[k] for k in ("index", "how", "samples", "update")})
@@ -734,7 +788,7 @@ def _go(trainer: Trainer, run: Run, stop: Stop | None, opening: dict) -> Trainer
             (run.out / "promoted").mkdir(exist_ok=True)
             save(run.out / "promoted" / f"{index}.pt", network)
             save(run.out / "best.pt", network)
-        run.emit(record)
+        run.emit({**record, **join(index)})
         trainer.pending = {"kind": "ladder", "final": False}
 
     def settle() -> None:
@@ -744,7 +798,7 @@ def _go(trainer: Trainer, run: Run, stop: Stop | None, opening: dict) -> Trainer
             checkpoint()
             if trainer.pending["kind"] == "gate":
                 result = trainer.gate(stop)
-                run.emit({"type": "gate", **counters(), **result})
+                run.emit({"type": "gate", **counters(), **result, "league": trainer.league.table()})
                 trainer.pending = None
                 if result["result"] == "promoted":
                     promote("gate")
@@ -778,8 +832,7 @@ def _go(trainer: Trainer, run: Run, stop: Stop | None, opening: dict) -> Trainer
                     }
                 )
                 if trainer.snapshots.due(trainer.samples):
-                    trainer.snapshot()
-                    run.emit({"type": "snapshot", **counters(), "pool": len(trainer.pool)})
+                    run.emit({"type": "snapshot", **counters(), **join()})
                 if trainer.gates.due(trainer.samples):
                     trainer.pending = {"kind": "gate"}
                     settle()

@@ -8,18 +8,17 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 - **E05 closed 2026-10-20** (T1 to T9 in six increments, each with the user's checkpoint):
   the epic file, its record and the kept design note in `E05-log.md` (§1 to §9, cited as
   `E05-log.md` §n), the environment as built in `docs/07-simulation-and-ai.md` §1.1. Criteria
-  6 to 9 on the user's machine: the bots and `h3 ai eval`, the smoke run's 0.800 against Random,
-  the sweep (about 50 000 steps/s a thread, 497 000 on 24), the verifies with original data on
-  Linux and Windows.
+  6 to 9 met on the user's machine (the throughput: the epic file of E06, "Starting point").
 - **E06 refined 2026-10-20** (AI-Q8; `docs/epics/E06-battle-ai.md`): it starts now beside E23
   with the kinds a player plays on both sides; the neutral share (T7) waits for E23's policy of a
   side without a hero (its T2 to T4). PPO and a league first, search last; runs of a few hours,
-  interruptible and resumable. **Increment 1 done:** T1, T2a (#310; ADR-0026 in #306: the design
-  note `docs/epics/E06-design.md`, the run's config and record), T2b1 (#315: the full checkpoint,
-  Ctrl+C, `--resume`), T2c (#319: C ABI v31). **Increment 2 done:** T3a (#324: the held-out sets
-  v1, the bots' table), T3b (#328: the SPRT gate, promotions, ladders, `--init-from`); the
+  interruptible and resumable. **Increments 1 and 2 done** (#306 to #328: ADR-0026, the design
+  note `docs/epics/E06-design.md`, config and record, the checkpoint and `--resume`, C ABI v31,
+  the held-out sets v1, the bots' table, the SPRT gate, promotions, ladders, `--init-from`); the
   user's hour `t3b-1` (evaluation 21.4 %, the agent at the bots' level, stalling: AI-Q9).
-  **Next:** increment 3 (T4, the league) with AI-Q9 at the user's checkpoint.
+  **Increment 3 refined** (AI-Q9 answered): T4a done (#342, open: the league, `h3env.train.league`;
+  checkpoint format 3, record schema 5), then T4b (the user's two league runs of 60 M samples,
+  `configs/e06-t4.toml` at γ 0.995 and 1.0).
 - **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v31 (E06 T2c: the record's identity, N capped) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q10, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
@@ -66,8 +65,8 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   train pytest`); a run is a TOML config (`python/configs/`, `--set`), its budget and cadences in
   samples; its files go into `python/runs/` (ignored). A piece of training state goes into
   `Trainer.state` and `restore` together, and into `test_a_stopped_run_resumes_to_its_budget`'s
-  comparisons (checkpoint format 2, T3b; the promoted networks stay in `promoted/`, which a
-  resume reads); `resume` checks before `Run(…, resume=…)` cuts the metrics (a refused resume
+  comparisons (checkpoint format 3, T4a; the promoted networks and the league's stay in their
+  files, which a resume reads: a file the checkpoint names is deleted only after the next one); `resume` checks before `Run(…, resume=…)` cuts the metrics (a refused resume
   changes nothing). `h3env.train.run` stays free of torch
   (the package loads its torch modules lazily); `tests/test_run.py` runs without torch
   (to block it: a `torch.py` raising `ModuleNotFoundError` first on `PYTHONPATH`; pytest 9). In a background shell `cd`
@@ -91,13 +90,16 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 
 ## Recent sessions
 
+### 2026-10-20 — E06 increment 3's refinement, T4a (the league)
+
+- The user (AI-Q9): two league runs in T4b (γ 1.0 beside 0.995), T4a in one pull request, 60 M
+  samples a run. T4a: the live set drawn every `live_every` samples, not every rollout
+  (`frozen_passes`); 90 Python tests with torch, 71 without; a CPU run stopped and resumed.
+
 ### 2026-10-20 — E06 T3b's hour (`t3b-1`)
 
-- The user ran `configs/e06-t3b.toml`: record committed, results in `E06-log.md`; AI-Q9
-  (stalling) for T4; the record keeps the ladders' truncations.
+- `t3b-1`'s record committed, its results in `E06-log.md`; AI-Q9 (stalling).
 
 ### 2026-10-20 — E06 T3b (the evaluation gate)
 
-- #324 merged; the user: "no need to cut" T3b. The SPRT gate, promotions, ladders, record schema
-  4, checkpoint format 2, `--init-from`. 87 Python tests with torch (CPU), 69 without; the scoped
-  verify (Python only); a real CLI run in the sandbox (`E06-log.md`).
+- The SPRT gate, promotions, ladders, `--init-from` (the user: no cut; `E06-log.md`).

@@ -1,6 +1,6 @@
 # E06 — Battle AI v1 and the local training pipeline v0
 
-Status: **in progress**, refined 2026-10-20 (AI-Q8); increment 1 (T1, T2a, T2b1, T2c) done; increment 2 (T3a, T3b) done; increment 3 (T4) next · Lane: **ai** · Follows E05 (closed
+Status: **in progress**, refined 2026-10-20 (AI-Q8); increment 1 (T1, T2a, T2b1, T2c) done; increment 2 (T3a, T3b) done; increment 3 (T4a done, T4b next) in progress · Lane: **ai** · Follows E05 (closed
 2026-10-20) · Runs beside E23 (the battle lane: the original's battle AI, the system actor's
 policy), whose neutral side opens E06's neutral share (decision 1)
 
@@ -120,10 +120,19 @@ the user, 2026-10-20: T1 and T2a in one).
   21.4 % of 124 minutes, the agent at the bots' level from 10 M samples on, stalling suspected
   (AI-Q9).
 
+**Increment 3:** T4a, then T4b (refined 2026-10-20, AI-Q9: T4a in one pull request; T4b two
+league runs, γ 1.0 beside 0.995, 60 M samples each).
+
+- [x] **T4a The league** — done 2026-10-20: `h3env.train.league` (PFSP over snapshots and
+  promoted networks, a live set drawn every `live_every` samples) replacing E05's pool,
+  `[league]`, the members' files in `league/`, checkpoint format 3, record schema 5,
+  `configs/e06-t4.toml`; the record in `E06-log.md`.
+- [ ] **T4b The first league runs** (the user's machine) — `e06-t4.toml` at γ 0.995 and at γ 1.0
+  (AI-Q9), 60 M samples each, one of them stopped and resumed for real; both records committed,
+  the stalling compared by the truncations and the ladders.
+
 **Later increments** (cut at each checkpoint; proposed in design §10):
 
-- [ ] **T4 The league** — T4a: PFSP over snapshots and promoted networks with a live set (design
-  §8); T4b: the first multi-hour run, its resume used for real.
 - [ ] **T5 The network and the preview** — the entity network against the MLP; AI-Q7 (b); the
   mana-price experiment; batch size and threads from T9c's table; the observations in place.
 - [ ] **T6 Toward the targets** — runs on the best configuration until decision 7's targets hold,

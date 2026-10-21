@@ -1511,6 +1511,39 @@ window), the user took T6c-2 whole.
   `master` merged in (E08 T27, E23 T2a); `check.sh` all gates (coverage 100 %); the real-asset
   gate passes.
 
+### M3 T7a-1 — The magic animations read (2026-10-21)
+
+On `client/e17-m3-t7a-1`, the user present at the start: T7a split with the user at its seam
+(T7a-1 the code reading alone, from the executable; T7a-2 the harness casting from a hero's spell
+book and the recorded sequences against the reading).
+
+- **Starting point:** `master` at `01ce622` (#341 merged at `c0c955e`, then the battle lane's
+  #340); no client pull request open; the client gates' full check on that code (`verify-once`:
+  all gates).
+- **The reading** (design §7.16): `play_magic_animation` whole (its `show_hit` part), the at-hex
+  player 0x496A10, `mass_spell_animation`, `raise_stack`'s and Armageddon's drawing,
+  `strike_animation`'s magic part, the spell projectile 0x467DB0, `cast_spell`'s opening (the
+  hero's cast frames, Magic Mirror's redirection, the resisted path) and tail (the hero's
+  frames left, the Familiars), every handler's drawing, `creature_cast_action`'s cast group,
+  the creatures' abilities in `striker_effects`, `stack_shot` (Magogs, Liches), the turn and
+  round starts (regeneration, Poison, the Wraiths, the objects' vanishing), morale, fear and
+  luck; every call site of the four players (22, 11, 6, 21) with its animation and sound; the
+  spell records' static sound and animation, the hero DEF records' cast point and frames.
+- **Found:** the handler decides how an animation plays, not its place (seven players); several
+  animations named by a call are never drawn on the paths read (Chain Lightning's 38 and Fire
+  Shield's return 11 mark no stack; Animate Dead plays Resurrection's 50; 4, 13, 43, 44, 52,
+  62, 63, 82 met nowhere); a mass animation never shows its last frame (n − 2 twice); the
+  Liches' cloud is drawn plain though the table marks it translucent; a creature caster's group
+  takes an angle whose sign and points differ from the shot's (a level target nearby: 17),
+  where VCMI takes the shot's; good morale's log line comes after its animation, bad morale's
+  and fear's before. All *provisional* until T7a-2's recordings.
+- **The map:** 16 entries added (the at-hex player, the projectile, `battle_show_field`, the
+  dissolve's two, DrawTransparent's, four `cast_spell` sites, six projectile tables), 10
+  completed (`mass_spell_animation` and `enchanter_shot` now read); `structs.toml`: the stack's
+  glow +0x450, the manager's +0x13300, +0x547C's users.
+- **Checked:** `scripts/exe.py check` and `cited` (every cited address covered), `cargo xtask
+  check-exe-map` and `check-docs`; `verify --scope client`. No code changed: no capture needed.
+
 ## Accepted review lists (M1, M2)
 
 Moved from the epic file on 2026-10-20 (less start-up reading), unchanged.

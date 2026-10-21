@@ -53,34 +53,27 @@ the experience no further than the threshold of the hero's level (the details st
 original keeps such a hero at its level with less experience, a state the game's setup does not
 make (D-21).
 
-### 8. The original's choice between two offers (HER-LVL-006; D-20)
+### 8. Built by T28
 
-- Decision 55: **the computer's evaluation is ported**: `ai_level_up_choice` (0x52BBD0) with
-  `ai_secondary_skill_value` (0x524690, 0x684 bytes) and `ai_takes_new_secondary_skill` (0x524DD0,
-  0xF3 bytes): both offers known or both new, the higher of the two values, the first on a tie;
-  otherwise 0x524DD0 decides whether the new skill is taken (§2.5, §9).
-- **Read by T25** (survey §10): no draws; a skill's value (§10.2, the flag-clear column at
-  load) from the hero's skills, Wisdom, its primary skills with the worn artifacts (Spell Power
-  and Knowledge held to 1–99, Attack to 0–99), two tables (Archery's, Estates'), the army's
-  worth A = 1 000 and B = 500 and **the map's terrain shares** (§10.3: water share and the rough
-  share per Pathfinding level, over the coast-flagged tiles only: A-11, reproduced in every
-  profile, decision 60); a new skill against an advance by 0x524DD0's ranking (§10.5). E3-6's four
-  choices follow from it (§10.6).
-- **Its place**: an `h3-heroes` rule (the hero model beneath the contexts), so the game's levels at
-  load, the system actor's default (§13) and later E10's computer players call the same function.
-  **Its inputs**: the hero's details and class, the two offers, the army's worth (the setup's
-  1 000 and 500; E10 passes its own with the flag-set path) and the map's shares, which the game
-  computes once from the static map at the build (§12) and passes in. Only the flag-clear path is
-  built in increment 4; the flag-set one reads E10's computer-player state (§10.4).
-- **The shares' arithmetic** is the original's f64 (counts to f64, a division, × A, / 4 or / 2,
-  truncated; a NaN, on a map without a coast, gives 0): through `kernel::num`, or an integer form
-  a test shows equal for every count the maps can have.
+Built by T28 (2026-10-21, `adventure/e08-t28`; `E08-log.md`): `h3_heroes::original_choice(details,
+ruleset, level_up, worth, shares) -> Choice` (HER-LVL-006; the flag-clear path of 0x52BBD0,
+0x524690, 0x524DD0), `ArmyWorth` (`SETUP`: 1 000 and 500) and `TerrainShares { tiles, water,
+rough }` (the map's counts; the evaluation divides them in the original's f64 through
+`h3_kernel::arith::X87`, 0 without tiles); `ADV-QUIRK-14`. What the game side needs from it:
+**the shares** are counted once from the static map at the build (§12: over the coast-flagged
+tiles that are not rock, the water tiles and the tiles whose straight step costs more than 100
+by Pathfinding level 0–2, from the terrains' costs by Pathfinding level of §1) and passed in;
+the choice takes the hero before the level's answer and the drawn `LevelUp` (it raises the
+level's primary skill itself). The flag-set path (E10's computer players) reads
+computer-player state: the army's AI values, the effectiveness words, `ai_school_value`
+(survey §10.4).
+
 - **The levels at load** seen from the hero (the game's sequence is GAM-SET-002, §12): after the
   custom skills, army, spells and artifacts, the experience set to 0 and the custom experience
   gained (§3), then each pending level drawn with the original's source and S (§4), two offers
-  chosen by this rule with the setup's defaults, one learned, none the primary only, each applied
-  as `GainLevel` (§7); the spell points after (HER-MAN-001). In `strict-fixed` the owner's stream
-  draws (D-14's flag).
+  chosen by `original_choice` with `ArmyWorth::SETUP` and the map's shares, one learned, none
+  the primary only, each applied as `GainLevel` (§7); the spell points after (HER-MAN-001). In
+  `strict-fixed` the owner's stream draws (D-14's flag).
 
 ### 9. Rule ids and quirks proposed
 
@@ -95,7 +88,7 @@ make (D-21).
   **ADV-QUIRK-11** the levels past 74 wrap (A-7), **ADV-QUIRK-12** a limit above 75 caps at a
   wrapped threshold (A-8), **ADV-QUIRK-13** a primary skill wraps at 128 (A-9): fixed, no flag;
   **ADV-QUIRK-14** the computer's terrain shares count only coast-flagged tiles (A-11, survey
-  §10.3): the original's in every profile, no flag (decision 60), written with T28.
+  §10.3): the original's in every profile, no flag (decision 60), written by T28.
   The two flags are registered (T26b): 27 `quirk.adventure.level_up_from_seed`, 28
   `quirk.content.elementalist_offer_intervals`; `ADV-QUIRK-10`'s entry is written (its data
   quirk is complete), `ADV-QUIRK-9`'s waits for its rule (T29).
@@ -244,7 +237,7 @@ confirmed at its checkpoint):
 | Round | Tasks | Content |
 |---|---|---|
 | 1 | **T25** + **T26** | Done. Cut (decision 59): **T25** (2026-10-20: survey §10; ADV-Q17, decision 60), **T26a** (2026-10-20, #325: ADR-0013 and -0017 amended), **T26b** (2026-10-20, `shared/e08-t26b`, decision 61: the hero parameters' level data and offered skills, the class's `offer_intervals`, `[[hero_class_override]]`, the two flags, the packs and the gap-fill, the bumps and the replays' headers; part A §1, §10) |
-| 2 | **T27** + **T28** | T27 done (2026-10-20, `adventure/e08-t27`, decision 62). T27: `h3-heroes`' progression (part A §2–§7: levels, the bound, the limit's cap, the draw source and the original's generator, the primary skill, the offers, `GainLevel`, the counters, the checks; HER-EXP-002, -003, HER-LVL-001 to -005; `ADV-QUIRK-10` to `-13`). T28: the original's choice ported, its flag-clear path (part A §8, HER-LVL-006; survey §10; `ADV-QUIRK-14`) |
+| 2 | **T27** + **T28** | Done: T27 (2026-10-20, `adventure/e08-t27`, decision 62), T28 (2026-10-21, `adventure/e08-t28`). T27: `h3-heroes`' progression (part A §2–§7: levels, the bound, the limit's cap, the draw source and the original's generator, the primary skill, the offers, `GainLevel`, the counters, the checks; HER-EXP-002, -003, HER-LVL-001 to -005; `ADV-QUIRK-10` to `-13`). T28: the original's choice ported, its flag-clear path (part A §8, HER-LVL-006; survey §10; `ADV-QUIRK-14`) |
 | 3 | **T29** + **T30** | T29: the game's setup and build (§11, §12: the seeds, the limit and banned skills, the terrains' costs by Pathfinding level and the map's shares, levels at load, the import's refusal lifted, the 5 shipped maps; GAM-HER-002, GAM-SET-002; `ADV-QUIRK-9`). T30: the level-up as a decision (§13: the answers, the events, the observation, the system actor's default, the battle's levels; GAM-DEC-002, GAM-BAT-008) |
 | 4 | **T31** + **T32a** | T31: the env, replays, fixtures, properties and benchmarks (§14). T32a: batch E4's spec and recipe (§16; `cross-lane`) |
 | 5 | **T32b** + **T33** | T32b: batch E4 run on the harness. T33: the scoring (the rules it covers `verified` or reopened), the audit against the exit criteria, increment 4 closed, the next increment refined |
