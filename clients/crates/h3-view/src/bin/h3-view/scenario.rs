@@ -224,7 +224,11 @@ pub fn effect_skills(
         let wanted: CompiledHeroEffect = match *effect {
             BattleEffect::Morale { amount, affects } => HeroEffect::Morale { amount, affects },
             BattleEffect::Luck { amount, affects } => HeroEffect::Luck { amount, affects },
-            ref other => return Err(format!("{other:?}: no skill gives it on the original's map")),
+            ref other => {
+                return Err(format!(
+                    "{other:?}: no skill gives it on the original's map"
+                ));
+            }
         };
         let (number, level) = core
             .skills()
