@@ -453,3 +453,25 @@ fn a_hero_that_wins_again_before_it_answers_draws_nothing_more_until_then() {
         .collect();
     assert_eq!(levels, [2, 3]);
 }
+
+// covers: GAM-DEC-002, HER-LVL-006
+#[test]
+fn the_system_actors_default_takes_the_offer_the_original_chooses() {
+    let rules = rules();
+    let mut answers = Vec::new();
+    for seed in 0..40 {
+        let mut setup = setup();
+        setup.heroes[0].details.experience = Some(950);
+        let game = GameState::new(&rules, &setup, seed).unwrap();
+        let (ended, _) = end(&game, &rules, &won_by(BattleSide::Attacker, 2));
+        let (_, level_up) = ended.open_level_up(RED).unwrap();
+        let details = ended.hero(RED_HERO).unwrap();
+        let shares = ended.adventure().map().terrain_shares();
+        let choice = original_choice(details, rules.core(), &level_up, ArmyWorth::SETUP, shares);
+        let answer = default_answer(&ended, &rules, RED).unwrap();
+        assert_eq!(answer, Answer::of(choice));
+        answers.push(answer);
+    }
+    // Over the seeds' draws the original takes either offer.
+    assert!(answers.contains(&Answer::First) && answers.contains(&Answer::Second));
+}
