@@ -30,6 +30,14 @@ Sorted by destination at E05's audit (T9a, 2026-10-19); the origin stays in brac
 done: BAT-Q33's point for E05 (AI-Q3, ADR-0025 point 6), the `h3-game` coverage gap of a pending
 Pass offer (fixed by the adventure lane's fixed tests, #266).
 
+- 2026-10-21 (the battle lane, E23 T2b, `shared/e23-t2b`, `cross-lane` with the user's consent;
+  for your information, nothing to do): BAT-QUIRK-25 (`quirk.battle.original_ai_slips`, registry
+  position 29) is on in the faithful profiles, so the faithful core ruleset hashes moved
+  (`base:faithful` `0xe6839bfb42ebe118`, `synthetic:faithful` `0x203012933e60e190`; strict-fixed
+  unchanged) and `python/records/bots-report-v1.json` was regenerated (`h3 ai eval --set
+  report-v1`): only `engine.core` moved, every rate is the same (the flag changes only the
+  original's battle AI's estimates, which no bot plays). `h3_battle_ai::POLICY_VERSION` is 2 (the
+  Magogs' and Liches' area value, the Cyclops's wall shot); the function is yours at E23 T4.
 - 2026-10-20 (the adventure lane, E08 T27, `adventure/e08-t27`, `cross-lane` with the user's
   consent, E08 decision 62; for your information, nothing to do): `h3_heroes::HeroDetails` gained
   `offered` (the levels of the last Wisdom and school offers) and its validation refuses a level

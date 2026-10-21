@@ -262,7 +262,8 @@ dev_external = []
 layer = "adapter"
 logic = false
 # The adventure crates: the adventure commands in the adventure-owned src/adventure/ (ADR-0017 point 8).
-deps = ["h3-kernel", "h3-content", "h3-content-battle", "h3-contracts", "h3-battle", "h3-pack-battle", "h3-sim", "h3-adventure", "h3-game", "h3-map", "h3-pack-adventure"]
+# h3-battle-ai: the battle AI's gated benchmark, `h3 bench-computer` (ADR-0027 point 11, E23 T2b).
+deps = ["h3-kernel", "h3-content", "h3-content-battle", "h3-contracts", "h3-battle", "h3-pack-battle", "h3-sim", "h3-adventure", "h3-game", "h3-map", "h3-pack-adventure", "h3-battle-ai"]
 external = ["serde", "toml"]
 dev_deps = []
 dev_external = []
