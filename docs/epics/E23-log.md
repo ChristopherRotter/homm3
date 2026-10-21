@@ -812,3 +812,9 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   Lucid Pools (a Naga Queen worth more at Advanced, a Behemoth at Expert), no chain or area spell
   that hurts the side's Archangels more than a Peasant beside them. The random-battle property
   (`harvested_computer.rs`) now plays the casts.
+- **A blind check** (a fresh agent, the disassembly against the port with the slips on): every
+  function agrees. Two notes, no change: 0x5A61F0 tests a chain candidate as cast by the side
+  opposite its own record side (only the Orb of Vulnerability's negation depends on it; the
+  estimate keeps the rules' search, BAT-Q28; §7.50); the agent read the slip-off bolts' missing
+  hero bonuses as wanted for the chain and area spells too, which the rules give the hero's
+  (BAT-MAG-049, §7.21's review re-read).

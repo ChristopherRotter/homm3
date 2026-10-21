@@ -4943,7 +4943,11 @@ The damage through `fild`, `fstp dword`, `fmul` of the factor, `_ftol`; at most 
 by mastery, the marks cleared first and set per strike; the next stack from 0x5A61F0 with its flag
 0, whose candidate test is then the factor above 0 (0x5A6299: `fcomp 0.0`, `test ah, 0x41`) with
 no roll; the damage halved by `cdq; sub; sar 1` after a found next stack. The sums' test (0x437283
-to 0x437304) as §7.43, the same code as 0x437040's (0x437103 to 0x437161).
+to 0x437304) as §7.43, the same code as 0x437040's (0x437103 to 0x437161). One more detail of 0x5A61F0 (found by the blind re-read): it tests each candidate as cast by
+the side opposite the candidate's own record side (`ebx`, 0x5A6269), not by the caster's; for
+the neutral Chain Lightning only the immunity negation (the Orb of Vulnerability) depends on it.
+The estimate takes the rules' search (BAT-MAG-006, the caster's side), whose order BAT-Q28 holds
+open.
 
 **Slips:** none new; slip 7 (survey §4) is built under BAT-QUIRK-25. **Draws:** none of their own;
 the dragon's context draws through its predictions (§7.42), which its value never reads (the port
