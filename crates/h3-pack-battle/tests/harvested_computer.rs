@@ -24,12 +24,16 @@ fn pick(rng: &mut Rng, n: usize) -> usize {
 
 /// Valid details of a random hero: level 1 to 30, primary skills 0 to 20, Tactics, Artillery,
 /// First Aid and Ballistics each at a random level (none to Expert), each war machine's artifact
-/// half the time, a spell book with half the spells and some mana.
+/// half the time, a spell book with half the spells and some mana; the level's experience
+/// (HER-EXP-002, E08 T27).
 fn details(r: &BattleRuleset, rng: &mut Rng) -> HeroDetails {
+    let hero_type = HeroTypeId::from_index(pick(rng, r.hero_types().len())).unwrap();
+    let level = u8::try_from(1 + rng.below(30)).unwrap();
     let mut d = HeroDetails {
-        hero_type: HeroTypeId::from_index(pick(rng, r.hero_types().len())).unwrap(),
-        level: u8::try_from(1 + rng.below(30)).unwrap(),
-        experience: 0,
+        hero_type,
+        level,
+        experience: h3_heroes::experience_for(r.hero_params().unwrap(), level),
+        offered: Default::default(),
         primary: [0; 4].map(|_| u8::try_from(rng.below(21)).unwrap()),
         skills: vec![],
         worn: vec![],
