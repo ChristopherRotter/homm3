@@ -1457,14 +1457,56 @@ fn a_hero_visit_ends_the_move_and_an_own_hero_blocks() {
             error: StandError::Occupied
         }
     );
-    // Down onto a hero on a tile not visited from above: the visit is the hero's.
+    // Blue's hero 4 stands on the Cartographer's tile, not visited from above: no step down onto
+    // it from the three tiles above, the visit a hero's or not (ADV-OBJ-004; batch E4's E4-10:
+    // the original finds no path and starts no battle, E08 T33). Straight down, down-right,
+    // down-left.
+    for path in [
+        &[p(1, 0), p(1, 1)][..],
+        &[p(1, 1)],
+        &[p(1, 0), p(2, 0), p(1, 1)],
+    ] {
+        assert_eq!(
+            rejected(&mut state, &rules, RED, 1, path),
+            E::FromAbove {
+                step: path.len() - 1
+            }
+        );
+    }
+    // The query's path to it goes round: from (0, 1), 1300 - 100 - 100.
+    let reach = state
+        .reach(&rules.0, &rules.1, &[], HeroId::new(1))
+        .unwrap();
+    assert_eq!(reach.points_left(p(1, 1)), Some(1100));
+    assert_eq!(reach.path(p(1, 1)), Some(vec![p(0, 1), p(1, 1)]));
+    // Red's hero 1 above it: hero 4 leaves its tile toward none of the three tiles above, a
+    // hero's visit included (ADV-OBJ-004).
     let mut events = Vec::new();
-    let down = AdventureCommand::MoveHero {
+    let step = AdventureCommand::MoveHero {
         hero: HeroId::new(1),
-        path: vec![p(1, 0), p(1, 1)],
+        path: vec![p(1, 0)],
+    };
+    state
+        .apply(&rules.0, &rules.1, &[], RED, &step, &mut events)
+        .unwrap();
+    assert_eq!(hero(&state, 1), (p(1, 0), 1200));
+    assert_eq!(
+        rejected(&mut state, &rules, BLUE, 4, &[p(1, 0)]),
+        E::FromAbove { step: 0 }
+    );
+    // The query's path to red's hero goes round: from (0, 1), 1300 - 100 - 141.
+    let reach = state
+        .reach(&rules.0, &rules.1, &[], HeroId::new(4))
+        .unwrap();
+    assert_eq!(reach.points_left(p(1, 0)), Some(1059));
+    assert_eq!(reach.path(p(1, 0)), Some(vec![p(0, 1), p(1, 0)]));
+    // From the side the visit is the hero's: a battle on the chart's tile.
+    let side = AdventureCommand::MoveHero {
+        hero: HeroId::new(1),
+        path: vec![p(0, 1), p(1, 1)],
     };
     let outcome = state
-        .apply(&rules.0, &rules.1, &[], RED, &down, &mut events)
+        .apply(&rules.0, &rules.1, &[], RED, &side, &mut events)
         .unwrap();
     let battle = outcome.battle.unwrap();
     assert_eq!(
@@ -1476,19 +1518,6 @@ fn a_hero_visit_ends_the_move_and_an_own_hero_blocks() {
         ),
         (HeroId::new(4), p(1, 1), crate::testing::GRASS, None)
     );
-    // Blue's hero 4 stands on the Cartographer's tile: it leaves it toward none of the three
-    // tiles above, a hero's visit included (ADV-OBJ-004).
-    assert_eq!(hero(&state, 1).0, p(1, 0));
-    assert_eq!(
-        rejected(&mut state, &rules, BLUE, 4, &[p(1, 0)]),
-        E::FromAbove { step: 0 }
-    );
-    // The query's path to red's hero goes round: from (0, 1), 1300 - 100 - 141.
-    let reach = state
-        .reach(&rules.0, &rules.1, &[], HeroId::new(4))
-        .unwrap();
-    assert_eq!(reach.points_left(p(1, 0)), Some(1059));
-    assert_eq!(reach.path(p(1, 0)), Some(vec![p(0, 1), p(1, 0)]));
 }
 
 // covers: GAM-BAT-001
