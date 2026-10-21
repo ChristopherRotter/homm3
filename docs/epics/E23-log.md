@@ -878,3 +878,37 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
 - **A blind check** (a fresh agent, the disassembly against the port with the slips on): every
   function agrees. One note, no change: the original hard-codes the Ogre Mage's mastery 2 and its
   rounds 6, the port reads the ability's mastery and power (2 and 6 in the packs).
+
+## T4b2 — the predictions (2026-10-22, increment 5)
+
+- **The checkpoint** (the user, 2026-10-21): T4b2 whole (a cut into the shooters' predictions
+  first, or the prediction mode first, was offered and declined). The creature cast listing's gap
+  that T4b1 found was fixed first in a PR of its own (#MASS, `cross-lane`: `creature_cast_targets`
+  lists `None` for a creature's mass version; the AI lane's mask gains it).
+- **The reading** (`installation.md` §7.52): the run's pass-over tests (any duration of Blind,
+  Stone Gaze, Paralyze; the Catapult by creature), its controller test, only actions 7 and 6
+  counting; the flag's readers in both turns (the value 0x435B90 is 0 when either stack has no
+  hit points left; the shooter's target, the threat records, the walker's candidates, the blocked
+  shooters, the multi-headed danger pass such a stack over; the plan's counts, the floor and the
+  last retaliation read the hit points left); in a prediction the walker asks no cast, gives its
+  walks no careful flag and of its fallbacks keeps only the attack after all; 0x4224E0's order
+  (the multi-headed record bit set before the hit-point test; Fire Shield before the damage; the
+  breath after it, unreflected); the last search is the predicted walker's own map (its run-up,
+  and the mark's cost for a retaliation); 0x4369C0's context keeps +9 clear; the enemy beaten
+  passes over the war machines (the arrow towers among them).
+- **The port.** `h3-battle`'s `computer`: `Planned` (the table by stack id, 0x4430D0's cap),
+  `Context::predicting`, `predicts`, `left`, `spent`; `predicted_shot` (0x41F060 with the flag:
+  the context predicting, no wall shot); `fire_shield_estimate` (0x422440). `aim.rs`: the value
+  (`strike_value`, `kill_shot_value` through `pair_left`), the shooter's target (`pick`), the
+  turns (`turns` with the planned damage). `h3-battle-ai`: `predict.rs` (`plan`, the run, the melee
+  prediction, the strike), `order::list`, `Walker::predicting` and the prediction's branches in
+  the walker, its plan, scores, gain and fallbacks; `spells.rs`'s `beaten` and the attack bonus's
+  0; the scan and the dragon run the predictions first. `POLICY_VERSION` 8.
+- **Found and decided** (the user): the walker's candidates hold a hypnotized walker itself (no
+  test in 0x421680); a Harpy without retaliation valued its own strike and planned a move and
+  attack on itself, which the engine refuses. The predictions' draws moved the harvested
+  property's stream onto it. The port leaves the walker out (BAT-STUB-10, BAT-Q58).
+- **Kept apart** (documented): the planned damage is the decision's own (the original keeps it on
+  the records until the next prediction, read only by a prediction, the context and its fill); a
+  predicted walk, wait or fallback other than the attack after all is not built (it plans and
+  draws nothing, ADR-0027 point 11); the run's own battle context (0x422893) is unused.
