@@ -3597,7 +3597,7 @@ otherwise), A-12 fix-optional, D-26 the original's way, the scope and batch E5 a
 Asked again with context: Cursed Ground's place in movement and A-12's tie to it. The survey's §8,
 §9 and §12, the queue (T34b ready) and the handoff record it on the same branch (#372).
 
-### Increment 5, round 1: T34b, the ADR amendment drafts, the design note and the cut (2026-10-22, `adventure/e08-t34b`)
+### Increment 5, round 1: T34b, the ADR amendment drafts, the design note and the cut (2026-10-22, `adventure/e08-t34b` #375)
 
 **The cut** (decision 76; asked at the start, `AskUserQuestion`): T34b whole, one session and one
 pull request (not by crate as T24b, recommended; not both drafts first; not the hero side with the
