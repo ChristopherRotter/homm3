@@ -6,8 +6,11 @@
 //! attacks it within one turn, else walks towards the plan's hex (0x41F580). Nothing chosen:
 //! Wait on Hard and above or for a human side, outside the wait phase; else Defend.
 //!
-//! Not built yet (BAT-STUB-4): the hex scores (0x4214F0, 0x421590, 0x420260, 0x41FB60; E23 T3b)
-//! stand at 0 and "the stronger side" (0x420A80; T3c) is false; the last retaliation's gain
+//! The hex scores (0x4214F0, 0x421590, 0x420260, 0x41FB60; BAT-AI-007) come from [`scores`]: the
+//! plan adds the score of its hex and the walk holds back on Hard and above rather than step onto
+//! a hex that scores worse (BAT-AI-006).
+//!
+//! Not built yet (BAT-STUB-4): "the stronger side" (0x420A80; T3c) is false; the last retaliation's gain
 //! (0x41F3B0), the fallbacks (0x41F920, 0x420760, 0x4208F0), a besieger's walk to its wall and a
 //! defender holding the walls (0x4213F0) are T3c's; the creature casts (0x421280) T4's. The
 //! walker's turn in the tactics phase is T6's (BAT-STUB-5).
@@ -21,9 +24,10 @@ use h3_kernel::Rng;
 use h3_kernel::arith::{DOUBLE_BITS, X87};
 
 use crate::hexes::{self, Shape};
+use crate::scores;
 
 /// Hexes a table of hex scores covers.
-const HEXES: usize = 256;
+pub(crate) const HEXES: usize = 256;
 
 /// The draw of a candidate's value, percent (0x421B02: `random(75, 100)`).
 const DRAW: (u32, u32) = (75, 100);
@@ -71,7 +75,7 @@ pub(crate) struct Walker<'a> {
     side: BattleSide,
     ctx: Context,
     map: Map,
-    /// The hex scores (T3b: all 0).
+    /// The hex scores (BAT-AI-007).
     scores: Scores,
     /// The living stack on each hex (0x4E7170).
     on: [Option<StackId>; HEXES],
@@ -117,6 +121,8 @@ impl<'a> Walker<'a> {
                 }
             }
         }
+        let ctx = computer::context(state, ruleset, side);
+        let scores = scores::build(state, ruleset, (id, side), &ctx);
         Self {
             state,
             ruleset,
@@ -124,17 +130,15 @@ impl<'a> Walker<'a> {
             id,
             me: &state.stacks()[id.index()],
             side,
-            ctx: computer::context(state, ruleset, side),
+            ctx,
             map: computer::map(state, ruleset, id, side),
-            // stub: BAT-STUB-4
-            // The hex scores (§7.35 step 1, §7.36): T3b.
-            scores: [0; HEXES],
+            scores,
             on,
             normal: computer::difficulty(state) > 0 || computer::human(state, side),
         }
     }
 
-    /// The walker with the hex scores `scores` (the tests' stand-in for T3b's).
+    /// The walker with the hex scores `scores` (the tests' scores by hand).
     #[cfg(test)]
     pub(crate) fn scored(self, scores: Scores) -> Self {
         Self { scores, ..self }

@@ -2,7 +2,7 @@
 
 Status: **in progress**, refined 2026-10-19 (BAT-Q52); T1a1 to T1a4 done (the cuts confirmed
 2026-10-20), T1c done (BAT-Q53, BAT-Q54); T1a5 done as cut (part C, §7.42 to §7.45); T1a5e (the spell evaluators) done (§7.46); T1b done, ADR-0027 accepted (BAT-Q55); T2 done (T2a the crate and the plain shooters, T2b the area value, the wall shot, the benchmark), the budget
-set; T3 cut in four, T3-0 and T3a done, T3b next · Follows E05 (the
+set; T3 cut in four, T3-0, T3a and T3b done, T3c next · Follows E05 (the
 AI lane, done) · Followed by E06 (training: this policy holds the neutral seat; AI-Q1) ·
 The battle lane's, later the AI lane's (BACKLOG).
 
@@ -185,9 +185,10 @@ found after that decision) belong to the neutral side's map too and are read (§
     of 75 to 100 %; the best) and the walk 0x41F580 (BAT-AI-006); Wait on Hard and up, else
     Defend; the hex scores 0 and "the stronger side" absent until T3b and T3c (BAT-STUB-4;
     `installation.md` §7.47; the log).
-  - [ ] **T3b The hex scores and the hold-back** — the Fire Walls, the moat under SoD rules, the
-    enemies' reach with the multi-headed strike, the crowding and breath lines with the area
-    threat (§7.36); the walk's score test and its Wait on Hard and up (§7.38).
+  - [x] **T3b The hex scores and the hold-back** (2026-10-21; the user: whole) — the Fire Walls,
+    the moat under SoD rules, the enemies' reach with speed + 1 and the multi-headed strike, the
+    crowding and breath lines with the area threat and the enemy hero's area spell (BAT-AI-007,
+    §7.48; slips 3, 18, 19); the walk's hold-back now reads them (the log).
   - [ ] **T3c The odds and the ends** — the stronger at range 0x420A80 with the hero's value
     (§7.39), the last retaliation's gain 0x41F3B0, the fallbacks (guarding a shooter, the step to
     safety), the besieger's walk to its wall, holding the walls with the walls test's slip

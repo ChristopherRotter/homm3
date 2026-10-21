@@ -4702,3 +4702,60 @@ cells, marks and stops; the difficulty and `human`. **Draws:** 0x421B02 per cand
 **Readings at risk:** none beyond §7.35 to §7.38's (the walker's draw and its comparisons,
 batch rows W1 to W3).
 
+
+### 7.48 Code reading: the hex scores re-read for the port (E23 T3b, 2026-10-21)
+
+Read again in full for E23 T3b (the hex scores, BAT-AI-007): 0x4214F0, 0x421590, 0x420260 with its
+map 0x4B2DA0, 0x41FD60 with 0x420060, 0x41FB60, 0x41F920 and 0x5A8090's factor for the area spells.
+§7.36 stands; these are the details the port needs. Insight only, nothing copied (Q29).
+
+**0x4214F0, the Fire Walls.** Over the 187 hex records (+0x1C4, stride 0x70) a hex with flag `0x10`
+takes its object's value (+0xC) and caster side (+9) and calls 0x5A78E0 (the value, spell 13, the
+caster side's hero, the acting side's hero, the stack, no message): the trigger's damage (§7.15)
+**without the trigger's test 0x5A8090 (`f > 0`)**, so an immune stack's score drops as any. Valued
+by 0x442FD0 with **the context's least attack bonus (+0) for both bonuses** (0x42155B), no shot
+flag and the desperate mode (+8); unclamped.
+
+**0x421590, the moat** (0x4216FF calls it only with `[game]+0x1F698` ≥ 2): with the moat flag
++0x53A8 the 11 hexes of 0x63BCE8, with +0x53A9 also the 11 of 0x63BCF4, but 95 (94) while +0x53A4
+is not 3; each loses 0x442FD0 of the town's moat damage (0x63BD18), again with the least attack
+bonus for both (0x4215EC); unclamped.
+
+**0x420260's map.** 0x4B2DA0 with the enemy, its records' side (the context's +0x24), range and
+speed both `speed + 1`, no tactics flag. 0x4B3400 counts with that speed, not the stack's: a stop
+costs `s − c mod s`, a mark from a stop `+ s`, and with the range within the speed (always here)
+0x4B378D refuses every mark from a stop or from a position whose other hex is one; a flyer passes
+over hexes by its own speed (0x4B39E7). 0x4B2DA0 then sets the hex record's +0x4A on each position
+reached within the speed (+0x4B on its other hex), so a stack's position hex holds +0x4A only by
+the marks. The test that the enemy can strike a stack this turn reads +0x4A at the stack's
+position and its cell's cost against the enemy's own speed (0x420407). The reached cells (byte +4,
+bit `0x1`) include the start and hexes flown over. A two-hex enemy's hex beside a reached cell is
+the neighbour table's (+0x13468) in direction 1 (facing right) or 4.
+
+**0x41FD60.** One 187-byte array of marks for all the struck stacks and one per stack. The strike
+positions go into a vector: the struck stack's neighbours 0 to 5 (0 to 7 for a two-hex one) through
+0x523DF0 at its position, then, for a two-hex enemy, **0x523DF0 of the struck stack at its position
+∓ 1** (− 1 for an enemy facing right, directions 3 to 5; + 1 facing left, 0 to 2): a hex index, so a
+two-hex struck stack's own shift by its facing applies again (0x41FEF8). Positions from the last
+found, at each the directions from the last; a hex off the field (−1, 187 and above) is skipped. In
+a prediction a struck stack without hit points left after the planned damage is left out
+(0x41FE2E).
+
+**0x41FB60.** One array of marks; each stack's neighbours from the last direction (0x523DF0); `T`
+only when it is not 0, then the clamp; the breath hex through 0x523D90 with the stack's facing for
+6 and 7, `K` subtracted and clamped there even when `K` is 0 (a score below the floor rises to it).
+
+**0x41F920.** The mask's bits by record index (+0xF8) over the other side's records, without a
+test that the stack lives (the mask holds only living ones); the ball shooters' estimates with the
+shot flag 1, the breath's with 0, both capped. The hero: of the spells 10 to 69 that +0x430 holds,
+20 to 23; the mastery 0x4E5080 on the battlefield, the cost 0x4E5240 with the other side's army
+(the rule's cost) against the spell points +0x18; the damage 0x5A7890 (the hero's power for the
+battle +0x53D4, the mastery, the hero, the other side's hero, S, no message); 0x5A8090 (the spell,
+the side, S, flags 0, 1, 0: the middle one matters only for Sacrifice's case) returns `f` on the
+FPU (`f32(f − r)`, beside an aura times the `f32` 0.8 at 53 bits); the damage `fild`, stored as an
+`f32`, `fmul`, 0x6179D4. The largest from 0 (a strictly greater one replaces). The result is
+0x442FD0 of `D` when `D > 0`, else `D` itself.
+
+**Slips** (survey §4, BAT-QUIRK-25): the Fire Wall's missing immunity test (slip 18) and the least
+attack bonus for both bonuses at the two hazards (slip 19). **Draws:** none. **Readings at risk:**
+none beyond §7.36's (batch rows W2, W4, S3).

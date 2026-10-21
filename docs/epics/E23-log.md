@@ -632,3 +632,62 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   (worth 1), and with its hex scored high stays; the walk with scores by hand (holding back on
   Hard, the whole-turns rule without the flag, no path); the hex geometry; the property over
   random battles with Harpies; on the harvested packs the Cyclopes blocked by a defender walk.
+
+## T3b — the walker's hex scores (2026-10-21, increment 4)
+
+- **The checkpoint** (the user, 2026-10-21): T3b whole, one pull request (the cut into the enemies'
+  reach and the hazards was offered and declined).
+- **The reading** (`installation.md` §7.48): §7.36's builders re-read in full for the port, the
+  call sites in 0x421680's head, 0x4B2DA0's marks and positions (+0x4A, +0x4B), the speed argument
+  of 0x4B3400 (a stop's cost, a mark from a stop, the refusal 0x4B378D with the range within the
+  speed, a flyer's pass-over by its own speed 0x4B39E7), 0x41FD60's positions by index (0x41FEF8),
+  0x41F920's area spells through 0x5A7890 and 0x5A8090 (the flags 0, 1, 0; `f` on the FPU, the
+  damage stored as an `f32`). **Two new slips** (survey §4, BAT-QUIRK-25): the Fire Wall's scores
+  value the damage without the trigger's immunity test (slip 18), and both hazards pass the
+  context's least attack bonus for both bonuses (slip 19). Built with them: slip 3 (the
+  multi-headed value's sign).
+- **The port.** `h3-battle`: the pathfinder's query takes the turn's speed (`Query::speed`; every
+  earlier caller passes none, the stack's own) and refuses the marks from a stop with the range
+  within it (unobservable for the earlier callers: their range is 127 or reads no marks);
+  `computer` gains the enemy's reach map (`reach_map`: speed + 1 as range and speed, the player's
+  stop test as 0x474BF0's), `Map::reached` and `Map::mark`, the Fire Wall's damage with the rule's
+  hurt test (`fire_wall_damage`, through `magic::obstacle_damage`, which the burn now calls too), the
+  damaging moat (`damaging_moat`), the hero's best area spell (`area_spell_damage`:
+  `aim::best_area_spell` with `magic::effect_factor`, 0x5A8090's `f` beside `affect_chance`), and
+  `Context::attack_for_both`. `h3-battle-ai`: `scores.rs` (0x4214F0, 0x421590, 0x420260, 0x41FD60,
+  0x420060, 0x41FB60, 0x41F920); `hexes::stack_neighbor` takes the original's index arithmetic for
+  a two-hex stack's other hex (`stack_neighbor_at`; no difference at a stack's own position, so
+  T3a's choices stay); the walker builds its scores (BAT-STUB-4 narrowed). By the engine's data,
+  not the original's numbers: the multi-headed by their abilities, the ball shooters by
+  `area_shot`, the area spells by a hex target with an area and a damage effect (Frost Ring,
+  Fireball, Inferno, Meteor Shower in the packs). `POLICY_VERSION` 4. The mask goes to the area
+  threat only; the fallback's own call (0x421E94) is T3c's.
+- **Cost** (the budget: the count re-set on purpose, at most 1 ms for the slowest decision):
+  `computer-decisions` counts 274 968 963 instructions over 831 decisions, **about 331 000 per
+  decision** (T3a: 226 000; each walker now searches every enemy's reach), the battles longer again;
+  the other workloads within +0.8 % (`random-rollouts-full` +0.05 %, `-siege` +0.36 %; the
+  adventure lane's +0.5 to +0.8 %, under their gate). Release, each decision's best of five (a local
+  patch of `h3 bench-computer`, not kept), 2 000 battles of seeds 4 to 8: 30 to 37 µs per decision on
+  average, the slowest 0.16 to 0.28 ms; single timings up to 3.5 ms (the sandbox's scheduling, as in
+  T3a). Within the budget.
+- **Tests:** the reach (Easy none, a clamp at the floor for desperate imps, two enemies' values
+  adding up, an enemy within a turn of the side adding nothing, a two-hex enemy's beside hexes), the
+  multi-headed strike (Hard for a computer side only, the Cerberi's fewer hexes, a second struck
+  stack's 1, slip 3 both ways), the crowding (the area threat around two friends, the breath line,
+  an enemy dragon in the mask), the Fire Wall with slips 18 and 19 both ways on the test ruleset
+  (a Fire Wall spell and the efreet's fire immunity added to it) and on the harvested packs (the
+  minotaurs strike from a hex off the wall, the efreet only with the slip); `h3-battle`'s
+  `tests/computer.rs` for the new surface (the reach map's speed + 1, a stop's cost and refused
+  marks, the Fire Wall's damage and hurt test, the moat, the area spell with costs, immunity,
+  resistance, an aura and the Orb of Vulnerability in both precisions). The harvested property's
+  shot count floor went from 500 to 300 (415 shots now: the walkers' choices changed the games).
+- **A blind check** (a fresh agent, the disassembly against the port with the slips on): no
+  discrepancy in 0x421680's head, 0x4214F0, 0x421590, 0x420260, 0x41FD60, 0x420060, 0x41FB60,
+  0x41F920 or 0x4B3400's uses of its speed argument; 0x5A78E0's defending hero, which the Fire
+  Wall's call passes as the acting side's, is never read. Not in its brief: the queue's push
+  0x4B3BB0 and the stops 0x4B3290 (T1c's port), the estimates' insides (T2, T3a's), the record
+  order (`state::RECORD_ORDER`).
+- **Not built here** (BAT-STUB-4, T3c): the stronger at range, the last retaliation's gain,
+  holding the walls, a besieger's walk, the fallbacks. Predictions only (T4, T5): a struck stack
+  without hit points after the planned damage (0x41FE2E), the hit points left after it (0x443080
+  with the context's flag).

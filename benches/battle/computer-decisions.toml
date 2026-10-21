@@ -8,7 +8,7 @@ toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
 target = "x86_64-unknown-linux-gnu"
 
 [workload]
-description = "the original's battle AI's decisions (ADR-0027 point 11, E23 T2b): 40 battles of random armies of the harvested SoD creatures (base:faithful, no heroes, every difficulty), on the open field the defender the computer against random legal commands, at a Fort both sides the computer, at most 300 steps each; counts only inside h3_battle_ai::choose (re-set on purpose at each part of E23 T3, the budget: T3a's walkers fight, so the battles are shorter and each decision costs more)"
+description = "the original's battle AI's decisions (ADR-0027 point 11, E23 T2b): 40 battles of random armies of the harvested SoD creatures (base:faithful, no heroes, every difficulty), on the open field the defender the computer against random legal commands, at a Fort both sides the computer, at most 300 steps each; counts only inside h3_battle_ai::choose (re-set on purpose at each part of E23 T3, the budget: T3a's walkers fight, so the battles are shorter and each decision costs more; T3b's hex scores search each enemy's reach, and the battles run longer again)"
 args = [
     "bench-computer",
     "--games",
@@ -17,5 +17,5 @@ args = [
     "1",
 ]
 collect = "*h3_battle_ai::choose*"
-instructions = 133069578
+instructions = 274968963
 threshold_percent = 2
