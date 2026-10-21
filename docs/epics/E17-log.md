@@ -1716,6 +1716,43 @@ linked for the staging only (all files staged once, the session then ran in the 
   `play` on the three records: the cues' sounds named. The viewer's tests (100 % of the library),
   `cargo fmt`, clippy; `scripts/exe.py check` and `cited`.
 
+### M3 T7b-2a — The count box's tint, Haste and Slow's walk, Dispel, Cure, Disrupting Ray (2026-10-21)
+
+On `client/e17-m3-t7b-2a`, the user present at the start: T7b-2 split with the user (T7b-2a the
+parts without the original's rolls; morale, luck and the creatures' rolled animations T7b-2b).
+The user's computer was linked for the staging only.
+
+- **Starting point:** `master` at `a6b6c55` (#361 merged); no client pull request open; the
+  client gates on that code verified once (`verify-once clients`: the light gates).
+- **The reading** (design §4.3, §7.16 "Read at T7b-2a"; one map entry, `count_box_spell_hue`
+  0x43E6AA): the box's hue r = Σ k / Σ |k| over the stack's active spells, k the spell record's +0
+  (polarity), at the x87's 53 bits; Dispel's, Cure's and Disrupting Ray's handlers (the order of
+  animation, effect and line; Disrupting Ray's projectile, its defense taken, GENRLTXT 92); Haste
+  and Slow's W (0x444CE5, 0x444D3A: integer W0 × 65 / 100, W0 × 3 / 2 exactly).
+- **Harvested:** `[[spell]]`'s `sign` (the record's +0) and Disrupting Ray's one-DEF projectile;
+  every earlier line as it was. The catalogue: `battle.log.disrupted`.
+- **The viewer:** `scene::spell_hue` (exact in integers; checked against the executable's
+  arithmetic run in floats for all 6 722 sums of up to 81 signs), `Moment::hues`, the box's tint
+  by them; `anim`'s `TintKey`, `Timeline::hues`, a stack's active spells from the snapshot and the
+  effects at the handler's point, `walk_time`, Dispel, Cure and Disrupting Ray in `Player::cast`
+  (`SpellLook::original`, `sign`, `value`), a stack's defense lowered by Disrupting Ray
+  (`Logged::Disrupted`; `Logged::Defend` carries the defense); `motion::casts` compiles the
+  record's ruleset (`--packs`) for a spell's value at the caster's mastery.
+- **Recorded** (`casts.toml`'s way, `h3drive.py sequences`; hot seat, Pikemen against Vampire
+  Lords): `haste` (175 changes with the screens, about 9 minutes) and `dispel` (289, about 11).
+  Both moved into `sequences.toml` with their commands: their timelines as recorded on the first
+  run (84 and 136 changes); every other sequence as recorded.
+- **Checked:** captured (`frames --only`, count boxes compared): `cast` 36 frames, all exact but
+  0 (its 71 pixels, listed at T7b-1), the box's tint from 600 exact; `resist` 61 frames, all
+  exact (the tint's end at 2 900 found by the frame check: a round's start ends Slow and the next
+  turn's start redraws the box, so the hues a round's start changes show at the turn's start);
+  `haste` 91 frames and `dispel` 153 frames, all exact (both heroes' casts, the walks, the
+  projectile and animation 14 from its third frame, Disrupting Ray's line, the Vampire Lords'
+  defend gaining 1 of their 7 since, Cure's and Dispel's lines after their animations, the
+  tints). `drawn`: the four listed, then `drawn --record` (74). The viewer's tests, the full
+  `clients/scripts/check.sh` (all gates, the library at 100 %); `scripts/exe.py check` and
+  `cited`.
+
 ## Accepted review lists (M1, M2)
 
 Moved from the epic file on 2026-10-20 (less start-up reading), unchanged.

@@ -1723,9 +1723,10 @@ resistance roll, if any (category 3, 0x5A0331); Curse's is named `Curse`, withou
   record's packs) at the caster's mastery, the record's own hero's (the other's book is hidden:
   none, *provisional*). Recorded (`casts.toml`'s way, then `sequences.toml`): `haste` (Haste,
   a hasted walk, Crag Hack's Slow ending it, a slowed walk) and `dispel` (Slow, Disrupting Ray at
-  the Vampire Lords, Cure, Slow, Dispel), both as recorded on the first run; the projectile's
-  last position at 4 093 and the animation from its third frame at 4 126 (the flight's 726 ms
-  outside the deadline: frames 0 to 2 drawn at once, as the clock's lateness rule gives).
+  the Vampire Lords, Cure, Slow, Dispel), both as recorded on the first run and their frames
+  exact (91 and 153); the projectile's last position at 4 093 and the animation from its third
+  frame at 4 126 (the flight's 726 ms outside the deadline: frames 0 to 2 drawn at 4 126, as the
+  clock's lateness rule gives). With the tint, `cast`'s and `resist`'s boxes exact.
 - **Not read:** the dissolve's blend; Chain Lightning's rays beyond `draw_ray`'s call (colour
   0x131, 0x5A64EF; T7c); how the glows are painted; the summons' and the Pit Lord's creation
   beyond the dissolve; Earthquake (sieges); the force-feedback effects (IFC20, nothing drawn).
