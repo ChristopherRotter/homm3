@@ -53,7 +53,7 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
-- **2026-10-21, E17 M3 T6c-2 (the mouse over time; PR_PLACEHOLDER).** Taken whole (the user).
+- **2026-10-21, E17 M3 T6c-2 (the mouse over time; #341 open).** Taken whole (the user).
   `mouse::track` follows the harness's or the window's mouse; entered stacks fidget
   (`Timeline::enter`); a ray hides the cursor; the harness aligns the mouse poll's grid, records
   the cursor's point; the sequences recaptured (hints gone, `hover` compared); the window's mouse.
