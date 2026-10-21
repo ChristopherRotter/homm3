@@ -52,8 +52,8 @@ pub struct CursorImage {
     pub rgba: Vec<u8>,
 }
 
-/// The keys the viewer answers.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// The keys the viewer answers: its own and the battle panel's hotkeys (E17 M3 T6c-2).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Key {
     /// Escape.
     Escape,
@@ -61,18 +61,92 @@ pub enum Key {
     Space,
     /// The right arrow.
     Right,
-    /// R.
-    R,
-    /// F.
-    F,
-    /// V.
-    V,
+    /// The up arrow.
+    Up,
+    /// The down arrow.
+    Down,
+    /// Home.
+    Home,
+    /// A.
+    A,
     /// C.
     C,
-    /// M.
-    M,
+    /// D.
+    D,
     /// E.
     E,
+    /// F.
+    F,
+    /// H.
+    H,
+    /// M.
+    M,
+    /// O.
+    O,
+    /// P.
+    P,
+    /// R.
+    R,
+    /// S.
+    S,
+    /// V.
+    V,
+    /// W.
+    W,
+}
+
+impl Key {
+    /// The key of an SDL keycode, if the viewer answers it.
+    fn of(code: SDL_Keycode) -> Option<Self> {
+        Some(match code {
+            SDLK_ESCAPE => Self::Escape,
+            SDLK_SPACE => Self::Space,
+            SDLK_RIGHT => Self::Right,
+            SDLK_UP => Self::Up,
+            SDLK_DOWN => Self::Down,
+            SDLK_HOME => Self::Home,
+            SDLK_A => Self::A,
+            SDLK_C => Self::C,
+            SDLK_D => Self::D,
+            SDLK_E => Self::E,
+            SDLK_F => Self::F,
+            SDLK_H => Self::H,
+            SDLK_M => Self::M,
+            SDLK_O => Self::O,
+            SDLK_P => Self::P,
+            SDLK_R => Self::R,
+            SDLK_S => Self::S,
+            SDLK_V => Self::V,
+            SDLK_W => Self::W,
+            _ => return None,
+        })
+    }
+
+    /// The key's name (the layout's hotkeys: `S`, `Space`, …).
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Escape => "Escape",
+            Self::Space => "Space",
+            Self::Right => "Right",
+            Self::Up => "Up",
+            Self::Down => "Down",
+            Self::Home => "Home",
+            Self::A => "A",
+            Self::C => "C",
+            Self::D => "D",
+            Self::E => "E",
+            Self::F => "F",
+            Self::H => "H",
+            Self::M => "M",
+            Self::O => "O",
+            Self::P => "P",
+            Self::R => "R",
+            Self::S => "S",
+            Self::V => "V",
+            Self::W => "W",
+        }
+    }
 }
 
 /// What happened, as the viewer needs it.
@@ -82,6 +156,15 @@ pub enum Event {
     Quit,
     /// A key went down (repeats left out).
     Key(Key),
+    /// A key went up (E17 M3 T6c-2: a hotkey's button is released).
+    KeyUp(Key),
+    /// The left mouse button went down or up, in the frame's pixels (E17 M3 T6c-2).
+    Click {
+        /// Down, else up.
+        down: bool,
+        /// Where.
+        at: (i32, i32),
+    },
     /// The pointer moved, in the frame's pixels (outside the frame too); `None`: it left the
     /// window.
     Pointer(Option<(i32, i32)>),
@@ -311,20 +394,18 @@ impl Window {
             let ty = SDL_EventType(ev.r#type);
             match ty {
                 SDL_EVENT_QUIT | SDL_EVENT_WINDOW_CLOSE_REQUESTED => Some(Event::Quit),
-                SDL_EVENT_KEY_DOWN if !ev.key.repeat => {
-                    let key = match ev.key.key {
-                        SDLK_ESCAPE => Key::Escape,
-                        SDLK_SPACE => Key::Space,
-                        SDLK_RIGHT => Key::Right,
-                        SDLK_R => Key::R,
-                        SDLK_F => Key::F,
-                        SDLK_V => Key::V,
-                        SDLK_C => Key::C,
-                        SDLK_M => Key::M,
-                        SDLK_E => Key::E,
-                        _ => return None,
-                    };
-                    Some(Event::Key(key))
+                SDL_EVENT_KEY_DOWN if !ev.key.repeat => Key::of(ev.key.key).map(Event::Key),
+                SDL_EVENT_KEY_UP => Key::of(ev.key.key).map(Event::KeyUp),
+                SDL_EVENT_MOUSE_BUTTON_DOWN | SDL_EVENT_MOUSE_BUTTON_UP
+                    if i32::from(ev.button.button) == SDL_BUTTON_LEFT =>
+                {
+                    SDL_ConvertEventToRenderCoordinates(self.renderer, ev);
+                    let (x, y) = (ev.button.x.floor(), ev.button.y.floor());
+                    #[allow(clippy::cast_possible_truncation)]
+                    Some(Event::Click {
+                        down: ty == SDL_EVENT_MOUSE_BUTTON_DOWN,
+                        at: (x as i32, y as i32),
+                    })
                 }
                 SDL_EVENT_MOUSE_MOTION => {
                     SDL_ConvertEventToRenderCoordinates(self.renderer, ev);

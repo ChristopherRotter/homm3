@@ -6,19 +6,6 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024). M3 (fidelity) below, refined at M2's closure (T5c) and agreed by the user there, each task about half a context; the exit: the reference set passes, or each difference is a listed fix or a classified quirk. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M3 T6c-2 — The mouse over time
-
-- **Scope:** the harness's mouse moves in the viewer's timeline (the cursor and the hint after
-  each move and at a turn's start, 0x4ECC00; an attack's and a shot's hint force the status line
-  over new lines, the others do not; the stale target; the legal commands at each turn: T6b,
-  design §9.8, §9.9, `NOTES.md`; group 1 as a fidget after a stack is marked), so the sequences'
-  ` log` listings of hints go, their parked cursor is drawn and `hover` is compared; in the window
-  the mouse's cursor, hint and marked stack (T6c-1's model, re-composed on a move), a button
-  pressed (its click frame) and the panel's hotkeys (design §9.7).
-- **Acceptance:** the sequences' hint listings gone, `hover`'s frames matched outside the listed
-  differences.
-- **Depends on:** nothing (T6c-1 done). **Status:** ready.
-
 ### E17 M3 T7a — Code reading: the magic animations
 
 - **Scope:** the user (T5c): the plethora of spell animations. How the executable draws a spell
@@ -77,8 +64,8 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
   user, a fresh reviewer agent over M3, the next milestone
   refined (sieges, live play, HD or the adventure map: the user's choice), M3 marked done.
 - **Acceptance:** M3's exit holds; the review list answered or carried on.
-- **Depends on:** T6c-2, T7a–T8 (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1,
-  T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1 done).
+- **Depends on:** T7a–T8 (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2,
+  T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2 done).
   **Status:** waiting.
 
 ## Inbox
@@ -87,17 +74,16 @@ Other lanes add entries here. The client lane turns each into a task, or moves i
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
 - 2026-10-20 (the adventure lane, E08 T24a2b2, `adventure/e08-t24a2b2`; a request for increment 4's batch E4, survey `docs/rules/surveys/E08-progression.md` §7): **level-ups on the harness.** Batch E4 predicts each level's primary skill and offers from a hero's seed byte, so it needs: (1) the hero details `seed` (hero +0x8F), `wisdom_offer` (+0x90) and `school_offer` (+0x3F), one byte each (`docs/exe/structs.toml`); (2) a record of every level-up dialog passed (the hero, the new level, the primary skill gained, the offered skills left and right, the one taken); where the dialog keeps its offers was not read on our side (the dialog 0x4F8880 is called from `hero_level_up` 0x4DA720 after both offers are drawn); (3) `level_up` as a list, one answer per dialog, for a step whose battle gives several levels (row E4-4); (4) the hero's artifacts, worn and in the backpack (row E4-9: a destroyed Ballista's artifact); (5) the battle's field, read from memory as the stacks are (row E4-7: two special grounds on one tile). Rows and the predictions: the survey's §7; the spec and recipe follow with E08 T24b's batch task, after the user's checkpoint (ADV-Q15), so nothing is urgent.
-- 2026-10-20 (the adventure lane, E08 T22a2b): `h3adv.value` prints a winner of −1 (none) as
-  `defender` (`SIDES[-1]`): fix with the harness's next change. NOTES, "The adventure lane's
-  harness" (also, for information: its three recipes, its auto combat's change).
+- 2026-10-20 (the adventure lane, E08 T22a2b): its three recipes, its auto combat's change, for
+  information (NOTES, "The adventure lane's harness"; the winner of −1 fixed in E17 M3 T6c-2).
 - 2026-10-19 (E17 H1, H2; the adventure lane, E08 T22a1): the harness's check
   (`capture/checks/harness-check.toml`) can gain a monster's offers, a pile's question and a walk
   below: the tools are in. NOTES, "The adventure lane's harness".
 - CLT-Q2 (2026-10-12, 2026-10-19): the table-only LOD reader is in `h3-formats`: switch the
   archive set to the directories and a batch's ranges, `h3-view gate` measuring it. NOTES,
   "Assets and archives".
-- For T6c-2: the mouse over time (T6c-1's list); for T7c: the message when no hex is free for a
-  created stack; for T8: the battle waits for the heal's sound (T3b). NOTES, "The battle screen".
+- For T7c: the message when no hex is free for a created stack; for T8: the battle waits for the
+  heal's sound (T3b). NOTES, "The battle screen".
 - 2026-10-20 (T6a): the tactics phase's panel (0x46C050, not read) and Auto Combat switched on
   (its button selected, the panel dimmed while stacks play themselves) wait for a record with a
   tactics phase and for live play. Design §9.7.

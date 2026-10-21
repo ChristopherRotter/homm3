@@ -2103,3 +2103,112 @@ loader 0x5B98B0). Built: `h3_view::mouse` (`spot`, `neighbour`, `distance`, `Leg
   the cursor at odd points (144 pixels a sword, 101 the pointer) until the comparisons drew it. The set's other 31
   situations draw the parked cursor (frame 6 at (618, 593)), their `cursor` masks gone: all 57
   situations' 85 frames exact.
+
+### 9.10 The mouse over time (M3 T6c-2)
+
+T6c-2 taken whole (the user, 2026-10-21). Read: the battle's mouse-move branch again for the same
+hex and the status line's rewrite (0x475544 to 0x4758D1), a human's turn start
+(`battle_controls_state` 0x47883E to 0x478873), the action dispatcher's head (0x478DA0 to
+0x478E3A: every action shows the pointer) and its switch (0x47902F: the action +0x3C less 1),
+who unmarks the mouse's stack (`battle_clear_highlight` 0x477E10's callers: a walk 0x4459A6, a
+strike or a shot 0x445AD4, the Catapult 0x445D55, a cast 0x5A0055, the computer's turn 0x422200;
+`round_start` 0x476081), who stands the fidgeting stacks (`battle_stand_fidgets` 0x479DE0 and its
+callers), `battle_cursor`'s target (+0x10, +0x14 of the acting stack), `battle_mouse_stack`'s tail
+(0x477D47 to 0x477DF8), the mouse manager's draw and poll (`mouse_draw_cursor` 0x50CD90,
+`mouse_poll` 0x50D680, its next time 0x69CA18), the DEF button's handler (`def_button_message`
+0x456190: keys and the mouse's button) and the panel's hotkeys (`battle_panel_base` 0x46B7B1 to
+0x46BAF9). Built: `h3_view::mouse::track` (`follow`, `Input`, `Turn`, `Start`, `Shown`),
+`mouse::Facing`, `Field`, `pointer_in`, `slots_in`, `cursor`, `Hint::NoShots`;
+`Timeline::enter` (`anim/entered.rs`), `anim::unfidgeted`, `hero::Action`'s `start`, `stands`,
+`unmarks`; `battle_log::Logged::Status` and `Scroll`; `ui::Button::keys`, `Dialog::button_at`,
+`button_for_key`; `Panels::at_pressed`; `cursor::Cursor::read`; in the adapters
+`pointer` (the harness's actions as inputs, each turn's battle from the engine:
+`scenario::turned`), the window's mouse, the log's `Writer`.
+
+- **When the battle takes a move.** Only while a human's turn waits (the dialog's loop): during
+  an action, and a computer's turn, the moves wait in the input queue. On the hex the mouse was
+  already on only an attack's slot is computed again (0x475553): the kind is not; the status
+  line is written for a new hex (its kind's "written" +0x132DC forgotten, -99), for another
+  kind, or for an attack whose slot gave another frame (0x4758A4). Outside the field (0x475402)
+  the items' hints (the control under the mouse, else empty, under the 3 000 ms rule: `walk`'s
+  hint gone at the next human turn, `strike`'s line not replaced), the pointer, the hex forgotten.
+- **An action** shows the pointer at its start (0x478E3A, whatever the cursor was: `strike`'s
+  sword gone at 0 ms); a walk, a strike, a shot, a cast and the Catapult's shot unmark the
+  mouse's stack (0x477E10), as does every round's start (0x476081). A **computer's turn** shows
+  the pointer (0x478873) and unmarks (0x422200). A **human's turn** (a war machine's that plays
+  itself in hot seat too: `machines` at 2 221 ms) settles the log (§9.8), forgets the mouse's
+  hex (0x47883E) and posts the mouse where it rests (0x478857): the moves that waited are taken
+  first, then the posted one, each a new hex.
+- **The hints** go into the log's status line as the battle writes them
+  (`battle_log_add(text, 0, forced)`): an attack's and a shot's forced over new entries (`machines`
+  at 0 ms: "Attack Pikemen" over the defend's line 0 ms old), the others not. **The target**
+  (+0x10, +0x14 of the acting stack) is cleared over every hex of the field (0x476686), set over
+  an enemy (0x47679D), cleared again where neither a shot nor a strike reaches it (0x476837), and
+  left by nothing, a side column or a hero: there a shooter without shots shows "No shots left!"
+  (GENRLTXT:299, `battle.hint.no-shots`) for the last enemy it could strike.
+- **Entering a stack** (`battle_mouse_stack`): over the stack already marked nothing; else the
+  old one unmarked and the new one marked, its group 1 started at frame 0 (or, showing it, it
+  stands), then the battle redrawn (0x477DF8) inside the new frame's rectangle only: pixels of
+  the old frame outside it stay on the screen until the next idle step's redraw (`hover`: one
+  pixel of the standing Pikemen's pike at 0 and 33 ms, thirteen of frame 2's at 200 and 231 ms,
+  each equal to the original's screen just before). The idle step then plays the group as a
+  fidget (§7.2); an action that stands the fidgeting stacks (`battle_stand_fidgets` 0x479DE0: a
+  walk, a strike, a shot, a cast, a creature's cast, the Catapult's shot) stands it at its start
+  (`strike`'s Pikemen, entered at 0 ms, stand as the Archangel flies), and the heroes' idle clocks
+  start again then (not modelled: the heroes are the original's in a check). The viewer plays
+  no stalls (one step in about 12 in the original: a check would show it).
+- **The cursor's point.** The software cursor is drawn where the mouse manager last read the
+  mouse (+0x6C, +0x70, its x even): a SetCursor draws the new frame there at once, and only
+  `mouse_poll` (0x50D680, from the input loop) reads the mouse again, on a grid of 33 ms of the
+  game's clock (its next time 0x69CA18, moved on by max(the time since it, 33)). The grid's phase
+  is whatever the run before the battle left (19 and 10 ms in two captures of `hover`), so the
+  harness sets 0x69CA18 to the opening's time (its timers only, never the game's state): the
+  cursor then moves at 33 k ms in every run. The frame check draws the viewer's frame where the
+  original's memory says the cursor is (`frames.toml`'s `cursor`); the viewer's own point is the
+  mouse's.
+- **A ray hides the cursor** (`draw_ray` 0x5A5C20): `mouse_hide` (0x50D540) as it starts
+  (0x5A5C46) erases the cursor from the screen, `mouse_show` (0x50D5B0) after the shot group's
+  rest (0x5A61D4) draws it again: in `shots` the panel shows under the parked point from 655 to
+  879 ms, 4 086 to 4 267 and 5 293 to 5 517 (35 pixels in each of 40 frames until the viewer
+  hid it too: `Beam::cursor_back`, `Timeline::cursor_hidden`; the window hides its cursor then
+  too).
+- **The facing** the cursor asks (a two-hex stack's other hex, a shooter's front hex) is the
+  timeline's at the turn's start (`Facing::Left`, the poses facing left), the opening's by side.
+- **The viewer** (`mouse::track::follow`): the log's entries and the inputs in time order (a move
+  after the entries at its time up to an action's start; an `Act`, a click's or a key's, takes
+  that start, the moves after it wait), each turn's battle and legal commands from the engine
+  (`scenario::turned`; a record without its scenario: the opening's battle for every turn, no
+  legal commands); its log, with the hints in, is the panel's (`log::panels`). The capture
+  harness's actions are the inputs (`pointer::inputs`: the mouse parked first, `hex:` and `click:`
+  move, click and park it again at once, `move:` moves it, `key:` acts). The timeline check
+  leaves out the original's own fidgets but those of the stacks the mouse entered
+  (`anim::unfidgeted`); the frame check draws those stacks as the viewer's timeline has them, the
+  others in the original's poses.
+- **The window** (`h3-view window`, *provisional*): the battle takes the window's mouse as the
+  original's (the inputs at the battle's clock; after a seek back the later ones go), its cursor
+  the combat cursor's frame (hardware or drawn, `Cursor::read`: 0x50D8B0's plain drawer, runs
+  skipped), the marked and entered stacks and the hints re-made on a move. A panel button shows
+  its click frame while the mouse holds it (and is on it) or one of its hotkeys is down (the
+  layout's `keys`: S, R, O, A, C, W, D and Space, the scan codes 0x1F, 0x13, 0x18, 0x1E, 0x2E,
+  0x11, 0x20, 0x39; the key down presses, the key up releases: 0x4565E7, 0x4564D6); a disabled
+  one takes none (0x4562DD). A replay takes no command, but the log's scroll buttons (2006, 2007)
+  and the arrow keys (the battle's own, 0x4758FB) scroll it (`Logged::Scroll`). The viewer's own
+  keys moved: P pauses, Home restarts, H the cursor's kind. Not modelled there: the viewer's own
+  fidgets meeting the mouse's.
+- **The harness** (`capture/`): `h3mem`'s battle state reads the mouse's hex, the cursor's kind,
+  type, frame and drawn point; a sequence keeps a frame where only the cursor changes too (its
+  screen digest takes the cursor) and masks nothing fixed (the parked cursor drawn, the panel
+  compared since T6b); `hover` is captured and compared (no engine command: the opening's
+  battle); 0x69CA18 set at a sequence's opening.
+- **Checked:** every sequence's timeline as recorded (eleven: `hover`'s with the original's own
+  fidgets left out). All eleven sequences captured afresh with the cursor compared and nothing
+  fixed masked: 922 frames, every count the ten sequences recorded before unchanged (the
+  ` log` listings from 668 to 173, each a line whose numbers the engine rolled: the hints are
+  the viewer's), `shots` six frames more where the cursor hides and shows (exact), `hover` new:
+  20 frames, 16 exact, four with the leftover pixels above. The set not captured (its capture
+  unchanged): `drawn`, every situation the same. The window under Xvfb with the mouse moved and
+  clicked over the field and the panel: every frame read back exact.
+- **Not modelled:** a stall of a mouse fidget, a hero's cast's return to the same stack's turn
+  (0x479195: the mouse posted again), the army info windows, the hex shade under the mouse
+  (the option "Show Combat Mouse Hex", off in the harness; its call on every move not read),
+  casters' and sieges' cursors, network play, the redraw's leftover pixels (above).

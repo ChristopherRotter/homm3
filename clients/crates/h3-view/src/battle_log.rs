@@ -86,6 +86,17 @@ pub enum Logged {
     },
     /// A round starts outside the tactics phase (`round_start` 0x4761E9).
     Round,
+    /// The status line written (0x472E90 with its second argument 0; E17 M3 T6c-2): the mouse's
+    /// hint, forced over new entries or not (`crate::mouse::track`).
+    Status {
+        /// The text.
+        text: String,
+        /// Whether it replaces the item's text over new entries.
+        forced: bool,
+    },
+    /// The log scrolled by its buttons or the arrow keys (0x472DF0, 0x472E40, 0x472DB0; E17 M3
+    /// T6c-2: the window's), by entries (up: negative).
+    Scroll(i64),
 }
 
 /// A stack as [`word`] names it: its creature's key in the catalogue, whether it is a war machine
@@ -109,7 +120,7 @@ pub fn word(
 ) -> Option<String> {
     let named = |id: u8, count: u32| stack(id).map(|n| (n, count));
     match logged {
-        Logged::Action | Logged::Turn(_) => None,
+        Logged::Action | Logged::Turn(_) | Logged::Status { .. } | Logged::Scroll(_) => None,
         Logged::Strike {
             attacker,
             count,
@@ -259,9 +270,9 @@ impl Log {
 
 /// The text the log's item shows from each time on (E17 M3 T6b), as the executable's log keeps it
 /// through `logged` (in time order): each line worded by `word`, its entries by `lines`; at the
-/// turn of a stack `human` names, the mouse rests over nothing that has a hint (*provisional*:
-/// the status line's hints are M3 T6c's), so the status line it sets is empty. The first change
-/// is the opening's empty log at 0.
+/// turn of a stack `human` names the new entries settle, and the status line takes what the
+/// mouse's hints write (`Logged::Status`, E17 M3 T6c-2: `crate::mouse::track::follow` puts them
+/// in). The first change is the opening's empty log at 0.
 #[must_use]
 pub fn texts(
     logged: &[(u32, Logged)],
@@ -275,11 +286,10 @@ pub fn texts(
         let now = *now;
         match happened {
             Logged::Action => log.settle(now),
-            Logged::Turn(stack) if human(*stack) => {
-                log.settle(now);
-                log.status("", now, false);
-            }
+            Logged::Turn(stack) if human(*stack) => log.settle(now),
             Logged::Turn(_) => {}
+            Logged::Status { text, forced } => log.status(text, now, *forced),
+            Logged::Scroll(by) => log.scroll(*by, now),
             other => {
                 if let Some(line) = word(other) {
                     log.add(&line, now, lines);

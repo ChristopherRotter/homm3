@@ -177,7 +177,10 @@ fields = [
   { offset = 0x132C4, name = "auto_combat", type = "i32", summary = "auto combat on: the button (control 2004, 0x474E5A) toggles it; a human side's creature then acts on its own only with the option 0x698794 set (war_machine_automatic 0x474CDF); the capture harness's `battle = \"auto\"` (E17 H1)", confidence = "read", refs = ["epics/E17-design.md §6.3"] },
   { offset = 0x132C8, name = "active_stack", type = "stack*", summary = "the stack whose turn it is: outline 0x60", confidence = "read", refs = ["epics/E17-design.md §4"] },
   { offset = 0x132CC, name = "mouse_highlight", type = "u8", summary = "with +0x132D0: the stack on that hex gets outline 0x70", confidence = "read", refs = ["epics/E17-design.md §4"] },
-  { offset = 0x132D0, name = "mouse_hex", type = "i32", summary = "the hex under the mouse", confidence = "read", refs = ["epics/E17-design.md §4"] },
+  { offset = 0x132D0, name = "marked_hex", type = "i32", summary = "the marked stack's position (with +0x132CC set: its outline 0x70); -1 none (battle_mouse_stack 0x477C20, battle_clear_highlight 0x477E10)", confidence = "read", refs = ["epics/E17-design.md §4", "epics/E17-design.md §9.10"] },
+  { offset = 0x132D4, name = "mouse_hex", type = "i32", summary = "the hex under the mouse (0xFC, 0xFD the heroes' rectangles), -1 none or forgotten (a human's turn start, 0x47883E)", confidence = "read", refs = ["epics/E17-design.md §9.9", "epics/E17-design.md §9.10"] },
+  { offset = 0x132DC, name = "status_kind", type = "i32", summary = "the cursor's kind the status line was last written for, -99 none (0x4758A4: written again only for another kind, or an attack's new slot)", confidence = "read", refs = ["epics/E17-design.md §9.10"] },
+  { offset = 0x132E0, name = "cursor_kind", type = "i32", summary = "the cursor's kind at the mouse's hex (battle_cursor 0x476490), recomputed only on a new hex", confidence = "read", refs = ["epics/E17-design.md §9.9", "epics/E17-design.md §9.10"] },
   { offset = 0x132E8, name = "magic_def", type = "def*", summary = "the magic animation's DEF (0x5A92F0)", confidence = "read", refs = ["epics/E17-design.md §7.15"] },
   { offset = 0x132EC, name = "magic_animation", type = "i32", summary = "its number in the table 0x641E08, -1 none", confidence = "read", refs = ["epics/E17-design.md §7.15"] },
   { offset = 0x132F0, name = "magic_frame", type = "i32", summary = "the frame of its group 0 drawn over the stacks whose +0x20 is set", confidence = "read", refs = ["epics/E17-design.md §7.15"] },
@@ -472,6 +475,21 @@ refs = ["epics/E17-design.md §6.3"]
 h3api = "H3WindowManager"
 fields = [
   { offset = 0x54, name = "top_dialog", type = "dialog*", summary = "the topmost dialog (H3API's lastDlg): a question's message box while it shows; observed in the running game (h3mem.py), not read", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
+]
+
+[[struct]]
+name = "mouse_manager"
+size = 0x78
+summary = "The mouse manager (pointer at 0x699260; H3API's H3MouseManager, whose size is not used here): the cursor drawn in software over the screen; only what the viewer and the capture harness need."
+refs = ["epics/E17-design.md §9.9", "epics/E17-design.md §9.10"]
+h3api = "H3MouseManager"
+fields = [
+  { offset = 0x4C, name = "cursor_type", type = "i32", summary = "the cursor's type: its DEF in 0x67FF38 (2 the combat cursor), set by SetCursor 0x50CCA0", confidence = "read", refs = ["epics/E17-design.md §9.9"] },
+  { offset = 0x50, name = "cursor_frame", type = "i32", summary = "the cursor's frame", confidence = "read", refs = ["epics/E17-design.md §9.9"] },
+  { offset = 0x58, name = "drawn_x", type = "i32", summary = "the drawn canvas's left edge: the point less the frame's hot spot", confidence = "read", refs = ["epics/E17-design.md §9.10"] },
+  { offset = 0x5C, name = "drawn_y", type = "i32", summary = "the drawn canvas's top edge", confidence = "read", refs = ["epics/E17-design.md §9.10"] },
+  { offset = 0x6C, name = "x", type = "i32", summary = "the mouse's x as last read (GetCursorPos, rounded down to even, 0x50CE04): only mouse_poll 0x50D680 reads it again, a SetCursor draws the new frame at the old point", confidence = "read", refs = ["epics/E17-design.md §9.10"] },
+  { offset = 0x70, name = "y", type = "i32", summary = "the mouse's y as last read", confidence = "read", refs = ["epics/E17-design.md §9.10"] },
 ]
 
 [[struct]]

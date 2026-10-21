@@ -6,8 +6,8 @@
 //! The rules' answers (where the acting stack may move, whom it may strike from where, shoot or
 //! heal) are the legal commands the server lists ([`Legal`]); what the executable's cursor decides
 //! on its own (the slot inside the hex, the broken arrow's distance from the shooter's facing) is
-//! ported here. Over time (the hint against the log's new lines, a stack marked starting its
-//! fidget, a target left over from the last hex) is T6c-2's.
+//! ported here. Over time (E17 M3 T6c-2, design §9.10: the hint against the log's new lines, a
+//! stack marked starting its fidget, a target left over from the last hex, the turns): [`track`].
 
 use alloc::collections::BTreeSet;
 use alloc::string::String;
@@ -17,6 +17,8 @@ use h3_protocol::wire::{Command, Observation, Side, Stack};
 use crate::layout::BattleLayout;
 use crate::scene::Draw;
 use crate::text::{Args, Catalogue};
+
+pub mod track;
 
 /// The battlefield's columns.
 pub const COLUMNS: u8 = 17;
@@ -162,6 +164,69 @@ impl Legal {
     }
 }
 
+/// Which way the stacks face (+0x44; E17 M3 T6c-2): a two-hex stack's front hex and a shooter's
+/// distance count from it.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub enum Facing {
+    /// Each side's own way: the attacker's to the right, the defender's to the left (the opening).
+    #[default]
+    Sides,
+    /// The stacks facing left now (the timeline's poses: a stack turned in the battle).
+    Left(BTreeSet<u8>),
+}
+
+impl Facing {
+    /// Whether `stack` faces left.
+    #[must_use]
+    pub fn left(&self, stack: &Stack) -> bool {
+        match self {
+            Self::Sides => stack.side == Side::Defender,
+            Self::Left(left) => left.contains(&stack.id),
+        }
+    }
+}
+
+/// The battle as the cursor asks it: the stacks, the acting stack's legal commands and which way
+/// the stacks face.
+#[derive(Debug, Clone, Copy)]
+pub struct Field<'a> {
+    /// The battle.
+    pub observation: &'a Observation,
+    /// The acting stack's legal commands.
+    pub legal: &'a Legal,
+    /// Which way the stacks face.
+    pub facing: &'a Facing,
+}
+
+impl Field<'_> {
+    /// The acting stack.
+    fn acting(&self) -> Option<&Stack> {
+        let id = self.observation.active?;
+        self.observation.stacks.iter().find(|s| s.id == id)
+    }
+
+    /// A stack's hexes: its position and, two hexes wide, its front hex by its facing
+    /// (`stack_other_hex` 0x4466A0).
+    fn hexes(&self, stack: &Stack) -> [u8; 2] {
+        let other = if !stack.two_hex {
+            stack.hex
+        } else if self.facing.left(stack) {
+            stack.hex.saturating_sub(1)
+        } else {
+            stack.hex.saturating_add(1)
+        };
+        [stack.hex, other]
+    }
+
+    /// The living stack on `hex`.
+    fn at(&self, hex: u8) -> Option<&Stack> {
+        self.observation
+            .stacks
+            .iter()
+            .find(|s| s.alive && self.hexes(s).contains(&hex))
+    }
+}
+
 /// The cursor's kind (`battle_cursor`'s answer; its number is the combat cursor's frame but for
 /// an attack, whose frame is its slot's, and the other side's hero, frame 5).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -230,6 +295,9 @@ pub enum Hint {
     EnemyHero,
     /// "Apply first aid to the %s" (420), the patient by its number.
     Heal(u8),
+    /// "No shots left!" (299): over nothing, for a shooter without shots whose target is still
+    /// set (E17 M3 T6c-2).
+    NoShots,
     /// A control's hint: its key.
     Control(String),
 }
@@ -272,6 +340,7 @@ impl Hint {
             Self::Heal(id) => with("battle.hint.heal", *id, false),
             Self::Hero => catalogue.text("battle.hint.hero", &Args::new()),
             Self::EnemyHero => catalogue.text("battle.hint.enemy-hero", &Args::new()),
+            Self::NoShots => catalogue.text("battle.hint.no-shots", &Args::new()),
             Self::Control(key) => catalogue.text(key, &Args::new()),
         }
     }
@@ -291,33 +360,59 @@ pub struct Pointer {
 }
 
 impl Pointer {
-    /// The cursor at `point` (`SetCursor(frame, 2)`, 0x50CCA0): the combat cursor's frame with
-    /// its hot spot (0x50CEE0; none beyond the table), its canvas's corner the point less it.
+    /// The cursor at `point` ([`cursor`]).
     #[must_use]
-    pub fn cursor(&self, layout: &BattleLayout, [x, y]: [i32; 2]) -> Draw {
-        let hot = usize::try_from(self.frame)
-            .ok()
-            .and_then(|f| layout.mouse.hot.get(f).copied())
-            .unwrap_or_default();
-        Draw::Cursor {
-            def: layout.mouse.cursor.clone(),
-            frame: self.frame,
-            x,
-            y,
-            hot,
-        }
+    pub fn cursor(&self, layout: &BattleLayout, point: [i32; 2]) -> Draw {
+        cursor(layout, self.frame, point)
+    }
+}
+
+/// The combat cursor's `frame` at `point` (`SetCursor(frame, 2)`, 0x50CCA0): its hot spot
+/// (0x50CEE0; none beyond the table), its canvas's corner the point less it.
+#[must_use]
+pub fn cursor(layout: &BattleLayout, frame: u32, [x, y]: [i32; 2]) -> Draw {
+    let hot = usize::try_from(frame)
+        .ok()
+        .and_then(|f| layout.mouse.hot.get(f).copied())
+        .unwrap_or_default();
+    Draw::Cursor {
+        def: layout.mouse.cursor.clone(),
+        frame,
+        x,
+        y,
+        hot,
     }
 }
 
 /// The mouse at `point` of the screen in the battle `observation` shows, its acting stack's
 /// commands `legal` (`battle_buttons`' mouse move 0x4753A4): over the battlefield its spot's
-/// kind, over the panel the pointer and the hint of the control under it.
+/// kind, over the panel the pointer and the hint of the control under it. A still: each side
+/// faces its own way and no target is left over ([`pointer_in`]).
 #[must_use]
 pub fn pointer(
     observation: &Observation,
     legal: &Legal,
     layout: &BattleLayout,
     point: [i32; 2],
+) -> Pointer {
+    let field = Field {
+        observation,
+        legal,
+        facing: &Facing::Sides,
+    };
+    pointer_in(&field, layout, point, &mut None)
+}
+
+/// As [`pointer`] in `field`, the acting stack's target `aim` (+0x10, +0x14) as `battle_cursor`
+/// leaves it: cleared over a hex of the field, set over an enemy the stack may shoot or strike,
+/// kept over nothing, a side column or a hero (E17 M3 T6c-2); over nothing a shooter without
+/// shots whose target is still set shows "No shots left!".
+#[must_use]
+pub fn pointer_in(
+    field: &Field<'_>,
+    layout: &BattleLayout,
+    point: [i32; 2],
+    aim: &mut Option<u8>,
 ) -> Pointer {
     let [width, height] = layout.mouse.field;
     if !(0..width).contains(&point[0]) || !(0..height).contains(&point[1]) {
@@ -335,27 +430,28 @@ pub fn pointer(
     }
     let spot = spot(layout, point);
     let marked = match spot {
-        Spot::Hex(hex) => at(observation, hex).map(|s| s.id),
+        Spot::Hex(hex) => field.at(hex).map(|s| s.id),
         _ => None,
     };
-    let (kind, target) = kind(observation, legal, spot);
+    let (kind, target) = kind(field, spot, aim);
     let frame = match (kind, spot) {
         (Kind::Attack, Spot::Hex(hex)) => {
             let slot = slot(layout, point, hex);
-            slots(observation, legal, hex)[slot]
+            slots_in(field, hex)[slot]
         }
         (Kind::EnemyHero, _) => Kind::Query.code(),
         _ => kind.code(),
     };
-    let acting = observation.active;
+    let acting = field.acting();
     let hint = match (kind, target, acting) {
-        (Kind::Move, _, Some(id)) => Hint::Move(id),
-        (Kind::Fly, _, Some(id)) => Hint::Fly(id),
+        (Kind::Move, _, Some(s)) => Hint::Move(s.id),
+        (Kind::Fly, _, Some(s)) => Hint::Fly(s.id),
         (Kind::Shoot | Kind::BrokenArrow | Kind::Attack, Some(id), _) => Hint::Attack(id),
         (Kind::Hero, ..) => Hint::Hero,
         (Kind::EnemyHero, ..) => Hint::EnemyHero,
         (Kind::Query, Some(id), _) => Hint::View(id),
         (Kind::Heal, Some(id), _) => Hint::Heal(id),
+        (Kind::Nothing, _, Some(s)) if s.shooter && s.shots == 0 && aim.is_some() => Hint::NoShots,
         _ => Hint::Empty,
     };
     Pointer {
@@ -366,34 +462,13 @@ pub fn pointer(
     }
 }
 
-/// A stack's hexes: its position and, two hexes wide, its front hex by its side's facing
-/// (`stack_other_hex` 0x4466A0; *provisional*: a stack turned in the battle is T6c-2's).
-fn hexes(stack: &Stack) -> [u8; 2] {
-    let other = if !stack.two_hex {
-        stack.hex
-    } else if stack.side == Side::Attacker {
-        stack.hex.saturating_add(1)
-    } else {
-        stack.hex.saturating_sub(1)
-    };
-    [stack.hex, other]
-}
-
-/// The living stack on `hex`.
-fn at(observation: &Observation, hex: u8) -> Option<&Stack> {
-    observation
-        .stacks
-        .iter()
-        .find(|s| s.alive && hexes(s).contains(&hex))
-}
-
-/// The cursor's kind at `spot` and the stack it is about (`battle_cursor` 0x476490): the modelled
-/// cases (sieges, casters and network play are not: design §9.9).
-fn kind(observation: &Observation, legal: &Legal, spot: Spot) -> (Kind, Option<u8>) {
-    let acting = observation
-        .active
-        .and_then(|id| observation.stacks.iter().find(|s| s.id == id));
-    let Some(acting) = acting else {
+/// The cursor's kind at `spot` and the stack it is about (`battle_cursor` 0x476490), the acting
+/// stack's target `aim` cleared on a hex of the field (0x476686) and set over an enemy (0x47679D)
+/// until neither a shot nor a strike reaches it (0x476837): the modelled cases (sieges, casters
+/// and network play are not: design §9.9).
+fn kind(field: &Field<'_>, spot: Spot, aim: &mut Option<u8>) -> (Kind, Option<u8>) {
+    let (observation, legal) = (field.observation, field.legal);
+    let Some(acting) = field.acting() else {
         return (Kind::Nothing, None);
     };
     let side = acting.controller;
@@ -414,7 +489,8 @@ fn kind(observation: &Observation, legal: &Legal, spot: Spot) -> (Kind, Option<u
     if column == 0 || column == COLUMNS - 1 {
         return (Kind::Nothing, None);
     }
-    if let Some(stack) = at(observation, hex) {
+    *aim = None;
+    if let Some(stack) = field.at(hex) {
         let id = Some(stack.id);
         if observation.tactics.is_some() || stack.id == acting.id {
             return (Kind::Query, id);
@@ -427,8 +503,9 @@ fn kind(observation: &Observation, legal: &Legal, spot: Spot) -> (Kind, Option<u
             };
             return (kind, id);
         }
+        *aim = id;
         if legal.shots.contains(&stack.id) {
-            let kind = if halved(acting, stack) {
+            let kind = if halved(field, acting, stack) {
                 Kind::BrokenArrow
             } else {
                 Kind::Shoot
@@ -438,11 +515,12 @@ fn kind(observation: &Observation, legal: &Legal, spot: Spot) -> (Kind, Option<u
         if legal.attacks.iter().any(|&(t, _)| t == stack.id) {
             return (Kind::Attack, id);
         }
+        *aim = None;
         return (Kind::Nothing, None);
     }
     // An empty hex the reach map marks (+0x20E a position, +0x20F a two-hex stack's front hex,
     // 0x4B2E69, 0x4B2EF4).
-    let [position, front] = hexes(acting);
+    let [position, front] = field.hexes(acting);
     let back = i32::from(hex) - (i32::from(front) - i32::from(position));
     let reached = legal.moves.contains(&hex)
         || (acting.two_hex && u8::try_from(back).is_ok_and(|b| legal.moves.contains(&b)));
@@ -457,12 +535,13 @@ fn kind(observation: &Observation, legal: &Legal, spot: Spot) -> (Kind, Option<u
 /// 0x4767E6): without the shooter turned to the target (its front hex by its facing now), no
 /// shot of a shooter without the distance penalty is halved; else halved when both of the
 /// target's hexes are farther than 10. The siege's wall test (0x467510) is not modelled.
-fn halved(shooter: &Stack, target: &Stack) -> bool {
+fn halved(field: &Field<'_>, shooter: &Stack, target: &Stack) -> bool {
     if shooter.no_distance_penalty {
         return false;
     }
-    let from = hexes(shooter)[1];
-    hexes(target)
+    let from = field.hexes(shooter)[1];
+    field
+        .hexes(target)
         .iter()
         .all(|&h| distance(from, h) > FULL_DAMAGE_DISTANCE)
 }
@@ -495,15 +574,25 @@ pub fn slot(layout: &BattleLayout, [x, y]: [i32; 2], hex: u8) -> usize {
 /// nearest slot's by the executable's measure.
 #[must_use]
 pub fn slots(observation: &Observation, legal: &Legal, hex: u8) -> [u32; 12] {
+    let field = Field {
+        observation,
+        legal,
+        facing: &Facing::Sides,
+    };
+    slots_in(&field, hex)
+}
+
+/// As [`slots`] in `field`: the acting stack's facing decides which position beside it a two-hex
+/// stack tries (E17 M3 T6c-2).
+#[must_use]
+pub fn slots_in(field: &Field<'_>, hex: u8) -> [u32; 12] {
+    let legal = field.legal;
     let mut frames = [0_u32; 12];
-    let acting = observation
-        .active
-        .and_then(|id| observation.stacks.iter().find(|s| s.id == id));
-    let (Some(acting), Some(target)) = (acting, at(observation, hex)) else {
+    let (Some(acting), Some(target)) = (field.acting(), field.at(hex)) else {
         return frames;
     };
     let ok = |p: i32| u8::try_from(p).is_ok_and(|p| legal.attacks.contains(&(target.id, p)));
-    let right = acting.side == Side::Attacker;
+    let right = !field.facing.left(acting);
     for (s, frame) in frames.iter_mut().enumerate() {
         let direction = u8::try_from(s / 2).unwrap_or(0);
         let Some(next) = neighbour(hex, direction) else {

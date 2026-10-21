@@ -21,9 +21,11 @@
 # frames. A box whose count is not the one the original's memory shows
 # (the engine rolls its own damage) is masked and listed after the frame's counts
 # (` n<side>.<record>`); `strike` at 2 730 ms differs in 134 pixels of the original's redraws
-# (design §4.3). The panel is compared since E17 M3 T6b (design §9.8), the game's parked cursor
-# masked; the log's item where the original's text (its memory) is not the viewer's and its
-# pixels differ is masked and listed (` log`: a status line's hint, M3 T6c, or a rolled line).
+# (design §4.3). The panel is compared since E17 M3 T6b (design §9.8), the cursor since T6c-2 (the
+# viewer follows the harness's `actions` with its mouse, design §9.10: the cursor drawn where the
+# original's memory says, the status line's hints, the marked and entered stacks); the log's item
+# where the original's text (its memory) is not the viewer's and its pixels differ is masked and
+# listed (` log`: a rolled line).
 
 [[sequence]]
 id = "walk"
@@ -180,8 +182,10 @@ command = [
 # E17 M3 T1b-2: the mouse over a stack (`seq-fly.toml`'s opening, the Black Dragons' turn). The
 # mouse enters the Pikemen at once: they show group 1 from frame 0, one frame per idle step
 # (`battle_mouse_stack` 0x477C20; their outline 0x70); it leaves at 150 ms and enters again at 200,
-# while they still show group 1: they stand (group 2, frame 0). No engine command: the viewer
-# draws no mouse in a record (design §7.2), so `h3-view sequences` and the frame check skip it.
+# while they still show group 1: they stand (group 2, frame 0). Since M3 T6c-2 the viewer follows
+# the harness's mouse (design §9.10): no engine command, the opening's battle with the mouse over
+# it; its timeline compares the stacks the mouse entered (the original's own fidgets aside), its
+# frames the cursor, the attack's hint and the outline.
 [[sequence]]
 id = "hover"
 scenario = "seq-fly.toml"
@@ -189,6 +193,8 @@ hot_seat = true
 actions = ["move:102,280", "at:150", "move:300,300", "at:200", "move:102,280"]
 ms = 1300
 timeline = "timelines/hover.txt"
+frames = "timelines/hover-frames.txt"
+boxes = true
 
 # E17 M3 T4b-2b-2: a strike's line in the log (`seq-strike.toml`, design §9.6). The Archangel
 # flies beside the Pikemen (its rear hex 47, the cursor left of their centre) and kills all ten

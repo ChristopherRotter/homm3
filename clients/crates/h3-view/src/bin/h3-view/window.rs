@@ -3,9 +3,17 @@
 //! the bot or a record read, its commands timed by `h3_view::anim`, every asset of its frames in
 //! one checkpoint batch. The window shows the frame of the latest change at or before the
 //! battle's clock (`h3_view::clock`), composed and widened ahead of its time, presented when it
-//! falls due; past the end the battle idles. Keys: Space pauses, → steps a frame while paused, R
-//! restarts, F fullscreen, V vsync, C the hardware or the drawn cursor, M the music, E the
-//! creatures' sounds, Esc quits.
+//! falls due; past the end the battle idles. Keys: P pauses, → steps a frame while paused, Home
+//! restarts, F fullscreen, V vsync, H the hardware or the drawn cursor, M the music, E the
+//! creatures' sounds, Esc quits (*provisional*: since E17 M3 T6c-2, as the battle's own keys
+//! took Space, R and C).
+//!
+//! The mouse (T6c-2, `crate::pointer`): the battle takes it as the original does
+//! (`h3_view::mouse::track`): its cursor (the combat cursor's frame, the hardware cursor or drawn),
+//! the stack it marks and those it enters fidgeting, its hints in the panel's log. The panel's
+//! buttons show their click frame while the mouse holds them or their hotkeys are down (the
+//! layout's `keys`: S, R, O, A, C, W, D and Space); a replay takes no command, but the log's
+//! scroll buttons and the arrow keys scroll it.
 //!
 //! The sound (T5b, [`crate::audio`]): a battle shown from its start opens as the original's does,
 //! its start sound playing over the first frame while the battle's clock waits (at most 10 s),
@@ -25,7 +33,8 @@ use h3_sdl::{Config, CursorImage, Event, Key, ReadBack, Window};
 use h3_view::anim::{Sound, Speed};
 use h3_view::clock::Clock;
 use h3_view::compose::FORMAT;
-use h3_view::cursor::{self, Cursor};
+use h3_view::cursor::Cursor;
+use h3_view::mouse::track::Input;
 use h3_view::scene::Draw;
 
 use crate::assets;
@@ -265,24 +274,15 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     let mut battle = Battle::load(source, None, &mut lines)?;
     // The checkpoint batch: every frame's names to the end, and the cursor.
     let frames = battle.frames(battle.timeline.end)?;
-    battle.load_batch(
-        frames.iter().map(|(_, _, l)| l.as_slice()),
-        &[cursor::DEFAULT],
-    )?;
+    let combat = battle.layout().mouse.cursor.clone();
+    battle.load_batch(frames.iter().map(|(_, _, l)| l.as_slice()), &[&combat])?;
     let count = frames.len();
     drop(frames);
-    let cursor = battle
-        .sprite(cursor::DEFAULT)
-        .and_then(|s| Cursor::new(s, 0, (0, 0), FORMAT))
-        .ok_or_else(|| format!("{}: no first frame", cursor::DEFAULT))?;
-    let image = cursor.image(FORMAT);
-    let hardware = CursorImage {
-        width: image.width,
-        height: image.height,
-        hot_x: image.hot.0,
-        hot_y: image.hot.1,
-        rgba: image.rgba,
-    };
+    // The combat cursor's frames as the mouse manager draws them (E17 M3 T6c-2), made as shown.
+    let mut cursors = Cursors::default();
+    let mut frame_now = battle.cursor_frame(options.from);
+    let mut cursor_visible = true;
+    let (_, hardware) = cursors.get(&battle, frame_now)?;
     let [width, height] = battle.frame_size();
     let mut win = Window::open(&Config {
         title: format!("h3-view — {}", source.stem()),
@@ -293,7 +293,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         fullscreen: options.fullscreen,
     })?;
     let mut drawn_cursor = options.drawn_cursor;
-    if !drawn_cursor && let Err(e) = win.set_cursor(Some(hardware.clone())) {
+    if !drawn_cursor && let Err(e) = win.set_cursor(Some(hardware)) {
         lines.push(format!("hardware cursor: {e}; drawn instead"));
         drawn_cursor = true;
     }
@@ -343,6 +343,10 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     let mut shown: Option<Frame> = None;
     let mut next = Some(frame_at(&battle, changes.latest(&battle, options.from))?);
     let mut pointer: Option<(i32, i32)> = None;
+    // The mouse's moves, the log's scrolls and the button held (E17 M3 T6c-2).
+    let mut inputs: Vec<Input> = Vec::new();
+    let mut scrolls: Vec<(u32, i64)> = Vec::new();
+    let mut held: Option<Held> = None;
     let mut report = Report::default();
     let started = win.ticks_ns();
     let stop_ns = options
@@ -364,10 +368,11 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     .min(WAIT_MS)
             });
         let mut redraw = false;
+        let mut mouse_changed = false;
         for event in win.wait(timeout) {
             let now = win.ticks_ns();
             // A key that moves the battle ends the opening first: the clock runs, the music starts.
-            if matches!(event, Event::Key(Key::Space | Key::Right | Key::R))
+            if matches!(event, Event::Key(Key::P | Key::Right | Key::Home))
                 && options.run.is_none()
                 && opening_until.take().is_some()
             {
@@ -375,14 +380,16 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 if let Some(p) = player.as_mut() {
                     p.start_music(now);
                 }
-                if event == Event::Key(Key::Space) {
+                if event == Event::Key(Key::P) {
                     continue;
                 }
             }
+            let at = clock.ms(now);
             match event {
                 Event::Quit | Event::Key(Key::Escape) => break 'run,
-                _ if options.run.is_some() => {}
-                Event::Key(Key::Space) => {
+                // Unattended, the keys do nothing (the mouse still moves the battle's).
+                Event::Key(_) | Event::KeyUp(_) if options.run.is_some() => {}
+                Event::Key(Key::P) => {
                     clock.toggle(now);
                     if let Some(p) = player.as_mut() {
                         p.pause(clock.paused(), now);
@@ -400,7 +407,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     }
                 }
                 Event::Key(Key::Right) => {}
-                Event::Key(Key::R) => {
+                Event::Key(Key::Home) => {
                     clock.seek(now, options.from);
                     shown = None;
                     next = Some(frame_at(&battle, changes.latest(&battle, options.from))?);
@@ -430,9 +437,13 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     let on = !win.vsync();
                     win.set_vsync(on);
                 }
-                Event::Key(Key::C) => {
+                Event::Key(Key::H) => {
                     drawn_cursor = !drawn_cursor;
-                    let image = (!drawn_cursor).then(|| hardware.clone());
+                    let image = if drawn_cursor {
+                        None
+                    } else {
+                        Some(cursors.get(&battle, frame_now)?.1)
+                    };
                     if win.set_cursor(image).is_err() {
                         drawn_cursor = true;
                     }
@@ -441,8 +452,93 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 Event::Pointer(p) => {
                     pointer = p;
                     redraw |= drawn_cursor;
+                    if let Some((x, y)) = p {
+                        // The battle takes the move now (inputs after a seek back are gone).
+                        inputs.retain(|i| i.at() <= at);
+                        inputs.push(Input::Move { at, to: [x, y] });
+                        // The mouse's button follows it on or off the button it holds.
+                        if let Some(h) = held.as_mut().filter(|h| h.key.is_none()) {
+                            h.over = battle.layout().panel.button_at([x, y]) == Some(h.id);
+                        }
+                        mouse_changed = true;
+                    }
+                }
+                Event::Click {
+                    down: true,
+                    at: (x, y),
+                } => {
+                    if let Some(id) = battle.layout().panel.button_at([x, y]) {
+                        held = Some(Held {
+                            id,
+                            key: None,
+                            over: true,
+                        });
+                        mouse_changed = true;
+                    }
+                }
+                Event::Click { down: false, .. } => {
+                    if let Some(h) = held.take_if(|h| h.key.is_none()) {
+                        if let Some(by) = scroll_by(h.id).filter(|_| h.over) {
+                            scrolls.push((at, by));
+                        }
+                        mouse_changed = true;
+                    }
+                }
+                Event::Key(key @ (Key::Up | Key::Down)) => {
+                    // The battle's own keys (0x4758FB: 72, 80) scroll the log.
+                    scrolls.push((at, if key == Key::Up { -1 } else { 1 }));
+                    mouse_changed = true;
+                }
+                Event::Key(key) => {
+                    if let Some(id) = battle.layout().panel.button_for_key(key.name()) {
+                        held = Some(Held {
+                            id,
+                            key: Some(key),
+                            over: true,
+                        });
+                        mouse_changed = true;
+                    }
+                }
+                Event::KeyUp(key) => {
+                    if held.take_if(|h| h.key == Some(key)).is_some() {
+                        mouse_changed = true;
+                    }
                 }
                 Event::Redraw => redraw = true,
+            }
+        }
+        // The mouse, a button held, the log scrolled (E17 M3 T6c-2): the battle follows them and
+        // the frame now is made again.
+        if mouse_changed {
+            let pressed = held.filter(|h| h.over).map(|h| h.id);
+            let changed = battle.mouse(&inputs, &scrolls)? || battle.pressed != pressed;
+            battle.pressed = pressed;
+            if changed {
+                let ms = clock.ms(win.ticks_ns());
+                changes = Changes::new(&battle);
+                next = Some(frame_at(&battle, changes.latest(&battle, ms))?);
+                shown = None;
+            }
+        }
+        // The cursor's frame now, none while a ray hides it: the hardware cursor made again when
+        // it changes.
+        let ms = clock.ms(win.ticks_ns());
+        let frame = battle.cursor_frame(ms);
+        let visible = !battle.timeline.cursor_hidden(ms);
+        if (frame, visible) != (frame_now, cursor_visible) {
+            (frame_now, cursor_visible) = (frame, visible);
+            if drawn_cursor {
+                redraw = true;
+            } else {
+                let image = if visible {
+                    Some(cursors.get(&battle, frame)?.1)
+                } else {
+                    None
+                };
+                if win.set_cursor(image).is_err() {
+                    drawn_cursor = true;
+                    redraw = true;
+                }
             }
         }
         // A hardware cursor SDL could not remake (a new scale) is drawn instead.
@@ -496,8 +592,10 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             let back = show(
                 &mut win,
                 &due,
-                drawn_cursor.then_some(pointer).flatten(),
-                &cursor,
+                (drawn_cursor && cursor_visible)
+                    .then_some(pointer)
+                    .flatten(),
+                &cursors.get(&battle, frame_now)?.0,
                 read,
             )?;
             report
@@ -512,8 +610,10 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             show(
                 &mut win,
                 f,
-                drawn_cursor.then_some(pointer).flatten(),
-                &cursor,
+                (drawn_cursor && cursor_visible)
+                    .then_some(pointer)
+                    .flatten(),
+                &cursors.get(&battle, frame_now)?.0,
                 false,
             )?;
         }
@@ -556,6 +656,61 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         ));
     }
     Ok((lines, ok))
+}
+
+/// A panel button held: by the mouse (`key` none; `over` while the mouse stays on it) or by a
+/// hotkey.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Held {
+    id: u16,
+    key: Option<Key>,
+    over: bool,
+}
+
+/// How far the log's scroll button `id` scrolls it (`battle_log_up` 0x472DF0, `battle_log_down`
+/// 0x472E40: the panel's items 2006 and 2007).
+fn scroll_by(id: u16) -> Option<i64> {
+    match id {
+        2006 => Some(-1),
+        2007 => Some(1),
+        _ => None,
+    }
+}
+
+/// The combat cursor's frames made so far: each drawn and as the hardware cursor's image.
+#[derive(Default)]
+struct Cursors {
+    made: std::collections::BTreeMap<u32, (Cursor, CursorImage)>,
+}
+
+impl Cursors {
+    /// Frame `frame` of the battle's combat cursor with its hot spot (the layout's).
+    fn get(&mut self, battle: &Battle, frame: u32) -> Result<(Cursor, CursorImage), String> {
+        if let Some(made) = self.made.get(&frame) {
+            return Ok(made.clone());
+        }
+        let layout = battle.layout();
+        let [x, y] = usize::try_from(frame)
+            .ok()
+            .and_then(|f| layout.mouse.hot.get(f).copied())
+            .unwrap_or_default();
+        let hot = (u32::try_from(x).unwrap_or(0), u32::try_from(y).unwrap_or(0));
+        let def = &layout.mouse.cursor;
+        let cursor = battle
+            .sprite(def)
+            .and_then(|s| Cursor::read(s, frame, hot, FORMAT))
+            .ok_or_else(|| format!("{def}: no frame {frame}"))?;
+        let image = cursor.image(FORMAT);
+        let hardware = CursorImage {
+            width: image.width,
+            height: image.height,
+            hot_x: image.hot.0,
+            hot_y: image.hot.1,
+            rgba: image.rgba,
+        };
+        self.made.insert(frame, (cursor.clone(), hardware.clone()));
+        Ok((cursor, hardware))
+    }
 }
 
 /// Presents `frame`, with the drawn cursor at `pointer` if any; reads it back first if `read`.

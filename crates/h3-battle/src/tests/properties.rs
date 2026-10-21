@@ -983,6 +983,9 @@ proptest! {
         if own_clone {
             crowd(&mut state, &r);
         }
+        // Each side's stacks at the start: an army, its war machines and a town's turrets may
+        // already pass the stack limit, which bounds only the stacks a battle creates.
+        let start = BattleSide::BOTH.map(|side| state.stacks().iter().filter(|s| s.side == side).count());
         let mut legal = LegalCommands::new();
         for (turn, step) in steps.iter().enumerate() {
             let (actor, cmd) = resolve(&state, &r, step, &mut legal);
@@ -1458,7 +1461,9 @@ proptest! {
             prop_assert_eq!(state.side_to_act(), state.active().map(|id| controller_by_rule(&state, &r, id)));
             prop_assert!(state.active().is_none_or(|id| !berserk(&r, &listed, id)));
             // Living stacks never share a hex (BAT-GEO-002; a clone neither, BAT-QUIRK-7); a side
-            // has at most the stack limit of stacks; created stacks leave no corpse
+            // creates stacks only below the stack limit, so it has at most the larger of the
+            // limit and its stacks at the start (seven, three war machines and three turrets
+            // pass the property's 12); created stacks leave no corpse
             // (BAT-MAG-037). Rounds are left to exactly the living clones and, with quirk
             // BAT-QUIRK-7, the living stacks that became their own clones: created, no clones,
             // linked to themselves; any other link joins a living clone and its living original
@@ -1487,7 +1492,7 @@ proptest! {
             }
             for side in BattleSide::BOTH {
                 let n = state.stacks().iter().filter(|s| s.side == side).count();
-                prop_assert!(n <= usize::from(r.battle().side_stack_limit));
+                prop_assert!(n <= start[side.index()].max(usize::from(r.battle().side_stack_limit)));
             }
             // A town's turrets (BAT-SIE-016, BAT-SIE-017): each is held by one wall-shot target,
             // lives exactly while that target stands and leaves no corpse.

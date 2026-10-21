@@ -890,6 +890,11 @@ fn the_panel_over_time_follows_the_turns_and_the_log() {
     assert_eq!(panels.text(200), "hit");
     assert!(matches!(&computer[8], Draw::Text { text, .. } if text == "hit"));
     assert_eq!(wait(&panels.at(&o, &started, 300, &layout)), 0);
+    // E17 M3 T6c-2: Wait pressed shows its click frame; a disabled one takes no press.
+    let pressed = panels.at_pressed(&o, &started, 300, &layout, "", Some(2009));
+    assert_eq!(wait(&pressed), 1);
+    let dimmed = panels.at_pressed(&o, &started, 200, &layout, "", Some(2009));
+    assert_eq!(wait(&dimmed), 2);
     // More turns started than the events name: the last named; no opening stack: the attacker's
     // colours.
     assert_eq!(

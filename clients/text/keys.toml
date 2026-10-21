@@ -137,6 +137,12 @@ original = [{ at = "GENRLTXT:418" }]
 id = "battle.hint.enemy-hero"
 original = [{ at = "GENRLTXT:419" }]
 
+# Over nothing, for a shooter without shots whose target is still set (`battle_status_line`'s
+# kind 0; E17 M3 T6c-2, design §9.10).
+[[key]]
+id = "battle.hint.no-shots"
+original = [{ at = "GENRLTXT:299" }]
+
 # The panel's controls' hints (`battle_panel_base` 0x46B7A3 on, `SetHints` from the pairs at
 # 0x6A6968; E17 M3 T6c-1): `Help.txt`'s first column, records 379 to 387 (its loader 0x5B98B0
 # copies them there in order); the log's item (383) and its scroll buttons (384) have empty hints.
