@@ -331,6 +331,7 @@ actions = [
 ms = 3000
 heroes = true
 timeline = "timelines/haste.txt"
+frames = "timelines/haste-frames.txt"
 boxes = true
 command = [
     { seat = "Defender", at = 0, command = { Defend = {} } },
