@@ -102,17 +102,18 @@ commands = [
     "1 battle move 140",
     "system battle move 61",
     "1 battle attack 2 42",
-    "1 move 1 33,24,0",
+    "1 answer second",
     "1 end-turn",
+    "0 move 0 19,1,0 18,1,0 17,1,0 16,2,0 15,3,0 14,3,0 13,3,0 12,3,0 11,3,0 10,3,0",
+    "0 move 2 12,20,1 13,20,1 14,20,1 15,20,1 16,20,1 17,20,1 18,21,1 19,22,1 20,23,1 21,24,1 22,25,1",
     "0 end-turn",
-    "1 move 3 27,4,1 28,5,1 27,6,1 27,7,1 27,8,1 28,9,1",
     "1 end-turn",
 ]
 checkpoints = [
-    "0xdd9647ca2cb691bf",
-    "0x082789c59107d0d9",
-    "0xbca5aca2182ce661",
-    "0x9aa62a98e5ea88b2",
+    "0x9fe1cd2dde75beed",
+    "0x73e3f08bf4c5f5da",
+    "0x787687f582771052",
+    "0x040825500800648b",
 ]
 
 [replay]
@@ -147,9 +148,9 @@ checkpoint_every = 25
 
 [map]
 path = "fixtures/maps/e08-duel-36.h3m"
-hash = "0x32a05ae71f1167fe"
+hash = "0x4efb56b9fa8d5fd4"
 import_version = 8
 
 [result]
 day = 8
-final_hash = "0x4a758e153285bfa8"
+final_hash = "0x9d6711d52e9858c7"

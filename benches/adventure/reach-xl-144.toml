@@ -8,7 +8,7 @@ toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
 target = "x86_64-unknown-linux-gnu"
 
 [workload]
-description = "the reachable-tiles query of every hero of the acting player at each step of 2 random games of 28 days on the generated 144 x 144 two-level map (E08 decision 11; since E08 T20b3b2 with its monsters, whose guarded tiles end paths; since E04c T10b with the original's obstacles in its battles: 4 608 queries); counts only inside h3_cli::adventure::bench::reach_queries"
+description = "the reachable-tiles query of every hero of the acting player at each step of 2 random games of 28 days on the generated 144 x 144 two-level map (E08 decision 11; since E08 T20b3b2 with its monsters, whose guarded tiles end paths; since E04c T10b with the original's obstacles in its battles; since E08 T31 with its heroes near a level and one levelled at load: 4 728 queries); counts only inside h3_cli::adventure::bench::reach_queries"
 args = [
     "adventure",
     "bench",
@@ -24,5 +24,5 @@ args = [
     "1",
 ]
 collect = "*reach_queries*"
-instructions = 525670749
+instructions = 477460821
 threshold_percent = 2

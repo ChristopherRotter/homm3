@@ -204,8 +204,8 @@ proptest! {
 }
 
 /// A game with a battle, recorded command by command with each command's actor (the attacked
-/// player's battle commands outside its turn), verifies; a battle command under the other owner
-/// is refused at its step.
+/// player's battle commands outside its turn; since E08 T31 the winner's answer to its level-up),
+/// verifies; a battle command under the other owner is refused at its step.
 #[test]
 fn a_replay_records_a_battle_with_its_actors() {
     let (setup, near) = battle_setup(&FAITHFUL, h3_game::DEFAULT_DIFFICULTY);
@@ -224,6 +224,11 @@ fn a_replay_records_a_battle_with_its_actors() {
         let player = acting(&env);
         let action = choose(&env, player, &mut rng);
         play(&mut env, player, action);
+    }
+    // E08 T31: the duel's heroes are near a level (`fixtures/maps/README.md`), so the winner
+    // answers its level-ups first.
+    while let Some(player) = env.state().waiting_for() {
+        play(&mut env, player, Action::first());
     }
     play(&mut env, RED, Action::end_turn());
     let blue_moved = commands.iter().position(|(actor, c)| {

@@ -4,13 +4,13 @@
 //! it cannot see) and the observation's consistency with the events it is told.
 
 use h3_adventure::{
-    AdventureEvent, AdventureEventKind, ObjectKind, ObjectView, OfferKind, Pos as TilePos,
-    TileMask, TileView, Viewers,
+    AdventureCommand, AdventureEvent, AdventureEventKind, ObjectKind, ObjectView, OfferKind,
+    Pos as TilePos, TileMask, TileView, Viewers,
 };
 use h3_contracts::{HeroId, PlayerId};
 use h3_game::{
-    Actor, DecisionView, GameEvent, GameObservation, GameRuleset, GameState, LevelUpView, Viewer,
-    apply, legal_commands, legal_moves, observe, project,
+    Actor, DecisionView, GameCommand, GameEvent, GameObservation, GameRuleset, GameState,
+    LevelUpView, Viewer, apply, legal_commands, legal_moves, observe, project,
 };
 use proptest::collection::vec;
 use proptest::prelude::*;
@@ -18,8 +18,9 @@ use proptest::test_runner::TestCaseError;
 
 use super::import::object;
 use super::play::{
-    BLOCKERS, FAITHFUL, HERO_TEMPLATE, KINDS, STRICT, Slots, Spot, army, lay_out, masks, options,
-    plan, player_of, resolve, slots, start_on, steps, tile,
+    BLOCKERS, FAITHFUL, HERO_TEMPLATE, KINDS, MONSTER_OBJECTS, STRICT, Slots, Spot, Step, army,
+    experience, experienced, lay_out, masks, options, plan, player_of, resolve, slots, start_on,
+    steps, tile,
 };
 use crate::model::{Body, Object, Pos, RawMap, Stack};
 
@@ -41,6 +42,11 @@ struct Unseen {
     /// (none: kept): taken where the viewer sees the hero on neither tile, the new one land and
     /// free of heroes and blockers.
     moved: Vec<Option<Spot>>,
+    /// Another custom experience for each of the other players' heroes that has one, in the
+    /// map's order (none: kept; E08 T31): their levels at load, drawn from their level seeds or
+    /// the setup stream after every other draw, and so their level-ups in play. A hero without
+    /// one (SoD's plans) keeps its default, drawn from the seed before the objects' contents.
+    experience: Vec<Option<u32>>,
 }
 
 /// Each kind of change in about half the cases, so that some cases keep the other players'
@@ -63,15 +69,22 @@ fn unseen() -> impl Strategy<Value = Unseen> {
             Just(Vec::new()),
             vec(proptest::option::of(any::<Spot>()), 1..=6)
         ],
+        prop_oneof![
+            Just(Vec::new()),
+            vec(proptest::option::weighted(0.5, experience()), 1..=6)
+        ],
     )
-        .prop_map(|(seed, armies, tiles, removed, added, moved)| Unseen {
-            seed,
-            armies,
-            tiles,
-            removed,
-            added,
-            moved,
-        })
+        .prop_map(
+            |(seed, armies, tiles, removed, added, moved, experience)| Unseen {
+                seed,
+                armies,
+                tiles,
+                removed,
+                added,
+                moved,
+                experience,
+            },
+        )
 }
 
 /// An army of its own for the viewer's heroes: at least one stack (a hero whose slots are all
@@ -157,9 +170,26 @@ fn vary(
             tile.river = river;
         }
     }
+    // The tiles of the monsters the viewer sees (where it sees the ground, decision 40), which no
+    // object added or removed may cover (E08 T31: random cases found one): the last object on a
+    // tile takes its visits (ADV-OBJ-003), so the monster would stop guarding (ADV-MON-005), and
+    // the viewer's paths would show it.
+    let seen_monsters: Vec<Spot> = m
+        .objects
+        .iter()
+        .filter(|o| o.template != HERO_TEMPLATE)
+        .flat_map(|o| {
+            let template = usize::try_from(o.template - 1).unwrap();
+            let monster = KINDS[template / BLOCKERS.len()].0 == 54;
+            covers((o.pos.x, o.pos.y, o.pos.z), template, side).filter(move |_| monster)
+        })
+        .filter(|&spot| !ground(spot))
+        .collect();
     let unseen_blocker = |anchor: Spot, template: usize| {
         let monster = KINDS[template / BLOCKERS.len()].0 == 54;
-        covers(anchor, template, side).all(|spot| objects(spot) && (!monster || ground(spot)))
+        covers(anchor, template, side).all(|spot| {
+            objects(spot) && (!monster || ground(spot)) && !seen_monsters.contains(&spot)
+        })
     };
     let mut blocker = 0;
     m.objects.retain(|o| {
@@ -208,6 +238,12 @@ fn vary(
         other += 1;
         if let Some(Some(slots)) = unseen.armies.get(index % unseen.armies.len().max(1)) {
             hero.army = slots.as_deref().map(stacks);
+        }
+        let experience = unseen
+            .experience
+            .get(index % unseen.experience.len().max(1));
+        if let (Some(Some(amount)), Some(own)) = (experience, &mut hero.experience) {
+            *own = *amount;
         }
         if let Some(Some((x, y, z))) = unseen.moved.get(index % unseen.moved.len().max(1)) {
             let (from, to) = (standing_on(o), (x % side, y % side, z % levels));
@@ -656,21 +692,23 @@ fn tiles(game: &GameState, player: PlayerId) -> Vec<(HeroId, TilePos)> {
 }
 
 /// Whether a command was accepted, each hero's move (id, columns, rows, levels), the steps told,
-/// the decisions opened (0), refused (1), declined (2) or accepted (3), and (E08 T19a) every
-/// battle event, start and end, and the heroes removed.
+/// the decisions opened (0), refused (1), declined (2) or accepted (3), (E08 T19a) every
+/// battle event, start and end, and the heroes removed, and (E08 T31) whom the game waits for.
 type Outcome = (
     bool,
     Vec<(HeroId, i32, i32, i32)>,
     usize,
     Vec<u8>,
     Vec<GameEvent>,
+    Option<PlayerId>,
 );
 
 /// What a command of `player` did in a game, as the hygiene test compares it between two games
 /// (E08 T14b's review): whether it was accepted, how far each of the player's heroes moved from
 /// its tile `before` (columns, rows, levels), how many steps the game told, and the decisions it
-/// opened, refused or closed. Where the heroes stand is left out: the test may put them on other
-/// tiles in the other game from the start.
+/// opened, refused or closed; and whom the game then waits for (E08 T31: a level-up open holds
+/// the game, which every player learns, never the level-up, ADR-0017 point 6). Where the heroes
+/// stand is left out: the test may put them on other tiles in the other game from the start.
 fn outcome(
     (player, accepted): (PlayerId, bool),
     before: &[(HeroId, TilePos)],
@@ -727,7 +765,14 @@ fn outcome(
         })
         .copied()
         .collect();
-    (accepted, moved, steps, decisions, battles)
+    (
+        accepted,
+        moved,
+        steps,
+        decisions,
+        battles,
+        after.waiting_for(),
+    )
 }
 
 proptest! {
@@ -749,7 +794,13 @@ proptest! {
     /// refused or declined tells it nothing hidden, nor does a key or a guard's passage, and an
     /// observatory's disk (T15a) is the same tiles in both games: the comparison goes on. A battle
     /// of the viewer's shows it the other side's stacks: the comparison ends when one starts (E08
-    /// T19a); another player's battle must go alike in both games ([`outcome`]).
+    /// T19a); another player's battle must go alike in both games ([`outcome`]). Since E08 T31 the
+    /// other players' heroes may have another custom experience in the other game, so other levels
+    /// at load (their level seeds' draws, or the setup stream's) that never show; that the game
+    /// waits for a player's level-up does show, so the game must wait alike ([`outcome`]). Random
+    /// play seldom gets another player's battle out of sight to its end with the comparison still
+    /// running: [`another_players_level_up_shows_nothing_of_its_offers`] plays one whose offers
+    /// differ.
     #[test]
     fn a_viewer_learns_nothing_it_cannot_see(
         plan in plan(),
@@ -914,7 +965,8 @@ proptest! {
 }
 
 /// [`vary`] changes what it may and nothing else: with every tile unseen, each kind of change
-/// shows on a known plan; with none, only the other players' armies change.
+/// shows on a known plan; with none, only the other players' armies change, and (E08 T31) their
+/// heroes' custom experience, where they have one (not on SoD's plans).
 #[test]
 fn vary_changes_what_the_viewer_never_sees_only() {
     let plan = super::play::Plan {
@@ -938,6 +990,7 @@ fn vary_changes_what_the_viewer_never_sees_only() {
         removed: vec![true],
         added: vec![((3, 6, 0), 0)],
         moved: vec![Some((6, 2, 0))],
+        experience: vec![Some(3_000)],
     };
     let other = vary(&m, 0, &unseen, |_| true, |_| true);
     // Every tile is swamp with a road and a river but the heroes', which stay land as swamp is.
@@ -977,6 +1030,24 @@ fn vary_changes_what_the_viewer_never_sees_only() {
     let mut kept = same.clone();
     let armies: Vec<_> = heroes(&mut kept).map(|(_, army)| army.clone()).collect();
     assert_eq!(armies, [None, Some(stacks(&[Some((10, 3))]))]);
+    // The heroes' experience: none of their own on SoD's plans, kept; RoE's write 0 for every
+    // hero, and the other player's gets its new one.
+    let experience = |m: &RawMap| -> Vec<Option<u32>> {
+        m.objects
+            .iter()
+            .filter_map(|o| match &o.body {
+                Body::Hero(hero) => Some(hero.experience),
+                _ => None,
+            })
+            .collect()
+    };
+    assert_eq!(experience(&other), [None, None]);
+    let roe = lay_out(&super::play::Plan {
+        version: crate::model::Version::RoE,
+        ..plan
+    });
+    let varied = vary(&roe, 0, &unseen, |_| false, |_| false);
+    assert_eq!(experience(&varied), [Some(0), Some(3_000)]);
 }
 
 // covers: ADV-FOG-004, ADV-PIK-001, ADV-PIK-003
@@ -1030,5 +1101,95 @@ fn a_typed_object_in_sight_shows_its_type_never_its_drawn_contents() {
     assert!(drawn.iter().any(|c| *c != drawn[0]));
     for seed in 0..20 {
         assert_eq!(view(seed), base, "seed {seed}");
+    }
+}
+
+/// Another player's level-up shows nothing of its draws (E08 T31, design §14; GAM-DEC-002,
+/// ADR-0017 points 5 and 6), in both profiles: red's hero, at 990 experience, beats eight savage
+/// wolf riders beside it, out of the sight of blue's hero underground, and levels; in the other
+/// game it also knows Scholar, which no battle or move reads, so the same battle opens a level-up
+/// with other offers for some seeds (drawn from its level seed in `faithful`, for most of them;
+/// from red's stream in `strict-fixed`, for two of these sixteen). Blue is shown the same
+/// observation, legal commands and moves and told the same events at every step: that the game
+/// waits for red, never what red is offered or takes.
+// covers: GAM-DEC-002
+#[test]
+fn another_players_level_up_shows_nothing_of_its_offers() {
+    let plan = |scholar: bool| super::play::Plan {
+        version: crate::model::Version::RoE,
+        side: 12,
+        two_levels: true,
+        tiles: vec![(0, 0, 0); 2 * 12 * 12],
+        players: vec![(0, true), (1, true)],
+        heroes: vec![
+            (
+                (2, 2, 0),
+                Some(vec![Some((13, 20)), None, None, None, None, None, None]),
+            ),
+            ((9, 9, 1), None),
+        ],
+        hero_types: 0,
+        backpacks: vec![],
+        // Estates, and Scholar in the other game.
+        skills: vec![Some(if scholar {
+            vec![(13, 1), (18, 1)]
+        } else {
+            vec![(13, 1)]
+        })],
+        blockers: vec![((3, 2, 0), MONSTER_OBJECTS[3])],
+        difficulty: 1,
+    };
+    let (red, blue) = (PlayerId::new(0), PlayerId::new(1));
+    let attack = GameCommand::Adventure(AdventureCommand::MoveHero {
+        hero: HeroId::new(0),
+        path: vec![TilePos::new(3, 2, 0)],
+    });
+    let filter = |events: &[GameEvent], keep: fn(&GameEvent) -> bool| -> Vec<GameEvent> {
+        events.iter().filter(|e| keep(e)).copied().collect()
+    };
+    for (rules, profile) in [(&*FAITHFUL, "faithful"), (&*STRICT, "strict-fixed")] {
+        let mut differ = 0;
+        for seed in 0..16 {
+            let [mut a, mut b] = [false, true].map(|scholar| {
+                start_on(&experienced(&plan(scholar), Some(&[990, 500])), rules, seed)
+            });
+            let mut levels = [Vec::new(), Vec::new()];
+            check_same(&a, &b, rules, blue).unwrap();
+            for turn in 0..40 {
+                let (actor, command) = if turn == 0 {
+                    (Actor::Player(red), attack.clone())
+                } else {
+                    resolve(&a, rules, &options(&a, rules), &Step::Fight(0))
+                };
+                let (mut ea, mut eb) = (Vec::new(), Vec::new());
+                let ra = apply(&mut a, rules, actor, command.clone(), &mut ea);
+                let rb = apply(&mut b, rules, actor, command, &mut eb);
+                assert_eq!(ra, rb, "{profile}, seed {seed}");
+                // The battle goes alike in both games.
+                let battle = |e: &GameEvent| {
+                    matches!(
+                        e,
+                        GameEvent::BattleStarted { .. }
+                            | GameEvent::Battle { .. }
+                            | GameEvent::BattleEnded { .. }
+                    )
+                };
+                assert_eq!(filter(&ea, battle), filter(&eb, battle));
+                let level = |e: &GameEvent| {
+                    matches!(
+                        e,
+                        GameEvent::LevelUpOpened { .. } | GameEvent::LevelGained { .. }
+                    )
+                };
+                levels[0].extend(filter(&ea, level));
+                levels[1].extend(filter(&eb, level));
+                assert_eq!(told(&ea, blue), told(&eb, blue), "{profile}, seed {seed}");
+                assert_eq!(a.waiting_for(), b.waiting_for());
+                check_same(&a, &b, rules, blue).unwrap();
+            }
+            assert!(!levels[0].is_empty(), "{profile}, seed {seed}: no level");
+            differ += usize::from(levels[0] != levels[1]);
+        }
+        assert!(differ > 0, "{profile}");
     }
 }
