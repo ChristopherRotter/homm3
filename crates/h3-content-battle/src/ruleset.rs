@@ -26,11 +26,11 @@ use crate::pack::{BattleCreaturePatch, BattlePack, BattleParamsDef, BattleSpellD
 use crate::params::{self, BattleParams, MAX_AURA_VALUES, SurrenderParams};
 use crate::siege::{self, Siege, SiegeField};
 use crate::spell::{
-    ObstacleKind, SpellEffect, SpellMagic, SpellPolarity, SpellTarget, TimedChange,
+    ObstacleKind, SpellAi, SpellEffect, SpellMagic, SpellPolarity, SpellTarget, TimedChange,
 };
 
 /// Version of the battle part's hash encoding. Bump when the encoding below changes.
-pub const BATTLE_RULESET_HASH_VERSION: u32 = 6;
+pub const BATTLE_RULESET_HASH_VERSION: u32 = 7;
 
 /// Most spells with a summon effect in a ruleset (the battle keeps a side's stack of each
 /// creature its hero can summon from the battle's start, E04b T6b; four in the original).
@@ -128,6 +128,9 @@ pub struct BattleSpell {
     /// The creature a summon effect summons (pack format v18; the Summon Elemental spells, their
     /// elementals, `installation.md` §7.19).
     pub summons: Option<CreatureTypeId>,
+    /// What the original's computer reads of it: its AI categories and values (pack format v45,
+    /// E23 T3-0; no battle rule reads them).
+    pub ai: SpellAi,
 }
 
 /// A spell's battle row before the core fields are copied in.
@@ -140,6 +143,7 @@ struct SpellRow {
     spares: Vec<SpellId>,
     tests_as: Option<SpellId>,
     summons: Option<CreatureTypeId>,
+    ai: SpellAi,
 }
 
 impl Default for SpellRow {
@@ -152,6 +156,7 @@ impl Default for SpellRow {
             spares: Vec::new(),
             tests_as: None,
             summons: None,
+            ai: SpellAi::default(),
         }
     }
 }
@@ -344,6 +349,7 @@ impl BattleRuleset {
                 spares: row.spares,
                 tests_as: row.tests_as,
                 summons: row.summons,
+                ai: row.ai,
             });
         }
         for ((stats, abils), key) in creatures.iter().zip(&abilities).zip(&keys) {
@@ -516,7 +522,8 @@ impl CanonicalHash for BattleRuleset {
     /// order (each roll table as length + all 8 entries, the war machine positions, the full
     /// formation tables loose then tight, the tactics zone widths, the surrender as presence
     /// flag + resource handle + percent, casts per round, side stack limit); spells in handle
-    /// order (polarity, battle magic, counters, dispels, spares, `tests_as`, `summons`); the
+    /// order (polarity, battle magic, counters, dispels, spares, `tests_as`, `summons`, the AI
+    /// kinds and values, v7); the
     /// siege field as presence flag + its encoding; the siege records as length + each's. Neither
     /// the core's hash nor the copies of core fields (speed, flags, the spells' data rows) are
     /// part of it: replays record both hashes.
@@ -570,6 +577,7 @@ impl CanonicalHash for BattleRuleset {
             s.spares.hash_into(h);
             s.tests_as.hash_into(h);
             s.summons.hash_into(h);
+            s.ai.hash_into(h);
         }
         h.write_bool(self.siege_field.is_some());
         if let Some(f) = &self.siege_field {
@@ -842,6 +850,7 @@ fn spell_row(def: &BattleSpellDef, scope: &Scope<'_>) -> Result<SpellRow, Compil
         dispels: scope.spells(&def.dispels)?,
         spares: scope.spells(&def.spares)?,
         tests_as: def.tests_as.as_ref().map(|t| scope.spell(t)).transpose()?,
+        ai: def.ai,
     })
 }
 

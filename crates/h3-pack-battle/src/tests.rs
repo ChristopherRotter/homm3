@@ -2892,3 +2892,86 @@ fn error_display() {
         "unknown spell school `a:l`"
     );
 }
+
+#[test]
+fn spells_carry_the_computers_categories_and_values() {
+    // Pack format v45 (E23 T3-0, ADR-0027 point 13): `ai` holds the executable's AI categories
+    // and SPTRAITS.TXT's four AI values (installation.md §7.6, §7.39).
+    let profile = "base:faithful";
+    let sod = compile(&[&SOD_PACK, &AB_PACK, &BASE_PACK], profile).unwrap();
+    let ai = |k: &str| sod.spell(sod.spell_by_key(k).unwrap()).unwrap().ai;
+    let kinds = |ks: &[SpellAiKind]| {
+        ks.iter()
+            .fold(SpellAiKinds::default(), |set, &k| set.with(k))
+    };
+    for (key, k, values) in [
+        ("base:magic_arrow", Some(SpellAiKind::Damage), [10; 4]),
+        ("base:meteor_shower", Some(SpellAiKind::Damage), [37; 4]),
+        (
+            "base:chain_lightning",
+            Some(SpellAiKind::DamageOnce),
+            [75; 4],
+        ),
+        ("base:armageddon", Some(SpellAiKind::DamageAll), [100; 4]),
+        (
+            "base:resurrection",
+            Some(SpellAiKind::Stacks),
+            [50, 50, 60, 120],
+        ),
+        (
+            "base:summon_boat",
+            Some(SpellAiKind::Special),
+            [10, 10, 20, 20],
+        ),
+        ("base:visions", None, [1; 4]),
+    ] {
+        let want = SpellAi {
+            kinds: k.map_or_else(SpellAiKinds::default, |k| kinds(&[k])),
+            values,
+        };
+        assert_eq!(ai(key), want, "{key}");
+    }
+    // Titan's Lightning Bolt has two categories: the original values it at 1 (§7.39).
+    let titans = ai("sod:titans_lightning_bolt");
+    assert_eq!(
+        titans.kinds,
+        kinds(&[SpellAiKind::Damage, SpellAiKind::Special])
+    );
+    assert_eq!((titans.kinds.only(), titans.values), (None, [75; 4]));
+    // The synthetic pack: a spell without `ai` has none, one without `kinds` no category.
+    let r = compile(&[&SYNTHETIC_PACK], "synthetic:faithful").unwrap();
+    let ai = |k: &str| r.spell(r.spell_by_key(k).unwrap()).unwrap().ai;
+    assert_eq!(
+        ai("synthetic:spark").kinds.only(),
+        Some(SpellAiKind::Damage)
+    );
+    assert_eq!(
+        ai("synthetic:ward"),
+        SpellAi {
+            kinds: SpellAiKinds::default(),
+            values: [1, 1, 2, 2]
+        }
+    );
+    assert_eq!(ai("synthetic:hasten"), SpellAi::default());
+    for (from, to, error) in [
+        (
+            "kinds = [\"damage\"], values = [10",
+            "kinds = [\"damages\"], values = [10",
+            "unknown AI kind `damages`",
+        ),
+        (
+            "kinds = [\"damage\"], values = [10",
+            "kinds = [\"damage\", \"damage\"], values = [10",
+            "AI kind `damage` twice",
+        ),
+    ] {
+        let text = SYNTHETIC_PACK.battle_replace(from, to);
+        assert_eq!(
+            parse_pack(&text).map(|_| ()),
+            Err(BattlePackError::Syntax(error.into()))
+        );
+    }
+    let text =
+        SYNTHETIC_PACK.battle_replace("ai = { values = [1, 1, 2, 2] }", "ai = { kinds = [] }");
+    assert!(matches!(parse_pack(&text), Err(BattlePackError::Syntax(_))));
+}

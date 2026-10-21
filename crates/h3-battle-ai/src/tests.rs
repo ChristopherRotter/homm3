@@ -30,6 +30,7 @@ use proptest::prelude::{any, prop_assert, prop_assert_eq, proptest};
 use proptest::test_runner::Config;
 
 use super::{POLICY_VERSION, checked, choose, unchecked};
+use crate::walker::Walker;
 
 fn key(text: &str) -> ContentKey {
     ContentKey::parse(text).unwrap()
@@ -65,8 +66,9 @@ const HEALS: Option<AbilityDef> = Some(AbilityDef::FirstAid {
 /// The test creatures, by handle: walkers (the imp, the gog, the runner, faster than the field is
 /// wide), the archer, the Ballista and the First Aid Tent; the area shooters (the magog's
 /// fireball, the undead lich's death cloud); fast walkers that are fire-immune (the efreet),
-/// lifeless (the golem) and undead (the zombie); a slow two-hex walker (the cavalier).
-const CREATURES: [Creature; 12] = [
+/// lifeless (the golem) and undead (the zombie); a slow two-hex walker (the cavalier); a flyer
+/// that strikes and returns (the harpy).
+const CREATURES: [Creature; 13] = [
     ("imp", 5, 100, &[], [2, 3, 1, 2], 4, 0, None),
     ("gog", 3, 900, &[], [4, 4, 2, 3], 13, 0, None),
     ("runner", 20, 300, &["alive"], [5, 5, 2, 4], 10, 0, None),
@@ -137,6 +139,16 @@ const CREATURES: [Creature; 12] = [
         0,
         None,
     ),
+    (
+        "harpy",
+        6,
+        150,
+        &["flying", "alive"],
+        [6, 5, 1, 4],
+        14,
+        0,
+        Some(AbilityDef::StrikeAndReturn),
+    ),
 ];
 
 const IMP: usize = 0;
@@ -151,6 +163,7 @@ const EFREET: usize = 8;
 const GOLEM: usize = 9;
 const ZOMBIE: usize = 10;
 const CAVALIER: usize = 11;
+const HARPY: usize = 12;
 
 /// The core ruleset of the test creatures, one hero type and the profiles `t:faithful` (the
 /// original's slips in its estimates, BAT-QUIRK-25) and `t:fixed` (none), in `profile`.
@@ -519,26 +532,39 @@ fn an_area_shot_at_a_two_hex_stack_takes_its_better_hex() {
     assert_eq!(decide(&state, &r), shot(StackId(0), cavalier.front));
 }
 
-// covers: BAT-AI-001
+// covers: BAT-AI-001, BAT-AI-005
 #[test]
-fn a_walker_and_a_blocked_shooter_defend() {
+fn a_walker_attacks_and_a_blocked_shooter_strikes_back() {
     let r = ruleset();
     // The runner (speed 20) reaches the archers in its first turn and attacks them.
     let mut state = BattleState::new(&r, &setup(&[(RUNNER, 1)], &[(ARCHER, 5)]), 3).unwrap();
     assert_eq!(active(&state), RUNNER);
-    assert_eq!(decide(&state, &r), Command::Defend);
-    let mut legal = LegalCommands::new();
-    legal_commands(&state, &r, BattleSide::Attacker, &mut legal);
-    let attack = legal
-        .iter()
-        .copied()
-        .find(|c| matches!(c, Command::Attack { .. }))
-        .unwrap();
+    let attack = decide(&state, &r);
+    assert!(
+        matches!(
+            attack,
+            Command::Attack {
+                target: StackId(1),
+                ..
+            }
+        ),
+        "{attack:?}"
+    );
+    assert!(validate(&state, &r, BattleSide::Attacker, attack).is_ok());
     play(&mut state, &r, attack);
-    // Blocked by the runner beside them, the archers cannot shoot: a walker's turn.
+    // Blocked by the runner beside them, the archers cannot shoot: a walker's turn, which strikes
+    // the runner from where they stand.
     assert_eq!(active(&state), ARCHER);
-    assert!(!computer::shoots(&state, &r, state.active().unwrap()));
-    assert_eq!(decide(&state, &r), Command::Defend);
+    let archers = state.active().unwrap();
+    assert!(!computer::shoots(&state, &r, archers));
+    let from = state.stack(archers).unwrap().hex;
+    assert_eq!(
+        decide(&state, &r),
+        Command::Attack {
+            target: StackId(0),
+            from
+        }
+    );
 }
 
 // covers: BAT-AI-001, BAT-AI-002
@@ -546,7 +572,7 @@ fn a_walker_and_a_blocked_shooter_defend() {
 fn the_commanded_ballista_shoots_and_the_tent_defends() {
     let r = ruleset();
     // The runner wounds the gogs in its first turn, so that the commanded tent has a patient and
-    // takes its turns (BAT-WAR-007).
+    // takes its turns (BAT-WAR-007); the gogs defend (the walker is not under test here).
     let mut setup = setup(&[(GOG, 2)], &[(RUNNER, 1)]);
     setup.heroes = [Some(hero(0)), None];
     setup.war_machines = [vec![creature(BALLISTA), creature(TENT)], vec![]];
@@ -572,6 +598,8 @@ fn the_commanded_ballista_shoots_and_the_tent_defends() {
                     )
                 })
                 .unwrap_or(Command::Defend)
+        } else if active(&state) == GOG {
+            Command::Defend
         } else {
             decide(&state, &r)
         };
@@ -643,12 +671,132 @@ fn a_refused_choice_falls_back_to_defend() {
     assert!(validate(&state, &r, side, refused).is_err());
     assert_eq!(checked(&state, &r, side, refused), Command::Defend);
     assert_eq!(checked(&state, &r, side, Command::Wait), Command::Wait);
-    assert_eq!(POLICY_VERSION, 2);
+    assert_eq!(POLICY_VERSION, 3);
+}
+
+/// The setup of `setup` on `difficulty`.
+fn on(difficulty: u8, mut setup: BattleSetup) -> BattleSetup {
+    setup.difficulty = difficulty;
+    setup
+}
+
+/// Whether the footprint of the active stack at `to` would touch stack `id`.
+fn touches(state: &BattleState, r: &BattleRuleset, to: Hex, id: StackId) -> bool {
+    let field = Field::new(r.battle().field);
+    let me = state.stack(state.active().unwrap()).unwrap();
+    field
+        .footprint(to, me.is_two_hex(), me.side)
+        .is_some_and(|fp| field.touches(fp, state.stack(id).unwrap().footprint(field)))
+}
+
+// covers: BAT-AI-005, BAT-AI-006
+#[test]
+fn a_harpy_flies_to_block_shooters_it_would_hardly_hurt() {
+    let r = ruleset();
+    for difficulty in [1, 2] {
+        // Fifty archers: blocking them is worth more than one harpy's strike, so the harpy takes
+        // the plan's value alone (the Harpies' larger) and only goes to the plan's hex; once
+        // beside them it blocks them already, which is worth 1 (§7.37), and it strikes. The
+        // archers (not under test) defend.
+        let mut state = BattleState::new(
+            &r,
+            &on(difficulty, setup(&[(HARPY, 1)], &[(ARCHER, 50)])),
+            10,
+        )
+        .unwrap();
+        let archers = StackId(1);
+        let mut moves = 0;
+        loop {
+            assert_eq!(active(&state), HARPY);
+            let command = decide(&state, &r);
+            if let Command::Move { to } = command {
+                moves += 1;
+                assert!(validate(&state, &r, BattleSide::Attacker, command).is_ok());
+                play(&mut state, &r, command);
+                play(&mut state, &r, Command::Defend);
+                if touches(&state, &r, to, archers) {
+                    break;
+                }
+                continue;
+            }
+            panic!("{command:?}");
+        }
+        assert!(moves >= 2, "{moves}");
+        let from = state.stacks()[0].hex;
+        assert_eq!(
+            decide(&state, &r),
+            Command::Attack {
+                target: archers,
+                from
+            }
+        );
+        // With the hex it stands on scored high (T3b's scores, here by hand), the plan's value is
+        // worth more again: it stays, so nothing is chosen.
+        let mut scores = [0; 256];
+        scores[usize::from(from.0)] = 1_000_000;
+        let walker = Walker::new(&state, &r, (StackId(0), BattleSide::Attacker)).scored(scores);
+        assert_eq!(walker.choose(&mut Rng::from_seed(1)), None);
+    }
+}
+
+/// A walker of `handles` against the defender's `enemy` on Hard, at the attacker's first turn.
+fn walking(r: &BattleRuleset, handle: usize, enemy: usize) -> BattleState {
+    BattleState::new(r, &on(2, setup(&[(handle, 10)], &[(enemy, 10)])), 11).unwrap()
+}
+
+// covers: BAT-AI-006
+#[test]
+fn the_walk_holds_back_from_worse_hexes_on_hard() {
+    let r = ruleset();
+    // The imps (speed 5) walk towards the gogs across the field, on Hard.
+    let state = walking(&r, IMP, GOG);
+    assert_eq!(active(&state), IMP);
+    let me = StackId(0);
+    let start = state.stacks()[0].hex;
+    let far = state.stacks()[1].hex;
+    let side = BattleSide::Attacker;
+    let walk = |scores: [i32; 256], careful| {
+        Walker::new(&state, &r, (me, side))
+            .scored(scores)
+            .walk(Hex(far.0 - 1), careful)
+    };
+    // No scores: the walk goes its whole speed.
+    let Some(Command::Move { to }) = walk([0; 256], true) else {
+        panic!("no walk");
+    };
+    let field = Field::new(r.battle().field);
+    assert_eq!(field.distance(start, to), 5);
+    // Every hex worse than the start: it holds back and waits for the wait phase.
+    let mut scores = [-1; 256];
+    scores[usize::from(start.0)] = 0;
+    assert_eq!(walk(scores, true), Some(Command::Wait));
+    let mut scores = [-1; 256];
+    scores[usize::from(start.0)] = -2;
+    // Every hex better than the start: it goes on.
+    assert_eq!(walk(scores, true), Some(Command::Move { to }));
+    // The last hex worse than one before it: it stops there and waits, as no end is worse than
+    // the start.
+    let mut scores = [0; 256];
+    scores[usize::from(to.0)] = -1;
+    assert_eq!(walk(scores, true), Some(Command::Wait));
+    // Not careful (Normal): once an end is found it still refuses a worse hex from the step on
+    // that leaves at most `5 × ⌊(n − 1) / 5⌋` of the path's `n` steps (whole turns), as the
+    // fifth step does here: it stops one short and moves there.
+    let Some(Command::Move { to: short }) = walk(scores, false) else {
+        panic!("no walk");
+    };
+    assert_eq!(
+        (field.distance(start, short), field.distance(short, to)),
+        (4, 1)
+    );
+    // No path (the gogs' own hex): nothing.
+    assert_eq!(walk([0; 256], false), Some(Command::Move { to }));
+    assert_eq!(Walker::new(&state, &r, (me, side)).walk(far, false), None);
 }
 
 /// The handles an army draws from: every creature but the war machines.
-const ARMY: [usize; 10] = [
-    IMP, GOG, RUNNER, ARCHER, MAGOG, LICH, EFREET, GOLEM, ZOMBIE, CAVALIER,
+const ARMY: [usize; 11] = [
+    IMP, GOG, RUNNER, ARCHER, MAGOG, LICH, EFREET, GOLEM, ZOMBIE, CAVALIER, HARPY,
 ];
 
 proptest! {
@@ -670,7 +818,7 @@ proptest! {
         let mut rng = Rng::from_seed(draws);
         let draw_army = |rng: &mut Rng| -> Vec<(usize, u32)> {
             (0..=rng.below(4))
-                .map(|_| (ARMY[rng.below(10) as usize], 1 + rng.below(40)))
+                .map(|_| (ARMY[rng.below(11) as usize], 1 + rng.below(40)))
                 .collect()
         };
         let attacker = draw_army(&mut rng);

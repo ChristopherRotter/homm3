@@ -1,7 +1,8 @@
 # E23 — The original's battle AI
 
 Status: **in progress**, refined 2026-10-19 (BAT-Q52); T1a1 to T1a4 done (the cuts confirmed
-2026-10-20), T1c done (BAT-Q53, BAT-Q54); T1a5 done as cut (part C, §7.42 to §7.45); T1a5e (the spell evaluators) done (§7.46); T1b done, ADR-0027 accepted (BAT-Q55); T2 done (T2a the crate and the plain shooters, T2b the area value, the wall shot, the benchmark), T3 next · Follows E05 (the
+2026-10-20), T1c done (BAT-Q53, BAT-Q54); T1a5 done as cut (part C, §7.42 to §7.45); T1a5e (the spell evaluators) done (§7.46); T1b done, ADR-0027 accepted (BAT-Q55); T2 done (T2a the crate and the plain shooters, T2b the area value, the wall shot, the benchmark), the budget
+set; T3 cut in four, T3-0 and T3a done, T3b next · Follows E05 (the
 AI lane, done) · Followed by E06 (training: this policy holds the neutral seat; AI-Q1) ·
 The battle lane's, later the AI lane's (BACKLOG).
 
@@ -170,9 +171,27 @@ found after that decision) belong to the neutral side's map too and are read (§
   - [x] **T2b The area value and the wall shot** (2026-10-21; the user: whole) — BAT-QUIRK-25's flag
     (`shared/`, registry position 29), the area value 0x41EDA0 with slip 1 (BAT-AI-003), the wall shot
     0x41EEA0 (BAT-AI-004, the policy's first draw), the gated benchmark `computer-decisions` and the
-    budget (ADR-0027 point 11; the log).
-- [ ] **T3 Walkers** — melee targets and moves (0x4221F0's walker branch, the melee estimate, the
-  AI pathfinder), waits and defends.
+    budget (ADR-0027 point 11; the log). **The budget** (the user, 2026-10-21): the gated count
+    with its +2 %, re-set on purpose at each part of T3 (the walkers cost more), and at most 1 ms
+    for the slowest decision on a quiet sandbox, measured and recorded per task.
+- **T3 Walkers**, cut in four (the user, 2026-10-21: the pack data first, then the plan and the
+  attack, the scores, the odds and the ends; each part's missing pieces stand in as stubs):
+  - [x] **T3-0 The spells' AI values** (2026-10-21) — each spell's `ai` in the battle pack: the
+    executable's AI categories and `SPTRAITS.TXT`'s four AI values (pack format v45, battle part
+    hash v7; ADR-0027 point 13; the log).
+  - [x] **T3a The plan and the attack** (2026-10-21) — the walker's choice 0x421680 (BAT-AI-005:
+    the plan 0x436300 with the blocked shooters, the multi-headed and breath strikes and the
+    retaliation's; the melee estimate 0x4359B0, read in full; the Harpies' larger value; the draw
+    of 75 to 100 %; the best) and the walk 0x41F580 (BAT-AI-006); Wait on Hard and up, else
+    Defend; the hex scores 0 and "the stronger side" absent until T3b and T3c (BAT-STUB-4;
+    `installation.md` §7.47; the log).
+  - [ ] **T3b The hex scores and the hold-back** — the Fire Walls, the moat under SoD rules, the
+    enemies' reach with the multi-headed strike, the crowding and breath lines with the area
+    threat (§7.36); the walk's score test and its Wait on Hard and up (§7.38).
+  - [ ] **T3c The odds and the ends** — the stronger at range 0x420A80 with the hero's value
+    (§7.39), the last retaliation's gain 0x41F3B0, the fallbacks (guarding a shooter, the step to
+    safety), the besieger's walk to its wall, holding the walls with the walls test's slip
+    (BAT-QUIRK-25).
 - [ ] **T4 Creature casts** — the abilities a computer stack chooses to use, per T1a's map. With
   T2 to T4 a side without a hero is complete: the AI lane's and the adventure lane's inboxes get
   the function (`Policy::System`, the neutral seat, A12's weights are theirs).

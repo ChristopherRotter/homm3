@@ -19,9 +19,9 @@ use h3_content_battle::{
     BattleCreatureOverride, BattleCreaturePatch, BattlePack, BattleParamsDef, BattleRuleset,
     BattleSpellDef, BattlefieldDef, EffectDuration, EffectEnd, FactionChangeDef, HexStep,
     MASTERY_NAMES, ObstacleDef, ObstacleKind, ObstacleShape, SPECIALIST_LEVELS, SiegeDef,
-    SiegeFieldDef, SpecialistBonus, SpellArea, SpellChain, SpellEffect, SpellMagic, SpellPolarity,
-    SpellTarget, SurrenderDef, TargetConditions, TargetSide, TimedChange, Usefulness, WallKind,
-    WallTarget,
+    SiegeFieldDef, SpecialistBonus, SpellAi, SpellAiKind, SpellAiKinds, SpellArea, SpellChain,
+    SpellEffect, SpellMagic, SpellPolarity, SpellTarget, SurrenderDef, TargetConditions,
+    TargetSide, TimedChange, Usefulness, WallKind, WallTarget,
 };
 use h3_contracts::BattleSetup;
 use h3_pack::{PackError, reference, references};
@@ -783,6 +783,40 @@ struct SpellDto {
     /// `useful = "<when>"`: when the spell is useful on a stack for a helpful caster (pack
     /// format v24, E04b T7b2b; `Usefulness` names; default `always`).
     useful: Option<String>,
+    /// `ai = { kinds = ["damage"], values = [10, 10, 10, 10] }`: what the original's computer
+    /// reads of the spell (pack format v45, E23 T3-0; `SpellAiKind` names, each once, `kinds`
+    /// default none; the values by mastery from none to expert).
+    ai: Option<SpellAiDto>,
+}
+
+/// `ai = { kinds = [...], values = [none, basic, advanced, expert] }` (pack format v45).
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct SpellAiDto {
+    #[serde(default)]
+    kinds: Vec<String>,
+    values: [u16; 4],
+}
+
+impl SpellAiDto {
+    fn ai(&self) -> Result<SpellAi, BattlePackError> {
+        let kinds = self
+            .kinds
+            .iter()
+            .try_fold(
+                SpellAiKinds::default(),
+                |set, name| match SpellAiKind::from_name(name) {
+                    Some(k) if !set.contains(k) => Ok(set.with(k)),
+                    Some(_) => Err(format!("AI kind `{name}` twice")),
+                    None => Err(format!("unknown AI kind `{name}`")),
+                },
+            )
+            .map_err(BattlePackError::Syntax)?;
+        Ok(SpellAi {
+            kinds,
+            values: self.values,
+        })
+    }
 }
 
 /// `obstacle = { steps = ["top_right", "top_left"], hexes = [2, 2, 3, 3], mirrored = true,
@@ -1218,6 +1252,12 @@ pub fn parse_battle(manifest: &PackManifest, text: &str) -> Result<BattlePack, B
                 spares: references(pack_id, &s.spares)?,
                 tests_as: optional(s.tests_as.as_deref())?,
                 summons: optional(s.summons.as_deref())?,
+                ai: s
+                    .ai
+                    .as_ref()
+                    .map(SpellAiDto::ai)
+                    .transpose()?
+                    .unwrap_or_default(),
             })
         })
         .collect::<Result<Vec<_>, BattlePackError>>()?;

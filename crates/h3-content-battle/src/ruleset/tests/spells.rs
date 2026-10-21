@@ -45,6 +45,7 @@ fn spell(k: &str, schools: &[&str]) -> Spell {
             spares: vec![],
             tests_as: None,
             summons: None,
+            ai: SpellAi::default(),
         },
     }
 }
@@ -180,10 +181,16 @@ fn spell_rows_compile_and_are_checked() {
         change(&mut p);
         assert_eq!(fails(p), err);
     }
-    // The battle magic is part of the part's hash.
+    // The battle magic is part of the part's hash, and so is what the computer reads (v7).
     let mut q = pack();
     q.battle.spells[0].magic.target = SpellTarget::None;
     assert_ne!(compile(&[q]).unwrap().content_hash(), r.content_hash());
+    assert_eq!(s.ai, SpellAi::default());
+    let mut q = pack();
+    q.battle.spells[0].ai.values[3] = 15;
+    let with_ai = compile(&[q]).unwrap();
+    assert_eq!(with_ai.spell(bolt).unwrap().ai.values, [0, 0, 0, 15]);
+    assert_ne!(with_ai.content_hash(), r.content_hash());
 }
 /// A timed spell `k` of the test pack's air school.
 fn timed(k: &str) -> Spell {
