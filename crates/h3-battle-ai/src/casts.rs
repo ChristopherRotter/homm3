@@ -90,10 +90,13 @@ fn raises_melee_attack(ruleset: &BattleRuleset, spell: SpellId) -> bool {
 /// The Ogre Mage's scan (0x420D20; BAT-AI-014), for a caster of `spell` at `mastery` with `power`
 /// (its rounds): with a value so far that is not 0 (a negative one too) a draw of 1 to 100
 /// ([`SKIP`]) casts nothing on 30 or less. Then over the walker's side's stacks from the last to
-/// the first, but the caster and the turrets, each that the engine accepts as the cast's target,
-/// and once the value so far is above 0 only one at least as strong as the caster (0x442E60 in the
+/// the first, but the caster and the turrets, each that the engine accepts as the cast's target
+/// (where the rules cast the mass version, which takes no target, each the spell can affect,
+/// [`computer::spell_affects`]: the original aims it at the stack's hex all the same), and once
+/// the value so far is above 0 only one at least as strong as the caster (0x442E60 in the
 /// walker's context): its [`bloodlust`] value; one above 0 and above `value` replaces it and takes
-/// the stack, so the cast must beat the walker's value, and the later stack stays at a tie.
+/// the stack (the mass version: no target), so the cast must beat the walker's value, and the
+/// later stack stays at a tie.
 // rule: BAT-AI-014
 fn scan(
     w: &Walker<'_>,
@@ -107,17 +110,27 @@ fn scan(
     if *value != 0 && rng.range_inclusive(SKIP.0, SKIP.1) <= SKIP.2 {
         return None;
     }
+    // The rules cast the mass version without a target (Magic Plains raises a creature's cast to
+    // Expert): the stacks the scan values are then those the spell can affect.
+    let mass = !computer::takes_stack(ruleset, spell, computer::creature_mastery(state, mastery));
     let mut targets = CastTargets::new();
-    creature_cast_targets(state, ruleset, side, &mut targets);
+    if !mass {
+        creature_cast_targets(state, ruleset, side, &mut targets);
+    }
     let caster = (spell, mastery, u32::from(power));
     let mut best = None;
     for (i, s) in state.stacks().iter().enumerate().rev() {
         let id = StackId(u8::try_from(i).unwrap_or(u8::MAX));
         let target = CastTarget::Stack(id);
+        let accepted = if mass {
+            computer::spell_affects(state, ruleset, side, spell, id)
+        } else {
+            targets.as_slice().contains(&target)
+        };
         if s.side != side
             || id == w.id
             || s.is_turret()
-            || !targets.as_slice().contains(&target)
+            || !accepted
             || (*value > 0 && strength > computer::strength(state, ruleset, &w.ctx, id))
         {
             continue;
@@ -125,7 +138,7 @@ fn scan(
         let v = bloodlust(w, &sc, caster, id);
         if v > 0 && v > *value {
             *value = v;
-            best = Some(target);
+            best = Some(if mass { CastTarget::None } else { target });
         }
     }
     best.map(|target| Command::CreatureCast { target })

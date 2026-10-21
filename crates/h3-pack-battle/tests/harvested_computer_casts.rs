@@ -2,11 +2,14 @@
 //! BAT-AI-013): the Archangels' and the Pit Lords' raise when it beats the walker's value, the
 //! Faerie Dragons' drawn spell wherever it is worth anything (at the targets the engine accepts),
 //! its estimate at Expert on its school's field with BAT-QUIRK-25 (survey slip 7), no cast on
-//! Cursed Ground and none that costs the side more than the enemy.
+//! Cursed Ground and none that costs the side more than the enemy; the Ogre Mages' Bloodlust (E23
+//! T4b1; BAT-AI-014) when it beats their attack, at a stack as strong as they are, skipped three
+//! times in ten, its mass version on Magic Plains, its estimate at Expert on Fiery Fields with
+//! BAT-QUIRK-25 (slip 8); the elementals that never cast (BAT-Q57).
 
 use h3_battle::{
-    BattleState, CastSpell, CastTarget, Command, Field, LegalCommands, NoopSink, StackId, apply,
-    computer, legal_commands, stack_spell, validate,
+    BattleState, CastSpell, CastTarget, Command, Field, Hex, LegalCommands, NoopSink, StackId,
+    apply, computer, creature_cast_targets, legal_commands, stack_spell, validate,
 };
 use h3_content::{Formation, HeroTypeId};
 use h3_content_battle::BattleRuleset;
@@ -444,4 +447,302 @@ fn no_spell_that_costs_the_side_more_than_the_enemy() {
         bolts > 0 && chains > 0 && areas > 0,
         "{bolts} {chains} {areas}"
     );
+}
+
+/// A battle of `pegasi` Silver Pegasi against `mages` Ogre Mages and `others` on `battlefield` (on
+/// Normal, from seed 3): the pegasi fly to hex 98, beside the defender's last stack, every other
+/// stack before the Ogre Mages defends, and the Ogre Mages are to act.
+fn mages_against_pegasi(
+    r: &BattleRuleset,
+    pegasi: u32,
+    (mages, others): (u32, (&str, u32)),
+    battlefield: Option<&str>,
+) -> BattleState {
+    let mut state = battle(
+        r,
+        (
+            &[("base:silver_pegasus", pegasi)],
+            &[("base:ogre_mage", mages), others],
+        ),
+        [None, None],
+        battlefield,
+        3,
+    );
+    assert!(acting(r, &state, "base:silver_pegasus"));
+    let fly = Command::Move { to: Hex(98) };
+    apply(&mut state, r, BattleSide::Attacker, fly, &mut NoopSink).unwrap();
+    until(r, &mut state, "base:ogre_mage");
+    state
+}
+
+/// The commands of the side to act from the streams of seeds `0..n`.
+fn choices(r: &BattleRuleset, state: &BattleState, n: u64) -> Vec<Command> {
+    let side = state.side_to_act().unwrap();
+    (0..n)
+        .map(|seed| h3_battle_ai::choose(state, r, side, &mut Rng::from_seed(seed)))
+        .collect()
+}
+
+/// The Ogre Mages' Bloodlust at stack `t`.
+fn bloodlust_at(t: StackId) -> Command {
+    Command::CreatureCast {
+        target: CastTarget::Stack(t),
+    }
+}
+
+// covers: BAT-AI-014
+#[test]
+fn the_ogre_mages_bless_a_stack_as_strong_as_they_are_when_it_beats_their_attack() {
+    // 10 Ogre Mages (strength 6 720) value their attack on 15 Silver Pegasi at about 300 to 400
+    // per turn. Nine Dendroid Soldiers beside the pegasi (strength 6 885, not yet acted) gain by
+    // Bloodlust's 6 attack g = 125 / 97 on a base of 100: their strike of 105 rises to 135, worth
+    // trunc((√g − 1) × 6 885) = 930 over the battle's class 2 (six rounds, all of it). So the
+    // mages cast it at them unless the scan's draw skips (three in ten).
+    let r = sod("base:faithful");
+    let state = mages_against_pegasi(&r, 15, (10, ("base:dendroid_soldier", 9)), None);
+    let dendroids = stack_of(&r, &state, "base:dendroid_soldier");
+    let mages = stack_of(&r, &state, "base:ogre_mage");
+    let ctx = computer::context(&state, &r, BattleSide::Defender);
+    assert_eq!(computer::strength(&state, &r, &ctx, mages), 6720);
+    assert_eq!(computer::strength(&state, &r, &ctx, dendroids), 6885);
+    let commands = choices(&r, &state, 20);
+    let casts = commands
+        .iter()
+        .filter(|&&c| c == bloodlust_at(dendroids))
+        .count();
+    assert!(casts >= 10, "{commands:?}");
+    let mut state = state;
+    apply(
+        &mut state,
+        &r,
+        BattleSide::Defender,
+        bloodlust_at(dendroids),
+        &mut NoopSink,
+    )
+    .unwrap();
+    let blessed = r.spell_by_key("base:bloodlust").unwrap();
+    assert!(
+        state
+            .effects()
+            .iter()
+            .any(|e| e.stack == dendroids && e.spell == blessed)
+    );
+    // Eight dendroids (strength 6 120) would be worth about 830, more than the attack, but once
+    // there is a value to beat the scan takes only stacks at least as strong as the caster.
+    let state = mages_against_pegasi(&r, 15, (10, ("base:dendroid_soldier", 8)), None);
+    let commands = choices(&r, &state, 20);
+    assert!(
+        commands
+            .iter()
+            .all(|c| !matches!(c, Command::CreatureCast { .. })),
+        "{commands:?}"
+    );
+}
+
+// covers: BAT-AI-014
+#[test]
+fn three_scans_in_ten_cast_nothing_when_the_attack_is_worth_something() {
+    // With an attack worth about 300 to 400 the scan draws 1 to 100 and casts nothing on 30 or
+    // less: the mages attack instead.
+    let r = sod("base:faithful");
+    let state = mages_against_pegasi(&r, 15, (10, ("base:dendroid_soldier", 9)), None);
+    let dendroids = stack_of(&r, &state, "base:dendroid_soldier");
+    let commands = choices(&r, &state, 200);
+    let casts = commands
+        .iter()
+        .filter(|&&c| c == bloodlust_at(dendroids))
+        .count();
+    assert!((120..=160).contains(&casts), "{casts}");
+    assert!(
+        commands
+            .iter()
+            .all(|&c| c == bloodlust_at(dendroids) || matches!(c, Command::Attack { .. })),
+        "{commands:?}"
+    );
+    // Against 20 pegasi their attack is worth nothing (they would lose more than they kill): no
+    // draw, the cast every time; 30 dendroids gain 6 attack for their whole strike (no cap).
+    let state = mages_against_pegasi(&r, 20, (10, ("base:dendroid_soldier", 30)), None);
+    let dendroids = stack_of(&r, &state, "base:dendroid_soldier");
+    assert!(
+        choices(&r, &state, 20)
+            .iter()
+            .all(|&c| c == bloodlust_at(dendroids))
+    );
+}
+
+// covers: BAT-AI-014
+#[test]
+fn no_bloodlust_where_the_strike_already_takes_nearly_everything() {
+    // 30 dendroids strike 12 pegasi (360 hit points) for 351: Bloodlust can add only the 9 left,
+    // g = 360 / 351, worth trunc((√g − 1) × 22 950) = 292, below the mages' attack (about 500 to
+    // 600): they attack.
+    let r = sod("base:faithful");
+    let state = mages_against_pegasi(&r, 12, (10, ("base:dendroid_soldier", 30)), None);
+    let pegasi = stack_of(&r, &state, "base:silver_pegasus");
+    let dendroids = stack_of(&r, &state, "base:dendroid_soldier");
+    let count = u64::from(state.stacks()[dendroids.index()].count);
+    assert_eq!(
+        computer::damage_estimate(&state, &r, (dendroids, pegasi), count, false, 0),
+        351
+    );
+    assert!(
+        choices(&r, &state, 20)
+            .iter()
+            .all(|c| matches!(c, Command::Attack { target, .. } if *target == pegasi))
+    );
+}
+
+// covers: BAT-AI-014, BAT-TER-005
+#[test]
+fn on_magic_plains_the_ogre_mages_cast_the_mass_version() {
+    // Magic Plains raise the creatures' casts to Expert: the rules cast Bloodlust's mass version,
+    // which takes no target. The estimate is the evaluator's sum over the side: the Ancient
+    // Behemoths acted in a battle so one-sided (class 1) that their share is 0, the mages' own,
+    // trunc((√(145 / 115) − 1) × 2 016) = 247, beats an attack worth nothing.
+    for profile in ["base:faithful", "base:strict-fixed"] {
+        let r = sod(profile);
+        let mut state = mages_against_pegasi(
+            &r,
+            10,
+            (3, ("base:ancient_behemoth", 2)),
+            Some("base:magic_plains"),
+        );
+        let mass = Command::CreatureCast {
+            target: CastTarget::None,
+        };
+        assert!(
+            choices(&r, &state, 20).iter().all(|&c| c == mass),
+            "{profile}"
+        );
+        apply(&mut state, &r, BattleSide::Defender, mass, &mut NoopSink).unwrap();
+        let blessed = r.spell_by_key("base:bloodlust").unwrap();
+        for key in ["base:ogre_mage", "base:ancient_behemoth"] {
+            let s = stack_of(&r, &state, key);
+            assert!(
+                state
+                    .effects()
+                    .iter()
+                    .any(|e| e.stack == s && e.spell == blessed),
+                "{profile} {key}"
+            );
+        }
+    }
+}
+
+// covers: BAT-AI-014
+#[test]
+fn on_fiery_fields_the_estimate_takes_expert_with_the_slip() {
+    // Fiery Fields raise Bloodlust's school for a hero, not a creature's cast: the rules cast it
+    // at Advanced on one stack. The original's estimate takes Expert there (survey slip 8): the
+    // mass value, the mages' own 247, makes them bless the behemoths. Without the slip the
+    // behemoths' own value is 0 (they acted, class 1): no cast.
+    let pick = |profile: &str| {
+        let r = sod(profile);
+        let state = mages_against_pegasi(
+            &r,
+            10,
+            (3, ("base:ancient_behemoth", 2)),
+            Some("sod:fiery_fields"),
+        );
+        let behemoths = stack_of(&r, &state, "base:ancient_behemoth");
+        (choices(&r, &state, 20), behemoths)
+    };
+    let (faithful, behemoths) = pick("base:faithful");
+    assert!(faithful.iter().all(|&c| c == bloodlust_at(behemoths)));
+    let (fixed, _) = pick("base:strict-fixed");
+    assert!(
+        fixed
+            .iter()
+            .all(|c| !matches!(c, Command::CreatureCast { .. }))
+    );
+}
+
+// covers: BAT-AI-014
+#[test]
+fn a_stack_with_bloodlust_is_not_blessed_again() {
+    let r = sod("base:faithful");
+    let mut state = mages_against_pegasi(&r, 20, (10, ("base:dendroid_soldier", 30)), None);
+    let dendroids = stack_of(&r, &state, "base:dendroid_soldier");
+    let cast = decide(&r, &state);
+    assert_eq!(cast, bloodlust_at(dendroids));
+    apply(&mut state, &r, BattleSide::Defender, cast, &mut NoopSink).unwrap();
+    // The next round: Bloodlust still lasts on the dendroids, the only other stack is the caster.
+    until(&r, &mut state, "base:dendroid_soldier");
+    until(&r, &mut state, "base:ogre_mage");
+    assert!(state.casts_left(state.active().unwrap()) > 0);
+    assert!(
+        choices(&r, &state, 20)
+            .iter()
+            .all(|c| !matches!(c, Command::CreatureCast { .. }))
+    );
+}
+
+// covers: BAT-AI-012
+#[test]
+fn the_computers_elementals_never_cast() {
+    // The rules let the Storm Elementals protect the dendroids (BAT-MAG-048); the computer's
+    // table sends no elemental to a cast routine (BAT-Q57).
+    let r = sod("base:faithful");
+    let mut state = battle(
+        &r,
+        (
+            &[("base:silver_pegasus", 15)],
+            &[("ab:storm_elemental", 10), ("base:dendroid_soldier", 9)],
+        ),
+        [None, None],
+        None,
+        3,
+    );
+    let fly = Command::Move { to: Hex(98) };
+    apply(&mut state, &r, BattleSide::Attacker, fly, &mut NoopSink).unwrap();
+    until(&r, &mut state, "ab:storm_elemental");
+    let mut targets = h3_battle::CastTargets::new();
+    creature_cast_targets(&state, &r, BattleSide::Defender, &mut targets);
+    assert!(!targets.is_empty());
+    assert!(
+        choices(&r, &state, 20)
+            .iter()
+            .all(|c| !matches!(c, Command::CreatureCast { .. }))
+    );
+}
+
+// covers: BAT-AI-014
+#[test]
+fn the_spell_contexts_threat_records_and_the_damage_of_a_base() {
+    let r = sod("base:faithful");
+    let mut state = battle(
+        &r,
+        (
+            &[("base:marksman", 20), ("base:pikeman", 10)],
+            &[("ab:peasant", 1), ("base:swordsman", 5)],
+        ),
+        [None, None],
+        None,
+        3,
+    );
+    let marksmen = stack_of(&r, &state, "base:marksman");
+    let pikemen = stack_of(&r, &state, "base:pikeman");
+    let peasant = stack_of(&r, &state, "ab:peasant");
+    let swordsmen = stack_of(&r, &state, "base:swordsman");
+    let ctx = computer::context(&state, &r, BattleSide::Attacker);
+    // A shooter takes every enemy at one turn, the one its shot is worth most against.
+    let threat = computer::threat(&state, &r, &ctx, marksmen).unwrap();
+    assert_eq!((threat.enemy, threat.turns), (swordsmen, 1));
+    // A walker the nearest by its turns: the pikemen (speed 4) need three for 13 hexes or so.
+    let threat = computer::threat(&state, &r, &ctx, pikemen).unwrap();
+    assert!(threat.turns > 1, "{threat:?}");
+    // The damage of a base of 100 by the marksmen (attack 6) on the pikemen (defense 5): 105 for
+    // a shot, halved in melee; with 6 attack more 135 and 67.
+    let base =
+        |shot, bonus| computer::base_damage(&state, &r, (marksmen, pikemen), (100, shot), bonus);
+    assert_eq!((base(true, 0), base(false, 0)), (105, 52));
+    assert_eq!((base(true, 6), base(false, 6)), (135, 67));
+    // A dead stack records nothing.
+    let shot = Command::Shoot {
+        target: peasant,
+        at: state.stacks()[peasant.index()].hex,
+    };
+    apply(&mut state, &r, BattleSide::Attacker, shot, &mut NoopSink).unwrap();
+    assert!(!state.stacks()[peasant.index()].is_alive());
+    assert_eq!(computer::threat(&state, &r, &ctx, peasant), None);
 }

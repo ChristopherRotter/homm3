@@ -4955,3 +4955,71 @@ skips them). **For the port:** the policy casts only at targets the engine accep
 T4a): the original's dragon may aim an area spell at a free hex, its own or an immune stack's (the
 cast routine tests nothing for a creature's cast, §7.21), and its raise ignores the engine's slot
 test for the raised stack (BAT-STUB-8, BAT-Q32).
+
+### 7.51 Code reading: the Ogre Mage's cast re-read for the port (E23 T4b1, 2026-10-21)
+
+Read again for E23 T4b1 (the user's cut of T4b: the Ogre Mage first, the predictions in T4b2, the
+context's threat tables and second context in T4c): 0x420D20, 0x43C330, 0x43A910's mass path with
+Bloodlust's evaluator 0x438100, 0x437800, 0x443E30 against 0x443F40 and 0x443840, and 0x422B20
+with flag 0 as the context calls it. §7.42, §7.44 and §7.45 stand; these are the details the port
+needs. Insight only, nothing copied (Q29).
+
+**0x420D20.** The caster's strength (0x442E60) with the entry's battle context's +0 and +4. The
+spell context with flag 1. The draw `random(1, 100)` is taken when the value so far is not 0
+(`cmp [value], 0; je`: a negative value draws too); 30 or less ends the scan with no cast (the
+context freed). The side's records from the last (+0x54BC − 1) down, the caster and creature 149
+skipped; 0x4476C0 at the record's position (+0x38). While the value so far is above 0 (signed,
+re-read for each record), a record whose strength is below the caster's is skipped (`cmp caster,
+R; jg`: an equal one passes). The value by the caster's creature: 37 the Genie's (0x43C4A0), 91
+Bloodlust's (0x43C330). Above 0 and above the value so far (signed) it replaces it and the record's
+position becomes the target; at the end a target gives action 10 at it.
+
+**0x43C330.** 0 while Bloodlust lasts on R (+0x244). The mastery 2; by the battlefield − 1 through
+the jumps 0x43C478: 0 (Magic Plains) 3; 5 to 8 (fields 6 to 9) 3 when spell 43's school bits (its
+record's +0x1C) have bit 2, 1, 3 or 0: Bloodlust is fire, so Fiery Fields only (slip 8). The
+candidate: spell 43, that mastery, power 6, rounds 6, flag 1. 0x59E060(43, mastery) true (below
+Expert): the same steps as the evaluator 0x438100 (R can shoot now, 0x4428F0 with 0: 0; no threat
+enemy +0x538: 0; 0x448BD0 at R's speed 0x448CD0 above 1: 0; else 0x437800(R, the enemy, the
+candidate's rounds, spell 43's value at the mastery, its record's +0x34 + 4 × mastery)). At
+Expert: 0x43A910(the candidate, the context's side), the candidate's value.
+
+**0x43A910's mass path** (0x59E060 false): the evaluator by 0x43B690 (0x438100 for 43). Over the
+given side's records in record order: skipped when blind (+0x290), petrified (+0x2B0) or
+paralysed (+0x2C0) at any duration, dead (bit 21), creature 147 or 148, or with the spell lasting
+(+0x198 + 4 × spell); then 0x5A3C80(spell, the context's side, R, 1, the context's creature flag
++0x1D); the evaluator's value is added (32-bit). Hypnotized records and the war machines are not
+skipped here: 0x5A3C80 and the evaluators' own tests decide them. "Now" is set and the sum is the
+candidate's value. With the evaluator independent of the scan's record, the mass value is the
+same for every record the scan values (but one with Bloodlust, 0 first).
+
+**0x437800 in detail.** The enemy beaten (+0x1C): 0. The copy's attack (+0xC8) plus `b`; the shot
+flag 0x4428F0(S, 0); `D` = 0x443E30(S: E, 100, shot, jousting 0), `D'` the copy's; `g = D' / D`
+(`fild`, `fdiv` of doubles, stored); `d` = 0x442780(S: E, shot, S's count +0x4C, cap 1, jousting
+0); `d' = ftol(d × g)`; `h` = 0x443080(E, 0); `d' > h` (signed): `d' = h` and `g = h / d`; `d' ≤ d`
+(signed): 0. `k` the context's +0x3C; `r ≥ k`: `t = 1.0`, else `r / k`; acted (bit 26): `t = t −
+1 / k`, below 0 (`fcomp 0.0`, C0) then 0. `w` = 0x442E60(S, the context's +0x20, +0x24). The value
+`ftol((√g − 1) × w × t)` in that order (the runtime's `sqrt`, then `fsub 1.0`, `fmul w`, `fmul t`).
+
+**0x443E30 against 0x443F40.** 0x443840, stage 1 of a real strike, passes `estimate == 0` as
+0x443320's fourth argument; 0x443E30 passes 0, as an estimate. What 0x443840 does after stage 1
+(the Dread Knight's death blow, 67; the Ballista's double damage, 146) runs only outside an
+estimate. So 0x443E30's damage is the strike's estimate (0x443F40 with its estimate flag) without
+Fire Shield's value, at least 1.
+
+**0x422B20 with flag 0** (the context's: each side, no record left out, flag 0, the context, the
+global pathfinder). Per record: cleared; skipped when dead, a war machine (bit 6) but the Ballista
+(146), petrified or blind above 1 round, hypnotized, berserk. One that can shoot now runs no search
+and takes every record of the other side but creature 149, **the dead included**, at cost 1, the
+value 0x435C70 with the shot flag. Another runs 0x4B2DA0 (range 127, its speed, the tactics flag;
+no range 0 for a paralysed or blind stack there) and takes the other side's records but 149 whose
+position hex is marked (the hex record's +0x20E: a mark, or a dead record's free place reached
+within the speed), at the cell's cost (+0x18), none at a cost above 0 for a stack of speed 0; the
+value 0x435C70 (shot flag 0, the cost as the run-up when within the speed, else 0). 0x448840 keeps
+the first, then fewer turns or, at equal turns, a strictly higher value.
+
+**For the port:** the records' dead enemies are left out, as the walker's records in T3c (a dead
+enemy's value on the records' stale fields is not read); the predictions' draws and "the enemy
+beaten" wait for T4b2 (BAT-STUB-9): while the battle runs, every side has a living stack that is no
+war machine, so with nothing planned the flag is never set. **Slips:** slip 8 (survey §4) is built
+under BAT-QUIRK-25. **Draws:** the scan's (0x420D98); the context's predictions (§7.42), not taken
+until T4b2.
