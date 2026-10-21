@@ -59,7 +59,7 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
-- **2026-10-22, E17 M3 T7b-2b-3 (strike effects).** Not split (the user): four sequences, seeds
+- **2026-10-22, E17 M3 T7b-2b-3 (strike effects; #376).** Not split (the user): four sequences, seeds
   matching the original's damage; the catalogue reads `Heroes3.exe`'s text (`EXE:`).
 - **2026-10-21, E17 M3 T7b-2b-2b (morale, luck, fear; #371, merged).** Not split (the user):
   four sequences recorded, seeds searched; the outline found; frames exact.
