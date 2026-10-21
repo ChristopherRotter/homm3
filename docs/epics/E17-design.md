@@ -1858,35 +1858,60 @@ is hidden, 0x46A4A0):
   volume rises by a tenth of the music volume every 100 ms (0x59AB5D, an f32 sum truncated: 12,
   25, 38, 50, 63, 76, 88, 101, 114, then 127 after 900 ms); a track played once starts at its
   volume, from its start. The tracks' names: 0x66C090.
-- *Not read*: the start sound's volume (its loader's default), the battle's end (`battle_end`
-  0x477470 calls `play_music` twice: the victory and defeat tunes and the results), spells', heroes',
-  walls' and towers' sounds, the turn's, the adventure map's.
+- *A sound played by its name* (M3 T8; `play_sound_file` 0x59A470: the start sound, the tent's
+  heal): its loader (0x55C720, the object 0x55C3C0) builds the WAV with category 0, volume 127
+  and one play (the constructor 0x566DA0, from 0x55C48A and 0x55C6DC); `play_sound_file` sets
+  category 2 and keeps the volume, so both play at 127, the music's level.
+- *The battle's end* (M3 T8): once an action's last frame has shown, `battle_winner` 0x4762F0
+  finds the battle over (both sides tested, 0x465830, 0x4658B0), sets the manager's +0x132F8
+  (0 from the battle's start, 0x463C85), the winner (+0x13D48, −1 none) and the retreat's and
+  surrender's flags (0x6985A3, 0x697744: either side's), and calls `battle_end` 0x477470 at once:
+  its last log line, the cursor, the whole screen darkened (0x44E5F0 over 800 × 600, shown at
+  0x477843), then the result's window (built by 0x4702D0) and, before it runs (0x471B70), its
+  tune through `play_music` with a loop count of 1 and the effects ended (0x477905, 0x4779B4), no
+  clock step between: the tune starts when the next turn would have. The window shows the
+  winner's side when the winner's player is a human here (0x4778B1, the side's player +0x54A8;
+  the network's `remote_turn` aside), else the other side (a draw: the defender's,
+  1 − (−1) = 2 taken as side 1); shown the winner, the tune is `win battle`, or `defend castle`
+  for the defender of a town (the manager's +0x53C8, a siege or not; 0x470B68); shown the loser,
+  `losecastle` for a town's defender, else `surrender battle` or `retreat battle` when either
+  flag is set, else `losecombat` (0x470BFE to 0x470CFF; the index 0x695014 into the names
+  0x6701A8). A tune played once starts at its volume (above). Recorded (`end`, below).
+- *Not read*: spells', heroes', walls' and towers' sounds, the turn's, the adventure map's.
 
 **The viewer.** `h3_view::anim`'s timeline carries the cues (`Cue`: a time, a stack, a `Sound`,
-start or stop) at the frames the readings name; `play` writes them to `cues.txt`.
-`h3_view::sound` holds the opening: the start sound and the music are drawn from the viewer's
-own C-library sequence seeded with the battle's seed (*provisional*, as the fidgets; the
-executable draws from its rules' generator), the fade-in's volumes, the volumes 127 and 64. The
-window (`bin/h3-view/audio.rs`): every sound the battle's stacks name and the start sound are
-decoded when the battle loads, the music by `nanomp3` (i16; the battle's 44 clips and a
-3-minute track in 0.4 s in the sandbox); `h3-sdl` opens one device and 10 streams: the music's,
-the start sound's and 8 creature channels, each a free one or the next in turn, as
-`play_sample` takes them. A one-shot is flushed; the move sound
-and the music are queued a second ahead and topped up (no flush, so no seam). Volumes as SDL
-gains: the music's fade-in by its steps, the effects at 64/127 (*provisional*: both settings
-equal; no settings yet). From the battle's start the window plays the start sound over the first
-frame with the clock held, then starts the music and the clock (a key that moves the battle ends
-the wait); Space pauses the device with the battle (the fade-in holds with it), R and → stop
-the creature sounds and go on from the cues at the new time (→ keeps the next frame's, cued as
-the frame stepped to shows), M and E switch the music and the creature sounds, `--mute` plays
-nothing; a sound that does not decode costs that sound, as a missing one (T5c, the reviewer).
+start or stop) at the frames the readings name; `play` writes them to `cues.txt`. `h3_view::sound`
+holds the opening: the start sound and the music are drawn from the viewer's own C-library sequence
+seeded with the battle's seed (*provisional*, as the fidgets; the executable draws from its rules'
+generator), the fade-in's volumes, the volumes 127 and 64, and since M3 T8 the end's tune
+(`end_tune`, by the outcome, the snapshot's human sides and a town, none yet: sieges are not drawn;
+`Timeline::ended`, the end of the command whose events end the battle). The window
+(`bin/h3-view/audio.rs`): every sound the battle's stacks name and the start sound are decoded when
+the battle loads, the music by `nanomp3` (i16; the battle's 44 clips and a 3-minute track in 0.4 s
+in the sandbox); `h3-sdl` opens one device and 10 streams: the music's, the start sound's and 8
+creature channels, each a free one or the next in turn, as `play_sample` takes them. A one-shot is
+flushed; the move sound and the music are queued a second ahead and topped up (no flush, so no
+seam). Volumes as SDL gains: the music's fade-in by its steps, the creature sounds at 64/127, the
+start sound and the heal at 127/127 (since T8; *provisional*: both settings equal, no settings yet).
+At the battle's end the window ends every effect and plays the tune on the music's stream once, at
+127, from its start; Home brings the battle's music back. From the battle's start the window plays
+the start sound over the first frame with the clock held, then starts the music and the clock (a key
+that moves the battle ends the wait); Space pauses the device with the battle (the fade-in holds
+with it), R and → stop the creature sounds and go on from the cues at the new time (→ keeps the next
+frame's, cued as the frame stepped to shows), M and E switch the music and the creature sounds,
+`--mute` plays nothing; a sound that does not decode costs that sound, as a missing one (T5c, the
+reviewer).
 
 **Checks.** The gate (above); the cues' unit tests (each with its group's first frame); in the
 sandbox under Xvfb with SDL's `disk` audio driver (it writes the mix to `sdlaudio.raw` in the
-current directory): `--check 25` with sound, all 293 frames read back exact; the start sound
-5.8 s (`BATTLE01`, seed 1), then the music fading in; with the music switched off (M), the
-effects' onsets in the mix within 10–100 ms of their cues' times (onset detection on 10 ms
-windows; overlapping sounds hide some).
+current directory): `--check 25` with sound, all 293 frames read back exact; the start sound 5.8 s
+(`BATTLE01`, seed 1), then the music fading in; with the music switched off (M), the effects' onsets
+in the mix within 10–100 ms of their cues' times (onset detection on 10 ms windows; overlapping
+sounds hide some). M3 T8: `end` (`sequences.toml`) recorded in the original, the battle decided at 3
+730 ms (the harness's `end` line, the manager's +0x132F8; the whole screen changed in the same
+step); the viewer's timeline as recorded, its `end` at 3 730. Its record in the window (`--check
+20`): the tune (`Win Battle.mp3`, hot seat's human winner) alone in the mix, whole and once, 3 692
+ms after the music's start (the disk driver's pacing, as the effects'), then silence.
 
 ## 9. The string catalogue (M3 T4b-1)
 

@@ -18,7 +18,8 @@
 //! The sound (T5b, [`crate::audio`]): a battle shown from its start opens as the original's does,
 //! its start sound playing over the first frame while the battle's clock waits (at most 10 s),
 //! then the music starts, looping and fading in, and the clock with it; the stacks' sounds follow
-//! the timeline's cues. `--mute` (or no sound device) plays none and does not wait.
+//! the timeline's cues. When the battle is decided (T8), every effect ends and its end's tune
+//! replaces the music, once. `--mute` (or no sound device) plays none and does not wait.
 //!
 //! `--check <s>` and `--measure <s>` run unattended for that many seconds and report when each
 //! frame showed against its time; `--check` also reads every frame back before presenting it and
@@ -313,6 +314,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             opening,
             stacks,
             heal,
+            battle.end_tune().map(|(_, tune)| tune),
             &mut lines,
         )?)
     };
@@ -325,6 +327,9 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         None => None,
     };
     let mut cue = battle.timeline.cue_from(options.from);
+    // The battle's end (E17 M3 T8): when its tune starts; whether it has.
+    let ending = battle.end_tune().map(|(at, _)| at);
+    let mut ended = false;
 
     let mut changes = Changes::new(&battle);
     let mut clock = Clock::new(win.ticks_ns(), options.from);
@@ -414,7 +419,12 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     cue = battle.timeline.cue_from(options.from);
                     if let Some(p) = player.as_mut() {
                         p.silence();
+                        // The end's tune gives way to the battle's music again.
+                        if ended {
+                            p.start_music(now);
+                        }
                     }
+                    ended = false;
                 }
                 Event::Key(Key::M) => {
                     if let Some(p) = player.as_mut() {
@@ -562,6 +572,10 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 while let Some(c) = battle.timeline.cues.get(cue).filter(|c| c.at <= battle_ms) {
                     p.cue(lib, c);
                     cue += 1;
+                }
+                if !ended && ending.is_some_and(|at| at <= battle_ms) {
+                    p.end(lib);
+                    ended = true;
                 }
             }
             p.service(lib, now);

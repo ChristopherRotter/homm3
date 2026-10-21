@@ -8,8 +8,10 @@
 //! (their category's, 0x684AB8): a sound takes a free channel, else the next one in turn,
 //! cutting what that one played; a move's sound loops until its stop; a sound a creature lacks
 //! plays nothing. The tent's heal sound plays in category 2, on the start sound's stream (E17
-//! M3 T3b; *provisional*: the category's other three channels are not built). An adapter: it
-//! reads files and drives the audio device.
+//! M3 T3b; *provisional*: the category's other three channels are not built), as the start sound
+//! at its loader's volume (127, E17 M3 T8). The battle's end (T8) ends every effect and plays its
+//! tune once on the music's stream, at the music's volume, from its start. An adapter: it reads
+//! files and drives the audio device.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -19,7 +21,9 @@ use h3_assets::snd::SndArchive;
 use h3_assets::wav::{Pcm, decode_wav};
 use h3_sdl::Audio;
 use h3_view::anim::{Cue, Sound};
-use h3_view::sound::{EFFECT_VOLUME, MUSIC_VOLUME, Opening, START_WAIT, music_volume};
+use h3_view::sound::{
+    EFFECT_VOLUME, FILE_VOLUME, MUSIC_VOLUME, Opening, START_WAIT, Tune, music_volume,
+};
 use h3_view::tables::Sounds;
 
 use crate::gate::find_ci;
@@ -38,13 +42,18 @@ fn gain(volume: u8) -> f32 {
     f32::from(volume) / f32::from(MUSIC_VOLUME)
 }
 
+/// A decoded MP3: its rate, channels and samples.
+type Music = (u32, u16, Vec<i16>);
+
 /// The sounds a battle plays, decoded.
 #[derive(Debug)]
 pub struct Library {
     /// The sound archives' entries the battle names, by upper-cased name.
     clips: BTreeMap<String, Pcm>,
     /// The music: its rate, channels and samples.
-    music: Option<(u32, u16, Vec<i16>)>,
+    music: Option<Music>,
+    /// The end's tune, if the battle ends (E17 M3 T8).
+    tune: Option<Music>,
     /// The start sound's name.
     start: String,
     /// How long the decoding took, in ms.
@@ -57,17 +66,18 @@ pub struct Library {
 
 impl Library {
     /// Decodes the start sound and every sound of `stacks` from the sound archives of `install`,
-    /// and the music from its `MP3` folder. A missing or undecodable sound costs that sound,
-    /// noted in `lines`.
+    /// and the music and the end's `tune` from its `MP3` folder. A missing or undecodable sound
+    /// costs that sound, noted in `lines`.
     pub fn load(
         install: &Path,
         opening: Opening,
         stacks: BTreeMap<u8, Sounds>,
         heal: Option<&str>,
+        tune: Option<Tune>,
         lines: &mut Vec<String>,
     ) -> Result<Self, String> {
         let (result, took) =
-            crate::gate::timed(|| Self::decode(install, opening, stacks, heal, lines));
+            crate::gate::timed(|| Self::decode(install, opening, stacks, heal, tune, lines));
         let mut library = result?;
         library.took = took.as_millis();
         Ok(library)
@@ -79,6 +89,7 @@ impl Library {
         opening: Opening,
         stacks: BTreeMap<u8, Sounds>,
         heal: Option<&str>,
+        tune: Option<Tune>,
         lines: &mut Vec<String>,
     ) -> Result<Self, String> {
         let start = opening.start_sound();
@@ -123,27 +134,15 @@ impl Library {
         if !missing.is_empty() {
             lines.push(format!("sound: not found: {}", missing.join(", ")));
         }
-        let file = format!("{}.mp3", opening.music_file());
-        let music = match find_ci(install, "MP3").and_then(|d| find_ci(&d, &file)) {
-            Ok(path) => {
-                let bytes = fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?;
-                let decoded = nanomp3::decode_all::<i16>(&bytes);
-                let channels = decoded.channels.map_or(0, |c| c as u16);
-                if channels == 0 || decoded.sample_rate == 0 {
-                    lines.push(format!("music: {} holds no audio", path.display()));
-                    None
-                } else {
-                    Some((decoded.sample_rate, channels, decoded.samples))
-                }
-            }
-            Err(e) => {
-                lines.push(format!("music: {file}: {e}"));
-                None
-            }
+        let music = mp3(install, &opening.music_file(), lines)?;
+        let tune = match tune {
+            Some(t) => mp3(install, t.file(), lines)?,
+            None => None,
         };
         Ok(Self {
             clips,
             music,
+            tune,
             start: start.to_ascii_uppercase(),
             took: 0,
             stacks,
@@ -169,8 +168,13 @@ impl Library {
                 format!("music {rate} Hz × {channels}, {seconds} s")
             },
         );
+        let tune = if self.tune.is_some() {
+            ", the end's tune"
+        } else {
+            ""
+        };
         format!(
-            "sound: {} clips, {music}, decoded in {} ms",
+            "sound: {} clips, {music}{tune}, decoded in {} ms",
             self.clips.len(),
             self.took
         )
@@ -200,6 +204,10 @@ pub struct Player {
     /// When the music started (SDL's nanoseconds; moved on by each pause) and the next sample to
     /// queue.
     music: Option<(u64, usize)>,
+    /// The music's format on its stream.
+    music_format: (u32, u16),
+    /// The end's tune playing instead of the music: the next sample to queue (E17 M3 T8).
+    tune: Option<usize>,
     /// Since when the sound is held.
     paused: Option<u64>,
     /// Whether the music and the effects are heard (the keys M and E).
@@ -215,7 +223,7 @@ impl Player {
         let (rate, channels) = library.music.as_ref().map_or((44_100, 2), |m| (m.0, m.1));
         let music_stream = out.add_stream(rate, channels)?;
         let start_stream = out.add_stream(22_050, 1)?;
-        out.set_gain(start_stream, gain(EFFECT_VOLUME));
+        out.set_gain(start_stream, gain(FILE_VOLUME));
         let mut list = Vec::with_capacity(CHANNELS);
         for _ in 0..CHANNELS {
             let stream = out.add_stream(22_050, 1)?;
@@ -234,6 +242,8 @@ impl Player {
             channels: list,
             turn: 0,
             music: None,
+            music_format: (rate, channels),
+            tune: None,
             paused: None,
             music_on: true,
             effects_on: true,
@@ -259,10 +269,30 @@ impl Player {
     }
 
     /// Starts the music at `now` (SDL's nanoseconds); the creature sounds still playing stop
-    /// (0x59ADAC).
+    /// (0x59ADAC). After the end's tune (the battle shown again from earlier), its stream takes
+    /// the music's format back.
     pub fn start_music(&mut self, now: u64) {
         self.silence();
+        if self.tune.take().is_some() {
+            self.out.clear(self.music_stream);
+            let (rate, channels) = self.music_format;
+            self.out.set_format(self.music_stream, rate, channels);
+        }
         self.music = Some((now, 0));
+    }
+
+    /// The battle's end (E17 M3 T8, design §8.2): every effect ends, the start sound's stream
+    /// too, and the end's tune replaces the music, played once from its start at the music's
+    /// volume (`play_music` with a loop count of 1: no fade-in).
+    pub fn end(&mut self, library: &Library) {
+        self.silence();
+        self.out.clear(self.start_stream);
+        self.out.clear(self.music_stream);
+        self.music = None;
+        if let Some((rate, channels, _)) = library.tune.as_ref() {
+            self.out.set_format(self.music_stream, *rate, *channels);
+            self.tune = Some(0);
+        }
     }
 
     /// Plays a cue: starts the stack's sound on a channel, or stops its looping move sound.
@@ -357,6 +387,27 @@ impl Player {
                 let _ = self.out.put(c.stream, &clip.samples, false);
             }
         }
+        if let (Some(next), Some((rate, channels, samples))) =
+            (self.tune.as_mut(), library.tune.as_ref())
+        {
+            let volume = if self.music_on { MUSIC_VOLUME } else { 0 };
+            self.out.set_gain(self.music_stream, gain(volume));
+            // Once: queued up to its end, never from its start again.
+            let ahead = ahead(*rate, *channels);
+            while self.out.queued(self.music_stream) < ahead && *next < samples.len() {
+                let end = (*next + ahead).min(samples.len());
+                let chunk = samples.get(*next..end).unwrap_or_default();
+                if self
+                    .out
+                    .put(self.music_stream, chunk, end == samples.len())
+                    .is_err()
+                {
+                    break;
+                }
+                *next = end;
+            }
+            return;
+        }
         let (Some((started, next)), Some((rate, channels, samples))) =
             (self.music.as_mut(), library.music.as_ref())
         else {
@@ -379,6 +430,29 @@ impl Player {
     /// The device, for the report.
     pub fn describe(&self) -> String {
         self.out.describe()
+    }
+}
+
+/// The MP3 `stem` of the installation's `MP3` folder (found ignoring case), decoded; none, noted in
+/// `lines`, when it is missing or holds no audio.
+fn mp3(install: &Path, stem: &str, lines: &mut Vec<String>) -> Result<Option<Music>, String> {
+    let file = format!("{stem}.mp3");
+    match find_ci(install, "MP3").and_then(|d| find_ci(&d, &file)) {
+        Ok(path) => {
+            let bytes = fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+            let decoded = nanomp3::decode_all::<i16>(&bytes);
+            let channels = decoded.channels.map_or(0, |c| c as u16);
+            if channels == 0 || decoded.sample_rate == 0 {
+                lines.push(format!("music: {} holds no audio", path.display()));
+                Ok(None)
+            } else {
+                Ok(Some((decoded.sample_rate, channels, decoded.samples)))
+            }
+        }
+        Err(e) => {
+            lines.push(format!("music: {file}: {e}"));
+            Ok(None)
+        }
     }
 }
 
