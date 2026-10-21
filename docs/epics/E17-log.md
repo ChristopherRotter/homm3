@@ -1657,8 +1657,12 @@ then ran in the cloud).
   158 of 158 frames read back exact): the tune alone in the mix (correlation 1.0 with
   `Win Battle.mp3` decoded by ffmpeg), whole and once, then silence; 3 692 ms after the music's
   start against the cue's 3 730 (the disk driver's pacing, as the effects' 10–100 ms at M2 T5b).
-  FRAMES_LINE The viewer's tests, `cargo fmt`, clippy; `scripts/exe.py check` and `cited`,
-  `check-exe-map`; `h3drive.py drawn`; the client gates' full check.
+  `frames --only end`: 53 frames, as `strike`'s but at the end, 2 730 its 134 pixels of the
+  original's redraws (design §4.3), 3 730 the result's window over the screen darkened (every
+  colour component halved, 0x44E5F0: 478 876 pixels; the window is not drawn yet, QUEUE's
+  inbox). `drawn`: 68 of 68 the same, `end` new, recorded; `sequences --only strike`, `walk`
+  and `end` as recorded with the changed harness. The viewer's tests, `cargo fmt`, clippy;
+  `scripts/exe.py check` and `cited`, `check-exe-map`; the client gates' full check.
 
 ## Accepted review lists (M1, M2)
 
