@@ -879,6 +879,41 @@ proptest! {
 }
 
 /// The test map's hero body.
+// covers: GAM-SET-002
+#[test]
+fn the_scenarios_level_limit_and_banned_skills_carry_over() {
+    // E08 T29: the header's level limit (AB and SoD) and SoD's set of banned skills, each bit
+    // the skill of its code (the original's ids).
+    let core = SOD.core();
+    let mut m = map();
+    m.header.level_limit = 12;
+    // Navigation (5), Eagle Eye (11) and First Aid (27).
+    m.banned_skills = Bits(vec![1 << 5, 1 << 3, 0, 1 << 3]);
+    let setup = import(&m, &SOD).unwrap();
+    assert_eq!(setup.level_limit, 12);
+    let skill = |k| core.skill_by_key(k).unwrap();
+    assert_eq!(
+        setup.banned_skills,
+        [
+            skill("base:navigation"),
+            skill("base:eagle_eye"),
+            skill("base:first_aid")
+        ]
+    );
+    assert_eq!(setup.validate(&SOD), Ok(()));
+    // The test map bans none and has no limit.
+    let plain = import(&map(), &SOD).unwrap();
+    assert_eq!((plain.level_limit, plain.banned_skills.len()), (0, 0));
+    // A set bit past the 28 skills is an unknown code.
+    assert_eq!(
+        import_err(|m| m.banned_skills = Bits(vec![0, 0, 0, 1 << 4])),
+        ImportError::UnknownCode {
+            what: "secondary skill",
+            code: 28
+        }
+    );
+}
+
 fn body(m: &mut RawMap) -> &mut HeroBody {
     match &mut m.objects[1].body {
         Body::Hero(h) => h,
@@ -1046,23 +1081,20 @@ fn before_sod_experience_0_and_the_spell_byte_mean_the_types() {
 }
 
 #[test]
-fn a_hero_of_level_2_and_unknown_codes_are_refused() {
-    let unsupported = Unsupported::HeroExperience(1);
+fn a_heros_experience_passes_as_it_is_and_unknown_codes_are_refused() {
+    // E08 T29: a custom experience of a level above 1, the body's or the map-wide entry's,
+    // imports as it is; the game gives its levels at load (GAM-SET-002).
+    let experience = |edit: fn(&mut RawMap)| customised(edit).experience;
+    assert_eq!(experience(|m| body(m).experience = Some(1000)), Some(1000));
     assert_eq!(
-        import_err(|m| body(m).experience = Some(1000)),
-        ImportError::Unsupported(unsupported)
-    );
-    assert_eq!(
-        unsupported.reason(),
-        "a hero with an experience of 1 000 or more"
-    );
-    assert_eq!(
-        import_err(|m| m.custom_heroes = vec![CustomHero {
-            hero_type: 0,
-            experience: Some(5000),
-            ..CustomHero::default()
-        }]),
-        ImportError::Unsupported(unsupported)
+        experience(|m| {
+            m.custom_heroes = vec![CustomHero {
+                hero_type: 0,
+                experience: Some(5_000_000),
+                ..CustomHero::default()
+            }];
+        }),
+        Some(5_000_000)
     );
     assert_eq!(
         import_err(|m| body(m).secondary_skills = Some(vec![(28, 1)])),

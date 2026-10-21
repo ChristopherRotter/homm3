@@ -200,6 +200,8 @@ fn check(
         difficulty: DEFAULT_DIFFICULTY,
         map: static_map,
         heroes: Vec::new(),
+        level_limit: 0,
+        banned_skills: Vec::new(),
     };
     setup
         .validate(rules)
