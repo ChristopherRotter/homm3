@@ -19,6 +19,9 @@ const CLIMB: &str = include_str!("../../../../situations/timelines/climb.txt");
 const BEHIND: &str = include_str!("../../../../situations/timelines/behind.txt");
 const SHOTS: &str = include_str!("../../../../situations/timelines/shots.txt");
 const FLY: &str = include_str!("../../../../situations/timelines/fly.txt");
+const CAST: &str = include_str!("../../../../situations/timelines/cast.txt");
+const RESIST: &str = include_str!("../../../../situations/timelines/resist.txt");
+const ARROW: &str = include_str!("../../../../situations/timelines/arrow.txt");
 
 /// Creature handles of the tests.
 const CHAMPION: u16 = 0;
@@ -36,6 +39,10 @@ const BEHOLDER: u16 = 11;
 const BLACK_DRAGON: u16 = 12;
 /// The First Aid Tent (E17 M3 T3b).
 const TENT: u16 = 13;
+/// The casts' creatures (E17 M3 T7b-1).
+const SWORDSMAN: u16 = 14;
+const ARCHANGEL: u16 = 15;
+const BATTLE_DWARF: u16 = 16;
 
 /// A look: `times` and the frames of each group.
 fn look(times: [u32; 4], frames: &[(u32, u32)], top: i32) -> Look {
@@ -45,6 +52,7 @@ fn look(times: [u32; 4], frames: &[(u32, u32)], top: i32) -> Look {
         climax: 0,
         missile_offsets: [[0, 0]; 3],
         top,
+        front: 0,
         missile: None,
         ray: None,
     }
@@ -237,6 +245,89 @@ fn looks() -> BTreeMap<u16, Look> {
                 &[(2, 6), (3, 9), (4, 9), (5, 6)],
                 144,
             ),
+        ),
+        // `CSWORD.DEF`, `CRANGL.DEF`, `CBDWAR.DEF` (E17 M3 T7b-1), with their standing frames'
+        // fronts.
+        (
+            SWORDSMAN,
+            Look {
+                front: 221,
+                ..look(
+                    [9000, 435, 500, 115],
+                    &[
+                        (0, 8),
+                        (1, 8),
+                        (2, 8),
+                        (3, 6),
+                        (4, 11),
+                        (5, 6),
+                        (7, 2),
+                        (8, 2),
+                        (9, 2),
+                        (10, 2),
+                        (11, 7),
+                        (12, 7),
+                        (13, 7),
+                        (20, 2),
+                        (21, 2),
+                    ],
+                    182,
+                )
+            },
+        ),
+        (
+            ARCHANGEL,
+            Look {
+                front: 254,
+                ..look(
+                    [9000, 410, 500, 115],
+                    &[
+                        (0, 7),
+                        (1, 7),
+                        (2, 8),
+                        (3, 6),
+                        (4, 10),
+                        (5, 8),
+                        (7, 2),
+                        (8, 2),
+                        (9, 2),
+                        (10, 2),
+                        (11, 6),
+                        (12, 6),
+                        (13, 6),
+                        (20, 2),
+                        (21, 3),
+                    ],
+                    164,
+                )
+            },
+        ),
+        (
+            BATTLE_DWARF,
+            Look {
+                front: 215,
+                ..look(
+                    [9000, 485, 500, 115],
+                    &[
+                        (0, 8),
+                        (1, 7),
+                        (2, 8),
+                        (3, 6),
+                        (4, 11),
+                        (5, 6),
+                        (7, 2),
+                        (8, 2),
+                        (9, 2),
+                        (10, 2),
+                        (11, 8),
+                        (12, 8),
+                        (13, 8),
+                        (20, 2),
+                        (21, 2),
+                    ],
+                    196,
+                )
+            },
         ),
     ];
     base.into_iter().collect()
@@ -438,6 +529,7 @@ fn play(snapshot: &Observation, commands: &[(Option<u32>, Vec<Event>)]) -> Timel
         width: 17,
         groups: tables().battle.groups,
         magic: &magic(),
+        casts: &Casts::default(),
     };
     let commands: Vec<Command<'_>> = commands
         .iter()
@@ -871,6 +963,7 @@ fn a_creature_without_numbers_is_an_error() {
         width: 0,
         groups: tables().battle.groups,
         magic: &magic(),
+        casts: &Casts::default(),
     };
     let err = timeline(&o, &[], &looks(), stage, Speed::default()).unwrap_err();
     assert_eq!(err, AnimError::Look(99));
@@ -927,6 +1020,7 @@ fn a_flight_without_a_distance_is_one_cycle() {
         width: 17,
         groups: tables().battle.groups,
         magic: &magic(),
+        casts: &Casts::default(),
     };
     let o = snapshot(vec![angels]);
     let events = [moved(0, 35, 37)];
@@ -1043,6 +1137,7 @@ fn a_reaction_without_frames_and_a_strike_at_nothing() {
         width: 17,
         groups: tables().battle.groups,
         magic: &magic(),
+        casts: &Casts::default(),
     };
     let o = snapshot(vec![
         at(0, Side::Attacker, WOLF_RIDER, 52, true),
@@ -1076,6 +1171,7 @@ fn a_ray_without_a_climax_frame_or_a_target() {
         width: 17,
         groups: tables().battle.groups,
         magic: &magic(),
+        casts: &Casts::default(),
     };
     let o = snapshot(vec![
         at(0, Side::Attacker, ARCH_MAGE, 137, false),
@@ -1152,6 +1248,7 @@ fn shots_aim_up_straight_and_down() {
         width: 17,
         groups: tables().battle.groups,
         magic: &magic(),
+        casts: &Casts::default(),
     };
     let column = |target: u8| {
         let o = snapshot(vec![
@@ -1185,6 +1282,7 @@ fn shots_without_a_climax_or_a_target() {
         width: 17,
         groups: tables().battle.groups,
         magic: &magic(),
+        casts: &Casts::default(),
     };
     let o = snapshot(vec![
         at(0, Side::Attacker, MARKSMAN, 35, false),
@@ -1349,6 +1447,7 @@ fn a_shooter_without_a_projectile_waits_as_one_flies() {
         width: 17,
         groups: tables().battle.groups,
         magic: &magic(),
+        casts: &Casts::default(),
     };
     let o = snapshot(vec![
         at(0, Side::Attacker, MARKSMAN, 35, false),
@@ -1592,6 +1691,7 @@ fn a_breath_on_two_stacks_takes_its_own_groups() {
         width: 17,
         groups: tables().battle.groups,
         magic: &magic(),
+        casts: &Casts::default(),
     };
     let o = snapshot(vec![
         at(0, Side::Attacker, ANGEL, 52, false),
@@ -1745,6 +1845,7 @@ fn neighbours_follow_the_layout() {
         width: 17,
         groups: tables().battle.groups,
         magic: &magic(),
+        casts: &Casts::default(),
     };
     // Hex 83 (row 4, even, shifted right): up-right 67, right 84, down-right 101, down-left 100,
     // left 82, up-left 66; row 5 (odd): up-right of 100 is 83.
@@ -1815,6 +1916,7 @@ fn fidgeting_play(
         width: 17,
         groups: tables().battle.groups,
         magic: &magic(),
+        casts: &Casts::default(),
     };
     let commands: Vec<Command<'_>> = commands
         .iter()
@@ -2040,6 +2142,7 @@ fn a_target_reacts_as_the_projectile_lands() {
         width: 17,
         groups: tables().battle.groups,
         magic: &magic(),
+        casts: &Casts::default(),
     };
     let o = snapshot(vec![
         at(0, Side::Attacker, MARKSMAN, 35, false),
@@ -2194,6 +2297,7 @@ fn a_heal_without_its_animation_plays_its_sound_only() {
         width: 17,
         groups: tables().battle.groups,
         magic: &none,
+        casts: &Casts::default(),
     };
     let events = [healed(1, 0), Event::TurnStarted { stack: 2 }];
     let commands = [Command {
@@ -2229,7 +2333,8 @@ fn a_heal_without_its_animation_plays_its_sound_only() {
 
 #[test]
 fn magic_animations_stand_where_their_place_says() {
-    // Place 0 on the anchor, 2 above the creature, 1 centred; 3 is not built: on the anchor.
+    // Place 0 on the anchor, 2 above the creature, 1 centred; 3 beside its standing frame's front
+    // (E17 M3 T7b-1: the anchor + the front − 196 facing right, the test's front 0), as high as 1.
     let o = snapshot(vec![
         machine(1, Side::Attacker, TENT, 153, 18),
         at(0, Side::Attacker, PIKEMAN, 86, false),
@@ -2243,6 +2348,7 @@ fn magic_animations_stand_where_their_place_says() {
             width: 17,
             groups: tables().battle.groups,
             magic: &magic,
+            casts: &Casts::default(),
         };
         let events = [healed(1, 0)];
         let commands = [Command {
@@ -2255,7 +2361,7 @@ fn magic_animations_stand_where_their_place_says() {
     assert_eq!(place(0), [32, 338 - 94]);
     assert_eq!(place(1), [32, 338 - 47 - 48]);
     assert_eq!(place(2), [32, 338 - 94 - 96]);
-    assert_eq!(place(3), place(0));
+    assert_eq!(place(3), [80 - 196, 338 - 47 - 48]);
 }
 
 #[test]
@@ -2429,6 +2535,7 @@ fn the_log_records_what_the_battle_writes_and_when() {
             Logged::Round => "round",
             Logged::Status { .. } => "status",
             Logged::Scroll(_) => "scroll",
+            Logged::Cast { .. } | Logged::Resisted { .. } | Logged::SpellDamage { .. } => "spell",
         })
         .collect();
     // E17 M3 T6c-2: a wait, two strikes, a defend's command.
@@ -2628,4 +2735,467 @@ fn the_battle_ends_with_the_command_that_decides_it() {
     let t = play(&o, &commands[..1]);
     assert_eq!(t.ended, None);
     assert!(!t.lines().contains("end"));
+}
+
+/// The magic animations of the casts' tests (E17 M3 T7b-1, the user's DEFs' numbers): Slow's 19
+/// (`C09spE0.def`, 20 frames, 74 x 54, place 0), the resisted 78 (`sp09_.def`, 20, 91 x 86, place
+/// 3) and Magic Arrow's 64 (`C20SPX.DEF`, 14, 133 x 116, place 1).
+fn spell_magic() -> BTreeMap<u8, MagicLook> {
+    let entry = |def: &str, frames, size, place| MagicLook {
+        def: def.to_string(),
+        frames,
+        size,
+        place,
+        translucent: false,
+    };
+    let mut all = magic();
+    all.insert(19, entry("C09spE0.def", 20, [74, 54], 0));
+    all.insert(RESISTED, entry("sp09_.def", 20, [91, 86], 3));
+    all.insert(64, entry("C20SPX.DEF", 14, [133, 116], 1));
+    all
+}
+
+/// What the casts' tests cast (E17 M3 T7b-1): Slow (54) with its animation 19, Magic Arrow (15)
+/// with 64 and its five projectile DEFs (`c20spx0`–`4.def`); Orrin on the left (`CH00.DEF`'s
+/// cast point (92, 67): (49, 48) on the screen, five of its eight casting frames before the
+/// spell), no caster on the right.
+fn casts() -> Casts {
+    let shell = |k: usize, size, frames, angle| Shell {
+        def: format!("c20spx{k}.def"),
+        size,
+        frames,
+        angle,
+    };
+    let arrow = SpellLook {
+        animation: Some(64),
+        projectile: vec![
+            shell(0, [123, 47], 14, 0),
+            shell(1, [123, 59], 15, -16),
+            shell(2, [112, 87], 15, -34),
+            shell(3, [82, 109], 15, -56),
+            shell(4, [50, 119], 15, -83),
+        ],
+    };
+    let slow = SpellLook {
+        animation: Some(19),
+        projectile: Vec::new(),
+    };
+    Casts {
+        spells: BTreeMap::from([(15, arrow), (54, slow)]),
+        casters: [
+            Some(Caster {
+                point: [49, 48],
+                before: 5,
+                frames: 8,
+            }),
+            None,
+        ],
+        groups: [4, 0],
+    }
+}
+
+/// The battle's heroes as the casts' sequences show them (Orrin and Crag Hack, `CH00.DEF` and
+/// `CH013.DEF`: 1, 4, 11, 11 and 8 frames in groups 0 to 4), both players human.
+fn cast_heroes() -> Heroes {
+    let look = crate::hero::HeroLook {
+        frames: BTreeMap::from([(0, 1), (1, 4), (2, 11), (3, 11), (4, 8)]),
+        flag_frames: 8,
+    };
+    Heroes::new(
+        [Some(look.clone()), Some(look)],
+        [true, true],
+        tables().battle.hero_groups,
+        None,
+    )
+}
+
+/// The timeline of `snapshot` and `commands` with the casts' stage, and the casts' heroes.
+fn play_casts(snapshot: &Observation, commands: &[(Option<u32>, Vec<Event>)]) -> Timeline {
+    let layout = layout();
+    let (magic, casts) = (spell_magic(), casts());
+    let stage = Stage {
+        layout: &layout,
+        width: 17,
+        groups: tables().battle.groups,
+        magic: &magic,
+        casts: &casts,
+    };
+    let commands: Vec<Command<'_>> = commands
+        .iter()
+        .map(|(at, events)| Command { at: *at, events })
+        .collect();
+    timeline(snapshot, &commands, &looks(), stage, Speed::default())
+        .unwrap()
+        .with_heroes(cast_heroes())
+}
+
+/// A recorded timeline without its screens' boxes (`screens`, E17 M3 T7a-2b).
+fn screenless(lines: &str) -> String {
+    lines
+        .lines()
+        .filter(|l| l.split(' ').nth(1) != Some("screen"))
+        .map(|l| format!("{l}\n"))
+        .collect()
+}
+
+fn cast(spell: u16, target: u8) -> Event {
+    Event::SpellCast {
+        side: Side::Attacker,
+        spell,
+        target: Target::Stack { stack: target },
+        second: Target::None {},
+    }
+}
+
+fn applied(target: u8, spell: u16) -> Event {
+    Event::EffectApplied {
+        target,
+        spell,
+        rounds: Some(1),
+    }
+}
+
+fn spell_damage(target: u8, damage: u64, kills: u32) -> Event {
+    Event::SpellDamage {
+        target,
+        value: WireU64(damage),
+        caster: WireU64(damage),
+        damage: WireU64(damage),
+        kills,
+    }
+}
+
+#[test]
+fn the_cast_sequence_plays_as_recorded() {
+    // E17 M3 T7b-1 (`seq-cast.toml`): Orrin casts Slow at the Wolf Riders at the opening: his
+    // frames 0 to 4, Slow's animation 19 over them after its effect, frames 5 to 7, standing.
+    let o = snapshot(vec![
+        at(0, Side::Attacker, CHAMPION, 35, true),
+        at(1, Side::Attacker, MARKSMAN, 137, false),
+        at(2, Side::Defender, WOLF_RIDER, 49, true),
+        at(3, Side::Defender, GOBLIN, 151, false),
+    ]);
+    let t = play_casts(&o, &[(Some(0), vec![cast(54, 2), applied(2, 54)])]);
+    assert_eq!(t.lines_with_heroes(3500), until(CAST, 3500));
+    // The outline goes at the click and comes back as the hero stands; the line and the spell's
+    // sound go with the animation's first frame drawn.
+    let outlined: Vec<Option<u8>> = [0, 2899, 2900].map(|t2| t.outlined(t2)).into();
+    assert_eq!(outlined, [None, None, Some(0)]);
+    assert!(t.log.contains(&(
+        500,
+        Logged::Cast {
+            side: 0,
+            spell: 54,
+            target: 2,
+            count: 40
+        }
+    )));
+    assert_eq!(
+        t.cues,
+        [Cue {
+            at: 500,
+            stack: 2,
+            sound: Sound::Spell(54),
+            stop: false
+        }]
+    );
+    // Shown a deadline after drawn: the hero's frame 0 from 100, standing at once at 2900; the
+    // animation standing on the Wolf Riders' anchor.
+    let heroes = t.heroes.as_ref().unwrap();
+    let group = |p: [Option<crate::hero::HeroPose>; 2]| p[0].map(|h| (h.group, h.frame));
+    assert_eq!(group(heroes.at(&t, 99)), Some((0, 0)));
+    assert_eq!(group(heroes.at(&t, 100)), Some((4, 0)));
+    assert_eq!(group(heroes.drawn_at(&t, 100)), Some((4, 1)));
+    assert_eq!(group(heroes.at(&t, 2900)), Some((0, 0)));
+    let magic = t.magic(600).unwrap();
+    assert_eq!((magic.def.as_str(), magic.frame), ("C09spE0.def", 0));
+    assert_eq!(t.magic(2600), None);
+}
+
+#[test]
+fn the_resist_sequence_plays_as_recorded() {
+    // E17 M3 T7b-1 (`seq-resist.toml`): Slow on the Battle Dwarves in round 1, resisted in round
+    // 2: the resistance's sound and line, then animation 78 beside them (place 3, facing left:
+    // its right edge the anchor less the front less 196).
+    let o = snapshot(vec![
+        at(1, Side::Defender, BATTLE_DWARF, 100, false),
+        at(0, Side::Attacker, PIKEMAN, 86, false),
+    ]);
+    let commands = [
+        (
+            Some(0),
+            vec![
+                Event::Defended { stack: 1 },
+                Event::TurnStarted { stack: 0 },
+            ],
+        ),
+        (Some(0), vec![cast(54, 1), applied(1, 54)]),
+        (
+            Some(2900),
+            vec![
+                Event::Defended { stack: 0 },
+                Event::RoundStarted { round: 2 },
+                Event::EffectEnded {
+                    target: 1,
+                    spell: 54,
+                },
+                Event::TurnStarted { stack: 1 },
+            ],
+        ),
+        (
+            Some(2900),
+            vec![
+                Event::Defended { stack: 1 },
+                Event::TurnStarted { stack: 0 },
+            ],
+        ),
+        (
+            Some(2900),
+            vec![cast(54, 1), Event::SpellResisted { target: 1 }],
+        ),
+    ];
+    let t = play_casts(&o, &commands);
+    assert_eq!(t.lines_with_heroes(6000), until(&screenless(RESIST), 6000));
+    assert!(t.log.contains(&(
+        3400,
+        Logged::Resisted {
+            stack: 1,
+            count: 40
+        }
+    )));
+    let resisted = Cue {
+        at: 3400,
+        stack: 1,
+        sound: Sound::Resisted,
+        stop: false,
+    };
+    assert_eq!(t.cues.last(), Some(&resisted));
+    let magic = t.magic(3500).unwrap();
+    // Hex 100 (column 15, row 5): its anchor 696; the Battle Dwarves' front 215.
+    assert_eq!(magic.over[0].1[0], 696 - (215 - 196) - 91);
+}
+
+#[test]
+fn the_arrow_sequence_plays_as_recorded() {
+    // E17 M3 T7b-1 (`seq-arrow.toml`): the Archangel flies beside the Pikemen; Magic Arrow at the
+    // Swordsmen at row 0 (round 1), at the Archangel (round 2), at the Swordsmen at row 10 (round
+    // 3), each defending: the projectile, then animation 64 over the struck stack with its
+    // reaction, the loop as long as the animation.
+    let mut angel = at(2, Side::Defender, ARCHANGEL, 83, true);
+    angel.flies = true;
+    let o = snapshot(vec![
+        angel,
+        at(0, Side::Attacker, PIKEMAN, 86, false),
+        at(1, Side::Defender, SWORDSMAN, 15, false),
+        at(3, Side::Defender, SWORDSMAN, 117, false),
+        at(4, Side::Defender, SWORDSMAN, 185, false),
+    ]);
+    let defend = |stack, next| {
+        vec![
+            Event::Defended { stack },
+            Event::TurnStarted { stack: next },
+        ]
+    };
+    let round = |round| {
+        vec![
+            Event::Defended { stack: 0 },
+            Event::RoundStarted { round },
+            Event::TurnStarted { stack: 2 },
+        ]
+    };
+    let commands = [
+        (
+            Some(0),
+            vec![moved(2, 83, 174), Event::TurnStarted { stack: 1 }],
+        ),
+        (Some(2730), defend(1, 3)),
+        (Some(2730), defend(3, 4)),
+        (Some(2730), defend(4, 0)),
+        (Some(2730), vec![cast(15, 1), spell_damage(1, 20, 0)]),
+        (Some(5456), round(2)),
+        (Some(5456), defend(2, 1)),
+        (Some(5456), defend(1, 3)),
+        (Some(5456), defend(3, 4)),
+        (Some(5456), defend(4, 0)),
+        (Some(5456), vec![cast(15, 2), spell_damage(2, 20, 0)]),
+        (Some(7951), round(3)),
+        (Some(7951), defend(2, 1)),
+        (Some(7951), defend(1, 3)),
+        (Some(7951), defend(3, 4)),
+        (Some(7951), defend(4, 0)),
+        (Some(7951), vec![cast(15, 4), spell_damage(4, 20, 0)]),
+    ];
+    let t = play_casts(&o, &commands);
+    assert_eq!(t.lines_with_heroes(11009), until(&screenless(ARROW), 11009));
+    // The first projectile: from the hero's frame 4 shown (3230), 22 steps of 33 ms, the level
+    // DEF; the line after the loop, when the animation is erased.
+    let p = t.projectile(3230).unwrap();
+    assert_eq!(
+        (p.def.as_str(), p.frame, p.mirrored),
+        ("c20spx0.def", 0, false)
+    );
+    assert_eq!(t.projectile(3263).unwrap().frame, 1);
+    assert_eq!(t.projectile(3956), None);
+    assert!(t.log.contains(&(
+        5156,
+        Logged::SpellDamage {
+            spell: 15,
+            hit: (1, 20, 0)
+        }
+    )));
+}
+
+#[test]
+fn casts_without_a_caster_a_stack_or_an_effect_play_what_they_can() {
+    // E17 M3 T7b-1: the defender's side has no caster (no frames of its hero); a cast at a hex
+    // or at no stack, and one without an effect, play the hero's frames alone; a spell the
+    // stage does not know plays nothing of its own; a projectile at a two-hex stack facing right
+    // aims at its middle, 22 pixels toward its front.
+    let o = snapshot(vec![
+        at(0, Side::Attacker, CHAMPION, 35, true),
+        at(3, Side::Defender, GOBLIN, 151, false),
+    ]);
+    let by_defender = Event::SpellCast {
+        side: Side::Defender,
+        spell: 54,
+        target: Target::Stack { stack: 3 },
+        second: Target::None {},
+    };
+    let at_hex = Event::SpellCast {
+        side: Side::Attacker,
+        spell: 54,
+        target: Target::Hex { hex: 70 },
+        second: Target::None {},
+    };
+    let commands = [
+        (Some(0), vec![by_defender, applied(3, 54)]),
+        (Some(3000), vec![cast(15, 0), spell_damage(0, 5, 0)]),
+        (Some(8000), vec![at_hex]),
+        (
+            Some(10000),
+            vec![cast(54, 9), cast(54, 3), Event::TurnStarted { stack: 3 }],
+        ),
+        (Some(13000), vec![cast(99, 3), applied(3, 99)]),
+    ];
+    let t = play_casts(&o, &commands);
+    // A spell whose animation the stage has not loaded: none drawn, over one stack or marked.
+    let field = layout();
+    let (magic, mut unloaded) = (spell_magic(), casts());
+    for spell in unloaded.spells.values_mut() {
+        spell.animation = Some(200);
+    }
+    let stage = Stage {
+        layout: &field,
+        width: 17,
+        groups: tables().battle.groups,
+        magic: &magic,
+        casts: &unloaded,
+    };
+    let bare = [
+        vec![cast(54, 3), applied(3, 54)],
+        vec![cast(15, 3), spell_damage(3, 5, 0)],
+    ];
+    let bare: Vec<Command<'_>> = bare
+        .iter()
+        .map(|events| Command { at: None, events })
+        .collect();
+    let without = timeline(&o, &bare, &looks(), stage, Speed::default()).unwrap();
+    assert!(without.magics.is_empty());
+    assert_eq!(without.flights.len(), 1);
+    // No hero frames for the defender's cast: Slow's animation from the click.
+    assert!(t.hero_keys.iter().all(|k| k.side == 0 && k.drawn >= 3000));
+    assert_eq!(t.magics[0].drawn, 0);
+    // The projectile at the Champions (hex 35, facing right): their middle, half their height up.
+    let [ax, ay] = layout().anchor(2, 1);
+    let to = [ax + 22, ay - (267 - 165) / 2];
+    let shells = casts().spells[&15].projectile.clone();
+    let shell = &shells[shell_index(&shells, [to[0] - 49, to[1] - 48])];
+    let flight = &t.flights[0];
+    let [w, h] = shell.size;
+    let steps = i32::try_from(flight.steps).unwrap();
+    assert_eq!(flight.def, shell.def);
+    assert_eq!(
+        [
+            flight.start[0] + w / 2 + steps * flight.delta[0],
+            flight.start[1] + h / 2 + steps * flight.delta[1]
+        ],
+        [
+            49 + (to[0] - 49) / steps * steps,
+            48 + (to[1] - 48) / steps * steps
+        ]
+    );
+    // The hex's cast, the cast at no stack, the one without an effect and the unknown spell:
+    // the hero's eight frames and its standing, no animation, no line, no sound.
+    let frames = |from: u32, to: u32| {
+        t.hero_keys
+            .iter()
+            .filter(|k| (from..to).contains(&k.drawn))
+            .count()
+    };
+    assert_eq!(
+        [
+            frames(8000, 10000),
+            frames(10000, 13000),
+            frames(13000, 20000)
+        ],
+        [9, 18, 9]
+    );
+    assert_eq!(t.magics.iter().filter(|k| k.drawn >= 8000).count(), 0);
+    let spoken: Vec<(u32, &Logged)> = t
+        .log
+        .iter()
+        .filter(|(at, l)| *at >= 8000 && !matches!(l, Logged::Action | Logged::Turn(_)))
+        .map(|(at, l)| (*at, l))
+        .collect();
+    let unknown = Logged::Cast {
+        side: 0,
+        spell: 99,
+        target: 3,
+        count: 40,
+    };
+    assert_eq!(spoken, [(13500, &unknown)]);
+    // The cast at no stack ends its effects there; the next event starts the next turn.
+    assert_eq!(t.active(13000), Some(3));
+}
+
+#[test]
+fn a_spells_projectile_takes_the_def_nearest_its_angle() {
+    // `spell_projectile` 0x467E5D (E17 M3 T7b-1): straight below the last, straight above or
+    // level the first; else the count of midpoints (−8, −25, −45, −69.5) at least the angle.
+    let shells = casts().spells[&15].projectile.clone();
+    assert_eq!(shell_index(&shells, [0, 10]), 4);
+    assert_eq!(shell_index(&shells, [0, -10]), 0);
+    assert_eq!(shell_index(&shells, [0, 0]), 0);
+    assert_eq!(shell_index(&shells, [100, -50]), 0);
+    assert_eq!(shell_index(&shells, [100, 7]), 0);
+    assert_eq!(shell_index(&shells, [-100, 20]), 1);
+    assert_eq!(shell_index(&shells, [100, 70]), 2);
+    assert_eq!(shell_index(&shells, [100, 200]), 3);
+    assert_eq!(shell_index(&shells, [1, 1000]), 4);
+    assert_eq!(shell_index(&[], [1, 1]), 0);
+}
+
+#[test]
+fn hero_lines_leave_out_a_side_without_a_hero() {
+    // E17 M3 T7b-1: `lines_with_heroes` prints the heroes there are; without heroes, none.
+    let o = snapshot(vec![
+        at(0, Side::Attacker, CHAMPION, 35, true),
+        at(3, Side::Defender, GOBLIN, 151, false),
+    ]);
+    let commands = [(Some(0), vec![cast(54, 3), applied(3, 54)])];
+    let t = play_casts(&o, &commands);
+    let look = crate::hero::HeroLook {
+        frames: BTreeMap::from([(0, 1), (4, 8)]),
+        flag_frames: 8,
+    };
+    let groups = tables().battle.hero_groups;
+    let one = Heroes::new([Some(look), None], [true, false], groups, None);
+    let lines = t.clone().with_heroes(one).lines_with_heroes(3000);
+    assert!(lines.contains("0 hero 0 g0 f0\n") && !lines.contains("hero 1"));
+    let none = Timeline {
+        heroes: None,
+        ..t.clone()
+    };
+    assert!(!none.lines_with_heroes(3000).contains("hero"));
+    assert_eq!(t.lines(), none.lines_with_heroes(3000));
 }

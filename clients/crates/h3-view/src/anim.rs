@@ -27,7 +27,7 @@ use alloc::vec::Vec;
 use core::cmp::Ordering;
 use core::fmt::Write as _;
 
-use h3_protocol::wire::{Event, Observation, Outcome, ServerMessage, Side, Stack};
+use h3_protocol::wire::{Event, Observation, Outcome, ServerMessage, Side, Stack, Target};
 
 use crate::battle_log::{Logged, Spread};
 use crate::hero::{Action, Happening, Heroes};
@@ -66,6 +66,8 @@ pub const FLYING: u8 = 8;
 const STEP_PIXELS: u64 = 40;
 /// Half a hex: a two-hex target is aimed at from its middle (0x43F323).
 const HALF_HEX: i32 = 22;
+/// Place 3's offset from the standing frame's front (0x43E922: its left margin + width − 0xC4).
+const BESIDE: i32 = 196;
 /// tan(25°) × 10^15: a shot is up above 25°, down below −25° (0x469880).
 const TAN_25: i64 = 466_307_658_154_999;
 /// The scale of [`TAN_25`] and of [`tangent`].
@@ -126,6 +128,10 @@ pub struct Look {
     /// anchor y minus (267 − it) / 2 (0x43F338; the 267 is the canvas's anchor,
     /// [`BattleLayout::stack_canvas`]).
     pub top: i32,
+    /// The right edge of frame 0 of the standing group in its canvas (its left margin and width,
+    /// the DEF frame's +0x38 and +0x30): a magic animation of place 3 is drawn beside it (E17 M3
+    /// T7b-1).
+    pub front: i32,
     /// A shooter's projectile (none: no projectile is drawn).
     pub missile: Option<Missile>,
     /// A ray shooter's colours by the distance from the ray's edge (R, G, B; none: it shoots
@@ -154,8 +160,11 @@ pub struct Missile {
 pub struct Flight {
     /// The DEF.
     pub def: String,
-    /// Its frame in group 0.
+    /// Its frame in group 0 (at the first step).
     pub frame: u32,
+    /// The frames of group 0 it cycles through, a frame a step (a spell's projectile, E17 M3
+    /// T7b-1); 0: it keeps its frame.
+    pub cycle: u32,
     /// Drawn mirrored: the target lies left of the start.
     pub mirrored: bool,
     /// When the first step shows.
@@ -228,6 +237,74 @@ pub struct Stage<'a> {
     pub groups: Groups,
     /// The magic animations the record shows, by number (E17 M3 T3b).
     pub magic: &'a BTreeMap<u8, MagicLook>,
+    /// What the record's casts draw (E17 M3 T7b-1).
+    pub casts: &'a Casts,
+}
+
+/// What a battle's casts draw (E17 M3 T7b-1, design §7.16): each spell the record casts by its
+/// handle, each side's hero as it casts, and the heroes' groups for it.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct Casts {
+    /// The spells, by handle.
+    pub spells: BTreeMap<u16, SpellLook>,
+    /// Each side's hero (none: no hero, or none that casts).
+    pub casters: [Option<Caster>; 2],
+    /// The heroes' casting group (4) and standing group (0).
+    pub groups: [u8; 2],
+}
+
+/// A spell as its cast draws it (E17 M3 T7b-1): its magic animation (the spell record's +8; the
+/// stage's `magic` holds its numbers) and its projectile's DEFs, if its handler flies one.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct SpellLook {
+    /// Its magic animation's number.
+    pub animation: Option<u8>,
+    /// Its projectile's DEFs from the level one to the one pointing down, none for most spells.
+    pub projectile: Vec<Shell>,
+}
+
+/// One DEF of a spell's projectile (`spell_projectile` 0x467DB0): its name, its canvas's width
+/// and height, the frames of its group 0 (they cycle) and its angle in degrees.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Shell {
+    /// The DEF.
+    pub def: String,
+    /// Its canvas's width and height.
+    pub size: [i32; 2],
+    /// The frames of its group 0.
+    pub frames: u32,
+    /// Its angle (0 level, negative down).
+    pub angle: i16,
+}
+
+/// A side's hero as it casts (`cast_spell` 0x5A01CF, 0x5A20B8; design §7.16): its cast point on
+/// the screen, where projectiles start (`hero_battle_defs` +4, +8: (x − 43, y − 19) on the left,
+/// (693 + W − x, y − 19) on the right, W its DEF's width), the casting group's frames played before
+/// the spell (+0xC) and the group's frames.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Caster {
+    /// The cast point.
+    pub point: [i32; 2],
+    /// The frames before the spell.
+    pub before: u32,
+    /// The casting group's frames.
+    pub frames: u32,
+}
+
+/// A frame of a side's hero that a command draws (E17 M3 T7b-1: its cast), drawn at `drawn`,
+/// shown from `shown`; its idle motions and reactions are [`crate::hero::Heroes`]'s.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HeroKey {
+    /// The side (0 the attacker's).
+    pub side: u8,
+    /// When it is drawn.
+    pub drawn: u32,
+    /// When it shows.
+    pub shown: u32,
+    /// The hero DEF's group.
+    pub group: u32,
+    /// The frame in it.
+    pub frame: u32,
 }
 
 /// A magic animation's numbers (`PlayMagicAnimation` 0x496840, design §7.15; E17 M3 T3b): its
@@ -242,7 +319,7 @@ pub struct MagicLook {
     /// The DEF's width and height.
     pub size: [i32; 2],
     /// Where it is drawn over a stack: 0 standing on the hex, 1 centred on the creature, 2 above
-    /// it (3, beside it, is not built yet).
+    /// it, 3 beside its front (E17 M3 T7b-1).
     pub place: u8,
     /// Drawn by the translucent drawer.
     pub translucent: bool,
@@ -251,6 +328,10 @@ pub struct MagicLook {
 /// The magic animation of the First Aid Tent's heal (`first_aid_tent_action` 0x478D14: number
 /// 0x4F over the patient, 100 ms a frame, without the patient's hit).
 pub const HEAL: u8 = 79;
+
+/// The magic animation of a spell resisted by the stack it was aimed at (`cast_spell` 0x5A2043:
+/// number 0x4E over it, 100 ms a frame, without its hit; E17 M3 T7b-1).
+pub const RESISTED: u8 = 78;
 
 /// The count a stack's box shows from `shown` on (E17 M3 T5b, design §4.3): a strike's kills
 /// show at its end.
@@ -447,6 +528,13 @@ pub enum Sound {
     /// (the asset tables' `heal_sound`, category 2: `play_sound_file` 0x59A470 from
     /// `first_aid_tent_action` 0x478C46; E17 M3 T3b).
     Heal,
+    /// A spell resisted by the stack it was aimed at, cued on that stack: the battle's sound (the
+    /// asset tables' `resist_sound`, `play_sound_file` from `cast_spell` 0x5A1F98; E17 M3
+    /// T7b-1).
+    Resisted,
+    /// A spell's own sound (its handle), cued on its target: the spell record's (the asset
+    /// tables' spell `sound`, started after the resistance roll, 0x5A0331; E17 M3 T7b-1).
+    Spell(u16),
 }
 
 /// A sound a stack starts at a time, or (`stop`) the move sound it ends then (E17 M2 T5b; the
@@ -478,6 +566,8 @@ pub struct Timeline {
     pub beams: Vec<Beam>,
     /// The magic animations' frames and erasures, in order (E17 M3 T3b).
     pub magics: Vec<MagicKey>,
+    /// The heroes' frames the commands draw, in order (E17 M3 T7b-1: their casts).
+    pub hero_keys: Vec<HeroKey>,
     /// The counts the stacks' boxes show from a time on, in order (E17 M3 T5b); before its
     /// first, a stack's box shows the snapshot's count.
     pub counts: Vec<CountKey>,
@@ -672,10 +762,14 @@ impl Timeline {
         self.flights.iter().find_map(|f| {
             let k = t.checked_sub(f.from)? / f.step.max(1);
             (k < f.steps).then(|| {
+                let frame = match f.cycle {
+                    0 => f.frame,
+                    n => (f.frame + k) % n,
+                };
                 let k = i32::try_from(k).unwrap_or(0);
                 Projectile {
                     def: f.def.clone(),
-                    frame: f.frame,
+                    frame,
                     at: [f.start[0] + k * f.delta[0], f.start[1] + k * f.delta[1]],
                     mirrored: f.mirrored,
                 }
@@ -795,6 +889,17 @@ impl Timeline {
     /// over its stacks, `<ms> magic -` once erased. Then `<ms> end` when the battle is decided
     /// (E17 M3 T8).
     pub fn lines(&self) -> String {
+        self.lines_with(None)
+    }
+
+    /// [`Timeline::lines`] with the heroes' changes by `until` (the harness's `heroes`, E17 M3
+    /// T7b-1): after a time's stacks, each change of a hero's group or frame as drawn, `<ms> hero
+    /// <side> g<group> f<frame>`, both heroes at 0 (none without [`Timeline::heroes`]).
+    pub fn lines_with_heroes(&self, until: u32) -> String {
+        self.lines_with(Some(until))
+    }
+
+    fn lines_with(&self, heroes: Option<u32>) -> String {
         let mut now: BTreeMap<u8, Pose> = self.members.iter().map(|m| (m.stack, m.start)).collect();
         let mut printed: BTreeMap<u8, (u32, u32, u8)> = BTreeMap::new();
         let mut out = String::new();
@@ -802,8 +907,17 @@ impl Timeline {
         times.extend(self.magics.iter().map(|k| k.drawn));
         times.extend(self.ended.map(|(t, _)| t));
         times.push(0);
+        let shown_heroes = self.heroes.as_ref().zip(heroes);
+        if let Some((_, until)) = shown_heroes {
+            times.extend(self.hero_keys.iter().map(|k| k.drawn));
+            times.extend(self.steps.iter().copied());
+            let mut idle = self.idle;
+            idle.run(until, |t| times.push(t));
+            times.retain(|t| *t <= until);
+        }
         times.sort_unstable();
         times.dedup();
+        let mut heroes_printed: [Option<(u32, u32)>; 2] = [None; 2];
         for t in times {
             for key in self.keys.iter().filter(|k| k.drawn == t) {
                 now.insert(key.stack, key.pose);
@@ -818,6 +932,18 @@ impl Timeline {
                         "{t} {side}.{} g{} f{} h{}",
                         m.record, p.group, p.frame, p.hex
                     );
+                }
+            }
+            if let Some((h, _)) = shown_heroes {
+                for (side, pose) in h.drawn_at(self, t).iter().enumerate() {
+                    let Some(p) = pose else {
+                        continue;
+                    };
+                    let seen = Some((p.group, p.frame));
+                    if heroes_printed[side] != seen {
+                        heroes_printed[side] = seen;
+                        let _ = writeln!(out, "{t} hero {side} g{} f{}", p.group, p.frame);
+                    }
                 }
             }
             // Each key drawn differs from the one before it (a frame on, or the erasure).
@@ -1062,6 +1188,7 @@ fn played(
         flights: Vec::new(),
         beams: Vec::new(),
         magics: Vec::new(),
+        hero_keys: Vec::new(),
         counts: Vec::new(),
         outlined: Vec::new(),
         machine: None,
@@ -1120,20 +1247,38 @@ fn played(
             }
         }
         let (before, turns) = (player.keys.len(), player.turns.len());
+        let heroes_before = player.hero_keys.len();
         // The action starts (`action_dispatcher` 0x478D80's head, E17 M3 T6b).
         let started = player.clock.now;
         player.log.push((started, Logged::Action));
+        // A hero's cast (E17 M3 T7b-1, the recorded `cast`): its action clears the outline at
+        // once (no stack active while it plays); its stack's turn goes on after it, outlined
+        // again as the hero stands.
+        let cast = command
+            .events
+            .iter()
+            .take_while(|e| !matches!(e, Event::TurnStarted { .. }))
+            .any(|e| matches!(e, Event::SpellCast { .. }));
+        if cast {
+            outlines.push((started, None));
+        }
         player.command(command.events);
-        // The outline goes with the command's first frame shown; a turn started brings its
-        // stack's, unless the computer acts next.
-        if let Some(first) = player.keys.get(before) {
-            outlines.push((first.shown, None));
+        // The outline goes with the command's first frame shown (a stack's, or a hero's as it
+        // casts, E17 M3 T7b-1); a turn started brings its stack's, unless the computer acts next.
+        let first = [
+            player.keys.get(before).map(|k| k.shown),
+            player.hero_keys.get(heroes_before).map(|k| k.shown),
+        ];
+        if let Some(first) = first.into_iter().flatten().min() {
+            outlines.push((first, None));
         }
         outlines.append(&mut player.outlined);
         if let Some(&(at, stack)) = player.turns.get(turns..).and_then(<[_]>::last) {
             let computer = commands.get(i + 1).is_some_and(|c| c.at.is_none());
             outlines.push((at, (!computer).then_some(stack)));
             waiting = Some(stack);
+        } else if cast {
+            outlines.push((player.clock.now, waiting));
         }
         player.idle.from = player.clock.now;
         // The battle decided: `battle_end` follows the action's last frame (design §8.2).
@@ -1162,6 +1307,7 @@ fn played(
         flights: player.flights,
         beams: player.beams,
         magics: player.magics,
+        hero_keys: player.hero_keys,
         counts: player.counts,
         outlines,
         steps: player.steps,
@@ -1306,6 +1452,30 @@ impl Aim {
     }
 }
 
+/// A magic animation drawn over the marked stacks through a strike's loop (E17 M3 T7b-1): its
+/// number, its numbers and the stacks with its canvas's corner over each.
+#[derive(Debug, Clone)]
+struct Riding {
+    number: u8,
+    look: MagicLook,
+    over: Vec<(u8, [i32; 2], bool)>,
+}
+
+impl Riding {
+    /// Its frame `frame` (none: erased), drawn at `drawn`, shown from `shown`.
+    fn key(&self, drawn: u32, shown: u32, frame: Option<u32>) -> MagicKey {
+        MagicKey {
+            animation: self.number,
+            drawn,
+            shown,
+            frame,
+            def: self.look.def.clone(),
+            translucent: self.look.translucent,
+            over: self.over.clone(),
+        }
+    }
+}
+
 /// Plays the commands.
 #[derive(Debug)]
 struct Player<'a> {
@@ -1322,6 +1492,8 @@ struct Player<'a> {
     beams: Vec<Beam>,
     /// The magic animations' frames (E17 M3 T3b).
     magics: Vec<MagicKey>,
+    /// The heroes' frames (E17 M3 T7b-1).
+    hero_keys: Vec<HeroKey>,
     /// The counts the boxes show from a time on (E17 M3 T5b).
     counts: Vec<CountKey>,
     /// The outline's changes inside the command so far: a war machine's turn that plays out
@@ -1590,6 +1762,28 @@ impl Player<'_> {
                     target,
                     hit_points,
                 } => self.heal(healer, target, hit_points),
+                Event::SpellCast {
+                    side,
+                    spell,
+                    target,
+                    ..
+                } => {
+                    // Its effects follow it (E17 M3 T7b-1).
+                    let from = i;
+                    while events.get(i).is_some_and(|e| {
+                        matches!(
+                            e,
+                            Event::EffectApplied { .. }
+                                | Event::EffectEnded { .. }
+                                | Event::SpellResisted { .. }
+                                | Event::SpellDamage { .. }
+                                | Event::SpellHealed { .. }
+                        )
+                    }) {
+                        i += 1;
+                    }
+                    self.cast(side, spell, target, &events[from..i]);
+                }
                 Event::GoodMorale { stack } | Event::BadMorale { stack } => {
                     let good = matches!(*event, Event::GoodMorale { .. });
                     let count = self.live(stack).map_or(0, |l| l.count);
@@ -1683,8 +1877,10 @@ impl Player<'_> {
     /// 0x43E7FD to 0x43E98C): centred on its position's anchor (on a two-hex stack's middle, 22
     /// pixels toward its front), standing on the anchor (place 0), centred on the creature, whose
     /// height is 267 less its standing frame's top (+0x16C, 0x43DD62; place 1), or above it
-    /// (place 2); the halves truncated toward zero. Place 3 (beside it) and the higher ones are
-    /// not built: they stand on the anchor (*provisional*).
+    /// (place 2); the halves truncated toward zero. Place 3 (0x43E906, E17 M3 T7b-1): beside the
+    /// standing frame's front, its left edge the anchor + (the front − 196) facing right, its
+    /// right edge the anchor − that facing left, no two-hex shift; its height as place 1. The
+    /// higher ones are not over a stack: they stand on the anchor (*provisional*).
     fn magic_at(&self, live: &Live, look: &MagicLook) -> [i32; 2] {
         let [x, y] = self.stage.anchor(live.position(live.hex));
         let middle = if !live.two_hex {
@@ -1697,11 +1893,221 @@ impl Player<'_> {
         let [w, h] = look.size;
         let height = self.stage.layout.stack_canvas[1] - live.look.top;
         let top = match look.place {
-            1 => y - h / 2 - height / 2,
+            1 | 3 => y - h / 2 - height / 2,
             2 => y - h - height,
             _ => y - h,
         };
+        if look.place == 3 {
+            let beside = live.look.front - BESIDE;
+            let left = if live.right {
+                x + beside
+            } else {
+                x - beside - w
+            };
+            return [left, top];
+        }
         [x + middle - w / 2, top]
+    }
+
+    /// A magic animation over one stack (`play_magic_animation` 0x496840 without the hit,
+    /// design §7.15, §7.16): its frames at `time` each on the deadline, then a last redraw that
+    /// erases it; returns when its first frame shows (none: the stage has no such animation).
+    fn over_one(&mut self, number: u8, (target, live): (u8, &Live), time: u32) -> Option<u32> {
+        let look = self.stage.magic.get(&number).cloned()?;
+        let over = vec![(target, self.magic_at(live, &look), !live.right)];
+        let mut first = None;
+        for frame in (0..look.frames).map(Some).chain([None]) {
+            let drawn = self.clock.now;
+            let shown = self.clock.show(time);
+            self.flush(drawn, shown);
+            first = first.or(Some(shown));
+            self.magics.push(MagicKey {
+                animation: number,
+                drawn,
+                shown,
+                frame,
+                def: look.def.clone(),
+                translucent: look.translucent,
+                over: over.clone(),
+            });
+        }
+        first
+    }
+
+    /// A frame of the hero of `side` (0 the attacker's): drawn now and shown at the deadline,
+    /// which then moves on by `time` (a redraw with its frame wait); with `at_once`, shown now,
+    /// the deadline as it is (E17 M3 T7b-1).
+    fn hero_frame(&mut self, side: u8, (group, frame): (u8, u32), time: u32, at_once: bool) {
+        let drawn = self.clock.now;
+        let shown = if at_once {
+            drawn
+        } else {
+            self.clock.show(time)
+        };
+        self.flush(drawn, shown);
+        self.hero_keys.push(HeroKey {
+            side,
+            drawn,
+            shown,
+            group: u32::from(group),
+            frame,
+        });
+    }
+
+    /// A hero's cast of `spell` at `target` with its `effects` (`cast_spell` 0x59FE30, design
+    /// §7.16; E17 M3 T7b-1): the hero's casting frames before the spell, a redraw at trunc(100 F)
+    /// each; then, if the stack it was aimed at resisted, the resistance's sound, the log's line
+    /// and animation [`RESISTED`] over it (0x5A1F89), else the spell's own sound (0x5A0331) and
+    /// its handler: a timed spell on one stack its line, then its animation over it (0x5A107F;
+    /// player 1), Magic Arrow and Ice Bolt their projectile, then their animation over the
+    /// struck stack with its reaction and their damage's line (0x5A098A; player 2). The common
+    /// tail (0x5A2058): the rest of the casting group at trunc(100 F) each, then the hero stands
+    /// in a redraw shown at once. Other spells play the hero's frames alone (T7b-2, T7c).
+    fn cast(&mut self, side: Side, spell: u16, target: Target, effects: &[Event]) {
+        let s = u8::from(side == Side::Defender);
+        let casts = self.stage.casts;
+        let caster = casts.casters[usize::from(s)];
+        let [casting, standing] = casts.groups;
+        let time = self.speed.scale(TICK);
+        if let Some(c) = caster {
+            for f in 0..c.before {
+                self.hero_frame(s, (casting, f), time, false);
+            }
+        }
+        let aimed = match target {
+            Target::Stack { stack } => self.live(stack).map(|l| (stack, l)),
+            _ => None,
+        };
+        let look = casts.spells.get(&spell).cloned().unwrap_or_default();
+        let resisted = |t: u8| {
+            effects
+                .iter()
+                .any(|e| matches!(*e, Event::SpellResisted { target } if target == t))
+        };
+        match aimed {
+            Some((t, live)) if resisted(t) => {
+                self.cue(t, Sound::Resisted, false);
+                let line = Logged::Resisted {
+                    stack: t,
+                    count: live.count,
+                };
+                self.log.push((self.clock.now, line));
+                self.over_one(RESISTED, (t, &live), time);
+            }
+            Some((t, live)) => {
+                self.cue(t, Sound::Spell(spell), false);
+                let damage = effects.iter().find_map(|e| match *e {
+                    Event::SpellDamage {
+                        target,
+                        ref damage,
+                        kills,
+                        ..
+                    } if target == t => Some((damage.0, kills)),
+                    _ => None,
+                });
+                let applied = effects
+                    .iter()
+                    .any(|e| matches!(*e, Event::EffectApplied { target, .. } if target == t));
+                match (damage, caster) {
+                    (Some((damage, kills)), Some(c)) if !look.projectile.is_empty() => {
+                        self.spell_projectile(c.point, &live, &look.projectile);
+                        self.marked((t, &live), kills, look.animation);
+                        let line = Logged::SpellDamage {
+                            spell,
+                            hit: (t, damage, kills),
+                        };
+                        self.log.push((self.clock.now, line));
+                    }
+                    _ if applied => {
+                        let line = Logged::Cast {
+                            side: s,
+                            spell,
+                            target: t,
+                            count: live.count,
+                        };
+                        self.log.push((self.clock.now, line));
+                        if let Some(number) = look.animation {
+                            self.over_one(number, (t, &live), time);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            None => {}
+        }
+        if let Some(c) = caster {
+            for f in c.before..c.frames {
+                self.hero_frame(s, (casting, f), time, false);
+            }
+            self.hero_frame(s, (standing, 0), time, true);
+        }
+    }
+
+    /// A spell's projectile from `from` to the centre of `target` (`spell_projectile` 0x467DB0,
+    /// design §7.16): n = trunc((trunc(d) + 15) / 31) positions (one at least) trunc(33 F) apart
+    /// outside the deadline, each moved by the distance over n (truncated toward zero), the first
+    /// at the start, shown at once; the DEF whose angle is nearest atan(−Δy / |Δx|) (the first
+    /// midpoint between consecutive angles below it ends the count; Δx = 0: the last for a
+    /// target below, else the first), mirrored for a target to the left, its group 0's frames
+    /// cycling; erased as the next frame shows, n × trunc(33 F) after the start.
+    fn spell_projectile(&mut self, from: [i32; 2], target: &Live, shells: &[Shell]) {
+        let to = self.centre(target);
+        let [dx, dy] = [to[0] - from[0], to[1] - from[1]];
+        let d = isqrt(i64::from(dx).pow(2) + i64::from(dy).pow(2));
+        let n = u32::try_from((d + 15) / 31).unwrap_or(0);
+        let shell = &shells[shell_index(shells, [dx, dy])];
+        let steps = i32::try_from(n.max(1)).unwrap_or(1);
+        let step = self.speed.scale(STEP);
+        let [w, h] = shell.size;
+        self.flights.push(Flight {
+            def: shell.def.clone(),
+            frame: 0,
+            cycle: shell.frames,
+            mirrored: dx < 0,
+            from: self.clock.now,
+            step,
+            steps: n,
+            start: [from[0] - w / 2, from[1] - h / 2],
+            delta: [dx / steps, dy / steps],
+        });
+        self.clock.wait(n * step);
+    }
+
+    /// The centre a projectile aims at (`stack_screen_x` 0x446660, `stack_screen_y` 0x446630):
+    /// its position's anchor, a two-hex stack's middle (22 pixels toward its front), and up by
+    /// half its height (267 less its standing frame's top, truncated toward zero).
+    fn centre(&self, live: &Live) -> [i32; 2] {
+        let [x, y] = self.stage.anchor(live.position(live.hex));
+        let x = match (live.two_hex, live.right) {
+            (false, _) => x,
+            (true, true) => x + HALF_HEX,
+            (true, false) => x - HALF_HEX,
+        };
+        [
+            x,
+            y - (self.stage.layout.stack_canvas[1] - live.look.top) / 2,
+        ]
+    }
+
+    /// A spell's animation `number` over the marked stack `target` with its reaction to `kills`
+    /// (`strike_animation` 0x468990 without a striker; design §7.16, player 2): iteration i draws
+    /// the animation's frame i while it has one, then keeps its last; the reaction from frame 0 at
+    /// once, as after a projectile (L = R + 1, §7.4), the loop at least as long as the animation;
+    /// at its end the mark is cleared, the dead die and the battle is redrawn at once.
+    fn marked(&mut self, (target, live): (u8, &Live), kills: u32, number: Option<u8>) {
+        let riding = number.and_then(|number| {
+            let look = self.stage.magic.get(&number).cloned()?;
+            let over = vec![(target, self.magic_at(live, &look), !live.right)];
+            Some(Riding { number, look, over })
+        });
+        let reactions = self.reactions(&[(target, kills)]);
+        self.iterate(
+            None,
+            (0, 0, 0, 2),
+            &reactions,
+            [STANDING, STRUCK],
+            riding.as_ref(),
+        );
     }
 
     /// An attack is over: a melee's target turns back, then its striker at the attack's end
@@ -2027,6 +2433,7 @@ impl Player<'_> {
             (group, 0, frames, frames),
             &reactions,
             [layer, STRUCK],
+            None,
         );
     }
 
@@ -2052,7 +2459,7 @@ impl Player<'_> {
     /// taken (E17 M2 T5c, the reviewer).
     fn react_alone(&mut self, hit: &[(u8, u32)], layers: [u8; 2]) {
         let reactions = self.reactions(hit);
-        self.iterate(None, (0, 0, 0, 2), &reactions, layers);
+        self.iterate(None, (0, 0, 0, 2), &reactions, layers, None);
     }
 
     /// A shot of `shooter` at the stacks `hit` (`shot_animation` 0x43F2C0, §7.4); returns when
@@ -2090,6 +2497,7 @@ impl Player<'_> {
                 (group, n, 0, 2),
                 &reactions,
                 [STANDING, STRUCK],
+                None,
             );
             return start;
         }
@@ -2103,6 +2511,7 @@ impl Player<'_> {
             self.flights.push(Flight {
                 def: missile.def.clone(),
                 frame: aim.frame(missile),
+                cycle: 0,
                 mirrored: aim.to[0] < aim.from[0],
                 from: self.clock.now,
                 step,
@@ -2130,6 +2539,7 @@ impl Player<'_> {
             (group, climax, n - climax, 2),
             &reactions,
             [STANDING, STRUCK],
+            None,
         );
         start
     }
@@ -2238,6 +2648,7 @@ impl Player<'_> {
         (group, from, frames, counted): (u8, u32, u32, u32),
         reactions: &[Reaction],
         [striking, struck]: [u8; 2],
+        riding: Option<&Riding>,
     ) {
         // L = A + R − 1 (with a magic animation, at least its frames: not yet); at least A + 1,
         // so a striker without a reaction to wait for still stands at the end (the original
@@ -2247,7 +2658,11 @@ impl Player<'_> {
         // *provisional*: not read).
         let longest = reactions.iter().map(|r| r.frames).max().unwrap_or(0);
         let reacting = (counted + longest).saturating_sub(1).max(counted + 1);
-        let loops = reacting.max(frames + 1);
+        // A magic animation over the marked stacks lengthens the loop to its frames (E17 M3
+        // T7b-1, design §7.16).
+        let loops = reacting
+            .max(frames + 1)
+            .max(riding.map_or(0, |r| r.look.frames));
         let tick = self.speed.scale(TICK);
         let striker = striker.map(|(id, live)| (id, live, self.standing(live, live.hex)));
         for i in 0..loops {
@@ -2299,7 +2714,13 @@ impl Player<'_> {
                     },
                 ));
             }
+            let drawn = self.clock.now;
             self.frame(&poses, tick);
+            if let Some(r) = riding {
+                // Its frame i while it has one, then its last (0x46905A).
+                let frame = i.min(r.look.frames.saturating_sub(1));
+                self.magics.push(r.key(drawn, self.clock.now, Some(frame)));
+            }
         }
         // The strike's end (`strike_animation` 0x4692A4 to 0x46938A, design §4.3; E17 M3 T5b):
         // the dead leave their hexes for the corpses, every stack's layer is 4 again and its
@@ -2335,8 +2756,36 @@ impl Player<'_> {
                 self.stacks.remove(&r.stack);
             }
         }
+        // Every stack's mark cleared (0x46905A): the magic animation is gone with the redraw.
+        if let Some(r) = riding {
+            self.magics.push(r.key(shown, shown, None));
+        }
         self.redraw();
     }
+}
+
+/// The projectile DEF of `shells` a spell flies along `[dx, dy]` (screen y down;
+/// `spell_projectile` 0x467E5D to 0x467F6F): Δx = 0 takes the last for a target below, else the
+/// first; otherwise the count of leading midpoints between consecutive angles that are at least
+/// atan(−Δy / |Δx|) (the original compares the angle as an f32 with each midpoint as an f32;
+/// comparing tangents is the same but within an f32's rounding of a midpoint, *provisional*), the
+/// last when none falls below it.
+fn shell_index(shells: &[Shell], [dx, dy]: [i32; 2]) -> usize {
+    let last = shells.len().saturating_sub(1);
+    if dx == 0 {
+        return if dy > 0 { last } else { 0 };
+    }
+    let (dx, dy) = (i128::from(dx.unsigned_abs()), i128::from(dy));
+    let at_least = |pair: &[Shell]| {
+        let midpoint = tangent(i32::from(pair[0].angle) + i32::from(pair[1].angle));
+        // tan(midpoint) ≥ −dy / dx, dx > 0.
+        i128::from(midpoint) * dx >= -dy * i128::from(TAN_SCALE)
+    };
+    shells
+        .windows(2)
+        .take_while(|p| at_least(p))
+        .count()
+        .min(last)
 }
 
 /// The fractional bits of the fixed-point integers that hold f32 values exactly here: every f32

@@ -311,6 +311,8 @@ pub struct Panels {
     turns: Vec<Observation>,
     /// The log item's text from each time on.
     texts: Vec<(u32, String)>,
+    /// When each hero's cast started, and its side (E17 M3 T7b-1).
+    casts: Vec<(u32, Side)>,
 }
 
 impl Panels {
@@ -321,7 +323,16 @@ impl Panels {
         Self {
             turns: crate::panel::turns(snapshot, events),
             texts,
+            casts: Vec::new(),
         }
+    }
+
+    /// The panel with the heroes' casts, each its start and its side (E17 M3 T7b-1): from a
+    /// cast's start the spell book's button of its side's turn is disabled, as the hero has cast
+    /// this round (the recorded `cast`: at the click).
+    #[must_use]
+    pub fn with_casts(self, casts: Vec<(u32, Side)>) -> Self {
+        Self { casts, ..self }
     }
 
     /// The text the log's item shows at `t`.
@@ -375,6 +386,11 @@ impl Panels {
                 .and_then(|id| snapshot.stacks.iter().find(|s| s.id == id))
                 .map(|s| s.controller)
         };
+        let since = started
+            .iter()
+            .rev()
+            .find(|(at, _)| *at <= t)
+            .map_or(0, |(at, _)| *at);
         let started = started.iter().filter(|(at, _)| *at <= t).count();
         let turns = self.turns.get(..started).unwrap_or(&self.turns);
         let sides: Vec<(Side, bool)> = core::iter::once(snapshot)
@@ -383,8 +399,13 @@ impl Panels {
             .collect();
         let built = controller(snapshot).unwrap_or(Side::Attacker);
         let kept = crate::panel::kept(snapshot, &sides, built);
-        let now = turns.last().unwrap_or(snapshot);
-        pressed_panel(now, controller(now), kept, text, layout, pressed)
+        let mut now = turns.last().unwrap_or(snapshot).clone();
+        for &(_, side) in self.casts.iter().filter(|(at, _)| (since..=t).contains(at)) {
+            if let Some(hero) = now.sides[usize::from(side == Side::Defender)].hero.as_mut() {
+                hero.casts = hero.casts.max(1);
+            }
+        }
+        pressed_panel(&now, controller(&now), kept, text, layout, pressed)
     }
 }
 
@@ -573,7 +594,7 @@ pub fn battle_at(
             player: PLAYERS[side],
         });
         list.push(Draw::Hero {
-            def: def.clone(),
+            def: def.def.clone(),
             group: pose.group,
             frame: pose.frame,
             x: hx,

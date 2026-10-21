@@ -17,9 +17,11 @@
 //!   draws them from a generator of its own (as the stacks' fidgets, `anim::Fidgets`), or none:
 //!   the reference checks take the original's poses from its memory.
 //!
+//! - **A cast** (group 4, `cast_spell` 0x5A01CF, 0x5A20B8; E17 M3 T7b-1): the frames the
+//!   timeline's command draws ([`crate::anim::HeroKey`]), between the idle steps.
+//!
 //! Not read: Berserk's and Chain Lightning's strikes on a stack of the own side (0x422391,
-//! 0x4457FC, 0x5A6545 ask for defeat too), a clone's death (none asked), the cast (group 4,
-//! `cast_spell` 0x5A01D5; E17 M3 T7).
+//! 0x4457FC, 0x5A6545 ask for defeat too), a clone's death (none asked).
 
 use alloc::collections::BTreeMap;
 
@@ -135,6 +137,21 @@ impl Heroes {
     /// What each side's hero and flag show at `t` of `timeline` (none: no hero).
     #[must_use]
     pub fn at(&self, timeline: &Timeline, t: u32) -> [Option<HeroPose>; 2] {
+        self.posed(timeline, t, false)
+    }
+
+    /// What each side's hero has been drawn in by `t` (the harness's timeline reads the frame
+    /// drawn, design §7.1; none: no hero): a cast's frames from when they are drawn (E17 M3
+    /// T7b-1).
+    #[must_use]
+    pub fn drawn_at(&self, timeline: &Timeline, t: u32) -> [Option<HeroPose>; 2] {
+        self.posed(timeline, t, true)
+    }
+
+    /// [`Heroes::at`], or [`Heroes::drawn_at`] with `drawn`: the idle steps by `t`, and the frames
+    /// the commands draw ([`crate::anim::HeroKey`]: a cast) from when they show or are drawn.
+    fn posed(&self, timeline: &Timeline, t: u32, drawn: bool) -> [Option<HeroPose>; 2] {
+        let time = |k: &crate::anim::HeroKey| if drawn { k.drawn } else { k.shown };
         let standing = u32::from(self.groups.standing);
         let mut states = [State {
             group: standing,
@@ -142,27 +159,42 @@ impl Heroes {
         }; 2];
         let mut rng = self.seed;
         let mut actions = timeline.actions.iter().peekable();
-        let mut steps = 0u32;
-        let mut step = |now: u32| {
-            while let Some(action) = actions.next_if(|a| a.end <= now) {
-                self.act(&mut states, action, &mut rng);
-            }
-            let human = timeline
-                .active(now)
-                .and_then(|stack| timeline.members.iter().find(|m| m.stack == stack))
-                .is_some_and(|m| self.human[usize::from(m.side == Side::Defender)]);
-            for (state, look) in states.iter_mut().zip(&self.looks) {
-                if let Some(look) = look {
-                    self.step(state, look, now, human);
-                }
-            }
-            steps += 1;
+        let mut keys = timeline.hero_keys.iter().peekable();
+        let keyed = |states: &mut [State; 2], key: &crate::anim::HeroKey| {
+            let state = &mut states[usize::from(key.side != 0)];
+            (state.group, state.frame) = (key.group, key.frame);
         };
-        for &now in timeline.steps.iter().filter(|s| **s <= t) {
-            step(now);
+        let mut steps = 0u32;
+        {
+            let mut step = |now: u32| {
+                // A command's frames come before the next idle step (none runs while it plays).
+                while let Some(key) = keys.next_if(|k| time(k) <= now) {
+                    keyed(&mut states, key);
+                }
+                while let Some(action) = actions.next_if(|a| a.end <= now) {
+                    self.act(&mut states, action, &mut rng);
+                }
+                let human = timeline
+                    .active(now)
+                    .and_then(|stack| timeline.members.iter().find(|m| m.stack == stack))
+                    .is_some_and(|m| self.human[usize::from(m.side == Side::Defender)]);
+                for (state, look) in states.iter_mut().zip(&self.looks) {
+                    if let Some(look) = look {
+                        self.step(state, look, now, human);
+                    }
+                }
+                steps += 1;
+            };
+            for &now in timeline.steps.iter().filter(|s| **s <= t) {
+                step(now);
+            }
+            let mut idle = timeline.idle;
+            idle.run(t, &mut step);
         }
-        let mut idle = timeline.idle;
-        idle.run(t, step);
+        // The frames since the last idle step.
+        for key in keys.take_while(|k| time(k) <= t) {
+            keyed(&mut states, key);
+        }
         let mut out = [None; 2];
         for (side, ((out, look), state)) in out.iter_mut().zip(&self.looks).zip(&states).enumerate()
         {

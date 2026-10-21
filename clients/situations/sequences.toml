@@ -233,3 +233,84 @@ boxes = true
 command = [
     { seat = "Attacker", command = { Attack = { target = 3, from = 98 } } },
 ]
+
+# E17 M3 T7b-1 (recorded at T7a-2a in `casts.toml`, design §7.16): a hero's timed spell on one stack,
+# Orrin's Slow at the Wolf Riders at the opening (`seq-cast.toml`, the Champions' turn): his cast
+# group's frames 0 to 4, Slow's animation 19 over the Wolf Riders after its effect, its erasure,
+# frames 5 to 7, standing; `heroes`: the heroes' changes are compared too.
+[[sequence]]
+id = "cast"
+scenario = "seq-cast.toml"
+actions = ["cast:0:49"]
+ms = 3500
+heroes = true
+timeline = "timelines/cast.txt"
+frames = "timelines/cast-frames.txt"
+boxes = true
+command = [
+    { seat = "Attacker", command = { Cast = { spell = 54, target = { Stack = { stack = 2 } }, second = { None = {} } } } },
+]
+
+# E17 M3 T7b-1 (recorded at T7a-2b in `casts.toml`): a hero's spell resisted, Orrin's Slow at the
+# Battle Dwarves (`seq-resist.toml`, hot seat): applied in round 1 (animation 19), resisted in round
+# 2 (`MagicRes.wav`, the log's line, animation 78 beside the target), both stacks defending. `seed`:
+# the engine's seed whose rolls resist the second cast only, as the original did.
+[[sequence]]
+id = "resist"
+scenario = "seq-resist.toml"
+hot_seat = true
+seed = 3
+actions = ["turn:1.0", "key:d", "turn:0.0", "cast:0:100", "key:d", "turn:1.0", "key:d", "turn:0.0", "cast:0:100"]
+ms = 3100
+heroes = true
+timeline = "timelines/resist.txt"
+frames = "timelines/resist-frames.txt"
+boxes = true
+command = [
+    { seat = "Defender", at = 0, command = { Defend = {} } },
+    { seat = "Attacker", at = 0, command = { Cast = { spell = 54, target = { Stack = { stack = 1 } }, second = { None = {} } } } },
+    { seat = "Attacker", at = 2900, command = { Defend = {} } },
+    { seat = "Defender", at = 2900, command = { Defend = {} } },
+    { seat = "Attacker", at = 2900, command = { Cast = { spell = 54, target = { Stack = { stack = 1 } }, second = { None = {} } } } },
+]
+
+# E17 M3 T7b-1 (recorded at T7a-2b in `casts.toml`): Magic Arrow from the hero's cast point
+# (`seq-arrow.toml`, hot seat; the projectile, then animation 64 over the struck stack with its
+# reaction) at the Swordsmen nearly level (round 1, row 0), at the Archangel flown beside the Pikemen
+# (round 2, steep) and at the Swordsmen about 35° below (round 3, row 10); the others defend.
+[[sequence]]
+id = "arrow"
+scenario = "seq-arrow.toml"
+hot_seat = true
+actions = [
+    "turn:1.1", "hex:173", "turn:1.0", "key:d", "turn:1.2", "key:d", "turn:1.3", "key:d",
+    "turn:0.0", "cast:0:15", "key:d",
+    "turn:1.1", "key:d", "turn:1.0", "key:d", "turn:1.2", "key:d", "turn:1.3", "key:d",
+    "turn:0.0", "cast:0:173", "key:d",
+    "turn:1.1", "key:d", "turn:1.0", "key:d", "turn:1.2", "key:d", "turn:1.3", "key:d",
+    "turn:0.0", "cast:0:185",
+]
+ms = 3058
+heroes = true
+timeline = "timelines/arrow.txt"
+frames = "timelines/arrow-frames.txt"
+boxes = true
+command = [
+    { seat = "Defender", at = 0, command = { Move = { to = 174 } } },
+    { seat = "Defender", at = 2730, command = { Defend = {} } },
+    { seat = "Defender", at = 2730, command = { Defend = {} } },
+    { seat = "Defender", at = 2730, command = { Defend = {} } },
+    { seat = "Attacker", at = 2730, command = { Cast = { spell = 15, target = { Stack = { stack = 1 } }, second = { None = {} } } } },
+    { seat = "Attacker", at = 5456, command = { Defend = {} } },
+    { seat = "Defender", at = 5456, command = { Defend = {} } },
+    { seat = "Defender", at = 5456, command = { Defend = {} } },
+    { seat = "Defender", at = 5456, command = { Defend = {} } },
+    { seat = "Defender", at = 5456, command = { Defend = {} } },
+    { seat = "Attacker", at = 5456, command = { Cast = { spell = 15, target = { Stack = { stack = 2 } }, second = { None = {} } } } },
+    { seat = "Attacker", at = 7951, command = { Defend = {} } },
+    { seat = "Defender", at = 7951, command = { Defend = {} } },
+    { seat = "Defender", at = 7951, command = { Defend = {} } },
+    { seat = "Defender", at = 7951, command = { Defend = {} } },
+    { seat = "Defender", at = 7951, command = { Defend = {} } },
+    { seat = "Attacker", at = 7951, command = { Cast = { spell = 15, target = { Stack = { stack = 4 } }, second = { None = {} } } } },
+]

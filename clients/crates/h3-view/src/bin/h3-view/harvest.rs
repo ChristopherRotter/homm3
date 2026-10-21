@@ -1,6 +1,6 @@
 //! `h3-view harvest` (E17 M1 T4): generates the asset tables (`{base,ab,sod}.toml`, committed in
 //! `clients/assets/`) from the user's `Heroes3.exe` and `H3bitmap.lod` (`cranim.txt`,
-//! `crtraits.txt`, `hotraits.txt`), keyed by the committed packs (`packs/<id>/core.toml` and `battle.toml`); by
+//! `crtraits.txt`, `hotraits.txt`, `sptraits.txt`), keyed by the committed packs (`packs/<id>/core.toml` and `battle.toml`); by
 //! default into `clients/out/harvest` (T8). Afterwards the tables are maintained as source
 //! (ADR-0020 point 5); the client never reads the executable. An adapter: it reads files and
 //! writes text. The executable's addresses: `docs/exe/map.toml`; what they hold:
@@ -102,6 +102,17 @@ const HERO_DEFS: (u32, usize, usize) = (0x63_BD40, 18, 0x10);
 const MAGIC: (u32, usize, usize) = (0x64_1E08, 83, 12);
 /// The heal's sound `first_aid_tent_action` plays (0x478C46, `Regener.wav`).
 const HEAL_SOUND: u32 = 0x66_0A94;
+/// The sound of a spell resisted by its aimed stack (`cast_spell` 0x5A1F98, `MagicRes.wav`; E17 M3
+/// T7b-1).
+const RESIST_SOUND: u32 = 0x68_8440;
+/// The spell records (`spell_table`, 81 records of 0x88 bytes; E17 M3 T7b-1): +4 the sound's
+/// name (none: 0), +8 the magic animation's number (−1: none).
+const SPELLS: (u32, usize, usize) = (0x68_5450, 81, 0x88);
+/// The spells whose handlers fly a projectile (`spell_projectile` 0x467DB0; E17 M3 T7b-1): Magic
+/// Arrow's (0x5A0995) and Ice Bolt's (0x5A0A3B) five DEFs and their angles (f32 degrees).
+const PROJECTILES: [(usize, u32, u32); 2] =
+    [(15, 0x64_21EC, 0x64_2200), (16, 0x64_2234, 0x64_2248)];
+const PROJECTILE_DEFS: usize = 5;
 
 /// The command's options.
 #[derive(Debug, PartialEq, Eq)]
@@ -143,7 +154,7 @@ impl Options {
     }
 }
 
-/// The parts of a pack the tables are keyed by: from `core.toml` the manifest, creatures, heroes
+/// The parts of a pack the tables are keyed by: from `core.toml` the manifest, creatures, heroes, spells
 /// and terrains, from `battle.toml` the special battlefields and the obstacles.
 #[derive(Debug, Deserialize)]
 struct Pack {
@@ -152,6 +163,8 @@ struct Pack {
     creature: Vec<Keyed>,
     #[serde(default)]
     hero: Vec<Keyed>,
+    #[serde(default)]
+    spell: Vec<Keyed>,
     #[serde(default)]
     terrain: Vec<Keyed>,
     #[serde(skip)]
@@ -199,13 +212,21 @@ struct Harvest {
     rays: BTreeMap<usize, Vec<[u8; 3]>>,
     cranim: Vec<Cranim>,
     names: BTreeMap<String, usize>,
-    /// The heroes' battle DEFs and `hotraits.txt`'s names, by hero type.
+    /// The heroes' battle DEFs, their cast points and cast frames (the same record's +4, +8,
+    /// +0xC), and `hotraits.txt`'s names, by hero type.
     hero_defs: Vec<String>,
+    hero_casts: Vec<([i32; 2], u32)>,
     hero_names: Vec<String>,
     flags: [String; 2],
     /// The magic animations: DEF, place, translucent.
     magic: Vec<(String, u8, bool)>,
     heal_sound: String,
+    resist_sound: String,
+    /// The spells' sounds and animations by original id, their projectiles' DEFs and angles,
+    /// and `sptraits.txt`'s numbers by name.
+    spells: Vec<(Option<String>, Option<u8>)>,
+    projectiles: BTreeMap<usize, Vec<(String, i16)>>,
+    spell_numbers: BTreeMap<String, usize>,
     obstacles: Vec<(String, u8, u8)>,
     absolute: Vec<(String, i16, i16)>,
     terrains: Vec<[String; 3]>,
@@ -244,6 +265,7 @@ fn harvest(options: &Options) -> Result<(), String> {
         &text("CRANIM.TXT")?,
         &text("CRTRAITS.TXT")?,
         &text("HOTRAITS.TXT")?,
+        &text("SPTRAITS.TXT")?,
     )?;
     let mut gaps = Vec::new();
     fs::create_dir_all(&options.out).map_err(|e| format!("{}: {e}", options.out.display()))?;
@@ -300,6 +322,7 @@ fn read_harvest(
     cranim: &TextTable,
     crtraits: &TextTable,
     hotraits: &TextTable,
+    sptraits: &TextTable,
 ) -> Result<Harvest, String> {
     let (_, image) = exe::identify(exe).map_err(|e| format!("Heroes3.exe: {e:?}"))?;
     let creatures = exe::creature_table(exe).map_err(|e| format!("creatures: {e:?}"))?;
@@ -356,10 +379,17 @@ fn read_harvest(
     }
     let mut battle_defs = Vec::new();
     for k in 0..HERO_DEFS.1 {
-        let record = bytes(&image, exe, HERO_DEFS.0 + to_u32(k * HERO_DEFS.2), 4)?;
-        battle_defs.push(string(u32_at(&record, 0))?);
+        let record = bytes(
+            &image,
+            exe,
+            HERO_DEFS.0 + to_u32(k * HERO_DEFS.2),
+            HERO_DEFS.2,
+        )?;
+        let point = [i32_at(&record, 4), i32_at(&record, 8)];
+        battle_defs.push((string(u32_at(&record, 0))?, point, u32_at(&record, 0xC)));
     }
     let mut hero_defs = Vec::new();
+    let mut hero_casts = Vec::new();
     for id in 0..HERO_INFO.1 {
         let info = bytes(&image, exe, HERO_INFO.0 + to_u32(id * HERO_INFO.2), 12)?;
         let (female, class) = (u32_at(&info, 0), u32_at(&info, 8) as usize);
@@ -375,10 +405,11 @@ fn read_harvest(
             )?,
             0,
         ) as usize;
-        let def = battle_defs
+        let (def, point, frames) = battle_defs
             .get(town * 2 + female as usize)
             .ok_or(format!("hero {id}: class {class}'s town {town}"))?;
         hero_defs.push(def.clone());
+        hero_casts.push((*point, *frames));
     }
     let mut magic = Vec::new();
     for k in 0..MAGIC.1 {
@@ -386,11 +417,36 @@ fn read_harvest(
         let kind = u32_at(&record, 8);
         magic.push((string(u32_at(&record, 0))?, kind as u8, kind & 0x100 != 0));
     }
-    let heal_sound = string(HEAL_SOUND)?;
-    let heal_sound = heal_sound
-        .split_once('.')
-        .map_or(heal_sound.as_str(), |(stem, _)| stem)
-        .to_owned();
+    let heal_sound = stem(&string(HEAL_SOUND)?);
+    let resist_sound = stem(&string(RESIST_SOUND)?);
+    let mut spells = Vec::new();
+    for k in 0..SPELLS.1 {
+        let record = bytes(&image, exe, SPELLS.0 + to_u32(k * SPELLS.2), 12)?;
+        let sound = match u32_at(&record, 4) {
+            0 => None,
+            va => Some(stem(&string(va)?)),
+        };
+        spells.push((sound, u8::try_from(i32_at(&record, 8)).ok()));
+    }
+    let mut projectiles = BTreeMap::new();
+    for (spell, defs, angles) in PROJECTILES {
+        let names = bytes(&image, exe, defs, 4 * PROJECTILE_DEFS)?;
+        let degrees = bytes(&image, exe, angles, 4 * PROJECTILE_DEFS)?;
+        let mut list = Vec::new();
+        for k in 0..PROJECTILE_DEFS {
+            let angle = f32::from_le_bytes([
+                degrees[4 * k],
+                degrees[4 * k + 1],
+                degrees[4 * k + 2],
+                degrees[4 * k + 3],
+            ]);
+            // Whole degrees in the table; an f32 only at this adapter's edge.
+            #[allow(clippy::cast_possible_truncation)]
+            let angle = angle as i16;
+            list.push((string(u32_at(&names, 4 * k))?, angle));
+        }
+        projectiles.insert(spell, list);
+    }
     let mut specials = vec![string(SHORE)?];
     let row = bytes(&image, exe, SPECIAL_BACKGROUNDS + 4, 4 * 9)?;
     for k in 0..9 {
@@ -407,10 +463,15 @@ fn read_harvest(
         cranim: cranim_rows(cranim)?,
         names: creature_names(crtraits)?,
         hero_defs,
+        hero_casts,
         hero_names: hero_names(hotraits),
         flags: [string(FLAGS[0])?, string(FLAGS[1])?],
         magic,
         heal_sound,
+        resist_sound,
+        spells,
+        projectiles,
+        spell_numbers: spell_numbers(sptraits),
         obstacles,
         absolute,
         terrains,
@@ -616,9 +677,9 @@ fn write_table(
         t,
         "# Asset tables of the pack `{id}` (E17 M1 T4; ADR-0020 points 5 and 6; the format:\n\
          # clients/README.md, \"The asset tables\"). GENERATED by `h3-view harvest` from the user's\n\
-         # Heroes3.exe and H3bitmap.lod (cranim.txt, crtraits.txt, hotraits.txt), keyed by the pack's\n\
-         # core.toml and battle.toml (packs/{id}/); maintained as source afterwards. Identifiers and\n\
-         # numbers only (ADR-0009).\n\n\
+         # Heroes3.exe and H3bitmap.lod (cranim.txt, crtraits.txt, hotraits.txt, sptraits.txt), keyed\n\
+         # by the pack's core.toml and battle.toml (packs/{id}/); maintained as source afterwards.\n\
+         # Identifiers and numbers only (ADR-0009).\n\n\
          [table]\nid = \"{id}\"\ndepends = [{}]",
         list(&pack.pack.depends)
     );
@@ -642,7 +703,12 @@ fn write_table(
                 plain(def)?
             );
         }
-        let _ = writeln!(t, "]\nheal_sound = \"{}\"", plain(&h.heal_sound)?);
+        let _ = writeln!(
+            t,
+            "]\nheal_sound = \"{}\"\nresist_sound = \"{}\"",
+            plain(&h.heal_sound)?,
+            plain(&h.resist_sound)?
+        );
     }
     for c in &pack.creature {
         let name = c.name.as_deref().unwrap_or_default();
@@ -700,8 +766,9 @@ fn write_table(
         let def = h
             .hero_defs
             .get(n)
+            .zip(h.hero_casts.get(n))
             .filter(|_| h.hero_names.get(n).map(String::as_str) == Some(name));
-        let Some(def) = def else {
+        let Some((def, (point, frames))) = def else {
             gaps.push(format!(
                 "{id}:{}: `{name}` is not hero type {n} of hotraits.txt",
                 hero.id
@@ -710,10 +777,47 @@ fn write_table(
         };
         let _ = write!(
             t,
-            "\n[[hero]]\nkey = \"{}\"  # original id {n}\ndef = \"{}\"\n",
+            "\n[[hero]]\nkey = \"{}\"\noriginal = {n}\ndef = \"{}\"\ncast = [{}]\ncast_frames = {frames}\n",
             plain(&hero.id)?,
-            plain(def)?
+            plain(def)?,
+            numbers(point)
         );
+    }
+    // The spells (E17 M3 T7b-1): by `sptraits.txt`'s name, as the packs' harvester numbers them.
+    for spell in &pack.spell {
+        let name = spell.name.as_deref().unwrap_or_default();
+        let found = h
+            .spell_numbers
+            .get(name)
+            .and_then(|&n| Some((n, h.spells.get(n)?)));
+        let Some((original, (sound, animation))) = found else {
+            gaps.push(format!(
+                "{id}:{}: `{name}` is not a spell of sptraits.txt",
+                spell.id
+            ));
+            continue;
+        };
+        let _ = write!(
+            t,
+            "\n[[spell]]\nkey = \"{}\"\noriginal = {original}\n",
+            plain(&spell.id)?
+        );
+        if let Some(a) = animation {
+            let _ = writeln!(t, "animation = {a}");
+        }
+        if let Some(sound) = sound {
+            let _ = writeln!(t, "sound = \"{}\"", plain(sound)?);
+        }
+        if let Some(flown) = h.projectiles.get(&original) {
+            let defs: Vec<String> = flown.iter().map(|(d, _)| d.clone()).collect();
+            let angles: Vec<i16> = flown.iter().map(|(_, a)| *a).collect();
+            let _ = writeln!(
+                t,
+                "projectile = [{}]\nprojectile_angles = [{}]",
+                list(&defs),
+                numbers(&angles)
+            );
+        }
     }
     for (index, terrain) in pack.terrain.iter().enumerate() {
         match h.terrains.get(index) {
@@ -825,6 +929,17 @@ fn bytes(image: &PeImage<'_>, exe: &[u8], va: u32, len: usize) -> Result<Vec<u8>
     exe.get(start..start + len)
         .map(<[u8]>::to_vec)
         .ok_or(format!("0x{va:X}: {len} bytes past the end"))
+}
+
+/// A sound's entry name: its file name without the extension (`Regener.wav`; `Curse` has none).
+fn stem(name: &str) -> String {
+    name.split_once('.')
+        .map_or(name, |(stem, _)| stem)
+        .to_owned()
+}
+
+fn i32_at(bytes: &[u8], at: usize) -> i32 {
+    i32::from_le_bytes([bytes[at], bytes[at + 1], bytes[at + 2], bytes[at + 3]])
 }
 
 fn u32_at(bytes: &[u8], at: usize) -> u32 {

@@ -419,6 +419,8 @@ fn map(
         players,
         objects: vec![hero((tile.0 - 1, tile.1), 0)?, hero(tile, 1)?],
         underground: None,
+        // No level limit (E08 T32a's field; the byte the writer wrote before it).
+        level_limit: 0,
     })
 }
 
