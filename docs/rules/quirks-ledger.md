@@ -499,7 +499,7 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Impact: gameplay-altering (the computer side's choices)
 - Community status: unknown (the wiki describes none of them)
 - Sources: original-data (`installation.md` §7.35 to §7.46; the blind re-reads of T1a5e)
-- Flag: `quirk.battle.original_ai_slips` (registered with the first slip built, E23 T2 or later; a slip found later joins it)
+- Flag: `quirk.battle.original_ai_slips` (registry position 29, registered with the first slip built, E23 T2b; a slip found later joins it). Built: slip 1, the area shot's estimate (BAT-AI-003, E23 T2b)
 - Defaults: faithful = on, strict-fixed = off
-- Regression test: each slip's rule tests both settings (with its task)
+- Regression test: each slip's rule tests both settings (with its task); slip 1: `h3-battle-ai`'s `the_original_estimates_an_area_shot_without_the_immunities`
 - Decided by / date: user, 2026-10-20 (E23 T1b, BAT-Q55)

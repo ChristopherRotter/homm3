@@ -1009,21 +1009,28 @@ fn area(state: &BattleState, field: Field, shooter: StackId, target: StackId, at
     if !me.has(StackTraits::AREA_SHOT) {
         return NO_TARGETS;
     }
-    let spared: fn(&Stack) -> bool = if me.has(StackTraits::DEATH_CLOUD) {
-        |s| !s.has(StackTraits::ALIVE)
-    } else {
-        |s| s.has(StackTraits::FIRE_IMMUNE)
-    };
     core::array::from_fn(|i| {
         state.stacks.get(i).is_some_and(|s| {
             s.is_alive()
                 && i != target.index()
-                && !spared(s)
+                && !spares(me, s)
                 && s.footprint(field)
                     .hexes()
                     .any(|h| field.distance(h, at) <= 1)
         })
     })
+}
+
+/// Whether the area shot of `shooter` spares stack `s` (BAT-RNG-004): a fireball the
+/// fire-immune stacks, a death cloud the stacks that are not alive. The computer's estimate of
+/// the shot asks it too (`aim::area_value` without BAT-QUIRK-25).
+// rule: BAT-RNG-004
+pub(crate) fn spares(shooter: &Stack, s: &Stack) -> bool {
+    if shooter.has(StackTraits::DEATH_CLOUD) {
+        !s.has(StackTraits::ALIVE)
+    } else {
+        s.has(StackTraits::FIRE_IMMUNE)
+    }
 }
 
 /// The battle ends when a side has no living stacks other than war machines (BAT-WAR-001): the

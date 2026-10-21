@@ -1,7 +1,7 @@
 # E23 — The original's battle AI
 
 Status: **in progress**, refined 2026-10-19 (BAT-Q52); T1a1 to T1a4 done (the cuts confirmed
-2026-10-20), T1c done (BAT-Q53, BAT-Q54); T1a5 done as cut (part C, §7.42 to §7.45); T1a5e (the spell evaluators) done (§7.46); T1b done, ADR-0027 accepted (BAT-Q55); T2a done (the crate, the plain shooters), T2b next · Follows E05 (the
+2026-10-20), T1c done (BAT-Q53, BAT-Q54); T1a5 done as cut (part C, §7.42 to §7.45); T1a5e (the spell evaluators) done (§7.46); T1b done, ADR-0027 accepted (BAT-Q55); T2 done (T2a the crate and the plain shooters, T2b the area value, the wall shot, the benchmark), T3 next · Follows E05 (the
 AI lane, done) · Followed by E06 (training: this policy holds the neutral seat; AI-Q1) ·
 The battle lane's, later the AI lane's (BACKLOG).
 
@@ -167,9 +167,10 @@ found after that decision) belong to the neutral side's map too and are read (§
     (property tests on the test ruleset and the harvested packs); every computer shooter as the
     automatic Ballista shoots (0x41F060); stand-ins for the rest (BAT-STUB-4 to 6); BAT-AI-001,
     BAT-AI-002; about 6 µs per decision, a shot about 50 µs (the log).
-  - [ ] **T2b The area value and the wall shot** — BAT-QUIRK-25's flag (`shared/`, registry position
-    29: the adventure lane's #335 took 27 and 28), the area value 0x41EDA0 with slip 1, the wall shot
-    0x41EEA0, the gated benchmark and the budget (ADR-0027 point 11).
+  - [x] **T2b The area value and the wall shot** (2026-10-21; the user: whole) — BAT-QUIRK-25's flag
+    (`shared/`, registry position 29), the area value 0x41EDA0 with slip 1 (BAT-AI-003), the wall shot
+    0x41EEA0 (BAT-AI-004, the policy's first draw), the gated benchmark `computer-decisions` and the
+    budget (ADR-0027 point 11; the log).
 - [ ] **T3 Walkers** — melee targets and moves (0x4221F0's walker branch, the melee estimate, the
   AI pathfinder), waits and defends.
 - [ ] **T4 Creature casts** — the abilities a computer stack chooses to use, per T1a's map. With

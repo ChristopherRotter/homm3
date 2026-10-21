@@ -112,6 +112,7 @@ pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&[
     "quirk.battle.berserk_walks_to_position_hex",
     "quirk.adventure.level_up_from_seed",
     "quirk.content.elementalist_offer_intervals",
+    "quirk.battle.original_ai_slips",
 ]);
 
 /// Q-0003: creatures of a side without a hero never get lucky strikes (BAT-LCK-002).
@@ -246,6 +247,13 @@ pub const LEVEL_UP_FROM_SEED: QuirkFlag = QuirkFlag(27);
 /// compiler only.
 pub const ELEMENTALIST_OFFER_INTERVALS: QuirkFlag = QuirkFlag(28);
 
+/// BAT-QUIRK-25 (survey `E23-battle-ai.md` §4): the original computer's slips in its own
+/// estimates (a wrong record, argument, spell, side, mastery or test compared with the rule it
+/// estimates; ADR-0027 point 9, BAT-Q55): on, the battle AI estimates as the original reads;
+/// off, each estimate as the rule it estimates. It decides the computer's choices only, never a
+/// rule's outcome. Read by `h3-battle`'s `computer` numbers and `h3-battle-ai` from E23 T2b.
+pub const ORIGINAL_AI_SLIPS: QuirkFlag = QuirkFlag(29);
+
 /// The prefix of the flags of data quirks: a gated override names one of them (`fixes`), and
 /// rule code never reads them (ADR-0007, amendment E04b T8e).
 pub const DATA_QUIRK_PREFIX: &str = "quirk.content.";
@@ -288,7 +296,11 @@ mod tests {
 
     #[test]
     fn registry_lookup_and_bitset() {
-        assert_eq!(REGISTRY.len(), 29);
+        assert_eq!(REGISTRY.len(), 30);
+        assert_eq!(
+            REGISTRY.lookup("quirk.battle.original_ai_slips"),
+            Some(ORIGINAL_AI_SLIPS)
+        );
         assert_eq!(
             REGISTRY.lookup("quirk.adventure.level_up_from_seed"),
             Some(LEVEL_UP_FROM_SEED)
@@ -427,7 +439,7 @@ mod tests {
         }
         // The positions stay taken, so the flags after them keep their indices
         // (`registry_lookup_and_bitset`), and the flags that exist are every other position.
-        assert_eq!(REGISTRY.len(), 29);
+        assert_eq!(REGISTRY.len(), 30);
         assert_eq!(
             [REGISTRY.names[9], REGISTRY.names[10], REGISTRY.names[14]],
             [RETIRED; 3]
@@ -436,7 +448,7 @@ mod tests {
             REGISTRY
                 .flags()
                 .map(QuirkFlag::index)
-                .eq((0..29).filter(|i| ![9, 10, 14].contains(i)))
+                .eq((0..30).filter(|i| ![9, 10, 14].contains(i)))
         );
         // A registry without retired flags has them all.
         assert!(TEST.flags().map(QuirkFlag::index).eq(0..2));

@@ -1,0 +1,21 @@
+# Instruction-count baseline of one `cargo xtask bench-check` workload (valgrind/callgrind, event
+# Ir); the directory names the owning lane (lanes.toml). Counts are deterministic for a given
+# toolchain + target + source and are compared only when both match this file. A change above
+# `threshold_percent` fails verify. Update intentionally with
+# `cargo xtask bench-check --update --workload <name>` and state the reason in the commit message.
+
+toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
+target = "x86_64-unknown-linux-gnu"
+
+[workload]
+description = "the original's battle AI's decisions (ADR-0027 point 11, E23 T2b): 40 battles of random armies of the harvested SoD creatures (base:faithful, no heroes, every difficulty), on the open field the defender the computer against random legal commands, at a Fort both sides the computer, at most 300 steps each; counts only inside h3_battle_ai::choose (the walkers' Defend stand-in until E23 T3, so its count moves with T3)"
+args = [
+    "bench-computer",
+    "--games",
+    "40",
+    "--seed",
+    "1",
+]
+collect = "*h3_battle_ai::choose*"
+instructions = 274292359
+threshold_percent = 2
