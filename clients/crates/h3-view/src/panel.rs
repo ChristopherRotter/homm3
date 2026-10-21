@@ -58,7 +58,7 @@ pub const BUTTONS: [u16; 7] = [
 ];
 
 /// The battle as each turn's start finds it (E17 M3 T6b): for each `TurnStarted` of `events` (a
-/// record's, in order), the opening's `observation` with the events before it applied as far as
+/// record's, in order) but a frozen stack's, the opening's `observation` with the events before it applied as far as
 /// the panel reads them: the active stack, the round's wait phase (its stack waited this round:
 /// only waited stacks act then), the heroes' casts this round and the tactics phase.
 #[must_use]
@@ -66,7 +66,7 @@ pub fn turns(observation: &Observation, events: &[Event]) -> Vec<Observation> {
     let mut now = observation.clone();
     let mut waited = BTreeSet::new();
     let mut out = Vec::new();
-    for event in events {
+    for (i, event) in events.iter().enumerate() {
         match *event {
             Event::RoundStarted { round } => {
                 now.round = round;
@@ -86,7 +86,8 @@ pub fn turns(observation: &Observation, events: &[Event]) -> Vec<Observation> {
                 }
             }
             Event::TacticsEnded {} => now.tactics = None,
-            Event::TurnStarted { stack } => {
+            // A turn its pick freezes is none (E17 M3 T7b-2b-2b, as the timeline's).
+            Event::TurnStarted { stack } if !crate::anim::freezes(events.get(i + 1), stack) => {
                 now.active = Some(stack);
                 now.wait_phase = waited.contains(&stack);
                 out.push(now.clone());

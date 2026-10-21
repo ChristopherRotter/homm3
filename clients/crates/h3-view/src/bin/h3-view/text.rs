@@ -312,6 +312,15 @@ pub fn log_samples(catalogue: &Catalogue) -> Vec<(&'static str, String)> {
         ("morale-good", battle_log::morale_good(c, stack(wolves, 8))),
         ("morale-bad", battle_log::morale_bad(c, stack(pikemen, 1))),
         ("luck-good", battle_log::luck_good(c, stack(wolves, 8))),
+        // E17 M3 T7b-2b-2b: Fear, the frightening creature by its number.
+        (
+            "fear",
+            battle_log::fear(c, stack(wolves, 1), stack(pikemen, 12)),
+        ),
+        (
+            "fear",
+            battle_log::fear(c, stack(wolves, 2), stack(pikemen, 1)),
+        ),
         (
             "heal",
             battle_log::heal(c, stack(tent, 1), stack(pikemen, 12), 17),
@@ -468,6 +477,7 @@ mod tests {
                 "destroyed": " {{creature}}", "wait": "{{creature}}",
                 "defend": "{{creature}} {{defense}}", "morale-good": "{{creature}}",
                 "morale-bad": "{{creature}}", "luck-good": "{{creature}}",
+                "fear": "{{frightener}} {{creature}}",
                 "heal": "{{healer}} {{creature}} {{hit_points}}", "round": "R",
                 "cast-on": "{{hero}} {{spell}} {{creature}}", "resisted": "{{creature}} {{verb}}"
                 } },

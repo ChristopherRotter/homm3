@@ -24,6 +24,10 @@ const RESIST: &str = include_str!("../../../../situations/timelines/resist.txt")
 const ARROW: &str = include_str!("../../../../situations/timelines/arrow.txt");
 const HASTE: &str = include_str!("../../../../situations/timelines/haste.txt");
 const DISPEL: &str = include_str!("../../../../situations/timelines/dispel.txt");
+const LUCK: &str = include_str!("../../../../situations/timelines/luck.txt");
+const MORALE: &str = include_str!("../../../../situations/timelines/morale.txt");
+const BAD: &str = include_str!("../../../../situations/timelines/bad.txt");
+const FEAR: &str = include_str!("../../../../situations/timelines/fear.txt");
 
 /// Creature handles of the tests.
 const CHAMPION: u16 = 0;
@@ -2553,6 +2557,7 @@ fn the_log_records_what_the_battle_writes_and_when() {
             Logged::Morale { good: true, .. } => "good",
             Logged::Morale { .. } => "bad",
             Logged::Luck { .. } => "luck",
+            Logged::Fear { .. } => "fear",
             Logged::Round => "round",
             Logged::Status { .. } => "status",
             Logged::Scroll(_) => "scroll",
@@ -2848,6 +2853,7 @@ fn casts() -> Casts {
             None,
         ],
         groups: [4, 0],
+        frighteners: BTreeSet::new(),
     }
 }
 
@@ -3509,4 +3515,279 @@ fn spells_tint_boxes_from_the_snapshot_on_and_disrupting_ray_flies_only_from_a_c
     assert_eq!(lowered, [1]);
     // Disrupting Ray (negative) with Haste and Slow: r = −1/3.
     assert_eq!(hue(4000), Some(0x3DE3_99E0));
+}
+
+/// The rolled effects' magic animations (E17 M3 T7b-2b-2b): Fear's `C0fear` (translucent), good
+/// luck's `C09spA0`, good morale's `C09spW0` and bad morale's `C14spE0`, all centred on the
+/// creature (the user's archive; numbers only).
+fn roll_magic() -> BTreeMap<u8, MagicLook> {
+    let entry = |def: &str, frames, size| MagicLook {
+        def: def.to_string(),
+        frames,
+        size,
+        place: 1,
+        translucent: false,
+    };
+    let mut all = magic();
+    all.insert(
+        super::FEAR,
+        MagicLook {
+            translucent: true,
+            ..entry("C0fear.def", 31, [58, 98])
+        },
+    );
+    all.insert(GOOD_LUCK, entry("C09spA0.def", 15, [50, 97]));
+    all.insert(GOOD_MORALE, entry("C09spW0.def", 20, [94, 127]));
+    all.insert(BAD_MORALE, entry("C14spE0.def", 20, [90, 125]));
+    all
+}
+
+/// The timeline of `snapshot` and `commands` with the rolled effects' animations, `frighteners`
+/// the creatures that frighten.
+fn play_rolls(
+    snapshot: &Observation,
+    commands: &[(Option<u32>, Vec<Event>)],
+    magic: &BTreeMap<u8, MagicLook>,
+    frighteners: &[u16],
+) -> Timeline {
+    let layout = layout();
+    let casts = Casts {
+        frighteners: frighteners.iter().copied().collect(),
+        ..Casts::default()
+    };
+    let stage = Stage {
+        layout: &layout,
+        width: 17,
+        groups: tables().battle.groups,
+        magic,
+        casts: &casts,
+    };
+    let commands: Vec<Command<'_>> = commands
+        .iter()
+        .map(|(at, events)| Command { at: *at, events })
+        .collect();
+    timeline(snapshot, &commands, &looks(), stage, Speed::default()).unwrap()
+}
+
+/// A recorded timeline without the original's own fidgets (the idle step's, which the viewer's
+/// timeline check leaves out too).
+fn fidgetless(lines: &str) -> String {
+    unfidgeted(lines, &BTreeSet::new())
+}
+
+#[test]
+fn the_luck_sequence_plays_as_recorded() {
+    // E17 M3 T7b-2b-2b (`seq-luck.toml`): the Archangel flies to the Pikemen and strikes them, a
+    // lucky strike: `goodluck.82m`, the line, then animation 18 over it, the strike 1 600 ms
+    // later than `strike`'s.
+    let mut pikemen = at(3, Side::Defender, PIKEMAN, 49, false);
+    pikemen.count = 10;
+    let mut archangel = at(0, Side::Attacker, ARCHANGEL, 35, true);
+    archangel.flies = true;
+    let o = snapshot(vec![
+        archangel,
+        at(1, Side::Attacker, GOBLIN, 86, false),
+        at(2, Side::Attacker, GNOLL, 137, false),
+        pikemen,
+        at(4, Side::Defender, GOBLIN, 151, false),
+    ]);
+    let lucky = Strike {
+        lucky: true,
+        ..flags(false, false, false)
+    };
+    let events = vec![
+        moved(0, 35, 47),
+        struck(0, 3, 10, lucky),
+        Event::TurnStarted { stack: 4 },
+    ];
+    let t = play_rolls(&o, &[(None, events)], &roll_magic(), &[]);
+    // To the strike's first frame: the tests' Archangel and Pikemen strike and die by looks of
+    // their own (`h3-view sequences luck` checks the rest with the original's DEFs).
+    assert_eq!(until(&t.lines(), 4330), until(LUCK, 4330));
+    let luck = Logged::Luck {
+        stack: 0,
+        count: 40,
+    };
+    let at_luck = t.log.iter().position(|l| *l == (2730, luck.clone()));
+    let at_strike = t
+        .log
+        .iter()
+        .position(|(_, l)| matches!(l, Logged::Strike { .. }));
+    assert!(at_luck < at_strike, "{:?}", t.log);
+    assert!(cues(&t).contains(&(2730, 0, Sound::Luck, false)));
+}
+
+#[test]
+fn the_morale_sequence_plays_as_recorded() {
+    // E17 M3 T7b-2b-2b (`seq-morale.toml`): `shot` with the first shot lucky (animation 18
+    // before it), then good morale after the second (`GoodMrle.wav`, animation 20, the line once
+    // it is erased, a redraw) and the Marksmen's turn again.
+    let o = snapshot(vec![
+        at(0, Side::Attacker, MARKSMAN, 35, false),
+        at(1, Side::Attacker, PIKEMAN, 137, false),
+        at(2, Side::Defender, GOBLIN, 49, false),
+        at(3, Side::Defender, GNOLL, 151, false),
+    ]);
+    let shot = flags(true, false, false);
+    let lucky = Strike {
+        lucky: true,
+        ..shot
+    };
+    let events = vec![
+        struck(0, 2, 4, lucky),
+        struck(0, 2, 3, shot),
+        Event::GoodMorale { stack: 0 },
+        Event::TurnStarted { stack: 0 },
+    ];
+    let t = play_rolls(&o, &[(None, events)], &roll_magic(), &[]);
+    assert_eq!(t.lines(), MORALE);
+    let good = Logged::Morale {
+        stack: 0,
+        count: 40,
+        good: true,
+    };
+    assert!(t.log.contains(&(6876, good)), "{:?}", t.log);
+    let cued = cues(&t);
+    assert!(cued.contains(&(0, 0, Sound::Luck, false)));
+    assert!(cued.contains(&(4776, 0, Sound::GoodMorale, false)));
+    assert_eq!([t.active(6875), t.active(6876)], [None, Some(0)]);
+    // No outline from the luck's first frame shown (the shot's handler); the Marksmen's again
+    // from good morale's first frame (`morale`'s frames).
+    assert_eq!(
+        [0, 100, 4875, 4876].map(|ms| t.outlined(ms)),
+        [Some(0), None, None, Some(0)]
+    );
+}
+
+#[test]
+fn the_bad_morale_and_fear_sequences_play_as_recorded() {
+    // E17 M3 T7b-2b-2b (`seq-bad.toml`): the Champions defend; the Goblins' pick freezes them:
+    // `BadMrle.wav`, the line, animation 30 with their hit; they never become the active stack,
+    // the Dwarves' turn starts once the animation is erased.
+    let o = snapshot(vec![
+        at(0, Side::Attacker, CHAMPION, 35, true),
+        at(1, Side::Attacker, GOBLIN, 86, false),
+        at(2, Side::Attacker, GNOLL, 137, false),
+        at(3, Side::Defender, PIKEMAN, 100, false),
+    ]);
+    let events = vec![
+        Event::Defended { stack: 0 },
+        Event::TurnStarted { stack: 1 },
+        Event::BadMorale { stack: 1 },
+        Event::TurnStarted { stack: 3 },
+    ];
+    let t = play_rolls(&o, &[(None, events)], &roll_magic(), &[]);
+    assert_eq!(t.lines(), fidgetless(BAD));
+    let bad = Logged::Morale {
+        stack: 1,
+        count: 40,
+        good: false,
+    };
+    assert!(t.log.contains(&(0, bad)));
+    assert!(!t.log.contains(&(0, Logged::Turn(1))));
+    assert!(cues(&t).contains(&(0, 1, Sound::BadMorale, false)));
+    assert_eq!([t.active(2099), t.active(2100)], [None, Some(3)]);
+    // The Champions, who defended, stay outlined through the freeze (`bad`'s frames).
+    assert_eq!([t.outlined(1000), t.outlined(2100)], [Some(0), Some(3)]);
+    // `seq-fear.toml`: the Azure Dragon defends; the Champions' pick frightens them: `Fear.wav`,
+    // the line (the Dragon by its number), animation 15 with their hit; the Marksmen's turn.
+    let mut dragon = at(2, Side::Defender, BLACK_DRAGON, 100, true);
+    dragon.count = 1;
+    let mut o = snapshot(vec![
+        at(0, Side::Attacker, CHAMPION, 35, true),
+        at(1, Side::Attacker, MARKSMAN, 137, false),
+        dragon,
+    ]);
+    o.active = Some(2);
+    let events = vec![
+        Event::Defended { stack: 2 },
+        Event::TurnStarted { stack: 0 },
+        Event::Frightened { stack: 0 },
+        Event::TurnStarted { stack: 1 },
+    ];
+    let t = play_rolls(&o, &[(None, events)], &roll_magic(), &[BLACK_DRAGON]);
+    assert_eq!(t.lines(), fidgetless(FEAR));
+    let fear = Logged::Fear {
+        stack: 0,
+        count: 40,
+        by: 2,
+        number: 1,
+    };
+    assert!(t.log.contains(&(0, fear)));
+    assert!(cues(&t).contains(&(0, 0, Sound::Fear, false)));
+    assert_eq!([t.active(3199), t.active(3200)], [None, Some(1)]);
+    assert_eq!([t.outlined(1000), t.outlined(3200)], [Some(2), Some(1)]);
+}
+
+#[test]
+fn rolled_effects_without_their_stack_or_a_long_enough_animation() {
+    // E17 M3 T7b-2b-2b: two frightening stacks name the first by their sum; a hit longer than
+    // bad morale's animation shows the standing frame at once, with no animation frame beside
+    // the hit's last ones (not met in the original's recordings: *provisional*).
+    let o = snapshot(vec![
+        at(0, Side::Attacker, CHAMPION, 35, true),
+        at(1, Side::Defender, BLACK_DRAGON, 100, true),
+        at(2, Side::Defender, BLACK_DRAGON, 151, true),
+    ]);
+    let mut magic = roll_magic();
+    if let Some(bad) = magic.get_mut(&BAD_MORALE) {
+        bad.frames = 3;
+    }
+    let events = vec![
+        Event::Frightened { stack: 0 },
+        // A round's start: no stack outlined during the next freeze.
+        Event::RoundStarted { round: 2 },
+        Event::BadMorale { stack: 0 },
+        // Stacks the timeline does not follow.
+        Event::GoodMorale { stack: 9 },
+        Event::BadMorale { stack: 9 },
+        Event::Frightened { stack: 9 },
+        struck(
+            9,
+            1,
+            0,
+            Strike {
+                lucky: true,
+                ..flags(true, false, false)
+            },
+        ),
+    ];
+    let t = play_rolls(&o, &[(Some(0), events)], &magic, &[BLACK_DRAGON]);
+    let fear = Logged::Fear {
+        stack: 0,
+        count: 40,
+        by: 1,
+        number: 80,
+    };
+    assert!(t.log.iter().any(|(_, l)| *l == fear));
+    // Fear's animation: the Champions' 8 hit frames, then 23 more and the erasing redraw; bad
+    // morale's: 8 hit frames beside 3 of the animation and 5 without, the standing frame shown
+    // at once with the last, then the erasing redraw.
+    let bad = t.magics.iter().filter(|k| k.animation == BAD_MORALE);
+    let frames: Vec<Option<u32>> = bad.map(|k| k.frame).collect();
+    assert_eq!(
+        frames,
+        [
+            Some(0),
+            Some(1),
+            Some(2),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None
+        ]
+    );
+    // Fear's is drawn to 3 100; bad morale's hit frames are drawn from 3 200 and shown a
+    // deadline later, the last at 4 000 with the standing frame at once.
+    assert_eq!(t.at(3999)[&0], pose(3, 6, 35));
+    assert_eq!(t.at(4000)[&0], still(2, 35));
+    assert_eq!([t.outlined(100), t.outlined(3300)], [Some(0), None]);
+    assert!(t.log.iter().all(|(_, l)| !matches!(
+        l,
+        Logged::Morale { stack: 9, .. }
+            | Logged::Fear { stack: 9, .. }
+            | Logged::Luck { stack: 9, .. }
+    )));
 }

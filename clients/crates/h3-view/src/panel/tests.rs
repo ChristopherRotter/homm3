@@ -255,6 +255,19 @@ fn each_turn_finds_the_battle_its_events_left() {
         ],
     );
     assert!(after[0].sides[0].hero.is_none());
+    // E17 M3 T7b-2b-2b: a turn its pick freezes is none, as the timeline's.
+    let frozen = super::turns(
+        &battle(),
+        &[
+            Event::TurnStarted { stack: 1 },
+            Event::BadMorale { stack: 1 },
+            Event::TurnStarted { stack: 0 },
+            Event::Frightened { stack: 0 },
+            Event::TurnStarted { stack: 1 },
+        ],
+    );
+    assert_eq!(frozen.len(), 1);
+    assert_eq!(frozen[0].active, Some(1));
 }
 
 #[test]
