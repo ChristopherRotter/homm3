@@ -186,10 +186,10 @@ Cartographers, `h3_map::writer`'s `Plain`, for E4-10); two grounds on one tile i
 load and dialogs from its seed byte under each source's rule (the reading as `h3_heroes` draws
 it, always-left, VCMI's row, intervals and school weight, the levels drawn up front); its tests
 check the reading's draws and levels at load against the engine. Kept or thrown away at the
-scoring. The **recipes** (`clients/capture/batches/`, client-owned) follow the harness's new reads
-(the client lane's inbox: the seed byte and counters, the skills as a list, every level-up
-dialog, `level_up` as a list, the artifacts, the battlefield, a battle played by plan for E4-9).
-The run is on the harness (decision 50).
+scoring. The **recipes** (`clients/capture/batches/`, client-owned) use the harness's reads, built by
+T32b1 (decision 68: the seed byte and counters, the skills as a list, every level-up dialog,
+`level_up` as a list, the artifacts, the battlefield, the messages, battles between two human
+players by `attack` or a plan for E4-9). The run is on the harness (decision 50), T32b2.
 
 ### 17. Shared and `cross-lane` work; the building tasks
 
@@ -209,7 +209,7 @@ confirmed at its checkpoint):
 | 2 | **T27** + **T28** | Done: T27 (2026-10-20, `adventure/e08-t27`, decision 62), T28 (2026-10-21, `adventure/e08-t28`). T27: `h3-heroes`' progression (part A §2–§7: levels, the bound, the limit's cap, the draw source and the original's generator, the primary skill, the offers, `GainLevel`, the counters, the checks; HER-EXP-002, -003, HER-LVL-001 to -005; `ADV-QUIRK-10` to `-13`). T28: the original's choice ported, its flag-clear path (part A §8, HER-LVL-006; survey §10; `ADV-QUIRK-14`) |
 | 3 | **T29** + **T30** | Done: T29 (2026-10-21, `adventure/e08-t29`, `cross-lane`, decision 63: whole, one pull request; §11 and §12 built), T30 (2026-10-21, `adventure/e08-t30`, decision 64: whole, one pull request, with §14's env answers and replay format; §13 built). T29: the game's setup and build (§11, §12: the seeds, the limit and banned skills, the terrains' costs by Pathfinding level and the map's shares, levels at load, the import's refusal lifted, the 5 shipped maps; GAM-HER-002, GAM-SET-002; `ADV-QUIRK-9`). T30: the level-up as a decision (§13: the answers, the events, the observation, the system actor's default, the battle's levels; GAM-DEC-002, GAM-BAT-008) |
 | 4 | **T31** + **T32a** | Done. T31 (2026-10-21, `adventure/e08-t31`, decision 66: whole, one pull request; §14 built): the replays, fixtures, properties and benchmarks. T32a (2026-10-21, `adventure/e08-t32a`, `cross-lane`, decision 67: whole): batch E4's three specs and the scorer (§16); the recipes wait for the harness's new reads |
-| 5 | **T32b** + **T33** | T32b: batch E4's recipes and run on the harness, once the client lane has its reads. T33: the scoring (the rules it covers `verified` or reopened), the audit against the exit criteria, increment 4 closed, the next increment refined |
+| 5 | **T32b** + **T33** | Cut (decision 68): **T32b1** done (2026-10-21, `adventure/e08-t32b1`, `cross-lane`: the harness's reads, built by this lane); **T32b2**: batch E4's recipes and run on the harness. T33: the scoring (the rules it covers `verified` or reopened), the audit against the exit criteria, increment 4 closed, the next increment refined |
 
 **Increment 4's exit criteria**:
 1. A hero's experience gives the original's levels, at most 74, capped by the scenario's limit

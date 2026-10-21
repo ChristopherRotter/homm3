@@ -352,6 +352,8 @@ fields = [
   { offset = 0x101, name = "secondary_skill_count", type = "i32", summary = "the number of secondary skills known, at most 8 (0x4E22D0, 0x4DAD00)", confidence = "read", refs = ["rules/surveys/E08-progression.md §2.4"] },
   { offset = 0x112, name = "fly_power", type = "i32", summary = "-1 unless flying by a spell; with Angel Wings a guard attacks only at the move's destination (H3API flyPower)", confidence = "inferred", refs = ["rules/surveys/E08-battles.md §2.2"] },
   { offset = 0x12D, name = "worn_artifacts", type = "artifact[19]", summary = "the worn artifacts by slot, 8 bytes each (id, -1 for none; then a subtype, a scroll's spell); 0x4D91F0 walks them", confidence = "read", refs = ["installation.md §7.26"] },
+  { offset = 0x1D4, name = "backpack", type = "artifact[64]", summary = "the backpack's artifacts, 8 bytes each as worn_artifacts (-1 for an empty place; hero_give_backpack_artifact 0x4E2F90 refuses a war machine and a 65th)", confidence = "read", refs = ["epics/E08-log.md T32b1"] },
+  { offset = 0x3D4, name = "backpack_count", type = "u8", summary = "the number of artifacts in the backpack (0x4E2F90: none added at 64)", confidence = "read", refs = ["epics/E08-log.md T32b1"] },
   { offset = 0x476, name = "primary_skills", type = "i8[4]", summary = "Attack, Defense, Spell Power, Knowledge with the worn artifacts' bonuses: equipping adds them, taking off subtracts them (0x4E2A00, 0x4E2BD0; E08 T20a1), unclamped; readers clamp (0x4E5400: 0-99)", confidence = "read", refs = ["rules/surveys/E08-battles.md §3.1", "rules/catalog/heroes.toml HER-ADV-001"] },
   { offset = 0x47E, name = "ai_spell_power_effectiveness", type = "u32", summary = "H3API's aiSpellPowerEffectiveness: the computer's Wisdom, Eagle Eye, Scholar and Sorcery values scale by it with ai_secondary_skill_value's flag set (0x524690); written after battles (0x4ADCEC) and elsewhere, not read", confidence = "inferred", refs = ["rules/surveys/E08-progression.md §10"] },
   { offset = 0x486, name = "ai_knowledge_effectiveness", type = "u32", summary = "H3API's aiKnowledgeEffectiveness: the computer's Mysticism and Intelligence values scale by it with ai_secondary_skill_value's flag set (0x524690); written after battles (0x4ADD04) and elsewhere, not read", confidence = "inferred", refs = ["rules/surveys/E08-progression.md §10"] },
@@ -441,6 +443,16 @@ fields = [
 ]
 
 [[struct]]
+name = "artifact_setup"
+size = 0x20
+summary = "An artifact's setup record (the table at artifact_setup_pointer 0x660B68, filled from ARTRAITS.TXT by 0x44CD50 at a stride of 0x20); only what the capture harness reads."
+refs = ["epics/E08-log.md T32b1"]
+h3api = "H3ArtifactSetup"
+fields = [
+  { offset = 0x0, name = "name", type = "char*", summary = "the artifact's name; observed in the running game (h3mem.py: Ballista, Catapult, Centaurs Axe), not read", confidence = "inferred", refs = ["epics/E08-log.md T32b1"] },
+]
+
+[[struct]]
 name = "map_item"
 size = 0x26
 summary = "A tile of the adventure map (game +0x1FC40; H3API's H3MapItem); only what the docs cite."
@@ -516,9 +528,11 @@ summary = "An item of a dialog (H3API's H3DlgItem; a text item is its H3DlgText,
 refs = ["epics/E17-design.md §6.3"]
 h3api = "H3DlgItem"
 fields = [
+  { offset = 0x0, name = "vtable", type = "u32", summary = "the item's kind: 0x63EC48 a DEF picture (0x4EA720), 0x63BA94 a picture (0x4502D0), 0x63BB54 a DEF button (0x455EF0)", confidence = "read", refs = ["epics/E08-log.md T32b1"] },
   { offset = 0x8, name = "next", type = "dialog_item*", summary = "the next item of the dialog (0 after the last)", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
   { offset = 0x10, name = "id", type = "i16", summary = "the item's id (a question's OK 30725, its Cancel 30726)", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
-  { offset = 0x30, name = "text", type = "string", summary = "a text item's text: a string record, the characters' pointer at +0x34 and their number at +0x38 (H3API's H3String)", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
+  { offset = 0x30, name = "text", type = "string", summary = "a text item's text: a string record, the characters' pointer at +0x34 and their number at +0x38 (H3API's H3String); a DEF picture holds its loaded DEF here instead (its name at +0x4, H3API's H3LoadedDef; 0x4EA720, E08 T32b1)", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
+  { offset = 0x34, name = "frame", type = "i32", summary = "a DEF picture's or DEF button's frame (0x4EA720, 0x455EF0; the level-up dialog's skill pictures, 0x4F8880)", confidence = "read", refs = ["epics/E08-log.md T32b1"] },
 ]
 
 [[struct]]

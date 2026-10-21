@@ -4,13 +4,22 @@
 # the map and fought by the computer, a retreat, a surrender in hot seat, a hero's details read from
 # memory. Built by h3-experiment as the domain lanes' specs are; the questions of a monster's offers
 # need a monster that offers (a disposition other than savage, or one that may flee), which
-# h3-experiment places from E08 T22a on: the recipe's question steps wait for it.
+# h3-experiment places from E08 T22a on: the recipe's question steps wait for it. E08 T32b1 (batch
+# E4's reads, `cross-lane`): Exp's skills in order, seed byte and offer counters, Lvl's level-up
+# dialogs and messages, and Gear: a hero's artifacts and backpack, a battle on a Clover Field
+# played by plan (Blue's Thunderbirds destroy Red's Ballista first, as batch E4's E4-9), Red's
+# hero with a spell book (the battle screen's `battle_book` state, E17 M3 T7a-2a).
 
 [map]
 name = "Harness check"
 description = "The capture harness's check map (E17 H1): played by clients/capture/h3adv.py, not by hand."
 size = 36
 terrain = "grass"
+
+# Gear's battle: a Clover Field (6 x 4 left of and above its anchor) under both heroes (E08 T32b1).
+[[map.ground]]
+picture = "AVXcf0"
+at = [13, 14]
 
 [[encounter]]
 id = "Win"
@@ -135,6 +144,14 @@ field = "Diplomacy"
 [[encounter.record]]
 field = "Logistics"
 [[encounter.record]]
+field = "secondary skills (in the hero's order)"
+[[encounter.record]]
+field = "seed byte (hero +0x8F)"
+[[encounter.record]]
+field = "Wisdom last offered (hero +0x90)"
+[[encounter.record]]
+field = "a school last offered (hero +0x3F)"
+[[encounter.record]]
 field = "anything odd"
 
 [[encounter]]
@@ -152,9 +169,43 @@ army = [["Archangel", 20]]
 monster = "Pikeman"
 count = 150
 [[encounter.record]]
+field = "seed byte (hero +0x8F)"
+[[encounter.record]]
+field = "Wisdom last offered (hero +0x90)"
+[[encounter.record]]
+field = "a school last offered (hero +0x3F)"
+[[encounter.record]]
+field = "experience at the start"
+[[encounter.record]]
+field = "level at the start"
+[[encounter.record]]
+field = "primary skills at the start (attack/defense/power/knowledge)"
+[[encounter.record]]
+field = "secondary skills at the start (in the hero's order)"
+[[encounter.record]]
 field = "level after"
 [[encounter.record]]
 field = "experience after"
+[[encounter.record]]
+field = "level-up dialogs"
+[[encounter.record]]
+field = "dialog 1, level"
+[[encounter.record]]
+field = "dialog 1, primary skill raised"
+[[encounter.record]]
+field = "dialog 1, left offer (or the only one)"
+[[encounter.record]]
+field = "dialog 1, right offer"
+[[encounter.record]]
+field = "dialog 1, taken"
+[[encounter.record]]
+field = "secondary skills after (in the hero's order)"
+[[encounter.record]]
+field = "the battlefield's special field"
+[[encounter.record]]
+field = "the battlefield's terrain"
+[[encounter.record]]
+field = "messages after the battle"
 [[encounter.record]]
 field = "anything odd"
 
@@ -191,5 +242,86 @@ army = [["Pikeman", 1]]
 field = "the hero's tile"
 [[encounter.record]]
 field = "the heroes off the map: experience"
+[[encounter.record]]
+field = "anything odd"
+
+[[encounter]]
+id = "Gear"
+title = "Artifacts worn and carried; a battle on a Clover Field played by plan (E08 T32b1)"
+questions = []
+procedure = [
+    "Read the hero's artifacts (worn, by slot) and backpack; click Blue's hero east of it twice.",
+    "In the battle: Red's Archangels defend and Blue's Thunderbirds attack Red's Ballista until it is destroyed; then every stack attacks (two human sides: no auto combat). Answer the level-ups left, then right.",
+]
+[encounter.hero]
+type = "Orrin"
+specialty = "skill Archery"
+at = [10, 13]
+primary = [0, 0, 1, 1]
+army = [["Archangel", 10]]
+artifacts = { "war machine 1" = "Ballista", "head" = "Helm of the Alabaster Unicorn", "spell book" = "Spell Book" }
+backpack = ["Centaurs Axe"]
+[encounter.opponent.hero]
+type = "Valeska"
+specialty = "creature Archer"
+name = "Gear B"
+primary = [0, 0, 1, 1]
+army = [["Thunderbird", 30]]
+[[encounter.record]]
+field = "seed byte (hero +0x8F)"
+[[encounter.record]]
+field = "Wisdom last offered (hero +0x90)"
+[[encounter.record]]
+field = "a school last offered (hero +0x3F)"
+[[encounter.record]]
+field = "experience at the start"
+[[encounter.record]]
+field = "level at the start"
+[[encounter.record]]
+field = "primary skills at the start (attack/defense/power/knowledge)"
+[[encounter.record]]
+field = "secondary skills at the start (in the hero's order)"
+[[encounter.record]]
+field = "artifacts before (worn, by slot)"
+[[encounter.record]]
+field = "backpack before"
+[[encounter.record]]
+field = "the battlefield's special field"
+[[encounter.record]]
+field = "the battlefield's terrain"
+[[encounter.record]]
+field = "the Ballista destroyed (yes/no)"
+[[encounter.record]]
+field = "the battle's winner"
+[[encounter.record]]
+field = "artifacts after (worn, by slot)"
+[[encounter.record]]
+field = "backpack after"
+[[encounter.record]]
+field = "experience after"
+[[encounter.record]]
+field = "level-up dialogs"
+[[encounter.record]]
+field = "dialog 1, level"
+[[encounter.record]]
+field = "dialog 1, primary skill raised"
+[[encounter.record]]
+field = "dialog 1, left offer (or the only one)"
+[[encounter.record]]
+field = "dialog 1, right offer"
+[[encounter.record]]
+field = "dialog 1, taken"
+[[encounter.record]]
+field = "dialog 2, level"
+[[encounter.record]]
+field = "dialog 2, primary skill raised"
+[[encounter.record]]
+field = "dialog 2, left offer (or the only one)"
+[[encounter.record]]
+field = "dialog 2, right offer"
+[[encounter.record]]
+field = "dialog 2, taken"
+[[encounter.record]]
+field = "secondary skills after (in the hero's order)"
 [[encounter.record]]
 field = "anything odd"
