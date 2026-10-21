@@ -181,8 +181,9 @@ impl SiegeState {
             .any(|w| self.field.coords(w).1 == row && hex.0 < w.0)
     }
 
-    /// Whether `hex` is inside the walls on its row: the row's wall hex or right of it.
-    fn inside(&self, hex: Hex) -> bool {
+    /// Whether `hex` is inside the walls on its row: the row's wall hex or right of it (the
+    /// original's 0x467460; none without a fort).
+    pub fn inside(&self, hex: Hex) -> bool {
         let row = self.field.coords(hex).1;
         self.line
             .iter()

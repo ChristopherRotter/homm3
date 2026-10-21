@@ -47,7 +47,11 @@ extern crate alloc;
 #[cfg(test)]
 extern crate std;
 
+mod ends;
+mod gain;
 mod hexes;
+mod odds;
+mod order;
 mod scores;
 mod shooter;
 mod walker;
