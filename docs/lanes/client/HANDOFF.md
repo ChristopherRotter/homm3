@@ -59,8 +59,8 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
-- **2026-10-21, E17 M3 T7b-2a (tint, Haste/Slow walks, Dispel, Cure, Disrupting Ray).** Split
-  with the user; `haste`, `dispel` recorded, played as recorded.
+- **2026-10-21, E17 M3 T7b-2a (tint, Haste/Slow walks, Dispel, Cure, Ray; #363, open).**
+  Split with the user; `haste`, `dispel` recorded, frames exact.
 - **2026-10-21, E17 M3 T7b-1 (a hero's cast on one stack; #361, merged).** `cast`, `resist`,
   `arrow` played as recorded, their frames exact but the spell tint (T7b-2a).
 - **2026-10-21, E17 M3 T8 (the battle's end tune; #356, merged).** `end` recorded; its tune.
