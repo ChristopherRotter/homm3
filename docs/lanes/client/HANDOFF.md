@@ -53,9 +53,9 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
-- **2026-10-21, E17 M3 T8 (the battle's end tune; its PR open, on #355's branch).** The end
+- **2026-10-21, E17 M3 T8 (the battle's end tune; its PR open).** The end
   read and recorded (`end`), the window plays the tune; the start sound at 127.
-- **2026-10-21, E17 M3 T7a-2b (the magic animations recorded; #355 open).** Seven casts
+- **2026-10-21, E17 M3 T7a-2b (the magic animations recorded; #355, merged).** Seven casts
   sequences and `dragon` with `screens` (`casts.toml`, all replayed); four readings corrected;
   quirks to the review list; the client gates' full check in a second session (all gates).
 - **2026-10-21, E17 M3 T7a-2a (the harness casts; #348, merged).** The book read; `cast:`;

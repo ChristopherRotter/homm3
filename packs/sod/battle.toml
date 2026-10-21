@@ -30,6 +30,7 @@ polarity = "negative"
 target = "stack"
 side = "enemy"
 effects = [{ kind = "damage" }]
+ai = { kinds = ["damage", "special"], values = [75, 75, 75, 75] }
 
 [[battlefield]]
 id = "holy_ground"

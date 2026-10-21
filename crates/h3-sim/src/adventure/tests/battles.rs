@@ -7,7 +7,7 @@
 
 use h3_adventure::Pos;
 use h3_contracts::BattleResult;
-use h3_game::GameEvent;
+use h3_game::{Answer, DecisionView, GameEvent};
 
 use super::*;
 
@@ -270,5 +270,67 @@ fn a_replay_records_a_battle_with_its_actors() {
             step,
             error: GameCommandError::NotYourSide
         })
+    );
+}
+
+/// [`battle_setup`] with both heroes 10 short of level 2, played by the random agent from red's
+/// attack until the battle ends: its winner then has a level-up (GAM-BAT-008).
+fn levelled() -> AdventureEnv {
+    let (setup, near) = battle_setup(&FAITHFUL, h3_game::DEFAULT_DIFFICULTY);
+    let mut setup = GameSetup::clone(&setup);
+    for hero in &mut setup.heroes {
+        hero.details.experience = Some(990);
+    }
+    let mut env = AdventureEnv::new(FAITHFUL.clone(), Arc::new(setup), 1, 0).unwrap();
+    let tile = tile_index(env.state(), near).unwrap();
+    env.step(RED, Action::move_to(0, tile)).unwrap();
+    let mut rng = Rng::for_stream(4, StreamId::AGENT);
+    while env.phase(RED) == Phase::Battle {
+        let player = acting(&env);
+        let action = choose(&env, player, &mut rng);
+        env.step(player, action).unwrap();
+    }
+    env
+}
+
+// covers: GAM-DEC-002
+#[test]
+fn a_level_up_is_answered_by_its_two_entries() {
+    let env = levelled();
+    let winner = [RED, BLUE]
+        .into_iter()
+        .find(|&p| env.state().level_up(p).is_some())
+        .unwrap();
+    let view = env.state().level_up(winner).unwrap();
+    // The game waits for it: its owner alone acts, in its turn or not; its answers are its only
+    // entries, each with tile 0.
+    assert_eq!(env.state().waiting_for(), Some(winner));
+    assert_eq!(env.to_move().collect::<Vec<_>>(), [Seat::Player(winner)]);
+    assert_eq!(env.phase(winner), Phase::Adventure);
+    let observed = env.observation(winner).decision;
+    assert_eq!(observed, Some(DecisionView::LevelUp(view)));
+    check_masks(&env, winner).unwrap();
+    let (state, rules) = (env.state(), env.rules());
+    for (entry, answer) in [(FIRST, Answer::First), (SECOND, Answer::Second)] {
+        let command = GameCommand::Answer(answer);
+        let action = Action::map(entry, 0);
+        assert_eq!(
+            action::decode(state, rules, winner, action),
+            Some(command.clone())
+        );
+        assert_eq!(action::encode(state, rules, winner, &command), Some(action));
+        let mut answered = env.fork();
+        let result = answered.step(winner, action).unwrap();
+        assert!(
+            answered.state().hero(view.hero).unwrap().level >= 2,
+            "{result:?}"
+        );
+    }
+    // The random agent answers it too.
+    let mut rng = Rng::for_stream(9, StreamId::AGENT);
+    let action = choose(&env, winner, &mut rng);
+    assert!(
+        action == Action::first() || action == Action::second(),
+        "{action:?}"
     );
 }

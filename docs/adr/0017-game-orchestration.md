@@ -110,7 +110,7 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    owned by the players it involves (a battle against another player's hero: both). Its owners
    may answer outside their turn; while a player has one, its only legal commands are the
    decision's answers (in a battle, the battle's commands) and it cannot end its turn; it
-   blocks no one else. The engine never waits and never calls back. Increment 2 has two kinds,
+   blocks no one else, but for a level-up (below). The engine never waits and never calls back. Increment 2 has two kinds,
    both offers answered yes or no: the Cartographer's (a price, E08 decision 15) and the border
    guard's passage (no price; ADV-Q10, D-7). A player's open decisions form a queue (at most one
    in increment 2); `GameCommand::Answer` answers the first (`Accept` or `Decline`, additive
@@ -130,6 +130,15 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    right offer). A hero's pending levels are given in order, one at a time: a level with one offer
    learns it and one with none gives the primary skill only, at once, with an event to the
    owner; a level with two opens the decision, and its answer gives the level and draws the next.
+   Unlike the other kinds, an open level-up **holds the game**, as the original's modal dialog
+   does: until its owner answers, every other actor's command is rejected and lists no legal
+   command (a battle's defender that won outside its turn answers before the player whose turn
+   runs goes on), and the game names the player it waits for. The hosting layer handles the
+   wait: in **hot seat** the client hands the screen to the owner, hiding everything until the
+   owner confirms it is in control, then shows the dialog alone, and hands back the same way;
+   **online** the server pauses the waiting players' turn timers and gives the owner a limited
+   time, then answers with the system actor's default. Other players learn only that the game
+   waits for the owner, never the level-up itself.
    The system actor's default answer to a level-up is the original's choice (ADR-0013 point 12),
    as the original's when the dialog's time runs out; until E10 gives the engine the computer
    player's state that choice reads with the army counted, it chooses with the setup's inputs, as
@@ -164,8 +173,9 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    (`h3_battle::observe_as`); the adventure replay format v3 records each command's actor.
    Increment 4's action encoding v4 appends two entries, the first and the second offer, legal
    only while a level-up is the player's open decision (`Accept` and `Decline` only while an offer
-   is); the observation shows its owner the open level-up (the hero, the new level, the primary
-   skill gained, the two offers).
+   is); while a level-up holds the game (point 6) `to_move` yields its owner alone, in its turn
+   or not; the observation shows its owner the open level-up (the hero, the new level, the
+   primary skill gained, the two offers).
 9. **Versions owned by the adventure lane** (T2 adds the rows): the game state hash (`h3-game`),
    the adventure state and ruleset-part hashes (`h3-adventure`), the import version (`h3-map`),
    the adventure replay format and encodings (`h3-sim`'s sub-path, to the AI lane at E05).
@@ -207,7 +217,9 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
 
 ## Consequences
 
-- The server builds M5 on points 1, 2 and 6 without engine changes beyond the additive variants.
+- The server builds M5 on points 1, 2 and 6 without engine changes beyond the additive variants;
+  its turn timers pause while the game waits for another player's level-up, whose time limit
+  and default answer are the server's (point 6).
 - One player's choices never move another player's dice, in sequential play too: for RL a
   cleaner signal, for simultaneous play the precondition of commuting.
 - Every game command needs a turn check and a pending-decision check; `legal_commands` and
@@ -283,3 +295,9 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   system default (with the setup's inputs until E10, ADV-Q17), action encoding v4 and the
   observation's level-up, the versions, the battle's winner levelling after the outcome. Drafted
   in E08 T24b2 (#321; survey `E08-progression.md` §10 for the evaluation).
+- 2026-10-21 (E08 T30; the user at T30's checkpoint, E08 decision 65): point 6 amended: an open
+  level-up holds the game until its owner answers (every other actor's command rejected, the
+  game naming the player it waits for), as the original's modal dialog; the hot-seat handover is
+  the client's, the paused turn timer, the owner's time limit and the default answer online the
+  server's. Point 8: `to_move` yields the owner alone meanwhile. T30's first build let the other
+  players act on, which allowed a battle against a hero whose level-up was still open.

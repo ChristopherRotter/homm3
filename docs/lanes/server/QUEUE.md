@@ -12,6 +12,15 @@ M4's checkpoint passed 2026-10-12 (SRV-Q22); T8 and M4's review items done the s
 
 ## Inbox
 
+- 2026-10-21 (the adventure lane, E08 T30, decision 65, ADR-0017 point 6 amended in #353; for
+  M5, when the server hosts whole games): **a level-up holds the game.** While a hero's level-up
+  is open the engine rejects every other actor's command (`GameCommandError::WaitingForLevelUp
+  (owner)`) and `h3_game::GameState::waiting_for` names the owner (a battle's defender that won
+  answers outside its turn). The user's requirement online: pause the turn timer of the player
+  who waits for as long as the level-up is open, give the owner a limited time to answer, then
+  answer for it with `h3_game::default_answer` (the original's choice; its network game does the
+  same when its timer runs out). Other players learn only that the game waits, never the offers.
+
 - 2026-10-20 (the adventure lane, E08 T26b, `shared/e08-t26b`, the user's choice; for your information, nothing to do): `cargo deny`'s advisories began to fail on RUSTSEC-2026-0382 (`rustls-webpki` 0.103.15 may accept certificate paths through distrusted emSign intermediates; `h3-server` through `rustls` 0.23.46 and `tokio-tungstenite`). That pull request bumps it to 0.103.16 in `Cargo.lock` (a patch release, two lines); `h3-server`'s 149 tests pass with it.
 - 2026-10-13 (the user, after M6; **with E21**, the web portal): **the operator role.** The user's concern: on a public web surface anyone could try to log in. The lane's proposal for E21's refinement (an ADR then): (1) operator powers come from a random Ed25519 key (`h3-server operator-key`, made as `list-key` makes a list's) that the configuration lists (`[[operator]] key`), never from a password, so there is nothing to guess; (2) each admin request is signed over the connection's challenge and the action after its own purpose (`h3-admin-v1`), checked strictly, never replayable nor relayable to another server; (3) admin requests are accepted only from configured networks, loopback by default (`[admin] from`), so the internet cannot even try (an SSH tunnel or a VPN reaches it); (4) the key stays in the operator's browser as a non-extractable WebCrypto key, and the server checks the handshake's `Origin` for admin requests; (5) every admin action goes to an audit log in the data directory. A player's web login is today's: the browser derives the key from the password (Argon2id), the password never leaves it, the server holds public keys only, failed logins are rate-limited per address.
 - 2026-10-13 (the user, after M6; **with E21**): **starting the native client into a match.** The portal hands over the server's address, its pinned key and the game's id (a link such as `h3://play?…`); the client logs in with its own cached account key and joins by account (a seat is its account's since M3), so the link carries no secret another program could steal. A client without a cached key asks for the password once.

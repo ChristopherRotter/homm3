@@ -63,6 +63,21 @@ const SPELL_NO_WAR_MACHINES: u32 = 0x1000;
 /// Only Titan's Lightning Bolt: the spell that every artifact spell set but Titan's Thunder's
 /// clears (installation.md §7.22, 0x4D9532).
 const SPELL_NAMED_GRANT: u32 = 0x2000;
+/// The first of the six AI category bits, `0x8000` to `0x100000` (installation.md §7.6, §7.39;
+/// E23 T3-0), named in [`SPELL_AI_KINDS`].
+const SPELL_AI_FIRST: u32 = 0x8000;
+/// The AI categories' pack names by bit from [`SPELL_AI_FIRST`] (`SpellAiKind::ALL`'s, a test
+/// checks).
+pub(crate) const SPELL_AI_KINDS: [&str; 6] = [
+    "damage",
+    "damage_once",
+    "damage_all",
+    "effect",
+    "stacks",
+    "special",
+];
+/// `SPTRAITS.TXT`'s four "AI value" columns, none to expert (E23 T3-0).
+const AI_VALUE_COLUMNS: std::ops::Range<usize> = 25..29;
 
 /// The pack ranks: content may refer to its own pack and those below it.
 const PACKS: [&str; 3] = ["base", "ab", "sod"];
@@ -1055,6 +1070,27 @@ pub fn harvest_heroes(
         if let Some(when) = useful.remove(name) {
             let _ = writeln!(text, "useful = {}", quote(when));
         }
+        // What the computer reads of it (pack format v45, E23 T3-0, ADR-0027 point 13): the flag
+        // word's AI categories and the four AI values.
+        let kinds: Vec<String> = (0..)
+            .zip(SPELL_AI_KINDS)
+            .filter(|&(i, _)| flags & (SPELL_AI_FIRST << i) != 0)
+            .map(|(_, k)| quote(k))
+            .collect();
+        let values = numbers(AI_VALUE_COLUMNS)?;
+        match (kinds.is_empty(), values == "[0, 0, 0, 0]") {
+            (true, true) => {}
+            (true, false) => {
+                let _ = writeln!(text, "ai = {{ values = {values} }}");
+            }
+            (false, _) => {
+                let _ = writeln!(
+                    text,
+                    "ai = {{ kinds = [{}], values = {values} }}",
+                    kinds.join(", ")
+                );
+            }
+        }
         spell_keys.push((key, pack));
     }
     if let Some(name) = timed
@@ -1081,7 +1117,8 @@ pub fn harvest_heroes(
          kinds come with their tasks (E04b T5-T7)"
     ));
     report.push(
-        "SPTRAITS: town chances, AI values, texts and the attribute column not harvested (E04b, E09)"
+        "SPTRAITS: town chances, texts and the attribute column not harvested (E04b, E09); the AI \
+         values with the flag word's AI categories since E23 T3-0"
             .into(),
     );
     let spell_ref = |id: i32, pack: &str, what: &str| -> Result<String, String> {

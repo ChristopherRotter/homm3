@@ -6,14 +6,19 @@
 //! Its callers are the AI lane's batch (`Policy::System`) and the adventure's neutral seat; they
 //! get it once a side without a hero is complete (E23 T4).
 //!
-//! So far (E23 T2): the stack's action of the original's dispatch (0x477EE0, 0x4221F0;
-//! `docs/formats/installation.md` §7.34) for a stack that can shoot now, which shoots the
-//! computer's target (0x41F060, 0x41EB80; §7.33, the automatic Ballista's), an area shooter by
-//! its value at a hex (0x41EDA0; §7.35), and the Cyclops batters the weakest wall when much of
-//! its side's strength is locked out (0x41EEA0). The rest stands in with a legal command until
-//! its task builds it: a walker defends (BAT-STUB-4, T3); the hero's side casts nothing, ends the
-//! tactics phase at once and shoots the first wall with a commanded Catapult (BAT-STUB-5, T5 and
-//! T6).
+//! So far (E23 T2, T3a, T3b): the stack's action of the original's dispatch (0x477EE0, 0x4221F0;
+//! `docs/formats/installation.md` §7.34). A stack that can shoot now shoots the computer's target
+//! (0x41F060, 0x41EB80; §7.33, the automatic Ballista's), an area shooter by its value at a hex
+//! (0x41EDA0; §7.35), and the Cyclops batters the weakest wall when much of its side's strength
+//! is locked out (0x41EEA0). Any other stack is a walker (0x421F80, 0x421680; §7.35, §7.37,
+//! §7.38): it values each enemy by the best hex to strike it from and its melee value with a draw,
+//! attacks the best within a turn or walks towards it, and else waits (Hard and up) or defends;
+//! its hex scores (0x4214F0, 0x421590, 0x420260, 0x41FB60; §7.36) weigh the Fire Walls, the moat,
+//! the enemies' reach and the crowding into the plan and the walk. The rest stands in until its
+//! task builds it: the odds, the last
+//! retaliation's gain, the fallbacks and the sieges' walks (T3c) and the creature casts (T4)
+//! (BAT-STUB-4); the hero's side casts nothing, ends the tactics phase at once, its First Aid Tent
+//! defends and a commanded Catapult shoots the first wall (BAT-STUB-5, T5 and T6).
 //!
 //! The original's slips in its own estimates (survey `E23-battle-ai.md` §4) follow the quirk
 //! BAT-QUIRK-25 (`quirk.battle.original_ai_slips`, ADR-0027 point 9): on in `faithful`, off in
@@ -42,19 +47,24 @@ extern crate alloc;
 #[cfg(test)]
 extern crate std;
 
+mod hexes;
+mod scores;
 mod shooter;
+mod walker;
 
 #[cfg(test)]
 mod tests;
 
-use h3_battle::{BattleSide, BattleState, Command, LegalCommands, Stack, computer, legal_commands};
+use h3_battle::{
+    BattleSide, BattleState, Command, LegalCommands, Stack, StackTraits, computer, legal_commands,
+};
 use h3_content_battle::BattleRuleset;
 use h3_kernel::Rng;
 
 /// The policy's behaviour version (ADR-0027 point 12): bumped with every change of a choice, so
 /// that a training record names its opponent (the AI lane's engine identity includes it).
 /// Replays store commands and do not change with it.
-pub const POLICY_VERSION: u32 = 2;
+pub const POLICY_VERSION: u32 = 4;
 
 /// The command the original's computer gives for `side`, the side to act in `state` (the active
 /// stack's controller, BAT-MAG-026), whatever `BattleSetup.human` says (ADR-0027 point 8):
@@ -77,8 +87,8 @@ pub fn choose(
 /// The original's computer's choice for `side` before validation (the property tests assert the
 /// engine accepts it): the stack's action (0x477EE0, 0x4221F0; BAT-AI-001). A stack that can shoot
 /// now ([`computer::shoots`]; the original's Ballista always can) shoots ([`shooter::shoot`],
-/// BAT-AI-002 to BAT-AI-004: the Cyclops's wall shot draws from `rng`); any other is a walker,
-/// which defends until E23 T3 builds its choice.
+/// BAT-AI-002 to BAT-AI-004: the Cyclops's wall shot draws from `rng`); any other is a walker
+/// ([`walker::turn`], BAT-AI-005, BAT-AI-006: its candidates draw from `rng`).
 // rule: BAT-AI-001
 pub fn unchecked(
     state: &BattleState,
@@ -102,10 +112,16 @@ pub fn unchecked(
         // The commanded Catapult's aim (§7.29, the gate first): T6.
         return first_wall_shot(state, ruleset, side);
     }
-    // stub: BAT-STUB-4
-    // The walker's choice (0x421F80, 0x421680; §7.35 to §7.38) and the First Aid Tent's patient
-    // (§7.14, BAT-Q51): T3 and T6; until then the original's default action, Defend.
-    Command::Defend
+    if state
+        .stack(id)
+        .is_some_and(|s| s.has(StackTraits::FIRST_AID))
+    {
+        // stub: BAT-STUB-5
+        // The First Aid Tent's patient (§7.14, BAT-Q51): T6; until then the original's default
+        // action, Defend.
+        return Command::Defend;
+    }
+    walker::turn(state, ruleset, (id, side), rng)
 }
 
 /// `command` when the engine accepts it from `side`, else Defend (ADR-0027 point 3).

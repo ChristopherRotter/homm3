@@ -17,10 +17,12 @@ use h3_battle::{
 use h3_content::{
     ContentKey, ContentPack, CreatureDef, CreatureInfoDef, CreatureTypeId, FactionDef,
     HeroClassDef, HeroTypeDef, HeroTypeId, PackManifest, ProfileDef, ResourceDef, Ruleset,
-    TerrainDef,
+    SpellCategory, SpellDef, SpellSchoolDef, TerrainDef,
 };
 use h3_content_battle::{
     AbilityDef, AreaShot, BattleCreatureDef, BattlePack, BattleParamsDef, BattleRuleset,
+    BattleSpellDef, HexStep, ObstacleKind, ObstacleShape, SpellAi, SpellEffect, SpellMagic,
+    SpellPolarity, SpellTarget,
 };
 use h3_contracts::{
     Army, ArmyStack, BallistaControl, BattleHero, BattleSetup, BattleSide, Rate, TentControl,
@@ -30,6 +32,7 @@ use proptest::prelude::{any, prop_assert, prop_assert_eq, proptest};
 use proptest::test_runner::Config;
 
 use super::{POLICY_VERSION, checked, choose, unchecked};
+use crate::walker::Walker;
 
 fn key(text: &str) -> ContentKey {
     ContentKey::parse(text).unwrap()
@@ -65,8 +68,10 @@ const HEALS: Option<AbilityDef> = Some(AbilityDef::FirstAid {
 /// The test creatures, by handle: walkers (the imp, the gog, the runner, faster than the field is
 /// wide), the archer, the Ballista and the First Aid Tent; the area shooters (the magog's
 /// fireball, the undead lich's death cloud); fast walkers that are fire-immune (the efreet),
-/// lifeless (the golem) and undead (the zombie); a slow two-hex walker (the cavalier).
-const CREATURES: [Creature; 12] = [
+/// lifeless (the golem) and undead (the zombie); a slow two-hex walker (the cavalier); a flyer
+/// that strikes and returns (the harpy); the multi-headed (the two-hex hydra, the cerberus) and
+/// a breath attacker (the dragon).
+const CREATURES: [Creature; 16] = [
     ("imp", 5, 100, &[], [2, 3, 1, 2], 4, 0, None),
     ("gog", 3, 900, &[], [4, 4, 2, 3], 13, 0, None),
     ("runner", 20, 300, &["alive"], [5, 5, 2, 4], 10, 0, None),
@@ -137,6 +142,46 @@ const CREATURES: [Creature; 12] = [
         0,
         None,
     ),
+    (
+        "harpy",
+        6,
+        150,
+        &["flying", "alive"],
+        [6, 5, 1, 4],
+        14,
+        0,
+        Some(AbilityDef::StrikeAndReturn),
+    ),
+    (
+        "hydra",
+        4,
+        3000,
+        &["two_hex", "alive", "multi_headed"],
+        [16, 18, 25, 45],
+        175,
+        0,
+        Some(AbilityDef::AttacksAllAdjacent),
+    ),
+    (
+        "cerberus",
+        4,
+        500,
+        &["alive", "multi_headed"],
+        [10, 8, 2, 7],
+        25,
+        0,
+        Some(AbilityDef::ThreeHeadedAttack),
+    ),
+    (
+        "dragon",
+        9,
+        3000,
+        &["breath_attack", "alive"],
+        [25, 25, 40, 50],
+        200,
+        0,
+        None,
+    ),
 ];
 
 const IMP: usize = 0;
@@ -151,6 +196,10 @@ const EFREET: usize = 8;
 const GOLEM: usize = 9;
 const ZOMBIE: usize = 10;
 const CAVALIER: usize = 11;
+const HARPY: usize = 12;
+const HYDRA: usize = 13;
+const CERBERUS: usize = 14;
+const DRAGON: usize = 15;
 
 /// The core ruleset of the test creatures, one hero type and the profiles `t:faithful` (the
 /// original's slips in its estimates, BAT-QUIRK-25) and `t:fixed` (none), in `profile`.
@@ -201,6 +250,23 @@ fn core(profile: &str) -> Ruleset {
         key: key("t:gold"),
         name: "Gold".into(),
     }];
+    pack.spell_schools = vec![SpellSchoolDef {
+        key: key("t:fire"),
+        name: "Fire".into(),
+        protection_rank: 0,
+    }];
+    // Fire Wall: power × 10 + 10 at Basic, two hexes.
+    pack.spells = vec![SpellDef {
+        key: key("t:firewall"),
+        name: "Fire Wall".into(),
+        category: SpellCategory::Combat,
+        level: 2,
+        schools: vec![key("t:fire")],
+        cost: [5; 4],
+        power: 10,
+        effect: [10, 10, 20, 50],
+        granted_by_name_only: false,
+    }];
     pack.profiles = vec![
         ProfileDef {
             key: key("t:faithful"),
@@ -239,9 +305,40 @@ fn ruleset_as(profile: &str) -> BattleRuleset {
                 }
             },
         )
-        .collect();
+        .collect::<Vec<BattleCreatureDef>>();
+    // The efreet are immune to fire spells too (the Fire Wall's test).
+    let mut creatures = creatures;
+    creatures[EFREET]
+        .abilities
+        .push(AbilityDef::SchoolImmunity {
+            school: key("t:fire"),
+        });
+    let firewall = BattleSpellDef {
+        key: key("t:firewall"),
+        polarity: SpellPolarity::Neutral,
+        magic: SpellMagic {
+            target: SpellTarget::Hex,
+            obstacle: Some(ObstacleShape {
+                steps: vec![HexStep::TopRight, HexStep::TopLeft],
+                hexes: [2, 2, 3, 3],
+                random: false,
+                mirrored: true,
+                separate: true,
+                rounds: 2,
+            }),
+            effects: vec![SpellEffect::Obstacle(ObstacleKind::Fire)],
+            ..SpellMagic::default()
+        },
+        counters: vec![],
+        dispels: vec![],
+        spares: vec![],
+        tests_as: None,
+        summons: None,
+        ai: SpellAi::default(),
+    };
     let pack = BattlePack {
         creatures,
+        spells: vec![firewall],
         battle: Some(BattleParamsDef {
             field_width: 17,
             field_height: 11,
@@ -519,26 +616,39 @@ fn an_area_shot_at_a_two_hex_stack_takes_its_better_hex() {
     assert_eq!(decide(&state, &r), shot(StackId(0), cavalier.front));
 }
 
-// covers: BAT-AI-001
+// covers: BAT-AI-001, BAT-AI-005
 #[test]
-fn a_walker_and_a_blocked_shooter_defend() {
+fn a_walker_attacks_and_a_blocked_shooter_strikes_back() {
     let r = ruleset();
     // The runner (speed 20) reaches the archers in its first turn and attacks them.
     let mut state = BattleState::new(&r, &setup(&[(RUNNER, 1)], &[(ARCHER, 5)]), 3).unwrap();
     assert_eq!(active(&state), RUNNER);
-    assert_eq!(decide(&state, &r), Command::Defend);
-    let mut legal = LegalCommands::new();
-    legal_commands(&state, &r, BattleSide::Attacker, &mut legal);
-    let attack = legal
-        .iter()
-        .copied()
-        .find(|c| matches!(c, Command::Attack { .. }))
-        .unwrap();
+    let attack = decide(&state, &r);
+    assert!(
+        matches!(
+            attack,
+            Command::Attack {
+                target: StackId(1),
+                ..
+            }
+        ),
+        "{attack:?}"
+    );
+    assert!(validate(&state, &r, BattleSide::Attacker, attack).is_ok());
     play(&mut state, &r, attack);
-    // Blocked by the runner beside them, the archers cannot shoot: a walker's turn.
+    // Blocked by the runner beside them, the archers cannot shoot: a walker's turn, which strikes
+    // the runner from where they stand.
     assert_eq!(active(&state), ARCHER);
-    assert!(!computer::shoots(&state, &r, state.active().unwrap()));
-    assert_eq!(decide(&state, &r), Command::Defend);
+    let archers = state.active().unwrap();
+    assert!(!computer::shoots(&state, &r, archers));
+    let from = state.stack(archers).unwrap().hex;
+    assert_eq!(
+        decide(&state, &r),
+        Command::Attack {
+            target: StackId(0),
+            from
+        }
+    );
 }
 
 // covers: BAT-AI-001, BAT-AI-002
@@ -546,7 +656,7 @@ fn a_walker_and_a_blocked_shooter_defend() {
 fn the_commanded_ballista_shoots_and_the_tent_defends() {
     let r = ruleset();
     // The runner wounds the gogs in its first turn, so that the commanded tent has a patient and
-    // takes its turns (BAT-WAR-007).
+    // takes its turns (BAT-WAR-007); the gogs defend (the walker is not under test here).
     let mut setup = setup(&[(GOG, 2)], &[(RUNNER, 1)]);
     setup.heroes = [Some(hero(0)), None];
     setup.war_machines = [vec![creature(BALLISTA), creature(TENT)], vec![]];
@@ -572,6 +682,8 @@ fn the_commanded_ballista_shoots_and_the_tent_defends() {
                     )
                 })
                 .unwrap_or(Command::Defend)
+        } else if active(&state) == GOG {
+            Command::Defend
         } else {
             decide(&state, &r)
         };
@@ -643,12 +755,133 @@ fn a_refused_choice_falls_back_to_defend() {
     assert!(validate(&state, &r, side, refused).is_err());
     assert_eq!(checked(&state, &r, side, refused), Command::Defend);
     assert_eq!(checked(&state, &r, side, Command::Wait), Command::Wait);
-    assert_eq!(POLICY_VERSION, 2);
+    assert_eq!(POLICY_VERSION, 4);
+}
+
+/// The setup of `setup` on `difficulty`.
+fn on(difficulty: u8, mut setup: BattleSetup) -> BattleSetup {
+    setup.difficulty = difficulty;
+    setup
+}
+
+/// Whether the footprint of the active stack at `to` would touch stack `id`.
+fn touches(state: &BattleState, r: &BattleRuleset, to: Hex, id: StackId) -> bool {
+    let field = Field::new(r.battle().field);
+    let me = state.stack(state.active().unwrap()).unwrap();
+    field
+        .footprint(to, me.is_two_hex(), me.side)
+        .is_some_and(|fp| field.touches(fp, state.stack(id).unwrap().footprint(field)))
+}
+
+// covers: BAT-AI-005, BAT-AI-006
+#[test]
+fn a_harpy_flies_to_block_shooters_it_would_hardly_hurt() {
+    let r = ruleset();
+    for difficulty in [1, 2] {
+        // Fifty archers: blocking them is worth more than one harpy's strike, so the harpy takes
+        // the plan's value alone (the Harpies' larger) and only goes to the plan's hex; once
+        // beside them it blocks them already, which is worth 1 (§7.37), and it strikes. The
+        // archers (not under test) defend.
+        let mut state = BattleState::new(
+            &r,
+            &on(difficulty, setup(&[(HARPY, 1)], &[(ARCHER, 50)])),
+            10,
+        )
+        .unwrap();
+        let archers = StackId(1);
+        let mut moves = 0;
+        loop {
+            assert_eq!(active(&state), HARPY);
+            let command = decide(&state, &r);
+            if let Command::Move { to } = command {
+                moves += 1;
+                assert!(validate(&state, &r, BattleSide::Attacker, command).is_ok());
+                play(&mut state, &r, command);
+                play(&mut state, &r, Command::Defend);
+                if touches(&state, &r, to, archers) {
+                    break;
+                }
+                continue;
+            }
+            panic!("{command:?}");
+        }
+        assert!(moves >= 2, "{moves}");
+        let from = state.stacks()[0].hex;
+        assert_eq!(
+            decide(&state, &r),
+            Command::Attack {
+                target: archers,
+                from
+            }
+        );
+        // With the hex it stands on scored high (T3b's scores, here by hand), the plan's value is
+        // worth more again: it stays, so nothing is chosen.
+        let mut scores = [0; 256];
+        scores[usize::from(from.0)] = 1_000_000;
+        let walker = Walker::new(&state, &r, (StackId(0), BattleSide::Attacker)).scored(scores);
+        assert_eq!(walker.choose(&mut Rng::from_seed(1)), None);
+    }
+}
+
+/// A walker of `handles` against the defender's `enemy` on Hard, at the attacker's first turn.
+fn walking(r: &BattleRuleset, handle: usize, enemy: usize) -> BattleState {
+    BattleState::new(r, &on(2, setup(&[(handle, 10)], &[(enemy, 10)])), 11).unwrap()
+}
+
+// covers: BAT-AI-006
+#[test]
+fn the_walk_holds_back_from_worse_hexes_on_hard() {
+    let r = ruleset();
+    // The imps (speed 5) walk towards the gogs across the field, on Hard.
+    let state = walking(&r, IMP, GOG);
+    assert_eq!(active(&state), IMP);
+    let me = StackId(0);
+    let start = state.stacks()[0].hex;
+    let far = state.stacks()[1].hex;
+    let side = BattleSide::Attacker;
+    let walk = |scores: [i32; 256], careful| {
+        Walker::new(&state, &r, (me, side))
+            .scored(scores)
+            .walk(Hex(far.0 - 1), careful)
+    };
+    // No scores: the walk goes its whole speed.
+    let Some(Command::Move { to }) = walk([0; 256], true) else {
+        panic!("no walk");
+    };
+    let field = Field::new(r.battle().field);
+    assert_eq!(field.distance(start, to), 5);
+    // Every hex worse than the start: it holds back and waits for the wait phase.
+    let mut scores = [-1; 256];
+    scores[usize::from(start.0)] = 0;
+    assert_eq!(walk(scores, true), Some(Command::Wait));
+    let mut scores = [-1; 256];
+    scores[usize::from(start.0)] = -2;
+    // Every hex better than the start: it goes on.
+    assert_eq!(walk(scores, true), Some(Command::Move { to }));
+    // The last hex worse than one before it: it stops there and waits, as no end is worse than
+    // the start.
+    let mut scores = [0; 256];
+    scores[usize::from(to.0)] = -1;
+    assert_eq!(walk(scores, true), Some(Command::Wait));
+    // Not careful (Normal): once an end is found it still refuses a worse hex from the step on
+    // that leaves at most `5 × ⌊(n − 1) / 5⌋` of the path's `n` steps (whole turns), as the
+    // fifth step does here: it stops one short and moves there.
+    let Some(Command::Move { to: short }) = walk(scores, false) else {
+        panic!("no walk");
+    };
+    assert_eq!(
+        (field.distance(start, short), field.distance(short, to)),
+        (4, 1)
+    );
+    // No path (the gogs' own hex): nothing.
+    assert_eq!(walk([0; 256], false), Some(Command::Move { to }));
+    assert_eq!(Walker::new(&state, &r, (me, side)).walk(far, false), None);
 }
 
 /// The handles an army draws from: every creature but the war machines.
-const ARMY: [usize; 10] = [
-    IMP, GOG, RUNNER, ARCHER, MAGOG, LICH, EFREET, GOLEM, ZOMBIE, CAVALIER,
+const ARMY: [usize; 14] = [
+    IMP, GOG, RUNNER, ARCHER, MAGOG, LICH, EFREET, GOLEM, ZOMBIE, CAVALIER, HARPY, HYDRA, CERBERUS,
+    DRAGON,
 ];
 
 proptest! {
@@ -670,7 +903,7 @@ proptest! {
         let mut rng = Rng::from_seed(draws);
         let draw_army = |rng: &mut Rng| -> Vec<(usize, u32)> {
             (0..=rng.below(4))
-                .map(|_| (ARMY[rng.below(10) as usize], 1 + rng.below(40)))
+                .map(|_| (ARMY[rng.below(14) as usize], 1 + rng.below(40)))
                 .collect()
         };
         let attacker = draw_army(&mut rng);
@@ -715,6 +948,395 @@ proptest! {
                 command
             };
             apply(&mut state, &r, side, played, &mut NoopSink).unwrap();
+        }
+    }
+}
+
+/// The walker `id`'s hex scores of `side` (BAT-AI-007).
+fn scores_of(state: &BattleState, r: &BattleRuleset, id: StackId) -> [i32; 256] {
+    let side = state.stack(id).unwrap().side;
+    let ctx = computer::context(state, r, side);
+    crate::scores::build(state, r, (id, side), &ctx)
+}
+
+/// The floor of the walker `id`'s scores: minus the value of its whole hit points.
+fn floor_of(state: &BattleState, r: &BattleRuleset, id: StackId) -> i32 {
+    let ctx = computer::context(state, r, state.stack(id).unwrap().side);
+    let hp = computer::hit_points(state, id);
+    -computer::damage_value(state, r, &ctx, (id, hp), (false, false))
+}
+
+/// The strike value of `a` on the walker `t` in the walker's context (0x435C70, no run-up).
+fn strike_on(state: &BattleState, r: &BattleRuleset, (a, t): (StackId, StackId)) -> i32 {
+    let ctx = computer::context(state, r, state.stack(t).unwrap().side);
+    computer::strike_value(state, r, &ctx, (a, t), 0)
+}
+
+/// The hexes of the test field.
+fn all_hexes() -> impl Iterator<Item = Hex> {
+    (0u8..187).map(Hex)
+}
+
+// covers: BAT-AI-007
+#[test]
+fn the_hexes_an_enemy_reaches_lose_its_strike_value_from_normal_on() {
+    let r = ruleset();
+    for difficulty in [0, 1] {
+        let state =
+            BattleState::new(&r, &on(difficulty, setup(&[(IMP, 10)], &[(GOG, 10)])), 12).unwrap();
+        assert_eq!(active(&state), IMP);
+        let (me, gog) = (StackId(0), StackId(1));
+        let scores = scores_of(&state, &r, me);
+        if difficulty == 0 {
+            // Easy for a computer side: no reach.
+            assert!(scores.iter().all(|&s| s == 0));
+            continue;
+        }
+        // The gog (speed 3) at hex 15 reaches with speed 4: hex 11, not 10.
+        let map = computer::reach_map(&state, &r, gog);
+        assert_eq!(state.stacks()[1].hex, Hex(15));
+        assert!(map.reached(Hex(11)) && !map.reached(Hex(10)));
+        // Ten imps against the gogs are desperate: their kills count 1000 each, beyond their
+        // whole value, so the reached hexes stop at the floor.
+        let (t, floor) = (strike_on(&state, &r, (gog, me)), floor_of(&state, &r, me));
+        assert!(-t < floor && floor < 0, "{t} {floor}");
+        for hex in all_hexes() {
+            let want = if map.reached(hex) { floor } else { 0 };
+            assert_eq!(scores[hex.index()], want, "{hex:?}");
+        }
+    }
+}
+
+// covers: BAT-AI-007
+#[test]
+fn an_enemy_within_a_turn_of_the_side_adds_nothing() {
+    let r = ruleset();
+    // The runner (speed 20) goes next to the gogs: they can strike it this turn, so they add
+    // nothing to the imps' scores (on Normal: no multi-headed strike, no crowding).
+    let mut state =
+        BattleState::new(&r, &setup(&[(RUNNER, 1), (IMP, 10)], &[(GOG, 10)]), 13).unwrap();
+    assert_eq!(active(&state), RUNNER);
+    play(&mut state, &r, Command::Move { to: Hex(14) });
+    assert_eq!(active(&state), IMP);
+    assert!(scores_of(&state, &r, StackId(1)).iter().all(|&s| s == 0));
+}
+
+// covers: BAT-AI-007
+#[test]
+fn a_two_hex_enemy_also_lowers_the_hex_beside_its_reach() {
+    let r = ruleset();
+    // The defender's cavaliers (speed 2) at 15 cover 15 and 14; with speed 3 their positions
+    // reach 12 (covering 12 and 11), and the hex beside it on their facing side, 11, which no
+    // position reaches, is lowered too; 10 is not.
+    let state = BattleState::new(&r, &setup(&[(IMP, 10)], &[(CAVALIER, 10)]), 14).unwrap();
+    let (me, cavalier) = (StackId(0), StackId(1));
+    let map = computer::reach_map(&state, &r, cavalier);
+    assert!(map.reached(Hex(12)) && !map.reached(Hex(11)));
+    let scores = scores_of(&state, &r, me);
+    let lowered = (-strike_on(&state, &r, (cavalier, me))).max(floor_of(&state, &r, me));
+    assert!(lowered < 0);
+    assert_eq!((scores[12], scores[11], scores[10]), (lowered, lowered, 0));
+    for hex in all_hexes().filter(|&h| map.reached(h)) {
+        assert_eq!(scores[hex.index()], lowered, "{hex:?}");
+    }
+}
+
+// covers: BAT-AI-007
+#[test]
+fn the_reach_of_several_enemies_adds_up() {
+    let r = ruleset();
+    // Ten imps with five dragons (not desperate) against two stacks of gogs at 15 and 100 (rows
+    // 0 and 5), out of reach of the dragons: where both reach, their two values add up, above
+    // the floor. The dragons defend first.
+    let mut state = BattleState::new(
+        &r,
+        &setup(&[(IMP, 10), (DRAGON, 5)], &[(GOG, 10), (GOG, 10)]),
+        15,
+    )
+    .unwrap();
+    play(&mut state, &r, Command::Defend);
+    assert_eq!(active(&state), IMP);
+    let me = StackId(0);
+    let (a, b) = (StackId(2), StackId(3));
+    let floor = floor_of(&state, &r, me);
+    let (ta, tb) = (
+        strike_on(&state, &r, (a, me)),
+        strike_on(&state, &r, (b, me)),
+    );
+    assert!(ta > 0 && tb > 0 && -ta - tb > floor, "{ta} {tb} {floor}");
+    let (ma, mb) = (
+        computer::reach_map(&state, &r, a),
+        computer::reach_map(&state, &r, b),
+    );
+    let scores = scores_of(&state, &r, me);
+    let mut both = 0;
+    for hex in all_hexes() {
+        let want = match (ma.reached(hex), mb.reached(hex)) {
+            (true, true) => -ta - tb,
+            (true, false) => -ta,
+            (false, true) => -tb,
+            (false, false) => 0,
+        };
+        both += u32::from(ma.reached(hex) && mb.reached(hex));
+        assert_eq!(scores[hex.index()], want, "{hex:?}");
+    }
+    assert!(both > 0);
+}
+
+/// The imps' scores after `escorts` (the attacker's first stacks, faster than everything else)
+/// went to `hexes`, on `difficulty`, the imps' own side human if `human`, against `enemy`.
+fn escorted_imps(
+    r: &BattleRuleset,
+    (escorts, hexes): (&[(usize, u32)], &[u8]),
+    (imps, enemy): (u32, (usize, u32)),
+    (difficulty, human): (u8, bool),
+) -> (BattleState, [i32; 256]) {
+    let mut army = escorts.to_vec();
+    army.push((IMP, imps));
+    let mut setup = on(difficulty, setup(&army, &[enemy]));
+    setup.human[0] = human;
+    let mut state = BattleState::new(r, &setup, 16).unwrap();
+    for &to in hexes {
+        play(&mut state, r, Command::Move { to: Hex(to) });
+    }
+    assert_eq!(active(&state), IMP);
+    let me = StackId(u8::try_from(escorts.len()).unwrap());
+    let scores = scores_of(&state, r, me);
+    (state, scores)
+}
+
+// covers: BAT-AI-007
+#[test]
+fn a_multi_headed_enemy_lowers_where_it_would_strike_the_side_on_hard_for_a_computer() {
+    let r = ruleset();
+    // The runner goes next to the hydra's front hex (the defender's hydra at 15 covers 15 and 14):
+    // the hydra can strike it this turn. On Hard for a computer side, the hexes its strike would
+    // hit from where it can strike the runner lose its strike value on the imps; on Normal, or for
+    // a human side, nothing.
+    let hydra = (HYDRA, 1);
+    let lowered = |state: &BattleState| {
+        let me = StackId(1);
+        (-strike_on(state, &r, (StackId(2), me))).max(floor_of(state, &r, me))
+    };
+    let (state, scores) = escorted_imps(&r, (&[(RUNNER, 1)], &[13]), (10, hydra), (2, false));
+    let low = lowered(&state);
+    assert!(low < 0);
+    let hit: Vec<Hex> = all_hexes().filter(|h| scores[h.index()] != 0).collect();
+    assert!(!hit.is_empty());
+    let field = Field::new(r.battle().field);
+    for &hex in &hit {
+        assert_eq!(scores[hex.index()], low, "{hex:?}");
+        // Within two hexes of the runner: around a position next to it.
+        assert!(field.distance(hex, Hex(13)) <= 3, "{hex:?}");
+    }
+    for (difficulty, human) in [(1, false), (2, true)] {
+        let (_, scores) = escorted_imps(
+            &r,
+            (&[(RUNNER, 1)], &[13]),
+            (10, hydra),
+            (difficulty, human),
+        );
+        assert!(scores.iter().all(|&s| s == 0), "{difficulty} {human}");
+    }
+    // A cerberus strikes three directions: fewer hexes.
+    let (_, cerberus) = escorted_imps(&r, (&[(RUNNER, 1)], &[14]), (10, (CERBERUS, 1)), (2, false));
+    let three = all_hexes().filter(|h| cerberus[h.index()] != 0).count();
+    assert!(three > 0 && three < hit.len(), "{three} {}", hit.len());
+    // Two stacks it can strike (the runner at 13, the efreet at 30 below it), a hundred imps
+    // (above the floor): a hex the second gives again loses 1 more.
+    let (state, scores) = escorted_imps(
+        &r,
+        (&[(RUNNER, 1), (EFREET, 1)], &[13, 30]),
+        (100, hydra),
+        (2, false),
+    );
+    let me = StackId(2);
+    let t = strike_on(&state, &r, (StackId(3), me));
+    assert!(-t > floor_of(&state, &r, me) + 1, "{t}");
+    assert!(scores.contains(&-t) && scores.contains(&(-t - 1)), "{t}");
+}
+
+// covers: BAT-AI-007
+#[test]
+fn a_multi_headed_strike_that_costs_the_enemy_raises_the_hexes_with_the_slip() {
+    // Five hundred imps would kill the hydra in their retaliation: its strike is worth less than
+    // nothing to it. The original subtracts it with its sign untested (slip 3): the hexes gain;
+    // fixed, they keep 0.
+    for (profile, slip) in [("t:faithful", true), ("t:fixed", false)] {
+        let r = ruleset_as(profile);
+        let (state, scores) =
+            escorted_imps(&r, (&[(RUNNER, 1)], &[13]), (500, (HYDRA, 1)), (2, false));
+        let t = strike_on(&state, &r, (StackId(2), StackId(1)));
+        assert!(t < 0, "{t}");
+        let raised: Vec<i32> = scores.iter().copied().filter(|&s| s != 0).collect();
+        if slip {
+            assert!(
+                !raised.is_empty() && raised.iter().all(|&s| s == -t),
+                "{raised:?}"
+            );
+        } else {
+            assert!(raised.is_empty(), "{raised:?}");
+        }
+    }
+}
+
+// covers: BAT-AI-007
+#[test]
+fn the_hexes_around_the_side_lose_the_area_threat_on_hard() {
+    let r = ruleset();
+    // The defender's magogs can shoot: their fireball is the area threat on the imps. On Hard the
+    // hexes around the imps' friends lose its value, a hex next to both of them 1 more; on Normal
+    // nothing. The runner goes next to the gog (at 52, row 3) to share hexes.
+    let magogs = (MAGOG, 20);
+    let (state, scores) = escorted_imps(
+        &r,
+        (&[(RUNNER, 1), (GOG, 1)], &[53]),
+        (10, magogs),
+        (2, false),
+    );
+    let me = StackId(2);
+    let floor = floor_of(&state, &r, me);
+    let field = Field::new(r.battle().field);
+    let threat = {
+        let ctx = computer::context(&state, &r, BattleSide::Attacker);
+        let damage = computer::damage_estimate(&state, &r, (StackId(3), me), 20, true, 0);
+        computer::damage_value(&state, &r, &ctx, (me, damage), (false, false))
+    };
+    assert!(threat > 0);
+    let low = (-threat).max(floor);
+    let near = |a: Hex| field.distance(a, state.stacks()[0].hex) == 1;
+    let near_gog = |a: Hex| field.distance(a, state.stacks()[1].hex) == 1;
+    for hex in all_hexes() {
+        let want = match (near(hex), near_gog(hex)) {
+            (true, true) => (low - 1).max(floor),
+            (true, false) | (false, true) => low,
+            (false, false) => 0,
+        };
+        assert_eq!(scores[hex.index()], want, "{hex:?}");
+    }
+    assert!(all_hexes().any(|h| near(h) && near_gog(h)));
+    let (_, normal) = escorted_imps(
+        &r,
+        (&[(RUNNER, 1), (GOG, 1)], &[53]),
+        (10, magogs),
+        (1, false),
+    );
+    assert!(normal.iter().all(|&s| s == 0));
+}
+
+// covers: BAT-AI-007
+#[test]
+fn a_breath_attackers_line_and_an_enemy_dragons_threat() {
+    let r = ruleset();
+    // The imps' own dragon at 0 (it defends first): the hexes behind its neighbours, in each
+    // direction, lose the value of its breath on the imps on Hard; the archers only shoot (in
+    // the mask, no area threat).
+    let mut state = BattleState::new(
+        &r,
+        &on(2, setup(&[(DRAGON, 1), (IMP, 10)], &[(ARCHER, 5)])),
+        17,
+    )
+    .unwrap();
+    assert_eq!(active(&state), DRAGON);
+    play(&mut state, &r, Command::Defend);
+    assert_eq!(active(&state), IMP);
+    let (dragon, me) = (StackId(0), StackId(1));
+    let field = Field::new(r.battle().field);
+    let k = {
+        let ctx = computer::context(&state, &r, BattleSide::Attacker);
+        let damage = computer::damage_estimate(&state, &r, (dragon, me), 1, false, 0);
+        computer::damage_value(&state, &r, &ctx, (me, damage), (false, false))
+    };
+    assert!(k > 0);
+    let scores = scores_of(&state, &r, me);
+    let at = state.stacks()[0].hex;
+    for hex in all_hexes() {
+        let behind = field.distance(hex, at) == 2
+            && field
+                .neighbors(at)
+                .into_iter()
+                .flatten()
+                .any(|n| field.direction(at, n) == field.direction(n, hex));
+        let want = if behind {
+            (-k).max(floor_of(&state, &r, me))
+        } else {
+            0
+        };
+        assert_eq!(scores[hex.index()], want, "{hex:?}");
+    }
+    // An enemy dragon within a turn of the imps' friend breathes on them: the area threat around
+    // the friend.
+    let mut state = BattleState::new(
+        &r,
+        &on(2, setup(&[(GOG, 1), (IMP, 10)], &[(DRAGON, 1)])),
+        18,
+    )
+    .unwrap();
+    assert_eq!(active(&state), DRAGON);
+    play(&mut state, &r, Command::Move { to: Hex(6) });
+    assert_eq!(active(&state), IMP);
+    let scores = scores_of(&state, &r, StackId(1));
+    let gog = state.stacks()[0].hex;
+    assert!(all_hexes().any(|h| field.distance(h, gog) == 1 && scores[h.index()] < 0));
+}
+
+// covers: BAT-AI-007
+#[test]
+fn a_fire_wall_is_valued_with_the_slips_or_as_the_rule() {
+    // Both heroes give their stacks 4 attack and no defense: the context's least attack bonus is
+    // 4, its least defense bonus 0. The attacker's hero casts Fire Wall (30 damage) at 93 and its
+    // upper right neighbour, on Easy (no reach, no crowding: the hazards alone). The defender's
+    // imps' scores there lose the value of its damage, valued with the least attack bonus for
+    // both bonuses with the original's slips (slip 19), else with both least bonuses; the
+    // efreet, immune to fire, lose it only with the slips (slip 18).
+    for (profile, slips) in [("t:faithful", true), ("t:fixed", false)] {
+        let r = ruleset_as(profile);
+        let firewall = r.spell_by_key("t:firewall").unwrap();
+        let mut mage = BattleHero::new(HeroTypeId::from_index(0).unwrap());
+        mage.attack = 4;
+        mage.power = 2;
+        mage.magic.spell_book = Some(vec![firewall]);
+        mage.magic.mana = 50;
+        let mut knight = BattleHero::new(HeroTypeId::from_index(0).unwrap());
+        knight.attack = 4;
+        let mut setup = on(0, setup(&[(GOG, 5)], &[(IMP, 10), (EFREET, 5)]));
+        setup.heroes = [Some(mage), Some(knight)];
+        let mut state = BattleState::new(&r, &setup, 19).unwrap();
+        play(&mut state, &r, Command::Defend);
+        play(&mut state, &r, Command::Defend);
+        assert_eq!(active(&state), GOG);
+        let cast = Command::Cast {
+            spell: firewall,
+            target: h3_battle::CastTarget::Hex(Hex(93)),
+            second: h3_battle::CastTarget::None,
+        };
+        play(&mut state, &r, cast);
+        let walls: Vec<Hex> = state
+            .spell_obstacles()
+            .iter()
+            .flat_map(|o| o.hexes.iter())
+            .collect();
+        assert_eq!(walls.len(), 2);
+        let ctx = computer::context(&state, &r, BattleSide::Defender);
+        for (id, immune) in [(StackId(1), false), (StackId(2), true)] {
+            let scores = scores_of(&state, &r, id);
+            for hex in all_hexes() {
+                let want =
+                    computer::fire_wall_damage(&state, &r, hex, id).map_or(0, |(d, hurts)| {
+                        assert_eq!(hurts, !immune);
+                        let value = |ctx: &computer::Context| {
+                            -computer::damage_value(&state, &r, ctx, (id, d), (false, false))
+                        };
+                        let (orig, rule) = (value(&ctx.attack_for_both()), value(&ctx));
+                        assert!(orig < 0 && rule < 0 && orig != rule, "{orig} {rule}");
+                        match (slips, immune) {
+                            (true, _) => orig,
+                            (false, false) => rule,
+                            (false, true) => 0,
+                        }
+                    });
+                assert_eq!(scores[hex.index()], want, "{profile} {id:?} {hex:?}");
+            }
         }
     }
 }

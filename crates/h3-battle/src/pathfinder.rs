@@ -14,14 +14,22 @@
 //! over such a neighbour while it has passed over fewer than its speed less one in a row. Draws:
 //! none.
 //!
+//! A search may leave the stacks of one side unmarked (the walker's map of the original's battle
+//! AI asks with its own side, 0x4217BE; the berserk turn with none, side −1).
+//!
+//! A search may count with a turn's speed other than the stack's (the walker's hex scores ask
+//! each enemy's reach with its speed + 1 as range and speed, 0x420260): a stop then costs up to
+//! that speed's next multiple and a mark from a stop that speed more; with the range within the
+//! speed nothing is marked from a stop (0x4B378D to 0x4B37D1). A flyer passes over hexes by its
+//! own speed (0x4B39E7).
+//!
 //! Not modelled, as no caller of the engine meets it: the original's cap of 500 queued entries (a
-//! position is queued at most twice, below); its refusal to mark from a stop when the range is
-//! within one move (0x4B378D: the walks' searches, which read no marks); the side whose stacks
-//! are no targets (every caller here asks with none, as the berserk turn's side −1); the tactics
-//! phase's range (no walk is searched there: a placement is one move); the computer's stop
-//! avoidance in a walk's own search (0x4B3420: for a stack the computer plays at a town; the
-//! engine's walks are commands, whose legality reads no player, and within one move a stop is
-//! an end that no path to another position passes, so no such path changes).
+//! position is queued at most twice, below); the tactics phase's
+//! range (no walk is searched there: a placement is one move); the computer's stop avoidance in
+//! a command's own walk (0x4B3420: for a stack the computer plays at a town; the engine's walks
+//! are commands, whose legality reads no player, and within one move a stop is an end that no
+//! path to another position passes, so no such path changes; the battle AI's own searches ask
+//! for it, `computer`).
 
 use h3_content_battle::MAX_FIELD_HEXES;
 
@@ -31,6 +39,7 @@ use crate::movement::{MAX_PATH, fits};
 use crate::obstacles;
 use crate::siege;
 use crate::state::{BattleState, Stack, StackId, StackTraits};
+use h3_contracts::BattleSide;
 
 /// The range of the computer's searches over the whole field (the berserk turn's 127: 0x445582,
 /// 0x42232C).
@@ -81,6 +90,12 @@ pub(crate) struct Query {
     /// Whether the computer keeps the stack out of its stops (BAT-SIE-022): a step that enters
     /// one is treated as blocked.
     pub(crate) avoid: bool,
+    /// The side whose stacks are not marked (0x4B3801: a stack's own side, +0xF4), or none.
+    pub(crate) spare: Option<BattleSide>,
+    /// The turn's speed the search counts with (the original's last argument), or the stack's
+    /// own (−1): a stop costs up to its next multiple, a mark from a stop one more of it, and a
+    /// range within it marks nothing from a stop. A flyer passes over hexes by its own speed.
+    pub(crate) speed: Option<u16>,
 }
 
 /// The queue: a bucket per cost, first in first out within one.
@@ -149,6 +164,7 @@ pub(crate) struct Search {
     flown: [u8; HEXES],
     reached: HexSet,
     marked: HexSet,
+    stops: HexSet,
     end: Option<Hex>,
 }
 
@@ -161,7 +177,8 @@ impl Search {
         (id, mover): (StackId, &Stack),
         query: Query,
     ) -> Self {
-        let speed = u16::from(mover.speed_now());
+        let own_speed = u16::from(mover.speed_now());
+        let speed = query.speed.unwrap_or(own_speed);
         let range = if speed == 0 || binds::is_bound(state, id) {
             0
         } else {
@@ -204,6 +221,7 @@ impl Search {
             flown: [0; HEXES],
             reached: HexSet::new(),
             marked: HexSet::new(),
+            stops,
             end: None,
         };
         search.reached.insert(mover.hex);
@@ -244,11 +262,19 @@ impl Search {
                     search.push(&mut queue, (n, at), c + step, 0, range);
                     continue;
                 }
-                // The attack marks (0x4B3772): from a stop a whole move more.
-                let a = c + if stops.contains(at) { speed } else { 0 };
-                if let Some(occupant) = occupant.as_ref().filter(|_| a <= range) {
+                // The attack marks (0x4B3772): from a stop a whole move more, and none from a
+                // stop (or a two-hex walker's hex beside it on one) when the range is within the
+                // speed (0x4B378D to 0x4B37D1).
+                let from_stop = stops.contains(at);
+                let a = c + if from_stop { speed } else { 0 };
+                let refused =
+                    range <= speed && (from_stop || at_beside.is_some_and(|b| stops.contains(b)));
+                if let Some(occupant) = occupant.as_ref().filter(|_| a <= range && !refused) {
                     for hit in [Some(n), beside(n)].into_iter().flatten() {
-                        if let Some(t) = occupant[hit.index()] {
+                        if let Some((t, side)) = occupant[hit.index()] {
+                            if Some(side) == query.spare {
+                                continue;
+                            }
                             for h in t.hexes() {
                                 search.mark(h, a);
                             }
@@ -261,7 +287,7 @@ impl Search {
                 }
                 // A flyer has no stops: its step costs 1.
                 // rule: BAT-MOV-002
-                if flies && u16::from(flown) + 1 < speed {
+                if flies && u16::from(flown) + 1 < own_speed {
                     search.push(&mut queue, (n, at), c + 1, flown + 1, range);
                 }
             }
@@ -309,6 +335,17 @@ impl Search {
         self.flown[hex.index()]
     }
 
+    /// Whether the search reached `hex` (the cell's bit 0), a position or a hex flown over.
+    pub(crate) const fn reached(&self, hex: Hex) -> bool {
+        self.reached.contains(hex)
+    }
+
+    /// Whether `hex` is one of the walk's stops (the pathfinder's +0x68, 0x4B3290): a pit its
+    /// controller sees or a town's moat, not under the stack at its start; none for a flyer.
+    pub(crate) const fn is_stop(&self, hex: Hex) -> bool {
+        self.stops.contains(hex)
+    }
+
     /// Where the search ended: the position reached ([`Goal::Reach`]) or the one the stack attacks
     /// from ([`Goal::Attack`]).
     pub(crate) const fn end(&self) -> Option<Hex> {
@@ -331,14 +368,17 @@ impl Search {
     }
 }
 
-/// The footprint of the living stack on each hex of the field (turrets stand off it).
-fn occupants(state: &BattleState, field: Field) -> [Option<crate::geometry::Footprint>; HEXES] {
+/// The footprint and side of the living stack on each hex of the field (turrets stand off it).
+fn occupants(
+    state: &BattleState,
+    field: Field,
+) -> [Option<(crate::geometry::Footprint, BattleSide)>; HEXES] {
     let mut on = [None; HEXES];
     for s in state.stacks.iter() {
         if s.is_alive() && !s.is_turret() {
             let fp = s.footprint(field);
             for h in fp.hexes() {
-                on[h.index()] = Some(fp);
+                on[h.index()] = Some((fp, s.side));
             }
         }
     }

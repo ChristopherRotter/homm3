@@ -177,6 +177,9 @@ fn only_the_owner_of_the_side_to_act_commands_the_battle() {
     assert_eq!(legal_commands(&game, &rules, Actor::Player(owner)), listed);
     assert_eq!(legal_commands(&game, &rules, Actor::Player(waiting)), []);
     assert_eq!(legal_commands(&game, &rules, Actor::Player(GREEN)), []);
+    // E08 T30: a battle has no default answer (the server lane's), nor has a player without one.
+    assert_eq!(default_answer(&game, &rules, owner), None);
+    assert_eq!(default_answer(&game, &rules, GREEN), None);
     // Red, whose turn runs, may neither move nor end its turn.
     assert_eq!(
         legal_moves(&game, &rules, Actor::Player(RED), RED_HERO),

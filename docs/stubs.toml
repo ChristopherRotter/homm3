@@ -21,14 +21,14 @@ epic   = "E05"
 
 [[stub]]
 id     = "BAT-STUB-4"
-where  = "crates/h3-battle-ai/src/lib.rs::unchecked"
-reason = "The computer's walker (0x421F80, 0x421680; installation.md §7.35 to §7.38) is not built: a stack that cannot shoot defends, the original's default action, and draws nothing (BAT-AI-001). The First Aid Tent's patient (§7.14, BAT-Q51) waits for E23 T6"
+where  = "crates/h3-battle-ai/src/walker.rs"
+reason = "The computer's walker is built in part (E23 T3a: the plan, the choice with its draw, the walk; BAT-AI-005, BAT-AI-006; T3b: the hex scores, BAT-AI-007). Not yet: the stronger at range (0x420A80) and with it P alone for a negative value, the last retaliation's gain (0x41F3B0), a defender holding the walls (0x4213F0), a besieger's walk to its wall and the fallbacks (0x41F920, 0x420760, 0x4208F0) are T3c's; the creature casts (0x421280, before and after the choice) are T4's"
 epic   = "E23"
 
 [[stub]]
 id     = "BAT-STUB-5"
 where  = "crates/h3-battle-ai/src/lib.rs::unchecked"
-reason = "The hero's side of the computer (E23 T5, T6): no hero's cast (0x422DA0, T1a6's reading) and no retreat test (0x41E570); the tactics phase ends at once instead of the shooters' placement and the walkers' choice in the zone (§7.34); a commanded Catapult shoots the first wall the engine lists instead of the computer's aim (§7.29, the gate first) (BAT-AI-001)"
+reason = "The hero's side of the computer (E23 T5, T6): no hero's cast (0x422DA0, T1a6's reading) and no retreat test (0x41E570); the tactics phase ends at once instead of the shooters' placement and the walkers' choice in the zone (§7.34); a commanded Catapult shoots the first wall the engine lists instead of the computer's aim (§7.29, the gate first); a commanded First Aid Tent defends instead of healing the computer's patient (§7.14, BAT-Q51) (BAT-AI-001)"
 epic   = "E23"
 
 # --- adventure (ADV-STUB-<n>) ---
@@ -38,6 +38,12 @@ id     = "ADV-STUB-2"
 where  = "crates/h3-adventure/src/state/monsters.rs::AdventureState::answer_to"
 reason = "A wandering monster's offer to join is skipped, as declined, when the hero's army has neither a stack of the group's creature nor a free slot (E08 decision 22); the original shows its army dialog (0x5D11D0, not read) so the player can make room (dismiss or merge stacks) and then accept. A feature to-do for army management (E08 decision 48: increment 5's sketch): read 0x5D11D0, build the dialog as a pending decision"
 epic   = "E08"
+
+[[stub]]
+id     = "ADV-STUB-8"
+where  = "crates/h3-game/src/legal.rs::default_answer"
+reason = "The system actor's default answer to a level-up (ADR-0017 point 6) is the original's choice (HER-LVL-006) with the setup's inputs (ArmyWorth::SETUP and the map's terrain shares), as at load (GAM-SET-002): the original's flag-set path when the dialog's time runs out reads the computer player's state with the army counted (survey E08-progression.md §10.4, ADV-Q17, decision 60), which the engine gets with E10"
+epic   = "E10"
 
 # --- server (SRV-STUB-<n>) ---
 

@@ -7,7 +7,7 @@ use h3_content::{CompileError, FactionDef, SpellCategory, SpellDef, SpellSchoolD
 
 use super::{Pack, Spell, base, compile, content, expect, key};
 use crate::siege::{BallisticsRecord, SiegeDef, SiegeFieldDef, WallKind, WallTarget};
-use crate::spell::{ObstacleKind, ObstacleShape, SpellEffect, SpellMagic, SpellPolarity};
+use crate::spell::{ObstacleKind, ObstacleShape, SpellAi, SpellEffect, SpellMagic, SpellPolarity};
 use crate::{BattleCompileError, BattleSpellDef};
 
 /// The original's field (`installation.md` §7.27, §7.28).
@@ -97,6 +97,7 @@ fn obstacle_spell(k: &str, kind: ObstacleKind) -> Spell {
             spares: vec![],
             tests_as: None,
             summons: None,
+            ai: SpellAi::default(),
         },
     }
 }
@@ -178,10 +179,10 @@ fn the_field_and_the_records_compile() {
 fn the_hash_covers_the_sieges() {
     let hash = |p: Pack| compile(&[p], "base:faithful").unwrap().content_hash();
     let with = hash(sieges());
-    // Golden value: pins the sieges' encoding (battle part v6; bump BATTLE_RULESET_HASH_VERSION
+    // Golden value: pins the sieges' encoding (battle part v7; bump BATTLE_RULESET_HASH_VERSION
     // when it changes).
     assert_eq!(with, GOLDEN, "got {with:#018x}");
-    assert_eq!(crate::BATTLE_RULESET_HASH_VERSION, 6);
+    assert_eq!(crate::BATTLE_RULESET_HASH_VERSION, 7);
     assert_ne!(with, hash(base()));
     let mut p = sieges();
     p.battle.sieges[0].moat_damage = 71;
@@ -217,7 +218,7 @@ fn the_hash_covers_the_sieges() {
     }
 }
 
-const GOLDEN: u64 = 0x3223_a026_5428_ab56;
+const GOLDEN: u64 = 0x1271_1f8b_61fb_67bd;
 
 #[test]
 fn field_errors() {

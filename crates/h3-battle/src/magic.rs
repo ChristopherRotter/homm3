@@ -28,7 +28,7 @@ use h3_content_battle::{
 use h3_content_battle::{BattleSpell, Battlefield, BattlefieldId, MAX_MASTERY};
 use h3_contracts::{BattleEffect, BattleHero, BattleSide, Rate};
 use h3_kernel::arith::{
-    SINGLE_BITS, SINGLE_FRAC_BITS, X87, mul_div_floor, round_single, single_precision,
+    DOUBLE_BITS, SINGLE_BITS, SINGLE_FRAC_BITS, X87, mul_div_floor, round_single, single_precision,
 };
 use h3_kernel::{CanonicalHash, FixedVec, StateHasher};
 
@@ -2173,6 +2173,44 @@ pub(crate) fn affect_chance(
     u32::try_from(chance).unwrap_or(100).min(100)
 }
 
+/// The factor of the original's effect test 0x5A8090 for `spell` of `caster`'s side at stack `s`
+/// as the x87 holds it (BAT-MAG-008; `installation.md` §7.8): 0 when the spell cannot affect the
+/// stack ([`affects_stack`]); 1 for a positive spell, one that ignores immunity and when the
+/// immunities are negated; else [`share`] times 1 − the strongest [`aura`] (with quirk Q-0005
+/// their single-precision values, else the exact rates, each rounded to the double), the product
+/// at 53 bits. The computer's estimate of a hero's area spell takes it (0x41F920).
+pub(crate) fn effect_factor(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    caster: BattleSide,
+    spell: SpellRef<'_>,
+    s: StackId,
+) -> X87 {
+    if !affects_stack(state, ruleset, caster, spell, s) {
+        return X87::ZERO;
+    }
+    // rule: BAT-MAG-066
+    if spell.1.polarity == SpellPolarity::Positive
+        || spell.1.magic.ignores_immunity
+        || Guard::of(state, caster, s).negated
+    {
+        return X87::ONE;
+    }
+    let single = ruleset.quirks().is_enabled(SINGLE_PRECISION_RATES);
+    let (share, _) = share(state, ruleset, caster, s);
+    // A rate at the scale: a single-precision numerator, or basis points (at most `FULL_BP`).
+    let value = |v: u64| {
+        if single {
+            X87::fixed(v)
+        } else {
+            let v = u32::try_from(v).unwrap_or(u32::MAX);
+            X87::ratio(v, u32::from(FULL_BP), DOUBLE_BITS).unwrap_or(X87::ZERO)
+        }
+    };
+    let f = value(share);
+    aura(state, ruleset, s).map_or(f, |p| f.times(value(percent_rate(single, p))))
+}
+
 /// Rolls whether stack `s` resists `spell` (BAT-MAG-008): one draw from 1 to 100 when the chance
 /// to be affected is neither 0 nor 100.
 pub(crate) fn resists(
@@ -2667,6 +2705,29 @@ pub(crate) fn hurts(
     })
 }
 
+/// The damage of the obstacle `fire` with its spell `spell` to stack `s` whether or not the spell
+/// hurts it (BAT-MAG-028, BAT-MAG-033; the original's 0x5A78E0 with the hero of the side that cast
+/// it as the caster, the stack's reductions and protection), as [`spell_damage`] gives it: the
+/// value after the caster's bonuses and the damage. The computer's Fire Wall scores estimate it
+/// without the test (`computer::fire_wall_damage`).
+pub(crate) fn obstacle_damage(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    (fire, spell): (&SpellObstacle, &BattleSpell),
+    s: StackId,
+) -> (u64, u64) {
+    let hero = state.heroes[fire.side.index()]
+        .as_ref()
+        .map(|h| &h.magic.bonuses);
+    let target = state.at(s);
+    spell_damage(
+        ruleset,
+        ((fire.spell, spell), hero),
+        fire.value,
+        (target.creature, &target.spells.school_protection),
+    )
+}
+
 /// The damage of the obstacle `fire` (Fire Wall, BAT-MAG-028, or a mine, BAT-MAG-033; the
 /// original's 0x59FCD0 and 0x59FB40) to stack `s`: none unless its spell [`hurts`] the stack;
 /// else the obstacle's value as the spell's damage with the bonuses of the hero of the side that
@@ -2686,17 +2747,7 @@ pub(crate) fn burn<S: Sink>(
     let Some(spell) = found else {
         return;
     };
-    let hero = state.heroes[fire.side.index()]
-        .as_ref()
-        .map(|h| &h.magic.bonuses);
-    let target = state.at(s);
-    let protection = target.spells.school_protection;
-    let (caster, damage) = spell_damage(
-        ruleset,
-        ((fire.spell, spell), hero),
-        fire.value,
-        (target.creature, &protection),
-    );
+    let (caster, damage) = obstacle_damage(state, ruleset, (fire, spell), s);
     let kills = apply_damage(state.at_mut(s), damage);
     sink.emit(Event::public(EventKind::SpellDamage {
         target: s,

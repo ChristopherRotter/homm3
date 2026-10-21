@@ -506,6 +506,15 @@ pub(crate) fn damaging(state: &BattleState) -> bool {
     state.siege.is_some_and(|s| s.moat_damage > 0)
 }
 
+/// The hexes of a damaging moat now (BAT-SIE-005: under SoD rules; the drawbridge's, and with a
+/// second row the outer bridge's, not while the gate is open) and its damage; none without one.
+pub(crate) fn damaging_moat(state: &BattleState) -> Option<(HexSet, u64)> {
+    state
+        .siege
+        .filter(|s| s.moat_damage > 0)
+        .map(|s| (s.moat(), u64::from(s.moat_damage)))
+}
+
 /// Whether entering `hex` damages a stack: a hex of a damaging moat now (BAT-SIE-005).
 pub(crate) fn damages_on(state: &BattleState, hex: Hex) -> bool {
     state

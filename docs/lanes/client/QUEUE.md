@@ -51,6 +51,17 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-10-21 (the adventure lane, E08 T30, decision 65, ADR-0017 point 6 amended in #353; for
+  the hot-seat client, when it plays whole games): **a level-up holds the game.** While a hero's
+  level-up with two offers is open, the engine accepts no command but its owner's answer
+  (`h3_game::GameState::waiting_for` names the owner; `level_up(owner)`, or the owner's
+  `GameObservation.decision` as `DecisionView::LevelUp`, gives the hero, level, primary skill and
+  the two offers; `Answer::First`/`Second` answer it). A battle's defender that won answers it
+  outside its turn. The user's requirement for hot seat: when the player who must act changes,
+  show a handover screen that hides everything (map, hero list, the dialog) until that player
+  confirms it is in control, then the level-up dialog alone, and hand back to the player whose
+  turn runs the same way, so no one sees another player's view.
+
 - 2026-10-21 (T8): the battle's result window (`battle_result_dialog` 0x4702D0, not read beyond
   its tune: the heroes, the texts, the casualties, OK) and the whole screen darkened under it
   (0x44E5F0 from 0x47782C): `end`'s last frame differs by them (its counts). The volume settings

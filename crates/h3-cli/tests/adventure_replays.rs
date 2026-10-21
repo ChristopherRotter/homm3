@@ -54,7 +54,10 @@
 //! (`duel-s1122-d28` has it), `duel-s1122-d28` the declined Cartographer; no replay now declines a
 //! pile's question or a Cartographer. E08 T29 re-recorded them all with their options for the game
 //! state hash v10, the adventure part v9 and the import v8, their commands unchanged (the level
-//! seeds are the setup stream's last draws, and the duel's heroes have no custom experience).
+//! seeds are the setup stream's last draws, and the duel's heroes have no custom experience). E08
+//! T30 re-recorded them for the game state hash v11 and the replay format v5, their commands
+//! unchanged: no battle of theirs reaches a level (the highest experience any of their heroes ends
+//! with is 788), so none answers a level-up yet (E08 T31).
 
 use std::path::PathBuf;
 

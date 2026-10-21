@@ -1627,8 +1627,8 @@ task at once). The user's computer was linked for the staging only.
 
 ### M3 T8 — The battle's end tune (2026-10-21)
 
-On `client/e17-m3-t8` (branched from `client/e17-m3-t7a-2b`, #355 open), the user present at the
-start. The user's computer was linked for the staging only (all files staged once, the session
+On `client/e17-m3-t8` (branched from `client/e17-m3-t7a-2b`; #355 merged meanwhile, `master`
+merged in), the user present at the start. The user's computer was linked for the staging only (all files staged once, the session
 then ran in the cloud).
 
 - **Starting point:** T7a-2b's branch, the client gates' full check on its code (`verify-once

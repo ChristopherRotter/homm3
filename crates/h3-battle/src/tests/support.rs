@@ -16,8 +16,9 @@ use h3_content_battle::{
     AbilityDef, AuraTarget, BallisticsRecord, BattleCompileError, BattleCreatureDef, BattlePack,
     BattleParamsDef, BattleRuleset, BattleSpellDef, BattlefieldDef, EffectDuration, EffectEnd,
     FactionChangeDef, HexStep, ObstacleDef, ObstacleKind, ObstacleShape, SiegeDef, SiegeFieldDef,
-    SpecialistBonus, SpellArea, SpellChain, SpellEffect, SpellMagic, SpellPolarity, SpellTarget,
-    SurrenderDef, TargetConditions, TargetSide, TimedChange, Usefulness, WallKind, WallTarget,
+    SpecialistBonus, SpellAi, SpellArea, SpellChain, SpellEffect, SpellMagic, SpellPolarity,
+    SpellTarget, SurrenderDef, TargetConditions, TargetSide, TimedChange, Usefulness, WallKind,
+    WallTarget,
 };
 pub use h3_contracts::Rate;
 use h3_contracts::{Army, ArmyStack, BattleHero, BattleSetup, BattleSide};
@@ -70,6 +71,7 @@ impl SpellDef {
                 spares: self.spares,
                 tests_as: self.tests_as,
                 summons: self.summons,
+                ai: SpellAi::default(),
             },
         )
     }

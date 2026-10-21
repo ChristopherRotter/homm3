@@ -14,7 +14,7 @@ use h3_content::{ContentKey, PackManifest};
 use crate::ability::AbilityDef;
 use crate::battlefield::BattlefieldDef;
 use crate::siege::{SiegeDef, SiegeFieldDef};
-use crate::spell::{SpellMagic, SpellPolarity};
+use crate::spell::{SpellAi, SpellMagic, SpellPolarity};
 
 /// A battlefield obstacle type (E03, BAT-GEO-004).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -193,6 +193,9 @@ pub struct BattleSpellDef {
     /// The creature a summon effect summons (pack format v18; Summon Fire Elemental: the Fire
     /// Elemental).
     pub summons: Option<ContentKey>,
+    /// What the original's computer reads of it (pack format v45, E23 T3-0; default: no kind,
+    /// values 0).
+    pub ai: SpellAi,
 }
 
 /// The battle's part of one content pack.

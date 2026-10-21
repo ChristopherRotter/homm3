@@ -1193,54 +1193,66 @@ abilities = [{ kind = "turret" }]
 [[spell]]
 id = "summon_boat"  # original id 0
 polarity = "neutral"
+ai = { kinds = ["special"], values = [10, 10, 20, 20] }
 
 [[spell]]
 id = "scuttle_boat"  # original id 1
 polarity = "neutral"
+ai = { values = [1, 1, 1, 1] }
 
 [[spell]]
 id = "visions"  # original id 2
 polarity = "neutral"
+ai = { values = [1, 1, 1, 1] }
 
 [[spell]]
 id = "view_earth"  # original id 3
 polarity = "neutral"
+ai = { values = [1, 1, 1, 1] }
 
 [[spell]]
 id = "disguise"  # original id 4
 polarity = "neutral"
+ai = { values = [1, 1, 1, 1] }
 
 [[spell]]
 id = "view_air"  # original id 5
 polarity = "neutral"
+ai = { values = [1, 1, 1, 1] }
 
 [[spell]]
 id = "fly"  # original id 6
 polarity = "neutral"
+ai = { kinds = ["special"], values = [30, 30, 40, 50] }
 
 [[spell]]
 id = "water_walk"  # original id 7
 polarity = "neutral"
+ai = { kinds = ["special"], values = [15, 15, 20, 25] }
 
 [[spell]]
 id = "dimension_door"  # original id 8
 polarity = "neutral"
+ai = { kinds = ["special"], values = [30, 30, 40, 50] }
 
 [[spell]]
 id = "town_portal"  # original id 9
 polarity = "neutral"
+ai = { kinds = ["special"], values = [5, 5, 70, 70] }
 
 [[spell]]
 id = "quicksand"  # original id 10
 polarity = "neutral"
 obstacle = { hexes = [4, 4, 6, 8], random = true, separate = true }
 effects = [{ kind = "obstacle", obstacle = "pit" }]
+ai = { values = [1, 1, 1, 1] }
 
 [[spell]]
 id = "land_mine"  # original id 11
 polarity = "neutral"
 obstacle = { hexes = [4, 4, 6, 8], random = true, separate = true }
 effects = [{ kind = "obstacle", obstacle = "mine" }]
+ai = { values = [1, 1, 1, 1] }
 
 [[spell]]
 id = "force_field"  # original id 12
@@ -1248,6 +1260,7 @@ polarity = "neutral"
 target = "hex"
 obstacle = { hexes = [2, 2, 3, 3], rounds = 2, steps = ["top_right", "top_left"] }
 effects = [{ kind = "obstacle", obstacle = "wall" }]
+ai = { values = [1, 1, 1, 1] }
 
 [[spell]]
 id = "fire_wall"  # original id 13
@@ -1255,11 +1268,13 @@ polarity = "neutral"
 target = "hex"
 obstacle = { hexes = [2, 2, 3, 3], mirrored = true, rounds = 2, separate = true, steps = ["top_right", "top_left"] }
 effects = [{ kind = "obstacle", obstacle = "fire" }]
+ai = { values = [1, 1, 1, 1] }
 
 [[spell]]
 id = "earthquake"  # original id 14
 polarity = "neutral"
 effects = [{ kind = "earthquake" }]
+ai = { kinds = ["special"], values = [1, 1, 1, 1] }
 
 [[spell]]
 id = "magic_arrow"  # original id 15
@@ -1267,6 +1282,7 @@ polarity = "negative"
 target = "stack"
 side = "enemy"
 effects = [{ kind = "damage" }]
+ai = { kinds = ["damage"], values = [10, 10, 10, 10] }
 
 [[spell]]
 id = "ice_bolt"  # original id 16
@@ -1274,6 +1290,7 @@ polarity = "negative"
 target = "stack"
 side = "enemy"
 effects = [{ kind = "damage" }]
+ai = { kinds = ["damage"], values = [20, 20, 20, 20] }
 
 [[spell]]
 id = "lightning_bolt"  # original id 17
@@ -1281,6 +1298,7 @@ polarity = "negative"
 target = "stack"
 side = "enemy"
 effects = [{ kind = "damage" }]
+ai = { kinds = ["damage"], values = [25, 25, 25, 25] }
 
 [[spell]]
 id = "implosion"  # original id 18
@@ -1289,6 +1307,7 @@ target = "stack"
 side = "enemy"
 excludes = ["war_machine"]
 effects = [{ kind = "damage" }]
+ai = { kinds = ["damage"], values = [75, 75, 75, 75] }
 
 [[spell]]
 id = "chain_lightning"  # original id 19
@@ -1297,6 +1316,7 @@ target = "stack"
 side = "enemy"
 chain = { factor_bp = 5000, targets = [4, 4, 5, 5] }
 effects = [{ kind = "damage" }]
+ai = { kinds = ["damage_once"], values = [75, 75, 75, 75] }
 
 [[spell]]
 id = "frost_ring"  # original id 20
@@ -1304,6 +1324,7 @@ polarity = "neutral"
 target = "hex"
 area = { inner = 1, radius = [1, 1, 1, 1] }
 effects = [{ kind = "damage" }]
+ai = { kinds = ["damage"], values = [12, 12, 12, 12] }
 
 [[spell]]
 id = "fireball"  # original id 21
@@ -1311,6 +1332,7 @@ polarity = "neutral"
 target = "hex"
 area = { radius = [1, 1, 1, 1] }
 effects = [{ kind = "damage" }]
+ai = { kinds = ["damage"], values = [15, 15, 15, 15] }
 
 [[spell]]
 id = "inferno"  # original id 22
@@ -1318,6 +1340,7 @@ polarity = "neutral"
 target = "hex"
 area = { radius = [2, 2, 2, 2] }
 effects = [{ kind = "damage" }]
+ai = { kinds = ["damage_once"], values = [20, 20, 20, 20] }
 
 [[spell]]
 id = "meteor_shower"  # original id 23
@@ -1325,23 +1348,27 @@ polarity = "neutral"
 target = "hex"
 area = { radius = [1, 1, 1, 1] }
 effects = [{ kind = "damage" }]
+ai = { kinds = ["damage"], values = [37, 37, 37, 37] }
 
 [[spell]]
 id = "death_ripple"  # original id 24
 polarity = "neutral"
 excludes = ["undead", "war_machine"]
 effects = [{ kind = "damage" }]
+ai = { kinds = ["damage_all"], values = [20, 20, 20, 20] }
 
 [[spell]]
 id = "destroy_undead"  # original id 25
 polarity = "neutral"
 requires = ["undead"]
 effects = [{ kind = "damage" }]
+ai = { kinds = ["damage_all"], values = [40, 40, 40, 40] }
 
 [[spell]]
 id = "armageddon"  # original id 26
 polarity = "neutral"
 effects = [{ kind = "damage" }]
+ai = { kinds = ["damage_all"], values = [100, 100, 100, 100] }
 
 [[spell]]
 id = "shield"  # original id 27
@@ -1351,6 +1378,7 @@ side = "own"
 mass = "expert"
 effects = [{ kind = "timed", change = "melee_protection" }]
 useful = "enemy_melee"
+ai = { kinds = ["effect"], values = [10, 10, 20, 20] }
 
 [[spell]]
 id = "air_shield"  # original id 28
@@ -1360,6 +1388,7 @@ side = "own"
 mass = "expert"
 effects = [{ kind = "timed", change = "ranged_protection" }]
 useful = "enemy_shooter"
+ai = { kinds = ["effect"], values = [20, 20, 50, 50] }
 
 [[spell]]
 id = "fire_shield"  # original id 29
@@ -1368,6 +1397,7 @@ target = "stack"
 side = "own"
 effects = [{ kind = "timed", change = "fire_shield" }]
 useful = "enemy_melee"
+ai = { kinds = ["effect"], values = [10, 10, 12, 15] }
 
 [[spell]]
 id = "protection_from_air"  # original id 30
@@ -1377,6 +1407,7 @@ side = "own"
 mass = "expert"
 effects = [{ kind = "timed", change = "school_protection" }]
 useful = "enemy_spell_book"
+ai = { kinds = ["effect"], values = [2, 2, 4, 4] }
 
 [[spell]]
 id = "protection_from_fire"  # original id 31
@@ -1386,6 +1417,7 @@ side = "own"
 mass = "expert"
 effects = [{ kind = "timed", change = "school_protection" }]
 useful = "enemy_spell_book"
+ai = { kinds = ["effect"], values = [2, 2, 4, 4] }
 
 [[spell]]
 id = "prot_from_water"  # original id 32
@@ -1395,6 +1427,7 @@ side = "own"
 mass = "expert"
 effects = [{ kind = "timed", change = "school_protection" }]
 useful = "enemy_spell_book"
+ai = { kinds = ["effect"], values = [2, 2, 4, 4] }
 
 [[spell]]
 id = "prot_from_earth"  # original id 33
@@ -1404,6 +1437,7 @@ side = "own"
 mass = "expert"
 effects = [{ kind = "timed", change = "school_protection" }]
 useful = "enemy_spell_book"
+ai = { kinds = ["effect"], values = [2, 2, 4, 4] }
 
 [[spell]]
 id = "anti_magic"  # original id 34
@@ -1412,6 +1446,7 @@ target = "stack"
 side = "own"
 effects = [{ kind = "timed", change = "spell_immunity" }]
 useful = "enemy_spell_book"
+ai = { kinds = ["effect"], values = [10, 10, 15, 20] }
 
 [[spell]]
 id = "dispel"  # original id 35
@@ -1425,6 +1460,7 @@ needs_effect = true
 ignores_immunity = true
 spares = ["poison"]
 effects = [{ kind = "dispel" }]
+ai = { kinds = ["effect"], values = [3, 3, 3, 3] }
 
 [[spell]]
 id = "magic_mirror"  # original id 36
@@ -1433,6 +1469,7 @@ target = "stack"
 side = "own"
 effects = [{ kind = "timed", change = "magic_mirror" }]
 useful = "enemy_spell_book"
+ai = { kinds = ["effect"], values = [12, 12, 18, 24] }
 
 [[spell]]
 id = "cure"  # original id 37
@@ -1444,6 +1481,7 @@ restores_health = true
 dispels = ["curse", "weakness", "sorrow", "misfortune", "slow", "berserk", "hypnotize", "forgetfulness", "blind", "stone_gaze", "poison", "disease", "paralyze", "age"]
 effects = [{ kind = "dispel" }, { kind = "heal" }]
 useful = "wounded"
+ai = { kinds = ["effect"], values = [4, 4, 4, 4] }
 
 [[spell]]
 id = "resurrection"  # original id 38
@@ -1454,6 +1492,7 @@ requires = ["alive"]
 excludes = ["war_machine"]
 temporary_below = "advanced"
 effects = [{ kind = "raise" }]
+ai = { kinds = ["stacks"], values = [50, 50, 60, 120] }
 
 [[spell]]
 id = "animate_dead"  # original id 39
@@ -1463,6 +1502,7 @@ side = "own"
 requires = ["undead"]
 excludes = ["war_machine"]
 effects = [{ kind = "raise" }]
+ai = { kinds = ["stacks"], values = [60, 60, 60, 120] }
 
 [[spell]]
 id = "sacrifice"  # original id 40
@@ -1473,6 +1513,7 @@ requires = ["alive"]
 excludes = ["undead", "war_machine"]
 tests_as = "resurrection"
 effects = [{ kind = "sacrifice" }]
+ai = { values = [1, 1, 1, 1] }
 
 [[spell]]
 id = "bless"  # original id 41
@@ -1484,6 +1525,7 @@ excludes = ["undead"]
 needs_damage = true
 counters = ["curse"]
 effects = [{ kind = "timed", change = "maximum_damage" }]
+ai = { kinds = ["effect"], values = [10, 10, 11, 11] }
 
 [[spell]]
 id = "curse"  # original id 42
@@ -1495,6 +1537,7 @@ excludes = ["undead"]
 needs_damage = true
 counters = ["bless"]
 effects = [{ kind = "timed", change = "minimum_damage" }]
+ai = { kinds = ["effect"], values = [10, 10, 11, 11] }
 
 [[spell]]
 id = "bloodlust"  # original id 43
@@ -1506,6 +1549,7 @@ excludes = ["war_machine"]
 effects = [{ kind = "timed", change = "melee_attack" }]
 specialist = { kind = "creature_level", values = [3, 3, 2, 2, 1, 1, 0] }
 useful = "melee"
+ai = { kinds = ["effect"], values = [7, 7, 15, 15] }
 
 [[spell]]
 id = "precision"  # original id 44
@@ -1517,6 +1561,7 @@ requires = ["shooter"]
 effects = [{ kind = "timed", change = "ranged_attack" }]
 specialist = { kind = "creature_level", values = [3, 3, 2, 2, 1, 1, 0] }
 useful = "shooting"
+ai = { kinds = ["effect"], values = [7, 7, 15, 15] }
 
 [[spell]]
 id = "weakness"  # original id 45
@@ -1526,6 +1571,7 @@ side = "enemy"
 mass = "expert"
 effects = [{ kind = "timed", change = "attack_loss" }]
 specialist = { kind = "creature_level", values = [3, 3, 2, 2, 1, 1, 0] }
+ai = { kinds = ["effect"], values = [7, 7, 15, 15] }
 
 [[spell]]
 id = "stone_skin"  # original id 46
@@ -1535,6 +1581,7 @@ side = "own"
 mass = "expert"
 effects = [{ kind = "timed", change = "defense" }]
 specialist = { kind = "creature_level", values = [3, 3, 2, 2, 1, 1, 0] }
+ai = { kinds = ["effect"], values = [7, 7, 15, 15] }
 
 [[spell]]
 id = "disrupting_ray"  # original id 47
@@ -1545,6 +1592,7 @@ duration = "permanent"
 cumulative = true
 effects = [{ kind = "timed", change = "defense_loss" }]
 specialist = { amount = 2, kind = "fixed" }
+ai = { kinds = ["effect"], values = [7, 7, 15, 15] }
 
 [[spell]]
 id = "prayer"  # original id 48
@@ -1555,6 +1603,7 @@ mass = "expert"
 effects = [{ kind = "timed", change = "attack" }, { kind = "timed", change = "defense" }, { kind = "timed", change = "speed" }]
 specialist = { kind = "creature_level", values = [3, 3, 2, 2, 1, 1, 0] }
 useful = "not_acted"
+ai = { kinds = ["effect"], values = [8, 8, 16, 16] }
 
 [[spell]]
 id = "mirth"  # original id 49
@@ -1565,6 +1614,7 @@ mass = "expert"
 mind = true
 excludes = ["no_morale"]
 effects = [{ kind = "timed", change = "morale" }]
+ai = { kinds = ["effect"], values = [1, 1, 2, 2] }
 
 [[spell]]
 id = "sorrow"  # original id 50
@@ -1575,6 +1625,7 @@ mass = "expert"
 mind = true
 excludes = ["no_morale"]
 effects = [{ kind = "timed", change = "morale_loss" }]
+ai = { kinds = ["effect"], values = [1, 1, 2, 2] }
 
 [[spell]]
 id = "fortune"  # original id 51
@@ -1585,6 +1636,7 @@ mass = "expert"
 needs_damage = true
 effects = [{ kind = "timed", change = "luck" }]
 specialist = { kind = "total", value = 3 }
+ai = { kinds = ["effect"], values = [1, 1, 2, 2] }
 
 [[spell]]
 id = "misfortune"  # original id 52
@@ -1594,6 +1646,7 @@ side = "enemy"
 mass = "expert"
 needs_damage = true
 effects = [{ kind = "timed", change = "luck_loss" }]
+ai = { kinds = ["effect"], values = [1, 1, 2, 2] }
 
 [[spell]]
 id = "haste"  # original id 53
@@ -1605,6 +1658,7 @@ excludes = ["war_machine"]
 counters = ["slow"]
 effects = [{ kind = "timed", change = "speed" }]
 specialist = { kind = "creature_level", values = [3, 3, 2, 2, 1, 1, 0] }
+ai = { kinds = ["effect"], values = [5, 5, 10, 10] }
 
 [[spell]]
 id = "slow"  # original id 54
@@ -1615,6 +1669,7 @@ mass = "expert"
 excludes = ["war_machine"]
 counters = ["haste"]
 effects = [{ kind = "timed", change = "speed_percent" }]
+ai = { kinds = ["effect"], values = [5, 5, 15, 15] }
 
 [[spell]]
 id = "slayer"  # original id 55
@@ -1625,6 +1680,7 @@ needs_damage = true
 effects = [{ kind = "timed", change = "slayer" }]
 specialist = { kind = "creature_level", values = [4, 3, 2, 1, 0, 0, 0] }
 useful = "enemy_king"
+ai = { kinds = ["effect"], values = [1, 1, 1, 1] }
 
 [[spell]]
 id = "frenzy"  # original id 56
@@ -1634,6 +1690,7 @@ side = "own"
 mind = true
 duration = "own_turn"
 effects = [{ kind = "timed", change = "frenzy" }]
+ai = { kinds = ["effect"], values = [10, 10, 20, 30] }
 
 [[spell]]
 id = "counterstrike"  # original id 58
@@ -1643,6 +1700,7 @@ side = "own"
 mass = "expert"
 excludes = ["war_machine"]
 effects = [{ kind = "timed", change = "retaliations" }]
+ai = { kinds = ["effect"], values = [20, 20, 30, 30] }
 
 [[spell]]
 id = "berserk"  # original id 59
@@ -1656,6 +1714,7 @@ fixed_rounds = 255
 ends = "own_attack"
 counters = ["hypnotize"]
 effects = [{ kind = "timed", change = "berserk" }]
+ai = { kinds = ["effect"], values = [60, 60, 60, 60] }
 
 [[spell]]
 id = "hypnotize"  # original id 60
@@ -1668,6 +1727,7 @@ counters = ["berserk"]
 health_limit = true
 refuses = ["magic_mirror"]
 effects = [{ kind = "timed", change = "hypnotize" }]
+ai = { kinds = ["stacks"], values = [25, 25, 50, 100] }
 
 [[spell]]
 id = "forgetfulness"  # original id 61
@@ -1680,6 +1740,7 @@ mind = true
 requires = ["shooter"]
 excludes = ["war_machine"]
 effects = [{ kind = "timed", change = "forgetfulness" }]
+ai = { values = [1, 1, 1, 1] }
 
 [[spell]]
 id = "blind"  # original id 62
@@ -1690,6 +1751,7 @@ mind = true
 excludes = ["undead", "war_machine"]
 ends = "damaged"
 effects = [{ kind = "timed", change = "blind" }]
+ai = { kinds = ["effect"], values = [50, 50, 50, 50] }
 
 [[spell]]
 id = "teleport"  # original id 63
@@ -1698,6 +1760,7 @@ target = "stack"
 side = "own"
 excludes = ["war_machine"]
 effects = [{ kind = "teleport" }]
+ai = { kinds = ["effect"], values = [20, 20, 20, 20] }
 
 [[spell]]
 id = "remove_obstacle"  # original id 64
@@ -1705,6 +1768,7 @@ polarity = "neutral"
 target = "hex"
 removes = { fire = "advanced", mine = "expert", pit = "expert", wall = "expert" }
 effects = [{ kind = "remove_obstacle" }]
+ai = { values = [1, 1, 1, 1] }
 
 [[spell]]
 id = "clone"  # original id 65
@@ -1713,30 +1777,35 @@ target = "stack"
 side = "own"
 excludes = ["war_machine"]
 effects = [{ kind = "clone" }]
+ai = { kinds = ["effect"], values = [20, 20, 40, 50] }
 
 [[spell]]
 id = "fire_elemental"  # original id 66
 polarity = "neutral"
 summons = "fire_elemental"
 effects = [{ kind = "summon" }]
+ai = { kinds = ["stacks"], values = [50, 50, 100, 150] }
 
 [[spell]]
 id = "earth_elemental"  # original id 67
 polarity = "neutral"
 summons = "earth_elemental"
 effects = [{ kind = "summon" }]
+ai = { kinds = ["stacks"], values = [50, 50, 100, 150] }
 
 [[spell]]
 id = "water_elemental"  # original id 68
 polarity = "neutral"
 summons = "water_elemental"
 effects = [{ kind = "summon" }]
+ai = { kinds = ["stacks"], values = [50, 50, 100, 150] }
 
 [[spell]]
 id = "air_elemental"  # original id 69
 polarity = "neutral"
 summons = "air_elemental"
 effects = [{ kind = "summon" }]
+ai = { kinds = ["stacks"], values = [50, 50, 100, 150] }
 
 [[spell]]
 id = "stone_gaze"  # original id 70
@@ -1746,6 +1815,7 @@ side = "enemy"
 excludes = ["war_machine"]
 ends = "damaged"
 effects = [{ kind = "timed", change = "petrify" }]
+ai = { values = [1, 1, 1, 1] }
 
 [[spell]]
 id = "poison"  # original id 71
@@ -1755,6 +1825,7 @@ side = "enemy"
 requires = ["alive"]
 excludes = ["war_machine"]
 effects = [{ kind = "timed", change = "poison" }]
+ai = { values = [1, 1, 1, 1] }
 
 [[spell]]
 id = "bind"  # original id 72
@@ -1766,6 +1837,7 @@ duration = "fixed"
 fixed_rounds = 255
 ignores_immunity = true
 effects = [{ kind = "timed", change = "bind" }]
+ai = { values = [1, 1, 1, 1] }
 
 [[spell]]
 id = "disease"  # original id 73
@@ -1774,6 +1846,7 @@ target = "stack"
 side = "enemy"
 excludes = ["war_machine"]
 effects = [{ kind = "timed", change = "attack_loss" }, { kind = "timed", change = "defense_loss" }]
+ai = { values = [1, 1, 1, 1] }
 
 [[spell]]
 id = "paralyze"  # original id 74
@@ -1783,6 +1856,7 @@ side = "enemy"
 excludes = ["war_machine"]
 ends = "damaged"
 effects = [{ kind = "timed", change = "paralyze" }]
+ai = { values = [1, 1, 1, 1] }
 
 [[spell]]
 id = "age"  # original id 75
@@ -1791,14 +1865,17 @@ target = "stack"
 side = "enemy"
 excludes = ["war_machine"]
 effects = [{ kind = "timed", change = "age" }]
+ai = { values = [1, 1, 1, 1] }
 
 [[spell]]
 id = "death_cloud"  # original id 76
 polarity = "neutral"
+ai = { values = [1, 1, 1, 1] }
 
 [[spell]]
 id = "thunderbolt"  # original id 77
 polarity = "negative"
+ai = { values = [1, 1, 1, 1] }
 
 [[spell]]
 id = "dispel_helpful_spells"  # original id 78
@@ -1808,10 +1885,12 @@ side = "enemy"
 ignores_immunity = true
 dispels_positive = true
 effects = [{ kind = "dispel" }]
+ai = { values = [1, 1, 1, 1] }
 
 [[spell]]
 id = "death_stare"  # original id 79
 polarity = "negative"
+ai = { values = [1, 1, 1, 1] }
 
 [[spell]]
 id = "acid_breath"  # original id 80
@@ -1822,6 +1901,7 @@ duration = "permanent"
 cumulative = true
 ignores_immunity = true
 effects = [{ kind = "timed", change = "defense_loss" }]
+ai = { values = [1, 1, 1, 1] }
 
 [[battlefield]]
 id = "shore"

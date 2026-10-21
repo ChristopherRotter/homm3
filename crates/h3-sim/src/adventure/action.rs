@@ -12,6 +12,8 @@
 //! | 1 + s, s < 8 | Move the player's hero in slot `s` to the tile in the tile head |
 //! | 9 | Accept the player's open decision (E08 T14b: a Cartographer's offer) |
 //! | 10 | Decline it |
+//! | 11 | Take the first offer of the player's open level-up (E08 T30: the dialog's left) |
+//! | 12 | Take its second offer (the dialog's right) |
 //!
 //! A player's hero slots are its heroes on the map in the order of their ids, the first
 //! [`HERO_SLOTS`] (the original allows a player eight heroes on the map); a hero's slot changes
@@ -28,7 +30,8 @@
 //! conditioned on the entry ([`legal_mask`], [`tile_mask`]); an illegal entry's tile mask is
 //! empty. While the player has an open decision its answers are its only legal entries
 //! (GAM-DEC-001: `h3_game::legal_commands` lists them alone and `h3_game::legal_moves` gives
-//! nothing), each with tile 0 alone.
+//! nothing), each with tile 0 alone: `Accept` and `Decline` for an offer, `First` and `Second`
+//! for a level-up (GAM-DEC-002).
 //!
 //! In the battle phase an action is one of the battle lane's encoding (`crate::action`, its own
 //! version: entries and the spell and target heads), for the side the player owns; its masks
@@ -44,7 +47,8 @@
 //!
 //! Version 2 (E08 T14b) appended the answers. Version 3 (E08 T19b1) added the battle phase: since
 //! E08 T19a a move onto another player's hero starts a battle, which version 2 could not play, so
-//! it left such tiles out of the masks and the decoder (`ADV-STUB-4`, closed).
+//! it left such tiles out of the masks and the decoder (`ADV-STUB-4`, closed). Version 4 (E08
+//! T30) appended a level-up's two answers.
 
 use h3_adventure::{AdventureCommand, Pos, Reach};
 use h3_battle::{BattleState, LegalCommands};
@@ -54,7 +58,7 @@ use h3_game::{Actor, Answer, GameCommand, GameRuleset, GameState, legal_commands
 use crate::action as battle;
 
 /// Version of this encoding; bump on any change of the layout above.
-pub const ACTION_ENCODING_VERSION: u32 = 3;
+pub const ACTION_ENCODING_VERSION: u32 = 4;
 
 /// Hero slots per player: the most heroes the original allows a player on the map.
 pub const HERO_SLOTS: usize = 8;
@@ -71,8 +75,14 @@ pub const ACCEPT: usize = MOVE_BASE + HERO_SLOTS;
 /// The entry that declines the player's open decision.
 pub const DECLINE: usize = ACCEPT + 1;
 
+/// The entry that takes the first offer of the player's open level-up (E08 T30).
+pub const FIRST: usize = DECLINE + 1;
+
+/// The entry that takes the second offer of the player's open level-up (E08 T30).
+pub const SECOND: usize = FIRST + 1;
+
 /// Number of entries.
-pub const ENTRY_COUNT: usize = DECLINE + 1;
+pub const ENTRY_COUNT: usize = SECOND + 1;
 
 /// Which entries are legal.
 pub type EntryMask = [bool; ENTRY_COUNT];
@@ -158,6 +168,16 @@ impl Action {
     /// Declines the open decision.
     pub const fn decline() -> Self {
         Self::map(DECLINE, 0)
+    }
+
+    /// Takes the open level-up's first offer (E08 T30).
+    pub const fn first() -> Self {
+        Self::map(FIRST, 0)
+    }
+
+    /// Takes the open level-up's second offer (E08 T30).
+    pub const fn second() -> Self {
+        Self::map(SECOND, 0)
     }
 
     /// The map phase's action of `entry` with `tile`.
@@ -246,7 +266,7 @@ pub fn moves(
 
 /// Fills `mask` with the legal map entries of `seat`: the commands [`legal_commands`] lists
 /// (`EndTurn` while its turn runs, or with an open decision its answers alone: `Decline`, and
-/// `Accept` while the offer stands, E08 T15a), and each hero slot with a tile to move to
+/// `Accept` while the offer stands, E08 T15a; a level-up's `First` and `Second`, E08 T30), and each hero slot with a tile to move to
 /// ([`legal_moves`]: none with a decision open); none in the battle phase, where the listed
 /// commands are the battle's and no hero moves, so none for the neutral seat.
 pub fn legal_mask(
@@ -365,6 +385,8 @@ const fn tileless(entry: usize) -> Option<GameCommand> {
         END_TURN => Some(GameCommand::EndTurn),
         ACCEPT => Some(GameCommand::Answer(Answer::Accept)),
         DECLINE => Some(GameCommand::Answer(Answer::Decline)),
+        FIRST => Some(GameCommand::Answer(Answer::First)),
+        SECOND => Some(GameCommand::Answer(Answer::Second)),
         _ => None,
     }
 }
@@ -375,6 +397,8 @@ const fn tileless_entry(command: &GameCommand) -> Option<usize> {
         GameCommand::EndTurn => Some(END_TURN),
         GameCommand::Answer(Answer::Accept) => Some(ACCEPT),
         GameCommand::Answer(Answer::Decline) => Some(DECLINE),
+        GameCommand::Answer(Answer::First) => Some(FIRST),
+        GameCommand::Answer(Answer::Second) => Some(SECOND),
         GameCommand::Adventure(_) | GameCommand::Battle(_) => None,
     }
 }

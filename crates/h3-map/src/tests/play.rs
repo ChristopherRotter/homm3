@@ -766,7 +766,8 @@ pub(super) fn steps() -> impl Strategy<Value = Vec<Step>> {
     .prop_map(|runs: Vec<Vec<Step>>| runs.into_iter().flatten().collect())
 }
 
-/// On the map (E08 T19b2): the acting player's open offer declined; else the `n`-th of its
+/// On the map (E08 T19b2): the acting player's open offer declined, its open level-up's first
+/// offer taken (E08 T30); else the `n`-th of its
 /// options that end nearest to another player's hero on the hero's level, nearer than the hero
 /// stands (an attack, on the other hero's tile, is nearest of all; the heroes seek each other as
 /// the fork benchmark's do: random play seldom meets); `EndTurn` when none gets nearer.
@@ -774,6 +775,9 @@ fn seek(state: &GameState, legal: &[GameCommand], n: u16) -> GameCommand {
     let actor = acting(state);
     if state.decision(actor).is_some() {
         return GameCommand::Answer(Answer::Decline);
+    }
+    if state.level_up(actor).is_some() {
+        return GameCommand::Answer(Answer::First);
     }
     let heroes = state.adventure().heroes();
     let distance = |pos: TilePos| {
@@ -941,19 +945,22 @@ fn landing(
 
 /// The player who acts: the one whose turn is running (sequential play: one at a time), or, while
 /// its battle's other side is to act, that side's owner (E08 T19a); while the other side is a
-/// monster's, still the player whose battle it is ([`actor`] is then the system).
+/// monster's, still the player whose battle it is ([`actor`] is then the system); while the game
+/// waits for a level-up, its owner (E08 T30).
 pub(super) fn acting(state: &GameState) -> PlayerId {
     let player = state.turn_group()[0];
-    state
-        .battle(player)
-        .and_then(OpenBattle::owner_to_act)
-        .unwrap_or(player)
+    state.waiting_for().unwrap_or_else(|| {
+        state
+            .battle(player)
+            .and_then(OpenBattle::owner_to_act)
+            .unwrap_or(player)
+    })
 }
 
 /// Who acts (E08 T20b3b1): the system actor while a battle's side to act is a monster's (no
 /// player owns it: `GameState::unowned_battle`), else the acting player ([`acting`]).
 pub(super) fn actor(state: &GameState) -> Actor {
-    if state.unowned_battle().is_some() {
+    if state.waiting_for().is_none() && state.unowned_battle().is_some() {
         Actor::System
     } else {
         Actor::Player(acting(state))
@@ -1183,6 +1190,12 @@ const ANSWERS: [GameCommand; 2] = [
     GameCommand::Answer(Answer::Decline),
 ];
 
+/// The answers to a level-up, as `legal_commands` lists them (GAM-DEC-002, E08 T30).
+const LEVEL_ANSWERS: [GameCommand; 2] = [
+    GameCommand::Answer(Answer::First),
+    GameCommand::Answer(Answer::Second),
+];
+
 /// Legality consistency, before a step: only the actor has legal commands, `EndTurn`, or with an
 /// open decision (only ever the acting player's in sequential play) its answers and nothing else
 /// (GAM-DEC-001, E08 T14b), `Decline` alone if the offer no longer stands (T15a; never in
@@ -1192,7 +1205,10 @@ const ANSWERS: [GameCommand; 2] = [
 /// actor's legal moves are the query of each of its own heroes while no decision is open, and
 /// nobody has any for another player's; every listed answer applies and closes the decision;
 /// every option's move applies and leaves the hero on its last tile (on the tile before for a
-/// visit from a neighbour) with the points the query reports there, one event per step.
+/// visit from a neighbour) with the points the query reports there, one event per step. A
+/// level-up (E08 T30) is a decision too, its answers `First` and `Second`, each of which applies;
+/// it holds the game, so its owner acts (in its turn or not: a battle's defender that won) and no
+/// one else lists a command.
 fn check_legal(
     state: &GameState,
     rules: &GameRuleset,
@@ -1203,6 +1219,7 @@ fn check_legal(
     let actor = acting(state);
     let fighting = battle_of(state, who).is_some();
     let decided = state.decision(actor).is_some();
+    let levelling = state.level_up(actor).is_some();
     let system = legal_commands(state, rules, Actor::System);
     prop_assert_eq!(system.is_empty(), who != Actor::System);
     prop_assert!(system.iter().all(|c| matches!(c, GameCommand::Battle(_))));
@@ -1221,7 +1238,9 @@ fn check_legal(
             prop_assert!(!listed.is_empty());
             prop_assert!(listed.iter().all(|c| matches!(c, GameCommand::Battle(_))));
         } else {
-            let expected = if !me {
+            let expected = if state.level_up(player).is_some() {
+                LEVEL_ANSWERS.to_vec()
+            } else if !me {
                 Vec::new()
             } else if decided {
                 answers.to_vec()
@@ -1234,6 +1253,7 @@ fn check_legal(
             let moves = legal_moves(state, rules, Actor::Player(player), *hero);
             let own = me
                 && !decided
+                && !levelling
                 && !fighting
                 && state.adventure().hero(*hero).map(|h| h.owner) == Some(actor);
             prop_assert_eq!(moves.as_ref(), own.then_some(reach));
@@ -1245,6 +1265,21 @@ fn check_legal(
             let mut probe = state.clone();
             let result = apply(&mut probe, rules, who, command.clone(), &mut Vec::new());
             prop_assert!(result.is_ok(), "legal {:?} rejected: {:?}", command, result);
+        }
+        return Ok(());
+    }
+    if levelling {
+        prop_assert_eq!(legal, &LEVEL_ANSWERS[..]);
+        for answer in &LEVEL_ANSWERS {
+            let mut probe = state.clone();
+            let result = apply(
+                &mut probe,
+                rules,
+                Actor::Player(actor),
+                answer.clone(),
+                &mut Vec::new(),
+            );
+            prop_assert!(result.is_ok(), "legal {:?} rejected: {:?}", answer, result);
         }
         return Ok(());
     }
@@ -1382,7 +1417,9 @@ fn check_unlisted(
 /// none); since T14b by an accepted offer's price, which its owner is told it paid, exactly the
 /// price of the decision it answered; and since T19a by a surrender's price, which the
 /// surrendering side's owner pays and the other side's owner gains, as much as was paid. The
-/// heroes' details (E08 T19a2a) change only by a battle's end. Since E08 T20b3b1 a wandering
+/// heroes' details (E08 T19a2a) change only by a battle's end, and (E08 T30) a hero's by the
+/// levels it is told it gained answering its level-up ([`check_levels`]: its level and skills,
+/// nothing else but the offers' levels). Since E08 T20b3b1 a wandering
 /// monster is a source of creatures and resources: a group that joins goes into its visitor's
 /// army (into the stack of its creature, else the first free slot), all of it, told to the
 /// visitor's owner as the creatures joining, and its treasure is the owner's gains as it leaves
@@ -1397,7 +1434,22 @@ fn check_conservation(
     if !battles.is_empty() {
         return check_battle_end(rules, before, after, events, &battles);
     }
-    prop_assert_eq!(before.heroes(), after.heroes());
+    for (i, (b, a)) in before.heroes().iter().zip(after.heroes()).enumerate() {
+        let id = HeroId::new(u16::try_from(i).unwrap());
+        let levelled = events
+            .iter()
+            .any(|e| matches!(e, GameEvent::LevelGained { hero, .. } if *hero == id));
+        if levelled {
+            check_levels(rules, (before, after), events, id)?;
+            prop_assert_eq!(
+                (a.experience, a.mana, &a.worn, &a.backpack, &a.spells),
+                (b.experience, b.mana, &b.worn, &b.backpack, &b.spells)
+            );
+        } else {
+            prop_assert_eq!(b, a);
+        }
+    }
+    prop_assert_eq!(before.heroes().len(), after.heroes().len());
     let (map, adventure) = (before.adventure().map(), after.adventure());
     let joined: Vec<(HeroId, CreatureTypeId, u32)> = events
         .iter()
@@ -1740,8 +1792,56 @@ fn check_unowned_battle_end(
 /// battle's heroes and is told to its owner; every other hero's details stay; a battle hero's
 /// experience grows by the gains it is told (only one that stays on the map gains), its spell
 /// points become the last it is told, its artifacts change in number by the ones it is told it
-/// received and lost, and nothing else of it changes; the two heroes' artifacts only move between
-/// them or leave with a destroyed war machine.
+/// received and lost, its level, primary and secondary skills by the levels it is told it gained
+/// (E08 T30: only one that stays on the map, each the next level), and nothing else of it
+/// changes; the two heroes' artifacts only move between them or leave with a destroyed war
+/// machine.
+/// The levels `hero` is told it gained (E08 T30, GAM-DEC-002): each by its owner, of a hero on
+/// the map, the next level, raising the primary skill told (up to the ruleset's maximum) and
+/// learning or advancing the skill told; its level, primary and secondary skills are what they
+/// give, its type as before.
+fn check_levels(
+    rules: &GameRuleset,
+    (before, after): (&GameState, &GameState),
+    events: &[GameEvent],
+    id: HeroId,
+) -> Result<(), TestCaseError> {
+    let (b, a) = (before.hero(id).unwrap(), after.hero(id).unwrap());
+    let (mut level, mut primary, mut skills) = (b.level, b.primary, b.skills.clone());
+    let max = rules.core().hero_params().unwrap().primary_max;
+    for event in events {
+        if let GameEvent::LevelGained {
+            player,
+            hero,
+            level: gained,
+            primary: raised,
+            skill,
+        } = *event
+        {
+            if hero != id {
+                continue;
+            }
+            prop_assert!(after.adventure().hero(id).is_some(), "{:?} levelled", id);
+            prop_assert_eq!(player, before.adventure().hero(id).unwrap().owner);
+            prop_assert_eq!(gained, level + 1);
+            level = gained;
+            let base = &mut primary[raised.index()];
+            *base = base.saturating_add(1).min(max);
+            if let Some(skill) = skill {
+                match skills.iter_mut().find(|(s, _)| *s == skill) {
+                    Some((_, l)) => *l += 1,
+                    None => skills.push((skill, 1)),
+                }
+            }
+        }
+    }
+    prop_assert_eq!(
+        (a.hero_type, a.level, a.primary, &a.skills),
+        (b.hero_type, level, primary, &skills)
+    );
+    Ok(())
+}
+
 fn check_heroes_after_battle(
     rules: &GameRuleset,
     (before, after): (&GameState, &GameState),
@@ -1799,10 +1899,7 @@ fn check_heroes_after_battle(
         prop_assert_eq!((a.experience, a.mana), (experience, mana));
         prop_assert_eq!(a.worn.len() + a.backpack.len(), items);
         prop_assert_eq!(&a.spells, &spells);
-        prop_assert_eq!(
-            (a.hero_type, a.level, a.primary, &a.skills),
-            (b.hero_type, b.level, b.primary, &b.skills)
-        );
+        check_levels(rules, (before, after), events, id)?;
     }
     // E08 T19a2b: creatures are raised into the army of a battle hero that stays, told to its
     // owner, as a stack of the creature told with at least that many.
@@ -2095,6 +2192,10 @@ fn check_isolation(
                     .eq(after.adventure().bought(player))
             );
             prop_assert_eq!(before.decision(player), after.decision(player));
+            // E08 T30: a level-up opens for the other owner of the battle the command ended.
+            if !partners.contains(&player) {
+                prop_assert_eq!(before.level_up(player), after.level_up(player));
+            }
             prop_assert_eq!(
                 before.adventure().keys(player),
                 after.adventure().keys(player)
