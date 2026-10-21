@@ -52,7 +52,7 @@ Area traps live where they are used: experiments in `docs/experiments/README.md`
 
 ### 2026-10-21 (ninety-fifth) — E23 T4b1, the Ogre Mage
 
-The user: T4b in two (the Ogre Mage, then the predictions; the tables to T4c); the Ogre Mage told by its spell. §7.51. `spells.rs`, `casts::scan`; `computer::threat`, `base_damage`, `spell_affects`, `takes_stack`. The mass version casts without a target (the listing's gap: the inbox). The count −0.02 %: no re-set.
+The user: T4b in two (the Ogre Mage, then the predictions; the tables to T4c); the Ogre Mage told by its spell. §7.51. `spells.rs`, `casts::scan`; `computer::threat`, `base_damage`, `spell_affects`, `takes_stack`. The mass version casts without a target (the listing's gap: the inbox). The count +0.00 %: no re-set.
 
 ### 2026-10-21 (ninety-fourth) — E23 T4a, the entry, the raise and the Faerie Dragon
 

@@ -854,7 +854,7 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   action mask misses the cast).
 - **Kept apart** (documented): the threat records leave out dead enemies (as T3c's walker
   records); "the enemy beaten" is never set and the predictions draw nothing (BAT-STUB-9, T4b2).
-- **Cost:** `computer-decisions` 477 122 897 instructions, −0.02 % against its baseline (the
+- **Cost:** `computer-decisions` 477 220 414 instructions, +0.00 % against its baseline (the
   workload's random armies seldom hold Ogre Mages that cast): no re-set. Release, each decision's
   best of five (a local patch of `h3 bench-computer`, not kept), 400 battles each of seeds 4 to
   8: 32.9 to 46.6 µs per decision on average, the slowest 0.23 to 0.29 ms; `master` on the same
