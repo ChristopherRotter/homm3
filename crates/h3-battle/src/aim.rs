@@ -16,7 +16,7 @@
 
 use core::cell::Cell;
 
-use h3_content::{CreatureFlag, ORIGINAL_AI_SLIPS, SpellId};
+use h3_content::{CreatureFlag, CreatureTypeId, ORIGINAL_AI_SLIPS, SpellId};
 use h3_content_battle::{
     BattleRuleset, BattleSpell, MAX_MASTERY, SpellAiKind, SpellEffect, SpellTarget, TimedChange,
     WallKind,
@@ -228,12 +228,25 @@ pub(crate) fn worth(
     shot: bool,
 ) -> X87 {
     let s = state.at(id);
+    // The shot flag stays for the Ballista and a turret, else only while the stack can shoot.
+    let kept = shot && (is_ballista(s) || s.is_turret() || can_shoot(state, field, id));
+    worth_of(state, ruleset, ctx, s, (shot, kept))
+}
+
+/// [`worth`] of the stack `s`, on the field or not (a side's template of a creature the battle
+/// may create), with the shot flag `shot` for its protection and `kept` for its offense.
+fn worth_of(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    ctx: &Context,
+    s: &Stack,
+    (shot, kept): (bool, bool),
+) -> X87 {
     let (base_attack, base_defense) = base(ruleset, s);
     let off = attack(ruleset, s, shot) - base_attack - ctx.min_attack;
     let def = defense(state, ruleset, s) - base_defense - ctx.min_defense;
     let defense = advantage(def).times(protection(state, s, shot));
-    // The shot flag stays for the Ballista and a turret, else only while the stack can shoot.
-    let shot = shot && (is_ballista(s) || s.is_turret() || can_shoot(state, field, id));
+    let shot = kept;
     let mut offense = advantage(off);
     if !shot && s.has(StackTraits::SHOOTER) {
         offense = offense.times(X87::ratio(1, 2, DOUBLE_BITS).unwrap_or(X87::ZERO));
@@ -857,6 +870,80 @@ pub(crate) fn damage_value(
         worth(state, (ruleset, field), ctx, id, shot)
     };
     kill_value(s, i64::try_from(damage).unwrap_or(i64::MAX), v)
+}
+
+/// The computer's worth of one creature of `creature` that the battle would create for `side`
+/// (0x442A50 of the one-creature record 0x43D730 sets up: the Pit Lord's Demon in the computer's
+/// raise, 0x421000; E23 T4a): [`worth_of`] the side's template of it (its hero's bonuses, as at
+/// the battle's start) without the shot flag; 0 when the battle creates no such stack for it.
+pub(crate) fn created_worth(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    ctx: &Context,
+    (side, creature): (BattleSide, CreatureTypeId),
+) -> X87 {
+    state
+        .created
+        .template(side, creature)
+        .map_or(X87::ZERO, |t| {
+            worth_of(state, ruleset, ctx, t, (false, false))
+        })
+}
+
+/// The largest damage `fild` loads as a positive 32-bit integer.
+const MAX_INT: u64 = 0x7FFF_FFFF;
+
+/// The computer's value of a damage spell of the context's side whose value is `damage` on stack
+/// `s` (0x436E30; E23 T4a): 0 for a dead stack or a turret; the damage after the bonuses of the
+/// side's hero when `bonuses` (0x5A78E0 given the hero) and after the stack's reductions and
+/// protection ([`magic::spell_damage`], BAT-MAG-004), as a single-precision value times the
+/// effect test's factor for the side ([`magic::effect_factor`], 0x5A8090), truncated; 0 unless
+/// above 0; at most the stack's total hit points; its [`damage_value`] with its own shot flag and
+/// the context's desperate mode. A stack that loses its turns, the First Aid Tent or the Ammo
+/// Cart whose strength `w` ([`stack_strength`]) exceeds that value `v` is worth `2v − w` (below 0
+/// when `v` is under half of `w`).
+pub(crate) fn spell_damage_value(
+    state: &BattleState,
+    (ruleset, field): (&BattleRuleset, Field),
+    ctx: &Context,
+    (spell, damage): (magic::SpellRef<'_>, u64),
+    bonuses: bool,
+    s: StackId,
+) -> i32 {
+    let target = state.at(s);
+    if !target.is_alive() || target.is_turret() {
+        return 0;
+    }
+    let hero = state.heroes[ctx.side.index()]
+        .as_ref()
+        .filter(|_| bonuses)
+        .map(|h| &h.magic.bonuses);
+    let (_, dealt) = magic::spell_damage(
+        ruleset,
+        (spell, hero),
+        damage,
+        (target.creature, &target.spells.school_protection),
+    );
+    let f = magic::effect_factor(state, ruleset, ctx.side, spell, s);
+    let x = ftol(X87::int(dealt.min(MAX_INT)).round(SINGLE_BITS).times(f));
+    if x <= 0 {
+        return 0;
+    }
+    let x = u64::from(x.unsigned_abs()).min(hit_points(target));
+    let shot = can_shoot(state, field, s);
+    let v = damage_value(state, (ruleset, field), ctx, (s, x), (shot, ctx.desperate));
+    let disabled = target.spells.status.contains(Status::NO_TURNS)
+        || target.has(StackTraits::FIRST_AID)
+        || target.has(StackTraits::AMMO_SUPPLY);
+    if !disabled {
+        return v;
+    }
+    let w = stack_strength(state, (ruleset, field), ctx, s);
+    if w > v {
+        v.wrapping_mul(2).wrapping_sub(w)
+    } else {
+        v
+    }
 }
 
 /// The best damage of `caster`'s hero's area spells on stack `s` as the computer's area threat

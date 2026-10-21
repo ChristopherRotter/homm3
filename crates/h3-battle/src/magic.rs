@@ -2377,10 +2377,14 @@ fn screen_centre(state: &BattleState, field: Field, s: StackId) -> (i64, i64) {
     (i64::from(44 * col + shift + other), i64::from(42 * row))
 }
 
+/// The order in which Chain Lightning looks for its next stack (BAT-MAG-006): the defender's
+/// stacks first, then the attacker's.
+const CHAIN_ORDER: [BattleSide; 2] = [BattleSide::Defender, BattleSide::Attacker];
+
 /// The next stack Chain Lightning jumps to from `from` (BAT-MAG-006): among the living stacks
 /// not yet struck, the defender's first, then the attacker's, each by id, those the spell
 /// affects (each rolling for resistance, so a resisting stack is passed over for this jump)
-/// and the first at the smallest screen distance, rounded down to whole pixels.
+/// and the first at the smallest screen distance, rounded down to whole pixels ([`nearest`]).
 // rule: BAT-MAG-006
 fn next_in_chain(
     state: &mut BattleState,
@@ -2389,15 +2393,35 @@ fn next_in_chain(
     from: StackId,
     struck: &[bool; STACK_CAPACITY],
 ) -> Option<StackId> {
-    let field = Field::new(ruleset.battle().field);
-    let (x, y) = screen_centre(state, field, from);
-    let mut best: Option<(u64, StackId)> = None;
-    for side in [BattleSide::Defender, BattleSide::Attacker] {
+    let mut found = [false; STACK_CAPACITY];
+    for side in CHAIN_ORDER {
         for s in stack_ids(state) {
             let candidate = state.at(s).side == side
                 && !struck[s.index()]
                 && affects_stack(state, ruleset, caster, spell, s);
-            if !candidate || resists(state, ruleset, caster, spell.1, s) {
+            if candidate && !resists(state, ruleset, caster, spell.1, s) {
+                found[s.index()] = true;
+            }
+        }
+    }
+    nearest(state, ruleset, from, &found)
+}
+
+/// The stack of `found` nearest to `from` on the battle screen (BAT-MAG-006): in
+/// [`CHAIN_ORDER`], each side's by id, the first at the smallest distance, rounded down to whole
+/// pixels.
+fn nearest(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    from: StackId,
+    found: &[bool; STACK_CAPACITY],
+) -> Option<StackId> {
+    let field = Field::new(ruleset.battle().field);
+    let (x, y) = screen_centre(state, field, from);
+    let mut best: Option<(u64, StackId)> = None;
+    for side in CHAIN_ORDER {
+        for s in stack_ids(state) {
+            if state.at(s).side != side || !found[s.index()] {
                 continue;
             }
             let (cx, cy) = screen_centre(state, field, s);
@@ -2408,6 +2432,82 @@ fn next_in_chain(
         }
     }
     best.map(|(_, s)| s)
+}
+
+/// The stacks a chain spell strikes from its first stack as the computer estimates it, each
+/// with the value it takes (0x437190 with 0x5A61F0 not for real, `installation.md` §7.43; E23
+/// T4a): the rules' chain (BAT-MAG-006: the strikes at the mastery, each further stack taking
+/// its share of the last value) without resistance rolls, each next stack one the spell can
+/// affect at all (its effect test's factor above 0).
+#[derive(Debug, Clone)]
+pub(crate) struct ChainEstimate<'a> {
+    state: &'a BattleState,
+    ruleset: &'a BattleRuleset,
+    side: BattleSide,
+    spell: SpellRef<'a>,
+    next: Option<(StackId, u64)>,
+    left: u8,
+    struck: [bool; STACK_CAPACITY],
+}
+
+impl<'a> ChainEstimate<'a> {
+    /// `side`'s chain of `spell` at `mastery` from stack `first` with the value `value`; none for
+    /// a spell without a chain.
+    pub(crate) fn new(
+        (state, ruleset): (&'a BattleState, &'a BattleRuleset),
+        side: BattleSide,
+        (spell, mastery): (SpellRef<'a>, u8),
+        (first, value): (StackId, u64),
+    ) -> Self {
+        let left = spell
+            .1
+            .magic
+            .chain
+            .map_or(0, |c| c.targets[usize::from(mastery.min(MAX_MASTERY))]);
+        Self {
+            state,
+            ruleset,
+            side,
+            spell,
+            next: Some((first, value)),
+            left,
+            struck: [false; STACK_CAPACITY],
+        }
+    }
+}
+
+impl Iterator for ChainEstimate<'_> {
+    type Item = (StackId, u64);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let (current, value) = self.next.filter(|_| self.left > 0)?;
+        self.left -= 1;
+        self.struck[current.index()] = true;
+        let mut found = [false; STACK_CAPACITY];
+        if self.left > 0 {
+            for s in stack_ids(self.state) {
+                found[s.index()] = !self.struck[s.index()]
+                    && effect_factor(self.state, self.ruleset, self.side, self.spell, s)
+                        > X87::ZERO;
+            }
+        }
+        let share = self.spell.1.magic.chain.map_or(0, |c| c.factor_bp);
+        self.next = nearest(self.state, self.ruleset, current, &found)
+            .map(|s| (s, value * u64::from(share) / u64::from(FULL_BP)));
+        Some((current, value))
+    }
+}
+
+/// The stacks `side`'s cast of `spell` at `mastery` aimed at `hex` reaches (BAT-MAG-007), by id:
+/// the computer's estimate of an area spell takes the rules' area (0x437040 with 0x5A4920; E23
+/// T4a; a stack the spell cannot affect would add nothing to it).
+pub(crate) fn area_estimate<'a>(
+    (state, ruleset): (&'a BattleState, &'a BattleRuleset),
+    side: BattleSide,
+    (spell, mastery): (SpellRef<'a>, u8),
+    hex: Hex,
+) -> impl Iterator<Item = StackId> + 'a {
+    area_stacks(state, ruleset, side, (spell, mastery), hex)
 }
 
 /// The innate spell of `creature` with the timed change `change` (ability `innate_spell`): the

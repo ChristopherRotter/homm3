@@ -17,8 +17,9 @@
 //! Without a candidate a besieger walks to its row's wall, and the fallbacks ([`Walker::fallback`],
 //! BAT-AI-010) guard a shooter or step to safety.
 //!
-//! Not built yet (BAT-STUB-4): the creature casts (0x421280, before the action and after a choice
-//! of nothing) are T4's; the walker's turn in the tactics phase is T6's (BAT-STUB-5).
+//! The creature cast entry ([`casts::entry`], 0x421280; BAT-AI-012, BAT-AI-013) comes before the
+//! action, with the best's value per turn (0 without a candidate), and again after a choice of
+//! nothing. Not built yet: the walker's turn in the tactics phase is T6's (BAT-STUB-5).
 
 use core::cell::{Cell, OnceCell};
 
@@ -30,6 +31,7 @@ use h3_content_battle::{Ability, BattleRuleset};
 use h3_kernel::Rng;
 use h3_kernel::arith::{DOUBLE_BITS, X87};
 
+use crate::casts;
 use crate::gain::{self, Records};
 use crate::hexes::{self, Shape};
 use crate::odds;
@@ -103,8 +105,9 @@ pub(crate) struct Walker<'a> {
 }
 
 /// The command of the computer's walker `id` of `side` (0x421F80; BAT-AI-005): the walker's choice
-/// ([`Walker::choose`], its draws from `rng`); without one, Wait on Hard and above or for a human
-/// side outside the wait phase, else Defend.
+/// ([`Walker::choose`], its draws from `rng`); without one the creature cast entry again with the
+/// value the choice left ([`casts::entry`], BAT-AI-012); without a cast, Wait on Hard and above or
+/// for a human side outside the wait phase, else Defend.
 // rule: BAT-AI-005
 pub(crate) fn turn(
     state: &BattleState,
@@ -113,16 +116,18 @@ pub(crate) fn turn(
     rng: &mut Rng,
 ) -> Command {
     let walker = Walker::new(state, ruleset, (id, side));
-    // stub: BAT-STUB-4
-    // A choice of nothing asks the creature's cast entry again (0x421280): T4.
-    walker.choose(rng).unwrap_or_else(|| {
-        let hard = computer::difficulty(state) >= 2 || computer::human(state, side);
-        if hard && !computer::wait_phase(state) {
-            Command::Wait
-        } else {
-            Command::Defend
-        }
-    })
+    let mut value = 0;
+    let chosen = walker.choose(rng, &mut value);
+    chosen
+        .or_else(|| casts::entry(&walker, &mut value))
+        .unwrap_or_else(|| {
+            let hard = computer::difficulty(state) >= 2 || computer::human(state, side);
+            if hard && !computer::wait_phase(state) {
+                Command::Wait
+            } else {
+                Command::Defend
+            }
+        })
 }
 
 impl<'a> Walker<'a> {
@@ -223,9 +228,12 @@ impl<'a> Walker<'a> {
     /// turn below 0 and below its drawn `P` per turn, the stack not summoned, outside Easy for a
     /// computer side, the side the stronger at range) the fallbacks first
     /// ([`Walker::fallback`]); the attack ([`Walker::attack`]). No candidate: a besieger walks to
-    /// its row's wall ([`Walker::besiege`]), any other the fallbacks.
+    /// its row's wall ([`Walker::besiege`]), any other the fallbacks. Before any of these, `value`
+    /// becomes the larger of the best's value and its drawn `P` per turn (0 without a candidate)
+    /// and the creature cast entry is asked with it ([`casts::entry`], BAT-AI-012: a cast ends
+    /// the choice); only the plan's hex sets `value` to the drawn `P` per turn.
     // rule: BAT-AI-005
-    pub(crate) fn choose(&self, rng: &mut Rng) -> Option<Command> {
+    pub(crate) fn choose(&self, rng: &mut Rng, value: &mut i32) -> Option<Command> {
         let me = self.me;
         let still = me.speed_now() == 0 || computer::bound(self.state, self.id);
         let other = self.side.opponent();
@@ -300,6 +308,10 @@ impl<'a> Walker<'a> {
                 only,
             });
         }
+        *value = best.map_or(0, |b| b.value.max(b.plan_value));
+        if let Some(cast) = casts::entry(self, value) {
+            return Some(cast);
+        }
         let Some(b) = best else {
             return if self.besieging() {
                 Some(self.besiege())
@@ -307,9 +319,8 @@ impl<'a> Walker<'a> {
                 self.fallback(None)
             };
         };
-        // stub: BAT-STUB-4
-        // The creature's cast entry first, outside the tactics phase (0x421280): T4.
         if b.only {
+            *value = b.plan_value;
             if b.plan.hex == me.hex {
                 return None;
             }

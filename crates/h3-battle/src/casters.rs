@@ -41,6 +41,16 @@ pub enum CastSpell {
     Raise,
 }
 
+impl CastSpell {
+    /// The spell, if the cast names one before its resolution.
+    pub const fn named(self) -> Option<SpellId> {
+        match self {
+            Self::Named(id) => Some(id),
+            Self::AtResolution | Self::Raise => None,
+        }
+    }
+}
+
 /// What a raiser raises as its stack's action (BAT-MAG-051, BAT-MAG-052).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Raiser {
@@ -627,6 +637,30 @@ pub(crate) fn corpse_count(
         .max(1);
     let raised = budget.min(start * u64::from(dead.max_hp)) / u64::from(health);
     u32::try_from(raised.min(start)).unwrap_or(u32::MAX)
+}
+
+/// The creatures the raiser `caster` raises from stack `target` by the computer's count (the
+/// original's 0x447330, `installation.md` §7.43; E23 T4a): a stack raiser's `min(lost creatures,
+/// per creature × its creatures div the target's hit points per creature)`, whole creatures only;
+/// a corpse raiser's [`corpse_count`]; 0 for a stack that raises nothing.
+pub(crate) fn raise_count(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    (caster, target): (StackId, StackId),
+) -> u32 {
+    let (raiser_stack, t) = (state.at(caster), state.at(target));
+    raiser(ruleset, raiser_stack.creature).map_or(0, |r| match r {
+        Raiser::Stack { per_creature, .. } => {
+            let budget = u64::from(per_creature) * u64::from(raiser_stack.count);
+            let whole = budget / u64::from(t.max_hp.max(1));
+            let lost = u64::from(t.base_count.saturating_sub(t.count));
+            u32::try_from(whole.min(lost)).unwrap_or(u32::MAX)
+        }
+        Raiser::Corpse {
+            creature,
+            per_creature,
+        } => corpse_count(state, ruleset, (caster, target), (creature, per_creature)),
+    })
 }
 
 /// The raiser `caster` raises stack or corpse `target` as its action (BAT-MAG-051,

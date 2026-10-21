@@ -35,6 +35,7 @@ use proptest::test_runner::Config;
 use super::{POLICY_VERSION, checked, choose, unchecked};
 use crate::walker::Walker;
 
+mod casts;
 mod ends;
 mod gain;
 mod odds;
@@ -853,7 +854,7 @@ fn a_refused_choice_falls_back_to_defend() {
     assert!(validate(&state, &r, side, refused).is_err());
     assert_eq!(checked(&state, &r, side, refused), Command::Defend);
     assert_eq!(checked(&state, &r, side, Command::Wait), Command::Wait);
-    assert_eq!(POLICY_VERSION, 5);
+    assert_eq!(POLICY_VERSION, 6);
 }
 
 /// The setup of `setup` on `difficulty`.
@@ -917,7 +918,7 @@ fn a_harpy_flies_to_block_shooters_it_would_hardly_hurt() {
         let mut scores = [0; 256];
         scores[usize::from(from.0)] = 1_000_000;
         let walker = Walker::new(&state, &r, (StackId(0), BattleSide::Attacker)).scored(scores);
-        assert_eq!(walker.choose(&mut Rng::from_seed(1)), None);
+        assert_eq!(walker.choose(&mut Rng::from_seed(1), &mut 0), None);
     }
 }
 

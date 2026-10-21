@@ -21,8 +21,8 @@ epic   = "E05"
 
 [[stub]]
 id     = "BAT-STUB-4"
-where  = "crates/h3-battle-ai/src/walker.rs"
-reason = "The computer's walker is built but its creature casts (E23 T3a: the plan, the choice with its draw, the walk; T3b: the hex scores; T3c: the odds, the last retaliation's gain, holding the walls, the besieger's walk, the fallbacks; BAT-AI-005 to BAT-AI-011). Not yet: the creature cast entry 0x421280, before the action and after a choice of nothing (T4)"
+where  = "crates/h3-battle-ai/src/casts.rs"
+reason = "The computer's creature cast entry (0x421280) is built with the raise and the Faerie Dragon (E23 T4a; BAT-AI-012, BAT-AI-013). Not yet: the Ogre Mage's and the Master Genie's scan 0x420D20 with the spell context's predictions and the evaluators (T4b, T4c): they cast nothing"
 epic   = "E23"
 
 [[stub]]
@@ -35,6 +35,12 @@ epic   = "E23"
 id     = "BAT-STUB-7"
 where  = "crates/h3-battle/src/aim.rs::spell_value"
 reason = "The computer's odds value the hero's spells at the mastery of the special ground of the hero's own adventure tile (0x5273D0 with 0x4E4FA0; survey E23-battle-ai.md slip 6). The battle's tile is the defender's, so for a defending hero that is the battlefield's; the attacking hero's tile is not in the seam (BattleSetup has no field for it): both profiles take the battlefield's (the user, 2026-10-21: a gap; BAT-Q56 for a seam field later) (BAT-AI-008)"
+epic   = "E23"
+
+[[stub]]
+id     = "BAT-STUB-8"
+where  = "crates/h3-battle-ai/src/casts.rs"
+reason = "The computer's creature casts take only the targets the engine accepts (the user, E23 T4a; ADR-0027 point 3): the original's Faerie Dragon may also aim an area spell at a free hex, its own or an immune stack's (its cast routine tests nothing for a creature's cast; the rules' cursor, BAT-MAG-049, only a stack the spell affects), so its best hex there is passed over; the original's raise ignores the engine's slot test for the raised Demons (BAT-MAG-052). The dragon's targets settle with BAT-Q32 (1) (BAT-AI-012, BAT-AI-013)"
 epic   = "E23"
 
 # --- adventure (ADV-STUB-<n>) ---

@@ -4,6 +4,7 @@
 //! computer estimates moves both. It grows with E23's tasks: what the policy needs from the
 //! battle's private state is added here by the battle lane.
 
+use h3_content::{CreatureTypeId, SpellId};
 use h3_content_battle::BattleRuleset;
 use h3_contracts::BattleSide;
 use h3_kernel::arith::X87;
@@ -422,4 +423,118 @@ pub fn ftol(x: X87) -> i32 {
 /// then takes only the enemies next to it and does not walk.
 pub fn bound(state: &BattleState, id: StackId) -> bool {
     crate::binds::is_bound(state, id)
+}
+
+/// Whether the creatures may not cast now as the computer's creature cast entry asks (0x421280;
+/// BAT-AI-012, E23 T4a): on a battlefield that forbids creature casts (Cursed Ground), at an
+/// anti-magic garrison or while a hero forbids casting (the Orb of Inhibition), whatever a
+/// creature's `ignores_magic_block` (BAT-MAG-061, BAT-TER-004).
+pub fn creature_casts_blocked(state: &BattleState) -> bool {
+    magic::creature_casting_forbidden(state)
+}
+
+/// The mastery of a creature's cast at the ability's `mastery` (BAT-TER-005): Expert where the
+/// battlefield raises the casts that are not a hero's (Magic Plains).
+pub fn creature_mastery(state: &BattleState, mastery: u8) -> u8 {
+    magic::other_mastery(state, mastery)
+}
+
+/// Whether the battlefield raises one of `spell`'s schools to Expert for a hero (BAT-TER-005):
+/// the computer's estimate of the Faerie Dragon's spell takes Expert there too (0x43C620; E23
+/// T4a, survey slip 7).
+pub fn field_raises(state: &BattleState, ruleset: &BattleRuleset, spell: SpellId) -> bool {
+    state
+        .battlefield
+        .and_then(|b| ruleset.battlefield(b))
+        .zip(ruleset.spell(spell))
+        .is_some_and(|(b, s)| b.raises(&s.schools))
+}
+
+/// The creatures the raiser `caster` raises from stack `target` by the computer's count
+/// (0x447330; E23 T4a): an Archangel's (a stack raiser's) `min(lost creatures, its hit points
+/// div the target's per creature)`, whole creatures only; a Pit Lord's (a corpse raiser's) as its
+/// raise (BAT-MAG-052); 0 for a stack that raises nothing.
+pub fn raise_count(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    caster: StackId,
+    target: StackId,
+) -> u32 {
+    crate::casters::raise_count(state, ruleset, (caster, target))
+}
+
+/// The computer's worth of one creature of `creature` that the battle would create for `side`
+/// (0x442A50 of the record 0x43D730 sets up: the Pit Lord's Demon, 0x421000; E23 T4a): the
+/// side's stack of it as at the battle's start (its hero's bonuses), without the shot flag; 0
+/// when the battle creates no such stack for the side.
+pub fn created_worth(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    ctx: &Context,
+    side: BattleSide,
+    creature: CreatureTypeId,
+) -> X87 {
+    aim::created_worth(state, ruleset, ctx, (side, creature))
+}
+
+/// The computer's value of a damage spell of the context's side with the value `damage` on stack
+/// `id` (0x436E30; E23 T4a): the kills of its damage (with the side's hero's bonuses when
+/// `bonuses`) after the stack's reductions, protection and resistance, at most its hit points;
+/// a disabled stack's value less its strength's excess over it. 0 for a spell the ruleset lacks.
+pub fn spell_damage_value(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    ctx: &Context,
+    (spell, damage): (SpellId, u64),
+    bonuses: bool,
+    id: StackId,
+) -> i32 {
+    let field = Field::new(ruleset.battle().field);
+    ruleset.spell(spell).map_or(0, |s| {
+        aim::spell_damage_value(
+            state,
+            (ruleset, field),
+            ctx,
+            ((spell, s), damage),
+            bonuses,
+            id,
+        )
+    })
+}
+
+/// The stacks `side`'s chain spell `spell` at `mastery` strikes from stack `first` as the
+/// computer estimates it, each with its value from `value` on (0x437190 with 0x5A61F0 not for
+/// real; E23 T4a): the rules' chain (BAT-MAG-006) without resistance rolls; nothing for a spell
+/// the ruleset lacks or without a chain.
+pub fn chain<'a>(
+    state: &'a BattleState,
+    ruleset: &'a BattleRuleset,
+    side: BattleSide,
+    (spell, mastery): (SpellId, u8),
+    (first, value): (StackId, u64),
+) -> impl Iterator<Item = (StackId, u64)> + 'a {
+    ruleset.spell(spell).into_iter().flat_map(move |s| {
+        magic::ChainEstimate::new(
+            (state, ruleset),
+            side,
+            ((spell, s), mastery),
+            (first, value),
+        )
+    })
+}
+
+/// The stacks `side`'s area spell `spell` at `mastery` aimed at `hex` reaches (BAT-MAG-007), by
+/// id, as the computer's estimate takes them (0x437040 with 0x5A4920; E23 T4a); none for a spell
+/// the ruleset lacks.
+pub fn area_stacks<'a>(
+    state: &'a BattleState,
+    ruleset: &'a BattleRuleset,
+    side: BattleSide,
+    (spell, mastery): (SpellId, u8),
+    hex: Hex,
+) -> impl Iterator<Item = StackId> + 'a {
+    ruleset
+        .spell(spell)
+        .into_iter()
+        .flat_map(move |s| magic::area_estimate((state, ruleset), side, ((spell, s), mastery), hex))
 }
