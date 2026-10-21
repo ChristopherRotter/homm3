@@ -1010,6 +1010,9 @@ fn spell_value(
     (id, spell): (SpellId, &BattleSpell),
     c: Caster,
 ) -> i32 {
+    // stub: BAT-STUB-7
+    // The original's mastery is on the hero's own adventure tile (slip 6), which the seam lacks
+    // for an attacking hero: the battlefield's.
     let m = magic::mastery(state, ruleset, hero, id);
     let cost = i32::from(crate::mana::cost(
         spell,

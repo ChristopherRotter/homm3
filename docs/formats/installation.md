@@ -4759,3 +4759,118 @@ FPU (`f32(f − r)`, beside an aura times the `f32` 0.8 at 53 bits); the damage 
 **Slips** (survey §4, BAT-QUIRK-25): the Fire Wall's missing immunity test (slip 18) and the least
 attack bonus for both bonuses at the two hazards (slip 19). **Draws:** none. **Readings at risk:**
 none beyond §7.36's (batch rows W2, W4, S3).
+
+### 7.49 Code reading: the odds and the ends re-read for the port (E23 T3c, 2026-10-21)
+
+Read again for E23 T3c (the user: whole): 0x421680's tail from 0x421C16 and its branches, the
+order of action 0x41F140 with its sort, the threat records 0x422B20 with flag 1 and 0x448840,
+0x41F3B0, 0x420760 with 0x4205D0 and 0x4B3F20, 0x4208F0, 0x4213F0 with 0x469A10 and 0x469DC0,
+0x420A80 and the hero's value 0x5275B0, 0x5273D0, 0x5270E0. §7.35, §7.37 to §7.39 stand; these
+are the details the port needs. Insight only, nothing copied (Q29).
+
+**0x421680's tail.** The best's drawn value per turn is `trunc(v × r / 100) / turns` and its plan
+value per turn `trunc(P × r / (100 × turns))` (one 32-bit product, one division; 0x421C27). With a
+best: the plan's hex only when `P` was taken; else the losing attack's test (0x421E30: the value
+below 0 and below the plan value, `0x400000` clear, above Easy or a human side, 0x420A80) leads to
+the fallback, any other to the attack (0x421EF8). Without one: 0x421D51 tests the fort (+0x132F4
+above 0) and the acting side (+0x132C0 = 0), else the fallback. **The besieger's walk**
+(0x421D6D): the row's wall hex (0x63BD00 by position / 17); from it while above the position, the
+first hex whose cell bit `0x1` is set (reached, a hex flown over included), not a moat hex
+(0x469DC0, the bridges only while the gate is closed) and, for a two-hex walker, whose index ± 1
+by its facing (+0x44) is none either; then the walk with the scores and flag 0 when above the
+position, else Defend. The walk's answer is not read: without a path the action field keeps what
+it held (not read; the port defends). **The fallback** (0x421E84): outside a prediction, 0x41F920
+with the mask the scores' 0x420260 filled (0 when it did not run: Easy for a computer side) and,
+when it gives 0, 0x420760; then with a best the attack after all, else outside a prediction
+0x4208F0; else false.
+
+**0x41F140, the order of action, read in full.** The keys as §7.34 (+0x290 or +0x2B0 above 1
+before the acted bit `0x4000000` or 0x41F380, then the waited bit `0x2000000` or +0x13DE4); dead
+records and arrow towers are left out and keep the +0x190 they last had. The vector (side 0's
+records, then side 1's) is sorted by 0x423340, which has the steps of Visual C++ 5/6's `std::sort`
+exactly: more than 16 elements, the quicksort 0x423630 (median of the first, the middle at `n / 2`
+and the last; the unguarded partition 0x423820; recursion into the part not larger, `L − M ≤ M −
+F` the right one) down to 16, then the insertion sort of the first 16 (an element before the first
+goes to the front, any other through the unguarded insertion 0x4237C0) and the unguarded insertion
+of the rest; at most 16, the insertion sort alone. The predicate 0x4235C0: the higher key, then the
+lower record index. The alternation from +0x132B8 (the activation's side: the walker's own on its
+turn): where the element is not of the expected side, the next one with the same key and the
+expected side (the search stops at the first other key) is swapped in; the side expected next is
+the other of the element's. +0x190 gets `n − index`.
+
+**0x422B20 with flag 1** (0x421F80's call: the side, the walker as the record left out, flag 1, the
+context). Per record of the side: cleared; then skipped when dead, a war machine other than the
+Ballista (146), in a prediction without hit points left, +0x2B0 or +0x290 above 1, hypnotized
+(+0x288) or berserk (+0x284), the walker itself, or **able to shoot now (with flag 1 no record)**.
+The map 0x4B2DA0 with **range = the stack's speed** (0x448CD0) and the tactics flag, so a stop
+marks nothing. Over the other side's records but arrow towers: **flag 1 takes only an enemy whose
+rank +0x190 is below the record's** (it acts later); the enemy's position hex marked (+0x4A: a
+mark, or for a free hex a position reached within the speed, so a dead enemy's place counts, by
+the rank it kept); in a prediction with hit points left; the cell's cost, skipped for a stack of
+speed 0 at a cost above 0; the value 0x435C70 (shot flag 0, the cost as the run-up when within the
+speed, else 0); 0x448840 (enemy, value, cost): `turns = max(1, ceil(cost / s))` with `s` the speed
+by +0xC4 and the slow factor +0x4C8 (at least 1; a war machine's unslowed), the enemy's bit in
++0x544 at one turn, and +0x538/+0x53C/+0x540 replaced by fewer turns or, at equal turns, a strictly
+higher value. With range = speed every recorded enemy is within one turn.
+
+**0x41F3B0** as §7.38: `+0x454` nonzero and at most 1 (unlimited retaliations are 5000, 0x447172);
+`r` from 0x443080 with the prediction flag less 0x435980(S); per record of the acting side but
+arrow towers with the enemy's bit: `D` = 0x435980(O) capped at `r`; `w` = 0x442A50(E, +0, +4, 0,
+0); without desperate mode `fild D`, `fmul w`, `fdiv hp` (+0xC0), with it `fild ⌊(r mod hp + D) /
+hp⌋`, `fmul w` (slip 4); `ftol` less +0x53C; +0x538 = E and positive: summed, else the largest
+from 0.
+
+**0x420760 and 0x4205D0.** The acting side's records but dead, arrow towers (149) and the Catapult
+(145), that can shoot now (0x4428F0 with no record left out) and have `0x1000` clear. The guard hex:
+directions 0 to 7 (6 and 7 only for a two-hex R) through 0x523DF0 at R's position, the hex within
+0 to 186, its stack (0x4E7170) none or S: counted, then the map's cell bit `0x1`; the turns (1 in
+the tactics phase, else 0x4B3F20: `max(1, (cost + s − 1) / s)`); the touch 2 when S is two-hex and
+R touches (0x4466C0) S's position ± 1 by S's facing; replaced by fewer turns, more touch, or, at
+equal ones, the hex record's x anchor (+0) not smaller for R facing right (+0x44 = 1), not larger
+for R facing left. R's value 0x442E60 with the context's least bonuses, divided by the open sides
+when above 1 (`idiv`); R replaced by fewer turns or, at equal turns, a value not lower. Defend on
+S's position, else the walk without scores, true either way.
+
+**0x4208F0.** As §7.38; the own score the lower of S's position and its index ± 1 (two-hex);
+the best starts at the own score, cost 0 and no hex, so S's own position at cost 0 takes it at an
+equal score and only a strictly higher score replaces it then; over the 187 cells with bit `0x1`,
+none of the top six bits, a cost within the speed: a lower score is skipped, an equal one with a
+higher cost than the best's too. The walk's answer is returned.
+
+**0x4213F0, the walls test.** False without a fort (+0x132F4 = 0) or for side 0. Over the five
+parts of 0x63ABE0 (6, 8, 9, 10, 12): a part with 0 hit points (+0x13F60) takes the target record
+of its part number (12-byte records from 0x63BE60, the word +2 its wall-hex index or −1) and
+0x469A10 on that hex. Part 6: target 6, the lower tower, −1: 0x469A10 at a fort reads the hex
+record's flag byte at index −1, `+0x1D4 − 0x70`: the battle manager's +0x164, byte 93 of the
+display overlay +0x107 (H3API's `accessibleSquares2`, filled for a shown battle's movement shadow
+by 0x4937D0, cleared after each action, 0x478E51): clear in a hidden battle, so **a destroyed
+Upper Wall counts as a breach** (the port: as clear). Parts 8 and 12: past the table, index 0, hex
+12 (a wall hex no target opens: always blocked): never. Parts 9 and 10: indices 94 and 107, past the
+wall-hex table at its 95th and 108th byte: hex 0, never blocked at a fort (no obstacle there):
+always. Then 0x420A80, then every living record of side 1 but arrow towers at or right of its row's
+wall hex (0x467460 at the position only). **0x469DC0**, the moat test: with +0x53A8 the hexes of
+0x63BCE8, with the Fortress (town type 7) those of 0x63BCF4 too; 95 (94) only while +0x53A4 is 3;
+its second argument is an out pointer (the row).
+
+**0x420A80 and the hero's value.** As §7.38 and §7.39; the records skipped for +0x290, +0x2B0 or
++0x2C0 at any value; the turrets: the keep while +0x13F98 (part 14) is above 0 at fort level 2 or
+3, `a × v`; at 3 the upper tower (+0x13F74, part 5) and the lower (+0x13F94, part 13), each
+`trunc(v × (a + 1) / 2)` (`cdq`, `sub`, `sar`); `v` **creature 2's AI value** (+0x40 of the
+creature table's third record, 0x6747B0 + 0x128): the Archers', not the Arrow Tower's (slip 20).
+0x5273D0's cost is 0x4E5240 with no enemy army and field −1: the hero's own school mastery and its
+own army's changes (the Mages; not the enemy's Pegasi); `n = mana / cost` (1000 at a cost of 0 or
+less); the bits `flags & 0x1F8000` compared whole, so 0x8000 alone goes to 0x5270E0. **0x5270E0**:
+`10 d` an `int`; `X = fild(10 d) / fild(S)` stored as a double; `k` the first of 13 rows whose
+threshold `X` reaches (`fcomp`, C0 clear; an unordered `X` takes none: 13); `Y = X α_k + β_k` and `Z
+= X φ_min(n,13)` stored as doubles; `fcomp Y, Z` with C0 or C3 set (not greater, or unordered)
+gives `S × Y`, else `S × Z`, through `_ftol`. The table's 56 doubles are the nearest doubles to
+§7.39's decimals (read to the last bit). 0x5275B0 walks the 70 spells' +0x430 bytes, the flags
++0xC of each 0x88-byte spell record against the mask, the level +0x18 at most 2 under Recanter's
+Cloak (83), a value replacing the best only when greater.
+
+**Slips** (survey §4, BAT-QUIRK-25): the walls test's records (slip 2), the desperate kills' top
+creature (slip 4), the turrets as creature 2 (slip 20, new); the hero's tile's field (slip 6) needs
+the attacking hero's adventure tile, which the seam does not carry (BAT-STUB-7, BAT-Q56). **Draws:**
+none new. **Readings at risk** (added for T7): the Upper Wall's breach through the display overlay
+(a shown battle with the movement shadow may differ); a dead enemy recorded by its stale rank; the
+besieger's walk to a hex it cannot stand on (a flyer's flown-over wall hex) leaving the last action.

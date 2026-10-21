@@ -853,7 +853,7 @@ fn a_refused_choice_falls_back_to_defend() {
     assert!(validate(&state, &r, side, refused).is_err());
     assert_eq!(checked(&state, &r, side, refused), Command::Defend);
     assert_eq!(checked(&state, &r, side, Command::Wait), Command::Wait);
-    assert_eq!(POLICY_VERSION, 4);
+    assert_eq!(POLICY_VERSION, 5);
 }
 
 /// The setup of `setup` on `difficulty`.
@@ -986,11 +986,12 @@ proptest! {
     #![proptest_config(Config::with_cases(48))]
 
     /// Exit criterion 1 on the test ruleset: random battles of both sides, every difficulty,
-    /// with and without heroes (Tactics, a commanded Ballista and First Aid Tent): at every step
+    /// with and without heroes (Tactics, a commanded Ballista and First Aid Tent), on the field
+    /// or at the town (every fort level, moat and turrets): at every step
     /// the original's choice for the side to act is a command the engine accepts (no fallback
     /// fires), and the same state and stream give the same command and leave the same stream.
     /// Two steps in three play it, the third a random legal command that stays in the battle.
-    // covers: BAT-AI-001, BAT-AI-002, BAT-AI-003
+    // covers: BAT-AI-001, BAT-AI-002, BAT-AI-003, BAT-AI-005, BAT-AI-010, BAT-AI-011
     #[test]
     fn the_choice_is_legal_and_the_same_for_the_same_stream(
         seed in any::<u64>(),
@@ -1019,6 +1020,17 @@ proptest! {
             setup.human[side] = rng.below(2) == 0;
         }
         setup.difficulty = u8::try_from(rng.below(5)).unwrap();
+        // One battle in three at the town (BAT-AI-005's besieger's walk, BAT-AI-011).
+        if rng.below(3) == 0 {
+            let fort = [FortLevel::Fort, FortLevel::Citadel, FortLevel::Castle][rng.below(3) as usize];
+            let moat = if fort == FortLevel::Fort {
+                Moat::Absent
+            } else {
+                [Moat::Absent, Moat::Harmless, Moat::Damaging][rng.below(3) as usize]
+            };
+            let structures = u8::try_from(rng.below(4)).unwrap();
+            setup.siege = at_town(&r, (&attacker, &defender), (fort, moat, structures)).siege;
+        }
         let mut state = BattleState::new(&r, &setup, seed).unwrap();
         let mut seat = Rng::from_seed(seed ^ draws);
         let mut legal = LegalCommands::new();
