@@ -691,3 +691,67 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   holding the walls, a besieger's walk, the fallbacks. Predictions only (T4, T5): a struck stack
   without hit points after the planned damage (0x41FE2E), the hit points left after it (0x443080
   with the context's flag).
+
+## T3c — the odds and the ends (2026-10-21, increment 4)
+
+- **The checkpoint** (the user, 2026-10-21): T3c whole, one pull request (a cut into the ends, the
+  last retaliation's gain and the odds was offered and declined). Two calls during the session:
+  **slip 6** (the hero's value at the mastery of the hero's own adventure tile) stays a gap, both
+  profiles take the battlefield's (the battle's tile is the defender's, so only an attacking hero
+  on another magic ground differs; BAT-STUB-7, BAT-Q56 for a seam field later); the turrets valued
+  at creature 2's AI value (the Archers) become **slip 20** under BAT-QUIRK-25, the turret's own
+  value without it (no pack change).
+- **The reading** (`installation.md` §7.49): 0x421680's tail re-read (the plan value per turn, the
+  losing attack, the besieger's walk with 0x469DC0, the fallback's order); 0x41F140 and its sort
+  read in full (Visual C++ 5/6's `std::sort` step by step: the median, the unguarded partition,
+  the recursion into the part not larger, the insertion sorts); **0x422B20 with flag 1** (the
+  walker's turn): no record for a stack that can shoot now, the map's range the stack's speed, and
+  only enemies of a lower rank (acting later); a dead enemy's place counts by its stale rank;
+  0x448840's turns and the strictly higher value; 0x41F3B0 (unlimited retaliations are 5000);
+  0x420760, 0x4205D0 (the hex record's x anchor), 0x4B3F20, 0x4208F0 (the own position at cost 0
+  takes an equal score); **0x4213F0's part 6** reads the battle manager's +0x164, byte 93 of the
+  display overlay +0x107 (0x4937D0, H3API's `accessibleSquares2`): clear in a hidden battle, a
+  breach; hex 0 never blocked at a fort; 0x420A80's turrets (creature 2's +0x40 at 0x420C59, the
+  keep part 14, the towers parts 5 and 13); 0x5273D0's cost with no enemy army and field −1;
+  0x5270E0's comparisons and stores; the table's doubles are the nearest to the decimals.
+- **The port.** `h3-battle`: `computer::turn_map` (range the speed), `kept_out`, `hero_value`
+  (`aim::hero_value`, `spell_value`, the curve as thousandths through `X87::ratio` at 53 bits),
+  `siege` (the town whole), `SiegeState::inside` public, `magic::untargeted_bonus` (0x4E5760
+  without a stack: the Orbs and Sorcery; `caster_rates` shared with `caster_stage`); the odds'
+  cost is the spell's at the hero's own mastery without any army's change. `h3-battle-ai`: `order.rs` (the keys, the library sort, the alternation, the ranks),
+  `gain.rs` (the flag-1 threat records, built once per decision when first needed; the gain),
+  `odds.rs` (the stronger at range, the turrets), `ends.rs` (holding the walls with `breaches`,
+  the besieger's walk, the fallback, the guard and its hex, the step to safety); the walker reads
+  the odds once per decision (a cell) and the mask its scores built (`scores::build` returns it;
+  `scores::area_threat`); `walk_with` walks without scores for the guard. `POLICY_VERSION` 5.
+- **A blind check** (a fresh agent, the disassembly against the port with the slips on): no
+  discrepancy in 0x41F140 and its sort, 0x422B20 with flag 1 and 0x448840, 0x421680's tail,
+  0x4208F0 and 0x4213F0 (its part 6 confirmed: the overlay's byte 93); the table checked value by
+  value. Three differences, all fixed: 0x41F3B0 loops over the acting side's records (a
+  hypnotized walker's controller's; the port had the walker's own side); 0x4E5240 given no enemy
+  army skips the own Mages too (0x4E52DA; the port had counted them); 0x420760 defends when the
+  walker stands on the last shooter's guard hex, not the best's (0x4208B4: **slip 21**, joined to
+  BAT-QUIRK-25 as the user had the turrets' creature).
+- **Not built here** (BAT-STUB-4): the creature casts (T4). Kept apart (documented): a dead enemy
+  in the flag-1 records; the stale action the original keeps when the besieger's or the guard's
+  walk finds no path (the port defends).
+- **Cost** (the budget: the count re-set on purpose, at most 1 ms for the slowest decision):
+  `computer-decisions` counts 684 134 426 instructions over 1 784 decisions, **about 383 000 per
+  decision** (T3b: 331 000), the battles twice as long (2 272 steps against 1 097: the walkers hold
+  back, guard and walk to the walls); `random-rollouts-full` +0.08 %, `-siege` +0.42 %. Release,
+  each decision's best of five (a local patch of `h3 bench-computer`, not kept), 2 000 battles of
+  seeds 4 to 8: 31.7 to 37.2 µs per decision on average, the slowest 0.19 to 0.34 ms. Within the
+  budget.
+- **Tests:** `h3-battle-ai`: the library sort (sixteen equivalent pairs kept in order, a pinned
+  order above sixteen, a property that it sorts), the ranks with equal speeds alternating and
+  after a Defend and a Wait; the odds by shooters and the turrets with slip 20 both ways at each
+  fort level; the gain against the formula, the desperate kills with slip 4 both ways (970 and
+  70), no gain without the last retaliation or for a stack acting after the enemy; the besieger's
+  walk (one- and two-hex walkers, with and without the moat), the walls test's breaches with slip
+  2 both ways, holding at a Citadel (the keep) and a Fort (archers), the guard instead of a losing
+  attack, no guard under an area threat, the guard's Defend and the step to safety; the property
+  over random battles now one in three at the town. `h3-battle`'s `tests/computer.rs`: the hero's
+  value (§7.39's example 7179, one cast 2697, the cost above the maximum mana, the curve's row 0, S
+  = 0, Sorcery 9016 in both precisions, the level limit, no book, casting forbidden, neither the Mages
+  nor the enemy's Pegasi, the kinds), the turn's map; slip 21 both ways; the attacker's two-hex
+  multi-headed enemy in the hex scores (a fixed test for a branch the property had reached).

@@ -20,12 +20,13 @@ use h3_content::{
     SpellCategory, SpellDef, SpellSchoolDef, TerrainDef,
 };
 use h3_content_battle::{
-    AbilityDef, AreaShot, BattleCreatureDef, BattlePack, BattleParamsDef, BattleRuleset,
-    BattleSpellDef, HexStep, ObstacleKind, ObstacleShape, SpellAi, SpellEffect, SpellMagic,
-    SpellPolarity, SpellTarget,
+    AbilityDef, AreaShot, BallisticsRecord, BattleCreatureDef, BattlePack, BattleParamsDef,
+    BattleRuleset, BattleSpellDef, HexStep, ObstacleKind, ObstacleShape, SiegeDef, SiegeFieldDef,
+    SpellAi, SpellEffect, SpellMagic, SpellPolarity, SpellTarget, WallKind, WallTarget,
 };
 use h3_contracts::{
-    Army, ArmyStack, BallistaControl, BattleHero, BattleSetup, BattleSide, Rate, TentControl,
+    Army, ArmyStack, BallistaControl, BattleHero, BattleSetup, BattleSide, FortLevel, Moat, Rate,
+    Siege, TentControl,
 };
 use h3_kernel::Rng;
 use proptest::prelude::{any, prop_assert, prop_assert_eq, proptest};
@@ -33,6 +34,11 @@ use proptest::test_runner::Config;
 
 use super::{POLICY_VERSION, checked, choose, unchecked};
 use crate::walker::Walker;
+
+mod ends;
+mod gain;
+mod odds;
+mod order;
 
 fn key(text: &str) -> ContentKey {
     ContentKey::parse(text).unwrap()
@@ -69,9 +75,9 @@ const HEALS: Option<AbilityDef> = Some(AbilityDef::FirstAid {
 /// wide), the archer, the Ballista and the First Aid Tent; the area shooters (the magog's
 /// fireball, the undead lich's death cloud); fast walkers that are fire-immune (the efreet),
 /// lifeless (the golem) and undead (the zombie); a slow two-hex walker (the cavalier); a flyer
-/// that strikes and returns (the harpy); the multi-headed (the two-hex hydra, the cerberus) and
-/// a breath attacker (the dragon).
-const CREATURES: [Creature; 16] = [
+/// that strikes and returns (the harpy); the multi-headed (the two-hex hydra, the cerberus), a
+/// breath attacker (the dragon) and a town's turret (the tower, BAT-SIE-016).
+const CREATURES: [Creature; 17] = [
     ("imp", 5, 100, &[], [2, 3, 1, 2], 4, 0, None),
     ("gog", 3, 900, &[], [4, 4, 2, 3], 13, 0, None),
     ("runner", 20, 300, &["alive"], [5, 5, 2, 4], 10, 0, None),
@@ -182,6 +188,16 @@ const CREATURES: [Creature; 16] = [
         0,
         None,
     ),
+    (
+        "tower",
+        0,
+        50,
+        &["shooter", "war_machine"],
+        [10, 5, 2, 4],
+        100,
+        99,
+        Some(AbilityDef::Turret),
+    ),
 ];
 
 const IMP: usize = 0;
@@ -200,6 +216,11 @@ const HARPY: usize = 12;
 const HYDRA: usize = 13;
 const CERBERUS: usize = 14;
 const DRAGON: usize = 15;
+const TOWER: usize = 16;
+
+/// The test creatures' AI values (the others have none): the runner's stands for the Archers'
+/// (creature 2), which the odds give a turret under BAT-QUIRK-25 (slip 20), the tower's own.
+const AI_VALUES: [(usize, u32); 2] = [(RUNNER, 126), (TOWER, 400)];
 
 /// The core ruleset of the test creatures, one hero type and the profiles `t:faithful` (the
 /// original's slips in its estimates, BAT-QUIRK-25) and `t:fixed` (none), in `profile`.
@@ -211,15 +232,22 @@ fn core(profile: &str) -> Ruleset {
     }];
     pack.creatures = CREATURES
         .iter()
-        .map(|&(k, speed, fight_value, flags, ..)| CreatureDef {
-            key: key(&["t:", k].concat()),
-            speed,
-            info: CreatureInfoDef {
-                fight_value,
-                flags: flags.iter().map(|f| f.to_string()).collect(),
-                ..CreatureInfoDef::default()
+        .enumerate()
+        .map(
+            |(handle, &(k, speed, fight_value, flags, ..))| CreatureDef {
+                key: key(&["t:", k].concat()),
+                speed,
+                info: CreatureInfoDef {
+                    fight_value,
+                    ai_value: AI_VALUES
+                        .iter()
+                        .find(|&&(h, _)| h == handle)
+                        .map_or(0, |&(_, v)| v),
+                    flags: flags.iter().map(|f| f.to_string()).collect(),
+                    ..CreatureInfoDef::default()
+                },
             },
-        })
+        )
         .collect();
     pack.factions = vec![FactionDef {
         key: key("t:town"),
@@ -370,11 +398,81 @@ fn ruleset_as(profile: &str) -> BattleRuleset {
             surrender: None,
             hero_casts_per_round: 1,
             side_stack_limit: 20,
-            siege: None,
+            siege: Some(siege_field()),
         }),
+        sieges: vec![SiegeDef {
+            faction: key("t:town"),
+            moat_damage: 70,
+            second_moat: false,
+            mines: None,
+            hit_points: vec![2; 8],
+        }],
         ..BattlePack::new(manifest())
     };
     BattleRuleset::compile(Arc::new(core(profile)), &[pack]).unwrap()
+}
+
+/// The siege's field: the original's (`docs/formats/installation.md` §7.27, §7.28).
+fn siege_field() -> SiegeFieldDef {
+    SiegeFieldDef {
+        walls: vec![12, 29, 45, 62, 78, 96, 112, 130, 147, 165, 182],
+        gate: 96,
+        moat: vec![11, 28, 44, 61, 77, 95, 111, 129, 146, 164, 181],
+        second_moat: vec![10, 27, 43, 60, 76, 94, 110, 128, 145, 163, 180],
+        moat_defense_penalty: 3,
+        mine_power: 3,
+        teleport_moat: 2,
+        teleport_walls: 3,
+        catapult: 119,
+        turret_count: 4,
+        targets: [
+            (WallKind::Tower, None, Some(255)),
+            (WallKind::Wall, Some(29), None),
+            (WallKind::Wall, Some(78), None),
+            (WallKind::Gate, Some(96), None),
+            (WallKind::Wall, Some(130), None),
+            (WallKind::Wall, Some(182), None),
+            (WallKind::Tower, None, Some(251)),
+            (WallKind::Keep, None, Some(254)),
+        ]
+        .map(|(kind, wall, turret)| WallTarget { kind, wall, turret })
+        .to_vec(),
+        missed: vec![1, 2, 5, 4],
+        automatic: vec![1, 2, 4, 5],
+        fallback: vec![3, 7, 0, 6],
+        castle_bonus: 1,
+        ballistics: [
+            ([5, 10, 25, 50], 1, [10, 60, 30]),
+            ([7, 15, 30, 60], 1, [0, 50, 50]),
+            ([7, 15, 30, 60], 2, [0, 50, 50]),
+            ([10, 20, 40, 75], 2, [0, 0, 100]),
+        ]
+        .map(|(hit, shots, damage)| BallisticsRecord { hit, shots, damage })
+        .to_vec(),
+    }
+}
+
+/// The two armies of a setup: each stack's creature handle and count.
+type Armies<'a> = (&'a [(usize, u32)], &'a [(usize, u32)]);
+
+/// [`setup`] at the town's `fort` with `moat`, its turrets' count 4 plus `structures`.
+fn at_town(
+    r: &BattleRuleset,
+    (attacker, defender): Armies<'_>,
+    (fort, moat, structures): (FortLevel, Moat, u8),
+) -> BattleSetup {
+    BattleSetup {
+        siege: Some(Siege {
+            faction: r.faction_by_key("t:town").unwrap(),
+            fort,
+            moat,
+            structures,
+            escape_tunnel: false,
+            morale: 0,
+            luck: 0,
+        }),
+        ..setup(attacker, defender)
+    }
 }
 
 fn creature(handle: usize) -> CreatureTypeId {
@@ -755,7 +853,7 @@ fn a_refused_choice_falls_back_to_defend() {
     assert!(validate(&state, &r, side, refused).is_err());
     assert_eq!(checked(&state, &r, side, refused), Command::Defend);
     assert_eq!(checked(&state, &r, side, Command::Wait), Command::Wait);
-    assert_eq!(POLICY_VERSION, 4);
+    assert_eq!(POLICY_VERSION, 5);
 }
 
 /// The setup of `setup` on `difficulty`.
@@ -888,11 +986,12 @@ proptest! {
     #![proptest_config(Config::with_cases(48))]
 
     /// Exit criterion 1 on the test ruleset: random battles of both sides, every difficulty,
-    /// with and without heroes (Tactics, a commanded Ballista and First Aid Tent): at every step
+    /// with and without heroes (Tactics, a commanded Ballista and First Aid Tent), on the field
+    /// or at the town (every fort level, moat and turrets): at every step
     /// the original's choice for the side to act is a command the engine accepts (no fallback
     /// fires), and the same state and stream give the same command and leave the same stream.
     /// Two steps in three play it, the third a random legal command that stays in the battle.
-    // covers: BAT-AI-001, BAT-AI-002, BAT-AI-003
+    // covers: BAT-AI-001, BAT-AI-002, BAT-AI-003, BAT-AI-005, BAT-AI-010, BAT-AI-011
     #[test]
     fn the_choice_is_legal_and_the_same_for_the_same_stream(
         seed in any::<u64>(),
@@ -921,6 +1020,17 @@ proptest! {
             setup.human[side] = rng.below(2) == 0;
         }
         setup.difficulty = u8::try_from(rng.below(5)).unwrap();
+        // One battle in three at the town (BAT-AI-005's besieger's walk, BAT-AI-011).
+        if rng.below(3) == 0 {
+            let fort = [FortLevel::Fort, FortLevel::Citadel, FortLevel::Castle][rng.below(3) as usize];
+            let moat = if fort == FortLevel::Fort {
+                Moat::Absent
+            } else {
+                [Moat::Absent, Moat::Harmless, Moat::Damaging][rng.below(3) as usize]
+            };
+            let structures = u8::try_from(rng.below(4)).unwrap();
+            setup.siege = at_town(&r, (&attacker, &defender), (fort, moat, structures)).siege;
+        }
         let mut state = BattleState::new(&r, &setup, seed).unwrap();
         let mut seat = Rng::from_seed(seed ^ draws);
         let mut legal = LegalCommands::new();
@@ -956,7 +1066,7 @@ proptest! {
 fn scores_of(state: &BattleState, r: &BattleRuleset, id: StackId) -> [i32; 256] {
     let side = state.stack(id).unwrap().side;
     let ctx = computer::context(state, r, side);
-    crate::scores::build(state, r, (id, side), &ctx)
+    crate::scores::build(state, r, (id, side), &ctx).0
 }
 
 /// The floor of the walker `id`'s scores: minus the value of its whole hit points.
@@ -1154,6 +1264,31 @@ fn a_multi_headed_enemy_lowers_where_it_would_strike_the_side_on_hard_for_a_comp
     let t = strike_on(&state, &r, (StackId(3), me));
     assert!(-t > floor_of(&state, &r, me) + 1, "{t}");
     assert!(scores.contains(&-t) && scores.contains(&(-t - 1)), "{t}");
+}
+
+// covers: BAT-AI-007
+#[test]
+fn an_attackers_multi_headed_enemy_lowers_where_it_would_strike_the_defender() {
+    let r = ruleset();
+    // The sides swapped: the attacker's hydra (at 1, its front hex 2) faces right; the defender's
+    // runner goes next to its front hex, and on Hard the defender's imps' hexes around the runner
+    // that the hydra's strike would hit lose its strike value.
+    let setup = on(2, setup(&[(HYDRA, 1)], &[(RUNNER, 1), (IMP, 10)]));
+    let mut state = BattleState::new(&r, &setup, 16).unwrap();
+    assert_eq!(active(&state), RUNNER);
+    play(&mut state, &r, Command::Move { to: Hex(3) });
+    assert_eq!(active(&state), IMP);
+    let me = StackId(2);
+    let scores = scores_of(&state, &r, me);
+    let low = (-strike_on(&state, &r, (StackId(0), me))).max(floor_of(&state, &r, me));
+    assert!(low < 0);
+    let hit: Vec<Hex> = all_hexes().filter(|h| scores[h.index()] != 0).collect();
+    assert!(!hit.is_empty());
+    let field = Field::new(r.battle().field);
+    for &hex in &hit {
+        assert_eq!(scores[hex.index()], low, "{hex:?}");
+        assert!(field.distance(hex, Hex(3)) <= 3, "{hex:?}");
+    }
 }
 
 // covers: BAT-AI-007

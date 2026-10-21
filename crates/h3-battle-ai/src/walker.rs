@@ -10,10 +10,17 @@
 //! plan adds the score of its hex and the walk holds back on Hard and above rather than step onto
 //! a hex that scores worse (BAT-AI-006).
 //!
-//! Not built yet (BAT-STUB-4): "the stronger side" (0x420A80; T3c) is false; the last retaliation's gain
-//! (0x41F3B0), the fallbacks (0x41F920, 0x420760, 0x4208F0), a besieger's walk to its wall and a
-//! defender holding the walls (0x4213F0) are T3c's; the creature casts (0x421280) T4's. The
-//! walker's turn in the tactics phase is T6's (BAT-STUB-5).
+//! The odds (0x420A80, [`odds`]; BAT-AI-008) decide three branches: a negative melee value takes
+//! the plan's value alone, a defender at a fort that holds its walls takes only the enemies inside
+//! them ([`Walker::holds_walls`], BAT-AI-011), and a losing attack gives way to the fallbacks. On
+//! Hard and above the last retaliation's gain ([`gain`], BAT-AI-009) starts an enemy's value.
+//! Without a candidate a besieger walks to its row's wall, and the fallbacks ([`Walker::fallback`],
+//! BAT-AI-010) guard a shooter or step to safety.
+//!
+//! Not built yet (BAT-STUB-4): the creature casts (0x421280, before the action and after a choice
+//! of nothing) are T4's; the walker's turn in the tactics phase is T6's (BAT-STUB-5).
+
+use core::cell::{Cell, OnceCell};
 
 use h3_battle::computer::{self, Context, Map};
 use h3_battle::{
@@ -23,7 +30,9 @@ use h3_content_battle::{Ability, BattleRuleset};
 use h3_kernel::Rng;
 use h3_kernel::arith::{DOUBLE_BITS, X87};
 
+use crate::gain::{self, Records};
 use crate::hexes::{self, Shape};
+use crate::odds;
 use crate::scores;
 
 /// Hexes a table of hex scores covers.
@@ -44,14 +53,15 @@ struct Plan {
     value: i32,
 }
 
-/// The best candidate so far (0x421680's locals): the enemy, its plan, its drawn value per turn
-/// and whether only the plan's hex counts. (Its drawn plan value per turn, which the fallbacks and
-/// the creature casts read, joins with T3c and T4.)
+/// The best candidate so far (0x421680's locals): the enemy, its plan, its drawn value per turn,
+/// its plan's value `P` drawn alike per turn (`trunc(P × r / (100 × turns))`, a 32-bit product)
+/// and whether only the plan's hex counts.
 #[derive(Debug, Clone, Copy)]
-struct Best {
+pub(crate) struct Best {
     enemy: StackId,
     plan: Plan,
     value: i32,
+    plan_value: i32,
     only: bool,
 }
 
@@ -67,20 +77,29 @@ struct Striker {
 
 /// One walker's choice: its battle, side, context, map and scores.
 pub(crate) struct Walker<'a> {
-    state: &'a BattleState,
-    ruleset: &'a BattleRuleset,
-    field: Field,
-    id: StackId,
-    me: &'a Stack,
-    side: BattleSide,
-    ctx: Context,
-    map: Map,
+    pub(crate) state: &'a BattleState,
+    pub(crate) ruleset: &'a BattleRuleset,
+    pub(crate) field: Field,
+    pub(crate) id: StackId,
+    pub(crate) me: &'a Stack,
+    pub(crate) side: BattleSide,
+    pub(crate) ctx: Context,
+    pub(crate) map: Map,
     /// The hex scores (BAT-AI-007).
-    scores: Scores,
+    pub(crate) scores: Scores,
+    /// The enemies that can strike the side this turn, by record bit (the reach's mask, 0x420260):
+    /// the area threat's (0x41F920).
+    pub(crate) mask: u32,
     /// The living stack on each hex (0x4E7170).
-    on: [Option<StackId>; HEXES],
+    pub(crate) on: [Option<StackId>; HEXES],
     /// The game is above Easy or the side's player human (`[game]+0x1F6D8 > 0`, +0x54A4).
-    normal: bool,
+    pub(crate) normal: bool,
+    /// The odds (0x420A80), computed when first asked: they read nothing the choice changes
+    /// (ADR-0027 point 11: an optimisation that changes no choice).
+    stronger: Cell<Option<bool>>,
+    /// The side's threat records on the walker's turn (0x422B20 with flag 1), built when the last
+    /// retaliation's gain first needs them.
+    records: OnceCell<Records>,
 }
 
 /// The command of the computer's walker `id` of `side` (0x421F80; BAT-AI-005): the walker's choice
@@ -122,7 +141,7 @@ impl<'a> Walker<'a> {
             }
         }
         let ctx = computer::context(state, ruleset, side);
-        let scores = scores::build(state, ruleset, (id, side), &ctx);
+        let (scores, mask) = scores::build(state, ruleset, (id, side), &ctx);
         Self {
             state,
             ruleset,
@@ -133,9 +152,36 @@ impl<'a> Walker<'a> {
             ctx,
             map: computer::map(state, ruleset, id, side),
             scores,
+            mask,
             on,
             normal: computer::difficulty(state) > 0 || computer::human(state, side),
+            stronger: Cell::new(None),
+            records: OnceCell::new(),
         }
+    }
+
+    /// Whether the walker's side is the stronger at range (0x420A80; BAT-AI-008).
+    pub(crate) fn stronger(&self) -> bool {
+        self.stronger.get().unwrap_or_else(|| {
+            let stronger = odds::stronger(self.state, self.ruleset, &self.ctx, self.side);
+            self.stronger.set(Some(stronger));
+            stronger
+        })
+    }
+
+    /// The last retaliation's gain against `enemy` (0x41F3B0; BAT-AI-009), the side's threat
+    /// records built the first time.
+    fn gain(&self, enemy: StackId) -> i32 {
+        let records = self.records.get_or_init(|| {
+            gain::records(self.state, self.ruleset, &self.ctx, (self.id, self.side))
+        });
+        gain::gain(
+            self.state,
+            self.ruleset,
+            &self.ctx,
+            records,
+            (self.id, self.side, enemy),
+        )
     }
 
     /// The walker with the hex scores `scores` (the tests' scores by hand).
@@ -156,27 +202,36 @@ impl<'a> Walker<'a> {
         u32::try_from(n).unwrap_or(31)
     }
 
-    fn score(&self, hex: Hex) -> i32 {
+    pub(crate) fn score(&self, hex: Hex) -> i32 {
         self.scores[hex.index()]
     }
 
     /// The walker's choice (0x421680 outside a prediction; BAT-AI-005): over the other side's
-    /// living stacks but the turrets, in record order (a bound walker only those next to it),
-    /// each with a [`Walker::plan`]: its value `v` is the melee value with the plan's cost as the
-    /// run-up when the plan takes one turn (0x435C70), and the plan's value `P` joins it
-    /// (outside Easy for a computer side, a positive `P` of a stack not summoned: the Harpies take
-    /// the larger, `P` alone for a negative `v` when the side is the stronger, else the sum); a
-    /// negative `v` outside Easy drops the enemy when `P` is below its hex's score; then the draw,
-    /// `v × random(75, 100) / 100`. The best: one not blind, petrified or paralysed, then fewer
+    /// living stacks but the turrets, in record order (a bound walker only those next to it; a
+    /// defender holding its walls only those inside them, [`Walker::holds_walls`]), each with a
+    /// [`Walker::plan`]: its value `v` starts at the last retaliation's gain (on Hard and above or
+    /// for a human side, an enemy it strikes within its speed that is not multi-headed; 0x41F3B0,
+    /// BAT-AI-009), adds the melee value with the plan's cost as the run-up when the plan takes
+    /// one turn (0x435C70), and the plan's value `P` joins it (outside Easy for a computer side, a
+    /// positive `P` of a stack not summoned: the Harpies take the larger, `P` alone for a negative
+    /// `v` when the side is the stronger at range, 0x420A80, else the sum); a negative `v` outside
+    /// Easy drops the enemy when `P` is below its hex's score; then the draw, `v × random(75,
+    /// 100) / 100`, and `P` alike. The best: one not blind, petrified or paralysed, then fewer
     /// turns, the value (the best's per turn against the candidate's whole), more hit points lost
     /// by the top creature, the lower cost to the plan's hex, the later record. Then: only the
-    /// plan's hex when `P` was taken (a walk there, nothing on it); an attack within one turn; a
-    /// walk towards the plan's hex (nothing on it). No candidate: nothing.
+    /// plan's hex when `P` was taken (a walk there, nothing on it); a losing attack (its value per
+    /// turn below 0 and below its drawn `P` per turn, the stack not summoned, outside Easy for a
+    /// computer side, the side the stronger at range) the fallbacks first
+    /// ([`Walker::fallback`]); the attack ([`Walker::attack`]). No candidate: a besieger walks to
+    /// its row's wall ([`Walker::besiege`]), any other the fallbacks.
     // rule: BAT-AI-005
     pub(crate) fn choose(&self, rng: &mut Rng) -> Option<Command> {
         let me = self.me;
         let still = me.speed_now() == 0 || computer::bound(self.state, self.id);
         let other = self.side.opponent();
+        let holds = self.holds_walls();
+        let hard = computer::difficulty(self.state) >= 2 || computer::human(self.state, self.side);
+        let speed = u16::from(me.speed_now());
         let mut best: Option<Best> = None;
         for (i, t) in (0u8..).zip(self.state.stacks()) {
             let enemy = StackId(i);
@@ -185,35 +240,46 @@ impl<'a> Walker<'a> {
                 || !t.is_alive()
                 || t.is_turret()
                 || (still && self.map.cost(t.hex) > 0)
+                || (holds && !self.inside_walls(t))
             {
                 continue;
             }
-            // stub: BAT-STUB-4
-            // A defender holding the walls takes only enemies inside them (0x4213F0), and on Hard
-            // the last retaliation's gain starts the value (0x41F3B0): T3c.
+            // The last retaliation's gain (a walker on its turn can act: the original also asks
+            // whether it is blind, petrified or paralysed, or the First Aid Tent or the Ammo Cart,
+            // for the predictions' stacks, T4).
+            let gains = hard
+                && self.map.mark(t.hex).is_some_and(|c| c <= speed)
+                && !t.has(StackTraits::ALL_ADJACENT)
+                && !t.has(StackTraits::THREE_HEADED);
+            let gain = if gains { self.gain(enemy) } else { 0 };
             let Some(plan) = self.plan(enemy) else {
                 continue;
             };
-            // The melee value with the run-up when the plan takes one turn: a walker on its turn can
-            // act (the original also asks whether it is blind, petrified or paralysed, or the First
-            // Aid Tent or the Ammo Cart, for the predictions' stacks: T4).
+            // The melee value with the run-up when the plan takes one turn.
             let run_up = u8::try_from(self.map.cost(plan.hex) * u16::from(plan.turns == 1))
                 .unwrap_or(u8::MAX);
             let pair = (self.id, enemy);
             let ctx = &self.ctx;
-            let mut v = computer::strike_value(self.state, self.ruleset, ctx, pair, run_up);
+            let mut v = gain.wrapping_add(computer::strike_value(
+                self.state,
+                self.ruleset,
+                ctx,
+                pair,
+                run_up,
+            ));
             let p = plan.value;
             let mut only = false;
-            // stub: BAT-STUB-4
-            // With a negative `v` and the side the stronger at range, `P` alone: T3c (0x420A80).
-            if p > 0
-                && !me.has(StackTraits::SUMMONED)
-                && self.normal
-                && me.has(StackTraits::STRIKE_AND_RETURN)
-            {
-                // The Harpies and Harpy Hags (72, 73 by number; the engine: strike and return).
-                only = v < p;
-                v = v.max(p);
+            if p > 0 && !me.has(StackTraits::SUMMONED) && self.normal {
+                if me.has(StackTraits::STRIKE_AND_RETURN) {
+                    // The Harpies and Harpy Hags (72, 73 by number; the engine: strike and return).
+                    only = v < p;
+                    v = v.max(p);
+                } else if v < 0 && self.stronger() {
+                    only = true;
+                    v = p;
+                } else {
+                    v = v.wrapping_add(p);
+                }
             } else {
                 v = v.wrapping_add(p);
             }
@@ -230,21 +296,47 @@ impl<'a> Walker<'a> {
                 enemy,
                 plan,
                 value: v / turns,
+                plan_value: p.wrapping_mul(r) / turns.wrapping_mul(100),
                 only,
             });
         }
-        // stub: BAT-STUB-4
-        // Without a candidate, a besieger walks to its row's wall, else the fallbacks guard a
-        // shooter or step to safety (§7.35, §7.38), and with the best's value per turn below 0
-        // and below its drawn `P` the side the stronger tries them first: T3c.
-        let b = best?;
+        let Some(b) = best else {
+            return if self.besieging() {
+                Some(self.besiege())
+            } else {
+                self.fallback(None)
+            };
+        };
         // stub: BAT-STUB-4
         // The creature's cast entry first, outside the tactics phase (0x421280): T4.
-        if b.plan.turns <= 1 && !b.only {
+        if b.only {
+            if b.plan.hex == me.hex {
+                return None;
+            }
+            return self.walk(b.plan.hex, b.plan.turns > 1);
+        }
+        let losing = b.value < 0
+            && b.value < b.plan_value
+            && !me.has(StackTraits::SUMMONED)
+            && self.normal
+            && self.stronger();
+        if losing {
+            self.fallback(Some(&b))
+        } else {
+            self.attack(&b)
+        }
+    }
+
+    /// The attack on the best candidate `b` (0x421EF8): within one turn a move and attack (a move
+    /// alone where the original's walk stops early); further, a careful walk towards the plan's
+    /// hex (never the walker's own: its own hexes are no stops, so a plan there takes one turn;
+    /// the original's test for it, 0x421F39, finds none).
+    pub(crate) fn attack(&self, b: &Best) -> Option<Command> {
+        if b.plan.turns <= 1 {
             // The original's move and attack stops where a step enters a stop and then skips the
             // attack (0x441FA0, 0x478971; §7.16): a two-hex walker whose other hex lies on one
             // at the plan's hex (the plan counts a stop by the position hex alone) only moves.
-            let other = Shape::of(me).other(self.field, b.plan.hex);
+            let other = Shape::of(self.me).other(self.field, b.plan.hex);
             return Some(if self.map.is_stop(other) {
                 Command::Move { to: b.plan.hex }
             } else {
@@ -254,10 +346,7 @@ impl<'a> Walker<'a> {
                 }
             });
         }
-        if b.plan.hex == me.hex {
-            return None;
-        }
-        self.walk(b.plan.hex, b.plan.turns > 1)
+        self.walk(b.plan.hex, true)
     }
 
     /// Whether the candidate `t` with `plan` and the drawn value `v` replaces `best` (0x421B2F to
@@ -530,26 +619,32 @@ impl<'a> Walker<'a> {
             })
     }
 
-    /// The computer's walk towards the position `to` (0x41F580; BAT-AI-006): nothing without a
-    /// path ([`computer::path`]; for a bound walker or one without speed: T3c's callers, the
-    /// plan's hex of such a walker is its own). Along the path, at most
-    /// its speed in steps and ending after a stop it enters (a flyer has none), each position it
-    /// stands on may become the end. With `careful` on Hard and above or for a human side
-    /// (the walker's own side), outside the wait phase, every end must score no lower than the
-    /// last end (both hexes of a two-hex walker; its start's score first), else only from the step
-    /// that leaves at most `s × ⌊(n − 1) / s⌋` of the path's `n` steps once an end was found, so it
-    /// first reaches the hex from which the rest takes whole turns. Then, careful: an end short of
-    /// the last hex reached with a score no lower than the start's is Wait; an end at its own
-    /// position Wait, else Defend; any other end a move there.
-    // rule: BAT-AI-006
+    /// The computer's walk towards the position `to` with the hex scores ([`Walker::walk_with`]).
     pub(crate) fn walk(&self, to: Hex, careful: bool) -> Option<Command> {
+        self.walk_with(to, careful, true)
+    }
+
+    /// The computer's walk towards the position `to` (0x41F580; BAT-AI-006): nothing without a
+    /// path ([`computer::path`]; for a bound walker or one without speed, the plan's hex of such
+    /// a walker is its own and the fallbacks find no other). Along the path, at most its speed in
+    /// steps and ending after a stop it enters (a flyer has none), each position it stands on may
+    /// become the end. With the scores (`scored`; the guard's walk has none, BAT-AI-010): with
+    /// `careful` on Hard and above or for a human side (the walker's own side), outside the wait
+    /// phase, every end must score no lower than the last end (both hexes of a two-hex walker; its
+    /// start's score first), else only from the step that leaves at most `s × ⌊(n − 1) / s⌋` of
+    /// the path's `n` steps once an end was found, so it first reaches the hex from which the rest
+    /// takes whole turns. Then, careful: an end short of the last hex reached with a score no
+    /// lower than the start's is Wait; an end at its own position Wait, else Defend; any other end
+    /// a move there.
+    // rule: BAT-AI-006
+    pub(crate) fn walk_with(&self, to: Hex, careful: bool, scored: bool) -> Option<Command> {
         let me = self.me;
         let speed = usize::from(me.speed_now());
         let path = computer::path(self.state, self.ruleset, (self.id, self.side), to);
         let steps = path.steps();
         let n = steps.len();
         let hard = computer::difficulty(self.state) >= 2 || computer::human(self.state, me.side);
-        let careful = careful && hard && !computer::wait_phase(self.state);
+        let careful = scored && careful && hard && !computer::wait_phase(self.state);
         let shape = Shape::of(me);
         let start = self
             .score(me.hex)
@@ -562,7 +657,7 @@ impl<'a> Walker<'a> {
                 continue;
             }
             let other = shape.other(self.field, hex);
-            let tested = careful || (n - k <= whole && found);
+            let tested = careful || (scored && n - k <= whole && found);
             if !tested || (self.score(hex) >= kept && self.score(other) >= kept) {
                 (end, found, kept) = (hex, true, self.score(hex).min(self.score(other)));
             }

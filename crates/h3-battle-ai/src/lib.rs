@@ -6,19 +6,21 @@
 //! Its callers are the AI lane's batch (`Policy::System`) and the adventure's neutral seat; they
 //! get it once a side without a hero is complete (E23 T4).
 //!
-//! So far (E23 T2, T3a, T3b): the stack's action of the original's dispatch (0x477EE0, 0x4221F0;
+//! So far (E23 T2, T3): the stack's action of the original's dispatch (0x477EE0, 0x4221F0;
 //! `docs/formats/installation.md` §7.34). A stack that can shoot now shoots the computer's target
 //! (0x41F060, 0x41EB80; §7.33, the automatic Ballista's), an area shooter by its value at a hex
 //! (0x41EDA0; §7.35), and the Cyclops batters the weakest wall when much of its side's strength
 //! is locked out (0x41EEA0). Any other stack is a walker (0x421F80, 0x421680; §7.35, §7.37,
-//! §7.38): it values each enemy by the best hex to strike it from and its melee value with a draw,
-//! attacks the best within a turn or walks towards it, and else waits (Hard and up) or defends;
-//! its hex scores (0x4214F0, 0x421590, 0x420260, 0x41FB60; §7.36) weigh the Fire Walls, the moat,
-//! the enemies' reach and the crowding into the plan and the walk. The rest stands in until its
-//! task builds it: the odds, the last
-//! retaliation's gain, the fallbacks and the sieges' walks (T3c) and the creature casts (T4)
-//! (BAT-STUB-4); the hero's side casts nothing, ends the tactics phase at once, its First Aid Tent
-//! defends and a commanded Catapult shoots the first wall (BAT-STUB-5, T5 and T6).
+//! §7.38): it values each enemy by the best hex to strike it from, its melee value and on Hard the
+//! gain when it takes the enemy's last retaliation, with a draw, attacks the best within a turn
+//! or walks towards it; its hex scores (0x4214F0, 0x421590, 0x420260, 0x41FB60; §7.36) weigh the
+//! Fire Walls, the moat, the enemies' reach and the crowding into the plan and the walk. The odds
+//! (0x420A80: the stronger at range, the hero's best damage spell and the turrets included, §7.39)
+//! let a defender hold its walls and send a losing walker to the fallbacks; without a candidate
+//! a besieger walks to its wall, any other guards a shooter or steps to safety (§7.38), and else
+//! waits (Hard and up) or defends. The rest stands in until its task builds it: the creature
+//! casts (T4) (BAT-STUB-4); the hero's side casts nothing, ends the tactics phase at once, its
+//! First Aid Tent defends and a commanded Catapult shoots the first wall (BAT-STUB-5, T5 and T6).
 //!
 //! The original's slips in its own estimates (survey `E23-battle-ai.md` §4) follow the quirk
 //! BAT-QUIRK-25 (`quirk.battle.original_ai_slips`, ADR-0027 point 9): on in `faithful`, off in
@@ -47,7 +49,11 @@ extern crate alloc;
 #[cfg(test)]
 extern crate std;
 
+mod ends;
+mod gain;
 mod hexes;
+mod odds;
+mod order;
 mod scores;
 mod shooter;
 mod walker;
@@ -64,7 +70,7 @@ use h3_kernel::Rng;
 /// The policy's behaviour version (ADR-0027 point 12): bumped with every change of a choice, so
 /// that a training record names its opponent (the AI lane's engine identity includes it).
 /// Replays store commands and do not change with it.
-pub const POLICY_VERSION: u32 = 4;
+pub const POLICY_VERSION: u32 = 5;
 
 /// The command the original's computer gives for `side`, the side to act in `state` (the active
 /// stack's controller, BAT-MAG-026), whatever `BattleSetup.human` says (ADR-0027 point 8):

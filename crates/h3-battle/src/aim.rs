@@ -16,8 +16,11 @@
 
 use core::cell::Cell;
 
-use h3_content::{CreatureFlag, ORIGINAL_AI_SLIPS};
-use h3_content_battle::{BattleRuleset, SpellEffect, SpellTarget, TimedChange, WallKind};
+use h3_content::{CreatureFlag, ORIGINAL_AI_SLIPS, SpellId};
+use h3_content_battle::{
+    BattleRuleset, BattleSpell, MAX_MASTERY, SpellAiKind, SpellEffect, SpellTarget, TimedChange,
+    WallKind,
+};
 use h3_contracts::{BattleSide, FortLevel};
 use h3_kernel::arith::{DOUBLE_BITS, SINGLE_BITS, X87};
 
@@ -551,7 +554,7 @@ fn costs(
 /// Whether stack `id` is blind or turned to stone for more than one round (0x422BD0 to 0x422BE9:
 /// the durations of Blind and of the Medusas' stone above 1): the computer records no enemy for
 /// it. Only a stack that loses its turns can be.
-fn kept_out(state: &BattleState, ruleset: &BattleRuleset, id: StackId) -> bool {
+pub(crate) fn kept_out(state: &BattleState, ruleset: &BattleRuleset, id: StackId) -> bool {
     state.at(id).spells.status.contains(Status::NO_TURNS)
         && state.effects.of(id).iter().any(|e| {
             e.rounds.is_none_or(|r| r > 1)
@@ -904,6 +907,136 @@ pub(crate) fn best_area_spell(
             })
         })
         .fold(0, i32::max)
+}
+
+/// The value curve of a hero's damage spell in the odds (the table 0x640398 read by 0x5270E0,
+/// `installation.md` §7.39), 14 rows in thousandths, each the nearest double to its decimal: the
+/// casts' factor φ, the threshold t (row 13's unread), the slope α and the intercept β.
+const SPELL_CURVE: [[u32; 4]; 14] = [
+    [0, 4800, 0, 4000],
+    [830, 1557, 500, 1600],
+    [1530, 752, 987, 842],
+    [2110, 433, 1452, 492],
+    [2590, 275, 1888, 303],
+    [2990, 186, 2291, 192],
+    [3330, 131, 2657, 124],
+    [3600, 95, 2986, 81],
+    [3840, 71, 3277, 53],
+    [4030, 54, 3353, 35],
+    [4190, 41, 3755, 23],
+    [4330, 32, 3947, 16],
+    [4440, 25, 4112, 10],
+    [4530, 0, 4530, 0],
+];
+
+/// The casts the curve's factor stops growing at (0x5270E0: `min(n, 13)`).
+const CURVE_CASTS: i32 = 13;
+
+/// The casts a free spell allows (0x5273D0: 1000 at cost 0).
+const FREE_CASTS: i32 = 1000;
+
+/// The highest Spell Power the odds take (0x526D40 holds it to 1–99).
+const MAX_POWER: u8 = 99;
+
+/// A curve entry as the double the table holds.
+fn curve(row: usize, column: usize) -> X87 {
+    let n = SPELL_CURVE[row.min(SPELL_CURVE.len() - 1)][column];
+    X87::ratio(n, 1000, DOUBLE_BITS).unwrap_or(X87::ZERO)
+}
+
+/// The computer's value of `side`'s hero in the odds (0x420A80's caster record 0x526D40 and best
+/// spell 0x5275B0 with the AI bit `0x8000`; BAT-AI-008, `installation.md` §7.39), with
+/// `strength` its side's whole strength: 0 without a hero or its spell book, or while casting is
+/// forbidden (an anti-magic garrison, the Orb of Inhibition on either hero, BAT-MAG-061); else
+/// the best from 0 among the spells of its book whose AI kinds hold `damage`, none above its own
+/// spell level limit (Recanter's Cloak on the hero itself), of [`spell_value`]. The hero's power
+/// held to 1–99 and its maximum mana (the adventure map's formula, not the points it has left).
+/// Whether it has cast this round is not asked.
+// rule: BAT-AI-008
+pub(crate) fn hero_value(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    side: BattleSide,
+    strength: i32,
+) -> i32 {
+    let Some(hero) = state.heroes[side.index()]
+        .as_ref()
+        .filter(|h| h.view.spell_book && !magic::casting_forbidden(state))
+    else {
+        return 0;
+    };
+    let caster = Caster {
+        power: hero.view.power.clamp(1, MAX_POWER),
+        mana: i32::from(hero.view.max_mana),
+        strength,
+    };
+    hero.magic
+        .book
+        .iter()
+        .filter_map(|id| ruleset.spell(id).map(|spell| (id, spell)))
+        .filter(|(_, spell)| {
+            spell.ai.kinds.contains(SpellAiKind::Damage) && spell.level <= hero.magic.level_limit
+        })
+        .map(|(id, spell)| spell_value(state, ruleset, hero, (id, spell), caster))
+        .fold(0, i32::max)
+}
+
+/// The caster record's numbers the odds read (0x526D40's +8, +0x10 and the side's strength as
+/// +4).
+#[derive(Debug, Clone, Copy)]
+struct Caster {
+    power: u8,
+    mana: i32,
+    strength: i32,
+}
+
+/// The odds' value of `hero`'s spell `id` (0x5273D0, 0x5270E0; §7.39): its mastery `m` on the
+/// battlefield (the original's on the hero's own adventure tile, the battle's for a defending
+/// hero; the attacker's tile is not in the seam: BAT-STUB-7); its cost at the hero's own mastery
+/// with no army's change (0x4E5240 given no enemy army skips both, the own Mages too; BAT-MAG-054
+/// at mastery without the battlefield's raise); 0 above the mana, else `n` casts, the mana over
+/// the cost (1000 at cost 0). A spell of the kind `damage` alone: the base `b = v_m × (power +
+/// m)` (`v_m` its AI value at `m`), `d` the hero's bonuses on it without a target
+/// ([`magic::untargeted_bonus`]), `X = 10 d / S` in doubles with `S` the side's strength, `Y =
+/// α_k X + β_k` for the first row `k` of 0–12 whose threshold `X` reaches (13 without one), `Z =
+/// φ_min(n, 13) X`, and `trunc(S × Z)` when `Y > Z`, else `trunc(S × Y)`: 0 for `S` = 0 (the
+/// original's NaN). Any other kinds (Titan's Lightning Bolt's): 1.
+// rule: BAT-AI-008
+fn spell_value(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    hero: &hero::HeroRecord,
+    (id, spell): (SpellId, &BattleSpell),
+    c: Caster,
+) -> i32 {
+    // stub: BAT-STUB-7
+    // The original's mastery is on the hero's own adventure tile (slip 6), which the seam lacks
+    // for an attacking hero: the battlefield's.
+    let m = magic::mastery(state, ruleset, hero, id);
+    let cost = i32::from(crate::mana::cost(spell, hero.magic.masteries.get(id), 0));
+    if cost > c.mana {
+        return 0;
+    }
+    let casts = if cost > 0 { c.mana / cost } else { FREE_CASTS };
+    if spell.ai.kinds.only() != Some(SpellAiKind::Damage) {
+        return 1;
+    }
+    let v = spell.ai.values[usize::from(m.min(MAX_MASTERY))];
+    let b = u64::from(v) * u64::from(c.power + m);
+    let d = magic::untargeted_bonus(ruleset, spell, &hero.magic.bonuses, b);
+    // `10 d`, an `int` in the original (far below 2^31: the base is at most 65 535 × 102).
+    let ten = d.saturating_mul(10).min(i32::MAX.unsigned_abs().into());
+    let s = X87::int(u64::try_from(c.strength).unwrap_or(0));
+    let Some(x) = X87::int(ten).over(s) else {
+        return 0;
+    };
+    let k = (0..SPELL_CURVE.len() - 1)
+        .find(|&k| x >= curve(k, 1))
+        .unwrap_or(SPELL_CURVE.len() - 1);
+    let y = x.times(curve(k, 2)).plus(curve(k, 3)).round(DOUBLE_BITS);
+    let n = usize::try_from(casts.clamp(0, CURVE_CASTS)).unwrap_or(0);
+    let z = x.times(curve(n, 0)).round(DOUBLE_BITS);
+    ftol(s.times(if y > z { z } else { y }))
 }
 
 /// The computer's value of `a` striking `t` after `jousting` hexes (0x435C70, 0x435B90 without the

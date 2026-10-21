@@ -4,10 +4,11 @@
 //! ruleset. The policy's use of them: `h3-battle-ai`'s tests and the harvested
 //! `harvested_computer.rs`.
 
+use std::vec;
 use std::vec::Vec;
 
 use h3_content::SpellId;
-use h3_content_battle::{BattleRuleset, ObstacleKind};
+use h3_content_battle::{BattleRuleset, ObstacleKind, SpellAi, SpellAiKind, SpellAiKinds};
 use h3_contracts::{BattleEffect, BattleHero, BattleSetup, BattleSide, FortLevel, Moat, Siege};
 
 use super::spells::{arena, mage, spell};
@@ -274,4 +275,138 @@ fn the_context_with_its_least_attack_for_both_bonuses() {
     let both = ctx.attack_for_both();
     assert_eq!((both.min_attack, both.min_defense), (3, 3));
     assert_eq!(both.strengths(), ctx.strengths());
+}
+
+/// The test ruleset (`profile`) with `bolt`'s AI values at 25 for every mastery and the AI kinds
+/// `kinds` (the odds count the kind `damage` alone, 0x420A80).
+fn odds_ruleset(profile: &str, kinds: &[SpellAiKind]) -> BattleRuleset {
+    let kinds = kinds
+        .iter()
+        .fold(SpellAiKinds::default(), |set, &k| set.with(k));
+    ruleset_from(
+        profile,
+        |_| {},
+        |_, battle| {
+            for def in &mut battle.spells {
+                if def.key.name() == "bolt" {
+                    def.ai = SpellAi {
+                        kinds,
+                        values: [25; 4],
+                    };
+                }
+            }
+        },
+    )
+}
+
+/// A mage with `bolt` at Expert, spell power 10 and a maximum of `max_mana` spell points, and
+/// `effects`.
+fn bolter(r: &BattleRuleset, max_mana: u16, effects: &[BattleEffect]) -> BattleHero {
+    let mut h = mage(r, &["bolt"]);
+    h.power = 10;
+    h.magic.max_mana = max_mana;
+    h.magic.masteries = vec![(spell(r, "bolt"), 3)];
+    h.effects.extend_from_slice(effects);
+    h
+}
+
+/// The hero's value of the attacker's hero `hero` against the side's strength `strength`, with
+/// `attacker` its army.
+fn hero_value(
+    r: &BattleRuleset,
+    hero: Option<BattleHero>,
+    attacker: &[(&'static str, u32, i32, i32)],
+    strength: i32,
+) -> i32 {
+    let s = arena(r, [hero, None], attacker, &[("fixed", 1, 10, 5)], 1);
+    computer::hero_value(&s, r, BattleSide::Attacker, strength)
+}
+
+// covers: BAT-AI-008
+#[test]
+fn the_heros_value_in_the_odds() {
+    for profile in ["t:faithful", "t:single"] {
+        let r = odds_ruleset(profile, &[SpellAiKind::Damage]);
+        let army: &[(&'static str, u32, i32, i32)] = &[("fixed", 1, 2, 5)];
+        let value = |h: BattleHero, s: i32| hero_value(&r, Some(h), army, s);
+        // installation.md §7.39's example: b = 25 × (10 + 3) = 325, X = 0.65 (row 3), Y =
+        // 1.452 X + 0.492 = 1.4358 below Z = 4.53 X (100 / 4 = 25 casts, at most 13): 7179.
+        assert_eq!(value(bolter(&r, 100, &[]), 5000), 7179, "{profile}");
+        // One cast (4 of 4 mana): Z = 0.83 X = 0.5395 is lower: trunc(5000 × 0.5395) = 2697.
+        assert_eq!(value(bolter(&r, 4, &[]), 5000), 2697, "{profile}");
+        // The cost above the maximum mana (not the points left): 0.
+        assert_eq!(value(bolter(&r, 3, &[]), 5000), 0, "{profile}");
+        // From X = 4.8 on, Y = 4: at most four times the side's strength.
+        assert_eq!(value(bolter(&r, 100, &[]), 100), 400, "{profile}");
+        // A side without strength: 0 (the original's NaN).
+        assert_eq!(value(bolter(&r, 100, &[]), 0), 0, "{profile}");
+        // Sorcery +50 %: d = trunc(325 × 1.5) = 487, X = 0.974 (row 2), Y = 0.987 X + 0.842:
+        // trunc(5000 × 1.803338) = 9016.
+        let sorcery = BattleEffect::SpellDamage {
+            scope: h3_content::SpellScope::All,
+            rate: Rate::bp(5000),
+        };
+        assert_eq!(value(bolter(&r, 100, &[sorcery]), 5000), 9016, "{profile}");
+        // The hero's own spell level limit (Recanter's Cloak: here 0) bars the spell.
+        let limit = BattleEffect::SpellLevelLimit { max_level: 0 };
+        assert_eq!(value(bolter(&r, 100, &[limit]), 5000), 0, "{profile}");
+    }
+    let r = odds_ruleset("t:faithful", &[SpellAiKind::Damage]);
+    // Without a spell book, a hero, or while casting is forbidden: 0.
+    let mut no_book = bolter(&r, 100, &[]);
+    no_book.magic.spell_book = None;
+    let army: &[(&'static str, u32, i32, i32)] = &[("fixed", 1, 2, 5)];
+    assert_eq!(hero_value(&r, Some(no_book), army, 5000), 0);
+    assert_eq!(hero_value(&r, None, army, 5000), 0);
+    let mut s = arena(
+        &r,
+        [Some(bolter(&r, 100, &[])), None],
+        army,
+        &[("fixed", 1, 10, 5)],
+        1,
+    );
+    s.limits.no_casting = true;
+    assert_eq!(computer::hero_value(&s, &r, BattleSide::Attacker, 5000), 0);
+    // No army changes the cost here (0x4E5240 given no enemy army skips both): the hero's own
+    // Mages (−2) do not make 2 mana enough for a cost of 4, the enemy's Pegasi (+2) do not make
+    // 4 too little.
+    let mages: &[(&'static str, u32, i32, i32)] = &[("fixed", 1, 2, 5), ("magus", 1, 2, 7)];
+    assert_eq!(hero_value(&r, Some(bolter(&r, 2, &[])), mages, 5000), 0);
+    assert_eq!(hero_value(&r, Some(bolter(&r, 4, &[])), mages, 5000), 2697);
+    let s = arena(
+        &r,
+        [Some(bolter(&r, 4, &[])), None],
+        army,
+        &[("fixed", 1, 10, 5), ("pegasus", 1, 10, 7)],
+        1,
+    );
+    assert_eq!(
+        computer::hero_value(&s, &r, BattleSide::Attacker, 5000),
+        2697
+    );
+    // Not the kind `damage` (no AI kind): not counted; `damage` with another kind: 1.
+    let r = odds_ruleset("t:faithful", &[]);
+    assert_eq!(hero_value(&r, Some(bolter(&r, 100, &[])), army, 5000), 0);
+    let r = odds_ruleset("t:faithful", &[SpellAiKind::Damage, SpellAiKind::Special]);
+    assert_eq!(hero_value(&r, Some(bolter(&r, 100, &[])), army, 5000), 1);
+}
+
+// covers: BAT-AI-009
+#[test]
+fn a_turns_map_reaches_within_the_speed() {
+    let r = ruleset();
+    // A fixed stack (speed 5) marks an enemy within its speed only, so a stop marks nothing.
+    let s = arena(
+        &r,
+        [None, None],
+        &[("fixed", 1, 2, 5)],
+        &[("fixed", 1, 4, 5), ("fixed", 1, 14, 5)],
+        1,
+    );
+    let speed = u16::from(s.stacks()[0].speed_now());
+    let map = computer::turn_map(&s, &r, StackId(0), BattleSide::Attacker);
+    assert!(map.mark(at(&r, 4, 5)).is_some_and(|c| c <= speed));
+    assert_eq!(map.mark(at(&r, 14, 5)), None);
+    assert!(!computer::kept_out(&s, &r, StackId(0)));
+    assert!(computer::siege(&s).is_none());
 }
