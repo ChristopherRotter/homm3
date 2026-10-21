@@ -81,14 +81,6 @@ Refined with the user on 2026-10-12 (T10c; ADV-Q9). Built like increment 1: comm
 
 **Exit criteria (increment 2):** the ADR amendments accepted; full verify green in CI with the adventure logic crates at 100 %; the property tests hold with objects: atomicity, legality consistency (pending decisions included), ownership isolation (treasuries, and the streams if a command draws), conservation (an army changes by no accepted command of increment 2; a treasury only by a visit's rule), observation hygiene (typed objects, treasuries), clone equivalence, determinism; golden replays on a duel map with objects in the determinism matrix; the benchmarks re-baselined; every new `ADV-*`/`GAM-*` rule `implemented` with sources; batch 2 staged and scored; the lane HANDOFF, the epic log and `QUEUE.md` current.
 
-### Decisions at round 4 (2026-10-21, user)
-
-66. **T31 whole, one pull request** (the user's choice of four; not chosen: T31a, the property
-    checks first, then T31b, the fixtures, replays and benchmarks, in two sessions or as two pull
-    requests in one; or T31b first). T32a follows in its own session: its recipe waits for the
-    harness's new reads (the client lane's inbox since T24a2b2), so only its spec and scorer can
-    be built before them.
-
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T11a Survey.** Done (2026-10-12): `docs/rules/surveys/E08-objects.md` from a code reading and VCMI (the wiki not reached): visit modes per class, all draws at setup, D-5 to D-7, A-5, starting resources as VCMI (log).
@@ -307,6 +299,23 @@ Refined with the user on 2026-10-20 (T23; ADV-Q14). Built like increments 1 to 3
     dialog alone, and back the same way); online the server pauses the turn timer of the player
     who waits and gives the owner a limited time, then answers with the system actor's default.
     ADR-0017 point 6 amended in `shared/e08-t30-adr` (#353), merged before #352.
+
+### Decisions at round 4 (2026-10-21, user)
+
+66. **T31 whole, one pull request** (the user's choice of four; not chosen: T31a, the property
+    checks first, then T31b, the fixtures, replays and benchmarks, in two sessions or as two pull
+    requests in one; or T31b first). T32a follows in its own session: its recipe waits for the
+    harness's new reads (the client lane's inbox since T24a2b2), so only its spec and scorer can
+    be built before them.
+67. **T32a whole** (the user's choice of four; not chosen: T32a1, batch E4a's spec alone; T32a1
+    with T32a2, the spec and the scorer; or the scorer first). Batch E4 is split by rows, as
+    batch E3 (decision 44): **E4a** the progression rows E4-1 to E4-6 (the map's level limit),
+    **E4b** decision 45's four rows E4-7 to E4-10 (a placed Cartographer for E4-10; the
+    harness's artifacts and battlefield). Both recipes wait for the harness's new reads (the
+    client lane's inbox). The spec's level limit and placed object change `h3-experiment` and
+    `docs/experiments/` **`cross-lane` with the user's consent**; the scorer, an example of
+    `h3-map` on `h3-heroes`' draws and evaluation, needs `h3-heroes` among `h3-map`'s
+    dev-dependencies (`arch.toml`, `shared/e08-t32a`, merged first).
 
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
