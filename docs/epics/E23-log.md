@@ -818,3 +818,63 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   estimate keeps the rules' search, BAT-Q28; §7.50); the agent read the slip-off bolts' missing
   hero bonuses as wanted for the chain and area spells too, which the rules give the hero's
   (BAT-MAG-049, §7.21's review re-read).
+
+## T4b1 — the Ogre Mage (2026-10-21, increment 5)
+
+- **The checkpoint** (the user, 2026-10-21): T4b is cut in two. T4b1 the Ogre Mage (the scan,
+  Bloodlust's value, the attack bonus's value), "the enemy beaten" from the state; T4b2 the
+  predictions (§7.42), which on the neutral side decide only that flag; the context's threat
+  tables and second context (0x43C040, 0x43BF20), which only the Genie's evaluators read there,
+  move to T4c. **The Ogre Mage against the elementals:** the engine gives both one ability (a
+  creature's cast of a fixed spell, BAT-MAG-048), the original sends only creature 91 to the
+  scan; the policy tells them apart by the spell (the only fixed cast that raises the melee
+  attack, Bloodlust), no pack change (the alternative, a pack field from the table 0x42136C, was
+  declined).
+- **The reading** (`installation.md` §7.51): the scan draws when the value so far is not 0 (a
+  negative one too); the strength floor is re-read per record and lets an equal strength pass;
+  0x43C330's mastery by battlefield (Bloodlust is fire: Fiery Fields only, slip 8); power and
+  rounds 6; the single path is the evaluator 0x438100's; the mass path's skips (blind, petrified,
+  paralysed at any duration, dead, the Tent and the Cart, the spell lasting; hypnotized stacks and
+  war machines left to 0x5A3C80 and the evaluator), the caster included in the sum; 0x437800's
+  order of operations; 0x443E30 is the estimate's stages (0x443840 passes `estimate == 0` to
+  0x443320, 0x443E30 passes 0); 0x422B20 with flag 0 (range 127, a shooter every enemy record at
+  cost 1, the dead included; no range 0 for a disabled stack there).
+- **The port.** `h3-battle`'s `computer`: `threat` (0x422B20 flag 0's record: the enemy and its
+  turns; `aim::threat`), `base_damage` (0x443E30 on a copy of the record with a bonus to its
+  attack; `combat::estimated_damage`, which `melee_damage` and `shot_damage` now share),
+  `spell_affects` (0x5A3C80 as `magic::affects_stack`), `takes_stack` (0x59E060 as the rules'
+  `target_at`). `h3-battle-ai`: `spells.rs` (the spell context with the balance class and the
+  threat records cached per decision; `attack_bonus`, 0x437800; `bloodlust`, 0x438100; `on_side`,
+  the mass sum), `casts::scan` and `casts::bloodlust` (0x420D20, 0x43C330); the entry's
+  `SpellCaster` arm; the entry takes the stream. `POLICY_VERSION` 7.
+- **Found:** where the rules cast a creature's mass version (the Ogre Mage on Magic Plains, Expert
+  by BAT-TER-005), `apply` accepts only `CreatureCast { target: None }`, which
+  `creature_cast_targets` does not list: the scan then values each stack the spell affects and
+  casts without a target. The listing's gap is in this lane's inbox (and the AI lane's: its
+  action mask misses the cast).
+- **Kept apart** (documented): the threat records leave out dead enemies (as T3c's walker
+  records); "the enemy beaten" is never set and the predictions draw nothing (BAT-STUB-9, T4b2).
+- **Cost:** `computer-decisions` 477 220 414 instructions, +0.00 % against its baseline (the
+  workload's random armies seldom hold Ogre Mages that cast): no re-set. Release, each decision's
+  best of five (a local patch of `h3 bench-computer`, not kept), 400 battles each of seeds 4 to
+  8: 32.9 to 46.6 µs per decision on average, the slowest 0.23 to 0.29 ms; `master` on the same
+  sandbox 31.1 to 44.5 µs, 0.22 to 0.28 ms. An Ogre Mage's decision with seven stacks a side at
+  the battle's start (the mass version on Magic Plains included): 0.16 to 0.20 ms. Within the
+  budget.
+- **Tests** (the harvested `harvested_computer_casts.rs`): nine Dendroid Soldiers (strength 6 885,
+  Bloodlust worth 930) are blessed over the Ogre Mages' attack on 15 Silver Pegasi unless the
+  draw skips, eight (6 120, below the mages' 6 720) never; over 200 streams 120 to 160 casts, the
+  rest attacks; an attack worth nothing (20 pegasi) draws nothing; 30 dendroids whose strike
+  already takes 351 of 360 hit points (the cap: 292) do not beat the attack; the mass version on
+  Magic Plains without a target, both stacks blessed (both profiles); slip 8 on Fiery Fields (the
+  mass estimate, the mages' own share 247: a cast; without the slip the acted behemoths' 0: none);
+  a blessed stack is not blessed again; Storm Elementals never cast (BAT-Q57); the threat records
+  (a shooter's at one turn, a walker's further, none for the dead) and the damage of a base (105,
+  52; 135, 67). `h3-battle-ai`'s `tests/spells.rs`: the attack bonus's value by hand (ten imps
+  against ten, class 7: g = 125 / 97, 115 over six rounds, 135 over seven, 98 once they acted with
+  their strength 1 024), the Ballista's record, none for the Tent or for imps behind a closed gate.
+  The speed-0 test of 0x422B20 is not ported: no stack that searches has speed 0 here (the war
+  machines are left out, the Ballista shoots).
+- **A blind check** (a fresh agent, the disassembly against the port with the slips on): every
+  function agrees. One note, no change: the original hard-codes the Ogre Mage's mastery 2 and its
+  rounds 6, the port reads the ability's mastery and power (2 and 6 in the packs).

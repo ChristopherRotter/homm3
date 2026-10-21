@@ -22,7 +22,7 @@ epic   = "E05"
 [[stub]]
 id     = "BAT-STUB-4"
 where  = "crates/h3-battle-ai/src/casts.rs"
-reason = "The computer's creature cast entry (0x421280) is built with the raise and the Faerie Dragon (E23 T4a; BAT-AI-012, BAT-AI-013). Not yet: the Ogre Mage's and the Master Genie's scan 0x420D20 with the spell context's predictions and the evaluators (T4b, T4c): they cast nothing"
+reason = "The computer's creature cast entry (0x421280) is built with the raise, the Faerie Dragon (E23 T4a; BAT-AI-012, BAT-AI-013) and the Ogre Mage's scan (E23 T4b1; BAT-AI-014). Not yet: the Master Genie's value in the scan (0x43C4A0) with the evaluators of its spells (T4c): it casts nothing"
 epic   = "E23"
 
 [[stub]]
@@ -41,6 +41,12 @@ epic   = "E23"
 id     = "BAT-STUB-8"
 where  = "crates/h3-battle-ai/src/casts.rs"
 reason = "The computer's creature casts take only the targets the engine accepts (the user, E23 T4a; ADR-0027 point 3): the original's Faerie Dragon may also aim an area spell at a free hex, its own or an immune stack's (its cast routine tests nothing for a creature's cast; the rules' cursor, BAT-MAG-049, only a stack the spell affects), so its best hex there is passed over; the original's raise ignores the engine's slot test for the raised Demons (BAT-MAG-052). The dragon's targets settle with BAT-Q32 (1) (BAT-AI-012, BAT-AI-013)"
+epic   = "E23"
+
+[[stub]]
+id     = "BAT-STUB-9"
+where  = "crates/h3-battle-ai/src/spells.rs::SpellContext::new"
+reason = "The computer's spell context (0x4369C0) runs the predictions first (0x422A40: the side's stacks that act before the other side's next one, as the shooter's and the walker's turns, and their strikes' planned damage), which draw from the stream and decide \"the enemy beaten\" (+0x1C: every enemy but the war machines killed by the planned damage), which the attack bonus's value reads (0x437800: then 0). Not yet (E23 T4b2): no draws, and the flag is never set, as with nothing planned while the battle runs (BAT-AI-014)"
 epic   = "E23"
 
 # --- adventure (ADV-STUB-<n>) ---

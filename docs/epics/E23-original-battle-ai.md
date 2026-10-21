@@ -2,7 +2,7 @@
 
 Status: **in progress**, refined 2026-10-19 (BAT-Q52); T1a1 to T1a4 done (the cuts confirmed
 2026-10-20), T1c done (BAT-Q53, BAT-Q54); T1a5 done as cut (part C, §7.42 to §7.45); T1a5e (the spell evaluators) done (§7.46); T1b done, ADR-0027 accepted (BAT-Q55); T2 done (T2a the crate and the plain shooters, T2b the area value, the wall shot, the benchmark), the budget
-set; T3 done (cut in four: T3-0, T3a, T3b, T3c); T4 cut in three, T4a done, T4b next · Follows E05 (the
+set; T3 done (cut in four: T3-0, T3a, T3b, T3c); T4 cut in three, T4a done, T4b cut in two, T4b1 done, T4b2 next · Follows E05 (the
 AI lane, done) · Followed by E06 (training: this policy holds the neutral seat; AI-Q1) ·
 The battle lane's, later the AI lane's (BACKLOG).
 
@@ -203,10 +203,19 @@ found after that decision) belong to the neutral side's map too and are read (§
     Pit Lord's raise 0x421000 against the walker's value, the Faerie Dragon 0x420F00 with its
     values (BAT-AI-013, slip 7), at the targets the engine accepts (the user; BAT-STUB-8, BAT-Q32);
     §7.50; the log.
-  - [ ] **T4b The spell context and the Ogre Mage** — the context 0x4369C0 with its predictions
-    and fill (§7.42), the scan 0x420D20 and Bloodlust's value with 0x437800 (§7.44, §7.45; slip 8).
-  - [ ] **T4c The Master Genie** — its mean over the 34 evaluators and the removals (§7.44, §7.46;
-    slips 9 to 17); cut again at its checkpoint.
+  - **T4b The spell context and the Ogre Mage**, cut in two (the user, 2026-10-21: the Ogre Mage
+    first; the context's threat tables and its second context, which only the Genie's evaluators
+    read on the neutral side, move to T4c; the Ogre Mage is told from the elementals by its spell):
+    - [x] **T4b1 The Ogre Mage** (2026-10-21) — the scan 0x420D20 (its draw, the strength floor),
+      Bloodlust's value 0x43C330 with its mass version (0x43A910 with the evaluator 0x438100), the
+      attack bonus's value 0x437800 and the context's threat records (BAT-AI-014, slip 8; "the
+      enemy beaten" and the predictions' draws BAT-STUB-9); §7.51; the log.
+    - [ ] **T4b2 The predictions** — 0x422A40 with the side's run, the predicted shooters' and
+      walkers' turns, the melee prediction and the predicted strike (§7.42) and the draws they
+      take; "the enemy beaten" from them.
+  - [ ] **T4c The Master Genie** — the context's fill 0x43C040 with its seed 0x43BF20 and the
+    second context (§7.42), its mean over the 34 evaluators and the removals (§7.44, §7.46; slips 9
+    to 17); cut again at its checkpoint.
 - [ ] **T5 The hero's spells** (T1a6's reading first).
 - [ ] **T6 The hero's other choices** — retreat and surrender, the tactics phase, the Catapult's
   aim, the First Aid Tent's patient (BAT-Q51); BAT-Q33's rule.

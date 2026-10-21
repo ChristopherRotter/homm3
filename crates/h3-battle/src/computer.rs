@@ -5,7 +5,7 @@
 //! battle's private state is added here by the battle lane.
 
 use h3_content::{CreatureTypeId, SpellId};
-use h3_content_battle::BattleRuleset;
+use h3_content_battle::{BattleRuleset, SpellTarget};
 use h3_contracts::BattleSide;
 use h3_kernel::arith::X87;
 
@@ -18,7 +18,7 @@ use crate::pathfinder::{AI_RANGE, Goal, Query, Search};
 use crate::siege::{self, SiegeState};
 use crate::state::{BattleState, StackId};
 
-pub use crate::aim::{Context, Shot};
+pub use crate::aim::{Context, Shot, Threat};
 
 /// Whether stack `id` of `state` can shoot now (the original's 0x4428F0 as the battle's rule,
 /// BAT-RNG-001: a shooter with a shot to use, not blocked or a war machine, not forgetful): the
@@ -537,4 +537,55 @@ pub fn area_stacks<'a>(
         .spell(spell)
         .into_iter()
         .flat_map(move |s| magic::area_estimate((state, ruleset), side, ((spell, s), mastery), hex))
+}
+
+/// The threat record of stack `id` in the context `ctx` as the spell context builds it (0x422B20
+/// with flag 0; E23 T4b1): its nearest enemy and the turns to attack it, or none (a stack the
+/// computer gives no target, or one that reaches no living enemy within the range of 127).
+pub fn threat(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    ctx: &Context,
+    id: StackId,
+) -> Option<Threat> {
+    aim::threat(state, ruleset, ctx, id)
+}
+
+/// The computer's damage of the base `base` of `striker` on `target`, a shot with `shot`, with
+/// `bonus` more attack (0x443E30 on the striker's record or, with a bonus, a copy of it, 0x437800;
+/// E23 T4b1): every stage of the strike without its draws and without a run-up, at least 1.
+pub fn base_damage(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    (striker, target): (StackId, StackId),
+    (base, shot): (u64, bool),
+    bonus: i16,
+) -> u64 {
+    aim::base_damage(state, ruleset, (striker, target), (base, shot), bonus)
+}
+
+/// Whether `side`'s cast of `spell` can affect stack `id` (the original's 0x5A3C80 as the spell
+/// evaluation asks it, 0x43A910; E23 T4b1): a living stack that is no turret, the spell not barred
+/// by the battle's level limit, its conditions and immunities met with the heroes' part, Anti-Magic
+/// not keeping it off and no clone for a spell that makes its stacks immune; false for a spell the
+/// ruleset lacks.
+pub fn spell_affects(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    side: BattleSide,
+    spell: SpellId,
+    id: StackId,
+) -> bool {
+    ruleset
+        .spell(spell)
+        .is_some_and(|s| magic::affects_stack(state, ruleset, side, (spell, s), id))
+}
+
+/// Whether `spell` at `mastery` is aimed at a stack (0x59E060; E23 T4b1): not its mass version
+/// (with the ruleset's quirk Q-0011 as the rules take it); false for a spell the ruleset lacks or
+/// one not aimed at a stack.
+pub fn takes_stack(ruleset: &BattleRuleset, spell: SpellId, mastery: u8) -> bool {
+    ruleset
+        .spell(spell)
+        .is_some_and(|s| magic::target_at(ruleset, s, mastery) == SpellTarget::Stack)
 }

@@ -150,7 +150,7 @@ each estimate as the rule it estimates:
 | 5 | the destination map marks a two-hex enemy's position hex twice, its other hex never (§7.38) | both hexes |
 | 6 | the hero's value takes the mastery on the hero's adventure tile (§7.39; not built, E23 T3c: the seam has no tile for the attacking hero, both settings take the battlefield's, BAT-STUB-7, BAT-Q56) | the battlefield's |
 | 7 | the Faerie Dragon's estimate: Expert on its school's field, the side's hero's bonuses on its bolts (§7.43; built, BAT-AI-013, E23 T4a) | the rules' mastery for a creature, no hero bonus |
-| 8 | the Ogre Mage's Bloodlust valued at Expert on Fiery Fields (§7.44) | Advanced, as the rules cast it |
+| 8 | the Ogre Mage's Bloodlust valued at Expert on Fiery Fields (§7.44, §7.51; built, BAT-AI-014, E23 T4b1) | Advanced, as the rules cast it |
 | 9 | the protections take the caster bonuses of the context's own hero and the caster's own army for the cost (§7.46) | the casting hero's, the target side's army |
 | 10 | Magic Mirror keeps `2 × (50 − c)` % (§7.46) | `100 − c` % |
 | 11 | Anti-Magic's estimate removes helpful spells too and counts level `v` (§7.46) | harmful spells below `v`; spells below `v` |
