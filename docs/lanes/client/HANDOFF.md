@@ -4,8 +4,8 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E17 M0–M2 done; M3 T1a–T7a-2b, T7b-1, T7b-2a, T7b-2b-1, T8 done; H1, H2 done (2026-10-19: the adventure lane's harness); next: M3 T7b-2b-2, T7b-2b-3, T7c** (`QUEUE.md`; T9 closes M3). Screens from the executable's dialog items (`h3_view::ui`; design §9.7). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
-- **Captures** (the user, 2026-10-20): `h3drive.py drawn` first (no Wine); capture only what it lists or the task changes, all at a milestone's closure or after a harness change (runbook, "Which captures a change needs"). Detail for later tasks: `NOTES.md`.
+- **E17 M0–M2 done; M3 T1a–T7a-2b, T7b-1, T7b-2a, T7b-2b-1, T7b-2b-2a, T8 done; H1, H2 done (2026-10-19: the adventure lane's harness); next: M3 T7b-2b-2b, T7b-2b-3, T7c** (`QUEUE.md`; T9 closes M3). Screens from the executable's dialog items (`h3_view::ui`; design §9.7). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
+- **Captures** (the user, 2026-10-20): `h3drive.py drawn` first (no Wine); capture only what it lists or the task changes, all at a milestone's closure or after a harness change (runbook, "Which captures a change needs"); later tasks' detail in `NOTES.md`.
 - **The user's requirements** (epic, "Decisions"): a string catalogue (JSON packs, no committed translation, CLT-Q7); graphics options (`faithful` default); exhaustive diffs.
 - The lane owns `clients/`, `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
 - **Checkpoints** per milestone (the autonomy contract below), a fresh reviewer agent first.
@@ -30,7 +30,7 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - **Known asset issues:** no conclusive list; the HD patch's notes or content may tell more. Most common: misplaced content (textures or rendered fonts one pixel off), less often clipping. Some textures have minor bugs (miscoloured pixels) that need an ad-hoc fix mechanism applied when loading. Unexplained: some extracted textures render with a few pixels slightly off-colour against the game; unknown whether the game applies a filter or the user's tooling was wrong. Shadows, above all those of adventure map objects, always looked off in the user's engine: they converted the keyed colours (purple hues) to alpha transparency, which may not be the right approach; needs investigation.
 - **Wishes:** an agent that observes or drives the original game (a custom MCP or similar), feasibility unknown. Screenshots of a comprehensive, representative set of situations in the original, diffed exactly against our output, so that changes such as offset fixes are deliberate; feasibility to be evaluated. Loading as fast as the original: no long content rebuild, work with the native files as much as possible. Content configured per expansion (RoE, AB, SoD, …), aligned with the gameplay rules' configuration.
 
-**Research items** (the agent's reading of the notes; all nine with their state in the epic file's table; 1, 2, 6 and 8 done): 3. the licences of MMArchive and homm3-unpacker before reading their code (licence questions stop the line); 4. the video archives (low priority); 5. capturing the original (M3); 7. the HD patch, its notes as a source of fixes, its resolution handling for HD; 9. the adventure map's object draw order (the user, 2026-10-12: surprisingly complicated, neither the user nor VCMI got it exactly right; a code reading with reference frames).
+**Research items** (the agent's reading of the notes; their state in the epic file's table; 1, 2, 6, 8 done): 3. the licences of MMArchive and homm3-unpacker before reading their code (licence questions stop the line); 4. the video archives (low priority); 5. capturing the original (M3); 7. the HD patch, its notes as a source of fixes, its resolution handling for HD; 9. the adventure map's object draw order (the user, 2026-10-12: surprisingly complicated, neither the user nor VCMI got it exactly right; a code reading with reference frames).
 
 ## Standing traps
 
@@ -50,17 +50,17 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - The harness's `actions` are the viewer's mouse (`pointer::inputs`, design §9.10): a new action
   kind needs both; `hex_point` and `PARK` mirror `h3drive.py`'s; a `key:` right after a `cast:`
   acts at the cast's end in both (T7b-1).
-- The original's rolls: forced (`roll:<name>`, `fail`; runbook); the engine's by a sequence's
-  `seed` (`resist`: 3). The frame check takes the heroes from memory but cast frames.
+- The original's rolls: forced (`roll:`, `fail`; runbook), luck and morale by the hero's
+  `effects`; the engine's by a `seed` (`resist`: 3). The frame check takes the heroes from memory but cast frames.
 - `turn:` naming the active stack passes at once: after its hero's cast a stack acts by `key:`
   only (pick speeds so turns alternate, T7b-2a). A spell's handler: `Player::cast` by
   `SpellLook::original`, its effects at the handler's point (the box's tint follows them).
 
 ## Recent sessions
 
-- **2026-10-21, E17 M3 T7b-2b-1 (the harness forces the original's rolls; #366, open).** Split with the user
-  (T7b-2b-2 morale, luck, fear; T7b-2b-3 abilities); nine roll calls redirected in `xdd.dll`.
-- **2026-10-21, E17 M3 T7b-2a (tint, Haste/Slow walks, Dispel, Cure, Ray; #363, merged).**
-  Split with the user; `haste`, `dispel` recorded, frames exact.
-- **2026-10-21, E17 M3 T7b-1 (a hero's cast on one stack; #361, merged).** `cast`, `resist`,
-  `arrow` recorded, frames exact.
+- **2026-10-21, E17 M3 T7b-2b-2a (a hero's luck and morale on the map; #368, open).** At the
+  user's word: `effects` become Leadership and Luck; a forced lucky shot checked.
+- **2026-10-21, E17 M3 T7b-2b-1 (forced rolls; #366, merged).** Split with the user (T7b-2b-2
+  morale, luck, fear; T7b-2b-3 abilities); nine roll calls redirected.
+- **2026-10-21, E17 M3 T7b-2a (tint, Haste/Slow, Dispel, Cure, Ray; #363, merged).** `haste`,
+  `dispel` recorded, frames exact.

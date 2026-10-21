@@ -32,6 +32,8 @@ h3-pack-battle = { path = "../crates/h3-pack-battle" }
 # battle as a map the original plays (`h3-view situation`), with h3-map's writer; and the ruleset's
 # type, which the scenario adapter names. Never in a pure crate.
 h3-content-battle = { path = "../crates/h3-content-battle" }
+h3-content = { path = "../crates/h3-content" }
+h3-contracts = { path = "../crates/h3-contracts" }
 h3-map = { path = "../crates/h3-map" }
 # Light dependencies (the engine's versions and features).
 miniz_oxide = { version = "0.8", default-features = false, features = ["with-alloc"] }

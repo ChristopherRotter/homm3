@@ -162,6 +162,10 @@ FIELDS = {
     "fidget_interval": 0x154,
     "walk_time": 0x158,
     "attack_time": 0x15C,
+    # The stack's morale and luck (structs.toml; E17 M3 T7b-2b-2a: a scenario's hero effects
+    # given by its skills, checked), set at the battle's start and after every action.
+    "morale": 0x4E8,
+    "luck": 0x4EC,
 }
 
 
