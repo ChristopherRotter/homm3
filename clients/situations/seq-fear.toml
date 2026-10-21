@@ -1,0 +1,49 @@
+# E17 M3 T7b-2b-2b: fear (design §7.16, player 1), in hot seat (`hot_seat` in sequences.toml: the
+# harness plays both sides). Crag Hack's Azure Dragon (speed 19, the battle's first turn: no
+# check) defends; at the next pick the Champions' (9) bad-morale roll cannot fall (one town, morale
+# 1) and their Fear roll (`roll:fear`, `rand` at 0x464DF1) does: `Fear.wav`, the log's line (the
+# Dragon's name, then theirs), then animation 15 (`C0fear`, translucent) over them with their hit
+# group; they lose the turn and the Marksmen's (6) starts, their roll failed. On grass at the
+# capture set's tile (grass.toml's obstacles).
+
+[scenario]
+id = "sequence-fear"
+# Both players human, as the original's hot-seat map (`h3-view situation --hot-seat`).
+human = ["attacker", "defender"]
+packs = ["base", "ab", "sod"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:champion"
+count = 5
+
+[[attacker]]
+slot = 2
+creature = "base:marksman"
+count = 10
+
+[[defender]]
+slot = 0
+creature = "ab:azure_dragon"
+count = 1
+
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1

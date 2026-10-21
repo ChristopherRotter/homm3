@@ -350,7 +350,9 @@ fields = [
   { offset = 0xC9, name = "secondary_skill_levels", type = "u8[28]", summary = "level per secondary skill id", confidence = "read", refs = ["installation.md §7.4"] },
   { offset = 0xE5, name = "secondary_skill_slots", type = "u8[28]", summary = "per secondary skill id its slot in the hero's list, 1-8 in the order learned (0x4E22D0)", confidence = "read", refs = ["rules/surveys/E08-progression.md §2.5"] },
   { offset = 0x101, name = "secondary_skill_count", type = "i32", summary = "the number of secondary skills known, at most 8 (0x4E22D0, 0x4DAD00)", confidence = "read", refs = ["rules/surveys/E08-progression.md §2.4"] },
-  { offset = 0x112, name = "fly_power", type = "i32", summary = "-1 unless flying by a spell; with Angel Wings a guard attacks only at the move's destination (H3API flyPower)", confidence = "inferred", refs = ["rules/surveys/E08-battles.md §2.2"] },
+  { offset = 0x105, name = "status_flags", type = "u32", summary = "bit 1 the Stables' +400 land points (0x4E4990); bit 18 in a boat (set by hero_boards_boat 0x4A1010; no flying or water walking then); bit 24 1 000 000 points a day (not set by any rule read)", confidence = "read", refs = ["rules/surveys/E08-hero-movement.md §1.1", "rules/surveys/E08-hero-movement.md §2.1"] },
+  { offset = 0x112, name = "fly_power", type = "i32", summary = "the Fly spell's level, -1 none (H3API flyPower); Angel Wings count as 3 for the price and the pathfinder (0x4B18C0, 0x56B440) but not here, nor in the move's drop to 0 (A-12); with Angel Wings a guard attacks only at the move's destination", confidence = "read", refs = ["rules/surveys/E08-battles.md §2.2", "rules/surveys/E08-hero-movement.md §2.1"] },
+  { offset = 0x116, name = "water_walk_power", type = "i32", summary = "the Water Walk spell's level, -1 none; Boots of Levitation count as 3 for the price and the pathfinder, not here", confidence = "read", refs = ["rules/surveys/E08-hero-movement.md §2.1"] },
   { offset = 0x12D, name = "worn_artifacts", type = "artifact[19]", summary = "the worn artifacts by slot, 8 bytes each (id, -1 for none; then a subtype, a scroll's spell); 0x4D91F0 walks them", confidence = "read", refs = ["installation.md §7.26"] },
   { offset = 0x1D4, name = "backpack", type = "artifact[64]", summary = "the backpack's artifacts, 8 bytes each as worn_artifacts (-1 for an empty place; hero_give_backpack_artifact 0x4E2F90 refuses a war machine and a 65th)", confidence = "read", refs = ["epics/E08-log.md T32b1"] },
   { offset = 0x3D4, name = "backpack_count", type = "u8", summary = "the number of artifacts in the backpack (0x4E2F90: none added at 64)", confidence = "read", refs = ["epics/E08-log.md T32b1"] },
@@ -461,6 +463,7 @@ h3api = "H3MapItem"
 fields = [
   { offset = 0x0, name = "word", type = "u32", summary = "the class's data on the object's entrance tile: a pile's amount (low 19 bits) and guards flag (bit 31), a campfire's resource (low 4 bits) and amount (bits 4 up), a monster's count (bits 0-11), aggression (12-16), never flees (17), does not grow (18), message index (19-26) and message flag (31)", confidence = "read", refs = ["rules/surveys/E08-objects.md §3", "rules/surveys/E08-battles.md §1.2"] },
   { offset = 0x4, name = "terrain", type = "u8", summary = "terrain code 0-9", confidence = "read", refs = ["rules/surveys/E08-objects.md §4"] },
+  { offset = 0xC, name = "flags", type = "u8", summary = "the map file's tile flags: bits 0-5 the pictures' mirroring, 0x40 the coast (land next to water; the flying price and hero_flight_tile_test read it)", confidence = "read", refs = ["formats/h3m.md", "rules/surveys/E08-hero-movement.md §2.1"] },
   { offset = 0xD, name = "access", type = "u8", summary = "0x01 cannot be entered, 0x10 an object's entrance (visitable) tile (H3API's names)", confidence = "read", refs = ["rules/surveys/E08-objects.md §2"] },
   { offset = 0xE, name = "draw_list", type = "vector", summary = "the objects drawn on the tile, bottom to top (4-byte entries: object index u16, footprint cell, layer); 0x505610 takes the tile's object from it", confidence = "read", refs = ["rules/surveys/E08-objects.md §2.5"] },
   { offset = 0x1E, name = "class", type = "i32", summary = "the object class on this tile", confidence = "read", refs = ["rules/surveys/E08-objects.md §2"] },
@@ -538,10 +541,14 @@ fields = [
 [[struct]]
 name = "pathfinder"
 size = 0x70
-summary = "The pathfinder object (H3API's H3Pathfinder): the battle pathfinder 0x4B3400's fields only."
+summary = "The pathfinder object (H3API's H3Pathfinder): the battle pathfinder 0x4B3400's fields and the adventure search's set-up (0x56B440)."
 refs = ["installation.md §7.40"]
 h3api = "H3Pathfinder"
 fields = [
+  { offset = 0xC, name = "land_maximum", type = "i32", summary = "on the adventure map the hero's land points for a new day (0x4E4990), H3API maxLandMovement", confidence = "read", refs = ["rules/surveys/E08-hero-movement.md §3.1"] },
+  { offset = 0x10, name = "sea_maximum", type = "i32", summary = "the same at sea", confidence = "read", refs = ["rules/surveys/E08-hero-movement.md §3.1"] },
+  { offset = 0x18, name = "water_walk_level", type = "i32", summary = "the hero's water-walk level for the search, -1 none; Boots of Levitation 3", confidence = "read", refs = ["rules/surveys/E08-hero-movement.md §3.1"] },
+  { offset = 0x1C, name = "fly_level", type = "i32", summary = "the hero's fly level for the search, -1 none; Angel Wings 3", confidence = "read", refs = ["rules/surveys/E08-hero-movement.md §3.1"] },
   { offset = 0x24, name = "cells", type = "pathfinder_cell*", summary = "in a battle 187 cells of 30 bytes, one per hex (0x4B3B90)", confidence = "read", refs = ["installation.md §7.40"] },
   { offset = 0x38, name = "queue", type = "vector", summary = "the battle search's queue of 30-byte entries, sorted by cost from highest to lowest (0x4B3BB0): +0x3C begin, +0x40 end, +0x44 capacity's end", confidence = "read", refs = ["installation.md §7.40"] },
   { offset = 0x48, name = "path", type = "vector", summary = "the path's cell pointers, from the end to the first step (+0x4C begin, +0x50 end; H3API's arrowPath)", confidence = "read", refs = ["installation.md §7.38", "installation.md §7.40"] },

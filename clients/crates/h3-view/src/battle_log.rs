@@ -87,6 +87,17 @@ pub enum Logged {
         /// Its number.
         count: u32,
     },
+    /// A stack frozen by Fear (`fear_check` 0x464EFF, E17 M3 T7b-2b-2b), before its animation.
+    Fear {
+        /// The frightened stack.
+        stack: u8,
+        /// Its number.
+        count: u32,
+        /// A frightening stack: its creature's name.
+        by: u8,
+        /// The frightening creatures' number on that side, which picks the name's form.
+        number: u32,
+    },
     /// A round starts outside the tactics phase (`round_start` 0x4761E9).
     Round,
     /// A hero's spell on a stack (`battle_log_cast` 0x5A8950 for the caster kind 0 with a target;
@@ -237,6 +248,16 @@ pub fn word(
         Logged::Luck { stack, count } => {
             let (n, count) = named(*stack, *count)?;
             Some(luck_good(catalogue, n.stack(count)))
+        }
+        Logged::Fear {
+            stack,
+            count,
+            by,
+            number,
+        } => {
+            let (frightener, _) = named(*by, *number)?;
+            let (n, count) = named(*stack, *count)?;
+            Some(fear(catalogue, frightener.stack(*number), n.stack(count)))
         }
         Logged::Round => Some(catalogue.text("battle.log.round", &Args::new())),
         Logged::Cast {
@@ -509,6 +530,18 @@ pub fn morale_bad(catalogue: &Catalogue, stack: Stack<'_>) -> String {
 #[must_use]
 pub fn luck_good(catalogue: &Catalogue, stack: Stack<'_>) -> String {
     named(catalogue, "battle.log.luck-good", stack)
+}
+
+/// Fear freezes a stack (`fear_check` 0x464EFF, E17 M3 T7b-2b-2b): the frightening creature's
+/// name by the number of them on the other side, then the frozen stack's by its own.
+#[must_use]
+pub fn fear(catalogue: &Catalogue, frightener: Stack<'_>, stack: Stack<'_>) -> String {
+    catalogue.text(
+        "battle.log.fear",
+        &Args::new()
+            .text("frightener", &name(catalogue, frightener))
+            .text("creature", &name(catalogue, stack)),
+    )
 }
 
 /// The First Aid Tent heals a stack (`first_aid_tent_action` 0x478CE4, E17 M3 T6b): the tent's

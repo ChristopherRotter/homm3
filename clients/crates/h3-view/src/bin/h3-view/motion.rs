@@ -6,10 +6,13 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
+use h3_content::CreatureTypeId;
+use h3_content_battle::Ability;
 use h3_formats::lod::LodArchive;
 use h3_protocol::wire::{Event, ServerMessage, Side};
 use h3_view::anim::{
-    Caster, Casts, HEAL, Look, MagicLook, Missile, RESISTED, Shell, SpellLook, Stage,
+    BAD_MORALE, Caster, Casts, FEAR, GOOD_LUCK, GOOD_MORALE, HEAL, Look, MagicLook, Missile,
+    RESISTED, Shell, SpellLook, Stage,
 };
 use h3_view::batch::Batch;
 use h3_view::hero::{HeroLook, Heroes};
@@ -156,7 +159,9 @@ fn missile(
 
 /// The magic animations the record's events call for, by number (E17 M3 T3b): the heal's when a
 /// stack is healed ([`HEAL`]); since E17 M3 T7b-1 each cast spell's and the resisted one's
-/// ([`RESISTED`]); each with its DEF's frames and size.
+/// ([`RESISTED`]); since E17 M3 T7b-2b-2b good and bad morale's, Fear's and good luck's
+/// ([`GOOD_MORALE`], [`BAD_MORALE`], [`FEAR`], [`GOOD_LUCK`]); each with its DEF's frames and
+/// size.
 pub fn magic(
     record: &Record,
     tables: &Tables,
@@ -170,6 +175,18 @@ pub fn magic(
             }
             Event::SpellResisted { .. } => {
                 numbers.insert(RESISTED);
+            }
+            Event::GoodMorale { .. } => {
+                numbers.insert(GOOD_MORALE);
+            }
+            Event::BadMorale { .. } => {
+                numbers.insert(BAD_MORALE);
+            }
+            Event::Frightened { .. } => {
+                numbers.insert(FEAR);
+            }
+            Event::Struck { flags, .. } if flags.lucky => {
+                numbers.insert(GOOD_LUCK);
             }
             Event::SpellCast { spell, .. } => {
                 if let Some(a) = spell_entry(record, tables, *spell).and_then(|e| e.animation) {
@@ -206,7 +223,8 @@ pub fn magic(
 /// number and sign (E17 M3 T7b-2a: the box's tint, the walk time, the handler) and its effect at
 /// each side's hero's mastery, from the ruleset the record's packs compile to (`packs`; the
 /// mastery of the viewer's own hero, none for the other side's, which the record does not show:
-/// *provisional*).
+/// *provisional*); with a stack frightened, the record's creatures that frighten (the ruleset's
+/// `fear`, E17 M3 T7b-2b-2b: Fear's line names them).
 pub fn casts(
     record: &Record,
     tables: &Tables,
@@ -222,6 +240,7 @@ pub fn casts(
         .first_snapshot()
         .ok_or("the record holds no snapshot")?;
     let mut cast = false;
+    let mut frightened = false;
     let mut spells: Vec<u16> = snapshot
         .stacks
         .iter()
@@ -234,17 +253,30 @@ pub fn casts(
                 spells.push(spell);
             }
             Event::EffectApplied { spell, .. } => spells.push(spell),
+            Event::Frightened { .. } => frightened = true,
             _ => {}
         }
     }
     spells.sort_unstable();
     spells.dedup();
     let manifest = &record.header.manifest;
-    let ruleset = if cast {
+    let ruleset = if cast || frightened {
         Some(crate::scenario::ruleset(packs, manifest)?)
     } else {
         None
     };
+    if let Some(r) = ruleset.as_ref().filter(|_| frightened) {
+        casts.frighteners = snapshot
+            .stacks
+            .iter()
+            .map(|s| s.creature)
+            .filter(|&c| {
+                r.abilities(CreatureTypeId::from_raw(c))
+                    .iter()
+                    .any(|a| matches!(a, Ability::Fear { .. }))
+            })
+            .collect();
+    }
     let viewer = usize::from(snapshot.viewer == Side::Defender);
     for spell in spells {
         let Some(entry) = spell_entry(record, tables, spell) else {

@@ -1,11 +1,11 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b, T8, T7b-1, T7b-2a, T7b-2b-1, T7b-2b-2a done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b, T8, T7b-1, T7b-2a, T7b-2b-1, T7b-2b-2a, T7b-2b-2b done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
 [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
-are there). Next: M3 T7b-2b-2b, T7b-2b-3, T7c (`docs/lanes/client/QUEUE.md`).
+are there). Next: M3 T7b-2b-3, T7c (`docs/lanes/client/QUEUE.md`).
 
 ## Goal
 
@@ -449,6 +449,14 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   (Leadership, Luck: the pack's level whose effects are that change alone); `h3mem` reads a
   stack's morale and luck. Checked in the original: the Marksmen at luck 3 and morale 3 as in
   the engine, a forced lucky shot (animation 18, its line), a failed one as the recorded `shot`.
+- **T7b-2b-2b done 2026-10-21** ([log](E17-log.md#m3-t7b-2b-2b--morale-luck-and-fear-2026-10-21),
+  design §7.16, §9.8): not split, at the user's word. Good luck (18) and good morale (20) over
+  their stack, bad morale (30) and Fear (15) with its hit group beside them, their sounds (the
+  asset tables' `[battle]` names, harvested), good morale's line after its animation and Fear's
+  (GENRLTXT 729); a frozen stack never becomes the active one; the stack that acted last stays
+  outlined through good morale and a freeze (found by the frame check). `luck`, `morale`, `bad`
+  and `fear` recorded with forced rolls, their engine seeds searched: played as recorded, frames
+  exact.
 
 ### The adventure lane's harness (H1, H2: its batch E3)
 
@@ -517,6 +525,16 @@ Accepted by the user (M1 2026-10-13, M2 2026-10-14); moved to the log,
 ## M3 review list
 
 (Filled by the tasks: choices queued for the milestone review under the autonomy contract.)
+
+- T7b-2b-2b: **the asset tables' `[battle]`** gains `good_morale_sound`, `bad_morale_sound`,
+  `fear_sound` and `luck_sound` (optional entry names, harvested from the strings the four
+  rolls play; a format change). *Provisional*: the battle waiting for these sounds' end
+  (`wait_for_sample`) is not built, as the heal's (the captures play without sound); Fear's line
+  names the first frightening stack of the frozen stack's side's opponents by their summed number
+  (the original names creature 132 by the count of its records; one creature frightens), by the
+  stack's side, not a hypnotized stack's controller; a hit longer than its animation draws no
+  animation frame beside its last frames (not met). The viewer's binary reads the ruleset's
+  `fear` ability (`Casts::frighteners`).
 
 - T7b-2b-2a: **a scenario's hero effects on the original's map** (*provisional*): each morale or
   luck change becomes the secondary skill level whose effects are that change alone (Leadership,
