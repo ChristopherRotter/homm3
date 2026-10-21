@@ -56,6 +56,9 @@ pub enum Logged {
         stack: u8,
         /// Its number.
         count: u32,
+        /// Its defense skill then (the gain's base, 0x479758; E17 M3 T7b-2a: lowered by
+        /// Disrupting Ray).
+        defense: i32,
     },
     /// The First Aid Tent heals a stack (0x478D0A).
     Heal {
@@ -106,6 +109,14 @@ pub enum Logged {
         /// Its number, which picks its name and the verb.
         count: u32,
     },
+    /// Disrupting Ray's line (0x5A1B0B to 0x5A1B43; E17 M3 T7b-2a): the defense it took from the
+    /// stack, after its animation and effect; no cast line.
+    Disrupted {
+        /// The stack.
+        stack: u8,
+        /// The defense lowered (at most the stack's, 0x5A1ACB).
+        lowered: i32,
+    },
     /// A spell's damage on one stack (`battle_log_damage` 0x469A90 named by the spell, its number
     /// 1: Magic Arrow 0x5A0A1F, Ice Bolt 0x5A0AEB; E17 M3 T7b-1), after its animation.
     SpellDamage {
@@ -127,16 +138,14 @@ pub enum Logged {
     Scroll(i64),
 }
 
-/// A stack as [`word`] names it: its creature's key in the catalogue, whether it is a war machine
-/// and its defense skill.
+/// A stack as [`word`] names it: its creature's key in the catalogue and whether it is a war
+/// machine.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Named {
     /// Its creature's key (`creature.base:pikeman`).
     pub creature: String,
     /// A war machine.
     pub war_machine: bool,
-    /// Its defense skill (a defend's gain).
-    pub defense: i32,
 }
 
 /// What else than a stack a line names (E17 M3 T7b-1): a spell by its handle, a side's hero
@@ -191,12 +200,20 @@ pub fn word(
             let (n, count) = named(*stack, *count)?;
             Some(wait(catalogue, n.stack(count)))
         }
-        Logged::Defend { stack, count } => {
+        Logged::Defend {
+            stack,
+            count,
+            defense,
+        } => {
             let (n, count) = named(*stack, *count)?;
             // 0x479758: max(1, its defense × 20 / 100).
-            let gain = (i64::from(n.defense) * 20 / 100).max(1);
+            let gain = (i64::from(*defense) * 20 / 100).max(1);
             Some(defend(catalogue, n.stack(count), gain))
         }
+        Logged::Disrupted { lowered, .. } => Some(catalogue.text(
+            "battle.log.disrupted",
+            &Args::new().number("defense", i64::from(*lowered)),
+        )),
         Logged::Heal {
             healer,
             target,

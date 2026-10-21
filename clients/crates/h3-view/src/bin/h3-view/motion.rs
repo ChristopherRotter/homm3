@@ -4,9 +4,10 @@
 //! archives.
 
 use std::collections::BTreeMap;
+use std::path::Path;
 
 use h3_formats::lod::LodArchive;
-use h3_protocol::wire::{Event, ServerMessage};
+use h3_protocol::wire::{Event, ServerMessage, Side};
 use h3_view::anim::{
     Caster, Casts, HEAL, Look, MagicLook, Missile, RESISTED, Shell, SpellLook, Stage,
 };
@@ -201,23 +202,51 @@ pub fn magic(
 }
 
 /// What the record's casts draw (E17 M3 T7b-1): each cast spell's animation and projectile DEFs,
-/// each side's hero's cast point and casting frames.
+/// each side's hero's cast point and casting frames; each spell the record's stacks hold, its
+/// number and sign (E17 M3 T7b-2a: the box's tint, the walk time, the handler) and its effect at
+/// each side's hero's mastery, from the ruleset the record's packs compile to (`packs`; the
+/// mastery of the viewer's own hero, none for the other side's, which the record does not show:
+/// *provisional*).
 pub fn casts(
     record: &Record,
     tables: &Tables,
     archives: &[(&str, LodArchive<'_>)],
+    packs: &Path,
 ) -> Result<Casts, String> {
     let groups = tables.battle.hero_groups;
     let mut casts = Casts {
         groups: [groups.cast, groups.standing],
         ..Casts::default()
     };
+    let snapshot = record
+        .first_snapshot()
+        .ok_or("the record holds no snapshot")?;
     let mut cast = false;
+    let mut spells: Vec<u16> = snapshot
+        .stacks
+        .iter()
+        .flat_map(|s| s.effects.iter().map(|e| e.spell))
+        .collect();
     for event in events(record) {
-        let Event::SpellCast { spell, .. } = *event else {
-            continue;
-        };
-        cast = true;
+        match *event {
+            Event::SpellCast { spell, .. } => {
+                cast = true;
+                spells.push(spell);
+            }
+            Event::EffectApplied { spell, .. } => spells.push(spell),
+            _ => {}
+        }
+    }
+    spells.sort_unstable();
+    spells.dedup();
+    let manifest = &record.header.manifest;
+    let ruleset = if cast {
+        Some(crate::scenario::ruleset(packs, manifest)?)
+    } else {
+        None
+    };
+    let viewer = usize::from(snapshot.viewer == Side::Defender);
+    for spell in spells {
         let Some(entry) = spell_entry(record, tables, spell) else {
             continue;
         };
@@ -231,16 +260,29 @@ pub fn casts(
                 angle,
             });
         }
+        let effect = ruleset
+            .as_ref()
+            .and_then(|r| r.spells().get(usize::from(spell)))
+            .map_or([0; 4], |s| s.effect);
+        let mut value = [effect[0]; 2];
+        if let Some(own) = &snapshot.own_hero {
+            let mastery = own
+                .spell_book
+                .iter()
+                .find(|b| b.spell == spell)
+                .map_or(0, |b| usize::from(b.mastery.min(3)));
+            value[viewer] = effect[mastery];
+        }
         let look = SpellLook {
+            original: entry.original,
+            sign: entry.sign,
+            value,
             animation: entry.animation,
             projectile,
         };
         casts.spells.insert(spell, look);
     }
-    let snapshot = record
-        .first_snapshot()
-        .ok_or("the record holds no snapshot")?;
-    let keys = &record.header.manifest.keys.hero_types;
+    let keys = &manifest.keys.hero_types;
     for (side, view) in snapshot.sides.iter().enumerate().filter(|_| cast) {
         let Some(hero) = &view.hero else {
             continue;

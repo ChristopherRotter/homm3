@@ -1,11 +1,11 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b, T8, T7b-1 done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b, T8, T7b-1, T7b-2a done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
 [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
-are there). Next: M3 T7b-2, T7c (`docs/lanes/client/QUEUE.md`).
+are there). Next: M3 T7b-2b, T7c (`docs/lanes/client/QUEUE.md`).
 
 ## Goal
 
@@ -245,8 +245,9 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
 - The **spell animations** (the user, at T5c: their plethora; T7a the code reading, split with
   the user on 2026-10-21 into T7a-1, the reading, and T7a-2, the harness's casts and the
   recordings; T7b on stacks with morale and luck, split with the user on 2026-10-21 into
-  T7b-1, a hero's cast on one stack, and T7b-2, the rest; T7c area spells, rays and spell
-  obstacles) and their sounds.
+  T7b-1, a hero's cast on one stack, and T7b-2, the rest, which the user split on 2026-10-21
+  into T7b-2a, the parts without the original's rolls, and T7b-2b, morale, luck and the
+  creatures' rolled animations; T7c area spells, rays and spell obstacles) and their sounds.
 - The sound's remainder (T8: the battle's end; the volume settings later).
 - **Exit:** the reference set passes, or each difference is a listed fix or a classified quirk.
 - **T1a done 2026-10-14** ([log](E17-log.md#m3-t1a--turns-and-the-walk-by-2026-10-14),
@@ -426,6 +427,12 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   `resist`, `arrow` moved into `sequences.toml`: their timelines as recorded, `arrow`'s 168 frames
   exact, `cast`'s and `resist`'s but the count box's spell tint (T7b-2) and one frame of `cast`
   (the review list).
+- **T7b-2a done 2026-10-21** ([log](E17-log.md#m3-t7b-2a--the-count-boxs-tint-haste-and-slows-walk-dispel-cure-disrupting-ray-2026-10-21),
+  [design §4.3, §7.3, §7.16](E17-design.md)): T7b-2 split with the user (the parts without the
+  original's rolls; morale, luck and the creatures' rolled animations T7b-2b). The count box's
+  tint by its stack's spells (the spell records' sign harvested), Haste and Slow's walk time,
+  Dispel, Cure and Disrupting Ray on one stack with their lines. `haste` and `dispel` recorded,
+  played as recorded and their frames exact; `cast`'s and `resist`'s boxes exact.
 
 ### The adventure lane's harness (H1, H2: its batch E3)
 
@@ -494,6 +501,20 @@ Accepted by the user (M1 2026-10-13, M2 2026-10-14); moved to the log,
 ## M3 review list
 
 (Filled by the tasks: choices queued for the milestone review under the autonomy contract.)
+
+- T7b-2a: T7b-2 split with the user (2026-10-21: T7b-2a the parts without the original's rolls,
+  T7b-2b morale, luck and the creatures' rolled animations). **Formats** (lasting): the asset
+  tables' `[[spell]]` `sign` (the record's +0) and Disrupting Ray's one-DEF `projectile`; the key
+  catalogue's `battle.log.disrupted` (GENRLTXT 92). **The viewer reads the record's ruleset**
+  (`h3-view`'s binary compiles it from the record's packs, `--packs`): Disrupting Ray's lowered
+  defense is its effect at the caster's mastery, known for the record's own hero only (the other
+  side's hero's book is hidden: mastery none, *provisional*); a stack's defense followed through
+  Disrupting Ray only (Stone Skin's and other changes not: the defend line's gain,
+  *provisional*). **Found by the frames, kept:** a box's hue shows with the first frame drawn
+  after the change, and a round's start's change with the next turn's start; Dispel's animation
+  before its effect and line, Cure's and Disrupting Ray's lines after their animations. The
+  count boxes' spell tint listed at T7b-1 is resolved (`cast`, `resist` exact but `cast`'s 71
+  pixels at 0).
 
 - T7b-1: **formats** (lasting): the asset tables' `[[spell]]` (`original`, `animation`, `sound`,
   `projectile`, `projectile_angles`), `[[hero]]`'s `original`, `cast` and `cast_frames`,

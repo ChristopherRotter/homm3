@@ -105,14 +105,18 @@ const HEAL_SOUND: u32 = 0x66_0A94;
 /// The sound of a spell resisted by its aimed stack (`cast_spell` 0x5A1F98, `MagicRes.wav`; E17 M3
 /// T7b-1).
 const RESIST_SOUND: u32 = 0x68_8440;
-/// The spell records (`spell_table`, 81 records of 0x88 bytes; E17 M3 T7b-1): +4 the sound's
-/// name (none: 0), +8 the magic animation's number (−1: none).
+/// The spell records (`spell_table`, 81 records of 0x88 bytes; E17 M3 T7b-1): +0 the spell's sign
+/// (1 positive, −1 negative, 0 neither; the count box's tint sums it, 0x43E6C7, E17 M3 T7b-2a),
+/// +4 the sound's name (none: 0), +8 the magic animation's number (−1: none).
 const SPELLS: (u32, usize, usize) = (0x68_5450, 81, 0x88);
 /// The spells whose handlers fly a projectile (`spell_projectile` 0x467DB0; E17 M3 T7b-1): Magic
-/// Arrow's (0x5A0995) and Ice Bolt's (0x5A0A3B) five DEFs and their angles (f32 degrees).
-const PROJECTILES: [(usize, u32, u32); 2] =
-    [(15, 0x64_21EC, 0x64_2200), (16, 0x64_2234, 0x64_2248)];
-const PROJECTILE_DEFS: usize = 5;
+/// Arrow's (0x5A0995) and Ice Bolt's (0x5A0A3B) five DEFs and their angles (f32 degrees),
+/// Disrupting Ray's one (0x5A1A5E, E17 M3 T7b-2a).
+const PROJECTILES: [(usize, u32, u32, usize); 3] = [
+    (15, 0x64_21EC, 0x64_2200, 5),
+    (16, 0x64_2234, 0x64_2248, 5),
+    (47, 0x64_225C, 0x64_2260, 1),
+];
 
 /// The command's options.
 #[derive(Debug, PartialEq, Eq)]
@@ -224,7 +228,7 @@ struct Harvest {
     resist_sound: String,
     /// The spells' sounds and animations by original id, their projectiles' DEFs and angles,
     /// and `sptraits.txt`'s numbers by name.
-    spells: Vec<(Option<String>, Option<u8>)>,
+    spells: Vec<(Option<String>, Option<u8>, i8)>,
     projectiles: BTreeMap<usize, Vec<(String, i16)>>,
     spell_numbers: BTreeMap<String, usize>,
     obstacles: Vec<(String, u8, u8)>,
@@ -426,14 +430,15 @@ fn read_harvest(
             0 => None,
             va => Some(stem(&string(va)?)),
         };
-        spells.push((sound, u8::try_from(i32_at(&record, 8)).ok()));
+        let sign = i8::try_from(i32_at(&record, 0).signum()).unwrap_or(0);
+        spells.push((sound, u8::try_from(i32_at(&record, 8)).ok(), sign));
     }
     let mut projectiles = BTreeMap::new();
-    for (spell, defs, angles) in PROJECTILES {
-        let names = bytes(&image, exe, defs, 4 * PROJECTILE_DEFS)?;
-        let degrees = bytes(&image, exe, angles, 4 * PROJECTILE_DEFS)?;
+    for (spell, defs, angles, count) in PROJECTILES {
+        let names = bytes(&image, exe, defs, 4 * count)?;
+        let degrees = bytes(&image, exe, angles, 4 * count)?;
         let mut list = Vec::new();
-        for k in 0..PROJECTILE_DEFS {
+        for k in 0..count {
             let angle = f32::from_le_bytes([
                 degrees[4 * k],
                 degrees[4 * k + 1],
@@ -790,7 +795,7 @@ fn write_table(
             .spell_numbers
             .get(name)
             .and_then(|&n| Some((n, h.spells.get(n)?)));
-        let Some((original, (sound, animation))) = found else {
+        let Some((original, (sound, animation, sign))) = found else {
             gaps.push(format!(
                 "{id}:{}: `{name}` is not a spell of sptraits.txt",
                 spell.id
@@ -807,6 +812,9 @@ fn write_table(
         }
         if let Some(sound) = sound {
             let _ = writeln!(t, "sound = \"{}\"", plain(sound)?);
+        }
+        if *sign != 0 {
+            let _ = writeln!(t, "sign = {sign}");
         }
         if let Some(flown) = h.projectiles.get(&original) {
             let defs: Vec<String> = flown.iter().map(|(d, _)| d.clone()).collect();

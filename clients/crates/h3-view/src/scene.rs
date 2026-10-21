@@ -50,6 +50,9 @@ pub struct Moment {
     /// The counts the boxes show, by id, of the stacks whose count changed since the snapshot
     /// (E17 M3 T5b); the others show the snapshot's.
     pub counts: BTreeMap<u8, u32>,
+    /// The hues of the count boxes of the stacks with active spells, by id, as the bits of the
+    /// f32 values ([`spell_hue`]; E17 M3 T7b-2a); the other boxes take the layout's tint.
+    pub hues: BTreeMap<u8, u32>,
     /// The stack the mouse marks (E17 M3 T6c-1, `crate::mouse`): its outline the mouse's unless
     /// it is the active stack (0x43E23A to 0x43E261, §4.2).
     pub marked: Option<u8>,
@@ -70,6 +73,7 @@ impl Moment {
                 .map_or([None; 2], |h| h.at(timeline, t)),
             magic: timeline.magic(t),
             counts: timeline.counts(t),
+            hues: timeline.hues(t),
             marked: None,
         }
     }
@@ -185,8 +189,8 @@ pub enum Draw {
         y: i32,
         /// The count written (`%d` of the stack's +0x50 while it is not −1, else +0x4C: §4.3).
         count: u32,
-        /// The tint's hue and saturation, the bits of the f32 values (the layout's without
-        /// spells; by the stack's spells not yet).
+        /// The tint's hue and saturation, the bits of the f32 values: the layout's without
+        /// spells, else the hue by the stack's spells ([`spell_hue`], E17 M3 T7b-2a).
         tint: [u32; 2],
     },
     /// A creature's sprite with the shadow its frame holds, standing on a hex (§4.2).
@@ -638,7 +642,8 @@ pub fn battle_at(
                 })
             });
             let shown = moment.counts.get(&s.id).copied().unwrap_or(s.count);
-            let count = count_box(s, pose, shown, &sprite, &taken, layout);
+            let hue = moment.hues.get(&s.id).copied();
+            let count = count_box(s, pose, (shown, hue), &sprite, &taken, layout);
             Ok((sprite.at, pose.layer, [Some(sprite.draw), count, magic]))
         })
         .collect::<Result<Vec<_>, SceneError>>()?;
@@ -707,11 +712,12 @@ fn ahead(hex: u8, right: bool, extra: u8) -> Option<u8> {
 /// standing or under the mouse (groups 2 and 1), its box not hidden by a walk or a flight (its
 /// +0x30, [`Pose::boxless`]: E17 M3 T5a). Beside its sprite's anchor by its facing, its width and
 /// whether the hex ahead is `taken`; its number the count `shown` (E17 M3 T5b: the snapshot's,
-/// then each strike's from its end).
+/// then each strike's from its end), its tint's hue the `hue` of its spells if it has any (E17
+/// M3 T7b-2a), else the layout's.
 fn count_box(
     stack: &Stack,
     pose: Pose,
-    shown: u32,
+    (shown, hue): (u32, Option<u32>),
     sprite: &Sprite,
     taken: &BTreeSet<u8>,
     layout: &BattleLayout,
@@ -730,8 +736,66 @@ fn count_box(
         x,
         y,
         count: shown,
-        tint: layout.count_box.tint,
+        tint: [
+            hue.unwrap_or(layout.count_box.tint[0]),
+            layout.count_box.tint[1],
+        ],
     })
+}
+
+/// The fractional bits of [`spell_hue`]'s fixed point: every value it rounds is a multiple of
+/// 2^−86 below 2.
+const HUE_FRAC: u32 = 96;
+
+/// The hue of the count box of a stack with active spells (`draw_battle_stack` 0x43E6AA to
+/// 0x43E742, design §4.3; E17 M3 T7b-2a), as the bits of the f32 the executable passes: r = Σ k
+/// / Σ |k| over the `signs` k of the stack's active spells (the spell records' +0: 1 positive,
+/// −1 negative, 0 neither; r = 0 when every one is 0), then f32((r + 1) × 0.1667), the constant
+/// f32(0.1667) widened, at the x87's 53 bits: r, r + 1 and the product each rounded to 53
+/// significant bits, the last to 24 by the store, ties to even. All positive spells give green
+/// (2 × 0.1667), all negative red (0), a mix the hues between. Computed exactly in integers (no
+/// float arithmetic in the client, ADR-0003 §3).
+pub fn spell_hue(signs: impl IntoIterator<Item = i8>) -> u32 {
+    /// f32(0.1667): its 24-bit mantissa; the value is it × 2^−26.
+    const SIXTH: u128 = 0xAA_B368;
+    const SIXTH_SHIFT: u32 = 26;
+    let one: u128 = 1 << HUE_FRAC;
+    let (sum, magnitude) = signs.into_iter().fold((0i32, 0u32), |(s, m), k| {
+        (s + i32::from(k), m + u32::from(k.unsigned_abs()))
+    });
+    // r rounded to 53 bits (its quotient's remainder decides a tie), then r + 1, exact.
+    let r = if magnitude == 0 {
+        0
+    } else {
+        let scaled = u128::from(sum.unsigned_abs()) << HUE_FRAC;
+        let den = u128::from(magnitude);
+        round_significant(scaled / den, 53, !scaled.is_multiple_of(den))
+    };
+    let v = round_significant(if sum < 0 { one - r } else { one + r }, 53, false);
+    let w = round_significant((v * SIXTH) >> SIXTH_SHIFT, 53, false);
+    let h = round_significant(w, 24, false);
+    if h == 0 {
+        return 0;
+    }
+    // h = 1.f × 2^e: its exponent and its 23 fraction bits.
+    let width = 128 - h.leading_zeros();
+    let exponent = i64::from(width) - 1 - i64::from(HUE_FRAC) + 127;
+    let fraction = (h >> (width - 24)) & 0x7F_FFFF;
+    u32::try_from(exponent).unwrap_or(0) << 23 | u32::try_from(fraction).unwrap_or(0)
+}
+
+/// `v` rounded to `bits` significant bits, ties to even; `sticky`: `v` was cut below its last
+/// bit, so a half is more than half.
+fn round_significant(v: u128, bits: u32, sticky: bool) -> u128 {
+    let width = 128 - v.leading_zeros();
+    if width <= bits {
+        return v;
+    }
+    let shift = width - bits;
+    let (kept, rest) = (v >> shift, v & ((1 << shift) - 1));
+    let half = 1 << (shift - 1);
+    let up = rest > half || (rest == half && (sticky || kept & 1 == 1));
+    (kept + u128::from(up)) << shift
 }
 
 /// A stack's sprite as the scene places it.

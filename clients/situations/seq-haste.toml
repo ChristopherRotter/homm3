@@ -1,0 +1,52 @@
+# E17 M3 T7b-2a: Haste and Slow's walk time (casts.toml's `haste`; design §7.3, §7.16, player 1):
+# round 1 Orrin hastes the Pikemen (hex 86; his book's place 0, Haste alone) and they defend at the
+# cast's end; round 2 the Vampire Lords (speed 9) defend and the hasted Pikemen (speed 7) walk two
+# hexes east (W trunc(W0 x 0.65), 0x444CE5); round 3 Crag Hack slows the Pikemen (his place 0,
+# Slow alone; Slow ends Haste, 0x444D17), the Vampire Lords defend and the slowed Pikemen walk two
+# hexes more (W trunc(W0 x 1.5), 0x444D3A). The count box's tint by the stack's spells (§4.3):
+# Haste's, then Slow's. Hot seat; on grass at the capture set's tile (grass.toml's obstacles).
+
+[scenario]
+id = "sequence-haste"
+# Both players human, as the original's hot-seat map (`h3-view situation --hot-seat`).
+human = ["attacker", "defender"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:pikeman"
+count = 10
+
+[[defender]]
+slot = 0
+creature = "base:vampire_lord"
+count = 5
+
+# The heroes (E17 M3 T3a) with 1 in attack, defense and knowledge and 3 in power: Haste and Slow
+# last three rounds (BAT-MAG-010), so the Haste of round 1 still holds in round 3.
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 3
+knowledge = 1
+mana = 10
+max_mana = 10
+spell_book = ["base:haste"]
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 3
+knowledge = 1
+mana = 10
+max_mana = 10
+spell_book = ["base:slow"]

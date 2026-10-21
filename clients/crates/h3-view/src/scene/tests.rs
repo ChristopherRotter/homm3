@@ -335,20 +335,34 @@ fn a_count_box_shows_by_its_stack_and_the_hex_ahead() {
             (at(9, 2, [22, -15]), 1234),
         ]
     );
-    // The moment's counts (E17 M3 T5b: a strike's kills from its end) override the snapshot's.
+    // The moment's counts (E17 M3 T5b: a strike's kills from its end) override the snapshot's;
+    // its hues (E17 M3 T7b-2a: a stack's spells) the layout's, its saturation kept.
     let moment = Moment {
         counts: [(1, 7), (6, 1200)].into_iter().collect(),
+        hues: [(2, 0x3EAA_B368)].into_iter().collect(),
         ..moment
     };
     let list = battle_at(&o, &moment, &keys(), &tables(), &layout).unwrap();
     let counts: Vec<_> = list
         .iter()
         .filter_map(|d| match d {
-            Draw::CountBox { stack, count, .. } => Some((*stack, *count)),
+            Draw::CountBox {
+                stack, count, tint, ..
+            } => Some((*stack, *count, *tint)),
             _ => None,
         })
         .collect();
-    assert_eq!(counts, [(0, 10), (1, 7), (2, 10), (6, 1200)]);
+    let plain = layout.count_box.tint;
+    let green = [0x3EAA_B368, plain[1]];
+    assert_eq!(
+        counts,
+        [
+            (0, 10, plain),
+            (1, 7, plain),
+            (2, 10, green),
+            (6, 1200, plain)
+        ]
+    );
     // A stack on the field's edge: nothing ahead of hex 0 facing left.
     assert_eq!(ahead(0, false, 0), None);
     assert_eq!(ahead(255, true, 0), None);
@@ -495,6 +509,7 @@ fn a_moment_draws_each_stack_in_its_pose() {
             over: vec![(0, [7, 8], false), (9, [1, 1], true)],
         }),
         counts: BTreeMap::new(),
+        hues: BTreeMap::new(),
         // E17 M3 T6c-1: the mouse marks the walking Pikemen.
         marked: Some(0),
     };
@@ -929,4 +944,31 @@ fn a_heros_cast_disables_its_spell_book_for_the_turn() {
         _ => 9,
     };
     assert_eq!([book(100), book(199), book(200)], [0, 0, 2]);
+}
+
+/// The count box's hue under spells (E17 M3 T7b-2a, 0x43E6AA): the executable's f64 and f32
+/// arithmetic, checked against it run in floats for every sum of up to 81 signs (all equal); here
+/// a few: all positive green, all negative red (0), none or only neutral ones 0.1667, mixes
+/// between (r = 1/3, −1/3, 2/3, 1/2, 5/7, −2/5, −79/81).
+#[test]
+fn a_boxs_hue_follows_its_spells_signs() {
+    let hue = |pos: usize, neg: usize, zero: usize| {
+        let signs = core::iter::repeat_n(1i8, pos)
+            .chain(core::iter::repeat_n(-1, neg))
+            .chain(core::iter::repeat_n(0, zero));
+        spell_hue(signs)
+    };
+    assert_eq!(hue(1, 0, 0), 0x3EAA_B368);
+    assert_eq!(hue(3, 0, 2), 0x3EAA_B368);
+    assert_eq!(hue(0, 1, 0), 0);
+    assert_eq!(hue(0, 0, 1), 0x3E2A_B368);
+    assert_eq!(hue(1, 1, 0), 0x3E2A_B368);
+    assert_eq!(hue(2, 1, 0), 0x3E63_99E0);
+    assert_eq!(hue(1, 2, 0), 0x3DE3_99E0);
+    assert_eq!(hue(5, 1, 0), 0x3E8E_402C);
+    assert_eq!(hue(3, 1, 0), 0x3E80_068E);
+    assert_eq!(hue(6, 1, 0), 0x3E92_50A2);
+    assert_eq!(hue(3, 7, 0), 0x3DCC_D74A);
+    assert_eq!(hue(0, 81, 0), 0);
+    assert_eq!(hue(1, 80, 0), 0x3B86_DFED);
 }
