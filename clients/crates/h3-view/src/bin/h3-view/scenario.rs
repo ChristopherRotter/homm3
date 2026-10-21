@@ -149,11 +149,18 @@ pub fn school_skills(
     asked.sort_by_key(|&(spell, _)| (schools(spell).len(), spell));
     let mut levels = BTreeMap::new();
     for &(spell, level) in &asked {
-        if let Some(&first) = schools(spell).first().filter(|_| best(&levels, spell) < level) {
+        if let Some(&first) = schools(spell)
+            .first()
+            .filter(|_| best(&levels, spell) < level)
+        {
             levels.insert(first, level);
         }
     }
-    for spell in masteries.iter().map(|&(s, _)| s).chain(book.iter().copied()) {
+    for spell in masteries
+        .iter()
+        .map(|&(s, _)| s)
+        .chain(book.iter().copied())
+    {
         let wanted = masteries
             .iter()
             .find(|&&(s, _)| s == spell)
@@ -534,8 +541,8 @@ mod tests {
     fn masteries_become_school_skills() {
         // E17 M3 T7a-2b: the original's mastery is the best of the spell's school skills.
         let packs = repo().join("packs");
-        let (ruleset, _) = battle(&repo().join("clients/situations/seq-cast.toml"), &packs, 1)
-            .unwrap();
+        let (ruleset, _) =
+            battle(&repo().join("clients/situations/seq-cast.toml"), &packs, 1).unwrap();
         let spell = |key: &str| (*ruleset).spell_by_key(key).unwrap().index();
         let (slow, arrow, ripple) = (
             spell("base:slow"),
@@ -550,7 +557,10 @@ mod tests {
         );
         // Magic Arrow (all four schools, earth first in the pack) alone raises Earth Magic to
         // Basic; with Slow at Expert Earth it already is Expert.
-        assert_eq!(school_skills(&ruleset, &[(arrow, 1)], &[arrow]), Ok(vec![(17, 1)]));
+        assert_eq!(
+            school_skills(&ruleset, &[(arrow, 1)], &[arrow]),
+            Ok(vec![(17, 1)])
+        );
         assert_eq!(
             school_skills(&ruleset, &[(arrow, 3), (slow, 3)], &[arrow, slow]),
             Ok(vec![(17, 3)])
