@@ -46,10 +46,12 @@ const BOOK_PLACES: u8 = 12;
 /// The mouse's inputs for the harness's `actions` (`h3drive.py`'s `act`), the first acting `pre`
 /// ms after the opening, the mouse parked before the battle: `hex:<n>` and `click:<x>,<y>` move
 /// the mouse there, click (the command's action starts) and park it again; `move:<x>,<y>` moves
-/// it; `key:<k>` gives a command; `cast:<k>[:<hex>]` (E17 M3 T7a-2a) moves it to the spell
-/// book's place `k` (the book opened by its key) and then to the target hex, if any, where the
-/// click starts the cast, and parks it; `at:<ms>` acts then, `turn:<side>.<record>` when that
-/// stack's next turn starts (the timeline's, after the turn the last `turn:` named),
+/// it; `key:<k>` gives a command (right after a cast, at the cast's end: E17 M3 T7b-1);
+/// `cast:<k>[:<hex>]` (E17 M3 T7a-2a) moves it to the spell book's place `k` (the book opened by
+/// its key), aims the next of the record's casts `spells` (T7b-1) and moves to the target hex, if
+/// any, where the click starts the cast, and parks it; `at:<ms>` acts then,
+/// `turn:<side>.<record>` when that stack's next turn starts (the timeline's, after the turn the
+/// last `turn:` named; a first one naming the opening's active stack at once, T7b-1),
 /// `step:<ms>` that much later. *Not modelled:* the book over the battlefield.
 pub fn inputs(
     actions: &[String],
