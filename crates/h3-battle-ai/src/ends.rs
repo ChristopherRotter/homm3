@@ -162,11 +162,15 @@ impl Walker<'_> {
     /// Guarding a shooter (0x420760; BAT-AI-010): over the walker's side's living stacks but the
     /// turrets and the Catapult that can shoot now and have the melee penalty, in record order,
     /// each with its guard hex ([`Walker::guard_hex`]): the fewest turns to it, then the higher
-    /// strength (0x442E60) over its open sides when more than one, then the later stack. Defend
-    /// on the walker's own position, else the walk there without scores (Defend without a path).
+    /// strength (0x442E60) over its open sides (at least the guard hex), then the later stack.
+    /// The walk there without scores (Defend without a path), but Defend when the walker stands
+    /// on the guard hex of the last shooter asked, under BAT-QUIRK-25 (slip 21: the original tests
+    /// the guard routine's last answer, 0x4208B4, where the best's belongs; none when that
+    /// shooter has no guard hex), else on the best's.
     // rule: BAT-AI-010
     pub(crate) fn guard(&self) -> Option<Command> {
         let mut best: Option<(Hex, u32, i32)> = None;
+        let mut last = None;
         for (i, r) in (0u8..).zip(self.state.stacks()) {
             let id = StackId(i);
             if r.side != self.side
@@ -178,21 +182,22 @@ impl Walker<'_> {
             {
                 continue;
             }
-            let Some((hex, open)) = self.guard_hex(r) else {
+            let guard = self.guard_hex(r);
+            last = guard.map(|(hex, _)| hex);
+            let Some((hex, open)) = guard else {
                 continue;
             };
             let turns = self.turns_to(hex);
-            let mut value = computer::strength(self.state, self.ruleset, &self.ctx, id);
-            if open > 1 {
-                value /= open;
-            }
+            let value = computer::strength(self.state, self.ruleset, &self.ctx, id) / open.max(1);
             if best.is_some_and(|(_, t, v)| turns > t || (turns == t && v > value)) {
                 continue;
             }
             best = Some((hex, turns, value));
         }
         let (hex, ..) = best?;
-        Some(if hex == self.me.hex {
+        let slips = self.ruleset.quirks().is_enabled(ORIGINAL_AI_SLIPS);
+        let stays = if slips { last } else { Some(hex) };
+        Some(if stays == Some(self.me.hex) {
             Command::Defend
         } else {
             self.walk_with(hex, false, false).unwrap_or(Command::Defend)

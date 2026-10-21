@@ -192,7 +192,7 @@ found after that decision) belong to the neutral side's map too and are read (§
   - [x] **T3c The odds and the ends** (2026-10-21; the user: whole) — the stronger at range
     0x420A80 with the hero's value and the turrets (BAT-AI-008, slip 20; slip 6 a gap, BAT-STUB-7,
     BAT-Q56), the last retaliation's gain 0x41F3B0 with the order of action and the walker's
-    side's threat records (BAT-AI-009, slip 4), the fallbacks (BAT-AI-010), holding the walls
+    side's threat records (BAT-AI-009, slip 4), the fallbacks (BAT-AI-010, slip 21), holding the walls
     (BAT-AI-011, slip 2), the besieger's walk to its wall (BAT-AI-005; §7.49; the log).
 - [ ] **T4 Creature casts** — the abilities a computer stack chooses to use, per T1a's map. With
   T2 to T4 a side without a hero is complete: the AI lane's and the adventure lane's inboxes get

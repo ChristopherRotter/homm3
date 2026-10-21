@@ -74,7 +74,13 @@ fn the_runners_gain_when_the_efreet_takes_the_gogs_last_retaliation() {
         let ctx = computer::context(&state, &r, BattleSide::Attacker);
         let side = (StackId(0), BattleSide::Attacker);
         let recs = records(&state, &r, &ctx, side);
-        let got = gain(&state, &r, &ctx, &recs, (StackId(0), StackId(2)));
+        let got = gain(
+            &state,
+            &r,
+            &ctx,
+            &recs,
+            (StackId(0), BattleSide::Attacker, StackId(2)),
+        );
         assert!(!ctx.desperate());
         assert_eq!(got, expected(&state, profile, true), "{profile}");
         assert!(got > 0, "{profile}: {got}");
@@ -96,7 +102,13 @@ fn the_desperate_kills_with_and_without_the_slip() {
         let r = ruleset_as(profile);
         let ctx = computer::context(&state, &r, BattleSide::Attacker);
         let recs = records(&state, &r, &ctx, (StackId(0), BattleSide::Attacker));
-        gain(&state, &r, &ctx, &recs, (StackId(0), StackId(2)))
+        gain(
+            &state,
+            &r,
+            &ctx,
+            &recs,
+            (StackId(0), BattleSide::Attacker, StackId(2)),
+        )
     };
     assert_eq!(at(faithful), expected(&state, faithful, true));
     assert_eq!(at(fixed), expected(&state, fixed, false));
@@ -138,7 +150,16 @@ fn no_gain_without_a_last_retaliation_or_a_stack_that_strikes_after_the_enemy() 
     assert_eq!(state.stacks()[2].retaliations_left, 0);
     let ctx = computer::context(&state, &r, BattleSide::Attacker);
     let recs = records(&state, &r, &ctx, (StackId(1), BattleSide::Attacker));
-    assert_eq!(gain(&state, &r, &ctx, &recs, (StackId(1), gogs)), 0);
+    assert_eq!(
+        gain(
+            &state,
+            &r,
+            &ctx,
+            &recs,
+            (StackId(1), BattleSide::Attacker, gogs)
+        ),
+        0
+    );
     // A second efreet stack acts after the defender's runners (the same speed, the sides
     // alternating, the walker's first): it records none of them, though it reaches them, so the
     // runners' last retaliation gains the walker nothing.
@@ -156,7 +177,16 @@ fn no_gain_without_a_last_retaliation_or_a_stack_that_strikes_after_the_enemy() 
             .mark(state.stacks()[2].hex)
             .is_some()
     );
-    assert_eq!(gain(&state, &r, &ctx, &recs, (StackId(0), StackId(2))), 0);
+    assert_eq!(
+        gain(
+            &state,
+            &r,
+            &ctx,
+            &recs,
+            (StackId(0), BattleSide::Attacker, StackId(2))
+        ),
+        0
+    );
     // A shooter of the side records nothing either (it shoots): the archers beside the efreet.
     let state = BattleState::new(
         &r,
@@ -166,5 +196,14 @@ fn no_gain_without_a_last_retaliation_or_a_stack_that_strikes_after_the_enemy() 
     .unwrap();
     let ctx = computer::context(&state, &r, BattleSide::Attacker);
     let recs = records(&state, &r, &ctx, (StackId(0), BattleSide::Attacker));
-    assert_eq!(gain(&state, &r, &ctx, &recs, (StackId(0), StackId(2))), 0);
+    assert_eq!(
+        gain(
+            &state,
+            &r,
+            &ctx,
+            &recs,
+            (StackId(0), BattleSide::Attacker, StackId(2))
+        ),
+        0
+    );
 }

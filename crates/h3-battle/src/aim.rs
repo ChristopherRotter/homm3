@@ -968,7 +968,6 @@ pub(crate) fn hero_value(
     let caster = Caster {
         power: hero.view.power.clamp(1, MAX_POWER),
         mana: i32::from(hero.view.max_mana),
-        change: crate::mana::own_cost_change(state, ruleset, side),
         strength,
     };
     hero.magic
@@ -983,25 +982,25 @@ pub(crate) fn hero_value(
 }
 
 /// The caster record's numbers the odds read (0x526D40's +8, +0x10 and the side's strength as
-/// +4) and the own army's cost change.
+/// +4).
 #[derive(Debug, Clone, Copy)]
 struct Caster {
     power: u8,
     mana: i32,
-    change: i8,
     strength: i32,
 }
 
 /// The odds' value of `hero`'s spell `id` (0x5273D0, 0x5270E0; §7.39): its mastery `m` on the
 /// battlefield (the original's on the hero's own adventure tile, the battle's for a defending
 /// hero; the attacker's tile is not in the seam: BAT-STUB-7); its cost at the hero's own mastery
-/// with the own army's change (no battlefield, no enemy army; BAT-MAG-054); 0 above the mana,
-/// else `n` casts, the mana over the cost (1000 at cost 0). A spell of the kind `damage` alone:
-/// the base `b = v_m × (power + m)` (`v_m` its AI value at `m`), `d` the hero's bonuses on it
-/// without a target ([`magic::untargeted_bonus`]), `X = 10 d / S` in doubles with `S` the side's
-/// strength, `Y = α_k X + β_k` for the first row `k` of 0–12 whose threshold `X` reaches (13
-/// without one), `Z = φ_min(n, 13) X`, and `trunc(S × Z)` when `Y > Z`, else `trunc(S × Y)`: 0
-/// for `S` = 0 (the original's NaN). Any other kinds (Titan's Lightning Bolt's): 1.
+/// with no army's change (0x4E5240 given no enemy army skips both, the own Mages too; BAT-MAG-054
+/// at mastery without the battlefield's raise); 0 above the mana, else `n` casts, the mana over
+/// the cost (1000 at cost 0). A spell of the kind `damage` alone: the base `b = v_m × (power +
+/// m)` (`v_m` its AI value at `m`), `d` the hero's bonuses on it without a target
+/// ([`magic::untargeted_bonus`]), `X = 10 d / S` in doubles with `S` the side's strength, `Y =
+/// α_k X + β_k` for the first row `k` of 0–12 whose threshold `X` reaches (13 without one), `Z =
+/// φ_min(n, 13) X`, and `trunc(S × Z)` when `Y > Z`, else `trunc(S × Y)`: 0 for `S` = 0 (the
+/// original's NaN). Any other kinds (Titan's Lightning Bolt's): 1.
 // rule: BAT-AI-008
 fn spell_value(
     state: &BattleState,
@@ -1014,11 +1013,7 @@ fn spell_value(
     // The original's mastery is on the hero's own adventure tile (slip 6), which the seam lacks
     // for an attacking hero: the battlefield's.
     let m = magic::mastery(state, ruleset, hero, id);
-    let cost = i32::from(crate::mana::cost(
-        spell,
-        hero.magic.masteries.get(id),
-        c.change,
-    ));
+    let cost = i32::from(crate::mana::cost(spell, hero.magic.masteries.get(id), 0));
     if cost > c.mana {
         return 0;
     }

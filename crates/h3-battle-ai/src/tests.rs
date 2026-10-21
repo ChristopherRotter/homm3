@@ -1268,6 +1268,31 @@ fn a_multi_headed_enemy_lowers_where_it_would_strike_the_side_on_hard_for_a_comp
 
 // covers: BAT-AI-007
 #[test]
+fn an_attackers_multi_headed_enemy_lowers_where_it_would_strike_the_defender() {
+    let r = ruleset();
+    // The sides swapped: the attacker's hydra (at 1, its front hex 2) faces right; the defender's
+    // runner goes next to its front hex, and on Hard the defender's imps' hexes around the runner
+    // that the hydra's strike would hit lose its strike value.
+    let setup = on(2, setup(&[(HYDRA, 1)], &[(RUNNER, 1), (IMP, 10)]));
+    let mut state = BattleState::new(&r, &setup, 16).unwrap();
+    assert_eq!(active(&state), RUNNER);
+    play(&mut state, &r, Command::Move { to: Hex(3) });
+    assert_eq!(active(&state), IMP);
+    let me = StackId(2);
+    let scores = scores_of(&state, &r, me);
+    let low = (-strike_on(&state, &r, (StackId(0), me))).max(floor_of(&state, &r, me));
+    assert!(low < 0);
+    let hit: Vec<Hex> = all_hexes().filter(|h| scores[h.index()] != 0).collect();
+    assert!(!hit.is_empty());
+    let field = Field::new(r.battle().field);
+    for &hex in &hit {
+        assert_eq!(scores[hex.index()], low, "{hex:?}");
+        assert!(field.distance(hex, Hex(3)) <= 3, "{hex:?}");
+    }
+}
+
+// covers: BAT-AI-007
+#[test]
 fn a_multi_headed_strike_that_costs_the_enemy_raises_the_hexes_with_the_slip() {
     // Five hundred imps would kill the hydra in their retaliation: its strike is worth less than
     // nothing to it. The original subtracts it with its sign untested (slip 3): the hexes gain;

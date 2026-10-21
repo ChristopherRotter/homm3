@@ -717,14 +717,21 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
 - **The port.** `h3-battle`: `computer::turn_map` (range the speed), `kept_out`, `hero_value`
   (`aim::hero_value`, `spell_value`, the curve as thousandths through `X87::ratio` at 53 bits),
   `siege` (the town whole), `SiegeState::inside` public, `magic::untargeted_bonus` (0x4E5760
-  without a stack: the Orbs and Sorcery; `caster_rates` shared with `caster_stage`),
-  `mana::own_cost_change` (the own army's allies-changes, dead stacks included, created and raised
-  ones not). `h3-battle-ai`: `order.rs` (the keys, the library sort, the alternation, the ranks),
+  without a stack: the Orbs and Sorcery; `caster_rates` shared with `caster_stage`); the odds'
+  cost is the spell's at the hero's own mastery without any army's change. `h3-battle-ai`: `order.rs` (the keys, the library sort, the alternation, the ranks),
   `gain.rs` (the flag-1 threat records, built once per decision when first needed; the gain),
   `odds.rs` (the stronger at range, the turrets), `ends.rs` (holding the walls with `breaches`,
   the besieger's walk, the fallback, the guard and its hex, the step to safety); the walker reads
   the odds once per decision (a cell) and the mask its scores built (`scores::build` returns it;
   `scores::area_threat`); `walk_with` walks without scores for the guard. `POLICY_VERSION` 5.
+- **A blind check** (a fresh agent, the disassembly against the port with the slips on): no
+  discrepancy in 0x41F140 and its sort, 0x422B20 with flag 1 and 0x448840, 0x421680's tail,
+  0x4208F0 and 0x4213F0 (its part 6 confirmed: the overlay's byte 93); the table checked value by
+  value. Three differences, all fixed: 0x41F3B0 loops over the acting side's records (a
+  hypnotized walker's controller's; the port had the walker's own side); 0x4E5240 given no enemy
+  army skips the own Mages too (0x4E52DA; the port had counted them); 0x420760 defends when the
+  walker stands on the last shooter's guard hex, not the best's (0x4208B4: **slip 21**, joined to
+  BAT-QUIRK-25 as the user had the turrets' creature).
 - **Not built here** (BAT-STUB-4): the creature casts (T4). Kept apart (documented): a dead enemy
   in the flag-1 records; the stale action the original keeps when the besieger's or the guard's
   walk finds no path (the port defends).
@@ -745,5 +752,6 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   attack, no guard under an area threat, the guard's Defend and the step to safety; the property
   over random battles now one in three at the town. `h3-battle`'s `tests/computer.rs`: the hero's
   value (§7.39's example 7179, one cast 2697, the cost above the maximum mana, the curve's row 0, S
-  = 0, Sorcery 9016 in both precisions, the level limit, no book, casting forbidden, the Mages and
-  the enemy's Pegasi, the kinds), the turn's map.
+  = 0, Sorcery 9016 in both precisions, the level limit, no book, casting forbidden, neither the Mages
+  nor the enemy's Pegasi, the kinds), the turn's map; slip 21 both ways; the attacker's two-hex
+  multi-headed enemy in the hex scores (a fixed test for a branch the property had reached).

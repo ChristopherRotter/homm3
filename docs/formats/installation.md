@@ -4813,7 +4813,7 @@ by +0xC4 and the slow factor +0x4C8 (at least 1; a war machine's unslowed), the 
 +0x544 at one turn, and +0x538/+0x53C/+0x540 replaced by fewer turns or, at equal turns, a strictly
 higher value. With range = speed every recorded enemy is within one turn.
 
-**0x41F3B0** as §7.38: `+0x454` nonzero and at most 1 (unlimited retaliations are 5000, 0x447172);
+**0x41F3B0** as §7.38, over the acting side's records (+0x132C0: a hypnotized walker's controller's, the side 0x422B20 filled): `+0x454` nonzero and at most 1 (unlimited retaliations are 5000, 0x447172);
 `r` from 0x443080 with the prediction flag less 0x435980(S); per record of the acting side but
 arrow towers with the enemy's bit: `D` = 0x435980(O) capped at `r`; `w` = 0x442A50(E, +0, +4, 0,
 0); without desperate mode `fild D`, `fmul w`, `fdiv hp` (+0xC0), with it `fild ⌊(r mod hp + D) /
@@ -4828,8 +4828,10 @@ the tactics phase, else 0x4B3F20: `max(1, (cost + s − 1) / s)`); the touch 2 w
 R touches (0x4466C0) S's position ± 1 by S's facing; replaced by fewer turns, more touch, or, at
 equal ones, the hex record's x anchor (+0) not smaller for R facing right (+0x44 = 1), not larger
 for R facing left. R's value 0x442E60 with the context's least bonuses, divided by the open sides
-when above 1 (`idiv`); R replaced by fewer turns or, at equal turns, a value not lower. Defend on
-S's position, else the walk without scores, true either way.
+when above 1 (`idiv`); R replaced by fewer turns or, at equal turns, a value not lower. **Defend
+when S's position is the out hex of the last 0x4205D0 call** (0x4208B4 reads `[ebp−0xC]`: the
+last shooter asked, −1 when it found none), where the best's hex `[ebp−0x1C]` belongs (slip 21);
+else the walk to the best's hex without scores, true either way.
 
 **0x4208F0.** As §7.38; the own score the lower of S's position and its index ± 1 (two-hex);
 the best starts at the own score, cost 0 and no hex, so S's own position at cost 0 takes it at an
@@ -4857,8 +4859,9 @@ its second argument is an out pointer (the row).
 3, `a × v`; at 3 the upper tower (+0x13F74, part 5) and the lower (+0x13F94, part 13), each
 `trunc(v × (a + 1) / 2)` (`cdq`, `sub`, `sar`); `v` **creature 2's AI value** (+0x40 of the
 creature table's third record, 0x6747B0 + 0x128): the Archers', not the Arrow Tower's (slip 20).
-0x5273D0's cost is 0x4E5240 with no enemy army and field −1: the hero's own school mastery and its
-own army's changes (the Mages; not the enemy's Pegasi); `n = mana / cost` (1000 at a cost of 0 or
+0x5273D0's cost is 0x4E5240 with no enemy army and field −1: the hero's own school mastery and no
+army's change at all (0x4E52DA skips the Pegasi's +2 and the own Mages' −2 alike without an enemy
+army), at least 1; `n = mana / cost` (1000 at a cost of 0 or
 less); the bits `flags & 0x1F8000` compared whole, so 0x8000 alone goes to 0x5270E0. **0x5270E0**:
 `10 d` an `int`; `X = fild(10 d) / fild(S)` stored as a double; `k` the first of 13 rows whose
 threshold `X` reaches (`fcomp`, C0 clear; an unordered `X` takes none: 13); `Y = X α_k + β_k` and `Z
@@ -4869,7 +4872,8 @@ gives `S × Y`, else `S × Z`, through `_ftol`. The table's 56 doubles are the n
 Cloak (83), a value replacing the best only when greater.
 
 **Slips** (survey §4, BAT-QUIRK-25): the walls test's records (slip 2), the desperate kills' top
-creature (slip 4), the turrets as creature 2 (slip 20, new); the hero's tile's field (slip 6) needs
+creature (slip 4), the turrets as creature 2 (slip 20, new), the guard's Defend test on the last
+shooter's hex (slip 21, new; found by the blind re-read); the hero's tile's field (slip 6) needs
 the attacking hero's adventure tile, which the seam does not carry (BAT-STUB-7, BAT-Q56). **Draws:**
 none new. **Readings at risk** (added for T7): the Upper Wall's breach through the display overlay
 (a shown battle with the movement shadow may differ); a dead enemy recorded by its stale rank; the

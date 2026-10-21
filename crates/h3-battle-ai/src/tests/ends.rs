@@ -249,3 +249,40 @@ fn the_guard_defends_beside_its_shooter_and_the_step_to_safety_takes_the_best_he
     let w = walker(&state, &r, (0, BattleSide::Attacker)).scored([-5; 256]);
     assert_eq!(w.step_to_safety(), None);
 }
+
+// covers: BAT-AI-010
+#[test]
+fn the_guard_defends_on_the_last_shooters_hex_with_the_slip_else_on_the_bests() {
+    // The runners stand on the guard hex of the five archers (the last shooter asked, beside it
+    // on its right); the fifty archers are worth more, so their guard hex is the best. The
+    // original tests the last answer (slip 21): the runners defend; without the slip they go to
+    // the fifty archers' side.
+    for (profile, slips) in [("t:faithful", true), ("t:fixed", false)] {
+        let r = super::ruleset_as(profile);
+        let mut state = BattleState::new(
+            &r,
+            &setup(&[(RUNNER, 10), (ARCHER, 50), (ARCHER, 5)], &[(GOG, 30)]),
+            1,
+        )
+        .unwrap();
+        assert_eq!(active(&state), RUNNER);
+        let field = Field::new(r.battle().field);
+        let [_, many, few] = [0, 1, 2].map(|i| state.stacks()[i].hex);
+        let beside = |h: Hex| {
+            let (col, row) = field.coords(h);
+            field.hex(col + 1, row).unwrap()
+        };
+        play(&mut state, &r, Command::Move { to: beside(few) });
+        while active(&state) != RUNNER {
+            play(&mut state, &r, Command::Defend);
+        }
+        assert_eq!(state.stacks()[0].hex, beside(few));
+        let guard = walker(&state, &r, (0, BattleSide::Attacker)).guard();
+        let want = if slips {
+            Command::Defend
+        } else {
+            Command::Move { to: beside(many) }
+        };
+        assert_eq!(guard, Some(want), "{profile}");
+    }
+}

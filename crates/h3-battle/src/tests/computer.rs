@@ -367,11 +367,12 @@ fn the_heros_value_in_the_odds() {
     );
     s.limits.no_casting = true;
     assert_eq!(computer::hero_value(&s, &r, BattleSide::Attacker, 5000), 0);
-    // The hero's own Mages (−2) lower the cost: 4 − 2 = 2, so one cast at 2 mana where 4 would
-    // be needed; an enemy's Pegasi (+2) do not count here.
+    // No army changes the cost here (0x4E5240 given no enemy army skips both): the hero's own
+    // Mages (−2) do not make 2 mana enough for a cost of 4, the enemy's Pegasi (+2) do not make
+    // 4 too little.
     let mages: &[(&'static str, u32, i32, i32)] = &[("fixed", 1, 2, 5), ("magus", 1, 2, 7)];
-    assert_eq!(hero_value(&r, Some(bolter(&r, 2, &[])), mages, 5000), 2697);
-    assert_eq!(hero_value(&r, Some(bolter(&r, 2, &[])), army, 5000), 0);
+    assert_eq!(hero_value(&r, Some(bolter(&r, 2, &[])), mages, 5000), 0);
+    assert_eq!(hero_value(&r, Some(bolter(&r, 4, &[])), mages, 5000), 2697);
     let s = arena(
         &r,
         [Some(bolter(&r, 4, &[])), None],

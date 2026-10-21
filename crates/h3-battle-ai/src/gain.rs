@@ -77,10 +77,11 @@ pub(crate) fn records(
         {
             continue;
         }
+        // The range is the stack's speed and no mark comes from a stop: every enemy marked is
+        // within one turn (0x448840's turns 1, a cost within the speed as the run-up), so each
+        // sets its bit and the nearest is the one of the strictly higher value.
         let map = computer::turn_map(state, ruleset, id, side);
-        let speed = u16::from(o.speed_now());
         let mut record = Record::default();
-        let mut turns_of_nearest = 0;
         for (j, e) in (0u8..).zip(state.stacks()) {
             let enemy = StackId(j);
             if e.side == side
@@ -90,23 +91,15 @@ pub(crate) fn records(
             {
                 continue;
             }
-            let Some(cost) = map.mark(e.hex).filter(|&c| speed > 0 || c == 0) else {
+            let Some(cost) = map.mark(e.hex) else {
                 continue;
             };
-            let run_up = if cost <= speed { cost } else { 0 };
-            let run_up = u8::try_from(run_up).unwrap_or(u8::MAX);
+            let run_up = u8::try_from(cost).unwrap_or(u8::MAX);
             let value = computer::strike_value(state, ruleset, ctx, (id, enemy), run_up);
-            let turns = u32::from(cost).div_ceil(u32::from(speed.max(1))).max(1);
-            if turns == 1 {
-                record.mask |= bit(state, enemy);
-            }
-            if record.nearest.is_none()
-                || turns < turns_of_nearest
-                || (turns == turns_of_nearest && value > record.value)
-            {
+            record.mask |= bit(state, enemy);
+            if record.nearest.is_none() || value > record.value {
                 record.nearest = Some(enemy);
                 record.value = value;
-                turns_of_nearest = turns;
             }
         }
         out[id.index()] = record;
@@ -126,11 +119,12 @@ fn creatures(state: &BattleState, id: StackId) -> u64 {
     computer::hit_points(state, id).div_ceil(u64::from(s.max_hp.max(1)))
 }
 
-/// The last retaliation's gain of `walker` against `enemy` in the context `ctx` with its side's
-/// threat records `records` (0x41F3B0; BAT-AI-009): 0 unless the enemy is not turned to stone and
-/// has exactly one retaliation left; `r` its hit points left less the walker's strike on it (the
-/// damage estimate by the walker's creatures, no shot, capped), 0 when the strike kills it. Each
-/// stack of the walker's side but the turrets whose enemies within a turn hold the enemy: `D` its
+/// The last retaliation's gain of `walker` of the acting `side` against `enemy` in the context
+/// `ctx` with the side's threat records `records` (0x41F3B0; BAT-AI-009): 0 unless the enemy is
+/// not turned to stone and has exactly one retaliation left; `r` its hit points left less the
+/// walker's strike on it (the damage estimate by the walker's creatures, no shot, capped), 0 when
+/// the strike kills it. Each stack of the acting side (+0x132C0, a hypnotized walker's
+/// controller's) but the turrets whose enemies within a turn hold the enemy: `D` its
 /// strike on it, at most `r`; `g = trunc(D × w / hp) − v` with `w` the enemy's worth (no shot
 /// flag), `hp` its hit points per creature and `v` the stack's recorded value; in desperate mode
 /// `trunc(k × w) − v` with `k = ⌊(t + D) / hp⌋`, `t` the top creature's remaining hit points `r
@@ -142,7 +136,7 @@ pub(crate) fn gain(
     ruleset: &BattleRuleset,
     ctx: &Context,
     records: &Records,
-    (walker, enemy): (StackId, StackId),
+    (walker, side, enemy): (StackId, BattleSide, StackId),
 ) -> i32 {
     let e = &state.stacks()[enemy.index()];
     if e.spells.status.contains(Status::PETRIFIED) || e.retaliations_left != 1 {
@@ -160,7 +154,6 @@ pub(crate) fn gain(
     let hp = i32::try_from(e.max_hp).unwrap_or(i32::MAX).max(1);
     let w = computer::worth(state, ruleset, ctx, enemy, false);
     let slips = ruleset.quirks().is_enabled(ORIGINAL_AI_SLIPS);
-    let side = state.stacks()[walker.index()].side;
     let bit = bit(state, enemy);
     let (mut sum, mut best) = (0i32, 0i32);
     for (i, o) in (0u8..).zip(state.stacks()) {

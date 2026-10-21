@@ -163,6 +163,7 @@ each estimate as the rule it estimates:
 | 18 | the Fire Wall's hex scores value its damage without the spell's immunity test (§7.48; built, BAT-AI-007, E23 T3b; found in T3b) | only a wall whose spell hurts the stack (BAT-MAG-028's test) |
 | 19 | the Fire Wall's and the moat's hex scores value the damage with the least attack bonus for both bonuses (§7.48; built, BAT-AI-007, E23 T3b; found in T3b) | the least attack and the least defense bonus, as every other value |
 | 20 | the odds value the turrets at creature 2's AI value (the Archers), not the turret's own (§7.38, §7.49; built, BAT-AI-008, E23 T3c; the user's call, 2026-10-21) | the turret creature's AI value |
+| 21 | guarding a shooter defends when the walker stands on the guard hex of the last shooter asked, not the best's (§7.49; built, BAT-AI-010, E23 T3c; found by the blind re-read) | the best's guard hex |
 
 The ledger entry lists them; a slip found later joins the same flag. The tie orders, the library
 sort (§7.37) and the draws are the original's behaviour, not slips: no flag.

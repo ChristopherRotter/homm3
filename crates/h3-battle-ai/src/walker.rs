@@ -180,7 +180,7 @@ impl<'a> Walker<'a> {
             self.ruleset,
             &self.ctx,
             records,
-            (self.id, enemy),
+            (self.id, self.side, enemy),
         )
     }
 
@@ -328,8 +328,9 @@ impl<'a> Walker<'a> {
     }
 
     /// The attack on the best candidate `b` (0x421EF8): within one turn a move and attack (a move
-    /// alone where the original's walk stops early); further, a walk towards the plan's hex,
-    /// careful when it is more than one turn away; nothing on it.
+    /// alone where the original's walk stops early); further, a careful walk towards the plan's
+    /// hex (never the walker's own: its own hexes are no stops, so a plan there takes one turn;
+    /// the original's test for it, 0x421F39, finds none).
     pub(crate) fn attack(&self, b: &Best) -> Option<Command> {
         if b.plan.turns <= 1 {
             // The original's move and attack stops where a step enters a stop and then skips the
@@ -344,9 +345,6 @@ impl<'a> Walker<'a> {
                     from: b.plan.hex,
                 }
             });
-        }
-        if b.plan.hex == self.me.hex {
-            return None;
         }
         self.walk(b.plan.hex, true)
     }

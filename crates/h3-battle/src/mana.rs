@@ -5,7 +5,6 @@
 //! (`mana_channel`), and a Wraith takes mana from the enemy hero at its activations
 //! (`mana_drain`).
 
-use h3_content::MAX_ARMY_SLOTS;
 use h3_content_battle::BattleSpell;
 use h3_content_battle::{Ability, AuraTarget, BattleRuleset};
 use h3_contracts::{BattleSetup, BattleSide};
@@ -32,35 +31,6 @@ pub(crate) fn cost_change(ruleset: &BattleRuleset, setup: &BattleSetup, side: Ba
                     up = up.max(amount);
                     down = down.min(amount);
                 }
-            }
-        }
-    }
-    up.saturating_add(down)
-}
-
-/// The change of the spell costs of `side`'s hero from its own army alone (the original's
-/// 0x4E5240 given no enemy army, as the adventure AI's value of a spell calls it: the computer's
-/// odds, BAT-AI-008, `installation.md` §7.39): [`cost_change`]'s largest increase plus largest
-/// reduction among the `spell_cost` abilities for allies of the creatures in the side's army
-/// slots, dead or alive (the army keeps its creatures, BAT-QUIRK-15), created and raised stacks
-/// (a Pit Lord's Demons, new records) and war machines left out.
-// rule: BAT-AI-008
-pub(crate) fn own_cost_change(
-    state: &BattleState,
-    ruleset: &BattleRuleset,
-    side: BattleSide,
-) -> i8 {
-    let (mut up, mut down) = (0i8, 0i8);
-    let army = state.stacks.iter().filter(|s| {
-        s.side == side && usize::from(s.slot) < MAX_ARMY_SLOTS && !s.has(StackTraits::RAISED)
-    });
-    for stack in army {
-        for ability in ruleset.abilities(stack.creature) {
-            if let Ability::SpellCost { amount, affects } = *ability
-                && affects == AuraTarget::Allies
-            {
-                up = up.max(amount);
-                down = down.min(amount);
             }
         }
     }
