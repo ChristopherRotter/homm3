@@ -321,12 +321,14 @@ observation; `before:<observation>` reads the same before the step:
 | `battle`, `winner`, `retreated`, `surrendered` | yes or no; the side (`attacker`, `defender`, `none`) |
 | `stacks:start`, `stacks:end[:<side>]` | the battle's stacks (`attacker 20 Archangels \| defender 3 Pikemen, 2 Halberdiers`) |
 | `hexes:start[:<side>]` | their hexes at the start (the formation) |
-| `hero:<detail>`, `hero[<name>]:<detail>` | the step's hero after the step, or another by name: `experience`, `level`, `primary` (`3/5/1/2`), `army`, `skill:<name>` (none, basic, advanced, expert), `on_map`, `tile`; since E08 T32b1 `skills` (`Leadership expert, Wisdom basic`, in the hero's order), `seed` (the level seed, hero +0x8F), `wisdom_offer` and `school_offer` (the levels Wisdom and a school were last offered at, +0x90, +0x3F), `artifacts` (worn: `Ballista (war machine 1), …` in slot order) and `backpack` |
+| `hero:<detail>`, `hero[<name>]:<detail>` | the step's hero after the step, or another by name: `experience`, `level`, `primary` (`3/5/1/2`), `army`, `skill:<name>` (none, basic, advanced, expert), `on_map`, `tile`; since E08 T32b1 `skills` (`Leadership expert, Wisdom basic`, in the hero's order), `seed` (the level seed, hero +0x8F), `wisdom_offer` and `school_offer` (the levels Wisdom and a school were last offered at, +0x90, +0x3F), `artifacts` (worn: `Ballista (war machine 1), …` in slot order) and `backpack`; since E08 T32b2 `equipment` (the worn artifacts but the war machines and the spell book: a starting bonus's) |
 | `monster:x,y`, `aggression:x,y`, `never_flees:x,y` | the monster on a tile (`30 Pikemen`, `none`), its aggression (−4 to 10) and flag, from the tile's word |
 
 `expect = { marks = <n>, path = "green", question = "join, flee", battle = true, dialogs = true }`
 notes a difference under the encounter's "anything odd" (`dialogs = true`: dialogs passed after
-the walk are expected). `end_turn = true` ends the turn. Everything the record holds comes from
+the walk are expected). `note = { <label> = <observation> }` (E08 T32b2) reads as `record` does
+and adds `<label>: <value>` under "anything odd" unless it reads `none` (batch E4: a hero's
+`equipment`, the starting bonus's trap). `end_turn = true` ends the turn. Everything the record holds comes from
 the game's memory, not from the screen. `compare` prints each record line of two filled templates
 as the same or different (random amounts differ by nature: judge them by their ranges).
 

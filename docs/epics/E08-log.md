@@ -3413,3 +3413,53 @@ user's consent; T32b2 (the recipes and the run) next.
   T32b2 decides it); 2 300 experience, two dialogs answered left, then right.
 - **Not built**: batch E4's recipes and run (T32b2). E4-6's "can gain no more" shows under
   `messages` as its record (GENRLTXT, not yet seen).
+
+### Increment 4, round 5: T32b2, batch E4's recipes and run (2026-10-21, `adventure/e08-t32b2`)
+
+Baseline: `master` at 3843b3f (T32b1 merged, #362); its code state had no run on record, so the
+sandbox ran the full verify on it (every step passed, without `--with-original-data`); the branch
+changes no engine code. Decision 69: the user took T32b2 whole (not chosen: E4a first, then E4b
+and E4c; one batch per task). The original's files were staged from the user's PC at the start.
+
+- **The recipes** (`clients/capture/batches/E08-batch-4{a,b,c}.toml`, `cross-lane` as T32b1): the
+  specs' procedures as steps; E4a's heroes on `h3-experiment`'s grid (size 36: (3 + 6 (i mod 6),
+  3 + 5 (i div 6)) by the encounter's index, the opponent a column east), E4c's at the spec's
+  `at`. E4-1's five heroes are Blue's and never move: read by name (`hero[E4-1a]:seed`, …) while
+  Red's E4-2a is selected. E4-4 answers right, left, right; E4-9 by plan, E4-10 by `attack`.
+- **The harness** (`clients/capture/`, the same `cross-lane`): a step's `note` (read as `record`,
+  added under "anything odd" unless `none`) and the hero detail `equipment` (the worn artifacts but
+  the war machines and the spell book: every hero wears a Catapult, which E4a's first run noted for
+  all sixteen), so a starting bonus's artifact shows; `h3lod.identify` takes the most specific
+  record (the most literal text) of any run of the dialog's text items (it took the first match
+  of the whole text: `%s the %s`, GENRLTXT 16, formats every text with " the ", and the
+  Necromancy dialog's picture caption is a text item of its own, so GENRLTXT 146 never matched);
+  `strike` tries its hover pass four times, a second apart (E4c's third run stopped when a
+  Thunderbird's turn showed only the plain pointer, frame 6, over every position: a good morale's
+  extra turn not yet taking input). Runbook updated.
+- **Batch E4a** (four runs, 64 hero records; each run's template and `e4_score` report under
+  `experiments/results/`, `E08-batch-4a.md` and `-run2` to `-run4`): **63 fit the reading**; the
+  64th (run 2's E4-1a) wore Blue's starting bonus, a Centaur's Axe (the note), and recorded 4/4/1/2
+  against the reading's 2/4/1/2, its skills the reading's. Conclusive heroes (the alternative
+  predicted otherwise), all for the reading: **E4-1** (D-20) 16 of 20 refute always-left (none
+  fits it alone; the other rows' levels at load 19 of 36 more); **E4-2** (D-15) 7 of 12 (run 4's three the same under both rows); **E4-3**
+  (D-16, A-10) 12 of 12 (no Elementalist was offered Wisdom at level 3); **E4-4** (§2.1) 8 of 8;
+  **E4-5** (D-17) **1 of 12** (run 1's E4-5c, Water Magic where VCMI's weights give Fire; the
+  others had a school offered at load, or both weights picked the same school from the draw).
+  Run 1's template had its Catapult notes removed by hand (its header says so).
+- **Batch E4b** (one run): E4-6a (seed 71) **4 600, level 5 at load** (the reading; VCMI's 10 000,
+  level 8 refuted), the Pikeman's gain **no dialog, 4 600 kept**, the messages GENRLTXT:2 ("can
+  gain no more experience") and GENRLTXT:7 (the warning of a player without towns, after the
+  battle); E4-6b (seed 107) 4 000 to **4 600, level 5, one dialog** (the reading's offers), then
+  GENRLTXT:2 too; it wore Blue's starting bonus, a Pendant of Dispassion (no primary skills).
+  Both fit the reading (`E08-batch-4b-score.md`).
+- **Batch E4c** (four runs; the fourth committed, by the final harness; runs 1 and 2 the same but
+  for the message's record, run 3 stopped in E4-9's battle): **E4-7a Evil Fog, E4-7b Clover
+  Field** (the last ground written is the topmost: the reading); **E4-8**: 90 Pikemen split 30
+  Pikemen, 30 Halberdiers, 30 Pikemen, the Skeleton Warriors 10 → **16** (+6 = (2c + 2) / 3 for
+  c = 9: the reading; VCMI's +9 refuted), 900 experience, the dialog GENRLTXT:146; **E4-9**: the
+  Ballista destroyed, Red won, **war machine 1 empty** after (HER-WAR-002), 2 300, level 3 (run
+  1: a Pendant of Death on the neck after, Blue's starting bonus taken from E4-9b; Blue's gold and
+  resources were the plain ones); **E4-10**: Blue's hero stepped onto the Cartographer's entrance
+  (18, 18) from below, its question ADVEVENT:26 declined; **Red's click from (18, 17) found no
+  path (no marks) and started no battle, in all three runs that reached it**: the spec's "other
+  outcome", **against the engine's prediction** (a battle; ADV-OBJ-004, GAM-BAT-001). For T33.
