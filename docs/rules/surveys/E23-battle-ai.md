@@ -113,7 +113,7 @@ an agent where the harness allows (`experiments/README.md`), else by the user.
 | 4a W3 | the walker's 75–100 % draw (§7.35) | two targets whose values differ by under a quarter, the same battle replayed with ten seeds | both targets chosen across the seeds | always the same |
 | 4a W4 | holding back on Hard (§7.38) | a neutral walker two turns from its target whose path crosses an enemy's reach, Hard | it stops short and waits | it walks into the reach |
 | 4a W5 | the several-turn comparison undivided (§7.35) and the Harpies' larger value | a near weak and a far strong target; Harpies beside it | as the reading's value per turn | another order |
-| 4a C1 | the elementals never cast (§7.42) | neutral Storm Elementals beside an own stack they could protect, an enemy shooter on the field | no Protection cast | a cast |
+| 4a C1 | the elementals never cast (§7.42; built in both profiles, BAT-Q57) | neutral Storm Elementals beside an own stack they could protect, an enemy shooter on the field | no Protection cast | a cast |
 | 4a C2 | the Faerie Dragon casts whenever its spell is worth anything; an area spell at a free hex (§7.43) | neutral Faerie Dragons beside an attackable enemy, ten seeds | a cast at every damage spell drawn, a free hex when it pays | an attack instead |
 | 4a C3 | the raise against the walker's value (§7.43) | neutral Archangels with a dead own stack and an enemy in reach | as the values compare | always raise |
 | 4a C4 | the Ogre Mages' skip and strength floor (§7.44) | neutral Ogre Mages beside a weaker and a stronger own stack, an enemy in reach, twenty seeds | about three in ten skip; only the stronger stack is blessed | other rates or targets |
