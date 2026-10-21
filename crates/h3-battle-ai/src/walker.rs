@@ -138,7 +138,7 @@ impl<'a> Walker<'a> {
         }
     }
 
-    /// The walker with the hex scores `scores` (the tests' stand-in for T3b's).
+    /// The walker with the hex scores `scores` (the tests' scores by hand).
     #[cfg(test)]
     pub(crate) fn scored(self, scores: Scores) -> Self {
         Self { scores, ..self }

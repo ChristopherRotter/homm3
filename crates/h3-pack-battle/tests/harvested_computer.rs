@@ -486,7 +486,7 @@ fn strike_hex(r: &BattleRuleset, walker: &str, wall: bool) -> (h3_battle::Hex, h
     (from, target)
 }
 
-// covers: BAT-AI-007, BAT-QUIRK-25
+// covers: BAT-AI-007
 #[test]
 fn a_walker_strikes_from_a_hex_off_the_fire_wall() {
     for profile in ["base:faithful", "base:strict-fixed"] {

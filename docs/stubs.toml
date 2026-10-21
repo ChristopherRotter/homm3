@@ -22,7 +22,7 @@ epic   = "E05"
 [[stub]]
 id     = "BAT-STUB-4"
 where  = "crates/h3-battle-ai/src/walker.rs"
-reason = "The computer's walker is built in part (E23 T3a: the plan, the choice with its draw, the walk; BAT-AI-005, BAT-AI-006). Not yet: the hex scores (0x4214F0, 0x421590, 0x420260, 0x41FB60; §7.36) stand at 0 (T3b); the stronger at range (0x420A80) and with it P alone for a negative value, the last retaliation's gain (0x41F3B0), a defender holding the walls (0x4213F0), a besieger's walk to its wall and the fallbacks (0x41F920, 0x420760, 0x4208F0) are T3c's; the creature casts (0x421280, before and after the choice) are T4's"
+reason = "The computer's walker is built in part (E23 T3a: the plan, the choice with its draw, the walk; BAT-AI-005, BAT-AI-006; T3b: the hex scores, BAT-AI-007). Not yet: the stronger at range (0x420A80) and with it P alone for a negative value, the last retaliation's gain (0x41F3B0), a defender holding the walls (0x4213F0), a besieger's walk to its wall and the fallbacks (0x41F920, 0x420760, 0x4208F0) are T3c's; the creature casts (0x421280, before and after the choice) are T4's"
 epic   = "E23"
 
 [[stub]]

@@ -17,10 +17,12 @@ use h3_battle::{
 use h3_content::{
     ContentKey, ContentPack, CreatureDef, CreatureInfoDef, CreatureTypeId, FactionDef,
     HeroClassDef, HeroTypeDef, HeroTypeId, PackManifest, ProfileDef, ResourceDef, Ruleset,
-    TerrainDef,
+    SpellCategory, SpellDef, SpellSchoolDef, TerrainDef,
 };
 use h3_content_battle::{
     AbilityDef, AreaShot, BattleCreatureDef, BattlePack, BattleParamsDef, BattleRuleset,
+    BattleSpellDef, HexStep, ObstacleKind, ObstacleShape, SpellAi, SpellEffect, SpellMagic,
+    SpellPolarity, SpellTarget,
 };
 use h3_contracts::{
     Army, ArmyStack, BallistaControl, BattleHero, BattleSetup, BattleSide, Rate, TentControl,
@@ -248,6 +250,23 @@ fn core(profile: &str) -> Ruleset {
         key: key("t:gold"),
         name: "Gold".into(),
     }];
+    pack.spell_schools = vec![SpellSchoolDef {
+        key: key("t:fire"),
+        name: "Fire".into(),
+        protection_rank: 0,
+    }];
+    // Fire Wall: power × 10 + 10 at Basic, two hexes.
+    pack.spells = vec![SpellDef {
+        key: key("t:firewall"),
+        name: "Fire Wall".into(),
+        category: SpellCategory::Combat,
+        level: 2,
+        schools: vec![key("t:fire")],
+        cost: [5; 4],
+        power: 10,
+        effect: [10, 10, 20, 50],
+        granted_by_name_only: false,
+    }];
     pack.profiles = vec![
         ProfileDef {
             key: key("t:faithful"),
@@ -286,9 +305,40 @@ fn ruleset_as(profile: &str) -> BattleRuleset {
                 }
             },
         )
-        .collect();
+        .collect::<Vec<BattleCreatureDef>>();
+    // The efreet are immune to fire spells too (the Fire Wall's test).
+    let mut creatures = creatures;
+    creatures[EFREET]
+        .abilities
+        .push(AbilityDef::SchoolImmunity {
+            school: key("t:fire"),
+        });
+    let firewall = BattleSpellDef {
+        key: key("t:firewall"),
+        polarity: SpellPolarity::Neutral,
+        magic: SpellMagic {
+            target: SpellTarget::Hex,
+            obstacle: Some(ObstacleShape {
+                steps: vec![HexStep::TopRight, HexStep::TopLeft],
+                hexes: [2, 2, 3, 3],
+                random: false,
+                mirrored: true,
+                separate: true,
+                rounds: 2,
+            }),
+            effects: vec![SpellEffect::Obstacle(ObstacleKind::Fire)],
+            ..SpellMagic::default()
+        },
+        counters: vec![],
+        dispels: vec![],
+        spares: vec![],
+        tests_as: None,
+        summons: None,
+        ai: SpellAi::default(),
+    };
     let pack = BattlePack {
         creatures,
+        spells: vec![firewall],
         battle: Some(BattleParamsDef {
             field_width: 17,
             field_height: 11,
@@ -1106,7 +1156,7 @@ fn a_multi_headed_enemy_lowers_where_it_would_strike_the_side_on_hard_for_a_comp
     assert!(scores.contains(&-t) && scores.contains(&(-t - 1)), "{t}");
 }
 
-// covers: BAT-AI-007, BAT-QUIRK-25
+// covers: BAT-AI-007
 #[test]
 fn a_multi_headed_strike_that_costs_the_enemy_raises_the_hexes_with_the_slip() {
     // Five hundred imps would kill the hydra in their retaliation: its strike is worth less than
@@ -1228,4 +1278,65 @@ fn a_breath_attackers_line_and_an_enemy_dragons_threat() {
     let scores = scores_of(&state, &r, StackId(1));
     let gog = state.stacks()[0].hex;
     assert!(all_hexes().any(|h| field.distance(h, gog) == 1 && scores[h.index()] < 0));
+}
+
+// covers: BAT-AI-007
+#[test]
+fn a_fire_wall_is_valued_with_the_slips_or_as_the_rule() {
+    // Both heroes give their stacks 4 attack and no defense: the context's least attack bonus is
+    // 4, its least defense bonus 0. The attacker's hero casts Fire Wall (30 damage) at 93 and its
+    // upper right neighbour, on Easy (no reach, no crowding: the hazards alone). The defender's
+    // imps' scores there lose the value of its damage, valued with the least attack bonus for
+    // both bonuses with the original's slips (slip 19), else with both least bonuses; the
+    // efreet, immune to fire, lose it only with the slips (slip 18).
+    for (profile, slips) in [("t:faithful", true), ("t:fixed", false)] {
+        let r = ruleset_as(profile);
+        let firewall = r.spell_by_key("t:firewall").unwrap();
+        let mut mage = BattleHero::new(HeroTypeId::from_index(0).unwrap());
+        mage.attack = 4;
+        mage.power = 2;
+        mage.magic.spell_book = Some(vec![firewall]);
+        mage.magic.mana = 50;
+        let mut knight = BattleHero::new(HeroTypeId::from_index(0).unwrap());
+        knight.attack = 4;
+        let mut setup = on(0, setup(&[(GOG, 5)], &[(IMP, 10), (EFREET, 5)]));
+        setup.heroes = [Some(mage), Some(knight)];
+        let mut state = BattleState::new(&r, &setup, 19).unwrap();
+        play(&mut state, &r, Command::Defend);
+        play(&mut state, &r, Command::Defend);
+        assert_eq!(active(&state), GOG);
+        let cast = Command::Cast {
+            spell: firewall,
+            target: h3_battle::CastTarget::Hex(Hex(93)),
+            second: h3_battle::CastTarget::None,
+        };
+        play(&mut state, &r, cast);
+        let walls: Vec<Hex> = state
+            .spell_obstacles()
+            .iter()
+            .flat_map(|o| o.hexes.iter())
+            .collect();
+        assert_eq!(walls.len(), 2);
+        let ctx = computer::context(&state, &r, BattleSide::Defender);
+        for (id, immune) in [(StackId(1), false), (StackId(2), true)] {
+            let scores = scores_of(&state, &r, id);
+            for hex in all_hexes() {
+                let want =
+                    computer::fire_wall_damage(&state, &r, hex, id).map_or(0, |(d, hurts)| {
+                        assert_eq!(hurts, !immune);
+                        let value = |ctx: &computer::Context| {
+                            -computer::damage_value(&state, &r, ctx, (id, d), (false, false))
+                        };
+                        let (orig, rule) = (value(&ctx.attack_for_both()), value(&ctx));
+                        assert!(orig < 0 && rule < 0 && orig != rule, "{orig} {rule}");
+                        match (slips, immune) {
+                            (true, _) => orig,
+                            (false, false) => rule,
+                            (false, true) => 0,
+                        }
+                    });
+                assert_eq!(scores[hex.index()], want, "{profile} {id:?} {hex:?}");
+            }
+        }
+    }
 }

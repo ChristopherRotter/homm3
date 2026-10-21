@@ -145,7 +145,7 @@ each estimate as the rule it estimates:
 |---|---|---|
 | 1 | the area shot's estimate ignores fire immunity and counts a Lich's cloud on the lifeless stacks that are not undead (§7.35; built, BAT-AI-003, E23 T2b) | the shot's rule's immunities (BAT-RNG-004) |
 | 2 | the walls test reads the wrong records for the walls and the gate (§7.35) | each part's own hex |
-| 3 | the multi-headed reach's value is subtracted with its sign untested (§7.36) | only a positive value, as the other branch |
+| 3 | the multi-headed reach's value is subtracted with its sign untested (§7.36; built, BAT-AI-007, E23 T3b) | only a positive value, as the other branch |
 | 4 | the desperate kills count the top creature's remaining hit points where its lost ones belong (§7.38) | the lost hit points |
 | 5 | the destination map marks a two-hex enemy's position hex twice, its other hex never (§7.38) | both hexes |
 | 6 | the hero's value takes the mastery on the hero's adventure tile (§7.39) | the battlefield's |
@@ -160,6 +160,8 @@ each estimate as the rule it estimates:
 | 15 | Frenzy is valued as a second strike, without its value (§7.46) | 0x437800 with its attack gain less 0x438910 with the defense it loses |
 | 16 | the exchange gives B's attack and kill values A's shot flag (§7.46) | B's own |
 | 17 | the removals count Disrupting Ray, which none ends, and Cure removes every harmful spell (§7.46) | the spells each rule ends (§7.10, §7.13) |
+| 18 | the Fire Wall's hex scores value its damage without the spell's immunity test (§7.48; built, BAT-AI-007, E23 T3b; found in T3b) | only a wall whose spell hurts the stack (BAT-MAG-028's test) |
+| 19 | the Fire Wall's and the moat's hex scores value the damage with the least attack bonus for both bonuses (§7.48; built, BAT-AI-007, E23 T3b; found in T3b) | the least attack and the least defense bonus, as every other value |
 
 The ledger entry lists them; a slip found later joins the same flag. The tie orders, the library
 sort (§7.37) and the draws are the original's behaviour, not slips: no flag.

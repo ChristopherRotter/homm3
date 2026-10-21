@@ -8,7 +8,7 @@ use std::vec::Vec;
 
 use h3_content::SpellId;
 use h3_content_battle::{BattleRuleset, ObstacleKind};
-use h3_contracts::{BattleHero, BattleSetup, BattleSide, FortLevel, Moat, Siege};
+use h3_contracts::{BattleEffect, BattleHero, BattleSetup, BattleSide, FortLevel, Moat, Siege};
 
 use super::spells::{arena, mage, spell};
 use super::support::*;
@@ -205,6 +205,10 @@ fn the_heros_best_area_spell_on_a_stack() {
     assert_eq!(best("t:faithful", caster(&r, &["nova"], 15), "ember"), 0);
     assert_eq!(best("t:faithful", caster(&r, &["nova"], 15), "dwarf"), 32);
     assert_eq!(best("t:single", caster(&r, &["nova"], 15), "dwarf"), 32);
+    // The Orb of Vulnerability negates the resistance (BAT-MAG-066): f = 1.
+    let mut orb = caster(&r, &["nova"], 15);
+    orb.effects.push(BattleEffect::NegateImmunities);
+    assert_eq!(best("t:faithful", orb, "dwarf"), 40);
     // Without a hero, or while casting is forbidden: none.
     let s = arena(
         &r,
