@@ -4,7 +4,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E23, the original's battle AI, in progress** (`docs/epics/E23-original-battle-ai.md`; BAT-Q52): the neutral side first, a crate of its own, the reading first, batch rows only for readings at risk. **T1 to T4 done** (#288 to #382): the reading §7.34 to §7.54, `pathfinder.rs`, the survey, **ADR-0027**, BAT-QUIRK-25, `computer-decisions`; a side without a hero is complete (slip 6: BAT-STUB-7, BAT-Q56). **The budget** (the user): the gated count +2 %, re-set per part; ≤ 1 ms for the slowest decision, a hero's ≤ 5 ms, recorded per task. **T1a6, slip 25 done** (§7.55; slip 26, BAT-Q61; BAT-Q57). **T5** (the hero's spells; the retreat a stub until T6, BAT-Q61) cut by the user into T5a (BAT-AI-017, 018, slip 27), T5b1 (BAT-AI-019, slips 28, 29) and T5b2a (Teleport, BAT-AI-020, §7.58, slips 30, 31; `POLICY_VERSION` 14), built (T5b2a on `battle/e23-t5b2a`, pushed, no PR: the user's checkpoint). **Resume**: `computer-decisions` +2.62 % (re-baseline or trim), the full verify, the PR; then **T5b2b** (BAT-STUB-14).
+- **E23, the original's battle AI, in progress** (`docs/epics/E23-original-battle-ai.md`; BAT-Q52): the neutral side first, a crate of its own, the reading first, batch rows only for readings at risk. **T1 to T4 done** (#288 to #382): the reading §7.34 to §7.54, `pathfinder.rs`, the survey, **ADR-0027**, BAT-QUIRK-25, `computer-decisions`; a side without a hero is complete (slip 6: BAT-STUB-7, BAT-Q56). **The budget** (the user): the gated count +2 %, re-set per part; ≤ 1 ms for the slowest decision, a hero's ≤ 5 ms, recorded per task. **T1a6, slip 25 done** (§7.55; slip 26, BAT-Q61; BAT-Q57). **T5** (the hero's spells; the retreat a stub until T6, BAT-Q61) cut by the user into T5a (BAT-AI-017, 018, slip 27), T5b1 (BAT-AI-019, slips 28, 29) and T5b2a (Teleport, BAT-AI-020, §7.58, slips 30, 31; `POLICY_VERSION` 14), built (T5b2a: **#400 open**, verified). Next **T5b2b** (BAT-STUB-14), then T6.
 - E05, `h3-sim` and `h3-ffi` are the AI lane's (AI-Q1), `h3-heroes` the adventure lane's.
 - **Open:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35, BAT-Q51, BAT-Q56, BAT-Q58 (none blocks; BAT-Q33 and BAT-Q51 settle with E23's T6), BAT-STUB-1, the inbox (by kind since 2026-10-19), Q43; S-23, S-24, batch 2g.
 - **Versions:** battle state hash v51, battle part hash v7 (E23 T3-0; the encodings, replay format and C ABI are the AI lane's); shared: core ruleset hash v47, pack format v46 (E08 T35b), protocol v34. Next ids: BAT-Q62, BAT-QUIRK-27, BAT-STUB-15, BAT-AI-021, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-24, S-30.
@@ -56,7 +56,7 @@ Area traps live where they are used: experiments in `docs/experiments/README.md`
 
 ### 2026-10-22 (103rd) — E23 T5b2a, the hero's Teleport
 
-The user cut T5b2 in two; slips 30 (strict-fixed without stops: batch 3g TV), 31; a blind check. Checkpoint, no PR (the user).
+The user cut T5b2 in two; slips 30 (strict-fixed without stops: batch 3g TV), 31; a blind check. The search keeps its stops inline (a call cost `computer-decisions` 2.6 %). `h3-map`'s play property fails on `master` (the adventure inbox).
 
 ### 2026-10-22 (102nd) — E23 T5b1, the hero's raises, Sacrifice and Earthquake
 
