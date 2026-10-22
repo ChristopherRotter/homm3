@@ -34,14 +34,14 @@ impl View<'_> {
     // rule: BAT-AI-016
     fn removal(&self, s: StackId, ends: impl Fn(SpellId, &BattleSpell, bool) -> bool) -> i32 {
         let ruleset = self.ruleset;
-        let mut lasting: Vec<(ActiveEffect, &BattleSpell)> = Vec::new();
-        let on = self.state.effects().iter().filter(|e| e.stack == s);
-        for (e, spell) in on.filter_map(|e| ruleset.spell(e.spell).map(|sp| (*e, sp))) {
-            if lasting.iter().all(|(l, _)| l.spell != e.spell) {
-                lasting.push((e, spell));
-            }
-        }
-        // One effect a spell: the spells are the unique key.
+        let mut lasting: Vec<(ActiveEffect, &BattleSpell)> = self
+            .state
+            .effects()
+            .iter()
+            .filter(|e| e.stack == s)
+            .filter_map(|e| ruleset.spell(e.spell).map(|sp| (*e, sp)))
+            .collect();
+        // A stack holds one effect a spell (a recast renews it): the spells are the unique key.
         let _ = order::sort_by_unique_key(&mut lasting, |(e, _)| e.spell.index());
         // stub: BAT-STUB-12
         // The original's copy is a lone record the battle's records never match (slip 24, T4d):
