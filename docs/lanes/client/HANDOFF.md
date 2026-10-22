@@ -59,8 +59,8 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
-- **2026-10-22, E17 M3 T9a (`client/e17-m3-t9a`, from #391's branch; in progress).** T9 split
-  (the user); findings left for the next session, on the branch.
+- **2026-10-22, E17 M3 T9a (`client/e17-m3-t9a`, from #391's; in progress).** T9 split (the
+  user); findings for the next session. 16 of 31 captured: QUEUE's T9a.
 - **2026-10-22, E17 M3 T7d (a creature's cast: CLT-Q8's bugs fixed; #391 open).** The switch
   reaches the timeline (`anim::Stage::bugs`, `Original` only in `h3-view sequences`); `drawn`
   all the same; the fixed group's points: review list.

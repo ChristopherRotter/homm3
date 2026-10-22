@@ -15,6 +15,16 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
   session, on the branch (HANDOFF, "Recent sessions"; the epic's log).
 - **Acceptance:** every sequence and situation captured; each count as recorded, or each
   difference listed for the next session.
+- **Progress** (2026-10-22, one `frames --only <id>` at a time, the machine otherwise idle; the
+  loop stopped at the session's 2-hour limit for a background job, inside `dispel`): 16 of the
+  31 sequences captured, `walk` to `haste` in `sequences.toml`'s order; 15 as recorded. Their
+  kept files gained only `before` (T7c-3's harness), the frames' times unchanged: committed.
+  **Finding, `melee`:** every pixel as recorded (85 frames, 34 by redraw artifacts), but from
+  5 266 ms on the log's item is listed (` log`) and from 6 466 ms the box n1.0 (` n1.0`): this
+  run's damage line and count are not the engine's, where the recorded run's were (a roll of the
+  original's that differed between runs, the runbook's "Traps"; not investigated). Left: the
+  other 15 sequences (`dispel` to `bolt`), the set (`set`), then `drawn --record`; a fresh
+  sandbox needs only those (the 16 are kept).
 - **Depends on:** T7d (#391). **Status:** in progress.
 
 ### E17 M3 T9b — M3's closure: the review

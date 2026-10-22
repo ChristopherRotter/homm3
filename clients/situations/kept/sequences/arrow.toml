@@ -5,6 +5,7 @@ t = 0
 file = "t00000b.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+before = [[0, 0, 0], [1, 0, 0]]
 cursor = [618, 593]
 
 [[frame]]
@@ -299,6 +300,7 @@ t = 2730
 file = "t02730b.npz"
 fidgets = []
 heroes = [[0, 4, 0], [1, 0, 0]]
+before = [[0, 0, 0], [1, 0, 0]]
 cursor = [618, 593]
 
 [[frame]]
@@ -593,6 +595,7 @@ t = 5456
 file = "t05456b.npz"
 fidgets = []
 heroes = [[0, 4, 0], [1, 0, 0]]
+before = [[0, 0, 0], [1, 0, 0]]
 cursor = [618, 593]
 
 [[frame]]
@@ -838,6 +841,7 @@ t = 7951
 file = "t07951b.npz"
 fidgets = []
 heroes = [[0, 4, 0], [1, 0, 0]]
+before = [[0, 0, 0], [1, 0, 0]]
 cursor = [618, 593]
 
 [[frame]]
