@@ -34,7 +34,7 @@ Pass offer (fixed by the adventure lane's fixed tests, #266).
   E08 decision 79; for your information, nothing to do): `python/records/bots-report-v1.json`
   regenerated (`h3 ai eval --set report-v1 --json`) for the core ruleset hash v47 (six adventure
   hero-effect kinds and three adventure flags; nothing the battle reads). Besides `engine.core`,
-  four rewards and two values moved in the fourth decimal (wins unchanged): the battle lane's
+  two pairs' rewards and two values moved in the fourth decimal (wins unchanged): the battle lane's
   creature-cast change below, not T35b (a regeneration on `master` 25c01bd gives the same table
   but for `engine.core`).
 - 2026-10-21 (the battle lane, `battle/creature-cast-mass-target`, `cross-lane` with the user's consent; for your information, nothing to do): `h3_battle::creature_cast_targets` now lists `CastTarget::None` first when a creature's cast takes no target: on Magic Plains the Ogre Mage casts Bloodlust at Expert, its mass version, which `apply` accepts only as `CreatureCast { target: CastTarget::None }` (BAT-MAG-048, BAT-TER-005). `h3-sim`'s action mask (`action.rs`, `rollout.rs`) reads the listing, so it now offers that cast (target index 0) without a change of yours; such a cast lists no stack. The computer's policy cast it already (BAT-AI-014).
