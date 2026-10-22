@@ -94,7 +94,7 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 ### 2026-10-22 — E06 T4b (the league runs), increment 3 closed
 
 - `t4-1` and `t4-2` committed, results in `E06-log.md`; the user closed the session before
-  increment 4's refinement (the QUEUE). Pull request: PRNUM (open).
+  increment 4's refinement (the QUEUE). Pull request: #381 (open).
 
 ### 2026-10-20 — E06 increment 3's refinement, T4a (the league)
 
