@@ -21,6 +21,7 @@ from h3env import BattleBatch, _ffi
 torch = pytest.importorskip("torch")
 
 from h3env.train import EVAL_SEED, Config, Policy, Rollout, gae, resume, train  # noqa: E402
+from h3env.train.entity import Entity  # noqa: E402
 from h3env.train.evaluate import (  # noqa: E402
     GATE_V1_SEED,
     REPORT_V1_SEED,
@@ -31,6 +32,7 @@ from h3env.train.evaluate import (  # noqa: E402
     play,
     random_agent,
 )
+from h3env.train.policy import Mlp, build  # noqa: E402
 from h3env.train.ppo import Trainer  # noqa: E402
 from h3env.train.run import (  # noqa: E402
     ConfigError,
@@ -62,15 +64,23 @@ SMALL = dict(
 )
 #: The most samples one update of `SMALL` holds (its rollout's rows).
 ONE_UPDATE = 16 * 8
+#: A small entity network (E06 T5a) for `SMALL`'s runs.
+ENTITY = dict(kind="entity", width=16, layers=1, heads=2)
 
 
-def casting_policy(batch: BattleBatch) -> Policy:
-    """A small network that prefers the casts where they are legal, so that their heads are
-    chosen too."""
+def casting_policy(batch: BattleBatch, kind: str = "mlp") -> Policy:
+    """A small network of `kind` that prefers the casts where they are legal, so that their
+    heads are chosen too."""
     torch.manual_seed(0)
-    policy = Policy.for_batch(batch, hidden=32, embed=8)
+    if kind == "mlp":
+        policy = Mlp.for_batch(batch, hidden=32, embed=8)
+        with torch.no_grad():
+            policy.entry_head.bias[[_ffi.HERO_CAST, _ffi.CREATURE_CAST]] = 30.0
+        return policy
+    policy = Entity.for_batch(batch, width=16, layers=1, heads=2, embed=8)
     with torch.no_grad():
-        policy.entry_head.bias[[_ffi.HERO_CAST, _ffi.CREATURE_CAST]] = 30.0
+        # The fixed entries: Wait, Defend, End tactics, Retreat, Surrender, the two casts, ….
+        policy.fixed_head.bias[[5, 6]] = 30.0
     return policy
 
 
@@ -83,9 +93,10 @@ def mixed_batch() -> BattleBatch:
     return batch
 
 
-def test_choices_keep_to_the_masks_and_recompute_their_log_probabilities() -> None:
+@pytest.mark.parametrize("kind", ["mlp", "entity"])
+def test_choices_keep_to_the_masks_and_recompute_their_log_probabilities(kind) -> None:
     batch = mixed_batch()
-    policy = casting_policy(batch)
+    policy = casting_policy(batch, kind)
     generator = torch.Generator().manual_seed(1)
     calls = 60
     rollout = Rollout(calls, batch.envs, batch)
@@ -262,7 +273,7 @@ def test_a_short_run_writes_its_files_and_round_trips_its_checkpoint(tmp_path) -
     assert len(record["gates"]) == 1 and len(record["curve"]) == 1
     assert record["progress"]["evaluation_minutes"] > 0
     saved = torch.load(tmp_path / "checkpoint.pt", weights_only=True)
-    restored = Policy.for_batch(trainer.batch, hidden=32, embed=8)
+    restored = build(asdict(trainer.config), trainer.batch)
     restored.load_state_dict(saved["policy"])
     restored_state = restored.state_dict()
     for name, weights in trainer.policy.state_dict().items():
@@ -604,6 +615,32 @@ def test_a_run_starts_from_its_parents_network(tmp_path) -> None:
     assert record["promotions"][0]["how"] == "init"
     with pytest.raises(ConfigError, match="not a network of this run's size"):
         train(Config(**{**SMALL, "hidden": 16}, samples=1), init_from=tmp_path / "a" / "best.pt")
+    # E06 T5a: a network of another kind is refused before its weights are read.
+    with pytest.raises(ConfigError, match="a network of kind 'mlp', this run's is 'entity'"):
+        train(Config(**SMALL, **ENTITY, samples=1), init_from=tmp_path / "a" / "best.pt")
+
+
+def test_an_entity_run_stops_resumes_and_plays_its_ladder(tmp_path) -> None:
+    # E06 T5a: the entity network through a run: stopped after its first update, resumed to the
+    # budget; its files are entity networks (`load` builds the kind their config names).
+    config = Config(**SMALL, **ENTITY, samples=2 * ONE_UPDATE, snapshot_every=1)
+
+    def interrupt(record: dict) -> None:
+        if record["type"] == "update" and record["update"] == 1:
+            signal.raise_signal(signal.SIGINT)
+
+    stopped = train(config, tmp_path, log=interrupt)
+    assert isinstance(stopped.policy, Entity) and stopped.updates == 1
+    finished = resume(tmp_path)
+    assert finished.updates >= 2 and isinstance(finished.policy, Entity)
+    _same(finished.nets[1].state_dict(), load(tmp_path / "league" / "1.pt").state_dict())
+    record = json.loads((tmp_path / "record.json").read_text())
+    assert check_record(record) == [] and record["config"]["network"]["kind"] == "entity"
+    assert [s["ended"] for s in record["segments"]] == ["stop", "budget"]
+    best = load(tmp_path / "best.pt")
+    assert isinstance(best, Entity) and best.width == 16 and len(best.blocks) == 1
+    rows = ladder(best, opponents=["random"], per_kind=1, max_steps=300)
+    assert rows["random"]["games"] == 6
 
 
 def test_a_checkpoint_plays_the_ladder(tmp_path, capsys) -> None:

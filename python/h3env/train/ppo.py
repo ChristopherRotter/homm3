@@ -47,7 +47,7 @@ from ..seats import SeatBook
 from .evaluate import Stopped, compact, held_out_seeds, ladder, load
 from .gate import Bounds, game_score, gate
 from .league import League, Member
-from .policy import Choice, Policy
+from .policy import Choice, Policy, build
 from .run import (
     Cadence,
     Config,
@@ -239,7 +239,7 @@ class Trainer:
         self.held_out = HeldOut(held_out_seeds())
         self.batch.reset()
         self.held_out.check(self.batch.episode_seed)
-        self.policy = Policy.for_batch(self.batch, c.hidden, c.embed).to(self.device)
+        self.policy = build(asdict(c), self.batch).to(self.device)
         self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=c.lr, eps=1e-5)
         self.generator = torch.Generator(device=self.device).manual_seed(c.seed)
         self.book = SeatBook(c.envs)
@@ -348,9 +348,15 @@ class Trainer:
 
     def init_from(self, path: Path) -> dict[str, Any]:
         """The learner starts from a saved network (`--init-from`: a run's `best.pt`,
-        `promoted/<n>.pt` or `checkpoint.pt`, of this network's size); returns the parent's entry
-        for the record (its file, run, promoted index, samples and updates)."""
+        `promoted/<n>.pt` or `checkpoint.pt`, of this network's kind and size); returns the
+        parent's entry for the record (its file, run, promoted index, samples and updates)."""
         saved = torch.load(path, map_location=self.device, weights_only=True)
+        kind = saved.get("config", {}).get("kind", "mlp")
+        if kind != self.config.kind:
+            raise ConfigError(
+                f"--init-from {path}: a network of kind {kind!r}, this run's is "
+                f"{self.config.kind!r}"
+            )
         try:
             self.policy.load_state_dict(saved["policy"])
         except (KeyError, RuntimeError) as e:
@@ -495,7 +501,7 @@ class Trainer:
             if trunc.any():
                 final = torch.from_numpy(b.final_obs[e[trunc], s[trunc]]).to(self.device)
                 with torch.no_grad():
-                    v = self.policy.value(self.policy.features(final)).cpu().numpy()
+                    v = self.policy.values(final).cpu().numpy()
                 r.final_value[at[trunc], e[trunc]] = v
             self.opened[e, s] = -1
             done = np.nonzero(b.done)[0]
@@ -520,7 +526,7 @@ class Trainer:
         elapsed = time.perf_counter() - start
         with torch.no_grad():
             obs = torch.from_numpy(b.obs).to(self.device)
-            self.last_value = self.policy.value(self.policy.features(obs)).cpu().numpy()
+            self.last_value = self.policy.values(obs).cpu().numpy()
         # A frozen network to move: the learner's transition stays open (left out).
         frozen = (b.to_move >= 0) & (self.frozen_side == b.to_move)
         self.last_side = np.where(frozen, -1, b.to_move).astype(np.int8)
