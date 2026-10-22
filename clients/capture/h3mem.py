@@ -10,8 +10,8 @@ nothing is written into the game.
                       each player's selected hero and resources, every hero on the map
 
 Library use: `Mem` (globals, stacks, battle_heroes, battle_outcome, battlefield; current_player,
-player, heroes, all_heroes, hero, hero_named, view, mouse_tile, path, difficulty, tile, monster,
-creature_name, artifact_name, dialog_text, dialog_items, level_up_dialog). Needs a running game
+player, heroes, all_heroes, hero, hero_named, view, mouse_tile, path, difficulty, tile, explored,
+monster, creature_name, artifact_name, dialog_text, dialog_items, level_up_dialog). Needs a running game
 (h3drive.py) and the rights to read its memory (root in a sandbox).
 """
 
@@ -64,6 +64,10 @@ DIFFICULTIES = ("easy", "normal", "hard", "expert", "impossible")
 # A tile (map_item): the class's word (u32 +0x0; a monster's count bits 0-11, aggression 12-16
 # signed, never flees 17, does not grow 18), class (i32 +0x1E), subclass (i16 +0x22).
 MONSTER_CLASS = 54
+# The tiles' vision words (E08 T37a; map.toml tile_vision_pointer 0x6989F8, tile_vision_word
+# 0x4F79B0): a pointer to a u16 per tile at (level x side + y) x side + x, its low byte one
+# explored bit per player (bit n for colour n), its bit 8 the guard flag.
+TILE_VISION_POINTER = 0x6989F8
 # The creature table (a pointer at 0x6747B0; 0x74 bytes a record): the singular and plural names
 # (char* +0x14, +0x18).
 CREATURE_TABLE_POINTER, CREATURE_SIZE = 0x6747B0, 0x74
@@ -504,6 +508,17 @@ class Mem:
         return {"word": struct.unpack_from("<I", raw, 0)[0],
                 "class": struct.unpack_from("<i", raw, 0x1E)[0],
                 "subclass": struct.unpack_from("<h", raw, 0x22)[0]}
+
+    def explored(self, x, y, z=0, colour=None):
+        """Whether a player (default the current one) has explored tile (x, y) of a level: its
+        bit in the tile's vision word (E08 T37a; tile_vision_word 0x4F79B0)."""
+        side = self.i32(self.game() + MAP_SIDE)
+        if not (0 <= x < side and 0 <= y < side and 0 <= z < self.levels()):
+            raise ValueError(f"tile {(x, y, z)} is outside the map")
+        colour = self.current_player() if colour is None else colour
+        word = struct.unpack("<H", self.read(self.u32(TILE_VISION_POINTER)
+                                             + 2 * ((z * side + y) * side + x), 2))[0]
+        return bool(word >> colour & 1)
 
     def monster(self, x, y, z=0):
         """The wandering monster on a tile from its word (E17 H1; E3-3), None for none: its

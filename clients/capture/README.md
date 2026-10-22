@@ -21,7 +21,7 @@ enter git (they stay in the sandbox or `clients/out/`).
 | `screens.toml` | The screens the driver recognises: 12 probes `[x, y, 5-6-5 value]` each (numbers only). |
 | `h3cap.py` | `diff` (our render against a capture, with masks) and `find` (the original's obstacles in a capture); `compare` and `boxes_at` for the frame check. |
 | `h3mem.py` | Reads the running game's state from its memory: the battle's clocks, idle steps, active stack and the mouse's highlight, each stack's group, frame, hex, offsets and draw layer, and each side's hero's group and frame and its flag's frame (M3 T3a), the magic animation drawn and the stacks under it (M3 T3b), the battle's outcome (H1); the adventure map's players, heroes (with their experience, level, army and skills: H1), view and path, the difficulty, a tile's monster, the topmost dialog's text (H1; below). |
-| `h3adv.py` | The adventure map (M2 T6, H1, H2): hot seat at a chosen difficulty, heroes (the list scrolled), tiles of either level clicked twice, questions answered, battles played, level-ups chosen, turns; `batch` plays an experiment batch and fills its results template, `compare` sets two filled templates side by side, `learn-button`. |
+| `h3adv.py` | The adventure map (M2 T6, H1, H2): hot seat at a chosen difficulty, heroes (the list scrolled), tiles of either level clicked twice, questions answered, battles played, level-ups chosen, turns, artifacts put on from the backpack in the hero screen (E08 T37a); `batch` plays an experiment batch and fills its results template, `compare` sets two filled templates side by side, `learn-button`. |
 | `h3lod.py` | The original's text tables, read from the run directory's LODs at run time (H1): which record a dialog's text was written from (`ADVEVENT:86`); never their text. |
 | `batches/` | The batches' recipes: a spec's procedure as steps (`E08-batch-2.toml`), and the harness's own check (`harness-check.toml`, its spec in `checks/`). |
 | `../situations/` | The capture set: `set.toml` and its situations' scenario files; the recorded sequences, `sequences.toml`, their scenarios `seq-*.toml` and `timelines/`. |
@@ -305,8 +305,19 @@ hex records' attack mark, +0x4A) makes the stack move to the free hex nearest it
 creature, each stack of the side named attacks it and every other stack defends; then `then`
 (`attack` or `auto`) plays the rest. The battle's record holds its field (`battlefield`).
 
-A step without `walk` only reads. `record` fills the template's fields and table rows from the
-observation; `before:<observation>` reads the same before the step:
+Since E08 T37a a step may instead put artifacts on from the backpack: `equip = { "Boots of
+Speed" = "feet", "Spyglass" = "misc 1" }` opens the hero's screen (a click on the hero on the map:
+the `hero_screen` probes), clicks each artifact in the backpack (the cursor takes it; the first five
+places shown, no scrolling) and then its slot, checks in memory that the slot holds it, and closes
+the screen (`Return`): the original's own equipping, as a player's (batch E5's E5-3b and E5-10b).
+A step either walks or equips.
+
+A step without `walk` or `equip` only reads. `record` fills the template's fields and table rows
+from the observation; `before:<observation>` reads the same before the step (not `explored:`: the
+step's snapshot holds no tiles, so a read before a walk is a step of its own). A table of one
+value column is filled by the row's label; since E08 T37a a wider one cell by cell, by `<row label>
+| <column>` (`"W (2, 10) | after the battle" = "explored:2,10"`), and `compare` keys such cells
+the same way:
 
 | Observation | What |
 |---|---|
@@ -324,7 +335,8 @@ observation; `before:<observation>` reads the same before the step:
 | `battle`, `winner`, `retreated`, `surrendered` | yes or no; the side (`attacker`, `defender`, `none`) |
 | `stacks:start`, `stacks:end[:<side>]` | the battle's stacks (`attacker 20 Archangels \| defender 3 Pikemen, 2 Halberdiers`) |
 | `hexes:start[:<side>]` | their hexes at the start (the formation) |
-| `hero:<detail>`, `hero[<name>]:<detail>` | the step's hero after the step, or another by name: `experience`, `level`, `primary` (`3/5/1/2`), `army`, `skill:<name>` (none, basic, advanced, expert), `on_map`, `tile`; since E08 T32b1 `skills` (`Leadership expert, Wisdom basic`, in the hero's order), `seed` (the level seed, hero +0x8F), `wisdom_offer` and `school_offer` (the levels Wisdom and a school were last offered at, +0x90, +0x3F), `artifacts` (worn: `Ballista (war machine 1), …` in slot order) and `backpack`; since E08 T32b2 `equipment` (the worn artifacts but the war machines and the spell book: a starting bonus's) |
+| `hero:<detail>`, `hero[<name>]:<detail>` | the step's hero after the step, or another by name: `experience`, `level`, `primary` (`3/5/1/2`), `army`, `skill:<name>` (none, basic, advanced, expert), `on_map`, `tile`; since E08 T32b1 `skills` (`Leadership expert, Wisdom basic`, in the hero's order), `seed` (the level seed, hero +0x8F), `wisdom_offer` and `school_offer` (the levels Wisdom and a school were last offered at, +0x90, +0x3F), `artifacts` (worn: `Ballista (war machine 1), …` in slot order) and `backpack`; since E08 T32b2 `equipment` (the worn artifacts but the war machines and the spell book: a starting bonus's); since E08 T37a `points` (the points left, +0x4D: read without a walk at a turn start, the points the turn start set) and `day_points` (+0x49, the day's points: the movement bar's length) |
+| `explored:x,y[,level][:<colour>]` | yes or no: the player (the step's hero's owner, or `red`, `blue`, …) has explored the tile: its bit in the tile's vision word (`tile_vision_word` 0x4F79B0, the words at 0x6989F8; E08 T37a) |
 | `monster:x,y`, `aggression:x,y`, `never_flees:x,y` | the monster on a tile (`30 Pikemen`, `none`), its aggression (−4 to 10) and flag, from the tile's word |
 
 `expect = { marks = <n>, path = "green", question = "join, flee", battle = true, dialogs = true }`
@@ -371,6 +383,10 @@ button that shows in more than one place (a dialog's OK): `python3 capture/h3adv
 | Adventure map | tile (x, y) in the view at (vx, vy) | (24 + 32 (x − vx), 24 + 32 (y − vy)) |
 | Adventure map | the minimap (72 × 72 map): centre the view on (x, y) | (630 + 2x, 26 + 2y) |
 | Adventure map | end the turn | key `e` |
+| Adventure map | the selected hero's screen (E08 T37a) | a click on the hero's tile |
+| Hero screen | the backpack's place *k* (0 to 4 from the left; its arrows not used) | (425 + 46 *k*, 387) |
+| Hero screen | a worn slot: feet, misc 1 (the others in `h3adv.SLOT_PLACES`, not checked) | (537, 317), (405, 165) |
+| Hero screen | close | key `Return` |
 | Adventure map | park the cursor over the right panel | (700, 300) |
 | Scenario list | the players' difficulty *i* (0 Easy to 4 Impossible) | (521 + 32 *i*, 478) |
 | Any question | Yes, No: found by `[button.ok]`, `[button.cancel]` | their corner + (33, 16) |

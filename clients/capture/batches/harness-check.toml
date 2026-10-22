@@ -74,6 +74,32 @@ record = { "seed byte (hero +0x8F)" = "hero:seed", "Wisdom last offered (hero +0
 [[step]]
 end_turn = true
 
+# Day 1, Blue (E08 T37a, batch E5's reads): whether Blue has explored the probes at its disk's edge
+# and whether Red has explored Fog's tile, before and after a step east (each cell of the table by
+# its column); Equip's Boots of Speed and Spyglass put on from the backpack in the hero screen.
+
+[[step]]
+encounter = "Fog"
+hero = "Fog"
+record = { "points at the start" = "hero:points", "A (33, 30) | at the start" = "explored:33,30", "B (34, 30) | at the start" = "explored:34,30", "C (33, 32) | at the start" = "explored:33,32", "D (33, 33) | at the start" = "explored:33,33", "Red explored the hero's tile (yes/no)" = "explored:28,30:red" }
+
+[[step]]
+encounter = "Fog"
+hero = "Fog"
+walk = [29, 30]
+record = { "points after the step" = "points", "A (33, 30) | after the step" = "explored:33,30", "B (34, 30) | after the step" = "explored:34,30", "C (33, 32) | after the step" = "explored:33,32", "D (33, 33) | after the step" = "explored:33,33" }
+
+[[step]]
+encounter = "Equip"
+hero = "Equip"
+record = { "artifacts before (worn, by slot)" = "hero:artifacts", "backpack before" = "hero:backpack", "points before" = "hero:points", "day's points before (hero +0x49)" = "hero:day_points" }
+
+[[step]]
+encounter = "Equip"
+hero = "Equip"
+equip = { "Boots of Speed" = "feet", "Spyglass" = "misc 1" }
+record = { "artifacts after (worn, by slot)" = "hero:artifacts", "backpack after" = "hero:backpack", "points after" = "hero:points", "day's points after (hero +0x49)" = "hero:day_points" }
+
 [[step]]
 end_turn = true
 
@@ -84,3 +110,13 @@ encounter = "Six"
 hero = "Six"
 walk = [11, 3]
 record = { "the date" = "date", "points before the walk" = "before:points" }
+
+[[step]]
+end_turn = true
+
+# Day 2, Blue (E08 T37a): Equip's points at the turn start, read without a walk.
+
+[[step]]
+encounter = "Equip"
+hero = "Equip"
+record = { "day 2 points (no walk)" = "hero:points", "day 2 day's points (hero +0x49)" = "hero:day_points" }
