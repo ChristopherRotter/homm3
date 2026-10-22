@@ -223,10 +223,11 @@ fn fortune_values_the_luck_points_it_adds_and_removes() {
 // covers: BAT-AI-016
 #[test]
 fn the_genies_value_is_the_mean_of_the_spells_it_could_draw() {
-    // A genie beside the runners and the archers (the class 3), its turn after theirs: on both it
-    // could draw Fire Shield, Slayer, Bless, Mirth, Fortune, Shield (the giants strike in melee),
-    // Stone Skin, Counterstrike and Frenzy at Advanced, and Bloodlust on the runners, Precision
-    // on the archers; not Air Shield (no enemy shoots).
+    // A genie beside the runners and the archers (the class 3), its turn after the runners': on
+    // both it could draw Fire Shield, Slayer, Bless, Mirth, Fortune, Shield (the giants strike in
+    // melee), Stone Skin, Counterstrike, Frenzy and Haste at Advanced, Bloodlust on the runners,
+    // Precision and Prayer on the archers (which have not acted); not Air Shield (no enemy
+    // shoots) or the protections (the giants have no hero).
     let r = ruleset();
     let setup = with_hero(&[(RUNNER, 10), (ARCHER, 10), (GENIE, 1)], GIANT, (0, 0));
     let mut state = BattleState::new(&r, &setup, 1).unwrap();
@@ -251,9 +252,12 @@ fn the_genies_value_is_the_mean_of_the_spells_it_could_draw() {
         "fortune",
         "shield",
     ];
-    let more = ["stoneskin", "counterstrike", "frenzy"];
+    let more = ["stoneskin", "counterstrike", "frenzy", "haste"];
     let runners = mean(RUNNERS, &[&both[..], &["bloodlust"], &more[..]].concat());
-    let archers = mean(ARCHERS, &[&both[..], &["precision"], &more[..]].concat());
+    let archers = mean(
+        ARCHERS,
+        &[&both[..], &["precision", "prayer"], &more[..]].concat(),
+    );
     assert!(runners > 0 && archers > 0);
     assert_eq!(crate::casts::genie(&w, &sc, (2, 6), RUNNERS), runners);
     assert_eq!(crate::casts::genie(&w, &sc, (2, 6), ARCHERS), archers);

@@ -390,7 +390,7 @@ impl SpellContext<'_> {
     /// desperate mode). With BAT-QUIRK-25 `b`'s exchange and kill value take `a`'s shot flag
     /// (survey slip 16), without its own.
     // rule: BAT-AI-016
-    fn exchange_value(&self, (a, b): (StackId, StackId)) -> i32 {
+    pub(crate) fn exchange_value(&self, (a, b): (StackId, StackId)) -> i32 {
         let (state, ruleset, side) = (self.state, self.ruleset, self.side);
         let shot = computer::shoots(state, ruleset, a);
         let other = if self.slips() {

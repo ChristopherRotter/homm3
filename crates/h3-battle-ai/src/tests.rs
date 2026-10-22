@@ -20,10 +20,10 @@ use h3_content::{
     SpellCategory, SpellDef, SpellId, SpellSchoolDef, TerrainDef,
 };
 use h3_content_battle::{
-    AbilityDef, AreaShot, BallisticsRecord, BattleCreatureDef, BattlePack, BattleParamsDef,
-    BattleRuleset, BattleSpellDef, HexStep, ObstacleKind, ObstacleShape, SiegeDef, SiegeFieldDef,
-    SpellAi, SpellEffect, SpellMagic, SpellPolarity, SpellTarget, TimedChange, Usefulness,
-    WallKind, WallTarget,
+    AbilityDef, AreaShot, AuraTarget, BallisticsRecord, BattleCreatureDef, BattlePack,
+    BattleParamsDef, BattleRuleset, BattleSpellDef, HexStep, ObstacleKind, ObstacleShape, SiegeDef,
+    SiegeFieldDef, SpellAi, SpellEffect, SpellMagic, SpellPolarity, SpellTarget, TimedChange,
+    Usefulness, WallKind, WallTarget,
 };
 use h3_contracts::{
     Army, ArmyStack, BallistaControl, BattleHero, BattleSetup, BattleSide, FortLevel, Moat, Rate,
@@ -43,6 +43,7 @@ mod gain;
 mod odds;
 mod order;
 mod predict;
+mod speed;
 mod spells;
 mod values;
 
@@ -85,9 +86,9 @@ const HEALS: Option<AbilityDef> = Some(AbilityDef::FirstAid {
 /// breath attacker (the dragon), a town's turret (the tower, BAT-SIE-016), a walker with an innate
 /// Fire Shield (the sultan), one that strikes twice (the crusader), kings of each level (the
 /// giant, the knight, the lord), a Master Genie (the genie: three casts of the test spells), the
-/// griffins with two and with unlimited retaliations and a shooter that shoots twice (the
-/// marksman).
-const CREATURES: [Creature; 26] = [
+/// griffins with two and with unlimited retaliations, a shooter that shoots twice (the
+/// marksman) and the creatures that change the heroes' spell costs (the pegasus, the mage).
+const CREATURES: [Creature; 28] = [
     ("imp", 5, 100, &[], [2, 3, 1, 2], 4, 0, None),
     ("gog", 3, 900, &[], [4, 4, 2, 3], 13, 0, None),
     ("runner", 20, 300, &["alive"], [5, 5, 2, 4], 10, 0, None),
@@ -298,6 +299,32 @@ const CREATURES: [Creature; 26] = [
         24,
         None,
     ),
+    (
+        "pegasus",
+        8,
+        250,
+        &["alive", "flying", "two_hex"],
+        [5, 5, 3, 5],
+        20,
+        0,
+        Some(AbilityDef::SpellCost {
+            amount: 2,
+            affects: AuraTarget::Enemies,
+        }),
+    ),
+    (
+        "mage",
+        5,
+        500,
+        &["alive", "shooter"],
+        [11, 8, 7, 9],
+        25,
+        24,
+        Some(AbilityDef::SpellCost {
+            amount: -2,
+            affects: AuraTarget::Allies,
+        }),
+    ),
 ];
 
 const IMP: usize = 0;
@@ -326,10 +353,12 @@ const GENIE: usize = 22;
 const GRIFFIN: usize = 23;
 const ROYAL: usize = 24;
 const MARKSMAN: usize = 25;
+const PEGASUS: usize = 26;
+const MAGE: usize = 27;
 
 /// A test spell of the computer's spell values (E23 T4c): its key, level, value by mastery,
-/// polarity, timed changes, the mastery from which it is cast on the whole side and its
-/// usefulness for the Master Genie. Every one is a fire spell aimed at a stack.
+/// polarity, timed changes, the mastery from which it is cast on the whole side, its usefulness
+/// for the Master Genie and its school. Every one is aimed at a stack.
 type TestSpell = (
     &'static str,
     u8,
@@ -338,11 +367,12 @@ type TestSpell = (
     &'static [TimedChange],
     Option<u8>,
     Usefulness,
+    &'static str,
 );
 
 /// The test spells after the Fire Wall and Fire Shield, with the values of the original's
 /// (`SPTRAITS.TXT`).
-const SPELLS: [TestSpell; 11] = [
+const SPELLS: [TestSpell; 16] = [
     (
         "bloodlust",
         1,
@@ -351,6 +381,7 @@ const SPELLS: [TestSpell; 11] = [
         &[TimedChange::MeleeAttack],
         Some(3),
         Usefulness::Melee,
+        "fire",
     ),
     (
         "precision",
@@ -360,6 +391,7 @@ const SPELLS: [TestSpell; 11] = [
         &[TimedChange::RangedAttack],
         Some(3),
         Usefulness::Shooting,
+        "fire",
     ),
     (
         "slayer",
@@ -369,6 +401,7 @@ const SPELLS: [TestSpell; 11] = [
         &[TimedChange::Slayer],
         None,
         Usefulness::EnemyKing,
+        "fire",
     ),
     (
         "bless",
@@ -378,6 +411,7 @@ const SPELLS: [TestSpell; 11] = [
         &[TimedChange::MaximumDamage],
         Some(3),
         Usefulness::Always,
+        "fire",
     ),
     (
         "mirth",
@@ -387,6 +421,7 @@ const SPELLS: [TestSpell; 11] = [
         &[TimedChange::Morale],
         Some(3),
         Usefulness::Always,
+        "fire",
     ),
     (
         "fortune",
@@ -396,6 +431,7 @@ const SPELLS: [TestSpell; 11] = [
         &[TimedChange::Luck],
         Some(3),
         Usefulness::Always,
+        "fire",
     ),
     (
         "shield",
@@ -405,6 +441,7 @@ const SPELLS: [TestSpell; 11] = [
         &[TimedChange::MeleeProtection],
         Some(3),
         Usefulness::EnemyMelee,
+        "fire",
     ),
     (
         "airshield",
@@ -414,6 +451,7 @@ const SPELLS: [TestSpell; 11] = [
         &[TimedChange::RangedProtection],
         Some(3),
         Usefulness::EnemyShooter,
+        "fire",
     ),
     (
         "stoneskin",
@@ -423,6 +461,7 @@ const SPELLS: [TestSpell; 11] = [
         &[TimedChange::Defense],
         Some(3),
         Usefulness::Always,
+        "fire",
     ),
     (
         "counterstrike",
@@ -432,6 +471,7 @@ const SPELLS: [TestSpell; 11] = [
         &[TimedChange::Retaliations],
         Some(3),
         Usefulness::Always,
+        "fire",
     ),
     (
         "frenzy",
@@ -441,6 +481,61 @@ const SPELLS: [TestSpell; 11] = [
         &[TimedChange::Frenzy],
         None,
         Usefulness::Always,
+        "fire",
+    ),
+    (
+        "haste",
+        1,
+        [3, 3, 5, 5],
+        SpellPolarity::Positive,
+        &[TimedChange::Speed],
+        Some(3),
+        Usefulness::Always,
+        "air",
+    ),
+    (
+        "prayer",
+        4,
+        [2, 2, 4, 4],
+        SpellPolarity::Positive,
+        &[
+            TimedChange::Attack,
+            TimedChange::Defense,
+            TimedChange::Speed,
+        ],
+        Some(3),
+        Usefulness::NotActed,
+        "fire",
+    ),
+    (
+        "protfire",
+        1,
+        [70, 70, 50, 50],
+        SpellPolarity::Positive,
+        &[TimedChange::SchoolProtection],
+        Some(3),
+        Usefulness::EnemySpellBook,
+        "fire",
+    ),
+    (
+        "protair",
+        2,
+        [70, 70, 50, 50],
+        SpellPolarity::Positive,
+        &[TimedChange::SchoolProtection],
+        Some(3),
+        Usefulness::EnemySpellBook,
+        "air",
+    ),
+    (
+        "mirror",
+        5,
+        [20, 20, 30, 40],
+        SpellPolarity::Positive,
+        &[TimedChange::MagicMirror],
+        None,
+        Usefulness::EnemySpellBook,
+        "air",
     ),
 ];
 
@@ -509,11 +604,14 @@ fn core(profile: &str) -> Ruleset {
         key: key("t:gold"),
         name: "Gold".into(),
     }];
-    pack.spell_schools = vec![SpellSchoolDef {
-        key: key("t:fire"),
-        name: "Fire".into(),
-        protection_rank: 0,
-    }];
+    pack.spell_schools = ["fire", "air"]
+        .into_iter()
+        .map(|k| SpellSchoolDef {
+            key: key(&["t:", k].concat()),
+            name: k.into(),
+            protection_rank: 0,
+        })
+        .collect();
     // Fire Wall: power × 10 + 10 at Basic, two hexes.
     pack.spells = vec![
         SpellDef {
@@ -540,18 +638,33 @@ fn core(profile: &str) -> Ruleset {
             granted_by_name_only: false,
         },
     ];
-    pack.spells
-        .extend(SPELLS.iter().map(|&(k, level, effect, ..)| SpellDef {
-            key: key(&["t:", k].concat()),
-            name: k.into(),
-            category: SpellCategory::Combat,
-            level,
-            schools: vec![key("t:fire")],
-            cost: [5; 4],
-            power: 0,
-            effect,
-            granted_by_name_only: false,
-        }));
+    pack.spells.extend(
+        SPELLS
+            .iter()
+            .map(|&(k, level, effect, .., school)| SpellDef {
+                key: key(&["t:", k].concat()),
+                name: k.into(),
+                category: SpellCategory::Combat,
+                level,
+                schools: vec![key(&["t:", school].concat())],
+                cost: [5; 4],
+                power: 0,
+                effect,
+                granted_by_name_only: false,
+            }),
+    );
+    // The bolt: a fire damage spell aimed at a stack, power × 10 + 10 at Basic.
+    pack.spells.push(SpellDef {
+        key: key("t:bolt"),
+        name: "Bolt".into(),
+        category: SpellCategory::Combat,
+        level: 1,
+        schools: vec![key("t:fire")],
+        cost: [5; 4],
+        power: 10,
+        effect: [10, 10, 20, 50],
+        granted_by_name_only: false,
+    });
     pack.profiles = vec![
         ProfileDef {
             key: key("t:faithful"),
@@ -658,7 +771,7 @@ fn ruleset_as(profile: &str) -> BattleRuleset {
     let mut spells = vec![firewall, fireshield];
     spells.extend(
         SPELLS.iter().map(
-            |&(k, _, _, polarity, changes, mass_from, useful)| BattleSpellDef {
+            |&(k, _, _, polarity, changes, mass_from, useful, _)| BattleSpellDef {
                 key: key(&["t:", k].concat()),
                 polarity,
                 magic: SpellMagic {
@@ -677,6 +790,21 @@ fn ruleset_as(profile: &str) -> BattleRuleset {
             },
         ),
     );
+    spells.push(BattleSpellDef {
+        key: key("t:bolt"),
+        polarity: SpellPolarity::Negative,
+        magic: SpellMagic {
+            target: SpellTarget::Stack,
+            effects: vec![SpellEffect::Damage],
+            ..SpellMagic::default()
+        },
+        counters: vec![],
+        dispels: vec![],
+        spares: vec![],
+        tests_as: None,
+        summons: None,
+        ai: SpellAi::default(),
+    });
     let pack = BattlePack {
         creatures,
         spells,
