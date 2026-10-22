@@ -215,9 +215,10 @@ found after that decision) belong to the neutral side's map too and are read (§
       `h3-battle`'s estimates and the walker), the melee prediction 0x4227A0 and the predicted
       strike 0x4224E0 with their draws, "the enemy beaten" (BAT-AI-015, BAT-STUB-9 retired); a
       hypnotized walker leaves itself out (the user: BAT-STUB-10, BAT-Q58); §7.52; the log.
-  - [ ] **T4c The Master Genie** — the context's fill 0x43C040 with its seed 0x43BF20 and the
-    second context (§7.42), its mean over the 34 evaluators and the removals (§7.44, §7.46; slips 9
-    to 17); cut again at its checkpoint.
+  - [ ] **T4c The Master Genie** (the user, 2026-10-22: whole, no cut; with slip 22, BAT-Q59) —
+    the context's fill 0x43C040 with its seed 0x43BF20 and the second context (§7.42), its mean
+    over the 34 evaluators and the removals (§7.44, §7.46; slips 9 to 17); the walker's fallbacks
+    after a built context on the last searched map (slip 22). **In progress** (`battle/e23-t4c`).
 - [ ] **T5 The hero's spells** (T1a6's reading first).
 - [ ] **T6 The hero's other choices** — retreat and surrender, the tactics phase, the Catapult's
   aim, the First Aid Tent's patient (BAT-Q51); BAT-Q33's rule.
