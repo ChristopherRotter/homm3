@@ -59,6 +59,10 @@ IDENTITY = (
 )
 
 
+#: The networks `[network] kind` names (`policy.build`).
+NETWORK_KINDS = ("mlp", "entity")
+
+
 def _in(table: str) -> dict:
     return {"table": table}
 
@@ -80,10 +84,20 @@ class Config:
     kinds: list[int] | None = field(default=None, metadata=_in("env"))
     currency: str = field(default="ai_value", metadata=_in("env"))
     mana_price: int = field(default=10, metadata=_in("env"))
+    #: The network (design §11): "mlp" (E05's) or "entity"; a saved file without the key is an
+    #: MLP's.
+    kind: str = field(default="mlp", metadata=_in("network"))
+    #: The MLP's layers.
     hidden: int = field(default=512, metadata=_in("network"))
+    #: Both kinds' spell and target embeddings.
     embed: int = field(default=32, metadata=_in("network"))
+    #: The entity network's token width, transformer blocks and attention heads.
+    width: int = field(default=128, metadata=_in("network"))
+    layers: int = field(default=2, metadata=_in("network"))
+    heads: int = field(default=4, metadata=_in("network"))
     rollout: int = field(default=128, metadata=_in("ppo"))
-    gamma: float = field(default=0.995, metadata=_in("ppo"))
+    #: 1.0 since E06 T5a (AI-Q9: γ 0.995 let the winner stall, `t4-1` against `t4-2`).
+    gamma: float = field(default=1.0, metadata=_in("ppo"))
     lam: float = field(default=0.95, metadata=_in("ppo"))
     lr: float = field(default=2.5e-4, metadata=_in("ppo"))
     #: "linear" from `lr` to `lr * lr_floor` over `lr_horizon` samples, then the floor; or
@@ -283,6 +297,12 @@ def resolve(config: Config) -> Config:
     for key in ("samples", "envs", "max_steps", "rollout", "epochs", "minibatches", "hidden"):
         if getattr(c, key) <= 0:
             problems.append(f"`{key}` must be positive")
+    if c.kind not in NETWORK_KINDS:
+        problems.append(f"`kind` is one of {', '.join(NETWORK_KINDS)}")
+    if min(c.embed, c.width, c.layers, c.heads) <= 0 or c.width % c.heads:
+        problems.append(
+            "`embed`, `width`, `layers` and `heads` are positive, `width` a multiple of `heads`"
+        )
     for key in ("max_members", "live"):
         if getattr(c, key) <= 0:
             problems.append(f"`{key}` must be positive")

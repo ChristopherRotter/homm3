@@ -1,6 +1,6 @@
 # E06 — Battle AI v1 and the local training pipeline v0
 
-Status: **in progress**, refined 2026-10-20 (AI-Q8); increment 1 (T1, T2a, T2b1, T2c) done; increment 2 (T3a, T3b) done; increment 3 (T4a, T4b) done; increment 4 next (its refinement open) · Lane: **ai** · Follows E05 (closed
+Status: **in progress**, refined 2026-10-20 (AI-Q8); increment 1 (T1, T2a, T2b1, T2c) done; increment 2 (T3a, T3b) done; increment 3 (T4a, T4b) done; increment 4 refined 2026-10-22: T5a done, T5b next · Lane: **ai** · Follows E05 (closed
 2026-10-20) · Runs beside E23 (the battle lane: the original's battle AI, the system actor's
 policy), whose neutral side opens E06's neutral share (decision 1)
 
@@ -131,10 +131,19 @@ league runs, γ 1.0 beside 0.995, 60 M samples each).
   (truncations 13 % to 0) and plays better (final 0.839, 0.578, 0.559 against Random, Aggressor,
   Greedy); the stopped `t4-2` resumed for real; the record in `E06-log.md`.
 
+**Increment 4:** T5a, then T5b (refined 2026-10-22, the user: the entity network first, design
+§11; a brief comparison of architectures in `E06-log.md`; the visualization in T5a).
+
+- [x] **T5a The entity network** — done 2026-10-22: `h3env.train.entity` behind one interface
+  with the MLP, `[network] kind`, the v21 layout pinned by `h3-sim`'s tests, γ 1.0 the default,
+  `python -m h3env.train.network`, `configs/e06-t5.toml`; the record in `E06-log.md`.
+- [ ] **T5b The A/B run** — the user's 60 M samples with the entity network against `t4-2`
+  (the same config and seed); its record committed.
+
 **Later increments** (cut at each checkpoint; proposed in design §10):
 
-- [ ] **T5 The network and the preview** — the entity network against the MLP; AI-Q7 (b); the
-  mana-price experiment; batch size and threads from T9c's table; the observations in place.
+- [ ] **T5 The rest** — AI-Q7 (b); the mana-price experiment; batch size and threads from T9c's
+  table; the observations in place.
 - [ ] **T6 Toward the targets** — runs on the best configuration until decision 7's targets hold,
   or the evidence says PPO plateaus (then T8).
 - [ ] **T7 The neutral share** (after E23's neutral side) — `Policy::System` in the training mix,

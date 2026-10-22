@@ -16,17 +16,20 @@ hour `t3b-1`: evaluation 21.4 %, stalling suspected, AI-Q9). Increment 3 done 20
 (the league), T4b (the user's runs `t4-1`, `t4-2`: γ 1.0 ends the stalling, AI-Q9; the best
 plays 0.839, 0.578, 0.559 against Random, Aggressor, Greedy; `E06-log.md`).
 
-**Next: increment 4's refinement, with the user** (no task is ready until then). The user closed
-T4b's session before choosing. Put to them:
-- **What T5 starts with:** (a) the entity network (Python only, decision 5; γ 1.0 as the
-  trainer's default with it), A/B against `t4-2` as the control (the same config and seed, 60 M):
-  the agent's recommendation; (b) AI-Q7 (b), the preview's kills per attack and shot entry as a
-  batch output (`h3-sim`, C ABI v32, the binding); (c) throughput: the batch size and threads,
-  the observations in place, `t4-2`'s dip to about 4 000 samples/s from 20 M to 40 M; (d) T7,
-  the neutral share, now that E23's neutral side is complete (the inbox, 2026-10-22).
-- **A spare run while T5 is built** (no code): `--init-from runs/t4-2/best.pt` at γ 1.0 with a
-  fresh schedule for 60 M or 120 M samples, to see whether the MLP keeps climbing (both T4b runs
-  rose slowly to 50 M; their last gates rejected with the learning rate at its floor).
+**Increment 4** refined 2026-10-22 (the user, `E06-log.md`): the entity network first, T5a then
+T5b; no spare MLP run. T5a done 2026-10-22 (`E06-log.md`). Still open for later increments: AI-Q7 (b), throughput (`t4-2`'s dip to
+about 4 000 samples/s from 20 M to 40 M), the mana price, T7 (E23's neutral side is complete).
+
+### T5b — The A/B run
+
+- **Scope:** the user runs `configs/e06-t5.toml` (the entity network, `t4-2`'s config and seed,
+  60 M samples) on their machine; the record committed, the comparison with `t4-2` in
+  `E06-log.md`.
+- **Acceptance:** the record passes `check_record`; the ladders compared per opponent.
+- **Depends on:** T5a's pull request merged; the user's machine. **Status:** waiting (the
+  merge, then the user). First `python -m h3env.train.network --config configs/e06-t5.toml
+  --time --device cuda` (the GPU's cost; T5a measured the entity network at about five times
+  the MLP's time on the sandbox's CPU), then the run (the config's comment).
 
 ## Inbox
 
@@ -34,6 +37,9 @@ Sorted by destination at E05's audit (T9a, 2026-10-19); the origin stays in brac
 done: BAT-Q33's point for E05 (AI-Q3, ADR-0025 point 6), the `h3-game` coverage gap of a pending
 Pass offer (fixed by the adventure lane's fixed tests, #266).
 
+- 2026-10-22 (the adventure lane, E08 T36b, `adventure/e08-t36b`, `cross-lane` with the user's
+  consent; for your information, nothing to do): `h3_map::writer::Map` gained `banned_skills`;
+  the census map in `crates/h3-cli/src/ai/tests.rs` says none (one line).
 - 2026-10-22 (the battle lane, E23 T4d, `battle/e23-t4d`; for your information, nothing to do): `h3_battle_ai::POLICY_VERSION` is 10: the Master Genie values Cure and Anti-Magic as the original does (a removal's copy, slip 24 under BAT-QUIRK-25; the copy's turns and Hypnotize's map for a shooter in both profiles). Name it in a run record's engine identity; the function's signature is unchanged.
 - 2026-10-22 (the adventure lane, E08 T35b, `shared/e08-t35b`, `cross-lane` with the user's consent,
   E08 decision 79; for your information, nothing to do): `python/records/bots-report-v1.json`

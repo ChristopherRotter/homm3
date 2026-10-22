@@ -1,0 +1,133 @@
+# Experiment batch E5d (E08 T36b; decisions 78, 80, 81): row E5-2's second map (survey
+# docs/rules/surveys/E08-hero-movement.md §9; docs/epics/E08-design.md §11), D-22, a Logistics
+# specialist's day's points in single precision or exact, in SoD on Easy, hot seat. A hero type
+# appears once per map, so E5-2's six heroes stand on two maps: batch E5c (Gunnar at level 2, Kyrre
+# at 6, Dessa at 12) and this one (Kyrre at 2, Gunnar at 3, Dessa at 6, with seven other skills as
+# E5c's Kyrre). Everything else is batch E5c's: its header holds the rows' arithmetic, how often a
+# hero stays below Expert and the trap of the starting bonus. Build:
+# docs/experiments/README.md. Predictions are for the agent who evaluates the results; the template
+# never shows them.
+#
+#   cargo run -p h3-map --example e4_score -- experiments/out/E08-batch-5d.h3m experiments/results/E08-batch-5d.md
+
+[map]
+name = "E08 batch E5d"
+description = "Engine-generated experiment map (E08, batch E5d): a Logistics specialist's day's points at levels 2, 3 and 6. Hot seat, Red and Blue human, difficulty Easy; follow the results template."
+size = 36
+terrain = "grass"
+difficulty = "easy"
+instructions = [
+    "Copy `E08-batch-5d.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human, difficulty **Easy**. Before you start it, compare the stamp at the start of the map's description with the stamp above. Save right away (save 1).",
+    "Every hero's seed byte (hero +0x8F) and the levels Wisdom (+0x90) and a magic school (+0x3F) were last offered show only in the game's memory, the movement points too: the capture harness reads them (clients/capture/batches/E08-batch-5d.toml). Played by hand, leave the seed byte and the two levels empty and read the points from the hero's movement bar.",
+    "No hero moves. Order: day 1, Red's turn: read E5-2d and E5-2e; end the turn. Blue's turn: read E5-2f; end the turn. Day 2, Red's turn: read E5-2d's and E5-2e's points again; end the turn. Blue's turn: read E5-2f's points again. Then the map is done: two days, no battle.",
+    "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
+]
+
+# --- D-22: a Logistics specialist's day's points --------------------------------------------------
+
+[[encounter]]
+id = "E5-2d"
+title = "Kyrre, Basic Logistics, level 2 at load (1 000 experience), 10 Dwarves"
+questions = ["D-22", "HER-ADV-003", "ADV-MOV-001", "D-20", "GAM-SET-002"]
+procedure = [
+    "Day 1, Red's turn, before anything moves: read E5-2d's seed byte and the two levels last offered (the harness), its experience, level, primary and secondary skills (its portrait's window) and its movement points. It never moves.",
+    "Day 2, Red's turn start: read its movement points again.",
+    "Note any worn artifact (a starting bonus) under \"anything odd\".",
+]
+record = [
+    { field = "seed byte (hero +0x8F)" },
+    { field = "Wisdom last offered (hero +0x90)" },
+    { field = "a school last offered (hero +0x3F)" },
+    { field = "experience at the start" },
+    { field = "level at the start" },
+    { field = "primary skills at the start (attack/defense/power/knowledge)" },
+    { field = "secondary skills at the start (in the hero's order, each with its level)" },
+    { field = "day 1 points" },
+    { field = "day 2 points" },
+    { field = "anything odd" },
+]
+predictions = """
+- As batch E5c's E5-2a (level 2): **the reading 1664** at Basic, **1829** at Advanced; **exact
+  1665**, **1830**.
+"""
+[encounter.hero]
+type = "Kyrre"
+specialty = "skill Logistics"
+at = [6, 10]
+experience = 1000
+primary = [1, 1, 1, 1]
+skills = [["Logistics", 1]]
+army = [["Dwarf", 10]]
+
+[[encounter]]
+id = "E5-2e"
+title = "Gunnar, Basic Logistics, level 3 at load (2 000 experience), 10 Dwarves"
+questions = ["D-22", "HER-ADV-003", "ADV-MOV-001", "D-20", "GAM-SET-002"]
+procedure = [
+    "Day 1, Red's turn, before anything moves: read E5-2e as E5-2d. It never moves.",
+    "Day 2, Red's turn start: read its movement points again.",
+    "Note any worn artifact (a starting bonus) under \"anything odd\".",
+]
+record = [
+    { field = "seed byte (hero +0x8F)" },
+    { field = "Wisdom last offered (hero +0x90)" },
+    { field = "a school last offered (hero +0x3F)" },
+    { field = "experience at the start" },
+    { field = "level at the start" },
+    { field = "primary skills at the start (attack/defense/power/knowledge)" },
+    { field = "secondary skills at the start (in the hero's order, each with its level)" },
+    { field = "day 1 points" },
+    { field = "day 2 points" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The level**: 2 000 is level 3's threshold: **level 3**, two level-ups at load (the scorer).
+- **The control** (§1.3): at level 3 both arithmetics agree, **1672** at Basic, **1845** at
+  Advanced, **2017** at Expert. Another value refutes the bonus's formula, not D-22's rounding.
+"""
+[encounter.hero]
+type = "Gunnar"
+specialty = "skill Logistics"
+at = [16, 10]
+experience = 2000
+primary = [1, 1, 1, 1]
+skills = [["Logistics", 1]]
+army = [["Dwarf", 10]]
+
+[[encounter]]
+id = "E5-2f"
+title = "Dessa, Basic Logistics and seven other skills, level 6 at load (6 200 experience), 10 Dwarves"
+questions = ["D-22", "HER-ADV-003", "ADV-MOV-001", "D-20", "GAM-SET-002"]
+procedure = [
+    "Day 1, Blue's turn, before anything moves: read E5-2f as E5-2d. It never moves.",
+    "Day 2, Blue's turn start: read its movement points again.",
+    "Note any worn artifact (a starting bonus) under \"anything odd\".",
+]
+record = [
+    { field = "seed byte (hero +0x8F)" },
+    { field = "Wisdom last offered (hero +0x90)" },
+    { field = "a school last offered (hero +0x3F)" },
+    { field = "experience at the start" },
+    { field = "level at the start" },
+    { field = "primary skills at the start (attack/defense/power/knowledge)" },
+    { field = "secondary skills at the start (in the hero's order, each with its level)" },
+    { field = "day 1 points" },
+    { field = "day 2 points" },
+    { field = "anything odd" },
+]
+predictions = """
+- As batch E5c's E5-2b (level 6, eight skills: every offer an advance): **the reading 1694** at
+  Basic, **1889** at Advanced; **exact 1695**, **1890**; Expert **2085** under both
+  (inconclusive).
+"""
+[encounter.hero]
+type = "Dessa"
+specialty = "skill Logistics"
+owner = "blue"
+at = [26, 10]
+experience = 6200
+primary = [1, 1, 1, 1]
+skills = [["Logistics", 1], ["Archery", 1], ["Armorer", 1], ["Offense", 1], ["Leadership", 1], ["Luck", 1], ["Resistance", 1], ["First Aid", 1]]
+army = [["Dwarf", 10]]

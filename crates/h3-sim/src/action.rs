@@ -546,6 +546,22 @@ mod tests {
         assert_eq!(Action::entry(usize::MAX).entry, u32::MAX);
     }
 
+    /// E06 T5a: the entity network's heads build this encoding's entries (design §11): the
+    /// literals of `python/h3env/train/layout.py` are its (the bases derived from them there
+    /// as here).
+    #[test]
+    fn the_python_layout_is_the_encodings() {
+        let python = crate::python_layout;
+        assert_eq!(python("ACTION_ENCODING"), ACTION_ENCODING_VERSION as usize);
+        assert_eq!(python("MOVE_BASE"), MOVE_BASE);
+        assert_eq!(python("ATTACK_SLOTS"), ATTACK_SLOTS);
+        assert_eq!(python("MAX_WALL_TARGETS"), MAX_WALL_TARGETS);
+        assert_eq!(python("SPELL_COUNT"), SPELL_COUNT);
+        assert_eq!(ATTACK_BASE, MOVE_BASE + MAX_FIELD_HEXES);
+        assert_eq!(WALL_SHOT_BASE, END_TACTICS + 5);
+        assert_eq!(TARGET_STACK_BASE, 1 + MAX_FIELD_HEXES);
+    }
+
     #[test]
     fn every_legal_command_round_trips() {
         let (r, s) = env();

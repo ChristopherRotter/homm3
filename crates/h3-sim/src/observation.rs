@@ -541,6 +541,50 @@ mod tests {
     /// The offset of the private part's per-spell vectors.
     const SPELLS: usize = OWN_HERO_VALUES;
 
+    /// E06 T5a: the entity network reads this encoding by `python/h3env/train/layout.py`
+    /// (design §11): its sizes are these, and its stack columns hold what it reads them as.
+    #[test]
+    fn the_python_layout_is_the_encodings() {
+        let python = crate::python_layout;
+        assert_eq!(
+            python("OBSERVATION_ENCODING"),
+            OBSERVATION_ENCODING_VERSION as usize
+        );
+        for (name, value) in [
+            ("GLOBALS", GLOBALS),
+            ("HERO_PUBLIC_FEATURES", HERO_PUBLIC_FEATURES),
+            ("OWN_HERO_FEATURES", OWN_HERO_FEATURES),
+            ("HEX_PLANES", HEX_PLANES),
+            ("MAX_FIELD_HEXES", MAX_FIELD_HEXES),
+            ("STACK_FEATURES", STACK_FEATURES),
+            ("STACK_CAPACITY", STACK_CAPACITY),
+        ] {
+            assert_eq!(python(name), value, "{name}");
+        }
+        // The offsets follow from the sizes in the same order there.
+        assert_eq!(
+            (HEROES, OWN_HERO, FIELD),
+            (GLOBALS, GLOBALS + 28, GLOBALS + 28 + OWN_HERO_FEATURES)
+        );
+        let (r, setup) = h3_pack_battle::synthetic(h3_pack_battle::SYNTHETIC_DUEL).unwrap();
+        let s = BattleState::new(&r, &setup, 1).unwrap();
+        let obs = observe(&s, &r, BattleSide::Defender);
+        let width = r.battle().field.width;
+        let mut out = vec![0.0; OBSERVATION_LEN];
+        encode(&obs, width, &mut out).unwrap();
+        let column = |name| python(name);
+        for (i, st) in obs.stacks.iter().enumerate() {
+            let f = stack(&out, i);
+            let (x, y) = coords(st.hex.0, width);
+            assert_eq!(f[column("PRESENT")], 1.0);
+            assert_eq!(f[column("CREATURE")], f32::from(st.creature.raw()));
+            assert_eq!((f[column("X")], f[column("Y")]), (x, y));
+            let active = obs.active.is_some_and(|a| a.index() == i);
+            assert_eq!(f[column("ACTIVE")], if active { 1.0 } else { 0.0 });
+        }
+        assert_eq!(stack(&out, obs.stacks.len())[column("PRESENT")], 0.0);
+    }
+
     #[test]
     fn encodes_globals_and_stacks() {
         let (r, setup) = h3_pack_battle::synthetic(h3_pack_battle::SYNTHETIC_DUEL).unwrap();

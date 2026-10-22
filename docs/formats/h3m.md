@@ -332,7 +332,8 @@ E08 T22a1 an underground level may follow: its own base terrain and rectangles (
 objects after the surface's (z = 1), a player's heroes on it in its hero list after the
 surface's. Since E08 T32a the scenario's level limit and the Cartographers (class 13, no body,
 the template from `Objects.txt`); since E08 T36a the trees (classes 135, 137, 155) and the
-Border Gates (212, the key's colour as subclass), no body either. `h3-map`'s read-back test reads both back and imports them.
+Border Gates (212, the key's colour as subclass), no body either; since E08 T36b SoD's banned
+skills (the header's four bytes, bit `code` for the skill of that code). `h3-map`'s read-back test reads them back and imports them.
 
 **Town buildings** (a town's custom `built` and `forbidden` bits; VCMI 1.7.5's
 `config/gameConfig.json`, `mapFormat.restorationOfErathia`): 0 Town Hall, 1 City Hall, 2 Capitol,

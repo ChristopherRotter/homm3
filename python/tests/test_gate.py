@@ -83,11 +83,11 @@ def test_a_network_against_itself_is_not_promoted() -> None:
     torch = pytest.importorskip("torch")
     from h3env import BattleBatch
     from h3env.train.gate import gate, line
-    from h3env.train.policy import Policy
+    from h3env.train.policy import Mlp
 
     probe = BattleBatch(1)
     torch.manual_seed(0)
-    net = Policy.for_batch(probe, hidden=32, embed=8)
+    net = Mlp.for_batch(probe, hidden=32, embed=8)
     probe.close()
     twin = net.frozen()
     bounds = Bounds(max_pairs=24)

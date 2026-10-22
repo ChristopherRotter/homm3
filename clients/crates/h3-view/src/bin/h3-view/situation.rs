@@ -428,6 +428,8 @@ fn map(
         underground: None,
         // No level limit (E08 T32a's field; the byte the writer wrote before it).
         level_limit: 0,
+        // No banned skills (E08 T36b's field; the bytes the writer wrote before it).
+        banned_skills: Vec::new(),
     })
 }
 

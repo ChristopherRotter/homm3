@@ -83,6 +83,22 @@ decisions that trained): `samples`, the learning rate's linear decay over `lr_ho
 by default), the league's snapshots and live draws (`snapshot_every`, `live_every`), the gates
 (`gate_every`); wall time sets only the checkpoints.
 
+**The networks** (E06 T5a, `docs/epics/E06-design.md` §11): `network.kind` is `"mlp"` (E05's,
+the default: `hidden` 512) or `"entity"`, observation v21 read as entities by `h3env.train.layout`
+(a token per stack slot, the globals, the own hero, the field; `layers` 2 transformer blocks of
+`width` 128 with `heads` 4; pointer heads at the hexes and stacks); `embed` (32) sizes both
+kinds' spell and target embeddings. A saved network's config names its kind (a file from before
+T5a is an MLP); `--init-from` a network of another kind is refused. A network at a glance:
+
+```sh
+uv run --group train python -m h3env.train.network --config configs/e06-t5.toml --time --mermaid net.md
+uv run --group train python -m h3env.train.network --from runs/t4-2/best.pt
+```
+
+prints each part's parameters, output shape and multiply-adds per decision (a cast's heads
+apart), with `--time` the microseconds per decision of a forward and a training pass (`--device
+cuda` on the GPU), and `--mermaid` writes the table with the data flow as a Mermaid diagram.
+
 Each update prints one line (samples, samples/s, self-play's attacker wins, truncations, the
 league's size, the learner's score against its members, the frozen networks a call passed, the
 losses). Every training episode's seed is checked against the held-out sets' (a hit stops the
@@ -110,7 +126,7 @@ and the `ladder_promoted` (1) promoted networks before it, on the report set v1'
 `ladder_final_episodes` (500). Each gate, promotion and ladder prints one line;
 `python -m h3env.train.gate --candidate b.pt --best a.pt` plays the same gate between any two saved
 networks. `--init-from <file>` starts a new run (fresh optimizer, counters and league) from a saved
-network (a `best.pt`, `promoted/<n>.pt` or `checkpoint.pt` of the same size), its parent.
+network (a `best.pt`, `promoted/<n>.pt` or `checkpoint.pt` of the same kind and size), its parent.
 
 The run's directory (`runs/` is git-ignored) gets `config.toml` (the file as given),
 `metrics.jsonl` (one typed record per line: `start`, `update`, `snapshot`, `gate`, `promotion`,

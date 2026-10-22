@@ -494,7 +494,7 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 ### BAT-QUIRK-25 — The original computer's slips in its own estimates (E23 T1b; survey E23 §4)
 - Class: fix-optional (user, 2026-10-20, BAT-Q55: one flag for all the fixes of the original's AI)
 - Context / rules affected: battle, the computer's choices (ADR-0027 point 9; `BAT-AI-nnn`, E23 T2 onwards; the policy crate `h3-battle-ai` and the computer's numbers in `h3-battle`)
-- Original behavior: where the computer estimates a rule's outcome, it sometimes reads a wrong record, argument, spell, side, mastery or test: the walls test's records, Magic Mirror's doubled chance, Paralyze with Blind's record, Disease with Weakness's resistance, the protections with the own hero's bonuses, the turrets valued as Archers, the guard's Defend test on the wrong hex, and the rest of `docs/rules/surveys/E23-battle-ai.md` §4 (24 so far; `docs/formats/installation.md` §7.35 to §7.54). They change which command the computer picks, never a rule's outcome.
+- Original behavior: where the computer estimates a rule's outcome, it sometimes reads a wrong record, argument, spell, side, mastery or test: the walls test's records, Magic Mirror's doubled chance, Paralyze with Blind's record, Disease with Weakness's resistance, the protections with the own hero's bonuses, the turrets valued as Archers, the guard's Defend test on the wrong hex, and the rest of `docs/rules/surveys/E23-battle-ai.md` §4 (26 so far; `docs/formats/installation.md` §7.35 to §7.55; slip 25, the elementals that never cast their protection, the user's call, 2026-10-22, BAT-Q57; slip 26, the hero's cast choice on the retreat test's predictions, E23 T1a6, for T5's checkpoint). They change which command the computer picks, never a rule's outcome.
 - Intended/expected behavior: each estimate as the rule it estimates (the survey's "Fixed" column; strict-fixed).
 - Impact: gameplay-altering (the computer side's choices)
 - Community status: unknown (the wiki describes none of them)
@@ -505,7 +505,7 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Decided by / date: user, 2026-10-20 (E23 T1b, BAT-Q55)
 
 ### BAT-QUIRK-26 — The computer's removal leaves its copy in the Unicorns' aura lists (E23 T4d)
-- Class: exploit-fix (never reproduced, no flag: a state-corrupting bug, always fixed, AGENTS.md; for the user's confirmation)
+- Class: exploit-fix (never reproduced, no flag: a state-corrupting bug, always fixed, AGENTS.md; confirmed by the user, 2026-10-22)
 - Context / rules affected: battle, the computer's choices (BAT-AI-016); the Unicorns' aura (BAT-MAG-066)
 - Original behavior: valuing Cure or Anti-Magic on a hypnotized stack, the computer's removal (0x439A80) ends Hypnotize on a lone copy of the stack's record (0x437A00). The end routine's Hypnotize case (0x44460A; 0x444689 → 0x43EA70) rebuilds the copy's Unicorn aura lists from the battle's records beside it and adds the copy to theirs (+0x514, a Unicorn's protected stacks; +0x524, a stack's protectors; the duplicate test compares pointers). The copy is freed (0x43D400) without leaving those lists: a Unicorn beside it keeps a pointer to freed memory, and a stack of the copy's side beside a copied Unicorn keeps an aura source that no longer exists (its spells' factor × 0.8, 0x5A8599) until its lists are rebuilt.
 - Intended/expected behavior: an estimate changes nothing in the battle.
@@ -515,4 +515,4 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Flag: none
 - Defaults: n/a
 - Regression test: `crates/h3-battle-ai/src/tests/copies.rs`, `berserk_and_hypnotize_meet_the_stack_itself_on_the_copy` (valuing Hypnotize's end on a copy leaves the battle's state hash unchanged: the policy reads the battle through a shared reference)
-- Decided by / date: the standing rule (state-corrupting bugs are always fixed), E23 T4d, 2026-10-22; the user to confirm
+- Decided by / date: the standing rule (state-corrupting bugs are always fixed), E23 T4d, 2026-10-22; confirmed by the user, 2026-10-22 (at E23 T1a6's start)

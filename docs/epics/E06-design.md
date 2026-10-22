@@ -274,8 +274,48 @@ Each with the user's checkpoint; only the next one refined (Q41's pattern).
   `configs/e06-t4.toml`: a gate every 10 M samples and ladders of 250 per kind, about 12 % of a
   run by `t3b-1`'s costs), T4b (two league runs of 60 M samples, about 3.5 hours each, at γ 0.995
   and γ 1.0 against the stalling; one of them stopped and resumed for real).
-- **Increment 4** (to refine; T4b's evidence: the MLP at γ 1.0 still climbs slowly, the learning
-  rate at its floor at the budget; E23's neutral side is complete, so T7 can start too): T5's
-  experiments, each a recorded run with `t4-2` as the control: the entity network against the MLP,
-  AI-Q7 (b), the mana price, the batch size and threads (T9c's table), the observations in place.
-- **Then** T6, T7 (after E23's T2 to T4), T8 (only if PPO plateaus), T9.
+- **Increment 4** (refined 2026-10-22; T4b's evidence: the MLP at γ 1.0 still climbs slowly, the
+  learning rate at its floor at the budget): T5a (the entity network of §11 and the
+  visualization command), T5b (the user's A/B run, 60 M samples, `t4-2` the control).
+- **Then** T5's rest (AI-Q7 (b), the mana price, the batch size and threads from T9c's table,
+  the observations in place), T6, T7 (E23's neutral side is complete), T8 (only if PPO
+  plateaus), T9.
+
+## 11. The entity network — built (T5a)
+
+Decision 5: v21 read as entities, in Python, with no encoding change. `[network] kind` chooses
+`"mlp"` (E05's, the default: its weights and files stay as they are) or `"entity"`; both share
+one interface (`h3env.train.policy.Network`: `encode`, the value, the four heads' logits; `act`,
+`evaluate` and `frozen` on top), and a saved network's config names its kind (a file without the
+key is an MLP). The comparison with the other architectures the user saw: `E06-log.md`,
+"Increment 4's refinement".
+
+- **Layout** (`h3env.train.layout`, pinned by an `h3-sim` test against `observation.rs`): the
+  globals (38), the two public hero parts (14 each), the own hero's private part (578), 16 hex
+  planes of 255, 42 stack slots of 99 (8 882); in a slot, present (0), the creature's handle
+  (3), x and y (12, 13), active (18).
+- **Tokens** (width `width`, 128): one per stack slot, `symlog` of its 99 features through a
+  linear layer plus learned embeddings of its creature's handle (clamped to 255), x (31) and y
+  (15), an empty slot masked out of attention; the global token (the globals and both public
+  hero parts, 66); the own-hero token (578); the field token: each hex's 16 planes (`symlog`)
+  through a shared 16 → 16 layer plus a learned per-hex embedding, ReLU, the 255 hex vectors
+  flattened through a linear layer.
+- **Encoder:** `layers` (2) pre-norm transformer layers, `heads` (4), feed-forward twice the
+  width, over the 45 tokens; the context is the global token's output, the active stack's (zeros
+  without a present active one) and the mean of the present stacks', through a linear layer and
+  ReLU.
+- **Heads** (the logits in action encoding v13's order): the value and the 15 fixed entries
+  (Wait, Defend, End tactics, Retreat, Surrender, the two casts, the 8 wall shots) from the
+  context; Move h from hex h's vector, the 24 attacks, 2 shots and the heal of stack s from its
+  token, each scored against the context (an additive pointer: a linear layer of the key plus
+  one of the query, ReLU, a linear layer to the logits); the spell head as the MLP's; the target
+  heads point at "none", the 255 hexes and the 42 stacks the same way, their query the context,
+  the cast and the spell's embedding (the second target's also the target's embedding).
+- **Cost** (measured in T5a, `E06-log.md`): 1.19 M parameters against the MLP's 5.95 M, 15.5 M
+  multiply-adds per decision against 5.5 M, about five times the MLP's time on the sandbox's CPU;
+  T5b measures the GPU (`--time --device cuda`) before its run.
+- **Visualization** (`python -m h3env.train.network`, no dependency beyond torch): a config's
+  network (`--config`, `--set`) or a saved file's: each module's parameters and output shape on
+  an observation, the multiply-adds of its linear layers and attention, the time of a forward
+  and a training pass per sample (`--time`), and a Mermaid diagram (`--mermaid <file>`) of the
+  data flow, which GitHub renders.

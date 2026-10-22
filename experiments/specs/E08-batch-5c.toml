@@ -1,0 +1,173 @@
+# Experiment batch E5c (E08 T36b; decisions 78, 80, 81): row E5-2 of increment 5's plan (survey
+# docs/rules/surveys/E08-hero-movement.md §9; docs/epics/E08-design.md §11), D-22, a Logistics
+# specialist's day's points in single precision or exact, in SoD on Easy, hot seat. A hero type
+# appears once per map, so E5-2's six heroes stand on two maps: this one (Gunnar at level 2, Kyrre
+# at 6, Dessa at 12) and batch E5d (Kyrre at 2, Gunnar at 3, Dessa at 6). Batches E5a and E5b hold
+# the rows with fixed predictions, batch E5e the forced level-ups (E5-3, E5-10). Build:
+# docs/experiments/README.md. Predictions are for the agent who evaluates the results; the template
+# never shows them.
+#
+# | row  | settles                                   | the reading (faithful)           | strict-fixed      |
+# | E5-2 | D-22: a Logistics specialist's growth     | f32 rate, x87 product, truncated | exact basis points |
+#
+# Every hero is a Logistics specialist (Gunnar, Kyrre, Dessa: `skill_specialty` logistics, 500 bp
+# per level) with Basic Logistics and 10 Dwarves (speed 3: the land table's 1500,
+# packs/base/adventure.toml `land_points`, 0x698A98). The levels come at load from the custom
+# experience (1 000 level 2, 2 000 level 3, 6 200 level 6, 20 600 level 12), each drawn from the
+# hero's seed byte S and chosen by the computer's evaluation (D-20, GAM-SET-002; batch E4a), which
+# takes Logistics whenever it is offered: so each hero's points follow from its level and its
+# Logistics level after the load, both recorded at the start; with S the scorer also predicts them:
+#
+#   cargo run -p h3-map --example e4_score -- experiments/out/E08-batch-5c.h3m experiments/results/E08-batch-5c.md
+#
+# (crates/h3-map/examples/e4_score.rs: the levels at load as batch E4's, then the day's points in
+# both arithmetics for the hero predicted and for the hero recorded). The two part only below
+# Expert (§1.3): 1500 at Basic 1664/1665 (level 2), 1672 (3, both), 1694/1695 (6), 1739/1740 (12);
+# at Advanced 1829/1830, 1845 (both), 1889/1890, 1979/1980; at Expert they agree (1995, 2017, 2085,
+# 2220). A hero whose Logistics ends Expert, or a level where both agree, is inconclusive.
+#
+# How often a hero stays below Expert (the engine's levels at load over 400 games, T36b): at level
+# 2 always (Basic 32 %, Advanced 68 %); at level 6 with Basic Logistics alone 19 %, so the level-6
+# heroes also know seven other skills at Basic, which fill their eight slots and make Logistics one
+# advance among eight (Kyrre 75 %, Dessa in batch E5d 41 %: a Battle Mage weighs Logistics 9, a
+# Ranger 5); at level 12 almost never (1 %), so E5-2c checks the growth at a high level (2220 at
+# Expert under both) rather than D-22.
+#
+# The trap of the starting bonus: a hot-seat player's random starting bonus may give a hero an
+# artifact; Boots of Speed (+600) or Equestrian's Gloves (+300) change its points. Note a worn
+# artifact the spec does not give under "anything odd" (the harness: a hero's `equipment`).
+
+[map]
+name = "E08 batch E5c"
+description = "Engine-generated experiment map (E08, batch E5c): a Logistics specialist's day's points at levels 2, 6 and 12. Hot seat, Red and Blue human, difficulty Easy; follow the results template."
+size = 36
+terrain = "grass"
+difficulty = "easy"
+instructions = [
+    "Copy `E08-batch-5c.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human, difficulty **Easy**. Before you start it, compare the stamp at the start of the map's description with the stamp above. Save right away (save 1).",
+    "Every hero's seed byte (hero +0x8F) and the levels Wisdom (+0x90) and a magic school (+0x3F) were last offered show only in the game's memory, the movement points too: the capture harness reads them (clients/capture/batches/E08-batch-5c.toml). Played by hand, leave the seed byte and the two levels empty and read the points from the hero's movement bar.",
+    "No hero moves. Order: day 1, Red's turn: read E5-2a and E5-2b; end the turn. Blue's turn: read E5-2c; end the turn. Day 2, Red's turn: read E5-2a's and E5-2b's points again; end the turn. Blue's turn: read E5-2c's points again. Then the map is done: two days, no battle.",
+    "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
+]
+
+# --- D-22: a Logistics specialist's day's points --------------------------------------------------
+
+[[encounter]]
+id = "E5-2a"
+title = "Gunnar, Basic Logistics, level 2 at load (1 000 experience), 10 Dwarves"
+questions = ["D-22", "HER-ADV-003", "ADV-MOV-001", "D-20", "GAM-SET-002"]
+procedure = [
+    "Day 1, Red's turn, before anything moves: read E5-2a's seed byte and the two levels last offered (the harness), its experience, level, primary and secondary skills (its portrait's window) and its movement points. It never moves.",
+    "Day 2, Red's turn start: read its movement points again.",
+    "Note any worn artifact (a starting bonus) under \"anything odd\".",
+]
+record = [
+    { field = "seed byte (hero +0x8F)" },
+    { field = "Wisdom last offered (hero +0x90)" },
+    { field = "a school last offered (hero +0x3F)" },
+    { field = "experience at the start" },
+    { field = "level at the start" },
+    { field = "primary skills at the start (attack/defense/power/knowledge)" },
+    { field = "secondary skills at the start (in the hero's order, each with its level)" },
+    { field = "day 1 points" },
+    { field = "day 2 points" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The level** (HER-EXP-002): 1 000 is level 2's threshold: **level 2**, one level-up at load
+  (no dialog); the scorer prints it from S (its primary skill, offers and the evaluation's choice:
+  Logistics advanced or not).
+- **D-22** (`hero_max_land_movement` 0x4E4990, §1.1 point 4): 1500 × (1 + the Logistics rate)
+  with the specialty's growth, the same on both days (ADV-MOV-002: set at the build after the
+  levels at load, then at each turn start of the owner). **The reading** (Q-0005's single
+  precision, faithful): **1664** with Basic Logistics, **1829** with Advanced. **Exact** (the
+  engine's strict-fixed): **1665**, **1830**. Either Logistics level tells the two apart.
+- Another value: the bonus is not as read (the survey §1.1 and §1.3 reopened), or a starting
+  bonus's artifact (+600, +300).
+"""
+[encounter.hero]
+type = "Gunnar"
+specialty = "skill Logistics"
+at = [6, 10]
+experience = 1000
+primary = [1, 1, 1, 1]
+skills = [["Logistics", 1]]
+army = [["Dwarf", 10]]
+
+[[encounter]]
+id = "E5-2b"
+title = "Kyrre, Basic Logistics and seven other skills, level 6 at load (6 200 experience), 10 Dwarves"
+questions = ["D-22", "HER-ADV-003", "ADV-MOV-001", "D-20", "GAM-SET-002"]
+procedure = [
+    "Day 1, Red's turn, before anything moves: read E5-2b as E5-2a. It never moves.",
+    "Day 2, Red's turn start: read its movement points again.",
+    "Note any worn artifact (a starting bonus) under \"anything odd\".",
+]
+record = [
+    { field = "seed byte (hero +0x8F)" },
+    { field = "Wisdom last offered (hero +0x90)" },
+    { field = "a school last offered (hero +0x3F)" },
+    { field = "experience at the start" },
+    { field = "level at the start" },
+    { field = "primary skills at the start (attack/defense/power/knowledge)" },
+    { field = "secondary skills at the start (in the hero's order, each with its level)" },
+    { field = "day 1 points" },
+    { field = "day 2 points" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The level**: 6 200 is level 6's threshold: **level 6**, five level-ups at load (the scorer).
+  Its eight skills fill the slots: every offer is an advance (Logistics one of eight).
+- **D-22** as E5-2a's: **the reading 1694** at Basic, **1889** at Advanced; **exact 1695**,
+  **1890**; Expert **2085** under both (inconclusive). No other skill of its eight changes the
+  points.
+"""
+[encounter.hero]
+type = "Kyrre"
+specialty = "skill Logistics"
+at = [16, 10]
+experience = 6200
+primary = [1, 1, 1, 1]
+skills = [["Logistics", 1], ["Archery", 1], ["Armorer", 1], ["Offense", 1], ["Leadership", 1], ["Luck", 1], ["Resistance", 1], ["First Aid", 1]]
+army = [["Dwarf", 10]]
+
+[[encounter]]
+id = "E5-2c"
+title = "Dessa, Basic Logistics, level 12 at load (20 600 experience), 10 Dwarves: the growth at a high level"
+questions = ["D-22", "HER-ADV-003", "ADV-MOV-001", "D-20", "GAM-SET-002"]
+procedure = [
+    "Day 1, Blue's turn, before anything moves: read E5-2c as E5-2a. It never moves.",
+    "Day 2, Blue's turn start: read its movement points again.",
+    "Note any worn artifact (a starting bonus) under \"anything odd\".",
+]
+record = [
+    { field = "seed byte (hero +0x8F)" },
+    { field = "Wisdom last offered (hero +0x90)" },
+    { field = "a school last offered (hero +0x3F)" },
+    { field = "experience at the start" },
+    { field = "level at the start" },
+    { field = "primary skills at the start (attack/defense/power/knowledge)" },
+    { field = "secondary skills at the start (in the hero's order, each with its level)" },
+    { field = "day 1 points" },
+    { field = "day 2 points" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The level**: 20 600 is level 12's threshold: **level 12**, eleven level-ups at load (the
+  scorer); Logistics ends **Expert** in 395 of the engine's 400 games.
+- **The growth at a high level** (a check, every source: the specialty grows the skill's rate 5 %
+  of itself per level, §1.1 point 4, §1.2): Expert at level 12 **2220** under both arithmetics
+  (1500 × (1 + 0.3 × 1.6)). Below Expert, D-22 as E5-2a's: the reading 1739 at Basic, 1979 at
+  Advanced; exact 1740, 1980.
+"""
+[encounter.hero]
+type = "Dessa"
+specialty = "skill Logistics"
+owner = "blue"
+at = [26, 10]
+experience = 20600
+primary = [1, 1, 1, 1]
+skills = [["Logistics", 1]]
+army = [["Dwarf", 10]]
