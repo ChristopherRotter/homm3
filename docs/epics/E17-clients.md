@@ -1,11 +1,11 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b, T8, T7b-1, T7b-2a, T7b-2b-1, T7b-2b-2a, T7b-2b-2b done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b, T8, T7b-1, T7b-2a, T7b-2b-1, T7b-2b-2a, T7b-2b-2b, T7b-2b-3 done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
 [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
-are there). Next: M3 T7b-2b-3, T7c (`docs/lanes/client/QUEUE.md`).
+are there). Next: M3 T7c, then T9 (`docs/lanes/client/QUEUE.md`).
 
 ## Goal
 
@@ -457,6 +457,14 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   outlined through good morale and a freeze (found by the frame check). `luck`, `morale`, `bad`
   and `fear` recorded with forced rolls, their engine seeds searched: played as recorded, frames
   exact.
+- **T7b-2b-3 done 2026-10-22** ([log](E17-log.md#m3-t7b-2b-3--the-creatures-strike-effects-2026-10-22),
+  design §7.4, §7.16): not split, at the user's word. A melee strike's pending spells cast at its
+  animation's end (Poison with the stack's hit, Acid Breath with the executable's own line, read
+  through the catalogue's new `EXE:` source), then the strike's line and the striker's effect:
+  Life Drain, Death Stare, the Thunderbird's bolt, the Rust Dragon's acid; a hero's Lightning
+  Bolt; their sounds; a melee loop counts a defending stack's hit group; a cast's outline.
+  `thunder`, `acid`, `stare` and `lightning` recorded with forced rolls, seeds matching the
+  original's damage: played as recorded, frames as the original's but a landing flier's boxes.
 
 ### The adventure lane's harness (H1, H2: its batch E3)
 
@@ -525,6 +533,18 @@ Accepted by the user (M1 2026-10-13, M2 2026-10-14); moved to the log,
 ## M3 review list
 
 (Filled by the tasks: choices queued for the milestone review under the autonomy contract.)
+
+- T7b-2b-3: not split, at the user's word. **Formats** (lasting): the key catalogue's
+  `EXE:0x<address>` source, a string of the user's `Heroes3.exe` read at run time (Acid Breath's
+  line is the executable's own text, not a table's: the viewer's binary now needs the
+  installation's `Heroes3.exe` for its log, a build `h3_formats::exe` knows), `%i` read as `%d`;
+  the asset tables' `[battle]` `drain_sound` and `thunderbolt_sound` (harvested). *Provisional*:
+  the sounds' waits not built (as the heal's); after a shot or a spell a defending stack's group
+  4 counts in the loop's length, where a melee strike counts its hit group as read (`machines` and
+  `arrow` show the whole group 4; the reading counts the hit group there too); the pending
+  spells but Poison and Acid Breath, and the flies' dispels, take effect without their
+  animations and lines (NOTES); a pending spell's events not right after its strike's play as
+  the striker's effects do (the engine emits them so).
 
 - T7b-2b-2b: **the asset tables' `[battle]`** gains `good_morale_sound`, `bad_morale_sound`,
   `fear_sound` and `luck_sound` (optional entry names, harvested from the strings the four

@@ -67,9 +67,48 @@ const ARTILLERY: [(u32, u32); 4] = [(1, 1), (3, 2), (3, 2), (2, 1)];
 /// The divisor of a shot's value at a stack that loses its turns (0x435CB0).
 const DISABLED: i32 = 10;
 
+/// The damage the computer's predictions plan on each stack (+0x534; 0x4430D0), by stack id
+/// (E23 T4b2): what the side's stacks that act before the other side's next one are expected to
+/// deal. A predicted turn's estimates read the hit points less it (0x443080 with the battle
+/// context's prediction flag, [`Context::predicting`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Planned([u64; STACK_CAPACITY]);
+
+impl Default for Planned {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Planned {
+    /// Nothing planned (0x4430D0 with 0 on every listed stack).
+    pub const fn new() -> Self {
+        Self([0; STACK_CAPACITY])
+    }
+
+    /// The damage planned on stack `id`.
+    pub const fn on(&self, id: StackId) -> u64 {
+        self.0[id.index()]
+    }
+
+    /// Plans `damage` more on stack `id` of `state` (0x4430D0 of the sum): at most its hit points
+    /// (1 for a clone).
+    pub fn add(&mut self, state: &BattleState, id: StackId, damage: u64) {
+        let slot = &mut self.0[id.index()];
+        *slot = slot.saturating_add(damage).min(hit_points(state.at(id)));
+    }
+
+    /// The hit points stack `id` of `state` has left after the damage planned on it (0x443080
+    /// with flag 1): at least 0.
+    pub fn left(&self, state: &BattleState, id: StackId) -> u64 {
+        hit_points(state.at(id)).saturating_sub(self.on(id))
+    }
+}
+
 /// The computer's battle context for a side (0x435EC0): the least attack and defense bonus of
 /// the stacks on the field, whether the side is desperate (BAT-SIE-023), and the strengths of
-/// the side and of the other side over all their records (+0xC, +0x10).
+/// the side and of the other side over all their records (+0xC, +0x10); in a prediction (+9) the
+/// damage planned so far.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Context {
     pub(crate) side: BattleSide,
@@ -77,9 +116,50 @@ pub struct Context {
     pub(crate) min_defense: i64,
     pub(crate) desperate: bool,
     pub(crate) strengths: (i32, i32),
+    pub(crate) planned: Option<Planned>,
 }
 
 impl Context {
+    /// The context of a predicted turn (the prediction flag +9 that 0x421F80 and 0x41F060 set;
+    /// E23 T4b2) with the damage `planned` so far: its estimates read each stack's hit points
+    /// less the damage planned on it ([`Context::left`]).
+    #[must_use]
+    pub const fn predicting(self, planned: &Planned) -> Self {
+        Self {
+            planned: Some(*planned),
+            ..self
+        }
+    }
+
+    /// Whether the context is a predicted turn's (+9).
+    pub const fn predicts(&self) -> bool {
+        self.planned.is_some()
+    }
+
+    /// The hit points of stack `id` the computer's estimates read (0x443080 with the context's
+    /// prediction flag): in a prediction less the damage planned on it (at least 0), else all of
+    /// them (1 for a clone).
+    pub fn left(&self, state: &BattleState, id: StackId) -> u64 {
+        match &self.planned {
+            Some(p) => p.left(state, id),
+            None => hit_points(state.at(id)),
+        }
+    }
+
+    /// Whether stack `id` has no hit points left after the damage planned on it in a prediction
+    /// (the readers that pass such a stack over test nothing outside one).
+    pub fn spent(&self, state: &BattleState, id: StackId) -> bool {
+        self.planned.is_some_and(|p| p.left(state, id) == 0)
+    }
+
+    /// The hit points of `a` and `t` the computer's value of `a`'s strike or shot on `t` reads
+    /// (0x435B90): [`Context::left`] of each; none in a prediction where either has none left
+    /// (the value is then 0).
+    fn pair_left(&self, state: &BattleState, (a, t): (StackId, StackId)) -> Option<(u64, u64)> {
+        let (a0, t0) = (self.left(state, a), self.left(state, t));
+        (!self.predicts() || (a0 > 0 && t0 > 0)).then_some((a0, t0))
+    }
+
     /// The side's own strength and the other side's (+0xC, +0x10: 0x41EAC0 with flag 1 over
     /// their living stacks but the turrets, as 32-bit sums).
     pub const fn strengths(&self) -> (i32, i32) {
@@ -402,6 +482,7 @@ pub(crate) fn context(
         min_defense,
         desperate: false,
         strengths: (0, 0),
+        planned: None,
     };
     let own = strength(state, (ruleset, field), &ctx, side);
     let other = strength(state, (ruleset, field), &ctx, side.opponent());
@@ -589,30 +670,44 @@ pub(crate) fn kept_out(state: &BattleState, ruleset: &BattleRuleset, id: StackId
 /// position next to a defender (a full move more from a stop), or of a dead defender's place
 /// within its speed: that cost over its speed, rounded up, at least 1. `None` for a stack the
 /// computer gives no target (a war machine but the Ballista, a hypnotized or berserk stack, one
-/// blind or turned to stone for more than a round) or that reaches none within the range.
+/// blind or turned to stone for more than a round) or that reaches none within the range. In a
+/// prediction with the damage `planned` (E23 T4b2) neither the stack nor an enemy without hit
+/// points left after it counts.
 pub(crate) fn turns(
     state: &BattleState,
     (ruleset, field): (&BattleRuleset, Field),
+    planned: Option<&Planned>,
     id: StackId,
 ) -> Option<u32> {
     let me = state.at(id);
     let status = me.spells.status;
+    // In a prediction (E23 T4b2) neither the stack nor an enemy counts without hit points left
+    // after the damage planned on it (0x422BC1, 0x422CDE): a dead enemy neither.
+    let left = |j: StackId| planned.is_none_or(|p| p.left(state, j) > 0);
     if (me.has(StackTraits::WAR_MACHINE) && !is_ballista(me))
         || status.contains(Status::HYPNOTIZED)
         || status.contains(Status::BERSERK)
         || kept_out(state, ruleset, id)
+        || !left(id)
     {
         return None;
     }
     if shoots(state, field, id) {
-        return Some(1);
+        // Every enemy but the turrets at one turn, the dead too; in a prediction only those with
+        // hit points left.
+        let any = planned.is_none_or(|p| {
+            (0u8..)
+                .zip(state.stacks.iter())
+                .any(|(j, t)| t.side != me.side && !t.is_turret() && p.left(state, StackId(j)) > 0)
+        });
+        return any.then_some(1);
     }
     let (cost, stops) = costs(state, (ruleset, field), id);
     let speed = u32::from(me.speed_now());
     let reached = |hex: Hex| cost.get(hex.index()).copied().filter(|&c| c != UNREACHED);
     let mut least: Option<u32> = None;
-    for t in state.stacks.iter() {
-        if t.side == me.side || t.is_turret() {
+    for (j, t) in (0u8..).zip(state.stacks.iter()) {
+        if t.side == me.side || t.is_turret() || !left(StackId(j)) {
             continue;
         }
         let found = if t.is_alive() {
@@ -654,16 +749,18 @@ impl Threats {
         Self([const { Cell::new(None) }; STACK_CAPACITY])
     }
 
-    /// The [`turns`] of stack `id`, computed the first time.
+    /// The [`turns`] of stack `id` with the damage `planned` of the choice's context, computed the
+    /// first time.
     fn turns(
         &self,
         state: &BattleState,
         (ruleset, field): (&BattleRuleset, Field),
+        planned: Option<&Planned>,
         id: StackId,
     ) -> Option<u32> {
         let cell = &self.0[id.index()];
         cell.get().unwrap_or_else(|| {
-            let t = turns(state, (ruleset, field), id);
+            let t = turns(state, (ruleset, field), planned, id);
             cell.set(Some(t));
             t
         })
@@ -769,7 +866,7 @@ fn score(
     let divisor = if disabled {
         MAX_TURNS
     } else {
-        turns(state, (ruleset, field), id).map_or(MAX_TURNS, |t| {
+        turns(state, (ruleset, field), ctx.planned.as_ref(), id).map_or(MAX_TURNS, |t| {
             i32::try_from(t).unwrap_or(MAX_TURNS).min(MAX_TURNS)
         })
     };
@@ -814,16 +911,17 @@ pub(crate) fn turret_target(
     best.1
 }
 
-/// The computer's estimate of the damage a shot of `shooter` deals to `target` (0x4359B0,
-/// 0x442780; BAT-WAR-008): [`damage_estimate`] of the shooter's creatures by its hit points
-/// (rounded up), with the shot flag, at most the target's hit points.
+/// The computer's estimate of the damage a shot of `shooter` with `hp` hit points deals to
+/// `target` (0x4359B0, 0x442780; BAT-WAR-008): [`damage_estimate`] of the shooter's creatures by
+/// those hit points (rounded up), with the shot flag, at most the target's hit points.
 pub(crate) fn estimate(
     state: &BattleState,
     ruleset: &BattleRuleset,
     (shooter, target): (StackId, StackId),
+    hp: u64,
 ) -> u64 {
     let s = state.at(shooter);
-    let count = hit_points(s).div_ceil(u64::from(s.max_hp.max(1)));
+    let count = hp.div_ceil(u64::from(s.max_hp.max(1)));
     damage_estimate(state, ruleset, (shooter, target), count, true, 0)
 }
 
@@ -890,7 +988,7 @@ pub(crate) fn base_damage(
 /// estimated at `damage` on `struck` with `left` hit points (0x422440): the rule's reflection
 /// ([`magic::reflection`]: none for a fire-immune striker or without a shield) of the lesser of
 /// the two.
-fn reflection_estimate(
+pub(crate) fn reflection_estimate(
     state: &BattleState,
     ruleset: &BattleRuleset,
     (striker, struck): (StackId, StackId),
@@ -1227,7 +1325,8 @@ fn spell_value(
 /// shot flag, the walker's; BAT-AI-005): with both stacks' whole hit points, the [`exchange`]'s
 /// damage to `t` valued at `t`'s worth (1000 per creature in desperate mode), less the hit points
 /// `a` loses at `a`'s worth (never desperate), both without the shot flag; as the original's
-/// 32-bit integers.
+/// 32-bit integers. In a prediction (E23 T4b2) each stack's hit points are those left after the
+/// damage planned on it ([`Context::left`]), and the value is 0 when either has none left.
 // rule: BAT-AI-005
 pub(crate) fn strike_value(
     state: &BattleState,
@@ -1236,26 +1335,27 @@ pub(crate) fn strike_value(
     (a, t): (StackId, StackId),
     jousting: u8,
 ) -> i32 {
-    let (a0, t0) = (hit_points(state.at(a)), hit_points(state.at(t)));
-    let (a1, t1) = exchange(state, ruleset, ctx.side, ((a, a0), (t, t0)), jousting);
-    let gain = damage_value(
-        state,
-        (ruleset, field),
-        ctx,
-        (t, t0 - t1),
-        (false, ctx.desperate),
-    );
-    if a0 > a1 {
-        gain.wrapping_sub(damage_value(
+    ctx.pair_left(state, (a, t)).map_or(0, |(a0, t0)| {
+        let (a1, t1) = exchange(state, ruleset, ctx.side, ((a, a0), (t, t0)), jousting);
+        let gain = damage_value(
             state,
             (ruleset, field),
             ctx,
-            (a, a0 - a1),
-            (false, false),
-        ))
-    } else {
-        gain
-    }
+            (t, t0 - t1),
+            (false, ctx.desperate),
+        );
+        if a0 > a1 {
+            gain.wrapping_sub(damage_value(
+                state,
+                (ruleset, field),
+                ctx,
+                (a, a0 - a1),
+                (false, false),
+            ))
+        } else {
+            gain
+        }
+    })
 }
 
 /// Whether stack `id` can shoot now for the computer with `blocker` left out of its blockers
@@ -1279,7 +1379,8 @@ pub(crate) fn total_hit_points(state: &BattleState, id: StackId) -> u64 {
 /// The computer's value of a shot of `shooter` at `target` before any divisor (0x435B90 with the
 /// shot flag; as 0x435C70 gives it): the kills of its estimated damage ([`estimate`]) times the
 /// worth of one of the target's creatures with the shot flag ([`kill_value`]; 1000 in `desperate`
-/// mode).
+/// mode). In a prediction (E23 T4b2) by the shooter's hit points left after the damage planned
+/// on it, at most the target's left, and 0 when either has none left.
 fn kill_shot_value(
     state: &BattleState,
     (ruleset, field): (&BattleRuleset, Field),
@@ -1288,13 +1389,16 @@ fn kill_shot_value(
     desperate: bool,
 ) -> i32 {
     let t = state.at(target);
-    let dealt = estimate(state, ruleset, (shooter, target));
-    let v = if desperate && !t.has(StackTraits::CLONE) {
-        X87::int(DESPERATE_WORTH)
-    } else {
-        worth(state, (ruleset, field), ctx, target, true)
-    };
-    kill_value(t, i64::try_from(dealt).unwrap_or(i64::MAX), v)
+    ctx.pair_left(state, (shooter, target))
+        .map_or(0, |(a0, t0)| {
+            let dealt = estimate(state, ruleset, (shooter, target), a0).min(t0);
+            let v = if desperate && !t.has(StackTraits::CLONE) {
+                X87::int(DESPERATE_WORTH)
+            } else {
+                worth(state, (ruleset, field), ctx, target, true)
+            };
+            kill_value(t, i64::try_from(dealt).unwrap_or(i64::MAX), v)
+        })
 }
 
 /// The computer's value of a shot of `shooter` at `target` (0x435CB0, 0x435B90; BAT-WAR-008): its
@@ -1321,7 +1425,7 @@ pub(crate) fn shot_value(
         MAX_TURNS
     } else {
         threats
-            .turns(state, (ruleset, field), target)
+            .turns(state, (ruleset, field), ctx.planned.as_ref(), target)
             .map_or(MAX_TURNS, |n| {
                 i32::try_from(n).unwrap_or(MAX_TURNS).min(MAX_TURNS)
             })
@@ -1411,7 +1515,8 @@ struct Pick {
 /// stack. A stack's value is its [`shot_value`], the shot aimed at its front hex; an area
 /// shooter's is its [`area_value`] at the stack's position and, for a two-hex stack, at its other
 /// hex when strictly higher there (the shot then aimed there), and a stack whose value is below 0
-/// is no target. `None` without a target.
+/// is no target; in a prediction neither is a stack without hit points left after the planned
+/// damage (E23 T4b2). `None` without a target.
 // rule: BAT-WAR-008, BAT-AI-002, BAT-AI-003
 fn pick(
     state: &BattleState,
@@ -1423,10 +1528,11 @@ fn pick(
     let me = state.at(shooter);
     let mut best: Option<(bool, Pick)> = None;
     for (i, t) in (0u8..).zip(state.stacks.iter()) {
-        if !t.is_alive() || !me.may_attack(t) {
+        let target = StackId(i);
+        // In a prediction not a stack without hit points left after the planned damage (0x41EC34).
+        if !t.is_alive() || !me.may_attack(t) || ctx.spent(state, target) {
             continue;
         }
-        let target = StackId(i);
         let fp = t.footprint(field);
         let (value, at) = if me.has(StackTraits::AREA_SHOT) {
             let area = |at| {
@@ -1498,6 +1604,18 @@ pub(crate) fn shot(
 ) -> Shot {
     let side = state.at(shooter).controller();
     let ctx = context(state, ruleset, field, side);
+    shot_in(state, (ruleset, field), (&ctx, shooter), wall)
+}
+
+/// What the computer's shooter `shooter` does in the context `ctx` ([`shot`]; a predicted turn's
+/// context, E23 T4b2, asks for no wall shot).
+pub(crate) fn shot_in(
+    state: &BattleState,
+    (ruleset, field): (&BattleRuleset, Field),
+    (ctx, shooter): (&Context, StackId),
+    wall: impl FnOnce(&Context, i32) -> Option<u8>,
+) -> Shot {
+    let ctx = *ctx;
     let threats = Threats::new();
     let first = pick(
         state,

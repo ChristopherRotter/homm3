@@ -103,6 +103,8 @@ good_morale_sound = "GoodMrle"
 bad_morale_sound = "BadMrle"
 fear_sound = "Fear"
 luck_sound = "goodluck"
+drain_sound = "DrainLif"
+thunderbolt_sound = "LightBlt"
 
 [[creature]]
 key = "pikeman"

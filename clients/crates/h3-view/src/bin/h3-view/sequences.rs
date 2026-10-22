@@ -216,6 +216,8 @@ fn sequences(options: &Options) -> Result<usize, String> {
     )
     .map_err(|e| format!("{}: {e}", layout_path.display()))?;
     let bytes = read_archives(&options.install)?;
+    // The executable's own strings: read only when a line needs them.
+    let exe = crate::text::executable(&options.install).unwrap_or_default();
     let archives = bytes
         .iter()
         .map(|(name, b)| {
@@ -307,7 +309,7 @@ fn sequences(options: &Options) -> Result<usize, String> {
             (&timeline, &spells),
         )
         .map_err(|e| format!("{}: {e}", sequence.id))?;
-        let catalogue = log::catalogue(&tables, &archives)?;
+        let catalogue = log::catalogue(&tables, &archives, &exe)?;
         let shown = pointer::shown(&record, &timeline, &turned, &inputs, &layout, &catalogue);
 
         pointer::entered(
@@ -333,14 +335,20 @@ fn sequences(options: &Options) -> Result<usize, String> {
         write(&ours_path, ours.as_bytes())?;
         if let Some(dir) = &options.frames {
             let here = dir.join(&sequence.id);
-            let panels = log::panels(&record, &shown.log, &tables, &layout, &archives)?;
+            let panels = log::panels(&record, &shown.log, &tables, &layout, (&archives, &exe))?;
             let interface = Interface {
                 panels: &panels,
                 legal: &Legal::default(),
                 shown: Some(&shown),
             };
             let drawn = draw_frames(
-                &here, &record, &timeline, &tables, &layout, &archives, &interface,
+                &here,
+                &record,
+                &timeline,
+                &tables,
+                &layout,
+                (&archives, &exe),
+                &interface,
             )?;
             println!(
                 "{}: {drawn} frames drawn in {}",
@@ -409,7 +417,7 @@ pub(crate) fn draw_frames(
     timeline: &Timeline,
     tables: &Tables,
     layout: &BattleLayout,
-    archives: &[(&str, LodArchive<'_>)],
+    (archives, exe): (&[(&str, LodArchive<'_>)], &[u8]),
     interface: &Interface<'_>,
 ) -> Result<usize, String> {
     let panels = interface.panels;
@@ -433,7 +441,7 @@ pub(crate) fn draw_frames(
     });
     let status = match &pointer {
         Some((_, p)) => {
-            let catalogue = log::catalogue(tables, archives)?;
+            let catalogue = log::catalogue(tables, archives, exe)?;
             let name = |s: &Stack| {
                 let key = manifest.keys.creatures.get(usize::from(s.creature))?;
                 Some(format!("creature.{key}"))

@@ -384,6 +384,48 @@ pub const FEAR: u8 = 15;
 /// Good luck's ([`GOOD_MORALE`]).
 pub const GOOD_LUCK: u8 = 18;
 
+/// The magic animations of the striker's effects and the spells after a strike (design §7.16;
+/// E17 M3 T7b-2b-3), over one stack (player 1) unless named: the bolt from the sky 1 (`C11spA0`,
+/// one frame at [`BOLT_TIME`]: Lightning Bolt's 0x5A0B15 and the Thunderbird's 0x441315), then
+/// [`THUNDERBOLT`] over the marked stack (player 2); Life Drain 0x4A over the drinkers (0x440E83),
+/// Death Stare 0x50 (0x44113F) and the Rust Dragon's acid 0x51 (0x44156A) over the stack struck,
+/// each 100 ms a frame without its hit.
+pub const BOLT: u8 = 1;
+/// The bolt from the sky's frame time, ms ([`BOLT`]).
+pub const BOLT_TIME: u32 = 10;
+/// The Thunderbird's bolt over the marked stack (`strike_animation` 0x44135B: 0x31, Lightning
+/// Bolt's own; [`BOLT`]).
+pub const THUNDERBOLT: u8 = 49;
+/// Life Drain's ([`BOLT`]).
+pub const LIFE_DRAIN: u8 = 74;
+/// Death Stare's ([`BOLT`]).
+pub const DEATH_STARE: u8 = 80;
+/// The acid's ([`BOLT`]).
+pub const ACID: u8 = 81;
+
+/// The executable's numbers of the spells of the strikes' effects (E17 M3 T7b-2b-3, design
+/// §7.16): Lightning Bolt and the Titans' (the bolt from the sky, 0x5A0B0C), Poison (its handler
+/// plays its animation with the stack's hit, 0x5A15AF), Death Stare (its sound for the striker's
+/// effect, 0x44111A), Acid Breath (its handler lowers the defense by 3 and writes the executable's
+/// own line, 0x5A1E70; its sound and name for the acid, 0x44150E).
+pub const LIGHTNING_BOLT: u16 = 17;
+/// The Titans' Lightning Bolt ([`LIGHTNING_BOLT`]).
+pub const TITAN_BOLT: u16 = 57;
+/// Poison ([`LIGHTNING_BOLT`]).
+pub const POISON: u16 = 71;
+/// Death Stare ([`LIGHTNING_BOLT`]).
+pub const DEATH_STARE_SPELL: u16 = 79;
+/// Acid Breath ([`LIGHTNING_BOLT`]).
+pub const ACID_BREATH: u16 = 80;
+/// The spells a melee strike leaves pending on the stack it struck (`strike_spell_choice`
+/// 0x440500 sets +0xEC: Curse, Blind, Stone Gaze, Poison, Bind, Disease, Paralyze, Age, Acid
+/// Breath), cast as a creature's at the end of the strike's animation, before the dead die
+/// (`strike_animation` 0x469102); the striker's own effects come after the strike's line
+/// (`striker_effects` 0x440BC0).
+const PENDING: [u16; 9] = [42, 62, 70, 71, 72, 73, 74, 75, 80];
+/// Acid Breath's lowering of the defense (0x5A1E76).
+const ACID_DEFENSE: i32 = 3;
+
 /// The count a stack's box shows from `shown` on (E17 M3 T5b, design §4.3): a strike's kills
 /// show at its end.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -599,6 +641,15 @@ pub enum Sound {
     /// Good luck, cued on the striker or shooter (`luck_sound`, category 3 as a spell's:
     /// `play_sound_async` from `melee_strike` 0x441860 and `stack_shot` 0x43F97E).
     Luck,
+    /// Life Drain, cued on the drinkers (`drain_sound`, category 2: `play_sound_file` from
+    /// `striker_effects` 0x440E6D; E17 M3 T7b-2b-3).
+    Drain,
+    /// The Thunderbird's bolt, cued on the stack struck (`thunderbolt_sound`, `play_sound_file`
+    /// from 0x4412FF).
+    Thunderbolt,
+    /// A spell's own sound (its handle) started as a file, category 2, cued on the stack struck:
+    /// Death Stare's (`play_sound_file` 0x441126) and the Rust Dragon's acid (0x44151A).
+    SpellFile(u16),
 }
 
 /// A sound a stack starts at a time, or (`stop`) the move sound it ends then (E17 M2 T5b; the
@@ -1290,6 +1341,7 @@ fn played(
         outcome: None,
         tactics: snapshot.tactics.is_some(),
         acting: snapshot.active,
+        strike_casts: Vec::new(),
     };
     let mut actions = Vec::new();
     let mut fidgets = seed.map(|rng| Fidgets {
@@ -1515,6 +1567,10 @@ struct Reaction {
     stack: u8,
     group: u8,
     frames: u32,
+    /// The frames its part of the loop counts (`strike_animation` 0x468BD7 to 0x468C84): the
+    /// death group's for a death, else the hit group's, a defending stack's too, whose group 4
+    /// it draws (E17 M3 T7b-2b-3, `thunder`'s Vampire Lords).
+    counted: u32,
     died: bool,
     count: Option<u32>,
     sound: Sound,
@@ -1646,6 +1702,18 @@ struct Player<'a> {
     /// again at its end (0x445996, 0x4459ED; a Defend leaves it); none from a round's start
     /// (0x4761EE). Shown by the redraws of good morale and of a freeze before the next turn.
     acting: Option<u8>,
+    /// The spells the melee strike playing leaves pending, cast at its animation's end
+    /// ([`PENDING`]; E17 M3 T7b-2b-3).
+    strike_casts: Vec<StrikeCast>,
+}
+
+/// A spell a melee strike leaves pending on the stack it struck ([`PENDING`]): the stack, the
+/// spell's handle and the events of its effect.
+#[derive(Debug, Clone)]
+struct StrikeCast {
+    target: u8,
+    spell: u16,
+    effects: Vec<Event>,
 }
 
 /// A command's melee (`move_and_attack` 0x478900, `melee_attack` 0x441CB0): its striker, its
@@ -1752,6 +1820,9 @@ impl Player<'_> {
         let mut before_move: Option<(u8, bool)> = None;
         // A shooter and its facing before its shots.
         let mut shooter: Option<(u8, bool)> = None;
+        // The stack the last melee strike struck and its number before it: Life Drain's line
+        // names it (E17 M3 T7b-2b-3).
+        let mut last_hit: Option<(u8, u32)> = None;
         while let Some(event) = events.get(i) {
             i += 1;
             match *event {
@@ -1856,6 +1927,12 @@ impl Player<'_> {
                         } else {
                             Spread::Target
                         };
+                        // The spells it leaves pending, cast at its animation's end (E17 M3
+                        // T7b-2b-3).
+                        let (casts, next) = self.pending_casts(events, i, attacker);
+                        self.strike_casts = casts;
+                        i = next;
+                        last_hit = self.live(target).map(|l| (target, l.count));
                         self.strike(attacker, &hit, layer);
                         // After the strike's animation (`melee_strike` 0x441C5D).
                         let line = Logged::Strike {
@@ -1870,6 +1947,42 @@ impl Player<'_> {
                 Event::Struck { target, kills, .. } => {
                     self.reactions(&[(target, kills)]);
                 }
+                // A spell after a strike that is the striker's own effect (E17 M3 T7b-2b-3): the
+                // Thunderbird's bolt with its damage; another's effects at once.
+                Event::StrikeSpell { target, spell, .. } => {
+                    let from = i;
+                    while events.get(i).is_some_and(|e| {
+                        matches!(
+                            e,
+                            Event::EffectApplied { .. }
+                                | Event::EffectEnded { .. }
+                                | Event::SpellDamage { .. }
+                        )
+                    }) {
+                        i += 1;
+                    }
+                    self.strike_spell(target, spell, &events[from..i]);
+                }
+                Event::StrikeDamage {
+                    target,
+                    ref damage,
+                    kills,
+                    ..
+                } => self.acid(target, (damage.0, kills)),
+                Event::LifeDrained {
+                    stack,
+                    ref hit_points,
+                    resurrected,
+                } => {
+                    if let Some(hit) = last_hit {
+                        self.drain(stack, (hit_points.0, resurrected), hit);
+                    }
+                }
+                Event::DeathStared {
+                    attacker,
+                    target,
+                    kills,
+                } => self.death_stare(attacker, target, kills),
                 Event::Defended { stack } => {
                     self.defends(stack, true);
                     // A war machine writes no line (0x479758).
@@ -2211,6 +2324,241 @@ impl Player<'_> {
         }
     }
 
+    /// The spells a melee strike of `attacker` leaves pending ([`PENDING`]), from `events[i]` on:
+    /// each its target, its handle and the effects that follow it; and where the events go on.
+    fn pending_casts(
+        &self,
+        events: &[Event],
+        mut i: usize,
+        attacker: u8,
+    ) -> (Vec<StrikeCast>, usize) {
+        let mut casts = Vec::new();
+        while let Some(&Event::StrikeSpell {
+            striker,
+            target,
+            spell,
+        }) = events.get(i)
+        {
+            let pending = self
+                .stage
+                .casts
+                .spells
+                .get(&spell)
+                .is_some_and(|l| PENDING.contains(&l.original));
+            if striker != attacker || !pending {
+                break;
+            }
+            let from = i + 1;
+            let mut end = from;
+            while events.get(end).is_some_and(|e| {
+                matches!(e, Event::EffectApplied { .. } | Event::EffectEnded { .. })
+            }) {
+                end += 1;
+            }
+            casts.push(StrikeCast {
+                target,
+                spell,
+                effects: events[from..end].to_vec(),
+            });
+            i = end;
+        }
+        (casts, i)
+    }
+
+    /// A spell a melee strike left pending, cast as a creature's at its animation's end
+    /// (`strike_animation` 0x469102, `cast_spell` 0x59FE30 with caster kind 1; design §7.16; E17
+    /// M3 T7b-2b-3): its own sound (category 3, 0x5A0331), then its handler: Poison's effect, its
+    /// line (`battle_log_cast` 0x5A8EFC) and its animation over the stack with the stack's hit
+    /// (0x5A15AF); Acid Breath its animation, the defense lowered by 3 (to 0 at least) and the
+    /// executable's own line (0x5A1E70 to 0x5A1F53), no spell set; the others' effects at once
+    /// (not built: their handlers and lines). A cast clears the outline as it starts (0x5A004C,
+    /// 0x477B60) and outlines the stack whose turn it is at its end (`cast_spell`'s tail
+    /// 0x5A216B, 0x477B16), each in a redraw shown at once (the recorded `acid`: the
+    /// Rust Dragon outlined from Acid Breath's end, not from the Wyvern Monarchs' Poison's start
+    /// to its end); the tail draws nothing else for a creature.
+    fn strike_cast(
+        &mut self,
+        StrikeCast {
+            target,
+            spell,
+            effects,
+        }: StrikeCast,
+    ) {
+        let look = self
+            .stage
+            .casts
+            .spells
+            .get(&spell)
+            .cloned()
+            .unwrap_or_default();
+        let Some(live) = self
+            .live(target)
+            .filter(|_| matches!(look.original, POISON | ACID_BREATH))
+        else {
+            self.effects(&effects);
+            return;
+        };
+        let time = self.speed.scale(TICK);
+        // The outline cleared as the cast starts, in a redraw shown at once, if a cast set it.
+        if self.outlined.last().is_some_and(|(_, s)| s.is_some()) {
+            self.outlined.push((self.clock.now, None));
+        }
+        self.cue(target, Sound::Spell(spell), false);
+        let poison = look.original == POISON;
+        // Acid Breath's defense lowered (none for Poison).
+        let lowered = (!poison).then(|| live.defense.clamp(0, ACID_DEFENSE));
+        if let Some(lowered) = lowered {
+            self.stacks
+                .entry(target)
+                .and_modify(|l| l.defense -= lowered);
+        } else {
+            self.effects(&effects);
+            let line = Logged::Poisoned {
+                stack: target,
+                count: live.count,
+            };
+            self.log.push((self.clock.now, line));
+        }
+        if let Some(number) = look.animation {
+            self.over_one(number, (target, &live), time, poison);
+        }
+        if let Some(lowered) = lowered {
+            let line = Logged::AcidBreath {
+                stack: target,
+                count: live.count,
+                lowered,
+            };
+            self.log.push((self.clock.now, line));
+        }
+        // The outline: the turn's stack's from the cast's end.
+        self.outlined.push((self.clock.now, self.acting));
+    }
+
+    /// A spell after a strike that is the striker's own effect (`striker_effects` 0x440BC0; E17
+    /// M3 T7b-2b-3): the Thunderbird's bolt (0x441185 to 0x441374) with its damage: the log's
+    /// line, its sound, the bolt from the sky over the stack, the damage's line (named by the
+    /// spell), then [`THUNDERBOLT`] over the marked stack with its reaction; the sound waited for
+    /// as good morale's (not built). Any other its effects at once (the flies' dispels and
+    /// Weakness: not built), as a pending one the strike did not take.
+    fn strike_spell(&mut self, target: u8, spell: u16, effects: &[Event]) {
+        let damage = effects.iter().find_map(|e| match *e {
+            Event::SpellDamage {
+                target: t,
+                ref damage,
+                kills,
+                ..
+            } if t == target => Some((damage.0, kills)),
+            _ => None,
+        });
+        let (Some((damage, kills)), Some(live)) = (damage, self.live(target)) else {
+            self.effects(effects);
+            return;
+        };
+        let line = Logged::Thunderbolt {
+            stack: target,
+            count: live.count,
+        };
+        self.log.push((self.clock.now, line));
+        self.cue(target, Sound::Thunderbolt, false);
+        self.over_one(BOLT, (target, &live), self.speed.scale(BOLT_TIME), false);
+        let line = Logged::SpellDamage {
+            spell,
+            hit: (target, damage, kills),
+        };
+        self.log.push((self.clock.now, line));
+        self.marked((target, &live), kills, Some(THUNDERBOLT));
+        self.effects(effects);
+    }
+
+    /// The handle of the record's spell numbered `original` in the executable, if a cast needs it.
+    fn spell_handle(&self, original: u16) -> Option<u16> {
+        self.stage
+            .casts
+            .spells
+            .iter()
+            .find(|(_, l)| l.original == original)
+            .map(|(&h, _)| h)
+    }
+
+    /// The Rust Dragon's acid on the stack it struck (`striker_effects` 0x44149F to 0x441586;
+    /// E17 M3 T7b-2b-3): Acid Breath's sound (category 2), the damage and its line (named by Acid
+    /// Breath), animation [`ACID`] over the stack without its hit, the sound waited for (not
+    /// built), then the stack's reaction (`strike_animation` without an animation).
+    fn acid(&mut self, target: u8, (damage, kills): (u64, u32)) {
+        let Some(live) = self.live(target) else {
+            return;
+        };
+        if let Some(spell) = self.spell_handle(ACID_BREATH) {
+            self.cue(target, Sound::SpellFile(spell), false);
+            let line = Logged::SpellDamage {
+                spell,
+                hit: (target, damage, kills),
+            };
+            self.log.push((self.clock.now, line));
+        }
+        self.over_one(ACID, (target, &live), self.speed.scale(TICK), false);
+        self.react_alone(&[(target, kills)], [STRIKER, STRUCK]);
+    }
+
+    /// Life Drain after a strike of `stack` (`striker_effects` 0x440C01 to 0x440E8D; E17 M3
+    /// T7b-2b-3): the creatures it raised join the stack, the log's line (the drinkers by their
+    /// number before them, the stack `hit` struck by its number before the strike), its sound,
+    /// then animation [`LIFE_DRAIN`] over the drinkers without their hit, the box showing their
+    /// new number from its first frame; the sound waited for (not built).
+    fn drain(
+        &mut self,
+        stack: u8,
+        (hit_points, raised): (u64, u32),
+        (target, target_count): (u8, u32),
+    ) {
+        let Some(live) = self.stacks.get_mut(&stack) else {
+            return;
+        };
+        let count = live.count;
+        live.count = live.count.saturating_add(raised);
+        let live = live.clone();
+        let line = Logged::Drain {
+            stack,
+            count,
+            hit_points,
+            raised,
+            target,
+            target_count,
+        };
+        self.log.push((self.clock.now, line));
+        self.cue(stack, Sound::Drain, false);
+        let first = self.over_one(LIFE_DRAIN, (stack, &live), self.speed.scale(TICK), false);
+        if let Some(shown) = first.filter(|_| raised > 0) {
+            self.counts.push(CountKey {
+                stack,
+                shown,
+                count: live.count,
+            });
+        }
+    }
+
+    /// Death Stare after a strike of `starer` on `target` (`striker_effects` 0x440EB6 to
+    /// 0x441178; E17 M3 T7b-2b-3): the log's line, Death Stare's sound (category 2), animation
+    /// [`DEATH_STARE`] over the stack without its hit, then the kills and the stack's reaction
+    /// (`strike_animation` without an animation); the sound waited for (not built).
+    fn death_stare(&mut self, starer: u8, target: u8, kills: u32) {
+        let (Some(gorgons), Some(live)) = (self.live(starer), self.live(target)) else {
+            return;
+        };
+        let line = Logged::DeathStare {
+            stack: starer,
+            count: gorgons.count,
+            target,
+            kills,
+        };
+        self.log.push((self.clock.now, line));
+        if let Some(spell) = self.spell_handle(DEATH_STARE_SPELL) {
+            self.cue(target, Sound::SpellFile(spell), false);
+        }
+        self.over_one(DEATH_STARE, (target, &live), self.speed.scale(TICK), false);
+        self.react_alone(&[(target, kills)], [STRIKER, STRUCK]);
+    }
+
     /// A frame of the hero of `side` (0 the attacker's): drawn now and shown at the deadline,
     /// which then moves on by `time` (a redraw with its frame wait); with `at_once`, shown now,
     /// the deadline as it is (E17 M3 T7b-1).
@@ -2331,6 +2679,20 @@ impl Player<'_> {
                             |e| matches!(*e, Event::EffectApplied { target, .. } if target == t),
                         );
                         match (damage, caster) {
+                            // Lightning Bolt (0x5A0B0C; E17 M3 T7b-2b-3): the bolt from the sky,
+                            // then its animation over the marked stack, the line after it.
+                            (Some((damage, kills)), _)
+                                if matches!(look.original, LIGHTNING_BOLT | TITAN_BOLT) =>
+                            {
+                                let bolt = self.speed.scale(BOLT_TIME);
+                                self.over_one(BOLT, (t, &live), bolt, false);
+                                self.marked((t, &live), kills, look.animation);
+                                let line = Logged::SpellDamage {
+                                    spell,
+                                    hit: (t, damage, kills),
+                                };
+                                self.log.push((self.clock.now, line));
+                            }
                             (Some((damage, kills)), Some(c)) if !look.projectile.is_empty() => {
                                 self.spell_projectile(c.point, &live, &look.projectile);
                                 self.marked((t, &live), kills, look.animation);
@@ -2389,6 +2751,15 @@ impl Player<'_> {
             _ => return,
         };
         let casts = self.stage.casts;
+        // Acid Breath only lowers the defense: no spell the box's hue counts (0x5A1E70; E17 M3
+        // T7b-2b-3, [`Player::strike_cast`]).
+        if casts
+            .spells
+            .get(&spell)
+            .is_some_and(|l| l.original == ACID_BREATH)
+        {
+            return;
+        }
         let Some(live) = self.stacks.get_mut(&stack) else {
             return;
         };
@@ -2487,7 +2858,7 @@ impl Player<'_> {
         self.iterate(
             None,
             (0, 0, 0, 2),
-            &reactions,
+            (&reactions, false),
             [STANDING, STRUCK],
             riding.as_ref(),
         );
@@ -2770,6 +3141,7 @@ impl Player<'_> {
                 (g.hit, Sound::Wince)
             };
             let frames = live.look.count(group);
+            let counted = if died { frames } else { live.look.count(g.hit) };
             let live = live.clone();
             if died && living {
                 self.happenings.push(Happening::Died(live.side));
@@ -2778,6 +3150,7 @@ impl Player<'_> {
                 stack,
                 group,
                 frames,
+                counted,
                 died,
                 count: (kills > 0).then_some(live.count),
                 sound,
@@ -2814,7 +3187,7 @@ impl Player<'_> {
         self.iterate(
             Some((attacker, &live)),
             (group, 0, frames, frames),
-            &reactions,
+            (&reactions, true),
             [layer, STRUCK],
             None,
         );
@@ -2842,7 +3215,7 @@ impl Player<'_> {
     /// taken (E17 M2 T5c, the reviewer).
     fn react_alone(&mut self, hit: &[(u8, u32)], layers: [u8; 2]) {
         let reactions = self.reactions(hit);
-        self.iterate(None, (0, 0, 0, 2), &reactions, layers, None);
+        self.iterate(None, (0, 0, 0, 2), (&reactions, false), layers, None);
     }
 
     /// A shot of `shooter` at the stacks `hit` (`shot_animation` 0x43F2C0, §7.4); returns when
@@ -2878,7 +3251,7 @@ impl Player<'_> {
             self.iterate(
                 Some((shooter, &live)),
                 (group, n, 0, 2),
-                &reactions,
+                (&reactions, false),
                 [STANDING, STRUCK],
                 None,
             );
@@ -2920,7 +3293,7 @@ impl Player<'_> {
         self.iterate(
             Some((shooter, &live)),
             (group, climax, n - climax, 2),
-            &reactions,
+            (&reactions, false),
             [STANDING, STRUCK],
             None,
         );
@@ -3029,7 +3402,7 @@ impl Player<'_> {
         &mut self,
         striker: Option<(u8, &Live)>,
         (group, from, frames, counted): (u8, u32, u32, u32),
-        reactions: &[Reaction],
+        (reactions, melee): (&[Reaction], bool),
         [striking, struck]: [u8; 2],
         riding: Option<&Riding>,
     ) {
@@ -3039,7 +3412,16 @@ impl Player<'_> {
         // those; a shooter plays the rest of its group out beyond them and stands after its last
         // frame (the Cyclops' 10 frames after a 6-frame hit, sequence `shots`, E17 M3 T1b-1;
         // *provisional*: not read).
-        let longest = reactions.iter().map(|r| r.frames).max().unwrap_or(0);
+        // A melee strike marks its striker and counts each reaction's hit group, a defending
+        // stack's too (0x468C4F; E17 M3 T7b-2b-3, `thunder`); a shot or a spell marks none, and
+        // the recordings show a defending stack's whole group 4 after them (`machines`, `arrow`):
+        // there the group each draws counts (*provisional*: the reading counts the hit group
+        // there too).
+        let longest = reactions
+            .iter()
+            .map(|r| if melee { r.counted } else { r.frames })
+            .max()
+            .unwrap_or(0);
         let reacting = (counted + longest).saturating_sub(1).max(counted + 1);
         // A magic animation over the marked stacks lengthens the loop to its frames (E17 M3
         // T7b-1, design §7.16).
@@ -3104,6 +3486,11 @@ impl Player<'_> {
                 let frame = i.min(r.look.frames.saturating_sub(1));
                 self.magics.push(r.key(drawn, self.clock.now, Some(frame)));
             }
+        }
+        // The spells the strike left pending, cast before the dead die (0x469102; E17 M3
+        // T7b-2b-3).
+        for cast in core::mem::take(&mut self.strike_casts) {
+            self.strike_cast(cast);
         }
         // The strike's end (`strike_animation` 0x4692A4 to 0x46938A, design §4.3; E17 M3 T5b):
         // the dead leave their hexes for the corpses, every stack's layer is 4 again and its

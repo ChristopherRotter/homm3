@@ -2,7 +2,7 @@
 
 Status: **in progress**, refined 2026-10-19 (BAT-Q52); T1a1 to T1a4 done (the cuts confirmed
 2026-10-20), T1c done (BAT-Q53, BAT-Q54); T1a5 done as cut (part C, §7.42 to §7.45); T1a5e (the spell evaluators) done (§7.46); T1b done, ADR-0027 accepted (BAT-Q55); T2 done (T2a the crate and the plain shooters, T2b the area value, the wall shot, the benchmark), the budget
-set; T3 done (cut in four: T3-0, T3a, T3b, T3c); T4 cut in three, T4a done, T4b cut in two, T4b1 done, T4b2 next · Follows E05 (the
+set; T3 done (cut in four: T3-0, T3a, T3b, T3c); T4 cut in three, T4a done, T4b done (cut in two), T4c next · Follows E05 (the
 AI lane, done) · Followed by E06 (training: this policy holds the neutral seat; AI-Q1) ·
 The battle lane's, later the AI lane's (BACKLOG).
 
@@ -210,9 +210,11 @@ found after that decision) belong to the neutral side's map too and are read (§
       Bloodlust's value 0x43C330 with its mass version (0x43A910 with the evaluator 0x438100), the
       attack bonus's value 0x437800 and the context's threat records (BAT-AI-014, slip 8; "the
       enemy beaten" and the predictions' draws BAT-STUB-9); §7.51; the log.
-    - [ ] **T4b2 The predictions** — 0x422A40 with the side's run, the predicted shooters' and
-      walkers' turns, the melee prediction and the predicted strike (§7.42) and the draws they
-      take; "the enemy beaten" from them.
+    - [x] **T4b2 The predictions** (2026-10-22; the user: whole) — 0x422A40 with the side's run
+      0x422880, the predicted shooters' and walkers' turns (the prediction flag through
+      `h3-battle`'s estimates and the walker), the melee prediction 0x4227A0 and the predicted
+      strike 0x4224E0 with their draws, "the enemy beaten" (BAT-AI-015, BAT-STUB-9 retired); a
+      hypnotized walker leaves itself out (the user: BAT-STUB-10, BAT-Q58); §7.52; the log.
   - [ ] **T4c The Master Genie** — the context's fill 0x43C040 with its seed 0x43BF20 and the
     second context (§7.42), its mean over the 34 evaluators and the removals (§7.44, §7.46; slips 9
     to 17); cut again at its checkpoint.

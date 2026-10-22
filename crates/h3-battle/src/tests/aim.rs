@@ -311,7 +311,7 @@ fn the_turns_until_a_stack_can_attack() {
     );
     let s = fresh(&r, &setup);
     let f = field(&r);
-    let at = |s: &BattleState, id: u8| turns(s, (&r, f), StackId(id));
+    let at = |s: &BattleState, id: u8| turns(s, (&r, f), None, StackId(id));
     // Behind the walls the walker reaches no defender; the archer shoots now; the flyer needs
     // its hex distance to a place next to the defender, 7 a turn.
     assert_eq!(at(&s, 0), None);
@@ -360,7 +360,7 @@ fn a_stack_blind_or_stone_for_more_than_a_round_has_no_target() {
     let r = rules();
     let s = fresh(&r, &setup(&r, &[(0, "flyer", 10)], &[(0, "slow", 10)]));
     let f = field(&r);
-    assert!(turns(&s, (&r, f), StackId(0)).is_some());
+    assert!(turns(&s, (&r, f), None, StackId(0)).is_some());
     // The original records no enemy for a stack blind or stone for more than a round (0x422BD0),
     // whatever else makes it lose its turns.
     for (name, rounds, kept_out) in [
@@ -384,7 +384,7 @@ fn a_stack_blind_or_stone_for_more_than_a_round_has_no_target() {
             "{name}"
         );
         assert_eq!(
-            turns(&t, (&r, f), StackId(0)).is_none(),
+            turns(&t, (&r, f), None, StackId(0)).is_none(),
             kept_out,
             "{name} {rounds}"
         );
@@ -403,15 +403,15 @@ fn a_dead_defender_s_place_counts_within_one_turn() {
     );
     let f = field(&r);
     let walker = s.at(StackId(0)).hex;
-    let living = turns(&s, (&r, f), StackId(0)).unwrap();
+    let living = turns(&s, (&r, f), None, StackId(0)).unwrap();
     assert!(living > 1, "{living}");
     let dead = &mut s.stacks.as_mut_slice()[2];
     dead.count = 0;
     dead.hex = Hex(walker.0 + 3);
-    assert_eq!(turns(&s, (&r, f), StackId(0)), Some(1));
+    assert_eq!(turns(&s, (&r, f), None, StackId(0)), Some(1));
     // Bound, it reaches neither (BAT-MAG-045).
     s.binds.bound |= 1;
-    assert_eq!(turns(&s, (&r, f), StackId(0)), None);
+    assert_eq!(turns(&s, (&r, f), None, StackId(0)), None);
 }
 
 /// A Castle siege with a damaging moat, players `human`, the wall of row 4 (target 2, hex 78)
@@ -436,7 +436,7 @@ fn a_two_hex_walker_pays_a_moat_hex_it_covers_once() {
     // players: no moat avoidance.
     let r = rules();
     let s = through_the_wall(&r, (0, "wide", 10), [true, true], 4 * 17 + 5);
-    assert_eq!(turns(&s, (&r, field(&r)), StackId(0)), Some(2));
+    assert_eq!(turns(&s, (&r, field(&r)), None, StackId(0)), Some(2));
 }
 
 // covers: BAT-SIE-022
@@ -448,9 +448,9 @@ fn a_computer_s_weak_walker_keeps_out_of_the_moat() {
     let r = rules();
     let f = field(&r);
     let human = through_the_wall(&r, (0, "fixed", 1), [true, true], 4 * 17 + 6);
-    assert_eq!(turns(&human, (&r, f), StackId(0)), Some(2));
+    assert_eq!(turns(&human, (&r, f), None, StackId(0)), Some(2));
     let computer = through_the_wall(&r, (0, "fixed", 1), [false, true], 4 * 17 + 6);
-    assert_eq!(turns(&computer, (&r, f), StackId(0)), None);
+    assert_eq!(turns(&computer, (&r, f), None, StackId(0)), None);
 }
 
 // covers: BAT-SIE-022
@@ -660,9 +660,24 @@ fn value(r: &BattleRuleset, s: &BattleState, target: u8) -> i32 {
     )
 }
 
+/// The computer's estimate of a shot of `shooter` at `target` by all its hit points.
+fn estimate_whole(
+    s: &BattleState,
+    r: &BattleRuleset,
+    (shooter, target): (StackId, StackId),
+) -> u64 {
+    estimate(
+        s,
+        r,
+        (shooter, target),
+        crate::aim::total_hit_points(s, shooter),
+    )
+}
+
 // covers: BAT-WAR-008
 #[test]
 fn the_ballista_estimates_its_shot_without_draws() {
+    let estimate = estimate_whole;
     let r = rules();
     let mut s = fresh(
         &r,
@@ -747,14 +762,14 @@ fn the_ballista_scores_kills_over_turns_but_not_on_easy_for_the_computer() {
             ..base
         },
     );
-    let dealt = |t: u8| i64::try_from(estimate(&s, &r, (gun(&s), StackId(t)))).unwrap();
+    let dealt = |t: u8| i64::try_from(estimate_whole(&s, &r, (gun(&s), StackId(t)))).unwrap();
     assert_eq!((dealt(2), dealt(3)), (2, 2));
-    assert_eq!(turns(&s, (&r, field(&r)), StackId(2)), Some(4));
+    assert_eq!(turns(&s, (&r, field(&r)), None, StackId(2)), Some(4));
     assert_eq!(
         value(&r, &s, 3),
         kill_value(s.at(StackId(3)), dealt(3), X87::int(140))
     );
-    assert_eq!(turns(&s, (&r, field(&r)), StackId(3)), Some(1));
+    assert_eq!(turns(&s, (&r, field(&r)), None, StackId(3)), Some(1));
 }
 
 // covers: BAT-WAR-008
@@ -804,7 +819,7 @@ fn the_ballista_prefers_a_stack_that_keeps_its_turns() {
         },
     );
     blind(&mut s, 3);
-    assert!(turns(&s, (&r, field(&r)), StackId(2)).is_some_and(|t| t > 5));
+    assert!(turns(&s, (&r, field(&r)), None, StackId(2)).is_some_and(|t| t > 5));
     assert_eq!((value(&r, &s, 2), value(&r, &s, 3)), (8 / 5, 66 / 10));
     assert_eq!(aimed(&r, &s), Some(2));
 }
@@ -854,7 +869,7 @@ fn a_war_machine_is_a_target_as_any_stack() {
     with_tent.difficulty = 1;
     s = fresh(&r, &with_tent);
     let ctx = context(&s, &r, field(&r), BattleSide::Attacker);
-    let dealt = i64::try_from(estimate(&s, &r, (gun(&s), StackId(3)))).unwrap();
+    let dealt = i64::try_from(estimate_whole(&s, &r, (gun(&s), StackId(3)))).unwrap();
     let whole = kill_value(
         s.at(StackId(3)),
         dealt,
@@ -1048,7 +1063,7 @@ fn the_automatic_ballista_does_not_show_hidden_pits() {
     let shot = |s: &BattleState| ballista_target(s, &r, field(&r), StackId(4)).map(|id| id.0);
     // Both one turn away: the serfs (the estimate's 2 hit points at 700 per 10: 140) before the
     // fixed (500: 100).
-    assert_eq!(turns(&clear, (&r, field(&r)), StackId(0)), Some(1));
+    assert_eq!(turns(&clear, (&r, field(&r)), None, StackId(0)), Some(1));
     assert_eq!(shot(&clear), Some(0));
     // A hidden pit changes nothing, whichever side's.
     assert_eq!(shot(&with_pit(BattleSide::Attacker)), Some(0));
@@ -1057,7 +1072,7 @@ fn the_automatic_ballista_does_not_show_hidden_pits() {
     for side in [BattleSide::Attacker, BattleSide::Defender] {
         let mut s = with_pit(side);
         s.spell_obstacles.reveal_for_tests(at(&r, 6, 5));
-        assert_eq!(turns(&s, (&r, field(&r)), StackId(0)), Some(2));
+        assert_eq!(turns(&s, (&r, field(&r)), None, StackId(0)), Some(2));
         assert_eq!(shot(&s), Some(1), "{side:?}");
     }
 }

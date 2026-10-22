@@ -25,9 +25,10 @@ use crate::text;
 pub fn catalogue(
     tables: &Tables,
     archives: &[(&str, LodArchive<'_>)],
+    exe: &[u8],
 ) -> Result<Catalogue, String> {
     let keys = text::read_keys(&text::default_keys(), tables)?;
-    let texts = text::tables(&keys, |name| lookup(archives, name))?;
+    let texts = text::tables(&keys, |name| lookup(archives, name), exe)?;
     let (original, problems) = Pack::original(&keys, &texts);
     match problems.first() {
         Some(problem) => Err(format!("the original's text: {problem}")),
@@ -109,7 +110,7 @@ pub fn panels(
     logged: &[(u32, battle_log::Logged)],
     tables: &Tables,
     layout: &BattleLayout,
-    archives: &[(&str, LodArchive<'_>)],
+    (archives, exe): (&[(&str, LodArchive<'_>)], &[u8]),
 ) -> Result<Panels, String> {
     let writes = logged.iter().any(|(_, l)| {
         !matches!(
@@ -121,7 +122,7 @@ pub fn panels(
         )
     });
     let catalogue = if writes {
-        catalogue(tables, archives)?
+        catalogue(tables, archives, exe)?
     } else {
         Catalogue::default()
     };
@@ -139,13 +140,14 @@ pub struct Writer {
 }
 
 impl Writer {
-    /// The original's words from `archives`' text tables, the log item's font of `layout`.
+    /// The original's words from `archives`' text tables and `exe`'s strings, the log item's
+    /// font of `layout`.
     pub fn new(
         tables: &Tables,
         layout: &BattleLayout,
-        archives: &[(&str, LodArchive<'_>)],
+        (archives, exe): (&[(&str, LodArchive<'_>)], &[u8]),
     ) -> Result<Self, String> {
-        Self::with(catalogue(tables, archives)?, layout, archives)
+        Self::with(catalogue(tables, archives, exe)?, layout, archives)
     }
 
     fn with(

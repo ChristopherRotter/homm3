@@ -131,9 +131,12 @@ impl Walker<'_> {
     /// instead of a losing attack on `best`: with no area threat on the walker (0x41F920 with the
     /// reach's mask; [`scores::area_threat`]), guarding a shooter ([`Walker::guard`]); then the
     /// attack on `best` after all; else the step to safety ([`Walker::step_to_safety`]); else
-    /// nothing.
+    /// nothing. In a prediction only the attack after all (0x421E8D, 0x421EC8).
     // rule: BAT-AI-010
     pub(crate) fn fallback(&self, best: Option<&Best>) -> Option<Command> {
+        if self.predicts() {
+            return best.and_then(|b| self.attack(b));
+        }
         let threat = scores::area_threat(
             self.state,
             self.ruleset,

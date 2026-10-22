@@ -97,7 +97,8 @@ impl Message {
                     continue;
                 }
                 Some('s') => Kind::Text,
-                Some('d') => Kind::Number,
+                // `%i` as `%d` (Acid Breath's line, the executable's own: E17 M3 T7b-2b-3).
+                Some('d' | 'i') => Kind::Number,
                 other => return Err(PrintfError::Specifier(other)),
             };
             let name = names

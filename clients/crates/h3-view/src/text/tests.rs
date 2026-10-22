@@ -6,7 +6,7 @@ use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use alloc::{format, vec};
 
-use super::keys::{Entry, Keys, KeysError, Row, Source};
+use super::keys::{EXECUTABLE, Entry, Keys, KeysError, Row, Source, address_field};
 use super::message::{Kind, Message, PrintfError, Segment};
 use super::pack::{Pack, PackError, Problem, Tables};
 use super::plural::{Category, Rule};
@@ -654,4 +654,41 @@ fn a_single_form_family_counts_the_records_its_column_fills() {
             KeysError::Form(s("spell"), s("a family has forms or a column, not both"))
         );
     }
+}
+
+#[test]
+fn the_executables_own_strings_are_a_table_by_address() {
+    // E17 M3 T7b-2b-3: `EXE:0x<address>` names a string of the executable (Acid Breath's line):
+    // the table `EXE`'s record whose first field is the address, its text the second; `%i` is a
+    // number as `%d` is.
+    let catalogue = r#"
+[[key]]
+id = "acid"
+args = { who = "text", n = "number" }
+original = [{ at = "EXE:0x688450", printf = ["who", "n"] }]
+[[key]]
+id = "gone"
+original = [{ at = "EXE:0x10" }]
+"#;
+    let keys = Keys::parse(catalogue, &entries()).unwrap();
+    let row = |fields: &[&str]| fields.iter().map(|f| s(f)).collect::<Vec<_>>();
+    let exe = vec![row(&[&address_field(0x68_8450), "Acid on %s: -%i"])];
+    assert_eq!(address_field(0x68_8450), "0x688450");
+    let tables = BTreeMap::from([(s(EXECUTABLE), exe)]);
+    let (pack, problems) = Pack::original(&keys, &tables);
+    assert_eq!(
+        pack.messages["acid"].segments,
+        vec![lit("Acid on "), ph("who"), lit(": -"), ph("n")]
+    );
+    let shown: Vec<String> = problems.iter().map(|p| format!("{p}")).collect();
+    assert_eq!(shown, ["`gone`: EXE.TXT has no such record (Address(16))"]);
+    // An address that is no hexadecimal number.
+    let bad = Keys::parse(
+        "[[key]]\nid = \"a\"\noriginal = [{ at = \"EXE:0xZZ\" }]",
+        &entries(),
+    );
+    assert_eq!(
+        bad.unwrap_err(),
+        KeysError::Form(s("a"), s("`EXE:0xZZ` is not EXE:0x<address>"))
+    );
 }

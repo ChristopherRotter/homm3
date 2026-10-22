@@ -18,6 +18,9 @@
 //!
 //! The desperate kills follow BAT-QUIRK-25 (slip 4): the original adds the top creature's
 //! remaining hit points where its lost ones belong.
+//!
+//! On a predicted turn (E23 T4b2) the hit points are those left after the damage planned so far
+//! ([`Context::left`]), and neither a stack nor an enemy without any left is recorded.
 
 use h3_battle::computer::{self, Context};
 use h3_battle::{BattleSide, BattleState, STACK_CAPACITY, Stack, StackId, StackTraits, Status};
@@ -53,7 +56,8 @@ fn is_ballista(s: &Stack) -> bool {
 }
 
 /// The threat records of `side`'s stacks on the turn of its walker `walker` in the context `ctx`
-/// (0x422B20 with flag 1; BAT-AI-009).
+/// (0x422B20 with flag 1; BAT-AI-009). The order's first side among equal keys is the active
+/// stack's (+0x132B8: the walker's own on its turn, the deciding stack's in a prediction).
 // rule: BAT-AI-009
 pub(crate) fn records(
     state: &BattleState,
@@ -62,13 +66,15 @@ pub(crate) fn records(
     (walker, side): (StackId, BattleSide),
 ) -> Records {
     let mut out = [Record::default(); STACK_CAPACITY];
-    let ranks = order::ranks(state, ruleset, state.stacks()[walker.index()].side);
+    let first = state.active().unwrap_or(walker);
+    let ranks = order::ranks(state, ruleset, state.stacks()[first.index()].side);
     for (i, o) in (0u8..).zip(state.stacks()) {
         let id = StackId(i);
         let status = o.spells.status;
         if o.side != side
             || id == walker
             || !o.is_alive()
+            || ctx.spent(state, id)
             || (o.has(StackTraits::WAR_MACHINE) && !is_ballista(o))
             || computer::kept_out(state, ruleset, id)
             || status.contains(Status::HYPNOTIZED)
@@ -88,6 +94,7 @@ pub(crate) fn records(
                 || !e.is_alive()
                 || e.is_turret()
                 || ranks[enemy.index()] >= ranks[id.index()]
+                || ctx.spent(state, enemy)
             {
                 continue;
             }
@@ -112,11 +119,11 @@ fn int32(x: u64) -> i32 {
     x as u32 as i32
 }
 
-/// The creatures of stack `id` by its hit points (0x435980's count: its hit points left over its
-/// hit points per creature, rounded up).
-fn creatures(state: &BattleState, id: StackId) -> u64 {
+/// The creatures of stack `id` by its hit points in the context `ctx` (0x435980's count: its hit
+/// points left over its hit points per creature, rounded up).
+fn creatures(state: &BattleState, ctx: &Context, id: StackId) -> u64 {
     let s = &state.stacks()[id.index()];
-    computer::hit_points(state, id).div_ceil(u64::from(s.max_hp.max(1)))
+    ctx.left(state, id).div_ceil(u64::from(s.max_hp.max(1)))
 }
 
 /// The last retaliation's gain of `walker` of the acting `side` against `enemy` in the context
@@ -143,11 +150,17 @@ pub(crate) fn gain(
         return 0;
     }
     let hit = |a: StackId| {
-        let damage =
-            computer::damage_estimate(state, ruleset, (a, enemy), creatures(state, a), false, 0);
+        let damage = computer::damage_estimate(
+            state,
+            ruleset,
+            (a, enemy),
+            creatures(state, ctx, a),
+            false,
+            0,
+        );
         int32(damage)
     };
-    let r = int32(computer::hit_points(state, enemy)).wrapping_sub(hit(walker));
+    let r = int32(ctx.left(state, enemy)).wrapping_sub(hit(walker));
     if r <= 0 {
         return 0;
     }
