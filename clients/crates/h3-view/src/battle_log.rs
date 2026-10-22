@@ -209,6 +209,13 @@ pub enum Logged {
         /// Destroy Undead's row (the spell named), else Death Ripple's.
         undead: bool,
     },
+    /// Armageddon's damage (GENRLTXT 89, `mass_damage_handler` 0x5A5244; E17 M3 T7c-2): after
+    /// its animation and the deaths, the spell's value without the caster's bonuses (the
+    /// original's, CLT-Q16).
+    Armageddon {
+        /// The damage.
+        damage: u64,
+    },
     /// An area spell's damage (`area_spell_handler` 0x5A4B83: `battle_log_damage` named by the
     /// spell, its number 1; E17 M3 T7c-1), before the reactions: one stack's damage and kills
     /// naming it, or with several the caster's damage and every kill, named by the word for
@@ -470,6 +477,11 @@ pub fn word(
             } else {
                 catalogue.text("battle.log.death-ripple", &args)
             })
+        }
+        Logged::Armageddon { damage } => {
+            let damage = i64::try_from(*damage).unwrap_or(i64::MAX);
+            let args = Args::new().number("damage", damage);
+            Some(catalogue.text("battle.log.armageddon", &args))
         }
         Logged::AreaDamage {
             spell,

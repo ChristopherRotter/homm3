@@ -105,6 +105,15 @@ const CLOVER_FIELD: &str = "AVXcf0.def 11111111111111111111111111111111111111111
 const CARTOGRAPHER: &str = "AVXmaps0.def 001111111111111111111111111111111111111111111111 \
      010000000000000000000000000000000000000000000000 111111111 010111111 13 1 0 0";
 
+/// A tree's picture in `Objects.txt` (E08 T36a): class 155, it blocks its tile.
+const TREE: &str = "AVLtr3d0.def 011111111111111111111111111111111111111111111111 \
+     000000000000000000000000000000000000000000000000 111111111 000010101 155 0 0 0";
+
+/// The light blue Border Gate's picture in `Objects.txt` (E08 T36a): it blocks its tile and the
+/// two west of it, the middle one visited.
+const BORDER_GATE: &str = "avxbgt00.def 000111111111111111111111111111111111111111111111 \
+     010000000000000000000000000000000000000000000000 111111111 011111111 212 0 0 0";
+
 fn limits() -> Limits {
     Limits::default()
 }
@@ -892,6 +901,16 @@ fn maps_from_the_experiment_writer_read_back() {
                 tile: (25, 25),
                 template: w::ObjectTemplate::from_objects_txt(CARTOGRAPHER).unwrap(),
             }),
+            // A tree and a light blue Border Gate (E08 T36a: batch E5b's E5-7 and E5-11),
+            // without a body.
+            w::MapObject::Plain(w::Plain {
+                tile: (20, 25),
+                template: w::ObjectTemplate::from_objects_txt(TREE).unwrap(),
+            }),
+            w::MapObject::Plain(w::Plain {
+                tile: (22, 30),
+                template: w::ObjectTemplate::from_objects_txt(BORDER_GATE).unwrap(),
+            }),
         ],
         underground: None,
         // The scenario's level limit (E08 T32a: batch E4a's E4-6).
@@ -943,8 +962,8 @@ fn maps_from_the_experiment_writer_read_back() {
         assert_eq!((t.river, t.river_dir), (0, 0));
     }
     // The heroes (written one column right of their tiles, docs/formats/h3m.md), the monster, the
-    // pile, the ground and the Cartographer.
-    assert_eq!(m.objects.len(), 6);
+    // pile, the ground, the Cartographer, the tree and the gate.
+    assert_eq!(m.objects.len(), 8);
     let hero_template = &m.templates[m.objects[0].template as usize];
     assert_eq!((hero_template.class, hero_template.subclass), (34, 0));
     assert_eq!(m.objects[0].pos, Pos { x: 4, y: 4, z: 0 });
@@ -998,12 +1017,27 @@ fn maps_from_the_experiment_writer_read_back() {
     assert_eq!((plain_template.class, plain_template.subclass), (13, 1));
     assert_eq!(m.objects[5].pos, Pos { x: 25, y: 25, z: 0 });
     assert_eq!(m.objects[5].body, Body::None);
+    for (object, class, pos) in [(6, 155, (20, 25)), (7, 212, (22, 30))] {
+        let template = &m.templates[m.objects[object].template as usize];
+        assert_eq!((template.class, template.subclass), (class, 0));
+        assert_eq!((m.objects[object].pos.x, m.objects[object].pos.y), pos);
+        assert_eq!(m.objects[object].body, Body::None);
+    }
     assert!(m.events.is_empty());
     // The import types the pile as random mercury: no fixed amount, drawn when the game starts.
     // Heroes leave the objects for the setup's heroes: the monster, the pile, the ground, then the
-    // Cartographer; the setup keeps the level limit.
+    // Cartographer, the tree (a blocker, without a type) and the gate; the setup keeps the level
+    // limit.
     let setup = crate::import(&m, &import::SOD).unwrap();
-    assert_eq!(setup.map.objects.len(), 4);
+    assert_eq!(setup.map.objects.len(), 6);
+    assert_eq!(setup.map.objects[4].object_type, None);
+    assert_eq!(
+        setup.map.objects[5].object_type,
+        import::SOD
+            .adventure()
+            .object_type_by_key("ab:border_gate_light_blue")
+    );
+    assert!(setup.map.objects[5].object_type.is_some());
     assert_eq!(
         setup.map.objects[3].object_type,
         import::SOD

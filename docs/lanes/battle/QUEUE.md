@@ -6,7 +6,7 @@ Pre-refined tasks of the battle lane, in order, then the inbox of discovered wor
 
 E23, the original's battle AI, is in progress (refined 2026-10-19, BAT-Q52; `docs/epics/E23-original-battle-ai.md`). E04b closed on 2026-10-12, E04c on 2026-10-16 (their epic files and logs; their cuts: OPEN-QUESTIONS BAT-Q10 to BAT-Q27, BAT-Q37 to BAT-Q50).
 
-T1c is done (#316, #317 merged). T1a5 is cut in four (the user, 2026-10-20; the epic file), T1a5 is done as cut (§7.42 to §7.45); T1a5e, the 36 spell evaluators found in T1a5c, is done in one part (the user, 2026-10-20; §7.46). T1b is done (the survey `docs/rules/surveys/E23-battle-ai.md`); ADR-0027 accepted (BAT-Q55). T2 is cut in two (the user, 2026-10-20): T2a is done (the crate and the plain shooters; `shared/` #334, `battle/e23-t2a`), T2b is done whole (the user, 2026-10-21: the area value with slip 1, the wall shot, BAT-QUIRK-25's flag, the gated benchmark; #345 to #347). The budget is set (the user, 2026-10-21: the epic's T2b line). T3 is done, cut in four (the user, 2026-10-21; the epic file): T3-0 (the spells' AI values, #350), T3a (the walker's plan, choice and walk; #351), T3b (the hex scores, whole; #354), T3c (the odds and the ends, whole; #359). T4 is cut in three (the user, 2026-10-21; the epic file): T4a (the entry, the raise and the Faerie Dragon; #364) is done; T4b is cut in two (the user, 2026-10-21): T4b1 (the Ogre Mage; #369) and T4b2 (the predictions, whole; #374) are done; T4c (the Master Genie, whole, with slip 22) is done: a side without a hero is complete. Next T4d (a removal's copy, slip 24; the user, BAT-Q60), then T1a6 (the hero's cast's reading) and T5.
+T1c is done (#316, #317 merged). T1a5 is cut in four (the user, 2026-10-20; the epic file), T1a5 is done as cut (§7.42 to §7.45); T1a5e, the 36 spell evaluators found in T1a5c, is done in one part (the user, 2026-10-20; §7.46). T1b is done (the survey `docs/rules/surveys/E23-battle-ai.md`); ADR-0027 accepted (BAT-Q55). T2 is cut in two (the user, 2026-10-20): T2a is done (the crate and the plain shooters; `shared/` #334, `battle/e23-t2a`), T2b is done whole (the user, 2026-10-21: the area value with slip 1, the wall shot, BAT-QUIRK-25's flag, the gated benchmark; #345 to #347). The budget is set (the user, 2026-10-21: the epic's T2b line). T3 is done, cut in four (the user, 2026-10-21; the epic file): T3-0 (the spells' AI values, #350), T3a (the walker's plan, choice and walk; #351), T3b (the hex scores, whole; #354), T3c (the odds and the ends, whole; #359). T4 is cut in three (the user, 2026-10-21; the epic file): T4a (the entry, the raise and the Faerie Dragon; #364) is done; T4b is cut in two (the user, 2026-10-21): T4b1 (the Ogre Mage; #369) and T4b2 (the predictions, whole; #374) are done; T4c (the Master Genie, whole, with slip 22) is done: a side without a hero is complete. T4d (a removal's copy, slip 24; the user: whole, BAT-Q60) is done. Next T1a6 (the hero's cast's reading) and T5.
 
 **Waiting on this lane** (found in the 2026-10-19 consolidation; never queued here):
 - **Open questions naming this lane:** CLT-Q4 (a battle's background variant in the setup) and CLT-Q6 (each side's player colour and a hero's sex for viewers): small setup fields, `cross-lane` with the server lane's wire; the client lane holds them.
@@ -15,6 +15,25 @@ T1c is done (#316, #317 merged). T1a5 is cut in four (the user, 2026-10-20; the 
 
 Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure are merged below by kind, done and duplicate parts dropped; the origin stays in brackets (an epic and task, a review report such as r3 or F-r2b-2). History: git. Items for other lanes went into their inboxes; the First Aid Tent became BAT-Q51. The addresses are readings of the executable, the reviews' not read a second time. Where the readings stand: `installation.md` §7.8–§7.33; the reviews' reports stay on `battle/e04b-t11b-review-reports` and `battle/e04c-t10b-review-reports`; their experiment candidates are in `docs/experiments/README.md` ("From the battle queue's inbox", "From the E04b review", "From E04c").
 
+- 2026-10-22 (the adventure lane, E08 T36a, `adventure/e08-t36a`, `cross-lane` with the user's
+  consent; for information): `h3-experiment`'s `[[map.object]]` takes the trees (classes 135,
+  137, 155) and the Border Gates (212) since the writer's `PLAIN_OBJECTS` holds them (no body);
+  batches E5a and E5b use them. Nothing else of the crate changed.
+
+- 2026-10-22 (the adventure lane, E08 T35b, `shared/e08-t35b`, `cross-lane` with the user's consent,
+  E08 decision 79; for your information, nothing to do): **T35 is built** (the note below).
+  `h3_content::HeroEffect` gained `pathfinding`, `land_movement`, `land_movement_points`, `flying`,
+  `water_walking` and `scouting_radius` (codes 45 to 50; no `BattleEffect`: `derive_battle_hero`
+  ignores them, no match needed a new arm); the registry flags 30 to 32
+  (`quirk.adventure.flying_inland_price`, `drop_ignores_artifacts`, `radius_waits_for_a_step`;
+  on in `base:faithful`, off in strict-fixed; your next flag is 33); **pack format v46, core
+  ruleset hash v47**. In your paths: the gap-fill's three skill entries, five artifact entries and
+  eight sources (`exe-movement`, `exe-step-cost`, `exe-scouting`, `vcmi-movement`, four wiki
+  pages), the six artifacts out of the `pending` list, both harvested profiles with the three
+  flags, `exe-necromancy`'s url now `docs/exe/map.toml`; `packs/base/core.toml` re-harvested (only
+  those lines), `packs/README.md`'s effect table; your ten golden replays' headers (`ruleset_hash`
+  only: commands and state hashes unchanged). Q-0005's rules list gains HER-ADV-003 with E08 T39,
+  when the rule exists.
 - 2026-10-22 (the adventure lane, E08 T34b, `adventure/e08-t34b`; for your information, nothing
   to do now): **increment 5's proposed cut touches your paths** once the user accepts it
   (ADV-Q21; `docs/epics/E08-design.md` §4, §11, §12). T35, a `shared/` and `cross-lane` pull

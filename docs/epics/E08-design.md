@@ -1,18 +1,18 @@
 # E08 design note: increment 5
 
-A handover, not binding (`docs/adr/README.md`): the working detail behind increment 5's amendment
-drafts of ADR-0013 (point 13), ADR-0016 (points 3–5) and ADR-0017 (points 1, 3, 9), all three
-drafted in T34b (`docs/lanes/adventure/adr-drafts/*-increment-5.md`) from the answers at ADV-Q20
-(the epic's decision 75) and at T34b (decision 77: D-26 revised), accepted at ADV-Q21 with the cut
-(decision 78; ADR-0016's with A-13's caveat restated). The task that builds a section
+A handover, not binding (`docs/adr/README.md`): the working detail behind increment 5's amendments
+of ADR-0013 (point 13), ADR-0016 (points 3–5) and ADR-0017 (points 1, 3, 9), drafted in T34b from
+the answers at ADV-Q20 (the epic's decision 75) and at T34b (decision 77: D-26 revised), accepted
+at ADV-Q21 with the cut (decision 78; ADR-0016's with A-13's caveat restated) and applied in T35a
+(#377). The task that builds a section
 deletes it; the file goes when the epic closes. Facts and sources: survey
 `docs/rules/surveys/E08-hero-movement.md` (§ numbers are the survey's unless they name this note).
 
 Increment 4's note was moved by T34b into `E08-log.md` ("Increment 4's design note at its
 closure"): every section was built (T25 to T33). Four code comments still cite its sections as
 `E08-design.md` §2–§13 (`h3-heroes`' `level.rs`, `level_up.rs`, `choice.rs`; `h3-game`'s
-`state/levels.rs`) and the gap-fill's source `exe-necromancy` (battle-owned) its file: they mean
-that copy until T39 and T40 repoint them (the queue's inbox).
+`state/levels.rs`): they mean that copy until T39 and T40 repoint them (the queue's inbox; the
+gap-fill's `exe-necromancy` was repointed to `docs/exe/map.toml` in T35b).
 
 Written whole (decision 76): **part A**, the hero side (`h3-heroes` and the core content); **part
 B**, the map, the game, the batch and the cut.
@@ -21,38 +21,23 @@ B**, the map, the game, the batch and the cut.
 
 Everything in part A is either core content (shared: `h3-content`, `h3-pack`, the packs through
 the harvester) or a rule of `h3-heroes`: pure functions of a hero's details, the ruleset and
-explicit inputs (ADR-0013 point 13 of the draft). When the map reads them is part B's.
+explicit inputs (ADR-0013 point 13). When the map reads them is part B's.
 
 ### 1. The data
 
-**Six hero-effect kinds** (`h3_content::HeroEffect`, codes 45 to 50 after `learn_level`; pack
-names as below; `NAMES`, `code`, the canonical hash and the pack's checks grow by one each):
+**Built in T35b** (`shared/e08-t35b`; the detail is in the code, `packs/README.md` and the log):
+the six hero-effect kinds (`pathfinding`, `land_movement`, `land_movement_points`, `flying`,
+`water_walking`, `scouting_radius`; codes 45 to 50), the gap-fill's effects of Pathfinding,
+Logistics, Scouting and the six artifacts (no longer `pending`), and the three quirk flags 30 to
+32 (`quirk.adventure.flying_inland_price`, `ADV-QUIRK-16`; `drop_ignores_artifacts`, `-17`;
+`radius_waits_for_a_step`, `-18`), on in `faithful`; pack format v46, core ruleset hash v47. What
+the derivations must honour (T39): each artifact type counts once, worn or as a part of a worn
+combination (`worn_types`, the original's `hero_wears_artifact` 0x4D91F0), and an artifact that
+needs a skill counts only with it; several `pathfinding`, `flying` and `water_walking` sources
+give the highest, the other three kinds add, `land_movement` grown by the skill's specialties;
+no kind reaches `BattleEffect`. The Logistics specialists (Kyrre, Gunnar, Dessa) already carry
+`skill_specialty` logistics 500 bp, the creature specialists `creature_specialty` with `speed = 1`.
 
-| Kind (pack name) | Fields | Several sources | The base pack gives |
-|---|---|---|---|
-| `pathfinding` | `level` 1..=3 | the highest | Pathfinding 1, 2, 3 |
-| `land_movement` | `bp` ≥ 1 | summed, each skill's grown by its skill specialties | Logistics 1 000, 2 000, 3 000 |
-| `land_movement_points` | `points` ≥ 1 | summed | Boots of Speed 600, Equestrian's Gloves 300 |
-| `flying` | `level` 0..=3 | the highest | Angel Wings 3 |
-| `water_walking` | `level` 0..=3 | the highest | Boots of Levitation 3 |
-| `scouting_radius` | `tiles` ≥ 1 | summed | Scouting 1, 2, 3; the Speculum 1; the Spyglass 1 |
-
-Each artifact type counts once, worn or as a part of a worn combination (`worn_types`, the
-original's `hero_wears_artifact` 0x4D91F0); an artifact that needs a skill counts only with it.
-The flying and water-walking levels are the original's index into its price table (0 to 3, the
-spells' masteries later; §1.1 point 5, §2.1). No kind reaches `BattleEffect`: the battle's
-translation skips them.
-
-- **The packs** (generated: `crates/h3-harvest/data/gapfill.toml`, battle-owned, `cross-lane`): the
-  three skills' levels get their effects, the six artifacts theirs and lose `pending: E08-E10`.
-  Sources: `movement.txt` (column 6: rows 2 and 3, 300 and 600; the code gives row 3's to Boots of
-  Speed 98, though the file names the Ring of the Wayfarer: §1.1), `skill_logistics` 0x63EA68,
-  `skill_scouting` 0x63E9D8 (5, 6, 7, 8 less the base 5), the fly and water-walk levels forced by
-  `hero_step_cost` 0x4B18C0 (Angel Wings 72, Boots of Levitation 90), the Speculum's and the
-  Spyglass's +1 in 0x4E4070; VCMI's `config/skills.json` and `config/artifacts.json` and the wiki
-  agree on the amounts (§1.2, §4.1). The Logistics specialists (Kyrre, Gunnar, Dessa) already
-  carry `skill_specialty` logistics 500 bp; the creature specialists `creature_specialty` with
-  `speed = 1`. `packs/README.md`'s effect list (battle-owned) gains the six kinds.
 - **The adventure part** (`packs/*/adventure.toml`, `h3-pack-adventure`; adventure-owned): the
   `[params]` gain `fly_cost` and `water_walk_cost`, each `[140, 140, 120, 100]` by level
   (`fly_walk_step_cost` 0x6778AC, one table in the original; two fields, so that data can tell
@@ -62,12 +47,6 @@ translation skips them.
   from it, the diagonal's bound included: §2.1 point 1; the core's desert is the original's sand);
   **if batch E5's row E5-6 confirms D-23**, the `cursed_ground` object type's
   `ground = { battlefield = "cursed_ground", no_native = true }`. Adventure ruleset part v10.
-- **Three quirk flags** (`h3_content`'s registry, the next free positions, 30 to 32 unless the
-  battle lane takes one first), each on in `faithful`, off in `strict-fixed`:
-  `quirk.adventure.flying_inland_price` (`ADV-QUIRK-16`, D-24),
-  `quirk.adventure.drop_ignores_artifacts` (`ADV-QUIRK-17`, A-12),
-  `quirk.adventure.radius_waits_for_a_step` (`ADV-QUIRK-18`, D-26 revised). The faithful core
-  ruleset hash moves with them (both lanes' golden replays' headers).
 - **D-22** needs no flag of its own: Q-0005's `quirk.battle.single_precision_rates` (§1.2).
 
 ### 2. The derivations (HER-ADV-003 to -007)
@@ -100,7 +79,7 @@ New in `h3_heroes` (a module `movement.rs`; names and signatures the agent's cal
   (HER-ADV-005): the highest level, none without a source.
 - **`scouting_radius(details, core, base) -> u8`** (HER-ADV-006): `base` (the adventure part's
   5) plus the sum of `scouting_radius` tiles, saturating. A skill specialty on Scouting grows
-  nothing (ADR-0013 point 13.4 of the draft).
+  nothing (ADR-0013 point 13.4).
 - **`movement(details, core) -> Movement`** (agent's call): `Pathfinding`, flying and
   water-walking levels in one pass, for the adventure's pricing (derived once per search or move,
   never per step; the reach's hot loop).
@@ -120,21 +99,15 @@ data are checked by `h3-pack`'s harvested tests (the battle lane's pattern for Q
 - **Q-0005** (the battle lane's ledger, `cross-lane` in T35 or a line in the battle lane's
   inbox): its rules list gains HER-ADV-003.
 
-### 4. The hero side's shared and `cross-lane` needs (for the cut, §12)
+### 4. The hero side's shared and `cross-lane` needs
 
-- `h3-content` (shared): the six kinds and the three flags; `h3-pack` (shared): their syntax;
-  pack format v46, core ruleset hash v47 (the next numbers when T35 lands: the battle lane shares
-  both).
-- The harvester's gap-fill and the regenerated packs, `packs/README.md` (battle-owned,
-  `cross-lane`); both lanes' golden replays' headers (the faithful core ruleset hash).
-- Exhaustive matches over `HeroEffect` outside `h3-content`: `h3-heroes`' battle translation (a
-  new arm that skips them), the harvester, and whatever `clients/` builds (`clients/scripts/
-  check.sh`, or `cargo build --manifest-path clients/Cargo.toml`): T35 runs both.
+Built in T35b (the log). Left for T39: Q-0005's rules list gains HER-ADV-003 (the battle lane's
+ledger, `cross-lane`, or a line in its inbox).
 
 ## Part B — the map, the game, the batch and the cut
 
 Rules of `h3-adventure` and `h3-game` around part A's: when a hero's properties are read, how
-its steps are priced and where it may pass and stop. The drafts of ADR-0016 and ADR-0017 hold the
+its steps are priced and where it may pass and stop. ADR-0016 and ADR-0017 hold the
 decisions.
 
 ### 5. The day's points and the radius; the build and the day (ADV-MOV-001, -002, ADV-FOG-001, -003)
@@ -146,7 +119,7 @@ decisions.
 - **ADV-MOV-002 (amended):** `start_turn(core, part, heroes, player)` reads the store (the game
   passes it as to `apply` and `reach`). A gain in the day (a level-up's Logistics, an artifact)
   changes nothing until then (§1.4).
-- **The build** (ADR-0017 point 1 of the draft): `AdventureState::new` places the heroes and no
+- **The build** (ADR-0017 point 1): `AdventureState::new` places the heroes and no
   longer reveals or prices; a second step (`AdventureState::start_game(core, part, heroes)`,
   agent's call) gives each hero its day's points and reveals around it with its radius
   (ADV-FOG-003), called by `GameState::new` after the levels at load (the original's order:
@@ -302,10 +275,9 @@ border gate whose key it lacks, clicks a free tile beyond it; the reading predic
 gate (an entrance a flyer passes, §3.1 point 7), which no other source states (§13).
 
 - **Spec** (`experiments/specs/E08-batch-5*.toml`, `h3-experiment` and `docs/experiments/`
-  battle-owned: `cross-lane`): heroes wearing artifacts (`equipment`, since batch E4), a ground
-  under a hero's tile (E5-6: the writer places grounds since E04c T3; check under a hero),
-  unexplored strips (a hero far enough from the explored start), a border gate (E5-11:
-  `[[map.object]]`), a Fortress army on swamp (E5-6), Gunnar and Kyrre at levels 2, 3, 6, 12 with
+  battle-owned: `cross-lane`). *Built by T36a* (decision 80): batches E5a (E5-1, E5-4 to E5-6,
+  with E5-6b on the SoD Cursed Ground) and E5b (E5-7, E5-9, E5-11; trees and Border Gates in
+  `[[map.object]]`). *Left for T36b:* Gunnar and Kyrre at levels 2, 3, 6, 12 with
   Basic Logistics (E5-2: a custom experience gives levels at load, so the scorer predicts their
   skills after them; or levels the seed byte keeps clean of Logistics), a level-up the test
   forces (E5-3, E5-10: the seed byte's prediction, as batch E4's). Split by rows if a map cannot

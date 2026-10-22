@@ -13,7 +13,7 @@ use core::fmt;
 
 use h3_protocol::wire::{Event, Manifest, Observation, Side, Stack};
 
-use crate::anim::{Magic, Pose, Projectile, Ray, Spot, Timeline};
+use crate::anim::{Field, Magic, Object, Pose, Projectile, Ray, Spot, Timeline};
 use crate::hero::{FLAG_START, HeroPose};
 use crate::layout::BattleLayout;
 use crate::tables::{ObstacleArt, Tables};
@@ -49,6 +49,11 @@ pub struct Moment {
     pub magic: Option<Magic>,
     /// The magic animation at a hex, over everything (E17 M3 T7c-1).
     pub spot: Option<Spot>,
+    /// The battlefield objects spells placed, by anchor (E17 M3 T7c-2).
+    pub objects: BTreeMap<u8, Object>,
+    /// The magic animation over the whole battlefield, tiled over everything on it (E17 M3
+    /// T7c-2).
+    pub field: Option<Field>,
     /// The counts the boxes show, by id, of the stacks whose count changed since the snapshot
     /// (E17 M3 T5b); the others show the snapshot's.
     pub counts: BTreeMap<u8, u32>,
@@ -75,6 +80,8 @@ impl Moment {
                 .map_or([None; 2], |h| h.at(timeline, t)),
             magic: timeline.magic(t),
             spot: timeline.spot(t),
+            objects: timeline.objects(t),
+            field: timeline.field(t),
             counts: timeline.counts(t),
             hues: timeline.hues(t),
             marked: None,
@@ -179,6 +186,17 @@ pub enum Draw {
         mirrored: bool,
         /// Drawn half and half with what is under it.
         translucent: bool,
+    },
+    /// A magic animation's frame tiled over an area from its top-left corner (Armageddon's,
+    /// `mass_damage_handler` 0x5A4FEF to 0x5A50AD; E17 M3 T7c-2): ceil(800 / W) columns and
+    /// ceil(600 / H) rows of its canvas, each cut to what is left of the area, plain.
+    Tiled {
+        /// The DEF.
+        def: String,
+        /// The frame in group 0.
+        frame: u32,
+        /// The area's width and height (the battlefield's).
+        area: [i32; 2],
     },
     /// A stack's count box, right after its sprite and any magic animation over it
     /// (`draw_battle_stack`'s part 1 0x43E568, §4.3; E17 M3 T4a): the layout's picture with index
@@ -438,9 +456,10 @@ impl fmt::Display for SceneError {
     }
 }
 
-/// A usual obstacle, placed.
+/// A usual obstacle or a spell's battlefield object, placed, with the frame it shows.
 struct Placed {
     def: String,
+    frame: u32,
     before_stacks: bool,
     at: (u8, u8),
     x: i32,
@@ -460,7 +479,9 @@ const EMPTY_SURROUNDINGS: usize = 2;
 /// passes with its layer-0 obstacles and its living stacks, each with its count box (§4.6; M3
 /// T4a). A natural obstacle without a type is not drawn; a removed one is no longer in the
 /// observation's list (the engine drops it), so every listed one is drawn, whatever hexes a
-/// removal cleared. Left out until later tasks: corpses, spell obstacles, the grid.
+/// removal cleared. The spells' battlefield objects come with a moment of the timeline
+/// ([`battle_at`], E17 M3 T7c-2), whose stage holds their looks. Left out until later tasks:
+/// corpses, the grid.
 ///
 /// # Errors
 /// A handle the manifest does not resolve, a key the tables lack, an obstacle type of the wrong
@@ -551,16 +572,33 @@ pub fn battle_at(
         let [x, y] = layout.hex_box(row, column);
         placed.push(Placed {
             def: def.clone(),
+            frame: 0,
             before_stacks: *before_stacks,
             at: (row, column),
             x,
             y: y - layout.hex_step[1] * (i32::from(*rows) - 1),
         });
     }
+    // The spells' battlefield objects go through the same passes, their frame by the idle steps
+    // (`battle_redraw` 0x494680: +0x13FFC modulo the group's frames; E17 M3 T7c-2). The original
+    // draws one its owner placed hidden only when it shows to the side whose view the screen
+    // shows (0x49460A to 0x49463A); a record holds those its viewer sees.
+    for (&anchor, o) in &moment.objects {
+        let (row, column) = at(anchor);
+        let [x, y] = layout.hex_box(row, column);
+        placed.push(Placed {
+            def: o.def.clone(),
+            frame: moment.pulse % o.frames.max(1),
+            before_stacks: o.before_stacks,
+            at: (row, column),
+            x,
+            y: y - layout.hex_step[1] * (i32::from(o.rows) - 1),
+        });
+    }
     let obstacle_draw = |o: &Placed| Draw::Obstacle {
         def: o.def.clone(),
         group: 0,
-        frame: 0,
+        frame: o.frame,
         x: o.x,
         y: o.y,
     };
@@ -612,6 +650,12 @@ pub fn battle_at(
     // The hexes a count box cannot take (0x43E605): a living stack's (each of its poses' hexes)
     // while it holds them (not dead since, its box not hidden: E17 M3 T5a), and the blocked ones.
     let mut taken: BTreeSet<u8> = observation.obstacles.iter().copied().collect();
+    taken.extend(
+        moment
+            .objects
+            .values()
+            .flat_map(|o| o.blocked.iter().copied()),
+    );
     for s in observation.stacks.iter().filter(|s| s.alive) {
         let pose = pose_of(s, moment, tables);
         if !pose.holds_hex() {
@@ -695,6 +739,15 @@ pub fn battle_at(
             y: spot.at[1],
             mirrored: false,
             translucent: spot.translucent,
+        });
+    }
+    // The magic animation over the whole battlefield, tiled over it after the redraw (Armageddon's
+    // 0x5A4FEF to 0x5A50AD; E17 M3 T7c-2).
+    if let Some(f) = &moment.field {
+        list.push(Draw::Tiled {
+            def: f.def.clone(),
+            frame: f.frame,
+            area: layout.mouse.field,
         });
     }
     Ok(list)

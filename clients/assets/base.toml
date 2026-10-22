@@ -2016,22 +2016,28 @@ sound = "Telptout"
 key = "quicksand"
 original = 10
 animation = 55
+objects = [{ def = "C17SPE1.DEF", hexes = 1, rows = 1, before_stacks = true, placed = 55, vanish = 58 }]
+object_sound = "Quiksand"
 
 [[spell]]
 key = "land_mine"
 original = 11
 animation = 47
+objects = [{ def = "C09spF1.def", hexes = 1, rows = 1, before_stacks = true, placed = 47, vanish = 59 }]
+object_sound = "landmine"
 
 [[spell]]
 key = "force_field"
 original = 12
 sound = "Forcefld"
+objects = [{ def = "C15spE1.def", hexes = 2, rows = 3, placed = 32, vanish = 60 }, { def = "C15spE10.def", hexes = 3, rows = 4, placed = 33, vanish = 61 }]
 
 [[spell]]
 key = "fire_wall"
 original = 13
 animation = 65
 sound = "Firewall"
+objects = [{ def = "C07spF61.def", hexes = 1, rows = 3, placed = 65, vanish = 66 }]
 
 [[spell]]
 key = "earthquake"

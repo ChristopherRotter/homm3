@@ -124,6 +124,24 @@ const PROJECTILES: [(usize, u32, u32, usize); 3] = [
     (16, 0x64_2234, 0x64_2248, 5),
     (47, 0x64_225C, 0x64_2260, 1),
 ];
+/// The battlefield objects the spell handlers place (E17 M3 T7c-2, design §7.16), by spell
+/// number: each object's descriptor (+4 its height in rows, +6 its hexes, +7 its layer, +0x10 its
+/// DEF's name), the magic animation that places it (none: the spell record's +8, as its handler
+/// plays) and its vanish animation (the object's +0x14): Quicksand's (0x5A0452, 0x5A0477), Land
+/// Mine's (0x5A066C, 0x5A0695), Force Field's two (0x5A0777 and 0x5A077E, 32 or 33 at 0x5A0768,
+/// 60 or 61 at 0x5A07A2), Fire Wall's (0x5A089D, 0x5A090D); and the sound its handler plays with
+/// each object (Quicksand's 0x5A0369, Land Mine's 0x5A0577).
+type Placed = (u32, Option<u8>, u8);
+const OBJECTS: [(usize, &[Placed], Option<u32>); 4] = [
+    (10, &[(0x63_CEE8, None, 58)], Some(0x68_84A0)),
+    (11, &[(0x63_CF00, None, 59)], Some(0x68_8490)),
+    (
+        12,
+        &[(0x63_CF18, Some(32), 60), (0x63_CF2C, Some(33), 61)],
+        None,
+    ),
+    (13, &[(0x63_CF68, None, 66)], None),
+];
 
 /// The command's options.
 #[derive(Debug, PartialEq, Eq)]
@@ -240,6 +258,8 @@ struct Harvest {
     /// and `sptraits.txt`'s numbers by name.
     spells: Vec<(Option<String>, Option<u8>, i8)>,
     projectiles: BTreeMap<usize, Vec<(String, i16)>>,
+    /// The objects the spells place by original id, and the sound placed with each.
+    objects: BTreeMap<usize, (Vec<Object>, Option<String>)>,
     spell_numbers: BTreeMap<String, usize>,
     obstacles: Vec<(String, u8, u8)>,
     absolute: Vec<(String, i16, i16)>,
@@ -247,6 +267,17 @@ struct Harvest {
     specials: Vec<String>,
     ship_to_ship: String,
     ship: String,
+}
+
+/// A battlefield object a spell places (the asset tables' `objects`).
+#[derive(Debug)]
+struct Object {
+    def: String,
+    hexes: u8,
+    rows: u8,
+    before_stacks: bool,
+    placed: u8,
+    vanish: u8,
 }
 
 pub fn run(options: &Options) -> ExitCode {
@@ -471,6 +502,24 @@ fn read_harvest(
         }
         projectiles.insert(spell, list);
     }
+    let mut objects = BTreeMap::new();
+    for (spell, placed, sound) in OBJECTS {
+        let mut list = Vec::new();
+        for &(descriptor, animation, vanish) in placed {
+            let d = bytes(&image, exe, descriptor, 0x14)?;
+            let record = spells.get(spell).and_then(|r| r.1);
+            list.push(Object {
+                def: string(u32_at(&d, 0x10))?,
+                hexes: d[6],
+                rows: d[4],
+                before_stacks: d[7] != 0,
+                placed: animation.or(record).unwrap_or(0),
+                vanish,
+            });
+        }
+        let sound = sound.map(|va| string(va).map(|s| stem(&s))).transpose()?;
+        objects.insert(spell, (list, sound));
+    }
     let mut specials = vec![string(SHORE)?];
     let row = bytes(&image, exe, SPECIAL_BACKGROUNDS + 4, 4 * 9)?;
     for k in 0..9 {
@@ -497,6 +546,7 @@ fn read_harvest(
         strike_sounds,
         spells,
         projectiles,
+        objects,
         spell_numbers: spell_numbers(sptraits),
         obstacles,
         absolute,
@@ -862,6 +912,26 @@ fn write_table(
                 list(&defs),
                 numbers(&angles)
             );
+        }
+        if let Some((placed, sound)) = h.objects.get(&original) {
+            let items: Vec<String> = placed
+                .iter()
+                .map(|o| {
+                    let layer = if o.before_stacks {
+                        ", before_stacks = true"
+                    } else {
+                        ""
+                    };
+                    format!(
+                        "{{ def = \"{}\", hexes = {}, rows = {}{layer}, placed = {}, vanish = {} }}",
+                        o.def, o.hexes, o.rows, o.placed, o.vanish
+                    )
+                })
+                .collect();
+            let _ = writeln!(t, "objects = [{}]", items.join(", "));
+            if let Some(sound) = sound {
+                let _ = writeln!(t, "object_sound = \"{}\"", plain(sound)?);
+            }
         }
     }
     for (index, terrain) in pack.terrain.iter().enumerate() {

@@ -3892,3 +3892,120 @@ confirmed at its checkpoint):
 5. Every new rule has its id, source and tests; `ADV-QUIRK-9` to `-13` are in the ledger; the
    gates pass (coverage, determinism with the re-recorded replays, benchmarks).
 6. Batch E4 run and scored; the disputes it covers (D-14 to D-21) `verified` or reopened.
+
+### Increment 5, round 1: T35a and T35b, the shared groundwork (2026-10-22, `shared/e08-t35a` #377, `shared/e08-t35b` #380)
+
+**The cut** (decision 79; asked at the start, `AskUserQuestion`): T35 in two parts, both in this
+session, as T26 was: T35a the ADRs (docs only), then T35b the code groundwork; T36 in the next
+session. Recommended was T35a with T36 (batch E5's chain T36, T37, T38 is the critical path, and
+T35b is not needed before T39); not chosen either: T35a alone, T36 alone.
+
+**Baseline:** `master` 25c01bd (#375 merged), engine code 22188e09 verified on 5a6e583 (the
+sandbox ran only the light gates). The user's PC was linked at the start: the repository came from
+GitHub, the original data from the PC (the executable, both LODs, `Objects.txt`, `maps.tar`,
+`extracted.tar`). The sandbox's VM restarted once during the first question (the setup's
+background job died; the tools it had installed stayed).
+
+- **T35a** (#377, docs only): ADR-0013 points 2, 3 and 11 amended and point 13 added (six effect
+  kinds the adventure's derivations read, `HER-ADV-`, the derivations), ADR-0016 points 3 to 5
+  (the points and radius from the details, a hero's passage with A-13's caveat in the user's
+  words, a move's end, the query's two kinds of node, the step's price, the reveals), ADR-0017
+  points 1, 3 and 9 (the levels at load before the points and the first reveal, the start of a
+  day's first rule, the versions); the index's three "Read when" cells. Each ADR's consequences
+  and alternatives are the drafts' condensed. Light gates and `check-lane` passed.
+- **`h3-content`** (part A §1): `HeroEffect` gains `Pathfinding { level }` (1..=3),
+  `LandMovement { bp }` (≥ 1), `LandMovementPoints { points }` (≥ 1), `Flying { level }` and
+  `WaterWalking { level }` (0..=3) and `ScoutingRadius { tiles }` (≥ 1), codes 45 to 50, with
+  `NAMES`, `try_map`, the parameter checks and the hash; a list holds each kind once (the default
+  collision). No match outside `h3-content` and `h3-pack` needed an arm: `derive_battle_hero`
+  picks the kinds it reads, and `clients/` constructs effects only from `BattleEffect`. The
+  registry's flags 30 to 32: `quirk.adventure.flying_inland_price` (`FLYING_INLAND_PRICE`,
+  `ADV-QUIRK-16`, D-24), `drop_ignores_artifacts` (`DROP_IGNORES_ARTIFACTS`, `-17`, A-12),
+  `radius_waits_for_a_step` (`RADIUS_WAITS_FOR_A_STEP`, `-18`, D-26), none read before T40 and
+  T41. **Core ruleset hash v47** (the golden base hash moved).
+- **`h3-pack`**: **pack format v46** (the six kinds' syntax), a syntax test (the values, an
+  unknown field, every parameter error) and a harvested test
+  (`the_harvested_movement_and_scouting_effects`: the three skills' and six artifacts' effects
+  with and without the expansions, the flags by profile).
+- **The harvester** (battle-owned, `cross-lane`): the gap-fill's `[[heroes.skill_effects]]` for
+  Pathfinding (1 to 3), Logistics (1 000 to 3 000 bp) and Scouting (1 to 3 tiles: the code's
+  table 5 to 8 less the base 5), `[[artifacts.effects]]` for Boots of Speed (600), Equestrian's
+  Gloves (300), Angel Wings (flying 3), Boots of Levitation (water walking 3), the Speculum and
+  the Spyglass (1 tile each), the six out of the `pending` list; eight sources (`exe-movement`,
+  `exe-step-cost`, `exe-scouting`, `vcmi-movement` from VCMI 1.7.5's `config/skills.json` and
+  `config/artifacts.json`, read again for this, and four wiki pages from the survey); the three
+  flags in both harvested profiles; `exe-necromancy`'s url `docs/exe/map.toml` (the queue's
+  inbox). Logistics and Scouting stay out of the harvester's value-table list: Scouting's table
+  holds the radius with its base, and the amounts are written as data with their code reading,
+  as Wisdom's were. `base` re-harvested from the staged installation: only those lines changed
+  (`ab` and `sod` unchanged). `synthetic-ext` gains `wayfarer_sash` with the six kinds
+  (`h3-pack-battle`'s `hero_content_syntax` wants every kind used once; not in `synthetic`, so
+  the battle replays' hash stays; the synthetic profiles still list only the battle's flags).
+  `packs/README.md`'s effect table.
+- **Replays and records**: the 19 golden replays keep commands and state hashes; only
+  `ruleset_hash` in their headers moved (three values: synthetic faithful 0xccc383cf72e6a6ab, the
+  base packs 0x1259740d4579c6b3 faithful and 0x5c100ae884edfb0a strict-fixed); `duel-s2-d7` and
+  `duel-s5-strict-d7` re-recorded with their options differed in that line only. The AI lane's
+  `bots-report-v1.json` regenerated: besides `engine.core`, two pairs' rewards and two values
+  moved in the fourth decimal, wins unchanged; a regeneration on `master` 25c01bd gives the same
+  table, so the drift is `master`'s (the battle lane's creature-cast change of 2026-10-21), not
+  T35b's.
+- **Docs**: the three drafts deleted; the design note's part A §1 and §4 cut to what T39 still
+  needs; decision 79 and the round's line in the epic; the queue (T35 out, an inbox note: the data
+  without a reader until T39 to T41); the battle and AI lanes' inboxes; the battle HANDOFF's
+  shared versions. The quirks' ledger entries come with their rules (T40, T41), Q-0005's line
+  with HER-ADV-003 (T39).
+- **Verify**: the first full run with the original data failed two steps: coverage
+  (`h3-pack-battle`'s `hero_content_syntax`: the synthetic packs must use every kind, hence
+  `wayfarer_sash`) and `check-docs` (the adventure HANDOFF 100 bytes over). The second, on
+  d403160, passed all 16 steps, and again on 8c982b6 after `master` was merged in (#377, E23 T4c) (benchmarks within +0.7 %, the harvest check matching the
+  installation). The clients' check (`clients/scripts/check.sh --no-coverage`) passed every gate
+  once SDL's build dependencies were installed in the sandbox (the client lane's setup installs
+  them, the adventure lane's does not). CI cannot run (billing).
+
+### Increment 5, round 1: T36a, batch E5a and E5b's specs (2026-10-22, `adventure/e08-t36a`, `cross-lane`)
+
+**The cut** (decision 80; asked at the start, `AskUserQuestion`): T36 by rows, T36a now with the
+fixed predictions, T36b (the seed byte's rows E5-2, E5-3, E5-10 and their scorer) in the next
+session. Not chosen: both parts as two pull requests this session, T36 whole, T36b first. Found
+while sizing it: the writer and the spec placed only Cartographers, and E5-7 needs trees, E5-11 a
+Border Gate.
+
+**Baseline:** `master` eb1f35a (#380 merged); the sandbox's baseline ran the full gates on its
+engine code (5a41242d): all 16 steps passed. The user's PC was linked at the start (the repository from GitHub, the
+original data from the PC: the executable, both LODs, `Objects.txt`, `maps.tar`, `extracted.tar`);
+it went offline later, after everything was copied.
+
+- **The writer** (`h3_map::writer`): `PLAIN_OBJECTS` gains the trees (Oak Trees 135, Pine Trees
+  137, Trees 155) and the Border Gates (212, the key's colour as subclass): no body in the file,
+  as the reader's `Body::None` for them. A writer test writes a tree and a gate; the read-back test
+  imports a tree as a blocker (no type) and the light blue gate as `ab:border_gate_light_blue`.
+- **The spec** (`h3-experiment`, battle-owned, `cross-lane`): `[[map.object]]` takes their
+  pictures (`Tables.plains` already filters by `PLAIN_OBJECTS`); a test checks a tree's one tile,
+  a gate's three with the middle one its entrance, and the shared-tile errors for both.
+  `docs/experiments/README.md` and `docs/formats/h3m.md` say so.
+- **Batch E5a** (`experiments/specs/E08-batch-5a.toml`, 36 x 36, grass): Blue's eight E5-1 heroes
+  never move (10 Pikemen, 1560: no Logistics, Basic, Advanced, Expert, Boots of Speed, Equestrian's
+  Gloves, both with Expert Logistics, Valeska with Archers; 1560 to 2928, read at Blue's turn
+  starts on days 1 and 2); Red's E5-4a flies along an inland cobblestone road, then over grass and
+  swamp (the reading 100 per step, the wiki and VCMI 50 on the road), E5-4b along a coastal road
+  (50, every source); E5-5 crosses a lake with Boots of Levitation from sand and back with a
+  diagonal (450, 491: a water walker cannot stop on water, so each walk crosses whole); E5-6a's
+  Gnolls step off the RoE Cursed Ground on swamp (the reading 175, VCMI 100) and **E5-6b** off the
+  SoD one (class 223; the agent's call: `tile_special_ground` 0x4FCE20 does not list 223, the map
+  loader was not read, and the engine types it apart as `sod:cursed_ground`).
+- **Batch E5b** (`E08-batch-5b.toml`): E5-9 first, a flyer and a walker west of a strip of five
+  unexplored columns, a scout east of it (the walker's click the control: no path; the reading:
+  the flyer's green path of 13 marks, 260 left; VCMI and the engine: none); E5-7a a flyer clicks a
+  tree beyond a tree line (no path), then the free tile before it (3 marks over the line); E5-7b a
+  water walker clicks a lake tile (no path), then the far shore (4 marks); E5-11 a flyer two rows
+  south of a light blue Border Gate clicks two rows north of it (the reading: straight over the
+  entrance, 1160 left; over a blocked side 1078; stopped by the gate 1460 and its message).
+- **Checked in the engine**: both maps compile, read, import and validate
+  (`original_data` on a folder holding them; the tiles' coast flags, roads and grounds as
+  designed; E5-9's strip unexplored for Red at the build, the targets explored) through a
+  throwaway example (not committed).
+- **Not built**: the recipes and the run (T37: the harness's explored-tile read for E5-9; a read
+  of the points at a turn start without a walk for E5-1); T36b's specs and scorer.
+- **Verify**: the full run with the original data on de9f71b (`master` a64631e merged in, #382)
+  passed all 16 steps (engine code 4e17824f; benchmarks within +0.7 %). CI cannot run (billing).

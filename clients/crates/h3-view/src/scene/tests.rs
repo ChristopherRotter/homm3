@@ -509,6 +509,8 @@ fn a_moment_draws_each_stack_in_its_pose() {
             over: vec![(0, [7, 8], false), (9, [1, 1], true)],
         }),
         spot: None,
+        objects: BTreeMap::new(),
+        field: None,
         counts: BTreeMap::new(),
         hues: BTreeMap::new(),
         // E17 M3 T6c-1: the mouse marks the walking Pikemen.
@@ -1005,4 +1007,87 @@ fn a_boxs_hue_follows_its_spells_signs() {
     assert_eq!(hue(3, 7, 0), 0x3DCC_D74A);
     assert_eq!(hue(0, 81, 0), 0);
     assert_eq!(hue(1, 80, 0), 0x3B86_DFED);
+}
+
+#[test]
+fn spell_objects_go_through_the_obstacles_passes() {
+    // E17 M3 T7c-2 (0x494680): a pit (layer 1) before every stack, a Force Field (layer 0, three
+    // rows) in its anchor row's pass 2, each at its anchor raised by its rows above, its frame the
+    // idle steps' count modulo its frames; the Force Field's hexes keep a count box off them.
+    let layout = layout();
+    let mut o = observation();
+    o.terrain = Some(0);
+    o.stacks = vec![stack(0, Side::Attacker, 0, hex(6, 2), false)];
+    let object = |def: &str, frames, rows, before_stacks, blocked: Vec<u8>| Object {
+        def: def.to_string(),
+        frames,
+        rows,
+        before_stacks,
+        blocked,
+    };
+    let moment = Moment {
+        pulse: 5,
+        objects: [
+            (
+                hex(6, 3),
+                object("C15spE10.def", 4, 4, false, vec![hex(6, 3)]),
+            ),
+            (hex(9, 9), object("C17SPE1.DEF", 1, 1, true, Vec::new())),
+        ]
+        .into_iter()
+        .collect(),
+        field: Some(Field {
+            def: "C06spF0.def".to_string(),
+            frame: 7,
+        }),
+        ..Moment::default()
+    };
+    let list = battle_at(&o, &moment, &keys(), &tables(), &layout).unwrap();
+    let [px, py] = layout.hex_box(9, 9);
+    let [fx, fy] = layout.hex_box(6, 3);
+    let pit = list
+        .iter()
+        .position(|d| {
+            *d == Draw::Obstacle {
+                def: "C17SPE1.DEF".to_string(),
+                group: 0,
+                frame: 0,
+                x: px,
+                y: py,
+            }
+        })
+        .unwrap();
+    let field = list
+        .iter()
+        .position(|d| {
+            *d == Draw::Obstacle {
+                def: "C15spE10.def".to_string(),
+                group: 0,
+                frame: 1,
+                x: fx,
+                y: fy - 3 * 42,
+            }
+        })
+        .unwrap();
+    let sprite = list
+        .iter()
+        .position(|d| matches!(d, Draw::Creature { .. }))
+        .unwrap();
+    assert!(pit < sprite && field < sprite);
+    // The box over its stack: the hex ahead is the Force Field's.
+    let [x, y] = layout.anchor(6, 2);
+    assert!(
+        list.iter()
+            .any(|d| matches!(d, Draw::CountBox { x: bx, y: by, .. }
+        if [*bx, *by] == [x - 15, y - 15]))
+    );
+    // Armageddon's frame tiled over the battlefield, last.
+    assert_eq!(
+        list.last(),
+        Some(&Draw::Tiled {
+            def: "C06spF0.def".to_string(),
+            frame: 7,
+            area: layout.mouse.field,
+        })
+    );
 }

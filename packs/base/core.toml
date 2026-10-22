@@ -2010,6 +2010,9 @@ flags = ["shooter", "war_machine", "mind_immune", "no_morale"]
 [[secondary_skill]]
 id = "pathfinding"
 name = "Pathfinding"
+basic = [{ kind = "pathfinding", level = 1 }]
+advanced = [{ kind = "pathfinding", level = 2 }]
+expert = [{ kind = "pathfinding", level = 3 }]
 
 [[secondary_skill]]
 id = "archery"
@@ -2021,10 +2024,16 @@ expert = [{ kind = "ranged_damage", bp = 5000 }]
 [[secondary_skill]]
 id = "logistics"
 name = "Logistics"
+basic = [{ kind = "land_movement", bp = 1000 }]
+advanced = [{ kind = "land_movement", bp = 2000 }]
+expert = [{ kind = "land_movement", bp = 3000 }]
 
 [[secondary_skill]]
 id = "scouting"
 name = "Scouting"
+basic = [{ kind = "scouting_radius", tiles = 1 }]
+advanced = [{ kind = "scouting_radius", tiles = 2 }]
+expert = [{ kind = "scouting_radius", tiles = 3 }]
 
 [[secondary_skill]]
 id = "diplomacy"
@@ -4804,18 +4813,20 @@ slot = "misc"
 effects = [{ kind = "morale", amount = 1 }]
 
 [[artifact]]
-id = "speculum"  # original id 52; pending: E08-E10
+id = "speculum"  # original id 52
 name = "Speculum"
 class = "treasure"
 cost = { "gold" = 1000 }
 slot = "misc"
+effects = [{ kind = "scouting_radius", tiles = 1 }]
 
 [[artifact]]
-id = "spyglass"  # original id 53; pending: E08-E10
+id = "spyglass"  # original id 53
 name = "Spyglass"
 class = "treasure"
 cost = { "gold" = 1000 }
 slot = "misc"
+effects = [{ kind = "scouting_radius", tiles = 1 }]
 
 [[artifact]]
 id = "amulet_of_the_undertaker"  # original id 54
@@ -4955,11 +4966,12 @@ slot = "ring"
 effects = [{ kind = "creature_stat", stat = "speed", amount = 1 }]
 
 [[artifact]]
-id = "equestrians_gloves"  # original id 70; pending: E08-E10
+id = "equestrians_gloves"  # original id 70
 name = "Equestrian's Gloves"
 class = "minor"
 cost = { "gold" = 3000 }
 slot = "ring"
+effects = [{ kind = "land_movement_points", points = 300 }]
 
 [[artifact]]
 id = "necklace_of_ocean_guidance"  # original id 71; pending: E08-E10
@@ -4969,11 +4981,12 @@ cost = { "gold" = 10000 }
 slot = "neck"
 
 [[artifact]]
-id = "angel_wings"  # original id 72; pending: E08-E10
+id = "angel_wings"  # original id 72
 name = "Angel Wings"
 class = "relic"
 cost = { "gold" = 20000 }
 slot = "shoulders"
+effects = [{ kind = "flying", level = 3 }]
 
 [[artifact]]
 id = "charm_of_mana"  # original id 73; pending: E08-E10
@@ -5109,11 +5122,12 @@ slot = "misc"
 effects = [{ kind = "spells", school = "earth" }]
 
 [[artifact]]
-id = "boots_of_levitation"  # original id 90; pending: E08-E10
+id = "boots_of_levitation"  # original id 90
 name = "Boots of Levitation"
 class = "relic"
 cost = { "gold" = 10000 }
 slot = "feet"
+effects = [{ kind = "water_walking", level = 3 }]
 
 [[artifact]]
 id = "golden_bow"  # original id 91
@@ -5172,11 +5186,12 @@ slot = "neck"
 effects = [{ kind = "creature_stat", stat = "speed", amount = 1 }]
 
 [[artifact]]
-id = "boots_of_speed"  # original id 98; pending: E08-E10
+id = "boots_of_speed"  # original id 98
 name = "Boots of Speed"
 class = "minor"
 cost = { "gold" = 6000 }
 slot = "feet"
+effects = [{ kind = "land_movement_points", points = 600 }]
 
 [[artifact]]
 id = "cape_of_velocity"  # original id 99
@@ -5402,8 +5417,8 @@ schools = ["fire_magic", "air_magic", "water_magic", "earth_magic"]
 
 [[profile]]
 id = "faithful"        # default: preserve/fix-optional quirks on
-quirks = { "quirk.battle.no_luck_without_hero" = true, "quirk.battle.single_precision_rates" = true, "quirk.battle.unlimited_ballista_shots" = true, "quirk.battle.first_protection" = true, "quirk.battle.counterstrike_extra_round" = true, "quirk.battle.frenzy_reduced_defense" = true, "quirk.battle.fire_shield_first_stage" = true, "quirk.battle.early_mass_version" = true, "quirk.battle.mass_cure_skips_hypnotized" = true, "quirk.battle.obstacle_anchors" = true, "quirk.battle.draws_avoid_hidden" = true, "quirk.battle.sacrifice_tests_as_resurrection" = true, "quirk.battle.clone_on_its_original" = true, "quirk.battle.periodic_first_stack" = true, "quirk.battle.no_defender_ballista_at_fort" = true, "quirk.battle.berserk_walks_to_position_hex" = true, "quirk.battle.original_ai_slips" = true, "quirk.content.roland_crusader_specialty" = true, "quirk.content.elemental_levels" = true, "quirk.content.elementalist_offer_intervals" = true, "quirk.adventure.diagonal_check_ignores_roads" = true, "quirk.adventure.diagonal_check_ignores_native" = true, "quirk.adventure.native_skips_leading_neutrals" = true, "quirk.adventure.fringe_shows_objects" = true, "quirk.adventure.obstacles_from_tile" = true, "quirk.adventure.split_from_tile" = true, "quirk.adventure.level_up_from_seed" = true }    # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-3 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, BAT-QUIRK-23, BAT-QUIRK-24, BAT-QUIRK-25, ADV-QUIRK-1 to ADV-QUIRK-6, ADV-QUIRK-9, ADV-QUIRK-10
+quirks = { "quirk.battle.no_luck_without_hero" = true, "quirk.battle.single_precision_rates" = true, "quirk.battle.unlimited_ballista_shots" = true, "quirk.battle.first_protection" = true, "quirk.battle.counterstrike_extra_round" = true, "quirk.battle.frenzy_reduced_defense" = true, "quirk.battle.fire_shield_first_stage" = true, "quirk.battle.early_mass_version" = true, "quirk.battle.mass_cure_skips_hypnotized" = true, "quirk.battle.obstacle_anchors" = true, "quirk.battle.draws_avoid_hidden" = true, "quirk.battle.sacrifice_tests_as_resurrection" = true, "quirk.battle.clone_on_its_original" = true, "quirk.battle.periodic_first_stack" = true, "quirk.battle.no_defender_ballista_at_fort" = true, "quirk.battle.berserk_walks_to_position_hex" = true, "quirk.battle.original_ai_slips" = true, "quirk.content.roland_crusader_specialty" = true, "quirk.content.elemental_levels" = true, "quirk.content.elementalist_offer_intervals" = true, "quirk.adventure.diagonal_check_ignores_roads" = true, "quirk.adventure.diagonal_check_ignores_native" = true, "quirk.adventure.native_skips_leading_neutrals" = true, "quirk.adventure.fringe_shows_objects" = true, "quirk.adventure.obstacles_from_tile" = true, "quirk.adventure.split_from_tile" = true, "quirk.adventure.level_up_from_seed" = true, "quirk.adventure.flying_inland_price" = true, "quirk.adventure.drop_ignores_artifacts" = true, "quirk.adventure.radius_waits_for_a_step" = true }    # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-3 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, BAT-QUIRK-23, BAT-QUIRK-24, BAT-QUIRK-25, ADV-QUIRK-1 to ADV-QUIRK-6, ADV-QUIRK-9, ADV-QUIRK-10, ADV-QUIRK-16 to ADV-QUIRK-18
 
 [[profile]]
 id = "strict-fixed"    # all quirks fixed
-quirks = { "quirk.battle.no_luck_without_hero" = false, "quirk.battle.single_precision_rates" = false, "quirk.battle.unlimited_ballista_shots" = false, "quirk.battle.first_protection" = false, "quirk.battle.counterstrike_extra_round" = false, "quirk.battle.frenzy_reduced_defense" = false, "quirk.battle.fire_shield_first_stage" = false, "quirk.battle.early_mass_version" = false, "quirk.battle.mass_cure_skips_hypnotized" = false, "quirk.battle.obstacle_anchors" = false, "quirk.battle.draws_avoid_hidden" = false, "quirk.battle.sacrifice_tests_as_resurrection" = false, "quirk.battle.clone_on_its_original" = false, "quirk.battle.periodic_first_stack" = false, "quirk.battle.no_defender_ballista_at_fort" = false, "quirk.battle.berserk_walks_to_position_hex" = false, "quirk.battle.original_ai_slips" = false, "quirk.content.roland_crusader_specialty" = false, "quirk.content.elemental_levels" = false, "quirk.content.elementalist_offer_intervals" = false, "quirk.adventure.diagonal_check_ignores_roads" = false, "quirk.adventure.diagonal_check_ignores_native" = false, "quirk.adventure.native_skips_leading_neutrals" = false, "quirk.adventure.fringe_shows_objects" = false, "quirk.adventure.obstacles_from_tile" = false, "quirk.adventure.split_from_tile" = false, "quirk.adventure.level_up_from_seed" = false }   # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-3 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, BAT-QUIRK-23, BAT-QUIRK-24, BAT-QUIRK-25, ADV-QUIRK-1 to ADV-QUIRK-6, ADV-QUIRK-9, ADV-QUIRK-10
+quirks = { "quirk.battle.no_luck_without_hero" = false, "quirk.battle.single_precision_rates" = false, "quirk.battle.unlimited_ballista_shots" = false, "quirk.battle.first_protection" = false, "quirk.battle.counterstrike_extra_round" = false, "quirk.battle.frenzy_reduced_defense" = false, "quirk.battle.fire_shield_first_stage" = false, "quirk.battle.early_mass_version" = false, "quirk.battle.mass_cure_skips_hypnotized" = false, "quirk.battle.obstacle_anchors" = false, "quirk.battle.draws_avoid_hidden" = false, "quirk.battle.sacrifice_tests_as_resurrection" = false, "quirk.battle.clone_on_its_original" = false, "quirk.battle.periodic_first_stack" = false, "quirk.battle.no_defender_ballista_at_fort" = false, "quirk.battle.berserk_walks_to_position_hex" = false, "quirk.battle.original_ai_slips" = false, "quirk.content.roland_crusader_specialty" = false, "quirk.content.elemental_levels" = false, "quirk.content.elementalist_offer_intervals" = false, "quirk.adventure.diagonal_check_ignores_roads" = false, "quirk.adventure.diagonal_check_ignores_native" = false, "quirk.adventure.native_skips_leading_neutrals" = false, "quirk.adventure.fringe_shows_objects" = false, "quirk.adventure.obstacles_from_tile" = false, "quirk.adventure.split_from_tile" = false, "quirk.adventure.level_up_from_seed" = false, "quirk.adventure.flying_inland_price" = false, "quirk.adventure.drop_ignores_artifacts" = false, "quirk.adventure.radius_waits_for_a_step" = false }   # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-3 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, BAT-QUIRK-23, BAT-QUIRK-24, BAT-QUIRK-25, ADV-QUIRK-1 to ADV-QUIRK-6, ADV-QUIRK-9, ADV-QUIRK-10, ADV-QUIRK-16 to ADV-QUIRK-18

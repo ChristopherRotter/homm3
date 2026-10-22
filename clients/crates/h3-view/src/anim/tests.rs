@@ -29,6 +29,7 @@ const MORALE: &str = include_str!("../../../../situations/timelines/morale.txt")
 const BAD: &str = include_str!("../../../../situations/timelines/bad.txt");
 const FEAR: &str = include_str!("../../../../situations/timelines/fear.txt");
 const MASS: &str = include_str!("../../../../situations/timelines/mass.txt");
+const OBSTACLES: &str = include_str!("../../../../situations/timelines/obstacles.txt");
 
 /// Creature handles of the tests.
 const CHAMPION: u16 = 0;
@@ -2570,6 +2571,7 @@ fn the_log_records_what_the_battle_writes_and_when() {
             | Logged::SpellDamage { .. }
             | Logged::CastAll { .. }
             | Logged::MassDamage { .. }
+            | Logged::Armageddon { .. }
             | Logged::AreaDamage { .. } => "spell",
             Logged::Drain { .. }
             | Logged::DeathStare { .. }
@@ -2830,13 +2832,14 @@ fn casts() -> Casts {
             shell(3, [82, 109], 15, -56),
             shell(4, [50, 119], 15, -83),
         ],
+        ..SpellLook::default()
     };
     let timed = |original, sign, animation| SpellLook {
         original,
         sign,
         value: [0; 2],
         animation: Some(animation),
-        projectile: Vec::new(),
+        ..SpellLook::default()
     };
     // E17 M3 T7b-2a: Disrupting Ray (47) lowers the defense by 3 for either side's hero.
     let ray = SpellLook {
@@ -3842,7 +3845,7 @@ fn strike_casts() -> Casts {
         sign: -1,
         value: [0; 2],
         animation: Some(animation),
-        projectile: Vec::new(),
+        ..SpellLook::default()
     };
     for (original, animation) in [(17, 49), (71, 67), (62, 12), (79, 80), (80, 81)] {
         casts.spells.insert(original, spell(original, animation));
@@ -4232,7 +4235,7 @@ fn area_casts() -> Casts {
         sign: -1,
         value: [0; 2],
         animation,
-        projectile: Vec::new(),
+        ..SpellLook::default()
     };
     casts.spells.extend([
         (24, spell(24, Some(8))),
@@ -4766,5 +4769,408 @@ fn magic_animations_at_a_hex_and_over_several_stacks_without_their_look() {
     ];
     let t = timeline(&o, &commands, &area_looks(), stage, Speed::default()).unwrap();
     assert!(t.spots.is_empty() && t.magics.is_empty());
+    assert!(t.keys.iter().any(|k| k.stack == 1 && k.pose.group == 3));
+}
+
+/// The magic animations of the spell objects' tests (E17 M3 T7c-2): the placing and vanish ones
+/// of Fire Wall (65, 66), Quicksand (55, 58), Force Field (32, 33, 60, 61) and Land Mine (47, 59),
+/// three frames each, and Armageddon's 12 (20 frames).
+fn object_magic() -> BTreeMap<u8, MagicLook> {
+    let entry = |def: &str, frames, size, place| MagicLook {
+        def: def.to_string(),
+        frames,
+        size,
+        place,
+        translucent: false,
+    };
+    let mut all = spell_magic();
+    for (number, def, place) in [
+        (65, "C07spF60.def", 4),
+        (66, "C07spF62.def", 4),
+        (55, "C17spE0.def", 4),
+        (58, "C17spE2.def", 4),
+        (32, "C15spE0.def", 0),
+        (33, "C15spE9.def", 0),
+        (60, "C15spE2.def", 4),
+        (61, "C15spE11.def", 4),
+        (47, "C09spF0.def", 4),
+        (59, "C09spF2.def", 4),
+    ] {
+        all.insert(number, entry(def, 3, [44, 52], place));
+    }
+    all.insert(12, entry("C06spF0.def", 20, [200, 200], 15));
+    all
+}
+
+/// The spells that place objects (Quicksand 10, Land Mine 11, Force Field 12, Fire Wall 13: the
+/// asset tables' objects, invented frames) and Armageddon (26).
+fn object_casts() -> Casts {
+    let mut casts = casts();
+    let object = |def: &str, (hexes, rows, before_stacks), (placed, vanish)| ObjectLook {
+        def: def.to_string(),
+        frames: 4,
+        hexes,
+        rows,
+        before_stacks,
+        placed,
+        vanish,
+    };
+    let spell = |original, animation, objects, object_sound| SpellLook {
+        original,
+        animation,
+        objects,
+        object_sound,
+        ..SpellLook::default()
+    };
+    casts.spells.extend([
+        (
+            10,
+            spell(
+                10,
+                Some(55),
+                vec![object("C17SPE1.DEF", (1, 1, true), (55, 58))],
+                true,
+            ),
+        ),
+        (
+            11,
+            spell(
+                11,
+                Some(47),
+                vec![object("C09spF1.def", (1, 1, true), (47, 59))],
+                true,
+            ),
+        ),
+        (
+            12,
+            spell(
+                12,
+                None,
+                vec![
+                    object("C15spE1.def", (2, 3, false), (32, 60)),
+                    object("C15spE10.def", (3, 4, false), (33, 61)),
+                ],
+                false,
+            ),
+        ),
+        (
+            13,
+            spell(
+                13,
+                Some(65),
+                vec![object("C07spF61.def", (1, 3, false), (65, 66))],
+                false,
+            ),
+        ),
+        (26, spell(26, Some(12), Vec::new(), false)),
+    ]);
+    casts
+}
+
+fn play_objects_with(
+    snapshot: &Observation,
+    commands: &[(Option<u32>, Vec<Event>)],
+    (magic, casts): (&BTreeMap<u8, MagicLook>, Casts),
+) -> Timeline {
+    let layout = layout();
+    let stage = Stage {
+        layout: &layout,
+        width: 17,
+        groups: tables().battle.groups,
+        magic,
+        casts: &casts,
+    };
+    let commands: Vec<Command<'_>> = commands
+        .iter()
+        .map(|(at, events)| Command { at: *at, events })
+        .collect();
+    timeline(snapshot, &commands, &area_looks(), stage, Speed::default())
+        .unwrap()
+        .with_heroes(cast_heroes())
+}
+
+fn placed(spell: u16, hexes: &[u8]) -> Event {
+    Event::ObstaclePlaced {
+        side: Side::Attacker,
+        spell,
+        hexes: hexes.to_vec(),
+    }
+}
+
+fn removed(spell: u16, hexes: &[u8]) -> Event {
+    Event::ObstacleRemoved {
+        spell,
+        hexes: hexes.to_vec(),
+    }
+}
+
+/// When the spots of animation `number` show their frames, and where.
+fn spots_of(t: &Timeline, number: u8) -> Vec<(u32, Option<u32>, [i32; 2])> {
+    t.spots
+        .iter()
+        .filter(|k| k.animation == number)
+        .map(|k| (k.shown, k.frame, k.at))
+        .collect()
+}
+
+#[test]
+fn the_obstacles_sequence_plays_as_recorded() {
+    // E17 M3 T7c-2 (`seq-obstacles.toml`): Orrin's Fire Wall at 146 (round 1), Quicksand's four
+    // pits (round 2), the Fire Wall gone at round 3's start, a Force Field at 63 (round 3),
+    // Armageddon (round 4); the Swordsmen and the Pikemen defend.
+    let o = snapshot(vec![
+        at(1, Side::Defender, SWORDSMAN, 49, false),
+        at(2, Side::Defender, SWORDSMAN, 151, false),
+        at(0, Side::Attacker, PIKEMAN, 86, false),
+    ]);
+    let defend = |stack, next| {
+        vec![
+            Event::Defended { stack },
+            Event::TurnStarted { stack: next },
+        ]
+    };
+    let round = |round, gone: Vec<Event>| {
+        let mut events = vec![Event::Defended { stack: 0 }, Event::RoundStarted { round }];
+        events.extend(gone);
+        events.push(Event::TurnStarted { stack: 1 });
+        events
+    };
+    let none = Target::None {};
+    let pits = [154, 99, 177, 71];
+    let mut quicksand = vec![cast_at(10, none)];
+    quicksand.extend(pits.iter().map(|&h| placed(10, &[h])));
+    let commands = [
+        (Some(0), defend(1, 2)),
+        (Some(0), defend(2, 0)),
+        (
+            Some(0),
+            vec![
+                cast_at(13, Target::Hex { hex: 146 }),
+                placed(13, &[146]),
+                placed(13, &[130]),
+            ],
+        ),
+        (Some(1400), round(2, Vec::new())),
+        (Some(1400), defend(1, 2)),
+        (Some(1400), defend(2, 0)),
+        (Some(1400), quicksand),
+        (
+            Some(3400),
+            round(3, vec![removed(13, &[146]), removed(13, &[130])]),
+        ),
+        (Some(4200), defend(1, 2)),
+        (Some(4200), defend(2, 0)),
+        (
+            Some(4200),
+            vec![cast_at(12, Target::Hex { hex: 63 }), placed(12, &[46, 63])],
+        ),
+        (Some(5300), round(4, Vec::new())),
+        (Some(5300), defend(1, 2)),
+        (Some(5300), defend(2, 0)),
+        (
+            Some(5300),
+            vec![
+                cast_at(26, none),
+                hurt(0, 80, 80, 8),
+                hurt(1, 80, 80, 2),
+                hurt(2, 80, 80, 2),
+            ],
+        ),
+    ];
+    let t = play_objects_with(&o, &commands, (&object_magic(), object_casts()));
+    assert_eq!(
+        t.lines_with_heroes(7700),
+        until(&screenless(OBSTACLES), 7700)
+    );
+    // The Fire Wall: both hexes' 65 at the hex aimed at, each object with the redraw after its
+    // animation; both go at round 3's start, each with 66 at its own hex, before the round's line.
+    let walls = spots_of(&t, 65);
+    assert_eq!(walls.iter().filter(|w| w.1.is_some()).count(), 6);
+    assert_eq!(walls.len(), 8);
+    assert!(walls.iter().all(|w| w.2 == walls[0].2));
+    assert_eq!(t.objects(800).len(), 1);
+    assert_eq!(
+        t.objects(1100).keys().copied().collect::<Vec<_>>(),
+        [130, 146]
+    );
+    let vanish = spots_of(&t, 66);
+    assert_eq!(vanish.len(), 8);
+    assert_ne!(vanish[0].2, vanish[4].2);
+    let round_3 = t
+        .log
+        .iter()
+        .filter(|(_, l)| *l == Logged::Round)
+        .map(|(at, _)| *at)
+        .nth(1)
+        .unwrap();
+    assert!(vanish.iter().all(|v| v.0 <= round_3));
+    assert!(!t.objects(vanish[0].0).contains_key(&146));
+    // The pits: each its own place and its sound; the cast's line after the last.
+    let sunk = spots_of(&t, 55);
+    assert_eq!(sunk.iter().filter(|p| p.1.is_some()).count(), 12);
+    assert_eq!(sunk.len(), 16);
+    assert_eq!(
+        t.cues
+            .iter()
+            .filter(|c| c.sound == Sound::Object(10))
+            .count(),
+        4
+    );
+    let cast_lines: Vec<u32> = t
+        .log
+        .iter()
+        .filter(|(_, l)| matches!(l, Logged::CastAll { .. }))
+        .map(|(at, _)| *at)
+        .collect();
+    assert_eq!(cast_lines.len(), 3);
+    assert!(sunk.iter().all(|p| p.0 <= cast_lines[1]));
+    // The Force Field at 63 (two hexes, rows 3): it shows with the hero's next frame, no redraw of
+    // its own.
+    let field = t.objects(t.end);
+    assert_eq!(
+        field.keys().copied().collect::<Vec<_>>(),
+        [63, 71, 99, 154, 177]
+    );
+    assert_eq!(
+        (field[&63].rows, field[&63].blocked.clone()),
+        (3, vec![46, 63])
+    );
+    assert!(field[&154].before_stacks && field[&154].blocked.is_empty());
+    let shown = t.objects.iter().find(|k| k.anchor == 63).unwrap().shown;
+    assert!(t.hero_keys.iter().any(|k| k.shown == shown));
+    // Armageddon: its 20 frames tiled, then its line; the last frame stays to the next redraw.
+    let frames: Vec<Option<u32>> = t.fields.iter().map(|k| k.frame).collect();
+    let mut expected: Vec<Option<u32>> = (0..20).map(Some).collect();
+    expected.push(None);
+    assert_eq!(frames, expected);
+    assert_eq!(t.field(t.fields[19].shown).map(|f| f.frame), Some(19));
+    assert_eq!(t.field(t.fields[20].shown), None);
+    let line = t
+        .log
+        .iter()
+        .find(|(_, l)| matches!(l, Logged::Armageddon { .. }))
+        .unwrap();
+    assert_eq!(line.1, Logged::Armageddon { damage: 80 });
+    assert!(line.0 >= t.fields[19].shown);
+    assert!(t.changes(t.end).contains(&t.fields[0].shown));
+}
+
+#[test]
+fn objects_outside_casts_and_without_their_looks() {
+    // E17 M3 T7c-2: the snapshot's pit at 0; a Land Mine laid outside a cast and one revealed,
+    // shown with the next frame (one already known not twice); a removal outside a round's
+    // start plays its vanish, one the timeline does not know none; a placement without hexes or a
+    // look is skipped; a Force Field of three hexes takes its three-hex object, a spell whose sizes
+    // do not match its first; Armageddon with a two-frame animation shows the field plain after
+    // it, kills a stack (its corpse, a redraw), strikes none (no line) or lacks its look.
+    let mut o = snapshot(vec![
+        at(1, Side::Defender, SWORDSMAN, 49, false),
+        at(0, Side::Attacker, PIKEMAN, 86, false),
+    ]);
+    o.spell_obstacles = vec![h3_protocol::wire::SpellObstacle {
+        spell: 10,
+        kind: h3_protocol::wire::ObstacleKind::Pit {},
+        side: Side::Attacker,
+        hexes: vec![50],
+        rounds: 0,
+        value: WireU64(0),
+        revealed: true,
+    }];
+    let revealed = |spell, hexes: &[u8]| Event::ObstacleRevealed {
+        side: Side::Attacker,
+        spell,
+        hexes: hexes.to_vec(),
+    };
+    let none = Target::None {};
+    let commands = [
+        (
+            Some(0),
+            vec![
+                placed(11, &[60]),
+                revealed(10, &[50]),
+                revealed(10, &[70]),
+                placed(99, &[80]),
+                placed(10, &[]),
+            ],
+        ),
+        (
+            Some(1000),
+            vec![
+                Event::Defended { stack: 1 },
+                removed(11, &[60]),
+                removed(11, &[90]),
+                removed(11, &[]),
+            ],
+        ),
+        (
+            Some(2000),
+            vec![
+                cast_at(12, Target::Hex { hex: 63 }),
+                Event::SpellResisted { target: 1 },
+                placed(12, &[29, 46, 63]),
+                placed(10, &[]),
+            ],
+        ),
+        (Some(4000), vec![cast_at(11, none), placed(11, &[100])]),
+        (
+            Some(6000),
+            vec![
+                cast_at(26, none),
+                Event::SpellResisted { target: 0 },
+                hurt(1, 50, 50, 40),
+                hurt(9, 50, 50, 1),
+            ],
+        ),
+        (Some(9000), vec![cast_at(26, none)]),
+    ];
+    let mut magic = object_magic();
+    magic.insert(
+        12,
+        MagicLook {
+            frames: 2,
+            ..magic[&12].clone()
+        },
+    );
+    let t = play_objects_with(&o, &commands, (&magic, object_casts()));
+    assert_eq!(t.objects(0).keys().copied().collect::<Vec<_>>(), [50]);
+    assert_eq!(
+        t.objects(999).keys().copied().collect::<Vec<_>>(),
+        [50, 60, 70]
+    );
+    assert_eq!(spots_of(&t, 59).len(), 4);
+    assert!(!t.objects(1999).contains_key(&60));
+    assert_eq!(t.objects(5000)[&63].rows, 4);
+    assert!(t.cues.iter().any(|c| c.sound == Sound::Object(11)));
+    // Armageddon: frames 0 and 1, then the field plain through the Swordsmen's death group.
+    let frames: Vec<Option<u32>> = t.fields.iter().map(|k| k.frame).collect();
+    assert_eq!(&frames[..3], &[Some(0), Some(1), None]);
+    let corpse = t.keys.iter().rev().find(|k| k.stack == 1).unwrap();
+    assert_eq!(corpse.pose.layer, CORPSE);
+    let lines = t
+        .log
+        .iter()
+        .filter(|(_, l)| matches!(l, Logged::Armageddon { .. }))
+        .count();
+    assert_eq!(lines, 1);
+    // Without its look Armageddon plays the reactions alone; a Fire Wall without its objects'
+    // looks places nothing and writes its line.
+    let mut bare = object_magic();
+    bare.remove(&12);
+    let mut casts = object_casts();
+    casts.spells.entry(13).and_modify(|s| s.objects.clear());
+    let commands = [
+        (Some(0), vec![cast_at(26, none), hurt(1, 50, 50, 1)]),
+        (
+            Some(4000),
+            vec![cast_at(13, Target::Hex { hex: 63 }), placed(13, &[63])],
+        ),
+    ];
+    let t = play_objects_with(&o, &commands, (&bare, casts));
+    assert!(t.fields.is_empty() && !t.objects(t.end).contains_key(&63));
+    assert!(
+        t.log
+            .iter()
+            .any(|(_, l)| *l == Logged::CastAll { side: 0, spell: 13 })
+    );
     assert!(t.keys.iter().any(|k| k.stack == 1 && k.pose.group == 3));
 }

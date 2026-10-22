@@ -99,6 +99,9 @@ pub fn compose(
                 };
                 drawn(&mut screen, batch, def, (0, *frame), at, drawer)?;
             }
+            Draw::Tiled { def, frame, area } => {
+                tiled(&mut screen, batch, def, *frame, *area)?;
+            }
             Draw::Projectile {
                 def,
                 frame,
@@ -385,6 +388,50 @@ fn drawn(
     let (sprite, frame) = frame_of(batch, def, group, index)?;
     let palette = ScreenPalette::new(&sprite.def.palette, FORMAT);
     draw_frame(screen, frame, &palette, at, drawer);
+    Ok(())
+}
+
+/// The columns and rows a tiling counts from, whatever the area (`mass_damage_handler`'s 0x31F
+/// and 0x257: ceil(800 / W), ceil(600 / H)).
+const TILES_FROM: [i64; 2] = [800, 600];
+
+/// Frame `frame` of `def`'s group 0 tiled from (0, 0) over `area`, plain (0x47C170 without its
+/// translucent flag): each tile its canvas cut to the width and height left of the area
+/// (Armageddon's, 0x5A4FEF to 0x5A50AD; E17 M3 T7c-2).
+fn tiled(
+    screen: &mut Screen,
+    batch: &Batch,
+    def: &str,
+    frame: u32,
+    area: [i32; 2],
+) -> Result<(), ComposeError> {
+    let (sprite, frame) = frame_of(batch, def, 0, frame)?;
+    let palette = ScreenPalette::new(&sprite.def.palette, FORMAT);
+    let (w, h) = (
+        i64::from(frame.full_width.max(1)),
+        i64::from(frame.full_height.max(1)),
+    );
+    let (columns, rows) = ((TILES_FROM[0] + w - 1) / w, (TILES_FROM[1] + h - 1) / h);
+    for row in 0..rows {
+        let height = h.min(i64::from(area[1]) - row * h);
+        for column in 0..columns {
+            let width = w.min(i64::from(area[0]) - column * w);
+            let (Ok(width), Ok(height)) = (u32::try_from(width), u32::try_from(height)) else {
+                continue;
+            };
+            let cut = Frame {
+                full_width: width,
+                full_height: height,
+                ..frame.clone()
+            };
+            let at = Placement {
+                x: i32::try_from(column * w).unwrap_or(i32::MAX),
+                y: i32::try_from(row * h).unwrap_or(i32::MAX),
+                mirrored: false,
+            };
+            draw_frame(screen, &cut, &palette, at, PLAIN);
+        }
+    }
     Ok(())
 }
 

@@ -1,11 +1,11 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b, T8, T7b-1, T7b-2a, T7b-2b-1, T7b-2b-2a, T7b-2b-2b, T7b-2b-3, T7c-1 done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b, T8, T7b-1, T7b-2a, T7b-2b-1, T7b-2b-2a, T7b-2b-2b, T7b-2b-3, T7c-1, T7c-2 done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
 [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
-are there). Next: M3 T7c-2, T7c-3, then T9 (`docs/lanes/client/QUEUE.md`).
+are there). Next: M3 T7c-3, T7d, then T9 (`docs/lanes/client/QUEUE.md`).
 
 ## Goal
 
@@ -484,6 +484,13 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   stack on after its loop, the cast's tail (counts, outline), the mouse's highlight cleared as a
   cast starts, the book's empty status line. `mass` and `dragon` recorded (seed 174): played as
   recorded, frames as the original's but its redraw artifacts (the draw's log line listed).
+- **T7c-2 done 2026-10-22** ([log](E17-log.md#m3-t7c-2--the-spell-objects-and-armageddon-2026-10-22),
+  design §7.16): not split, at the user's word. The spell objects (Quicksand, Land Mine, Force
+  Field, Fire Wall) placed by their animations at a hex, drawn in the obstacles' passes by the
+  idle steps, gone with their vanish animations at a round's start before its line; Armageddon
+  tiled over the battlefield with every stack's reaction, then its line. `obstacles` recorded
+  (seed 517 487 719: the original's four pits): played as recorded, all 84 frames as the
+  original's.
 
 ### The adventure lane's harness (H1, H2: its batch E3)
 
@@ -553,6 +560,17 @@ Accepted by the user (M1 2026-10-13, M2 2026-10-14); moved to the log,
 
 (Filled by the tasks: choices queued for the milestone review under the autonomy contract.
 Oddities of the original are open questions since 2026-10-22, the items naming them.)
+
+- T7c-2: not split, at the user's word. **Formats** (lasting): the asset tables' spell `objects`
+  (DEF, hexes, rows, layer, placing and vanish animations: harvested from the descriptors and
+  the handlers) and `object_sound`; the key catalogue's `battle.log.armageddon` (GENRLTXT 89).
+  **Found by the reading, built as the original's:** a Fire Wall's every placing animation at the
+  hex aimed at (CLT-Q12, now confirmed by the code and the frames); Armageddon's line without the
+  caster's bonuses (CLT-Q16). *Provisional:* the objects' sound at the spells' volume; the
+  samples' waits not built (as the heal's); Dispel's and Remove Obstacle's removals as the event
+  comes; a record holds only the objects its viewer sees, so the hot seat's hiding of the other
+  player's hidden objects is not drawn (as CLT-Q15). **Unexplained:** the first capture in the
+  sandbox showed the Swordsmen's defend gain +3, every later run +2 (the log).
 
 - T7c-1: T7c split with the user (T7c-1 the area and mass spells; T7c-2 the spell obstacles and
   Armageddon; T7c-3 raises, the creatures' own animations and Chain Lightning). **Records**
