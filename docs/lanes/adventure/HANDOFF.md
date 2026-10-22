@@ -19,7 +19,7 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 - **Experiments**: `h3-experiment` (battle's) has the adventure shape (T22a1; T32a, T36a, T36b: `level_limit`, `[[map.object]]`, `banned_skills`); batches 1, 2, E3, E4 scored (T33); E5a–E5e specified; `crates/h3-map/examples/e4_score.rs` scores E4 and E5-2, -3, -10. **Agents run batches** on the client lane's harness (decision 21); T32b1 and T32b2 changed it (`cross-lane`; the runbook).
 - **Adventure ruleset part** (v9 since T29: the costs by Pathfinding level): terrains, roads, rivers, the movement and setup parameters, the object types, the starting resources by difficulty, the battle terrains, the monsters' parameters (with the price resource).
 - **Properties** on generated playable maps (`h3-map`'s `play.rs`, `view.rs`): `Step::Fight` runs (hero casts via `h3-battle`, a dev-dependency), monsters, grounds, the system actor, guarded piles, level-ups (T30), `check_progression` after every command (T31); `the_plans_play_battles_to_a_victory`: 192 fixed cases.
-- **Next:** T36b's pull request to merge; then round 2 (T37 + T38, `QUEUE.md`; the cut at its checkpoint).
+- **Next:** #387 (T36b, `cross-lane`) to merge; then round 2 (T37 + T38, `QUEUE.md`; the cut at its checkpoint).
 - **ADRs accepted**: ADR-0015 to -0017 (2026-10-10), amended for increments 2 (#115), 3 (T18a, #185, with ADR-0013), 4 (T26a, #325) and 5 (T35a, #377: ADR-0013, -0016, -0017).
 - **R01** (the content split): the core `h3-content` and `h3-pack` (`core.toml`) are shared; the writer is `h3_map::writer`.
 - **Ownership:** the four crates and `h3-heroes` (since E04c), `src/adventure/` in `h3-sim` and `h3-cli` (their `Cargo.toml`, `lib.rs` and `h3-cli`'s `main.rs` are battle's: `cross-lane`), `crates/h3-cli/tests/adventure_replays.rs`, `fixtures/replays/adventure/`, `fixtures/maps/`, `benches/adventure/`, each pack's `adventure.toml`, `docs/formats/h3m.md`, `docs/rules/catalog/{adventure,game,town}.toml`.
@@ -41,7 +41,7 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 
 ### 2026-10-22 — increment 5, fifth session: T36b
 
-Baseline c84370f (full verify). Decision 81. The evaluation at load takes Logistics: the level-6 heroes got seven more skills. PR open (`cross-lane`).
+Baseline c84370f (full verify). Decision 81. The evaluation at load takes Logistics: the level-6 heroes got seven more skills. Full verify green on 736a00f; #387 open.
 
 ### 2026-10-22 — increment 5, fourth session: T36a
 
