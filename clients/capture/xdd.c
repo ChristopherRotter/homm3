@@ -28,7 +28,11 @@
         <seq> rolls <site> natural          ... or the generator's again (as at the start)
       A call is redirected only where its bytes are the call the table names. The ack goes on
       with "<forced> <pending> <sites>": the draws forced so far, the forced draws still waiting
-      for their roll and the calls redirected. */
+      for their roll and the calls redirected.
+   4. Logged draws (E17 M3 T7c-3, *provisional*): a site marked `logged` (Chain Lightning's
+      rays turning in `ray_aim`) appends each of its draws, as returned, to <H3CLOCK>\draws, one
+      line "<site> <value>", so the frame check can draw the same rays; the file starts empty
+      with the game. Nothing is forced there unless the harness asks, as at any site. */
 #include <windows.h>
 #include <stdio.h>
 #include <string.h>
@@ -50,6 +54,7 @@ struct site {
     long value;       /* what they return */
     int fixed;        /* the site's other draws return `otherwise` */
     long otherwise;
+    int logged;       /* its draws go to <H3CLOCK>\draws */
 };
 
 static struct site sites[] = {
@@ -72,6 +77,9 @@ static struct site sites[] = {
     {"acid", 0x4414B7, RANDOM_BETWEEN, 0, 0, 0, 0, 0},
     /* strike_spell_choice 0x440500: the Wyvern Monarch's Poison, random_between(1, 100) <= 30 */
     {"poison", 0x440839, RANDOM_BETWEEN, 0, 0, 0, 0, 0},
+    /* ray_aim 0x5A5260: Chain Lightning's ray turns by random_between(10, 80) hundredths of a
+       radian (or -80 to -10) at each aim while its target is far (E17 M3 T7c-3); logged */
+    {"ray_aim", 0x5A53FC, RANDOM_BETWEEN, 0, 0, 0, 0, 0, 1},
 };
 #define SITES (sizeof sites / sizeof *sites)
 
@@ -83,7 +91,7 @@ static int frozen;
 static DWORD stopped_at;   /* the time while frozen */
 static DWORD shift;        /* running: the time is real_time() + shift */
 static volatile LONG reads; /* the game's reads since the last command */
-static char ctl_path[MAX_PATH], ack_path[MAX_PATH], tmp_path[MAX_PATH];
+static char ctl_path[MAX_PATH], ack_path[MAX_PATH], tmp_path[MAX_PATH], draws_path[MAX_PATH];
 
 static DWORD now(void)
 {
@@ -133,6 +141,13 @@ static int forced(DWORD back, int draw)
         } else if (s->fixed) {
             draw = (int)s->otherwise;
             forced_draws++;
+        }
+        if (s->logged) {
+            FILE *f = fopen(draws_path, "a");
+            if (f) {
+                fprintf(f, "%s %d\n", s->name, draw);
+                fclose(f);
+            }
         }
         break;
     }
@@ -299,6 +314,12 @@ BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved)
     snprintf(ctl_path, sizeof ctl_path, "%s\\ctl", dir);
     snprintf(ack_path, sizeof ack_path, "%s\\ack", dir);
     snprintf(tmp_path, sizeof tmp_path, "%s\\ack.tmp", dir);
+    snprintf(draws_path, sizeof draws_path, "%s\\draws", dir);
+    {
+        FILE *f = fopen(draws_path, "w");
+        if (f)
+            fclose(f);
+    }
     InitializeCriticalSection(&lock);
     if (hook()) {
         redirected = redirect();

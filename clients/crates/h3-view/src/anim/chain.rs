@@ -6,7 +6,7 @@ use alloc::vec::Vec;
 
 use h3_protocol::wire::Event;
 
-use super::{Beam, Player, Riding, STANDING, STRUCK, SpellLook, Sound, TICK};
+use super::{Beam, Player, Riding, STANDING, STRUCK, Sound, SpellLook, TICK};
 use crate::battle_log::Logged;
 use crate::ray;
 

@@ -2125,9 +2125,8 @@ impl Player<'_> {
 
     /// A dead stack leaves the living for the corpses (a raise may bring it back).
     fn bury(&mut self, stack: u8) {
-        if let Some(live) = self.stacks.remove(&stack) {
-            self.corpses.insert(stack, live);
-        }
+        let live = self.stacks.remove(&stack);
+        self.corpses.extend(live.map(|l| (stack, l)));
     }
 
     /// One command's events, in order.
@@ -4843,9 +4842,9 @@ mod creature;
 mod entered;
 mod raise;
 
-pub use raise::{ANIMATE_DEAD, RAISE, RESURRECTION, SACRIFICE, SACRIFICED};
-pub use creature::{FIRE_SHIELD, SHIELD_RETURN};
 pub use chain::{CHAIN_LIGHTNING, CHAIN_START};
+pub use creature::{FIRE_SHIELD, SHIELD_RETURN};
+pub use raise::{ANIMATE_DEAD, RAISE, RESURRECTION, SACRIFICE, SACRIFICED};
 
 #[cfg(test)]
 pub(crate) mod tests;

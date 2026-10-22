@@ -100,6 +100,10 @@ struct Frames {
     /// and marked stack; none for a sequence, whose mouse moves: `Interface::shown`).
     #[serde(default)]
     mouse: Option<[i32; 2]>,
+    /// The draws the original's Chain Lightning rays turned by, in order (E17 M3 T7c-3:
+    /// `xdd.dll`'s log; the frame check's timeline draws the same rays).
+    #[serde(default)]
+    rays: Vec<i32>,
 }
 
 /// What the frames draw below and over the battlefield: the panel over the battle and the mouse:
@@ -257,7 +261,11 @@ fn sequences(options: &Options) -> Result<usize, String> {
         let tables = assets::load(&assets::default_dir(), top)?;
         let looks = motion::looks(&record, &tables, &archives)?;
         let magic = motion::magic(&record, &tables, &archives)?;
-        let casts = motion::casts(&record, &tables, &archives, &options.packs)?;
+        let mut casts = motion::casts(&record, &tables, &archives, &options.packs)?;
+        // The frame check draws Chain Lightning's rays from the original's draws (E17 M3 T7c-3).
+        if let Some(dir) = &options.frames {
+            casts.rays = kept_rays(&dir.join(&sequence.id))?;
+        }
         let stage = motion::stage(&record, &tables, &layout, (&magic, &casts));
         // The harness acts `pre` ms after the opening, and then at each command's `at`.
         let commands: Vec<anim::Command<'_>> = record
@@ -407,6 +415,17 @@ fn sequences(options: &Options) -> Result<usize, String> {
         }
     }
     Ok(differing)
+}
+
+/// The draws the original's Chain Lightning rays turned by in `<here>/frames.toml` (E17 M3
+/// T7c-3; none without the file).
+fn kept_rays(here: &Path) -> Result<Vec<i32>, String> {
+    let path = here.join("frames.toml");
+    let Ok(text) = fs::read_to_string(&path) else {
+        return Ok(Vec::new());
+    };
+    let kept: Frames = toml::from_str(&text).map_err(|e| format!("{}: {e}", path.display()))?;
+    Ok(kept.rays)
 }
 
 /// Draws the viewer's frame at each time in `<here>/frames.toml` (the stacks the original shows

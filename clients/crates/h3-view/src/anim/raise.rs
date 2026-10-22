@@ -7,7 +7,7 @@ use alloc::vec;
 
 use h3_protocol::wire::Event;
 
-use super::{CORPSE, MagicKey, Player, Pose, SpellLook, Sound, TICK};
+use super::{CORPSE, MagicKey, Player, Pose, Sound, SpellLook, TICK};
 use crate::battle_log::Logged;
 
 /// Resurrection (the executable's spell number).
@@ -50,8 +50,7 @@ impl Player<'_> {
             Event::Sacrificed { victim, creatures } => Some((victim, creatures)),
             _ => None,
         });
-        if let Some((victim, live, killed)) =
-            victim.and_then(|(v, k)| Some((v, self.live(v)?, k)))
+        if let Some((victim, live, killed)) = victim.and_then(|(v, k)| Some((v, self.live(v)?, k)))
         {
             let line = Logged::Cast {
                 side,

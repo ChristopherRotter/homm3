@@ -21,7 +21,12 @@ impl Player<'_> {
     /// `strike_animation` with [`SHIELD_RETURN`] over the shields and the striker's reaction
     /// (player 2); then the damage's line named by Fire Shield (`battle_log_damage` with a
     /// number of 1, 0x440B8C); the sound waited for (not built).
-    pub(super) fn shield_return(&mut self, striker: u8, (damage, kills): (u64, u32), struck: &[u8]) {
+    pub(super) fn shield_return(
+        &mut self,
+        striker: u8,
+        (damage, kills): (u64, u32),
+        struck: &[u8],
+    ) {
         let spell = self.spell_handle(FIRE_SHIELD);
         let shields: Vec<_> = struck
             .iter()

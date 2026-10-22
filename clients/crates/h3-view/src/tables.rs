@@ -843,6 +843,7 @@ attack_climax = 7
 missile = "PLCBOWX.DEF"
 missile_offsets = [[38, -65], [36, -59], [21, -50]]
 missile_angles = [90, 72, 45, 27, 0, -27, -45, -72, -90, 0, 0, 0]
+explosion = { spell = 76, time = 100 }
 
 [[battlefield]]
 key = "dirt"
@@ -1279,6 +1280,21 @@ at = [124, 254]
             rule(&[b], "base").to_string(),
             "`base:slow`: a sound is an entry's name, without an extension"
         );
+    }
+
+    #[test]
+    fn a_shooter_names_its_explosion() {
+        // E17 M3 T7c-3: a Death Cloud as the Liches' (on the test's archer).
+        let tables = load(&[base()], "base").unwrap();
+        let explosion = |key: &str| tables.creatures[key].explosion;
+        assert_eq!(
+            explosion("base:archer"),
+            Some(CreatureExplosion {
+                spell: 76,
+                time: 100
+            })
+        );
+        assert_eq!(explosion("base:pikeman"), None);
     }
 
     #[test]

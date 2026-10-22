@@ -858,7 +858,17 @@ def run_sequences(rest):
     return 1 if failed else 0
 
 
-def frames_toml(kept, mouse=None):
+def ray_draws(clock_dir):
+    """The draws Chain Lightning's rays turned by in the run (E17 M3 T7c-3): `xdd.dll`'s log of
+    the `ray_aim` site, in order (numbers only)."""
+    path = Path(clock_dir) / "draws"
+    if not path.exists():
+        return []
+    return [int(line.split()[1]) for line in path.read_text().splitlines()
+            if line.startswith("ray_aim ")]
+
+
+def frames_toml(kept, mouse=None, rays=()):
     """The kept frames for `h3-view sequences --frames`: each one's time, file and the stacks the
     original shows fidgeting (group 1: the viewer draws none of its own in a check), and, where
     the original's memory was read for them (the frame check, M3 T3a), its heroes' groups and
@@ -866,10 +876,13 @@ def frames_toml(kept, mouse=None):
     viewer's); a situation's mouse first (M3 T6c-1: `h3-view render --frames` draws its cursor,
     hint and marked stack); a sequence's frame the point the original's cursor is drawn at (M3
     T6c-2: its memory, `cursor_at`; the game reads the mouse on a 33 ms grid of its own, design
-    §9.10)."""
+    §9.10); and the draws its Chain Lightning's rays turned by (M3 T7c-3: `h3-view sequences
+    --frames` draws the same rays)."""
     out = ["# The original's kept frames (h3drive.py frames): numbers only.", ""]
     if mouse is not None:
         out += [f"mouse = [{mouse[0]}, {mouse[1]}]", ""]
+    if rays:
+        out += [f"rays = [{', '.join(str(r) for r in rays)}]", ""]
     for k in kept:
         fidgets = ", ".join(f"[{st['side']}, {st['record']}, {st['group']}, {st['frame']}]"
                             for st in k["stacks"] if st["group"] == 1 and st["count"] > 0)
@@ -928,7 +941,7 @@ def run_frames(rest):
         # turn at once: `t<ms>b`) is compared, not the one before it: the viewer draws one
         # moment per millisecond (M3 T1a).
         kept = [k for i, k in enumerate(kept) if i + 1 == len(kept) or kept[i + 1]["t"] != k["t"]]
-        (here / "frames.toml").write_text(frames_toml(kept))
+        (here / "frames.toml").write_text(frames_toml(kept, rays=ray_draws(here / "clock")))
         keep(set_path, "sequences", e["id"], here / "frames.toml")
         subprocess.run([h3view, "sequences", e["id"], "--frames", str(out), "--out", str(here)],
                        check=True, capture_output=True)
