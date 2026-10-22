@@ -262,7 +262,8 @@ fn gate(options: &Options) -> Result<(), String> {
         }
         Err(format!("{name}: in no archive"))
     };
-    let texts = text::tables(&keys, entry)?;
+    let exe = text::executable(&options.install)?;
+    let texts = text::tables(&keys, entry, &exe)?;
     let (original, problems) = Pack::original(&keys, &texts);
     if !problems.is_empty() {
         let shown: Vec<String> = problems.iter().map(ToString::to_string).collect();

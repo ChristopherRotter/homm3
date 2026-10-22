@@ -1,0 +1,44 @@
+# E17 M3 T7b-2b-3: the Rust Dragon's Acid Breath and acid, and Poison on the strike back (design
+# §7.16, player 1), in hot seat. The Rust Dragon (speed 17) flies to the Wyvern Monarchs and strikes
+# them from the left: at the strike's end its Acid Breath (a creature's cast, always) lowers their
+# defense (animation 81, the executable's own line), then the strike's line, then the acid's roll
+# (`roll:acid`, 0x4414B7) falls: its sound, the damage's line, 81 again and their hit. The Wyvern
+# Monarchs strike back and their Poison's roll (`roll:poison`, 0x440839) falls: at the strike's end
+# its line, then animation 67 over the Rust Dragon with its hit. On grass at the capture set's tile.
+
+[scenario]
+id = "sequence-acid"
+# Both players human, as the original's hot-seat map (`h3-view situation --hot-seat`).
+human = ["attacker", "defender"]
+packs = ["base", "ab", "sod"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "ab:rust_dragon"
+count = 1
+
+[[defender]]
+slot = 0
+creature = "base:wyvern_monarch"
+count = 5
+
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1

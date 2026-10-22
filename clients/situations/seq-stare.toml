@@ -1,0 +1,43 @@
+# E17 M3 T7b-2b-3: Death Stare on the strike back (design §7.16, player 1), in hot seat. Round 1:
+# the Royal Griffins (speed 9) fly to row 6, the Mighty Gorgons (beyond their reach at the start)
+# defend. Round 2: the Griffins strike them from the left; the Gorgons strike back and one of their
+# death stare rolls (`roll:death_stare`, 0x440EE0, once per Gorgon; five Gorgons kill one Griffin at
+# most) falls: the log's line, the spell's `Deathstr.wav`, animation 80 over the Griffins, then
+# their reaction. On grass at the capture set's tile.
+
+[scenario]
+id = "sequence-stare"
+# Both players human, as the original's hot-seat map (`h3-view situation --hot-seat`).
+human = ["attacker", "defender"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:royal_griffin"
+count = 10
+
+[[defender]]
+slot = 0
+creature = "base:mighty_gorgon"
+count = 5
+
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1

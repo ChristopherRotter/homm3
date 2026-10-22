@@ -6,18 +6,6 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024). M3 (fidelity) below, refined at M2's closure (T5c) and agreed by the user there, each task about half a context; the exit: the reference set passes, or each difference is a listed fix or a classified quirk. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M3 T7b-2b-3 — The creatures' rolled animations
-
-- **Scope:** Poison's hit (the Wyvern Monarchs), a magic animation lengthening a creature's
-  strike (Death Stare 80, Acid Breath 81, Life Drain 74, the Thunderbird's bolt 1 then 49;
-  players 1 and 2 of §7.16), Lightning Bolt's bolt from the sky with T7c's `bolt` (its round 1);
-  their sounds. Recorded with the forced rolls `death_stare`, `thunderbird`, `acid`, `poison`
-  (Acid Breath's defense and Life Drain draw nothing). The hit beside an animation (Poison's
-  `show_hit`) is built since T7b-2b-2b (`Player::over_one`, bad morale's and Fear's).
-- **Acceptance:** their recorded sequences as recorded and their frames match (new recordings,
-  T7b-2b-2b's way: `sequences.toml` with `fail` and an engine `seed` searched).
-- **Depends on:** T7b-2b-1 (done). **Status:** ready.
-
 ### E17 M3 T7c — Area spells, rays and spell obstacles
 
 - **Scope:** built from T7a: the area spells (Fireball, Inferno, Meteor Shower, Frost Ring,
@@ -27,10 +15,12 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
   scene (fire walls, force fields, quicksand, land mines: `ObstaclePlaced`, `ObstacleRevealed`,
   `ObstacleTriggered`; `scene::battle` leaves them out so far), Teleport, created and raised
   stacks (`StackCreated`, `SpellRaised`, `Reborn`: drawn once the snapshot lacks them), their
-  sounds. T7a-2b's recordings (`casts.toml`, design §7.16 "Recorded") are the references: `bolt`,
-  `mass`, `raise`, `obstacles` (its Fire Wall's second hex placed at the first's: confirm by the
+  sounds. T7a-2b's recordings (`casts.toml`, design §7.16 "Recorded") are the references: `bolt`
+  (its Chain Lightning; its Lightning Bolt is played since T7b-2b-3, `lightning`), `mass`, `raise`, `obstacles` (its Fire Wall's second hex placed at the first's: confirm by the
   frame check), `creatures` (the Liches' cloud), `dragon` (at a hex). May split when refined.
-- **Acceptance:** as T7b-2b-3.
+- **Acceptance:** their recorded sequences as recorded and their frames match (new recordings,
+  T7b-2b-3's way: `sequences.toml` with `fail` and an engine `seed` searched; `bolt`'s round 1
+  is `lightning` since T7b-2b-3).
 - **Depends on:** T7a-2b (done). **Status:** ready.
 
 ### E17 M3 T9 — M3's closure
@@ -40,15 +30,21 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
   user, a fresh reviewer agent over M3, the next milestone
   refined (sieges, live play, HD or the adventure map: the user's choice), M3 marked done.
 - **Acceptance:** M3's exit holds; the review list answered or carried on.
-- **Depends on:** T7b-2b-3, T7c (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1,
-  T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b, T8, T7b-1,
-  T7b-2a, T7b-2b-1, T7b-2b-2a, T7b-2b-2b done).
+- **Depends on:** T7c (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a,
+  T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b, T8, T7b-1, T7b-2a,
+  T7b-2b-1, T7b-2b-2a, T7b-2b-2b, T7b-2b-3 done).
   **Status:** waiting.
 
 ## Inbox
 
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
+
+- 2026-10-22 (the adventure lane, E08 T34b; for your information, nothing to do): batch E5 (the
+  hero's movement and scouting; `docs/epics/E08-design.md` §11) needs the harness to read a tile's
+  explored bit for a player (`explored:x,y`) and a hero's points at a turn start without a walk;
+  the adventure lane builds them in `clients/capture/` as `cross-lane` (T37, as T32b1 did) once the
+  user accepts the cut (ADV-Q21), with the recipes.
 
 - 2026-10-21 (the adventure lane, E08 T32b2, `adventure/e08-t32b2`, `cross-lane` as T32b1; for your
   information, nothing to do): **four more harness changes** while batch E4 ran (runbook updated):

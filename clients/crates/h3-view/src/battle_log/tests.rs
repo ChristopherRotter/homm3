@@ -31,7 +31,17 @@ const PACK: &str = r#"{
         "round": "Round.",
         "cast-on": "{{hero}}: {{spell}} on {{creature}}.",
         "resisted": "{{creature}} {{verb}} it.",
-        "disrupted": "Ray takes {{defense}}."
+        "disrupted": "Ray takes {{defense}}.",
+        "drain_one": "{{creature}} drinks {{hit_points}} from {{target}}.",
+        "drain_other": "{{creature}} drink {{hit_points}} from {{target}}.",
+        "drain-raised_one": "\nOne rises.",
+        "drain-raised_other": "\n{{count}} rise.",
+        "death-stare_one": "A {{creature}} dies by {{starer}}.",
+        "death-stare_other": "{{count}} {{creature}} die by {{starer}}.",
+        "thunderbolt": "Bolt on {{creature}}!",
+        "poisoned_one": "{{creature}} is poisoned.",
+        "poisoned_other": "{{creature}} are poisoned.",
+        "acid-breath": "Acid: {{creature}} -{{defense}}."
     } },
     "word": {
         "creature_one": "beast", "creature_other": "beasts",
@@ -563,4 +573,90 @@ fn the_mouses_hints_and_the_scrolls_enter_the_item() {
     );
     assert_eq!(worded(&status("x", true)), None);
     assert_eq!(worded(&Logged::Scroll(1)), None);
+}
+
+#[test]
+fn the_striker_effects_and_the_spells_after_a_strike_have_their_lines() {
+    // E17 M3 T7b-2b-3: Life Drain by the drinkers' number before the raised and the struck
+    // stack's before the strike; the raised's row when any.
+    let drain = |count, raised| Logged::Drain {
+        stack: 1,
+        count,
+        hit_points: 50,
+        raised,
+        target: 2,
+        target_count: 1,
+    };
+    assert_eq!(
+        worded(&drain(9, 1)).as_deref(),
+        Some("Ants drink 50 from Bee.\nOne rises.")
+    );
+    assert_eq!(
+        worded(&drain(1, 0)).as_deref(),
+        Some("Ant drinks 50 from Bee.")
+    );
+    assert_eq!(
+        worded(&drain(1, 2)).as_deref(),
+        Some("Ant drinks 50 from Bee.\n2 rise.")
+    );
+    // Death Stare: the struck creature's name by the kills, the Gorgons' by their number.
+    let stare = |kills| Logged::DeathStare {
+        stack: 1,
+        count: 5,
+        target: 2,
+        kills,
+    };
+    assert_eq!(worded(&stare(1)).as_deref(), Some("A Bee dies by Ants."));
+    assert_eq!(worded(&stare(3)).as_deref(), Some("3 Bees die by Ants."));
+    let bolt = Logged::Thunderbolt { stack: 2, count: 1 };
+    assert_eq!(worded(&bolt).as_deref(), Some("Bolt on Bee!"));
+    let poisoned = |count| Logged::Poisoned { stack: 2, count };
+    assert_eq!(worded(&poisoned(1)).as_deref(), Some("Bee is poisoned."));
+    assert_eq!(worded(&poisoned(4)).as_deref(), Some("Bees are poisoned."));
+    let acid = Logged::AcidBreath {
+        stack: 1,
+        count: 4,
+        lowered: 3,
+    };
+    assert_eq!(worded(&acid).as_deref(), Some("Acid: Ants -3."));
+    // A stack the record does not name writes nothing.
+    for unnamed in [
+        Logged::Drain {
+            stack: 1,
+            count: 1,
+            hit_points: 50,
+            raised: 0,
+            target: 9,
+            target_count: 1,
+        },
+        Logged::Drain {
+            stack: 9,
+            count: 1,
+            hit_points: 50,
+            raised: 0,
+            target: 2,
+            target_count: 1,
+        },
+        Logged::DeathStare {
+            stack: 9,
+            count: 5,
+            target: 2,
+            kills: 1,
+        },
+        Logged::DeathStare {
+            stack: 1,
+            count: 5,
+            target: 9,
+            kills: 1,
+        },
+        Logged::Thunderbolt { stack: 9, count: 1 },
+        Logged::Poisoned { stack: 9, count: 1 },
+        Logged::AcidBreath {
+            stack: 9,
+            count: 1,
+            lowered: 3,
+        },
+    ] {
+        assert_eq!(worded(&unnamed), None);
+    }
 }

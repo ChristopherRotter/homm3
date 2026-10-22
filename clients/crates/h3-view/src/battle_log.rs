@@ -128,6 +128,58 @@ pub enum Logged {
         /// The defense lowered (at most the stack's, 0x5A1ACB).
         lowered: i32,
     },
+    /// Life Drain (`striker_effects` 0x440D1F; E17 M3 T7b-2b-3): before its animation.
+    Drain {
+        /// The drinkers.
+        stack: u8,
+        /// Their number before the creatures it raised.
+        count: u32,
+        /// The hit points drained.
+        hit_points: u64,
+        /// The creatures it raised (a row of their own after the line when any).
+        raised: u32,
+        /// The stack struck.
+        target: u8,
+        /// Its number before the strike's kills.
+        target_count: u32,
+    },
+    /// Death Stare (`striker_effects` 0x440FD3; E17 M3 T7b-2b-3): before its animation.
+    DeathStare {
+        /// The Gorgons.
+        stack: u8,
+        /// Their number.
+        count: u32,
+        /// The stack stared at.
+        target: u8,
+        /// The creatures it killed.
+        kills: u32,
+    },
+    /// The Thunderbird's bolt strikes a stack (`striker_effects` 0x441276; E17 M3 T7b-2b-3):
+    /// before the bolt from the sky.
+    Thunderbolt {
+        /// The stack.
+        stack: u8,
+        /// Its number.
+        count: u32,
+    },
+    /// Poison takes hold of a stack after a strike (a creature's cast, `battle_log_cast`
+    /// 0x5A8EFC; E17 M3 T7b-2b-3): before its animation.
+    Poisoned {
+        /// The stack.
+        stack: u8,
+        /// Its number.
+        count: u32,
+    },
+    /// Acid Breath lowers a stack's defense (`cast_spell` 0x5A1F27; E17 M3 T7b-2b-3): after its
+    /// animation.
+    AcidBreath {
+        /// The stack.
+        stack: u8,
+        /// Its number.
+        count: u32,
+        /// The defense lowered (at most 3, to 0 at least: 0x5A1E70).
+        lowered: i32,
+    },
     /// A spell's damage on one stack (`battle_log_damage` 0x469A90 named by the spell, its number
     /// 1: Magic Arrow 0x5A0A1F, Ice Bolt 0x5A0AEB; E17 M3 T7b-1), after its animation.
     SpellDamage {
@@ -274,6 +326,70 @@ pub fn word(
         Logged::Resisted { stack, count } => {
             let (n, count) = named(*stack, *count)?;
             Some(resisted(catalogue, n.stack(count)))
+        }
+        Logged::Drain {
+            stack,
+            count,
+            hit_points,
+            raised,
+            target,
+            target_count,
+        } => {
+            let (drinkers, count) = named(*stack, *count)?;
+            let (struck, target_count) = named(*target, *target_count)?;
+            let hit_points = i64::try_from(*hit_points).unwrap_or(i64::MAX);
+            Some(drain(
+                catalogue,
+                drinkers.stack(count),
+                (hit_points, *raised),
+                struck.stack(target_count),
+            ))
+        }
+        Logged::DeathStare {
+            stack,
+            count,
+            target,
+            kills,
+        } => {
+            let (gorgons, count) = named(*stack, *count)?;
+            let (struck, kills) = named(*target, *kills)?;
+            Some(death_stare(
+                catalogue,
+                gorgons.stack(count),
+                struck.stack(kills),
+            ))
+        }
+        Logged::Thunderbolt { stack, count } => {
+            let (n, count) = named(*stack, *count)?;
+            Some(named_line(
+                catalogue,
+                "battle.log.thunderbolt",
+                n.stack(count),
+            ))
+        }
+        Logged::Poisoned { stack, count } => {
+            let (n, count) = named(*stack, *count)?;
+            Some(by_count(
+                catalogue,
+                "battle.log.poisoned",
+                n.stack(count),
+                Args::new(),
+            ))
+        }
+        Logged::AcidBreath {
+            stack,
+            count,
+            lowered,
+        } => {
+            let (n, count) = named(*stack, *count)?;
+            Some(
+                catalogue.text(
+                    "battle.log.acid-breath",
+                    &Args::new()
+                        .text("creature", &name(catalogue, n.stack(count)))
+                        .number("defense", i64::from(*lowered)),
+                ),
+            )
         }
         Logged::SpellDamage {
             spell,
@@ -517,19 +633,19 @@ pub fn defend(catalogue: &Catalogue, stack: Stack<'_>, defense: i64) -> String {
 /// Good morale (`good_morale_roll` 0x464AD5).
 #[must_use]
 pub fn morale_good(catalogue: &Catalogue, stack: Stack<'_>) -> String {
-    named(catalogue, "battle.log.morale-good", stack)
+    named_line(catalogue, "battle.log.morale-good", stack)
 }
 
 /// Bad morale (`bad_morale_check` 0x464CDF).
 #[must_use]
 pub fn morale_bad(catalogue: &Catalogue, stack: Stack<'_>) -> String {
-    named(catalogue, "battle.log.morale-bad", stack)
+    named_line(catalogue, "battle.log.morale-bad", stack)
 }
 
 /// Good luck on a strike or a shot (0x44187A, 0x43F998).
 #[must_use]
 pub fn luck_good(catalogue: &Catalogue, stack: Stack<'_>) -> String {
-    named(catalogue, "battle.log.luck-good", stack)
+    named_line(catalogue, "battle.log.luck-good", stack)
 }
 
 /// Fear freezes a stack (`fear_check` 0x464EFF, E17 M3 T7b-2b-2b): the frightening creature's
@@ -541,6 +657,48 @@ pub fn fear(catalogue: &Catalogue, frightener: Stack<'_>, stack: Stack<'_>) -> S
         &Args::new()
             .text("frightener", &name(catalogue, frightener))
             .text("creature", &name(catalogue, stack)),
+    )
+}
+
+/// Life Drain (`striker_effects` 0x440D1F, E17 M3 T7b-2b-3): the drinkers' name and verb by their
+/// number before the creatures it raised, the hit points drained and the struck stack's name; then
+/// the raised creatures' row when any (0x440DD1: its line break starts it on a line of its own,
+/// as the log's entries take it).
+#[must_use]
+pub fn drain(
+    catalogue: &Catalogue,
+    drinkers: Stack<'_>,
+    (hit_points, raised): (i64, u32),
+    struck: Stack<'_>,
+) -> String {
+    let mut line = by_count(
+        catalogue,
+        "battle.log.drain",
+        drinkers,
+        Args::new()
+            .number("hit_points", hit_points)
+            .text("target", &name(catalogue, struck)),
+    );
+    if raised > 0 {
+        let rise = catalogue.text(
+            "battle.log.drain-raised",
+            &Args::new().count(i64::from(raised)),
+        );
+        line.push_str(&rise);
+    }
+    line
+}
+
+/// Death Stare (`striker_effects` 0x440FD3, 0x441086; E17 M3 T7b-2b-3): the creatures killed (the
+/// row by their number, which picks the struck creature's name) and the Gorgons' name by theirs.
+#[must_use]
+pub fn death_stare(catalogue: &Catalogue, gorgons: Stack<'_>, killed: Stack<'_>) -> String {
+    catalogue.text(
+        "battle.log.death-stare",
+        &Args::new()
+            .text("creature", &name(catalogue, killed))
+            .text("starer", &name(catalogue, gorgons))
+            .count(i64::from(killed.count)),
     )
 }
 
@@ -635,7 +793,7 @@ fn by_count(catalogue: &Catalogue, key: &str, stack: Stack<'_>, args: Args) -> S
 }
 
 /// A key with the stack's name (by its number) as `creature`, and no form of its own.
-fn named(catalogue: &Catalogue, key: &str, stack: Stack<'_>) -> String {
+fn named_line(catalogue: &Catalogue, key: &str, stack: Stack<'_>) -> String {
     catalogue.text(key, &Args::new().text("creature", &name(catalogue, stack)))
 }
 

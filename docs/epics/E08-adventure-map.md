@@ -374,11 +374,36 @@ Refined with the user on 2026-10-21 (T33; ADV-Q19). Built like increments 1 to 4
 
 75. **Increment 5's rules, quirks and scope** (survey `docs/rules/surveys/E08-hero-movement.md`). **A-13** (a flying path through unexplored tiles): fixed, the moves stay on explored tiles; the user notes the gameplay cost (wide obstacle ranges become impassable to a flyer) and a possible trade-off (routing to the nearest unexplored but free tile), to be designed later. **A-14** (a flyer standing inland does not visit from its tile): withdrawn, "definitely wrong" (the user): a flyer visits as a walker; the reading's gap stays open (survey §3.3), row E5-8 dropped. **D-24** (flying's price 100 from every inland tile, roads included): the original's rule, a **fix-optional** quirk (strict-fixed takes the lesser of 100 and the walking price everywhere, as the wiki and VCMI); a significant debuff, and a flyer is drawn as a walker anyway; row E5-4 confirms the original. **D-22**: under Q-0005's flag (faithful single precision, strict-fixed exact). **D-23** (Cursed Ground cancels the native terrain's 100): **built only if row E5-6 confirms it in SoD** (the user took it for a battle-only effect). **A-12** (the drop to 0 prices a walking step): **fix-optional**; it matters only on Cursed Ground. **D-26**: the original's way (a grown radius shows at the next step or the new day; else it rewards swapping artifacts), the new day's reveal around every owned hero built. **Scope** and **batch E5** as recommended (the harness's explored-tile read built by this lane, `cross-lane`). D-25 was settled by the second reading.
 
+### Decisions at T34b (2026-10-22, user)
+
+76. **T34b whole** (the user's choice of four): the three ADR amendment drafts, the design note
+    and the cut in one session and one pull request. Not chosen: by crate as T24b (the hero side
+    first; recommended), both drafts first, or the hero side with the map's drafts first.
+77. **D-26 revised: the original's reveal as a fix-optional quirk** (`ADV-QUIRK-18`; the user's
+    choice of three, asked after T34b's reading of `new_day`: the new day reveals around the owned
+    heroes only after a Cover of Darkness hid tiles, 0x4C7BA0, so in SoD a grown radius shows only
+    at the hero's next step; survey §4.2). `faithful`: the next step only; `strict-fixed`: also
+    around every hero at each new day's start, as decision 75 assumed. Not chosen: the original's
+    way alone (recommended), or the new-day reveal in every profile.
+
+### Decisions at T34b's checkpoint (2026-10-22, user; ADV-Q21)
+
+78. **The drafts accepted and the cut confirmed**, every point as recommended: the amendment
+    drafts of ADR-0013, -0016 and -0017; a flyer's diagonal check in `strict-fixed` is the step's
+    own straight price, the fly price included; batch E5 gains row E5-11 (a flyer over a border
+    gate without its key); five rounds with batch E5 first, round 1 T35 + T36. **A-13 restated**
+    (the user's input at ADV-Q20, missing from ADR-0016's draft, now in its point 4): "probably
+    fix, but gameplay impacts have to be considered (wide obstacle ranges become impassable);
+    perhaps deserves a compromise, like allowing to route to the closest unexplored, but free hex;
+    TBD later anyway". Increment 5 builds the fix as provisional; the compromise and
+    `ADV-QUIRK-15`'s class are decided later (the queue's inbox).
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T33 Increment 5 refined** (with increment 4's closure). Done (2026-10-21, `adventure/e08-t33`; decisions 71, 72): movement and scouting, the first round queued (T34a, T34b).
 - **T34a The movement and scouting survey.** Done (2026-10-21, `adventure/e08-t34a`; decisions 73, 74): survey `docs/rules/surveys/E08-hero-movement.md`, the checkpoint's questions ADV-Q20.
-- **T34b The ADR amendment drafts, the design note and the cut** (next; ADV-Q20 answered, decision 75).
+- **T34b The ADR amendment drafts, the design note and the cut.** Done whole (2026-10-22, `adventure/e08-t34b` #375; decisions 76, 77): the drafts of ADR-0013, -0016 and -0017 (`docs/lanes/adventure/adr-drafts/*-increment-5.md`), `E08-design.md` rewritten for increment 5 with the cut and the exit criteria (§12), D-26 revised after a reading of `new_day`; the checkpoint's questions ADV-Q21 (log).
+- **T35 to T43 The building tasks**, proposed by T34b in five rounds (`E08-design.md` §12, with increment 5's exit criteria), batch E5 first: T35 + T36 (the shared groundwork; batch E5's specs and scorer), T37 + T38 (the harness's reads and the run; the scoring, D-23), T39 + T40 (`h3-heroes`' derivations; the points, radius and walking price), T41 (flying and water walking), T42 + T43 (the env, fixtures, replays, benchmarks; the closure). **Confirmed** at ADV-Q21 (decision 78); round 1 is next.
 
 ## Later increments (sketch)
 

@@ -1860,6 +1860,48 @@ the five DLLs, the combat and end tunes, `maps.tar`, `extracted.tar`).
   all gates passed (`verify-once clients`, code `a48bee9`), and `verify --scope client` no failing
   step. Pull request #371.
 
+### M3 T7b-2b-3 — The creatures' strike effects (2026-10-22)
+
+On `client/e17-m3-t7b-2b-3`, the user present at the start: offered a split (the effects over one
+stack after a strike; the bolts from the sky), the user chose the whole task. The user's computer
+was linked for the staging only (the four LODs, both sound archives, `H3ab_ahd.vid`, the
+executables, the five DLLs, the combat and end tunes, `maps.tar`, `extracted.tar`).
+
+- **Starting point:** `master` at `5b8d272` (#371 merged); no client pull request open; CI on
+  `master` not started (billing); the client gates' full check on that code (`verify-once
+  clients`: all gates passed).
+- **The reading** (design §7.4, §7.16, "Read at T7b-2b-3"; `docs/exe/map.toml`'s Acid Breath
+  string): `melee_strike`'s order (the strike's spell chosen, its animation, the pending casts at
+  its end, the line, `striker_effects`, Fire Shield); Poison's and Acid Breath's handlers; Life
+  Drain, Death Stare, the Thunderbird's bolt and the acid in `striker_effects`; the creature rows
+  of `battle_log_cast`; Lightning Bolt's handler; `strike_animation`'s second argument.
+- **The viewer:** `Player::pending_casts` and `strike_cast` (played by `iterate` before its
+  tail), `strike_spell`, `acid`, `drain`, `death_stare`, Lightning Bolt in `cast`; Acid Breath
+  sets no spell; `Sound::Drain`, `Thunderbolt`, `SpellFile`; `Logged::Drain`, `DeathStare`,
+  `Thunderbolt`, `Poisoned`, `AcidBreath` and their keys (GENRLTXT 119, 120, 362 to 365, 368,
+  562, 563; Acid Breath's `EXE:0x688450`, the catalogue's new source: the binary reads the
+  user's `Heroes3.exe` for it, `text::executable`); the asset tables' `drain_sound` and
+  `thunderbolt_sound` (harvested: a fresh harvest's `[battle]` as the tables'); `motion` loads
+  the animations and spells the strikes need.
+- **Recorded** (`sequences.toml`, forced rolls with `fail`, hot seat): `thunder`
+  (`seq-thunder.toml`, 129 changes; two rounds, the Vampire Lords twelve hexes from the
+  Thunderbirds), `acid` (`seq-acid.toml`, 156), `stare` (`seq-stare.toml`, 106; two rounds) and
+  `lightning` (`seq-lightning.toml`, 37), about 3 to 4 minutes each; a two-hex attacker's move
+  click puts its front on the hex (the engine's `Move` to its rear). The engine's seeds searched
+  (`h3-view sequences` per seed, about a quarter second): `thunder` 110, `acid` 55, `stare` 39,
+  each also matching the original's damage and kills (its log in the last state); all 25
+  sequences as recorded.
+- **Found by the timeline check:** a melee strike's loop counts a defending reaction's hit group
+  (`thunder`'s Vampire Lords, as read at 0x468C4F); after a shot or a spell the drawn group 4
+  still counts (`machines`, `arrow`, `shots`: *provisional*). **By the frame check** (`acid`):
+  every cast clears the outline as it starts and outlines the turn's stack as it ends.
+- **Checked:** `frames --only` for the four, then `--reuse` after the fixes: `thunder` 121
+  frames, `acid` 153, `stare` 98, `lightning` 34, as the original's but its redraw artifacts and a
+  landing flier's boxes (as `luck`'s at 2 730 ms); `drawn` (82: the four new, the rest the same),
+  then `drawn --record`. The library's tests (193, 100 % of lines and regions), clippy,
+  `scripts/exe.py check` and `cited`; the full `clients/scripts/check.sh` and `verify --scope
+  client` before the pull request.
+
 ## Accepted review lists (M1, M2)
 
 Moved from the epic file on 2026-10-20 (less start-up reading), unchanged.

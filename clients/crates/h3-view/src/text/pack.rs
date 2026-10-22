@@ -14,7 +14,7 @@ use core::fmt;
 
 use serde_json::Value;
 
-use super::keys::{Keys, Resolved, Row, Source};
+use super::keys::{Keys, Resolved, Row, Source, address_field};
 use super::message::Message;
 use super::plural::Rule;
 
@@ -151,6 +151,10 @@ fn cell<'t>(source: &Source, tables: &'t Tables) -> Result<&'t str, String> {
         .ok_or_else(|| format!("no table {name}.TXT"))?;
     let row = match source.row {
         Row::Record(r) => records.get(r),
+        Row::Address(a) => {
+            let field = address_field(a);
+            records.iter().find(|r| r.first() == Some(&field))
+        }
         Row::Id { first, id, by } => records
             .iter()
             .skip(first)

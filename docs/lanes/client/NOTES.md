@@ -35,6 +35,13 @@ a line there while the work waits.
   mouse enters a stack (`hover`'s four frames), the viewer's own fidgets meeting the mouse's in
   the window, sieges' and casters' cursors, the army info. The harness's `h3lod` now reads the
   base archive's text tables first, as the game does (its GENRLTXT and Help.txt differed).
+- 2026-10-22 (E17 M3 T7b-2b-3, done; design §7.16): the strikes' effects of the recorded
+  creatures are built. Left for a later task (read in part, not recorded): the other pending
+  spells of a melee strike (Blind, Curse, Disease, Age, Paralyze, Bind: the timed handler and
+  `battle_log_cast`'s creature rows 552 to 566; Stone Gaze's glow), the flies' Dispel and
+  Weakness (`striker_effects` 0x4413C4), regeneration (79), the Wraiths' mana drain (77), Death
+  Blow (73) and Poison's damage at a round's start (67, 0x4472AB); the waits for every sound
+  these play (as the heal's, below).
 - 2026-10-15 (E17 M3 T3b): **for T8**: the battle waits for the heal's sound to end
   (`wait_for_sample` after `first_aid_tent_action`'s animation, design §7.15): at speed 0 the
   animation outlasts `Regener` (2 100 against 1 881 ms), at speeds 1 and 2 with the sound on the
