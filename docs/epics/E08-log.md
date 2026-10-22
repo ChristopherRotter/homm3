@@ -3972,7 +3972,7 @@ while sizing it: the writer and the spec placed only Cartographers, and E5-7 nee
 Border Gate.
 
 **Baseline:** `master` eb1f35a (#380 merged); the sandbox's baseline ran the full gates on its
-engine code (5a41242d). The user's PC was linked at the start (the repository from GitHub, the
+engine code (5a41242d): all 16 steps passed. The user's PC was linked at the start (the repository from GitHub, the
 original data from the PC: the executable, both LODs, `Objects.txt`, `maps.tar`, `extracted.tar`);
 it went offline later, after everything was copied.
 
@@ -4007,3 +4007,5 @@ it went offline later, after everything was copied.
   throwaway example (not committed).
 - **Not built**: the recipes and the run (T37: the harness's explored-tile read for E5-9; a read
   of the points at a turn start without a walk for E5-1); T36b's specs and scorer.
+- **Verify**: the full run with the original data on de9f71b (`master` a64631e merged in, #382)
+  passed all 16 steps (engine code 4e17824f; benchmarks within +0.7 %). CI cannot run (billing).

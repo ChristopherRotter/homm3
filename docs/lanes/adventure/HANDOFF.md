@@ -41,7 +41,7 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 
 ### 2026-10-22 — increment 5, fourth session: T36a
 
-Baseline eb1f35a (full verify). Decision 80 (T36 by rows); E5-6b the agent's call. In progress: the full verify, then the pull request (`cross-lane`).
+Baseline eb1f35a (full verify). Decision 80 (T36 by rows); E5-6b the agent's call. Full verify green on de9f71b; PR open (`cross-lane`).
 
 ### 2026-10-22 — increment 5, third session: T35a + T35b
 
