@@ -243,7 +243,8 @@ found after that decision) belong to the neutral side's map too and are read (§
     the 75–100 % draw, "now"), 0x43BB20 but T5b's cases: the evaluators through 0x43A670 and
     0x43A910 with "now" (0x436C60) and Magic Mirror's scaling, the bolts', Dispel's and Clone's
     evaluators, Chain Lightning, the area and mass damage spells, the summons (BAT-AI-017,
-    BAT-AI-018; §7.56; `POLICY_VERSION` 12; the hero budget 5 ms; the log).
+    BAT-AI-018; §7.56; slip 27, Expert Dispel, found by the blind check; `POLICY_VERSION` 12;
+    the hero budget 5 ms; the log).
   - [ ] **T5b The raises, Sacrifice, Earthquake and Teleport** (BAT-STUB-14; Teleport runs the
     walker's real turn twice per candidate).
 - [ ] **T6 The hero's other choices** — retreat and surrender, the tactics phase, the Catapult's

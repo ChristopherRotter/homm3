@@ -5516,10 +5516,16 @@ are fresh: the context calls 0x41F140 at 0x436A25 with the activation's side.
 **0x43BB20's Dispel** (0x43BCE6): 0x43A910 on the own side into the candidate; at Advanced (+4 =
 2) 0x43A910 again on the other side into the same candidate, so its target replaces the own only
 when strictly larger, its "now" with it; at Expert (3) a copy of the candidate on the other side,
-its value added. **The stacks' case** (0x43BD34): only a spell with a target flag `0x70`; by the
-spell's type (+0 of its record): 0 or more on the own side, then 0 or less on the other side into
-the same candidate. No neutral spell reaches it (Dispel, the summons and the damage spells have
-their cases).
+its value added (0x43BD31). **The case has no return: it runs on into the stacks' case**
+(0x43BD34; found by T5a's blind check). **The stacks' case**: only a spell with a target flag
+`0x70`; by the spell's type (+0 of its record): 0 or more on the own side, then 0 or less on the
+other side into the same candidate. Dispel is neutral (type 0, flags `0x40041`), so both run
+again: aimed at one stack nothing changes (a target replaces only a strictly larger one; below
+Advanced the other side's stacks are weighed too, which the rules do not let it target); **at
+Expert the mass path writes its sum over the value (0x43AA54), so the own + other total becomes
+the own side's sum and then the other side's: Expert Dispel is valued at the other side's sum
+alone** (survey slip 27). No other neutral spell reaches the stacks' case (the summons and the
+damage spells have their cases).
 
 **The evaluators the hero alone reaches.** 0x436F60 (the bolts, 15 to 18 and 57): the damage
 `[+0x30] × power + [+0x34 + 4 × mastery]` by 0x436E30, its hero argument the context's +8, which

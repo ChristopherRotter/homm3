@@ -1124,3 +1124,10 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   **the slowest 2.9 ms** (within the hero's 5 ms; before the target bitmap and the area test's
   order 3.7 ms). Half of the hero's cost is the context the original builds too (predictions, every
   stack's threat record, the tables). `computer-decisions` (no heroes) unchanged in its choices.
+- **The blind check** (a fresh agent with the tool, the port and the addresses, no reading in the
+  brief): 0x43C800, 0x43A670, 0x436C60 and the three evaluators agree; **0x43BB20's Dispel case
+  has no return and falls into the stacks' case**, where Dispel (neutral) is weighed on both sides
+  again: no change for one target, but at Expert the mass sums overwrite the own + other total
+  with the other side's sum alone. Built as **slip 27** under BAT-QUIRK-25 (faithful: the other
+  side's sum; strict-fixed: both; `dispel_by_its_mastery` in both profiles, the side's own Bless
+  counting against it); §7.56 and the survey record it.

@@ -14,7 +14,7 @@ use h3_battle::{
     BattleSide, BattleState, CastTarget, CastTargets, Command, HexSet, STACK_CAPACITY, StackFlags,
     StackId, StackTraits, Status, cast_targets, castable_spells,
 };
-use h3_content::SpellId;
+use h3_content::{ORIGINAL_AI_SLIPS, SpellId};
 use h3_content_battle::{BattleRuleset, BattleSpell, SpellEffect, SpellPolarity, SpellTarget};
 use h3_kernel::Rng;
 use h3_kernel::arith::X87;
@@ -166,21 +166,22 @@ pub(crate) struct Hero<'h, 'a> {
     ranks: OnceCell<[u8; STACK_CAPACITY]>,
 }
 
-/// The engine's targets of a hero's cast now, by kind (a hex set and a stack mask for quick tests).
+/// The engine's stack and hex targets of a hero's cast now (a stack mask and a hex set for quick
+/// tests; a mass version's target is the engine's whenever the spell is castable).
 pub(crate) struct Targets {
-    none: bool,
     stacks: u64,
     hexes: HexSet,
 }
 
 impl Targets {
-    /// Whether `target` is one of them.
-    fn takes(&self, target: CastTarget) -> bool {
-        match target {
-            CastTarget::None => self.none,
-            CastTarget::Stack(s) => self.stacks & (1u64 << s.index()) != 0,
-            CastTarget::Hex(h) => self.hexes.contains(h),
-        }
+    /// Whether stack `s` is one of them.
+    const fn takes_stack(&self, s: StackId) -> bool {
+        self.stacks & (1u64 << s.index()) != 0
+    }
+
+    /// Whether hex `h` is one of them.
+    const fn takes_hex(&self, h: h3_battle::Hex) -> bool {
+        self.hexes.contains(h)
     }
 }
 
@@ -207,19 +208,19 @@ impl<'h, 'a> Hero<'h, 'a> {
     pub(crate) fn targets(&self, spell: SpellId) -> Targets {
         let mut list = CastTargets::new();
         cast_targets(self.state, self.ruleset, self.side, spell, &mut list);
-        let mut t = Targets {
-            none: false,
-            stacks: 0,
-            hexes: HexSet::new(),
-        };
-        for &target in list.as_slice() {
-            match target {
-                CastTarget::None => t.none = true,
-                CastTarget::Stack(s) => t.stacks |= 1u64 << s.index(),
-                CastTarget::Hex(h) => t.hexes.insert(h),
-            }
+        let list = list.as_slice();
+        Targets {
+            stacks: list.iter().fold(0, |mask, t| match *t {
+                CastTarget::Stack(s) => mask | 1u64 << s.index(),
+                _ => mask,
+            }),
+            hexes: list.iter().fold(HexSet::new(), |mut set, t| {
+                if let CastTarget::Hex(h) = *t {
+                    set.insert(h);
+                }
+                set
+            }),
         }
-        t
     }
 
     /// Whether stack `s` of `of` can act this round apart from the active stack (0x43A879,
@@ -246,8 +247,9 @@ impl<'h, 'a> Hero<'h, 'a> {
 /// ([`mass_damage`]), the summons' ([`summon`]) and Dispel's ([`dispel`]) by their own cases;
 /// the raises, Sacrifice, Earthquake and Teleport nothing yet (T5b); every other spell aimed at
 /// stacks by its evaluator ([`Kind`]) on the side's stacks for a positive spell, the other
-/// side's for a negative one ([`evaluated`]; no neutral spell gets there: the original would weigh
-/// both sides); any other nothing: the computer's hero never casts
+/// side's for a negative one ([`evaluated`]; the original weighs a neutral one on both, the only
+/// such spell Dispel, whose case falls into this one, [`dispel`]); any other nothing: the
+/// computer's hero never casts
 /// Quicksand, Land Mine, Force Field, Fire Wall, Berserk (aimed at a hex) or Remove Obstacle.
 // rule: BAT-AI-017, BAT-AI-018
 pub(crate) fn value(h: &Hero<'_, '_>, (id, s): (SpellId, &BattleSpell), c: Candidate) -> Valued {
@@ -340,7 +342,7 @@ fn weighed(h: &Hero<'_, '_>, s: StackId, c: Candidate) -> bool {
 
 /// The sum of the candidate's values over `of`'s stacks it weighs ([`weighed`]), in record order,
 /// as 32-bit integers (0x43A910's mass path).
-fn on_stacks(h: &Hero<'_, '_>, of: BattleSide, c: Candidate) -> i32 {
+pub(crate) fn on_stacks(h: &Hero<'_, '_>, of: BattleSide, c: Candidate) -> i32 {
     let view = h.sc.view();
     (0u8..)
         .zip(h.state.stacks())
@@ -368,7 +370,7 @@ pub(crate) fn one_target(
     let mut target = None;
     for (i, st) in (0u8..).zip(h.state.stacks()) {
         let s = StackId(i);
-        if st.side != of || !weighed(h, s, c) || !targets.takes(CastTarget::Stack(s)) {
+        if st.side != of || !weighed(h, s, c) || !targets.takes_stack(s) {
             continue;
         }
         let mut v = view.value(s, c);
@@ -477,7 +479,7 @@ fn chain(h: &Hero<'_, '_>, spell: Spell) -> Valued {
         if st.side == h.side
             || !st.is_alive()
             || !computer::spell_affects(h.state, h.ruleset, h.side, spell.id, s)
-            || !targets.takes(CastTarget::Stack(s))
+            || !targets.takes_stack(s)
         {
             continue;
         }
@@ -504,7 +506,7 @@ fn area(h: &Hero<'_, '_>, spell: Spell) -> Valued {
     };
     for hex in (0u8..).take(field).map(h3_battle::Hex) {
         let column = hex.0 % 17;
-        if column == 0 || column == 16 || !targets.takes(CastTarget::Hex(hex)) {
+        if column == 0 || column == 16 || !targets.takes_hex(hex) {
             continue;
         }
         let v = casts::area(&h.scanner, spell, hex, &mut cache);
@@ -570,21 +572,33 @@ pub(crate) fn summon(h: &Hero<'_, '_>, s: &BattleSpell, c: Candidate) -> Valued 
     }
 }
 
-/// Dispel's value (0x43BB20's case; BAT-AI-017): by its evaluator on the side's stacks (one target
-/// or the mass version, [`evaluated`]); at Advanced, where it takes any side's stack, the other
-/// side's best target too, the larger staying; at Expert the side's sum and the other side's.
+/// Dispel's value (0x43BB20's case and, without a return, the stacks' case after it, Dispel being
+/// neutral; BAT-AI-017): by its evaluator on the side's stacks (one target or the mass version,
+/// [`evaluated`]). Aimed at one stack, the other side's best target too, which replaces the side's
+/// only when strictly larger (at Advanced, and again in the stacks' case; below Advanced the engine
+/// takes none of them). At Expert the case sums the side's and the other side's, which the stacks'
+/// case then overwrites with the side's sum and then the other side's: with BAT-QUIRK-25 (survey
+/// slip 27) the other side's sum alone, without the two sums.
+// rule: BAT-AI-017
 fn dispel(h: &Hero<'_, '_>, c: Candidate) -> Valued {
+    let other = h.side.opponent();
     let own = evaluated(h, h.side, c);
-    if c.mastery == 2 {
-        let other = evaluated(h, h.side.opponent(), c);
-        if other.value > own.value {
-            return other;
-        }
-    } else if c.mastery >= 3 {
+    if c.mastery >= 3 {
+        let theirs = on_stacks(h, other, c);
+        let slip = h.ruleset.quirks().is_enabled(ORIGINAL_AI_SLIPS);
         return Valued {
-            value: own.value.wrapping_add(on_stacks(h, h.side.opponent(), c)),
+            value: if slip {
+                theirs
+            } else {
+                own.value.wrapping_add(theirs)
+            },
             ..own
         };
     }
-    own
+    let theirs = evaluated(h, other, c);
+    if theirs.value > own.value {
+        theirs
+    } else {
+        own
+    }
 }

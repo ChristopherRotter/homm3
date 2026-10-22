@@ -12,8 +12,8 @@ use h3_contracts::{BattleEffect, BattleHero, BattleSide};
 use h3_kernel::Rng;
 
 use super::{
-    ARCHER, BALLISTA, GOG, IMP, RUNNER, ZOMBIE, active, cast_at, hero_with, play, ruleset, setup,
-    spell,
+    ARCHER, BALLISTA, GOG, IMP, RUNNER, ZOMBIE, active, cast_at, hero_with, play, ruleset,
+    ruleset_as, setup, spell,
 };
 use crate::hero::{self, Hero, Valued};
 use crate::spells::{Candidate, SpellContext};
@@ -357,42 +357,62 @@ fn a_desperate_summon_counts_1000_a_creature() {
 fn dispel_by_its_mastery() {
     // The enemy hero blessed its runners, which reach the side within a turn; the attacker's hero
     // dispels. At Basic only its own side counts (nothing to remove there); at Advanced the
-    // enemy's blessed runners; at Expert the sum of both sides, no target.
-    let r = ruleset();
-    let run = |mastery: u8, blessed: bool| {
-        let mut setup = led(
-            &[(RUNNER, 10)],
-            &[(RUNNER, 20)],
-            hero_with(&r, &["dispel"], mastery, 999),
-        );
-        setup.heroes[1] = Some(hero_with(&r, &["bless"], 1, 999));
-        let mut state = BattleState::new(&r, &setup, 1).unwrap();
-        let runners = StackId(
-            u8::try_from(
-                state
-                    .stacks()
-                    .iter()
-                    .position(|s| s.side == DEFENDER)
-                    .unwrap(),
-            )
-            .unwrap(),
-        );
-        if blessed {
-            cast_at(&mut state, &r, DEFENDER, "bless", runners);
+    // enemy's blessed runners; at Expert, the hero also blessed the side's runners (their removal
+    // counts against Dispel): the original's stacks' case overwrites the two sums with the enemy's
+    // alone (survey slip 27), without the slip both count.
+    let battle = |r: &BattleRuleset, mastery: u8, blesses: &[BattleSide]| {
+        let mut hero = hero_with(r, &["dispel", "bless"], mastery, 999);
+        // Bless at Basic, aimed at one stack.
+        hero.magic.masteries[1].1 = 1;
+        let mut setup = led(&[(RUNNER, 10)], &[(RUNNER, 20)], hero);
+        setup.heroes[1] = Some(hero_with(r, &["bless"], 1, 999));
+        let mut state = BattleState::new(r, &setup, 1).unwrap();
+        for &side in blesses {
+            let i = state.stacks().iter().position(|s| s.side == side).unwrap();
+            let t = StackId(u8::try_from(i).unwrap());
+            cast_at(&mut state, r, side, "bless", t);
         }
-        until_side(&mut state, &r, ATTACKER);
-        (valued(&state, &r, "dispel"), runners)
+        until_side(&mut state, r, ATTACKER);
+        state
     };
-    let (basic, _) = run(1, true);
-    assert_eq!(basic.value, 0);
-    let (advanced, runners) = run(2, true);
+    let blessed = [DEFENDER];
+    let r = ruleset();
+    let state = battle(&r, 1, &blessed);
+    assert_eq!(valued(&state, &r, "dispel").value, 0);
+    let state = battle(&r, 2, &blessed);
+    let advanced = valued(&state, &r, "dispel");
     assert!(advanced.value > 0, "{advanced:?}");
+    let runners = state
+        .stacks()
+        .iter()
+        .position(|s| s.side == DEFENDER)
+        .unwrap();
+    let runners = StackId(u8::try_from(runners).unwrap());
     assert_eq!(advanced.target, CastTarget::Stack(runners));
     // Nothing on either side: nothing at Advanced either.
-    assert_eq!(run(2, false).0.value, 0);
-    let (expert, _) = run(3, true);
-    assert_eq!(expert.target, CastTarget::None);
-    assert_eq!(expert.value, advanced.value);
+    assert_eq!(valued(&battle(&r, 2, &[]), &r, "dispel").value, 0);
+    // At Expert: each side's sum of the evaluator over its stacks.
+    let both = [DEFENDER, ATTACKER];
+    let expert = |r: &BattleRuleset| {
+        let state = battle(r, 3, &both);
+        let ctx = computer::context(&state, r, ATTACKER);
+        let sc = SpellContext::new(&state, r, (&ctx, ATTACKER), &mut Rng::from_seed(5));
+        let h = Hero::new(&sc, (&state, r), (state.active().unwrap(), ATTACKER, ctx));
+        let c = candidate(&state, r, "dispel");
+        let v = valued(&state, r, "dispel");
+        assert_eq!(v.target, CastTarget::None);
+        (
+            v.value,
+            hero::on_stacks(&h, ATTACKER, c),
+            hero::on_stacks(&h, DEFENDER, c),
+        )
+    };
+    let (v, own, theirs) = expert(&r);
+    assert!(own < 0 && theirs > 0, "{own} {theirs}");
+    assert_eq!(v, theirs);
+    let (v, own, theirs) = expert(&ruleset_as("t:fixed"));
+    assert!(own < 0, "{own}");
+    assert_eq!(v, own + theirs);
 }
 
 // covers: BAT-AI-017
