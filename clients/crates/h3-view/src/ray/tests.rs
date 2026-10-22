@@ -226,3 +226,76 @@ fn the_series_are_exact_enough() {
     let [sin, cos] = sin_cos(-PI);
     assert!(sin.abs() < 64 && close(cos, -ONE));
 }
+
+#[test]
+fn a_chain_ray_turns_by_its_draws_while_the_target_is_far() {
+    // E17 M3 T7c-3: from left to right the draws lie from 10 to 80; d = 400, 30 steps a tick
+    // (trunc(400 / 10) kept to 30), 9 pixels thick at the start.
+    let mut asked = Vec::new();
+    let mut draw = |lo, hi| {
+        asked.push([lo, hi]);
+        hi
+    };
+    let ticks = chain([100, 300], [500, 300], &mut draw);
+    assert!(asked.iter().all(|&b| b == [10, 80]));
+    // Each aim draws while the target lies farther than 45 pixels: none once near.
+    assert!(asked.len() >= 2 && asked.len() < ticks.len());
+    let first = ticks[0][0];
+    assert_eq!((first.lo, first.hi, first.column), (-4, 4, true));
+    assert_eq!(ticks[0].len(), 30);
+    // Turned, the head leaves the row it started on.
+    assert!(ticks.iter().flatten().any(|s| s.y != 300));
+    // From right to left the draws lie from −80 to −10, and a short ray takes 8 steps a tick.
+    let mut asked = Vec::new();
+    let mut draw = |lo, hi| {
+        asked.push([lo, hi]);
+        lo
+    };
+    let short = chain([300, 300], [250, 300], &mut draw);
+    assert!(asked.iter().all(|&b| b == [-80, -10]));
+    assert_eq!(short[0].len(), 8);
+    // The draws' extremes turn it differently.
+    let straight = chain([100, 300], [500, 300], &mut |lo, _| lo);
+    assert_ne!(straight, ticks);
+}
+
+#[test]
+fn a_ray_whose_bounds_agree_turns_without_a_draw() {
+    // `ray_aim` takes the bound itself when both agree (0x5A53ED); no caller passes such.
+    let shape = Shape {
+        widths: [9, 2],
+        steps: 8,
+        bounds: [20, 20],
+    };
+    let mut drawn = 0;
+    let head = Head::shaped([100, 300], [500, 300], shape, &mut |_, _| {
+        drawn += 1;
+        0
+    });
+    assert_eq!(drawn, 0);
+    let plain = Head::shaped([100, 300], [500, 300], SHOT, &mut |_, _| 0);
+    assert_ne!(head.angle, plain.angle);
+    assert_eq!(head.width, 9);
+}
+
+#[test]
+fn a_head_near_its_target_keeps_its_aim() {
+    let mut head = Head::new([300, 300], [310, 300]);
+    head.near = Some(10);
+    head.width = 1;
+    head.at = [250, 300];
+    head.aim();
+    assert_eq!(head.width, 1);
+}
+
+#[test]
+fn quotients_round_as_the_x87_stores_them() {
+    // 80 / 100 to an f32: 0.800000011920928955078125; negative alike.
+    let v = scaled(80 << FRAC, 1, 100, 24);
+    assert_eq!(v, 13_421_773 << 36);
+    assert_eq!(scaled(-80 << FRAC, 1, 100, 24), -v);
+    // An exact quotient keeps its value: 2 / 1.5 × 3 / 2 = 2.
+    assert_eq!(scaled(ONE, 2, 1, 53), 2 * ONE);
+    // A tie rounds to even: 2^-53 above 1, halved below 53 bits.
+    assert_eq!(scaled(ONE + (1 << 7), 1, 1, 53), ONE);
+}

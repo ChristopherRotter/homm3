@@ -491,6 +491,17 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   tiled over the battlefield with every stack's reaction, then its line. `obstacles` recorded
   (seed 517 487 719: the original's four pits): played as recorded, all 84 frames as the
   original's.
+- **T7c-3 done 2026-10-22** ([log](E17-log.md#m3-t7c-3--raises-fire-shield-the-liches-cloud-and-chain-lightning-2026-10-22),
+  design §7.16): not split, at the user's word. `raise_stack` (Resurrection, Animate Dead,
+  Sacrifice's target, an Archangel, a Phoenix: Resurrection's 50 over the stack, a lying one's
+  death group backwards, its line first), Fire Shield's return (11 over the shields with the
+  striker's hit, its line), the Magogs' and the Liches' explosions (drawn plain, as spots), Chain
+  Lightning (37 never shown, three rays at once for 100 ms each, 38 over every stack struck, its
+  line); the rays' draws logged by the harness and kept for the frame check (the user's choice).
+  `raise`, `creatures` and `bolt` moved from `casts.toml` (gone) into `sequences.toml`: played as
+  recorded (seeds 9 and 566 for the original's damage); frames as the original's: `raise` 107,
+  `bolt` 47 (every pixel of the rays), `creatures` 114 but the landing Archangels' redraw
+  artifacts.
 
 ### The adventure lane's harness (H1, H2: its batch E3)
 
@@ -560,6 +571,22 @@ Accepted by the user (M1 2026-10-13, M2 2026-10-14); moved to the log,
 
 (Filled by the tasks: choices queued for the milestone review under the autonomy contract.
 Oddities of the original are open questions since 2026-10-22, the items naming them.)
+
+- T7c-3: not split, at the user's word. **The harness** (lasting, the user's choice): `xdd.dll`
+  logs the draws of `ray_aim`'s call (nothing forced) and `frames` keeps them as the frame
+  file's `rays`; the frame check's timeline draws Chain Lightning's rays with the original's
+  draws, the viewer elsewhere with its own generator (the C library's sequence, as the fidgets').
+  **Formats** (lasting): the asset tables' creature `explosion` (spell and frame time, from the
+  executable's creature tests: the Magogs', the Liches'); the key catalogue's `battle.log.raised`
+  (GENRLTXT 117, 118). **Found by the reading, built as the original's:** Chain Lightning's
+  opening 37 never on the screen (CLT-Q11), Animate Dead playing Resurrection's 50 (CLT-Q13), the
+  Liches' cloud plain (CLT-Q14), Sacrifice's line naming its victim after its death (CLT-Q17,
+  new). **Fixed on the way:** `ray_aim` keeps its aim once the head is within 15 of the target
+  (the viewer re-aimed; no shooter's ray met it); after a shot or a spell, a dying reaction spends
+  no iteration standing (L = R, the reading's, when the longest reactions all die; `raise`). The
+  timing check leaves out the heroes' rolled reactions to a death (`unrolled`, as the fidgets).
+  *Provisional*: the Archangel's raise, the Phoenix's rebirth, Sacrifice and Teleport (a move at
+  once) built as read, not recorded; created stacks not drawn (QUEUE's inbox).
 
 - T7c-2: not split, at the user's word. **Formats** (lasting): the asset tables' spell `objects`
   (DEF, hexes, rows, layer, placing and vanish animations: harvested from the descriptors and

@@ -162,6 +162,14 @@ pub enum Logged {
         /// Its number.
         count: u32,
     },
+    /// Creatures raised in a stack (`raise_stack` 0x5A772F, GENRLTXT 117 and 118 by their
+    /// number; E17 M3 T7c-3): before the raise's animation.
+    Raised {
+        /// The stack.
+        stack: u8,
+        /// The creatures raised, which pick its name.
+        count: u32,
+    },
     /// Poison takes hold of a stack after a strike (a creature's cast, `battle_log_cast`
     /// 0x5A8EFC; E17 M3 T7b-2b-3): before its animation.
     Poisoned {
@@ -415,6 +423,15 @@ pub fn word(
                 catalogue,
                 "battle.log.thunderbolt",
                 n.stack(count),
+            ))
+        }
+        Logged::Raised { stack, count } => {
+            let (n, count) = named(*stack, *count)?;
+            Some(by_count(
+                catalogue,
+                "battle.log.raised",
+                n.stack(count),
+                Args::new(),
             ))
         }
         Logged::Poisoned { stack, count } => {

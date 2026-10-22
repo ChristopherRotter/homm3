@@ -41,6 +41,8 @@ const PACK: &str = r#"{
         "thunderbolt": "Bolt on {{creature}}!",
         "poisoned_one": "{{creature}} is poisoned.",
         "poisoned_other": "{{creature}} are poisoned.",
+        "raised_one": "{{count}} {{creature}} rises.",
+        "raised_other": "{{count}} {{creature}} rise.",
         "acid-breath": "Acid: {{creature}} -{{defense}}.",
         "cast": "{{hero}}: {{spell}}.",
         "death-ripple": "Ripple {{damage}}.",
@@ -656,6 +658,10 @@ fn the_striker_effects_and_the_spells_after_a_strike_have_their_lines() {
     let poisoned = |count| Logged::Poisoned { stack: 2, count };
     assert_eq!(worded(&poisoned(1)).as_deref(), Some("Bee is poisoned."));
     assert_eq!(worded(&poisoned(4)).as_deref(), Some("Bees are poisoned."));
+    // Creatures raised (E17 M3 T7c-3): their name and verb by how many.
+    let raised = |count| Logged::Raised { stack: 2, count };
+    assert_eq!(worded(&raised(1)).as_deref(), Some("1 Bee rises."));
+    assert_eq!(worded(&raised(3)).as_deref(), Some("3 Bees rise."));
     let acid = Logged::AcidBreath {
         stack: 1,
         count: 4,
@@ -692,6 +698,7 @@ fn the_striker_effects_and_the_spells_after_a_strike_have_their_lines() {
             target: 9,
             kills: 1,
         },
+        Logged::Raised { stack: 9, count: 1 },
         Logged::Thunderbolt { stack: 9, count: 1 },
         Logged::Poisoned { stack: 9, count: 1 },
         Logged::AcidBreath {

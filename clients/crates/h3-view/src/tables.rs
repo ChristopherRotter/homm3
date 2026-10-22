@@ -300,9 +300,24 @@ pub struct Creature {
     /// draws its shot as a ray, not its projectile.
     #[serde(default)]
     pub ray: Option<Vec<[u8; 3]>>,
+    /// The explosion its projectile ends in (E17 M3 T7c-3): the spell whose animation and sound
+    /// it plays and each frame's time (`stack_shot` 0x43FA15: the Magogs Fireball's at 50 ms,
+    /// 0x43FE07: the Liches Death Cloud's at 100 ms).
+    #[serde(default)]
+    pub explosion: Option<CreatureExplosion>,
     /// Its sounds' entries in the sound archives (E17 M2 T5b).
     #[serde(default)]
     pub sounds: Sounds,
+}
+
+/// The explosion a shooter's projectile ends in ([`Creature::explosion`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CreatureExplosion {
+    /// The spell (the executable's number).
+    pub spell: u16,
+    /// Each frame's time in ms (times the speed factor).
+    pub time: u32,
 }
 
 /// A creature's sounds: each an entry of the sound archives, none where the creature has no such
@@ -828,6 +843,7 @@ attack_climax = 7
 missile = "PLCBOWX.DEF"
 missile_offsets = [[38, -65], [36, -59], [21, -50]]
 missile_angles = [90, 72, 45, 27, 0, -27, -45, -72, -90, 0, 0, 0]
+explosion = { spell = 76, time = 100 }
 
 [[battlefield]]
 key = "dirt"
@@ -1264,6 +1280,21 @@ at = [124, 254]
             rule(&[b], "base").to_string(),
             "`base:slow`: a sound is an entry's name, without an extension"
         );
+    }
+
+    #[test]
+    fn a_shooter_names_its_explosion() {
+        // E17 M3 T7c-3: a Death Cloud as the Liches' (on the test's archer).
+        let tables = load(&[base()], "base").unwrap();
+        let explosion = |key: &str| tables.creatures[key].explosion;
+        assert_eq!(
+            explosion("base:archer"),
+            Some(CreatureExplosion {
+                spell: 76,
+                time: 100
+            })
+        );
+        assert_eq!(explosion("base:pikeman"), None);
     }
 
     #[test]

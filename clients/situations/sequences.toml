@@ -648,3 +648,92 @@ command = [
     { seat = "Defender", at = 5300, command = { Defend = {} } },
     { seat = "Attacker", at = 5300, command = { Cast = { spell = 26, target = { None = {} }, second = { None = {} } } } },
 ]
+
+# E17 M3 T7c-3 (recorded at T7a-2b in `casts.toml`): the raise (design §7.16, player 4):
+# Resurrection on the Pikeman the Grand Elves shot (round 1; the raised Pikeman then takes its
+# turn), Animate Dead on the Skeleton the Marksmen shot (round 2). Both play Resurrection's 50
+# (CLT-Q13), each lying stack's death group backwards. `seed`: the engine's, whose damage is the
+# original's (the Grand Elves 23, the Marksmen 14).
+[[sequence]]
+id = "raise"
+scenario = "seq-raise.toml"
+hot_seat = true
+seed = 9
+actions = [
+    "turn:1.0", "hex:35", "turn:1.1", "hex:86", "turn:0.2", "cast:1:35", "key:d",
+    "turn:0.0", "key:d",
+    "turn:1.0", "key:d", "turn:1.1", "key:d", "turn:0.2", "cast:0:86",
+]
+ms = 3000
+heroes = true
+screens = true
+timeline = "timelines/raise.txt"
+frames = "timelines/raise-frames.txt"
+boxes = true
+command = [
+    { seat = "Defender", command = { Shoot = { target = 0, at = 35 } } },
+    { seat = "Defender", at = 1112, command = { Shoot = { target = 1, at = 86 } } },
+    { seat = "Attacker", at = 2633, command = { Cast = { spell = 38, target = { Stack = { stack = 0 } }, second = { None = {} } } } },
+    { seat = "Attacker", at = 5533, command = { Defend = {} } },
+    { seat = "Attacker", at = 5533, command = { Defend = {} } },
+    { seat = "Defender", at = 5533, command = { Defend = {} } },
+    { seat = "Defender", at = 5533, command = { Defend = {} } },
+    { seat = "Attacker", at = 5533, command = { Cast = { spell = 39, target = { Stack = { stack = 1 } }, second = { None = {} } } } },
+]
+
+# E17 M3 T7c-3 (recorded at T7a-2b in `casts.toml`): two creatures' animations (design §7.16):
+# the Archangels strike the Efreet Sultans from hex 31 (their Fire Shield's return, 11 over the
+# Sultans with the Archangels' hit, before the retaliation), the Sultans defend, the Power Liches
+# shoot the Archangels (their cloud, 72, drawn plain: CLT-Q14). `seed`: the engine's, whose damage
+# is the original's (the Archangels 185, the Sultans' retaliation 43, the Liches 33).
+[[sequence]]
+id = "creatures"
+scenario = "seq-creatures.toml"
+hot_seat = true
+seed = 566
+actions = ["turn:0.0", "hex:49", "turn:1.0", "key:d", "turn:1.1", "hex:31"]
+ms = 3340
+heroes = true
+screens = true
+timeline = "timelines/creatures.txt"
+frames = "timelines/creatures-frames.txt"
+boxes = true
+command = [
+    { seat = "Attacker", command = { Attack = { target = 1, from = 31 } } },
+    { seat = "Defender", at = 6130, command = { Defend = {} } },
+    { seat = "Defender", at = 6130, command = { Shoot = { target = 0, at = 31 } } },
+]
+
+# E17 M3 T7c-3 (recorded at T7a-2b in `casts.toml`): Lightning Bolt (round 1) and Chain Lightning
+# (round 2) at the Swordsmen at row 4 (design §7.16): the bolt from the sky over the marked
+# target; Chain Lightning's own animation 37 drawn but never shown (CLT-Q11), its three rays from
+# each struck stack to the next (each 100 ms), then 38 over all four.
+[[sequence]]
+id = "bolt"
+scenario = "seq-bolt.toml"
+hot_seat = true
+actions = [
+    "turn:1.0", "key:d", "turn:1.1", "key:d", "turn:1.2", "key:d", "turn:1.3", "key:d",
+    "turn:0.0", "cast:0:83", "key:d",
+    "turn:1.0", "key:d", "turn:1.1", "key:d", "turn:1.2", "key:d", "turn:1.3", "key:d",
+    "turn:0.0", "cast:1:83",
+]
+ms = 2400
+heroes = true
+screens = true
+timeline = "timelines/bolt.txt"
+frames = "timelines/bolt-frames.txt"
+boxes = true
+command = [
+    { seat = "Defender", command = { Defend = {} } },
+    { seat = "Defender", command = { Defend = {} } },
+    { seat = "Defender", command = { Defend = {} } },
+    { seat = "Defender", command = { Defend = {} } },
+    { seat = "Attacker", command = { Cast = { spell = 17, target = { Stack = { stack = 2 } }, second = { None = {} } } } },
+    { seat = "Attacker", at = 2020, command = { Defend = {} } },
+    { seat = "Defender", at = 2020, command = { Defend = {} } },
+    { seat = "Defender", at = 2020, command = { Defend = {} } },
+    { seat = "Defender", at = 2020, command = { Defend = {} } },
+    { seat = "Defender", at = 2020, command = { Defend = {} } },
+    { seat = "Attacker", at = 2020, command = { Cast = { spell = 19, target = { Stack = { stack = 2 } }, second = { None = {} } } } },
+]

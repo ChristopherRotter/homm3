@@ -790,7 +790,9 @@ fn count_box(
     taken: &BTreeSet<u8>,
     layout: &BattleLayout,
 ) -> Option<Draw> {
-    if !stack.alive || stack.war_machine || !sprite.boxed || pose.boxless {
+    // A stack among the corpses shows none, even standing as a raise lifts it (E17 M3 T7c-3,
+    // `raise`: its dead bit is cleared only at the raise's end, 0x5A7867).
+    if !stack.alive || stack.war_machine || !sprite.boxed || !pose.holds_hex() {
         return None;
     }
     let right = !pose.mirrored;

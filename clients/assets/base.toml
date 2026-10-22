@@ -479,6 +479,7 @@ attack_climax = 6
 missile = "cprgogx.def"
 missile_offsets = [[38, -89], [69, -51], [15, -9]]
 missile_angles = [90, 72, 45, 27, 0, -27, -45, -72, -90, 0, 0, 0]
+explosion = { spell = 21, time = 50 }
 sounds = { move = "mgogmove", attack = "mgogattk", wince = "mgogwnce", shot = "mgogshot", death = "mgogkill", defend = "mgogdfnd" }
 
 [[creature]]
@@ -618,6 +619,7 @@ attack_climax = 8
 missile = "PLICH.def"
 missile_offsets = [[49, -97], [65, -82], [33, -12]]
 missile_angles = [90, 72, 45, 27, 0, -27, -45, -72, -90, 0, 0, 0]
+explosion = { spell = 76, time = 100 }
 sounds = { move = "lichmove", attack = "lichattk", wince = "lichwnce", shot = "lichshot", death = "lichkill", defend = "lichdfnd" }
 
 [[creature]]
@@ -629,6 +631,7 @@ attack_climax = 8
 missile = "PLICH.def"
 missile_offsets = [[41, -92], [58, -79], [29, -14]]
 missile_angles = [90, 72, 45, 27, 0, -27, -45, -72, -90, 0, 0, 0]
+explosion = { spell = 76, time = 100 }
 sounds = { move = "plchmove", attack = "plchattk", wince = "plchwnce", shot = "plchshot", death = "plchkill", defend = "plchdfnd" }
 
 [[creature]]

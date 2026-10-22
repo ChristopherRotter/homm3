@@ -178,13 +178,16 @@ hero stands). A
 scenario's `masteries` become the hero's school skills on the original's map (`situation`: Fire,
 Air, Water, Earth Magic at the level the masteries ask; a mass spell at Expert). A Fire Wall or
 Force Field beside an obstacle is refused (the book closes, no cast): aim at open ground. The
-casts' sequences wait in `situations/casts.toml` (`sequences situations/casts.toml` replays them)
-until the viewer's timeline plays them (T7b, T7c): `dragon` (T7a-2a), `bolt`, `mass`, `raise`,
-`obstacles`, `creatures` (T7a-2b, design §7.16, "Recorded"; about 75 minutes for all with their
-screens, `cast`, `resist` and `arrow` included). `cast`, `resist` and `arrow` moved into
-`sequences.toml` at T7b-1 with their engine commands and frames, `haste` and `dispel` (recorded
-at T7b-2a, about 9 and 11 minutes with their screens) at T7b-2a; a recorded timeline's `screen`
-lines are left out of the timing check (they are the frame check's). A stack whose hero just
+casts' sequences, recorded at T7a-2a and T7a-2b (`dragon`, `bolt`, `mass`, `raise`, `obstacles`,
+`creatures`; design §7.16, "Recorded"), waited in `situations/casts.toml` until the viewer's
+timeline played them; all are in `sequences.toml` since T7c-3, which removed that file (`cast`,
+`resist` and `arrow` moved at T7b-1, `haste` and `dispel` were recorded at T7b-2a). A recorded
+timeline's `screen` lines are left out of the timing check (they are the frame check's).
+Chain Lightning's rays turn by the original's draws: `xdd.dll` logs them (the `ray_aim` site,
+"Logged draws" in `xdd.c`) and `frames` keeps them in the frame file's `rays`, so the viewer
+draws the same rays in the frame check (T7c-3). A frame that replaced another within its
+millisecond keeps the heroes that one showed (`before`): as a cast starts, memory holds its first
+frame a deadline before the screen shows it (T7c-3, `raise`: a rolled defeat's frame still shown). A stack whose hero just
 cast acts by `key:` only: a `turn:` naming the stack already active passes at once, so pick the
 speeds so the turns alternate (`haste`'s Vampire Lords, speed 9).
 

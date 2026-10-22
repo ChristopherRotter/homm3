@@ -80,17 +80,89 @@ impl Stroke {
 pub fn trace(from: [i32; 2], to: [i32; 2]) -> Vec<Vec<Stroke>> {
     // `shot_animation`'s distance, between the points as given (0x43F4AA).
     let steps = distance(from, to) / STEP_DIVISOR + STEP_BASE;
+    run(from, to, Shape { steps, ..SHOT }, &mut |_, _| 0)
+}
+
+/// Chain Lightning's ray from one struck stack's point to the next's (`chain_lightning`
+/// 0x5A6481 to 0x5A64EF, E17 M3 T7c-3): `DrawRay` without branches, 9 pixels thick at the start
+/// and 2 at the target, trunc(d / 10) pixel steps per tick kept to 8 to 30 (d the distance
+/// between the points as given), drawn in colour 305 ([`CHAIN_COLOURS`]) with no delay, so
+/// every tick shows at once. Each aim while the target lies farther than 1.5 ticks' steps turns
+/// by a draw of 10 to 80 hundredths of a radian (−80 to −10 toward a target left of the start;
+/// 0x5A5C74 to 0x5A5CA0), scaled by (2 − p) / 1.5 for the share p of the way gone (`ray_aim`
+/// 0x5A53C5 to 0x5A5431): `draw(lo, hi)` gives each draw (`random_between` 0x50B230: the
+/// original's generator, which the capture keeps, or the viewer's own).
+pub fn chain(
+    from: [i32; 2],
+    to: [i32; 2],
+    draw: &mut dyn FnMut(i32, i32) -> i32,
+) -> Vec<Vec<Stroke>> {
+    let steps = (distance(from, to) / CHAIN_DIVISOR).clamp(CHAIN_STEPS[0], CHAIN_STEPS[1]);
+    let bounds = if from[0] > to[0] {
+        [-CHAIN_BOUNDS[1], -CHAIN_BOUNDS[0]]
+    } else {
+        CHAIN_BOUNDS
+    };
+    let shape = Shape {
+        widths: CHAIN_WIDTHS,
+        steps,
+        bounds,
+    };
+    run(from, to, shape, draw)
+}
+
+/// Chain Lightning's colours (R, G, B) by the distance from the ray's edge, white at the edge,
+/// bluer inward (`ray_step`'s case for colour 305, 0x5A5786 to 0x5A5980: the executable's own
+/// numbers, no table; scaled into the screen's masks as every ray's).
+pub const CHAIN_COLOURS: [[u8; 3]; 6] = [
+    [255, 255, 255],
+    [240, 240, 255],
+    [224, 224, 255],
+    [216, 216, 255],
+    [200, 200, 255],
+    [192, 192, 255],
+];
+
+/// Chain Lightning's thickness at the start and at the target, its steps' divisor and their
+/// range, and its draws' bounds (`chain_lightning`'s arguments, 0x5A6481 to 0x5A64E1).
+const CHAIN_WIDTHS: [i32; 2] = [9, 2];
+const CHAIN_DIVISOR: u64 = 10;
+const CHAIN_STEPS: [u64; 2] = [8, 30];
+const CHAIN_BOUNDS: [i32; 2] = [10, 80];
+
+/// How `DrawRay` draws a ray (its arguments): the thickness at the start and at the target, the
+/// pixel steps per tick and the bounds of the aim's draws ([0, 0]: it draws none).
+#[derive(Debug, Clone, Copy)]
+struct Shape {
+    widths: [i32; 2],
+    steps: u64,
+    bounds: [i32; 2],
+}
+
+/// A shooter's ray (`shot_animation`'s arguments, 0x43F5A7): its steps by its distance.
+const SHOT: Shape = Shape {
+    widths: [START_WIDTH, END_WIDTH],
+    steps: STEP_BASE,
+    bounds: [0, 0],
+};
+
+/// The ray's ticks from `from` to `to`, both kept to the battlefield (`ray_init` 0x5A5A90).
+fn run(
+    from: [i32; 2],
+    to: [i32; 2],
+    shape: Shape,
+    draw: &mut dyn FnMut(i32, i32) -> i32,
+) -> Vec<Vec<Stroke>> {
     let clamp = |[x, y]: [i32; 2]| [x.clamp(0, RIGHT), y.clamp(0, BOTTOM)];
-    let (from, to) = (clamp(from), clamp(to));
-    let mut head = Head::new(from, to);
+    let mut head = Head::shaped(clamp(from), clamp(to), shape, draw);
     let mut ticks = Vec::new();
     while ticks.len() < MAX_TICKS {
-        let (strokes, done) = head.advance(steps);
+        let (strokes, done) = head.advance(shape.steps);
         ticks.push(strokes);
         if done {
             break;
         }
-        head.aim();
+        head.aim_drawing(draw);
     }
     ticks
 }
@@ -98,6 +170,7 @@ pub fn trace(from: [i32; 2], to: [i32; 2]) -> Vec<Vec<Stroke>> {
 /// The ray's state (its record, 0x5A5A90).
 #[derive(Debug, Clone)]
 struct Head {
+    shape: Shape,
     to: [i32; 2],
     /// The head as f32s (+0x24, +0x28) and the pixel it is on (+0x2C, +0x30).
     f: [i128; 2],
@@ -108,33 +181,61 @@ struct Head {
     column: bool,
     /// The thickness (+0x14).
     width: i32,
-    /// The aim's sine and cosine, of the f32 angle (+0x38).
+    /// The aim's f32 angle (+0x38) and its sine and cosine.
+    angle: i128,
     step: [i128; 2],
     /// The least city-block distance to the target once within [`NEAR`] (+0x44, +0x48).
     near: Option<i32>,
 }
 
 impl Head {
+    /// A shooter's ray's head.
+    #[cfg(test)]
     fn new(from: [i32; 2], to: [i32; 2]) -> Self {
+        Self::shaped(from, to, SHOT, &mut |_, _| 0)
+    }
+
+    fn shaped(
+        from: [i32; 2],
+        to: [i32; 2],
+        shape: Shape,
+        draw: &mut dyn FnMut(i32, i32) -> i32,
+    ) -> Self {
         let [dx, dy] = [to[0] - from[0], to[1] - from[1]];
         let mut head = Self {
+            shape,
             to,
             f: [i128::from(from[0]) << FRAC, i128::from(from[1]) << FRAC],
             at: from,
             length: distance(from, to),
             column: dx.abs() > dy.abs(),
-            width: START_WIDTH,
+            width: shape.widths[0],
+            angle: 0,
             step: [0, ONE],
             near: None,
         };
-        head.aim();
+        head.aim_drawing(draw);
         head
     }
 
     /// Aims at the target from the pixel reached and sets the thickness by the way gone
     /// (0x5A5260): the start's thickness plus trunc((end − start ± 1) × p), at least 1, p the
     /// f32 share of the start's distance gone (0 beyond it).
+    #[cfg(test)]
     fn aim(&mut self) {
+        self.aim_drawing(&mut |_, _| 0);
+    }
+
+    /// As a shooter's (none once it came near the target), then, for a ray with draws while the target lies farther than 1.5 ticks'
+    /// steps (0x5A53C5: f64(steps) × 1.5 < the distance left), the angle turned by
+    /// f32(f32(v / 100) × (2 − p) / 1.5), v the draw (the bounds' one value when they agree)
+    /// and p the f32 share gone, each step at the x87's 53 bits, the sum stored as an f32
+    /// (0x5A53EB to 0x5A5431).
+    fn aim_drawing(&mut self, draw: &mut dyn FnMut(i32, i32) -> i32) {
+        // Once within reach of the target it keeps its aim and thickness (0x5A526B).
+        if self.near.is_some() {
+            return;
+        }
         let left = distance(self.at, self.to);
         let gone = if left > self.length {
             0
@@ -144,11 +245,20 @@ impl Head {
                 i128::from(self.length.max(1)),
             )
         };
-        self.width = width(START_WIDTH, END_WIDTH, gone);
+        let [start, end] = self.shape.widths;
+        self.width = width(start, end, gone);
         // atan2(dx, dy): the angle from the y axis (0x5A5368), stored as an f32.
         let [dx, dy] = [self.to[0] - self.at[0], self.to[1] - self.at[1]];
-        let angle = round(atan2(dx, dy), 24);
-        self.step = sin_cos(angle);
+        self.angle = round(atan2(dx, dy), 24);
+        let [lo, hi] = self.shape.bounds;
+        if [lo, hi] != [0, 0] && 3 * self.shape.steps < 2 * left {
+            let v = if lo == hi { lo } else { draw(lo, hi) };
+            let v = scaled(i128::from(v) << FRAC, 1, 100, 24);
+            let share = scaled(round(2 * ONE - gone, 53), 2, 3, 53);
+            let turn = round(round(v * share, 53) >> FRAC, 24);
+            self.angle = round(round(self.angle + turn, 53), 24);
+        }
+        self.step = sin_cos(self.angle);
     }
 
     /// One tick (0x5A5440): `steps` steps of one pixel; a cross-section at every pixel entered;
@@ -253,7 +363,19 @@ fn f32_ratio(num: i128, den: i128) -> i128 {
     round(q, 24) >> (GUARD + 1)
 }
 
-/// sin(`x`) and cos(`x`) (|x| ≤ π + 1) by their series.
+/// `v` × `mul` / `div` (`v` in the fixed point, `div` > 0) rounded to `bits` significant bits,
+/// ties to even, as the x87 rounds an exact quotient: the quotient carries a sticky bit below its
+/// guard bits. Exact on the fixed point's grid for results of at least 2^(`bits` − 52).
+fn scaled(v: i128, mul: i128, div: i128, bits: u32) -> i128 {
+    /// Guard bits below the fixed point's grid.
+    const GUARD: u32 = 8;
+    let num = (v.abs() * mul) << GUARD;
+    let q = (num / div) << 1 | i128::from(num % div != 0);
+    let r = round(q, bits) >> (GUARD + 1);
+    if v < 0 { -r } else { r }
+}
+
+/// sin(`x`) and cos(`x`) (|x| ≤ π + 1.1) by their series.
 fn sin_cos(x: i128) -> [i128; 2] {
     let (mut sin, mut cos, mut term) = (0, 0, ONE);
     for n in 0..64 {

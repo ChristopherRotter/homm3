@@ -66,6 +66,7 @@ fn look(times: [u32; 4], frames: &[(u32, u32)], top: i32) -> Look {
         front: 0,
         missile: None,
         ray: None,
+        explosion: None,
     }
 }
 
@@ -911,7 +912,7 @@ fn the_shots_sequence_plays_as_recorded() {
     assert_eq!(rays, [(655, 11), (4086, 11), (5293, 11)]);
     // E17 M3 T6c-2: the cursor hidden from the ray's start until the shot group's rest is
     // over (the original's screen: back at 879).
-    assert_eq!(t.beams[0].cursor_back, 879);
+    assert_eq!(t.beams[0].cursor, [t.beams[0].from, 879]);
     let hidden = [654, 655, 878, 879].map(|ms| t.cursor_hidden(ms));
     assert_eq!(hidden, [false, true, true, false]);
     assert!(t.ray(664).is_none());
@@ -1220,7 +1221,8 @@ fn a_ray_without_a_climax_frame_or_a_target() {
     // Without a climax frame the cursor shows again as the ray's last tick is over.
     let b = &t.beams[0];
     let ticks = u32::try_from(b.ticks.len()).unwrap();
-    assert_eq!(b.cursor_back, b.from + ticks * b.step);
+    assert_eq!(b.cursor[1], b.from + ticks * b.step);
+    assert_eq!(b.until, b.cursor[1]);
 }
 
 #[test]
@@ -2572,7 +2574,8 @@ fn the_log_records_what_the_battle_writes_and_when() {
             | Logged::CastAll { .. }
             | Logged::MassDamage { .. }
             | Logged::Armageddon { .. }
-            | Logged::AreaDamage { .. } => "spell",
+            | Logged::AreaDamage { .. }
+            | Logged::Raised { .. } => "spell",
             Logged::Drain { .. }
             | Logged::DeathStare { .. }
             | Logged::Thunderbolt { .. }
@@ -2870,7 +2873,7 @@ fn casts() -> Casts {
             None,
         ],
         groups: [4, 0],
-        frighteners: BTreeSet::new(),
+        ..Casts::default()
     }
 }
 
@@ -5174,3 +5177,5 @@ fn objects_outside_casts_and_without_their_looks() {
     );
     assert!(t.keys.iter().any(|k| k.stack == 1 && k.pose.group == 3));
 }
+
+mod raised;

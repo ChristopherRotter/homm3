@@ -1299,8 +1299,8 @@ DrawRay (`draw_ray` 0x5A5C20 with `ray_init`, `ray_step`, `ray_aim`); every addr
   timeline as recorded on the first try, and all 139 frames of the sequence equal the original's
   outside the masks: every ray pixel of every tick, its colours included (the Arch Magi's
   0x95C2, 0x7EAF, 0x2584).
-- **Not read:** Chain Lightning's call (0x5A64EF) and the colours 300, 301, 303 and 305 (the
-  spells, M3 T7c); the Enchanters' shot (0x59FDE0).
+- **Not read:** the Enchanters' shot (0x59FDE0). Chain Lightning's call (0x5A64EF), its draws
+  and colour 305 were read at M3 T7c-3 (§7.16).
 
 ### 7.13 Flights, the breath and the mouse (M3 T1b-2)
 
@@ -1982,9 +1982,78 @@ resistance roll, if any (category 3, 0x5A0331); Curse's is named `Curse`, withou
   sees). Recorded (`sequences.toml`): `obstacles` (seed 517 487 719: the engine draws the
   original's four pits in its order), as recorded on the first run. The frame check: 84 frames,
   all as the original's; the boxes listed at 7 800 ms (memory holds the counts the tail reset).
-- **Not read:** the dissolve's blend; Chain Lightning's rays beyond `draw_ray`'s call (colour
-  0x131, 0x5A64EF; T7c-3); how the glows are painted; the summons' and the Pit Lord's creation
-  beyond the dissolve; Earthquake (sieges); the force-feedback effects (IFC20, nothing drawn).
+- **Read at T7c-3** (Chain Lightning's rays, the raises, Fire Shield's return, the explosions):
+  - *Chain Lightning* (`chain_lightning` 0x5A6360): the mouse hidden (0x5A6380); 37 over the
+    first stack at 0 ms a frame (0x5A6416); for each next stack a ray from the last one's
+    centre (`stack_screen_x`, `_y`) to its own: d = trunc(√(dx² + dy²)), steps per tick
+    trunc(d / 10) kept to 8 to 30, then `draw_ray` with no mouse or redraw of its own (its first
+    argument 0: the shooter's mouse, the redraw and the shot group's rest are skipped,
+    0x5A60D3), no branches, 9 pixels thick to 2, colour 305, draw bounds 10 and 80 (negated and
+    swapped, −80 to −10, when the start lies right of the target, 0x5A5C74), delay 0 (every tick
+    shows at once: its deadline is the clock's own); then `wait_ms` trunc(100 F) outside the
+    deadline (0x5A6517) and a redraw at once (`battle_redraw` 1, 0, 0, 0, 1, 0) without it; after
+    the last, the marks copied, `strike_animation` with 38 (0x5A665F), `battle_log_damage` named
+    by the spell with a number of 1, the first stack's value through `spell_damage_modifiers`
+    with the caster's hero, no stack (the word for creatures) and every kill (0x5A667C), a redraw
+    at once, the mouse shown. The arguments' smoothness (2, or 3 beyond 20 steps) is passed but
+    never read; the `randomness range` (80) only by branches, which it has none of.
+  - *The ray's draws* (`ray_init` 0x5A5A90, `ray_aim` 0x5A5260, `ray_step` 0x5A5440): the record
+    keeps the bounds (+0x68, +0x6C) and the steps per tick (+0x20). `ray_aim` returns at once once
+    the head came within 15 of the target (+0x44: its aim and thickness stay; the viewer had
+    missed this, a shooter's ray never meets it); else, as a shooter's, then, with bounds other
+    than 0 and 0 and while f64(steps) × 1.5 < the distance left, the f32 angle +0x38 turned by
+    f32(f32(v / 100) × ((2 − p) / 1.5)), v = `random_between(lo, hi)` (lo itself when the bounds
+    agree), p the f32 share gone, each step at 53 bits (0x5A53C5 to 0x5A5431); +0x3C (an "arched"
+    angle by trunc((lo + hi) / 200), 0 here) is computed and never read. `ray_step` draws
+    `random_between(7, 12)` at each call and drops it (0x5A5478). Colour 305's entries by the
+    distance from the edge are the code's own numbers (0x5A5786 to 0x5A5980): (255, 255, 255),
+    (240, 240, 255), (224, 224, 255), (216, 216, 255), (200, 200, 255), then (192, 192, 255);
+    colours 300, 301 and 303 have no caller (301 would write its number as the pixel).
+  - *The raises* (`raise_stack` 0x5A7560): the line first, GENRLTXT 117 for several, 118 for one
+    ("%d %s", the creatures raised and their name; 0x5A76C7 to 0x5A772F); 50 loaded
+    (0x5A7740); L = max(n, d) redraws (1, 0, 0, 100, 1, 1: shown, on the deadline), each setting
+    +0x132F0 = i and a lying stack (group 5) frame d − 1 − i, group 2 frame 0 from i = d; then
+    the dead bit (+0x84 0x200000) and the mark cleared and a redraw at once (0x5A7867 to
+    0x5A7881). Resurrection and Animate Dead (0x5A1907) write no cast line; Sacrifice
+    (0x5A199C) kills its victim (no corpse: +0x84 0x10000000), writes the cast's line on it after
+    its death (so by its number 0), plays `strike_animation` with 51, then raises; an Archangel
+    (0x448563) plays its cast toward the corpse, `Resurect.wav` as a file, `raise_stack`, then
+    waits for the sound; a Phoenix (0x469588) Resurrection's sound (category 3), then
+    `raise_stack`.
+  - *Fire Shield's return* (`fire_shield_damage_striker` 0x4409C0, from `melee_strike` 0x441C80
+    after the strike's line and the striker's effects): every stack whose shield struck back
+    marked, the striker marked struck, the damage taken, Fire Shield's sound as a file,
+    `strike_animation` with 11, its line (`battle_log_damage` named by Fire Shield with a number
+    of 1, the striker, its damage and kills), the sound waited for.
+  - *The explosions* (`stack_shot` 0x43FA15, 0x43FE07): the Magogs (45) Fireball's 53 and sound,
+    the Liches (64, 65) Death Cloud's 72 and sound (spell 76), loaded by `load_def` (not
+    +0x132E8: memory's magic animation does not name it); at the target's hex x (±22 for a
+    two-hex target by its facing) less half the width, its y less half the target's height and
+    half the DEF's; each frame a redraw (0, 0, 0, 50 or 100, 1, 1), the frame by
+    `battle_draw_magic_frame` (plain, not mirrored) and the battlefield shown; a redraw at once;
+    then the area's damage and `strike_animation`.
+  - *The strike's loop* after a shot or a spell: a reaction that dies spends no iteration
+    standing, so when the longest all die L = R (the reading's), else R + 1 (the recordings';
+    `raise`: the Marksmen shoot 100 ms after the Pikeman's death shows its last frame).
+- **Built (T7c-3, `anim`, `ray`):** `Player::raising`, `raise` (player 4), `creature_raise`,
+  `reborn`, `teleported` (*provisional*: the dissolve not read), the corpses kept for a raise
+  (`bury`); `shield_return` (`Casts::shielded`, the ruleset's innate Fire Shield) and
+  `explosion` (`Look::explosion`, the asset tables' creature `explosion`: a format change),
+  drawn as a spot; `chain` with `ray::chain` (`Shape`, the draws through `Draws`: the capture's
+  kept draws, `Casts::rays`, then the viewer's own generator), `Beam::until` and `cursor`; the
+  near check in `ray_aim`; the strike loop's dying reactions; `Logged::Raised` (key
+  `battle.log.raised`); the timing check leaves out the heroes' rolled reactions (`unrolled`).
+  `raise`, `creatures` and `bolt` moved from `casts.toml` (now gone) into `sequences.toml` with
+  their engine commands: played as recorded. **The harness** (the user's choice): `xdd.dll` logs
+  the draws of `ray_aim`'s call (0x5A53FC) into `<H3CLOCK>\draws` (nothing forced), `frames`
+  keeps them as the frame file's `rays`, and the frame check's timeline draws the original's
+  rays with them. **Not built:** a created stack (`StackCreated`, a Pit Lord's Demons
+  `RoseFromCorpse`): a record holds the first snapshot only, so the viewer lacks the new stack's
+  numbers to draw it (QUEUE's inbox), nor the message when no hex is free for one; a clone's
+  vanishing; the dissolves; Sacrifice's victim leaving no corpse; the samples' waits.
+- **Not read:** the dissolve's blend; how the glows are painted; the summons' and the Pit Lord's
+  creation beyond the dissolve; Earthquake (sieges); the force-feedback effects (IFC20, nothing
+  drawn).
 
 ## 8. The window, input and audio evaluation (M2 T2)
 

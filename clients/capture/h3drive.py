@@ -102,6 +102,10 @@ PARK = (618, 593)
 # The rolls the harness forces (M3 T7b-2b-1; xdd.c's `sites`, the runbook's "Forced rolls"): by
 # name, the draw that makes the roll fall and the one that makes it fail. Each draw happens for
 # every stack at its moment, whatever its morale or luck: a forced one goes to the next.
+# The draws xdd.dll logs without forcing them (E17 M3 T7c-3, its `logged` sites): Chain
+# Lightning's rays turning (`ray_aim`), kept for the frame check (`ray_draws`).
+LOGGED = ("ray_aim",)
+
 ROLLS = {
     "good_morale": (1, 24),  # random(1, 24) <= morale after an action: another turn
     "bad_morale": (1, 12),   # random(1, 12) <= -morale at a pick: the stack freezes
@@ -686,9 +690,10 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
     mem.align_mouse_poll(t0)
     # The forced rolls (M3 T7b-2b-1): xdd.dll redirected every roll's call, or none is forced.
     rolls = bool(fail) or any(a.startswith("roll:") for a in actions)
-    if rolls and game.ack()[5] != len(ROLLS):
-        raise RuntimeError(f"xdd.dll redirected {game.ack()[5]} of the {len(ROLLS)} rolls' "
-                           "calls (another Heroes3.exe?)")
+    sites = len(ROLLS) + len(LOGGED)
+    if rolls and game.ack()[5] != sites:
+        raise RuntimeError(f"xdd.dll redirected {game.ack()[5]} of the {sites} rolls' and "
+                           "logged draws' calls (another Heroes3.exe?)")
     for name in fail:
         if name not in ROLLS:
             raise ValueError(f"`fail`: {name}: the rolls are {', '.join(ROLLS)}")
@@ -858,7 +863,17 @@ def run_sequences(rest):
     return 1 if failed else 0
 
 
-def frames_toml(kept, mouse=None):
+def ray_draws(clock_dir):
+    """The draws Chain Lightning's rays turned by in the run (E17 M3 T7c-3): `xdd.dll`'s log of
+    the `ray_aim` site, in order (numbers only)."""
+    path = Path(clock_dir) / "draws"
+    if not path.exists():
+        return []
+    return [int(line.split()[1]) for line in path.read_text().splitlines()
+            if line.startswith("ray_aim ")]
+
+
+def frames_toml(kept, mouse=None, rays=()):
     """The kept frames for `h3-view sequences --frames`: each one's time, file and the stacks the
     original shows fidgeting (group 1: the viewer draws none of its own in a check), and, where
     the original's memory was read for them (the frame check, M3 T3a), its heroes' groups and
@@ -866,17 +881,22 @@ def frames_toml(kept, mouse=None):
     viewer's); a situation's mouse first (M3 T6c-1: `h3-view render --frames` draws its cursor,
     hint and marked stack); a sequence's frame the point the original's cursor is drawn at (M3
     T6c-2: its memory, `cursor_at`; the game reads the mouse on a 33 ms grid of its own, design
-    §9.10)."""
+    §9.10); a frame that replaced another within its millisecond the heroes that one showed
+    (`before`, M3 T7c-3); and the draws its Chain Lightning's rays turned by (M3 T7c-3: `h3-view
+    sequences --frames` draws the same rays)."""
     out = ["# The original's kept frames (h3drive.py frames): numbers only.", ""]
     if mouse is not None:
         out += [f"mouse = [{mouse[0]}, {mouse[1]}]", ""]
+    if rays:
+        out += [f"rays = [{', '.join(str(r) for r in rays)}]", ""]
     for k in kept:
         fidgets = ", ".join(f"[{st['side']}, {st['record']}, {st['group']}, {st['frame']}]"
                             for st in k["stacks"] if st["group"] == 1 and st["count"] > 0)
         out += ["[[frame]]", f"t = {k['t']}", f'file = "{k["frame"]}"', f"fidgets = [{fidgets}]"]
-        if "heroes" in k:
-            heroes = ", ".join(f"[{h['side']}, {h['group']}, {h['frame']}]" for h in k["heroes"])
-            out.append(f"heroes = [{heroes}]")
+        for field in ("heroes", "before"):
+            if field in k:
+                heroes = ", ".join(f"[{h['side']}, {h['group']}, {h['frame']}]" for h in k[field])
+                out.append(f"{field} = [{heroes}]")
         at = (k.get("clocks") or {}).get("cursor_at")
         if at is not None:
             out.append(f"cursor = [{at[0]}, {at[1]}]")
@@ -927,8 +947,13 @@ def run_frames(rest):
         # A screen the actions replaced within its millisecond (a wait or a defend passes the
         # turn at once: `t<ms>b`) is compared, not the one before it: the viewer draws one
         # moment per millisecond (M3 T1a).
+        # Its heroes as the replaced screen showed them go with it (`before`, M3 T7c-3: a cast's
+        # first frame is in memory a deadline before the screen shows it).
+        for i in range(len(kept) - 1):
+            if kept[i + 1]["t"] == kept[i]["t"] and "heroes" in kept[i]:
+                kept[i + 1]["before"] = kept[i]["heroes"]
         kept = [k for i, k in enumerate(kept) if i + 1 == len(kept) or kept[i + 1]["t"] != k["t"]]
-        (here / "frames.toml").write_text(frames_toml(kept))
+        (here / "frames.toml").write_text(frames_toml(kept, rays=ray_draws(here / "clock")))
         keep(set_path, "sequences", e["id"], here / "frames.toml")
         subprocess.run([h3view, "sequences", e["id"], "--frames", str(out), "--out", str(here)],
                        check=True, capture_output=True)

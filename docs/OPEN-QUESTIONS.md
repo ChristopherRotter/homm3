@@ -150,6 +150,10 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 **Context.** Armageddon's damage line, "The Armageddon does %d damage." (GENRLTXT 89, `mass_damage_handler` 0x5A5212), takes the spell's value through `spell_damage_modifiers` given no hero, so the caster's bonuses (Sorcery, the Orbs, a specialty) are not in it, though every stack's damage has them (0x5A4C90); Death Ripple's line takes the caster's (0x5A0DC6). With such a bonus the log understates the damage. Built as the original's (the record gives both numbers: `SpellDamage`'s `value` and `caster`). **Options:** (a) copy it in every mode (`faithful`); (b) fix it, the line with the caster's bonuses, the original's only for the comparisons with its captures (the development switch of 2026-10-15, as CLT-Q8); (c) a player's option. **Recommendation:** (b): a misleading number, not a look; no recording has such a bonus yet.
 
+#### CLT-Q17 — Sacrifice's line names its victim as none are left (E17 M3 T7c-3)
+
+**Context.** Sacrifice's handler (`cast_spell` 0x5A199C) kills its victim first and writes the cast's line after (`battle_log_cast` 0x5A1A30), which names the stack by its number then, 0: a victim of one creature is named by the plural ("… on the Pikemen" for one Pikeman; `docs/epics/E17-design.md` §7.16, "Read at T7c-3"). Read, not recorded; built as the original's (*provisional*). **Options:** (a) copy it in every mode (`faithful`); (b) fix it, the name by the victim's number before its death, the original's only for the comparisons with its captures (the development switch of 2026-10-15, as CLT-Q8); (c) a player's option. **Recommendation:** (b): a wrong word, cheap to fix; a recording should confirm it first.
+
 ## Answered
 
 Newest first in each block. A lane adds an answered question at the top of its own block, so lanes working at once never edit the same lines; a numbered question (`Q55`) and the decisions from before the lanes go to the last block.

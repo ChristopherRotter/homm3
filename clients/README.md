@@ -78,7 +78,10 @@ search the parent directories).
   as the Faerie Dragon's), the spell objects and Armageddon (M3 T7c-2: Quicksand's pits, Land
   Mines, a Force Field and a Fire Wall placed by their animations at a hex, drawn in the
   obstacles' passes and gone with their vanish animations at a round's start; Armageddon tiled
-  over the battlefield with every stack's reaction), the
+  over the battlefield with every stack's reaction), raised stacks, the creatures' own animations
+  and Chain Lightning (M3 T7c-3: Resurrection's animation over a stack raised, a lying one's
+  death group backwards; Fire Shield's return; the Magogs' and the Liches' explosions; Chain
+  Lightning's rays from stack to stack, the original's draws in the frame check), the
   panel (M3 T6a: its picture in the acting player's colours and its buttons as the turn's start
   sets them, `h3_view::panel`; since M3 T6b through the battle's turns and with its log's lines,
   `scene::Panels`); not yet
@@ -142,7 +145,7 @@ search the parent directories).
 | `clients/layouts/battle.toml` | the battle screen's layout at the native resolution (ADR-0020 point 3: layouts are data): the frame, the hex boxes, where sprites stand, the stack canvas, the layer-1 pass's columns, the outline's palette entry, the heroes' and flags' canvases, the count box (`docs/epics/E17-design.md` §4), the panel below the battlefield as a dialog of the executable's items (§9.5, §9.7: its picture, buttons and the log's item, `h3_view::ui`); an HD layout is another file of the same format (*provisional*) |
 | `clients/scenarios/*.toml` | the client's battle scenarios (the scenario format of `packs/README.md`) for `h3-view render` and `play`: the stills T7 renders, `smoke.toml` the captured smoke battle (T8), `battle.toml` the whole battle `play` fights (M2 T4b-2a) |
 | `clients/capture/` | the reference captures (below; the runbook `capture/README.md`): `setup.sh`, the driver `h3drive.py` and its screens' probes, `h3cap.py` (diffs, obstacles), the `xdd.dll` source (forwarder and virtual clock) |
-| `clients/situations/` | the capture set (`set.toml`) and its situations' scenario files: what the harness shows the original, with each frame's recorded differences; the recorded sequences (`sequences.toml`, `timelines/`) with their engine commands; the casts' sequences waiting for the viewer's timeline (`casts.toml`, M3 T7a-2a, T7a-2b: every magic animation player, with the screen's changes); `kept/`, what the last captures kept and the viewer's digests at those times |
+| `clients/situations/` | the capture set (`set.toml`) and its situations' scenario files: what the harness shows the original, with each frame's recorded differences; the recorded sequences (`sequences.toml`, `timelines/`) with their engine commands (the casts' since M3 T7a-2a, with the screen's changes); `kept/`, what the last captures kept and the viewer's digests at those times |
 | `clients/out/` | local output (renders, reports); gitignored |
 
 The decoders, the compositor and the scene model are pure (no I/O, clock or threads; time is an
@@ -222,7 +225,7 @@ composed from the keys as the executable composes them from its rows (`h3_view::
 T4b-2a, design §9.4: a strike's damage and perish rows, wait, defend, morale, luck, Fear (M3
 T7b-2b-2b), Life Drain, Death Stare, the Thunderbird's bolt, Poison, Acid Breath (M3 T7b-2b-3),
 a cast without a target, Death Ripple's and Destroy Undead's damage, an area spell's (M3 T7c-1),
-Armageddon's (M3 T7c-2), and the log
+Armageddon's (M3 T7c-2), a raise's (M3 T7c-3), and the log
 entries a line becomes; the text the log's item shows, M3 T4b-2b-2; the heal's and the round's
 lines, which event writes which line and when, and the log kept as the executable keeps it, M3
 T6b, design §9.8); `h3-view text --log` prints sample lines, and the viewer's frames show the

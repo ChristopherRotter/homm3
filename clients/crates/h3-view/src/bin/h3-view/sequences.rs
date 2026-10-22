@@ -100,6 +100,10 @@ struct Frames {
     /// and marked stack; none for a sequence, whose mouse moves: `Interface::shown`).
     #[serde(default)]
     mouse: Option<[i32; 2]>,
+    /// The draws the original's Chain Lightning rays turned by, in order (E17 M3 T7c-3:
+    /// `xdd.dll`'s log; the frame check's timeline draws the same rays).
+    #[serde(default)]
+    rays: Vec<i32>,
 }
 
 /// What the frames draw below and over the battlefield: the panel over the battle and the mouse:
@@ -127,6 +131,11 @@ struct Kept {
     fidgets: Vec<[u32; 4]>,
     #[serde(default)]
     heroes: Vec<[u32; 3]>,
+    /// The heroes of the screen it replaced within its millisecond (E17 M3 T7c-3): a cast's
+    /// first frame is in memory a deadline before the screen shows it, the screen still showing
+    /// these.
+    #[serde(default)]
+    before: Vec<[u32; 3]>,
     /// The point the original's cursor is drawn at (its memory: it reads the mouse on a 33 ms
     /// grid of its own, E17 M3 T6c-2, design §9.10); none: the mouse's.
     #[serde(default)]
@@ -257,7 +266,11 @@ fn sequences(options: &Options) -> Result<usize, String> {
         let tables = assets::load(&assets::default_dir(), top)?;
         let looks = motion::looks(&record, &tables, &archives)?;
         let magic = motion::magic(&record, &tables, &archives)?;
-        let casts = motion::casts(&record, &tables, &archives, &options.packs)?;
+        let mut casts = motion::casts(&record, &tables, &archives, &options.packs)?;
+        // The frame check draws Chain Lightning's rays from the original's draws (E17 M3 T7c-3).
+        if let Some(dir) = &options.frames {
+            casts.rays = kept_rays(&dir.join(&sequence.id))?;
+        }
         let stage = motion::stage(&record, &tables, &layout, (&magic, &casts));
         // The harness acts `pre` ms after the opening, and then at each command's `at`.
         let commands: Vec<anim::Command<'_>> = record
@@ -383,6 +396,9 @@ fn sequences(options: &Options) -> Result<usize, String> {
             .map(|l| format!("{l}\n"))
             .collect();
         let recorded = anim::unfidgeted(&recorded, &entered);
+        // Nor the heroes' rolled reactions to a death (E17 M3 T7c-3).
+        let g = tables.battle.hero_groups;
+        let recorded = anim::unrolled(&recorded, g.standing, [g.defeat, g.victory]);
         let diff = anim::differences(&ours, &recorded);
         if diff.is_empty() {
             println!(
@@ -404,6 +420,17 @@ fn sequences(options: &Options) -> Result<usize, String> {
         }
     }
     Ok(differing)
+}
+
+/// The draws the original's Chain Lightning rays turned by in `<here>/frames.toml` (E17 M3
+/// T7c-3; none without the file).
+fn kept_rays(here: &Path) -> Result<Vec<i32>, String> {
+    let path = here.join("frames.toml");
+    let Ok(text) = fs::read_to_string(&path) else {
+        return Ok(Vec::new());
+    };
+    let kept: Frames = toml::from_str(&text).map_err(|e| format!("{}: {e}", path.display()))?;
+    Ok(kept.rays)
 }
 
 /// Draws the viewer's frame at each time in `<here>/frames.toml` (the stacks the original shows
@@ -486,16 +513,25 @@ pub(crate) fn draw_frames(
         }
         let casting = u32::from(tables.battle.hero_groups.cast);
         for &[side, group, f] in &frame.heroes {
+            let before = frame
+                .before
+                .iter()
+                .find(|b| b[0] == side)
+                .map(|b| (b[1], b[2]));
             if let Some(hero) = moment
                 .heroes
                 .get_mut(side as usize)
                 .and_then(Option::as_mut)
             {
                 // A cast's frames as the viewer's timeline shows them (E17 M3 T7b-1): the
-                // original's memory holds each a deadline before its screen shows it.
-                if group == casting || hero.group == casting {
-                    continue;
-                }
+                // original's memory holds each a deadline before its screen shows it, so as a
+                // cast starts the screen still shows the frame it replaced (E17 M3 T7c-3,
+                // `raise`: a rolled defeat's).
+                let (group, f) = match before {
+                    Some(b) if group == casting && hero.group != casting && b.0 != casting => b,
+                    _ if group == casting || hero.group == casting => continue,
+                    _ => (group, f),
+                };
                 *hero = HeroPose {
                     group,
                     frame: f,
@@ -503,6 +539,7 @@ pub(crate) fn draw_frames(
                 };
             }
         }
+
         let mut list = scene::battle_at(snapshot, &moment, manifest, tables, layout)
             .map_err(|e| e.to_string())?;
         // The moment, then the count boxes drawn (` box<x>,<y>n<count>@<side>.<record>`, their

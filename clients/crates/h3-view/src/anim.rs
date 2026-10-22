@@ -143,6 +143,20 @@ pub struct Look {
     /// A ray shooter's colours by the distance from the ray's edge (R, G, B; none: it shoots
     /// a projectile; §7.12).
     pub ray: Option<Vec<[u8; 3]>>,
+    /// The explosion its projectile ends in (the Magogs, the Liches; E17 M3 T7c-3).
+    pub explosion: Option<Explosion>,
+}
+
+/// The explosion a shooter's projectile ends in (`stack_shot` 0x43FA15, 0x43FE07; E17 M3
+/// T7c-3): a spell's magic animation and sound, a frame a redraw of `time` ms (times the speed).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct Explosion {
+    /// The spell (its handle): its sound.
+    pub spell: u16,
+    /// Its magic animation.
+    pub animation: u8,
+    /// Each frame's time.
+    pub time: u32,
 }
 
 /// A shooter's projectile DEF and how its frame follows the shot's angle (`shot_angle_group`
@@ -186,21 +200,25 @@ pub struct Flight {
 }
 
 /// A ray (`DrawRay` 0x5A5C20, [`crate::ray`], design §7.12): the ticks' strokes, tick k shown
-/// k × `step` after `from`; erased as the last shows (`DrawRay` redraws the battle then without
+/// k × `step` after `from` (all at `from` without a step: Chain Lightning's, E17 M3 T7c-3); erased
+/// at `until` (a shooter's as its last tick shows: `DrawRay` redraws the battle then without
 /// waiting for the frame deadline, so the last tick shows for no time).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Beam {
-    /// When the ray starts (after the wait of trunc(115 F)).
+    /// When the ray starts (a shooter's after the wait of trunc(115 F)).
     pub from: u32,
-    /// Each tick's time, trunc(10 F).
+    /// Each tick's time, trunc(10 F) (0: none).
     pub step: u32,
+    /// When it is erased.
+    pub until: u32,
     /// Each tick's strokes.
     pub ticks: Vec<Vec<Stroke>>,
     /// The colours by the distance from the edge (R, G, B).
     pub colours: Vec<[u8; 3]>,
-    /// When the mouse's cursor shows again (E17 M3 T6c-2): `draw_ray` hides it as it starts
-    /// (0x5A5C46) and shows it after the shot group's rest (0x5A61D4).
-    pub cursor_back: u32,
+    /// When the mouse's cursor is hidden and when it shows again (E17 M3 T6c-2): a shooter's
+    /// `draw_ray` hides it as it starts (0x5A5C46) and shows it after the shot group's rest
+    /// (0x5A61D4); Chain Lightning's handler from its start to its end (0x5A6380, 0x5A669C).
+    pub cursor: [u32; 2],
 }
 
 /// A ray as it shows at a time: the strokes drawn so far, in order.
@@ -261,6 +279,12 @@ pub struct Casts {
     /// The creatures that frighten, by handle (the ruleset's `fear`; the original's creature 132,
     /// the Azure Dragon, `fear_check` 0x464D40).
     pub frighteners: BTreeSet<u16>,
+    /// The creatures with a Fire Shield of their own, by handle (the ruleset's innate spell; the
+    /// Efreet Sultans, `fire_shield_factor` 0x443130; E17 M3 T7c-3).
+    pub shielded: BTreeSet<u16>,
+    /// The draws Chain Lightning's rays turn by, in order (E17 M3 T7c-3): the original's, which a
+    /// capture keeps for the frame check; past them the viewer draws its own ([`crate::ray::chain`]).
+    pub rays: Vec<i32>,
 }
 
 /// A spell as its cast draws it (E17 M3 T7b-1): its magic animation (the spell record's +8; the
@@ -1025,13 +1049,13 @@ impl Timeline {
         poses
     }
 
-    /// Whether the mouse's cursor is hidden at `t`: from a ray's start until it shows again (E17
-    /// M3 T6c-2, [`Beam::cursor_back`]).
+    /// Whether the mouse's cursor is hidden at `t`: while a ray's drawer hides it (E17 M3 T6c-2,
+    /// [`Beam::cursor`]).
     #[must_use]
     pub fn cursor_hidden(&self, t: u32) -> bool {
         self.beams
             .iter()
-            .any(|b| (b.from..b.cursor_back).contains(&t))
+            .any(|b| (b.cursor[0]..b.cursor[1]).contains(&t))
     }
 
     /// The projectile showing at `t`, if one flies then.
@@ -1057,8 +1081,11 @@ impl Timeline {
     /// The ray showing at `t`, if one is drawn then: the strokes of the ticks shown by then.
     pub fn ray(&self, t: u32) -> Option<Ray> {
         self.beams.iter().find_map(|b| {
-            let k = usize::try_from(t.checked_sub(b.from)? / b.step.max(1)).unwrap_or(usize::MAX);
-            (k >= 1 && k < b.ticks.len()).then(|| Ray {
+            let k = match b.step {
+                0 => b.ticks.len(),
+                step => usize::try_from(t.checked_sub(b.from)? / step).unwrap_or(usize::MAX),
+            };
+            (t >= b.from && t < b.until && k >= 1).then(|| Ray {
                 strokes: b.ticks.iter().take(k).flatten().copied().collect(),
                 colours: b.colours.clone(),
             })
@@ -1358,6 +1385,8 @@ struct Live {
     defense: i32,
     /// Its creature frightens ([`Casts::frighteners`]; E17 M3 T7b-2b-2b).
     frightens: bool,
+    /// Its creature has a Fire Shield of its own ([`Casts::shielded`]; E17 M3 T7c-3).
+    shielded: bool,
 }
 
 impl Live {
@@ -1507,6 +1536,7 @@ fn played(
                 spells: s.effects.iter().map(|e| e.spell).collect(),
                 defense: s.defense,
                 frightens: stage.casts.frighteners.contains(&s.creature),
+                shielded: stage.casts.shielded.contains(&s.creature),
             },
         );
     }
@@ -1550,6 +1580,8 @@ fn played(
         kept: None,
         fields: Vec::new(),
         field_kept: None,
+        corpses: BTreeMap::new(),
+        draws: chain::Draws::new(&stage.casts.rays),
     };
     let mut actions = Vec::new();
     let mut fidgets = seed.map(|rng| Fidgets {
@@ -1950,6 +1982,10 @@ struct Player<'a> {
     fields: Vec<FieldKey>,
     /// Its last frame, on the screen until the next frame drawn.
     field_kept: Option<FieldKey>,
+    /// The dead stacks as they fell, by id, which a raise brings back (E17 M3 T7c-3).
+    corpses: BTreeMap<u8, Live>,
+    /// The draws of Chain Lightning's rays (E17 M3 T7c-3).
+    draws: chain::Draws,
 }
 
 /// A spell a melee strike leaves pending on the stack it struck ([`PENDING`]): the stack, the
@@ -2087,6 +2123,12 @@ impl Player<'_> {
         self.stacks.get(&stack).cloned()
     }
 
+    /// A dead stack leaves the living for the corpses (a raise may bring it back).
+    fn bury(&mut self, stack: u8) {
+        let live = self.stacks.remove(&stack);
+        self.corpses.extend(live.map(|l| (stack, l)));
+    }
+
     /// One command's events, in order.
     fn command(&mut self, events: &[Event]) {
         let mut i = 0;
@@ -2103,6 +2145,8 @@ impl Player<'_> {
         // The events up to this index belong to a round's start whose expired objects went
         // (E17 M3 T7c-2).
         let mut expired = 0;
+        // The stacks the last melee strike struck: their Fire Shields strike back (E17 M3 T7c-3).
+        let mut shields: Vec<u8> = Vec::new();
         while let Some(event) = events.get(i) {
             i += 1;
             match *event {
@@ -2170,10 +2214,16 @@ impl Player<'_> {
                         if flags.lucky {
                             self.luck(attacker);
                         }
+                        // A shooter whose projectile explodes shoots at an area, whatever it
+                        // struck (the Magogs, the Liches: 0x43FA0C, 0x43FCFF; E17 M3 T7c-3).
+                        let area = hits.len() > 1
+                            || self
+                                .live(attacker)
+                                .is_some_and(|l| l.look.explosion.is_some());
                         let start = self.shot(attacker, &hit);
                         // One target's line after its reactions (0x43FDB4), an area shot's of
                         // every hit as they start (0x43FCE0, 0x4400DC).
-                        let (spread, at) = if hits.len() > 1 {
+                        let (spread, at) = if area {
                             (Spread::Around, start)
                         } else {
                             (Spread::Target, self.clock.now)
@@ -2213,6 +2263,7 @@ impl Player<'_> {
                         self.strike_casts = casts;
                         i = next;
                         last_hit = self.live(target).map(|l| (target, l.count));
+                        shields = hit.iter().map(|h| h.0).collect();
                         self.strike(attacker, &hit, layer);
                         // After the strike's animation (`melee_strike` 0x441C5D).
                         let line = Logged::Strike {
@@ -2263,6 +2314,31 @@ impl Player<'_> {
                     target,
                     kills,
                 } => self.death_stare(attacker, target, kills),
+                // Fire Shield strikes back at the striker (E17 M3 T7c-3).
+                Event::Reflected {
+                    stack,
+                    ref damage,
+                    kills,
+                } => self.shield_return(stack, (damage.0, kills), &shields),
+                // An Archangel's raise (E17 M3 T7c-3): the stack it raises follows.
+                Event::CreatureRaise { stack, target } => {
+                    let raised = match events.get(i) {
+                        Some(&Event::SpellRaised {
+                            target: t,
+                            creatures,
+                            ..
+                        }) if t == target => {
+                            i += 1;
+                            creatures
+                        }
+                        _ => 0,
+                    };
+                    self.creature_raise(stack, target, raised);
+                }
+                // A Phoenix reborn (E17 M3 T7c-3).
+                Event::Reborn { stack, creatures } => self.reborn(stack, creatures),
+                // Teleport's move (E17 M3 T7c-3, *provisional*: its dissolve not read).
+                Event::Teleported { stack, to, .. } => self.teleported(stack, to),
                 Event::Defended { stack } => {
                     self.defends(stack, true);
                     // A war machine writes no line (0x479758).
@@ -2307,6 +2383,8 @@ impl Player<'_> {
                                 | Event::SpellDamage { .. }
                                 | Event::SpellHealed { .. }
                                 | Event::ObstaclePlaced { .. }
+                                | Event::SpellRaised { .. }
+                                | Event::Sacrificed { .. }
                         )
                     }) {
                         i += 1;
@@ -2950,8 +3028,11 @@ impl Player<'_> {
                 .iter()
                 .any(|e| matches!(*e, Event::SpellResisted { target } if target == t))
         };
-        let mut done = false;
-        match aimed {
+        // The raises (E17 M3 T7c-3: `raise_stack`, player 4) and Chain Lightning (its handler's
+        // own rays) aim at a corpse or at several stacks.
+        let mut done = self.raising(s, (spell, &look), effects)
+            || (look.original == CHAIN_LIGHTNING && self.chain(spell, &look, effects));
+        match aimed.filter(|_| !done) {
             Some((t, live)) if resisted(t) => {
                 self.cue(t, Sound::Resisted, false);
                 let line = Logged::Resisted {
@@ -3050,7 +3131,8 @@ impl Player<'_> {
                     }
                 }
             }
-            None => done = self.untargeted(s, (spell, &look), target, effects),
+            None if !done => done = self.untargeted(s, (spell, &look), target, effects),
+            None => {}
         }
         if !done {
             self.effects(effects);
@@ -3464,7 +3546,7 @@ impl Player<'_> {
                     ..pose(&r, r.frames)
                 };
                 self.pending.push((r.stack, corpse));
-                self.stacks.remove(&r.stack);
+                self.bury(r.stack);
             } else {
                 self.pending.push((r.stack, r.base));
             }
@@ -3511,11 +3593,41 @@ impl Player<'_> {
             .get(&spell)
             .cloned()
             .unwrap_or_default();
-        let (Target::Hex { hex }, Some(live), FROST_RING..=METEOR_SHOWER) =
-            (target, self.live(stack), look.original)
+        let (Target::Hex { hex }, true, FROST_RING..=METEOR_SHOWER) =
+            (target, self.stacks.contains_key(&stack), look.original)
         else {
             self.effects(effects);
             return;
+        };
+        let turned = self.creature_casting(stack, hex);
+        // `cast_spell`'s start: the outline and the mouse's stack cleared, a redraw at once each.
+        self.outlined.push((self.clock.now, None));
+        self.log.push((self.clock.now, Logged::Unmark));
+        self.redraw();
+        self.cue(stack, Sound::Spell(spell), false);
+        let hits: Vec<(u8, u64, u64, u32)> = effects
+            .iter()
+            .filter_map(|e| match *e {
+                Event::SpellDamage {
+                    target,
+                    ref caster,
+                    ref damage,
+                    kills,
+                    ..
+                } => Some((target, caster.0, damage.0, kills)),
+                _ => None,
+            })
+            .collect();
+        self.area((spell, &look), hex, &hits, Some(stack));
+        self.creature_cast_over(stack, turned);
+    }
+
+    /// A creature caster's frames toward the hex `hex` (`creature_cast_action` 0x448380 to
+    /// 0x44851C, [`Player::creature_cast`]): turned toward it, its shot sound started, its group by
+    /// the angle played, its last frame kept. Returns whether it turned.
+    fn creature_casting(&mut self, stack: u8, hex: u8) -> bool {
+        let Some(live) = self.live(stack) else {
+            return false;
         };
         let [cx, cy] = self.centre(&live);
         let [tx, ty] = self.stage.anchor(hex);
@@ -3542,25 +3654,12 @@ impl Player<'_> {
         for f in 0..frames {
             self.frame(&[(stack, Self::posed(&live, group, f, live.hex))], time);
         }
-        // `cast_spell`'s start: the outline and the mouse's stack cleared, a redraw at once each.
-        self.outlined.push((self.clock.now, None));
-        self.log.push((self.clock.now, Logged::Unmark));
-        self.redraw();
-        self.cue(stack, Sound::Spell(spell), false);
-        let hits: Vec<(u8, u64, u64, u32)> = effects
-            .iter()
-            .filter_map(|e| match *e {
-                Event::SpellDamage {
-                    target,
-                    ref caster,
-                    ref damage,
-                    kills,
-                    ..
-                } => Some((target, caster.0, damage.0, kills)),
-                _ => None,
-            })
-            .collect();
-        self.area((spell, &look), hex, &hits, Some(stack));
+        turned
+    }
+
+    /// A creature's cast is over (0x4486E2, 0x44872F): its shot sound ends and it turns back if
+    /// it turned.
+    fn creature_cast_over(&mut self, stack: u8, turned: bool) {
         self.cue(stack, Sound::Shot, true);
         if let Some(live) = self.live(stack).filter(|_| turned) {
             self.turn(stack, live);
@@ -3660,7 +3759,7 @@ impl Player<'_> {
                     ..Self::posed(&live, group, frame, live.hex)
                 };
                 self.pending.push((stack, corpse));
-                self.stacks.remove(&stack);
+                self.bury(stack);
                 died = true;
             }
         }
@@ -3744,7 +3843,7 @@ impl Player<'_> {
                     ..Self::posed(&live, group, frame, live.hex)
                 };
                 self.pending.push((stack, corpse));
-                self.stacks.remove(&stack);
+                self.bury(stack);
                 died = true;
             }
         }
@@ -4305,6 +4404,10 @@ impl Player<'_> {
             });
         }
         self.clock.wait(aim.steps * step);
+        // The Magogs' and the Liches' explosion over their target (E17 M3 T7c-3).
+        if let (Some(e), Some(&(t, _))) = (live.look.explosion, hit.first()) {
+            self.explosion(e, t);
+        }
         let reactions = self.reactions(hit);
         // A shot marks no striker (`melee_strike` does, 0x441A87; `stack_shot` does not), so
         // `strike_animation`'s loop counts the reactions alone: the longest starts as the
@@ -4345,12 +4448,14 @@ impl Player<'_> {
         let step = self.speed.scale(RAY_TICK);
         let count = u32::try_from(ticks.len()).unwrap_or(0);
         let beam = self.beams.len();
+        let from = self.clock.now;
         self.beams.push(Beam {
-            from: self.clock.now,
+            from,
             step,
+            until: from + count * step,
             ticks,
             colours,
-            cursor_back: u32::MAX,
+            cursor: [from, u32::MAX],
         });
         self.clock.wait(count * step);
         self.redraw();
@@ -4373,7 +4478,7 @@ impl Player<'_> {
                 }
             }
         }
-        self.beams[beam].cursor_back = self.clock.now;
+        self.beams[beam].cursor[1] = self.clock.now;
     }
 
     /// The shot's group (0 up, 1 straight, 2 down), its start and target points and its
@@ -4451,9 +4556,19 @@ impl Player<'_> {
             .max()
             .unwrap_or(0);
         let reacting = (counted + longest).saturating_sub(1).max(counted + 1);
+        // After a shot or a spell, the iteration a hit's reaction spends standing again is not
+        // a dying stack's: when the longest reactions all die the loop ends with their last
+        // frame (the reading's L = R; E17 M3 T7c-3, `raise`: the Marksmen shoot 100 ms after the
+        // Pikeman's death shows its last frame).
+        let dying = !melee
+            && longest > 0
+            && reactions
+                .iter()
+                .filter(|r| r.frames == longest)
+                .all(|r| r.died);
         // A magic animation over the marked stacks lengthens the loop to its frames (E17 M3
         // T7b-1, design §7.16).
-        let loops = reacting
+        let loops = (reacting - u32::from(dying))
             .max(frames + 1)
             .max(riding.map_or(0, |r| r.look.frames));
         let tick = self.speed.scale(TICK);
@@ -4551,7 +4666,7 @@ impl Player<'_> {
             };
             self.pending.push((r.stack, pose));
             if r.died {
-                self.stacks.remove(&r.stack);
+                self.bury(r.stack);
             }
         }
         // Every stack's mark cleared (0x46905A): the magic animation is gone with the redraw.
@@ -4679,6 +4794,38 @@ pub fn unfidgeted(recorded: &str, kept: &BTreeSet<String>) -> String {
     out
 }
 
+/// The harness's `recorded` timeline without the heroes' rolled reactions (E17 M3 T7c-3,
+/// `raise`): a hero's defeat or victory group (`rolled`) after a death is the original's own
+/// draw (`Heroes`' rolls, 0x49642B), which the check does not share, as a stack's fidget is not
+/// (the frame check takes the hero's frame from the original's memory); its lines are left out,
+/// with the hero's return to `standing` after them.
+#[must_use]
+pub fn unrolled(recorded: &str, standing: u8, rolled: [u8; 2]) -> String {
+    let rolled = rolled.map(|g| format!("g{g}"));
+    let standing = format!("g{standing}");
+    let mut rolling = BTreeSet::new();
+    let mut out = String::new();
+    for line in recorded.lines() {
+        let words: Vec<&str> = line.split(' ').collect();
+        let skip = match words.as_slice() {
+            [_, "hero", side, group, ..] => {
+                if rolled.iter().any(|g| g == group) {
+                    rolling.insert(String::from(*side));
+                    true
+                } else {
+                    rolling.remove(*side) && *group == standing
+                }
+            }
+            _ => false,
+        };
+        if !skip {
+            out.push_str(line);
+            out.push('\n');
+        }
+    }
+    out
+}
+
 /// A timeline's lines that differ from `expected`'s (the harness's format): each differing
 /// line with `-` for the expected and `+` for ours.
 pub fn differences(ours: &str, expected: &str) -> Vec<String> {
@@ -4696,7 +4843,14 @@ pub fn differences(ours: &str, expected: &str) -> Vec<String> {
     out
 }
 
+mod chain;
+mod creature;
 mod entered;
+mod raise;
+
+pub use chain::{CHAIN_LIGHTNING, CHAIN_START};
+pub use creature::{FIRE_SHIELD, SHIELD_RETURN};
+pub use raise::{ANIMATE_DEAD, RAISE, RESURRECTION, SACRIFICE, SACRIFICED};
 
 #[cfg(test)]
 pub(crate) mod tests;
