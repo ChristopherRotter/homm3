@@ -4280,3 +4280,7 @@ battle lane's ledger in the same pull request (`cross-lane`, the user's consent)
   decisions (battle-owned, `cross-lane`; the battle lane's inbox told); `h3-heroes`' three module
   comments repointed to increment 4's note in this log; `E08-design.md`'s part A reduced to what
   T40 builds (the adventure part's data).
+- **The full local verify** (CI cannot run): `scripts/verify-once.sh engine --base origin/master
+  -- --with-original-data` on engine code 2391924a (commit 7d98ced, 2026-10-22, the sandbox,
+  Linux x86_64): all 16 steps passed; `original-data`: 9 heroes levelled at load with 41
+  level-ups (unchanged). `check-lane` names only `docs/rules/quirks-ledger.md` (the label).
