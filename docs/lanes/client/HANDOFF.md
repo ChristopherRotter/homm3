@@ -4,13 +4,13 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E17 M0–M2 done; M3 T1a–T7a-2b, T7b-1, T7b-2a, T7b-2b-1 to T7b-2b-3, T7c-1 (#378, open), T8 done; H1, H2 done (2026-10-19: the adventure lane's harness); next: M3 T7c-2, T7c-3, T7d** (`QUEUE.md`; T9 closes M3). Screens from the executable's dialog items (`h3_view::ui`; design §9.7). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
+- **E17 M0–M2 done; M3 T1a–T7a-2b, T7b-1 to T7b-2b-3, T7c-1, T7c-2 (#384, open), T8 done; H1, H2 done (2026-10-19: the adventure lane's harness); next: M3 T7c-3, T7d** (`QUEUE.md`; T9 closes M3). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
 - **Captures** (the user, 2026-10-20): `h3drive.py drawn` first (no Wine); capture what it lists or the task changes, all at a milestone's closure or a harness change (runbook); later tasks' detail in `NOTES.md`.
 - **The user's requirements** (epic, "Decisions"): a string catalogue (JSON packs, no committed translation, CLT-Q7); graphics options (`faithful` default); exhaustive diffs; drawing bugs fixed, the original's only for comparisons (`Bugs`).
 - The lane owns `clients/`, `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
 - **Checkpoints** per milestone (the autonomy contract below), a fresh reviewer agent first.
 - Stage first (the user's computer online) from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04`, the four end tunes, `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`; `cp -rn` the staged `original-data/.` into the clone first. Frames stay in their sandbox.
-- **Open:** CLT-Q4 (background variant), Q5 (boats), Q6 (colours, sex), Q9–Q14 (the original's oddities), Q15 (the dragon's draw line).
+- **Open:** CLT-Q4 (background variant), Q5 (boats), Q6 (colours, sex), Q9–Q14, Q16 (the original's oddities), Q15 (the dragon's draw line).
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
 
@@ -49,18 +49,18 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - The harness's `actions` are the viewer's mouse (`pointer::inputs`, design §9.10): a new action
   kind needs both; `hex_point` and `PARK` mirror `h3drive.py`'s; a `key:` right after a `cast:`
   acts at the cast's end in both (T7b-1).
-- The original's rolls: forced (`roll:`, `fail`; runbook), luck and morale by the hero's
-  `effects`.
+- The original's rolls: forced (`roll:`, `fail`; runbook), luck and morale by hero `effects`.
 - `turn:` naming the active stack passes at once: after a hero's cast a stack acts by `key:`
   only (T7b-2a). Tell spells by `SpellLook::original`, not engine handles (Poison 70).
-- Sequences are spectators' records (no seat's own events: a Faerie Dragon's draw); a random
-  caster's seed is searched for the original's draws (`dragon` 174; T7c-1).
-- `strike_animation` plays every stack on after its loop in partial redraws (0x4691A9; T7c-1).
+- Sequences are spectators' records (no seat's own events); an engine draw the original made is
+  matched by a searched seed (`dragon` 174; `obstacles`: the kernel's generator alone, T7c-2).
+- A fresh sandbox's first capture once differed (T7c-2, a defend's gain): recapture.
 
 ## Recent sessions
 
-- **2026-10-22, E17 M3 T7c-1 (area and mass spells; #378 open).** T7c split in three; `mass`,
+- **2026-10-22, E17 M3 T7c-2 (spell objects, Armageddon; #384 open).** Not split (the user);
+  `obstacles` recorded (seed searched for the pits), all frames as the original's; CLT-Q16.
+- **2026-10-22, E17 M3 T7c-1 (area and mass spells; #378, merged).** T7c split in three; `mass`,
   `dragon` recorded, frames as the original's; checkpoint (the user).
 - **2026-10-22, E17 M3 T7b-2b-3 (strike effects; #376, merged).** Four sequences, seeds searched;
   the catalogue reads `Heroes3.exe`'s text (`EXE:`).
-- **2026-10-21, E17 M3 T7b-2b-2b (morale, luck, fear; #371, merged).** Four sequences; the outline.

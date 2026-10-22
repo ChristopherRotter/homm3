@@ -333,7 +333,8 @@ impl Battle {
     /// The battle's own sounds its cues name, by cue (not a creature's; design §8.2): the tent's
     /// heal (E17 M3 T3b), a resisted spell's and each cast spell's (E17 M3 T7b-1), morale's, Fear's
     /// and good luck's (E17 M3 T7b-2b-2b), Life Drain's, the Thunderbird's bolt's and the spells'
-    /// the striker's effects play (E17 M3 T7b-2b-3).
+    /// the striker's effects play (E17 M3 T7b-2b-3), the sound placed with each object (E17 M3
+    /// T7c-2).
     pub fn battle_sounds(&self) -> BTreeMap<Sound, String> {
         let spells = &self.record.header.manifest.keys.spells;
         let battle = &self.tables.battle;
@@ -353,6 +354,9 @@ impl Battle {
                     Sound::Spell(handle) | Sound::SpellFile(handle) => spells
                         .get(usize::from(handle))
                         .and_then(|key| self.tables.spells.get(key)?.sound.as_ref()),
+                    Sound::Object(handle) => spells
+                        .get(usize::from(handle))
+                        .and_then(|key| self.tables.spells.get(key)?.object_sound.as_ref()),
                     _ => None,
                 };
                 Some((c.sound, name?.clone()))

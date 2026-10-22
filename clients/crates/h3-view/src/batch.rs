@@ -129,7 +129,8 @@ pub fn names(list: &[Draw], layout: &BattleLayout) -> BTreeSet<String> {
         | Draw::Projectile { def, .. }
         | Draw::Creature { def, .. }
         | Draw::Hero { def, .. }
-        | Draw::Magic { def, .. } => vec![def],
+        | Draw::Magic { def, .. }
+        | Draw::Tiled { def, .. } => vec![def],
         Draw::Flag { def, palette, .. } => vec![def, palette],
         Draw::CountBox { .. } => vec![&boxes.picture, &boxes.font, &boxes.font_palette],
         Draw::Picture {
@@ -244,6 +245,12 @@ mod tests {
                 mirrored: false,
                 translucent: true,
             },
+            // A tiled animation its DEF (M3 T7c-2).
+            Draw::Tiled {
+                def: "C06spF0.def".to_string(),
+                frame: 0,
+                area: [800, 556],
+            },
             // A count box the layout's picture, font and its palette (M3 T4a).
             Draw::CountBox {
                 stack: 0,
@@ -295,6 +302,7 @@ mod tests {
             [
                 "ABS.PCX",
                 "BG.PCX",
+                "C06SPF0.DEF",
                 "CBAR.PCX",
                 "CH00.DEF",
                 "CMFLAGL.DEF",

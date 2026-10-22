@@ -682,3 +682,45 @@ fn a_button_draws_its_frame_or_frame_0() {
         Err(ComposeError::Missing("no.def".to_string()))
     );
 }
+
+#[test]
+fn a_tiled_animation_covers_its_area_cut_to_it() {
+    // E17 M3 T7c-2 (Armageddon's 0x5A4FEF): a 4 x 1 canvas tiled from (0, 0), ceil(800 / 4)
+    // columns and ceil(600 / 1) rows of it, each cut to the area: over a 6 x 2 frame with an
+    // area 5 wide and 1 high only the first row's first five pixels change, the fifth by the
+    // second tile's first pixel.
+    let p = palette(&[(3, RED), (4, WHITE)]);
+    let field = build::def(
+        0x40,
+        (4, 1),
+        &p,
+        &[(0, &[("f", 0)])],
+        &[row(&[3, 4, 4, 4], &[false; 4])],
+    );
+    let mut b = batch();
+    b.add("Arma.def", &field).unwrap();
+    let background = Draw::Background {
+        picture: "bg.pcx".to_string(),
+        x: 0,
+        y: 0,
+    };
+    let tiled = Draw::Tiled {
+        def: "ARMA.DEF".to_string(),
+        frame: 0,
+        area: [5, 1],
+    };
+    let screen = compose(&[background, tiled], &b, &small()).unwrap();
+    let [bl, r, w] = [BLUE, RED, WHITE].map(|c| FORMAT.pack(c));
+    assert_eq!(screen.pixels()[..6], [r, w, w, w, r, bl]);
+    assert_eq!(screen.pixels()[6..], [bl; 6]);
+    // A DEF the batch lacks.
+    let missing = Draw::Tiled {
+        def: "NONE.DEF".to_string(),
+        frame: 0,
+        area: [5, 1],
+    };
+    assert_eq!(
+        compose(&[missing], &batch(), &small()).unwrap_err(),
+        ComposeError::Missing("NONE.DEF".into())
+    );
+}

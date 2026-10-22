@@ -348,10 +348,10 @@ impl Player {
             return;
         };
         self.out.clear(channel.stream);
-        // A spell's sound and good luck's at their loader's volume, a creature's at the effects'
-        // (E17 M3 T7b-1, T7b-2b-2b).
+        // A spell's sound, good luck's and an object's at their loader's volume, a creature's at
+        // the effects' (E17 M3 T7b-1, T7b-2b-2b; T7c-2: `wav_load` 0x55C720, *provisional*).
         let volume = match cue.sound {
-            Sound::Spell(_) | Sound::Luck => FILE_VOLUME,
+            Sound::Spell(_) | Sound::Luck | Sound::Object(_) => FILE_VOLUME,
             _ => EFFECT_VOLUME,
         };
         self.out.set_gain(channel.stream, gain(volume));

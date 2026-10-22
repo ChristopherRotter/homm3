@@ -279,6 +279,32 @@ pub struct SpellLook {
     pub animation: Option<u8>,
     /// Its projectile's DEFs from the level one to the one pointing down, none for most spells.
     pub projectile: Vec<Shell>,
+    /// The battlefield objects its handler places, one per size (E17 M3 T7c-2).
+    pub objects: Vec<ObjectLook>,
+    /// Its handler plays a sound with each object it places ([`Sound::Object`]: Quicksand's,
+    /// Land Mine's).
+    pub object_sound: bool,
+}
+
+/// A battlefield object a spell places (E17 M3 T7c-2, the asset tables' `objects`): as
+/// [`Object`] draws it, the hexes a placement of it takes, and the magic animations at a hex that
+/// place it and that it vanishes with.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct ObjectLook {
+    /// Its DEF.
+    pub def: String,
+    /// The frames of its DEF's group 0.
+    pub frames: u32,
+    /// The hexes it covers.
+    pub hexes: u8,
+    /// Its height in hex rows.
+    pub rows: u8,
+    /// Its layer is 1.
+    pub before_stacks: bool,
+    /// The animation that places it.
+    pub placed: u8,
+    /// The animation it vanishes with.
+    pub vanish: u8,
 }
 
 /// One DEF of a spell's projectile (`spell_projectile` 0x467DB0): its name, its canvas's width
@@ -449,6 +475,73 @@ pub const METEOR_SHOWER: u16 = 23;
 pub const DEATH_RIPPLE: u16 = 24;
 /// Destroy Undead ([`FROST_RING`]).
 pub const DESTROY_UNDEAD: u16 = 25;
+/// Armageddon (E17 M3 T7c-2, design §7.16): its handler's own loop tiles its animation over the
+/// whole battlefield with every stack's reaction (`mass_damage_handler` 0x5A4BC0), then writes its
+/// damage's line.
+pub const ARMAGEDDON: u16 = 26;
+/// The spells whose handlers place battlefield objects (E17 M3 T7c-2, design §7.16): each object
+/// its animation at a hex, kept until the object shows (Quicksand 0x5A0354 and Land Mine 0x5A0536
+/// at each object's hex with their own sound, Fire Wall 0x5A0821 at the hex aimed at for each, a
+/// redraw shown after each; Force Field 0x5A0759 once, shown with the next redraw), then the
+/// cast's line (0x5A0817, 0x5A04FF).
+pub const QUICKSAND: u16 = 10;
+/// Land Mine ([`QUICKSAND`]).
+pub const LAND_MINE: u16 = 11;
+/// Force Field ([`QUICKSAND`]).
+pub const FORCE_FIELD: u16 = 12;
+/// Fire Wall ([`QUICKSAND`]).
+pub const FIRE_WALL: u16 = 13;
+
+/// A battlefield object a spell places, as the scene draws it (E17 M3 T7c-2, design §4.4,
+/// §7.16): drawn as a usual obstacle in its layer's pass at its anchor, group 0, the frame the
+/// idle steps' count modulo `frames` (`battle_redraw` 0x494680).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Object {
+    /// Its DEF.
+    pub def: String,
+    /// The frames of its group 0.
+    pub frames: u32,
+    /// Its height in hex rows: its canvas rises 42 pixels a row above its anchor hex's box.
+    pub rows: u8,
+    /// Drawn in the pass before every stack (its layer 1), else in its anchor row's.
+    pub before_stacks: bool,
+    /// The hexes it blocks (Force Field's: a count box does not take them, 0x43E605).
+    pub blocked: Vec<u8>,
+}
+
+/// A battlefield object placed at `anchor` from `shown` on, or (`object` none) gone from then
+/// (E17 M3 T7c-2).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ObjectKey {
+    /// When it shows.
+    pub shown: u32,
+    /// Its anchor hex.
+    pub anchor: u8,
+    /// The object, none once removed.
+    pub object: Option<Object>,
+}
+
+/// A frame of the magic animation over the whole battlefield (Armageddon's, design §7.16, player
+/// 6; E17 M3 T7c-2), or (`frame` none) the battlefield shown without it: tiled from the
+/// battlefield's top-left over its rectangle, plain, from `shown`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FieldKey {
+    /// When it shows.
+    pub shown: u32,
+    /// The frame of group 0, none once gone.
+    pub frame: Option<u32>,
+    /// The DEF.
+    pub def: String,
+}
+
+/// The magic animation over the whole battlefield as it shows at a time (E17 M3 T7c-2).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Field {
+    /// The DEF.
+    pub def: String,
+    /// The frame of group 0.
+    pub frame: u32,
+}
 
 /// The count a stack's box shows from `shown` on (E17 M3 T5b, design §4.3): a strike's kills
 /// show at its end.
@@ -703,6 +796,10 @@ pub enum Sound {
     /// The Thunderbird's bolt, cued on the stack struck (`thunderbolt_sound`, `play_sound_file`
     /// from 0x4412FF).
     Thunderbolt,
+    /// The sound a spell's handler plays with each object it places (its handle: the asset
+    /// tables' spell `object_sound`, `play_sample` 0x5A040A, Land Mine's 0x5A061A; E17 M3
+    /// T7c-2), cued on no stack (stack 0).
+    Object(u16),
     /// A spell's own sound (its handle) started as a file, category 2, cued on the stack struck:
     /// Death Stare's (`play_sound_file` 0x441126) and the Rust Dragon's acid (0x44151A).
     SpellFile(u16),
@@ -739,6 +836,11 @@ pub struct Timeline {
     pub magics: Vec<MagicKey>,
     /// The magic animations' frames and erasures at a hex, in order (E17 M3 T7c-1).
     pub spots: Vec<SpotKey>,
+    /// The battlefield objects placed and gone, in order (E17 M3 T7c-2): the snapshot's at 0.
+    pub objects: Vec<ObjectKey>,
+    /// The frames and erasures of the magic animation over the whole battlefield, in order (E17
+    /// M3 T7c-2).
+    pub fields: Vec<FieldKey>,
     /// The heroes' frames the commands draw, in order (E17 M3 T7b-1: their casts).
     pub hero_keys: Vec<HeroKey>,
     /// The counts the stacks' boxes show from a time on, in order (E17 M3 T5b); before its
@@ -974,6 +1076,28 @@ impl Timeline {
         })
     }
 
+    /// The battlefield objects showing at `t`, by anchor (E17 M3 T7c-2).
+    pub fn objects(&self, t: u32) -> BTreeMap<u8, Object> {
+        let mut shown = BTreeMap::new();
+        for k in self.objects.iter().filter(|k| k.shown <= t) {
+            match &k.object {
+                Some(o) => shown.insert(k.anchor, o.clone()),
+                None => shown.remove(&k.anchor),
+            };
+        }
+        shown
+    }
+
+    /// The magic animation over the whole battlefield showing at `t`, if one is drawn then (E17
+    /// M3 T7c-2).
+    pub fn field(&self, t: u32) -> Option<Field> {
+        let key = self.fields.iter().rev().find(|k| k.shown <= t)?;
+        key.frame.map(|frame| Field {
+            def: key.def.clone(),
+            frame,
+        })
+    }
+
     /// The magic animation at a hex showing at `t`, if one is drawn then (E17 M3 T7c-1).
     pub fn spot(&self, t: u32) -> Option<Spot> {
         let key = self.spots.iter().rev().find(|k| k.shown <= t)?;
@@ -1046,9 +1170,10 @@ impl Timeline {
 
     /// Every time up to `until` at which what shows may change (E17 M2 T4b-2a, `h3-view
     /// play`): 0, each pose's, each projectile step's and its erasure's, each ray tick's and its
-    /// erasure's, each magic animation's frame and erasure, each count shown (T5b), each
-    /// outline's and each idle step's (the outline's colour), and the last frame's; in order,
-    /// each once.
+    /// erasure's, each magic animation's frame and erasure (over stacks, at a hex: E17 M3 T7c-2,
+    /// which adds them, and over the field), each hero's frame, each object placed or gone,
+    /// each count and hue shown (T5b), each outline's and each idle step's (the outline's colour),
+    /// and the last frame's; in order, each once.
     pub fn changes(&self, until: u32) -> Vec<u32> {
         let mut times = vec![0, self.end];
         times.extend(self.keys.iter().map(|k| k.shown));
@@ -1060,7 +1185,12 @@ impl Timeline {
             times.extend((1..=ticks).map(|k| b.from + k * b.step));
         }
         times.extend(self.magics.iter().map(|k| k.shown));
+        times.extend(self.spots.iter().map(|k| k.shown));
+        times.extend(self.objects.iter().map(|k| k.shown));
+        times.extend(self.fields.iter().map(|k| k.shown));
+        times.extend(self.hero_keys.iter().map(|k| k.shown));
         times.extend(self.counts.iter().map(|k| k.shown));
+        times.extend(self.tints.iter().map(|k| k.shown));
         times.extend(self.outlines.iter().map(|(t, _)| *t));
         times.extend(&self.steps);
         let mut idle = self.idle;
@@ -1414,6 +1544,12 @@ fn played(
         strike_casts: Vec::new(),
         erasing: Vec::new(),
         pending_counts: Vec::new(),
+        objects: Vec::new(),
+        pending_objects: Vec::new(),
+        placed: BTreeMap::new(),
+        kept: None,
+        fields: Vec::new(),
+        field_kept: None,
     };
     let mut actions = Vec::new();
     let mut fidgets = seed.map(|rng| Fidgets {
@@ -1432,6 +1568,10 @@ fn played(
         .filter(|(_, l)| !l.spells.is_empty())
         .map(|(&id, l)| (id, hue(l, casts)))
         .collect();
+    // The snapshot's battlefield objects show from the start (E17 M3 T7c-2).
+    for o in &snapshot.spell_obstacles {
+        player.place(o.spell, &o.hexes);
+    }
     player.flush(0, 0);
     let mut outlines = vec![(0, snapshot.active)];
     let mut waiting = snapshot.active;
@@ -1541,6 +1681,8 @@ fn played(
         beams: player.beams,
         magics: player.magics,
         spots: player.spots,
+        objects: player.objects,
+        fields: player.fields,
         hero_keys: player.hero_keys,
         counts: player.counts,
         tints: player.tints,
@@ -1794,6 +1936,20 @@ struct Player<'a> {
     /// The counts the boxes show with the next frame drawn (E17 M3 T7c-1: `cast_spell`'s tail
     /// resets every stack's +0x50, 0x5A2089).
     pending_counts: Vec<(u8, u32)>,
+    /// The battlefield objects placed and gone (E17 M3 T7c-2).
+    objects: Vec<ObjectKey>,
+    /// The objects placed or removed since the last frame drawn: they show with the next.
+    pending_objects: Vec<(u8, Option<Object>)>,
+    /// The objects on the battlefield in memory by anchor, each with the animation it vanishes
+    /// with.
+    placed: BTreeMap<u8, u8>,
+    /// The last frame of a magic animation at a hex that its caller keeps (`keep`, E17 M3
+    /// T7c-2): on the screen until the next frame drawn erases it.
+    kept: Option<SpotKey>,
+    /// The frames of the magic animation over the whole battlefield (E17 M3 T7c-2).
+    fields: Vec<FieldKey>,
+    /// Its last frame, on the screen until the next frame drawn.
+    field_kept: Option<FieldKey>,
 }
 
 /// A spell a melee strike leaves pending on the stack it struck ([`PENDING`]): the stack, the
@@ -1861,6 +2017,27 @@ impl Player<'_> {
         for erased in core::mem::take(&mut self.erasing) {
             self.magics.push(MagicKey { shown, ..erased });
         }
+        if let Some(kept) = self.kept.take() {
+            self.spots.push(SpotKey {
+                shown,
+                frame: None,
+                ..kept
+            });
+        }
+        if let Some(kept) = self.field_kept.take() {
+            self.fields.push(FieldKey {
+                shown,
+                frame: None,
+                ..kept
+            });
+        }
+        for (anchor, object) in core::mem::take(&mut self.pending_objects) {
+            self.objects.push(ObjectKey {
+                shown,
+                anchor,
+                object,
+            });
+        }
         for (stack, count) in core::mem::take(&mut self.pending_counts) {
             self.counts.push(CountKey {
                 stack,
@@ -1923,6 +2100,9 @@ impl Player<'_> {
         // The stack the last melee strike struck and its number before it: Life Drain's line
         // names it (E17 M3 T7b-2b-3).
         let mut last_hit: Option<(u8, u32)> = None;
+        // The events up to this index belong to a round's start whose expired objects went
+        // (E17 M3 T7c-2).
+        let mut expired = 0;
         while let Some(event) = events.get(i) {
             i += 1;
             match *event {
@@ -2116,7 +2296,7 @@ impl Player<'_> {
                     target,
                     ..
                 } => {
-                    // Its effects follow it (E17 M3 T7b-1).
+                    // Its effects follow it (E17 M3 T7b-1; the objects it places, T7c-2).
                     let from = i;
                     while events.get(i).is_some_and(|e| {
                         matches!(
@@ -2126,6 +2306,7 @@ impl Player<'_> {
                                 | Event::SpellResisted { .. }
                                 | Event::SpellDamage { .. }
                                 | Event::SpellHealed { .. }
+                                | Event::ObstaclePlaced { .. }
                         )
                     }) {
                         i += 1;
@@ -2169,8 +2350,44 @@ impl Player<'_> {
                 Event::RoundStarted { .. } => {
                     self.acting = None;
                     self.happenings.push(Happening::Round);
+                    // The objects whose last round passed go first, each with its vanish
+                    // animation, then the round's line (`round_start` 0x476152 to 0x4761E9; E17
+                    // M3 T7c-2).
+                    let start = &events[i..];
+                    let ends = start
+                        .iter()
+                        .position(|e| {
+                            matches!(e, Event::TurnStarted { .. } | Event::RoundStarted { .. })
+                        })
+                        .unwrap_or(start.len());
+                    for e in &start[..ends] {
+                        if let Event::ObstacleRemoved { hexes, .. } = e {
+                            self.vanish(hexes);
+                        }
+                    }
+                    expired = i + ends;
                     if !self.tactics {
                         self.log.push((self.clock.now, Logged::Round));
+                    }
+                }
+                // An object gone outside a round's start (a spell's removal; E17 M3 T7c-2,
+                // *provisional*: not recorded).
+                Event::ObstacleRemoved { ref hexes, .. } if i > expired => self.vanish(hexes),
+                // An object placed outside a hero's cast (a town's mines at the battle's start)
+                // or one the viewer did not see revealed (E17 M3 T7c-2): drawn from the next
+                // frame on.
+                Event::ObstaclePlaced {
+                    spell, ref hexes, ..
+                }
+                | Event::ObstacleRevealed {
+                    spell, ref hexes, ..
+                } => {
+                    let known = hexes
+                        .iter()
+                        .max()
+                        .is_some_and(|a| self.placed.contains_key(a));
+                    if !known {
+                        self.place(spell, hexes);
                     }
                 }
                 Event::TurnStarted { stack } => {
@@ -2924,6 +3141,29 @@ impl Player<'_> {
                 self.area((spell, look), hex, &hits, None);
                 true
             }
+            QUICKSAND..=FIRE_WALL => {
+                self.cue(0, Sound::Spell(spell), false);
+                self.place_objects((spell, look), target, effects);
+                self.log.push((self.clock.now, cast_line));
+                true
+            }
+            ARMAGEDDON => {
+                self.cue(owner.unwrap_or(0), Sound::Spell(spell), false);
+                let struck: Vec<(u8, u32)> = hits.iter().map(|h| (h.0, h.3)).collect();
+                self.field(look.animation, &struck);
+                // Its damage's line once it struck a stack (0x5A51DF to 0x5A5244): the spell's
+                // value without the caster's bonuses (0x5A78E0 given no hero, CLT-Q16).
+                let value = effects.iter().find_map(|e| match *e {
+                    Event::SpellDamage { ref value, .. } => Some(value.0),
+                    _ => None,
+                });
+                if let Some(damage) = value {
+                    self.log
+                        .push((self.clock.now, Logged::Armageddon { damage }));
+                }
+                self.recount(&struck);
+                true
+            }
             _ if !applied.is_empty() => {
                 self.cue(owner.unwrap_or(0), Sound::Spell(spell), false);
                 self.effects(effects);
@@ -2957,7 +3197,7 @@ impl Player<'_> {
         caster: Option<u8>,
     ) {
         if let Some(number) = look.animation {
-            self.at_hex(number, hex, self.speed.scale(TICK));
+            self.at_hex(number, hex, self.speed.scale(TICK), false);
         }
         let line = match hits {
             [] => None,
@@ -2984,11 +3224,13 @@ impl Player<'_> {
 
     /// Magic animation `number` at `hex` (`play_magic_animation_at_hex` 0x496A10, design §7.16,
     /// player 5; E17 M3 T7c-1): each frame a redraw restoring the background and waiting `time`
-    /// on the deadline, then the frame drawn over everything and the battlefield shown; then a
-    /// last redraw at `time` erases it (no caller here keeps it). Placed by its kind's low nibble
-    /// at the hex: 1 centred 37 above its anchor, 4 from its left on the cell's lower edge, else
-    /// centred on that edge (the cell picture's bottom, the hex's top + 52).
-    fn at_hex(&mut self, number: u8, hex: u8, time: u32) {
+    /// on the deadline, then the frame drawn over everything and the battlefield shown; then,
+    /// unless its caller keeps it, a last redraw at `time` erases it (E17 M3 T7c-2: a placement
+    /// keeps its last frame until the next frame drawn, which shows the object instead). Placed by
+    /// its kind's low nibble at the hex: 1 centred 37 above its anchor, 4 from its left on the
+    /// cell's lower edge, else centred on that edge (the cell picture's bottom, the hex's top +
+    /// 52).
+    fn at_hex(&mut self, number: u8, hex: u8, time: u32, keep: bool) {
         let Some(look) = self.stage.magic.get(&number).cloned() else {
             return;
         };
@@ -3001,7 +3243,8 @@ impl Player<'_> {
             4 => [left, top + CELL_BOTTOM - h],
             _ => [x - w / 2, top + CELL_BOTTOM - h],
         };
-        for frame in (0..look.frames).map(Some).chain([None]) {
+        let erase = (!keep).then_some(None);
+        for frame in (0..look.frames).map(Some).chain(erase) {
             let drawn = self.clock.now;
             let shown = self.clock.show(time);
             self.flush(drawn, shown);
@@ -3013,6 +3256,108 @@ impl Player<'_> {
                 translucent: look.translucent,
                 at,
             });
+        }
+        if keep {
+            self.kept = Some(SpotKey {
+                animation: number,
+                shown: self.clock.now,
+                frame: None,
+                def: look.def,
+                translucent: look.translucent,
+                at,
+            });
+        }
+    }
+
+    /// The look of the object `spell` places on `hexes` (E17 M3 T7c-2): the one of that many
+    /// hexes (Force Field's two or three by its mastery), else its first.
+    fn object_look(&self, spell: u16, hexes: &[u8]) -> Option<ObjectLook> {
+        let objects = &self.stage.casts.spells.get(&spell)?.objects;
+        objects
+            .iter()
+            .find(|o| usize::from(o.hexes) == hexes.len())
+            .or_else(|| objects.first())
+            .cloned()
+    }
+
+    /// The battlefield object `spell` placed on `hexes` (E17 M3 T7c-2; `place_battle_object`
+    /// 0x4669B0): in memory now, at its anchor (the lowest hex, its bottom row's), drawn from the
+    /// next frame on.
+    fn place(&mut self, spell: u16, hexes: &[u8]) {
+        let (Some(look), Some(&anchor)) = (self.object_look(spell, hexes), hexes.iter().max())
+        else {
+            return;
+        };
+        let forced = self
+            .stage
+            .casts
+            .spells
+            .get(&spell)
+            .is_some_and(|s| s.original == FORCE_FIELD);
+        let blocked = if forced { hexes.to_vec() } else { Vec::new() };
+        self.placed.insert(anchor, look.vanish);
+        let object = Object {
+            def: look.def,
+            frames: look.frames,
+            rows: look.rows,
+            before_stacks: look.before_stacks,
+            blocked,
+        };
+        self.pending_objects.push((anchor, Some(object)));
+    }
+
+    /// The battlefield object on `hexes` goes (E17 M3 T7c-2; `remove_battle_object` 0x466B30):
+    /// out of memory at once, then its vanish animation plays at its anchor (`round_start`
+    /// 0x4761A9: player 5, not kept), its first frame drawn without the object.
+    fn vanish(&mut self, hexes: &[u8]) {
+        let Some(&anchor) = hexes.iter().max() else {
+            return;
+        };
+        let vanish = self.placed.remove(&anchor);
+        self.pending_objects.push((anchor, None));
+        if let Some(number) = vanish {
+            self.at_hex(number, anchor, self.speed.scale(TICK), false);
+        }
+    }
+
+    /// A hero's spell that places battlefield objects (E17 M3 T7c-2, design §7.16; its sound
+    /// started at the handler, 0x5A0331): each object in turn its own sound (Quicksand's, Land
+    /// Mine's), its placing animation at a hex, kept, then the object placed and (Force Field
+    /// excepted, 0x5A0806) a redraw shown at once; Fire Wall plays every object's at the hex aimed
+    /// at (0x5A0884), Force Field at that hex, the others at the object's own. Then the cast's
+    /// line (0x5A0817, 0x5A04FF).
+    fn place_objects(
+        &mut self,
+        (spell, look): (u16, &SpellLook),
+        target: Target,
+        effects: &[Event],
+    ) {
+        let aimed = match target {
+            Target::Hex { hex } => Some(hex),
+            _ => None,
+        };
+        let tick = self.speed.scale(TICK);
+        for e in effects {
+            let Event::ObstaclePlaced { ref hexes, .. } = *e else {
+                continue;
+            };
+            let Some(&anchor) = hexes.iter().max() else {
+                continue;
+            };
+            if look.object_sound {
+                self.cue(0, Sound::Object(spell), false);
+            }
+            let at = match look.original {
+                FIRE_WALL | FORCE_FIELD => aimed.unwrap_or(anchor),
+                _ => anchor,
+            };
+            if let Some(o) = self.object_look(spell, hexes) {
+                self.at_hex(o.placed, at, tick, true);
+            }
+            self.place(spell, hexes);
+            if look.original != FORCE_FIELD {
+                self.redraw();
+            }
         }
     }
 
@@ -3307,6 +3652,90 @@ impl Player<'_> {
             });
         }
         // The dead die (`stack_death` 0x444120): their corpses with the redraw.
+        let mut died = false;
+        for (stack, live, group, frame, dead) in reacting {
+            if dead {
+                let corpse = Pose {
+                    layer: CORPSE,
+                    ..Self::posed(&live, group, frame, live.hex)
+                };
+                self.pending.push((stack, corpse));
+                self.stacks.remove(&stack);
+                died = true;
+            }
+        }
+        if died {
+            self.redraw();
+        }
+    }
+
+    /// Magic animation `number` over the whole battlefield with the reactions of the stacks
+    /// `hit` (Armageddon's own loop in `mass_damage_handler`, 0x5A4D47 to 0x5A50C6, design
+    /// §7.16, player 6; E17 M3 T7c-2): each stack struck takes its death group (none left) or
+    /// its hit group at frame 0 with its sound; L = max(n, the longest such group) iterations,
+    /// each the reactions advanced first (a hit runs on into the standing group, a frame an
+    /// iteration, to its last), a redraw at trunc(100 F) and, while the animation has a frame
+    /// i, that frame tiled over the battlefield, shown (all n, unlike `mass_spell_animation`);
+    /// the last stays on the screen until the next frame drawn. Then the dead die and, if one
+    /// did, a redraw shows at once (0x5A51C2).
+    fn field(&mut self, number: Option<u8>, hit: &[(u8, u32)]) {
+        let look = number.and_then(|n| self.stage.magic.get(&n).cloned());
+        let g = self.stage.groups;
+        let mut reacting: Vec<(u8, Live, u8, u32, bool)> = Vec::new();
+        let mut loops = look.as_ref().map_or(0, |l| l.frames);
+        for &(stack, kills) in hit {
+            let Some(live) = self.stacks.get_mut(&stack) else {
+                continue;
+            };
+            live.count = live.count.saturating_sub(kills);
+            let live = live.clone();
+            let died = live.count == 0;
+            let (group, sound) = if died {
+                (g.death, Sound::Death)
+            } else {
+                (g.hit, Sound::Wince)
+            };
+            loops = loops.max(live.look.count(group));
+            self.cue(stack, sound, false);
+            if died {
+                self.happenings.push(Happening::Died(live.side));
+            }
+            reacting.push((stack, live, group, 0, died));
+        }
+        let tick = self.speed.scale(TICK);
+        let mut drawn_frame = None;
+        for i in 0..loops {
+            let mut poses = Vec::with_capacity(reacting.len());
+            for (stack, live, group, frame, _) in &mut reacting {
+                if *frame + 1 < live.look.count(*group) {
+                    *frame += 1;
+                } else if *group == g.hit {
+                    *group = g.standing;
+                    *frame = 0;
+                }
+                poses.push((*stack, Self::posed(live, *group, *frame, live.hex)));
+            }
+            self.frame(&poses, tick);
+            let Some(l) = look.as_ref() else {
+                continue;
+            };
+            let frame = (i < l.frames).then_some(i);
+            if frame != drawn_frame {
+                self.fields.push(FieldKey {
+                    shown: self.clock.now,
+                    frame,
+                    def: l.def.clone(),
+                });
+            }
+            drawn_frame = frame;
+        }
+        if let (Some(l), Some(_)) = (look, drawn_frame) {
+            self.field_kept = Some(FieldKey {
+                shown: self.clock.now,
+                frame: None,
+                def: l.def,
+            });
+        }
         let mut died = false;
         for (stack, live, group, frame, dead) in reacting {
             if dead {

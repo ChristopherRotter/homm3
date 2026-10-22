@@ -130,6 +130,13 @@ id = "battle.log.death-ripple"
 args = { damage = "number" }
 original = [{ at = "GENRLTXT:188", printf = ["damage"] }]
 
+# Armageddon's damage (`mass_damage_handler` 0x5A5244, E17 M3 T7c-2): after its animation and the
+# deaths, the spell's value without the caster's bonuses (CLT-Q16).
+[[key]]
+id = "battle.log.armageddon"
+args = { damage = "number" }
+original = [{ at = "GENRLTXT:89", printf = ["damage"] }]
+
 # Destroy Undead's damage (`cast_spell` 0x5A0FED, E17 M3 T7c-1, *provisional*: not recorded): the
 # spell's name, then the damage as Death Ripple's.
 [[key]]

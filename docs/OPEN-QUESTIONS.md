@@ -132,7 +132,7 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 #### CLT-Q12 — A Fire Wall's second hex animated at the first's place (E17 M3 T7a-2b; for T7c-2)
 
-**Context.** The recording `obstacles` shows a Fire Wall's two placement animations (65) both at the target hex's place, the second hex's at the first's (design §7.16); T7c-2's frame check confirms it. If confirmed, a placement slip of the original's. **Options:** (a) copy it in every mode (`faithful`); (b) fix it, the original's only for the comparisons with its captures (the development switch of 2026-10-15, as CLT-Q8); (c) a player's option (the graphics options, later). **Recommendation:** (b), each at its own hex.
+**Context.** The recording `obstacles` shows a Fire Wall's two placement animations (65) both at the target hex's place, the second hex's at the first's (design §7.16); the code confirms it (T7c-2: the handler plays every object's animation at `[ebp+0x18]`, the hex aimed at, 0x5A0884; built so), and so does T7c-2's frame check. A placement slip of the original's. **Options:** (a) copy it in every mode (`faithful`); (b) fix it, the original's only for the comparisons with its captures (the development switch of 2026-10-15, as CLT-Q8); (c) a player's option (the graphics options, later). **Recommendation:** (b), each at its own hex.
 
 #### CLT-Q13 — Animate Dead plays Resurrection's animation (E17 M3 T7a-1; for T7c-3)
 
@@ -145,6 +145,10 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 #### CLT-Q15 — The Faerie Dragon's draw line and spectators' records (E17 M3 T7c-1)
 
 **Context.** At a Faerie Dragon's activation the original writes "The %s readies %s (press F to cast)" (its own text, 0x660AD0) when the dragon's controller is human here. The engine shows the drawn spell only to the controller (`SpellDrawn`, ADR-0014 point 8), and the recorded sequences are a spectator's records, so the viewer cannot write it (`dragon`'s frames list the log's item). **Options:** (a) record hot-seat sequences from both seats' views, the viewer acting as "human here" for both; (b) keep the spectator's record and list the line; (c) the line from the spell the cast reveals, written late. **Recommendation:** (a) when hot seat is played whole (the live client), (b) until then.
+
+#### CLT-Q16 — Armageddon's line leaves out the caster's bonuses (E17 M3 T7c-2)
+
+**Context.** Armageddon's damage line, "The Armageddon does %d damage." (GENRLTXT 89, `mass_damage_handler` 0x5A5212), takes the spell's value through `spell_damage_modifiers` given no hero, so the caster's bonuses (Sorcery, the Orbs, a specialty) are not in it, though every stack's damage has them (0x5A4C90); Death Ripple's line takes the caster's (0x5A0DC6). With such a bonus the log understates the damage. Built as the original's (the record gives both numbers: `SpellDamage`'s `value` and `caster`). **Options:** (a) copy it in every mode (`faithful`); (b) fix it, the line with the caster's bonuses, the original's only for the comparisons with its captures (the development switch of 2026-10-15, as CLT-Q8); (c) a player's option. **Recommendation:** (b): a misleading number, not a look; no recording has such a bonus yet.
 
 ## Answered
 

@@ -1647,7 +1647,7 @@ resistance roll, if any (category 3, 0x5A0331); Curse's is named `Curse`, withou
     death group backwards from its second-to-last frame, a frame a redraw, standing after frame
     0; the log's line with frame 0.
   - `obstacles`: at a hex each frame 100 ms: a Fire Wall's two hexes 65 (3 frames each) both at
-    the target hex's place (the second hex's at the first's: for T7c's frame check), the wall
+    the target hex's place (the second hex's at the first's: the code's, 0x5A0884, and T7c-2's frames confirm it), the wall
     shown with its last frame and the log's line; Quicksand's four pits 55 (3 frames) each at its
     own place; a Force Field's 32 (3 frames). The Fire Wall gone at round 3's start: 66 at each
     hex's own place (3 frames and an erase each). Armageddon's 12 tiled, all 20 frames at 100 ms,
@@ -1921,6 +1921,67 @@ resistance roll, if any (category 3, 0x5A0331); Curse's is named `Curse`, withou
   line). Found by it: the mouse's highlight cleared as a cast starts, the empty status line
   while the book is open (`Input::Book`), the groups played on inside `strike_animation`, and
   the counts at the cast's tail.
+- **Read at T7c-2** (the obstacle spells' handlers, the objects' drawing, the round start's
+  expiry, Armageddon's loop and line):
+  - *The objects* (`battle_object`, 0x18 bytes; descriptors after the 91 usual types:
+    `docs/exe/map.toml`): Quicksand `C17SPE1.DEF` (one hex, height 1, layer 1), Land Mine
+    `C09spF1.def` (1, 1, layer 1), Force Field `C15spE1.def` (two hexes, height 3, layer 0) or
+    from Advanced `C15spE10.def` (three, height 4), Fire Wall `C07spF61.def` per hex (height 3,
+    layer 0); two fire descriptors of two and three hexes (`C07spF1`, `C07spF10`) are referenced
+    by no instruction. `battle_redraw` draws them in the obstacles' passes (layer 1 before every
+    stack, layer 0 in the anchor row's pass 2: 0x4945DC, 0x4948F9) at (left, top − 42 (height −
+    1)) of the anchor, group 0, frame = +0x13FFC (the idle steps) modulo the group's frames
+    (0x494680). An object whose +0xA (revealed) is clear shows only to the screen's side: the
+    acting side when its player is human here (+0x54A6), else the other one (0x49460A to
+    0x49463A, 0x494931 to 0x494961; +0x13D75, set only by 0x4F4350, shows all). A record holds the objects its viewer
+    sees, so the viewer draws them all.
+  - *Placing* (`cast_spell`'s handlers): Quicksand (0x5A0354) draws its pits over the hexes
+    (0x5A0397 to 0x5A03F3: not a side column, no object bit, no stack, no corpse), each with
+    `Quiksand.wav` started (`play_sample`, 0x5A040A, unless hidden), animation 55 at the pit
+    (`time` 100, kept), the object (vanish 58, lasting the battle, revealed by the other side's
+    natives, 0x5A0442) placed and a whole redraw shown at once (0x5A04C1); after the last, a
+    wait for the sample (0x5A04DD, `sub_599EC0` up to 4 s: not built, the captures play without
+    sound) and the cast's line (GENRLTXT 197). Land Mine (0x5A0536) the same with
+    `landmine.wav`, 47 and vanish 59. Fire Wall (0x5A0821): for each of its two hexes (three
+    from Advanced) animation 65 **at the hex aimed at** (0x5A0884: `[ebp+0x18]` stays the
+    target), its object (owner the acting side, revealed, two rounds, vanish 66) placed and a
+    redraw shown at once (0x5A0961); then the cast's line (0x5A080B). Force Field (0x5A0759):
+    32 (33 from Advanced) at the hex aimed at, kept, its object (vanish 60 or 61) placed without
+    a redraw (it shows with the next frame drawn: the hero's next casting frame), then the line.
+  - *Expiring* (`round_start` 0x476152 to 0x4761E9): after the stacks' round start, each object
+    with rounds left loses one; at 0 it is removed (`remove_battle_object`, out of every redraw
+    after) and its vanish animation plays at its anchor (`time` 100, not kept: its frames and a
+    last redraw that erases it, 0x4761A9); then the round's line.
+  - *Armageddon* (`mass_damage_handler` 0x5A4BC0): each stack rolled against its resistance (a
+    draw of 1 to 100 per stack, 0x5A4C4A), damaged with the acting side's hero's bonuses and
+    marked; then (not while hidden) the DEF loaded (+0x132E8), each marked stack its death (5,
+    sound 4) or hit group (3, sound 2) at frame 0 (a defending stack too), L = max(n, the
+    longest such group) (0x5A4D47 to 0x5A4EEB); iteration i: the reactions advanced first (a
+    hit running on into the standing group to its last frame, a death on its last), a redraw at
+    trunc(100 F) not shown, the frame i tiled while i < n (from (0, 0), ceil(800 / W) columns
+    and ceil(600 / H) rows, each cut to the 800 × 556 battlefield; plain), the battlefield shown
+    (0x5A4F00 to 0x5A50C6). So every frame shows, and an iteration after the last frame shows
+    the field plain. Then the marks cleared, the dead die and, if one did, a redraw shown at once
+    (0x5A51C2); then, if a stack was struck, GENRLTXT 89 ("The Armageddon does %d damage.") with
+    the spell's value through `spell_damage_modifiers` given no hero and no stack (0x5A5212): the
+    caster's bonuses (Sorcery, the Orbs) are not in it, though they are in every stack's damage
+    (CLT-Q16); then the Phoenix check. No cast line.
+- **Built (T7c-2, `anim`, `scene`):** `ObjectKey`, `Timeline::objects` and `Moment::objects`
+  (drawn with the usual obstacles in their passes, their frame by the idle steps, Force Field's
+  hexes kept from the count boxes), `Player::place_objects` (the handlers above; `at_hex`'s
+  `keep`: the kept frame erased by the next frame drawn), `vanish` (the round start's objects
+  before its line; another removal *provisional*: not recorded), `field` (player 6: `FieldKey`,
+  `Timeline::field`, `Draw::Tiled`), `Logged::Armageddon` (key `battle.log.armageddon`), the
+  objects' sound (`Sound::Object`, the asset tables' `object_sound`); the snapshot's objects at
+  0, a placement outside a cast or a pit revealed to the viewer drawn from the next frame on. The
+  asset tables' spell `objects` (DEF, hexes, rows, layer, placing and vanish animations) are
+  harvested from the descriptors. Not built: the sample's wait; Land Mine's blast (57) and a
+  Fire Wall's burn when a stack steps in (`ObstacleTriggered`: no record steps on one); Dispel's
+  and Remove Obstacle's removals as their handlers order them (the vanish plays where the event
+  comes); a hidden object's hiding on the other human's turn (a record holds only what its viewer
+  sees). Recorded (`sequences.toml`): `obstacles` (seed 517 487 719: the engine draws the
+  original's four pits in its order), as recorded on the first run. The frame check: 84 frames,
+  all as the original's; the boxes listed at 7 800 ms (memory holds the counts the tail reset).
 - **Not read:** the dissolve's blend; Chain Lightning's rays beyond `draw_ray`'s call (colour
   0x131, 0x5A64EF; T7c-3); how the glows are painted; the summons' and the Pit Lord's creation
   beyond the dissolve; Earthquake (sieges); the force-feedback effects (IFC20, nothing drawn).
