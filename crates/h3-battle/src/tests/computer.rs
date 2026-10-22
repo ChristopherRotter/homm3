@@ -415,6 +415,10 @@ fn a_turns_map_reaches_within_the_speed() {
     assert_eq!(map.mark(at(&r, 14, 5)), None);
     assert!(!computer::kept_out(&s, &r, StackId(0)));
     assert!(computer::siege(&s).is_none());
+    // The turns to its record's enemy at a speed of 0: 1 (0x448BD0).
+    let ctx = computer::context(&s, &r, BattleSide::Attacker);
+    let threat = computer::threat(&s, &r, &ctx, StackId(0)).unwrap();
+    assert_eq!(threat.turns_at(0), 1);
 }
 
 /// The test ruleset with a Fight Value of 100 for every creature (the computer's worth; the test

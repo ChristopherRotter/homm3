@@ -718,12 +718,18 @@ pub fn effect_factor(
 }
 
 /// Ends `spell` on stack `id` of the computer's copy of the battle (0x444510 on a stack's copy,
-/// the removals' estimate 0x439A80; E23 T4c): its effects with a duration end and the stack's
-/// values are recomputed; a permanent effect stays, as the original's end routine never ends
-/// Disrupting Ray (BAT-MAG-010).
-pub fn end_spell(state: &mut BattleState, ruleset: &BattleRuleset, id: StackId, spell: SpellId) {
+/// the removals' estimate 0x439A80; E23 T4c): its effects with a duration end, its permanent ones
+/// too with `permanent` (the original's end routine keeps only Disrupting Ray, BAT-MAG-010), and
+/// the stack's values are recomputed.
+pub fn end_spell(
+    state: &mut BattleState,
+    ruleset: &BattleRuleset,
+    (id, spell): (StackId, SpellId),
+    permanent: bool,
+) {
     let mut sink = crate::NoopSink;
-    let ends = |e: &crate::effects::ActiveEffect| e.spell == spell && e.rounds.is_some();
+    let ends =
+        |e: &crate::effects::ActiveEffect| e.spell == spell && (permanent || e.rounds.is_some());
     if crate::effects::end_matching(state, id, &mut sink, ends) {
         crate::effects::recompute(state, ruleset, id);
     }

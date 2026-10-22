@@ -316,6 +316,32 @@ fn after_a_context_without_a_cast_the_fallbacks_read_its_last_map_with_the_slip(
         let want = if slips { &gogs } else { &w.map };
         assert!(same_map(w.cells(), want), "{profile}");
     }
+    // A hypnotized genie among shooters: no record searches (it is left out, the others shoot),
+    // so it keeps its own map.
+    let r = ruleset_as("t:faithful");
+    let mut s = setup(&[(GENIE, 1), (ARCHER, 10)], &[(ARCHER, 10)]);
+    s.heroes[1] = Some(super::caster(&r, 2));
+    let mut state = BattleState::new(&r, &s, 1).unwrap();
+    super::cast_at(
+        &mut state,
+        &r,
+        BattleSide::Defender,
+        "hypnotize",
+        StackId(0),
+    );
+    while active(&state) != GENIE {
+        play(&mut state, &r, Command::Defend);
+    }
+    let side = state.side_to_act().unwrap();
+    assert_eq!(side, BattleSide::Defender);
+    assert_eq!(computer::last_searched(&state, &r), None);
+    let w = walker(&state, &r, (0, side));
+    let mut value = i32::MAX;
+    assert_eq!(
+        crate::casts::entry(&w, &mut value, &mut Rng::from_seed(0)),
+        None
+    );
+    assert!(w.held.get().is_none());
     // The step to safety reads the held map: from a hex scored −5, a hex beside the gogs scored
     // 4 is within the runners' speed on the gogs' map but not on theirs, where the hex scored 3
     // near them is the best.

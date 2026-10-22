@@ -92,6 +92,12 @@ fn haste_values_the_turns_it_wins_and_overtaking_its_enemy() {
     let state = BattleState::new(&r, &setup(&[(IMP, 10), (RUNNER, 40)], &[(GOG, 1)]), 1).unwrap();
     let sc = context(&state, &r);
     assert_eq!(haste(&sc, StackId(0)), 0);
+    // The same where the enemy acts first, so the predictions plan nothing: the hasted imps
+    // still need two turns.
+    let state = BattleState::new(&r, &setup(&[(IMP, 10), (GOG, 10)], &[(RUNNER, 1)]), 1).unwrap();
+    let sc = context(&state, &r);
+    assert!(!sc.view().beaten());
+    assert_eq!(haste(&sc, StackId(0)), 0);
     // When the predictions beat the enemy: nothing.
     let won = BattleState::new(&r, &setup(&[(RUNNER, 100)], &[(IMP, 1)]), 1).unwrap();
     assert!(context(&won, &r).view().beaten());

@@ -108,6 +108,32 @@ fn the_tables_hold_the_strikes_each_stack_meets_this_turn() {
         assert_eq!(t.threatens, 1 << 3 | 1 << 4 | 1 << 6);
         assert_eq!(t.melee_threatens, 1 << 3 | 1 << 6);
     }
+    // The seeded enemy is passed over even after a stronger strike took the entry (the fill reads
+    // the seed once, 0x43C0EE): the runners' record takes the four runners, worth more to strike
+    // than the forty, which come first and strike harder.
+    let r = ruleset();
+    let state = BattleState::new(
+        &r,
+        &battle(&[(RUNNER, 10)], &[(RUNNER, 40), (RUNNER, 4)]),
+        1,
+    )
+    .unwrap();
+    let ctx = computer::context(&state, &r, ATTACKER);
+    let own = computer::threat(&state, &r, &ctx, StackId(0)).unwrap();
+    assert_eq!((own.enemy, own.turns), (StackId(2), 1));
+    let (seed, many) = (
+        strike(&state, &r, (2, 0), false),
+        strike(&state, &r, (1, 0), false),
+    );
+    assert!(many > seed);
+    let t = context(&state, &r).view().tables().clone();
+    let want = Entry {
+        stack: Some(StackId(1)),
+        damage: many,
+        count: 2,
+        sum: seed + many,
+    };
+    assert_eq!(t.melee[0], want);
     // Without a melee threat the worse entry is the shots'.
     let r = ruleset_as("t:fixed");
     let state =
@@ -151,6 +177,16 @@ fn the_shields_and_stone_skin_by_the_protection_they_give() {
             0
         );
     }
+    // Nothing kept (the original's infinite factor): the archer's shot of 1 on the giant, 75 %
+    // of it truncated to 0.
+    let state = BattleState::new(&r, &battle(&[(GIANT, 1)], &[(ARCHER, 1)]), 1).unwrap();
+    let sc = context(&state, &r);
+    let shots = sc.view().tables().shots[0];
+    assert_eq!((shots.stack, shots.sum), (Some(StackId(1)), 1));
+    assert_eq!(
+        sc.value(StackId(0), Candidate::cast(spell(&r, "airshield"), 0, 6)),
+        0
+    );
 }
 
 // covers: BAT-AI-016

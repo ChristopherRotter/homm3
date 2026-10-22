@@ -129,6 +129,9 @@ impl<'s> View<'s> {
             if !s.is_alive() || s.is_turret() {
                 continue;
             }
+            // The seeded enemy, read before the enemies (0x43C0EE): a stronger strike later
+            // takes the entry's stack, not the seed's place in the test.
+            let seeded = t.melee[r.index()].stack;
             for (j, e) in (0u8..).zip(state.stacks()) {
                 let enemy = StackId(j);
                 if e.side == self.side
@@ -148,7 +151,7 @@ impl<'s> View<'s> {
                 let reaches = self
                     .threat(enemy)
                     .is_some_and(|th| th.mask & (1 << r.index()) != 0);
-                if t.melee[r.index()].stack == Some(enemy) || !reaches {
+                if seeded == Some(enemy) || !reaches {
                     continue;
                 }
                 let d = computer::uncapped_damage(state, ruleset, (enemy, r), count, false, 0);

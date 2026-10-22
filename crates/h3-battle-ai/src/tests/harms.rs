@@ -1,14 +1,16 @@
 //! The harmful spells' evaluators (Curse to Age, §7.46; E23 T4c; BAT-AI-016) and the removals
 //! (0x439A80, Cure, Anti-Magic), by hand on the test ruleset.
 
-use h3_battle::{BattleSetup, BattleState, StackId, computer};
-use h3_content_battle::BattleRuleset;
-use h3_contracts::BattleSide;
+use h3_battle::{BattleSetup, BattleState, Command, StackFlags, StackId, computer};
+use h3_content::{Affects, SpellCategory};
+use h3_content_battle::{BattleRuleset, SpellPolarity};
+use h3_contracts::{BattleEffect, BattleSide};
 use h3_kernel::Rng;
+use h3_kernel::arith::X87;
 
 use super::{
-    ARCHER, EFREET, GOG, IMP, RUNNER, cast_at, caster, hero, ruleset, ruleset_as, same_map, setup,
-    spell,
+    ARCHER, EFREET, GOG, IMP, RUNNER, active, cast_at, caster, hero, play, ruleset, ruleset_as,
+    same_map, setup, spell,
 };
 use crate::spells::{Candidate, SpellContext};
 
@@ -221,10 +223,13 @@ fn the_removals_value_what_they_end_to_its_caster() {
         let view = sc.view();
         let c = Candidate::cast(spell(&r, "cure"), 1, 6);
         let cure = view.value(runners, c);
-        // By hand: each harmful spell in turn, in the enemy's half, on the copy so far.
+        // By hand: each harmful spell in turn (the spells' order), in the enemy's half, on the
+        // copy so far.
+        let mut names = ["curse", "slow", "ray"];
+        names.sort_by_key(|n| spell(&r, n).index());
         let mut copy = state.clone();
         let mut want = 0;
-        for name in ["curse", "slow", "ray"] {
+        for name in names {
             let id = spell(&r, name);
             let e = state
                 .effects()
@@ -234,7 +239,7 @@ fn the_removals_value_what_they_end_to_its_caster() {
             if profile == "t:fixed" && name == "ray" {
                 continue;
             }
-            computer::end_spell(&mut copy, &r, runners, id);
+            computer::end_spell(&mut copy, &r, (runners, id), false);
             let rounds = e.rounds.map_or(255, u32::from);
             let removed = Candidate {
                 spell: id,
@@ -247,9 +252,52 @@ fn the_removals_value_what_they_end_to_its_caster() {
         }
         // The runners lost no hit points: no healing.
         assert_eq!(cure, want, "{profile}");
-        // Anti-Magic ends the side's own Bless too with the slip (subtracted in this half).
-        let am = view.value(runners, Candidate::cast(spell(&r, "antimagic"), 1, 6));
-        let _ = am;
+        // Anti-Magic at Basic, level v: with the slip it ends every spell but Poison, the side's
+        // own Bless too (subtracted in this half), and adds the spell protection up to v;
+        // without, the harmful spells below v that are no ability and last their rounds, and the
+        // protection below v.
+        let am = Candidate::cast(spell(&r, "antimagic"), 1, 6);
+        let level = u8::try_from(r.spell(am.spell).unwrap().effect[1]).unwrap();
+        let slip = profile == "t:faithful";
+        let mut names = ["bless", "curse", "slow", "ray"];
+        names.sort_by_key(|n| spell(&r, n).index());
+        let mut copy = state.clone();
+        let mut want = 0i32;
+        for name in names {
+            let id = spell(&r, name);
+            let sp = r.spell(id).unwrap();
+            let e = state
+                .effects()
+                .iter()
+                .find(|e| e.stack == runners && e.spell == id)
+                .unwrap();
+            let harmful = sp.polarity == SpellPolarity::Negative;
+            let ends = slip
+                || (e.rounds.is_some()
+                    && harmful
+                    && sp.category != SpellCategory::Ability
+                    && sp.level < level);
+            if !ends {
+                continue;
+            }
+            computer::end_spell(&mut copy, &r, (runners, id), name != "ray");
+            let rounds = e.rounds.map_or(255, u32::from);
+            let removed = Candidate {
+                spell: id,
+                mastery: e.mastery,
+                power: rounds,
+                rounds,
+                cast: false,
+            };
+            if harmful {
+                want += view.other().on(&copy).value(runners, removed);
+            } else {
+                want -= view.on(&copy).value(runners, removed);
+            }
+        }
+        let limit = if slip { level } else { level - 1 };
+        want += view.spell_protection(runners, (None, limit, 0), 6);
+        assert_eq!(view.value(runners, am), want, "{profile}");
     }
 }
 
@@ -292,4 +340,168 @@ fn the_context_leaves_its_last_search_to_the_fallbacks_with_the_slip() {
     let state = BattleState::new(&r, &setup(&[(ARCHER, 1)], &[(ARCHER, 1)]), 1).unwrap();
     assert_eq!(computer::last_searched(&state, &r), None);
     assert!(context(&state, &r).cells().is_none());
+}
+
+/// The value of the candidate `c` of `name` at `mastery` on `s` in the attacker's half.
+fn at(sc: &SpellContext<'_>, r: &BattleRuleset, (name, mastery): (&str, u8), s: StackId) -> i32 {
+    sc.view()
+        .value(s, Candidate::cast(spell(r, name), mastery, 6))
+}
+
+// covers: BAT-AI-016
+#[test]
+fn the_harmful_spells_value_nothing_where_their_tests_fail() {
+    let r = ruleset();
+    let state = BattleState::new(&r, &threats(&r), 1).unwrap();
+    let sc = context(&state, &r);
+    // The gogs reach none of the side: nothing for the spells that ask it.
+    for name in ["weakness", "sorrow", "misfortune", "blind", "disease"] {
+        assert_eq!(value(&sc, &r, (name, true), GOGS), 0, "{name}");
+    }
+    // Slow on the archers, which shoot (one turn, no turns lost), and on the gogs, several turns
+    // from the side (no stack to strike first).
+    assert!(value(&sc, &r, ("slow", true), ENEMY_ARCHERS) >= 0);
+    assert!(value(&sc, &r, ("slow", true), GOGS) >= 0);
+    // A morale or luck already at −3 falls no further.
+    let mut s = threats(&r);
+    let mut low = hero(0);
+    for e in [
+        BattleEffect::Morale {
+            amount: -6,
+            affects: Affects::Own,
+        },
+        BattleEffect::Luck {
+            amount: -6,
+            affects: Affects::Own,
+        },
+    ] {
+        low.effects.push(e);
+    }
+    s.heroes[1] = Some(low);
+    let state = BattleState::new(&r, &s, 1).unwrap();
+    let sc = context(&state, &r);
+    assert_eq!(state.stacks()[ENEMY_RUNNERS.index()].morale, -3);
+    for name in ["sorrow", "misfortune"] {
+        assert_eq!(value(&sc, &r, (name, true), ENEMY_RUNNERS), 0, "{name}");
+    }
+    // Berserk archers shoot at anyone, so they threaten the side, but have no threat record:
+    // no Weakness, no Slow; their Berserk value searches nothing.
+    let mut state = BattleState::new(&r, &threats(&r), 1).unwrap();
+    cast_at(&mut state, &r, ATTACKER, "berserk", ENEMY_ARCHERS);
+    let sc = context(&state, &r);
+    assert_eq!(value(&sc, &r, ("weakness", true), ENEMY_ARCHERS), 0);
+    assert_eq!(value(&sc, &r, ("slow", true), ENEMY_ARCHERS), 0);
+    assert!(
+        sc.view()
+            .berserk(ENEMY_ARCHERS, Candidate::cast(spell(&r, "berserk"), 2, 6))
+            >= 0
+    );
+    // The speed before Slow counts what Haste adds (3 at Basic).
+    cast_at(&mut state, &r, ATTACKER, "haste", StackId(0));
+    assert_eq!(computer::unslowed_speed(&state, StackId(0)), 23);
+    // An enemy that has acted: a round less for Slow; Hypnotize at Basic (one turn) none left.
+    let mut state = BattleState::new(&r, &threats(&r), 1).unwrap();
+    while !state.stacks()[ENEMY_RUNNERS.index()]
+        .flags
+        .contains(StackFlags::ACTED)
+    {
+        let side = state.side_to_act().unwrap();
+        h3_battle::apply(
+            &mut state,
+            &r,
+            side,
+            Command::Defend,
+            &mut h3_battle::NoopSink,
+        )
+        .unwrap();
+    }
+    let sc = context(&state, &r);
+    let one = Candidate::cast(spell(&r, "hypnotize"), 1, 6);
+    assert_eq!(sc.view().value(ENEMY_RUNNERS, one), 0);
+    assert!(value(&sc, &r, ("slow", true), ENEMY_RUNNERS) >= 0);
+    // The enemy beaten: nothing for the spells that ask it.
+    let won = BattleState::new(&r, &setup(&[(RUNNER, 100)], &[(IMP, 1)]), 1).unwrap();
+    let sc = context(&won, &r);
+    assert!(sc.view().beaten());
+    for name in ["berserk", "hypnotize", "poison", "age"] {
+        assert_eq!(at(&sc, &r, (name, 2), StackId(1)), 0, "{name}");
+    }
+    // A strength's loss above 1: negative (√4 × 100 − 100 lost: −100).
+    assert_eq!(crate::spells::View::loss(X87::int(100), X87::int(4)), -100);
+    // The other half's other half is the side's own.
+    let sc = context(&won, &r);
+    let back = sc.view().other().other();
+    assert_eq!(
+        back.value(StackId(1), Candidate::cast(spell(&r, "age"), 2, 6)),
+        0
+    );
+}
+
+// covers: BAT-AI-016
+#[test]
+fn cure_heals_the_lost_hit_points_unless_the_battle_is_won_without_them() {
+    // The enemy's hero curses and bolts the side's gogs: their top creature lost hit points.
+    // Cure heals x = min(lost, power × p + v) and adds its worth to the removal of the Curse:
+    // trunc(x × worth / h + removal), x87.
+    for profile in ["t:faithful", "t:fixed"] {
+        let r = ruleset_as(profile);
+        let mut s = setup(&[(GOG, 10), (IMP, 5)], &[(RUNNER, 4), (GOG, 5)]);
+        s.heroes[0] = Some(caster(&r, 1));
+        s.heroes[1] = Some(caster(&r, 1));
+        let mut state = BattleState::new(&r, &s, 1).unwrap();
+        let gogs = StackId(0);
+        cast_at(&mut state, &r, DEFENDER, "curse", gogs);
+        cast_at(&mut state, &r, DEFENDER, "bolt", gogs);
+        let stack = state.stacks()[0];
+        let lost = u64::from(stack.max_hp - stack.top_hp);
+        assert!(lost > 0, "{profile}");
+        let sc = context(&state, &r);
+        let view = sc.view();
+        let c = Candidate::cast(spell(&r, "cure"), 1, 6);
+        let cure = r.spell(c.spell).unwrap();
+        let x = lost.min(u64::from(cure.power) * 6 + u64::from(cure.effect[1]));
+        let shot = computer::shoots(&state, &r, gogs);
+        let ctx = computer::context(&state, &r, ATTACKER);
+        let worth = computer::worth(&state, &r, &ctx, gogs, shot);
+        let healed = X87::int(x)
+            .times(worth)
+            .over(X87::int(u64::from(stack.max_hp)))
+            .unwrap();
+        // The Curse's removal by hand, in the enemy's half on a copy without it.
+        let curse = spell(&r, "curse");
+        let e = state
+            .effects()
+            .iter()
+            .find(|e| e.stack == gogs && e.spell == curse)
+            .unwrap();
+        let mut copy = state.clone();
+        computer::end_spell(&mut copy, &r, (gogs, curse), false);
+        let rounds = e.rounds.map_or(255, u32::from);
+        let removed = Candidate {
+            spell: curse,
+            mastery: e.mastery,
+            power: rounds,
+            rounds,
+            cast: false,
+        };
+        let removal = view.other().on(&copy).value(gogs, removed);
+        assert!(removal >= 0, "{profile}");
+        let want = computer::ftol(healed.plus(X87::int(u64::try_from(removal).unwrap())));
+        assert_eq!(view.value(gogs, c), want, "{profile}");
+    }
+    // The enemy beaten and the runners' loss short of a creature: the removal alone (none here).
+    // The archer shoots at the runners on its turn.
+    let r = ruleset();
+    let mut state = BattleState::new(&r, &setup(&[(RUNNER, 100)], &[(ARCHER, 1)]), 1).unwrap();
+    play(&mut state, &r, Command::Defend);
+    let shot = super::decide(&state, &r);
+    play(&mut state, &r, shot);
+    while active(&state) != RUNNER {
+        play(&mut state, &r, Command::Defend);
+    }
+    let stack = state.stacks()[0];
+    assert!(stack.top_hp < stack.max_hp);
+    let sc = context(&state, &r);
+    assert!(sc.view().beaten());
+    assert_eq!(at(&sc, &r, ("cure", 1), StackId(0)), 0);
 }

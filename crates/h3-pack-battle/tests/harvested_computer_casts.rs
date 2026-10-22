@@ -753,8 +753,8 @@ fn the_spell_contexts_threat_records_and_the_damage_of_a_base() {
 }
 
 /// Silver Pegasi that flew to hex 98 against `genies` Master Genies and nine Dendroid Soldiers on
-/// the genies' turn.
-fn genies_against_pegasi(r: &BattleRuleset, genies: u32) -> BattleState {
+/// the genies' turn, on `battlefield` if any.
+fn genies_against_pegasi(r: &BattleRuleset, genies: u32, battlefield: Option<&str>) -> BattleState {
     let mut state = battle(
         r,
         (
@@ -762,7 +762,7 @@ fn genies_against_pegasi(r: &BattleRuleset, genies: u32) -> BattleState {
             &[("base:master_genie", genies), ("base:dendroid_soldier", 9)],
         ),
         [None, None],
-        None,
+        battlefield,
         3,
     );
     let fly = Command::Move { to: Hex(98) };
@@ -779,7 +779,7 @@ fn the_master_genies_cast_at_their_side_when_it_beats_their_attack() {
     // genies' attack on the pegasi is worth more than that mean: they strike.
     for profile in ["base:faithful", "base:strict-fixed"] {
         let r = sod(profile);
-        let state = genies_against_pegasi(&r, 5);
+        let state = genies_against_pegasi(&r, 5, None);
         let dendroids = stack_of(&r, &state, "base:dendroid_soldier");
         let cast = Command::CreatureCast {
             target: CastTarget::Stack(dendroids),
@@ -788,7 +788,7 @@ fn the_master_genies_cast_at_their_side_when_it_beats_their_attack() {
             assert_eq!(c, cast, "{profile}");
             assert!(validate(&state, &r, BattleSide::Defender, c).is_ok());
         }
-        let state = genies_against_pegasi(&r, 20);
+        let state = genies_against_pegasi(&r, 20, None);
         let pegasi = stack_of(&r, &state, "base:silver_pegasus");
         assert!(
             choices(&r, &state, 20)
@@ -796,5 +796,24 @@ fn the_master_genies_cast_at_their_side_when_it_beats_their_attack() {
                 .all(|c| matches!(c, Command::Attack { target, .. } if *target == pegasi)),
             "{profile}"
         );
+    }
+}
+
+// covers: BAT-AI-016, BAT-TER-005
+#[test]
+fn on_magic_plains_the_master_genies_value_the_mass_versions() {
+    // Magic Plains raise a creature's cast to Expert: the spells whose Expert version takes no
+    // target are valued over the side (BAT-AI-014's mass sum). The genies still cast at a stack,
+    // which the engine accepts.
+    let r = sod("base:faithful");
+    let state = genies_against_pegasi(&r, 5, Some("base:magic_plains"));
+    for c in choices(&r, &state, 20) {
+        assert!(
+            validate(&state, &r, BattleSide::Defender, c).is_ok(),
+            "{c:?}"
+        );
+        if let Command::CreatureCast { target } = c {
+            assert!(matches!(target, CastTarget::Stack(_)), "{c:?}");
+        }
     }
 }

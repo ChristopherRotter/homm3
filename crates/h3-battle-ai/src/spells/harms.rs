@@ -70,7 +70,7 @@ impl View<'_> {
 
     /// `w − √g × w` for a strength `w` and a factor `g` as the original's x87 computes it, then
     /// truncated: below 0 when `g` exceeds 1.
-    fn loss(w: X87, g: X87) -> i32 {
+    pub(crate) fn loss(w: X87, g: X87) -> i32 {
         let kept = g.sqrt().times(w);
         if kept > w {
             computer::ftol(kept.minus(w)).wrapping_neg()
@@ -299,17 +299,14 @@ impl View<'_> {
             computer::worth(state, ruleset, self.ctx, s, true),
             computer::worth(state, ruleset, self.ctx, s, false),
         );
-        let dw = if with >= without {
-            Signed {
-                negative: false,
-                magnitude: with.minus(without),
-            }
-        } else {
-            Signed {
-                negative: true,
-                magnitude: without.minus(with),
-            }
-        };
+        let dw = Signed {
+            negative: false,
+            magnitude: with,
+        }
+        .plus(Signed {
+            negative: true,
+            magnitude: without,
+        });
         let hp = X87::int(computer::hit_points(state, s));
         let per = X87::int(u64::from(stack.max_hp.max(1)));
         let a = Signed {
@@ -367,10 +364,8 @@ impl View<'_> {
         if let Some(map) = map {
             self.root.searched(map);
         }
-        if n == 0 {
-            return 0;
-        }
-        i32::from_ne_bytes((u32::from_ne_bytes(sum.to_ne_bytes()) / n).to_ne_bytes())
+        // Without a target the sum is 0: 0 whatever the divisor.
+        i32::from_ne_bytes((u32::from_ne_bytes(sum.to_ne_bytes()) / n.max(1)).to_ne_bytes())
     }
 
     /// Hypnotize's evaluator (0x43A500; BAT-AI-016): 0 when beaten or when `s` cannot act (dead,

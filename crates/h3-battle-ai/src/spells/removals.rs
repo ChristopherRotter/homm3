@@ -10,10 +10,11 @@ use h3_content::SpellCategory;
 use h3_content::SpellId;
 use h3_content_battle::{BattleSpell, SpellPolarity};
 use h3_kernel::arith::X87;
+use h3_kernel::order;
 
 use super::boosts::Signed;
 use super::harms::poisons;
-use super::{Candidate, View};
+use super::{Candidate, Kind, View};
 
 /// The rounds the original keeps for a spell that lasts to the battle's end (Disrupting Ray's
 /// 255).
@@ -23,7 +24,8 @@ impl View<'_> {
     /// A removal's value (0x439A80; BAT-AI-016) on stack `s`: over the spells lasting on it in
     /// the spells' order, each once, those `ends` selects (the spell, its record and whether it
     /// lasts to the battle's end): the spell ends on a copy of the battle ([`computer::end_spell`]:
-    /// a permanent one stays, as the original's end routine never ends Disrupting Ray), so later
+    /// Disrupting Ray stays, as the original's end routine never ends it, a permanent Acid Breath
+    /// does not; only the slips select a permanent spell), so later
     /// spells are valued without the earlier ones, and its evaluator values it on the copy with
     /// the stack's mastery of it and its rounds left as the power and the rounds, as a removal
     /// (no resistance). A harmful spell on the half's own side, or a helpful one on the other
@@ -32,26 +34,26 @@ impl View<'_> {
     // rule: BAT-AI-016
     fn removal(&self, s: StackId, ends: impl Fn(SpellId, &BattleSpell, bool) -> bool) -> i32 {
         let ruleset = self.ruleset;
-        let mut lasting: Vec<ActiveEffect> = self
-            .state
-            .effects()
-            .iter()
-            .filter(|e| e.stack == s)
-            .copied()
-            .collect();
-        lasting.sort_by_key(|e| e.spell.index());
-        lasting.dedup_by_key(|e| e.spell);
+        let mut lasting: Vec<(ActiveEffect, &BattleSpell)> = Vec::new();
+        let on = self.state.effects().iter().filter(|e| e.stack == s);
+        for (e, spell) in on.filter_map(|e| ruleset.spell(e.spell).map(|sp| (*e, sp))) {
+            if lasting.iter().all(|(l, _)| l.spell != e.spell) {
+                lasting.push((e, spell));
+            }
+        }
+        // One effect a spell: the spells are the unique key.
+        let _ = order::sort_by_unique_key(&mut lasting, |(e, _)| e.spell.index());
         let mut copy = self.state.clone();
         let own = self.stack(s).side == self.side;
         let mut v = 0i32;
-        for e in lasting {
-            let Some(spell) = ruleset.spell(e.spell) else {
-                continue;
-            };
+        for (e, spell) in lasting {
             if !ends(e.spell, spell, e.rounds.is_none()) {
                 continue;
             }
-            computer::end_spell(&mut copy, ruleset, s, e.spell);
+            // The original's end routine (0x444510) keeps only Disrupting Ray; the rule keeps
+            // every permanent effect (BAT-MAG-010), which only the slips select.
+            let ray = Kind::of(spell) == Some(Kind::DisruptingRay);
+            computer::end_spell(&mut copy, ruleset, (s, e.spell), !ray);
             let rounds = e.rounds.map_or(FOREVER, u32::from);
             let c = Candidate {
                 spell: e.spell,
@@ -80,20 +82,19 @@ impl View<'_> {
     // rule: BAT-AI-016
     pub(crate) fn cure(&self, s: StackId, c: Candidate) -> i32 {
         let ruleset = self.ruleset;
-        let Some(cure) = ruleset.spell(c.spell) else {
-            return 0;
-        };
+        let cure = ruleset.spell(c.spell);
         let slip = self.slips();
         let removed = self.removal(s, |id, spell, permanent| {
             if slip {
                 spell.polarity == SpellPolarity::Negative
             } else {
-                !permanent && cure.dispels.contains(&id)
+                !permanent && cure.is_some_and(|cure| cure.dispels.contains(&id))
             }
         });
         let stack = self.stack(s);
         let lost = stack.max_hp.saturating_sub(stack.top_hp);
-        let heal = u64::from(cure.power) * u64::from(c.power) + u64::from(self.effect(c));
+        let factor = cure.map_or(0, |cure| cure.power);
+        let heal = u64::from(factor) * u64::from(c.power) + u64::from(self.effect(c));
         let x = u64::from(lost).min(heal);
         let creature = u64::from(stack.max_hp);
         let spared = self.planned.on(s).saturating_add(u64::from(lost)) < creature;
