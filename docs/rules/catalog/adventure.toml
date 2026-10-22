@@ -301,12 +301,12 @@ id       = "ADV-FOG-003"
 title    = "When tiles are revealed"
 context  = "adventure"
 status   = "implemented"
-summary  = "At the start of a game each hero reveals the tiles around its tile to its owner, and each step of a move reveals the tiles around the tile it enters, for the radius of ADV-FOG-001 (shape ADV-FOG-002). Increment 1 has no owned objects, so a game opens with only the heroes' surroundings explored (towns and mines add theirs once owned: a recorded simplification). The original also reveals around everything a player owns at each new day (0x4C7C50), which adds nothing while no rule hides a tile again (Cover of Darkness, with towns). E08 T8a."
+summary  = "At the start of a game each hero reveals the tiles around its tile to its owner, and each step of a move reveals the tiles around the tile it enters, for the radius of ADV-FOG-001 (shape ADV-FOG-002). Increment 1 has no owned objects, so a game opens with only the heroes' surroundings explored (towns and mines add theirs once owned: a recorded simplification). The original reveals around everything a player owns (0x4C7C50) only right after a hide: at a new day only when a Cover of Darkness hid tiles (0x4C7BA0; E08 T34b, survey E08-hero-movement.md §4.2), so no new day reveals as a rule (with towns, E09). E08 T8a."
 numeric  = "integer"
 
   [[rule.source]]
   kind       = "original-data"
-  ref        = "Heroes3.exe code reading (E08 T8a): hero_move_step (0x4805E0) calls reveal_disk at the step's destination before the hero's position changes (0x48106B); the placed heroes' setup (placed_heroes_setup 0x4CAE10) reveals around each placed hero (0x4CAF74; survey E08-progression.md §3.1, first read in a campaign's carried-over hero's setup 0x486590 at 0x486E25); reveal_owned (0x4C7C50) around every owned hero at a new day (survey E08-adventure-core.md §2)"
+  ref        = "Heroes3.exe code reading (E08 T8a): hero_move_step (0x4805E0) calls reveal_disk at the step's destination before the hero's position changes (0x48106B); the placed heroes' setup (placed_heroes_setup 0x4CAE10) reveals around each placed hero (0x4CAF74; survey E08-progression.md §3.1, first read in a campaign's carried-over hero's setup 0x486590 at 0x486E25); reveal_owned (0x4C7C50) around every owned hero, called by new_day only after the Cover of Darkness hid tiles (0x4C7BA0; E08 T34b, survey E08-hero-movement.md §4.2; first read in E08-adventure-core.md §2 as every new day)"
   confidence = "high"
 
   [[rule.source]]
