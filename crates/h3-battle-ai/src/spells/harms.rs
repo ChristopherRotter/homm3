@@ -5,7 +5,7 @@
 //! weighs the stack's resistance.
 
 use h3_battle::computer;
-use h3_battle::{StackFlags, StackId, StackTraits, Status};
+use h3_battle::{BattleState, StackFlags, StackId, StackTraits, Status};
 use h3_content::SpellCategory;
 use h3_content::SpellId;
 use h3_content_battle::{SpellEffect, TimedChange};
@@ -124,13 +124,15 @@ impl View<'_> {
     /// Disrupting Ray's evaluator (0x438DC0; BAT-AI-016): not desperate; some stack of the side
     /// has `s` as its threat record's enemy; `trunc(w − √(1 − 0.05 v) × w)`, `w` the strength of
     /// `s` and `v` the spell's value; no rounds' share, no "beaten" test; with the candidate's
-    /// flag resisted.
+    /// flag resisted. On a lone copy (survey slip 24) no record's enemy is the copy (0x438E11
+    /// compares pointers): 0.
     // rule: BAT-AI-016
     pub(crate) fn disrupting_ray(&self, s: StackId, c: Candidate) -> i32 {
-        let targeted = (0u8..)
-            .zip(self.state.stacks())
-            .filter(|(_, r)| r.side == self.side)
-            .any(|(i, _)| self.threat(StackId(i)).is_some_and(|t| t.enemy == s));
+        let targeted = self.lone.is_none()
+            && (0u8..)
+                .zip(self.state.stacks())
+                .filter(|(_, r)| r.side == self.side)
+                .any(|(i, _)| self.threat(StackId(i)).is_some_and(|t| t.enemy == s));
         if self.desperate() || !targeted {
             return 0;
         }
@@ -191,9 +193,10 @@ impl View<'_> {
     /// when it acted). `s1 = max(1, trunc(v × s0 / 100))`, `s0` its speed now. When `t0 = 1`: the
     /// best of striking first both ways ([`Self::exchange_value`]) over the side's stacks that
     /// can act whose threat record's enemy is `s` and that Slow lets act first (`s1 < speed ≤
-    /// s0`), at least 0. Plus, when `s` cannot shoot now, the rounds of fighting it loses, `n =
-    /// min(its turns at s1 − t0, the rounds)`: `(k − t0 + 1) × w / k − (k − min(t0 + n, k + 1) +
-    /// 1) × w / k`. With the candidate's flag resisted.
+    /// s0`), at least 0; on a lone copy (survey slip 24) none, as no record's enemy is the copy
+    /// (0x439379 compares pointers). Plus, when `s` cannot shoot now, the rounds of fighting it
+    /// loses, `n = min(its turns at s1 − t0, the rounds)`: `(k − t0 + 1) × w / k − (k − min(t0 +
+    /// n, k + 1) + 1) × w / k`. With the candidate's flag resisted.
     // rule: BAT-AI-016
     pub(crate) fn slow(&self, s: StackId, c: Candidate) -> i32 {
         if self.threat(s).is_none() || self.beaten {
@@ -213,7 +216,7 @@ impl View<'_> {
         }
         let s1 = (u32::from(self.effect(c)) * s0 / 100).max(1);
         let mut best = 0i32;
-        if t0 == 1 {
+        if t0 == 1 && self.lone.is_none() {
             for (i, r) in (0u8..).zip(self.state.stacks()) {
                 let id = StackId(i);
                 let speed = u32::from(r.speed_now());
@@ -345,22 +348,66 @@ impl View<'_> {
         value(s, hp.0 - hs).wrapping_add(value(t, hp.1 - ht))
     }
 
+    /// The berserk attack's value of a lone copy on the battle's record of its own stack (survey
+    /// slip 24: Berserk's and Hypnotize's targets hold it, 0x43A340 with the copy and the record):
+    /// [`Self::berserk_attack`] with the copy (the view's state, stack `s`) striking the record in
+    /// `battle` ([`computer::exchange_with_itself`]), each loss valued on its own record.
+    // rule: BAT-AI-016
+    fn berserk_attack_on_itself(&self, s: StackId, battle: &BattleState) -> i32 {
+        if battle.stacks()[s.index()].side == self.side {
+            return 0;
+        }
+        let (copy, ruleset) = (self.state, self.ruleset);
+        let shot = computer::shoots(copy, ruleset, s);
+        let hp = (
+            computer::hit_points(copy, s),
+            computer::hit_points(battle, s),
+        );
+        let (hs, ht) =
+            computer::exchange_with_itself((battle, copy), ruleset, self.side, (s, hp), shot);
+        let desperate = self.desperate();
+        let value = |state, lost| {
+            computer::damage_value(state, ruleset, self.ctx, (s, lost), (shot, desperate))
+        };
+        value(copy, hp.0 - hs).wrapping_add(value(battle, hp.1 - ht))
+    }
+
+    /// A berserk attack's value of `s` on `t` ([`Self::berserk_attack`]), on a lone copy's own
+    /// record ([`Self::berserk_attack_on_itself`]) when `t` is `s`.
+    fn berserk_attack_of(&self, (s, t): (StackId, StackId)) -> i32 {
+        match self.lone {
+            Some(battle) if t == s => self.berserk_attack_on_itself(s, battle),
+            _ => self.berserk_attack((s, t)),
+        }
+    }
+
     /// Berserk's evaluator (0x43A400; BAT-AI-016): 0 when beaten or without a target; the mean of
     /// the berserk attack's values ([`Self::berserk_attack`]) over the stacks a berserk `s`
     /// would take ([`computer::berserk_search`]), the sum divided as an unsigned 32-bit integer.
     /// No rounds' share. With BAT-QUIRK-25 the context keeps the candidates' search (survey slip
-    /// 22: the walker's fallbacks read it).
+    /// 22: the walker's fallbacks read it). On a lone copy (survey slip 24) the battle's record of
+    /// the stack is a candidate too, the nearest ([`computer::berserk_search_of_copy`]), struck
+    /// by the copy ([`Self::berserk_attack_on_itself`]).
     // rule: BAT-AI-016
     pub(crate) fn berserk(&self, s: StackId, _c: Candidate) -> i32 {
         if self.beaten {
             return 0;
         }
         let (mut sum, mut n) = (0i32, 0u32);
-        let (candidates, map) = computer::berserk_search(self.state, self.ruleset, s);
-        for t in candidates {
-            sum = sum.wrapping_add(self.berserk_attack((s, t)));
+        let (state, ruleset) = (self.state, self.ruleset);
+        let mut add = |t| {
+            sum = sum.wrapping_add(self.berserk_attack_of((s, t)));
             n += 1;
-        }
+        };
+        let map = if self.lone.is_some() {
+            let (candidates, map) = computer::berserk_search_of_copy(state, ruleset, s);
+            candidates.for_each(&mut add);
+            map
+        } else {
+            let (candidates, map) = computer::berserk_search(state, ruleset, s);
+            candidates.for_each(&mut add);
+            map
+        };
         if let Some(map) = map {
             self.root.searched(map);
         }
@@ -372,9 +419,12 @@ impl View<'_> {
     /// blind, turned to stone or paralysed, the First Aid Tent or the Ammo Cart). `n = min(k,
     /// (1, 1, 2, 3) by the mastery)`, less 1 when it acted, 0 at none; the pathfinder's map from
     /// `s` for the side up to `n` times its speed before Slow ([`computer::map_within`]); the
-    /// best berserk attack's value ([`Self::berserk_attack`]) over the other stacks of its side
-    /// it reaches, at least 0. With BAT-QUIRK-25 the context keeps that map (survey slip 22: the
-    /// walker's fallbacks read it).
+    /// best berserk attack's value ([`Self::berserk_attack`]) over the other living stacks of its
+    /// side the map marks (0x4B2DA0: those it can attack within the range, and all but the
+    /// turrets when `s` can shoot now and is no Catapult), at least 0. With BAT-QUIRK-25 the
+    /// context keeps that map (survey slip 22: the walker's fallbacks read it). On a lone copy
+    /// (survey slip 24) the battle's record of the stack is among them (its position is the map's
+    /// start), struck by the copy ([`Self::berserk_attack_on_itself`]).
     // rule: BAT-AI-016
     pub(crate) fn hypnotize(&self, s: StackId, c: Candidate) -> i32 {
         let stack = self.stack(s);
@@ -397,12 +447,17 @@ impl View<'_> {
         let speed = u32::from(computer::unslowed_speed(self.state, s));
         let range = u16::try_from(speed * turns).unwrap_or(u16::MAX);
         let map = computer::map_within(self.state, self.ruleset, (s, self.side), range);
+        // A stack that can shoot now marks every other stack but the turrets (0x4B2F18).
+        let shooter = computer::shoots(self.state, self.ruleset, s) && !stack.is_catapult();
         let best = (0u8..)
             .zip(self.state.stacks())
             .filter(|&(i, r)| {
-                StackId(i) != s && r.side == stack.side && r.is_alive() && map.mark(r.hex).is_some()
+                let id = StackId(i);
+                let marked = (shooter && !r.is_turret()) || map.mark(r.hex).is_some();
+                (id == s && self.lone.is_some())
+                    || (id != s && r.side == stack.side && r.is_alive() && marked)
             })
-            .map(|(i, _)| self.berserk_attack((s, StackId(i))))
+            .map(|(i, _)| self.berserk_attack_of((s, StackId(i))))
             .fold(0, i32::max);
         self.root.searched(map);
         best

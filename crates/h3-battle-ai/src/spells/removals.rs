@@ -23,7 +23,7 @@ const FOREVER: u32 = 255;
 impl View<'_> {
     /// A removal's value (0x439A80; BAT-AI-016) on stack `s`: over the spells lasting on it in
     /// the spells' order, each once, those `ends` selects (the spell, its record and whether it
-    /// lasts to the battle's end): the spell ends on a copy of the battle ([`computer::end_spell`]:
+    /// lasts to the battle's end): the spell ends on a copy of the stack ([`computer::end_spell`]:
     /// Disrupting Ray stays, as the original's end routine never ends it, a permanent Acid Breath
     /// does not; only the slips select a permanent spell), so later
     /// spells are valued without the earlier ones, and its evaluator values it on the copy with
@@ -31,6 +31,14 @@ impl View<'_> {
     /// (no resistance). A harmful spell on the half's own side, or a helpful one on the other
     /// side, adds its value in the other side's half; the rest subtract theirs in this one: a
     /// removal is worth what the removed spells are worth to their caster.
+    ///
+    /// The original's copy is a lone record (0x437A00), the battle untouched. With BAT-QUIRK-25
+    /// (survey slip 24) the copy is valued so ([`View::on_copy`]): the battle's records, its
+    /// record of the stack with every spell among them, are walked beside it and none is the copy
+    /// (Disrupting Ray, Slow, Berserk, Hypnotize), and a two-hex shooter's copy is blocked by the
+    /// stack itself where either is berserk or the copy is hypnotized
+    /// ([`computer::block_by_itself`]). Without, the copy is the stack itself: a clone of the
+    /// battle with the spells ended.
     // rule: BAT-AI-016
     fn removal(&self, s: StackId, ends: impl Fn(SpellId, &BattleSpell, bool) -> bool) -> i32 {
         let ruleset = self.ruleset;
@@ -43,9 +51,7 @@ impl View<'_> {
             .collect();
         // A stack holds one effect a spell (a recast renews it): the spells are the unique key.
         let _ = order::sort_by_unique_key(&mut lasting, |(e, _)| e.spell.index());
-        // stub: BAT-STUB-12
-        // The original's copy is a lone record the battle's records never match (slip 24, T4d):
-        // here the clone's stack is the stack itself.
+        let lone = self.slips().then_some(self.root.state);
         let mut copy = self.state.clone();
         let own = self.stack(s).side == self.side;
         let mut v = 0i32;
@@ -57,6 +63,9 @@ impl View<'_> {
             // every permanent effect (BAT-MAG-010), which only the slips select.
             let ray = Kind::of(spell) == Some(Kind::DisruptingRay);
             computer::end_spell(&mut copy, ruleset, (s, e.spell), !ray);
+            if let Some(battle) = lone {
+                computer::block_by_itself(&mut copy, battle, s);
+            }
             let rounds = e.rounds.map_or(FOREVER, u32::from);
             let c = Candidate {
                 spell: e.spell,
@@ -66,11 +75,18 @@ impl View<'_> {
                 cast: false,
             };
             let harmful = spell.polarity == SpellPolarity::Negative;
-            if harmful == own {
-                v = v.wrapping_add(self.other().on(&copy).value(s, c));
+            let half = if harmful == own { self.other() } else { *self };
+            let view = if lone.is_some() {
+                half.on_copy(&copy)
             } else {
-                v = v.wrapping_sub(self.on(&copy).value(s, c));
-            }
+                half.on(&copy)
+            };
+            let x = view.value(s, c);
+            v = if harmful == own {
+                v.wrapping_add(x)
+            } else {
+                v.wrapping_sub(x)
+            };
         }
         v
     }

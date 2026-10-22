@@ -348,7 +348,7 @@ impl<'a> SpellContext<'a> {
 
     /// The side's half on the battle (the context the casts ask).
     pub(crate) fn view(&self) -> View<'_> {
-        View::of(self, &self.first, self.state)
+        View::of(self, &self.first, (self.state, None))
     }
 
     /// The value of the candidate `c` on stack `s` ([`View::value`]).
@@ -389,7 +389,8 @@ pub(crate) fn last_searched(state: &BattleState, ruleset: &BattleRuleset) -> Opt
 
 /// A half of the spell context on a state: the battle's, or a copy with spells ended (a
 /// removal's, 0x439A80, which values each spell on the stack's copy). Its records (the threat
-/// records, the tables) are the context's, as the original's copy keeps them.
+/// records, the tables) are the context's, as the original's copy keeps them. With BAT-QUIRK-25
+/// (survey slip 24) a removal's copy is a lone record beside the battle ([`Self::lone`]).
 #[derive(Clone, Copy)]
 pub(crate) struct View<'s> {
     state: &'s BattleState,
@@ -401,11 +402,20 @@ pub(crate) struct View<'s> {
     class: u8,
     beaten: bool,
     planned: &'s Planned,
+    /// With BAT-QUIRK-25 (survey slip 24), on a removal's copy: the battle, whose records the
+    /// original walks beside the copy (0x437A00 copies the stack's record alone, the battle
+    /// untouched). Its record of the stack valued still holds every spell, and no record is the
+    /// copy: the original tells them apart by pointer.
+    lone: Option<&'s BattleState>,
 }
 
 impl<'s> View<'s> {
-    /// The view of `half` of `root` on `state`.
-    fn of(root: &'s SpellContext<'s>, half: &'s Half, state: &'s BattleState) -> Self {
+    /// The view of `half` of `root` on `state`, `lone` the battle beside a lone copy.
+    fn of(
+        root: &'s SpellContext<'s>,
+        half: &'s Half,
+        (state, lone): (&'s BattleState, Option<&'s BattleState>),
+    ) -> Self {
         Self {
             state,
             ruleset: root.ruleset,
@@ -416,15 +426,25 @@ impl<'s> View<'s> {
             class: half.class,
             beaten: half.beaten,
             planned: &root.planned,
+            lone,
         }
     }
 
-    /// The same half on `state`.
+    /// The same half on `state` (the stack valued is the state's own record).
     pub(crate) fn on<'t>(&self, state: &'t BattleState) -> View<'t>
     where
         's: 't,
     {
-        View::of(self.root, self.half, state)
+        View::of(self.root, self.half, (state, None))
+    }
+
+    /// The same half on `copy`, a removal's lone copy of the valued stack's record beside the
+    /// battle (survey slip 24): [`Self::lone`].
+    pub(crate) fn on_copy<'t>(&self, copy: &'t BattleState) -> View<'t>
+    where
+        's: 't,
+    {
+        View::of(self.root, self.half, (copy, Some(self.root.state)))
     }
 
     /// The other half on the same state (the second context, or from it the first).
@@ -434,7 +454,7 @@ impl<'s> View<'s> {
         } else {
             &self.root.first
         };
-        View::of(self.root, half, self.state)
+        View::of(self.root, half, (self.state, self.lone))
     }
 
     /// Whether the predictions beat the enemy (+0x1C).
@@ -458,9 +478,17 @@ impl<'s> View<'s> {
     }
 
     /// The enemy of stack `s`'s threat record when `s` attacks it within a turn (0x448BD0 at its
-    /// speed: at most 1), else none.
+    /// speed now, at most 1), else none. The original counts the turns as it values, on the record
+    /// it is given: a removal's copy counts them at its own speed and shot (E23 T4d: an ended Slow,
+    /// Haste, Prayer or Forgetfulness changes them); on the battle the record's turns are those.
     fn within_a_turn(&self, s: StackId) -> Option<StackId> {
-        self.threat(s).filter(|t| t.turns <= 1).map(|t| t.enemy)
+        let threat = self.threat(s)?;
+        let turns = if core::ptr::eq(self.state, self.root.state) {
+            threat.turns
+        } else {
+            self.turns_at(s, u32::from(self.stack(s).speed_now()))
+        };
+        (turns <= 1).then_some(threat.enemy)
     }
 
     /// The candidate's value at its mastery (the spell's value, +0x34 of its record), 0 for a
