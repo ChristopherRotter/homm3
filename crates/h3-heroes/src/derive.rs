@@ -438,7 +438,7 @@ pub fn gained_experience(details: &HeroDetails, ruleset: &Ruleset, base: u32) ->
 /// `base` grown by the sum of the rates `rate` picks among [`grown_effects`] (each grown by its
 /// skill's specialty), rounded down; with quirk Q-0005 as the original's skill getters and their
 /// callers compute it: `trunc((1 + the single-precision sum) × f32(base))` in x87 arithmetic.
-fn grown(
+pub(crate) fn grown(
     details: &HeroDetails,
     ruleset: &Ruleset,
     base: u32,

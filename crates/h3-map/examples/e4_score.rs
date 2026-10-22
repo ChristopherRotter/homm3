@@ -37,9 +37,7 @@ use std::ops::Range;
 use std::process::ExitCode;
 use std::sync::Arc;
 
-use h3_content::{
-    FULL_BP, HeroClass, HeroEffect, HeroTypeId, MAX_HERO_SKILLS, MAX_SKILL_LEVEL, Ruleset, SkillId,
-};
+use h3_content::{HeroClass, HeroTypeId, MAX_HERO_SKILLS, MAX_SKILL_LEVEL, Ruleset, SkillId};
 use h3_contracts::{ArmyStack, HeroId};
 use h3_game::{GameRuleset, GameSetup, GameState};
 use h3_heroes::{
@@ -47,7 +45,6 @@ use h3_heroes::{
     PrimarySkill, TerrainShares, apply_change_limited, experience_for, level_of, original_choice,
     pending_levels,
 };
-use h3_kernel::arith::{SINGLE_BITS, X87};
 use h3_map::Limits;
 use h3_pack_adventure::{ORIGINAL_PACKS, compile};
 
@@ -279,73 +276,41 @@ fn draw_weighted(
 
 // -- The day's points (batch E5's E5-2, D-22) --------------------------------------------------
 
-/// The land table's entry at the army's slowest speed (ADV-MOV-001 as `h3_adventure::day_points`
-/// takes it, without the bonuses increment 5 adds; its last entry for every faster speed).
-fn land_table(rules: &GameRuleset, army: &[ArmyStack]) -> u32 {
+/// The land table's entry at the army's slowest speed as the hero counts it (ADV-MOV-001 as E08
+/// T40 builds it into `h3_adventure::day_points`: each stack's speed by
+/// `h3_heroes::movement_speed`, HER-ADV-004, a creature specialist's creature and its upgrades one
+/// faster; the table's last entry for every faster speed).
+fn land_table(rules: &GameRuleset, army: &[ArmyStack], details: &HeroDetails) -> u32 {
     let slowest = army
         .iter()
-        .map(|stack| {
-            rules
-                .core()
-                .creature(stack.creature)
-                .map_or(u8::MAX, |c| c.speed)
-        })
+        .map(|stack| h3_heroes::movement_speed(details, rules.core(), stack.creature))
         .min()
         .unwrap_or(u8::MAX);
     rules.adventure().params().land_points(slowest)
 }
 
-/// A hero's day's points on land from `land`, the table's entry (survey
-/// `docs/rules/surveys/E08-hero-movement.md` §1.1 point 4, the derivation E08 T39 builds into
-/// `h3_heroes`, HER-ADV-003): `land` grown by the `land_movement` rates of the hero's skills, each
-/// grown by the hero's skill specialties for its skill, as `(single, exact)`. **Single** is the
-/// reading's (Q-0005, `faithful`; `hero_max_land_movement` 0x4E4990): each rate
-/// `f32(r × (f32(level) × g + 1))`, summed in single precision, then `trunc((1 + sum) × land)` in
-/// the x87's arithmetic; **exact** the basis points grown and rounded down (`strict-fixed`). The
-/// batch's heroes wear no artifact, so none counts here.
-fn land_points(details: &HeroDetails, core: &Ruleset, land: u32) -> (u32, u32) {
-    let full = u32::from(FULL_BP);
-    let ratio = |bp: u64| {
-        X87::ratio(u32::try_from(bp).unwrap_or(u32::MAX), full, SINGLE_BITS).unwrap_or(X87::ZERO)
-    };
-    let specialty = core
-        .hero_type(details.hero_type)
-        .map_or(&[][..], |h| h.specialty.as_slice());
-    let mut single = X87::ZERO;
-    let mut exact: u64 = 0;
-    for &(skill, level) in &details.skills {
-        let growth: u64 = specialty
-            .iter()
-            .filter_map(|effect| match *effect {
-                HeroEffect::SkillSpecialty {
-                    skill: grown,
-                    bp_per_level,
-                } if grown == skill => Some(u64::from(bp_per_level)),
-                _ => None,
-            })
-            .sum();
-        let effects = core.skill(skill).map_or(&[][..], |k| k.effects(level));
-        for effect in effects {
-            let HeroEffect::LandMovement { bp } = *effect else {
-                continue;
-            };
-            let bp = u64::from(bp);
-            let per_level = growth * u64::from(details.level);
-            exact += bp + bp * per_level / u64::from(full);
-            let rate = X87::int(details.level.into())
-                .round(SINGLE_BITS)
-                .times(ratio(growth))
-                .plus(X87::ONE)
-                .times(ratio(bp))
-                .round(SINGLE_BITS);
-            single = single.plus(rate).round(SINGLE_BITS);
-        }
-    }
-    let table = X87::int(land.into()).round(SINGLE_BITS);
-    let single = X87::ONE.plus(single).times(table).trunc();
-    let exact = u64::from(land) + u64::from(land) * exact / u64::from(full);
-    let points = |p: u64| u32::try_from(p).unwrap_or(u32::MAX);
-    (points(single), points(exact))
+/// A hero's day's points on land from `land`, the table's entry, as `(single, exact)`:
+/// `h3_heroes::land_points` (HER-ADV-003, E08 T39; survey
+/// `docs/rules/surveys/E08-hero-movement.md` §1.1 point 4) under each of two cores. **Single**
+/// is the reading's (`faithful`, Q-0005 on: each rate `f32(r × (f32(level) × g + 1))`, summed in
+/// single precision, then `trunc((1 + sum) × land)` in the x87's arithmetic,
+/// `hero_max_land_movement` 0x4E4990); **exact** the basis points grown and rounded down
+/// (`strict-fixed`, Q-0005 off, [`strict_core`]). Both compile the same packs, so the details'
+/// handles are both's. The batch's heroes wear no artifact; a worn one's flat bonus would count in both.
+fn land_points(
+    details: &HeroDetails,
+    faithful: &Ruleset,
+    strict: &Ruleset,
+    land: u32,
+) -> (u32, u32) {
+    let points = |core| h3_heroes::land_points(details, core, land);
+    (points(faithful), points(strict))
+}
+
+/// The original packs' core under `base:strict-fixed` (Q-0005 off: D-22's exact arithmetic).
+fn strict_core() -> Result<Ruleset, String> {
+    let (core, _) = compile(&ORIGINAL_PACKS, "base:strict-fixed").map_err(|e| format!("{e:?}"))?;
+    Ok(core)
 }
 
 // -- A batch map's heroes ------------------------------------------------------------------------
@@ -371,6 +336,8 @@ enum Chooser {
 /// A batch map as the game builds it: its rules, limit, banned skills, terrain shares and heroes.
 struct Batch<'a> {
     core: &'a Ruleset,
+    /// The same packs under `strict-fixed` (E5-2's exact arithmetic).
+    strict: Ruleset,
     limit: u8,
     banned: Vec<SkillId>,
     shares: TerrainShares,
@@ -408,12 +375,13 @@ impl<'a> Batch<'a> {
                     hero_type: hero.hero_type,
                     before: base.hero(id)?.clone(),
                     experience: hero.details.experience,
-                    land: land_table(rules, army),
+                    land: land_table(rules, army, base.hero(id)?),
                 })
             })
             .collect();
         Ok(Self {
             core: rules.core(),
+            strict: strict_core()?,
             limit: game.level_limit(),
             banned: game.banned_skills().to_vec(),
             shares: game.adventure().map().terrain_shares(),
@@ -713,7 +681,7 @@ impl<'a> Batch<'a> {
         let mut out = String::new();
         let _ = writeln!(out, "Day's points (the land table's {}):\n", hero.land);
         let line = |name: &str, h: &HeroDetails| {
-            let (single, exact) = land_points(h, self.core, hero.land);
+            let (single, exact) = land_points(h, self.core, &self.strict, hero.land);
             let logistics = self.logistics(h);
             format!(
                 "- {name} (level {}, Logistics {logistics}): single precision {single}, exact {exact}",
@@ -743,7 +711,7 @@ impl<'a> Batch<'a> {
         let _ = writeln!(out, "{}", line("the recorded hero", &h));
         let shown: Vec<String> = days.iter().map(|(d, p)| format!("day {d} {p}")).collect();
         let _ = writeln!(out, "- recorded: {}", shown.join(", "));
-        let (single, exact) = land_points(&h, self.core, hero.land);
+        let (single, exact) = land_points(&h, self.core, &self.strict, hero.land);
         let fit = |points: u32| days.iter().all(|&(_, p)| p == u64::from(points));
         let mut fits = Vec::new();
         if fit(single) {
@@ -1238,6 +1206,7 @@ mod tests {
         };
         let batch = Batch {
             core,
+            strict: strict_core().expect("strict-fixed"),
             limit: 0,
             banned: Vec::new(),
             shares: TerrainShares::default(),
@@ -1360,11 +1329,14 @@ mod tests {
     }
 
     /// E08 T36b: the day's points of the survey's §1.3 (E08-hero-movement.md) and of batch E5a's
-    /// E5-1, in both arithmetics, from the base pack's Logistics and specialties.
+    /// E5-1, in both arithmetics, from the base pack's Logistics and specialties (since T39
+    /// `h3_heroes::land_points`, whose own tests hold the same vectors on a test pack).
     #[test]
     fn land_points_are_the_survey_s() {
         let rules = rules();
         let core = rules.core();
+        let strict = strict_core().expect("strict-fixed");
+        let points = |h: &HeroDetails, land| land_points(h, core, &strict, land);
         for (level, logistics, single, exact) in [
             (1, 1, 1657, 1657),
             (2, 1, 1664, 1665),
@@ -1374,12 +1346,13 @@ mod tests {
             (20, 1, 1800, 1800),
             (2, 2, 1829, 1830),
             (3, 2, 1845, 1845),
+            (6, 2, 1889, 1890),
             (9, 2, 1934, 1935),
             (12, 3, 2220, 2220),
         ] {
             let gunnar = with_logistics(core, "Gunnar", level, logistics);
             assert_eq!(
-                land_points(&gunnar, core, 1500),
+                points(&gunnar, 1500),
                 (single, exact),
                 "level {level}, Logistics {logistics}"
             );
@@ -1387,13 +1360,66 @@ mod tests {
         // The table's 2000 (speed 11 and up) at Basic: the survey's second table.
         for (level, single, exact) in [(2, 2219, 2220), (3, 2230, 2230), (9, 2289, 2290)] {
             let kyrre = with_logistics(core, "Kyrre", level, 1);
-            assert_eq!(land_points(&kyrre, core, 2000), (single, exact));
+            assert_eq!(points(&kyrre, 2000), (single, exact));
         }
         // Without a specialty (E5-1a to -1d): ⌊1560 × (10 + rate) / 10⌋ in both.
-        for (logistics, points) in [(0, 1560), (1, 1716), (2, 1872), (3, 2028)] {
+        for (logistics, land) in [(0, 1560), (1, 1716), (2, 1872), (3, 2028)] {
             let orrin = with_logistics(core, "Orrin", 1, logistics);
-            assert_eq!(land_points(&orrin, core, 1560), (points, points));
+            assert_eq!(points(&orrin, 1560), (land, land));
         }
+    }
+
+    /// E08 T39: batch E5a's E5-1 as the base pack's data derive it through `h3_heroes`
+    /// (HER-ADV-003 to -007; survey §13: every value observed): Boots of Speed 2160, Equestrian's
+    /// Gloves 1860, both with Expert Logistics 2928 from the table's 1560; Valeska's Archers count
+    /// one faster (speed 5: the table's 1630); Angel Wings fly and Boots of Levitation walk on water
+    /// at level 3; Pathfinding's levels; Expert Scouting with the Speculum and the Spyglass sees 10
+    /// tiles from the part's 5.
+    #[test]
+    fn the_base_packs_movement_effects_derive_as_batch_e5_saw_them() {
+        let rules = rules();
+        let core = rules.core();
+        let strict = strict_core().expect("strict-fixed");
+        let art = |k: &str| h3_heroes::ArtifactInstance::from(core.artifact_by_key(k).expect(k));
+        let mut hero = with_logistics(core, "Orrin", 1, 0);
+        hero.worn = vec![art("base:boots_of_speed")];
+        assert_eq!(land_points(&hero, core, &strict, 1560), (2160, 2160));
+        hero.worn = vec![art("base:equestrians_gloves")];
+        assert_eq!(land_points(&hero, core, &strict, 1560), (1860, 1860));
+        let mut hero = with_logistics(core, "Cuthbert", 1, 3);
+        hero.worn = vec![art("base:boots_of_speed"), art("base:equestrians_gloves")];
+        assert_eq!(land_points(&hero, core, &strict, 1560), (2928, 2928));
+
+        let archer = core.creature_by_key("base:archer").expect("archer");
+        let army = [ArmyStack {
+            slot: 0,
+            creature: archer,
+            count: 10,
+        }];
+        let valeska = with_logistics(core, "Valeska", 1, 0);
+        let orrin = with_logistics(core, "Orrin", 1, 0);
+        assert_eq!(land_table(&rules, &army, &valeska), 1630);
+        assert_eq!(land_table(&rules, &army, &orrin), 1560);
+
+        let mut hero = with_logistics(core, "Orrin", 1, 0);
+        assert_eq!(
+            h3_heroes::movement(&hero, core),
+            h3_heroes::Movement::default()
+        );
+        hero.worn = vec![art("base:angel_wings"), art("base:boots_of_levitation")];
+        let levels = h3_heroes::movement(&hero, core);
+        assert_eq!((levels.flying, levels.water_walking), (Some(3), Some(3)));
+        let pathfinding = skill("pathfinding", core).expect("Pathfinding");
+        let scouting = skill("scouting", core).expect("Scouting");
+        let radius = rules.adventure().params().scouting_radius();
+        assert_eq!(radius, 5);
+        for level in 1..=3 {
+            hero.skills = vec![(pathfinding, level), (scouting, level)];
+            assert_eq!(h3_heroes::movement(&hero, core).pathfinding, level);
+            assert_eq!(h3_heroes::scouting_radius(&hero, core, radius), 5 + level);
+        }
+        hero.worn = vec![art("base:speculum"), art("base:spyglass")];
+        assert_eq!(h3_heroes::scouting_radius(&hero, core, radius), 10);
     }
 
     /// E08 T36b, batch E5e's forced level-up (decision 81): a map that bans every skill but
@@ -1482,6 +1508,7 @@ mod tests {
         let before = with_logistics(core, "Gunnar", 1, 1);
         let batch = Batch {
             core,
+            strict: strict_core().expect("strict-fixed"),
             limit: 0,
             banned: Vec::new(),
             shares: TerrainShares::default(),

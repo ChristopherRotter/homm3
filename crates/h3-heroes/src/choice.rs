@@ -4,7 +4,8 @@
 //! `ai_secondary_skill_value` 0x524690 and `ai_takes_new_secondary_skill` 0x524DD0). Only the path
 //! with the original's flag clear is built (the setup's and an unowned hero's): the flag-set
 //! path reads computer-player state (E10). No draws. Survey
-//! `docs/rules/surveys/E08-progression.md` §10, design `docs/epics/E08-design.md` §8.
+//! `docs/rules/surveys/E08-progression.md` §10, design §8 of increment 4's note (since T34b in
+//! `docs/epics/E08-log.md`, "Increment 4's design note at its closure").
 //!
 //! The original indexes its skills by id, Pathfinding 0 to First Aid 27 (`SSTRAITS.TXT`'s
 //! order); the evaluation reads the ruleset's skills by that position, as the offers' draws do

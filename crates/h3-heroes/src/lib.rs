@@ -6,7 +6,9 @@
 //! learn and the Eagle Eye picks it learns), and what the adventure map reads of a hero (E08 T20a1:
 //! its Attack and Defense, its join bonus), and since E08 T27 its progression: the levels of its
 //! experience, the scenario's level limit, a level-up's draws and the answer as a change (ADR-0013
-//! point 12), and since E08 T28 the original's choice between two offers. No commands and no map or
+//! point 12), and since E08 T28 the original's choice between two offers, and since E08 T39 what
+//! the map reads to move and scout (the day's land points, a creature's speed, the Pathfinding,
+//! flying and water-walking levels, the scouting radius; ADR-0013 point 13). No commands and no map or
 //! battle state: who levels a hero up, when, and equipping and learning arrive with the adventure
 //! and game epics (E08–E10); the battle never depends on this crate and reads only the battle hero
 //! of the seam (`h3_contracts::BattleHero`).
@@ -38,6 +40,7 @@ mod details;
 mod error;
 mod level;
 mod level_up;
+mod movement;
 mod spells;
 
 pub use change::{
@@ -57,6 +60,7 @@ pub use level::{
     experience_bound, experience_cap, experience_for, gained_under_limit, level_of, pending_levels,
 };
 pub use level_up::{Choice, Draws, LevelUp, Offers, OriginalDraws, draw_level_up};
+pub use movement::{Movement, land_points, movement, movement_speed, scouting_radius};
 pub use spells::{available_spells, learn_level, learns_spell, spell_masteries};
 
 #[cfg(test)]
