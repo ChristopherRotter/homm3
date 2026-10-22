@@ -684,6 +684,7 @@ fn the_experiment_writer_marks_the_coast() {
         objects: vec![],
         underground: None,
         level_limit: 0,
+        banned_skills: Vec::new(),
     };
     let m = read(&w::gzip(&w::write(&map).unwrap()), &limits()).unwrap();
     for (index, t) in m.terrain.tiles.iter().enumerate() {
@@ -758,6 +759,7 @@ fn towns_from_the_experiment_writer_read_back() {
         ],
         underground: None,
         level_limit: 0,
+        banned_skills: Vec::new(),
     };
     let m = read(&w::gzip(&w::write(&map).unwrap()), &limits()).unwrap();
     let template = &m.templates[m.objects[1].template as usize];
@@ -915,6 +917,9 @@ fn maps_from_the_experiment_writer_read_back() {
         underground: None,
         // The scenario's level limit (E08 T32a: batch E4a's E4-6).
         level_limit: 5,
+        // Banned skills (E08 T36b: batch E5e's forced level-ups): Navigation, Eagle Eye, First
+        // Aid.
+        banned_skills: vec![5, 11, 27],
     };
     let m = read(&w::gzip(&w::write(&map).unwrap()), &limits()).unwrap();
     assert_eq!(m.header.version, Version::Sod);
@@ -922,6 +927,7 @@ fn maps_from_the_experiment_writer_read_back() {
     assert_eq!(m.header.name.as_bytes(), b"Writer");
     assert_eq!(m.header.description.as_bytes(), b"Read back");
     assert_eq!(m.header.level_limit, 5);
+    assert_eq!(m.banned_skills.bytes(), [1 << 5, 1 << 3, 0, 1 << 3]);
     let red = m.players[0].details.as_ref().unwrap();
     assert_eq!(red.allowed_towns, 0x1FF);
     assert_eq!(red.main_hero.as_ref().map(|h| h.hero_type), Some(0));
@@ -1045,6 +1051,11 @@ fn maps_from_the_experiment_writer_read_back() {
             .object_type_by_key("base:cartographer_land")
     );
     assert_eq!(setup.level_limit, 5);
+    let skill = |k| import::SOD.core().skill_by_key(k).unwrap();
+    assert_eq!(
+        setup.banned_skills,
+        ["base:navigation", "base:eagle_eye", "base:first_aid"].map(skill)
+    );
     let pile = &setup.map.objects[1];
     assert_eq!(
         pile.object_type,
@@ -1137,6 +1148,7 @@ fn the_writer_s_underground_and_guarded_piles_read_back() {
             objects: vec![hero((5, 5), 1), monster],
         }),
         level_limit: 0,
+        banned_skills: Vec::new(),
     };
     let m = read(&w::gzip(&w::write(&map).unwrap()), &limits()).unwrap();
     assert!(m.header.two_levels);

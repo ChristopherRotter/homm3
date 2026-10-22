@@ -20,6 +20,15 @@
 //! example's tests. The rows that need no seed byte (batch E4c, E4-6's experience) are scored by
 //! hand from the spec's predictions.
 //!
+//! **Batch E5's seed-byte rows** (E08 T36b, decision 81; survey
+//! `docs/rules/surveys/E08-hero-movement.md` §9): the maps of `E08-batch-5c.toml`, `-5d.toml` and
+//! `-5e.toml` the same way. E5-2's Logistics specialists get their levels at load as E4-1's heroes,
+//! and their **day's points** (D-22) are predicted for the reading's hero and for the hero recorded
+//! at the start, in both arithmetics: the reading's single precision (Q-0005, `faithful`) and
+//! exact basis points (`strict-fixed`); a hero whose two agree (Expert Logistics, level 3) is
+//! inconclusive. E5-3's and E5-10's level-ups are drawn as E4's dialogs, under the map's banned
+//! skills; the rest of batch E5 is scored by hand from its specs.
+//!
 //! `cargo run -p h3-map --example e4_score -- experiments/out/E08-batch-4a.h3m experiments/results/E08-batch-4a.md`
 
 use std::collections::BTreeMap;
@@ -28,14 +37,17 @@ use std::ops::Range;
 use std::process::ExitCode;
 use std::sync::Arc;
 
-use h3_content::{HeroClass, HeroTypeId, MAX_HERO_SKILLS, MAX_SKILL_LEVEL, Ruleset, SkillId};
-use h3_contracts::HeroId;
+use h3_content::{
+    FULL_BP, HeroClass, HeroEffect, HeroTypeId, MAX_HERO_SKILLS, MAX_SKILL_LEVEL, Ruleset, SkillId,
+};
+use h3_contracts::{ArmyStack, HeroId};
 use h3_game::{GameRuleset, GameSetup, GameState};
 use h3_heroes::{
     ArmyWorth, Choice, Draws, HeroChange, HeroDetails, LevelUp, OfferLevels, Offers, OriginalDraws,
     PrimarySkill, TerrainShares, apply_change_limited, experience_for, level_of, original_choice,
     pending_levels,
 };
+use h3_kernel::arith::{SINGLE_BITS, X87};
 use h3_map::Limits;
 use h3_pack_adventure::{ORIGINAL_PACKS, compile};
 
@@ -265,6 +277,77 @@ fn draw_weighted(
         .map(|(skill, _)| skill)
 }
 
+// -- The day's points (batch E5's E5-2, D-22) --------------------------------------------------
+
+/// The land table's entry at the army's slowest speed (ADV-MOV-001 as `h3_adventure::day_points`
+/// takes it, without the bonuses increment 5 adds; its last entry for every faster speed).
+fn land_table(rules: &GameRuleset, army: &[ArmyStack]) -> u32 {
+    let slowest = army
+        .iter()
+        .map(|stack| {
+            rules
+                .core()
+                .creature(stack.creature)
+                .map_or(u8::MAX, |c| c.speed)
+        })
+        .min()
+        .unwrap_or(u8::MAX);
+    rules.adventure().params().land_points(slowest)
+}
+
+/// A hero's day's points on land from `land`, the table's entry (survey
+/// `docs/rules/surveys/E08-hero-movement.md` §1.1 point 4, the derivation E08 T39 builds into
+/// `h3_heroes`, HER-ADV-003): `land` grown by the `land_movement` rates of the hero's skills, each
+/// grown by the hero's skill specialties for its skill, as `(single, exact)`. **Single** is the
+/// reading's (Q-0005, `faithful`; `hero_max_land_movement` 0x4E4990): each rate
+/// `f32(r × (f32(level) × g + 1))`, summed in single precision, then `trunc((1 + sum) × land)` in
+/// the x87's arithmetic; **exact** the basis points grown and rounded down (`strict-fixed`). The
+/// batch's heroes wear no artifact, so none counts here.
+fn land_points(details: &HeroDetails, core: &Ruleset, land: u32) -> (u32, u32) {
+    let full = u32::from(FULL_BP);
+    let ratio = |bp: u64| {
+        X87::ratio(u32::try_from(bp).unwrap_or(u32::MAX), full, SINGLE_BITS).unwrap_or(X87::ZERO)
+    };
+    let specialty = core
+        .hero_type(details.hero_type)
+        .map_or(&[][..], |h| h.specialty.as_slice());
+    let mut single = X87::ZERO;
+    let mut exact: u64 = 0;
+    for &(skill, level) in &details.skills {
+        let growth: u64 = specialty
+            .iter()
+            .filter_map(|effect| match *effect {
+                HeroEffect::SkillSpecialty {
+                    skill: grown,
+                    bp_per_level,
+                } if grown == skill => Some(u64::from(bp_per_level)),
+                _ => None,
+            })
+            .sum();
+        let effects = core.skill(skill).map_or(&[][..], |k| k.effects(level));
+        for effect in effects {
+            let HeroEffect::LandMovement { bp } = *effect else {
+                continue;
+            };
+            let bp = u64::from(bp);
+            let per_level = growth * u64::from(details.level);
+            exact += bp + bp * per_level / u64::from(full);
+            let rate = X87::int(details.level.into())
+                .round(SINGLE_BITS)
+                .times(ratio(growth))
+                .plus(X87::ONE)
+                .times(ratio(bp))
+                .round(SINGLE_BITS);
+            single = single.plus(rate).round(SINGLE_BITS);
+        }
+    }
+    let table = X87::int(land.into()).round(SINGLE_BITS);
+    let single = X87::ONE.plus(single).times(table).trunc();
+    let exact = u64::from(land) + u64::from(land) * exact / u64::from(full);
+    let points = |p: u64| u32::try_from(p).unwrap_or(u32::MAX);
+    (points(single), points(exact))
+}
+
 // -- A batch map's heroes ------------------------------------------------------------------------
 
 /// A source's levels at load: its rule, who chooses, the limit it applies, and whether the whole
@@ -285,14 +368,23 @@ enum Chooser {
     Left,
 }
 
-/// A batch map as the game builds it: its rules, limit, banned skills and terrain shares, and
-/// each hero's type, its details before its levels at load and its custom experience.
+/// A batch map as the game builds it: its rules, limit, banned skills, terrain shares and heroes.
 struct Batch<'a> {
     core: &'a Ruleset,
     limit: u8,
     banned: Vec<SkillId>,
     shares: TerrainShares,
-    heroes: Vec<(HeroTypeId, HeroDetails, Option<u32>)>,
+    heroes: Vec<MapHero>,
+}
+
+/// A hero of a batch map: its type, its details before its levels at load, its custom experience
+/// and the land table's entry at its army's slowest speed (batch E5's day's points).
+#[derive(Debug, Clone)]
+struct MapHero {
+    hero_type: HeroTypeId,
+    before: HeroDetails,
+    experience: Option<u32>,
+    land: u32,
 }
 
 impl<'a> Batch<'a> {
@@ -310,8 +402,14 @@ impl<'a> Batch<'a> {
             .iter()
             .zip(0..=u16::MAX)
             .filter_map(|(hero, index)| {
-                let details = base.hero(HeroId::new(index))?.clone();
-                Some((hero.hero_type, details, hero.details.experience))
+                let id = HeroId::new(index);
+                let army = &base.adventure().hero(id)?.army;
+                Some(MapHero {
+                    hero_type: hero.hero_type,
+                    before: base.hero(id)?.clone(),
+                    experience: hero.details.experience,
+                    land: land_table(rules, army),
+                })
             })
             .collect();
         Ok(Self {
@@ -399,9 +497,9 @@ impl<'a> Batch<'a> {
     fn report(&self, records: &[Record]) -> String {
         let mut out = String::new();
         for record in records {
-            let Some((_, before, experience)) = self.heroes.iter().find(|(hero_type, ..)| {
+            let Some(hero) = self.heroes.iter().find(|hero| {
                 self.core
-                    .hero_type(*hero_type)
+                    .hero_type(hero.hero_type)
                     .is_some_and(|h| h.name == record.hero_type)
             }) else {
                 let _ = writeln!(
@@ -411,29 +509,37 @@ impl<'a> Batch<'a> {
                 );
                 continue;
             };
-            out.push_str(&self.score(record, before, *experience));
+            out.push_str(&self.score(record, hero));
         }
         out
     }
 
     /// One hero's predictions and record.
-    fn score(&self, record: &Record, before: &HeroDetails, experience: Option<u32>) -> String {
+    fn score(&self, record: &Record, hero: &MapHero) -> String {
         let mut out = String::new();
+        let (before, experience) = (&hero.before, hero.experience);
         let class = self
             .core
             .hero_type(before.hero_type)
             .and_then(|h| self.core.hero_class(h.class))
             .map_or("?", |c| c.name.as_str());
         let _ = writeln!(out, "## {} ({}, {class})\n", record.id, record.hero_type);
+        let row = record.id.get(..4).unwrap_or("");
+        let observed_start = self.observed(record, "at the start", before);
         let Some(seed) = record
             .number("seed byte")
             .and_then(|s| u8::try_from(s).ok())
         else {
-            let _ = writeln!(out, "No seed byte recorded: nothing to predict.\n");
+            let _ = writeln!(
+                out,
+                "No seed byte recorded: no levels or dialogs predicted.\n"
+            );
+            if row == "E5-2" {
+                out.push_str(&self.day_points(record, hero, None, observed_start.as_ref()));
+            }
             return out;
         };
         let _ = writeln!(out, "Seed byte {seed}.\n");
-        let observed_start = self.observed(record, "at the start", before);
         let mut start = observed_start.clone();
         let reading = experience.map(|e| {
             let rule = (Rules::default(), Chooser::Evaluation);
@@ -496,6 +602,13 @@ impl<'a> Batch<'a> {
                 start = Some(loaded);
             }
         }
+        if row == "E5-2" {
+            let loaded = experience.map(|e| {
+                let rule = (Rules::default(), Chooser::Evaluation);
+                self.at_load(before, (e, self.limit), seed, rule).0
+            });
+            out.push_str(&self.day_points(record, hero, loaded.as_ref(), observed_start.as_ref()));
+        }
         let start = start.unwrap_or_else(|| before.clone());
         let dialogs = record.dialogs(self.core);
         if dialogs.is_empty() {
@@ -518,7 +631,6 @@ impl<'a> Batch<'a> {
             .iter()
             .map(|d| d.taken.unwrap_or(Choice::First))
             .collect();
-        let row = record.id.get(..4).unwrap_or("");
         let mut variants: Vec<(&str, (Rules, bool))> =
             vec![("the reading", (Rules::default(), false))];
         match row {
@@ -585,6 +697,76 @@ impl<'a> Batch<'a> {
         };
         let _ = writeln!(out, "- fits: {} {verdict}\n", list(&fits));
         out
+    }
+
+    /// E5-2's day's points (D-22): for the reading's hero after its levels at load and for the
+    /// hero recorded at the start (or, played by hand, its level and skills alone), the points in
+    /// both arithmetics; which of them every recorded day's points fit; inconclusive where the
+    /// two agree for the hero recorded.
+    fn day_points(
+        &self,
+        record: &Record,
+        hero: &MapHero,
+        loaded: Option<&HeroDetails>,
+        observed: Option<&HeroDetails>,
+    ) -> String {
+        let mut out = String::new();
+        let _ = writeln!(out, "Day's points (the land table's {}):\n", hero.land);
+        let line = |name: &str, h: &HeroDetails| {
+            let (single, exact) = land_points(h, self.core, hero.land);
+            let logistics = self.logistics(h);
+            format!(
+                "- {name} (level {}, Logistics {logistics}): single precision {single}, exact {exact}",
+                h.level
+            )
+        };
+        if let Some(h) = loaded {
+            let _ = writeln!(out, "{}", line("the reading's hero", h));
+        }
+        let partial = || {
+            let mut h = hero.before.clone();
+            h.level = u8::try_from(record.number("level at the start")?).ok()?;
+            h.skills = parse_skills(record.field("secondary skills at the start")?, self.core)?;
+            Some(h)
+        };
+        let recorded_hero = observed.cloned().or_else(partial);
+        let days: Vec<(u8, u64)> = (1..=2)
+            .filter_map(|day| Some((day, record.number(&format!("day {day} points"))?)))
+            .collect();
+        let Some(h) = recorded_hero.filter(|_| !days.is_empty()) else {
+            let _ = writeln!(
+                out,
+                "- recorded: incomplete (the level, the skills or the points)\n"
+            );
+            return out;
+        };
+        let _ = writeln!(out, "{}", line("the recorded hero", &h));
+        let shown: Vec<String> = days.iter().map(|(d, p)| format!("day {d} {p}")).collect();
+        let _ = writeln!(out, "- recorded: {}", shown.join(", "));
+        let (single, exact) = land_points(&h, self.core, hero.land);
+        let fit = |points: u32| days.iter().all(|&(_, p)| p == u64::from(points));
+        let mut fits = Vec::new();
+        if fit(single) {
+            fits.push("single precision (the reading, Q-0005)");
+        }
+        if fit(exact) {
+            fits.push("exact (strict-fixed)");
+        }
+        let verdict = if single == exact {
+            " the arithmetics agree here: inconclusive"
+        } else {
+            ""
+        };
+        let _ = writeln!(out, "- fits: {}{verdict}\n", list(&fits));
+        out
+    }
+
+    /// The hero's Logistics level by name (`none` without it).
+    fn logistics(&self, h: &HeroDetails) -> &'static str {
+        let level = skill("logistics", self.core)
+            .and_then(|logistics| h.skills.iter().find(|&&(s, _)| s == logistics))
+            .map_or(0, |&(_, level)| level);
+        LEVELS.get(usize::from(level)).copied().unwrap_or("?")
     }
 
     /// The hero recorded under `when` (its experience, level, primary and secondary skills and
@@ -992,6 +1174,7 @@ mod tests {
                 ],
                 underground: None,
                 level_limit: limit,
+                banned_skills: Vec::new(),
             };
             let file = w::gzip(&w::write(&map).expect("map"));
             let raw = h3_map::read(&file, &Limits::default()).expect("read");
@@ -1000,10 +1183,10 @@ mod tests {
             assert_eq!(batch.limit, limit);
             for seed in 1..4 {
                 let game = GameState::new(&rules, &setup, seed).expect("game");
-                for (index, (_, before, experience)) in batch.heroes.iter().enumerate() {
+                for (index, hero) in batch.heroes.iter().enumerate() {
                     let id = HeroId::new(u16::try_from(index).expect("id"));
                     let built = game.hero(id).expect("hero");
-                    let experience = experience.expect("custom");
+                    let (before, experience) = (&hero.before, hero.experience.expect("custom"));
                     let found = (1..=255).any(|s| {
                         let (ours, _) = batch.at_load(
                             before,
@@ -1058,7 +1241,12 @@ mod tests {
             limit: 0,
             banned: Vec::new(),
             shares: TerrainShares::default(),
-            heroes: vec![(knight, before.clone(), Some(3200))],
+            heroes: vec![MapHero {
+                hero_type: knight,
+                before: before.clone(),
+                experience: Some(3200),
+                land: 1500,
+            }],
         };
         let seed = 75;
         let (loaded, _) = batch.at_load(
@@ -1139,5 +1327,209 @@ mod tests {
             parse_primary_skill("Spell Power"),
             Some(PrimarySkill::Power)
         );
+    }
+
+    fn hero_type(core: &Ruleset, name: &str) -> HeroTypeId {
+        core.hero_types()
+            .iter()
+            .position(|h| h.name == name)
+            .and_then(|i| u16::try_from(i).ok())
+            .map(HeroTypeId::from_raw)
+            .expect(name)
+    }
+
+    /// A level-1 hero of `name` with `logistics` (0: none) at `level`.
+    fn with_logistics(core: &Ruleset, name: &str, level: u8, logistics: u8) -> HeroDetails {
+        let skill = skill("logistics", core).expect("Logistics");
+        HeroDetails {
+            hero_type: hero_type(core, name),
+            level,
+            experience: 0,
+            offered: OfferLevels::default(),
+            primary: [1, 1, 1, 1],
+            skills: if logistics == 0 {
+                Vec::new()
+            } else {
+                vec![(skill, logistics)]
+            },
+            worn: Vec::new(),
+            backpack: Vec::new(),
+            spells: Vec::new(),
+            mana: 0,
+        }
+    }
+
+    /// E08 T36b: the day's points of the survey's §1.3 (E08-hero-movement.md) and of batch E5a's
+    /// E5-1, in both arithmetics, from the base pack's Logistics and specialties.
+    #[test]
+    fn land_points_are_the_survey_s() {
+        let rules = rules();
+        let core = rules.core();
+        for (level, logistics, single, exact) in [
+            (1, 1, 1657, 1657),
+            (2, 1, 1664, 1665),
+            (3, 1, 1672, 1672),
+            (6, 1, 1694, 1695),
+            (12, 1, 1739, 1740),
+            (20, 1, 1800, 1800),
+            (2, 2, 1829, 1830),
+            (3, 2, 1845, 1845),
+            (9, 2, 1934, 1935),
+            (12, 3, 2220, 2220),
+        ] {
+            let gunnar = with_logistics(core, "Gunnar", level, logistics);
+            assert_eq!(
+                land_points(&gunnar, core, 1500),
+                (single, exact),
+                "level {level}, Logistics {logistics}"
+            );
+        }
+        // The table's 2000 (speed 11 and up) at Basic: the survey's second table.
+        for (level, single, exact) in [(2, 2219, 2220), (3, 2230, 2230), (9, 2289, 2290)] {
+            let kyrre = with_logistics(core, "Kyrre", level, 1);
+            assert_eq!(land_points(&kyrre, core, 2000), (single, exact));
+        }
+        // Without a specialty (E5-1a to -1d): ⌊1560 × (10 + rate) / 10⌋ in both.
+        for (logistics, points) in [(0, 1560), (1, 1716), (2, 1872), (3, 2028)] {
+            let orrin = with_logistics(core, "Orrin", 1, logistics);
+            assert_eq!(land_points(&orrin, core, 1560), (points, points));
+        }
+    }
+
+    /// E08 T36b, batch E5e's forced level-up (decision 81): a map that bans every skill but
+    /// Logistics and Scouting gives heroes who know none, of three classes, a level-up offering
+    /// exactly those two for every seed byte; the seed byte decides only their order.
+    #[test]
+    fn a_map_banning_all_but_two_skills_offers_those_two() {
+        let rules = rules();
+        let core = rules.core();
+        let mut players: [Option<w::Player>; w::PLAYERS] = Default::default();
+        players[0] = Some(w::Player {
+            human: true,
+            computer: true,
+            towns: 1,
+        });
+        let hero = |tile: (u8, u8), hero_type: u8, class: u8| {
+            w::MapObject::Hero(w::Hero {
+                tile,
+                owner: 0,
+                hero_type,
+                class,
+                name: None,
+                experience: Some(999),
+                skills: Some(Vec::new()),
+                army: Some([Some((0, 10)), None, None, None, None, None, None]),
+                tight_formation: false,
+                artifacts: None,
+                spells: None,
+                primary: Some([1, 1, 1, 1]),
+            })
+        };
+        let map = w::Map {
+            name: "E5e".to_owned(),
+            description: "Forced level-ups".to_owned(),
+            size: 36,
+            terrain: w::Terrain::Grass,
+            patches: vec![],
+            roads: vec![],
+            players,
+            objects: vec![
+                hero((3, 3), 0, 0),
+                hero((9, 3), 70, 8),
+                hero((15, 3), 96, 12),
+            ],
+            underground: None,
+            level_limit: 0,
+            banned_skills: (0..w::SKILL_COUNT).filter(|&c| c != 2 && c != 3).collect(),
+        };
+        let file = w::gzip(&w::write(&map).expect("map"));
+        let raw = h3_map::read(&file, &Limits::default()).expect("read");
+        let setup = h3_map::import(&raw, &rules).expect("import");
+        let batch = Batch::new(&rules, &setup).expect("batch");
+        assert_eq!(batch.banned.len(), 26);
+        let mut pair = [
+            skill("logistics", core).expect("Logistics"),
+            skill("scouting", core).expect("Scouting"),
+        ];
+        pair.sort_unstable();
+        let mut lefts = BTreeMap::new();
+        for hero in &batch.heroes {
+            assert_eq!((hero.before.level, hero.before.skills.len()), (1, 0));
+            for seed in 1..=255 {
+                let ups = batch.in_play(&hero.before, 1009, seed, (Rules::default(), false), &[]);
+                let [up] = ups.as_slice() else {
+                    panic!("seed {seed}: {ups:?}")
+                };
+                let Offers::Two(left, right) = up.offers else {
+                    panic!("seed {seed}: {up:?}")
+                };
+                let mut offered = [left, right];
+                offered.sort_unstable();
+                assert_eq!((up.level, offered), (2, pair), "seed {seed}");
+                *lefts.entry(left).or_insert(0) += 1;
+            }
+        }
+        // Both stand left for some seed bytes.
+        assert_eq!(lefts.len(), 2, "{lefts:?}");
+    }
+
+    /// E08 T36b: E5-2's records: the day's points fit one arithmetic where they part and both
+    /// where they agree; played by hand (no seed byte) the recorded level and skills suffice.
+    #[test]
+    fn e5_2_records_score_the_day_s_points() {
+        let rules = rules();
+        let core = rules.core();
+        let before = with_logistics(core, "Gunnar", 1, 1);
+        let batch = Batch {
+            core,
+            limit: 0,
+            banned: Vec::new(),
+            shares: TerrainShares::default(),
+            heroes: vec![MapHero {
+                hero_type: before.hero_type,
+                before,
+                experience: Some(1000),
+                land: 1500,
+            }],
+        };
+        let report = |seed: &str, skills: &str, days: [u32; 2]| {
+            let [one, two] = days;
+            batch.report(&parse_template(&format!(
+                "## E5-2a — Gunnar at level 2\n\n\
+                 - Red hero **E5-2a** (Gunnar, specialty skill Logistics, 1000 experience): …\n\n\
+                 **Record**\n\n\
+                 - seed byte (hero +0x8F): {seed}\n\
+                 - level at the start: 2\n\
+                 - secondary skills at the start (in the hero's order, each with its level): \
+                 {skills}\n\
+                 - day 1 points: {one}\n\
+                 - day 2 points: {two}\n\
+                 - anything odd: \n"
+            )))
+        };
+        let r = report("", "Logistics basic, Tactics basic", [1664, 1664]);
+        assert!(r.contains("No seed byte recorded"), "{r}");
+        assert!(r.contains("single precision 1664, exact 1665"), "{r}");
+        assert!(
+            r.contains("- fits: single precision (the reading, Q-0005)\n"),
+            "{r}"
+        );
+        let r = report("", "Logistics advanced", [1830, 1830]);
+        assert!(r.contains("- fits: exact (strict-fixed)\n"), "{r}");
+        let r = report("", "Logistics expert", [1995, 1995]);
+        assert!(r.contains("agree here: inconclusive"), "{r}");
+        let r = report("", "Logistics basic", [1664, 1700]);
+        assert!(r.contains("- fits: none\n"), "{r}");
+        // With a seed byte the reading's hero after its level at load shows too.
+        let r = report("75", "Logistics basic", [1664, 1664]);
+        assert!(r.contains("Seed byte 75."), "{r}");
+        assert!(
+            r.contains("- the reading's hero (level 2, Logistics "),
+            "{r}"
+        );
+        let r = batch.report(&parse_template(
+            "## E5-2a — x\n\n- Red hero **E5-2a** (Gunnar, …)\n",
+        ));
+        assert!(r.contains("- recorded: incomplete"), "{r}");
     }
 }
