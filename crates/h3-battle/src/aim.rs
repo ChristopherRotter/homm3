@@ -25,9 +25,7 @@ use h3_contracts::{BattleSide, FortLevel};
 use h3_kernel::arith::{DOUBLE_BITS, SINGLE_BITS, X87};
 
 use crate::binds;
-use crate::combat::{
-    can_shoot, can_shoot_without, estimated_damage, melee_damage, shot_damage, spares,
-};
+use crate::combat::{can_shoot, can_shoot_without, estimated_damage, spares};
 use crate::damage::{Strike, effective_defense, frenzied};
 use crate::effects::{DamageRoll, Status};
 use crate::event::StrikeFlags;
@@ -1022,15 +1020,53 @@ pub(crate) fn uncapped_estimate(
     shot: bool,
     jousting: u8,
 ) -> u64 {
-    let s = state.at(attacker);
-    let each = per_creature(state, ruleset, s);
+    estimate_between(
+        ruleset,
+        ((state, attacker), (state, target)),
+        count,
+        (shot, jousting),
+    )
+}
+
+/// A stack as the computer's estimates read it: the state its record and effects come from and
+/// its id there. A removal's lone copy of a record and the battle's record of the same stack are
+/// two parties (E23 T4d, survey slip 24).
+pub(crate) type Party<'a> = (&'a BattleState, StackId);
+
+/// [`damage_estimate`] of the attacker's record on the target's, each read from its own state
+/// ([`estimate_between`] at most the target's hit points).
+pub(crate) fn damage_between(
+    ruleset: &BattleRuleset,
+    (attacker, target): (Party<'_>, Party<'_>),
+    count: u64,
+    flags: (bool, u8),
+) -> u64 {
+    estimate_between(ruleset, (attacker, target), count, flags)
+        .min(hit_points(target.0.at(target.1)))
+}
+
+/// [`uncapped_estimate`] of the attacker's record on the target's, each read from its own state
+/// (the stages read the heroes and the field from the attacker's, which the two states share):
+/// `count` creatures' damage per creature ([`per_creature`]), every stage of a shot (`shot`) or of
+/// a strike after `jousting` hexes ([`estimated_damage`]), at least 1, twice for a creature that
+/// shoots twice.
+pub(crate) fn estimate_between(
+    ruleset: &BattleRuleset,
+    ((sa, attacker), (st, target)): (Party<'_>, Party<'_>),
+    count: u64,
+    (shot, jousting): (bool, u8),
+) -> u64 {
+    let s = sa.at(attacker);
+    let each = per_creature(sa, ruleset, s);
     let base = u64::try_from(ftol(double(count).times(each))).unwrap_or(0);
-    let mut damage = if shot {
-        shot_damage(state, ruleset, (attacker, target), base)
+    let (flags, charge) = if shot {
+        (StrikeFlags::RANGED, 0)
     } else {
-        melee_damage(state, ruleset, (attacker, target), (base, jousting))
-    }
-    .max(1);
+        (StrikeFlags::NONE, jousting)
+    };
+    let victim = st.at(target);
+    let mut damage =
+        estimated_damage(sa, ruleset, (s, attacker, victim), (base, charge), flags).max(1);
     if shot && s.has(StackTraits::STRIKES_TWICE) {
         damage = damage.saturating_mul(2);
     }
@@ -1095,32 +1131,56 @@ pub(crate) fn exchange(
     state: &BattleState,
     ruleset: &BattleRuleset,
     side: BattleSide,
-    ((a, mut a_hp), (t, mut t_hp)): ((StackId, u64), (StackId, u64)),
+    ((a, a_hp), (t, t_hp)): ((StackId, u64), (StackId, u64)),
     jousting: u8,
 ) -> (u64, u64) {
-    let (sa, st) = (state.at(a), state.at(t));
+    exchange_between(
+        ruleset,
+        side,
+        (((state, a), a_hp), ((state, t), t_hp)),
+        jousting,
+    )
+}
+
+/// [`exchange`] of the striker's record on the struck stack's, each read from its own state
+/// ([`Party`]): a removal's lone copy of a record striking the battle's record of the same stack
+/// (E23 T4d, survey slip 24). The reflections read the struck party's Fire Shield.
+pub(crate) fn exchange_between(
+    ruleset: &BattleRuleset,
+    side: BattleSide,
+    ((pa, mut a_hp), (pt, mut t_hp)): ((Party<'_>, u64), (Party<'_>, u64)),
+    jousting: u8,
+) -> (u64, u64) {
+    let (sa, st) = (pa.0.at(pa.1), pt.0.at(pt.1));
     let per = |s: &Stack, hp: u64| hp.div_ceil(u64::from(s.max_hp.max(1)));
-    let dealt = damage_estimate(state, ruleset, (a, t), per(sa, a_hp), false, jousting);
-    a_hp = a_hp.saturating_sub(reflection_estimate(state, ruleset, (a, t), dealt, t_hp));
+    let strike = |(from, to): (Party<'_>, Party<'_>), count, charge, left| {
+        let dealt = damage_between(ruleset, (from, to), count, (false, charge));
+        let reflected =
+            magic::reflection(to.0, ruleset, (from.0.at(from.1), to.1), dealt.min(left));
+        (dealt, reflected)
+    };
+    let (dealt, reflected) = strike((pa, pt), per(sa, a_hp), jousting, t_hp);
+    a_hp = a_hp.saturating_sub(reflected);
     t_hp = t_hp.saturating_sub(dealt);
     if a_hp == 0 || t_hp == 0 {
         return (a_hp, t_hp);
     }
+    let state = pa.0;
     let retaliates = !sa.has(StackTraits::NO_ENEMY_RETALIATION)
         && !st.spells.status.contains(Status::PETRIFIED)
         && st.retaliations_left > 0
         && (state.difficulty > 0 || state.human[side.index()]);
     if retaliates {
-        let back = damage_estimate(state, ruleset, (t, a), per(st, t_hp), false, 0);
-        t_hp = t_hp.saturating_sub(reflection_estimate(state, ruleset, (t, a), back, a_hp));
+        let (back, reflected) = strike((pt, pa), per(st, t_hp), 0, a_hp);
+        t_hp = t_hp.saturating_sub(reflected);
         a_hp = a_hp.saturating_sub(back);
         if a_hp == 0 || t_hp == 0 {
             return (a_hp, t_hp);
         }
     }
     if sa.has(StackTraits::STRIKES_TWICE) {
-        let again = damage_estimate(state, ruleset, (a, t), per(sa, a_hp), false, 0);
-        a_hp = a_hp.saturating_sub(reflection_estimate(state, ruleset, (a, t), again, t_hp));
+        let (again, reflected) = strike((pa, pt), per(sa, a_hp), 0, t_hp);
+        a_hp = a_hp.saturating_sub(reflected);
         t_hp = t_hp.saturating_sub(again);
     }
     (a_hp, t_hp)

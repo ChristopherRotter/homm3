@@ -970,3 +970,47 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   T4b2). Ten Master Genies with six other stacks against a hero's seven, three spells lasting on
   the side: 0.25 to 0.45 ms, on Magic Plains (the mass values) up to 0.61 ms. Within the budget,
   the dragon's the nearest to it.
+
+## T4d — a removal's copy (2026-10-22, increment 5)
+
+- **The user** (2026-10-22): T4d whole (the agent proposed the reading first, the build in a
+  second session: the call closure showed 35 functions reading the battle manager).
+- **The reading** (§7.54). The copy (0x437A00) keeps every field of its own, its side and record
+  index included, so what an evaluator takes from the context at its index or from its threat
+  record is the stack's. Pointer tests over the battle's records never meet it (Disrupting Ray
+  0x438E11, Slow 0x439379) or leave out only it (Berserk's candidates 0x4455C9, Hypnotize's walk
+  0x43A5FE). A hex names the battle's record by side and index (0x4E7170): the fit test 0x446C40
+  compares those, so the copy fits its own hexes and its search is the stack's; the blocked-shooter
+  test 0x469600 compares by pointer (0x442880), so a two-hex shooter's copy is blocked by its own
+  record where either is berserk or the copy hypnotized. The map's start, the record's position, is
+  reached and marked (+0x4A): the record is Berserk's nearest target (distance or cost 0) and one
+  of Hypnotize's, struck by the copy (0x43A340). Nothing else walks the records with the stack.
+  Found besides, port errors in both profiles: 0x448BD0 counts the turns on the record it is
+  given (the copy's speed and shot), the port kept the battle's; 0x4B2DA0 marks a shooter's whole
+  other side (0x4B2F18), the port's map lacked the marks (Hypnotize's value of a shooter).
+- **The port.** `h3-battle`'s computer: `berserk_search_of_copy` (the stack itself a candidate at
+  0; `control::searched` with `itself`), `exchange_with_itself` (the copy's exchange with the
+  battle's record: aim's estimate and exchange read each party from its own state, `Party`,
+  `estimate_between`, `damage_between`, `exchange_between`; `combat::melee_damage` gone,
+  `shot_damage` test-only), `block_by_itself` (a blocked copy marked as one that cannot shoot,
+  asked again after each ended spell, as `end_spell` recomputes the marks). `h3-battle-ai`: the
+  removal with BAT-QUIRK-25 values on `View::on_copy` (the clone with the spells ended, the
+  battle beside it in `lone`); Disrupting Ray, Slow, Berserk and Hypnotize read it
+  (`berserk_attack_on_itself`); `within_a_turn` counts on a copy at its own speed; Hypnotize's
+  shooter marks. BAT-STUB-12 retired; `POLICY_VERSION` 10; the AI lane's inbox has the version.
+- **Kept apart** (documented): none new. The port's copy is the battle's clone with the spells
+  ended (its own record) beside the battle (the records the evaluators walk); a removal is rare in
+  the gated workload (no heroes: only the creatures' own spells last).
+- **A blind check** (a fresh agent, the disassembly against the port, without the reading): the
+  pointer tests, Berserk's and Hypnotize's targets, the self-block, the copy's exchange, the
+  fit test and the turns agree. Found and built: the copy keeps the stack's morale and luck (only
+  0x469750 recomputes them, after an action): an ended Mirth, Sorrow, Fortune or Misfortune still
+  counts there (slip 24; `View::kept`). Found and recorded: Hypnotize's end on the copy adds the
+  copy to the battle's aura lists, which keep it after it is freed (0x444689 → 0x43EA70; a
+  state-corrupting bug, never modelled, BAT-QUIRK-26, for the user's confirmation). Noted as
+  known: the bow's test asks the controller's hero (the inbox's F-r2b-2).
+- **Cost** (2026-10-22): `computer-decisions` 518 107 736 instructions, +0.02 % (no re-set).
+  Release, each decision's best of five (a local patch of `h3 bench-computer`, not kept), 400
+  battles each of seeds 4 to 8: 34.7 to 38.0 µs per decision on average, the slowest 0.42 to
+  0.79 ms (a Faerie Dragon, a Master Genie or an Ogre Mage: their contexts and predictions).
+  Within the budget.

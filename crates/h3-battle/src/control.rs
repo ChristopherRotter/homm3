@@ -59,21 +59,25 @@ pub(crate) fn candidates(
     ruleset: &BattleRuleset,
     id: StackId,
 ) -> FixedVec<(StackId, u32), STACK_CAPACITY> {
-    searched(state, ruleset, id).0
+    searched(state, ruleset, id, false).0
 }
 
 /// [`candidates`] with the pathfinder's map their search left (none for a stack that can shoot:
-/// no search).
+/// no search). With `itself` the stack's own record is a candidate too, at distance 0 or at the
+/// search's start (cost 0): the computer's removal values a lone copy of the record, which the
+/// original's 0x445490 tells from the battle's record by pointer (E23 T4d, survey slip 24); the
+/// copy's search is the stack's, as the pathfinder tells a hex's stack by side and index (0x446C40).
 pub(crate) fn searched(
     state: &BattleState,
     ruleset: &BattleRuleset,
     id: StackId,
+    itself: bool,
 ) -> (FixedVec<(StackId, u32), STACK_CAPACITY>, Option<Search>) {
     let field = Field::new(ruleset.battle().field);
     let me = *state.at(id);
     let others = (0u8..)
         .zip(state.stacks.iter())
-        .filter(|&(i, t)| i != id.0 && t.is_alive() && !t.is_turret())
+        .filter(|&(i, t)| (itself || i != id.0) && t.is_alive() && !t.is_turret())
         .map(|(i, t)| (StackId(i), t));
     if can_shoot(state, field, id) {
         let front = me.footprint(field).front;
@@ -93,7 +97,11 @@ pub(crate) fn searched(
         speed: None,
     };
     let map = Search::run(state, field, (id, &me), query);
-    let list = nearest(others.filter_map(|(t, s)| map.mark_of(s.hex).map(|c| (t, u32::from(c)))));
+    // The start, reached at cost 0, is the stack's own position (0x4B2DA0 marks it).
+    let list = nearest(others.filter_map(|(t, s)| {
+        let c = if t == id { Some(0) } else { map.mark_of(s.hex) };
+        c.map(|c| (t, u32::from(c)))
+    }));
     (list, Some(map))
 }
 
