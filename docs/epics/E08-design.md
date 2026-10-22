@@ -274,23 +274,19 @@ the first hero's step). *Agent's call (change freely):* **E5-11**, an Angel Wing
 border gate whose key it lacks, clicks a free tile beyond it; the reading predicts a path over the
 gate (an entrance a flyer passes, §3.1 point 7), which no other source states (§13).
 
-- **Spec** (`experiments/specs/E08-batch-5*.toml`, `h3-experiment` and `docs/experiments/`
-  battle-owned: `cross-lane`). *Built by T36a* (decision 80): batches E5a (E5-1, E5-4 to E5-6,
-  with E5-6b on the SoD Cursed Ground) and E5b (E5-7, E5-9, E5-11; trees and Border Gates in
-  `[[map.object]]`). *Left for T36b:* Gunnar and Kyrre at levels 2, 3, 6, 12 with
-  Basic Logistics (E5-2: a custom experience gives levels at load, so the scorer predicts their
-  skills after them; or levels the seed byte keeps clean of Logistics), a level-up the test
-  forces (E5-3, E5-10: the seed byte's prediction, as batch E4's). Split by rows if a map cannot
-  hold them all (batch E4's E4b precedent).
-- **Scorer:** most rows predict fixed numbers (§9); E5-2, E5-3 and E5-10 need the seed byte's
-  draws and the levels at load: `crates/h3-map/examples/e4_score.rs` extended or an `e5_score`
-  beside it (on `h3-heroes`, `h3-map`'s dev-dependency since `shared/e08-t32a`), with the
-  results template.
+- **Spec and scorer: built** (T36a, T36b; decisions 80, 81; the log): batches E5a to E5e
+  (`experiments/specs/E08-batch-5*.toml`, their templates in `experiments/results/`), E5-2 on two
+  maps (a hero type once per map; the level-6 heroes with eight skills, since the evaluation at
+  load takes Logistics whenever offered), E5-3 and E5-10 on a map banning all but Logistics and
+  Scouting (the forced offers), the gains in the day from the backpack instead of a pile;
+  `crates/h3-map/examples/e4_score.rs` scores E5-2's points (D-22) and E5-3's and E5-10's dialogs.
+  T39's `land_points` replaces the scorer's own copy of the arithmetic (the same §1.3 vectors).
 - **The harness's reads** (`clients/capture/`, client-owned; built by this lane, `cross-lane`, as
   T32b1): a tile's explored bit for a player (`explored:x,y`, the vision word against the player's
   bit; E5-9, E5-10, E5-11), a hero's points at a turn start without a walk (check whether a read
   step's `points` gives it), the next turn's start after `end_turn` (exists), the path's mark
-  (exists).
+  (exists); for E5-3b and E5-10b an artifact moved from the backpack to a slot in the hero screen
+  (or the rows are skipped, as the survey's plan allows).
 - **The run and the scoring:** on the harness (decision 50), then scored: D-22 (E5-2), D-23
   (E5-6: Cursed Ground built or not), D-24 (E5-4), D-25 (E5-7), D-26 (E5-10), A-13's original
   path (E5-9), E5-11; the consensus rows (E5-1, -3, -5) as checks.

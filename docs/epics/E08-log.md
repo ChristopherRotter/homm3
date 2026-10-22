@@ -4009,3 +4009,61 @@ it went offline later, after everything was copied.
   of the points at a turn start without a walk for E5-1); T36b's specs and scorer.
 - **Verify**: the full run with the original data on de9f71b (`master` a64631e merged in, #382)
   passed all 16 steps (engine code 4e17824f; benchmarks within +0.7 %). CI cannot run (billing).
+
+### Increment 5, round 1: T36b, batch E5's seed-byte rows and their scorer; round 1 closed (2026-10-22, `adventure/e08-t36b`, `cross-lane`)
+
+**The cut** (decision 81; asked at the start, `AskUserQuestion`): T36b whole in one pull request,
+its level-ups forced by the map's banned skills. Not chosen: several heroes per row (batch E4's
+way), T36b cut with E5-2 first.
+
+**Baseline:** `master` c84370f (#383 merged); the sandbox's baseline ran the full gates with the
+original data on its engine code (4e17824f, the code T36a verified): all 16 steps passed. The
+branch starts from `master` 0f989da (#386, battle only). The user's PC was linked at the start (the
+repository from GitHub; the original data from the PC: the executable, both LODs, `Objects.txt`,
+`maps.tar`, `extracted.tar`); it went offline later, after everything was copied.
+
+- **Banned skills** (decision 81): `h3_map::writer::Map::banned_skills` (the original's codes;
+  SoD's header's four bytes, bit `code`; a code from 28 on is refused) and `h3-experiment`'s
+  `[map] banned_skills` by `SSTRAITS.TXT` name (battle-owned, `cross-lane`); the writer's other
+  maps (the smoke example, `h3-cli`'s AI tests, `h3-view`'s situation: `cross-lane`) say none.
+  Tests: the writer refuses code 28; the read-back test writes three, reads the bits and imports
+  Navigation, Eagle Eye and First Aid; the spec maps names in any case and refuses an unknown one.
+- **Batch E5c and E5d** (E5-2, D-22): Gunnar, Kyrre and Dessa (the three Logistics specialists)
+  with Basic Logistics and 10 Dwarves (speed 3, 1500), levelled at load from their experience:
+  E5c Gunnar 2, Kyrre 6, Dessa 12; E5d Kyrre 2, Gunnar 3 (both arithmetics agree: the control),
+  Dessa 6; a hero type once per map, Red's two and Blue's one never moving; the points read at
+  both turn starts of days 1 and 2. **Measured in the engine first** (the levels at load over 400
+  games): the computer's evaluation takes Logistics whenever offered, so a level-2 hero ends Basic
+  or Advanced always (both part from exact there), a level-6 one with Basic Logistics alone ends
+  Expert in 81 % (Kyrre) and 92 % (Dessa), where both agree; with seven more skills at Basic,
+  filling the slots so that Logistics is one advance among eight, in 25 % and 59 %. So the level-6
+  heroes know Archery, Armorer, Offense, Leadership, Luck, Resistance and First Aid too; level 12
+  ends Expert in 99 % either way, so E5-2c checks the specialty's growth at a high level (2220
+  under both) rather than D-22.
+- **Batch E5e** (E5-3, E5-10): a map banning all but Logistics and Scouting; the heroes who level
+  know no skill and have 999 experience, one Pikeman east (10 hit points: level 2, one dialog, the
+  two offered in the order S gives; the scorer's test checks it for every seed byte and three
+  classes). Red's E5-3a takes Logistics (1560, 1460 after the attack, 1360 after a step, 1716 at
+  day 2), E5-3b puts Boots of Speed on from its backpack (1560, 1460, 2160): the backpack instead
+  of the survey's pile (no artifact objects in the writer; `hero_equip_artifact` 0x4E2A00 is on
+  §1.4's list as `hero_give_artifact` is). Blue's E5-10a takes Scouting, E5-10b puts the Spyglass
+  on, neither steps on day 1; three probes each on their row (W 6 west: radius 6 around the
+  standing tile only; E 7 east: radius 6 around the day-2 step's tile only; C 8 east: never),
+  read at the start, after the gain, at day 2's start and after the step: the reading E only
+  after the step, VCMI W at once for the skill, the engine's strict-fixed W at day 2. Red plays
+  E5-3 and Blue E5-10, so each player's explored tiles come from its own heroes. Checked in the
+  engine: every probe unexplored for Blue at the build, the tiles at distance 5 explored.
+- **The scorer** (`e4_score`, extended rather than an `e5_score`: the levels at load and the
+  dialogs are batch E4's): each map hero carries the land table's entry at its army's slowest
+  speed; E5-2's records get the day's points for the reading's hero after its levels at load and
+  for the hero recorded (or its level and skills alone, played by hand), single precision (Q-0005,
+  the x87's arithmetic through `h3_kernel::arith::X87`, a new dev-dependency of `h3-map`) and
+  exact, and which fit every recorded day; a row without a seed byte still scores its points;
+  E5-3's and E5-10's dialogs are scored as E4's, under the map's bans. Tests: §1.3's vectors and
+  E5-1's from the base pack, the forced offers, E5-2's report.
+- **Templates**: E5c to E5e's, and E5a's and E5b's, which T36a had not committed (the README's
+  flow commits them). Every map compiles, reads, imports and validates (a throwaway example, not
+  committed).
+- **Not built**: the recipes and the run (T37: the explored-tile read, a read of the points at a
+  turn start without a walk, an equip from the backpack in the hero screen); the scoring (T38).
+- **Verify**: the full run with the original data on the branch: see the pull request.

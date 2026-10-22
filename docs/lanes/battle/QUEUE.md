@@ -15,6 +15,11 @@ T1c is done (#316, #317 merged). T1a5 is cut in four (the user, 2026-10-20; the 
 
 Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure are merged below by kind, done and duplicate parts dropped; the origin stays in brackets (an epic and task, a review report such as r3 or F-r2b-2). History: git. Items for other lanes went into their inboxes; the First Aid Tent became BAT-Q51. The addresses are readings of the executable, the reviews' not read a second time. Where the readings stand: `installation.md` §7.8–§7.33; the reviews' reports stay on `battle/e04b-t11b-review-reports` and `battle/e04c-t10b-review-reports`; their experiment candidates are in `docs/experiments/README.md` ("From the battle queue's inbox", "From the E04b review", "From E04c").
 
+- 2026-10-22 (the adventure lane, E08 T36b, `adventure/e08-t36b`, `cross-lane` with the user's
+  consent, E08 decision 81; for information): `h3-experiment`'s `[map]` takes `banned_skills`
+  (skill names; the writer's `Map::banned_skills`, SoD's header bits); batch E5e uses it to force
+  a level-up's two offers. Nothing else of the crate changed.
+
 - 2026-10-22 (the adventure lane, E08 T36a, `adventure/e08-t36a`, `cross-lane` with the user's
   consent; for information): `h3-experiment`'s `[[map.object]]` takes the trees (classes 135,
   137, 155) and the Border Gates (212) since the writer's `PLAIN_OBJECTS` holds them (no body);
