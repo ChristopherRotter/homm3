@@ -255,7 +255,7 @@ found after that decision) belong to the neutral side's map too and are read (§
       - [x] **T5b2a Teleport's value** (2026-10-22) — 0x43AA60 with the destination map 0x4B2FF0
         and the walker's flag-1 turn, a disabled stack's turns, "now" (BAT-AI-020; §7.58; slips 30
         and 31 found and built under BAT-QUIRK-25, strict-fixed without stops on batch 3g TV and
-        without a run-up; slip 5 changes no choice; `POLICY_VERSION` 14; the slowest decision 4.0 ms; the log).
+        without a run-up; slip 5 changes no choice; `POLICY_VERSION` 14; the slowest decision 3.5 to 4.3 ms; the log).
       - [ ] **T5b2b A caster's cast entry in Teleport's turns** (BAT-STUB-14) — 0x421280 and its
         callees on a stack that is not the active one (what they read of its record: the Faerie
         Dragon's spell drawn at its last turn, the casts left), the engine's cast targets for a

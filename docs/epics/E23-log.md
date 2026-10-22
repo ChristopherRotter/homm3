@@ -1228,10 +1228,10 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
 - **The cost:** release, heroes with every combat spell, 500 mana, power and knowledge 10 and each
   school at Basic to Expert on both sides, 40 battles of 7 random harvested stacks a side, half at
   a Citadel with a damaging moat, on Hard; each decision's best of five: 2 334 decisions, mean 0.38
-  ms, **the slowest 4.0 ms** (within the hero's 5 ms; before the mastery-first line test 0.45 and
-  4.4 ms; on Impossible 0.42 and 3.9 ms); the hero cast Teleport 7 times. `master` on the same
-  harness: 2 469 decisions, mean 0.26 ms, the slowest 2.1 ms; the branch with Teleport out of the
-  books plays `master`'s battles command for command. In a profile Teleport is about 40 % of the
+  to 0.42 ms, **the slowest 3.5 to 4.3 ms** over four runs on Hard and Impossible (within the
+  hero's 5 ms; before the mastery-first line test 0.45 and 4.4 ms); the hero cast Teleport 7 times.
+  `master` on the same harness: 2 469 decisions, mean 0.26 ms, the slowest 2.1 ms; the branch with
+  Teleport out of the books plays `master`'s battles command for command. In a profile Teleport is about 40 % of the
   hero's cost: the engine's destinations (the siege's line test per hex, `blocked_as` per hex) and
   each stack's hex scores (every enemy's reach searched again per stack). If the budget tightens:
   the enemies' reach maps cached across the stacks, the blocked hexes computed once per stack.
