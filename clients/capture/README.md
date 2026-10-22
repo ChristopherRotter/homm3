@@ -35,8 +35,9 @@ and build `cargo build --release -p h3-view` in `clients/`. A run of the whole s
 
 ## Which captures a change needs
 
-Capturing the original is slow (all ten sequences and the set: about 80 minutes in a fresh
-sandbox, which keeps no frames of an earlier one), so a task captures only what its change can
+Capturing the original is slow (M3 T9a, in a fresh sandbox, which keeps no frames of an earlier
+one: the 31 sequences about 3½ hours, 2 to 18 minutes each, in batches (Traps); the 57
+situations 8 minutes), so a task captures only what its change can
 alter (the user, 2026-10-20):
 
 1. **Always, without the original:** from `clients/`, after `cargo build --release -p h3-view`,
@@ -585,3 +586,7 @@ design §7.1.
   and all 31 sequences take longer: T9a's first loop over every `frames --only <id>` was stopped
   inside `dispel`. Run them in batches of up to ten, one background job each, that start no new
   sequence after about 75 minutes (a sequence takes 2 to 18), and the next batch after it.
+- A game started right after another stopped can still dump no 5-6-5 screen after
+  `xwd_bytes`' five tries (M3 T9a: `set` stopped so twice, after 27 and 62 frames, and one
+  `frames --only` at its start; the display dumped as it should afterwards). `set --only <id>`
+  for each situation, a crashed one run again, passed all 57 at their first try (8 minutes).

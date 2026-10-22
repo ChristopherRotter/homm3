@@ -6,35 +6,18 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024). M3 (fidelity) below, refined at M2's closure (T5c) and agreed by the user there, each task about half a context; the exit: the reference set passes, or each difference is a listed fix or a classified quirk. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M3 T9a — M3's closure: every capture afresh
-
-- **Scope:** T9 split in three with the user (2026-10-22: T9a the captures, T9b the review,
-  T9c the next milestone). Every sequence and situation captured afresh (the runbook, "Which
-  captures a change needs": `frames` and `set` in full, then `drawn --record`), on
-  `client/e17-m3-t9a`; the user: run the recordings and leave any findings for the next
-  session, on the branch (HANDOFF, "Recent sessions"; the epic's log).
-- **Acceptance:** every sequence and situation captured; each count as recorded, or each
-  difference listed for the next session.
-- **Progress** (2026-10-22, one `frames --only <id>` at a time, the machine otherwise idle; the
-  loop stopped at the session's 2-hour limit for a background job, inside `dispel`): 16 of the
-  31 sequences captured, `walk` to `haste` in `sequences.toml`'s order; 15 as recorded. Their
-  kept files gained only `before` (T7c-3's harness), the frames' times unchanged: committed.
-  **Finding, `melee`:** every pixel as recorded (85 frames, 34 by redraw artifacts), but from
-  5 266 ms on the log's item is listed (` log`) and from 6 466 ms the box n1.0 (` n1.0`): this
-  run's damage line and count are not the engine's, where the recorded run's were (a roll of the
-  original's that differed between runs, the runbook's "Traps"; not investigated). Left: the
-  other 15 sequences (`dispel` to `bolt`), the set (`set`), then `drawn --record`; a fresh
-  sandbox needs only those (the 16 are kept). `master` merged after them: its harness change
-  (the adventure lane's `h3adv.py`, batch E5) is the adventure map's only; `h3drive.py`,
-  `h3mem.py`, `xdd.c` unchanged, so the 16 stand.
-- **Depends on:** T7d (#391, merged). **Status:** in progress.
-
 ### E17 M3 T9b — M3's closure: the review
 
 - **Scope:** T9a's findings settled (a listed fix or a classified quirk each: M3's exit); a
-  fresh reviewer agent over M3; M3's review list with the user.
+  fresh reviewer agent over M3; M3's review list with the user. T9a (2026-10-23, the epic's
+  log) left no difference: every sequence and situation as recorded, the four that differed in
+  one run (`melee`: the log's line and a box, `mass`: the log's line, the original's damage
+  rolls; `fear`: a frame 1 ms late; `raise`: a hero read a step apart) as recorded on a rerun,
+  the runbook's known traps. To look at: `raise`'s kept `before` at 1 312 ms (frame 1 in both of T9a's runs,
+  0 at T7c-3; the count the same); the dump that failed on a game started right after another
+  (runbook, "Traps": `xwd_bytes` could wait longer).
 - **Acceptance:** M3's exit holds; the review list answered or carried on.
-- **Depends on:** T9a. **Status:** waiting.
+- **Depends on:** T9a (done 2026-10-23). **Status:** ready.
 
 ### E17 M3 T9c — M3's closure: the next milestone
 

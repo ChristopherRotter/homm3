@@ -4,7 +4,7 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E17 M0–M2 done; M3 T1a–T7a-2b, T7b-1 to T7b-2b-3, T7c-1 to T7c-3, T7d (#391), T8 done; H1, H2 done (2026-10-19: the adventure lane's harness); next: M3 T9a** (in progress: every capture afresh; then T9b the review, T9c the next milestone; `QUEUE.md`). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
+- **E17 M0–M2 done; M3 T1a–T7a-2b, T7b-1 to T7b-2b-3, T7c-1 to T7c-3, T7d (#391), T8, T9a done; H1, H2 done (the adventure lane's harness); next: M3 T9b** (the review; then T9c the next milestone; `QUEUE.md`). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
 - **Captures** (the user, 2026-10-20): `h3drive.py drawn` first (no Wine); capture what it lists or the task changes, all at a milestone's closure or a harness change (runbook); later tasks' detail in `NOTES.md`.
 - **The user's requirements** (epic, "Decisions"): a string catalogue (JSON packs, no committed translation, CLT-Q7); graphics options (`faithful` default); exhaustive diffs; drawing bugs fixed, the original's only for comparisons (`Bugs`).
 - The lane owns `clients/`, `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
@@ -55,14 +55,14 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
   `h3-view sequences <id>` matches it (`obstacles`: the kernel's generator alone). Records: army,
   then war machines. Chain Lightning's rays: the original's draws (`xdd.dll`'s log, `rays`).
 - A capture times out at the main menu when the CPU is busy: run it alone. A fresh sandbox's
-  first capture once differed (T7c-2): recapture.
+  first capture once differed (T7c-2): recapture. A background job stops at 2 h: batches;
+  `set` by `--only` (T9a, runbook).
 
 ## Recent sessions
 
-- **2026-10-22, E17 M3 T9a (`client/e17-m3-t9a`, from #391's; in progress).** T9 split (the
-  user); findings for the next session. 16 of 31 captured: QUEUE's T9a.
-- **2026-10-22, E17 M3 T7d (a creature's cast: CLT-Q8's bugs fixed; #391, merged).** The switch
+- **2026-10-22/23, E17 M3 T9a (two sessions; done).** T9 split (the user); all 88 as recorded
+  (four after a rerun), `drawn` the same; the first loop stopped at the 2-hour job limit; the
+  epic file's conflict markers resolved. T9b's findings: QUEUE.
+- **2026-10-22, E17 M3 T7d (CLT-Q8's bugs fixed; #391, merged).** The switch
   reaches the timeline (`anim::Stage::bugs`, `Original` only in `h3-view sequences`); `drawn`
   all the same; the fixed group's points: review list.
-- **2026-10-22, E17 M3 T7c-3 (#388, merged).** `raise`, `creatures`, `bolt` recorded; CLT-Q17.
-
