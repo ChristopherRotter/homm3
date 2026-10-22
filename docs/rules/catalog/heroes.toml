@@ -1160,3 +1160,156 @@ numeric  = "integer"
   url        = "https://heroes.thelazy.net/index.php/Diplomacy"
   retrieved  = "2026-10-13"
   confidence = "medium"
+
+[[rule]]
+id       = "HER-ADV-003"
+title    = "A hero's day's land points: the Logistics rate and the flat bonuses"
+context  = "heroes"
+status   = "implemented"
+summary  = "The day's land points from the land table's entry the adventure gives (ADV-MOV-001): the entry grown by the sum of the hero's land_movement rates (Logistics 10 %, 20 %, 30 %; each skill's grown by the hero's skill specialties for it: the Logistics specialists Kyrre, Gunnar and Dessa 5 % of the rate per hero level), rounded down, then the land_movement_points of the worn artifact types added (Boots of Speed 600, Equestrian's Gloves 300; each type once, worn or as a part of a worn combination, one that needs a skill only with it), saturating. With quirk Q-0005 (D-22) the growth as the original computes it: the rate f32(r x (f32(level) x 0.05 + 1)), the sum in single precision, trunc((1 + sum) x entry) in the x87's arithmetic, so a specialist can get one point less than the exact basis points (Basic at level 2 from 1500: 1664, exact 1665); without a specialty both give floor(entry x (10 + the Logistics level) / 10). The percentage grows the table's points only: the flat bonuses come after it. Not here: the Stables' +400 and a computer player's bonus (objects, E10). E08 T39: `h3_heroes::land_points`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T34a; survey E08-hero-movement.md §1.1): hero_max_land_movement 0x4E4990 multiplies the table's points by (rate + 1) on the x87 and truncates; the rate skill_logistics 0x63EA68 (f32 0, 0.1, 0.2, 0.3) at the hero's Logistics level, with a Logistics specialty f32(rate x (f32(level) x 0.05 + 1)) (skill_specialty_growth 0x63EAE4); then +600 (movement_bonus_boots 0x698B00) for Boots of Speed (98) and +300 (movement_bonus_gloves 0x698AFC) for Equestrian's Gloves (70), each tested by type with hero_wears_artifact 0x4D91F0"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/pathfinder/TurnInfo.cpp (1.7.5) TurnInfo::TurnInfo: the land table by the slowest stack, then the bonus system's MOVEMENT: Logistics PERCENT_TO_BASE 10/20/30 (config/skills.json), Boots of Speed ADDITIVE_VALUE 600 and Equestrian's Gloves 300 (config/artifacts.json); a Logistics specialist's growth in integer percent (lib/entities/hero/CHeroHandler.cpp createSecondarySkillSpecialty, 5 per level)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/pathfinder/TurnInfo.cpp"
+  retrieved  = "2026-10-21"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Movement - Heroes 3 wiki (survey E08-hero-movement.md §1.2): Logistics increases base movement on land by 10 %, 20 %, 30 % (SoD); Boots of Speed +600, Equestrian's Gloves +300 (SoD); 'Logistics and Navigation do not affect bonuses from artifacts and adventure map locations'; a specialist's bonus grows by 5 % of itself per level (Logistics)"
+  url        = "https://heroes.thelazy.net/index.php/Movement"
+  retrieved  = "2026-10-21"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-5a.md (stamp 5e02703d, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-22) E5-1: from the table's 1560 no Logistics 1560, Basic 1716, Advanced 1872, Expert 2028; Boots of Speed 2160; Equestrian's Gloves 1860; Expert Logistics with both 2928; and E08-batch-5c.md, -5c-run2.md, -5d.md, -5d-run2.md (stamps 3c1dc0a9, 1255306f) E5-2 (D-22): six conclusive Logistics specialists fit single precision (Advanced at level 2 1829 four times, Basic at level 6 1694, Advanced at level 6 1889; exact 1830, 1695, 1890)"
+  retrieved  = "2026-10-22"
+  confidence = "high"
+
+[[rule]]
+id       = "HER-ADV-004"
+title    = "A creature's speed for the day's points"
+context  = "heroes"
+status   = "implemented"
+summary  = "The speed a stack of a creature counts with for the army's slowest speed (ADV-MOV-001): the creature's speed in the core (its table's: no speed artifact such as the Necklace of Swiftness, Ring of the Wayfarer or Cape of Velocity, and no creature_stat effect counts), plus the speed of each of the hero's creature specialties whose creature is it or has it as a direct upgrade (one faster for the specialty's creature and its upgrade), saturating; the fastest for a creature the core lacks. Not modelled: the original's four elementals without an upgrade on a RoE map (the packs decide upgrades). E08 T39: `h3_heroes::movement_speed`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T4, T34a; survey E08-hero-movement.md §1.1 point 2): hero_max_land_movement 0x4E4990 takes the lowest speed (the creature record's +0x50) of the seven slots, from 20 down; a slot holding the hero's specialty creature (a hero_specialty_record of type 1) or its upgrade counts one faster"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Movement - Heroes 3 wiki (survey §1.2): 'Artifacts increasing creatures' speed (like Necklace of Swiftness), the hero speciality of Sir Mullich and native terrain bonuses don't affect the base movement, but a hero's creature specialty does.'"
+  url        = "https://heroes.thelazy.net/index.php/Movement"
+  retrieved  = "2026-10-21"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/pathfinder/TurnInfo.cpp (1.7.5): getLowestCreatureSpeed takes each stack's speed with its bonuses (getInitiative, marked 'TODO? should speed modifiers (eg from artifacts) affect hero movement?'): the speed artifacts count there, against the code and the wiki (survey §1.2: 2 sources to 1)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/pathfinder/TurnInfo.cpp"
+  retrieved  = "2026-10-21"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-5a.md (stamp 5e02703d, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-22) E5-1h: Valeska, an Archer specialist with 10 Archers (speed 4), had the table's next entry, 1630, on both days"
+  retrieved  = "2026-10-22"
+  confidence = "high"
+
+[[rule]]
+id       = "HER-ADV-005"
+title    = "A hero's flying and water-walking levels"
+context  = "heroes"
+status   = "implemented"
+summary  = "A hero's flying and water-walking levels, the indexes of the adventure's fly and water-walk prices (ADV-MOV-009, -010): the highest level of its flying and of its water_walking effects (the secondary skills', the worn artifact types', the specialty's), none without a source. Angel Wings fly and Boots of Levitation walk on water at level 3; the spells' levels (Fly, Water Walk) come with them later. E08 T39: `h3_heroes::movement` (`Movement::flying`, `Movement::water_walking`)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T34a; survey E08-hero-movement.md §2.1): hero_step_cost 0x4B18C0 takes the fly level from the hero's +0x112 (-1 unless a Fly spell is on), forced to 3 by Angel Wings (72), and the water-walk level from +0x116, forced to 3 by Boots of Levitation (90); both -1 in a boat"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/pathfinder/CPathfinder.cpp (1.7.5) getMovementCost (survey E08-hero-movement.md §2.3): in the air layer the lesser of the walking price and 100 + the flying bonus, Angel Wings' 0 (the expert spell's; Fly 40, 40, 20, 0 by level, config/spells/adventure.json)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/pathfinder/CPathfinder.cpp"
+  retrieved  = "2026-10-21"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Angel Wings and Boots of Levitation - Heroes 3 wiki (survey §2.3): 'Permanent Expert Fly while equipped'; 'Permanent Expert Water Walk while equipped'"
+  url        = "https://heroes.thelazy.net/index.php/Angel_Wings"
+  retrieved  = "2026-10-21"
+  confidence = "medium"
+
+[[rule]]
+id       = "HER-ADV-006"
+title    = "A hero's scouting radius"
+context  = "heroes"
+status   = "implemented"
+summary  = "A hero's scouting radius from the adventure's base radius (5 in the original packs, ADV-FOG-001): the base plus the scouting_radius tiles of its effects (Scouting 1, 2, 3; the Speculum and the Spyglass 1 each, each artifact type once, worn or as a part of a worn combination), saturating: Expert Scouting with both sees 10 tiles. A skill specialty grows nothing (ADR-0013 point 13.4: the original's Scouting specialty reaches no SoD hero, and the code, VCMI and the wiki disagree on its formula). E08 T39: `h3_heroes::scouting_radius`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T8a, T34a; survey E08-hero-movement.md §4.1): hero_scouting_radius 0x4E4070 takes skill_scouting (0x63E9D8: 5, 6, 7, 8) at the Scouting level, +1 for each of the Speculum (52) and the Spyglass (53), worn or in a worn combination"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/skills.json (1.7.5) scouting: SIGHT_RADIUS +1, +2, +3 over the hero's 5; config/artifacts.json: the Speculum and the Spyglass +1 each"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/skills.json"
+  retrieved  = "2026-10-21"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Scouting and Scouting radius - Heroes 3 wiki (survey §4.1): basic +1, advanced +2, expert +3 (SoD); 'it can be increased up to 10'"
+  url        = "https://heroes.thelazy.net/index.php/Scouting_radius"
+  retrieved  = "2026-10-21"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-5e.md (stamp bf513e0e, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-22) E5-10 (D-26): after a level-up's Basic Scouting, and after the Spyglass put on in the day, the probe tile at distance 6 was explored after the hero's next step (survey §13)"
+  retrieved  = "2026-10-22"
+  confidence = "high"
+
+[[rule]]
+id       = "HER-ADV-007"
+title    = "A hero's Pathfinding level"
+context  = "heroes"
+status   = "implemented"
+summary  = "A hero's Pathfinding level, by which the adventure prices a step's terrain (ADV-MOV-003; the terrains' costs by level in the adventure part since E08 T29): the highest level of its pathfinding effects (the skill: 1, 2, 3), 0 without. The step's price reads the level, never the skill by name (ADR-0016 point 4). E08 T39: `h3_heroes::movement` (`Movement::pathfinding`)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T7a, T34a; survey E08-hero-movement.md §2.1): hero_step_cost 0x4B18C0 passes the hero's skill 0 (Pathfinding, +0xC9) to step_cost 0x4B1740, which indexes step_cost_table 0x63E510 by terrain and that level"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/skills.json (1.7.5) pathfinding: ROUGH_TERRAIN_DISCOUNT 25, 50, 75 (survey §2.2: the same prices by level for the original's terrains)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/skills.json"
+  retrieved  = "2026-10-21"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Pathfinding - Heroes 3 wiki (survey E08-hero-movement.md §2.2): 'reducing the cost of moving one tile by 25 movement points' per level, minimum 100 in SoD; 'Pathfinding is useless on roads'"
+  url        = "https://heroes.thelazy.net/index.php/Pathfinding"
+  retrieved  = "2026-10-21"
+  confidence = "medium"

@@ -9,101 +9,33 @@ deletes it; the file goes when the epic closes. Facts and sources: survey
 `docs/rules/surveys/E08-hero-movement.md` (§ numbers are the survey's unless they name this note).
 
 Increment 4's note was moved by T34b into `E08-log.md` ("Increment 4's design note at its
-closure"): every section was built (T25 to T33). Four code comments still cite its sections as
-`E08-design.md` §2–§13 (`h3-heroes`' `level.rs`, `level_up.rs`, `choice.rs`; `h3-game`'s
-`state/levels.rs`): they mean that copy until T39 and T40 repoint them (the queue's inbox; the
-gap-fill's `exe-necromancy` was repointed to `docs/exe/map.toml` in T35b).
+closure"): every section was built (T25 to T33). One code comment still cites its sections as
+`E08-design.md` §11–§13 (`h3-game`'s `state/levels.rs`): it means that copy until T40 repoints it
+(the queue's inbox; T39 repointed `h3-heroes`' three, T35b the gap-fill's `exe-necromancy`).
 
 Written whole (decision 76): **part A**, the hero side (`h3-heroes` and the core content); **part
 B**, the map, the game, the batch and the cut.
 
 ## Part A — the hero side (`h3-heroes`, the core content)
 
-Everything in part A is either core content (shared: `h3-content`, `h3-pack`, the packs through
-the harvester) or a rule of `h3-heroes`: pure functions of a hero's details, the ruleset and
-explicit inputs (ADR-0013 point 13). When the map reads them is part B's.
+**Built** (the log): the core data in T35b (`shared/e08-t35b`: the six hero-effect kinds, the
+gap-fill's effects, the flags 30 to 32; flag 30 to be retired in T41's shared part, `ADV-QUIRK-16`
+withdrawn at ADV-Q22, decision 85), the derivations in T39 (`h3_heroes`' `movement.rs`:
+`land_points`, `movement_speed`, `movement` with its `Movement` of the Pathfinding, flying and
+water-walking levels, `scouting_radius`; HER-ADV-003 to -007 in `heroes.toml`; Q-0005's entry
+names HER-ADV-003). Part B reads them: `day_points` the land table's entry at the lowest
+`movement_speed`, then `land_points` (§5); `Pricing` one `movement` per search or move (§6); the
+reveals `scouting_radius` on the part's base (§5).
 
-### 1. The data
-
-**Built in T35b** (`shared/e08-t35b`; the detail is in the code, `packs/README.md` and the log):
-the six hero-effect kinds (`pathfinding`, `land_movement`, `land_movement_points`, `flying`,
-`water_walking`, `scouting_radius`; codes 45 to 50), the gap-fill's effects of Pathfinding,
-Logistics, Scouting and the six artifacts (no longer `pending`), and the three quirk flags 30 to
-32 (`quirk.adventure.flying_inland_price`, `ADV-QUIRK-16`; `drop_ignores_artifacts`, `-17`;
-`radius_waits_for_a_step`, `-18`), on in `faithful` (flag 30 to be retired in T41's shared part:
-`ADV-QUIRK-16` withdrawn at ADV-Q22, decision 85); pack format v46, core ruleset hash v47. What
-the derivations must honour (T39): each artifact type counts once, worn or as a part of a worn
-combination (`worn_types`, the original's `hero_wears_artifact` 0x4D91F0), and an artifact that
-needs a skill counts only with it; several `pathfinding`, `flying` and `water_walking` sources
-give the highest, the other three kinds add, `land_movement` grown by the skill's specialties;
-no kind reaches `BattleEffect`. The Logistics specialists (Kyrre, Gunnar, Dessa) already carry
-`skill_specialty` logistics 500 bp, the creature specialists `creature_specialty` with `speed = 1`.
-
-- **The adventure part** (`packs/*/adventure.toml`, `h3-pack-adventure`; adventure-owned): the
-  `[params]` gain `fly_cost` and `water_walk_cost`, each `[140, 140, 120, 100]` by level
-  (`fly_walk_step_cost` 0x6778AC, one table in the original; two fields, so that data can tell
-  them apart as VCMI's spells do: agent's call); the `ab` pack gains a **terrain walker**,
-  `[[terrain_walker]] creature = "nomad", terrain = "desert", counts_as = "dirt"`
-  (an army with a stack of the creature counts the terrain as the other for every price of a step
-  from it, the diagonal's bound included: §2.1 point 1; the core's desert is the original's sand);
-  **if batch E5's row E5-6 confirms D-23**, the `cursed_ground` object type's
-  `ground = { battlefield = "cursed_ground", no_native = true }`. Adventure ruleset part v10.
-- **D-22** needs no flag of its own: Q-0005's `quirk.battle.single_precision_rates` (§1.2).
-
-### 2. The derivations (HER-ADV-003 to -007)
-
-New in `h3_heroes` (a module `movement.rs`; names and signatures the agent's call):
-
-- **`land_points(details, core, base) -> u32`** (HER-ADV-003): `base`, the land table's entry the
-  adventure gives (§5), grown by the sum of the hero's `land_movement` rates (each skill's grown by
-  its skill specialties, `grown_effects`), rounded down, then the sum of `land_movement_points`
-  added (saturating). The growth is the existing `grown` helper's, as `gained_experience`'s: with
-  Q-0005 `trunc((1 + the single-precision sum) × base)` in the x87 arithmetic at 53 bits, the rate
-  `f32(r × (f32(level) × 0.05 + 1))` (`Growth::single`; the original's 0x4E4CBB); without it the
-  exact grown basis points (`Growth::grow`; exact for Logistics, whose 5 % of 10 %, 20 %, 30 % per
-  level is a whole number of basis points). **Vectors**: survey §1.3 (1 500 at Basic: 1 657, 1 664,
-  1 672, 1 694, 1 739, 1 800 at levels 1, 2, 3, 6, 12, 20 with Q-0005; 1 665, 1 695, 1 740 exact at
-  2, 6, 12; 2 000: 2 210, 2 219, 2 230, 2 259, 2 289, 2 319 at 1, 2, 3, 6, 9, 12, exact 2 220, 2 260,
-  2 290, 2 320), E5-1's (1 560: 1 716, 1 872, 2 028; +600 2 160; +300 1 860; Expert with both
-  2 928), and without a specialty `⌊points × (10 + level) / 10⌋` for every table entry in both
-  profiles (§1.3's last sentence).
-- **`movement_speed(details, core, creature) -> u8`** (HER-ADV-004): the creature's speed in the
-  core (its table's, no effect), plus the `speed` of each of the hero's `creature_specialty`
-  effects whose creature is it or one of its direct upgrades (`CreatureSelector::Creature`'s
-  selection, `Ruleset::upgrades`), saturating; `u8::MAX` for a creature the core lacks (today's
-  rule). Not modelled: the original's four elementals without an upgrade on a RoE map (mapKind 0,
-  §1.1 point 2); the packs decide upgrades. No speed artifact and no `creature_stat` counts (the
-  code and the wiki, §1.2).
-- **`pathfinding(details, core) -> u8`** (HER-ADV-007): the highest `pathfinding` level, 0
-  without.
-- **`flying(details, core) -> Option<u8>`, `water_walking(details, core) -> Option<u8>`**
-  (HER-ADV-005): the highest level, none without a source.
-- **`scouting_radius(details, core, base) -> u8`** (HER-ADV-006): `base` (the adventure part's
-  5) plus the sum of `scouting_radius` tiles, saturating. A skill specialty on Scouting grows
-  nothing (ADR-0013 point 13.4).
-- **`movement(details, core) -> Movement`** (agent's call): `Pathfinding`, flying and
-  water-walking levels in one pass, for the adventure's pricing (derived once per search or move,
-  never per step; the reach's hot loop).
-
-Test rulesets are built in code (`h3-heroes`' dev-dependencies obey the layers); the base pack's
-data are checked by `h3-pack`'s harvested tests (the battle lane's pattern for Q-0005,
-`harvested_magic_derives`).
-
-### 3. Rule ids and quirks (the hero side)
-
-- **HER-ADV-003** (the land points' bonuses; D-22 under Q-0005), **HER-ADV-004** (a creature's
-  speed for the day's points), **HER-ADV-005** (the flying and water-walking levels),
-  **HER-ADV-006** (the scouting radius), **HER-ADV-007** (the Pathfinding level; new beside the
-  survey's §10, since the step's price may read no skill by name, ADR-0016 point 4), in
-  `heroes.toml` with the code reading (0x4E4990, 0x4E4070, 0x4B18C0), VCMI and the wiki as
-  sources (§1.2, §2.2, §2.3, §4.1).
-- **Q-0005** (the battle lane's ledger, `cross-lane` in T35 or a line in the battle lane's
-  inbox): its rules list gains HER-ADV-003.
-
-### 4. The hero side's shared and `cross-lane` needs
-
-Built in T35b (the log). Left for T39: Q-0005's rules list gains HER-ADV-003 (the battle lane's
-ledger, `cross-lane`, or a line in its inbox).
+**Left for T40**, the adventure part (`packs/*/adventure.toml`, `h3-pack-adventure`;
+adventure-owned): the `[params]` gain `fly_cost` and `water_walk_cost`, each `[140, 140, 120, 100]`
+by level (`fly_walk_step_cost` 0x6778AC, one table in the original; two fields, so that data can
+tell them apart as VCMI's spells do: agent's call); the `ab` pack gains a **terrain walker**,
+`[[terrain_walker]] creature = "nomad", terrain = "desert", counts_as = "dirt"` (an army with a
+stack of the creature counts the terrain as the other for every price of a step from it, the
+diagonal's bound included: §2.1 point 1; the core's desert is the original's sand); the
+`cursed_ground` object type's `ground = { battlefield = "cursed_ground", no_native = true }`
+(D-23, confirmed by batch E5's E5-6). Adventure ruleset part v10.
 
 ## Part B — the map, the game, the batch and the cut
 
@@ -142,7 +74,7 @@ decisions.
 
 ### 6. The step's price (ADV-MOV-003 to -006 amended, ADV-MOV-009, -010)
 
-`Pricing::new(core, part, army, movement)` takes the hero's `Movement` (§2) and precomputes, per
+`Pricing::new(core, part, army, movement)` takes the hero's `h3_heroes::Movement` (part A) and precomputes, per
 terrain, the walking price at the hero's Pathfinding level (`part.step_cost`), so the hot path
 keeps one load per step. A step's price from `from` to `to` (the original's `step_cost` 0x4B1740,
 §2.1):
@@ -284,7 +216,8 @@ gate (an entrance a flyer passes, §3.1 point 7), which no other source states (
   load takes Logistics whenever offered), E5-3 and E5-10 on a map banning all but Logistics and
   Scouting (the forced offers), the gains in the day from the backpack instead of a pile;
   `crates/h3-map/examples/e4_score.rs` scores E5-2's points (D-22) and E5-3's and E5-10's dialogs.
-  T39's `land_points` replaces the scorer's own copy of the arithmetic (the same §1.3 vectors).
+  Since T39 the scorer calls `h3_heroes::land_points` under `faithful` and `strict-fixed` (the
+  same §1.3 vectors; its reports on batch E5 unchanged).
 - **The harness's reads** (`clients/capture/`, client-owned; built by this lane, `cross-lane`, as
   T32b1): a tile's explored bit for a player (`explored:x,y`, the vision word against the player's
   bit; E5-9, E5-10, E5-11), a hero's points at a turn start without a walk (check whether a read
@@ -320,7 +253,7 @@ the scorer needs only increment 4's draws):
 |---|---|---|
 | 1 | **T35** + **T36** | T35: the shared groundwork (`shared/`, `cross-lane`): ADR-0013, -0016 and -0017 amended from the accepted drafts; the six kinds, the three flags, their syntax; the packs' effects through the gap-fill; pack format v46, core ruleset hash v47; both lanes' replay headers; `clients/` checked (part A §1, §4). T36: batch E5's specs, results templates and scorer (§11; `cross-lane`) |
 | 2 | **T37** + **T38** | T37: the harness's reads, the recipes and the run of batch E5 (`cross-lane`). T38: batch E5 scored, D-23 decided by E5-6; the survey's §8 and the rules' sources updated; an ADV-Q if a row contradicts the reading. *Added by decision 85:* **T38b** (done), ADV-MAP-002's count corrected (every tile no object blocks but rock, water included), `ADV-QUIRK-14` withdrawn, before round 3 |
-| 3 | **T39** + **T40** | T39: `h3-heroes`' derivations (part A §2; HER-ADV-003 to -007, §1.3's vectors; Q-0005's line). T40: the day's points, the radius and the walking price (§5, §6 points 1, 2, 7): ADV-MOV-001 to -004 amended, the build's order, `start_turn` and the reveals with the store, `ADV-QUIRK-18` and the strict start-of-day reveal, Nomads, Cursed Ground (confirmed); adventure ruleset part v10 |
+| 3 | **T39** + **T40** | T39 (done alone, decision 86): `h3-heroes`' derivations (part A; HER-ADV-003 to -007, §1.3's vectors; Q-0005's line). T40 (its own session, cut at its start): the day's points, the radius and the walking price (§5, §6 points 1, 2, 7): ADV-MOV-001 to -004 amended, the build's order, `start_turn` and the reveals with the store, `ADV-QUIRK-18` and the strict start-of-day reveal, Nomads, Cursed Ground (confirmed); adventure ruleset part v10 |
 | 4 | **T41** | Flying and water walking (§6 points 3 to 6, §7): the price (the original's, decision 85; flag 30 retired and ADR-0016 point 4's words corrected in its shared part), the drop (`ADV-QUIRK-17`), the passage, the reach's two kinds of node, `MoveHero`'s passage, end, visits and guards; ADV-MOV-006, -007 amended, -009, -010; `ADV-QUIRK-15` and `-17`. The largest task: cut at its start if needed (the price and the drop; the reach and `MoveHero`) |
 | 5 | **T42** + **T43** | T42: the env, the plans and properties, the fixtures and replays, the benchmarks, `--with-original-data` (§8). T43: the audit against the exit criteria, increment 5 closed, increment 6 refined |
 

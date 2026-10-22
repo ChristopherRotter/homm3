@@ -2,7 +2,8 @@
 //! (HER-LVL-002), the primary skill (HER-LVL-001; A-9, `ADV-QUIRK-13`), the two offers
 //! (HER-LVL-003, HER-LVL-004) and their result, [`LevelUp`], which changes nothing until the game
 //! applies the answer as [`HeroChange::GainLevel`] (HER-LVL-005). Survey
-//! `docs/rules/surveys/E08-progression.md` §2, design `docs/epics/E08-design.md` §4 to §7.
+//! `docs/rules/surveys/E08-progression.md` §2, design §4 to §7 of increment 4's note (since T34b in
+//! `docs/epics/E08-log.md`, "Increment 4's design note at its closure").
 
 use core::ops::Range;
 
