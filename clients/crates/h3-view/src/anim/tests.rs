@@ -28,6 +28,7 @@ const LUCK: &str = include_str!("../../../../situations/timelines/luck.txt");
 const MORALE: &str = include_str!("../../../../situations/timelines/morale.txt");
 const BAD: &str = include_str!("../../../../situations/timelines/bad.txt");
 const FEAR: &str = include_str!("../../../../situations/timelines/fear.txt");
+const MASS: &str = include_str!("../../../../situations/timelines/mass.txt");
 
 /// Creature handles of the tests.
 const CHAMPION: u16 = 0;
@@ -50,6 +51,8 @@ const SWORDSMAN: u16 = 14;
 const ARCHANGEL: u16 = 15;
 const BATTLE_DWARF: u16 = 16;
 const VAMPIRE_LORD: u16 = 17;
+/// A creature caster of the area spells' tests (E17 M3 T7c-1), invented numbers.
+const FAERIE_DRAGON: u16 = 18;
 
 /// A look: `times` and the frames of each group.
 fn look(times: [u32; 4], frames: &[(u32, u32)], top: i32) -> Look {
@@ -2561,7 +2564,13 @@ fn the_log_records_what_the_battle_writes_and_when() {
             Logged::Round => "round",
             Logged::Status { .. } => "status",
             Logged::Scroll(_) => "scroll",
-            Logged::Cast { .. } | Logged::Resisted { .. } | Logged::SpellDamage { .. } => "spell",
+            Logged::Unmark => "unmark",
+            Logged::Cast { .. }
+            | Logged::Resisted { .. }
+            | Logged::SpellDamage { .. }
+            | Logged::CastAll { .. }
+            | Logged::MassDamage { .. }
+            | Logged::AreaDamage { .. } => "spell",
             Logged::Drain { .. }
             | Logged::DeathStare { .. }
             | Logged::Thunderbolt { .. }
@@ -4193,4 +4202,569 @@ fn spells_after_a_strike_without_animations_and_a_drain_raising_none() {
     assert!(lines.iter().any(|l| matches!(l, Logged::Poisoned { .. })));
     assert!(lines.iter().any(|l| matches!(l, Logged::AcidBreath { .. })));
     assert!(t.counts.iter().all(|k| k.stack != 1));
+}
+
+/// The stage of the spells aimed at no stack (E17 M3 T7c-1): the casts' with Death Ripple (24,
+/// animation 8, 15 frames: `C04spE0.def`), Destroy Undead (25, 29), Fireball (21, 53: 13 frames
+/// centred 37 above the anchor), Inferno (22, 9: 16 frames, here from the hex's left), Meteor
+/// Shower (23, 16: on the cell's lower edge) and Frost Ring (20, no animation).
+fn area_magic() -> BTreeMap<u8, MagicLook> {
+    let entry = |def: &str, frames, size, place| MagicLook {
+        def: def.to_string(),
+        frames,
+        size,
+        place,
+        translucent: false,
+    };
+    let mut all = spell_magic();
+    all.insert(8, entry("C04spE0.def", 15, [100, 100], 1));
+    all.insert(29, entry("C14spA0.def", 10, [80, 80], 1));
+    all.insert(53, entry("C13spF.def", 13, [120, 110], 1));
+    all.insert(9, entry("C04spF0.def", 16, [90, 70], 4));
+    all.insert(16, entry("C08spE0.def", 4, [60, 50], 0));
+    all
+}
+
+fn area_casts() -> Casts {
+    let mut casts = casts();
+    let spell = |original, animation| SpellLook {
+        original,
+        sign: -1,
+        value: [0; 2],
+        animation,
+        projectile: Vec::new(),
+    };
+    casts.spells.extend([
+        (24, spell(24, Some(8))),
+        (25, spell(25, Some(29))),
+        (21, spell(21, Some(53))),
+        (22, spell(22, Some(9))),
+        (23, spell(23, Some(16))),
+        (20, spell(20, None)),
+    ]);
+    casts
+}
+
+/// A Faerie Dragon (two hexes): standing 1 frame, its hit 7, its casting groups 17 to 19 of 12
+/// each, its attack time 480 (40 ms a frame); and the casts' creatures.
+fn area_looks() -> BTreeMap<u16, Look> {
+    let mut looks = looks();
+    looks.insert(
+        FAERIE_DRAGON,
+        look(
+            [9000, 400, 480, 300],
+            &[
+                (2, 1),
+                (3, 7),
+                (7, 2),
+                (8, 2),
+                (9, 2),
+                (10, 2),
+                (17, 12),
+                (18, 12),
+                (19, 12),
+            ],
+            100,
+        ),
+    );
+    looks
+}
+
+fn play_area(snapshot: &Observation, commands: &[(Option<u32>, Vec<Event>)]) -> Timeline {
+    let layout = layout();
+    let magic = area_magic();
+    let casts = area_casts();
+    let stage = Stage {
+        layout: &layout,
+        width: 17,
+        groups: tables().battle.groups,
+        magic: &magic,
+        casts: &casts,
+    };
+    let commands: Vec<Command<'_>> = commands
+        .iter()
+        .map(|(at, events)| Command { at: *at, events })
+        .collect();
+    timeline(snapshot, &commands, &area_looks(), stage, Speed::default())
+        .unwrap()
+        .with_heroes(cast_heroes())
+}
+
+fn cast_at(spell: u16, target: Target) -> Event {
+    Event::SpellCast {
+        side: Side::Attacker,
+        spell,
+        target,
+        second: Target::None {},
+    }
+}
+
+fn hurt(target: u8, caster: u64, damage: u64, kills: u32) -> Event {
+    Event::SpellDamage {
+        target,
+        value: WireU64(caster),
+        caster: WireU64(caster),
+        damage: WireU64(damage),
+        kills,
+    }
+}
+
+#[test]
+fn the_mass_sequence_plays_as_recorded() {
+    // E17 M3 T7c-1 (`seq-mass.toml`): Orrin's Slow at Expert on the four Swordsmen (round 1), their
+    // defends, Death Ripple on every stack with their reactions (round 2).
+    let o = snapshot(vec![
+        at(0, Side::Attacker, MARKSMAN, 86, false),
+        at(1, Side::Defender, SWORDSMAN, 15, false),
+        at(2, Side::Defender, SWORDSMAN, 83, false),
+        at(3, Side::Defender, SWORDSMAN, 117, false),
+        at(4, Side::Defender, SWORDSMAN, 185, false),
+    ]);
+    let none = Target::None {};
+    let mut slow = vec![cast_at(54, none)];
+    slow.extend((1..5).map(|t| applied(t, 54)));
+    let defend = |stack| {
+        vec![
+            Event::Defended { stack },
+            Event::TurnStarted { stack: stack + 1 },
+        ]
+    };
+    let mut round = vec![
+        Event::Defended { stack: 4 },
+        Event::RoundStarted { round: 2 },
+    ];
+    round.extend((1..5).map(|target| Event::EffectEnded { target, spell: 54 }));
+    round.push(Event::TurnStarted { stack: 0 });
+    let mut ripple = vec![cast_at(24, none), hurt(0, 35, 35, 3)];
+    ripple.extend((1..5).map(|t| hurt(t, 35, 35, 1)));
+    let commands = [
+        (Some(0), slow),
+        (Some(2800), defend(0)),
+        (Some(2800), defend(1)),
+        (Some(2800), defend(2)),
+        (Some(2800), defend(3)),
+        (Some(2800), round),
+        (Some(2800), ripple),
+    ];
+    let t = play_area(&o, &commands);
+    assert_eq!(t.lines_with_heroes(5300), until(&screenless(MASS), 5300));
+    // The lines: the casts' before their animations, Death Ripple's damage after its cast's.
+    let lines: Vec<(u32, &Logged)> = t
+        .log
+        .iter()
+        .filter(|(_, l)| matches!(l, Logged::CastAll { .. } | Logged::MassDamage { .. }))
+        .map(|(at, l)| (*at, l))
+        .collect();
+    assert_eq!(
+        lines,
+        [
+            (500, &Logged::CastAll { side: 0, spell: 54 }),
+            (3300, &Logged::CastAll { side: 0, spell: 24 }),
+            (
+                3300,
+                &Logged::MassDamage {
+                    spell: 24,
+                    damage: 35,
+                    undead: false
+                }
+            ),
+        ]
+    );
+    // The animation shows its frame 18 twice and goes with the hero's frame 5; the boxes show the
+    // kills with it too, after Death Ripple (the cast's tail).
+    assert_eq!(t.magic(2400).map(|m| m.frame), Some(18));
+    assert_eq!(t.magic(2599).map(|m| m.frame), Some(18));
+    assert_eq!(t.magic(2600), None);
+    assert_eq!(t.counts(4899).get(&1), None);
+    assert_eq!(t.counts(4900).get(&1), Some(&39));
+    assert_eq!(t.counts(4900).get(&0), Some(&37));
+}
+
+#[test]
+fn spells_at_no_stack_play_what_they_strike() {
+    // E17 M3 T7c-1: Death Ripple on one stack (its own damage in the line), on none (no line, no
+    // animation), killing one (its corpse, a redraw); Destroy Undead's line after its animation;
+    // a timed spell without effects, an area spell aimed at no hex and Frost Ring without an
+    // animation take effect at once or play their reactions alone.
+    let o = snapshot(vec![
+        at(0, Side::Attacker, MARKSMAN, 86, false),
+        at(1, Side::Defender, SWORDSMAN, 15, false),
+        at(2, Side::Defender, SWORDSMAN, 83, false),
+    ]);
+    let none = Target::None {};
+    let commands = [
+        (Some(0), vec![cast_at(24, none), hurt(1, 35, 30, 1)]),
+        (Some(4000), vec![cast_at(24, none)]),
+        (
+            Some(8000),
+            vec![cast_at(25, none), hurt(1, 20, 20, 40), hurt(2, 20, 20, 1)],
+        ),
+        (Some(12000), vec![cast_at(54, none)]),
+        (Some(16000), vec![cast_at(21, none), hurt(2, 10, 10, 0)]),
+        (
+            Some(20000),
+            vec![cast_at(20, Target::Hex { hex: 83 }), hurt(2, 10, 10, 0)],
+        ),
+    ];
+    let t = play_area(&o, &commands);
+    let damage: Vec<(u64, bool)> = t
+        .log
+        .iter()
+        .filter_map(|(_, l)| match l {
+            Logged::MassDamage { damage, undead, .. } => Some((*damage, *undead)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(damage, [(30, false), (20, true)]);
+    // Destroy Undead: its line after its animation; the Swordsmen at 15 die and lie as a corpse.
+    let undead = t
+        .log
+        .iter()
+        .find(|(_, l)| matches!(l, Logged::MassDamage { undead: true, .. }))
+        .map(|(at, _)| *at)
+        .unwrap();
+    let last = t
+        .magics
+        .iter()
+        .filter(|k| k.animation == 29 && k.frame.is_some())
+        .map(|k| k.drawn)
+        .max();
+    assert!(last.is_some_and(|at| at < undead));
+    let corpse = t.keys.iter().rev().find(|k| k.stack == 1).unwrap();
+    assert_eq!((corpse.pose.group, corpse.pose.layer), (5, CORPSE));
+    // Frost Ring: the reactions alone, its line on the one stack it struck.
+    assert!(t.log.iter().any(|(_, l)| *l
+        == Logged::AreaDamage {
+            spell: 20,
+            damage: 10,
+            kills: 0,
+            target: Some(2)
+        }));
+    assert!(t.spots.is_empty());
+}
+
+#[test]
+fn an_area_spell_plays_at_its_hex_then_its_line_and_the_reactions() {
+    // E17 M3 T7c-1 (0x5A4970): a hero's Fireball at 83 (centred 37 above the anchor), Inferno at
+    // 117 (from the hex's left on the cell's lower edge), Meteor Shower at 15 (centred on that
+    // edge); a defending stack's group plays on after the loop, a hit stands after its last frame.
+    let o = snapshot(vec![
+        at(0, Side::Attacker, MARKSMAN, 86, false),
+        at(1, Side::Defender, SWORDSMAN, 15, false),
+        at(2, Side::Defender, SWORDSMAN, 83, false),
+    ]);
+    let hex = |hex| Target::Hex { hex };
+    let commands = [
+        (
+            Some(0),
+            vec![
+                Event::Defended { stack: 0 },
+                Event::TurnStarted { stack: 1 },
+            ],
+        ),
+        (
+            Some(100),
+            vec![
+                Event::Defended { stack: 1 },
+                Event::TurnStarted { stack: 2 },
+            ],
+        ),
+        (
+            Some(200),
+            vec![
+                Event::Defended { stack: 2 },
+                Event::TurnStarted { stack: 0 },
+            ],
+        ),
+        (
+            Some(300),
+            vec![cast_at(21, hex(83)), hurt(1, 50, 50, 1), hurt(2, 50, 40, 2)],
+        ),
+        (Some(8000), vec![cast_at(22, hex(117))]),
+        (Some(14000), vec![cast_at(23, hex(15)), hurt(1, 9, 9, 40)]),
+    ];
+    let t = play_area(&o, &commands);
+    // Meteor Shower kills the Swordsmen at 15: they lie as a corpse on their death's last frame.
+    let corpse = t.keys.iter().rev().find(|k| k.stack == 1).unwrap();
+    assert_eq!(
+        (corpse.pose.group, corpse.pose.frame, corpse.pose.layer),
+        (5, 5, CORPSE)
+    );
+    let layout = layout();
+    let anchor = layout.anchor(4, 15);
+    let at = |shown| t.spot(shown).map(|s| (s.def, s.frame, s.at));
+    // Fireball's frames from the hero's fifth frame on, each 100 ms, erased after the last.
+    let first = t.spots.iter().find(|k| k.animation == 53).unwrap().shown;
+    assert_eq!(
+        at(first),
+        Some((
+            "C13spF.def".to_string(),
+            0,
+            [anchor[0] - 60, anchor[1] - 55 - 37]
+        ))
+    );
+    assert_eq!(at(first + 1200).map(|s| s.1), Some(12));
+    assert_eq!(at(first + 1300), None);
+    // Its line: several stacks, the caster's damage and every kill, before the reactions.
+    let line = t
+        .log
+        .iter()
+        .find(|(_, l)| matches!(l, Logged::AreaDamage { spell: 21, .. }))
+        .unwrap();
+    assert_eq!(
+        *line,
+        (
+            first + 1300,
+            Logged::AreaDamage {
+                spell: 21,
+                damage: 50,
+                kills: 3,
+                target: None
+            }
+        )
+    );
+    // The defending Swordsmen's group 4 (11 frames) plays on after the six of the loop.
+    let poses = |stack| -> Vec<(u32, u32, u32)> {
+        t.keys
+            .iter()
+            .filter(|k| k.stack == stack && k.drawn >= first + 1300 && k.drawn < 8000)
+            .map(|k| (k.drawn, k.pose.group, k.pose.frame))
+            .collect()
+    };
+    let swordsmen = poses(2);
+    assert_eq!(swordsmen.first(), Some(&(first + 1300, 4, 0)));
+    assert!(swordsmen.contains(&(first + 1300 + 1000, 4, 10)));
+    assert_eq!(swordsmen.last().map(|p| (p.1, p.2)), Some((2, 0)));
+    // Inferno at no stack: its animation alone, from the hex's left.
+    let [left, top] = layout.hex_box(6, 15);
+    let inferno = t.spots.iter().find(|k| k.animation == 9).unwrap();
+    assert_eq!(inferno.at, [left, top + 52 - 70]);
+    let shower = t.spots.iter().find(|k| k.animation == 16).unwrap();
+    let [x, _] = layout.anchor(0, 15);
+    let [_, top] = layout.hex_box(0, 15);
+    assert_eq!(shower.at, [x - 30, top + 52 - 50]);
+}
+
+/// A creature's cast (`StackCast`).
+fn stack_cast(stack: u8, spell: u16, target: Target) -> Event {
+    Event::StackCast {
+        stack,
+        spell,
+        target,
+    }
+}
+
+#[test]
+fn a_creature_casts_by_its_angle_and_stands_at_its_casts_tail() {
+    // E17 M3 T7c-1 (0x448260, `dragon`): the Faerie Dragon beside its target takes group 17, its
+    // frames at trunc(480 / 12), the outline kept until the cast starts; Fireball at the hex, the
+    // dragon struck with the defending Swordsmen; it stands after the loop as their group 4 plays
+    // on, outlined once nothing plays (the cast's tail).
+    let o = snapshot(vec![
+        at(0, Side::Attacker, FAERIE_DRAGON, 81, true),
+        at(1, Side::Defender, SWORDSMAN, 83, false),
+        at(2, Side::Defender, SWORDSMAN, 15, false),
+        at(3, Side::Defender, SWORDSMAN, 100, false),
+    ]);
+    let hex = |hex| Target::Hex { hex };
+    let commands = [
+        (
+            Some(0),
+            vec![
+                Event::Defended { stack: 1 },
+                Event::TurnStarted { stack: 2 },
+            ],
+        ),
+        (
+            Some(0),
+            vec![
+                Event::Defended { stack: 2 },
+                Event::TurnStarted { stack: 0 },
+            ],
+        ),
+        (
+            Some(1000),
+            vec![
+                stack_cast(0, 21, hex(83)),
+                hurt(0, 20, 20, 0),
+                hurt(1, 20, 20, 0),
+                hurt(3, 20, 20, 0),
+                Event::TurnStarted { stack: 1 },
+            ],
+        ),
+        (
+            Some(8000),
+            vec![
+                Event::Defended { stack: 1 },
+                Event::TurnStarted { stack: 0 },
+            ],
+        ),
+        (
+            Some(8000),
+            vec![stack_cast(0, 21, hex(15)), hurt(2, 20, 20, 0)],
+        ),
+    ];
+    let t = play_area(&o, &commands);
+    let frames = |group| -> Vec<u32> {
+        t.keys
+            .iter()
+            .filter(|k| k.stack == 0 && k.pose.group == group)
+            .map(|k| k.drawn)
+            .collect()
+    };
+    let cast = frames(17);
+    assert_eq!(cast.len(), 12);
+    assert_eq!(cast.get(2).zip(cast.get(1)).map(|(b, a)| b - a), Some(40));
+    // The outline kept while it casts, gone as the cast starts, back at its tail.
+    let last = cast.last().copied().unwrap();
+    assert_eq!(t.outlined(last), Some(0));
+    assert_eq!(t.outlined(last + 41), None);
+    let hit = frames(3);
+    assert_eq!(hit.len(), 7);
+    let stood = t
+        .keys
+        .iter()
+        .find(|k| k.stack == 0 && k.pose.group == 2 && k.drawn > hit[0])
+        .map(|k| k.drawn)
+        .unwrap();
+    assert_eq!(stood, hit[0] + 700);
+    assert_eq!(t.outlined(stood + 100), None);
+    // The Swordsmen at 100, not defending: their hit's six frames, standing inside the loop.
+    let hit_100: Vec<(u32, u32)> = t
+        .keys
+        .iter()
+        .filter(|k| k.stack == 3 && k.drawn >= hit[0] && k.drawn < stood)
+        .map(|k| (k.pose.group, k.pose.frame))
+        .collect();
+    assert_eq!(hit_100.last(), Some(&(2, 0)));
+    assert_eq!(hit_100.len(), 7);
+    // The Swordsmen go on after the dragon stands; the outline is back as they stand.
+    let defended: Vec<u32> = t
+        .keys
+        .iter()
+        .filter(|k| k.stack == 1 && k.drawn > stood)
+        .map(|k| k.drawn)
+        .collect();
+    assert_eq!(defended.len(), 5);
+    // Its frames 8 to 10, standing, then the end's whole redraw.
+    let end = defended.last().copied().unwrap();
+    assert_eq!(t.outlined(end - 1), None);
+    assert!(t.outlines.contains(&(end, Some(0))));
+    // The next turn's stack the same moment.
+    assert_eq!(t.outlined(end), Some(1));
+    // Four rows above: group 19, the dragon not struck, standing in memory after the loop (six),
+    // on the screen only with the battle's whole redraw once the Swordsmen stand.
+    let above = frames(19);
+    assert_eq!(above.len(), 12);
+    let reacts = t
+        .keys
+        .iter()
+        .find(|k| k.stack == 2 && k.pose.group == 4)
+        .unwrap()
+        .drawn;
+    let stood = t
+        .keys
+        .iter()
+        .find(|k| k.stack == 0 && k.pose.group == 2 && k.drawn > above[0])
+        .map(|k| (k.drawn, k.shown));
+    assert_eq!(stood, Some((reacts + 600, reacts + 1200)));
+    assert_eq!(t.at(reacts + 1199).get(&0).map(|p| p.group), Some(19));
+}
+
+#[test]
+fn a_creature_casts_turned_toward_its_target_and_by_its_strike_groups() {
+    // E17 M3 T7c-1: straight below the dragon (Δx = 0) group 19, straight above 17; the
+    // Swordsmen, without groups 17 to 19, cast by their strike groups (11 to 13), turned toward a
+    // hex on their left and back; a cast at a stack, by an unknown stack or of another spell, and
+    // an area spell that strikes nothing (the caster stands at its tail all the same).
+    let o = snapshot(vec![
+        at(0, Side::Attacker, FAERIE_DRAGON, 81, true),
+        at(1, Side::Attacker, SWORDSMAN, 100, false),
+        at(2, Side::Defender, SWORDSMAN, 150, false),
+    ]);
+    let hex = |hex| Target::Hex { hex };
+    let commands = [
+        (
+            Some(0),
+            vec![
+                stack_cast(0, 23, hex(133)),
+                Event::SpellResisted { target: 1 },
+                hurt(2, 5, 5, 0),
+            ],
+        ),
+        (Some(4000), vec![stack_cast(0, 23, hex(31))]),
+        (Some(8000), vec![stack_cast(1, 23, hex(97))]),
+        (
+            Some(12000),
+            vec![
+                stack_cast(0, 54, Target::Stack { stack: 2 }),
+                applied(2, 54),
+            ],
+        ),
+        (Some(13000), vec![stack_cast(9, 23, hex(97))]),
+        (Some(14000), vec![stack_cast(0, 54, hex(97))]),
+    ];
+    let t = play_area(&o, &commands);
+    let groups: Vec<(u8, u32)> = t
+        .keys
+        .iter()
+        .filter(|k| matches!(k.pose.group, 11..=13 | 17..=19) && k.pose.frame == 0)
+        .map(|k| (k.stack, k.pose.group))
+        .collect();
+    assert_eq!(groups, [(0, 19), (0, 17), (1, 12)]);
+    // The Swordsmen turned left (group 7) before and right (group 9) after.
+    let turns: Vec<u32> = t
+        .keys
+        .iter()
+        .filter(|k| k.stack == 1 && matches!(k.pose.group, 7 | 9) && k.pose.frame == 0)
+        .map(|k| k.pose.group)
+        .collect();
+    assert_eq!(turns, [7, 9]);
+    assert!(t.tints.iter().any(|k| k.stack == 2));
+}
+
+#[test]
+fn magic_animations_at_a_hex_and_over_several_stacks_without_their_look() {
+    // E17 M3 T7c-1: an area spell or a mass spell whose animation the stage lacks plays only its
+    // line and reactions; a mass animation over a stack the timeline does not know skips it.
+    let o = snapshot(vec![
+        at(0, Side::Attacker, MARKSMAN, 86, false),
+        at(1, Side::Defender, SWORDSMAN, 15, false),
+    ]);
+    let mut casts = area_casts();
+    for spell in [21, 24] {
+        if let Some(look) = casts.spells.get_mut(&spell) {
+            look.animation = Some(200);
+        }
+    }
+    let layout = layout();
+    let magic = area_magic();
+    let stage = Stage {
+        layout: &layout,
+        width: 17,
+        groups: tables().battle.groups,
+        magic: &magic,
+        casts: &casts,
+    };
+    let events = [
+        vec![cast_at(21, Target::Hex { hex: 15 }), hurt(1, 9, 9, 0)],
+        vec![
+            cast_at(24, Target::None {}),
+            hurt(1, 9, 9, 0),
+            hurt(7, 9, 9, 0),
+        ],
+    ];
+    let commands = [
+        Command {
+            at: Some(0),
+            events: &events[0],
+        },
+        Command {
+            at: Some(4000),
+            events: &events[1],
+        },
+    ];
+    let t = timeline(&o, &commands, &area_looks(), stage, Speed::default()).unwrap();
+    assert!(t.spots.is_empty() && t.magics.is_empty());
+    assert!(t.keys.iter().any(|k| k.stack == 1 && k.pose.group == 3));
 }

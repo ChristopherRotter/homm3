@@ -116,6 +116,27 @@ id = "battle.log.cast-on"
 args = { hero = "text", spell = "text", creature = "text" }
 original = [{ at = "GENRLTXT:196", printf = ["hero", "spell", "creature"] }]
 
+# A hero casts a spell without a target (`battle_log_cast` 0x5A8950, the caster kind 0 without one;
+# E17 M3 T7c-1: a mass timed spell, Death Ripple, Destroy Undead): the hero's name and the spell's.
+[[key]]
+id = "battle.log.cast"
+args = { hero = "text", spell = "text" }
+original = [{ at = "GENRLTXT:197", printf = ["hero", "spell"] }]
+
+# Death Ripple's damage (`cast_spell` 0x5A0DCD, E17 M3 T7c-1): one stack's when it struck one, else
+# the caster's. Its row's line break joins or splits it as any line's (0x472E90).
+[[key]]
+id = "battle.log.death-ripple"
+args = { damage = "number" }
+original = [{ at = "GENRLTXT:188", printf = ["damage"] }]
+
+# Destroy Undead's damage (`cast_spell` 0x5A0FED, E17 M3 T7c-1, *provisional*: not recorded): the
+# spell's name, then the damage as Death Ripple's.
+[[key]]
+id = "battle.log.destroy-undead"
+args = { spell = "text", damage = "number" }
+original = [{ at = "GENRLTXT:187", printf = ["spell", "damage"] }]
+
 # A spell resisted by the stack it was aimed at (`cast_spell` 0x5A1FB0, E17 M3 T7b-1): the stack's
 # name by its number, and the verb `word.resist` by it.
 [[key]]

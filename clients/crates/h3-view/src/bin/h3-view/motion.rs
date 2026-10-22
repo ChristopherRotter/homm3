@@ -191,7 +191,9 @@ pub fn magic(
             Event::Struck { flags, .. } if flags.lucky => {
                 numbers.insert(GOOD_LUCK);
             }
-            Event::SpellCast { spell, .. } | Event::StrikeSpell { spell, .. } => {
+            Event::SpellCast { spell, .. }
+            | Event::StrikeSpell { spell, .. }
+            | Event::StackCast { spell, .. } => {
                 let entry = spell_entry(record, tables, *spell);
                 if let Some(a) = entry.and_then(|e| e.animation) {
                     numbers.insert(a);
@@ -279,7 +281,10 @@ pub fn casts(
                 cast = true;
                 spells.push(spell);
             }
-            Event::EffectApplied { spell, .. } | Event::StrikeSpell { spell, .. } => {
+            // A creature's cast (E17 M3 T7c-1) draws its spell as a hero's does.
+            Event::EffectApplied { spell, .. }
+            | Event::StrikeSpell { spell, .. }
+            | Event::StackCast { spell, .. } => {
                 spells.push(spell);
             }
             Event::Frightened { .. } => frightened = true,

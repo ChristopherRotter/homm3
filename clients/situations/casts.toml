@@ -1,7 +1,8 @@
 # The casts' sequences (E17 M3 T7a-2a; T7a-2b adds the others): recorded as sequences.toml's
 # (`h3drive.py sequences situations/casts.toml` replays them and fails when a timeline changes),
 # kept beside it until the viewer's timeline plays them (T7b, T7c): then each moves into
-# sequences.toml with its engine commands and its frames (T7b-1: `cast`, `resist`, `arrow`).
+# sequences.toml with its engine commands and its frames (T7b-1: `cast`, `resist`, `arrow`; T7c-1:
+# `mass`, `dragon`).
 # `cast:<k>[:<hex>]` casts the hero's spell at its book's place k (design §7.16, "The spell
 # book"); a Faerie Dragon casts by a click on its target. `heroes = true`: the timeline has the heroes' changes too
 # (`<ms> hero <side> g<group> f<frame>`); `screens = true` (T7a-2b) the screen's changes
@@ -9,24 +10,6 @@
 # does not show (the at-hex and Armageddon players, the projectiles, the rays, design §7.16).
 # A key pressed at the frozen clock right after a hero's cast acts once the cast has played
 # (sequences.toml's `resist`: its stack defends as the hero stands).
-
-# A Faerie Dragon's casts at targets level, above and below (§7.16, a creature caster's angle):
-# round 1 its flight and the Swordsmen's defence, rounds 2 to 4 a cast each.
-[[sequence]]
-id = "dragon"
-scenario = "seq-dragon.toml"
-hot_seat = true
-actions = [
-    "hex:82", "turn:1.0", "key:d", "turn:1.1", "key:d", "turn:1.2", "key:d", "turn:1.3", "key:d",
-    "turn:0.0", "hex:83", "turn:1.0", "key:d", "turn:1.1", "key:d", "turn:1.2", "key:d",
-    "turn:1.3", "key:d",
-    "turn:0.0", "hex:15", "turn:1.0", "key:d", "turn:1.1", "key:d", "turn:1.2", "key:d",
-    "turn:1.3", "key:d",
-    "turn:0.0", "hex:117",
-]
-ms = 4000
-screens = true
-timeline = "timelines/dragon.txt"
 
 # Lightning Bolt (round 1) and Chain Lightning (round 2) at the Swordsmen at row 4 (§7.16: the bolt
 # from the sky, the rays, the marked target; Chain Lightning's own animation never drawn).
@@ -44,22 +27,6 @@ ms = 2400
 heroes = true
 screens = true
 timeline = "timelines/bolt.txt"
-
-# The mass animation (§7.16, player 3): Slow at Expert on every enemy (round 1), Death Ripple with
-# its reactions (round 2), each as the Marksmen's turn starts.
-[[sequence]]
-id = "mass"
-scenario = "seq-mass.toml"
-hot_seat = true
-actions = [
-    "turn:0.0", "cast:0", "key:d",
-    "turn:1.0", "key:d", "turn:1.1", "key:d", "turn:1.2", "key:d", "turn:1.3", "key:d",
-    "turn:0.0", "cast:1",
-]
-ms = 2500
-heroes = true
-screens = true
-timeline = "timelines/mass.txt"
 
 # The raise (§7.16, player 4): Resurrection on the Pikeman the Grand Elves shot (round 1; the
 # raised Pikeman then takes its turn), Animate Dead on the Skeleton the Marksmen shot (round 2).

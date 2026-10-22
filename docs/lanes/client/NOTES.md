@@ -42,6 +42,14 @@ a line there while the work waits.
   Weakness (`striker_effects` 0x4413C4), regeneration (79), the Wraiths' mana drain (77), Death
   Blow (73) and Poison's damage at a round's start (67, 0x4472AB); the waits for every sound
   these play (as the heal's, below).
+- 2026-10-22 (E17 M3 T7c-1, done; design §7.16): the mass and area spells of the recorded casts
+  are built. Left for later (read in part or not at all, not recorded): the Faerie Dragon's
+  draw line ("readies %s", the executable's own text, 0x660AD0) needs the drawn spell, private to
+  its controller, where the sequences record a spectator's view (CLT-Q15); a melee
+  strike's or a shot's loop (`iterate`) to play the groups on after it as `strike_animation`
+  does (0x4691A9; the same times so far); Expert Dispel and Cure over several stacks; Destroy
+  Undead, Frost Ring and Meteor Shower (built as read); an at-hex frame over the panel; the
+  hero's aim over a hex (`enter_player_cast`, inbox).
 - 2026-10-15 (E17 M3 T3b): **for T8**: the battle waits for the heal's sound to end
   (`wait_for_sample` after `first_aid_tent_action`'s animation, design §7.15): at speed 0 the
   animation outlasts `Regener` (2 100 against 1 881 ms), at speeds 1 and 2 with the sound on the

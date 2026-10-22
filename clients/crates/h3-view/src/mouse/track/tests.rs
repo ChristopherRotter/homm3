@@ -459,3 +459,40 @@ fn an_aimed_spell_hints_its_cast() {
     assert_eq!(shown.marked, [(10, Some(1))]);
     assert_eq!(Input::Aim { at: 3, spell: 1 }.at(), 3);
 }
+
+#[test]
+fn the_spell_book_empties_the_status_line() {
+    // E17 M3 T7c-1: the book over the battle takes the mouse (a spell without a target is cast
+    // from it at once); a move back over the same hex writes its hint again.
+    let (o, legal) = (battle(), legal());
+    let field = Field {
+        observation: &o,
+        legal: &legal,
+        facing: &Facing::Sides,
+    };
+    let turns = [Turn { field, human: true }];
+    let inputs = [
+        Input::Move {
+            at: 0,
+            to: centre(87),
+        },
+        Input::Book { at: 2 },
+        Input::Move {
+            at: 3,
+            to: centre(87),
+        },
+    ];
+    let shown = run(&[], &[], &turns, &inputs);
+    let texts: Vec<(u32, String)> = shown
+        .log
+        .iter()
+        .filter_map(|(t, l)| match l {
+            Logged::Status { text, .. } => Some((*t, text.clone())),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(texts.len(), 3);
+    assert_eq!(texts[1], (2, String::new()));
+    assert_eq!(texts[2].1, texts[0].1);
+    assert_eq!(Input::Book { at: 4 }.at(), 4);
+}

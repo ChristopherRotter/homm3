@@ -6,22 +6,55 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024). M3 (fidelity) below, refined at M2's closure (T5c) and agreed by the user there, each task about half a context; the exit: the reference set passes, or each difference is a listed fix or a classified quirk. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M3 T7c — Area spells, rays and spell obstacles
+### E17 M3 T7c-2 — Spell obstacles and Armageddon
 
-- **Scope:** built from T7a: the area spells (Fireball, Inferno, Meteor Shower, Frost Ring,
-  Armageddon, Death Ripple and the like), the lightning spells' rays (`draw_ray` read and built at
-  T1b-1, design §7.12; not yet its branches, randomness and colours 300, 301, 303, 305, nor
-  Chain Lightning's call), the spell obstacles in the
-  scene (fire walls, force fields, quicksand, land mines: `ObstaclePlaced`, `ObstacleRevealed`,
-  `ObstacleTriggered`; `scene::battle` leaves them out so far), Teleport, created and raised
-  stacks (`StackCreated`, `SpellRaised`, `Reborn`: drawn once the snapshot lacks them), their
-  sounds. T7a-2b's recordings (`casts.toml`, design §7.16 "Recorded") are the references: `bolt`
-  (its Chain Lightning; its Lightning Bolt is played since T7b-2b-3, `lightning`), `mass`, `raise`, `obstacles` (its Fire Wall's second hex placed at the first's: confirm by the
-  frame check), `creatures` (the Liches' cloud), `dragon` (at a hex). May split when refined.
-- **Acceptance:** their recorded sequences as recorded and their frames match (new recordings,
-  T7b-2b-3's way: `sequences.toml` with `fail` and an engine `seed` searched; `bolt`'s round 1
-  is `lightning` since T7b-2b-3).
-- **Depends on:** T7a-2b (done). **Status:** ready.
+- **Scope:** T7c split with the user on 2026-10-22 (T7c-1 the area and mass spells, done; T7c-2;
+  T7c-3). The spell obstacles in the scene (fire walls, force fields, quicksand, land mines:
+  `ObstaclePlaced`, `ObstacleRevealed`, `ObstacleTriggered`, `ObstacleRemoved`; `scene::battle`
+  leaves them out so far, design §4.4: a side's own shown only when revealed or seen), their
+  placement at the hex (player 5, `Player::at_hex` since T7c-1: places 4 and 0) with their sounds,
+  their vanish animations at a round's start (66, 58, 59, 60/61), Armageddon's tiled field
+  (player 6) with its reactions; Land Mine's blast (57, marked) if a record steps on one. The
+  reference: `casts.toml`'s `obstacles` (its Fire Wall's second hex placed at the first's: confirm
+  by the frame check).
+- **Acceptance:** `obstacles` moves into `sequences.toml` (engine commands, a searched seed if a
+  roll matters), played as recorded, its frames as the original's or each difference listed.
+- **Depends on:** T7c-1 (done). **Status:** ready.
+
+### E17 M3 T7c-3 — Raises, the creatures' own animations and Chain Lightning
+
+- **Scope:** created and raised stacks (`StackCreated`, `SpellRaised`, `Reborn`: drawn once the
+  snapshot lacks them; `raise_stack`, player 4: Resurrection's 50 for Animate Dead too), Fire
+  Shield's return (11 over the shield's stack with the striker's hit), the Power Liches' cloud
+  (72, plain), Chain Lightning's rays (`draw_ray`'s branches, randomness and colours 300, 301,
+  303, 305 from its call 0x5A64EF: a code reading; its randomness draws the original's own
+  generator, so the frame check may need a mask: a decision for the user), Teleport's and a
+  created stack's dissolves if a recording shows them; their sounds; the message when no hex is
+  free for a created stack (inbox). References: `casts.toml`'s `raise`, `creatures`, `bolt` (its
+  round 2; round 1 is `lightning`).
+- **Acceptance:** those recordings move into `sequences.toml`, played as recorded, frames as the
+  original's or each difference listed (the rays' randomness as the user decides).
+- **Depends on:** T7c-2. **Status:** waiting. May split when refined.
+
+### E17 M3 T7d — A creature's cast: its drawing bugs fixed
+
+- **Scope:** CLT-Q8 (the user, 2026-10-22: dev-only for the captures, fixed otherwise): three
+  drawing bugs of a creature's cast, built as the original's at T7c-1, are fixed in what the
+  client draws and reproduced only for the comparisons with the original, by the development
+  switch of the 2026-10-15 decision (`h3_render::Bugs`; ADR-0020 point 9 amendment draft, point
+  3): (1) the casting group by the angle (`creature_cast`: the original's Δy unnegated, from the
+  caster's mid-height to the hex's anchor; fixed: VCMI's choice, the shot's sign between the
+  centres, exact points decided in the task); (2) a caster its spell missed shown on its last
+  casting frame until `strike_animation`'s end (`spell_reactions`' `unseen` key; fixed: shown
+  standing as memory has it); (3) the target's mouse highlight kept through a creature's frames
+  (`Logged::Unmark` at the cast's start; fixed: at the action's start, as a hero's). The switch
+  reaches `h3_view::anim`'s timeline, not only the renderer: `h3-view sequences` and the
+  harness's comparisons set it, the window, `render` and `play` do not. Whatever else of
+  CLT-Q9 to CLT-Q14 the user answers the same way joins it.
+- **Acceptance:** with the switch every recorded sequence as recorded and its frames as before;
+  without it, tests show the fixed group, the caster standing at once and the highlight cleared
+  at the click; the design notes name each fixed bug.
+- **Depends on:** T7c-1 (done). **Status:** ready (small).
 
 ### E17 M3 T9 — M3's closure
 
@@ -30,9 +63,9 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
   user, a fresh reviewer agent over M3, the next milestone
   refined (sieges, live play, HD or the adventure map: the user's choice), M3 marked done.
 - **Acceptance:** M3's exit holds; the review list answered or carried on.
-- **Depends on:** T7c (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a,
+- **Depends on:** T7c-3, T7d (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a,
   T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b, T8, T7b-1, T7b-2a,
-  T7b-2b-1, T7b-2b-2a, T7b-2b-2b, T7b-2b-3 done).
+  T7b-2b-1, T7b-2b-2a, T7b-2b-2b, T7b-2b-3, T7c-1 done).
   **Status:** waiting.
 
 ## Inbox
@@ -89,7 +122,8 @@ Other lanes add entries here. The client lane turns each into a task, or moves i
   cursor is the spell's (`crspell.DEF`, animated: not read; the viewer leaves it as it was) and the
   status line says "Cast %s on %s" (GENRLTXT 28, built *provisional*, not forced; 27 elsewhere);
   `enter_player_cast` 0x59EC50's loop is not read (which targets it offers, the cursor's frames):
-  with the mouse's model when T7c's area spells aim at hexes, and for live play. And `cast`'s 71
+  with the mouse's model when a recording aims a hero's area spell at a hex (T7c-1's are the
+  Faerie Dragon's clicks), and for live play. And `cast`'s 71
   pixels at 0: the original redraws the battlefield over a rock's top (obstacle 22) for the one
   frame of the click (0x479038's path, not read).
 
@@ -107,8 +141,8 @@ Other lanes add entries here. The client lane turns each into a task, or moves i
 - CLT-Q2 (2026-10-12, 2026-10-19): the table-only LOD reader is in `h3-formats`: switch the
   archive set to the directories and a batch's ranges, `h3-view gate` measuring it. NOTES,
   "Assets and archives".
-- For T7c: the message when no hex is free for a created stack; for T8: the battle waits for the
-  heal's sound (T3b). NOTES, "The battle screen".
+- For T7c-3: the message when no hex is free for a created stack; the battle waits for the
+  heal's sound (T3b) and the other effects' (T7b-2b). NOTES, "The battle screen".
 - 2026-10-20 (T6a): the tactics phase's panel (0x46C050, not read) and Auto Combat switched on
   (its button selected, the panel dimmed while stacks play themselves) wait for a record with a
   tactics phase and for live play. Design §9.7.

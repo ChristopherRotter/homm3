@@ -119,6 +119,7 @@ pub fn panels(
                 | battle_log::Logged::Turn(_)
                 | battle_log::Logged::Status { .. }
                 | battle_log::Logged::Scroll(_)
+                | battle_log::Logged::Unmark
         )
     });
     let catalogue = if writes {

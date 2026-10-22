@@ -41,6 +41,13 @@ pub enum Input {
         /// The spell's handle.
         spell: u16,
     },
+    /// The hero's spell book opened over the battle (E17 M3 T7c-1): its dialog takes the mouse,
+    /// so the status line is empty (a spell without a target is cast from it at once, its line
+    /// the next the log shows).
+    Book {
+        /// When.
+        at: u32,
+    },
 }
 
 impl Input {
@@ -48,7 +55,9 @@ impl Input {
     #[must_use]
     pub const fn at(&self) -> u32 {
         match *self {
-            Self::Move { at, .. } | Self::Act { at } | Self::Aim { at, .. } => at,
+            Self::Move { at, .. } | Self::Act { at } | Self::Aim { at, .. } | Self::Book { at } => {
+                at
+            }
         }
     }
 }
@@ -303,6 +312,11 @@ pub fn follow(
         j += 1;
         match *input {
             Input::Aim { spell, .. } => h.aiming = Some(spell),
+            Input::Book { at: now } => {
+                h.write(now, &Hint::Empty, None, name);
+                h.hex = None;
+                h.written = None;
+            }
             Input::Act { at: now } => {
                 h.aiming = None;
                 // The action it gives starts now (none: a key that gives nothing).
@@ -379,8 +393,9 @@ impl Handler<'_> {
                     self.set_marked(now, None);
                 }
             }
-            // `round_start` unmarks the mouse's stack (0x476081).
-            Logged::Round => self.set_marked(now, None),
+            // `round_start` unmarks the mouse's stack (0x476081), and so does a cast as it starts
+            // (0x5A0055; E17 M3 T7c-1).
+            Logged::Round | Logged::Unmark => self.set_marked(now, None),
             _ => {}
         }
     }

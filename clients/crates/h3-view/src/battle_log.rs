@@ -188,6 +188,41 @@ pub enum Logged {
         /// The stack, its damage and its kills.
         hit: (u8, u64, u32),
     },
+    /// A hero's spell without a target (`battle_log_cast` 0x5A8950 for the caster kind 0 without
+    /// one, GENRLTXT 197; E17 M3 T7c-1): a mass timed spell after its effects, before its
+    /// animation (0x5A10D0); Death Ripple and Destroy Undead before their damage (0x5A0C89,
+    /// 0x5A0E86).
+    CastAll {
+        /// The caster's side (0 the attacker's).
+        side: u8,
+        /// The spell's handle.
+        spell: u16,
+    },
+    /// Death Ripple's or Destroy Undead's damage (GENRLTXT 188, 187; E17 M3 T7c-1): one stack's
+    /// damage when it struck one, else the caster's (0x5A0DC6 to 0x5A0E0A); Death Ripple's before
+    /// its animation, Destroy Undead's after it.
+    MassDamage {
+        /// The spell's handle.
+        spell: u16,
+        /// The damage.
+        damage: u64,
+        /// Destroy Undead's row (the spell named), else Death Ripple's.
+        undead: bool,
+    },
+    /// An area spell's damage (`area_spell_handler` 0x5A4B83: `battle_log_damage` named by the
+    /// spell, its number 1; E17 M3 T7c-1), before the reactions: one stack's damage and kills
+    /// naming it, or with several the caster's damage and every kill, named by the word for
+    /// creatures (0x5A4B1D).
+    AreaDamage {
+        /// The spell's handle.
+        spell: u16,
+        /// The damage.
+        damage: u64,
+        /// The creatures killed.
+        kills: u32,
+        /// The one stack struck (none: several).
+        target: Option<u8>,
+    },
     /// The status line written (0x472E90 with its second argument 0; E17 M3 T6c-2): the mouse's
     /// hint, forced over new entries or not (`crate::mouse::track`).
     Status {
@@ -196,6 +231,10 @@ pub enum Logged {
         /// Whether it replaces the item's text over new entries.
         forced: bool,
     },
+    /// The mouse's stack unmarked as a cast starts (`battle_clear_highlight` 0x477E10 from
+    /// `cast_spell` 0x5A0055; E17 M3 T7c-1: a creature's cast, whose action leaves it marked until
+    /// its own frames are over): no line.
+    Unmark,
     /// The log scrolled by its buttons or the arrow keys (0x472DF0, 0x472E40, 0x472DB0; E17 M3
     /// T6c-2: the window's), by entries (up: negative).
     Scroll(i64),
@@ -232,7 +271,11 @@ pub fn word(
 ) -> Option<String> {
     let named = |id: u8, count: u32| stack(id).map(|n| (n, count));
     match logged {
-        Logged::Action | Logged::Turn(_) | Logged::Status { .. } | Logged::Scroll(_) => None,
+        Logged::Action
+        | Logged::Turn(_)
+        | Logged::Status { .. }
+        | Logged::Scroll(_)
+        | Logged::Unmark => None,
         Logged::Strike {
             attacker,
             count,
@@ -397,6 +440,52 @@ pub fn word(
         } => {
             let spell = key(Name::Spell(*spell))?;
             let struck = stack(*target)?;
+            let hit = Hit {
+                creature: &struck.creature,
+                war_machine: struck.war_machine,
+                damage: *damage,
+                kills: *kills,
+            };
+            let attacker = Stack {
+                creature: &spell,
+                count: 1,
+            };
+            Some(strike(catalogue, attacker, Spread::Target, &[hit]))
+        }
+        Logged::CastAll { side, spell } => {
+            let hero = catalogue.text(&key(Name::Hero(*side))?, &Args::new());
+            let spell = catalogue.text(&key(Name::Spell(*spell))?, &Args::new());
+            Some(cast_all(catalogue, &hero, &spell))
+        }
+        Logged::MassDamage {
+            spell,
+            damage,
+            undead,
+        } => {
+            let damage = i64::try_from(*damage).unwrap_or(i64::MAX);
+            let args = Args::new().number("damage", damage);
+            Some(if *undead {
+                let spell = catalogue.text(&key(Name::Spell(*spell))?, &Args::new());
+                catalogue.text("battle.log.destroy-undead", &args.text("spell", &spell))
+            } else {
+                catalogue.text("battle.log.death-ripple", &args)
+            })
+        }
+        Logged::AreaDamage {
+            spell,
+            damage,
+            kills,
+            target,
+        } => {
+            let spell = key(Name::Spell(*spell))?;
+            // Several stacks: the line names the word for creatures by the kills.
+            let struck = match target {
+                Some(t) => stack(*t)?,
+                None => Named {
+                    creature: String::from("word.creature"),
+                    war_machine: false,
+                },
+            };
             let hit = Hit {
                 creature: &struck.creature,
                 war_machine: struck.war_machine,
@@ -730,6 +819,16 @@ pub fn cast_on(catalogue: &Catalogue, hero: &str, spell: &str, stack: Stack<'_>)
             .text("hero", hero)
             .text("spell", spell)
             .text("creature", &name(catalogue, stack)),
+    )
+}
+
+/// A hero's spell without a target (`battle_log_cast` 0x5A8950, E17 M3 T7c-1): the hero's name and
+/// the spell's.
+#[must_use]
+pub fn cast_all(catalogue: &Catalogue, hero: &str, spell: &str) -> String {
+    catalogue.text(
+        "battle.log.cast",
+        &Args::new().text("hero", hero).text("spell", spell),
     )
 }
 
