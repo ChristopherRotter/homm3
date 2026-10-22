@@ -15,7 +15,7 @@ use crate::effects::Status;
 use crate::geometry::{Field, Hex, HexSet};
 use crate::magic;
 use crate::movement::MAX_PATH;
-use crate::pathfinder::{AI_RANGE, Goal, Query, Search};
+use crate::pathfinder::{self, AI_RANGE, Goal, Query, Search};
 use crate::siege::{self, SiegeState};
 use crate::state::{BattleState, StackId, StackTraits};
 
@@ -353,6 +353,52 @@ pub fn reach_map(state: &BattleState, ruleset: &BattleRuleset, id: StackId) -> M
         speed: Some(speed),
     };
     Map(Search::run(state, field, (id, me), query))
+}
+
+/// The stops of the computer's search for stack `id` (the pathfinder's +0x68, which every search
+/// marks afresh for its stack, 0x4B3290): none for a flyer, else the pits its controller sees and
+/// a town's moat (BAT-MAG-032, BAT-SIE-004), not under the stack. The destination map keeps the
+/// last search's (E23 T5b2a, survey slip 30).
+// rule: BAT-AI-020
+pub fn search_stops(state: &BattleState, ruleset: &BattleRuleset, id: StackId) -> HexSet {
+    pathfinder::stops(state, Field::new(ruleset.battle().field), state.at(id))
+}
+
+/// The computer's destination map of stack `id` for `side` (0x4B2FF0, the walker's map with its
+/// flag 1, which the hero's Teleport asks; BAT-AI-020): every hex of `destinations` (Teleport's
+/// for the stack, BAT-MAG-029) a position reached at cost 1 and marked, no other hex reached; the
+/// position of each living stack of the other side but the turrets with a neighbour of its hexes
+/// among them marked at cost 1 (a two-hex stack's other hex never: survey slip 5, which no choice
+/// reads); the walk's stops `stops`, which the original leaves as its last search's (survey slip
+/// 30).
+// rule: BAT-AI-020
+pub fn destination_map(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    (id, side): (StackId, BattleSide),
+    destinations: HexSet,
+    stops: HexSet,
+) -> Map {
+    let field = Field::new(ruleset.battle().field);
+    let mut marked = destinations;
+    let near = |h: Hex| {
+        field
+            .neighbors(h)
+            .iter()
+            .flatten()
+            .any(|&n| destinations.contains(n))
+    };
+    for s in state.stacks.iter() {
+        if s.side != side && s.is_alive() && !s.is_turret() && s.footprint(field).hexes().any(near)
+        {
+            marked.insert(s.hex);
+        }
+    }
+    Map(Search::placed(
+        state.at(id).hex,
+        (destinations, marked),
+        stops,
+    ))
 }
 
 /// The damage of the Fire Wall on `hex` to stack `id` (BAT-MAG-028: its value with the bonuses of

@@ -50,6 +50,7 @@ mod predict;
 mod specials;
 mod speed;
 mod spells;
+mod teleport;
 mod values;
 
 fn key(text: &str) -> ContentKey {
@@ -776,11 +777,11 @@ type HeroSpell = (
     fn() -> SpellMagic,
 );
 
-/// The hero's own cases (E23 T5a, T5b1): Dispel (any side's stack from Advanced, the mass version
-/// at Expert), Clone, an area spell, a mass damage spell, a chain, a summon of runners, a raise,
-/// one that lasts only the battle below Advanced (as Resurrection), Sacrifice (tested as that one)
-/// and Earthquake.
-const HERO_SPELLS: [HeroSpell; 10] = [
+/// The hero's own cases (E23 T5a, T5b1, T5b2a): Dispel (any side's stack from Advanced, the mass
+/// version at Expert), Clone, an area spell, a mass damage spell, a chain, a summon of runners, a
+/// raise, one that lasts only the battle below Advanced (as Resurrection), Sacrifice (tested as
+/// that one), Earthquake and Teleport.
+const HERO_SPELLS: [HeroSpell; 11] = [
     ("dispel", 0, [0; 4], SpellPolarity::Neutral, || SpellMagic {
         target: SpellTarget::Stack,
         side: TargetSide::Own,
@@ -882,6 +883,14 @@ const HERO_SPELLS: [HeroSpell; 10] = [
     ("quake", 0, [2, 2, 4, 9], SpellPolarity::Neutral, || {
         SpellMagic {
             effects: vec![SpellEffect::Earthquake],
+            ..SpellMagic::default()
+        }
+    }),
+    ("teleport", 0, [0; 4], SpellPolarity::Positive, || {
+        SpellMagic {
+            target: SpellTarget::Stack,
+            side: TargetSide::Own,
+            effects: vec![SpellEffect::Teleport],
             ..SpellMagic::default()
         }
     }),
@@ -1771,7 +1780,7 @@ fn a_refused_choice_falls_back_to_defend() {
     assert!(validate(&state, &r, side, refused).is_err());
     assert_eq!(checked(&state, &r, side, refused), Command::Defend);
     assert_eq!(checked(&state, &r, side, Command::Wait), Command::Wait);
-    assert_eq!(POLICY_VERSION, 13);
+    assert_eq!(POLICY_VERSION, 14);
 }
 
 /// The setup of `setup` on `difficulty`.
