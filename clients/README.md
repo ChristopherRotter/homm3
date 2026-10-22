@@ -92,7 +92,8 @@ search the parent directories).
   and its drawing bugs (M3 T4a: the client draws them fixed, the comparisons as the original).
 - **The timing check:** `cargo run --release -p h3-view -- sequences [<id>]` (from `clients/`)
   plays each recorded sequence of `situations/sequences.toml` with its engine commands, times it
-  with `h3_view::anim` and compares the timeline with the one the harness recorded in the
+  with `h3_view::anim` (the original's drawing bugs in the timeline too, M3 T7d:
+  `anim::Stage::bugs`; the window, `render` and `play` draw them fixed) and compares the timeline with the one the harness recorded in the
   original (`docs/epics/E17-design.md` §7.8); it exits 1 on a difference and writes the records
   and timelines to `clients/out/sequences/`. The unit tests replay the same sequences from their
   numbers, without the original files. A sequence may be a battle in progress, both sides played
