@@ -116,8 +116,7 @@ fn setup() -> AdventureSetup {
 }
 
 fn build(setup: &AdventureSetup) -> Result<AdventureState, SetupError> {
-    let (core, part) = rules();
-    AdventureState::new(&core, &part, setup, &mut draws())
+    crate::testing::started(&rules(), setup)
 }
 
 fn error(edit: impl FnOnce(&mut AdventureSetup)) -> SetupError {
@@ -523,15 +522,15 @@ fn a_players_turn_gives_only_its_heroes_the_days_points() {
     state.heroes[0].movement = 7;
     state.heroes[1].movement = 9;
     // Blue's turn (hero 5): what it had left is lost; red's hero keeps its points.
-    state.start_turn(&core, &part, PlayerId::new(1));
+    state.start_turn(&core, &part, &[], PlayerId::new(1));
     assert_eq!(points(&state), [7, 1430]);
     // A slower army gets fewer points at the next turn.
     state.heroes[0].army[0].creature = GOG;
-    state.start_turn(&core, &part, PlayerId::new(0));
+    state.start_turn(&core, &part, &[], PlayerId::new(0));
     assert_eq!(points(&state), [1430, 1430]);
     // A player without heroes changes nothing.
     let before = state.clone();
-    state.start_turn(&core, &part, PlayerId::new(5));
+    state.start_turn(&core, &part, &[], PlayerId::new(5));
     assert_eq!(state, before);
 }
 
@@ -850,5 +849,6 @@ fn the_hash_sees_content_not_sharing() {
 }
 
 mod answers;
+mod day;
 mod monsters;
 mod piles;

@@ -38,7 +38,7 @@ use h3_content::Ruleset;
 use h3_contracts::{HeroId, PlayerId};
 use h3_heroes::HeroDetails;
 
-use crate::movement::{DIRECTIONS, Pricing};
+use crate::movement::{DIRECTIONS, Pricing, details_of, hero_movement};
 use crate::ruleset::AdventureRuleset;
 use crate::setup::Pos;
 use crate::state::{AdventureState, HeroOnMap, StaticMap, enterable_terrain};
@@ -89,15 +89,18 @@ pub struct Reach {
 }
 
 impl Reach {
-    /// The search from `hero`'s tile with its points.
+    /// The search from `hero`'s tile with its points, its steps priced by its details in the
+    /// game's store (E08 T40).
     fn search(
         state: &AdventureState,
         core: &Ruleset,
         part: &AdventureRuleset,
+        heroes: &[Arc<HeroDetails>],
         hero: &HeroOnMap,
     ) -> Self {
         let map = state.map();
-        let pricing = Pricing::new(core, part, &hero.army);
+        let movement = hero_movement(core, details_of(heroes, hero.id));
+        let pricing = Pricing::new(core, part, &hero.army, &movement);
         // No step costs less than the cheapest straight step, so none goes farther than this.
         let radius = u16::try_from(hero.movement / pricing.cheapest()).unwrap_or(u16::MAX);
         let origin = hero.pos;
@@ -291,17 +294,17 @@ impl AdventureState {
     /// The tiles `hero` can reach today over the tiles its owner has explored (ADV-MOV-008), if it
     /// is on the map (see [`Reach`]). The caller decides whose hero it may ask about. `heroes` is
     /// the game's store of heroes' details, as for [`Self::apply`] (E08 T20a2b): the hero's
-    /// movement skills and artifacts read it from increment 5 on (E08 decision 71).
+    /// Pathfinding prices its steps (E08 T40; its flying and water walking with T41).
     // rule: ADV-MOV-008
     pub fn reach(
         &self,
         core: &Ruleset,
         part: &AdventureRuleset,
-        _heroes: &[Arc<HeroDetails>],
+        heroes: &[Arc<HeroDetails>],
         hero: HeroId,
     ) -> Option<Reach> {
         self.hero(hero)
-            .map(|hero| Reach::search(self, core, part, hero))
+            .map(|hero| Reach::search(self, core, part, heroes, hero))
     }
 }
 

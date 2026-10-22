@@ -95,6 +95,8 @@ fn params() -> AdventureParamsDef {
         starting_stack_chances: vec![88, 25],
         battle: None,
         monsters: None,
+        fly_cost: [cost(140), cost(140), cost(120), cost(100)],
+        water_walk_cost: [cost(150), cost(140), cost(120), cost(110)],
     }
 }
 
@@ -380,11 +382,99 @@ fn the_hash_is_stable_and_sees_every_part() {
         edit(|p| pack(p, "t").starting_resources[0].computer[0].1 = 501),
         edit(|p| pack(p, "t").starting_resources.swap(0, 1)),
         edit(|p| pack(p, "t").starting_resources.truncate(1)),
+        edit(|p| pack(p, "t").params.as_mut().unwrap().fly_cost[0] = cost(141)),
+        edit(|p| pack(p, "t").params.as_mut().unwrap().water_walk_cost[3] = cost(100)),
+        edit(|p| pack(p, "u").terrain_walkers = vec![walker("t:imp", "u:swamp", "t:grass")]),
+        edit(|p| {
+            pack(p, "u").terrain_walkers = vec![walker("t:gog", "u:swamp", "t:grass")];
+        }),
+        edit(|p| {
+            pack(p, "u").terrain_walkers = vec![walker("t:imp", "t:grass", "u:swamp")];
+        }),
     ];
     for (i, packs) in changes.iter().enumerate() {
         let other = compile(packs).unwrap();
         assert_ne!(other.content_hash(), base.content_hash(), "change {i}");
     }
+}
+
+/// A terrain walker of `creature` counting `terrain` as `counts_as` (E08 T40).
+fn walker(creature: &str, terrain: &str, counts_as: &str) -> TerrainWalkerDef {
+    TerrainWalkerDef {
+        creature: key(creature),
+        terrain: key(terrain),
+        counts_as: key(counts_as),
+    }
+}
+
+// covers: ADV-MOV-003, ADV-MOV-009, ADV-MOV-010
+#[test]
+fn compiles_terrain_walkers_and_the_fly_and_water_walk_prices() {
+    let core = core();
+    let part = compile(&edit(|p| {
+        pack(p, "u").terrain_walkers = vec![walker("t:imp", "u:swamp", "t:grass")];
+    }))
+    .unwrap();
+    let id = |k: &str| core.terrain_by_key(k).unwrap();
+    assert_eq!(
+        part.terrain_walkers(),
+        [TerrainWalker {
+            creature: core.creature_by_key("t:imp").unwrap(),
+            terrain: id("u:swamp"),
+            counts_as: id("t:grass"),
+        }]
+    );
+    assert!(compile(&packs()).unwrap().terrain_walkers().is_empty());
+    // The prices by level; a level above 3 counts as 3.
+    let params = part.params();
+    let fly: Vec<u32> = (0..=4).map(|level| params.fly_cost(level)).collect();
+    assert_eq!(fly, [140, 140, 120, 100, 100]);
+    let water: Vec<u32> = (0..=4).map(|level| params.water_walk_cost(level)).collect();
+    assert_eq!(water, [150, 140, 120, 110, 110]);
+    // Each walker's references, from the pack's closure, of the core; both terrains on land, one
+    // walker per terrain.
+    let with = |walkers: Vec<TerrainWalkerDef>| {
+        compile_err(&edit(|p| pack(p, "u").terrain_walkers = walkers))
+    };
+    assert_eq!(
+        with(vec![walker("t:ghost", "u:swamp", "t:grass")]),
+        AdventureCompileError::UnknownCreature("t:ghost".into())
+    );
+    assert_eq!(
+        with(vec![walker("v:imp", "u:swamp", "t:grass")]),
+        AdventureCompileError::ReferenceOutsideDependencies {
+            key: "v:imp".into(),
+            pack: "u".into(),
+        }
+    );
+    assert_eq!(
+        with(vec![walker("t:imp", "u:dune", "t:grass")]),
+        AdventureCompileError::UnknownTerrain("u:dune".into())
+    );
+    assert_eq!(
+        with(vec![walker("t:imp", "u:swamp", "v:grass")]),
+        AdventureCompileError::ReferenceOutsideDependencies {
+            key: "v:grass".into(),
+            pack: "u".into(),
+        }
+    );
+    for (terrain, counts_as) in [("t:sea", "t:grass"), ("u:swamp", "t:rock")] {
+        assert_eq!(
+            with(vec![walker("t:imp", terrain, counts_as)]),
+            AdventureCompileError::TerrainWalker(terrain.into())
+        );
+    }
+    assert_eq!(
+        with(vec![
+            walker("t:imp", "u:swamp", "t:grass"),
+            walker("t:gog", "u:swamp", "t:grass"),
+        ]),
+        AdventureCompileError::TerrainWalker("u:swamp".into())
+    );
+    assert_eq!(
+        AdventureCompileError::TerrainWalker("u:swamp".into()).to_string(),
+        "terrain walker of `u:swamp`: both terrains must be land, one walker per terrain"
+    );
 }
 
 fn set_kind(packs: &mut [AdventurePack], index: usize, kind: ObjectKindDef) {
@@ -1243,6 +1333,7 @@ fn monster_packs() -> Vec<AdventurePack> {
                 true,
                 ObjectKindDef::Ground {
                     battlefield: key("t:hallow"),
+                    no_native: false,
                 },
             ),
         ]);
@@ -1274,7 +1365,8 @@ fn compiles_monsters_grounds_and_their_parameters() {
     assert_eq!(
         *kind(2),
         ObjectKind::Ground {
-            battlefield: key("t:hallow")
+            battlefield: key("t:hallow"),
+            no_native: false,
         }
     );
     // A monster's visit is its answer (E08 T20b1); a ground is never visited.
@@ -1348,6 +1440,7 @@ fn monsters_and_grounds_are_checked() {
         true,
         ObjectKindDef::Ground {
             battlefield: key("t:hallow"),
+            no_native: false,
         },
     ));
     assert_eq!(
@@ -1492,6 +1585,17 @@ fn the_hash_sees_the_monsters_and_the_grounds() {
             MONSTER_TYPES + 2,
             ObjectKindDef::Ground {
                 battlefield: key("t:barrens"),
+                no_native: false,
+            },
+        )
+    });
+    change(&|p| {
+        set_kind(
+            p,
+            MONSTER_TYPES + 2,
+            ObjectKindDef::Ground {
+                battlefield: key("t:hallow"),
+                no_native: true,
             },
         )
     });

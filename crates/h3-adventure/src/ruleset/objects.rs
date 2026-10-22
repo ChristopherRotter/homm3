@@ -117,6 +117,9 @@ pub enum ObjectKind {
     Ground {
         /// The battlefield (a battle part's key, checked when the game bundles the parts).
         battlefield: ContentKey,
+        /// Whether a step from a tile it lies on, as the tile's top ground, costs no army the
+        /// native price (Cursed Ground, ADV-MOV-004, E08 T40).
+        no_native: bool,
     },
 }
 
@@ -273,6 +276,8 @@ pub enum ObjectKindDef {
     Ground {
         /// The battlefield.
         battlefield: ContentKey,
+        /// Whether it takes the native price away (E08 T40).
+        no_native: bool,
     },
 }
 
@@ -557,10 +562,14 @@ fn compile_kind(
             }
             _ => Ok(ObjectKind::Monster { levels: *levels }),
         },
-        ObjectKindDef::Ground { battlefield } => {
+        ObjectKindDef::Ground {
+            battlefield,
+            no_native,
+        } => {
             scope.reach(battlefield)?;
             Ok(ObjectKind::Ground {
                 battlefield: battlefield.clone(),
+                no_native: *no_native,
             })
         }
     })
@@ -594,7 +603,7 @@ impl CanonicalHash for ObjectType {
     /// 1 reveal terrain, 2 reveal area, 3 key tent, 4 key guard, 5 key gate; since part v7 6
     /// monster, 7 ground) and parameters (a pickup's own tag, 0 resource, 1 one of, 2 paired,
     /// then its fields in order; a monster's levels as 0 for none, else 1, low, high; a ground's
-    /// battlefield key).
+    /// battlefield key, since part v10 whether it takes the native price away).
     fn hash_into(&self, h: &mut StateHasher) {
         self.key.as_str().hash_into(h);
         self.name.as_str().hash_into(h);
@@ -644,9 +653,13 @@ impl CanonicalHash for ObjectType {
                     }
                 }
             }
-            ObjectKind::Ground { battlefield } => {
+            ObjectKind::Ground {
+                battlefield,
+                no_native,
+            } => {
                 h.write_u8(7);
                 battlefield.as_str().hash_into(h);
+                h.write_bool(*no_native);
             }
         }
     }

@@ -177,8 +177,7 @@ fn the_planes_and_the_tiles_line_up_on_a_wide_map_with_two_levels() {
     for faithful in [false, true] {
         let rules = movement_rules_up_to(faithful, 70);
         let setup = crate::testing::world(&rows, 2, heroes.clone());
-        let state =
-            AdventureState::new(&rules.0, &rules.1, &setup, &mut crate::testing::draws()).unwrap();
+        let state = crate::testing::started(&rules, &setup).unwrap();
         let seen = state.observe(&rules.0, &rules.1, RED);
         assert_eq!(
             (seen.width, seen.height, seen.levels, seen.stride),

@@ -11,15 +11,17 @@ use core::num::{NonZeroU8, NonZeroU16, NonZeroU32};
 
 use h3_content::{
     ContentKey, ContentPack, CreatureDef, CreatureInfoDef, CreatureTypeId, FactionDef,
-    PackManifest, ProfileDef, ResourceDef, Ruleset, TerrainDef, TerrainId,
+    HeroEffectDef, HeroTypeId, PackManifest, ProfileDef, ResourceDef, Ruleset, SecondarySkillDef,
+    SkillId, TerrainDef, TerrainId,
 };
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
+use h3_heroes::{HeroDetails, OfferLevels};
 use h3_kernel::{Rng, StreamId};
 
 use crate::ruleset::{
     AdventurePack, AdventureParamsDef, AdventureRuleset, BattleTerrainsDef, MonsterParamsDef,
     ObjectKindDef, ObjectTypeDef, ObjectTypeId, Passage, PickupDef, RiverDef, RoadDef, RoadId,
-    StartingResourcesDef, TerrainMovementDef, Visit,
+    StartingResourcesDef, TerrainMovementDef, TerrainWalkerDef, Visit,
 };
 use crate::setup::{
     AdventureSetup, HeroSetup, MapSetup, MonsterSetup, ObjectSetup, Pos, TileMask, TileSetup,
@@ -171,6 +173,7 @@ fn object_types() -> Vec<ObjectTypeDef> {
             Visit::Enter,
             ObjectKindDef::Ground {
                 battlefield: key("t:hallow"),
+                no_native: false,
             },
         ),
         ty(
@@ -178,6 +181,7 @@ fn object_types() -> Vec<ObjectTypeDef> {
             Visit::Enter,
             ObjectKindDef::Ground {
                 battlefield: key("t:barrens"),
+                no_native: true,
             },
         ),
     ]
@@ -257,6 +261,8 @@ pub(crate) fn rules() -> (Ruleset, AdventureRuleset) {
             starting_stack_chances: vec![88, 25],
             battle: None,
             monsters: Some(monster_params()),
+            fly_cost: [cost(140), cost(140), cost(120), cost(100)],
+            water_walk_cost: [cost(140), cost(140), cost(120), cost(100)],
         }),
         starting_resources: starting_resources(),
         ..AdventurePack::new(manifest("t", &[]))
@@ -292,7 +298,7 @@ fn faction_creature(k: &str, speed: u8, faction: Option<&str>) -> CreatureDef {
 }
 
 /// The rules the movement tests use, under the profile `t:faithful` (the adventure quirks
-/// ADV-QUIRK-1 to -4 on) or `t:strict` (all off): the terrains grass (100), sand (150; 125, 100,
+/// ADV-QUIRK-1 to -4 and -18 on) or `t:strict` (all off): the terrains grass (100), sand (150; 125, 100,
 /// 100 by Pathfinding level), swamp (175; 150, 125, 100), sea (water) and rock; a dirt road (75) and a cobblestone road (50); the native cost
 /// 100; the creatures above (speeds 4, 4, 3, 6); the land table 1000, 1100, 1200, 1300, 1500 for
 /// speeds 0 to 4; maps up to 16 × 16 on two levels, two players, armies of seven slots; the
@@ -313,11 +319,83 @@ pub(crate) fn movement_rules_edited(
     size: u16,
     edit: impl FnOnce(&mut ContentPack),
 ) -> (Ruleset, AdventureRuleset) {
+    movement_rules_with(faithful, size, edit, |_| {})
+}
+
+/// [`movement_rules`] with the skills of [`hero_skills`] and a terrain walker: an army with a
+/// wolf counts sand as swamp (E08 T40; invented, as the original's Nomads count sand as dirt).
+pub(crate) fn hero_rules(faithful: bool) -> (Ruleset, AdventureRuleset) {
+    movement_rules_with(
+        faithful,
+        16,
+        |core| core.skills = hero_skills(),
+        |part| {
+            part.terrain_walkers = vec![TerrainWalkerDef {
+                creature: key("t:wolf"),
+                terrain: key("t:sand"),
+                counts_as: key("t:swamp"),
+            }];
+        },
+    )
+}
+
+/// The skills of [`hero_rules`], in handle order: Logistics (+10 %, 20 %, 30 % of the land
+/// table's entry), Pathfinding (levels 1 to 3) and Scouting (radius +1 to +3), as the original's
+/// (E08 T40).
+pub(crate) fn hero_skills() -> Vec<SecondarySkillDef> {
+    let skill = |k: &str, effect: fn(u8) -> HeroEffectDef| SecondarySkillDef {
+        key: key(k),
+        name: "Skill".into(),
+        levels: [1, 2, 3].map(|level| vec![effect(level)]),
+    };
+    vec![
+        skill("t:logistics", |level| HeroEffectDef::LandMovement {
+            bp: 1000 * u16::from(level),
+        }),
+        skill("t:pathfinding", |level| HeroEffectDef::Pathfinding {
+            level,
+        }),
+        skill("t:scouting", |tiles| HeroEffectDef::ScoutingRadius {
+            tiles,
+        }),
+    ]
+}
+
+/// The skills of [`hero_rules`].
+pub(crate) const LOGISTICS: SkillId = SkillId::from_raw(0);
+pub(crate) const PATHFINDING: SkillId = SkillId::from_raw(1);
+pub(crate) const SCOUTING: SkillId = SkillId::from_raw(2);
+
+/// A hero's details with these secondary skills and nothing else (a hero type the core lacks:
+/// no specialty), for the derivations of [`hero_rules`] (E08 T40).
+pub(crate) fn hero_details(skills: &[(SkillId, u8)]) -> HeroDetails {
+    HeroDetails {
+        hero_type: HeroTypeId::from_raw(u16::MAX),
+        level: 1,
+        experience: 0,
+        offered: OfferLevels::default(),
+        primary: [1, 1, 1, 1],
+        skills: skills.to_vec(),
+        worn: vec![],
+        backpack: vec![],
+        spells: vec![],
+        mana: 0,
+    }
+}
+
+/// [`movement_rules_edited`] with the adventure pack changed by `edit_part` too.
+fn movement_rules_with(
+    faithful: bool,
+    size: u16,
+    edit: impl FnOnce(&mut ContentPack),
+    edit_part: impl FnOnce(&mut AdventurePack),
+) -> (Ruleset, AdventureRuleset) {
     let adventure_quirks = [
         "quirk.adventure.diagonal_check_ignores_roads",
         "quirk.adventure.diagonal_check_ignores_native",
         "quirk.adventure.native_skips_leading_neutrals",
         "quirk.adventure.fringe_shows_objects",
+        "quirk.adventure.radius_waits_for_a_step",
     ];
     let core = ContentPack {
         terrains: ["t:grass", "t:sand", "t:swamp", "t:sea", "t:rock"]
@@ -413,10 +491,14 @@ pub(crate) fn movement_rules_edited(
                 coast_battlefield: key("t:shore"),
             }),
             monsters: Some(monster_params()),
+            fly_cost: [cost(140), cost(140), cost(120), cost(100)],
+            water_walk_cost: [cost(140), cost(140), cost(120), cost(100)],
         }),
         starting_resources: starting_resources(),
         ..AdventurePack::new(manifest("t", &[]))
     };
+    let mut part = part;
+    edit_part(&mut part);
     let part = AdventureRuleset::compile(&core, &[part]).unwrap();
     (core, part)
 }
@@ -541,11 +623,23 @@ pub(crate) fn world(rows: &[&str], levels: u8, heroes: Vec<HeroSetup>) -> Advent
     }
 }
 
-/// The state of [`world`] under `rules`.
+/// The state of a setup as the game builds it (E08 T40): [`AdventureState::new`] with
+/// [`draws`], then the start of the game ([`AdventureState::start_game`]) with an empty store of
+/// heroes (no levels at load: each hero counts without skills, artifacts or a specialty).
+pub(crate) fn started(
+    rules: &(Ruleset, AdventureRuleset),
+    setup: &AdventureSetup,
+) -> Result<AdventureState, crate::SetupError> {
+    let mut state = AdventureState::new(&rules.0, &rules.1, setup, &mut draws())?;
+    state.start_game(&rules.0, &rules.1, &[]);
+    Ok(state)
+}
+
+/// The state of [`world`] under `rules`, started ([`started`]).
 pub(crate) fn world_state(
     rules: &(Ruleset, AdventureRuleset),
     rows: &[&str],
     heroes: Vec<HeroSetup>,
 ) -> AdventureState {
-    AdventureState::new(&rules.0, &rules.1, &world(rows, 1, heroes), &mut draws()).unwrap()
+    started(rules, &world(rows, 1, heroes)).unwrap()
 }

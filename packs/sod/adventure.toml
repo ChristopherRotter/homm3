@@ -19,12 +19,15 @@ visit = "enter"
 from_above = true
 ground = { battlefield = "clover_field" }
 
+# ADV-MOV-004 (E08 T40): the SoD picture of Cursed Ground takes the native price away as the RoE
+# one (batch E5's E5-6b: Gnolls 175 from swamp under it, experiments/results/E08-batch-5a.md;
+# the map loader that turns class 223 into what 0x4FCE20 tests was not read).
 [[object_type]]
 id = "cursed_ground"
 name = "Cursed Ground"
 visit = "enter"
 from_above = true
-ground = { battlefield = "base:cursed_ground" }
+ground = { battlefield = "base:cursed_ground", no_native = true }
 
 [[object_type]]
 id = "evil_fog"

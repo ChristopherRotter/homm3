@@ -18,6 +18,10 @@
 //! army_slots = 7                   # the slots of a hero's army
 //! starting_stack_chances = [88, 25] # percent for the 2nd, 3rd... starting slot of a hero's
 //!                                  # starting army; the 1st always (GAM-SET-001, E08 T6b)
+//! fly_cost = [140, 140, 120, 100]  # E08 T40: a flying hero's straight step by its flying level
+//!                                  # 0 to 3 (ADV-MOV-009)
+//! water_walk_cost = [140, 140, 120, 100] # a water walker's step from water by its level
+//!                                  # (ADV-MOV-010)
 //!
 //! [params.battle]                  # optional (E08 T19a, GAM-BAT-001): a battle on the map is
 //! underground = "subterranean"     # fought on this terrain underground, else on a coast tile
@@ -51,6 +55,11 @@
 //! id = "clear_river"
 //! name = "Clear river"
 //!
+//! [[terrain_walker]]               # E08 T40 (ADV-MOV-003): an army with a stack of the creature
+//! creature = "nomad"               # counts the terrain as the other for every price of a step
+//! terrain = "base:desert"          # from it; both land terrains, one walker per terrain
+//! counts_as = "base:dirt"
+//!
 //! [[object_type]]                  # E08 T12a; ADR-0016 point 4, ADV-OBJ-002
 //! id = "pile_gold"
 //! name = "Gold"
@@ -65,7 +74,9 @@
 //! # key_tent = { key = 0 }         # also key_guard, key_gate (from_above = true); keys 0-7
 //! # monster = {}                   # E08 T20a2a, visit = "neighbour": the map names the creature,
 //! # monster = { levels = [1, 7] } # or a random monster's levels (ADV-MON-001, ADV-MON-003)
-//! # ground = { battlefield = "cursed_ground" } # a special ground (ADV-GRD-001)
+//! # ground = { battlefield = "cursed_ground" } # a special ground (ADV-GRD-001); with
+//! #                                # `no_native = true` (E08 T40) a step from a tile it tops
+//! #                                # costs no army the native price (ADV-MOV-004)
 //!
 //! [[difficulty]]                   # E08 T13a, GAM-RES-002: the starting resources by the game's
 //!                                  # difficulty, from 0 (easy); exactly one enabled pack gives
@@ -86,7 +97,7 @@ use std::num::NonZeroU32;
 use h3_adventure::{
     AdventureCompileError, AdventurePack, AdventureParamsDef, AdventureRuleset, BattleTerrainsDef,
     MonsterParamsDef, ObjectKindDef, ObjectTypeDef, Passage, PickupDef, RiverDef, RoadDef,
-    StartingResourcesDef, TerrainMovementDef, Visit,
+    StartingResourcesDef, TerrainMovementDef, TerrainWalkerDef, Visit,
 };
 use h3_content::{ContentKey, KeyError, PackManifest, Ruleset};
 use h3_pack::PackError;
@@ -176,6 +187,16 @@ struct AdventureFile {
     object_type: Vec<ObjectTypeDto>,
     #[serde(default)]
     difficulty: Vec<DifficultyDto>,
+    #[serde(default)]
+    terrain_walker: Vec<TerrainWalkerDto>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct TerrainWalkerDto {
+    creature: String,
+    terrain: String,
+    counts_as: String,
 }
 
 #[derive(Deserialize)]
@@ -200,6 +221,8 @@ struct ParamsDto {
     battle: Option<BattleDto>,
     #[serde(default)]
     monsters: Option<MonstersDto>,
+    fly_cost: [NonZeroU16; 4],
+    water_walk_cost: [NonZeroU16; 4],
 }
 
 #[derive(Deserialize)]
@@ -288,6 +311,8 @@ struct MonsterDto {
 #[serde(deny_unknown_fields)]
 struct GroundDto {
     battlefield: String,
+    #[serde(default)]
+    no_native: bool,
 }
 
 #[derive(Deserialize)]
@@ -378,6 +403,7 @@ fn object_type(pack: &str, t: ObjectTypeDto) -> Result<ObjectTypeDef, AdventureP
     if let Some(g) = t.ground {
         kinds.push(ObjectKindDef::Ground {
             battlefield: reference(pack, &g.battlefield)?,
+            no_native: g.no_native,
         });
     }
     let [kind] = <[ObjectKindDef; 1]>::try_from(kinds)
@@ -475,6 +501,17 @@ pub fn parse_adventure(
         .iter()
         .map(|k| reference(pack, k))
         .collect::<Result<_, KeyError>>()?;
+    let terrain_walkers = file
+        .terrain_walker
+        .iter()
+        .map(|w| {
+            Ok(TerrainWalkerDef {
+                creature: reference(pack, &w.creature)?,
+                terrain: reference(pack, &w.terrain)?,
+                counts_as: reference(pack, &w.counts_as)?,
+            })
+        })
+        .collect::<Result<_, KeyError>>()?;
     Ok(AdventurePack {
         terrains,
         roads,
@@ -482,6 +519,7 @@ pub fn parse_adventure(
         object_types,
         starting_resources,
         not_random_monsters,
+        terrain_walkers,
         params: file
             .params
             .map(|p| {
@@ -516,6 +554,8 @@ pub fn parse_adventure(
                     starting_stack_chances: p.starting_stack_chances,
                     battle,
                     monsters,
+                    fly_cost: p.fly_cost,
+                    water_walk_cost: p.water_walk_cost,
                 })
             })
             .transpose()?,

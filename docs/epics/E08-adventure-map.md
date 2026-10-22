@@ -450,6 +450,10 @@ Refined with the user on 2026-10-21 (T33; ADV-Q19). Built like increments 1 to 4
     order, `start_turn` and the reveals with `ADV-QUIRK-18`). Q-0005's line goes into the battle
     lane's ledger in T39's pull request (`cross-lane`, the user's consent). Not chosen: T39 with
     T40's price half, or round 3 whole.
+87. **T40 whole** (the user's choice of three, 2026-10-22): the price (ruleset part v10 with the
+    fly and water-walk prices, Nomads and Cursed Ground; Pathfinding) and the day (the build's
+    order, `start_turn`, the reveals with `ADV-QUIRK-18`) in one session and one pull request. Not
+    chosen: the price first (T40a, recommended), or the day first.
 
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
