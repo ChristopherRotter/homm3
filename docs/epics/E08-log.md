@@ -4345,7 +4345,7 @@ Decision 87: T40 whole (the price and the day in one session and one pull reques
 
 Decision 88: T41 whole (the user: "no cut"), its shared part in its own pull request.
 
-- **The shared part** (`shared/e08-t41`, `cross-lane` with the user's consent): `h3-content`'s
+- **The shared part** (`shared/e08-t41` #401, `cross-lane` with the user's consent): `h3-content`'s
   registry position 30 (`quirk.adventure.flying_inland_price`, `ADV-QUIRK-16`) `RETIRED` with a
   note, `FLYING_INLAND_PRICE` gone; `h3-pack`'s harvested test on the two flags left; both
   harvested profiles (`h3-harvest`) and `packs/base/core.toml` without the line, and
@@ -4363,6 +4363,12 @@ Decision 88: T41 whole (the user: "no cut"), its shared part in its own pull req
   reveals around each hero (`ADV-QUIRK-18` off, T40), so a radius grown since the hero's last step
   shows then. On a new day both now ask only that those tiles grow (the view's fringe follows
   them); both cases are in the regressions files. Master fails them rarely until this merges.
+- **The shared verify** took four full runs: coverage is a full verify's only run of the tests
+  (`test` then runs the doc tests alone) and stops at the first failing test binary, so each fix
+  uncovered the next (the two properties, then the battle's profile test).
+  `cargo test --workspace --exclude xtask --all-targets --no-fail-fast` lists every failure at
+  once. The fourth, `scripts/verify-once.sh engine --base origin/master -- --with-original-data`
+  on b154ce9 (code 8b89cb94, 2026-10-23, the sandbox): all 16 steps passed.
 - **The price** (`movement.rs`): `Pricing` holds the hero's fly and water-walk prices (`Lifts`,
   from `Movement`'s levels by `AdventureParams::fly_cost`, `water_walk_cost`) and the ones the
   drop counts (none under `ADV-QUIRK-17`, flag 31); each terrain's `water` bit. `lifted`: from
