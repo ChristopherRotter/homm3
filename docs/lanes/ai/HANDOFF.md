@@ -18,8 +18,9 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   user's hour `t3b-1` (evaluation 21.4 %, the agent at the bots' level, stalling: AI-Q9).
   **Increment 3 done** 2026-10-22: T4a (#342: the league, `h3env.train.league`; checkpoint
   format 3, record schema 5), T4b (`t4-1`, `t4-2`: γ 1.0 ends the stalling, AI-Q9; best 0.839,
-  0.578, 0.559 against Random, Aggressor, Greedy). **Next:** increment 4's refinement with the
-  user (the QUEUE lists the choices; E23's neutral side is complete, so T7 is open too).
+  0.578, 0.559 against Random, Aggressor, Greedy; #381 merged). **Increment 4** refined
+  2026-10-22: T5a (the entity network, design §11, and the visualization command) in progress,
+  then T5b (the user's A/B run against `t4-2`).
 - **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v31 (E06 T2c: the record's identity, N capped) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q10, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
@@ -90,6 +91,11 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   `uv --directory python sync --group train`: 3 to 25 minutes.
 
 ## Recent sessions
+
+### 2026-10-22 — E06 increment 4's refinement, T5a (the entity network)
+
+- The user: the entity network first (the comparison in `E06-log.md`), T5a now, T5b later, no
+  spare run, the visualization in T5a. **In progress:** T5a on `claude/e06-increment-4-y91v4c`.
 
 ### 2026-10-22 — E06 T4b (the league runs), increment 3 closed
 

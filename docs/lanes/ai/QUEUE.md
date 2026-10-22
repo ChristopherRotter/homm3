@@ -16,17 +16,31 @@ hour `t3b-1`: evaluation 21.4 %, stalling suspected, AI-Q9). Increment 3 done 20
 (the league), T4b (the user's runs `t4-1`, `t4-2`: γ 1.0 ends the stalling, AI-Q9; the best
 plays 0.839, 0.578, 0.559 against Random, Aggressor, Greedy; `E06-log.md`).
 
-**Next: increment 4's refinement, with the user** (no task is ready until then). The user closed
-T4b's session before choosing. Put to them:
-- **What T5 starts with:** (a) the entity network (Python only, decision 5; γ 1.0 as the
-  trainer's default with it), A/B against `t4-2` as the control (the same config and seed, 60 M):
-  the agent's recommendation; (b) AI-Q7 (b), the preview's kills per attack and shot entry as a
-  batch output (`h3-sim`, C ABI v32, the binding); (c) throughput: the batch size and threads,
-  the observations in place, `t4-2`'s dip to about 4 000 samples/s from 20 M to 40 M; (d) T7,
-  the neutral share, now that E23's neutral side is complete (the inbox, 2026-10-22).
-- **A spare run while T5 is built** (no code): `--init-from runs/t4-2/best.pt` at γ 1.0 with a
-  fresh schedule for 60 M or 120 M samples, to see whether the MLP keeps climbing (both T4b runs
-  rose slowly to 50 M; their last gates rejected with the learning rate at its floor).
+**Increment 4** refined 2026-10-22 (the user, `E06-log.md`): the entity network first, T5a then
+T5b; no spare MLP run. Still open for later increments: AI-Q7 (b), throughput (`t4-2`'s dip to
+about 4 000 samples/s from 20 M to 40 M), the mana price, T7 (E23's neutral side is complete).
+
+### T5a — The entity network
+
+- **Scope:** design §11 (`docs/epics/E06-design.md`): `h3env.train.layout` (v21's offsets and
+  the stack columns read, pinned by an `h3-sim` test), the entity network beside the MLP under
+  one interface (the MLP's weights and files unchanged), `[network] kind`, `width`, `layers`,
+  `heads`; every place that builds a network from a saved file builds its kind; γ 1.0 the
+  default; the visualization command `python -m h3env.train.network` (parameters, shapes, the
+  cost, timing, a Mermaid diagram; no new dependency); `configs/e06-t5.toml` for T5b.
+- **Acceptance:** the Python tests pass with torch (both kinds through `act`, `evaluate`, a short
+  run, a resume, `--init-from` refusing the other kind) and without it; the cost of both kinds
+  measured on the sandbox's CPU; the Definition of Done (`docs/05-testing.md`).
+- **Depends on:** nothing. **Status:** in progress (`claude/e06-increment-4-y91v4c`, 2026-10-22
+  12:00 UTC).
+
+### T5b — The A/B run
+
+- **Scope:** the user runs `configs/e06-t5.toml` (the entity network, `t4-2`'s config and seed,
+  60 M samples) on their machine; the record committed, the comparison with `t4-2` in
+  `E06-log.md`.
+- **Acceptance:** the record passes `check_record`; the ladders compared per opponent.
+- **Depends on:** T5a merged; the user's machine. **Status:** waiting (T5a).
 
 ## Inbox
 

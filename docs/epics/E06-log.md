@@ -332,3 +332,23 @@ entry only where a task builds on it.
   then 5 200; not explained: T5's profile).
 - **Increment 3 closed** at the checkpoint (2026-10-22): the user ended the session before
   increment 4's refinement; the next session puts it to the user (the QUEUE's note).
+
+## Increment 4's refinement (2026-10-22)
+
+- The agent put T5's start to the user: the entity network (its recommendation), AI-Q7 (b),
+  throughput, or T7 (E23's neutral side being complete); and a spare MLP run from `t4-2`'s best.
+  **User:** the entity network, with a brief comparison of architectures; T5a now (the network,
+  its config, tests, a CPU cost check; one pull request), T5b later (the user's 60 M A/B run
+  against `t4-2`); no spare run; network visualization tooling soon.
+- **The comparison** (forward multiply-adds per sample on v21, the agent's estimates): the MLP
+  (≈ 6 M; each stack slot and hex learned apart, a creature's handle a number, 1 404 entry
+  outputs each its own); an entity transformer over the stacks with the globals, the own hero
+  and the field as tokens (≈ 14 M; shared weights, order-free slots, relations between stacks,
+  pointer heads); the same with the 255 hexes as tokens (≈ 125 M: too slow on the GTX 1070); a
+  CNN on the hex grid (20 to 60 M; the offset rows, the stacks' 99 features as planes, the
+  turrets off the field); a graph network on the hexes' adjacency (the engine's geometry in
+  Python); a recurrent memory (v21 is complete; sequence minibatches in PPO).
+- **User:** the entity transformer as proposed (design §11: two layers of width 128, four heads,
+  pointer heads; `[network] kind`, the MLP the default kind, γ 1.0 the default), the
+  visualization in T5a (dependency-free: the summary table, the cost, a Mermaid diagram; no
+  torchview or Graphviz, whose EPL is a licence doubt).
