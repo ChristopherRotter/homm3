@@ -414,3 +414,41 @@ fn the_query_reports_where_a_flight_or_a_water_walk_may_stop() {
     // A walker's query from the same tile: none.
     assert_eq!(state_reach(&state, &rules, &[]).tiles().count(), 0);
 }
+
+// covers: ADV-MOV-009, ADV-MOV-006
+#[test]
+fn the_query_replaces_a_node_by_a_better_one_of_its_kind() {
+    // As a walker's (`a_better_path_found_later_replaces_the_first`), a flight at level 1 (the
+    // fly price 140): (2, 0) is first reached over the swamp at (1, 0) with 1300 − 140 − 140 =
+    // 1020 points, then from the road at (1, 1) by a road diagonal with 1300 − 197 − 70 = 1033.
+    let rules = hero_rules(false);
+    let state = flight_world(&rules, &["wwG", "gGg"], p(0, 0), vec![]);
+    let reach = state_reach(&state, &rules, &store(&[(FLYING, 1)]));
+    assert_eq!(reach.points_left(p(2, 0)), Some(1033));
+    assert_eq!(reach.path(p(2, 0)), Some(vec![p(1, 1), p(2, 0)]));
+    // Rock: never, a flight included.
+    let mut state = flight_world(&rules, &["g#g"], p(0, 0), vec![]);
+    assert_eq!(
+        fly(&mut state, &rules, &flyer(), &row(1)),
+        Err(AdventureCommandError::Blocked {
+            step: 0,
+            error: StandError::Terrain
+        })
+    );
+}
+
+// covers: ADV-MOV-009, ADV-MOV-006
+#[test]
+fn a_flight_goes_as_far_as_its_points() {
+    // 1300 points: five steps east and five back leave 300, three more steps of 100; the third
+    // leaves 0, and no fourth is paid.
+    let rules = hero_rules(true);
+    let mut state = flight_world(&rules, &["gggggggggggg"], p(0, 0), vec![]);
+    fly(&mut state, &rules, &flyer(), &row(5)).unwrap();
+    let back: Vec<Pos> = (0..5).rev().map(|x| p(x, 0)).collect();
+    fly(&mut state, &rules, &flyer(), &back).unwrap();
+    assert_eq!(at(&state), (p(0, 0), 300));
+    let reach = state_reach(&state, &rules, &flyer());
+    assert_eq!(reach.points_left(p(3, 0)), Some(0));
+    assert_eq!(reach.points_left(p(4, 0)), None);
+}
