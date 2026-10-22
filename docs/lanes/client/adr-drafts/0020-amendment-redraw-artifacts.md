@@ -29,11 +29,12 @@ melee's walk-by, 30 of `behind`'s 194 frames).
    unbreakable word's break and aligns the line by the whole word, design §3.6) is fixed in what
    the client draws. The comparisons with the original's captures reproduce it, so that they
    stay exact: a development switch (`h3_render::Bugs`) the comparing commands set, neither a
-   player's option nor a quirk profile. It reaches the timeline too, not only the renderer: a
-   creature caster's casting group, and the stale frame the original's partial redraws leave of
-   a caster its spell missed (M3 T7c-1), are such bugs (CLT-Q8, the user: "dev-only for the
-   captures, fixed otherwise"), not artifacts of point 1. Every oddity of the original is first
-   an open question (the user, 2026-10-22).
+   player's option nor a quirk profile. It reaches the timeline too, not only the renderer
+   (`h3_view::anim::Stage::bugs`, M3 T7d): a creature caster's casting group, the stale frame
+   the original's partial redraws leave of a caster its spell missed, and the mouse's highlight
+   kept through a creature's casting frames (M3 T7c-1) are such bugs (CLT-Q8, the user:
+   "dev-only for the captures, fixed otherwise"), not artifacts of point 1. Every oddity of the
+   original is first an open question (the user, 2026-10-22).
 
 ## Consequences
 

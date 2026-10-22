@@ -28,6 +28,7 @@ use core::cmp::Ordering;
 use core::fmt::Write as _;
 
 use h3_protocol::wire::{Event, Observation, Outcome, ServerMessage, Side, Stack, Target};
+use h3_render::Bugs;
 
 use crate::battle_log::{Logged, Spread};
 use crate::hero::{Action, Happening, Heroes};
@@ -250,7 +251,8 @@ impl Look {
     }
 }
 
-/// Where the battle is drawn: the layout, the field's width and the DEF groups.
+/// Where the battle is drawn: the layout, the field's width and the DEF groups, and whether the
+/// original's drawing bugs are reproduced.
 #[derive(Debug, Clone, Copy)]
 pub struct Stage<'a> {
     /// The battle screen's layout.
@@ -263,6 +265,12 @@ pub struct Stage<'a> {
     pub magic: &'a BTreeMap<u8, MagicLook>,
     /// What the record's casts draw (E17 M3 T7b-1).
     pub casts: &'a Casts,
+    /// Whether the timeline reproduces the original's drawing bugs (E17 M3 T7d, CLT-Q8;
+    /// `h3_render::Bugs`): fixed for what the client shows, the original's for the comparisons
+    /// with its captures (`h3-view sequences`). The design notes name each one (§7.16): a
+    /// creature caster's group by the angle, a caster its spell missed standing at once, the
+    /// mouse's stack unmarked as a creature's cast starts.
+    pub bugs: Bugs,
 }
 
 /// What a battle's casts draw (E17 M3 T7b-1, design §7.16): each spell the record casts by its
@@ -1689,7 +1697,7 @@ fn played(
         // The battle decided: `battle_end` follows the action's last frame (design §8.2).
         let now = player.clock.now;
         ended = ended.or_else(|| player.outcome.map(|o| (now, o)));
-        let (stands, unmarks) = calms(command.events);
+        let (stands, unmarks) = calms(command.events, player.stage.bugs);
         actions.push(Action {
             start: started,
             end: player.clock.now,
@@ -1746,9 +1754,11 @@ fn hue(live: &Live, casts: &Casts) -> Option<u32> {
 /// What a command's action does at its start to the stacks in group 1 and to the mouse's stack
 /// (E17 M3 T6c-2), by what it does before the next turn: a walk, a strike or a shot, a cast or the
 /// Catapult's shot stands the fidgeting stacks (`battle_stand_fidgets` 0x479DE0) and unmarks the
-/// mouse's (`battle_clear_highlight` 0x477E10); a creature's cast only stands them; a defend, a
+/// mouse's (`battle_clear_highlight` 0x477E10); a creature's cast only stands them, keeping the
+/// mouse's stack marked through its frames until `cast_spell` starts (0x5A0055, a drawing bug:
+/// CLT-Q8), unless `bugs` are fixed (E17 M3 T7d: unmarked at its start, as a hero's); a defend, a
 /// wait or the First Aid Tent's heal does neither.
-fn calms(events: &[Event]) -> (bool, bool) {
+fn calms(events: &[Event], bugs: Bugs) -> (bool, bool) {
     let own = events
         .iter()
         .take_while(|e| !matches!(e, Event::TurnStarted { .. } | Event::RoundStarted { .. }));
@@ -1759,7 +1769,10 @@ fn calms(events: &[Event]) -> (bool, bool) {
             | Event::Struck { .. }
             | Event::SpellCast { .. }
             | Event::WallShot { .. } => (stands, unmarks) = (true, true),
-            Event::StackCast { .. } => stands = true,
+            Event::StackCast { .. } => {
+                stands = true;
+                unmarks |= bugs == Bugs::Fixed;
+            }
             _ => {}
         }
     }
@@ -3451,7 +3464,8 @@ impl Player<'_> {
     /// standing after its last frame. Then every stack not standing plays on (0x4691A9 to
     /// 0x469268): a frame a redraw at trunc(100 F), standing after its group's last (a death stays
     /// on its last), until none changes: the reactions left over, and `caster` (a creature, its
-    /// cast group's frames, kept on its last) stands. Then the dead lie as corpses, the boxes show
+    /// cast group's frames, kept on its last) stands, shown only with the end's redraw if it did
+    /// not react (CLT-Q8: at once with the bugs fixed). Then the dead lie as corpses, the boxes show
     /// their counts and the battle is redrawn at once (0x46938A); a creature caster is outlined
     /// at the cast's tail ([`Player::stand_caster`]).
     fn spell_reactions(&mut self, hit: &[(u8, u32)], caster: Option<u8>) {
@@ -3504,7 +3518,9 @@ impl Player<'_> {
         playing.extend(standing.map(|(c, p)| (c, 0, 0, p)));
         // The redraws of this loop are partial (the reacting stacks' rectangle, 0x469263): a
         // caster that did not react stands in memory but shows standing only with the end's
-        // redraw (`dragon`'s round 3).
+        // redraw (`dragon`'s round 3), a drawing bug (CLT-Q8) the fixed bugs do not keep: there
+        // it shows standing at once (E17 M3 T7d).
+        let stale = casting.filter(|_| self.stage.bugs == Bugs::Original);
         let mut unseen = None;
         loop {
             let mut poses = Vec::new();
@@ -3515,7 +3531,7 @@ impl Player<'_> {
                     poses.push((*stack, r.map_or(*standing, |r| pose(r, *i))));
                     changed = true;
                 } else if *i == *frames {
-                    if casting == Some(*stack) {
+                    if stale == Some(*stack) {
                         unseen = Some((*stack, self.clock.now, *standing));
                     } else {
                         poses.push((*stack, *standing));
@@ -3579,7 +3595,8 @@ impl Player<'_> {
     /// A creature's cast as its action (`creature_cast_action` 0x448260, design §7.16; E17 M3
     /// T7c-1): turned toward the hex aimed at, its shot sound starts and its group by the angle
     /// from its centre (before it turns) to the hex's anchor, y down (above 25° 17, above −25° 18,
-    /// else 19; straight up 17, down 19; the strike's 11 to 13 when its DEF lacks the group),
+    /// else 19; straight up 17, down 19; the strike's 11 to 13 when its DEF lacks the group; with
+    /// the bugs fixed, y up between the rows, [`Player::creature_casting`]),
     /// plays at trunc(trunc(A / n) F) a frame, its last kept through the cast (0x44851C). The cast
     /// (caster kind 1: no hero frames, no resistance roll) clears the outline in a redraw at once
     /// (0x5A004C), its spell's sound starts and an area spell's handler plays ([`Player::area`]),
@@ -3600,7 +3617,9 @@ impl Player<'_> {
             return;
         };
         let turned = self.creature_casting(stack, hex);
-        // `cast_spell`'s start: the outline and the mouse's stack cleared, a redraw at once each.
+        // `cast_spell`'s start: the outline and the mouse's stack cleared, a redraw at once each
+        // (the mouse's stack unmarked already at the action's start with the bugs fixed, as after
+        // a hero's: [`calms`]).
         self.outlined.push((self.clock.now, None));
         self.log.push((self.clock.now, Logged::Unmark));
         self.redraw();
@@ -3625,6 +3644,13 @@ impl Player<'_> {
     /// A creature caster's frames toward the hex `hex` (`creature_cast_action` 0x448380 to
     /// 0x44851C, [`Player::creature_cast`]): turned toward it, its shot sound started, its group by
     /// the angle played, its last frame kept. Returns whether it turned.
+    ///
+    /// The original's angle is a drawing bug (CLT-Q8): its Δy is not negated as a shot's is and
+    /// runs from the caster's mid-height to the hex's anchor, so a caster rears up toward a target
+    /// beside or below it and looks down toward one above. With the bugs fixed (E17 M3 T7d) the
+    /// angle is VCMI's choice (`RangedAttackAnimation::setAnimationGroup`: hex to hex, y up) at the
+    /// shot's 25°: from the caster's centre to the same point over the hex, so the rise is the
+    /// anchors' (*provisional*): above 25° up, below −25° down, else straight (the same row too).
     fn creature_casting(&mut self, stack: u8, hex: u8) -> bool {
         let Some(live) = self.live(stack) else {
             return false;
@@ -3633,16 +3659,31 @@ impl Player<'_> {
         let [tx, ty] = self.stage.anchor(hex);
         let turned = (tx > cx && !live.right) || (tx < cx && live.right);
         let live = if turned { self.turn(stack, live) } else { live };
-        let (dx, dy) = (i64::from(tx - cx).abs(), i64::from(ty - cy));
-        // atan(dy / |dx|) in degrees, the target's y less the caster's (0x4483B3 to 0x448442).
-        let direction = if dx == 0 {
-            if dy <= 0 { 0 } else { 2 }
-        } else if dy * TAN_SCALE > dx * TAN_25 {
-            0
-        } else if dy * TAN_SCALE > -dx * TAN_25 {
-            1
-        } else {
-            2
+        let dx = i64::from(tx - cx).abs();
+        let direction = match self.stage.bugs {
+            // atan(dy / |dx|) in degrees, the target's y less the caster's (0x4483B3 to 0x448442).
+            Bugs::Original => {
+                let dy = i64::from(ty - cy);
+                if dx == 0 {
+                    if dy <= 0 { 0 } else { 2 }
+                } else if dy * TAN_SCALE > dx * TAN_25 {
+                    0
+                } else if dy * TAN_SCALE > -dx * TAN_25 {
+                    1
+                } else {
+                    2
+                }
+            }
+            Bugs::Fixed => {
+                let rise = i64::from(self.stage.anchor(live.hex)[1] - ty);
+                if rise * TAN_SCALE > dx * TAN_25 {
+                    0
+                } else if rise * TAN_SCALE < -dx * TAN_25 {
+                    2
+                } else {
+                    1
+                }
+            }
         };
         let g = self.stage.groups;
         let group = Some(g.breath[direction])

@@ -2035,6 +2035,33 @@ the executables, the five DLLs, the combat and end tunes, `extracted.tar`, `maps
   Teleport, a shield cast on a stack, a chain past a missing stack); the full check: in the pull
   request.
 
+### M3 T7d — A creature's cast: its drawing bugs fixed (2026-10-22)
+
+On `client/e17-m3-t7d`, the user present at the start (T7d is small: not split). The user's
+computer was linked for the staging only (the four LODs, both sound archives, `H3ab_ahd.vid`,
+both executables, `extracted.tar`); no Wine: nothing the original shows changed.
+
+- **Starting point:** `master` at `f494cb1` (#388 merged before the session, #390 the battle
+  lane's after it); no client pull request open; CI on `master` not started (billing); the
+  client gates' full check on that code (`verify-once clients`: all gates passed, coverage
+  100 %).
+- **Built** (design §7.16, "Fixed (T7d)"): `anim::Stage::bugs` (`h3_render::Bugs`), set to
+  `Original` by `h3-view sequences` (the timing and frame checks, `drawn`), `Fixed` by
+  `motion::stage` (the window, `render`, `play`). (1) `Player::creature_casting`: fixed, the
+  group by the rise between the anchors' rows over the caster's centre's Δx, y up, at the shot's
+  25° (VCMI's points, *provisional*: the review list); the original's unnegated angle kept
+  beside it. (2) `spell_reactions`' play-on: fixed, a caster its spell missed shows standing with
+  the frame that stands it; the original's `unseen` key kept beside it. (3) `calms`: fixed, a
+  creature's cast unmarks the mouse's stack at the action's start (`Action::unmarks`, which
+  `pointer` hands to the mouse's track), as a hero's; `cast_spell`'s `Logged::Unmark` stays (a
+  no-op there).
+- **Checks:** `drawn` (from the release build): all 31 sequences and 57 situations the same, so
+  no capture; the timing check of every sequence passes. Unit tests: the earlier ones run with
+  the original's bugs (each test's stage), `a_creatures_cast_with_the_bugs_fixed` plays
+  `dragon`'s casts fixed (groups 18, 17, 19 where the original's are 17, 19, 17; the missed
+  dragon on the screen standing with the play-on's frame, 500 ms before the end's redraw; the casts' actions unmarking), `calms` both ways.
+- **Gates:** the full check: in the pull request.
+
 ## Accepted review lists (M1, M2)
 
 Moved from the epic file on 2026-10-20 (less start-up reading), unchanged.

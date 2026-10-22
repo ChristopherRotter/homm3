@@ -1,11 +1,11 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b, T8, T7b-1, T7b-2a, T7b-2b-1, T7b-2b-2a, T7b-2b-2b, T7b-2b-3, T7c-1, T7c-2 done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b, T8, T7b-1, T7b-2a, T7b-2b-1, T7b-2b-2a, T7b-2b-2b, T7b-2b-3, T7c-1, T7c-2, T7c-3, T7d done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
 [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
-are there). Next: M3 T7c-3, T7d, then T9 (`docs/lanes/client/QUEUE.md`).
+are there). Next: M3 T9, M3's closure (`docs/lanes/client/QUEUE.md`).
 
 ## Goal
 
@@ -63,10 +63,10 @@ viewer and playable clients. Everything with graphics, sound, input or a window 
   exact. A development switch (`h3_render::Bugs`), neither a player's option nor a quirk
   profile. Goes into the ADR-0020 point 9 amendment draft. The second (2026-10-20, M3 T6c-1):
   the software cursor drawn at an even x (0x50CE04, design §9.9). The third to fifth
-  (2026-10-22, M3 T7c-1, CLT-Q8: "dev-only for the captures, fixed otherwise"; built as the
-  original's until T7d): a creature caster's group by the angle's wrong sign, a caster its spell
-  missed kept on its casting frame until the whole redraw, the target's highlight kept through a
-  creature's frames.
+  (2026-10-22, M3 T7c-1, CLT-Q8: "dev-only for the captures, fixed otherwise"; fixed in T7d,
+  the switch reaching the timeline: `anim::Stage::bugs`): a creature caster's group by the
+  angle's wrong sign, a caster its spell missed kept on its casting frame until the whole
+  redraw, the target's highlight kept through a creature's frames.
 - **Every oddity of the original is an open question** (the user, 2026-10-22: so that nothing is
   forgotten): a drawing quirk or bug a reading or a recording finds becomes a `CLT-Q<n>` in
   `docs/OPEN-QUESTIONS.md` in the same task (copy it, fix it with the original's only for the
@@ -502,6 +502,11 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   recorded (seeds 9 and 566 for the original's damage); frames as the original's: `raise` 107,
   `bolt` 47 (every pixel of the rays), `creatures` 114 but the landing Archangels' redraw
   artifacts.
+- **T7d done 2026-10-22** ([log](E17-log.md#m3-t7d--a-creatures-cast-its-drawing-bugs-fixed-2026-10-22),
+  design §7.16): CLT-Q8's three drawing bugs fixed in what the client draws (a creature
+  caster's group by the rows' angle, a missed caster standing at once, the mouse's stack
+  unmarked at the action's start), the original's kept for the comparisons by
+  `anim::Stage::bugs` (`h3-view sequences` only). Every sequence and situation drawn as before.
 
 ### The adventure lane's harness (H1, H2: its batch E3)
 
@@ -571,6 +576,12 @@ Accepted by the user (M1 2026-10-13, M2 2026-10-14); moved to the log,
 
 (Filled by the tasks: choices queued for the milestone review under the autonomy contract.
 Oddities of the original are open questions since 2026-10-22, the items naming them.)
+
+- T7d: **a visual deviation without a reference** (*provisional*): the fixed casting group takes
+  VCMI's points (hex to hex: the caster's centre and the same point over the hex aimed at, y
+  up) with the original's shot threshold, 25°, not VCMI's 0.2 rad; the same row and the
+  caster's own hex straight (18). The switch reaching the timeline is `anim::Stage::bugs`
+  (`Original` only in `h3-view sequences`, the comparisons' command).
 
 - T7c-3: not split, at the user's word. **The harness** (lasting, the user's choice): `xdd.dll`
   logs the draws of `ray_aim`'s call (nothing forced) and `frames` keeps them as the frame
