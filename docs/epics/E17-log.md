@@ -2015,9 +2015,21 @@ the executables, the five DLLs, the combat and end tunes, `extracted.tar`, `maps
   read (the Marksmen's shot 100 ms early) and the Liches' cloud became a spot (memory does not
   name it).
 - **The harness:** `xdd.dll` logs `ray_aim`'s draws (`<H3CLOCK>\draws`), `frames` keeps them
-  (`rays`), `h3-view sequences --frames` reads them into the timeline. HARNESS_RESULT
-- **The frame check** (`frames --only raise`, `creatures`, `bolt`): FRAMES_RESULT `drawn`: the
-  other sequences and situations the same; digests recorded.
+  (`rays`), `h3-view sequences --frames` reads them into the timeline; the redirect check counts the
+  logged site (`LOGGED`). Recaptured with it, `shots` and `luck` keep their recorded counts: the
+  logging changes nothing the original does. A frame that replaced another within its
+  millisecond keeps the heroes that one showed (`before`).
+- **The frame check** (`frames --only raise`, `creatures`, `bolt`): `raise`, 107 frames, all as
+  the original's once its seed (9) gave the Grand Elves' 23 and the frame check took two
+  findings: a stack rising among the corpses shows no count box (the scene: its dead bit stays to
+  the raise's end), and as a cast starts the screen still shows the hero's frame its memory
+  replaced (Orrin's rolled dismay: the kept `before`). `creatures` (seed 566: 185, 43, 33), 114
+  frames, all as the original's but the landing Archangels' redraw artifacts (10 frames), once
+  the Liches' line came as the reactions start (an area shooter's whatever it struck: 0x43FCFF).
+  `bolt`, 47 frames, all as the original's, every pixel of the three rays included (38 draws
+  kept; a spell's damage is not rolled). The first `bolt` capture timed out at the main menu
+  while a seed search loaded the CPU; run alone it passed. `drawn`: the other sequences and
+  situations the same; digests recorded.
 - **Gates:** the client workspace's coverage 100 %; unit tests replay `raise`, `creatures` and
   `bolt` exactly and cover the unrecorded paths (Sacrifice, an Archangel's and a Phoenix's raise,
   Teleport, a shield cast on a stack, a chain past a missing stack); the full check: in the pull

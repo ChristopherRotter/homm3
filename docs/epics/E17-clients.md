@@ -499,7 +499,9 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   Lightning (37 never shown, three rays at once for 100 ms each, 38 over every stack struck, its
   line); the rays' draws logged by the harness and kept for the frame check (the user's choice).
   `raise`, `creatures` and `bolt` moved from `casts.toml` (gone) into `sequences.toml`: played as
-  recorded; FRAMES_SUMMARY.
+  recorded (seeds 9 and 566 for the original's damage); frames as the original's: `raise` 107,
+  `bolt` 47 (every pixel of the rays), `creatures` 114 but the landing Archangels' redraw
+  artifacts.
 
 ### The adventure lane's harness (H1, H2: its batch E3)
 

@@ -41,8 +41,8 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - `winit`, `cpal`, `hound` (and Bevy, eframe, `rodio`) are Apache-2.0-only (`deny.toml`, ADR-0009): the window is SDL 3 (`h3-sdl`; building it: CMake, a C compiler, `clients.yml`'s apt list). Windows: `x86_64-pc-windows-gnu`, `mingw-w64`, the user's `clients/out/win/`.
 - `clients/Cargo.lock` is a common path: the verify's `clients-lock` gate (#202) fails when an engine crate's dependencies change it; fix: `cargo update --workspace --manifest-path clients/Cargo.toml`.
 - `ci.yml` ignores `clients/**`; `clients.yml` watches `clients/` and the engine crates the client builds (`check.sh`'s "ci paths" keeps that list complete).
-- Never run the original game from the installation: it writes saves, settings and DDrawCompat's log into its folder. Captures run the copy under `original-data/wine/` (the runbook's "Traps"); a Wine prefix sits in a directory the shell's user owns (`/root/...` in a sandbox). Captures never enter git (ADR-0009).
-- The original's memory holds the frame drawn, the screen the one shown (design §7.1, §7.9): never render memory's poses as the screen. More in the runbook (`Combat Speed`, acting as a turn starts, both heroes named, steps ≤ 100 ms, `hot_seat`, the adventure harness's settings).
+- Never run the original game from the installation: it writes saves, settings and DDrawCompat's log into its folder. Captures run the copy under `original-data/wine/` (the runbook's "Traps"); a Wine prefix sits in a directory the shell's user owns. Captures never enter git (ADR-0009).
+- The original's memory holds the frame drawn, the screen the one shown (design §7.1, §7.9): never render memory's poses as the screen (a cast's first frame: `before`). More in the runbook's "Traps".
 - No float arithmetic or platform transcendental in the client's drawing and timing, the binary included (`clippy.toml`): f32 behaviour in fixed point (`anim::f32_round`), tangents by series; SDL's floats only at the adapter's edge (coordinates, `audio::gain`).
 - The harness's `actions` are the viewer's mouse (`pointer::inputs`, design §9.10): a new action
   kind needs both; `hex_point` and `PARK` mirror `h3drive.py`'s; a `key:` right after a `cast:`
@@ -61,7 +61,7 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 - **2026-10-22, E17 M3 T7c-3 (raises, Fire Shield, the Liches' cloud, Chain Lightning; #PRNUM
   open).** Not split, the rays' draws logged by the harness (the user); `raise`, `creatures`,
-  `bolt` recorded, seeds searched; FRAMESHORT; CLT-Q17.
+  `bolt` recorded, frames as the original's (the rays too); CLT-Q17.
 - **2026-10-22, E17 M3 T7c-2 (spell objects, Armageddon; #384, merged).** Not split (the user);
   `obstacles` recorded (seed searched for the pits), all frames as the original's; CLT-Q16.
 - **2026-10-22, E17 M3 T7c-1 (#378, merged).** T7c split in three; `mass`, `dragon` recorded.

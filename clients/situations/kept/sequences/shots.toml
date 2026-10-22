@@ -5,6 +5,7 @@ t = 0
 file = "t00000b.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+before = [[0, 0, 0], [1, 0, 0]]
 cursor = [618, 593]
 
 [[frame]]
@@ -194,6 +195,7 @@ t = 1517
 file = "t01517b.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+before = [[0, 0, 0], [1, 0, 0]]
 cursor = [618, 593]
 
 [[frame]]
@@ -404,6 +406,7 @@ t = 3471
 file = "t03471b.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+before = [[0, 0, 0], [1, 0, 0]]
 cursor = [618, 593]
 
 [[frame]]
@@ -544,6 +547,7 @@ t = 4638
 file = "t04638b.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+before = [[0, 0, 0], [1, 0, 0]]
 cursor = [618, 593]
 
 [[frame]]
@@ -740,6 +744,7 @@ t = 6655
 file = "t06655b.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+before = [[0, 0, 0], [1, 0, 0]]
 cursor = [618, 593]
 
 [[frame]]
@@ -935,70 +940,70 @@ cursor = [618, 593]
 t = 8543
 file = "t08543.npz"
 fidgets = []
-heroes = [[0, 3, 1], [1, 0, 0]]
+heroes = [[0, 0, 0], [1, 0, 0]]
 cursor = [618, 593]
 
 [[frame]]
 t = 8643
 file = "t08643.npz"
 fidgets = []
-heroes = [[0, 3, 2], [1, 0, 0]]
+heroes = [[0, 0, 0], [1, 0, 0]]
 cursor = [618, 593]
 
 [[frame]]
 t = 8743
 file = "t08743.npz"
 fidgets = []
-heroes = [[0, 3, 3], [1, 0, 0]]
+heroes = [[0, 0, 0], [1, 0, 0]]
 cursor = [618, 593]
 
 [[frame]]
 t = 8843
 file = "t08843.npz"
 fidgets = []
-heroes = [[0, 3, 4], [1, 0, 0]]
+heroes = [[0, 0, 0], [1, 0, 0]]
 cursor = [618, 593]
 
 [[frame]]
 t = 8943
 file = "t08943.npz"
 fidgets = []
-heroes = [[0, 3, 5], [1, 0, 0]]
+heroes = [[0, 0, 0], [1, 0, 0]]
 cursor = [618, 593]
 
 [[frame]]
 t = 9043
 file = "t09043.npz"
 fidgets = []
-heroes = [[0, 3, 6], [1, 0, 0]]
+heroes = [[0, 0, 0], [1, 0, 0]]
 cursor = [618, 593]
 
 [[frame]]
 t = 9143
 file = "t09143.npz"
 fidgets = []
-heroes = [[0, 3, 7], [1, 0, 0]]
+heroes = [[0, 0, 0], [1, 0, 0]]
 cursor = [618, 593]
 
 [[frame]]
 t = 9243
 file = "t09243.npz"
 fidgets = []
-heroes = [[0, 3, 8], [1, 0, 0]]
+heroes = [[0, 0, 0], [1, 0, 0]]
 cursor = [618, 593]
 
 [[frame]]
 t = 9343
 file = "t09343.npz"
 fidgets = []
-heroes = [[0, 3, 9], [1, 0, 0]]
+heroes = [[0, 0, 0], [1, 0, 0]]
 cursor = [618, 593]
 
 [[frame]]
 t = 9443
 file = "t09443.npz"
 fidgets = []
-heroes = [[0, 3, 10], [1, 0, 0]]
+heroes = [[0, 0, 0], [1, 0, 0]]
 cursor = [618, 593]
 
 [[frame]]

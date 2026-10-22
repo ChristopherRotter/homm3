@@ -722,6 +722,7 @@ ms = 2400
 heroes = true
 screens = true
 timeline = "timelines/bolt.txt"
+frames = "timelines/bolt-frames.txt"
 boxes = true
 command = [
     { seat = "Defender", command = { Defend = {} } },

@@ -102,6 +102,10 @@ PARK = (618, 593)
 # The rolls the harness forces (M3 T7b-2b-1; xdd.c's `sites`, the runbook's "Forced rolls"): by
 # name, the draw that makes the roll fall and the one that makes it fail. Each draw happens for
 # every stack at its moment, whatever its morale or luck: a forced one goes to the next.
+# The draws xdd.dll logs without forcing them (E17 M3 T7c-3, its `logged` sites): Chain
+# Lightning's rays turning (`ray_aim`), kept for the frame check (`ray_draws`).
+LOGGED = ("ray_aim",)
+
 ROLLS = {
     "good_morale": (1, 24),  # random(1, 24) <= morale after an action: another turn
     "bad_morale": (1, 12),   # random(1, 12) <= -morale at a pick: the stack freezes
@@ -686,9 +690,10 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
     mem.align_mouse_poll(t0)
     # The forced rolls (M3 T7b-2b-1): xdd.dll redirected every roll's call, or none is forced.
     rolls = bool(fail) or any(a.startswith("roll:") for a in actions)
-    if rolls and game.ack()[5] != len(ROLLS):
-        raise RuntimeError(f"xdd.dll redirected {game.ack()[5]} of the {len(ROLLS)} rolls' "
-                           "calls (another Heroes3.exe?)")
+    sites = len(ROLLS) + len(LOGGED)
+    if rolls and game.ack()[5] != sites:
+        raise RuntimeError(f"xdd.dll redirected {game.ack()[5]} of the {sites} rolls' and "
+                           "logged draws' calls (another Heroes3.exe?)")
     for name in fail:
         if name not in ROLLS:
             raise ValueError(f"`fail`: {name}: the rolls are {', '.join(ROLLS)}")
