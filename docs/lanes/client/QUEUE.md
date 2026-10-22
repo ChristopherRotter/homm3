@@ -6,17 +6,30 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024). M3 (fidelity) below, refined at M2's closure (T5c) and agreed by the user there, each task about half a context; the exit: the reference set passes, or each difference is a listed fix or a classified quirk. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M3 T9 — M3's closure
+### E17 M3 T9a — M3's closure: every capture afresh
 
-- **Scope:** every sequence and situation captured afresh (the runbook, "Which captures a
-  change needs": `frames` and `set` in full, then `drawn --record`), M3's review list with the
-  user, a fresh reviewer agent over M3, the next milestone
-  refined (sieges, live play, HD or the adventure map: the user's choice), M3 marked done.
+- **Scope:** T9 split in three with the user (2026-10-22: T9a the captures, T9b the review,
+  T9c the next milestone). Every sequence and situation captured afresh (the runbook, "Which
+  captures a change needs": `frames` and `set` in full, then `drawn --record`), on
+  `client/e17-m3-t9a`; the user: run the recordings and leave any findings for the next
+  session, on the branch (HANDOFF, "Recent sessions"; the epic's log).
+- **Acceptance:** every sequence and situation captured; each count as recorded, or each
+  difference listed for the next session.
+- **Depends on:** T7d (#391). **Status:** in progress.
+
+### E17 M3 T9b — M3's closure: the review
+
+- **Scope:** T9a's findings settled (a listed fix or a classified quirk each: M3's exit); a
+  fresh reviewer agent over M3; M3's review list with the user.
 - **Acceptance:** M3's exit holds; the review list answered or carried on.
-- **Depends on:** T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a,
-  T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b, T8, T7b-1, T7b-2a,
-  T7b-2b-1, T7b-2b-2a, T7b-2b-2b, T7b-2b-3, T7c-1, T7c-2, T7c-3, T7d (all done).
-  **Status:** ready.
+- **Depends on:** T9a. **Status:** waiting.
+
+### E17 M3 T9c — M3's closure: the next milestone
+
+- **Scope:** the next milestone refined with the user (sieges, live play, HD or the adventure
+  map: the user's choice), its tasks queued, M3 marked done.
+- **Acceptance:** the next milestone's tasks in this queue, agreed by the user.
+- **Depends on:** T9b (T1a–T7d done). **Status:** waiting.
 
 ## Inbox
 
