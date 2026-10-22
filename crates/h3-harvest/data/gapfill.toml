@@ -1823,7 +1823,7 @@ retrieved = "2026-10-14"
 id = "exe-necromancy"
 kind = "original-data"
 ref = "Heroes3.exe code reading (E08 T19a2b; docs/exe/map.toml 0x4E3CD0, 0x4E3C60): with the skill the share is the skill's table value (a specialist's times 1 + 0.05 x its level) +0.05, +0.10, +0.15 for the Amulet of the Undertaker (54), the Vampire's Cowl (55), Dead Man's Boots (56), each worn or through the combination it is part of; without the skill only +0.30 with the Cloak of the Undead King (130); the creature is the Skeleton, with the Cloak by the Necromancy level Skeleton, Walking Dead, Wight, Lich"
-url = "docs/epics/E08-design.md"
+url = "docs/exe/map.toml"
 retrieved = "2026-10-14"
 
 [[source]]
@@ -1846,6 +1846,63 @@ kind = "wiki"
 ref = "Cloak of the Undead King - Heroes 3 wiki: as a combination '+30% Necromancy'; 'For heroes without Necromancy, the Cloak of the Undead King raises killed enemy troops' as Skeletons at a fixed 30 % that cannot be increased; with Basic, Advanced, Expert Necromancy Walking Dead, Wights, Liches, its power raised by the specialty and the town buildings 'but not the Cloak's components' effects'"
 url = "https://heroes.thelazy.net/index.php/Cloak_of_the_Undead_King"
 retrieved = "2026-10-14"
+
+# The hero's movement and scouting (E08 T35b, pack format v46; survey E08-hero-movement.md).
+[[source]]
+id = "exe-movement"
+kind = "original-data"
+ref = "Heroes3.exe code reading (E08 T34a; docs/exe/map.toml 0x4E4990, 0x4D7240, 0x4D91F0): hero_max_land_movement grows the land table's points by skill_logistics 0x63EA68 (f32 0, 0.1, 0.2, 0.3 at the Logistics level), then adds movement.txt's column 6, row 3 (600) for Boots of Speed (98) and row 2 (300) for Equestrian's Gloves (70), each worn or part of a worn combination; the file names row 3 for the Ring of the Wayfarer, the code gives it to the boots"
+url = "docs/rules/surveys/E08-hero-movement.md"
+retrieved = "2026-10-21"
+
+[[source]]
+id = "exe-step-cost"
+kind = "original-data"
+ref = "Heroes3.exe code reading (E08 T34a; docs/exe/map.toml 0x4B1740, 0x4B18C0): step_cost prices a step by the hero's Pathfinding level (skill 0) as the column of step_cost_table 0x63E510; hero_step_cost forces the fly level to 3 while Angel Wings (72) is worn and the water-walk level to 3 while Boots of Levitation (90) are, the index of fly_walk_step_cost 0x6778AC (140, 140, 120, 100)"
+url = "docs/rules/surveys/E08-hero-movement.md"
+retrieved = "2026-10-21"
+
+[[source]]
+id = "exe-scouting"
+kind = "original-data"
+ref = "Heroes3.exe code reading (E08 T8a, T34a; docs/exe/map.toml 0x4E4070): hero_scouting_radius takes skill_scouting 0x63E9D8 (5, 6, 7, 8) at the Scouting level, so 1, 2, 3 over the base 5, and adds 1 for each of the Speculum (52) and the Spyglass (53), worn or in a worn combination"
+url = "docs/rules/surveys/E08-hero-movement.md"
+retrieved = "2026-10-21"
+
+[[source]]
+id = "vcmi-movement"
+kind = "vcmi"
+ref = "config/skills.json (1.7.5): pathfinding ROUGH_TERRAIN_DISCOUNT 25, 50, 75; logistics MOVEMENT heroMovementLand PERCENT_TO_BASE 10, 20, 30; scouting SIGHT_RADIUS 1, 2, 3. config/artifacts.json: bootsOfSpeed MOVEMENT heroMovementLand 600, equestriansGloves 300 (ADDITIVE_VALUE); angelWings FLYING_MOVEMENT 0 and bootsOfLevitation WATER_WALKING 0 (no penalty); speculum and spyglass SIGHT_RADIUS 1"
+url = "https://github.com/vcmi/vcmi/blob/1.7.5/config/skills.json"
+retrieved = "2026-10-22"
+
+[[source]]
+id = "wiki-movement"
+kind = "wiki"
+ref = "Movement - Heroes 3 wiki: Logistics raises the base land movement by 10 %, 20 %, 30 %; Boots of Speed +600 and Equestrian's Gloves +300 land points in SoD (400 and 200 in HotA); Logistics does not grow the artifacts' bonuses (survey E08-hero-movement.md §1.2)"
+url = "https://heroes.thelazy.net/index.php/Movement"
+retrieved = "2026-10-21"
+
+[[source]]
+id = "wiki-pathfinding"
+kind = "wiki"
+ref = "Pathfinding - Heroes 3 wiki: each level lowers the cost of a step by 25 points, to at least 100 in SoD; no effect on roads (survey E08-hero-movement.md §2.2)"
+url = "https://heroes.thelazy.net/index.php/Pathfinding"
+retrieved = "2026-10-21"
+
+[[source]]
+id = "wiki-scouting"
+kind = "wiki"
+ref = "Scouting - Heroes 3 wiki: the radius grows by 1, 2, 3 in SoD (1, 3, 5 in HotA); Scouting radius: up to 10 in SoD, the base 5, the skill's 3 and the Speculum's and the Spyglass's 1 each (survey E08-hero-movement.md §4.1)"
+url = "https://heroes.thelazy.net/index.php/Scouting_radius"
+retrieved = "2026-10-21"
+
+[[source]]
+id = "wiki-flying-artifacts"
+kind = "wiki"
+ref = "Angel Wings - Heroes 3 wiki: the hero flies as with an Expert Fly while it is equipped; Boots of Levitation: the hero walks on water as with an Expert Water Walk while they are equipped (survey E08-hero-movement.md §2.3)"
+url = "https://heroes.thelazy.net/index.php/Angel_Wings"
+retrieved = "2026-10-21"
 
 # Skills whose values are not in the executable's skill tables (installation.md §7.4).
 # Wisdom (E08 T19a2b, pack format v40): the code's Wisdom level + 2 over the base of 2.
@@ -1924,6 +1981,30 @@ basic = [{ kind = "ballistics", level = 1 }]
 advanced = [{ kind = "ballistics", level = 2 }]
 expert = [{ kind = "ballistics", level = 3 }]
 sources = ["exe-wall-shots", "wiki-ballistics", "vcmi-ballistics"]
+
+# The hero's movement and scouting (E08 T35b, pack format v46; ADR-0013 point 13): read by the
+# adventure's derivations in h3-heroes (HER-ADV-003, -006, -007). Logistics and Scouting have
+# value tables (0x63EA68; 0x63E9D8, the radius with the base 5), written here as the kinds' amounts.
+[[heroes.skill_effects]]
+skill = "Pathfinding"
+basic = [{ kind = "pathfinding", level = 1 }]
+advanced = [{ kind = "pathfinding", level = 2 }]
+expert = [{ kind = "pathfinding", level = 3 }]
+sources = ["exe-step-cost", "vcmi-movement", "wiki-pathfinding"]
+
+[[heroes.skill_effects]]
+skill = "Logistics"
+basic = [{ kind = "land_movement", bp = 1000 }]
+advanced = [{ kind = "land_movement", bp = 2000 }]
+expert = [{ kind = "land_movement", bp = 3000 }]
+sources = ["exe-movement", "vcmi-movement", "wiki-movement"]
+
+[[heroes.skill_effects]]
+skill = "Scouting"
+basic = [{ kind = "scouting_radius", tiles = 1 }]
+advanced = [{ kind = "scouting_radius", tiles = 2 }]
+expert = [{ kind = "scouting_radius", tiles = 3 }]
+sources = ["exe-scouting", "vcmi-movement", "wiki-scouting"]
 
 # Specialty parts the executable's fixed-stat record has no field for (dispute H-2: speed).
 [[heroes.specialty_extra]]
@@ -2845,6 +2926,33 @@ effects = [
 ]
 sources = ["exe-necromancy", "vcmi-necromancy", "wiki-cloak-of-the-undead-king"]
 
+# The hero's movement and scouting (E08 T35b, pack format v46; ADR-0013 point 13): each artifact
+# type counts once, worn or as a part of a worn combination (none holds them).
+[[artifacts.effects]]
+artifacts = ["Boots of Speed"]
+effects = [{ kind = "land_movement_points", points = 600 }]
+sources = ["exe-movement", "vcmi-movement", "wiki-movement"]
+
+[[artifacts.effects]]
+artifacts = ["Equestrian's Gloves"]
+effects = [{ kind = "land_movement_points", points = 300 }]
+sources = ["exe-movement", "vcmi-movement", "wiki-movement"]
+
+[[artifacts.effects]]
+artifacts = ["Angel Wings"]
+effects = [{ kind = "flying", level = 3 }]
+sources = ["exe-step-cost", "vcmi-movement", "wiki-flying-artifacts"]
+
+[[artifacts.effects]]
+artifacts = ["Boots of Levitation"]
+effects = [{ kind = "water_walking", level = 3 }]
+sources = ["exe-step-cost", "vcmi-movement", "wiki-flying-artifacts"]
+
+[[artifacts.effects]]
+artifacts = ["Speculum", "Spyglass"]
+effects = [{ kind = "scouting_radius", tiles = 1 }]
+sources = ["exe-scouting", "vcmi-movement", "wiki-scouting"]
+
 # Effects no epic has modelled yet; the pack marks these artifacts, and every artifact without a
 # modelled effect must be listed here.
 # The Catapult has no effect of its own: every hero carries one, and the battle sets one up for
@@ -2869,10 +2977,9 @@ artifacts = [
 
 [[artifacts.pending]]
 epic = "E08-E10"
-what = "adventure map: movement, vision, resources, growth, the Grail"
+what = "adventure map: the sea's movement, resources, growth, the Grail"
 artifacts = [
-    "The Grail", "Speculum", "Spyglass", "Equestrian's Gloves", "Necklace of Ocean Guidance",
-    "Angel Wings", "Boots of Levitation", "Boots of Speed",
+    "The Grail", "Necklace of Ocean Guidance",
     "Everflowing Crystal Cloak", "Ring of Infinite Gems", "Everpouring Vial of Mercury",
     "Inexhaustible Cart of Ore", "Eversmoking Ring of Sulfur", "Inexhaustible Cart of Lumber",
     "Endless Sack of Gold", "Endless Bag of Gold", "Endless Purse of Gold",

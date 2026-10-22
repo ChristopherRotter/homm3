@@ -265,6 +265,72 @@ fn wisdom_and_the_skill_condition_of_a_share_parse() {
 }
 
 #[test]
+fn the_movement_and_scouting_kinds_parse() {
+    // E08 T35b (pack format v46, increment 5): the six kinds the adventure's derivations read.
+    let manifest = "[pack]\nid = \"x\"\nversion = \"1\"\n";
+    let pack = parse_pack(&format!(
+        "{manifest}[[secondary_skill]]\nid = \"s\"\n\
+         basic = [{{ kind = \"pathfinding\", level = 1 }}, {{ kind = \"land_movement\", bp = 1000 }}]\n\
+         expert = [{{ kind = \"scouting_radius\", tiles = 3 }}]\n\
+         [[artifact]]\nid = \"a\"\nname = \"A\"\nclass = \"relic\"\n\
+         effects = [{{ kind = \"land_movement_points\", points = 600 }}, \
+         {{ kind = \"flying\", level = 3 }}, {{ kind = \"water_walking\", level = 0 }}]\n"
+    ))
+    .unwrap();
+    assert_eq!(
+        pack.skills[0].levels,
+        [
+            vec![
+                HeroEffect::Pathfinding { level: 1 },
+                HeroEffect::LandMovement { bp: 1000 }
+            ],
+            vec![],
+            vec![HeroEffect::ScoutingRadius { tiles: 3 }],
+        ]
+    );
+    assert_eq!(
+        pack.artifacts[0].effects,
+        [
+            HeroEffect::LandMovementPoints { points: 600 },
+            HeroEffect::Flying { level: 3 },
+            HeroEffect::WaterWalking { level: 0 },
+        ]
+    );
+    // An unknown field is a syntax error; the parameters are checked when the pack compiles.
+    let unknown = format!(
+        "{manifest}[[secondary_skill]]\nid = \"s\"\n\
+         basic = [{{ kind = \"flying\", level = 1, cost = 100 }}]\n"
+    );
+    assert!(matches!(parse_pack(&unknown), Err(PackError::Syntax(_))));
+    for (effect, message) in [
+        (
+            "kind = \"pathfinding\", level = 4",
+            "pathfinding level must be 1..=3",
+        ),
+        (
+            "kind = \"land_movement\", bp = 0",
+            "land_movement bp must be at least 1",
+        ),
+        (
+            "kind = \"land_movement_points\", points = 0",
+            "land_movement_points points must be at least 1",
+        ),
+        (
+            "kind = \"water_walking\", level = 4",
+            "flying and water_walking levels must be 0..=3",
+        ),
+        (
+            "kind = \"scouting_radius\", tiles = 0",
+            "scouting_radius tiles must be at least 1",
+        ),
+    ] {
+        let bad = format!("{manifest}[[secondary_skill]]\nid = \"s\"\nbasic = [{{ {effect} }}]\n");
+        let error = compile(&[bad.as_str(), SYNTHETIC_CORE], "synthetic:faithful").unwrap_err();
+        assert!(error.to_string().contains(message), "{error}");
+    }
+}
+
+#[test]
 fn the_level_data_and_class_overrides_parse() {
     // E08 T26b (pack format v44): the experience of the first levels, the highest level, the
     // skills offered when due, the class's intervals and a gated class override.
@@ -316,6 +382,74 @@ fn the_level_data_and_class_overrides_parse() {
 /// E08 T26b: the harvested packs' level data (HER-EXP-002, HER-LVL-004) and the Elementalist's
 /// intervals, the executable's in `faithful` and the magic classes' in `strict-fixed`
 /// (ADV-QUIRK-10), with and without SoD.
+#[test]
+fn the_harvested_movement_and_scouting_effects() {
+    // E08 T35b (pack format v46): the three skills' and six artifacts' effects from the gap-fill,
+    // and the three flags of increment 5, on in `faithful` and off in `strict-fixed`.
+    use h3_content::{DROP_IGNORES_ARTIFACTS, FLYING_INLAND_PRICE, RADIUS_WAITS_FOR_A_STEP};
+    for packs in [
+        &[SOD_CORE, AB_CORE, BASE_CORE][..],
+        &[AB_CORE, BASE_CORE],
+        &[BASE_CORE],
+    ] {
+        for (profile, on) in [("base:faithful", true), ("base:strict-fixed", false)] {
+            let r = compile(packs, profile).unwrap();
+            let skill = |k: &str| {
+                let levels = &r.skill(r.skill_by_key(k).unwrap()).unwrap().levels;
+                levels.clone().map(|l| l.into_iter().next().unwrap())
+            };
+            assert_eq!(
+                skill("base:pathfinding"),
+                [1, 2, 3].map(|level| HeroEffect::Pathfinding { level })
+            );
+            assert_eq!(
+                skill("base:logistics"),
+                [1000, 2000, 3000].map(|bp| HeroEffect::LandMovement { bp })
+            );
+            assert_eq!(
+                skill("base:scouting"),
+                [1, 2, 3].map(|tiles| HeroEffect::ScoutingRadius { tiles })
+            );
+            let artifact = |k: &str| {
+                r.artifact(r.artifact_by_key(k).unwrap())
+                    .unwrap()
+                    .effects
+                    .clone()
+            };
+            assert_eq!(
+                [
+                    "base:boots_of_speed",
+                    "base:equestrians_gloves",
+                    "base:angel_wings",
+                    "base:boots_of_levitation",
+                    "base:speculum",
+                    "base:spyglass"
+                ]
+                .map(artifact),
+                [
+                    vec![HeroEffect::LandMovementPoints { points: 600 }],
+                    vec![HeroEffect::LandMovementPoints { points: 300 }],
+                    vec![HeroEffect::Flying { level: 3 }],
+                    vec![HeroEffect::WaterWalking { level: 3 }],
+                    vec![HeroEffect::ScoutingRadius { tiles: 1 }],
+                    vec![HeroEffect::ScoutingRadius { tiles: 1 }],
+                ]
+            );
+            let q = r.quirks();
+            assert_eq!(
+                [
+                    FLYING_INLAND_PRICE,
+                    DROP_IGNORES_ARTIFACTS,
+                    RADIUS_WAITS_FOR_A_STEP
+                ]
+                .map(|f| q.is_enabled(f)),
+                [on; 3],
+                "{profile}"
+            );
+        }
+    }
+}
+
 #[test]
 fn the_harvested_level_data_and_the_elementalists_intervals() {
     for packs in [&[SOD_CORE, AB_CORE, BASE_CORE][..], &[AB_CORE, BASE_CORE]] {

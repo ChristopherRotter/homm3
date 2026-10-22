@@ -113,6 +113,9 @@ pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&[
     "quirk.adventure.level_up_from_seed",
     "quirk.content.elementalist_offer_intervals",
     "quirk.battle.original_ai_slips",
+    "quirk.adventure.flying_inland_price",
+    "quirk.adventure.drop_ignores_artifacts",
+    "quirk.adventure.radius_waits_for_a_step",
 ]);
 
 /// Q-0003: creatures of a side without a hero never get lucky strikes (BAT-LCK-002).
@@ -254,6 +257,25 @@ pub const ELEMENTALIST_OFFER_INTERVALS: QuirkFlag = QuirkFlag(28);
 /// rule's outcome. Read by `h3-battle`'s `computer` numbers and `h3-battle-ai` from E23 T2b.
 pub const ORIGINAL_AI_SLIPS: QuirkFlag = QuirkFlag(29);
 
+/// ADV-QUIRK-16 (D-24): a flying hero's step from an inland tile costs the fly price, roads
+/// included, the lesser of the two prices only from the coast (`hero_step_cost` 0x4B18C0 replaces
+/// `step_cost` 0x4B1740's; survey `E08-hero-movement.md` §2.3). Off: the lesser of the fly price
+/// and the walking price everywhere (the wiki and VCMI). Read by the adventure from E08 T41.
+pub const FLYING_INLAND_PRICE: QuirkFlag = QuirkFlag(30);
+
+/// ADV-QUIRK-17 (A-12): the drop of the points left to 0 after a step prices the cheapest step
+/// from the new tile without the artifacts' flying and water walking (`cheapest_step_from`
+/// 0x4B1880 reads the hero's spell fields only; survey `E08-hero-movement.md` §2.5). Off: with
+/// the hero's flying and water-walking levels. Read by the adventure from E08 T41.
+pub const DROP_IGNORES_ARTIFACTS: QuirkFlag = QuirkFlag(31);
+
+/// ADV-QUIRK-18 (D-26, E08 decision 77): a scouting radius grown in the day shows only at the
+/// hero's next step: the new day reveals around a player's heroes only after a Cover of Darkness
+/// hid tiles (`cover_of_darkness_hide` 0x4C7BA0; survey `E08-hero-movement.md` §4.2). Off: every
+/// hero also reveals around it to its owner at each new day's start. Read by the adventure and
+/// the game from E08 T40.
+pub const RADIUS_WAITS_FOR_A_STEP: QuirkFlag = QuirkFlag(32);
+
 /// The prefix of the flags of data quirks: a gated override names one of them (`fixes`), and
 /// rule code never reads them (ADR-0007, amendment E04b T8e).
 pub const DATA_QUIRK_PREFIX: &str = "quirk.content.";
@@ -296,7 +318,19 @@ mod tests {
 
     #[test]
     fn registry_lookup_and_bitset() {
-        assert_eq!(REGISTRY.len(), 30);
+        assert_eq!(REGISTRY.len(), 33);
+        assert_eq!(
+            REGISTRY.lookup("quirk.adventure.flying_inland_price"),
+            Some(FLYING_INLAND_PRICE)
+        );
+        assert_eq!(
+            REGISTRY.lookup("quirk.adventure.drop_ignores_artifacts"),
+            Some(DROP_IGNORES_ARTIFACTS)
+        );
+        assert_eq!(
+            REGISTRY.lookup("quirk.adventure.radius_waits_for_a_step"),
+            Some(RADIUS_WAITS_FOR_A_STEP)
+        );
         assert_eq!(
             REGISTRY.lookup("quirk.battle.original_ai_slips"),
             Some(ORIGINAL_AI_SLIPS)
@@ -439,7 +473,7 @@ mod tests {
         }
         // The positions stay taken, so the flags after them keep their indices
         // (`registry_lookup_and_bitset`), and the flags that exist are every other position.
-        assert_eq!(REGISTRY.len(), 30);
+        assert_eq!(REGISTRY.len(), 33);
         assert_eq!(
             [REGISTRY.names[9], REGISTRY.names[10], REGISTRY.names[14]],
             [RETIRED; 3]
@@ -448,7 +482,7 @@ mod tests {
             REGISTRY
                 .flags()
                 .map(QuirkFlag::index)
-                .eq((0..30).filter(|i| ![9, 10, 14].contains(i)))
+                .eq((0..33).filter(|i| ![9, 10, 14].contains(i)))
         );
         // A registry without retired flags has them all.
         assert!(TEST.flags().map(QuirkFlag::index).eq(0..2));
