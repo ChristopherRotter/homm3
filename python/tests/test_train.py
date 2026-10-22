@@ -202,6 +202,24 @@ def test_gae_over_two_sides_by_hand() -> None:
     np.testing.assert_array_equal(used, closed)
 
 
+@pytest.mark.parametrize("penalty", [0.0, 1.0])
+def test_a_truncation_costs_its_penalty_or_bootstraps(penalty) -> None:
+    # E06 T5c: battles cut after 6 steps. With a penalty each learning side's last transition
+    # gets -penalty and ends there (reward v1 gives 0 at a truncation); without one it
+    # bootstraps from the final observation's value, as before.
+    trainer = Trainer(Config(**{**SMALL, "max_steps": 6}, truncation_penalty=penalty))
+    stats = trainer.collect()
+    r = trainer.rollout
+    assert stats["truncated"] > 0.5
+    cut = r.closed & r.terminal & (r.reward == -penalty) if penalty else r.closed & r.truncated
+    assert cut.sum() > 0 and r.terminal[cut].all()
+    if penalty:
+        assert not r.truncated.any() and (r.final_value[cut] == 0.0).all()
+    else:
+        assert (r.final_value[cut] != 0.0).any()
+    trainer.batch.close()
+
+
 def test_the_evaluation_plays_fixed_held_out_episodes() -> None:
     settings = dict(episodes=12, envs=4, max_steps=300)
     first = play(random_agent(np.random.default_rng(5)), **settings)

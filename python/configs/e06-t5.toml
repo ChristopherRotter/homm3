@@ -19,6 +19,8 @@ heads = 4
 
 [ppo]
 gamma = 1.0
+# Before E06 T5c's truncation penalty (the bootstrap at the step limit).
+truncation_penalty = 0.0
 
 [league]
 self_play = 0.5
