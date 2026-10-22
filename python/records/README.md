@@ -66,3 +66,7 @@ its `parent`.
   1.0): promoted #0 to #4 and #0 to #5; `t4-2`'s best #5 (50 M samples) is the lineage's
   strongest (Random 0.839, Aggressor 0.578, Greedy 0.559 on the full report set). Their networks
   are on the user's machine (`python/runs/t4-1/`, `t4-2/`).
+- `t5-1` (E06 T5b, 2026-10-22; the entity network at `t4-2`'s settings, stopped at 26.6 M of 60
+  M): promoted #0 and #1 (10 M samples; Random 0.607, Aggressor 0.383, Greedy 0.372 on 250 per
+  kind); 45 % of its self-play battles stalled to the step limit (`docs/epics/E06-log.md`, T5b).
+  Its networks are on the user's machine (`python/runs/t5-1/`).

@@ -17,19 +17,20 @@ hour `t3b-1`: evaluation 21.4 %, stalling suspected, AI-Q9). Increment 3 done 20
 plays 0.839, 0.578, 0.559 against Random, Aggressor, Greedy; `E06-log.md`).
 
 **Increment 4** refined 2026-10-22 (the user, `E06-log.md`): the entity network first, T5a then
-T5b; no spare MLP run. T5a done 2026-10-22 (`E06-log.md`). Still open for later increments: AI-Q7 (b), throughput (`t4-2`'s dip to
+T5b; no spare MLP run. T5a done, T5b done (negative: `t5-1` stalled), T5c done (the
+truncation penalty, the user's amendment of decision 10), all 2026-10-22 (`E06-log.md`). Still open for later increments: AI-Q7 (b), throughput (`t4-2`'s dip to
 about 4 000 samples/s from 20 M to 40 M), the mana price, T7 (E23's neutral side is complete).
 
-### T5b — The A/B run
+### T5d — The runs with the truncation penalty
 
-- **Scope:** the user runs `configs/e06-t5.toml` (the entity network, `t4-2`'s config and seed,
-  60 M samples) on their machine; the record committed, the comparison with `t4-2` in
-  `E06-log.md`.
-- **Acceptance:** the record passes `check_record`; the ladders compared per opponent.
-- **Depends on:** T5a's pull request merged; the user's machine. **Status:** waiting (the
-  merge, then the user). First `python -m h3env.train.network --config configs/e06-t5.toml
-  --time --device cuda` (the GPU's cost; T5a measured the entity network at about five times
-  the MLP's time on the sandbox's CPU), then the run (the config's comment).
+- **Scope:** the user runs `configs/e06-t5c.toml` twice on their machine, 20 M samples each:
+  the entity network (`runs/t5-2`) and the MLP (`runs/t5-3`, `--set network.kind=mlp`; the
+  config's comment); the records committed, compared with each other and with `t4-2`'s first
+  20 M in `E06-log.md` (truncations, samples/s, gates, ladders).
+- **Acceptance:** the records pass `check_record`; the ladders compared per opponent; the
+  entity network's stalling gone or explained.
+- **Depends on:** T5c's pull request merged; the user's machine. **Status:** waiting (the
+  merge, then the user).
 
 ## Inbox
 

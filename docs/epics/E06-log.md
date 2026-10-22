@@ -388,3 +388,47 @@ entry only where a task builds on it.
   across kinds refused). 97 Python tests with torch on the CPU (the GPU test skipped), 71
   without.
 
+## T5b — The entity network's run, stopped (2026-10-22)
+
+- **`t5-1`** (`python/records/t5-1.json`; `configs/e06-t5.toml`: `t4-2`'s settings with the
+  entity network; GTX 1070; the user's GPU timing first: forward 37.6 µs, a training pass 119 µs
+  per decision at 256 rows): stopped by the user at 26.6 M of 60 M samples (275 minutes).
+- **Against `t4-2` at 10 M and 20 M:** 1 831 and 1 643 samples/s (`t4-2`: 6 673 and 5 328);
+  self-play truncations 42.8 % and 44.9 % (11.7 %, 10.1 %); explained variance 0.82, 0.46, then
+  0.02 from 20 M on (0.87); gates promoted (+137 Elo) and rejected (−14) (`t4-2`: +233, +43); the
+  10 M ladder 0.607, 0.383, 0.372 with 20 % truncated (0.719, 0.440, 0.422, 8 %); the learner's
+  score against its league 0.39 at the end.
+- **The diagnosis** (the run's `metrics.jsonl`, `best.pt` and `checkpoint.pt` in the sandbox):
+  truncations rose from 18 % in the first million samples to 45 % in the second and stayed. In
+  self-play with either network 62 of 128 battles truncated (hero battles 39 of 74, sieges with a
+  hero 19 of 36, garrisons' 4 of 18); in them 86 to 95 % of the choices were moves, the rest
+  waits, no attack, shot, defence or cast in 2 000 steps; at the cut the attackers stood at column
+  1.5 on average, the defenders at 14.5, the closest opposing stacks 11 columns apart, 8 % of the
+  moves ending closer to the enemy. Both sides hide at their own edge: who approaches is struck
+  first, and a truncation bootstrapped from a value of about 0 costs nothing. Such a battle lasts
+  2 000 steps against about 100, so about 94 % of the samples came from battles where nothing
+  happens (their advantages about 0: explained variance 0, the regression); and their long
+  episodes kept members live (8 frozen passes a call). The context layer was alive (126 to 128
+  of 128 units on); the cost: a PPO update about 10 s and a rollout about 5 s for 25 000 samples.
+  The MLP escaped the same incentive (`t4-2`'s truncations went to 0): its move logits read
+  every stack's position, the entity network's a hex's own 16 features and the context, which
+  makes "to my edge" easy and "toward that stack" hard.
+
+## Increment 4's revision, T5c (2026-10-22)
+
+- The agent proposed relative geometry for the hexes (the stacks on their hexes, distances).
+  **User:** exploration should find the fights (the agent: a random step forward is undone by the
+  next; an approach exploration finds is mostly punished, as the approacher is struck first; the
+  entropy of 3.3 nats spreads over the safe hexes, not toward the enemy); no feature engineering
+  for so simple a problem, but a penalty for stalling to the step limit (or a cost per step); the
+  neutral share (T7) will force fights anyway, as the system actor does not cower. The agent
+  chose the penalty at the limit: a cost per step would weigh on every decided battle and could
+  drive a losing side to attack only to end it sooner.
+- **T5c:** `[ppo] truncation_penalty` (1.0, the default; decision 10 amended): at a truncation
+  each learning side's last transition gets −1.0 and ends there, no bootstrap from
+  `final_obs`. Reward v1 lies in about (−1, 1), so stalling to the limit is worse than any
+  decided battle. Reward v1 itself, the engine and the evaluation (a truncation is no win) are
+  unchanged. `configs/e06-t4.toml` and `e06-t5.toml` state 0.0 (their runs reproducible),
+  `configs/e06-t5c.toml` the next runs. Tests: both cases in a rollout of battles cut after 6
+  steps.
+

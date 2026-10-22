@@ -112,6 +112,11 @@ class Config:
     value_coef: float = field(default=0.5, metadata=_in("ppo"))
     entropy_coef: float = field(default=0.01, metadata=_in("ppo"))
     max_grad_norm: float = field(default=0.5, metadata=_in("ppo"))
+    #: What a battle cut at `max_steps` costs each learning side (E06 T5c, the user's amendment
+    #: of decision 10): its last transition gets `-truncation_penalty` and ends there, instead of
+    #: bootstrapping from the final observation (0: the bootstrap, as before T5c). Reward v1 lies
+    #: in about (-1, 1), so 1.0 makes stalling to the limit worse than any decided battle.
+    truncation_penalty: float = field(default=1.0, metadata=_in("ppo"))
     #: The league (design §8, `league`): the share of self-play episodes (else a live member plays
     #: one side, drawn per episode).
     self_play: float = field(default=0.5, metadata=_in("league"))
@@ -317,8 +322,10 @@ def resolve(config: Config) -> Config:
     ):
         if getattr(c, key) < 0:
             problems.append(f"`{key}` must not be negative")
-    if c.checkpoint_minutes < 0 or c.pfsp_power < 0:
-        problems.append("`checkpoint_minutes` and `pfsp_power` must not be negative")
+    if c.checkpoint_minutes < 0 or c.pfsp_power < 0 or c.truncation_penalty < 0:
+        problems.append(
+            "`checkpoint_minutes`, `pfsp_power` and `truncation_penalty` must not be negative"
+        )
     if c.lr_schedule not in ("linear", "constant"):
         problems.append("`lr_schedule` is linear or constant")
     if not 0.0 <= c.lr_floor <= 1.0 or not 0.0 <= c.self_play <= 1.0 or not 0.0 < c.decay <= 1.0:
