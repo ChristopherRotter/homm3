@@ -11,8 +11,8 @@ use core::cell::OnceCell;
 
 use h3_battle::computer::{self, HeroCast};
 use h3_battle::{
-    BattleSide, BattleState, CastTarget, CastTargets, Command, STACK_CAPACITY, StackFlags,
-    StackId, StackTraits, Status, cast_targets, castable_spells,
+    BattleSide, BattleState, CastTarget, CastTargets, Command, STACK_CAPACITY, StackFlags, StackId,
+    StackTraits, Status, cast_targets, castable_spells,
 };
 use h3_content::SpellId;
 use h3_content_battle::{BattleRuleset, BattleSpell, SpellEffect, SpellPolarity, SpellTarget};
@@ -95,15 +95,7 @@ pub(crate) fn choose(
         sc.desperately();
     }
     let raises_only = sc.beaten() && !sc.at_risk();
-    let hero = Hero {
-        state,
-        ruleset,
-        side,
-        active: id,
-        sc,
-        scanner: Scanner::new(state, ruleset, (id, side), ctx),
-        ranks: OnceCell::new(),
-    };
+    let hero = Hero::new(sc, (state, ruleset), (id, side, ctx));
     let mut best: Option<(SpellId, Valued)> = None;
     let mut top = 0i32;
     let spells = castable_spells(state, ruleset, side);
@@ -147,7 +139,7 @@ pub(crate) fn choose(
 /// A value `v` above 0 by the casts the hero's spell points cover (0x43CA0B to 0x43CA4E): `trunc(5v
 /// / 2)` (32 bits) when they cover at least seven (a free spell always), else `trunc(v ×
 /// √⌊mana / cost⌋)` as doubles.
-fn scaled(v: i32, hc: HeroCast) -> i32 {
+pub(crate) fn scaled(v: i32, hc: HeroCast) -> i32 {
     let (mana, cost) = (i32::from(hc.mana), i32::from(hc.cost));
     if mana >= cost.wrapping_mul(CASTS) {
         v.wrapping_mul(5) / 2
@@ -160,7 +152,7 @@ fn scaled(v: i32, hc: HeroCast) -> i32 {
 }
 
 /// The hero's side in its spell context, as the values read it.
-struct Hero<'h, 'a> {
+pub(crate) struct Hero<'h, 'a> {
     state: &'a BattleState,
     ruleset: &'a BattleRuleset,
     side: BattleSide,
@@ -174,7 +166,25 @@ struct Hero<'h, 'a> {
     ranks: OnceCell<[u8; STACK_CAPACITY]>,
 }
 
-impl Hero<'_, '_> {
+impl<'h, 'a> Hero<'h, 'a> {
+    /// `side`'s hero in the spell context `sc`, `id` the active stack, `ctx` the side's battle
+    /// context.
+    pub(crate) fn new(
+        sc: &'h SpellContext<'a>,
+        (state, ruleset): (&'a BattleState, &'a BattleRuleset),
+        (id, side, ctx): (StackId, BattleSide, computer::Context),
+    ) -> Self {
+        Self {
+            state,
+            ruleset,
+            side,
+            active: id,
+            sc,
+            scanner: Scanner::new(state, ruleset, (id, side), ctx),
+            ranks: OnceCell::new(),
+        }
+    }
+
     /// The engine's targets of the hero's cast of `spell` now.
     fn targets(&self, spell: SpellId) -> CastTargets {
         let mut targets = CastTargets::new();
@@ -215,7 +225,7 @@ impl Hero<'_, '_> {
 /// both sides); any other nothing: the computer's hero never casts
 /// Quicksand, Land Mine, Force Field, Fire Wall, Berserk (aimed at a hex) or Remove Obstacle.
 // rule: BAT-AI-017, BAT-AI-018
-fn value(h: &Hero<'_, '_>, (id, s): (SpellId, &BattleSpell), c: Candidate) -> Valued {
+pub(crate) fn value(h: &Hero<'_, '_>, (id, s): (SpellId, &BattleSpell), c: Candidate) -> Valued {
     let m = &s.magic;
     let has = |e: SpellEffect| m.effects.contains(&e);
     if [
@@ -310,7 +320,9 @@ fn on_stacks(h: &Hero<'_, '_>, of: BattleSide, c: Candidate) -> i32 {
     (0u8..)
         .zip(h.state.stacks())
         .filter(|&(i, s)| s.side == of && weighed(h, StackId(i), c))
-        .fold(0i32, |sum, (i, _)| sum.wrapping_add(view.value(StackId(i), c)))
+        .fold(0i32, |sum, (i, _)| {
+            sum.wrapping_add(view.value(StackId(i), c))
+        })
 }
 
 /// The best target of the candidate `c` among `of`'s stacks (0x43A670; BAT-AI-017): over those it
@@ -319,7 +331,12 @@ fn on_stacks(h: &Hero<'_, '_>, of: BattleSide, c: Candidate) -> i32 {
 /// but Dispel becomes `trunc(2v(50 − c) / 100)`, `c` the mirror's chance (32 bits); the first
 /// strictly above the best so far (from 0) is the target. Then whether it is due now
 /// ([`now_on_own`], [`now_on_enemy`]); Haste always.
-fn one_target(h: &Hero<'_, '_>, of: BattleSide, c: Candidate, targets: &CastTargets) -> Valued {
+pub(crate) fn one_target(
+    h: &Hero<'_, '_>,
+    of: BattleSide,
+    c: Candidate,
+    targets: &CastTargets,
+) -> Valued {
     let view = h.sc.view();
     let dispel = h.ruleset.spell(c.spell).and_then(Kind::of) == Some(Kind::Dispel);
     let mut best = Valued::ZERO;
@@ -364,19 +381,23 @@ fn one_target(h: &Hero<'_, '_>, of: BattleSide, c: Candidate, targets: &CastTarg
 /// other stack of the side can still act this round, or the spell protects (0x4000: Shield, Air
 /// Shield, Fire Shield, the Protections, Anti-Magic, Magic Mirror, Stone Skin, Counterstrike).
 fn now_on_own(h: &Hero<'_, '_>, t: StackId, c: Candidate) -> bool {
-    let protects = h.ruleset.spell(c.spell).and_then(Kind::of).is_some_and(|k| {
-        matches!(
-            k,
-            Kind::Shield
-                | Kind::AirShield
-                | Kind::FireShield
-                | Kind::Protection
-                | Kind::AntiMagic
-                | Kind::MagicMirror
-                | Kind::StoneSkin
-                | Kind::Counterstrike
-        )
-    });
+    let protects = h
+        .ruleset
+        .spell(c.spell)
+        .and_then(Kind::of)
+        .is_some_and(|k| {
+            matches!(
+                k,
+                Kind::Shield
+                    | Kind::AirShield
+                    | Kind::FireShield
+                    | Kind::Protection
+                    | Kind::AntiMagic
+                    | Kind::MagicMirror
+                    | Kind::StoneSkin
+                    | Kind::Counterstrike
+            )
+        });
     t == h.active || h.last_to_act() || protects
 }
 
@@ -385,7 +406,7 @@ fn now_on_own(h: &Hero<'_, '_>, t: StackId, c: Candidate) -> bool {
 /// threat record's enemy) within a turn, cannot shoot now and meets a retaliation; else only when
 /// `e` threatens the side this turn (the threat tables) and no other stack of the side, alive,
 /// not blind, turned to stone or paralysed and no turret, acts before `e` by the order's ranks.
-fn now_on_enemy(h: &Hero<'_, '_>, e: StackId) -> bool {
+pub(crate) fn now_on_enemy(h: &Hero<'_, '_>, e: StackId) -> bool {
     let view = h.sc.view();
     if view.desperate() || h.last_to_act() {
         return true;
@@ -489,7 +510,8 @@ fn mass_damage(h: &Hero<'_, '_>, spell: Spell) -> Valued {
             continue;
         }
         let id = StackId(u8::try_from(i).unwrap_or(u8::MAX));
-        let v = computer::spell_damage_value(state, ruleset, ctx, (spell.id, spell.damage), true, id);
+        let v =
+            computer::spell_damage_value(state, ruleset, ctx, (spell.id, spell.damage), true, id);
         casts::add(&mut sums, st.side == h.side, v);
     }
     Valued {
@@ -503,7 +525,7 @@ fn mass_damage(h: &Hero<'_, '_>, spell: Spell) -> Valued {
 /// beat the enemy (the rules' refusal, 0x5A93A0, keeps the spell from being castable); else `n` =
 /// the spell's value at the mastery × the power creatures, worth `1000 n` in the desperate mode,
 /// else `n` × the summoned creature's AI value (32 bits); no target; due now.
-fn summon(h: &Hero<'_, '_>, s: &BattleSpell, c: Candidate) -> Valued {
+pub(crate) fn summon(h: &Hero<'_, '_>, s: &BattleSpell, c: Candidate) -> Valued {
     if h.sc.beaten() {
         return Valued::ZERO;
     }

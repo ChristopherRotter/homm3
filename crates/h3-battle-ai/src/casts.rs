@@ -203,7 +203,12 @@ pub(crate) fn before_shot(
         })
         .filter(|_| state.casts_left(id) > 0)?;
     let side = me.controller();
-    let s = Scanner::new(state, ruleset, (id, side), computer::context(state, ruleset, side));
+    let s = Scanner::new(
+        state,
+        ruleset,
+        (id, side),
+        computer::context(state, ruleset, side),
+    );
     scan_as(&s, caster, (&mut value, rng), |_| ())
 }
 

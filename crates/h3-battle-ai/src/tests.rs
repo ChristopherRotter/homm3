@@ -22,8 +22,9 @@ use h3_content::{
 use h3_content_battle::{
     AbilityDef, AreaShot, AuraTarget, BallisticsRecord, BattleCreatureDef, BattlePack,
     BattleParamsDef, BattleRuleset, BattleSpellDef, EffectDuration, HexStep, ObstacleKind,
-    ObstacleShape, SiegeDef, SiegeFieldDef, SpellAi, SpellEffect, SpellMagic, SpellPolarity,
-    SpellTarget, TimedChange, Usefulness, WallKind, WallTarget,
+    ObstacleShape, SiegeDef, SiegeFieldDef, SpellAi, SpellArea, SpellChain, SpellEffect,
+    SpellMagic, SpellPolarity, SpellTarget, TargetSide, TimedChange, Usefulness, WallKind,
+    WallTarget,
 };
 use h3_contracts::{
     Army, ArmyStack, BallistaControl, BattleHero, BattleSetup, BattleSide, FortLevel, Moat, Rate,
@@ -42,6 +43,7 @@ mod defenses;
 mod ends;
 mod gain;
 mod harms;
+mod hero;
 mod odds;
 mod order;
 mod predict;
@@ -763,6 +765,107 @@ const EXTRA: [ExtraSpell; 17] = [
     ),
 ];
 
+/// A test spell for the hero's own cases (E23 T5a): its key, power factor, values, polarity and
+/// magic.
+type HeroSpell = (
+    &'static str,
+    u16,
+    [u16; 4],
+    SpellPolarity,
+    fn() -> SpellMagic,
+);
+
+/// The hero's own cases (E23 T5a): Dispel (any side's stack from Advanced, the mass version at
+/// Expert), Clone, an area spell, a mass damage spell, a chain, a summon of runners and a raise.
+const HERO_SPELLS: [HeroSpell; 7] = [
+    ("dispel", 0, [0; 4], SpellPolarity::Neutral, || SpellMagic {
+        target: SpellTarget::Stack,
+        side: TargetSide::Own,
+        any_side_from: Some(2),
+        mass_from: Some(3),
+        effects: vec![SpellEffect::Dispel],
+        ..SpellMagic::default()
+    }),
+    ("clone", 0, [0; 4], SpellPolarity::Positive, || SpellMagic {
+        target: SpellTarget::Stack,
+        side: TargetSide::Own,
+        effects: vec![SpellEffect::Clone],
+        ..SpellMagic::default()
+    }),
+    (
+        "fireball",
+        10,
+        [15, 15, 30, 60],
+        SpellPolarity::Neutral,
+        || SpellMagic {
+            target: SpellTarget::Hex,
+            area: Some(SpellArea {
+                inner: 0,
+                radius: [1; 4],
+            }),
+            effects: vec![SpellEffect::Damage],
+            ..SpellMagic::default()
+        },
+    ),
+    (
+        "ripple",
+        5,
+        [10, 10, 20, 30],
+        SpellPolarity::Neutral,
+        || SpellMagic {
+            effects: vec![SpellEffect::Damage],
+            ..SpellMagic::default()
+        },
+    ),
+    (
+        "chain",
+        25,
+        [25, 25, 50, 100],
+        SpellPolarity::Neutral,
+        || SpellMagic {
+            target: SpellTarget::Stack,
+            side: TargetSide::Enemy,
+            chain: Some(SpellChain {
+                targets: [4, 4, 5, 5],
+                factor_bp: 5000,
+            }),
+            effects: vec![SpellEffect::Damage],
+            ..SpellMagic::default()
+        },
+    ),
+    ("summon", 0, [2, 2, 3, 4], SpellPolarity::Neutral, || {
+        SpellMagic {
+            effects: vec![SpellEffect::Summon],
+            ..SpellMagic::default()
+        }
+    }),
+    (
+        "raise",
+        50,
+        [30, 30, 60, 160],
+        SpellPolarity::Positive,
+        || SpellMagic {
+            target: SpellTarget::Stack,
+            side: TargetSide::Own,
+            effects: vec![SpellEffect::Raise],
+            ..SpellMagic::default()
+        },
+    ),
+];
+
+/// A hero whose book holds the test spells `names` at `mastery`, with `mana` spell points and
+/// power 5.
+fn hero_with(r: &BattleRuleset, names: &[&str], mastery: u8, mana: u16) -> BattleHero {
+    let mut h = hero(0);
+    h.power = 5;
+    let book: Vec<SpellId> = names.iter().map(|k| spell(r, k)).collect();
+    h.magic.masteries = book.iter().map(|&s| (s, mastery)).collect();
+    h.magic.spell_book = Some(book);
+    h.magic.mana = mana;
+    h.magic.max_mana = mana;
+    h
+}
+
 /// A hero whose book holds every test spell but the creatures' abilities at `mastery`, with 999
 /// mana and power 5.
 fn caster(r: &BattleRuleset, mastery: u8) -> BattleHero {
@@ -951,6 +1054,19 @@ fn core(profile: &str) -> Ruleset {
         effect: [10, 10, 20, 50],
         granted_by_name_only: false,
     });
+    // The hero's other cases (E23 T5a): their power factors and values.
+    pack.spells
+        .extend(HERO_SPELLS.iter().map(|&(k, power, effect, ..)| SpellDef {
+            key: key(&["t:", k].concat()),
+            name: k.into(),
+            category: SpellCategory::Combat,
+            level: 1,
+            schools: vec![key("t:fire")],
+            cost: [5; 4],
+            power,
+            effect,
+            granted_by_name_only: false,
+        }));
     pack.profiles = vec![
         ProfileDef {
             key: key("t:faithful"),
@@ -1101,6 +1217,21 @@ fn ruleset_as(profile: &str) -> BattleRuleset {
                     ai: SpellAi::default(),
                 },
             ),
+    );
+    spells.extend(
+        HERO_SPELLS
+            .iter()
+            .map(|&(k, _, _, polarity, magic)| BattleSpellDef {
+                key: key(&["t:", k].concat()),
+                polarity,
+                magic: magic(),
+                counters: vec![],
+                dispels: vec![],
+                spares: vec![],
+                tests_as: None,
+                summons: (k == "summon").then(|| key("t:runner")),
+                ai: SpellAi::default(),
+            }),
     );
     spells.push(BattleSpellDef {
         key: key("t:bolt"),
