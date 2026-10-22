@@ -96,46 +96,7 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### Adventure lane (`ADV-Q<n>`)
 
-#### ADV-Q21 — Increment 5's ADR amendment drafts and the cut (E08 T34b)
-
-T34b drafted the amendments the survey (`docs/rules/surveys/E08-hero-movement.md`) and the
-checkpoint (ADV-Q20, the epic's decision 75; D-26 revised at T34b, decision 77) call for, with the
-design note `docs/epics/E08-design.md` and a cut into building tasks. Nothing is built until they
-are accepted. Blocks T35 and T36. Recommendations marked.
-
-1. **ADR-0013's draft** (`docs/lanes/adventure/adr-drafts/0013-increment-5.md`): movement and
-   scouting as `h3-heroes`' derivations on bases the adventure gives (the land table's entry, the
-   base radius); six effect kinds (the Pathfinding level, a land movement rate, land movement
-   points, the flying and water-walking levels, a radius bonus); D-22 under Q-0005; no Scouting
-   specialty. *Recommended: accept.*
-2. **ADR-0016's draft** (`0016-increment-5.md`): the points and radius through the store, set after
-   the levels at load; the passage of a flying and a water-walking hero (design §7's table),
-   moves on explored tiles only (A-13, `ADV-QUIRK-15`), a move ending only where a hero may stop
-   (D-25), two kinds of node in the reach for them alone; the price's quirks D-24 and A-12
-   (`ADV-QUIRK-16`, `-17`), Cursed Ground after E5-6; a grown radius at the next step,
-   `strict-fixed` also at each new day (`ADV-QUIRK-18`). *Recommended: accept.*
-3. **ADR-0017's draft** (`0017-increment-5.md`): the build gives the day's points and the reveal
-   after the levels at load (the original's order); the start of a day's first rule
-   (`strict-fixed`'s reveal); the versions (no game or adventure state hash, import, encoding or
-   replay format change). *Recommended: accept.*
-4. **The diagonal exception's check for a flyer** (design §6 point 5; the agent's call): under
-   `ADV-QUIRK-2` or `-3` (faithful) the check stays the walking terrain's price, as the original;
-   with both off (strict-fixed) it is the step's own straight price, the fly price included, as
-   ADV-Q3's fix ("the step's own straight cost") extended. Only a flight from rough terrain tells
-   them apart (a swamp's diagonal at 175 to 247 points: 100 faithful, 141 strict). *Recommended:
-   as proposed;* alternative: the walking check in both profiles.
-5. **Batch E5's row E5-11** (the agent's call): an Angel Wings hero facing a border gate it lacks
-   the key of; the reading predicts a flight over the gate, which no other source states.
-   *Recommended: add it;* alternative: a fixed test of the reading only.
-6. **The cut** (design §12): five rounds, **batch E5 first** — round 1 T35 (the shared groundwork:
-   the drafts applied, the six kinds, three flags, the packs, pack format v46, core ruleset hash
-   v47; `shared/`, `cross-lane`) + T36 (batch E5's specs and scorer, `cross-lane`); round 2 T37 (the
-   harness's reads and the run) + T38 (the scoring; D-23 decided by E5-6); round 3 T39 (the
-   derivations) + T40 (the points, radius and walking price, Nomads, Cursed Ground if confirmed);
-   round 4 T41 (flying and water walking: price, drop, passage, reach, `MoveHero`); round 5 T42 (env,
-   fixtures, replays, benchmarks) + T43 (closure). *Recommended: as proposed;* alternative: the
-   batch at the end, as in increment 4 (the build first; a built rule may reopen and Cursed Ground
-   comes late).
+(no open questions)
 
 ### Server lane (`SRV-Q<n>`)
 
@@ -220,6 +181,7 @@ Newest first in each block. A lane adds an answered question at the top of its o
 
 ### Adventure lane (`ADV-Q<n>`)
 
+- *(2026-10-22, ADV-Q21, E08 T34b checkpoint)* **Increment 5's ADR amendment drafts and the cut.** Six points with recommendations after T34b (`docs/lanes/adventure/adr-drafts/*-increment-5.md`, `docs/epics/E08-design.md`; the epic's decision 78). **User: all accepted**, with one input missing from ADR-0016's draft restated in its point 4: A-13 (a flight over unexplored tiles) "probably fix, but gameplay impacts have to be considered (wide obstacle ranges become impassable); perhaps deserves a compromise, like allowing to route to the closest unexplored, but free hex; TBD later anyway": the fix is built in increment 5 as provisional, the compromise and `ADV-QUIRK-15`'s class decided later. (1)–(3) the drafts of ADR-0013, -0016 and -0017 accepted; (4) a flyer's diagonal check in `strict-fixed` is the step's own straight price, the fly price included; (5) batch E5 gains row E5-11 (a flyer over a border gate without its key); (6) the cut in five rounds with batch E5 first, round 1 T35 + T36.
 - *(2026-10-22, ADV-Q20, E08 T34a)* **Increment 5's checkpoint.** Asked after T34a's survey (`docs/rules/surveys/E08-hero-movement.md`; the epic's decision 75), nine points with recommendations, two of them asked again with context. **A-13** (a flying path through unexplored tiles): **fixed**, with the gameplay cost noted (wide obstacle ranges impassable to a flyer) and a trade-off to design later (routing to the nearest unexplored but free tile). **A-14** (a flyer inland does not visit from its tile): **withdrawn, "definitely wrong"**: a flyer visits as a walker; the reading's gap stays open. **D-24** (flying's price, roads 100): **the original's rule, fix-optional** (recommended: the code's rule, a batch row). **D-22**: Q-0005's flag (recommended). **D-23** (Cursed Ground cancels the native terrain's 100; the user asked whether it was confirmed: no, the code alone): **only if row E5-6 confirms** (recommended). **A-12** (the drop to 0 prices a walking step; asked again: it matters only on Cursed Ground): **fix-optional** (recommended). **D-26**: **the original's way** (recommended; else artifact swapping pays). Scope and batch E5: as recommended. D-25 had been settled by the second reading.
 - *(2026-10-21, ADV-Q19, E08 T33)* **Increment 5 refined.** Asked interactively after a summary of the sketch's item 5 in three parts (the epic's decisions 71 and 72). (Scope) Which part increment 5 holds, the rest moving to later increments: **movement and scouting** (Logistics, Pathfinding and Scouting on the map, the movement and scouting artifacts the heroes wear, the specialties that touch them, derived once in `h3-heroes`; recommended: the skills the heroes now gain at a level-up do nothing on the map yet), rewards on the map (treasure chests and the objects that give experience, spells, skills or primary skills; artifacts as pickups, the treasures with an artifact), army management (the army dialog of `ADV-STUB-2`, meetings and exchanges, dismissing, merging and splitting, the formation command), or the whole sketch: **user: movement and scouting.** (Round 1) A survey, then the ADR amendment drafts with the design note and the cut, accepted before anything is built (recommended, as increments 3 and 4), or the survey alone first: **user: survey + ADR drafts** (T34a, T34b in the queue).
 - *(2026-10-21, ADV-Q18, E08 T33)* **Batch E4's two findings; T33's seam.** Asked interactively with context after reading T32b2's results (the epic's decision 70). (1) **E4-10**: from the tile directly above, Red's click on Blue's hero standing on a land Cartographer's entrance found no path and started no battle in all three runs that reached it; the engine attacked (T19a1: the visit is the hero's, ADV-OBJ-004 checking only the visitor's tile). The code reading explains it: the pathfinder's test from above (0x4B26AC) reads the tile's class through 0x4FCBD0, which for a hero standing there returns the object under it, one lookup for both directions; VCMI 1.7.5 attacks (`canMoveBetween` tests the tile's blocking objects, the hero). Options: the original's rule in every profile, no flag (recommended: consistent, a hero on an entrance is attacked from exactly the tiles the object is visited from, nothing exploitable); a fix-optional quirk; keep the engine. **User: the original's rule, no flag** (built in T33: `check_step` and the reachable-tiles query). (2) **D-17**: 1 of 12 heroes conclusive (run 1's E4-5c: Water Magic, the reading's, where VCMI's class weights give Fire Magic); the draw is deterministic and every other prediction from the same seed bytes held. Options: one hero settles it (recommended), more E4a runs (about four per conclusive hero), a targeted batch later. **User: one hero settles it** (HER-LVL-003 `verified`). (3) The seam: T33a (the scoring with (1) and (2)) then T33b (the audit, the closure, increment 5's refinement; recommended), the scoring only, or **T33 whole: user's choice.**

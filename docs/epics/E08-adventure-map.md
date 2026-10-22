@@ -386,12 +386,24 @@ Refined with the user on 2026-10-21 (T33; ADV-Q19). Built like increments 1 to 4
     around every hero at each new day's start, as decision 75 assumed. Not chosen: the original's
     way alone (recommended), or the new-day reveal in every profile.
 
+### Decisions at T34b's checkpoint (2026-10-22, user; ADV-Q21)
+
+78. **The drafts accepted and the cut confirmed**, every point as recommended: the amendment
+    drafts of ADR-0013, -0016 and -0017; a flyer's diagonal check in `strict-fixed` is the step's
+    own straight price, the fly price included; batch E5 gains row E5-11 (a flyer over a border
+    gate without its key); five rounds with batch E5 first, round 1 T35 + T36. **A-13 restated**
+    (the user's input at ADV-Q20, missing from ADR-0016's draft, now in its point 4): "probably
+    fix, but gameplay impacts have to be considered (wide obstacle ranges become impassable);
+    perhaps deserves a compromise, like allowing to route to the closest unexplored, but free hex;
+    TBD later anyway". Increment 5 builds the fix as provisional; the compromise and
+    `ADV-QUIRK-15`'s class are decided later (the queue's inbox).
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T33 Increment 5 refined** (with increment 4's closure). Done (2026-10-21, `adventure/e08-t33`; decisions 71, 72): movement and scouting, the first round queued (T34a, T34b).
 - **T34a The movement and scouting survey.** Done (2026-10-21, `adventure/e08-t34a`; decisions 73, 74): survey `docs/rules/surveys/E08-hero-movement.md`, the checkpoint's questions ADV-Q20.
 - **T34b The ADR amendment drafts, the design note and the cut.** Done whole (2026-10-22, `adventure/e08-t34b` #375; decisions 76, 77): the drafts of ADR-0013, -0016 and -0017 (`docs/lanes/adventure/adr-drafts/*-increment-5.md`), `E08-design.md` rewritten for increment 5 with the cut and the exit criteria (§12), D-26 revised after a reading of `new_day`; the checkpoint's questions ADV-Q21 (log).
-- **T35 to T43 The building tasks**, proposed by T34b in five rounds (`E08-design.md` §12, with increment 5's exit criteria), batch E5 first: T35 + T36 (the shared groundwork; batch E5's specs and scorer), T37 + T38 (the harness's reads and the run; the scoring, D-23), T39 + T40 (`h3-heroes`' derivations; the points, radius and walking price), T41 (flying and water walking), T42 + T43 (the env, fixtures, replays, benchmarks; the closure). Waiting for ADV-Q21.
+- **T35 to T43 The building tasks**, proposed by T34b in five rounds (`E08-design.md` §12, with increment 5's exit criteria), batch E5 first: T35 + T36 (the shared groundwork; batch E5's specs and scorer), T37 + T38 (the harness's reads and the run; the scoring, D-23), T39 + T40 (`h3-heroes`' derivations; the points, radius and walking price), T41 (flying and water walking), T42 + T43 (the env, fixtures, replays, benchmarks; the closure). **Confirmed** at ADV-Q21 (decision 78); round 1 is next.
 
 ## Later increments (sketch)
 

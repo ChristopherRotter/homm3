@@ -1,8 +1,8 @@
 # ADR-0016 amendment (draft): movement and scouting on the map; flying and water walking
 
-- Status: Draft (E08 T34b, 2026-10-22), from the user's answers at ADV-Q20 (the epic's decision 75)
-  and at T34b (decision 77); put to the user with the ADR-0013 and ADR-0017 drafts and the cut
-  (ADV-Q21), then into ADR-0016 through a `shared/` pull request.
+- Status: Accepted by the user (ADV-Q21, 2026-10-22; the epic's decision 78) with A-13's caveat
+  restated in point 4; drafted in E08 T34b from the answers at ADV-Q20 (decision 75) and at T34b
+  (decision 77). T35's `shared/` pull request applies it to ADR-0016.
 - Amends: ADR-0016 points 3, 4 and 5.
 - Detail: `docs/epics/E08-design.md` part B (§5–§8); facts: survey
   `docs/rules/surveys/E08-hero-movement.md`.
@@ -33,7 +33,12 @@ Darkness's hide (T34b's reading, survey §4.2).
    - **A walking hero** moves as before.
    - **A flying hero** also passes over blocked tiles, water, guarded tiles and the visitable tiles
      of objects and heroes, never over rock, and never over an **unexplored** tile: moves stay on
-     explored tiles for every hero (A-13 fixed in every profile, `ADV-QUIRK-15`). It is attacked
+     explored tiles for every hero (A-13 fixed for now, `ADV-QUIRK-15`). **Provisional** (the user
+     at ADV-Q20 and ADV-Q21): "probably fix, but gameplay impacts have to be considered (wide
+     obstacle ranges become impassable); perhaps deserves a compromise, like allowing to route to
+     the closest unexplored, but free hex; TBD later anyway". The compromise, and with it
+     `ADV-QUIRK-15`'s class, is decided later (the lane's queue inbox); until then nothing hidden
+     enters the legal moves. It is attacked
      by a guard and visits an object or a hero only at its move's end, and a step down onto the
      visitable tile of an object not visited from above stays impossible.
    - **A water-walking hero** also passes over water that holds no object; on land, and for the
@@ -68,9 +73,10 @@ Darkness's hide (T34b's reading, survey §4.2).
 - A walking hero's search keeps its cost (`bench-check`); a flying or water-walking hero's search
   holds a second node layer in its window.
 - The legal moves stay a function of the explored tiles alone (ADV-MOV-008; `docs/06-security.md`),
-  at the price A-13's fix has: a flight over a wide range of obstacles may stop at its unexplored
-  edge (the user's note at ADV-Q20: a route to the nearest unexplored free tile is a trade-off for
-  a later increment).
+  at the price A-13's fix has: a flight over a wide range of obstacles stops at its unexplored
+  edge, so such a range is impassable to a flyer until it is explored. The compromise point 4
+  names (a route to the closest unexplored but free tile) would let a flight end there, and must
+  then settle what that tells the player of the hidden tiles it crosses (`docs/06-security.md`).
 - The state keeps no new field: the passage and the prices are rules over the hero's details; a
   hero's flying and water walking end with the artifact (the spells' day-long levels with the
   adventure spells).
@@ -80,7 +86,8 @@ Darkness's hide (T34b's reading, survey §4.2).
 - **VCMI's layered pathfinder** (land, sail, water, air: a node per tile and layer): more than the
   original's two nodes per tile, which suffice until boats bring the sea's layer.
 - **The original's flight over unexplored tiles** (A-13): the legal moves would depend on hidden
-  terrain (whether the strip is rock, coast or water), an information leak the projection rules out.
+  terrain (whether the strip is rock, coast or water), an information leak the projection rules
+  out; kept open as the basis of a later compromise (point 4).
 - **A visit from a flyer's tile refused inland** (A-14, the reading of 0x4E5CE0): withdrawn by the
   user; a flying hero visits from its tile as a walking hero.
 - **A reveal at once when the radius grows** (VCMI, for a skill): it would reward swapping radius

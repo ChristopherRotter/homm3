@@ -3,7 +3,8 @@
 A handover, not binding (`docs/adr/README.md`): the working detail behind increment 5's amendment
 drafts of ADR-0013 (point 13), ADR-0016 (points 3–5) and ADR-0017 (points 1, 3, 9), all three
 drafted in T34b (`docs/lanes/adventure/adr-drafts/*-increment-5.md`) from the answers at ADV-Q20
-(the epic's decision 75) and at T34b (decision 77: D-26 revised). The task that builds a section
+(the epic's decision 75) and at T34b (decision 77: D-26 revised), accepted at ADV-Q21 with the cut
+(decision 78; ADR-0016's with A-13's caveat restated). The task that builds a section
 deletes it; the file goes when the epic closes. Facts and sources: survey
 `docs/rules/surveys/E08-hero-movement.md` (§ numbers are the survey's unless they name this note).
 
@@ -275,8 +276,8 @@ step, passes included, emits `HeroStepped` with its viewers and reveals (§5).
 - **New:** **ADV-MOV-009** flying (the price §6.4, the passage §7, the end of a move §3.4),
   **ADV-MOV-010** water walking (the same).
 - **Quirks** (`docs/rules/quirks-adventure.md`, each written with its rule): **ADV-QUIRK-15** a
-  flight crosses unexplored tiles (A-13; exploit-fix, Q-0002's class: no flag, fixed in every
-  profile), **ADV-QUIRK-16** flying costs the fly price from inland tiles, roads included (D-24;
+  flight crosses unexplored tiles (A-13; fixed for now, no flag: Q-0002's class, **provisional**:
+  the user's caveat at ADV-Q20 and ADV-Q21, §13; its class is revisited with the compromise), **ADV-QUIRK-16** flying costs the fly price from inland tiles, roads included (D-24;
   fix-optional), **ADV-QUIRK-17** the drop to 0 forgets the artifacts (A-12; fix-optional),
   **ADV-QUIRK-18** a grown radius waits for the hero's next step (D-26; fix-optional, decision 77).
   A-14 is withdrawn (no entry); D-23 is a rule (Cursed Ground) or nothing, after E5-6.
@@ -333,7 +334,7 @@ else is the lane's own (`h3-heroes`, `h3-adventure`, `h3-game`, `h3-map`, `h3-pa
 adventure packs, the env's and the CLI's adventure sub-paths, fixtures, replays, benchmarks).
 
 **The building tasks**, in rounds of one or two (task ids continue the epic's; each round's cut
-confirmed at its checkpoint). *Proposed:* batch E5 runs **before** the build (rounds 1 and 2), so
+confirmed at its checkpoint). *Confirmed at ADV-Q21 (decision 78):* batch E5 runs **before** the build (rounds 1 and 2), so
 that its answers (D-23's Cursed Ground above all, and D-22, D-24) shape the rules once instead of
 reopening them, and nothing in the batch needs the engine's increment 5 (it tests the original;
 the scorer needs only increment 4's draws):
@@ -346,7 +347,7 @@ the scorer needs only increment 4's draws):
 | 4 | **T41** | Flying and water walking (§6 points 3 to 6, §7): the price (`ADV-QUIRK-16`), the drop (`ADV-QUIRK-17`), the passage, the reach's two kinds of node, `MoveHero`'s passage, end, visits and guards; ADV-MOV-006, -007 amended, -009, -010; `ADV-QUIRK-15` to `-17`. The largest task: cut at its start if needed (the price and the drop; the reach and `MoveHero`) |
 | 5 | **T42** + **T43** | T42: the env, the plans and properties, the fixtures and replays, the benchmarks, `--with-original-data` (§8). T43: the audit against the exit criteria, increment 5 closed, increment 6 refined |
 
-*Not chosen* (for ADV-Q21): the batch at the end as in increment 4 (T35, T39 to T42 first, then
+*Not chosen* at ADV-Q21: the batch at the end as in increment 4 (T35, T39 to T42 first, then
 the batch and its scoring: the order of increments 3 and 4, at the risk of reopening a built rule
 and building Cursed Ground late).
 
@@ -377,8 +378,13 @@ and building Cursed Ground late).
   E5-11 checks the gate in SoD; the wiki's Border Gate and Border Guard pages are worth a look in
   T41. The reading also missed something about 0x4E5CE0 (A-14, withdrawn): its callers' start
   node (§3.3) is built as a walker's, and the gap stays in the queue's inbox.
-- **A-13's cost:** a flight over a wide obstacle range stops at its unexplored edge (the user's
-  note at ADV-Q20; a route to the nearest unexplored free tile is a later trade-off).
+- **A-13's cost** (the user at ADV-Q20 and ADV-Q21: "probably fix, but gameplay impacts have to
+  be considered (wide obstacle ranges become impassable); perhaps deserves a compromise, like
+  allowing to route to the closest unexplored, but free hex; TBD later anyway"): a flight over a
+  wide obstacle range stops at its unexplored edge. Increment 5 builds the fix; the compromise is
+  designed later (the queue's inbox), with what a flight's end beyond hidden tiles may tell the
+  player (`docs/06-security.md`). Keep the reach's passage rules in one place, so that the
+  compromise changes the unexplored tile's row of §7's table and nothing else.
 - **The reach's speed:** the second layer only for flyers and water walkers; the walker's hot
   loop must not gain a branch (`bench-check`'s +2 %).
 - **Not in increment 5** (survey §6): the sea's points (Navigation, its specialists, the

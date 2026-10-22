@@ -3652,6 +3652,15 @@ and water walking), T42 + T43 (the env, fixtures, replays, benchmarks; the closu
 are in the queue, waiting for ADV-Q21 (six points: the three drafts, the strict diagonal check
 with flying, E5-11, the cut).
 
+**The checkpoint** (ADV-Q21, 2026-10-22, the next morning; decision 78): **all accepted** as
+recommended (the three drafts, the strict diagonal check with flying, E5-11, the cut with batch E5
+first). The user missed an input of ADV-Q20 in ADR-0016's draft, now restated in its point 4, in the
+design note (§9, §13), the queue's inbox and the epic: A-13 "probably fix, but gameplay impacts have
+to be considered (wide obstacle ranges become impassable); perhaps deserves a compromise, like
+allowing to route to the closest unexplored, but free hex; TBD later anyway" (the draft had it only
+as a consequence). The drafts are marked accepted for T35's `shared/` pull request; T35 and T36
+ready. `master` (E23 T4b2, E17 M3 T7b-2b-3) merged into the branch first, without conflicts.
+
 #### Increment 4's design note at its closure (moved by T34b)
 
 The note as T33 left it, every section built (T25 to T33); its § numbers are the ones code

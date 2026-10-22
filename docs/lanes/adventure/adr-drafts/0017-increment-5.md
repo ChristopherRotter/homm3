@@ -1,8 +1,8 @@
 # ADR-0017 amendment (draft): the hero's movement and scouting in the game's build and day
 
-- Status: Draft (E08 T34b, 2026-10-22), from the user's answers at ADV-Q20 (the epic's decision 75)
-  and at T34b (decision 77); put to the user with the ADR-0013 and ADR-0016 drafts and the cut
-  (ADV-Q21), then into ADR-0017 through a `shared/` pull request.
+- Status: Accepted by the user as drafted (ADV-Q21, 2026-10-22; the epic's decision 78); drafted
+  in E08 T34b from the answers at ADV-Q20 (decision 75) and at T34b (decision 77). T35's
+  `shared/` pull request applies it to ADR-0017.
 - Amends: ADR-0017 points 1, 3 and 9.
 - Detail: `docs/epics/E08-design.md` part B (§5, §9); facts: survey
   `docs/rules/surveys/E08-hero-movement.md` §1.4, §4.2.

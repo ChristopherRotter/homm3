@@ -1,8 +1,8 @@
 # ADR-0013 amendment (draft): the hero's movement and scouting in `h3-heroes`
 
-- Status: Draft (E08 T34b, 2026-10-22), from the user's answers at ADV-Q20 (the epic's decision 75)
-  and at T34b (decisions 76, 77); put to the user with the ADR-0016 and ADR-0017 drafts and the cut
-  (ADV-Q21), then into ADR-0013 through a `shared/` pull request.
+- Status: Accepted by the user as drafted (ADV-Q21, 2026-10-22; the epic's decision 78); drafted
+  in E08 T34b from the answers at ADV-Q20 (decision 75) and at T34b (decisions 76, 77). T35's
+  `shared/` pull request applies it to ADR-0013.
 - Amends: ADR-0013 points 2, 3 and 11; adds point 13.
 - Detail: `docs/epics/E08-design.md` part A (§1–§4); facts: survey
   `docs/rules/surveys/E08-hero-movement.md`.
