@@ -4355,12 +4355,13 @@ Decision 88: T41 whole (the user: "no cut"), its shared part in its own pull req
   adventure replays' headers (commands and hashes unchanged), `python/records/bots-report-v1.json`
   regenerated (AI-owned: `engine.core`, and `engine.adventure` catching up with T40's part v10,
   which #399 left at v9's; every rate unchanged). The battle and AI lanes' inboxes.
-- **A property after T40** (in the shared pull request): the full verify's coverage run found a
-  case of `h3-map`'s `views_move_as_the_events_say` where another player's last end of turn of a
-  day changed the viewer's explored tiles: in strict-fixed `start_day` reveals around each hero
-  (`ADV-QUIRK-18` off, T40), so a radius grown since the hero's last step shows then. On a new day
-  the property now asks only that the explored tiles grow (the fringe follows them); the case is
-  in the regressions file.
+- **Two properties after T40** (in the shared pull request, and on the lane branch alike): the
+  shared branch's full verifies found, in their coverage runs, a case each of `h3-map`'s
+  `views_move_as_the_events_say` and `every_step_keeps_the_commands_invariants` where an end of
+  turn that starts a day changed another player's explored tiles: in strict-fixed `start_day`
+  reveals around each hero (`ADV-QUIRK-18` off, T40), so a radius grown since the hero's last step
+  shows then. On a new day both now ask only that those tiles grow (the view's fringe follows
+  them); both cases are in the regressions files. Master fails them rarely until this merges.
 - **The price** (`movement.rs`): `Pricing` holds the hero's fly and water-walk prices (`Lifts`,
   from `Movement`'s levels by `AdventureParams::fly_cost`, `water_walk_cost`) and the ones the
   drop counts (none under `ADV-QUIRK-17`, flag 31); each terrain's `water` bit. `lifted`: from
