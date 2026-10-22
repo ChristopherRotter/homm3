@@ -15,6 +15,14 @@ T1c is done (#316, #317 merged). T1a5 is cut in four (the user, 2026-10-20; the 
 
 Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure are merged below by kind, done and duplicate parts dropped; the origin stays in brackets (an epic and task, a review report such as r3 or F-r2b-2). History: git. Items for other lanes went into their inboxes; the First Aid Tent became BAT-Q51. The addresses are readings of the executable, the reviews' not read a second time. Where the readings stand: `installation.md` §7.8–§7.33; the reviews' reports stay on `battle/e04b-t11b-review-reports` and `battle/e04c-t10b-review-reports`; their experiment candidates are in `docs/experiments/README.md` ("From the battle queue's inbox", "From the E04b review", "From E04c").
 
+- 2026-10-22 (the adventure lane, E08 T41's shared part, `shared/e08-t41`, `cross-lane` with the
+  user's consent; for your information, nothing to do): **flag 30 retired**
+  (`quirk.adventure.flying_inland_price`, `ADV-QUIRK-16` withdrawn at ADV-Q22: the original's
+  flying price is the rule in every profile). Its registry position stays taken (`RETIRED`; your
+  next flag is still 33); in your paths both harvested profiles (`h3-harvest`) and
+  `packs/base/core.toml` lose the line. `base:faithful`'s core ruleset hash moved
+  (`0xde583eb06ef4dd73`); strict-fixed's, the synthetic packs' and the battle replays' did not.
+
 - 2026-10-22 (the adventure lane, E08 T39, `adventure/e08-t39`, `cross-lane` with the user's
   consent, E08 decision 86; for information, nothing to do): Q-0005's ledger entry
   (`docs/rules/quirks-ledger.md`) names HER-ADV-003, a Logistics specialist's day's land points in

@@ -113,7 +113,11 @@ pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&[
     "quirk.adventure.level_up_from_seed",
     "quirk.content.elementalist_offer_intervals",
     "quirk.battle.original_ai_slips",
-    "quirk.adventure.flying_inland_price",
+    // 30: `quirk.adventure.flying_inland_price` (ADV-QUIRK-16, D-24), retired on 2026-10-22 (E08
+    // T41; ADV-Q22, E08 decision 85): the original prices a flying step from every land tile no
+    // object blocks at the lesser of the fly and walking prices, so there is no such quirk (survey
+    // `E08-hero-movement.md` §2.1 point 5, batch E5's E5-4).
+    RETIRED,
     "quirk.adventure.drop_ignores_artifacts",
     "quirk.adventure.radius_waits_for_a_step",
 ]);
@@ -257,12 +261,6 @@ pub const ELEMENTALIST_OFFER_INTERVALS: QuirkFlag = QuirkFlag(28);
 /// rule's outcome. Read by `h3-battle`'s `computer` numbers and `h3-battle-ai` from E23 T2b.
 pub const ORIGINAL_AI_SLIPS: QuirkFlag = QuirkFlag(29);
 
-/// ADV-QUIRK-16 (D-24): a flying hero's step from an inland tile costs the fly price, roads
-/// included, the lesser of the two prices only from the coast (`hero_step_cost` 0x4B18C0 replaces
-/// `step_cost` 0x4B1740's; survey `E08-hero-movement.md` §2.3). Off: the lesser of the fly price
-/// and the walking price everywhere (the wiki and VCMI). Read by the adventure from E08 T41.
-pub const FLYING_INLAND_PRICE: QuirkFlag = QuirkFlag(30);
-
 /// ADV-QUIRK-17 (A-12): the drop of the points left to 0 after a step prices the cheapest step
 /// from the new tile without the artifacts' flying and water walking (`cheapest_step_from`
 /// 0x4B1880 reads the hero's spell fields only; survey `E08-hero-movement.md` §2.5). Off: with
@@ -319,10 +317,6 @@ mod tests {
     #[test]
     fn registry_lookup_and_bitset() {
         assert_eq!(REGISTRY.len(), 33);
-        assert_eq!(
-            REGISTRY.lookup("quirk.adventure.flying_inland_price"),
-            Some(FLYING_INLAND_PRICE)
-        );
         assert_eq!(
             REGISTRY.lookup("quirk.adventure.drop_ignores_artifacts"),
             Some(DROP_IGNORES_ARTIFACTS)
@@ -461,12 +455,14 @@ mod tests {
         // Positions 10 and 14 were `quirk.battle.attack_from_seen_pit` (BAT-QUIRK-2, BAT-Q30)
         // and `quirk.battle.creature_mirror_untested` (BAT-QUIRK-9, BAT-Q29), both retired on
         // 2026-10-12, position 9 `quirk.battle.natives_sight_at_start` (BAT-QUIRK-1, BAT-Q34),
-        // retired on 2026-10-13. Neither their old names nor the empty name of their entries
-        // find them.
+        // retired on 2026-10-13, position 30 `quirk.adventure.flying_inland_price`
+        // (ADV-QUIRK-16, ADV-Q22), retired on 2026-10-22. Neither their old names nor the empty
+        // name of their entries find them.
         for name in [
             "quirk.battle.natives_sight_at_start",
             "quirk.battle.attack_from_seen_pit",
             "quirk.battle.creature_mirror_untested",
+            "quirk.adventure.flying_inland_price",
             "",
         ] {
             assert_eq!(REGISTRY.lookup(name), None, "{name:?}");
@@ -475,14 +471,19 @@ mod tests {
         // (`registry_lookup_and_bitset`), and the flags that exist are every other position.
         assert_eq!(REGISTRY.len(), 33);
         assert_eq!(
-            [REGISTRY.names[9], REGISTRY.names[10], REGISTRY.names[14]],
-            [RETIRED; 3]
+            [
+                REGISTRY.names[9],
+                REGISTRY.names[10],
+                REGISTRY.names[14],
+                REGISTRY.names[30]
+            ],
+            [RETIRED; 4]
         );
         assert!(
             REGISTRY
                 .flags()
                 .map(QuirkFlag::index)
-                .eq((0..33).filter(|i| ![9, 10, 14].contains(i)))
+                .eq((0..33).filter(|i| ![9, 10, 14, 30].contains(i)))
         );
         // A registry without retired flags has them all.
         assert!(TEST.flags().map(QuirkFlag::index).eq(0..2));

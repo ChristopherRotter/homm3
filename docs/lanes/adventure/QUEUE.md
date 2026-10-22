@@ -22,14 +22,6 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1
 
 ## Inbox
 
-- 2026-10-22 (T38, decision 85; for T41's shared part): **D-24 is the original's rule, no flag.**
-  `ADV-QUIRK-16` is withdrawn: retire `h3-content`'s `FLYING_INLAND_PRICE` (flag 30,
-  `quirk.adventure.flying_inland_price`; its doc comment says "from an inland tile") and its
-  packs' profiles (`h3-harvest`'s profile lines), and correct ADR-0016 point 4 ("costs the fly
-  price from every inland tile, roads included"; the corrected rule: `E08-design.md` §6 point 4).
-  The price's blocked tiles are the live occupancy's (a tree flown over), an object's visitable
-  tile is free (the original's +0xC bit 0x40, survey `E08-hero-movement.md` §2.1 point 5).
-
 - 2026-10-22 (the battle lane, E23 T1a6, `battle/e23-t1a6`; for your information, nothing to do
   now): **the computer's retreat test reads the adventure** (`docs/formats/installation.md`
   §7.55): the side's hero's carried artifacts and experience, the player's gold, its towns with a
