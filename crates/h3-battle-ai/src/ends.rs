@@ -116,7 +116,7 @@ impl Walker<'_> {
         let in_moat = |i: usize| u8::try_from(i).is_ok_and(|h| moat.contains(Hex(h)));
         let free = |h: u8| {
             let hex = Hex(h);
-            self.map.reached(hex)
+            self.cells().reached(hex)
                 && !in_moat(hex.index())
                 && !(me.is_two_hex() && in_moat(beside(shape, hex)))
         };
@@ -159,7 +159,7 @@ impl Walker<'_> {
     /// rounded up, at least 1.
     fn turns_to(&self, hex: Hex) -> u32 {
         let speed = u32::from(self.me.speed_now()).max(1);
-        u32::from(self.map.cost(hex)).div_ceil(speed).max(1)
+        u32::from(self.cells().cost(hex)).div_ceil(speed).max(1)
     }
 
     /// Guarding a shooter (0x420760; BAT-AI-010): over the walker's side's living stacks but the
@@ -233,7 +233,7 @@ impl Walker<'_> {
                 continue;
             }
             open += 1;
-            if !self.map.reached(h) {
+            if !self.cells().reached(h) {
                 continue;
             }
             let turns = self.turns_to(h);
@@ -283,7 +283,7 @@ impl Walker<'_> {
         let speed = u16::from(me.speed_now());
         let mut best = (own, 0u16, None);
         for h in (0u8..).take(self.field.hex_count()).map(Hex) {
-            let Some(cost) = self.map.position(h).filter(|&c| c <= speed) else {
+            let Some(cost) = self.cells().position(h).filter(|&c| c <= speed) else {
                 continue;
             };
             let s = score(h);

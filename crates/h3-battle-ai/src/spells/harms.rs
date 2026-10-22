@@ -358,9 +358,13 @@ impl View<'_> {
             return 0;
         }
         let (mut sum, mut n) = (0i32, 0u32);
-        for t in computer::berserk_candidates(self.state, self.ruleset, s) {
+        let (candidates, map) = computer::berserk_search(self.state, self.ruleset, s);
+        for t in candidates {
             sum = sum.wrapping_add(self.berserk_attack((s, t)));
             n += 1;
+        }
+        if let Some(map) = map {
+            self.root.searched(map);
         }
         if n == 0 {
             return 0;
@@ -396,13 +400,15 @@ impl View<'_> {
         let speed = u32::from(computer::unslowed_speed(self.state, s));
         let range = u16::try_from(speed * turns).unwrap_or(u16::MAX);
         let map = computer::map_within(self.state, self.ruleset, (s, self.side), range);
-        (0u8..)
+        let best = (0u8..)
             .zip(self.state.stacks())
             .filter(|&(i, r)| {
                 StackId(i) != s && r.side == stack.side && r.is_alive() && map.mark(r.hex).is_some()
             })
             .map(|(i, _)| self.berserk_attack((s, StackId(i))))
-            .fold(0, i32::max)
+            .fold(0, i32::max);
+        self.root.searched(map);
+        best
     }
 
     /// Poison's evaluator (0x439500; BAT-AI-016): 0 when beaten; else the kill value of half the

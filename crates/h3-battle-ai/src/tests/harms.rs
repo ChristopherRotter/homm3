@@ -7,7 +7,8 @@ use h3_contracts::BattleSide;
 use h3_kernel::Rng;
 
 use super::{
-    ARCHER, EFREET, GOG, IMP, RUNNER, cast_at, caster, hero, ruleset, ruleset_as, setup, spell,
+    ARCHER, EFREET, GOG, IMP, RUNNER, cast_at, caster, hero, ruleset, ruleset_as, same_map, setup,
+    spell,
 };
 use crate::spells::{Candidate, SpellContext};
 
@@ -250,4 +251,45 @@ fn the_removals_value_what_they_end_to_its_caster() {
         let am = view.value(runners, Candidate::cast(spell(&r, "antimagic"), 1, 6));
         let _ = am;
     }
+}
+
+// covers: BAT-AI-016, BAT-AI-010
+#[test]
+fn the_context_leaves_its_last_search_to_the_fallbacks_with_the_slip() {
+    // The threat records search last the gogs (the defender's last walker: its archers shoot);
+    // with the slip (22) a Berserk or Hypnotize value searches after them and the context keeps
+    // that map once; without, the records' map stays.
+    for (profile, slips) in [("t:faithful", true), ("t:fixed", false)] {
+        let r = ruleset_as(profile);
+        let state = BattleState::new(&r, &threats(&r), 1).unwrap();
+        assert_eq!(computer::last_searched(&state, &r), Some(GOGS));
+        let records = computer::map(&state, &r, GOGS, DEFENDER);
+        let sc = context(&state, &r);
+        assert!(same_map(&sc.cells().unwrap(), &records), "{profile}");
+        // Berserk on the side's runners searches their map over the whole field.
+        value(&sc, &r, ("berserk", false), StackId(0));
+        let berserk = computer::berserk_search(&state, &r, StackId(0)).1.unwrap();
+        let want = if slips { &berserk } else { &records };
+        assert!(same_map(&sc.cells().unwrap(), want), "{profile}");
+        assert!(same_map(&sc.cells().unwrap(), &records), "{profile}");
+        // Hypnotize on the enemy runners: their map for the side within the turns (Advanced: 2,
+        // at most the class) times their speed.
+        value(&sc, &r, ("hypnotize", true), ENEMY_RUNNERS);
+        let ctx = computer::context(&state, &r, ATTACKER);
+        let class = crate::casts::balance(&state, &r, &ctx, ATTACKER).class;
+        let speed = computer::unslowed_speed(&state, ENEMY_RUNNERS);
+        let range = speed * u16::from(class.min(2));
+        let hypnotize = computer::map_within(&state, &r, (ENEMY_RUNNERS, ATTACKER), range);
+        assert!(!same_map(&hypnotize, &records));
+        let want = if slips { &hypnotize } else { &records };
+        assert!(same_map(&sc.cells().unwrap(), want), "{profile}");
+    }
+    // Without a defender's walker the attacker's last; with no walker at all, none.
+    let r = ruleset();
+    let state =
+        BattleState::new(&r, &setup(&[(RUNNER, 1), (ARCHER, 1)], &[(ARCHER, 1)]), 1).unwrap();
+    assert_eq!(computer::last_searched(&state, &r), Some(StackId(0)));
+    let state = BattleState::new(&r, &setup(&[(ARCHER, 1)], &[(ARCHER, 1)]), 1).unwrap();
+    assert_eq!(computer::last_searched(&state, &r), None);
+    assert!(context(&state, &r).cells().is_none());
 }

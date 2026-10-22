@@ -1839,6 +1839,25 @@ fn all_hexes() -> impl Iterator<Item = Hex> {
     (0u8..187).map(Hex)
 }
 
+/// Whether two of the computer's maps hold the same cells (BAT-QUIRK-25 slip 22's tests).
+fn same_map(a: &computer::Map, b: &computer::Map) -> bool {
+    all_hexes().all(|h| {
+        (
+            a.position(h),
+            a.cost(h),
+            a.is_stop(h),
+            a.reached(h),
+            a.mark(h),
+        ) == (
+            b.position(h),
+            b.cost(h),
+            b.is_stop(h),
+            b.reached(h),
+            b.mark(h),
+        )
+    })
+}
+
 // covers: BAT-AI-007
 #[test]
 fn the_hexes_an_enemy_reaches_lose_its_strike_value_from_normal_on() {

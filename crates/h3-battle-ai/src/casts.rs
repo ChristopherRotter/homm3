@@ -16,7 +16,7 @@
 //! stack's, which the rules' cursor refuses (BAT-MAG-049; BAT-STUB-8, BAT-Q32).
 //!
 
-use h3_battle::computer::{self, Context};
+use h3_battle::computer::{self, Context, Map};
 use h3_battle::{
     BattleSide, BattleState, CastSpell, CastTarget, CastTargets, Command, Hex, STACK_CAPACITY,
     StackId, StackTraits, Status, creature_cast_spell, creature_cast_targets,
@@ -29,7 +29,7 @@ use h3_kernel::Rng;
 use h3_kernel::arith::{DOUBLE_BITS, SINGLE_BITS, X87};
 
 use crate::predict;
-use crate::spells::{Candidate, SpellContext, has_spell};
+use crate::spells::{Candidate, SpellContext, has_spell, last_searched};
 use crate::walker::Walker;
 
 /// The scan's draw (0x420D98: `random(1, 100)`) and the share that casts nothing (30 or less).
@@ -111,6 +111,39 @@ fn scan(w: &Walker<'_>, caster: Caster, value: &mut i32, rng: &mut Rng) -> Optio
     let (state, ruleset, side) = (w.state, w.ruleset, w.side);
     let strength = computer::strength(state, ruleset, &w.ctx, w.id);
     let sc = SpellContext::new(state, ruleset, (&w.ctx, side), rng);
+    let cast = choose(w, (&sc, caster, strength), value, rng);
+    if cast.is_none() && slips(w) {
+        hold(w, sc.cells());
+    }
+    cast
+}
+
+/// Whether the original's slips are kept (BAT-QUIRK-25).
+fn slips(w: &Walker<'_>) -> bool {
+    w.ruleset.quirks().is_enabled(ORIGINAL_AI_SLIPS)
+}
+
+/// With BAT-QUIRK-25 (survey slip 22), a creature cast entry that built a spell context and cast
+/// nothing leaves `cells`, the map of the context's last search, to the walker's fallbacks
+/// ([`Walker::cells`]); none: the walker's own.
+// rule: BAT-AI-005, BAT-AI-010
+fn hold(w: &Walker<'_>, cells: Option<Map>) {
+    if let Some(map) = cells {
+        // The second entry of a turn (0x421F80 after a choice without an action) finds it set,
+        // and nothing reads it after that entry.
+        let _ = w.held.set(map);
+    }
+}
+
+/// The scan's draw and its stacks (0x420D20 after the context) with the context `sc` for
+/// `caster` of `strength`.
+fn choose(
+    w: &Walker<'_>,
+    (sc, caster, strength): (&SpellContext<'_>, Caster, i32),
+    value: &mut i32,
+    rng: &mut Rng,
+) -> Option<Command> {
+    let (state, ruleset, side) = (w.state, w.ruleset, w.side);
     if *value != 0 && rng.range_inclusive(SKIP.0, SKIP.1) <= SKIP.2 {
         return None;
     }
@@ -146,9 +179,9 @@ fn scan(w: &Walker<'_>, caster: Caster, value: &mut i32, rng: &mut Rng) -> Optio
         }
         let v = match caster {
             Caster::Ogre(spell, mastery, power) => {
-                bloodlust(w, &sc, (spell, mastery, u32::from(power)), id)
+                bloodlust(w, sc, (spell, mastery, u32::from(power)), id)
             }
-            Caster::Genie(mastery, power) => genie(w, &sc, (mastery, u32::from(power)), id),
+            Caster::Genie(mastery, power) => genie(w, sc, (mastery, u32::from(power)), id),
         };
         if v > 0 && v > *value {
             *value = v;
@@ -377,7 +410,9 @@ impl Kind {
 /// when worth more (the lowest hex at a tie), and `value` becomes its worth: a dragon with a cast
 /// left casts whenever its spell is worth anything, before any attack. The original builds the
 /// spell context first (0x4369C0) and reads none of it but its battle context: the policy runs
-/// only its predictions, for their draws from `rng` ([`predict::plan`]; BAT-AI-015).
+/// only its predictions, for their draws from `rng` ([`predict::plan`]; BAT-AI-015), and with
+/// BAT-QUIRK-25 holds its threat records' last map when it casts nothing ([`hold`], survey slip
+/// 22).
 // rule: BAT-AI-013
 fn dragon(
     w: &Walker<'_>,
@@ -385,9 +420,22 @@ fn dragon(
     value: &mut i32,
     rng: &mut Rng,
 ) -> Option<Command> {
-    let (state, ruleset, side) = (w.state, w.ruleset, w.side);
     // rule: BAT-AI-015
-    predict::plan(state, ruleset, side, rng);
+    predict::plan(w.state, w.ruleset, w.side, rng);
+    let cast = dragon_cast(w, (mastery, per_creature), value);
+    if cast.is_none() && slips(w) {
+        hold(w, last_searched(w.state, w.ruleset));
+    }
+    cast
+}
+
+/// The Faerie Dragon's drawn spell and its hexes ([`dragon`] after the context).
+fn dragon_cast(
+    w: &Walker<'_>,
+    (mastery, per_creature): (u8, u8),
+    value: &mut i32,
+) -> Option<Command> {
+    let (state, ruleset, side) = (w.state, w.ruleset, w.side);
     let mut targets = CastTargets::new();
     // stub: BAT-STUB-8
     // Only the targets the engine accepts (ADR-0027 point 3; the user, E23 T4a).

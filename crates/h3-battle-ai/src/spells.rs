@@ -21,9 +21,9 @@ mod harms;
 mod removals;
 pub(crate) mod tables;
 
-use core::cell::OnceCell;
+use core::cell::{Cell, OnceCell};
 
-use h3_battle::computer::{self, Context, Planned, Threat};
+use h3_battle::computer::{self, Context, Map, Planned, Threat};
 use h3_battle::{
     BattleSide, BattleState, STACK_CAPACITY, StackFlags, StackId, StackTraits, Status,
 };
@@ -254,6 +254,10 @@ pub(crate) struct SpellContext<'a> {
     first: Half,
     /// The other side's (the second context, +0x48).
     second: OnceCell<Half>,
+    /// With BAT-QUIRK-25 (survey slip 22), the map of the last search an evaluator ran in the
+    /// computer's pathfinder (Berserk's and Hypnotize's, 0x445582, 0x43A5DB), which the walker's
+    /// fallbacks then read.
+    searched: Cell<Option<Map>>,
 }
 
 /// One side's half of the spell context (the context's own fields, 0x4369C0, or the second
@@ -315,7 +319,31 @@ impl<'a> SpellContext<'a> {
             threats: [const { OnceCell::new() }; STACK_CAPACITY],
             first,
             second: OnceCell::new(),
+            searched: Cell::new(None),
         }
+    }
+
+    /// Whether the original's slips are kept (BAT-QUIRK-25).
+    fn slips(&self) -> bool {
+        self.ruleset.quirks().is_enabled(ORIGINAL_AI_SLIPS)
+    }
+
+    /// An evaluator's search left `map` in the computer's pathfinder: with BAT-QUIRK-25 (survey
+    /// slip 22) the context keeps it.
+    fn searched(&self, map: Map) {
+        if self.slips() {
+            self.searched.set(Some(map));
+        }
+    }
+
+    /// The map the computer's pathfinder holds after the context and its values (survey slip
+    /// 22): the last evaluator's search, else the threat records' last
+    /// ([`computer::last_searched`]); none when nothing searched (only a hypnotized walker's
+    /// context can meet that: every other walker's own record searches).
+    pub(crate) fn cells(&self) -> Option<Map> {
+        self.searched
+            .take()
+            .or_else(|| last_searched(self.state, self.ruleset))
     }
 
     /// The side's half on the battle (the context the casts ask).
@@ -349,6 +377,14 @@ impl<'a> SpellContext<'a> {
         *self.threats[id.index()]
             .get_or_init(|| computer::threat(self.state, self.ruleset, &self.first.ctx, id))
     }
+}
+
+/// The map the computer's pathfinder holds after the threat records of both sides (0x436ABA;
+/// survey slip 22): the last searched stack's ([`computer::last_searched`]) for its side, none
+/// when no record searched.
+pub(crate) fn last_searched(state: &BattleState, ruleset: &BattleRuleset) -> Option<Map> {
+    computer::last_searched(state, ruleset)
+        .map(|id| computer::map(state, ruleset, id, state.stacks()[id.index()].side))
 }
 
 /// A half of the spell context on a state: the battle's, or a copy with spells ended (a

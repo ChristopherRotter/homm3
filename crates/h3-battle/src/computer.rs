@@ -736,8 +736,27 @@ pub fn berserk_candidates(
     ruleset: &BattleRuleset,
     id: StackId,
 ) -> impl Iterator<Item = StackId> {
-    let list = crate::control::candidates(state, ruleset, id);
-    (0..list.len()).filter_map(move |i| list.get(i).map(|&(t, _)| t))
+    berserk_search(state, ruleset, id).0
+}
+
+/// [`berserk_candidates`] with the map their search left in the computer's pathfinder (0x445582:
+/// none for a stack that can shoot, which searches nothing; E23 T4c, survey slip 22).
+pub fn berserk_search(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    id: StackId,
+) -> (impl Iterator<Item = StackId>, Option<Map>) {
+    let (list, search) = crate::control::searched(state, ruleset, id);
+    let candidates = (0..list.len()).filter_map(move |i| list.get(i).map(|&(t, _)| t));
+    (candidates, search.map(Map))
+}
+
+/// The stack whose map the computer's pathfinder holds after the threat records of both sides
+/// (0x422B20 for side 0, then side 1, as the spell context 0x4369C0 runs them; E23 T4c, survey
+/// slip 22): the last recorded stack that cannot shoot now, the defender's last before the
+/// attacker's; none when no record searches. Its map is [`map`] for its side.
+pub fn last_searched(state: &BattleState, ruleset: &BattleRuleset) -> Option<StackId> {
+    aim::last_searched(state, ruleset)
 }
 
 /// [`map`] with the range `range` (0x4B2DA0 with a range of the caller's: the computer's Hypnotize

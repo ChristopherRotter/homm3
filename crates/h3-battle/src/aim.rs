@@ -794,6 +794,39 @@ impl Threat {
     }
 }
 
+/// Whether the threat records (0x422B20, 0x422B8B to 0x422C0A) give stack `id` none: a dead
+/// stack, a war machine but the Ballista, a hypnotized or berserk one, one blind or turned to
+/// stone for more than a round ([`kept_out`]).
+fn unrecorded(state: &BattleState, ruleset: &BattleRuleset, id: StackId) -> bool {
+    let me = state.at(id);
+    let status = me.spells.status;
+    !me.is_alive()
+        || (me.has(StackTraits::WAR_MACHINE) && !is_ballista(me))
+        || status.contains(Status::HYPNOTIZED)
+        || status.contains(Status::BERSERK)
+        || kept_out(state, ruleset, id)
+}
+
+/// The last stack the threat records of both sides search (0x422B20 with flag 0 for side 0, then
+/// side 1, each over its records in order, as the spell context runs them, 0x436AA9 to 0x436AC3):
+/// of the recorded stacks ([`unrecorded`]) that cannot shoot now, the defender's last, else the
+/// attacker's; none when no record searches.
+pub(crate) fn last_searched(state: &BattleState, ruleset: &BattleRuleset) -> Option<StackId> {
+    let field = Field::new(ruleset.battle().field);
+    let searched = |side: BattleSide| {
+        (0u8..)
+            .zip(state.stacks.iter())
+            .filter(|&(i, s)| {
+                s.side == side
+                    && !unrecorded(state, ruleset, StackId(i))
+                    && !shoots(state, field, StackId(i))
+            })
+            .map(|(i, _)| StackId(i))
+            .last()
+    };
+    searched(BattleSide::Defender).or_else(|| searched(BattleSide::Attacker))
+}
+
 /// The threat record of stack `id` in the context `ctx` (0x422B20 with flag 0, 0x448840; E23
 /// T4b1): none for a dead stack, a war machine but the Ballista, one blind or turned to stone for
 /// more than a round ([`kept_out`]), a hypnotized or berserk one. A stack that can shoot now takes
@@ -815,13 +848,7 @@ pub(crate) fn threat(
 ) -> Option<Threat> {
     let field = Field::new(ruleset.battle().field);
     let me = state.at(id);
-    let status = me.spells.status;
-    if !me.is_alive()
-        || (me.has(StackTraits::WAR_MACHINE) && !is_ballista(me))
-        || status.contains(Status::HYPNOTIZED)
-        || status.contains(Status::BERSERK)
-        || kept_out(state, ruleset, id)
-    {
+    if unrecorded(state, ruleset, id) {
         return None;
     }
     let shooter = shoots(state, field, id);

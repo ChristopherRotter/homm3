@@ -109,6 +109,10 @@ pub(crate) struct Walker<'a> {
     /// The side's threat records on the walker's turn (0x422B20 with flag 1), built when the last
     /// retaliation's gain first needs them.
     records: OnceCell<Records>,
+    /// With BAT-QUIRK-25 (survey slip 22), the map the computer's pathfinder holds after a
+    /// creature cast entry that built a spell context and cast nothing ([`casts::entry`]): the
+    /// besieger's walk and the fallbacks read it ([`Walker::cells`]).
+    pub(crate) held: OnceCell<Map>,
 }
 
 /// The command of the computer's walker `id` of `side` (0x421F80; BAT-AI-005): the walker's choice
@@ -190,7 +194,17 @@ impl<'a> Walker<'a> {
             normal: computer::difficulty(state) > 0 || computer::human(state, side),
             stronger: Cell::new(None),
             records: OnceCell::new(),
+            held: OnceCell::new(),
         }
+    }
+
+    /// The map the besieger's walk and the fallbacks read (the computer's pathfinder's cells,
+    /// 0x421DA5, 0x421EA9, 0x421ECF): the walker's own, but with BAT-QUIRK-25 after a creature
+    /// cast entry that built a spell context and cast nothing the one that context's last search
+    /// left (survey slip 22, [`Walker::held`]). Their walks search afresh (0x41F580).
+    // rule: BAT-AI-005, BAT-AI-010
+    pub(crate) fn cells(&self) -> &Map {
+        self.held.get().unwrap_or(&self.map)
     }
 
     /// Whether the walker's turn is a prediction (its context's +9).

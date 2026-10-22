@@ -59,6 +59,16 @@ pub(crate) fn candidates(
     ruleset: &BattleRuleset,
     id: StackId,
 ) -> FixedVec<(StackId, u32), STACK_CAPACITY> {
+    searched(state, ruleset, id).0
+}
+
+/// [`candidates`] with the pathfinder's map their search left (none for a stack that can shoot:
+/// no search).
+pub(crate) fn searched(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    id: StackId,
+) -> (FixedVec<(StackId, u32), STACK_CAPACITY>, Option<Search>) {
     let field = Field::new(ruleset.battle().field);
     let me = *state.at(id);
     let others = (0u8..)
@@ -67,7 +77,9 @@ pub(crate) fn candidates(
         .map(|(i, t)| (StackId(i), t));
     if can_shoot(state, field, id) {
         let front = me.footprint(field).front;
-        return nearest(others.map(|(t, s)| (t, field.distance(front, s.footprint(field).front))));
+        let list =
+            nearest(others.map(|(t, s)| (t, field.distance(front, s.footprint(field).front))));
+        return (list, None);
     }
     // At a town the computer keeps a weak walker of a player who is no human out of its stops
     // (BAT-SIE-022: both searches, 0x445582 and 0x42232C, without a side's records).
@@ -81,7 +93,8 @@ pub(crate) fn candidates(
         speed: None,
     };
     let map = Search::run(state, field, (id, &me), query);
-    nearest(others.filter_map(|(t, s)| map.mark_of(s.hex).map(|c| (t, u32::from(c)))))
+    let list = nearest(others.filter_map(|(t, s)| map.mark_of(s.hex).map(|c| (t, u32::from(c)))));
+    (list, Some(map))
 }
 
 /// The berserk walker `me` (stack `id`) goes for `target` (the original's 0x4222C0, §7.41). The
