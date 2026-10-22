@@ -65,3 +65,20 @@ effects = [
     # Format v40 (E08 T19a2b): the highest spell level learnable grows (Wisdom).
     { kind = "learn_level", levels = 1 },
 ]
+
+# Format v46 (E08 T35b): the hero's movement and scouting, kinds only the adventure reads (its own
+# artifact: the regalia's list is full). Here, not in `synthetic`, so the battle replays' ruleset
+# hash stays.
+[[artifact]]
+id = "wayfarer_sash"
+name = "Wayfarer Sash"
+class = "major"
+slot = "synthetic:charm"
+effects = [
+    { kind = "pathfinding", level = 1 },
+    { kind = "land_movement", bp = 500 },
+    { kind = "land_movement_points", points = 200 },
+    { kind = "flying", level = 3 },
+    { kind = "water_walking", level = 2 },
+    { kind = "scouting_radius", tiles = 1 },
+]

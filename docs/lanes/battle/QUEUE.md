@@ -15,6 +15,20 @@ T1c is done (#316, #317 merged). T1a5 is cut in four (the user, 2026-10-20; the 
 
 Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure are merged below by kind, done and duplicate parts dropped; the origin stays in brackets (an epic and task, a review report such as r3 or F-r2b-2). History: git. Items for other lanes went into their inboxes; the First Aid Tent became BAT-Q51. The addresses are readings of the executable, the reviews' not read a second time. Where the readings stand: `installation.md` §7.8–§7.33; the reviews' reports stay on `battle/e04b-t11b-review-reports` and `battle/e04c-t10b-review-reports`; their experiment candidates are in `docs/experiments/README.md` ("From the battle queue's inbox", "From the E04b review", "From E04c").
 
+- 2026-10-22 (the adventure lane, E08 T35b, `shared/e08-t35b`, `cross-lane` with the user's consent,
+  E08 decision 79; for your information, nothing to do): **T35 is built** (the note below).
+  `h3_content::HeroEffect` gained `pathfinding`, `land_movement`, `land_movement_points`, `flying`,
+  `water_walking` and `scouting_radius` (codes 45 to 50; no `BattleEffect`: `derive_battle_hero`
+  ignores them, no match needed a new arm); the registry flags 30 to 32
+  (`quirk.adventure.flying_inland_price`, `drop_ignores_artifacts`, `radius_waits_for_a_step`;
+  on in `base:faithful`, off in strict-fixed; your next flag is 33); **pack format v46, core
+  ruleset hash v47**. In your paths: the gap-fill's three skill entries, five artifact entries and
+  eight sources (`exe-movement`, `exe-step-cost`, `exe-scouting`, `vcmi-movement`, four wiki
+  pages), the six artifacts out of the `pending` list, both harvested profiles with the three
+  flags, `exe-necromancy`'s url now `docs/exe/map.toml`; `packs/base/core.toml` re-harvested (only
+  those lines), `packs/README.md`'s effect table; your ten golden replays' headers (`ruleset_hash`
+  only: commands and state hashes unchanged). Q-0005's rules list gains HER-ADV-003 with E08 T39,
+  when the rule exists.
 - 2026-10-22 (the adventure lane, E08 T34b, `adventure/e08-t34b`; for your information, nothing
   to do now): **increment 5's proposed cut touches your paths** once the user accepts it
   (ADV-Q21; `docs/epics/E08-design.md` §4, §11, §12). T35, a `shared/` and `cross-lane` pull

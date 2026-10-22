@@ -577,6 +577,25 @@ enum EffectDto {
     LearnLevel {
         levels: u8,
     },
+    /// Pack format v46 (E08 T35b, increment 5): the hero's movement and scouting.
+    Pathfinding {
+        level: u8,
+    },
+    LandMovement {
+        bp: u16,
+    },
+    LandMovementPoints {
+        points: u16,
+    },
+    Flying {
+        level: u8,
+    },
+    WaterWalking {
+        level: u8,
+    },
+    ScoutingRadius {
+        tiles: u8,
+    },
 }
 
 /// Whose stacks a morale or luck effect changes, as files write it (`own` by default, `enemy`,
@@ -821,6 +840,12 @@ impl EffectDto {
             },
             Self::Ballistics { level } => HeroEffect::Ballistics { level },
             Self::LearnLevel { levels } => HeroEffect::LearnLevel { levels },
+            Self::Pathfinding { level } => HeroEffect::Pathfinding { level },
+            Self::LandMovement { bp } => HeroEffect::LandMovement { bp },
+            Self::LandMovementPoints { points } => HeroEffect::LandMovementPoints { points },
+            Self::Flying { level } => HeroEffect::Flying { level },
+            Self::WaterWalking { level } => HeroEffect::WaterWalking { level },
+            Self::ScoutingRadius { tiles } => HeroEffect::ScoutingRadius { tiles },
         })
     }
 }

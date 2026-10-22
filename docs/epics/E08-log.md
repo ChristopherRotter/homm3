@@ -3892,3 +3892,73 @@ confirmed at its checkpoint):
 5. Every new rule has its id, source and tests; `ADV-QUIRK-9` to `-13` are in the ledger; the
    gates pass (coverage, determinism with the re-recorded replays, benchmarks).
 6. Batch E4 run and scored; the disputes it covers (D-14 to D-21) `verified` or reopened.
+
+### Increment 5, round 1: T35a and T35b, the shared groundwork (2026-10-22, `shared/e08-t35a` #377, `shared/e08-t35b` #380)
+
+**The cut** (decision 79; asked at the start, `AskUserQuestion`): T35 in two parts, both in this
+session, as T26 was: T35a the ADRs (docs only), then T35b the code groundwork; T36 in the next
+session. Recommended was T35a with T36 (batch E5's chain T36, T37, T38 is the critical path, and
+T35b is not needed before T39); not chosen either: T35a alone, T36 alone.
+
+**Baseline:** `master` 25c01bd (#375 merged), engine code 22188e09 verified on 5a6e583 (the
+sandbox ran only the light gates). The user's PC was linked at the start: the repository came from
+GitHub, the original data from the PC (the executable, both LODs, `Objects.txt`, `maps.tar`,
+`extracted.tar`). The sandbox's VM restarted once during the first question (the setup's
+background job died; the tools it had installed stayed).
+
+- **T35a** (#377, docs only): ADR-0013 points 2, 3 and 11 amended and point 13 added (six effect
+  kinds the adventure's derivations read, `HER-ADV-`, the derivations), ADR-0016 points 3 to 5
+  (the points and radius from the details, a hero's passage with A-13's caveat in the user's
+  words, a move's end, the query's two kinds of node, the step's price, the reveals), ADR-0017
+  points 1, 3 and 9 (the levels at load before the points and the first reveal, the start of a
+  day's first rule, the versions); the index's three "Read when" cells. Each ADR's consequences
+  and alternatives are the drafts' condensed. Light gates and `check-lane` passed.
+- **`h3-content`** (part A §1): `HeroEffect` gains `Pathfinding { level }` (1..=3),
+  `LandMovement { bp }` (≥ 1), `LandMovementPoints { points }` (≥ 1), `Flying { level }` and
+  `WaterWalking { level }` (0..=3) and `ScoutingRadius { tiles }` (≥ 1), codes 45 to 50, with
+  `NAMES`, `try_map`, the parameter checks and the hash; a list holds each kind once (the default
+  collision). No match outside `h3-content` and `h3-pack` needed an arm: `derive_battle_hero`
+  picks the kinds it reads, and `clients/` constructs effects only from `BattleEffect`. The
+  registry's flags 30 to 32: `quirk.adventure.flying_inland_price` (`FLYING_INLAND_PRICE`,
+  `ADV-QUIRK-16`, D-24), `drop_ignores_artifacts` (`DROP_IGNORES_ARTIFACTS`, `-17`, A-12),
+  `radius_waits_for_a_step` (`RADIUS_WAITS_FOR_A_STEP`, `-18`, D-26), none read before T40 and
+  T41. **Core ruleset hash v47** (the golden base hash moved).
+- **`h3-pack`**: **pack format v46** (the six kinds' syntax), a syntax test (the values, an
+  unknown field, every parameter error) and a harvested test
+  (`the_harvested_movement_and_scouting_effects`: the three skills' and six artifacts' effects
+  with and without the expansions, the flags by profile).
+- **The harvester** (battle-owned, `cross-lane`): the gap-fill's `[[heroes.skill_effects]]` for
+  Pathfinding (1 to 3), Logistics (1 000 to 3 000 bp) and Scouting (1 to 3 tiles: the code's
+  table 5 to 8 less the base 5), `[[artifacts.effects]]` for Boots of Speed (600), Equestrian's
+  Gloves (300), Angel Wings (flying 3), Boots of Levitation (water walking 3), the Speculum and
+  the Spyglass (1 tile each), the six out of the `pending` list; eight sources (`exe-movement`,
+  `exe-step-cost`, `exe-scouting`, `vcmi-movement` from VCMI 1.7.5's `config/skills.json` and
+  `config/artifacts.json`, read again for this, and four wiki pages from the survey); the three
+  flags in both harvested profiles; `exe-necromancy`'s url `docs/exe/map.toml` (the queue's
+  inbox). Logistics and Scouting stay out of the harvester's value-table list: Scouting's table
+  holds the radius with its base, and the amounts are written as data with their code reading,
+  as Wisdom's were. `base` re-harvested from the staged installation: only those lines changed
+  (`ab` and `sod` unchanged). `synthetic-ext` gains `wayfarer_sash` with the six kinds
+  (`h3-pack-battle`'s `hero_content_syntax` wants every kind used once; not in `synthetic`, so
+  the battle replays' hash stays; the synthetic profiles still list only the battle's flags).
+  `packs/README.md`'s effect table.
+- **Replays and records**: the 19 golden replays keep commands and state hashes; only
+  `ruleset_hash` in their headers moved (three values: synthetic faithful 0xccc383cf72e6a6ab, the
+  base packs 0x1259740d4579c6b3 faithful and 0x5c100ae884edfb0a strict-fixed); `duel-s2-d7` and
+  `duel-s5-strict-d7` re-recorded with their options differed in that line only. The AI lane's
+  `bots-report-v1.json` regenerated: besides `engine.core`, two pairs' rewards and two values
+  moved in the fourth decimal, wins unchanged; a regeneration on `master` 25c01bd gives the same
+  table, so the drift is `master`'s (the battle lane's creature-cast change of 2026-10-21), not
+  T35b's.
+- **Docs**: the three drafts deleted; the design note's part A §1 and §4 cut to what T39 still
+  needs; decision 79 and the round's line in the epic; the queue (T35 out, an inbox note: the data
+  without a reader until T39 to T41); the battle and AI lanes' inboxes; the battle HANDOFF's
+  shared versions. The quirks' ledger entries come with their rules (T40, T41), Q-0005's line
+  with HER-ADV-003 (T39).
+- **Verify**: the first full run with the original data failed two steps: coverage
+  (`h3-pack-battle`'s `hero_content_syntax`: the synthetic packs must use every kind, hence
+  `wayfarer_sash`) and `check-docs` (the adventure HANDOFF 100 bytes over). The second, on
+  d403160, passed all 16 steps, and again on 8c982b6 after `master` was merged in (#377, E23 T4c) (benchmarks within +0.7 %, the harvest check matching the
+  installation). The clients' check (`clients/scripts/check.sh --no-coverage`) passed every gate
+  once SDL's build dependencies were installed in the sandbox (the client lane's setup installs
+  them, the adventure lane's does not). CI cannot run (billing).

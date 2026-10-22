@@ -626,6 +626,48 @@ pub enum HeroEffect<C, K, S, F, L> {
         /// Levels added (1..=5).
         levels: u8,
     },
+    /// The hero's Pathfinding level (pack format v46, E08 increment 5; ADR-0013 point 13): the
+    /// adventure's step price reads it (the terrains' costs by level, ADV-MOV-003). Several
+    /// sources: the highest (the skill: 1, 2, 3).
+    Pathfinding {
+        /// Pathfinding level (1..=3).
+        level: u8,
+    },
+    /// The day's land points grow by `bp` of the land table's entry (pack format v46, E08
+    /// increment 5; HER-ADV-003). Several sources add, each skill's grown by its skill
+    /// specialties (Logistics: 10 %, 20 %, 30 %; its specialists 5 % of the rate per level).
+    LandMovement {
+        /// Bonus in basis points (≥ 1).
+        bp: u16,
+    },
+    /// Flat points added to the day's land points after the rates (pack format v46, E08
+    /// increment 5; HER-ADV-003). Several sources add (Boots of Speed 600, Equestrian's Gloves
+    /// 300).
+    LandMovementPoints {
+        /// Movement points (≥ 1).
+        points: u16,
+    },
+    /// The hero flies on the adventure map (pack format v46, E08 increment 5; HER-ADV-005): the
+    /// level indexes the adventure's fly prices (0 to 3, the original's index; Angel Wings 3, the
+    /// spell's masteries later). Several sources: the highest.
+    Flying {
+        /// Flying level (0..=3).
+        level: u8,
+    },
+    /// The hero walks on water (pack format v46, E08 increment 5; HER-ADV-005): the level
+    /// indexes the adventure's water-walk prices (0 to 3; Boots of Levitation 3). Several
+    /// sources: the highest.
+    WaterWalking {
+        /// Water-walking level (0..=3).
+        level: u8,
+    },
+    /// The hero's scouting radius grows by `tiles` over the adventure's base radius (pack format
+    /// v46, E08 increment 5; HER-ADV-006). Several sources add (Scouting 1, 2, 3; the Speculum
+    /// and the Spyglass 1 each).
+    ScoutingRadius {
+        /// Tiles added (≥ 1).
+        tiles: u8,
+    },
 }
 
 /// An effect as written in a pack (references are keys).
@@ -635,7 +677,7 @@ pub type CompiledHeroEffect = HeroEffect<CreatureTypeId, SkillId, SpellId, Facti
 
 impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
     /// Pack names, indexed by [`HeroEffect::code`].
-    pub const NAMES: [&'static str; 45] = [
+    pub const NAMES: [&'static str; 51] = [
         "morale",
         "luck",
         "ranged_damage",
@@ -681,6 +723,12 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
         "raises",
         "ballistics",
         "learn_level",
+        "pathfinding",
+        "land_movement",
+        "land_movement_points",
+        "flying",
+        "water_walking",
+        "scouting_radius",
     ];
 
     /// Stable code of the variant (canonical hash, duplicate checks).
@@ -731,6 +779,12 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
             Self::Raises { .. } => 42,
             Self::Ballistics { .. } => 43,
             Self::LearnLevel { .. } => 44,
+            Self::Pathfinding { .. } => 45,
+            Self::LandMovement { .. } => 46,
+            Self::LandMovementPoints { .. } => 47,
+            Self::Flying { .. } => 48,
+            Self::WaterWalking { .. } => 49,
+            Self::ScoutingRadius { .. } => 50,
         }
     }
 
@@ -917,6 +971,14 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
             },
             Self::Ballistics { level } => HeroEffect::Ballistics { level: *level },
             Self::LearnLevel { levels } => HeroEffect::LearnLevel { levels: *levels },
+            Self::Pathfinding { level } => HeroEffect::Pathfinding { level: *level },
+            Self::LandMovement { bp } => HeroEffect::LandMovement { bp: *bp },
+            Self::LandMovementPoints { points } => {
+                HeroEffect::LandMovementPoints { points: *points }
+            }
+            Self::Flying { level } => HeroEffect::Flying { level: *level },
+            Self::WaterWalking { level } => HeroEffect::WaterWalking { level: *level },
+            Self::ScoutingRadius { tiles } => HeroEffect::ScoutingRadius { tiles: *tiles },
         })
     }
 
@@ -1020,6 +1082,17 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
             Self::LearnLevel { levels } if !(1..=MAX_SPELL_LEVEL).contains(levels) => {
                 Some("learn_level levels must be 1..=5")
             }
+            Self::Pathfinding { level } if !(1..=MAX_SKILL_LEVEL).contains(level) => {
+                Some("pathfinding level must be 1..=3")
+            }
+            Self::LandMovement { bp: 0 } => Some("land_movement bp must be at least 1"),
+            Self::LandMovementPoints { points: 0 } => {
+                Some("land_movement_points points must be at least 1")
+            }
+            Self::Flying { level } | Self::WaterWalking { level } if *level > MAX_SKILL_LEVEL => {
+                Some("flying and water_walking levels must be 0..=3")
+            }
+            Self::ScoutingRadius { tiles: 0 } => Some("scouting_radius tiles must be at least 1"),
             _ => None,
         }
     }
@@ -1268,8 +1341,15 @@ impl CanonicalHash for CompiledHeroEffect {
                 unless_skill.hash_into(h);
             }
             Self::ExperienceGain { bp } | Self::MaxMana { bp } => h.write_u16(*bp),
-            Self::JoinBonus { level } | Self::Ballistics { level } => h.write_u8(*level),
+            Self::JoinBonus { level }
+            | Self::Ballistics { level }
+            | Self::Pathfinding { level }
+            | Self::Flying { level }
+            | Self::WaterWalking { level } => h.write_u8(*level),
             Self::LearnLevel { levels } => h.write_u8(*levels),
+            Self::LandMovement { bp } => h.write_u16(*bp),
+            Self::LandMovementPoints { points } => h.write_u16(*points),
+            Self::ScoutingRadius { tiles } => h.write_u8(*tiles),
             Self::Raises { priority, creature } => {
                 h.write_u8(*priority);
                 creature.hash_into(h);
@@ -1407,6 +1487,12 @@ mod tests {
             },
             E::Ballistics { level: 2 },
             E::LearnLevel { levels: 2 },
+            E::Pathfinding { level: 1 },
+            E::LandMovement { bp: 1000 },
+            E::LandMovementPoints { points: 600 },
+            E::Flying { level: 3 },
+            E::WaterWalking { level: 0 },
+            E::ScoutingRadius { tiles: 1 },
         ]
     }
 
@@ -1421,9 +1507,9 @@ mod tests {
         }
         let (old, new) = all.split_at(13);
         assert_eq!(list_error(old, true), None);
-        let (new, newest) = new.split_at(MAX_EFFECTS);
-        assert_eq!(list_error(new, false), None);
-        assert_eq!(list_error(newest, false), None);
+        for chunk in new.chunks(MAX_EFFECTS) {
+            assert_eq!(list_error(chunk, false), None);
+        }
         assert_eq!(
             list_error(old, false),
             Some("specialty effects are allowed in a hero's specialty only")
@@ -1722,6 +1808,13 @@ mod tests {
             E::Ballistics { level: 4 },
             E::LearnLevel { levels: 0 },
             E::LearnLevel { levels: 6 },
+            E::Pathfinding { level: 0 },
+            E::Pathfinding { level: 4 },
+            E::LandMovement { bp: 0 },
+            E::LandMovementPoints { points: 0 },
+            E::Flying { level: 4 },
+            E::WaterWalking { level: 4 },
+            E::ScoutingRadius { tiles: 0 },
         ];
         for e in bad {
             assert!(e.parameter_error().is_some(), "{e:?}");
