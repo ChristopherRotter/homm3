@@ -4,10 +4,10 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E23, the original's battle AI, in progress** (`docs/epics/E23-original-battle-ai.md`; BAT-Q52): the neutral side first, a crate of its own, the reading first, batch rows only for readings at risk. **T1 done** (#288 to #331): §7.34 to §7.46, `pathfinder.rs`, the survey, **ADR-0027**. **T2 done** (#334 to #347): `choose`, the shooters, BAT-QUIRK-25, `computer-decisions`. **The budget** (the user): the gated count +2 %, re-set on purpose per part; ≤ 1 ms for the slowest decision, a hero's ≤ 5 ms, recorded per task. **T3 done** (#350 to #359): the walker; slip 6 a gap (BAT-STUB-7, BAT-Q56). **T4 done** (#364 to #382): the creature casts, the predictions, the Genie, a removal's copy: a side without a hero is complete. **T1a6 done** (§7.55: the hero's cast choice, the retreat test; slip 26, BAT-Q61). **Slip 25 done** (BAT-Q57). **T5 cut in two** (the user; BAT-Q61: the retreat a stub until T6): **T5a done** (the hero's cast, BAT-AI-017, 018; §7.56; slip 27; `POLICY_VERSION` 12). Next **T5b** (BAT-STUB-14).
+- **E23, the original's battle AI, in progress** (`docs/epics/E23-original-battle-ai.md`; BAT-Q52): the neutral side first, a crate of its own, the reading first, batch rows only for readings at risk. **T1 to T4 done** (#288 to #382): the reading §7.34 to §7.54, `pathfinder.rs`, the survey, **ADR-0027**, BAT-QUIRK-25, `computer-decisions`; a side without a hero is complete (slip 6: BAT-STUB-7, BAT-Q56). **The budget** (the user): the gated count +2 %, re-set per part; ≤ 1 ms for the slowest decision, a hero's ≤ 5 ms, recorded per task. **T1a6 done** (§7.55: the hero's cast choice, the retreat test; slip 26, BAT-Q61). **Slip 25 done** (BAT-Q57). **T5 cut in two** (the user; BAT-Q61: the retreat a stub until T6): **T5a done** (the hero's cast, BAT-AI-017, 018; §7.56; slip 27). **T5b cut in two** (the user): **T5b1 done** (the raises, Sacrifice, Earthquake, BAT-AI-019; §7.57; slips 28, 29; `POLICY_VERSION` 13). Next **T5b2** (Teleport, BAT-STUB-14).
 - E05, `h3-sim` and `h3-ffi` are the AI lane's (AI-Q1), `h3-heroes` the adventure lane's.
 - **Open:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35, BAT-Q51, BAT-Q56, BAT-Q58 (none blocks; BAT-Q33 and BAT-Q51 settle with E23's T6), BAT-STUB-1, the inbox (by kind since 2026-10-19), Q43; S-23, S-24, batch 2g.
-- **Versions:** battle state hash v51, battle part hash v7 (E23 T3-0; the encodings, replay format and C ABI are the AI lane's); shared: core ruleset hash v47, pack format v46 (E08 T35b), protocol v34. Next ids: BAT-Q62, BAT-QUIRK-27, BAT-STUB-15, BAT-AI-019, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-24, S-30.
+- **Versions:** battle state hash v51, battle part hash v7 (E23 T3-0; the encodings, replay format and C ABI are the AI lane's); shared: core ruleset hash v47, pack format v46 (E08 T35b), protocol v34. Next ids: BAT-Q62, BAT-QUIRK-27, BAT-STUB-15, BAT-AI-020, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-24, S-30.
 - Working agreement: increments with a user checkpoint (Q41); the user confirms seams and ADRs; batches by the user or an agent; small increments (the user, 2026-10-19).
 
 ## Standing traps
@@ -53,14 +53,14 @@ Area traps live where they are used: experiments in `docs/experiments/README.md`
 
 ## Recent sessions
 
+### 2026-10-22 (102nd) — E23 T5b1, the hero's raises, Sacrifice and Earthquake
+
+The user cut T5b in two (Teleport alone). `hero/specials.rs`; slips 28, 29 built under BAT-QUIRK-25; a blind check. **#398 open** (verified). The baseline ran fmt to coverage only.
+
 ### 2026-10-22 (101st) — E23 slip 25 and T5a
 
-Slip 25 (#390): shooting elementals weigh the cast too. T5a (`hero.rs`, stacked on #390): the user cut T5 in two, BAT-Q61 (c), the hero's budget 5 ms (slowest 2.9 ms). Original data staged late (the device link came up).
+Slip 25 (#390): shooting elementals weigh the cast too. T5a (`hero.rs`, #394): the user cut T5 in two, BAT-Q61 (c), the hero's budget 5 ms (slowest 2.9 ms).
 
 ### 2026-10-22 (hundredth) — E23 T1a6, the hero's reading
 
 T1a6 whole: §7.55; slip 26, BAT-Q61; BAT-QUIRK-26 confirmed. #386.
-
-### 2026-10-22 (ninety-ninth) — E23 T4d, a removal's copy
-
-T4d whole: §7.54, slip 24, two port errors fixed. #382.
