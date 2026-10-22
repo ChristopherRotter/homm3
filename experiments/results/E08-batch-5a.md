@@ -1,5 +1,7 @@
 # E08 batch E5a — results
 
+> Played by the capture harness on 2026-10-22 (`clients/capture/h3adv.py batch clients/capture/batches/E08-batch-5a.toml`): the same Complete 4.0 `Heroes3.exe` under Wine, without the HD mod; hot seat, difficulty Easy, the starting bonus random, Show Route on; read from the game's memory.
+
 Map file: `E08-batch-5a.h3m`. Fill in the blanks below and keep this file; an agent records the results (`docs/experiments/README.md`).
 
 **Stamp `5e02703d`.** The map's description in the scenario list starts with "Stamp 5e02703d.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
@@ -32,16 +34,16 @@ Map file: `E08-batch-5a.h3m`. Fill in the blanks below and keep this file; an ag
 
 | hero | day 1 points | day 2 points |
 |---|---|---|
-| E5-1a (no Logistics) |   |   |
-| E5-1b (Basic Logistics) |   |   |
-| E5-1c (Advanced Logistics) |   |   |
-| E5-1d (Expert Logistics) |   |   |
-| E5-1e (Boots of Speed) |   |   |
-| E5-1f (Equestrian's Gloves) |   |   |
-| E5-1g (both, Expert Logistics) |   |   |
-| E5-1h (Valeska, Archers) |   |   |
+| E5-1a (no Logistics) | 1560 | 1560 |
+| E5-1b (Basic Logistics) | 1716 | 1716 |
+| E5-1c (Advanced Logistics) | 1872 | 1872 |
+| E5-1d (Expert Logistics) | 2028 | 2028 |
+| E5-1e (Boots of Speed) | 2160 | 2160 |
+| E5-1f (Equestrian's Gloves) | 1860 | 1860 |
+| E5-1g (both, Expert Logistics) | 2928 | 2928 |
+| E5-1h (Valeska, Archers) | 1630 | 1630 |
 
-- anything odd: 
+- anything odd: E5-1e's (the spec: Boots of Speed): Boots of Speed (feet); E5-1f's (the spec: Equestrian's Gloves): Equestrian's Gloves (right ring); E5-1g's (the spec: both): Equestrian's Gloves (right ring), Boots of Speed (feet)
 
 ## E5-4a — Angel Wings inland: a cobblestone road, grass, swamp (D-24, ADV-MOV-009, HER-ADV-005)
 
@@ -53,18 +55,18 @@ Map file: `E08-batch-5a.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- points before the walks: 
+- points before the walks: 1560
 
 | walk | mark | marks | points after |
 |---|---|---|---|
-| 1 (3, 4) to (4, 4), road |   |   |   |
-| 2 (4, 4) to (5, 4), road |   |   |   |
-| 3 (5, 4) to (6, 4), road to grass |   |   |   |
-| 4 (6, 4) to (7, 4), grass |   |   |   |
-| 5 (7, 4) to (8, 4), grass to swamp |   |   |   |
-| 6 (8, 4) to (9, 4), swamp |   |   |   |
+| 1 (3, 4) to (4, 4), road | green | 1 | 1510 |
+| 2 (4, 4) to (5, 4), road | green | 1 | 1460 |
+| 3 (5, 4) to (6, 4), road to grass | green | 1 | 1360 |
+| 4 (6, 4) to (7, 4), grass | green | 1 | 1260 |
+| 5 (7, 4) to (8, 4), grass to swamp | green | 1 | 1160 |
+| 6 (8, 4) to (9, 4), swamp | green | 1 | 1060 |
 
-- anything odd: 
+- anything odd: worn at the start but the war machines (the spec: Angel Wings): Angel Wings (shoulders)
 
 ## E5-4b — Angel Wings on the coast: a cobblestone road along the shore (D-24, ADV-MOV-009)
 
@@ -75,14 +77,14 @@ Map file: `E08-batch-5a.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- points before the walks: 
+- points before the walks: 1560
 
 | walk | mark | marks | points after |
 |---|---|---|---|
-| 1 (3, 8) to (4, 8), coastal road |   |   |   |
-| 2 (4, 8) to (5, 8), coastal road |   |   |   |
+| 1 (3, 8) to (4, 8), coastal road | green | 1 | 1510 |
+| 2 (4, 8) to (5, 8), coastal road | green | 1 | 1460 |
 
-- anything odd: 
+- anything odd: worn at the start but the war machines (the spec: Angel Wings): Angel Wings (shoulders)
 
 ## E5-5 — Boots of Levitation: across the lake and back with a diagonal (ADV-MOV-010, HER-ADV-005)
 
@@ -94,14 +96,14 @@ Map file: `E08-batch-5a.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- points before the walks: 
+- points before the walks: 1560
 
 | walk | mark | marks | points after |
 |---|---|---|---|
-| 1 (8, 12) to (8, 8) |   |   |   |
-| 2 (8, 8) to (9, 12) |   |   |   |
+| 1 (8, 12) to (8, 8) | green | 4 | 1110 |
+| 2 (8, 8) to (9, 12) | green | 4 | 619 |
 
-- anything odd: 
+- anything odd: worn at the start but the war machines (the spec: Boots of Levitation): Boots of Levitation (feet)
 
 ## E5-6a — A Fortress army on swamp under the RoE Cursed Ground (class 21) (D-23, ADV-MOV-003, ADV-MOV-004)
 
@@ -112,13 +114,13 @@ Map file: `E08-batch-5a.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- points before the walks: 
+- points before the walks: 1560
 
 | walk | mark | marks | points after |
 |---|---|---|---|
-| 1 (7, 18) to (8, 18), cursed to cursed |   |   |   |
-| 2 (8, 18) to (9, 18), cursed to plain |   |   |   |
-| 3 (9, 18) to (10, 18), plain swamp |   |   |   |
+| 1 (7, 18) to (8, 18), cursed to cursed | green | 1 | 1385 |
+| 2 (8, 18) to (9, 18), cursed to plain | green | 1 | 1210 |
+| 3 (9, 18) to (10, 18), plain swamp | green | 1 | 1110 |
 
 - anything odd: 
 
@@ -131,12 +133,12 @@ Map file: `E08-batch-5a.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- points before the walks: 
+- points before the walks: 1560
 
 | walk | mark | marks | points after |
 |---|---|---|---|
-| 1 (7, 25) to (8, 25), cursed to cursed |   |   |   |
-| 2 (8, 25) to (9, 25), cursed to plain |   |   |   |
-| 3 (9, 25) to (10, 25), plain swamp |   |   |   |
+| 1 (7, 25) to (8, 25), cursed to cursed | green | 1 | 1385 |
+| 2 (8, 25) to (9, 25), cursed to plain | green | 1 | 1210 |
+| 3 (9, 25) to (10, 25), plain swamp | green | 1 | 1110 |
 
 - anything odd: 

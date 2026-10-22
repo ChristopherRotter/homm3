@@ -1,0 +1,100 @@
+# E08 batch E5b played by the capture harness (E08 T37b, `cross-lane`; h3adv.py batch): the
+# procedure of experiments/specs/E08-batch-5b.toml as steps, on Easy. Hot seat, Red and Blue
+# human; every hero stands where the spec puts it (`at`); one day, Red's turn only. E5-9 first
+# (the strip between its heroes stays unexplored until it flies): the strip's probes read
+# (`explored:`, E08 T37a), the walker's control, then the flight. Then E5-7a (a tree beyond a tree
+# line, then the free tile before it), E5-7b (a water tile, then the shore beyond the lake) and
+# E5-11 (over a Border Gate without its key: the path's tiles on the gate's row, `path_tiles:14`,
+# E08 T37b). A walk with no path shows `none` and 0 marks; the hero stays. `note` reads each hero's
+# worn artifacts but the war machines (the spec's own, or a starting bonus's) and the flights'
+# paths (their marks' tiles).
+
+spec = "experiments/specs/E08-batch-5b.toml"
+players = ["Red", "Blue"]
+difficulty = "easy"
+
+# --- Day 1, Red: E5-9 (a flight over a strip of unexplored land) ------------------------------------
+
+[[step]]
+encounter = "E5-9"
+hero = "E5-9"
+note = { "E5-9's worn artifacts (the spec: Angel Wings)" = "hero:equipment", "E5-9w's" = "hero[E5-9w]:equipment", "E5-9s's" = "hero[E5-9s]:equipment" }
+record = { "(13, 24) explored before the clicks (yes/no)" = "explored:13,24", "(18, 24) explored before the clicks (yes/no)" = "explored:18,24" }
+
+[[step]]
+encounter = "E5-9"
+hero = "E5-9w"
+walk = [18, 26]
+record = { "E5-9w's mark at (18, 26)" = "mark", "E5-9w's marks" = "marks", "did E5-9w move (yes/no)" = "moved" }
+
+[[step]]
+encounter = "E5-9"
+hero = "E5-9"
+walk = [18, 24]
+note = { "E5-9's path (its marks' tiles)" = "path_tiles" }
+record = { "E5-9's mark at (18, 24)" = "mark", "E5-9's marks" = "marks", "did E5-9 arrive (yes/no)" = "arrived", "E5-9's points after" = "points" }
+
+# --- Day 1, Red: E5-7a (Angel Wings: a tree beyond a tree line, then the free tile) -----------------
+
+[[step]]
+encounter = "E5-7a"
+hero = "E5-7a"
+note = { "worn at the start but the war machines (the spec: Angel Wings)" = "hero:equipment" }
+record = { "points before the walks" = "hero:points" }
+
+[[step]]
+encounter = "E5-7a"
+hero = "E5-7a"
+walk = [7, 4]
+record = { "1 the tree on (7, 4) | mark" = "mark", "1 the tree on (7, 4) | marks" = "marks", "1 the tree on (7, 4) | arrived" = "arrived", "1 the tree on (7, 4) | hero's tile" = "hero:tile", "1 the tree on (7, 4) | points after" = "points" }
+
+[[step]]
+encounter = "E5-7a"
+hero = "E5-7a"
+walk = [7, 5]
+note = { "walk 2's path (its marks' tiles)" = "path_tiles" }
+record = { "2 the free tile (7, 5) | mark" = "mark", "2 the free tile (7, 5) | marks" = "marks", "2 the free tile (7, 5) | arrived" = "arrived", "2 the free tile (7, 5) | hero's tile" = "hero:tile", "2 the free tile (7, 5) | points after" = "points" }
+
+# --- Day 1, Red: E5-7b (Boots of Levitation: a water tile, then the shore beyond) -------------------
+
+[[step]]
+encounter = "E5-7b"
+hero = "E5-7b"
+note = { "worn at the start but the war machines (the spec: Boots of Levitation)" = "hero:equipment" }
+record = { "points before the walks" = "hero:points" }
+
+[[step]]
+encounter = "E5-7b"
+hero = "E5-7b"
+walk = [25, 5]
+record = { "1 the water tile (25, 5) | mark" = "mark", "1 the water tile (25, 5) | marks" = "marks", "1 the water tile (25, 5) | arrived" = "arrived", "1 the water tile (25, 5) | hero's tile" = "hero:tile", "1 the water tile (25, 5) | points after" = "points" }
+
+[[step]]
+encounter = "E5-7b"
+hero = "E5-7b"
+walk = [25, 3]
+note = { "walk 2's path (its marks' tiles)" = "path_tiles" }
+record = { "2 the shore (25, 3) | mark" = "mark", "2 the shore (25, 3) | marks" = "marks", "2 the shore (25, 3) | arrived" = "arrived", "2 the shore (25, 3) | hero's tile" = "hero:tile", "2 the shore (25, 3) | points after" = "points" }
+
+# --- Day 1, Red: E5-11 (Angel Wings over a Border Gate without its key) ------------------------------
+# A locked gate's message is clicked away and named by its record (`messages`).
+
+[[step]]
+encounter = "E5-11"
+hero = "E5-11"
+note = { "worn at the start but the war machines (the spec: Angel Wings)" = "hero:equipment" }
+record = { "points before the walk" = "hero:points" }
+
+[[step]]
+encounter = "E5-11"
+hero = "E5-11"
+walk = [31, 12]
+note = { "the path (its marks' tiles)" = "path_tiles" }
+record = { "the mark at (31, 12)" = "mark", "marks" = "marks", "the path's tile on row 14" = "path_tiles:14", "arrived (yes/no)" = "arrived", "hero's tile after" = "hero:tile", "points after" = "points", "a message (its text)" = "messages" }
+
+# --- Blue's hero (never moves): its worn artifacts, read by name in Red's turn ------------------------
+
+[[step]]
+encounter = "E5-b"
+hero = "E5-11"
+note = { "E5-b's worn artifacts (the starting bonus)" = "hero[E5-b]:equipment" }
