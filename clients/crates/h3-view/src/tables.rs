@@ -1230,6 +1230,40 @@ at = [124, 254]
             rule(&[b], "base").to_string(),
             "`base:magic_arrow`: `c20spx0.pcx` is not a DEF name"
         );
+        // E17 M3 T7c-2: a spell's objects name DEFs and magic animations, its object sound an
+        // entry; both are among the tables' names.
+        let object = |def: &str, placed, vanish| SpellObject {
+            def: def.to_string(),
+            hexes: 1,
+            rows: 1,
+            before_stacks: true,
+            placed,
+            vanish,
+        };
+        let mut b = base();
+        b.spell[0].objects = vec![object("C17SPE1.DEF", 0, 1)];
+        b.spell[0].object_sound = Some("Quiksand".to_string());
+        let tables = load(&[b], "base").unwrap();
+        assert!(tables.names().contains("C17SPE1.DEF"));
+        assert!(tables.sound_names().contains("QUIKSAND"));
+        for (def, placed, vanish, error) in [
+            ("C17SPE1.PCX", 0, 0, "`C17SPE1.PCX` is not a DEF name"),
+            ("C17SPE1.DEF", 9, 0, "no such magic animation"),
+            ("C17SPE1.DEF", 0, 9, "no such magic animation"),
+        ] {
+            let mut b = base();
+            b.spell[0].objects = vec![object(def, placed, vanish)];
+            assert_eq!(
+                rule(&[b], "base").to_string(),
+                format!("`base:slow`: {error}")
+            );
+        }
+        let mut b = base();
+        b.spell[0].object_sound = Some("Quiksand.wav".to_string());
+        assert_eq!(
+            rule(&[b], "base").to_string(),
+            "`base:slow`: a sound is an entry's name, without an extension"
+        );
     }
 
     #[test]

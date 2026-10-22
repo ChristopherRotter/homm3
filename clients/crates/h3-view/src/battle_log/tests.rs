@@ -44,6 +44,7 @@ const PACK: &str = r#"{
         "acid-breath": "Acid: {{creature}} -{{defense}}.",
         "cast": "{{hero}}: {{spell}}.",
         "death-ripple": "Ripple {{damage}}.",
+        "armageddon": "Doom {{damage}}.",
         "destroy-undead": "{{spell}} {{damage}}."
     } },
     "word": {
@@ -305,6 +306,11 @@ fn spells_without_a_target_name_their_hero_spell_and_damage() {
     assert_eq!(worded(&mass(16, false)).as_deref(), Some("Ripple 35."));
     assert_eq!(worded(&mass(15, true)).as_deref(), Some("Dart 35."));
     assert_eq!(worded(&mass(16, true)), None);
+    // E17 M3 T7c-2: Armageddon's damage.
+    assert_eq!(
+        worded(&Logged::Armageddon { damage: 80 }).as_deref(),
+        Some("Doom 80.")
+    );
     let area = |spell, kills, target| Logged::AreaDamage {
         spell,
         damage: 30,
