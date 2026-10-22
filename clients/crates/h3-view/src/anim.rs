@@ -70,6 +70,12 @@ const HALF_HEX: i32 = 22;
 const BESIDE: i32 = 196;
 /// tan(25°) × 10^15: a shot is up above 25°, down below −25° (0x469880).
 const TAN_25: i64 = 466_307_658_154_999;
+/// A magic animation at a hex of kind 1 rises this far above half its height over the hex's
+/// anchor (`play_magic_animation_at_hex` 0x496A10; E17 M3 T7c-1).
+const AT_HEX_RISE: i32 = 37;
+/// The cell picture's bottom below a hex's top (the hex record's +0xC, design §4.1): a magic
+/// animation at a hex of kinds 0 and 4 stands on it (E17 M3 T7c-1).
+const CELL_BOTTOM: i32 = 52;
 /// The scale of [`TAN_25`] and of [`tangent`].
 const TAN_SCALE: i64 = 1_000_000_000_000_000;
 
@@ -490,6 +496,38 @@ pub struct Magic {
     pub over: Vec<(u8, [i32; 2], bool)>,
 }
 
+/// A frame of a magic animation at a hex (`play_magic_animation_at_hex` 0x496A10, design §7.16,
+/// player 5; E17 M3 T7c-1), or (`frame` none) its erasure: shown from `shown`, drawn over everything
+/// at its canvas's top-left `at`. Memory does not show it (the harness's timelines leave it out).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SpotKey {
+    /// Its number.
+    pub animation: u8,
+    /// When it shows.
+    pub shown: u32,
+    /// The frame of group 0, none once erased.
+    pub frame: Option<u32>,
+    /// The DEF.
+    pub def: String,
+    /// Drawn by the translucent drawer.
+    pub translucent: bool,
+    /// The canvas's top-left.
+    pub at: [i32; 2],
+}
+
+/// A magic animation at a hex as it shows at a time (E17 M3 T7c-1).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Spot {
+    /// The DEF.
+    pub def: String,
+    /// The frame of group 0.
+    pub frame: u32,
+    /// Drawn by the translucent drawer.
+    pub translucent: bool,
+    /// The canvas's top-left.
+    pub at: [i32; 2],
+}
+
 impl Stage<'_> {
     /// The anchor of `hex` (§4.1).
     fn anchor(&self, hex: u8) -> [i32; 2] {
@@ -699,6 +737,8 @@ pub struct Timeline {
     pub beams: Vec<Beam>,
     /// The magic animations' frames and erasures, in order (E17 M3 T3b).
     pub magics: Vec<MagicKey>,
+    /// The magic animations' frames and erasures at a hex, in order (E17 M3 T7c-1).
+    pub spots: Vec<SpotKey>,
     /// The heroes' frames the commands draw, in order (E17 M3 T7b-1: their casts).
     pub hero_keys: Vec<HeroKey>,
     /// The counts the stacks' boxes show from a time on, in order (E17 M3 T5b); before its
@@ -931,6 +971,17 @@ impl Timeline {
             frame,
             translucent: key.translucent,
             over: key.over.clone(),
+        })
+    }
+
+    /// The magic animation at a hex showing at `t`, if one is drawn then (E17 M3 T7c-1).
+    pub fn spot(&self, t: u32) -> Option<Spot> {
+        let key = self.spots.iter().rev().find(|k| k.shown <= t)?;
+        key.frame.map(|frame| Spot {
+            def: key.def.clone(),
+            frame,
+            translucent: key.translucent,
+            at: key.at,
         })
     }
 
@@ -1345,6 +1396,7 @@ fn played(
         flights: Vec::new(),
         beams: Vec::new(),
         magics: Vec::new(),
+        spots: Vec::new(),
         hero_keys: Vec::new(),
         counts: Vec::new(),
         tints: Vec::new(),
@@ -1361,6 +1413,7 @@ fn played(
         acting: snapshot.active,
         strike_casts: Vec::new(),
         erasing: Vec::new(),
+        pending_counts: Vec::new(),
     };
     let mut actions = Vec::new();
     let mut fidgets = seed.map(|rng| Fidgets {
@@ -1442,7 +1495,14 @@ fn played(
             player.hero_keys.get(heroes_before).map(|k| k.shown),
             player.magics.get(magics_before).map(|k| k.shown),
         ];
-        if let Some(first) = first.into_iter().flatten().min() {
+        // A creature's cast keeps it outlined until its cast starts (E17 M3 T7c-1: `cast_spell`
+        // clears it, 0x5A004C).
+        let creature_cast = command
+            .events
+            .iter()
+            .take_while(|e| !matches!(e, Event::TurnStarted { .. }))
+            .any(|e| matches!(e, Event::StackCast { .. }));
+        if let Some(first) = first.into_iter().flatten().min().filter(|_| !creature_cast) {
             outlines.push((first, None));
         }
         outlines.append(&mut player.outlined);
@@ -1480,6 +1540,7 @@ fn played(
         flights: player.flights,
         beams: player.beams,
         magics: player.magics,
+        spots: player.spots,
         hero_keys: player.hero_keys,
         counts: player.counts,
         tints: player.tints,
@@ -1691,6 +1752,8 @@ struct Player<'a> {
     beams: Vec<Beam>,
     /// The magic animations' frames (E17 M3 T3b).
     magics: Vec<MagicKey>,
+    /// The magic animations' frames at a hex (E17 M3 T7c-1).
+    spots: Vec<SpotKey>,
     /// The heroes' frames (E17 M3 T7b-1).
     hero_keys: Vec<HeroKey>,
     /// The counts the boxes show from a time on (E17 M3 T5b).
@@ -1728,6 +1791,9 @@ struct Player<'a> {
     /// 0x5A6B50; E17 M3 T7c-1): erased with the next frame drawn, each with the time memory lost
     /// it.
     erasing: Vec<MagicKey>,
+    /// The counts the boxes show with the next frame drawn (E17 M3 T7c-1: `cast_spell`'s tail
+    /// resets every stack's +0x50, 0x5A2089).
+    pending_counts: Vec<(u8, u32)>,
 }
 
 /// A spell a melee strike leaves pending on the stack it struck ([`PENDING`]): the stack, the
@@ -1794,6 +1860,13 @@ impl Player<'_> {
         self.show_tints(shown);
         for erased in core::mem::take(&mut self.erasing) {
             self.magics.push(MagicKey { shown, ..erased });
+        }
+        for (stack, count) in core::mem::take(&mut self.pending_counts) {
+            self.counts.push(CountKey {
+                stack,
+                shown,
+                count,
+            });
         }
         let pending = core::mem::take(&mut self.pending);
         self.keys
@@ -2058,6 +2131,27 @@ impl Player<'_> {
                         i += 1;
                     }
                     self.cast(side, spell, target, &events[from..i]);
+                }
+                // A creature's cast as its action (E17 M3 T7c-1): its effects follow it.
+                Event::StackCast {
+                    stack,
+                    spell,
+                    target,
+                } => {
+                    let from = i;
+                    while events.get(i).is_some_and(|e| {
+                        matches!(
+                            e,
+                            Event::EffectApplied { .. }
+                                | Event::EffectEnded { .. }
+                                | Event::SpellResisted { .. }
+                                | Event::SpellDamage { .. }
+                                | Event::SpellHealed { .. }
+                        )
+                    }) {
+                        i += 1;
+                    }
+                    self.creature_cast(stack, spell, target, &events[from..i]);
                 }
                 // An effect's start or end outside a hero's cast: a round's start ends the spells
                 // that ran out (0x447120), a creature's ability or cast adds one (E17 M3 T7b-2a).
@@ -2758,13 +2852,15 @@ impl Player<'_> {
     /// once (0x5A0E6D); Destroy Undead the same with its damage's line after the animation
     /// (0x5A0FC6, *provisional*: not recorded); a timed spell on several stacks (Expert, or a mass
     /// spell) its effects, its cast's line, then its animation over them without reactions
-    /// (0x5A10C2 to 0x5A10E7). Returns whether it drew the spell (its effects taken); the others
-    /// take effect at the cast's end (T7c-2, T7c-3).
+    /// (0x5A10C2 to 0x5A10E7); an area spell at a hex its animation there, its damage's line and
+    /// the reactions ([`Player::area`]). Every box shows its count again at the cast's tail
+    /// (0x5A2089), with the next frame drawn. Returns whether it drew the spell (its effects
+    /// taken); the others take effect at the cast's end (T7c-2, T7c-3).
     fn untargeted(
         &mut self,
         side: u8,
         (spell, look): (u16, &SpellLook),
-        _target: Target,
+        target: Target,
         effects: &[Event],
     ) -> bool {
         // Each stack struck: its damage before and after its own modifiers, its kills.
@@ -2817,6 +2913,15 @@ impl Player<'_> {
                     self.log.push((self.clock.now, line));
                 }
                 self.redraw();
+                self.recount(&struck);
+                true
+            }
+            FROST_RING..=METEOR_SHOWER => {
+                let Target::Hex { hex } = target else {
+                    return false;
+                };
+                self.cue(owner.unwrap_or(0), Sound::Spell(spell), false);
+                self.area((spell, look), hex, &hits, None);
                 true
             }
             _ if !applied.is_empty() => {
@@ -2828,6 +2933,248 @@ impl Player<'_> {
                 true
             }
             _ => false,
+        }
+    }
+
+    /// The boxes of the stacks `hit` show their counts with the next frame drawn (`cast_spell`'s
+    /// tail resets every stack's +0x50, 0x5A2089; E17 M3 T7c-1).
+    fn recount(&mut self, hit: &[(u8, u32)]) {
+        for &(stack, _) in hit {
+            let count = self.stacks.get(&stack).map_or(0, |l| l.count);
+            self.pending_counts.push((stack, count));
+        }
+    }
+
+    /// An area spell aimed at `hex` (`area_spell_handler` 0x5A4970, design §7.16; E17 M3 T7c-1):
+    /// its animation at the hex (player 5, trunc(100 F) a frame, 0x5A49B8), then, if it struck any
+    /// stack, its damage's line and the reactions ([`Player::spell_reactions`]), `caster` the
+    /// creature that cast it (none: a hero), which stands at the cast's tail.
+    fn area(
+        &mut self,
+        (spell, look): (u16, &SpellLook),
+        hex: u8,
+        hits: &[(u8, u64, u64, u32)],
+        caster: Option<u8>,
+    ) {
+        if let Some(number) = look.animation {
+            self.at_hex(number, hex, self.speed.scale(TICK));
+        }
+        let line = match hits {
+            [] => None,
+            [(target, _, damage, kills)] => Some((*damage, *kills, Some(*target))),
+            [(_, caster_damage, ..), ..] => {
+                let kills = hits.iter().fold(0_u32, |k, h| k.saturating_add(h.3));
+                Some((*caster_damage, kills, None))
+            }
+        };
+        if let Some((damage, kills, target)) = line {
+            let line = Logged::AreaDamage {
+                spell,
+                damage,
+                kills,
+                target,
+            };
+            self.log.push((self.clock.now, line));
+            let struck: Vec<(u8, u32)> = hits.iter().map(|h| (h.0, h.3)).collect();
+            self.spell_reactions(&struck, caster);
+        } else if let Some(c) = caster {
+            self.stand_caster(c);
+        }
+    }
+
+    /// Magic animation `number` at `hex` (`play_magic_animation_at_hex` 0x496A10, design §7.16,
+    /// player 5; E17 M3 T7c-1): each frame a redraw restoring the background and waiting `time`
+    /// on the deadline, then the frame drawn over everything and the battlefield shown; then a
+    /// last redraw at `time` erases it (no caller here keeps it). Placed by its kind's low nibble
+    /// at the hex: 1 centred 37 above its anchor, 4 from its left on the cell's lower edge, else
+    /// centred on that edge (the cell picture's bottom, the hex's top + 52).
+    fn at_hex(&mut self, number: u8, hex: u8, time: u32) {
+        let Some(look) = self.stage.magic.get(&number).cloned() else {
+            return;
+        };
+        let width = self.stage.width.max(1);
+        let [left, top] = self.stage.layout.hex_box(hex / width, hex % width);
+        let [x, y] = self.stage.anchor(hex);
+        let [w, h] = look.size;
+        let at = match look.place & 0xF {
+            1 => [x - w / 2, y - h / 2 - AT_HEX_RISE],
+            4 => [left, top + CELL_BOTTOM - h],
+            _ => [x - w / 2, top + CELL_BOTTOM - h],
+        };
+        for frame in (0..look.frames).map(Some).chain([None]) {
+            let drawn = self.clock.now;
+            let shown = self.clock.show(time);
+            self.flush(drawn, shown);
+            self.spots.push(SpotKey {
+                animation: number,
+                shown,
+                frame,
+                def: look.def.clone(),
+                translucent: look.translucent,
+                at,
+            });
+        }
+    }
+
+    /// The reactions of the stacks `hit` by a spell without a striker or an animation over them
+    /// (`strike_animation` 0x468990 with −1, design §7.16; E17 M3 T7c-1): with no striker to wait
+    /// for each starts at once, its group (death, a defending stack's defend, else hit) a frame a
+    /// redraw at trunc(100 F) and its sound with its first; the loop runs as many iterations as
+    /// the longest hit or death group (a defending stack's hit group counts, 0x468C4F), a hit
+    /// standing after its last frame. At the loop's end the dead lie as corpses, the boxes show
+    /// their counts and the battle is redrawn at once; `caster` stands (`cast_spell`'s tail,
+    /// [`Player::stand_caster`]); then the groups left over play on, a frame at trunc(100 F) each
+    /// and standing after their last (recorded: `dragon`'s defending Swordsmen; *provisional*:
+    /// what plays them is not read, and a hero's casting frames wait for them).
+    fn spell_reactions(&mut self, hit: &[(u8, u32)], caster: Option<u8>) {
+        let reactions = self.reactions(hit);
+        let looped = reactions.iter().map(|r| r.counted).max().unwrap_or(0);
+        let tick = self.speed.scale(TICK);
+        let pose = |r: &Reaction, i: u32, layer: u8| {
+            let frame = if i < r.frames {
+                Some(i)
+            } else if r.died {
+                r.frames.checked_sub(1)
+            } else {
+                None
+            };
+            frame.map_or(r.base, |f| Pose {
+                group: u32::from(r.group),
+                frame: f,
+                layer,
+                ..r.base
+            })
+        };
+        for i in 0..looped {
+            if i == 0 {
+                for r in &reactions {
+                    self.cue(r.stack, r.sound, false);
+                }
+            }
+            let poses: Vec<(u8, Pose)> = reactions
+                .iter()
+                .map(|r| (r.stack, pose(r, i, STRUCK)))
+                .collect();
+            self.frame(&poses, tick);
+        }
+        // The loop's end (0x4692A4): the dead lie as corpses, the layers and boxes as at a
+        // strike's end, a redraw at once.
+        let shown = self.clock.now;
+        self.counts.extend(reactions.iter().filter_map(|r| {
+            r.count.map(|count| CountKey {
+                stack: r.stack,
+                shown,
+                count,
+            })
+        }));
+        let mut left = Vec::new();
+        for r in reactions {
+            if r.died {
+                let corpse = Pose {
+                    layer: CORPSE,
+                    ..pose(&r, r.frames, CORPSE)
+                };
+                self.pending.push((r.stack, corpse));
+                self.stacks.remove(&r.stack);
+            } else if r.frames > looped {
+                self.pending.push((r.stack, pose(&r, looped, STANDING)));
+                left.push(r);
+            } else {
+                self.pending.push((r.stack, r.base));
+            }
+        }
+        self.redraw();
+        if let Some(c) = caster {
+            self.stand_caster(c);
+        }
+        // The groups left over play on (the frame drawn at the end shows with the first).
+        let longest = left.iter().map(|r| r.frames).max().unwrap_or(0);
+        self.pending.retain(|(s, _)| left.iter().all(|r| r.stack != *s));
+        for i in looped..=longest {
+            let poses: Vec<(u8, Pose)> = left
+                .iter()
+                .filter(|r| i <= r.frames)
+                .map(|r| (r.stack, pose(r, i, STANDING)))
+                .collect();
+            self.frame(&poses, tick);
+        }
+    }
+
+    /// A creature caster stands at its cast's tail (`outline_turn_stack` 0x477AC0 from
+    /// `cast_spell` 0x5A216B; E17 M3 T7c-1): the stack whose turn it is, standing, outlined again,
+    /// in a redraw shown at once.
+    fn stand_caster(&mut self, stack: u8) {
+        if let Some(live) = self.live(stack) {
+            self.pending.push((stack, self.standing(&live, live.hex)));
+        }
+        let now = self.clock.now;
+        self.outlined.push((now, Some(stack)));
+        self.acting = Some(stack);
+        self.redraw();
+    }
+
+    /// A creature's cast as its action (`creature_cast_action` 0x448260, design §7.16; E17 M3
+    /// T7c-1): turned toward the hex aimed at, its shot sound starts and its group by the angle
+    /// from its centre (before it turns) to the hex's anchor, y down (above 25° 17, above −25° 18,
+    /// else 19; straight up 17, down 19; the strike's 11 to 13 when its DEF lacks the group),
+    /// plays at trunc(trunc(A / n) F) a frame, its last kept through the cast (0x44851C). The cast
+    /// (caster kind 1: no hero frames, no resistance roll) clears the outline in a redraw at once
+    /// (0x5A004C), its spell's sound starts and an area spell's handler plays ([`Player::area`]),
+    /// the caster standing outlined at its tail; then its sound ends and it turns back if it
+    /// turned (0x4486E2, 0x44872F). Other spells take effect at once (T7c-3).
+    fn creature_cast(&mut self, stack: u8, spell: u16, target: Target, effects: &[Event]) {
+        let look = self.stage.casts.spells.get(&spell).cloned().unwrap_or_default();
+        let (Target::Hex { hex }, Some(live), FROST_RING..=METEOR_SHOWER) =
+            (target, self.live(stack), look.original)
+        else {
+            self.effects(effects);
+            return;
+        };
+        let [cx, cy] = self.centre(&live);
+        let [tx, ty] = self.stage.anchor(hex);
+        let turned = (tx > cx && !live.right) || (tx < cx && live.right);
+        let live = if turned { self.turn(stack, live) } else { live };
+        let (dx, dy) = (i64::from(tx - cx).abs(), i64::from(ty - cy));
+        // atan(dy / |dx|) in degrees, the target's y less the caster's (0x4483B3 to 0x448442).
+        let direction = if dx == 0 {
+            if dy <= 0 { 0 } else { 2 }
+        } else if dy * TAN_SCALE > dx * TAN_25 {
+            0
+        } else if dy * TAN_SCALE > -dx * TAN_25 {
+            1
+        } else {
+            2
+        };
+        let g = self.stage.groups;
+        let group = Some(g.breath[direction])
+            .filter(|&b| live.look.count(b) > 0)
+            .unwrap_or(g.strike[direction]);
+        let frames = live.look.count(group);
+        let time = self.speed.scale(live.look.times[2] / frames.max(1));
+        self.cue(stack, Sound::Shot, false);
+        for f in 0..frames {
+            self.frame(&[(stack, Self::posed(&live, group, f, live.hex))], time);
+        }
+        self.outlined.push((self.clock.now, None));
+        self.redraw();
+        self.cue(stack, Sound::Spell(spell), false);
+        let hits: Vec<(u8, u64, u64, u32)> = effects
+            .iter()
+            .filter_map(|e| match *e {
+                Event::SpellDamage {
+                    target,
+                    ref caster,
+                    ref damage,
+                    kills,
+                    ..
+                } => Some((target, caster.0, damage.0, kills)),
+                _ => None,
+            })
+            .collect();
+        self.area((spell, &look), hex, &hits, Some(stack));
+        self.cue(stack, Sound::Shot, true);
+        if let Some(live) = self.live(stack).filter(|_| turned) {
+            self.turn(stack, live);
         }
     }
 

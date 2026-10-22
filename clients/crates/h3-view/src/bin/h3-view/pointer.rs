@@ -149,7 +149,8 @@ pub fn inputs(
 }
 
 /// The mouse's inputs of a hero's cast `<k>[:<hex>]` of `spell` at `now` (`inputs`): the book's
-/// place, the spell aimed (E17 M3 T7b-1), the target.
+/// place, the spell aimed (E17 M3 T7b-1), the target; without one the book's empty status line
+/// (E17 M3 T7c-1).
 fn cast(arg: &str, (now, spell): (u32, u16), layout: &BattleLayout) -> Result<Vec<Input>, String> {
     let (place, target) = arg
         .split_once(':')
@@ -172,6 +173,9 @@ fn cast(arg: &str, (now, spell): (u32, u16), layout: &BattleLayout) -> Result<Ve
             at: now,
             to: hex_point(layout, hex),
         });
+    } else {
+        // Cast from the book at once (E17 M3 T7c-1): the status line as the book left it.
+        out.insert(1, Input::Book { at: now });
     }
     out.extend([Input::Act { at: now }, Input::Move { at: now, to: PARK }]);
     Ok(out)

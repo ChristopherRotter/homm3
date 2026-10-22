@@ -13,7 +13,7 @@ use core::fmt;
 
 use h3_protocol::wire::{Event, Manifest, Observation, Side, Stack};
 
-use crate::anim::{Magic, Pose, Projectile, Ray, Timeline};
+use crate::anim::{Magic, Pose, Projectile, Ray, Spot, Timeline};
 use crate::hero::{FLAG_START, HeroPose};
 use crate::layout::BattleLayout;
 use crate::tables::{ObstacleArt, Tables};
@@ -47,6 +47,8 @@ pub struct Moment {
     pub heroes: [Option<HeroPose>; 2],
     /// The magic animation drawn over stacks (E17 M3 T3b).
     pub magic: Option<Magic>,
+    /// The magic animation at a hex, over everything (E17 M3 T7c-1).
+    pub spot: Option<Spot>,
     /// The counts the boxes show, by id, of the stacks whose count changed since the snapshot
     /// (E17 M3 T5b); the others show the snapshot's.
     pub counts: BTreeMap<u8, u32>,
@@ -72,6 +74,7 @@ impl Moment {
                 .as_ref()
                 .map_or([None; 2], |h| h.at(timeline, t)),
             magic: timeline.magic(t),
+            spot: timeline.spot(t),
             counts: timeline.counts(t),
             hues: timeline.hues(t),
             marked: None,
@@ -681,6 +684,18 @@ pub fn battle_at(
     }
     if let Some(ray) = &moment.ray {
         list.push(Draw::Ray(ray.clone()));
+    }
+    // A magic animation at a hex, over everything on the screen (0x496A10 through 0x47C170, E17
+    // M3 T7c-1).
+    if let Some(spot) = &moment.spot {
+        list.push(Draw::Magic {
+            def: spot.def.clone(),
+            frame: spot.frame,
+            x: spot.at[0],
+            y: spot.at[1],
+            mirrored: false,
+            translucent: spot.translucent,
+        });
     }
     Ok(list)
 }
