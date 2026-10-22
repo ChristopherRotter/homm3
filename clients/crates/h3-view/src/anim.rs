@@ -426,6 +426,24 @@ const PENDING: [u16; 9] = [42, 62, 70, 71, 72, 73, 74, 75, 80];
 /// Acid Breath's lowering of the defense (0x5A1E76).
 const ACID_DEFENSE: i32 = 3;
 
+/// The executable's numbers of the spells aimed at no stack whose handlers the viewer tells apart
+/// (E17 M3 T7c-1, design §7.16): the area spells play their animation at the hex aimed at, then
+/// their damage's line and the reactions (`area_spell_handler` 0x5A4970); Death Ripple writes its
+/// cast's and its damage's lines, then plays its animation over every stack struck with their
+/// reactions (0x5A0C81); Destroy Undead its cast's line, the animation, then its damage's line
+/// (0x5A0E7E).
+pub const FROST_RING: u16 = 20;
+/// Fireball ([`FROST_RING`]).
+pub const FIREBALL: u16 = 21;
+/// Inferno ([`FROST_RING`]).
+pub const INFERNO: u16 = 22;
+/// Meteor Shower ([`FROST_RING`]).
+pub const METEOR_SHOWER: u16 = 23;
+/// Death Ripple ([`FROST_RING`]).
+pub const DEATH_RIPPLE: u16 = 24;
+/// Destroy Undead ([`FROST_RING`]).
+pub const DESTROY_UNDEAD: u16 = 25;
+
 /// The count a stack's box shows from `shown` on (E17 M3 T5b, design §4.3): a strike's kills
 /// show at its end.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1342,6 +1360,7 @@ fn played(
         tactics: snapshot.tactics.is_some(),
         acting: snapshot.active,
         strike_casts: Vec::new(),
+        erasing: Vec::new(),
     };
     let mut actions = Vec::new();
     let mut fidgets = seed.map(|rng| Fidgets {
@@ -1705,6 +1724,10 @@ struct Player<'a> {
     /// The spells the melee strike playing leaves pending, cast at its animation's end
     /// ([`PENDING`]; E17 M3 T7b-2b-3).
     strike_casts: Vec<StrikeCast>,
+    /// The magic animations whose marks were cleared without a redraw (`mass_spell_animation`
+    /// 0x5A6B50; E17 M3 T7c-1): erased with the next frame drawn, each with the time memory lost
+    /// it.
+    erasing: Vec<MagicKey>,
 }
 
 /// A spell a melee strike leaves pending on the stack it struck ([`PENDING`]): the stack, the
@@ -1765,9 +1788,13 @@ impl Player<'_> {
         });
     }
 
-    /// The pending poses, drawn at `drawn` and shown at `shown`, and the pending hues with them.
+    /// The pending poses, drawn at `drawn` and shown at `shown`, and the pending hues and erasures
+    /// with them.
     fn flush(&mut self, drawn: u32, shown: u32) {
         self.show_tints(shown);
+        for erased in core::mem::take(&mut self.erasing) {
+            self.magics.push(MagicKey { shown, ..erased });
+        }
         let pending = core::mem::take(&mut self.pending);
         self.keys
             .extend(pending.into_iter().map(|(stack, pose)| Key {
@@ -2712,7 +2739,7 @@ impl Player<'_> {
                     }
                 }
             }
-            None => {}
+            None => done = self.untargeted(s, (spell, &look), target, effects),
         }
         if !done {
             self.effects(effects);
@@ -2722,6 +2749,187 @@ impl Player<'_> {
                 self.hero_frame(s, (casting, f), time, false);
             }
             self.hero_frame(s, (standing, 0), time, true);
+        }
+    }
+
+    /// A hero's spell aimed at no stack (E17 M3 T7c-1, design §7.16; the cast's sound has started
+    /// at the handler, 0x5A0331): Death Ripple its cast's line, its damage's line, then animation
+    /// 8 over every stack struck with their reactions (player 3, 0x5A0C81), and a redraw shown at
+    /// once (0x5A0E6D); Destroy Undead the same with its damage's line after the animation
+    /// (0x5A0FC6, *provisional*: not recorded); a timed spell on several stacks (Expert, or a mass
+    /// spell) its effects, its cast's line, then its animation over them without reactions
+    /// (0x5A10C2 to 0x5A10E7). Returns whether it drew the spell (its effects taken); the others
+    /// take effect at the cast's end (T7c-2, T7c-3).
+    fn untargeted(
+        &mut self,
+        side: u8,
+        (spell, look): (u16, &SpellLook),
+        _target: Target,
+        effects: &[Event],
+    ) -> bool {
+        // Each stack struck: its damage before and after its own modifiers, its kills.
+        let hits: Vec<(u8, u64, u64, u32)> = effects
+            .iter()
+            .filter_map(|e| match *e {
+                Event::SpellDamage {
+                    target,
+                    ref caster,
+                    ref damage,
+                    kills,
+                    ..
+                } => Some((target, caster.0, damage.0, kills)),
+                _ => None,
+            })
+            .collect();
+        let applied: Vec<u8> = effects
+            .iter()
+            .filter_map(|e| match *e {
+                Event::EffectApplied { target, .. } => Some(target),
+                _ => None,
+            })
+            .collect();
+        let owner = hits.first().map_or(applied.first().copied(), |h| Some(h.0));
+        let cast_line = Logged::CastAll { side, spell };
+        match look.original {
+            DEATH_RIPPLE | DESTROY_UNDEAD => {
+                self.cue(owner.unwrap_or(0), Sound::Spell(spell), false);
+                self.log.push((self.clock.now, cast_line));
+                // One stack's damage when it struck one, else the caster's (0x5A0DC6); no line
+                // without a stack struck (the record gives no value then, *provisional*).
+                let damage = match hits.as_slice() {
+                    [(_, _, damage, _)] => Some(*damage),
+                    _ => hits.first().map(|h| h.1),
+                };
+                let undead = look.original == DESTROY_UNDEAD;
+                let line = damage.map(|damage| Logged::MassDamage {
+                    spell,
+                    damage,
+                    undead,
+                });
+                let struck: Vec<(u8, u32)> = hits.iter().map(|h| (h.0, h.3)).collect();
+                if let Some(line) = line.clone().filter(|_| !undead) {
+                    self.log.push((self.clock.now, line));
+                }
+                if !struck.is_empty() {
+                    self.mass(look.animation, &struck, true);
+                }
+                if let Some(line) = line.filter(|_| undead) {
+                    self.log.push((self.clock.now, line));
+                }
+                self.redraw();
+                true
+            }
+            _ if !applied.is_empty() => {
+                self.cue(owner.unwrap_or(0), Sound::Spell(spell), false);
+                self.effects(effects);
+                self.log.push((self.clock.now, cast_line));
+                let marked: Vec<(u8, u32)> = applied.iter().map(|&t| (t, 0)).collect();
+                self.mass(look.animation, &marked, false);
+                true
+            }
+            _ => false,
+        }
+    }
+
+    /// Magic animation `number` over the stacks `hit` (`mass_spell_animation` 0x5A67C0, design
+    /// §7.16, player 3; E17 M3 T7c-1), with their `reactions` to their kills: each takes its death
+    /// group (no creature left) or its hit group at frame 0 and its sound as the animation starts;
+    /// L = max(n, the longest such group) redraws at trunc(100 F), shown, the reactions advancing
+    /// first (frame 0 never shows; a hit runs on into the standing group, a frame a redraw, to its
+    /// last frame, where the stack stays until its next animation; a death stays on its last), the
+    /// animation's frame i set only while i + 1 < n (its last never shows, the one before it twice:
+    /// recorded at T7a-2b). Then the marks are cleared without a redraw (the animation goes with
+    /// the next frame drawn), the dead die and, if any did, a redraw is shown at once (0x5A6C47).
+    /// The count boxes keep the number before the kills (the stack's +0x50, which only
+    /// `strike_animation`'s end resets, design §4.3: *provisional*).
+    fn mass(&mut self, number: Option<u8>, hit: &[(u8, u32)], reactions: bool) {
+        let look = number.and_then(|n| Some((n, self.stage.magic.get(&n).cloned()?)));
+        let g = self.stage.groups;
+        let mut over = Vec::new();
+        // Each reacting stack: its id, its state then, its group and frame, whether it died.
+        let mut reacting: Vec<(u8, Live, u8, u32, bool)> = Vec::new();
+        let mut loops = look.as_ref().map_or(0, |(_, l)| l.frames);
+        for &(stack, kills) in hit {
+            let Some(live) = self.stacks.get_mut(&stack) else {
+                continue;
+            };
+            live.count = live.count.saturating_sub(kills);
+            let live = live.clone();
+            if let Some((_, l)) = &look {
+                over.push((stack, self.magic_at(&live, l), !live.right));
+            }
+            if reactions {
+                let died = live.count == 0;
+                let (group, sound) = if died {
+                    (g.death, Sound::Death)
+                } else {
+                    (g.hit, Sound::Wince)
+                };
+                loops = loops.max(live.look.count(group));
+                self.cue(stack, sound, false);
+                if died {
+                    self.happenings.push(Happening::Died(live.side));
+                }
+                reacting.push((stack, live, group, 0, died));
+            }
+        }
+        let tick = self.speed.scale(TICK);
+        let mut drawn_frame = None;
+        for i in 0..loops {
+            let mut poses = Vec::with_capacity(reacting.len());
+            for (stack, live, group, frame, _) in &mut reacting {
+                if *frame + 1 < live.look.count(*group) {
+                    *frame += 1;
+                } else if *group == g.hit {
+                    *group = g.standing;
+                    *frame = 0;
+                }
+                poses.push((*stack, Self::posed(live, *group, *frame, live.hex)));
+            }
+            let frames = look.as_ref().map_or(0, |(_, l)| l.frames);
+            let frame = (i + 1 < frames).then_some(i).or(drawn_frame);
+            let drawn = self.clock.now;
+            self.frame(&poses, tick);
+            if let Some((n, l)) = look.as_ref().filter(|_| frame != drawn_frame) {
+                self.magics.push(MagicKey {
+                    animation: *n,
+                    drawn,
+                    shown: self.clock.now,
+                    frame,
+                    def: l.def.clone(),
+                    translucent: l.translucent,
+                    over: over.clone(),
+                });
+            }
+            drawn_frame = frame;
+        }
+        // The marks cleared (0x5A6B50): erased with the next frame drawn.
+        if let Some((n, l)) = &look {
+            self.erasing.push(MagicKey {
+                animation: *n,
+                drawn: self.clock.now,
+                shown: self.clock.now,
+                frame: None,
+                def: l.def.clone(),
+                translucent: l.translucent,
+                over,
+            });
+        }
+        // The dead die (`stack_death` 0x444120): their corpses with the redraw.
+        let mut died = false;
+        for (stack, live, group, frame, dead) in reacting {
+            if dead {
+                let corpse = Pose {
+                    layer: CORPSE,
+                    ..Self::posed(&live, group, frame, live.hex)
+                };
+                self.pending.push((stack, corpse));
+                self.stacks.remove(&stack);
+                died = true;
+            }
+        }
+        if died {
+            self.redraw();
         }
     }
 
