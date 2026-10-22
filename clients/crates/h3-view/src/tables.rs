@@ -200,6 +200,36 @@ pub struct Spell {
     /// Each projectile DEF's angle in degrees (0 level, negative down).
     #[serde(default)]
     pub projectile_angles: Vec<i16>,
+    /// The battlefield objects its handler places (Quicksand, Land Mine, Force Field, Fire Wall;
+    /// E17 M3 T7c-2, design §7.16): one per object size it places, by its hexes.
+    #[serde(default)]
+    pub objects: Vec<SpellObject>,
+    /// The sound its handler plays with each object it places, an entry of the sound archives
+    /// without its extension (Quicksand's `Quiksand.wav` 0x5A0369, Land Mine's `landmine.wav`
+    /// 0x5A0577; E17 M3 T7c-2).
+    #[serde(default)]
+    pub object_sound: Option<String>,
+}
+
+/// A battlefield object a spell places (`battle_object`, its descriptor 0x14 bytes from 0x63CEE8;
+/// E17 M3 T7c-2, design §4.4, §7.16): drawn as a usual obstacle is, its frame the idle steps'
+/// count modulo its group 0's frames.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SpellObject {
+    /// Its DEF (the descriptor's +0x10).
+    pub def: String,
+    /// The hexes it covers (the descriptor's +6): the object a placement's hexes take.
+    pub hexes: u8,
+    /// Its height in hex rows (+4): its canvas rises 42 pixels a row above its anchor's.
+    pub rows: u8,
+    /// Its layer (+7) is 1: drawn in the pass before every stack, not in its row's.
+    #[serde(default)]
+    pub before_stacks: bool,
+    /// The magic animation at a hex its handler plays as it places it (player 5).
+    pub placed: u8,
+    /// The magic animation at its anchor as it goes (the object's +0x14).
+    pub vanish: u8,
 }
 
 /// The creature DEF groups the battle uses (`docs/epics/E17-design.md` §4.2, §4.3, §7).
@@ -329,7 +359,8 @@ impl Sounds {
             | Sound::Luck
             | Sound::Drain
             | Sound::Thunderbolt
-            | Sound::SpellFile(_) => None,
+            | Sound::SpellFile(_)
+            | Sound::Object(_) => None,
         }
     }
 
@@ -450,6 +481,7 @@ impl Tables {
             .flat_map(|c| c.sounds.names())
             .chain(self.battle.sounds())
             .chain(self.spells.values().filter_map(|s| s.sound.as_ref()))
+            .chain(self.spells.values().filter_map(|s| s.object_sound.as_ref()))
             .map(|n| n.to_ascii_uppercase())
             .collect()
     }
@@ -463,7 +495,12 @@ impl Tables {
             .chain(self.heroes.values().map(|h| &h.def))
             .chain(&self.battle.flags)
             .chain(self.battle.magic.iter().map(|m| &m.def))
-            .chain(self.spells.values().flat_map(|s| &s.projectile));
+            .chain(self.spells.values().flat_map(|s| &s.projectile))
+            .chain(
+                self.spells
+                    .values()
+                    .flat_map(|s| s.objects.iter().map(|o| &o.def)),
+            );
         let fields = self.battlefields.values().flat_map(|b| &b.backgrounds);
         let obstacles = self.obstacles.values().map(|o| match o {
             ObstacleArt::Usual { def, .. } => def,
@@ -586,10 +623,9 @@ pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
         }
         for spell in &file.spell {
             let key = qualify(id, &spell.key)?;
-            if spell
-                .sound
-                .as_ref()
-                .is_some_and(|n| n.is_empty() || n.contains('.'))
+            if [&spell.sound, &spell.object_sound]
+                .iter()
+                .any(|s| s.as_ref().is_some_and(|n| n.is_empty() || n.contains('.')))
             {
                 return Err(entry(
                     &key,
@@ -607,6 +643,16 @@ pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
             }
             for def in &spell.projectile {
                 names(&key, &[(def, ".DEF")])?;
+            }
+            for o in &spell.objects {
+                names(&key, &[(&o.def, ".DEF")])?;
+                let magic = tables.battle.magic.len();
+                if [o.placed, o.vanish]
+                    .iter()
+                    .any(|&a| usize::from(a) >= magic)
+                {
+                    return Err(entry(&key, "no such magic animation"));
+                }
             }
             insert(&mut tables.spells, key, spell.clone())?;
         }

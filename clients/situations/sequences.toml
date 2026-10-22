@@ -608,3 +608,42 @@ command = [
     { seat = "Defender", at = 8264, command = { Defend = {} } },
     { seat = "Attacker", at = 8264, command = { CreatureCast = { target = { Hex = { hex = 117 } } } } },
 ]
+
+# E17 M3 T7c-2 (recorded at T7a-2b in `casts.toml`): the spell objects and Armageddon (design
+# §7.16, players 5 and 6): a Fire Wall at hex 146 (round 1), Quicksand (round 2), a Force Field at
+# hex 63 (round 3), Armageddon (round 4); the Fire Wall's vanish at round 3's start. The
+# Swordsmen and the Pikemen defend. `seed`: the engine's seed whose draws place the original's
+# four pits (154, 99, 177, 71).
+[[sequence]]
+id = "obstacles"
+scenario = "seq-obstacles.toml"
+hot_seat = true
+seed = 517487719
+actions = [
+    "turn:1.0", "key:d", "turn:1.1", "key:d", "turn:0.0", "cast:0:146", "key:d",
+    "turn:1.0", "key:d", "turn:1.1", "key:d", "turn:0.0", "cast:1", "key:d",
+    "turn:1.0", "key:d", "turn:1.1", "key:d", "turn:0.0", "cast:2:63", "key:d",
+    "turn:1.0", "key:d", "turn:1.1", "key:d", "turn:0.0", "cast:3",
+]
+ms = 3000
+heroes = true
+screens = true
+timeline = "timelines/obstacles.txt"
+boxes = true
+command = [
+    { seat = "Defender", at = 0, command = { Defend = {} } },
+    { seat = "Defender", at = 0, command = { Defend = {} } },
+    { seat = "Attacker", at = 0, command = { Cast = { spell = 13, target = { Hex = { hex = 146 } }, second = { None = {} } } } },
+    { seat = "Attacker", at = 1400, command = { Defend = {} } },
+    { seat = "Defender", at = 1400, command = { Defend = {} } },
+    { seat = "Defender", at = 1400, command = { Defend = {} } },
+    { seat = "Attacker", at = 1400, command = { Cast = { spell = 10, target = { None = {} }, second = { None = {} } } } },
+    { seat = "Attacker", at = 3400, command = { Defend = {} } },
+    { seat = "Defender", at = 4200, command = { Defend = {} } },
+    { seat = "Defender", at = 4200, command = { Defend = {} } },
+    { seat = "Attacker", at = 4200, command = { Cast = { spell = 12, target = { Hex = { hex = 63 } }, second = { None = {} } } } },
+    { seat = "Attacker", at = 5300, command = { Defend = {} } },
+    { seat = "Defender", at = 5300, command = { Defend = {} } },
+    { seat = "Defender", at = 5300, command = { Defend = {} } },
+    { seat = "Attacker", at = 5300, command = { Cast = { spell = 26, target = { None = {} }, second = { None = {} } } } },
+]

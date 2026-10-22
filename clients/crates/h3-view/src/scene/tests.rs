@@ -509,6 +509,8 @@ fn a_moment_draws_each_stack_in_its_pose() {
             over: vec![(0, [7, 8], false), (9, [1, 1], true)],
         }),
         spot: None,
+        objects: BTreeMap::new(),
+        field: None,
         counts: BTreeMap::new(),
         hues: BTreeMap::new(),
         // E17 M3 T6c-1: the mouse marks the walking Pikemen.

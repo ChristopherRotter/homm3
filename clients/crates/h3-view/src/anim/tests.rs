@@ -2570,6 +2570,7 @@ fn the_log_records_what_the_battle_writes_and_when() {
             | Logged::SpellDamage { .. }
             | Logged::CastAll { .. }
             | Logged::MassDamage { .. }
+            | Logged::Armageddon { .. }
             | Logged::AreaDamage { .. } => "spell",
             Logged::Drain { .. }
             | Logged::DeathStare { .. }
@@ -2830,13 +2831,14 @@ fn casts() -> Casts {
             shell(3, [82, 109], 15, -56),
             shell(4, [50, 119], 15, -83),
         ],
+        ..SpellLook::default()
     };
     let timed = |original, sign, animation| SpellLook {
         original,
         sign,
         value: [0; 2],
         animation: Some(animation),
-        projectile: Vec::new(),
+        ..SpellLook::default()
     };
     // E17 M3 T7b-2a: Disrupting Ray (47) lowers the defense by 3 for either side's hero.
     let ray = SpellLook {
@@ -3842,7 +3844,7 @@ fn strike_casts() -> Casts {
         sign: -1,
         value: [0; 2],
         animation: Some(animation),
-        projectile: Vec::new(),
+        ..SpellLook::default()
     };
     for (original, animation) in [(17, 49), (71, 67), (62, 12), (79, 80), (80, 81)] {
         casts.spells.insert(original, spell(original, animation));
@@ -4232,7 +4234,7 @@ fn area_casts() -> Casts {
         sign: -1,
         value: [0; 2],
         animation,
-        projectile: Vec::new(),
+        ..SpellLook::default()
     };
     casts.spells.extend([
         (24, spell(24, Some(8))),

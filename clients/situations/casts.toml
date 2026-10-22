@@ -2,7 +2,7 @@
 # (`h3drive.py sequences situations/casts.toml` replays them and fails when a timeline changes),
 # kept beside it until the viewer's timeline plays them (T7b, T7c): then each moves into
 # sequences.toml with its engine commands and its frames (T7b-1: `cast`, `resist`, `arrow`; T7c-1:
-# `mass`, `dragon`).
+# `mass`, `dragon`; T7c-2: `obstacles`).
 # `cast:<k>[:<hex>]` casts the hero's spell at its book's place k (design §7.16, "The spell
 # book"); a Faerie Dragon casts by a click on its target. `heroes = true`: the timeline has the heroes' changes too
 # (`<ms> hero <side> g<group> f<frame>`); `screens = true` (T7a-2b) the screen's changes
@@ -43,23 +43,6 @@ ms = 3000
 heroes = true
 screens = true
 timeline = "timelines/raise.txt"
-
-# The at-hex player and the whole field (§7.16, players 5 and 6): a Fire Wall (round 1),
-# Quicksand (round 2), a Force Field (round 3), Armageddon (round 4).
-[[sequence]]
-id = "obstacles"
-scenario = "seq-obstacles.toml"
-hot_seat = true
-actions = [
-    "turn:1.0", "key:d", "turn:1.1", "key:d", "turn:0.0", "cast:0:146", "key:d",
-    "turn:1.0", "key:d", "turn:1.1", "key:d", "turn:0.0", "cast:1", "key:d",
-    "turn:1.0", "key:d", "turn:1.1", "key:d", "turn:0.0", "cast:2:63", "key:d",
-    "turn:1.0", "key:d", "turn:1.1", "key:d", "turn:0.0", "cast:3",
-]
-ms = 3000
-heroes = true
-screens = true
-timeline = "timelines/obstacles.txt"
 
 # Two creatures' animations (§7.16): the Archangels strike the Efreet Sultans from hex 31 (their
 # Fire Shield's return), the Sultans defend, the Power Liches shoot the Archangels (their cloud).

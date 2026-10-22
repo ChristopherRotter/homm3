@@ -12,8 +12,8 @@ use h3_formats::lod::LodArchive;
 use h3_protocol::wire::{Event, ServerMessage, Side};
 use h3_view::anim::{
     ACID, ACID_BREATH, BAD_MORALE, BOLT, Caster, Casts, DEATH_STARE, DEATH_STARE_SPELL, FEAR,
-    GOOD_LUCK, GOOD_MORALE, HEAL, LIFE_DRAIN, LIGHTNING_BOLT, Look, MagicLook, Missile, RESISTED,
-    Shell, SpellLook, Stage, THUNDERBOLT, TITAN_BOLT,
+    GOOD_LUCK, GOOD_MORALE, HEAL, LIFE_DRAIN, LIGHTNING_BOLT, Look, MagicLook, Missile, ObjectLook,
+    RESISTED, Shell, SpellLook, Stage, THUNDERBOLT, TITAN_BOLT,
 };
 use h3_view::batch::Batch;
 use h3_view::hero::{HeroLook, Heroes};
@@ -163,14 +163,32 @@ fn missile(
 /// ([`RESISTED`]); since E17 M3 T7b-2b-2b good and bad morale's, Fear's and good luck's
 /// ([`GOOD_MORALE`], [`BAD_MORALE`], [`FEAR`], [`GOOD_LUCK`]); since E17 M3 T7b-2b-3 each spell
 /// after a strike's, the bolt from the sky ([`BOLT`], the Thunderbird's [`THUNDERBOLT`] after it),
-/// Life Drain's, Death Stare's and the acid's ([`LIFE_DRAIN`], [`DEATH_STARE`], [`ACID`]); each
-/// with its DEF's frames and size.
+/// Life Drain's, Death Stare's and the acid's ([`LIFE_DRAIN`], [`DEATH_STARE`], [`ACID`]); since
+/// E17 M3 T7c-2 each spell object's placing and vanishing ones; each with its DEF's frames and
+/// size.
 pub fn magic(
     record: &Record,
     tables: &Tables,
     archives: &[(&str, LodArchive<'_>)],
 ) -> Result<BTreeMap<u8, MagicLook>, String> {
     let mut numbers = std::collections::BTreeSet::new();
+    // The objects a spell places, the snapshot's too (E17 M3 T7c-2): placed and gone.
+    let placed = record
+        .first_snapshot()
+        .into_iter()
+        .flat_map(|s| s.spell_obstacles.iter().map(|o| o.spell))
+        .chain(events(record).filter_map(|e| match *e {
+            Event::ObstaclePlaced { spell, .. }
+            | Event::ObstacleRemoved { spell, .. }
+            | Event::ObstacleRevealed { spell, .. } => Some(spell),
+            _ => None,
+        }));
+    for spell in placed {
+        for o in spell_entry(record, tables, spell).map_or(&[][..], |e| &e.objects) {
+            numbers.insert(o.placed);
+            numbers.insert(o.vanish);
+        }
+    }
     for event in events(record) {
         match event {
             Event::Healed { .. } => {
@@ -275,12 +293,18 @@ pub fn casts(
         let count = u16::try_from(record.header.manifest.keys.spells.len()).unwrap_or(u16::MAX);
         (0..count).find(|&h| spell_entry(record, tables, h).is_some_and(|e| e.original == original))
     };
+    // The snapshot's battlefield objects' spells (E17 M3 T7c-2).
+    spells.extend(snapshot.spell_obstacles.iter().map(|o| o.spell));
     for event in events(record) {
         match *event {
             Event::SpellCast { spell, .. } => {
                 cast = true;
                 spells.push(spell);
             }
+            // The objects a spell places (E17 M3 T7c-2).
+            Event::ObstaclePlaced { spell, .. }
+            | Event::ObstacleRemoved { spell, .. }
+            | Event::ObstacleRevealed { spell, .. } => spells.push(spell),
             // A creature's cast (E17 M3 T7c-1) draws its spell as a hero's does.
             Event::EffectApplied { spell, .. }
             | Event::StrikeSpell { spell, .. }
@@ -341,12 +365,27 @@ pub fn casts(
                 .map_or(0, |b| usize::from(b.mastery.min(3)));
             value[viewer] = effect[mastery];
         }
+        let mut objects = Vec::new();
+        for o in &entry.objects {
+            let (_, frames) = def_numbers(&o.def, archives)?;
+            objects.push(ObjectLook {
+                def: o.def.clone(),
+                frames,
+                hexes: o.hexes,
+                rows: o.rows,
+                before_stacks: o.before_stacks,
+                placed: o.placed,
+                vanish: o.vanish,
+            });
+        }
         let look = SpellLook {
             original: entry.original,
             sign: entry.sign,
             value,
             animation: entry.animation,
             projectile,
+            objects,
+            object_sound: entry.object_sound.is_some(),
         };
         casts.spells.insert(spell, look);
     }
