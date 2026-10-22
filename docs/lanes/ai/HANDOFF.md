@@ -16,7 +16,7 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   schema 5), T4b (#381: γ 1.0 ends the stalling; best 0.839, 0.578, 0.559 against Random,
   Aggressor, Greedy). **Increment 4** refined 2026-10-22: T5a done (the entity network, design
   §11; `python -m h3env.train.network`); next T5b, the user's A/B run (`configs/e06-t5.toml`
-  against `t4-2`), once T5a's pull request is merged.
+  against `t4-2`), once T5a's pull request #385 is merged.
 - **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v31 (E06 T2c: the record's identity, N capped) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q10, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
@@ -92,7 +92,7 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 
 - The user: the entity network first (the comparison in `E06-log.md`), T5a now, T5b later, no
   spare run, the visualization in T5a. T5a done: 15.5 M multiply-adds a decision against the
-  MLP's 5.5 M, about five times its CPU time; the GPU's is T5b's first step.
+  MLP's 5.5 M, about five times its CPU time; the GPU's is T5b's first step. #385 (open).
 
 ### 2026-10-22 — E06 T4b (the league runs), increment 3 closed
 
