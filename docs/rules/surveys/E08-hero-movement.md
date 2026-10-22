@@ -4,7 +4,7 @@ Date: 2026-10-21. Scope: E08 increment 5 (decisions 71, 72; T34a whole and flyin
 walking in: decisions 73, 74), input for T34b's ADR amendment drafts, the design note and the cut.
 Input, not rules (`README.md`): a fact becomes binding when a task writes it into the catalog
 with its sources and tests. **The checkpoint** (ADV-Q20, 2026-10-22: the epic's decision 75) decided
-the open points; §8 and §9 carry its answers.
+the open points; §8 and §9 carry its answers, D-26 as revised at T34b (decision 77, §4.2).
 
 **Sources** (retrieved 2026-10-21):
 - `original-data`: a code reading of the user's `Heroes3.exe` (SoD 4.0 Complete); every address
@@ -75,7 +75,9 @@ the open points; §8 and §9 carry its answers.
   Spyglass (worn or in a worn combination), as read in T8a. The Scouting specialty's 1 + 0.05 ×
   level is in the code, but **no SoD hero has the specialty** (the wiki: HotA's Beatrice, Miriam,
   Wynona): nothing to build. A radius that grows in the day reveals nothing until the hero's next
-  step or the next day's reveal around every owned hero; VCMI reveals at once (D-26).
+  step; VCMI reveals at once (D-26). *T34b:* the new day reveals around the owned heroes only after
+  a Cover of Darkness hid tiles (§4.2's correction), not at every new day as this survey first had
+  it.
 - **Content** (§5, §7): six artifacts (Boots of Speed, Equestrian's Gloves, Angel Wings, Boots of
   Levitation, Speculum, Spyglass), three Logistics specialists (Kyrre, Gunnar, Dessa), the creature
   specialists' speed (51 heroes), Nomads and Cursed Ground. In the shipped maps 1 of the 5 maps
@@ -416,6 +418,23 @@ after each step already uses the radius then; the new day's reveal (0x4C7C50) is
 "adds nothing while no rule hides a tile", T8a) and becomes the place a grown radius shows for a
 hero that does not move. Row E5-10.
 
+**Corrected by E08 T34b (2026-10-22), after the checkpoint:** the new day does **not** reveal
+around the owned heroes as a rule. `new_day` calls `reveal_owned` only when
+`cover_of_darkness_hide` (0x4C7BA0) returns true (0x4C8101 to 0x4C810C): that loop over the towns
+(records of 0x168 bytes from game +0x21614) hides a disk of radius 20 around each Necropolis
+(faction 4) with building 17, the Cover of Darkness, built (+0x150/+0x154 against
+`building_bits` +0x88), through 0x49D3D0 with the town's owner, and is true when one did.
+`reveal_owned`'s three other callers also follow a hide: an object visit's hide of radius 20 for
+the current player (0x4A14B0, from `visit_object` 0x4A8CB7) and a hide of the whole map per level
+(0x402450). No turn start reveals: of the functions holding `reveal_disk`'s 33 call sites and
+their known callers, `next_player_turn` (0x4C6FE0) reaches none within two calls but `new_day`'s
+conditional one. So in SoD, until a Cover of Darkness stands on the map, **a grown radius
+shows only at the hero's next step**. Before the reveal `new_day` also ends the day's spells: every
+hero's fly and water-walk levels (+0x112, +0x116) and the fields +0x10E and +0x129 go back to −1
+(0x4C80CF to 0x4C80FD). The user's answer (the epic's decision 77): the original's way as a
+fix-optional quirk, `strict-fixed` also revealing around every hero at the new day as decision 75
+assumed.
+
 ## 5. The artifacts and specialties of increment 5
 
 | Original id | Content | Effect (the reading) | Pack today | Census (§7) |
@@ -490,7 +509,7 @@ move; their import is unchanged (`MAP_IMPORT_VERSION` stays unless the import ga
 | D-23 | Cursed Ground takes away the native terrain's 100 | code; VCMI none; wiki silent | **decided**: built only if row E5-6 confirms it |
 | D-24 | flying's price: the fly price from inland tiles (roads 100), the lesser only from the coast | code against the wiki and VCMI (the lesser everywhere) | **decided**: the original's rule, a fix-optional quirk (strict-fixed the lesser everywhere); row E5-4 confirms |
 | D-25 | where a flying or water-walking move may end | code (the second reading), wiki and VCMI: a tile a hero may stop on | settled; row E5-7 a check |
-| D-26 | a radius grown in the day shows at the next step or day | code; VCMI at once for a skill; wiki silent | **decided**: the code, the new day's reveal built; row E5-10 |
+| D-26 | a radius grown in the day shows at the next step (T34b: the new day reveals only after a Cover of Darkness's hide, §4.2) | code; VCMI at once for a skill; wiki silent | **decided** (revised at T34b, decision 77): the code as a fix-optional quirk, `strict-fixed` also revealing around every hero at the new day; row E5-10 |
 | A-12 | the drop to 0 prices the cheapest step without the artifacts' flying and water walking | code | **decided**: fix-optional (it matters only on Cursed Ground, D-23) |
 | A-13 | a flying path crosses unexplored tiles | code; VCMI never | **decided**: fixed (moves on explored tiles); a trade-off for wide obstacle ranges (routing to the nearest unexplored but free tile) to design later; row E5-9 shows the original |
 | A-14 | a flying hero standing inland neither visits a neighbour's "cannot be entered" object nor enters a town from its tile | code, unconfirmed | **withdrawn** (the user: a flyer visits as a walker) |
@@ -513,7 +532,7 @@ recipe are T34b's cut's tasks; this is the plan. Each row names what it settles 
 | E5-7 | D-25 (a check) | an Angel Wings hero clicks a tree beyond a tree line; a Boots of Levitation hero clicks a water tile | the mark (green, red, none); arrived; the hero's tile | no path to either (§3.4) |
 | E5-8 | — | dropped at the checkpoint (A-14 withdrawn) | — | — |
 | E5-9 | A-13 | an Angel Wings hero facing a strip of unexplored land between it and an explored tile | the target's mark at the first click | the reading: a green path through the strip |
-| E5-10 | D-26, ADV-FOG-003 | a hero that gains Scouting at a level-up (battle), then no step; a second hero with the Spyglass in the backpack (if the harness can equip it; else a skip) | the explored tiles around both after the battle and at day 2 | nothing new after the battle; at day 2 the radius 6 around the hero |
+| E5-10 | D-26, ADV-FOG-003 | a hero that gains Scouting at a level-up (battle), then no step; a second hero with the Spyglass in the backpack (if the harness can equip it; else a skip) | the explored tiles around both after the battle, at day 2 and after each hero's first step of day 2 | nothing new after the battle nor at day 2 (T34b, §4.2); the radius 6 around the first hero after its step |
 
 Not planned: the Speculum and the Spyglass worn (consensus: radius +1 each, a fixed test), Nomads
 (consensus), the specialty's radius (no SoD content).
@@ -575,4 +594,6 @@ kinds and properties (the land bonus, the speed, the flying and water-walking le
 ADR-0016's or -0017's amendment where the points, the passage, the end of a move and the reveal
 change (the reach's two kinds of node, the new day's reveal), the quirks (D-24's flying price and
 A-12 fix-optional, A-13 fixed, Q-0005 for D-22), and the design note's increment 5 with the cut;
-D-23 waits for row E5-6.
+D-23 waits for row E5-6. *Done by T34b (2026-10-22):* the drafts in `docs/lanes/adventure/
+adr-drafts/*-increment-5.md`, the design note `docs/epics/E08-design.md`; its reading of `new_day`
+revised D-26 (§4.2, decision 77); the checkpoint's questions ADV-Q21.

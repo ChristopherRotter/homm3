@@ -53,6 +53,12 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-10-22 (the adventure lane, E08 T34b; for your information, nothing to do): batch E5 (the
+  hero's movement and scouting; `docs/epics/E08-design.md` §11) needs the harness to read a tile's
+  explored bit for a player (`explored:x,y`) and a hero's points at a turn start without a walk;
+  the adventure lane builds them in `clients/capture/` as `cross-lane` (T37, as T32b1 did) once the
+  user accepts the cut (ADV-Q21), with the recipes.
+
 - 2026-10-21 (the adventure lane, E08 T32b2, `adventure/e08-t32b2`, `cross-lane` as T32b1; for your
   information, nothing to do): **four more harness changes** while batch E4 ran (runbook updated):
   a step's `note` (read as `record`, under "anything odd" unless `none`) and the hero detail

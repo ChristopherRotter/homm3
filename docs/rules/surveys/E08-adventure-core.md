@@ -225,7 +225,8 @@ where to read, not facts.
   step's destination before the hero's position changes (0x48106B); a placed hero's setup
   (0x486590) reveals around it (0x486E25); the new day (0x4C7FE0) calls 0x4C7C50, which reveals
   around every owned hero (and further owned objects, not read): nothing new while no rule hides a
-  tile again. Increment 1 models no owned objects, so a game opens with only its heroes'
+  tile again. *Corrected by E08 T34b:* the new day calls it only when a Cover of Darkness hid
+  tiles (0x4C7BA0; survey `E08-hero-movement.md` §4.2). Increment 1 models no owned objects, so a game opens with only its heroes'
   surroundings explored. Towns and mines add theirs once they are owned (increment 2 or later): a
   recorded simplification, not a rule.
 - **Explored stays explored, and shows live content.** VCMI keeps one explored bit per tile and
