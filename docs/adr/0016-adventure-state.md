@@ -57,7 +57,11 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    returns what a visit changes in a hero as typed hero changes in its outcome, which the game
    applies (ADR-0017 points 1 and 10; no adventure profile, E08 decision 25). The adventure owns
    the hero on the map and its army; a battle's outcome reaches them through the game's
-   infallible application (ADR-0017 point 11).
+   infallible application (ADR-0017 point 11). From increment 5 a hero's **day's points** (the
+   land table at its army's slowest speed, with the hero's bonuses) and **scouting radius** come
+   from its details through `h3-heroes` (ADR-0013 point 13), set when the game builds the state,
+   after the levels at load (ADR-0017 point 1), and the points again at each turn start of its
+   owner (ADV-MOV-002); a gain in the day changes neither the points left nor the explored tiles.
 4. **Map objects are closed behaviour kinds with data parameters** (as abilities, ADR-0012;
    answers the `docs/03` question). An object is its static part (position, template masks of
    blocked and visitable tiles, object type), a kind from a closed enum in `h3-adventure` with
@@ -114,10 +118,43 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
      one of its tiles is fought on its battlefield (ADR-0017 point 11). Random contents of
      increment 3 are drawn at setup, in object order, from the setup stream; the import refuses
      what increment 3 cannot represent (a treasure with an artifact, a count above 4 095).
+   - **A hero's passage** (increment 5) depends on how it moves: walking, flying (a flying level
+     from its details) or water walking (a water-walking level); a hero that does both flies.
+     **A walking hero** moves as above. **A flying hero** also passes over blocked tiles, water,
+     guarded tiles and the visitable tiles of objects and heroes, never over rock and never over
+     an **unexplored** tile: moves stay on explored tiles for every hero (A-13 fixed for now,
+     `ADV-QUIRK-15`). **Provisional** (the user at ADV-Q20 and ADV-Q21): "probably fix, but
+     gameplay impacts have to be considered (wide obstacle ranges become impassable); perhaps
+     deserves a compromise, like allowing to route to the closest unexplored, but free hex; TBD
+     later anyway". The compromise, and with it `ADV-QUIRK-15`'s class, is decided later; until
+     then nothing hidden enters the legal moves. A flyer is attacked by a guard and visits an
+     object or a hero only at its move's end, and a step down onto the visitable tile of an
+     object not visited from above stays impossible. **A water-walking hero** also passes over
+     water that holds no object; on land, and for the guards, it is a walking hero.
+   - **A move ends only on a tile a hero may stop on** (D-25): a free land tile, or a visit made
+     from such a tile (an entered object, or a neighbour's object or hero visited from it). A
+     tile only passed over (blocked, water, a visitable tile flown over, a tile a flight enters by
+     a step up off the visitable tile of an object not visited from above) is never a move's end
+     nor the tile a visit is made from. The **reachable-tiles query** keeps two kinds of node per
+     tile for a flying or water-walking hero, one it may stop on and one it passes, and one kind
+     for a walking hero (its search unchanged); a path follows each node's predecessor of its
+     kind. Its destinations, and the env's mask (ADR-0017 point 8), are the tiles a hero may stop
+     on.
+   - **The step's price** follows the hero: its Pathfinding level, Nomads in its army, flying and
+     water walking (the original's `step_cost` 0x4B1740), with two fix-optional quirks: flying
+     costs the fly price from every inland tile, roads included (D-24, `ADV-QUIRK-16`;
+     `strict-fixed` takes the lesser of the fly and the walking price everywhere), and the drop
+     to 0 after a step prices the cheapest step without the artifacts' flying and water walking
+     (A-12, `ADV-QUIRK-17`). Cursed Ground's loss of the native price is built only if batch E5
+     confirms it in SoD (D-23).
 5. **Fog of war.** Each player has an explored layer (a bitset grid). An explored tile stays
    visible with its current content until a rule clears it (Cover of Darkness): no line-of-sight
    memory (VCMI, survey `E08-adventure-core.md` §2). Reveals set disk-shaped areas;
-   clearing is supported. The **fringe** is the hidden tiles touching an explored tile (the
+   clearing is supported. A hero reveals with its radius (ADR-0013 point 13.4) when the game is
+   built and around each step's tile; a radius grown in the day shows at the hero's next step
+   (the original's, `ADV-QUIRK-18`, fix-optional): `strict-fixed` also reveals around every hero
+   for its owner at each new day's start (D-26). The original's own new-day reveal around
+   everything a player owns follows a Cover of Darkness's hide and comes with it (E09). The **fringe** is the hidden tiles touching an explored tile (the
    reveal's shape: ADV-Q5). A viewer sees on explored tiles the public part of their content; on the
    fringe terrain, roads and rivers, plus object appearance under the `faithful` profile once
    `ADV-QUIRK-1` is confirmed (Q30's rule: until then the clean behaviour only); nothing else of
@@ -152,6 +189,14 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   that knows the original's class numbers; a monster's split generator lives in its rule, not
   the kernel. In `faithful` a split needs no player's dice (the same tile and armies split the
   same way, as the original's); in `strict-fixed` it costs the attacker two draws.
+- Increment 5 reaches every caller of the query and of `MoveHero` (the env's mask,
+  `legal_moves`, the properties' plans); a walking hero's search keeps its cost (`bench-check`), a
+  flyer's or water walker's holds a second node layer. The state keeps no new field: the passage
+  and the prices are rules over the hero's details.
+- The legal moves stay a function of the explored tiles alone (ADV-MOV-008, `docs/06-security.md`)
+  at A-13's price: a flight over a wide range of obstacles stops at its unexplored edge until it
+  is explored. The compromise (a route to the closest unexplored but free tile) would let a flight
+  end there and must then settle what that tells the player of the hidden tiles it crosses.
 
 ## Alternatives considered
 
@@ -167,6 +212,12 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
 - The split from the tile in every profile: predictable, so an attacker tunes its army to it
   (the user, ADV-Q13); monsters as their own context: they are map objects with a visit, the
   battle is the game's; a monster's exact count shown: the original shows the word only.
+- Increment 5 (ADV-Q21): VCMI's layered pathfinder (a node per tile and layer: more than the
+  original's two nodes per tile, which suffice until boats bring the sea's layer); the original's
+  flight over unexplored tiles (A-13: the legal moves would depend on hidden terrain; kept as the
+  basis of a later compromise); a flyer's visit from its tile refused inland (A-14, withdrawn by
+  the user); a reveal at once when the radius grows (VCMI's for a skill: it rewards swapping
+  radius artifacts between heroes).
 
 ## Revision history
 
@@ -184,3 +235,10 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   neighbour as a battle, the monster and ground kinds, guarded tiles, the monster's answer, the
   split by the profile (`ADV-QUIRK-6`), guarded piles, what a viewer sees of monsters, heroes and
   battles (drafted in E08 T17b, #181; survey `E08-battles.md`).
+- 2026-10-22 (E08 T35a; the user at ADV-Q20 and ADV-Q21): points 3, 4 and 5 amended for E08
+  increment 5, the hero's movement and scouting: the day's points and the radius from the details
+  through `h3-heroes`, set after the levels at load and at each turn start; a hero's passage by
+  walking, flying or water walking (A-13 fixed for now and provisional, with the user's words), a
+  move's end only where a hero may stop (D-25), the query's two kinds of node, the step's price
+  by the hero (`ADV-QUIRK-16`, `-17`; D-23 by batch E5); the radius's reveals (`ADV-QUIRK-18`,
+  D-26). Drafted in E08 T34b (#375; survey `E08-hero-movement.md`).

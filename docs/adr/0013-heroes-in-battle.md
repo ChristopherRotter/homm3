@@ -34,15 +34,23 @@ are computed before the seam (03-domain). The seam must change once for E04a and
    spells (learned, worn scrolls, the spell-giving artifacts) and its mastery of a spell
    (`h3_heroes::available_spells`, `spell_masteries`), from E08 increment 3 the adventure's Attack
    and Defense, Diplomacy's join bonus, the maximum spell points, Necromancy and Learning, from
-   increment 4 progression (point 12), later movement and scouting (E08 decision 48); no context
-   keeps its own copy, and no adventure profile
-   seam copies them (E08 decision 5 withdrawn).
+   increment 4 progression (point 12), from increment 5 its movement and scouting (point 13); no
+   context keeps its own copy, and no adventure profile seam copies them (E08 decision 5
+   withdrawn).
 3. **Effects are data.** Artifacts, skill levels and specialties carry a closed `HeroEffect` enum in
    content (Tier 3, like `Ability`, ADR-0012); the translation resolves them into a closed
    `BattleEffect` enum in contracts. Percentages are **basis points** in content and seam.
    Progression is data too (Tier 2, ADR-0006): the hero parameters hold the experience of levels
    1 to 12, the highest level and the skills a level-up forces (Wisdom, the magic schools); a
-   hero class holds its primary chances, skill weights and two forcing intervals.
+   hero class holds its primary chances, skill weights and two forcing intervals. E08 increment
+   5 adds six kinds that only the adventure's derivations read (none reaches `BattleEffect`): the
+   **Pathfinding level**, a **land movement rate** (basis points of the land table's entry, grown
+   by a skill specialty as the battle's skill rates are), **land movement points** (flat), a
+   **flying level** and a **water-walking level** (0 to 3, the original's index into its price
+   table; the artifacts give 3) and a **scouting radius bonus** (tiles). Each artifact type counts
+   once, worn or as a part of a worn combination. The tables they apply to (the land points by
+   speed, the base radius, the step, fly and water-walk prices) are the adventure part's data and
+   come in as arguments.
 4. **`BattleHero` is a hybrid:** typed fields for what the battle reads by name (primary skills,
    Tactics level, damage bonuses, war-machine control as derived numbers (the Catapult's: the
    Ballistics level, ADR-0023 point 6; the Ballista's also the Artillery level), surrender
@@ -75,7 +83,8 @@ are computed before the seam (03-domain). The seam must change once for E04a and
     its private part); E04b designs a factorized one for casting together with E05.
 11. **Rule ids.** Battle rules keep `BAT-` (new areas `BAT-TAC`, `BAT-FLE`, `BAT-HER`); derivation
     rules are `HER-` rules in `docs/rules/catalog/heroes.toml`, progression's `HER-EXP-` and
-    `HER-LVL-` (E08 increment 4).
+    `HER-LVL-` (E08 increment 4), the adventure's derivations `HER-ADV-` (increment 3's Attack and
+    Defense and join bonus, increment 5's movement and scouting).
 12. **Progression is `h3-heroes`' rules** (E08 increment 4; pure functions of the details, the
     ruleset and explicit inputs). No context writes a hero: an object or a building describes its
     effect, a context reads the details through `h3-heroes` and returns typed hero changes, and
@@ -104,6 +113,25 @@ are computed before the seam (03-domain). The seam must change once for E04a and
        for the system actor's default, and will for E10's computer players; what it needs beyond
        the details is an argument: the army's worth (the setup's defaults at load) and the map's
        terrain shares, which the game computes from the static map (E08 T25, ADV-Q17).
+13. **Movement and scouting are `h3-heroes`' derivations** (E08 increment 5; pure functions of
+    the details, the ruleset and explicit inputs):
+    1. **The day's land points** from the land table's entry the adventure gives: grown by the
+       hero's land movement rates (Logistics 10, 20, 30 %; a Logistics specialist's rate grown by
+       5 % of itself per level) and rounded down, then the flat points added (Boots of Speed 600,
+       Equestrian's Gloves 300). The rate follows Q-0005's flag: the original's single-precision
+       rate and x87 product in `faithful`, exact in `strict-fixed` (D-22).
+    2. **A creature's speed for the day's points**: the creature table's speed, one faster for the
+       hero's creature specialty's creature and its upgrades; no speed artifact counts (the code
+       and the wiki). The army stays the adventure's, an argument.
+    3. **The Pathfinding, flying and water-walking levels**: the highest of the hero's sources,
+       none without one; the adventure prices steps and passes tiles by them (ADR-0016 point 4).
+    4. **The scouting radius**: the base radius the adventure gives plus the hero's bonuses
+       (Scouting 1, 2, 3; the Speculum and the Spyglass 1 each). The original's Scouting specialty
+       (the radius × (1 + 0.05 × level)) has no SoD hero: not built; a skill specialty on Scouting
+       grows nothing.
+    5. **When** a property takes effect is the adventure's and the game's (ADR-0016 points 3 and
+       5, ADR-0017 point 3): a gain in the day changes neither the points left nor the explored
+       tiles until the owner's next turn start or the hero's next step.
 
 ## Consequences
 
@@ -124,6 +152,11 @@ are computed before the seam (03-domain). The seam must change once for E04a and
   skills, as the original's; the data adds hero parameters, a class field and a class override
   kind (the pack format, the core ruleset hash); the details' counters move the game state hash;
   the evaluation's port needs a code reading first (E08 T25).
+- Movement and scouting (point 13): increment 4's level-ups now matter on the map from the
+  hero's next turn or step; six effect kinds (the pack format, the core ruleset hash), the skills
+  and artifacts getting their effects through the harvester's gap-fill; later sources (Stables,
+  Lighthouses, Fly, Water Walk) add to the same functions, Navigation's sea points become a
+  sibling of point 13.1 with boats; nothing in increment 5 writes a hero.
 
 ## Alternatives considered
 
@@ -145,6 +178,11 @@ are computed before the seam (03-domain). The seam must change once for E04a and
   otherwise, D-20); VCMI's table to level 197 (diverges from SoD's levels, A-7); the intervals by a
   might/magic affinity of the class (no other rule reads one); progression in `h3-game` (towns,
   objects and computer players would each need the game).
+- Movement and scouting (E08 ADV-Q21): the whole day's points formula here with the land table as
+  hero data (the table is the adventure's, ADV-MOV-001); VCMI's bonus system (its speed artifacts
+  count towards the slowest creature, against the code and the wiki; its integer percents round
+  the specialists differently from both profiles, D-22); the Scouting specialty built from the
+  code (no SoD content reaches it; the wiki and VCMI each have another formula).
 
 ## Revision history
 
@@ -188,3 +226,9 @@ are computed before the seam (03-domain). The seam must change once for E04a and
   through a draw source its caller gives, the original's offers, the original's choice ported);
   no context writes a hero (the user's note at ADV-Q16). Drafted in E08 T24b1 (#318; survey
   `E08-progression.md`).
+- 2026-10-22 (E08 T35a; the user at ADV-Q20 and ADV-Q21): points 2, 3 and 11 amended and point 13
+  added for E08 increment 5, the hero's movement and scouting: six hero-effect kinds the
+  adventure's derivations read, `HER-ADV-` rules, and the day's land points (D-22 under Q-0005),
+  a creature's speed for them, the Pathfinding, flying and water-walking levels and the scouting
+  radius as `h3-heroes`' derivations, taking effect at the owner's next turn or the hero's next
+  step. Drafted in E08 T34b (#375; survey `E08-hero-movement.md`).
