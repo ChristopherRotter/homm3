@@ -4066,4 +4066,6 @@ repository from GitHub; the original data from the PC: the executable, both LODs
   committed).
 - **Not built**: the recipes and the run (T37: the explored-tile read, a read of the points at a
   turn start without a walk, an equip from the backpack in the hero screen); the scoring (T38).
-- **Verify**: the full run with the original data on the branch: see the pull request.
+- **Verify**: the full run with the original data on 736a00f (`master` 0f989da) passed all 16
+  steps (engine code 947c5b97; benchmarks within +0.7 %); `h3-view` checked in `clients/` (SDL's
+  build packages installed for it). CI cannot run (billing).
