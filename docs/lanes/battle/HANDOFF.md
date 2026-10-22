@@ -55,7 +55,7 @@ Area traps live where they are used: experiments in `docs/experiments/README.md`
 
 ### 2026-10-22 (102nd) — E23 T5b1, the hero's raises, Sacrifice and Earthquake
 
-The user cut T5b in two (Teleport alone). `hero/specials.rs`; slips 28, 29 built under BAT-QUIRK-25; a blind check. **#398 open** (full verify green). The baseline ran fmt to coverage only.
+The user cut T5b in two (Teleport alone). `hero/specials.rs`; slips 28, 29 built under BAT-QUIRK-25; a blind check. **#398 open** (verified). The baseline ran fmt to coverage only.
 
 ### 2026-10-22 (101st) — E23 slip 25 and T5a
 
