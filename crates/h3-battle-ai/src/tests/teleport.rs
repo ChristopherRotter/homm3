@@ -1,6 +1,7 @@
 //! The computer hero's Teleport (0x43AA60 with the destination map 0x4B2FF0; E23 T5b2a;
 //! BAT-AI-020) on the test ruleset: each stack's two walker turns and their gain, the stacks it
-//! asks, "now", a disabled stack's turns, and the destination map's stops with survey slip 30.
+//! asks, "now", a disabled stack's turns, the destination map's stops with survey slip 30 and its
+//! run-up with slip 31.
 
 use h3_battle::computer;
 use h3_battle::{
@@ -14,8 +15,8 @@ use h3_kernel::arith::X87;
 
 use super::hero::{cast, led, until_side};
 use super::{
-    ARCHER, CAVALIER, GOG, HARPY, IMP, RUNNER, active, at_town, cast_at, caster, decide, hero_with,
-    play, ruleset, ruleset_as, spell,
+    ARCHER, CAVALIER, CHAMPION, GOG, HARPY, IMP, RUNNER, active, at_town, cast_at, caster, decide,
+    hero_with, play, ruleset, ruleset_as, spell,
 };
 use crate::hero::{self, Hero, Valued};
 use crate::spells::{Candidate, SpellContext};
@@ -361,4 +362,34 @@ fn without_the_reach_s_searches_the_stops_are_the_side_s_last_recorded_or_the_st
     let w = Walker::new(&state, &r, (gogs, DEFENDER)).teleported(dest);
     assert!(w.map.is_stop(MOAT));
     assert!(!w.map.is_stop(BRIDGE));
+}
+
+// covers: BAT-AI-020
+#[test]
+fn a_teleported_jouster_counts_a_run_up_of_one_hex_only_with_the_slip() {
+    // On the destination map the plan's hex costs 1, which the original passes as the jousting
+    // run-up (survey slip 31); a teleported stack strikes from where it stands: none without the
+    // slip. The same stream, the same destination, a larger value with the slip.
+    let mut values = [0; 2];
+    for (i, profile) in ["t:faithful", "t:fixed"].into_iter().enumerate() {
+        let r = ruleset_as(profile);
+        let own = [(CHAMPION, 5)];
+        let enemies = [(GOG, 20)];
+        let hero = hero_with(&r, &["teleport"], 1, 99);
+        let mut state = BattleState::new(&r, &led(&own, &enemies, hero), 1).unwrap();
+        until_side(&mut state, &r, ATTACKER);
+        let ((_, _), (after, value)) = turns(&state, &r, (StackId(0), ATTACKER), 9);
+        assert!(
+            matches!(
+                after,
+                Command::Attack {
+                    target: StackId(1),
+                    ..
+                }
+            ),
+            "{after:?}"
+        );
+        values[i] = value;
+    }
+    assert!(values[0] > values[1], "{values:?}");
 }

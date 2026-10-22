@@ -47,12 +47,15 @@ pub(super) fn teleport(h: &Hero<'_, '_>, spell: SpellId, rng: &mut Rng) -> Value
             (spell, CastTarget::Stack(r)),
             &mut list,
         );
-        let destinations = list.as_slice().iter().fold(HexSet::new(), |mut set, t| {
-            if let CastTarget::Hex(hex) = *t {
-                set.insert(hex);
-            }
-            set
-        });
+        // Teleport's second targets are hexes.
+        let destinations =
+            list.as_slice()
+                .iter()
+                .filter_map(|t| t.hex())
+                .fold(HexSet::new(), |mut set, hex| {
+                    set.insert(hex);
+                    set
+                });
         let (before, after) = Walker::teleport_turns(state, ruleset, (r, side), destinations, rng);
         // The walker never attacks itself (BAT-STUB-10): the original's test that the attacked
         // stack is not the one moved (0x43AB34) always passes.

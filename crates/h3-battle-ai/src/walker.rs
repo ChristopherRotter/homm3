@@ -390,6 +390,10 @@ impl<'a> Walker<'a> {
         let holds = self.holds_walls();
         let hard = computer::difficulty(self.state) >= 2 || computer::human(self.state, self.side);
         let speed = u16::from(me.speed_now());
+        // On the destination map the run-up is the map's cost of 1 where a teleported stack
+        // strikes from where it stands: with BAT-QUIRK-25 as the original (survey slip 31), else
+        // none.
+        let runs = !self.teleport || self.ruleset.quirks().is_enabled(ORIGINAL_AI_SLIPS);
         // The stack can act (0x4219DB to 0x421A18): not blind, petrified, paralysed or dead, not
         // the First Aid Tent or the Ammo Cart.
         let able = me.is_alive()
@@ -427,7 +431,7 @@ impl<'a> Walker<'a> {
                 continue;
             };
             // The melee value with the run-up when the plan takes one turn.
-            let run_up = u8::try_from(self.map.cost(plan.hex) * u16::from(plan.turns == 1))
+            let run_up = u8::try_from(self.map.cost(plan.hex) * u16::from(plan.turns == 1 && runs))
                 .unwrap_or(u8::MAX);
             let pair = (self.id, enemy);
             let ctx = &self.ctx;

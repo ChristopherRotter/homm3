@@ -58,7 +58,7 @@ epic   = "E23"
 [[stub]]
 id     = "BAT-STUB-14"
 where  = "crates/h3-battle-ai/src/walker.rs::Walker::teleport_turns"
-reason = "The computer's hero values Teleport by each stack's walker turn as it is and on the destination map (0x43AA60, installation.md §7.58; BAT-AI-020, E23 T5b2a). In those turns the original asks the creature cast entry (0x421280) of a stack that is not the active one too, from its own record (the Faerie Dragon's spell drawn at its last turn), where the engine lists only the active stack's cast targets; and when no search ran before the destination map, the stops it keeps may be a cast entry's spell context's last search's, not the stack's own (survey slip 30). Until E23 T5b2b (the user, 2026-10-22: T5b2 in two parts) such a stack's turns ask no cast entry"
+reason = "The computer's hero values Teleport by each stack's walker turn as it is and on the destination map (0x43AA60, installation.md §7.58; BAT-AI-020, E23 T5b2a). In those turns the original asks the creature cast entry (0x421280) of a stack that is not the active one too, from its own record (the Faerie Dragon's spell drawn at its last turn), where the engine lists only the active stack's cast targets; and when no search ran before the destination map (an Easy computer side, the stack its side's only walker the threat records search), the stops it keeps may be the last search of a spell context that a cast entry built in the stack's first turn, the active stack's too, not the stack's own (survey slip 30). Until E23 T5b2b (the user, 2026-10-22: T5b2 in two parts) such a stack's turns ask no cast entry"
 epic   = "E23"
 
 # --- adventure (ADV-STUB-<n>) ---

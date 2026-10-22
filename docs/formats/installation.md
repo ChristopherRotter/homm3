@@ -5663,7 +5663,12 @@ act from there on its next turn (BAT-MAG-029, BAT-SIE-004, BAT-SIE-005; batch 3g
 onto the moat hex 61, no damage on landing, the Swordsmen defended there that turn): the estimate
 reads another stack's search. The unreached cells' costs are stale too, but read only at an enemy's
 position by a bound walker (0x4217F6 onwards: an enemy at a cost above 0 is passed over): after a
-search of an enemy, which marks none of its own side, every enemy's cell holds 0.
+search of an enemy, which marks none of its own side, every enemy's cell holds 0 (after one of the
+side's own stacks an enemy's may hold its mark; the port reads 0).
+
+**The run-up** (survey slip 31, found by T5b2a's blind check): the melee value's jousting distance
+is the cell's cost at the plan's hex for a plan of one turn (0x421A1A to 0x421A3F), on the
+destination map 1, where a teleported stack strikes from where it stands.
 
 **Draws.** Per R: the first call's (0x421B02 per candidate, the cast entry's when it runs), then the
 second's (0x421B02 per candidate); then 0x43C800's draw for Teleport's value (§7.56).
