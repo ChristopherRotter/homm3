@@ -4175,3 +4175,51 @@ changes no engine code.
   new day refuted for the original).
 - **For T38:** E5-4a contradicts the reading's D-24 (decision 75 took it as the original's rule,
   a fix-optional quirk): an ADV-Q at the scoring, and the survey's §2.1 point 5 read again.
+
+### Increment 5, round 2: T38, batch E5 scored; the tile bit read again (2026-10-22, `adventure/e08-t38`, `cross-lane`)
+
+**The cut** (decision 84; asked at the start): T38 whole. **Baseline:** `master` 38f227f (#392
+merged); its engine code (783c406f) was verified on that commit, so the sandbox ran the light
+gates (passed). `Heroes3.exe` staged from the user's PC for the re-read. `cross-lane` for the
+status row in `docs/experiments/README.md` (battle-owned), as T33.
+
+**Batch E5 scored** (survey `E08-hero-movement.md` §13, from T37b's results and `e4_score`'s
+reports): E5-1, E5-3, E5-5 and E5-7 as the consensus; **D-22** six conclusive heroes of six fit
+single precision (Q-0005); **D-23** confirmed for both Cursed Grounds (21 and 223): built in T40;
+**D-26** (E5-10) and **A-13** (E5-9: the original's flyer crosses the unexplored strip) as read;
+**E5-11** a flyer passes over a Border Gate's entrance without the key, no message, as read.
+**E5-4 refuted D-24 as read**: an inland road's steps cost 50 under Angel Wings.
+
+**The re-read** (`step_cost` 0x4B1740 at 0x4B17EA, then the bit's writers): the reading itself was
+right (the lesser from a tile with +0xC bit 0x40, the fly price from water or a tile without it);
+the bit's meaning was not. The map's tile loader `map_tiles_load` (0x4FE220, from
+`map_objects_place_all` 0x4FD690 before the objects) copies only the file's six mirror bits into
++0xC, turns the file's coast bit into +0xD bit 0x02 (the shore battlefield's test, 0x4643B0) and
+sets +0xC bit 0x40 on every tile but rock; `tile_refresh_object` (0x505610), for each tile of an
+object placed or removed, sets it again and clears it (with +0xD bit 0x01) where an object's
+passability blocks the tile without an entrance there. So the bit means "no object blocks the
+tile". Three readings rested on it as the coast:
+- **D-24**: the lesser of the fly and walking price from every free land tile (an entrance too),
+  the fly price from water and from blocked tiles. Every E5-4, E5-7, E5-9 and E5-11 price fits.
+  The wiki's text agrees; VCMI takes the lesser over obstacles too (at level 3 only a blocked
+  tile carrying a road differs).
+- **A-14's gap** (`hero_flight_tile_test` 0x4E5CE0): the test passes on every free land tile, so a
+  flyer visits as a walker, as the user said at ADV-Q20.
+- **A-11** (`ai_map_terrain_shares` 0x52B9C0, built as ADV-MAP-002 under `ADV-QUIRK-14` in T29):
+  the shares count every tile no object blocks but rock, water included, not the coast. The
+  experiment maps with levels at load are all grass, where both counts give 0.
+
+**ADV-Q22** (decision 85, asked interactively): D-24 the original's rule in every profile, no
+flag (`ADV-QUIRK-16` withdrawn; flag 30 and ADR-0016 point 4's words in T41's shared part);
+ADV-MAP-002 corrected now as **T38b** (`ADV-QUIRK-14` withdrawn).
+
+- **Docs:** `docs/exe/map.toml` (0x4FE220 new; 0x4B1740, 0x4E5CE0, 0x4FD690, 0x505610, 0x52B9C0
+  corrected), `structs.toml` (`map_item` +0xC, +0xD); survey `E08-hero-movement.md` §0, §2.1,
+  §2.3, §2.5, §3.3, §8, §13 and `E08-progression.md` §10.3; `ADV-QUIRK-14` marked withdrawn (removed
+  with its test in T38b); `E08-design.md` §6, §9, §11 to §13.
+- **The catalog:** observation sources for ADV-MOV-002 (E5-1, E5-3), ADV-MOV-008 (E5-9's walker;
+  `verified`), ADV-FOG-003 (E5-10; `verified`), GAM-SET-002 (E5-2's twelve levels at load); a
+  note on ADV-MAP-002's source. The new rules (HER-ADV-003 to -007, ADV-MOV-009, -010) get
+  batch E5's observations when T39 to T41 write them.
+- **For T41's shared part:** `h3-content`'s `FLYING_INLAND_PRICE` (flag 30) and its packs'
+  profiles, ADR-0016 point 4 ("the fly price from every inland tile"); the queue's inbox.
