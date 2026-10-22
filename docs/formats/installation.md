@@ -5162,7 +5162,11 @@ the stack once: the routine's test picks it (Cure's, Anti-Magic's); the copy end
 Disrupting Ray, which lasts to the battle's end, stays); its evaluator values it on the copy with
 the stack's mastery of it and its rounds left (255 to the end) as power and rounds, no resistance.
 Harmful on the context's side (or helpful on the other): the second context's value is added;
-else this context's is subtracted.
+else this context's is subtracted. The copy is a lone record (0x437A00), the battle untouched:
+the evaluators that walk the battle's records compare them with the stack by pointer and never
+find it (Disrupting Ray 0x438E11, Slow 0x439379, Berserk's candidates 0x4455C9, Hypnotize
+0x43A500), and what they read through the battle still holds the spell (found by T4c's blind
+check: slip 24, E23 T4d, BAT-Q60; the port values on a clone, BAT-STUB-12).
 
 **The pathfinder after the context** (slip 22). The threat records run for side 0 then side 1
 (0x436AA9 to 0x436AC3), each over its records in order, with the global pathfinder (§7.52): the
@@ -5183,4 +5187,4 @@ last search or the walker's own, the port the walker's own.
 it); the threat records and the tables computed when first read (ADR-0027 point 11: they read
 nothing a value changes); a removal's copy is a clone of the battle with the spell ended
 (`h3_battle::computer::end_spell`). **Slips:** 9 to 17 built (BAT-AI-016), 8 widened to the
-Genie's spells, 22 and 23 new. **Draws:** none new (the scan's, the predictions').
+Genie's spells, 22 and 23 new, 24 found (T4d). **Draws:** none new (the scan's, the predictions').

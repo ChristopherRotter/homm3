@@ -221,6 +221,10 @@ found after that decision) belong to the neutral side's map too and are read (§
     0x43BF20 (slip 23) and the second context, the removals 0x439A80 (BAT-AI-016; slips 9 to 17,
     8 widened; BAT-STUB-4 retired); the fallbacks after a built context on its last search (slip
     22, BAT-STUB-11); §7.53; the inboxes have the function; the log.
+  - [ ] **T4d A removal's copy** (the user, 2026-10-22, BAT-Q60) — slip 24 under BAT-QUIRK-25:
+    the removal's lone copy of the stack's record (0x437A00), which the evaluators walking the
+    battle's records never find (Disrupting Ray, Slow, Berserk's candidates, Hypnotize, and what
+    they read through the battle); each evaluator a removal reaches re-read; BAT-STUB-12 retired.
 - [ ] **T5 The hero's spells** (T1a6's reading first).
 - [ ] **T6 The hero's other choices** — retreat and surrender, the tactics phase, the Catapult's
   aim, the First Aid Tent's patient (BAT-Q51); BAT-Q33's rule.

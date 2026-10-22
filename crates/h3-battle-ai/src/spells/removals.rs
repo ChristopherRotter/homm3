@@ -43,6 +43,9 @@ impl View<'_> {
         }
         // One effect a spell: the spells are the unique key.
         let _ = order::sort_by_unique_key(&mut lasting, |(e, _)| e.spell.index());
+        // stub: BAT-STUB-12
+        // The original's copy is a lone record the battle's records never match (slip 24, T4d):
+        // here the clone's stack is the stack itself.
         let mut copy = self.state.clone();
         let own = self.stack(s).side == self.side;
         let mut v = 0i32;
