@@ -1,0 +1,77 @@
+# E08 batch E5c — results
+
+Map file: `E08-batch-5c.h3m`. Fill in the blanks below and keep this file; an agent records the results (`docs/experiments/README.md`).
+
+**Stamp `3c1dc0a9`.** The map's description in the scenario list starts with "Stamp 3c1dc0a9.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
+
+**Difficulty: Easy.** Choose it in the scenario list before you start.
+
+1. Copy `E08-batch-5c.h3m` into `D:\Heroes3\HoMM 3 Complete\Maps`.
+2. Use the HD launcher with plain HD (HD+ off).
+3. Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human, difficulty **Easy**. Before you start it, compare the stamp at the start of the map's description with the stamp above. Save right away (save 1).
+4. Every hero's seed byte (hero +0x8F) and the levels Wisdom (+0x90) and a magic school (+0x3F) were last offered show only in the game's memory, the movement points too: the capture harness reads them (clients/capture/batches/E08-batch-5c.toml). Played by hand, leave the seed byte and the two levels empty and read the points from the hero's movement bar.
+5. No hero moves. Order: day 1, Red's turn: read E5-2a and E5-2b; end the turn. Blue's turn: read E5-2c; end the turn. Day 2, Red's turn: read E5-2a's and E5-2b's points again; end the turn. Blue's turn: read E5-2c's points again. Then the map is done: two days, no battle.
+6. Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.
+
+## E5-2a — Gunnar, Basic Logistics, level 2 at load (1 000 experience), 10 Dwarves (D-22, HER-ADV-003, ADV-MOV-001, D-20, GAM-SET-002)
+
+- Red hero **E5-2a** (Gunnar, specialty skill Logistics, 1000 experience): attack 1, defense 1, power 1, knowledge 1; Basic Logistics; no artifacts; no spells; army 10 Dwarf
+
+1. Day 1, Red's turn, before anything moves: read E5-2a's seed byte and the two levels last offered (the harness), its experience, level, primary and secondary skills (its portrait's window) and its movement points. It never moves.
+2. Day 2, Red's turn start: read its movement points again.
+3. Note any worn artifact (a starting bonus) under "anything odd".
+
+**Record**
+
+- seed byte (hero +0x8F): 
+- Wisdom last offered (hero +0x90): 
+- a school last offered (hero +0x3F): 
+- experience at the start: 
+- level at the start: 
+- primary skills at the start (attack/defense/power/knowledge): 
+- secondary skills at the start (in the hero's order, each with its level): 
+- day 1 points: 
+- day 2 points: 
+- anything odd: 
+
+## E5-2b — Kyrre, Basic Logistics and seven other skills, level 6 at load (6 200 experience), 10 Dwarves (D-22, HER-ADV-003, ADV-MOV-001, D-20, GAM-SET-002)
+
+- Red hero **E5-2b** (Kyrre, specialty skill Logistics, 6200 experience): attack 1, defense 1, power 1, knowledge 1; Basic Logistics, Basic Archery, Basic Armorer, Basic Offense, Basic Leadership, Basic Luck, Basic Resistance, Basic First Aid; no artifacts; no spells; army 10 Dwarf
+
+1. Day 1, Red's turn, before anything moves: read E5-2b as E5-2a. It never moves.
+2. Day 2, Red's turn start: read its movement points again.
+3. Note any worn artifact (a starting bonus) under "anything odd".
+
+**Record**
+
+- seed byte (hero +0x8F): 
+- Wisdom last offered (hero +0x90): 
+- a school last offered (hero +0x3F): 
+- experience at the start: 
+- level at the start: 
+- primary skills at the start (attack/defense/power/knowledge): 
+- secondary skills at the start (in the hero's order, each with its level): 
+- day 1 points: 
+- day 2 points: 
+- anything odd: 
+
+## E5-2c — Dessa, Basic Logistics, level 12 at load (20 600 experience), 10 Dwarves: the growth at a high level (D-22, HER-ADV-003, ADV-MOV-001, D-20, GAM-SET-002)
+
+- Blue hero **E5-2c** (Dessa, specialty skill Logistics, 20600 experience): attack 1, defense 1, power 1, knowledge 1; Basic Logistics; no artifacts; no spells; army 10 Dwarf
+
+1. Day 1, Blue's turn, before anything moves: read E5-2c as E5-2a. It never moves.
+2. Day 2, Blue's turn start: read its movement points again.
+3. Note any worn artifact (a starting bonus) under "anything odd".
+
+**Record**
+
+- seed byte (hero +0x8F): 
+- Wisdom last offered (hero +0x90): 
+- a school last offered (hero +0x3F): 
+- experience at the start: 
+- level at the start: 
+- primary skills at the start (attack/defense/power/knowledge): 
+- secondary skills at the start (in the hero's order, each with its level): 
+- day 1 points: 
+- day 2 points: 
+- anything odd: 

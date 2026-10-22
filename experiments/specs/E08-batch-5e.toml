@@ -1,0 +1,248 @@
+# Experiment batch E5e (E08 T36b; decisions 78, 80, 81): rows E5-3 and E5-10 of increment 5's
+# plan (survey docs/rules/surveys/E08-hero-movement.md §9; docs/epics/E08-design.md §11), a gain
+# in the day: the day's points (§1.4) and the scouting radius (D-26, ADV-FOG-003), in SoD on Easy,
+# hot seat. Batches E5a and E5b hold the rows with fixed predictions, E5c and E5d row E5-2. Build:
+# docs/experiments/README.md. Predictions are for the agent who evaluates the results; the template
+# never shows them.
+#
+# | row   | settles                                 | the reading (faithful)              | the other source(s)            |
+# | E5-3  | §1.4: a gain in the day (a check)       | today's points stay; day 2 with it  | consensus (VCMI, the wiki)     |
+# | E5-10 | D-26: a radius grown in the day         | shown at the hero's next step only  | VCMI: a skill's at once; strict-fixed also at the new day |
+#
+# **The forced level-up** (decision 81): the map bans every secondary skill but Logistics and
+# Scouting, and the heroes who gain a level know none, so their one level-up at 1 000 experience
+# offers exactly those two (HER-LVL-003: no known skill to advance; Wisdom and the schools are
+# banned; the other skills, banned and unknown, weigh 0; every class weighs both above 0): the
+# seed byte S decides only which stands left. With S the scorer prints the dialog:
+#
+#   cargo run -p h3-map --example e4_score -- experiments/out/E08-batch-5e.h3m experiments/results/E08-batch-5e.md
+#
+# A level-up that offers another skill or one skill alone: the map's ban is not as the reading
+# (`hero_secondary_offer` 0x4DAD00, the banned skills at game +0x4E658) and the wiki say.
+#
+# Every hero's army is 10 Pikemen (speed 4: the land table's 1560), no hero has a skill, and the
+# gains come from a level-up after a battle with one Pikeman (999 + 10 experience) or from the
+# backpack (the hero screen), in place of the survey's pile (the spec places no artifact on the
+# map; `hero_equip_artifact` 0x4E2A00 is on §1.4's list as `hero_give_artifact` 0x4E3070 is). Red
+# plays E5-3, Blue E5-10, so that each player's explored tiles come from its own two heroes; the
+# E5-10 heroes stand 16 columns apart and their probe tiles lie on their row, outside every disk
+# but the one each probe is for (dx² + dy² ≤ r² + r, ADV-FOG-002: 30 for radius 5, 42 for 6).
+#
+# The trap of the starting bonus: a hot-seat player's random starting bonus may give a hero an
+# artifact; Boots of Speed, Equestrian's Gloves, the Speculum or the Spyglass on a hero would change
+# its points or radius. Note a worn artifact the spec does not give under "anything odd".
+
+[map]
+name = "E08 batch E5e"
+description = "Engine-generated experiment map (E08, batch E5e): a level-up's Logistics and Scouting, Boots of Speed and the Spyglass put on in the day. Hot seat, Red and Blue human, difficulty Easy; follow the results template."
+size = 36
+terrain = "grass"
+difficulty = "easy"
+banned_skills = [
+    "Pathfinding", "Archery", "Diplomacy", "Navigation", "Leadership", "Wisdom", "Mysticism",
+    "Luck", "Ballistics", "Eagle Eye", "Necromancy", "Estates", "Fire Magic", "Air Magic",
+    "Water Magic", "Earth Magic", "Scholar", "Tactics", "Artillery", "Learning", "Offense",
+    "Armorer", "Intelligence", "Sorcery", "Resistance", "First Aid",
+]
+instructions = [
+    "Copy `E08-batch-5e.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human, difficulty **Easy**. Before you start it, compare the stamp at the start of the map's description with the stamp above. Save right away (save 1).",
+    "The heroes' seed bytes (hero +0x8F), the levels Wisdom (+0x90) and a magic school (+0x3F) were last offered, the movement points and whether a tile is explored for a player (its vision word) show in the game's memory: the capture harness reads them (clients/capture/batches/E08-batch-5e.toml). Played by hand, leave the seed bytes and the two levels empty, read the points from the hero's movement bar and a tile's state from the map (black: unexplored).",
+    "The map bans every secondary skill but Logistics and Scouting (the scenario's information does not show it), so each level-up should offer those two; another skill, or one alone, goes under the encounter's \"anything odd\".",
+    "Each battle by auto combat. The level-up dialog: note the new level, the primary skill it raises, the skill offered left and right and the one taken; take the skill the encounter names, on whichever side it stands.",
+    "Order: day 1, Red's turn: E5-3a, then E5-3b, each to its step of day 1; end the turn. Blue's turn: E5-10a, then E5-10b, each to its step of day 1; end the turn. Day 2, Red's turn: E5-3a's and E5-3b's points at the turn start; end the turn. Blue's turn: E5-10a's and E5-10b's steps of day 2. Then the map is done.",
+    "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
+]
+
+# --- §1.4: a gain in the day (Red) ---------------------------------------------------------------
+
+[[encounter]]
+id = "E5-3a"
+title = "A level-up's Logistics in the day: the points left, then day 2"
+questions = ["ADV-MOV-002", "ADV-MOV-001", "HER-ADV-003", "HER-LVL-003"]
+procedure = [
+    "Day 1, Red's turn, before anything moves: read E5-3a's seed byte and the two levels last offered (the harness) and its movement points.",
+    "Click the Pikeman east of E5-3a twice; the battle by auto combat. The level-up dialog: note it and take **Logistics**. Read the hero's experience and its movement points.",
+    "Walk one step east onto (7, 26), where the Pikeman stood (two clicks on it). Read its movement points.",
+    "Day 2, Red's turn start: read its movement points.",
+]
+record = [
+    { field = "seed byte (hero +0x8F)" },
+    { field = "Wisdom last offered (hero +0x90)" },
+    { field = "a school last offered (hero +0x3F)" },
+    { field = "points at the start" },
+    { field = "dialog 1, level" },
+    { field = "dialog 1, primary skill raised" },
+    { field = "dialog 1, left offer (or the only one)" },
+    { field = "dialog 1, right offer" },
+    { field = "dialog 1, taken" },
+    { field = "experience after the battle" },
+    { field = "points after the battle" },
+    { field = "points after the step" },
+    { field = "day 2 points" },
+    { field = "anything odd" },
+]
+predictions = """
+- **1560** at the start (10 Pikemen, no skill). The battle gives the Pikeman's 10 hit points
+  (GAM-BAT-002): **1 009 experience, level 2: one dialog**, offering **Logistics and Scouting**
+  (the order from S: the scorer).
+- **Every source** (§1.4: the reading's 57 writers of the points left, `hero_level_up` 0x4DA720
+  and `hero_learn_secondary_skill` 0x4E22D0 calling neither the day's points nor a reveal; VCMI
+  sets the points only at the new day; the wiki "only at the beginning of each day"): the points
+  left do not grow in the day. The attack is a visit from the neighbouring tile at the step's
+  price, the hero staying on its tile (ADV-OBJ-003; grass, 100): **1460 after the battle**, as
+  E5-10a's after its battle without Logistics (the control); **1360 after the step**.
+- **Day 2: 1716** (1560 × 1.1, no specialty: ⌊1560 × 11 / 10⌋).
+- After the battle above 1460 (1616, or 1460 grown in proportion): the gain shows in the day,
+  against every source. 1560 at day 2: Logistics was not taken (the dialog says which).
+"""
+[encounter.hero]
+type = "Orrin"
+specialty = "skill Archery"
+at = [6, 26]
+experience = 999
+primary = [1, 1, 1, 1]
+skills = []
+army = [["Pikeman", 10]]
+[encounter.opponent]
+monster = "Pikeman"
+count = 1
+
+[[encounter]]
+id = "E5-3b"
+title = "Boots of Speed put on in the day: the points left, then day 2"
+questions = ["ADV-MOV-002", "ADV-MOV-001", "HER-ADV-003"]
+procedure = [
+    "Day 1, Red's turn, after E5-3a: read E5-3b's movement points (Boots of Speed are in its backpack, nothing on its feet).",
+    "Open its hero screen, put the Boots of Speed from the backpack on its feet and close the screen. Read its movement points (and the movement bar's length, if it changed).",
+    "Walk one step east onto (17, 26) (two clicks on it). Read its movement points.",
+    "Day 2, Red's turn start: read its movement points.",
+]
+record = [
+    { field = "points at the start" },
+    { field = "points with the boots on" },
+    { field = "points after the step" },
+    { field = "day 2 points" },
+    { field = "anything odd" },
+]
+predictions = """
+- **1560** at the start. **Every source** (§1.4: `hero_equip_artifact` 0x4E2A00 calls neither the
+  day's points nor a reveal; the hero screen's close writes only the day's maximum, +0x49, so the
+  bar may grow, the points left stay; VCMI: equipping does not touch the points; the wiki: the
+  artifacts count "at the beginning of a day"): **1560 with the boots on**, **1460 after the
+  step**.
+- **Day 2: 2160** (1560 + 600, `movement_bonus_boots` 0x698B00).
+- 2160 or 2060 on day 1: the gain shows in the day, against every source. 1560 at day 2: the boots
+  are not worn (the hero screen).
+"""
+[encounter.hero]
+type = "Sylvia"
+specialty = "skill Navigation"
+at = [16, 26]
+primary = [1, 1, 1, 1]
+skills = []
+army = [["Pikeman", 10]]
+backpack = ["Boots of Speed"]
+
+# --- D-26: a radius grown in the day (Blue) ------------------------------------------------------
+
+[[encounter]]
+id = "E5-10a"
+title = "A level-up's Scouting in the day: the tiles at distance 6, at day 2 and after a step"
+questions = ["D-26", "ADV-FOG-003", "ADV-FOG-001", "HER-ADV-006", "HER-LVL-003"]
+procedure = [
+    "Day 1, Blue's turn, before anything moves: read E5-10a's seed byte and the two levels last offered (the harness) and its movement points. It stands on (8, 10). Read whether Blue has explored the probe tiles W (2, 10), E (15, 10) and C (16, 10).",
+    "Click the Pikeman east of E5-10a twice; the battle by auto combat. The level-up dialog: note it and take **Scouting**. Read the hero's movement points and the three probes again. No step today.",
+    "Day 2, Blue's turn start: read the three probes.",
+    "Walk one step east onto (9, 10), where the Pikeman stood (two clicks on it). Read the three probes.",
+]
+record = [
+    { field = "seed byte (hero +0x8F)" },
+    { field = "Wisdom last offered (hero +0x90)" },
+    { field = "a school last offered (hero +0x3F)" },
+    { field = "points at the start" },
+    { table = ["probe", "at the start", "after the battle", "day 2 start", "after the step"], labels = [
+        "W (2, 10)",
+        "E (15, 10)",
+        "C (16, 10)",
+    ] },
+    { field = "dialog 1, level" },
+    { field = "dialog 1, primary skill raised" },
+    { field = "dialog 1, left offer (or the only one)" },
+    { field = "dialog 1, right offer" },
+    { field = "dialog 1, taken" },
+    { field = "points after the battle" },
+    { field = "anything odd" },
+]
+predictions = """
+- The hero's radius is 5 (`skill_scouting` 0x63E9D8 at no Scouting), 6 with Basic Scouting. A tile
+  is revealed within dx² + dy² ≤ r² + r of a reveal's centre (ADV-FOG-002): 30 for 5, 42 for 6.
+  The level-up as E5-3a's (Logistics and Scouting, the order from S); **1460 after the battle**
+  (E5-3a's control: no Logistics here).
+- **At the start**: W, E, C unexplored (W is 6 west of the hero, E and C 7 and 8 east).
+- **The reading** (§4.2, D-26 as decided, faithful; `hero_learn_secondary_skill` 0x4E22D0 reveals
+  nothing; `new_day` reveals around the heroes only after a Cover of Darkness's hide,
+  0x4C8101): **after the battle W, E, C unexplored; at day 2's start unchanged; after the step**
+  (a reveal of radius 6 around (9, 10), the step's destination) **E explored**, W (7 from it) and
+  C (7) unexplored.
+- **VCMI 1.7.5** (`CGameHandler::changeSecSkill` reveals the new radius at once): W explored
+  after the battle (around (8, 10)).
+- **The engine's strict-fixed** (decision 77, not a source): W explored at day 2's start (a reveal
+  around every hero at the new day).
+- E unexplored after the step: the radius did not grow with Basic Scouting (HER-ADV-006
+  reopened). C explored: a probe is not where the reading puts the disk's edge.
+"""
+[encounter.hero]
+type = "Edric"
+specialty = "creature Griffin"
+owner = "blue"
+at = [8, 10]
+experience = 999
+primary = [1, 1, 1, 1]
+skills = []
+army = [["Pikeman", 10]]
+[encounter.opponent]
+monster = "Pikeman"
+count = 1
+
+[[encounter]]
+id = "E5-10b"
+title = "The Spyglass put on in the day: the tiles at distance 6, at day 2 and after a step"
+questions = ["D-26", "ADV-FOG-003", "ADV-FOG-001", "HER-ADV-006"]
+procedure = [
+    "Day 1, Blue's turn, after E5-10a: E5-10b stands on (24, 10), the Spyglass in its backpack. Read whether Blue has explored the probe tiles W (18, 10), E (31, 10) and C (32, 10).",
+    "Open its hero screen, put the Spyglass from the backpack into a free misc slot and close the screen. Read the three probes again. No step today.",
+    "Day 2, Blue's turn start: read the three probes.",
+    "Walk one step east onto (25, 10) (two clicks on it). Read the three probes.",
+]
+record = [
+    { table = ["probe", "at the start", "with the Spyglass on", "day 2 start", "after the step"], labels = [
+        "W (18, 10)",
+        "E (31, 10)",
+        "C (32, 10)",
+    ] },
+    { field = "anything odd" },
+]
+predictions = """
+- The radius is 5, 6 with the Spyglass worn (`hero_scouting_radius` 0x4E4070: +1 for the
+  Speculum and the Spyglass each, worn or in a worn combination; VCMI and the wiki agree, §4.1).
+- **At the start**: W, E, C unexplored.
+- **The reading** (§4.2; `hero_equip_artifact` 0x4E2A00 reveals nothing; no new-day reveal):
+  **with the Spyglass on W, E, C unexplored; at day 2's start unchanged; after the step E
+  explored** (radius 6 around (25, 10)), W and C unexplored.
+- **VCMI 1.7.5**: an artifact's move reveals nothing (no caller of `getSightRadius` there, §4.2):
+  as the reading in the day.
+- **The engine's strict-fixed** (decision 77): W explored at day 2's start.
+- E unexplored after the step: the Spyglass from the backpack is not counted as worn (the hero
+  screen), or the radius did not grow.
+"""
+[encounter.hero]
+type = "Christian"
+specialty = "creature Ballista"
+owner = "blue"
+at = [24, 10]
+primary = [1, 1, 1, 1]
+skills = []
+army = [["Pikeman", 10]]
+backpack = ["Spyglass"]
