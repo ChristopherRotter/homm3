@@ -4,7 +4,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E23, the original's battle AI, in progress** (`docs/epics/E23-original-battle-ai.md`; refined 2026-10-19, BAT-Q52): the neutral side first, a crate of its own, the code reading first, batch rows only for readings at risk. **T1 done** (#288 to #331): §7.34 to §7.46, `pathfinder.rs` (BAT-QUIRK-24), the survey `E23-battle-ai.md`, **ADR-0027** (BAT-Q55). **T2 done** (#334 to #347): `h3_battle_ai::choose`, the shooters, BAT-QUIRK-25, the benchmark `computer-decisions`. **The budget** (the user, 2026-10-21): the gated count +2 %, re-set on purpose per part; ≤ 1 ms for the slowest decision on a quiet sandbox, recorded per task. **T3 done** (#350 to #359): the walker, BAT-AI-005 to 011, slips 2 to 4, 18 to 21; slip 6 a gap (BAT-STUB-7, BAT-Q56). **T4 done**: T4a (#364, #365), T4b1 (#369), T4b2 (#374: the predictions, BAT-AI-015, §7.52; BAT-STUB-10, BAT-Q58), T4c (#379: the Master Genie, BAT-AI-016, §7.53, slips 9 to 17, 22, 23; BAT-STUB-11), T4d (PR open: a removal's lone copy, slip 24, §7.54; `POLICY_VERSION` 10): a side without a hero is complete. Next **T1a6**, then T5.
+- **E23, the original's battle AI, in progress** (`docs/epics/E23-original-battle-ai.md`; refined 2026-10-19, BAT-Q52): the neutral side first, a crate of its own, the code reading first, batch rows only for readings at risk. **T1 done** (#288 to #331): §7.34 to §7.46, `pathfinder.rs` (BAT-QUIRK-24), the survey `E23-battle-ai.md`, **ADR-0027** (BAT-Q55). **T2 done** (#334 to #347): `h3_battle_ai::choose`, the shooters, BAT-QUIRK-25, the benchmark `computer-decisions`. **The budget** (the user, 2026-10-21): the gated count +2 %, re-set on purpose per part; ≤ 1 ms for the slowest decision on a quiet sandbox, recorded per task. **T3 done** (#350 to #359): the walker, BAT-AI-005 to 011, slips 2 to 4, 18 to 21; slip 6 a gap (BAT-STUB-7, BAT-Q56). **T4 done**: T4a (#364, #365), T4b1 (#369), T4b2 (#374: the predictions, BAT-AI-015, §7.52; BAT-STUB-10, BAT-Q58), T4c (#379: the Master Genie, BAT-AI-016, §7.53, slips 9 to 17, 22, 23; BAT-STUB-11), T4d (#382: a removal's lone copy, slip 24, §7.54; `POLICY_VERSION` 10): a side without a hero is complete. Next **T1a6**, then T5.
 - E05, `h3-sim` and `h3-ffi` are the AI lane's (AI-Q1), `h3-heroes` the adventure lane's.
 - **Open:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35, BAT-Q51, BAT-Q56 to BAT-Q58 (none blocks; BAT-Q33 and BAT-Q51 settle with E23's T6), BAT-STUB-1, the inbox (by kind since 2026-10-19), Q43; S-23, S-24, batch 2g.
 - **Versions:** battle state hash v51, battle part hash v7 (E23 T3-0; the encodings, replay format and C ABI are the AI lane's); shared: core ruleset hash v47, pack format v46 (E08 T35b), protocol v34. Next ids: BAT-Q61, BAT-QUIRK-27, BAT-STUB-13, BAT-AI-017, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-24, S-30.
@@ -54,7 +54,7 @@ Area traps live where they are used: experiments in `docs/experiments/README.md`
 
 ### 2026-10-22 (ninety-ninth) — E23 T4d, a removal's copy
 
-The user: T4d whole. §7.54: the copy fits its own hexes (side and index), pointer tests miss it. Built slip 24, fixed two port errors (the copy's turns, Hypnotize's shooter marks). Verify in the PR.
+The user: T4d whole. §7.54: the copy fits its own hexes (side and index), pointer tests miss it. Built slip 24, fixed two port errors (the copy's turns, Hypnotize's shooter marks). Verify in #382.
 
 ### 2026-10-22 (ninety-eighth) — E23 T4c, the Master Genie
 
