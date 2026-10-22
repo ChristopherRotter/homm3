@@ -11,9 +11,10 @@ use h3_content_battle::Ability;
 use h3_formats::lod::LodArchive;
 use h3_protocol::wire::{Event, ServerMessage, Side};
 use h3_view::anim::{
-    ACID, ACID_BREATH, BAD_MORALE, BOLT, Caster, Casts, DEATH_STARE, DEATH_STARE_SPELL, FEAR,
-    GOOD_LUCK, GOOD_MORALE, HEAL, LIFE_DRAIN, LIGHTNING_BOLT, Look, MagicLook, Missile, ObjectLook,
-    RESISTED, Shell, SpellLook, Stage, THUNDERBOLT, TITAN_BOLT,
+    ACID, ACID_BREATH, BAD_MORALE, BOLT, CHAIN_LIGHTNING, CHAIN_START, Caster, Casts, DEATH_STARE,
+    DEATH_STARE_SPELL, Explosion, FEAR, FIRE_SHIELD, GOOD_LUCK, GOOD_MORALE, HEAL, LIFE_DRAIN,
+    LIGHTNING_BOLT, Look, MagicLook, Missile, ObjectLook, RAISE, RESISTED, RESURRECTION,
+    SACRIFICED, SHIELD_RETURN, Shell, SpellLook, Stage, THUNDERBOLT, TITAN_BOLT,
 };
 use h3_view::batch::Batch;
 use h3_view::hero::{HeroLook, Heroes};
@@ -68,6 +69,15 @@ pub fn looks(
             Some(def) => Some(missile(def, &entry.missile_angles, archives)?),
             None => None,
         };
+        // The explosion its projectile ends in (E17 M3 T7c-3): its spell's handle, animation.
+        let explosion = entry.explosion.and_then(|e| {
+            let (spell, s) = spell_numbered(record, tables, e.spell)?;
+            Some(Explosion {
+                spell,
+                animation: s.animation?,
+                time: e.time,
+            })
+        });
         looks.insert(
             stack.creature,
             Look {
@@ -79,6 +89,7 @@ pub fn looks(
                 front,
                 missile,
                 ray: entry.ray.clone(),
+                explosion,
             },
         );
     }
@@ -189,6 +200,15 @@ pub fn magic(
             numbers.insert(o.vanish);
         }
     }
+    // The explosions the shooters' projectiles end in (E17 M3 T7c-3).
+    let keys = &record.header.manifest.keys.creatures;
+    for stack in record.first_snapshot().into_iter().flat_map(|s| &s.stacks) {
+        let explosion = keys
+            .get(usize::from(stack.creature))
+            .and_then(|key| tables.creatures.get(key)?.explosion);
+        let spell = explosion.and_then(|e| spell_numbered(record, tables, e.spell));
+        numbers.extend(spell.and_then(|(_, s)| s.animation));
+    }
     for event in events(record) {
         match event {
             Event::Healed { .. } => {
@@ -216,6 +236,10 @@ pub fn magic(
                 if let Some(a) = entry.and_then(|e| e.animation) {
                     numbers.insert(a);
                 }
+                // Chain Lightning's opening first (E17 M3 T7c-3).
+                if entry.is_some_and(|e| e.original == CHAIN_LIGHTNING) {
+                    numbers.insert(CHAIN_START);
+                }
                 // The bolt from the sky first (E17 M3 T7b-2b-3), the Thunderbird's own after it.
                 if entry.is_some_and(|e| matches!(e.original, LIGHTNING_BOLT | TITAN_BOLT)) {
                     numbers.insert(BOLT);
@@ -227,6 +251,16 @@ pub fn magic(
             // The striker's effects (E17 M3 T7b-2b-3).
             Event::LifeDrained { .. } => {
                 numbers.insert(LIFE_DRAIN);
+            }
+            // The raises, Fire Shield's return, Sacrifice's victim (E17 M3 T7c-3).
+            Event::SpellRaised { .. } | Event::Reborn { .. } => {
+                numbers.insert(RAISE);
+            }
+            Event::Reflected { .. } => {
+                numbers.insert(SHIELD_RETURN);
+            }
+            Event::Sacrificed { .. } => {
+                numbers.insert(SACRIFICED);
             }
             Event::DeathStared { .. } => {
                 numbers.insert(DEATH_STARE);
@@ -282,6 +316,7 @@ pub fn casts(
         .ok_or("the record holds no snapshot")?;
     let mut cast = false;
     let mut frightened = false;
+    let mut reflected = false;
     let mut spells: Vec<u16> = snapshot
         .stacks
         .iter()
@@ -312,6 +347,15 @@ pub fn casts(
                 spells.push(spell);
             }
             Event::Frightened { .. } => frightened = true,
+            // Fire Shield's return names it and plays its sound; an Archangel's raise and a
+            // Phoenix's rebirth play Resurrection's (E17 M3 T7c-3).
+            Event::Reflected { .. } => {
+                reflected = true;
+                spells.extend(numbered(FIRE_SHIELD));
+            }
+            Event::CreatureRaise { .. } | Event::Reborn { .. } => {
+                spells.extend(numbered(RESURRECTION));
+            }
             Event::DeathStared { .. } => spells.extend(numbered(DEATH_STARE_SPELL)),
             Event::StrikeDamage { .. } => spells.extend(numbered(ACID_BREATH)),
             _ => {}
@@ -320,7 +364,7 @@ pub fn casts(
     spells.sort_unstable();
     spells.dedup();
     let manifest = &record.header.manifest;
-    let ruleset = if cast || frightened {
+    let ruleset = if cast || frightened || reflected {
         Some(crate::scenario::ruleset(packs, manifest)?)
     } else {
         None
@@ -334,6 +378,20 @@ pub fn casts(
                 r.abilities(CreatureTypeId::from_raw(c))
                     .iter()
                     .any(|a| matches!(a, Ability::Fear { .. }))
+            })
+            .collect();
+    }
+    // The creatures with a Fire Shield of their own (E17 M3 T7c-3: the ruleset's innate spell).
+    if let Some(r) = ruleset.as_ref().filter(|_| reflected) {
+        let shield = numbered(FIRE_SHIELD);
+        casts.shielded = snapshot
+            .stacks
+            .iter()
+            .map(|s| s.creature)
+            .filter(|&c| {
+                r.abilities(CreatureTypeId::from_raw(c)).iter().any(|a| {
+                    matches!(a, Ability::InnateSpell { spell, .. } if Some(spell.raw()) == shield)
+                })
             })
             .collect();
     }
@@ -453,6 +511,19 @@ fn spell_entry<'t>(
         .spells
         .get(usize::from(handle))?;
     tables.spells.get(key)
+}
+
+/// The record's spell numbered `original` in the executable: its handle and its entry.
+fn spell_numbered<'t>(
+    record: &Record,
+    tables: &'t Tables,
+    original: u16,
+) -> Option<(u16, &'t h3_view::tables::Spell)> {
+    let count = u16::try_from(record.header.manifest.keys.spells.len()).unwrap_or(u16::MAX);
+    (0..count).find_map(|h| {
+        let entry = spell_entry(record, tables, h)?;
+        (entry.original == original).then_some((h, entry))
+    })
 }
 
 /// A DEF's canvas (width, height) and the frames of its group 0.

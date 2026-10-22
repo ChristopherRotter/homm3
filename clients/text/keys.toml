@@ -198,6 +198,18 @@ id = "battle.log.thunderbolt"
 args = { creature = "text" }
 original = [{ at = "GENRLTXT:368", printf = ["creature"] }]
 
+# Creatures raised in a stack (`raise_stack` 0x5A772F, E17 M3 T7c-3: Resurrection, Animate Dead,
+# Sacrifice, an Archangel, a Phoenix): `count` the creatures raised, which picks the creature's
+# name and the verb.
+[[key]]
+id = "battle.log.raised"
+args = { creature = "text" }
+plural = true
+original = [
+    { form = "one", at = "GENRLTXT:118", printf = ["count", "creature"] },
+    { form = "other", at = "GENRLTXT:117", printf = ["count", "creature"] },
+]
+
 # Poison taking hold after a strike (`battle_log_cast` 0x5A8EFC, a creature's cast of Poison; E17 M3
 # T7b-2b-3): the stack's name, verb and pronoun by its number.
 [[key]]

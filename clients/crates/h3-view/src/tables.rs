@@ -300,9 +300,24 @@ pub struct Creature {
     /// draws its shot as a ray, not its projectile.
     #[serde(default)]
     pub ray: Option<Vec<[u8; 3]>>,
+    /// The explosion its projectile ends in (E17 M3 T7c-3): the spell whose animation and sound
+    /// it plays and each frame's time (`stack_shot` 0x43FA15: the Magogs Fireball's at 50 ms,
+    /// 0x43FE07: the Liches Death Cloud's at 100 ms).
+    #[serde(default)]
+    pub explosion: Option<CreatureExplosion>,
     /// Its sounds' entries in the sound archives (E17 M2 T5b).
     #[serde(default)]
     pub sounds: Sounds,
+}
+
+/// The explosion a shooter's projectile ends in ([`Creature::explosion`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CreatureExplosion {
+    /// The spell (the executable's number).
+    pub spell: u16,
+    /// Each frame's time in ms (times the speed factor).
+    pub time: u32,
 }
 
 /// A creature's sounds: each an entry of the sound archives, none where the creature has no such

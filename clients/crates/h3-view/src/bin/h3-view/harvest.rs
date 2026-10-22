@@ -67,6 +67,11 @@ const SHOOTER: u32 = 0x4;
 const RAY: u32 = 0x800;
 const RAY_COLOURS: [(u32, &[usize]); 2] = [(0x68_833C, &[35]), (0x68_834C, &[74, 75, 120, 121])];
 const RAY_ENTRIES: usize = 5;
+/// The explosions the shooters' projectiles end in (`stack_shot`: the creature tests at 0x43FA0C
+/// and 0x43FCFF, each frame a redraw of the time pushed at 0x43FAFC and 0x43FEE8; E17 M3 T7c-3):
+/// the Magogs Fireball's (spell 21, 0x43FA1B), the Liches and the Power Liches Death Cloud's
+/// (spell 76, 0x43FE0D), by creature: the spell and the time.
+const EXPLOSIONS: [(usize, u16, u32); 3] = [(45, 21, 50), (64, 76, 100), (65, 76, 100)];
 /// A war machine's flag (`installation.md` §5).
 const WAR_MACHINE: u32 = 0x40;
 /// The Ballista, whose strike sounds its shot (0x43DA9D).
@@ -847,6 +852,9 @@ fn write_table(
                 .map(|c| format!("[{}]", numbers(c)))
                 .collect();
             let _ = writeln!(t, "ray = [{}]", colours.join(", "));
+        }
+        if let Some(&(_, spell, time)) = EXPLOSIONS.iter().find(|e| e.0 == original) {
+            let _ = writeln!(t, "explosion = {{ spell = {spell}, time = {time} }}");
         }
         if let Some(sounds) = h.sounds.get(original) {
             let _ = writeln!(t, "sounds = {{ {sounds} }}");

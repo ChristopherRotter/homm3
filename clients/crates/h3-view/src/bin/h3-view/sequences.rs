@@ -383,6 +383,9 @@ fn sequences(options: &Options) -> Result<usize, String> {
             .map(|l| format!("{l}\n"))
             .collect();
         let recorded = anim::unfidgeted(&recorded, &entered);
+        // Nor the heroes' rolled reactions to a death (E17 M3 T7c-3).
+        let g = tables.battle.hero_groups;
+        let recorded = anim::unrolled(&recorded, g.standing, [g.defeat, g.victory]);
         let diff = anim::differences(&ours, &recorded);
         if diff.is_empty() {
             println!(
