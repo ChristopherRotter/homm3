@@ -1878,6 +1878,10 @@ resistance roll, if any (category 3, 0x5A0331); Curse's is named `Curse`, withou
     group's six iterations) as their defend group plays on to its eleventh frame, on the screen
     only with the end's whole redraw; in rounds 2 and 4, struck, it stands after its hit's seven
     frames, shown at once, outlined only at the tail.
+  - *The user's answer* (CLT-Q8, 2026-10-22): the group's unnegated angle, the missed caster's
+    stale frame and the highlight kept through the caster's frames are drawing bugs: fixed in
+    what the client draws, the original's reproduced only for the comparisons (T7d; built as the
+    original's until then). The other oddities of this section are CLT-Q9 to CLT-Q14.
   - *A creature's cast* (`creature_cast_action`, completed): its frames' redraws mark it dirty
     (`battle_redraw` with its second argument) and it stays outlined through them; `cast_spell`
     clears the outline (0x5A004C) and the mouse's highlight (0x5A0055) as it starts, a redraw at

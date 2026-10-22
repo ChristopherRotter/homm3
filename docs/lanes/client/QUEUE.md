@@ -36,6 +36,26 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
   original's or each difference listed (the rays' randomness as the user decides).
 - **Depends on:** T7c-2. **Status:** waiting. May split when refined.
 
+### E17 M3 T7d — A creature's cast: its drawing bugs fixed
+
+- **Scope:** CLT-Q8 (the user, 2026-10-22: dev-only for the captures, fixed otherwise): three
+  drawing bugs of a creature's cast, built as the original's at T7c-1, are fixed in what the
+  client draws and reproduced only for the comparisons with the original, by the development
+  switch of the 2026-10-15 decision (`h3_render::Bugs`; ADR-0020 point 9 amendment draft, point
+  3): (1) the casting group by the angle (`creature_cast`: the original's Δy unnegated, from the
+  caster's mid-height to the hex's anchor; fixed: VCMI's choice, the shot's sign between the
+  centres, exact points decided in the task); (2) a caster its spell missed shown on its last
+  casting frame until `strike_animation`'s end (`spell_reactions`' `unseen` key; fixed: shown
+  standing as memory has it); (3) the target's mouse highlight kept through a creature's frames
+  (`Logged::Unmark` at the cast's start; fixed: at the action's start, as a hero's). The switch
+  reaches `h3_view::anim`'s timeline, not only the renderer: `h3-view sequences` and the
+  harness's comparisons set it, the window, `render` and `play` do not. Whatever else of
+  CLT-Q9 to CLT-Q14 the user answers the same way joins it.
+- **Acceptance:** with the switch every recorded sequence as recorded and its frames as before;
+  without it, tests show the fixed group, the caster standing at once and the highlight cleared
+  at the click; the design notes name each fixed bug.
+- **Depends on:** T7c-1 (done). **Status:** ready (small).
+
 ### E17 M3 T9 — M3's closure
 
 - **Scope:** every sequence and situation captured afresh (the runbook, "Which captures a
@@ -43,7 +63,7 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
   user, a fresh reviewer agent over M3, the next milestone
   refined (sieges, live play, HD or the adventure map: the user's choice), M3 marked done.
 - **Acceptance:** M3's exit holds; the review list answered or carried on.
-- **Depends on:** T7c-3 (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a,
+- **Depends on:** T7c-3, T7d (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a,
   T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b, T8, T7b-1, T7b-2a,
   T7b-2b-1, T7b-2b-2a, T7b-2b-2b, T7b-2b-3, T7c-1 done).
   **Status:** waiting.

@@ -45,7 +45,7 @@ a line there while the work waits.
 - 2026-10-22 (E17 M3 T7c-1, done; design §7.16): the mass and area spells of the recorded casts
   are built. Left for later (read in part or not at all, not recorded): the Faerie Dragon's
   draw line ("readies %s", the executable's own text, 0x660AD0) needs the drawn spell, private to
-  its controller, where the sequences record a spectator's view (the review list); a melee
+  its controller, where the sequences record a spectator's view (CLT-Q15); a melee
   strike's or a shot's loop (`iterate`) to play the groups on after it as `strike_animation`
   does (0x4691A9; the same times so far); Expert Dispel and Cure over several stacks; Destroy
   Undead, Frost Ring and Meteor Shower (built as read); an at-hex frame over the panel; the

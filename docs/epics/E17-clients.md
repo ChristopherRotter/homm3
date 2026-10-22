@@ -62,7 +62,15 @@ viewer and playable clients. Everything with graphics, sound, input or a window 
   captures (the capture set, the frame check) draw it as the original does, so that they stay
   exact. A development switch (`h3_render::Bugs`), neither a player's option nor a quirk
   profile. Goes into the ADR-0020 point 9 amendment draft. The second (2026-10-20, M3 T6c-1):
-  the software cursor drawn at an even x (0x50CE04, design §9.9).
+  the software cursor drawn at an even x (0x50CE04, design §9.9). The third to fifth
+  (2026-10-22, M3 T7c-1, CLT-Q8: "dev-only for the captures, fixed otherwise"; built as the
+  original's until T7d): a creature caster's group by the angle's wrong sign, a caster its spell
+  missed kept on its casting frame until the whole redraw, the target's highlight kept through a
+  creature's frames.
+- **Every oddity of the original is an open question** (the user, 2026-10-22: so that nothing is
+  forgotten): a drawing quirk or bug a reading or a recording finds becomes a `CLT-Q<n>` in
+  `docs/OPEN-QUESTIONS.md` in the same task (copy it, fix it with the original's only for the
+  comparisons, or a player's option; a recommendation), and the review list names it.
 - **The natural obstacles' types first** (2026-10-13, CLT-Q3): the engine dropped them at
   generation; a `cross-lane` change carries them to the wire before T7 draws obstacles.
 
@@ -543,7 +551,8 @@ Accepted by the user (M1 2026-10-13, M2 2026-10-14); moved to the log,
 
 ## M3 review list
 
-(Filled by the tasks: choices queued for the milestone review under the autonomy contract.)
+(Filled by the tasks: choices queued for the milestone review under the autonomy contract.
+Oddities of the original are open questions since 2026-10-22, the items naming them.)
 
 - T7c-1: T7c split with the user (T7c-1 the area and mass spells; T7c-2 the spell obstacles and
   Armageddon; T7c-3 raises, the creatures' own animations and Chain Lightning). **Records**
@@ -551,10 +560,11 @@ Accepted by the user (M1 2026-10-13, M2 2026-10-14); moved to the log,
   cast)", written when its controller is human here) needs the drawn spell, which the engine
   shows only to the dragon's controller; the recorded sequences are a spectator's, so it is not
   written and `dragon`'s frames list the log's item: record hot-seat sequences from both seats'
-  views (the viewer as "human here" for both), or keep the spectator's and list it? **Drawing
-  quirks** (`faithful` copies them, as built): a mass animation's last frame never shown, the one
-  before it twice; a caster that did not react stands in memory but the original's partial
-  redraws show its old frame until the end's whole redraw (built so). *Provisional*: Destroy
+  views (the viewer as "human here" for both), or keep the spectator's and list it? (CLT-Q15.)
+  **Drawing quirks** (built as the original's): a mass animation's last frame never shown, the
+  one before it twice (CLT-Q9); a caster that did not react stands in memory but the original's
+  partial redraws show its old frame until the end's whole redraw (CLT-Q8, **answered**: fixed,
+  the original's for the comparisons only, T7d). *Provisional*: Destroy
   Undead, Frost Ring and Meteor Shower built as read, not recorded; a melee strike's and a
   shot's loop keep counting the drawn group 4 rather than playing it on after the loop (the
   same times in every recording).
@@ -638,11 +648,12 @@ Accepted by the user (M1 2026-10-13, M2 2026-10-14); moved to the log,
 
 - T7a-2b: **confirmed or found by recording** (design §7.16, "Recorded"), each the original's
   drawing to copy (`faithful`) or fix (`fixed`)? A mass animation (Slow at Expert, Death Ripple)
-  never shows its last frame and shows the one before twice; Chain Lightning's opening bolt (37)
-  is drawn but never on the screen; a Fire Wall's two placement animations play at the target
-  hex's place (the second hex's too; T7c-2's frame check to confirm); a mass reaction's hit runs on
-  through the standing group and stays on its last frame. Kept as read: Animate Dead plays
-  Resurrection's 50, the Liches' cloud is drawn plain (the table's translucency ignored). The
+  never shows its last frame and shows the one before twice (CLT-Q9); Chain Lightning's opening
+  bolt (37) is drawn but never on the screen (CLT-Q11); a Fire Wall's two placement animations
+  play at the target hex's place (the second hex's too; T7c-2's frame check to confirm; CLT-Q12);
+  a mass reaction's hit runs on through the standing group and stays on its last frame
+  (CLT-Q10). Kept as read: Animate Dead plays Resurrection's 50 (CLT-Q13), the Liches' cloud is
+  drawn plain (the table's translucency ignored; CLT-Q14). The
   harness: `screens` (`<ms> screen x0,y0,x1,y1`, numbers only), a stalled `turn:` writes its
   states first; `situation` writes school skills from a scenario's `masteries`
   (`school_skills`: the first school of a several-school spell, *provisional*).
@@ -651,7 +662,8 @@ Accepted by the user (M1 2026-10-13, M2 2026-10-14); moved to the log,
   T7a-2b). **Confirmed by recording** (design §7.16): a creature caster's group by its own angle,
   not the shot's: a Faerie Dragon beside a level target plays group 17, toward one above 19,
   toward one below 17 (VCMI: 18, 17, 19), so by VCMI's names it turns up toward a target below:
-  copy it (`faithful`) or fix it (`fixed`)? The harness: the scenarios' heroes carry a spell book
+  copy it (`faithful`) or fix it (`fixed`)? (CLT-Q8, **answered** 2026-10-22: fixed, the
+  original's for the comparisons only, T7d.) The harness: the scenarios' heroes carry a spell book
   (`spell_book`, mana 10 per knowledge, checked; the book's spells numbered by `sptraits.txt`'s
   names: the SoD pack adds 57, Titan's Lightning Bolt, after the base pack's others);
   `cast:<k>[:<hex>]` (the
