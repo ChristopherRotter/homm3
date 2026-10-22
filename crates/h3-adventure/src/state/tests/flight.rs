@@ -158,7 +158,7 @@ fn a_water_walk_crosses_plain_water_and_lands_on_the_far_shore() {
     assert_eq!(at(&state).0, p(3, 0));
 }
 
-// covers: ADV-MOV-009, ADV-QUIRK-15
+// covers: ADV-MOV-009, ADV-MOV-008
 #[test]
 fn a_flight_never_crosses_an_unexplored_tile() {
     // ADV-QUIRK-15 (A-13 fixed for now): batch E5's E5-9 flyer flew straight through an

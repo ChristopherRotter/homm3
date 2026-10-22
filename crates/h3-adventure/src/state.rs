@@ -1067,8 +1067,8 @@ impl AdventureState {
     /// way: only its last step's tile is tested for a guard and only its object visited (the
     /// original's move, 0x48147D to 0x4814E1). Each step, a pass included, reveals and emits its
     /// event.
-    // rule: ADV-MOV-006, ADV-MOV-007, ADV-MOV-009, ADV-MOV-010, ADV-FOG-003, ADV-OBJ-003,
-    // rule: ADV-MON-006
+    // rule: ADV-MOV-006, ADV-MOV-007, ADV-MOV-009, ADV-MOV-010, ADV-FOG-003
+    // rule: ADV-OBJ-003, ADV-MON-006
     fn move_hero<S: Sink>(
         &mut self,
         core: &Ruleset,
