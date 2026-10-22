@@ -927,3 +927,32 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   merged `master` (#373 merged by then) without a conflict and ran the full verify with the
   original data: every step passed (code 22188e09 on 42aeffd, 2026-10-22); `computer-decisions`
   477 815 842 instructions, +0.13 %, the other workloads +0.06 to +0.68 % (no re-set). #374.
+
+## T4c — the Master Genie (2026-10-22, increment 5)
+
+- **The user** (2026-10-22): T4c whole, no cut (the agent proposed seven parts, about 13 KB of the
+  original's code); BAT-Q59 as slip 22, built with it.
+- **The reading** (§7.53). 0x43C4A0: each spell 0x447EB0 accepts counted once, 0x43C330's mastery
+  (slip 8 for every drawn spell), power and rounds 6, on R or over the side; the mean by integer
+  division. The tables' seed 0x43BF20 never moves its record pointer (slip 23, found here). The
+  second context (+0x48) for the other side, read only by the removals. The removal 0x439A80:
+  spell order, each once, ended in turn on a copy (Disrupting Ray stays), the stack's mastery and
+  rounds left, added in the second context for a harmful spell on the side, else subtracted. The
+  pathfinder after the context: the threat records' last search (side 0, then 1), then only
+  Hypnotize's (0x43A5DB) and Berserk's (0x445582) values search.
+- **The port.** `h3-battle-ai`'s `spells.rs` became a root (the planned damage, the threat records
+  once, the side's half and the other's when first asked) and views on a state (the battle or a
+  removal's clone); the evaluators by the spell's data (`Kind`, 31 kinds) in `spells/boosts.rs`,
+  `defenses.rs`, `harms.rs`, `removals.rs`, the tables in `spells/tables.rs`; `casts.rs`'s
+  `genie`, the scan for both casters, `hold` (slip 22). `h3-battle`'s `computer` gained the
+  estimates the evaluators need (the damage range and per creature, the exchange, the spell
+  protection, the effect factor, `end_spell`, the berserk candidates with their search,
+  `map_within`, `unslowed_speed`, `last_searched`). Slips 9 to 17, 22, 23 under BAT-QUIRK-25;
+  BAT-AI-016; BAT-STUB-4 retired; `POLICY_VERSION` 9.
+- **Found and decided:** slip 23 (the seed). Slip 22's map can name a hex the walker's own walk
+  does not reach: the besieger's walk and the guard then return true with the action fields as
+  they were (0x421E15, 0x4208DE); the port defends (BAT-STUB-11). With no record searching (a
+  hypnotized walker among shooters) the port keeps the walker's own map.
+- **Kept apart** (documented): the threat records and the tables computed when first read, the
+  second context when a removal first asks it (ADR-0027 point 11); a removal's copy is a clone of
+  the battle; the bolts', Dispel's and Clone's evaluators wait for the hero (T5).
