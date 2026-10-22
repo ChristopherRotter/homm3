@@ -296,3 +296,39 @@ entry only where a task builds on it.
   second segment. Snapshots 1 to 10 joined, eight members retired in turn (best #0 among them:
   no games were needed), `league/` kept only the members' files (8, 9, 10), the record passed `check_record` with both segments; the end gate was
   inconclusive at its cap (50 pairs, +63 Elo).
+
+## T4b — The first league runs on the user's machine (2026-10-21 to 22)
+
+- **The runs** (`python/records/t4-1.json`, `t4-2.json`; `configs/e06-t4.toml`, seed 1, 60 M
+  samples, GTX 1070, Windows, 24 threads, 256 envs): `t4-1` at γ 0.995 (commit `3b0d79f`, 222.4
+  minutes, one segment), `t4-2` at γ 1.0 (`--set ppo.gamma=1.0`, commits `a6b6c55` and
+  `357f7c6`, 232.8 minutes; stopped by Ctrl+C at 52.9 M samples after 209 minutes, resumed the
+  next morning to the budget, 0 records dropped: exit criterion 2 used for real). Between the two
+  commits the trainer, the encounters and the rulesets' content hashes are the same; the engine
+  moved by the battle lane's E23 T3c to T4b (the computer's choices, which `human = [true,
+  true]` leaves out, and an Ogre Mage's mass Bloodlust on Magic Plains offered without a target).
+- **AI-Q9's answer: γ 1.0 ends the stalling.** Self-play's truncations per 10 M samples: γ 0.995
+  1.8, 9.3, 12.4, 12.6, 13.2, 13.2 % (as `t3b-1`); γ 1.0 11.7, 10.1, 2.2, then 0 (the winner had
+  no reason to hurry while the policy was loose; the truncations went once it firmed up, entropy
+  3.3 to 1.5, γ 0.995's stayed at 3.0). The ladders' truncations: 4 % against the bots and 9 %
+  against the promoted network at γ 0.995, none from 30 M on at γ 1.0. A battle took 253 batch
+  calls at γ 0.995, 108 at γ 1.0 (`t3b-1`: 147); the attacker won 0.61 and 0.69 of self-play.
+- **Ladders** (final, 500 per kind): γ 0.995's #4 Random 0.788 ± 0.015 (value +0.251),
+  Aggressor 0.540 ± 0.018 (+0.037), Greedy 0.526 ± 0.018 (+0.022), #3 0.465 (+0.018); γ 1.0's
+  #5 0.839 ± 0.013 (+0.281), 0.578 ± 0.018 (+0.054), 0.559 ± 0.018 (+0.039), #4 0.524 (+0.016).
+  With γ 0.995's truncations counted ½, γ 1.0 still leads by 3, 2 and 1 points, and on every
+  value. Both rose slowly to 50 M (γ 1.0 against Greedy: 0.422, 0.487, 0.517, 0.533, 0.561); both
+  last gates rejected (−7 and −2 Elo) while the learning rate decayed to its floor (5 %) at the
+  budget. Promotions: 4 of 6 gates at γ 0.995, 5 of 6 at γ 1.0. The targets (decision 7): 0.95,
+  0.75, 0.75 not met; a positive value against every ladder member met by both.
+- **The league:** at γ 1.0 a call passed 4.0 to 7.0 frozen networks, 4.4 at the end (the live set
+  4); at γ 0.995 up to 8.1 (stalled episodes keep earlier sets' members). Every member's `p` lay
+  between 0.45 and 0.58 after the first gate (the learner scores about ½ against its recent past),
+  so PFSP's weights were nearly uniform; the untrained best #0 and the first snapshots retired by
+  20 M, the members spanned the last 15 to 30 M samples.
+- **Costs:** evaluation 18.7 % of `t4-1` (ladders of 321 s to 518 s: long battles) and 11.6 % of
+  `t4-2` (late gates 14 s to 19 s, ladders 50 s to 76 s), as design §9 estimated for a gate every
+  10 M. Training rate 5 530 samples/s at γ 0.995, 4 860 at γ 1.0 (about 4 000 from 20 M to 40 M,
+  then 5 200; not explained: T5's profile).
+- **Increment 3 closed** at the checkpoint (2026-10-22): the user ended the session before
+  increment 4's refinement; the next session puts it to the user (the QUEUE's note).
