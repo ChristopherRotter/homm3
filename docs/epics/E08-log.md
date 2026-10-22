@@ -3958,7 +3958,7 @@ background job died; the tools it had installed stayed).
 - **Verify**: the first full run with the original data failed two steps: coverage
   (`h3-pack-battle`'s `hero_content_syntax`: the synthetic packs must use every kind, hence
   `wayfarer_sash`) and `check-docs` (the adventure HANDOFF 100 bytes over). The second, on
-  d403160, passed all 16 steps (benchmarks within +0.7 %, the harvest check matching the
+  d403160, passed all 16 steps, and again on 8c982b6 after `master` was merged in (#377, E23 T4c) (benchmarks within +0.7 %, the harvest check matching the
   installation). The clients' check (`clients/scripts/check.sh --no-coverage`) passed every gate
   once SDL's build dependencies were installed in the sandbox (the client lane's setup installs
   them, the adventure lane's does not). CI cannot run (billing).

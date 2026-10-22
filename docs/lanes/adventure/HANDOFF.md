@@ -19,7 +19,7 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 - **Experiments**: `h3-experiment` (battle's) has the adventure shape (T22a1; T32a: `level_limit`, `[[map.object]]`); batches 1, 2, E3, E4 scored (T33; E4's scorer `crates/h3-map/examples/e4_score.rs` kept). **Agents run batches** on the client lane's harness (decision 21); T32b1 and T32b2 changed it (`cross-lane`; the runbook).
 - **Adventure ruleset part** (v9 since T29: the costs by Pathfinding level): terrains, roads, rivers, the movement and setup parameters, the object types, the starting resources by difficulty, the battle terrains, the monsters' parameters (with the price resource).
 - **Properties** on generated playable maps (`h3-map`'s `play.rs`, `view.rs`): `Step::Fight` runs (hero casts via `h3-battle`, a dev-dependency), monsters, grounds, the system actor, guarded piles, level-ups (T30), `check_progression` after every command (T31); `the_plans_play_battles_to_a_victory`: 192 fixed cases.
-- **Next:** #377 (T35a), then #380 (T35b) to merge; then T36 (`QUEUE.md`), then round 2.
+- **Next:** #380 (T35b) to merge (#377 merged); then T36 (`QUEUE.md`), then round 2.
 - **ADRs accepted**: ADR-0015 to -0017 (2026-10-10), amended for increments 2 (#115), 3 (T18a, #185, with ADR-0013), 4 (T26a, #325) and 5 (T35a, #377: ADR-0013, -0016, -0017).
 - **R01** (the content split): the core `h3-content` and `h3-pack` (`core.toml`) are shared; the writer is `h3_map::writer`.
 - **Ownership:** the four crates and `h3-heroes` (since E04c), `src/adventure/` in `h3-sim` and `h3-cli` (their `Cargo.toml`, `lib.rs` and `h3-cli`'s `main.rs` are battle's: `cross-lane`), `crates/h3-cli/tests/adventure_replays.rs`, `fixtures/replays/adventure/`, `fixtures/maps/`, `benches/adventure/`, each pack's `adventure.toml`, `docs/formats/h3m.md`, `docs/rules/catalog/{adventure,game,town}.toml`.
@@ -41,8 +41,8 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 
 ### 2026-10-22 — increment 5, third session: T35a + T35b
 
-Baseline 25c01bd (light gates). Decision 79 (T35 in two parts, both now). #377 (T35a) merges
-before #380 (T35b).
+Baseline 25c01bd (light gates). Decision 79 (T35 in two parts, both now). #377 (T35a) merged;
+#380 (T35b) open, mergeable, its full verify green.
 
 ### 2026-10-22 — increment 5, second session: T34b
 
