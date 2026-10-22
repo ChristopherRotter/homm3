@@ -16,9 +16,10 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   note `docs/epics/E06-design.md`, config and record, the checkpoint and `--resume`, C ABI v31,
   the held-out sets v1, the bots' table, the SPRT gate, promotions, ladders, `--init-from`); the
   user's hour `t3b-1` (evaluation 21.4 %, the agent at the bots' level, stalling: AI-Q9).
-  **Increment 3 refined** (AI-Q9 answered): T4a done (#342, open: the league, `h3env.train.league`;
-  checkpoint format 3, record schema 5), then T4b (the user's two league runs of 60 M samples,
-  `configs/e06-t4.toml` at γ 0.995 and 1.0).
+  **Increment 3 done** 2026-10-22: T4a (#342: the league, `h3env.train.league`; checkpoint
+  format 3, record schema 5), T4b (`t4-1`, `t4-2`: γ 1.0 ends the stalling, AI-Q9; best 0.839,
+  0.578, 0.559 against Random, Aggressor, Greedy). **Next:** increment 4's refinement with the
+  user (the QUEUE lists the choices; E23's neutral side is complete, so T7 is open too).
 - **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v31 (E06 T2c: the record's identity, N capped) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q10, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
@@ -90,16 +91,12 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 
 ## Recent sessions
 
+### 2026-10-22 — E06 T4b (the league runs), increment 3 closed
+
+- `t4-1` and `t4-2` committed, results in `E06-log.md`; the user closed the session before
+  increment 4's refinement (the QUEUE). Pull request: #381 (open).
+
 ### 2026-10-20 — E06 increment 3's refinement, T4a (the league)
 
-- The user (AI-Q9): two league runs in T4b (γ 1.0 beside 0.995), T4a in one pull request, 60 M
-  samples a run. T4a: the live set drawn every `live_every` samples, not every rollout
-  (`frozen_passes`); 90 Python tests with torch, 71 without; a CPU run stopped and resumed.
-
-### 2026-10-20 — E06 T3b's hour (`t3b-1`)
-
-- `t3b-1`'s record committed, its results in `E06-log.md`; AI-Q9 (stalling).
-
-### 2026-10-20 — E06 T3b (the evaluation gate)
-
-- The SPRT gate, promotions, ladders, `--init-from` (the user: no cut; `E06-log.md`).
+- The user (AI-Q9): two league runs in T4b (γ 1.0 beside 0.995), 60 M samples each. T4a: the
+  live set drawn every `live_every` samples (`frozen_passes`); 90 Python tests, 71 without torch.

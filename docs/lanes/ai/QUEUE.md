@@ -12,17 +12,21 @@ neutral share waits for E23's side without a hero. Increment 1 done 2026-10-20: 
 (ADR-0026, design `E06-design.md`), T2b1 (the full checkpoint and `--resume`; its pending gate and
 `--init-from` moved to T3b), T2c (C ABI v31). Increment 2 done 2026-10-20: T3a (the held-out
 sets v1, the bots' table), T3b (the SPRT gate, promotions, ladders, `--init-from`; the user's
-hour `t3b-1`: evaluation 21.4 %, stalling suspected, AI-Q9). Increment 3 refined 2026-10-20
-(AI-Q9 answered): T4a done 2026-10-20 (the league, `E06-log.md`), then T4b.
+hour `t3b-1`: evaluation 21.4 %, stalling suspected, AI-Q9). Increment 3 done 2026-10-22: T4a
+(the league), T4b (the user's runs `t4-1`, `t4-2`: γ 1.0 ends the stalling, AI-Q9; the best
+plays 0.839, 0.578, 0.559 against Random, Aggressor, Greedy; `E06-log.md`).
 
-### E06 T4b — The first league runs
-
-- **Scope:** the user runs `configs/e06-t4.toml` twice (AI-Q9): at γ 0.995 and with `--set
-  ppo.gamma=1.0`, 60 M samples each, one stopped and resumed for real; both records committed,
-  the results in `E06-log.md` (the truncations, the ladders, the league's table).
-- **Acceptance:** both records pass `check_record`; increment 3's checkpoint with the user.
-- **Depends on:** T4a merged (its pull request). **Status:** waiting (T4a's merge, then the
-  user's two runs).
+**Next: increment 4's refinement, with the user** (no task is ready until then). The user closed
+T4b's session before choosing. Put to them:
+- **What T5 starts with:** (a) the entity network (Python only, decision 5; γ 1.0 as the
+  trainer's default with it), A/B against `t4-2` as the control (the same config and seed, 60 M):
+  the agent's recommendation; (b) AI-Q7 (b), the preview's kills per attack and shot entry as a
+  batch output (`h3-sim`, C ABI v32, the binding); (c) throughput: the batch size and threads,
+  the observations in place, `t4-2`'s dip to about 4 000 samples/s from 20 M to 40 M; (d) T7,
+  the neutral share, now that E23's neutral side is complete (the inbox, 2026-10-22).
+- **A spare run while T5 is built** (no code): `--init-from runs/t4-2/best.pt` at γ 1.0 with a
+  fresh schedule for 60 M or 120 M samples, to see whether the MLP keeps climbing (both T4b runs
+  rose slowly to 50 M; their last gates rejected with the learning rate at its floor).
 
 ## Inbox
 
@@ -31,6 +35,13 @@ done: BAT-Q33's point for E05 (AI-Q3, ADR-0025 point 6), the `h3-game` coverage 
 Pass offer (fixed by the adventure lane's fixed tests, #266).
 
 - 2026-10-22 (the battle lane, E23 T4d, `battle/e23-t4d`; for your information, nothing to do): `h3_battle_ai::POLICY_VERSION` is 10: the Master Genie values Cure and Anti-Magic as the original does (a removal's copy, slip 24 under BAT-QUIRK-25; the copy's turns and Hypnotize's map for a shooter in both profiles). Name it in a run record's engine identity; the function's signature is unchanged.
+- 2026-10-22 (the adventure lane, E08 T35b, `shared/e08-t35b`, `cross-lane` with the user's consent,
+  E08 decision 79; for your information, nothing to do): `python/records/bots-report-v1.json`
+  regenerated (`h3 ai eval --set report-v1 --json`) for the core ruleset hash v47 (six adventure
+  hero-effect kinds and three adventure flags; nothing the battle reads). Besides `engine.core`,
+  two pairs' rewards and two values moved in the fourth decimal (wins unchanged): the battle lane's
+  creature-cast change below, not T35b (a regeneration on `master` 25c01bd gives the same table
+  but for `engine.core`).
 - 2026-10-22 (the battle lane, E23 T4c, `battle/e23-t4c`; **for you: the neutral side's policy is complete**, E23 decision 1 and exit criterion 5): `h3_battle_ai::choose(&BattleState, &BattleRuleset, BattleSide, &mut Rng) -> Command` now plays a side without a hero as the original's computer does: shots, melee attacks, moves, waits and defends, and the creature casts (the raise, the Faerie Dragon, the Ogre Mage, the Master Genie). It reads the whole state, draws only from the stream you give it, and validates its choice (a refused one becomes Defend; none is known). `POLICY_VERSION` is 9 (name it in a run record's engine identity). `Policy::System` and the neutral seat can call it now; A12's weights for the neutral share are yours (`E05-log.md` §4.4). A side with a hero still casts nothing and never retreats (BAT-STUB-5, E23 T5 and T6). Cost: within ADR-0027 point 11's budget (≤ 1 ms for the slowest decision; `benches/battle/computer-decisions.toml`).
 - 2026-10-21 (the battle lane, `battle/creature-cast-mass-target`, `cross-lane` with the user's consent; for your information, nothing to do): `h3_battle::creature_cast_targets` now lists `CastTarget::None` first when a creature's cast takes no target: on Magic Plains the Ogre Mage casts Bloodlust at Expert, its mass version, which `apply` accepts only as `CreatureCast { target: CastTarget::None }` (BAT-MAG-048, BAT-TER-005). `h3-sim`'s action mask (`action.rs`, `rollout.rs`) reads the listing, so it now offers that cast (target index 0) without a change of yours; such a cast lists no stack. The computer's policy cast it already (BAT-AI-014).
 - 2026-10-21 (the adventure lane, E08 T32a, `adventure/e08-t32a`, `cross-lane` with the user's
