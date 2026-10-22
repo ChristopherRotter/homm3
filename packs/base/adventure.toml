@@ -37,6 +37,15 @@ army_slots = 7
 # then <= 25 for the third. The wiki's hero template has 88 % and 25 % for SoD; VCMI 1.7.5
 # config/gameConfig.json startingStackChances [100, 88, 25] uses one roll for both (ADV-Q6).
 starting_stack_chances = [88, 25]
+# ADV-MOV-009, ADV-MOV-010 (E08 T40; read by the step's price from T41): a flying hero's straight
+# step, and a water-walking hero's from water, by the level of its flying or water walking (0 to 2
+# the spells', later; 3 Angel Wings' and Boots of Levitation's). Code reading (survey
+# E08-hero-movement.md section 2.1 points 4, 5): fly_walk_step_cost (0x6778AC) holds 140, 140, 120,
+# 100 for both, read by step_cost 0x4B1740. The wiki (Fly, Water Walk: "40% penalty", 20 % at
+# advanced, none at expert) and VCMI 1.7.5 config/spells/adventure.json (Fly and Water Walk 40,
+# 40, 20, 0 over 100) agree on the amounts; two fields so that data can tell the two apart.
+fly_cost = [140, 140, 120, 100]
+water_walk_cost = [140, 140, 120, 100]
 
 # GAM-BAT-001 (E08 T19a): where a battle on the map is fought, by the defender's tile, in the
 # original's order (survey E04c-battlefields.md section 4, code 0x4FCE20, installation.md
@@ -507,12 +516,17 @@ monster = { levels = [7, 7] }
 # templates have no blocked and no visitable tile); a battle on a tile it lies on is fought on its
 # battlefield, the battle part's (code reading 0x4643B0 and 0x4FCE20, installation.md section
 # 7.26: field 2 for class 21, field 1 for class 46; E04c batch 3a).
+# ADV-MOV-004 (E08 T40, D-23): a step from a tile Cursed Ground tops costs no army the native
+# price, the terrain's instead (step_cost 0x4B1740 tests the source tile's special ground 21,
+# 0x4FCE20; survey E08-hero-movement.md section 2.1 point 2). VCMI 1.7.5 and the wiki are silent;
+# batch E5's E5-6a confirmed it (Gnolls 175 from swamp under it, experiments/results/
+# E08-batch-5a.md).
 [[object_type]]
 id = "cursed_ground"
 name = "Cursed Ground"
 visit = "enter"
 from_above = true
-ground = { battlefield = "cursed_ground" }
+ground = { battlefield = "cursed_ground", no_native = true }
 
 [[object_type]]
 id = "magic_plains"

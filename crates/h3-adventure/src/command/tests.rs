@@ -371,7 +371,7 @@ fn each_hero_reveals_its_surroundings_to_its_owner_at_the_start() {
             hero_at(3, 1, blue, &[PEASANT]),
         ],
     );
-    let state = AdventureState::new(&rules.0, &rules.1, &setup, &mut draws()).unwrap();
+    let state = crate::testing::started(&rules, &setup).unwrap();
     assert_eq!(state.explored(RED), Some(&disks(16, 2, &[red_a, red_b])));
     assert_eq!(state.explored(BLUE), Some(&disks(16, 2, &[blue])));
     // Radius 5: (2, 7) is 5 below the hero, (2, 8) 6.
@@ -701,7 +701,7 @@ fn reveal_world(rules: &(Ruleset, AdventureRuleset)) -> AdventureState {
         hero_at(1, 0, p(1, 1), &[PEASANT]),
         hero_at(2, 1, p(14, 1), &[PEASANT]),
     ];
-    AdventureState::new(&rules.0, &rules.1, &world(&rows, 2, heroes), &mut draws()).unwrap()
+    crate::testing::started(rules, &world(&rows, 2, heroes)).unwrap()
 }
 
 /// `player`'s hero `hero` steps onto `to` and back off it to `back`, then onto `to` again: the
@@ -911,7 +911,7 @@ fn stacked(
     let mut object = setup.map.objects[0].clone();
     object.object_type = object_type;
     setup.map.objects.push(object);
-    AdventureState::new(&rules.0, &rules.1, &setup, &mut draws())
+    crate::testing::started(rules, &setup)
 }
 
 // covers: ADV-OBJ-003, ADV-OBJ-004
@@ -1034,8 +1034,7 @@ fn an_observatory_reveals_the_disk_around_it_at_every_visit() {
         hero_at(1, 0, p(4, 8), &[PEASANT]),
         hero_at(2, 1, Pos::new(15, 15, 1), &[PEASANT]),
     ];
-    let mut state =
-        AdventureState::new(&rules.0, &rules.1, &world(&rows, 2, heroes), &mut draws()).unwrap();
+    let mut state = crate::testing::started(&rules, &world(&rows, 2, heroes)).unwrap();
     let blue = state.explored(BLUE).cloned();
     let path: Vec<Pos> = (5..=8).map(|x| p(x, 8)).collect();
     let mut events = move_hero(&mut state, &rules, RED, 1, &path).unwrap();
@@ -1380,7 +1379,7 @@ fn heroes_world(rules: &(Ruleset, AdventureRuleset)) -> AdventureState {
     );
     setup.map.tiles[3].coast = true;
     setup.heroes[1].formation = Formation::Tight;
-    AdventureState::new(&rules.0, &rules.1, &setup, &mut draws()).unwrap()
+    crate::testing::started(rules, &setup).unwrap()
 }
 
 // covers: GAM-BAT-004, GAM-BAT-001
@@ -1531,7 +1530,7 @@ fn a_battle_is_fought_on_the_ground_its_tile_gives() {
     );
     setup.map.tiles[1].coast = true;
     setup.map.tiles[5].coast = true;
-    let state = AdventureState::new(&rules.0, &rules.1, &setup, &mut draws()).unwrap();
+    let state = crate::testing::started(&rules, &setup).unwrap();
     let shore = Some(ContentKey::parse("t:shore").unwrap());
     use crate::testing::{SAND, SWAMP};
     // The tile's terrain, the coast's on the coast, the underground's below (coast or not).

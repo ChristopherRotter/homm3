@@ -2,7 +2,8 @@
 //! (HER-EXP-002), the bound that makes level 74 the highest (A-7, `ADV-QUIRK-11`), the scenario's
 //! level limit and the experience a gain gives under it (HER-EXP-003; A-8, `ADV-QUIRK-12`), and
 //! the levels a hero has yet to be given. Survey `docs/rules/surveys/E08-progression.md` §1,
-//! design `docs/epics/E08-design.md` §2, §3.
+//! design §2, §3 of increment 4's note (since T34b in `docs/epics/E08-log.md`, "Increment 4's
+//! design note at its closure").
 
 use h3_content::HeroParams;
 

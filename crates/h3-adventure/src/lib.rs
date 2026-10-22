@@ -58,7 +58,7 @@ pub use command::{
     AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, AdventureOutcome,
     BattleStart, Combatant, Defender, Offer, OfferKind, Sink, Viewers,
 };
-pub use movement::{day_points, diagonal_cost, native_terrain};
+pub use movement::{day_points, diagonal_cost, land_table_points, native_terrain};
 pub use observe::{AdventureObservation, HeroView, MonsterView, ObjectView, OwnHeroView, TileView};
 pub use persistent::BitGrid;
 pub use reach::Reach;
@@ -68,7 +68,7 @@ pub use ruleset::{
     MAX_MONSTER_COUNT, MAX_PICKUP_AMOUNT, MAX_PLAYERS, MonsterParams, MonsterParamsDef, ObjectKind,
     ObjectKindDef, ObjectType, ObjectTypeDef, ObjectTypeId, Passage, Pickup, PickupDef, RiverDef,
     RiverId, RiverKind, RoadDef, RoadId, RoadKind, StartingResources, StartingResourcesDef,
-    TerrainMovement, TerrainMovementDef, Visit,
+    TerrainMovement, TerrainMovementDef, TerrainWalker, TerrainWalkerDef, Visit,
 };
 pub use setup::{
     AdventureSetup, ArmyError, Guards, HeroSetup, MapSetup, MonsterSetup, ObjectSetup, Pos,
@@ -94,5 +94,6 @@ pub const ADVENTURE_STATE_HASH_VERSION: u32 = 10;
 /// difficulty. v6 (E08 T19a): the battle terrains by tile. v7 (E08 T20a2a): the monster and
 /// ground kinds, the monsters' parameters and the creatures no random monster becomes. v8 (E08
 /// T20b1): the resource a monster's price to join is paid in. v9 (E08 T29): the terrains' costs
-/// by Pathfinding level.
-pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 9;
+/// by Pathfinding level. v10 (E08 T40): the fly and water-walk prices, the terrain walkers and a
+/// ground's loss of the native price (Cursed Ground's `no_native`).
+pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 10;

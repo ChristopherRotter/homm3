@@ -2,8 +2,9 @@
 //! scenario's level limit and banned skills, each hero's level seed; GAM-HER-002), where a level's
 //! draws come from by the profile (`ADV-QUIRK-9`), and the levels at load (GAM-SET-002). Since E08
 //! T30 the levels in play: given one at a time, a level with two offers a pending decision of the
-//! hero's owner (GAM-DEC-002). Design `docs/epics/E08-design.md` §11 to §13; survey
-//! `docs/rules/surveys/E08-progression.md` §2.2, §3.2, §4.1.
+//! hero's owner (GAM-DEC-002). Design: increment 4's note, §11 to §13 (`docs/epics/E08-log.md`,
+//! "Increment 4's design note at its closure"); survey `docs/rules/surveys/E08-progression.md`
+//! §2.2, §3.2, §4.1.
 
 use alloc::boxed::Box;
 use alloc::collections::BTreeSet;

@@ -17,19 +17,20 @@ hour `t3b-1`: evaluation 21.4 %, stalling suspected, AI-Q9). Increment 3 done 20
 plays 0.839, 0.578, 0.559 against Random, Aggressor, Greedy; `E06-log.md`).
 
 **Increment 4** refined 2026-10-22 (the user, `E06-log.md`): the entity network first, T5a then
-T5b; no spare MLP run. T5a done 2026-10-22 (`E06-log.md`). Still open for later increments: AI-Q7 (b), throughput (`t4-2`'s dip to
+T5b; no spare MLP run. T5a done, T5b done (negative: `t5-1` stalled), T5c done (the
+truncation penalty, the user's amendment of decision 10), all 2026-10-22 (`E06-log.md`). Still open for later increments: AI-Q7 (b), throughput (`t4-2`'s dip to
 about 4 000 samples/s from 20 M to 40 M), the mana price, T7 (E23's neutral side is complete).
 
-### T5b — The A/B run
+### T5d — The runs with the truncation penalty
 
-- **Scope:** the user runs `configs/e06-t5.toml` (the entity network, `t4-2`'s config and seed,
-  60 M samples) on their machine; the record committed, the comparison with `t4-2` in
-  `E06-log.md`.
-- **Acceptance:** the record passes `check_record`; the ladders compared per opponent.
-- **Depends on:** T5a's pull request merged; the user's machine. **Status:** waiting (the
-  merge, then the user). First `python -m h3env.train.network --config configs/e06-t5.toml
-  --time --device cuda` (the GPU's cost; T5a measured the entity network at about five times
-  the MLP's time on the sandbox's CPU), then the run (the config's comment).
+- **Scope:** the user runs `configs/e06-t5c.toml` twice on their machine, 20 M samples each:
+  the entity network (`runs/t5-2`) and the MLP (`runs/t5-3`, `--set network.kind=mlp`; the
+  config's comment); the records committed, compared with each other and with `t4-2`'s first
+  20 M in `E06-log.md` (truncations, samples/s, gates, ladders).
+- **Acceptance:** the records pass `check_record`; the ladders compared per opponent; the
+  entity network's stalling gone or explained.
+- **Depends on:** T5c's pull request merged; the user's machine. **Status:** waiting (the
+  merge, then the user).
 
 ## Inbox
 
@@ -37,6 +38,7 @@ Sorted by destination at E05's audit (T9a, 2026-10-19); the origin stays in brac
 done: BAT-Q33's point for E05 (AI-Q3, ADR-0025 point 6), the `h3-game` coverage gap of a pending
 Pass offer (fixed by the adventure lane's fixed tests, #266).
 
+- 2026-10-22 (the battle lane, E23 T5b1, `battle/e23-t5b1`; for your information, nothing to do): `h3_battle_ai::POLICY_VERSION` is 13: a computer side's hero now also casts Resurrection, Animate Dead, Sacrifice and Earthquake (the original's values, BAT-AI-019; not yet Teleport, nor retreats). A side without a hero is unchanged; a hero's decision stays within the 5 ms budget. Name it in a run record's engine identity; the function's signature is unchanged.
 - 2026-10-22 (the battle lane, E23 T5a, `battle/e23-t5a`; for your information, nothing to do): `h3_battle_ai::POLICY_VERSION` is 12: a computer side's hero now casts spells (the original's choice, BAT-AI-017, BAT-AI-018; not yet the raises, Sacrifice, Earthquake, Teleport, nor retreats). A side without a hero is unchanged. A decision with a hero's cast takes up to 5 ms (the user's budget; mean 0.43 ms with every spell in the book). Name it in a run record's engine identity; the function's signature is unchanged.
 - 2026-10-22 (the battle lane, E23 slip 25, `battle/e23-slip25`; for your information, nothing to do): `h3_battle_ai::POLICY_VERSION` is 11: in `strict-fixed` (BAT-QUIRK-25 off) the computer's Ice, Magma, Storm and Energy Elementals cast their protection when it beats their attack or shot; `faithful` choices are unchanged. Name it in a run record's engine identity; the function's signature is unchanged.
 - 2026-10-22 (the adventure lane, E08 T36b, `adventure/e08-t36b`, `cross-lane` with the user's

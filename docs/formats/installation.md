@@ -5541,3 +5541,55 @@ hero may cast, so the policy draws the predictions even when no spell can be pai
 hero considers a cast at every activation of a stack of its side but a war machine, before the
 stack acts, once a round (+0x54B4). The retreat test's answer is no until T6 (BAT-STUB-13, BAT-Q61);
 the raises, Sacrifice, Earthquake and Teleport are T5b's (BAT-STUB-14).
+
+### 7.57 Code reading: the raises, Sacrifice and Earthquake re-read for the port (E23 T5b1, 2026-10-22)
+
+Read again for E23 T5b1 (the user's cut of T5b: the raises, Sacrifice and Earthquake first,
+Teleport T5b2): 0x43ACA0, 0x43B1E0 with 0x43AF50, 0x43B8F0, and the candidate's setup in 0x43C800
+(0x43C9C8 to 0x43C9FB). §7.55 stands; these are the details the port needs. Insight only, nothing
+copied (Q29).
+
+**The candidate** (0x43C9E3 to 0x43C9F7): spell, mastery, power, rounds, flag 1, the target hex
+and the second hex −1, the value 0, "now" 0. Each case below writes value, hexes and "now" only
+with a strictly larger value, so "now" is the best target's.
+
+**0x43ACA0, the raises** (Resurrection, Animate Dead). Over the side's records from the first: R
+that 0x5A3C80 takes (its fourth argument 1, the fifth the context's +0x1D), found by the spell's
+target test (0x5A3F50 for 39, else 0x5A3CC0 with 0) at its position (+0x38) or, for a two-hex R,
+at its other hex (0x4466A0), that hex the target. All in 32-bit integers: `n` = (the power factor
++0x30 × the power + the value at the mastery +0x34) / R's hit points per creature (+0xC0, `idiv`);
+`l` = the start count +0x60 − the count +0x4C; `n` > `l` only when `l` ≥ trunc(3 × start / 4) or the
+enemy is beaten (+0x1C, a byte), else R is passed over; `k` = min(`n`, `l`), passed over below 1;
+Resurrection (38) below Advanced (mastery +4 < 2) passed over when the enemy is beaten. The worth
+0x442A50 of R with the context's least attack and defense (+0x20, +0x24), R's own shot flag
+(0x4428F0 with 0) and 0 as its fourth argument (no desperate worth); `k` stored as a double, the
+product truncated (`crt_ftol`); doubled when +0x34 > +0x38 and +0x3C ≤ 1 (the able strengths and
+the balance class, §7.43). "Now": R is the active record (+0x132B8, +0x132BC), or the enemy is
+beaten, or none of the side's other records is alive and no war machine (`0x200040`), not blind,
+turned to stone or paralysed (+0x290, +0x2B0, +0x2C0) and has not acted (bit 26).
+
+**0x43B1E0, Sacrifice's targets**: T as the raises' R, by 0x5A3CC0 with 0 (spell 40 is not 39),
+then 0x43AF50 with T and the hex found. **0x43AF50, the victims**: over the side's records from
+the first, V not dead (bit 21), not T, that 0x5A3C80 takes with its fourth argument 0: `n` = (the
+value at the mastery + the hit points of V's creature in the creature table, +0x4C of its row
+0x74 bytes + the power) × V's count / T's hit points per creature (32 bits, `idiv`; the power
+factor unused); `l`, the three-quarter rule and `k` as the raises' (no Resurrection test). The
+worth 0x442A50 of T with the least bonuses, but **the shot flag 0x4428F0 asks of V** (`ecx` holds
+V's record at 0x43B06F; T's is loaded for the worth after it): survey slip 28. `trunc(k × w)` −
+V's strength (0x442E60 with the least bonuses), passed over unless above 0, then doubled as the
+raises'; a strictly larger one writes T's hex (+0x14), V's position (+0x18) and "now" as the
+raises' for T.
+
+**0x43B8F0, Earthquake**: nothing (the value stays 0) for the side 1, with the enemy beaten, or
+without a siege (+0x132F4). `W` = the sum of the eight wall-shot targets' hit points (0x63BE60's
++8, parts 5, 6, 8, 9, 10, 12, 13, 14 at +0x13F60: the absent towers and keep have theirs too,
+BAT-QUIRK-22), `m` their least (from 0x7FFF); nothing when `W` = 0, nor unless a record of the
+context's other side (+0x10), not dead and not creature 149, stands inside the walls at its
+position (0x467460). `h` = min(`W`, the value at the mastery). Over the side's records from the
+first but the dead, the blind, the petrified, the paralysed, creatures 147 and 148 (the Catapult
+and the Ballista count): without a threat enemy (+0x538) its strength (0x442E60, the least
+bonuses) while `m` > 0; with one E, when it can shoot now (0x4428F0 with 0) and 0x467510 says the
+walls halve a shot from **its position (+0x38) to E's position**, `trunc(s × h / 3W)` (32-bit
+`imul`, `idiv`). The rule's halving (0x443C79, BAT-SIE-008) tests from the hex the shooter turns
+to: for the two-hex shooters (the Medusas, the Ballista) the estimate's hex may differ, survey slip
+29. The sum is written (0 too), "now" 1, no target.

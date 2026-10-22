@@ -4247,3 +4247,96 @@ Decision 85 (ADV-Q22 point 2), right after T38 in the same session, on T38's bra
   -- --with-original-data` on engine code ebd76b02 (commit 97457a6, 2026-10-22, the sandbox,
   Linux x86_64): all 16 steps passed; `original-data`: 5 shipped maps import whole, 9 heroes
   levelled at load with 41 level-ups (the counts unchanged).
+
+### Increment 5, round 3: T39, `h3-heroes`' movement and scouting derivations (2026-10-22, `adventure/e08-t39`, `cross-lane`)
+
+Decision 86: T39 alone (T40 in a session of its own, cut at its start), Q-0005's line in the
+battle lane's ledger in the same pull request (`cross-lane`, the user's consent).
+
+- **The derivations** (`crates/h3-heroes/src/movement.rs`, `E08-design.md` part A, ADR-0013
+  point 13): `land_points(details, core, base)` (HER-ADV-003: `derive.rs`' `grown`, now
+  `pub(crate)`, over the `land_movement` rates as Learning's experience, then the
+  `land_movement_points` of the worn types added, saturating); `movement_speed(details, core,
+  creature)` (HER-ADV-004: the core's speed plus each creature specialty's `speed` for its
+  creature and direct upgrades; `u8::MAX` for a creature the core lacks); `movement(details,
+  core) -> Movement { pathfinding, flying, water_walking }` (HER-ADV-005, -007: the highest of
+  each kind, the levels `None` without a source; one call instead of the note's three getters);
+  `scouting_radius(details, core, base)` (HER-ADV-006: the tiles added, no specialty growth).
+  Every kind once per artifact type (`effects`' `OncePerType`).
+- **The vectors** (`crates/h3-heroes/src/tests/movement.rs`, a test pack built in code): the
+  survey's §1.3 in both arithmetics (17 cases, Basic to Expert, the tables' 1500 and 2000),
+  ⌊base × (10 + level) / 10⌋ without a specialty for every base to 10 000 in both, batch E5's
+  E5-1 (2160, 1860, 2928) and E5-2 (1829, 1889 single, 1830, 1890 exact): all as predicted at
+  the first run. The base pack's data through the derivations: `e4_score`'s
+  `the_base_packs_movement_effects_derive_as_batch_e5_saw_them` (Boots of Speed, Equestrian's
+  Gloves, Valeska's Archers 1630, Angel Wings, Boots of Levitation, Pathfinding, Scouting with
+  the Speculum and the Spyglass 10).
+- **The scorer** (`crates/h3-map/examples/e4_score.rs`): its copy of the arithmetic replaced by
+  `h3_heroes::land_points` under `base:faithful` and `base:strict-fixed` (`strict_core`), the
+  land table at the slowest `movement_speed`; its reports on E5c, E5c-run2, E5d, E5d-run2 and
+  E5e from freshly compiled maps identical to the committed ones below their headers.
+- **Docs:** `heroes.toml` HER-ADV-003 to -007 (the code reading, VCMI, the wiki, batch E5's
+  observations); Q-0005's ledger entry names HER-ADV-003 in its rules, regression tests and
+  decisions (battle-owned, `cross-lane`; the battle lane's inbox told); `h3-heroes`' three module
+  comments repointed to increment 4's note in this log; `E08-design.md`'s part A reduced to what
+  T40 builds (the adventure part's data).
+- **The full local verify** (CI cannot run): `scripts/verify-once.sh engine --base origin/master
+  -- --with-original-data` on engine code 2391924a (commit 7d98ced, 2026-10-22, the sandbox,
+  Linux x86_64): all 16 steps passed; `original-data`: 9 heroes levelled at load with 41
+  level-ups (unchanged). `check-lane` names only `docs/rules/quirks-ledger.md` (the label).
+
+### Increment 5, round 3: T40, the day's points, the radius and the walking price; round 3 closed (2026-10-22, `adventure/e08-t40`)
+
+Decision 87: T40 whole (the price and the day in one session and one pull request).
+
+- **Ruleset part v10** (`h3-adventure`'s `ruleset.rs`, `h3-pack-adventure`): `[params]`' `fly_cost`
+  and `water_walk_cost` (four prices by level each, required; the base pack's 140, 140, 120, 100
+  from `fly_walk_step_cost` 0x6778AC; read by T41), `AdventureParams::fly_cost`,
+  `water_walk_cost`; `[[terrain_walker]]` (`TerrainWalkerDef`/`TerrainWalker`: a creature, a
+  terrain and the terrain it counts as; both land, one walker per terrain,
+  `AdventureCompileError::TerrainWalker`), the `ab` pack's Nomads (sand as dirt); a ground's
+  `no_native` (`ObjectKind::Ground`), on both Cursed Grounds. `ADVENTURE_RULESET_HASH_VERSION`
+  10. The misplaced doc line of `pathfinding_fits` moved to `core_terrain`.
+- **The walking price** (`movement.rs`): `Pricing::new(core, part, army, &Movement)` precomputes
+  per terrain the walking price at the hero's Pathfinding level of the terrain a walker in the
+  army makes it count as, and whether that terrain is the army's native one; `base` gives the
+  native cost only off a `no_native` tile; `left_after` prices a `no_native` tile's terrain (the
+  original's `cheapest_step_from` 0x4B1880, re-read: it hands its own arguments on as
+  `step_cost`'s Pathfinding level and Nomads flag, the tile's terrain as native; its caller not
+  read); `cheapest` over the hero's prices. The static
+  map's `StaticTile::no_native` from the last ground in map order lying on each tile (as
+  `battle_ground`), left out of the hash. `MoveHero` and `reach` take the hero's `Movement` from
+  the store (`details_of`; an empty store: no skills, this crate's tests).
+- **The day** (`state.rs`, `h3-game`'s `state.rs`): `AdventureState::new` places the heroes
+  without points or reveals; `start_game(core, part, heroes)` gives the day's points
+  (`day_points(core, part, details, army)`: `land_table_points` at the lowest
+  `h3_heroes::movement_speed`, then `h3_heroes::land_points`) and reveals with
+  `h3_heroes::scouting_radius`; `start_turn` takes the store; `start_day` reveals around every
+  hero under `strict-fixed` (`ADV-QUIRK-18` off). `GameState::new` calls `start_game` after the
+  levels at load, then `start_day` for day 1; `advance_day` calls `start_day` after the calendar.
+  A move reveals with the hero's radius. `reveal_at_start` (and its stale doc) is gone.
+- **Tests:** `movement/tests.rs` (the details' points, radius and levels; Pathfinding's prices and
+  ADV-QUIRK-3's check at a level; a terrain walker in every price, the native test and the check;
+  Cursed Ground in the price, the diagonal and the drop), `state/tests/day.rs` (the start of the
+  game from the store, a gain in the day under both profiles, a move's and the reach's price by
+  Pathfinding, the grounds' bit and a move over it), `ruleset/tests.rs` (walkers, prices, the
+  hash), `h3-pack-adventure` (the syntax, both packs' grounds), `h3-game`'s `tests/day.rs` (a
+  creature and Logistics specialist with the boots: 2257 at level 1; the points after the levels at
+  load). `testing::started` builds a state as the game does; `hero_rules` adds the skills and a
+  walker.
+- **Replays:** every game's commands changed (the duel's heroes' points and prices): the nine
+  re-recorded with their options (the master binary reproduces the committed ones byte for byte
+  with the same script); what each meets is re-checked by T42 (the queue's inbox).
+- **Benchmarks:** the changed games moved `reach-xl-144` by +4.13 % (4 784 queries) and
+  `random-play-duel-36` by -2.04 % (2 839 steps); both re-baselined. The code itself: a scratch
+  build with the details' effects held off (the day's points, the levels and the radius computed
+  and dropped, no `no_native` bits) replays master's nine games byte for byte and measures
+  -0.09 % (reach), +0.13 % (play), +0.17 % (fork, not re-baselined) against the old baselines.
+- **Docs:** the catalog (ADV-MOV-001 to -004, -006, ADV-FOG-001, -003; -004 and ADV-FOG-001
+  verified by E5-6 and E5-10), `ADV-QUIRK-18`'s ledger entry, `e4_score`'s `land_table` on
+  `land_table_points`, `levels.rs`' citations repointed to increment 4's note in this log, the
+  design note (§5 and §6's built points reduced), the epic, the queue (T41's entry), the HANDOFF.
+- **The full local verify** (CI cannot run): `scripts/verify-once.sh engine --base origin/master
+  -- --with-original-data` on engine code 8235b24f (commit 55d1642, 2026-10-22, the sandbox,
+  Linux x86_64): all 16 steps passed; `original-data`: 9 heroes levelled at load with 41
+  level-ups (unchanged). The baseline on `master` e4dd551 (code 7214d773): all passed.

@@ -1,0 +1,29 @@
+# E06 T5d's runs on the user's machine (T5c, the user's amendment of decision 10): a battle cut
+# at the 2 000-step limit costs each learning side 1.0 (`ppo.truncation_penalty`, the default),
+# which ends `t5-1`'s stalling (both sides hiding at their back edges; E06-log.md, T5b). The
+# entity network and an MLP control at the same settings, 20 M samples each (otherwise
+# `e06-t5.toml`'s, `t4-2`'s):
+#
+#   uv run --group train python -m h3env.train --config configs/e06-t5c.toml --out runs/t5-2
+#   uv run --group train python -m h3env.train --config configs/e06-t5c.toml --out runs/t5-3 \
+#       --set network.kind=mlp
+
+seed = 1
+samples = 20_000_000
+
+[network]
+kind = "entity"
+
+[league]
+self_play = 0.5
+snapshot_every = 1_000_000
+max_members = 16
+live = 4
+live_every = 250_000
+
+[gate]
+gate_every = 10_000_000
+
+[ladder]
+ladder_episodes = 250
+ladder_final_episodes = 500

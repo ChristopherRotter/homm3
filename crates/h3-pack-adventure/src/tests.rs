@@ -341,7 +341,8 @@ fn the_packs_type_the_monsters_and_the_grounds() {
         assert_eq!(
             ty(key).kind,
             ObjectKind::Ground {
-                battlefield: ContentKey::parse(battlefield).unwrap()
+                battlefield: ContentKey::parse(battlefield).unwrap(),
+                no_native: key.ends_with("cursed_ground"),
             }
         );
     }
@@ -476,6 +477,8 @@ fn parses_every_field() {
         max_players = 4
         army_slots = 5
         starting_stack_chances = [80, 20]
+        fly_cost = [140, 140, 120, 100]
+        water_walk_cost = [150, 140, 125, 110]
 
         [params.monsters]
         aggression = [[-4, -4], [1, 7]]
@@ -598,7 +601,12 @@ fn parses_every_field() {
         name = "Cursed ground"
         visit = "enter"
         from_above = true
-        ground = { battlefield = "other:cursed" }
+        ground = { battlefield = "other:cursed", no_native = true }
+
+        [[terrain_walker]]
+        creature = "nomad"
+        terrain = "other:sand"
+        counts_as = "dirt"
         "#,
     )
     .unwrap();
@@ -757,7 +765,8 @@ fn parses_every_field() {
                 Visit::Enter,
                 true,
                 &ObjectKindDef::Ground {
-                    battlefield: k("other:cursed")
+                    battlefield: k("other:cursed"),
+                    no_native: true,
                 }
             ),
         ]
@@ -780,7 +789,17 @@ fn parses_every_field() {
                 count_words: vec![5, 10],
                 price_resource: k("p:coin"),
             }),
+            fly_cost: [cost(140), cost(140), cost(120), cost(100)],
+            water_walk_cost: [cost(150), cost(140), cost(125), cost(110)],
         })
+    );
+    assert_eq!(
+        pack.terrain_walkers,
+        [TerrainWalkerDef {
+            creature: k("p:nomad"),
+            terrain: k("other:sand"),
+            counts_as: k("p:dirt"),
+        }]
     );
     assert_eq!(
         pack.starting_resources,
@@ -865,7 +884,28 @@ fn rejects_malformed_files() {
     ));
     assert!(key("[[difficulty]]\nhuman = { Bad = 1 }\ncomputer = {}"));
     assert!(key("[[difficulty]]\nhuman = {}\ncomputer = { Bad = 1 }"));
-    let full = format!("[params]\n{bounds}\n{slots} = 1\nstarting_stack_chances = []");
+    // E08 T40: a terrain walker's three references; its fields, a ground's `no_native` a bool.
+    let walker = |c: &str, t: &str, a: &str| {
+        format!("[[terrain_walker]]\ncreature = \"{c}\"\nterrain = \"{t}\"\ncounts_as = \"{a}\"")
+    };
+    assert!(key(&walker("Bad", "a", "b")));
+    assert!(key(&walker("c", "Bad", "b")));
+    assert!(key(&walker("c", "a", "Bad")));
+    assert!(syntax(&format!("{}\nspeed = 1", walker("c", "a", "b"))));
+    assert!(syntax(
+        "[[terrain_walker]]\ncreature = \"c\"\nterrain = \"a\""
+    ));
+    assert!(syntax(&object(
+        "ground = { battlefield = \"f\", no_native = 1 }"
+    )));
+    let prices = "fly_cost = [1, 1, 1, 1]\nwater_walk_cost = [1, 1, 1, 1]";
+    assert!(syntax(&format!(
+        "[params]\n{bounds}\n{slots} = 1\nstarting_stack_chances = []\nfly_cost = [1, 1, 1]"
+    )));
+    assert!(syntax(&format!(
+        "[params]\n{bounds}\n{slots} = 1\nstarting_stack_chances = []\n{prices}\nwater_walk_cost = [0, 1, 1, 1]"
+    )));
+    let full = format!("[params]\n{bounds}\n{slots} = 1\nstarting_stack_chances = []\n{prices}");
     let battle = |fields: &str| format!("{full}\n[params.battle]\n{fields}");
     let fine = "underground = \"u\"\ncoast = \"c\"\ncoast_battlefield = \"f\"";
     let parsed = parse(&battle(fine))

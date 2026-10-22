@@ -99,6 +99,11 @@ prints each part's parameters, output shape and multiply-adds per decision (a ca
 apart), with `--time` the microseconds per decision of a forward and a training pass (`--device
 cuda` on the GPU), and `--mermaid` writes the table with the data flow as a Mermaid diagram.
 
+**A battle cut at `env.max_steps`** (2 000) costs each learning side `ppo.truncation_penalty`
+(1.0) and ends its trajectory there (E06 T5c; reward v1 lies in about (−1, 1), so stalling to
+the limit never pays); with 0 the trainer bootstraps from the final observation's value instead,
+as before T5c. Reward v1 and the evaluation (a truncation is no win) are unchanged.
+
 Each update prints one line (samples, samples/s, self-play's attacker wins, truncations, the
 league's size, the learner's score against its members, the frozen networks a call passed, the
 losses). Every training episode's seed is checked against the held-out sets' (a hit stops the

@@ -606,4 +606,5 @@ mod change;
 mod choice;
 mod derive;
 mod level;
+mod movement;
 mod outcome;

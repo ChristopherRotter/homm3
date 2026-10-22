@@ -401,7 +401,8 @@ fn a_viewer_sees_a_monsters_creature_and_the_word_of_its_count() {
     let mut setup = four();
     setup.heroes = vec![hero_at(1, 0, Pos::new(1, 2, 0), &[PIKEMAN])];
     setup.map.objects.push(ground(HALLOW, (5, 2, 0), (1, 3)));
-    let state = AdventureState::new(&core, &part, &setup, &mut draws()).unwrap();
+    let mut state = AdventureState::new(&core, &part, &setup, &mut draws()).unwrap();
+    state.start_game(&core, &part, &[]);
     let seen = state.observe(&core, &part, RED);
     let monsters: Vec<_> = seen
         .objects
@@ -457,7 +458,7 @@ fn guarded(rows: &[&str], objects: Vec<ObjectSetup>, heroes: Vec<HeroSetup>) -> 
     let (core, part) = monster_rules();
     let mut setup = world(rows, 1, heroes);
     setup.map.objects.extend(objects);
-    AdventureState::new(&core, &part, &setup, &mut draws()).unwrap()
+    crate::testing::started(&(core, part), &setup).unwrap()
 }
 
 // covers: ADV-MON-005

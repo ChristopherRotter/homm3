@@ -313,7 +313,11 @@ key is an MLP). The comparison with the other architectures the user saw: `E06-l
   the cast and the spell's embedding (the second target's also the target's embedding).
 - **Cost** (measured in T5a, `E06-log.md`): 1.19 M parameters against the MLP's 5.95 M, 15.5 M
   multiply-adds per decision against 5.5 M, about five times the MLP's time on the sandbox's CPU;
-  T5b measures the GPU (`--time --device cuda`) before its run.
+  on the GTX 1070 `t5-1` trained at about 1 600 samples/s (the MLP's `t4-2`: about 5 000).
+- **T5b's lesson** (`t5-1`, `E06-log.md`): a move's logit reads its hex's own features and the
+  context, so "to my edge" is easy and "toward that stack" hard; both sides learned to hide and
+  45 % of self-play stalled to the step limit. The user's remedy is the incentive, not features:
+  `ppo.truncation_penalty` (T5c).
 - **Visualization** (`python -m h3env.train.network`, no dependency beyond torch): a config's
   network (`--config`, `--set`) or a saved file's: each module's parameters and output shape on
   an observation, the multiply-adds of its linear layers and attention, the time of a forward

@@ -2,7 +2,7 @@
 
 Status: **in progress**, refined 2026-10-19 (BAT-Q52); T1a1 to T1a4 done (the cuts confirmed
 2026-10-20), T1c done (BAT-Q53, BAT-Q54); T1a5 done as cut (part C, §7.42 to §7.45); T1a5e (the spell evaluators) done (§7.46); T1b done, ADR-0027 accepted (BAT-Q55); T2 done (T2a the crate and the plain shooters, T2b the area value, the wall shot, the benchmark), the budget
-set; T3 done (cut in four: T3-0, T3a, T3b, T3c); T4 done (T4a, T4b in two, T4c, T4d); T1a6 done; slip 25 done; T5 cut in two, T5a done; T5b next · Follows E05 (the
+set; T3 done (cut in four: T3-0, T3a, T3b, T3c); T4 done (T4a, T4b in two, T4c, T4d); T1a6 done; slip 25 done; T5 cut in two, T5a done; T5b cut in two, T5b1 done; T5b2 next · Follows E05 (the
 AI lane, done) · Followed by E06 (training: this policy holds the neutral seat; AI-Q1) ·
 The battle lane's, later the AI lane's (BACKLOG).
 
@@ -245,8 +245,14 @@ found after that decision) belong to the neutral side's map too and are read (§
     evaluators, Chain Lightning, the area and mass damage spells, the summons (BAT-AI-017,
     BAT-AI-018; §7.56; slip 27, Expert Dispel, found by the blind check; `POLICY_VERSION` 12;
     the hero budget 5 ms; the log).
-  - [ ] **T5b The raises, Sacrifice, Earthquake and Teleport** (BAT-STUB-14; Teleport runs the
-    walker's real turn twice per candidate).
+  - **T5b The raises, Sacrifice, Earthquake and Teleport**, cut in two (the user, 2026-10-22:
+    Teleport on its own):
+    - [x] **T5b1 The raises, Sacrifice and Earthquake** (2026-10-22) — 0x43ACA0, 0x43B1E0 with
+      0x43AF50, 0x43B8F0 (BAT-AI-019; §7.57; slips 28 and 29 found and built under BAT-QUIRK-25;
+      Sacrifice's victim the cast's second target; `POLICY_VERSION` 13; the log).
+    - [ ] **T5b2 Teleport** (BAT-STUB-14) — 0x43AA60 with the destination map 0x4B2FF0: the
+      walker's real turn twice per stack it could move, with its draws and casts; the threat
+      records filled again after; watched against the hero's 5 ms.
 - [ ] **T6 The hero's other choices** — retreat and surrender, the tactics phase, the Catapult's
   aim, the First Aid Tent's patient (BAT-Q51); BAT-Q33's rule.
 - [ ] **T7 The closure** — the batch rows' leftovers, the benchmarks, the docs.

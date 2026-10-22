@@ -631,12 +631,15 @@ pub(crate) fn wall_penalty(
 ) -> bool {
     state.siege.is_some_and(|s| {
         let from = turned_front(s.field, shooter, target.hex);
-        !exempt
-            && !s.line.is_empty()
-            && s.outside(from)
-            && s.inside(target.hex)
-            && line_blocked(&s, from, target.hex)
+        !exempt && walls_between(&s, from, target.hex)
     })
+}
+
+/// Whether the walls halve a shot from `from` at a target positioned at `to` (0x467510 past its
+/// shooter's tests; BAT-SIE-008): a battle with walls, `from` outside them on its row, `to` inside
+/// on its row, and a wall on the straight line between them ([`line_blocked`]).
+pub(crate) fn walls_between(s: &SiegeState, from: Hex, to: Hex) -> bool {
+    !s.line.is_empty() && s.outside(from) && s.inside(to) && line_blocked(s, from, to)
 }
 
 /// The screen x of `hex`'s anchor in the original's units (44 per column, even rows 22 to the

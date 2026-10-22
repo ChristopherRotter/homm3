@@ -1,6 +1,6 @@
 # E06 — Battle AI v1 and the local training pipeline v0
 
-Status: **in progress**, refined 2026-10-20 (AI-Q8); increment 1 (T1, T2a, T2b1, T2c) done; increment 2 (T3a, T3b) done; increment 3 (T4a, T4b) done; increment 4 refined 2026-10-22: T5a done, T5b next · Lane: **ai** · Follows E05 (closed
+Status: **in progress**, refined 2026-10-20 (AI-Q8); increment 1 (T1, T2a, T2b1, T2c) done; increment 2 (T3a, T3b) done; increment 3 (T4a, T4b) done; increment 4 refined 2026-10-22: T5a to T5c done, T5d next · Lane: **ai** · Follows E05 (closed
 2026-10-20) · Runs beside E23 (the battle lane: the original's battle AI, the system actor's
 policy), whose neutral side opens E06's neutral share (decision 1)
 
@@ -54,7 +54,10 @@ on held-out encounters.
    the system actor. Exploiter agents only if a check shows the main agent exploitable. Heuristic
    bots never train (E05 decision 8).
 10. **Reward v1 unchanged**, one experiment on the mana price (10 per spell point, provisional);
-    retreat and surrender stay masked (ADR-0025 point 7).
+    retreat and surrender stay masked (ADR-0025 point 7). **Amended 2026-10-22** (the user, T5c):
+    in training a battle cut at the step limit costs each learning side
+    `ppo.truncation_penalty` (1.0) instead of a bootstrap, against stalling (`t5-1`); reward v1
+    and the evaluation unchanged.
 11. **Records:** every run's summary (config, commit, ruleset hash, ABI version, metrics, the
     evaluations) is committed; checkpoints stay outside git, on the user's machine.
 12. **No new scripted bot:** the ladder is Random, Aggressor, Greedy, E23's policy as it arrives,
@@ -132,13 +135,19 @@ league runs, γ 1.0 beside 0.995, 60 M samples each).
   Greedy); the stopped `t4-2` resumed for real; the record in `E06-log.md`.
 
 **Increment 4:** T5a, then T5b (refined 2026-10-22, the user: the entity network first, design
-§11; a brief comparison of architectures in `E06-log.md`; the visualization in T5a).
+§11; a brief comparison of architectures in `E06-log.md`; the visualization in T5a); after
+T5b's stalling, T5c and T5d (the user, 2026-10-22).
 
 - [x] **T5a The entity network** — done 2026-10-22: `h3env.train.entity` behind one interface
   with the MLP, `[network] kind`, the v21 layout pinned by `h3-sim`'s tests, γ 1.0 the default,
   `python -m h3env.train.network`, `configs/e06-t5.toml`; the record in `E06-log.md`.
-- [ ] **T5b The A/B run** — the user's 60 M samples with the entity network against `t4-2`
-  (the same config and seed); its record committed.
+- [x] **T5b The A/B run** — done 2026-10-22, negative: `t5-1` stopped at 26.6 M (1 600
+  samples/s, 45 % of self-play stalled to the step limit, both sides hiding at their edges); the
+  record and the diagnosis in `E06-log.md`.
+- [x] **T5c The truncation penalty** — done 2026-10-22 (the user's amendment of decision 10):
+  `[ppo] truncation_penalty` 1.0; `configs/e06-t5c.toml`.
+- [ ] **T5d The runs with the penalty** — the user's 20 M samples each: the entity network
+  (`t5-2`) and the MLP (`t5-3`), against each other and `t4-2`'s first 20 M.
 
 **Later increments** (cut at each checkpoint; proposed in design §10):
 

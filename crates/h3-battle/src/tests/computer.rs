@@ -828,3 +828,58 @@ fn a_two_hex_shooters_copy_is_blocked_by_the_stack_itself() {
     // A one-hex shooter has no other hex.
     assert!(!blocked("archer", &["berserk"], &["berserk"]));
 }
+
+// covers: BAT-SIE-008, BAT-AI-019
+#[test]
+fn the_computer_s_wall_test_asks_from_a_shooter_s_position() {
+    // The computer's Earthquake value tests the walls from a shooter's position (0x43BAC3), the
+    // rule from the hex the shooter turns to (survey slip 29). A two-hex shooter stands with its
+    // rear outside at (9, 4) and its front on row 4's destroyed wall hex (10, 4), and shoots up at
+    // (13, 2) inside: from its rear the line meets row 3's wall, from its front the shot starts at
+    // the walls' line and nothing halves it.
+    let r = ruleset();
+    let fort = Siege {
+        faction: r.faction_by_key("t:castle").unwrap(),
+        fort: FortLevel::Fort,
+        moat: Moat::Absent,
+        structures: 0,
+        escape_tunnel: false,
+        morale: 0,
+        luck: 0,
+    };
+    let at_fort = |shooter: &'static str| {
+        let mut s = arena_on(
+            &r,
+            [None, None],
+            &[(shooter, 10, 9, 4)],
+            &[("fixed", 10, 13, 2)],
+            1,
+            |s| s.siege = Some(fort),
+        );
+        crate::siege::damage_part(&mut s, 2, u8::MAX, &mut crate::NoopSink);
+        assert!(!s.siege.unwrap().walls().contains(Hex(78)));
+        s
+    };
+    let (me, enemy) = (StackId(0), StackId(1));
+    let s = at_fort("medusa");
+    assert_eq!(s.stacks()[0].hex, at(&r, 9, 4));
+    assert!(computer::walls_halve_from_position(&s, me, enemy));
+    assert!(!computer::walls_halve(&s, me, enemy));
+    // A one-hex shooter there shoots from its position either way; a shooter the walls never
+    // halve, neither.
+    let s = at_fort("archer");
+    assert!(computer::walls_halve_from_position(&s, me, enemy));
+    assert!(computer::walls_halve(&s, me, enemy));
+    let s = at_fort("mage_s");
+    assert!(!computer::walls_halve_from_position(&s, me, enemy));
+    assert!(!computer::walls_halve(&s, me, enemy));
+    // On the open field, nothing.
+    let s = arena(
+        &r,
+        [None, None],
+        &[("archer", 10, 9, 4)],
+        &[("fixed", 10, 13, 2)],
+        1,
+    );
+    assert!(!computer::walls_halve_from_position(&s, me, enemy));
+}

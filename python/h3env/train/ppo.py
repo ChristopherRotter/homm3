@@ -6,8 +6,9 @@ Each call's sample is the acting side's decision (observation, masks, chosen hea
 log-probability and value). `SeatBook` closes a side's transition at its next decision or at the
 episode's end with the rewards in between (reward v1, terminal); the sample that opened it gets
 that reward. GAE runs backwards over the rollout's calls with a carry per (env, side): a sample's
-next value is its side's next sample's, 0 after a decided battle, the value of `final_obs[env,
-side]` after a truncation, and the value of the batch's current observation for the side to move
+next value is its side's next sample's, 0 after a decided battle, after a truncation 0 with the
+reward `-truncation_penalty` (E06 T5c; with 0 instead the value of `final_obs[env, side]`), and
+the value of the batch's current observation for the side to move
 when the rollout ends. A transition still open at the end (the side not to move) has no next value
 yet and is left out of that update; the sample before it bootstraps from its value.
 
@@ -497,6 +498,11 @@ class Trainer:
             r.closed[at, e] = True
             r.terminal[at, e] = closed.terminal[e, s]
             trunc = closed.truncated[e, s]
+            if c.truncation_penalty:
+                # A battle cut at the step limit ends there (it is terminal) at a loss for each
+                # learning side (E06 T5c): no bootstrap, so stalling to the limit never pays.
+                r.reward[at[trunc], e[trunc]] -= c.truncation_penalty
+                trunc = np.zeros_like(trunc)
             r.truncated[at, e] = trunc
             if trunc.any():
                 final = torch.from_numpy(b.final_obs[e[trunc], s[trunc]]).to(self.device)
