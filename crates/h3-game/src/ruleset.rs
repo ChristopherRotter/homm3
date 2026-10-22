@@ -52,7 +52,7 @@ impl GameRuleset {
             .battle_terrains()
             .is_none_or(|t| known(&t.coast_battlefield))
             && adventure.object_types().iter().all(|ty| match &ty.kind {
-                ObjectKind::Ground { battlefield } => known(battlefield),
+                ObjectKind::Ground { battlefield, .. } => known(battlefield),
                 _ => true,
             });
         if adventure.core_hash() == hash && battle.core_hash() == hash && field {

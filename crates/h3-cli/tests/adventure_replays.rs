@@ -62,7 +62,11 @@
 //! searched ones, which no longer met what they were chosen for. E08 T38b (ADV-MAP-002's count:
 //! every tile no object blocks, not the coast) moved red's levels at load in `duel-s1-d28`,
 //! `duel-s3-easy-d7` and `duel-s236-d28`: re-recorded with their options, their commands
-//! unchanged, only their checkpoints and final hashes moved.
+//! unchanged, only their checkpoints and final hashes moved. E08 T40 (the heroes' day's points,
+//! Pathfinding and radius from their details; adventure ruleset part v10) changed every game:
+//! all nine re-recorded with their options, their commands new, so what each meets is T31's list
+//! above only where the new game meets it too; E08 T42 checks them again when it re-records them
+//! for flyers and water walkers (and may replace the searched ones, as T31).
 
 use std::path::PathBuf;
 

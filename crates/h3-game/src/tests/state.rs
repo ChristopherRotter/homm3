@@ -96,7 +96,8 @@ fn the_setup_stream_draws_the_objects_contents_after_the_armies_and_experience()
         let (part, _) = setup.adventure_setup(&rules, &mut draws).unwrap();
         let alone =
             AdventureState::new(rules.core(), rules.adventure(), &part, &mut draws).unwrap();
-        assert_eq!(state.adventure(), &alone);
+        // The map's draws; the heroes' points and reveals follow at the start of the game.
+        assert_eq!(state.adventure().map(), alone.map());
         let [(_, gold)] = state.adventure().map().objects()[0].contents[..] else {
             panic!("one resource");
         };

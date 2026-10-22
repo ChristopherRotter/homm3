@@ -6,6 +6,7 @@
 
 mod aftermath;
 mod battles;
+mod day;
 mod decisions;
 mod heroes;
 mod legal;
@@ -407,6 +408,7 @@ fn part_with(core: &Ruleset, chances: Vec<u8>, slots: u8) -> AdventureRuleset {
                 from_above: true,
                 kind: ObjectKindDef::Ground {
                     battlefield: key("t:holy"),
+                    no_native: false,
                 },
             },
             // A wandering monster of the map's creature (E08 T20b1).
@@ -440,6 +442,8 @@ fn part_with(core: &Ruleset, chances: Vec<u8>, slots: u8) -> AdventureRuleset {
                 count_words: vec![5, 10],
                 price_resource: key("t:gold"),
             }),
+            fly_cost: [cost; 4],
+            water_walk_cost: [cost; 4],
         }),
         // Difficulty 0 starts with 3 000 gold for a human, 1 with 2 000 (E08 T13a).
         starting_resources: [3000, 2000]

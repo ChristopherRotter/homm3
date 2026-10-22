@@ -10,6 +10,8 @@ max_levels = 2
 max_players = 4
 army_slots = 5
 starting_stack_chances = [80, 20]
+fly_cost = [160, 150, 130, 110]
+water_walk_cost = [170, 150, 140, 120]
 
 [[difficulty]]
 human = { coin = 500, shard = 5 }

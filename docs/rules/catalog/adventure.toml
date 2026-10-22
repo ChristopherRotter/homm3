@@ -9,7 +9,7 @@ id       = "ADV-MOV-001"
 title    = "Movement points of a day on land"
 context  = "adventure"
 status   = "verified"
-summary  = "A hero's movement points on land for a day come from the lowest speed among the creatures of its army through the land table (data: 1300, 1360, 1430, 1500, 1560, 1630, 1700, 1760, 1830, 1900, 1960, 2000 for speeds 0 to 11; faster armies take the last entry; the original reads its table up to speed 20, all 2000 from 11, and caps the speed at 20). When they are set: ADV-MOV-002. Bonuses (Logistics, artifacts, Stables, a creature specialty's +1 speed) come with the adventure profile (increment 3); at sea (Navigation) with boats. E08 T4: the table; T6b: `h3_adventure::day_points`."
+summary  = "A hero's movement points on land for a day come from the lowest speed among the creatures of its army through the land table (data: 1300, 1360, 1430, 1500, 1560, 1630, 1700, 1760, 1830, 1900, 1960, 2000 for speeds 0 to 11; faster armies take the last entry; the original reads its table up to speed 20, all 2000 from 11, and caps the speed at 20). Since E08 T40 the hero counts in: each stack's speed as `h3_heroes::movement_speed` gives it (HER-ADV-004: a creature specialist's creature and its direct upgrades one faster, which can lift the slowest speed past the table's end; speed artifacts do not count), then the hero's bonuses on the entry by `h3_heroes::land_points` (HER-ADV-003: Logistics +10/20/30 %, a Logistics specialist's growth under Q-0005, the worn Boots of Speed +600 and Equestrian's Gloves +300 after the rate). When they are set: ADV-MOV-002. Stables, a computer player's bonus and the sea (Navigation) come later (survey E08-hero-movement.md §6). E08 T4: the table; T6b: `h3_adventure::day_points`; T40: `land_table_points` and the details."
 numeric  = "integer"
 
   [[rule.source]]
@@ -38,12 +38,24 @@ numeric  = "integer"
   retrieved  = "2026-10-12"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T34a; survey E08-hero-movement.md §1.1): hero_max_land_movement (0x4E4990) takes the slowest of the seven slots with a creature specialist's creature and its upgrade one faster, indexes the land table, grows it by Logistics (skill_logistics 0x63EA68, a specialist's rate grown 5 % of itself per level in single precision, 0x63EAE4) and adds 600 for Boots of Speed (98) and 300 for Equestrian's Gloves (70), worn or in a worn combination"
+  confidence = "high"
+  note       = "The wiki (Movement, Logistics) and VCMI (TurnInfo, skills.json, artifacts.json) agree on the order and the amounts; VCMI counts speed artifacts, which the code and the wiki do not (survey §1.2)."
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-5a.md E5-1 and E08-batch-5c.md, E08-batch-5d.md E5-2 (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-22; survey E08-hero-movement.md §13): 1560, 1716, 1872, 2028 with no, Basic, Advanced and Expert Logistics; 2160 and 1860 with Boots of Speed and Equestrian's Gloves; 2928 with both and Expert Logistics; Valeska's Archers 1630; the Logistics specialists' 1829, 1694, 1889 in single precision"
+  retrieved  = "2026-10-22"
+  confidence = "high"
+
 [[rule]]
 id       = "ADV-MOV-002"
 title    = "When a day's movement points are set"
 context  = "adventure"
 status   = "verified"
-summary  = "At the start of its owner's turn every hero of that player gets the day's movement points for its army (ADV-MOV-001); points left from the day before are lost. A placed hero gets them when the game is built too. The original sets them at the start of the turn, not at the change of day for everyone as the wiki and VCMI have it; the difference shows only when another player changes the army between the two (a battle in that player's turn), which nothing in increment 1 can. The user chose the code reading (ADV-Q4, 2026-10-10); batch 1a confirmed it on day 1 and day 2 (E08 T10c), and a change of the army during the owner's own turn leaves the day's points as they are. E08 T6b: `AdventureState::start_turn`, run by `h3-game` at each turn group's start (ADR-0017 point 3)."
+summary  = "At the start of its owner's turn every hero of that player gets the day's movement points for its army (ADV-MOV-001); points left from the day before are lost. A placed hero gets them when the game is built too. The original sets them at the start of the turn, not at the change of day for everyone as the wiki and VCMI have it; the difference shows only when another player changes the army between the two (a battle in that player's turn), which nothing in increment 1 can. The user chose the code reading (ADV-Q4, 2026-10-10); batch 1a confirmed it on day 1 and day 2 (E08 T10c), and a change of the army during the owner's own turn leaves the day's points as they are. E08 T6b: `AdventureState::start_turn`, run by `h3-game` at each turn group's start (ADR-0017 point 3). Since E08 T40 both read the hero's details in the game's store (ADV-MOV-001), and the build's points come after the levels at load (`AdventureState::start_game`, called by `GameState::new` after them: the original's `placed_hero_setup` 0x4D8B30, ADR-0017 point 1); a gain in the day (a level-up's Logistics, an artifact put on) changes neither the points left nor the day's maximum until the owner's next turn start (survey E08-hero-movement.md §1.4; batch E5's E5-3)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -85,7 +97,7 @@ id       = "ADV-MOV-003"
 title    = "The straight cost of a step"
 context  = "adventure"
 status   = "verified"
-summary  = "A straight step costs the source tile's terrain cost (data: dirt 100, sand 150, grass 100, snow 150, swamp 175, rough 125, subterranean 100, lava 100; water 100 by boat) or, when both tiles have a road, the source tile's road's cost (data: dirt road 75, gravel road 65, cobblestone road 50). Only the source tile prices a step: stepping off a road onto swamp from a road on grass costs grass's 100 (D-2: the code reading and VCMI; the wiki's destination terrain not taken, the user, ADV-Q3, 2026-10-11; batch 1a confirmed it both ways, E08 T10c). Rivers change no cost. E08 T7b: `Pricing::step`, through `MoveHero` and the reachable-tiles query."
+summary  = "A straight step costs the source tile's terrain cost (data: dirt 100, sand 150, grass 100, snow 150, swamp 175, rough 125, subterranean 100, lava 100; water 100 by boat) or, when both tiles have a road, the source tile's road's cost (data: dirt road 75, gravel road 65, cobblestone road 50). Only the source tile prices a step: stepping off a road onto swamp from a road on grass costs grass's 100 (D-2: the code reading and VCMI; the wiki's destination terrain not taken, the user, ADV-Q3, 2026-10-11; batch 1a confirmed it both ways, E08 T10c). Rivers change no cost. Since E08 T40 a terrain's price is the one at the hero's Pathfinding level (the part's costs by level: sand and snow 125, 100, 100, swamp 150, 125, 100; roads, water and the native cost unchanged), and a terrain walker in the army counts the source's terrain as another for every price of the step, the native test and the diagonal exception's check included (the `ab` pack's Nomads: sand as dirt). E08 T7b: `Pricing::step`, through `MoveHero` and the reachable-tiles query; T40: `Pricing::new` from the hero's `h3_heroes::Movement` and its army."
 numeric  = "integer"
 
   [[rule.source]]
@@ -116,12 +128,32 @@ numeric  = "integer"
   confidence = "high"
   note       = "Confirms D-2 (ADV-Q3) for the code reading and VCMI."
 
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T34a; survey E08-hero-movement.md §2.1 points 1, 2): step_cost (0x4B1740) prices the source terrain by step_cost_table (0x63E510) at the Pathfinding level (hero skill 0, from hero_step_cost 0x4B18C0), and with a stack of creature 142 (army_count_of_type) counts the source's sand (1) as dirt (0) for everything after it, the native test and the diagonal's check included"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Pathfinding - Heroes 3 wiki: 'reducing the cost of moving one tile by 25 movement points' per level, at least 100 in SoD, 'useless on roads'; Nomad: 'a hero can eliminate the sand terrain penalty if he has at least one Nomad on his army'"
+  url        = "https://heroes.thelazy.net/index.php/Pathfinding"
+  retrieved  = "2026-10-21"
+  confidence = "medium"
+  note       = "Agrees with the reading and VCMI (survey §2.2)."
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/pathfinder/CPathfinder.cpp getTileMovementCost: max(100, terrain - 25 x level) (config/skills.json ROUGH_TERRAIN_DISCOUNT 25/50/75), roads unaffected; the Nomad's NO_TERRAIN_PENALTY for sand"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/pathfinder/CPathfinder.cpp"
+  retrieved  = "2026-10-21"
+  confidence = "high"
+
 [[rule]]
 id       = "ADV-MOV-004"
 title    = "Native terrain removes the penalty"
 context  = "adventure"
-status   = "implemented"
-summary  = "An army is native to a terrain when every creature's faction has it as native terrain (neutral creatures, and factions without one, have none); a step from that terrain without a road costs the native cost (data: 100) instead of the terrain's. Under ADV-QUIRK-4 (faithful) the original's walk: stacks without a native terrain in slots before the first that has one are skipped, so [Peasants, Pikemen] is native to grass but [Pikemen, Peasants] is not. Nomads' sand ability (increment 3) and Cursed Ground (with objects) come later. E08 T7b: `native_terrain`, `Pricing`."
+status   = "verified"
+summary  = "An army is native to a terrain when every creature's faction has it as native terrain (neutral creatures, and factions without one, have none); a step from that terrain without a road costs the native cost (data: 100) instead of the terrain's. Under ADV-QUIRK-4 (faithful) the original's walk: stacks without a native terrain in slots before the first that has one are skipped, so [Peasants, Pikemen] is native to grass but [Pikemen, Peasants] is not. The terrain compared is the source's as a terrain walker counts it (ADV-MOV-003). Cursed Ground (D-23, E08 T40): a step from a tile whose top ground (the last in map order lying on it, as for a battle's ground) takes the native cost away (the packs' `no_native`: the RoE and the SoD Cursed Ground) costs every army the terrain's walking price, and so does the drop's cheapest step on such a tile (ADV-MOV-006). E08 T7b: `native_terrain`, `Pricing`; T40: `StaticTile::no_native`."
 numeric  = "integer"
 quirks   = ["ADV-QUIRK-4"]
 
@@ -145,6 +177,18 @@ quirks   = ["ADV-QUIRK-4"]
   retrieved  = "2026-10-09"
   confidence = "high"
   note       = "Re-read 2026-10-11: a neutral stack anywhere leaves the army without a native terrain, the strict-fixed behaviour of ADV-QUIRK-4."
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T34a; survey E08-hero-movement.md §2.1 point 2, §2.5): step_cost (0x4B1740) gives the native 100 only when the source tile's special ground (tile_special_ground 0x4FCE20) is not Cursed Ground (21); cheapest_step_from (0x4B1880) prices the tile against itself with its terrain as native, so on Cursed Ground the terrain's price"
+  confidence = "high"
+  note       = "VCMI 1.7.5 gives Cursed Ground only its battlefield; the wiki is silent (D-23): batch E5's E5-6 settled it."
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-5a.md E5-6a, E5-6b (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-22; survey E08-hero-movement.md §13): 10 Gnolls (native to swamp) pay 175 for each step from swamp under the RoE (class 21) and the SoD (223) Cursed Ground alike, then 100 from plain swamp"
+  retrieved  = "2026-10-22"
+  confidence = "high"
 
 [[rule]]
 id       = "ADV-MOV-005"
@@ -178,7 +222,7 @@ id       = "ADV-MOV-006"
 title    = "A step needs its price; the diagonal exception; the points left"
 context  = "adventure"
 status   = "verified"
-summary  = "A step is made only with at least its price in points left; MoveHero takes only paths payable today and rejects one with a step it cannot pay (the original stops there and loses the rest). The diagonal exception: with points from a check cost C up to ⌊C × √2⌋ (inclusive) a diagonal costs only its straight cost; C is the step's own straight cost, or under ADV-QUIRK-2 without the road and under ADV-QUIRK-3 without the native cost (the original compares with the source terrain's plain cost). After each step the points left drop to 0 when fewer remain than the cheapest straight step from the new tile: its road's cost, else the native cost (D-3: the code reading; VCMI's rule, below the step's own straight cost, not taken: the user, ADV-Q3, 2026-10-11). E08 T7b: `Pricing::step`, `Pricing::left_after`, `MoveHero`."
+summary  = "A step is made only with at least its price in points left; MoveHero takes only paths payable today and rejects one with a step it cannot pay (the original stops there and loses the rest). The diagonal exception: with points from a check cost C up to ⌊C × √2⌋ (inclusive) a diagonal costs only its straight cost; C is the step's own straight cost, or under ADV-QUIRK-2 without the road and under ADV-QUIRK-3 without the native cost (the original compares with the source terrain's plain cost). After each step the points left drop to 0 when fewer remain than the cheapest straight step from the new tile: its road's cost, else the native cost (D-3: the code reading; VCMI's rule, below the step's own straight cost, not taken: the user, ADV-Q3, 2026-10-11), on Cursed Ground the terrain's walking price at the hero's Pathfinding level after a terrain walker (E08 T40, ADV-MOV-004). C is likewise the source terrain's price at the hero's Pathfinding level after a terrain walker. E08 T7b: `Pricing::step`, `Pricing::left_after`, `MoveHero`; flying and water walking in the price and the drop with T41."
 numeric  = "integer"
 quirks   = ["ADV-QUIRK-2", "ADV-QUIRK-3"]
 
@@ -272,8 +316,8 @@ numeric  = "integer"
 id       = "ADV-FOG-001"
 title    = "The scouting radius of a hero"
 context  = "adventure"
-status   = "implemented"
-summary  = "A hero reveals the tiles within its scouting radius (data: 5 without bonuses). Scouting (6, 7, 8 by level), artifacts (Speculum and Spyglass, +1 each) and the Scouting specialty come with the adventure profile (increment 3). E08 T4: the base radius; T8a: the reveals use it (ADV-FOG-002, ADV-FOG-003)."
+status   = "verified"
+summary  = "A hero reveals the tiles within its scouting radius (data: 5 without bonuses). Since E08 T40 the radius is `h3_heroes::scouting_radius` on that base (HER-ADV-006: Scouting +1, +2, +3, the worn Speculum and Spyglass +1 each; a Scouting specialty adds nothing, ADR-0013 point 13.4), derived once per reveal from the hero's details in the game's store. E08 T4: the base radius; T8a: the reveals use it (ADV-FOG-002, ADV-FOG-003); T40: the hero's."
 numeric  = "integer"
 
   [[rule.source]]
@@ -286,6 +330,12 @@ numeric  = "integer"
   ref        = "config/gameConfig.json baseScoutingRange 5"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/gameConfig.json"
   retrieved  = "2026-10-10"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-5e.md E5-10 (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-22; survey E08-hero-movement.md §13): after a level-up's Basic Scouting the radius 6's tile is revealed at the hero's first step; the Spyglass the same"
+  retrieved  = "2026-10-22"
   confidence = "high"
 
 [[rule]]
@@ -313,8 +363,9 @@ id       = "ADV-FOG-003"
 title    = "When tiles are revealed"
 context  = "adventure"
 status   = "verified"
-summary  = "At the start of a game each hero reveals the tiles around its tile to its owner, and each step of a move reveals the tiles around the tile it enters, for the radius of ADV-FOG-001 (shape ADV-FOG-002). Increment 1 has no owned objects, so a game opens with only the heroes' surroundings explored (towns and mines add theirs once owned: a recorded simplification). The original reveals around everything a player owns (0x4C7C50) only right after a hide: at a new day only when a Cover of Darkness hid tiles (0x4C7BA0; E08 T34b, survey E08-hero-movement.md §4.2), so no new day reveals as a rule (with towns, E09). E08 T8a."
+summary  = "At the start of a game each hero reveals the tiles around its tile to its owner, and each step of a move reveals the tiles around the tile it enters, for the radius of ADV-FOG-001 (shape ADV-FOG-002). Increment 1 has no owned objects, so a game opens with only the heroes' surroundings explored (towns and mines add theirs once owned: a recorded simplification). The original reveals around everything a player owns (0x4C7C50) only right after a hide: at a new day only when a Cover of Darkness hid tiles (0x4C7BA0; E08 T34b, survey E08-hero-movement.md §4.2), so no new day reveals as a rule (with towns, E09). Since E08 T40 the start's reveal comes after the levels at load (`AdventureState::start_game`), each with the hero's radius then; a radius grown in the day shows at the hero's next step (ADV-QUIRK-18, faithful; batch E5's E5-10), and in strict-fixed also at the next day's start, where the adventure's start-of-day step (`AdventureState::start_day`, after the calendar) reveals around every hero to its owner. E08 T8a; T40."
 numeric  = "integer"
+quirks   = ["ADV-QUIRK-18"]
 
   [[rule.source]]
   kind       = "original-data"

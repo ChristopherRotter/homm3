@@ -178,3 +178,16 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 
 ### ADV-QUIRK-14 — Withdrawn (was: the computer's terrain shares count only the coast)
 - **Withdrawn** (the user, 2026-10-22, ADV-Q22; the epic's decision 85; removed from the rules by E08 T38b). T25 read the tile flag `0x40` (+0xC) that `ai_map_terrain_shares` (0x52B9C0) tests as the map file's coast flag, so the shares would count the coast alone (ADV-Q17, decision 60: reproduced). E08 T38 found it means "no object blocks the tile": `map_tiles_load` (0x4FE220) sets it on every tile but rock, `tile_refresh_object` (0x505610) clears it where an object blocks the tile without an entrance there (survey `E08-progression.md` §10.3's correction). The original counts every tile no object blocks but rock, water included, which is no quirk: ADV-MAP-002 counts so (`crates/h3-adventure/src/state/tests.rs`, `the_terrain_shares_count_the_tiles_no_object_blocks`). The id is not reused.
+
+### ADV-QUIRK-18 — A grown scouting radius waits for the hero's next step
+- Class: fix-optional (the user, 2026-10-22, at T34b's checkpoint: the original's way as a fix-optional quirk; the epic's decision 77, ADV-Q21)
+- Context / rules affected: adventure, ADV-FOG-003 (E08 T40), with ADV-FOG-001
+- Original behavior: a hero's scouting radius grown in the day (a level-up's Scouting, the Speculum or the Spyglass put on) reveals nothing until the hero's next step, which reveals with the new radius; a hero that does not move shows nothing new at later days either. No turn start reveals: `new_day` (0x4C7FE0) calls `reveal_owned` (0x4C7C50, around everything a player owns) only after `cover_of_darkness_hide` (0x4C7BA0) hid tiles, and `next_player_turn` (0x4C6FE0) reaches no reveal; `hero_level_up`, `hero_learn_secondary_skill` and the artifact moves call none (survey `E08-hero-movement.md` §1.4, §4.2).
+- Intended/expected behavior: a grown radius shows by the next day's start: the adventure's start-of-day step reveals around every hero to its owner with its radius (VCMI reveals at once for a skill, nothing for an artifact; the wiki is silent: D-26).
+- Impact: information: a few tiles at the edge of a hero's view revealed one day earlier for a hero that waits.
+- Community status: not documented.
+- Sources: code reading (E08 T34a, corrected by T34b's re-read of `new_day`; survey `E08-hero-movement.md` §4.2); batch E5's E5-10 (`experiments/results/E08-batch-5e.md`: no tile revealed after the battle's Scouting nor at day 2's start, the radius 6's tile after the first step; the Spyglass the same; survey §13); VCMI 1.7.5 `CGameHandler::changeSecSkill`.
+- Flag: `quirk.adventure.radius_waits_for_a_step`
+- Defaults: faithful = on (no start-of-day reveal), strict-fixed = off (`AdventureState::start_day` reveals around every hero at each new day's start, after the calendar; on day 1 it adds nothing)
+- Regression test: `crates/h3-adventure/src/state/tests/day.rs`, `a_gain_in_the_day_shows_at_the_next_turn_start_and_step`
+- Decided by / date: the user 2026-10-22 (the epic's decision 77; confirmed by batch E5's E5-10, T38); built by E08 T40
