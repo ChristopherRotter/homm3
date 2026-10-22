@@ -5268,3 +5268,208 @@ lacked the marks: fixed in both profiles.
 without the strikes first, Berserk's and Hypnotize's targets with the stack itself, a two-hex
 shooter's copy blocked by itself, the stack's morale and luck with the ended spell; without, the
 copy is the stack itself. **Draws:** none new.
+
+### 7.55 Code reading: the hero's cast choice and the retreat test (E23 T1a6, 2026-10-22)
+
+Read for E23 T1a6 (the user: whole): part H of §7.34's map in full, the cast choice 0x43C800 with
+its spell dispatch 0x43BB20 and the helpers of the spells outside the evaluators' table (0x436FB0,
+0x437310, 0x43ACA0, 0x43B1E0 with 0x43AF50, 0x43B8F0, 0x43AA60, 0x5A9360), the retreat test
+0x41E570 with 0x41E440 and the price 0x477A00; of part A the artifact value 0x433AA0 and
+0x4339E0 in full and 0x4336C0 by its cases (the adventure lane's to read with its AI). Insight
+only, nothing copied (Q29).
+
+**0x43C800, the cast choice** (0x308 bytes; the spell context 0x422DA0 built, §7.42; the retreat
+test's answer `q`). The best starts empty (spell −1, value 0). With `q` the context's desperate
+mode is set (+0x28, the battle context's +8, §7.31) for every value that follows. Over the spells
+0 to 69 the side's hero has available (+0x430) that are battle spells (flag `0x1`): with `q` only
+damage spells (`0x200`); on Cursed Ground (+0x53C0 = 2) only level 1 (+0x18), while either hero
+wears Recanter's Cloak (83) only levels 1 and 2; the mastery 0x4E5080 and the cost 0x4E5240 on
+the battlefield (the other side's army for the Pegasi); a cost above the hero's mana (+0x18) skips
+the spell. **Raises only:** when the context's enemy is beaten (+0x1C, §7.42) and no living own
+record but the arrow towers has planned damage (+0x534) that, with its top creature's lost hit
+points (+0x58), reaches its hit points per creature (+0xC0), only Resurrection and Animate Dead
+(38, 39) are tried. The candidate (§7.44): the spell, the mastery, the power `p` (the battle's
++0x53D4 of the side), the rounds `p` + 0x4E4DB0 (the Collar, Ring and Cape of Conjuring, the Ring
+of the Magi), flag 1; 0x43BB20 writes its value `v`, target and "now". For `v` > 0:
+
+- `v' = trunc(5v / 2)` when the mana `m` covers at least 7 casts (`m` ≥ 7 × the cost), else
+  `v' = trunc(v × √⌊m / cost⌋)` (the root and the product in doubles); Titan's Lightning Bolt
+  costs 0 (the first branch);
+- `v'' = trunc(r × v' / 100)`, `r = random(75, 100)` (0x43CA60), one draw per spell with a value;
+- `v''` above the best's value makes the candidate the best with that value (strict: at a tie the
+  lower spell id stays).
+
+After the loop: no best, or a best whose "now" (+0x20, §7.44) is 0 while `q` is false: no cast
+(false). Else action 1, the spell (+0x40), the target hex (+0x44), the second hex (+0x48)
+(§7.13). **So the computer's hero casts its best drawn value only when that cast is due now, or,
+when its side would retreat, always: a damage spell then, valued in the desperate mode.** Values
+within a quarter of each other are a lottery; while mana is short a spell is worth √(its casts
+left) times its value, from 7 casts on 2.5 times.
+
+**0x43BB20, a spell's value** (0x3FC bytes; the candidate). By the spell:
+
+- *Earthquake* (14): 0x43B8F0; *Chain Lightning* (19): 0x437310; *Resurrection, Animate Dead*
+  (38, 39): 0x43ACA0; *Sacrifice* (40): 0x43B1E0; *Teleport* (63): 0x43AA60 (below).
+- *Frost Ring, Fireball, Inferno, Meteor Shower* (20 to 23): the damage `d` = the power factor
+  (+0x30) × `p` + the value at the mastery (+0x34); at each hex 0 to 186 but the side columns
+  (hex mod 17 = 0 or 16) 0x437040 (§7.35: the area's own and other sums under its test); a larger
+  value takes the hex (the first of equals); "now" 1.
+- *Death Ripple, Destroy Undead, Armageddon* (24 to 26): `d` as above; `E` the sum of 0x436E30
+  (§7.43, with each stack's own side's hero, as the bolts') over the other side's records, `O`
+  over the own side's (each from the last record); the value 0x436FB0(`E`, `O`); "now" 1.
+- *Dispel* (35): 0x43A910 (§7.44) on the own side; at Advanced on the other side too (one target:
+  the larger stays); at Expert the own side's sum plus the other side's.
+- *The summons* (66 to 69): 0 when the enemy is beaten or 0x5A93A0 refuses (20 stacks, an
+  elemental of another kind summoned by the side, +0x132A8); else `n` = the value at the mastery × `p` creatures, worth `1000 n` in
+  the desperate mode, else `n` × the elemental's AI value (creature table +0x40; 0x5A9360: Fire
+  114, Earth 113, Water 115, Air 112); "now" 1.
+- *Every other spell*: 0 unless it takes stacks (flags `0x70`, §7.6); then a positive or neutral
+  one on the own side, a negative or neutral one on the other side, by 0x43A910 (one target by
+  0x43A670, or the mass version's sum) with its evaluator (§7.46). No neutral spell gets here.
+  **Quicksand, Land Mine, Force Field, Fire Wall (10 to 13), Berserk (59: flags `0x41485`, aimed
+  at a hex) and Remove Obstacle (64) are worth 0: the computer's hero never casts them.**
+
+**0x436FB0, the mass damage's value** (0x8A bytes; `E`, `O`): 0 when `E` ≤ 0; an `O` below 0
+counts 0; 0 when `E` ≤ `O`, when `O / S` is not below `E / T` (`S`, `T` the own and the other
+side's strengths with flag 1, the battle context's +0xC and +0x10, §7.31; each operand an `f32`,
+the quotients in the x87's precision) or when `O` ≥ `S`; else `E − O`. 0x437040's test (§7.35)
+without the area.
+
+**0x437310, Chain Lightning** (0xD1 bytes): over the other side's living records in record order
+the spell's test takes (0x5A3C80 with the context's creature-cast flag), 0x437190 (§7.43: the
+chain from that stack) with the power and mastery; a larger value takes the stack's position;
+"now" 1. The first target is always an enemy.
+
+**0x43ACA0, the raises** (0x2AE bytes; Resurrection, Animate Dead). Over the own records in
+record order the spell's test takes, a record R that is the raise's target at its position
+(0x5A3F50 for Animate Dead, else 0x5A3CC0 with 0), or at its other hex for a two-hex R (0x4466A0),
+that hex the target:
+
+- `n` = (the power factor × `p` + the value at the mastery) / R's hit points per creature (+0xC0,
+  integer division); `l` = the creatures lost (+0x60 − +0x4C); the top creature's lost hit points
+  are not counted;
+- when `n` > `l` and `l` is below `trunc(3 × start / 4)` (+0x60) only if the enemy is beaten;
+  Resurrection below Advanced never when the enemy is beaten (its creatures last the battle only);
+- `k = min(n, l)`, at least 1; the value `trunc(k × w)`, `w` R's worth (0x442A50 with the context's
+  least attack and defense and R's shot flag, §7.31), doubled when the own able strength exceeds
+  the other's (the battle context's +0x14, +0x18) and the balance class (+0x1C) is 1, as the
+  creatures' raise (§7.43);
+- a larger value takes the hex; "now" 1 when R is the active stack (+0x132B8, +0x132BC), when the
+  enemy is beaten, or when no other own record can still act this round (living, not a war
+  machine, not blind, petrified or paralysed, not acted), else 0.
+
+**0x43B1E0 and 0x43AF50, Sacrifice** (0xF2 and 0x284 bytes): the target T as the raises' (the
+test with 1, Resurrection's target at its hex or other hex); over the own living records V but T
+the test takes as the victim (0x5A3C80 with 0): `n` = (the value at the mastery + V's creature's
+hit points (creature table +0x4C) + `p`) × V's count / T's hit points per creature, `l`, the
+three-quarter rule and `k` as the raises'; the value `trunc(k × w_T) − s_V` (V's strength
+0x442E60, §7.31), above 0, doubled as the raises'; a larger value takes T's hex as the target and
+V's position as the second hex; "now" as the raises'.
+
+**0x43B8F0, Earthquake** (0x224 bytes): 0 for the defender, when the enemy is beaten, without a
+fort (+0x132F4). Over the eight wall-shot targets (0x63BE60: the parts 5, 6, 8, 9, 10, 12, 13,
+14) `W` is the sum of their hit points (+0x13F60) and `m` the least: 0 when `W` = 0, and unless a
+living defender record but the arrow towers stands inside the walls (0x467460). `h = min(W, the
+value at the mastery)`. Over the own records in record order but the dead, the blind, petrified
+and paralysed, the Tent and the Cart: one without a threat enemy (+0x538) adds its strength
+(0x442E60) while `m` > 0 (no target part down); one with a threat enemy E adds `trunc(s × h /
+3W)` when it can shoot now and its shot at E crosses the walls (0x467510). "Now" 1.
+
+**0x43AA60, Teleport** (0x235 bytes). Over the own records in record order but the dead and
+those that have acted, that the test takes and that cannot shoot now: `v₀` = the walker's turn
+0x421F80(R, 0, 0, the side) (§7.34: the real turn, the creature cast entry too when the walker
+chose nothing; it answers the chosen value, 0 for Wait or Defend), then `v₁` = 0x421F80(R, 1, 0,
+the side) (the destination map 0x4B2FF0, §7.38: whom R would strike from anywhere Teleport could
+put it). Only when the second wrote a move and attack (6) at an enemy that is not R (+0x44 not R's
+position) does `v₁ − v₀` count; a larger one takes R's position as the target and the plan's hex
+(+0x40) as the destination; "now" 1 when R is the active stack, is blind, petrified or paralysed,
+or no other own record can still act, else 0. When any walker was asked, the threat records of
+both sides are filled again afterwards (0x422B20 with flag 0, the context's step 4, §7.42). The
+turns are real ones: they write the manager's action (+0x3C to +0x48; the cast replaces it), draw
+the walker's 75–100 % (0x421B02), and a caster's cast entry may build spell contexts of its own
+(the Ogre Mage's, the Genie's, the dragon's), which predict the side's run again.
+
+**0x41E570, the retreat test** (0x546 bytes; the battle manager; the acting side +0x132C0), now
+in full, in its order:
+
+1. no when the side has no hero; for a computer side (+0x54A4 = 0) on Easy, or on Normal when
+   `random(1, 100)` ≤ 50 (0x41E5BC); when either hero wears the Shackles of War (125); when the
+   scenario's victory condition (game +0x1F89C, a byte: 5, defeat a hero) names the side's hero
+   (+0x1F8D0 against the hero's id +0x1A);
+2. no when none of the hero's player's towns (the player record +0x3E and its list +0x40; the
+   towns at game +0x21614, 0x168 bytes each) has a Tavern (building 5 in the every-built set
+   +0x158, §7.27), or the only one is the battle's town (+0x53C8) and the side the defender; at a
+   town the defender goes on only in a Stronghold (+4 = 6) with the Escape Tunnel (17);
+3. **yes** when 0x41E440 finds the attacker walled out (below);
+4. the artifacts' worth `A`: over the hero's 19 worn and 64 carried artifacts (+0x12D, +0x1D4),
+   each the larger of 0x433AA0 (part A, below; at least 10) and half its cost (the artifact
+   table's +4, ARTRAITS.TXT; integer); no when `A` < 1000 and the hero's experience (+0x51) is
+   below 2000;
+5. the price `P` (0x477A00); the predictions 0x422A40 with flag 1 (§7.42: the side's run, then
+   the other side's next): **yes** when no own living record but war machines keeps hit points
+   after the planned damage (0x443080 with 1);
+6. no when the player's gold (+0xB4) is below `P` + 2500;
+7. the strengths: per side, over its first 20 records with a creature and a count, count × Fight
+   Value (+0xB0, the creature's +0x3C), × 1.2 for a record that has not acted (`0x4000000`; in a
+   double, truncated), summed; at a town the defender's sum × 1.1, then the other side's (of the
+   acting one) × 1.1, each truncated;
+8. the threshold `x`: 0.16 when `A` ≤ 0, 0.2 above 0 (0x3E4CCCCC, 0.19999999), 0.21 above 5000,
+   0.22 above 10 000; less (4 − the difficulty) × 0.015; plus 0.03 when ⌊experience / 200 000⌋
+   exceeds 0.03, which the integer division makes 0 below 200 000 experience and 0.03 from there;
+   less 0.06 for the attacker; at most 0.16; each step stored as an `f32`;
+9. **yes** when the side's own strength over both sides' sum (each an `f32`, the quotient stored
+   as one) is below `x` (an unordered 0 / 0 too); else no.
+
+So a computer hero retreats from a hopeless siege, when the predictions leave its side no
+creature, or when its side holds less than about a tenth to a sixth of the battle's Fight Value
+(with artifacts worth up to 5000: an attacker 0.095 on Normal to 0.14 on Impossible, a defender
+0.155 on Normal and 0.16 above; the cap takes most of the artifact terms), but only with a hero
+worth keeping (artifacts worth
+1000 or 2000 experience; a worn Catapult alone counts 500, half its cost), gold for the price and
+2500 more, a tavern to hire him back from, and not on Easy or the Normal draw's half.
+
+**0x41E440, walled out** (0x129 bytes): a siege (+0x132F4) with the gate closed (+0x53A4 = 3),
+the acting side the attacker, none of its living records flying (`0x2`), a catapult (`0x20`) or
+able to shoot now, the four walls standing (the wall-shot targets 1, 2, 4, 5 by 0x63ABC0: the
+parts 6, 8, 10, 12 above 0 hit points), and every living defender record but the arrow towers
+inside the walls (0x467460).
+
+**0x477A00, the price** (0xB2 bytes; only the retreat test calls it): §7.34's surrender price (the
+acting side's first 20 records: `(count − temporary) × gold` of those not summoned with more
+creatures than temporary ones, halved, × 0x4E4580's factor through an `f32`).
+
+**Part A, the artifacts' value** (as far as the battle needs it). 0x433AA0 (0x9E bytes; an
+artifact, a player): the largest of 10 and 0x4339E0 over the player's heroes (+1, +8; game
++0x21620, 0x492 bytes each). 0x4339E0 (0xB8 bytes; a hero, the artifact): the hero's value of it
+(0x4336C0, at least 0) when some body position takes it (0x4E2550), else that value less the
+value of the worn one it would replace (0x4E2840; the last such position), at least 0. 0x4336C0
+(0x320 bytes; by its cases only), by the artifact: the Spell Scroll its spell's value (0x527640)
+unless the hero knows the spell; the Ballista, the Ammo Cart and the First Aid Tent from the
+hero's Attack, the army's shooters' AI values and First Aid; any other the sum of its effects'
+values (the table 0x692E18, virtual calls; a combination's too), and 5 000 000 for the victory
+condition's artifact (+0x1F89C 0 or 10, +0x1F8A0). The adventure AI's own valuation.
+
+**What these read.** The cast choice: the battle, both heroes' battle data (spells available,
+mana, power, artifacts) and the special field. The retreat test besides: the hero's carried
+artifacts, experience and player, the player's gold, towns, buildings, other heroes and their
+artifacts, the scenario's victory condition and the difficulty: no seam carries these (T6,
+BAT-Q61). Nothing hidden from the side but what the adventure holds.
+
+**Order and state.** 0x422DA0 builds the context (its predictions of the side's run alone, the
+threat records filled again), asks the retreat test, then the cast choice. When the test gets as
+far as its predictions (step 5), they replace the context's on every stack: the cast choice's
+values read the planned damage of both sides' runs (the raises-only test, every 0x443080 with
+flag 1) and the threat records as the predicted turns left them (each side's last predicted
+walker's, §7.52), until Teleport's evaluation (63) fills them again (survey §4, slip 26, for T5's
+checkpoint). 0x477EE0 asks the test again after a cast, with a new draw and new predictions.
+
+**Draws:** the retreat test's `random(1, 100)` on Normal (0x41E5BC), twice per activation when the
+hero may cast; the cast choice's `random(75, 100)` per spell with a value (0x43CA60); the
+predictions' (§7.42) in the context and in the test; Teleport's walker turns (0x421B02 and any
+cast's, §7.44).
+
+**Readings at risk** (survey §3): the hero never casts Berserk, Quicksand, Land Mine, Force Field,
+Fire Wall or Remove Obstacle (the wiki says it of Force Field and Quicksand); a cast only when due
+"now" (row 4b H3); the retreat's threshold with the cap and the steps, the strengths' 1.2 and 1.1. Its
+other terms agree with the wiki's word for word, the walled-out siege's four conditions too
+(Combat, "AI Retreat"; survey §2).

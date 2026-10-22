@@ -2,7 +2,7 @@
 
 Status: **in progress**, refined 2026-10-19 (BAT-Q52); T1a1 to T1a4 done (the cuts confirmed
 2026-10-20), T1c done (BAT-Q53, BAT-Q54); T1a5 done as cut (part C, §7.42 to §7.45); T1a5e (the spell evaluators) done (§7.46); T1b done, ADR-0027 accepted (BAT-Q55); T2 done (T2a the crate and the plain shooters, T2b the area value, the wall shot, the benchmark), the budget
-set; T3 done (cut in four: T3-0, T3a, T3b, T3c); T4 done (T4a, T4b in two, T4c, T4d); T1a6 and T5 next · Follows E05 (the
+set; T3 done (cut in four: T3-0, T3a, T3b, T3c); T4 done (T4a, T4b in two, T4c, T4d); T1a6 done; slip 25 and T5 next · Follows E05 (the
 AI lane, done) · Followed by E06 (training: this policy holds the neutral seat; AI-Q1) ·
 The battle lane's, later the AI lane's (BACKLOG).
 
@@ -143,9 +143,13 @@ there):
     T1b) — the 36 evaluators 0x43B690 hands out and their nine helpers (about 11.6 KB): the
     removals value what they remove by its evaluator, so the Genie needs 34 of the 36, not its 21
     (`installation.md` §7.46; the log).
-- [ ] **T1a6 The hero** (read just before T5) — part H (5.8 KB): the cast choice 0x43C800's candidates, the retreat test
-  0x41E570; the rest of part A (about 2.4 KB) only as far as the battle needs it (the adventure lane's to read with
-  its AI). The Catapult and the First Aid Tent are read (§7.29; §7.14, BAT-Q51).
+- [x] **T1a6 The hero** (2026-10-22; the user: whole) — part H in full: the cast choice 0x43C800
+  with its spell dispatch 0x43BB20 and the special spells' helpers (a cast only when due now, or
+  a damage spell when the side would retreat; never Berserk, Quicksand, Land Mine, Force Field,
+  Fire Wall, Remove Obstacle), the retreat test 0x41E570 (the wiki's terms; the share of Fight
+  Value); part A's artifact value as far as the battle needs it; slip 26 found, BAT-Q61 (the
+  adventure's inputs) (`installation.md` §7.55; the log). The Catapult and the First Aid Tent are
+  read (§7.29; §7.14, BAT-Q51).
 
 **T1b follows T1a5** (the user, 2026-10-20): the neutral side's map is then complete and the
 seam's questions are the neutral side's; T1a6 moves to just before T5. The evaluators (T1a5e,
@@ -226,7 +230,10 @@ found after that decision) belong to the neutral side's map too and are read (§
     Ray and Slow never meet, Berserk and Hypnotize strike as the stack itself, a two-hex shooter's
     copy blocked by its own record; the copy's turns at its own speed and Hypnotize's shooter
     marks in both profiles; BAT-STUB-12 retired; §7.54; the log.
-- [ ] **T5 The hero's spells** (T1a6's reading first).
+- [ ] **Slip 25** (the user, 2026-10-22, BAT-Q57): in `strict-fixed` the computer's elementals cast
+  their protection through the Ogre Mage's scan with the protections' estimates (§7.42, §7.46).
+- [ ] **T5 The hero's spells** (T1a6's reading done, §7.55; cut at its checkpoint; BAT-Q61's
+  answer for the retreat test's part).
 - [ ] **T6 The hero's other choices** — retreat and surrender, the tactics phase, the Catapult's
   aim, the First Aid Tent's patient (BAT-Q51); BAT-Q33's rule.
 - [ ] **T7 The closure** — the batch rows' leftovers, the benchmarks, the docs.
