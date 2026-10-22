@@ -1,0 +1,375 @@
+# Experiment batch E5a (E08 T36a; decisions 78, 80): increment 5's day's points and step prices,
+# rows E5-1, E5-4, E5-5 and E5-6 of the survey's plan (docs/rules/surveys/E08-hero-movement.md §9;
+# docs/epics/E08-design.md §11), in SoD on Easy, hot seat. Where a flight or a water walk may go
+# (E5-7, E5-9, E5-11) is batch E5b; the rows that need the heroes' seed bytes and the scorer (E5-2,
+# E5-3, E5-10) are T36b's. Build: docs/experiments/README.md. Predictions are for the agent who
+# evaluates the results; the template never shows them.
+#
+# | row  | settles                               | the reading (faithful)        | the other source(s)          |
+# | E5-1 | ADV-MOV-001's bonuses (a check)        | 1560 x (1 + Logistics) + 600/300 | consensus (VCMI, the wiki) |
+# | E5-4 | D-24: flying's price on an inland road | 100 per straight step         | the wiki, VCMI: 50 (the lesser) |
+# | E5-5 | water walking's price (a check)        | the land tile's, then 100, 141 | consensus                   |
+# | E5-6 | D-23: Cursed Ground and native terrain | 175 from it (the native 100 lost) | VCMI: 100 (no such rule)  |
+#
+# Every hero's army is speed 4 (10 Pikemen, Gnolls or Archers): the land table's 1560
+# (packs/base/adventure.toml `land_points`, 0x698A98), no hero has Pathfinding, Logistics or a
+# Logistics specialty unless a row gives it, and every army is native to the terrain it starts on
+# only where the row says so (ADV-MOV-004). The rates are the original's floats (0x63EA68: 0.1,
+# 0.2, 0.3 as f32) and the x87's trunc((rate + 1) x points): 1716, 1872, 2028 (§1.1).
+#
+# The trap of the starting bonus: a hot-seat player's random starting bonus may give a hero an
+# artifact; Boots of Speed or Equestrian's Gloves on an E5-1 hero would change its points. Note a
+# worn artifact the spec does not give under "anything odd" (the harness: a hero's `equipment`).
+
+[map]
+name = "E08 batch E5a"
+description = "Engine-generated experiment map (E08, batch E5a): a hero's day's points by Logistics, artifacts and specialty; flying, water walking and Cursed Ground prices. Hot seat, Red and Blue human, difficulty Easy; follow the results template."
+size = 36
+terrain = "grass"
+difficulty = "easy"
+instructions = [
+    "Copy `E08-batch-5a.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human, difficulty **Easy**. Before you start it, compare the stamp at the start of the map's description with the stamp above. Save right away (save 1).",
+    "A click on a tile shows the hero's path (arrows and a cross on the tile clicked); a second click on the same tile makes the hero go. Each walk below is one such pair of clicks on the tile named; note the colour of the target's mark, the number of marks and the hero's movement points after it (the harness reads them from memory: clients/capture/batches/E08-batch-5a.toml). A walk that does not happen: note it and go on with the next.",
+    "Order: day 1, Red's turn: E5-4a, E5-4b, E5-5, E5-6a, E5-6b, each as its encounter says; end the turn. Blue's turn: read E5-1's points (no hero moves); end the turn. Day 2, Red's turn: end the turn. Blue's turn: read E5-1's points again. Then the map is done: two days, no battle.",
+    "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
+]
+
+# E5-5's lake: rows 9 to 11, columns 2 to 16 (its land neighbours carry the coast flag).
+[[map.patch]]
+terrain = "water"
+from = [2, 9]
+to = [16, 11]
+
+# E5-5's shores: sand on the north (row 8, columns 8 to 10) and the south (row 12, 7 to 10).
+[[map.patch]]
+terrain = "sand"
+from = [8, 8]
+to = [10, 8]
+
+[[map.patch]]
+terrain = "sand"
+from = [7, 12]
+to = [10, 12]
+
+# E5-4a: a cobblestone road on row 4 (columns 3 to 5), grass, then swamp (columns 8 to 10).
+[[map.road]]
+kind = "cobblestone"
+row = 4
+from = 3
+to = 5
+
+[[map.patch]]
+terrain = "swamp"
+from = [8, 3]
+to = [10, 5]
+
+# E5-4b: a cobblestone road on the lake's north shore (row 8, columns 3 to 6): coastal tiles.
+[[map.road]]
+kind = "cobblestone"
+row = 8
+from = 3
+to = 6
+
+# E5-6: swamp (rows 15 to 27), with the RoE Cursed Ground (class 21, 6 x 4: columns 3 to 8,
+# rows 16 to 19) and the SoD one (class 223, AVXcg5, 3 x 3: columns 6 to 8, rows 24 to 26).
+[[map.patch]]
+terrain = "swamp"
+from = [2, 15]
+to = [16, 27]
+
+[[map.ground]]
+picture = "AVXcrsd0"
+at = [8, 19]
+
+[[map.ground]]
+picture = "AVXcg5"
+at = [8, 26]
+
+# --- ADV-MOV-001: the day's points (Blue) ------------------------------------------------------
+
+[[encounter]]
+id = "E5-1"
+title = "The day's points: Logistics, Boots of Speed, Equestrian's Gloves, a creature specialist"
+questions = ["ADV-MOV-001", "ADV-MOV-002", "HER-ADV-003", "HER-ADV-004"]
+procedure = [
+    "Day 1, Blue's turn, before anything moves: read the movement points of Blue's eight heroes E5-1a to E5-1h (row 32; the harness, from memory). None of them moves. End the turn.",
+    "Day 2, Blue's turn start: read the eight heroes' points again.",
+    "Note each hero's worn artifacts if any is not the one its line names (a starting bonus).",
+]
+record = [
+    { table = ["hero", "day 1 points", "day 2 points"], labels = [
+        "E5-1a (no Logistics)",
+        "E5-1b (Basic Logistics)",
+        "E5-1c (Advanced Logistics)",
+        "E5-1d (Expert Logistics)",
+        "E5-1e (Boots of Speed)",
+        "E5-1f (Equestrian's Gloves)",
+        "E5-1g (both, Expert Logistics)",
+        "E5-1h (Valeska, Archers)",
+    ] },
+    { field = "anything odd" },
+]
+predictions = """
+- Every source (the reading 0x4E4990, VCMI 1.7.5, the wiki; consensus, a check): the land table
+  at the slowest speed, times 1 + the Logistics rate, then +600 for worn Boots of Speed and +300
+  for worn Equestrian's Gloves; a creature specialist's creature counts one faster. The same on
+  both days (the points are set at the build and at each turn start of the owner, ADV-MOV-002).
+- **E5-1a 1560**, **E5-1b 1716**, **E5-1c 1872**, **E5-1d 2028**, **E5-1e 2160**, **E5-1f 1860**,
+  **E5-1g 2928** (2028 + 600 + 300), **E5-1h 1630** (Archers at speed 5: the table's next entry).
+- A difference of 600 or 300 on one hero only: a starting bonus's artifact (its equipment).
+  Another difference: the bonuses are not as read (ADV-MOV-001's amendment reopened, the survey
+  §1.1).
+"""
+[encounter.hero]
+type = "Orrin"
+specialty = "skill Archery"
+owner = "blue"
+name = "E5-1a"
+at = [2, 32]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+[[encounter.also]]
+type = "Edric"
+specialty = "creature Griffin"
+owner = "blue"
+name = "E5-1b"
+at = [6, 32]
+primary = [1, 1, 1, 1]
+skills = [["Logistics", 1]]
+army = [["Pikeman", 10]]
+[[encounter.also]]
+type = "Sorsha"
+specialty = "creature Swordsman"
+owner = "blue"
+name = "E5-1c"
+at = [10, 32]
+primary = [1, 1, 1, 1]
+skills = [["Logistics", 2]]
+army = [["Pikeman", 10]]
+[[encounter.also]]
+type = "Tyris"
+specialty = "creature Cavalier"
+owner = "blue"
+name = "E5-1d"
+at = [14, 32]
+primary = [1, 1, 1, 1]
+skills = [["Logistics", 3]]
+army = [["Pikeman", 10]]
+[[encounter.also]]
+type = "Rion"
+specialty = "skill First Aid"
+owner = "blue"
+name = "E5-1e"
+at = [18, 32]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+artifacts = { "feet" = "Boots of Speed" }
+[[encounter.also]]
+type = "Adela"
+specialty = "spell Bless"
+owner = "blue"
+name = "E5-1f"
+at = [22, 32]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+artifacts = { "right ring" = "Equestrian's Gloves" }
+[[encounter.also]]
+type = "Cuthbert"
+specialty = "spell Weakness"
+owner = "blue"
+name = "E5-1g"
+at = [26, 32]
+primary = [1, 1, 1, 1]
+skills = [["Logistics", 3]]
+army = [["Pikeman", 10]]
+artifacts = { "feet" = "Boots of Speed", "right ring" = "Equestrian's Gloves" }
+[[encounter.also]]
+type = "Valeska"
+specialty = "creature Archer"
+owner = "blue"
+name = "E5-1h"
+at = [30, 32]
+primary = [1, 1, 1, 1]
+army = [["Archer", 10]]
+
+# --- D-24: flying's price (Red) ------------------------------------------------------------------
+
+[[encounter]]
+id = "E5-4a"
+title = "Angel Wings inland: a cobblestone road, grass, swamp"
+questions = ["D-24", "ADV-MOV-009", "HER-ADV-005"]
+procedure = [
+    "Day 1, Red's turn: select E5-4a (Angel Wings worn). It stands on (3, 4), the west end of a cobblestone road (columns 3 to 5 of row 4); east of the road grass, then swamp from column 8. No water is near.",
+    "Read its movement points (before any walk).",
+    "Walk 1: one step east onto (4, 4), road to road. Walk 2: onto (5, 4), road to road. Walk 3: onto (6, 4), off the road onto grass. Walk 4: onto (7, 4), grass to grass. Walk 5: onto (8, 4), grass to swamp. Walk 6: onto (9, 4), swamp to swamp. After each walk read its points.",
+]
+record = [
+    { field = "points before the walks" },
+    { table = ["walk", "mark", "marks", "points after"], labels = [
+        "1 (3, 4) to (4, 4), road",
+        "2 (4, 4) to (5, 4), road",
+        "3 (5, 4) to (6, 4), road to grass",
+        "4 (6, 4) to (7, 4), grass",
+        "5 (7, 4) to (8, 4), grass to swamp",
+        "6 (8, 4) to (9, 4), swamp",
+    ] },
+    { field = "anything odd" },
+]
+predictions = """
+- 1560 points (10 Pikemen); every walk one green mark. A step's price is the source tile's
+  (ADV-MOV-003).
+- **The reading** (`step_cost` 0x4B1740, §2.1 point 5; faithful): flying replaces the price by 100
+  from every inland tile, a road included: **1460, 1360**, then 1260, 1160, 1060, 960.
+- **The wiki's table and VCMI 1.7.5** (the lesser of 100 and the walking price everywhere;
+  strict-fixed): the road steps **50 each: 1510, 1460**, then 1360, 1260, 1160, 1060.
+- Walks 3 to 6 are controls (every source 100: grass 100, swamp 175 walking, 100 flying). A
+  swamp step of 175 (walk 6): Angel Wings not flying at all (a starting bonus took the slot?).
+"""
+[encounter.hero]
+type = "Adelaide"
+specialty = "spell Frost Ring"
+at = [3, 4]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+artifacts = { "shoulders" = "Angel Wings" }
+
+[[encounter]]
+id = "E5-4b"
+title = "Angel Wings on the coast: a cobblestone road along the shore"
+questions = ["D-24", "ADV-MOV-009"]
+procedure = [
+    "Day 1, Red's turn: select E5-4b (Angel Wings worn). It stands on (3, 8), the west end of a cobblestone road along the lake's north shore (columns 3 to 6 of row 8; the water starts on row 9).",
+    "Read its points. Walk 1: one step east onto (4, 8). Walk 2: onto (5, 8). After each walk read its points.",
+]
+record = [
+    { field = "points before the walks" },
+    { table = ["walk", "mark", "marks", "points after"], labels = [
+        "1 (3, 8) to (4, 8), coastal road",
+        "2 (4, 8) to (5, 8), coastal road",
+    ] },
+    { field = "anything odd" },
+]
+predictions = """
+- 1560 points; one green mark each.
+- **Every source**: from a coastal land tile the lesser of the fly price and the walking price
+  (the reading, §2.1 point 5: the tile's coast flag 0x40; the wiki and VCMI: everywhere): the road's
+  **50 each: 1510, 1460**. The control for E5-4a: the same road inland costs 100 by the reading.
+- 100 each here: the coast flag is not what the reading says (or the writer's flag is missing);
+  E5-4a's reading cannot then be told from a flyer that never takes the lesser.
+"""
+[encounter.hero]
+type = "Sanya"
+specialty = "skill Eagle Eye"
+at = [3, 8]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+artifacts = { "shoulders" = "Angel Wings" }
+
+# --- water walking's price (Red) ---------------------------------------------------------------
+
+[[encounter]]
+id = "E5-5"
+title = "Boots of Levitation: across the lake and back with a diagonal"
+questions = ["ADV-MOV-010", "HER-ADV-005"]
+procedure = [
+    "Day 1, Red's turn: select E5-5 (Boots of Levitation worn). It stands on sand at (8, 12), the lake's south shore; the lake covers rows 9 to 11, and (8, 8) north of it is sand too.",
+    "Read its points. Walk 1: click (8, 8), across the lake straight north. Read its points and the number of marks.",
+    "Walk 2: click (9, 12), back across the lake to the sand one column east of the start. Read its points and the number of marks.",
+]
+record = [
+    { field = "points before the walks" },
+    { table = ["walk", "mark", "marks", "points after"], labels = [
+        "1 (8, 12) to (8, 8)",
+        "2 (8, 8) to (9, 12)",
+    ] },
+    { field = "anything odd" },
+]
+predictions = """
+- 1560 points; a water walker may not stop on water, so each walk crosses the lake whole.
+- **Every source** (the reading §2.1 point 4, VCMI 1.7.5 and the wiki agree at level 3; a
+  check): a step from land onto water costs the land tile's price (sand 150: the Pikemen are not
+  native to sand), a step from water 100 straight, 141 diagonally.
+- Walk 1: 150 + 100 + 100 + 100 = 450: **4 green marks, 1110 left**.
+- Walk 2: the cheapest path takes its diagonal on the water (a diagonal from the sand would cost
+  212): 150 + 141 + 100 + 100 = 491: **4 green marks, 619 left**.
+- 400 for walk 1: the step onto water costs 100 (VCMI's level-0-to-2 shape at level 3 or the
+  wiki's "without penalty"); 1160 or a fifth mark: the lake is not crossed as read.
+"""
+[encounter.hero]
+type = "Loynis"
+specialty = "spell Prayer"
+at = [8, 12]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+artifacts = { "feet" = "Boots of Levitation" }
+
+# --- D-23: Cursed Ground (Red) -----------------------------------------------------------------
+
+[[encounter]]
+id = "E5-6a"
+title = "A Fortress army on swamp under the RoE Cursed Ground (class 21)"
+questions = ["D-23", "ADV-MOV-003", "ADV-MOV-004"]
+procedure = [
+    "Day 1, Red's turn: select E5-6a (10 Gnolls, native to swamp). It stands on (7, 18), swamp under a Cursed Ground (columns 3 to 8, rows 16 to 19); east of column 8 plain swamp.",
+    "Read its points. Walk 1: one step east onto (8, 18), still on the Cursed Ground. Walk 2: onto (9, 18), off it. Walk 3: onto (10, 18), plain swamp to plain swamp. After each walk read its points.",
+]
+record = [
+    { field = "points before the walks" },
+    { table = ["walk", "mark", "marks", "points after"], labels = [
+        "1 (7, 18) to (8, 18), cursed to cursed",
+        "2 (8, 18) to (9, 18), cursed to plain",
+        "3 (9, 18) to (10, 18), plain swamp",
+    ] },
+    { field = "anything odd" },
+]
+predictions = """
+- 1560 points (10 Gnolls); one green mark each. A step's price is the source tile's.
+- **The reading** (`step_cost` 0x4B1740, §2.1 point 2: the native terrain's 100 only on a tile
+  that is not Cursed Ground, `tile_special_ground` 0x4FCE20 answering 21): walks 1 and 2 cost
+  swamp's 175, walk 3 the native 100: **1385, 1210, 1110**.
+- **VCMI 1.7.5** (Cursed Ground has no movement effect; the wiki is silent): 100 each: **1460,
+  1360, 1260**.
+- D-23 is built only if this row confirms the reading (decision 75).
+"""
+[encounter.hero]
+type = "Tazar"
+specialty = "skill Armorer"
+at = [7, 18]
+primary = [1, 1, 1, 1]
+army = [["Gnoll", 10]]
+
+[[encounter]]
+id = "E5-6b"
+title = "The same under the SoD Cursed Ground (class 223)"
+questions = ["D-23", "ADV-MOV-003"]
+procedure = [
+    "Day 1, Red's turn: select E5-6b (10 Gnolls). It stands on (7, 25), swamp under the SoD's Cursed Ground (columns 6 to 8, rows 24 to 26); east of column 8 plain swamp.",
+    "Read its points. Walk 1: one step east onto (8, 25), still on the Cursed Ground. Walk 2: onto (9, 25), off it. Walk 3: onto (10, 25). After each walk read its points.",
+]
+record = [
+    { field = "points before the walks" },
+    { table = ["walk", "mark", "marks", "points after"], labels = [
+        "1 (7, 25) to (8, 25), cursed to cursed",
+        "2 (8, 25) to (9, 25), cursed to plain",
+        "3 (9, 25) to (10, 25), plain swamp",
+    ] },
+    { field = "anything odd" },
+]
+predictions = """
+- *Agent's call (T36a), not in the survey's plan:* `tile_special_ground` (0x4FCE20) lists 21, 46,
+  222, 224-229 and 231, not the SoD's Cursed Ground 223 and Magic Plains 230; the map loader was
+  not read (docs/formats/installation.md §7: "it probably gives them the classes 21 and 46"). The
+  engine imports 223 as `sod:cursed_ground`, a type of its own: this row says whether D-23's rule
+  (if E5-6a confirms it) covers it.
+- **The loader gives 223 the class 21**: as E5-6a, **1385, 1210, 1110**.
+- **It does not**: no special ground for the step, the native 100: **1460, 1360, 1260**.
+- Only meaningful when E5-6a shows 175: with E5-6a at 100 this row says nothing about the step.
+"""
+[encounter.hero]
+type = "Alkin"
+specialty = "creature Gorgon"
+at = [7, 25]
+primary = [1, 1, 1, 1]
+army = [["Gnoll", 10]]

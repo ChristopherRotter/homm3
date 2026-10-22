@@ -3962,3 +3962,50 @@ background job died; the tools it had installed stayed).
   installation). The clients' check (`clients/scripts/check.sh --no-coverage`) passed every gate
   once SDL's build dependencies were installed in the sandbox (the client lane's setup installs
   them, the adventure lane's does not). CI cannot run (billing).
+
+### Increment 5, round 1: T36a, batch E5a and E5b's specs (2026-10-22, `adventure/e08-t36a`, `cross-lane`)
+
+**The cut** (decision 80; asked at the start, `AskUserQuestion`): T36 by rows, T36a now with the
+fixed predictions, T36b (the seed byte's rows E5-2, E5-3, E5-10 and their scorer) in the next
+session. Not chosen: both parts as two pull requests this session, T36 whole, T36b first. Found
+while sizing it: the writer and the spec placed only Cartographers, and E5-7 needs trees, E5-11 a
+Border Gate.
+
+**Baseline:** `master` eb1f35a (#380 merged); the sandbox's baseline ran the full gates on its
+engine code (5a41242d): all 16 steps passed. The user's PC was linked at the start (the repository from GitHub, the
+original data from the PC: the executable, both LODs, `Objects.txt`, `maps.tar`, `extracted.tar`);
+it went offline later, after everything was copied.
+
+- **The writer** (`h3_map::writer`): `PLAIN_OBJECTS` gains the trees (Oak Trees 135, Pine Trees
+  137, Trees 155) and the Border Gates (212, the key's colour as subclass): no body in the file,
+  as the reader's `Body::None` for them. A writer test writes a tree and a gate; the read-back test
+  imports a tree as a blocker (no type) and the light blue gate as `ab:border_gate_light_blue`.
+- **The spec** (`h3-experiment`, battle-owned, `cross-lane`): `[[map.object]]` takes their
+  pictures (`Tables.plains` already filters by `PLAIN_OBJECTS`); a test checks a tree's one tile,
+  a gate's three with the middle one its entrance, and the shared-tile errors for both.
+  `docs/experiments/README.md` and `docs/formats/h3m.md` say so.
+- **Batch E5a** (`experiments/specs/E08-batch-5a.toml`, 36 x 36, grass): Blue's eight E5-1 heroes
+  never move (10 Pikemen, 1560: no Logistics, Basic, Advanced, Expert, Boots of Speed, Equestrian's
+  Gloves, both with Expert Logistics, Valeska with Archers; 1560 to 2928, read at Blue's turn
+  starts on days 1 and 2); Red's E5-4a flies along an inland cobblestone road, then over grass and
+  swamp (the reading 100 per step, the wiki and VCMI 50 on the road), E5-4b along a coastal road
+  (50, every source); E5-5 crosses a lake with Boots of Levitation from sand and back with a
+  diagonal (450, 491: a water walker cannot stop on water, so each walk crosses whole); E5-6a's
+  Gnolls step off the RoE Cursed Ground on swamp (the reading 175, VCMI 100) and **E5-6b** off the
+  SoD one (class 223; the agent's call: `tile_special_ground` 0x4FCE20 does not list 223, the map
+  loader was not read, and the engine types it apart as `sod:cursed_ground`).
+- **Batch E5b** (`E08-batch-5b.toml`): E5-9 first, a flyer and a walker west of a strip of five
+  unexplored columns, a scout east of it (the walker's click the control: no path; the reading:
+  the flyer's green path of 13 marks, 260 left; VCMI and the engine: none); E5-7a a flyer clicks a
+  tree beyond a tree line (no path), then the free tile before it (3 marks over the line); E5-7b a
+  water walker clicks a lake tile (no path), then the far shore (4 marks); E5-11 a flyer two rows
+  south of a light blue Border Gate clicks two rows north of it (the reading: straight over the
+  entrance, 1160 left; over a blocked side 1078; stopped by the gate 1460 and its message).
+- **Checked in the engine**: both maps compile, read, import and validate
+  (`original_data` on a folder holding them; the tiles' coast flags, roads and grounds as
+  designed; E5-9's strip unexplored for Red at the build, the targets explored) through a
+  throwaway example (not committed).
+- **Not built**: the recipes and the run (T37: the harness's explored-tile read for E5-9; a read
+  of the points at a turn start without a walk for E5-1); T36b's specs and scorer.
+- **Verify**: the full run with the original data on de9f71b (`master` a64631e merged in, #382)
+  passed all 16 steps (engine code 4e17824f; benchmarks within +0.7 %). CI cannot run (billing).

@@ -1,0 +1,277 @@
+# Experiment batch E5b (E08 T36a; decisions 78, 80): where a flight or a water walk may go, rows
+# E5-7, E5-9 and E5-11 of the survey's plan (docs/rules/surveys/E08-hero-movement.md §9;
+# docs/epics/E08-design.md §11), in SoD on Easy, hot seat. The day's points and the step prices
+# (E5-1, E5-4 to E5-6) are batch E5a; E5-2, E5-3 and E5-10 are T36b's. E5-8 was dropped (A-14
+# withdrawn, decision 75). Build: docs/experiments/README.md. Predictions are for the agent who
+# evaluates the results; the template never shows them.
+#
+# | row   | settles                                      | the reading (faithful)       | the other source(s)        |
+# | E5-7  | D-25: where a move may end (a check)          | not on a tree, not on water  | consensus (VCMI, the wiki) |
+# | E5-9  | A-13: a flight through unexplored tiles       | a green path through them    | VCMI (and the engine): none |
+# | E5-11 | a flight over a Border Gate without its key   | a path over the gate         | no other source states it   |
+#
+# Every hero's army is 10 Pikemen (speed 4: 1560 points, native to grass, the map's terrain); no
+# hero has a skill. A flight costs 100 per straight step from an inland tile (§2.1), so each
+# walk's points count its steps.
+#
+# The trap of the starting bonus: a hot-seat player's random starting bonus may give a hero an
+# artifact; note a worn artifact the spec does not give under "anything odd".
+
+[map]
+name = "E08 batch E5b"
+description = "Engine-generated experiment map (E08, batch E5b): where a flying or water-walking hero may go: over trees, water, unexplored tiles and a Border Gate. Hot seat, Red and Blue human, difficulty Easy; follow the results template."
+size = 36
+terrain = "grass"
+difficulty = "easy"
+instructions = [
+    "Copy `E08-batch-5b.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human, difficulty **Easy**. Before you start it, compare the stamp at the start of the map's description with the stamp above. Save right away (save 1).",
+    "A click on a tile shows the hero's path (arrows and a cross on the tile clicked); a second click on the same tile makes the hero go. Each walk below is one such pair of clicks on the tile named; note the colour of the target's mark (green, red, or none when no path shows), the number of marks, whether the hero arrived and its movement points after it (the harness reads them from memory: clients/capture/batches/E08-batch-5b.toml). Whether a tile is explored for Red shows only in the game's memory (the harness reads it); by hand, whether the tile is black.",
+    "Order: day 1, Red's turn: E5-9 first (nothing else may move before it: its strip must stay unexplored), then E5-7a, E5-7b and E5-11, each as its encounter says. Then the map is done: one day, no battle. Blue's hero never moves.",
+    "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
+]
+
+# E5-7a: a tree line on row 6 (columns 3 to 11, one-tile trees) and one more tree beyond it at
+# (7, 4).
+[[map.object]]
+picture = "AVLtr3d0"
+at = [3, 6]
+
+[[map.object]]
+picture = "AVLtr3d0"
+at = [4, 6]
+
+[[map.object]]
+picture = "AVLtr3d0"
+at = [5, 6]
+
+[[map.object]]
+picture = "AVLtr3d0"
+at = [6, 6]
+
+[[map.object]]
+picture = "AVLtr3d0"
+at = [7, 6]
+
+[[map.object]]
+picture = "AVLtr3d0"
+at = [8, 6]
+
+[[map.object]]
+picture = "AVLtr3d0"
+at = [9, 6]
+
+[[map.object]]
+picture = "AVLtr3d0"
+at = [10, 6]
+
+[[map.object]]
+picture = "AVLtr3d0"
+at = [11, 6]
+
+[[map.object]]
+picture = "AVLtr3d0"
+at = [7, 4]
+
+# E5-7b: a lake on rows 4 to 6, columns 20 to 30.
+[[map.patch]]
+terrain = "water"
+from = [20, 4]
+to = [30, 6]
+
+# E5-11: a light blue Border Gate anchored on (32, 14): it covers (30, 14) to (32, 14), its
+# entrance (31, 14). Red holds no key (no Keymaster's Tent on the map).
+[[map.object]]
+picture = "AVXbgt00"
+at = [32, 14]
+
+# --- A-13: a flight through unexplored tiles ---------------------------------------------------
+
+[[encounter]]
+id = "E5-9"
+title = "A flight over a strip of unexplored land"
+questions = ["A-13", "ADV-MOV-008", "ADV-MOV-009"]
+procedure = [
+    "Day 1, Red's turn, before any other hero moves: E5-9 (Angel Wings worn) stands on (5, 24), the walker E5-9w (no artifact) on (5, 26), the scout E5-9s on (21, 24). Each explored around itself at the start (radius 5); between them columns 11 to 15 stay unexplored (black) on rows 19 to 31. Nothing else of Red's is near.",
+    "Read whether (13, 24), in the strip's middle, and (18, 24), near the scout, are explored for Red (the harness, from memory).",
+    "Control first: select E5-9w and click (18, 26) (east of the strip, explored by the scout): note the target's mark and the number of marks; click it again and note whether E5-9w moved.",
+    "Then select E5-9 and click (18, 24): note the target's mark and the number of marks; click it again and note where it arrived and its points.",
+]
+record = [
+    { field = "(13, 24) explored before the clicks (yes/no)" },
+    { field = "(18, 24) explored before the clicks (yes/no)" },
+    { field = "E5-9w's mark at (18, 26)" },
+    { field = "E5-9w's marks" },
+    { field = "did E5-9w move (yes/no)" },
+    { field = "E5-9's mark at (18, 24)" },
+    { field = "E5-9's marks" },
+    { field = "did E5-9 arrive (yes/no)" },
+    { field = "E5-9's points after" },
+    { field = "anything odd" },
+]
+predictions = """
+- The strip: (13, 24) **not explored**, (18, 24) **explored** (the reveal's radius 5 around each
+  hero, ADV-FOG-002: dx^2 + dy^2 <= 30; columns 11 to 15 lie beyond both). If (13, 24) is
+  explored, the row says nothing: report it.
+- **The control, every source**: a walking hero's path never enters an unexplored tile (the
+  reading: `pathfinder_fog_test` 0x4B25D4 makes it blocked, which only a flyer passes; VCMI; the
+  user's observation behind ADV-FOG-005): **no mark, no move**.
+- **The reading** (survey §3.1 point 3, A-13): an unexplored tile is passable only flying, so
+  E5-9's path runs straight east through the strip: **a green mark, 13 marks**; it **arrives**
+  on (18, 24) with **260** points (13 x 100 from 1560).
+- **VCMI 1.7.5** (unexplored tiles blocked in every layer) and the engine (A-13 fixed, decision
+  75): **no path**, as the walker.
+- A path that goes around the strip cannot exist (the strip spans the explored areas' rows).
+"""
+[encounter.hero]
+type = "Sorsha"
+specialty = "creature Swordsman"
+at = [5, 24]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+artifacts = { "shoulders" = "Angel Wings" }
+[[encounter.also]]
+type = "Tyris"
+specialty = "creature Cavalier"
+name = "E5-9w"
+at = [5, 26]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+[[encounter.also]]
+type = "Rion"
+specialty = "skill First Aid"
+name = "E5-9s"
+at = [21, 24]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+
+# --- D-25: where a flight or a water walk may end ----------------------------------------------
+
+[[encounter]]
+id = "E5-7a"
+title = "Angel Wings: a tree beyond a tree line, then the free tile before it"
+questions = ["D-25", "ADV-MOV-009"]
+procedure = [
+    "Day 1, Red's turn, after E5-9: select E5-7a (Angel Wings worn) on (7, 8). Two rows north of it a line of trees (row 6, columns 3 to 11); beyond it the free tile (7, 5) and a tree on (7, 4).",
+    "Walk 1: click the tree on (7, 4): note the target's mark and the number of marks; click it again and note whether the hero moved.",
+    "Walk 2: click (7, 5): note the mark and the number of marks; click it again, note where the hero arrived and its points.",
+]
+record = [
+    { field = "points before the walks" },
+    { table = ["walk", "mark", "marks", "arrived", "hero's tile", "points after"], labels = [
+        "1 the tree on (7, 4)",
+        "2 the free tile (7, 5)",
+    ] },
+    { field = "anything odd" },
+]
+predictions = """
+- 1560 points.
+- **Walk 1, every source** (the reading's second reading §3.4: a move ends only on a node that
+  may stop, never over a blocked tile; the wiki: "to an unoccupied map location"; VCMI: a flyer
+  lands on free tiles): **no mark, no move**, the hero stays on (7, 8) with 1560.
+- **Walk 2, every source**: a flyer passes over the blocked tree on (7, 6): **a green mark, 3
+  marks**, it arrives on (7, 5) with **1260** (3 x 100).
+- A path to the tree on (7, 4): D-25 reopened (a flight may end over a blocked tile).
+"""
+[encounter.hero]
+type = "Orrin"
+specialty = "skill Archery"
+at = [7, 8]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+artifacts = { "shoulders" = "Angel Wings" }
+
+[[encounter]]
+id = "E5-7b"
+title = "Boots of Levitation: a water tile, then the shore beyond the lake"
+questions = ["D-25", "ADV-MOV-010"]
+procedure = [
+    "Day 1, Red's turn: select E5-7b (Boots of Levitation worn) on (25, 7), the lake's south shore (the lake covers rows 4 to 6, columns 20 to 30).",
+    "Walk 1: click (25, 5), water in the lake's middle: note the target's mark and the number of marks; click it again and note whether the hero moved.",
+    "Walk 2: click (25, 3), land beyond the lake: note the mark and the number of marks; click it again, note where the hero arrived and its points.",
+]
+record = [
+    { field = "points before the walks" },
+    { table = ["walk", "mark", "marks", "arrived", "hero's tile", "points after"], labels = [
+        "1 the water tile (25, 5)",
+        "2 the shore (25, 3)",
+    ] },
+    { field = "anything odd" },
+]
+predictions = """
+- 1560 points.
+- **Walk 1, every source** (§3.4: a water-walking move never ends on water; the wiki: "provided
+  the end destination is an unoccupied location on land"; VCMI: never a turn on water): **no
+  mark, no move**.
+- **Walk 2, every source**: across the lake: grass onto water 100, two water steps 100, onto
+  the shore 100: **a green mark, 4 marks**, it arrives on (25, 3) with **1160**.
+"""
+[encounter.hero]
+type = "Edric"
+specialty = "creature Griffin"
+at = [25, 7]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+artifacts = { "feet" = "Boots of Levitation" }
+
+# --- E5-11: a flight over a Border Gate without its key ---------------------------------------
+
+[[encounter]]
+id = "E5-11"
+title = "Angel Wings over a light blue Border Gate whose key Red lacks"
+questions = ["E5-11", "ADV-MOV-009", "ADV-VIS-005"]
+procedure = [
+    "Day 1, Red's turn: select E5-11 (Angel Wings worn) on (31, 16). Two rows north of it the light blue Border Gate: its entrance (31, 14) between its two blocked sides (30, 14) and (32, 14). Red holds no key.",
+    "Click (31, 12), the free tile two rows beyond the gate: note the target's mark, the number of marks and the tiles the path crosses on row 14; click it again, note where the hero arrived, its points and any message (a locked gate's).",
+]
+record = [
+    { field = "points before the walk" },
+    { field = "the mark at (31, 12)" },
+    { field = "marks" },
+    { field = "the path's tile on row 14" },
+    { field = "arrived (yes/no)" },
+    { field = "hero's tile after" },
+    { field = "points after" },
+    { field = "a message (its text)" },
+    { field = "anything odd" },
+]
+predictions = """
+- 1560 points.
+- **The reading** (survey §3.1 point 7: a flying node reaching an entrance is also stored without
+  "may stop", so the flight goes on over it without the visit; the move visits only its
+  destination, 0x48147D to 0x4814E1): the cheapest path runs straight north **over the gate's
+  entrance (31, 14)**: **a green mark, 4 marks**, it **arrives** on (31, 12) with **1160** (4 x
+  100), **no message**.
+- **The gate closes the flight at its entrance** (a flyer's step onto it only a visit): the path
+  crosses row 14 over a blocked side, (30, 14) or (32, 14), with two diagonals: 4 marks, **1078**
+  (100 + 141 + 141 + 100).
+- **The walk stops at the gate**: E5-11 stays on (31, 15) with 1460 and the locked gate's message
+  (the visit from the tile before).
+- No other source states the case (the wiki's Border Gate page, VCMI: not looked at for a flyer;
+  design note §13): an answer the engine's passage table rests on (T41).
+"""
+[encounter.hero]
+type = "Adela"
+specialty = "spell Bless"
+at = [31, 16]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+artifacts = { "shoulders" = "Angel Wings" }
+
+# --- Blue ------------------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E5-b"
+title = "Blue's hero (never moves)"
+questions = []
+procedure = ["Blue's hero stands far from Red's; it never moves."]
+record = [{ field = "anything odd" }]
+predictions = "Nothing happens."
+[encounter.hero]
+type = "Cuthbert"
+specialty = "spell Weakness"
+owner = "blue"
+at = [30, 32]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
