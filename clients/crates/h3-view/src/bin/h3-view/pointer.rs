@@ -329,8 +329,11 @@ mod tests {
                 Input::Move { at: 7, to: PARK },
             ]
         );
-        // A spell without a target is cast at its place.
-        assert_eq!(cast("0", (0, 54), &layout).unwrap().len(), 4);
+        // A spell without a target is cast at its place, the book's status line empty (E17 M3
+        // T7c-1).
+        let untargeted = cast("0", (0, 54), &layout).unwrap();
+        assert_eq!(untargeted.len(), 5);
+        assert_eq!(untargeted[1], Input::Book { at: 0 });
         for bad in ["12", "x", "0:x", "-1:4"] {
             assert!(cast(bad, (0, 54), &layout).is_err(), "{bad}");
         }
