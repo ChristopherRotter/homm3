@@ -4,10 +4,10 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E23, the original's battle AI, in progress** (`docs/epics/E23-original-battle-ai.md`; refined 2026-10-19, BAT-Q52): the neutral side first, a crate of its own, the code reading first, batch rows only for readings at risk. **T1 done** (#288 to #331): §7.34 to §7.46, `pathfinder.rs` (BAT-QUIRK-24), the survey `E23-battle-ai.md`, **ADR-0027** (BAT-Q55). **T2 done** (#334 to #347): `h3_battle_ai::choose`, the shooters, BAT-QUIRK-25, the benchmark `computer-decisions`. **The budget** (the user, 2026-10-21): the gated count +2 %, re-set on purpose per part; ≤ 1 ms for the slowest decision on a quiet sandbox, recorded per task. **T3 done** (#350 to #359): the walker, BAT-AI-005 to 011, slips 2 to 4, 18 to 21; slip 6 a gap (BAT-STUB-7, BAT-Q56). **T4a done** (#364, #365), **T4b1 done** (#369), **T4b2 done** (#374: the predictions, BAT-AI-015, §7.52; BAT-STUB-10, BAT-Q58). **T4c done** (the user: whole; #379 open: the Master Genie, BAT-AI-016, §7.53, slips 9 to 17, 22, 23; BAT-STUB-4 retired, BAT-STUB-11, 12; `POLICY_VERSION` 9): a side without a hero is complete (the AI and adventure inboxes). Next **T4d** (slip 24, BAT-Q60), then T1a6 and T5.
+- **E23, the original's battle AI, in progress** (`docs/epics/E23-original-battle-ai.md`; refined 2026-10-19, BAT-Q52): the neutral side first, a crate of its own, the code reading first, batch rows only for readings at risk. **T1 done** (#288 to #331): §7.34 to §7.46, `pathfinder.rs` (BAT-QUIRK-24), the survey `E23-battle-ai.md`, **ADR-0027** (BAT-Q55). **T2 done** (#334 to #347): `h3_battle_ai::choose`, the shooters, BAT-QUIRK-25, the benchmark `computer-decisions`. **The budget** (the user, 2026-10-21): the gated count +2 %, re-set on purpose per part; ≤ 1 ms for the slowest decision on a quiet sandbox, recorded per task. **T3 done** (#350 to #359): the walker, BAT-AI-005 to 011, slips 2 to 4, 18 to 21; slip 6 a gap (BAT-STUB-7, BAT-Q56). **T4 done**: T4a (#364, #365), T4b1 (#369), T4b2 (#374: the predictions, BAT-AI-015, §7.52; BAT-STUB-10, BAT-Q58), T4c (#379: the Master Genie, BAT-AI-016, §7.53, slips 9 to 17, 22, 23; BAT-STUB-11), T4d (#382: a removal's lone copy, slip 24, §7.54; `POLICY_VERSION` 10): a side without a hero is complete. Next **T1a6**, then T5.
 - E05, `h3-sim` and `h3-ffi` are the AI lane's (AI-Q1), `h3-heroes` the adventure lane's.
 - **Open:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35, BAT-Q51, BAT-Q56 to BAT-Q58 (none blocks; BAT-Q33 and BAT-Q51 settle with E23's T6), BAT-STUB-1, the inbox (by kind since 2026-10-19), Q43; S-23, S-24, batch 2g.
-- **Versions:** battle state hash v51, battle part hash v7 (E23 T3-0; the encodings, replay format and C ABI are the AI lane's); shared: core ruleset hash v47, pack format v46 (E08 T35b), protocol v34. Next ids: BAT-Q61, BAT-QUIRK-26, BAT-STUB-13, BAT-AI-017, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-24, S-30.
+- **Versions:** battle state hash v51, battle part hash v7 (E23 T3-0; the encodings, replay format and C ABI are the AI lane's); shared: core ruleset hash v47, pack format v46 (E08 T35b), protocol v34. Next ids: BAT-Q61, BAT-QUIRK-27, BAT-STUB-13, BAT-AI-017, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-24, S-30.
 - Working agreement: increments with a user checkpoint (Q41); the user confirms seams and ADRs; batches by the user or an agent; small increments (the user, 2026-10-19).
 
 ## Standing traps
@@ -30,7 +30,7 @@ Area traps live where they are used: experiments in `docs/experiments/README.md`
 - The creature cast entry (`casts.rs`) comes after the walker's loop, before its branches, even without a candidate: `choose` writes the value first; `turn` asks again after nothing. Casts take only the engine's targets (`creature_cast_targets`; a mass version's `None`).
 - The predictions (`predict.rs`, §7.52) run whole walker and shooter turns in a predicting context (`Context::predicting`): where the original passes the context's flag to 0x443080 read `Context::left`, where it passes a stack without hit points left over test `Context::spent`. A predicted walk, wait or fallback plans nothing and is not built.
 - The spell context's threat records (`computer::threat`, 0x422B20 flag 0: range 127, no rank test, a shooter every enemy at one turn) are not the walker's (`gain.rs`, flag 1). `spells.rs` caches them per decision.
-- `spells.rs`: a root (records, halves, tables: the battle's, built once) and `View`s on a state; a removal values on a clone (`View::on`). Slip 22: a cast entry that built a context and cast nothing sets `Walker::held`; the fallbacks read `Walker::cells`, their walks the walker's own map.
+- `spells.rs`: a root (records, halves, tables: the battle's, built once) and `View`s on a state; a removal values on a clone (`View::on`), with BAT-QUIRK-25 on a lone copy (`View::on_copy`: `lone` is the battle, whose records never meet the copy; slip 24). Slip 22: a cast entry that built a context and cast nothing sets `Walker::held`; the fallbacks read `Walker::cells`, their walks the walker's own map.
 - At a town the computer's choices (`aim.rs`: turrets, the automatic Ballista, a weak walker's moat avoidance) read `BattleSetup.human` and Fight Values, which test creatures lack (`fighting_turret_ruleset`); `BattleState::new` has fired the keep's first shot.
 
 **Tests**
@@ -52,14 +52,14 @@ Area traps live where they are used: experiments in `docs/experiments/README.md`
 
 ## Recent sessions
 
+### 2026-10-22 (ninety-ninth) — E23 T4d, a removal's copy
+
+The user: T4d whole. §7.54: the copy fits its own hexes (side and index), pointer tests miss it. Built slip 24, fixed two port errors (the copy's turns, Hypnotize's shooter marks). Verify in #382.
+
 ### 2026-10-22 (ninety-eighth) — E23 T4c, the Master Genie
 
-The user: T4c whole, BAT-Q59 as slip 22; BAT-Q60 (a removal's copy) as slip 24 in T4d. Built: every evaluator, the tables (slip 23), the second context, the removals, slip 22 (BAT-STUB-11); a blind check (two fixes; the log); `computer-decisions` re-set (+8.55 %), the slowest decision 0.98 ms (a Faerie Dragon). The full verify's result is in the PR.
+The user: T4c whole, BAT-Q59 as slip 22, BAT-Q60 as slip 24 (T4d). Built every evaluator, the tables (slip 23), the removals, slip 22; a blind check (two fixes); `computer-decisions` re-set (+8.55 %), the slowest decision 0.98 ms (a Faerie Dragon). #379.
 
 ### 2026-10-22 (ninety-seventh) — E23 T4b2 finished
 
 `master` merged; the full verify with the original data passed; #374 opened.
-
-### 2026-10-22 (ninety-sixth) — E23 T4b2, the predictions; the mass-cast listing
-
-T4b2 built, stopped by the user before the PR (the log). The user: T4b2 whole; BAT-STUB-10, BAT-Q58.

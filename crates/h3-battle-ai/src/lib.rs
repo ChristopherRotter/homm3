@@ -81,7 +81,7 @@ use h3_kernel::Rng;
 /// The policy's behaviour version (ADR-0027 point 12): bumped with every change of a choice, so
 /// that a training record names its opponent (the AI lane's engine identity includes it).
 /// Replays store commands and do not change with it.
-pub const POLICY_VERSION: u32 = 9;
+pub const POLICY_VERSION: u32 = 10;
 
 /// The command the original's computer gives for `side`, the side to act in `state` (the active
 /// stack's controller, BAT-MAG-026), whatever `BattleSetup.human` says (ADR-0027 point 8):

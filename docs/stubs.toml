@@ -49,12 +49,6 @@ where  = "crates/h3-battle-ai/src/ends.rs"
 reason = "With BAT-QUIRK-25's slip 22 (BAT-Q59) the besieger's walk and the guard of a shooter take their hex from the map a spell context's last search left, which the walker's own walk may not reach: the original's walk then writes nothing and the besieger's walk (0x421E15) and the guard (0x4208DE) return true with the action fields as they were (the last predicted move and attack or the battle's last action, installation.md §7.52, §7.53). The port does not model those fields: it defends there (BAT-AI-005, BAT-AI-010)"
 epic   = "E23"
 
-[[stub]]
-id     = "BAT-STUB-12"
-where  = "crates/h3-battle-ai/src/spells/removals.rs"
-reason = "The computer's removal (0x439A80; Cure and Anti-Magic, the Master Genie's) values each ended spell on a lone copy of the stack's record, which the evaluators walking the battle's records never find (they compare by pointer): Disrupting Ray values 0, Slow finds no stack to strike first, Berserk's and Hypnotize's candidates count the live stack as another. The port values on a clone of the battle with the spell ended, the stack itself, in both profiles: slip 24 under BAT-QUIRK-25 is E23 T4d (the user, BAT-Q60) (BAT-AI-016)"
-epic   = "E23"
-
 # --- adventure (ADV-STUB-<n>) ---
 
 [[stub]]

@@ -5166,7 +5166,7 @@ else this context's is subtracted. The copy is a lone record (0x437A00), the bat
 the evaluators that walk the battle's records compare them with the stack by pointer and never
 find it (Disrupting Ray 0x438E11, Slow 0x439379, Berserk's candidates 0x4455C9, Hypnotize
 0x43A500), and what they read through the battle still holds the spell (found by T4c's blind
-check: slip 24, E23 T4d, BAT-Q60; the port values on a clone, BAT-STUB-12).
+check: slip 24, BAT-Q60; re-read and built in E23 T4d, §7.54).
 
 **The pathfinder after the context** (slip 22). The threat records run for side 0 then side 1
 (0x436AA9 to 0x436AC3), each over its records in order, with the global pathfinder (§7.52): the
@@ -5187,4 +5187,84 @@ last search or the walker's own, the port the walker's own.
 it); the threat records and the tables computed when first read (ADR-0027 point 11: they read
 nothing a value changes); a removal's copy is a clone of the battle with the spell ended
 (`h3_battle::computer::end_spell`). **Slips:** 9 to 17 built (BAT-AI-016), 8 widened to the
-Genie's spells, 22 and 23 new, 24 found (T4d). **Draws:** none new (the scan's, the predictions').
+Genie's spells, 22 and 23 new, 24 found (T4d, §7.54). **Draws:** none new (the scan's, the
+predictions').
+
+### 7.54 Code reading: a removal's copy re-read for the port (E23 T4d, 2026-10-22)
+
+Read again for E23 T4d (the user: whole; slip 24, BAT-Q60): what the evaluators a removal reaches
+(§7.46, §7.53) read when their stack is the removal's copy. The call closure of those 34
+evaluators and their helpers holds 35 functions that read the battle manager (0x6993D0); each
+such read, and each pointer comparison with the stack, was classified. Insight only, nothing
+copied (Q29).
+
+**The copy.** 0x437A00 copies the record field by field up to +0x544: its side (+0xF4) and record
+index (+0xF8), its spells (+0x198), its aura list (+0x524) and its threat record (+0x534 to
++0x544) come along. 0x444510 ends a spell on the copy; it recomputes neither its morale nor its
+luck (+0x4E8, +0x4EC: only 0x469750 does, after an action), and only its Hypnotize case touches
+the battle (below). So the copy reads as the stack in every field of its own, and what an
+evaluator takes from the context at its record index (the tables, the threat mask, §7.53) or from
+its threat record and planned damage is the stack's.
+
+**What meets the battle's record instead.**
+
+- *Pointer comparisons over the battle's records* (+0x54CC, a side every 0x6EE8 bytes):
+  Disrupting Ray's "a stack of the side has S as its threat enemy" (0x438E11) and Slow's stacks
+  that strike first (0x439379) never meet the copy: Disrupting Ray values 0, Slow only the rounds
+  the stack loses. Berserk's candidates (0x445490, its test at 0x4455C9) and Hypnotize's walk
+  (0x43A5FE) leave out only the copy: the battle's record of the stack is a candidate.
+- *The hex records*: 0x4E7170 returns the record the hex's side and index bytes (+0x18, +0x19)
+  name, the battle's. The fit test 0x446C40 compares those bytes with the stack's +0xF4 and
+  +0xF8 (0x446CBA, 0x446CC6), so the copy fits its own hexes and its search (0x4B2DA0 →
+  0x4B3400) is the stack's. The blocked-shooter test 0x469600 compares the hex's record with the
+  stack by pointer (0x442880: none, then itself, then enemies when either is berserk or by the
+  first's controller against the second's own side): a two-hex copy's other hex holds the
+  battle's record, which blocks the copy where the copy or the record is berserk or the copy is
+  hypnotized; a one-hex copy has no such neighbour. Every "can shoot now" asks it (0x4428F0, and
+  inline 0x442E60, 0x448BD0, 0x445490; the worth 0x442A50 through 0x4429F0). The bow (artifact
+  137) skips the test; the Ballista and the arrow towers always shoot.
+- *Berserk*: a copy that can shoot takes the nearest by hex distance between positions: the
+  record, at 0, alone. A walker's map sets +0x4A on every position its search reaches within the
+  range, not flown over (0x4B2E35 to 0x4B2E69), the start included: the record's position is the
+  start, at cost 0, the least; the candidates are the record and the stacks marked at 0 (beside
+  the copy), in record order. 0x43A340 then values the copy's exchange with the record (0x4359B0:
+  the copy's strike, the record's Fire Shield and retaliation, the copy's second strike) and both
+  losses (0x442FD0 on each), 0 when the record is of the context's side.
+- *Hypnotize*: the record's position is the map's start, so it is among the stacks of its side
+  the walk takes (0x43A624); its value is the copy's exchange with it as Berserk's.
+- *Morale and luck* (found by T4d's blind check): Mirth (0x43819D) and Sorrow read the copy's
+  +0x4E8, Fortune (0x4384D4) and Misfortune (0x438FA3) its +0x4EC, both the stack's: an ended
+  one of the four still counts there (a morale of 1 under Mirth +2 is read as 3).
+- Nothing else in the closure walks the battle's records with the stack: the worth's sum of its
+  side's other hit points (0x442DBD) runs only for a war machine or a summoned stack and skips
+  both kinds, the record too; the damage stages read the heroes by the controller and the moat
+  and the walls by the positions; 0x5A8090 reads the Unicorns' aura from the record's own list
+  (0x5A8599), and its walk over the records is the raise spells' (not reached).
+
+**Hypnotize's end on the copy** (0x44460A; 0x444689 → 0x43EA70, found by T4d's blind check):
+it rebuilds the copy's Unicorn aura lists from the battle's records beside it (0x4E7170) and adds
+the copy to theirs (+0x514, a Unicorn's protected stacks; +0x524, a stack's protectors; the
+duplicate test compares pointers and never finds it). The copy is freed (0x43D400) without
+leaving those lists: a Unicorn beside it keeps a pointer to freed memory, and a stack of the
+copy's side beside a copied Unicorn an aura source that is gone (its spells' factor × 0.8,
+0x5A8599). The removal itself reads none of it (the spell protections, which read the aura, come
+before Hypnotize in the spells' order); later values and casts do. The battle's state corrupted:
+never modelled (BAT-QUIRK-26).
+
+**Counted as it values.** 0x448BD0 counts the turns at the speed its caller passes and tests "can
+shoot now" itself; the evaluators that ask "E within a turn" pass 0x448CD0 of their stack
+(Bloodlust 0x438124 and 0x43812C; Precision, Slayer, Bless, Frenzy, Fortune, Weakness, Prayer
+alike), so on a copy an ended Slow, Haste, Prayer or Forgetfulness changes them. The port kept
+the battle's threat record's turns there: a port error, fixed in both profiles.
+
+**0x4B2DA0's shooter marks** (0x4B2F18 to 0x4B2FE0): after the reached cells, a stack that can
+shoot now (0x4428F0), outside the tactics phase and not the Catapult (creature 145), sets +0x4A
+on the position and the other hex of every living record of the other side but the arrow
+towers. Of the map's callers only Hypnotize's (0x43A5DB, with the context's side) can ask it for
+a shooter: a shooter's Hypnotize value takes every other living stack of its side. The port
+lacked the marks: fixed in both profiles.
+
+**Slip 24** (survey §4): with BAT-QUIRK-25 the copy is the lone record: Disrupting Ray 0, Slow
+without the strikes first, Berserk's and Hypnotize's targets with the stack itself, a two-hex
+shooter's copy blocked by itself, the stack's morale and luck with the ended spell; without, the
+copy is the stack itself. **Draws:** none new.

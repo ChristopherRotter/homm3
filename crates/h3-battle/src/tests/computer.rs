@@ -655,3 +655,176 @@ fn the_creature_casts_on_the_battlefields() {
     assert_eq!(CastSpell::AtResolution.named(), None);
     assert_eq!(CastSpell::Raise.named(), None);
 }
+
+/// Puts the timed spell `name` at `mastery` on stack `id` for five rounds, as a cast would (test
+/// setup).
+fn give(s: &mut BattleState, r: &BattleRuleset, (id, name): (u8, &str), mastery: u8) {
+    let spell_id = spell(r, name);
+    let cast = crate::effects::TimedCast {
+        id: spell_id,
+        spell: r.spell(spell_id).unwrap(),
+        mastery,
+        rounds: 5,
+        own: crate::magic::SpellBonus::default(),
+    };
+    crate::effects::apply(s, r, cast, StackId(id), &mut Vec::<Event>::new());
+}
+
+// covers: BAT-AI-016
+#[test]
+fn a_removals_copy_finds_the_stack_itself_among_its_berserk_targets() {
+    // The original's removal values a lone copy of a record (0x437A00): 0x445490 tells the
+    // battle's records from it by pointer, so the stack's own record is a target, the nearest
+    // (E23 T4d, survey slip 24). A walker at (5, 5) beside an enemy at (6, 5), another far.
+    let r = ruleset();
+    let s = arena(
+        &r,
+        [None, None],
+        &[("fixed", 5, 5, 5)],
+        &[("fixed", 5, 6, 5), ("fixed", 5, 12, 2)],
+        1,
+    );
+    let me = StackId(0);
+    let (normal, normal_map) = computer::berserk_search(&s, &r, me);
+    let (copy, copy_map) = computer::berserk_search_of_copy(&s, &r, me);
+    assert_eq!(normal.collect::<Vec<_>>(), [StackId(1)]);
+    // The record itself at the search's start (cost 0), with the neighbour marked at 0, in record
+    // order; the copy's search is the stack's (the pathfinder tells a hex's stack by side and
+    // index, 0x446C40).
+    assert_eq!(copy.collect::<Vec<_>>(), [me, StackId(1)]);
+    let (normal_map, copy_map) = (normal_map.unwrap(), copy_map.unwrap());
+    for hex in (0..=u8::MAX).map(Hex) {
+        assert_eq!(normal_map.position(hex), copy_map.position(hex));
+        assert_eq!(normal_map.mark(hex), copy_map.mark(hex));
+    }
+    // With no neighbour the record alone; a shooter by hex distance, the record at 0.
+    let s = arena(
+        &r,
+        [None, None],
+        &[("fixed", 5, 2, 5)],
+        &[("fixed", 5, 12, 2)],
+        1,
+    );
+    assert_eq!(
+        computer::berserk_search(&s, &r, me).0.collect::<Vec<_>>(),
+        [StackId(1)]
+    );
+    assert_eq!(
+        computer::berserk_search_of_copy(&s, &r, me)
+            .0
+            .collect::<Vec<_>>(),
+        [me]
+    );
+    let s = arena(
+        &r,
+        [None, None],
+        &[("archer", 5, 2, 5)],
+        &[("fixed", 5, 12, 2)],
+        1,
+    );
+    let (copy, map) = computer::berserk_search_of_copy(&s, &r, me);
+    assert_eq!(copy.collect::<Vec<_>>(), [me]);
+    assert!(map.is_none());
+}
+
+// covers: BAT-AI-016
+#[test]
+fn a_removals_copy_strikes_the_stack_itself() {
+    // The copy without the battle record's Bless strikes the record (its mean damage), which
+    // strikes back blessed (its maximum): each party read from its own state (E23 T4d).
+    let r = ruleset();
+    let mut battle = arena_on(
+        &r,
+        [None, None],
+        &[("range", 10, 5, 5)],
+        &[("fixed", 5, 12, 2)],
+        1,
+        |s| s.difficulty = 1,
+    );
+    give(&mut battle, &r, (0, "bless"), 0);
+    let me = StackId(0);
+    let mut copy = battle.clone();
+    computer::end_spell(&mut copy, &r, (me, spell(&r, "bless")), true);
+    let hp = computer::hit_points(&battle, me);
+    let (a, t) = computer::exchange_with_itself(
+        (&battle, &copy),
+        &r,
+        BattleSide::Attacker,
+        (me, (hp, hp)),
+        false,
+    );
+    let dealt = computer::damage_estimate(&copy, &r, (me, me), 10, false, 0);
+    let left = (hp - dealt).div_ceil(10);
+    let back = computer::damage_estimate(&battle, &r, (me, me), left, false, 0);
+    assert!(back > computer::damage_estimate(&copy, &r, (me, me), left, false, 0));
+    assert_eq!((a, t), (hp - back, hp - dealt));
+    // On one state it is the stack's exchange with itself.
+    let same = computer::exchange_with_itself(
+        (&battle, &battle),
+        &r,
+        BattleSide::Attacker,
+        (me, (hp, hp)),
+        false,
+    );
+    let one = computer::exchange(
+        &battle,
+        &r,
+        BattleSide::Attacker,
+        ((me, hp), (me, hp)),
+        (false, 0),
+    );
+    assert_eq!(same, one);
+    // A shooter's copy that can shoot shoots: no retaliation.
+    let battle = arena(
+        &r,
+        [None, None],
+        &[("archer", 10, 2, 5)],
+        &[("fixed", 5, 12, 2)],
+        1,
+    );
+    let hp = computer::hit_points(&battle, me);
+    let shot = computer::exchange_with_itself(
+        (&battle, &battle),
+        &r,
+        BattleSide::Attacker,
+        (me, (hp, hp)),
+        true,
+    );
+    let dealt = computer::damage_estimate(&battle, &r, (me, me), 10, true, 0);
+    assert_eq!(shot, (hp, hp - dealt));
+}
+
+// covers: BAT-AI-016
+#[test]
+fn a_two_hex_shooters_copy_is_blocked_by_the_stack_itself() {
+    // The battle's record of a two-hex shooter stands beside its lone copy, at the copy's other
+    // hex (0x469600 → 0x442880 by pointer): the copy is blocked where either is berserk or the
+    // copy is hypnotized (E23 T4d, survey slip 24).
+    let r = ruleset();
+    let me = StackId(0);
+    let blocked = |name: &'static str, spells: &[&str], ended: &[&str]| {
+        let mut battle = arena(
+            &r,
+            [None, None],
+            &[(name, 10, 3, 5)],
+            &[("fixed", 5, 12, 2)],
+            1,
+        );
+        for spell_name in spells {
+            give(&mut battle, &r, (0, spell_name), 0);
+        }
+        let mut copy = battle.clone();
+        for spell_name in ended {
+            computer::end_spell(&mut copy, &r, (me, spell(&r, spell_name)), true);
+        }
+        computer::block_by_itself(&mut copy, &battle, me);
+        !computer::shoots(&copy, &r, me)
+    };
+    // The record berserk, the copy not: blocked; the copy hypnotized: blocked; neither: free.
+    assert!(blocked("medusa", &["berserk"], &["berserk"]));
+    assert!(blocked("medusa", &["hypnotize", "bless"], &["bless"]));
+    assert!(!blocked("medusa", &["hypnotize"], &["hypnotize"]));
+    assert!(!blocked("medusa", &["bless"], &["bless"]));
+    // A one-hex shooter has no other hex.
+    assert!(!blocked("archer", &["berserk"], &["berserk"]));
+}

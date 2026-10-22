@@ -37,6 +37,7 @@ use super::{POLICY_VERSION, checked, choose, unchecked};
 use crate::walker::Walker;
 
 mod casts;
+mod copies;
 mod defenses;
 mod ends;
 mod gain;
@@ -1605,7 +1606,7 @@ fn a_refused_choice_falls_back_to_defend() {
     assert!(validate(&state, &r, side, refused).is_err());
     assert_eq!(checked(&state, &r, side, refused), Command::Defend);
     assert_eq!(checked(&state, &r, side, Command::Wait), Command::Wait);
-    assert_eq!(POLICY_VERSION, 9);
+    assert_eq!(POLICY_VERSION, 10);
 }
 
 /// The setup of `setup` on `difficulty`.
