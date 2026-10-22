@@ -94,6 +94,14 @@ pub struct Battle {
     /// Good luck's ([`Battle::good_morale_sound`]).
     #[serde(default)]
     pub luck_sound: Option<String>,
+    /// The sounds of the striker's effects (E17 M3 T7b-2b-3, design §7.16), each category 2 as the
+    /// heal's: Life Drain's (`striker_effects` 0x440E68, `DrainLif.wav`) and the Thunderbird's bolt
+    /// (0x4412FA, `LightBlt.wav`); Death Stare and the Rust Dragon's acid play their spell's.
+    #[serde(default)]
+    pub drain_sound: Option<String>,
+    /// The Thunderbird's bolt's ([`Battle::drain_sound`]).
+    #[serde(default)]
+    pub thunderbolt_sound: Option<String>,
 }
 
 impl Battle {
@@ -105,6 +113,8 @@ impl Battle {
             .chain(&self.bad_morale_sound)
             .chain(&self.fear_sound)
             .chain(&self.luck_sound)
+            .chain(&self.drain_sound)
+            .chain(&self.thunderbolt_sound)
     }
 }
 
@@ -316,7 +326,10 @@ impl Sounds {
             | Sound::GoodMorale
             | Sound::BadMorale
             | Sound::Fear
-            | Sound::Luck => None,
+            | Sound::Luck
+            | Sound::Drain
+            | Sound::Thunderbolt
+            | Sound::SpellFile(_) => None,
         }
     }
 
@@ -730,6 +743,8 @@ good_morale_sound = "GoodMrle"
 bad_morale_sound = "BadMrle"
 fear_sound = "Fear"
 luck_sound = "goodluck"
+drain_sound = "DrainLif"
+thunderbolt_sound = "LightBlt"
 
 [[hero]]
 key = "orrin"
@@ -854,7 +869,8 @@ at = [124, 254]
         assert_eq!(
             t.battle.sounds().collect::<Vec<_>>(),
             [
-                "Regener", "MagicRes", "GoodMrle", "BadMrle", "Fear", "goodluck"
+                "Regener", "MagicRes", "GoodMrle", "BadMrle", "Fear", "goodluck", "DrainLif",
+                "LightBlt"
             ]
         );
         assert_eq!(
@@ -1188,6 +1204,9 @@ at = [124, 254]
             Sound::BadMorale,
             Sound::Fear,
             Sound::Luck,
+            Sound::Drain,
+            Sound::Thunderbolt,
+            Sound::SpellFile(79),
         ] {
             assert_eq!(pikeman.name(none), None);
         }
@@ -1201,13 +1220,14 @@ at = [124, 254]
         assert_eq!(all.name(Sound::Start), Some("a"));
         assert_eq!(all.name(Sound::End), Some("e"));
         // The archer has none; the tent's heal sound is the battle's (E17 M3 T3b), and so are
-        // morale's, Fear's and good luck's (E17 M3 T7b-2b-2b).
+        // morale's, Fear's and good luck's (E17 M3 T7b-2b-2b), Life Drain's and the Thunderbird's
+        // bolt's (E17 M3 T7b-2b-3).
         let names: Vec<String> = tables.sound_names().into_iter().collect();
         assert_eq!(
             names,
             [
-                "BADMRLE", "FEAR", "GOODLUCK", "GOODMRLE", "MAGICRES", "PIKEATTK", "PIKEDFND",
-                "PIKEKILL", "PIKEMOVE", "PIKEWNCE", "REGENER", "SLOW"
+                "BADMRLE", "DRAINLIF", "FEAR", "GOODLUCK", "GOODMRLE", "LIGHTBLT", "MAGICRES",
+                "PIKEATTK", "PIKEDFND", "PIKEKILL", "PIKEMOVE", "PIKEWNCE", "REGENER", "SLOW"
             ]
         );
     }

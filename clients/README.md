@@ -71,6 +71,9 @@ search the parent directories).
   frames, the spell's animation over its target, a resisted cast's, Magic Arrow's and Ice Bolt's
   projectile and hit, their sounds and log lines), good luck, good and bad morale and Fear over
   their stack (M3 T7b-2b-2b: the last two with its hit, their sounds and lines), the
+  creatures' effects of a melee strike (M3 T7b-2b-3: Poison and Acid Breath cast at the
+  strike's end, Life Drain, Death Stare, the Thunderbird's bolt, the Rust Dragon's acid) and a
+  hero's Lightning Bolt, the
   panel (M3 T6a: its picture in the acting player's colours and its buttons as the turn's start
   sets them, `h3_view::panel`; since M3 T6b through the battle's turns and with its log's lines,
   `scene::Panels`); not yet
@@ -170,7 +173,8 @@ on the M1 review list):
   stack, and `translucent`; design §7.15), `heal_sound` (the First Aid Tent's heal),
   `resist_sound` (a spell resisted by the stack it was aimed at; M3 T7b-1) and
   `good_morale_sound`, `bad_morale_sound`, `fear_sound`, `luck_sound` (the rolled effects over a
-  stack; M3 T7b-2b-2b, optional, entry names without an extension).
+  stack; M3 T7b-2b-2b, optional, entry names without an extension), `drain_sound`,
+  `thunderbolt_sound` (Life Drain's and the Thunderbird's bolt's; M3 T7b-2b-3, optional).
 - `[[creature]]`: `key`, `original` (its original id, the executable's creature number: its
   record among `crtraits.txt`'s creature rows; M3 T4b-1), `def` (the battle sprite), `times` (`cranim.txt`'s fidget interval, walk,
   attack and flight distance as the executable keeps them: scaled by 9000, 500, 500, 115 and
@@ -211,7 +215,8 @@ prints every key's forms from the installation, or one key's text (`h3-view text
 battle.log.damage attacker=Imps damage=4 count=2 [--pack de.json]`). The battle log's lines are
 composed from the keys as the executable composes them from its rows (`h3_view::battle_log`, M3
 T4b-2a, design §9.4: a strike's damage and perish rows, wait, defend, morale, luck, Fear (M3
-T7b-2b-2b), and the log
+T7b-2b-2b), Life Drain, Death Stare, the Thunderbird's bolt, Poison, Acid Breath (M3 T7b-2b-3),
+and the log
 entries a line becomes; the text the log's item shows, M3 T4b-2b-2; the heal's and the round's
 lines, which event writes which line and when, and the log kept as the executable keeps it, M3
 T6b, design §9.8); `h3-view text --log` prints sample lines, and the viewer's frames show the
@@ -222,8 +227,11 @@ log's lines over the battle.
   `.`), `args` (the names its messages may use, each `text` or `number`), `plural` (forms by the
   number `count`), `contexts` (forms by the argument `context`) and `original`, its forms in the
   user's text tables: `form` (the suffix: `one`, `other`, a context; none for the only form),
-  `at = "<TABLE>:<record>[:<column>]"` (records from 0 with the header rows) and `printf` (the
-  arguments the row's `%s` and `%d` stand for, in order); `[[family]]`: a key per asset-table
+  `at = "<TABLE>:<record>[:<column>]"` (records from 0 with the header rows) or
+  `at = "EXE:0x<address>"` (M3 T7b-2b-3, *provisional*: a string of the user's `Heroes3.exe`
+  itself, read at run time, for a line the executable writes from its own text: Acid Breath's)
+  and `printf` (the arguments the row's `%s` and `%d` or `%i` stand for, in order);
+  `[[family]]`: a key per asset-table
   entry (`creature`: `creature.<table>:<key>`, a creature's names; `spell` and `hero`, M3 T7b-1),
   its row the non-blank record of its original id from `first` (with `by`, the records whose
   column `by` is filled: `sptraits.txt`'s group rows fill only their first), its forms' columns in

@@ -439,7 +439,16 @@ minutes each. Their `seed`s were searched so the engine's own rolls fall as the 
 for each seed, `h3-view sequences <id>` and its record's events (`out/sequences/<id>.jsonl`:
 `lucky` strikes, `GoodMorale`, `BadMorale`, `Frightened`), the first seed that matches kept. The
 original's idle fidgets go on after a freeze (`bad`'s Goblins, `fear`'s Marksmen): the timeline
-check leaves them out as any.
+check leaves them out as any. Recorded at T7b-2b-3 (about 3 to 4 minutes each): `thunder` (the
+Thunderbird's bolt, Life Drain on the strike back), `acid` (Acid Breath, the acid, Poison on
+the strike back), `stare` (Death Stare on the strike back) and `lightning` (`bolt`'s round 1 in
+`sequences.toml`). From column 1 the defender's column 15 is twelve hexes away for a two-hex
+attacker (thirteen for a one-hex one): a slower striker flies within reach in round 1 while the
+other side defends (`turn:`, `key:d`), then strikes in round 2. `hex:<n>` moves a two-hex
+attacker's front to n, so its engine `Move` goes to n − 1 (its rear, the position). Each search
+for an engine seed (a loop over `h3-view sequences <id>` with the release binary, about a
+quarter second a seed) also matched the original's damage and kills where it could (its log in
+the recording's last state).
 
 ## The original's state
 

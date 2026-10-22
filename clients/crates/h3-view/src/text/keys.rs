@@ -148,6 +148,10 @@ pub struct Source {
 pub enum Row {
     /// A record, from 0 with the header rows.
     Record(usize),
+    /// A string of the executable at its address (the table [`EXECUTABLE`], E17 M3 T7b-2b-3): its
+    /// record is the one whose first field is the address ([`address_field`]), its text the
+    /// second.
+    Address(u32),
     /// A family's: the `id`-th non-blank record from `first` (with `by`, the `id`-th whose column
     /// `by` is not blank).
     Id {
@@ -333,8 +337,29 @@ fn form_error<T>(id: &str, what: &str) -> Result<T, KeysError> {
     Err(KeysError::Form(id.into(), what.into()))
 }
 
-/// `<TABLE>:<record>[:<column>]`.
+/// The table of the executable's own strings (E17 M3 T7b-2b-3): `EXE:0x<address>` names the
+/// string at that address of the user's `Heroes3.exe`, read at run time as the text tables are
+/// (numbers only here, ADR-0009); a line the executable writes from a literal, not a table's row.
+pub const EXECUTABLE: &str = "EXE";
+
+/// The first field of the executable's string at `address` in the table [`EXECUTABLE`].
+#[must_use]
+pub fn address_field(address: u32) -> String {
+    format!("{address:#X}")
+}
+
+/// `<TABLE>:<record>[:<column>]`, or `EXE:0x<address>` ([`EXECUTABLE`]).
 fn source(id: &str, at: &str) -> Result<Source, KeysError> {
+    if let Some(hex) = at.strip_prefix("EXE:0x") {
+        return match u32::from_str_radix(hex, 16) {
+            Ok(address) => Ok(Source {
+                table: EXECUTABLE.into(),
+                row: Row::Address(address),
+                column: 1,
+            }),
+            Err(_) => form_error(id, &format!("`{at}` is not EXE:0x<address>")),
+        };
+    }
     let mut parts = at.split(':');
     let table = parts.next().unwrap_or_default();
     let numbers: Option<Vec<usize>> = parts.map(|p| p.parse().ok()).collect();

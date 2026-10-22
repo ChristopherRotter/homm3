@@ -218,6 +218,9 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
     // The checkpoint: the archives (whole, CLT-Q2), then the batch.
     let (bytes, read) = timed(|| read_archives(&options.install));
     let bytes = bytes?;
+    // The executable's own strings: read only when a line needs them (none in an installation
+    // without it, as the synthetic one of the tests).
+    let exe = crate::text::executable(&options.install).unwrap_or_default();
     let archives = bytes
         .iter()
         .map(|(name, b)| {
@@ -244,7 +247,8 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
         )
         .map_err(|e| e.to_string())?
         .with_heroes(motion::heroes(&record, &tables, &archives, None)?);
-        let panels = crate::log::panels(&record, &timeline.log, &tables, &layout, &archives)?;
+        let panels =
+            crate::log::panels(&record, &timeline.log, &tables, &layout, (&archives, &exe))?;
         // The acting stack's legal commands at the opening, for the mouse (E17 M3 T6c-1): the
         // engine's, from the scenario; a record names none.
         let legal = if options.scenario() {
@@ -258,7 +262,13 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
             shown: None,
         };
         let drawn = crate::sequences::draw_frames(
-            dir, &record, &timeline, &tables, &layout, &archives, &interface,
+            dir,
+            &record,
+            &timeline,
+            &tables,
+            &layout,
+            (&archives, &exe),
+            &interface,
         )?;
         lines.push(format!("{drawn} frames drawn in {}", dir.display()));
         return Ok(lines);
@@ -291,14 +301,15 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
             let moment = scene::Moment::at(&timeline, t);
             // The mouse parked as the harness parks it (E17 M3 T6c-2): a human's turn writes the
             // hint there, none, which needs no words (an installation without text tables).
-            let catalogue = crate::log::catalogue(&tables, &archives).unwrap_or_default();
+            let catalogue = crate::log::catalogue(&tables, &archives, &exe).unwrap_or_default();
             let parked = [h3_view::mouse::track::Input::Move {
                 at: 0,
                 to: crate::pointer::PARK,
             }];
             let shown =
                 crate::pointer::shown(&record, &timeline, &[], &parked, &layout, &catalogue);
-            let panels = crate::log::panels(&record, &shown.log, &tables, &layout, &archives)?;
+            let panels =
+                crate::log::panels(&record, &shown.log, &tables, &layout, (&archives, &exe))?;
             panel = panels.at(observation, &timeline.turns, t, &layout);
             scene::battle_at(observation, &moment, manifest, &tables, &layout)
         }

@@ -445,3 +445,96 @@ timeline = "timelines/fear.txt"
 frames = "timelines/fear-frames.txt"
 boxes = true
 command = [{ seat = "Defender", command = { Defend = {} } }]
+
+# E17 M3 T7b-2b-3: the Thunderbird's bolt and Life Drain (`seq-thunder.toml`, hot seat; design
+# §7.16, players 1 and 2). Round 1: the Thunderbirds fly to row 6 (the Vampire Lords are beyond
+# their reach), the Vampire Lords defend. Round 2: the Thunderbirds strike them from the left, the
+# bolt's roll forced (`roll:thunderbird`: the line, `LightBlt.wav`, animation 1 at 10 ms, the
+# damage's line, 49 over the marked target with its reaction); the Vampire Lords strike back and
+# drain them (`DrainLif.wav`, the line, 74 over the drinkers). Good morale failed: one town each.
+# `seed`: one Vampire Lord killed, 50 drained, one raised, as in the original. Frames: as the
+# original's but the landing's boxes at 4 490 ms (86 pixels, as `luck`'s at 2 730, design §4.3)
+# and the drinkers' box listed at 8 410 (memory holds the raised number a frame before the
+# screen shows it).
+[[sequence]]
+id = "thunder"
+scenario = "seq-thunder.toml"
+hot_seat = true
+seed = 110
+actions = [
+    "hex:110", "turn:1.0", "key:d", "turn:0.0", "roll:thunderbird", "click:678,322",
+]
+fail = ["thunderbird", "good_morale"]
+ms = 9000
+timeline = "timelines/thunder.txt"
+frames = "timelines/thunder-frames.txt"
+boxes = true
+command = [
+    { seat = "Attacker", command = { Move = { to = 109 } } },
+    { seat = "Defender", at = 2494, command = { Defend = {} } },
+    { seat = "Attacker", at = 2494, command = { Attack = { target = 1, from = 98 } } },
+]
+
+# E17 M3 T7b-2b-3: Acid Breath, the acid and Poison (`seq-acid.toml`, hot seat; design §7.16,
+# player 1): the Rust Dragon strikes the Wyvern Monarchs from the left; at the strike's end its
+# Acid Breath (always: 81, the executable's own line), then the strike's line and the acid's
+# roll forced (`roll:acid`: its sound, the damage's line, 81, their hit); the Wyvern Monarchs
+# strike back with Poison's roll forced (`roll:poison`: its line, 67 over the Rust Dragon with its
+# hit). `seed`: the strike back's 49 damage, as the original's. Frames: as the original's but the
+# landing's boxes at 2 200 ms (273 pixels, as `luck`'s); each cast outlines the Rust Dragon at its
+# end and the next clears it at its start (`cast_spell`'s tail, design §7.16).
+[[sequence]]
+id = "acid"
+scenario = "seq-acid.toml"
+hot_seat = true
+seed = 55
+actions = ["roll:acid", "roll:poison", "click:634,322"]
+fail = ["acid", "poison", "good_morale"]
+ms = 14000
+timeline = "timelines/acid.txt"
+frames = "timelines/acid-frames.txt"
+boxes = true
+command = [{ seat = "Attacker", command = { Attack = { target = 1, from = 97 } } }]
+
+# E17 M3 T7b-2b-3: Death Stare on the strike back (`seq-stare.toml`, hot seat; design §7.16,
+# player 1). Round 1: the Royal Griffins fly to row 6 (the Gorgons are beyond their reach), the
+# Mighty Gorgons defend. Round 2: the Griffins strike them from the left; the Gorgons strike back,
+# one death stare roll forced (`roll:death_stare`: the line, `Deathstr.wav`, 80 over the Griffins,
+# then their reaction). `seed`: the Griffins' 37 damage, the strike back's 72 and its two kills, as
+# the original's. Frames: as the original's but the landing's boxes at 4 620 ms (433 pixels, as
+# `luck`'s).
+[[sequence]]
+id = "stare"
+scenario = "seq-stare.toml"
+hot_seat = true
+seed = 39
+actions = [
+    "hex:110", "turn:1.0", "key:d", "turn:0.0", "roll:death_stare", "click:634,322",
+]
+fail = ["death_stare", "good_morale"]
+ms = 8000
+timeline = "timelines/stare.txt"
+frames = "timelines/stare-frames.txt"
+boxes = true
+command = [
+    { seat = "Attacker", command = { Move = { to = 109 } } },
+    { seat = "Defender", at = 2572, command = { Defend = {} } },
+    { seat = "Attacker", at = 2572, command = { Attack = { target = 1, from = 97 } } },
+]
+
+# E17 M3 T7b-2b-3: a hero's Lightning Bolt (`seq-lightning.toml`; casts.toml's `bolt`, its round 1;
+# design §7.16): Orrin's casting frames, the bolt from the sky (1 at 10 ms), then 49 over the
+# marked Swordsmen with their hit and the damage's line after it. Frames: as the original's.
+[[sequence]]
+id = "lightning"
+scenario = "seq-lightning.toml"
+hot_seat = true
+actions = ["cast:0:83"]
+ms = 3200
+heroes = true
+timeline = "timelines/lightning.txt"
+frames = "timelines/lightning-frames.txt"
+boxes = true
+command = [
+    { seat = "Attacker", command = { Cast = { spell = 17, target = { Stack = { stack = 2 } }, second = { None = {} } } } },
+]
