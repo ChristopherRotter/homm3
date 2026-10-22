@@ -393,3 +393,33 @@ fn a_teleported_jouster_counts_a_run_up_of_one_hex_only_with_the_slip() {
     }
     assert!(values[0] > values[1], "{values:?}");
 }
+
+// covers: BAT-AI-020
+#[test]
+fn the_search_stops_are_the_searchs_own() {
+    // `computer::search_stops` is `Search::run`'s own stops, which the search keeps in a copy of
+    // its own (a call costs it): every stack's, a flyer's (none) and the moat's at a town.
+    let r = ruleset();
+    let field = Field::new(r.battle().field);
+    for state in [
+        besieged(&r, 10, &[(HARPY, 5)], 1),
+        BattleState::new(
+            &r,
+            &led(&[(GOG, 3)], &[(IMP, 2)], hero_with(&r, &[], 1, 0)),
+            1,
+        )
+        .unwrap(),
+    ] {
+        for (i, s) in (0u8..).zip(state.stacks()) {
+            let id = StackId(i);
+            if !s.is_alive() || s.is_turret() {
+                continue;
+            }
+            let stops = computer::search_stops(&state, &r, id);
+            let map = computer::map(&state, &r, id, s.side);
+            for h in (0u8..).map(Hex).take(field.hex_count()) {
+                assert_eq!(stops.contains(h), map.is_stop(h), "{id:?} {h:?}");
+            }
+        }
+    }
+}

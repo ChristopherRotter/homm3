@@ -192,7 +192,23 @@ impl Search {
                 .then(|| field.neighbor(hex, Field::front_direction(mover.side)))
                 .flatten()
         };
-        let stops = stops(state, field, mover);
+        // rule: BAT-MAG-032, BAT-SIE-004
+        // [`stops`]'s code, kept inline: a call costs the computer's searches 5 % (E23 T5b2a).
+        let stops = if flies {
+            HexSet::new()
+        } else {
+            let side = mover.controller();
+            let own = mover
+                .footprint(field)
+                .hexes()
+                .fold(HexSet::new(), |mut own, h| {
+                    own.insert(h);
+                    own
+                });
+            obstacles::seen_pits(state, side)
+                .union(siege::stops(state, side))
+                .without(own)
+        };
         // A walk's search reads no marks (its target is a free position): none are made.
         let (ends, occupant) = match query.goal {
             Goal::Attack(ends) => (ends, Some(occupants(state, field))),
@@ -375,7 +391,9 @@ impl Search {
 
 /// The stops of a search for `mover` (the pathfinder's +0x68, which 0x4B3290 marks at every
 /// search's start for its stack): none for a flyer; else the pits its controller sees and a town's
-/// moat (BAT-MAG-032, BAT-SIE-004), not under the stack at its start.
+/// moat (BAT-MAG-032, BAT-SIE-004), not under the stack at its start. [`Search::run`] keeps its
+/// own copy of this code (a call there costs its searches 5 %); `h3-battle-ai`'s test
+/// `the_search_stops_are_the_searchs_own` holds the two together.
 // rule: BAT-MAG-032, BAT-SIE-004
 pub(crate) fn stops(state: &BattleState, field: Field, mover: &Stack) -> HexSet {
     if mover.has(StackTraits::FLIES) {
