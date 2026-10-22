@@ -2756,7 +2756,10 @@ fn an_actions_start_stands_and_unmarks_by_what_it_does() {
     let original = |events: &[Event]| calms(events, Bugs::Original);
     assert_eq!(original(&[cast]), (true, true));
     assert_eq!(original(core::slice::from_ref(&creature)), (true, false));
-    assert_eq!(calms(core::slice::from_ref(&creature), Bugs::Fixed), (true, true));
+    assert_eq!(
+        calms(core::slice::from_ref(&creature), Bugs::Fixed),
+        (true, true)
+    );
     assert_eq!(original(&[wall]), (true, true));
     assert_eq!(original(&[moved(0, 1, 2)]), (true, true));
     let later = [Event::TurnStarted { stack: 1 }, moved(1, 2, 3)];
@@ -4794,7 +4797,10 @@ fn a_creatures_cast_with_the_bugs_fixed() {
             Some(1000),
             vec![stack_cast(0, 21, hex(83)), hurt(1, 20, 20, 0)],
         ),
-        (Some(8000), vec![stack_cast(0, 21, hex(15)), hurt(2, 20, 20, 0)]),
+        (
+            Some(8000),
+            vec![stack_cast(0, 21, hex(15)), hurt(2, 20, 20, 0)],
+        ),
         (Some(16000), vec![stack_cast(0, 23, hex(98))]),
     ];
     let groups = |t: &Timeline| -> Vec<u32> {

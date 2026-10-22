@@ -502,6 +502,11 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   recorded (seeds 9 and 566 for the original's damage); frames as the original's: `raise` 107,
   `bolt` 47 (every pixel of the rays), `creatures` 114 but the landing Archangels' redraw
   artifacts.
+- **T7d done 2026-10-22** ([log](E17-log.md#m3-t7d--a-creatures-cast-its-drawing-bugs-fixed-2026-10-22),
+  design §7.16): CLT-Q8's three drawing bugs fixed in what the client draws (a creature
+  caster's group by the rows' angle, a missed caster standing at once, the mouse's stack
+  unmarked at the action's start), the original's kept for the comparisons by
+  `anim::Stage::bugs` (`h3-view sequences` only). Every sequence and situation drawn as before.
 
 ### The adventure lane's harness (H1, H2: its batch E3)
 
@@ -571,6 +576,12 @@ Accepted by the user (M1 2026-10-13, M2 2026-10-14); moved to the log,
 
 (Filled by the tasks: choices queued for the milestone review under the autonomy contract.
 Oddities of the original are open questions since 2026-10-22, the items naming them.)
+
+- T7d: **a visual deviation without a reference** (*provisional*): the fixed casting group takes
+  VCMI's points (hex to hex: the caster's centre and the same point over the hex aimed at, y
+  up) with the original's shot threshold, 25°, not VCMI's 0.2 rad; the same row and the
+  caster's own hex straight (18). The switch reaching the timeline is `anim::Stage::bugs`
+  (`Original` only in `h3-view sequences`, the comparisons' command).
 
 - T7c-3: not split, at the user's word. **The harness** (lasting, the user's choice): `xdd.dll`
   logs the draws of `ray_aim`'s call (nothing forced) and `frames` keeps them as the frame
