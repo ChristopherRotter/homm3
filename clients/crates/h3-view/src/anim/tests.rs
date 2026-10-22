@@ -4486,7 +4486,10 @@ fn an_area_spell_plays_at_its_hex_then_its_line_and_the_reactions() {
     let t = play_area(&o, &commands);
     // Meteor Shower kills the Swordsmen at 15: they lie as a corpse on their death's last frame.
     let corpse = t.keys.iter().rev().find(|k| k.stack == 1).unwrap();
-    assert_eq!((corpse.pose.group, corpse.pose.frame, corpse.pose.layer), (5, 5, CORPSE));
+    assert_eq!(
+        (corpse.pose.group, corpse.pose.frame, corpse.pose.layer),
+        (5, 5, CORPSE)
+    );
     let layout = layout();
     let anchor = layout.anchor(4, 15);
     let at = |shown| t.spot(shown).map(|s| (s.def, s.frame, s.at));

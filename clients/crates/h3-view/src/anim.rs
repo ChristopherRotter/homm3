@@ -3126,13 +3126,12 @@ impl Player<'_> {
         }
         self.redraw();
         let shown = self.clock.now;
-        self.keys
-            .extend(unseen.map(|(stack, drawn, pose)| Key {
-                stack,
-                drawn,
-                shown,
-                pose,
-            }));
+        self.keys.extend(unseen.map(|(stack, drawn, pose)| Key {
+            stack,
+            drawn,
+            shown,
+            pose,
+        }));
         if let Some(c) = caster {
             self.stand_caster(c);
         }
