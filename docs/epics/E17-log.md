@@ -1902,6 +1902,48 @@ executables, the five DLLs, the combat and end tunes, `maps.tar`, `extracted.tar
   `scripts/exe.py check` and `cited`; the full `clients/scripts/check.sh` and `verify --scope
   client` before the pull request.
 
+### M3 T7c-1 — The area and mass spells (2026-10-22)
+
+On `client/e17-m3-t7c-1`, the user present at the start: T7c split with the user (offered four
+parts, the user chose three: T7c-1 the area and mass spells, `mass` and `dragon`; T7c-2 the spell
+obstacles and Armageddon; T7c-3 raises, the creatures' own animations and Chain Lightning). The
+user's computer was linked for the staging only (the four LODs, both sound archives,
+`H3ab_ahd.vid`, the executables, the five DLLs, the combat and end tunes, `extracted.tar`).
+
+- **Starting point:** `master` at `357f7c6` (#376 merged); no client pull request open; CI on
+  `master` not started (billing); the client gates' full check on that code (`verify-once
+  clients`: all gates passed).
+- **The reading** (design §7.16, "Read at T7c-1"; `docs/exe/map.toml`): Death Ripple's, Destroy
+  Undead's and the mass timed spells' handlers and lines (GENRLTXT 197, 188, 187),
+  `mass_spell_animation`'s end (a redraw only when one died), the area handler's order (the
+  animation at the hex, the line, `strike_animation(−1)`), `strike_animation`'s length (L =
+  max(n, A, R, A + R − 1); with no striker every reaction at once) and its play-on after the
+  loop (0x4691A9: every stack not standing, partial redraws, before the dead die), `cast_spell`'s
+  tail (+0x50 reset, `outline_turn_stack`) and start (the outline and the mouse's highlight
+  cleared), `creature_cast_action`'s cast, the Faerie Dragon's draw line (the executable's own,
+  0x660AD0).
+- **Built** (design §7.16, "Built (T7c-1)"): `Player::untargeted`, `mass`, `at_hex` (`SpotKey`,
+  `Timeline::spot`, drawn over everything), `area`, `spell_reactions`, `stand_caster`,
+  `creature_cast` (the `StackCast` event), `pending_counts`; `Logged::CastAll`, `MassDamage`,
+  `AreaDamage`, `Unmark` (keys `battle.log.cast`, `death-ripple`, `destroy-undead`); the mouse's
+  `Input::Book`; the viewer's binary loads a creature's cast's spell and animation (`motion`).
+- **Recorded** (`sequences.toml`; both moved from `casts.toml`): `mass` (123 changes) and
+  `dragon` (150; the engine's seeds searched for its draws, 174: Fireball, Fireball, Inferno as
+  the original's; spell damage rolls nothing). Both as recorded on the first run.
+- **The frame check** (`frames --only`, then `--reuse` after each fix): first run `mass` 1 of 53
+  frames differing (the click's artifacts) with the log's item listed at 0 to 400 ms and the
+  boxes after Death Ripple; `dragon` 48 of 166 (the mouse's outline kept on the target, the
+  dragon standing outlined too early, the defenders and the caster after the loop). Fixed by the
+  reading: the empty status line while the book is open, the boxes at the cast's tail, the
+  highlight cleared as the cast starts, the play-on inside `strike_animation` (the caster's stand
+  unseen until the end's whole redraw). Final: `mass` as the original's but the click's 126
+  pixels (redraw artifacts) and the boxes listed at 4 800 ms; `dragon` as the original's but the
+  landing's three frames (142 pixels, redraw artifacts), the log's item listed in every frame
+  (the draw's line, not built: a spectator's record, the review list). `drawn`: all other 82
+  sequences and situations the same; digests recorded.
+- **Gates:** the client workspace's coverage 100 %, unit tests replay `mass` exactly and the
+  dragon's mechanics with invented numbers; the full check: in the pull request.
+
 ## Accepted review lists (M1, M2)
 
 Moved from the epic file on 2026-10-20 (less start-up reading), unchanged.

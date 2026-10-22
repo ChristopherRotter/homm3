@@ -4,7 +4,7 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E17 M0–M2 done; M3 T1a–T7a-2b, T7b-1, T7b-2a, T7b-2b-1 to T7b-2b-3, T8 done; H1, H2 done (2026-10-19: the adventure lane's harness); next: M3 T7c** (`QUEUE.md`; T9 closes M3). Screens from the executable's dialog items (`h3_view::ui`; design §9.7). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
+- **E17 M0–M2 done; M3 T1a–T7a-2b, T7b-1, T7b-2a, T7b-2b-1 to T7b-2b-3, T7c-1, T8 done; H1, H2 done (2026-10-19: the adventure lane's harness); next: M3 T7c-2, then T7c-3** (`QUEUE.md`; T9 closes M3). Screens from the executable's dialog items (`h3_view::ui`; design §9.7). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
 - **Captures** (the user, 2026-10-20): `h3drive.py drawn` first (no Wine); capture what it lists or the task changes, all at a milestone's closure or a harness change (runbook); later tasks' detail in `NOTES.md`.
 - **The user's requirements** (epic, "Decisions"): a string catalogue (JSON packs, no committed translation, CLT-Q7); graphics options (`faithful` default); exhaustive diffs.
 - The lane owns `clients/`, `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
@@ -51,17 +51,16 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
   acts at the cast's end in both (T7b-1).
 - The original's rolls: forced (`roll:`, `fail`; runbook), luck and morale by the hero's
   `effects`. The frame check takes heroes from memory, not casts.
-- `turn:` naming the active stack passes at once: after its hero's cast a stack acts by `key:`
-  only (pick speeds so turns alternate, T7b-2a). A spell's handler: `Player::cast` by
-  `SpellLook::original`, its effects at the handler's point (the box's tint follows them).
-- Engine spell handles are not the original's numbers (Poison 70, Acid Breath 79): tell spells
-  by `SpellLook::original` (T7b-2b-3).
+- `turn:` naming the active stack passes at once: after a hero's cast a stack acts by `key:`
+  only (T7b-2a). Tell spells by `SpellLook::original`, not engine handles (Poison 70).
+- Sequences are spectators' records (no seat's own events: a Faerie Dragon's draw); a random
+  caster's seed is searched for the original's draws (`dragon` 174; T7c-1).
+- `strike_animation` plays every stack on after its loop in partial redraws (0x4691A9; T7c-1).
 
 ## Recent sessions
 
-- **2026-10-22, E17 M3 T7b-2b-3 (strike effects; #376).** Not split (the user): four sequences, seeds
-  matching the original's damage; the catalogue reads `Heroes3.exe`'s text (`EXE:`).
-- **2026-10-21, E17 M3 T7b-2b-2b (morale, luck, fear; #371, merged).** Not split (the user):
-  four sequences recorded, seeds searched; the outline found; frames exact.
-- **2026-10-21, E17 M3 T7b-2b-2a (hero luck and morale on the map; #368, merged).** At the
-  user's word: `effects` become Leadership and Luck; a forced lucky shot checked.
+- **2026-10-22, E17 M3 T7c-1 (area and mass spells).** T7c split in three with the user; `mass`,
+  `dragon` recorded, frames as the original's; checkpoint (the user).
+- **2026-10-22, E17 M3 T7b-2b-3 (strike effects; #376, merged).** Four sequences, seeds searched;
+  the catalogue reads `Heroes3.exe`'s text (`EXE:`).
+- **2026-10-21, E17 M3 T7b-2b-2b (morale, luck, fear; #371, merged).** Four sequences; the outline.

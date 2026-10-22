@@ -72,8 +72,10 @@ search the parent directories).
   projectile and hit, their sounds and log lines), good luck, good and bad morale and Fear over
   their stack (M3 T7b-2b-2b: the last two with its hit, their sounds and lines), the
   creatures' effects of a melee strike (M3 T7b-2b-3: Poison and Acid Breath cast at the
-  strike's end, Life Drain, Death Stare, the Thunderbird's bolt, the Rust Dragon's acid) and a
-  hero's Lightning Bolt, the
+  strike's end, Life Drain, Death Stare, the Thunderbird's bolt, the Rust Dragon's acid), a
+  hero's Lightning Bolt, the mass and area spells (M3 T7c-1: a mass timed spell, Death Ripple,
+  Destroy Undead, the area spells' animation at their hex and reactions, a creature's cast such
+  as the Faerie Dragon's), the
   panel (M3 T6a: its picture in the acting player's colours and its buttons as the turn's start
   sets them, `h3_view::panel`; since M3 T6b through the battle's turns and with its log's lines,
   `scene::Panels`); not yet
@@ -216,6 +218,7 @@ battle.log.damage attacker=Imps damage=4 count=2 [--pack de.json]`). The battle 
 composed from the keys as the executable composes them from its rows (`h3_view::battle_log`, M3
 T4b-2a, design §9.4: a strike's damage and perish rows, wait, defend, morale, luck, Fear (M3
 T7b-2b-2b), Life Drain, Death Stare, the Thunderbird's bolt, Poison, Acid Breath (M3 T7b-2b-3),
+a cast without a target, Death Ripple's and Destroy Undead's damage, an area spell's (M3 T7c-1),
 and the log
 entries a line becomes; the text the log's item shows, M3 T4b-2b-2; the heal's and the round's
 lines, which event writes which line and when, and the log kept as the executable keeps it, M3

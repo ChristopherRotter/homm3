@@ -1,11 +1,11 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b, T8, T7b-1, T7b-2a, T7b-2b-1, T7b-2b-2a, T7b-2b-2b, T7b-2b-3 done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b, T8, T7b-1, T7b-2a, T7b-2b-1, T7b-2b-2a, T7b-2b-2b, T7b-2b-3, T7c-1 done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
 [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
-are there). Next: M3 T7c, then T9 (`docs/lanes/client/QUEUE.md`).
+are there). Next: M3 T7c-2, T7c-3, then T9 (`docs/lanes/client/QUEUE.md`).
 
 ## Goal
 
@@ -250,7 +250,10 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   creatures' rolled animations, which the user split on 2026-10-21 into T7b-2b-1, the harness
   forcing the original's rolls (the user's wish), T7b-2b-2, morale, luck and fear (its first part
   T7b-2b-2a, a scenario's hero's luck and morale on the original's map, at the user's word), and
-  T7b-2b-3, the creatures' rolled animations; T7c area spells, rays and spell obstacles) and their sounds.
+  T7b-2b-3, the creatures' rolled animations; T7c area spells, rays and spell obstacles, split
+  with the user on 2026-10-22 into T7c-1, the area and mass spells, T7c-2, the spell obstacles and
+  Armageddon, and T7c-3, raised stacks, the creatures' own animations and Chain Lightning) and
+  their sounds.
 - The sound's remainder (T8: the battle's end; the volume settings later).
 - **Exit:** the reference set passes, or each difference is a listed fix or a classified quirk.
 - **T1a done 2026-10-14** ([log](E17-log.md#m3-t1a--turns-and-the-walk-by-2026-10-14),
@@ -466,6 +469,14 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   `thunder`, `acid`, `stare` and `lightning` recorded with forced rolls, seeds matching the
   original's damage: played as recorded, frames as the original's but a landing flier's boxes.
 
+- **T7c-1 done 2026-10-22** ([log](E17-log.md#m3-t7c-1--the-area-and-mass-spells-2026-10-22),
+  design §7.16): T7c split with the user. The mass animation (Slow at Expert, Death Ripple and
+  Destroy Undead's handlers, their lines), the area spells' animation at the hex and reactions,
+  a creature's cast (the Faerie Dragon's group by the angle), `strike_animation` playing every
+  stack on after its loop, the cast's tail (counts, outline), the mouse's highlight cleared as a
+  cast starts, the book's empty status line. `mass` and `dragon` recorded (seed 174): played as
+  recorded, frames as the original's but its redraw artifacts (the draw's log line listed).
+
 ### The adventure lane's harness (H1, H2: its batch E3)
 
 Taken ahead of M3's remainder on 2026-10-19 (the user): the adventure lane's E08 T22a waits on
@@ -533,6 +544,20 @@ Accepted by the user (M1 2026-10-13, M2 2026-10-14); moved to the log,
 ## M3 review list
 
 (Filled by the tasks: choices queued for the milestone review under the autonomy contract.)
+
+- T7c-1: T7c split with the user (T7c-1 the area and mass spells; T7c-2 the spell obstacles and
+  Armageddon; T7c-3 raises, the creatures' own animations and Chain Lightning). **Records**
+  (lasting): the Faerie Dragon's draw line (the executable's own "The %s readies %s (press F to
+  cast)", written when its controller is human here) needs the drawn spell, which the engine
+  shows only to the dragon's controller; the recorded sequences are a spectator's, so it is not
+  written and `dragon`'s frames list the log's item: record hot-seat sequences from both seats'
+  views (the viewer as "human here" for both), or keep the spectator's and list it? **Drawing
+  quirks** (`faithful` copies them, as built): a mass animation's last frame never shown, the one
+  before it twice; a caster that did not react stands in memory but the original's partial
+  redraws show its old frame until the end's whole redraw (built so). *Provisional*: Destroy
+  Undead, Frost Ring and Meteor Shower built as read, not recorded; a melee strike's and a
+  shot's loop keep counting the drawn group 4 rather than playing it on after the loop (the
+  same times in every recording).
 
 - T7b-2b-3: not split, at the user's word. **Formats** (lasting): the key catalogue's
   `EXE:0x<address>` source, a string of the user's `Heroes3.exe` read at run time (Acid Breath's
@@ -615,7 +640,7 @@ Accepted by the user (M1 2026-10-13, M2 2026-10-14); moved to the log,
   drawing to copy (`faithful`) or fix (`fixed`)? A mass animation (Slow at Expert, Death Ripple)
   never shows its last frame and shows the one before twice; Chain Lightning's opening bolt (37)
   is drawn but never on the screen; a Fire Wall's two placement animations play at the target
-  hex's place (the second hex's too; T7c's frame check to confirm); a mass reaction's hit runs on
+  hex's place (the second hex's too; T7c-2's frame check to confirm); a mass reaction's hit runs on
   through the standing group and stays on its last frame. Kept as read: Animate Dead plays
   Resurrection's 50, the Liches' cloud is drawn plain (the table's translucency ignored). The
   harness: `screens` (`<ms> screen x0,y0,x1,y1`, numbers only), a stalled `turn:` writes its
