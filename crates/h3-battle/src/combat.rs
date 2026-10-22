@@ -402,8 +402,10 @@ fn slays(ruleset: &BattleRuleset, mastery: u8, victim: &Stack) -> bool {
 }
 
 /// The damage a shot of `attacker` would deal to `target` now from the base damage `base`: every
-/// stage of a real shot, without luck, death blows and double damage. The computer's damage
-/// estimate (0x442780 → 0x443F40 with its estimate flag, BAT-WAR-008) and [`shot_damage_range`].
+/// stage of a real shot, without luck, death blows and double damage ([`shot_damage_range`]; the
+/// computer's damage estimate, 0x442780 → 0x443F40 with its estimate flag, BAT-WAR-008, is
+/// `aim::estimate_between`).
+#[cfg(test)]
 pub(crate) fn shot_damage(
     state: &BattleState,
     ruleset: &BattleRuleset,
@@ -416,25 +418,6 @@ pub(crate) fn shot_damage(
         (state.at(attacker), attacker, state.at(target)),
         (base, 0),
         StrikeFlags::RANGED,
-    )
-}
-
-/// The damage a melee strike of `attacker` would deal to `target` now from the base damage
-/// `base` after a run-up of `charge` hexes: every stage of a real strike, without luck, death
-/// blows and double damage. The computer's damage estimate of a strike (0x442780 → 0x443F40 with
-/// its estimate flag and no shot flag; E23 T3a).
-pub(crate) fn melee_damage(
-    state: &BattleState,
-    ruleset: &BattleRuleset,
-    (attacker, target): (StackId, StackId),
-    (base, charge): (u64, u8),
-) -> u64 {
-    estimated_damage(
-        state,
-        ruleset,
-        (state.at(attacker), attacker, state.at(target)),
-        (base, charge),
-        StrikeFlags::NONE,
     )
 }
 

@@ -11,12 +11,13 @@ use h3_kernel::arith::X87;
 
 use crate::aim;
 use crate::combat::can_shoot;
+use crate::effects::Status;
 use crate::geometry::{Field, Hex, HexSet};
 use crate::magic;
 use crate::movement::MAX_PATH;
 use crate::pathfinder::{AI_RANGE, Goal, Query, Search};
 use crate::siege::{self, SiegeState};
-use crate::state::{BattleState, StackId};
+use crate::state::{BattleState, StackId, StackTraits};
 
 pub use crate::aim::{Context, Planned, Shot, Threat};
 
@@ -675,14 +676,28 @@ pub fn exchange(
     ((a, a_hp), (t, t_hp)): ((StackId, u64), (StackId, u64)),
     (shot, jousting): (bool, u8),
 ) -> (u64, u64) {
+    exchange_of(
+        ruleset,
+        side,
+        (((state, a), a_hp), ((state, t), t_hp)),
+        (shot, jousting),
+    )
+}
+
+/// [`exchange`] of the striker's record on the struck stack's, each read from its own state.
+fn exchange_of(
+    ruleset: &BattleRuleset,
+    side: BattleSide,
+    ((pa, a_hp), (pt, t_hp)): ((aim::Party<'_>, u64), (aim::Party<'_>, u64)),
+    (shot, jousting): (bool, u8),
+) -> (u64, u64) {
     let field = Field::new(ruleset.battle().field);
-    if shot && can_shoot(state, field, a) {
-        let s = state.at(a);
-        let count = a_hp.div_ceil(u64::from(s.max_hp.max(1)));
-        let dealt = aim::damage_estimate(state, ruleset, (a, t), count, true, 0);
+    if shot && can_shoot(pa.0, field, pa.1) {
+        let count = a_hp.div_ceil(u64::from(pa.0.at(pa.1).max_hp.max(1)));
+        let dealt = aim::damage_between(ruleset, (pa, pt), count, (true, 0));
         return (a_hp, t_hp.saturating_sub(dealt));
     }
-    aim::exchange(state, ruleset, side, ((a, a_hp), (t, t_hp)), jousting)
+    aim::exchange_between(ruleset, side, ((pa, a_hp), (pt, t_hp)), jousting)
 }
 
 /// The best kill value a protection of stack `id` keeping `kept` percent takes off the other
@@ -752,9 +767,74 @@ pub fn berserk_search(
     ruleset: &BattleRuleset,
     id: StackId,
 ) -> (impl Iterator<Item = StackId>, Option<Map>) {
-    let (list, search) = crate::control::searched(state, ruleset, id);
+    berserk_list(state, ruleset, id, false)
+}
+
+/// [`berserk_search`] for a removal's lone copy of stack `id`'s record, which `state` holds in
+/// the stack's place (0x445490 on the copy; E23 T4d, survey slip 24): the original tells the
+/// battle's records from the copy by pointer, so the stack's own record is a candidate too, at
+/// distance 0 or at the search's start (cost 0), the least, in record order. The copy's search is
+/// the stack's: the pathfinder tells a hex's stack by side and index (0x446C40).
+pub fn berserk_search_of_copy(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    id: StackId,
+) -> (impl Iterator<Item = StackId>, Option<Map>) {
+    berserk_list(state, ruleset, id, true)
+}
+
+/// The berserk candidates of `id` and their search, the stack's own record among them with
+/// `itself`.
+fn berserk_list(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    id: StackId,
+    itself: bool,
+) -> (impl Iterator<Item = StackId>, Option<Map>) {
+    let (list, search) = crate::control::searched(state, ruleset, id, itself);
     let candidates = (0..list.len()).filter_map(move |i| list.get(i).map(|&(t, _)| t));
     (candidates, search.map(Map))
+}
+
+/// The exchange of a removal's lone copy of stack `id` (its record in `copy`, `hp.0` hit points)
+/// with the battle's record of the same stack (in `battle`, `hp.1`), as [`exchange`] for the
+/// computer's `side` without a run-up (0x4359B0 on the copy and the record; E23 T4d, survey slip
+/// 24: the computer's Berserk and Hypnotize values meet the stack itself among their targets).
+/// The hit points both have left.
+pub fn exchange_with_itself(
+    (battle, copy): (&BattleState, &BattleState),
+    ruleset: &BattleRuleset,
+    side: BattleSide,
+    (id, hp): (StackId, (u64, u64)),
+    shot: bool,
+) -> (u64, u64) {
+    exchange_of(
+        ruleset,
+        side,
+        (((copy, id), hp.0), ((battle, id), hp.1)),
+        (shot, 0),
+    )
+}
+
+/// The lone copy's block (0x4428F0 → 0x469600 → 0x442880 on a removal's copy; E23 T4d, survey
+/// slip 24): the original finds the battle's record of a two-hex stack beside its copy, at the
+/// copy's other hex, and tells them apart by pointer. So the copy of a two-hex shooter, stack `id`
+/// of `copy`, is blocked by the stack itself in `battle` when either is berserk or the copy is
+/// hypnotized ([`Stack::is_hostile_to`]); a war machine and a stack that shoots while adjacent
+/// shoot anyway, as [`shoots`] (BAT-WAR-001, BAT-HER-006). Such a copy is marked as one that
+/// cannot shoot now; an end of a spell on it ([`end_spell`]) recomputes its marks, so the block
+/// is asked again after each.
+///
+/// [`Stack::is_hostile_to`]: crate::Stack::is_hostile_to
+pub fn block_by_itself(copy: &mut BattleState, battle: &BattleState, id: StackId) {
+    let live = battle.at(id);
+    let s = copy.at_mut(id);
+    let blocked = s.is_two_hex()
+        && s.has(StackTraits::SHOOTER)
+        && !s.has(StackTraits::WAR_MACHINE)
+        && !s.has(StackTraits::SHOOTS_WHEN_ADJACENT)
+        && s.is_hostile_to(live);
+    s.spells.status = s.spells.status.with(Status::NO_SHOOTING, blocked);
 }
 
 /// The stack whose map the computer's pathfinder holds after the threat records of both sides

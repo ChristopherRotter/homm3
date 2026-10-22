@@ -214,15 +214,16 @@ impl View<'_> {
 
     /// Mirth's evaluator (0x438170; BAT-AI-016): 0 for a creature without morale; `x` the value
     /// of the morale's change by the spell's value from the stack's morale clamped to ±3
-    /// ([`change_value`] with morale's values), 0 when `x` is 0; else `trunc(w × t × x)`, `w`
-    /// the stack's strength and `t` the rounds' share. No "beaten" test.
+    /// ([`change_value`] with morale's values; on a lone copy the record's, [`Self::kept`]), 0
+    /// when `x` is 0; else `trunc(w × t × x)`, `w` the stack's strength and `t` the rounds' share.
+    /// No "beaten" test.
     // rule: BAT-AI-016
     pub(crate) fn mirth(&self, s: StackId, c: Candidate) -> i32 {
         let stack = self.stack(s);
         if stack.has(StackTraits::NO_MORALE) {
             return 0;
         }
-        let m = i32::from(stack.morale).clamp(-LIMIT, LIMIT);
+        let m = self.morale(s).clamp(-LIMIT, LIMIT);
         let x = change_value(m, i32::from(self.effect(c)), values(MORALE), self.slips());
         if x.is_zero() {
             return 0;
@@ -231,7 +232,7 @@ impl View<'_> {
     }
 
     /// Fortune's evaluator (0x438490; BAT-AI-016): against the threat record's enemy within a
-    /// turn, from the stack's luck `L` as its record keeps it (not clamped, [`computer::luck`])
+    /// turn, from the stack's luck `L` as its record keeps it (not clamped, [`Self::luck`])
     /// and the spell's value `v`, cut to `3 − L`: nothing at `L ≥ 3` or `L + v ≤ −3`. With `d` the
     /// stack's strike on the enemy by its count, uncapped: each point of bad luck removed (`−L`
     /// when the luck crosses 0, else `v`) is worth `u / 24`, `u` the gain of a halved strike
@@ -244,7 +245,7 @@ impl View<'_> {
             return 0;
         };
         let (state, ruleset) = (self.state, self.ruleset);
-        let l = computer::luck(state, ruleset, s);
+        let l = self.luck(s);
         let mut v = i32::from(self.effect(c));
         if l >= LIMIT || l.saturating_add(v) <= -LIMIT {
             return 0;

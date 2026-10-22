@@ -217,7 +217,7 @@ fields = [
   { offset = 0xC, name = "cell_bottom", type = "i16", summary = "top + 52", confidence = "read", refs = ["epics/E17-design.md §4"] },
   { offset = 0x10, name = "flags", type = "u8", summary = "0x1 anchor, 0x2 blocked, 0x4 Quicksand, 0x8 Land Mine, 0x10 Fire Wall, 0x20 Force Field", confidence = "read", refs = ["installation.md §7.15"] },
   { offset = 0x14, name = "object", type = "i32", summary = "object index, -1 none", confidence = "read", refs = ["installation.md §7.15"] },
-  { offset = 0x18, name = "stack", type = "stack ref", summary = "the living stack on it", confidence = "read", refs = ["installation.md §7.16", "installation.md §7.18"] },
+  { offset = 0x18, name = "stack", type = "stack ref", summary = "the living stack on it: its side (+0x18, -1 none) and record index (+0x19), the battle's record (0x4E7170); the fit test 0x446C40 compares them with a stack's +0xF4 and +0xF8, so a removal's copy fits its own hexes (E23 T4d)", confidence = "read", refs = ["installation.md §7.16", "installation.md §7.18"] },
   { offset = 0x1A, name = "two_hex_part", type = "i8", summary = "-1 under a one-hex stack; under a two-hex one, the hex where it equals the facing is not drawn from (0x4687C0, 0x494F40)", confidence = "read", refs = ["epics/E17-design.md §4"] },
   { offset = 0x1C, name = "corpse_count", type = "i32", summary = "dead stacks lying on it (at most 14)", confidence = "read", refs = ["installation.md §7.16", "installation.md §7.18"] },
   { offset = 0x20, name = "corpse_sides", type = "u8[14]", summary = "their sides", confidence = "read", refs = ["installation.md §7.18"] },

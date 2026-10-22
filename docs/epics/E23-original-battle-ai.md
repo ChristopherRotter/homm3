@@ -2,7 +2,7 @@
 
 Status: **in progress**, refined 2026-10-19 (BAT-Q52); T1a1 to T1a4 done (the cuts confirmed
 2026-10-20), T1c done (BAT-Q53, BAT-Q54); T1a5 done as cut (part C, §7.42 to §7.45); T1a5e (the spell evaluators) done (§7.46); T1b done, ADR-0027 accepted (BAT-Q55); T2 done (T2a the crate and the plain shooters, T2b the area value, the wall shot, the benchmark), the budget
-set; T3 done (cut in four: T3-0, T3a, T3b, T3c); T4 cut in three, T4a done, T4b done (cut in two), T4c next · Follows E05 (the
+set; T3 done (cut in four: T3-0, T3a, T3b, T3c); T4 done (T4a, T4b in two, T4c, T4d); T1a6 and T5 next · Follows E05 (the
 AI lane, done) · Followed by E06 (training: this policy holds the neutral seat; AI-Q1) ·
 The battle lane's, later the AI lane's (BACKLOG).
 
@@ -221,10 +221,11 @@ found after that decision) belong to the neutral side's map too and are read (§
     0x43BF20 (slip 23) and the second context, the removals 0x439A80 (BAT-AI-016; slips 9 to 17,
     8 widened; BAT-STUB-4 retired); the fallbacks after a built context on its last search (slip
     22, BAT-STUB-11); §7.53; the inboxes have the function; the log.
-  - [ ] **T4d A removal's copy** (the user, 2026-10-22, BAT-Q60) — slip 24 under BAT-QUIRK-25:
-    the removal's lone copy of the stack's record (0x437A00), which the evaluators walking the
-    battle's records never find (Disrupting Ray, Slow, Berserk's candidates, Hypnotize, and what
-    they read through the battle); each evaluator a removal reaches re-read; BAT-STUB-12 retired.
+  - [x] **T4d A removal's copy** (2026-10-22; the user: whole, BAT-Q60) — slip 24 under
+    BAT-QUIRK-25: the removal's lone copy (0x437A00) beside the battle's records, which Disrupting
+    Ray and Slow never meet, Berserk and Hypnotize strike as the stack itself, a two-hex shooter's
+    copy blocked by its own record; the copy's turns at its own speed and Hypnotize's shooter
+    marks in both profiles; BAT-STUB-12 retired; §7.54; the log.
 - [ ] **T5 The hero's spells** (T1a6's reading first).
 - [ ] **T6 The hero's other choices** — retreat and surrender, the tactics phase, the Catapult's
   aim, the First Aid Tent's patient (BAT-Q51); BAT-Q33's rule.
