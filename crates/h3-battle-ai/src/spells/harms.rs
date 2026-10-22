@@ -327,11 +327,16 @@ impl View<'_> {
 
     /// A berserk attack's value (0x43A340; BAT-AI-016): 0 for a target `t` of the half's side;
     /// else the exchange of `s` on it ([`computer::exchange`], `s`'s shot flag), both stacks'
-    /// losses counted as gains ([`computer::damage_value`], the side's desperate mode).
+    /// losses counted as gains ([`computer::damage_value`], the side's desperate mode). On a lone
+    /// copy (survey slip 24) the target `s` is the battle's record of the stack, struck by the copy
+    /// ([`Self::berserk_attack_on_itself`]).
     // rule: BAT-AI-016
     pub(crate) fn berserk_attack(&self, (s, t): (StackId, StackId)) -> i32 {
         if self.stack(t).side == self.side {
             return 0;
+        }
+        if let Some(battle) = self.lone.filter(|_| t == s) {
+            return self.berserk_attack_on_itself(s, battle);
         }
         let (state, ruleset) = (self.state, self.ruleset);
         let shot = computer::shoots(state, ruleset, s);
@@ -349,14 +354,12 @@ impl View<'_> {
     }
 
     /// The berserk attack's value of a lone copy on the battle's record of its own stack (survey
-    /// slip 24: Berserk's and Hypnotize's targets hold it, 0x43A340 with the copy and the record):
-    /// [`Self::berserk_attack`] with the copy (the view's state, stack `s`) striking the record in
-    /// `battle` ([`computer::exchange_with_itself`]), each loss valued on its own record.
+    /// slip 24: Berserk's and Hypnotize's targets hold it, 0x43A340 with the copy and the record),
+    /// the record of the other side than the half's ([`Self::berserk_attack`]'s test, on the copy's
+    /// own side): the copy (the view's state, stack `s`) striking the record in `battle`
+    /// ([`computer::exchange_with_itself`]), each loss valued on its own record.
     // rule: BAT-AI-016
     fn berserk_attack_on_itself(&self, s: StackId, battle: &BattleState) -> i32 {
-        if battle.stacks()[s.index()].side == self.side {
-            return 0;
-        }
         let (copy, ruleset) = (self.state, self.ruleset);
         let shot = computer::shoots(copy, ruleset, s);
         let hp = (
@@ -370,15 +373,6 @@ impl View<'_> {
             computer::damage_value(state, ruleset, self.ctx, (s, lost), (shot, desperate))
         };
         value(copy, hp.0 - hs).wrapping_add(value(battle, hp.1 - ht))
-    }
-
-    /// A berserk attack's value of `s` on `t` ([`Self::berserk_attack`]), on a lone copy's own
-    /// record ([`Self::berserk_attack_on_itself`]) when `t` is `s`.
-    fn berserk_attack_of(&self, (s, t): (StackId, StackId)) -> i32 {
-        match self.lone {
-            Some(battle) if t == s => self.berserk_attack_on_itself(s, battle),
-            _ => self.berserk_attack((s, t)),
-        }
     }
 
     /// Berserk's evaluator (0x43A400; BAT-AI-016): 0 when beaten or without a target; the mean of
@@ -396,7 +390,7 @@ impl View<'_> {
         let (mut sum, mut n) = (0i32, 0u32);
         let (state, ruleset) = (self.state, self.ruleset);
         let mut add = |t| {
-            sum = sum.wrapping_add(self.berserk_attack_of((s, t)));
+            sum = sum.wrapping_add(self.berserk_attack((s, t)));
             n += 1;
         };
         let map = if self.lone.is_some() {
@@ -457,7 +451,7 @@ impl View<'_> {
                 (id == s && self.lone.is_some())
                     || (id != s && r.side == stack.side && r.is_alive() && marked)
             })
-            .map(|(i, _)| self.berserk_attack_of((s, StackId(i))))
+            .map(|(i, _)| self.berserk_attack((s, StackId(i))))
             .fold(0, i32::max);
         self.root.searched(map);
         best
