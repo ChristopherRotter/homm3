@@ -580,3 +580,8 @@ design §7.1.
   late (`melee`: 1919 for 1918, `CHANGED`): the turn's start ran after the 20 clock reads the
   driver then waited for. A sequence's steps now wait for 500 reads; still, run `sequences` and
   `frames` on an otherwise idle machine and rerun a one-line change before believing it.
+- An agent's background shell job is stopped after 2 hours (the agent harness's limit, not the
+  sandbox's; a process detached with `nohup … &` is stopped minutes after the agent's turn ends),
+  and all 31 sequences take longer: T9a's first loop over every `frames --only <id>` was stopped
+  inside `dispel`. Run them in batches of up to ten, one background job each, that start no new
+  sequence after about 75 minutes (a sequence takes 2 to 18), and the next batch after it.
