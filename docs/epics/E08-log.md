@@ -4395,7 +4395,7 @@ Decision 88: T41 whole (the user: "no cut"), its shared part in its own pull req
   (slot, kind) with a second layer `passing`/`passing_via`, each node replaced only by a strictly
   better one of its kind, the predecessor's kind in the direction byte's bit 3 (`FROM_PASS`); a
   visit's stop node ends there, a guard ends any node of a hero that does not fly; `path` follows
-  the recorded kinds. The walker's search and hot loop unchanged (`bench-check` below).
+  the recorded kinds. The walker's search keeps its loop (`bench-check` below).
 - **Tests:** `movement/tests.rs` (a flight's prices by level from free land, an entrance, an
   obstacle with a road, water; a water walk's, E5-5's 450 and 491; the diagonal check with and
   without the quirks; the drop under `ADV-QUIRK-17`; the levels from the details), the new
@@ -4409,3 +4409,10 @@ Decision 88: T41 whole (the user: "no cut"), its shared part in its own pull req
   random maps up to 8 × 8 (both profiles, flyers, water walkers and both, levels 1 to 3): 12 316
   stop tiles, none differing; with the exception on, none differed either on these maps.
 - **Replays:** none changed (no fixture hero flies or water-walks; T42 adds them).
+- **Benchmarks:** the first lane verify measured `reach-xl-144` +7.32 % and `random-play-duel-36`
+  +6.76 % on the same games (4 784 queries): callgrind showed the walking search's loop with the
+  price inlined into it (master keeps `Pricing::step` a call). The walker now prices by
+  `Pricing::walking_step` (`#[inline(never)]`, without the lifts' test) and
+  `walking_left_after`, the same prices for a hero that neither flies nor water-walks: `reach`
+  +0.89 %, `play` +0.83 %, `fork` +0.17 %, within the 2 % (not re-baselined). The rest is the
+  search's set-up (the terrains' water bit, the mode).

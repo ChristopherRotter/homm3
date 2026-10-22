@@ -376,12 +376,45 @@ impl<'a> Pricing<'a> {
         diagonal: bool,
         points: u32,
     ) -> u32 {
+        self.price_step::<true>(from, to, diagonal, points)
+    }
+
+    /// [`Self::step`] for a hero that neither flies nor water-walks, without the test of its
+    /// fly and water-walk prices: the walking search's hot loop (`bench-check`, E08 T41). The
+    /// same price as [`Self::step`] for such a hero. Not inlined: the search's loop measures
+    /// fewer instructions with the call (`bench-check`, E08 T41).
+    #[inline(never)]
+    pub(crate) fn walking_step(
+        &self,
+        from: &StaticTile,
+        to: &StaticTile,
+        diagonal: bool,
+        points: u32,
+    ) -> u32 {
+        self.price_step::<false>(from, to, diagonal, points)
+    }
+
+    /// [`Self::step`], with the hero's fly and water-walk prices when `LIFTED`.
+    #[inline(always)]
+    fn price_step<const LIFTED: bool>(
+        &self,
+        from: &StaticTile,
+        to: &StaticTile,
+        diagonal: bool,
+        points: u32,
+    ) -> u32 {
         let road = self.road(from, to);
-        let straight = self.lifted(from, self.base(from, road, true), self.lifts);
+        let walk = self.base(from, road, true);
+        let straight = if LIFTED {
+            self.lifted(from, walk, self.lifts)
+        } else {
+            walk
+        };
         if !diagonal {
             return straight;
         }
-        let check = if self.check_ignores_roads || self.check_ignores_native {
+        // Clean, a walking step's check is its walking price: the same as the lifted one's.
+        let check = if !LIFTED || self.check_ignores_roads || self.check_ignores_native {
             self.base(
                 from,
                 road.filter(|_| !self.check_ignores_roads),
@@ -408,8 +441,26 @@ impl<'a> Pricing<'a> {
     /// after each step of a move, in 0x4805E0. `to` is the tile as it stands now.
     // rule: ADV-MOV-006
     pub(crate) fn left_after(&self, to: &StaticTile, left: u32) -> u32 {
-        let walk = to
-            .road
+        let cheapest = self.lifted(to, self.walking_cheapest(to), self.drop_lifts);
+        if left < cheapest { 0 } else { left }
+    }
+
+    /// [`Self::left_after`] for a hero that neither flies nor water-walks: the walking search's
+    /// hot loop (E08 T41), the same points as [`Self::left_after`] for such a hero.
+    #[inline]
+    pub(crate) fn walking_left_after(&self, to: &StaticTile, left: u32) -> u32 {
+        if left < self.walking_cheapest(to) {
+            0
+        } else {
+            left
+        }
+    }
+
+    /// The cheapest walking step from `to`, priced against itself: its road's cost, else the
+    /// native cost, or under Cursed Ground the terrain's walking price.
+    #[inline(always)]
+    fn walking_cheapest(&self, to: &StaticTile) -> u32 {
+        to.road
             .and_then(|road| self.road_cost(road))
             .unwrap_or_else(|| {
                 if to.no_native {
@@ -417,9 +468,7 @@ impl<'a> Pricing<'a> {
                 } else {
                     self.native_cost
                 }
-            });
-        let cheapest = self.lifted(to, walk, self.drop_lifts);
-        if left < cheapest { 0 } else { left }
+            })
     }
 }
 

@@ -181,7 +181,8 @@ and building Cursed Ground late).
   player (`docs/06-security.md`). Keep the reach's passage rules in one place, so that the
   compromise changes the unexplored tile's row of §7's table and nothing else.
 - **The reach's speed:** the second layer only for flyers and water walkers; the walker's hot
-  loop must not gain a branch (`bench-check`'s +2 %).
+  loop must not gain a branch (`bench-check`'s +2 %). T41: `reach` +0.89 %, `play` +0.83 % with
+  the walker's own unlifted price (the log); a flyer's reach is baselined in T42.
 - **Not in increment 5** (survey §6): the sea's points (Navigation, its specialists, the
   Necklace of Ocean Guidance, the Sea Captain's Hat, the Admiral's Hat, Lighthouses, Favorable
   Winds), Stables, the spells Fly, Water Walk and Dimension Door with their levels 0 to 2 (the

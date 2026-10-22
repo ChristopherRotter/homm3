@@ -235,11 +235,11 @@ impl Reach {
                     continue;
                 }
             }
-            let Some(left) = points.checked_sub(pricing.step(&from, &to, dir % 2 == 1, points))
-            else {
+            let price = pricing.walking_step(&from, &to, dir % 2 == 1, points);
+            let Some(left) = points.checked_sub(price) else {
                 continue;
             };
-            let left = pricing.left_after(&to, left);
+            let left = pricing.walking_left_after(&to, left);
             if self.points[next].is_none_or(|best| left > best) {
                 self.points[next] = Some(left);
                 self.via[next] = dir as u8;

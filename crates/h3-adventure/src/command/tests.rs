@@ -328,6 +328,10 @@ fn errors_display() {
         ),
         (E::PastVisit { step: 2 }, "step 2 follows a visit"),
         (
+            E::NoStop { step: 1 },
+            "step 1 lands where the hero may not stop",
+        ),
+        (
             E::TooFewPoints {
                 step: 4,
                 cost: 141,
