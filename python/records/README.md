@@ -62,3 +62,7 @@ its `parent`.
 - `t3b-1` (E06 T3b's hour, 2026-10-20): promoted #0 to #4; its best #4 (25 M samples) at the
   bots' level (`docs/epics/E06-log.md`). Its networks are on the user's machine
   (`python/runs/t3b-1/`).
+- `t4-1` and `t4-2` (E06 T4b, 2026-10-21 and 22; the league, 60 M samples each, γ 0.995 and γ
+  1.0): promoted #0 to #4 and #0 to #5; `t4-2`'s best #5 (50 M samples) is the lineage's
+  strongest (Random 0.839, Aggressor 0.578, Greedy 0.559 on the full report set). Their networks
+  are on the user's machine (`python/runs/t4-1/`, `t4-2/`).

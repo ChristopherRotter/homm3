@@ -1,6 +1,6 @@
 # E06 — Battle AI v1 and the local training pipeline v0
 
-Status: **in progress**, refined 2026-10-20 (AI-Q8); increment 1 (T1, T2a, T2b1, T2c) done; increment 2 (T3a, T3b) done; increment 3 (T4a done, T4b next) in progress · Lane: **ai** · Follows E05 (closed
+Status: **in progress**, refined 2026-10-20 (AI-Q8); increment 1 (T1, T2a, T2b1, T2c) done; increment 2 (T3a, T3b) done; increment 3 (T4a, T4b) done; increment 4 next (its refinement open) · Lane: **ai** · Follows E05 (closed
 2026-10-20) · Runs beside E23 (the battle lane: the original's battle AI, the system actor's
 policy), whose neutral side opens E06's neutral share (decision 1)
 
@@ -127,9 +127,9 @@ league runs, γ 1.0 beside 0.995, 60 M samples each).
   promoted networks, a live set drawn every `live_every` samples) replacing E05's pool,
   `[league]`, the members' files in `league/`, checkpoint format 3, record schema 5,
   `configs/e06-t4.toml`; the record in `E06-log.md`.
-- [ ] **T4b The first league runs** (the user's machine) — `e06-t4.toml` at γ 0.995 and at γ 1.0
-  (AI-Q9), 60 M samples each, one of them stopped and resumed for real; both records committed,
-  the stalling compared by the truncations and the ladders.
+- [x] **T4b The first league runs** — done 2026-10-22 (`t4-1`, `t4-2`): γ 1.0 ends the stalling
+  (truncations 13 % to 0) and plays better (final 0.839, 0.578, 0.559 against Random, Aggressor,
+  Greedy); the stopped `t4-2` resumed for real; the record in `E06-log.md`.
 
 **Later increments** (cut at each checkpoint; proposed in design §10):
 

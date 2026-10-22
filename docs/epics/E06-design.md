@@ -270,10 +270,12 @@ Each with the user's checkpoint; only the next one refined (Q41's pattern).
   pending one at the resume, `--init-from`; the user one pull request). The hour on the user's
   machine with gates (`python/configs/e06-t3b.toml`) measures §9's evaluation share; its result
   sets T4's cadences.
-- **Increment 3** (refined 2026-10-20, AI-Q9): T4a (done 2026-10-20: the league of §8; with
+- **Increment 3** (done 2026-10-22, `E06-log.md`; AI-Q9: γ 1.0): T4a (the league of §8; with
   `configs/e06-t4.toml`: a gate every 10 M samples and ladders of 250 per kind, about 12 % of a
   run by `t3b-1`'s costs), T4b (two league runs of 60 M samples, about 3.5 hours each, at γ 0.995
   and γ 1.0 against the stalling; one of them stopped and resumed for real).
-- **Increment 4:** T5's experiments, each a recorded run: the entity network against the MLP,
+- **Increment 4** (to refine; T4b's evidence: the MLP at γ 1.0 still climbs slowly, the learning
+  rate at its floor at the budget; E23's neutral side is complete, so T7 can start too): T5's
+  experiments, each a recorded run with `t4-2` as the control: the entity network against the MLP,
   AI-Q7 (b), the mana price, the batch size and threads (T9c's table), the observations in place.
 - **Then** T6, T7 (after E23's T2 to T4), T8 (only if PPO plateaus), T9.

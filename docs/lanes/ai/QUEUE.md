@@ -12,17 +12,21 @@ neutral share waits for E23's side without a hero. Increment 1 done 2026-10-20: 
 (ADR-0026, design `E06-design.md`), T2b1 (the full checkpoint and `--resume`; its pending gate and
 `--init-from` moved to T3b), T2c (C ABI v31). Increment 2 done 2026-10-20: T3a (the held-out
 sets v1, the bots' table), T3b (the SPRT gate, promotions, ladders, `--init-from`; the user's
-hour `t3b-1`: evaluation 21.4 %, stalling suspected, AI-Q9). Increment 3 refined 2026-10-20
-(AI-Q9 answered): T4a done 2026-10-20 (the league, `E06-log.md`), then T4b.
+hour `t3b-1`: evaluation 21.4 %, stalling suspected, AI-Q9). Increment 3 done 2026-10-22: T4a
+(the league), T4b (the user's runs `t4-1`, `t4-2`: γ 1.0 ends the stalling, AI-Q9; the best
+plays 0.839, 0.578, 0.559 against Random, Aggressor, Greedy; `E06-log.md`).
 
-### E06 T4b — The first league runs
-
-- **Scope:** the user runs `configs/e06-t4.toml` twice (AI-Q9): at γ 0.995 and with `--set
-  ppo.gamma=1.0`, 60 M samples each, one stopped and resumed for real; both records committed,
-  the results in `E06-log.md` (the truncations, the ladders, the league's table).
-- **Acceptance:** both records pass `check_record`; increment 3's checkpoint with the user.
-- **Depends on:** T4a merged (its pull request). **Status:** waiting (T4a's merge, then the
-  user's two runs).
+**Next: increment 4's refinement, with the user** (no task is ready until then). The user closed
+T4b's session before choosing. Put to them:
+- **What T5 starts with:** (a) the entity network (Python only, decision 5; γ 1.0 as the
+  trainer's default with it), A/B against `t4-2` as the control (the same config and seed, 60 M):
+  the agent's recommendation; (b) AI-Q7 (b), the preview's kills per attack and shot entry as a
+  batch output (`h3-sim`, C ABI v32, the binding); (c) throughput: the batch size and threads,
+  the observations in place, `t4-2`'s dip to about 4 000 samples/s from 20 M to 40 M; (d) T7,
+  the neutral share, now that E23's neutral side is complete (the inbox, 2026-10-22).
+- **A spare run while T5 is built** (no code): `--init-from runs/t4-2/best.pt` at γ 1.0 with a
+  fresh schedule for 60 M or 120 M samples, to see whether the MLP keeps climbing (both T4b runs
+  rose slowly to 50 M; their last gates rejected with the learning rate at its floor).
 
 ## Inbox
 
