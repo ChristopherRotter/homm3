@@ -8,7 +8,7 @@ use h3_content::{CreatureFlag, ORIGINAL_AI_SLIPS, SchoolId};
 use h3_content_battle::Ability;
 use h3_kernel::arith::{DOUBLE_BITS, X87};
 
-use super::{Candidate, SpellContext};
+use super::{Candidate, View};
 
 /// The base damage a defense bonus's value compares (0x438910's 100).
 const BASE: u64 = 100;
@@ -19,7 +19,7 @@ const PERCENT: u64 = 100;
 /// The highest spell level (the Protections' and Magic Mirror's limit, 5).
 const MAX_LEVEL: u8 = 5;
 
-impl SpellContext<'_> {
+impl View<'_> {
     /// A protection's value (0x4387C0; BAT-AI-016) for stack `s` against the threat `e` over
     /// `rounds` rounds, the factor `f` dividing `e`'s strike on it: `d`, the strike by `e`'s
     /// whole count with its shot flag, uncapped, becomes `d' = trunc(d / f)`; when `d` exceeds
@@ -150,7 +150,7 @@ impl SpellContext<'_> {
         let best = computer::spell_protection(
             self.state,
             self.ruleset,
-            &self.ctx,
+            self.ctx,
             s,
             (schools, level, kept),
             self.ruleset.quirks().is_enabled(ORIGINAL_AI_SLIPS),

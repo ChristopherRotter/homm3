@@ -70,7 +70,7 @@ fn the_tables_hold_the_strikes_each_stack_meets_this_turn() {
         };
         assert_eq!((mask(enemy_runners), mask(gogs)), (0b111, 0));
         let sc = context(&state, &r);
-        let t = sc.tables();
+        let t = sc.view().tables();
         let seed = strike(&state, &r, (gogs, 0), false);
         assert_eq!(seed, 11);
         for s in 0..3u8 {
@@ -112,7 +112,7 @@ fn the_tables_hold_the_strikes_each_stack_meets_this_turn() {
     let r = ruleset_as("t:fixed");
     let state =
         BattleState::new(&r, &battle(&[(ARCHER, 10)], &[(ARCHER, 6), (GOG, 1)]), 1).unwrap();
-    let t = context(&state, &r).tables().clone();
+    let t = context(&state, &r).view().tables().clone();
     assert_eq!(t.melee[0], Entry::default());
     assert_eq!(t.worse[0], t.shots[0]);
     assert_eq!(t.worse[0].stack, Some(StackId(1)));
@@ -132,13 +132,13 @@ fn the_shields_and_stone_skin_by_the_protection_they_give() {
     assert_eq!(value("shield", 0, StackId(0)), 213);
     assert_eq!(value("airshield", 0, StackId(0)), 80);
     // Stone Skin: the defense bonus's factor against the worse threat, then the same value.
-    let worse = sc.tables().worse[0].stack.unwrap();
+    let worse = sc.view().tables().worse[0].stack.unwrap();
     let base =
         |b| computer::base_damage_on_defense(&state, &r, (worse, StackId(0)), (100, false), b);
     let f = X87::int(base(0)).over(X87::int(base(3))).unwrap().round(53);
     assert_eq!(
         value("stoneskin", 0, StackId(0)),
-        sc.protection((StackId(0), worse), 6, f)
+        sc.view().protection((StackId(0), worse), 6, f)
     );
     assert!(value("stoneskin", 0, StackId(0)) > 0);
     // Without a threat of the kind: nothing (no enemy shoots, the archers meet no melee).
@@ -161,7 +161,7 @@ fn a_protection_is_worth_nothing_without_a_threat_it_lowers() {
     let sc = context(&state, &r);
     let (runners, enemy) = (StackId(0), StackId(3));
     // A factor of 1 lowers nothing.
-    assert_eq!(sc.protection((runners, enemy), 6, X87::ONE), 0);
+    assert_eq!(sc.view().protection((runners, enemy), 6, X87::ONE), 0);
     // A strike above the stack's hit points is cut to them: forty runners' strike on one imp (4
     // hit points) divided by itself is 1, so f = 4 / 1; divided by more, 0, and the factor
     // 4 / 0: nothing (the original's infinite factor).
@@ -170,19 +170,19 @@ fn a_protection_is_worth_nothing_without_a_threat_it_lowers() {
     let d = strike(&few, &r, (1, 0), false);
     assert!(d > computer::hit_points(&few, StackId(0)));
     let (imp, runners) = (StackId(0), StackId(1));
-    assert_eq!(sc.protection((imp, runners), 6, X87::int(d + 1)), 0);
+    assert_eq!(sc.view().protection((imp, runners), 6, X87::int(d + 1)), 0);
     // trunc((√4 − 1) × 100) = 100: the imp's strength 100, a one-sided battle (the class 1).
-    assert_eq!(sc.protection((imp, runners), 6, X87::int(d)), 100);
+    assert_eq!(sc.view().protection((imp, runners), 6, X87::int(d)), 100);
     // The sums times the class short of a creature: the imps' 1 a strike on a giant (150).
     let weak = BattleState::new(&r, &battle(&[(GIANT, 1)], &[(IMP, 1), (IMP, 1)]), 1).unwrap();
     let sc = context(&weak, &r);
-    assert_eq!(sc.protection((StackId(0), StackId(1)), 6, X87::int(2)), 0);
+    assert_eq!(sc.view().protection((StackId(0), StackId(1)), 6, X87::int(2)), 0);
     // The enemy beaten: a hundred runners kill the one imp before it acts; the runners lose no
     // creature to the damage planned on them.
     let won = BattleState::new(&r, &battle(&[(RUNNER, 100)], &[(IMP, 1)]), 1).unwrap();
     let sc = context(&won, &r);
-    assert!(sc.beaten());
-    assert_eq!(sc.protection((StackId(0), StackId(1)), 6, X87::int(2)), 0);
+    assert!(sc.view().beaten());
+    assert_eq!(sc.view().protection((StackId(0), StackId(1)), 6, X87::int(2)), 0);
 }
 
 // covers: BAT-AI-016
@@ -231,7 +231,7 @@ fn counterstrike_values_the_retaliations_the_threats_would_use() {
     // A threat for each retaliation: nothing more to use (griffins retaliate twice).
     let griffins =
         BattleState::new(&r, &battle(&[(GRIFFIN, 5)], &[(RUNNER, 4), (RUNNER, 3)]), 1).unwrap();
-    assert_eq!(context(&griffins, &r).tables().melee[0].count, 2);
+    assert_eq!(context(&griffins, &r).view().tables().melee[0].count, 2);
     assert_eq!(counter(&context(&griffins, &r), StackId(0)), 0);
     // Unlimited retaliations: nothing.
     let royal =
@@ -240,7 +240,7 @@ fn counterstrike_values_the_retaliations_the_threats_would_use() {
     // The strongest threat's strike kills the stack: nothing.
     let killed =
         BattleState::new(&r, &battle(&[(IMP, 1)], &[(RUNNER, 40), (RUNNER, 3)]), 1).unwrap();
-    assert_eq!(context(&killed, &r).tables().melee[0].count, 2);
+    assert_eq!(context(&killed, &r).view().tables().melee[0].count, 2);
     assert_eq!(counter(&context(&killed, &r), StackId(0)), 0);
     // When the predictions beat the enemy: nothing.
     let won = BattleState::new(&r, &battle(&[(RUNNER, 100)], &[(IMP, 1)]), 1).unwrap();
@@ -273,7 +273,7 @@ fn frenzy_as_a_second_strike_with_the_slip_or_as_its_rule() {
     let e = StackId(5);
     assert_eq!(
         sc.value(StackId(0), c),
-        sc.attack_bonus((StackId(0), e), 6, defense * 2) - sc.defense_bonus(StackId(0), 6, defense)
+        sc.view().attack_bonus((StackId(0), e), 6, defense * 2) - sc.view().defense_bonus(StackId(0), 6, defense)
     );
     // Beyond a turn: nothing.
     let far = BattleState::new(&r, &battle(&[(IMP, 10)], &[(GOG, 4)]), 1).unwrap();

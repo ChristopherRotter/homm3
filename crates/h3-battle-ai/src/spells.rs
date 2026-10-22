@@ -22,7 +22,7 @@ use h3_battle::computer::{self, Context, Planned, Threat};
 use h3_battle::{
     BattleSide, BattleState, STACK_CAPACITY, StackFlags, StackId, StackTraits, Status,
 };
-use h3_content::SpellId;
+use h3_content::{ORIGINAL_AI_SLIPS, SpellId};
 use h3_content_battle::{BattleRuleset, BattleSpell, SpellEffect, TimedChange};
 use h3_kernel::Rng;
 use h3_kernel::arith::X87;
@@ -58,7 +58,7 @@ impl Candidate {
 }
 
 /// An evaluator (0x43B690's table): the value of a candidate on a stack.
-pub(crate) type Evaluator = fn(&SpellContext<'_>, StackId, Candidate) -> i32;
+pub(crate) type Evaluator = fn(&View<'_>, StackId, Candidate) -> i32;
 
 /// Which evaluator of 0x43B690's table values a spell (§7.44, §7.46), told by the spell's data as
 /// the original tells it by the spell's number: its timed changes, its other effects and, for a
@@ -159,10 +159,27 @@ impl Kind {
     }
 }
 
-/// The computer's spell context of a side (0x4369C0 with the creature casts' flag 1; E23 T4b1).
+/// The computer's spell context (0x4369C0 with the creature casts' flag 1; E23 T4b1, T4c): the
+/// damage the predictions plan, the threat records of both sides (0x422B20 with flag 0, in the
+/// side's battle context), the side's half and the other side's (the second context, +0x48),
+/// built when first asked. The evaluators read it through a [`View`].
 pub(crate) struct SpellContext<'a> {
     state: &'a BattleState,
     ruleset: &'a BattleRuleset,
+    /// The damage the predictions plan (each stack's +0x534).
+    planned: Planned,
+    /// Each stack's threat record (0x422B20 with flag 0), computed the first time it is asked
+    /// (ADR-0027 point 11: the records read nothing a value changes).
+    threats: [OnceCell<Option<Threat>>; STACK_CAPACITY],
+    /// The side's half.
+    first: Half,
+    /// The other side's (the second context, +0x48).
+    second: OnceCell<Half>,
+}
+
+/// One side's half of the spell context (the context's own fields, 0x4369C0, or the second
+/// context's).
+pub(crate) struct Half {
     /// The side (+0xC).
     side: BattleSide,
     /// The side's battle context (+0x20, 0x435EC0).
@@ -172,19 +189,32 @@ pub(crate) struct SpellContext<'a> {
     /// The enemy beaten (+0x1C): no stack of the other side but the war machines has hit points
     /// left after the planned damage.
     beaten: bool,
-    /// The damage the predictions plan (each stack's +0x534).
-    planned: Planned,
     /// The threat tables (0x43C040), built when first asked.
     tables: OnceCell<Tables>,
-    /// Each stack's threat record (0x422B20 with flag 0), computed the first time it is asked
-    /// (ADR-0027 point 11: the records read nothing a value changes).
-    threats: [OnceCell<Option<Threat>>; STACK_CAPACITY],
+}
+
+impl Half {
+    /// The half of `side` with its battle context `ctx`: its balance class ([`balance`]) and
+    /// "the enemy beaten" after the damage `planned` ([`beaten`]).
+    fn new(
+        state: &BattleState,
+        ruleset: &BattleRuleset,
+        (ctx, side): (Context, BattleSide),
+        planned: &Planned,
+    ) -> Self {
+        Self {
+            side,
+            ctx,
+            class: balance(state, ruleset, &ctx, side).class,
+            beaten: beaten(state, planned, side),
+            tables: OnceCell::new(),
+        }
+    }
 }
 
 impl<'a> SpellContext<'a> {
-    /// The spell context of `side` with its battle context `ctx` (0x4369C0; BAT-AI-015): its
-    /// balance class ([`balance`]), then the predictions ([`predict::plan`], their walkers' draws
-    /// from `rng`) and "the enemy beaten" after them ([`beaten`]).
+    /// The spell context of `side` with its battle context `ctx` (0x4369C0; BAT-AI-015): the
+    /// predictions ([`predict::plan`], their walkers' draws from `rng`), then the side's half.
     // rule: BAT-AI-015
     pub(crate) fn new(
         state: &'a BattleState,
@@ -193,17 +223,99 @@ impl<'a> SpellContext<'a> {
         rng: &mut Rng,
     ) -> Self {
         let planned = predict::plan(state, ruleset, side, rng);
+        let first = Half::new(state, ruleset, (*ctx, side), &planned);
         Self {
             state,
             ruleset,
-            side,
-            ctx: *ctx,
-            class: balance(state, ruleset, ctx, side).class,
-            beaten: beaten(state, &planned, side),
             planned,
-            tables: OnceCell::new(),
             threats: [const { OnceCell::new() }; STACK_CAPACITY],
+            first,
+            second: OnceCell::new(),
         }
+    }
+
+    /// The side's half on the battle (the context the casts ask).
+    pub(crate) fn view(&self) -> View<'_> {
+        View::of(self, &self.first, self.state)
+    }
+
+    /// The value of the candidate `c` on stack `s` ([`View::value`]).
+    pub(crate) fn value(&self, s: StackId, c: Candidate) -> i32 {
+        self.view().value(s, c)
+    }
+
+    /// The value of the candidate `c` cast on the side's whole army ([`View::on_side`]).
+    pub(crate) fn on_side(&self, c: Candidate, value: Evaluator) -> i32 {
+        self.view().on_side(c, value)
+    }
+
+    /// The other side's half (0x4369C0's step 6: its own battle context, its "enemy beaten" for
+    /// the side's own stacks after the planned damage), built when first asked.
+    fn second(&self) -> &Half {
+        self.second.get_or_init(|| {
+            let side = self.first.side.opponent();
+            let ctx = computer::context(self.state, self.ruleset, side);
+            Half::new(self.state, self.ruleset, (ctx, side), &self.planned)
+        })
+    }
+
+    /// The threat record of stack `id` ([`computer::threat`] in the side's battle context, on
+    /// the battle), computed once.
+    fn threat(&self, id: StackId) -> Option<Threat> {
+        *self.threats[id.index()].get_or_init(|| {
+            computer::threat(self.state, self.ruleset, &self.first.ctx, id)
+        })
+    }
+}
+
+/// A half of the spell context on a state: the battle's, or a copy with spells ended (a
+/// removal's, 0x439A80, which values each spell on the stack's copy). Its records (the threat
+/// records, the tables) are the context's, as the original's copy keeps them.
+#[derive(Clone, Copy)]
+pub(crate) struct View<'s> {
+    state: &'s BattleState,
+    ruleset: &'s BattleRuleset,
+    root: &'s SpellContext<'s>,
+    half: &'s Half,
+    side: BattleSide,
+    ctx: &'s Context,
+    class: u8,
+    beaten: bool,
+    planned: &'s Planned,
+}
+
+impl<'s> View<'s> {
+    /// The view of `half` of `root` on `state`.
+    fn of(root: &'s SpellContext<'s>, half: &'s Half, state: &'s BattleState) -> Self {
+        Self {
+            state,
+            ruleset: root.ruleset,
+            root,
+            half,
+            side: half.side,
+            ctx: &half.ctx,
+            class: half.class,
+            beaten: half.beaten,
+            planned: &root.planned,
+        }
+    }
+
+    /// The same half on `state`.
+    fn on<'t>(&self, state: &'t BattleState) -> View<'t>
+    where
+        's: 't,
+    {
+        View::of(self.root, self.half, state)
+    }
+
+    /// The other half on the same state (the second context, or from it the first).
+    fn other(&self) -> Self {
+        let half = if core::ptr::eq(self.half, &self.root.first) {
+            self.root.second()
+        } else {
+            &self.root.first
+        };
+        View::of(self.root, half, self.state)
     }
 
     /// Whether the predictions beat the enemy (+0x1C).
@@ -215,18 +327,15 @@ impl<'a> SpellContext<'a> {
     /// The value of the candidate `c` on stack `s` by its spell's evaluator ([`Kind`]; 0x43B690):
     /// 0 for a spell of no kind or one the ruleset lacks.
     pub(crate) fn value(&self, s: StackId, c: Candidate) -> i32 {
-        // stub: BAT-STUB-4
-        // The other evaluators and the threat tables (E23 T4c, in progress).
         self.ruleset
             .spell(c.spell)
             .and_then(Kind::of)
             .map_or(0, |k| k.evaluator()(self, s, c))
     }
 
-    /// The threat record of stack `id` ([`computer::threat`]), computed once.
+    /// The threat record of stack `id` (the context's, [`SpellContext::threat`]).
     fn threat(&self, id: StackId) -> Option<Threat> {
-        *self.threats[id.index()]
-            .get_or_init(|| computer::threat(self.state, self.ruleset, &self.ctx, id))
+        self.root.threat(id)
     }
 
     /// The enemy of stack `s`'s threat record when `s` attacks it within a turn (0x448BD0 at its
@@ -268,11 +377,16 @@ impl<'a> SpellContext<'a> {
         }
     }
 
-    /// The strength of stack `s` in the side's battle context (0x442E60 with its least bonuses),
+    /// The strength of stack `s` in the half's battle context (0x442E60 with its least bonuses),
     /// a double.
     fn strength(&self, s: StackId) -> X87 {
-        let w = computer::strength(self.state, self.ruleset, &self.ctx, s);
-        X87::int(u64::try_from(w).unwrap_or(0))
+        X87::int(u64::try_from(self.strength_of(s)).unwrap_or(0))
+    }
+
+    /// The strength of stack `s` in the half's battle context (0x442E60), as the original's
+    /// integer.
+    fn strength_of(&self, s: StackId) -> i32 {
+        computer::strength(self.state, self.ruleset, self.ctx, s)
     }
 
     /// The gain of a strike of `d` by stack `s` on `e` raised by the factor `g` over `rounds`
@@ -306,8 +420,13 @@ impl<'a> SpellContext<'a> {
     }
 
     /// Stack `id`.
-    fn stack(&self, id: StackId) -> &h3_battle::Stack {
+    fn stack(&self, id: StackId) -> &'s h3_battle::Stack {
         &self.state.stacks()[id.index()]
+    }
+
+    /// Whether the ruleset ports the original's slips (BAT-QUIRK-25).
+    fn slips(&self) -> bool {
+        self.ruleset.quirks().is_enabled(ORIGINAL_AI_SLIPS)
     }
 
     /// The value of the candidate `c` cast on the side's whole army (0x43A910's mass path; BAT-AI-014):

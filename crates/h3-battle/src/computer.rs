@@ -695,6 +695,77 @@ pub fn spell_protection(
     aim::spell_protection(state, ruleset, ctx, id, (schools, level, kept), slip)
 }
 
+/// The factor of the original's effect test 0x5A8090 for `spell` of `side` at stack `id`
+/// (BAT-MAG-008; E23 T4c: the computer's harmful spell values): 0 when it cannot affect the stack,
+/// 1 for a positive spell, else the share it is not resisted (with the Unicorns' aura); 0 for a
+/// spell the ruleset lacks.
+pub fn effect_factor(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    side: BattleSide,
+    spell: SpellId,
+    id: StackId,
+) -> X87 {
+    ruleset.spell(spell).map_or(X87::ZERO, |s| {
+        magic::effect_factor(state, ruleset, side, (spell, s), id)
+    })
+}
+
+/// Ends `spell` on stack `id` of the computer's copy of the battle (0x444510 on a stack's copy,
+/// the removals' estimate 0x439A80; E23 T4c): its effects with a duration end and the stack's
+/// values are recomputed; a permanent effect stays, as the original's end routine never ends
+/// Disrupting Ray (BAT-MAG-010).
+pub fn end_spell(state: &mut BattleState, ruleset: &BattleRuleset, id: StackId, spell: SpellId) {
+    let mut sink = crate::NoopSink;
+    let ends = |e: &crate::effects::ActiveEffect| e.spell == spell && e.rounds.is_some();
+    if crate::effects::end_matching(state, id, &mut sink, ends) {
+        crate::effects::recompute(state, ruleset, id);
+    }
+}
+
+/// The targets of stack `id` as a berserk stack's automatic turn would take them (0x445490;
+/// BAT-MAG-025; E23 T4c: the computer's Berserk value), in record order.
+pub fn berserk_candidates(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    id: StackId,
+) -> impl Iterator<Item = StackId> {
+    let list = crate::control::candidates(state, ruleset, id);
+    (0..list.len()).filter_map(move |i| list.get(i).map(|&(t, _)| t))
+}
+
+/// [`map`] with the range `range` (0x4B2DA0 with a range of the caller's: the computer's Hypnotize
+/// value, its turns times the stack's speed; E23 T4c).
+pub fn map_within(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    (id, side): (StackId, BattleSide),
+    range: u16,
+) -> Map {
+    let field = Field::new(ruleset.battle().field);
+    let me = state.at(id);
+    let query = Query {
+        goal: Goal::Map,
+        range,
+        avoid: aim::fears_moat(state, ruleset, me, Some(side)),
+        spare: Some(side),
+        speed: None,
+    };
+    Map(Search::run(state, field, (id, me), query))
+}
+
+/// The speed of stack `id` with what its effects added but not slowed (the record's +0xC4,
+/// which Slow scales through +0x4C8; E23 T4c: the computer's Hypnotize value).
+pub fn unslowed_speed(state: &BattleState, id: StackId) -> u16 {
+    let added: i32 = state
+        .effects
+        .of(id)
+        .iter()
+        .map(|e| i32::from(e.speed))
+        .sum();
+    u16::try_from((i32::from(state.at(id).speed) + added).clamp(0, 255)).unwrap_or(0)
+}
+
 /// The defense of stack `id` for the computer (0x442590 with flag 1): 0 while frenzied, else its
 /// defense with the Defend bonus less the moat's penalty (E23 T4c: Frenzy's value without the
 /// original's slip).

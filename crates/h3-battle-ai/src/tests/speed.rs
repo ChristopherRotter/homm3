@@ -68,7 +68,7 @@ fn haste_values_the_turns_it_wins_and_overtaking_its_enemy() {
     let tent = StackId(3);
     assert!(state.stacks()[tent.index()].has(h3_battle::StackTraits::FIRST_AID));
     assert_eq!(haste(&sc, tent), 0);
-    assert_eq!(sc.speed_bonus(IMPS, 3, 0), 0);
+    assert_eq!(sc.view().speed_bonus(IMPS, 3, 0), 0);
     // A stack that has acted has a round less: with one round, none.
     let mut state = BattleState::new(&r, &mixed(&r, 20), 1).unwrap();
     play(&mut state, &r, Command::Defend);
@@ -78,14 +78,14 @@ fn haste_values_the_turns_it_wins_and_overtaking_its_enemy() {
             .flags
             .contains(h3_battle::StackFlags::ACTED)
     );
-    assert_eq!(sc.speed_bonus(RUNNERS, 3, 1), 0);
+    assert_eq!(sc.view().speed_bonus(RUNNERS, 3, 1), 0);
     // Runners that overtake efreet (both 20, 23 hasted) value striking first both ways.
     let state = BattleState::new(&r, &setup(&[(RUNNER, 10)], &[(EFREET, 4)]), 1).unwrap();
     let sc = context(&state, &r);
     let (runners, efreet) = (StackId(0), StackId(1));
     let both = sc
-        .exchange_value((runners, efreet))
-        .wrapping_add(sc.exchange_value((efreet, runners)));
+        .view().exchange_value((runners, efreet))
+        .wrapping_add(sc.view().exchange_value((efreet, runners)));
     assert_eq!(haste(&sc, runners), both.max(0));
     // Two turns where the class is 1: beyond the battle's expected length, nothing.
     let state = BattleState::new(&r, &setup(&[(IMP, 10), (RUNNER, 40)], &[(GOG, 1)]), 1).unwrap();
@@ -93,7 +93,7 @@ fn haste_values_the_turns_it_wins_and_overtaking_its_enemy() {
     assert_eq!(haste(&sc, StackId(0)), 0);
     // When the predictions beat the enemy: nothing.
     let won = BattleState::new(&r, &setup(&[(RUNNER, 100)], &[(IMP, 1)]), 1).unwrap();
-    assert!(context(&won, &r).beaten());
+    assert!(context(&won, &r).view().beaten());
     assert_eq!(haste(&context(&won, &r), StackId(0)), 0);
 }
 
@@ -107,8 +107,8 @@ fn the_exchange_gives_the_second_stack_the_first_ones_shot_flag_with_the_slip() 
         let state = BattleState::new(&r, &setup(&[(RUNNER, 10)], &[(ARCHER, 6)]), 1).unwrap();
         let sc = context(&state, &r);
         (
-            sc.exchange_value((StackId(0), StackId(1))),
-            sc.exchange_value((StackId(1), StackId(0))),
+            sc.view().exchange_value((StackId(0), StackId(1))),
+            sc.view().exchange_value((StackId(1), StackId(0))),
         )
     };
     let (slip, fixed) = (values("t:faithful"), values("t:fixed"));
@@ -131,11 +131,11 @@ fn prayer_sums_its_defense_speed_and_attack() {
             let e = computer::threat(&state, &r, &computer::context(&state, &r, ATTACKER), s)
                 .unwrap()
                 .enemy;
-            sc.attack_bonus((s, e), 6, 2)
+            sc.view().attack_bonus((s, e), 6, 2)
         };
         assert_eq!(
             sc.value(s, c),
-            sc.defense_bonus(s, 6, 2) + sc.speed_bonus(s, 2, 6) + attack
+            sc.view().defense_bonus(s, 6, 2) + sc.view().speed_bonus(s, 2, 6) + attack
         );
     }
 }

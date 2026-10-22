@@ -194,7 +194,7 @@ fn bloodlust(
     let mastery = estimate_mastery(w, spell, mastery);
     let c = Candidate::cast(spell, mastery, rounds);
     if computer::takes_stack(w.ruleset, spell, mastery) {
-        sc.bloodlust(id, c)
+        sc.view().bloodlust(id, c)
     } else {
         sc.on_side(c, |sc, s, c| sc.bloodlust(s, c))
     }

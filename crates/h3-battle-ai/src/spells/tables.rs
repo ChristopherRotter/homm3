@@ -7,7 +7,7 @@ use h3_battle::computer;
 use h3_battle::{STACK_CAPACITY, Stack, StackId, StackTraits, Status};
 use h3_content::ORIGINAL_AI_SLIPS;
 
-use super::SpellContext;
+use super::View;
 
 /// One stack's entry of a threat table (16 bytes in the original): the strongest strike, its
 /// damage, how many strikes and their sum.
@@ -62,10 +62,10 @@ fn acts(s: &Stack) -> bool {
         && !s.spells.status.contains(Status::HYPNOTIZED)
 }
 
-impl SpellContext<'_> {
+impl<'s> View<'s> {
     /// The side's threat tables (0x43C040; BAT-AI-016), built the first time they are asked.
-    pub(crate) fn tables(&self) -> &Tables {
-        self.tables.get_or_init(|| self.fill())
+    pub(crate) fn tables(&self) -> &'s Tables {
+        self.half.tables.get_or_init(|| self.on(self.root.state).fill())
     }
 
     /// The seed of stack `r`'s melee entry (0x43BF20): when `r` can act ([`acts`]), cannot shoot

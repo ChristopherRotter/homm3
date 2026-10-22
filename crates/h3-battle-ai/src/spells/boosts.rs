@@ -4,11 +4,11 @@
 
 use h3_battle::computer;
 use h3_battle::{StackFlags, StackId, StackTraits};
-use h3_content::{CreatureFlag, ORIGINAL_AI_SLIPS};
+use h3_content::CreatureFlag;
 use h3_content_battle::Ability;
 use h3_kernel::arith::{DOUBLE_BITS, X87};
 
-use super::{Candidate, SpellContext};
+use super::{Candidate, View};
 
 /// The base damage the attack bonus's value compares (0x437800's 100).
 const BASE: u64 = 100;
@@ -120,7 +120,7 @@ pub(crate) fn change_value(m: i32, c: i32, (p, n): (X87, X87), slip: bool) -> Si
         .plus(Signed::product(m + c, n))
 }
 
-impl SpellContext<'_> {
+impl View<'_> {
     /// The value of `bonus` more attack for stack `s` against `e` over `rounds` rounds (0x437800;
     /// BAT-AI-014): 0 when the predictions beat the enemy (BAT-AI-015); else the gain `g = D' /
     /// D`, `D` and `D'` the damage of a base of 100 on `e` without and with the bonus
@@ -409,7 +409,7 @@ impl SpellContext<'_> {
         }
         let desperate = self.ctx.desperate();
         let value = |id, lost, shot| {
-            computer::damage_value(state, ruleset, &self.ctx, (id, lost), (shot, desperate))
+            computer::damage_value(state, ruleset, self.ctx, (id, lost), (shot, desperate))
         };
         let mut v = value(b, hp.1 - hb, other);
         if hp.0 > ha {
@@ -459,7 +459,7 @@ impl SpellContext<'_> {
         }
         if t1 < t0 {
             let t0 = t0.min(k + 1);
-            let w = computer::strength(self.state, self.ruleset, &self.ctx, s);
+            let w = computer::strength(self.state, self.ruleset, self.ctx, s);
             let k = i32::from(self.class);
             let share = |t: u32| (k - i32::try_from(t).unwrap_or(0) + 1).wrapping_mul(w) / k;
             v = v.wrapping_add(share(t1).wrapping_sub(share(t0)));
@@ -488,10 +488,6 @@ impl SpellContext<'_> {
             .wrapping_add(attack)
     }
 
-    /// Whether the ruleset ports the original's slips (BAT-QUIRK-25).
-    fn slips(&self) -> bool {
-        self.ruleset.quirks().is_enabled(ORIGINAL_AI_SLIPS)
-    }
 }
 
 /// A point's values as [`change_value`] takes them.

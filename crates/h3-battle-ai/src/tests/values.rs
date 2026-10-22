@@ -167,7 +167,7 @@ fn mirth_values_the_morale_it_adds() {
     assert_eq!(sc.value(RUNNERS, mirth), 51);
     // A change of 0 (Bless's value at Basic as the change): nothing.
     assert_eq!(
-        sc.mirth(RUNNERS, Candidate::cast(spell(&r, "bless"), 0, 6)),
+        sc.view().mirth(RUNNERS, Candidate::cast(spell(&r, "bless"), 0, 6)),
         0
     );
     // At morale 3 nothing more.

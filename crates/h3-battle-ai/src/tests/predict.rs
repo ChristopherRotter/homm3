@@ -155,13 +155,13 @@ fn a_stack_predicted_dead_is_passed_over_and_no_target() {
     assert_eq!((p.on(runners), p.on(archers)), (0, 0));
     let ctx = computer::context(&state, &r, ATTACKER);
     let sc = SpellContext::new(&state, &r, (&ctx, ATTACKER), &mut Rng::from_seed(3));
-    assert!(sc.beaten());
-    assert_eq!(sc.attack_bonus((runners, imp), 6, 6), 0);
+    assert!(sc.view().beaten());
+    assert_eq!(sc.view().attack_bonus((runners, imp), 6, 6), 0);
     // Without the archers too: the runners' turn alone, and a second imp left alive.
     let state = BattleState::new(&r, &setup(&[(RUNNER, 100)], &[(IMP, 1), (IMP, 100)]), 2).unwrap();
     let ctx = computer::context(&state, &r, ATTACKER);
     let sc = SpellContext::new(&state, &r, (&ctx, ATTACKER), &mut Rng::from_seed(3));
-    assert!(!sc.beaten());
+    assert!(!sc.view().beaten());
 }
 
 // covers: BAT-AI-015
