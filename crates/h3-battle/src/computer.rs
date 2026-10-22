@@ -193,6 +193,52 @@ pub fn damage_estimate(
     aim::damage_estimate(state, ruleset, (attacker, target), count, shot, jousting)
 }
 
+/// [`damage_estimate`] without its cap at the target's hit points (0x442780 with the cap flag
+/// clear; E23 T4c: the spell context's threat tables, Fortune's value).
+pub fn uncapped_damage(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    (attacker, target): (StackId, StackId),
+    count: u64,
+    shot: bool,
+    jousting: u8,
+) -> u64 {
+    aim::uncapped_estimate(state, ruleset, (attacker, target), count, shot, jousting)
+}
+
+/// One creature's damage of stack `id` for the computer (0x4426F0; E23 T4c: Bless's value), a
+/// double: its maximum and Bless's bonus while blessed, its minimum less Curse's penalty but at
+/// least 1 while cursed, else the mean of the two.
+pub fn damage_per_creature(state: &BattleState, ruleset: &BattleRuleset, id: StackId) -> X87 {
+    aim::per_creature(state, ruleset, state.at(id))
+}
+
+/// The most damage one creature of stack `id` deals as the computer reads it (+0xD4; E23 T4c:
+/// Bless's value): a Ballista's without its hero's multiplier.
+pub fn maximum_damage(state: &BattleState, ruleset: &BattleRuleset, id: StackId) -> u64 {
+    aim::damage_range(state, ruleset, state.at(id)).1
+}
+
+/// The luck of stack `id` as the original's record keeps it (+0x4EC; E23 T4c: Fortune's value):
+/// the engine's luck before the roll levels' clamp (BAT-LCK-001), so below 0 too; 0 on a field
+/// without luck.
+pub fn luck(state: &BattleState, ruleset: &BattleRuleset, id: StackId) -> i32 {
+    crate::morale::unclamped_luck(state, ruleset, id)
+}
+
+/// The spells the helpful caster `caster`'s cast could draw for stack `s` when `side` commands it
+/// (BAT-MAG-050; the original's 0x447EB0 with 0x447A80, which the computer's Master Genie asks
+/// for each spell, 0x43C4A0; E23 T4c): its creature's drawn spells useful on that stack, in
+/// their creature's order.
+pub fn helpful_spells<'a>(
+    state: &'a BattleState,
+    ruleset: &'a BattleRuleset,
+    side: BattleSide,
+    (caster, s): (StackId, StackId),
+) -> impl Iterator<Item = SpellId> + 'a {
+    crate::casters::useful_spells(state, ruleset, side, (caster, s)).map(|(spell, _)| spell)
+}
+
 /// The computer's value of `a` striking `t` after `jousting` hexes (0x435C70 without the shot
 /// flag; BAT-AI-005): the exchange's damage to `t` less `a`'s losses, valued in `ctx`.
 pub fn strike_value(

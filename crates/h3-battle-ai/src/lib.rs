@@ -24,8 +24,9 @@
 //! anything, the Ogre Mage's Bloodlust (0x420D20; §7.44 to §7.46, §7.51) at a stack as strong as
 //! itself when it beats the walker's value, valued by the spell context ([`spells`]), which first
 //! predicts the damage its side's stacks deal before the other side's next one ([`predict`],
-//! §7.52: their turns as predictions, with their draws). The rest stands in until its task builds
-//! it: the Master Genie's cast (T4c) (BAT-STUB-4); the hero's side casts nothing, ends the tactics phase at once,
+//! §7.52: their turns as predictions, with their draws), and the Master Genie's drawn spell by its
+//! mean value (0x43C4A0, §7.53) the same way. The rest stands in until its task builds it: the
+//! Genie's evaluators but the first (T4c, BAT-STUB-4); the hero's side casts nothing, ends the tactics phase at once,
 //! its First Aid Tent defends and a commanded Catapult shoots the first wall (BAT-STUB-5, T5 and
 //! T6).
 //!

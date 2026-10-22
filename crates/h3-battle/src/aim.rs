@@ -275,7 +275,7 @@ fn shoots(state: &BattleState, field: Field, id: StackId) -> bool {
 /// the computer reads. A war machine's stack keeps its creature's range times its side's hero's
 /// attack + 1 (BAT-WAR-005), the original only its creature's range (with the hero's changes,
 /// BAT-HER-005) and multiplies in a strike's base damage (0x4431AC): the hero's share comes off.
-fn damage(state: &BattleState, ruleset: &BattleRuleset, s: &Stack) -> (u64, u64) {
+pub(crate) fn damage_range(state: &BattleState, ruleset: &BattleRuleset, s: &Stack) -> (u64, u64) {
     let (min, max) = (u64::from(s.damage_min), u64::from(s.damage_max));
     if !s.has(StackTraits::WAR_MACHINE) {
         return (min, max);
@@ -344,7 +344,7 @@ fn worth_of(
         let (n, d) = ARTILLERY.get(usize::from(level)).copied().unwrap_or((1, 1));
         offense = offense.times(X87::ratio(n, d, DOUBLE_BITS).unwrap_or(X87::ONE));
     }
-    let (min, max) = damage(state, ruleset, s);
+    let (min, max) = damage_range(state, ruleset, s);
     let roll = match s.spells.damage {
         DamageRoll::Random => None,
         DamageRoll::Maximum(bonus) => Some(max + u64::from(bonus)),
@@ -926,14 +926,13 @@ pub(crate) fn estimate(
 }
 
 /// The computer's damage of `count` creatures of `attacker` on `target` (0x442780; BAT-WAR-008,
-/// BAT-AI-005): `count` times one creature's damage as its record holds it ([`damage`]: a
+/// BAT-AI-005): `count` times one creature's damage as its record holds it ([`damage_range`]: a
 /// Ballista's 2–3 without its hero's multiplier; the maximum and Bless's bonus while blessed, the
 /// minimum less Curse's penalty but at least 1 while cursed, else the mean, a double), truncated,
 /// through every stage of a real shot (`shot`) or of a melee strike after `jousting` hexes, without
 /// their draws ([`shot_damage`], [`melee_damage`]); at least 1 (a count of 0 too); a shot doubled
 /// for a creature that strikes twice; at most the target's hit points (1 for a clone): the
-/// original's cap flag, which every caller so far sets (the spell context's uncapped strike: E23
-/// T4).
+/// original's cap flag ([`uncapped_estimate`] without it).
 pub(crate) fn damage_estimate(
     state: &BattleState,
     ruleset: &BattleRuleset,
@@ -942,13 +941,34 @@ pub(crate) fn damage_estimate(
     shot: bool,
     jousting: u8,
 ) -> u64 {
-    let s = state.at(attacker);
-    let (min, max) = damage(state, ruleset, s);
-    let each = match s.spells.damage {
+    uncapped_estimate(state, ruleset, (attacker, target), count, shot, jousting)
+        .min(hit_points(state.at(target)))
+}
+
+/// One creature's damage of `s` for the computer (0x4426F0), a double: the maximum and Bless's
+/// bonus while blessed, the minimum less Curse's penalty but at least 1 while cursed, else the
+/// mean ([`damage_range`]: a Ballista's without its hero's multiplier).
+pub(crate) fn per_creature(state: &BattleState, ruleset: &BattleRuleset, s: &Stack) -> X87 {
+    let (min, max) = damage_range(state, ruleset, s);
+    match s.spells.damage {
         DamageRoll::Maximum(bonus) => double(max + u64::from(bonus)),
         DamageRoll::Minimum(penalty) => double(min.saturating_sub(u64::from(penalty)).max(1)),
         DamageRoll::Random => double(min + max).over(X87::int(2)).unwrap_or(X87::ZERO),
-    };
+    }
+}
+
+/// [`damage_estimate`] without its cap at the target's hit points (0x442780 with the cap flag
+/// clear: the spell context's tables and Fortune's value, E23 T4c).
+pub(crate) fn uncapped_estimate(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    (attacker, target): (StackId, StackId),
+    count: u64,
+    shot: bool,
+    jousting: u8,
+) -> u64 {
+    let s = state.at(attacker);
+    let each = per_creature(state, ruleset, s);
     let base = u64::try_from(ftol(double(count).times(each))).unwrap_or(0);
     let mut damage = if shot {
         shot_damage(state, ruleset, (attacker, target), base)
@@ -959,7 +979,7 @@ pub(crate) fn damage_estimate(
     if shot && s.has(StackTraits::STRIKES_TWICE) {
         damage = damage.saturating_mul(2);
     }
-    damage.min(hit_points(state.at(target)))
+    damage
 }
 
 /// The computer's damage of the base `base` of `striker` on `target` with `bonus` more attack

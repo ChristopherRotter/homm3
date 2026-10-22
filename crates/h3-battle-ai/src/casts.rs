@@ -5,8 +5,8 @@
 //! creature in the original's table 0x42136C, by ability here): the raise of the Archangel and
 //! the Pit Lord ([`raise`]), which must beat that value, the Faerie Dragon's drawn spell
 //! ([`dragon`]), cast at the first hex where it is worth anything whatever that value, and the
-//! Ogre Mage's Bloodlust ([`scan`], [`bloodlust`]), which must beat that value. Every other
-//! creature casts nothing: the computer's elementals never protect (§7.42, BAT-Q57). The engine
+//! Ogre Mage's Bloodlust and the Master Genie's drawn spell ([`scan`], [`bloodlust`], [`genie`]),
+//! which must beat that value. Every other creature casts nothing: the computer's elementals never protect (§7.42, BAT-Q57). The engine
 //! gives the Ogre Mage and the elementals one ability, a creature's cast of a fixed spell: the
 //! policy tells the Ogre Mage by its spell, the only one that raises the melee attack (the user,
 //! E23 T4b1).
@@ -15,7 +15,6 @@
 //! T4a): the original's dragon may also aim an area spell at a free hex, its own or an immune
 //! stack's, which the rules' cursor refuses (BAT-MAG-049; BAT-STUB-8, BAT-Q32).
 //!
-//! Not built yet (BAT-STUB-4): the Master Genie's value in the scan (0x43C4A0), E23 T4c.
 
 use h3_battle::computer::{self, Context};
 use h3_battle::{
@@ -69,9 +68,10 @@ pub(crate) fn entry(w: &Walker<'_>, value: &mut i32, rng: &mut Rng) -> Option<Co
                 mastery,
                 power,
             } => raises_melee_attack(w.ruleset, spell)
-                .then(|| scan(w, (spell, mastery, power), value, rng)),
-            // stub: BAT-STUB-4
-            // The Master Genie's value in the scan (0x43C4A0): T4c.
+                .then(|| scan(w, Caster::Ogre(spell, mastery, power), value, rng)),
+            Ability::HelpfulSpellCaster { mastery, power } => {
+                Some(scan(w, Caster::Genie(mastery, power), value, rng))
+            }
             _ => None,
         })
         .flatten()
@@ -88,45 +88,53 @@ fn raises_melee_attack(ruleset: &BattleRuleset, spell: SpellId) -> bool {
     })
 }
 
-/// The Ogre Mage's scan (0x420D20; BAT-AI-014), for a caster of `spell` at `mastery` with `power`
-/// (its rounds): with a value so far that is not 0 (a negative one too) a draw of 1 to 100
+/// A caster the scan serves (0x421280's case 1): the Ogre Mage with its spell, mastery and power,
+/// or the Master Genie with its mastery and power.
+#[derive(Debug, Clone, Copy)]
+enum Caster {
+    Ogre(SpellId, u8, u8),
+    Genie(u8, u8),
+}
+
+/// The Ogre Mage's and the Master Genie's scan (0x420D20; BAT-AI-014, BAT-AI-016), for a caster
+/// of `caster`: with a value so far that is not 0 (a negative one too) a draw of 1 to 100
 /// ([`SKIP`]) casts nothing on 30 or less. Then over the walker's side's stacks from the last to
 /// the first, but the caster and the turrets, each that the engine accepts as the cast's target
-/// (where the rules cast the mass version, which takes no target, each the spell can affect,
-/// [`computer::spell_affects`]: the original aims it at the stack's hex all the same), and once
-/// the value so far is above 0 only one at least as strong as the caster (0x442E60 in the
-/// walker's context): its [`bloodlust`] value; one above 0 and above `value` replaces it and takes
-/// the stack (the mass version: no target), so the cast must beat the walker's value, and the
-/// later stack stays at a tie.
-// rule: BAT-AI-014
-fn scan(
-    w: &Walker<'_>,
-    (spell, mastery, power): (SpellId, u8, u8),
-    value: &mut i32,
-    rng: &mut Rng,
-) -> Option<Command> {
+/// (where the rules cast the Ogre Mage's mass version, which takes no target, each the spell can
+/// affect, [`computer::spell_affects`]: the original aims it at the stack's hex all the same),
+/// and once the value so far is above 0 only one at least as strong as the caster (0x442E60 in
+/// the walker's context): its value, the Ogre Mage's [`bloodlust`], the Genie's [`genie`]; one
+/// above 0 and above `value` replaces it and takes the stack (the mass version: no target), so the
+/// cast must beat the walker's value, and the later stack stays at a tie.
+// rule: BAT-AI-014, BAT-AI-016
+fn scan(w: &Walker<'_>, caster: Caster, value: &mut i32, rng: &mut Rng) -> Option<Command> {
     let (state, ruleset, side) = (w.state, w.ruleset, w.side);
     let strength = computer::strength(state, ruleset, &w.ctx, w.id);
     let sc = SpellContext::new(state, ruleset, (&w.ctx, side), rng);
     if *value != 0 && rng.range_inclusive(SKIP.0, SKIP.1) <= SKIP.2 {
         return None;
     }
-    // The rules cast the mass version without a target (Magic Plains raises a creature's cast to
-    // Expert): the stacks the scan values are then those the spell can affect.
-    let mass = !computer::takes_stack(ruleset, spell, computer::creature_mastery(state, mastery));
+    // The rules cast the Ogre Mage's mass version without a target (Magic Plains raises a
+    // creature's cast to Expert): the stacks the scan values are then those the spell can affect.
+    // The Genie's cast always takes a stack.
+    let mass = match caster {
+        Caster::Ogre(spell, mastery, _) => {
+            (!computer::takes_stack(ruleset, spell, computer::creature_mastery(state, mastery)))
+                .then_some(spell)
+        }
+        Caster::Genie(..) => None,
+    };
     let mut targets = CastTargets::new();
-    if !mass {
+    if mass.is_none() {
         creature_cast_targets(state, ruleset, side, &mut targets);
     }
-    let caster = (spell, mastery, u32::from(power));
     let mut best = None;
     for (i, s) in state.stacks().iter().enumerate().rev() {
         let id = StackId(u8::try_from(i).unwrap_or(u8::MAX));
         let target = CastTarget::Stack(id);
-        let accepted = if mass {
-            computer::spell_affects(state, ruleset, side, spell, id)
-        } else {
-            targets.as_slice().contains(&target)
+        let accepted = match mass {
+            Some(spell) => computer::spell_affects(state, ruleset, side, spell, id),
+            None => targets.as_slice().contains(&target),
         };
         if s.side != side
             || id == w.id
@@ -136,49 +144,90 @@ fn scan(
         {
             continue;
         }
-        let v = bloodlust(w, &sc, caster, id);
+        let v = match caster {
+            Caster::Ogre(spell, mastery, power) => {
+                bloodlust(w, &sc, (spell, mastery, u32::from(power)), id)
+            }
+            Caster::Genie(mastery, power) => genie(w, &sc, (mastery, u32::from(power)), id),
+        };
         if v > 0 && v > *value {
             *value = v;
-            best = Some(if mass { CastTarget::None } else { target });
+            best = Some(if mass.is_some() {
+                CastTarget::None
+            } else {
+                target
+            });
         }
     }
     best.map(|target| Command::CreatureCast { target })
 }
 
+/// The mastery the computer's estimate of a creature's cast of `spell` at the ability's `mastery`
+/// takes (0x43C330's and 0x43C4A0's switch): the creature's (Expert on Magic Plains,
+/// [`computer::creature_mastery`]); with BAT-QUIRK-25 Expert also on the spell's school's field
+/// (survey slip 8), where the rules keep the creature's.
+// rule: BAT-AI-014, BAT-AI-016, BAT-TER-005
+fn estimate_mastery(w: &Walker<'_>, spell: SpellId, mastery: u8) -> u8 {
+    let slips = w.ruleset.quirks().is_enabled(ORIGINAL_AI_SLIPS);
+    if slips && computer::field_raises(w.state, w.ruleset, spell) {
+        MAX_MASTERY
+    } else {
+        computer::creature_mastery(w.state, mastery)
+    }
+}
+
 /// The computer's value of an Ogre Mage's Bloodlust on stack `id` (0x43C330; BAT-AI-014), the
-/// caster's `spell` at its `mastery` lasting `rounds`: 0 while Bloodlust lasts on the stack. The
-/// estimate's mastery is the creature's, Expert on Magic Plains; with BAT-QUIRK-25 also on the
-/// spell's school's field (survey slip 8: Fiery Fields), where the rules keep the creature's.
-/// Aimed at a stack at that mastery, Bloodlust's evaluator on the stack
-/// ([`SpellContext::bloodlust`]); its mass version, the value on the side's whole army
+/// caster's `spell` at its `mastery` lasting `rounds`: 0 while Bloodlust lasts on the stack; at
+/// the estimate's mastery ([`estimate_mastery`]) aimed at a stack, Bloodlust's evaluator on the
+/// stack ([`SpellContext::bloodlust`]); its mass version, the value on the side's whole army
 /// ([`SpellContext::on_side`]).
-// rule: BAT-AI-014, BAT-TER-005
+// rule: BAT-AI-014
 fn bloodlust(
     w: &Walker<'_>,
     sc: &SpellContext<'_>,
     (spell, mastery, rounds): (SpellId, u8, u32),
     id: StackId,
 ) -> i32 {
-    let state = w.state;
-    if has_spell(state, id, spell) {
+    if has_spell(w.state, id, spell) {
         return 0;
     }
-    let slips = w.ruleset.quirks().is_enabled(ORIGINAL_AI_SLIPS);
-    let mastery = if slips && computer::field_raises(state, w.ruleset, spell) {
-        MAX_MASTERY
-    } else {
-        computer::creature_mastery(state, mastery)
-    };
-    let c = Candidate {
-        spell,
-        mastery,
-        rounds,
-    };
+    let mastery = estimate_mastery(w, spell, mastery);
+    let c = Candidate::cast(spell, mastery, rounds);
     if computer::takes_stack(w.ruleset, spell, mastery) {
         sc.bloodlust(id, c)
     } else {
         sc.on_side(c, |sc, s, c| sc.bloodlust(s, c))
     }
+}
+
+/// The computer's value of a Master Genie's cast on stack `id` (0x43C4A0; BAT-AI-016), at the
+/// ability's `mastery` with `power` (its power and rounds): the mean, in 32-bit integers, over the
+/// spells its cast could draw for the stack ([`computer::helpful_spells`]: the rules' usefulness
+/// test, as 0x447EB0 asks 0x447A80) of each one's value at its estimate's mastery
+/// ([`estimate_mastery`]): its evaluator on the stack when aimed at a stack at that mastery
+/// ([`SpellContext::value`]), else on the side's whole army ([`SpellContext::on_side`]). The
+/// rules draw among the same spells (BAT-MAG-050): the value of the spell the cast draws, each
+/// counted once whatever its weight (the original has none). 0 without such a spell.
+// rule: BAT-AI-016
+pub(crate) fn genie(
+    w: &Walker<'_>,
+    sc: &SpellContext<'_>,
+    (mastery, power): (u8, u32),
+    id: StackId,
+) -> i32 {
+    let (mut sum, mut n) = (0i32, 0i32);
+    for spell in computer::helpful_spells(w.state, w.ruleset, w.side, (w.id, id)) {
+        n += 1;
+        let m = estimate_mastery(w, spell, mastery);
+        let c = Candidate::cast(spell, m, power);
+        let v = if computer::takes_stack(w.ruleset, spell, m) {
+            sc.value(id, c)
+        } else {
+            sc.on_side(c, |sc, s, c| sc.value(s, c))
+        };
+        sum = sum.wrapping_add(v);
+    }
+    if n == 0 { 0 } else { sum / n }
 }
 
 /// The two sides' able strengths and their balance class (0x435EC0's +0x14, +0x18 and +0x1C).

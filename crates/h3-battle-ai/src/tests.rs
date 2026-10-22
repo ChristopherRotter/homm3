@@ -17,13 +17,13 @@ use h3_battle::{
 use h3_content::{
     ContentKey, ContentPack, CreatureDef, CreatureInfoDef, CreatureTypeId, FactionDef,
     HeroClassDef, HeroTypeDef, HeroTypeId, PackManifest, ProfileDef, ResourceDef, Ruleset,
-    SpellCategory, SpellDef, SpellSchoolDef, TerrainDef,
+    SpellCategory, SpellDef, SpellId, SpellSchoolDef, TerrainDef,
 };
 use h3_content_battle::{
     AbilityDef, AreaShot, BallisticsRecord, BattleCreatureDef, BattlePack, BattleParamsDef,
     BattleRuleset, BattleSpellDef, HexStep, ObstacleKind, ObstacleShape, SiegeDef, SiegeFieldDef,
-    SpellAi, SpellEffect, SpellMagic, SpellPolarity, SpellTarget, TimedChange, WallKind,
-    WallTarget,
+    SpellAi, SpellEffect, SpellMagic, SpellPolarity, SpellTarget, TimedChange, Usefulness,
+    WallKind, WallTarget,
 };
 use h3_contracts::{
     Army, ArmyStack, BallistaControl, BattleHero, BattleSetup, BattleSide, FortLevel, Moat, Rate,
@@ -43,6 +43,7 @@ mod odds;
 mod order;
 mod predict;
 mod spells;
+mod values;
 
 fn key(text: &str) -> ContentKey {
     ContentKey::parse(text).unwrap()
@@ -81,8 +82,9 @@ const HEALS: Option<AbilityDef> = Some(AbilityDef::FirstAid {
 /// lifeless (the golem) and undead (the zombie); a slow two-hex walker (the cavalier); a flyer
 /// that strikes and returns (the harpy); the multi-headed (the two-hex hydra, the cerberus), a
 /// breath attacker (the dragon), a town's turret (the tower, BAT-SIE-016), a walker with an innate
-/// Fire Shield (the sultan) and one that strikes twice (the crusader).
-const CREATURES: [Creature; 19] = [
+/// Fire Shield (the sultan), one that strikes twice (the crusader), kings of each level (the
+/// giant, the knight, the lord) and a Master Genie (the genie: three casts of the test spells).
+const CREATURES: [Creature; 23] = [
     ("imp", 5, 100, &[], [2, 3, 1, 2], 4, 0, None),
     ("gog", 3, 900, &[], [4, 4, 2, 3], 13, 0, None),
     ("runner", 20, 300, &["alive"], [5, 5, 2, 4], 10, 0, None),
@@ -223,6 +225,46 @@ const CREATURES: [Creature; 19] = [
         0,
         None,
     ),
+    (
+        "giant",
+        7,
+        2000,
+        &["alive", "king_1"],
+        [19, 16, 40, 60],
+        150,
+        0,
+        None,
+    ),
+    (
+        "knight",
+        7,
+        2000,
+        &["alive", "king_2"],
+        [19, 16, 40, 60],
+        150,
+        0,
+        None,
+    ),
+    (
+        "lord",
+        7,
+        2000,
+        &["alive", "king_3"],
+        [19, 16, 40, 60],
+        150,
+        0,
+        None,
+    ),
+    (
+        "genie",
+        12,
+        1500,
+        &["alive", "flying"],
+        [12, 12, 13, 16],
+        40,
+        0,
+        None,
+    ),
 ];
 
 const IMP: usize = 0;
@@ -244,6 +286,87 @@ const DRAGON: usize = 15;
 const TOWER: usize = 16;
 const SULTAN: usize = 17;
 const CRUSADER: usize = 18;
+const GIANT: usize = 19;
+const KNIGHT: usize = 20;
+const LORD: usize = 21;
+const GENIE: usize = 22;
+
+/// A test spell of the computer's spell values (E23 T4c): its key, level, value by mastery,
+/// polarity, timed changes, the mastery from which it is cast on the whole side and its
+/// usefulness for the Master Genie. Every one is a fire spell aimed at a stack.
+type TestSpell = (
+    &'static str,
+    u8,
+    [u16; 4],
+    SpellPolarity,
+    &'static [TimedChange],
+    Option<u8>,
+    Usefulness,
+);
+
+/// The test spells after the Fire Wall and Fire Shield, with the values of the original's
+/// (`SPTRAITS.TXT`).
+const SPELLS: [TestSpell; 6] = [
+    (
+        "bloodlust",
+        1,
+        [3, 3, 6, 6],
+        SpellPolarity::Positive,
+        &[TimedChange::MeleeAttack],
+        Some(3),
+        Usefulness::Melee,
+    ),
+    (
+        "precision",
+        2,
+        [3, 3, 6, 6],
+        SpellPolarity::Positive,
+        &[TimedChange::RangedAttack],
+        Some(3),
+        Usefulness::Shooting,
+    ),
+    (
+        "slayer",
+        4,
+        [8, 8, 8, 8],
+        SpellPolarity::Positive,
+        &[TimedChange::Slayer],
+        None,
+        Usefulness::EnemyKing,
+    ),
+    (
+        "bless",
+        1,
+        [0, 0, 1, 1],
+        SpellPolarity::Positive,
+        &[TimedChange::MaximumDamage],
+        Some(3),
+        Usefulness::Always,
+    ),
+    (
+        "mirth",
+        3,
+        [1, 1, 2, 2],
+        SpellPolarity::Positive,
+        &[TimedChange::Morale],
+        Some(3),
+        Usefulness::Always,
+    ),
+    (
+        "fortune",
+        2,
+        [1, 1, 2, 2],
+        SpellPolarity::Positive,
+        &[TimedChange::Luck],
+        Some(3),
+        Usefulness::Always,
+    ),
+];
+
+/// The id of the test spell `name` in `r`.
+fn spell(r: &BattleRuleset, name: &str) -> SpellId {
+    r.spell_by_key(&["t:", name].concat()).unwrap()
+}
 
 /// The test creatures' AI values (the others have none): the runner's stands for the Archers'
 /// (creature 2), which the odds give a turret under BAT-QUIRK-25 (slip 20), the tower's own.
@@ -336,6 +459,18 @@ fn core(profile: &str) -> Ruleset {
             granted_by_name_only: false,
         },
     ];
+    pack.spells
+        .extend(SPELLS.iter().map(|&(k, level, effect, ..)| SpellDef {
+            key: key(&["t:", k].concat()),
+            name: k.into(),
+            category: SpellCategory::Combat,
+            level,
+            schools: vec![key("t:fire")],
+            cost: [5; 4],
+            power: 0,
+            effect,
+            granted_by_name_only: false,
+        }));
     pack.profiles = vec![
         ProfileDef {
             key: key("t:faithful"),
@@ -386,6 +521,21 @@ fn ruleset_as(profile: &str) -> BattleRuleset {
         spell: key("t:fireshield"),
         value: 20,
     });
+    let genie = &mut creatures[GENIE];
+    genie.casts = 3;
+    genie.abilities.push(AbilityDef::HelpfulSpellCaster {
+        mastery: 2,
+        power: 6,
+    });
+    genie.abilities.extend(
+        ["fireshield"]
+            .into_iter()
+            .chain(SPELLS.iter().map(|s| s.0))
+            .map(|k| AbilityDef::DrawnSpell {
+                spell: key(&["t:", k].concat()),
+                weight: 1,
+            }),
+    );
     let fireshield = BattleSpellDef {
         key: key("t:fireshield"),
         polarity: SpellPolarity::Positive,
@@ -424,9 +574,31 @@ fn ruleset_as(profile: &str) -> BattleRuleset {
         summons: None,
         ai: SpellAi::default(),
     };
+    let mut spells = vec![firewall, fireshield];
+    spells.extend(
+        SPELLS.iter().map(
+            |&(k, _, _, polarity, changes, mass_from, useful)| BattleSpellDef {
+                key: key(&["t:", k].concat()),
+                polarity,
+                magic: SpellMagic {
+                    target: SpellTarget::Stack,
+                    effects: changes.iter().map(|&c| SpellEffect::Timed(c)).collect(),
+                    mass_from,
+                    useful,
+                    ..SpellMagic::default()
+                },
+                counters: vec![],
+                dispels: vec![],
+                spares: vec![],
+                tests_as: None,
+                summons: None,
+                ai: SpellAi::default(),
+            },
+        ),
+    );
     let pack = BattlePack {
         creatures,
-        spells: vec![firewall, fireshield],
+        spells,
         battle: Some(BattleParamsDef {
             field_width: 17,
             field_height: 11,

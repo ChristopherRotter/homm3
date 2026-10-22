@@ -1,14 +1,18 @@
 //! The computer's spell context and its spell values (0x4369C0, 0x43A910, the evaluators of
-//! 0x43B690; `docs/formats/installation.md` §7.42, §7.44 to §7.46, §7.51; BAT-AI-014): what a cast
-//! on a stack is worth to the side. The creature casts that weigh a spell (the Ogre Mage's scan,
-//! [`casts`](crate::casts)) build the context and ask its evaluator for each stack.
+//! 0x43B690; `docs/formats/installation.md` §7.42, §7.44 to §7.46, §7.51 to §7.53; BAT-AI-014 to
+//! BAT-AI-016): what a cast on a stack is worth to the side. The creature casts that weigh a spell
+//! (the Ogre Mage's and the Master Genie's scan, [`casts`](crate::casts)) build the context and
+//! ask its evaluator for each stack.
 //!
-//! So far (E23 T4b1, T4b2) the context holds the side's battle context, its balance class, "the
-//! enemy beaten" after the predictions ([`predict`]: the damage the side's stacks that act before
-//! the other side's next one are expected to deal, with their draws) and each stack's threat
-//! record (0x422B20 with flag 0, [`computer::threat`]), and one evaluator, Bloodlust's: the attack
-//! bonus's value (0x437800). Not built yet: the threat tables and the second context (0x43C040,
-//! E23 T4c) and the other evaluators (E23 T4c).
+//! The context holds the side's battle context, its balance class, "the enemy beaten" after the
+//! predictions ([`predict`]: the damage the side's stacks that act before the other side's next
+//! one are expected to deal, with their draws) and each stack's threat record (0x422B20 with flag
+//! 0, [`computer::threat`]). Each spell's evaluator is told by the spell's data ([`Kind`]), as the
+//! original's table 0x43B690 tells it by the spell's number: the attack bonuses, luck and morale
+//! ([`boosts`]). Not built yet (BAT-STUB-4, E23 T4c): the threat tables and the second context
+//! (0x43C040) and the other evaluators.
+
+pub(crate) mod boosts;
 
 use core::cell::OnceCell;
 
@@ -17,27 +21,91 @@ use h3_battle::{
     BattleSide, BattleState, STACK_CAPACITY, StackFlags, StackId, StackTraits, Status,
 };
 use h3_content::SpellId;
-use h3_content_battle::BattleRuleset;
+use h3_content_battle::{BattleRuleset, BattleSpell, SpellEffect, TimedChange};
 use h3_kernel::Rng;
-use h3_kernel::arith::{DOUBLE_BITS, X87};
+use h3_kernel::arith::X87;
 
 use crate::casts::balance;
 use crate::predict;
 
-/// The base damage the attack bonus's value compares (0x437800's 100).
-const BASE: u64 = 100;
-
-/// A cast the computer weighs (the cast candidate, §7.44): the spell, its mastery and the rounds
-/// its timed effects last.
+/// A cast the computer weighs (the cast candidate, §7.44): the spell, its mastery, its power, the
+/// rounds its timed effects last and whether it is a cast's candidate (+0x10: 1) or a spell a
+/// removal values (0; [`Self::cast`]).
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Candidate {
     pub(crate) spell: SpellId,
     pub(crate) mastery: u8,
+    pub(crate) power: u32,
     pub(crate) rounds: u32,
+    pub(crate) cast: bool,
+}
+
+impl Candidate {
+    /// A cast's candidate of `spell` at `mastery` with the creature's `power` as its power and
+    /// rounds (6 and 6 for the Ogre Mage and the Master Genie, §7.44).
+    pub(crate) const fn cast(spell: SpellId, mastery: u8, power: u32) -> Self {
+        Self {
+            spell,
+            mastery,
+            power,
+            rounds: power,
+            cast: true,
+        }
+    }
 }
 
 /// An evaluator (0x43B690's table): the value of a candidate on a stack.
 pub(crate) type Evaluator = fn(&SpellContext<'_>, StackId, Candidate) -> i32;
+
+/// Which evaluator of 0x43B690's table values a spell (§7.44, §7.46), told by the spell's data as
+/// the original tells it by the spell's number: its timed changes, its other effects and, for a
+/// defense loss alone, whether a hero may cast it (Disrupting Ray, 47; the Rust Dragons' Acid
+/// Breath, 80, is a creature's ability the table values at 0). A spell of no kind is worth 0
+/// (0x43B680: the damage, raise, summon and obstacle spells, Stone Gaze, Bind).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Kind {
+    /// Bloodlust (43; 0x438100).
+    Bloodlust,
+    /// Precision (44; 0x438B50).
+    Precision,
+    /// Slayer (55; 0x438D00).
+    Slayer,
+    /// Bless (41; 0x437430).
+    Bless,
+    /// Mirth (49; 0x438170).
+    Mirth,
+    /// Fortune (51; 0x438490).
+    Fortune,
+}
+
+impl Kind {
+    /// The kind of `spell` by its data.
+    pub(crate) fn of(spell: &BattleSpell) -> Option<Self> {
+        let timed = |c: TimedChange| spell.magic.effects.contains(&SpellEffect::Timed(c));
+        [
+            (TimedChange::MeleeAttack, Self::Bloodlust),
+            (TimedChange::RangedAttack, Self::Precision),
+            (TimedChange::Slayer, Self::Slayer),
+            (TimedChange::MaximumDamage, Self::Bless),
+            (TimedChange::Morale, Self::Mirth),
+            (TimedChange::Luck, Self::Fortune),
+        ]
+        .into_iter()
+        .find_map(|(c, kind)| timed(c).then_some(kind))
+    }
+
+    /// Its evaluator.
+    fn evaluator(self) -> Evaluator {
+        match self {
+            Self::Bloodlust => |sc, s, c| sc.bloodlust(s, c),
+            Self::Precision => |sc, s, c| sc.precision(s, c),
+            Self::Slayer => |sc, s, c| sc.slayer(s, c),
+            Self::Bless => |sc, s, c| sc.bless(s, c),
+            Self::Mirth => |sc, s, c| sc.mirth(s, c),
+            Self::Fortune => |sc, s, c| sc.fortune(s, c),
+        }
+    }
+}
 
 /// The computer's spell context of a side (0x4369C0 with the creature casts' flag 1; E23 T4b1).
 pub(crate) struct SpellContext<'a> {
@@ -46,7 +114,7 @@ pub(crate) struct SpellContext<'a> {
     /// The side (+0xC).
     side: BattleSide,
     /// The side's battle context (+0x20, 0x435EC0).
-    ctx: &'a Context,
+    ctx: Context,
     /// Its balance class (+0x3C, the battle context's +0x1C).
     class: u8,
     /// The enemy beaten (+0x1C): no stack of the other side but the war machines has hit points
@@ -65,7 +133,7 @@ impl<'a> SpellContext<'a> {
     pub(crate) fn new(
         state: &'a BattleState,
         ruleset: &'a BattleRuleset,
-        (ctx, side): (&'a Context, BattleSide),
+        (ctx, side): (&Context, BattleSide),
         rng: &mut Rng,
     ) -> Self {
         let planned = predict::plan(state, ruleset, side, rng);
@@ -73,7 +141,7 @@ impl<'a> SpellContext<'a> {
             state,
             ruleset,
             side,
-            ctx,
+            ctx: *ctx,
             class: balance(state, ruleset, ctx, side).class,
             beaten: beaten(state, &planned, side),
             threats: [const { OnceCell::new() }; STACK_CAPACITY],
@@ -86,10 +154,21 @@ impl<'a> SpellContext<'a> {
         self.beaten
     }
 
+    /// The value of the candidate `c` on stack `s` by its spell's evaluator ([`Kind`]; 0x43B690):
+    /// 0 for a spell of no kind or one the ruleset lacks.
+    pub(crate) fn value(&self, s: StackId, c: Candidate) -> i32 {
+        // stub: BAT-STUB-4
+        // The other evaluators and the threat tables (E23 T4c, in progress).
+        self.ruleset
+            .spell(c.spell)
+            .and_then(Kind::of)
+            .map_or(0, |k| k.evaluator()(self, s, c))
+    }
+
     /// The threat record of stack `id` ([`computer::threat`]), computed once.
     fn threat(&self, id: StackId) -> Option<Threat> {
         *self.threats[id.index()]
-            .get_or_init(|| computer::threat(self.state, self.ruleset, self.ctx, id))
+            .get_or_init(|| computer::threat(self.state, self.ruleset, &self.ctx, id))
     }
 
     /// The enemy of stack `s`'s threat record when `s` attacks it within a turn (0x448BD0 at its
@@ -98,78 +177,72 @@ impl<'a> SpellContext<'a> {
         self.threat(s).filter(|t| t.turns <= 1).map(|t| t.enemy)
     }
 
-    /// The value of `bonus` more attack for stack `s` against `e` over `rounds` rounds (0x437800;
-    /// BAT-AI-014): 0 when the predictions beat the enemy (BAT-AI-015); else the gain `g = D' / D`, `D` and `D'` the damage of a base of 100 on `e` without
-    /// and with the bonus ([`computer::base_damage`], `s`'s shot flag), doubles; `s`'s strike `d`
-    /// by its count on `e` (capped at `e`'s hit points `h`, no run-up) rises to `d' = trunc(d ×
-    /// g)`, at most `h` (then `g = h / d`); 0 unless `d' > d`. The rounds' share `t = min(1,
-    /// rounds / k)`, `k` the balance class, less `1 / k` (at least 0) for a stack that acted this
-    /// round. The value is `trunc((√g − 1) × w × t)`, `w` the strength of `s` (0x442E60): the rise
-    /// of its worth, whose offense enters under a square root, for the share of the battle's
-    /// expected length the bonus lasts. As the original's x87 doubles.
-    // rule: BAT-AI-014
-    pub(crate) fn attack_bonus(&self, (s, e): (StackId, StackId), rounds: u32, bonus: u16) -> i32 {
-        if self.beaten {
-            return 0;
-        }
-        let (state, ruleset) = (self.state, self.ruleset);
-        let shot = computer::shoots(state, ruleset, s);
-        let bonus = i16::try_from(bonus).unwrap_or(i16::MAX);
-        let base = |b| {
-            X87::int(computer::base_damage(
-                state,
-                ruleset,
-                (s, e),
-                (BASE, shot),
-                b,
-            ))
-        };
-        let mut g = base(bonus)
-            .over(base(0))
-            .unwrap_or(X87::MAX)
-            .round(DOUBLE_BITS);
-        let count = u64::from(state.stacks()[s.index()].count);
-        let d = computer::damage_estimate(state, ruleset, (s, e), count, shot, 0);
-        let mut boosted = computer::ftol(X87::int(d).times(g));
-        let h = computer::hit_points(state, e);
-        let ih = i32::try_from(h).unwrap_or(i32::MAX);
-        if boosted > ih {
-            boosted = ih;
-            g = X87::int(h).over(X87::int(d)).unwrap_or(X87::MAX);
-        }
-        if i64::from(boosted) <= i64::try_from(d).unwrap_or(i64::MAX) {
-            return 0;
-        }
+    /// The candidate's value at its mastery (the spell's value, +0x34 of its record), 0 for a
+    /// spell the ruleset lacks.
+    fn effect(&self, c: Candidate) -> u16 {
+        self.ruleset
+            .spell(c.spell)
+            .map_or(0, |sp| sp.effect[usize::from(c.mastery.min(3))])
+    }
+
+    /// The rounds' share of the battle's expected length a change of `rounds` rounds on stack `s`
+    /// lasts (§7.45): `t = min(1, rounds / k)`, `k` the balance class, less `1 / k` (at least 0)
+    /// for a stack that has acted this round. As the original's x87 doubles.
+    fn share(&self, s: StackId, rounds: u32) -> X87 {
         let k = X87::int(u64::from(self.class));
-        let mut t = if rounds >= u32::from(self.class) {
+        let t = if rounds >= u32::from(self.class) {
             X87::ONE
         } else {
             X87::int(u64::from(rounds)).over(k).unwrap_or(X87::ONE)
         };
-        if state.stacks()[s.index()].flags.contains(StackFlags::ACTED) {
+        if self.stack(s).flags.contains(StackFlags::ACTED) {
             // `minus` stops at 0, as the original's floor.
-            t = t.minus(X87::ONE.over(k).unwrap_or(X87::ZERO));
+            t.minus(X87::ONE.over(k).unwrap_or(X87::ZERO))
+        } else {
+            t
         }
-        let w = computer::strength(state, ruleset, self.ctx, s);
-        let w = X87::int(u64::try_from(w).unwrap_or(0));
-        computer::ftol(g.sqrt().minus(X87::ONE).times(w).times(t))
     }
 
-    /// Bloodlust's evaluator (0x438100; BAT-AI-014): 0 for a stack `s` that can shoot now or that
-    /// does not attack its threat record's enemy within a turn; else the attack bonus's value
-    /// ([`Self::attack_bonus`]) against that enemy over the candidate's rounds with the spell's
-    /// value at its mastery.
-    // rule: BAT-AI-014
-    pub(crate) fn bloodlust(&self, s: StackId, c: Candidate) -> i32 {
-        if computer::shoots(self.state, self.ruleset, s) {
+    /// The strength of stack `s` in the side's battle context (0x442E60 with its least bonuses),
+    /// a double.
+    fn strength(&self, s: StackId) -> X87 {
+        let w = computer::strength(self.state, self.ruleset, &self.ctx, s);
+        X87::int(u64::try_from(w).unwrap_or(0))
+    }
+
+    /// The gain of a strike of `d` by stack `s` on `e` raised by the factor `g` over `rounds`
+    /// rounds (0x437800's end, inline in the evaluators of Bless, Fortune, Frenzy, Fire Shield and
+    /// Counterstrike): the raised strike `d' = trunc(d × g)`, when it exceeds `e`'s hit points `h`
+    /// (0x443080) `h` with `g = h / d`; 0 unless `d' > d`; else `trunc((√g − 1) × w × t)`, `w`
+    /// the strength of `s` and `t` the rounds' share ([`Self::share`]): the rise of its worth,
+    /// whose offense enters under a square root, for the share of the battle it lasts.
+    fn gain(&self, (s, e): (StackId, StackId), (d, mut g): (u64, X87), rounds: u32) -> i32 {
+        let mut raised = computer::ftol(X87::int(d).times(g));
+        let h = computer::hit_points(self.state, e);
+        let ih = i32::try_from(h).unwrap_or(i32::MAX);
+        if raised > ih {
+            raised = ih;
+            g = X87::int(h).over(X87::int(d)).unwrap_or(X87::MAX);
+        }
+        if i64::from(raised) <= i64::try_from(d).unwrap_or(i64::MAX) {
             return 0;
         }
-        let bonus = self
-            .ruleset
-            .spell(c.spell)
-            .map_or(0, |sp| sp.effect[usize::from(c.mastery.min(3))]);
-        self.within_a_turn(s)
-            .map_or(0, |e| self.attack_bonus((s, e), c.rounds, bonus))
+        let t = self.share(s, rounds);
+        computer::ftol(g.sqrt().minus(X87::ONE).times(self.strength(s)).times(t))
+    }
+
+    /// The strike of stack `s` by its whole count on `e` (0x442780 with its shot flag, capped at
+    /// `e`'s hit points, no run-up).
+    fn strike(&self, (s, e): (StackId, StackId)) -> u64 {
+        let (state, ruleset) = (self.state, self.ruleset);
+        let shot = computer::shoots(state, ruleset, s);
+        let count = u64::from(self.stack(s).count);
+        computer::damage_estimate(state, ruleset, (s, e), count, shot, 0)
+    }
+
+    /// Stack `id`.
+    fn stack(&self, id: StackId) -> &h3_battle::Stack {
+        &self.state.stacks()[id.index()]
     }
 
     /// The value of the candidate `c` cast on the side's whole army (0x43A910's mass path; BAT-AI-014):
