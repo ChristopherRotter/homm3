@@ -1,0 +1,190 @@
+# E08 batch E5a played by the capture harness (E08 T37b, `cross-lane`; h3adv.py batch): the
+# procedure of experiments/specs/E08-batch-5a.toml as steps, on Easy. Hot seat, Red and Blue
+# human; every hero stands where the spec puts it (`at`). Day 1, Red: E5-4a's six one-step walks
+# (a road, grass, swamp with Angel Wings), E5-4b's two on the coastal road, E5-5 across the lake and
+# back (Boots of Levitation), E5-6a and E5-6b off a Cursed Ground (RoE's, SoD's) with Gnolls; each
+# hero's points read before its first walk (`hero:points`, E08 T37a), each walk's cells by `<row> |
+# <column>`. Blue: E5-1's eight heroes' points read by name (no hero moves); day 2 again. `note`
+# reads each hero's worn artifacts but the war machines: the spec's own, or a starting bonus's.
+
+spec = "experiments/specs/E08-batch-5a.toml"
+players = ["Red", "Blue"]
+difficulty = "easy"
+
+# --- Day 1, Red: E5-4a (Angel Wings inland: road, grass, swamp) ---------------------------------
+
+[[step]]
+encounter = "E5-4a"
+hero = "E5-4a"
+note = { "worn at the start but the war machines (the spec: Angel Wings)" = "hero:equipment" }
+record = { "points before the walks" = "hero:points" }
+
+[[step]]
+encounter = "E5-4a"
+hero = "E5-4a"
+walk = [4, 4]
+expect = { marks = 1, path = "green" }
+record = { "1 (3, 4) to (4, 4), road | mark" = "mark", "1 (3, 4) to (4, 4), road | marks" = "marks", "1 (3, 4) to (4, 4), road | points after" = "points" }
+
+[[step]]
+encounter = "E5-4a"
+hero = "E5-4a"
+walk = [5, 4]
+expect = { marks = 1, path = "green" }
+record = { "2 (4, 4) to (5, 4), road | mark" = "mark", "2 (4, 4) to (5, 4), road | marks" = "marks", "2 (4, 4) to (5, 4), road | points after" = "points" }
+
+[[step]]
+encounter = "E5-4a"
+hero = "E5-4a"
+walk = [6, 4]
+expect = { marks = 1, path = "green" }
+record = { "3 (5, 4) to (6, 4), road to grass | mark" = "mark", "3 (5, 4) to (6, 4), road to grass | marks" = "marks", "3 (5, 4) to (6, 4), road to grass | points after" = "points" }
+
+[[step]]
+encounter = "E5-4a"
+hero = "E5-4a"
+walk = [7, 4]
+expect = { marks = 1, path = "green" }
+record = { "4 (6, 4) to (7, 4), grass | mark" = "mark", "4 (6, 4) to (7, 4), grass | marks" = "marks", "4 (6, 4) to (7, 4), grass | points after" = "points" }
+
+[[step]]
+encounter = "E5-4a"
+hero = "E5-4a"
+walk = [8, 4]
+expect = { marks = 1, path = "green" }
+record = { "5 (7, 4) to (8, 4), grass to swamp | mark" = "mark", "5 (7, 4) to (8, 4), grass to swamp | marks" = "marks", "5 (7, 4) to (8, 4), grass to swamp | points after" = "points" }
+
+[[step]]
+encounter = "E5-4a"
+hero = "E5-4a"
+walk = [9, 4]
+expect = { marks = 1, path = "green" }
+record = { "6 (8, 4) to (9, 4), swamp | mark" = "mark", "6 (8, 4) to (9, 4), swamp | marks" = "marks", "6 (8, 4) to (9, 4), swamp | points after" = "points" }
+
+# --- Day 1, Red: E5-4b (Angel Wings on the coastal road) ----------------------------------------
+
+[[step]]
+encounter = "E5-4b"
+hero = "E5-4b"
+note = { "worn at the start but the war machines (the spec: Angel Wings)" = "hero:equipment" }
+record = { "points before the walks" = "hero:points" }
+
+[[step]]
+encounter = "E5-4b"
+hero = "E5-4b"
+walk = [4, 8]
+expect = { marks = 1, path = "green" }
+record = { "1 (3, 8) to (4, 8), coastal road | mark" = "mark", "1 (3, 8) to (4, 8), coastal road | marks" = "marks", "1 (3, 8) to (4, 8), coastal road | points after" = "points" }
+
+[[step]]
+encounter = "E5-4b"
+hero = "E5-4b"
+walk = [5, 8]
+expect = { marks = 1, path = "green" }
+record = { "2 (4, 8) to (5, 8), coastal road | mark" = "mark", "2 (4, 8) to (5, 8), coastal road | marks" = "marks", "2 (4, 8) to (5, 8), coastal road | points after" = "points" }
+
+# --- Day 1, Red: E5-5 (Boots of Levitation across the lake and back) ------------------------------
+
+[[step]]
+encounter = "E5-5"
+hero = "E5-5"
+note = { "worn at the start but the war machines (the spec: Boots of Levitation)" = "hero:equipment" }
+record = { "points before the walks" = "hero:points" }
+
+[[step]]
+encounter = "E5-5"
+hero = "E5-5"
+walk = [8, 8]
+expect = { marks = 4, path = "green" }
+record = { "1 (8, 12) to (8, 8) | mark" = "mark", "1 (8, 12) to (8, 8) | marks" = "marks", "1 (8, 12) to (8, 8) | points after" = "points" }
+
+[[step]]
+encounter = "E5-5"
+hero = "E5-5"
+walk = [9, 12]
+expect = { marks = 4, path = "green" }
+record = { "2 (8, 8) to (9, 12) | mark" = "mark", "2 (8, 8) to (9, 12) | marks" = "marks", "2 (8, 8) to (9, 12) | points after" = "points" }
+
+# --- Day 1, Red: E5-6a (the RoE Cursed Ground, class 21) ------------------------------------------
+
+[[step]]
+encounter = "E5-6a"
+hero = "E5-6a"
+note = { "worn at the start but the war machines (the starting bonus)" = "hero:equipment" }
+record = { "points before the walks" = "hero:points" }
+
+[[step]]
+encounter = "E5-6a"
+hero = "E5-6a"
+walk = [8, 18]
+expect = { marks = 1, path = "green" }
+record = { "1 (7, 18) to (8, 18), cursed to cursed | mark" = "mark", "1 (7, 18) to (8, 18), cursed to cursed | marks" = "marks", "1 (7, 18) to (8, 18), cursed to cursed | points after" = "points" }
+
+[[step]]
+encounter = "E5-6a"
+hero = "E5-6a"
+walk = [9, 18]
+expect = { marks = 1, path = "green" }
+record = { "2 (8, 18) to (9, 18), cursed to plain | mark" = "mark", "2 (8, 18) to (9, 18), cursed to plain | marks" = "marks", "2 (8, 18) to (9, 18), cursed to plain | points after" = "points" }
+
+[[step]]
+encounter = "E5-6a"
+hero = "E5-6a"
+walk = [10, 18]
+expect = { marks = 1, path = "green" }
+record = { "3 (9, 18) to (10, 18), plain swamp | mark" = "mark", "3 (9, 18) to (10, 18), plain swamp | marks" = "marks", "3 (9, 18) to (10, 18), plain swamp | points after" = "points" }
+
+# --- Day 1, Red: E5-6b (the SoD Cursed Ground, class 223) -----------------------------------------
+
+[[step]]
+encounter = "E5-6b"
+hero = "E5-6b"
+note = { "worn at the start but the war machines (the starting bonus)" = "hero:equipment" }
+record = { "points before the walks" = "hero:points" }
+
+[[step]]
+encounter = "E5-6b"
+hero = "E5-6b"
+walk = [8, 25]
+expect = { marks = 1, path = "green" }
+record = { "1 (7, 25) to (8, 25), cursed to cursed | mark" = "mark", "1 (7, 25) to (8, 25), cursed to cursed | marks" = "marks", "1 (7, 25) to (8, 25), cursed to cursed | points after" = "points" }
+
+[[step]]
+encounter = "E5-6b"
+hero = "E5-6b"
+walk = [9, 25]
+expect = { marks = 1, path = "green" }
+record = { "2 (8, 25) to (9, 25), cursed to plain | mark" = "mark", "2 (8, 25) to (9, 25), cursed to plain | marks" = "marks", "2 (8, 25) to (9, 25), cursed to plain | points after" = "points" }
+
+[[step]]
+encounter = "E5-6b"
+hero = "E5-6b"
+walk = [10, 25]
+expect = { marks = 1, path = "green" }
+record = { "3 (9, 25) to (10, 25), plain swamp | mark" = "mark", "3 (9, 25) to (10, 25), plain swamp | marks" = "marks", "3 (9, 25) to (10, 25), plain swamp | points after" = "points" }
+
+[[step]]
+end_turn = true
+
+# --- Day 1, Blue: E5-1's points, read by name (no hero moves) -------------------------------------
+
+[[step]]
+encounter = "E5-1"
+hero = "E5-1a"
+note = { "E5-1a's worn artifacts" = "hero[E5-1a]:equipment", "E5-1b's" = "hero[E5-1b]:equipment", "E5-1c's" = "hero[E5-1c]:equipment", "E5-1d's" = "hero[E5-1d]:equipment", "E5-1e's (the spec: Boots of Speed)" = "hero[E5-1e]:equipment", "E5-1f's (the spec: Equestrian's Gloves)" = "hero[E5-1f]:equipment", "E5-1g's (the spec: both)" = "hero[E5-1g]:equipment", "E5-1h's" = "hero[E5-1h]:equipment" }
+record = { "E5-1a (no Logistics) | day 1 points" = "hero[E5-1a]:points", "E5-1b (Basic Logistics) | day 1 points" = "hero[E5-1b]:points", "E5-1c (Advanced Logistics) | day 1 points" = "hero[E5-1c]:points", "E5-1d (Expert Logistics) | day 1 points" = "hero[E5-1d]:points", "E5-1e (Boots of Speed) | day 1 points" = "hero[E5-1e]:points", "E5-1f (Equestrian's Gloves) | day 1 points" = "hero[E5-1f]:points", "E5-1g (both, Expert Logistics) | day 1 points" = "hero[E5-1g]:points", "E5-1h (Valeska, Archers) | day 1 points" = "hero[E5-1h]:points" }
+
+[[step]]
+end_turn = true
+
+# --- Day 2, Red: nothing ---------------------------------------------------------------------------
+
+[[step]]
+end_turn = true
+
+# --- Day 2, Blue: E5-1's points at the turn start ---------------------------------------------------
+
+[[step]]
+encounter = "E5-1"
+hero = "E5-1a"
+record = { "E5-1a (no Logistics) | day 2 points" = "hero[E5-1a]:points", "E5-1b (Basic Logistics) | day 2 points" = "hero[E5-1b]:points", "E5-1c (Advanced Logistics) | day 2 points" = "hero[E5-1c]:points", "E5-1d (Expert Logistics) | day 2 points" = "hero[E5-1d]:points", "E5-1e (Boots of Speed) | day 2 points" = "hero[E5-1e]:points", "E5-1f (Equestrian's Gloves) | day 2 points" = "hero[E5-1f]:points", "E5-1g (both, Expert Logistics) | day 2 points" = "hero[E5-1g]:points", "E5-1h (Valeska, Archers) | day 2 points" = "hero[E5-1h]:points" }

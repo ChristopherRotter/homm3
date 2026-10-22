@@ -1,0 +1,59 @@
+# E08 batch E5d played by the capture harness (E08 T37b, `cross-lane`; h3adv.py batch): the
+# procedure of experiments/specs/E08-batch-5d.toml as steps, on Easy. Hot seat, Red and Blue
+# human; no hero moves, two days. Day 1, Red: E5-2d and E5-2e read (their seed bytes, the levels
+# last offered, the levels at load and the points: `hero:points`, E08 T37a); Blue: E5-2f. Day 2,
+# each player's heroes' points at its turn start. `note` reads each hero's worn artifacts but the
+# war machines (a starting bonus's: +600 or +300 points). The scorer
+# (crates/h3-map/examples/e4_score.rs) predicts the levels and points from each seed byte.
+
+spec = "experiments/specs/E08-batch-5d.toml"
+players = ["Red", "Blue"]
+difficulty = "easy"
+
+# --- Day 1, Red: E5-2d and E5-2e ---------------------------------------------------------------
+
+[[step]]
+encounter = "E5-2d"
+hero = "E5-2d"
+note = { "worn artifacts but the war machines (the starting bonus)" = "hero:equipment" }
+record = { "seed byte (hero +0x8F)" = "hero:seed", "Wisdom last offered (hero +0x90)" = "hero:wisdom_offer", "a school last offered (hero +0x3F)" = "hero:school_offer", "experience at the start" = "hero:experience", "level at the start" = "hero:level", "primary skills at the start (attack/defense/power/knowledge)" = "hero:primary", "secondary skills at the start (in the hero's order, each with its level)" = "hero:skills", "day 1 points" = "hero:points" }
+
+[[step]]
+encounter = "E5-2e"
+hero = "E5-2e"
+note = { "worn artifacts but the war machines (the starting bonus)" = "hero:equipment" }
+record = { "seed byte (hero +0x8F)" = "hero:seed", "Wisdom last offered (hero +0x90)" = "hero:wisdom_offer", "a school last offered (hero +0x3F)" = "hero:school_offer", "experience at the start" = "hero:experience", "level at the start" = "hero:level", "primary skills at the start (attack/defense/power/knowledge)" = "hero:primary", "secondary skills at the start (in the hero's order, each with its level)" = "hero:skills", "day 1 points" = "hero:points" }
+
+[[step]]
+end_turn = true
+
+# --- Day 1, Blue: E5-2f --------------------------------------------------------------------------
+
+[[step]]
+encounter = "E5-2f"
+hero = "E5-2f"
+note = { "worn artifacts but the war machines (the starting bonus)" = "hero:equipment" }
+record = { "seed byte (hero +0x8F)" = "hero:seed", "Wisdom last offered (hero +0x90)" = "hero:wisdom_offer", "a school last offered (hero +0x3F)" = "hero:school_offer", "experience at the start" = "hero:experience", "level at the start" = "hero:level", "primary skills at the start (attack/defense/power/knowledge)" = "hero:primary", "secondary skills at the start (in the hero's order, each with its level)" = "hero:skills", "day 1 points" = "hero:points" }
+
+[[step]]
+end_turn = true
+
+# --- Day 2: each player's points at its turn start -------------------------------------------------
+
+[[step]]
+encounter = "E5-2d"
+hero = "E5-2d"
+record = { "day 2 points" = "hero:points" }
+
+[[step]]
+encounter = "E5-2e"
+hero = "E5-2e"
+record = { "day 2 points" = "hero:points" }
+
+[[step]]
+end_turn = true
+
+[[step]]
+encounter = "E5-2f"
+hero = "E5-2f"
+record = { "day 2 points" = "hero:points" }

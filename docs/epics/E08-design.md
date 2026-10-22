@@ -287,9 +287,12 @@ gate (an entrance a flyer passes, §3.1 point 7), which no other source states (
   step's `points` gives it), the next turn's start after `end_turn` (exists), the path's mark
   (exists); for E5-3b and E5-10b an artifact moved from the backpack to a slot in the hero screen
   (or the rows are skipped, as the survey's plan allows).
-- **The run and the scoring:** on the harness (decision 50), then scored: D-22 (E5-2), D-23
-  (E5-6: Cursed Ground built or not), D-24 (E5-4), D-25 (E5-7), D-26 (E5-10), A-13's original
-  path (E5-9), E5-11; the consensus rows (E5-1, -3, -5) as checks.
+- **The run: done** (T37b, decision 83; the log): the recipes
+  `clients/capture/batches/E08-batch-5*.toml`, every batch on the harness (decision 50) at its
+  first run, E5c and E5d twice; the results and the scorer's reports in `experiments/results/`.
+- **The scoring** (T38): D-22 (E5-2), D-23 (E5-6: Cursed Ground built or not), D-24 (E5-4), D-25
+  (E5-7), D-26 (E5-10), A-13's original path (E5-9), E5-11; the consensus rows (E5-1, -3, -5) as
+  checks.
 
 ### 12. Shared and `cross-lane` work; the building tasks; the exit criteria
 
