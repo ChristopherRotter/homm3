@@ -4063,7 +4063,8 @@ the worse of the two; +0x14 and +0x18 two masks by the other side's record index
   147 and 148, not hypnotized +0x288), cannot shoot now (0x4428F0) and has a nearest enemy in its
   threat record (+0x538) that it attacks within a turn (0x448BD0 at its speed: at most 1) gets that
   enemy, the enemy's damage on it (0x442780: the enemy's whole count, melee, no jousting,
-  uncapped), 1 and the same damage: **the retaliation it meets at its target**.
+  uncapped), 1 and the same damage: **the retaliation it meets at its target**. (§7.53: the loop
+  never moves to the next record, so every entry gets the first record's seed: slip 23.)
 - 0x43C040 clears the masks and the other two tables and calls 0x43BF20. Then, for each record of
   the side but the dead and the arrow towers (149), over each record of the other side that can
   act (as above, and not an arrow tower) and has hit points after the planned damage:
@@ -5111,7 +5112,7 @@ threat records run 0x422B20 with no pathfinder of their own (0x436AB2), so the g
 Ogre Mage's scan, the Faerie Dragon) and cast nothing goes on in 0x421680 with those cells: the
 besieger's wall hex (0x421DA5) and the fallbacks' guard and step to safety (0x420760, 0x4208F0 get
 that pathfinder, 0x421EA9, 0x421ECF) read another stack's map; the walk 0x41F580 searches afresh.
-The port reads the walker's own map (BAT-Q59).
+Built as slip 22 under BAT-QUIRK-25 (the user, BAT-Q59; §7.53).
 
 **For the port:** the planned damage is a table by stack id that each predicted turn's context
 copies (`h3_battle::computer::Planned`), the decision's own: the original keeps it on the records
@@ -5120,3 +5121,70 @@ its fill (E23 T4c) read it. A predicted walk, wait or fallback other than the at
 draws nothing, so the port does not build them (ADR-0027 point 11). **Slips:** none new. **Draws:**
 the predicted walkers' (0x421B02, one per candidate that gets that far) in the run's order, in each
 spell context (the Ogre Mage's scan before its own draw, the Faerie Dragon's before its values).
+
+### 7.53 Code reading: the Master Genie and the evaluators re-read for the port (E23 T4c, 2026-10-22)
+
+Read again for E23 T4c (the user: whole, no cut; slip 22 with it, BAT-Q59): 0x43C4A0 with
+0x447EB0, 0x4369C0's steps after the predictions (the threat records, the fill 0x43C040 with its
+seed 0x43BF20, the second context +0x48), the evaluators of 0x43B690 that a creature reaches
+(§7.46's list but the bolts, Dispel and Clone, which only the hero's choice asks, E23 T5), the
+removal 0x439A80 with Cure 0x439C30 and Anti-Magic 0x439D40, and the pathfinder after the context.
+§7.42, §7.44 to §7.46 stand with the corrections below; these are the details the port needs.
+Insight only, nothing copied (Q29).
+
+**0x43C4A0.** Each spell 0x447EB0 accepts for the Genie on R is counted once; its mastery is 0x43C330's
+(2, Expert on Magic Plains, and on the spell's school's field: slip 8 for every drawn spell, not
+only Bloodlust); the candidate power and rounds 6; a spell that takes a stack at that mastery is
+valued on R, another over the side (0x43A910's mass path). The sum over the count by 32-bit integer
+division; no spell, 0. The scan (0x420D20) is the Ogre Mage's: its draw, its order, its strength
+test.
+
+**The second context** (0x436AF5 to 0x436BC6). Built for the other side with its own battle
+context, its own "enemy beaten" for the side's stacks after the planned damage and its own tables,
+on the same threat records. Only the removals read it: a harmful spell on the context's own side,
+or a helpful one on the other, is valued there.
+
+**0x43BF20, the seed** (0x43BF74 to 0x43C02C). The loop steps the table entry (`add ebx, 0x10`)
+and the index, never the record pointer (`esi`): every entry of the melee table gets the side's
+first record's seed, alive or not (**slip 23**, found here). The fill 0x43C040 then tests "not the
+record's seeded enemy" against that seed.
+
+**The evaluators.** Told by the spell's number in 0x43B690; the port tells them by the spell's
+data (its timed changes, its category and polarity), which gives the same evaluator for every
+spell the table lists. Each reads the context's tables, its threat records, "the enemy beaten",
+its balance class (the rounds' share, §7.45) and the stack's worth (0x442A50 with its shot flag);
+the slips 9 to 17 (survey §4) are read as T1a5e found them. A copy of a stack (the attack bonuses,
+the defense bonus, the removals) is the record with its fields changed; the port clones the
+battle and changes the stack there.
+
+**0x439A80, the removal.** Over the spells in number order (+0x198 + 4 × spell), each lasting on
+the stack once: the routine's test picks it (Cure's, Anti-Magic's); the copy ends it (0x444230:
+Disrupting Ray, which lasts to the battle's end, stays); its evaluator values it on the copy with
+the stack's mastery of it and its rounds left (255 to the end) as power and rounds, no resistance.
+Harmful on the context's side (or helpful on the other): the second context's value is added;
+else this context's is subtracted. The copy is a lone record (0x437A00), the battle untouched:
+the evaluators that walk the battle's records compare them with the stack by pointer and never
+find it (Disrupting Ray 0x438E11, Slow 0x439379, Berserk's candidates 0x4455C9, Hypnotize
+0x43A500), and what they read through the battle still holds the spell (found by T4c's blind
+check: slip 24, E23 T4d, BAT-Q60; the port values on a clone, BAT-STUB-12).
+
+**The pathfinder after the context** (slip 22). The threat records run for side 0 then side 1
+(0x436AA9 to 0x436AC3), each over its records in order, with the global pathfinder (§7.52): the
+last record that searches (§7.51: recorded, cannot shoot now) leaves its map, the defender's last
+before the attacker's. The values search after it only in two evaluators: Hypnotize's map
+(0x43A5DB, the context's side, the turns times the speed) and Berserk's candidates (0x445582, no
+side, range 127; none for a stack that can shoot), both on the global pathfinder; with the Master
+Genie they run inside a removal (Cure, Anti-Magic on a stack under Berserk or Hypnotize). The
+besieger's wall hex (0x421DA5), the guard (0x420760: its guard hex 0x4205D0 and the turns
+0x4B3F20 with the walker's speed) and the step to safety (0x4208F0) read that map; their walk
+0x41F580 searches afresh. A walk that finds no path: the step to safety returns false, but the
+besieger's walk (0x421E15) and the guard (0x4208DE) return true with the action fields as they
+were (§7.52); the port defends there (BAT-STUB-11). No record searches only when the walker is
+hypnotized and every other stack shoots or is left out; the original then holds the predictions'
+last search or the walker's own, the port the walker's own.
+
+**For the port:** the context's half per side (the second context built when a removal first asks
+it); the threat records and the tables computed when first read (ADR-0027 point 11: they read
+nothing a value changes); a removal's copy is a clone of the battle with the spell ended
+(`h3_battle::computer::end_spell`). **Slips:** 9 to 17 built (BAT-AI-016), 8 widened to the
+Genie's spells, 22 and 23 new, 24 found (T4d). **Draws:** none new (the scan's, the predictions').

@@ -34,22 +34,52 @@ pub(crate) fn berserk<S: Sink>(
 ) -> bool {
     let field = Field::new(ruleset.battle().field);
     let me = *state.at(id);
-    // rule: BAT-SIE-019
+    let nearest = candidates(state, ruleset, id);
+    let Some(target) = draw(state, &nearest) else {
+        return passes(id, sink);
+    };
+    if can_shoot(state, field, id) {
+        let at = state.at(target).footprint(field).front;
+        shoot(state, ruleset, id, target, at, sink);
+        obstacles::stand(state, ruleset, id, sink);
+        return true;
+    }
+    let avoid = aim::avoids_stops(state, ruleset, &me, None);
+    walk_and_attack(state, ruleset, (id, &me), target, avoid, sink)
+}
+
+/// The targets of the berserk stack `id`'s automatic turn (BAT-MAG-025; the original's 0x445490,
+/// which the computer's Berserk value also asks, 0x43A400): every other living stack but the
+/// turrets (BAT-SIE-019); for a stack that can shoot those nearest by hex distance between the
+/// front hexes, for any other those the pathfinder marks at the least cost over the whole field;
+/// in record order.
+// rule: BAT-MAG-025, BAT-SIE-019
+pub(crate) fn candidates(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    id: StackId,
+) -> FixedVec<(StackId, u32), STACK_CAPACITY> {
+    searched(state, ruleset, id).0
+}
+
+/// [`candidates`] with the pathfinder's map their search left (none for a stack that can shoot:
+/// no search).
+pub(crate) fn searched(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    id: StackId,
+) -> (FixedVec<(StackId, u32), STACK_CAPACITY>, Option<Search>) {
+    let field = Field::new(ruleset.battle().field);
+    let me = *state.at(id);
     let others = (0u8..)
         .zip(state.stacks.iter())
         .filter(|&(i, t)| i != id.0 && t.is_alive() && !t.is_turret())
         .map(|(i, t)| (StackId(i), t));
     if can_shoot(state, field, id) {
         let front = me.footprint(field).front;
-        let nearest =
+        let list =
             nearest(others.map(|(t, s)| (t, field.distance(front, s.footprint(field).front))));
-        let Some(target) = draw(state, &nearest) else {
-            return passes(id, sink);
-        };
-        let at = state.at(target).footprint(field).front;
-        shoot(state, ruleset, id, target, at, sink);
-        obstacles::stand(state, ruleset, id, sink);
-        return true;
+        return (list, None);
     }
     // At a town the computer keeps a weak walker of a player who is no human out of its stops
     // (BAT-SIE-022: both searches, 0x445582 and 0x42232C, without a side's records).
@@ -63,12 +93,8 @@ pub(crate) fn berserk<S: Sink>(
         speed: None,
     };
     let map = Search::run(state, field, (id, &me), query);
-    let nearest =
-        nearest(others.filter_map(|(t, s)| map.mark_of(s.hex).map(|c| (t, u32::from(c)))));
-    let Some(target) = draw(state, &nearest) else {
-        return passes(id, sink);
-    };
-    walk_and_attack(state, ruleset, (id, &me), target, avoid, sink)
+    let list = nearest(others.filter_map(|(t, s)| map.mark_of(s.hex).map(|c| (t, u32::from(c)))));
+    (list, Some(map))
 }
 
 /// The berserk walker `me` (stack `id`) goes for `target` (the original's 0x4222C0, §7.41). The

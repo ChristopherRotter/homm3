@@ -4,7 +4,7 @@
 //! computer estimates moves both. It grows with E23's tasks: what the policy needs from the
 //! battle's private state is added here by the battle lane.
 
-use h3_content::{CreatureTypeId, SpellId};
+use h3_content::{CreatureTypeId, SchoolId, SpellId};
 use h3_content_battle::{BattleRuleset, SpellTarget};
 use h3_contracts::BattleSide;
 use h3_kernel::arith::X87;
@@ -191,6 +191,58 @@ pub fn damage_estimate(
     jousting: u8,
 ) -> u64 {
     aim::damage_estimate(state, ruleset, (attacker, target), count, shot, jousting)
+}
+
+/// [`damage_estimate`] without its cap at the target's hit points (0x442780 with the cap flag
+/// clear; E23 T4c: the spell context's threat tables, Fortune's value).
+pub fn uncapped_damage(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    (attacker, target): (StackId, StackId),
+    count: u64,
+    shot: bool,
+    jousting: u8,
+) -> u64 {
+    aim::uncapped_estimate(state, ruleset, (attacker, target), count, shot, jousting)
+}
+
+/// One creature's damage of stack `id` for the computer (0x4426F0; E23 T4c: Bless's value), a
+/// double: its maximum and Bless's bonus while blessed, its minimum less Curse's penalty but at
+/// least 1 while cursed, else the mean of the two.
+pub fn damage_per_creature(state: &BattleState, ruleset: &BattleRuleset, id: StackId) -> X87 {
+    aim::per_creature(state, ruleset, state.at(id))
+}
+
+/// The least damage one creature of stack `id` deals as the computer reads it (+0xD0; E23 T4c:
+/// Curse's value): a Ballista's without its hero's multiplier.
+pub fn minimum_damage(state: &BattleState, ruleset: &BattleRuleset, id: StackId) -> u64 {
+    aim::damage_range(state, ruleset, state.at(id)).0
+}
+
+/// The most damage one creature of stack `id` deals as the computer reads it (+0xD4; E23 T4c:
+/// Bless's value): a Ballista's without its hero's multiplier.
+pub fn maximum_damage(state: &BattleState, ruleset: &BattleRuleset, id: StackId) -> u64 {
+    aim::damage_range(state, ruleset, state.at(id)).1
+}
+
+/// The luck of stack `id` as the original's record keeps it (+0x4EC; E23 T4c: Fortune's value):
+/// the engine's luck before the roll levels' clamp (BAT-LCK-001), so below 0 too; 0 on a field
+/// without luck.
+pub fn luck(state: &BattleState, ruleset: &BattleRuleset, id: StackId) -> i32 {
+    crate::morale::unclamped_luck(state, ruleset, id)
+}
+
+/// The spells the helpful caster `caster`'s cast could draw for stack `s` when `side` commands it
+/// (BAT-MAG-050; the original's 0x447EB0 with 0x447A80, which the computer's Master Genie asks
+/// for each spell, 0x43C4A0; E23 T4c): its creature's drawn spells useful on that stack, in
+/// their creature's order.
+pub fn helpful_spells<'a>(
+    state: &'a BattleState,
+    ruleset: &'a BattleRuleset,
+    side: BattleSide,
+    (caster, s): (StackId, StackId),
+) -> impl Iterator<Item = SpellId> + 'a {
+    crate::casters::useful_spells(state, ruleset, side, (caster, s)).map(|(spell, _)| spell)
 }
 
 /// The computer's value of `a` striking `t` after `jousting` hexes (0x435C70 without the shot
@@ -596,7 +648,160 @@ pub fn base_damage(
     (base, shot): (u64, bool),
     bonus: i16,
 ) -> u64 {
-    aim::base_damage(state, ruleset, (striker, target), (base, shot), bonus)
+    aim::base_damage(state, ruleset, (striker, target), (base, shot), (bonus, 0))
+}
+
+/// [`base_damage`] on a copy of `target`'s record with `bonus` more defense (0x443E30 on the
+/// copy 0x438910 makes, a defense bonus's value; E23 T4c).
+pub fn base_damage_on_defense(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    (striker, target): (StackId, StackId),
+    (base, shot): (u64, bool),
+    bonus: i16,
+) -> u64 {
+    aim::base_damage(state, ruleset, (striker, target), (base, shot), (0, bonus))
+}
+
+/// The computer's exchange of `a` with `a_hp` hit points and `t` with `t_hp` (0x4359B0; E23 T4c:
+/// Frenzy's value), the context's computer `side`: with `shot`, while `a` can shoot now, `a`'s
+/// shot alone, else its strike after `jousting` hexes with Fire Shield's reflection, `t`'s
+/// retaliation (none on Easy for a computer side) and a second strike; the hit points both have
+/// left.
+pub fn exchange(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    side: BattleSide,
+    ((a, a_hp), (t, t_hp)): ((StackId, u64), (StackId, u64)),
+    (shot, jousting): (bool, u8),
+) -> (u64, u64) {
+    let field = Field::new(ruleset.battle().field);
+    if shot && can_shoot(state, field, a) {
+        let s = state.at(a);
+        let count = a_hp.div_ceil(u64::from(s.max_hp.max(1)));
+        let dealt = aim::damage_estimate(state, ruleset, (a, t), count, true, 0);
+        return (a_hp, t_hp.saturating_sub(dealt));
+    }
+    aim::exchange(state, ruleset, side, ((a, a_hp), (t, t_hp)), jousting)
+}
+
+/// The best kill value a protection of stack `id` keeping `kept` percent takes off the other
+/// side's hero's damage spells of `schools` (`None`: every school) up to `level`, for the spell
+/// context `ctx` of its side (0x4396E0; E23 T4c): 0 while casting is forbidden, without that
+/// hero, or for a clone; with `slip` (BAT-QUIRK-25, survey slip 9) the protected side's hero's
+/// caster bonuses and the caster's own army's cost changes.
+pub fn spell_protection(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    ctx: &Context,
+    id: StackId,
+    (schools, level, kept): (Option<&[SchoolId]>, u8, u16),
+    slip: bool,
+) -> i32 {
+    aim::spell_protection(state, ruleset, ctx, id, (schools, level, kept), slip)
+}
+
+/// The factor of the original's effect test 0x5A8090 for `spell` of `side` at stack `id`
+/// (BAT-MAG-008; E23 T4c: the computer's harmful spell values): 0 when it cannot affect the stack,
+/// 1 for a positive spell, else the share it is not resisted (with the Unicorns' aura); 0 for a
+/// spell the ruleset lacks.
+pub fn effect_factor(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    side: BattleSide,
+    spell: SpellId,
+    id: StackId,
+) -> X87 {
+    ruleset.spell(spell).map_or(X87::ZERO, |s| {
+        magic::effect_factor(state, ruleset, side, (spell, s), id)
+    })
+}
+
+/// Ends `spell` on stack `id` of the computer's copy of the battle (0x444510 on a stack's copy,
+/// the removals' estimate 0x439A80; E23 T4c): its effects with a duration end, its permanent ones
+/// too with `permanent` (the original's end routine keeps only Disrupting Ray, BAT-MAG-010), and
+/// the stack's values are recomputed.
+pub fn end_spell(
+    state: &mut BattleState,
+    ruleset: &BattleRuleset,
+    (id, spell): (StackId, SpellId),
+    permanent: bool,
+) {
+    let mut sink = crate::NoopSink;
+    let ends =
+        |e: &crate::effects::ActiveEffect| e.spell == spell && (permanent || e.rounds.is_some());
+    if crate::effects::end_matching(state, id, &mut sink, ends) {
+        crate::effects::recompute(state, ruleset, id);
+    }
+}
+
+/// The targets of stack `id` as a berserk stack's automatic turn would take them (0x445490;
+/// BAT-MAG-025; E23 T4c: the computer's Berserk value), in record order.
+pub fn berserk_candidates(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    id: StackId,
+) -> impl Iterator<Item = StackId> {
+    berserk_search(state, ruleset, id).0
+}
+
+/// [`berserk_candidates`] with the map their search left in the computer's pathfinder (0x445582:
+/// none for a stack that can shoot, which searches nothing; E23 T4c, survey slip 22).
+pub fn berserk_search(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    id: StackId,
+) -> (impl Iterator<Item = StackId>, Option<Map>) {
+    let (list, search) = crate::control::searched(state, ruleset, id);
+    let candidates = (0..list.len()).filter_map(move |i| list.get(i).map(|&(t, _)| t));
+    (candidates, search.map(Map))
+}
+
+/// The stack whose map the computer's pathfinder holds after the threat records of both sides
+/// (0x422B20 for side 0, then side 1, as the spell context 0x4369C0 runs them; E23 T4c, survey
+/// slip 22): the last recorded stack that cannot shoot now, the defender's last before the
+/// attacker's; none when no record searches. Its map is [`map`] for its side.
+pub fn last_searched(state: &BattleState, ruleset: &BattleRuleset) -> Option<StackId> {
+    aim::last_searched(state, ruleset)
+}
+
+/// [`map`] with the range `range` (0x4B2DA0 with a range of the caller's: the computer's Hypnotize
+/// value, its turns times the stack's speed; E23 T4c).
+pub fn map_within(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    (id, side): (StackId, BattleSide),
+    range: u16,
+) -> Map {
+    let field = Field::new(ruleset.battle().field);
+    let me = state.at(id);
+    let query = Query {
+        goal: Goal::Map,
+        range,
+        avoid: aim::fears_moat(state, ruleset, me, Some(side)),
+        spare: Some(side),
+        speed: None,
+    };
+    Map(Search::run(state, field, (id, me), query))
+}
+
+/// The speed of stack `id` with what its effects added but not slowed (the record's +0xC4,
+/// which Slow scales through +0x4C8; E23 T4c: the computer's Hypnotize value).
+pub fn unslowed_speed(state: &BattleState, id: StackId) -> u16 {
+    let added: i32 = state
+        .effects
+        .of(id)
+        .iter()
+        .map(|e| i32::from(e.speed))
+        .sum();
+    u16::try_from((i32::from(state.at(id).speed) + added).clamp(0, 255)).unwrap_or(0)
+}
+
+/// The defense of stack `id` for the computer (0x442590 with flag 1): 0 while frenzied, else its
+/// defense with the Defend bonus less the moat's penalty (E23 T4c: Frenzy's value without the
+/// original's slip).
+pub fn defense(state: &BattleState, ruleset: &BattleRuleset, id: StackId) -> i64 {
+    aim::defense(state, ruleset, state.at(id))
 }
 
 /// Whether `side`'s cast of `spell` can affect stack `id` (the original's 0x5A3C80 as the spell

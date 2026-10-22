@@ -16,10 +16,10 @@
 
 use core::cell::Cell;
 
-use h3_content::{CreatureFlag, CreatureTypeId, ORIGINAL_AI_SLIPS, SpellId};
+use h3_content::{CreatureFlag, CreatureTypeId, ORIGINAL_AI_SLIPS, SchoolId, SpellId};
 use h3_content_battle::{
-    BattleRuleset, BattleSpell, MAX_MASTERY, SpellAiKind, SpellEffect, SpellTarget, TimedChange,
-    WallKind,
+    Ability, AuraTarget, BattleRuleset, BattleSpell, MAX_MASTERY, SpellAiKind, SpellEffect,
+    SpellTarget, TimedChange, WallKind,
 };
 use h3_contracts::{BattleSide, FortLevel};
 use h3_kernel::arith::{DOUBLE_BITS, SINGLE_BITS, X87};
@@ -37,7 +37,7 @@ use crate::magic;
 use crate::movement::fits;
 use crate::obstacles;
 use crate::siege;
-use crate::state::{BattleState, STACK_CAPACITY, Stack, StackId, StackTraits};
+use crate::state::{BattleState, CREATED_SLOT, STACK_CAPACITY, Stack, StackId, StackTraits};
 
 /// The pathfinder's range (0x422B20 asks 0x4B2DA0 for 127 steps).
 const AI_RANGE: u32 = 127;
@@ -240,7 +240,7 @@ fn attack(ruleset: &BattleRuleset, s: &Stack, shot: bool) -> i64 {
 
 /// The defense of `s` against no striker (0x442590 with flag 1): 0 while frenzied, else its
 /// defense with the Defend bonus less the moat's penalty.
-fn defense(state: &BattleState, ruleset: &BattleRuleset, s: &Stack) -> i64 {
+pub(crate) fn defense(state: &BattleState, ruleset: &BattleRuleset, s: &Stack) -> i64 {
     if s.spells.frenzy > 0 {
         0
     } else {
@@ -275,7 +275,7 @@ fn shoots(state: &BattleState, field: Field, id: StackId) -> bool {
 /// the computer reads. A war machine's stack keeps its creature's range times its side's hero's
 /// attack + 1 (BAT-WAR-005), the original only its creature's range (with the hero's changes,
 /// BAT-HER-005) and multiplies in a strike's base damage (0x4431AC): the hero's share comes off.
-fn damage(state: &BattleState, ruleset: &BattleRuleset, s: &Stack) -> (u64, u64) {
+pub(crate) fn damage_range(state: &BattleState, ruleset: &BattleRuleset, s: &Stack) -> (u64, u64) {
     let (min, max) = (u64::from(s.damage_min), u64::from(s.damage_max));
     if !s.has(StackTraits::WAR_MACHINE) {
         return (min, max);
@@ -344,7 +344,7 @@ fn worth_of(
         let (n, d) = ARTILLERY.get(usize::from(level)).copied().unwrap_or((1, 1));
         offense = offense.times(X87::ratio(n, d, DOUBLE_BITS).unwrap_or(X87::ONE));
     }
-    let (min, max) = damage(state, ruleset, s);
+    let (min, max) = damage_range(state, ruleset, s);
     let roll = match s.spells.damage {
         DamageRoll::Random => None,
         DamageRoll::Maximum(bonus) => Some(max + u64::from(bonus)),
@@ -775,6 +775,56 @@ pub struct Threat {
     pub enemy: StackId,
     /// The turns to attack it (0x448BD0 from the record's cost +0x540: at least 1).
     pub turns: u32,
+    /// The cost to attack it (+0x540): the mark's for a walker, 1 for a shooter (E23 T4c).
+    pub cost: u16,
+    /// The enemies it attacks within one turn, by stack id bit (+0x544, 0x448840: every enemy
+    /// it records at one turn; E23 T4c).
+    pub mask: u64,
+}
+
+impl Threat {
+    /// The turns to attack the enemy at `speed` (0x448BD0 from the cost: `⌈cost / speed⌉`, at
+    /// least 1, and 1 at speed 0; a stack that can shoot now records the cost 1).
+    pub fn turns_at(&self, speed: u32) -> u32 {
+        if speed == 0 {
+            1
+        } else {
+            u32::from(self.cost).div_ceil(speed).max(1)
+        }
+    }
+}
+
+/// Whether the threat records (0x422B20, 0x422B8B to 0x422C0A) give stack `id` none: a dead
+/// stack, a war machine but the Ballista, a hypnotized or berserk one, one blind or turned to
+/// stone for more than a round ([`kept_out`]).
+fn unrecorded(state: &BattleState, ruleset: &BattleRuleset, id: StackId) -> bool {
+    let me = state.at(id);
+    let status = me.spells.status;
+    !me.is_alive()
+        || (me.has(StackTraits::WAR_MACHINE) && !is_ballista(me))
+        || status.contains(Status::HYPNOTIZED)
+        || status.contains(Status::BERSERK)
+        || kept_out(state, ruleset, id)
+}
+
+/// The last stack the threat records of both sides search (0x422B20 with flag 0 for side 0, then
+/// side 1, each over its records in order, as the spell context runs them, 0x436AA9 to 0x436AC3):
+/// of the recorded stacks ([`unrecorded`]) that cannot shoot now, the defender's last, else the
+/// attacker's; none when no record searches.
+pub(crate) fn last_searched(state: &BattleState, ruleset: &BattleRuleset) -> Option<StackId> {
+    let field = Field::new(ruleset.battle().field);
+    let searched = |side: BattleSide| {
+        (0u8..)
+            .zip(state.stacks.iter())
+            .filter(|&(i, s)| {
+                s.side == side
+                    && !unrecorded(state, ruleset, StackId(i))
+                    && !shoots(state, field, StackId(i))
+            })
+            .map(|(i, _)| StackId(i))
+            .last()
+    };
+    searched(BattleSide::Defender).or_else(|| searched(BattleSide::Attacker))
 }
 
 /// The threat record of stack `id` in the context `ctx` (0x422B20 with flag 0, 0x448840; E23
@@ -798,25 +848,20 @@ pub(crate) fn threat(
 ) -> Option<Threat> {
     let field = Field::new(ruleset.battle().field);
     let me = state.at(id);
-    let status = me.spells.status;
-    if !me.is_alive()
-        || (me.has(StackTraits::WAR_MACHINE) && !is_ballista(me))
-        || status.contains(Status::HYPNOTIZED)
-        || status.contains(Status::BERSERK)
-        || kept_out(state, ruleset, id)
-    {
+    if unrecorded(state, ruleset, id) {
         return None;
     }
     let shooter = shoots(state, field, id);
     let map = (!shooter).then(|| crate::computer::map(state, ruleset, id, me.side));
     let speed = u16::from(me.speed_now());
     let mut best: Option<(Threat, i32)> = None;
+    let mut mask = 0u64;
     for (j, t) in (0u8..).zip(state.stacks.iter()) {
         if t.side == me.side || !t.is_alive() || t.is_turret() {
             continue;
         }
         let enemy = StackId(j);
-        let (turns, value) = match &map {
+        let (cost, value) = match &map {
             None => (
                 1,
                 kill_shot_value(state, (ruleset, field), ctx, (id, enemy), ctx.desperate),
@@ -828,15 +873,25 @@ pub(crate) fn threat(
                 let run_up = if c <= speed { c } else { 0 };
                 let run_up = u8::try_from(run_up).unwrap_or(u8::MAX);
                 let value = strike_value(state, (ruleset, field), ctx, (id, enemy), run_up);
-                (u32::from(c).div_ceil(u32::from(speed.max(1))).max(1), value)
+                (c, value)
             }
         };
+        let turns = u32::from(cost).div_ceil(u32::from(speed.max(1))).max(1);
+        if turns == 1 {
+            mask |= 1 << j;
+        }
         let better = best.is_none_or(|(b, v)| turns < b.turns || (turns == b.turns && value > v));
         if better {
-            best = Some((Threat { enemy, turns }, value));
+            let threat = Threat {
+                enemy,
+                turns,
+                cost,
+                mask: 0,
+            };
+            best = Some((threat, value));
         }
     }
-    best.map(|(t, _)| t)
+    best.map(|(t, _)| Threat { mask, ..t })
 }
 
 /// The score of attacker stack `id` for a turret of damage `mean` (the turret's `3n`; 0x41E190;
@@ -926,14 +981,13 @@ pub(crate) fn estimate(
 }
 
 /// The computer's damage of `count` creatures of `attacker` on `target` (0x442780; BAT-WAR-008,
-/// BAT-AI-005): `count` times one creature's damage as its record holds it ([`damage`]: a
+/// BAT-AI-005): `count` times one creature's damage as its record holds it ([`damage_range`]: a
 /// Ballista's 2–3 without its hero's multiplier; the maximum and Bless's bonus while blessed, the
 /// minimum less Curse's penalty but at least 1 while cursed, else the mean, a double), truncated,
 /// through every stage of a real shot (`shot`) or of a melee strike after `jousting` hexes, without
 /// their draws ([`shot_damage`], [`melee_damage`]); at least 1 (a count of 0 too); a shot doubled
 /// for a creature that strikes twice; at most the target's hit points (1 for a clone): the
-/// original's cap flag, which every caller so far sets (the spell context's uncapped strike: E23
-/// T4).
+/// original's cap flag ([`uncapped_estimate`] without it).
 pub(crate) fn damage_estimate(
     state: &BattleState,
     ruleset: &BattleRuleset,
@@ -942,13 +996,34 @@ pub(crate) fn damage_estimate(
     shot: bool,
     jousting: u8,
 ) -> u64 {
-    let s = state.at(attacker);
-    let (min, max) = damage(state, ruleset, s);
-    let each = match s.spells.damage {
+    uncapped_estimate(state, ruleset, (attacker, target), count, shot, jousting)
+        .min(hit_points(state.at(target)))
+}
+
+/// One creature's damage of `s` for the computer (0x4426F0), a double: the maximum and Bless's
+/// bonus while blessed, the minimum less Curse's penalty but at least 1 while cursed, else the
+/// mean ([`damage_range`]: a Ballista's without its hero's multiplier).
+pub(crate) fn per_creature(state: &BattleState, ruleset: &BattleRuleset, s: &Stack) -> X87 {
+    let (min, max) = damage_range(state, ruleset, s);
+    match s.spells.damage {
         DamageRoll::Maximum(bonus) => double(max + u64::from(bonus)),
         DamageRoll::Minimum(penalty) => double(min.saturating_sub(u64::from(penalty)).max(1)),
         DamageRoll::Random => double(min + max).over(X87::int(2)).unwrap_or(X87::ZERO),
-    };
+    }
+}
+
+/// [`damage_estimate`] without its cap at the target's hit points (0x442780 with the cap flag
+/// clear: the spell context's tables and Fortune's value, E23 T4c).
+pub(crate) fn uncapped_estimate(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    (attacker, target): (StackId, StackId),
+    count: u64,
+    shot: bool,
+    jousting: u8,
+) -> u64 {
+    let s = state.at(attacker);
+    let each = per_creature(state, ruleset, s);
     let base = u64::try_from(ftol(double(count).times(each))).unwrap_or(0);
     let mut damage = if shot {
         shot_damage(state, ruleset, (attacker, target), base)
@@ -959,12 +1034,13 @@ pub(crate) fn damage_estimate(
     if shot && s.has(StackTraits::STRIKES_TWICE) {
         damage = damage.saturating_mul(2);
     }
-    damage.min(hit_points(state.at(target)))
+    damage
 }
 
-/// The computer's damage of the base `base` of `striker` on `target` with `bonus` more attack
-/// (0x443E30; on a copy of the striker's record with `bonus` added to its attack, 0x437800; E23
-/// T4b1): every stage of a real shot (`shot`) or of a melee strike without a run-up, without
+/// The computer's damage of the base `base` of `striker` on `target` with `attack` more attack
+/// and the target with `defense` more defense (0x443E30; on a copy of the striker's record with
+/// the attack added, 0x437800, E23 T4b1, or of the target's with the defense added, 0x438910,
+/// E23 T4c): every stage of a real shot (`shot`) or of a melee strike without a run-up, without
 /// their draws ([`estimated_damage`]: 0x443E30 runs the stages 0x443F40 runs with its estimate
 /// flag, without Fire Shield's value), at least 1.
 pub(crate) fn base_damage(
@@ -972,16 +1048,18 @@ pub(crate) fn base_damage(
     ruleset: &BattleRuleset,
     (striker, target): (StackId, StackId),
     (base, shot): (u64, bool),
-    bonus: i16,
+    (attack, defense): (i16, i16),
 ) -> u64 {
     let mut copy = *state.at(striker);
-    copy.spells.attack = copy.spells.attack.saturating_add(bonus);
+    copy.spells.attack = copy.spells.attack.saturating_add(attack);
+    let mut victim = *state.at(target);
+    victim.spells.defense = victim.spells.defense.saturating_add(defense);
     let flags = if shot {
         StrikeFlags::RANGED
     } else {
         StrikeFlags::NONE
     };
-    estimated_damage(state, ruleset, (&copy, striker, target), (base, 0), flags).max(1)
+    estimated_damage(state, ruleset, (&copy, striker, &victim), (base, 0), flags).max(1)
 }
 
 /// The computer's estimate of what Fire Shield on `struck` reflects onto `striker` from a strike
@@ -1013,7 +1091,7 @@ pub(crate) fn reflection_estimate(
 /// a creature that strikes twice, by its creatures left, without a run-up. Hit points never fall
 /// below 0. (A shot's exchange, 0x435CB0's, is [`kill_shot_value`]'s.)
 // rule: BAT-AI-005
-fn exchange(
+pub(crate) fn exchange(
     state: &BattleState,
     ruleset: &BattleRuleset,
     side: BattleSide,
@@ -1224,6 +1302,109 @@ const MAX_POWER: u8 = 99;
 fn curve(row: usize, column: usize) -> X87 {
     let n = SPELL_CURVE[row.min(SPELL_CURVE.len() - 1)][column];
     X87::ratio(n, 1000, DOUBLE_BITS).unwrap_or(X87::ZERO)
+}
+
+/// The best kill value a protection of stack `s` keeping `kept` percent takes off the other
+/// side's hero's damage spells (0x4396E0's spells; E23 T4c, BAT-AI-016), for the spell context
+/// `ctx` of its side: none while casting is forbidden (BAT-MAG-061) or without that hero, and
+/// none for a clone. Over the damage spells of its book (BAT-MAG-004's) of `schools` (`None`:
+/// every school) up to `level` that may aim at `s` ([`magic::affects_stack`]) and that its mana
+/// pays at its mastery on the field: the damage on `s` (its value at that mastery), the part the
+/// protection takes off, `x = trunc(f32(min(d, h) − trunc(d × kept / 100)) × f)` (`h` the
+/// stack's hit points, `f` the effect test's factor, BAT-MAG-008), valued by its kills
+/// ([`damage_value`], its shot flag, never desperate); the best. With `slip` (BAT-QUIRK-25,
+/// survey slip 9) the damage takes the caster bonuses of the protected side's hero (none
+/// without one) and the cost the changes of the caster's own army as its enemy's (its own
+/// Pegasi); without, the caster's bonuses and costs, as the rules.
+// rule: BAT-AI-016
+pub(crate) fn spell_protection(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    ctx: &Context,
+    s: StackId,
+    (schools, level, kept): (Option<&[SchoolId]>, u8, u16),
+    slip: bool,
+) -> i32 {
+    let caster = ctx.side.opponent();
+    let target = state.at(s);
+    let Some(hero) = state.heroes[caster.index()]
+        .as_ref()
+        .filter(|_| !magic::casting_forbidden(state) && !target.has(StackTraits::CLONE))
+    else {
+        return 0;
+    };
+    let field = Field::new(ruleset.battle().field);
+    let shot = can_shoot(state, field, s);
+    let h = hit_points(target);
+    let (bonuses, change) = if slip {
+        let own = state.heroes[ctx.side.index()].as_ref();
+        (
+            own.map(|h| &h.magic.bonuses),
+            own_army_cost_change(state, ruleset, caster),
+        )
+    } else {
+        (Some(&hero.magic.bonuses), hero.magic.cost_change)
+    };
+    let of_schools = |spell: &BattleSpell| {
+        schools.is_none_or(|sch| spell.schools.iter().any(|x| sch.contains(x)))
+    };
+    hero.magic
+        .book
+        .iter()
+        .filter_map(|id| ruleset.spell(id).map(|spell| (id, spell)))
+        .filter(|&(id, spell)| {
+            spell.magic.effects.contains(&SpellEffect::Damage)
+                && of_schools(spell)
+                && spell.level <= level
+                && magic::affects_stack(state, ruleset, caster, (id, spell), s)
+        })
+        .filter_map(|(id, spell)| {
+            let mastery = magic::mastery(state, ruleset, hero, id);
+            if crate::mana::cost(spell, mastery, change) > hero.view.mana {
+                return None;
+            }
+            let value = magic::base_value(hero, spell, mastery);
+            let (_, d) = magic::spell_damage(
+                ruleset,
+                ((id, spell), bonuses),
+                value,
+                (target.creature, &target.spells.school_protection),
+            );
+            let off = d.saturating_mul(u64::from(kept)) / 100;
+            let capped = d.min(h);
+            (d > 0 && off < capped).then(|| {
+                let f = magic::effect_factor(state, ruleset, caster, (id, spell), s);
+                let x = ftol(X87::int(capped - off).round(SINGLE_BITS).times(f));
+                let x = u64::try_from(x).unwrap_or(0);
+                damage_value(state, (ruleset, field), ctx, (s, x), (shot, false))
+            })
+        })
+        .fold(0, i32::max)
+}
+
+/// The change of `caster`'s hero's spell costs the computer's estimate of a protection takes with
+/// its slip (0x4E5240 handed the caster's own army as the enemy's; survey slip 9): the largest
+/// increase among the `spell_cost` abilities that affect enemies and the largest reduction among
+/// those that affect allies, both of the creatures of its own army (its stacks but those created
+/// in the battle, dead ones too, as the armies keep them, BAT-MAG-054).
+fn own_army_cost_change(state: &BattleState, ruleset: &BattleRuleset, caster: BattleSide) -> i8 {
+    let (mut up, mut down) = (0i8, 0i8);
+    for stack in state
+        .stacks
+        .iter()
+        .filter(|t| t.side == caster && t.slot != CREATED_SLOT)
+    {
+        for ability in ruleset.abilities(stack.creature) {
+            if let Ability::SpellCost { amount, affects } = *ability {
+                if affects == AuraTarget::Allies {
+                    down = down.min(amount);
+                } else {
+                    up = up.max(amount);
+                }
+            }
+        }
+    }
+    up.saturating_add(down)
 }
 
 /// The computer's value of `side`'s hero in the odds (0x420A80's caster record 0x526D40 and best

@@ -6,7 +6,7 @@
 //! Its callers are the AI lane's batch (`Policy::System`) and the adventure's neutral seat; they
 //! get it once a side without a hero is complete (E23 T4).
 //!
-//! So far (E23 T2, T3, T4a, T4b): the stack's action of the original's dispatch (0x477EE0, 0x4221F0;
+//! So far (E23 T2, T3, T4): the stack's action of the original's dispatch (0x477EE0, 0x4221F0;
 //! `docs/formats/installation.md` §7.34). A stack that can shoot now shoots the computer's target
 //! (0x41F060, 0x41EB80; §7.33, the automatic Ballista's), an area shooter by its value at a hex
 //! (0x41EDA0; §7.35), and the Cyclops batters the weakest wall when much of its side's strength
@@ -24,8 +24,9 @@
 //! anything, the Ogre Mage's Bloodlust (0x420D20; §7.44 to §7.46, §7.51) at a stack as strong as
 //! itself when it beats the walker's value, valued by the spell context ([`spells`]), which first
 //! predicts the damage its side's stacks deal before the other side's next one ([`predict`],
-//! §7.52: their turns as predictions, with their draws). The rest stands in until its task builds
-//! it: the Master Genie's cast (T4c) (BAT-STUB-4); the hero's side casts nothing, ends the tactics phase at once,
+//! §7.52: their turns as predictions, with their draws), and the Master Genie's drawn spell by its
+//! mean value over its 21 spells' evaluators (0x43C4A0, §7.53) the same way. The rest stands in
+//! until its task builds it: the hero's side casts nothing, ends the tactics phase at once,
 //! its First Aid Tent defends and a commanded Catapult shoots the first wall (BAT-STUB-5, T5 and
 //! T6).
 //!
@@ -80,7 +81,7 @@ use h3_kernel::Rng;
 /// The policy's behaviour version (ADR-0027 point 12): bumped with every change of a choice, so
 /// that a training record names its opponent (the AI lane's engine identity includes it).
 /// Replays store commands and do not change with it.
-pub const POLICY_VERSION: u32 = 8;
+pub const POLICY_VERSION: u32 = 9;
 
 /// The command the original's computer gives for `side`, the side to act in `state` (the active
 /// stack's controller, BAT-MAG-026), whatever `BattleSetup.human` says (ADR-0027 point 8):

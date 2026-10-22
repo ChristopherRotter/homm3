@@ -197,7 +197,8 @@ found after that decision) belong to the neutral side's map too and are read (§
 - **T4 Creature casts** — the abilities a computer stack chooses to use, per T1a's map, cut in
   three (the user, 2026-10-21: the parts without the spell context first; T4c cut again at its
   checkpoint). With T2 to T4 a side without a hero is complete: the AI lane's and the adventure
-  lane's inboxes get the function (`Policy::System`, the neutral seat, A12's weights are theirs).
+  lane's inboxes get the function (`Policy::System`, the neutral seat, A12's weights are theirs;
+  done with T4c).
   - [x] **T4a The entry, the raise and the Faerie Dragon** (2026-10-21) — the creature cast entry
     0x421280 before the action and after a choice of nothing (BAT-AI-012), the Archangel's and the
     Pit Lord's raise 0x421000 against the walker's value, the Faerie Dragon 0x420F00 with its
@@ -215,9 +216,15 @@ found after that decision) belong to the neutral side's map too and are read (§
       `h3-battle`'s estimates and the walker), the melee prediction 0x4227A0 and the predicted
       strike 0x4224E0 with their draws, "the enemy beaten" (BAT-AI-015, BAT-STUB-9 retired); a
       hypnotized walker leaves itself out (the user: BAT-STUB-10, BAT-Q58); §7.52; the log.
-  - [ ] **T4c The Master Genie** — the context's fill 0x43C040 with its seed 0x43BF20 and the
-    second context (§7.42), its mean over the 34 evaluators and the removals (§7.44, §7.46; slips 9
-    to 17); cut again at its checkpoint.
+  - [x] **T4c The Master Genie** (2026-10-22; the user: whole, no cut; with slip 22, BAT-Q59) —
+    the Genie's mean 0x43C4A0 over the evaluators, the context's tables 0x43C040 with the seed
+    0x43BF20 (slip 23) and the second context, the removals 0x439A80 (BAT-AI-016; slips 9 to 17,
+    8 widened; BAT-STUB-4 retired); the fallbacks after a built context on its last search (slip
+    22, BAT-STUB-11); §7.53; the inboxes have the function; the log.
+  - [ ] **T4d A removal's copy** (the user, 2026-10-22, BAT-Q60) — slip 24 under BAT-QUIRK-25:
+    the removal's lone copy of the stack's record (0x437A00), which the evaluators walking the
+    battle's records never find (Disrupting Ray, Slow, Berserk's candidates, Hypnotize, and what
+    they read through the battle); each evaluator a removal reaches re-read; BAT-STUB-12 retired.
 - [ ] **T5 The hero's spells** (T1a6's reading first).
 - [ ] **T6 The hero's other choices** — retreat and surrender, the tactics phase, the Catapult's
   aim, the First Aid Tent's patient (BAT-Q51); BAT-Q33's rule.

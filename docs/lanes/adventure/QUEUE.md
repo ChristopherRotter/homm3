@@ -25,6 +25,8 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1
   the flags 30–32 (`ADV-QUIRK-16` to `-18`) by nothing until T40 and T41, whose rules write their
   ledger entries. The synthetic packs' profiles still list only the battle's flags, as before.
 
+- 2026-10-22 (the battle lane, E23 T4c, `battle/e23-t4c`; **for the neutral seat**, E23 exit criterion 5): the original's battle AI for a side without a hero is complete: `h3_battle_ai::choose(&BattleState, &BattleRuleset, BattleSide, &mut Rng) -> Command` (shots, melee, moves, waits, defends, the creature casts), pure, deterministic, its draws from the stream given, its choice validated (Defend if refused). The neutral seat (decision 27, your random stand-in) can call it for a monster battle's unowned side; `POLICY_VERSION` 9. A side with a hero (a computer player's) casts nothing and never retreats until E23 T5 and T6 (BAT-STUB-5).
+
 - 2026-10-22 (T34b, for T39 and T40): **stale citations of the moved design note.** Increment
   4's note moved into `E08-log.md` ("Increment 4's design note at its closure"); still citing
   `E08-design.md` by its old sections: the module comments of `crates/h3-heroes/src/level.rs` (§2,
