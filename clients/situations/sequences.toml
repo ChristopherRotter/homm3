@@ -652,11 +652,13 @@ command = [
 # E17 M3 T7c-3 (recorded at T7a-2b in `casts.toml`): the raise (design §7.16, player 4):
 # Resurrection on the Pikeman the Grand Elves shot (round 1; the raised Pikeman then takes its
 # turn), Animate Dead on the Skeleton the Marksmen shot (round 2). Both play Resurrection's 50
-# (CLT-Q13), each lying stack's death group backwards.
+# (CLT-Q13), each lying stack's death group backwards. `seed`: the engine's, whose damage is the
+# original's (the Grand Elves 23, the Marksmen 14).
 [[sequence]]
 id = "raise"
 scenario = "seq-raise.toml"
 hot_seat = true
+seed = 9
 actions = [
     "turn:1.0", "hex:35", "turn:1.1", "hex:86", "turn:0.2", "cast:1:35", "key:d",
     "turn:0.0", "key:d",
@@ -666,6 +668,7 @@ ms = 3000
 heroes = true
 screens = true
 timeline = "timelines/raise.txt"
+frames = "timelines/raise-frames.txt"
 boxes = true
 command = [
     { seat = "Defender", command = { Shoot = { target = 0, at = 35 } } },
@@ -681,16 +684,19 @@ command = [
 # E17 M3 T7c-3 (recorded at T7a-2b in `casts.toml`): two creatures' animations (design §7.16):
 # the Archangels strike the Efreet Sultans from hex 31 (their Fire Shield's return, 11 over the
 # Sultans with the Archangels' hit, before the retaliation), the Sultans defend, the Power Liches
-# shoot the Archangels (their cloud, 72, drawn plain: CLT-Q14).
+# shoot the Archangels (their cloud, 72, drawn plain: CLT-Q14). `seed`: the engine's, whose damage
+# is the original's (the Archangels 185, the Sultans' retaliation 43, the Liches 33).
 [[sequence]]
 id = "creatures"
 scenario = "seq-creatures.toml"
 hot_seat = true
+seed = 566
 actions = ["turn:0.0", "hex:49", "turn:1.0", "key:d", "turn:1.1", "hex:31"]
 ms = 3340
 heroes = true
 screens = true
 timeline = "timelines/creatures.txt"
+frames = "timelines/creatures-frames.txt"
 boxes = true
 command = [
     { seat = "Attacker", command = { Attack = { target = 1, from = 31 } } },

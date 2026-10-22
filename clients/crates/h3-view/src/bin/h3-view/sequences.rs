@@ -131,6 +131,11 @@ struct Kept {
     fidgets: Vec<[u32; 4]>,
     #[serde(default)]
     heroes: Vec<[u32; 3]>,
+    /// The heroes of the screen it replaced within its millisecond (E17 M3 T7c-3): a cast's
+    /// first frame is in memory a deadline before the screen shows it, the screen still showing
+    /// these.
+    #[serde(default)]
+    before: Vec<[u32; 3]>,
     /// The point the original's cursor is drawn at (its memory: it reads the mouse on a 33 ms
     /// grid of its own, E17 M3 T6c-2, design §9.10); none: the mouse's.
     #[serde(default)]
@@ -508,16 +513,25 @@ pub(crate) fn draw_frames(
         }
         let casting = u32::from(tables.battle.hero_groups.cast);
         for &[side, group, f] in &frame.heroes {
+            let before = frame
+                .before
+                .iter()
+                .find(|b| b[0] == side)
+                .map(|b| (b[1], b[2]));
             if let Some(hero) = moment
                 .heroes
                 .get_mut(side as usize)
                 .and_then(Option::as_mut)
             {
                 // A cast's frames as the viewer's timeline shows them (E17 M3 T7b-1): the
-                // original's memory holds each a deadline before its screen shows it.
-                if group == casting || hero.group == casting {
-                    continue;
-                }
+                // original's memory holds each a deadline before its screen shows it, so as a
+                // cast starts the screen still shows the frame it replaced (E17 M3 T7c-3,
+                // `raise`: a rolled defeat's).
+                let (group, f) = match before {
+                    Some(b) if group == casting && hero.group != casting && b.0 != casting => b,
+                    _ if group == casting || hero.group == casting => continue,
+                    _ => (group, f),
+                };
                 *hero = HeroPose {
                     group,
                     frame: f,
@@ -525,6 +539,7 @@ pub(crate) fn draw_frames(
                 };
             }
         }
+
         let mut list = scene::battle_at(snapshot, &moment, manifest, tables, layout)
             .map_err(|e| e.to_string())?;
         // The moment, then the count boxes drawn (` box<x>,<y>n<count>@<side>.<record>`, their

@@ -876,8 +876,9 @@ def frames_toml(kept, mouse=None, rays=()):
     viewer's); a situation's mouse first (M3 T6c-1: `h3-view render --frames` draws its cursor,
     hint and marked stack); a sequence's frame the point the original's cursor is drawn at (M3
     T6c-2: its memory, `cursor_at`; the game reads the mouse on a 33 ms grid of its own, design
-    §9.10); and the draws its Chain Lightning's rays turned by (M3 T7c-3: `h3-view sequences
-    --frames` draws the same rays)."""
+    §9.10); a frame that replaced another within its millisecond the heroes that one showed
+    (`before`, M3 T7c-3); and the draws its Chain Lightning's rays turned by (M3 T7c-3: `h3-view
+    sequences --frames` draws the same rays)."""
     out = ["# The original's kept frames (h3drive.py frames): numbers only.", ""]
     if mouse is not None:
         out += [f"mouse = [{mouse[0]}, {mouse[1]}]", ""]
@@ -887,9 +888,10 @@ def frames_toml(kept, mouse=None, rays=()):
         fidgets = ", ".join(f"[{st['side']}, {st['record']}, {st['group']}, {st['frame']}]"
                             for st in k["stacks"] if st["group"] == 1 and st["count"] > 0)
         out += ["[[frame]]", f"t = {k['t']}", f'file = "{k["frame"]}"', f"fidgets = [{fidgets}]"]
-        if "heroes" in k:
-            heroes = ", ".join(f"[{h['side']}, {h['group']}, {h['frame']}]" for h in k["heroes"])
-            out.append(f"heroes = [{heroes}]")
+        for field in ("heroes", "before"):
+            if field in k:
+                heroes = ", ".join(f"[{h['side']}, {h['group']}, {h['frame']}]" for h in k[field])
+                out.append(f"{field} = [{heroes}]")
         at = (k.get("clocks") or {}).get("cursor_at")
         if at is not None:
             out.append(f"cursor = [{at[0]}, {at[1]}]")
@@ -940,6 +942,11 @@ def run_frames(rest):
         # A screen the actions replaced within its millisecond (a wait or a defend passes the
         # turn at once: `t<ms>b`) is compared, not the one before it: the viewer draws one
         # moment per millisecond (M3 T1a).
+        # Its heroes as the replaced screen showed them go with it (`before`, M3 T7c-3: a cast's
+        # first frame is in memory a deadline before the screen shows it).
+        for i in range(len(kept) - 1):
+            if kept[i + 1]["t"] == kept[i]["t"] and "heroes" in kept[i]:
+                kept[i + 1]["before"] = kept[i]["heroes"]
         kept = [k for i, k in enumerate(kept) if i + 1 == len(kept) or kept[i + 1]["t"] != k["t"]]
         (here / "frames.toml").write_text(frames_toml(kept, rays=ray_draws(here / "clock")))
         keep(set_path, "sequences", e["id"], here / "frames.toml")

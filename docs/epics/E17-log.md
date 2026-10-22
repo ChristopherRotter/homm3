@@ -1985,6 +1985,44 @@ archives, `H3ab_ahd.vid`, the executables, the five DLLs, the combat and end tun
   objects' and Armageddon's other paths with invented numbers; the full check: in the pull
   request.
 
+### M3 T7c-3 — Raises, Fire Shield, the Liches' cloud and Chain Lightning (2026-10-22)
+
+On `client/e17-m3-t7c-3`, the user present at the start: offered T7c-3 cut in two (the raises
+and the creatures' animations first, Chain Lightning's rays next), the user chose T7c-3 whole;
+asked how the frame check should treat the rays' randomness (record the original's draws, mask
+the rays, or replay the generator from memory), the user chose to record the draws. The user's
+computer was linked for the staging only (the four LODs, both sound archives, `H3ab_ahd.vid`,
+the executables, the five DLLs, the combat and end tunes, `extracted.tar`, `maps.tar`).
+
+- **Starting point:** `master` at `c84370f` (#384 merged before the session); no client pull
+  request open; CI on `master` not started (billing); the client gates' full check on that code
+  (`verify-once clients`: all gates passed).
+- **The reading** (design §7.16, "Read at T7c-3"; §7.12; `docs/exe/map.toml`): Chain Lightning's
+  handler and its `draw_ray` call (steps by the distance, 9 to 2 pixels, colour 305's own numbers,
+  bounds 10 to 80 turned by the direction, no delay); `ray_aim`'s draw (the turn, at 53 bits),
+  its stop once near (missed at T1b-1); `raise_stack` (the line, the loop, the end) and its five
+  callers; Fire Shield's return; the Magogs' and the Liches' explosions (their DEFs loaded apart,
+  so memory does not name them); a dying reaction's loop. One new oddity: Sacrifice's line names
+  its victim after its death (CLT-Q17).
+- **Built** (design §7.16, "Built (T7c-3)"): `anim/raise.rs`, `anim/creature.rs`,
+  `anim/chain.rs`, `ray::chain`; the corpses kept for a raise; `Beam::until`, `cursor`;
+  `Casts::shielded`, `rays`; `Look::explosion` (the asset tables' creature `explosion`, a format
+  change; the harvester writes it); `Logged::Raised` (`battle.log.raised`); `anim::unrolled` (the
+  timing check leaves out the heroes' rolled reactions, as the fidgets: `raise`'s Orrin answered
+  the Pikeman's death).
+- **Recorded** (`sequences.toml`, moved from `casts.toml`, which is gone): `raise`, `creatures`,
+  `bolt` with their engine commands; played as recorded once the loop's dying reaction was
+  read (the Marksmen's shot 100 ms early) and the Liches' cloud became a spot (memory does not
+  name it).
+- **The harness:** `xdd.dll` logs `ray_aim`'s draws (`<H3CLOCK>\draws`), `frames` keeps them
+  (`rays`), `h3-view sequences --frames` reads them into the timeline. HARNESS_RESULT
+- **The frame check** (`frames --only raise`, `creatures`, `bolt`): FRAMES_RESULT `drawn`: the
+  other sequences and situations the same; digests recorded.
+- **Gates:** the client workspace's coverage 100 %; unit tests replay `raise`, `creatures` and
+  `bolt` exactly and cover the unrecorded paths (Sacrifice, an Archangel's and a Phoenix's raise,
+  Teleport, a shield cast on a stack, a chain past a missing stack); the full check: in the pull
+  request.
+
 ## Accepted review lists (M1, M2)
 
 Moved from the epic file on 2026-10-20 (less start-up reading), unchanged.

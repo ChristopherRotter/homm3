@@ -185,7 +185,9 @@ timeline played them; all are in `sequences.toml` since T7c-3, which removed tha
 timeline's `screen` lines are left out of the timing check (they are the frame check's).
 Chain Lightning's rays turn by the original's draws: `xdd.dll` logs them (the `ray_aim` site,
 "Logged draws" in `xdd.c`) and `frames` keeps them in the frame file's `rays`, so the viewer
-draws the same rays in the frame check (T7c-3). A stack whose hero just
+draws the same rays in the frame check (T7c-3). A frame that replaced another within its
+millisecond keeps the heroes that one showed (`before`): as a cast starts, memory holds its first
+frame a deadline before the screen shows it (T7c-3, `raise`: a rolled defeat's frame still shown). A stack whose hero just
 cast acts by `key:` only: a `turn:` naming the stack already active passes at once, so pick the
 speeds so the turns alternate (`haste`'s Vampire Lords, speed 9).
 

@@ -334,6 +334,20 @@ fn the_creatures_sequence_plays_as_recorded() {
     assert!(cloud.iter().all(|c| c.2 == cloud[0].2));
     assert!(t.spots.iter().all(|s| !s.translucent));
     assert!(t.cues.iter().any(|c| c.sound == Sound::Spell(DEATH_CLOUD)));
+    // The Liches shoot at an area: their line as the reactions start, though one stack is struck.
+    let lich = t
+        .log
+        .iter()
+        .find(|(_, l)| matches!(l, Logged::Strike { attacker: 2, .. }))
+        .unwrap();
+    assert_eq!(lich.0, 8662);
+    assert!(matches!(
+        lich.1,
+        Logged::Strike {
+            spread: crate::battle_log::Spread::Around,
+            ..
+        }
+    ));
 }
 
 #[test]

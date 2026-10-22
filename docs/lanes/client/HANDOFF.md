@@ -4,13 +4,13 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E17 M0–M2 done; M3 T1a–T7a-2b, T7b-1 to T7b-2b-3, T7c-1, T7c-2 (#384, open), T8 done; H1, H2 done (2026-10-19: the adventure lane's harness); next: M3 T7c-3, T7d** (`QUEUE.md`; T9 closes M3). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
+- **E17 M0–M2 done; M3 T1a–T7a-2b, T7b-1 to T7b-2b-3, T7c-1 to T7c-3 (#PRNUM, open), T8 done; H1, H2 done (2026-10-19: the adventure lane's harness); next: M3 T7d** (small; `QUEUE.md`; T9 closes M3). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
 - **Captures** (the user, 2026-10-20): `h3drive.py drawn` first (no Wine); capture what it lists or the task changes, all at a milestone's closure or a harness change (runbook); later tasks' detail in `NOTES.md`.
 - **The user's requirements** (epic, "Decisions"): a string catalogue (JSON packs, no committed translation, CLT-Q7); graphics options (`faithful` default); exhaustive diffs; drawing bugs fixed, the original's only for comparisons (`Bugs`).
 - The lane owns `clients/`, `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
 - **Checkpoints** per milestone (the autonomy contract below), a fresh reviewer agent first.
 - Stage first (the user's computer online) from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04`, the four end tunes, `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`; `cp -rn` the staged `original-data/.` into the clone first. Frames stay in their sandbox.
-- **Open:** CLT-Q4 (background variant), Q5 (boats), Q6 (colours, sex), Q9–Q14, Q16 (the original's oddities), Q15 (the dragon's draw line).
+- **Open:** CLT-Q4 (background variant), Q5 (boats), Q6 (colours, sex), Q9–Q14, Q16, Q17 (the original's oddities), Q15 (the dragon's draw line).
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
 
@@ -38,29 +38,31 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - **CI may be out** (billing, since 2026-10-12): `clients/scripts/check.sh` stands in, its result in the pull request (needs `cargo-deny`, `cargo-llvm-cov`, the LLVM tools `scripts/llvm-tools.sh` picks).
 - A new dependency of a pure crate goes into `h3-view/tests/purity.rs`'s allowlist deliberately; a window or audio crate belongs in an adapter crate, not in `h3-view`'s pure library.
 - Sound in a sandbox: `SDL_AUDIO_DRIVER=disk` (the mix in `./sdlaudio.raw`).
-- `winit`, `cpal`, `hound` (and Bevy, eframe, `rodio`) are Apache-2.0-only (`deny.toml`, ADR-0009): the window is SDL 3 (`h3-sdl`; building it: CMake, a C compiler, `clients.yml`'s apt list). Windows exes: target `x86_64-pc-windows-gnu`, `mingw-w64`; the user's `clients/out/win/`.
+- `winit`, `cpal`, `hound` (and Bevy, eframe, `rodio`) are Apache-2.0-only (`deny.toml`, ADR-0009): the window is SDL 3 (`h3-sdl`; building it: CMake, a C compiler, `clients.yml`'s apt list). Windows: `x86_64-pc-windows-gnu`, `mingw-w64`, the user's `clients/out/win/`.
 - `clients/Cargo.lock` is a common path: the verify's `clients-lock` gate (#202) fails when an engine crate's dependencies change it; fix: `cargo update --workspace --manifest-path clients/Cargo.toml`.
 - `ci.yml` ignores `clients/**`; `clients.yml` watches `clients/` and the engine crates the client builds (`check.sh`'s "ci paths" keeps that list complete).
 - Never run the original game from the installation: it writes saves, settings and DDrawCompat's log into its folder. Captures run the copy under `original-data/wine/` (the runbook's "Traps"); a Wine prefix sits in a directory the shell's user owns (`/root/...` in a sandbox). Captures never enter git (ADR-0009).
 - The original's memory holds the frame drawn, the screen the one shown (design §7.1, §7.9): never render memory's poses as the screen. More in the runbook (`Combat Speed`, acting as a turn starts, both heroes named, steps ≤ 100 ms, `hot_seat`, the adventure harness's settings).
 - No float arithmetic or platform transcendental in the client's drawing and timing, the binary included (`clippy.toml`): f32 behaviour in fixed point (`anim::f32_round`), tangents by series; SDL's floats only at the adapter's edge (coordinates, `audio::gain`).
-- The engine rolls its own damage: the frame check lists a box (` n…`) or the log's item
-  (` log`) unlike the original's; a searched seed can match it. Records: army, then war machines.
 - The harness's `actions` are the viewer's mouse (`pointer::inputs`, design §9.10): a new action
   kind needs both; `hex_point` and `PARK` mirror `h3drive.py`'s; a `key:` right after a `cast:`
   acts at the cast's end in both (T7b-1).
 - The original's rolls: forced (`roll:`, `fail`; runbook), luck and morale by hero `effects`.
 - `turn:` naming the active stack passes at once: after a hero's cast a stack acts by `key:`
   only (T7b-2a). Tell spells by `SpellLook::original`, not engine handles (Poison 70).
-- Sequences are spectators' records (no seat's own events); an engine draw the original made is
-  matched by a searched seed (`dragon` 174; `obstacles`: the kernel's generator alone, T7c-2).
-- A fresh sandbox's first capture once differed (T7c-2, a defend's gain): recapture.
+- Sequences are spectators' records. The engine rolls its own: the frame check lists a box
+  (` n…`) or the log's item (` log`) unlike the original's; a seed searched by a loop over
+  `h3-view sequences <id>` matches it (`obstacles`: the kernel's generator alone). Records: army,
+  then war machines. Chain Lightning's rays: the original's draws (`xdd.dll`'s log, `rays`).
+- A capture times out at the main menu when the CPU is busy: run it alone. A fresh sandbox's
+  first capture once differed (T7c-2): recapture.
 
 ## Recent sessions
 
-- **2026-10-22, E17 M3 T7c-2 (spell objects, Armageddon; #384 open).** Not split (the user);
+- **2026-10-22, E17 M3 T7c-3 (raises, Fire Shield, the Liches' cloud, Chain Lightning; #PRNUM
+  open).** Not split, the rays' draws logged by the harness (the user); `raise`, `creatures`,
+  `bolt` recorded, seeds searched; FRAMESHORT; CLT-Q17.
+- **2026-10-22, E17 M3 T7c-2 (spell objects, Armageddon; #384, merged).** Not split (the user);
   `obstacles` recorded (seed searched for the pits), all frames as the original's; CLT-Q16.
-- **2026-10-22, E17 M3 T7c-1 (area and mass spells; #378, merged).** T7c split in three; `mass`,
-  `dragon` recorded, frames as the original's; checkpoint (the user).
-- **2026-10-22, E17 M3 T7b-2b-3 (strike effects; #376, merged).** Four sequences, seeds searched;
-  the catalogue reads `Heroes3.exe`'s text (`EXE:`).
+- **2026-10-22, E17 M3 T7c-1 (#378, merged).** T7c split in three; `mass`, `dragon` recorded.
+

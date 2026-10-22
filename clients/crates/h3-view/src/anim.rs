@@ -2214,10 +2214,16 @@ impl Player<'_> {
                         if flags.lucky {
                             self.luck(attacker);
                         }
+                        // A shooter whose projectile explodes shoots at an area, whatever it
+                        // struck (the Magogs, the Liches: 0x43FA0C, 0x43FCFF; E17 M3 T7c-3).
+                        let area = hits.len() > 1
+                            || self
+                                .live(attacker)
+                                .is_some_and(|l| l.look.explosion.is_some());
                         let start = self.shot(attacker, &hit);
                         // One target's line after its reactions (0x43FDB4), an area shot's of
                         // every hit as they start (0x43FCE0, 0x4400DC).
-                        let (spread, at) = if hits.len() > 1 {
+                        let (spread, at) = if area {
                             (Spread::Around, start)
                         } else {
                             (Spread::Target, self.clock.now)
