@@ -147,6 +147,12 @@ quirks   = ["ADV-QUIRK-9", "ADV-QUIRK-12", "ADV-QUIRK-14"]
   retrieved  = "2026-10-21"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-5c.md, E08-batch-5d.md and their runs 2 (-run2.md), each with e4_score's report beside it (stamps 3c1dc0a9, 1255306f, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-22; the seed bytes read from the game's memory): twelve Logistics specialists with a custom experience started with the levels the original's choice gives (E5-2; run 2's E5-2c with attack +2 from a starting bonus's Centaur's Axe)"
+  retrieved  = "2026-10-22"
+  confidence = "high"
+
 [[rule]]
 id       = "GAM-TRN-001"
 title    = "Players act one at a time in colour order"
