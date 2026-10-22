@@ -58,7 +58,7 @@ epic   = "E23"
 [[stub]]
 id     = "BAT-STUB-14"
 where  = "crates/h3-battle-ai/src/hero.rs::value"
-reason = "The computer's hero values Resurrection and Animate Dead (0x43ACA0), Sacrifice (0x43B1E0), Earthquake (0x43B8F0) and Teleport (0x43AA60) by cases of their own (installation.md §7.55): E23 T5b (the user, 2026-10-22: T5 in two parts). Until then they are worth nothing and never cast; with the enemy beaten and no own creature at risk the hero casts nothing (BAT-AI-017)"
+reason = "The computer's hero values Teleport by a case of its own (0x43AA60, installation.md §7.55: the walker's real turn twice per stack it could move, the second on the destination map 0x4B2FF0): E23 T5b2 (the user, 2026-10-22: T5b in two parts, the raises, Sacrifice and Earthquake built in T5b1, BAT-AI-019). Until then Teleport is worth nothing and never cast"
 epic   = "E23"
 
 # --- adventure (ADV-STUB-<n>) ---

@@ -1131,3 +1131,53 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   with the other side's sum alone. Built as **slip 27** under BAT-QUIRK-25 (faithful: the other
   side's sum; strict-fixed: both; `dispel_by_its_mastery` in both profiles, the side's own Bless
   counting against it); §7.56 and the survey record it.
+
+## T5b1 — the hero's raises, Sacrifice and Earthquake (2026-10-22)
+
+- **The user** (T5b's checkpoint, 2026-10-22): T5b in two parts, the agent's proposed cut: T5b1 the
+  raises, Sacrifice and Earthquake (evaluators on the context's and the battle's existing pieces),
+  T5b2 Teleport (the destination map, the walker's turn with its value, its cost against the 5 ms).
+- **Re-read** (`docs/formats/installation.md` §7.57): the candidate's setup in 0x43C800 (value 0,
+  "now" 0, hexes −1; each case writes "now" with a strictly larger value only), 0x43ACA0 (the
+  target test at either hex, `n`, `l`, the three-quarter rule, Resurrection below Advanced, the
+  worth with the record's shot flag and no desperate worth, the doubling, "now"), 0x43B1E0 and
+  0x43AF50 (the victims' test, the creature table's hit points, the worth less the victim's
+  strength), 0x43B8F0 (the eight targets from 0x7FFF, the defenders inside, the Tent and the Cart
+  left out, the walkers while no target is down, the shooters' share through the walls).
+- **Two slips found** (the survey's "a slip found later joins the flag", BAT-Q55): **slip 28**,
+  Sacrifice values the target's worth with the victim's shot flag (0x43B06F: `ecx` still holds
+  the victim's record); **slip 29**, Earthquake asks 0x467510 from the shooter's position, the
+  rule's halving (0x443C79) from the hex it turns to: a two-hex shooter's (the Medusas, the
+  Ballista) may differ. Both built under BAT-QUIRK-25 (faithful as read; strict-fixed the target's
+  own flag, the rule's hex).
+- **Built:** `hero/specials.rs`: `raise`, `sacrifice`, `earthquake` (BAT-AI-019); `hero.rs`'s
+  `Valued` carries the second target (Sacrifice's victim) into the cast, Teleport stays 0
+  (BAT-STUB-14 narrowed to it). `spells.rs`: the context's own able strength, `raises_double`,
+  `threat_enemy`. `h3-battle`: `siege::walls_between` (the line test past the shooter's own tests,
+  `wall_penalty` now calls it), `computer::walls_halve_from_position` and `computer::walls_halve`.
+  The policy takes the engine's targets for the raises (living or the corpse on top) and
+  Sacrifice's victims (`second_targets`). `POLICY_VERSION` 13 (the AI lane's inbox).
+- **Tests:** `h3-battle-ai`'s `tests/specials.rs` (the test ruleset gained a raise that lasts the
+  battle below Advanced, Sacrifice tested as it, Earthquake): a raise of 2 bolted gogs by hand, not
+  due while the gogs can act, cast at their turn; more than the lost only from three quarters or
+  with the enemy beaten (then the 6 lost archers, due now); the battle-long raise worth nothing
+  then, at Advanced as the other; Sacrifice's imps by hand in both profiles (the slip's value the
+  smaller), the hydra's never above its strength, the cast accepted; Earthquake's walled-out gogs
+  and the archers' share in both profiles, nothing for the defender, with the enemy beaten, at a
+  fortless town or in the field, and the walkers' nothing once an Expert quake brought a target
+  down. `h3-battle`'s `the_computer_s_wall_test_asks_from_a_shooter_s_position` (a Medusa's rear
+  outside and front on a destroyed wall: halved from its position only).
+- **The cost:** release, T5a's shape (not committed): heroes with every combat spell and 500 mana
+  on both sides, 12 battles of 7 random harvested stacks a side, half at a walled town, each
+  decision's best of five: 609 decisions, mean 0.36 ms, **the slowest 2.5 ms** (an attack after
+  the hero weighed its spells; within the hero's 5 ms); the hero cast a raise 9 times, Sacrifice 4
+  and Earthquake 3. `master` on the same harness: 662 decisions, mean 0.37 ms, the slowest 2.2 ms
+  (the battles diverge once the new casts happen). `computer-decisions` (no heroes) unchanged in
+  its choices.
+- **The blind check** (a fresh agent with the tool, the port and the addresses, no reading in the
+  brief): the candidate's setup, 0x43ACA0, 0x43B1E0 with 0x43AF50 and 0x43B8F0 agree with the
+  port; it confirmed both slips at their sites (0x43B06F, 0x43BAB4). Its notes, none a
+  difference: the port leaves out the battle-long raise up front where the original tests it per
+  stack after `k`, tests the defenders inside before `W`, and names the turrets, the Tent and the
+  Cart by trait where the original names creatures 149, 147 and 148 (the same in the packs); its
+  `checked_div` and saturating conversions guard cases the original never reaches.
