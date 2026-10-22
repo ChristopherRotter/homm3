@@ -4284,3 +4284,50 @@ battle lane's ledger in the same pull request (`cross-lane`, the user's consent)
   -- --with-original-data` on engine code 2391924a (commit 7d98ced, 2026-10-22, the sandbox,
   Linux x86_64): all 16 steps passed; `original-data`: 9 heroes levelled at load with 41
   level-ups (unchanged). `check-lane` names only `docs/rules/quirks-ledger.md` (the label).
+
+### Increment 5, round 3: T40, the day's points, the radius and the walking price; round 3 closed (2026-10-22, `adventure/e08-t40`)
+
+Decision 87: T40 whole (the price and the day in one session and one pull request).
+
+- **Ruleset part v10** (`h3-adventure`'s `ruleset.rs`, `h3-pack-adventure`): `[params]`' `fly_cost`
+  and `water_walk_cost` (four prices by level each, required; the base pack's 140, 140, 120, 100
+  from `fly_walk_step_cost` 0x6778AC; read by T41), `AdventureParams::fly_cost`,
+  `water_walk_cost`; `[[terrain_walker]]` (`TerrainWalkerDef`/`TerrainWalker`: a creature, a
+  terrain and the terrain it counts as; both land, one walker per terrain,
+  `AdventureCompileError::TerrainWalker`), the `ab` pack's Nomads (sand as dirt); a ground's
+  `no_native` (`ObjectKind::Ground`), on both Cursed Grounds. `ADVENTURE_RULESET_HASH_VERSION`
+  10. The misplaced doc line of `pathfinding_fits` moved to `core_terrain`.
+- **The walking price** (`movement.rs`): `Pricing::new(core, part, army, &Movement)` precomputes
+  per terrain the walking price at the hero's Pathfinding level of the terrain a walker in the
+  army makes it count as, and whether that terrain is the army's native one; `base` gives the
+  native cost only off a `no_native` tile; `left_after` prices a `no_native` tile's terrain (the
+  original's `cheapest_step_from` 0x4B1880, re-read: it hands its own arguments on as
+  `step_cost`'s Pathfinding level and Nomads flag, the tile's terrain as native; its caller not
+  read); `cheapest` over the hero's prices. The static
+  map's `StaticTile::no_native` from the last ground in map order lying on each tile (as
+  `battle_ground`), left out of the hash. `MoveHero` and `reach` take the hero's `Movement` from
+  the store (`details_of`; an empty store: no skills, this crate's tests).
+- **The day** (`state.rs`, `h3-game`'s `state.rs`): `AdventureState::new` places the heroes
+  without points or reveals; `start_game(core, part, heroes)` gives the day's points
+  (`day_points(core, part, details, army)`: `land_table_points` at the lowest
+  `h3_heroes::movement_speed`, then `h3_heroes::land_points`) and reveals with
+  `h3_heroes::scouting_radius`; `start_turn` takes the store; `start_day` reveals around every
+  hero under `strict-fixed` (`ADV-QUIRK-18` off). `GameState::new` calls `start_game` after the
+  levels at load, then `start_day` for day 1; `advance_day` calls `start_day` after the calendar.
+  A move reveals with the hero's radius. `reveal_at_start` (and its stale doc) is gone.
+- **Tests:** `movement/tests.rs` (the details' points, radius and levels; Pathfinding's prices and
+  ADV-QUIRK-3's check at a level; a terrain walker in every price, the native test and the check;
+  Cursed Ground in the price, the diagonal and the drop), `state/tests/day.rs` (the start of the
+  game from the store, a gain in the day under both profiles, a move's and the reach's price by
+  Pathfinding, the grounds' bit and a move over it), `ruleset/tests.rs` (walkers, prices, the
+  hash), `h3-pack-adventure` (the syntax, both packs' grounds), `h3-game`'s `tests/day.rs` (a
+  creature and Logistics specialist with the boots: 2257 at level 1; the points after the levels at
+  load). `testing::started` builds a state as the game does; `hero_rules` adds the skills and a
+  walker.
+- **Replays:** every game's commands changed (the duel's heroes' points and prices): the nine
+  re-recorded with their options (the master binary reproduces the committed ones byte for byte
+  with the same script); what each meets is re-checked by T42 (the queue's inbox).
+- **Docs:** the catalog (ADV-MOV-001 to -004, -006, ADV-FOG-001, -003; -004 and ADV-FOG-001
+  verified by E5-6 and E5-10), `ADV-QUIRK-18`'s ledger entry, `e4_score`'s `land_table` on
+  `land_table_points`, `levels.rs`' citations repointed to increment 4's note in this log, the
+  design note (§5 and §6's built points reduced), the epic, the queue (T41's entry), the HANDOFF.

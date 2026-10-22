@@ -407,7 +407,8 @@ fn walker(creature: &str, terrain: &str, counts_as: &str) -> TerrainWalkerDef {
     }
 }
 
-// covers: ADV-MOV-003, ADV-MOV-009, ADV-MOV-010
+// The fly and water-walk prices: data for flying's and water walking's rules (E08 T41).
+// covers: ADV-MOV-003
 #[test]
 fn compiles_terrain_walkers_and_the_fly_and_water_walk_prices() {
     let core = core();
