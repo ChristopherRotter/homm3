@@ -72,10 +72,12 @@ impl StaticTile {
 mod flags;
 mod monsters;
 mod occupancy;
+mod passage;
 mod piles;
 
 use flags::Flags;
 pub(crate) use occupancy::Occupancy;
+pub(crate) use passage::{Mode, Node};
 
 /// An object of the static map: its position, footprint, type and contents (ADR-0016 point 4).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -761,7 +763,7 @@ pub(crate) struct StepVisit<'p> {
 /// hero, by index among the heroes on the map, visited from the tile before (GAM-BAT-004, E08
 /// T19a).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Meets<'p> {
+pub(crate) enum Meets<'p> {
     Object(StepVisit<'p>),
     Hero(usize),
 }
@@ -1056,7 +1058,17 @@ impl AdventureState {
     /// the hero's own tile may be guarded: it leaves it. A step that does not enter (toward a
     /// neighbour-visited object or a hero) tests no guard, even from a guarded tile: the original
     /// tests the hero's tile only after a step that changed it (E08 T20b3a).
-    // rule: ADV-MOV-006, ADV-MOV-007, ADV-FOG-003, ADV-OBJ-003, ADV-MON-006
+    ///
+    /// A flying or water-walking hero (E08 T41; ADV-MOV-009, ADV-MOV-010) moves by
+    /// [`Self::passage`]'s table, each step from the node the step before left it on (the start a
+    /// stop node): a step before the last passes over what the hero may pass, else stops (a free
+    /// tile, then the next step goes on from there); the last step stops, visits or is rejected
+    /// as [`AdventureCommandError::NoStop`]. A flying hero passes guarded tiles and objects on the
+    /// way: only its last step's tile is tested for a guard and only its object visited (the
+    /// original's move, 0x48147D to 0x4814E1). Each step, a pass included, reveals and emits its
+    /// event.
+    // rule: ADV-MOV-006, ADV-MOV-007, ADV-MOV-009, ADV-MOV-010, ADV-FOG-003, ADV-OBJ-003,
+    // rule: ADV-MON-006
     fn move_hero<S: Sink>(
         &mut self,
         core: &Ruleset,
@@ -1077,25 +1089,43 @@ impl AdventureState {
         }
         let hero = &self.heroes[index];
         let details = details_of(heroes, id);
-        let pricing = Pricing::new(core, part, &hero.army, &hero_movement(core, details));
+        let movement = hero_movement(core, details);
+        let mode = Mode::of(&movement);
+        let pricing = Pricing::new(core, part, &hero.army, &movement);
         let start = hero.pos;
-        let (mut at, mut from, mut points) = (start, self.map.at(start), hero.movement);
-        let (mut visit, mut guard) = (None, None);
+        let (mut at, mut from, mut points) =
+            (start, self.live(start, self.map.at(start)), hero.movement);
+        let (mut node, mut visit, mut guard) = (Node::Stop, None, None);
         for (step, &next) in path.iter().enumerate() {
             if visit.is_some() || guard.is_some() {
                 return Err(AdventureCommandError::PastVisit { step });
             }
             let direction =
                 direction(at, next).ok_or(AdventureCommandError::NotNeighbour { step })?;
-            let (to, met) = self.check_step(part, player, id, (at, next), direction, step)?;
+            let last = step + 1 == path.len();
+            let (to, met, kind) = if mode == Mode::Walk {
+                let (to, met) = self.check_step(part, player, id, (at, next), direction, step)?;
+                (to, met, Node::Stop)
+            } else {
+                let entry =
+                    self.passage(part, (player, id, mode), (at, node), next, direction, step)?;
+                match entry.stop {
+                    Some(met) if last || !entry.pass => (entry.tile, met, Node::Stop),
+                    _ if !last => (entry.tile, None, Node::Pass),
+                    _ => return Err(AdventureCommandError::NoStop { step }),
+                }
+            };
             let cost = pricing.step(&from, &to, direction % 2 == 1, points);
             let left = points
                 .checked_sub(cost)
                 .ok_or(AdventureCommandError::TooFewPoints { step, cost, points })?;
             points = pricing.left_after(&to, left);
             if met.is_none_or(Meets::enters) {
-                (at, from) = (next, to);
-                guard = self.guard_at(part, next);
+                (at, from, node) = (next, to, kind);
+                // A flying hero meets a guard only where its move ends (0x48147D).
+                if mode != Mode::Fly || last {
+                    guard = self.guard_at(part, next);
+                }
             }
             visit = met;
         }

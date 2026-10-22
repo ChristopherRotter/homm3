@@ -332,7 +332,10 @@ fn depth(view: &TileView) -> u8 {
 /// the level it is told it gained closes it (E08 T30); a reveal it is told explores at least that many
 /// more tiles; its keys change only by the keys it is told it gained (T15a); its heroes' details
 /// only by the changes it is told, each of a hero it saw as its own (T19a2a). Its planes change
-/// only by its own command (`own`).
+/// only by its own command (`own`), and its explored tiles grow at a new day's start too (E08
+/// T40: in `strict-fixed`, `ADV-QUIRK-18` off, each hero reveals around it to its owner then, so
+/// another player's last end of turn of the day can widen a radius grown since the hero's last
+/// step).
 /// An open decision as [`check_told`] follows it: an offer by its hero and object, or a level-up.
 #[derive(Debug, PartialEq)]
 enum Open {
@@ -675,9 +678,20 @@ fn check_told(
             _ => {}
         }
     }
-    if !own {
+    if !own && after.day == before.day {
         prop_assert_eq!(&before.adventure.explored, &after.adventure.explored);
         prop_assert_eq!(&before.adventure.fringe, &after.adventure.fringe);
+    } else if !own {
+        // A new day's reveal (E08 T40): the explored tiles only grow, the fringe follows them.
+        let kept = |(was, is): (&u64, &u64)| was & !is == 0;
+        prop_assert!(
+            before
+                .adventure
+                .explored
+                .iter()
+                .zip(&after.adventure.explored)
+                .all(kept)
+        );
     }
     Ok(())
 }

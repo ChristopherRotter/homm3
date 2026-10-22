@@ -298,7 +298,7 @@ fn faction_creature(k: &str, speed: u8, faction: Option<&str>) -> CreatureDef {
 }
 
 /// The rules the movement tests use, under the profile `t:faithful` (the adventure quirks
-/// ADV-QUIRK-1 to -4 and -18 on) or `t:strict` (all off): the terrains grass (100), sand (150; 125, 100,
+/// ADV-QUIRK-1 to -4, -17 and -18 on) or `t:strict` (all off): the terrains grass (100), sand (150; 125, 100,
 /// 100 by Pathfinding level), swamp (175; 150, 125, 100), sea (water) and rock; a dirt road (75) and a cobblestone road (50); the native cost
 /// 100; the creatures above (speeds 4, 4, 3, 6); the land table 1000, 1100, 1200, 1300, 1500 for
 /// speeds 0 to 4; maps up to 16 × 16 on two levels, two players, armies of seven slots; the
@@ -341,7 +341,9 @@ pub(crate) fn hero_rules(faithful: bool) -> (Ruleset, AdventureRuleset) {
 
 /// The skills of [`hero_rules`], in handle order: Logistics (+10 %, 20 %, 30 % of the land
 /// table's entry), Pathfinding (levels 1 to 3) and Scouting (radius +1 to +3), as the original's
-/// (E08 T40).
+/// (E08 T40); flying and water walking at levels 1 to 3 (E08 T41: invented skills, as the
+/// original's levels come from Angel Wings, Boots of Levitation and the spells, whose levels the
+/// fly and water-walk prices are by: 140, 120, 100 at levels 1 to 3).
 pub(crate) fn hero_skills() -> Vec<SecondarySkillDef> {
     let skill = |k: &str, effect: fn(u8) -> HeroEffectDef| SecondarySkillDef {
         key: key(k),
@@ -358,6 +360,10 @@ pub(crate) fn hero_skills() -> Vec<SecondarySkillDef> {
         skill("t:scouting", |tiles| HeroEffectDef::ScoutingRadius {
             tiles,
         }),
+        skill("t:flying", |level| HeroEffectDef::Flying { level }),
+        skill("t:water_walking", |level| HeroEffectDef::WaterWalking {
+            level,
+        }),
     ]
 }
 
@@ -365,6 +371,8 @@ pub(crate) fn hero_skills() -> Vec<SecondarySkillDef> {
 pub(crate) const LOGISTICS: SkillId = SkillId::from_raw(0);
 pub(crate) const PATHFINDING: SkillId = SkillId::from_raw(1);
 pub(crate) const SCOUTING: SkillId = SkillId::from_raw(2);
+pub(crate) const FLYING: SkillId = SkillId::from_raw(3);
+pub(crate) const WATER_WALKING: SkillId = SkillId::from_raw(4);
 
 /// A hero's details with these secondary skills and nothing else (a hero type the core lacks:
 /// no specialty), for the derivations of [`hero_rules`] (E08 T40).
@@ -395,6 +403,7 @@ fn movement_rules_with(
         "quirk.adventure.diagonal_check_ignores_native",
         "quirk.adventure.native_skips_leading_neutrals",
         "quirk.adventure.fringe_shows_objects",
+        "quirk.adventure.drop_ignores_artifacts",
         "quirk.adventure.radius_waits_for_a_step",
     ];
     let core = ContentPack {

@@ -8,8 +8,9 @@ use h3_contracts::ArmyStack;
 use super::*;
 use crate::ruleset::RoadId;
 use crate::testing::{
-    COBBLE_ROAD, DIRT_ROAD, GNOLL, GRASS, LOGISTICS, PATHFINDING, PEASANT, PIKEMAN, ROCK, SAND,
-    SCOUTING, SEA, SWAMP, WOLF, army, hero_details, hero_rules, movement_rules, rules,
+    COBBLE_ROAD, DIRT_ROAD, FLYING, GNOLL, GRASS, LOGISTICS, PATHFINDING, PEASANT, PIKEMAN, ROCK,
+    SAND, SCOUTING, SEA, SWAMP, WATER_WALKING, WOLF, army, hero_details, hero_rules,
+    movement_rules, rules,
 };
 
 const IMP: CreatureTypeId = CreatureTypeId::from_raw(0);
@@ -86,6 +87,40 @@ fn cursed(terrain: TerrainId, road: Option<RoadId>) -> StaticTile {
         no_native: true,
         ..tile(terrain, road)
     }
+}
+
+/// [`tile`] blocked by an object, which no object is visited from (an obstacle).
+fn obstacle(terrain: TerrainId, road: Option<RoadId>) -> StaticTile {
+    StaticTile {
+        blocked: true,
+        ..tile(terrain, road)
+    }
+}
+
+/// [`tile`] as an object's visitable tile, blocked too (a pile's).
+fn entrance(terrain: TerrainId) -> StaticTile {
+    StaticTile {
+        blocked: true,
+        visitable: true,
+        ..tile(terrain, None)
+    }
+}
+
+/// The pricing of the steps of a hero with `army`, no Pathfinding and these flying and
+/// water-walking levels (E08 T41).
+fn lifted<'a>(
+    core: &Ruleset,
+    part: &'a AdventureRuleset,
+    army: &[ArmyStack],
+    flying: Option<u8>,
+    water_walking: Option<u8>,
+) -> Pricing<'a> {
+    let movement = Movement {
+        flying,
+        water_walking,
+        ..Movement::default()
+    };
+    Pricing::new(core, part, army, &movement)
 }
 
 /// The pricing of a walker's steps with `army` and no Pathfinding.
@@ -459,4 +494,179 @@ fn cursed_ground_takes_the_native_price_away() {
             0
         );
     }
+}
+
+// covers: ADV-MOV-009
+#[test]
+fn a_flight_costs_the_lesser_from_free_land_and_the_fly_price_elsewhere() {
+    // E08 T41 (0x4B1740 point 5 as corrected at ADV-Q22, in every profile; batch E5's E5-4: an
+    // Angel Wings hero's inland road steps cost 50, from grass and from swamp 100): from a land
+    // tile no object blocks, an object's visitable tile included, the lesser of the fly price at
+    // the hero's level (140, 140, 120, 100) and the walking price; from a blocked tile or water
+    // the fly price, a road under an obstacle included.
+    for faithful in [false, true] {
+        let (core, part) = movement_rules(faithful);
+        let peasants = army(&[PEASANT]);
+        let (grass, swamp, sea) = (tile(GRASS, None), tile(SWAMP, None), tile(SEA, None));
+        let road = tile(GRASS, Some(COBBLE_ROAD));
+        for (level, fly) in [(0, 140), (1, 140), (2, 120), (3, 100)] {
+            let flyer = lifted(&core, &part, &peasants, Some(level), None);
+            assert_eq!(flyer.step(&grass, &grass, false, 1500), 100);
+            assert_eq!(flyer.step(&swamp, &grass, false, 1500), fly);
+            assert_eq!(flyer.step(&road, &road, false, 1500), 50);
+            assert_eq!(flyer.step(&entrance(SWAMP), &grass, false, 1500), fly);
+            assert_eq!(flyer.step(&obstacle(GRASS, None), &grass, false, 1500), fly);
+            let under = obstacle(GRASS, Some(COBBLE_ROAD));
+            assert_eq!(flyer.step(&under, &road, false, 1500), fly);
+            assert_eq!(flyer.step(&sea, &grass, false, 1500), fly);
+            assert_eq!(flyer.step(&sea, &sea, true, 1500), diagonal_cost(fly));
+            assert_eq!(flyer.cheapest(), 50);
+            // The native cost and Cursed Ground before the lesser: gnolls' swamp 100.
+            let gnolls = lifted(&core, &part, &army(&[GNOLL]), Some(level), None);
+            assert_eq!(gnolls.step(&swamp, &grass, false, 1500), 100);
+            assert_eq!(gnolls.step(&cursed(SWAMP, None), &grass, false, 1500), fly);
+        }
+    }
+}
+
+// covers: ADV-MOV-010
+#[test]
+fn a_water_walk_costs_the_water_walk_price_from_water() {
+    // E08 T41 (0x4B1740 point 4; batch E5's E5-5 with Boots of Levitation: across a lake 450,
+    // the sand's 150 onto the water and 100 a step after; back 491 with a diagonal): from water
+    // the water-walk price at the hero's level (140, 140, 120, 100), from land the walking price.
+    let (core, part) = movement_rules(true);
+    let peasants = army(&[PEASANT]);
+    let (sand, sea) = (tile(SAND, None), tile(SEA, None));
+    let boots = lifted(&core, &part, &peasants, None, Some(3));
+    let across = [sand, sea, sea, sea, sand];
+    let price = |path: &[StaticTile], last_diagonal: bool| -> u32 {
+        path.windows(2)
+            .enumerate()
+            .map(|(i, w)| boots.step(&w[0], &w[1], last_diagonal && i == 3, 2000))
+            .sum()
+    };
+    assert_eq!(price(&across, false), 450);
+    assert_eq!(price(&across, true), 491);
+    for (level, water_walk) in [(0, 140), (1, 140), (2, 120), (3, 100)] {
+        let walker = lifted(&core, &part, &peasants, None, Some(level));
+        assert_eq!(walker.step(&sea, &sand, false, 1500), water_walk);
+        assert_eq!(walker.step(&sand, &sea, false, 1500), 150);
+        assert_eq!(walker.cheapest(), 50);
+        // A hero that also flies pays the fly price from water.
+        let both = lifted(&core, &part, &peasants, Some(2), Some(level));
+        assert_eq!(both.step(&sea, &sea, false, 1500), 120);
+    }
+}
+
+// covers: ADV-MOV-006, ADV-MOV-009, ADV-MOV-010
+#[test]
+fn the_diagonal_exceptions_check_is_the_walking_one_under_the_quirks() {
+    // E08 T41 (0x4B1740 point 6): under ADV-QUIRK-2 and -3 the check C is the source terrain's
+    // walking price (water's 100), never the fly or water-walk price; clean, the step's own
+    // straight price, whatever priced it. A flight at level 1 from swamp: straight 140, diagonal
+    // 197; C is swamp's 175 in the original, the 140 clean.
+    let swamp = tile(SWAMP, None);
+    let (core, part) = movement_rules(false);
+    let strict = lifted(&core, &part, &army(&[PEASANT]), Some(1), None);
+    let (core, part) = movement_rules(true);
+    let faithful = lifted(&core, &part, &army(&[PEASANT]), Some(1), None);
+    for (points, clean, original) in [
+        (139, 197, 197),
+        (140, 140, 197),
+        (174, 140, 197),
+        (175, 140, 140),
+        (197, 140, 140),
+        (198, 197, 140),
+        (247, 197, 140),
+        (248, 197, 197),
+    ] {
+        assert_eq!(strict.step(&swamp, &swamp, true, points), clean, "{points}");
+        assert_eq!(
+            faithful.step(&swamp, &swamp, true, points),
+            original,
+            "{points}"
+        );
+    }
+    // At level 3, from swamp with 175 to 247 points: 100 in the original, 141 clean.
+    let (core, part) = movement_rules(false);
+    let strict = lifted(&core, &part, &army(&[PEASANT]), Some(3), None);
+    let (core, part) = movement_rules(true);
+    let faithful = lifted(&core, &part, &army(&[PEASANT]), Some(3), None);
+    assert_eq!(strict.step(&swamp, &swamp, true, 200), 141);
+    assert_eq!(faithful.step(&swamp, &swamp, true, 200), 100);
+    // A water walk at level 2 from water: straight 120, diagonal 169; C 100 in the original
+    // (water's walking price), 120 clean.
+    let sea = tile(SEA, None);
+    let (core, part) = movement_rules(false);
+    let strict = lifted(&core, &part, &army(&[PEASANT]), None, Some(2));
+    let (core, part) = movement_rules(true);
+    let faithful = lifted(&core, &part, &army(&[PEASANT]), None, Some(2));
+    for (points, clean, original) in [(110, 169, 120), (120, 120, 120), (150, 120, 169)] {
+        assert_eq!(strict.step(&sea, &sea, true, points), clean, "{points}");
+        assert_eq!(
+            faithful.step(&sea, &sea, true, points),
+            original,
+            "{points}"
+        );
+    }
+}
+
+// covers: ADV-MOV-006, ADV-MOV-009, ADV-MOV-010
+#[test]
+fn the_drop_forgets_flying_and_water_walking_under_adv_quirk_17() {
+    // E08 T41, A-12 (`cheapest_step_from` 0x4B1880 reads the hero's spell levels, not the
+    // artifacts'): clean, the cheapest step from the new tile is priced with the hero's flying
+    // and water walking as a step from it; in the original it is the walking one. On Cursed
+    // Ground's swamp an Expert flyer's next step costs 100, so clean it keeps 100 to 174 points
+    // the original drops.
+    let (core, part) = movement_rules(false);
+    let strict = lifted(&core, &part, &army(&[PEASANT]), Some(3), Some(2));
+    let (core, part) = movement_rules(true);
+    let faithful = lifted(&core, &part, &army(&[PEASANT]), Some(3), Some(2));
+    let swamp = cursed(SWAMP, None);
+    assert_eq!(strict.left_after(&swamp, 99), 0);
+    assert_eq!(strict.left_after(&swamp, 100), 100);
+    assert_eq!(faithful.left_after(&swamp, 174), 0);
+    assert_eq!(faithful.left_after(&swamp, 175), 175);
+    // The step itself costs the fly price in both.
+    let grass = tile(GRASS, None);
+    assert_eq!(strict.step(&swamp, &grass, false, 1500), 100);
+    assert_eq!(faithful.step(&swamp, &grass, false, 1500), 100);
+    // Over water and an obstacle: the fly price clean (a level 1 flight: 140), the native 100 in
+    // the original; a road's cost under the lesser.
+    let (core, part) = movement_rules(false);
+    let strict = lifted(&core, &part, &army(&[PEASANT]), Some(1), None);
+    let (core, part) = movement_rules(true);
+    let faithful = lifted(&core, &part, &army(&[PEASANT]), Some(1), None);
+    for over in [tile(SEA, None), obstacle(GRASS, None)] {
+        assert_eq!(strict.left_after(&over, 139), 0);
+        assert_eq!(strict.left_after(&over, 140), 140);
+        assert_eq!(faithful.left_after(&over, 100), 100);
+    }
+    assert_eq!(strict.left_after(&tile(GRASS, Some(COBBLE_ROAD)), 50), 50);
+    // A water walk at level 2 on water: 120 clean, 100 in the original.
+    let (core, part) = movement_rules(false);
+    let strict = lifted(&core, &part, &army(&[PEASANT]), None, Some(2));
+    assert_eq!(strict.left_after(&tile(SEA, None), 119), 0);
+    assert_eq!(strict.left_after(&tile(GRASS, None), 100), 100);
+}
+
+// covers: ADV-MOV-009, ADV-MOV-010
+#[test]
+fn the_heros_flying_and_water_walking_levels_come_from_its_details() {
+    // HER-ADV-005 through `hero_movement` (the test rules' invented skills): the levels price the
+    // steps as above.
+    let (core, part) = hero_rules(true);
+    let hero = hero_details(&[(FLYING, 2), (WATER_WALKING, 1)]);
+    let movement = hero_movement(&core, Some(&hero));
+    assert_eq!(
+        (movement.flying, movement.water_walking),
+        (Some(2), Some(1))
+    );
+    let pricing = Pricing::new(&core, &part, &army(&[PEASANT]), &movement);
+    assert_eq!(
+        pricing.step(&tile(SWAMP, None), &tile(GRASS, None), false, 1500),
+        120
+    );
 }

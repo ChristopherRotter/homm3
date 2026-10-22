@@ -850,5 +850,6 @@ fn the_hash_sees_content_not_sharing() {
 
 mod answers;
 mod day;
+mod flight;
 mod monsters;
 mod piles;

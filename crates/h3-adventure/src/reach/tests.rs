@@ -17,7 +17,10 @@ use proptest::prelude::{any, prop_assert, prop_assert_eq, proptest};
 use super::*;
 use crate::command::{AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind};
 use crate::movement::DIRECTIONS;
-use crate::testing::{GNOLL, PEASANT, PIKEMAN, WOLF, hero_at, movement_rules, world, world_state};
+use crate::testing::{
+    FLYING, GNOLL, PEASANT, PIKEMAN, WATER_WALKING, WOLF, hero_at, hero_details, hero_rules,
+    movement_rules, world, world_state,
+};
 
 const RED: PlayerId = PlayerId::new(0);
 
@@ -26,8 +29,18 @@ fn p(x: u16, y: u16) -> Pos {
 }
 
 fn reach(state: &AdventureState, rules: &(Ruleset, AdventureRuleset), hero: u16) -> Reach {
+    reach_of(state, rules, &[], hero)
+}
+
+/// [`reach`] with the game's store of heroes' details (E08 T41: a flyer's, a water walker's).
+fn reach_of(
+    state: &AdventureState,
+    rules: &(Ruleset, AdventureRuleset),
+    store: &[Arc<HeroDetails>],
+    hero: u16,
+) -> Reach {
     state
-        .reach(&rules.0, &rules.1, &[], HeroId::new(hero))
+        .reach(&rules.0, &rules.1, store, HeroId::new(hero))
         .unwrap()
 }
 
@@ -38,12 +51,23 @@ fn walk(
     hero: u16,
     path: Vec<Pos>,
 ) -> Result<Vec<AdventureEvent>, AdventureCommandError> {
+    walk_of(state, rules, &[], hero, path)
+}
+
+/// [`walk`] with the game's store of heroes' details.
+fn walk_of(
+    state: &mut AdventureState,
+    rules: &(Ruleset, AdventureRuleset),
+    store: &[Arc<HeroDetails>],
+    hero: u16,
+    path: Vec<Pos>,
+) -> Result<Vec<AdventureEvent>, AdventureCommandError> {
     let mut events = Vec::new();
     let command = AdventureCommand::MoveHero {
         hero: HeroId::new(hero),
         path,
     };
-    let result = state.apply(&rules.0, &rules.1, &[], RED, &command, &mut events);
+    let result = state.apply(&rules.0, &rules.1, store, RED, &command, &mut events);
     assert!(
         result.is_ok() || events.is_empty(),
         "a rejected move emitted events"
@@ -263,6 +287,8 @@ proptest! {
     /// visit; the tile of an accepted one-step move is reported with at least the points it
     /// leaves; a rejected move changes nothing; the query is deterministic. The hero's owner
     /// holds the gates' key from the start in half the cases, and takes it at a tent in others.
+    /// E08 T41: the hero walks, flies or water-walks (its details' levels 1 to 3; a flyer
+    /// sometimes water-walks too), over the two kinds of node.
     #[test]
     fn the_query_and_move_hero_agree(
         cells in proptest::collection::vec(0usize..TILES.len(), 64),
@@ -274,8 +300,16 @@ proptest! {
         faithful in any::<bool>(),
         picks in proptest::collection::vec(0usize..1000, 0..4),
         key in any::<bool>(),
+        (mode, level, both) in (0usize..3, 1u8..=3, any::<bool>()),
     ) {
-        let rules = movement_rules(faithful);
+        let rules = hero_rules(faithful);
+        let skills: Vec<_> = match mode {
+            1 if both => vec![(FLYING, level), (WATER_WALKING, 4 - level)],
+            1 => vec![(FLYING, level)],
+            2 => vec![(WATER_WALKING, level)],
+            _ => vec![],
+        };
+        let store = [Arc::new(hero_details(&[])), Arc::new(hero_details(&skills))];
         let (hx, hy) = (start.0 % width, start.1 % height);
         let mut grid: Vec<Vec<char>> = (0..height)
             .map(|y| (0..width).map(|x| TILES[cells[y * 8 + x]]).collect())
@@ -302,13 +336,13 @@ proptest! {
             state.give_key(RED, 0);
         }
         for round in 0..=picks.len() {
-            let reach = reach(&state, &rules, 1);
-            prop_assert_eq!(&reach, &state.reach(&rules.0, &rules.1, &[], HeroId::new(1)).unwrap());
+            let reach = reach_of(&state, &rules, &store, 1);
+            prop_assert_eq!(&reach, &state.reach(&rules.0, &rules.1, &store, HeroId::new(1)).unwrap());
             let origin = state.hero(HeroId::new(1)).unwrap().pos;
             for (pos, left) in reach.tiles() {
                 let path = reach.path(pos).unwrap();
                 let mut moved = state.clone();
-                let events = walk(&mut moved, &rules, 1, path.clone()).unwrap();
+                let events = walk_of(&mut moved, &rules, &store, 1, path.clone()).unwrap();
                 let steps = events
                     .iter()
                     .filter(|e| matches!(e.kind, AdventureEventKind::HeroStepped { .. }))
@@ -332,7 +366,7 @@ proptest! {
             }
             for next in around(&state, origin) {
                 let mut moved = state.clone();
-                match walk(&mut moved, &rules, 1, vec![next]) {
+                match walk_of(&mut moved, &rules, &store, 1, vec![next]) {
                     Ok(_) => {
                         let left = moved.hero(HeroId::new(1)).unwrap().movement;
                         prop_assert!(reach.points_left(next).is_some_and(|best| best >= left));
@@ -346,7 +380,7 @@ proptest! {
                 break;
             }
             let (pos, _) = tiles[pick % tiles.len()];
-            walk(&mut state, &rules, 1, reach.path(pos).unwrap()).unwrap();
+            walk_of(&mut state, &rules, &store, 1, reach.path(pos).unwrap()).unwrap();
         }
     }
 }

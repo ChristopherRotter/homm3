@@ -1,15 +1,16 @@
 //! Movement (E08): a day's movement points (T6b; the hero's bonuses since T40); the army's native
 //! terrain, the price of a step and the points left after it (T7b, survey
 //! `E08-adventure-core.md` §1.2–1.3; the hero's Pathfinding, Nomads and Cursed Ground since T40,
-//! survey `E08-hero-movement.md` §2.1). `MoveHero` is in `command.rs`, the reachable-tiles query
-//! in `reach.rs`.
+//! its flying and water walking since T41, survey `E08-hero-movement.md` §2). `MoveHero` is in
+//! `command.rs`, the passage of a flying or water-walking hero in `state/passage.rs`, the
+//! reachable-tiles query in `reach.rs`.
 
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use h3_content::{
-    DIAGONAL_CHECK_IGNORES_NATIVE, DIAGONAL_CHECK_IGNORES_ROADS, NATIVE_SKIPS_LEADING_NEUTRALS,
-    Ruleset, TerrainId,
+    DIAGONAL_CHECK_IGNORES_NATIVE, DIAGONAL_CHECK_IGNORES_ROADS, DROP_IGNORES_ARTIFACTS,
+    NATIVE_SKIPS_LEADING_NEUTRALS, Ruleset, TerrainId,
 };
 use h3_contracts::{ArmyStack, HeroId};
 use h3_heroes::{HeroDetails, Movement, land_points, movement_speed, scouting_radius};
@@ -78,7 +79,8 @@ pub(crate) fn hero_radius(
 }
 
 /// A hero's levels for its steps (E08 T40): `h3_heroes::movement` (HER-ADV-005, HER-ADV-007);
-/// none without `details`.
+/// none without `details`. Its flying and water-walking levels price its steps and decide its
+/// passage since T41 (ADV-MOV-009, ADV-MOV-010).
 pub(crate) fn hero_movement(core: &Ruleset, details: Option<&HeroDetails>) -> Movement {
     details.map_or_else(Movement::default, |details| {
         h3_heroes::movement(details, core)
@@ -158,6 +160,9 @@ struct TerrainPrice {
     /// Whether the terrain, as it counts for the army, is the army's native terrain
     /// (ADV-MOV-004).
     native: bool,
+    /// Whether the terrain is water (E08 T41: the fly and water-walk prices, ADV-MOV-009,
+    /// ADV-MOV-010).
+    water: bool,
 }
 
 impl TerrainPrice {
@@ -165,20 +170,42 @@ impl TerrainPrice {
     const UNKNOWN: Self = Self {
         walk: 0xFFFF,
         native: false,
+        water: false,
     };
 }
 
-/// What prices one hero's steps (ADV-MOV-003 to ADV-MOV-006; the original's `step_cost`
-/// 0x4B1740 with Pathfinding, Nomads and Cursed Ground since E08 T40, without flying and water
-/// walking, which come with T41): the adventure rules, each terrain's walking price for the hero
-/// and its army, the native cost and the profile's quirks of the diagonal exception. Built once
-/// per search or move, so the step's price is one load per terrain.
+/// The prices that replace a step's walking price when the hero flies or water-walks
+/// (ADV-MOV-009, ADV-MOV-010; E08 T41): the fly price at its flying level and the water-walk price
+/// at its water-walking level, each if it has the level.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+struct Lifts {
+    fly: Option<u32>,
+    water_walk: Option<u32>,
+}
+
+impl Lifts {
+    /// Whether neither price applies: a walking step.
+    const fn none(self) -> bool {
+        self.fly.is_none() && self.water_walk.is_none()
+    }
+}
+
+/// What prices one hero's steps (ADV-MOV-003 to ADV-MOV-006, ADV-MOV-009, ADV-MOV-010; the
+/// original's `step_cost` 0x4B1740 with Pathfinding, Nomads and Cursed Ground since E08 T40,
+/// flying and water walking since T41): the adventure rules, each terrain's walking price for the
+/// hero and its army, the native cost, the hero's fly and water-walk prices (for the step, and for
+/// the drop to 0 as `ADV-QUIRK-17` has them) and the profile's quirks of the diagonal exception.
+/// Built once per search or move, so the step's price is one load per terrain.
 #[derive(Debug, Clone)]
 pub(crate) struct Pricing<'a> {
     part: &'a AdventureRuleset,
     /// By core terrain.
     prices: Vec<TerrainPrice>,
     native_cost: u32,
+    /// The hero's fly and water-walk prices for its steps.
+    lifts: Lifts,
+    /// The ones the drop to 0 counts: none under `ADV-QUIRK-17`.
+    drop_lifts: Lifts,
     /// `ADV-QUIRK-2`: the exception's check ignores roads.
     check_ignores_roads: bool,
     /// `ADV-QUIRK-3`: the exception's check ignores the native cost.
@@ -190,8 +217,11 @@ impl<'a> Pricing<'a> {
     /// under `core`'s profile: each terrain counts as a terrain walker of a creature in the army
     /// makes it count (ADV-MOV-003, Nomads), then costs the step's price of that terrain at the
     /// hero's Pathfinding level (the part's [`AdventureRuleset::step_cost`]), and is native when
-    /// that terrain is the army's ([`native_terrain`]).
-    // rule: ADV-MOV-003, ADV-MOV-004
+    /// that terrain is the army's ([`native_terrain`]). A flying level brings the part's fly
+    /// price at that level, a water-walking level its water-walk price (ADV-MOV-009, ADV-MOV-010);
+    /// the drop to 0 counts them only with `ADV-QUIRK-17` off (the original's `cheapest_step_from`
+    /// 0x4B1880 reads the hero's spell levels, not the artifacts': none in increment 5).
+    // rule: ADV-MOV-003, ADV-MOV-004, ADV-MOV-006, ADV-MOV-009, ADV-MOV-010
     pub(crate) fn new(
         core: &Ruleset,
         part: &'a AdventureRuleset,
@@ -215,13 +245,30 @@ impl<'a> Pricing<'a> {
                         .step_cost(terrain, movement.pathfinding)
                         .map_or(TerrainPrice::UNKNOWN.walk, |cost| u32::from(cost.get())),
                     native: native == Some(terrain),
+                    water: matches!(
+                        part.passage(TerrainId::from_raw(raw)),
+                        Some(Passage::Water(_))
+                    ),
                 }
             })
             .collect();
+        let params = part.params();
+        let lifts = Lifts {
+            fly: movement.flying.map(|level| params.fly_cost(level)),
+            water_walk: movement
+                .water_walking
+                .map(|level| params.water_walk_cost(level)),
+        };
         Self {
             part,
             prices,
-            native_cost: u32::from(part.params().native_cost().get()),
+            native_cost: u32::from(params.native_cost().get()),
+            lifts,
+            drop_lifts: if quirks.is_enabled(DROP_IGNORES_ARTIFACTS) {
+                Lifts::default()
+            } else {
+                lifts
+            },
             check_ignores_roads: quirks.is_enabled(DIAGONAL_CHECK_IGNORES_ROADS),
             check_ignores_native: quirks.is_enabled(DIAGONAL_CHECK_IGNORES_NATIVE),
         }
@@ -263,8 +310,32 @@ impl<'a> Pricing<'a> {
         })
     }
 
+    /// A step's price from `from` after the hero's flying and water walking (ADV-MOV-009,
+    /// ADV-MOV-010; survey `E08-hero-movement.md` §2.1 points 4, 5): from water the water-walk
+    /// price replaces `walk`; then the fly price replaces it from water and from a tile an object
+    /// blocks (an obstacle flown over), and from a land tile no object blocks (an object's
+    /// visitable tile included: the original's tile bit +0xC 0x40, ADV-Q22) the lesser of the two
+    /// applies. `from` is the tile as it stands now (the live occupancy).
+    #[inline]
+    fn lifted(&self, from: &StaticTile, walk: u32, lifts: Lifts) -> u32 {
+        if lifts.none() {
+            return walk;
+        }
+        let water = self.price(from.terrain).water;
+        let price = match lifts.water_walk {
+            Some(water_walk) if water => water_walk,
+            _ => walk,
+        };
+        match lifts.fly {
+            None => price,
+            Some(fly) if water || (from.blocked && !from.visitable) => fly,
+            Some(fly) => price.min(fly),
+        }
+    }
+
     /// The cheapest straight step the hero makes (every step costs at least this): the least of
-    /// the native cost, the roads' costs and the land terrains' walking prices.
+    /// the native cost, the roads' costs, the land terrains' walking prices and the hero's fly
+    /// and water-walk prices (E08 T41).
     pub(crate) fn cheapest(&self) -> u32 {
         let roads = self
             .part
@@ -278,19 +349,26 @@ impl<'a> Pricing<'a> {
             .zip(&self.prices)
             .filter(|(terrain, _)| matches!(terrain.passage, Passage::Land(_)))
             .map(|(_, price)| price.walk);
-        roads.chain(lands).fold(self.native_cost, u32::min)
+        roads
+            .chain(lands)
+            .chain(self.lifts.fly)
+            .chain(self.lifts.water_walk)
+            .fold(self.native_cost, u32::min)
     }
 
-    /// The price of a step from `from` to `to` with `points` left (ADV-MOV-003 to ADV-MOV-006).
-    /// Straight: the road's cost when both tiles have a road, else the native cost when the
-    /// source's terrain counts as the army's and is not under Cursed Ground, else the source
-    /// terrain's walking price (by the hero's Pathfinding level, Nomads' sand as dirt): only the
-    /// source tile prices a step (D-2). Diagonal: ⌊straight × √2⌋, except that with points from a
-    /// check cost C up to ⌊C × √2⌋ it costs only the straight cost (the diagonal exception). C is
-    /// the step's own straight cost; under `ADV-QUIRK-2` it leaves out the road, under
-    /// `ADV-QUIRK-3` the native cost (the original compares with the source terrain's walking
-    /// price, 0x4B1740). A price above `points` means the step cannot be made.
-    // rule: ADV-MOV-003, ADV-MOV-004, ADV-MOV-005, ADV-MOV-006
+    /// The price of a step from `from` to `to` with `points` left (ADV-MOV-003 to ADV-MOV-006,
+    /// ADV-MOV-009, ADV-MOV-010). Straight: the road's cost when both tiles have a road, else the
+    /// native cost when the source's terrain counts as the army's and is not under Cursed Ground,
+    /// else the source terrain's walking price (by the hero's Pathfinding level, Nomads' sand as
+    /// dirt): only the source tile prices a step (D-2); then the hero's flying and water walking
+    /// ([`Self::lifted`], E08 T41). Diagonal: ⌊straight × √2⌋, except that with points from a check
+    /// cost C up to ⌊C × √2⌋ it costs only the straight cost (the diagonal exception). C is the
+    /// step's own straight cost, whatever priced it (the fly or water-walk price included); under
+    /// `ADV-QUIRK-2` or `ADV-QUIRK-3` it is the walking check, never the fly or water-walk price,
+    /// which under `ADV-QUIRK-2` leaves out the road and under `ADV-QUIRK-3` the native cost (the
+    /// original compares with the source terrain's walking price, 0x4B1740). `from` and `to` are
+    /// the tiles as they stand now. A price above `points` means the step cannot be made.
+    // rule: ADV-MOV-003, ADV-MOV-004, ADV-MOV-005, ADV-MOV-006, ADV-MOV-009, ADV-MOV-010
     pub(crate) fn step(
         &self,
         from: &StaticTile,
@@ -299,15 +377,19 @@ impl<'a> Pricing<'a> {
         points: u32,
     ) -> u32 {
         let road = self.road(from, to);
-        let straight = self.base(from, road, true);
+        let straight = self.lifted(from, self.base(from, road, true), self.lifts);
         if !diagonal {
             return straight;
         }
-        let check = self.base(
-            from,
-            road.filter(|_| !self.check_ignores_roads),
-            !self.check_ignores_native,
-        );
+        let check = if self.check_ignores_roads || self.check_ignores_native {
+            self.base(
+                from,
+                road.filter(|_| !self.check_ignores_roads),
+                !self.check_ignores_native,
+            )
+        } else {
+            straight
+        };
         if (check..=diagonal_cost(check)).contains(&points) {
             straight
         } else {
@@ -319,11 +401,14 @@ impl<'a> Pricing<'a> {
     /// none when fewer remain than the cheapest straight step from `to`, priced against itself
     /// with its own terrain as native: its road's cost, else the native cost, or under Cursed
     /// Ground the terrain's walking price (E08 T40: by the hero's Pathfinding level, after
-    /// Nomads). The original's `cheapest_step_from` 0x4B1880 after each step of a move, in
-    /// 0x4805E0 (the walking case: flying and water walking with T41, `ADV-QUIRK-17`).
+    /// Nomads); then the hero's water walking and flying as for a step ([`Self::lifted`]: on water
+    /// the water-walk price, then the fly price from water or a blocked tile and the lesser from a
+    /// free land tile), without them under `ADV-QUIRK-17` (E08 T41: the original passes the
+    /// hero's spell levels, not the artifacts'). The original's `cheapest_step_from` 0x4B1880
+    /// after each step of a move, in 0x4805E0. `to` is the tile as it stands now.
     // rule: ADV-MOV-006
     pub(crate) fn left_after(&self, to: &StaticTile, left: u32) -> u32 {
-        let cheapest = to
+        let walk = to
             .road
             .and_then(|road| self.road_cost(road))
             .unwrap_or_else(|| {
@@ -333,6 +418,7 @@ impl<'a> Pricing<'a> {
                     self.native_cost
                 }
             });
+        let cheapest = self.lifted(to, walk, self.drop_lifts);
         if left < cheapest { 0 } else { left }
     }
 }
