@@ -429,6 +429,9 @@ Refined with the user on 2026-10-21 (T33; ADV-Q19). Built like increments 1 to 4
     on from the backpack in the hero screen) with the harness check passing under Wine
     (`cross-lane`); T37b the five recipes and the runs in the next session. Not chosen: T37
     whole, or the reads with batches E5a and E5b first.
+83. **T37b whole** (the user's choice of three, as T32b2): the five recipes and the five batches
+    run in one session and one pull request (`cross-lane`). Not chosen: by the specs' tasks
+    (batches E5a and E5b first, then E5c to E5e), or the seed-byte batches first.
 
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 

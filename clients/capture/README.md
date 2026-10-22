@@ -290,7 +290,9 @@ waits until the hero, its points and the players' resources rest, on the way:
   step does not plan stops the batch.
 - **choosing a level-up's skill**: the dialog whose OK stays disabled (`[button.ok_disabled]`)
   until one of its two offered skills is clicked: `level_up = "left"` (the default) or `"right"`,
-  or a list of them, one per such dialog in order (the last one repeated; E08 T32b1). Every
+  or a list of them, one per such dialog in order (the last one repeated; E08 T32b1); since E08
+  T37b also a skill's name (`"Logistics"`), taken on whichever side it stands (the left if
+  neither offers it: the dialog's record shows the offers; batch E5e's forced level-ups). Every
   level-up dialog, with two offers, one or none, is recorded from the game's memory (E08 T32b1):
   the hero (its name in the dialog's text), its new level, the primary skill raised and the
   offers, read from the dialog's picture items (`level_up_dialog` 0x4F8880: item 2009 the primary
@@ -326,6 +328,7 @@ the same way:
 |---|---|
 | `arrived`, `moved` | yes or no: the hero stands on the tile; it left its tile |
 | `mark`, `marks`, `points`, `points_if_moved` | the target's path mark at the first click (green, red, none), the marks, the points left (if it moved) |
+| `path_tiles[:<row>]` | the tiles the path's marks lay on at the first click, by row then column (`31,12 31,13 31,14`), or those of one row; `none` (E08 T37b: batch E5b's E5-11) |
 | `resource:<name>[:<colour>]` | a resource of the hero's player (or of `red`, `blue`, …) |
 | `difficulty`, `date` | the game's difficulty; the date (`month 1, week 1, day 2`) |
 | `heroes:experience` | the heroes off the map (E3-7): `147 heroes: 40 to 90; 2 at 40, 1 at 90` |
