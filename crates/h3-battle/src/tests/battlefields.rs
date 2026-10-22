@@ -133,7 +133,7 @@ fn cursed_ground_sets_every_morale_and_luck_to_zero() {
     let cursed = on(&r, Some("t:cursed"), None, attacker, defender);
     assert_eq!(values(&cursed), [(0, 0); 4]);
     // The computer's luck as the record keeps it (E23 T4c, BAT-AI-016) is 0 there too.
-    let lucky = crate::StackId(3);
+    let lucky = StackId(3);
     assert_eq!(crate::computer::luck(&plain, &r, lucky), 3);
     assert_eq!(crate::computer::luck(&cursed, &r, lucky), 0);
 }
