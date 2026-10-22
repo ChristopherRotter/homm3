@@ -281,7 +281,7 @@ Each with the user's checkpoint; only the next one refined (Q41's pattern).
   the observations in place), T6, T7 (E23's neutral side is complete), T8 (only if PPO
   plateaus), T9.
 
-## 11. The entity network (T5a)
+## 11. The entity network — built (T5a)
 
 Decision 5: v21 read as entities, in Python, with no encoding change. `[network] kind` chooses
 `"mlp"` (E05's, the default: its weights and files stay as they are) or `"entity"`; both share
@@ -302,7 +302,8 @@ key is an MLP). The comparison with the other architectures the user saw: `E06-l
   flattened through a linear layer.
 - **Encoder:** `layers` (2) pre-norm transformer layers, `heads` (4), feed-forward twice the
   width, over the 45 tokens; the context is the global token's output, the active stack's (zeros
-  without one) and the mean of the present stacks', through a linear layer and ReLU.
+  without a present active one) and the mean of the present stacks', through a linear layer and
+  ReLU.
 - **Heads** (the logits in action encoding v13's order): the value and the 15 fixed entries
   (Wait, Defend, End tactics, Retreat, Surrender, the two casts, the 8 wall shots) from the
   context; Move h from hex h's vector, the 24 attacks, 2 shots and the heal of stack s from its
@@ -310,8 +311,9 @@ key is an MLP). The comparison with the other architectures the user saw: `E06-l
   one of the query, ReLU, a linear layer to the logits); the spell head as the MLP's; the target
   heads point at "none", the 255 hexes and the 42 stacks the same way, their query the context,
   the cast and the spell's embedding (the second target's also the target's embedding).
-- **Cost** (forward multiply-adds per sample): about 14 M against the MLP's 6 M; measured by the
-  visualization command (below) on the sandbox's CPU in T5a, on the user's GPU in T5b.
+- **Cost** (measured in T5a, `E06-log.md`): 1.19 M parameters against the MLP's 5.95 M, 15.5 M
+  multiply-adds per decision against 5.5 M, about five times the MLP's time on the sandbox's CPU;
+  T5b measures the GPU (`--time --device cuda`) before its run.
 - **Visualization** (`python -m h3env.train.network`, no dependency beyond torch): a config's
   network (`--config`, `--set`) or a saved file's: each module's parameters and output shape on
   an observation, the multiply-adds of its linear layers and attention, the time of a forward

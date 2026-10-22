@@ -5,29 +5,25 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 ## Current state
 
 - **Opened 2026-10-18** with E05's refinement (AI-Q1): the lane owns `h3-sim` (its `src/adventure/` stays the adventure lane's until E13), `h3-ffi`, `h3-cli`'s `src/ai/`, `python/`, `benches/ai/`, E05 and E06 (`lanes.toml`).
-- **E05 closed 2026-10-20** (T1 to T9 in six increments, each with the user's checkpoint):
-  the epic file, its record and the kept design note in `E05-log.md` (§1 to §9, cited as
-  `E05-log.md` §n), the environment as built in `docs/07-simulation-and-ai.md` §1.1. Criteria
-  6 to 9 met on the user's machine (the throughput: the epic file of E06, "Starting point").
-- **E06 refined 2026-10-20** (AI-Q8; `docs/epics/E06-battle-ai.md`): it starts now beside E23
-  with the kinds a player plays on both sides; the neutral share (T7) waits for E23's policy of a
-  side without a hero (its T2 to T4). PPO and a league first, search last; runs of a few hours,
-  interruptible and resumable. **Increments 1 and 2 done** (#306 to #328: ADR-0026, the design
-  note `docs/epics/E06-design.md`, config and record, the checkpoint and `--resume`, C ABI v31,
-  the held-out sets v1, the bots' table, the SPRT gate, promotions, ladders, `--init-from`); the
-  user's hour `t3b-1` (evaluation 21.4 %, the agent at the bots' level, stalling: AI-Q9).
-  **Increment 3 done** 2026-10-22: T4a (#342: the league, `h3env.train.league`; checkpoint
-  format 3, record schema 5), T4b (`t4-1`, `t4-2`: γ 1.0 ends the stalling, AI-Q9; best 0.839,
-  0.578, 0.559 against Random, Aggressor, Greedy; #381 merged). **Increment 4** refined
-  2026-10-22: T5a (the entity network, design §11, and the visualization command) in progress,
-  then T5b (the user's A/B run against `t4-2`).
+- **E05 closed 2026-10-20**: its record and design in `E05-log.md` (cited as §n), the
+  environment as built in `docs/07-simulation-and-ai.md` §1.1.
+- **E06 refined 2026-10-20** (AI-Q8; `docs/epics/E06-battle-ai.md`): beside E23, the player
+  kinds first, the neutral share (T7) open since E23's neutral side; PPO and a league first,
+  search last; runs of hours, resumable. **Increments 1 and 2 done** (#306 to #328: ADR-0026,
+  design `E06-design.md`, config, record, checkpoint, `--resume`, C ABI v31, the held-out sets
+  v1, the bots' table, the SPRT gate, promotions, ladders, `--init-from`; `t3b-1`: stalling,
+  AI-Q9). **Increment 3 done** 2026-10-22: T4a (#342: the league; checkpoint format 3, record
+  schema 5), T4b (#381: γ 1.0 ends the stalling; best 0.839, 0.578, 0.559 against Random,
+  Aggressor, Greedy). **Increment 4** refined 2026-10-22: T5a done (the entity network, design
+  §11; `python -m h3env.train.network`); next T5b, the user's A/B run (`configs/e06-t5.toml`
+  against `t4-2`), once T5a's pull request is merged.
 - **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v31 (E06 T2c: the record's identity, N capped) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q10, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
 ## Standing traps
 
 **Ownership**
-- The battle lane still writes rules the encodings show: a new observation feature or action entry comes as a `cross-lane` pull request from the battle lane with this lane's version bumps (`docs/08-work-process.md`, "Lanes"). This lane's own changes to `h3-battle` (an engine query the env needs) are `cross-lane` the other way.
+- The battle lane still writes rules the encodings show: a new observation feature or action entry comes as a `cross-lane` pull request from the battle lane with this lane's version bumps (`docs/08-work-process.md`, "Lanes"). This lane's own changes to `h3-battle` (an engine query the env needs) are `cross-lane` the other way. A new encoding also changes `python/h3env/train/layout.py` (the entity network's; `h3-sim`'s `the_python_layout_is_the_encodings` tests fail otherwise).
 - `docs/07-simulation-and-ai.md` is shared: only `--scope ai` checks it (T3a's edit slipped in).
 - `h3-cli` is the battle lane's except `src/ai/`; its golden replays (`fixtures/`) and `benches/battle/` stay with battle, and change when the encodings or the replay format change: regenerate them deliberately (`fixtures/README.md`) in the same pull request.
 
@@ -40,16 +36,14 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 - `batch::pool` holds this lane's only `unsafe` outside `h3-ffi`: `Pool::run` erases a job's lifetime and is sound only because it blocks until every worker is done (a worker's panic too). Keep any new call through `run`, never a stored job.
 - The batch workloads count inside `*BattleBatch>::step` (v0 symbol names; `BattleBatch::step` is `#[inline(never)]`) with `--threads 0`: callgrind toggles per thread, and a pattern ending in `*` also matches the closures nested in `step` and turns the count off inside them.
 - The census counts through `h3_map::import_map`, a `GameState` and `battle_ground`: a change to
-  the map import or the adventure's battle place changes it; rerun `h3 ai census
-  original-data/install/Maps --out crates/h3-sim/data/census-v1.toml` (bump `CENSUS_VERSION` when
-  a number changes meaning). The maps arrive as `original-data/maps.tar` in one staging call.
+  them changes it; rerun `h3 ai census original-data/install/Maps --out
+  crates/h3-sim/data/census-v1.toml` (`CENSUS_VERSION` when a number changes meaning).
 - A batch entry is a fixed battle or the encounter distribution (`Scenario::encounters`): its
   `setup()` and `seats()` are `None`, each episode's come from `Scenario::episode` (stream
   `ENCOUNTER` of the episode's seed, never `SETUP`, which draws the entry).
 - The encounter sampler (`h3_sim::encounter`) uses the engine's rules (ADV-MON-003, -004, -009,
-  `derive_battle_hero`): a change to them changes the encounters; `encounter::tests` checks every
-  dimension against its weight (5 σ). By default the neutral kinds weigh 0 (A12, until E23);
-  tests draw them with `with_shares`. Everything is an integer (quantile tables in ‰).
+  `derive_battle_hero`): a change to them changes the encounters (`encounter::tests`: 5 σ). The
+  neutral kinds weigh 0 by default (A12, until T7); tests use `with_shares`.
 - Scenario texts are parsed and packs compiled in `h3-ffi` (`src/scenario.rs`), never in `h3-sim`: `arch.toml` gives `h3-sim` `h3-pack-battle` for tests only. Each `h3_env_create_scenario` compiles its packs (about 18 ms for `base`, `ab`, `sod` in release, ten times that in debug).
 
 - The bots (`h3_sim::bots`) read the engine's preview (`h3_battle::preview`, BAT-DMG-011): a
@@ -84,18 +78,21 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   only. PyPI's torch 2.14 is not it (Linux: CUDA 13; Windows: CPU only). The user works with
   Anaconda (system Python older than 3.11): uv in a conda env, `UV_PYTHON` on its Python
   (`python/README.md`); runs on the user's machine are given as those commands.
-- The sandbox reaches PyTorch's index (`download.pytorch.org`, `download-r2.pytorch.org`) only
-  while the environment's network access is **Custom** with `*.pytorch.org`: **Trusted** ignores
-  the Allowed domains. The proxy's 403 says why in its body, which curl hides: send a raw
-  `CONNECT host:443` to `$HTTPS_PROXY` ("no rule or allowlist entry allows host", 2026-10-19).
-  `uv --directory python sync --group train`: 3 to 25 minutes.
+- A network is made only by `policy.build` from a config (a saved file's: without `kind` an
+  MLP); `Mlp`'s parameter names stay, so older files load. Time a kind with `python -m
+  h3env.train.network --time` (the sandbox's CPU is noisy: `--repeats 30`).
+- The sandbox reaches PyTorch's index only while the environment's network access allows
+  `*.pytorch.org` (**Custom**; **Trusted** ignores the Allowed domains; a raw `CONNECT host:443`
+  to `$HTTPS_PROXY` shows the proxy's reason). `uv --directory python sync --group train`: 3 to
+  25 minutes.
 
 ## Recent sessions
 
 ### 2026-10-22 — E06 increment 4's refinement, T5a (the entity network)
 
 - The user: the entity network first (the comparison in `E06-log.md`), T5a now, T5b later, no
-  spare run, the visualization in T5a. **In progress:** T5a on `claude/e06-increment-4-y91v4c`.
+  spare run, the visualization in T5a. T5a done: 15.5 M multiply-adds a decision against the
+  MLP's 5.5 M, about five times its CPU time; the GPU's is T5b's first step.
 
 ### 2026-10-22 — E06 T4b (the league runs), increment 3 closed
 
@@ -105,4 +102,4 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 ### 2026-10-20 — E06 increment 3's refinement, T4a (the league)
 
 - The user (AI-Q9): two league runs in T4b (γ 1.0 beside 0.995), 60 M samples each. T4a: the
-  live set drawn every `live_every` samples (`frozen_passes`); 90 Python tests, 71 without torch.
+  live set drawn every `live_every` samples (`frozen_passes`).

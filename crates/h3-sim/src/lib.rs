@@ -45,3 +45,16 @@ pub use observation::{OBSERVATION_ENCODING_VERSION, OBSERVATION_LEN};
 pub use replay::{Replay, ReplayError, ReplayHeader};
 pub use reward::{Currency, RewardConfig};
 pub use rollout::{RolloutResult, random_rollout};
+
+/// A literal constant of the entity network's layout (`python/h3env/train/layout.py`, E06 T5a),
+/// for the tests that pin it to the encodings.
+#[cfg(test)]
+pub(crate) fn python_layout(name: &str) -> usize {
+    let prefix = format!("{name} = ");
+    include_str!("../../../python/h3env/train/layout.py")
+        .lines()
+        .find_map(|l| l.strip_prefix(prefix.as_str()))
+        .unwrap()
+        .parse()
+        .unwrap()
+}

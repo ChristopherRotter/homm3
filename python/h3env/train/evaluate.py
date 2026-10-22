@@ -431,15 +431,15 @@ def trained_seed(path) -> int:
 
 
 def load(path, device: str = "cpu"):
-    """The network of a checkpoint (`checkpoint.pt`, `best.pt`), sized by the run's config."""
+    """The network of a checkpoint (`checkpoint.pt`, `best.pt`), of the kind and size the run's
+    config names (`policy.build`)."""
     import torch
 
-    from .policy import Policy
+    from .policy import build
 
     saved = torch.load(path, map_location=device, weights_only=True)
-    config = saved["config"]
     probe = BattleBatch(1)
-    policy = Policy.for_batch(probe, config["hidden"], config["embed"])
+    policy = build(saved["config"], probe)
     probe.close()
     policy.load_state_dict(saved["policy"])
     return policy.to(device)

@@ -1,0 +1,35 @@
+# E06 T5b's A/B run on the user's machine (design §11): the entity network against `t4-2`, the
+# MLP at γ 1.0 (`e06-t4.toml` with `--set ppo.gamma=1.0`). Everything but the network is
+# `t4-2`'s: the seed, 60 M samples, the league, a gate every 10 M samples, ladders of 250 per
+# kind and the final one of 500 (γ 1.0 is the default since T5a). Its architecture and cost:
+#
+#   uv run --group train python -m h3env.train.network --config configs/e06-t5.toml --time \
+#       --device cuda --mermaid runs/t5-1-network.md
+#   uv run --group train python -m h3env.train --config configs/e06-t5.toml --out runs/t5-1
+#   uv run --group train python -m h3env.train --resume runs/t5-1
+
+seed = 1
+samples = 60_000_000
+
+[network]
+kind = "entity"
+width = 128
+layers = 2
+heads = 4
+
+[ppo]
+gamma = 1.0
+
+[league]
+self_play = 0.5
+snapshot_every = 1_000_000
+max_members = 16
+live = 4
+live_every = 250_000
+
+[gate]
+gate_every = 10_000_000
+
+[ladder]
+ladder_episodes = 250
+ladder_final_episodes = 500

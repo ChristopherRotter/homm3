@@ -352,3 +352,39 @@ entry only where a task builds on it.
   pointer heads; `[network] kind`, the MLP the default kind, γ 1.0 the default), the
   visualization in T5a (dependency-free: the summary table, the cost, a Mermaid diagram; no
   torchview or Graphviz, whose EPL is a licence doubt).
+
+## T5a — The entity network (2026-10-22)
+
+- **One interface** (`h3env.train.policy.Policy`): a kind implements `encode` (a tuple of tensors,
+  rows first), `value` and the four heads' logits; `act`, `evaluate`, `values` and `frozen` are
+  shared. `Mlp` is E05's network unchanged (its weights' names, so `t4-2`'s files load), `Entity`
+  the network of design §11 (`h3env.train.entity`), `build(config, batch)` the one place a
+  network is made: the trainer, `evaluate.load` (the league's and lineage's files, the ladder, the
+  gate's command) and `--init-from` build the kind a saved file's config names (none: an MLP).
+- **The layout** (`h3env.train.layout`): v21's sizes, the stack columns read (present, creature,
+  x, y, active) and action v13's bases. `h3-sim`'s two tests `the_python_layout_is_the_encodings`
+  read its literals (`python_layout`, test-only) against `observation.rs` and `action.rs` (a
+  wrong column fails them); `test_entity.py` checks the derived values against the library's
+  sizes and on real battles (the legal attacks, shots and heals name present stacks, at most one
+  active). One change from §11's outline: a stack counts as active only where it is present.
+- **Config:** `[network] kind` (`"mlp"` the default), `width`, `layers`, `heads` (`embed` both
+  kinds'); γ 1.0 the default (AI-Q9); `--init-from` a network of another kind is refused before
+  its weights are read. No checkpoint format or record schema change: a file's config names its
+  kind, a record gains only keys. `configs/e06-t5.toml`: `t4-2`'s settings with the entity
+  network.
+- **The visualization** (`python -m h3env.train.network`; no new dependency): parameters, output
+  shape and multiply-adds per part (a cast's heads apart), `--time` per decision, `--mermaid`
+  writes the table and the data flow.
+- **Costs** (the defaults, 256 observations of the encounter distribution; the sandbox's 4 CPU
+  threads, the median of 30): the MLP 5.95 M parameters, 5.53 M multiply-adds per decision (a
+  cast's heads 0.40 M more), forward 82 µs, a training pass 159 µs; the entity network 1.19 M
+  parameters, 15.5 M (2.6 M more a cast; the two blocks 12.8 M), 398 µs and 873 µs, about five
+  times the MLP on this CPU (many small kernels). The GPU decides the run's samples per second:
+  T5b starts with `--time --device cuda` on the user's machine.
+- **Tests:** `test_entity.py` (the layout against the library, the logits in the encodings'
+  order, an empty slot unseen, the context free of the slots' order, other encodings refused, the
+  visualization's numbers and files); `test_train.py` (the choices' masks and recomputed
+  log-probabilities for both kinds, an entity run stopped, resumed and laddered, `--init-from`
+  across kinds refused). 97 Python tests with torch on the CPU (the GPU test skipped), 71
+  without.
+

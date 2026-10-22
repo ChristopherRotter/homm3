@@ -17,22 +17,8 @@ hour `t3b-1`: evaluation 21.4 %, stalling suspected, AI-Q9). Increment 3 done 20
 plays 0.839, 0.578, 0.559 against Random, Aggressor, Greedy; `E06-log.md`).
 
 **Increment 4** refined 2026-10-22 (the user, `E06-log.md`): the entity network first, T5a then
-T5b; no spare MLP run. Still open for later increments: AI-Q7 (b), throughput (`t4-2`'s dip to
+T5b; no spare MLP run. T5a done 2026-10-22 (`E06-log.md`). Still open for later increments: AI-Q7 (b), throughput (`t4-2`'s dip to
 about 4 000 samples/s from 20 M to 40 M), the mana price, T7 (E23's neutral side is complete).
-
-### T5a — The entity network
-
-- **Scope:** design §11 (`docs/epics/E06-design.md`): `h3env.train.layout` (v21's offsets and
-  the stack columns read, pinned by an `h3-sim` test), the entity network beside the MLP under
-  one interface (the MLP's weights and files unchanged), `[network] kind`, `width`, `layers`,
-  `heads`; every place that builds a network from a saved file builds its kind; γ 1.0 the
-  default; the visualization command `python -m h3env.train.network` (parameters, shapes, the
-  cost, timing, a Mermaid diagram; no new dependency); `configs/e06-t5.toml` for T5b.
-- **Acceptance:** the Python tests pass with torch (both kinds through `act`, `evaluate`, a short
-  run, a resume, `--init-from` refusing the other kind) and without it; the cost of both kinds
-  measured on the sandbox's CPU; the Definition of Done (`docs/05-testing.md`).
-- **Depends on:** nothing. **Status:** in progress (`claude/e06-increment-4-y91v4c`, 2026-10-22
-  12:00 UTC).
 
 ### T5b — The A/B run
 
@@ -40,7 +26,10 @@ about 4 000 samples/s from 20 M to 40 M), the mana price, T7 (E23's neutral side
   60 M samples) on their machine; the record committed, the comparison with `t4-2` in
   `E06-log.md`.
 - **Acceptance:** the record passes `check_record`; the ladders compared per opponent.
-- **Depends on:** T5a merged; the user's machine. **Status:** waiting (T5a).
+- **Depends on:** T5a's pull request merged; the user's machine. **Status:** waiting (the
+  merge, then the user). First `python -m h3env.train.network --config configs/e06-t5.toml
+  --time --device cuda` (the GPU's cost; T5a measured the entity network at about five times
+  the MLP's time on the sandbox's CPU), then the run (the config's comment).
 
 ## Inbox
 
