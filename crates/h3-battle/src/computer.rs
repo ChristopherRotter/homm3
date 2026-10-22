@@ -4,7 +4,7 @@
 //! computer estimates moves both. It grows with E23's tasks: what the policy needs from the
 //! battle's private state is added here by the battle lane.
 
-use h3_content::{CreatureTypeId, SpellId};
+use h3_content::{CreatureTypeId, SchoolId, SpellId};
 use h3_content_battle::{BattleRuleset, SpellTarget};
 use h3_contracts::BattleSide;
 use h3_kernel::arith::X87;
@@ -642,7 +642,64 @@ pub fn base_damage(
     (base, shot): (u64, bool),
     bonus: i16,
 ) -> u64 {
-    aim::base_damage(state, ruleset, (striker, target), (base, shot), bonus)
+    aim::base_damage(state, ruleset, (striker, target), (base, shot), (bonus, 0))
+}
+
+/// [`base_damage`] on a copy of `target`'s record with `bonus` more defense (0x443E30 on the
+/// copy 0x438910 makes, a defense bonus's value; E23 T4c).
+pub fn base_damage_on_defense(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    (striker, target): (StackId, StackId),
+    (base, shot): (u64, bool),
+    bonus: i16,
+) -> u64 {
+    aim::base_damage(state, ruleset, (striker, target), (base, shot), (0, bonus))
+}
+
+/// The computer's exchange of `a` with `a_hp` hit points and `t` with `t_hp` (0x4359B0; E23 T4c:
+/// Frenzy's value), the context's computer `side`: with `shot`, while `a` can shoot now, `a`'s
+/// shot alone, else its strike after `jousting` hexes with Fire Shield's reflection, `t`'s
+/// retaliation (none on Easy for a computer side) and a second strike; the hit points both have
+/// left.
+pub fn exchange(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    side: BattleSide,
+    ((a, a_hp), (t, t_hp)): ((StackId, u64), (StackId, u64)),
+    (shot, jousting): (bool, u8),
+) -> (u64, u64) {
+    let field = Field::new(ruleset.battle().field);
+    if shot && can_shoot(state, field, a) {
+        let s = state.at(a);
+        let count = a_hp.div_ceil(u64::from(s.max_hp.max(1)));
+        let dealt = aim::damage_estimate(state, ruleset, (a, t), count, true, 0);
+        return (a_hp, t_hp.saturating_sub(dealt));
+    }
+    aim::exchange(state, ruleset, side, ((a, a_hp), (t, t_hp)), jousting)
+}
+
+/// The best kill value a protection of stack `id` keeping `kept` percent takes off the other
+/// side's hero's damage spells of `schools` (`None`: every school) up to `level`, for the spell
+/// context `ctx` of its side (0x4396E0; E23 T4c): 0 while casting is forbidden, without that
+/// hero, or for a clone; with `slip` (BAT-QUIRK-25, survey slip 9) the protected side's hero's
+/// caster bonuses and the caster's own army's cost changes.
+pub fn spell_protection(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    ctx: &Context,
+    id: StackId,
+    (schools, level, kept): (Option<&[SchoolId]>, u8, u16),
+    slip: bool,
+) -> i32 {
+    aim::spell_protection(state, ruleset, ctx, id, (schools, level, kept), slip)
+}
+
+/// The defense of stack `id` for the computer (0x442590 with flag 1): 0 while frenzied, else its
+/// defense with the Defend bonus less the moat's penalty (E23 T4c: Frenzy's value without the
+/// original's slip).
+pub fn defense(state: &BattleState, ruleset: &BattleRuleset, id: StackId) -> i64 {
+    aim::defense(state, ruleset, state.at(id))
 }
 
 /// Whether `side`'s cast of `spell` can affect stack `id` (the original's 0x5A3C80 as the spell

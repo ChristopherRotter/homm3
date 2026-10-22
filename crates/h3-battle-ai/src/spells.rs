@@ -13,6 +13,8 @@
 //! (0x43C040) and the other evaluators.
 
 pub(crate) mod boosts;
+mod defenses;
+pub(crate) mod tables;
 
 use core::cell::OnceCell;
 
@@ -27,6 +29,7 @@ use h3_kernel::arith::X87;
 
 use crate::casts::balance;
 use crate::predict;
+use tables::Tables;
 
 /// A cast the computer weighs (the cast candidate, §7.44): the spell, its mastery, its power, the
 /// rounds its timed effects last and whether it is a cast's candidate (+0x10: 1) or a spell a
@@ -76,12 +79,44 @@ pub(crate) enum Kind {
     Mirth,
     /// Fortune (51; 0x438490).
     Fortune,
+    /// Shield (27; 0x438C60).
+    Shield,
+    /// Air Shield (28; 0x438BC0).
+    AirShield,
+    /// Fire Shield (29; 0x43A110).
+    FireShield,
+    /// Stone Skin (46; 0x438D90).
+    StoneSkin,
+    /// Counterstrike (58; 0x439E80).
+    Counterstrike,
+    /// Frenzy (56; 0x4375D0).
+    Frenzy,
+    /// Haste (53; 0x4396B0).
+    Haste,
+    /// Prayer (48; 0x438AC0).
+    Prayer,
+    /// The Protections from Air, Fire, Water and Earth (30 to 33; 0x4399A0, 0x4399D0, 0x439A40,
+    /// 0x439A00).
+    Protection,
+    /// Magic Mirror (36; 0x439DE0).
+    MagicMirror,
 }
 
 impl Kind {
     /// The kind of `spell` by its data.
     pub(crate) fn of(spell: &BattleSpell) -> Option<Self> {
-        let timed = |c: TimedChange| spell.magic.effects.contains(&SpellEffect::Timed(c));
+        let effects = &spell.magic.effects;
+        let timed = |c: TimedChange| effects.contains(&SpellEffect::Timed(c));
+        // Stone Skin raises the defense alone, Haste the speed alone; Prayer all three.
+        if effects.as_slice() == [SpellEffect::Timed(TimedChange::Defense)] {
+            return Some(Self::StoneSkin);
+        }
+        if effects.as_slice() == [SpellEffect::Timed(TimedChange::Speed)] {
+            return Some(Self::Haste);
+        }
+        if timed(TimedChange::Attack) && timed(TimedChange::Defense) && timed(TimedChange::Speed) {
+            return Some(Self::Prayer);
+        }
         [
             (TimedChange::MeleeAttack, Self::Bloodlust),
             (TimedChange::RangedAttack, Self::Precision),
@@ -89,6 +124,13 @@ impl Kind {
             (TimedChange::MaximumDamage, Self::Bless),
             (TimedChange::Morale, Self::Mirth),
             (TimedChange::Luck, Self::Fortune),
+            (TimedChange::MeleeProtection, Self::Shield),
+            (TimedChange::RangedProtection, Self::AirShield),
+            (TimedChange::FireShield, Self::FireShield),
+            (TimedChange::Retaliations, Self::Counterstrike),
+            (TimedChange::Frenzy, Self::Frenzy),
+            (TimedChange::SchoolProtection, Self::Protection),
+            (TimedChange::MagicMirror, Self::MagicMirror),
         ]
         .into_iter()
         .find_map(|(c, kind)| timed(c).then_some(kind))
@@ -103,6 +145,16 @@ impl Kind {
             Self::Bless => |sc, s, c| sc.bless(s, c),
             Self::Mirth => |sc, s, c| sc.mirth(s, c),
             Self::Fortune => |sc, s, c| sc.fortune(s, c),
+            Self::Shield => |sc, s, c| sc.shield(s, c),
+            Self::AirShield => |sc, s, c| sc.air_shield(s, c),
+            Self::FireShield => |sc, s, c| sc.fire_shield(s, c),
+            Self::StoneSkin => |sc, s, c| sc.stone_skin(s, c),
+            Self::Counterstrike => |sc, s, c| sc.counterstrike(s, c),
+            Self::Frenzy => |sc, s, c| sc.frenzy(s, c),
+            Self::Haste => |sc, s, c| sc.haste(s, c),
+            Self::Prayer => |sc, s, c| sc.prayer(s, c),
+            Self::Protection => |sc, s, c| sc.protection_from(s, c),
+            Self::MagicMirror => |sc, s, c| sc.magic_mirror(s, c),
         }
     }
 }
@@ -120,6 +172,10 @@ pub(crate) struct SpellContext<'a> {
     /// The enemy beaten (+0x1C): no stack of the other side but the war machines has hit points
     /// left after the planned damage.
     beaten: bool,
+    /// The damage the predictions plan (each stack's +0x534).
+    planned: Planned,
+    /// The threat tables (0x43C040), built when first asked.
+    tables: OnceCell<Tables>,
     /// Each stack's threat record (0x422B20 with flag 0), computed the first time it is asked
     /// (ADR-0027 point 11: the records read nothing a value changes).
     threats: [OnceCell<Option<Threat>>; STACK_CAPACITY],
@@ -144,6 +200,8 @@ impl<'a> SpellContext<'a> {
             ctx: *ctx,
             class: balance(state, ruleset, ctx, side).class,
             beaten: beaten(state, &planned, side),
+            planned,
+            tables: OnceCell::new(),
             threats: [const { OnceCell::new() }; STACK_CAPACITY],
         }
     }
@@ -190,16 +248,23 @@ impl<'a> SpellContext<'a> {
     /// for a stack that has acted this round. As the original's x87 doubles.
     fn share(&self, s: StackId, rounds: u32) -> X87 {
         let k = X87::int(u64::from(self.class));
-        let t = if rounds >= u32::from(self.class) {
-            X87::ONE
-        } else {
-            X87::int(u64::from(rounds)).over(k).unwrap_or(X87::ONE)
-        };
+        let t = self.share_of(rounds);
         if self.stack(s).flags.contains(StackFlags::ACTED) {
             // `minus` stops at 0, as the original's floor.
             t.minus(X87::ONE.over(k).unwrap_or(X87::ZERO))
         } else {
             t
+        }
+    }
+
+    /// The rounds' share without the step for a stack that has acted: `min(1, rounds / k)`.
+    fn share_of(&self, rounds: u32) -> X87 {
+        if rounds >= u32::from(self.class) {
+            X87::ONE
+        } else {
+            X87::int(u64::from(rounds))
+                .over(X87::int(u64::from(self.class)))
+                .unwrap_or(X87::ONE)
         }
     }
 

@@ -37,6 +37,7 @@ use super::{POLICY_VERSION, checked, choose, unchecked};
 use crate::walker::Walker;
 
 mod casts;
+mod defenses;
 mod ends;
 mod gain;
 mod odds;
@@ -83,8 +84,10 @@ const HEALS: Option<AbilityDef> = Some(AbilityDef::FirstAid {
 /// that strikes and returns (the harpy); the multi-headed (the two-hex hydra, the cerberus), a
 /// breath attacker (the dragon), a town's turret (the tower, BAT-SIE-016), a walker with an innate
 /// Fire Shield (the sultan), one that strikes twice (the crusader), kings of each level (the
-/// giant, the knight, the lord) and a Master Genie (the genie: three casts of the test spells).
-const CREATURES: [Creature; 23] = [
+/// giant, the knight, the lord), a Master Genie (the genie: three casts of the test spells), the
+/// griffins with two and with unlimited retaliations and a shooter that shoots twice (the
+/// marksman).
+const CREATURES: [Creature; 26] = [
     ("imp", 5, 100, &[], [2, 3, 1, 2], 4, 0, None),
     ("gog", 3, 900, &[], [4, 4, 2, 3], 13, 0, None),
     ("runner", 20, 300, &["alive"], [5, 5, 2, 4], 10, 0, None),
@@ -265,6 +268,36 @@ const CREATURES: [Creature; 23] = [
         0,
         None,
     ),
+    (
+        "griffin",
+        6,
+        350,
+        &["alive", "flying", "two_hex"],
+        [8, 8, 3, 6],
+        25,
+        0,
+        Some(AbilityDef::ExtraRetaliations { count: 1 }),
+    ),
+    (
+        "royal",
+        9,
+        450,
+        &["alive", "flying", "two_hex"],
+        [9, 9, 3, 6],
+        25,
+        0,
+        Some(AbilityDef::UnlimitedRetaliations),
+    ),
+    (
+        "marksman",
+        6,
+        400,
+        &["alive", "shooter", "strikes_twice"],
+        [6, 3, 2, 3],
+        10,
+        24,
+        None,
+    ),
 ];
 
 const IMP: usize = 0;
@@ -290,6 +323,9 @@ const GIANT: usize = 19;
 const KNIGHT: usize = 20;
 const LORD: usize = 21;
 const GENIE: usize = 22;
+const GRIFFIN: usize = 23;
+const ROYAL: usize = 24;
+const MARKSMAN: usize = 25;
 
 /// A test spell of the computer's spell values (E23 T4c): its key, level, value by mastery,
 /// polarity, timed changes, the mastery from which it is cast on the whole side and its
@@ -306,7 +342,7 @@ type TestSpell = (
 
 /// The test spells after the Fire Wall and Fire Shield, with the values of the original's
 /// (`SPTRAITS.TXT`).
-const SPELLS: [TestSpell; 6] = [
+const SPELLS: [TestSpell; 11] = [
     (
         "bloodlust",
         1,
@@ -359,6 +395,51 @@ const SPELLS: [TestSpell; 6] = [
         SpellPolarity::Positive,
         &[TimedChange::Luck],
         Some(3),
+        Usefulness::Always,
+    ),
+    (
+        "shield",
+        1,
+        [85, 85, 70, 70],
+        SpellPolarity::Positive,
+        &[TimedChange::MeleeProtection],
+        Some(3),
+        Usefulness::EnemyMelee,
+    ),
+    (
+        "airshield",
+        3,
+        [75, 75, 50, 50],
+        SpellPolarity::Positive,
+        &[TimedChange::RangedProtection],
+        Some(3),
+        Usefulness::EnemyShooter,
+    ),
+    (
+        "stoneskin",
+        1,
+        [3, 3, 6, 6],
+        SpellPolarity::Positive,
+        &[TimedChange::Defense],
+        Some(3),
+        Usefulness::Always,
+    ),
+    (
+        "counterstrike",
+        4,
+        [1, 1, 2, 2],
+        SpellPolarity::Positive,
+        &[TimedChange::Retaliations],
+        Some(3),
+        Usefulness::Always,
+    ),
+    (
+        "frenzy",
+        4,
+        [100, 100, 150, 200],
+        SpellPolarity::Positive,
+        &[TimedChange::Frenzy],
+        None,
         Usefulness::Always,
     ),
 ];

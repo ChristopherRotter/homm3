@@ -2,9 +2,10 @@
 //! BAT-AI-016): each values the rise of the stack's worth when its strike on its threat record's
 //! enemy grows, for the share of the battle the spell lasts.
 
-use h3_battle::StackId;
 use h3_battle::computer;
+use h3_battle::{StackFlags, StackId, StackTraits};
 use h3_content::{CreatureFlag, ORIGINAL_AI_SLIPS};
+use h3_content_battle::Ability;
 use h3_kernel::arith::{DOUBLE_BITS, X87};
 
 use super::{Candidate, SpellContext};
@@ -218,7 +219,7 @@ impl SpellContext<'_> {
     // rule: BAT-AI-016
     pub(crate) fn mirth(&self, s: StackId, c: Candidate) -> i32 {
         let stack = self.stack(s);
-        if stack.has(h3_battle::StackTraits::NO_MORALE) {
+        if stack.has(StackTraits::NO_MORALE) {
             return 0;
         }
         let m = i32::from(stack.morale).clamp(-LIMIT, LIMIT);
@@ -269,6 +270,222 @@ impl SpellContext<'_> {
             sum = sum.wrapping_add(u.wrapping_mul(points) / LUCK_DICE);
         }
         sum
+    }
+
+    /// Counterstrike's evaluator (0x439E80; BAT-AI-016): the stack's own retaliations `r` (1, more
+    /// for a creature with extra ones; 0 for one that always retaliates, the Royal Griffins); 0
+    /// when the predictions beat the enemy. The extra retaliations used, `min(v, n − r)` with `v`
+    /// the spell's value and `n` the melee threats ([`tables`](super::tables)), 0 at none.
+    /// Against the strongest melee threat `e`: 0 when its strike (capped) kills the stack; `d2`
+    /// the survivors' strike back on it (capped), `base = d1 + r × d2` (`d1` the stack's strike,
+    /// one `d2` more for a walker that strikes twice), `g = (base + extra × d2) / base`; the gain
+    /// on the stack's strike with its shot flag ([`Self::gain`]).
+    // rule: BAT-AI-016
+    pub(crate) fn counterstrike(&self, s: StackId, c: Candidate) -> i32 {
+        let (state, ruleset) = (self.state, self.ruleset);
+        let stack = self.stack(s);
+        let abilities = ruleset.abilities(stack.creature);
+        if abilities.contains(&Ability::UnlimitedRetaliations) || self.beaten {
+            return 0;
+        }
+        let r = 1 + abilities
+            .iter()
+            .find_map(|a| match *a {
+                Ability::ExtraRetaliations { count } => Some(i64::from(count)),
+                _ => None,
+            })
+            .unwrap_or(0);
+        let entry = self.tables().melee[s.index()];
+        let extra = i64::from(self.effect(c)).min(i64::from(entry.count) - r);
+        let (Some(e), Ok(extra)) = (entry.stack, u64::try_from(extra)) else {
+            return 0;
+        };
+        if extra == 0 {
+            return 0;
+        }
+        let count = u64::from(self.stack(e).count);
+        let struck = computer::damage_estimate(state, ruleset, (e, s), count, false, 0);
+        let left = computer::hit_points(state, s).saturating_sub(struck);
+        if left == 0 {
+            return 0;
+        }
+        let own = u64::from(stack.count);
+        let d1 = computer::damage_estimate(state, ruleset, (s, e), own, false, 0);
+        let survivors = left.div_ceil(u64::from(stack.max_hp.max(1)));
+        let d2 = computer::damage_estimate(state, ruleset, (s, e), survivors, false, 0);
+        let mut base = d1 + u64::try_from(r).unwrap_or(0) * d2;
+        let shooter = ruleset
+            .creature(stack.creature)
+            .is_some_and(|cr| cr.flags.contains(CreatureFlag::Shooter));
+        if stack.has(StackTraits::STRIKES_TWICE) && !shooter {
+            base += d2;
+        }
+        let g = X87::int(d2 * extra + base)
+            .over(X87::int(base))
+            .unwrap_or(X87::MAX)
+            .round(DOUBLE_BITS);
+        self.gain((s, e), (self.strike((s, e)), g), c.rounds)
+    }
+
+    /// Frenzy's evaluator (0x4375D0; BAT-AI-016): against the threat record's enemy `e` within a
+    /// turn. With BAT-QUIRK-25 valued as a second strike, the spell's value unread (survey slip
+    /// 15): `d1` the stack's strike by its count from its hit points (its shot flag, capped);
+    /// the exchange of the two ([`computer::exchange`]), 0 when the stack dies in it; `d2` its
+    /// strike by the survivors (halved for a shooter that shoots twice, which the estimate
+    /// doubled); `g = (d1 + d2) / d1`, the gain on its strike with its shot flag
+    /// ([`Self::gain`]). Without the slip, as the rule: the attack bonus's value of its defense
+    /// times the spell's value in percent ([`Self::attack_bonus`]) less the defense bonus's value
+    /// of the defense it loses ([`Self::defense_bonus`]).
+    // rule: BAT-AI-016
+    pub(crate) fn frenzy(&self, s: StackId, c: Candidate) -> i32 {
+        let Some(e) = self.within_a_turn(s) else {
+            return 0;
+        };
+        let (state, ruleset) = (self.state, self.ruleset);
+        if !self.slips() {
+            let defense = u64::try_from(computer::defense(state, ruleset, s)).unwrap_or(0);
+            let gain = defense * u64::from(self.effect(c)) / 100;
+            let gain = u16::try_from(gain).unwrap_or(u16::MAX);
+            let lost = u16::try_from(defense).unwrap_or(u16::MAX);
+            return self
+                .attack_bonus((s, e), c.rounds, gain)
+                .wrapping_sub(self.defense_bonus(s, c.rounds, lost));
+        }
+        let stack = self.stack(s);
+        let shot = computer::shoots(state, ruleset, s);
+        let per = u64::from(stack.max_hp.max(1));
+        let hp = (
+            computer::hit_points(state, s),
+            computer::hit_points(state, e),
+        );
+        let d1 = computer::damage_estimate(state, ruleset, (s, e), hp.0.div_ceil(per), shot, 0);
+        let (left, _) =
+            computer::exchange(state, ruleset, self.side, ((s, hp.0), (e, hp.1)), (shot, 0));
+        if left == 0 {
+            return 0;
+        }
+        let mut d2 = computer::damage_estimate(state, ruleset, (s, e), left.div_ceil(per), shot, 0);
+        if shot && stack.has(StackTraits::STRIKES_TWICE) {
+            d2 /= 2;
+        }
+        let g = X87::int(d1 + d2)
+            .over(X87::int(d1))
+            .unwrap_or(X87::MAX)
+            .round(DOUBLE_BITS);
+        self.gain((s, e), (self.strike((s, e)), g), c.rounds)
+    }
+
+    /// The turns stack `s` needs to attack its threat record's enemy at `speed` (0x448BD0): 1 for
+    /// a stack that can shoot now or at speed 0, else from the record's cost.
+    fn turns_at(&self, s: StackId, speed: u32) -> u32 {
+        if computer::shoots(self.state, self.ruleset, s) {
+            return 1;
+        }
+        self.threat(s).map_or(1, |t| t.turns_at(speed))
+    }
+
+    /// The value of stack `a` attacking `b` first (0x435DC0; BAT-AI-016): `a`'s exchange with `b`
+    /// ([`computer::exchange`], `a`'s shot flag), then `b`'s with `a` if `b` lives; the kill value
+    /// of `b`'s loss less that of `a`'s ([`computer::damage_value`], desperate in the side's
+    /// desperate mode). With BAT-QUIRK-25 `b`'s exchange and kill value take `a`'s shot flag
+    /// (survey slip 16), without its own.
+    // rule: BAT-AI-016
+    fn exchange_value(&self, (a, b): (StackId, StackId)) -> i32 {
+        let (state, ruleset, side) = (self.state, self.ruleset, self.side);
+        let shot = computer::shoots(state, ruleset, a);
+        let other = if self.slips() {
+            shot
+        } else {
+            computer::shoots(state, ruleset, b)
+        };
+        let hp = (
+            computer::hit_points(state, a),
+            computer::hit_points(state, b),
+        );
+        let (mut ha, mut hb) =
+            computer::exchange(state, ruleset, side, ((a, hp.0), (b, hp.1)), (shot, 0));
+        if hb > 0 {
+            (hb, ha) = computer::exchange(state, ruleset, side, ((b, hb), (a, ha)), (other, 0));
+        }
+        let desperate = self.ctx.desperate();
+        let value = |id, lost, shot| {
+            computer::damage_value(state, ruleset, &self.ctx, (id, lost), (shot, desperate))
+        };
+        let mut v = value(b, hp.1 - hb, other);
+        if hp.0 > ha {
+            v = v.wrapping_sub(value(a, hp.0 - ha, shot));
+        }
+        v
+    }
+
+    /// A speed bonus's value (0x439550; BAT-AI-016) of `bonus` more speed for stack `s` over
+    /// `rounds` rounds: 0 without a threat record's enemy `e`, when the predictions beat the
+    /// enemy, or with no round left (a round less for a stack that has acted). `s0` its speed
+    /// now, `s1` its speed before its effects plus the bonus, `t0` and `t1` its turns to attack
+    /// at each; 0 when `t1` exceeds the balance class `k`. When `t1 = 1` and the stack overtakes
+    /// `e` (`s0 ≤ e's speed < s1`), the values of striking first both ways
+    /// ([`Self::exchange_value`]), at least 0. Plus, when `t1 < t0`, the rounds of fighting won:
+    /// `(k − t1 + 1) × w / k − (k − min(t0, k + 1) + 1) × w / k`, `w` its strength, as the
+    /// original's 32-bit integers.
+    // rule: BAT-AI-016
+    pub(crate) fn speed_bonus(&self, s: StackId, bonus: u16, rounds: u32) -> i32 {
+        let Some(threat) = self.threat(s) else {
+            return 0;
+        };
+        let stack = self.stack(s);
+        let left = if stack.flags.contains(StackFlags::ACTED) {
+            i64::from(rounds) - 1
+        } else {
+            i64::from(rounds)
+        };
+        if self.beaten || left == 0 {
+            return 0;
+        }
+        let s0 = u32::from(stack.speed_now());
+        let s1 = u32::from(stack.speed) + u32::from(bonus);
+        let (t0, t1) = (self.turns_at(s, s0), self.turns_at(s, s1));
+        let k = u32::from(self.class);
+        if t1 > k {
+            return 0;
+        }
+        let mut v = 0i32;
+        let e = threat.enemy;
+        let se = u32::from(self.stack(e).speed_now());
+        if t1 == 1 && s0 <= se && se < s1 {
+            v = self
+                .exchange_value((s, e))
+                .wrapping_add(self.exchange_value((e, s)))
+                .max(0);
+        }
+        if t1 < t0 {
+            let t0 = t0.min(k + 1);
+            let w = computer::strength(self.state, self.ruleset, &self.ctx, s);
+            let k = i32::from(self.class);
+            let share = |t: u32| (k - i32::try_from(t).unwrap_or(0) + 1).wrapping_mul(w) / k;
+            v = v.wrapping_add(share(t1).wrapping_sub(share(t0)));
+        }
+        v
+    }
+
+    /// Haste's evaluator (0x4396B0; BAT-AI-016): the speed bonus's value of the spell's value
+    /// ([`Self::speed_bonus`]).
+    // rule: BAT-AI-016
+    pub(crate) fn haste(&self, s: StackId, c: Candidate) -> i32 {
+        self.speed_bonus(s, self.effect(c), c.rounds)
+    }
+
+    /// Prayer's evaluator (0x438AC0; BAT-AI-016): the spell's value as a defense bonus
+    /// ([`Self::defense_bonus`]), a speed bonus ([`Self::speed_bonus`]) and, against the threat
+    /// record's enemy within a turn, an attack bonus ([`Self::attack_bonus`]), summed.
+    // rule: BAT-AI-016
+    pub(crate) fn prayer(&self, s: StackId, c: Candidate) -> i32 {
+        let v = self.effect(c);
+        let attack = self
+            .within_a_turn(s)
+            .map_or(0, |e| self.attack_bonus((s, e), c.rounds, v));
+        self.defense_bonus(s, c.rounds, v)
+            .wrapping_add(self.speed_bonus(s, v, c.rounds))
+            .wrapping_add(attack)
     }
 
     /// Whether the ruleset ports the original's slips (BAT-QUIRK-25).
