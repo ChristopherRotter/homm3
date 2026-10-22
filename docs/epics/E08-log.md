@@ -4069,3 +4069,45 @@ repository from GitHub; the original data from the PC: the executable, both LODs
 - **Verify**: the full run with the original data on 736a00f (`master` 0f989da) passed all 16
   steps (engine code 947c5b97; benchmarks within +0.7 %); `h3-view` checked in `clients/` (SDL's
   build packages installed for it). CI cannot run (billing).
+
+### Increment 5, round 2: T37a, the harness's reads for batch E5 (2026-10-22, `adventure/e08-t37a`, `cross-lane`)
+
+**The cut** (decision 82; asked at the start, `AskUserQuestion`): T37 in two, the reads first (as
+T32b1, T32b2). Not chosen: T37 whole, the reads with batches E5a and E5b.
+
+**Baseline:** `master` 1b280e0 (#387 merged); the sandbox's baseline ran the full gates with the
+original data on its engine code (7feae1f3): all 16 steps passed. The user's PC was linked at the
+start: the repository from GitHub, the original's sixteen files from the PC (the executable, the
+five DLLs, the four LODs, the three sound and video archives, `maps.tar`, `extracted.tar`,
+`Objects.txt`), so the harness ran under Wine in the sandbox. The branch changes no engine code.
+
+- **A tile's explored bit** (`h3mem.Mem.explored`; `h3adv`'s `explored:x,y[,level][:colour]`,
+  yes or no, the player the step's hero's owner unless named): the tile's vision word
+  (`tile_vision_word` 0x4F79B0 read again: index (level × height + y) × width + x into
+  `tile_vision_pointer` 0x6989F8, the map's side for both on the square maps), bit n for colour n.
+  `before:explored:` is refused (the step's snapshot holds no tiles).
+- **A hero's points at a turn start without a walk:** a read step's `points` already gave the step
+  hero's +0x4D (the "check" of §11); added the hero details `points` and `day_points` (+0x49, the
+  movement bar), so any hero's are read by name (`hero[E5-1a]:points`, batch E5a's table).
+- **An artifact put on from the backpack** (the step `equip = { "<artifact>" = "<slot>" }`): the
+  hero screen opened by a click on the selected hero on the map (new probes `hero_screen`, from the
+  primary skills' labels, checked on two heroes' screens), a click on the artifact's place in the
+  backpack (the cursor takes it; the backpack in memory loses it at once) and one on the slot,
+  checked in memory, the screen closed with `Return`. Places checked under Wine: the backpack's
+  (425 + 46k, 387), the feet (537, 317), misc 1 (405, 165); the other slots are VCMI's hero
+  window's places, unchecked. Only the first five backpack places (no scrolling).
+- **Wider tables** (batch E5a's, E5b's, E5e's: a row with several value columns): `fill` and
+  `records` key a cell by `<row label> | <column>` (`"W (2, 10) | after the battle"`), a table of
+  one value column by its label as before.
+- **The harness check** gained Blue's Fog (Tyris at (28, 30): probes at its disk's edge, before
+  and after a step east, and Red's bit on its tile) and Equip (Sorsha at (28, 3), Boots of Speed
+  and the Spyglass in the backpack, put on in the hero screen; its points at Blue's day-2 start
+  without a walk); Red already held eight heroes (the list's most). **Passed under Wine in two
+  full runs** (about 2.5 minutes each; the runs differ only in the random starting gold, seed
+  bytes and their draws): Fog's probes as ADV-FOG-002's disk of radius 5 (dx² + dy² ≤ 30): (33,
+  30) and (33, 32) explored at the start, (34, 30) and (33, 33) not, all four after the step;
+  Red's bit clear; points 1560, 1460 after the step. Equip: Boots of Speed (feet) and Spyglass
+  (misc 1) worn, the backpack empty; **the points left 1560 after the screen, the day's points
+  1560 → 2160 at its close** (as §1.4's reading says: the close writes only +0x49); day 2: 2160
+  and 2160. Seen while exploring by hand: neither value changes while the screen is open.
+- **Not built:** batch E5's recipes and the runs (T37b); the scoring (T38).
