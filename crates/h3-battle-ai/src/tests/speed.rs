@@ -84,7 +84,8 @@ fn haste_values_the_turns_it_wins_and_overtaking_its_enemy() {
     let sc = context(&state, &r);
     let (runners, efreet) = (StackId(0), StackId(1));
     let both = sc
-        .view().exchange_value((runners, efreet))
+        .view()
+        .exchange_value((runners, efreet))
         .wrapping_add(sc.view().exchange_value((efreet, runners)));
     assert_eq!(haste(&sc, runners), both.max(0));
     // Two turns where the class is 1: beyond the battle's expected length, nothing.

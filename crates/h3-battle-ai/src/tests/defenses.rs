@@ -176,13 +176,21 @@ fn a_protection_is_worth_nothing_without_a_threat_it_lowers() {
     // The sums times the class short of a creature: the imps' 1 a strike on a giant (150).
     let weak = BattleState::new(&r, &battle(&[(GIANT, 1)], &[(IMP, 1), (IMP, 1)]), 1).unwrap();
     let sc = context(&weak, &r);
-    assert_eq!(sc.view().protection((StackId(0), StackId(1)), 6, X87::int(2)), 0);
+    assert_eq!(
+        sc.view()
+            .protection((StackId(0), StackId(1)), 6, X87::int(2)),
+        0
+    );
     // The enemy beaten: a hundred runners kill the one imp before it acts; the runners lose no
     // creature to the damage planned on them.
     let won = BattleState::new(&r, &battle(&[(RUNNER, 100)], &[(IMP, 1)]), 1).unwrap();
     let sc = context(&won, &r);
     assert!(sc.view().beaten());
-    assert_eq!(sc.view().protection((StackId(0), StackId(1)), 6, X87::int(2)), 0);
+    assert_eq!(
+        sc.view()
+            .protection((StackId(0), StackId(1)), 6, X87::int(2)),
+        0
+    );
 }
 
 // covers: BAT-AI-016
@@ -273,7 +281,8 @@ fn frenzy_as_a_second_strike_with_the_slip_or_as_its_rule() {
     let e = StackId(5);
     assert_eq!(
         sc.value(StackId(0), c),
-        sc.view().attack_bonus((StackId(0), e), 6, defense * 2) - sc.view().defense_bonus(StackId(0), 6, defense)
+        sc.view().attack_bonus((StackId(0), e), 6, defense * 2)
+            - sc.view().defense_bonus(StackId(0), 6, defense)
     );
     // Beyond a turn: nothing.
     let far = BattleState::new(&r, &battle(&[(IMP, 10)], &[(GOG, 4)]), 1).unwrap();

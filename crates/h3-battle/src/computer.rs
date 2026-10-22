@@ -213,6 +213,12 @@ pub fn damage_per_creature(state: &BattleState, ruleset: &BattleRuleset, id: Sta
     aim::per_creature(state, ruleset, state.at(id))
 }
 
+/// The least damage one creature of stack `id` deals as the computer reads it (+0xD0; E23 T4c:
+/// Curse's value): a Ballista's without its hero's multiplier.
+pub fn minimum_damage(state: &BattleState, ruleset: &BattleRuleset, id: StackId) -> u64 {
+    aim::damage_range(state, ruleset, state.at(id)).0
+}
+
 /// The most damage one creature of stack `id` deals as the computer reads it (+0xD4; E23 T4c:
 /// Bless's value): a Ballista's without its hero's multiplier.
 pub fn maximum_damage(state: &BattleState, ruleset: &BattleRuleset, id: StackId) -> u64 {

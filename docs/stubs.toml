@@ -20,12 +20,6 @@ reason = "The observation does not show which dead created stacks vanished when 
 epic   = "E05"
 
 [[stub]]
-id     = "BAT-STUB-4"
-where  = "crates/h3-battle-ai/src/spells.rs"
-reason = "The computer's creature cast entry (0x421280) is built with the raise, the Faerie Dragon (E23 T4a; BAT-AI-012, BAT-AI-013), the Ogre Mage's scan (E23 T4b1; BAT-AI-014) and the Master Genie's mean (E23 T4c, in progress; BAT-AI-016). Not yet: the threat tables and the second context (0x43C040) and the evaluators but those of the attack bonuses, Bless, Mirth and Fortune: a spell without one is worth 0 in the Genie's mean"
-epic   = "E23"
-
-[[stub]]
 id     = "BAT-STUB-5"
 where  = "crates/h3-battle-ai/src/lib.rs::unchecked"
 reason = "The hero's side of the computer (E23 T5, T6): no hero's cast (0x422DA0, T1a6's reading) and no retreat test (0x41E570); the tactics phase ends at once instead of the shooters' placement and the walkers' choice in the zone (§7.34); a commanded Catapult shoots the first wall the engine lists instead of the computer's aim (§7.29, the gate first); a commanded First Aid Tent defends instead of healing the computer's patient (§7.14, BAT-Q51) (BAT-AI-001)"

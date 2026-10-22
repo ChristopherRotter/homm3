@@ -18,7 +18,7 @@ const BASE: u64 = 100;
 const MORALE: [(u32, u32, u32); 2] = [(173, 10_000, DOUBLE_BITS), (833, 10_000, DOUBLE_BITS)];
 
 /// The highest and lowest morale or luck the values count (the callers' clamp to ±3).
-const LIMIT: i32 = 3;
+pub(crate) const LIMIT: i32 = 3;
 
 /// The dice of a luck roll (0x438490's divisor: one chance in 24 per point).
 const LUCK_DICE: i32 = 24;
@@ -41,7 +41,7 @@ impl Signed {
     }
 
     /// `self + rhs`, rounded as the FPU does.
-    fn plus(self, rhs: Self) -> Self {
+    pub(crate) fn plus(self, rhs: Self) -> Self {
         if self.negative == rhs.negative {
             return Self {
                 negative: self.negative,
@@ -60,7 +60,7 @@ impl Signed {
     }
 
     /// `−self`.
-    fn negated(self) -> Self {
+    pub(crate) fn negated(self) -> Self {
         Self {
             negative: !self.negative,
             magnitude: self.magnitude,
@@ -377,7 +377,7 @@ impl View<'_> {
 
     /// The turns stack `s` needs to attack its threat record's enemy at `speed` (0x448BD0): 1 for
     /// a stack that can shoot now or at speed 0, else from the record's cost.
-    fn turns_at(&self, s: StackId, speed: u32) -> u32 {
+    pub(crate) fn turns_at(&self, s: StackId, speed: u32) -> u32 {
         if computer::shoots(self.state, self.ruleset, s) {
             return 1;
         }
@@ -487,11 +487,10 @@ impl View<'_> {
             .wrapping_add(self.speed_bonus(s, v, c.rounds))
             .wrapping_add(attack)
     }
-
 }
 
 /// A point's values as [`change_value`] takes them.
-fn values(table: [(u32, u32, u32); 2]) -> (X87, X87) {
+pub(crate) fn values(table: [(u32, u32, u32); 2]) -> (X87, X87) {
     let [(pn, pd, pb), (nn, nd, nb)] = table;
     (
         X87::ratio(pn, pd, pb).unwrap_or(X87::ZERO),

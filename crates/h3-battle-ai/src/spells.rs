@@ -4,16 +4,21 @@
 //! (the Ogre Mage's and the Master Genie's scan, [`casts`](crate::casts)) build the context and
 //! ask its evaluator for each stack.
 //!
-//! The context holds the side's battle context, its balance class, "the enemy beaten" after the
-//! predictions ([`predict`]: the damage the side's stacks that act before the other side's next
-//! one are expected to deal, with their draws) and each stack's threat record (0x422B20 with flag
-//! 0, [`computer::threat`]). Each spell's evaluator is told by the spell's data ([`Kind`]), as the
-//! original's table 0x43B690 tells it by the spell's number: the attack bonuses, luck and morale
-//! ([`boosts`]). Not built yet (BAT-STUB-4, E23 T4c): the threat tables and the second context
-//! (0x43C040) and the other evaluators.
+//! The context holds the damage the predictions plan ([`predict`]: what the side's stacks that
+//! act before the other side's next one are expected to deal, with their draws), each stack's
+//! threat record (0x422B20 with flag 0, [`computer::threat`]) and a half per side: its battle
+//! context, balance class, "the enemy beaten" and threat tables ([`tables`]); the other side's
+//! half is the original's second context (+0x48), which the removals value spells in. Each
+//! spell's evaluator is told by the spell's data ([`Kind`]), as the original's table 0x43B690
+//! tells it by the spell's number: the attack bonuses, luck, morale, speed and the second strikes
+//! ([`boosts`]), the defenses and the spell protections ([`defenses`]), the harmful spells
+//! ([`harms`]) and the removals ([`removals`]). The bolts', Dispel's and Clone's evaluators serve
+//! only the hero's choice (E23 T5): they value 0 here.
 
 pub(crate) mod boosts;
 mod defenses;
+mod harms;
+mod removals;
 pub(crate) mod tables;
 
 use core::cell::OnceCell;
@@ -22,7 +27,7 @@ use h3_battle::computer::{self, Context, Planned, Threat};
 use h3_battle::{
     BattleSide, BattleState, STACK_CAPACITY, StackFlags, StackId, StackTraits, Status,
 };
-use h3_content::{ORIGINAL_AI_SLIPS, SpellId};
+use h3_content::{ORIGINAL_AI_SLIPS, SpellCategory, SpellId};
 use h3_content_battle::{BattleRuleset, BattleSpell, SpellEffect, TimedChange};
 use h3_kernel::Rng;
 use h3_kernel::arith::X87;
@@ -100,6 +105,36 @@ pub(crate) enum Kind {
     Protection,
     /// Magic Mirror (36; 0x439DE0).
     MagicMirror,
+    /// Cure (37; 0x439C30).
+    Cure,
+    /// Anti-Magic (34; 0x439D40).
+    AntiMagic,
+    /// Curse (42; 0x43B370).
+    Curse,
+    /// Weakness (45; 0x438ED0).
+    Weakness,
+    /// Disrupting Ray (47; 0x438DC0).
+    DisruptingRay,
+    /// Sorrow (50; 0x4382C0).
+    Sorrow,
+    /// Misfortune (52; 0x438F60).
+    Misfortune,
+    /// Slow (54; 0x439270).
+    Slow,
+    /// Berserk (59; 0x43A400).
+    Berserk,
+    /// Hypnotize (60; 0x43A500).
+    Hypnotize,
+    /// Forgetfulness (61; 0x43B500).
+    Forgetfulness,
+    /// Blind and Paralyze (62, 74; 0x439100).
+    Disable,
+    /// Poison (71; 0x439500).
+    Poison,
+    /// Disease (73; 0x438A10).
+    Disease,
+    /// Age (75; 0x4373F0).
+    Age,
 }
 
 impl Kind {
@@ -117,6 +152,23 @@ impl Kind {
         if timed(TimedChange::Attack) && timed(TimedChange::Defense) && timed(TimedChange::Speed) {
             return Some(Self::Prayer);
         }
+        // Disease lowers the attack and the defense, Weakness the attack alone; Disrupting Ray
+        // lowers the defense alone and a hero casts it (the Rust Dragons' Acid Breath is an
+        // ability the table values at 0).
+        if timed(TimedChange::AttackLoss) {
+            return Some(if timed(TimedChange::DefenseLoss) {
+                Self::Disease
+            } else {
+                Self::Weakness
+            });
+        }
+        if timed(TimedChange::DefenseLoss) {
+            return (spell.category != SpellCategory::Ability).then_some(Self::DisruptingRay);
+        }
+        // Cure ends harmful spells and heals (Dispel only ends: the hero's, E23 T5).
+        if effects.contains(&SpellEffect::Dispel) && effects.contains(&SpellEffect::Heal) {
+            return Some(Self::Cure);
+        }
         [
             (TimedChange::MeleeAttack, Self::Bloodlust),
             (TimedChange::RangedAttack, Self::Precision),
@@ -131,6 +183,18 @@ impl Kind {
             (TimedChange::Frenzy, Self::Frenzy),
             (TimedChange::SchoolProtection, Self::Protection),
             (TimedChange::MagicMirror, Self::MagicMirror),
+            (TimedChange::SpellImmunity, Self::AntiMagic),
+            (TimedChange::MinimumDamage, Self::Curse),
+            (TimedChange::MoraleLoss, Self::Sorrow),
+            (TimedChange::LuckLoss, Self::Misfortune),
+            (TimedChange::SpeedPercent, Self::Slow),
+            (TimedChange::Berserk, Self::Berserk),
+            (TimedChange::Hypnotize, Self::Hypnotize),
+            (TimedChange::Forgetfulness, Self::Forgetfulness),
+            (TimedChange::Blind, Self::Disable),
+            (TimedChange::Paralyze, Self::Disable),
+            (TimedChange::Poison, Self::Poison),
+            (TimedChange::Age, Self::Age),
         ]
         .into_iter()
         .find_map(|(c, kind)| timed(c).then_some(kind))
@@ -155,6 +219,21 @@ impl Kind {
             Self::Prayer => |sc, s, c| sc.prayer(s, c),
             Self::Protection => |sc, s, c| sc.protection_from(s, c),
             Self::MagicMirror => |sc, s, c| sc.magic_mirror(s, c),
+            Self::Cure => |sc, s, c| sc.cure(s, c),
+            Self::AntiMagic => |sc, s, c| sc.anti_magic(s, c),
+            Self::Curse => |sc, s, c| sc.curse(s, c),
+            Self::Weakness => |sc, s, c| sc.weakness(s, c),
+            Self::DisruptingRay => |sc, s, c| sc.disrupting_ray(s, c),
+            Self::Sorrow => |sc, s, c| sc.sorrow(s, c),
+            Self::Misfortune => |sc, s, c| sc.misfortune(s, c),
+            Self::Slow => |sc, s, c| sc.slow(s, c),
+            Self::Berserk => |sc, s, c| sc.berserk(s, c),
+            Self::Hypnotize => |sc, s, c| sc.hypnotize(s, c),
+            Self::Forgetfulness => |sc, s, c| sc.forgetfulness(s, c),
+            Self::Disable => |sc, s, c| sc.disable(s, c),
+            Self::Poison => |sc, s, c| sc.poison(s, c),
+            Self::Disease => |sc, s, c| sc.disease(s, c),
+            Self::Age => |sc, s, c| sc.age(s, c),
         }
     }
 }
@@ -189,24 +268,29 @@ pub(crate) struct Half {
     /// The enemy beaten (+0x1C): no stack of the other side but the war machines has hit points
     /// left after the planned damage.
     beaten: bool,
+    /// The other side's able strength (+0x38, the battle context's +0x18).
+    other_able: i32,
     /// The threat tables (0x43C040), built when first asked.
     tables: OnceCell<Tables>,
 }
 
 impl Half {
-    /// The half of `side` with its battle context `ctx`: its balance class ([`balance`]) and
-    /// "the enemy beaten" after the damage `planned` ([`beaten`]).
+    /// The half of `side` with its battle context `ctx`: its balance class and the other side's
+    /// able strength ([`balance`]) and "the enemy beaten" after the damage `planned`
+    /// ([`beaten`]).
     fn new(
         state: &BattleState,
         ruleset: &BattleRuleset,
         (ctx, side): (Context, BattleSide),
         planned: &Planned,
     ) -> Self {
+        let balance = balance(state, ruleset, &ctx, side);
         Self {
             side,
             ctx,
-            class: balance(state, ruleset, &ctx, side).class,
+            class: balance.class,
             beaten: beaten(state, planned, side),
+            other_able: balance.other,
             tables: OnceCell::new(),
         }
     }
@@ -262,9 +346,8 @@ impl<'a> SpellContext<'a> {
     /// The threat record of stack `id` ([`computer::threat`] in the side's battle context, on
     /// the battle), computed once.
     fn threat(&self, id: StackId) -> Option<Threat> {
-        *self.threats[id.index()].get_or_init(|| {
-            computer::threat(self.state, self.ruleset, &self.first.ctx, id)
-        })
+        *self.threats[id.index()]
+            .get_or_init(|| computer::threat(self.state, self.ruleset, &self.first.ctx, id))
     }
 }
 
@@ -301,7 +384,7 @@ impl<'s> View<'s> {
     }
 
     /// The same half on `state`.
-    fn on<'t>(&self, state: &'t BattleState) -> View<'t>
+    pub(crate) fn on<'t>(&self, state: &'t BattleState) -> View<'t>
     where
         's: 't,
     {
@@ -309,7 +392,7 @@ impl<'s> View<'s> {
     }
 
     /// The other half on the same state (the second context, or from it the first).
-    fn other(&self) -> Self {
+    pub(crate) fn other(&self) -> Self {
         let half = if core::ptr::eq(self.half, &self.root.first) {
             self.root.second()
         } else {

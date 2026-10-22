@@ -21,9 +21,9 @@ use h3_content::{
 };
 use h3_content_battle::{
     AbilityDef, AreaShot, AuraTarget, BallisticsRecord, BattleCreatureDef, BattlePack,
-    BattleParamsDef, BattleRuleset, BattleSpellDef, HexStep, ObstacleKind, ObstacleShape, SiegeDef,
-    SiegeFieldDef, SpellAi, SpellEffect, SpellMagic, SpellPolarity, SpellTarget, TimedChange,
-    Usefulness, WallKind, WallTarget,
+    BattleParamsDef, BattleRuleset, BattleSpellDef, EffectDuration, HexStep, ObstacleKind,
+    ObstacleShape, SiegeDef, SiegeFieldDef, SpellAi, SpellEffect, SpellMagic, SpellPolarity,
+    SpellTarget, TimedChange, Usefulness, WallKind, WallTarget,
 };
 use h3_contracts::{
     Army, ArmyStack, BallistaControl, BattleHero, BattleSetup, BattleSide, FortLevel, Moat, Rate,
@@ -40,6 +40,7 @@ mod casts;
 mod defenses;
 mod ends;
 mod gain;
+mod harms;
 mod odds;
 mod order;
 mod predict;
@@ -539,6 +540,271 @@ const SPELLS: [TestSpell; 16] = [
     ),
 ];
 
+/// A test spell of the harmful spells' and the removals' values (E23 T4c): its key, level,
+/// value by mastery, power, category, polarity, effects, whether it lasts to the battle's end and
+/// the spells its dispel ends. Every one is aimed at a stack; a hero's is a fire spell.
+type ExtraSpell = (
+    &'static str,
+    u8,
+    [u16; 4],
+    u16,
+    SpellCategory,
+    SpellPolarity,
+    &'static [SpellEffect],
+    bool,
+    &'static [&'static str],
+);
+
+/// A timed change as a spell's effect.
+const fn timed(change: TimedChange) -> SpellEffect {
+    SpellEffect::Timed(change)
+}
+
+/// The harmful test spells and the removals, with the values of the original's.
+const EXTRA: [ExtraSpell; 17] = [
+    (
+        "curse",
+        1,
+        [0, 0, 1, 1],
+        0,
+        SpellCategory::Combat,
+        SpellPolarity::Negative,
+        &[timed(TimedChange::MinimumDamage)],
+        false,
+        &[],
+    ),
+    (
+        "weakness",
+        2,
+        [3, 3, 6, 6],
+        0,
+        SpellCategory::Combat,
+        SpellPolarity::Negative,
+        &[timed(TimedChange::AttackLoss)],
+        false,
+        &[],
+    ),
+    (
+        "ray",
+        2,
+        [3, 3, 4, 5],
+        0,
+        SpellCategory::Combat,
+        SpellPolarity::Negative,
+        &[timed(TimedChange::DefenseLoss)],
+        true,
+        &[],
+    ),
+    (
+        "acid",
+        0,
+        [3, 3, 3, 3],
+        0,
+        SpellCategory::Ability,
+        SpellPolarity::Negative,
+        &[timed(TimedChange::DefenseLoss)],
+        true,
+        &[],
+    ),
+    (
+        "sorrow",
+        4,
+        [1, 1, 2, 2],
+        0,
+        SpellCategory::Combat,
+        SpellPolarity::Negative,
+        &[timed(TimedChange::MoraleLoss)],
+        false,
+        &[],
+    ),
+    (
+        "misfortune",
+        3,
+        [1, 1, 2, 2],
+        0,
+        SpellCategory::Combat,
+        SpellPolarity::Negative,
+        &[timed(TimedChange::LuckLoss)],
+        false,
+        &[],
+    ),
+    (
+        "slow",
+        1,
+        [75, 75, 50, 50],
+        0,
+        SpellCategory::Combat,
+        SpellPolarity::Negative,
+        &[timed(TimedChange::SpeedPercent)],
+        false,
+        &[],
+    ),
+    (
+        "berserk",
+        4,
+        [0, 0, 1, 2],
+        0,
+        SpellCategory::Combat,
+        SpellPolarity::Negative,
+        &[timed(TimedChange::Berserk)],
+        false,
+        &[],
+    ),
+    (
+        "hypnotize",
+        3,
+        [10, 10, 20, 50],
+        25,
+        SpellCategory::Combat,
+        SpellPolarity::Negative,
+        &[timed(TimedChange::Hypnotize)],
+        false,
+        &[],
+    ),
+    (
+        "forget",
+        3,
+        [0, 0, 0, 0],
+        0,
+        SpellCategory::Combat,
+        SpellPolarity::Negative,
+        &[timed(TimedChange::Forgetfulness)],
+        false,
+        &[],
+    ),
+    (
+        "blind",
+        2,
+        [50, 50, 25, 0],
+        0,
+        SpellCategory::Combat,
+        SpellPolarity::Negative,
+        &[timed(TimedChange::Blind)],
+        false,
+        &[],
+    ),
+    (
+        "paralyze",
+        4,
+        [25, 25, 25, 25],
+        0,
+        SpellCategory::Ability,
+        SpellPolarity::Negative,
+        &[timed(TimedChange::Paralyze)],
+        false,
+        &[],
+    ),
+    (
+        "poison",
+        0,
+        [0, 0, 0, 0],
+        0,
+        SpellCategory::Ability,
+        SpellPolarity::Negative,
+        &[timed(TimedChange::Poison)],
+        false,
+        &[],
+    ),
+    (
+        "disease",
+        2,
+        [2, 2, 2, 2],
+        0,
+        SpellCategory::Ability,
+        SpellPolarity::Negative,
+        &[
+            timed(TimedChange::AttackLoss),
+            timed(TimedChange::DefenseLoss),
+        ],
+        false,
+        &[],
+    ),
+    (
+        "age",
+        5,
+        [0, 0, 0, 0],
+        0,
+        SpellCategory::Ability,
+        SpellPolarity::Negative,
+        &[timed(TimedChange::Age)],
+        false,
+        &[],
+    ),
+    (
+        "cure",
+        1,
+        [10, 10, 20, 30],
+        5,
+        SpellCategory::Combat,
+        SpellPolarity::Positive,
+        &[SpellEffect::Dispel, SpellEffect::Heal],
+        false,
+        &[
+            "curse",
+            "weakness",
+            "slow",
+            "blind",
+            "poison",
+            "sorrow",
+            "misfortune",
+        ],
+    ),
+    (
+        "antimagic",
+        3,
+        [4, 4, 5, 6],
+        0,
+        SpellCategory::Combat,
+        SpellPolarity::Positive,
+        &[timed(TimedChange::SpellImmunity)],
+        false,
+        &[],
+    ),
+];
+
+/// A hero whose book holds every test spell but the creatures' abilities at `mastery`, with 999
+/// mana and power 5.
+fn caster(r: &BattleRuleset, mastery: u8) -> BattleHero {
+    let mut h = hero(0);
+    h.power = 5;
+    let book: Vec<SpellId> = SPELLS
+        .iter()
+        .map(|s| s.0)
+        .chain(
+            EXTRA
+                .iter()
+                .filter(|s| s.4 == SpellCategory::Combat)
+                .map(|s| s.0),
+        )
+        .chain(["bolt"])
+        .map(|k| spell(r, k))
+        .collect();
+    h.magic.masteries = book.iter().map(|&s| (s, mastery)).collect();
+    h.magic.spell_book = Some(book);
+    h.magic.mana = 999;
+    h.magic.max_mana = 999;
+    h
+}
+
+/// `side`'s hero casts `name` at stack `t`, at the first turn of one of its stacks where the
+/// engine accepts it, every other stack defending until then.
+fn cast_at(state: &mut BattleState, r: &BattleRuleset, side: BattleSide, name: &str, t: StackId) {
+    let cast = Command::Cast {
+        spell: spell(r, name),
+        target: h3_battle::CastTarget::Stack(t),
+        second: h3_battle::CastTarget::None,
+    };
+    for _ in 0..40 {
+        if validate(state, r, side, cast).is_ok() {
+            apply(state, r, side, cast, &mut NoopSink).unwrap();
+            return;
+        }
+        let acting = state.side_to_act().unwrap();
+        apply(state, r, acting, Command::Defend, &mut NoopSink).unwrap();
+    }
+    panic!("{name} at {t:?} never accepted");
+}
+
 /// The id of the test spell `name` in `r`.
 fn spell(r: &BattleRuleset, name: &str) -> SpellId {
     r.spell_by_key(&["t:", name].concat()).unwrap()
@@ -649,6 +915,25 @@ fn core(profile: &str) -> Ruleset {
                 schools: vec![key(&["t:", school].concat())],
                 cost: [5; 4],
                 power: 0,
+                effect,
+                granted_by_name_only: false,
+            }),
+    );
+    pack.spells.extend(
+        EXTRA
+            .iter()
+            .map(|&(k, level, effect, power, category, ..)| SpellDef {
+                key: key(&["t:", k].concat()),
+                name: k.into(),
+                category,
+                level,
+                schools: if category == SpellCategory::Ability {
+                    vec![]
+                } else {
+                    vec![key("t:fire")]
+                },
+                cost: [5; 4],
+                power,
                 effect,
                 granted_by_name_only: false,
             }),
@@ -789,6 +1074,32 @@ fn ruleset_as(profile: &str) -> BattleRuleset {
                 ai: SpellAi::default(),
             },
         ),
+    );
+    spells.extend(
+        EXTRA
+            .iter()
+            .map(
+                |&(k, _, _, _, _, polarity, effects, permanent, dispels)| BattleSpellDef {
+                    key: key(&["t:", k].concat()),
+                    polarity,
+                    magic: SpellMagic {
+                        target: SpellTarget::Stack,
+                        effects: effects.to_vec(),
+                        duration: if permanent {
+                            EffectDuration::Permanent
+                        } else {
+                            EffectDuration::Rounds
+                        },
+                        ..SpellMagic::default()
+                    },
+                    counters: vec![],
+                    dispels: dispels.iter().map(|d| key(&["t:", d].concat())).collect(),
+                    spares: vec![],
+                    tests_as: None,
+                    summons: None,
+                    ai: SpellAi::default(),
+                },
+            ),
     );
     spells.push(BattleSpellDef {
         key: key("t:bolt"),

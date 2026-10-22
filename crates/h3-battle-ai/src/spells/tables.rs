@@ -65,7 +65,9 @@ fn acts(s: &Stack) -> bool {
 impl<'s> View<'s> {
     /// The side's threat tables (0x43C040; BAT-AI-016), built the first time they are asked.
     pub(crate) fn tables(&self) -> &'s Tables {
-        self.half.tables.get_or_init(|| self.on(self.root.state).fill())
+        self.half
+            .tables
+            .get_or_init(|| self.on(self.root.state).fill())
     }
 
     /// The seed of stack `r`'s melee entry (0x43BF20): when `r` can act ([`acts`]), cannot shoot
