@@ -65,17 +65,17 @@ const SCHOOL_VALUES: [u64; 4] = [0, 25, 3, 30];
 const PRIMARY_CAP: u8 = 99;
 
 /// The map's tiles the computer weighs Pathfinding and Navigation by (`ai_map_terrain_shares`
-/// 0x52B9C0, survey §10.3): over the tiles of both levels that carry the map file's coast flag
-/// and are not rock (only those: `ADV-QUIRK-14`), how many there are, the water tiles among them
-/// and, per Pathfinding level 0 to 2, the tiles whose straight step still costs more than 100.
-/// The game counts them from its static map (E08 T29); the evaluation divides them. A map
-/// without a coast counts none, and both skills are then worth 0 (the original's 0 / 0).
+/// 0x52B9C0, survey §10.3): over the tiles of both levels that are not rock and that no object
+/// blocks, water included (E08 T38b: not the coast, as T25 read it), how many there are, the
+/// water tiles among them and, per Pathfinding level 0 to 2, the tiles whose straight step still
+/// costs more than 100. The game counts them from its static map (ADV-MAP-002); the evaluation
+/// divides them. A map without such a tile counts none, and both skills are then worth 0 (the
+/// original's 0 / 0).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct TerrainShares {
     /// The tiles counted.
     pub tiles: u32,
-    /// The water tiles among them (none where the coast flag lies on land only, as on every
-    /// shipped map: Navigation is then worth 0).
+    /// The water tiles among them (none on a map without water: Navigation is then worth 0).
     pub water: u32,
     /// Per Pathfinding level 0 to 2, the tiles among them whose step costs more than 100.
     pub rough: [u32; 3],

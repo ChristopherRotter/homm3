@@ -114,7 +114,7 @@ context  = "game"
 status   = "verified"
 summary  = "The setup carries the scenario's level limit (the map header's byte, AB and SoD; 0 none, as is a limit above the highest level, ADV-QUIRK-12) and its banned skills (SoD's set, the skills of the set bits' codes; each the ruleset's, a set in any order); the game keeps both, static. A hero with a custom experience gets its levels when the game is built, after its custom skills, army, spells and artifacts and its war machines' artifacts: it starts at level 1 and experience 0 and gains the custom experience under the limit (HER-EXP-003; D-21: capped at the limit's threshold, so no hero starts above it), then each pending level is drawn (GAM-HER-002) and given in hero id order: two offers chosen by the original's choice with the setup's army worth (1 000 and 500) and the map's terrain shares (HER-LVL-006, ADV-MAP-002; D-20: not the left offer), one learned, none the primary skill only; never a banned skill (HER-LVL-003); last the spell points full (HER-MAN-001). Building a game emits no events. A hero without a custom experience keeps its default 40-90 at level 1. Every level the battle's experience gives is under the limit too (GAM-BAT-002); in play a level-up is GAM-DEC-002's (E08 T30). The import passes a placed hero's custom experience as it is (MAP_IMPORT_VERSION 8): the five shipped maps that import whole give 9 heroes 41 levels at load. E08 T29: `h3_game::GameState::new`."
 numeric  = "integer"
-quirks   = ["ADV-QUIRK-9", "ADV-QUIRK-12", "ADV-QUIRK-14"]
+quirks   = ["ADV-QUIRK-9", "ADV-QUIRK-12"]
 
   [[rule.source]]
   kind       = "original-data"

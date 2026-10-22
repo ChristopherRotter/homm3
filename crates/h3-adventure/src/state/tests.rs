@@ -172,31 +172,49 @@ fn builds_the_static_map_with_the_objects_footprints() {
 
 // covers: ADV-MAP-002
 #[test]
-fn the_terrain_shares_count_the_coast_alone() {
-    // ADV-QUIRK-14's regression test (E08 T29): only the tiles with the coast flag count, rock
-    // not among them; grass 100, sand 150 (125, 100, 100 by Pathfinding level) and swamp 175
-    // (150, 125, 100) in the movement rules.
+fn the_terrain_shares_count_the_tiles_no_object_blocks() {
+    // E08 T38b (decision 85): every tile but rock that no object blocks counts, water included and
+    // an object's visitable tile too (the original's map item bit +0xC 0x40, not the coast flag,
+    // which plays no part). Grass 100, sand 150 (125, 100, 100 by Pathfinding level) and swamp
+    // 175 (150, 125, 100) in the movement rules.
     let rules = crate::testing::movement_rules(true);
-    let mut setup = crate::testing::world(&["gsw~", "#gsw", "gggg"], 1, vec![]);
+    let mut setup = crate::testing::world(&["gsw~", "#gsw", "gBTg"], 1, vec![]);
     let build = |setup: &AdventureSetup| {
         AdventureState::new(&rules.0, &rules.1, setup, &mut draws())
             .unwrap()
             .map()
             .terrain_shares()
     };
-    // A map without a coast counts nothing (the original's 0 / 0: both skills worth 0).
-    assert_eq!(build(&setup), TerrainShares::default());
-    for index in [0, 1, 2, 3, 4, 6] {
-        setup.map.tiles[index].coast = true;
-    }
-    // Grass, sand, swamp, sea and sand; the rock left out. Above 100: both sands and the swamp
-    // without Pathfinding and at Basic, the swamp alone at Advanced.
-    let shares = TerrainShares {
-        tiles: 5,
+    // Ten tiles: the rock and the blocked grass left out, the gate's grass (blocked and
+    // visitable) in. Above 100: both sands and both swamps without Pathfinding and at Basic, the
+    // swamps alone at Advanced.
+    let all = TerrainShares {
+        tiles: 10,
         water: 1,
-        rough: [3, 3, 1],
+        rough: [4, 4, 2],
     };
-    assert_eq!(build(&setup), shares);
+    assert_eq!(build(&setup), all);
+    for tile in &mut setup.map.tiles {
+        tile.coast = true;
+    }
+    assert_eq!(build(&setup), all);
+    // An object blocking the first row's sand and swamp leaves them out.
+    setup.map.objects.push(ObjectSetup {
+        anchor: Pos::new(2, 0, 0),
+        blocked: mask(&[(0, 0), (1, 0)]),
+        visitable: TileMask::default(),
+        object_type: None,
+        amount: None,
+        drawn: TileMask::default(),
+        monster: None,
+        guards: None,
+    });
+    let blocked = TerrainShares {
+        tiles: 8,
+        water: 1,
+        rough: [2, 2, 1],
+    };
+    assert_eq!(build(&setup), blocked);
 }
 
 // covers: ADV-OBJ-001
