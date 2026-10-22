@@ -1014,3 +1014,47 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   battles each of seeds 4 to 8: 34.7 to 38.0 µs per decision on average, the slowest 0.42 to
   0.79 ms (a Faerie Dragon, a Master Genie or an Ogre Mage: their contexts and predictions).
   Within the budget.
+
+## T1a6 — the hero's cast choice and the retreat test (2026-10-22, before increment 6)
+
+- **The user** (2026-10-22): T1a6 whole (the agent proposed two parts, the cast choice of about
+  4.9 KB first, the retreat test with part A after it). At the same time: BAT-QUIRK-26's class
+  confirmed (always fixed, no flag); BAT-Q57 answered as slip 25 (a task of its own, queued); the
+  BAT-MAG-010 note left in the inbox.
+- **Read** (`docs/formats/installation.md` §7.55): part H in full (about 5.9 KB: 0x43C800, 0x43BB20,
+  0x436FB0, 0x437310, 0x43ACA0, 0x43B1E0, 0x43AF50, 0x43B8F0, 0x43AA60, 0x5A9360, 0x41E570,
+  0x41E440, 0x477A00), of part A 0x433AA0 and 0x4339E0 in full and 0x4336C0 by its cases.
+- **Found, the cast:** over the spells the hero has, can pay and may cast there, the value is the
+  evaluator's (§7.46) or a case of its own, × 2.5 with mana for 7 casts, else × √(casts left),
+  then drawn at 75 to 100 %; the best is cast only when its "now" (§7.44) says it is due at this
+  activation, or, when the retreat test said yes, always, a damage spell only, valued in the
+  desperate mode. With the enemy beaten and no own creature about to die, only the raises. Never
+  cast: Quicksand, Land Mine, Force Field, Fire Wall, Berserk (aimed at a hex: its evaluator
+  serves only the removals), Remove Obstacle. Earthquake only for a besieger; Teleport as the
+  gain of the walker's real turn with the destination map over its own, twice per candidate; the
+  summons by AI value.
+- **Found, the retreat:** the wiki's terms all hold (never on Easy, half the Normal draws, never
+  for the victory condition's hero or without a tavern town, a walled-out besieger always), then
+  the hero's worth (artifacts 1000 or experience 2000), the predictions leaving no creature
+  (retreat), the gold for the price and 2500, and the share of Fight Value under a threshold of
+  0.16 to 0.22 less the difficulty's term and the attacker's 0.06, capped at 0.16 (an
+  experience term that the integer division makes a step at 200 000). The adventure's inputs have
+  no seam: BAT-Q61.
+- **Found, a slip** (survey §4, slip 26, for T5's checkpoint): 0x422DA0 asks the retreat test
+  between the context and the cast choice; when the test reaches its predictions, the cast's
+  values read their planned damage (both sides' runs) and the threat records the predicted turns
+  left, until Teleport's evaluation fills the records again.
+- **Map:** 20 entries (16 new: 0x41E440, 0x4336C0, 0x4339E0, 0x433AA0, 0x436FB0, 0x437310,
+  0x43ACA0, 0x43AF50, 0x43B1E0, 0x43B8F0, 0x477A00, 0x4E2840, 0x527640, 0x5A9360 and the tables
+  0x63ABC0, 0x63ABF8; 4 updated: 0x41E570, 0x43C800, and 0x43BB20 and 0x43AA60 renamed
+  `ai_hero_spell_value` and `ai_hero_teleport_value`); nine struct fields (the game's victory
+  condition and towns, the player's towns, the hero's id and spell lists).
+- **Checks:** a fresh agent re-read three findings blind, on the tool and the map as they were
+  before the edits (one `grep` met §7.55's two lines on game +0x1F89C): the cast choice's skips,
+  its value (the 2.5, the root of the casts left, the 75–100 % draw, the strict best, the cast
+  only when "now" or retreating, the desperate mode); 0x43BB20's zero spells, its area hexes and
+  its summons; the retreat test's every term in order with its constants and float steps. It
+  agreed on all three; two details it added went into §7.55 (Summon Elemental's refusal is for
+  an elemental of another kind; an unordered 0 / 0 counts as below the threshold).
+- **The wiki** was not reachable this session (WebFetch's approval was not answered): the four
+  siege conditions stand as the survey paraphrases them, to compare word for word with T6.

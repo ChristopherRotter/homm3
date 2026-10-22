@@ -5319,8 +5319,8 @@ left) times its value, from 7 casts on 2.5 times.
   over the own side's (each from the last record); the value 0x436FB0(`E`, `O`); "now" 1.
 - *Dispel* (35): 0x43A910 (§7.44) on the own side; at Advanced on the other side too (one target:
   the larger stays); at Expert the own side's sum plus the other side's.
-- *The summons* (66 to 69): 0 when the enemy is beaten or 0x5A93A0 refuses (20 stacks, another
-  elemental of the side); else `n` = the value at the mastery × `p` creatures, worth `1000 n` in
+- *The summons* (66 to 69): 0 when the enemy is beaten or 0x5A93A0 refuses (20 stacks, an
+  elemental of another kind summoned by the side, +0x132A8); else `n` = the value at the mastery × `p` creatures, worth `1000 n` in
   the desperate mode, else `n` × the elemental's AI value (creature table +0x40; 0x5A9360: Fire
   114, Earth 113, Water 115, Air 112); "now" 1.
 - *Every other spell*: 0 unless it takes stacks (flags `0x70`, §7.6); then a positive or neutral
@@ -5418,7 +5418,7 @@ in full, in its order:
    exceeds 0.03, which the integer division makes 0 below 200 000 experience and 0.03 from there;
    less 0.06 for the attacker; at most 0.16; each step stored as an `f32`;
 9. **yes** when the side's own strength over both sides' sum (each an `f32`, the quotient stored
-   as one) is below `x`; else no.
+   as one) is below `x` (an unordered 0 / 0 too); else no.
 
 So a computer hero retreats from a hopeless siege, when the predictions leave its side no
 creature, or when its side holds less than about a tenth to a sixth of the battle's Fight Value
@@ -5440,7 +5440,7 @@ creatures than temporary ones, halved, × 0x4E4580's factor through an `f32`).
 
 **Part A, the artifacts' value** (as far as the battle needs it). 0x433AA0 (0x9E bytes; an
 artifact, a player): the largest of 10 and 0x4339E0 over the player's heroes (+1, +8; game
-+0x21620, 0x492 bytes each). 0x4339E0 (0xB6 bytes; a hero, the artifact): the hero's value of it
++0x21620, 0x492 bytes each). 0x4339E0 (0xB8 bytes; a hero, the artifact): the hero's value of it
 (0x4336C0, at least 0) when some body position takes it (0x4E2550), else that value less the
 value of the worn one it would replace (0x4E2840; the last such position), at least 0. 0x4336C0
 (0x320 bytes; by its cases only), by the artifact: the Spell Scroll its spell's value (0x527640)

@@ -54,7 +54,7 @@ Area traps live where they are used: experiments in `docs/experiments/README.md`
 
 ### 2026-10-22 (hundredth) — E23 T1a6, the hero's reading
 
-The user: T1a6 whole; BAT-QUIRK-26 confirmed; BAT-Q57 as slip 25 (queued). §7.55 read; slip 26 and BAT-Q61 found; BLIND. Docs only.
+The user: T1a6 whole; BAT-QUIRK-26 confirmed; BAT-Q57 as slip 25 (queued). §7.55 read; slip 26 and BAT-Q61 found; a blind re-read agreed. Docs only.
 
 ### 2026-10-22 (ninety-ninth) — E23 T4d, a removal's copy
 
