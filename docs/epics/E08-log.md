@@ -3893,7 +3893,7 @@ confirmed at its checkpoint):
    gates pass (coverage, determinism with the re-recorded replays, benchmarks).
 6. Batch E4 run and scored; the disputes it covers (D-14 to D-21) `verified` or reopened.
 
-### Increment 5, round 1: T35a and T35b, the shared groundwork (2026-10-22, `shared/e08-t35a` #377, `shared/e08-t35b`)
+### Increment 5, round 1: T35a and T35b, the shared groundwork (2026-10-22, `shared/e08-t35a` #377, `shared/e08-t35b` #380)
 
 **The cut** (decision 79; asked at the start, `AskUserQuestion`): T35 in two parts, both in this
 session, as T26 was: T35a the ADRs (docs only), then T35b the code groundwork; T36 in the next
