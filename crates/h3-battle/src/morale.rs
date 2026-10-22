@@ -23,7 +23,7 @@ use h3_kernel::{
     CanonicalHash, Handle, Modifier, ModifierOp, ModifierPool, SourceKey, StateHasher,
 };
 
-use crate::state::{BattleState, StackFlags, StackId, StackTraits, side_code};
+use crate::state::{BattleState, Stack, StackFlags, StackId, StackTraits, side_code};
 
 /// Who carries a battle modifier.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -333,32 +333,8 @@ pub(crate) fn materialize(state: &mut BattleState, ruleset: &BattleRuleset) {
     let bad_morale = i32::from(params.bad_morale.levels());
     let good_luck = i32::from(params.good_luck.levels());
     for s in state.stacks.as_mut_slice() {
-        let bearer = Bearer::Side(s.side);
-        let abilities = ruleset.abilities(s.creature);
-        let value = |stat: Stat, own: i32| {
-            let minimum = abilities.iter().filter_map(move |a| match (stat, *a) {
-                (Stat::Morale, Ability::MinimumMorale { value })
-                | (Stat::Luck, Ability::MinimumLuck { value }) => {
-                    Some((ModifierOp::AtLeast, i32::from(value)))
-                }
-                _ => None,
-            });
-            let mods = pool
-                .iter()
-                .filter(move |m| m.stat == stat && m.bearer == bearer)
-                .map(|m| (m.op, m.amount));
-            evaluate(own, mods.chain(minimum))
-        };
-        let faction = ruleset.creature_info(s.creature).and_then(|i| i.faction);
-        let (field_morale, field_luck) = field.map_or((0, 0), |f| {
-            (
-                Battlefield::change(&f.morale, faction),
-                Battlefield::change(&f.luck, faction),
-            )
-        });
-        let morale = value(Stat::Morale, i32::from(s.spells.morale) + field_morale)
-            .clamp(-bad_morale, good_morale);
-        let luck = value(Stat::Luck, i32::from(s.spells.luck) + field_luck).clamp(0, good_luck);
+        let morale = stat(&pool, ruleset, field, s, Stat::Morale).clamp(-bad_morale, good_morale);
+        let luck = stat(&pool, ruleset, field, s, Stat::Luck).clamp(0, good_luck);
         // Both are within ±MAX_ROLL_LEVELS.
         s.morale = if s.has(StackTraits::NO_MORALE) || field.is_some_and(|f| f.no_morale) {
             0
@@ -371,6 +347,55 @@ pub(crate) fn materialize(state: &mut BattleState, ruleset: &BattleRuleset) {
             i8::try_from(luck).unwrap_or(0)
         };
     }
+}
+
+/// The morale or luck of `s` before the roll levels' clamp: its spells' change and the field's,
+/// then the side's modifiers in `pool` and its creature's minimum.
+fn stat(
+    pool: &Modifiers,
+    ruleset: &BattleRuleset,
+    field: Option<&Battlefield>,
+    s: &Stack,
+    stat: Stat,
+) -> i32 {
+    let bearer = Bearer::Side(s.side);
+    let minimum = ruleset
+        .abilities(s.creature)
+        .iter()
+        .filter_map(move |a| match (stat, *a) {
+            (Stat::Morale, Ability::MinimumMorale { value })
+            | (Stat::Luck, Ability::MinimumLuck { value }) => {
+                Some((ModifierOp::AtLeast, i32::from(value)))
+            }
+            _ => None,
+        });
+    let mods = pool
+        .iter()
+        .filter(move |m| m.stat == stat && m.bearer == bearer)
+        .map(|m| (m.op, m.amount));
+    let faction = ruleset.creature_info(s.creature).and_then(|i| i.faction);
+    let (own, field) = match stat {
+        Stat::Morale => (
+            s.spells.morale,
+            field.map_or(0, |f| Battlefield::change(&f.morale, faction)),
+        ),
+        Stat::Luck => (
+            s.spells.luck,
+            field.map_or(0, |f| Battlefield::change(&f.luck, faction)),
+        ),
+    };
+    evaluate(i32::from(own) + field, mods.chain(minimum))
+}
+
+/// The luck of stack `id` as the original's record keeps it (+0x4EC, 0x43DF20: its base routine
+/// does not clamp; the computer's Fortune value reads it, E23 T4c): [`materialize`]'s luck before
+/// the roll levels' clamp, so below 0 too; 0 on a field without luck.
+pub(crate) fn unclamped_luck(state: &BattleState, ruleset: &BattleRuleset, id: StackId) -> i32 {
+    let field = state.battlefield.and_then(|b| ruleset.battlefield(b));
+    if field.is_some_and(|f| f.no_luck) {
+        return 0;
+    }
+    stat(&state.modifiers, ruleset, field, state.at(id), Stat::Luck)
 }
 
 /// Rolls a `chance` out of `dice`.

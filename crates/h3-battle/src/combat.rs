@@ -413,7 +413,7 @@ pub(crate) fn shot_damage(
     estimated_damage(
         state,
         ruleset,
-        (state.at(attacker), attacker, target),
+        (state.at(attacker), attacker, state.at(target)),
         (base, 0),
         StrikeFlags::RANGED,
     )
@@ -432,21 +432,22 @@ pub(crate) fn melee_damage(
     estimated_damage(
         state,
         ruleset,
-        (state.at(attacker), attacker, target),
+        (state.at(attacker), attacker, state.at(target)),
         (base, charge),
         StrikeFlags::NONE,
     )
 }
 
 /// The damage `striker`, the record of stack `attacker` or a changed copy of it (the computer's
-/// copy with a bonus, 0x437800; E23 T4b1), would deal to `target` now from the base damage `base`
-/// after a run-up of `charge` hexes, a shot with `flags` [`StrikeFlags::RANGED`]: every stage of
-/// a real strike, without luck, death blows and double damage (0x443F40 with its estimate flag,
-/// the stages 0x443E30 also runs).
+/// copy with a bonus, 0x437800; E23 T4b1), would deal to `target`, a stack's record or a changed
+/// copy of it (with a defense bonus, 0x438910; E23 T4c), now from the base damage `base` after a
+/// run-up of `charge` hexes, a shot with `flags` [`StrikeFlags::RANGED`]: every stage of a real
+/// strike, without luck, death blows and double damage (0x443F40 with its estimate flag, the
+/// stages 0x443E30 also runs).
 pub(crate) fn estimated_damage(
     state: &BattleState,
     ruleset: &BattleRuleset,
-    (striker, attacker, target): (&Stack, StackId, StackId),
+    (striker, attacker, target): (&Stack, StackId, &Stack),
     (base, charge): (u64, u8),
     flags: StrikeFlags,
 ) -> u64 {
@@ -458,13 +459,7 @@ pub(crate) fn estimated_damage(
         retaliation_percent: 100,
     };
     let terms = specialist_terms(state, ruleset, attacker);
-    let (inputs, _) = strike_inputs(
-        ruleset,
-        state,
-        (striker, state.at(target)),
-        (flags, terms),
-        blow,
-    );
+    let (inputs, _) = strike_inputs(ruleset, state, (striker, target), (flags, terms), blow);
     inputs.damage(base, ruleset.battle(), staged(ruleset))
 }
 

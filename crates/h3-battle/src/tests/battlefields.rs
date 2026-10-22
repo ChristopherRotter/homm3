@@ -128,10 +128,14 @@ fn cursed_ground_sets_every_morale_and_luck_to_zero() {
     // original's routines return before anything else (0x43E00F, 0x43DF2B).
     let attacker: &[Spec] = &[(0, "pikeman_c", 5), (1, "imp", 5), (2, "minotaur", 5)];
     let defender: &[Spec] = &[(0, "lucky", 5)];
-    let base = values(&on(&r, None, None, attacker, defender));
-    assert_eq!(base, [(-1, 0), (-1, 0), (1, 0), (1, 3)]);
-    let cursed = values(&on(&r, Some("t:cursed"), None, attacker, defender));
-    assert_eq!(cursed, [(0, 0); 4]);
+    let plain = on(&r, None, None, attacker, defender);
+    assert_eq!(values(&plain), [(-1, 0), (-1, 0), (1, 0), (1, 3)]);
+    let cursed = on(&r, Some("t:cursed"), None, attacker, defender);
+    assert_eq!(values(&cursed), [(0, 0); 4]);
+    // The computer's luck as the record keeps it (E23 T4c, BAT-AI-016) is 0 there too.
+    let lucky = StackId(3);
+    assert_eq!(crate::computer::luck(&plain, &r, lucky), 3);
+    assert_eq!(crate::computer::luck(&cursed, &r, lucky), 0);
 }
 
 // ---------------------------------------------------------------- BAT-TER-006

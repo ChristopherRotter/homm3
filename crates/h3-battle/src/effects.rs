@@ -568,6 +568,17 @@ pub(crate) fn end_spells<S: Sink>(
 
 /// Ends the effects on stack `s` that `ends` selects, reporting each, and says whether any
 /// ended. The caller recomputes the stack's values.
+pub(crate) fn end_matching<S: Sink>(
+    state: &mut BattleState,
+    s: StackId,
+    sink: &mut S,
+    ends: impl Fn(&ActiveEffect) -> bool,
+) -> bool {
+    end_where(state, s, sink, ends)
+}
+
+/// Ends the effects on stack `s` that `ends` selects, reporting each, and says whether any
+/// ended. The caller recomputes the stack's values.
 fn end_where<S: Sink>(
     state: &mut BattleState,
     s: StackId,

@@ -5,7 +5,8 @@
 //! Cursed Ground and none that costs the side more than the enemy; the Ogre Mages' Bloodlust (E23
 //! T4b1; BAT-AI-014) when it beats their attack, at a stack as strong as they are, skipped three
 //! times in ten, its mass version on Magic Plains, its estimate at Expert on Fiery Fields with
-//! BAT-QUIRK-25 (slip 8); the elementals that never cast (BAT-Q57).
+//! BAT-QUIRK-25 (slip 8); the elementals that never cast (BAT-Q57); the Master Genies' cast at their
+//! side when the mean of the spells they could draw beats their attack (E23 T4c; BAT-AI-016).
 
 use h3_battle::{
     BattleState, CastSpell, CastTarget, Command, Field, Hex, LegalCommands, NoopSink, StackId,
@@ -749,4 +750,70 @@ fn the_spell_contexts_threat_records_and_the_damage_of_a_base() {
     apply(&mut state, &r, BattleSide::Attacker, shot, &mut NoopSink).unwrap();
     assert!(!state.stacks()[peasant.index()].is_alive());
     assert_eq!(computer::threat(&state, &r, &ctx, peasant), None);
+}
+
+/// Silver Pegasi that flew to hex 98 against `genies` Master Genies and nine Dendroid Soldiers on
+/// the genies' turn, on `battlefield` if any.
+fn genies_against_pegasi(r: &BattleRuleset, genies: u32, battlefield: Option<&str>) -> BattleState {
+    let mut state = battle(
+        r,
+        (
+            &[("base:silver_pegasus", 15)],
+            &[("base:master_genie", genies), ("base:dendroid_soldier", 9)],
+        ),
+        [None, None],
+        battlefield,
+        3,
+    );
+    let fly = Command::Move { to: Hex(98) };
+    apply(&mut state, r, BattleSide::Attacker, fly, &mut NoopSink).unwrap();
+    until(r, &mut state, "base:master_genie");
+    state
+}
+
+// covers: BAT-AI-016
+#[test]
+fn the_master_genies_cast_at_their_side_when_it_beats_their_attack() {
+    // Five Master Genies cast at the dendroids for every stream, in both profiles, the engine
+    // accepting it: the mean of the spells they could draw there beats their attack. Twenty
+    // genies' attack on the pegasi is worth more than that mean: they strike.
+    for profile in ["base:faithful", "base:strict-fixed"] {
+        let r = sod(profile);
+        let state = genies_against_pegasi(&r, 5, None);
+        let dendroids = stack_of(&r, &state, "base:dendroid_soldier");
+        let cast = Command::CreatureCast {
+            target: CastTarget::Stack(dendroids),
+        };
+        for c in choices(&r, &state, 20) {
+            assert_eq!(c, cast, "{profile}");
+            assert!(validate(&state, &r, BattleSide::Defender, c).is_ok());
+        }
+        let state = genies_against_pegasi(&r, 20, None);
+        let pegasi = stack_of(&r, &state, "base:silver_pegasus");
+        assert!(
+            choices(&r, &state, 20)
+                .iter()
+                .all(|c| matches!(c, Command::Attack { target, .. } if *target == pegasi)),
+            "{profile}"
+        );
+    }
+}
+
+// covers: BAT-AI-016, BAT-TER-005
+#[test]
+fn on_magic_plains_the_master_genies_value_the_mass_versions() {
+    // Magic Plains raise a creature's cast to Expert: the spells whose Expert version takes no
+    // target are valued over the side (BAT-AI-014's mass sum). The genies still cast at a stack,
+    // which the engine accepts.
+    let r = sod("base:faithful");
+    let state = genies_against_pegasi(&r, 5, Some("base:magic_plains"));
+    for c in choices(&r, &state, 20) {
+        assert!(
+            validate(&state, &r, BattleSide::Defender, c).is_ok(),
+            "{c:?}"
+        );
+        if let Command::CreatureCast { target } = c {
+            assert!(matches!(target, CastTarget::Stack(_)), "{c:?}");
+        }
+    }
 }

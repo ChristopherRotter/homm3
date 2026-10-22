@@ -17,13 +17,13 @@ use h3_battle::{
 use h3_content::{
     ContentKey, ContentPack, CreatureDef, CreatureInfoDef, CreatureTypeId, FactionDef,
     HeroClassDef, HeroTypeDef, HeroTypeId, PackManifest, ProfileDef, ResourceDef, Ruleset,
-    SpellCategory, SpellDef, SpellSchoolDef, TerrainDef,
+    SpellCategory, SpellDef, SpellId, SpellSchoolDef, TerrainDef,
 };
 use h3_content_battle::{
-    AbilityDef, AreaShot, BallisticsRecord, BattleCreatureDef, BattlePack, BattleParamsDef,
-    BattleRuleset, BattleSpellDef, HexStep, ObstacleKind, ObstacleShape, SiegeDef, SiegeFieldDef,
-    SpellAi, SpellEffect, SpellMagic, SpellPolarity, SpellTarget, TimedChange, WallKind,
-    WallTarget,
+    AbilityDef, AreaShot, AuraTarget, BallisticsRecord, BattleCreatureDef, BattlePack,
+    BattleParamsDef, BattleRuleset, BattleSpellDef, EffectDuration, HexStep, ObstacleKind,
+    ObstacleShape, SiegeDef, SiegeFieldDef, SpellAi, SpellEffect, SpellMagic, SpellPolarity,
+    SpellTarget, TimedChange, Usefulness, WallKind, WallTarget,
 };
 use h3_contracts::{
     Army, ArmyStack, BallistaControl, BattleHero, BattleSetup, BattleSide, FortLevel, Moat, Rate,
@@ -37,12 +37,16 @@ use super::{POLICY_VERSION, checked, choose, unchecked};
 use crate::walker::Walker;
 
 mod casts;
+mod defenses;
 mod ends;
 mod gain;
+mod harms;
 mod odds;
 mod order;
 mod predict;
+mod speed;
 mod spells;
+mod values;
 
 fn key(text: &str) -> ContentKey {
     ContentKey::parse(text).unwrap()
@@ -81,8 +85,11 @@ const HEALS: Option<AbilityDef> = Some(AbilityDef::FirstAid {
 /// lifeless (the golem) and undead (the zombie); a slow two-hex walker (the cavalier); a flyer
 /// that strikes and returns (the harpy); the multi-headed (the two-hex hydra, the cerberus), a
 /// breath attacker (the dragon), a town's turret (the tower, BAT-SIE-016), a walker with an innate
-/// Fire Shield (the sultan) and one that strikes twice (the crusader).
-const CREATURES: [Creature; 19] = [
+/// Fire Shield (the sultan), one that strikes twice (the crusader), kings of each level (the
+/// giant, the knight, the lord), a Master Genie (the genie: three casts of the test spells), the
+/// griffins with two and with unlimited retaliations, a shooter that shoots twice (the
+/// marksman) and the creatures that change the heroes' spell costs (the pegasus, the mage).
+const CREATURES: [Creature; 28] = [
     ("imp", 5, 100, &[], [2, 3, 1, 2], 4, 0, None),
     ("gog", 3, 900, &[], [4, 4, 2, 3], 13, 0, None),
     ("runner", 20, 300, &["alive"], [5, 5, 2, 4], 10, 0, None),
@@ -223,6 +230,102 @@ const CREATURES: [Creature; 19] = [
         0,
         None,
     ),
+    (
+        "giant",
+        7,
+        2000,
+        &["alive", "king_1"],
+        [19, 16, 40, 60],
+        150,
+        0,
+        None,
+    ),
+    (
+        "knight",
+        7,
+        2000,
+        &["alive", "king_2"],
+        [19, 16, 40, 60],
+        150,
+        0,
+        None,
+    ),
+    (
+        "lord",
+        7,
+        2000,
+        &["alive", "king_3"],
+        [19, 16, 40, 60],
+        150,
+        0,
+        None,
+    ),
+    (
+        "genie",
+        12,
+        1500,
+        &["alive", "flying"],
+        [12, 12, 13, 16],
+        40,
+        0,
+        None,
+    ),
+    (
+        "griffin",
+        6,
+        350,
+        &["alive", "flying", "two_hex"],
+        [8, 8, 3, 6],
+        25,
+        0,
+        Some(AbilityDef::ExtraRetaliations { count: 1 }),
+    ),
+    (
+        "royal",
+        9,
+        450,
+        &["alive", "flying", "two_hex"],
+        [9, 9, 3, 6],
+        25,
+        0,
+        Some(AbilityDef::UnlimitedRetaliations),
+    ),
+    (
+        "marksman",
+        6,
+        400,
+        &["alive", "shooter", "strikes_twice"],
+        [6, 3, 2, 3],
+        10,
+        24,
+        None,
+    ),
+    (
+        "pegasus",
+        8,
+        250,
+        &["alive", "flying", "two_hex"],
+        [5, 5, 3, 5],
+        20,
+        0,
+        Some(AbilityDef::SpellCost {
+            amount: 2,
+            affects: AuraTarget::Enemies,
+        }),
+    ),
+    (
+        "mage",
+        5,
+        500,
+        &["alive", "shooter"],
+        [11, 8, 7, 9],
+        25,
+        24,
+        Some(AbilityDef::SpellCost {
+            amount: -2,
+            affects: AuraTarget::Allies,
+        }),
+    ),
 ];
 
 const IMP: usize = 0;
@@ -244,6 +347,468 @@ const DRAGON: usize = 15;
 const TOWER: usize = 16;
 const SULTAN: usize = 17;
 const CRUSADER: usize = 18;
+const GIANT: usize = 19;
+const KNIGHT: usize = 20;
+const LORD: usize = 21;
+const GENIE: usize = 22;
+const GRIFFIN: usize = 23;
+const ROYAL: usize = 24;
+const MARKSMAN: usize = 25;
+const PEGASUS: usize = 26;
+const MAGE: usize = 27;
+
+/// A test spell of the computer's spell values (E23 T4c): its key, level, value by mastery,
+/// polarity, timed changes, the mastery from which it is cast on the whole side, its usefulness
+/// for the Master Genie and its school. Every one is aimed at a stack.
+type TestSpell = (
+    &'static str,
+    u8,
+    [u16; 4],
+    SpellPolarity,
+    &'static [TimedChange],
+    Option<u8>,
+    Usefulness,
+    &'static str,
+);
+
+/// The test spells after the Fire Wall and Fire Shield, with the values of the original's
+/// (`SPTRAITS.TXT`).
+const SPELLS: [TestSpell; 16] = [
+    (
+        "bloodlust",
+        1,
+        [3, 3, 6, 6],
+        SpellPolarity::Positive,
+        &[TimedChange::MeleeAttack],
+        Some(3),
+        Usefulness::Melee,
+        "fire",
+    ),
+    (
+        "precision",
+        2,
+        [3, 3, 6, 6],
+        SpellPolarity::Positive,
+        &[TimedChange::RangedAttack],
+        Some(3),
+        Usefulness::Shooting,
+        "fire",
+    ),
+    (
+        "slayer",
+        4,
+        [8, 8, 8, 8],
+        SpellPolarity::Positive,
+        &[TimedChange::Slayer],
+        None,
+        Usefulness::EnemyKing,
+        "fire",
+    ),
+    (
+        "bless",
+        1,
+        [0, 0, 1, 1],
+        SpellPolarity::Positive,
+        &[TimedChange::MaximumDamage],
+        Some(3),
+        Usefulness::Always,
+        "fire",
+    ),
+    (
+        "mirth",
+        3,
+        [1, 1, 2, 2],
+        SpellPolarity::Positive,
+        &[TimedChange::Morale],
+        Some(3),
+        Usefulness::Always,
+        "fire",
+    ),
+    (
+        "fortune",
+        2,
+        [1, 1, 2, 2],
+        SpellPolarity::Positive,
+        &[TimedChange::Luck],
+        Some(3),
+        Usefulness::Always,
+        "fire",
+    ),
+    (
+        "shield",
+        1,
+        [85, 85, 70, 70],
+        SpellPolarity::Positive,
+        &[TimedChange::MeleeProtection],
+        Some(3),
+        Usefulness::EnemyMelee,
+        "fire",
+    ),
+    (
+        "airshield",
+        3,
+        [75, 75, 50, 50],
+        SpellPolarity::Positive,
+        &[TimedChange::RangedProtection],
+        Some(3),
+        Usefulness::EnemyShooter,
+        "fire",
+    ),
+    (
+        "stoneskin",
+        1,
+        [3, 3, 6, 6],
+        SpellPolarity::Positive,
+        &[TimedChange::Defense],
+        Some(3),
+        Usefulness::Always,
+        "fire",
+    ),
+    (
+        "counterstrike",
+        4,
+        [1, 1, 2, 2],
+        SpellPolarity::Positive,
+        &[TimedChange::Retaliations],
+        Some(3),
+        Usefulness::Always,
+        "fire",
+    ),
+    (
+        "frenzy",
+        4,
+        [100, 100, 150, 200],
+        SpellPolarity::Positive,
+        &[TimedChange::Frenzy],
+        None,
+        Usefulness::Always,
+        "fire",
+    ),
+    (
+        "haste",
+        1,
+        [3, 3, 5, 5],
+        SpellPolarity::Positive,
+        &[TimedChange::Speed],
+        Some(3),
+        Usefulness::Always,
+        "air",
+    ),
+    (
+        "prayer",
+        4,
+        [2, 2, 4, 4],
+        SpellPolarity::Positive,
+        &[
+            TimedChange::Attack,
+            TimedChange::Defense,
+            TimedChange::Speed,
+        ],
+        Some(3),
+        Usefulness::NotActed,
+        "fire",
+    ),
+    (
+        "protfire",
+        1,
+        [70, 70, 50, 50],
+        SpellPolarity::Positive,
+        &[TimedChange::SchoolProtection],
+        Some(3),
+        Usefulness::EnemySpellBook,
+        "fire",
+    ),
+    (
+        "protair",
+        2,
+        [70, 70, 50, 50],
+        SpellPolarity::Positive,
+        &[TimedChange::SchoolProtection],
+        Some(3),
+        Usefulness::EnemySpellBook,
+        "air",
+    ),
+    (
+        "mirror",
+        5,
+        [20, 20, 30, 40],
+        SpellPolarity::Positive,
+        &[TimedChange::MagicMirror],
+        None,
+        Usefulness::EnemySpellBook,
+        "air",
+    ),
+];
+
+/// A test spell of the harmful spells' and the removals' values (E23 T4c): its key, level,
+/// value by mastery, power, category, polarity, effects, whether it lasts to the battle's end and
+/// the spells its dispel ends. Every one is aimed at a stack; a hero's is a fire spell.
+type ExtraSpell = (
+    &'static str,
+    u8,
+    [u16; 4],
+    u16,
+    SpellCategory,
+    SpellPolarity,
+    &'static [SpellEffect],
+    bool,
+    &'static [&'static str],
+);
+
+/// A timed change as a spell's effect.
+const fn timed(change: TimedChange) -> SpellEffect {
+    SpellEffect::Timed(change)
+}
+
+/// The harmful test spells and the removals, with the values of the original's.
+const EXTRA: [ExtraSpell; 17] = [
+    (
+        "curse",
+        1,
+        [0, 0, 1, 1],
+        0,
+        SpellCategory::Combat,
+        SpellPolarity::Negative,
+        &[timed(TimedChange::MinimumDamage)],
+        false,
+        &[],
+    ),
+    (
+        "weakness",
+        2,
+        [3, 3, 6, 6],
+        0,
+        SpellCategory::Combat,
+        SpellPolarity::Negative,
+        &[timed(TimedChange::AttackLoss)],
+        false,
+        &[],
+    ),
+    (
+        "ray",
+        2,
+        [3, 3, 4, 5],
+        0,
+        SpellCategory::Combat,
+        SpellPolarity::Negative,
+        &[timed(TimedChange::DefenseLoss)],
+        true,
+        &[],
+    ),
+    (
+        "acid",
+        0,
+        [3, 3, 3, 3],
+        0,
+        SpellCategory::Ability,
+        SpellPolarity::Negative,
+        &[timed(TimedChange::DefenseLoss)],
+        true,
+        &[],
+    ),
+    (
+        "sorrow",
+        4,
+        [1, 1, 2, 2],
+        0,
+        SpellCategory::Combat,
+        SpellPolarity::Negative,
+        &[timed(TimedChange::MoraleLoss)],
+        false,
+        &[],
+    ),
+    (
+        "misfortune",
+        3,
+        [1, 1, 2, 2],
+        0,
+        SpellCategory::Combat,
+        SpellPolarity::Negative,
+        &[timed(TimedChange::LuckLoss)],
+        false,
+        &[],
+    ),
+    (
+        "slow",
+        1,
+        [75, 75, 50, 50],
+        0,
+        SpellCategory::Combat,
+        SpellPolarity::Negative,
+        &[timed(TimedChange::SpeedPercent)],
+        false,
+        &[],
+    ),
+    (
+        "berserk",
+        4,
+        [0, 0, 1, 2],
+        0,
+        SpellCategory::Combat,
+        SpellPolarity::Negative,
+        &[timed(TimedChange::Berserk)],
+        false,
+        &[],
+    ),
+    (
+        "hypnotize",
+        3,
+        [10, 10, 20, 50],
+        25,
+        SpellCategory::Combat,
+        SpellPolarity::Negative,
+        &[timed(TimedChange::Hypnotize)],
+        false,
+        &[],
+    ),
+    (
+        "forget",
+        3,
+        [0, 0, 0, 0],
+        0,
+        SpellCategory::Combat,
+        SpellPolarity::Negative,
+        &[timed(TimedChange::Forgetfulness)],
+        false,
+        &[],
+    ),
+    (
+        "blind",
+        2,
+        [50, 50, 25, 0],
+        0,
+        SpellCategory::Combat,
+        SpellPolarity::Negative,
+        &[timed(TimedChange::Blind)],
+        false,
+        &[],
+    ),
+    (
+        "paralyze",
+        4,
+        [25, 25, 25, 25],
+        0,
+        SpellCategory::Ability,
+        SpellPolarity::Negative,
+        &[timed(TimedChange::Paralyze)],
+        false,
+        &[],
+    ),
+    (
+        "poison",
+        0,
+        [0, 0, 0, 0],
+        0,
+        SpellCategory::Ability,
+        SpellPolarity::Negative,
+        &[timed(TimedChange::Poison)],
+        false,
+        &[],
+    ),
+    (
+        "disease",
+        2,
+        [2, 2, 2, 2],
+        0,
+        SpellCategory::Ability,
+        SpellPolarity::Negative,
+        &[
+            timed(TimedChange::AttackLoss),
+            timed(TimedChange::DefenseLoss),
+        ],
+        false,
+        &[],
+    ),
+    (
+        "age",
+        5,
+        [0, 0, 0, 0],
+        0,
+        SpellCategory::Ability,
+        SpellPolarity::Negative,
+        &[timed(TimedChange::Age)],
+        false,
+        &[],
+    ),
+    (
+        "cure",
+        1,
+        [10, 10, 20, 30],
+        5,
+        SpellCategory::Combat,
+        SpellPolarity::Positive,
+        &[SpellEffect::Dispel, SpellEffect::Heal],
+        false,
+        &[
+            "curse",
+            "weakness",
+            "slow",
+            "blind",
+            "poison",
+            "sorrow",
+            "misfortune",
+        ],
+    ),
+    (
+        "antimagic",
+        3,
+        [4, 4, 5, 6],
+        0,
+        SpellCategory::Combat,
+        SpellPolarity::Positive,
+        &[timed(TimedChange::SpellImmunity)],
+        false,
+        &[],
+    ),
+];
+
+/// A hero whose book holds every test spell but the creatures' abilities at `mastery`, with 999
+/// mana and power 5.
+fn caster(r: &BattleRuleset, mastery: u8) -> BattleHero {
+    let mut h = hero(0);
+    h.power = 5;
+    let book: Vec<SpellId> = SPELLS
+        .iter()
+        .map(|s| s.0)
+        .chain(
+            EXTRA
+                .iter()
+                .filter(|s| s.4 == SpellCategory::Combat)
+                .map(|s| s.0),
+        )
+        .chain(["bolt"])
+        .map(|k| spell(r, k))
+        .collect();
+    h.magic.masteries = book.iter().map(|&s| (s, mastery)).collect();
+    h.magic.spell_book = Some(book);
+    h.magic.mana = 999;
+    h.magic.max_mana = 999;
+    h
+}
+
+/// `side`'s hero casts `name` at stack `t`, at the first turn of one of its stacks where the
+/// engine accepts it, every other stack defending until then.
+fn cast_at(state: &mut BattleState, r: &BattleRuleset, side: BattleSide, name: &str, t: StackId) {
+    let cast = Command::Cast {
+        spell: spell(r, name),
+        target: h3_battle::CastTarget::Stack(t),
+        second: h3_battle::CastTarget::None,
+    };
+    for _ in 0..40 {
+        if validate(state, r, side, cast).is_ok() {
+            apply(state, r, side, cast, &mut NoopSink).unwrap();
+            return;
+        }
+        let acting = state.side_to_act().unwrap();
+        apply(state, r, acting, Command::Defend, &mut NoopSink).unwrap();
+    }
+    panic!("{name} at {t:?} never accepted");
+}
+
+/// The id of the test spell `name` in `r`.
+fn spell(r: &BattleRuleset, name: &str) -> SpellId {
+    r.spell_by_key(&["t:", name].concat()).unwrap()
+}
 
 /// The test creatures' AI values (the others have none): the runner's stands for the Archers'
 /// (creature 2), which the odds give a turret under BAT-QUIRK-25 (slip 20), the tower's own.
@@ -305,11 +870,14 @@ fn core(profile: &str) -> Ruleset {
         key: key("t:gold"),
         name: "Gold".into(),
     }];
-    pack.spell_schools = vec![SpellSchoolDef {
-        key: key("t:fire"),
-        name: "Fire".into(),
-        protection_rank: 0,
-    }];
+    pack.spell_schools = ["fire", "air"]
+        .into_iter()
+        .map(|k| SpellSchoolDef {
+            key: key(&["t:", k].concat()),
+            name: k.into(),
+            protection_rank: 0,
+        })
+        .collect();
     // Fire Wall: power × 10 + 10 at Basic, two hexes.
     pack.spells = vec![
         SpellDef {
@@ -336,6 +904,52 @@ fn core(profile: &str) -> Ruleset {
             granted_by_name_only: false,
         },
     ];
+    pack.spells.extend(
+        SPELLS
+            .iter()
+            .map(|&(k, level, effect, .., school)| SpellDef {
+                key: key(&["t:", k].concat()),
+                name: k.into(),
+                category: SpellCategory::Combat,
+                level,
+                schools: vec![key(&["t:", school].concat())],
+                cost: [5; 4],
+                power: 0,
+                effect,
+                granted_by_name_only: false,
+            }),
+    );
+    pack.spells.extend(
+        EXTRA
+            .iter()
+            .map(|&(k, level, effect, power, category, ..)| SpellDef {
+                key: key(&["t:", k].concat()),
+                name: k.into(),
+                category,
+                level,
+                schools: if category == SpellCategory::Ability {
+                    vec![]
+                } else {
+                    vec![key("t:fire")]
+                },
+                cost: [5; 4],
+                power,
+                effect,
+                granted_by_name_only: false,
+            }),
+    );
+    // The bolt: a fire damage spell aimed at a stack, power × 10 + 10 at Basic.
+    pack.spells.push(SpellDef {
+        key: key("t:bolt"),
+        name: "Bolt".into(),
+        category: SpellCategory::Combat,
+        level: 1,
+        schools: vec![key("t:fire")],
+        cost: [5; 4],
+        power: 10,
+        effect: [10, 10, 20, 50],
+        granted_by_name_only: false,
+    });
     pack.profiles = vec![
         ProfileDef {
             key: key("t:faithful"),
@@ -386,6 +1000,21 @@ fn ruleset_as(profile: &str) -> BattleRuleset {
         spell: key("t:fireshield"),
         value: 20,
     });
+    let genie = &mut creatures[GENIE];
+    genie.casts = 3;
+    genie.abilities.push(AbilityDef::HelpfulSpellCaster {
+        mastery: 2,
+        power: 6,
+    });
+    genie.abilities.extend(
+        ["fireshield"]
+            .into_iter()
+            .chain(SPELLS.iter().map(|s| s.0))
+            .map(|k| AbilityDef::DrawnSpell {
+                spell: key(&["t:", k].concat()),
+                weight: 1,
+            }),
+    );
     let fireshield = BattleSpellDef {
         key: key("t:fireshield"),
         polarity: SpellPolarity::Positive,
@@ -424,9 +1053,72 @@ fn ruleset_as(profile: &str) -> BattleRuleset {
         summons: None,
         ai: SpellAi::default(),
     };
+    let mut spells = vec![firewall, fireshield];
+    spells.extend(
+        SPELLS.iter().map(
+            |&(k, _, _, polarity, changes, mass_from, useful, _)| BattleSpellDef {
+                key: key(&["t:", k].concat()),
+                polarity,
+                magic: SpellMagic {
+                    target: SpellTarget::Stack,
+                    effects: changes.iter().map(|&c| SpellEffect::Timed(c)).collect(),
+                    mass_from,
+                    useful,
+                    ..SpellMagic::default()
+                },
+                counters: vec![],
+                dispels: vec![],
+                spares: vec![],
+                tests_as: None,
+                summons: None,
+                ai: SpellAi::default(),
+            },
+        ),
+    );
+    spells.extend(
+        EXTRA
+            .iter()
+            .map(
+                |&(k, _, _, _, _, polarity, effects, permanent, dispels)| BattleSpellDef {
+                    key: key(&["t:", k].concat()),
+                    polarity,
+                    magic: SpellMagic {
+                        target: SpellTarget::Stack,
+                        effects: effects.to_vec(),
+                        duration: if permanent {
+                            EffectDuration::Permanent
+                        } else {
+                            EffectDuration::Rounds
+                        },
+                        ..SpellMagic::default()
+                    },
+                    counters: vec![],
+                    dispels: dispels.iter().map(|d| key(&["t:", d].concat())).collect(),
+                    spares: vec![],
+                    tests_as: None,
+                    summons: None,
+                    ai: SpellAi::default(),
+                },
+            ),
+    );
+    spells.push(BattleSpellDef {
+        key: key("t:bolt"),
+        polarity: SpellPolarity::Negative,
+        magic: SpellMagic {
+            target: SpellTarget::Stack,
+            effects: vec![SpellEffect::Damage],
+            ..SpellMagic::default()
+        },
+        counters: vec![],
+        dispels: vec![],
+        spares: vec![],
+        tests_as: None,
+        summons: None,
+        ai: SpellAi::default(),
+    });
     let pack = BattlePack {
         creatures,
-        spells: vec![firewall, fireshield],
+        spells,
         battle: Some(BattleParamsDef {
             field_width: 17,
             field_height: 11,
@@ -913,7 +1605,7 @@ fn a_refused_choice_falls_back_to_defend() {
     assert!(validate(&state, &r, side, refused).is_err());
     assert_eq!(checked(&state, &r, side, refused), Command::Defend);
     assert_eq!(checked(&state, &r, side, Command::Wait), Command::Wait);
-    assert_eq!(POLICY_VERSION, 8);
+    assert_eq!(POLICY_VERSION, 9);
 }
 
 /// The setup of `setup` on `difficulty`.
@@ -1145,6 +1837,25 @@ fn strike_on(state: &BattleState, r: &BattleRuleset, (a, t): (StackId, StackId))
 /// The hexes of the test field.
 fn all_hexes() -> impl Iterator<Item = Hex> {
     (0u8..187).map(Hex)
+}
+
+/// Whether two of the computer's maps hold the same cells (BAT-QUIRK-25 slip 22's tests).
+fn same_map(a: &computer::Map, b: &computer::Map) -> bool {
+    all_hexes().all(|h| {
+        (
+            a.position(h),
+            a.cost(h),
+            a.is_stop(h),
+            a.reached(h),
+            a.mark(h),
+        ) == (
+            b.position(h),
+            b.cost(h),
+            b.is_stop(h),
+            b.reached(h),
+            b.mark(h),
+        )
+    })
 }
 
 // covers: BAT-AI-007

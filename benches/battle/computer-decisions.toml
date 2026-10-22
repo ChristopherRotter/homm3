@@ -17,5 +17,5 @@ args = [
     "1",
 ]
 collect = "*h3_battle_ai::choose*"
-instructions = 477211553
+instructions = 518013597
 threshold_percent = 2

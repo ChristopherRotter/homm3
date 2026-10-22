@@ -150,20 +150,23 @@ each estimate as the rule it estimates:
 | 5 | the destination map marks a two-hex enemy's position hex twice, its other hex never (§7.38) | both hexes |
 | 6 | the hero's value takes the mastery on the hero's adventure tile (§7.39; not built, E23 T3c: the seam has no tile for the attacking hero, both settings take the battlefield's, BAT-STUB-7, BAT-Q56) | the battlefield's |
 | 7 | the Faerie Dragon's estimate: Expert on its school's field, the side's hero's bonuses on its bolts (§7.43; built, BAT-AI-013, E23 T4a) | the rules' mastery for a creature, no hero bonus |
-| 8 | the Ogre Mage's Bloodlust valued at Expert on Fiery Fields (§7.44, §7.51; built, BAT-AI-014, E23 T4b1) | Advanced, as the rules cast it |
-| 9 | the protections take the caster bonuses of the context's own hero and the caster's own army for the cost (§7.46) | the casting hero's, the target side's army |
-| 10 | Magic Mirror keeps `2 × (50 − c)` % (§7.46) | `100 − c` % |
-| 11 | Anti-Magic's estimate removes helpful spells too and counts level `v` (§7.46) | harmful spells below `v`; spells below `v` |
-| 12 | a morale or luck rise from below 0 is valued as if it crossed 0 (§7.46) | `−c × N` while below 0 (`N` < 0) |
-| 13 | Paralyze is valued with Blind's record and resistance (§7.46) | its own (74) |
-| 14 | Disease asks the resistance to Weakness (§7.46) | its own (73) |
-| 15 | Frenzy is valued as a second strike, without its value (§7.46) | 0x437800 with its attack gain less 0x438910 with the defense it loses |
-| 16 | the exchange gives B's attack and kill values A's shot flag (§7.46) | B's own |
-| 17 | the removals count Disrupting Ray, which none ends, and Cure removes every harmful spell (§7.46) | the spells each rule ends (§7.10, §7.13) |
+| 8 | the Ogre Mage's Bloodlust valued at Expert on Fiery Fields, the Master Genie's spells on their school's field (§7.44, §7.51, §7.53; built, BAT-AI-014, E23 T4b1; BAT-AI-016, E23 T4c) | Advanced, as the rules cast it |
+| 9 | the protections take the caster bonuses of the context's own hero and the caster's own army for the cost (§7.46; built, BAT-AI-016, E23 T4c) | the casting hero's, the target side's army |
+| 10 | Magic Mirror keeps `2 × (50 − c)` % (§7.46; built, BAT-AI-016, E23 T4c) | `100 − c` % |
+| 11 | Anti-Magic's estimate removes helpful spells too and counts level `v` (§7.46; built, BAT-AI-016, E23 T4c) | harmful spells below `v`; spells below `v` |
+| 12 | a morale or luck rise from below 0 is valued as if it crossed 0 (§7.46; built, BAT-AI-016, E23 T4c) | `−c × N` while below 0 (`N` < 0) |
+| 13 | Paralyze is valued with Blind's record and resistance (§7.46; built, BAT-AI-016, E23 T4c) | its own (74) |
+| 14 | Disease asks the resistance to Weakness (§7.46; built, BAT-AI-016, E23 T4c) | its own (73) |
+| 15 | Frenzy is valued as a second strike, without its value (§7.46; built, BAT-AI-016, E23 T4c) | 0x437800 with its attack gain less 0x438910 with the defense it loses |
+| 16 | the exchange gives B's attack and kill values A's shot flag (§7.46; built, BAT-AI-016, E23 T4c) | B's own |
+| 17 | the removals count Disrupting Ray, which none ends, and Cure removes every harmful spell (§7.46; built, BAT-AI-016, E23 T4c) | the spells each rule ends (§7.10, §7.13) |
 | 18 | the Fire Wall's hex scores value its damage without the spell's immunity test (§7.48; built, BAT-AI-007, E23 T3b; found in T3b) | only a wall whose spell hurts the stack (BAT-MAG-028's test) |
 | 19 | the Fire Wall's and the moat's hex scores value the damage with the least attack bonus for both bonuses (§7.48; built, BAT-AI-007, E23 T3b; found in T3b) | the least attack and the least defense bonus, as every other value |
 | 20 | the odds value the turrets at creature 2's AI value (the Archers), not the turret's own (§7.38, §7.49; built, BAT-AI-008, E23 T3c; the user's call, 2026-10-21) | the turret creature's AI value |
 | 21 | guarding a shooter defends when the walker stands on the guard hex of the last shooter asked, not the best's (§7.49; built, BAT-AI-010, E23 T3c; found by the blind re-read) | the best's guard hex |
+| 22 | after a creature cast entry built a spell context and cast nothing, the besieger's walk and the fallbacks read the pathfinder as the context left it: the last Berserk or Hypnotize value's search, else the threat records' last (§7.52, §7.53; built, BAT-AI-005, BAT-AI-010, E23 T4c; BAT-Q59; a walk there without a path keeps the last action, BAT-STUB-11) | the walker's own map |
+| 23 | the threat tables' seed never moves to the next record: every stack's melee entry gets the side's first record's seed (§7.53; built, BAT-AI-016, E23 T4c; found in T4c) | each record's own |
+| 24 | a removal values each ended spell on a lone copy of the stack's record, which the evaluators walking the battle's records never find: Disrupting Ray 0, no first strike for Slow, the live stack another candidate for Berserk and Hypnotize (§7.53; found by T4c's blind check; not built: E23 T4d, BAT-Q60, BAT-STUB-12) | the stack itself |
 
 The ledger entry lists them; a slip found later joins the same flag. The tie orders, the library
 sort (§7.37) and the draws are the original's behaviour, not slips: no flag.

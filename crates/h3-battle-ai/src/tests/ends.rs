@@ -2,13 +2,14 @@
 //! to its row's wall, holding the walls with and without the original's slip 2, guarding a
 //! shooter and the step to safety.
 
-use h3_battle::{BattleState, Command, Field, Hex, StackId};
+use h3_battle::{BattleState, Command, Field, Hex, StackId, computer};
 use h3_content_battle::WallKind;
 use h3_contracts::{BattleSide, FortLevel, Moat};
+use h3_kernel::Rng;
 
 use super::{
-    ARCHER, CAVALIER, GOG, IMP, MAGOG, RUNNER, active, at_town, decide, on, play, ruleset, setup,
-    touches,
+    ARCHER, CAVALIER, GENIE, GOG, IMP, MAGOG, RUNNER, active, at_town, decide, on, play, ruleset,
+    ruleset_as, same_map, setup, touches,
 };
 use crate::ends::breaches;
 use crate::walker::Walker;
@@ -258,7 +259,7 @@ fn the_guard_defends_on_the_last_shooters_hex_with_the_slip_else_on_the_bests() 
     // original tests the last answer (slip 21): the runners defend; without the slip they go to
     // the fifty archers' side.
     for (profile, slips) in [("t:faithful", true), ("t:fixed", false)] {
-        let r = super::ruleset_as(profile);
+        let r = ruleset_as(profile);
         let mut state = BattleState::new(
             &r,
             &setup(&[(RUNNER, 10), (ARCHER, 50), (ARCHER, 5)], &[(GOG, 30)]),
@@ -285,4 +286,82 @@ fn the_guard_defends_on_the_last_shooters_hex_with_the_slip_else_on_the_bests() 
         };
         assert_eq!(guard, Some(want), "{profile}");
     }
+}
+
+// covers: BAT-AI-005, BAT-AI-010
+#[test]
+fn after_a_context_without_a_cast_the_fallbacks_read_its_last_map_with_the_slip() {
+    // The genie's cast entry builds the spell context and, with nothing worth more than the
+    // value so far, casts nothing: with the slip (22) the walker holds the map of the records'
+    // last search, the gogs' (the defender's last walker); without, its own.
+    for (profile, slips) in [("t:faithful", true), ("t:fixed", false)] {
+        let r = ruleset_as(profile);
+        let mut state = BattleState::new(
+            &r,
+            &on(2, setup(&[(RUNNER, 10), (GENIE, 1)], &[(GOG, 30)])),
+            1,
+        )
+        .unwrap();
+        while active(&state) != GENIE {
+            play(&mut state, &r, Command::Defend);
+        }
+        let w = walker(&state, &r, (1, BattleSide::Attacker));
+        let mut value = i32::MAX;
+        assert_eq!(
+            crate::casts::entry(&w, &mut value, &mut Rng::from_seed(0)),
+            None
+        );
+        let gogs = computer::map(&state, &r, StackId(2), BattleSide::Defender);
+        assert_eq!(w.held.get().is_some(), slips, "{profile}");
+        let want = if slips { &gogs } else { &w.map };
+        assert!(same_map(w.cells(), want), "{profile}");
+    }
+    // A hypnotized genie among shooters: no record searches (it is left out, the others shoot),
+    // so it keeps its own map.
+    let r = ruleset_as("t:faithful");
+    let mut s = setup(&[(GENIE, 1), (ARCHER, 10)], &[(ARCHER, 10)]);
+    s.heroes[1] = Some(super::caster(&r, 2));
+    let mut state = BattleState::new(&r, &s, 1).unwrap();
+    super::cast_at(
+        &mut state,
+        &r,
+        BattleSide::Defender,
+        "hypnotize",
+        StackId(0),
+    );
+    while active(&state) != GENIE {
+        play(&mut state, &r, Command::Defend);
+    }
+    let side = state.side_to_act().unwrap();
+    assert_eq!(side, BattleSide::Defender);
+    assert_eq!(computer::last_searched(&state, &r), None);
+    let w = walker(&state, &r, (0, side));
+    let mut value = i32::MAX;
+    assert_eq!(
+        crate::casts::entry(&w, &mut value, &mut Rng::from_seed(0)),
+        None
+    );
+    assert!(w.held.get().is_none());
+    // The step to safety reads the held map: from a hex scored −5, a hex beside the gogs scored
+    // 4 is within the runners' speed on the gogs' map but not on theirs, where the hex scored 3
+    // near them is the best.
+    let r = ruleset();
+    let state = BattleState::new(&r, &on(2, setup(&[(RUNNER, 10)], &[(GOG, 30)])), 1).unwrap();
+    let field = Field::new(r.battle().field);
+    let (here, gogs) = (state.stacks()[0].hex, state.stacks()[1].hex);
+    let far = field.neighbors(gogs).into_iter().flatten().next().unwrap();
+    let safe = field.neighbors(field.neighbors(here)[0].unwrap())[0].unwrap();
+    let mut scores = [0; 256];
+    scores[here.index()] = -5;
+    scores[safe.index()] = 3;
+    scores[far.index()] = 4;
+    let w = walker(&state, &r, (0, BattleSide::Attacker)).scored(scores);
+    assert_eq!(w.step_to_safety(), Some(Command::Move { to: safe }));
+    w.held
+        .set(computer::map(&state, &r, StackId(1), BattleSide::Defender))
+        .unwrap();
+    let Some(Command::Move { to }) = w.step_to_safety() else {
+        panic!("no step");
+    };
+    assert!(field.distance(to, far) < field.distance(here, far));
 }
