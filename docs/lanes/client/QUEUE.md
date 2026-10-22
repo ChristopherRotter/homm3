@@ -6,21 +6,6 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024). M3 (fidelity) below, refined at M2's closure (T5c) and agreed by the user there, each task about half a context; the exit: the reference set passes, or each difference is a listed fix or a classified quirk. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M3 T7c-2 — Spell obstacles and Armageddon
-
-- **Scope:** T7c split with the user on 2026-10-22 (T7c-1 the area and mass spells, done; T7c-2;
-  T7c-3). The spell obstacles in the scene (fire walls, force fields, quicksand, land mines:
-  `ObstaclePlaced`, `ObstacleRevealed`, `ObstacleTriggered`, `ObstacleRemoved`; `scene::battle`
-  leaves them out so far, design §4.4: a side's own shown only when revealed or seen), their
-  placement at the hex (player 5, `Player::at_hex` since T7c-1: places 4 and 0) with their sounds,
-  their vanish animations at a round's start (66, 58, 59, 60/61), Armageddon's tiled field
-  (player 6) with its reactions; Land Mine's blast (57, marked) if a record steps on one. The
-  reference: `casts.toml`'s `obstacles` (its Fire Wall's second hex placed at the first's: confirm
-  by the frame check).
-- **Acceptance:** `obstacles` moves into `sequences.toml` (engine commands, a searched seed if a
-  roll matters), played as recorded, its frames as the original's or each difference listed.
-- **Depends on:** T7c-1 (done). **Status:** ready.
-
 ### E17 M3 T7c-3 — Raises, the creatures' own animations and Chain Lightning
 
 - **Scope:** created and raised stacks (`StackCreated`, `SpellRaised`, `Reborn`: drawn once the
@@ -34,7 +19,7 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
   round 2; round 1 is `lightning`).
 - **Acceptance:** those recordings move into `sequences.toml`, played as recorded, frames as the
   original's or each difference listed (the rays' randomness as the user decides).
-- **Depends on:** T7c-2. **Status:** waiting. May split when refined.
+- **Depends on:** T7c-2 (done). **Status:** ready. May split when refined.
 
 ### E17 M3 T7d — A creature's cast: its drawing bugs fixed
 
@@ -65,7 +50,7 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 - **Acceptance:** M3's exit holds; the review list answered or carried on.
 - **Depends on:** T7c-3, T7d (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a,
   T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b, T8, T7b-1, T7b-2a,
-  T7b-2b-1, T7b-2b-2a, T7b-2b-2b, T7b-2b-3, T7c-1 done).
+  T7b-2b-1, T7b-2b-2a, T7b-2b-2b, T7b-2b-3, T7c-1, T7c-2 done).
   **Status:** waiting.
 
 ## Inbox

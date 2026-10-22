@@ -1944,6 +1944,47 @@ user's computer was linked for the staging only (the four LODs, both sound archi
 - **Gates:** the client workspace's coverage 100 %, unit tests replay `mass` exactly and the
   dragon's mechanics with invented numbers; the full check: in the pull request.
 
+### M3 T7c-2 — The spell objects and Armageddon (2026-10-22)
+
+On `client/e17-m3-t7c-2`, the user present at the start: asked whether to cut T7c-2 (the agent
+offered the spell objects first and Armageddon with the whole recording next), the user chose
+T7c-2 whole. The user's computer was linked for the staging only (the four LODs, both sound
+archives, `H3ab_ahd.vid`, the executables, the five DLLs, the combat and end tunes,
+`extracted.tar`, `maps.tar`).
+
+- **Starting point:** `master` at `ab17a58` (#378 merged as the session began); no client pull
+  request open; CI on `master` not started (billing); the client gates' full check on that code
+  (`verify-once clients`: all gates passed).
+- **The reading** (design §7.16, "Read at T7c-2"; `docs/exe/map.toml`): the spell objects'
+  descriptors after the 91 usual types (DEFs, heights, layers; two unused fire descriptors),
+  their drawing in `battle_redraw`'s obstacle passes by the idle steps' count and the screen
+  side's sight (0x49460A, 0x494931), the four handlers' placing (Fire Wall's every animation at
+  the hex aimed at, 0x5A0884: CLT-Q12 confirmed; Force Field's object without a redraw), the
+  round start's expiry (0x476152 to 0x4761E9: each object out of memory, its vanish at its
+  anchor, then the round's line), Armageddon's own loop (all its frames tiled, the reactions as
+  the mass animation's) and its line without the caster's bonuses (CLT-Q16).
+- **Built** (design §7.16, "Built (T7c-2)"): `ObjectKey`, `Timeline::objects`,
+  `Moment::objects` (the obstacles' passes, the frame by the idle steps, Force Field's hexes kept
+  from the count boxes), `Player::place_objects`, `place`, `vanish`, `at_hex`'s `keep`,
+  `field` (`FieldKey`, `Timeline::field`, `Draw::Tiled`), `Logged::Armageddon` (key
+  `battle.log.armageddon`, GENRLTXT 89), `Sound::Object`; the asset tables' spell `objects` and
+  `object_sound` (harvested, a format change); `Timeline::changes` now names the spots', the
+  objects', the field's, the heroes' and the hues' times (the window's `play` skipped them).
+- **Recorded** (`sequences.toml`, moved from `casts.toml`): `obstacles` (76 changes) with the
+  engine's seed searched for the original's four pits in their order (517 487 719: the
+  Quicksand draw is the battle's first, so the search ran the kernel's generator alone over 3 ×
+  10⁹ seeds in two and a half minutes); played as recorded on the first run.
+- **The frame check** (`frames --only obstacles`): 84 frames, all as the original's; the boxes
+  listed at 7 800 ms (memory holds the counts the cast's tail reset, as `mass`). The first
+  capture in the fresh sandbox showed every Swordsmen's defend gain as +3 (the log's item listed
+  in 76 frames), four later runs of the same map +2, as the engine's defense 14 gives (read from
+  memory: 14 at the opening, 16 after the defend); the stacks' states of both captures are
+  otherwise identical; cause not found (the first launch after `setup.sh`?), the second capture
+  recorded. `drawn`: the other sequences and situations the same; digests recorded.
+- **Gates:** the client workspace's coverage 100 %, unit tests replay `obstacles` exactly and the
+  objects' and Armageddon's other paths with invented numbers; the full check: in the pull
+  request.
+
 ## Accepted review lists (M1, M2)
 
 Moved from the epic file on 2026-10-20 (less start-up reading), unchanged.

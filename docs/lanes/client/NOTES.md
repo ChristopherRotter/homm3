@@ -50,6 +50,13 @@ a line there while the work waits.
   does (0x4691A9; the same times so far); Expert Dispel and Cure over several stacks; Destroy
   Undead, Frost Ring and Meteor Shower (built as read); an at-hex frame over the panel; the
   hero's aim over a hex (`enter_player_cast`, inbox).
+- 2026-10-22 (E17 M3 T7c-2, done; design §7.16): the spell objects and Armageddon are built.
+  Left for later (read in part, not recorded): a stack stepping into a Fire Wall (its burn) or
+  onto a Land Mine (its blast 57 over the stack, the mine's removal; `ObstacleTriggered`), a
+  pit's reveal as the walker meets it; Dispel's (Expert) and Remove Obstacle's removals in their
+  handlers' order (0x5A1767, 0x5A1C35; the vanish plays where the event comes), an obstacle's
+  fade (vanish −1); Quicksand's and Land Mine's wait for their sample (0x5A04DD); in hot seat, a
+  hidden object shown only on its owner's turn (a seat's record would need it, CLT-Q15).
 - 2026-10-15 (E17 M3 T3b): **for T8**: the battle waits for the heal's sound to end
   (`wait_for_sample` after `first_aid_tent_action`'s animation, design §7.15): at speed 0 the
   animation outlasts `Regener` (2 100 against 1 881 ms), at speeds 1 and 2 with the sound on the

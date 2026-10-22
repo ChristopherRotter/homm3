@@ -479,7 +479,9 @@ const EMPTY_SURROUNDINGS: usize = 2;
 /// passes with its layer-0 obstacles and its living stacks, each with its count box (§4.6; M3
 /// T4a). A natural obstacle without a type is not drawn; a removed one is no longer in the
 /// observation's list (the engine drops it), so every listed one is drawn, whatever hexes a
-/// removal cleared. Left out until later tasks: corpses, spell obstacles, the grid.
+/// removal cleared. The spells' battlefield objects come with a moment of the timeline
+/// ([`battle_at`], E17 M3 T7c-2), whose stage holds their looks. Left out until later tasks:
+/// corpses, the grid.
 ///
 /// # Errors
 /// A handle the manifest does not resolve, a key the tables lack, an obstacle type of the wrong

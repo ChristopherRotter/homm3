@@ -1647,7 +1647,7 @@ resistance roll, if any (category 3, 0x5A0331); Curse's is named `Curse`, withou
     death group backwards from its second-to-last frame, a frame a redraw, standing after frame
     0; the log's line with frame 0.
   - `obstacles`: at a hex each frame 100 ms: a Fire Wall's two hexes 65 (3 frames each) both at
-    the target hex's place (the second hex's at the first's: for T7c's frame check), the wall
+    the target hex's place (the second hex's at the first's: the code's, 0x5A0884, and T7c-2's frames confirm it), the wall
     shown with its last frame and the log's line; Quicksand's four pits 55 (3 frames) each at its
     own place; a Force Field's 32 (3 frames). The Fire Wall gone at round 3's start: 66 at each
     hex's own place (3 frames and an erase each). Armageddon's 12 tiled, all 20 frames at 100 ms,
@@ -1979,7 +1979,9 @@ resistance roll, if any (category 3, 0x5A0331); Curse's is named `Curse`, withou
   Fire Wall's burn when a stack steps in (`ObstacleTriggered`: no record steps on one); Dispel's
   and Remove Obstacle's removals as their handlers order them (the vanish plays where the event
   comes); a hidden object's hiding on the other human's turn (a record holds only what its viewer
-  sees).
+  sees). Recorded (`sequences.toml`): `obstacles` (seed 517 487 719: the engine draws the
+  original's four pits in its order), as recorded on the first run. The frame check: 84 frames,
+  all as the original's; the boxes listed at 7 800 ms (memory holds the counts the tail reset).
 - **Not read:** the dissolve's blend; Chain Lightning's rays beyond `draw_ray`'s call (colour
   0x131, 0x5A64EF; T7c-3); how the glows are painted; the summons' and the Pit Lord's creation
   beyond the dissolve; Earthquake (sieges); the force-feedback effects (IFC20, nothing drawn).

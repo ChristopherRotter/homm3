@@ -629,6 +629,7 @@ ms = 3000
 heroes = true
 screens = true
 timeline = "timelines/obstacles.txt"
+frames = "timelines/obstacles-frames.txt"
 boxes = true
 command = [
     { seat = "Defender", at = 0, command = { Defend = {} } },
