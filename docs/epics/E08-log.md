@@ -4243,3 +4243,7 @@ Decision 85 (ADV-Q22 point 2), right after T38 in the same session, on T38's bra
   grass: both counts give 0 shares).
 - **Round 2 closed** (T37a, T37b, T38, T38b). Round 3 queued: T39 + T40 (`E08-design.md` §12),
   the cut at its start.
+- **The full local verify** (CI cannot run): `scripts/verify-once.sh engine --base origin/master
+  -- --with-original-data` on engine code ebd76b02 (commit 97457a6, 2026-10-22, the sandbox,
+  Linux x86_64): all 16 steps passed; `original-data`: 5 shipped maps import whole, 9 heroes
+  levelled at load with 41 level-ups (the counts unchanged).
