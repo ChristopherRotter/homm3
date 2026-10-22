@@ -1244,3 +1244,10 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   spell context as the last search for the active stack too (BAT-STUB-14 widened); and the stops of
   a hypnotized stack, which the original takes from its real side and the engine's pathfinder from
   its controller (Q-0002's fix, §7.16: the slip-30 estimate follows the engine).
+- **Checkpoint** (the user, 2026-10-22, 23:15: stop here, push, no PR). The scoped verify passed
+  but for the coverage gate (one dead branch, fixed after) and `bench-check`: `computer-decisions`
+  (no heroes) +2.62 %, over its 2 %: the walker's new tests (the can-act test, the flag-1 and
+  run-up tests, the cast entry's guard) on every decision. The next session re-baselines it on
+  purpose (the budget's rule: re-set per part, the reason recorded) or trims the walker's tests,
+  runs the full verify with the original data and opens the PR. The full verify was stopped in
+  its coverage step.
