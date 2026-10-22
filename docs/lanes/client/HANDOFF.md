@@ -54,7 +54,7 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
   only (T7b-2a). Tell spells by `SpellLook::original`, not engine handles (Poison 70).
 - Sequences are spectators' records (no seat's own events); an engine draw the original made is
   matched by a searched seed (`dragon` 174; `obstacles`: the kernel's generator alone, T7c-2).
-- A fresh sandbox's first capture once differed (T7c-2: a defend's gain): capture again.
+- A fresh sandbox's first capture once differed (T7c-2, a defend's gain): recapture.
 
 ## Recent sessions
 
