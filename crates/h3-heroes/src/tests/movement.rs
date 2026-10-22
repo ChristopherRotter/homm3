@@ -9,8 +9,8 @@ use super::*;
 
 /// The test pack with movement and scouting (E08 T39): Logistics 10/20/30 %, Pathfinding 1/2/3
 /// and Scouting 1/2/3 tiles; `t:helm` +600 land points (Boots of Speed's), reached as a part of
-/// the combination `t:circle` too, `t:eye` +300 (Equestrian's Gloves') and a radius tile (worn twice
-/// in [`hero`]'s tests: counted once), `t:band` a radius tile, `t:loop` (needs Luck) flying 3
+/// the combination `t:circle` too, `t:eye` +300 (Equestrian's Gloves') and a radius tile (worn
+/// twice in some tests: counted once), `t:band` a radius tile, `t:loop` (needs Luck) flying 3
 /// and Pathfinding 3, `t:hook` water walking 3 and `t:kit` water walking 0; `t:archer` (speed 4)
 /// upgrades into `t:marksman` (6), whose own upgrade `t:sharpshooter` (7) is not a direct one of
 /// the archer's, `t:quick` has speed 255. `specialty` is Orrin's.

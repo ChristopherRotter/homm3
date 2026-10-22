@@ -3,8 +3,8 @@
 //! day's land points grown by the hero's rates and flat bonuses, a creature's speed for the slowest
 //! stack, the Pathfinding, flying and water-walking levels, and the scouting radius. Pure functions
 //! of the details, the core ruleset and the adventure's inputs (the land table's entry, the base
-//! radius); when the map reads them is the adventure's (ADV-MOV-001, -002, ADV-FOG-001). No skill or
-//! artifact is read by name (ADR-0016 point 4): the effect kinds `land_movement`,
+//! radius); when the map reads them is the adventure's (ADV-MOV-001, -002, ADV-FOG-001). No skill
+//! or artifact is read by name (ADR-0016 point 4): the effect kinds `land_movement`,
 //! `land_movement_points`, `pathfinding`, `flying`, `water_walking`, `scouting_radius` and the
 //! creature specialty's `speed`. Every artifact type counts once, worn or as a part of a worn
 //! combination, one that needs a skill only with it (the original's `hero_wears_artifact`

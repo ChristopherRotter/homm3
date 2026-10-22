@@ -8,10 +8,10 @@
 //! experience, the scenario's level limit, a level-up's draws and the answer as a change (ADR-0013
 //! point 12), and since E08 T28 the original's choice between two offers, and since E08 T39 what
 //! the map reads to move and scout (the day's land points, a creature's speed, the Pathfinding,
-//! flying and water-walking levels, the scouting radius; ADR-0013 point 13). No commands and no map or
-//! battle state: who levels a hero up, when, and equipping and learning arrive with the adventure
-//! and game epics (E08–E10); the battle never depends on this crate and reads only the battle hero
-//! of the seam (`h3_contracts::BattleHero`).
+//! flying and water-walking levels, the scouting radius; ADR-0013 point 13). No commands and no
+//! map or battle state: who levels a hero up, when, and equipping and learning arrive with the
+//! adventure and game epics (E08–E10); the battle never depends on this crate and reads only the
+//! battle hero of the seam (`h3_contracts::BattleHero`).
 //!
 //! Logic crate: pure, deterministic, `no_std` + `alloc` (ADR-0003, ADR-0005). The lint header
 //! below is required and checked by `cargo xtask check-arch`.

@@ -296,7 +296,8 @@ fn land_table(rules: &GameRuleset, army: &[ArmyStack], details: &HeroDetails) ->
 /// single precision, then `trunc((1 + sum) × land)` in the x87's arithmetic,
 /// `hero_max_land_movement` 0x4E4990); **exact** the basis points grown and rounded down
 /// (`strict-fixed`, Q-0005 off, [`strict_core`]). Both compile the same packs, so the details'
-/// handles are both's. The batch's heroes wear no artifact; a worn one's flat bonus would count in both.
+/// handles are both's. The batch's heroes wear no artifact; a worn one's flat bonus would count in
+/// both.
 fn land_points(
     details: &HeroDetails,
     faithful: &Ruleset,
@@ -1372,9 +1373,9 @@ mod tests {
     /// E08 T39: batch E5a's E5-1 as the base pack's data derive it through `h3_heroes`
     /// (HER-ADV-003 to -007; survey §13: every value observed): Boots of Speed 2160, Equestrian's
     /// Gloves 1860, both with Expert Logistics 2928 from the table's 1560; Valeska's Archers count
-    /// one faster (speed 5: the table's 1630); Angel Wings fly and Boots of Levitation walk on water
-    /// at level 3; Pathfinding's levels; Expert Scouting with the Speculum and the Spyglass sees 10
-    /// tiles from the part's 5.
+    /// one faster (speed 5: the table's 1630); Angel Wings fly and Boots of Levitation walk on
+    /// water at level 3; Pathfinding's levels; Expert Scouting with the Speculum and the Spyglass
+    /// sees 10 tiles from the part's 5.
     #[test]
     fn the_base_packs_movement_effects_derive_as_batch_e5_saw_them() {
         let rules = rules();
