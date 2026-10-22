@@ -567,6 +567,18 @@ def offer_text(offer):
     return offer[0] if offer else "none"
 
 
+def side_of(choice, shown):
+    """A level-up choice's side: `left` or `right` as given, or a skill by name (E08 T37b, batch
+    E5e's forced offers: the seed byte decides its side) on whichever side offers it, else the
+    left (the dialog's record shows what was offered and taken)."""
+    if choice in LEVEL_UP_CHOICES:
+        return choice
+    if choice not in h3mem.SKILLS:
+        raise ValueError(f"`level_up = {choice!r}`: left, right or a secondary skill's name")
+    return next((side for side in ("left", "right") if (shown[side] or [None])[0] == choice),
+                "left")
+
+
 def settle(game, mem, index, answer=None, battle=None, level_up="left"):
     """Waits until the hero, its points and the players' resources stay the same for QUIET
     seconds on the adventure map (the walk and any visit over), on the way answering each question
@@ -607,7 +619,8 @@ def settle(game, mem, index, answer=None, battle=None, level_up="left"):
             if not known_dialogs or (known_dialogs[-1]["hero"], known_dialogs[-1]["level"]) != (
                     record["hero"], record["level"]):
                 if waiting:
-                    choice = choices[min(len(events["level_ups"]), len(choices) - 1)]
+                    choice = side_of(choices[min(len(events["level_ups"]), len(choices) - 1)],
+                                     shown)
                     dx, dy = LEVEL_UP_CHOICES[choice]
                     game.click(waiting[0][0] + dx, waiting[0][1] + dy, 0.5)
                     game.move(*PARK)
@@ -679,7 +692,8 @@ def walk(game, mem, name, target, answer=None, battle=None, level_up="left"):
     return {
         "hero": name, "index": index, "from": before["tile"], "target": list(target),
         "tile": after["tile"], "marks": len(path), "mark": path.get((x, y, z), "none"),
-        "path": colours, "arrived": after["tile"] == [x, y, z],
+        "path": colours, "tiles": sorted(path, key=lambda t: (t[2], t[1], t[0])),
+        "arrived": after["tile"] == [x, y, z],
         "moved": after["tile"] != before["tile"], "points_before": before["points"],
         "points": after["points"], "first_click_walked": first_walked, **events,
     }
@@ -846,6 +860,12 @@ def value(obs, what, mem):
         return str(obs[what])
     if what == "points_if_moved":
         return str(obs["points"]) if obs["moved"] else ""
+    # E08 T37b (batch E5b's E5-11): the tiles the path's marks lay on at the first click, by row
+    # then column (`31,12 31,13 31,14 31,15`), or those of one row (`path_tiles:14`); `none`.
+    if m := re.match(r"path_tiles(?::(\d+))?$", what):
+        row = m.group(1)
+        return " ".join(f"{x},{y}" + (f",{z}" if z else "") for x, y, z in obs["tiles"]
+                        if row is None or y == int(row)) or "none"
     if what.startswith("resource:"):
         _, name, *colour = what.split(":")
         owner = colour[0] if colour else COLOURS[obs["before"]["hero"]["owner"]]
