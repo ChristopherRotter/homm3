@@ -2089,7 +2089,7 @@ fn artifact_syntax() {
         (params.primary_min, params.primary_max, params.backpack),
         ([0, 0, 1, 2], 40, 3)
     );
-    assert_eq!(r.artifacts().len(), 22);
+    assert_eq!(r.artifacts().len(), 23);
     let by_key = |k: &str| r.artifact(r.artifact_by_key(k).unwrap()).unwrap();
     let regalia = by_key("synthetic-ext:storm_regalia");
     assert_eq!(regalia.class, ArtifactClass::Relic);
