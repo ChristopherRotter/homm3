@@ -41,7 +41,7 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 
 ### 2026-10-22 — increment 5, ninth session: T39
 
-Baseline b0d9012. Decision 86 (T39 alone, Q-0005's line `cross-lane`); every vector as predicted; full verify green.
+Baseline b0d9012. Decision 86 (T39 alone, Q-0005's line `cross-lane`); verify green.
 
 ### 2026-10-22 — increment 5, eighth session: T38, T38b
 
