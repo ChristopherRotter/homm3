@@ -231,6 +231,10 @@ pub enum Logged {
         /// Whether it replaces the item's text over new entries.
         forced: bool,
     },
+    /// The mouse's stack unmarked as a cast starts (`battle_clear_highlight` 0x477E10 from
+    /// `cast_spell` 0x5A0055; E17 M3 T7c-1: a creature's cast, whose action leaves it marked until
+    /// its own frames are over): no line.
+    Unmark,
     /// The log scrolled by its buttons or the arrow keys (0x472DF0, 0x472E40, 0x472DB0; E17 M3
     /// T6c-2: the window's), by entries (up: negative).
     Scroll(i64),
@@ -267,7 +271,11 @@ pub fn word(
 ) -> Option<String> {
     let named = |id: u8, count: u32| stack(id).map(|n| (n, count));
     match logged {
-        Logged::Action | Logged::Turn(_) | Logged::Status { .. } | Logged::Scroll(_) => None,
+        Logged::Action
+        | Logged::Turn(_)
+        | Logged::Status { .. }
+        | Logged::Scroll(_)
+        | Logged::Unmark => None,
         Logged::Strike {
             attacker,
             count,

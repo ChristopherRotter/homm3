@@ -2564,6 +2564,7 @@ fn the_log_records_what_the_battle_writes_and_when() {
             Logged::Round => "round",
             Logged::Status { .. } => "status",
             Logged::Scroll(_) => "scroll",
+            Logged::Unmark => "unmark",
             Logged::Cast { .. }
             | Logged::Resisted { .. }
             | Logged::SpellDamage { .. }
@@ -4480,9 +4481,12 @@ fn an_area_spell_plays_at_its_hex_then_its_line_and_the_reactions() {
             vec![cast_at(21, hex(83)), hurt(1, 50, 50, 1), hurt(2, 50, 40, 2)],
         ),
         (Some(8000), vec![cast_at(22, hex(117))]),
-        (Some(14000), vec![cast_at(23, hex(15)), hurt(1, 9, 9, 0)]),
+        (Some(14000), vec![cast_at(23, hex(15)), hurt(1, 9, 9, 40)]),
     ];
     let t = play_area(&o, &commands);
+    // Meteor Shower kills the Swordsmen at 15: they lie as a corpse on their death's last frame.
+    let corpse = t.keys.iter().rev().find(|k| k.stack == 1).unwrap();
+    assert_eq!((corpse.pose.group, corpse.pose.frame, corpse.pose.layer), (5, 5, CORPSE));
     let layout = layout();
     let anchor = layout.anchor(4, 15);
     let at = |shown| t.spot(shown).map(|s| (s.def, s.frame, s.at));
@@ -4551,12 +4555,13 @@ fn stack_cast(stack: u8, spell: u16, target: Target) -> Event {
 fn a_creature_casts_by_its_angle_and_stands_at_its_casts_tail() {
     // E17 M3 T7c-1 (0x448260, `dragon`): the Faerie Dragon beside its target takes group 17, its
     // frames at trunc(480 / 12), the outline kept until the cast starts; Fireball at the hex, the
-    // dragon struck with the defending Swordsmen; it stands at the loop's end, outlined, while
-    // their group 4 plays on.
+    // dragon struck with the defending Swordsmen; it stands after the loop as their group 4 plays
+    // on, outlined once nothing plays (the cast's tail).
     let o = snapshot(vec![
         at(0, Side::Attacker, FAERIE_DRAGON, 81, true),
         at(1, Side::Defender, SWORDSMAN, 83, false),
         at(2, Side::Defender, SWORDSMAN, 15, false),
+        at(3, Side::Defender, SWORDSMAN, 100, false),
     ]);
     let hex = |hex| Target::Hex { hex };
     let commands = [
@@ -4580,6 +4585,7 @@ fn a_creature_casts_by_its_angle_and_stands_at_its_casts_tail() {
                 stack_cast(0, 21, hex(83)),
                 hurt(0, 20, 20, 0),
                 hurt(1, 20, 20, 0),
+                hurt(3, 20, 20, 0),
                 Event::TurnStarted { stack: 1 },
             ],
         ),
@@ -4619,14 +4625,32 @@ fn a_creature_casts_by_its_angle_and_stands_at_its_casts_tail() {
         .map(|k| k.drawn)
         .unwrap();
     assert_eq!(stood, hit[0] + 700);
-    assert_eq!(t.outlined(stood), Some(0));
-    // The Swordsmen go on after the dragon stands.
-    assert!(
-        t.keys
-            .iter()
-            .any(|k| k.stack == 1 && k.pose.group == 4 && k.drawn > stood)
-    );
-    // Four rows above: group 19, the dragon not struck, standing at the loop's end (six).
+    assert_eq!(t.outlined(stood + 100), None);
+    // The Swordsmen at 100, not defending: their hit's six frames, standing inside the loop.
+    let hit_100: Vec<(u32, u32)> = t
+        .keys
+        .iter()
+        .filter(|k| k.stack == 3 && k.drawn >= hit[0] && k.drawn < stood)
+        .map(|k| (k.pose.group, k.pose.frame))
+        .collect();
+    assert_eq!(hit_100.last(), Some(&(2, 0)));
+    assert_eq!(hit_100.len(), 7);
+    // The Swordsmen go on after the dragon stands; the outline is back as they stand.
+    let defended: Vec<u32> = t
+        .keys
+        .iter()
+        .filter(|k| k.stack == 1 && k.drawn > stood)
+        .map(|k| k.drawn)
+        .collect();
+    assert_eq!(defended.len(), 5);
+    // Its frames 8 to 10, standing, then the end's whole redraw.
+    let end = defended.last().copied().unwrap();
+    assert_eq!(t.outlined(end - 1), None);
+    assert!(t.outlines.contains(&(end, Some(0))));
+    // The next turn's stack the same moment.
+    assert_eq!(t.outlined(end), Some(1));
+    // Four rows above: group 19, the dragon not struck, standing in memory after the loop (six),
+    // on the screen only with the battle's whole redraw once the Swordsmen stand.
     let above = frames(19);
     assert_eq!(above.len(), 12);
     let reacts = t
@@ -4639,8 +4663,9 @@ fn a_creature_casts_by_its_angle_and_stands_at_its_casts_tail() {
         .keys
         .iter()
         .find(|k| k.stack == 0 && k.pose.group == 2 && k.drawn > above[0])
-        .map(|k| k.drawn);
-    assert_eq!(stood, Some(reacts + 600));
+        .map(|k| (k.drawn, k.shown));
+    assert_eq!(stood, Some((reacts + 600, reacts + 1200)));
+    assert_eq!(t.at(reacts + 1199).get(&0).map(|p| p.group), Some(19));
 }
 
 #[test]
@@ -4656,7 +4681,14 @@ fn a_creature_casts_turned_toward_its_target_and_by_its_strike_groups() {
     ]);
     let hex = |hex| Target::Hex { hex };
     let commands = [
-        (Some(0), vec![stack_cast(0, 23, hex(133)), hurt(2, 5, 5, 0)]),
+        (
+            Some(0),
+            vec![
+                stack_cast(0, 23, hex(133)),
+                Event::SpellResisted { target: 1 },
+                hurt(2, 5, 5, 0),
+            ],
+        ),
         (Some(4000), vec![stack_cast(0, 23, hex(31))]),
         (Some(8000), vec![stack_cast(1, 23, hex(97))]),
         (

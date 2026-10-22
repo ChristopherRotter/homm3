@@ -3021,16 +3021,17 @@ impl Player<'_> {
     /// for each starts at once, its group (death, a defending stack's defend, else hit) a frame a
     /// redraw at trunc(100 F) and its sound with its first; the loop runs as many iterations as
     /// the longest hit or death group (a defending stack's hit group counts, 0x468C4F), a hit
-    /// standing after its last frame. At the loop's end the dead lie as corpses, the boxes show
-    /// their counts and the battle is redrawn at once; `caster` stands (`cast_spell`'s tail,
-    /// [`Player::stand_caster`]); then the groups left over play on, a frame at trunc(100 F) each
-    /// and standing after their last (recorded: `dragon`'s defending Swordsmen; *provisional*:
-    /// what plays them is not read, and a hero's casting frames wait for them).
+    /// standing after its last frame. Then every stack not standing plays on (0x4691A9 to
+    /// 0x469268): a frame a redraw at trunc(100 F), standing after its group's last (a death stays
+    /// on its last), until none changes: the reactions left over, and `caster` (a creature, its
+    /// cast group's frames, kept on its last) stands. Then the dead lie as corpses, the boxes show
+    /// their counts and the battle is redrawn at once (0x46938A); a creature caster is outlined
+    /// at the cast's tail ([`Player::stand_caster`]).
     fn spell_reactions(&mut self, hit: &[(u8, u32)], caster: Option<u8>) {
         let reactions = self.reactions(hit);
         let looped = reactions.iter().map(|r| r.counted).max().unwrap_or(0);
         let tick = self.speed.scale(TICK);
-        let pose = |r: &Reaction, i: u32, layer: u8| {
+        let pose = |r: &Reaction, i: u32| {
             let frame = if i < r.frames {
                 Some(i)
             } else if r.died {
@@ -3038,12 +3039,15 @@ impl Player<'_> {
             } else {
                 None
             };
-            frame.map_or(r.base, |f| Pose {
+            let pose = frame.map_or(r.base, |f| Pose {
                 group: u32::from(r.group),
                 frame: f,
-                layer,
                 ..r.base
-            })
+            });
+            Pose {
+                layer: STRUCK,
+                ..pose
+            }
         };
         for i in 0..looped {
             if i == 0 {
@@ -3051,14 +3055,55 @@ impl Player<'_> {
                     self.cue(r.stack, r.sound, false);
                 }
             }
-            let poses: Vec<(u8, Pose)> = reactions
-                .iter()
-                .map(|r| (r.stack, pose(r, i, STRUCK)))
-                .collect();
+            let poses: Vec<(u8, Pose)> = reactions.iter().map(|r| (r.stack, pose(r, i))).collect();
             self.frame(&poses, tick);
         }
-        // The loop's end (0x4692A4): the dead lie as corpses, the layers and boxes as at a
-        // strike's end, a redraw at once.
+        // Every stack not standing plays on: each reaction still in its group (from iteration
+        // `looped`), the caster on its cast group's last frame unless it reacted (standing next);
+        // each with its standing pose.
+        let mut playing: Vec<(u8, u32, u32, Pose)> = reactions
+            .iter()
+            .filter(|r| !r.died && r.frames >= looped)
+            .map(|r| {
+                let standing = Pose {
+                    layer: STRUCK,
+                    ..r.base
+                };
+                (r.stack, looped, r.frames, standing)
+            })
+            .collect();
+        let casting = caster.filter(|c| reactions.iter().all(|r| r.stack != *c));
+        let standing = casting.and_then(|c| self.live(c).map(|l| (c, self.standing(&l, l.hex))));
+        playing.extend(standing.map(|(c, p)| (c, 0, 0, p)));
+        // The redraws of this loop are partial (the reacting stacks' rectangle, 0x469263): a
+        // caster that did not react stands in memory but shows standing only with the end's
+        // redraw (`dragon`'s round 3).
+        let mut unseen = None;
+        loop {
+            let mut poses = Vec::new();
+            let mut changed = false;
+            for (stack, i, frames, standing) in &mut playing {
+                if *i < *frames {
+                    let r = reactions.iter().find(|r| r.stack == *stack);
+                    poses.push((*stack, r.map_or(*standing, |r| pose(r, *i))));
+                    changed = true;
+                } else if *i == *frames {
+                    if casting == Some(*stack) {
+                        unseen = Some((*stack, self.clock.now, *standing));
+                    } else {
+                        poses.push((*stack, *standing));
+                    }
+                    changed = true;
+                }
+                *i += 1;
+            }
+            if !changed {
+                break;
+            }
+            self.frame(&poses, tick);
+        }
+        // The end (0x4692A4 to 0x46938A): the dead lie as corpses, every stack's layer and box as
+        // at a strike's end, a redraw at once.
         let shown = self.clock.now;
         self.counts.extend(reactions.iter().filter_map(|r| {
             r.count.map(|count| CountKey {
@@ -3067,37 +3112,29 @@ impl Player<'_> {
                 count,
             })
         }));
-        let mut left = Vec::new();
         for r in reactions {
             if r.died {
                 let corpse = Pose {
                     layer: CORPSE,
-                    ..pose(&r, r.frames, CORPSE)
+                    ..pose(&r, r.frames)
                 };
                 self.pending.push((r.stack, corpse));
                 self.stacks.remove(&r.stack);
-            } else if r.frames > looped {
-                self.pending.push((r.stack, pose(&r, looped, STANDING)));
-                left.push(r);
             } else {
                 self.pending.push((r.stack, r.base));
             }
         }
         self.redraw();
+        let shown = self.clock.now;
+        self.keys
+            .extend(unseen.map(|(stack, drawn, pose)| Key {
+                stack,
+                drawn,
+                shown,
+                pose,
+            }));
         if let Some(c) = caster {
             self.stand_caster(c);
-        }
-        // The groups left over play on (the frame drawn at the end shows with the first).
-        let longest = left.iter().map(|r| r.frames).max().unwrap_or(0);
-        self.pending
-            .retain(|(s, _)| left.iter().all(|r| r.stack != *s));
-        for i in looped..=longest {
-            let poses: Vec<(u8, Pose)> = left
-                .iter()
-                .filter(|r| i <= r.frames)
-                .map(|r| (r.stack, pose(r, i, STANDING)))
-                .collect();
-            self.frame(&poses, tick);
         }
     }
 
@@ -3105,9 +3142,8 @@ impl Player<'_> {
     /// `cast_spell` 0x5A216B; E17 M3 T7c-1): the stack whose turn it is, standing, outlined again,
     /// in a redraw shown at once.
     fn stand_caster(&mut self, stack: u8) {
-        if let Some(live) = self.live(stack) {
-            self.pending.push((stack, self.standing(&live, live.hex)));
-        }
+        let standing = self.live(stack).map(|l| (stack, self.standing(&l, l.hex)));
+        self.pending.extend(standing);
         let now = self.clock.now;
         self.outlined.push((now, Some(stack)));
         self.acting = Some(stack);
@@ -3162,7 +3198,9 @@ impl Player<'_> {
         for f in 0..frames {
             self.frame(&[(stack, Self::posed(&live, group, f, live.hex))], time);
         }
+        // `cast_spell`'s start: the outline and the mouse's stack cleared, a redraw at once each.
         self.outlined.push((self.clock.now, None));
+        self.log.push((self.clock.now, Logged::Unmark));
         self.redraw();
         self.cue(stack, Sound::Spell(spell), false);
         let hits: Vec<(u8, u64, u64, u32)> = effects

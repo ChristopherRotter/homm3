@@ -393,8 +393,9 @@ impl Handler<'_> {
                     self.set_marked(now, None);
                 }
             }
-            // `round_start` unmarks the mouse's stack (0x476081).
-            Logged::Round => self.set_marked(now, None),
+            // `round_start` unmarks the mouse's stack (0x476081), and so does a cast as it starts
+            // (0x5A0055; E17 M3 T7c-1).
+            Logged::Round | Logged::Unmark => self.set_marked(now, None),
             _ => {}
         }
     }
