@@ -5,6 +5,11 @@ walking in: decisions 73, 74), input for T34b's ADR amendment drafts, the design
 Input, not rules (`README.md`): a fact becomes binding when a task writes it into the catalog
 with its sources and tests. **The checkpoint** (ADV-Q20, 2026-10-22: the epic's decision 75) decided
 the open points; §8 and §9 carry its answers, D-26 as revised at T34b (decision 77, §4.2).
+**Batch E5** (run in T37b) is scored in §13 (T38, 2026-10-22). Its row E5-4 refuted §2.1's flying
+price as first read; a re-read found the cause: the tile bit the price tests (+0xC 0x40) is not the
+map file's coast flag but "no object blocks the tile" (§2.1 point 5). The same misreading had
+made A-14 (§3.3) and the computer's terrain shares of `E08-progression.md` §10.3 (A-11); ADV-Q22
+(decision 85) settled both.
 
 **Sources** (retrieved 2026-10-21):
 - `original-data`: a code reading of the user's `Heroes3.exe` (SoD 4.0 Complete); every address
@@ -54,9 +59,10 @@ the open points; §8 and §9 carry its answers, D-26 as revised at T34b (decisio
   (VCMI's max(100, cost − 25 × level) gives the same). Cursed Ground (class 21 on the step's
   source tile) takes away the native terrain's 100 (VCMI has no such rule, the wiki is silent:
   D-23). Nomads in the army price sand as dirt. **Flying** (Angel Wings, the Fly spell's level 3)
-  replaces the price by 100 from every inland tile, roads included, and takes the lesser of 100 and
-  the walking price only from a coastal land tile; the wiki's table and VCMI take the lesser
-  everywhere (roads 75, 65, 50): **D-24, a conflict of sources**. **Water walking** (Boots of
+  takes the lesser of 100 and the walking price from a land tile no object blocks (roads 75, 65,
+  50) and the fly price, 100, from water and from a blocked tile (*T38's correction*: this survey
+  first read the tile's bit as the coast flag, §2.1 point 5); the wiki agrees, VCMI takes the
+  lesser over obstacles too (**D-24**, settled by E5-4 and ADV-Q22). **Water walking** (Boots of
   Levitation) prices a step *from* water at 100; VCMI and the wiki agree at level 3. The diagonal
   exception compares the points with the source's terrain price by Pathfinding even then.
 - **The move's drop to 0** (ADV-MOV-006) prices the cheapest next step without the artifacts' flying
@@ -67,10 +73,9 @@ the open points; §8 and §9 carry its answers, D-26 as revised at T34b (decisio
   no object. Neither may stop on such a tile (a move's end and the next day's start need the
   tile's "may stop" node: the second reading, §3.4), nor visit a neighbour's object that is visited
   from the neighbouring tile, nor enter a town, from it: the wiki ("an unoccupied location (on
-  land)") and VCMI agree (D-25 settled). A flying hero standing inland has its start node marked
-  like a tile it flies over (`hero_flight_tile_test` 0x4E5CE0 passes only on coastal land), and the
-  move's step refuses a flyer's visit from the neighbouring tile there: either a misreading or a
-  quirk of the original (A-14: withdrawn at the checkpoint, the user: a flyer visits as a walker).
+  land)") and VCMI agree (D-25 settled). A flying hero on a free land tile visits from it as a
+  walking hero does (`hero_flight_tile_test` 0x4E5CE0 passes on every land tile no object blocks:
+  A-14, withdrawn at the checkpoint, rested on the misread bit; T38, §3.3).
 - **The scouting radius** (§4): 5, 6, 7, 8 by Scouting level, +1 for the Speculum and +1 for the
   Spyglass (worn or in a worn combination), as read in T8a. The Scouting specialty's 1 + 0.05 ×
   level is in the code, but **no SoD hero has the specialty** (the wiki: HotA's Beatrice, Miriam,
@@ -213,9 +218,16 @@ holds Nomads) is read whole (E08 T7a read its walking part, §1.2 of `E08-advent
 3. **Favorable Winds** (225) on water: two thirds, truncated (the sea).
 4. **Water walking** (level ≥ 0) on a water source: `fly_walk_step_cost` (0x6778AC: 140, 140, 120,
    100 by level) replaces the price.
-5. **Flying** (level ≥ 0): from a coastal land tile (the tile's flags +0xC bit 0x40, the map file's
-   coast flag) the lesser of the fly price and the price so far; from any other tile, inland land or
-   water, the fly price replaces it.
+5. **Flying** (level ≥ 0): from a land tile whose map item has +0xC bit 0x40 the lesser of the fly
+   price and the price so far; from water or from a tile without the bit the fly price replaces it.
+   *Corrected by T38* (row E5-4, then a re-read): the bit is not the map file's coast flag, as this
+   survey first had it. The tile loader (`map_tiles_load` 0x4FE220) copies only the file's six
+   mirror bits into +0xC, turns the file's coast bit into +0xD bit 0x02 (the coast the shore
+   battlefield tests) and sets +0xC bit 0x40 on every tile but rock; `tile_refresh_object`
+   (0x505610), run for each tile of an object placed or removed, sets it again and clears it where
+   an object's passability blocks the tile without an entrance there. So the bit means "no object
+   blocks the tile": the lesser applies from every free land tile (an object's entrance included),
+   the fly price from water and from a blocked tile (an obstacle the hero flies over).
 6. **The diagonal**: the exception (A-2, A-3) compares the points left with the source terrain's
    `step_cost_table` price by Pathfinding (after Nomads; water 100), never the fly or water-walk
    price; the charge is the price of 1–5 straight or trunc(price × √2).
@@ -225,10 +237,10 @@ set-up for the search: the fly level is the hero's +0x112 (−1 unless a Fly spe
 by Angel Wings (72); the water-walk level +0x116, forced to 3 by Boots of Levitation (90); both −1
 in a boat (+0x105 bit 18). The Pathfinding level is the hero's skill 0 (+0xC9).
 
-**With the artifacts** (level 3): a flying hero pays 100 for every straight step from an inland
-tile, 141 diagonally; a road under it costs 100 as well, and swamp, sand, snow and rough cost 100;
-from a coastal land tile it pays the lesser of 100 and the walking price (a road 75, 65, 50). A
-water-walking hero pays 100 (141) for a step from water and the walking price for a step from land
+**With the artifacts** (level 3): a flying hero pays the lesser of 100 and the walking price for
+a step from a free land tile (a road 75, 65, 50; swamp, sand, snow and rough 100), and 100 (141
+diagonally) for a step from water or from a blocked tile, so a blocked tile carrying a road is the
+only one where the fly price is above the lesser (T38). A water-walking hero pays 100 (141) for a step from water and the walking price for a step from land
 onto water.
 
 ### 2.2 Pathfinding, Cursed Ground and Nomads against VCMI and the wiki
@@ -259,10 +271,15 @@ onto water.
   the Fly spell". (Water Walk) "with 40% penalty … 20% … without penalty, provided the end
   destination is an unoccupied location on land". Angel Wings: "Permanent Expert Fly while
   equipped"; Boots of Levitation: "Permanent Expert Water Walk while equipped".
-- **D-24, flying's price: a conflict of sources.** The code replaces the price by the fly price
-  from every inland tile (a road costs 100 under Angel Wings) and takes the lesser only from coastal
-  land; the wiki and VCMI take the lesser everywhere. Row E5-4 (an Angel Wings hero on an inland
-  cobblestone road: 100 by the code, 50 by the others).
+- **D-24, flying's price.** *As first read*, the code replaced the price by the fly price from
+  every inland tile (a road 100 under Angel Wings) and took the lesser only from coastal land; the
+  wiki and VCMI take the lesser everywhere. Row E5-4 refuted the reading (an inland road's steps
+  cost 50) and T38's re-read found why (§2.1 point 5): the lesser applies from every land tile no
+  object blocks, the fly price from water and from a blocked tile. The wiki's text agrees ("the
+  lesser of the penalties" where the terrain has its own, its table's roads); VCMI takes the lesser
+  over obstacles too, which differs at level 3 only for a blocked tile carrying a road (at the
+  spell's levels 0–2 over every obstacle: 140 or 120 against the terrain's price). **ADV-Q22**
+  (decision 85): the original's rule in every profile, no flag.
 - **Water walking at level 3 agrees** (100 from water, the land tile's price onto water); at levels
   0 to 2 the code prices a step from water at 140 or 120 and a step from land onto water at the land
   price, VCMI a step onto water at the land price × 1.4 or 1.2 and a step from water at 100: the
@@ -282,8 +299,8 @@ from the new tile (ADV-MOV-006; `hero_move_step` 0x48084E → `cheapest_step_fro
 prices the tile against itself: its road, the native 100 unless Cursed Ground, the fly and
 water-walk levels). The move passes the hero's own fields +0x112 and +0x116, not the artifacts'
 level 3 that `hero_step_cost` forces. So for a hero with Angel Wings the drop prices a walking
-step: on an inland road with 60 points left it keeps them, though every step costs 100 (harmless:
-no step is affordable either way, the points shown differ); **on Cursed Ground** (swamp 175, sand
+step: on a road with 60 points left it keeps them, and a flying step along the road costs the
+road's price as well (no difference, §2.1 as corrected by T38); **on Cursed Ground** (swamp 175, sand
 150) with fewer points than the terrain's price but at least 100 it **drops points an affordable
 flying step needed**. With Boots of Levitation on water the walking cheapest is 100, the same.
 Suggested class: **fix-optional** (faithful drops as the original; strict prices the drop with the
@@ -359,22 +376,23 @@ land".
 ### 3.3 `hero_flight_tile_test` (0x4E5CE0) and A-14
 
 Read whole: true when the hero's own tile matches its boat state (on land without a boat, on
-water in one), carries the coast flag (+0xC bit 0x40, so only land next to water) and is not the
-entrance of a class visited from the neighbouring tile. H3API calls it `CanFlyOnTile`. Its callers
-(both read around the call):
+water in one), has the map item's +0xC bit 0x40 and is not the entrance of a class visited from the
+neighbouring tile. H3API calls it `CanFlyOnTile`. T34a read the bit as the coast flag (only land
+next to water); T38 found that it means "no object blocks the tile" (§2.1 point 5), so the test
+passes on every free land tile. Its callers (both read around the call):
 
 - `pathfinder_run` (0x56B88C, 0x56B8B5): a hero flying or water-walking whose tile fails it gets
   a start node without bit 10, so by §3.1 point 6 **its first step cannot visit a neighbour's
-  object visited from the neighbouring tile, nor enter a town**, from where it stands inland.
+  object visited from the neighbouring tile, nor enter a town**, from such a tile.
 - `hero_move_step` (0x481519): at the move's destination, a flying hero (not in a boat) whose tile
   fails it does not visit an object of such a class (a boat excepted).
 
-Read as it stands, a hero wearing Angel Wings on an inland tile could not pick up a resource pile
-beside it, a gameplay effect the wiki would hardly leave out; the reading may miss what makes the
-test pass there. **A-14** was withdrawn at the checkpoint (decision 75): "definitely wrong", the
-user says, a flying hero visits from its tile as a walking hero does. The engine builds the
-walker's visits for a flyer; what the reading misses here (which callers reach these tests, or
-what the tile's bit 0x40 holds in memory) stays open for a later re-read, and row E5-8 is dropped.
+As first read, a hero wearing Angel Wings on an inland tile could not pick up a resource pile
+beside it. **A-14** was withdrawn at the checkpoint (decision 75): "definitely wrong", the user
+says, a flying hero visits from its tile as a walking hero does; row E5-8 was dropped. T38's
+correction of the bit explains it: the test fails only on a tile where a hero cannot stand (a
+blocked one, water without a boat) or on a neighbour-visited entrance, so a flyer visits as a
+walker, as the engine builds it.
 
 ### 3.4 Where a move may end (D-25, settled)
 
@@ -505,14 +523,14 @@ move; their import is unchanged (`MAP_IMPORT_VERSION` stays unless the import ga
 
 | Id | What | Sources | Suggested |
 |---|---|---|---|
-| D-22 | a Logistics specialist's rate: single precision against exact or integer arithmetic | code (f32, Q-0005's kind), VCMI (integer percent), wiki (silent on rounding) | **decided**: Q-0005's flag (faithful the code, strict-fixed exact); row E5-2 |
-| D-23 | Cursed Ground takes away the native terrain's 100 | code; VCMI none; wiki silent | **decided**: built only if row E5-6 confirms it |
-| D-24 | flying's price: the fly price from inland tiles (roads 100), the lesser only from the coast | code against the wiki and VCMI (the lesser everywhere) | **decided**: the original's rule, a fix-optional quirk (strict-fixed the lesser everywhere); row E5-4 confirms |
-| D-25 | where a flying or water-walking move may end | code (the second reading), wiki and VCMI: a tile a hero may stop on | settled; row E5-7 a check |
-| D-26 | a radius grown in the day shows at the next step (T34b: the new day reveals only after a Cover of Darkness's hide, §4.2) | code; VCMI at once for a skill; wiki silent | **decided** (revised at T34b, decision 77): the code as a fix-optional quirk, `strict-fixed` also revealing around every hero at the new day; row E5-10 |
+| D-22 | a Logistics specialist's rate: single precision against exact or integer arithmetic | code (f32, Q-0005's kind), VCMI (integer percent), wiki (silent on rounding) | **decided**: Q-0005's flag (faithful the code, strict-fixed exact); **observed** (E5-2, §13): six conclusive heroes of six fit single precision |
+| D-23 | Cursed Ground takes away the native terrain's 100 | code; VCMI none; wiki silent | **confirmed** (E5-6, §13): built in T40, the SoD Cursed Ground (223) as class 21 |
+| D-24 | flying's price: as first read, the fly price from inland tiles (roads 100), the lesser only from the coast | code (corrected by T38: the lesser from free land, the fly price from water and blocked tiles), wiki (agrees), VCMI (the lesser over obstacles too) | **settled** (E5-4, §13; ADV-Q22, decision 85): the original's rule in every profile, no flag (`ADV-QUIRK-16` withdrawn) |
+| D-25 | where a flying or water-walking move may end | code (the second reading), wiki and VCMI: a tile a hero may stop on | settled; **observed** (E5-7, §13) |
+| D-26 | a radius grown in the day shows at the next step (T34b: the new day reveals only after a Cover of Darkness's hide, §4.2) | code; VCMI at once for a skill; wiki silent | **decided** (revised at T34b, decision 77): the code as a fix-optional quirk, `strict-fixed` also revealing around every hero at the new day; row E5-10; **observed** (E5-10, §13) |
 | A-12 | the drop to 0 prices the cheapest step without the artifacts' flying and water walking | code | **decided**: fix-optional (it matters only on Cursed Ground, D-23) |
-| A-13 | a flying path crosses unexplored tiles | code; VCMI never | **decided**: fixed (moves on explored tiles); a trade-off for wide obstacle ranges (routing to the nearest unexplored but free tile) to design later; row E5-9 shows the original |
-| A-14 | a flying hero standing inland neither visits a neighbour's "cannot be entered" object nor enters a town from its tile | code, unconfirmed | **withdrawn** (the user: a flyer visits as a walker) |
+| A-13 | a flying path crosses unexplored tiles | code; VCMI never | **decided**: fixed (moves on explored tiles); a trade-off for wide obstacle ranges (routing to the nearest unexplored but free tile) to design later; **observed** (E5-9, §13): the original's flyer paths through the unexplored strip |
+| A-14 | a flying hero standing inland neither visits a neighbour's "cannot be entered" object nor enters a town from its tile | code, unconfirmed | **withdrawn** (the user: a flyer visits as a walker); T38: the reading's gap was the misread bit (§3.3) |
 | — | players 6 and 7 get no computer bonus | code | E10's |
 
 ## 9. Batch E5's plan
@@ -546,6 +564,8 @@ special grounds under heroes (Cursed Ground on a hero's tile, E5-6: the writer p
 E04c T3), unexplored strips (the spec's map is explored around the heroes only: a hero far enough
 away), artifacts worn by placed heroes (`equipment`: since batch E4), a level-up offer the test can
 force (E5-3, E5-10: the seed byte's prediction as in batch E4, `e4_score`'s draws).
+
+**Run** (T37b) **and scored** (T38): §13.
 
 ## 10. The proposed rule ids
 
@@ -597,3 +617,26 @@ A-12 fix-optional, A-13 fixed, Q-0005 for D-22), and the design note's increment
 D-23 waits for row E5-6. *Done by T34b (2026-10-22):* the drafts in `docs/lanes/adventure/
 adr-drafts/*-increment-5.md`, the design note `docs/epics/E08-design.md`; its reading of `new_day`
 revised D-26 (§4.2, decision 77); the checkpoint's questions ADV-Q21.
+
+## 13. Batch E5 scored (T38)
+
+Played by the harness under Wine in T37b (`experiments/results/E08-batch-5a.md` to `-5e.md`, E5c
+and E5d twice as `-run2`, `e4_score`'s reports beside them; every stamp matched, every first run
+clean). "Conclusive": the other source predicted otherwise.
+
+| Row | Observed | Reading | Other source | Verdict |
+|---|---|---|---|---|
+| E5-1 (§1.1) | 1560, 1716, 1872, 2028; 2160; 1860; 2928; 1630 on both days | the same | the same (consensus) | confirmed |
+| E5-2 (D-22), twelve heroes over two runs | every level at load the evaluation's (run 2's E5-2c with a starting bonus's Centaur's Axe); six conclusive: Advanced at level 2 1829 four times, Basic at level 6 1694, Advanced at level 6 1889 | single precision (Q-0005) | exact: 1830, 1695, 1890 | the reading |
+| E5-3 (§1.4) | a level-up's Logistics: 1460 after the battle, 1360 after the step, 1716 at day 2; the Boots of Speed put on: 1560, then 2160 at day 2 (the bar's maximum 2160 at once) | nothing in the day | the same (consensus) | confirmed |
+| E5-4 (D-24) | inland: two road steps 50 each, road to grass and grass 100, grass to swamp and swamp 100 (walking 175); the coast's road 50, 50 | as first read: 100 inland, 50 on the coast | the wiki and VCMI: 50 on a road | **against the first reading**; the corrected one (§2.1 point 5) |
+| E5-5 (§2.1) | across the lake 450 (the sand's 150 onto water, 100 each after), back with a diagonal 491 (150, 100, 100, 141) | the same | the same (consensus) | confirmed |
+| E5-6 (D-23) | under the RoE (21) and the SoD (223) Cursed Ground alike: 175 and 175 from it, then 100 | 175 from it | VCMI: 100 | the reading: Cursed Ground built (T40) |
+| E5-7 (D-25) | the tree beyond the tree line no path; the free tile before it 3 marks over the trees, 300; the lake's water tile no path; the far shore 4 marks, 400 | no path onto a tree or water | the same | confirmed |
+| E5-9 (A-13) | the walker no path; the flyer 13 marks straight through the unexplored strip, arrived, 1300 | through the strip | VCMI: no path | the reading (the engine keeps to explored tiles, `ADV-QUIRK-15`) |
+| E5-10 (D-26) | no tile revealed after the battle's Scouting nor at day 2's start; the radius 6's tile after the first step; the Spyglass the same | the same | VCMI: at once | the reading (`ADV-QUIRK-18`) |
+| E5-11 | a path straight over the Border Gate's entrance without the key, 4 marks, arrived, 400, no message | the same (§3.1 point 7) | none states it | the reading |
+
+The corrected bit (§2.1 point 5) prices every row of E5-4, E5-7, E5-9 and E5-11 as observed: the
+trees E5-7's flyer passed are blocked tiles (100, as the lesser would give there on grass), the
+gate's entrance E5-11's flyer passed a free one. Nothing in the batch tells the corrected rule from VCMI's (a blocked tile carrying a road).
