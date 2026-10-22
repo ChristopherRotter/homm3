@@ -5200,10 +5200,11 @@ copied (Q29).
 
 **The copy.** 0x437A00 copies the record field by field up to +0x544: its side (+0xF4) and record
 index (+0xF8), its spells (+0x198), its aura list (+0x524) and its threat record (+0x534 to
-+0x544) come along; 0x444510 ends a spell on the copy alone and reads no record of the battle.
-So the copy reads as the stack in every field of its own, and what an evaluator takes from the
-context at its record index (the tables, the threat mask, §7.53) or from its threat record and
-planned damage is the stack's.
++0x544) come along. 0x444510 ends a spell on the copy; it recomputes neither its morale nor its
+luck (+0x4E8, +0x4EC: only 0x469750 does, after an action), and only its Hypnotize case touches
+the battle (below). So the copy reads as the stack in every field of its own, and what an
+evaluator takes from the context at its record index (the tables, the threat mask, §7.53) or from
+its threat record and planned damage is the stack's.
 
 **What meets the battle's record instead.**
 
@@ -5231,11 +5232,24 @@ planned damage is the stack's.
   losses (0x442FD0 on each), 0 when the record is of the context's side.
 - *Hypnotize*: the record's position is the map's start, so it is among the stacks of its side
   the walk takes (0x43A624); its value is the copy's exchange with it as Berserk's.
+- *Morale and luck* (found by T4d's blind check): Mirth (0x43819D) and Sorrow read the copy's
+  +0x4E8, Fortune (0x4384D4) and Misfortune (0x438FA3) its +0x4EC, both the stack's: an ended
+  one of the four still counts there (a morale of 1 under Mirth +2 is read as 3).
 - Nothing else in the closure walks the battle's records with the stack: the worth's sum of its
   side's other hit points (0x442DBD) runs only for a war machine or a summoned stack and skips
   both kinds, the record too; the damage stages read the heroes by the controller and the moat
   and the walls by the positions; 0x5A8090 reads the Unicorns' aura from the record's own list
   (0x5A8599), and its walk over the records is the raise spells' (not reached).
+
+**Hypnotize's end on the copy** (0x44460A; 0x444689 → 0x43EA70, found by T4d's blind check):
+it rebuilds the copy's Unicorn aura lists from the battle's records beside it (0x4E7170) and adds
+the copy to theirs (+0x514, a Unicorn's protected stacks; +0x524, a stack's protectors; the
+duplicate test compares pointers and never finds it). The copy is freed (0x43D400) without
+leaving those lists: a Unicorn beside it keeps a pointer to freed memory, and a stack of the
+copy's side beside a copied Unicorn an aura source that is gone (its spells' factor × 0.8,
+0x5A8599). The removal itself reads none of it (the spell protections, which read the aura, come
+before Hypnotize in the spells' order); later values and casts do. The battle's state corrupted:
+never modelled (BAT-QUIRK-26).
 
 **Counted as it values.** 0x448BD0 counts the turns at the speed its caller passes and tests "can
 shoot now" itself; the evaluators that ask "E within a turn" pass 0x448CD0 of their stack
@@ -5252,4 +5266,5 @@ lacked the marks: fixed in both profiles.
 
 **Slip 24** (survey §4): with BAT-QUIRK-25 the copy is the lone record: Disrupting Ray 0, Slow
 without the strikes first, Berserk's and Hypnotize's targets with the stack itself, a two-hex
-shooter's copy blocked by itself; without, the copy is the stack itself. **Draws:** none new.
+shooter's copy blocked by itself, the stack's morale and luck with the ended spell; without, the
+copy is the stack itself. **Draws:** none new.

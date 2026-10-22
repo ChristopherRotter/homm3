@@ -1001,6 +1001,14 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
 - **Kept apart** (documented): none new. The port's copy is the battle's clone with the spells
   ended (its own record) beside the battle (the records the evaluators walk); a removal is rare in
   the gated workload (no heroes: only the creatures' own spells last).
+- **A blind check** (a fresh agent, the disassembly against the port, without the reading): the
+  pointer tests, Berserk's and Hypnotize's targets, the self-block, the copy's exchange, the
+  fit test and the turns agree. Found and built: the copy keeps the stack's morale and luck (only
+  0x469750 recomputes them, after an action): an ended Mirth, Sorrow, Fortune or Misfortune still
+  counts there (slip 24; `View::kept`). Found and recorded: Hypnotize's end on the copy adds the
+  copy to the battle's aura lists, which keep it after it is freed (0x444689 → 0x43EA70; a
+  state-corrupting bug, never modelled, BAT-QUIRK-26, for the user's confirmation). Noted as
+  known: the bow's test asks the controller's hero (the inbox's F-r2b-2).
 - **Cost** (2026-10-22): `computer-decisions` 518 107 736 instructions, +0.02 % (no re-set).
   Release, each decision's best of five (a local patch of `h3 bench-computer`, not kept), 400
   battles each of seeds 4 to 8: 34.7 to 38.0 µs per decision on average, the slowest 0.42 to

@@ -571,6 +571,26 @@ impl<'s> View<'s> {
         &self.state.stacks()[id.index()]
     }
 
+    /// The state whose record of a stack holds the morale and luck the evaluators read (+0x4E8,
+    /// +0x4EC): the view's, but on a lone copy (survey slip 24) the battle's. Only 0x469750
+    /// recomputes them, after an action; neither the end of a spell (0x444510) nor the removal
+    /// runs it on a copy, which keeps the stack's: an ended Mirth, Sorrow, Fortune or Misfortune
+    /// still counts there.
+    fn kept(&self) -> &'s BattleState {
+        self.lone.unwrap_or(self.state)
+    }
+
+    /// The morale of stack `id` as its record holds it ([`Self::kept`]).
+    fn morale(&self, id: StackId) -> i32 {
+        i32::from(self.kept().stacks()[id.index()].morale)
+    }
+
+    /// The luck of stack `id` as its record holds it, not clamped ([`computer::luck`] on
+    /// [`Self::kept`]).
+    fn luck(&self, id: StackId) -> i32 {
+        computer::luck(self.kept(), self.ruleset, id)
+    }
+
     /// Whether the ruleset ports the original's slips (BAT-QUIRK-25).
     fn slips(&self) -> bool {
         self.ruleset.quirks().is_enabled(ORIGINAL_AI_SLIPS)

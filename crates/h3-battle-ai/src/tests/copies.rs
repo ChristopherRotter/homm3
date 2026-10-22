@@ -172,10 +172,48 @@ fn berserk_and_hypnotize_meet_the_stack_itself_on_the_copy() {
     let enemy = sc.view().other();
     let c = removed(&state, &r, "hypnotize", RUNNERS);
     let copy = without(&state, &r, "hypnotize", RUNNERS);
+    let hash = state.state_hash();
     let itself = on_itself((&r, DEFENDER), &state, &copy, RUNNERS);
     let walk = enemy.on(&copy).value(RUNNERS, c);
     assert!(itself > walk);
     assert_eq!(enemy.on_copy(&copy).value(RUNNERS, c), walk.max(itself));
+    // Ending Hypnotize on the original's copy writes it into its neighbours' aura lists, which
+    // keep it after it is freed (BAT-QUIRK-26: never modelled); the port's battle is untouched.
+    assert_eq!(state.state_hash(), hash);
+}
+
+// covers: BAT-AI-016
+#[test]
+fn a_copy_keeps_the_stacks_morale_and_luck() {
+    // The side's runners under its own Mirth and Fortune; Anti-Magic's removal ends them (with
+    // the slip every spell but Poison) and values them in the side's half. Only 0x469750
+    // recomputes morale and luck, never on a copy: with the slip the ended spell still counts
+    // (the battle's record's), without the copy is the stack itself, its morale and luck
+    // without it.
+    for profile in ["t:faithful", "t:fixed"] {
+        let r = ruleset_as(profile);
+        // At Advanced: at Expert the two are mass spells.
+        let mut setup = armies(&r);
+        setup.heroes[0] = Some(caster(&r, 2));
+        let mut state = BattleState::new(&r, &setup, 1).unwrap();
+        for name in ["mirth", "fortune"] {
+            cast_at(&mut state, &r, ATTACKER, name, RUNNERS);
+        }
+        let sc = context(&state, &r);
+        let view = sc.view();
+        // The morale the clone no longer holds: Mirth's at Advanced.
+        for (name, kept) in [("mirth", 2i32), ("fortune", 0)] {
+            let c = removed(&state, &r, name, RUNNERS);
+            let copy = without(&state, &r, name, RUNNERS);
+            // The clone recomputed its morale: the battle's record keeps Mirth's.
+            let (record, clone) = (state.stacks()[0].morale, copy.stacks()[0].morale);
+            assert_eq!(i32::from(record) - i32::from(clone), kept);
+            let lone = view.on_copy(&copy).value(RUNNERS, c);
+            let itself = view.on(&copy).value(RUNNERS, c);
+            assert!(itself > 0, "{profile} {name}");
+            assert_ne!(lone, itself, "{profile} {name}");
+        }
+    }
 }
 
 // covers: BAT-AI-016

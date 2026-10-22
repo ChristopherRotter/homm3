@@ -162,7 +162,7 @@ impl View<'_> {
 
     /// Sorrow's evaluator (0x4382C0; BAT-AI-016): 0 for a creature without morale, when `s` does
     /// not threaten the side, in the desperate mode or when beaten; else the fall of its morale
-    /// ([`Self::fall`], morale's values).
+    /// ([`Self::fall`], morale's values; the record's, [`Self::morale`]).
     // rule: BAT-AI-016
     pub(crate) fn sorrow(&self, s: StackId, c: Candidate) -> i32 {
         let stack = self.stack(s);
@@ -173,19 +173,18 @@ impl View<'_> {
         {
             return 0;
         }
-        self.fall(s, c, (i32::from(stack.morale), values(MORALE)))
+        self.fall(s, c, (self.morale(s), values(MORALE)))
     }
 
     /// Misfortune's evaluator (0x438F60; BAT-AI-016): `s` threatens the side, not desperate (no
-    /// "beaten" test); the fall of its luck as its record keeps it ([`computer::luck`]; luck's
+    /// "beaten" test); the fall of its luck as its record keeps it ([`Self::luck`]; luck's
     /// values, floats).
     // rule: BAT-AI-016
     pub(crate) fn misfortune(&self, s: StackId, c: Candidate) -> i32 {
         if !self.threatens(s) || self.desperate() {
             return 0;
         }
-        let luck = computer::luck(self.state, self.ruleset, s);
-        self.fall(s, c, (luck, values(LUCK)))
+        self.fall(s, c, (self.luck(s), values(LUCK)))
     }
 
     /// Slow's evaluator (0x439270; BAT-AI-016): 0 without a threat record's enemy, when beaten,
