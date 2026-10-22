@@ -4,13 +4,13 @@
 
 use h3_battle::{BattleSetup, BattleState, StackId, computer};
 use h3_content_battle::BattleRuleset;
-use h3_contracts::BattleSide;
+use h3_contracts::{BattleSide, FortLevel, Moat};
 use h3_kernel::Rng;
 use h3_kernel::arith::X87;
 
 use super::{
-    ARCHER, CRUSADER, EFREET, GIANT, GOG, GRIFFIN, IMP, MARKSMAN, ROYAL, RUNNER, SULTAN, hero,
-    ruleset, ruleset_as, setup, spell,
+    ARCHER, CRUSADER, EFREET, GIANT, GOG, GRIFFIN, IMP, MARKSMAN, ROYAL, RUNNER, SULTAN, at_town,
+    hero, ruleset, ruleset_as, setup, spell,
 };
 use crate::spells::tables::Entry;
 use crate::spells::{Candidate, SpellContext};
@@ -142,6 +142,34 @@ fn the_tables_hold_the_strikes_each_stack_meets_this_turn() {
     assert_eq!(t.melee[0], Entry::default());
     assert_eq!(t.worse[0], t.shots[0]);
     assert_eq!(t.worse[0].stack, Some(StackId(1)));
+}
+
+// covers: BAT-AI-016
+#[test]
+fn the_tables_leave_out_the_turrets() {
+    // At a castle the turrets are records of the defender's side: the tables fill no entry for
+    // them, while the archers' shots reach the gogs.
+    let r = ruleset();
+    let setup = at_town(
+        &r,
+        (&[(ARCHER, 10)], &[(GOG, 10)]),
+        (FortLevel::Castle, Moat::Absent, 0),
+    );
+    let state = BattleState::new(&r, &setup, 1).unwrap();
+    let side = BattleSide::Defender;
+    let ctx = computer::context(&state, &r, side);
+    let sc = SpellContext::new(&state, &r, (&ctx, side), &mut Rng::from_seed(0));
+    let t = sc.view().tables();
+    let mut turrets = 0;
+    for (i, s) in state.stacks().iter().enumerate() {
+        if s.is_turret() {
+            turrets += 1;
+            assert_eq!(t.shots[i], Entry::default());
+        } else if s.side == side {
+            assert_eq!(t.shots[i].stack, Some(StackId(0)));
+        }
+    }
+    assert!(turrets > 0);
 }
 
 // covers: BAT-AI-016

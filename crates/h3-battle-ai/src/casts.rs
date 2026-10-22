@@ -114,15 +114,11 @@ enum Caster {
 /// cast must beat the walker's value, and the later stack stays at a tie.
 // rule: BAT-AI-014, BAT-AI-016
 fn scan(w: &Walker<'_>, caster: Caster, value: &mut i32, rng: &mut Rng) -> Option<Command> {
-    match scan_as(&Scanner::of(w), caster, value, rng) {
-        Ok(cast) => Some(cast),
-        Err(sc) => {
-            if slips(w.ruleset) {
-                hold(w, sc.cells());
-            }
-            None
+    scan_as(&Scanner::of(w), caster, (value, rng), |sc| {
+        if slips(w.ruleset) {
+            hold(w, sc.cells());
         }
-    }
+    })
 }
 
 /// The stack a scan weighs a cast for: its battle, its side and the side's battle context (the
@@ -148,17 +144,21 @@ impl<'a> Scanner<'a> {
     }
 }
 
-/// The scan ([`scan`]) for the stack `s`: the cast, or the spell context it built when it cast
-/// nothing.
-fn scan_as<'a>(
-    s: &Scanner<'a>,
+/// The scan ([`scan`]) for the stack `s`: the cast; when it casts nothing, `nothing` is given the
+/// spell context it built.
+fn scan_as(
+    s: &Scanner<'_>,
     caster: Caster,
-    value: &mut i32,
-    rng: &mut Rng,
-) -> Result<Command, SpellContext<'a>> {
+    (value, rng): (&mut i32, &mut Rng),
+    nothing: impl FnOnce(&SpellContext<'_>),
+) -> Option<Command> {
     let strength = computer::strength(s.state, s.ruleset, &s.ctx, s.id);
     let sc = SpellContext::new(s.state, s.ruleset, (&s.ctx, s.side), rng);
-    choose(s, (&sc, caster, strength), value, rng).ok_or(sc)
+    let cast = choose(s, (&sc, caster, strength), value, rng);
+    if cast.is_none() {
+        nothing(&sc);
+    }
+    cast
 }
 
 /// With BAT-QUIRK-25 off (survey slip 25; the user, 2026-10-22), the cast a shooter that casts a
@@ -176,7 +176,7 @@ pub(crate) fn before_shot(
     mut value: i32,
     rng: &mut Rng,
 ) -> Option<Command> {
-    if slips(ruleset) || computer::creature_casts_blocked(state) || state.casts_left(id) == 0 {
+    if slips(ruleset) || computer::creature_casts_blocked(state) {
         return None;
     }
     let me = &state.stacks()[id.index()];
@@ -190,7 +190,8 @@ pub(crate) fn before_shot(
                 power,
             } => Some(Caster::Fixed(spell, mastery, power)),
             _ => None,
-        })?;
+        })
+        .filter(|_| state.casts_left(id) > 0)?;
     let side = me.controller();
     let s = Scanner {
         state,
@@ -199,7 +200,7 @@ pub(crate) fn before_shot(
         side,
         ctx: computer::context(state, ruleset, side),
     };
-    scan_as(&s, caster, &mut value, rng).ok()
+    scan_as(&s, caster, (&mut value, rng), |_| ())
 }
 
 /// Whether the original's slips are kept (BAT-QUIRK-25).

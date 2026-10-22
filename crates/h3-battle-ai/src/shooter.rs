@@ -2,7 +2,7 @@
 //! BAT-AI-004): a stack that can shoot now shoots the stack the computer picks for it (0x41EB80,
 //! the automatic Ballista's choice, BAT-WAR-008; an area shooter's by its value at a hex,
 //! 0x41EDA0), a Cyclops may batter the weakest wall instead (0x41EEA0), and without a target it
-//! defends (action 3). The target is `h3-battle`'s [`computer::shot`]; the wall shot, which
+//! defends (action 3). The target is `h3-battle`'s [`computer::valued_shot`]; the wall shot, which
 //! draws, is the policy's. With BAT-QUIRK-25 off a shooter that casts a fixed spell (the Storm
 //! and Ice Elementals) first weighs its cast against the shot's value (survey slip 25,
 //! [`casts::before_shot`]).
@@ -18,7 +18,7 @@ use h3_kernel::arith::X87;
 
 use crate::casts;
 
-/// The command of the computer's shooter `id` (0x41F060): [`computer::shot`]'s target, the
+/// The command of the computer's shooter `id` (0x41F060): [`computer::valued_shot`]'s target, the
 /// shot aimed where it says; a wall shot when [`wall_shot`] batters one; Defend without a target.
 /// With BAT-QUIRK-25 off, a cast of a fixed spell that beats the shot's value instead (survey
 /// slip 25, [`casts::before_shot`]; its draws from `rng` after the shot's own).
