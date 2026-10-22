@@ -43,6 +43,12 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-10-22 (the adventure lane, E08 T37b, `adventure/e08-t37b`, `cross-lane` with the user's
+  consent; for information, nothing to do): batch E5's recipes `clients/capture/batches/E08-batch-5a.toml`
+  to `-5e.toml`, each run clean under Wine at its first run; `h3adv`'s `level_up` may name a skill
+  (`side_of`: taken on whichever side it stands) and `path_tiles[:<row>]` reads the path's marked
+  tiles (the walk's observation keeps them as `tiles`). The runbook says how.
+
 - 2026-10-22 (the adventure lane, E08 T37a, `adventure/e08-t37a`, `cross-lane` with the user's
   consent; for information, nothing to do): what the two entries below announce is built in
   `clients/capture/`.

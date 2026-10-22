@@ -4111,3 +4111,67 @@ five DLLs, the four LODs, the three sound and video archives, `maps.tar`, `extra
   1560 → 2160 at its close** (as §1.4's reading says: the close writes only +0x49); day 2: 2160
   and 2160. Seen while exploring by hand: neither value changes while the screen is open.
 - **Not built:** batch E5's recipes and the runs (T37b); the scoring (T38).
+
+### Increment 5, round 2: T37b, batch E5's recipes and its run (2026-10-22, `adventure/e08-t37b`, `cross-lane`)
+
+**The cut** (decision 83; asked at the start, `AskUserQuestion`): T37b whole, as T32b2. Not
+chosen: by the specs' tasks (E5a and E5b first), or the seed-byte batches first.
+
+**Baseline:** `master` f494cb1 (#389, #390 merged); its engine code (783c406f) had no run on
+record, so the sandbox ran the full verify with the original data: all 16 steps passed. The
+user's PC was linked at the start: the original's sixteen files staged from it as T37a's (the
+sandbox setup copies only the engine's four into `original-data/install`: the harness's other
+LODs, sound archives and DLLs copied by hand before `clients/capture/setup.sh`). The branch
+changes no engine code.
+
+- **The recipes** (`clients/capture/batches/E08-batch-5{a,b,c,d,e}.toml`, `cross-lane` as T37a):
+  the specs' procedures as steps on T37a's reads; each hero's points read before its first walk
+  (`hero:points`), a walk's cells by `<row> | <column>`, E5-1's eight heroes by name; `note`
+  reads each hero's worn artifacts but the war machines (the spec's own, or a starting bonus's).
+  Each recipe's records match its template's fields one for one (checked with `fill` before the
+  runs).
+- **The harness** (the same `cross-lane`): `level_up` may name a skill (`"Logistics"`), taken on
+  whichever side it stands (the left if neither: E5e's forced offers, whose side the seed byte
+  decides); `path_tiles[:<row>]`, the tiles of the path's marks at the first click (E5-11's
+  "tile on row 14"). Runbook updated.
+- **Every batch ran clean at its first run** (E5a 26 steps, E5b 12, E5c and E5d 9, E5e 19; no
+  stop, no unplanned dialog, no first click that walked); E5c and E5d ran twice (new seed
+  bytes). Templates, and `e4_score`'s reports beside E5c's to E5e's, in `experiments/results/`
+  (`E08-batch-5c.md`, `-run2`, their `-score.md`).
+- **Batch E5a:** **E5-1** 1560, 1716, 1872, 2028, 2160, 1860, 2928, 1630 on both days, every
+  source's (no starting bonus's artifact on them). **E5-4a: the road steps cost 50 each (1510,
+  1460)**, the grass and swamp steps 100 (1360, 1260, 1160, 1060; flying: the swamp's 175
+  replaced): **against the reading's D-24** (100 from every inland tile), as the wiki and VCMI
+  (the lesser of 100 and the walking price). The road (3–5, 4) lies 5 rows from the lake; the
+  writer flags only land next to water as coastal (`h3m.md`). **E5-4b** 1510, 1460 (every
+  source). **E5-5** 4 green marks, 1110; 4, 619 (every source). **E5-6a 1385, 1210, 1110: the
+  reading's D-23** (on the Cursed Ground the native 100 is lost; VCMI's 1460, 1360, 1260
+  refuted); **E5-6b the same**: the SoD Cursed Ground (223) acts as class 21.
+- **Batch E5b:** **E5-9** (13, 24) unexplored and (18, 24) explored before; the walker's control
+  no path (0 marks, no move); **the flyer a green path of 13 marks straight east through the
+  strip (6, 24) to (18, 24), arrived with 260: the reading's A-13** (VCMI and the engine: no
+  path). **E5-7a** the tree no path, the hero stays with 1560; (7, 5) 3 marks over the tree line
+  ((7, 7), (7, 6)), 1260. **E5-7b** the water tile no path; the shore 4 marks, 1160 (every
+  source). **E5-11: a green path straight over the gate's entrance (31, 14), 4 marks, arrived on
+  (31, 12) with 1160, no message: the reading** (§3.1 point 7; neither closed at the entrance
+  nor stopped at the gate). Blue's hero wore a Pendant of Free Will (the starting bonus).
+- **Batches E5c and E5d (E5-2, D-22), twelve heroes over two runs:** every level at load the
+  reading's (E5-2b, -2c, -2e, -2f against always-left), but run 2's E5-2c (seed 183): skills,
+  offers and levels the reading's, attack 7 against 5, its starting bonus's Centaur's Axe (+2;
+  the scorer's "fits: none", as batch E4a's run 2). **Six heroes conclusive, all for the
+  reading's single precision (Q-0005)**: Advanced at level 2 **1829** (exact 1830) four times
+  (E5-2a both runs, E5-2d both runs), Basic at level 6 **1694** (1695; run 2's E5-2b), Advanced
+  at level 6 **1889** (1890; run 2's E5-2f). Inconclusive: Expert at levels 6 and 12 (2085,
+  2220), level 3 (1845). Both days alike on every hero. Run 2's E5-2f wore Cards of Prophecy.
+- **Batch E5e:** **E5-3a** (seed 222) 1560; the Pikeman fought (1009 experience), one dialog,
+  level 2, knowledge, **Scouting | Logistics** (the scorer's), Logistics taken right; **1460 after
+  the battle**, 1360 after the step, **day 2 1716**; it wore a Pendant of Dispassion (the starting
+  bonus). **E5-3b** 1560, **1560 with the boots on** (the day's points, +0x49, 2160: the bar),
+  1460 after the step, **day 2 2160**. **E5-10a** (seed 114) one dialog, level 2, defense,
+  **Logistics | Scouting** (the scorer's), Scouting taken right, 1460 after the battle; **W, E,
+  C unexplored after the battle and at day 2's start, E explored after the step** (W and C not).
+  **E5-10b** the same with the Spyglass put on. Every row the reading's (§1.4, D-26): no gain
+  shows in the day, no reveal at the new day (VCMI's reveal at the skill and strict-fixed's at the
+  new day refuted for the original).
+- **For T38:** E5-4a contradicts the reading's D-24 (decision 75 took it as the original's rule,
+  a fix-optional quirk): an ADV-Q at the scoring, and the survey's §2.1 point 5 read again.
