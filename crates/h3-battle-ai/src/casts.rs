@@ -134,12 +134,22 @@ pub(crate) struct Scanner<'a> {
 impl<'a> Scanner<'a> {
     /// The walker `w`'s.
     pub(crate) fn of(w: &Walker<'a>) -> Self {
+        Self::new(w.state, w.ruleset, (w.id, w.side), w.ctx)
+    }
+
+    /// Stack `id` of `side` in `state` with the side's battle context `ctx`.
+    pub(crate) const fn new(
+        state: &'a BattleState,
+        ruleset: &'a BattleRuleset,
+        (id, side): (StackId, BattleSide),
+        ctx: Context,
+    ) -> Self {
         Self {
-            state: w.state,
-            ruleset: w.ruleset,
-            id: w.id,
-            side: w.side,
-            ctx: w.ctx,
+            state,
+            ruleset,
+            id,
+            side,
+            ctx,
         }
     }
 }
@@ -193,13 +203,7 @@ pub(crate) fn before_shot(
         })
         .filter(|_| state.casts_left(id) > 0)?;
     let side = me.controller();
-    let s = Scanner {
-        state,
-        ruleset,
-        id,
-        side,
-        ctx: computer::context(state, ruleset, side),
-    };
+    let s = Scanner::new(state, ruleset, (id, side), computer::context(state, ruleset, side));
     scan_as(&s, caster, (&mut value, rng), |_| ())
 }
 
@@ -546,6 +550,7 @@ fn dragon_cast(
             mastery: m,
             damage,
         };
+        let sc = Scanner::of(w);
         let mut cache = [None; STACK_CAPACITY];
         let mut best = None;
         for h in (0u8..).take(w.field.hex_count()).map(Hex) {
@@ -562,8 +567,8 @@ fn dragon_cast(
                 (Kind::Bolt, CastTarget::Stack(s)) => {
                     computer::spell_damage_value(state, ruleset, &w.ctx, (id, damage), slips, s)
                 }
-                (Kind::Chain, CastTarget::Stack(s)) => chain(w, spell, s),
-                _ => area(w, spell, h, &mut cache),
+                (Kind::Chain, CastTarget::Stack(s)) => chain(&sc, spell, s),
+                _ => area(&sc, spell, h, &mut cache),
             };
             if v > 0 && (best.is_none() || v > *value) {
                 *value = v;
@@ -574,20 +579,20 @@ fn dragon_cast(
     })
 }
 
-/// A random caster's drawn spell as the computer values it: the spell, the estimate's mastery and
-/// its damage.
+/// A damage spell as the computer values it (a random caster's drawn spell, the hero's): the
+/// spell, the estimate's mastery and its damage.
 #[derive(Debug, Clone, Copy)]
-struct Spell {
-    id: SpellId,
-    mastery: u8,
-    damage: u64,
+pub(crate) struct Spell {
+    pub(crate) id: SpellId,
+    pub(crate) mastery: u8,
+    pub(crate) damage: u64,
 }
 
 /// Chain Lightning's value from stack `first` (0x437190): each stack of the estimated chain
 /// ([`computer::chain`]: the damage halved after each strike) by its spell value with the side's
 /// hero's bonuses into the side's sum (a stack of the side, whoever controls it) or the other's;
 /// then [`pays`].
-fn chain(w: &Walker<'_>, spell: Spell, first: StackId) -> i32 {
+pub(crate) fn chain(w: &Scanner<'_>, spell: Spell, first: StackId) -> i32 {
     let (state, ruleset) = (w.state, w.ruleset);
     let mut sums = (0i32, 0i32);
     for (s, damage) in computer::chain(
@@ -606,7 +611,12 @@ fn chain(w: &Walker<'_>, spell: Spell, first: StackId) -> i32 {
 /// An area spell's value at `hex` (0x437040): each stack of its area ([`computer::area_stacks`])
 /// by its spell value with the side's hero's bonuses (each stack's computed once a decision, in
 /// `cache`) into the side's sum or the other's; then [`pays`].
-fn area(w: &Walker<'_>, spell: Spell, hex: Hex, cache: &mut [Option<i32>; STACK_CAPACITY]) -> i32 {
+pub(crate) fn area(
+    w: &Scanner<'_>,
+    spell: Spell,
+    hex: Hex,
+    cache: &mut [Option<i32>; STACK_CAPACITY],
+) -> i32 {
     let (state, ruleset) = (w.state, w.ruleset);
     let mut sums = (0i32, 0i32);
     for s in computer::area_stacks(state, ruleset, w.side, (spell.id, spell.mastery), hex) {
@@ -619,7 +629,7 @@ fn area(w: &Walker<'_>, spell: Spell, hex: Hex, cache: &mut [Option<i32>; STACK_
 }
 
 /// Adds `v` to the side's sum when `own`, else to the other's, as the original's 32-bit integers.
-fn add(sums: &mut (i32, i32), own: bool, v: i32) {
+pub(crate) fn add(sums: &mut (i32, i32), own: bool, v: i32) {
     if own {
         sums.0 = sums.0.wrapping_add(v);
     } else {
@@ -634,7 +644,7 @@ fn add(sums: &mut (i32, i32), own: bool, v: i32) {
 /// context's) and `own` is below the side's strength; else 0. So friendly damage counts against
 /// the cast, and a cast that costs the side a larger part of its strength than the enemy's is never
 /// taken.
-fn pays(ctx: &Context, (own, other): (i32, i32)) -> i32 {
+pub(crate) fn pays(ctx: &Context, (own, other): (i32, i32)) -> i32 {
     let (s_own, s_other) = ctx.strengths();
     let own = own.max(0);
     let single = |n: i32| X87::int(u64::try_from(n).unwrap_or(0)).round(SINGLE_BITS);

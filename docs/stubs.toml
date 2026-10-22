@@ -22,7 +22,7 @@ epic   = "E05"
 [[stub]]
 id     = "BAT-STUB-5"
 where  = "crates/h3-battle-ai/src/lib.rs::unchecked"
-reason = "The hero's side of the computer (E23 T5, T6): no hero's cast (0x422DA0, T1a6's reading) and no retreat test (0x41E570); the tactics phase ends at once instead of the shooters' placement and the walkers' choice in the zone (§7.34); a commanded Catapult shoots the first wall the engine lists instead of the computer's aim (§7.29, the gate first); a commanded First Aid Tent defends instead of healing the computer's patient (§7.14, BAT-Q51) (BAT-AI-001)"
+reason = "The hero's side of the computer (E23 T6): no retreat test (0x41E570; BAT-STUB-13 for the cast choice's answer); the tactics phase ends at once instead of the shooters' placement and the walkers' choice in the zone (§7.34); a commanded Catapult shoots the first wall the engine lists instead of the computer's aim (§7.29, the gate first); a commanded First Aid Tent defends instead of healing the computer's patient (§7.14, BAT-Q51) (BAT-AI-001)"
 epic   = "E23"
 
 [[stub]]
@@ -47,6 +47,18 @@ epic   = "E23"
 id     = "BAT-STUB-11"
 where  = "crates/h3-battle-ai/src/ends.rs"
 reason = "With BAT-QUIRK-25's slip 22 (BAT-Q59) the besieger's walk and the guard of a shooter take their hex from the map a spell context's last search left, which the walker's own walk may not reach: the original's walk then writes nothing and the besieger's walk (0x421E15) and the guard (0x4208DE) return true with the action fields as they were (the last predicted move and attack or the battle's last action, installation.md §7.52, §7.53). The port does not model those fields: it defends there (BAT-AI-005, BAT-AI-010)"
+epic   = "E23"
+
+[[stub]]
+id     = "BAT-STUB-13"
+where  = "crates/h3-battle-ai/src/hero.rs::cast"
+reason = "The computer's hero cast asks the retreat test (0x41E570, installation.md §7.55) and, when its side would retreat, casts its best damage spell valued in the desperate mode. The test reads the adventure's state no seam carries (the hero's artifacts and experience, the player's gold and towns, the victory condition): until T6 adds a seam input its answer is no (the user, 2026-10-22, BAT-Q61 option c), so the choice is never desperate (BAT-AI-017)"
+epic   = "E23"
+
+[[stub]]
+id     = "BAT-STUB-14"
+where  = "crates/h3-battle-ai/src/hero.rs::value"
+reason = "The computer's hero values Resurrection and Animate Dead (0x43ACA0), Sacrifice (0x43B1E0), Earthquake (0x43B8F0) and Teleport (0x43AA60) by cases of their own (installation.md §7.55): E23 T5b (the user, 2026-10-22: T5 in two parts). Until then they are worth nothing and never cast; with the enemy beaten and no own creature at risk the hero casts nothing (BAT-AI-017)"
 epic   = "E23"
 
 # --- adventure (ADV-STUB-<n>) ---

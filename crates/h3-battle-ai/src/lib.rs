@@ -62,6 +62,7 @@ extern crate std;
 mod casts;
 mod ends;
 mod gain;
+mod hero;
 mod hexes;
 mod odds;
 mod order;
@@ -104,7 +105,9 @@ pub fn choose(
 }
 
 /// The original's computer's choice for `side` before validation (the property tests assert the
-/// engine accepts it): the stack's action (0x477EE0, 0x4221F0; BAT-AI-001). A stack that can shoot
+/// engine accepts it): first its hero's cast ([`hero::cast`], 0x422DA0; BAT-AI-017: its spell
+/// context's and its choice's draws from `rng`), then the stack's action (0x477EE0, 0x4221F0;
+/// BAT-AI-001). A stack that can shoot
 /// now ([`computer::shoots`]; the original's Ballista always can) shoots ([`shooter::shoot`],
 /// BAT-AI-002 to BAT-AI-004: the Cyclops's wall shot draws from `rng`); any other is a walker
 /// ([`walker::turn`], BAT-AI-005, BAT-AI-006: its candidates draw from `rng`).
@@ -122,6 +125,9 @@ pub fn unchecked(
         // stub: BAT-STUB-5
         // The shooters' placement and the walkers' choice in the zone (§7.34): T6.
         return Command::EndTactics;
+    }
+    if let Some(cast) = hero::cast(state, ruleset, (id, side), rng) {
+        return cast;
     }
     if computer::shoots(state, ruleset, id) {
         return shooter::shoot(state, ruleset, id, rng);
