@@ -5470,5 +5470,6 @@ cast's, §7.44).
 
 **Readings at risk** (survey §3): the hero never casts Berserk, Quicksand, Land Mine, Force Field,
 Fire Wall or Remove Obstacle (the wiki says it of Force Field and Quicksand); a cast only when due
-"now" (row 4b H3); the retreat's terms, which agree with the wiki's (survey §2); its threshold
-with the cap and the steps, the strengths' 1.2 and 1.1.
+"now" (row 4b H3); the retreat's threshold with the cap and the steps, the strengths' 1.2 and 1.1. Its
+other terms agree with the wiki's word for word, the walled-out siege's four conditions too
+(Combat, "AI Retreat"; survey §2).

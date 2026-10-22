@@ -1056,5 +1056,7 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   its summons; the retreat test's every term in order with its constants and float steps. It
   agreed on all three; two details it added went into §7.55 (Summon Elemental's refusal is for
   an elemental of another kind; an unordered 0 / 0 counts as below the threshold).
-- **The wiki** was not reachable this session (WebFetch's approval was not answered): the four
-  siege conditions stand as the survey paraphrases them, to compare word for word with T6.
+- **The wiki** (Combat, "AI Retreat", read later in the session at the user's request): every
+  term agrees word for word, the walled-out siege's four conditions too (the attacker, a fort;
+  the drawbridge up, no wall section destroyed; no flyers, shooters or catapult; every defender
+  inside); row 4b R2 dropped, R1 (the threshold) stays at risk.
