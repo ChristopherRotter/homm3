@@ -4416,3 +4416,7 @@ Decision 88: T41 whole (the user: "no cut"), its shared part in its own pull req
   `walking_left_after`, the same prices for a hero that neither flies nor water-walks: `reach`
   +0.89 %, `play` +0.83 %, `fork` +0.17 %, within the 2 % (not re-baselined). The rest is the
   search's set-up (the terrains' water bit, the mode).
+- **The lane's full verify** (CI cannot run): `scripts/verify-once.sh engine --base origin/master
+  -- --with-original-data` on fd4f16f (code d82c93aa, 2026-10-23, the sandbox, Linux x86_64): all
+  16 steps passed (the first run on 04e16ff failed coverage, `NoStop`'s message, and the benchmarks
+  above). Merges cleanly with `master` 2ad29e2 and with #401.
