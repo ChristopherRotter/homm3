@@ -42,6 +42,14 @@ a line there while the work waits.
   Weakness (`striker_effects` 0x4413C4), regeneration (79), the Wraiths' mana drain (77), Death
   Blow (73) and Poison's damage at a round's start (67, 0x4472AB); the waits for every sound
   these play (as the heal's, below).
+- 2026-10-22 (E17 M3 T7c-1, done; design §7.16): the mass and area spells of the recorded casts
+  are built. Left for later (read in part or not at all, not recorded): what plays a reaction's
+  group on after `strike_animation`'s loop (a defending stack's group 4, at 100 ms a frame;
+  built so, and for a hero's area spell before its last casting frames: a recording of a hero's
+  Fireball at defending stacks decides); Expert Dispel and Cure over several stacks (their
+  handlers, then `mass_spell_animation`); Destroy Undead, Frost Ring and Meteor Shower (built as
+  read); an at-hex frame over the panel (drawn under it now); the hero's aim over a hex
+  (`enter_player_cast`, inbox).
 - 2026-10-15 (E17 M3 T3b): **for T8**: the battle waits for the heal's sound to end
   (`wait_for_sample` after `first_aid_tent_action`'s animation, design §7.15): at speed 0 the
   animation outlasts `Regener` (2 100 against 1 881 ms), at speeds 1 and 2 with the sound on the

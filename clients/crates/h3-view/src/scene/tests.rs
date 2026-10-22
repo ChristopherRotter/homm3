@@ -508,6 +508,7 @@ fn a_moment_draws_each_stack_in_its_pose() {
             translucent: true,
             over: vec![(0, [7, 8], false), (9, [1, 1], true)],
         }),
+        spot: None,
         counts: BTreeMap::new(),
         hues: BTreeMap::new(),
         // E17 M3 T6c-1: the mouse marks the walking Pikemen.
@@ -614,6 +615,39 @@ fn a_moment_draws_each_stack_in_its_pose() {
         .iter()
         .position(|d| matches!(d, Draw::Obstacle { def, .. } if def == "Front.def"));
     assert!(corpse < front);
+}
+
+#[test]
+fn a_magic_animation_at_a_hex_is_drawn_over_everything() {
+    // E17 M3 T7c-1 (0x496A10): after the stacks, the flier and the projectile, never mirrored.
+    let layout = layout();
+    let moment = Moment {
+        spot: Some(Spot {
+            def: "C13spF.def".to_string(),
+            frame: 4,
+            translucent: false,
+            at: [600, 200],
+        }),
+        projectile: Some(Projectile {
+            def: "PLCBOWX.DEF".to_string(),
+            frame: 0,
+            at: [100, 50],
+            mirrored: false,
+        }),
+        ..Moment::default()
+    };
+    let list = battle_at(&battle_view(), &moment, &keys(), &tables(), &layout).unwrap();
+    assert_eq!(
+        list.last(),
+        Some(&Draw::Magic {
+            def: "C13spF.def".to_string(),
+            frame: 4,
+            x: 600,
+            y: 200,
+            mirrored: false,
+            translucent: false,
+        })
+    );
 }
 
 #[test]

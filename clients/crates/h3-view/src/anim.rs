@@ -3089,7 +3089,8 @@ impl Player<'_> {
         }
         // The groups left over play on (the frame drawn at the end shows with the first).
         let longest = left.iter().map(|r| r.frames).max().unwrap_or(0);
-        self.pending.retain(|(s, _)| left.iter().all(|r| r.stack != *s));
+        self.pending
+            .retain(|(s, _)| left.iter().all(|r| r.stack != *s));
         for i in looped..=longest {
             let poses: Vec<(u8, Pose)> = left
                 .iter()
@@ -3123,7 +3124,13 @@ impl Player<'_> {
     /// the caster standing outlined at its tail; then its sound ends and it turns back if it
     /// turned (0x4486E2, 0x44872F). Other spells take effect at once (T7c-3).
     fn creature_cast(&mut self, stack: u8, spell: u16, target: Target, effects: &[Event]) {
-        let look = self.stage.casts.spells.get(&spell).cloned().unwrap_or_default();
+        let look = self
+            .stage
+            .casts
+            .spells
+            .get(&spell)
+            .cloned()
+            .unwrap_or_default();
         let (Target::Hex { hex }, Some(live), FROST_RING..=METEOR_SHOWER) =
             (target, self.live(stack), look.original)
         else {

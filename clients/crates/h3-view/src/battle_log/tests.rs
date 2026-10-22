@@ -41,7 +41,10 @@ const PACK: &str = r#"{
         "thunderbolt": "Bolt on {{creature}}!",
         "poisoned_one": "{{creature}} is poisoned.",
         "poisoned_other": "{{creature}} are poisoned.",
-        "acid-breath": "Acid: {{creature}} -{{defense}}."
+        "acid-breath": "Acid: {{creature}} -{{defense}}.",
+        "cast": "{{hero}}: {{spell}}.",
+        "death-ripple": "Ripple {{damage}}.",
+        "destroy-undead": "{{spell}} {{damage}}."
     } },
     "word": {
         "creature_one": "beast", "creature_other": "beasts",
@@ -284,6 +287,40 @@ fn a_cast_names_its_hero_spell_and_target() {
     );
     assert_eq!(worded(&damage(16, (1, 20, 0))), None);
     assert_eq!(worded(&damage(15, (9, 20, 0))), None);
+}
+
+#[test]
+fn spells_without_a_target_name_their_hero_spell_and_damage() {
+    // E17 M3 T7c-1: a cast without a target, Death Ripple's and Destroy Undead's damage, an area
+    // spell's on one stack and on several.
+    let all = |side, spell| Logged::CastAll { side, spell };
+    assert_eq!(worded(&all(0, 15)).as_deref(), Some("Mage: Dart."));
+    assert_eq!(worded(&all(1, 15)), None);
+    assert_eq!(worded(&all(0, 16)), None);
+    let mass = |spell, undead| Logged::MassDamage {
+        spell,
+        damage: 35,
+        undead,
+    };
+    assert_eq!(worded(&mass(16, false)).as_deref(), Some("Ripple 35."));
+    assert_eq!(worded(&mass(15, true)).as_deref(), Some("Dart 35."));
+    assert_eq!(worded(&mass(16, true)), None);
+    let area = |spell, kills, target| Logged::AreaDamage {
+        spell,
+        damage: 30,
+        kills,
+        target,
+    };
+    assert_eq!(
+        worded(&area(15, 1, Some(1))).as_deref(),
+        Some("Dart hits for 30.\nA Ant falls.")
+    );
+    assert_eq!(
+        worded(&area(15, 3, None)).as_deref(),
+        Some("Dart hits for 30.\n3 beasts fall.")
+    );
+    assert_eq!(worded(&area(15, 0, Some(9))), None);
+    assert_eq!(worded(&area(16, 0, None)), None);
 }
 
 #[test]

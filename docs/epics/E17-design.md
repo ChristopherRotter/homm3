@@ -1842,8 +1842,61 @@ resistance roll, if any (category 3, 0x5A0331); Curse's is named `Curse`, withou
   273 at 2 200 in `acid`, 433 at 4 620 in `stare`; not copied, listed); `thunder`'s drinkers' box
   listed at 8 410 (memory holds the raised number a frame before the screen shows it). Found on
   the way: the outline of the casts (above), and the loop's hit group (§7.4).
+- **Read at T7c-1** (the handlers of the spells aimed at no stack, `mass_spell_animation`'s end,
+  `strike_animation`'s loop length, `cast_spell`'s tail, `creature_cast_action`'s cast):
+  - *Death Ripple* (0x5A0C81): the cast's line (`battle_log_cast`, caster kind 0 without a
+    target: GENRLTXT 197), each stack tested, rolled, marked and damaged, then GENRLTXT 188 ("The
+    Death spell does %d damage …", its line break as any line's) with one stack's damage when it
+    struck one, else the caster's (`spell_damage_modifiers` without a target, 0x5A0DC6), then
+    `mass_spell_animation` with reactions, a redraw shown at once (0x5A0E6D) and the Phoenix
+    check. *Destroy Undead* (0x5A0E7E): the same with its line after the animation, GENRLTXT 187
+    with the spell's name (not recorded). *A timed spell on several stacks* (Expert, a mass spell;
+    0x5A10AB): `mass_spell_handler`, the cast's line, then the animation without reactions.
+  - *`mass_spell_animation`'s end* (0x5A6B50 to 0x5A6C47): the marks cleared without a redraw (the
+    animation goes with the next frame drawn), the dead die, and only if one died a redraw shown
+    at once. The count boxes keep +0x50 (the number before the kills) until the cast's tail.
+  - *The area spells* (`area_spell_handler` 0x5A4970): the animation at the hex first (time 100),
+    then, with a stack struck, the line (`battle_log_damage` named by the spell, number 1: one
+    stack's damage and kills naming it, else the caster's damage, every kill and the word for
+    creatures, 0x5A4B1D), then `strike_animation(−1, 1)` and the Phoenix check. No cast's line.
+  - *`strike_animation`'s length* (0x468CBB to 0x468CF9): L = max(n, A, R, A + R − 1), R the
+    longest death group or hit group (a defending stack's hit group, §7.4); with no striker (A
+    = 0) every reaction starts at iteration 0 (0x468EBA), so a defending stack's group 4 outlasts
+    the loop.
+  - *`cast_spell`'s tail* (0x5A2058): every stack's +0xE9 and +0x0 cleared, its layer 4 and its
+    +0x50 −1 (the boxes show their counts again); a hero's last frames; then for every caster
+    `outline_turn_stack` (0x5A216B): a creature caster, the stack whose turn it is, stands (group
+    2) outlined in a redraw shown at once. Recorded (`dragon`, round 3): the Faerie Dragon not
+    struck stands 600 ms into the reactions, the Swordsmen's hit group's six iterations, while
+    their defend group plays on to its eleventh frame (a frame each 100 ms; what plays it is not
+    read). The original's partial redraw does not show the dragon standing until the next full
+    one (its old frame stays on the screen).
+  - *A creature's cast* (`creature_cast_action`, completed): its frames' redraws mark it dirty
+    (`battle_redraw` with its second argument) and it stays outlined through them; `cast_spell`
+    clears the outline as it starts (0x5A004C, a redraw at once). A Faerie Dragon casts its drawn
+    spell (+0x4E0) at the hex, caster kind 1, mastery 2, power 5 per creature (0x44863E).
+- **Built (T7c-1, `anim`):** `Player::untargeted` (Death Ripple, Destroy Undead, a mass timed
+  spell, an area spell of a hero), `mass` (player 3: the reactions first, a hit running on into
+  the standing group, the animation's last frame never drawn, the erasure with the next frame
+  drawn), `at_hex` (player 5: `SpotKey`, `Timeline::spot`, drawn over everything by
+  `scene::battle_at`; places 1, 4 and the others as read), `area`, `spell_reactions`
+  (`strike_animation` without a striker: L as read, then the dead, the counts and a redraw; the
+  caster standing outlined, `stand_caster`; then the groups left over a frame each trunc(100 F),
+  *provisional*: for a hero's cast before its last frames, not recorded), `creature_cast` (the
+  `StackCast` event: its group by the angle, its frames at trunc(trunc(A / n) F), the turn
+  toward the hex and back, the outline kept until the cast starts, its shot sound until the
+  cast's end); the tail's counts (`pending_counts`: with the next frame drawn); `Logged::CastAll`,
+  `MassDamage`, `AreaDamage` (keys `battle.log.cast`, `death-ripple`, `destroy-undead`); the
+  mouse's `Input::Book`: a spell without a target is cast from the book at once, whose dialog
+  leaves the status line empty (the harness's `cast:<k>`). Not built: Frost Ring's and Meteor
+  Shower's areas are the engine's (their animations as Fireball's path); a mass Dispel or Cure
+  (their handlers at Expert, not read); the area's at-hex frames over the panel (none reaches it
+  here). Recorded (`sequences.toml`): `mass` (Slow at Expert, then Death Ripple) and `dragon`
+  (seed 174: the engine draws Fireball, Fireball and Inferno as the original did), both as
+  recorded on the first run.
 - **Not read:** the dissolve's blend; Chain Lightning's rays beyond `draw_ray`'s call (colour
-  0x131, 0x5A64EF; T7c); how the glows are painted; the summons' and the Pit Lord's creation
+  0x131, 0x5A64EF; T7c-3); what plays a reaction's group on after `strike_animation`'s loop; how
+  the glows are painted; the summons' and the Pit Lord's creation
   beyond the dissolve; Earthquake (sieges); the force-feedback effects (IFC20, nothing drawn).
 
 ## 8. The window, input and audio evaluation (M2 T2)
