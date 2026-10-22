@@ -45,7 +45,11 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    experience is no longer refused: the build gives a placed hero its **levels at load**, after
    its custom skills, army, spells and artifacts and before its spell points, from experience 0
    with the limit, each two-offer level chosen by the original's choice (ADR-0013 point 12) with
-   the setup's defaults for the army. A hero that leaves the map
+   the setup's defaults for the army. From increment 5 the levels at load also come before the
+   hero's **day's points** and the **reveal around it**, which read its details as the levels
+   left them (the original's order, `placed_hero_setup` 0x4D8B30, `placed_heroes_setup`
+   0x4CAE10): the adventure places the heroes, the game gives the levels, then the adventure's
+   start of the game sets the points and reveals, reading the store. A hero that leaves the map
    keeps its details (the pool and the tavern are E09's). The contexts **read a hero's details
    by reference**: the game passes its store to the adventure's commands and queries (later the
    towns'), which read through `h3-heroes`' derivations (ADR-0013 point 2); what a command
@@ -74,7 +78,12 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    contexts and players. Building the state ends with day 1's start-of-day step and the first
    group's start-of-turn step, so the first day starts as every later one. Which rule runs at
    which hook is a rule question (survey `E08-adventure-core.md` §3: in increment 1 every rule
-   runs at the start of the day; ADV-Q4). Sequential play is one player per group in player
+   runs at the start of the day; ADV-Q4). From increment 5 the adventure's start-of-turn step reads
+   the store of heroes (the day's points with each hero's bonuses, ADV-MOV-002), and its
+   start-of-day step has its first rule: in `strict-fixed` (`ADV-QUIRK-18` off) every hero on the
+   map reveals around it to its owner with its radius, after the calendar and before the first
+   group's turn; `faithful` reveals nothing there until a rule hides tiles (the Cover of Darkness,
+   E09). Sequential play is one player per group in player
    order, the only schedule of increment 1. Commands interleave in one authoritative order, the
    server's log, which is the replay; logic stays single-threaded per game (ADR-0003).
 4. **An RNG stream per player** (kernel streams, ADR-0003 point 7). Randomness caused by a
@@ -183,7 +192,12 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    v2 and, if the answer command needs it, the adventure replay format (E08 T14). Increment 3:
    the game state hash v5, the adventure state hash v7, the adventure ruleset part v6, the map
    import v4, the action encoding v3, the adventure replay format v3. Increment 4: the game state
-   hash v9, the map import v8, the action encoding v4, the adventure replay format v5.
+   hash v9, the map import v8, the action encoding v4, the adventure replay format v5. Increment
+   5: the core ruleset hash and the pack format (shared: six effect kinds, three flags), the
+   adventure ruleset part v10 (the fly and water-walk prices, Nomads' terrain; Cursed Ground's
+   parameter if batch E5 confirms it); the game and adventure state hashes, the map import, the
+   action encoding (v4) and the adventure replay format (v5) do not change: a flying hero's
+   destinations are tiles of the same mask.
 10. **Gains and costs cross by outcome.** A context's `apply` returns an outcome: the resources
     its command gains for the actor and the offers it opens, each with its price. The context
     never sees a treasury. The game adds the gains after the context applied (gains cannot fail,
@@ -240,6 +254,10 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   owner's stream. The observation's open decision becomes a choice of kinds (an offer or a
   level-up). Level-ups write only their owner's hero: nothing for point 7's inventory. The
   golden replays, fixtures and property plans answer the levels a battle gives.
+- Increment 5: the golden replays' commands stay valid as data; where a fixture's hero has a
+  movement or scouting skill or artifact, its play and its state hashes change and the replay is
+  re-recorded (its header's core ruleset hash moves in any case). The first rule at a day's start
+  exists in one profile only: both profiles' properties run the day advance.
 
 ## Alternatives considered
 
@@ -268,6 +286,10 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   randomness is the setup stream's); all of a battle's levels drawn at once (the original draws
   each after the previous answer, whose skill enters the next draw); the first offer as the
   system actor's default (not the original's; a fallback if the army's path proves costly).
+- Increment 5 (ADV-Q21): the points and the reveal at the placement, before the levels at load
+  (a Scouting or Logistics gained at load would show only from the next step or turn, unlike the
+  original's); the levels at load before the adventure's state is built (the evaluation needs the
+  static map's terrain shares, which the adventure's build computes).
 
 ## Revision history
 
@@ -301,3 +323,8 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   the client's, the paused turn timer, the owner's time limit and the default answer online the
   server's. Point 8: `to_move` yields the owner alone meanwhile. T30's first build let the other
   players act on, which allowed a battle against a hero whose level-up was still open.
+- 2026-10-22 (E08 T35a; the user at ADV-Q20 and ADV-Q21): points 1, 3 and 9 amended for E08
+  increment 5, the hero's movement and scouting: the levels at load before a placed hero's day's
+  points and the reveal around it (the original's order); the start-of-turn step reads the store,
+  the start-of-day step's first rule (`strict-fixed`'s reveal around every hero, `ADV-QUIRK-18`);
+  the versions. Drafted in E08 T34b (#375; survey `E08-hero-movement.md` §1.4, §4.2).
