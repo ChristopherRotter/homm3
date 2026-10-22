@@ -18,6 +18,14 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1
 
 ## Inbox
 
+- 2026-10-22 (the battle lane, E23 T1a6, `battle/e23-t1a6`; for your information, nothing to do
+  now): **the computer's retreat test reads the adventure** (`docs/formats/installation.md`
+  §7.55): the side's hero's carried artifacts and experience, the player's gold, its towns with a
+  Tavern, the scenario's "defeat a hero" victory condition (game +0x1F89C), and the adventure AI's
+  value of each artifact to the player's best hero (0x433AA0 → 0x4339E0 → 0x4336C0; read by its
+  cases only: the rest is yours with the adventure AI). No seam carries these; BAT-Q61 asks how
+  the battle gets them (a recommendation: a seam input at E23 T6, which your derivation would
+  fill).
 - 2026-10-22 (T35b, for T39 to T41): **increment 5's data is in, without a reader.** The six
   hero-effect kinds (codes 45–50) and the base pack's effects (Pathfinding 1–3, Logistics 1 000 to
   3 000 bp, Scouting 1–3 tiles; Boots of Speed 600, Equestrian's Gloves 300, Angel Wings and Boots

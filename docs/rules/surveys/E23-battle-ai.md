@@ -21,7 +21,7 @@ chose, not as a source of the original's choices.
 plays (a side without a human player, or a human's in auto-combat or a hidden battle; 0x474BF0),
 first **the hero's cast** (0x422DA0): unless the hero cast this round, the tactics phase, or a war
 machine is active; the side's hero needs a spell book, neither hero the Orb of Inhibition, no
-anti-magic garrison; then the spell context, the retreat test and the cast choice (T1a6). Then
+anti-magic garrison; then the spell context, the retreat test and the cast choice (§7.55). Then
 **the stack's action** (0x477EE0): the retreat test again (outside the tactics phase); yes means
 retreat for a computer side (never surrender: the surrender branch is a human's only); no means
 the stack's turn. The Catapult and the First Aid Tent have turns of their own (§7.29, §7.14); the
@@ -58,10 +58,27 @@ The values come from the spell context (the threats each stack meets this turn, 
 of the side) and 36 per-spell evaluators (§7.46): mostly `(√g − 1) × strength × the rounds'
 share`, with the balance class as the battle's expected length.
 
-**Not read yet** (T1a6, before T5): the hero's cast choice 0x43C800 with its candidates and the
-retreat test 0x41E570; part A, the adventure AI's routines they call (6.4 KB), as far as the
-battle needs them. **The neutral side's map is complete**: a side without a hero never reaches
-them (no hero's cast; the retreat test answers for a hero's side only).
+**The hero's cast** (§7.55, T1a6). Over the spells the hero has, can pay and may cast there
+(Cursed Ground, Recanter's Cloak), each valued by its evaluator (§7.46) or a case of its own (the
+area spells at every hex, Chain Lightning's first enemy, the mass damage spells, the raises and
+Sacrifice, Earthquake for a besieger, Teleport as the walker's gain, the summons by AI value), ×
+2.5 with mana for 7 casts, else × √(casts left), then a 75–100 % draw: the best is cast only when
+its "now" says it is due at this activation. Quicksand, Land Mine, Force Field, Fire Wall, Berserk
+and Remove Obstacle are never cast. With the enemy beaten and no own creature at risk, only the
+raises; when the side would retreat, a damage spell first, always, in the desperate mode.
+
+**The retreat test** (§7.55). Never without a hero, on Easy, on half the Normal draws, with the
+Shackles of War on either side, for the victory condition's hero, without a tavern town to hire
+the hero back from (a town's defender only through the Escape Tunnel). Then a besieger walled
+out (gate closed, the four walls up, no flyer, Cyclops or shooter, every defender inside)
+retreats; a hero worth less than 1000 in artifacts with under 2000 experience does not; a side
+the predictions leave without a creature retreats; one without gold for the surrender price and
+2500 does not; else it retreats when its share of both sides' Fight Value (× 1.2 for the stacks
+yet to act, the other side × 1.1, a town's defender × 1.1) is below about a tenth to a sixth (the
+artifacts, the difficulty, 200 000 experience and the attacker's role move it, capped at 0.16).
+Part A, the adventure AI's value of the hero's artifacts, decides only the worth's thresholds;
+the test reads the adventure's state, which no seam carries (BAT-Q61). **The neutral side's map is
+complete**: a side without a hero never reaches either.
 
 **Difficulty and `human`** (the side's player is human: auto-combat, a hidden battle):
 
@@ -78,7 +95,8 @@ Fire Walls and the side's own stops). It runs in the trusted host (ADR-0017 poin
 
 **Its draws** (all the battle's generator, 0x50B230): the walker's 75–100 % per candidate
 (0x421B02), the wall shot's choice among the weakest walls (0x41EFFB), the scan's skip (0x420D98),
-the retreat test (0x41E5BC) and the cast choice (0x43CA60; both T1a6); the predicted walkers draw
+the retreat test (0x41E5BC, Normal only) and the cast choice (0x43CA60, per spell with a value;
+§7.55); the predicted walkers draw
 their candidates' values too (§7.42), and the rules' own draws inside the casts (the drawn spells,
 Chain Lightning's next target).
 
@@ -87,13 +105,13 @@ Chain Lightning's next target).
 | Area | The reading (code) | Wiki | VCMI 1.7.5 | Verdict |
 |---|---|---|---|---|
 | Surrender | a computer side never surrenders; its retreat test's yes is a retreat (0x47815A, §7.34) | "Same applies for enemy AI heroes, which however never surrender." (Combat) | the adventure AI's answer only retreats (`AIGateway::makeSurrenderRetreatDecision`) | **agree**: no row |
-| Retreat | the test 0x41E570 is unread (T1a6) | "In most cases, AI will retreat based on its estimation of state of the battle, and value of the hero"; never on Easy, "only 50% chance to consider retreating on medium"; never for a "defeat hero X" hero or without a tavern town; always from a hopeless siege (four conditions) (Combat) | strength thresholds of the adventure AI | T1a6 reads the test against these |
+| Retreat | 0x41E570 (§7.55): never on Easy, a 50 % draw on Normal, never for the victory condition's hero or without a tavern town, a walled-out besieger always (gate, four walls, no flyer, catapult or shooter, defenders inside); the hero's worth (artifacts, experience), the gold and the share of Fight Value | "In most cases, AI will retreat based on its estimation of state of the battle, and value of the hero"; never on Easy, "only 50% chance to consider retreating on medium"; never for a "defeat hero X" hero or without a tavern town; always from a hopeless siege (four conditions) (Combat) | strength thresholds of the adventure AI | **agree** on every named term (the four siege conditions to compare word for word); the threshold, its cap and float steps at risk (R1, R2) |
 | Wait | none below Hard (0x421F80's end; the walk's hold-back Hard and up) | Easy: "do not wait" (Difficulty level); Normal not mentioned | waits whenever its evaluation prefers it, at every difficulty | Easy agrees; **Normal at risk** (row W1) |
 | Enemy reach | the enemies' reach in the scores from Normal; holding back from Hard | Hard: "takes into account the range of the enemy troops… does not run into the range of the movement if he knows that the enemy creature is attacking him" | a threat map (`ThreatMap.cpp`) at every difficulty | Hard agrees; **Normal at risk** (W2) |
 | Tactics phase | a computer's shooter is placed only above Easy; walkers take the walker's choice inside the zone | Easy: "do not use creature tactics" | ends its tactics phase at once (`yourTacticPhase`) | Easy agrees; the placement a row for the hero's side (H1) |
 | Target choice | value per turn from the computer's worth (Fight Value based, §7.31), a 75–100 % draw per candidate | stack value "used by the AI, to an extent, to determine a target to attack" (AI/Fight Value) | simulated exchanges, no draw | consistent in kind; the draw at risk (W3) |
 | Creature casters | five casters; the elementals never cast | the Genie casts "a random, beneficial spell" and "will not cast spells that have no effect" (the rules' candidate set, §7.21); nothing on the computer's choice | every caster creature evaluates its spell (`findBestCreatureSpell`), elementals included; the Genie's spell drawn by weight | **the elementals at risk** (C1); the casts' values (C2 to C5) |
-| The hero's spells | every spell outside the 36 evaluators takes the empty one (§7.44), Force Field and Quicksand among them; how the cast choice values the damage spells is T1a6's | Force Field, Quicksand: "AI cannot cast this spell" | casts any spell by simulation | agree so far (T1a6 confirms) |
+| The hero's spells | the cast choice 0x43C800 (§7.55): never Quicksand, Land Mine, Force Field, Fire Wall, Berserk or Remove Obstacle; a cast only when due now | Force Field, Quicksand: "AI cannot cast this spell" | casts any spell by simulation | agree on the two; **Berserk, Land Mine, Fire Wall and Remove Obstacle at risk** (H4) |
 | The moat | the scores avoid it under SoD rules only (BAT-SIE-022) | AB and RoE readmes: AI-controlled monsters now avoid the moat | — | agree; the rules version at risk (S3) |
 | Sieges | the Cyclops batters the weakest wall when locked-out strength outweighs its best shot; a besieger without a target walks to its wall; a defender may hold the walls | "It is very rare that the AI stays in the castle entirely" (Ballistics, fan text) | — | rows S1, S2, S4 |
 | Paths | the original's pathfinder (built, BAT-MOV-003, T1c) | — | its own | done (batch 3c's M2, G4) |
@@ -113,7 +131,7 @@ an agent where the harness allows (`experiments/README.md`), else by the user.
 | 4a W3 | the walker's 75–100 % draw (§7.35) | two targets whose values differ by under a quarter, the same battle replayed with ten seeds | both targets chosen across the seeds | always the same |
 | 4a W4 | holding back on Hard (§7.38) | a neutral walker two turns from its target whose path crosses an enemy's reach, Hard | it stops short and waits | it walks into the reach |
 | 4a W5 | the several-turn comparison undivided (§7.35) and the Harpies' larger value | a near weak and a far strong target; Harpies beside it | as the reading's value per turn | another order |
-| 4a C1 | the elementals never cast (§7.42; built in both profiles, BAT-Q57) | neutral Storm Elementals beside an own stack they could protect, an enemy shooter on the field | no Protection cast | a cast |
+| 4a C1 | the elementals never cast (§7.42; built in both profiles; slip 25 lets `strict-fixed` cast, BAT-Q57) | neutral Storm Elementals beside an own stack they could protect, an enemy shooter on the field | no Protection cast | a cast |
 | 4a C2 | the Faerie Dragon casts whenever its spell is worth anything; an area spell at a free hex (§7.43) | neutral Faerie Dragons beside an attackable enemy, ten seeds | a cast at every damage spell drawn, a free hex when it pays | an attack instead |
 | 4a C3 | the raise against the walker's value (§7.43) | neutral Archangels with a dead own stack and an enemy in reach | as the values compare | always raise |
 | 4a C4 | the Ogre Mages' skip and strength floor (§7.44) | neutral Ogre Mages beside a weaker and a stronger own stack, an enemy in reach, twenty seeds | about three in ten skip; only the stronger stack is blessed | other rates or targets |
@@ -125,7 +143,10 @@ an agent where the harness allows (`experiments/README.md`), else by the user.
 | 4b S1 | the wall shot's 3.0 and its draw (§7.35) | a computer Cyclops besieger with much of its side locked out | the weakest wall, drawn among equals | a stack |
 | 4b S2 | the besieger walks to its row's wall (§7.35) | a computer besieger without a target in reach | before the moat in its row | elsewhere |
 | 4b H2 | the hero's value in the odds: the table's thresholds, the maximum mana, the run-time AI values (§7.39) | after T1a6: a computer hero at a threshold | as read | another branch |
-| 4b H3 | the hero's cast considered at every activation (§7.34) | after T1a6: a computer hero who declines at the first stack and casts later in the round | a cast after the first activation | only at the first |
+| 4b H3 | the hero's cast considered at every activation, cast only when due now (§7.34, §7.55) | a computer hero whose best spell helps a stack that acts later in the round (Haste aside) | a cast at that stack's activation, not at the first | at the first |
+| 4b H4 | the hero never casts Berserk, Land Mine, Fire Wall or Remove Obstacle (§7.55) | a computer hero with only Berserk (then only Fire Wall) and the mana, enemies in a cluster, ten seeds | no cast | a cast |
+| 4b R1 | the retreat's share of Fight Value, its cap at 0.16 and the attacker's 0.06 (§7.55) | a computer hero defending on Hard at 15 % and at 17 % of both sides' Fight Value (artifacts worth over 1000, gold enough, a tavern town) | retreats at 15 %, fights at 17 % | other thresholds |
+| 4b R2 | a walled-out besieger retreats at once (§7.55) | a computer hero besieging with walkers only, gate and walls intact, the garrison inside | retreats at its first activation | fights |
 
 Not rows: the order of more than 16 stacks (the library's sort, §7.37: ported as read, ADR draft);
 the tie orders (ported; batch 3c's M2 and G4 agree); everything the property tests and the
@@ -167,6 +188,8 @@ each estimate as the rule it estimates:
 | 22 | after a creature cast entry built a spell context and cast nothing, the besieger's walk and the fallbacks read the pathfinder as the context left it: the last Berserk or Hypnotize value's search, else the threat records' last (§7.52, §7.53; built, BAT-AI-005, BAT-AI-010, E23 T4c; BAT-Q59; a walk there without a path keeps the last action, BAT-STUB-11) | the walker's own map |
 | 23 | the threat tables' seed never moves to the next record: every stack's melee entry gets the side's first record's seed (§7.53; built, BAT-AI-016, E23 T4c; found in T4c) | each record's own |
 | 24 | a removal values each ended spell on a lone copy of the stack's record, which the evaluators walking the battle's records never meet by pointer: Disrupting Ray 0, no first strike for Slow, the battle's record of the stack (every spell on it) the nearest of Berserk's targets and one of Hypnotize's, a two-hex shooter's copy blocked by its own record where either is berserk or the copy hypnotized, an ended Mirth, Sorrow, Fortune or Misfortune still in the copy's morale or luck (§7.53, §7.54; built, BAT-AI-016, E23 T4d; found by T4c's blind check, BAT-Q60) | the stack itself |
+| 25 | the computer's Ice, Magma, Storm and Energy Elementals never cast their protection (§7.42, §7.50; the user, 2026-10-22, BAT-Q57: a slip; not built, queued) | they take the Ogre Mage's scan with the protections' estimates (§7.46) |
+| 26 | the hero's cast choice reads the planned damage and the threat records as the retreat test's predictions left them, when the test got that far: both sides' runs, each side's last predicted walker's records, until Teleport's evaluation fills them again (§7.55; T1a6; for T5's checkpoint) | the context's own (the side's run, the records it filled) |
 
 The ledger entry lists them; a slip found later joins the same flag. The tie orders, the library
 sort (§7.37) and the draws are the original's behaviour, not slips: no flag.
