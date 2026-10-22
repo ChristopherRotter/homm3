@@ -167,7 +167,7 @@ each estimate as the rule it estimates:
 | 2 | the walls test reads the wrong records for the walls and the gate (§7.35; built, BAT-AI-011, E23 T3c: the Upper Wall's record reads a display byte, §7.49) | each part's own hex |
 | 3 | the multi-headed reach's value is subtracted with its sign untested (§7.36; built, BAT-AI-007, E23 T3b) | only a positive value, as the other branch |
 | 4 | the desperate kills count the top creature's remaining hit points where its lost ones belong (§7.38; built, BAT-AI-009, E23 T3c) | the lost hit points |
-| 5 | the destination map marks a two-hex enemy's position hex twice, its other hex never (§7.38) | both hexes |
+| 5 | the destination map marks a two-hex enemy's position hex twice, its other hex never (§7.38; E23 T5b2a: no choice reads a mark but at a position, §7.58, so nothing is built) | both hexes |
 | 6 | the hero's value takes the mastery on the hero's adventure tile (§7.39; not built, E23 T3c: the seam has no tile for the attacking hero, both settings take the battlefield's, BAT-STUB-7, BAT-Q56) | the battlefield's |
 | 7 | the Faerie Dragon's estimate: Expert on its school's field, the side's hero's bonuses on its bolts (§7.43; built, BAT-AI-013, E23 T4a) | the rules' mastery for a creature, no hero bonus |
 | 8 | the Ogre Mage's Bloodlust valued at Expert on Fiery Fields, the Master Genie's spells on their school's field (§7.44, §7.51, §7.53; built, BAT-AI-014, E23 T4b1; BAT-AI-016, E23 T4c) | Advanced, as the rules cast it |
@@ -192,6 +192,7 @@ each estimate as the rule it estimates:
 | 27 | the hero's Expert Dispel is valued at the other side's sum alone: its case sums both sides, then falls into the stacks' case, whose mass evaluations overwrite the value with the side's sum and then the other side's (§7.56; built, BAT-AI-017, E23 T5a; found by T5a's blind check) | the side's sum and the other side's |
 | 28 | Sacrifice values the raised target's worth with the victim's shot flag (0x43B06F asks 0x4428F0 of the victim's record; §7.57; built, BAT-AI-019, E23 T5b1; found in T5b1) | the target's own, as the raises' |
 | 29 | Earthquake tests whether the walls halve a shooter's shot from the shooter's position, where the rule's halving tests from the hex it turns to: a two-hex shooter's differs (§7.57; built, BAT-AI-019, E23 T5b1; found in T5b1) | the rule's hex (BAT-SIE-008) |
+| 30 | Teleport's destination map writes no stops, so its plan counts a turn more at a stop of the pathfinder's last search, another stack's: a destination in the moat or on a pit that stack's controller sees (§7.58; built, BAT-AI-020, E23 T5b2a; found in T5b2a) | none: a teleported stack enters no hex and acts from it on its next turn (BAT-MAG-029, BAT-SIE-004; batch 3g TV; the user, 2026-10-22) |
 
 The ledger entry lists them; a slip found later joins the same flag. The tie orders, the library
 sort (§7.37) and the draws are the original's behaviour, not slips: no flag.
