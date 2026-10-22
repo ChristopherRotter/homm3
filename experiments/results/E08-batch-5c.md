@@ -1,5 +1,7 @@
 # E08 batch E5c — results
 
+> Played by the capture harness on 2026-10-22 (`clients/capture/h3adv.py batch clients/capture/batches/E08-batch-5c.toml`): the same Complete 4.0 `Heroes3.exe` under Wine, without the HD mod; hot seat, difficulty Easy, the starting bonus random, Show Route on; read from the game's memory.
+
 Map file: `E08-batch-5c.h3m`. Fill in the blanks below and keep this file; an agent records the results (`docs/experiments/README.md`).
 
 **Stamp `3c1dc0a9`.** The map's description in the scenario list starts with "Stamp 3c1dc0a9.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
@@ -23,15 +25,15 @@ Map file: `E08-batch-5c.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- seed byte (hero +0x8F): 
-- Wisdom last offered (hero +0x90): 
-- a school last offered (hero +0x3F): 
-- experience at the start: 
-- level at the start: 
-- primary skills at the start (attack/defense/power/knowledge): 
-- secondary skills at the start (in the hero's order, each with its level): 
-- day 1 points: 
-- day 2 points: 
+- seed byte (hero +0x8F): 126
+- Wisdom last offered (hero +0x90): 0
+- a school last offered (hero +0x3F): 0
+- experience at the start: 1000
+- level at the start: 2
+- primary skills at the start (attack/defense/power/knowledge): 1/1/2/1
+- secondary skills at the start (in the hero's order, each with its level): Logistics advanced
+- day 1 points: 1829
+- day 2 points: 1829
 - anything odd: 
 
 ## E5-2b — Kyrre, Basic Logistics and seven other skills, level 6 at load (6 200 experience), 10 Dwarves (D-22, HER-ADV-003, ADV-MOV-001, D-20, GAM-SET-002)
@@ -44,15 +46,15 @@ Map file: `E08-batch-5c.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- seed byte (hero +0x8F): 
-- Wisdom last offered (hero +0x90): 
-- a school last offered (hero +0x3F): 
-- experience at the start: 
-- level at the start: 
-- primary skills at the start (attack/defense/power/knowledge): 
-- secondary skills at the start (in the hero's order, each with its level): 
-- day 1 points: 
-- day 2 points: 
+- seed byte (hero +0x8F): 167
+- Wisdom last offered (hero +0x90): 0
+- a school last offered (hero +0x3F): 0
+- experience at the start: 6200
+- level at the start: 6
+- primary skills at the start (attack/defense/power/knowledge): 2/4/2/1
+- secondary skills at the start (in the hero's order, each with its level): Logistics expert, Archery basic, Armorer expert, Offense basic, Leadership basic, Luck basic, Resistance basic, First Aid advanced
+- day 1 points: 2085
+- day 2 points: 2085
 - anything odd: 
 
 ## E5-2c — Dessa, Basic Logistics, level 12 at load (20 600 experience), 10 Dwarves: the growth at a high level (D-22, HER-ADV-003, ADV-MOV-001, D-20, GAM-SET-002)
@@ -65,13 +67,13 @@ Map file: `E08-batch-5c.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- seed byte (hero +0x8F): 
-- Wisdom last offered (hero +0x90): 
-- a school last offered (hero +0x3F): 
-- experience at the start: 
-- level at the start: 
-- primary skills at the start (attack/defense/power/knowledge): 
-- secondary skills at the start (in the hero's order, each with its level): 
-- day 1 points: 
-- day 2 points: 
+- seed byte (hero +0x8F): 164
+- Wisdom last offered (hero +0x90): 8
+- a school last offered (hero +0x3F): 12
+- experience at the start: 20600
+- level at the start: 12
+- primary skills at the start (attack/defense/power/knowledge): 4/4/4/3
+- secondary skills at the start (in the hero's order, each with its level): Logistics expert, Scouting expert, Wisdom expert, Intelligence expert
+- day 1 points: 2220
+- day 2 points: 2220
 - anything odd: 
