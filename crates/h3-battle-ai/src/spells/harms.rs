@@ -350,8 +350,9 @@ impl View<'_> {
 
     /// Berserk's evaluator (0x43A400; BAT-AI-016): 0 when beaten or without a target; the mean of
     /// the berserk attack's values ([`Self::berserk_attack`]) over the stacks a berserk `s`
-    /// would take ([`computer::berserk_candidates`]), the sum divided as an unsigned 32-bit
-    /// integer. No rounds' share.
+    /// would take ([`computer::berserk_search`]), the sum divided as an unsigned 32-bit integer.
+    /// No rounds' share. With BAT-QUIRK-25 the context keeps the candidates' search (survey slip
+    /// 22: the walker's fallbacks read it).
     // rule: BAT-AI-016
     pub(crate) fn berserk(&self, s: StackId, _c: Candidate) -> i32 {
         if self.beaten {
@@ -377,7 +378,8 @@ impl View<'_> {
     /// (1, 1, 2, 3) by the mastery)`, less 1 when it acted, 0 at none; the pathfinder's map from
     /// `s` for the side up to `n` times its speed before Slow ([`computer::map_within`]); the
     /// best berserk attack's value ([`Self::berserk_attack`]) over the other stacks of its side
-    /// it reaches, at least 0.
+    /// it reaches, at least 0. With BAT-QUIRK-25 the context keeps that map (survey slip 22: the
+    /// walker's fallbacks read it).
     // rule: BAT-AI-016
     pub(crate) fn hypnotize(&self, s: StackId, c: Candidate) -> i32 {
         let stack = self.stack(s);

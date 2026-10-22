@@ -6,9 +6,9 @@
 //!   the walls takes only the enemies inside them as candidates. The walls test follows
 //!   BAT-QUIRK-25 (slip 2): the original looks up each destroyed part's wall hex by its part number
 //!   as a target index, so a destroyed Mid-Upper or Lower Wall gives hex 12, which always stays
-//!   blocked, and never counts as a breach, while the Upper Wall's gives no hex (the display byte it
-//!   reads instead, the movement overlay of hex 93, is taken as clear: a hidden battle's) and the
-//!   gate's and the Mid-Lower Wall's give hex 0, a side column, never blocked at a fort: these
+//!   blocked, and never counts as a breach, while the Upper Wall's gives no hex (the display byte
+//!   it reads instead, the movement overlay of hex 93, is taken as clear: a hidden battle's) and
+//!   the gate's and the Mid-Lower Wall's give hex 0, a side column, never blocked at a fort: these
 //!   count. Without the slip every destroyed wall or gate counts.
 //! - **The besieger's walk** (0x421D46 to 0x421E2D; BAT-AI-005): an attacker's walker at a fort
 //!   without a candidate walks to its own row's wall: from the row's wall hex leftwards to its own
@@ -16,8 +16,12 @@
 //!   hex): the open wall hex after a breach in that row, else the hex before the moat; none, or a
 //!   walker at or right of the wall, defends.
 //! - **The fallbacks** (BAT-AI-010): with no area threat on the walker (0x41F920), guarding a
-//!   shooter (0x420760, 0x4205D0); then the attack after all if there is a candidate; else, on
-//!   Hard and above or for a human side, the step to safety (0x4208F0).
+//!   shooter (0x420760, 0x4205D0); then the attack after all if there is a candidate; else, on Hard
+//!   and above or for a human side, the step to safety (0x4208F0).
+//!
+//! The besieger's walk and the fallbacks read the computer's pathfinder as the walker left it, its
+//! own map; under BAT-QUIRK-25 (survey slip 22, BAT-Q59) after a creature cast entry that built a
+//! spell context and cast nothing, the map that context's last search left ([`Walker::cells`]).
 
 use h3_battle::computer;
 use h3_battle::{BattleSide, Command, Hex, Stack, StackId, StackTraits, Status};
@@ -97,10 +101,10 @@ impl Walker<'_> {
     }
 
     /// The besieger's walk to its row's wall (0x421D5F to 0x421E2D; BAT-AI-005): the walk with the
-    /// scores (no flag) to the first hex from the row's wall hex leftwards that its map reached and
-    /// that is not in the moat, neither hex of a two-hex walker (the other by the index); Defend
-    /// without one, at or right of the wall, or without a path (the original leaves its last
-    /// action there).
+    /// scores (no flag) to the first hex from the row's wall hex leftwards that the map it reads
+    /// reached ([`Walker::cells`]) and that is not in the moat, neither hex of a two-hex walker
+    /// (the other by the index); Defend without one, at or right of the wall, or without a path
+    /// (the original leaves its last action there, BAT-STUB-11).
     // rule: BAT-AI-005
     pub(crate) fn besiege(&self) -> Command {
         let me = self.me;
@@ -123,6 +127,9 @@ impl Walker<'_> {
         let to = wall
             .and_then(|w| (me.hex.0.saturating_add(1)..=w).rev().find(|&h| free(h)))
             .map(Hex);
+        // stub: BAT-STUB-11
+        // Without a path the original keeps its action fields as they were (0x421E15): with
+        // slip 22's held map reachable, not modelled.
         to.and_then(|to| self.walk_with(to, false, true))
             .unwrap_or(Command::Defend)
     }
@@ -155,8 +162,8 @@ impl Walker<'_> {
         }
     }
 
-    /// The turns the walker needs to reach `hex` (0x4B3F20): its map's cost over its speed,
-    /// rounded up, at least 1.
+    /// The turns the walker needs to reach `hex` (0x4B3F20): the cost on the map the fallbacks
+    /// read ([`Walker::cells`]) over its speed, rounded up, at least 1.
     fn turns_to(&self, hex: Hex) -> u32 {
         let speed = u32::from(self.me.speed_now()).max(1);
         u32::from(self.cells().cost(hex)).div_ceil(speed).max(1)
@@ -165,10 +172,10 @@ impl Walker<'_> {
     /// Guarding a shooter (0x420760; BAT-AI-010): over the walker's side's living stacks but the
     /// turrets and the Catapult that can shoot now and have the melee penalty, in record order,
     /// each with its guard hex ([`Walker::guard_hex`]): the fewest turns to it, then the higher
-    /// strength (0x442E60) over its open sides (at least the guard hex), then the later stack.
-    /// The walk there without scores (Defend without a path), but Defend when the walker stands
-    /// on the guard hex of the last shooter asked, under BAT-QUIRK-25 (slip 21: the original tests
-    /// the guard routine's last answer, 0x4208B4, where the best's belongs; none when that
+    /// strength (0x442E60) over its open sides (at least the guard hex), then the later stack. The
+    /// walk there without scores (Defend without a path, BAT-STUB-11), but Defend when the walker
+    /// stands on the guard hex of the last shooter asked, under BAT-QUIRK-25 (slip 21: the original
+    /// tests the guard routine's last answer, 0x4208B4, where the best's belongs; none when that
     /// shooter has no guard hex), else on the best's.
     // rule: BAT-AI-010
     pub(crate) fn guard(&self) -> Option<Command> {
@@ -203,16 +210,19 @@ impl Walker<'_> {
         Some(if stays == Some(self.me.hex) {
             Command::Defend
         } else {
+            // stub: BAT-STUB-11
+            // Without a path the original keeps its action fields as they were (0x4208DE).
             self.walk_with(hex, false, false).unwrap_or(Command::Defend)
         })
     }
 
     /// The guard hex beside the shooter `r` (0x4205D0): of `r`'s neighbours (six, eight for a
     /// two-hex `r`; 0x523DF0) that are free or hold the walker, counted as its open sides, those
-    /// the walker's map reached: the fewest turns, then more of the walker's hexes touching `r`
-    /// (2 for a two-hex walker whose other hex, by the index, touches it too), then the hex
-    /// further the way `r` faces (its screen anchor's x: the larger facing right, the smaller
-    /// facing left), the later direction at an equal x. With the open sides; `None` without one.
+    /// the map the fallbacks read reached ([`Walker::cells`]): the fewest turns, then more of the
+    /// walker's hexes touching `r` (2 for a two-hex walker whose other hex, by the index, touches
+    /// it too), then the hex further the way `r` faces (its screen anchor's x: the larger facing
+    /// right, the smaller facing left), the later direction at an equal x. With the open sides;
+    /// `None` without one.
     fn guard_hex(&self, r: &Stack) -> Option<(Hex, i32)> {
         let shape = Shape::of(r);
         let me = Shape::of(self.me);
@@ -256,9 +266,9 @@ impl Walker<'_> {
     /// The step to safety (0x4208F0; BAT-AI-010): on Hard and above or for a human side (the
     /// walker's own side), a walker whose own score is below 0 (the lower of a two-hex walker's
     /// hexes, its other by the index) and that is not blind, petrified, paralysed or bound walks
-    /// with the scores (no flag) to the position its map reaches within its speed with the highest
-    /// score above its own: at an equal score the lower cost, then the later hex. Nothing without
-    /// one.
+    /// with the scores (no flag) to the position the map the fallbacks read ([`Walker::cells`])
+    /// reaches within its speed with the highest score above its own: at an equal score the lower
+    /// cost, then the later hex. Nothing without one.
     // rule: BAT-AI-010
     pub(crate) fn step_to_safety(&self) -> Option<Command> {
         let me = self.me;

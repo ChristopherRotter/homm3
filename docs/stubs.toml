@@ -43,6 +43,12 @@ where  = "crates/h3-battle-ai/src/walker.rs::Walker::choose"
 reason = "The original's walker (0x421680) values every record of the other side, a hypnotized walker itself included (no test against it): one without retaliation (a Harpy) plans a move and attack on itself, which the engine refuses. The port leaves the walker out of its candidates (the user, E23 T4b2; ADR-0027 point 3); what the original does with that attack is open (BAT-Q58)"
 epic   = "E23"
 
+[[stub]]
+id     = "BAT-STUB-11"
+where  = "crates/h3-battle-ai/src/ends.rs"
+reason = "With BAT-QUIRK-25's slip 22 (BAT-Q59) the besieger's walk and the guard of a shooter take their hex from the map a spell context's last search left, which the walker's own walk may not reach: the original's walk then writes nothing and the besieger's walk (0x421E15) and the guard (0x4208DE) return true with the action fields as they were (the last predicted move and attack or the battle's last action, installation.md §7.52, §7.53). The port does not model those fields: it defends there (BAT-AI-005, BAT-AI-010)"
+epic   = "E23"
+
 # --- adventure (ADV-STUB-<n>) ---
 
 [[stub]]
