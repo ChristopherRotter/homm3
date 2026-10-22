@@ -4348,7 +4348,8 @@ Decision 88: T41 whole (the user: "no cut"), its shared part in its own pull req
 - **The shared part** (`shared/e08-t41`, `cross-lane` with the user's consent): `h3-content`'s
   registry position 30 (`quirk.adventure.flying_inland_price`, `ADV-QUIRK-16`) `RETIRED` with a
   note, `FLYING_INLAND_PRICE` gone; `h3-pack`'s harvested test on the two flags left; both
-  harvested profiles (`h3-harvest`) and `packs/base/core.toml` without the line (battle-owned);
+  harvested profiles (`h3-harvest`) and `packs/base/core.toml` without the line, and
+  `h3-pack-battle`'s profile test with position 30 among the retired ones (battle-owned);
   ADR-0016 point 4's price as built (one fix-optional quirk, `ADV-QUIRK-17`; Cursed Ground
   confirmed). `base:faithful`'s core ruleset hash moved (0x1259740d4579c6b3 →
   0xde583eb06ef4dd73; strict-fixed and the synthetic packs unchanged): the seven faithful
