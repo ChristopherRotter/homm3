@@ -210,6 +210,10 @@ pub struct MapSpec {
     /// The scenario's level limit (E08 T32a; 0, the default: none).
     #[serde(default)]
     pub level_limit: u8,
+    /// The secondary skills the map bans, by `SSTRAITS.TXT` name (E08 T36b; none, the default):
+    /// no level-up offers one the hero does not know (batch E5e's forced offers).
+    #[serde(default)]
+    pub banned_skills: Vec<String>,
 }
 
 /// The underground level: its own terrain and rectangles; encounters and piles with `level = 1`
@@ -821,6 +825,12 @@ pub fn build_only(
     if heroes_per_player.iter().skip(2).any(|&n| n > 0) {
         return Err("owners are red or blue".into());
     }
+    let banned_skills = spec
+        .map
+        .banned_skills
+        .iter()
+        .map(|name| Ok(lookup(&tables.skills, name, "skill")? as u8))
+        .collect::<Result<Vec<u8>, String>>()?;
     let map = Map {
         name: spec.map.name.clone(),
         description: format!("Stamp {}. {}", spec.stamp, spec.map.description),
@@ -836,6 +846,7 @@ pub fn build_only(
             objects: on_level(&mut objects, 1),
         }),
         level_limit: spec.map.level_limit,
+        banned_skills,
     };
     Ok((map, text))
 }
@@ -1772,7 +1783,14 @@ mod tests {
         assert_eq!(covered(template, (20, 20)), [(19, 20), (20, 20)]);
         assert_eq!(covered(template, (0, 0)), [(0, 0)]);
         let (map, _) = build(&parse(SPEC).expect("spec"), &tables(), "t.h3m").expect("build");
-        assert_eq!(map.level_limit, 0);
+        assert_eq!((map.level_limit, map.banned_skills.len()), (0, 0));
+        // E08 T36b: banned skills by name, any case, as their codes.
+        let (map, _) = with("banned_skills = [\"archery\", \"Armorer\"]").expect("build");
+        assert_eq!(map.banned_skills, [0, 1]);
+        assert_eq!(
+            with("banned_skills = [\"Juggling\"]").unwrap_err(),
+            "unknown skill `Juggling`"
+        );
         for (picture, at, error) in [
             ("AVXzz0", "[1, 1]", "no plain-object picture `AVXzz0`"),
             (

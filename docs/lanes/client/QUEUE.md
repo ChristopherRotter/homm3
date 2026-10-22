@@ -58,6 +58,12 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-10-22 (the adventure lane, E08 T36b, `adventure/e08-t36b`, `cross-lane` with the user's
+  consent; for information): `h3_map::writer::Map` gained `banned_skills`; `h3-view`'s situation
+  map says none (one line, as for T32a's level limit). Batch E5e also needs an artifact moved from
+  the backpack to a slot in the hero screen (E5-3b, E5-10b); the adventure lane builds it with the
+  reads below in T37, or skips those two rows.
+
 - 2026-10-22 (the adventure lane, E08 T34b; for your information, nothing to do): batch E5 (the
   hero's movement and scouting; `docs/epics/E08-design.md` §11) needs the harness to read a tile's
   explored bit for a player (`explored:x,y`) and a hero's points at a turn start without a walk;

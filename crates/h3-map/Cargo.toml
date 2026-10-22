@@ -17,6 +17,8 @@ miniz_oxide.workspace = true
 [dev-dependencies]
 h3-battle.workspace = true
 h3-heroes.workspace = true
+# Batch E5's scorer (E08 T36b): the day's points in the x87's single precision (Q-0005).
+h3-kernel.workspace = true
 h3-pack.workspace = true
 h3-pack-adventure.workspace = true
 h3-pack-battle.workspace = true

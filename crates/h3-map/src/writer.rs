@@ -543,6 +543,9 @@ pub struct Map {
     /// The scenario's level limit (E08 T32a; 0: none): no hero gains a level past it (HER-EXP-003;
     /// the engine counts a limit above 74 as none, A-8).
     pub level_limit: u8,
+    /// The secondary skills the map bans, by their codes (0 Pathfinding … 27 First Aid, below
+    /// [`SKILL_COUNT`]; E08 T36b): no level-up offers one the hero does not know (HER-LVL-003).
+    pub banned_skills: Vec<u8>,
 }
 
 impl Map {
@@ -585,7 +588,11 @@ pub fn write(map: &Map) -> Result<Vec<u8>, WriteError> {
     out.bytes(&[0; 31]); // map options (unused in SoD)
     out.bytes(&DEFAULT_BANNED_ARTIFACTS);
     out.bytes(&[0; 9]); // no banned spells
-    out.bytes(&[0; 4]); // no banned skills
+    let mut banned = [0u8; SKILL_COUNT.div_ceil(8) as usize];
+    for &code in &map.banned_skills {
+        banned[usize::from(code / 8)] |= 1 << (code % 8);
+    }
+    out.bytes(&banned);
     out.u32(0); // no rumors
     out.bytes(&[0; HERO_COUNT as usize]); // no customised hero types
     write_terrain(&mut out, map.size, map.terrain, &map.patches, &map.roads);
@@ -644,6 +651,9 @@ fn out_of_range(what: &'static str, value: impl TryInto<u64>) -> WriteError {
 fn validate(map: &Map) -> Result<(), WriteError> {
     if ![36, 72, 108, 144].contains(&map.size) {
         return Err(out_of_range("map size", map.size));
+    }
+    if let Some(&code) = map.banned_skills.iter().find(|&&code| code >= SKILL_COUNT) {
+        return Err(out_of_range("banned skill", code));
     }
     let below = map.underground.iter().flat_map(|u| &u.patches);
     for patch in map.patches.iter().chain(below) {
@@ -1177,6 +1187,7 @@ mod tests {
             ],
             underground: None,
             level_limit: 0,
+            banned_skills: Vec::new(),
         }
     }
 
@@ -1361,6 +1372,16 @@ mod tests {
         let mut map = smoke_like_map();
         map.size = 40;
         assert!(write(&map).is_err());
+        // E08 T36b: a banned skill's code below the 28 skills.
+        let mut map = smoke_like_map();
+        map.banned_skills = vec![27, SKILL_COUNT];
+        assert_eq!(
+            write(&map),
+            Err(WriteError::OutOfRange {
+                what: "banned skill",
+                value: 28
+            })
+        );
         for road in [(1, 1, 5), (4, 4, 5), (1, 36, 5), (1, 4, 36)] {
             let mut map = smoke_like_map();
             (map.roads[0].from, map.roads[0].to, map.roads[0].row) = road;

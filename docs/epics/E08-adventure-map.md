@@ -414,13 +414,21 @@ Refined with the user on 2026-10-21 (T33; ADV-Q19). Built like increments 1 to 4
     byte's rows (E5-2, E5-3, E5-10) with their scorer. Not chosen: both parts this session as two
     pull requests, T36 whole in one, or T36b first.
 
+### Decisions at round 1's third session (2026-10-22, user)
+
+81. **T36b whole, its level-ups forced by banned skills** (the user's choices of two each): the
+    map of E5-3 and E5-10 bans every secondary skill but Logistics and Scouting, so a hero who
+    knows neither is offered exactly those two (`banned_skills` in the writer and the spec,
+    `cross-lane`); one pull request with E5-2's maps and the scorer. Not chosen: several heroes
+    per row (batch E4's way, a run without a usable hero possible), T36b cut with E5-2 first.
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T33 Increment 5 refined** (with increment 4's closure). Done (2026-10-21, `adventure/e08-t33`; decisions 71, 72): movement and scouting, the first round queued (T34a, T34b).
 - **T34a The movement and scouting survey.** Done (2026-10-21, `adventure/e08-t34a`; decisions 73, 74): survey `docs/rules/surveys/E08-hero-movement.md`, the checkpoint's questions ADV-Q20.
 - **T34b The ADR amendment drafts, the design note and the cut.** Done whole (2026-10-22, `adventure/e08-t34b` #375; decisions 76, 77): the drafts of ADR-0013, -0016 and -0017 (`docs/lanes/adventure/adr-drafts/*-increment-5.md`), `E08-design.md` rewritten for increment 5 with the cut and the exit criteria (§12), D-26 revised after a reading of `new_day`; the checkpoint's questions ADV-Q21 (log).
 - **T35 to T43 The building tasks**, proposed by T34b in five rounds (`E08-design.md` §12, with increment 5's exit criteria), batch E5 first: T35 + T36 (the shared groundwork; batch E5's specs and scorer), T37 + T38 (the harness's reads and the run; the scoring, D-23), T39 + T40 (`h3-heroes`' derivations; the points, radius and walking price), T41 (flying and water walking), T42 + T43 (the env, fixtures, replays, benchmarks; the closure). **Confirmed** at ADV-Q21 (decision 78).
-- **Round 1: T35 + T36** (decision 79). **T35a** done (2026-10-22, `shared/e08-t35a` #377: ADR-0013 points 2, 3, 11 amended and 13 added, ADR-0016 points 3–5, ADR-0017 points 1, 3, 9). **T35b** done (2026-10-22, `shared/e08-t35b` #380, `cross-lane`: the six hero-effect kinds, the three flags 30–32, their syntax; the gap-fill's effects of Pathfinding, Logistics, Scouting and the six artifacts, the packs re-harvested; pack format v46, core ruleset hash v47; the 19 golden replays' headers, the bots' table; the drafts deleted; log). **T36a** done (2026-10-22, `adventure/e08-t36a`, `cross-lane`, decision 80: trees and Border Gates in the writer and `[[map.object]]`; batches E5a (E5-1, E5-4 to E5-6, with the SoD Cursed Ground as E5-6b) and E5b (E5-7, E5-9, E5-11); log). T36b next.
+- **Round 1: T35 + T36** (decision 79). **T35a** done (2026-10-22, `shared/e08-t35a` #377: ADR-0013 points 2, 3, 11 amended and 13 added, ADR-0016 points 3–5, ADR-0017 points 1, 3, 9). **T35b** done (2026-10-22, `shared/e08-t35b` #380, `cross-lane`: the six hero-effect kinds, the three flags 30–32, their syntax; the gap-fill's effects of Pathfinding, Logistics, Scouting and the six artifacts, the packs re-harvested; pack format v46, core ruleset hash v47; the 19 golden replays' headers, the bots' table; the drafts deleted; log). **T36a** done (2026-10-22, `adventure/e08-t36a`, `cross-lane`, decision 80: trees and Border Gates in the writer and `[[map.object]]`; batches E5a (E5-1, E5-4 to E5-6, with the SoD Cursed Ground as E5-6b) and E5b (E5-7, E5-9, E5-11); log). **T36b** done whole (2026-10-22, `adventure/e08-t36b`, `cross-lane`, decision 81: `banned_skills` in the writer and the spec; batches E5c and E5d (E5-2) and E5e (E5-3, E5-10); `e4_score` scores E5-2's points and the forced dialogs; the five templates; log). **Round 1 closed**; round 2 (T37 + T38) next, its cut at its checkpoint.
 
 ## Later increments (sketch)
 
