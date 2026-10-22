@@ -4327,6 +4327,11 @@ Decision 87: T40 whole (the price and the day in one session and one pull reques
 - **Replays:** every game's commands changed (the duel's heroes' points and prices): the nine
   re-recorded with their options (the master binary reproduces the committed ones byte for byte
   with the same script); what each meets is re-checked by T42 (the queue's inbox).
+- **Benchmarks:** the changed games moved `reach-xl-144` by +4.13 % (4 784 queries) and
+  `random-play-duel-36` by -2.04 % (2 839 steps); both re-baselined. The code itself: a scratch
+  build with the details' effects held off (the day's points, the levels and the radius computed
+  and dropped, no `no_native` bits) replays master's nine games byte for byte and measures
+  -0.09 % (reach), +0.13 % (play), +0.17 % (fork, not re-baselined) against the old baselines.
 - **Docs:** the catalog (ADV-MOV-001 to -004, -006, ADV-FOG-001, -003; -004 and ADV-FOG-001
   verified by E5-6 and E5-10), `ADV-QUIRK-18`'s ledger entry, `e4_score`'s `land_table` on
   `land_table_points`, `levels.rs`' citations repointed to increment 4's note in this log, the
