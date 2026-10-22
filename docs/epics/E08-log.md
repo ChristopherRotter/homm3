@@ -4247,3 +4247,36 @@ Decision 85 (ADV-Q22 point 2), right after T38 in the same session, on T38's bra
   -- --with-original-data` on engine code ebd76b02 (commit 97457a6, 2026-10-22, the sandbox,
   Linux x86_64): all 16 steps passed; `original-data`: 5 shipped maps import whole, 9 heroes
   levelled at load with 41 level-ups (the counts unchanged).
+
+### Increment 5, round 3: T39, `h3-heroes`' movement and scouting derivations (2026-10-22, `adventure/e08-t39`, `cross-lane`)
+
+Decision 86: T39 alone (T40 in a session of its own, cut at its start), Q-0005's line in the
+battle lane's ledger in the same pull request (`cross-lane`, the user's consent).
+
+- **The derivations** (`crates/h3-heroes/src/movement.rs`, `E08-design.md` part A, ADR-0013
+  point 13): `land_points(details, core, base)` (HER-ADV-003: `derive.rs`' `grown`, now
+  `pub(crate)`, over the `land_movement` rates as Learning's experience, then the
+  `land_movement_points` of the worn types added, saturating); `movement_speed(details, core,
+  creature)` (HER-ADV-004: the core's speed plus each creature specialty's `speed` for its
+  creature and direct upgrades; `u8::MAX` for a creature the core lacks); `movement(details,
+  core) -> Movement { pathfinding, flying, water_walking }` (HER-ADV-005, -007: the highest of
+  each kind, the levels `None` without a source; one call instead of the note's three getters);
+  `scouting_radius(details, core, base)` (HER-ADV-006: the tiles added, no specialty growth).
+  Every kind once per artifact type (`effects`' `OncePerType`).
+- **The vectors** (`crates/h3-heroes/src/tests/movement.rs`, a test pack built in code): the
+  survey's §1.3 in both arithmetics (17 cases, Basic to Expert, the tables' 1500 and 2000),
+  ⌊base × (10 + level) / 10⌋ without a specialty for every base to 10 000 in both, batch E5's
+  E5-1 (2160, 1860, 2928) and E5-2 (1829, 1889 single, 1830, 1890 exact): all as predicted at
+  the first run. The base pack's data through the derivations: `e4_score`'s
+  `the_base_packs_movement_effects_derive_as_batch_e5_saw_them` (Boots of Speed, Equestrian's
+  Gloves, Valeska's Archers 1630, Angel Wings, Boots of Levitation, Pathfinding, Scouting with
+  the Speculum and the Spyglass 10).
+- **The scorer** (`crates/h3-map/examples/e4_score.rs`): its copy of the arithmetic replaced by
+  `h3_heroes::land_points` under `base:faithful` and `base:strict-fixed` (`strict_core`), the
+  land table at the slowest `movement_speed`; its reports on E5c, E5c-run2, E5d, E5d-run2 and
+  E5e from freshly compiled maps identical to the committed ones below their headers.
+- **Docs:** `heroes.toml` HER-ADV-003 to -007 (the code reading, VCMI, the wiki, batch E5's
+  observations); Q-0005's ledger entry names HER-ADV-003 in its rules, regression tests and
+  decisions (battle-owned, `cross-lane`; the battle lane's inbox told); `h3-heroes`' three module
+  comments repointed to increment 4's note in this log; `E08-design.md`'s part A reduced to what
+  T40 builds (the adventure part's data).
