@@ -176,15 +176,5 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Regression test: `crates/h3-heroes/src/tests/level.rs`, `a_level_is_checked_and_applied`
 - Decided by / date: the user 2026-10-20 (ADV-Q15; the epic's decision 55)
 
-### ADV-QUIRK-14 — The computer's terrain shares count only the coast
-- Class: preserve, no flag: the rule in every profile (the user, 2026-10-20, ADV-Q17, A-11; the epic's decision 60)
-- Context / rules affected: heroes, HER-LVL-006 (E08 T28); adventure, ADV-MAP-002, the count of the shares from the static map, which the levels at load read (GAM-SET-002; E08 T29)
-- Original behavior: `ai_map_terrain_shares` (0x52B9C0), which weighs Pathfinding and Navigation for the computer's choice of skills, counts only the tiles of both levels with the tile flag `0x40` that are not rock: the map file's coast flag, which the editor sets on land beside water and on no other tile. So the water share is 0 on every map with a coast (Navigation worth nothing), Pathfinding is weighed by the coast's terrain alone, and a map without a coast divides 0 by 0: a NaN, which `_ftol` turns into 0 (both worth nothing).
-- Intended/expected behavior: probably the map's tiles (what a fix would count is a guess, ADV-Q17).
-- Impact: AI-only (which offer the computer takes: the levels at load, an unowned hero's default, later E10's computer players); harmless to the rules.
-- Community status: not documented (VCMI does not reproduce the evaluation, survey `E08-progression.md` §10.7).
-- Sources: code reading (E08 T25, survey `E08-progression.md` §10.3; re-read by T28: the flag test at the tile's +0xC and the rock test before the counts); `docs/formats/h3m.md`, "Tile" (the coast flag).
-- Flag: none
-- Defaults: the original's in every profile
-- Regression test: `crates/h3-heroes/src/tests/choice.rs`, `the_shares_are_the_originals_doubles` (the evaluation on the counts); `crates/h3-adventure/src/state/tests.rs`, `the_terrain_shares_count_the_coast_alone` (the count from the static map, ADV-MAP-002, E08 T29)
-- Decided by / date: the user 2026-10-20 (ADV-Q17; the epic's decision 60)
+### ADV-QUIRK-14 — Withdrawn (was: the computer's terrain shares count only the coast)
+- **Withdrawn** (the user, 2026-10-22, ADV-Q22; the epic's decision 85; removed from the rules by E08 T38b). T25 read the tile flag `0x40` (+0xC) that `ai_map_terrain_shares` (0x52B9C0) tests as the map file's coast flag, so the shares would count the coast alone (ADV-Q17, decision 60: reproduced). E08 T38 found it means "no object blocks the tile": `map_tiles_load` (0x4FE220) sets it on every tile but rock, `tile_refresh_object` (0x505610) clears it where an object blocks the tile without an entrance there (survey `E08-progression.md` §10.3's correction). The original counts every tile no object blocks but rock, water included, which is no quirk: ADV-MAP-002 counts so (`crates/h3-adventure/src/state/tests.rs`, `the_terrain_shares_count_the_tiles_no_object_blocks`). The id is not reused.

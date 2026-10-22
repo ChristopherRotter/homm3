@@ -1,0 +1,141 @@
+# E08 batch E5e played by the capture harness (E08 T37b, `cross-lane`; h3adv.py batch): the
+# procedure of experiments/specs/E08-batch-5e.toml as steps, on Easy. Hot seat, Red and Blue
+# human; every hero stands where the spec puts it (`at`), each Pikeman one column east. Day 1,
+# Red: E5-3a fights its Pikeman by auto combat and takes Logistics at the level-up on whichever
+# side it stands (`level_up = "Logistics"`, E08 T37b: the seed byte decides the side), then steps
+# onto the Pikeman's tile; E5-3b puts the Boots of Speed on from the backpack (`equip`, E08 T37a)
+# and steps east. Blue: E5-10a fights and takes Scouting (no step today); E5-10b puts the Spyglass
+# on. Each probe a cell of its table (`explored:`, E08 T37a). Day 2: Red's points at the turn
+# start; Blue's probes at the turn start (both heroes' before either steps), then each hero's step.
+# `note` reads each hero's worn artifacts but the war machines (a starting bonus's) and, with the
+# boots on, the day's points (+0x49, the movement bar: E08 T37a saw it grow at the screen's close).
+
+spec = "experiments/specs/E08-batch-5e.toml"
+players = ["Red", "Blue"]
+difficulty = "easy"
+
+# --- Day 1, Red: E5-3a (a level-up's Logistics in the day) ------------------------------------------
+
+[[step]]
+encounter = "E5-3a"
+hero = "E5-3a"
+note = { "worn artifacts at the start but the war machines (the starting bonus)" = "hero:equipment" }
+record = { "seed byte (hero +0x8F)" = "hero:seed", "Wisdom last offered (hero +0x90)" = "hero:wisdom_offer", "a school last offered (hero +0x3F)" = "hero:school_offer", "points at the start" = "hero:points" }
+
+[[step]]
+encounter = "E5-3a"
+hero = "E5-3a"
+walk = [7, 26]
+answer = "no"
+battle = "auto"
+level_up = "Logistics"
+expect = { question = "none", battle = true, dialogs = true }
+record = { "dialog 1, level" = "level_up:1:level", "dialog 1, primary skill raised" = "level_up:1:primary", "dialog 1, left offer (or the only one)" = "level_up:1:left", "dialog 1, right offer" = "level_up:1:right", "dialog 1, taken" = "level_up:1:taken", "experience after the battle" = "hero:experience", "points after the battle" = "points" }
+
+[[step]]
+encounter = "E5-3a"
+hero = "E5-3a"
+walk = [7, 26]
+expect = { marks = 1, path = "green" }
+record = { "points after the step" = "points" }
+
+# --- Day 1, Red: E5-3b (Boots of Speed put on in the day) --------------------------------------------
+
+[[step]]
+encounter = "E5-3b"
+hero = "E5-3b"
+note = { "worn artifacts at the start but the war machines (the starting bonus)" = "hero:equipment" }
+record = { "points at the start" = "hero:points" }
+
+[[step]]
+encounter = "E5-3b"
+hero = "E5-3b"
+equip = { "Boots of Speed" = "feet" }
+note = { "the day's points with the boots on (hero +0x49, the movement bar)" = "hero:day_points" }
+record = { "points with the boots on" = "hero:points" }
+
+[[step]]
+encounter = "E5-3b"
+hero = "E5-3b"
+walk = [17, 26]
+expect = { marks = 1, path = "green" }
+record = { "points after the step" = "points" }
+
+[[step]]
+end_turn = true
+
+# --- Day 1, Blue: E5-10a (a level-up's Scouting in the day) ------------------------------------------
+
+[[step]]
+encounter = "E5-10a"
+hero = "E5-10a"
+note = { "worn artifacts at the start but the war machines (the starting bonus)" = "hero:equipment" }
+record = { "seed byte (hero +0x8F)" = "hero:seed", "Wisdom last offered (hero +0x90)" = "hero:wisdom_offer", "a school last offered (hero +0x3F)" = "hero:school_offer", "points at the start" = "hero:points", "W (2, 10) | at the start" = "explored:2,10", "E (15, 10) | at the start" = "explored:15,10", "C (16, 10) | at the start" = "explored:16,10" }
+
+[[step]]
+encounter = "E5-10a"
+hero = "E5-10a"
+walk = [9, 10]
+answer = "no"
+battle = "auto"
+level_up = "Scouting"
+expect = { question = "none", battle = true, dialogs = true }
+record = { "dialog 1, level" = "level_up:1:level", "dialog 1, primary skill raised" = "level_up:1:primary", "dialog 1, left offer (or the only one)" = "level_up:1:left", "dialog 1, right offer" = "level_up:1:right", "dialog 1, taken" = "level_up:1:taken", "points after the battle" = "points", "W (2, 10) | after the battle" = "explored:2,10", "E (15, 10) | after the battle" = "explored:15,10", "C (16, 10) | after the battle" = "explored:16,10" }
+
+# --- Day 1, Blue: E5-10b (the Spyglass put on in the day) ---------------------------------------------
+
+[[step]]
+encounter = "E5-10b"
+hero = "E5-10b"
+note = { "worn artifacts at the start but the war machines (the starting bonus)" = "hero:equipment" }
+record = { "W (18, 10) | at the start" = "explored:18,10", "E (31, 10) | at the start" = "explored:31,10", "C (32, 10) | at the start" = "explored:32,10" }
+
+[[step]]
+encounter = "E5-10b"
+hero = "E5-10b"
+equip = { "Spyglass" = "misc 1" }
+record = { "W (18, 10) | with the Spyglass on" = "explored:18,10", "E (31, 10) | with the Spyglass on" = "explored:31,10", "C (32, 10) | with the Spyglass on" = "explored:32,10" }
+
+[[step]]
+end_turn = true
+
+# --- Day 2, Red: the points at the turn start ----------------------------------------------------------
+
+[[step]]
+encounter = "E5-3a"
+hero = "E5-3a"
+record = { "day 2 points" = "hero:points" }
+
+[[step]]
+encounter = "E5-3b"
+hero = "E5-3b"
+record = { "day 2 points" = "hero:points" }
+
+[[step]]
+end_turn = true
+
+# --- Day 2, Blue: the probes at the turn start, then each hero's step ------------------------------------
+
+[[step]]
+encounter = "E5-10a"
+hero = "E5-10a"
+record = { "W (2, 10) | day 2 start" = "explored:2,10", "E (15, 10) | day 2 start" = "explored:15,10", "C (16, 10) | day 2 start" = "explored:16,10" }
+
+[[step]]
+encounter = "E5-10b"
+hero = "E5-10b"
+record = { "W (18, 10) | day 2 start" = "explored:18,10", "E (31, 10) | day 2 start" = "explored:31,10", "C (32, 10) | day 2 start" = "explored:32,10" }
+
+[[step]]
+encounter = "E5-10a"
+hero = "E5-10a"
+walk = [9, 10]
+expect = { marks = 1, path = "green" }
+record = { "W (2, 10) | after the step" = "explored:2,10", "E (15, 10) | after the step" = "explored:15,10", "C (16, 10) | after the step" = "explored:16,10" }
+
+[[step]]
+encounter = "E5-10b"
+hero = "E5-10b"
+walk = [25, 10]
+expect = { marks = 1, path = "green" }
+record = { "W (18, 10) | after the step" = "explored:18,10", "E (31, 10) | after the step" = "explored:31,10", "C (32, 10) | after the step" = "explored:32,10" }

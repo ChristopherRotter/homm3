@@ -24,8 +24,10 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
   run's damage line and count are not the engine's, where the recorded run's were (a roll of the
   original's that differed between runs, the runbook's "Traps"; not investigated). Left: the
   other 15 sequences (`dispel` to `bolt`), the set (`set`), then `drawn --record`; a fresh
-  sandbox needs only those (the 16 are kept).
-- **Depends on:** T7d (#391). **Status:** in progress.
+  sandbox needs only those (the 16 are kept). `master` merged after them: its harness change
+  (the adventure lane's `h3adv.py`, batch E5) is the adventure map's only; `h3drive.py`,
+  `h3mem.py`, `xdd.c` unchanged, so the 16 stand.
+- **Depends on:** T7d (#391, merged). **Status:** in progress.
 
 ### E17 M3 T9b — M3's closure: the review
 
@@ -45,6 +47,12 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
+
+- 2026-10-22 (the adventure lane, E08 T37b, `adventure/e08-t37b`, `cross-lane` with the user's
+  consent; for information, nothing to do): batch E5's recipes `clients/capture/batches/E08-batch-5a.toml`
+  to `-5e.toml`, each run clean under Wine at its first run; `h3adv`'s `level_up` may name a skill
+  (`side_of`: taken on whichever side it stands) and `path_tiles[:<row>]` reads the path's marked
+  tiles (the walk's observation keeps them as `tiles`). The runbook says how.
 
 - 2026-10-22 (the adventure lane, E08 T37a, `adventure/e08-t37a`, `cross-lane` with the user's
   consent; for information, nothing to do): what the two entries below announce is built in

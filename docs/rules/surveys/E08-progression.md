@@ -102,8 +102,8 @@ reading; the questions for the user's checkpoint are ADV-Q15 (`docs/OPEN-QUESTIO
   GAM-DEC-002, GAM-SET-002, GAM-BAT-008. The questions for the checkpoint: ADV-Q15.
 - **The computer's evaluation** (§10, T25): no draws; a skill's value from the army's worth
   (1 000 and 500 at load), the hero's primary skills with artifacts, Wisdom, two tables and **the
-  map's terrain shares**, which count only coast-flagged tiles, so Navigation is worth 0 and
-  Pathfinding follows the coast's terrain (A-11); a new skill is taken when it ranks among the
+  map's terrain shares**, which count every tile no object blocks but rock (*corrected by E08
+  T38*: this survey read the tile's flag as the coast, A-11, §10.3); a new skill is taken when it ranks among the
   hero's best unknown skills its free slots allow. E3-6's four choices all follow from it. The
   flag-set path (computer players) reads E10's state.
 
@@ -775,6 +775,19 @@ Pathfinding by the coast's terrain. Harmless to the rules (it moves only the com
 the levels at load, later E10's players); a faithful choice needs it reproduced. **The user at
 ADV-Q17: reproduced in every profile, no flag** (what a fix would count is a guess).
 
+*Corrected by E08 T38* (survey `E08-hero-movement.md` §2.1 point 5, after batch E5's row E5-4
+refuted the flying price that reads the same flag): the tile's flag `0x40` at +0xC is **not** the
+map file's coast flag. The tile loader (`map_tiles_load` 0x4FE220) copies only the file's six
+mirror bits into +0xC, turns the file's coast bit into +0xD bit 0x02 and sets +0xC bit 0x40 on
+every tile but rock; `tile_refresh_object` (0x505610) clears it where an object's passability
+blocks the tile without an entrance there (the objects are placed before the shares are counted).
+So the shares count **every tile of both levels that is not rock and that no object blocks, water
+included**: the water share is the map's, Navigation is worth it; Pathfinding the rough share of
+those tiles; a NaN only for a map without such a tile. A-11 rested on the misreading; **ADV-Q22**
+(decision 85) withdraws `ADV-QUIRK-14`; T38b corrected ADV-MAP-002's count. §10's worked
+examples "on a map without a coast" hold for a map without water and rough terrain (the experiment
+maps, all grass: E3-6's choices fit both counts).
+
 ### 10.4 The flag-set path (E10)
 
 The schools' value with the flag set comes from `ai_school_value` (0x524D20, not read further): it
@@ -830,7 +843,8 @@ to 0x524690.
   only).
 - The shares' arithmetic is f64 (counts to f64, a division, × A, / 4 or / 2, truncated): through
   `kernel::num` as the original's, or an integer form tested equal; a NaN gives 0.
-- **ADV-Q17** (the user, decision 60): A-11 reproduced in every profile (no flag); the system
+- **ADV-Q17** (the user, decision 60): A-11 reproduced in every profile (no flag; withdrawn at
+  ADV-Q22, decision 85: the flag is not the coast, §10.3's correction); the system
   actor's default (ADR-0017 point 6) chooses with the setup's inputs until E10, since the
   flag-set path needs E10's computer-player state; the adventure part's terrains gain their
   cost by Pathfinding level now (the original's `step_cost_table`), which increment 5's movement

@@ -169,6 +169,15 @@ impl Context {
         self.desperate
     }
 
+    /// The context in the desperate mode (+8): the hero's cast choice sets it when its side would
+    /// retreat (0x43C8FD; E23 T5a, BAT-AI-017), after the spell context took its strengths.
+    pub const fn desperately(self) -> Self {
+        Self {
+            desperate: true,
+            ..self
+        }
+    }
+
     /// The context with its least attack bonus also as its least defense bonus: the Fire Wall's
     /// and the moat's hex scores pass the one for both to the kill value (0x42155B, 0x4215EC; the
     /// walker's, E23 T3b: with quirk BAT-QUIRK-25 the original's slip 19, else the context as it

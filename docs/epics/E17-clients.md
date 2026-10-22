@@ -5,8 +5,12 @@ done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at t
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
 [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
+<<<<<<< HEAD
 are there). Next: M3 T9, M3's closure, split with the user in T9a (every capture afresh), T9b
 (the review) and T9c (the next milestone) (`docs/lanes/client/QUEUE.md`).
+=======
+are there). Next: M3 T9, M3's closure (`docs/lanes/client/QUEUE.md`).
+>>>>>>> origin/master
 
 ## Goal
 

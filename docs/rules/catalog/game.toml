@@ -114,7 +114,7 @@ context  = "game"
 status   = "verified"
 summary  = "The setup carries the scenario's level limit (the map header's byte, AB and SoD; 0 none, as is a limit above the highest level, ADV-QUIRK-12) and its banned skills (SoD's set, the skills of the set bits' codes; each the ruleset's, a set in any order); the game keeps both, static. A hero with a custom experience gets its levels when the game is built, after its custom skills, army, spells and artifacts and its war machines' artifacts: it starts at level 1 and experience 0 and gains the custom experience under the limit (HER-EXP-003; D-21: capped at the limit's threshold, so no hero starts above it), then each pending level is drawn (GAM-HER-002) and given in hero id order: two offers chosen by the original's choice with the setup's army worth (1 000 and 500) and the map's terrain shares (HER-LVL-006, ADV-MAP-002; D-20: not the left offer), one learned, none the primary skill only; never a banned skill (HER-LVL-003); last the spell points full (HER-MAN-001). Building a game emits no events. A hero without a custom experience keeps its default 40-90 at level 1. Every level the battle's experience gives is under the limit too (GAM-BAT-002); in play a level-up is GAM-DEC-002's (E08 T30). The import passes a placed hero's custom experience as it is (MAP_IMPORT_VERSION 8): the five shipped maps that import whole give 9 heroes 41 levels at load. E08 T29: `h3_game::GameState::new`."
 numeric  = "integer"
-quirks   = ["ADV-QUIRK-9", "ADV-QUIRK-12", "ADV-QUIRK-14"]
+quirks   = ["ADV-QUIRK-9", "ADV-QUIRK-12"]
 
   [[rule.source]]
   kind       = "original-data"
@@ -145,6 +145,12 @@ quirks   = ["ADV-QUIRK-9", "ADV-QUIRK-12", "ADV-QUIRK-14"]
   kind       = "observation"
   ref        = "experiments/results/E08-batch-4a.md and its runs 2 to 4 (-run2.md to -run4.md), each with e4_score's report beside it (stamp e9f2ca7f, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-21; the seed bytes read from the game's memory) E4-1 to E4-5 and experiments/results/E08-batch-4b.md with its report (stamp 8d4a4c2d, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-21) E4-6: every hero with a custom experience started with the levels the original's choice gives (D-20, HER-LVL-006); under the limit 5 a custom 10 000 started at 4 600 and level 5 (D-21; VCMI's 10 000 and level 8 refuted)"
   retrieved  = "2026-10-21"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-5c.md, E08-batch-5d.md and their runs 2 (-run2.md), each with e4_score's report beside it (stamps 3c1dc0a9, 1255306f, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-22; the seed bytes read from the game's memory): twelve Logistics specialists with a custom experience started with the levels the original's choice gives (E5-2; run 2's E5-2c with attack +2 from a starting bonus's Centaur's Axe)"
+  retrieved  = "2026-10-22"
   confidence = "high"
 
 [[rule]]

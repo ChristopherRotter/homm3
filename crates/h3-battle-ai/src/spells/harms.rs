@@ -31,7 +31,7 @@ impl View<'_> {
     }
 
     /// Whether the half's side is desperate (+0x28, its battle context's +8).
-    fn desperate(&self) -> bool {
+    pub(crate) fn desperate(&self) -> bool {
         self.ctx.desperate()
     }
 
@@ -454,6 +454,23 @@ impl View<'_> {
             .fold(0, i32::max);
         self.root.searched(map);
         best
+    }
+
+    /// The bolts' evaluator (0x436F60; BAT-AI-017): the spell's damage, its power factor × the
+    /// candidate's power + its value at the mastery, valued on `s` with the side's hero's
+    /// bonuses ([`computer::spell_damage_value`], 0x436E30).
+    // rule: BAT-AI-017
+    pub(crate) fn bolt(&self, s: StackId, c: Candidate) -> i32 {
+        let factor = self.ruleset.spell(c.spell).map_or(0, |sp| sp.power);
+        let damage = u64::from(factor) * u64::from(c.power) + u64::from(self.effect(c));
+        computer::spell_damage_value(
+            self.state,
+            self.ruleset,
+            self.ctx,
+            (c.spell, damage),
+            true,
+            s,
+        )
     }
 
     /// Poison's evaluator (0x439500; BAT-AI-016): 0 when beaten; else the kill value of half the

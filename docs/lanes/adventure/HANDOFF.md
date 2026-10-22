@@ -4,7 +4,7 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 
 ## Current state
 
-- **E08**: increments 1 to 4 **closed** (2026-10-12, -13, -20, -21). **Increment 5: the hero's movement and scouting** (decisions 71–82; flying and water walking in): survey `E08-hero-movement.md` (T34a), design `E08-design.md`, batch E5 first (T34b; ADV-Q21). Round 1 **closed**: T35a (#377, ADRs), T35b (#380: six hero-effect kinds, flags 30–32, pack v46, core hash v47; no reader until T39–T41), T36a, T36b (#383, #387): batch E5's specs, scorer. Round 2: T37a (decision 82: the harness's reads), T37b (recipes, runs), T38. Records: `E08-log.md`.
+- **E08**: increments 1 to 4 **closed** (2026-10-12, -13, -20, -21). **Increment 5: the hero's movement and scouting** (decisions 71–85; flying and water walking in): survey `E08-hero-movement.md` (T34a; §13 batch E5 scored), design `E08-design.md`, batch E5 first (T34b; ADV-Q21). Round 1 **closed** (T35a #377 ADRs, T35b #380 kinds and flags, no reader until T39–T41; T36a, T36b). Round 2: T37a (#389), T37b (#392), T38, T38b (ADV-Q22: the tile bit +0xC 0x40 means "no object blocks it", not the coast; D-24 no flag; ADV-MAP-002 corrected). Round 2 **closed**. Records: `E08-log.md`.
 - **Map reader and import** (`h3-map`): `read`/`parse` into `model::RawMap`; `import` into `h3_game::GameSetup`, `import_map` its static layer (`MAP_IMPORT_VERSION` 8, `docs/formats/h3m.md` "Import"). Every shipped map's static layer imports and validates; of the 160 shipped maps 5 import whole (9 heroes, 41 levels at load), the rest are typed `Unsupported`. `verify --with-original-data` runs `crates/h3-map/examples/original_data.rs` on the shipped maps.
 - **Monsters, grounds, guarded piles** (T20a2a to T21a; ADV-MON-002 to -010, ADV-GRD-001, ADV-PIK-004): kinds `Monster`, `Ground`; `[params.monsters]`; `ObjectSetup.monster`/`.drawn`; `army_left`; `battle_ground`; `guard_of`; `answer.rs` (`Join`, `JoinForGold`, `Pursue`); `split` (flag 24); `Defender::{Monster, Guards}`, `Actor::System`, `end_monster_battle`, `end_unowned_battle`; `MonsterChanged`; `state/piles.rs` (`Guards`, `OfferKind::Fight`).
 - **The store of heroes** (T18b, GAM-HER-001): `GameState` keeps `Arc<HeroDetails>` by `HeroId` (`GameHeroSetup.details` or defaults, validated by `h3-heroes`); `attack_defense`, `join_bonus`; `GameObservation.heroes`. Progression (T26b–T30): `h3_heroes`' `level.rs`, `level_up.rs` (`draw_level_up`), `GainLevel`, `offered`; no level above the experience's; `original_choice` (HER-LVL-006); `state/levels.rs`' `Progression` (GAM-HER-002, flag 27), levels at load (GAM-SET-002), `StaticMap::terrain_shares`; levels in play (`give_levels`, `Decision::LevelUp`, `DecisionView`, `default_answer`; GAM-DEC-002, GAM-BAT-008).
@@ -16,14 +16,14 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 - **Commands** (T8b2): `h3_game::legal_commands` and `legal_moves` (a hero's `Reach`, the user), empty outside the turn.
 - **The env** (T9a, `h3-sim/src/adventure/`): `AdventureEnv` (reset, `to_move`, masks, steps, fork, hash, the view, a day limit), action encoding v4 since T30 (`Phase`; `MapAction`: `EndTurn`, eight hero slots, `Accept`, `Decline`, `First`, `Second`, a tile; in a battle the battle's encoding; `to_move` yields `Seat`s, since T20b3a `Seat::Neutral` for an unowned side, played as `Actor::System` with `neutral_observation`), `random_rollout` (every seat).
 - **Replays and benchmarks** (T9b): `adventure::replay` (format v5), `h3 adventure run/verify/bench`, nine golden replays (re-record with the options in `crates/h3-cli/tests/adventure_replays.rs`), the maps `fixtures/maps/e08-{duel-36,xl-144}.h3m` (`h3-map`'s `tests/fixtures.rs`; since T31 heroes near a level, one levelled at load), three gated workloads in `benches/adventure/` (play, reach, fork with a battle open).
-- **Experiments**: `h3-experiment` (battle's) has the adventure shape (T22a1; T32a, T36a, T36b: `level_limit`, `[[map.object]]`, `banned_skills`); batches 1, 2, E3, E4 scored (T33); E5a–E5e specified; `crates/h3-map/examples/e4_score.rs` scores E4 and E5-2, -3, -10. **Agents run batches** on the client lane's harness (decision 21); T32b1, T32b2 and T37a changed it (`cross-lane`; the runbook).
+- **Experiments**: `h3-experiment` (battle's) has the adventure shape (T22a1, T32a, T36a, T36b); batches 1, 2, E3, E4, E5 scored (T33, T38); `crates/h3-map/examples/e4_score.rs` scores E4 and E5-2, -3, -10. **Agents run batches** on the client lane's harness (decision 21; changed `cross-lane` by T32b1 to T37b; the runbook).
 - **Adventure ruleset part** (v9 since T29: costs by Pathfinding level): terrains, roads, rivers, movement and setup parameters, object types, starting resources by difficulty, battle terrains, monsters' parameters (with the price resource).
 - **Properties** on generated playable maps (`h3-map`'s `play.rs`, `view.rs`): `Step::Fight` runs (hero casts via `h3-battle`, a dev-dependency), monsters, grounds, the system actor, guarded piles, level-ups (T30), `check_progression` after every command (T31); `the_plans_play_battles_to_a_victory`: 192 fixed cases.
-- **Next:** #389 (T37a, `cross-lane`) to merge; then T37b (the five recipes and runs, `QUEUE.md`), then T38.
+- **Next:** #393 (T38, `cross-lane`), then T38b's pull request to merge; round 3 (T39 + T40), its cut at its start.
 - **ADRs accepted**: ADR-0015 to -0017 (2026-10-10), amended for increments 2 (#115), 3 (T18a, #185, with ADR-0013), 4 (T26a, #325) and 5 (T35a, #377: ADR-0013, -0016, -0017).
 - **R01** (the content split): the core `h3-content` and `h3-pack` (`core.toml`) are shared; the writer is `h3_map::writer`.
 - **Ownership:** the four crates and `h3-heroes` (since E04c), `src/adventure/` in `h3-sim` and `h3-cli` (their `Cargo.toml`, `lib.rs` and `h3-cli`'s `main.rs` are battle's: `cross-lane`), `crates/h3-cli/tests/adventure_replays.rs`, `fixtures/replays/adventure/`, `fixtures/maps/`, `benches/adventure/`, each pack's `adventure.toml`, `docs/formats/h3m.md`, `docs/rules/catalog/{adventure,game,town}.toml`.
-- **Ids:** questions `ADV-Q<n>`, quirks `ADV-QUIRK-<n>` (1 the fog fringe; 2, 3 the diagonal exception; 4 leading neutral stacks; 5, 6 the tile's obstacles and split; 7 A-6; 8 the map's formation; flags 19–24; 16–18 increment 5's, flags 30–32), stubs `ADV-STUB-<n>`, rules `ADV-*` and `GAM-*`. Versions owned: game state hash, adventure state and ruleset-part hashes, map import, adventure replay format.
+- **Ids:** questions `ADV-Q<n>`, quirks `ADV-QUIRK-<n>` (1 the fog fringe; 2, 3 the diagonal exception; 4 leading neutral stacks; 5, 6 the tile's obstacles and split; 7 A-6; 8 the map's formation; flags 19–24; 15, 17, 18 increment 5's, flags 31, 32; 14 and 16 withdrawn at ADV-Q22, flag 30 retired in T41), stubs `ADV-STUB-<n>`, rules `ADV-*` and `GAM-*`. Versions owned: game state hash, adventure state and ruleset-part hashes, map import, adventure replay format.
 - **Working agreement:** a couple of tasks per checkpoint; the user confirms seams and ADRs; tokens first; fuzzing stable-only.
 
 ## Standing traps
@@ -31,7 +31,7 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 - Cheap forks are a hard requirement (decision 6): no per-fork deep copy of map-sized data; pointer identity never in logic or the hash.
 - RNG seeds and stream positions are server-only state (decision 9): never in an observation, never seeded from client data.
 - Template masks: bit `j` of byte `i` is the tile `7 − j` columns left of and `5 − i` rows above the anchor (`h3m.md` had it mirrored until T5a); check a geometric reading of the format against the shipped maps (towns' gates, heroes' tiles) before building on it.
-- Stage archives, not files (~13 k tokens per 50): the user's `original-data/maps.tar` (the shipped maps; untar into `original-data/install`) and `extracted.tar` (the text tables); the sprite archives for `.msk` sizes and the harness.
+- Stage archives, not files: the user's `original-data/maps.tar` (the shipped maps; untar into `original-data/install`) and `extracted.tar` (the text tables); the sprite archives for `.msk` sizes. `sandbox-setup.sh --lane adventure` copies only the engine's files (copy the harness's DLLs, sprite LODs and sound archives to `original-data/install`) and skips the client gate's SDL packages.
 - A shallow clone: `git fetch --depth=60 origin master` before `sandbox-setup.sh`, or its baseline runs in full.
 - A `CARGO_TARGET_DIR` outside `target/` is not gitignored: keep extra target directories under `target/` (`target/cov`), or `git add -A` commits gigabytes.
 - An experiment's map and template must come from the same compile (batch 1a's map predated the review's Q4c, T10c): after any change to a spec, compile again and copy the map to the user's folder in the same step. Since T16b a mismatch shows: the map's description starts with `Stamp <hex>.`, the template's top with its own (`docs/experiments/README.md`).
@@ -39,14 +39,14 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 
 ## Recent sessions
 
+### 2026-10-22 — increment 5, eighth session: T38, T38b
+
+Baseline 38f227f. Decisions 84, 85: E5-4a explained by a re-read; ADV-Q22; T38b three replays' hashes.
+
+### 2026-10-22 — increment 5, seventh session: T37b
+
+Baseline f494cb1. Decision 83; every batch clean; #392.
+
 ### 2026-10-22 — increment 5, sixth session: T37a
 
-Baseline 1b280e0 (full verify). Decision 82 (T37 in two). The harness's reads; the check's Fog and Equip passed twice under Wine; #389 open.
-
-### 2026-10-22 — increment 5, fifth session: T36b
-
-Baseline c84370f (full verify). Decision 81. The evaluation at load takes Logistics: the level-6 heroes know seven more skills. #387.
-
-### 2026-10-22 — increment 5, fourth session: T36a
-
-Baseline eb1f35a (full verify). Decision 80 (T36 by rows); E5-6b the agent's call. #383.
+Baseline 1b280e0. Decision 82; #389.

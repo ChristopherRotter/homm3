@@ -1,5 +1,7 @@
 # E08 batch E5b — results
 
+> Played by the capture harness on 2026-10-22 (`clients/capture/h3adv.py batch clients/capture/batches/E08-batch-5b.toml`): the same Complete 4.0 `Heroes3.exe` under Wine, without the HD mod; hot seat, difficulty Easy, the starting bonus random, Show Route on; read from the game's memory.
+
 Map file: `E08-batch-5b.h3m`. Fill in the blanks below and keep this file; an agent records the results (`docs/experiments/README.md`).
 
 **Stamp `7f27dfab`.** The map's description in the scenario list starts with "Stamp 7f27dfab.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
@@ -26,16 +28,16 @@ Map file: `E08-batch-5b.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- (13, 24) explored before the clicks (yes/no): 
-- (18, 24) explored before the clicks (yes/no): 
-- E5-9w's mark at (18, 26): 
-- E5-9w's marks: 
-- did E5-9w move (yes/no): 
-- E5-9's mark at (18, 24): 
-- E5-9's marks: 
-- did E5-9 arrive (yes/no): 
-- E5-9's points after: 
-- anything odd: 
+- (13, 24) explored before the clicks (yes/no): no
+- (18, 24) explored before the clicks (yes/no): yes
+- E5-9w's mark at (18, 26): none
+- E5-9w's marks: 0
+- did E5-9w move (yes/no): no
+- E5-9's mark at (18, 24): green
+- E5-9's marks: 13
+- did E5-9 arrive (yes/no): yes
+- E5-9's points after: 260
+- anything odd: E5-9's worn artifacts (the spec: Angel Wings): Angel Wings (shoulders); E5-9's path (its marks' tiles): 6,24 7,24 8,24 9,24 10,24 11,24 12,24 13,24 14,24 15,24 16,24 17,24 18,24
 
 ## E5-7a — Angel Wings: a tree beyond a tree line, then the free tile before it (D-25, ADV-MOV-009)
 
@@ -47,14 +49,14 @@ Map file: `E08-batch-5b.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- points before the walks: 
+- points before the walks: 1560
 
 | walk | mark | marks | arrived | hero's tile | points after |
 |---|---|---|---|---|---|
-| 1 the tree on (7, 4) |   |   |   |   |   |
-| 2 the free tile (7, 5) |   |   |   |   |   |
+| 1 the tree on (7, 4) | none | 0 | no | 7,8,0 | 1560 |
+| 2 the free tile (7, 5) | green | 3 | yes | 7,5,0 | 1260 |
 
-- anything odd: 
+- anything odd: worn at the start but the war machines (the spec: Angel Wings): Angel Wings (shoulders); walk 2's path (its marks' tiles): 7,5 7,6 7,7
 
 ## E5-7b — Boots of Levitation: a water tile, then the shore beyond the lake (D-25, ADV-MOV-010)
 
@@ -66,14 +68,14 @@ Map file: `E08-batch-5b.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- points before the walks: 
+- points before the walks: 1560
 
 | walk | mark | marks | arrived | hero's tile | points after |
 |---|---|---|---|---|---|
-| 1 the water tile (25, 5) |   |   |   |   |   |
-| 2 the shore (25, 3) |   |   |   |   |   |
+| 1 the water tile (25, 5) | none | 0 | no | 25,7,0 | 1560 |
+| 2 the shore (25, 3) | green | 4 | yes | 25,3,0 | 1160 |
 
-- anything odd: 
+- anything odd: worn at the start but the war machines (the spec: Boots of Levitation): Boots of Levitation (feet); walk 2's path (its marks' tiles): 25,3 25,4 25,5 25,6
 
 ## E5-11 — Angel Wings over a light blue Border Gate whose key Red lacks (E5-11, ADV-MOV-009, ADV-VIS-005)
 
@@ -84,15 +86,15 @@ Map file: `E08-batch-5b.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- points before the walk: 
-- the mark at (31, 12): 
-- marks: 
-- the path's tile on row 14: 
-- arrived (yes/no): 
-- hero's tile after: 
-- points after: 
-- a message (its text): 
-- anything odd: 
+- points before the walk: 1560
+- the mark at (31, 12): green
+- marks: 4
+- the path's tile on row 14: 31,14
+- arrived (yes/no): yes
+- hero's tile after: 31,12,0
+- points after: 1160
+- a message (its text): none
+- anything odd: worn at the start but the war machines (the spec: Angel Wings): Angel Wings (shoulders); the path (its marks' tiles): 31,12 31,13 31,14 31,15
 
 ## E5-b — Blue's hero (never moves)
 
@@ -102,4 +104,4 @@ Map file: `E08-batch-5b.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- anything odd: 
+- anything odd: E5-b's worn artifacts (the starting bonus): Pendant of Free Will (neck)
