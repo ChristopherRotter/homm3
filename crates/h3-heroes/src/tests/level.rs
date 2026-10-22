@@ -542,7 +542,7 @@ fn wisdom_and_a_school_are_offered_after_the_class_intervals() {
 fn batch_e3c_e3_6_levels_a_death_knight_from_its_seed() {
     // Survey §3.3: a Death Knight with 5 000 experience, 2/3/1/1 and eight basic skills, S = 75,
     // levels 2 to 5 chosen left, right, right, right; §10.6: the original's choice at load takes
-    // them on the batch's map, which has no coast (Pathfinding and Navigation worth 0; values 0
+    // them on the batch's map, all grass without water (Pathfinding and Navigation worth 0; values 0
     // against 0, 35 against 100, 0 against 50, 1 against 100).
     let r = base();
     let skills = [

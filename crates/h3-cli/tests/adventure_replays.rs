@@ -59,7 +59,10 @@
 //! options, their commands unchanged; a change of the duel changes every command: E08 T20b3b2
 //! (monsters, guarded piles, grounds), E04c T10b (the original's obstacles, `cross-lane`) and E08
 //! T31 (the heroes' experience) re-recorded the first four with their options and replaced the
-//! searched ones, which no longer met what they were chosen for.
+//! searched ones, which no longer met what they were chosen for. E08 T38b (ADV-MAP-002's count:
+//! every tile no object blocks, not the coast) moved red's levels at load in `duel-s1-d28`,
+//! `duel-s3-easy-d7` and `duel-s236-d28`: re-recorded with their options, their commands
+//! unchanged, only their checkpoints and final hashes moved.
 
 use std::path::PathBuf;
 

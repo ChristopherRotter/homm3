@@ -784,7 +784,7 @@ blocks the tile without an entrance there (the objects are placed before the sha
 So the shares count **every tile of both levels that is not rock and that no object blocks, water
 included**: the water share is the map's, Navigation is worth it; Pathfinding the rough share of
 those tiles; a NaN only for a map without such a tile. A-11 rested on the misreading; **ADV-Q22**
-(decision 85) withdraws `ADV-QUIRK-14` and corrects ADV-MAP-002's count (T38b). §10's worked
+(decision 85) withdraws `ADV-QUIRK-14`; T38b corrected ADV-MAP-002's count. §10's worked
 examples "on a map without a coast" hold for a map without water and rough terrain (the experiment
 maps, all grass: E3-6's choices fit both counts).
 

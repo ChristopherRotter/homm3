@@ -21,7 +21,7 @@ fn level_up(primary: PrimarySkill, offers: Offers) -> LevelUp {
     }
 }
 
-/// The shares of a map with 200 coast tiles, 20 of them water, 50, 30 and 10 rough by
+/// The shares of a map with 200 tiles counted (ADV-MAP-002), 20 of them water, 50, 30 and 10 rough by
 /// Pathfinding level.
 const SHARES: TerrainShares = TerrainShares {
     tiles: 200,
@@ -40,7 +40,7 @@ fn values(r: &Ruleset, d: &HeroDetails, primary: PrimarySkill) -> Vec<u64> {
 }
 
 /// The choice for `d` between `first` and `second` at a level raising Attack, on a map without a
-/// coast.
+/// tile counted (both shares 0 / 0).
 fn choose(r: &Ruleset, d: &HeroDetails, first: &str, second: &str) -> Choice {
     let up = level_up(PrimarySkill::Attack, Offers::Two(s(r, first), s(r, second)));
     original_choice(d, r, &up, ArmyWorth::SETUP, TerrainShares::default())

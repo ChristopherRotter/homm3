@@ -4223,3 +4223,23 @@ ADV-MAP-002 corrected now as **T38b** (`ADV-QUIRK-14` withdrawn).
   batch E5's observations when T39 to T41 write them.
 - **For T41's shared part:** `h3-content`'s `FLYING_INLAND_PRICE` (flag 30) and its packs'
   profiles, ADR-0016 point 4 ("the fly price from every inland tile"); the queue's inbox.
+
+### Increment 5, round 2: T38b, ADV-MAP-002's count corrected; round 2 closed (2026-10-22, `adventure/e08-t38b`)
+
+Decision 85 (ADV-Q22 point 2), right after T38 in the same session, on T38's branch (#393 open).
+
+- **The rule:** `StaticMap::terrain_shares` (ADV-MAP-002) counts, after the objects are placed,
+  every tile of every level that is not impassable and that no object blocks (a tile an object
+  is visited from counts, as the original's entrance keeps +0xC bit 0x40), water included; the
+  coast flag plays no part. `ADV-QUIRK-14` withdrawn (its ledger entry a stub, the id not
+  reused; no longer in ADV-MAP-002's, HER-LVL-006's and GAM-SET-002's `quirks`); the test
+  `the_terrain_shares_count_the_tiles_no_object_blocks` replaces the coast one; `h3-heroes`'
+  `TerrainShares` docs and two test comments say so.
+- **What moved:** the duel's red underground hero's levels at load in three of the nine golden
+  replays (`duel-s1-d28`, `duel-s3-easy-d7`, `duel-s236-d28`; the duel has water and rough
+  terrain): re-recorded with their options, the commands of all nine unchanged, only those
+  three's checkpoints and final hashes moved. `e4_score`'s reports re-run for E4a and E5c from
+  freshly compiled maps: the same predictions (the experiment maps with levels at load are all
+  grass: both counts give 0 shares).
+- **Round 2 closed** (T37a, T37b, T38, T38b). Round 3 queued: T39 + T40 (`E08-design.md` §12),
+  the cut at its start.

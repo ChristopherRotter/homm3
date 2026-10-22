@@ -518,26 +518,26 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0xd56283dfdd792bfb",
-    "0x3601dfaadcae3082",
-    "0xe217111d6efc4ba1",
-    "0x31021da27be08f77",
-    "0xf81e7632c2592018",
-    "0x53d047984f7aa715",
-    "0xccaf74be8b9f55a3",
-    "0x78dd595ef7bc9f1e",
-    "0xdae5fab869e91bff",
-    "0xeb09f941f52c6157",
-    "0xcc68792e8b09329f",
-    "0x2a9c8638d6ba8ac2",
-    "0x8451c1942666e2f3",
-    "0x7b59fb98eb52aab0",
-    "0x235389e12032eeb7",
-    "0x58bc7a060f02efb0",
-    "0xa792b582b5cf31ec",
-    "0x12313f9dfd4f3588",
-    "0x21255e5489f8081e",
-    "0x654badbd7cfcb7d7",
+    "0x7f136977891d0668",
+    "0xa9e0af8797b473e3",
+    "0x629889058d7e267b",
+    "0xec2f40cc93d8576b",
+    "0xb5a69c999105ea6a",
+    "0x99c5275207332b44",
+    "0xd0544f46179dd537",
+    "0x6fa2881faa99ccda",
+    "0x7bf138c6f69972ff",
+    "0x087b100f81d1a467",
+    "0x5e1b8b581e7ab5df",
+    "0x8531acfd56a29e18",
+    "0x5bf39eddc097652b",
+    "0xd7cf413163adfa02",
+    "0x56a3dc3b4988b2ef",
+    "0xb437f94ff8ae581c",
+    "0x231dc71a5540d340",
+    "0x93ed27b5aa18a824",
+    "0xb0cec572c865cce6",
+    "0x6d0bd5ffb9db8259",
 ]
 
 [replay]
@@ -577,4 +577,4 @@ import_version = 8
 
 [result]
 day = 29
-final_hash = "0xe33af33ba4b0ad2a"
+final_hash = "0x24f2b606bdc91c06"

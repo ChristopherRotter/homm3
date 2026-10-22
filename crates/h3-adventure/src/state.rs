@@ -34,7 +34,7 @@ use crate::ruleset::{
 };
 use crate::setup::{
     AdventureSetup, ArmyError, Guards, HeroSetup, MapSetup, MonsterSetup, ObjectSetup, Pos,
-    SetupError, StandError, TileMask, TileSetup,
+    SetupError, StandError, TileMask,
 };
 
 /// A tile of the static map.
@@ -184,8 +184,9 @@ pub struct StaticMap {
     near_monsters: Vec<u64>,
     /// Whether any object is a monster ([`Self::any_monster`]). Follows from the objects too.
     any_monster: bool,
-    /// The map's terrain shares (ADV-MAP-002, E08 T29), counted once from the tiles and the
-    /// part's costs: they follow from the tiles, so the hash leaves them out.
+    /// The map's terrain shares (ADV-MAP-002, E08 T29, T38b), counted once from the tiles, the
+    /// objects placed on them and the part's costs: they follow from those, so the hash leaves
+    /// them out.
     shares: TerrainShares,
     hash: u64,
 }
@@ -251,7 +252,7 @@ impl StaticMap {
             coast,
             near_monsters: vec![0; setup.tiles.len().div_ceil(64)],
             any_monster: false,
-            shares: terrain_shares(part, &setup.tiles),
+            shares: TerrainShares::default(),
             hash: 0,
         };
         if u16::try_from(setup.objects.len().div_ceil(Occupancy::ROW)).is_err() {
@@ -316,6 +317,8 @@ impl StaticMap {
         }
         map.resolve(core, part, &setup.objects, draws);
         map.mark_near_monsters();
+        // After the objects, as the original counts after placing its map's objects.
+        map.shares = terrain_shares(part, &map.tiles);
         map.hash = hash_of(&map);
         Ok(map)
     }
@@ -1849,18 +1852,21 @@ pub(crate) fn enterable_terrain(part: &AdventureRuleset, tile: &StaticTile) -> b
 }
 
 /// The map's terrain shares (ADV-MAP-002, E08 T29; the original's `ai_map_terrain_shares`
-/// 0x52B9C0, survey `E08-progression.md` §10.3): over the tiles of every level that carry the map
-/// file's coast flag and are not impassable (only those: `ADV-QUIRK-14`), how many there are, the
-/// water tiles among them, and per Pathfinding level 0 to 2 the tiles whose straight step costs
-/// more than a step on native terrain ([`AdventureRuleset::step_cost`] without a road; the
-/// original's 100). Known terrains only: the static map checks them first.
-fn terrain_shares(part: &AdventureRuleset, tiles: &[TileSetup]) -> TerrainShares {
+/// 0x52B9C0, survey `E08-progression.md` §10.3): over the tiles of every level that are not
+/// impassable and that no object blocks (a tile an object is visited from counts: the original's
+/// map item bit +0xC 0x40, set on every tile but rock by `map_tiles_load` 0x4FE220 and cleared by
+/// `tile_refresh_object` 0x505610 where an object blocks it; not the coast, as T29 had it: E08
+/// T38b, decision 85), water included, how many there are, the water tiles among them, and per
+/// Pathfinding level 0 to 2 the tiles whose straight step costs more than a step on native
+/// terrain ([`AdventureRuleset::step_cost`] without a road; the original's 100). Known terrains
+/// only: the static map checks them first.
+fn terrain_shares(part: &AdventureRuleset, tiles: &[StaticTile]) -> TerrainShares {
     // rule: ADV-MAP-002
     let native = part.params().native_cost();
     let mut shares = TerrainShares::default();
     let counted = tiles
         .iter()
-        .filter(|tile| tile.coast)
+        .filter(|tile| !tile.blocked || tile.visitable)
         .filter_map(|tile| part.passage(tile.terrain).map(|p| (tile.terrain, p)))
         .filter(|&(_, passage)| passage != Passage::Impassable);
     for (terrain, passage) in counted {
