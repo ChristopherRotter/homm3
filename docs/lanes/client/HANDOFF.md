@@ -4,7 +4,7 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E17 M0–M2 done; M3 T1a–T7a-2b, T7b-1 to T7b-2b-3, T7c-1, T7c-2 (open PR), T8 done; H1, H2 done (2026-10-19: the adventure lane's harness); next: M3 T7c-3, T7d** (`QUEUE.md`; T9 closes M3). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
+- **E17 M0–M2 done; M3 T1a–T7a-2b, T7b-1 to T7b-2b-3, T7c-1, T7c-2 (#384, open), T8 done; H1, H2 done (2026-10-19: the adventure lane's harness); next: M3 T7c-3, T7d** (`QUEUE.md`; T9 closes M3). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
 - **Captures** (the user, 2026-10-20): `h3drive.py drawn` first (no Wine); capture what it lists or the task changes, all at a milestone's closure or a harness change (runbook); later tasks' detail in `NOTES.md`.
 - **The user's requirements** (epic, "Decisions"): a string catalogue (JSON packs, no committed translation, CLT-Q7); graphics options (`faithful` default); exhaustive diffs; drawing bugs fixed, the original's only for comparisons (`Bugs`).
 - The lane owns `clients/`, `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
@@ -58,7 +58,7 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
-- **2026-10-22, E17 M3 T7c-2 (spell objects, Armageddon; PR open).** Not split (the user);
+- **2026-10-22, E17 M3 T7c-2 (spell objects, Armageddon; #384 open).** Not split (the user);
   `obstacles` recorded (seed searched for the pits), all frames as the original's; CLT-Q16.
 - **2026-10-22, E17 M3 T7c-1 (area and mass spells; #378, merged).** T7c split in three; `mass`,
   `dragon` recorded, frames as the original's; checkpoint (the user).
