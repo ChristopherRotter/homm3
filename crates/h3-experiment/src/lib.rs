@@ -203,7 +203,8 @@ pub struct MapSpec {
     /// The underground level (`[map.underground]`, E08 T22a1); none: the map has one level.
     #[serde(default)]
     pub underground: Option<UndergroundSpec>,
-    /// Visitable objects without a body (`[[map.object]]`, E08 T32a): the Cartographers.
+    /// Objects without a body (`[[map.object]]`, E08 T32a): the Cartographers; since E08 T36a
+    /// the trees and the Border Gates.
     #[serde(default)]
     pub object: Vec<ObjectSpec>,
     /// The scenario's level limit (E08 T32a; 0, the default: none).
@@ -236,18 +237,20 @@ pub struct GroundSpec {
     pub at: [u8; 2],
 }
 
-/// A visitable object without a body (E08 T32a): one of its pictures, placed with its bottom-right
+/// An object without a body (E08 T32a, T36a): one of its pictures, placed with its bottom-right
 /// tile on `at`, on the surface. No hero, monster, pile or town may stand on a tile it blocks or
 /// is visited from: a hero comes to it in play.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ObjectSpec {
     /// The picture's name in `Objects.txt` (`AVXmaps0` or `AVXmaps0.def`, any case), which names
-    /// the class ([`h3_map::writer::PLAIN_OBJECTS`]: the Cartographers, water `AVXmapw0`, land `AVXmaps0`,
-    /// subterranean `AVXmapu0`).
+    /// the class ([`h3_map::writer::PLAIN_OBJECTS`]: the Cartographers, water `AVXmapw0`, land
+    /// `AVXmaps0`, subterranean `AVXmapu0`; the trees, `AVLtr3d0` one tile among them; the Border
+    /// Gates `AVXbgt00` light blue … `AVXbgt70` black).
     pub picture: String,
     /// The object's position, `[column, row]`: the picture's bottom-right tile (the land
-    /// Cartographer covers it and the tile west of it, its entrance).
+    /// Cartographer covers it and the tile west of it, its entrance; a Border Gate it and the two
+    /// west of it, the middle one its entrance).
     pub at: [u8; 2],
 }
 
@@ -1459,14 +1462,18 @@ mod tests {
                 )
                 .expect("template"),
             ],
-            // The land Cartographer (E08 T32a), the game's line.
-            plains: vec![
-                ObjectTemplate::from_objects_txt(
-                    "AVXmaps0.def 001111111111111111111111111111111111111111111111 \
-                     010000000000000000000000000000000000000000000000 111111111 010111111 13 1 0 0",
-                )
-                .expect("template"),
-            ],
+            // The land Cartographer (E08 T32a), a tree and the light blue Border Gate (E08 T36a),
+            // the game's lines.
+            plains: [
+                "AVXmaps0.def 001111111111111111111111111111111111111111111111 \
+                 010000000000000000000000000000000000000000000000 111111111 010111111 13 1 0 0",
+                "AVLtr3d0.def 011111111111111111111111111111111111111111111111 \
+                 000000000000000000000000000000000000000000000000 111111111 000010101 155 0 0 0",
+                "avxbgt00.def 000111111111111111111111111111111111111111111111 \
+                 010000000000000000000000000000000000000000000000 111111111 011111111 212 0 0 0",
+            ]
+            .map(|line| ObjectTemplate::from_objects_txt(line).expect("template"))
+            .to_vec(),
             // A Stronghold (E04c T5b), the game's line; no Castle template, to see the error.
             towns: vec![(
                 6,
@@ -1780,10 +1787,34 @@ mod tests {
             ),
             // R1's hero stands on (3, 3), the Cartographer's entrance.
             ("AVXmaps0", "[4, 3]", "two objects on the tile (3, 3)"),
+            // ... and on a tree, or on a Border Gate's blocked side.
+            ("AVLtr3d0", "[3, 3]", "two objects on the tile (3, 3)"),
+            ("AVXbgt00", "[5, 3]", "two objects on the tile (3, 3)"),
         ] {
             let object = format!("[[map.object]]\npicture = \"{picture}\"\nat = {at}");
             assert_eq!(with(&object).unwrap_err(), error);
         }
+        // E08 T36a: a tree blocks its tile; a Border Gate its tile and the two west of it, the
+        // middle one its entrance, the key's colour its subclass.
+        let (map, _) = with(
+            "[[map.object]]\npicture = \"AVLtr3d0\"\nat = [20, 20]\n\
+             [[map.object]]\npicture = \"avxBGT00.def\"\nat = [24, 22]",
+        )
+        .expect("build");
+        let [MapObject::Plain(tree), MapObject::Plain(gate), ..] = &map.objects[..] else {
+            panic!("not two plain objects: {:?}", map.objects)
+        };
+        assert_eq!((tree.template.class, tree.tile), (155, (20, 20)));
+        assert_eq!(covered(&tree.template, tree.tile), [(20, 20)]);
+        assert_eq!(
+            (gate.template.class, gate.template.subclass, gate.tile),
+            (212, 0, (24, 22))
+        );
+        assert_eq!(
+            covered(&gate.template, gate.tile),
+            [(22, 22), (23, 22), (24, 22)]
+        );
+        assert_eq!(gate.template.visitable[5], 0x40);
     }
 
     #[test]

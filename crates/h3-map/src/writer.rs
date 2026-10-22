@@ -76,10 +76,13 @@ const RESOURCE_COUNT: u32 = 7;
 /// (225), Fiery Fields (226), Holy Ground (227), Lucid Pools (228), Magic Clouds (229),
 /// Rocklands (231); `Objects.txt` lists their pictures.
 pub const GROUND_OBJECTS: [u32; 12] = [21, 46, 222, 223, 224, 225, 226, 227, 228, 229, 230, 231];
-/// Object classes of the visitable objects without a body the writer places (E08 T32a: batch
-/// E4's attack on a hero standing on one): the Cartographers (13; subclass 0 water, 1 land, 2
-/// subterranean), entered and not visited from above (`packs/base/adventure.toml`).
-pub const PLAIN_OBJECTS: [u32; 1] = [13];
+/// Object classes of the objects without a body the writer places, their template alone: the
+/// Cartographers (13; subclass 0 water, 1 land, 2 subterranean), entered and not visited from
+/// above (`packs/base/adventure.toml`; E08 T32a: batch E4's attack on a hero standing on one);
+/// since E08 T36a the trees, obstacles that only block (Oak Trees 135, Pine Trees 137, Trees
+/// 155), and the Border Gates (212; subclass the key's colour, 0 light blue … 7 black), visited
+/// from the tile before (batch E5's flights over a tree line and a gate).
+pub const PLAIN_OBJECTS: [u32; 5] = [13, 135, 137, 155, 212];
 /// Object class of a town of a fixed faction (subclass = faction, `TOWNTYPE.TXT` order: Castle 0
 /// … Conflux 8; E04c T5b).
 pub const TOWN_OBJECT: u32 = 98;
@@ -387,7 +390,7 @@ pub struct Ground {
     pub template: ObjectTemplate,
 }
 
-/// A visitable object without a body placed on the map (E08 T32a): its template alone.
+/// An object without a body placed on the map (E08 T32a, T36a): its template alone.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Plain {
     /// The object's position: the bottom-right tile of its picture (its masks say which tiles it
@@ -446,7 +449,7 @@ pub enum MapObject {
     Pile(Pile),
     /// A special ground.
     Ground(Ground),
-    /// A visitable object without a body (E08 T32a).
+    /// An object without a body (E08 T32a): a Cartographer, a tree, a Border Gate.
     Plain(Plain),
     /// A town.
     Town(Town),
@@ -1230,6 +1233,20 @@ mod tests {
         // the difficulty (normal) and the level limit.
         let at = 10 + 4 + map.name.len() + 4 + map.description.len();
         assert_eq!(bytes[at..at + 2], [1, 7]);
+        // E08 T36a: a tree and a Border Gate, the game's lines, without a body as well.
+        for line in [
+            "AVLtr3d0.def 011111111111111111111111111111111111111111111111 \
+             000000000000000000000000000000000000000000000000 111111111 000010101 155 0 0 0",
+            "avxbgt00.def 000111111111111111111111111111111111111111111111 \
+             010000000000000000000000000000000000000000000000 111111111 011111111 212 0 0 0",
+        ] {
+            map.objects = vec![MapObject::Plain(Plain {
+                tile: (5, 5),
+                template: ObjectTemplate::from_objects_txt(line).unwrap(),
+            })];
+            let bytes = write(&map).unwrap();
+            assert_eq!(&bytes[bytes.len() - tail.len()..], &tail[..]);
+        }
         map.objects = vec![MapObject::Plain(Plain {
             tile: (5, 5),
             template: ObjectTemplate {
