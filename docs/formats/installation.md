@@ -5023,3 +5023,100 @@ beaten" wait for T4b2 (BAT-STUB-9): while the battle runs, every side has a livi
 war machine, so with nothing planned the flag is never set. **Slips:** slip 8 (survey §4) is built
 under BAT-QUIRK-25. **Draws:** the scan's (0x420D98); the context's predictions (§7.42), not taken
 until T4b2.
+
+### 7.52 Code reading: the predictions re-read for the port (E23 T4b2, 2026-10-21)
+
+Read again for E23 T4b2 (the user: whole): 0x422A40, the side's run 0x422880, 0x4430D0, 0x443080,
+the melee prediction 0x4227A0, the predicted strike 0x4224E0 with Fire Shield's estimate 0x422440,
+the context 0x4369C0's "enemy beaten", and the prediction flag's readers in the walker's and the
+shooter's turns (0x421F80, 0x421680, 0x41F060 and their helpers). §7.42 stands; these are the
+details the port needs. Insight only, nothing copied (Q29).
+
+**0x422A40.** The order 0x41F140 with a list (its begin and end at +4 and +8), 0x4430D0 with 0 for
+each listed stack, 0x422880 from index 0 for the side; with the flag 0x422880 again for the other
+side from where the first ended. The order's alternation starts with the activation's side
+(+0x132B8): the deciding stack's.
+
+**0x422880.** It builds a battle context for the side (0x422893) and passes it to nothing. Per
+index from the start: passed over when +0x290, +0x2B0 or +0x2C0 is set (any duration), dead (bit
+21), creature 147 or 148, berserk (+0x284), creature 145, or 0x443080 with flag 1 gives 0. The
+controller (1 − +0xF4 while +0x288 is set, else +0xF4) not the side returns the index. A stack
+that can shoot now (0x4428F0 with 0): 0x41F060(stack, 1, side), and only action 7 counts; any
+other: 0x421F80(stack, 0, 1, side), and only action 6 counts. The action's hex +0x44 within 0 to
+186 and its living stack (0x4E7170): a shooter adds 0x435980(shooter, its hit points left, the
+stack, shot 1, run-up 0) to that stack's planned damage (0x4430D0: the sum, at most its hit points
+`+0xC0 × +0x4C − +0x58`, 1 for a clone, signed); a walker hands it to 0x4227A0(S, the stack, side)
+with S's hex the plan's (+0x40).
+
+**The prediction flag in the turns.** 0x421F80's third argument goes to its context's +9 after
+0x435EC0 (the context's other fields do not depend on it); 0x41F060's second to +9 (0x41F096),
+and it skips the wall shot (0x41F0B1). With +9 set: the value 0x435B90 reads each stack's hit
+points less its planned damage and is 0 when either has none left (0x435BAF); the shooter's
+target 0x41EB80 passes over a stack without hit points left (0x41EC34); the threat records
+0x422B20 pass over a record (0x422BC1) and an enemy (0x422CDE) without any, for a shooter's
+records too, so a dead enemy neither; 0x421680 passes over an enemy without any (0x421834), asks
+no cast (0x421CCB), gives its walks no careful flag (0x421D15, 0x421F48) and of its fallbacks
+keeps only the attack after all (0x421E8D, 0x421EC8): with a best the move and attack within one
+turn outside the tactics phase (0x421F08), else false. The plan's counts (0x436101, 0x436114), the
+blocked shooter (0x43626E: none without hit points left), the multi-headed and breath values'
+damage (0x4366F7, 0x4367F0: at most the struck stack's hit points left), the hex scores' floor
+(0x420284, 0x41FBA6), the multi-headed danger's struck stacks (0x41FE2E) and the last
+retaliation's three readings (0x41F3EF, 0x41F400, 0x41F487) read the hit points left. The
+pathfinder 0x4B3400 reads them with flag 0 (the moat's test), so the maps do not change.
+
+**0x4227A0.** T's hit points with flag 0 are read before S's strike (0x4227CA) for the second
+strike's test; T's retaliation is 0x4224E0(T, T's position, S, S's hex, 1 − side), the game's
+difficulty and `human` of the side passed.
+
+**0x4224E0.** Multi-headed (`0x80000`): the pattern 0x448AB0 from S's hex at T; the directions 7
+down to 0 in it; S's neighbour there (0x523DF0) within 0 to 186 and its living stack; once per
+record bit (+0xF8, set before the hit-point test) and not of the side passed (+0xF4); while S has
+hit points left (flag 1): 0x435980(S, them, the stack, no shot, run-up 0), Fire Shield 0x422440
+of that damage on the stack's hit points left onto S when above 0, then the damage onto the
+stack. Any other: the run-up is the cost of S's hex in the cells of the pathfinder 0x699284 (+0x24,
+30 bytes per hex, the word +0x18); while S has hit points left, 0x435980(S, them, T, no shot, the
+run-up), Fire Shield inline as 0x422440 (T's +0x20C or creature 53, S not fire-immune `0x4000`, the
+lesser of the damage and T's hit points left through 0x443130 and 0x5A78E0) onto S, then the damage
+onto T. Then a breathing S (`0x8`): the direction 0x445840 from S's hex to T, S's neighbour there
+and its neighbour again (0x523DF0, 0x523D90); its living stack, not T, while S has hit points left:
+0x435980 with no run-up onto it, no Fire Shield. The last search in a run is the predicted walker's
+own map (0x421680's 0x4B2DA0 at 0x4217BE comes after the threat records' and the scores'
+searches; a move and attack writes no walk), so the strike's run-up is the plan's hex's cost and a
+retaliation's the mark's cost at T's position.
+
+**0x4369C0's enemy beaten.** Its battle context is built for the side with +9 clear, so its own
+threat records read no planned damage. Over the other side's records in order (+0x54BC of them):
+the dead, those with no hit points left after the planned damage and the war machines (bit 6; the
+arrow towers have it, §7.30) are passed over; any other leaves +0x1C at 0.
+
+**A hypnotized walker.** 0x421680 loops over the other side's records (its context's +0x24), which
+hold a hypnotized walker itself, and tests none against it (0x4217E5 to 0x42182E): the walker
+values itself as a candidate. One without retaliation (a Harpy) finds its own strike worth taking,
+a move and attack on itself, which the engine refuses (`NotAnEnemy`); the port leaves the walker
+out (the user, BAT-STUB-10, BAT-Q58).
+
+**A walk that writes nothing.** 0x41F580 returns false without an action when the walker is
+bound (+0x2B8), has no speed or finds no path (0x41F598, 0x41F5A7, 0x41F5DA), but 0x421680 returns
+true after every walk (0x421D3D, 0x421E15, 0x421F6E): the run then reads the action fields as they
+were, which 0x422A40 saved but did not clear (the last predicted move and attack, or the battle's
+last action), and a 6 there would plan a phantom melee. No run reaches it as far as read: a bound
+walker's map holds only its own position, so its plan is there (nothing, then Wait or Defend) or
+its attack within a turn, and no besieger's wall hex lies above it; the stacks without speed are
+passed over or shoot; the walk finds a path to every hex the walker's map reaches. The port plans
+nothing (not modelled).
+
+**The pathfinder after a spell context** (found in T4b2's blind re-read; not T4b2's). 0x4369C0's
+threat records run 0x422B20 with no pathfinder of their own (0x436AB2), so the global one
+(0x699284) then holds the last record's search. A walker whose cast entry built a context (the
+Ogre Mage's scan, the Faerie Dragon) and cast nothing goes on in 0x421680 with those cells: the
+besieger's wall hex (0x421DA5) and the fallbacks' guard and step to safety (0x420760, 0x4208F0 get
+that pathfinder, 0x421EA9, 0x421ECF) read another stack's map; the walk 0x41F580 searches afresh.
+The port reads the walker's own map (BAT-Q59).
+
+**For the port:** the planned damage is a table by stack id that each predicted turn's context
+copies (`h3_battle::computer::Planned`), the decision's own: the original keeps it on the records
+until the next prediction resets the listed ones, and only a prediction's readers, the context and
+its fill (E23 T4c) read it. A predicted walk, wait or fallback other than the attack plans and
+draws nothing, so the port does not build them (ADR-0027 point 11). **Slips:** none new. **Draws:**
+the predicted walkers' (0x421B02, one per candidate that gets that far) in the run's order, in each
+spell context (the Ogre Mage's scan before its own draw, the Faerie Dragon's before its values).

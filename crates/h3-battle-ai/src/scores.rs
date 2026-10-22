@@ -20,6 +20,9 @@
 //! `E23-battle-ai.md` §4): slip 3, the multi-headed strike's value taken with its sign untested;
 //! slip 18, the Fire Wall's damage valued without the spell's immunity test; slip 19, the Fire
 //! Wall's and the moat's values taken with the least attack bonus for both bonuses. Draws: none.
+//! On a predicted turn (E23 T4b2) the walker's floor and the strike values read the hit points
+//! left after the planned damage, and a multi-headed enemy's strike passes over a stack without
+//! any left.
 
 use h3_battle::computer::{self, Context, Map};
 use h3_battle::{
@@ -148,9 +151,10 @@ impl<'a> Scorer<'a> {
         computer::damage_value(self.state, self.ruleset, self.ctx, (self.id, damage), flags)
     }
 
-    /// The floor (0x420260, 0x41FB60): minus the value of the walker's whole hit points to it.
+    /// The floor (0x420260, 0x41FB60): minus the value of the walker's hit points to it (in a
+    /// prediction those left after the planned damage, [`Context::left`]).
     fn floor(&self) -> i32 {
-        let hp = computer::hit_points(self.state, self.id);
+        let hp = self.ctx.left(self.state, self.id);
         self.value_on_me(hp).wrapping_neg()
     }
 
@@ -287,9 +291,12 @@ impl<'a> Scorer<'a> {
             (true, false) => (0..3, 1),
         };
         let mut seen = [false; HEXES];
-        let struck = self
-            .records(self.side)
-            .filter(|&(o, s, _)| o != self.id && map.mark(s.hex).is_some_and(|c| c <= speed));
+        // In a prediction not a stack without hit points left after the planned damage (0x41FE2E).
+        let struck = self.records(self.side).filter(|&(o, s, _)| {
+            o != self.id
+                && !self.ctx.spent(self.state, o)
+                && map.mark(s.hex).is_some_and(|c| c <= speed)
+        });
         for (_, o, _) in struck {
             let (o_shape, pos) = (Shape::of(o), i32::from(o.hex.0));
             let at = |hex: i32, d: u8| hexes::stack_neighbor_at(field, o_shape, hex, d);

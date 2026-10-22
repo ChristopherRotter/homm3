@@ -3,23 +3,26 @@
 //! on a stack is worth to the side. The creature casts that weigh a spell (the Ogre Mage's scan,
 //! [`casts`](crate::casts)) build the context and ask its evaluator for each stack.
 //!
-//! So far (E23 T4b1) the context holds the side's battle context, its balance class and each
-//! stack's threat record (0x422B20 with flag 0, [`computer::threat`]), and one evaluator,
-//! Bloodlust's: the attack bonus's value (0x437800). Not built yet: the predictions (0x422A40,
-//! E23 T4b2: "the enemy beaten", BAT-STUB-9), the threat tables and the second context (0x43C040,
+//! So far (E23 T4b1, T4b2) the context holds the side's battle context, its balance class, "the
+//! enemy beaten" after the predictions ([`predict`]: the damage the side's stacks that act before
+//! the other side's next one are expected to deal, with their draws) and each stack's threat
+//! record (0x422B20 with flag 0, [`computer::threat`]), and one evaluator, Bloodlust's: the attack
+//! bonus's value (0x437800). Not built yet: the threat tables and the second context (0x43C040,
 //! E23 T4c) and the other evaluators (E23 T4c).
 
 use core::cell::OnceCell;
 
-use h3_battle::computer::{self, Context, Threat};
+use h3_battle::computer::{self, Context, Planned, Threat};
 use h3_battle::{
     BattleSide, BattleState, STACK_CAPACITY, StackFlags, StackId, StackTraits, Status,
 };
 use h3_content::SpellId;
 use h3_content_battle::BattleRuleset;
+use h3_kernel::Rng;
 use h3_kernel::arith::{DOUBLE_BITS, X87};
 
 use crate::casts::balance;
+use crate::predict;
 
 /// The base damage the attack bonus's value compares (0x437800's 100).
 const BASE: u64 = 100;
@@ -46,32 +49,41 @@ pub(crate) struct SpellContext<'a> {
     ctx: &'a Context,
     /// Its balance class (+0x3C, the battle context's +0x1C).
     class: u8,
+    /// The enemy beaten (+0x1C): no stack of the other side but the war machines has hit points
+    /// left after the planned damage.
+    beaten: bool,
     /// Each stack's threat record (0x422B20 with flag 0), computed the first time it is asked
     /// (ADR-0027 point 11: the records read nothing a value changes).
     threats: [OnceCell<Option<Threat>>; STACK_CAPACITY],
 }
 
 impl<'a> SpellContext<'a> {
-    /// The spell context of `side` with its battle context `ctx` (0x4369C0): its balance class
-    /// ([`balance`]). The predictions it runs first decide only "the enemy beaten" (+0x1C), which
-    /// no stack's value reads yet: while the battle runs and nothing is planned, every side has a
-    /// living stack that is no war machine (BAT-WAR-001), so it is never set.
-    // stub: BAT-STUB-9
-    // The predictions (0x422A40) with their draws and "the enemy beaten" (+0x1C): E23 T4b2.
+    /// The spell context of `side` with its battle context `ctx` (0x4369C0; BAT-AI-015): its
+    /// balance class ([`balance`]), then the predictions ([`predict::plan`], their walkers' draws
+    /// from `rng`) and "the enemy beaten" after them ([`beaten`]).
+    // rule: BAT-AI-015
     pub(crate) fn new(
         state: &'a BattleState,
         ruleset: &'a BattleRuleset,
-        ctx: &'a Context,
-        side: BattleSide,
+        (ctx, side): (&'a Context, BattleSide),
+        rng: &mut Rng,
     ) -> Self {
+        let planned = predict::plan(state, ruleset, side, rng);
         Self {
             state,
             ruleset,
             side,
             ctx,
             class: balance(state, ruleset, ctx, side).class,
+            beaten: beaten(state, &planned, side),
             threats: [const { OnceCell::new() }; STACK_CAPACITY],
         }
+    }
+
+    /// Whether the predictions beat the enemy (+0x1C).
+    #[cfg(test)]
+    pub(crate) fn beaten(&self) -> bool {
+        self.beaten
     }
 
     /// The threat record of stack `id` ([`computer::threat`]), computed once.
@@ -87,7 +99,7 @@ impl<'a> SpellContext<'a> {
     }
 
     /// The value of `bonus` more attack for stack `s` against `e` over `rounds` rounds (0x437800;
-    /// BAT-AI-014): the gain `g = D' / D`, `D` and `D'` the damage of a base of 100 on `e` without
+    /// BAT-AI-014): 0 when the predictions beat the enemy (BAT-AI-015); else the gain `g = D' / D`, `D` and `D'` the damage of a base of 100 on `e` without
     /// and with the bonus ([`computer::base_damage`], `s`'s shot flag), doubles; `s`'s strike `d`
     /// by its count on `e` (capped at `e`'s hit points `h`, no run-up) rises to `d' = trunc(d ×
     /// g)`, at most `h` (then `g = h / d`); 0 unless `d' > d`. The rounds' share `t = min(1,
@@ -97,6 +109,9 @@ impl<'a> SpellContext<'a> {
     /// expected length the bonus lasts. As the original's x87 doubles.
     // rule: BAT-AI-014
     pub(crate) fn attack_bonus(&self, (s, e): (StackId, StackId), rounds: u32, bonus: u16) -> i32 {
+        if self.beaten {
+            return 0;
+        }
         let (state, ruleset) = (self.state, self.ruleset);
         let shot = computer::shoots(state, ruleset, s);
         let bonus = i16::try_from(bonus).unwrap_or(i16::MAX);
@@ -180,6 +195,22 @@ impl<'a> SpellContext<'a> {
                 sum.wrapping_add(value(self, StackId(i), c))
             })
     }
+}
+
+/// Whether the damage `planned` beats `side`'s enemy (0x4369C0's +0x1C; BAT-AI-015): no stack of
+/// the other side (its own, whoever controls it) is alive with hit points left after the damage
+/// planned on it, but the war machines and the turrets (the original's arrow towers are war
+/// machines).
+// rule: BAT-AI-015
+pub(crate) fn beaten(state: &BattleState, planned: &Planned, side: BattleSide) -> bool {
+    let other = side.opponent();
+    !(0u8..).zip(state.stacks()).any(|(i, s)| {
+        s.side == other
+            && s.is_alive()
+            && planned.left(state, StackId(i)) > 0
+            && !s.has(StackTraits::WAR_MACHINE)
+            && !s.is_turret()
+    })
 }
 
 /// Whether `spell` lasts on stack `id` (the record's +0x198 + 4 × spell: its rounds left).

@@ -18,7 +18,7 @@ use crate::pathfinder::{AI_RANGE, Goal, Query, Search};
 use crate::siege::{self, SiegeState};
 use crate::state::{BattleState, StackId};
 
-pub use crate::aim::{Context, Shot, Threat};
+pub use crate::aim::{Context, Planned, Shot, Threat};
 
 /// Whether stack `id` of `state` can shoot now (the original's 0x4428F0 as the battle's rule,
 /// BAT-RNG-001: a shooter with a shot to use, not blocked or a war machine, not forgetful): the
@@ -60,11 +60,46 @@ pub fn shot(
     )
 }
 
+/// What the computer's shooter `shooter` does on a predicted turn for `side` with the damage
+/// `planned` so far (0x41F060 with its prediction flag, from the side's run 0x422880; E23 T4b2):
+/// [`shot`] in `side`'s context predicting it ([`Context::predicting`]: the hit points less the
+/// planned damage, no target without any left), never a wall shot.
+pub fn predicted_shot(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    (shooter, side): (StackId, BattleSide),
+    planned: &Planned,
+) -> Shot {
+    let field = Field::new(ruleset.battle().field);
+    let ctx = aim::context(state, ruleset, field, side).predicting(planned);
+    aim::shot_in(state, (ruleset, field), (&ctx, shooter), |_, _| None)
+}
+
+/// The computer's estimate of what Fire Shield on `struck` reflects onto `striker` from a strike
+/// of `damage` on `struck` with `left` hit points (0x422440, and inline in the predicted strike
+/// 0x4224E0; E23 T4b2): the rule's reflection of the lesser of the two (none for a fire-immune
+/// striker or without a shield).
+pub fn fire_shield_estimate(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    (striker, struck): (StackId, StackId),
+    damage: u64,
+    left: u64,
+) -> u64 {
+    aim::reflection_estimate(state, ruleset, (striker, struck), damage, left)
+}
+
 /// Whether the computer records no enemy for the living stack `id` (0x422B20's +0x538 = 0): a war
 /// machine but the Ballista, a hypnotized or berserk stack, one blind or turned to stone for
 /// more than a round, or a walker that reaches no enemy within the computer's range of 127.
 pub fn records_no_enemy(state: &BattleState, ruleset: &BattleRuleset, id: StackId) -> bool {
-    aim::turns(state, (ruleset, Field::new(ruleset.battle().field)), id).is_none()
+    aim::turns(
+        state,
+        (ruleset, Field::new(ruleset.battle().field)),
+        None,
+        id,
+    )
+    .is_none()
 }
 
 /// The computer's strength of stack `id` in the context `ctx` (0x442E60): its worth times its
