@@ -275,10 +275,9 @@ border gate whose key it lacks, clicks a free tile beyond it; the reading predic
 gate (an entrance a flyer passes, §3.1 point 7), which no other source states (§13).
 
 - **Spec** (`experiments/specs/E08-batch-5*.toml`, `h3-experiment` and `docs/experiments/`
-  battle-owned: `cross-lane`): heroes wearing artifacts (`equipment`, since batch E4), a ground
-  under a hero's tile (E5-6: the writer places grounds since E04c T3; check under a hero),
-  unexplored strips (a hero far enough from the explored start), a border gate (E5-11:
-  `[[map.object]]`), a Fortress army on swamp (E5-6), Gunnar and Kyrre at levels 2, 3, 6, 12 with
+  battle-owned: `cross-lane`). *Built by T36a* (decision 80): batches E5a (E5-1, E5-4 to E5-6,
+  with E5-6b on the SoD Cursed Ground) and E5b (E5-7, E5-9, E5-11; trees and Border Gates in
+  `[[map.object]]`). *Left for T36b:* Gunnar and Kyrre at levels 2, 3, 6, 12 with
   Basic Logistics (E5-2: a custom experience gives levels at load, so the scorer predicts their
   skills after them; or levels the seed byte keeps clean of Logistics), a level-up the test
   forces (E5-3, E5-10: the seed byte's prediction, as batch E4's). Split by rows if a map cannot
