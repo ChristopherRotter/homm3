@@ -1880,8 +1880,19 @@ resistance roll, if any (category 3, 0x5A0331); Curse's is named `Curse`, withou
     frames, shown at once, outlined only at the tail.
   - *The user's answer* (CLT-Q8, 2026-10-22): the group's unnegated angle, the missed caster's
     stale frame and the highlight kept through the caster's frames are drawing bugs: fixed in
-    what the client draws, the original's reproduced only for the comparisons (T7d; built as the
-    original's until then). The other oddities of this section are CLT-Q9 to CLT-Q14.
+    what the client draws, the original's reproduced only for the comparisons. The other
+    oddities of this section are CLT-Q9 to CLT-Q14.
+  - *Fixed (T7d)*, by `anim::Stage::bugs` (`h3_render::Bugs`; `Original` only in `h3-view
+    sequences`, so the timing and frame checks and `drawn`; the window, `render` and `play`
+    draw them fixed): (1) the casting group by VCMI's angle (`RangedAttackAnimation::
+    setAnimationGroup`: hex to hex, y up) at the shot's 25°, from the caster's centre to the same
+    point over the hex aimed at, so the rise is the anchors' rows: above 25° up (17), below −25°
+    down (19), else straight (18; the same row, the caster's own hex); a Faerie Dragon beside a
+    level target 18, toward one above 17, toward one below 19 (*provisional*: VCMI's points with
+    the original's shot threshold, not VCMI's 0.2 rad); (2) a caster its spell missed shows
+    standing with the play-on's frame that stands it, as memory has it; (3) a creature's action
+    unmarks the mouse's stack at its start (`Action::unmarks`), as a hero's; `cast_spell`'s
+    start unmarks it again (a no-op).
   - *A creature's cast* (`creature_cast_action`, completed): its frames' redraws mark it dirty
     (`battle_redraw` with its second argument) and it stays outlined through them; `cast_spell`
     clears the outline (0x5A004C) and the mouse's highlight (0x5A0055) as it starts, a redraw at

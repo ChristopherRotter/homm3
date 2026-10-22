@@ -559,6 +559,7 @@ fn play(snapshot: &Observation, commands: &[(Option<u32>, Vec<Event>)]) -> Timel
         groups: tables().battle.groups,
         magic: &magic(),
         casts: &Casts::default(),
+        bugs: Bugs::Original,
     };
     let commands: Vec<Command<'_>> = commands
         .iter()
@@ -993,6 +994,7 @@ fn a_creature_without_numbers_is_an_error() {
         groups: tables().battle.groups,
         magic: &magic(),
         casts: &Casts::default(),
+        bugs: Bugs::Original,
     };
     let err = timeline(&o, &[], &looks(), stage, Speed::default()).unwrap_err();
     assert_eq!(err, AnimError::Look(99));
@@ -1050,6 +1052,7 @@ fn a_flight_without_a_distance_is_one_cycle() {
         groups: tables().battle.groups,
         magic: &magic(),
         casts: &Casts::default(),
+        bugs: Bugs::Original,
     };
     let o = snapshot(vec![angels]);
     let events = [moved(0, 35, 37)];
@@ -1167,6 +1170,7 @@ fn a_reaction_without_frames_and_a_strike_at_nothing() {
         groups: tables().battle.groups,
         magic: &magic(),
         casts: &Casts::default(),
+        bugs: Bugs::Original,
     };
     let o = snapshot(vec![
         at(0, Side::Attacker, WOLF_RIDER, 52, true),
@@ -1201,6 +1205,7 @@ fn a_ray_without_a_climax_frame_or_a_target() {
         groups: tables().battle.groups,
         magic: &magic(),
         casts: &Casts::default(),
+        bugs: Bugs::Original,
     };
     let o = snapshot(vec![
         at(0, Side::Attacker, ARCH_MAGE, 137, false),
@@ -1279,6 +1284,7 @@ fn shots_aim_up_straight_and_down() {
         groups: tables().battle.groups,
         magic: &magic(),
         casts: &Casts::default(),
+        bugs: Bugs::Original,
     };
     let column = |target: u8| {
         let o = snapshot(vec![
@@ -1313,6 +1319,7 @@ fn shots_without_a_climax_or_a_target() {
         groups: tables().battle.groups,
         magic: &magic(),
         casts: &Casts::default(),
+        bugs: Bugs::Original,
     };
     let o = snapshot(vec![
         at(0, Side::Attacker, MARKSMAN, 35, false),
@@ -1478,6 +1485,7 @@ fn a_shooter_without_a_projectile_waits_as_one_flies() {
         groups: tables().battle.groups,
         magic: &magic(),
         casts: &Casts::default(),
+        bugs: Bugs::Original,
     };
     let o = snapshot(vec![
         at(0, Side::Attacker, MARKSMAN, 35, false),
@@ -1722,6 +1730,7 @@ fn a_breath_on_two_stacks_takes_its_own_groups() {
         groups: tables().battle.groups,
         magic: &magic(),
         casts: &Casts::default(),
+        bugs: Bugs::Original,
     };
     let o = snapshot(vec![
         at(0, Side::Attacker, ANGEL, 52, false),
@@ -1876,6 +1885,7 @@ fn neighbours_follow_the_layout() {
         groups: tables().battle.groups,
         magic: &magic(),
         casts: &Casts::default(),
+        bugs: Bugs::Original,
     };
     // Hex 83 (row 4, even, shifted right): up-right 67, right 84, down-right 101, down-left 100,
     // left 82, up-left 66; row 5 (odd): up-right of 100 is 83.
@@ -1947,6 +1957,7 @@ fn fidgeting_play(
         groups: tables().battle.groups,
         magic: &magic(),
         casts: &Casts::default(),
+        bugs: Bugs::Original,
     };
     let commands: Vec<Command<'_>> = commands
         .iter()
@@ -2173,6 +2184,7 @@ fn a_target_reacts_as_the_projectile_lands() {
         groups: tables().battle.groups,
         magic: &magic(),
         casts: &Casts::default(),
+        bugs: Bugs::Original,
     };
     let o = snapshot(vec![
         at(0, Side::Attacker, MARKSMAN, 35, false),
@@ -2328,6 +2340,7 @@ fn a_heal_without_its_animation_plays_its_sound_only() {
         groups: tables().battle.groups,
         magic: &none,
         casts: &Casts::default(),
+        bugs: Bugs::Original,
     };
     let events = [healed(1, 0), Event::TurnStarted { stack: 2 }];
     let commands = [Command {
@@ -2379,6 +2392,7 @@ fn magic_animations_stand_where_their_place_says() {
             groups: tables().battle.groups,
             magic: &magic,
             casts: &Casts::default(),
+            bugs: Bugs::Original,
         };
         let events = [healed(1, 0)];
         let commands = [Command {
@@ -2718,7 +2732,8 @@ fn the_originals_own_fidgets_are_left_out() {
 
 #[test]
 fn an_actions_start_stands_and_unmarks_by_what_it_does() {
-    // E17 M3 T6c-2: up to the next turn; a creature's cast only stands.
+    // E17 M3 T6c-2: up to the next turn; a creature's cast only stands (CLT-Q8), and unmarks too
+    // with the bugs fixed (E17 M3 T7d).
     use h3_protocol::wire::Target;
     let none = Target::None {};
     let cast = Event::SpellCast {
@@ -2738,14 +2753,16 @@ fn an_actions_start_stands_and_unmarks_by_what_it_does() {
         part: 1,
         damage: 1,
     };
-    assert_eq!(calms(&[cast]), (true, true));
-    assert_eq!(calms(core::slice::from_ref(&creature)), (true, false));
-    assert_eq!(calms(&[wall]), (true, true));
-    assert_eq!(calms(&[moved(0, 1, 2)]), (true, true));
+    let original = |events: &[Event]| calms(events, Bugs::Original);
+    assert_eq!(original(&[cast]), (true, true));
+    assert_eq!(original(core::slice::from_ref(&creature)), (true, false));
+    assert_eq!(calms(core::slice::from_ref(&creature), Bugs::Fixed), (true, true));
+    assert_eq!(original(&[wall]), (true, true));
+    assert_eq!(original(&[moved(0, 1, 2)]), (true, true));
     let later = [Event::TurnStarted { stack: 1 }, moved(1, 2, 3)];
-    assert_eq!(calms(&later), (false, false));
+    assert_eq!(original(&later), (false, false));
     let round = [Event::RoundStarted { round: 2 }, creature];
-    assert_eq!(calms(&round), (false, false));
+    assert_eq!(calms(&round, Bugs::Fixed), (false, false));
 }
 
 #[test]
@@ -2923,6 +2940,7 @@ fn play_casts_with(
         groups: tables().battle.groups,
         magic: &magic,
         casts: &casts,
+        bugs: Bugs::Original,
     };
     let commands: Vec<Command<'_>> = commands
         .iter()
@@ -3201,6 +3219,7 @@ fn casts_without_a_caster_a_stack_or_an_effect_play_what_they_can() {
         groups: tables().battle.groups,
         magic: &magic,
         casts: &unloaded,
+        bugs: Bugs::Original,
     };
     let bare = [
         vec![cast(54, 3), applied(3, 54)],
@@ -3581,6 +3600,7 @@ fn play_rolls(
         groups: tables().battle.groups,
         magic,
         casts: &casts,
+        bugs: Bugs::Original,
     };
     let commands: Vec<Command<'_>> = commands
         .iter()
@@ -3870,6 +3890,7 @@ fn play_strikes(
         groups: tables().battle.groups,
         magic: &magic,
         casts,
+        bugs: Bugs::Original,
     };
     let commands: Vec<Command<'_>> = commands
         .iter()
@@ -4277,6 +4298,15 @@ fn area_looks() -> BTreeMap<u16, Look> {
 }
 
 fn play_area(snapshot: &Observation, commands: &[(Option<u32>, Vec<Event>)]) -> Timeline {
+    play_area_with(snapshot, commands, Bugs::Original)
+}
+
+/// As [`play_area`], the original's drawing bugs reproduced or fixed by `bugs` (E17 M3 T7d).
+fn play_area_with(
+    snapshot: &Observation,
+    commands: &[(Option<u32>, Vec<Event>)],
+    bugs: Bugs,
+) -> Timeline {
     let layout = layout();
     let magic = area_magic();
     let casts = area_casts();
@@ -4286,6 +4316,7 @@ fn play_area(snapshot: &Observation, commands: &[(Option<u32>, Vec<Event>)]) -> 
         groups: tables().battle.groups,
         magic: &magic,
         casts: &casts,
+        bugs,
     };
     let commands: Vec<Command<'_>> = commands
         .iter()
@@ -4730,6 +4761,72 @@ fn a_creature_casts_turned_toward_its_target_and_by_its_strike_groups() {
 }
 
 #[test]
+fn a_creatures_cast_with_the_bugs_fixed() {
+    // E17 M3 T7d (CLT-Q8): the casts of `a_creature_casts_by_its_angle_and_stands_at_its_casts_tail`
+    // with the original's drawing bugs fixed. The group by the rows' angle, y up: beside its
+    // target the Faerie Dragon looks straight (18, the original's 17), four rows above it looks up
+    // (17, the original's 19), a row below down (19, the original's 17); missed by its Fireball
+    // it shows standing at once, not with the end's redraw; its action unmarks the mouse's stack
+    // at its start, as a hero's.
+    let o = snapshot(vec![
+        at(0, Side::Attacker, FAERIE_DRAGON, 81, true),
+        at(1, Side::Defender, SWORDSMAN, 83, false),
+        at(2, Side::Defender, SWORDSMAN, 15, false),
+        at(3, Side::Defender, SWORDSMAN, 100, false),
+    ]);
+    let hex = |hex| Target::Hex { hex };
+    let commands = [
+        (
+            Some(0),
+            vec![
+                Event::Defended { stack: 1 },
+                Event::TurnStarted { stack: 2 },
+            ],
+        ),
+        (
+            Some(0),
+            vec![
+                Event::Defended { stack: 2 },
+                Event::TurnStarted { stack: 0 },
+            ],
+        ),
+        (
+            Some(1000),
+            vec![stack_cast(0, 21, hex(83)), hurt(1, 20, 20, 0)],
+        ),
+        (Some(8000), vec![stack_cast(0, 21, hex(15)), hurt(2, 20, 20, 0)]),
+        (Some(16000), vec![stack_cast(0, 23, hex(98))]),
+    ];
+    let groups = |t: &Timeline| -> Vec<u32> {
+        t.keys
+            .iter()
+            .filter(|k| k.stack == 0 && matches!(k.pose.group, 17..=19) && k.pose.frame == 0)
+            .map(|k| k.pose.group)
+            .collect()
+    };
+    let fixed = play_area_with(&o, &commands, Bugs::Fixed);
+    assert_eq!(groups(&fixed), [18, 17, 19]);
+    assert_eq!(groups(&play_area(&o, &commands)), [17, 19, 17]);
+    // Missed: standing after the loop's six frames as the defending Swordsmen play on, on the
+    // screen with that frame (the original: its cast group's last frame until the end's redraw,
+    // 600 ms later).
+    let after_loop = |t: &Timeline| {
+        let reacts = t
+            .keys
+            .iter()
+            .find(|k| k.stack == 1 && k.pose.group == 4 && k.drawn > 1000)
+            .unwrap()
+            .drawn;
+        t.at(reacts + 700).get(&0).map(|p| p.group)
+    };
+    assert_eq!(after_loop(&fixed), Some(2));
+    assert_eq!(after_loop(&play_area(&o, &commands)), Some(17));
+    // The casts' actions unmark the mouse's stack at their start.
+    let unmarks: Vec<bool> = fixed.actions.iter().map(|a| a.unmarks).collect();
+    assert_eq!(unmarks, [false, false, true, true, true]);
+}
+
+#[test]
 fn magic_animations_at_a_hex_and_over_several_stacks_without_their_look() {
     // E17 M3 T7c-1: an area spell or a mass spell whose animation the stage lacks plays only its
     // line and reactions; a mass animation over a stack the timeline does not know skips it.
@@ -4751,6 +4848,7 @@ fn magic_animations_at_a_hex_and_over_several_stacks_without_their_look() {
         groups: tables().battle.groups,
         magic: &magic,
         casts: &casts,
+        bugs: Bugs::Original,
     };
     let events = [
         vec![cast_at(21, Target::Hex { hex: 15 }), hurt(1, 9, 9, 0)],
@@ -4882,6 +4980,7 @@ fn play_objects_with(
         groups: tables().battle.groups,
         magic,
         casts: &casts,
+        bugs: Bugs::Original,
     };
     let commands: Vec<Command<'_>> = commands
         .iter()

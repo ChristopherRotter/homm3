@@ -1,6 +1,7 @@
 use super::*;
 use alloc::vec;
 use alloc::vec::Vec;
+use h3_render::Bugs;
 
 use crate::anim::tests::magic;
 use crate::anim::{self, Member, Pose, Stage, Timeline};
@@ -34,6 +35,7 @@ fn idle(turns: &[(u32, u8)], actions: Vec<Action>) -> Timeline {
         groups: tables().battle.groups,
         magic: &magic(),
         casts: &anim::Casts::default(),
+        bugs: Bugs::Original,
     };
     let mut timeline = anim::timeline(
         &observation(),

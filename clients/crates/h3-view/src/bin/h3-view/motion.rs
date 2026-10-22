@@ -10,6 +10,7 @@ use h3_content::CreatureTypeId;
 use h3_content_battle::Ability;
 use h3_formats::lod::LodArchive;
 use h3_protocol::wire::{Event, ServerMessage, Side};
+use h3_render::Bugs;
 use h3_view::anim::{
     ACID, ACID_BREATH, BAD_MORALE, BOLT, CHAIN_LIGHTNING, CHAIN_START, Caster, Casts, DEATH_STARE,
     DEATH_STARE_SPELL, Explosion, FEAR, FIRE_SHIELD, GOOD_LUCK, GOOD_MORALE, HEAL, LIFE_DRAIN,
@@ -544,7 +545,8 @@ fn def_numbers(def: &str, archives: &[(&str, LodArchive<'_>)]) -> Result<([i32; 
 }
 
 /// The stage of the record's battle, with the magic animations `magic` ([`magic`]) and what its
-/// casts draw ([`casts`]).
+/// casts draw ([`casts`]); the original's drawing bugs fixed (the comparisons with its captures
+/// reproduce them: `sequences`).
 pub fn stage<'a>(
     record: &Record,
     tables: &Tables,
@@ -557,5 +559,6 @@ pub fn stage<'a>(
         groups: tables.battle.groups,
         magic,
         casts,
+        bugs: Bugs::Fixed,
     }
 }

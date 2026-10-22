@@ -1,11 +1,11 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b, T8, T7b-1, T7b-2a, T7b-2b-1, T7b-2b-2a, T7b-2b-2b, T7b-2b-3, T7c-1, T7c-2 done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b, T8, T7b-1, T7b-2a, T7b-2b-1, T7b-2b-2a, T7b-2b-2b, T7b-2b-3, T7c-1, T7c-2, T7c-3, T7d done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
 [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
-are there). Next: M3 T7c-3, T7d, then T9 (`docs/lanes/client/QUEUE.md`).
+are there). Next: M3 T9, M3's closure (`docs/lanes/client/QUEUE.md`).
 
 ## Goal
 
@@ -63,10 +63,10 @@ viewer and playable clients. Everything with graphics, sound, input or a window 
   exact. A development switch (`h3_render::Bugs`), neither a player's option nor a quirk
   profile. Goes into the ADR-0020 point 9 amendment draft. The second (2026-10-20, M3 T6c-1):
   the software cursor drawn at an even x (0x50CE04, design §9.9). The third to fifth
-  (2026-10-22, M3 T7c-1, CLT-Q8: "dev-only for the captures, fixed otherwise"; built as the
-  original's until T7d): a creature caster's group by the angle's wrong sign, a caster its spell
-  missed kept on its casting frame until the whole redraw, the target's highlight kept through a
-  creature's frames.
+  (2026-10-22, M3 T7c-1, CLT-Q8: "dev-only for the captures, fixed otherwise"; fixed in T7d,
+  the switch reaching the timeline: `anim::Stage::bugs`): a creature caster's group by the
+  angle's wrong sign, a caster its spell missed kept on its casting frame until the whole
+  redraw, the target's highlight kept through a creature's frames.
 - **Every oddity of the original is an open question** (the user, 2026-10-22: so that nothing is
   forgotten): a drawing quirk or bug a reading or a recording finds becomes a `CLT-Q<n>` in
   `docs/OPEN-QUESTIONS.md` in the same task (copy it, fix it with the original's only for the

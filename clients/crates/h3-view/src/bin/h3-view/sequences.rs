@@ -271,7 +271,11 @@ fn sequences(options: &Options) -> Result<usize, String> {
         if let Some(dir) = &options.frames {
             casts.rays = kept_rays(&dir.join(&sequence.id))?;
         }
-        let stage = motion::stage(&record, &tables, &layout, (&magic, &casts));
+        // The original's drawing bugs, as its captures show them (E17 M3 T7d, CLT-Q8).
+        let stage = anim::Stage {
+            bugs: Bugs::Original,
+            ..motion::stage(&record, &tables, &layout, (&magic, &casts))
+        };
         // The harness acts `pre` ms after the opening, and then at each command's `at`.
         let commands: Vec<anim::Command<'_>> = record
             .messages

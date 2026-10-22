@@ -8,6 +8,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use h3_protocol::wire::{Event, Observation, Side, WireU64};
+use h3_render::Bugs;
 
 use super::{
     ARCHANGEL, MARKSMAN, PIKEMAN, SWORDSMAN, at, cast, cast_heroes, flags, layout, look, looks,
@@ -174,6 +175,7 @@ fn play_raised(
         groups: tables().battle.groups,
         magic: &magic,
         casts,
+        bugs: Bugs::Original,
     };
     let commands: Vec<Command<'_>> = commands
         .iter()
@@ -587,6 +589,7 @@ fn creature_animations_without_their_looks_or_stacks() {
         groups: tables().battle.groups,
         magic: &magic,
         casts: &casts,
+        bugs: Bugs::Original,
     };
     let commands: Vec<Command<'_>> = commands
         .iter()
@@ -625,6 +628,7 @@ fn play_bare(
         groups: tables().battle.groups,
         magic,
         casts,
+        bugs: Bugs::Original,
     };
     let commands: Vec<Command<'_>> = commands
         .iter()
