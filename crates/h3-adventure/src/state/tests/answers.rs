@@ -98,7 +98,7 @@ fn state(
         .collect();
     setup.map.objects.extend(objects);
     setup.difficulty = difficulty;
-    AdventureState::new(&rules.0, &rules.1, &setup, &mut draws()).unwrap()
+    crate::testing::started(rules, &setup).unwrap()
 }
 
 /// Sets the aggression of the monster at object index `index` (drawn by its disposition when

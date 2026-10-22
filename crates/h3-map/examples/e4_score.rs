@@ -276,17 +276,12 @@ fn draw_weighted(
 
 // -- The day's points (batch E5's E5-2, D-22) --------------------------------------------------
 
-/// The land table's entry at the army's slowest speed as the hero counts it (ADV-MOV-001 as E08
-/// T40 builds it into `h3_adventure::day_points`: each stack's speed by
+/// The land table's entry at the army's slowest speed as the hero counts it: since E08 T40
+/// `h3_adventure::land_table_points` (ADV-MOV-001: each stack's speed by
 /// `h3_heroes::movement_speed`, HER-ADV-004, a creature specialist's creature and its upgrades one
 /// faster; the table's last entry for every faster speed).
 fn land_table(rules: &GameRuleset, army: &[ArmyStack], details: &HeroDetails) -> u32 {
-    let slowest = army
-        .iter()
-        .map(|stack| h3_heroes::movement_speed(details, rules.core(), stack.creature))
-        .min()
-        .unwrap_or(u8::MAX);
-    rules.adventure().params().land_points(slowest)
+    h3_adventure::land_table_points(rules.core(), rules.adventure(), Some(details), army)
 }
 
 /// A hero's day's points on land from `land`, the table's entry, as `(single, exact)`:

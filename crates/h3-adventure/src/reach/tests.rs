@@ -189,8 +189,7 @@ fn the_query_stays_on_the_heros_level() {
             hero_at(2, 1, p(1, 1), &[PEASANT]),
         ],
     );
-    let state =
-        AdventureState::new(&rules.0, &rules.1, &setup, &mut crate::testing::draws()).unwrap();
+    let state = crate::testing::started(&rules, &setup).unwrap();
     let reach = reach(&state, &rules, 1);
     assert_eq!(reach.points_left(Pos::new(1, 1, 1)), Some(1159));
     assert_eq!(reach.points_left(p(1, 1)), None);
@@ -205,8 +204,7 @@ fn the_query_stays_on_the_heros_level() {
             hero_at(2, 1, p(1, 1), &[PEASANT]),
         ],
     );
-    let guarded =
-        AdventureState::new(&rules.0, &rules.1, &setup, &mut crate::testing::draws()).unwrap();
+    let guarded = crate::testing::started(&rules, &setup).unwrap();
     assert_eq!(guarded.guard_of(&rules.1, p(1, 0)), Some(0));
     assert_eq!(guarded.guard_of(&rules.1, Pos::new(1, 0, 1)), None);
     assert_eq!(self::reach(&guarded, &rules, 1), reach);

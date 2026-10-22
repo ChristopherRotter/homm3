@@ -8,6 +8,18 @@
 # same six excludeFromRandomization.
 not_random_monsters = ["azure_dragon", "crystal_dragon", "faerie_dragon", "rust_dragon", "enchanter", "sharpshooter"]
 
+# ADV-MOV-003 (E08 T40): an army with Nomads (original id 142) walks sand as dirt, for every price
+# of a step from sand, the native terrain's and the diagonal exception's check included. Code
+# reading (survey E08-hero-movement.md section 2.1 point 1): step_cost 0x4B1740 counts the source's
+# sand (terrain 1) as dirt (0) when army_count_of_type finds creature 142. The wiki (Nomad: "a
+# hero can eliminate the sand terrain penalty if he has at least one Nomad on his army") and VCMI
+# 1.7.5 (the creature's NO_TERRAIN_PENALTY for sand) agree on the price. The core's desert is the
+# original's sand.
+[[terrain_walker]]
+creature = "nomad"
+terrain = "base:desert"
+counts_as = "base:dirt"
+
 # ADV-VIS-005 (E08 T12a): border gates (class 212, AB and SoD; subclass = the key colour as for
 # the base pack's tents and guards). Never removed; a key holder's heroes enter and cross it, the
 # others visit it from the neighbouring tile (0x4A8DD0, 0x480EE2, 0x56ABB1). VCMI

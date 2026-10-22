@@ -12,8 +12,8 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use h3_content::{
-    ContentKey, CreatureFlag, CreatureTypeId, FRINGE_SHOWS_OBJECTS, Formation, ResourceId, Ruleset,
-    TerrainId,
+    ContentKey, CreatureFlag, CreatureTypeId, FRINGE_SHOWS_OBJECTS, Formation,
+    RADIUS_WAITS_FOR_A_STEP, ResourceId, Ruleset, TerrainId,
 };
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
 use h3_heroes::{HeroDetails, TerrainShares};
@@ -26,7 +26,9 @@ use crate::command::{
     BattleStart, Combatant, Defender, Offer, OfferKind, Sink, Viewers,
 };
 use crate::fog::{on_fringe, reveal};
-use crate::movement::{DIRECTIONS, Pricing, day_points, direction};
+use crate::movement::{
+    DIRECTIONS, Pricing, day_points, details_of, direction, hero_movement, hero_radius,
+};
 use crate::persistent::BitGrid;
 use crate::ruleset::{
     AdventureRuleset, Effect, MAX_GAIN, MAX_MONSTER_COUNT, MAX_PICKUP_AMOUNT, ObjectKind,
@@ -50,6 +52,9 @@ pub struct StaticTile {
     pub blocked: bool,
     /// An object's visitable tile (ADV-OBJ-001).
     pub visitable: bool,
+    /// The tile's top ground takes the native price away (Cursed Ground; ADV-MOV-004, E08 T40):
+    /// a step from it, or the drop after a step onto it, prices its terrain for every army.
+    pub no_native: bool,
 }
 
 impl StaticTile {
@@ -60,6 +65,7 @@ impl StaticTile {
         river: None,
         blocked: true,
         visitable: false,
+        no_native: false,
     };
 }
 
@@ -236,6 +242,7 @@ impl StaticMap {
                 river: tile.river,
                 blocked: false,
                 visitable: false,
+                no_native: false,
             });
             if tile.coast {
                 coast[index / 64] |= 1 << (index % 64);
@@ -317,6 +324,7 @@ impl StaticMap {
         }
         map.resolve(core, part, &setup.objects, draws);
         map.mark_near_monsters();
+        map.mark_no_native(part);
         // After the objects, as the original counts after placing its map's objects.
         map.shares = terrain_shares(part, &map.tiles);
         map.hash = hash_of(&map);
@@ -350,6 +358,37 @@ impl StaticMap {
         }
         self.near_monsters = near;
         self.any_monster = !visitable.is_empty();
+    }
+
+    /// Marks the tiles whose top ground takes the native price away ([`StaticTile::no_native`],
+    /// E08 T40): on each tile the last ground in map order whose picture lies on it decides, as
+    /// for a battle's ground ([`AdventureState::battle_ground`]; the original's
+    /// `tile_special_ground` 0x4FCE20, which `step_cost` 0x4B1740 asks for Cursed Ground). Follows
+    /// from the objects, so the hash leaves it out.
+    // rule: ADV-MOV-004
+    fn mark_no_native(&mut self, part: &AdventureRuleset) {
+        let map = &*self;
+        let grounds: Vec<(usize, bool)> = map
+            .objects
+            .iter()
+            .filter_map(|object| {
+                let ty = object.object_type.and_then(|id| part.object_type(id))?;
+                match ty.kind {
+                    ObjectKind::Ground { no_native, .. } => Some((object, no_native)),
+                    _ => None,
+                }
+            })
+            .flat_map(|(object, no_native)| {
+                object
+                    .drawn
+                    .offsets()
+                    .filter_map(move |(column, row)| map.offset(object.anchor, column, row))
+                    .map(move |index| (index, no_native))
+            })
+            .collect();
+        for (index, no_native) in grounds {
+            self.tiles[index].no_native = no_native;
+        }
     }
 
     /// Whether a monster's visitable tile lies within one step of `pos` on its level (a tile off
@@ -783,8 +822,9 @@ impl AdventureState {
     /// and tiles, the objects, the players' bound, and each hero's owner, tile (ADV-MAP-001) and
     /// army. The objects' random contents are drawn from `draws`, the game's setup stream
     /// (ADR-0017 point 4); every draw is valid, so whether a setup is valid does not depend on
-    /// them. The heroes are kept by id, their stacks by slot. Each hero reveals the tiles around
-    /// it to its owner (ADV-FOG-003); nothing else is explored, and every object is on the map.
+    /// them. The heroes are kept by id, their stacks by slot, without movement points; nothing is
+    /// explored, and every object is on the map. The game gives the heroes their levels at load,
+    /// then starts the game ([`Self::start_game`]: the points and the reveals, ADR-0017 point 1).
     ///
     /// # Errors
     ///
@@ -813,20 +853,60 @@ impl AdventureState {
         for hero in &setup.heroes {
             state.place(core, part, hero)?;
         }
-        state.reveal_at_start(part);
         Ok(state)
     }
 
-    /// The start of the game: each hero reveals the tiles around it to its owner (ADV-FOG-003;
-    /// the original when it sets the placed heroes up, `placed_heroes_setup` 0x4CAE10 at
-    /// 0x4CAF74 (survey `E08-progression.md` §3.1), and again around everything a
-    /// player owns at each new day, 0x4C7C50, which adds nothing while no rule hides a tile).
-    /// Increment 1 has no owned objects: a game opens with only its heroes' surroundings
-    /// explored.
-    // rule: ADV-FOG-001, ADV-FOG-003
-    fn reveal_at_start(&mut self, part: &AdventureRuleset) {
-        let radius = part.params().scouting_radius();
+    /// The start of the game (ADR-0017 point 1, E08 T40), after the game gave the heroes their
+    /// levels at load: each hero gets the day's movement points ([`day_points`], ADV-MOV-002) and
+    /// reveals the tiles around it to its owner with its radius (ADV-FOG-003), both from its
+    /// details in `heroes`, the game's store. The original's order: `placed_hero_setup` 0x4D8B30
+    /// sets the points after the levels (survey `E08-progression.md` §3.2), `placed_heroes_setup`
+    /// 0x4CAE10 reveals after it (0x4CAF74, §3.1). Increment 1 has no owned objects: a game opens
+    /// with only its heroes' surroundings explored. The game calls it once, before day 1's
+    /// start-of-day step.
+    // rule: ADV-MOV-002, ADV-FOG-001, ADV-FOG-003
+    pub fn start_game(
+        &mut self,
+        core: &Ruleset,
+        part: &AdventureRuleset,
+        heroes: &[Arc<HeroDetails>],
+    ) {
+        for hero in &mut self.heroes {
+            let details = details_of(heroes, hero.id);
+            hero.movement = day_points(core, part, details, &hero.army);
+        }
+        self.reveal_around_heroes(core, part, heroes);
+    }
+
+    /// The adventure's start-of-day step (ADR-0017 point 3, E08 T40), after the calendar and
+    /// before the first group's turn, also on day 1: under `strict-fixed` (`ADV-QUIRK-18` off)
+    /// every hero on the map reveals the tiles around it to its owner with its radius, so a
+    /// radius grown in the day shows by the next day for a hero that does not move. The original
+    /// (`faithful`) reveals nothing here: its new day reveals around a player's heroes only after
+    /// a Cover of Darkness hid tiles (`new_day` 0x4C7FE0, `cover_of_darkness_hide` 0x4C7BA0; survey
+    /// `E08-hero-movement.md` §4.2), which comes with towns (E09). No event, as the start's and the
+    /// steps' reveals have none of their own: the owner's observation shows the explored tiles.
+    // rule: ADV-FOG-003
+    pub fn start_day(
+        &mut self,
+        core: &Ruleset,
+        part: &AdventureRuleset,
+        heroes: &[Arc<HeroDetails>],
+    ) {
+        if !core.quirks().is_enabled(RADIUS_WAITS_FOR_A_STEP) {
+            self.reveal_around_heroes(core, part, heroes);
+        }
+    }
+
+    /// Each hero reveals the tiles around it to its owner with its radius (ADV-FOG-001).
+    fn reveal_around_heroes(
+        &mut self,
+        core: &Ruleset,
+        part: &AdventureRuleset,
+        heroes: &[Arc<HeroDetails>],
+    ) {
         for hero in &self.heroes {
+            let radius = hero_radius(core, part, details_of(heroes, hero.id));
             reveal(
                 &mut self.explored[usize::from(hero.owner.raw())],
                 hero.pos,
@@ -835,10 +915,8 @@ impl AdventureState {
         }
     }
 
-    /// Checks and places one hero of the setup, with the day's movement points for its army
-    /// (the original computes them when it sets a placed hero up, `placed_hero_setup` 0x4D8B30,
-    /// survey `E08-progression.md` §3.2; its owner's turn
-    /// sets them again, [`Self::start_turn`]).
+    /// Checks and places one hero of the setup, without movement points ([`Self::start_game`]
+    /// gives them).
     fn place(
         &mut self,
         core: &Ruleset,
@@ -860,7 +938,6 @@ impl AdventureState {
             hero: hero.id,
             error,
         })?;
-        let movement = day_points(core, part, &army);
         self.heroes.insert(
             at,
             HeroOnMap {
@@ -869,18 +946,27 @@ impl AdventureState {
                 pos: hero.pos,
                 army,
                 formation: hero.formation,
-                movement,
+                movement: 0,
             },
         );
         Ok(())
     }
 
     /// The start of `player`'s turn (ADR-0017 point 3), a step only the game triggers: each of
-    /// its heroes gets the day's movement points for its army; what was left is lost.
+    /// its heroes gets the day's movement points for its army and its details in `heroes`, the
+    /// game's store ([`day_points`]); what was left is lost. A gain in the day (a level-up's
+    /// Logistics, an artifact put on) shows here first (survey `E08-hero-movement.md` §1.4).
     // rule: ADV-MOV-002
-    pub fn start_turn(&mut self, core: &Ruleset, part: &AdventureRuleset, player: PlayerId) {
+    pub fn start_turn(
+        &mut self,
+        core: &Ruleset,
+        part: &AdventureRuleset,
+        heroes: &[Arc<HeroDetails>],
+        player: PlayerId,
+    ) {
         for hero in self.heroes.iter_mut().filter(|h| h.owner == player) {
-            hero.movement = day_points(core, part, &hero.army);
+            let details = details_of(heroes, hero.id);
+            hero.movement = day_points(core, part, details, &hero.army);
         }
     }
 
@@ -990,7 +1076,8 @@ impl AdventureState {
             return Err(AdventureCommandError::EmptyPath);
         }
         let hero = &self.heroes[index];
-        let pricing = Pricing::new(core, part, &hero.army);
+        let details = details_of(heroes, id);
+        let pricing = Pricing::new(core, part, &hero.army, &hero_movement(core, details));
         let start = hero.pos;
         let (mut at, mut from, mut points) = (start, self.map.at(start), hero.movement);
         let (mut visit, mut guard) = (None, None);
@@ -1017,7 +1104,7 @@ impl AdventureState {
         let hero = &mut self.heroes[index];
         hero.pos = at;
         hero.movement = points;
-        let radius = part.params().scouting_radius();
+        let radius = hero_radius(core, part, details);
         let mut from = start;
         for &to in walked {
             reveal(&mut self.explored[usize::from(player.raw())], to, radius);
@@ -1164,7 +1251,7 @@ impl AdventureState {
         let ground = self.map.objects().iter().rev().find_map(|object| {
             match object.object_type.and_then(|id| part.object_type(id)) {
                 Some(ObjectType {
-                    kind: ObjectKind::Ground { battlefield },
+                    kind: ObjectKind::Ground { battlefield, .. },
                     ..
                 }) if object.lies_on(pos) => Some(battlefield.clone()),
                 _ => None,

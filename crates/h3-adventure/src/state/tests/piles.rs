@@ -77,7 +77,7 @@ fn setup(objects: Vec<ObjectSetup>) -> AdventureSetup {
 
 /// The state of [`setup`].
 fn state(rules: &Rules, objects: Vec<ObjectSetup>) -> AdventureState {
-    AdventureState::new(&rules.0, &rules.1, &setup(objects), &mut draws()).unwrap()
+    crate::testing::started(rules, &setup(objects)).unwrap()
 }
 
 /// A gold pile at [`TILE`] guarded by two pikemen in slot 1 and five gnolls in slot 4.
@@ -129,7 +129,7 @@ fn guards_stand_on_piles_only_as_a_valid_army() {
     assert_eq!(random.guards_left(0), &the_guards()[..]);
     // Refused: on another kind, or an invalid army (as a hero's), or a war machine among them.
     let refused = |object: ObjectSetup| {
-        let result = AdventureState::new(&rules.0, &rules.1, &setup(vec![object]), &mut draws());
+        let result = crate::testing::started(&rules, &setup(vec![object]));
         assert_eq!(result.err(), Some(SetupError::Guards(0)));
     };
     refused(pile_at(2, FIRE, guards(the_guards(), true)));

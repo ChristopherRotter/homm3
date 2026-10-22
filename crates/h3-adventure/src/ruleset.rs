@@ -141,6 +141,14 @@ pub struct AdventureParamsDef {
     pub battle: Option<BattleTerrainsDef>,
     /// The wandering monsters' parameters (E08 T20a2a); none: a map may hold no monster.
     pub monsters: Option<MonsterParamsDef>,
+    /// A flying hero's straight step price by its flying level, 0 to 3 (ADV-MOV-009, E08 T40;
+    /// read by the price from T41): the original's `fly_walk_step_cost` (0x6778AC), 140, 140,
+    /// 120, 100; a higher level counts as the last.
+    pub fly_cost: [NonZeroU16; 4],
+    /// A water-walking hero's straight step price from water by its water-walking level, 0 to 3
+    /// (ADV-MOV-010, E08 T40; read from T41): the same table in the original, a field of its own
+    /// so that data can tell the two apart (VCMI's spells do).
+    pub water_walk_cost: [NonZeroU16; 4],
 }
 
 /// The wandering monsters' parameters in a pack (E08 T20a2a).
@@ -219,6 +227,33 @@ pub struct AdventurePack {
     /// Core creatures of the pack's dependency closure that no random monster becomes (E08
     /// T20a2a, ADV-MON-003): the expansions' six the original leaves out.
     pub not_random_monsters: Vec<ContentKey>,
+    /// Terrain walkers (E08 T40, ADV-MOV-003): Nomads' sand priced as dirt.
+    pub terrain_walkers: Vec<TerrainWalkerDef>,
+}
+
+/// A terrain walker in a pack (E08 T40, ADV-MOV-003): an army with a stack of `creature` counts
+/// `terrain` as `counts_as` for every price of a step from it, the native terrain's and the
+/// diagonal exception's check included (the original's Nomads, creature 142: sand as dirt,
+/// `step_cost` 0x4B1740; survey `E08-hero-movement.md` §2.1 point 1).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TerrainWalkerDef {
+    /// The core creature.
+    pub creature: ContentKey,
+    /// The core terrain it walks as another (a land terrain).
+    pub terrain: ContentKey,
+    /// The core terrain `terrain` counts as (a land terrain).
+    pub counts_as: ContentKey,
+}
+
+/// A compiled [`TerrainWalkerDef`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TerrainWalker {
+    /// The creature.
+    pub creature: CreatureTypeId,
+    /// The terrain it walks as another.
+    pub terrain: TerrainId,
+    /// The terrain `terrain` counts as.
+    pub counts_as: TerrainId,
 }
 
 impl AdventurePack {
@@ -233,6 +268,7 @@ impl AdventurePack {
             params: None,
             starting_resources: Vec::new(),
             not_random_monsters: Vec::new(),
+            terrain_walkers: Vec::new(),
         }
     }
 }
@@ -288,6 +324,8 @@ pub struct AdventureParams {
     starting_stack_chances: Vec<u8>,
     battle: Option<BattleTerrains>,
     monsters: Option<MonsterParams>,
+    fly_cost: [NonZeroU16; 4],
+    water_walk_cost: [NonZeroU16; 4],
 }
 
 /// The compiled [`BattleTerrainsDef`].
@@ -360,6 +398,18 @@ impl AdventureParams {
     pub const fn monsters(&self) -> Option<&MonsterParams> {
         self.monsters.as_ref()
     }
+
+    /// A flying hero's straight step price at flying level `level` (ADV-MOV-009, E08 T40); a
+    /// level above 3 counts as 3.
+    pub fn fly_cost(&self, level: u8) -> u32 {
+        u32::from(self.fly_cost[usize::from(level.min(3))].get())
+    }
+
+    /// A water-walking hero's straight step price from water at water-walking level `level`
+    /// (ADV-MOV-010, E08 T40); a level above 3 counts as 3.
+    pub fn water_walk_cost(&self, level: u8) -> u32 {
+        u32::from(self.water_walk_cost[usize::from(level.min(3))].get())
+    }
 }
 
 /// Why the adventure packs could not be compiled into an [`AdventureRuleset`].
@@ -416,6 +466,9 @@ pub enum AdventureCompileError {
     /// A terrain's costs by Pathfinding level are given for a terrain not crossed on land, or
     /// one of them is above the cost below it (E08 T29).
     PathfindingCosts(String),
+    /// A terrain walker's terrain or the terrain it counts as is not crossed on land, or a second
+    /// walker names the same terrain (E08 T40); the payload is its terrain.
+    TerrainWalker(String),
     /// No enabled pack provides the adventure parameters.
     MissingParams,
     /// A second pack provides the adventure parameters.
@@ -473,6 +526,10 @@ impl fmt::Display for AdventureCompileError {
                 f,
                 "terrain `{k}`: costs by Pathfinding level need a land terrain and must not rise"
             ),
+            Self::TerrainWalker(k) => write!(
+                f,
+                "terrain walker of `{k}`: both terrains must be land, one walker per terrain"
+            ),
             Self::MissingParams => f.write_str("no pack provides the adventure parameters"),
             Self::DuplicateParams(p) => {
                 write!(
@@ -508,6 +565,7 @@ pub struct AdventureRuleset {
     params: AdventureParams,
     starting_resources: Vec<StartingResources>,
     not_random_monsters: BTreeSet<CreatureTypeId>,
+    terrain_walkers: Vec<TerrainWalker>,
     hash: u64,
 }
 
@@ -528,6 +586,7 @@ struct Tables {
     )>,
     starting_resources: Option<Vec<StartingResources>>,
     not_random_monsters: BTreeSet<CreatureTypeId>,
+    terrain_walkers: Vec<TerrainWalker>,
 }
 
 impl AdventureRuleset {
@@ -557,6 +616,7 @@ impl AdventureRuleset {
             })
             .collect::<Result<Vec<_>, _>>()?;
         check_object_types(core, &tables.objects.types, &tables.not_random_monsters)?;
+        check_terrain_walkers(core, &terrains, &tables.terrain_walkers)?;
         let (params, battle, price) = tables.params.ok_or(AdventureCompileError::MissingParams)?;
         let params = validate_params(params, battle, price)?;
         let starting_resources = tables
@@ -574,6 +634,7 @@ impl AdventureRuleset {
             params,
             starting_resources,
             not_random_monsters: tables.not_random_monsters,
+            terrain_walkers: tables.terrain_walkers,
             hash: 0,
         };
         part.hash = hash_of(&part);
@@ -677,6 +738,11 @@ impl AdventureRuleset {
         &self.starting_resources
     }
 
+    /// The terrain walkers, in load order (E08 T40, ADV-MOV-003): at most one per terrain.
+    pub fn terrain_walkers(&self) -> &[TerrainWalker] {
+        &self.terrain_walkers
+    }
+
     /// The creatures a random monster of these levels (inclusive) is drawn from (ADV-MON-003,
     /// E08 T20a2a), in the core's order: those of a level between them that are no war machine
     /// and that no pack leaves out (`not_random_monsters`).
@@ -690,8 +756,8 @@ impl AdventureRuleset {
 }
 
 impl CanonicalHash for AdventureRuleset {
-    /// Encoding v9 (E08 T29; v1 was T4's, v2 T5a's, v3 T6b's, v4 T12a's, v5 T13a's, v6 T19a's, v7
-    /// T20a2a's, v8 T20b1's): version; the terrains in the
+    /// Encoding v10 (E08 T40; v1 was T4's, v2 T5a's, v3 T6b's, v4 T12a's, v5 T13a's, v6 T19a's,
+    /// v7 T20a2a's, v8 T20b1's, v9 T29's): version; the terrains in the
     /// core's order (key, passage: 0 land, 1 water with the cost, 2 impassable; since v9 the
     /// costs by Pathfinding level, 0 for none, else 1 and the three costs); the road kinds
     /// (key, name, cost); the river kinds (key, name); the parameters (native cost, the land
@@ -703,8 +769,10 @@ impl CanonicalHash for AdventureRuleset {
     /// underground's and the coast's terrain, the coast's battlefield key); since v7 (E08 T20a2a)
     /// the monsters' parameters (0 for none, else 1, the aggression rows as their number and each
     /// row's bounds, the count words' thresholds as length and entries) and the creatures no
-    /// random monster becomes, as length and handles in order. The core's hash is not part of
-    /// it: replays record both.
+    /// random monster becomes, as length and handles in order; since v10 (E08 T40) the fly and
+    /// the water-walk prices (four each) and the terrain walkers as length and each one's
+    /// creature, terrain and the terrain it counts as (a ground's `no_native` in
+    /// [`ObjectType`]'s). The core's hash is not part of it: replays record both.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(ADVENTURE_RULESET_HASH_VERSION);
         h.write_len(self.terrains.len());
@@ -771,6 +839,20 @@ impl CanonicalHash for AdventureRuleset {
         h.write_len(self.not_random_monsters.len());
         for id in &self.not_random_monsters {
             id.hash_into(h);
+        }
+        for cost in self
+            .params
+            .fly_cost
+            .iter()
+            .chain(&self.params.water_walk_cost)
+        {
+            h.write_u16(cost.get());
+        }
+        h.write_len(self.terrain_walkers.len());
+        for walker in &self.terrain_walkers {
+            walker.creature.hash_into(h);
+            walker.terrain.hash_into(h);
+            walker.counts_as.hash_into(h);
         }
     }
 }
@@ -876,6 +958,22 @@ fn compile_pack(
             .ok_or_else(|| AdventureCompileError::UnknownCreature(String::from(key.as_str())))?;
         tables.not_random_monsters.insert(creature);
     }
+    for def in &pack.terrain_walkers {
+        if !closure.contains(def.creature.pack()) {
+            return Err(AdventureCompileError::ReferenceOutsideDependencies {
+                key: String::from(def.creature.as_str()),
+                pack: String::from(id),
+            });
+        }
+        let creature = core.creature_by_key(def.creature.as_str()).ok_or_else(|| {
+            AdventureCompileError::UnknownCreature(String::from(def.creature.as_str()))
+        })?;
+        tables.terrain_walkers.push(TerrainWalker {
+            creature,
+            terrain: core_terrain(core, id, closure, &def.terrain)?,
+            counts_as: core_terrain(core, id, closure, &def.counts_as)?,
+        });
+    }
     if !pack.starting_resources.is_empty() {
         if tables.starting_resources.is_some() {
             return Err(AdventureCompileError::DuplicateDifficulties(String::from(
@@ -925,7 +1023,32 @@ fn compile_pack(
     Ok(())
 }
 
-/// The core terrain `key` names, which `pack` (with dependency closure `closure`) may reference.
+/// Checks the terrain walkers once every pack's terrains are known (E08 T40): each walker's
+/// terrain and the terrain it counts as are crossed on land, and no two walkers name one terrain
+/// (an army holding both creatures would count it as two).
+fn check_terrain_walkers(
+    core: &Ruleset,
+    terrains: &[TerrainMovement],
+    walkers: &[TerrainWalker],
+) -> Result<(), AdventureCompileError> {
+    let land = |terrain: TerrainId| {
+        terrains
+            .get(usize::from(terrain.raw()))
+            .is_some_and(|t| matches!(t.passage, Passage::Land(_)))
+    };
+    let mut seen = BTreeSet::new();
+    for walker in walkers {
+        if !(land(walker.terrain) && land(walker.counts_as) && seen.insert(walker.terrain.raw())) {
+            let key = core
+                .terrains()
+                .get(usize::from(walker.terrain.raw()))
+                .map_or("", |info| info.key.as_str());
+            return Err(AdventureCompileError::TerrainWalker(String::from(key)));
+        }
+    }
+    Ok(())
+}
+
 /// Whether a terrain's costs by Pathfinding level fit (E08 T29): none, or a land terrain's, each
 /// at most the cost below it.
 fn pathfinding_fits(def: &TerrainMovementDef) -> bool {
@@ -939,6 +1062,7 @@ fn pathfinding_fits(def: &TerrainMovementDef) -> bool {
     }
 }
 
+/// The core terrain `key` names, which `pack` (with dependency closure `closure`) may reference.
 fn core_terrain(
     core: &Ruleset,
     pack: &str,
@@ -992,6 +1116,8 @@ fn validate_params(
                 count_words: m.count_words,
                 price_resource: price,
             }),
+            fly_cost: def.fly_cost,
+            water_walk_cost: def.water_walk_cost,
         }),
     }
 }

@@ -1,5 +1,6 @@
 //! Tests of a day's movement points (E08 T6b), the army's native terrain and the price of a step
-//! (T7b), each from its source (survey `E08-adventure-core.md` §1.2–1.3).
+//! (T7b), each from its source (survey `E08-adventure-core.md` §1.2–1.3); the hero's details in
+//! them since T40 (survey `E08-hero-movement.md` §1, §2, §4).
 
 use h3_content::CreatureTypeId;
 use h3_contracts::ArmyStack;
@@ -7,8 +8,8 @@ use h3_contracts::ArmyStack;
 use super::*;
 use crate::ruleset::RoadId;
 use crate::testing::{
-    COBBLE_ROAD, DIRT_ROAD, GNOLL, GRASS, PEASANT, PIKEMAN, ROCK, SAND, SEA, SWAMP, WOLF, army,
-    movement_rules, rules,
+    COBBLE_ROAD, DIRT_ROAD, GNOLL, GRASS, LOGISTICS, PATHFINDING, PEASANT, PIKEMAN, ROCK, SAND,
+    SCOUTING, SEA, SWAMP, WOLF, army, hero_details, hero_rules, movement_rules, rules,
 };
 
 const IMP: CreatureTypeId = CreatureTypeId::from_raw(0);
@@ -26,18 +27,46 @@ fn stack(slot: u8, creature: CreatureTypeId) -> ArmyStack {
 #[test]
 fn the_slowest_creature_picks_the_land_tables_entry() {
     let (core, part) = rules();
+    let points = |army: &[ArmyStack]| day_points(&core, &part, None, army);
     // Gogs (speed 2) slow the imps (speed 5) down to the table's third entry.
-    assert_eq!(
-        day_points(&core, &part, &[stack(0, IMP), stack(4, GOG)]),
-        1430
-    );
-    assert_eq!(day_points(&core, &part, &[stack(1, GOG)]), 1430);
+    assert_eq!(points(&[stack(0, IMP), stack(4, GOG)]), 1430);
+    assert_eq!(points(&[stack(1, GOG)]), 1430);
     // Speed 5 is past the table: its last entry.
-    assert_eq!(day_points(&core, &part, &[stack(0, IMP)]), 1500);
+    assert_eq!(points(&[stack(0, IMP)]), 1500);
     // Neither an empty army nor an unknown creature slows an army down.
-    assert_eq!(day_points(&core, &part, &[]), 1500);
+    assert_eq!(points(&[]), 1500);
     let ghost = stack(2, CreatureTypeId::from_raw(9));
-    assert_eq!(day_points(&core, &part, &[ghost, stack(0, IMP)]), 1500);
+    assert_eq!(points(&[ghost, stack(0, IMP)]), 1500);
+    // A hero without bonuses: the table's entry alone, as without details.
+    let plain = hero_details(&[]);
+    let army = [stack(0, IMP), stack(4, GOG)];
+    assert_eq!(land_table_points(&core, &part, Some(&plain), &army), 1430);
+    assert_eq!(day_points(&core, &part, Some(&plain), &army), 1430);
+}
+
+// covers: ADV-MOV-001, ADV-FOG-001
+#[test]
+fn the_heros_details_grow_its_day_points_and_radius() {
+    // E08 T40: `h3_heroes::land_points` on the table's entry (HER-ADV-003: Logistics +10 %, 20 %,
+    // 30 %, rounded down), `h3_heroes::scouting_radius` on the part's 5 (HER-ADV-006), the
+    // Pathfinding level for the price (HER-ADV-005). The creature specialty's speed and the
+    // artifacts: `h3-game`'s tests (the store's hero types).
+    let (core, part) = hero_rules(true);
+    let pikemen = army(&[PIKEMAN]); // speed 4: 1500
+    for (level, points, radius) in [(1, 1650, 6), (2, 1800, 7), (3, 1950, 8)] {
+        let hero = hero_details(&[(LOGISTICS, level), (SCOUTING, level), (PATHFINDING, level)]);
+        assert_eq!(land_table_points(&core, &part, Some(&hero), &pikemen), 1500);
+        assert_eq!(day_points(&core, &part, Some(&hero), &pikemen), points);
+        assert_eq!(hero_radius(&core, &part, Some(&hero)), radius);
+        assert_eq!(hero_movement(&core, Some(&hero)).pathfinding, level);
+    }
+    assert_eq!(day_points(&core, &part, None, &pikemen), 1500);
+    assert_eq!(hero_radius(&core, &part, None), 5);
+    assert_eq!(hero_movement(&core, None), Movement::default());
+    // The store by hero id: a hero it lacks has no details.
+    let store = [Arc::new(hero_details(&[(SCOUTING, 1)]))];
+    assert_eq!(details_of(&store, HeroId::new(0)), Some(&*store[0]));
+    assert_eq!(details_of(&store, HeroId::new(1)), None);
 }
 
 fn tile(terrain: TerrainId, road: Option<RoadId>) -> StaticTile {
@@ -47,7 +76,35 @@ fn tile(terrain: TerrainId, road: Option<RoadId>) -> StaticTile {
         river: None,
         blocked: false,
         visitable: false,
+        no_native: false,
     }
+}
+
+/// [`tile`] under a ground that takes the native price away (Cursed Ground, E08 T40).
+fn cursed(terrain: TerrainId, road: Option<RoadId>) -> StaticTile {
+    StaticTile {
+        no_native: true,
+        ..tile(terrain, road)
+    }
+}
+
+/// The pricing of a walker's steps with `army` and no Pathfinding.
+fn walking<'a>(core: &Ruleset, part: &'a AdventureRuleset, army: &[ArmyStack]) -> Pricing<'a> {
+    Pricing::new(core, part, army, &Movement::default())
+}
+
+/// The pricing of a walker's steps with `army` and Pathfinding at `level`.
+fn pathfinder<'a>(
+    core: &Ruleset,
+    part: &'a AdventureRuleset,
+    army: &[ArmyStack],
+    level: u8,
+) -> Pricing<'a> {
+    let movement = Movement {
+        pathfinding: level,
+        ..Movement::default()
+    };
+    Pricing::new(core, part, army, &movement)
 }
 
 // covers: ADV-MOV-004
@@ -140,7 +197,7 @@ fn a_step_goes_to_one_of_the_eight_tiles_around_on_the_same_level() {
 #[test]
 fn only_the_source_tile_prices_a_straight_step() {
     let (core, part) = movement_rules(false);
-    let pricing = Pricing::new(&core, &part, &army(&[PEASANT]));
+    let pricing = walking(&core, &part, &army(&[PEASANT]));
     let price = |from: StaticTile, to: StaticTile| pricing.step(&from, &to, false, 1500);
     let (grass, sand, swamp) = (tile(GRASS, None), tile(SAND, None), tile(SWAMP, None));
     assert_eq!(price(grass, grass), 100);
@@ -173,12 +230,12 @@ fn a_native_army_steps_from_its_terrain_at_the_native_cost() {
     let (core, part) = movement_rules(false);
     let swamp = tile(SWAMP, None);
     let grass = tile(GRASS, None);
-    let gnolls = Pricing::new(&core, &part, &army(&[GNOLL, GNOLL]));
+    let gnolls = walking(&core, &part, &army(&[GNOLL, GNOLL]));
     assert_eq!(gnolls.step(&swamp, &grass, false, 1500), 100);
     assert_eq!(gnolls.step(&swamp, &grass, true, 1500), 141);
     // Grass is not theirs: its own cost, which is 100 too; pikemen pay swamp's.
     assert_eq!(gnolls.step(&grass, &swamp, false, 1500), 100);
-    let pikemen = Pricing::new(&core, &part, &army(&[PIKEMAN]));
+    let pikemen = walking(&core, &part, &army(&[PIKEMAN]));
     assert_eq!(pikemen.step(&swamp, &grass, false, 1500), 175);
     // A road still prices a road step.
     let road = tile(SWAMP, Some(DIRT_ROAD));
@@ -193,7 +250,7 @@ fn the_diagonal_exception_charges_the_straight_cost_up_to_its_bound() {
     // 100; below, or above, 141.
     for faithful in [false, true] {
         let (core, part) = movement_rules(faithful);
-        let pricing = Pricing::new(&core, &part, &army(&[PEASANT]));
+        let pricing = walking(&core, &part, &army(&[PEASANT]));
         let grass = tile(GRASS, None);
         let price = |points| pricing.step(&grass, &grass, true, points);
         assert_eq!(price(99), 141);
@@ -214,9 +271,9 @@ fn the_exceptions_check_ignores_roads_under_adv_quirk_2() {
     // (exception from 100 to 141).
     let road = tile(GRASS, Some(COBBLE_ROAD));
     let (core, part) = movement_rules(false);
-    let strict = Pricing::new(&core, &part, &army(&[PEASANT]));
+    let strict = walking(&core, &part, &army(&[PEASANT]));
     let (core, part) = movement_rules(true);
-    let faithful = Pricing::new(&core, &part, &army(&[PEASANT]));
+    let faithful = walking(&core, &part, &army(&[PEASANT]));
     for (points, clean, original) in [
         (60, 50, 70),
         (70, 50, 70),
@@ -242,9 +299,9 @@ fn the_exceptions_check_ignores_the_native_cost_under_adv_quirk_3() {
     // 174 points the diagonal costs 141, and from 175 to 247 only 100.
     let swamp = tile(SWAMP, None);
     let (core, part) = movement_rules(false);
-    let strict = Pricing::new(&core, &part, &army(&[GNOLL]));
+    let strict = walking(&core, &part, &army(&[GNOLL]));
     let (core, part) = movement_rules(true);
-    let faithful = Pricing::new(&core, &part, &army(&[GNOLL]));
+    let faithful = walking(&core, &part, &army(&[GNOLL]));
     for (points, clean, original) in [
         (120, 100, 141),
         (141, 100, 141),
@@ -268,7 +325,7 @@ fn points_below_the_cheapest_next_step_are_lost() {
     // D-3 (0x4B1880 after each step): the cheapest straight step from the new tile is its road's
     // cost, else the native cost, whatever its terrain.
     let (core, part) = movement_rules(true);
-    let pricing = Pricing::new(&core, &part, &army(&[PEASANT]));
+    let pricing = walking(&core, &part, &army(&[PEASANT]));
     let swamp = tile(SWAMP, None);
     assert_eq!(pricing.left_after(&swamp, 99), 0);
     assert_eq!(pricing.left_after(&swamp, 100), 100);
@@ -287,8 +344,119 @@ fn points_below_the_cheapest_next_step_are_lost() {
 #[test]
 fn no_step_costs_less_than_the_cheapest_straight_step() {
     let (core, part) = movement_rules(true);
-    assert_eq!(Pricing::new(&core, &part, &army(&[PEASANT])).cheapest(), 50);
+    assert_eq!(walking(&core, &part, &army(&[PEASANT])).cheapest(), 50);
     // The other test rules' cheapest step is their road's.
     let (core, part) = rules();
-    assert_eq!(Pricing::new(&core, &part, &[]).cheapest(), 75);
+    assert_eq!(walking(&core, &part, &[]).cheapest(), 75);
+}
+
+// covers: ADV-MOV-003
+#[test]
+fn pathfinding_lowers_the_rough_terrains_walking_price() {
+    // E08 T40: the part's costs by Pathfinding level (the original's `step_cost_table` 0x63E510:
+    // sand 150, 125, 100, 100; swamp 175, 150, 125, 100), from the source's terrain; roads, the
+    // native cost and grass unchanged.
+    let (core, part) = movement_rules(false);
+    let (grass, sand, swamp) = (tile(GRASS, None), tile(SAND, None), tile(SWAMP, None));
+    let road = tile(SWAMP, Some(DIRT_ROAD));
+    for (level, from_sand, from_swamp) in
+        [(0, 150, 175), (1, 125, 150), (2, 100, 125), (3, 100, 100)]
+    {
+        let pricing = pathfinder(&core, &part, &army(&[PEASANT]), level);
+        assert_eq!(
+            pricing.step(&sand, &grass, false, 1500),
+            from_sand,
+            "{level}"
+        );
+        assert_eq!(
+            pricing.step(&swamp, &grass, false, 1500),
+            from_swamp,
+            "{level}"
+        );
+        assert_eq!(pricing.step(&grass, &swamp, false, 1500), 100);
+        assert_eq!(pricing.step(&road, &road, false, 1500), 75);
+        assert_eq!(pricing.cheapest(), 50);
+        // Water's price at every level.
+        assert_eq!(pricing.step(&tile(SEA, None), &grass, false, 1500), 100);
+        // Gnolls keep their native 100 on swamp.
+        let gnolls = pathfinder(&core, &part, &army(&[GNOLL]), level);
+        assert_eq!(gnolls.step(&swamp, &grass, false, 1500), 100);
+    }
+    // ADV-QUIRK-3's check is the source terrain's price at the hero's level (0x4B1740): gnolls on
+    // swamp with Basic Pathfinding check 150, so from 150 to 212 points a diagonal costs 100.
+    let (core, part) = movement_rules(true);
+    let gnolls = pathfinder(&core, &part, &army(&[GNOLL]), 1);
+    assert_eq!(gnolls.step(&swamp, &swamp, true, 149), 141);
+    assert_eq!(gnolls.step(&swamp, &swamp, true, 150), 100);
+    assert_eq!(gnolls.step(&swamp, &swamp, true, 212), 100);
+    assert_eq!(gnolls.step(&swamp, &swamp, true, 213), 141);
+}
+
+// covers: ADV-MOV-003, ADV-MOV-004
+#[test]
+fn a_terrain_walker_counts_its_terrain_as_another_for_every_price() {
+    // E08 T40 (Nomads' sand as dirt, 0x4B1740): the test rules' wolf walks sand as swamp.
+    for faithful in [false, true] {
+        let (core, part) = hero_rules(faithful);
+        let (sand, grass) = (tile(SAND, None), tile(GRASS, None));
+        // Without a wolf, sand's 150; with one, swamp's 175 (125 at Advanced Pathfinding).
+        let gnolls = walking(&core, &part, &army(&[GNOLL]));
+        assert_eq!(gnolls.step(&sand, &grass, false, 1500), 150);
+        let wolves = walking(&core, &part, &army(&[WOLF]));
+        assert_eq!(wolves.step(&sand, &grass, false, 1500), 175);
+        assert_eq!(
+            pathfinder(&core, &part, &army(&[WOLF]), 2).step(&sand, &grass, false, 1500),
+            125
+        );
+        // Only the source's terrain: from grass onto sand grass's 100.
+        assert_eq!(wolves.step(&grass, &sand, false, 1500), 100);
+        // The native test sees sand as swamp: wolves leading gnolls are native to swamp under
+        // ADV-QUIRK-4 (faithful), so sand costs the native 100; strict, no native terrain.
+        let pack = walking(&core, &part, &army(&[WOLF, GNOLL]));
+        let native = if faithful { 100 } else { 175 };
+        assert_eq!(pack.step(&sand, &grass, false, 1500), native);
+        // The diagonal exception's check under ADV-QUIRK-3: swamp's 175 from sand, not sand's.
+        if faithful {
+            assert_eq!(pack.step(&sand, &sand, true, 175), 100);
+            assert_eq!(pack.step(&sand, &sand, true, 174), 141);
+        }
+        // The drop prices the tile against itself after the walker too (under Cursed Ground).
+        assert_eq!(wolves.left_after(&cursed(SAND, None), 174), 0);
+        assert_eq!(wolves.left_after(&cursed(SAND, None), 175), 175);
+        assert_eq!(wolves.cheapest(), 50);
+    }
+}
+
+// covers: ADV-MOV-004, ADV-MOV-006
+#[test]
+fn cursed_ground_takes_the_native_price_away() {
+    // E08 T40, D-23 (0x4B1740 tests the source tile's special ground 21; batch E5's E5-6: Gnolls
+    // 175 from swamp under it): from a cursed tile every army pays the terrain's walking price,
+    // by its Pathfinding level; a road still prices a road step; the destination does not count.
+    for faithful in [false, true] {
+        let (core, part) = movement_rules(faithful);
+        let gnolls = walking(&core, &part, &army(&[GNOLL]));
+        let (swamp, grass) = (cursed(SWAMP, None), tile(GRASS, None));
+        assert_eq!(gnolls.step(&swamp, &grass, false, 1500), 175);
+        assert_eq!(gnolls.step(&tile(SWAMP, None), &swamp, false, 1500), 100);
+        assert_eq!(
+            pathfinder(&core, &part, &army(&[GNOLL]), 1).step(&swamp, &grass, false, 1500),
+            150
+        );
+        let road = cursed(SWAMP, Some(DIRT_ROAD));
+        assert_eq!(gnolls.step(&road, &road, false, 1500), 75);
+        // A diagonal: 247 from 248 points on; the exception's check is 175 in both profiles.
+        assert_eq!(gnolls.step(&swamp, &swamp, true, 248), 247);
+        assert_eq!(gnolls.step(&swamp, &swamp, true, 175), 175);
+        // The drop after a step onto a cursed tile: the terrain's price (0x4B1880), not 100; a
+        // road's still its own.
+        assert_eq!(gnolls.left_after(&swamp, 174), 0);
+        assert_eq!(gnolls.left_after(&swamp, 175), 175);
+        assert_eq!(gnolls.left_after(&tile(SWAMP, None), 100), 100);
+        assert_eq!(gnolls.left_after(&road, 75), 75);
+        assert_eq!(
+            gnolls.left_after(&cursed(TerrainId::from_raw(99), None), 9999),
+            0
+        );
+    }
 }

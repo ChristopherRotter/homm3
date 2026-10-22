@@ -151,11 +151,11 @@ impl GameState {
     /// contents, ADR-0016 point 4, then each hero's level seed in hero id order, GAM-HER-002;
     /// last of the stream's draws, so the earlier ones do not depend on the heroes' levels), the
     /// levels at load of each hero with a custom experience in hero id order (GAM-SET-002: its
-    /// levels' draws from the setup stream in `strict-fixed`), a stream
+    /// levels' draws from the setup stream in `strict-fixed`), the adventure's start of the game
+    /// after them (the heroes' day's points and reveals from their details, E08 T40), a stream
     /// and the difficulty's human row of starting resources per player (GAM-RES-002), sequential
-    /// play (GAM-TRN-001) on day 1
-    /// (GAM-CAL-001), and the first group's turn started, so the first day starts as every later
-    /// one (ADR-0017 point 3; no context has a rule at the start of a day yet).
+    /// play (GAM-TRN-001) on day 1 (GAM-CAL-001), day 1's start-of-day step and the first group's
+    /// turn started, so the first day starts as every later one (ADR-0017 point 3).
     ///
     /// # Errors
     ///
@@ -169,7 +169,7 @@ impl GameState {
             .ok_or(GameSetupError::Difficulty(setup.difficulty))?;
         let mut draws = Rng::for_stream(seed, StreamId::SETUP);
         let (part, mut heroes) = setup.adventure_setup(rules, &mut draws)?;
-        let adventure = AdventureState::new(rules.core(), rules.adventure(), &part, &mut draws)
+        let mut adventure = AdventureState::new(rules.core(), rules.adventure(), &part, &mut draws)
             .map_err(GameSetupError::Adventure)?;
         let progression = Progression::new(
             setup.level_limit,
@@ -184,6 +184,12 @@ impl GameState {
                 progression.levels_at_load(rules.core(), hero, experience, shares, &mut draws);
             }
         }
+        let heroes: Arc<Vec<Arc<HeroDetails>>> =
+            Arc::new(heroes.into_iter().map(Arc::new).collect());
+        // ADR-0017 point 1 (E08 T40): the adventure's start of the game after the levels at
+        // load, then day 1's start-of-day step (ADV-MOV-002, ADV-FOG-003).
+        adventure.start_game(rules.core(), rules.adventure(), &heroes);
+        adventure.start_day(rules.core(), rules.adventure(), &heroes);
         let players: Vec<PlayerState> = setup
             .players
             .iter()
@@ -208,7 +214,7 @@ impl GameState {
             group: 0,
             day: 1,
             rng: Rng::for_stream(seed, StreamId::GAME),
-            heroes: Arc::new(heroes.into_iter().map(Arc::new).collect()),
+            heroes,
             progression: Arc::new(progression),
             adventure,
         };
@@ -234,7 +240,7 @@ impl GameState {
         self.group += 1;
         if self.group == self.groups.len() {
             self.group = 0;
-            self.advance_day(sink);
+            self.advance_day(rules, sink);
         }
         self.start_group(rules, sink);
         Ok(())
@@ -540,12 +546,14 @@ impl GameState {
         self.decisions = (!rest.is_empty()).then(|| rest.into());
     }
 
-    /// The day advance (ADR-0017 point 3): the calendar, then each context's start-of-day step
-    /// (none has a rule there yet).
+    /// The day advance (ADR-0017 point 3): the calendar, then each context's start-of-day step:
+    /// the adventure's (E08 T40: in `strict-fixed` each hero's reveal, ADV-FOG-003).
     // rule: GAM-TRN-002, GAM-CAL-001
-    fn advance_day<S: Sink>(&mut self, sink: &mut S) {
+    fn advance_day<S: Sink>(&mut self, rules: &GameRuleset, sink: &mut S) {
         self.day = self.day.saturating_add(1);
         sink.emit(GameEvent::DayStarted { day: self.day });
+        self.adventure
+            .start_day(rules.core(), rules.adventure(), &self.heroes);
     }
 
     /// Starts the turn of the current group: each of its players acts, and each context runs its
@@ -555,7 +563,7 @@ impl GameState {
         for player in group {
             self.players[player.index()].acting = true;
             self.adventure
-                .start_turn(rules.core(), rules.adventure(), player);
+                .start_turn(rules.core(), rules.adventure(), &self.heroes, player);
             sink.emit(GameEvent::TurnStarted { player });
         }
     }
