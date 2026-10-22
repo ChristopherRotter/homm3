@@ -956,3 +956,17 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
 - **Kept apart** (documented): the threat records and the tables computed when first read, the
   second context when a removal first asks it (ADR-0027 point 11); a removal's copy is a clone of
   the battle; the bolts', Dispel's and Clone's evaluators wait for the hero (T5).
+- **A blind check** (a fresh agent, 0x43C4A0, 0x43BF20 with 0x43C040, 0x439A80 with Cure and
+  Anti-Magic against the port): the Genie's mean and the seed's slip agree. Fixed: the fill read
+  the seeded enemy from the entry a stronger strike had taken (0x43C0EE reads it once); the
+  removal kept a permanent Acid Breath on its copy (0x444510 keeps only Disrupting Ray). Kept
+  apart as before (T4b1): the threat records' dead enemies, which the seed then reads. Found: the
+  removal's copy is no record of the battle (BAT-Q60; the user: slip 24, T4d; BAT-STUB-12).
+- **Cost** (2026-10-22): `computer-decisions` 518 013 597 instructions, +8.55 %, re-set on
+  purpose (the Genie's values; slip 22's map when a context-building caster casts nothing).
+  Release, each decision's best of five (a local patch of `h3 bench-computer`, not kept), 400
+  battles each of seeds 4 to 8: 30.5 to 35.0 µs per decision on average, the slowest 0.38 to
+  0.98 ms, a Faerie Dragon's cast each time it was the slowest (its predictions and hexes, T4a and
+  T4b2). Ten Master Genies with six other stacks against a hero's seven, three spells lasting on
+  the side: 0.25 to 0.45 ms, on Magic Plains (the mass values) up to 0.61 ms. Within the budget,
+  the dragon's the nearest to it.
