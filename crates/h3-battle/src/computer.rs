@@ -573,6 +573,32 @@ pub fn siege(state: &BattleState) -> Option<&SiegeState> {
     state.siege.as_ref()
 }
 
+/// Whether the walls would halve a shot of `shooter` at `target` from the shooter's position
+/// (0x467510 as the computer's Earthquake value asks it, 0x43BAC3, from the record's +0x38 to the
+/// target's; BAT-SIE-008): the rule's halving tests from the hex the shooter turns to (a two-hex
+/// shooter's may differ, survey slip 29). A shooter whose shots the walls never halve (ability
+/// `no_wall_penalty`, its hero's bows): false. Both must be stacks of `state`.
+pub fn walls_halve_from_position(state: &BattleState, shooter: StackId, target: StackId) -> bool {
+    let s = state.at(shooter);
+    state.siege.as_ref().is_some_and(|walls| {
+        !s.has(StackTraits::NO_WALL_PENALTY)
+            && siege::walls_between(walls, s.hex, state.at(target).hex)
+    })
+}
+
+/// Whether the walls halve a shot of `shooter` at `target` (BAT-SIE-008, the original's
+/// 0x467510 from the hex the shooter turns to, as the shot's damage tests it). Both must be
+/// stacks of `state`.
+pub fn walls_halve(state: &BattleState, shooter: StackId, target: StackId) -> bool {
+    let s = state.at(shooter);
+    siege::wall_penalty(
+        state,
+        s,
+        state.at(target),
+        s.has(StackTraits::NO_WALL_PENALTY),
+    )
+}
+
 /// A double as the original's `_ftol` gives it to its callers (0x6179D4): truncated toward 0, the
 /// low 32 bits kept.
 pub fn ftol(x: X87) -> i32 {

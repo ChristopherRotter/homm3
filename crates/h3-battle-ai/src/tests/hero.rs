@@ -22,14 +22,14 @@ const ATTACKER: BattleSide = BattleSide::Attacker;
 const DEFENDER: BattleSide = BattleSide::Defender;
 
 /// `own` led by `hero` against `enemies` without a hero, on Normal.
-fn led(own: &[(usize, u32)], enemies: &[(usize, u32)], hero: BattleHero) -> BattleSetup {
+pub(super) fn led(own: &[(usize, u32)], enemies: &[(usize, u32)], hero: BattleHero) -> BattleSetup {
     let mut s = setup(own, enemies);
     s.heroes[0] = Some(hero);
     s
 }
 
 /// Every stack defends until a stack of `side` but a war machine acts.
-fn until_side(state: &mut BattleState, r: &BattleRuleset, side: BattleSide) {
+pub(super) fn until_side(state: &mut BattleState, r: &BattleRuleset, side: BattleSide) {
     for _ in 0..40 {
         let id = state.active().unwrap();
         let machine = state.stacks()[id.index()].has(StackTraits::WAR_MACHINE);
@@ -42,7 +42,7 @@ fn until_side(state: &mut BattleState, r: &BattleRuleset, side: BattleSide) {
 }
 
 /// The hero's cast for the side to act, from a fixed stream.
-fn cast(state: &BattleState, r: &BattleRuleset) -> Option<Command> {
+pub(super) fn cast(state: &BattleState, r: &BattleRuleset) -> Option<Command> {
     let side = state.side_to_act().unwrap();
     hero::cast(
         state,
@@ -63,7 +63,7 @@ fn choice(state: &BattleState, r: &BattleRuleset, retreat: bool) -> Option<Comma
 }
 
 /// The candidate of the attacker's hero's cast of `name` in `state`.
-fn candidate(state: &BattleState, r: &BattleRuleset, name: &str) -> Candidate {
+pub(super) fn candidate(state: &BattleState, r: &BattleRuleset, name: &str) -> Candidate {
     let id = spell(r, name);
     let hc = computer::hero_cast(state, r, ATTACKER, (id, r.spell(id).unwrap()));
     Candidate {
@@ -76,7 +76,7 @@ fn candidate(state: &BattleState, r: &BattleRuleset, name: &str) -> Candidate {
 }
 
 /// The value of the attacker's hero's cast of `name` in `state` (0x43BB20).
-fn valued(state: &BattleState, r: &BattleRuleset, name: &str) -> Valued {
+pub(super) fn valued(state: &BattleState, r: &BattleRuleset, name: &str) -> Valued {
     let ctx = computer::context(state, r, ATTACKER);
     let sc = SpellContext::new(state, r, (&ctx, ATTACKER), &mut Rng::from_seed(5));
     let h = Hero::new(&sc, (state, r), (state.active().unwrap(), ATTACKER, ctx));
@@ -232,7 +232,8 @@ fn spell_of(r: &BattleRuleset, name: &str) -> h3_content::SpellId {
 #[test]
 fn with_the_enemy_beaten_only_the_raises_count() {
     // A lone imp the archers' shot kills: the predictions beat the enemy and the side loses
-    // nothing, so only the raises are weighed, which T5b values (nothing yet): no cast.
+    // nothing, so only the raises are weighed, and the unhurt archers have nothing to raise: no
+    // cast.
     let r = ruleset();
     let hero = hero_with(&r, &["bolt", "raise"], 1, 999);
     let mut state = BattleState::new(&r, &led(&[(ARCHER, 30)], &[(IMP, 1)], hero), 1).unwrap();
@@ -246,6 +247,7 @@ fn with_the_enemy_beaten_only_the_raises_count() {
         Valued {
             value: 0,
             target: CastTarget::None,
+            second: CastTarget::None,
             now: false,
         }
     );
@@ -301,6 +303,7 @@ fn the_damage_spells_and_the_summon() {
         Valued {
             value: 10 * 126,
             target: CastTarget::None,
+            second: CastTarget::None,
             now: true,
         }
     );

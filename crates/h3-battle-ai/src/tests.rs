@@ -47,6 +47,7 @@ mod hero;
 mod odds;
 mod order;
 mod predict;
+mod specials;
 mod speed;
 mod spells;
 mod values;
@@ -775,9 +776,11 @@ type HeroSpell = (
     fn() -> SpellMagic,
 );
 
-/// The hero's own cases (E23 T5a): Dispel (any side's stack from Advanced, the mass version at
-/// Expert), Clone, an area spell, a mass damage spell, a chain, a summon of runners and a raise.
-const HERO_SPELLS: [HeroSpell; 7] = [
+/// The hero's own cases (E23 T5a, T5b1): Dispel (any side's stack from Advanced, the mass version
+/// at Expert), Clone, an area spell, a mass damage spell, a chain, a summon of runners, a raise,
+/// one that lasts only the battle below Advanced (as Resurrection), Sacrifice (tested as that one)
+/// and Earthquake.
+const HERO_SPELLS: [HeroSpell; 10] = [
     ("dispel", 0, [0; 4], SpellPolarity::Neutral, || SpellMagic {
         target: SpellTarget::Stack,
         side: TargetSide::Own,
@@ -851,6 +854,37 @@ const HERO_SPELLS: [HeroSpell; 7] = [
             ..SpellMagic::default()
         },
     ),
+    (
+        "resurrect",
+        50,
+        [30, 30, 60, 160],
+        SpellPolarity::Positive,
+        || SpellMagic {
+            target: SpellTarget::Stack,
+            side: TargetSide::Own,
+            temporary_below: Some(2),
+            effects: vec![SpellEffect::Raise],
+            ..SpellMagic::default()
+        },
+    ),
+    (
+        "sacrifice",
+        0,
+        [3, 3, 6, 9],
+        SpellPolarity::Positive,
+        || SpellMagic {
+            target: SpellTarget::Stack,
+            side: TargetSide::Own,
+            effects: vec![SpellEffect::Sacrifice],
+            ..SpellMagic::default()
+        },
+    ),
+    ("quake", 0, [2, 2, 4, 9], SpellPolarity::Neutral, || {
+        SpellMagic {
+            effects: vec![SpellEffect::Earthquake],
+            ..SpellMagic::default()
+        }
+    }),
 ];
 
 /// A hero whose book holds the test spells `names` at `mastery`, with `mana` spell points and
@@ -1228,7 +1262,7 @@ fn ruleset_as(profile: &str) -> BattleRuleset {
                 counters: vec![],
                 dispels: vec![],
                 spares: vec![],
-                tests_as: None,
+                tests_as: (k == "sacrifice").then(|| key("t:resurrect")),
                 summons: (k == "summon").then(|| key("t:runner")),
                 ai: SpellAi::default(),
             }),

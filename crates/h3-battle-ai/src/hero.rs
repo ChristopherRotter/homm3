@@ -4,8 +4,11 @@
 //! (0x422DA0, [`SpellContext`]) and weighs every spell it can cast now (0x43C800): the spell's
 //! value (0x43BB20, [`value`]), 2.5 times when its spell points cover seven casts, else times the
 //! square root of the casts they cover, drawn at 75 to 100 %; the best is cast when it is due now
-//! (+0x20) or when the side would retreat. Raises, Sacrifice, Earthquake and Teleport are T5b's
-//! (BAT-STUB-14); the retreat test is T6's (BAT-STUB-13, BAT-Q61).
+//! (+0x20) or when the side would retreat. The raises, Sacrifice and Earthquake have cases of
+//! their own ([`specials`], E23 T5b1); Teleport is T5b2's (BAT-STUB-14); the retreat test is T6's
+//! (BAT-STUB-13, BAT-Q61).
+
+mod specials;
 
 use core::cell::OnceCell;
 
@@ -58,11 +61,13 @@ pub(crate) fn cast(
 }
 
 /// A spell's value for the hero's choice (0x43BB20's candidate after it): the value, the target
-/// the cast takes and whether the cast is due now (+0x20).
+/// and the second target the cast takes (+0x14, +0x18: Sacrifice's victim) and whether the cast
+/// is due now (+0x20).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct Valued {
     pub(crate) value: i32,
     pub(crate) target: CastTarget,
+    pub(crate) second: CastTarget,
     pub(crate) now: bool,
 }
 
@@ -71,8 +76,18 @@ impl Valued {
     const ZERO: Self = Self {
         value: 0,
         target: CastTarget::None,
+        second: CastTarget::None,
         now: false,
     };
+
+    /// A value due now without a target (0x43BB20's cases of the spells without one).
+    const fn untargeted(value: i32) -> Self {
+        Self {
+            value,
+            now: true,
+            ..Self::ZERO
+        }
+    }
 }
 
 /// The hero's choice (0x43C800; BAT-AI-017) in the spell context `sc` of `side`, `id` the active
@@ -132,7 +147,7 @@ pub(crate) fn choose(
         .map(|(spell, v)| Command::Cast {
             spell,
             target: v.target,
-            second: CastTarget::None,
+            second: v.second,
         })
 }
 
@@ -242,32 +257,33 @@ impl<'h, 'a> Hero<'h, 'a> {
     }
 }
 
-/// A spell's value for the hero's choice (0x43BB20; BAT-AI-017, BAT-AI-018), its candidate `c`:
+/// A spell's value for the hero's choice (0x43BB20; BAT-AI-017 to BAT-AI-019), its candidate `c`:
 /// Chain Lightning's ([`chain`]), an area spell's ([`area`]) and a mass damage spell's
-/// ([`mass_damage`]), the summons' ([`summon`]) and Dispel's ([`dispel`]) by their own cases;
-/// the raises, Sacrifice, Earthquake and Teleport nothing yet (T5b); every other spell aimed at
+/// ([`mass_damage`]), the summons' ([`summon`]), Dispel's ([`dispel`]), the raises', Sacrifice's
+/// and Earthquake's ([`specials`]) by their own cases; Teleport nothing yet (T5b2); every other
+/// spell aimed at
 /// stacks by its evaluator ([`Kind`]) on the side's stacks for a positive spell, the other
 /// side's for a negative one ([`evaluated`]; the original weighs a neutral one on both, the only
 /// such spell Dispel, whose case falls into this one, [`dispel`]); any other nothing: the
 /// computer's hero never casts
 /// Quicksand, Land Mine, Force Field, Fire Wall, Berserk (aimed at a hex) or Remove Obstacle.
-// rule: BAT-AI-017, BAT-AI-018
+// rule: BAT-AI-017, BAT-AI-018, BAT-AI-019
 pub(crate) fn value(h: &Hero<'_, '_>, (id, s): (SpellId, &BattleSpell), c: Candidate) -> Valued {
     let m = &s.magic;
     let has = |e: SpellEffect| m.effects.contains(&e);
-    if [
-        SpellEffect::Raise,
-        SpellEffect::Sacrifice,
-        SpellEffect::Earthquake,
-        SpellEffect::Teleport,
-    ]
-    .into_iter()
-    .any(has)
-    {
+    if has(SpellEffect::Teleport) {
         // stub: BAT-STUB-14
-        // The raises, Sacrifice, Earthquake and Teleport (0x43ACA0, 0x43B1E0, 0x43B8F0,
-        // 0x43AA60): E23 T5b.
+        // Teleport (0x43AA60, the walker's turn twice per stack it could move): E23 T5b2.
         return Valued::ZERO;
+    }
+    if has(SpellEffect::Earthquake) {
+        return specials::earthquake(h, s, c);
+    }
+    if has(SpellEffect::Sacrifice) {
+        return specials::sacrifice(h, (id, s), c);
+    }
+    if has(SpellEffect::Raise) {
+        return specials::raise(h, (id, s), c);
     }
     if has(SpellEffect::Damage) && m.target != SpellTarget::Stack {
         let factor = u64::from(s.power);
@@ -319,11 +335,7 @@ fn evaluated(h: &Hero<'_, '_>, of: BattleSide, c: Candidate) -> Valued {
     if computer::takes_stack(h.ruleset, c.spell, c.mastery) {
         one_target(h, of, c, &h.targets(c.spell))
     } else {
-        Valued {
-            value: on_stacks(h, of, c),
-            target: CastTarget::None,
-            now: true,
-        }
+        Valued::untargeted(on_stacks(h, of, c))
     }
 }
 
@@ -400,6 +412,7 @@ pub(crate) fn one_target(
     Valued {
         value: best.value,
         target: CastTarget::Stack(t),
+        second: CastTarget::None,
         now,
     }
 }
@@ -541,11 +554,7 @@ fn mass_damage(h: &Hero<'_, '_>, spell: Spell) -> Valued {
             computer::spell_damage_value(state, ruleset, ctx, (spell.id, spell.damage), true, id);
         casts::add(&mut sums, st.side == h.side, v);
     }
-    Valued {
-        value: casts::pays(ctx, sums),
-        target: CastTarget::None,
-        now: true,
-    }
+    Valued::untargeted(casts::pays(ctx, sums))
 }
 
 /// A summon's value (0x43BB20's case for the four elementals; BAT-AI-018): 0 when the predictions
@@ -565,11 +574,7 @@ pub(crate) fn summon(h: &Hero<'_, '_>, s: &BattleSpell, c: Candidate) -> Valued 
             .and_then(|cr| h.ruleset.creature_info(cr))
             .map_or(0, |cr| i32::try_from(cr.ai_value).unwrap_or(i32::MAX))
     };
-    Valued {
-        value: n.wrapping_mul(worth),
-        target: CastTarget::None,
-        now: true,
-    }
+    Valued::untargeted(n.wrapping_mul(worth))
 }
 
 /// Dispel's value (0x43BB20's case and, without a return, the stacks' case after it, Dispel being

@@ -298,6 +298,8 @@ pub(crate) struct Half {
     /// The enemy beaten (+0x1C): no stack of the other side but the war machines has hit points
     /// left after the planned damage.
     beaten: bool,
+    /// The side's own able strength (+0x34, the battle context's +0x14).
+    own_able: i32,
     /// The other side's able strength (+0x38, the battle context's +0x18).
     other_able: i32,
     /// The threat tables (0x43C040), built when first asked.
@@ -320,6 +322,7 @@ impl Half {
             ctx,
             class: balance.class,
             beaten: beaten(state, planned, side),
+            own_able: balance.own,
             other_able: balance.other,
             tables: OnceCell::new(),
         }
@@ -390,6 +393,18 @@ impl<'a> SpellContext<'a> {
     /// Whether the predictions beat the enemy (+0x1C).
     pub(crate) fn beaten(&self) -> bool {
         self.first.beaten
+    }
+
+    /// Whether a raise's value doubles (0x43AE51 to 0x43AE61, as the creatures' raise, BAT-AI-012):
+    /// the side's able strength exceeds the other's and the balance class is 1 (+0x34, +0x38,
+    /// +0x3C).
+    pub(crate) fn raises_double(&self) -> bool {
+        self.first.own_able > self.first.other_able && self.first.class <= 1
+    }
+
+    /// The enemy of stack `id`'s threat record (+0x538: 0x422B20 with flag 0), if it has one.
+    pub(crate) fn threat_enemy(&self, id: StackId) -> Option<StackId> {
+        self.threat(id).map(|t| t.enemy)
     }
 
     /// Whether a living stack of the side but the turrets would lose its top creature to the
