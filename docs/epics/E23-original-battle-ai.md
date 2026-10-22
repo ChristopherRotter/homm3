@@ -2,7 +2,7 @@
 
 Status: **in progress**, refined 2026-10-19 (BAT-Q52); T1a1 to T1a4 done (the cuts confirmed
 2026-10-20), T1c done (BAT-Q53, BAT-Q54); T1a5 done as cut (part C, §7.42 to §7.45); T1a5e (the spell evaluators) done (§7.46); T1b done, ADR-0027 accepted (BAT-Q55); T2 done (T2a the crate and the plain shooters, T2b the area value, the wall shot, the benchmark), the budget
-set; T3 done (cut in four: T3-0, T3a, T3b, T3c); T4 done (T4a, T4b in two, T4c, T4d); T1a6 done; slip 25 done; T5 next · Follows E05 (the
+set; T3 done (cut in four: T3-0, T3a, T3b, T3c); T4 done (T4a, T4b in two, T4c, T4d); T1a6 done; slip 25 done; T5 cut in two, T5a done; T5b next · Follows E05 (the
 AI lane, done) · Followed by E06 (training: this policy holds the neutral seat; AI-Q1) ·
 The battle lane's, later the AI lane's (BACKLOG).
 
@@ -177,7 +177,9 @@ found after that decision) belong to the neutral side's map too and are read (§
     0x41EEA0 (BAT-AI-004, the policy's first draw), the gated benchmark `computer-decisions` and the
     budget (ADR-0027 point 11; the log). **The budget** (the user, 2026-10-21): the gated count
     with its +2 %, re-set on purpose at each part of T3 (the walkers cost more), and at most 1 ms
-    for the slowest decision on a quiet sandbox, measured and recorded per task.
+    for the slowest decision on a quiet sandbox, measured and recorded per task; **a decision with
+    a hero's cast at most 5 ms** (the user, 2026-10-22, at T5a: the hero's spell context and
+    values; the side without a hero keeps 1 ms).
 - **T3 Walkers**, cut in four (the user, 2026-10-21: the pack data first, then the plan and the
   attack, the scores, the odds and the ends; each part's missing pieces stand in as stubs):
   - [x] **T3-0 The spells' AI values** (2026-10-21) — each spell's `ai` in the battle pack: the
@@ -234,8 +236,17 @@ found after that decision) belong to the neutral side's map too and are read (§
   their protection through the Ogre Mage's scan with the protections' estimates (§7.42, §7.46),
   the shooters among them before their shot, against its value (the user, at the task's start;
   BAT-AI-002, BAT-AI-012, BAT-AI-014; `POLICY_VERSION` 11; the log).
-- [ ] **T5 The hero's spells** (T1a6's reading done, §7.55; cut at its checkpoint; BAT-Q61's
-  answer for the retreat test's part).
+- **T5 The hero's spells** (T1a6's reading, §7.55), cut in two (the user, 2026-10-22; BAT-Q61
+  option (c): the retreat test's answer is no until T6, BAT-STUB-13; slip 26 decided at T6):
+  - [x] **T5a The entry, the choice, the evaluators, the damage spells and the summons**
+    (2026-10-22) — 0x422DA0 before each stack's action, the choice 0x43C800 (× 2.5 or × √casts,
+    the 75–100 % draw, "now"), 0x43BB20 but T5b's cases: the evaluators through 0x43A670 and
+    0x43A910 with "now" (0x436C60) and Magic Mirror's scaling, the bolts', Dispel's and Clone's
+    evaluators, Chain Lightning, the area and mass damage spells, the summons (BAT-AI-017,
+    BAT-AI-018; §7.56; slip 27, Expert Dispel, found by the blind check; `POLICY_VERSION` 12;
+    the hero budget 5 ms; the log).
+  - [ ] **T5b The raises, Sacrifice, Earthquake and Teleport** (BAT-STUB-14; Teleport runs the
+    walker's real turn twice per candidate).
 - [ ] **T6 The hero's other choices** — retreat and surrender, the tactics phase, the Catapult's
   aim, the First Aid Tent's patient (BAT-Q51); BAT-Q33's rule.
 - [ ] **T7 The closure** — the batch rows' leftovers, the benchmarks, the docs.

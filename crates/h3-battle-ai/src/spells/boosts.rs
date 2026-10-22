@@ -121,6 +121,29 @@ pub(crate) fn change_value(m: i32, c: i32, (p, n): (X87, X87), slip: bool) -> Si
 }
 
 impl View<'_> {
+    /// Clone's evaluator (0x43B2E0; BAT-AI-017): 0 when the predictions beat the enemy, for a
+    /// stack that has acted this round or one that attacks its threat record's enemy `e` in more
+    /// than a turn; else the kill value of its strike on `e` by its whole count (capped at `e`'s
+    /// hit points, its shot flag) in the side's context, `e`'s shot flag, the desperate mode:
+    /// the clone strikes as the stack would.
+    // rule: BAT-AI-017
+    pub(crate) fn clone_value(&self, s: StackId, _c: Candidate) -> i32 {
+        if self.beaten || self.stack(s).flags.contains(StackFlags::ACTED) {
+            return 0;
+        }
+        self.within_a_turn(s).map_or(0, |e| {
+            let d = self.strike((s, e));
+            let shot = computer::shoots(self.state, self.ruleset, e);
+            computer::damage_value(
+                self.state,
+                self.ruleset,
+                self.ctx,
+                (e, d),
+                (shot, self.desperate()),
+            )
+        })
+    }
+
     /// The value of `bonus` more attack for stack `s` against `e` over `rounds` rounds (0x437800;
     /// BAT-AI-014): 0 when the predictions beat the enemy (BAT-AI-015); else the gain `g = D' /
     /// D`, `D` and `D'` the damage of a base of 100 on `e` without and with the bonus

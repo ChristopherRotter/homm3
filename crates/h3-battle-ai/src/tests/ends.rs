@@ -253,6 +253,75 @@ fn the_guard_defends_beside_its_shooter_and_the_step_to_safety_takes_the_best_he
 
 // covers: BAT-AI-010
 #[test]
+fn a_shooter_without_a_free_hex_beside_it_is_no_guard_target() {
+    // The imps take every free hex beside the archers (the side column holds no stack): the
+    // archers have no guard hex, and with no other shooter the runners guard no one.
+    let r = ruleset();
+    let mut state = BattleState::new(
+        &r,
+        &setup(
+            &[
+                (RUNNER, 10),
+                (ARCHER, 10),
+                (IMP, 1),
+                (IMP, 1),
+                (IMP, 1),
+                (IMP, 1),
+                (IMP, 1),
+            ],
+            &[(GOG, 30)],
+        ),
+        1,
+    )
+    .unwrap();
+    let field = Field::new(r.battle().field);
+    let archers = state.stacks()[1].hex;
+    let free = |state: &BattleState, h: Hex| {
+        !state
+            .stacks()
+            .iter()
+            .any(|s| s.is_alive() && s.footprint(field).hexes().any(|x| x == h))
+    };
+    // The runners step away from the archers (their start hex is beside them); the imps fill
+    // every free hex beside the archers.
+    for _ in 0..60 {
+        let left: std::vec::Vec<Hex> = field
+            .neighbors(archers)
+            .into_iter()
+            .flatten()
+            .filter(|&h| free(&state, h))
+            .filter(|&h| {
+                let (col, _) = field.coords(h);
+                col > 0 && col < 16
+            })
+            .collect();
+        let runner_beside = field
+            .neighbors(archers)
+            .contains(&Some(state.stacks()[0].hex));
+        if left.is_empty() && !runner_beside {
+            break;
+        }
+        let side = state.side_to_act().unwrap();
+        let walk = |to: Hex| {
+            let m = Command::Move { to };
+            h3_battle::validate(&state, &r, side, m)
+                .is_ok()
+                .then_some(m)
+        };
+        let command = match active(&state) {
+            RUNNER if runner_beside => walk(Hex(57)),
+            IMP => left.iter().find_map(|&to| walk(to)),
+            _ => None,
+        };
+        play(&mut state, &r, command.unwrap_or(Command::Defend));
+    }
+    let w = walker(&state, &r, (0, BattleSide::Attacker));
+    assert!(computer::shoots(&state, &r, StackId(1)));
+    assert_eq!(w.guard(), None);
+}
+
+// covers: BAT-AI-010
+#[test]
 fn the_guard_defends_on_the_last_shooters_hex_with_the_slip_else_on_the_bests() {
     // The runners stand on the guard hex of the five archers (the last shooter asked, beside it
     // on its right); the fifty archers are worth more, so their guard hex is the best. The
@@ -273,6 +342,13 @@ fn the_guard_defends_on_the_last_shooters_hex_with_the_slip_else_on_the_bests() 
             let (col, row) = field.coords(h);
             field.hex(col + 1, row).unwrap()
         };
+        // From the start both guard hexes are a turn away: the fifty archers' is the better, the
+        // five archers' (asked later) is passed over.
+        assert_eq!(
+            walker(&state, &r, (0, BattleSide::Attacker)).guard(),
+            Some(Command::Move { to: beside(many) }),
+            "{profile}"
+        );
         play(&mut state, &r, Command::Move { to: beside(few) });
         while active(&state) != RUNNER {
             play(&mut state, &r, Command::Defend);

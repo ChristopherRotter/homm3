@@ -5,7 +5,7 @@
 //! battle's private state is added here by the battle lane.
 
 use h3_content::{CreatureTypeId, SchoolId, SpellId};
-use h3_content_battle::{BattleRuleset, SpellTarget};
+use h3_content_battle::{BattleRuleset, BattleSpell, SpellTarget};
 use h3_contracts::BattleSide;
 use h3_kernel::arith::X87;
 
@@ -497,6 +497,74 @@ pub fn hero_value(
     strength: i32,
 ) -> i32 {
     aim::hero_value(state, ruleset, side, strength)
+}
+
+/// What the computer reads of a hero's cast (0x43C800's candidate; E23 T5a, BAT-AI-017).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct HeroCast {
+    /// The hero's mastery of the spell on the battlefield (0x4E5080; BAT-MAG-002, BAT-TER-005).
+    pub mastery: u8,
+    /// The spell's cost to the hero (0x4E5240; BAT-MAG-054).
+    pub cost: u16,
+    /// The hero's spell points (+0x18).
+    pub mana: u16,
+    /// The hero's spell power (the battle's +0x53D4).
+    pub power: u16,
+    /// The rounds its timed spells last as the computer counts them: the power and the duration
+    /// bonus (0x4E4DB0: the Collar, Ring and Cape of Conjuring, the Ring of the Magi; HER-BAT-014).
+    pub rounds: u16,
+}
+
+/// What the computer reads of `side`'s hero's cast of `spell` (0x43C800; E23 T5a, BAT-AI-017):
+/// its mastery, cost, spell points, power and rounds; all 0 without a hero.
+pub fn hero_cast(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    side: BattleSide,
+    (id, spell): (SpellId, &BattleSpell),
+) -> HeroCast {
+    state.heroes[side.index()]
+        .as_ref()
+        .map_or(HeroCast::default(), |hero| {
+            let mastery = magic::mastery(state, ruleset, hero, id);
+            let power = u16::from(hero.view.power);
+            HeroCast {
+                mastery,
+                cost: crate::mana::cost(spell, mastery, hero.magic.cost_change),
+                mana: hero.view.mana,
+                power,
+                rounds: power.saturating_add(hero.magic.duration_bonus),
+            }
+        })
+}
+
+/// Whether the dispel spell `dispel` ends spell `spell` lasting on a stack, `permanent` when it
+/// lasts to the battle's end, as the rule ends it (BAT-MAG-016; E23 T5a: Dispel's estimate
+/// without BAT-QUIRK-25).
+pub fn dispel_ends(
+    ruleset: &BattleRuleset,
+    dispel: &BattleSpell,
+    (spell, permanent): (SpellId, bool),
+) -> bool {
+    crate::effects::ends_spell(ruleset, dispel, (spell, permanent))
+}
+
+/// Whether a hero in the battle forbids every cast (BAT-MAG-061: an anti-magic garrison, the Orb
+/// of Inhibition on either hero; the original's 0x422DA0 tests both before the hero's cast).
+pub fn casting_forbidden(state: &BattleState) -> bool {
+    magic::casting_forbidden(state)
+}
+
+/// Magic Mirror's chance on stack `id` as the computer's one-target evaluation scales a value by
+/// it (0x43A76D with 0x4487F0; E23 T5a): while the cast Magic Mirror lasts on the stack its
+/// chance, at least the creature's own mirror's (BAT-MAG-022, BAT-MAG-057); 0 without the spell.
+pub fn cast_mirror_chance(state: &BattleState, ruleset: &BattleRuleset, id: StackId) -> u8 {
+    let s = state.at(id);
+    if s.spells.mirror == 0 {
+        0
+    } else {
+        magic::mirror_chance(ruleset, s)
+    }
 }
 
 /// The battle's town (ADR-0023), which the computer reads whole: its fort, walls, gate, moat and

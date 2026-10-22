@@ -13,7 +13,7 @@
 //! tells it by the spell's number: the attack bonuses, luck, morale, speed and the second strikes
 //! ([`boosts`]), the defenses and the spell protections ([`defenses`]), the harmful spells
 //! ([`harms`]) and the removals ([`removals`]). The bolts', Dispel's and Clone's evaluators serve
-//! only the hero's choice (E23 T5): they value 0 here.
+//! only the hero's choice ([`hero`](crate::hero), E23 T5a).
 
 pub(crate) mod boosts;
 mod defenses;
@@ -28,7 +28,7 @@ use h3_battle::{
     BattleSide, BattleState, STACK_CAPACITY, StackFlags, StackId, StackTraits, Status,
 };
 use h3_content::{ORIGINAL_AI_SLIPS, SpellCategory, SpellId};
-use h3_content_battle::{BattleRuleset, BattleSpell, SpellEffect, TimedChange};
+use h3_content_battle::{BattleRuleset, BattleSpell, SpellEffect, SpellTarget, TimedChange};
 use h3_kernel::Rng;
 use h3_kernel::arith::X87;
 
@@ -69,7 +69,8 @@ pub(crate) type Evaluator = fn(&View<'_>, StackId, Candidate) -> i32;
 /// the original tells it by the spell's number: its timed changes, its other effects and, for a
 /// defense loss alone, whether a hero may cast it (Disrupting Ray, 47; the Rust Dragons' Acid
 /// Breath, 80, is a creature's ability the table values at 0). A spell of no kind is worth 0
-/// (0x43B680: the damage, raise, summon and obstacle spells, Stone Gaze, Bind).
+/// (0x43B680: Chain Lightning, the area and mass damage, raise, summon and obstacle spells,
+/// Stone Gaze, Bind).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Kind {
     /// Bloodlust (43; 0x438100).
@@ -135,6 +136,13 @@ pub(crate) enum Kind {
     Disease,
     /// Age (75; 0x4373F0).
     Age,
+    /// The bolts: Magic Arrow, Ice Bolt, Lightning Bolt, Implosion, Titan's Lightning Bolt (15 to
+    /// 18, 57; 0x436F60).
+    Bolt,
+    /// Dispel (35; 0x439BC0).
+    Dispel,
+    /// Clone (65; 0x43B2E0).
+    Clone,
 }
 
 impl Kind {
@@ -165,9 +173,24 @@ impl Kind {
         if timed(TimedChange::DefenseLoss) {
             return (spell.category != SpellCategory::Ability).then_some(Self::DisruptingRay);
         }
-        // Cure ends harmful spells and heals (Dispel only ends: the hero's, E23 T5).
-        if effects.contains(&SpellEffect::Dispel) && effects.contains(&SpellEffect::Heal) {
-            return Some(Self::Cure);
+        // Cure ends harmful spells and heals, Dispel only ends.
+        if effects.contains(&SpellEffect::Dispel) {
+            return Some(if effects.contains(&SpellEffect::Heal) {
+                Self::Cure
+            } else {
+                Self::Dispel
+            });
+        }
+        if effects.contains(&SpellEffect::Clone) {
+            return Some(Self::Clone);
+        }
+        // A bolt: damage aimed at one stack, no chain.
+        let m = &spell.magic;
+        if effects.contains(&SpellEffect::Damage)
+            && m.target == SpellTarget::Stack
+            && m.chain.is_none()
+        {
+            return Some(Self::Bolt);
         }
         [
             (TimedChange::MeleeAttack, Self::Bloodlust),
@@ -234,6 +257,9 @@ impl Kind {
             Self::Poison => |sc, s, c| sc.poison(s, c),
             Self::Disease => |sc, s, c| sc.disease(s, c),
             Self::Age => |sc, s, c| sc.age(s, c),
+            Self::Bolt => |sc, s, c| sc.bolt(s, c),
+            Self::Dispel => |sc, s, c| sc.dispel(s, c),
+            Self::Clone => |sc, s, c| sc.clone_value(s, c),
         }
     }
 }
@@ -361,6 +387,30 @@ impl<'a> SpellContext<'a> {
         self.view().on_side(c, value)
     }
 
+    /// Whether the predictions beat the enemy (+0x1C).
+    pub(crate) fn beaten(&self) -> bool {
+        self.first.beaten
+    }
+
+    /// Whether a living stack of the side but the turrets would lose its top creature to the
+    /// damage the predictions plan on it (0x43C883: the planned damage and the top creature's lost
+    /// hit points reach a creature's).
+    pub(crate) fn at_risk(&self) -> bool {
+        let state = self.state;
+        (0u8..).zip(state.stacks()).any(|(i, s)| {
+            s.side == self.first.side
+                && s.is_alive()
+                && !s.is_turret()
+                && self.planned.on(StackId(i)) >= u64::from(s.top_hp)
+        })
+    }
+
+    /// The side's half in the desperate mode (0x43C8FD: when the hero's side would retreat, the
+    /// cast choice values every spell so; E23 T5a), its balance as built.
+    pub(crate) fn desperately(&mut self) {
+        self.first.ctx = self.first.ctx.desperately();
+    }
+
     /// The other side's half (0x4369C0's step 6: its own battle context, its "enemy beaten" for
     /// the side's own stacks after the planned damage), built when first asked.
     fn second(&self) -> &Half {
@@ -472,6 +522,11 @@ impl<'s> View<'s> {
             .map_or(0, |k| k.evaluator()(self, s, c))
     }
 
+    /// The half's battle context.
+    pub(crate) const fn context(&self) -> &'s Context {
+        self.ctx
+    }
+
     /// The threat record of stack `id` (the context's, [`SpellContext::threat`]).
     fn threat(&self, id: StackId) -> Option<Threat> {
         self.root.threat(id)
@@ -481,7 +536,7 @@ impl<'s> View<'s> {
     /// speed now, at most 1), else none. The original counts the turns as it values, on the record
     /// it is given: a removal's copy counts them at its own speed and shot (E23 T4d: an ended Slow,
     /// Haste, Prayer or Forgetfulness changes them); on the battle the record's turns are those.
-    fn within_a_turn(&self, s: StackId) -> Option<StackId> {
+    pub(crate) fn within_a_turn(&self, s: StackId) -> Option<StackId> {
         let threat = self.threat(s)?;
         let turns = if core::ptr::eq(self.state, self.root.state) {
             threat.turns

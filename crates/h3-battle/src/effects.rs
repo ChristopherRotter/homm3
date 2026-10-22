@@ -538,15 +538,25 @@ pub(crate) fn dispel<S: Sink>(
 /// `dispels`, or, without that list, any timed one but those of its `spares`; for a dispel of
 /// positive spells only one of a positive spell (Dispel Helpful Spells, BAT-MAG-042).
 pub(crate) fn dispel_ends(ruleset: &BattleRuleset, spell: &BattleSpell, e: &ActiveEffect) -> bool {
-    e.rounds.is_some()
+    ends_spell(ruleset, spell, (e.spell, e.rounds.is_none()))
+}
+
+/// [`dispel_ends`] for spell `id` lasting on a stack, `permanent` when it lasts to the battle's
+/// end (the computer's Dispel estimate asks it, E23 T5a).
+pub(crate) fn ends_spell(
+    ruleset: &BattleRuleset,
+    spell: &BattleSpell,
+    (id, permanent): (SpellId, bool),
+) -> bool {
+    !permanent
         && (!spell.magic.dispels_positive
             || ruleset
-                .spell(e.spell)
+                .spell(id)
                 .is_some_and(|sp| sp.polarity == SpellPolarity::Positive))
         && if spell.dispels.is_empty() {
-            !spell.spares.contains(&e.spell)
+            !spell.spares.contains(&id)
         } else {
-            spell.dispels.contains(&e.spell)
+            spell.dispels.contains(&id)
         }
 }
 

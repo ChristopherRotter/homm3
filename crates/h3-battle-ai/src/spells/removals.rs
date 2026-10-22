@@ -138,6 +138,23 @@ impl View<'_> {
         .ftol_times(X87::ONE)
     }
 
+    /// Dispel's evaluator (0x439BC0; BAT-AI-017): the removal of the spells on `s`, with
+    /// BAT-QUIRK-25 every lasting spell but Poison (as the removal without its flag reads them;
+    /// survey slip 17: Disrupting Ray too), without those the rule ends ([`computer::dispel_ends`],
+    /// BAT-MAG-016).
+    // rule: BAT-AI-017
+    pub(crate) fn dispel(&self, s: StackId, c: Candidate) -> i32 {
+        let dispel = self.ruleset.spell(c.spell);
+        let slip = self.slips();
+        self.removal(s, |id, spell, permanent| {
+            if slip {
+                !poisons(&spell.magic.effects)
+            } else {
+                dispel.is_some_and(|d| computer::dispel_ends(self.ruleset, d, (id, permanent)))
+            }
+        })
+    }
+
     /// Anti-Magic's evaluator (0x439D40; BAT-AI-016) with its level `v`: the removal of the
     /// spells on `s` plus the spell protection's value against every school, nothing kept
     /// ([`Self::spell_protection`]). With BAT-QUIRK-25 (survey slip 11) the removal of every

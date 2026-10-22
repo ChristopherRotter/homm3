@@ -5473,3 +5473,71 @@ Fire Wall or Remove Obstacle (the wiki says it of Force Field and Quicksand); a 
 "now" (row 4b H3); the retreat's threshold with the cap and the steps, the strengths' 1.2 and 1.1. Its
 other terms agree with the wiki's word for word, the walled-out siege's four conditions too
 (Combat, "AI Retreat"; survey §2).
+
+### 7.56 Code reading: the hero's cast re-read for the port (E23 T5a, 2026-10-22)
+
+Read again for E23 T5a (the user's cut of T5: the entry, the choice, the evaluators, the damage
+spells and the summons; T5b the raises, Sacrifice, Earthquake and Teleport): 0x422DA0, 0x43C800,
+0x43BB20's Dispel and stacks' cases, 0x43A670, 0x436C60, 0x436F60, 0x439BC0 and 0x43B2E0. §7.55
+stands; these are the details the port needs. Insight only, nothing copied (Q29).
+
+**0x43C800's arithmetic.** The value `v` (+0x1C of the candidate) counts only above 0. With the
+hero's spell points (+0x18, a signed word) at least seven times the cost: `lea eax, [v + 4v]`,
+`cdq; sub; sar 1`, so `trunc(5v / 2)` in 32 bits (a free spell takes this branch: 7 × 0).
+Otherwise `idiv` gives the integer quotient of the points by the cost, `fild` and `crt_sqrt` its
+root as a double, times `fild v`, `crt_ftol`. Then `random(75, 100)` (0x43CA60: `ecx` 75, `edx`
+100) times that value in 32 bits, divided by 100 with the reciprocal's truncation. The best starts
+at 0 and takes a strictly larger value, so at a tie the lower spell stays; the nine dwords of the
+candidate are copied whole, "now" (+0x20) with them.
+
+**The raises-only test** (0x43C883 to 0x43C8E1): with the context's +0x1C set, over the side's
+records from the first, a record not dead (bit 21) and not creature 149 whose planned damage
+(+0x534) plus its top creature's lost hit points (+0x58) reach its hit points per creature
+(+0xC0, a signed compare) clears the flag; none does, the flag stays: only spells 38 and 39.
+
+**0x43A670's "now"** (0x43A80A, only when this call found a target). An own target: 1 when it is
+the active record (+0x132B8, +0x132BC); else over the side's records, skipping those dead or war
+machines (`0x200040`), blind, turned to stone or paralysed (+0x290, +0x2B0, +0x2C0), acted (bit
+26) or the active record itself: the first other record found makes it the spell's protective flag
+(`0x4000`), none makes it 1. An enemy target: 0x436C60. Then Haste (53) always 1. The values: the
+evaluator per record; on the other side's record with Magic Mirror's rounds (+0x228) a value above
+0 of any spell but Dispel (35) becomes `(50 − c) × v × 2 / 100` (32 bits, `c` 0x4487F0); a value
+strictly above the candidate's takes the record.
+
+**0x436C60** (an enemy E). 1 with the desperate mode (+0x28). Else the side's other records as
+above: none, 1. Else when the active record is of the context's side (+0xF4), its threat record's
+enemy (+0x538) is E, 0x448BD0 at its speed (0x448CD0) gives exactly 1, it cannot shoot now (0x4428F0
+with 0) and lacks the creature flag `0x10000` (no retaliation): 1. Else 0 unless E's bit (its
+record index +0xF8) is in the threat tables' mask (+0x14); then over the side's records skipping
+the dead, the blind, turned to stone or paralysed, the arrow towers (149) and the active record (no
+war machine or acted test here): one whose rank (+0x190) is above E's gives 0; none, 1. The ranks
+are fresh: the context calls 0x41F140 at 0x436A25 with the activation's side.
+
+**0x43BB20's Dispel** (0x43BCE6): 0x43A910 on the own side into the candidate; at Advanced (+4 =
+2) 0x43A910 again on the other side into the same candidate, so its target replaces the own only
+when strictly larger, its "now" with it; at Expert (3) a copy of the candidate on the other side,
+its value added (0x43BD31). **The case has no return: it runs on into the stacks' case**
+(0x43BD34; found by T5a's blind check). **The stacks' case**: only a spell with a target flag
+`0x70`; by the spell's type (+0 of its record): 0 or more on the own side, then 0 or less on the
+other side into the same candidate. Dispel is neutral (type 0, flags `0x40041`), so both run
+again: aimed at one stack nothing changes (a target replaces only a strictly larger one; below
+Advanced the other side's stacks are weighed too, which the rules do not let it target); **at
+Expert the mass path writes its sum over the value (0x43AA54), so the own + other total becomes
+the own side's sum and then the other side's: Expert Dispel is valued at the other side's sum
+alone** (survey slip 27). No other neutral spell reaches the stacks' case (the summons and the
+damage spells have their cases).
+
+**The evaluators the hero alone reaches.** 0x436F60 (the bolts, 15 to 18 and 57): the damage
+`[+0x30] × power + [+0x34 + 4 × mastery]` by 0x436E30, its hero argument the context's +8, which
+reaches only the log (§7.50): no test of the enemy beaten. 0x439BC0 (Dispel): a copy of the stack
+(0x437A00) and 0x439A80 with flag 0 (every lasting spell but Poison). 0x43B2E0 (Clone): 0 with
++0x1C, with the acted bit 26, without a threat enemy (+0x538) or when 0x448BD0 at its speed gives
+more than 1; else 0x442780 on E with its own shot flag, its count and the cap, then 0x442FD0 on E
+with the context's least bonuses, E's shot flag and the desperate mode.
+
+**For the port:** the policy weighs only the spells the engine lets the hero cast now and casts
+only at the engine's targets (ADR-0027 point 3); the original builds the context whenever its
+hero may cast, so the policy draws the predictions even when no spell can be paid. A computer
+hero considers a cast at every activation of a stack of its side but a war machine, before the
+stack acts, once a round (+0x54B4). The retreat test's answer is no until T6 (BAT-STUB-13, BAT-Q61);
+the raises, Sacrifice, Earthquake and Teleport are T5b's (BAT-STUB-14).
