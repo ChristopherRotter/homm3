@@ -4336,3 +4336,7 @@ Decision 87: T40 whole (the price and the day in one session and one pull reques
   verified by E5-6 and E5-10), `ADV-QUIRK-18`'s ledger entry, `e4_score`'s `land_table` on
   `land_table_points`, `levels.rs`' citations repointed to increment 4's note in this log, the
   design note (§5 and §6's built points reduced), the epic, the queue (T41's entry), the HANDOFF.
+- **The full local verify** (CI cannot run): `scripts/verify-once.sh engine --base origin/master
+  -- --with-original-data` on engine code 8235b24f (commit 55d1642, 2026-10-22, the sandbox,
+  Linux x86_64): all 16 steps passed; `original-data`: 9 heroes levelled at load with 41
+  level-ups (unchanged). The baseline on `master` e4dd551 (code 7214d773): all passed.
