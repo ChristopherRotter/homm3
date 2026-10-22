@@ -23,13 +23,16 @@ the screen.
 A recipe (clients/capture/batches/): `spec` (the batch's spec, from the repository's root),
 `players` (the hot-seat names, one per human colour from red on) and `[[step]]`s, each either
 `end_turn = true` or a hero's: `encounter` (the template's section), `hero` (its name on the map),
-`walk = [x, y]` (click the tile twice: a walk, or a visit to what stands there; without it the
-step only reads), `record = { "<field or table row>" = "<observation>" }` and `expect = { marks =
-<n>, path = "green" | "red" }` (a difference goes into the encounter's "anything odd").
-Observations: arrived, moved (yes/no), mark (the target's mark at the first click: green, red or
-none), marks (their number), points (the points left), points_if_moved, resource:<name>.
+`walk = [x, y]` (click the tile twice: a walk, or a visit to what stands there) or `equip = {
+"<artifact>" = "<slot>" }` (put on from the backpack in the hero screen, E08 T37a; without
+either the step only reads), `record = { "<field, table row or `<row> | <column>`>" =
+"<observation>" }` and `expect = { marks = <n>, path = "green" | "red" }` (a difference goes into
+the encounter's "anything odd"). Observations (the README's table): arrived, moved (yes/no), mark
+(the target's mark at the first click: green, red or none), marks (their number), points (the
+points left), points_if_moved, resource:<name>, explored:x,y[:colour] (E08 T37a), hero:<detail>, …
 
-Library use: to_hot_seat, dismiss, end_turn, select, centre, hover, walk, observe. Needs a game
+Library use: to_hot_seat, dismiss, end_turn, select, centre, hover, walk, observe,
+open_hero_screen, equip. Needs a game
 set up by setup.sh (Show Route on), numpy, xdotool and the rights to read the game's memory.
 """
 
@@ -682,6 +685,61 @@ def walk(game, mem, name, target, answer=None, battle=None, level_up="left"):
     }
 
 
+# -- the hero screen (E08 T37a: batch E5's E5-3b and E5-10b) --------------------------------------
+# The hero screen's artifact places (800 x 600; the README's table): the backpack's five visible
+# places from the left, and each worn slot's place, by h3mem.ARTIFACT_SLOTS' names (centres of
+# 44 x 44 places). Checked in the original under Wine (E08 T37a): the backpack's, the feet's and misc
+# 1's; the others as VCMI's hero window places them, not checked.
+BACKPACK_PLACES = (425, 387, 46, 5)  # the first place's centre, the step, the places shown
+SLOT_PLACES = {
+    "head": (531, 52), "shoulders": (590, 264), "neck": (531, 102), "right hand": (405, 91),
+    "left hand": (584, 206), "torso": (531, 153), "right ring": (453, 91),
+    "left ring": (632, 206), "feet": (537, 317), "misc 1": (405, 165), "misc 2": (421, 215),
+    "misc 3": (437, 265), "misc 4": (453, 315), "misc 5": (403, 318),
+}
+
+
+def open_hero_screen(game, mem, name):
+    """Selects the hero and opens its hero screen by a click on it on the map."""
+    hero = select(game, mem, name)
+    x, y, z = hero["tile"]
+    centre(game, mem, x, y, z)
+    game.click(*hover(game, mem, x, y, z), 0.5)
+    game.wait("hero_screen", 10)
+    return hero
+
+
+def equip(game, mem, name, moves):
+    """Puts artifacts on from the backpack in the hero's screen (E08 T37a): for each artifact (by
+    name, in `moves`' order) a click on its place in the backpack (the first five shown; the
+    cursor takes it) and one on the slot (`moves`: {artifact: slot}), checked in the game's
+    memory; then the screen closed (Enter) and the adventure map back. The original's own
+    equipping (hero_equip_artifact 0x4E2A00) runs, as a player's would."""
+    index = open_hero_screen(game, mem, name)["index"]
+    for artifact, slot in moves.items():
+        hero = mem.hero(index)
+        names = [mem.artifact_name(a) for a in hero["backpack"]]
+        if artifact not in names:
+            raise ValueError(f"{name}'s backpack holds no {artifact} ({', '.join(names)})")
+        place = names.index(artifact)
+        x0, y0, step, shown = BACKPACK_PLACES
+        if place >= shown:
+            raise ValueError(f"{artifact} is the backpack's {place + 1}th: not shown")
+        if slot not in SLOT_PLACES:
+            raise ValueError(f"unknown slot `{slot}` ({', '.join(SLOT_PLACES)})")
+        if slot in hero["worn"]:
+            raise ValueError(f"{name}'s {slot} holds {mem.artifact_name(hero['worn'][slot])}")
+        game.click(x0 + step * place, y0, 0.5)
+        game.click(*SLOT_PLACES[slot], 0.5)
+        game.move(*PARK)
+        wanted = hero["backpack"][place]
+        wait_for(lambda: mem.hero(index)["worn"].get(slot) == wanted,
+                 f"{artifact} on {name}'s {slot}")
+    game.key("Return", 0.5)
+    game.wait("adventure", 10)
+    return {"hero": name, "equipped": dict(moves)}
+
+
 # -- a batch ---------------------------------------------------------------------------------
 COLOURS = ("red", "blue", "tan", "green", "orange", "purple", "teal", "pink")
 LEVELS = ("none", "basic", "advanced", "expert")
@@ -741,6 +799,10 @@ def hero_value(mem, hero, field):
     if field == "equipment":
         return ", ".join(f"{mem.artifact_name(a)} ({slot})" for slot, a in hero["worn"].items()
                          if not slot.startswith("war machine") and slot != "spell book") or "none"
+    # E08 T37a (batch E5): the points left (hero +0x4D) and the day's points (+0x49, the movement
+    # bar's length), read without a walk: at a turn start, the points the turn start set.
+    if field in ("points", "day_points"):
+        return str(hero[field])
     raise ValueError(f"unknown hero detail `{field}`")
 
 
@@ -771,6 +833,9 @@ def value(obs, what, mem):
     `monster:`, `aggression:` and another hero's details)."""
     yes = {True: "yes", False: "no"}
     if what.startswith("before:"):
+        if what.startswith("before:explored:"):
+            # The snapshot holds no tiles: the read would be the state after the step.
+            raise ValueError(f"`{what}`: read a tile before a step in a step of its own")
         return value({"before": obs["before"], "after": obs["before"]}, what.split(":", 1)[1], mem)
     after = obs["after"]
     if what in ("arrived", "moved"):
@@ -850,6 +915,15 @@ def value(obs, what, mem):
         if len(found) != 1:
             raise ValueError(f"{len(found)} heroes named {m.group(1)!r}")
         return hero_value(mem, found[0], m.group(2))
+    # E08 T37a (batch E5's E5-9, E5-10, E5-11): whether a player has explored a tile, its bit in
+    # the tile's vision word; the player the step's hero's owner unless named.
+    if m := re.match(r"explored:(\d+),(\d+)(?:,(\d))?(?::([a-z]+))?$", what):
+        if m.group(4) is not None and m.group(4) not in COLOURS:
+            raise ValueError(f"unknown colour `{m.group(4)}`")
+        colour = COLOURS.index(m.group(4)) if m.group(4) else after["hero"]["owner"]
+        if colour < 0:
+            raise ValueError(f"`{what}`: the step's hero is off the map; name the player")
+        return yes[mem.explored(int(m.group(1)), int(m.group(2)), int(m.group(3) or 0), colour)]
     if m := re.match(r"(monster|aggression|never_flees):(\d+),(\d+)(?:,(\d))?$", what):
         found = mem.monster(int(m.group(2)), int(m.group(3)), int(m.group(4) or 0))
         if found is None:
@@ -880,22 +954,45 @@ def oddities(obs, expect):
     return notes
 
 
+TABLE_RULE = re.compile(r"\|(\s*-+\s*\|)+")
+
+
+def table_cells(line):
+    """A table row's cells, as written between its bars (None if the line is no row)."""
+    line = line.strip()
+    return line[1:-1].split("|") if len(line) > 1 and line[0] == line[-1] == "|" else None
+
+
+def cell_key(section, label, columns, j):
+    """The record key of a row's j-th cell: its label in a table of one value column, `<label> |
+    <column>` in a wider one (E08 T37a: batch E5's probes, walks and heroes by column)."""
+    return (section, label if len(columns) <= 2 else f"{label} | {columns[j].strip()}")
+
+
 def fill(template, values, notes, header):
-    """The template with each section's fields and table rows filled in."""
-    lines, section, out = template.splitlines(), None, []
+    """The template with each section's fields and table rows filled in: an empty cell by its
+    row's label, in a table of more than one value column by `<label> | <column>` (E08 T37a)."""
+    lines, section, out, columns = template.splitlines(), None, [], []
     for line in lines:
         m = re.match(r"## (\S+) ", line)
         if m:
-            section = m.group(1)
+            section, columns = m.group(1), []
         if section is not None:
             m = re.match(r"- (.+): ?$", line)
             if m and (section, m.group(1)) in values:
                 line = f"- {m.group(1)}: {values.pop((section, m.group(1)))}"
             elif m and m.group(1) == "anything odd" and notes.get(section):
                 line = f"- anything odd: {'; '.join(notes.pop(section))}"
-            m = re.match(r"\| (.+?) \|\s*\|$", line)
-            if m and (section, m.group(1)) in values:
-                line = f"| {m.group(1)} | {values.pop((section, m.group(1)))} |"
+            cells = table_cells(line)
+            if cells is not None and TABLE_RULE.fullmatch(line.strip()) and out:
+                columns = table_cells(out[-1]) or []
+            elif cells is not None and len(cells) == len(columns) > 1:
+                label = cells[0].strip()
+                for j in range(1, len(cells)):
+                    key = cell_key(section, label, columns, j)
+                    if not cells[j].strip() and key in values:
+                        cells[j] = f" {values.pop(key)} "
+                line = "|" + "|".join(cells) + "|"
         out.append(line)
         if line.startswith("# ") and header:
             out += ["", header]
@@ -952,9 +1049,15 @@ def batch(recipe_path, map_path=None, out=None):
             else:
                 index = select(game, mem, step["hero"])["index"]
                 before = snapshot(mem, index)
-                obs = (walk(game, mem, step["hero"], step["walk"], step.get("answer"),
-                            step.get("battle"), step.get("level_up", "left"))
-                       if "walk" in step else {"hero": step["hero"]})
+                if "walk" in step and "equip" in step:
+                    raise ValueError("a step either walks or equips (E08 T37a)")
+                if "walk" in step:
+                    obs = walk(game, mem, step["hero"], step["walk"], step.get("answer"),
+                               step.get("battle"), step.get("level_up", "left"))
+                elif "equip" in step:
+                    obs = equip(game, mem, step["hero"], step["equip"])
+                else:
+                    obs = {"hero": step["hero"]}
                 obs.update(before=before, after=snapshot(mem, index))
             obs["encounter"] = step.get("encounter")
             obs["record"] = {field: value(obs, what, mem)
@@ -988,19 +1091,25 @@ def batch(recipe_path, map_path=None, out=None):
 
 
 def records(text):
-    """A filled template's record lines: {(section, field or row label): value}."""
-    found, section, recording = {}, None, False
-    for line in text.splitlines():
+    """A filled template's record lines: {(section, field or row label): value}, a cell of a
+    table of more than one value column under `<label> | <column>` (E08 T37a)."""
+    found, section, recording, columns = {}, None, False, []
+    lines = text.splitlines()
+    for i, line in enumerate(lines):
         m = re.match(r"## (\S+) ", line)
+        cells = table_cells(line)
         if m:
-            section, recording = m.group(1), False
+            section, recording, columns = m.group(1), False, []
         elif line.strip() == "**Record**":
             recording = True
         elif recording and (m := re.match(r"- (.+?): ?(.*)$", line)):
             found[(section, m.group(1))] = m.group(2).strip()
-        elif recording and (m := re.match(r"\| (.+?) \|\s*(.*?)\s*\|$", line)):
-            if m.group(1) != "pile":
-                found[(section, m.group(1))] = m.group(2)
+        elif recording and cells is not None:
+            if i + 1 < len(lines) and TABLE_RULE.fullmatch(lines[i + 1].strip()):
+                columns = cells  # the header
+            elif not TABLE_RULE.fullmatch(line.strip()) and len(cells) == len(columns) > 1:
+                for j in range(1, len(cells)):
+                    found[cell_key(section, cells[0].strip(), columns, j)] = cells[j].strip()
     return found
 
 

@@ -9,6 +9,9 @@
 # dialogs and messages, and Gear: a hero's artifacts and backpack, a battle on a Clover Field
 # played by plan (Blue's Thunderbirds destroy Red's Ballista first, as batch E4's E4-9), Red's
 # hero with a spell book (the battle screen's `battle_book` state, E17 M3 T7a-2a).
+# E08 T37a (batch E5's reads, `cross-lane`): Fog, a tile's explored bit for a player and a table
+# filled cell by cell; Equip, artifacts put on from the backpack in the hero screen and the points
+# at a turn start read without a walk (Blue's heroes: Red holds eight, the list's most).
 
 [map]
 name = "Harness check"
@@ -323,5 +326,79 @@ field = "dialog 2, right offer"
 field = "dialog 2, taken"
 [[encounter.record]]
 field = "secondary skills after (in the hero's order)"
+[[encounter.record]]
+field = "anything odd"
+
+# E08 T37a (batch E5's reads, `cross-lane`): Blue's two heroes in the south-east and north-east
+# corners, far from every other hero of Blue's. Fog: whether Blue has explored tiles at the edge of
+# its disk (radius 5 without Scouting: dx^2 + dy^2 <= 30, ADV-FOG-002), before and after a step
+# east, and whether Red has (its heroes stand far west); each cell of a table by its column. Equip:
+# Boots of Speed and the Spyglass put on from the backpack in the hero screen; its points at the
+# start of Blue's day 2, read without a walk.
+
+[[encounter]]
+id = "Fog"
+title = "A tile's explored bit for a player, before and after a step (E08 T37a)"
+questions = []
+procedure = [
+    "Day 1, Blue's turn: read the hero's points and whether Blue has explored the probes; whether Red has explored the hero's tile.",
+    "Walk one step east onto (29, 30) (two clicks on it). Read the points and the probes again.",
+]
+[encounter.hero]
+type = "Tyris"
+specialty = "creature Cavalier"
+owner = "blue"
+at = [28, 30]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
+[[encounter.record]]
+field = "points at the start"
+[[encounter.record]]
+table = ["probe", "at the start", "after the step"]
+labels = ["A (33, 30)", "B (34, 30)", "C (33, 32)", "D (33, 33)"]
+[[encounter.record]]
+field = "Red explored the hero's tile (yes/no)"
+[[encounter.record]]
+field = "points after the step"
+[[encounter.record]]
+field = "anything odd"
+
+[[encounter]]
+id = "Equip"
+title = "Artifacts put on from the backpack in the hero screen; the points at the next turn start (E08 T37a)"
+questions = []
+procedure = [
+    "Day 1, Blue's turn: read the hero's artifacts, backpack and points.",
+    "Open its hero screen, put the Boots of Speed from the backpack on its feet and the Spyglass into the first misc slot, close the screen. Read the artifacts, backpack and points again.",
+    "Day 2, Blue's turn start: read the hero's points and the day's points (no walk).",
+]
+[encounter.hero]
+type = "Sorsha"
+specialty = "creature Swordsman"
+owner = "blue"
+at = [28, 3]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
+backpack = ["Boots of Speed", "Spyglass"]
+[[encounter.record]]
+field = "artifacts before (worn, by slot)"
+[[encounter.record]]
+field = "backpack before"
+[[encounter.record]]
+field = "points before"
+[[encounter.record]]
+field = "day's points before (hero +0x49)"
+[[encounter.record]]
+field = "artifacts after (worn, by slot)"
+[[encounter.record]]
+field = "backpack after"
+[[encounter.record]]
+field = "points after"
+[[encounter.record]]
+field = "day's points after (hero +0x49)"
+[[encounter.record]]
+field = "day 2 points (no walk)"
+[[encounter.record]]
+field = "day 2 day's points (hero +0x49)"
 [[encounter.record]]
 field = "anything odd"
