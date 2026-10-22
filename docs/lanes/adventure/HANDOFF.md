@@ -39,6 +39,10 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 
 ## Recent sessions
 
+### 2026-10-22 — increment 5, seventh session: T37b (in progress)
+
+Decision 83 (T37b whole). Done: the five recipes and two harness reads (`adventure/e08-t37b`, pushed). Next: the baseline's full verify, then the five batches under Wine, the templates and `e4_score`'s reports; then the docs and the PR.
+
 ### 2026-10-22 — increment 5, sixth session: T37a
 
 Baseline 1b280e0 (full verify). Decision 82 (T37 in two). The harness's reads; the check's Fog and Equip passed twice under Wine; #389 open.
@@ -46,7 +50,3 @@ Baseline 1b280e0 (full verify). Decision 82 (T37 in two). The harness's reads; t
 ### 2026-10-22 — increment 5, fifth session: T36b
 
 Baseline c84370f (full verify). Decision 81. The evaluation at load takes Logistics: the level-6 heroes know seven more skills. #387.
-
-### 2026-10-22 — increment 5, fourth session: T36a
-
-Baseline eb1f35a (full verify). Decision 80 (T36 by rows); E5-6b the agent's call. #383.
