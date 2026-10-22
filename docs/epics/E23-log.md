@@ -1001,3 +1001,8 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
 - **Kept apart** (documented): none new. The port's copy is the battle's clone with the spells
   ended (its own record) beside the battle (the records the evaluators walk); a removal is rare in
   the gated workload (no heroes: only the creatures' own spells last).
+- **Cost** (2026-10-22): `computer-decisions` 518 107 736 instructions, +0.02 % (no re-set).
+  Release, each decision's best of five (a local patch of `h3 bench-computer`, not kept), 400
+  battles each of seeds 4 to 8: 34.7 to 38.0 µs per decision on average, the slowest 0.42 to
+  0.79 ms (a Faerie Dragon, a Master Genie or an Ogre Mage: their contexts and predictions).
+  Within the budget.
