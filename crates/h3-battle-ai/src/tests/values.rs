@@ -260,8 +260,17 @@ fn the_genies_value_is_the_mean_of_the_spells_it_could_draw() {
         &[&both[..], &["precision", "prayer"], &more[..]].concat(),
     );
     assert!(runners > 0 && archers > 0);
-    assert_eq!(crate::casts::genie(&w, &sc, (2, 6), RUNNERS), runners);
-    assert_eq!(crate::casts::genie(&w, &sc, (2, 6), ARCHERS), archers);
+    assert_eq!(
+        crate::casts::genie(&crate::casts::Scanner::of(&w), &sc, (2, 6), RUNNERS),
+        runners
+    );
+    assert_eq!(
+        crate::casts::genie(&crate::casts::Scanner::of(&w), &sc, (2, 6), ARCHERS),
+        archers
+    );
     // Nothing it could draw for a giant: 0.
-    assert_eq!(crate::casts::genie(&w, &sc, (2, 6), StackId(3)), 0);
+    assert_eq!(
+        crate::casts::genie(&crate::casts::Scanner::of(&w), &sc, (2, 6), StackId(3)),
+        0
+    );
 }

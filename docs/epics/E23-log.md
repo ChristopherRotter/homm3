@@ -1060,3 +1060,29 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   term agrees word for word, the walled-out siege's four conditions too (the attacker, a fort;
   the drawbridge up, no wall section destroyed; no flyers, shooters or catapult; every defender
   inside); row 4b R2 dropped, R1 (the threshold) stays at risk.
+
+## Slip 25 — the elementals' protection in `strict-fixed` (2026-10-22, before T5)
+
+- **The user** (2026-10-22, BAT-Q57 at T1a6's start): the elementals that never cast are slip 25
+  under BAT-QUIRK-25. At this task's start: the Storm and Ice Elementals, which shoot, weigh the
+  cast before their shot too (the agent had proposed the walker's entry alone, where a shooter
+  that can shoot never arrives: the original's turn sends it to its shot, 0x41F060, and none of
+  the casters of its table 0x42136C shoots). No new reading.
+- **Built:** `casts.rs`: with the flag off every `spell_caster` goes to the scan (BAT-AI-012), its
+  value by the spell's own evaluator (`fixed`: 0 while the spell lasts on the stack, Bloodlust's
+  0x438100 or the Protections' 0x4399A0 to 0x439A40, the mass version over the side), so the
+  Ogre Mage's path is unchanged; the scan takes a `Scanner` (the battle, the side, its context)
+  instead of the walker, and `before_shot` asks it for a shooter that casts a fixed spell, with
+  the shot's value as the value so far. `h3-battle`'s `computer::valued_shot`: the shot with its
+  target's value (the chosen pick's; the first pick's for a wall shot; 0 without a target).
+  `shooter.rs` asks `before_shot` after the shot's choice (its own draws first). `POLICY_VERSION`
+  11 (the AI lane's inbox).
+- **Tests** (harvested, both profiles): ten shooting Storm Elementals beside nine Dendroid Soldiers
+  against Silver Pegasi led by a hero with Lightning Bolt protect the dendroids when the scan's
+  draw lets them (16 of 20 streams; the shot is worth something), never without the enemy hero
+  (the Protection is worth nothing then) and never with the flag; protected, the dendroids are not
+  protected again (two casts left: they shoot). Blocked by the pegasi, the elementals take the
+  walker's entry: an attack worth nothing to them, so they cast for every stream (no draw).
+- **The cost:** `computer-decisions` plays `base:faithful`, where no choice changed. The new
+  decisions in release, best of five: a shooting elemental's 60 µs, an Ogre Mage's 146 µs, within
+  the budget.

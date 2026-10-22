@@ -5,8 +5,9 @@
 //! Cursed Ground and none that costs the side more than the enemy; the Ogre Mages' Bloodlust (E23
 //! T4b1; BAT-AI-014) when it beats their attack, at a stack as strong as they are, skipped three
 //! times in ten, its mass version on Magic Plains, its estimate at Expert on Fiery Fields with
-//! BAT-QUIRK-25 (slip 8); the elementals that never cast (BAT-Q57); the Master Genies' cast at their
-//! side when the mean of the spells they could draw beats their attack (E23 T4c; BAT-AI-016).
+//! BAT-QUIRK-25 (slip 8); the elementals that never cast with it (BAT-Q57) and, without it (slip
+//! 25), protect a stack through the same scan, before their shot too; the Master Genies' cast at
+//! their side when the mean of the spells they could draw beats their attack (E23 T4c; BAT-AI-016).
 
 use h3_battle::{
     BattleState, CastSpell, CastTarget, Command, Field, Hex, LegalCommands, NoopSink, StackId,
@@ -484,8 +485,8 @@ fn choices(r: &BattleRuleset, state: &BattleState, n: u64) -> Vec<Command> {
         .collect()
 }
 
-/// The Ogre Mages' Bloodlust at stack `t`.
-fn bloodlust_at(t: StackId) -> Command {
+/// A creature's cast at stack `t` (the Ogre Mages' Bloodlust, the elementals' Protection).
+fn cast_at(t: StackId) -> Command {
     Command::CreatureCast {
         target: CastTarget::Stack(t),
     }
@@ -509,7 +510,7 @@ fn the_ogre_mages_bless_a_stack_as_strong_as_they_are_when_it_beats_their_attack
     let commands = choices(&r, &state, 20);
     let casts = commands
         .iter()
-        .filter(|&&c| c == bloodlust_at(dendroids))
+        .filter(|&&c| c == cast_at(dendroids))
         .count();
     assert!(casts >= 10, "{commands:?}");
     let mut state = state;
@@ -517,7 +518,7 @@ fn the_ogre_mages_bless_a_stack_as_strong_as_they_are_when_it_beats_their_attack
         &mut state,
         &r,
         BattleSide::Defender,
-        bloodlust_at(dendroids),
+        cast_at(dendroids),
         &mut NoopSink,
     )
     .unwrap();
@@ -551,13 +552,13 @@ fn three_scans_in_ten_cast_nothing_when_the_attack_is_worth_something() {
     let commands = choices(&r, &state, 200);
     let casts = commands
         .iter()
-        .filter(|&&c| c == bloodlust_at(dendroids))
+        .filter(|&&c| c == cast_at(dendroids))
         .count();
     assert!((120..=160).contains(&casts), "{casts}");
     assert!(
         commands
             .iter()
-            .all(|&c| c == bloodlust_at(dendroids) || matches!(c, Command::Attack { .. })),
+            .all(|&c| c == cast_at(dendroids) || matches!(c, Command::Attack { .. })),
         "{commands:?}"
     );
     // Against 20 pegasi their attack is worth nothing (they would lose more than they kill): no
@@ -567,7 +568,7 @@ fn three_scans_in_ten_cast_nothing_when_the_attack_is_worth_something() {
     assert!(
         choices(&r, &state, 20)
             .iter()
-            .all(|&c| c == bloodlust_at(dendroids))
+            .all(|&c| c == cast_at(dendroids))
     );
 }
 
@@ -653,7 +654,7 @@ fn on_fiery_fields_the_estimate_takes_expert_with_the_slip() {
         (choices(&r, &state, 20), behemoths)
     };
     let (faithful, behemoths) = pick("base:faithful");
-    assert!(faithful.iter().all(|&c| c == bloodlust_at(behemoths)));
+    assert!(faithful.iter().all(|&c| c == cast_at(behemoths)));
     let (fixed, _) = pick("base:strict-fixed");
     assert!(
         fixed
@@ -669,7 +670,7 @@ fn a_stack_with_bloodlust_is_not_blessed_again() {
     let mut state = mages_against_pegasi(&r, 20, (10, ("base:dendroid_soldier", 30)), None);
     let dendroids = stack_of(&r, &state, "base:dendroid_soldier");
     let cast = decide(&r, &state);
-    assert_eq!(cast, bloodlust_at(dendroids));
+    assert_eq!(cast, cast_at(dendroids));
     apply(&mut state, &r, BattleSide::Defender, cast, &mut NoopSink).unwrap();
     // The next round: Bloodlust still lasts on the dendroids, the only other stack is the caster.
     until(&r, &mut state, "base:dendroid_soldier");
@@ -682,32 +683,82 @@ fn a_stack_with_bloodlust_is_not_blessed_again() {
     );
 }
 
-// covers: BAT-AI-012
-#[test]
-fn the_computers_elementals_never_cast() {
-    // The rules let the Storm Elementals protect the dendroids (BAT-MAG-048); the computer's
-    // table sends no elemental to a cast routine (BAT-Q57).
-    let r = sod("base:faithful");
+/// Silver Pegasi that flew to hex 98, led by `hero` if any, against ten Storm Elementals and nine
+/// Dendroid Soldiers on the elementals' turn.
+fn elementals_against_pegasi(r: &BattleRuleset, hero: Option<BattleHero>) -> BattleState {
     let mut state = battle(
-        &r,
+        r,
         (
             &[("base:silver_pegasus", 15)],
             &[("ab:storm_elemental", 10), ("base:dendroid_soldier", 9)],
         ),
-        [None, None],
+        [hero, None],
         None,
         3,
     );
     let fly = Command::Move { to: Hex(98) };
-    apply(&mut state, &r, BattleSide::Attacker, fly, &mut NoopSink).unwrap();
+    apply(&mut state, r, BattleSide::Attacker, fly, &mut NoopSink).unwrap();
+    until(r, &mut state, "ab:storm_elemental");
+    state
+}
+
+// covers: BAT-AI-002, BAT-AI-012, BAT-AI-014
+#[test]
+fn the_computers_elementals_protect_only_without_the_slip() {
+    // The rules let the Storm Elementals protect the dendroids (BAT-MAG-048); the computer's
+    // table sends no elemental to a cast routine (BAT-Q57): with BAT-QUIRK-25 they always shoot.
+    // Without it (survey slip 25) they take the Ogre Mage's scan before their shot with
+    // Protection from Air's estimate, which is worth nothing while the enemy has no hero to cast
+    // an air spell. Against a hero with Lightning Bolt it beats the shot's value, so they cast
+    // at the dendroids but when the scan's draw skips (three times in ten); then they shoot.
+    let casts = |profile: &str, hero: bool| {
+        let r = sod(profile);
+        let hero = hero.then(|| mage(&r, &["base:lightning_bolt"], 10));
+        let state = elementals_against_pegasi(&r, hero);
+        let elementals = state.active().unwrap();
+        let mut targets = h3_battle::CastTargets::new();
+        creature_cast_targets(&state, &r, BattleSide::Defender, &mut targets);
+        assert!(!targets.is_empty());
+        let (_, shot) = computer::valued_shot(&state, &r, elementals, |_, _| None);
+        assert!(shot > 0, "{shot}");
+        let dendroids = stack_of(&r, &state, "base:dendroid_soldier");
+        let cs = choices(&r, &state, 20);
+        for &c in &cs {
+            assert!(
+                validate(&state, &r, BattleSide::Defender, c).is_ok(),
+                "{c:?}"
+            );
+            assert!(
+                c == cast_at(dendroids) || matches!(c, Command::Shoot { .. }),
+                "{c:?}"
+            );
+        }
+        let n = cs.iter().filter(|&&c| c == cast_at(dendroids)).count();
+        (r, state, n)
+    };
+    assert_eq!(casts("base:faithful", false).2, 0);
+    assert_eq!(casts("base:faithful", true).2, 0);
+    assert_eq!(casts("base:strict-fixed", false).2, 0);
+    let (r, mut state, n) = casts("base:strict-fixed", true);
+    assert!((10..20).contains(&n), "{n}");
+    let dendroids = stack_of(&r, &state, "base:dendroid_soldier");
+    let cast = cast_at(dendroids);
+    apply(&mut state, &r, BattleSide::Defender, cast, &mut NoopSink).unwrap();
+    let protection = r.spell_by_key("base:protection_from_air").unwrap();
+    assert!(
+        state
+            .effects()
+            .iter()
+            .any(|e| e.stack == dendroids && e.spell == protection)
+    );
+    until(&r, &mut state, "base:dendroid_soldier");
     until(&r, &mut state, "ab:storm_elemental");
-    let mut targets = h3_battle::CastTargets::new();
-    creature_cast_targets(&state, &r, BattleSide::Defender, &mut targets);
-    assert!(!targets.is_empty());
+    // Two casts are left, but the dendroids are not protected again.
+    assert_eq!(state.casts_left(state.active().unwrap()), 2);
     assert!(
         choices(&r, &state, 20)
             .iter()
-            .all(|c| !matches!(c, Command::CreatureCast { .. }))
+            .all(|c| matches!(c, Command::Shoot { .. }))
     );
 }
 
@@ -814,6 +865,55 @@ fn on_magic_plains_the_master_genies_value_the_mass_versions() {
         );
         if let Command::CreatureCast { target } = c {
             assert!(matches!(target, CastTarget::Stack(_)), "{c:?}");
+        }
+    }
+}
+
+// covers: BAT-AI-012, BAT-AI-014
+#[test]
+fn a_blocked_elemental_weighs_its_cast_as_a_walker() {
+    // The pegasi stand next to the Storm Elementals, which cannot shoot: a walker's turn. With
+    // BAT-QUIRK-25 they attack. Without it the walker's creature cast entry sends them to the
+    // scan (survey slip 25); their attack on the pegasi is worth nothing to them (the value so
+    // far is 0, no draw), so they protect the dendroids for every stream.
+    for profile in ["base:faithful", "base:strict-fixed"] {
+        let r = sod(profile);
+        let hero = Some(mage(&r, &["base:lightning_bolt"], 10));
+        let mut state = battle(
+            &r,
+            (
+                &[("base:silver_pegasus", 15)],
+                &[("ab:storm_elemental", 10), ("base:dendroid_soldier", 9)],
+            ),
+            [hero, None],
+            None,
+            3,
+        );
+        let elementals = stack_of(&r, &state, "ab:storm_elemental");
+        let pegasi = stack_of(&r, &state, "base:silver_pegasus");
+        let dendroids = stack_of(&r, &state, "base:dendroid_soldier");
+        assert_eq!(state.stacks()[elementals.index()].hex, Hex(49));
+        let fly = Command::Move { to: Hex(98) };
+        apply(&mut state, &r, BattleSide::Attacker, fly, &mut NoopSink).unwrap();
+        until(&r, &mut state, "base:silver_pegasus");
+        // The two-hex pegasi on 47 and 48, beside the elementals.
+        let fly = Command::Move { to: Hex(47) };
+        apply(&mut state, &r, BattleSide::Attacker, fly, &mut NoopSink).unwrap();
+        until(&r, &mut state, "ab:storm_elemental");
+        assert!(!computer::shoots(&state, &r, elementals));
+        for c in choices(&r, &state, 20) {
+            assert!(
+                validate(&state, &r, BattleSide::Defender, c).is_ok(),
+                "{c:?}"
+            );
+            if profile == "base:faithful" {
+                assert!(
+                    matches!(c, Command::Attack { target, .. } if target == pegasi),
+                    "{c:?}"
+                );
+            } else {
+                assert_eq!(c, cast_at(dendroids));
+            }
         }
     }
 }

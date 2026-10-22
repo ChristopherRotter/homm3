@@ -5,8 +5,11 @@
 //! creature in the original's table 0x42136C, by ability here): the raise of the Archangel and
 //! the Pit Lord ([`raise`]), which must beat that value, the Faerie Dragon's drawn spell
 //! ([`dragon`]), cast at the first hex where it is worth anything whatever that value, and the
-//! Ogre Mage's Bloodlust and the Master Genie's drawn spell ([`scan`], [`bloodlust`], [`genie`]),
-//! which must beat that value. Every other creature casts nothing: the computer's elementals never protect (§7.42, BAT-Q57). The engine
+//! Ogre Mage's Bloodlust and the Master Genie's drawn spell ([`scan`], [`fixed`], [`genie`]),
+//! which must beat that value. Every other creature casts nothing: the computer's Ice, Magma,
+//! Storm and Energy Elementals never protect (§7.42, BAT-Q57), but with BAT-QUIRK-25 off (survey
+//! slip 25, the user, 2026-10-22) they take the Ogre Mage's scan with their Protection's
+//! estimate (§7.46), the shooters among them before their shot too ([`before_shot`]). The engine
 //! gives the Ogre Mage and the elementals one ability, a creature's cast of a fixed spell: the
 //! policy tells the Ogre Mage by its spell, the only one that raises the melee attack (the user,
 //! E23 T4b1).
@@ -46,8 +49,9 @@ const EVEN: u8 = 7;
 /// (Cursed Ground, an anti-magic garrison, the Orb of Inhibition; [`computer::creature_casts_blocked`],
 /// whatever a creature's `ignores_magic_block`) or without a cast left; a raiser's raise
 /// ([`raise`]); a random caster's drawn spell ([`dragon`]); the Ogre Mage's scan ([`scan`], its
-/// draw from `rng`); any other stack nothing. `value` is the value so far, which a cast's
-/// candidate replaces.
+/// draw from `rng`); with BAT-QUIRK-25 off (survey slip 25) every caster of a fixed spell's
+/// scan, the elementals' too; any other stack nothing. `value` is the value so far, which a
+/// cast's candidate replaces.
 // rule: BAT-AI-012
 pub(crate) fn entry(w: &Walker<'_>, value: &mut i32, rng: &mut Rng) -> Option<Command> {
     if computer::creature_casts_blocked(w.state) || w.state.casts_left(w.id) == 0 {
@@ -67,8 +71,8 @@ pub(crate) fn entry(w: &Walker<'_>, value: &mut i32, rng: &mut Rng) -> Option<Co
                 spell,
                 mastery,
                 power,
-            } => raises_melee_attack(w.ruleset, spell)
-                .then(|| scan(w, Caster::Ogre(spell, mastery, power), value, rng)),
+            } => (raises_melee_attack(w.ruleset, spell) || !slips(w.ruleset))
+                .then(|| scan(w, Caster::Fixed(spell, mastery, power), value, rng)),
             Ability::HelpfulSpellCaster { mastery, power } => {
                 Some(scan(w, Caster::Genie(mastery, power), value, rng))
             }
@@ -79,7 +83,7 @@ pub(crate) fn entry(w: &Walker<'_>, value: &mut i32, rng: &mut Rng) -> Option<Co
 
 /// Whether `spell` raises the melee attack (Bloodlust's timed change): the Ogre Mage's spell
 /// among the creatures' fixed casts, which the computer's table sends to the scan (0x42136C's
-/// case 1, creature 91); the elementals' Protections do not (BAT-Q57).
+/// case 1, creature 91); the elementals' Protections do not (BAT-Q57), but for survey slip 25.
 fn raises_melee_attack(ruleset: &BattleRuleset, spell: SpellId) -> bool {
     ruleset.spell(spell).is_some_and(|s| {
         s.magic
@@ -88,39 +92,119 @@ fn raises_melee_attack(ruleset: &BattleRuleset, spell: SpellId) -> bool {
     })
 }
 
-/// A caster the scan serves (0x421280's case 1): the Ogre Mage with its spell, mastery and power,
-/// or the Master Genie with its mastery and power.
+/// A caster the scan serves (0x421280's case 1): a caster of a fixed spell (the Ogre Mage; with
+/// BAT-QUIRK-25 off the elementals too, survey slip 25) with its spell, mastery and power, or the
+/// Master Genie with its mastery and power.
 #[derive(Debug, Clone, Copy)]
 enum Caster {
-    Ogre(SpellId, u8, u8),
+    Fixed(SpellId, u8, u8),
     Genie(u8, u8),
 }
 
-/// The Ogre Mage's and the Master Genie's scan (0x420D20; BAT-AI-014, BAT-AI-016), for a caster
-/// of `caster`: with a value so far that is not 0 (a negative one too) a draw of 1 to 100
+/// The Ogre Mage's and the Master Genie's scan (0x420D20; BAT-AI-014, BAT-AI-016; with
+/// BAT-QUIRK-25 off the elementals', survey slip 25), for a caster of `caster`: with a value so
+/// far that is not 0 (a negative one too) a draw of 1 to 100
 /// ([`SKIP`]) casts nothing on 30 or less. Then over the walker's side's stacks from the last to
 /// the first, but the caster and the turrets, each that the engine accepts as the cast's target
 /// (where the rules cast the Ogre Mage's mass version, which takes no target, each the spell can
 /// affect, [`computer::spell_affects`]: the original aims it at the stack's hex all the same),
 /// and once the value so far is above 0 only one at least as strong as the caster (0x442E60 in
-/// the walker's context): its value, the Ogre Mage's [`bloodlust`], the Genie's [`genie`]; one
+/// the walker's context): its value, a fixed spell's [`fixed`], the Genie's [`genie`]; one
 /// above 0 and above `value` replaces it and takes the stack (the mass version: no target), so the
 /// cast must beat the walker's value, and the later stack stays at a tie.
 // rule: BAT-AI-014, BAT-AI-016
 fn scan(w: &Walker<'_>, caster: Caster, value: &mut i32, rng: &mut Rng) -> Option<Command> {
-    let (state, ruleset, side) = (w.state, w.ruleset, w.side);
-    let strength = computer::strength(state, ruleset, &w.ctx, w.id);
-    let sc = SpellContext::new(state, ruleset, (&w.ctx, side), rng);
-    let cast = choose(w, (&sc, caster, strength), value, rng);
-    if cast.is_none() && slips(w) {
-        hold(w, sc.cells());
+    match scan_as(&Scanner::of(w), caster, value, rng) {
+        Ok(cast) => Some(cast),
+        Err(sc) => {
+            if slips(w.ruleset) {
+                hold(w, sc.cells());
+            }
+            None
+        }
     }
-    cast
+}
+
+/// The stack a scan weighs a cast for: its battle, its side and the side's battle context (the
+/// walker's, or a shooting caster's own, [`before_shot`]).
+pub(crate) struct Scanner<'a> {
+    state: &'a BattleState,
+    ruleset: &'a BattleRuleset,
+    id: StackId,
+    side: BattleSide,
+    ctx: Context,
+}
+
+impl<'a> Scanner<'a> {
+    /// The walker `w`'s.
+    pub(crate) fn of(w: &Walker<'a>) -> Self {
+        Self {
+            state: w.state,
+            ruleset: w.ruleset,
+            id: w.id,
+            side: w.side,
+            ctx: w.ctx,
+        }
+    }
+}
+
+/// The scan ([`scan`]) for the stack `s`: the cast, or the spell context it built when it cast
+/// nothing.
+fn scan_as<'a>(
+    s: &Scanner<'a>,
+    caster: Caster,
+    value: &mut i32,
+    rng: &mut Rng,
+) -> Result<Command, SpellContext<'a>> {
+    let strength = computer::strength(s.state, s.ruleset, &s.ctx, s.id);
+    let sc = SpellContext::new(s.state, s.ruleset, (&s.ctx, s.side), rng);
+    choose(s, (&sc, caster, strength), value, rng).ok_or(sc)
+}
+
+/// With BAT-QUIRK-25 off (survey slip 25; the user, 2026-10-22), the cast a shooter that casts a
+/// fixed spell (the Storm and Ice Elementals' Protections) weighs before its shot: the scan
+/// ([`scan`], its draws from `rng`) in its controller's battle context, with `value` the shot's
+/// value ([`computer::valued_shot`]: its target's, 0 without one) as the value so far, which the
+/// cast must beat as a walker's cast must beat its attack. None with the slips (the original's
+/// shooter shoots, 0x41F060: no caster of its table shoots), while the creatures may not cast,
+/// without a cast left or for any other shooter.
+// rule: BAT-AI-012, BAT-AI-014
+pub(crate) fn before_shot(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    id: StackId,
+    mut value: i32,
+    rng: &mut Rng,
+) -> Option<Command> {
+    if slips(ruleset) || computer::creature_casts_blocked(state) || state.casts_left(id) == 0 {
+        return None;
+    }
+    let me = &state.stacks()[id.index()];
+    let caster = ruleset
+        .abilities(me.creature)
+        .iter()
+        .find_map(|a| match *a {
+            Ability::SpellCaster {
+                spell,
+                mastery,
+                power,
+            } => Some(Caster::Fixed(spell, mastery, power)),
+            _ => None,
+        })?;
+    let side = me.controller();
+    let s = Scanner {
+        state,
+        ruleset,
+        id,
+        side,
+        ctx: computer::context(state, ruleset, side),
+    };
+    scan_as(&s, caster, &mut value, rng).ok()
 }
 
 /// Whether the original's slips are kept (BAT-QUIRK-25).
-fn slips(w: &Walker<'_>) -> bool {
-    w.ruleset.quirks().is_enabled(ORIGINAL_AI_SLIPS)
+fn slips(ruleset: &BattleRuleset) -> bool {
+    ruleset.quirks().is_enabled(ORIGINAL_AI_SLIPS)
 }
 
 /// With BAT-QUIRK-25 (survey slip 22), a creature cast entry that built a spell context and cast
@@ -138,7 +222,7 @@ fn hold(w: &Walker<'_>, cells: Option<Map>) {
 /// The scan's draw and its stacks (0x420D20 after the context) with the context `sc` for
 /// `caster` of `strength`.
 fn choose(
-    w: &Walker<'_>,
+    w: &Scanner<'_>,
     (sc, caster, strength): (&SpellContext<'_>, Caster, i32),
     value: &mut i32,
     rng: &mut Rng,
@@ -147,11 +231,11 @@ fn choose(
     if *value != 0 && rng.range_inclusive(SKIP.0, SKIP.1) <= SKIP.2 {
         return None;
     }
-    // The rules cast the Ogre Mage's mass version without a target (Magic Plains raises a
+    // The rules cast a fixed spell's mass version without a target (Magic Plains raises a
     // creature's cast to Expert): the stacks the scan values are then those the spell can affect.
     // The Genie's cast always takes a stack.
     let mass = match caster {
-        Caster::Ogre(spell, mastery, _) => {
+        Caster::Fixed(spell, mastery, _) => {
             (!computer::takes_stack(ruleset, spell, computer::creature_mastery(state, mastery)))
                 .then_some(spell)
         }
@@ -178,8 +262,8 @@ fn choose(
             continue;
         }
         let v = match caster {
-            Caster::Ogre(spell, mastery, power) => {
-                bloodlust(w, sc, (spell, mastery, u32::from(power)), id)
+            Caster::Fixed(spell, mastery, power) => {
+                fixed(w, sc, (spell, mastery, u32::from(power)), id)
             }
             Caster::Genie(mastery, power) => genie(w, sc, (mastery, u32::from(power)), id),
         };
@@ -200,23 +284,24 @@ fn choose(
 /// [`computer::creature_mastery`]); with BAT-QUIRK-25 Expert also on the spell's school's field
 /// (survey slip 8), where the rules keep the creature's.
 // rule: BAT-AI-014, BAT-AI-016, BAT-TER-005
-fn estimate_mastery(w: &Walker<'_>, spell: SpellId, mastery: u8) -> u8 {
-    let slips = w.ruleset.quirks().is_enabled(ORIGINAL_AI_SLIPS);
-    if slips && computer::field_raises(w.state, w.ruleset, spell) {
+fn estimate_mastery(w: &Scanner<'_>, spell: SpellId, mastery: u8) -> u8 {
+    if slips(w.ruleset) && computer::field_raises(w.state, w.ruleset, spell) {
         MAX_MASTERY
     } else {
         computer::creature_mastery(w.state, mastery)
     }
 }
 
-/// The computer's value of an Ogre Mage's Bloodlust on stack `id` (0x43C330; BAT-AI-014), the
-/// caster's `spell` at its `mastery` lasting `rounds`: 0 while Bloodlust lasts on the stack; at
-/// the estimate's mastery ([`estimate_mastery`]) aimed at a stack, Bloodlust's evaluator on the
-/// stack ([`SpellContext::bloodlust`]); its mass version, the value on the side's whole army
+/// The computer's value of a fixed spell's cast on stack `id`, the caster's `spell` at its
+/// `mastery` lasting `rounds`: the Ogre Mage's Bloodlust (0x43C330; BAT-AI-014) and, with
+/// BAT-QUIRK-25 off (survey slip 25), an elemental's Protection as the scan would value it. 0
+/// while the spell lasts on the stack; at the estimate's mastery ([`estimate_mastery`]) aimed at a
+/// stack, the spell's evaluator on the stack ([`SpellContext::value`]: Bloodlust's 0x438100, the
+/// Protections' 0x4399A0 to 0x439A40); its mass version, the value on the side's whole army
 /// ([`SpellContext::on_side`]).
 // rule: BAT-AI-014
-fn bloodlust(
-    w: &Walker<'_>,
+fn fixed(
+    w: &Scanner<'_>,
     sc: &SpellContext<'_>,
     (spell, mastery, rounds): (SpellId, u8, u32),
     id: StackId,
@@ -227,9 +312,9 @@ fn bloodlust(
     let mastery = estimate_mastery(w, spell, mastery);
     let c = Candidate::cast(spell, mastery, rounds);
     if computer::takes_stack(w.ruleset, spell, mastery) {
-        sc.view().bloodlust(id, c)
+        sc.value(id, c)
     } else {
-        sc.on_side(c, |sc, s, c| sc.bloodlust(s, c))
+        sc.on_side(c, |sc, s, c| sc.value(s, c))
     }
 }
 
@@ -243,7 +328,7 @@ fn bloodlust(
 /// counted once whatever its weight (the original has none). 0 without such a spell.
 // rule: BAT-AI-016
 pub(crate) fn genie(
-    w: &Walker<'_>,
+    w: &Scanner<'_>,
     sc: &SpellContext<'_>,
     (mastery, power): (u8, u32),
     id: StackId,
@@ -423,7 +508,7 @@ fn dragon(
     // rule: BAT-AI-015
     predict::plan(w.state, w.ruleset, w.side, rng);
     let cast = dragon_cast(w, (mastery, per_creature), value);
-    if cast.is_none() && slips(w) {
+    if cast.is_none() && slips(w.ruleset) {
         hold(w, last_searched(w.state, w.ruleset));
     }
     cast

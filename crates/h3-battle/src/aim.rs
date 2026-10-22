@@ -1843,9 +1843,20 @@ pub(crate) fn shot(
     shooter: StackId,
     wall: impl FnOnce(&Context, i32) -> Option<u8>,
 ) -> Shot {
+    valued_shot(state, ruleset, field, shooter, wall).0
+}
+
+/// [`shot`] with the value of the target the choice settled on ([`valued_shot_in`]).
+pub(crate) fn valued_shot(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    field: Field,
+    shooter: StackId,
+    wall: impl FnOnce(&Context, i32) -> Option<u8>,
+) -> (Shot, i32) {
     let side = state.at(shooter).controller();
     let ctx = context(state, ruleset, field, side);
-    shot_in(state, (ruleset, field), (&ctx, shooter), wall)
+    valued_shot_in(state, (ruleset, field), (&ctx, shooter), wall)
 }
 
 /// What the computer's shooter `shooter` does in the context `ctx` ([`shot`]; a predicted turn's
@@ -1856,6 +1867,17 @@ pub(crate) fn shot_in(
     (ctx, shooter): (&Context, StackId),
     wall: impl FnOnce(&Context, i32) -> Option<u8>,
 ) -> Shot {
+    valued_shot_in(state, (ruleset, field), (ctx, shooter), wall).0
+}
+
+/// [`shot_in`] with the value of the target the choice settled on ([`pick`]'s: the chosen
+/// stack's, the first pick's for a wall shot, 0 without a target).
+pub(crate) fn valued_shot_in(
+    state: &BattleState,
+    (ruleset, field): (&BattleRuleset, Field),
+    (ctx, shooter): (&Context, StackId),
+    wall: impl FnOnce(&Context, i32) -> Option<u8>,
+) -> (Shot, i32) {
     let ctx = *ctx;
     let threats = Threats::new();
     let first = pick(
@@ -1865,22 +1887,28 @@ pub(crate) fn shot_in(
         shooter,
         ctx.desperate,
     );
+    let first_value = first.map_or(0, |p| p.value);
     if siege::shooter_level(state, ruleset, shooter).is_some()
-        && let Some(part) = wall(&ctx, first.map_or(0, |p| p.value))
+        && let Some(part) = wall(&ctx, first_value)
     {
-        return Shot::Wall { part };
+        return (Shot::Wall { part }, first_value);
     }
     let Some(first) = first else {
-        return Shot::Nothing;
+        return (Shot::Nothing, 0);
     };
     let chosen = if ctx.desperate && first.value == 0 {
         pick(state, (ruleset, field), (&ctx, &threats), shooter, false)
     } else {
         Some(first)
     };
-    chosen.map_or(Shot::Nothing, |p| Shot::Stack {
-        target: p.target,
-        at: p.at,
+    chosen.map_or((Shot::Nothing, 0), |p| {
+        (
+            Shot::Stack {
+                target: p.target,
+                at: p.at,
+            },
+            p.value,
+        )
     })
 }
 
