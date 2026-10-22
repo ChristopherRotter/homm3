@@ -25,7 +25,9 @@
 //! itself when it beats the walker's value, valued by the spell context ([`spells`]), which first
 //! predicts the damage its side's stacks deal before the other side's next one ([`predict`],
 //! §7.52: their turns as predictions, with their draws), and the Master Genie's drawn spell by its
-//! mean value over its 21 spells' evaluators (0x43C4A0, §7.53) the same way. The rest stands in
+//! mean value over its 21 spells' evaluators (0x43C4A0, §7.53) the same way. With BAT-QUIRK-25
+//! off the elementals protect through the same scan, the shooters among them before their shot
+//! (survey slip 25). The rest stands in
 //! until its task builds it: the hero's side casts nothing, ends the tactics phase at once,
 //! its First Aid Tent defends and a commanded Catapult shoots the first wall (BAT-STUB-5, T5 and
 //! T6).
@@ -81,7 +83,7 @@ use h3_kernel::Rng;
 /// The policy's behaviour version (ADR-0027 point 12): bumped with every change of a choice, so
 /// that a training record names its opponent (the AI lane's engine identity includes it).
 /// Replays store commands and do not change with it.
-pub const POLICY_VERSION: u32 = 10;
+pub const POLICY_VERSION: u32 = 11;
 
 /// The command the original's computer gives for `side`, the side to act in `state` (the active
 /// stack's controller, BAT-MAG-026), whatever `BattleSetup.human` says (ADR-0027 point 8):

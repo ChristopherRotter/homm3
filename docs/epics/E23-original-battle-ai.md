@@ -2,7 +2,7 @@
 
 Status: **in progress**, refined 2026-10-19 (BAT-Q52); T1a1 to T1a4 done (the cuts confirmed
 2026-10-20), T1c done (BAT-Q53, BAT-Q54); T1a5 done as cut (part C, §7.42 to §7.45); T1a5e (the spell evaluators) done (§7.46); T1b done, ADR-0027 accepted (BAT-Q55); T2 done (T2a the crate and the plain shooters, T2b the area value, the wall shot, the benchmark), the budget
-set; T3 done (cut in four: T3-0, T3a, T3b, T3c); T4 done (T4a, T4b in two, T4c, T4d); T1a6 done; slip 25 and T5 next · Follows E05 (the
+set; T3 done (cut in four: T3-0, T3a, T3b, T3c); T4 done (T4a, T4b in two, T4c, T4d); T1a6 done; slip 25 done; T5 next · Follows E05 (the
 AI lane, done) · Followed by E06 (training: this policy holds the neutral seat; AI-Q1) ·
 The battle lane's, later the AI lane's (BACKLOG).
 
@@ -230,8 +230,10 @@ found after that decision) belong to the neutral side's map too and are read (§
     Ray and Slow never meet, Berserk and Hypnotize strike as the stack itself, a two-hex shooter's
     copy blocked by its own record; the copy's turns at its own speed and Hypnotize's shooter
     marks in both profiles; BAT-STUB-12 retired; §7.54; the log.
-- [ ] **Slip 25** (the user, 2026-10-22, BAT-Q57): in `strict-fixed` the computer's elementals cast
-  their protection through the Ogre Mage's scan with the protections' estimates (§7.42, §7.46).
+- [x] **Slip 25** (2026-10-22; the user, BAT-Q57) — in `strict-fixed` the computer's elementals cast
+  their protection through the Ogre Mage's scan with the protections' estimates (§7.42, §7.46),
+  the shooters among them before their shot, against its value (the user, at the task's start;
+  BAT-AI-002, BAT-AI-012, BAT-AI-014; `POLICY_VERSION` 11; the log).
 - [ ] **T5 The hero's spells** (T1a6's reading done, §7.55; cut at its checkpoint; BAT-Q61's
   answer for the retreat test's part).
 - [ ] **T6 The hero's other choices** — retreat and surrender, the tactics phase, the Catapult's

@@ -37,6 +37,7 @@ Sorted by destination at E05's audit (T9a, 2026-10-19); the origin stays in brac
 done: BAT-Q33's point for E05 (AI-Q3, ADR-0025 point 6), the `h3-game` coverage gap of a pending
 Pass offer (fixed by the adventure lane's fixed tests, #266).
 
+- 2026-10-22 (the battle lane, E23 slip 25, `battle/e23-slip25`; for your information, nothing to do): `h3_battle_ai::POLICY_VERSION` is 11: in `strict-fixed` (BAT-QUIRK-25 off) the computer's Ice, Magma, Storm and Energy Elementals cast their protection when it beats their attack or shot; `faithful` choices are unchanged. Name it in a run record's engine identity; the function's signature is unchanged.
 - 2026-10-22 (the adventure lane, E08 T36b, `adventure/e08-t36b`, `cross-lane` with the user's
   consent; for your information, nothing to do): `h3_map::writer::Map` gained `banned_skills`;
   the census map in `crates/h3-cli/src/ai/tests.rs` says none (one line).

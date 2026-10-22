@@ -45,14 +45,18 @@ pub fn shot_target(
 /// automatic Ballista's choice for any shooter, an area shooter's target by its value at a hex
 /// (0x41EDA0); a wall shooter (the Cyclops) asks `wall` with its side's context and its target's
 /// value (0 without one) whether it batters a wall instead, and which (0x41EEA0: the policy's,
-/// which draws). `shooter` must be a stack of `state` that can shoot now ([`shoots`]).
-pub fn shot(
+/// which draws). With it the value of the target the choice settled on (0x41EB80's best: the
+/// shot value 0x435CB0 of a plain shooter's target, an area shooter's value at its hex; the first
+/// pick's for a wall shot; 0 without a target): what a shooting caster's cast must beat in the
+/// policy's `strict-fixed` scan (E23, survey slip 25; the user, 2026-10-22). `shooter` must be a
+/// stack of `state` that can shoot now ([`shoots`]).
+pub fn valued_shot(
     state: &BattleState,
     ruleset: &BattleRuleset,
     shooter: StackId,
     wall: impl FnOnce(&Context, i32) -> Option<u8>,
-) -> Shot {
-    aim::shot(
+) -> (Shot, i32) {
+    aim::valued_shot(
         state,
         ruleset,
         Field::new(ruleset.battle().field),
@@ -63,7 +67,7 @@ pub fn shot(
 
 /// What the computer's shooter `shooter` does on a predicted turn for `side` with the damage
 /// `planned` so far (0x41F060 with its prediction flag, from the side's run 0x422880; E23 T4b2):
-/// [`shot`] in `side`'s context predicting it ([`Context::predicting`]: the hit points less the
+/// [`valued_shot`]'s shot in `side`'s context predicting it ([`Context::predicting`]: the hit points less the
 /// planned damage, no target without any left), never a wall shot.
 pub fn predicted_shot(
     state: &BattleState,
