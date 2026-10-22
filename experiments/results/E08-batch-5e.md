@@ -1,5 +1,7 @@
 # E08 batch E5e — results
 
+> Played by the capture harness on 2026-10-22 (`clients/capture/h3adv.py batch clients/capture/batches/E08-batch-5e.toml`): the same Complete 4.0 `Heroes3.exe` under Wine, without the HD mod; hot seat, difficulty Easy, the starting bonus random, Show Route on; read from the game's memory.
+
 Map file: `E08-batch-5e.h3m`. Fill in the blanks below and keep this file; an agent records the results (`docs/experiments/README.md`).
 
 **Stamp `bf513e0e`.** The map's description in the scenario list starts with "Stamp bf513e0e.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
@@ -27,20 +29,20 @@ Map file: `E08-batch-5e.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- seed byte (hero +0x8F): 
-- Wisdom last offered (hero +0x90): 
-- a school last offered (hero +0x3F): 
-- points at the start: 
-- dialog 1, level: 
-- dialog 1, primary skill raised: 
-- dialog 1, left offer (or the only one): 
-- dialog 1, right offer: 
-- dialog 1, taken: 
-- experience after the battle: 
-- points after the battle: 
-- points after the step: 
-- day 2 points: 
-- anything odd: 
+- seed byte (hero +0x8F): 222
+- Wisdom last offered (hero +0x90): 0
+- a school last offered (hero +0x3F): 0
+- points at the start: 1560
+- dialog 1, level: 2
+- dialog 1, primary skill raised: knowledge
+- dialog 1, left offer (or the only one): Scouting
+- dialog 1, right offer: Logistics
+- dialog 1, taken: right (Logistics)
+- experience after the battle: 1009
+- points after the battle: 1460
+- points after the step: 1360
+- day 2 points: 1716
+- anything odd: worn artifacts at the start but the war machines (the starting bonus): Pendant of Dispassion (neck)
 
 ## E5-3b — Boots of Speed put on in the day: the points left, then day 2 (ADV-MOV-002, ADV-MOV-001, HER-ADV-003)
 
@@ -53,11 +55,11 @@ Map file: `E08-batch-5e.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- points at the start: 
-- points with the boots on: 
-- points after the step: 
-- day 2 points: 
-- anything odd: 
+- points at the start: 1560
+- points with the boots on: 1560
+- points after the step: 1460
+- day 2 points: 2160
+- anything odd: the day's points with the boots on (hero +0x49, the movement bar): 2160
 
 ## E5-10a — A level-up's Scouting in the day: the tiles at distance 6, at day 2 and after a step (D-26, ADV-FOG-003, ADV-FOG-001, HER-ADV-006, HER-LVL-003)
 
@@ -71,23 +73,23 @@ Map file: `E08-batch-5e.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- seed byte (hero +0x8F): 
-- Wisdom last offered (hero +0x90): 
-- a school last offered (hero +0x3F): 
-- points at the start: 
+- seed byte (hero +0x8F): 114
+- Wisdom last offered (hero +0x90): 0
+- a school last offered (hero +0x3F): 0
+- points at the start: 1560
 
 | probe | at the start | after the battle | day 2 start | after the step |
 |---|---|---|---|---|
-| W (2, 10) |   |   |   |   |
-| E (15, 10) |   |   |   |   |
-| C (16, 10) |   |   |   |   |
+| W (2, 10) | no | no | no | no |
+| E (15, 10) | no | no | no | yes |
+| C (16, 10) | no | no | no | no |
 
-- dialog 1, level: 
-- dialog 1, primary skill raised: 
-- dialog 1, left offer (or the only one): 
-- dialog 1, right offer: 
-- dialog 1, taken: 
-- points after the battle: 
+- dialog 1, level: 2
+- dialog 1, primary skill raised: defense
+- dialog 1, left offer (or the only one): Logistics
+- dialog 1, right offer: Scouting
+- dialog 1, taken: right (Scouting)
+- points after the battle: 1460
 - anything odd: 
 
 ## E5-10b — The Spyglass put on in the day: the tiles at distance 6, at day 2 and after a step (D-26, ADV-FOG-003, ADV-FOG-001, HER-ADV-006)
@@ -103,8 +105,8 @@ Map file: `E08-batch-5e.h3m`. Fill in the blanks below and keep this file; an ag
 
 | probe | at the start | with the Spyglass on | day 2 start | after the step |
 |---|---|---|---|---|
-| W (18, 10) |   |   |   |   |
-| E (31, 10) |   |   |   |   |
-| C (32, 10) |   |   |   |   |
+| W (18, 10) | no | no | no | no |
+| E (31, 10) | no | no | no | yes |
+| C (32, 10) | no | no | no | no |
 
 - anything odd: 
