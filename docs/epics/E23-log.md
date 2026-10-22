@@ -1086,3 +1086,41 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
 - **The cost:** `computer-decisions` plays `base:faithful`, where no choice changed. The new
   decisions in release, best of five: a shooting elemental's 60 µs, an Ogre Mage's 146 µs, within
   the budget.
+
+## T5a — the hero's cast: the entry, the choice, the evaluators, the damage spells, the summons (2026-10-22)
+
+- **The user** (T5's checkpoint, 2026-10-22): T5 in two parts, the previous agent's cut (T5a; T5b
+  the raises, Sacrifice, Earthquake and Teleport, BAT-STUB-14); BAT-Q61 option (c): the retreat
+  test's answer is no until T6 (BAT-STUB-13), so slip 26 waits for T6; T5a in this session. At the
+  budget's check: **a decision with a hero's cast may take up to 5 ms** (the side without a hero
+  keeps 1 ms).
+- **Re-read** (`docs/formats/installation.md` §7.56): 0x43C800's arithmetic and raises-only test,
+  0x43A670's "now" (the active record, the side's other able records, the protective flag; Haste),
+  0x436C60 (the desperate mode, the other records, the active stack's strike on E, the threat mask
+  and the ranks, which the context's 0x41F140 keeps fresh), 0x43BB20's Dispel and stacks' cases
+  (the polarity's sign), the bolts' 0x436F60, Dispel's 0x439BC0 and Clone's 0x43B2E0.
+- **Built:** `hero.rs`: `cast` (0x422DA0; `unchecked` asks it before the stack's action),
+  `choose` (0x43C800), `value` (0x43BB20) with `evaluated`, `one_target` (Magic Mirror's scaling),
+  `now_on_own`, `now_on_enemy`, `chain`, `area`, `mass_damage`, `summon`, `dispel`; a `Targets`
+  bitmap of the engine's targets. `spells.rs`: the kinds `Bolt`, `Dispel`, `Clone` with their
+  evaluators (`harms.rs`, `removals.rs`, `boosts.rs`); the context's `beaten`, `at_risk`,
+  `desperately`; `casts.rs`'s chain, area and payoff helpers take a `Scanner`. `h3-battle`'s
+  `computer`: `HeroCast` and `hero_cast`, `casting_forbidden`, `cast_mirror_chance`,
+  `dispel_ends` (the rule's own test, `effects::ends_spell`), `Context::desperately`; the area
+  estimate tests the area before the spell's reach (the cheaper test first, no change of result).
+  `POLICY_VERSION` 12 (the AI lane's inbox). Rules BAT-AI-017 (the choice) and BAT-AI-018 (the
+  damage spells and summons).
+- **Tests:** `h3-battle-ai`'s `tests/hero.rs` (the test ruleset gained Dispel, Clone, an area, a
+  mass damage, a chain, a summon and a raise): the scaling by hand (2.5 times, √casts); a lone stack
+  bolts the enemy worth most, accepted, and once cast the stack acts; no cast without a book, under
+  the enemy's Orb, at the Ballista's activation or without a hero; a bolt not due now waits, a
+  retreating hero casts it (Haste left out); the raises-only mode casts nothing; the area, mass,
+  chain and summon cases (10 runners × 126); a summon worth nothing once the enemy is beaten, 1000
+  a creature desperate; Dispel at Basic, Advanced (the enemy's blessed runners; nothing on either
+  side) and Expert; Magic Mirror's scaling moves the bolt; the buffs and Clone. The harvested
+  property (random heroes with half the spells) stays legal.
+- **The cost:** release, heroes with every combat spell and 500 mana on both sides, 12 battles of
+  7 random harvested stacks a side, each decision's best of five: 645 decisions, mean 0.43 ms,
+  **the slowest 2.9 ms** (within the hero's 5 ms; before the target bitmap and the area test's
+  order 3.7 ms). Half of the hero's cost is the context the original builds too (predictions, every
+  stack's threat record, the tables). `computer-decisions` (no heroes) unchanged in its choices.

@@ -1145,9 +1145,10 @@ fn area_stacks<'a>(
 ) -> impl Iterator<Item = StackId> + 'a {
     let field = Field::new(ruleset.battle().field);
     let range = area(spell.1, mastery);
+    // The area first: it is the cheaper test.
     stack_ids(state).filter(move |&s| {
-        reachable(state, ruleset, side, (spell, mastery), s)
-            && in_area(field, hex, range, state.at(s).footprint(field))
+        in_area(field, hex, range, state.at(s).footprint(field))
+            && reachable(state, ruleset, side, (spell, mastery), s)
     })
 }
 

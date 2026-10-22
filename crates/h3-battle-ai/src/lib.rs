@@ -27,10 +27,12 @@
 //! §7.52: their turns as predictions, with their draws), and the Master Genie's drawn spell by its
 //! mean value over its 21 spells' evaluators (0x43C4A0, §7.53) the same way. With BAT-QUIRK-25
 //! off the elementals protect through the same scan, the shooters among them before their shot
-//! (survey slip 25). The rest stands in
-//! until its task builds it: the hero's side casts nothing, ends the tactics phase at once,
-//! its First Aid Tent defends and a commanded Catapult shoots the first wall (BAT-STUB-5, T5 and
-//! T6).
+//! (survey slip 25). Before any of this the side's hero weighs a cast at each activation of a
+//! stack of its side but a war machine (0x422DA0, 0x43C800; §7.55, §7.56; [`hero`]): every spell
+//! it can cast now by its value, the best cast when it is due now. The rest stands in until its
+//! task builds it: the raises, Sacrifice, Earthquake and Teleport are worth nothing to the hero
+//! (BAT-STUB-14, T5b), it never retreats (BAT-STUB-13), the tactics phase ends at once, the First
+//! Aid Tent defends and a commanded Catapult shoots the first wall (BAT-STUB-5, T6).
 //!
 //! The original's slips in its own estimates (survey `E23-battle-ai.md` §4) follow the quirk
 //! BAT-QUIRK-25 (`quirk.battle.original_ai_slips`, ADR-0027 point 9): on in `faithful`, off in
@@ -84,7 +86,7 @@ use h3_kernel::Rng;
 /// The policy's behaviour version (ADR-0027 point 12): bumped with every change of a choice, so
 /// that a training record names its opponent (the AI lane's engine identity includes it).
 /// Replays store commands and do not change with it.
-pub const POLICY_VERSION: u32 = 11;
+pub const POLICY_VERSION: u32 = 12;
 
 /// The command the original's computer gives for `side`, the side to act in `state` (the active
 /// stack's controller, BAT-MAG-026), whatever `BattleSetup.human` says (ADR-0027 point 8):

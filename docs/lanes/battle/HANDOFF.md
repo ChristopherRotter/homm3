@@ -4,10 +4,10 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E23, the original's battle AI, in progress** (`docs/epics/E23-original-battle-ai.md`; BAT-Q52): the neutral side first, a crate of its own, the reading first, batch rows only for readings at risk. **T1 done** (#288 to #331): §7.34 to §7.46, `pathfinder.rs` (BAT-QUIRK-24), the survey `E23-battle-ai.md`, **ADR-0027** (BAT-Q55). **T2 done** (#334 to #347): `h3_battle_ai::choose`, the shooters, BAT-QUIRK-25, `computer-decisions`. **The budget** (the user, 2026-10-21): the gated count +2 %, re-set on purpose per part; ≤ 1 ms for the slowest decision, recorded per task. **T3 done** (#350 to #359): the walker, BAT-AI-005 to 011; slip 6 a gap (BAT-STUB-7, BAT-Q56). **T4 done** (#364 to #382): the creature casts, BAT-AI-012 to 016, the predictions (§7.52), the Master Genie (§7.53), a removal's copy (§7.54, slip 24); `POLICY_VERSION` 10: a side without a hero is complete. **T1a6 done** (§7.55: the hero's cast choice, the retreat test; slip 26, BAT-Q61). **Slip 25 done** (BAT-Q57; `POLICY_VERSION` 11). Next **T5** (cut at its checkpoint).
+- **E23, the original's battle AI, in progress** (`docs/epics/E23-original-battle-ai.md`; BAT-Q52): the neutral side first, a crate of its own, the reading first, batch rows only for readings at risk. **T1 done** (#288 to #331): §7.34 to §7.46, `pathfinder.rs`, the survey, **ADR-0027**. **T2 done** (#334 to #347): `choose`, the shooters, BAT-QUIRK-25, `computer-decisions`. **The budget** (the user): the gated count +2 %, re-set on purpose per part; ≤ 1 ms for the slowest decision, a hero's ≤ 5 ms, recorded per task. **T3 done** (#350 to #359): the walker; slip 6 a gap (BAT-STUB-7, BAT-Q56). **T4 done** (#364 to #382): the creature casts, the predictions, the Genie, a removal's copy: a side without a hero is complete. **T1a6 done** (§7.55: the hero's cast choice, the retreat test; slip 26, BAT-Q61). **Slip 25 done** (BAT-Q57). **T5 cut in two** (the user; BAT-Q61: the retreat a stub until T6): **T5a done** (the hero's cast, BAT-AI-017, 018; §7.56; `POLICY_VERSION` 12). Next **T5b** (BAT-STUB-14).
 - E05, `h3-sim` and `h3-ffi` are the AI lane's (AI-Q1), `h3-heroes` the adventure lane's.
-- **Open:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35, BAT-Q51, BAT-Q56, BAT-Q58, BAT-Q61 (none blocks; BAT-Q33, BAT-Q51 and BAT-Q61 settle with E23's T5 and T6), BAT-STUB-1, the inbox (by kind since 2026-10-19), Q43; S-23, S-24, batch 2g.
-- **Versions:** battle state hash v51, battle part hash v7 (E23 T3-0; the encodings, replay format and C ABI are the AI lane's); shared: core ruleset hash v47, pack format v46 (E08 T35b), protocol v34. Next ids: BAT-Q62, BAT-QUIRK-27, BAT-STUB-13, BAT-AI-017, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-24, S-30.
+- **Open:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35, BAT-Q51, BAT-Q56, BAT-Q58 (none blocks; BAT-Q33 and BAT-Q51 settle with E23's T6), BAT-STUB-1, the inbox (by kind since 2026-10-19), Q43; S-23, S-24, batch 2g.
+- **Versions:** battle state hash v51, battle part hash v7 (E23 T3-0; the encodings, replay format and C ABI are the AI lane's); shared: core ruleset hash v47, pack format v46 (E08 T35b), protocol v34. Next ids: BAT-Q62, BAT-QUIRK-27, BAT-STUB-15, BAT-AI-019, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-24, S-30.
 - Working agreement: increments with a user checkpoint (Q41); the user confirms seams and ADRs; batches by the user or an agent; small increments (the user, 2026-10-19).
 
 ## Standing traps
@@ -27,7 +27,8 @@ Area traps live where they are used: experiments in `docs/experiments/README.md`
 - The computer's walker (`walker.rs`): an attack the engine refuses because its walk stops at the hex (a moat or seen pit under a two-hex walker's other hex) is the original's move without the attack (0x478971): give `Move`. Its map spares its own side and fears the moat without the player test (`computer::map`, `aim::fears_moat`).
 - The walker's hex scores (`scores.rs`) search each enemy's reach (`computer::reach_map`: speed + 1 as range and turn speed, `Query::speed`); `hexes::stack_neighbor_at` takes a hex index ± 1 as the original's arithmetic.
 - The walker's odds (`odds.rs`) and threat records (`gain.rs`) are computed once per decision when first asked (a cell, a once-cell): they must read nothing the choice changes. The flag-1 records need the order of action's ranks (`order.rs`, the library sort above 16 stacks).
-- The creature cast entry (`casts.rs`) comes after the walker's loop, before its branches, even without a candidate: `choose` writes the value first; `turn` asks again after nothing. In `strict-fixed` a shooting `spell_caster` asks the scan before its shot (`before_shot`, slip 25). Casts take only the engine's targets (`creature_cast_targets`; a mass version's `None`).
+- The creature cast entry (`casts.rs`) comes after the walker's loop, before its branches, even without a candidate: `choose` writes the value first; `turn` asks again after nothing. In `strict-fixed` a shooting `spell_caster` asks the scan before its shot (`before_shot`, slip 25).
+- The hero's cast (`hero.rs`) comes first in `unchecked` (not for a war machine); only the engine's castable spells and targets. Test `hero(0)` has no book. Casts take only the engine's targets (`creature_cast_targets`; a mass version's `None`).
 - The predictions (`predict.rs`, §7.52) run whole walker and shooter turns in a predicting context (`Context::predicting`): where the original passes the context's flag to 0x443080 read `Context::left`, where it passes a stack without hit points left over test `Context::spent`. A predicted walk, wait or fallback plans nothing and is not built.
 - The spell context's threat records (`computer::threat`, 0x422B20 flag 0: range 127, no rank test, a shooter every enemy at one turn) are not the walker's (`gain.rs`, flag 1). `spells.rs` caches them per decision.
 - `spells.rs`: a root (records, halves, tables: the battle's, built once) and `View`s on a state; a removal values on a clone (`View::on`), with BAT-QUIRK-25 on a lone copy (`View::on_copy`: `lone` is the battle, whose records never meet the copy; slip 24). Slip 22: a cast entry that built a context and cast nothing sets `Walker::held`; the fallbacks read `Walker::cells`, their walks the walker's own map.
@@ -52,14 +53,14 @@ Area traps live where they are used: experiments in `docs/experiments/README.md`
 
 ## Recent sessions
 
-### 2026-10-22 (101st) — E23 slip 25, the elementals' protection
+### 2026-10-22 (101st) — E23 slip 25 and T5a
 
-The user: shooting elementals weigh the cast too (against the shot's value). `casts.rs` (`Scanner`, `before_shot`), `computer::valued_shot`; `POLICY_VERSION` 11. No device link: `Heroes3.exe` attached.
+Slip 25 (#390): shooting elementals weigh the cast too. T5a (`hero.rs`, stacked on #390): the user cut T5 in two, BAT-Q61 (c), the hero's budget 5 ms (slowest 2.9 ms). Original data staged late (the device link came up).
 
 ### 2026-10-22 (hundredth) — E23 T1a6, the hero's reading
 
-The user: T1a6 whole; BAT-QUIRK-26 confirmed; BAT-Q57 as slip 25. §7.55 read; slip 26, BAT-Q61; a blind re-read agreed. #386.
+T1a6 whole: §7.55; slip 26, BAT-Q61; BAT-QUIRK-26 confirmed. #386.
 
 ### 2026-10-22 (ninety-ninth) — E23 T4d, a removal's copy
 
-The user: T4d whole. §7.54. Built slip 24, fixed two port errors. #382.
+T4d whole: §7.54, slip 24, two port errors fixed. #382.

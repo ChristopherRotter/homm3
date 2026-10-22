@@ -11,8 +11,8 @@ use core::cell::OnceCell;
 
 use h3_battle::computer::{self, HeroCast};
 use h3_battle::{
-    BattleSide, BattleState, CastTarget, CastTargets, Command, STACK_CAPACITY, StackFlags, StackId,
-    StackTraits, Status, cast_targets, castable_spells,
+    BattleSide, BattleState, CastTarget, CastTargets, Command, HexSet, STACK_CAPACITY, StackFlags,
+    StackId, StackTraits, Status, cast_targets, castable_spells,
 };
 use h3_content::SpellId;
 use h3_content_battle::{BattleRuleset, BattleSpell, SpellEffect, SpellPolarity, SpellTarget};
@@ -166,6 +166,24 @@ pub(crate) struct Hero<'h, 'a> {
     ranks: OnceCell<[u8; STACK_CAPACITY]>,
 }
 
+/// The engine's targets of a hero's cast now, by kind (a hex set and a stack mask for quick tests).
+pub(crate) struct Targets {
+    none: bool,
+    stacks: u64,
+    hexes: HexSet,
+}
+
+impl Targets {
+    /// Whether `target` is one of them.
+    fn takes(&self, target: CastTarget) -> bool {
+        match target {
+            CastTarget::None => self.none,
+            CastTarget::Stack(s) => self.stacks & (1u64 << s.index()) != 0,
+            CastTarget::Hex(h) => self.hexes.contains(h),
+        }
+    }
+}
+
 impl<'h, 'a> Hero<'h, 'a> {
     /// `side`'s hero in the spell context `sc`, `id` the active stack, `ctx` the side's battle
     /// context.
@@ -186,15 +204,22 @@ impl<'h, 'a> Hero<'h, 'a> {
     }
 
     /// The engine's targets of the hero's cast of `spell` now.
-    fn targets(&self, spell: SpellId) -> CastTargets {
-        let mut targets = CastTargets::new();
-        cast_targets(self.state, self.ruleset, self.side, spell, &mut targets);
-        targets
-    }
-
-    /// Whether `target` is one of the engine's `targets`.
-    fn takes(targets: &CastTargets, target: CastTarget) -> bool {
-        targets.as_slice().contains(&target)
+    pub(crate) fn targets(&self, spell: SpellId) -> Targets {
+        let mut list = CastTargets::new();
+        cast_targets(self.state, self.ruleset, self.side, spell, &mut list);
+        let mut t = Targets {
+            none: false,
+            stacks: 0,
+            hexes: HexSet::new(),
+        };
+        for &target in list.as_slice() {
+            match target {
+                CastTarget::None => t.none = true,
+                CastTarget::Stack(s) => t.stacks |= 1u64 << s.index(),
+                CastTarget::Hex(h) => t.hexes.insert(h),
+            }
+        }
+        t
     }
 
     /// Whether stack `s` of `of` can act this round apart from the active stack (0x43A879,
@@ -335,7 +360,7 @@ pub(crate) fn one_target(
     h: &Hero<'_, '_>,
     of: BattleSide,
     c: Candidate,
-    targets: &CastTargets,
+    targets: &Targets,
 ) -> Valued {
     let view = h.sc.view();
     let dispel = h.ruleset.spell(c.spell).and_then(Kind::of) == Some(Kind::Dispel);
@@ -343,7 +368,7 @@ pub(crate) fn one_target(
     let mut target = None;
     for (i, st) in (0u8..).zip(h.state.stacks()) {
         let s = StackId(i);
-        if st.side != of || !weighed(h, s, c) || !Hero::takes(targets, CastTarget::Stack(s)) {
+        if st.side != of || !weighed(h, s, c) || !targets.takes(CastTarget::Stack(s)) {
             continue;
         }
         let mut v = view.value(s, c);
@@ -452,7 +477,7 @@ fn chain(h: &Hero<'_, '_>, spell: Spell) -> Valued {
         if st.side == h.side
             || !st.is_alive()
             || !computer::spell_affects(h.state, h.ruleset, h.side, spell.id, s)
-            || !Hero::takes(&targets, CastTarget::Stack(s))
+            || !targets.takes(CastTarget::Stack(s))
         {
             continue;
         }
@@ -479,7 +504,7 @@ fn area(h: &Hero<'_, '_>, spell: Spell) -> Valued {
     };
     for hex in (0u8..).take(field).map(h3_battle::Hex) {
         let column = hex.0 % 17;
-        if column == 0 || column == 16 || !Hero::takes(&targets, CastTarget::Hex(hex)) {
+        if column == 0 || column == 16 || !targets.takes(CastTarget::Hex(hex)) {
             continue;
         }
         let v = casts::area(&h.scanner, spell, hex, &mut cache);

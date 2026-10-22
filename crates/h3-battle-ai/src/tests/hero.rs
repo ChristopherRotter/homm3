@@ -422,9 +422,7 @@ fn magic_mirror_halves_a_bolt_on_its_stack_and_now_follows_the_order() {
     let sc = SpellContext::new(&state, &r, (&ctx, ATTACKER), &mut Rng::from_seed(5));
     let h = Hero::new(&sc, (&state, &r), (state.active().unwrap(), ATTACKER, ctx));
     let c = candidate(&state, &r, "bolt");
-    let mut targets = CastTargets::new();
-    cast_targets(&state, &r, ATTACKER, c.spell, &mut targets);
-    let v = hero::one_target(&h, DEFENDER, c, &targets);
+    let v = hero::one_target(&h, DEFENDER, c, &h.targets(c.spell));
     // The mirrored imps are worth 2 × (50 − 20) % of their value: the other imps are the target.
     assert_ne!(v.target, CastTarget::Stack(first), "{v:?}");
     let chance = i32::from(computer::cast_mirror_chance(&state, &r, first));
