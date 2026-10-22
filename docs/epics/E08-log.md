@@ -4070,7 +4070,7 @@ repository from GitHub; the original data from the PC: the executable, both LODs
   steps (engine code 947c5b97; benchmarks within +0.7 %); `h3-view` checked in `clients/` (SDL's
   build packages installed for it). CI cannot run (billing).
 
-### Increment 5, round 2: T37a, the harness's reads for batch E5 (2026-10-22, `adventure/e08-t37a`, `cross-lane`)
+### Increment 5, round 2: T37a, the harness's reads for batch E5 (2026-10-22, `adventure/e08-t37a` #389, `cross-lane`)
 
 **The cut** (decision 82; asked at the start, `AskUserQuestion`): T37 in two, the reads first (as
 T32b1, T32b2). Not chosen: T37 whole, the reads with batches E5a and E5b.
