@@ -17,7 +17,7 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   Aggressor, Greedy). **Increment 4** refined 2026-10-22: T5a (#385: the entity network,
   design §11; `python -m h3env.train.network`), T5b (`t5-1`, negative: both sides hid, 45 %
   stalled), T5c (`ppo.truncation_penalty` 1.0, decision 10 amended) done; next T5d, the user's
-  two 20 M runs (`configs/e06-t5c.toml`: entity `t5-2`, MLP `t5-3`) once T5c is merged.
+  two 20 M runs (`configs/e06-t5c.toml`: entity `t5-2`, MLP `t5-3`) once #396 is merged.
 - **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v31 (E06 T2c: the record's identity, N capped) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q10, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
