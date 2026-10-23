@@ -63,7 +63,7 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
-- **2026-10-23, E17 M4 T1a (done; docs only).** The siege still read (design §10.1, the address
+- **2026-10-23, E17 M4 T1a (done; #417, docs only).** The siege still read (design §10.1, the address
   map): the same rules in every town; the harvest moved into T1b, the wall states on Castle and
   Conflux (the user).
 - **2026-10-23, E17 M4 T0 (done; #415).** M4 cut with the user: T1a, T1b (the still), T2a to
