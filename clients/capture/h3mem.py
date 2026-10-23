@@ -696,6 +696,64 @@ class Mem:
             out.append((name,) + struct.unpack("<II", self.read(record + TEMPLATE_CLASS, 8)))
         return out
 
+    def map_owners(self):
+        """Every map object's owner as the view passes find it (E24 M1 T5b1, design §2.9), in the
+        map's order: -1 none. tile_object_owner 0x40FD20 of the tile object_entrance_tile
+        0x4FEC30 gives (the template's first visitable cell on the map, by row from the anchor's
+        upwards, each row from the anchor's column leftwards; tile (0, 0) of the surface without
+        one): its class and word, a hero's the object under it (the hero record's +0xC, +0x14),
+        then the owner of the dwellings 17 and 20 (game +0x4E39C, 0x5C bytes, +0x57), a garrison
+        33 (+0x4E3AC, 0x40 bytes), a lighthouse 42 or a mine 53 (+0x4E38C, 0x40 bytes), a town 77
+        or 98 (+0x21614, 0x168 bytes, +0x1), a shipyard 87 (the word's low byte); -1 for every
+        other class."""
+        game = self.game()
+        side = self.i32(game + MAP_SIDE)
+        tiles = self.u32(game + TILES)
+        map_ = self.manager_field(MANAGER_MAP)
+        begin, end = struct.unpack("<II", self.read(map_ + MAP_TEMPLATES, 8))
+        templates = self.read(begin, end - begin) if end > begin else b""
+
+        def entrance(x, y, template):
+            t = TEMPLATE_RECORD * template
+            width, height = templates[t + 0x10], templates[t + 0x11]
+            mask = int.from_bytes(templates[t + 0x2C:t + 0x32], "little")
+            for dy in range(height):
+                for dx in range(width):
+                    tx, ty = x - dx, y - dy
+                    if 0 <= tx < side and 0 <= ty < side and mask >> (47 - 8 * dy - dx) & 1:
+                        return tx, ty
+            return None
+
+        def vector(offset, size, index, field, signed=True):
+            first = self.u32(game + offset)
+            value = self.read(first + size * index + field, 1)[0]
+            return value - 256 * (signed and value > 127)
+
+        out = []
+        for x, y, z, template, _ in self.map_objects():
+            at = entrance(x, y, template)
+            tx, ty, tz = (at[0], at[1], z) if at else (0, 0, 0)
+            raw = self.read(tiles + TILE_SIZE * ((tz * side + ty) * side + tx), TILE_SIZE)
+            word, = struct.unpack_from("<i", raw, 0)
+            kind, = struct.unpack_from("<i", raw, 0x1E)
+            if kind == HERO_OBJECT:
+                hero = self.read(game + HEROES + HERO_SIZE * word, HERO_SIZE)
+                kind, word = struct.unpack_from("<i", hero, 0xC)[0], struct.unpack_from("<i", hero, 0x14)[0]
+            if kind in (17, 20):
+                owner = vector(0x4E39C, 0x5C, word, 0x57)
+            elif kind == 33:
+                owner = vector(0x4E3AC, 0x40, word, 0)
+            elif kind in (42, 53):
+                owner = vector(0x4E38C, 0x40, word, 0)
+            elif kind in (77, 98):
+                owner = vector(0x21614, 0x168, word, 1)
+            elif kind == 87:
+                owner = (word & 0xFF) - 256 * (word & 0x80 != 0)
+            else:
+                owner = -1
+            out.append(owner)
+        return out
+
     def write_bytes(self, address, data):
         """Writes `data` into the game (E24 M1 T5a: a hero's or boat's facing before a still)."""
         with open(f"/proc/{self.pid}/mem", "r+b", buffering=0) as f:

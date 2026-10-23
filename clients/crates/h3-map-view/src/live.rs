@@ -12,9 +12,10 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use h3_map::RawMap;
-use h3_map::model::{Body, Pos};
+use h3_map::model::{Body, Buildings, Pos};
 
 use crate::art::{CELLS, MapArt, TemplateArt};
+use crate::tables::{self, TownArt};
 
 /// The live part.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -229,6 +230,8 @@ impl Moment {
 pub const HERO_CLASS: u32 = 34;
 /// The boats' class (8).
 pub const BOAT_CLASS: u32 = 8;
+/// The towns' class (98; a random town is 77).
+pub const TOWN_CLASS: u32 = 98;
 
 impl Live {
     /// The live part at a map's start, as far as it needs no draw: every object standing and
@@ -236,10 +239,12 @@ impl Live {
     /// gives (a colour above 7, `0xFF` among them, is no owner); the heroes placed with an owner
     /// and a class (a random hero, class 70, needs a draw and is left out), facing right, on land
     /// (as the original's new game has them, a hero on water too: E24 M1 T5a, design §2.8); the
-    /// boats of the map, facing right; every tile explored (*provisional*: what a start reveals
+    /// boats of the map, facing right; every town (not a random one) with its picture by its
+    /// buildings at the start (`towns`; E24 M1 T5b1, design §2.9: a new game redraws every town
+    /// so, as a copy of its template); every tile explored (*provisional*: what a start reveals
     /// is the engine's, a comparison reads it); the moment 0.
     #[must_use]
-    pub fn at_start(raw: &RawMap, art: &MapArt, viewer: u8) -> Self {
+    pub fn at_start(raw: &RawMap, art: &MapArt, viewer: u8, towns: &TownArt) -> Self {
         let mut heroes = Vec::new();
         let mut boats = Vec::new();
         let mut objects = Vec::with_capacity(art.objects.len());
@@ -270,9 +275,21 @@ impl Live {
                 }
                 _ => {}
             }
+            let drawn = match (template, &raw_object.body) {
+                (Some(t), Body::Town(town)) if t.class == TOWN_CLASS => towns
+                    .picture(t.subclass, built_at_start(&town.buildings))
+                    .filter(|def| !def.eq_ignore_ascii_case(&t.def))
+                    .map(|def| Drawn {
+                        def: def.into(),
+                        own: None,
+                        class: TOWN_CLASS,
+                        subclass: t.subclass,
+                    }),
+                _ => None,
+            };
             objects.push(LiveObject {
                 standing: true,
-                drawn: None,
+                drawn,
                 owner: owner(&raw_object.body),
                 phase: 0,
             });
@@ -301,6 +318,26 @@ fn entrance(anchor: Pos, template: &TemplateArt) -> Option<Pos> {
                 z: anchor.z,
             })
         })
+}
+
+/// The buildings of a town's picture it has at a new game, by the game's ids (bit `i` building
+/// `i`; design §2.9): the standard set's Fort if it has one (0x5C0C0F); the chosen ones' Capitol,
+/// Fort, Citadel and Castle, the map's buildings 2 to 5 (the map-to-game table 0x6888C0, the same
+/// for every faction).
+fn built_at_start(buildings: &Buildings) -> u64 {
+    let bit = |id: u32| 1u64 << id;
+    match buildings {
+        Buildings::Standard { fort } => u64::from(*fort) * bit(tables::FORT),
+        Buildings::Custom { built, .. } => [
+            (2, tables::CAPITOL),
+            (3, tables::FORT),
+            (4, tables::CITADEL),
+            (5, tables::CASTLE),
+        ]
+        .into_iter()
+        .filter(|&(map, _)| built[0] >> map & 1 == 1)
+        .fold(0, |set, (_, id)| set | bit(id)),
+    }
 }
 
 /// An owner as the map stores it: 0–7 a colour, anything else none.

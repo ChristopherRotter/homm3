@@ -1,0 +1,5 @@
+# A shipped map loaded whole with owned objects (E24 M1 T5b1; design §2.9): Too Many Monsters
+# (36 tiles) as a new game starts it, every tile explored, a view with a town, six mines and three
+# dwellings.
+map = "Too Many Monsters.h3m"
+view = [8, 8, 0]
