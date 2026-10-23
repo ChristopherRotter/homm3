@@ -4421,7 +4421,7 @@ Decision 88: T41 whole (the user: "no cut"), its shared part in its own pull req
   16 steps passed (the first run on 04e16ff failed coverage, `NoStop`'s message, and the benchmarks
   above). Merges cleanly with `master` 2ad29e2 and with #401.
 
-### Increment 5, round 5: T42, the env, the plans, the fixtures, the replays and the benchmarks (2026-10-23, `adventure/e08-t42`)
+### Increment 5, round 5: T42, the env, the plans, the fixtures, the replays and the benchmarks (2026-10-23, `adventure/e08-t42`, `cross-lane`)
 
 Decision 89: T42 whole (the user's choice; the cut at the committed fixtures not chosen).
 
@@ -4470,7 +4470,8 @@ Decision 89: T42 whole (the user's choice; the cut at the committed fixtures not
   `reach-lifted-xl-144` new, 880 080 619 Ir (3 158 queries, about 279 k each, 1.9 times a
   walker's), `random-play-duel-36` 976 085 207 Ir (+75.7 %: 3 205 steps, +56 % a step, the duel's
   flyer and water walker search two kinds of node at every step), `fork-xl-144` 356 400 024 Ir
-  (+0.17 %). `benches/README.md`'s rows are shared (see the pull request).
+  (+0.17 %). `benches/README.md`'s two rows (a shared file) in the lane's pull request, `cross-lane`
+  with the user's consent.
 - **`--with-original-data`:** the Tutorial's red hero (Expert Logistics and Pathfinding, Boots of
   Speed and Equestrian's Gloves, a speed-4 army) starts with 2 928 points, its entry 1 560 × 1.3 +
   900, printed and checked (`original_data.rs`' `tutorial`).
