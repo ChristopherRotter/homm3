@@ -8,13 +8,10 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 - **E05 closed 2026-10-20**: its record and design in `E05-log.md` (cited as §n), the
   environment as built in `docs/07-simulation-and-ai.md` §1.1.
 - **E06** (AI-Q8; `docs/epics/E06-battle-ai.md`, design `E06-design.md`, record `E06-log.md`):
-  increments 1 to 4 done (#306 to #419; best so far `t5-3`'s MLP 0.832, 0.557, 0.533 against
-  Random, Aggressor, Greedy in 20 M, `t4-2`'s 0.839, 0.578, 0.559 in 60 M). **Increment 5**
-  (T7, the neutral share; design §12) done 2026-10-23: T7a to T7c (#420, #421, #426), T7d
-  (`t7-1`: the report set as `t5-3`'s, the system actor 0.374, the neutral value +0.245 below the
-  target +0.285); beside it the mana price's preparation (#429) and AI-Q7 (b) part 1 (C ABI v33,
-  #432). **Next:** T6a, the behaviour analysis against the system actor (QUEUE; needs the
-  user's `runs/t7-1/best.pt`), then increment 6's lever.
+  increments 1 to 5 done (#306 to #432); T6a (the behaviour analysis) done 2026-10-23. Best so
+  far `t7-1` (20 M, a third neutral): 0.828, 0.551, 0.528 against Random, Aggressor, Greedy, the
+  system actor 0.374; the neutral set's value +0.245 below the target +0.285. **Next:**
+  increment 6's lever (QUEUE: the user's choice).
 - **Versions:** battle action encoding v13, observation encoding v21, replay format v30 (E23 T6), the adventure env's action encoding v4 (E08 T45), C ABI v33 (E06 T5: the kill preview) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q10, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
@@ -32,6 +29,7 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 - `legal_commands` lists no casts: the cast heads come from `cast_targets` × `second_targets` (the battle lane's trap; `h3_sim::action`).
 - The batch (`h3_sim::batch`) skips an episode that ends before an external seat could act and gives up after 64 in a row (no side to move until a reset): a scenario whose internal seat always acts first and ends it (a step limit of one) does that. Its per-env values come back as `EnvReport`s, which `h3-ffi` converts for the C arrays.
 - `batch::pool` holds this lane's only `unsafe` outside `h3-ffi`: `Pool::run` erases a job's lifetime and is sound only because it blocks until every worker is done (a worker's panic too). Keep any new call through `run`, never a stored job.
+- `batch-system-neutral-v1` moves with `h3_battle_ai` (lane-only): re-baseline it at a `POLICY_VERSION` bump.
 - The batch workloads count inside `*BattleBatch>::step` (v0 symbol names; `BattleBatch::step` is `#[inline(never)]`) with `--threads 0`: callgrind toggles per thread, and a pattern ending in `*` also matches the closures nested in `step` and turns the count off inside them.
 - The census counts through `h3_map::import_map`, a `GameState` and `battle_ground`: a change to
   them changes it; rerun `h3 ai census original-data/install/Maps --out
@@ -92,13 +90,16 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 
 ## Recent sessions
 
+### 2026-10-23 — E06 T6a, the behaviour analysis
+
+- Built `python -m h3env.train.inspect`, ran it on the user's `t7-1` best (records
+  `inspect/t7-1-*.json`; E06-log T6a). Found the turret shot's preview (battle lane's inbox).
+  Increment 6's lever put to the user (QUEUE). The user: the
+  System-seat benchmark (ADR-0027 point 11) into the same pull request.
+
 ### 2026-10-23 — T7d's mix; T5's rest beside it
 
 - The user: T7d at a third neutral (their machine); here the mana price's preparation (#429),
   then AI-Q7 (b) part 1 (#432): the preview of every entry halves the engine's step (29 µs),
   still far above training's 5 000 samples/s. `t7-1` recorded; the user: diagnose first (T6a),
   in a fresh session.
-
-### 2026-10-23 — E06 T7c, the trainer's neutral share
-
-- The user: T7c in one pull request (#426): the neutral set v1, the system actor on the ladder.

@@ -1,6 +1,6 @@
 # E06 — Battle AI v1 and the local training pipeline v0
 
-Status: **in progress**, refined 2026-10-20 (AI-Q8); increment 1 (T1, T2a, T2b1, T2c) done; increment 2 (T3a, T3b) done; increment 3 (T4a, T4b) done; increment 4 (T5a to T5d) done 2026-10-23; increment 5 (T7a to T7d) done 2026-10-23, with T5's mana preparation and AI-Q7 (b) part 1; increment 6 to refine · Lane: **ai** · Follows E05 (closed
+Status: **in progress**, refined 2026-10-20 (AI-Q8); increment 1 (T1, T2a, T2b1, T2c) done; increment 2 (T3a, T3b) done; increment 3 (T4a, T4b) done; increment 4 (T5a to T5d) done 2026-10-23; increment 5 (T7a to T7d) done 2026-10-23, with T5's mana preparation and AI-Q7 (b) part 1; T6a (the behaviour analysis) done 2026-10-23; increment 6 to refine · Lane: **ai** · Follows E05 (closed
 2026-10-20) · Runs beside E23 (the battle lane: the original's battle AI, the system actor's
 policy), whose neutral side opens E06's neutral share (decision 1)
 
@@ -174,8 +174,10 @@ the weights in the run's config, design §12): T7a and T7b, then the checkpoint,
   record in `E06-log.md`); AI-Q7 (b) part 1 done 2026-10-23 (the batch's previewed kills, C ABI
   v33); part 2 (the network reads them) after the checkpoint.
 - [ ] **T6 Toward the targets** — runs on the best configuration until decision 7's targets hold,
-  or the evidence says PPO plateaus (then T8). First T6a, the behaviour analysis against the
-  system actor (the user, 2026-10-23; the lane's QUEUE).
+  or the evidence says PPO plateaus (then T8). T6a, the behaviour analysis (the user,
+  2026-10-23), done 2026-10-23: `python -m h3env.train.inspect`; `t7-1` casts as the system
+  actor does, plays alike against it and Greedy, waits and defends less; the record in
+  `E06-log.md`. Next: increment 6's lever (the user's choice).
 - [ ] **T8 Search** (only if PPO plateaus below the targets) — determinized search over the fork
   with re-seeded streams, the learned network as its prior and value.
 - [ ] **T9 Closure** — the audit, an independent review, the verifies, the docs.
