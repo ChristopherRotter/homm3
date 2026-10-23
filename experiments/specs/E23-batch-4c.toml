@@ -1,0 +1,129 @@
+# Experiment batch 4c (E23 T7): batch 4a's rest (a player has at most eight heroes on a map): the
+# walker's draw (the survey docs/rules/surveys/E23-battle-ai.md §3, row 4a W3) and BAT-Q51's tent. Each
+# encounter is one battle against neutral creatures: a guarded pile's guards (a mixed army in
+# slot order, up to seven stacks) or a neutral town's garrison. Played by an agent on the capture
+# harness (experiments/agent/ai.py, its recipe experiments/agent/E23-batch-4c.toml): one map per
+# encounter (`--only <id>`), hot seat (Red and Blue human), the clock stepped 10 ms at a time;
+# Red's stacks follow the recipe's plan (else Defend), the neutral side acts on its own, and every
+# pick, freeze and action is read from the game's memory (the battle manager's action +0x3C to
+# +0x48, the stacks' flags, hexes, hit points, spells and a Faerie Dragon's drawn spell +0x4E0).
+# A run per seed (ms the clock idles before Red's first command: the fidgets draw from the rules'
+# generator, which the battle's setup seeds from its tile, 0x463A08) gives the computer's draws
+# another stream on the same field.
+#
+# Predictions are for the agent who evaluates the results; the template never shows them. "The
+# reading" is installation.md §7.34 to §7.60 (the port, h3-battle-ai, faithful); "the engine" is
+# today's rules or the port where they differ; VCMI's AI where the survey names it. Formations
+# (BAT-SET-001, loose): k stacks stand on these rows of column 1 (Red, the attacker) or 15 (the
+# defender): 1 [5], 2 [2, 8], 3 [2, 5, 8], 4 [0, 4, 6, 10], 5 [0, 2, 5, 8, 10], 7 every even row
+# and row 5; hex = 17 x row + column.
+#
+# Not staged (the survey's rows): W2, W4, W5 and P1 need positions the formations and the
+# original's own obstacles (drawn from the tile) do not give; C5 needs the mean of the Genie's 34
+# evaluators on the original's state, which no tool computes yet; S3 needs an RoE map, and the
+# writer writes SoD maps only. They stay open (survey §3).
+
+[map]
+name = "E23 batch 4c"
+description = "Engine-generated experiment map (E23, batch 4c): the computer's neutral side. Follow the results template."
+size = 36
+terrain = "grass"
+instructions = [
+    "Played by an agent (experiments/agent/ai.py): one map per encounter, `h3-experiment E23-batch-4c.toml --only <id>`. By hand: copy the map into `Maps`, start it in hot seat (Red and Blue human) at the difficulty the run names, select the Red hero and step east into the guards (north into a town).",
+    "Every Red stack defends unless the procedure says otherwise. Note what the encounter asks, then end the battle (retreat) as the procedure says.",
+    "Fill in this file (anything unexpected goes into the last line of an encounter) and keep it in the repo.",
+]
+
+# --- W3: the walker's 75-100 % draw (§7.35, 0x421B02) ----------------------------------------------
+
+[[map.pile]]
+resource = "gold"
+row = 22
+from = 4
+to = 4
+amount = 1
+guards = [["Gold Dragon", 1]]
+
+[[encounter]]
+id = "W3"
+title = "W3: a neutral Gold Dragon's choice between two equal targets follows its draw"
+questions = ["E23 survey row 4a W3"]
+procedure = [
+    "Step east into the guard (one Gold Dragon, row 5). Red's two stacks of 5 Archangels (rows 2 and 8, the same distance) act first: the clock idles the run's seed, then both defend.",
+    "Note which stack the dragon attacks in round 1; ten runs with different seeds; after round 1 Red retreats.",
+]
+predictions = """
+Both targets one turn away (a flyer of speed 16), alike in value, both defending.
+- The reading: each candidate's value is drawn down to 75-100 % (`trunc(v x random(75, 100) /
+  100)`), one draw each, and the larger wins: **both targets are chosen across the seeds** (each
+  about half; all ten the same with chance 0.2 %).
+- Otherwise (no draw): equal values fall to the tie order (the top creature's lost hit points,
+  the lower cost to the plan's hex, the later record): **always the same target**.
+A rerun with the same stream is no new sample: runs whose draws are the same (the dragon's damage
+and every roll alike) count once.
+"""
+[encounter.hero]
+type = "Sephinroth"
+specialty = "resource crystal"
+at = [3, 22]
+primary = [0, 10, 1, 1]
+skills = []
+army = [["Archangel", 5], ["Archangel", 5]]
+[[encounter.also]]
+type = "Ryland"
+specialty = "creature Dendroid Guard"
+owner = "blue"
+at = [33, 26]
+primary = [0, 0, 1, 1]
+skills = []
+army = [["Peasant", 1]]
+[[encounter.record]]
+field = "W3: per run, the stack the dragon attacked (row 2 or 8) and its damage"
+[[encounter.record]]
+field = "anything odd"
+
+# --- BAT-Q51: the automatic First Aid Tent's patient (0x473EA0) -----------------------------------
+
+[[map.pile]]
+resource = "gold"
+row = 16
+from = 4
+to = 4
+amount = 1
+guards = [["Archer", 20], ["Wood Elf", 20], ["Halfling", 20]]
+
+[[encounter]]
+id = "TP"
+title = "TP: Red's automatic First Aid Tent heals the stack whose top creature lost the most"
+questions = ["BAT-Q51", "BAT-WAR-003", "BAT-AI-022"]
+procedure = [
+    "Step east into the guards (three shooter stacks). Red's hero has a First Aid Tent and no First Aid: the tent acts on its own at the end of each round. Red's Swordsmen and Champions defend.",
+    "Note at each tent turn the top creature's lost hit points of both Red stacks and the stack healed (or a Defend); after round 8 Red retreats.",
+]
+predictions = """
+The shooters wound both Red stacks most rounds.
+- The reading (0x473EA0): the tent heals **the stack whose top creature lost the most hit points**
+  (the later record at a tie) at every turn; with no wounded stack it defends (action 3).
+- BAT-WAR-003 (the wiki, VCMI): a wounded stack drawn uniformly: the other stack about half the
+  time when both are wounded; an idle tent does nothing.
+"""
+[encounter.hero]
+type = "Saurug"
+specialty = "resource gems"
+at = [3, 16]
+primary = [0, 10, 1, 1]
+skills = []
+army = [["Swordsman", 30], ["Champion", 10]]
+artifacts = { "war machine 3" = "First Aid Tent" }
+[[encounter.also]]
+type = "Clancy"
+specialty = "creature Unicorn"
+owner = "blue"
+at = [33, 29]
+primary = [0, 0, 1, 1]
+skills = []
+army = [["Peasant", 1]]
+[[encounter.record]]
+field = "TP: per tent turn: both stacks' top lost hit points, the stack healed (or Defend)"
+[[encounter.record]]
+field = "anything odd"
