@@ -70,3 +70,7 @@ its `parent`.
   M): promoted #0 and #1 (10 M samples; Random 0.607, Aggressor 0.383, Greedy 0.372 on 250 per
   kind); 45 % of its self-play battles stalled to the step limit (`docs/epics/E06-log.md`, T5b).
   Its networks are on the user's machine (`python/runs/t5-1/`).
+- `t5-2` and `t5-3` (E06 T5d, 2026-10-22 and 23; `configs/e06-t5c.toml`, the truncation penalty
+  1.0, 20 M samples each): the entity network (best #1 from 10 M: 0.770, 0.470, 0.468 on the full
+  report set; 250 minutes) and the MLP (best #2, 20 M: 0.832, 0.557, 0.533; 70 minutes). Their
+  networks are on the user's machine (`python/runs/t5-2/`, `t5-3/`).

@@ -251,7 +251,7 @@ reference in IEEE doubles for nine hues and saturations (the tests' digests).
 Read 2026-10-13 in the user's `Heroes3.exe`, compared with VCMI 1.7.5 (`client/battle/`,
 `config/obstacles.json`). The path read: the battle's redraw 0x494440 (H3API's
 `H3CombatManager::Refresh`) as an ordinary battle shows it: no siege, not hidden (0x46A4A0), no
-replay of a network game; the siege branches are named, not read (E04c). Coordinates are screen
+replay of a network game; the siege branches are read in §10.1 (M4 T1a). Coordinates are screen
 pixels of the 800 × 600 frame; the battlefield takes its top 800 × 556.
 
 ### 4.1 The hexes
@@ -502,15 +502,16 @@ defender's blue (*provisional*, CLT-Q6). Over time: §7.14.
 The redraw 0x494440, after the background:
 
 1. Layer-1 obstacles, by anchor: rows top to bottom, columns 1–15 left to right.
-2. Siege parts (not read).
+2. Siege parts: the back wall (§10.1).
 3. The left flag and hero, then the right ones.
 4. For each row, top to bottom; in it for each pass 0–7; in it for each column 0–16, left to
-   right (right to left in a siege's rows 6–10): pass 0 a siege wall part (not read); pass 1 the
+   right (right to left in a siege's rows 6–10): pass 0 a siege wall part (§10.1); pass 1 the
    corpses on the hex, in their list's order (a two-hex corpse from one of its hexes, as a stack);
    pass 2 the layer-0 obstacle anchored there; in every pass the living stack on the hex if its
    **draw layer** (+0x8) equals the pass, then its count box and a magic animation over it (in
    a siege the moat's parts and the box again, §4.2).
-5. Siege towers, then the calls at 0x494AAC and 0x494ABC (not read); then the frame is shown.
+5. Siege towers (§10.1), then the calls at 0x494AAC and 0x494ABC (not read); then the frame is
+   shown.
 
 - The draw layer (H3API calls +0x8 "visibility") is 4 from the setup (0x43D750); 6 for the
   attacker of a melee (0x441CC1); 3 or 7 by direction in 0x43F0B0 (directions 0 and 5: 3; 2 and 3:
@@ -532,7 +533,7 @@ The redraw 0x494440, after the background:
   an absolute one, two-hex stacks facing either way, the outline's pixels and its rotation (a step
   per 100 ms through eight entries).
 - Not read: the grid and shading options (0x493930); the stack's byte +0x4F1; the palette
-  effects; the siege branches (E04c).
+  effects. The siege branches: read at M4 T1a (§10.1).
 
 ## 5. The asset tables' sources (M1 T4)
 
@@ -2065,6 +2066,34 @@ resistance roll, if any (category 3, 0x5A0331); Curse's is named `Curse`, withou
 - **Not read:** the dissolve's blend; how the glows are painted; the summons' and the Pit Lord's
   creation beyond the dissolve; Earthquake (sieges); the force-feedback effects (IFC20, nothing
   drawn).
+- **Fixed (T9d)**, the user's answers to CLT-Q9 to Q14, Q16 and Q17 (M3's review), by
+  `anim::Stage::bugs` as T7d's (`Original` only in `h3-view sequences`): (Q9) `mass` sets the
+  animation's frame i while i < n, every frame once; (Q10) a hit in `mass` and in Armageddon's
+  `field` (the same run-on, 0x5A4D47) ends on the standing group's frame 0 (`Player::react`). The
+  DEFs say where Q10 shows (every creature's group 2 in the four LODs, frame 0 against the
+  last): in 87 of the 145 creature DEFs the last standing frame differs from frame 0 by 213 to
+  7 339 pixels, 55 end their cycle on frame 0's picture (the three war machines have one frame),
+  so the fix, built for all, changes
+  exactly those where it is visible (the user: fixed where the frames differ visibly, else
+  copied); (Q11) Chain Lightning's opening 37 at the bolt from the sky's 10 ms a frame; (Q12)
+  each Fire Wall object's 65 at its own hex; (Q13) Animate Dead raises with its spell's own
+  animation (4, `C01spE0`); (Q14) the Liches' cloud translucent, as its table entry; (Q16)
+  Armageddon's line with the caster's value (`SpellDamage`'s `caster`); (Q17) Sacrifice's line
+  on its victim by its number before its death.
+- **Read and recorded at T9d** (`sacrifice`, the frame check's below): *a stack leaving without
+  a corpse.* `stack_death` gives a stack whose +0x84 holds 0x10000000 (Sacrifice's victim, set
+  at 0x5A1A1D) or 0x400000 (a summoned one) no corpse, marks it in +0x13438 (side × 20 + slot)
+  and sets +0x13460 (0x4442C5 to 0x4442EE); after the deaths `strike_animation` (0x469307) then
+  calls `battle_dissolve_removed` (0x466E00): a rectangle around the stack saved
+  (`screen_save_rect`; recorded: the Archer's, 95 × 97), the battle redrawn
+  without the stack (not shown) and dissolved into the screen by `screen_dissolve` 0x602DC0
+  with trunc(150 F) a step (0x4670EF): eight steps, 1 200 ms at speed 0, outside the deadline,
+  memory unchanged meanwhile; then the marks' clearing and the whole redraw at once, and
+  `raise_stack`, whose first two frames the late deadline shows at once (§7.1). **Built:**
+  `anim::GONE` (a layer no pass draws, holding no hex; the scene skips it), `Player::vanishing`
+  (Sacrifice's victim), the dissolve's wait at `iterate`'s end (`DISSOLVE_STEP`,
+  `DISSOLVE_STEPS`). **Not built:** the blend (the viewer shows the picture before it until its
+  end, *provisional*; with the created stacks' dissolve, QUEUE's inbox).
 
 ## 8. The window, input and audio evaluation (M2 T2)
 
@@ -2889,3 +2918,117 @@ callers), `battle_cursor`'s target (+0x10, +0x14 of the acting stack), `battle_m
   (0x479195: the mouse posted again), the army info windows, the hex shade under the mouse
   (the option "Show Combat Mouse Hex", off in the harness; its call on every move not read),
   casters' and sieges' cursors, network play, the redraw's leftover pixels (above).
+
+## 10. The siege (M4)
+
+### 10.1 The siege still (M4 T1a)
+
+Read 2026-10-23 in the user's `Heroes3.exe` (`scripts/exe.py`), compared with VCMI 1.7.5
+(`client/battle/BattleSiegeController.cpp`, the factions' `siege` in `config/factions/`). A siege
+here is a battle at a town with a fort (the manager's +0x132F4 above 0); a town without one is
+fought on an ordinary battlefield (§5). What moves (shots, the drawbridge, Earthquake, the
+cursors) is T2a's.
+
+- **The parts** (`siege_wall_parts_by_town` 0x66D848: per town 18 records of 36 bytes): x and y
+  (`i16`), the hex it is drawn at (`i16`, −1 none), five picture names at +8, then WALLS.TXT's
+  name cell (+0x1C) and hit points (+0x20), filled at the game's start (`walls_txt_load`). The
+  index is WALLS.TXT's row: 0 Drawbridge, 1 Drawbridge Rope, 2 Moat, 3 Moat Lip, 4 Back Wall,
+  5 Upper Tower, 6 Upper Wall, 7 Upper Buttress, 8 Mid-Upper Wall, 9 Gate, 10 Mid-Lower Wall,
+  11 Lower Buttress, 12 Lower Wall, 13 Lower Tower, 14 Keep, 15 the keep's cover, 16 the lower
+  tower's, 17 the upper tower's. Their hexes: 5 and 17 on 255, 6 on 45, 7 on 62, 8 on 78, 9 on
+  112, 10 on 130, 11 on 165, 12 on 182, 13 and 16 on 251, 14 and 15 on 135; 0 to 4 none.
+- **The pictures** `Sg<town><piece>.pcx` (towns Cs, Rm, Tw, In, Nc, Dn, St, Fr, El; Conflux's in
+  `H3ab_bmp.lod`, the rest in `H3bitmap.lod`; all 8-bit, drawn with index 0 transparent,
+  `pcx8_draw_to_pcx16`), by slot: the drawbridge Drw3, Drw2, Drw1; the rope DrwC in slot 1;
+  Moat, Mlip, the back wall TpWl (TpW1 in Rampart, Necropolis, Dungeon and Stronghold) and the
+  buttresses Wa5, Wa2 in slot 0; a wall (Wa6x, Wa4x, Wa3x, Wa1x) its damaged picture x2 in slot 1,
+  its whole x1 in slot 2 and nothing in 0; the upper tower Tw22 then Tw21, the lower Tw12 then
+  Tw11, the keep Man2 then Man1; the arch in every slot; the covers ManC, Tw1C, Tw2C in slot 1.
+  The Tower has no moat and no lip pictures. The background `Sg<town>Back.pcx` (800 × 556,
+  `siege_backgrounds` 0x63D2A0). Every name is in the user's LODs.
+- **Loading** (`battle_load_heroes` 0x463370, from 0x4633AB): each part's five pictures into the
+  manager's +0x13DF8 + 4 (5 part + slot), empty names left empty; a Stronghold's moat (part 2) is
+  not loaded in a game under RoE or AB rules (its moat flag is off then too, §7.27).
+- **Which picture: the part's picture state** (+0x13FA8, one `i32` per part) is its slot. The
+  siege's start (`battle_obstacles` 0x4662E3 to 0x466376) copies the hit points into it (WALLS.TXT,
+  the same in every town: 2 for the towers, the four walls, the gate and the keep, 0 for the rest;
+  the covers set to 1) before a Castle raises its four walls' hit points to 3; a hit
+  (`wall_part_damage` 0x465990) sets 1 while hit points are left and 0 at none, and a destroyed
+  tower or keep sets its cover's to 0. So a wall shows x1 whole, x2 once hit, nothing once
+  destroyed; a tower or the keep its whole picture (Tw21, Tw11, Man1) until destroyed, then Tw22,
+  Tw12, Man2; the arch never changes.
+  Nothing tests the fort level: a Fort draws the towers, the keep and their covers too, without
+  shooters. **From the engine:** `Siege.parts` holds the hit points by wall-shot target
+  (`wall_shot_targets` 0x63BE60: the targets 0 to 7 are the parts 5, 6, 8, 9, 10, 12, 13, 14),
+  so a target's state is 2 at its starting hit points, 1 above 0 and 0 at 0; a cover is 1 until
+  its tower or keep is destroyed (Earthquake's hits on a lower fort's absent turrets included,
+  BAT-QUIRK-22: a Fort's tower can show destroyed).
+- **The gate** (+0x53A4: 3 closed, 2 moving, 1 open, 0 destroyed) is drawn as part 0 with its
+  state as the slot: destroyed Drw3, open Drw2, moving Drw1, closed none (the arch over the
+  background); the rope (part 1, DrwC) only while it is open. From the engine: `gate_open`, and the
+  gate target's hit points at 0.
+- **The turrets** (`siege_turret_records` 0x466C50 from `siege_turrets_by_town` 0x63CF88, 32
+  bytes per town: the shooter's creature, the keep's x and y, the lower tower's, the upper
+  tower's, the missile's DEF): with a Citadel the keep's record (manager +0x13D78), with a Castle
+  also the lower tower's (+0x13D9C) and the upper's (+0x13DC0), each 0x24 bytes: the creature, its
+  battle DEF (the creature table's +0xC), the missile's DEF, x, y, facing 0, group 2 (standing),
+  frame 0, and its turret stack's index (+0x20, `battle_war_machine_stacks` 0x463600). The
+  shooters: Castle the Archer (2, `clcbow.def`), Rampart the Wood Elf (18), Tower the Mage (34),
+  Inferno the Gog (44), Necropolis the Lich (64), Dungeon the Medusa (76, two-hex), Stronghold the
+  Orc (88), Fortress the Lizardman (100), Conflux the Storm Elemental (127). The turret stacks
+  themselves (the engine's Arrow Towers on 251, 254, 255) are never drawn as stacks: the row
+  passes take hexes 0 to 186 only (`draw_hex_stack`).
+- **A shooter** (`draw_turret_shooter` 0x495090, from the parts drawer below): the shadowed
+  drawer (§4.2) of its group and frame, but only the canvas's top 232 rows (a stack's whole
+  height elsewhere), mirrored while its facing is 0 (always at rest), the canvas's top-left at
+  (x − W + 196, y − 267), W the DEF's width (450), 44 further right for a two-hex creature and 5
+  left for the Medusa (its id tested); outlined in `game.pal`'s entry 0x60 while it stands and
+  is the acting defender's active stack (+0x132B8, +0x132BC against the record's +0x20).
+- **The order** (`battle_redraw` 0x494440 with a fort; §4.6 completed):
+  1. The background buffer, composed once (`compose_battle_background` 0x493CF0): the town's
+     picture, then with the moat flag (+0x53A8: a Citadel or Castle, but not a Tower, nor a
+     Stronghold in an older game) the moat (part 2) and its lip (3) at their points.
+  2. The layer-1 obstacles (under SoD rules a siege has no natural ones, §7.27).
+  3. The back wall (part 4, slot 0) at its point.
+  4. The flags and heroes (§4.5).
+  5. The parts on hex 255: the upper tower (5), its shooter and cover (17).
+  6. Each row 0 to 10: on row 5 while the gate is not closed, first the drawbridge (above); then
+     the passes 0 to 7 over the columns, left to right but **right to left on rows 6 to 10**; in
+     pass 0 at each hex first the parts drawn there (below); after row 5's
+     passes, while the gate is open, the rope at its point.
+  7. The parts on hex 200 (the lower wall's last strip, below) and on hex 251: the lower tower
+     (13), its shooter and cover (16).
+- **The parts at a hex** (`siege_parts_at_hex` 0x494C20, given the hex and the row's direction
+  d, +1 on rows 0 to 5 and −1 below; the parts in index order, each that has a picture for its
+  state and a hex): the towers, the keep, the arch and the covers whole (`battle_draw_pcx_rect`
+  0x4957B0) when the hex is theirs, a cover after its turret's shooter (when the record has a
+  DEF). A wall or buttress on hex h (row r, o = r mod 2) is drawn in three vertical strips of its
+  whole height, cut at h's left edge L (§4.1): the part left of L at hex h + 17d − o, the 44
+  columns from L at h, the rest at h − 17d − o + 1. So the upper wall's strips fall on 62, 45
+  and 29, its buttress's on 78, 62, 45, the mid-upper wall's on 95, 78, 62, the mid-lower's on
+  112, 130, 147, the lower buttress's on 147, 165, 182 and the lower wall's on 165, 182 and 200
+  (left, middle, right): each wall meets the stacks of the rows beside it piece by piece.
+- **The moat over a stack** (`draw_hex_stack` 0x494F40 with the moat flag, after the stack's
+  sprite, its box and the magic over it; not on row 5 while the gate is not closed, nor in pass
+  7): when the stack's hex, or a two-hex stack's other hex (its position + 1 facing right, − 1
+  facing left), is its row's moat hex (0x63BCE8; a Fortress's also 0x63BCF4's),
+  `moat_over_stack` 0x495A10 draws the moat picture's (part 2) pixels at that hex from x L to
+  L + 43 and y top + 36 to top + 41 (a 44 × 6 strip at its feet, clipped to the picture and the
+  field, index 0 transparent); then, in the moat or not, the count box again (part 1, §4.2).
+- **VCMI 1.7.5:** the executable's points but the drawbridge's, one pixel further left in every
+  town (Castle's also two up, Stronghold's one up), the Fortress's mid-lower wall one left, the
+  Dungeon's moat and lip one right, its towers three to five left and one down and its mid-upper
+  wall, arch and lower buttress one down; Necropolis without its lip; the shooters' points the
+  same (the Medusa's 44 and 5 included). It draws each wall whole on one hex in its layer WALLS
+  (the upper wall on 12, its buttress on 45, the mid-upper wall on 62: a row earlier than the
+  executable's middle strips), the battlements only while their turret is there (none at a
+  Fort), the drawbridge open or destroyed before every row, never the moving bridge or the rope,
+  no moat over a stack, and the shooter whole.
+- **T1b's situations** (the user, 2026-10-23): every town with a Castle, one Fort, one Citadel;
+  the wall states (hit and destroyed walls, towers and keep, the gate open and destroyed) on
+  Castle and Conflux only, one town per archive (the rules are the same for every town; only the
+  points, pictures, shooters and moats differ). The captures settle VCMI's differences (the
+  drawbridge's pixel, Necropolis's lip, the Dungeon's points), a Fort's covers, the shooter's
+  cut and the moat's strip (a stack on a moat hex).
+- **Not read:** the grid and shade options in a siege; the siege drawers' dirty rectangles beyond
+  the shared rule (each extends or tests the rectangle, §7.11).

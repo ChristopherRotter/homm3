@@ -11,6 +11,14 @@ Two rules: the game runs from a copy under `original-data/wine/` (never the inst
 it writes saves and settings into its folder), and captures and renders of the original never
 enter git (they stay in the sandbox or `clients/out/`).
 
+**Who changes it** (the user, 2026-10-23, at the client lane's split): the harness is a common
+path (`lanes.toml`). Any lane changes it in its own pull request (the client and map-client
+lanes, the adventure lane's recipes and reads) without the `cross-lane` label; a change that can
+alter the original's side runs the harness's own check (`h3adv.py batch
+capture/batches/harness-check.toml`, "Common uses") and, for the battle's captures, point 4
+below; a change in behaviour goes into the inboxes of the lanes that use it (client, map-client,
+adventure).
+
 ## The pieces
 
 | File | What it does |
@@ -185,7 +193,8 @@ Force Field beside an obstacle is refused (the book closes, no cast): aim at ope
 casts' sequences, recorded at T7a-2a and T7a-2b (`dragon`, `bolt`, `mass`, `raise`, `obstacles`,
 `creatures`; design §7.16, "Recorded"), waited in `situations/casts.toml` until the viewer's
 timeline played them; all are in `sequences.toml` since T7c-3, which removed that file (`cast`,
-`resist` and `arrow` moved at T7b-1, `haste` and `dispel` were recorded at T7b-2a). A recorded
+`resist` and `arrow` moved at T7b-1, `haste` and `dispel` were recorded at T7b-2a; `sacrifice` at
+T9d: a spell with a second target takes it by a `hex:` right after its `cast:`). A recorded
 timeline's `screen` lines are left out of the timing check (they are the frame check's).
 Chain Lightning's rays turn by the original's draws: `xdd.dll` logs them (the `ray_aim` site,
 "Logged draws" in `xdd.c`) and `frames` keeps them in the frame file's `rays`, so the viewer

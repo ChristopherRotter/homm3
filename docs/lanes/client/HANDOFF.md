@@ -4,13 +4,19 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E17 M0–M2 done; M3 T1a–T9b done (the review list accepted, CLT-Q9 to Q17 answered, 2026-10-23); H1, H2 done (the adventure lane's harness); next: M3 T9c** (the next milestone with the user: sieges, live play, HD or the adventure map; M3 marked done) and **T9d** (CLT-Q9 to Q17's fixes; `QUEUE.md`). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
+- **E17 M0–M3 done** (M3 closed by T9d, 2026-10-23: CLT-Q9 to Q17's fixes; **the lane split at
+  T9c**, CLT-Q18: this lane keeps the battle client, the adventure map client is the map-client
+  lane's E24); **M4 (sieges): T0, T1a done** (the siege still read, design §10.1); **next: M4
+  T1b** (the harvest, the still drawn and captured; M5 live play after M4; `QUEUE.md`).
+  Workspace `clients/`
+  (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in
+  `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§10; records in
+  `E17-log.md`.
 - **Captures** (the user, 2026-10-20): `h3drive.py drawn` first (no Wine); capture what it lists or the task changes, all at a milestone's closure or a harness change (runbook); a capture not as recorded leaves `kept/` (T9b: record, then `--reuse`); later tasks' detail in `NOTES.md`.
 - **The user's requirements** (epic, "Decisions"): a string catalogue (JSON packs, no committed translation, CLT-Q7); graphics options (`faithful` default); exhaustive diffs; drawing bugs fixed, the original's only for comparisons (`Bugs`).
-- The lane owns `clients/`, `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
-- **Checkpoints** per milestone (the autonomy contract below), a fresh reviewer agent first.
+- The lane owns `clients/` but the map-client lane's paths and the common ones (`lanes.toml`: the foundation, `text/`, the harness; an additive change freely, a change in behaviour into the map-client lane's inbox), plus `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
+- **Checkpoints** per milestone (below), a fresh reviewer agent first. **Open:** CLT-Q4–Q6.
 - Stage first (the user's computer online) from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04`, the four end tunes, `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`; `cp -rn` the staged `original-data/.` into the clone first. Frames stay in their sandbox.
-- **Open:** CLT-Q4–Q6 (the setup's fields, boats).
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
 
@@ -31,7 +37,7 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - **Known asset issues:** no conclusive list; the HD patch's notes or content may tell more. Most common: misplaced content (textures or rendered fonts one pixel off), less often clipping. Some textures have minor bugs (miscoloured pixels) that need an ad-hoc fix mechanism applied when loading. Unexplained: some extracted textures render with a few pixels slightly off-colour against the game; unknown whether the game applies a filter or the user's tooling was wrong. Shadows, above all those of adventure map objects, always looked off in the user's engine: they converted the keyed colours (purple hues) to alpha transparency, which may not be the right approach; needs investigation.
 - **Wishes:** an agent that observes or drives the original game (a custom MCP or similar), feasibility unknown. Screenshots of a comprehensive, representative set of situations in the original, diffed exactly against our output, so that changes such as offset fixes are deliberate; feasibility to be evaluated. Loading as fast as the original: no long content rebuild, work with the native files as much as possible. Content configured per expansion (RoE, AB, SoD, …), aligned with the gameplay rules' configuration.
 
-**Research items** (the agent's reading of the notes; their state in the epic file's table; 1, 2, 6, 8 done): 3. the licences of MMArchive and homm3-unpacker before reading their code (licence questions stop the line); 4. the video archives (low priority); 5. capturing the original (M3); 7. the HD patch, its notes as a source of fixes, its resolution handling for HD; 9. the adventure map's object draw order (the user, 2026-10-12: surprisingly complicated, neither the user nor VCMI got it exactly right; a code reading with reference frames).
+**Research items** (the agent's reading of the notes; their state in the epic file's table; 1, 2, 5, 6, 8 done): 3. the licences of MMArchive and homm3-unpacker before reading their code (licence questions stop the line); 4. the video archives (low priority); 7. the HD patch, its notes as a source of fixes, its resolution handling for HD; 9. the adventure map's object draw order: the map-client lane's since the split (2026-10-23).
 
 ## Standing traps
 
@@ -57,10 +63,11 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
-- **2026-10-23, E17 M3 T9b (done; `client/e17-m3-t9b`'s PR open, on #404).** Three reviewers in
-  parallel (the user): 26 findings, 20 fixed, 5 queued (inbox); `drawn` the same, `set` and a
-  sample as recorded; the review list accepted, CLT-Q9 to Q17 answered (T9d).
-- **2026-10-23, E17 M3 T9b-1 (done; #404 open).** `raise`'s `before` harmless (runbook);
-  `Game.wait` waits through an unreadable dump: a whole `set` as recorded.
-- **2026-10-22/23, E17 M3 T9a (two sessions; #402, merged).** T9 split (the user); all 88 as
-  recorded (four after a rerun), `drawn` the same; the epic file's conflict markers resolved.
+- **2026-10-23, E17 M4 T1a (done; #417, docs only).** The siege still read (design §10.1, the address
+  map): the same rules in every town; the harvest moved into T1b, the wall states on Castle and
+  Conflux (the user).
+- **2026-10-23, E17 M4 T0 (done; #415).** M4 cut with the user: T1a, T1b (the still), T2a to
+  T2c (over time), T3; the wall states as stills by memory.
+- **2026-10-23, E17 M3 T9d (done; #413).** Not split (the user): the fixes behind
+  `anim::Stage::bugs`; `sacrifice` recorded (Q17 confirmed; the victim's dissolve: its time
+  built, its blend in the inbox). M3 done.

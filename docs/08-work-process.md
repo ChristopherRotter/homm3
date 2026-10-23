@@ -85,8 +85,13 @@ time per lane**. A lane owns paths; everything else it may not change in its own
   show: such a change (a new observation feature, a new action entry) is a `cross-lane` pull
   request from the battle lane, with the AI lane's version bumps in it.
 - **server:** the new adapter crates `h3-protocol` and `h3-server`, `benches/server/`, E16.
-- **client:** `clients/`, a separate Cargo workspace with its own lockfile and CI job
-  (`clients/README.md`), E17.
+- **client:** the battle client, E17: `clients/`, a separate Cargo workspace with its own
+  lockfile and CI job (`clients/README.md`), but for the map-client lane's paths and the client
+  workspace's common ones (below).
+- **map-client** (since 2026-10-23; the user split the client lane at E17 M3's closure,
+  CLT-Q18): the adventure map client, E24: its crates in the client workspace
+  (`clients/crates/h3-map…`) and its data folder `clients/map/`. What it needs of the client
+  lane's `h3-view` moves into a common crate (a `lanes.toml` change).
 - **Later lanes:** formats/tools when needed. Opening a lane is a `lanes.toml` change, with the
   lane's `HANDOFF.md` and `QUEUE.md` in the same pull request (`check-docs`).
 - **Shared** (a small, separate pull request that merges first): `h3-kernel`, `h3-contracts`,
@@ -101,7 +106,13 @@ time per lane**. A lane owns paths; everything else it may not change in its own
   contract; user, 2026-10-07), `clients/Cargo.lock` (an engine crate the client builds that
   changes its dependencies updates it too; the verify's `clients-lock` gate; user, 2026-10-14),
   the survey index `docs/rules/surveys/README.md` (one section
-  per epic), and **every lane's `QUEUE.md`, for its inbox only** (user, 2026-10-19): a lane that
+  per epic), **the client foundation and the capture harness** (the user, 2026-10-23, CLT-Q18:
+  `h3-assets`, `h3-render`, `h3-sdl`, the client workspace's `Cargo.toml`, `deny.toml`,
+  `.gitignore`, `README.md`, `scripts/`, the string catalogue `clients/text/`, and
+  `clients/capture/`: a client lane changes them in its own pull request, an additive change
+  freely, a change in behaviour noted in the other client lane's inbox; `clients/scripts/check.sh`
+  runs every client test, a harness change its check; the adventure lane changes the harness
+  without the `cross-lane` label), and **every lane's `QUEUE.md`, for its inbox only** (user, 2026-10-19): a lane that
   finds something another lane should learn about or do adds it as a dated inbox entry to that
   lane's queue itself, naming the sender (`2026-10-19 (the client lane, E17 M3 T4b-1): …`), in
   its own pull request; it never edits that queue's tasks or other entries, and leaves nothing
@@ -118,7 +129,7 @@ first, waits for its merge and rebases; a seam change (`h3-contracts`) stops the
 it touches.
 
 **Ids.** New questions, quirks and stubs carry the lane code from `lanes.toml` (BAT, ADV, SRV,
-CLT, AI) and count per lane: questions `ADV-Q1`, quirks `ADV-QUIRK-1` (in the lane's ledger), stubs
+CLT, MCL, AI) and count per lane: questions `ADV-Q1`, quirks `ADV-QUIRK-1` (in the lane's ledger), stubs
 `ADV-STUB-1`. Existing ids (`Q55`, `Q-0012`, `STUB-0001`) stay. `check-rules` and `check-stubs`
 accept both forms. **ADRs** are written as drafts in `docs/lanes/<lane>/adr-drafts/<slug>.md`
 and get the next number when the user accepts them (a shared change moves them to `docs/adr/`).
@@ -139,7 +150,8 @@ conflict on rebase and bumps again.
 | game state hash | `GAME_STATE_HASH_VERSION`, `h3-game` | adventure |
 | adventure state hash, adventure ruleset-part hash | `ADVENTURE_STATE_HASH_VERSION`, `ADVENTURE_RULESET_HASH_VERSION`, `h3-adventure` | adventure |
 | map import | `MAP_IMPORT_VERSION`, `h3-map` (a replay names its map by content hash, path and this version; ADR-0015) | adventure |
-| adventure replay format, action and observation encodings | `h3-sim/src/adventure/`: `adventure::ACTION_ENCODING_VERSION` (E08 T9a), `adventure::replay::REPLAY_FORMAT_VERSION` (E08 T9b; the file format in `h3-cli`'s `src/adventure/`); no observation encoding before E13 | adventure (the AI lane's from E13) |
+| adventure replay format | `h3-sim/src/adventure/replay.rs`: `adventure::replay::REPLAY_FORMAT_VERSION` (E08 T9b; the file format in `h3-cli`'s `src/adventure/`) | adventure |
+| adventure action and observation encodings | `h3-sim/src/adventure/`: `adventure::ACTION_ENCODING_VERSION` (E08 T9a); no observation encoding before E13 | ai (the adventure lane's until E08 T45, ADR-0017 point 8) |
 | wire protocol | `PROTOCOL_VERSION`, `h3-protocol` | server |
 | viewer record format | `RECORD_FORMAT_VERSION`, `h3-protocol` (from E16 M1) | server |
 | game journal format | `JOURNAL_FORMAT_VERSION`, `h3-server` (from E16 M2) | server |
@@ -175,8 +187,8 @@ CI runs the full verify on every pull request whose code it has not verified yet
 `benches/<lane>/<workload>.toml`, so each lane's +2 % gate is its own (`benches/README.md`).
 
 **Checkpoints.** The domain lanes (battle, adventure) close increments at a checkpoint with the
-user, as before. The client and server lanes have a checkpoint per milestone, under an autonomy
-contract in their HANDOFF with three tiers: *agent decides* (marked provisional), *queue for the
+user, as before. The client lanes (client, map-client) and the server lane have a checkpoint per milestone,
+under an autonomy contract in their HANDOFF with three tiers: *agent decides* (marked provisional), *queue for the
 milestone review*, *stop the line* (seams and contracts, heavy dependencies, licence, anything
 touching another lane). A fresh reviewer agent checks each milestone before the user does.
 

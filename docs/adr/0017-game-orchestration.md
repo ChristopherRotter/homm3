@@ -55,6 +55,17 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    towns'), which read through `h3-heroes`' derivations (ADR-0013 point 2); what a command
    changes in a hero comes back as typed **hero changes** in its outcome (point 10), which the
    game applies through `h3-heroes`. No adventure profile seam (E08 decision 25).
+   **Management commands** (increment 6): `GameCommand`'s new variant names its player's heroes
+   and places: a stack's move, split or dismissal; the formation; the tactics flag; an
+   artifact's move; an assembly; a disassembly. The game checks the actor, the turn and the open
+   decision, then the armies' rules in the adventure (ADR-0016 point 3) and the artifacts' in
+   `h3-heroes` through the store (ADR-0013 point 14), both before either applies; Scholar's
+   spells are hero changes the game applies when it opens a meeting. **The expansions are the
+   game's configuration** (E08 decision 104): the packs its ruleset is compiled from (base, AB,
+   SoD). A rule that differs by expansion reads the ruleset's data (the combinations and the fifth
+   misc position come with the SoD pack), never the map's version (the original's `mapKind`,
+   which follows the map); a rule the packs cannot express yet (the moat, E09) gains data or a
+   configuration input then.
 2. **Actors and viewers.** `Actor::Player(PlayerId)` for every player command, also a bot's;
    `Actor::System` for the trusted layer that hosts the game only (the server's session layer,
    the env), never for a player, with its own closed set of commands (end a player's turn,
@@ -152,6 +163,19 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    as the original's when the dialog's time runs out; until E10 gives the engine the computer
    player's state that choice reads with the army counted, it chooses with the setup's inputs, as
    at load (ADV-Q17).
+   Increment 6 adds two kinds, each its player's alone, holding no one else and blocking its
+   owner's `EndTurn` like an offer:
+   - **A meeting** of two of its heroes, opened by the step toward the visited one after Scholar
+     (ADR-0013 point 14): while it is open its owner's legal commands are the management commands
+     on either hero (between them or within one) and `Decline`, which closes it. The next meeting
+     needs another step.
+   - **An army dialog** of a hero and a joining group, opened by an accepted join that finds no
+     room (after the price and the treasure, the monster gone): the management commands between
+     the hero and the group's small army (ADR-0016 point 3) and on the hero alone, and `Decline`,
+     which closes it; the group's rest is lost (`ADV-STUB-2` closed).
+   Outside a decision the management commands are legal in the owner's turn on any of its heroes
+   on the map, but for the moves between two heroes, which need the meeting. `legal_commands`
+   lists every management command but the splits; a query gives a split's bounds.
 7. **Simultaneous play is designed for, not built.** Built now: turn groups, streams per player,
    pending decisions. **Not decided** (deferred to the increment that builds it): the target
    that commands of the players of one group commute (any interleaving, the same state hash; a
@@ -163,9 +187,7 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    added: the inventory for that decision. Increment 2 adds an object two players can remove
    (a pile, a border guard) and the per-player object state (purchases, keys), which only its
    owner's commands write.
-8. **`AdventureEnv` lives in adventure-owned sub-paths of the battle lane's crates:**
-   `crates/h3-sim/src/adventure/`, `crates/h3-cli/src/adventure/`, `fixtures/replays/adventure/`
-   (`lanes.toml`, longest match), until the AI lane takes `h3-sim` at E05. It drives `h3-game`,
+8. **`AdventureEnv`** (`crates/h3-sim/src/adventure/`; the lanes below) drives `h3-game`,
    not `h3-adventure`, so it sees turns, days and projections as a player does: reset (a map, a
    seed), step, mask, fork, state hash. Its action is a destination among the reachable tiles of
    a hero (the env builds the path from the core's reachable-tiles query, an ADR-0006
@@ -185,9 +207,19 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    is); while a level-up holds the game (point 6) `to_move` yields its owner alone, in its turn
    or not; the observation shows its owner the open level-up (the hero, the new level, the
    primary skill gained, the two offers).
+   **The adventure's RL encoding belongs to the AI lane** (increment 6; E08 decision 99): the
+   env's action and observation encodings and masks, the rollout and their tests; the adventure
+   lane keeps the game's commands, `legal_commands` and `legal_moves`, the decisions' views, the
+   replay model of game commands and the CLI's replays and benchmarks. In `lanes.toml` (E08
+   decision 103): `crates/h3-sim/src/adventure/` the AI lane's but its replay model
+   (`replay.rs`), which stays the adventure lane's with `crates/h3-cli/src/adventure/` and
+   `fixtures/replays/adventure/` (longest match). Increment 6 adds no entry to the action encoding
+   (v4); its masks allow `Decline` while a meeting or an army dialog is open, so an agent that
+   meets a hero or fills its army closes the decision and plays on.
 9. **Versions owned by the adventure lane** (T2 adds the rows): the game state hash (`h3-game`),
    the adventure state and ruleset-part hashes (`h3-adventure`), the import version (`h3-map`),
-   the adventure replay format and encodings (`h3-sim`'s sub-path, to the AI lane at E05).
+   the adventure replay format (`h3-sim`'s `replay.rs`), and until increment 6 the action
+   encoding (the AI lane's from then on, point 8).
    Increment 2 bumps the game state hash to v2 (treasuries, decisions), the action encoding to
    v2 and, if the answer command needs it, the adventure replay format (E08 T14). Increment 3:
    the game state hash v5, the adventure state hash v7, the adventure ruleset part v6, the map
@@ -197,7 +229,10 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    adventure ruleset part v10 (the fly and water-walk prices, Nomads' terrain; Cursed Ground's
    parameter if batch E5 confirms it); the game and adventure state hashes, the map import, the
    action encoding (v4) and the adventure replay format (v5) do not change: a flying hero's
-   destinations are tiles of the same mask.
+   destinations are tiles of the same mask. Increment 6: the game state hash (the decisions), the
+   adventure state hash (the flag), the details' hash (positions), the core ruleset hash and the
+   pack format (shared: two effect kinds), the map import (positions), the adventure replay
+   format v6 (the management commands); the action encoding's version is the AI lane's.
 10. **Gains and costs cross by outcome.** A context's `apply` returns an outcome: the resources
     its command gains for the actor and the offers it opens, each with its price. The context
     never sees a treasury. The game adds the gains after the context applied (gains cannot fail,
@@ -228,6 +263,12 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
     monster that survives keeps every stack's survivors (A-6 fixed). Then (increment 4) the
     winner's owner gets its hero's level-ups (point 6), as the original gives a human player's
     levels after the battle's screen.
+    **The tactics flag in battle** (increment 6): when the game builds a battle's setup it gives
+    each hero's `BattleHero` its Tactics as `h3-heroes` derives it, unless the side whose hero has
+    the greater Tactics level belongs to a hero on the map whose flag is off (ADR-0016 point 3):
+    then **both** heroes' Tactics go as 0, so no side gets the tactics phase and the two levels'
+    cancelling (BAT-TAC-001) stays as the experiments confirmed it (the user's condition at
+    ADV-Q24). No seam changes.
 
 ## Consequences
 
@@ -258,6 +299,11 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   movement or scouting skill or artifact, its play and its state hashes change and the replay is
   re-recorded (its header's core ruleset hash moves in any case). The first rule at a day's start
   exists in one profile only: both profiles' properties run the day advance.
+- Increment 6: clients and servers send the management commands; the server lane maps them when
+  it serves adventure games. An open meeting or army dialog is a state a fork shares; its views
+  are the owner's. The AI lane takes the env with an encoding that ignores increment 6's
+  commands until it extends it; the replays record them from v6 on. A battle's observation
+  shows the zeroed Tactics of both heroes in a battle the flag cancelled.
 
 ## Alternatives considered
 
@@ -290,6 +336,12 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   (a Scouting or Logistics gained at load would show only from the next step or turn, unlike the
   original's); the levels at load before the adventure's state is built (the evaluation needs the
   static map's terrain shares, which the adventure's build computes).
+- Increment 6 (ADV-Q24): a field of the battle's setup for the tactics flag (`cross-lane`, mapped
+  on the wire; the zeroing gives the same battle); zeroing only the flagged hero's Tactics (it
+  would hand the other side the phase when its level is lower but above 0, which the original
+  never does); an answer of its own to close a meeting or an army dialog (`Decline` already
+  closes a decision without carrying anything out); a subset of the management commands in the
+  adventure lane's encoding now.
 
 ## Revision history
 
@@ -328,3 +380,9 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   points and the reveal around it (the original's order); the start-of-turn step reads the store,
   the start-of-day step's first rule (`strict-fixed`'s reveal around every hero, `ADV-QUIRK-18`);
   the versions. Drafted in E08 T34b (#375; survey `E08-hero-movement.md` §1.4, §4.2).
+- 2026-10-23 (E08 T45; the user at ADV-Q24 and ADV-Q25): points 1, 6, 8, 9 and 11 amended for E08
+  increment 6, army and hero management: the management commands and the expansions as the
+  game's configuration (E08 decision 104); a meeting and an army dialog as pending decisions
+  closed by `Decline`; the adventure's RL encoding to the AI lane, the replay model staying the
+  adventure lane's (E08 decisions 99, 103); the versions; the tactics flag zeroing both heroes'
+  Tactics. Drafted in E08 T44b (#412; survey `E08-army.md` §1, §2, §4, §6).

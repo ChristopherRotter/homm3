@@ -693,11 +693,12 @@ fn check_lifted(env: &AdventureEnv, player: PlayerId, passed: &mut [usize; 2]) {
     }
 }
 
-/// The env plays flyers and water walkers (E08 T42, design note §8: no encoding change): on the
-/// duel (red's surface hero flies, its underground hero walks on water, `fixtures.rs`' kits), over
-/// random games of two weeks, their move heads allow only tiles a hero may stop on, the reach's
-/// stop tiles (`steps_agree_with_the_masks_and_the_game` checks them against the reach), and some
-/// of those tiles are reached over water or (the flyer) over tiles objects block.
+/// The env plays flyers and water walkers (E08 T42, increment 5's design note §8 in `E08-log.md`:
+/// no encoding change): on the duel (red's surface hero flies, its underground hero walks on water,
+/// `fixtures.rs`' kits), over random games of two weeks, their move heads allow only tiles a hero
+/// may stop on, the reach's stop tiles (`steps_agree_with_the_masks_and_the_game` checks them
+/// against the reach), and some of those tiles are reached over water or (the flyer) over tiles
+/// objects block.
 // covers: ADV-MOV-007, ADV-MOV-009, ADV-MOV-010
 #[test]
 fn a_flyer_and_a_water_walker_are_masked_by_their_stop_tiles() {

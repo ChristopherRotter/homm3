@@ -2127,6 +2127,9 @@ expert = [{ kind = "school_mastery", level = 3, school = "earth" }]
 [[secondary_skill]]
 id = "scholar"
 name = "Scholar"
+basic = [{ kind = "meeting_spells", level = 2 }]
+advanced = [{ kind = "meeting_spells", level = 3 }]
+expert = [{ kind = "meeting_spells", level = 4 }]
 
 [[secondary_skill]]
 id = "tactics"

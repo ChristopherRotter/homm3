@@ -196,7 +196,9 @@ fields = [
   { offset = 0x13D78, name = "turrets", type = "turret[3]", summary = "the keep and the two towers, 0x24 bytes each: the shooter creature, pictures, positions (0x466C50)", confidence = "read", refs = ["installation.md §7.27"] },
   { offset = 0x13DE4, name = "wait_phase", type = "u8", summary = "the round's wait phase: set when no stack is left to act (0x4652A7), cleared at the round start; no Wraith drain while set", confidence = "read", refs = ["installation.md §7.21"] },
   { offset = 0x13DE8, name = "defender_saved_skills", type = "i32[4]", summary = "the defending hero's attack, defense, power and mana before the town's bonuses; restored at the end, the mana capped", confidence = "read", refs = ["installation.md §7.27"] },
+  { offset = 0x13DF8, name = "siege_pictures", type = "pcx*[90]", summary = "the siege parts' pictures, five slots per part: +0x13DF8 + 4 (5 part + slot) (battle_load_heroes 0x463370); a part shows the slot of its picture state +0x13FA8, the drawbridge that of the gate state +0x53A4", confidence = "read", refs = ["epics/E17-design.md §10.1"] },
   { offset = 0x13F60, name = "wall_parts", type = "i32[18]", summary = "the walls' 18 parts' hit points (WALLS.TXT at a siege's start: 2 for the towers, the four walls, the gate and the keep at any fort level; the covers set to 1; a Castle's four walls +1), lowered by 0x465990; copied before the Castle's +1 to the picture states +0x13FA8 (then 1 hit, 0 destroyed)", confidence = "read", refs = ["installation.md §7.27", "installation.md §7.28", "installation.md §7.29"] },
+  { offset = 0x13FA8, name = "wall_picture_states", type = "i32[18]", summary = "each siege part's picture slot: the hit points at the start (before a Castle's +1), 1 once hit with hit points left, 0 destroyed (0x465990; a tower's or the keep's cover 0 with it)", confidence = "read", refs = ["epics/E17-design.md §10.1"] },
   { offset = 0x13FF0, name = "map_position", type = "u32", summary = "the battle's adventure map position, packed (x, y, the level in the high bits: underground -> subterranean, 0x464451)", confidence = "read", refs = ["installation.md §7.26"] },
   { offset = 0x13FFC, name = "step_counter", type = "i32", summary = "counted up by each idle step (0x4960D0); obstacle frames run by it", confidence = "read", refs = ["epics/E17-design.md §4"] },
 ]
@@ -340,7 +342,7 @@ fields = [
   { offset = 0x23, name = "name", type = "char[13]", summary = "the hero's name (an experiment map's custom name: D3a, Wood 1); observed in the running game (h3mem.py), not read", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
   { offset = 0x30, name = "class", type = "i32", summary = "the hero's class, 0-17: the level-up reads its record (hero_classes_pointer 0x67DCEC)", confidence = "read", refs = ["rules/surveys/E08-progression.md §2.3"] },
   { offset = 0x3F, name = "school_offer_level", type = "i16", summary = "the level at which a magic school was last offered at a level-up, 0 at a new game: a school is due when it plus 3 or 4 is reached (0x4DAD00)", confidence = "read", refs = ["rules/surveys/E08-progression.md §2.4"] },
-  { offset = 0x48, name = "flags", type = "u8", summary = "bit 0 the tight formation: the battle places the army by it for a human player's side (0x463673); the hero screen's buttons clear and set it (0x4DD577, 0x4DD587); the map's formation flag never reaches it (map_hero_setup, E08 T22b)", confidence = "read", refs = ["rules/surveys/E08-battles.md §6.4"] },
+  { offset = 0x48, name = "flags", type = "u8", summary = "bit 0 the tight formation: the battle places the army by it for a human player's side (0x463673); the hero screen's buttons clear and set it (0x4DD577, 0x4DD587); the map's formation flag never reaches it (map_hero_setup, E08 T22b). Bit 1 the tactics formation (E08 T44a): toggled by the hero screen's item 126 (0x4DD5AD); a human player's side whose Tactics would give it the tactics phase gets none while it is clear (battle_start 0x462D07); every hero starts with +0x48 = 2 (0x4D8ADD)", confidence = "read", refs = ["rules/surveys/E08-battles.md §6.4", "rules/surveys/E08-army.md §4"] },
   { offset = 0x49, name = "day_points", type = "i32", summary = "the movement points the day began with; observed in the running game (h3mem.py), not read", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
   { offset = 0x4D, name = "points", type = "i32", summary = "the movement points left (rules/surveys/E08-adventure-core.md §1.1); the harness reads them for an experiment's record", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
   { offset = 0x51, name = "experience", type = "i32", summary = "experience; random 40-90 at a new game; compared signed, added without a bound (E08 T24a1)", confidence = "read", refs = ["rules/surveys/E08-battles.md §6.2", "rules/surveys/E08-progression.md §1.2"] },
@@ -439,6 +441,7 @@ fields = [
   { offset = 0x40, name = "towns", type = "i8[]", summary = "the player's towns by index into game +0x21614, -1 none", confidence = "read", refs = ["installation.md §7.55"] },
   { offset = 0x9C, name = "resources", type = "i32[7]", summary = "wood, mercury, ore, sulfur, crystal, gems, gold (+0xB4)", confidence = "read", refs = ["rules/surveys/E08-objects.md §7.1"] },
   { offset = 0xE2, name = "human", type = "u8", summary = "a human player", confidence = "read", refs = ["rules/surveys/E08-objects.md §7.2"] },
+  { offset = 0xE8, name = "combinations_asked", type = "bitset[12]", summary = "per combination a bit set when the assembly question was asked after an equip or a combination was equipped (combination_prompt_after_equip 0x4DC100): a set bit skips the question", confidence = "read", refs = ["rules/surveys/E08-army.md §5.3"] },
 ]
 
 [[struct]]
@@ -449,8 +452,33 @@ refs = ["epics/E17-design.md §6.3"]
 h3api = "H3AdventureManager"
 fields = [
   { offset = 0x48, name = "path_arrows", type = "u16*", summary = "per tile of the surface (row by row, the map's side across) the selected hero's path arrow: 0 none, 1-25 a move today (green), 26-50 the same arrows for later days (red); observed in the running game (h3mem.py), not read", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
-  { offset = 0xE4, name = "view", type = "u32", summary = "the view's top-left tile, packed: x in bits 0-9, y in bits 16-25, signed (the view may start left of or above the map); the map area starts at screen (8, 8), 32 pixels a tile; observed in the running game (h3mem.py), not read", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
-  { offset = 0xE8, name = "mouse_tile", type = "u32", summary = "the tile under the mouse, packed as view; observed in the running game (h3mem.py), not read", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
+  { offset = 0x4C, name = "path_shown", type = "i32", summary = "set while the selected hero's path is shown: the view draws its passes 6 and 8 (0x40F5F2, 0x40F694)", confidence = "inferred", refs = ["epics/E24-design.md §1.1"] },
+  { offset = 0x5C, name = "map", type = "map*", summary = "the map: tiles +0xD0, side +0xD4, object records +0x14 (12 bytes, map_object), templates +0x4 (0x44 bytes, object_template), their loaded DEFs +0x24 by template; the tiles and side as game +0x1FC40, +0x1FC44, so probably game + 0x1FB70", confidence = "read", refs = ["epics/E24-design.md §1.3", "epics/E24-design.md §2.2"] },
+  { offset = 0x60, name = "terrain_defs", type = "def*[10]", summary = "the terrains' DEFs by code (terrain_def_names 0x65F55C); watrtl +0x80 and lavatl +0x7C have animated palettes", confidence = "read", refs = ["epics/E24-design.md §1.3"] },
+  { offset = 0x8C, name = "river_defs", type = "def*[4]", summary = "the rivers' DEFs for codes 1-4 (read as +0x88 + 4 x code; river_def_names 0x65F588)", confidence = "read", refs = ["epics/E24-design.md §1.3"] },
+  { offset = 0xA0, name = "road_defs", type = "def*[3]", summary = "the roads' DEFs for codes 1-3 (read as +0x9C + 4 x code; road_def_names 0x65F59C)", confidence = "read", refs = ["epics/E24-design.md §1.3"] },
+  { offset = 0xAC, name = "edge_def", type = "def*", summary = "edg.def, the map's edge outside it", confidence = "read", refs = ["epics/E24-design.md §1.4"] },
+  { offset = 0xB0, name = "path_def", type = "def*", summary = "adag.def, the path's arrows", confidence = "read", refs = ["epics/E24-design.md §1.1"] },
+  { offset = 0xB4, name = "corner_gem_defs", type = "def*[4]", summary = "agemul, agemur, agemll, agemlr, the view's corner gems (view_corner_gems 0x40F2F0)", confidence = "read", refs = ["epics/E24-design.md §1.1"] },
+  { offset = 0xC4, name = "fog_full_def", type = "def*", summary = "tshrc.def, the full piece over an unexplored tile", confidence = "read", refs = ["epics/E24-design.md §1.5"] },
+  { offset = 0xCC, name = "fog_edge_def", type = "def*", summary = "tshre.def, the edge pieces over unexplored tiles", confidence = "read", refs = ["epics/E24-design.md §1.5"] },
+  { offset = 0xE0, name = "attack_def", type = "def*", summary = "the DEF the object at +0x218 is drawn from in passes 5 and 7 (a monster's attack: monster_attacks_guarded, visit_object); not read further", confidence = "inferred", refs = ["epics/E24-design.md §2.2"] },
+  { offset = 0xE4, name = "view", type = "u32", summary = "the view's top-left tile, packed: x in bits 0-9, y in bits 16-25, signed (the view may start left of or above the map), the level from bit 26; its tile (x + i, y + j) is drawn at screen (32 i, 8 + 32 j), clipped to x 8-599, y 8-551 (adventure_view_draw 0x40F3F0)", confidence = "read", refs = ["epics/E17-design.md §6.3", "epics/E24-design.md §1.2"] },
+  { offset = 0xE8, name = "mouse_tile", type = "u32", summary = "the tile under the mouse, packed as view: view plus (x div 32, y div 32) of the mouse message's position (view_mouse_tile 0x40DEB0)", confidence = "read", refs = ["epics/E17-design.md §6.3", "epics/E24-design.md §1.2"] },
+  { offset = 0xF4, name = "view_offset", type = "i32[2]", summary = "added to every tile's screen x and y in the view's passes; 0 from the construction, written nowhere else (no pixel scrolling)", confidence = "read", refs = ["epics/E24-design.md §1.2"] },
+  { offset = 0x100, name = "object_animation_step", type = "i32", summary = "the objects' animation counter: a frame is (the object's phase + this) mod the group's frames; +1 per 180-ms step after a redraw (0x408B26, view_show_step)", confidence = "read", refs = ["epics/E24-design.md §1.6"] },
+  { offset = 0x104, name = "object_animation_held", type = "u8", summary = "while set the 180-ms steps do not count +0x100 (where it is set: not read)", confidence = "inferred", refs = ["epics/E24-design.md §1.6"] },
+  { offset = 0x10C, name = "hero_defs", type = "def*[18]", summary = "the heroes' map DEFs ah00_ to ah17_ by class (hero_map_def_names 0x65F5A8)", confidence = "read", refs = ["epics/E24-design.md §2.3"] },
+  { offset = 0x154, name = "boat_defs", type = "def*[3]", summary = "the boats' DEFs ab01_ to ab03_ by type (boat_def_names 0x65F670)", confidence = "read", refs = ["epics/E24-design.md §2.3"] },
+  { offset = 0x160, name = "boat_wave_defs", type = "def*[3]", summary = "the boats' waves abm01_ to abm03_ by type (boat_wave_def_names 0x65F67C)", confidence = "read", refs = ["epics/E24-design.md §2.3"] },
+  { offset = 0x16C, name = "hero_flag_defs", type = "def*[8]", summary = "the heroes' flags af00 to af07 by colour (hero_flag_def_names 0x65F5F0)", confidence = "read", refs = ["epics/E24-design.md §2.3"] },
+  { offset = 0x18C, name = "boat_flag_defs", type = "def*[24]", summary = "the boats' flags by type x 8 + colour (boat_flag_def_names 0x65F610)", confidence = "read", refs = ["epics/E24-design.md §2.3"] },
+  { offset = 0x1EC, name = "hero_moving", type = "u8", summary = "set while a hero moves (hero_move_step 0x480922, cleared at 0x480A80): passes 5 and 7 draw it at the view's centre, pass 9 (0x47FC80) steps it; also cleared when the current player has no selected hero (0x40F6F8)", confidence = "read", refs = ["epics/E24-design.md §1.1", "epics/E24-design.md §2.2"] },
+  { offset = 0x1FC, name = "moving_hero_group", type = "i32", summary = "the moving hero's group while +0x1EC is set (hero_move_step 0x4808AA)", confidence = "inferred", refs = ["epics/E24-design.md §2.2"] },
+  { offset = 0x200, name = "moving_hero_frame", type = "i32", summary = "the moving hero's frame, stepped by pass 9 (0x47FC80)", confidence = "inferred", refs = ["epics/E24-design.md §2.2"] },
+  { offset = 0x218, name = "substituted_object", type = "i32", summary = "the index of the object passes 5 and 7 draw from +0xE0 instead of its template's DEF (set by monster_attacks_guarded 0x4A79D2 and visit_object 0x4A97B9)", confidence = "inferred", refs = ["epics/E24-design.md §2.2"] },
+  { offset = 0x21C, name = "substitute_group", type = "i32", summary = "with +0x220: the substitute's frame +0x220 + 2 x +0x21C", confidence = "inferred", refs = ["epics/E24-design.md §2.2"] },
+  { offset = 0x220, name = "substitute_frame", type = "i32", summary = "see +0x21C", confidence = "inferred", refs = ["epics/E24-design.md §2.2"] },
 ]
 
 [[struct]]
@@ -472,12 +500,45 @@ h3api = "H3MapItem"
 fields = [
   { offset = 0x0, name = "word", type = "u32", summary = "the class's data on the object's entrance tile: a pile's amount (low 19 bits) and guards flag (bit 31), a campfire's resource (low 4 bits) and amount (bits 4 up), a monster's count (bits 0-11), aggression (12-16), never flees (17), does not grow (18), message index (19-26) and message flag (31)", confidence = "read", refs = ["rules/surveys/E08-objects.md §3", "rules/surveys/E08-battles.md §1.2"] },
   { offset = 0x4, name = "terrain", type = "u8", summary = "terrain code 0-9", confidence = "read", refs = ["rules/surveys/E08-objects.md §4"] },
-  { offset = 0xC, name = "flags", type = "u8", summary = "bits 0-5 the pictures' mirroring (the map file's flags byte, 0x4FE220); 0x40 no object blocks the tile: set at load on every tile but rock, cleared by 0x505610 where an object's passability blocks it without an entrance there (not the file's coast bit, which goes to +0xD: E08 T38; the flying price, hero_flight_tile_test and ai_map_terrain_shares read it); 0x80 water, lava, a river or a road", confidence = "read", refs = ["formats/h3m.md", "rules/surveys/E08-hero-movement.md §2.1"] },
+  { offset = 0x5, name = "terrain_picture", type = "u8", summary = "the terrain DEF's frame", confidence = "read", refs = ["epics/E24-design.md §1.3"] },
+  { offset = 0x6, name = "river", type = "u8", summary = "river code 1-4 (clear, icy, mud, lava), 0 none", confidence = "read", refs = ["epics/E24-design.md §1.3"] },
+  { offset = 0x7, name = "river_picture", type = "u8", summary = "the river DEF's frame", confidence = "read", refs = ["epics/E24-design.md §1.3"] },
+  { offset = 0x8, name = "road", type = "u8", summary = "road code 1-3 (dirt, gravel, cobblestone), 0 none", confidence = "read", refs = ["epics/E24-design.md §1.3"] },
+  { offset = 0x9, name = "road_picture", type = "u8", summary = "the road DEF's frame", confidence = "read", refs = ["epics/E24-design.md §1.3"] },
+  { offset = 0xC, name = "flags", type = "u8", summary = "bits 0-5 the pictures' mirroring (the map file's flags byte, 0x4FE220): bits 0 and 1 the terrain's left-right and top-bottom, 2 and 3 the river's, 4 and 5 the road's (E24 design §1.3); 0x40 no object blocks the tile: set at load on every tile but rock, cleared by 0x505610 where an object's passability blocks it without an entrance there (not the file's coast bit, which goes to +0xD: E08 T38; the flying price, hero_flight_tile_test and ai_map_terrain_shares read it); 0x80 water, lava, a river or a road", confidence = "read", refs = ["formats/h3m.md", "rules/surveys/E08-hero-movement.md §2.1"] },
   { offset = 0xD, name = "access", type = "u8", summary = "0x01 cannot be entered (rock, or an object blocks it: the opposite of +0xC bit 0x40), 0x02 the coast (the map file's coast bit on land, a shore picture on water: 0x4FE220; the shore battlefield's test), 0x10 an object's entrance (visitable) tile (H3API's names)", confidence = "read", refs = ["rules/surveys/E08-objects.md §2"] },
-  { offset = 0xE, name = "draw_list", type = "vector", summary = "the objects drawn on the tile, bottom to top (4-byte entries: object index u16, footprint cell, layer); 0x505610 takes the tile's object from it", confidence = "read", refs = ["rules/surveys/E08-objects.md §2.5"] },
+  { offset = 0xE, name = "draw_list", type = "vector", summary = "the objects drawn on the tile, bottom to top (4-byte entries: object index u16, the cell in the object as dy x 16 + dx from its anchor, the cell's layer 0-6), ordered by layer by tile_draw_insert 0x505230; 0x505610 takes the tile's object from it", confidence = "read", refs = ["rules/surveys/E08-objects.md §2.5", "epics/E24-design.md §2.1"] },
   { offset = 0x1E, name = "class", type = "i32", summary = "the object class on this tile", confidence = "read", refs = ["rules/surveys/E08-objects.md §2"] },
   { offset = 0x22, name = "subclass", type = "i16", summary = "the object subclass on this tile", confidence = "read", refs = ["rules/surveys/E08-objects.md §2"] },
   { offset = 0x24, name = "object_index", type = "i16", summary = "the index of the tile's object (the topmost drawn one visited from it; -1 none); its class and subclass are +0x1E and +0x22 (H3API's drawnObjectIndex)", confidence = "read", refs = ["rules/surveys/E08-objects.md §2.5"] },
+]
+
+[[struct]]
+name = "map_object"
+size = 0xC
+summary = "An object of the map (the map's +0x14, in map order; a draw-list entry's object index points here); only what the docs cite."
+refs = ["epics/E24-design.md §1.6"]
+fields = [
+  { offset = 0x4, name = "position", type = "u8[3]", summary = "x, y, level (the bad-object report of map_objects_check 0x504470 prints them)", confidence = "inferred", refs = ["epics/E24-design.md §1.6"] },
+  { offset = 0x8, name = "template", type = "u16", summary = "the object's template (the map's +0x4, 0x44 bytes each)", confidence = "read", refs = ["epics/E24-design.md §1.6"] },
+  { offset = 0xA, name = "animation_phase", type = "u8", summary = "random_between(0, 255) at load (0x5049C4): added to manager +0x100 for the object's frame", confidence = "read", refs = ["epics/E24-design.md §1.6"] },
+]
+
+[[struct]]
+name = "object_template"
+size = 0x44
+summary = "An object template of the map (the map's +0x4; H3API's H3ObjectAttributes); only what the docs cite. The masks are 48-bit sets, bit 47 - (8 dy + dx) the cell dx columns left of and dy rows above the anchor."
+refs = ["epics/E24-design.md §2.1"]
+h3api = "H3ObjectAttributes"
+fields = [
+  { offset = 0x10, name = "width", type = "u8", summary = "the width in tiles (H3API: from the picture's .msk, msk_load 0x514610)", confidence = "read", refs = ["epics/E24-design.md §2.1"] },
+  { offset = 0x11, name = "height", type = "u8", summary = "the height in tiles (H3API: from the .msk)", confidence = "read", refs = ["epics/E24-design.md §2.1"] },
+  { offset = 0x14, name = "colour_mask", type = "bitset[48]", summary = "the cells with body pixels (H3API colors; the .msk's colour mask): pass 7 draws a body piece only there", confidence = "read", refs = ["epics/E24-design.md §2.2"] },
+  { offset = 0x1C, name = "passability", type = "bitset[48]", summary = "a set bit passable, the .h3m's mask: the cells' layers (object_tile_layers 0x505060) and the blocked tiles (0x505610)", confidence = "read", refs = ["epics/E24-design.md §2.1"] },
+  { offset = 0x24, name = "shadow_mask", type = "bitset[48]", summary = "the cells with shadow pixels (H3API shadows; the .msk's shadow mask): pass 5 draws a shadow piece only there", confidence = "read", refs = ["epics/E24-design.md §2.2"] },
+  { offset = 0x2C, name = "entrances", type = "bitset[48]", summary = "the visitable cells, the .h3m's mask", confidence = "read", refs = ["epics/E24-design.md §2.1"] },
+  { offset = 0x38, name = "class", type = "i32", summary = "the object class", confidence = "read", refs = ["epics/E24-design.md §2.1"] },
+  { offset = 0x40, name = "flat", type = "u8", summary = "every cell layer 0, drawn by pass 4 alone; inferred: the .h3m template's priority byte not 0 (the special grounds)", confidence = "inferred", refs = ["epics/E24-design.md §2.1"] },
 ]
 
 [[struct]]

@@ -926,6 +926,7 @@ mod tests {
                 .any(|p| p == "h3-kernel" || p == "xtask")
         );
         assert!(lane_scope("client").unwrap().packages.is_empty());
+        assert!(lane_scope("map-client").unwrap().packages.is_empty());
         let adventure = lane_scope("adventure").unwrap();
         assert!(adventure.packages.iter().any(|p| p == "h3-game"));
         assert!(!adventure.packages.iter().any(|p| p == "h3-sim"));
