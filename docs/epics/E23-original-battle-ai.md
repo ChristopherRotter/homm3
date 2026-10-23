@@ -2,7 +2,7 @@
 
 Status: **in progress**, refined 2026-10-19 (BAT-Q52); T1a1 to T1a4 done (the cuts confirmed
 2026-10-20), T1c done (BAT-Q53, BAT-Q54); T1a5 done as cut (part C, §7.42 to §7.45); T1a5e (the spell evaluators) done (§7.46); T1b done, ADR-0027 accepted (BAT-Q55); T2 done (T2a the crate and the plain shooters, T2b the area value, the wall shot, the benchmark), the budget
-set; T3 done (cut in four: T3-0, T3a, T3b, T3c); T4 done (T4a, T4b in two, T4c, T4d); T1a6 done; slip 25 done; T5 cut in two, T5a done; T5b cut in two, T5b1 done; T5b2 next · Follows E05 (the
+set; T3 done (cut in four: T3-0, T3a, T3b, T3c); T4 done (T4a, T4b in two, T4c, T4d); T1a6 done; slip 25 done; T5 cut in two, T5a done; T5b cut in two, T5b1 done; T5b2 cut in two, T5b2a done; T5b2b next · Follows E05 (the
 AI lane, done) · Followed by E06 (training: this policy holds the neutral seat; AI-Q1) ·
 The battle lane's, later the AI lane's (BACKLOG).
 
@@ -250,9 +250,16 @@ found after that decision) belong to the neutral side's map too and are read (§
     - [x] **T5b1 The raises, Sacrifice and Earthquake** (2026-10-22) — 0x43ACA0, 0x43B1E0 with
       0x43AF50, 0x43B8F0 (BAT-AI-019; §7.57; slips 28 and 29 found and built under BAT-QUIRK-25;
       Sacrifice's victim the cast's second target; `POLICY_VERSION` 13; the log).
-    - [ ] **T5b2 Teleport** (BAT-STUB-14) — 0x43AA60 with the destination map 0x4B2FF0: the
-      walker's real turn twice per stack it could move, with its draws and casts; the threat
-      records filled again after; watched against the hero's 5 ms.
+    - **T5b2 Teleport**, cut in two (the user, 2026-10-22, at its start: the cast entry of a
+      caster that is not the active stack on its own):
+      - [x] **T5b2a Teleport's value** (2026-10-22) — 0x43AA60 with the destination map 0x4B2FF0
+        and the walker's flag-1 turn, a disabled stack's turns, "now" (BAT-AI-020; §7.58; slips 30
+        and 31 found and built under BAT-QUIRK-25, strict-fixed without stops on batch 3g TV and
+        without a run-up; slip 5 changes no choice; `POLICY_VERSION` 14; the slowest decision 3.5 to 4.3 ms; the log).
+      - [ ] **T5b2b A caster's cast entry in Teleport's turns** (BAT-STUB-14) — 0x421280 and its
+        callees on a stack that is not the active one (what they read of its record: the Faerie
+        Dragon's spell drawn at its last turn, the casts left), the engine's cast targets for a
+        given caster, and the stops a cast entry's spell context leaves to the destination map.
 - [ ] **T6 The hero's other choices** — retreat and surrender, the tactics phase, the Catapult's
   aim, the First Aid Tent's patient (BAT-Q51); BAT-Q33's rule.
 - [ ] **T7 The closure** — the batch rows' leftovers, the benchmarks, the docs.

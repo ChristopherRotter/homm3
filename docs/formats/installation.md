@@ -5593,3 +5593,82 @@ walls halve a shot from **its position (+0x38) to E's position**, `trunc(s × h 
 `imul`, `idiv`). The rule's halving (0x443C79, BAT-SIE-008) tests from the hex the shooter turns
 to: for the two-hex shooters (the Medusas, the Ballista) the estimate's hex may differ, survey slip
 29. The sum is written (0 too), "now" 1, no target.
+
+### 7.58 Code reading: Teleport re-read for the port (E23 T5b2a, 2026-10-22)
+
+Read again for E23 T5b2 (Teleport alone), which the user cut in two at its start: T5b2a all of it
+but a cast entry in the turn of a caster that is not the active stack, T5b2b that entry. Read:
+0x43AA60 and 0x4B2FF0 in full, 0x421F80's value, 0x421680's map call (0x421771 to 0x4217BE), its
+can-act test (0x4219DB to 0x421A18) and its flag-1 branch (0x421C69 to 0x421CC8), 0x436300's stop
+test (0x4363BA to 0x4363C9) and 0x4B3400's call of the stops (0x4B353E). §7.55 stands; these are the
+details the port needs. Insight only, nothing copied (Q29).
+
+**0x43AA60** (`this` the spell context, its side +0xC; the candidate). Over the side's records from
+the first: R not dead (bit 21) and not acted (bit 26), that 0x5A3C80 takes for spell 63 (its fourth
+argument 1, the fifth the context's +0x1D) and that cannot shoot now (0x4428F0 with 0). For each
+such R a flag "a walker was asked" is set, `v₀` = 0x421F80(R, 0, 0, the side) and `v₁` =
+0x421F80(R, 1, 0, the side): casts are skipped in neither, but the flag-1 choice always writes an
+action before the cast entry (below). `d = v₁ − v₀` (32 bits) counts only when the manager's action
+(+0x3C) after the second call is 6 and its +0x44 (the attacked stack's position) is not R's
+position (+0x38); in the port the walker never attacks itself (BAT-STUB-10). A `d` strictly above
+the candidate's value (from 0) writes the value, the target hex (+0x14) R's position, the second hex
+(+0x18) the manager's +0x40 (the plan's hex) and "now": 1 when R is the active record or is blind,
+petrified or paralysed (+0x290, +0x2B0, +0x2C0); else the side's records are searched from the first
+for one not dead and no war machine (`0x200040`), not blind, petrified or paralysed, not acted and not
+the active record: the first found makes "now" 0, none 1. R is such a record itself (Teleport's test
+refuses war machines), so "now" is 1 only for the active stack or a disabled one. After the loop, when
+a walker was asked, 0x422B20 with flag 0 and no record left out for both sides (the context's step 4,
+§7.42): the threat records as the context built them, until the retreat test's predictions run (T6,
+survey slip 26).
+
+**0x421F80's value.** The value 0x421680 wrote (its local, from 0) when 0x421680 returns true; else,
+unless casts are skipped, the cast entry 0x421280 with that value, which returns the value as the
+entry left it when it casts; else Wait or Defend, and 0.
+
+**0x421680 with the flag 1.** The scores (step 1), holding the walls and the candidates (steps 3 and
+4) as with 0. The map (0x421771 to 0x4217BE): the range is 0 while the stack is blind, petrified or
+paralysed, else 127, and goes to 0x4B2DA0 with the flag 0; with the flag 1 0x4B2FF0 takes no range.
+The candidates' melee value 0x435C70 is added only when the stack can act: not blind, petrified,
+paralysed or dead, not creature 147 or 148 (0x4219DB to 0x421A18), the test the last retaliation's
+gain asks too (§7.38). A stack on its own turn always can; Teleport's R may not. Step 5 (0x421C69):
+the value written as with 0 (the larger of the best's value and its drawn plan's value, each per
+turn); then with the flag 1, before the cast entry, a best with a written value of at least 0: move
+and attack (6, +0x40 the plan's hex, +0x44 the best's position), else Defend (3), both true. The plan's
+hex alone, a losing attack's fallbacks and a plan of more turns are not asked: the best is attacked
+from its plan's hex.
+
+**0x4B2FF0, the destination map** (`this` the pathfinder; S, its side). Per hex 0 to 186: the cell's
+hex (+0, 10 bits) written; a side column (hex mod 17 is 0 or 16), a hex where S does not fit
+(0x446C40) or Teleport's test 0x5A3700 fails (its own hex among them): the hex record's mark +0x4A and
+the cell's reached bit (+4 bit 0) cleared; else the mark set, the reached bit set with the top six bits
+(the hexes flown over) cleared and the cost +0x18 1. **Nothing else of the pathfinder is written**: a
+cell not reached keeps its cost, and the stops (+0x68) stay the last search's. Then over the other
+side's records but S, the dead and creature 149: when one of its 6 directions (8 for a two-hex record)
+from its position (0x523DF0) leads to a hex 0 to 186 whose cell is reached, its position's mark is set
+and its cost becomes 1 (unless marked at 1 already), and for a two-hex record its position again
+(survey slip 5). The flag-1 choice reads a mark only at a record's position (the gain's test,
+0x421977 to 0x421994), so slip 5 changes no choice: nothing to build.
+
+**The stale stops** (survey slip 30). 0x436300 adds a turn at a stop (+0x68 at the cell's hex,
+0x4363BA to 0x4363C9), and 0x4B3400 marks the stops for its own stack at every search's start
+(0x4B3290 from 0x4B353E: none for a flyer, else the moat and the pits its controller sees but its own
+hexes). With the destination map the plan so reads the stops of the last search before it. In
+0x421F80 with the flag 1 those are 0x422B20's with flag 1 (each record of the side it does not pass
+over, R left out, §7.38) and then 0x420260's (each enemy it does not pass over that cannot shoot now,
+on Normal and above or for a human side, §7.36): the last of 0x420260's searches, else the last of
+0x422B20's, else the last before the call, the first call's: R's own map (0x421680's step 2), its
+walk or fallback after it, or a spell context the cast entry built. A destination in the moat or on a
+seen pit may so count two turns. The rules move a teleported stack without entering a hex and let it
+act from there on its next turn (BAT-MAG-029, BAT-SIE-004, BAT-SIE-005; batch 3g TV: Advanced Teleport
+onto the moat hex 61, no damage on landing, the Swordsmen defended there that turn): the estimate
+reads another stack's search. The unreached cells' costs are stale too, but read only at an enemy's
+position by a bound walker (0x4217F6 onwards: an enemy at a cost above 0 is passed over): after a
+search of an enemy, which marks none of its own side, every enemy's cell holds 0 (after one of the
+side's own stacks an enemy's may hold its mark; the port reads 0).
+
+**The run-up** (survey slip 31, found by T5b2a's blind check): the melee value's jousting distance
+is the cell's cost at the plan's hex for a plan of one turn (0x421A1A to 0x421A3F), on the
+destination map 1, where a teleported stack strikes from where it stands.
+
+**Draws.** Per R: the first call's (0x421B02 per candidate, the cast entry's when it runs), then the
+second's (0x421B02 per candidate); then 0x43C800's draw for Teleport's value (§7.56).

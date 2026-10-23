@@ -50,6 +50,7 @@ mod predict;
 mod specials;
 mod speed;
 mod spells;
+mod teleport;
 mod values;
 
 fn key(text: &str) -> ContentKey {
@@ -92,8 +93,9 @@ const HEALS: Option<AbilityDef> = Some(AbilityDef::FirstAid {
 /// Fire Shield (the sultan), one that strikes twice (the crusader), kings of each level (the
 /// giant, the knight, the lord), a Master Genie (the genie: three casts of the test spells), the
 /// griffins with two and with unlimited retaliations, a shooter that shoots twice (the
-/// marksman) and the creatures that change the heroes' spell costs (the pegasus, the mage).
-const CREATURES: [Creature; 28] = [
+/// marksman), the creatures that change the heroes' spell costs (the pegasus, the mage) and a
+/// jouster (the champion).
+const CREATURES: [Creature; 29] = [
     ("imp", 5, 100, &[], [2, 3, 1, 2], 4, 0, None),
     ("gog", 3, 900, &[], [4, 4, 2, 3], 13, 0, None),
     ("runner", 20, 300, &["alive"], [5, 5, 2, 4], 10, 0, None),
@@ -330,6 +332,16 @@ const CREATURES: [Creature; 28] = [
             affects: AuraTarget::Allies,
         }),
     ),
+    (
+        "champion",
+        9,
+        2000,
+        &["two_hex", "alive"],
+        [16, 16, 20, 25],
+        100,
+        0,
+        Some(AbilityDef::Jousting { percent_per_hex: 5 }),
+    ),
 ];
 
 const IMP: usize = 0;
@@ -360,6 +372,7 @@ const ROYAL: usize = 24;
 const MARKSMAN: usize = 25;
 const PEGASUS: usize = 26;
 const MAGE: usize = 27;
+const CHAMPION: usize = 28;
 
 /// A test spell of the computer's spell values (E23 T4c): its key, level, value by mastery,
 /// polarity, timed changes, the mastery from which it is cast on the whole side, its usefulness
@@ -776,11 +789,11 @@ type HeroSpell = (
     fn() -> SpellMagic,
 );
 
-/// The hero's own cases (E23 T5a, T5b1): Dispel (any side's stack from Advanced, the mass version
-/// at Expert), Clone, an area spell, a mass damage spell, a chain, a summon of runners, a raise,
-/// one that lasts only the battle below Advanced (as Resurrection), Sacrifice (tested as that one)
-/// and Earthquake.
-const HERO_SPELLS: [HeroSpell; 10] = [
+/// The hero's own cases (E23 T5a, T5b1, T5b2a): Dispel (any side's stack from Advanced, the mass
+/// version at Expert), Clone, an area spell, a mass damage spell, a chain, a summon of runners, a
+/// raise, one that lasts only the battle below Advanced (as Resurrection), Sacrifice (tested as
+/// that one), Earthquake and Teleport.
+const HERO_SPELLS: [HeroSpell; 11] = [
     ("dispel", 0, [0; 4], SpellPolarity::Neutral, || SpellMagic {
         target: SpellTarget::Stack,
         side: TargetSide::Own,
@@ -882,6 +895,14 @@ const HERO_SPELLS: [HeroSpell; 10] = [
     ("quake", 0, [2, 2, 4, 9], SpellPolarity::Neutral, || {
         SpellMagic {
             effects: vec![SpellEffect::Earthquake],
+            ..SpellMagic::default()
+        }
+    }),
+    ("teleport", 0, [0; 4], SpellPolarity::Positive, || {
+        SpellMagic {
+            target: SpellTarget::Stack,
+            side: TargetSide::Own,
+            effects: vec![SpellEffect::Teleport],
             ..SpellMagic::default()
         }
     }),
@@ -1771,7 +1792,7 @@ fn a_refused_choice_falls_back_to_defend() {
     assert!(validate(&state, &r, side, refused).is_err());
     assert_eq!(checked(&state, &r, side, refused), Command::Defend);
     assert_eq!(checked(&state, &r, side, Command::Wait), Command::Wait);
-    assert_eq!(POLICY_VERSION, 13);
+    assert_eq!(POLICY_VERSION, 14);
 }
 
 /// The setup of `setup` on `difficulty`.

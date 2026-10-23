@@ -1181,3 +1181,75 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   stack after `k`, tests the defenders inside before `W`, and names the turrets, the Tent and the
   Cart by trait where the original names creatures 149, 147 and 148 (the same in the packs); its
   `checked_div` and saturating conversions guard cases the original never reaches.
+
+## T5b2a — the hero's Teleport (2026-10-22)
+
+- **The user** (T5b2's checkpoint, 2026-10-22): T5b2 in two parts, the agent's proposed cut: T5b2a
+  Teleport's value for every stack, a caster's cast entry in the turns of a stack that is not the
+  active one standing in (BAT-STUB-14), T5b2b that entry (the engine lists cast targets only for
+  the active stack; the original reads the stack's own record, the Faerie Dragon's spell drawn at
+  its last turn). Asked whether a Teleport into the moat had been observed: batch 3g TV (Advanced
+  Teleport onto the moat hex 61, no damage, the Swordsmen defended there that turn) and BAT-SIE-004
+  say a teleported stack loses no turn, so slip 30's strict-fixed side takes no stops.
+- **Re-read** (`docs/formats/installation.md` §7.58): 0x43AA60 in full ("now" only for the active
+  or a disabled stack: the search for another able record finds R itself), 0x421F80's value,
+  0x421680's map call (range 0 while disabled), its can-act test for the melee value and the gain,
+  its flag-1 branch (the best from its plan's hex when the written value is at least 0, else
+  Defend, before the cast entry), 0x4B2FF0 in full (it writes nothing else: the stops stay the last
+  search's) and 0x436300's stop test.
+- **Slips:** **slip 30** (new), the destination map's plan reads the stops of the pathfinder's last
+  search (the reach's last enemy on Normal and above, else the threat records' last own stack,
+  else the stack's own): a destination in the moat or on a seen pit counts two turns; built under
+  BAT-QUIRK-25 (strict-fixed: none). **Slip 31** (new, found by the blind check), on the
+  destination map the melee value's jousting run-up is the map's cost, 1, where a teleported stack
+  strikes from where it stands; built under BAT-QUIRK-25 (strict-fixed: none). **Slip 5** (a
+  two-hex enemy's position marked twice) changes no choice: the flag-1 choice reads a mark only at
+  a position; recorded, nothing built.
+- **Built:** `hero/teleport.rs` (BAT-AI-020): per own stack alive, not acted, that the cast can
+  affect and that cannot shoot now, the two turns (`Walker::teleport_turns`, their draws from the
+  hero's stream: `hero::value` takes the stream), the gain at a stack the engine takes, the
+  destination from the engine's Teleport rule (`second_targets`). `walker.rs`: `Walker::turn` with
+  its value, the flag-1 branch, the can-act test, the range-0 map of a disabled stack,
+  `teleported` (the second turn reuses the first's scores, odds and threat records: ADR-0027 point
+  11) and `last_search`; `scores::last_reached`, `gain::last_recorded` share their loops'
+  predicates. `h3-battle`: `computer::destination_map`, `computer::search_stops`
+  (`pathfinder::stops` taken out of the search), `Search::placed`; `siege::teleport_allowed` tests
+  the mastery before the line (no result changes: Expert no longer draws the line per hex).
+  `POLICY_VERSION` 14 (the AI lane's inbox). BAT-STUB-14 narrowed to the non-active caster's cast
+  entry and the stops a cast entry's spell context leaves.
+- **Tests:** `h3-battle-ai`'s `tests/teleport.rs` (the test ruleset gained Teleport): the gain of
+  the gogs' teleported turn over their walk, cast and followed by their attack; a stack not active
+  waits for its turn, shooters and stacks that acted are not asked; a blind stack moved now to block
+  the enemy's archers by its plan alone (range 0, no melee value); the flag-1 turn's Defend; the
+  destination map's positions, marks and slip 5; slip 30 at a Citadel's moat in both profiles
+  (faithful: the moat hex two turns, the archers attacked; strict-fixed: the runners from the moat)
+  and its tiers on Easy (the threat records' flyer: none; the stack's own: the moat but the
+  bridge); slip 31 with a jousting test creature (the champion) in both profiles.
+- **The cost:** release, heroes with every combat spell, 500 mana, power and knowledge 10 and each
+  school at Basic to Expert on both sides, 40 battles of 7 random harvested stacks a side, half at
+  a Citadel with a damaging moat, on Hard; each decision's best of five: 2 334 decisions, mean 0.38
+  to 0.42 ms, **the slowest 3.5 to 4.3 ms** over four runs on Hard and Impossible (within the
+  hero's 5 ms; before the mastery-first line test 0.45 and 4.4 ms); the hero cast Teleport 7 times.
+  `master` on the same harness: 2 469 decisions, mean 0.26 ms, the slowest 2.1 ms; the branch with
+  Teleport out of the books plays `master`'s battles command for command. In a profile Teleport is about 40 % of the
+  hero's cost: the engine's destinations (the siege's line test per hex, `blocked_as` per hex) and
+  each stack's hex scores (every enemy's reach searched again per stack). If the budget tightens:
+  the enemies' reach maps cached across the stacks, the blocked hexes computed once per stack.
+  `computer-decisions` (no heroes) unchanged in its choices.
+- **The blind check** (a fresh agent with the tool, the port and the addresses, no reading in the
+  brief): 0x43AA60, 0x421F80, the parts of 0x421680, 0x4B2FF0 and 0x436300's stop test agree with
+  the port. It found slip 31 (built) and noted, none a difference that needs code: an unmarked
+  enemy's stale cell cost read by a bound or speedless two-hex walker (the port reads 0; §7.58);
+  0x436300's 100 turns for a stack of speed 0 (only a war machine, never asked); the first turn's
+  spell context as the last search for the active stack too (BAT-STUB-14 widened); and the stops of
+  a hypnotized stack, which the original takes from its real side and the engine's pathfinder from
+  its controller (Q-0002's fix, §7.16: the slip-30 estimate follows the engine).
+- **Checkpoint, then the PR** (the user, 2026-10-22, 23:15: stop here, push, no PR; 23:40: finish
+  the PR after all). The scoped verify passed but for the coverage gate (one dead branch, fixed)
+  and `bench-check`: `computer-decisions` (no heroes) +2.62 %, over its 2 %. Per-function callgrind
+  profiles against `master` (in a worktree with its own target dir; the same 1 052 decisions)
+  put all of it in `Search::run`: taking its stops' code out into `pathfinder::stops` cost every
+  search about 5 % (a call or `#[inline(always)]` alike). The search keeps its own copy again
+  (518.27 M Ir against `master`'s 518.17 M, +0.02 %); `computer::search_stops` calls
+  `pathfinder::stops`, and `the_search_stops_are_the_searchs_own` holds the two together. No
+  re-baseline.

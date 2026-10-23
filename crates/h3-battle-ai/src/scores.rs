@@ -67,6 +67,38 @@ pub(crate) fn build(
     (scores, mask)
 }
 
+/// Whether the enemies' reach passes over the enemy `e` (0x420260): blind, petrified or
+/// paralysed, the First Aid Tent or the Ammo Cart.
+fn passed_over(e: &Stack) -> bool {
+    e.spells.status.contains(Status::NO_TURNS)
+        || e.has(StackTraits::FIRST_AID)
+        || e.has(StackTraits::AMMO_SUPPLY)
+}
+
+/// The enemy of `side` whose reach the hex scores search last (0x420260 on Normal and above or for
+/// a human side, [`Scorer::reach`]): the other side's last living stack, no turret, that the reach
+/// does not pass over and that cannot shoot now; none without one. The destination map keeps its
+/// search's stops (E23 T5b2a, survey slip 30).
+// rule: BAT-AI-020
+pub(crate) fn last_reached(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    side: BattleSide,
+) -> Option<StackId> {
+    let other = side.opponent();
+    (0u8..)
+        .zip(state.stacks())
+        .filter(|&(i, e)| {
+            e.side == other
+                && e.is_alive()
+                && !e.is_turret()
+                && !passed_over(e)
+                && !computer::shoots(state, ruleset, StackId(i))
+        })
+        .last()
+        .map(|(i, _)| StackId(i))
+}
+
 /// The area threat on the walker `id` of `side` with its context `ctx` and the reach's `mask`
 /// (0x41F920; the fallbacks' test at 0x421E94, BAT-AI-010): see [`Scorer::area_threat`].
 // rule: BAT-AI-010
@@ -220,10 +252,7 @@ impl<'a> Scorer<'a> {
         let hard = computer::difficulty(state) >= 2 && !computer::human(state, self.side);
         let mut mask = 0;
         for (enemy, e, bit) in self.records(self.side.opponent()) {
-            if e.spells.status.contains(Status::NO_TURNS)
-                || e.has(StackTraits::FIRST_AID)
-                || e.has(StackTraits::AMMO_SUPPLY)
-            {
+            if passed_over(e) {
                 continue;
             }
             if computer::shoots(state, ruleset, enemy) {
