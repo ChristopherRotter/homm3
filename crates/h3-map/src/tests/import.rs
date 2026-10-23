@@ -1040,20 +1040,44 @@ fn a_placed_heros_artifacts_keep_the_maps_positions() {
     let mut m = map();
     wearing(&mut m, &entries);
     assert_eq!(import(&m, &SOD).unwrap().validate(&SOD), Ok(()));
-    // RoE's rules have no fifth misc position: an artifact there is missing content, an empty
-    // entry nothing.
-    let mut m = map();
-    wearing(&mut m, &[(18, 46)]);
+    // An entry its position does not take is left out, in the map's order, as the original's
+    // loader: a misc artifact on the left hand (the Tutorial's second hero's Shackles of War, 125),
+    // Angelic Alliance (129) on the right hand after a helm on the head it locks; RoE's rules have
+    // no fifth misc position (the original refuses it before SoD).
+    let left = |entries: &[(usize, u16)], rules: &GameRuleset| {
+        let mut m = map();
+        wearing(&mut m, entries);
+        let setup = import(&m, rules).unwrap();
+        assert_eq!(setup.validate(rules), Ok(()));
+        let artifacts = setup.heroes[0].details.artifacts.clone().unwrap();
+        (0..)
+            .zip(artifacts.worn)
+            .filter_map(|(at, a)| a.map(|a| (at, a.artifact)))
+            .collect::<Vec<(usize, _)>>()
+    };
     assert_eq!(
-        import(&m, &rules(1)).unwrap_err(),
-        ImportError::MissingContent("base:misc")
+        left(&[(4, 125), (9, 125)], &SOD),
+        [(9, artifact(core, 125))]
     );
-    let mut m = map();
-    wearing(&mut m, &[(17, 0)]);
-    let roe = import(&m, &rules(1)).unwrap();
-    let book = roe.heroes[0].details.artifacts.as_ref().unwrap();
-    assert_eq!(book.worn.len(), 18);
-    assert!(book.worn[17].is_some() && book.worn[..17].iter().all(Option::is_none));
+    assert_eq!(left(&[(0, 19), (3, 129)], &SOD), [(0, artifact(core, 19))]);
+    assert_eq!(left(&[(3, 129), (5, 25)], &SOD), [(3, artifact(core, 129))]);
+    let roe = rules(1);
+    assert_eq!(left(&[(18, 46)], &roe), []);
+    assert_eq!(left(&[(17, 0)], &roe), [(17, artifact(roe.core(), 0))]);
+    assert_eq!(
+        roe.core()
+            .artifact_slots()
+            .iter()
+            .map(|s| usize::from(s.count))
+            .sum::<usize>(),
+        18
+    );
+}
+
+/// An artifact of `core` by its map code.
+fn artifact(core: &h3_content::Ruleset, code: u16) -> h3_content::ArtifactTypeId {
+    core.artifact_by_key(codes::ARTIFACTS[usize::from(code)])
+        .unwrap()
 }
 
 #[test]

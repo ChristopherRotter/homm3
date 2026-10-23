@@ -68,6 +68,40 @@ pub(crate) fn first_free(
         .map(Position)
 }
 
+/// Whether position `at` takes `artifact` (HER-ART-001): the position is empty and of the
+/// artifact's slot, and with the artifact there no slot's free positions less the worn
+/// combinations' locks go below zero. The original's `hero_can_place_artifact` (0x4E2550) at a
+/// given position; a map's import places each worn entry only where its position takes it, as
+/// the original's loader (`placed_hero_setup`, 0x4D8D63) and VCMI's do.
+pub fn takes(
+    worn: &[Option<ArtifactInstance>],
+    ruleset: &Ruleset,
+    artifact: ArtifactTypeId,
+    at: Position,
+) -> bool {
+    ruleset
+        .artifact(artifact)
+        .is_some_and(|a| fits(worn, ruleset, a, at))
+}
+
+/// [`takes`] for a known artifact type.
+pub(crate) fn fits(
+    worn: &[Option<ArtifactInstance>],
+    ruleset: &Ruleset,
+    artifact: &ArtifactType,
+    at: Position,
+) -> bool {
+    let slot = positions(ruleset).get(at.0).copied();
+    let empty = worn.get(at.0).is_some_and(Option::is_none);
+    let worn = worn
+        .iter()
+        .flatten()
+        .filter_map(|item| ruleset.artifact(item.artifact));
+    empty
+        && artifact.slot.is_some_and(|s| slot == Some(s))
+        && full_slot(ruleset, worn.chain(core::iter::once(artifact))).is_none()
+}
+
 /// The positions of a hero wearing `items` (E08 T49a): each placed in list order at the first
 /// position that takes it ([`first_position`]); one that none takes is left out. For callers
 /// that list artifacts (tests, experiments, generated heroes); a caller that needs a given

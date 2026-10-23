@@ -17,7 +17,7 @@ use crate::details::{
 };
 use crate::error::ChangeError;
 use crate::level::{gained_under_limit, pending_levels};
-use crate::positions::{Position, first_free, full_slot, positions};
+use crate::positions::{Position, first_free, fits};
 
 /// Where an artifact is in a hero's details.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -257,18 +257,7 @@ fn fits_at(
     at: ArtifactPlace,
 ) -> bool {
     match at {
-        ArtifactPlace::Worn(at) => {
-            let slot = positions(ruleset).get(at.0).copied();
-            let empty = details.worn.get(at.0).is_some_and(Option::is_none);
-            let worn = details
-                .worn
-                .iter()
-                .flatten()
-                .filter_map(|item| ruleset.artifact(item.artifact));
-            empty
-                && artifact.slot.is_some_and(|s| slot == Some(s))
-                && full_slot(ruleset, worn.chain(core::iter::once(artifact))).is_none()
-        }
+        ArtifactPlace::Worn(at) => fits(&details.worn, ruleset, artifact, at),
         ArtifactPlace::Backpack(i) => {
             i <= details.backpack.len() && carried(ruleset, artifact) && has_space(details, ruleset)
         }

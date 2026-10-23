@@ -141,6 +141,17 @@ fn the_first_position_that_takes_an_artifact() {
         assert_eq!(first(k), None, "{k}");
     }
     assert_eq!(first_position(&d, &r, ArtifactTypeId::from_raw(99)), None);
+    // A given position takes an artifact when it is empty, of its slot and the locks fit.
+    let eye = art(&r, "t:eye").artifact;
+    assert!(takes(&d.worn, &r, eye, Position(5)));
+    assert!(!takes(&d.worn, &r, eye, Position(4)));
+    assert!(!takes(&d.worn, &r, art(&r, "t:helm").artifact, Position(0)));
+    assert!(!takes(
+        &d.worn,
+        &r,
+        ArtifactTypeId::from_raw(99),
+        Position(5)
+    ));
     // A list placed: each at its first position in list order, one that none takes left out
     // (the fourth eye, the combination after the helm, an unknown artifact).
     let [eye, helm, circle] = ["t:eye", "t:helm", "t:circle"].map(|k| art(&r, k));

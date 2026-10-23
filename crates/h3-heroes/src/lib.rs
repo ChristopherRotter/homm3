@@ -64,7 +64,7 @@ pub use level::{
 };
 pub use level_up::{Choice, Draws, LevelUp, Offers, OriginalDraws, draw_level_up};
 pub use movement::{Movement, land_points, movement, movement_speed, scouting_radius};
-pub use positions::{Position, first_position, positions, wearing};
+pub use positions::{Position, first_position, positions, takes, wearing};
 pub use spells::{available_spells, learn_level, learns_spell, spell_masteries};
 
 #[cfg(test)]

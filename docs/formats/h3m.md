@@ -210,9 +210,14 @@ content and draws nothing; it rejects what the current increment cannot represen
   v9, E08 T49a, each worn entry at its position, ADR-0013 point 1: the map's entries 0–12 (head
   to the fourth misc) are the content's 0–12, its 13–17 (the four war machines, the spell book)
   the content's 14–18 and SoD's 18 (the fifth misc) the content's 13, each the entry's slot and
-  rank among that slot's positions (`codes::WORN`); with RoE's rules, which have four misc
-  positions, an artifact on the fifth is missing content; the backpack in order; codes by the
-  packs' `# original id`, 141–143 unused), spells (SoD's 9-byte set, spell `i` at bit `i mod 8` of byte
+  rank among that slot's positions (`codes::WORN`), placed in the map's order only where the
+  position takes it (`h3_heroes::takes`: empty, of the artifact's slot, the locks fitting), else
+  left out, as the original's loader (`placed_hero_setup` 0x4D8D63, `hero_equip_artifact`
+  0x4E2A00 refusing what `hero_can_place_artifact` 0x4E2550 refuses, the fifth misc before SoD)
+  and VCMI's (`loadArtifactToSlot`): the Tutorial's second hero's Shackles of War, stored on the
+  left hand, is dropped; with RoE's rules, which have four misc positions, so is an artifact on
+  the fifth; the backpack in order as before; codes by the packs' `# original id`, 141–143
+  unused), spells (SoD's 9-byte set, spell `i` at bit `i mod 8` of byte
   `i / 8`; AB's one byte: `0xFF` none, `0xFE` the type's own, else that spell beside the type's).
   The validation (`h3_heroes::validate`) checks the rest, so a war machine in the backpack or a
   scroll without its spell fails it (no shipped map that imports has one). Until v8 an experience
@@ -258,7 +263,9 @@ the 39 guards records as T21a's. E08 T29's run (import v8): 5 import and validat
 `Tutorial.tut`; survey `E08-progression.md` §6.5), their 9 heroes levelled at load with 41 levels;
 128 are unsupported for a hero generated at a main town, 18 for a random hero, 8 for a monster with
 an artifact, 1 for a hero in a town. No map has a level limit; 19 ban skills, none past the 28
-codes.
+codes. E08 T49a's run (import v9): the same 5 import and validate whole with the same levels
+at load; the Tutorial's second hero leaves its Shackles of War out (stored on the left hand,
+which the first version of v9 refused to validate); the other outcomes as T29's.
 
 ## The subset we write (E04a T2)
 

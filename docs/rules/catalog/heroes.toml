@@ -52,7 +52,7 @@ id       = "HER-ART-001"
 title    = "Worn artifacts on positions and combination locks"
 context  = "heroes"
 status   = "verified"
-summary  = "A hero's worn artifacts sit on positions (E08 T49a, ADR-0013 point 1): one per position of the ruleset's slots, in the slots' order and each slot's `count` (two rings; four misc positions before SoD, five in SoD; one of every other kind): SoD's 19 are head 0, shoulders 1, neck 2, right hand 3, left hand 4, torso 5, rings 6 and 7, feet 8, misc 9 to 13, the war machines 14 to 17, the spell book 18 (the original numbers its fifth misc 18, after the book; no rule tells the two apart). Each position is empty or holds an artifact of its slot. A combination artifact also takes one position of every slot in its locks (its parts' slots minus one position of its own; Angelic Alliance in the right hand also takes torso, feet, neck, left hand and head), counted per slot, not on given positions: the free positions of every slot less the worn combinations' locks never go below zero. An artifact without a slot (the Grail) cannot be worn. The same artifact type may be worn more than once while positions remain (two Quiet Eyes of the Dragon), and one war machine of each kind fits its own slot. A map's import keeps the map's positions. E08 T49a: `h3_heroes::positions`, `validate`."
+summary  = "A hero's worn artifacts sit on positions (E08 T49a, ADR-0013 point 1): one per position of the ruleset's slots, in the slots' order and each slot's `count` (two rings; four misc positions before SoD, five in SoD; one of every other kind): SoD's 19 are head 0, shoulders 1, neck 2, right hand 3, left hand 4, torso 5, rings 6 and 7, feet 8, misc 9 to 13, the war machines 14 to 17, the spell book 18 (the original numbers its fifth misc 18, after the book; no rule tells the two apart). Each position is empty or holds an artifact of its slot. A combination artifact also takes one position of every slot in its locks (its parts' slots minus one position of its own; Angelic Alliance in the right hand also takes torso, feet, neck, left hand and head), counted per slot, not on given positions: the free positions of every slot less the worn combinations' locks never go below zero. An artifact without a slot (the Grail) cannot be worn. The same artifact type may be worn more than once while positions remain (two Quiet Eyes of the Dragon), and one war machine of each kind fits its own slot. A map's import keeps the map's positions, entry by entry in the map's order, and leaves out an artifact its position does not take (another slot's position, a locked one, the fifth misc before SoD), as the original's loader and VCMI's: the Tutorial's second hero loses the Shackles of War the map stores on its left hand. E08 T49a: `h3_heroes::positions`, `takes`, `validate`; `h3_map`'s import."
 numeric  = "integer"
 
   [[rule.source]]
@@ -78,6 +78,18 @@ numeric  = "integer"
   kind       = "observation"
   ref        = "experiments/results/E08-batch-6.md E6-8 (the capture harness, SoD 4.0 Complete under Wine, E08 T47b2): the Wizard's Well assembled from its three misc parts sits on one misc position (the original's 9), its positions 10 to 12 empty, and the hero screen draws two locks in the misc slot (on misc 4 and misc 5); with the Well in the backpack no position is locked. E6-9: Titan's Thunder on the right hand locks the head, torso and left hand (survey docs/rules/surveys/E08-army.md §13)"
   retrieved  = "2026-10-23"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T49a): placed_hero_setup 0x4D8B30 removes the hero's worn artifacts (0x4D8D3E) and equips the map's 19 entries one by one at their positions through hero_equip_artifact 0x4E2A00 (0x4D8D63), which places one only where hero_can_place_artifact 0x4E2550 allows it (the position empty and among the artifact's slot's, its locks counted; position 18 refused before SoD) and otherwise returns without it; the loader ignores the result"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapping/MapFormatH3M.cpp loadArtifactToSlot: an artifact that canBePutAt refuses at its slot is skipped with a warning (the comment names the Shackles of War on a left hand in Good1.h3c's third scenario: 'Artifact seems to be missing in game')"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapping/MapFormatH3M.cpp#L1658-L1696"
+  retrieved  = "2026-10-24"
   confidence = "high"
 
 [[rule]]

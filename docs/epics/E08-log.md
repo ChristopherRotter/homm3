@@ -5152,12 +5152,21 @@ v9 with `PlaceArtifact` after; not chosen either: a cross-lane constructor first
 - **The game** (`h3-game`): `HeroArtifactsSetup.worn` by position; the defaults' book and the
   starting army's machines at their first positions; the details' hash writes each position (0
   empty, 1 and the artifact): **game state hash v12** (T51's decisions become v13, design §13).
-  `h3_game` re-exports `positions`, `wearing`, `Position` (`h3-map` has no `h3-heroes`
-  dependency, `arch.toml`).
+  `h3_game` re-exports `positions`, `takes`, `wearing`, `Position` (`h3-map` has no
+  `h3-heroes` dependency, `arch.toml`).
 - **The import v9** (`h3-map`): the map's worn entry `i` is `codes::WORN`'s slot and rank, placed
   at that rank of the slot's content positions (the map's 13 to 17 to 14 to 18, SoD's 18, the
-  fifth misc, to 13); with RoE's rules an artifact on the fifth misc is missing content
-  (`base:misc`). `MAP_IMPORT_VERSION` 9; `h3m.md`'s import paragraph. The plans put a hero's Spell
+  fifth misc, to 13), entry by entry in the map's order and only where the position takes it
+  (`h3_heroes::takes`), else left out. Found by the full verify's shipped maps: the Tutorial's
+  second hero stores the Shackles of War (125, misc) on its left hand, which the first version
+  (each entry placed as stored) refused to validate. The original's loader drops such an entry
+  (`placed_hero_setup` equips entry by entry through `hero_equip_artifact`, which returns
+  without placing what `hero_can_place_artifact` refuses; 0x4D8D63, read this session) and
+  VCMI's skips it (`loadArtifactToSlot`, its comment naming a campaign hero's Shackles on a left
+  hand): two sources agreeing, built (HER-ART-001's sources). With RoE's rules an artifact on the
+  fifth misc is dropped too (the original refuses position 18 before SoD). The backpack is as
+  before (the original's 0x4E2F90 also refuses a war machine there, which validation refuses
+  here; no shipped map has one). `MAP_IMPORT_VERSION` 9; `h3m.md`'s import paragraph. The plans put a hero's Spell
   Book on the map's book entry (17), until now the head's (0, "any slot"): the fixture maps
   regenerated (`H3_WRITE_FIXTURES`), both changed only there.
 - **The other lanes' call sites** (`cross-lane`, ADR-0013's consequences): the battle lane's
