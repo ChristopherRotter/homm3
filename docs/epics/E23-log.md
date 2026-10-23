@@ -1315,3 +1315,110 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   the branch) and in `deny`: RUSTSEC-2026-0385 (`ctutils` 0.4.3 under `h3-server`, published on
   2026-10-23, `master` alike); `Cargo.lock` takes `ctutils` 0.4.5 (the server lane's inbox).
   `computer-decisions` +0.04 %. PR #408 (`cross-lane`).
+
+## T6 — the hero's other choices (2026-10-23)
+
+**Decisions (the user, at the start).** T6 whole, no cut (the agent proposed three parts: the war
+machines, the tactics phase, the retreat). The policy's First Aid Tent heals the reading's patient
+(the most lost hit points of the top creature, the later stack at a tie); BAT-WAR-003 keeps the
+uniform draw until BAT-Q51's batch row. The seam (BAT-Q61 option a, BAT-Q56 option b): the
+retreat facts and the attacking hero's own ground now (`shared/e23-t6-seam`, ADR-0027 point 14),
+CLT-Q4's and CLT-Q6's viewer fields when a full game's viewer needs them. BAT-Q33: one bad-morale
+roll for every side until S-25's batch row (T7). Slip 26 joins BAT-QUIRK-25 by the standing rule
+(BAT-Q55). Checkpoint after the Catapult (the user): a branch, no pull request.
+
+**The seam** (`shared/e23-t6-seam`, the full verify green on its code
+3eeac6949ee2ad7aae0ae9b56ae43f3bddd6a306): `RetreatFacts { experience, artifacts, tavern, wanted }`
+per side and `attacker_ground: Option<ContentKey>` (`None`: an ordinary ground); nothing reads them
+yet, the two battle-lane literals take the defaults (`cross-lane`).
+
+**Done on `battle/e23-t6`** (stacked on the seam): the commanded Catapult (BAT-AI-021, §7.60):
+`siege::aim_with` holds the original's aim at any Ballistics level, the battle's automatic aim its
+level 0 with the battle's draw, `computer::catapult_aim` the policy's with its own stream;
+`POLICY_VERSION` 16; the harvested test plays eight battles at a Fort (a missed gate shot lands
+on a wall, so not every battle reaches the four standing walls).
+
+**Done in the second session** (the user: the tent and the whole tactics phase, `cross-lane` for
+the state hash): the tent (BAT-AI-022, `h3_battle_ai::tent`) heals the patient of its side with the
+most lost top hit points, the later record at a tie; the battle's automatic tent keeps its draw.
+The tactics phase (BAT-AI-023, `tactics.rs`): the battle counts the phase's rounds for the
+computer (`TacticsRounds`: the completed rounds, a placement in the running and the last one;
+`BattleState.tactics_rounds`, outside `TacticsPhase`, so neither the observation nor the wire
+moves; battle state hash v53, the ten golden and the adventure lane's replays rehashed with their
+commands); the policy gives `EndTactics` at the first turn after a round without a placement or
+after three. `computer::wait_phase` answers in the phase whether the active stack has waited (the
+original's pick sets +0x13DE4 there too). The pathfinder's `Query.tactics` (0x4B34DE: range and
+turn's speed 1000, before the speed-0 and Bind test) for `computer::map`, `map_within`, `path` and
+`turn_map` while the phase runs: a stop's step costs the rest of 1000 and is reached without being
+queued (the queue's buckets end at 255); a `Reach` search to it ends on it after the loop. The
+shooters: 0x422060 over `Map::position` (a flyer's hexes flown over left out: no shooter of the
+game flies). The walkers: no cast entry, the attack a walk, the walk the whole path without the
+score test, its end in the zone (`tactics::in_zone`, with the engine's footprint rule, BAT-STUB-15);
+the guard's turns 1; the flag-1 records' turns at the record's speed (`gain::Record.turns`; the run-up
+only within the speed). Defend becomes Wait in the phase; a walker below Hard (not a human side)
+that has waited gives Wait at once; on Hard a walker that defended is asked again (BAT-STUB-16);
+`checked`'s fallback in the phase is Wait. BAT-STUB-5 now holds only the retreat test.
+`POLICY_VERSION` 17. The battle lane's scoped verify on 46e5b5e: every step but `check-lane`
+(stacked on the seam, `cross-lane`); `computer-decisions` (no heroes) within its gate.
+
+**The design for the retreat** (from §7.60; for the next session):
+- *The retreat* (BAT-AI-024): the test (§7.55, §7.60) at the hero's cast (when the hero may cast)
+  and again at the stack's action outside the phase (not for the Catapult's or the tent's turns;
+  the Ballista's yes); a yes is `Retreat` (the computer never surrenders, 0x47815A). The battle
+  keeps the facts and the attacker's ground (hashed: still v53 while T6's branch is unmerged; scenarios and the replay file name them:
+  the replay format's bump is the AI lane's, `cross-lane`); the price as 0x477A00 (the temporary
+  creatures out, halved, × the hero's factor in `f32`); the predictions with flag 1 (the side's run
+  and then the other side's from where it ended); slip 26 in `faithful`: the cast choice reads both
+  runs' planned damage and, until Teleport's evaluation, each side's last predicted walker's flag-1
+  records. Slip 6 (BAT-STUB-7) in `faithful`: an attacking hero's spells at the mastery of
+  `attacker_ground`.
+
+**Done in the third session** (the user: the retreat test with slips 26 and 6 in one session, no
+cut; `cross-lane` again for the replay format and the rehash). *The facts*: `BattleState` keeps
+`retreat` and `attacker_ground` (resolved; an unknown key is `UnknownBattlefield`) as hashed state
+(still v53), not observed; `computer::retreat_facts`, `attacker_ground`, `funds`. Scenarios
+(`attacker_retreat`, `defender_retreat` tables, `attacker_ground`) and the replay file name them
+(`RetreatEntry`, each field omitted at 0 or false; replay format v30 in `h3-sim`); the ten golden
+replays rehashed with their commands, the adventure lane's ten re-recorded with their options
+(only hash lines moved; `duel-s2-d7` none). *The test* (BAT-AI-024, `retreat.rs`; re-read: §7.60's
+last paragraph): in its order, the Normal draw after the hero test; `state.may_retreat` stands
+for the Shackles and a town's defender without the Escape Tunnel; the walled-out siege
+(`computer::walled_out`: an attacker's living Catapult or Cyclops keeps it out, as the original's
+flag `0x20`); the price (`computer::retreat_price`, the reading's: temporary creatures and
+created stacks out, the surrender share before the discount, 0 for a ruleset that prices none;
+`flee::surrender_price` is unchanged, BAT-Q28 row 7); the predictions with flag 1
+(`predict::plan_both`: the other side's run from the stack that ended the first); the strengths
+over the first 20 stacks of each side with the turrets, `_ftol` of the products; the threshold as
+`f32` steps; the quotient of two `f32`s. Asked in `hero::cast` between the context and the choice,
+and in `unchecked` after the Catapult's and the tent's turns, before the shot or walk. *Slip 26*:
+`SpellContext::after_retreat` takes the test's planned damage and each side's last overwrite of
+the threat records (`predict::Overwrite`: a walker's records of its side via `gain::records`, now
+with each record's cost; a shot's of the other side via `computer::threat`, which now passes over
+spent stacks in a predicting context); Teleport's walkers refill them (`refill`); the threat
+tables read the context's (`View::built_on`), "the enemy beaten" of both halves is fixed at the
+build. *Slip 6*: `aim::ground`. *Found*: slip 33 (§7.60's last paragraph; BAT-STUB-17, not built):
+Teleport's caster turns' spell contexts set the planned damage the hero's later spells read.
+`POLICY_VERSION` 18. The default facts never retreat, so no golden replay or existing test changed
+its commands; the Normal draw now comes before every hero cast's choice (the streams moved, the
+tests' choices held). The property over random battles draws retreat facts and funds.
+*Verify* (the third session): the battle lane's scoped verify on 54dcb37 failed `check-lane`
+(stacked on the seam, `cross-lane`) and coverage (lines and regions the random battles had reached
+only by chance: fixed tests in bb7a295, a bound walker's choice among them); the full verify with
+the original data green on bb7a295 (`verify-once: verified (sandbox) code
+b78ab748a2a372885542109d125928082f30ea7d on bb7a295c7f948e8c7b42c4597076579d4e22bbec`), the
+clients' check green (`verify-once: clients verified (sandbox) code
+61a3bebb5aa8eaa98b1077bc7e22aef64db1668b on bb7a295c7f948e8c7b42c4597076579d4e22bbec`; SDL's build
+packages installed first). A trial merge with `master` (23e7924) conflicts in the AI and adventure
+queues and the lane HANDOFF; #418 moved the twenty replays' `ruleset_hash` (core ruleset hash
+v48): at the pull request, after the seam's, take `master`'s replays and rehash them on the merged
+code.
+*At the pull requests* (the user, 2026-10-23): `master` (7bd83d5, #420) merged into the seam
+(#422, no conflict; `Cargo.lock`: tokio 1.54.1 for RUSTSEC-2026-0386, published that day) and the
+seam into this branch (the queues and the HANDOFF resolved by hand); the twenty replays verify as
+merged (#418's `ruleset_hash` lines and this branch's hash lines touch different lines and the
+merged ruleset plays them alike).
+The user squash-merged #422; `master` (328b808) merged into this branch again (the two battle-lane
+literals kept this branch's), with the AI lane's System seat (#421, `h3_battle_ai::choose` behind
+`Policy::System`): the full verify with the original data green on 8c37c73 (`verify-once: verified
+(sandbox) code ef5e62438e5d4a95d310840954860cb95b984300`), recorded in #424.
+

@@ -18,8 +18,8 @@ use core::cell::Cell;
 
 use h3_content::{CreatureFlag, CreatureTypeId, ORIGINAL_AI_SLIPS, SchoolId, SpellId};
 use h3_content_battle::{
-    Ability, AuraTarget, BattleRuleset, BattleSpell, MAX_MASTERY, SpellAiKind, SpellEffect,
-    SpellTarget, TimedChange, WallKind,
+    Ability, AuraTarget, BattleRuleset, BattleSpell, BattlefieldId, MAX_MASTERY, SpellAiKind,
+    SpellEffect, SpellTarget, TimedChange, WallKind,
 };
 use h3_contracts::{BattleSide, FortLevel};
 use h3_kernel::arith::{DOUBLE_BITS, SINGLE_BITS, X87};
@@ -846,7 +846,10 @@ pub(crate) fn last_searched(state: &BattleState, ruleset: &BattleRuleset) -> Opt
 /// Over the other side's stacks in record order the first is kept, then one with fewer turns or,
 /// at equal turns, a strictly higher value. The original also records a dead enemy (a shooter
 /// every one, a walker one whose place it stands on within its speed); the port records none, as
-/// the walker's threat records do (`h3-battle-ai`'s `gain.rs`).
+/// the walker's threat records do (`h3-battle-ai`'s `gain.rs`). In a prediction (a predicted
+/// shot's records of the other side, E23 T6) a stack and an enemy without hit points left after
+/// the planned damage are passed over (0x422BC1, 0x422CDE) and the values read the hit points
+/// left.
 pub(crate) fn threat(
     state: &BattleState,
     ruleset: &BattleRuleset,
@@ -855,7 +858,7 @@ pub(crate) fn threat(
 ) -> Option<Threat> {
     let field = Field::new(ruleset.battle().field);
     let me = state.at(id);
-    if unrecorded(state, ruleset, id) {
+    if unrecorded(state, ruleset, id) || ctx.spent(state, id) {
         return None;
     }
     let shooter = shoots(state, field, id);
@@ -864,10 +867,10 @@ pub(crate) fn threat(
     let mut best: Option<(Threat, i32)> = None;
     let mut mask = 0u64;
     for (j, t) in (0u8..).zip(state.stacks.iter()) {
-        if t.side == me.side || !t.is_alive() || t.is_turret() {
+        let enemy = StackId(j);
+        if t.side == me.side || !t.is_alive() || t.is_turret() || ctx.spent(state, enemy) {
             continue;
         }
-        let enemy = StackId(j);
         let (cost, value) = match &map {
             None => (
                 1,
@@ -1509,8 +1512,28 @@ pub(crate) fn hero_value(
         .filter(|(_, spell)| {
             spell.ai.kinds.contains(SpellAiKind::Damage) && spell.level <= hero.magic.level_limit
         })
-        .map(|(id, spell)| spell_value(state, ruleset, hero, (id, spell), caster))
+        .map(|(id, spell)| {
+            spell_value(
+                ruleset,
+                (hero, ground(state, ruleset, side)),
+                (id, spell),
+                caster,
+            )
+        })
         .fold(0, i32::max)
+}
+
+/// The special battlefield whose mastery raise the odds value `side`'s hero's spells at
+/// (BAT-AI-008): with BAT-QUIRK-25 the hero's own adventure tile's (survey slip 6: 0x5273D0 with
+/// 0x4E4FA0), the attacking hero's own ground (`BattleSetup.attacker_ground`, ADR-0027 point 14);
+/// else, and for the defender, whose tile is the battle's, the battlefield's.
+// rule: BAT-AI-008
+fn ground(state: &BattleState, ruleset: &BattleRuleset, side: BattleSide) -> Option<BattlefieldId> {
+    if side == BattleSide::Attacker && ruleset.quirks().is_enabled(ORIGINAL_AI_SLIPS) {
+        state.attacker_ground
+    } else {
+        state.battlefield
+    }
 }
 
 /// The caster record's numbers the odds read (0x526D40's +8, +0x10 and the side's strength as
@@ -1523,8 +1546,8 @@ struct Caster {
 }
 
 /// The odds' value of `hero`'s spell `id` (0x5273D0, 0x5270E0; §7.39): its mastery `m` on the
-/// battlefield (the original's on the hero's own adventure tile, the battle's for a defending
-/// hero; the attacker's tile is not in the seam: BAT-STUB-7); its cost at the hero's own mastery
+/// special battlefield `ground` ([`ground`]: with BAT-QUIRK-25 the hero's own adventure tile's,
+/// survey slip 6); its cost at the hero's own mastery
 /// with no army's change (0x4E5240 given no enemy army skips both, the own Mages too; BAT-MAG-054
 /// at mastery without the battlefield's raise); 0 above the mana, else `n` casts, the mana over
 /// the cost (1000 at cost 0). A spell of the kind `damage` alone: the base `b = v_m × (power +
@@ -1535,16 +1558,12 @@ struct Caster {
 /// original's NaN). Any other kinds (Titan's Lightning Bolt's): 1.
 // rule: BAT-AI-008
 fn spell_value(
-    state: &BattleState,
     ruleset: &BattleRuleset,
-    hero: &hero::HeroRecord,
+    (hero, ground): (&hero::HeroRecord, Option<BattlefieldId>),
     (id, spell): (SpellId, &BattleSpell),
     c: Caster,
 ) -> i32 {
-    // stub: BAT-STUB-7
-    // The original's mastery is on the hero's own adventure tile (slip 6), which the seam lacks
-    // for an attacking hero: the battlefield's.
-    let m = magic::mastery(state, ruleset, hero, id);
+    let m = magic::mastery_at(ruleset, ground, hero, id);
     let cost = i32::from(crate::mana::cost(spell, hero.magic.masteries.get(id), 0));
     if cost > c.mana {
         return 0;

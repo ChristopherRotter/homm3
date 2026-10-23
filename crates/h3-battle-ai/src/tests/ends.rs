@@ -8,8 +8,8 @@ use h3_contracts::{BattleSide, FortLevel, Moat};
 use h3_kernel::Rng;
 
 use super::{
-    ARCHER, CAVALIER, GENIE, GOG, IMP, MAGOG, RUNNER, active, at_town, decide, on, play, ruleset,
-    ruleset_as, same_map, setup, touches,
+    ARCHER, CAVALIER, CHAMPION, GENIE, GOG, HARPY, IMP, MAGOG, RUNNER, active, at_town, decide, on,
+    play, ruleset, ruleset_as, same_map, setup, touches,
 };
 use crate::ends::breaches;
 use crate::walker::Walker;
@@ -440,4 +440,36 @@ fn after_a_context_without_a_cast_the_fallbacks_read_its_last_map_with_the_slip(
         panic!("no step");
     };
     assert!(field.distance(to, far) < field.distance(here, far));
+}
+
+// covers: BAT-AI-005
+#[test]
+fn a_two_hex_walker_whose_other_hex_lies_on_a_stop_at_its_plans_hex_only_moves() {
+    // At a Citadel with a harmless moat the defender's harpies fly into the moat at 77 while the
+    // attacker's champions defend. Next to them the champions stand at 60 or 94, whose front hexes
+    // (61 and the closed gate's bridge, 95) are stops: the plan counts a stop by the position hex
+    // alone, so the strike takes one turn, but the original's move and attack stops on entering
+    // the stop and skips the attack (0x441FA0, 0x478971): the walker only moves.
+    let r = ruleset();
+    let s = at_town(
+        &r,
+        (&[(CHAMPION, 5)], &[(HARPY, 3)]),
+        (FortLevel::Citadel, Moat::Harmless, 0),
+    );
+    let mut state = BattleState::new(&r, &s, 1).unwrap();
+    // Two rounds: behind the wall at 79, then over it into the moat.
+    for to in [Hex(79), Hex(77)] {
+        while active(&state) != HARPY {
+            play(&mut state, &r, Command::Defend);
+        }
+        play(&mut state, &r, Command::Move { to });
+    }
+    while active(&state) != CHAMPION {
+        play(&mut state, &r, Command::Defend);
+    }
+    let command = decide(&state, &r);
+    assert!(
+        matches!(command, Command::Move { to } if to == Hex(60) || to == Hex(94)),
+        "{command:?}"
+    );
 }
