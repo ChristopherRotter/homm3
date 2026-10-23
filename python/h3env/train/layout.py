@@ -1,7 +1,8 @@
 """Observation encoding v21's layout as the entity network reads it (E06 T5a, design §11): the
-offsets of its parts and the stack columns it uses. `h3-sim`'s test
-`the_python_layout_is_the_encodings` pins every value here against `observation.rs`; a new
-observation encoding changes this file in the same change.
+offsets of its parts and the stack columns it uses, and the columns the behaviour analysis reads
+(`h3env.train.inspect`, E06 T6a). `h3-sim`'s test `the_python_layout_is_the_encodings` pins every
+value here against `observation.rs`; a new observation encoding changes this file in the same
+change.
 """
 
 #: The encoding this layout describes (`_ffi.versions()["observation_encoding"]`).
@@ -30,6 +31,30 @@ CREATURE = 3
 X = 12
 Y = 13
 ACTIVE = 18
+
+#: The behaviour analysis's columns: the globals' round (0 in the tactics phase); a public hero
+#: block's (the viewer's at `HEROES`, the opponent's after it) mana, maximum mana and casts this
+#: round; a stack slot's alive and own flags, count, top creature's and full hit points, acted,
+#: waited, defending, retaliations left (255 unlimited), shooter, war machine, creatures at the
+#: start, its turn has started this round, a town's turret.
+ROUND = 0
+HERO_MANA = 6
+HERO_MAX_MANA = 7
+HERO_CASTS = 10
+ALIVE = 1
+OWN = 2
+COUNT = 4
+TOP_HP = 5
+MAX_HP = 6
+ACTED = 14
+WAITED = 15
+DEFENDING = 17
+RETALIATIONS_LEFT = 22
+SHOOTER = 26
+WAR_MACHINE = 27
+BASE_COUNT = 36
+STARTED = 37
+TURRET = 47
 
 #: Action encoding v13's entries the heads build (`h3_sim::action`): Wait, Defend, the moves,
 #: 24 attack positions per stack, 2 shots per stack, a heal per stack, End tactics, Retreat,

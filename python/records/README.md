@@ -65,6 +65,14 @@ cargo run --release -p h3-cli -- ai eval --set report-v1 --json python/records/b
 cargo run --release -p h3-cli -- ai eval --set neutral-v1 --json python/records/bots-neutral-v1.json
 ```
 
+## The behaviour analyses
+
+`inspect/<run>-<set>.json` (E06 T6a): `python -m h3env.train.inspect --checkpoint
+runs/<run>/best.pt --set <set> --json …` on the run's best, per opponent the ladder's row and
+the battles' groups (`h3env.train.inspect`; the findings in `docs/epics/E06-log.md`). The draws
+are the device's: a CPU's differ from the GPU ladder's in a few battles. `t7-1`'s on both
+stratified sets (the sandbox's CPU, 4 threads).
+
 ## Lineage
 
 The promoted networks (from E06 T3b: a run's `promoted/<n>.pt`, its record's `promotions`) and

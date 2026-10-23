@@ -27,23 +27,23 @@ ladder; #426), T7d (`t7-1` at a third neutral: the report set as `t5-3`'s, 0.828
 the system actor 0.374; the neutral set 0.972, value +0.245 against the target +0.285). Beside
 it T5's rest: the mana price's preparation (#429) and AI-Q7 (b) part 1 (C ABI v33, #432).
 
-**Next: T6a The behaviour analysis** (the user, 2026-10-23: diagnose first, in a fresh session;
-the critical path to beating the system actor, `E06-log.md`, T7d). Needs the user's upload of
-`runs/t7-1/best.pt`. A small command `python -m h3env.train.inspect` (Python only, rerun at
-every checkpoint; T5b's diagnosis was ad hoc): the network against the system actor, and
-against Greedy for comparison, on the report set (sampled play), per kind and side, wins and
-losses apart: the decision mix (waits, defends, moves, melee, shots, hero and stack casts); the
-hero's casts when castable, the spells, the mana spent; targeting with the kill preview (#432:
-a strike killing less than the best legal one; shooters that move or melee when they could
-shoot); trades (losses to retaliation against kills per strike, who strikes first, rounds).
-Its findings choose increment 6's lever:
+**T6a** (the behaviour analysis) done 2026-10-23 (`E06-log.md`, T6a): `python -m
+h3env.train.inspect` (rerun it at every checkpoint); on `t7-1`'s best the hero casts as the
+system actor's does, the agent plays alike against the system actor and Greedy, waits (3 %)
+and defends (1 %) less than the system actor (7 %, 3 %), loses mostly defending; targeting
+leaves a quarter of the previewed kills.
 
-- **Increment 6's choices** (put to the user at T7d; refined with T6a's findings):
-  - Code: **AI-Q7 (b) part 2** (the network reads `batch.preview` beside the entry mask, an
-    opt-in `[network]` key, the rollout keeps it; an A/B config against `t7-1`'s settings);
-    the system actor as a league opponent in the hero kinds too (a change of decision 9: the
-    agent never met it there; its ladder row then measures a training opponent); the casts'
-    exploration or the mana price (if the hero rarely casts); potential-based shaping.
+**Next: increment 6's lever** (the user's choice at T6a's checkpoint):
+
+- **Increment 6's choices** (put to the user at T7d; T6a's evidence beside each):
+  - Code: the system actor as a training opponent in the hero kinds (a change of decision 9:
+    the agent never met it there and does not adapt to it; its ladder row then measures a
+    training opponent; **the agent's recommendation**, A/B against `t7-1`'s settings); **AI-Q7
+    (b) part 2** (the network reads `batch.preview` beside the entry mask, an opt-in
+    `[network]` key, the rollout keeps it; an A/B config against `t7-1`'s settings; the
+    targeting slack says yes, the turret's preview first, the battle lane's inbox);
+    potential-based shaping. Not the casts' exploration or the mana price (the hero casts as
+    much as the system actor's).
   - Runs on the user's machine: 60 M at T7's mix (`configs/e06-t7.toml --set
     samples=60_000_000`, about 4 hours: whether PPO plateaus, T8's trigger); the mana run
     `t5-4` (`configs/e06-mana.toml`, about 75 minutes).
@@ -77,7 +77,9 @@ Pass offer (fixed by the adventure lane's fixed tests, #266).
   0.655, Aggressor 0.681, attacks best on the neutral set, value +0.285). **E23's exit criterion 4
   wants a gated batch workload with `System` seats** (`benches/ai/`; `h3 ai bench` has no `System`
   seat yet): yours to add when it suits; the computer's own cost is `h3 bench-computer` (now with
-  `--heroes 1`: the slowest decision 3.0 to 4.1 ms, the 5 ms budget).
+  `--heroes 1`: the slowest decision 3.0 to 4.1 ms, the 5 ms budget). **The workload: done**
+  (E06 T6a's pull request, `benches/ai/batch-system-neutral-v1.toml`); the let-off for a
+  `System` side in training is open (put to the user at T6a's checkpoint).
 - 2026-10-23 (this lane, E06 T5; for the next `shared/` change): `docs/07-simulation-and-ai.md`
   (shared) should name the batch's optional kill preview (C ABI v33: the acting side's previewed
   kills of each legal attack and shot entry, the engine's BAT-DMG-011 preview, what the original
