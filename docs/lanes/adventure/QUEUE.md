@@ -19,6 +19,15 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1
 
 ## Inbox
 
+- 2026-10-24 (the E11 refinement, `shared/e11-refinement`, Q58; for your information, nothing to
+  do now): **E08 decision 104 is extended**: the enabled packs decide the edition's *rules* too,
+  each at its latest patch (`base` alone RoE's executable, `base`+`ab` AB's, all three SoD's), read
+  from the user's own RoE and AB media (`docs/epics/E11-historical-rules.md`; the battle lane
+  leads). Adventure differences reach this queue as tasks after E11 T3's checkpoint; the edition's
+  data shape comes from E11 T4's ADR draft (amending ADR-0017 point 1). The former E11 is folded:
+  every epic covers RoE, AB and SoD for what it builds, and Conflux as a town and the moat by
+  expansion stay E09's, the AB/SoD objects E12's. E14's refinement decides on the original's random
+  map generator.
 - 2026-10-23 (the battle lane, E23 T7, `shared/e23-t7-human` #436 and `battle/e23-t7-rest`, both
   `cross-lane` with the user's consent; **for you**): **a battle rule reads `BattleSetup.human`
   now**: with the new fix-optional BAT-QUIRK-27 (`quirk.battle.computer_morale_let_off`, registry

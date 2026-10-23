@@ -1,8 +1,8 @@
 # E23 — The original's battle AI
 
-Status: **in progress**, refined 2026-10-19 (BAT-Q52); T1a1 to T1a4 done (the cuts confirmed
+Status: **closed** 2026-10-24 (every exit criterion met: the log, "T7 — the closure"), refined 2026-10-19 (BAT-Q52); T1a1 to T1a4 done (the cuts confirmed
 2026-10-20), T1c done (BAT-Q53, BAT-Q54); T1a5 done as cut (part C, §7.42 to §7.45); T1a5e (the spell evaluators) done (§7.46); T1b done, ADR-0027 accepted (BAT-Q55); T2 done (T2a the crate and the plain shooters, T2b the area value, the wall shot, the benchmark), the budget
-set; T3 done (cut in four: T3-0, T3a, T3b, T3c); T4 done (T4a, T4b in two, T4c, T4d); T1a6 done; slip 25 done; T5 cut in two, T5a done; T5b cut in two, T5b1 done; T5b2 done (in two); T6 done; T7 in progress (the batches played, the rest done; the closure checks left) · Follows E05 (the
+set; T3 done (cut in four: T3-0, T3a, T3b, T3c); T4 done (T4a, T4b in two, T4c, T4d); T1a6 done; slip 25 done; T5 cut in two, T5a done; T5b cut in two, T5b1 done; T5b2 done (in two); T6 done; T7 done · Follows E05 (the
 AI lane, done) · Followed by E06 (training: this policy holds the neutral seat; AI-Q1) ·
 The battle lane's, later the AI lane's (BACKLOG).
 
@@ -270,7 +270,7 @@ found after that decision) belong to the neutral side's map too and are read (§
   BAT-Q51's row), the tactics phase (BAT-AI-023, v53), the retreat test (BAT-AI-024: the facts kept
   in the state, replay format v30, `cross-lane`) with slips 26 and 6 (BAT-QUIRK-25), slip 33 found
   (BAT-STUB-17); `POLICY_VERSION` 18; BAT-Q33's rule waits for S-25's row (T7); the log.
-- [ ] **T7 The closure** — the batch rows' leftovers, the benchmarks, the docs. In progress:
+- [x] **T7 The closure** — the batch rows' leftovers, the benchmarks, the docs (2026-10-24):
   - [x] **The batches** (2026-10-23; the user: design and run them, no other cut yet) — 4a, 4b and
     4c (`experiments/specs/E23-batch-4*.toml`) played by an agent (`experiments/agent/ai.py`;
     h3-experiment's Tan and `[[map.town]]`): every played row as read (W1, W3, S4, C1 to C4, H3,
@@ -284,9 +284,10 @@ found after that decision) belong to the neutral side's map too and are read (§
     `shared/e23-t7-human`: ADR-0023 point 7 widened, flag 33, `cross-lane`), BAT-WAR-003's
     patient (BAT-Q51), slip 33 (BAT-STUB-17 retired), `POLICY_VERSION` 19, the benchmarks, the
     docs; the log.
-  - [ ] The closure checks: the user's Windows verify (criterion 6) passed (the user,
-    2026-10-23, after #441); the AI lane's gated batch with `System` seats (criterion 4, their
-    inbox; in progress), then `BACKLOG.md` (`shared/`).
+  - [x] **The closure checks** (2026-10-24; the user: close E23 now) — the user's Windows verify
+    (criterion 6) passed (2026-10-23, after #441), the full local Linux verify with the original
+    data on #441; the AI lane's gated batch with `System` seats (criterion 4) in #442
+    (`benches/ai/batch-system-neutral-v1.toml`); `BACKLOG.md` in `shared/e23-closure`; the log.
 
 ## Exit criteria
 
