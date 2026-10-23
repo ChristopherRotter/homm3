@@ -15,6 +15,17 @@ T1c is done (#316, #317 merged). T1a5 is cut in four (the user, 2026-10-20; the 
 
 Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure are merged below by kind, done and duplicate parts dropped; the origin stays in brackets (an epic and task, a review report such as r3 or F-r2b-2). History: git. Items for other lanes went into their inboxes; the First Aid Tent became BAT-Q51. The addresses are readings of the executable, the reviews' not read a second time. Where the readings stand: `installation.md` §7.8–§7.33; the reviews' reports stay on `battle/e04b-t11b-review-reports` and `battle/e04c-t10b-review-reports`; their experiment candidates are in `docs/experiments/README.md` ("From the battle queue's inbox", "From the E04b review", "From E04c").
 
+- 2026-10-23 (the AI lane, E06 T7c, `claude/bold-curie-a42rc4`; **for you, with each
+  `h3_battle_ai::POLICY_VERSION` bump**): the system actor is now a bot of the AI lane's tables,
+  `python/records/bots-report-v1.json` (it against Random, Aggressor, Greedy on the report set)
+  and the new `bots-neutral-v1.json` (every bot attacking it on the neutral set v1); both name
+  the policy version (`engine.system_policy`), and the AI lane's Python test fails when it is
+  stale. A pull request that changes the computer's choices regenerates both (from the root, in
+  release about 85 s and 15 s; `python/records/README.md`):
+  `cargo run --release -p h3-cli -- ai eval --set report-v1 --json python/records/bots-report-v1.json`
+  and the same with `--set neutral-v1 --json python/records/bots-neutral-v1.json`. Today's
+  numbers (version 18): the system actor beats Greedy 0.653 and Aggressor 0.681 on the report
+  set, and attacks best on the neutral set (value +0.285, Greedy's +0.223).
 - 2026-10-23 (the adventure lane, E08 T45, `shared/e08-t45`, `cross-lane` with the user's consent;
   for your information, nothing to do): **pack format v47, core ruleset hash v48**: two hero-effect
   kinds (`meeting_spells`, `gives_spell_book`; ADR-0013 points 3 and 14) that only `h3-heroes`

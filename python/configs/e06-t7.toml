@@ -1,0 +1,31 @@
+# E06 T7d's run on the user's machine (T7c, design §12): the neutral share joins the training.
+# The census's shares (A1, in H3_ENCOUNTER_* order: wandering, guards, hero, siege_hero,
+# siege_garrison, siege_neutral) put 82.5 % of the episodes in the neutral kinds, where the system
+# actor defends and only the learner's attacker trains; the player-against-player kinds keep
+# their 4 : 2 : 1. The user picks the mix (`--set "env.kinds=[...]"`; e.g. `[78, 2, 100, 50, 25,
+# 3]` keeps a third of the episodes neutral). Otherwise `t5-3`'s settings (`e06-t5c.toml` with
+# the MLP and the truncation penalty); every ladder also plays the neutral set v1 against the
+# system actor, and the system actor is a ladder opponent on the report set:
+#
+#   uv run --group train python -m h3env.train --config configs/e06-t7.toml --out runs/t7-1
+#   uv run --group train python -m h3env.train --resume runs/t7-1
+
+seed = 1
+samples = 20_000_000
+
+[env]
+kinds = [780, 20, 100, 50, 25, 25]
+
+[league]
+self_play = 0.5
+snapshot_every = 1_000_000
+max_members = 16
+live = 4
+live_every = 250_000
+
+[gate]
+gate_every = 10_000_000
+
+[ladder]
+ladder_episodes = 250
+ladder_final_episodes = 500

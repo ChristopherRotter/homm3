@@ -2537,6 +2537,214 @@ backgrounds = ["CmBkDeck.pcx"]
 key = "boats"
 backgrounds = ["CmBkBoat.pcx"]
 
+[[town]]
+key = "castle"
+original = 0
+background = "SgCsBack.pcx"
+turrets = { shooter = 2, shift = 0, missile = "plcbowx.def", keep = [780, 238], lower = [648, 566], upper = [596, 80] }
+parts = [
+    { at = [400, 276], pictures = ["SgCsDrw3.pcx", "SgCsDrw2.pcx", "SgCsDrw1.pcx", "", ""] },  # 0 drawbridge
+    { at = [400, 276], pictures = ["", "SgCsDrwC.pcx", "", "", ""] },  # 1 drawbridge's rope
+    { at = [410, 90], pictures = ["SgCsMoat.pcx", "", "", "", ""] },  # 2 moat
+    { at = [403, 80], pictures = ["SgCsMlip.pcx", "", "", "", ""] },  # 3 moat's lip
+    { at = [600, 49], pictures = ["SgCsTpWl.pcx", "", "", "", ""] },  # 4 back wall
+    { at = [569, 35], hex = 255, pictures = ["SgCsTw22.pcx", "SgCsTw21.pcx", "SgCsTw21.pcx", "SgCsTw21.pcx", "SgCsTw21.pcx"] },  # 5 upper tower
+    { at = [524, 32], hex = 45, pictures = ["", "SgCsWa62.pcx", "SgCsWa61.pcx", "SgCsWa61.pcx", "SgCsWa61.pcx"] },  # 6 upper wall
+    { at = [489, 79], hex = 62, pictures = ["SgCsWa5.pcx", "", "", "", ""] },  # 7 upper buttress
+    { at = [470, 127], hex = 78, pictures = ["", "SgCsWa42.pcx", "SgCsWa41.pcx", "SgCsWa41.pcx", "SgCsWa41.pcx"] },  # 8 mid-upper wall
+    { at = [477, 238], hex = 112, pictures = ["SgCsArch.pcx", "SgCsArch.pcx", "SgCsArch.pcx", "SgCsArch.pcx", "SgCsArch.pcx"] },  # 9 gate's arch
+    { at = [469, 291], hex = 130, pictures = ["", "SgCsWa32.pcx", "SgCsWa31.pcx", "SgCsWa31.pcx", "SgCsWa31.pcx"] },  # 10 mid-lower wall
+    { at = [512, 347], hex = 165, pictures = ["SgCsWa2.pcx", "", "", "", ""] },  # 11 lower buttress
+    { at = [528, 350], hex = 182, pictures = ["", "SgCsWa12.pcx", "SgCsWa11.pcx", "SgCsWa11.pcx", "SgCsWa11.pcx"] },  # 12 lower wall
+    { at = [602, 500], hex = 251, pictures = ["SgCsTw12.pcx", "SgCsTw11.pcx", "SgCsTw11.pcx", "SgCsTw11.pcx", "SgCsTw11.pcx"] },  # 13 lower tower
+    { at = [720, 158], hex = 135, pictures = ["SgCsMan2.pcx", "SgCsMan1.pcx", "SgCsMan1.pcx", "SgCsMan1.pcx", "SgCsMan1.pcx"] },  # 14 keep
+    { at = [720, 158], hex = 135, pictures = ["", "SgCsManC.pcx", "", "", ""] },  # 15 keep's cover
+    { at = [602, 500], hex = 251, pictures = ["", "SgCsTw1C.pcx", "", "", ""] },  # 16 lower tower's cover
+    { at = [557, 24], hex = 255, pictures = ["", "SgCsTw2C.pcx", "", "", ""] },  # 17 upper tower's cover
+]
+
+[[town]]
+key = "rampart"
+original = 1
+background = "SgRmBack.pcx"
+turrets = { shooter = 18, shift = 0, missile = "pelfx.def", keep = [786, 240], lower = [625, 563], upper = [595, 81] }
+parts = [
+    { at = [404, 271], pictures = ["SgRmDrw3.pcx", "SgRmDrw2.pcx", "SgRmDrw1.pcx", "", ""] },  # 0 drawbridge
+    { at = [404, 271], pictures = ["", "SgRmDrwC.pcx", "", "", ""] },  # 1 drawbridge's rope
+    { at = [410, 77], pictures = ["SgRmMoat.pcx", "", "", "", ""] },  # 2 moat
+    { at = [410, 97], pictures = ["SgRmMlip.pcx", "", "", "", ""] },  # 3 moat's lip
+    { at = [608, 46], pictures = ["SgRmTpW1.pcx", "", "", "", ""] },  # 4 back wall
+    { at = [565, 31], hex = 255, pictures = ["SgRmTw22.pcx", "SgRmTw21.pcx", "SgRmTw21.pcx", "SgRmTw21.pcx", "SgRmTw21.pcx"] },  # 5 upper tower
+    { at = [530, 57], hex = 45, pictures = ["", "SgRmWa62.pcx", "SgRmWa61.pcx", "SgRmWa61.pcx", "SgRmWa61.pcx"] },  # 6 upper wall
+    { at = [492, 103], hex = 62, pictures = ["SgRmWa5.pcx", "", "", "", ""] },  # 7 upper buttress
+    { at = [469, 186], hex = 78, pictures = ["", "SgRmWa42.pcx", "SgRmWa41.pcx", "SgRmWa41.pcx", "SgRmWa41.pcx"] },  # 8 mid-upper wall
+    { at = [460, 220], hex = 112, pictures = ["SgRmArch.pcx", "SgRmArch.pcx", "SgRmArch.pcx", "SgRmArch.pcx", "SgRmArch.pcx"] },  # 9 gate's arch
+    { at = [469, 309], hex = 130, pictures = ["", "SgRmWa32.pcx", "SgRmWa31.pcx", "SgRmWa31.pcx", "SgRmWa31.pcx"] },  # 10 mid-lower wall
+    { at = [510, 364], hex = 165, pictures = ["SgRmWa2.pcx", "", "", "", ""] },  # 11 lower buttress
+    { at = [549, 451], hex = 182, pictures = ["", "SgRmWa12.pcx", "SgRmWa11.pcx", "SgRmWa11.pcx", "SgRmWa11.pcx"] },  # 12 lower wall
+    { at = [594, 511], hex = 251, pictures = ["SgRmTw12.pcx", "SgRmTw11.pcx", "SgRmTw11.pcx", "SgRmTw11.pcx", "SgRmTw11.pcx"] },  # 13 lower tower
+    { at = [724, 189], hex = 135, pictures = ["SgRmMan2.pcx", "SgRmMan1.pcx", "SgRmMan1.pcx", "SgRmMan1.pcx", "SgRmMan1.pcx"] },  # 14 keep
+    { at = [724, 189], hex = 135, pictures = ["", "SgRmManC.pcx", "", "", ""] },  # 15 keep's cover
+    { at = [594, 511], hex = 251, pictures = ["", "SgRmTw1C.pcx", "", "", ""] },  # 16 lower tower's cover
+    { at = [566, 31], hex = 255, pictures = ["", "SgRmTw2C.pcx", "", "", ""] },  # 17 upper tower's cover
+]
+
+[[town]]
+key = "tower"
+original = 2
+background = "SgTwBack.pcx"
+turrets = { shooter = 34, shift = 0, missile = "pmagex.def", keep = [753, 251], lower = [609, 578], upper = [600, 92] }
+parts = [
+    { at = [401, 253], pictures = ["SgTwDrw3.pcx", "SgTwDrw2.pcx", "SgTwDrw1.pcx", "", ""] },  # 0 drawbridge
+    { at = [401, 253], pictures = ["", "SgTwDrwC.pcx", "", "", ""] },  # 1 drawbridge's rope
+    { at = [410, 90], pictures = ["", "", "", "", ""] },  # 2 moat
+    { at = [403, 80], pictures = ["", "", "", "", ""] },  # 3 moat's lip
+    { at = [615, 57], pictures = ["SgTwTpWl.pcx", "", "", "", ""] },  # 4 back wall
+    { at = [580, 36], hex = 255, pictures = ["SgTwTw22.pcx", "SgTwTw21.pcx", "SgTwTw21.pcx", "SgTwTw21.pcx", "SgTwTw21.pcx"] },  # 5 upper tower
+    { at = [547, 66], hex = 45, pictures = ["", "SgTwWa62.pcx", "SgTwWa61.pcx", "SgTwWa61.pcx", "SgTwWa61.pcx"] },  # 6 upper wall
+    { at = [514, 79], hex = 62, pictures = ["SgTwWa5.pcx", "", "", "", ""] },  # 7 upper buttress
+    { at = [488, 190], hex = 78, pictures = ["", "SgTwWa42.pcx", "SgTwWa41.pcx", "SgTwWa41.pcx", "SgTwWa41.pcx"] },  # 8 mid-upper wall
+    { at = [471, 187], hex = 112, pictures = ["SgTwArch.pcx", "SgTwArch.pcx", "SgTwArch.pcx", "SgTwArch.pcx", "SgTwArch.pcx"] },  # 9 gate's arch
+    { at = [475, 298], hex = 130, pictures = ["", "SgTwWa32.pcx", "SgTwWa31.pcx", "SgTwWa31.pcx", "SgTwWa31.pcx"] },  # 10 mid-lower wall
+    { at = [517, 365], hex = 165, pictures = ["SgTwWa2.pcx", "", "", "", ""] },  # 11 lower buttress
+    { at = [547, 452], hex = 182, pictures = ["", "SgTwWa12.pcx", "SgTwWa11.pcx", "SgTwWa11.pcx", "SgTwWa11.pcx"] },  # 12 lower wall
+    { at = [592, 516], hex = 251, pictures = ["SgTwTw12.pcx", "SgTwTw11.pcx", "SgTwTw11.pcx", "SgTwTw11.pcx", "SgTwTw11.pcx"] },  # 13 lower tower
+    { at = [726, 148], hex = 135, pictures = ["SgTwMan2.pcx", "SgTwMan1.pcx", "SgTwMan1.pcx", "SgTwMan1.pcx", "SgTwMan1.pcx"] },  # 14 keep
+    { at = [726, 148], hex = 135, pictures = ["", "SgTwManC.pcx", "", "", ""] },  # 15 keep's cover
+    { at = [592, 516], hex = 251, pictures = ["", "SgTwTw1C.pcx", "", "", ""] },  # 16 lower tower's cover
+    { at = [580, 36], hex = 255, pictures = ["", "SgTwTw2C.pcx", "", "", ""] },  # 17 upper tower's cover
+]
+
+[[town]]
+key = "inferno"
+original = 3
+background = "SgInBack.pcx"
+turrets = { shooter = 44, shift = 0, missile = "cprgogx.def", keep = [765, 230], lower = [623, 565], upper = [595, 80] }
+parts = [
+    { at = [409, 254], pictures = ["SgInDrw3.pcx", "SgInDrw2.pcx", "SgInDrw1.pcx", "", ""] },  # 0 drawbridge
+    { at = [409, 254], pictures = ["", "SgInDrwC.pcx", "", "", ""] },  # 1 drawbridge's rope
+    { at = [403, 68], pictures = ["SgInMoat.pcx", "", "", "", ""] },  # 2 moat
+    { at = [403, 68], pictures = ["SgInMlip.pcx", "", "", "", ""] },  # 3 moat's lip
+    { at = [606, 52], pictures = ["SgInTpWl.pcx", "", "", "", ""] },  # 4 back wall
+    { at = [569, 27], hex = 255, pictures = ["SgInTw22.pcx", "SgInTw21.pcx", "SgInTw21.pcx", "SgInTw21.pcx", "SgInTw21.pcx"] },  # 5 upper tower
+    { at = [532, 71], hex = 45, pictures = ["", "SgInWa62.pcx", "SgInWa61.pcx", "SgInWa61.pcx", "SgInWa61.pcx"] },  # 6 upper wall
+    { at = [502, 92], hex = 62, pictures = ["SgInWa5.pcx", "", "", "", ""] },  # 7 upper buttress
+    { at = [480, 151], hex = 78, pictures = ["", "SgInWa42.pcx", "SgInWa41.pcx", "SgInWa41.pcx", "SgInWa41.pcx"] },  # 8 mid-upper wall
+    { at = [477, 221], hex = 112, pictures = ["SgInArch.pcx", "SgInArch.pcx", "SgInArch.pcx", "SgInArch.pcx", "SgInArch.pcx"] },  # 9 gate's arch
+    { at = [485, 316], hex = 130, pictures = ["", "SgInWa32.pcx", "SgInWa31.pcx", "SgInWa31.pcx", "SgInWa31.pcx"] },  # 10 mid-lower wall
+    { at = [522, 376], hex = 165, pictures = ["SgInWa2.pcx", "", "", "", ""] },  # 11 lower buttress
+    { at = [561, 451], hex = 182, pictures = ["", "SgInWa12.pcx", "SgInWa11.pcx", "SgInWa11.pcx", "SgInWa11.pcx"] },  # 12 lower wall
+    { at = [595, 514], hex = 251, pictures = ["SgInTw12.pcx", "SgInTw11.pcx", "SgInTw11.pcx", "SgInTw11.pcx", "SgInTw11.pcx"] },  # 13 lower tower
+    { at = [730, 179], hex = 135, pictures = ["SgInMan2.pcx", "SgInMan1.pcx", "SgInMan1.pcx", "SgInMan1.pcx", "SgInMan1.pcx"] },  # 14 keep
+    { at = [730, 179], hex = 135, pictures = ["", "SgInManC.pcx", "", "", ""] },  # 15 keep's cover
+    { at = [595, 514], hex = 251, pictures = ["", "SgInTw1C.pcx", "", "", ""] },  # 16 lower tower's cover
+    { at = [569, 27], hex = 255, pictures = ["", "SgInTw2C.pcx", "", "", ""] },  # 17 upper tower's cover
+]
+
+[[town]]
+key = "necropolis"
+original = 4
+background = "SgNcBack.pcx"
+turrets = { shooter = 64, shift = 0, missile = "PLICH.def", keep = [755, 365], lower = [625, 570], upper = [593, 90] }
+parts = [
+    { at = [402, 262], pictures = ["SgNcDrw3.pcx", "SgNcDrw2.pcx", "SgNcDrw1.pcx", "", ""] },  # 0 drawbridge
+    { at = [402, 262], pictures = ["", "SgNcDrwC.pcx", "", "", ""] },  # 1 drawbridge's rope
+    { at = [406, 77], pictures = ["SgNcMoat.pcx", "", "", "", ""] },  # 2 moat
+    { at = [474, 109], pictures = ["SgNcMlip.pcx", "", "", "", ""] },  # 3 moat's lip
+    { at = [604, 58], pictures = ["SgNcTpW1.pcx", "", "", "", ""] },  # 4 back wall
+    { at = [561, 26], hex = 255, pictures = ["SgNcTw22.pcx", "SgNcTw21.pcx", "SgNcTw21.pcx", "SgNcTw21.pcx", "SgNcTw21.pcx"] },  # 5 upper tower
+    { at = [543, 66], hex = 45, pictures = ["", "SgNcWa62.pcx", "SgNcWa61.pcx", "SgNcWa61.pcx", "SgNcWa61.pcx"] },  # 6 upper wall
+    { at = [504, 97], hex = 62, pictures = ["SgNcWa5.pcx", "", "", "", ""] },  # 7 upper buttress
+    { at = [487, 164], hex = 78, pictures = ["", "SgNcWa42.pcx", "SgNcWa41.pcx", "SgNcWa41.pcx", "SgNcWa41.pcx"] },  # 8 mid-upper wall
+    { at = [474, 240], hex = 112, pictures = ["SgNcArch.pcx", "SgNcArch.pcx", "SgNcArch.pcx", "SgNcArch.pcx", "SgNcArch.pcx"] },  # 9 gate's arch
+    { at = [478, 323], hex = 130, pictures = ["", "SgNcWa32.pcx", "SgNcWa31.pcx", "SgNcWa31.pcx", "SgNcWa31.pcx"] },  # 10 mid-lower wall
+    { at = [509, 372], hex = 165, pictures = ["SgNcWa2.pcx", "", "", "", ""] },  # 11 lower buttress
+    { at = [536, 445], hex = 182, pictures = ["", "SgNcWa12.pcx", "SgNcWa11.pcx", "SgNcWa11.pcx", "SgNcWa11.pcx"] },  # 12 lower wall
+    { at = [592, 512], hex = 251, pictures = ["SgNcTw12.pcx", "SgNcTw11.pcx", "SgNcTw11.pcx", "SgNcTw11.pcx", "SgNcTw11.pcx"] },  # 13 lower tower
+    { at = [730, 164], hex = 135, pictures = ["SgNcMan2.pcx", "SgNcMan1.pcx", "SgNcMan1.pcx", "SgNcMan1.pcx", "SgNcMan1.pcx"] },  # 14 keep
+    { at = [730, 164], hex = 135, pictures = ["", "SgNcManC.pcx", "", "", ""] },  # 15 keep's cover
+    { at = [592, 512], hex = 251, pictures = ["", "SgNcTw1C.pcx", "", "", ""] },  # 16 lower tower's cover
+    { at = [561, 26], hex = 255, pictures = ["", "SgNcTw2C.pcx", "", "", ""] },  # 17 upper tower's cover
+]
+
+[[town]]
+key = "dungeon"
+original = 5
+background = "SgDnBack.pcx"
+turrets = { shooter = 76, shift = 39, missile = "pmedusx.def", keep = [785, 217], lower = [625, 560], upper = [596, 80] }
+parts = [
+    { at = [396, 260], pictures = ["SgDnDrw3.pcx", "SgDnDrw2.pcx", "SgDnDrw1.pcx", "", ""] },  # 0 drawbridge
+    { at = [396, 260], pictures = ["", "SgDnDrwC.pcx", "", "", ""] },  # 1 drawbridge's rope
+    { at = [283, 94], pictures = ["SgDnMoat.pcx", "", "", "", ""] },  # 2 moat
+    { at = [283, 94], pictures = ["SgDnMlip.pcx", "", "", "", ""] },  # 3 moat's lip
+    { at = [608, 50], pictures = ["SgDnTpW1.pcx", "", "", "", ""] },  # 4 back wall
+    { at = [565, 15], hex = 255, pictures = ["SgDnTw22.pcx", "SgDnTw21.pcx", "SgDnTw21.pcx", "SgDnTw21.pcx", "SgDnTw21.pcx"] },  # 5 upper tower
+    { at = [523, 56], hex = 45, pictures = ["", "SgDnWa62.pcx", "SgDnWa61.pcx", "SgDnWa61.pcx", "SgDnWa61.pcx"] },  # 6 upper wall
+    { at = [494, 53], hex = 62, pictures = ["SgDnWa5.pcx", "", "", "", ""] },  # 7 upper buttress
+    { at = [477, 180], hex = 78, pictures = ["", "SgDnWa42.pcx", "SgDnWa41.pcx", "SgDnWa41.pcx", "SgDnWa41.pcx"] },  # 8 mid-upper wall
+    { at = [471, 164], hex = 112, pictures = ["SgDnArch.pcx", "SgDnArch.pcx", "SgDnArch.pcx", "SgDnArch.pcx", "SgDnArch.pcx"] },  # 9 gate's arch
+    { at = [471, 296], hex = 130, pictures = ["", "SgDnWa32.pcx", "SgDnWa31.pcx", "SgDnWa31.pcx", "SgDnWa31.pcx"] },  # 10 mid-lower wall
+    { at = [522, 305], hex = 165, pictures = ["SgDnWa2.pcx", "", "", "", ""] },  # 11 lower buttress
+    { at = [559, 448], hex = 182, pictures = ["", "SgDnWa12.pcx", "SgDnWa11.pcx", "SgDnWa11.pcx", "SgDnWa11.pcx"] },  # 12 lower wall
+    { at = [600, 495], hex = 251, pictures = ["SgDnTw12.pcx", "SgDnTw11.pcx", "SgDnTw11.pcx", "SgDnTw11.pcx", "SgDnTw11.pcx"] },  # 13 lower tower
+    { at = [732, 162], hex = 135, pictures = ["SgDnMan2.pcx", "SgDnMan1.pcx", "SgDnMan1.pcx", "SgDnMan1.pcx", "SgDnMan1.pcx"] },  # 14 keep
+    { at = [732, 162], hex = 135, pictures = ["", "SgDnManC.pcx", "", "", ""] },  # 15 keep's cover
+    { at = [600, 495], hex = 251, pictures = ["", "SgDnTw1C.pcx", "", "", ""] },  # 16 lower tower's cover
+    { at = [565, 15], hex = 255, pictures = ["", "SgDnTw2C.pcx", "", "", ""] },  # 17 upper tower's cover
+]
+
+[[town]]
+key = "stronghold"
+original = 6
+background = "SgStBack.pcx"
+turrets = { shooter = 88, shift = 0, missile = "porchx.def", keep = [785, 222], lower = [615, 557], upper = [596, 80] }
+parts = [
+    { at = [408, 267], pictures = ["SgStDrw3.pcx", "SgStDrw2.pcx", "SgStDrw1.pcx", "", ""] },  # 0 drawbridge
+    { at = [408, 267], pictures = ["", "SgStDrwC.pcx", "", "", ""] },  # 1 drawbridge's rope
+    { at = [410, 90], pictures = ["SgStMoat.pcx", "", "", "", ""] },  # 2 moat
+    { at = [410, 91], pictures = ["SgStMlip.pcx", "", "", "", ""] },  # 3 moat's lip
+    { at = [617, 62], pictures = ["SgStTpW1.pcx", "", "", "", ""] },  # 4 back wall
+    { at = [568, 30], hex = 255, pictures = ["SgStTw22.pcx", "SgStTw21.pcx", "SgStTw21.pcx", "SgStTw21.pcx", "SgStTw21.pcx"] },  # 5 upper tower
+    { at = [534, 69], hex = 45, pictures = ["", "SgStWa62.pcx", "SgStWa61.pcx", "SgStWa61.pcx", "SgStWa61.pcx"] },  # 6 upper wall
+    { at = [499, 107], hex = 62, pictures = ["SgStWa5.pcx", "", "", "", ""] },  # 7 upper buttress
+    { at = [476, 189], hex = 78, pictures = ["", "SgStWa42.pcx", "SgStWa41.pcx", "SgStWa41.pcx", "SgStWa41.pcx"] },  # 8 mid-upper wall
+    { at = [478, 235], hex = 112, pictures = ["SgStArch.pcx", "SgStArch.pcx", "SgStArch.pcx", "SgStArch.pcx", "SgStArch.pcx"] },  # 9 gate's arch
+    { at = [483, 304], hex = 130, pictures = ["", "SgStWa32.pcx", "SgStWa31.pcx", "SgStWa31.pcx", "SgStWa31.pcx"] },  # 10 mid-lower wall
+    { at = [511, 380], hex = 165, pictures = ["SgStWa2.pcx", "", "", "", ""] },  # 11 lower buttress
+    { at = [553, 440], hex = 182, pictures = ["", "SgStWa12.pcx", "SgStWa11.pcx", "SgStWa11.pcx", "SgStWa11.pcx"] },  # 12 lower wall
+    { at = [586, 508], hex = 251, pictures = ["SgStTw12.pcx", "SgStTw11.pcx", "SgStTw11.pcx", "SgStTw11.pcx", "SgStTw11.pcx"] },  # 13 lower tower
+    { at = [731, 168], hex = 135, pictures = ["SgStMan2.pcx", "SgStMan1.pcx", "SgStMan1.pcx", "SgStMan1.pcx", "SgStMan1.pcx"] },  # 14 keep
+    { at = [731, 168], hex = 135, pictures = ["", "SgStManC.pcx", "", "", ""] },  # 15 keep's cover
+    { at = [586, 508], hex = 251, pictures = ["", "SgStTw1C.pcx", "", "", ""] },  # 16 lower tower's cover
+    { at = [568, 30], hex = 255, pictures = ["", "SgStTw2C.pcx", "", "", ""] },  # 17 upper tower's cover
+]
+
+[[town]]
+key = "fortress"
+original = 7
+background = "SgFrBack.pcx"
+turrets = { shooter = 100, shift = 0, missile = "pplizax.def", keep = [795, 230], lower = [626, 575], upper = [580, 85] }
+parts = [
+    { at = [393, 253], pictures = ["SgFrDrw3.pcx", "SgFrDrw2.pcx", "SgFrDrw1.pcx", "", ""] },  # 0 drawbridge
+    { at = [393, 253], pictures = ["", "SgFrDrwC.pcx", "", "", ""] },  # 1 drawbridge's rope
+    { at = [383, 95], pictures = ["SgFrMoat.pcx", "", "", "", ""] },  # 2 moat
+    { at = [376, 70], pictures = ["SgFrMlip.pcx", "", "", "", ""] },  # 3 moat's lip
+    { at = [599, 62], pictures = ["SgFrTpWl.pcx", "", "", "", ""] },  # 4 back wall
+    { at = [548, 27], hex = 255, pictures = ["SgFrTw22.pcx", "SgFrTw21.pcx", "SgFrTw21.pcx", "SgFrTw21.pcx", "SgFrTw21.pcx"] },  # 5 upper tower
+    { at = [526, 80], hex = 45, pictures = ["", "SgFrWa62.pcx", "SgFrWa61.pcx", "SgFrWa61.pcx", "SgFrWa61.pcx"] },  # 6 upper wall
+    { at = [508, 130], hex = 62, pictures = ["SgFrWa5.pcx", "", "", "", ""] },  # 7 upper buttress
+    { at = [498, 184], hex = 78, pictures = ["", "SgFrWa42.pcx", "SgFrWa41.pcx", "SgFrWa41.pcx", "SgFrWa41.pcx"] },  # 8 mid-upper wall
+    { at = [483, 236], hex = 112, pictures = ["SgFrArch.pcx", "SgFrArch.pcx", "SgFrArch.pcx", "SgFrArch.pcx", "SgFrArch.pcx"] },  # 9 gate's arch
+    { at = [487, 306], hex = 130, pictures = ["", "SgFrWa32.pcx", "SgFrWa31.pcx", "SgFrWa31.pcx", "SgFrWa31.pcx"] },  # 10 mid-lower wall
+    { at = [522, 382], hex = 165, pictures = ["SgFrWa2.pcx", "", "", "", ""] },  # 11 lower buttress
+    { at = [546, 441], hex = 182, pictures = ["", "SgFrWa12.pcx", "SgFrWa11.pcx", "SgFrWa11.pcx", "SgFrWa11.pcx"] },  # 12 lower wall
+    { at = [599, 505], hex = 251, pictures = ["SgFrTw12.pcx", "SgFrTw11.pcx", "SgFrTw11.pcx", "SgFrTw11.pcx", "SgFrTw11.pcx"] },  # 13 lower tower
+    { at = [721, 178], hex = 135, pictures = ["SgFrMan2.pcx", "SgFrMan1.pcx", "SgFrMan1.pcx", "SgFrMan1.pcx", "SgFrMan1.pcx"] },  # 14 keep
+    { at = [721, 178], hex = 135, pictures = ["", "SgFrManC.pcx", "", "", ""] },  # 15 keep's cover
+    { at = [599, 505], hex = 251, pictures = ["", "SgFrTw1C.pcx", "", "", ""] },  # 16 lower tower's cover
+    { at = [548, 27], hex = 255, pictures = ["", "SgFrTw2C.pcx", "", "", ""] },  # 17 upper tower's cover
+]
+
 [[obstacle]]
 key = "obstacle_0"
 def = "ObDino1.def"

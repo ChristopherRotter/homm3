@@ -496,3 +496,56 @@ entry only where a task builds on it.
   inside the step with the random defender, 15 349 with the system actor (2 089 episodes against
   979: it beats a random attacker fast); about 47 µs per system decision. The default kinds
   unchanged (40 186 and 43 887, noise). The engine stays far above the trainer's 5 000 samples/s.
+
+## T7c — The trainer's neutral share (2026-10-23)
+
+- **The user:** T7c in one pull request (as queued; the agent had proposed the evaluation and
+  the trainer as two).
+- **The trainer:** `Trainer.assign` draws no league member for a neutral kind's episode (its
+  defender is the system actor inside the batch; before, a member took one side: the defender's
+  never moved but scored, the attacker's left nothing to train). The update record's `by_kind`
+  (per kind the self-play episodes, the attacker's wins, the truncations), the record's curve
+  summed per gate interval, the update line's per-kind rates. `[ladder] ladder_neutral` (true):
+  every ladder also plays the neutral set v1, the ladder record's `neutral`. `ladder_opponents`'
+  default gains `system`. The gate stays on the gate set v1. `configs/e06-t7.toml`: `t5-3`'s
+  settings at the census shares.
+- **The neutral set v1:** strata wandering, guards, siege_neutral (`NEUTRAL_V1_SEED + k`,
+  `0x5EED_E7A1_0003_0000`), 500 envs each, weighed 780 : 20 : 25 (the census's `share`, pinned
+  by a Python test against `encounters-v1.toml`), the agent attacking the system actor; in
+  `evaluate.py` (`report(held_out=…)`, `stratified`, `ladder`, the held-out seeds: 8 batch
+  seeds, 8 000 episodes), `h3 ai eval --set neutral-v1` (a fixed defender: every policy
+  attacks it, itself too; no ratings) and `python -m h3env.train.ladder --set neutral-v1`.
+- **`h3 ai eval`:** the system actor in the default list; `--json` schema 2 (`defender`, the
+  engine's `system_policy`); both tables regenerated (`bots-report-v1.json`, new
+  `bots-neutral-v1.json`); the old bots' rows did not move (only the ratings, with more games).
+- **The bots' tables** (release, the sandbox: 84 s and 14.5 s; `POLICY_VERSION` 18, E23 T6
+  merged first: the tactics phase, the tent, the Catapult; its retreat needs facts the encounters
+  leave at their defaults, so the system actor never retreats here). Report set v1, row against
+  column:
+
+  | | Random | Aggressor | Greedy | System |
+  |---|---|---|---|---|
+  | Aggressor | 0.810 | – | 0.467 | 0.322 |
+  | Greedy | 0.832 | 0.533 | – | 0.340 |
+  | System | 0.875 | 0.681 | 0.653 | – |
+
+  The system actor's value efficiency +0.324, +0.140, +0.115 against Random, Aggressor, Greedy;
+  Glicko-2 1709 (Greedy 1561, Aggressor 1529, Random 1201). Decision 7's 0.75 targets against
+  Aggressor and Greedy now stand beside a bot at 0.68 and 0.65 (`t5-3`: 0.557, 0.533).
+  Neutral set v1, attacking the system actor: Random 0.743 ± 0.036 (value −0.056), Aggressor
+  0.967 ± 0.014 (+0.216), Greedy 0.956 ± 0.016 (+0.223), the system actor 0.991 ± 0.006
+  (+0.285). The neutral target is a value efficiency above +0.285, the system actor's own (its hero
+  casts since E23 T5a; it retreats only with the adventure's facts, which the encounters leave at
+  their defaults).
+- **Throughput** (`h3 ai bench`, 64 envs, one thread, 2 000 calls, the sandbox): the default
+  kinds 43 111 caller steps/s inside the step, the census shares 20 872, a third neutral
+  (`78,2,100,50,25,3`) 33 888; every mix far above the trainer's 5 000 samples/s. The user's
+  machine: `cargo run --release -p h3-cli -- ai bench --encounters 780,20,100,50,25,25 --envs 256
+  --threads 24` and the run itself (the update line's samples/s).
+- **Tests:** `h3-cli`: the neutral strata, the fixed defender's matchups, rates, interval, JSON
+  and command line, the constants pinned to Python; Python: the neutral set's batches and
+  shares, its stratified rates, Random against the system actor, both tables against the engine,
+  every held-out seed, the record's `by_kind` and `neutral`, the console lines; with torch (the
+  sandbox reached PyTorch's index): a neutral episode draws no member while a hero battle does,
+  the rates by kind, the ladder's neutral row, the ladder command on `--set neutral-v1`.
+

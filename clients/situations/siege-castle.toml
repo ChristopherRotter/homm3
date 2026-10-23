@@ -1,0 +1,74 @@
+# E17 M4 T1b: a situation of the capture set (situations/set.toml): a siege of a Castle town with
+# a Castle (its walls, gate, moat, keep and both towers, each with its Archer), the attacker's
+# Catapult, both armies at their places (design §10.1). `h3-view situation` puts Blue's hero into
+# the town (its visiting hero) and Red's south of its entrance; the harness steps Red's north
+# (`key = "Up"`). Both heroes command their war machines (Ballistics, Artillery), so that the
+# first frame is the keep's turn, as the record's opening: a war machine acting on its own
+# before the first command would act in the original's frames but before the engine's record.
+
+[scenario]
+id = "situation-siege-castle"
+# Both human (hot seat): the defender commands the keep.
+human = ["attacker", "defender"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+
+# The town: under SoD rules (the situation's map) its moat damages.
+[scenario.siege]
+faction = "base:castle"
+fort = "castle"
+moat = "damaging"
+
+[[attacker]]
+slot = 0
+creature = "base:pikeman"
+count = 12
+
+[[attacker]]
+slot = 3
+creature = "base:griffin"
+count = 4
+
+[[attacker]]
+slot = 6
+creature = "base:archer"
+count = 10
+
+[[defender]]
+slot = 0
+creature = "base:goblin"
+count = 15
+
+[[defender]]
+slot = 3
+creature = "base:wolf_rider"
+count = 6
+
+[[defender]]
+slot = 6
+creature = "base:orc"
+count = 8
+
+# The heroes, each with 1 in every primary skill (`h3-view situation` writes them so).
+[scenario.attacker_hero]
+hero_type = "base:valeska"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+# Basic Ballistics: the Catapult waits for its command.
+catapult = 1
+
+[scenario.defender_hero]
+hero_type = "base:ufretin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+
+# Basic Artillery: the turrets wait for their commands.
+[scenario.defender_hero.ballista]
+level = 1
+shots = 1
+double_damage_chance_bp = 5000

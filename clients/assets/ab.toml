@@ -384,3 +384,29 @@ original = 155
 def = "CH06.DEF"
 cast = [97, 63]
 cast_frames = 5
+
+[[town]]
+key = "conflux"
+original = 8
+background = "SgElBack.pcx"
+turrets = { shooter = 127, shift = 0, missile = "cprgtix.def", keep = [783, 225], lower = [636, 575], upper = [595, 105] }
+parts = [
+    { at = [409, 254], pictures = ["SgElDrw3.pcx", "SgElDrw2.pcx", "SgElDrw1.pcx", "", ""] },  # 0 drawbridge
+    { at = [409, 254], pictures = ["", "SgElDrwC.pcx", "", "", ""] },  # 1 drawbridge's rope
+    { at = [407, 80], pictures = ["SgElMoat.pcx", "", "", "", ""] },  # 2 moat
+    { at = [407, 80], pictures = ["SgElMlip.pcx", "", "", "", ""] },  # 3 moat's lip
+    { at = [600, 50], pictures = ["SgElTpWl.pcx", "", "", "", ""] },  # 4 back wall
+    { at = [576, 28], hex = 255, pictures = ["SgElTw22.pcx", "SgElTw21.pcx", "SgElTw21.pcx", "SgElTw22.pcx", ""] },  # 5 upper tower
+    { at = [521, 41], hex = 45, pictures = ["", "SgElWa62.pcx", "SgElWa61.pcx", "SgElWa61.pcx", ""] },  # 6 upper wall
+    { at = [490, 97], hex = 62, pictures = ["SgElWa5.pcx", "", "", "", ""] },  # 7 upper buttress
+    { at = [471, 147], hex = 78, pictures = ["", "SgElWa42.pcx", "SgElWa41.pcx", "SgElWa41.pcx", ""] },  # 8 mid-upper wall
+    { at = [486, 232], hex = 112, pictures = ["SgElArch.pcx", "SgElArch.pcx", "SgElArch.pcx", "SgElArch.pcx", ""] },  # 9 gate's arch
+    { at = [468, 299], hex = 130, pictures = ["", "SgElWa32.pcx", "SgElWa31.pcx", "SgElWa31.pcx", ""] },  # 10 mid-lower wall
+    { at = [509, 346], hex = 165, pictures = ["SgElWa2.pcx", "", "", "", ""] },  # 11 lower buttress
+    { at = [509, 346], hex = 182, pictures = ["", "SgElWa12.pcx", "SgElWa11.pcx", "SgElWa11.pcx", ""] },  # 12 lower wall
+    { at = [608, 505], hex = 251, pictures = ["SgElTw12.pcx", "SgElTw11.pcx", "SgElTw11.pcx", "SGElTw11.pcx", ""] },  # 13 lower tower
+    { at = [736, 159], hex = 135, pictures = ["SgElMan2.pcx", "SgElMan1.pcx", "SgElMan1.pcx", "SgElMan1.pcx", ""] },  # 14 keep
+    { at = [736, 159], hex = 135, pictures = ["", "SgElManC.pcx", "", "", ""] },  # 15 keep's cover
+    { at = [608, 505], hex = 251, pictures = ["", "SgElTw1C.pcx", "", "", ""] },  # 16 lower tower's cover
+    { at = [576, 28], hex = 255, pictures = ["", "SgElTw2C.pcx", "", "", ""] },  # 17 upper tower's cover
+]

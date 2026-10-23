@@ -132,6 +132,42 @@ fn each_draw_takes_its_drawer() {
 }
 
 #[test]
+fn a_siege_part_is_keyed_and_cut_its_shooter_to_its_top_rows() {
+    // E17 M4 T1b: a wall whole, cut by its clip (index 0 transparent inside it), a shooter as a
+    // creature but only its canvas's top `rows`.
+    let wall = |x: i32, y: i32, clip: Option<[i32; 4]>| Draw::Wall {
+        picture: "abs.pcx".to_string(),
+        x,
+        y,
+        clip,
+    };
+    let shooter = |anchor: [i32; 2], rows: u32| Draw::Shooter {
+        def: "cr.def".to_string(),
+        group: 2,
+        frame: 0,
+        anchor,
+        mirrored: false,
+        outline: Some(0x60),
+        rows,
+    };
+    let list = [
+        Draw::Background {
+            picture: "bg.pcx".to_string(),
+            x: 0,
+            y: 0,
+        },
+        wall(0, 0, None),
+        wall(2, 0, Some([0, 0, 3, 2])),
+        wall(3, 1, Some([4, 0, 6, 2])),
+        shooter([1, 1], 1),
+        shooter([3, 0], 0),
+    ];
+    let screen = compose(&list, &batch(), &small()).unwrap();
+    let [b, g, w, y] = [BLUE, GREEN, WHITE, YELLOW].map(|c| FORMAT.pack(c));
+    assert_eq!(screen.pixels(), [b, g, b, b, b, b, w, y, b, b, g, b]);
+}
+
+#[test]
 fn a_stack_is_placed_by_facing_with_the_native_offsets() {
     // §4.2: the canvas at the anchor minus (196, 267); mirrored, its left edge at the anchor's x
     // minus 254 for a DEF 450 wide, so canvas column 0 lands at x + 195.
@@ -195,6 +231,13 @@ fn what_the_batch_lacks_is_an_error() {
     let gone = |what: &str| ComposeError::Missing(what.to_string());
     assert_eq!(missing(&[picture("no.pcx")]), gone("no.pcx"));
     assert_eq!(missing(&[absolute]), gone("no.pcx"));
+    let wall = Draw::Wall {
+        picture: "no.pcx".to_string(),
+        x: 0,
+        y: 0,
+        clip: None,
+    };
+    assert_eq!(missing(&[wall]), gone("no.pcx"));
     assert_eq!(missing(&[obstacle("no.def", 0)]), gone("no.def"));
     let lost = creature_of("no.def", [1, 1], false, None);
     assert_eq!(missing(&[lost]), gone("no.def"));

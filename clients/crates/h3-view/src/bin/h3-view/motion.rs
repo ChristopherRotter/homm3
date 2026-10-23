@@ -38,7 +38,15 @@ pub fn looks(
     let keys = &record.header.manifest.keys.creatures;
     let standing = u32::from(tables.battle.groups.standing);
     let mut looks = BTreeMap::new();
-    for stack in snapshot.stacks.iter().filter(|s| s.alive) {
+    // The stacks on the field: a siege's turrets stand off it, their shooters the town's (E17
+    // M4 T1b).
+    let field = record.header.manifest.field;
+    let cells = u16::from(field.width) * u16::from(field.height);
+    for stack in snapshot
+        .stacks
+        .iter()
+        .filter(|s| s.alive && u16::from(s.hex) < cells)
+    {
         if looks.contains_key(&stack.creature) {
             continue;
         }

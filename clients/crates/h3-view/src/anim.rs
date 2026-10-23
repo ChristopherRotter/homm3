@@ -34,6 +34,7 @@ use crate::battle_log::{Logged, Spread};
 use crate::hero::{Action, Happening, Heroes};
 use crate::layout::BattleLayout;
 use crate::ray::{self, Stroke};
+use crate::siege::FIELD_HEXES;
 use crate::tables::Groups;
 
 /// Every frame outside a walk's group and the shot's: 100 ms times the factor (§7.1).
@@ -1512,7 +1513,13 @@ fn played(
     let mut records = [0u8; 2];
     // The harness's records follow the original's setup: each side's army, then its war
     // machines in `battle_war_machine_stacks`' order (E17 M3 T3b).
-    let mut living: Vec<&Stack> = snapshot.stacks.iter().filter(|s| s.alive).collect();
+    // A siege's turrets stand off the field: their shooters are the town's, not stacks drawn (E17
+    // M4 T1b, `crate::siege`); being the defender's last records, the others' numbers hold.
+    let mut living: Vec<&Stack> = snapshot
+        .stacks
+        .iter()
+        .filter(|s| s.alive && s.hex < FIELD_HEXES)
+        .collect();
     living.sort_by_key(|s| {
         (
             s.side == Side::Defender,

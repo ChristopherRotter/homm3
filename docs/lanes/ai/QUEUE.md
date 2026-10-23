@@ -22,17 +22,16 @@ stalled: both sides hid), T5c (the truncation penalty, the user's amendment of d
 0.533 in 20 M samples and 70 minutes, near `t4-2`'s 60 M).
 
 **Increment 5** (refined 2026-10-23, the user: T7 first, no run meanwhile; the neutral weights
-in the run's config; design §12): T7a (#420) and T7b (the system actor's seat, C ABI
-v32) done. **Next, after the user's checkpoint on T7b:**
-- **T7c The trainer's neutral share** (one pull request): the league draws no member for a
-  neutral episode (one learning side, the attacker); the training's rates by kind; the neutral
-  held-out set `neutral-v1` (a stratum per neutral kind at A1's shares, the policy attacking the
-  system actor) in `evaluate.py` and `h3 ai eval --set neutral-v1`, the bots on it in the same
-  seat (decision 7's neutral target); the system actor in the ladder and `h3 ai eval`'s default
-  list, its policy version in the JSON's engine identity, `bots-report-v1.json` regenerated; a
-  config for T7d. Then the throughput of a neutral mix on the user's machine.
-- **T7d The run:** the user's; the mix (A1's shares put 82.5 % of the episodes in the neutral
-  kinds) chosen with T7c's numbers.
+in the run's config; design §12): T7a (#420), T7b (the system actor's seat, C ABI v32; #421) and
+T7c (the trainer's neutral share, the neutral set v1, the system actor on the ladder; one pull
+request, the user) done. **Next:**
+- **T7d The run:** the user's (`configs/e06-t7.toml`, `t5-3`'s settings); the mix chosen with
+  T7c's numbers (`E06-log.md`, T7c): the census shares put 82.5 % of the episodes in the
+  neutral kinds with one learning side; a third neutral (`--set "env.kinds=[78, 2, 100, 50, 25,
+  3]"`) keeps more of the player-against-player kinds. The engine at the census shares: 20 872
+  caller steps/s a thread in the sandbox, far above the trainer's 5 000 samples/s; the user's
+  machine measures the run's samples/s. Read with it: the system actor is now the strongest
+  ladder bot (0.653 against Greedy); the neutral target is a value efficiency above +0.285.
 - Later (design §10): T5's rest (AI-Q7 (b), the mana price, throughput), T6, T8, T9; the run
   that compares the penalty at 60 M with `t4-2` (`configs/e06-t5c.toml`, `--set
   network.kind=mlp --set samples=60_000_000`) stays on offer.
@@ -47,7 +46,7 @@ Pass offer (fixed by the adventure lane's fixed tests, #266).
   consent; **for you**): the replay format is **v30** (`h3_sim::REPLAY_FORMAT_VERSION`: the setup
   names each side's `RetreatFacts` and `attacker_ground`, ADR-0027 point 14; the CLI's file writes
   `[setup.attacker_retreat]`, `[setup.defender_retreat]` and `attacker_ground`, each omitted at
-  its default); please take the number into your HANDOFF's versions (it says v29). The battle keeps
+  its default); please take the number into your HANDOFF's versions (it says v29; done, T7c). The battle keeps
   both as hashed state (still v53, not observed). `h3_battle_ai::POLICY_VERSION` is 18: a hero's
   side may now retreat (BAT-AI-024, the original's retreat test; never on Easy, on Normal half of
   its draws; a hero's cast in retreat takes its best damage spell), but only with the facts set: the

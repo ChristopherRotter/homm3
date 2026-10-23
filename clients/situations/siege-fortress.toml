@@ -1,0 +1,70 @@
+# E17 M4 T1b: a situation of the capture set (situations/set.toml): a siege of a Fortress town with
+# a Castle (its moat's second column); set up as siege-castle.toml's (Blue's hero in its town,
+# Red's south of the entrance, both heroes commanding their war machines; design §10.1).
+
+[scenario]
+id = "situation-siege-fortress"
+# Both human (hot seat): the defender commands the keep.
+human = ["attacker", "defender"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+
+# The town: under SoD rules (the situation's map) its moat damages.
+[scenario.siege]
+faction = "base:fortress"
+fort = "castle"
+moat = "damaging"
+
+[[attacker]]
+slot = 0
+creature = "base:pikeman"
+count = 12
+
+[[attacker]]
+slot = 3
+creature = "base:griffin"
+count = 4
+
+[[attacker]]
+slot = 6
+creature = "base:archer"
+count = 10
+
+[[defender]]
+slot = 0
+creature = "base:goblin"
+count = 15
+
+[[defender]]
+slot = 3
+creature = "base:wolf_rider"
+count = 6
+
+[[defender]]
+slot = 6
+creature = "base:orc"
+count = 8
+
+# The heroes, each with 1 in every primary skill (`h3-view situation` writes them so).
+[scenario.attacker_hero]
+hero_type = "base:valeska"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+# Basic Ballistics: the Catapult waits for its command.
+catapult = 1
+
+[scenario.defender_hero]
+hero_type = "base:ufretin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+
+# Basic Artillery: the turrets wait for their commands.
+[scenario.defender_hero.ballista]
+level = 1
+shots = 1
+double_damage_chance_bp = 5000

@@ -8,13 +8,12 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 - **E05 closed 2026-10-20**: its record and design in `E05-log.md` (cited as §n), the
   environment as built in `docs/07-simulation-and-ai.md` §1.1.
 - **E06** (AI-Q8; `docs/epics/E06-battle-ai.md`, design `E06-design.md`, record `E06-log.md`):
-  increments 1 to 4 done (#306 to #419: ADR-0026, config, record, checkpoint, `--resume`, the
-  held-out sets v1, the bots' table, the SPRT gate, ladders, the league, γ 1.0, the entity
-  network parked, `ppo.truncation_penalty`; best so far `t5-3`'s MLP 0.832, 0.557, 0.533 against
+  increments 1 to 4 done (#306 to #419; best so far `t5-3`'s MLP 0.832, 0.557, 0.533 against
   Random, Aggressor, Greedy in 20 M, `t4-2`'s 0.839, 0.578, 0.559 in 60 M). **Increment 5**
-  (T7, the neutral share; design §12): T7a (#420) and T7b (the system actor's seat,
-  C ABI v32; #421) done 2026-10-23. **Next:** the user's checkpoint on T7b, then T7c (QUEUE).
-- **Versions:** battle action encoding v13, observation encoding v21, replay format v29, the adventure env's action encoding v4 (E08 T45), C ABI v32 (E06 T7b: `H3_SEAT_SYSTEM`) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q10, AI-QUIRK-1, AI-STUB-1.
+  (T7, the neutral share; design §12): T7a (#420), T7b (#421, C ABI v32) and T7c (the neutral
+  set v1, the system actor on the ladder: the strongest bot; #426, open) done 2026-10-23.
+  **Next:** #426's merge, then T7d, the user's run (`configs/e06-t7.toml`; QUEUE).
+- **Versions:** battle action encoding v13, observation encoding v21, replay format v30 (E23 T6), the adventure env's action encoding v4 (E08 T45), C ABI v32 (E06 T7b: `H3_SEAT_SYSTEM`) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q10, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
 ## Standing traps
@@ -42,13 +41,16 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   `derive_battle_hero`): a change to them changes the encounters (`encounter::tests`: 5 σ). The
   neutral kinds weigh 0 by default (the held-out sets; a run's `[env] kinds` draws them, T7);
   tests use `with_shares`. Their defender is the system actor (`Policy::System`): a
-  `POLICY_VERSION` bump moves their battles (records name `system_policy`; design §12).
+  `POLICY_VERSION` bump moves their battles (records name `system_policy`; design §12), and the
+  trainer gives their episodes no league member (`evaluate.NEUTRAL_KINDS`).
 - Scenario texts are parsed and packs compiled in `h3-ffi` (`src/scenario.rs`), never in `h3-sim`: `arch.toml` gives `h3-sim` `h3-pack-battle` for tests only. Each `h3_env_create_scenario` compiles its packs (about 18 ms for `base`, `ab`, `sod` in release, ten times that in debug).
 
 - The bots (`h3_sim::bots`) read the engine's preview (`h3_battle::preview`, BAT-DMG-011): a
-  change to the strike stages (or any rule) moves them and the bots' table
-  `python/records/bots-report-v1.json`: regenerate it (`python/records/README.md`; a test
-  catches stale ruleset hashes, not moved code). The held-out sets' seeds live in `evaluate.py`
+  change to the strike stages (or any rule), or a `POLICY_VERSION` bump (the system actor is a
+  bot of both tables since T7c), moves them and the bots' tables
+  `python/records/bots-report-v1.json`, `bots-neutral-v1.json`: regenerate both
+  (`python/records/README.md`; a test catches stale ruleset hashes and policy versions, not
+  moved code; the battle lane's inbox says so). The held-out sets' seeds live in `evaluate.py`
   and `src/ai/eval.rs`, pinned by an `h3-cli` test.
 - Reward v1 reads the war machines from the outcome's records (what the battle placed: a
   siege's Catapult in, a Ballista BAT-QUIRK-23 leaves out not), never `setup.war_machines`.
@@ -80,6 +82,8 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 - A network is made only by `policy.build` from a config (a saved file's: without `kind` an
   MLP); `Mlp`'s parameter names stay, so older files load. Time a kind with `python -m
   h3env.train.network --time` (the sandbox's CPU is noisy: `--repeats 30`).
+- Diagnosing a user's run: they upload `metrics.jsonl`, `best.pt`, `checkpoint.pt`;
+  `evaluate.load` builds them on the CPU.
 - The sandbox reaches PyTorch's index only while the environment's network access allows
   `*.pytorch.org` (**Custom**; **Trusted** ignores the Allowed domains; a raw `CONNECT host:443`
   to `$HTTPS_PROXY` shows the proxy's reason). `uv --directory python sync --group train`: 3 to
@@ -87,14 +91,14 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 
 ## Recent sessions
 
+### 2026-10-23 — E06 T7c, the trainer's neutral share
+
+- The user: T7c in one pull request. The neutral set v1, `h3 ai eval --set neutral-v1` (a fixed
+  defender), `--json` schema 2, both bots' tables, no league member in a neutral episode, the
+  rates by kind, `ladder_neutral`, `configs/e06-t7.toml`. The sandbox reached PyTorch's index:
+  the torch tests ran. #426 open (full local verify green on its merged head); T7d next.
+
 ### 2026-10-23 — E06 increment 5 refined, T7a and T7b
 
-- The user: T7, no run meanwhile; the neutral weights in the run's config. T7a merged first
-  (#420), T7b is #421 (open). In progress: the user's checkpoint on T7b; T7c next
-  (QUEUE).
-
-### 2026-10-22 to 23 — E06 increment 4 (T5a to T5d), closed
-
-- `t5-1` stalled (both sides hid); T5c's penalty; T5d parked the entity network (#419).
-  Diagnosing a run: the user uploads `metrics.jsonl`, `best.pt`, `checkpoint.pt`;
-  `evaluate.load` builds them on the CPU.
+- The user: T7, no run meanwhile; the neutral weights in the run's config. T7a (#420) and T7b
+  (#421) merged.

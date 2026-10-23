@@ -146,10 +146,14 @@ class Config:
     alpha: float = field(default=0.05, metadata=_in("gate"))
     beta: float = field(default=0.05, metadata=_in("gate"))
     max_pairs: int = field(default=4000, metadata=_in("gate"))
-    #: The engine seats each promoted network's ladder plays (design §7), on the report set v1.
+    #: The engine seats each promoted network's ladder plays (design §7), on the report set v1
+    #: (the system actor among them since E06 T7c).
     ladder_opponents: list[str] = field(
         default_factory=lambda: list(OPPONENTS), metadata=_in("ladder")
     )
+    #: Whether each ladder also plays the neutral set v1 (as many per kind), attacking the system
+    #: actor (E06 T7c: decision 7's neutral target).
+    ladder_neutral: bool = field(default=True, metadata=_in("ladder"))
     #: Episodes per kind of a promoted network's ladder (the report set's first; at most 500).
     ladder_episodes: int = field(default=250, metadata=_in("ladder"))
     #: Episodes per kind of the final best's ladder at the run's end (0: none; 500 for a claim
@@ -586,6 +590,8 @@ class Record:
         self.ladders: list[dict[str, Any]] = []
         self._sums: dict[str, float] = {}
         self._count = 0
+        #: Per encounter kind since the last gate: the attacker's wins, truncations, episodes.
+        self._kinds: dict[str, list[float]] = {}
 
     def _ended(self, record: dict[str, Any], how: str) -> None:
         self.progress["ended"] = how
@@ -611,6 +617,11 @@ class Record:
         elif kind == "update":
             for k in ("samples", "episodes", "minutes"):
                 self.progress[k] = record[k]
+            for name, row in record.get("by_kind", {}).items():
+                sums = self._kinds.setdefault(name, [0.0, 0.0, 0])
+                sums[0] += row["attacker_won"] * row["episodes"]
+                sums[1] += row["truncated"] * row["episodes"]
+                sums[2] += row["episodes"]
             self.progress["updates"] = record["update"]
             if self.segments:
                 end = self.segments[-1]["end"]
@@ -624,26 +635,34 @@ class Record:
         elif kind == "gate":
             if self._count:
                 point = {k: v / self._count for k, v in self._sums.items()}
+                if self._kinds:
+                    point["by_kind"] = {
+                        name: {
+                            "episodes": n,
+                            "attacker_won": won / n,
+                            "truncated": cut / n,
+                        }
+                        for name, (won, cut, n) in self._kinds.items()
+                    }
                 self.curve.append(
                     {"samples": record["samples"], "updates": record["update"], **point}
                 )
-            self._sums, self._count = {}, 0
+            self._sums, self._count, self._kinds = {}, 0, {}
             self.gates.append({**at, **{k: record[k] for k in GATE}})
             self.progress["evaluation_minutes"] += record["seconds"] / 60
         elif kind == "promotion":
             self.promotions.append({**at, "index": record["index"], "how": record["how"]})
         elif kind == "ladder":
+            keep = ("win_rate", "interval", "value", "kinds", "truncated")
+            neutral = record.get("neutral")
             self.ladders.append(
                 {
                     **at,
                     **{k: record[k] for k in ("index", "final", "per_kind", "seconds")},
                     "opponents": {
-                        name: {
-                            k: row[k]
-                            for k in ("win_rate", "interval", "value", "kinds", "truncated")
-                        }
-                        for name, row in record["opponents"].items()
+                        name: {k: row[k] for k in keep} for name, row in record["opponents"].items()
                     },
+                    "neutral": None if neutral is None else {k: neutral[k] for k in keep},
                 }
             )
             self.progress["evaluation_minutes"] += record["seconds"] / 60

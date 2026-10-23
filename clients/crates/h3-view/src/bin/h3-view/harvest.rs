@@ -37,6 +37,43 @@ const TERRAINS_WITH_BACKGROUNDS: usize = 8;
 const SHORE: u32 = 0x66_FF40;
 const SHIP_TO_SHIP: u32 = 0x66_FF5C;
 const SHIP: u32 = 0x66_FF4C;
+/// The siege's town tables (E17 M4 T1b, design §10.1), by town type (the factions in the packs'
+/// order, Castle 0 to Conflux 8): the background (`siege_backgrounds`), the 18 wall parts
+/// (`siege_wall_parts_by_town`: records of 36 bytes, x and y and the hex drawn at as `i16`, −1
+/// none, five picture names by the part's picture state from +8) and the turrets'
+/// (`siege_turrets_by_town`: 32 bytes, the shooter creature, the keep's, the lower tower's and
+/// the upper tower's point as `i32` pairs, the missile's DEF).
+const SIEGE_TOWNS: usize = 9;
+const SIEGE_BACKGROUNDS: u32 = 0x63_D2A0;
+const SIEGE_PARTS: (u32, usize, usize) = (0x66_D848, 18, 0x24);
+const SIEGE_TURRETS: (u32, usize) = (0x63_CF88, 0x20);
+/// A part's picture slots (its picture states 0 to 4).
+const SIEGE_SLOTS: usize = 5;
+/// The parts by index (WALLS.TXT's rows), for the tables' comments.
+const PART_NAMES: [&str; 18] = [
+    "drawbridge",
+    "drawbridge's rope",
+    "moat",
+    "moat's lip",
+    "back wall",
+    "upper tower",
+    "upper wall",
+    "upper buttress",
+    "mid-upper wall",
+    "gate's arch",
+    "mid-lower wall",
+    "lower buttress",
+    "lower wall",
+    "lower tower",
+    "keep",
+    "keep's cover",
+    "lower tower's cover",
+    "upper tower's cover",
+];
+/// The shooter drawer's shifts (`siege_parts_at_hex` 0x494E6F, 0x494E79): 44 pixels for a
+/// two-hex creature (the creature's flag 1), 5 back for the Medusa (its id tested).
+const TWO_HEX: u32 = 0x1;
+const MEDUSA: usize = 76;
 /// The packs' keys of the special fields 0–9 (manager +0x53C0; `packs/base/battle.toml` and
 /// `packs/sod/battle.toml`, E04c T2b; survey `E04c-battlefields.md` §1), whose pictures 0x4646D0
 /// names; a battle on a ship (`deck`) and two heroes in boats (`boats`) have pictures of their own.
@@ -201,6 +238,9 @@ struct Pack {
     spell: Vec<Keyed>,
     #[serde(default)]
     terrain: Vec<Keyed>,
+    /// The factions in order are the town types (E17 M4 T1b).
+    #[serde(default)]
+    faction: Vec<Keyed>,
     #[serde(skip)]
     battlefield: Vec<Keyed>,
     #[serde(skip)]
@@ -272,6 +312,24 @@ struct Harvest {
     specials: Vec<String>,
     ship_to_ship: String,
     ship: String,
+    /// The siege's tables by town type (E17 M4 T1b).
+    towns: Vec<SiegeTown>,
+}
+
+/// A siege part's point, the hex it is drawn at (none: −1) and its pictures by slot.
+type SiegePart = ([i16; 2], Option<i16>, [Option<String>; SIEGE_SLOTS]);
+
+/// A town's siege tables (the asset tables' `[[town]]`, E17 M4 T1b).
+struct SiegeTown {
+    background: String,
+    /// Each part's point, the hex it is drawn at and its pictures by slot.
+    parts: Vec<SiegePart>,
+    shooter: usize,
+    missile: String,
+    /// The keep's, the lower tower's and the upper tower's point.
+    turrets: [[i32; 2]; 3],
+    /// The shooter's shift right (`TWO_HEX`, `MEDUSA`).
+    shift: i32,
 }
 
 /// A battlefield object a spell places (the asset tables' `objects`).
@@ -353,10 +411,10 @@ fn harvest(options: &Options) -> Result<(), String> {
     }
     // The packs' heroes in order are the hero types (as `h3-harvest` writes them), each checked
     // against hotraits.txt's name.
-    let mut hero_type = 0;
+    let (mut hero_type, mut town) = (0, 0);
     for pack in &packs {
         let id = &pack.pack.id;
-        let table = write_table(pack, &h, &defined, &mut hero_type, &mut gaps)?;
+        let table = write_table(pack, &h, &defined, (&mut hero_type, &mut town), &mut gaps)?;
         let out = options.out.join(format!("{id}.toml"));
         fs::write(&out, table).map_err(|e| format!("{}: {e}", out.display()))?;
         println!("harvest: {}", out.display());
@@ -530,6 +588,49 @@ fn read_harvest(
     for k in 0..9 {
         specials.push(string(u32_at(&row, 4 * k))?);
     }
+    let mut towns = Vec::new();
+    let named =
+        |va: u32| -> Result<Option<String>, String> { (va != 0).then(|| string(va)).transpose() };
+    let backgrounds = bytes(&image, exe, SIEGE_BACKGROUNDS, 4 * SIEGE_TOWNS)?;
+    for town in 0..SIEGE_TOWNS {
+        let (table, count, size) = SIEGE_PARTS;
+        let records = bytes(
+            &image,
+            exe,
+            table + to_u32(town * count * size),
+            count * size,
+        )?;
+        let mut parts = Vec::new();
+        for r in records.chunks_exact(size) {
+            let at = [i16_at(r, 0), i16_at(r, 2)];
+            let hex = Some(i16_at(r, 4)).filter(|&h| h >= 0);
+            let mut pictures: [Option<String>; SIEGE_SLOTS] = Default::default();
+            for (slot, picture) in pictures.iter_mut().enumerate() {
+                *picture = named(u32_at(r, 8 + 4 * slot))?;
+            }
+            parts.push((at, hex, pictures));
+        }
+        let (table, size) = SIEGE_TURRETS;
+        let r = bytes(&image, exe, table + to_u32(town * size), size)?;
+        let shooter =
+            usize::try_from(i32_at(&r, 0)).map_err(|_| format!("town {town}: shooter"))?;
+        let flags = creatures
+            .iter()
+            .find(|c| usize::from(c.id) == shooter)
+            .map(|c| c.flags)
+            .ok_or(format!("town {town}: no creature {shooter}"))?;
+        let shift =
+            if flags & TWO_HEX != 0 { 44 } else { 0 } - if shooter == MEDUSA { 5 } else { 0 };
+        let point = |k: usize| [i32_at(&r, 4 + 8 * k), i32_at(&r, 8 + 8 * k)];
+        towns.push(SiegeTown {
+            background: string(u32_at(&backgrounds, 4 * town))?,
+            parts,
+            shooter,
+            missile: string(u32_at(&r, 0x1C))?,
+            turrets: [point(0), point(1), point(2)],
+            shift,
+        });
+    }
     Ok(Harvest {
         defs: creatures.iter().map(|c| c.def_name.clone()).collect(),
         sounds: creatures
@@ -559,6 +660,7 @@ fn read_harvest(
         specials,
         ship_to_ship: string(SHIP_TO_SHIP)?,
         ship: string(SHIP)?,
+        towns,
     })
 }
 
@@ -749,7 +851,7 @@ fn write_table(
     pack: &Pack,
     h: &Harvest,
     defined: &[usize],
-    hero_type: &mut usize,
+    (hero_type, town): (&mut usize, &mut usize),
     gaps: &mut Vec<String>,
 ) -> Result<String, String> {
     let id = &pack.pack.id;
@@ -976,6 +1078,51 @@ fn write_table(
             None => gaps.push(format!("{id}:{}: no picture (0x4646D0)", field.id)),
         }
     }
+    // The siege's tables (E17 M4 T1b): the packs' factions in their order are the town types.
+    for faction in &pack.faction {
+        let n = *town;
+        *town += 1;
+        let Some(s) = h.towns.get(n) else {
+            gaps.push(format!(
+                "{id}:{}: no town type {n} (siege_wall_parts_by_town)",
+                faction.id
+            ));
+            continue;
+        };
+        let [keep, lower, upper] = s.turrets;
+        let _ = write!(
+            t,
+            "\n[[town]]\nkey = \"{}\"\noriginal = {n}\nbackground = \"{}\"\nturrets = {{ shooter = {}, \
+             shift = {}, missile = \"{}\", keep = [{}], lower = [{}], upper = [{}] }}\nparts = [\n",
+            plain(&faction.id)?,
+            plain(&s.background)?,
+            s.shooter,
+            s.shift,
+            plain(&s.missile)?,
+            numbers(&keep),
+            numbers(&lower),
+            numbers(&upper)
+        );
+        for (k, (at, hex, pictures)) in s.parts.iter().enumerate() {
+            let hex = hex.map(|h| format!(", hex = {h}")).unwrap_or_default();
+            let names = pictures
+                .iter()
+                .map(|p| {
+                    p.as_deref()
+                        .map_or(Ok(""), plain)
+                        .map(|p| format!("\"{p}\""))
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            let _ = writeln!(
+                t,
+                "    {{ at = [{}]{hex}, pictures = [{}] }},  # {k} {}",
+                numbers(at),
+                names.join(", "),
+                PART_NAMES[k % PART_NAMES.len()]
+            );
+        }
+        let _ = writeln!(t, "]");
+    }
     let mut keys: Vec<(usize, &str)> = Vec::new();
     for o in &pack.obstacle {
         keys.push((obstacle_number(id, &o.id)?, "pack"));
@@ -1059,6 +1206,10 @@ fn stem(name: &str) -> String {
     name.split_once('.')
         .map_or(name, |(stem, _)| stem)
         .to_owned()
+}
+
+fn i16_at(bytes: &[u8], at: usize) -> i16 {
+    i16::from_le_bytes([bytes[at], bytes[at + 1]])
 }
 
 fn i32_at(bytes: &[u8], at: usize) -> i32 {
