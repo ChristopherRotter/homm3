@@ -48,6 +48,7 @@ mod observe;
 mod obstacles;
 mod pathfinder;
 mod raise;
+mod retreat;
 mod siege;
 mod state;
 mod tactics;

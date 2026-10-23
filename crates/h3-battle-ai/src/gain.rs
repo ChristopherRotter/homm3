@@ -32,11 +32,12 @@ use h3_kernel::arith::X87;
 use crate::order;
 
 /// A stack's threat record on the walker's turn (+0x538 to +0x544): its nearest enemy, that
-/// one's value and turns, and its enemies within a turn by record bit.
+/// one's value, cost and turns, and its enemies within a turn by record bit.
 #[derive(Debug, Clone, Copy, Default)]
 pub(crate) struct Record {
     pub(crate) nearest: Option<StackId>,
     pub(crate) value: i32,
+    pub(crate) cost: u16,
     pub(crate) turns: u32,
     pub(crate) mask: u32,
 }
@@ -50,6 +51,16 @@ fn bit(state: &BattleState, id: StackId) -> u32 {
     let before = state.stacks().iter().take(id.index());
     let r = before.filter(|s| s.side == side).count();
     1u32 << (r & 31)
+}
+
+/// The stack id bits of `side`'s stacks whose record bits (+0xF8) `mask` holds.
+pub(crate) fn stack_bits(state: &BattleState, side: BattleSide, mask: u32) -> u64 {
+    (0u8..)
+        .zip(state.stacks())
+        .filter(|(_, s)| s.side == side)
+        .zip(0u32..32)
+        .filter(|&(_, r)| mask & (1 << r) != 0)
+        .fold(0, |bits, ((i, _), _)| bits | 1 << i)
 }
 
 /// Whether `s` is the Ballista: a shooting war machine that is neither the Catapult nor a turret.
@@ -149,6 +160,7 @@ pub(crate) fn records(
             {
                 record.nearest = Some(enemy);
                 record.value = value;
+                record.cost = cost;
                 record.turns = turns;
             }
         }

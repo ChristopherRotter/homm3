@@ -14,6 +14,12 @@
 //! ([`boosts`]), the defenses and the spell protections ([`defenses`]), the harmful spells
 //! ([`harms`]) and the removals ([`removals`]). The bolts', Dispel's and Clone's evaluators serve
 //! only the hero's choice ([`hero`](crate::hero), E23 T5a).
+//!
+//! With BAT-QUIRK-25 (survey slip 26) the hero's choice reads what the retreat test's predictions
+//! left when the test got that far ([`SpellContext::after_retreat`]): both sides' planned damage
+//! and each side's threat records as the last predicted turn that wrote them left them, until
+//! Teleport's evaluation fills the records again ([`SpellContext::refill`]). The threat tables
+//! and "the enemy beaten", which the original fills at the context's build, keep the context's.
 
 pub(crate) mod boosts;
 mod defenses;
@@ -21,6 +27,7 @@ mod harms;
 mod removals;
 pub(crate) mod tables;
 
+use alloc::boxed::Box;
 use core::cell::{Cell, OnceCell};
 
 use h3_battle::computer::{self, Context, Map, Planned, Threat};
@@ -33,7 +40,9 @@ use h3_kernel::Rng;
 use h3_kernel::arith::X87;
 
 use crate::casts::balance;
-use crate::predict;
+use crate::gain;
+use crate::predict::{self, Overwrite, Overwrites};
+use crate::retreat::Predicted;
 use tables::Tables;
 
 /// A cast the computer weighs (the cast candidate, §7.44): the spell, its mastery, its power, the
@@ -284,6 +293,20 @@ pub(crate) struct SpellContext<'a> {
     /// computer's pathfinder (Berserk's and Hypnotize's, 0x445582, 0x43A5DB), which the walker's
     /// fallbacks then read.
     searched: Cell<Option<Map>>,
+    /// "The enemy beaten" of the other side's half (its +0x1C at the context's build).
+    second_beaten: bool,
+    /// With BAT-QUIRK-25 (survey slip 26), what the retreat test's predictions left.
+    retreated: Option<Box<Retreated>>,
+}
+
+/// What the retreat test's predictions left on the stacks (survey slip 26): the planned damage of
+/// both sides' runs and the last overwrite of each side's threat records, the records computed
+/// when first asked, until Teleport's evaluation fills them again.
+struct Retreated {
+    planned: Planned,
+    overwrites: Overwrites,
+    records: [OnceCell<[Option<Threat>; STACK_CAPACITY]>; 2],
+    refilled: Cell<bool>,
 }
 
 /// One side's half of the spell context (the context's own fields, 0x4369C0, or the second
@@ -308,20 +331,20 @@ pub(crate) struct Half {
 
 impl Half {
     /// The half of `side` with its battle context `ctx`: its balance class and the other side's
-    /// able strength ([`balance`]) and "the enemy beaten" after the damage `planned`
-    /// ([`beaten`]).
+    /// able strength ([`balance`]) and `beaten`, "the enemy beaten" after the context's planned
+    /// damage ([`beaten`]).
     fn new(
         state: &BattleState,
         ruleset: &BattleRuleset,
         (ctx, side): (Context, BattleSide),
-        planned: &Planned,
+        beaten: bool,
     ) -> Self {
         let balance = balance(state, ruleset, &ctx, side);
         Self {
             side,
             ctx,
             class: balance.class,
-            beaten: beaten(state, planned, side),
+            beaten,
             own_able: balance.own,
             other_able: balance.other,
             tables: OnceCell::new(),
@@ -340,7 +363,7 @@ impl<'a> SpellContext<'a> {
         rng: &mut Rng,
     ) -> Self {
         let planned = predict::plan(state, ruleset, side, rng);
-        let first = Half::new(state, ruleset, (*ctx, side), &planned);
+        let first = Half::new(state, ruleset, (*ctx, side), beaten(state, &planned, side));
         Self {
             state,
             ruleset,
@@ -349,7 +372,39 @@ impl<'a> SpellContext<'a> {
             first,
             second: OnceCell::new(),
             searched: Cell::new(None),
+            second_beaten: beaten(state, &planned, side.opponent()),
+            retreated: None,
         }
+    }
+
+    /// With BAT-QUIRK-25 (survey slip 26; the caller asks only then), the retreat test's
+    /// predictions `predicted` replace the context's on every stack (0x41E85A after 0x4369C0):
+    /// the choice reads their planned damage and the threat records the predicted turns left.
+    // rule: BAT-AI-024
+    pub(crate) fn after_retreat(&mut self, predicted: &Predicted) {
+        self.retreated = Some(Box::new(Retreated {
+            planned: predicted.planned,
+            overwrites: predicted.overwrites,
+            records: [const { OnceCell::new() }; 2],
+            refilled: Cell::new(false),
+        }));
+    }
+
+    /// Teleport's evaluation asked a walker and the original fills both sides' threat records
+    /// again as the context built them (0x422B20 with flag 0, §7.58): the retreat test's are gone
+    /// (survey slip 26; its planned damage stays).
+    pub(crate) fn refill(&self) {
+        if let Some(r) = &self.retreated {
+            r.refilled.set(true);
+        }
+    }
+
+    /// The planned damage the choice reads: the retreat test's predictions' with survey slip 26,
+    /// else the context's.
+    fn planned_now(&self) -> &Planned {
+        self.retreated
+            .as_ref()
+            .map_or(&self.planned, |r| &r.planned)
     }
 
     /// Whether the original's slips are kept (BAT-QUIRK-25).
@@ -416,7 +471,7 @@ impl<'a> SpellContext<'a> {
             s.side == self.first.side
                 && s.is_alive()
                 && !s.is_turret()
-                && self.planned.on(StackId(i)) >= u64::from(s.top_hp)
+                && self.planned_now().on(StackId(i)) >= u64::from(s.top_hp)
         })
     }
 
@@ -432,16 +487,71 @@ impl<'a> SpellContext<'a> {
         self.second.get_or_init(|| {
             let side = self.first.side.opponent();
             let ctx = computer::context(self.state, self.ruleset, side);
-            Half::new(self.state, self.ruleset, (ctx, side), &self.planned)
+            Half::new(self.state, self.ruleset, (ctx, side), self.second_beaten)
         })
     }
 
-    /// The threat record of stack `id` ([`computer::threat`] in the side's battle context, on
-    /// the battle), computed once.
+    /// The threat record of stack `id` the choice reads: with survey slip 26 the one the retreat
+    /// test's predictions left for its side ([`records_after`]) until Teleport's refill, else the
+    /// context's ([`Self::built_threat`]).
     fn threat(&self, id: StackId) -> Option<Threat> {
+        let side = self.state.stacks()[id.index()].side;
+        let after = self.retreated.as_ref().and_then(|r| {
+            let o = r.overwrites[side.index()].filter(|_| !r.refilled.get())?;
+            Some(
+                r.records[side.index()]
+                    .get_or_init(|| records_after(self.state, self.ruleset, side, o)),
+            )
+        });
+        match after {
+            Some(records) => records[id.index()],
+            None => self.built_threat(id),
+        }
+    }
+
+    /// The threat record of stack `id` as the context built it ([`computer::threat`] in the
+    /// side's battle context, on the battle), computed once.
+    fn built_threat(&self, id: StackId) -> Option<Threat> {
         *self.threats[id.index()]
             .get_or_init(|| computer::threat(self.state, self.ruleset, &self.first.ctx, id))
     }
+}
+
+/// The threat records of `side`'s stacks as the predicted turn `o` left them (survey slip 26): a
+/// predicted walker's records on its turn (0x422B20 with flag 1, [`gain::records`] in its predicting
+/// context, the walker's own cleared), each record's nearest enemy with its cost, turns and the
+/// enemies within a turn by stack id; or a predicted shot's records of the other side (0x422B20
+/// with flag 0, [`computer::threat`] in the shooter's predicting context).
+fn records_after(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    side: BattleSide,
+    o: Overwrite,
+) -> [Option<Threat>; STACK_CAPACITY] {
+    let mut out = [None; STACK_CAPACITY];
+    match o {
+        Overwrite::Walker { walker, planned } => {
+            let ctx = computer::context(state, ruleset, side).predicting(&planned);
+            let records = gain::records(state, ruleset, &ctx, (walker, side));
+            for (slot, r) in out.iter_mut().zip(records.iter()) {
+                *slot = r.nearest.map(|enemy| Threat {
+                    enemy,
+                    turns: r.turns,
+                    cost: r.cost,
+                    mask: gain::stack_bits(state, side.opponent(), r.mask),
+                });
+            }
+        }
+        Overwrite::Shot { planned } => {
+            let ctx = computer::context(state, ruleset, side.opponent()).predicting(&planned);
+            for (i, s) in (0u8..).zip(state.stacks()) {
+                if s.side == side {
+                    out[usize::from(i)] = computer::threat(state, ruleset, &ctx, StackId(i));
+                }
+            }
+        }
+    }
+    out
 }
 
 /// The map the computer's pathfinder holds after the threat records of both sides (0x436ABA;
@@ -472,6 +582,9 @@ pub(crate) struct View<'s> {
     /// untouched). Its record of the stack valued still holds every spell, and no record is the
     /// copy: the original tells them apart by pointer.
     lone: Option<&'s BattleState>,
+    /// The view reads what the context built (the threat tables' fill, 0x43C040 at the context's
+    /// build): its planned damage and threat records, never the retreat test's (survey slip 26).
+    built: bool,
 }
 
 impl<'s> View<'s> {
@@ -490,8 +603,22 @@ impl<'s> View<'s> {
             ctx: &half.ctx,
             class: half.class,
             beaten: half.beaten,
-            planned: &root.planned,
+            planned: root.planned_now(),
             lone,
+            built: false,
+        }
+    }
+
+    /// The view of what the context built on `state` (the threat tables' fill): its planned
+    /// damage and threat records.
+    pub(crate) fn built_on<'t>(&self, state: &'t BattleState) -> View<'t>
+    where
+        's: 't,
+    {
+        View {
+            planned: &self.root.planned,
+            built: true,
+            ..View::of(self.root, self.half, (state, None))
         }
     }
 
@@ -542,9 +669,14 @@ impl<'s> View<'s> {
         self.ctx
     }
 
-    /// The threat record of stack `id` (the context's, [`SpellContext::threat`]).
+    /// The threat record of stack `id` (the context's, [`SpellContext::threat`]; as built for the
+    /// threat tables' fill).
     fn threat(&self, id: StackId) -> Option<Threat> {
-        self.root.threat(id)
+        if self.built {
+            self.root.built_threat(id)
+        } else {
+            self.root.threat(id)
+        }
     }
 
     /// The enemy of stack `s`'s threat record when `s` attacks it within a turn (0x448BD0 at its

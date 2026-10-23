@@ -17,6 +17,7 @@ use crate::geometry::{Field, Hex, HexSet};
 use crate::magic;
 use crate::movement::MAX_PATH;
 use crate::pathfinder::{self, AI_RANGE, Goal, Query, Search};
+use crate::retreat;
 use crate::siege::{self, SiegeState};
 use crate::state::{BattleState, StackFlags, StackId, StackTraits};
 use crate::tactics::TacticsRounds;
@@ -144,6 +145,24 @@ pub fn human(state: &BattleState, side: BattleSide) -> bool {
 /// reads (0x41E570; BAT-AI-024). Private to the side.
 pub fn retreat_facts(state: &BattleState, side: BattleSide) -> RetreatFacts {
     state.retreat[side.index()]
+}
+
+/// What `side`'s owner can pay (`BattleSetup.funds`: the player's gold, which the computer's
+/// retreat test reads, 0x41E8D1); 0 without a hero. Private to the side.
+pub fn funds(state: &BattleState, side: BattleSide) -> u32 {
+    state.heroes[side.index()].map_or(0, |h| h.funds)
+}
+
+/// The surrender price `side`'s computer expects in its retreat test (0x477A00; BAT-AI-024):
+/// [`retreat::price`]. Private to the side.
+pub fn retreat_price(state: &BattleState, ruleset: &BattleRuleset, side: BattleSide) -> i32 {
+    retreat::price(state, ruleset, side)
+}
+
+/// Whether `side`'s army is walled out of the siege, which its computer's retreat test answers
+/// with a retreat (0x41E440; BAT-AI-024): [`retreat::walled_out`].
+pub fn walled_out(state: &BattleState, ruleset: &BattleRuleset, side: BattleSide) -> bool {
+    retreat::walled_out(state, ruleset, side)
 }
 
 /// The special battlefield of the attacking hero's own adventure tile, if any

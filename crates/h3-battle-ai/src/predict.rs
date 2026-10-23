@@ -16,6 +16,11 @@
 //!
 //! The draws are the predicted walkers' (0x421B02, one per candidate): the context of every
 //! creature cast moves the stream by its run's candidates.
+//!
+//! The retreat test predicts with flag 1 (0x422A40 with 1; BAT-AI-024, [`plan_both`]): the
+//! side's run, then the other side's from where the first ended. Each predicted turn also leaves
+//! threat records behind (survey slip 26, [`Overwrite`]): a walker's of its own side (0x422B20
+//! with flag 1, 0x421F80), a shot's of the other side (0x422B20 with flag 0, 0x41F099).
 
 use h3_battle::computer::{self, Planned, Shot};
 use h3_battle::{BattleSide, BattleState, Command, Hex, Stack, StackId, StackTraits, Status};
@@ -42,7 +47,67 @@ pub(crate) fn plan(
         .map_or(side, |a| state.stacks()[a.index()].side);
     let (list, n) = order::list(state, ruleset, first);
     let mut planned = Planned::default();
-    run(state, ruleset, (&list[..n], side), &mut planned, rng);
+    run(state, ruleset, (&list[..n], side), &mut planned, rng, None);
+    planned
+}
+
+/// What a predicted turn left in a side's threat records (+0x538 to +0x544; survey slip 26): a
+/// predicted walker's records of its side on its turn (0x422B20 with flag 1, the walker's own
+/// cleared) or a predicted shot's records of the other side (0x422B20 with flag 0, 0x41F099), each
+/// in the context of the side that acted with the damage planned before that turn.
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum Overwrite {
+    /// The walker's records of its side.
+    Walker {
+        /// The walker.
+        walker: StackId,
+        /// The damage planned before its turn.
+        planned: Planned,
+    },
+    /// A shooter's records of the other side.
+    Shot {
+        /// The damage planned before its shot.
+        planned: Planned,
+    },
+}
+
+/// The last [`Overwrite`] of each side's threat records in a prediction, by side index.
+pub(crate) type Overwrites = [Option<Overwrite>; 2];
+
+/// The damage the predictions with flag 1 plan (0x422A40 with 1; the retreat test, BAT-AI-024):
+/// from nothing planned, over the computer's order of action with the active stack's side first
+/// among equal keys, `side`'s run ([`run`]) and then the other side's from the stack that ended
+/// the first. Their walkers' draws come from `rng`. With `overwrites`, the last overwrite of each
+/// side's threat records goes there (survey slip 26).
+// rule: BAT-AI-024
+pub(crate) fn plan_both(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    side: BattleSide,
+    rng: &mut Rng,
+    mut overwrites: Option<&mut Overwrites>,
+) -> Planned {
+    let first = state
+        .active()
+        .map_or(side, |a| state.stacks()[a.index()].side);
+    let (list, n) = order::list(state, ruleset, first);
+    let mut planned = Planned::default();
+    let end = run(
+        state,
+        ruleset,
+        (&list[..n], side),
+        &mut planned,
+        rng,
+        overwrites.as_deref_mut(),
+    );
+    run(
+        state,
+        ruleset,
+        (&list[end..n], side.opponent()),
+        &mut planned,
+        rng,
+        overwrites,
+    );
     planned
 }
 
@@ -65,25 +130,44 @@ fn creatures(s: &Stack, hp: u64) -> u64 {
 
 /// `side`'s run over the order `list` (0x422880; BAT-AI-015): each stack passed over
 /// ([`passed_over`], or without hit points left after `planned`) is skipped; the first other whose
-/// controller is not `side` ends it; each other predicts its turn. A shooter's shot plans the
-/// damage of its creatures by its hit points left (the shot flag, capped) on the stack shot at; a
-/// walker's move and attack plans its melee ([`melee`]).
+/// controller is not `side` ends it, and the run answers its place in `list` (the list's length
+/// when none does); each other predicts its turn. A shooter's shot plans the damage of its
+/// creatures by its hit points left (the shot flag, capped) on the stack shot at; a walker's move
+/// and attack plans its melee ([`melee`]). With `overwrites`, each turn notes the threat records it
+/// leaves ([`Overwrite`]).
 fn run(
     state: &BattleState,
     ruleset: &BattleRuleset,
     (list, side): (&[StackId], BattleSide),
     planned: &mut Planned,
     rng: &mut Rng,
-) {
-    for &id in list {
+    mut overwrites: Option<&mut Overwrites>,
+) -> usize {
+    for (at, &id) in list.iter().enumerate() {
         let s = &state.stacks()[id.index()];
         if passed_over(s) || planned.left(state, id) == 0 {
             continue;
         }
         if s.controller() != side {
-            return;
+            return at;
         }
-        if computer::shoots(state, ruleset, id) {
+        let shoots = computer::shoots(state, ruleset, id);
+        if let Some(o) = overwrites.as_deref_mut() {
+            let planned = *planned;
+            let (written, overwrite) = if shoots {
+                (side.opponent(), Overwrite::Shot { planned })
+            } else {
+                (
+                    side,
+                    Overwrite::Walker {
+                        walker: id,
+                        planned,
+                    },
+                )
+            };
+            o[written.index()] = Some(overwrite);
+        }
+        if shoots {
             if let Shot::Stack { target, .. } =
                 computer::predicted_shot(state, ruleset, (id, side), planned)
             {
@@ -100,6 +184,7 @@ fn run(
             melee(&w, planned, (id, from), target);
         }
     }
+    list.len()
 }
 
 /// A predicted move and attack of the walker `w`'s stack `s` from `s_hex` on `t` (0x4227A0;

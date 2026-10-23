@@ -47,6 +47,7 @@ mod hero;
 mod odds;
 mod order;
 mod predict;
+mod retreat;
 mod specials;
 mod speed;
 mod spells;
@@ -1820,7 +1821,7 @@ fn a_refused_choice_falls_back_to_defend() {
     assert!(validate(&state, &r, side, refused).is_err());
     assert_eq!(checked(&state, &r, side, refused), Command::Defend);
     assert_eq!(checked(&state, &r, side, Command::Wait), Command::Wait);
-    assert_eq!(POLICY_VERSION, 17);
+    assert_eq!(POLICY_VERSION, 18);
 }
 
 /// The setup of `setup` on `difficulty`.
@@ -1953,12 +1954,13 @@ proptest! {
     #![proptest_config(Config::with_cases(48))]
 
     /// Exit criterion 1 on the test ruleset: random battles of both sides, every difficulty,
-    /// with and without heroes (Tactics, a commanded Ballista and First Aid Tent), on the field
-    /// or at the town (every fort level, moat and turrets): at every step
+    /// with and without heroes (Tactics, a commanded Ballista and First Aid Tent, the retreat
+    /// facts and funds), on the field or at the town (every fort level, moat and turrets): at
+    /// every step
     /// the original's choice for the side to act is a command the engine accepts (no fallback
     /// fires), and the same state and stream give the same command and leave the same stream.
     /// Two steps in three play it, the third a random legal command that stays in the battle.
-    // covers: BAT-AI-001, BAT-AI-002, BAT-AI-003, BAT-AI-005, BAT-AI-010, BAT-AI-011
+    // covers: BAT-AI-001, BAT-AI-002, BAT-AI-003, BAT-AI-005, BAT-AI-010, BAT-AI-011, BAT-AI-024
     #[test]
     fn the_choice_is_legal_and_the_same_for_the_same_stream(
         seed in any::<u64>(),
@@ -1983,6 +1985,13 @@ proptest! {
                     .filter(|_| rng.below(2) == 0)
                     .map(creature)
                     .collect();
+                setup.retreat[side] = h3_contracts::RetreatFacts {
+                    experience: rng.below(4000),
+                    artifacts: rng.below(2000),
+                    tavern: rng.below(4) != 0,
+                    wanted: rng.below(8) == 0,
+                };
+                setup.funds[side] = rng.below(6000);
             }
             setup.human[side] = rng.below(2) == 0;
         }

@@ -398,6 +398,57 @@ fn the_heros_value_in_the_odds() {
     assert_eq!(hero_value(&r, Some(bolter(&r, 100, &[])), army, 5000), 1);
 }
 
+// The odds value the attacking hero's spells at the mastery of its own ground with the
+// original's slip (survey slip 6, `BattleSetup.attacker_ground`), at the battlefield's without;
+// the defender's at the battlefield's in both (E23 T6).
+// covers: BAT-AI-008
+#[test]
+fn the_attacking_heros_value_takes_its_own_ground_with_the_slip() {
+    use BattleSide::{Attacker, Defender};
+    let field = |name: Option<&str>| {
+        name.and_then(|n| h3_content::ContentKey::parse(&std::format!("t:{n}")).ok())
+    };
+    for (profile, slips) in [("t:faithful", false), ("t:slips", true)] {
+        let r = odds_ruleset(profile, &[SpellAiKind::Damage]);
+        // Bolt (air) without a mastery: b = 25 × 10 at none, 25 × 13 where the ground raises air
+        // to Expert (the plains).
+        let value = |side: BattleSide, battlefield: Option<&str>, ground: Option<&str>| {
+            let mut h = bolter(&r, 100, &[]);
+            h.magic.masteries = vec![];
+            let heroes = match side {
+                Attacker => [Some(h), None],
+                Defender => [None, Some(h)],
+            };
+            let s = arena_on(
+                &r,
+                heroes,
+                &[("fixed", 1, 2, 5)],
+                &[("fixed", 1, 10, 5)],
+                1,
+                |s| {
+                    s.battlefield = field(battlefield);
+                    s.attacker_ground = field(ground);
+                },
+            );
+            computer::hero_value(&s, &r, side, 5000)
+        };
+        let (none, expert) = (
+            value(Attacker, None, None),
+            value(Attacker, Some("plains"), Some("plains")),
+        );
+        assert!(none < expert, "{profile}");
+        let (own, battle) = if slips {
+            (expert, none)
+        } else {
+            (none, expert)
+        };
+        assert_eq!(value(Attacker, None, Some("plains")), own, "{profile}");
+        assert_eq!(value(Attacker, Some("plains"), None), battle, "{profile}");
+        assert_eq!(value(Defender, Some("plains"), None), expert, "{profile}");
+        assert_eq!(value(Defender, None, Some("plains")), none, "{profile}");
+    }
+}
+
 // covers: BAT-AI-009
 #[test]
 fn a_turns_map_reaches_within_the_speed() {

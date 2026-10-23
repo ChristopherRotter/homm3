@@ -4875,7 +4875,7 @@ Cloak (83), a value replacing the best only when greater.
 **Slips** (survey §4, BAT-QUIRK-25): the walls test's records (slip 2), the desperate kills' top
 creature (slip 4), the turrets as creature 2 (slip 20, new), the guard's Defend test on the last
 shooter's hex (slip 21, new; found by the blind re-read); the hero's tile's field (slip 6) needs
-the attacking hero's adventure tile, which the seam does not carry (BAT-STUB-7, BAT-Q56). **Draws:**
+the attacking hero's adventure tile, which the seam did not carry (BAT-STUB-7; since E23 T6 `BattleSetup.attacker_ground`, BAT-Q56). **Draws:**
 none new. **Readings at risk** (added for T7): the Upper Wall's breach through the display overlay
 (a shown battle with the movement shadow may differ); a dead enemy recorded by its stale rank; the
 besieger's walk to a hex it cannot stand on (a flyer's flown-over wall hex) leaving the last action.
@@ -5539,7 +5539,7 @@ with the context's least bonuses, E's shot flag and the desperate mode.
 only at the engine's targets (ADR-0027 point 3); the original builds the context whenever its
 hero may cast, so the policy draws the predictions even when no spell can be paid. A computer
 hero considers a cast at every activation of a stack of its side but a war machine, before the
-stack acts, once a round (+0x54B4). The retreat test's answer is no until T6 (BAT-STUB-13, BAT-Q61);
+stack acts, once a round (+0x54B4). The retreat test's answer was no until T6 (BAT-STUB-13, BAT-Q61; built in E23 T6, BAT-AI-024);
 the raises, Sacrifice, Earthquake and Teleport are T5b's (BAT-STUB-14).
 
 ### 7.57 Code reading: the raises, Sacrifice and Earthquake re-read for the port (E23 T5b1, 2026-10-22)
@@ -5811,3 +5811,19 @@ difficulty) × 0.015)` (the product a double); `k` = experience / 200 000 (signe
 0.03 (0x3CF5C28F) when above 0.03 (a double), `x = f32(f + x)`; for the attacker `x = f32(x −
 0.06f)`; above 0.16 (a double) `x` = 0.16f. Step 9: `q = f32(f32(own) / f32(own + other))` (the
 sum in 32 bits): yes when `q < x` or unordered (0 / 0).
+
+**Read again for the retreat's port (E23 T6's last session):** 0x41E570 from its start, 0x41E440
+and 0x477A00 in full, and 0x4E4580's end. The order stands as above; details: the Normal draw
+comes after the hero test and before the Shackles (0x41E5BC); the price (0x41E847) comes before
+the predictions (0x41E85A), the gold test after them (`gold < price + 2500`, signed, 0x41E8D7);
+step 5 walks the side's records in use (+0x54BC) and passes over the dead and the war machines
+(bit 6: the arrow towers too); step 7 walks records 0 to 19 of each side with no creature test
+but a type and a count above 0, the arrow towers included (count × the record's Fight Value,
++0xB0). 0x41E440 walks all the attacker's records in use (flags `0x22`: flying or able to batter
+walls, the Catapult and the Cyclops; then 0x4428F0) and every defender record in use but
+creature 149. 0x477A00 multiplies the halved sum (`cdq; sub; sar`, towards 0) as an `f32` by
+0x4E4580's `1.0 − d` (st(0), not stored: the discount `d` an `f32`). **Found** (survey slip 33,
+not built, BAT-STUB-17): Teleport's walker turns are real (§7.58), and a creature caster's cast
+entry in them (§7.59) may build a spell context whose predictions (0x422A40 with flag 0) set every
+listed stack's planned damage (+0x534) anew, which the hero's later spells read (0x443080 with
+flag 1). Nothing copied (Q29).

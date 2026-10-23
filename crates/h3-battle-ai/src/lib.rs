@@ -38,8 +38,11 @@
 //! creature (0x473EA0). In the tactics phase ([`tactics`], §7.60) the side ends its phase after a
 //! round without a placement or after three, its shooters move to the hex in the zone with the
 //! fewest free neighbours (0x422060) and its walkers walk towards their plans as far as the zone
-//! lets them (0x421F80 with the phase's flag). The rest stands in until its task builds it: the
-//! hero never retreats (BAT-STUB-5, BAT-STUB-13; T6).
+//! lets them (0x421F80 with the phase's flag). The retreat test (0x41E570; [`retreat`], E23 T6)
+//! weighs the hero's worth, the predictions of both sides' runs and the side's share of the
+//! battle's Fight Value: the hero's cast asks it before its choice (a yes makes the choice
+//! desperate), the stack's action again outside the tactics phase (a yes is a retreat; the
+//! computer never surrenders).
 //!
 //! The original's slips in its own estimates (survey `E23-battle-ai.md` §4) follow the quirk
 //! BAT-QUIRK-25 (`quirk.battle.original_ai_slips`, ADR-0027 point 9): on in `faithful`, off in
@@ -76,6 +79,7 @@ mod hexes;
 mod odds;
 mod order;
 mod predict;
+mod retreat;
 mod scores;
 mod shooter;
 mod spells;
@@ -85,14 +89,14 @@ mod walker;
 #[cfg(test)]
 mod tests;
 
-use h3_battle::{BattleSide, BattleState, Command, Stack, StackId, StackTraits, computer};
+use h3_battle::{BattleSide, BattleState, Command, StackId, StackTraits, computer};
 use h3_content_battle::BattleRuleset;
 use h3_kernel::Rng;
 
 /// The policy's behaviour version (ADR-0027 point 12): bumped with every change of a choice, so
 /// that a training record names its opponent (the AI lane's engine identity includes it).
 /// Replays store commands and do not change with it.
-pub const POLICY_VERSION: u32 = 17;
+pub const POLICY_VERSION: u32 = 18;
 
 /// The command the original's computer gives for `side`, the side to act in `state` (the active
 /// stack's controller, BAT-MAG-026), whatever `BattleSetup.human` says (ADR-0027 point 8):
@@ -115,11 +119,12 @@ pub fn choose(
 /// The original's computer's choice for `side` before validation (the property tests assert the
 /// engine accepts it): in the tactics phase the phase's turn ([`tactics::turn`], BAT-AI-023);
 /// else first its hero's cast ([`hero::cast`], 0x422DA0; BAT-AI-017: its spell
-/// context's and its choice's draws from `rng`), then the stack's action (0x477EE0, 0x4221F0;
-/// BAT-AI-001). A stack that can shoot
-/// now ([`computer::shoots`]; the original's Ballista always can) shoots ([`shooter::shoot`],
-/// BAT-AI-002 to BAT-AI-004: the Cyclops's wall shot draws from `rng`); any other is a walker
-/// ([`walker::turn`], BAT-AI-005, BAT-AI-006: its candidates draw from `rng`).
+/// context's, its retreat test's and its choice's draws from `rng`), then the stack's action
+/// (0x477EE0, 0x4221F0; BAT-AI-001): the commanded Catapult's shot and First Aid Tent's heal;
+/// for any other stack the retreat test ([`retreat::test`], BAT-AI-024: a yes is Retreat), then
+/// a stack that can shoot now ([`computer::shoots`]; the original's Ballista always can) shoots
+/// ([`shooter::shoot`], BAT-AI-002 to BAT-AI-004: the Cyclops's wall shot draws from `rng`); any
+/// other is a walker ([`walker::turn`], BAT-AI-005, BAT-AI-006: its candidates draw from `rng`).
 // rule: BAT-AI-001
 pub fn unchecked(
     state: &BattleState,
@@ -136,20 +141,18 @@ pub fn unchecked(
     if let Some(cast) = hero::cast(state, ruleset, (id, side), rng) {
         return cast;
     }
-    // stub: BAT-STUB-5
-    // The retreat test before the stack's action (0x477EE0, 0x41E570; §7.55, §7.60): T6's last
-    // part; until then the side never retreats.
-    if computer::shoots(state, ruleset, id) {
-        return shooter::shoot(state, ruleset, id, rng);
-    }
-    if state.stack(id).is_some_and(Stack::is_catapult) {
+    let me = &state.stacks()[id.index()];
+    if me.is_catapult() {
         return catapult(state, ruleset, id, rng);
     }
-    if state
-        .stack(id)
-        .is_some_and(|s| s.has(StackTraits::FIRST_AID))
-    {
+    if me.has(StackTraits::FIRST_AID) {
         return tent(state, id);
+    }
+    if retreat::test(state, ruleset, side, rng, false).retreat {
+        return Command::Retreat;
+    }
+    if computer::shoots(state, ruleset, id) {
+        return shooter::shoot(state, ruleset, id, rng);
     }
     walker::turn(state, ruleset, (id, side), rng)
 }
