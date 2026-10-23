@@ -892,7 +892,10 @@ command = [
 # (state 1). The Archangel flies in beside the lower tower, the Goblins and the Pikemen defend;
 # in round 2 the keep shoots the Pikemen (defending) and the lower tower the Archangel, facing
 # right (drawn unmirrored); the upper tower's turn is gone. `seed`: the engine's, whose shots
-# are the original's (15, 9).
+# are the original's (15, 9). Frames: the explosion at the upper tower cut at screen row 97
+# (CLT-Q22, reproduced); at 13 331 a 30 × 30 square of the background at the arrow's last place
+# over the Archangel's first reaction frame (899 pixels, §7.11's redraws, listed); the shots'
+# first frames leave their outline's top row (11, 4, 4 pixels, §7.11 (3)).
 [[sequence]]
 id = "tower"
 scenario = "seq-tower.toml"
@@ -926,6 +929,9 @@ command = [
 # Catapult hits the mid-lower wall (hex 130); the Cyclops on hex 35 shoots the lower tower (hex
 # 183) below it in its group 14 (up), the one on hex 137 the upper tower (its rectangle 0xFF)
 # above it in group 16 (down): the original's angle unnegated. Each roll forced: a hit for 1.
+# Frames: the first Cyclops' first shot frame leaves its standing outline (103 pixels, then 5 at
+# its feet until the next whole redraw at 7 801, §7.11 (3)); the upper tower's explosion cut as in
+# `tower` (CLT-Q22, reproduced).
 [[sequence]]
 id = "cyclops"
 scenario = "seq-cyclops.toml"

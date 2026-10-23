@@ -3116,7 +3116,11 @@ Q21 (the user, 2026-10-23).
   5. *The landing:* `WallMiss.82m` for 0 damage, else `WallHit.82m` (loaded by name: category 0,
      sample handle 0, volume 127), then the explosion, `CSGRCK.DEF` for 0 damage (10 frames growing
      to 110 × 143 in a 180 × 230 canvas) or `SGEXPL.DEF` (10 frames in 254 × 203, the largest frame
-     4, smaller after), group 0, its canvas centred on the target point. Each frame k, 0 to 9: an
+     4, smaller after), group 0, its canvas centred on the target point; drawn (0x446453) with
+     its rectangle clipped to the battlefield (0x446340) as the source size from the canvas's own
+     top-left corner, which the frame drawer 0x47C570 clips again: a canvas reaching above the
+     top edge loses as many rows at its bottom (the upper tower's, y −53: cut at screen row 97;
+     the left edge alike, which no target reaches; CLT-Q22). Each frame k, 0 to 9: an
      unshown redraw of everything without the background restored, through the deadline at T
      (`battle_redraw(0, 0, 1, 100, 0, 1)`), the frame drawn over it, its rectangle clipped to the
      battlefield shown alone. The deadline being behind after the flight, frames 0 and 1 show at
@@ -3282,3 +3286,44 @@ Q21 (the user, 2026-10-23).
   0xFE, 0xFF and the hexes; 22 on a defender's turn), `through` (an attacker's shooter at a stack
   behind the walls: the broken arrow and the halved damage, `shot_wall_test` 0x467510),
   `defended` (the keep kills the attacker's last stack: `defend castle`).
+
+**Recorded (M4 T2b, 2026-10-23).** The viewer plays the reading (`h3_view::anim`'s `siege`
+module; the asset tables' `wall_explosions` and `wall_sounds`, harvested; the turrets' looks the
+town's shooter's with the turret's missile) and seven hot-seat sequences are as recorded
+(`clients/situations/sequences.toml`; the harness's siege lines below): `keep` (the keep, the
+upper and the lower tower at the Pikemen, the Griffins and the Archers), `hit` (the upper wall hit
+for 1), `missed` (aimed at the gate, the tie forced to the mid-lower wall), `automatic` (the
+Catapult on its own: `catapult_tie` 2, a hit of no damage: CSGRCK and `WallMiss`), `breach` (a
+Citadel's mid-upper wall and then the gate destroyed, the retarget's tie forced), `tower` (the
+upper tower destroyed, its cover and shooter gone at frame 5; the keep's and the lower tower's
+shots in round 2, the lower tower facing right) and `cyclops` (the lower tower below a Cyclops in
+group 14, the upper tower above the other in group 16: CLT-Q19 (1)). Findings:
+
+- **The harness's siege lines.** Each turret record's pose (`<ms> turret <k> g f d`) and the
+  walls' states (`<ms> walls <18> gate <n>`) as memory holds them; the turret stacks themselves
+  (the defender's last records) never change. The wall shots' rolls are forced with values
+  (`roll:wall_damage:1`, `roll:wall_hit::2`: a count), the runbook's "Forced rolls".
+- **The turrets' counts.** The situation's town gives the keep 5 creatures and each tower 3
+  (`town_turret_count` 0x5BF4F0: one structure besides the 4 counts), so the sequences' scenarios
+  set `structures = 1` for the engine's (BAT-SIE-016); the turrets' damage then matches with a
+  searched seed.
+- **The Catapult on its own** acts at its turn's start in the same millisecond as the command
+  before it, outlined by a redraw then until its first frame (*provisional*: that redraw not
+  read): the defender commanding its turrets opens the record on the keep's turn, so `automatic`
+  needs no change of CLT-Q20's (which the opening's automatic turret shots still wait for).
+- **The rock's arc** leaves the screen at its top for a shot from hex 119 to the upper wall or
+  tower (no screen changes for some 700 ms): as computed, the frames before and after exact.
+- **Differences listed** (the frame check's `frames` files): a wall shot's or a turret's first
+  frame leaves its standing frame's outline top row on the screen (11 and 4 pixels: the first
+  frame's dirty rectangle is the new frame's alone, `reset_dirty_rects` then the shooter's flag;
+  §7.11 (3), not copied); the explosions' redraws darken the stacks' shadows in their rectangle
+  (§7.11 (1), classified as artifacts); a Catapult's or Cyclops' target hint in the status line
+  (`Attack Upper Wall`, kind 16, GENRLTXT 221) masked as ` log` until T2c draws the siege's mouse.
+  A Cyclops' first shot frame leaves more of its standing outline (103 pixels, 5 at its feet
+  until the next whole redraw; §7.11 (3)). In `tower` at the lower tower's shot (13 331) a 30 × 30
+  square of the background at the arrow's last place covers the Archangel's first reaction frame
+  for that frame (899 pixels): a rectangle restored from a picture without the target, §7.11's
+  redraws (not read further; not copied, the user's 2026-10-14 decision).
+- **The explosion over the top edge** (`tower`, `cyclops`: the upper tower's, its canvas from
+  y −53) shows cut at screen row 97, step 5's double clip (CLT-Q22): reproduced in the original's
+  profile (`Draw::Explosion`'s rows), whole in the fixed one; with it every explosion frame exact.

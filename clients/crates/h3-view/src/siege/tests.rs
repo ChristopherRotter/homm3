@@ -619,7 +619,7 @@ fn an_explosion_draws_in_its_rectangle_over_the_redraws() {
     let blasts: Vec<usize> = inner
         .iter()
         .enumerate()
-        .filter(|(_, d)| matches!(d, Draw::Projectile { def, .. } if def == "SGEXPL.DEF"))
+        .filter(|(_, d)| matches!(d, Draw::Explosion { def, rows: 203, .. } if def == "SGEXPL.DEF"))
         .map(|(i, _)| i)
         .collect();
     assert_eq!(blasts.len(), 2);

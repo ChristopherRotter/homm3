@@ -129,6 +129,7 @@ pub fn names(list: &[Draw], layout: &BattleLayout) -> BTreeSet<String> {
         | Draw::Wall { picture, .. } => vec![picture],
         Draw::Obstacle { def, .. }
         | Draw::Projectile { def, .. }
+        | Draw::Explosion { def, .. }
         | Draw::Creature { def, .. }
         | Draw::Shooter { def, .. }
         | Draw::Hero { def, .. }
@@ -322,12 +323,12 @@ mod tests {
             // A list within a rectangle its own names (M4 T2b: a wall shot's explosion).
             Draw::Within {
                 rect: [0, 0, 1, 1],
-                list: vec![Draw::Projectile {
+                list: vec![Draw::Explosion {
                     def: "SgExpl.def".to_string(),
                     frame: 0,
                     x: 0,
                     y: 0,
-                    mirrored: false,
+                    rows: 1,
                 }],
             },
         ];

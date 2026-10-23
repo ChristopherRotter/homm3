@@ -149,6 +149,21 @@ pub enum Draw {
         /// Reflected across its canvas.
         mirrored: bool,
     },
+    /// A wall shot's explosion frame (E17 M4 T2b, §10.2): drawn plain like a projectile; in the
+    /// original's profile only its canvas's top `rows` rows, the height of its rectangle clipped
+    /// to the battlefield (0x446453 passes the clipped size with the canvas's own place: CLT-Q22).
+    Explosion {
+        /// The DEF.
+        def: String,
+        /// The frame in group 0.
+        frame: u32,
+        /// The canvas's left edge.
+        x: i32,
+        /// The canvas's top edge.
+        y: i32,
+        /// The canvas's rows drawn from its top.
+        rows: u32,
+    },
     /// A ray's strokes, each pixel in its colour straight into the screen (§7.12).
     Ray(Ray),
     /// A hero's flag beside the battlefield, in its player's colours, with the shadow its frame
@@ -623,12 +638,18 @@ pub fn battle_at(
             drawn.drain(..background);
         }
         inner.extend(drawn);
-        inner.push(Draw::Projectile {
+        // 0x446453 draws the canvas's top as many rows as the clipped rectangle has from the
+        // canvas's own top, and the frame drawer clips the rows above the battlefield off them
+        // again: an explosion over the top edge loses as many rows at its bottom (CLT-Q22: the
+        // compose's original profile alone). Its columns alike at the left edge, which no wall's
+        // target reaches (the canvas 254 wide around x 400 or more).
+        let rows = u32::try_from(blast.rect[3] - blast.rect[1]).unwrap_or(0);
+        inner.push(Draw::Explosion {
             def: blast.def.clone(),
             frame,
             x: blast.at[0],
             y: blast.at[1],
-            mirrored: false,
+            rows,
         });
     }
     if let Some(blast) = &moment.blast {

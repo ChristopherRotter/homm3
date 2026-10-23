@@ -124,6 +124,28 @@ pub fn compose(
                 // 0x43F78A: the same drawer, group 0, mirrored toward a target on the left.
                 plain(&mut screen, batch, def, (0, *frame), *x, *y, *mirrored)?;
             }
+            Draw::Explosion {
+                def,
+                frame,
+                x,
+                y,
+                rows,
+            } => {
+                // 0x446453: the plain drawer, group 0; the original's slip, only the canvas's top
+                // rows, reproduced for the comparisons alone (CLT-Q22, as CLT-Q19).
+                let rows = match bugs {
+                    Bugs::Original => *rows,
+                    Bugs::Fixed => u32::MAX,
+                };
+                let (sprite, frame) = frame_of(batch, def, 0, *frame)?;
+                let palette = ScreenPalette::new(&sprite.def.palette, FORMAT);
+                let at = Placement {
+                    x: *x,
+                    y: *y,
+                    mirrored: false,
+                };
+                draw_frame_rows(&mut screen, frame, &palette, at, PLAIN, rows);
+            }
             Draw::Ray(ray) => {
                 // 0x5A55BF: each pixel its colour entry scaled into the masks, written straight
                 // into the screen.

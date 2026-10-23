@@ -274,6 +274,13 @@ impl Player<'_> {
             return;
         };
         let fixed = self.stage.bugs == Bugs::Fixed;
+        // The Catapult on its own shoots at its turn's start, outlined by a redraw then until
+        // its first frame shows (the recorded `automatic`; *provisional*: that redraw not read).
+        let now = self.clock.now;
+        if self.machine.is_none() && self.turns.last() == Some(&(now, shooter)) {
+            self.outlined.push((now, Some(shooter)));
+            self.machine = Some(shooter);
+        }
         let to = TARGET_POINTS.get(t).copied().unwrap_or_default();
         let anchor = self.stage.anchor(live.position(live.hex));
         let start = |i: usize| launch(anchor, live.right, &live.look, i);

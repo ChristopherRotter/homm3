@@ -407,6 +407,8 @@ fn the_automatic_sequence_plays_as_recorded() {
     let castle = castle();
     let t = play_siege(&o, &commands, Bugs::Original, Some(&castle));
     assert_eq!(t.lines(), recorded(AUTOMATIC, 5000));
+    // Outlined from its turn's start to its first frame (the lower tower's outline gone).
+    assert_eq!((t.outlined(0), t.outlined(100)), (Some(3), None));
     assert_eq!(t.walls.len(), 1);
     let blast = t.blasts.first().unwrap();
     assert_eq!((blast.def.as_str(), blast.at), ("CSGRCK.DEF", [430, 97]));
