@@ -25,7 +25,7 @@ use h3_formats::lod::LodArchive;
 use h3_formats::text::TextTable;
 use h3_map::writer::{
     ARMY_SLOTS, ARTIFACT_SLOTS, Ground, Hero, HeroArtifacts, Map, MapObject, ObjectTemplate,
-    PLAYERS, Patch, Player, Terrain, gzip, write,
+    PLAYERS, Patch, Player, TOWN_OBJECT, Terrain, Town, TownBuildings, gzip, write,
 };
 
 use crate::gate::find_ci;
@@ -179,6 +179,13 @@ fn situation(options: &Options) -> Result<(), String> {
     let (patches, ground) = special(battle.battlefield.as_deref(), &objects, options.tile)?;
     map.patches = patches;
     map.objects.extend(ground);
+    if let Some((town, fort)) = battle.siege {
+        if battle.battlefield.is_some() {
+            return Err(format!("{id}: a siege on a special battlefield"));
+        }
+        map.objects
+            .push(siege_town(town, fort, &objects, options.tile)?);
+    }
     let bytes = write(&map).map_err(|e| format!("the map: {e}"))?;
     if let Some(dir) = options.out.parent() {
         fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
@@ -276,6 +283,51 @@ fn special(
         template,
     };
     Ok((Vec::new(), Some(MapObject::Ground(ground))))
+}
+
+/// The map's building bits of the fort levels (`docs/formats/h3m.md`, "Town buildings"): the
+/// Fort's 3, the Citadel's 4, the Castle's 5 (the Village Hall, which every town has, has none).
+/// A level is built with those below it, as the experiments' sieges build them (E04c T5b).
+const FORT_BITS: [u8; 3] = [3, 4, 5];
+
+/// The town of a siege (E17 M4 T1b): Blue's, of town type `town` with the fort level `fort` (0
+/// to 3) and no other building but the Village Hall, an empty garrison, its entrance on Blue's
+/// `tile`, so that Blue's hero is its visiting hero; its picture is `objects`' (`Objects.txt`)
+/// first of class 98 with the town type as subclass, its anchor two tiles east of the entrance
+/// (h3-map's `Town`). Red stands south of the entrance ([`map`]) and steps north into the town
+/// (the situation's `key = "Up"`, `h3drive.py`).
+fn siege_town(town: usize, fort: u8, objects: &str, tile: (u8, u8)) -> Result<MapObject, String> {
+    let anchor = (tile.0 + 2, tile.1);
+    if tile.0 < 5 || tile.1 < 5 || anchor.0 > 35 || tile.1 > 34 {
+        return Err(format!(
+            "a town with its entrance on {tile:?} does not fit the map (5 columns west, 2 east, 5 \
+             rows north and Red's one south)"
+        ));
+    }
+    let (class, subclass) = (TOWN_OBJECT.to_string(), town.to_string());
+    let line = objects
+        .lines()
+        .find(|l| {
+            let mut fields = l.split_whitespace().skip(5);
+            fields.next() == Some(class.as_str()) && fields.next() == Some(subclass.as_str())
+        })
+        .ok_or(format!("Objects.txt has no town of type {town}"))?;
+    let template = ObjectTemplate::from_objects_txt(line).map_err(|e| e.to_string())?;
+    let mut built = [0u8; 6];
+    for &bit in FORT_BITS.iter().take(usize::from(fort)) {
+        built[usize::from(bit / 8)] |= 1 << (bit % 8);
+    }
+    Ok(MapObject::Town(Town {
+        tile: anchor,
+        template,
+        owner: Some(1),
+        garrison: Some([None; ARMY_SLOTS]),
+        tight_formation: false,
+        buildings: TownBuildings::Custom {
+            built,
+            forbidden: [0; 6],
+        },
+    }))
 }
 
 /// The map terrain of a pack's terrain key (`base:grass`): the packs' land terrains in the map
@@ -405,6 +457,11 @@ fn map(
             primary: Some(h.primary),
         }))
     };
+    let red = if battle.siege.is_some() {
+        (tile.0, tile.1 + 1)
+    } else {
+        (tile.0 - 1, tile.1)
+    };
     let mut players: [Option<Player>; PLAYERS] = Default::default();
     players[0] = Some(Player {
         human: true,
@@ -424,7 +481,8 @@ fn map(
         patches: Vec::new(),
         roads: Vec::new(),
         players,
-        objects: vec![hero((tile.0 - 1, tile.1), 0)?, hero(tile, 1)?],
+        // Red west of Blue, or south of the town's entrance in a siege (E17 M4 T1b).
+        objects: vec![hero(red, 0)?, hero(tile, 1)?],
         underground: None,
         // No level limit (E08 T32a's field; the byte the writer wrote before it).
         level_limit: 0,
@@ -484,6 +542,7 @@ mod tests {
             heroes: [hero(0, 0, "Orrin"), hero(102, 12, "Crag Hack")],
             human: [true, false],
             machines: [vec![(13, 4), (15, 6)], Vec::new()],
+            siege: None,
         }
     }
 
@@ -724,6 +783,61 @@ mod tests {
         let (patches, ground) = special(Some("base:cursed_ground"), OBJECTS, blue).unwrap();
         map.patches = patches;
         map.objects.extend(ground);
+        assert!(write(&map).is_ok());
+    }
+
+    /// Two towns' pictures (`Objects.txt`'s lines of class 98: Castle and Conflux).
+    const TOWNS: &str = "2\n\
+        AVCcasx0.def 000001110000011110001111111111111111111111111111 \
+        001000000000000000000000000000000000000000000000 011111111 011111111 98 0 1 0\n\
+        avchforx.def 000001110000011110001111111111111111111111111111 \
+        001000000000000000000000000000000000000000000000 011111111 011111111 98 8 1 0\n";
+
+    #[test]
+    fn a_siege_puts_blues_hero_into_its_town() {
+        let blue = BLUE_TILE;
+        let town = |t, fort| siege_town(t, fort, TOWNS, blue);
+        let Ok(MapObject::Town(castle)) = town(0, 3) else {
+            panic!("a town");
+        };
+        assert_eq!(
+            (castle.tile, castle.owner, castle.template.def.as_str()),
+            ((13, 10), Some(1), "AVCcasx0.def")
+        );
+        assert_eq!(castle.garrison, Some([None; ARMY_SLOTS]));
+        // The Fort's, the Citadel's and the Castle's bits, each level with those below.
+        let built = |t: &Town| match t.buildings {
+            TownBuildings::Custom { built, .. } => built[0],
+            TownBuildings::Standard { .. } => 0xFF,
+        };
+        assert_eq!(built(&castle), 0b11_1000);
+        let Ok(MapObject::Town(conflux)) = town(8, 1) else {
+            panic!("a town");
+        };
+        assert_eq!(
+            (built(&conflux), conflux.template.def.as_str()),
+            (0b1000, "avchforx.def")
+        );
+        assert!(town(5, 2).unwrap_err().contains("no town of type 5"));
+        assert!(
+            siege_town(0, 1, TOWNS, (4, 10))
+                .unwrap_err()
+                .contains("does not fit")
+        );
+        assert!(siege_town(0, 1, TOWNS, (11, 4)).is_err());
+        assert!(siege_town(0, 1, TOWNS, (34, 10)).is_err());
+        assert!(siege_town(0, 1, TOWNS, (11, 35)).is_err());
+        let bad = "AVCcasx0.def 1 2 3 4 98 0 1 0";
+        assert!(siege_town(0, 1, bad, blue).is_err());
+        // Red stands south of the entrance; the map with the town is written.
+        let mut battle = sides_of(Some("grass"), &[(0, "Archer", 20)]);
+        battle.siege = Some((0, 3));
+        let mut map = map("t", &battle, &ids(), blue, false).unwrap();
+        let [MapObject::Hero(red), MapObject::Hero(b)] = &map.objects[..] else {
+            panic!("two heroes");
+        };
+        assert_eq!((red.tile, b.tile), ((11, 11), blue));
+        map.objects.push(MapObject::Town(castle));
         assert!(write(&map).is_ok());
     }
 }

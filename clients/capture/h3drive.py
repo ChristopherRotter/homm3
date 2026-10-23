@@ -558,8 +558,10 @@ def run_set(rest):
         mouse = tuple(sit.get("mouse", PARK))
         game, stacks = Game(here), []
         try:
-            paths = capture(game, map_path, here, list(frames), stacks=stacks,
-                            hot_seat=bool(hot_seat), mouse=mouse)
+            # The step into the battle (E17 M4 T1b): a siege's attacker stands south of the
+            # town's entrance (`key = "Up"`), any other west of the defender.
+            paths = capture(game, map_path, here, list(frames), key=sit.get("key", "Right"),
+                            stacks=stacks, hot_seat=bool(hot_seat), mouse=mouse)
         finally:
             game.stop()
         # Our frame at each time (M3 T1b-2): the battle's idle steps (the outline's pulse) on the

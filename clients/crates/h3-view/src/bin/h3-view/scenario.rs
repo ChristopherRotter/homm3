@@ -10,7 +10,7 @@ use std::path::Path;
 use h3_battle::{BattleSetup, BattleSide, BattleState, LegalCommands, NoopSink, Viewer};
 use h3_content::{CompiledHeroEffect, HeroEffect};
 use h3_content_battle::BattleRuleset;
-use h3_contracts::BattleEffect;
+use h3_contracts::{BattleEffect, FortLevel, MachineControl};
 use h3_kernel::{Rng, StreamId};
 use h3_protocol::session::Bot as _;
 use h3_protocol::session::{ConnId, GameConfig, SeatKind, Session};
@@ -103,6 +103,10 @@ pub struct Sides {
     /// `ArtSlots.txt`'s order) and the artifact's number, which is the original's when the packs
     /// come in their order (base first: the Ballista 4, the Ammo Cart 5, the First Aid Tent 6).
     pub machines: [Vec<(usize, u16)>; 2],
+    /// The town the battle is fought at (E17 M4 T1b): its town type (the faction's index in the
+    /// ruleset, the original's when the packs come in their order) and fort level (1 Fort, 2
+    /// Citadel, 3 Castle; 0 none).
+    pub siege: Option<(usize, u8)>,
 }
 
 /// A side's hero for the original's map (E17 M3 T3a): its hero type's and class's numbers in
@@ -321,7 +325,10 @@ pub fn sides(scenario: &Path, packs: &Path) -> Result<Sides, String> {
                 })
             }
         };
-        let skills = effect_skills(&ruleset, &h.effects).map_err(|e| format!("{}: {e}", t.name))?;
+        let mut skills =
+            effect_skills(&ruleset, &h.effects).map_err(|e| format!("{}: {e}", t.name))?;
+        skills.extend(machine_skills(&ruleset, &h.war_machines)?);
+        skills.sort_unstable();
         Ok(Some(SideHero {
             hero_type: h.hero_type.index(),
             class: t.class.index(),
@@ -368,7 +375,49 @@ pub fn sides(scenario: &Path, packs: &Path) -> Result<Sides, String> {
         heroes,
         human: setup.human,
         machines: [machines(0)?, machines(1)?],
+        siege: setup.siege.map(|s| {
+            let fort = match s.fort {
+                FortLevel::None => 0,
+                FortLevel::Fort => 1,
+                FortLevel::Citadel => 2,
+                FortLevel::Castle => 3,
+            };
+            (s.faction.index(), fort)
+        }),
     })
+}
+
+/// The skills behind a hero's command of its war machines on the original's map (E17 M4 T1b):
+/// Artillery for its Ballista and a town's turrets (BAT-SIE-016), Ballistics for a siege's
+/// Catapult (BAT-SIE-011), each at the control's level, its number the ruleset's (the original's,
+/// `sstraits.txt`'s order). A siege's situation commands both, so that no war machine acts on its
+/// own before the first command: the engine's record opens after such acts (`BattleState::new`
+/// drops their events), the original's first frame before them. First Aid has none here.
+fn machine_skills(
+    ruleset: &BattleRuleset,
+    control: &MachineControl,
+) -> Result<Vec<(u8, u8)>, String> {
+    let wanted = [
+        ("artillery", control.ballista.map(|b| b.level)),
+        ("ballistics", control.catapult.map(|c| c.level)),
+    ];
+    if control.tent.is_some() {
+        return Err("a commanded First Aid Tent: no skill on the original's map here".into());
+    }
+    let mut skills = Vec::new();
+    for (name, level) in wanted {
+        let Some(level) = level else {
+            continue;
+        };
+        let number = (**ruleset)
+            .skills()
+            .iter()
+            .position(|s| s.key.as_str().rsplit(':').next() == Some(name))
+            .and_then(|n| u8::try_from(n).ok())
+            .ok_or_else(|| format!("no skill `{name}` in the ruleset"))?;
+        skills.push((number, level));
+    }
+    Ok(skills)
 }
 
 /// The record of a spectator of the battle `scenario` sets up with `seed`, its packs read from

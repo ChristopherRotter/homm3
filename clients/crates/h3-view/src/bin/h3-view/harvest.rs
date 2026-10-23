@@ -586,13 +586,17 @@ fn read_harvest(
         specials.push(string(u32_at(&row, 4 * k))?);
     }
     let mut towns = Vec::new();
-    let named = |va: u32| -> Result<Option<String>, String> {
-        (va != 0).then(|| string(va)).transpose()
-    };
+    let named =
+        |va: u32| -> Result<Option<String>, String> { (va != 0).then(|| string(va)).transpose() };
     let backgrounds = bytes(&image, exe, SIEGE_BACKGROUNDS, 4 * SIEGE_TOWNS)?;
     for town in 0..SIEGE_TOWNS {
         let (table, count, size) = SIEGE_PARTS;
-        let records = bytes(&image, exe, table + to_u32(town * count * size), count * size)?;
+        let records = bytes(
+            &image,
+            exe,
+            table + to_u32(town * count * size),
+            count * size,
+        )?;
         let mut parts = Vec::new();
         for r in records.chunks_exact(size) {
             let at = [i16_at(r, 0), i16_at(r, 2)];
@@ -605,13 +609,15 @@ fn read_harvest(
         }
         let (table, size) = SIEGE_TURRETS;
         let r = bytes(&image, exe, table + to_u32(town * size), size)?;
-        let shooter = usize::try_from(i32_at(&r, 0)).map_err(|_| format!("town {town}: shooter"))?;
+        let shooter =
+            usize::try_from(i32_at(&r, 0)).map_err(|_| format!("town {town}: shooter"))?;
         let flags = creatures
             .iter()
             .find(|c| usize::from(c.id) == shooter)
             .map(|c| c.flags)
             .ok_or(format!("town {town}: no creature {shooter}"))?;
-        let shift = if flags & TWO_HEX != 0 { 44 } else { 0 } - if shooter == MEDUSA { 5 } else { 0 };
+        let shift =
+            if flags & TWO_HEX != 0 { 44 } else { 0 } - if shooter == MEDUSA { 5 } else { 0 };
         let point = |k: usize| [i32_at(&r, 4 + 8 * k), i32_at(&r, 8 + 8 * k)];
         towns.push(SiegeTown {
             background: string(u32_at(&backgrounds, 4 * town))?,
@@ -1098,7 +1104,11 @@ fn write_table(
             let hex = hex.map(|h| format!(", hex = {h}")).unwrap_or_default();
             let names = pictures
                 .iter()
-                .map(|p| p.as_deref().map_or(Ok(""), plain).map(|p| format!("\"{p}\"")))
+                .map(|p| {
+                    p.as_deref()
+                        .map_or(Ok(""), plain)
+                        .map(|p| format!("\"{p}\""))
+                })
                 .collect::<Result<Vec<_>, _>>()?;
             let _ = writeln!(
                 t,

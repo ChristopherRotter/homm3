@@ -756,7 +756,10 @@ pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
             if town.parts.len() != SIEGE_PARTS {
                 return Err(entry(&key, "a town has 18 wall parts"));
             }
-            names(&key, &[(&town.background, ".PCX"), (&town.turrets.missile, ".DEF")])?;
+            names(
+                &key,
+                &[(&town.background, ".PCX"), (&town.turrets.missile, ".DEF")],
+            )?;
             for name in town.parts.iter().flat_map(|p| &p.pictures) {
                 if !name.is_empty() {
                     names(&key, &[(name, ".PCX")])?;
@@ -1225,7 +1228,12 @@ at = [124, 254]
         assert_eq!(castle.parts[0].hex, None);
         assert_eq!(castle.turrets.upper, [596, 80]);
         let names = t.names();
-        for n in ["SGCSBACK.PCX", "PLCBOWX.DEF", "SGCSTW21.PCX", "SGCSTW22.PCX"] {
+        for n in [
+            "SGCSBACK.PCX",
+            "PLCBOWX.DEF",
+            "SGCSTW21.PCX",
+            "SGCSTW22.PCX",
+        ] {
             assert!(names.contains(n), "{n}");
         }
         assert!(!names.contains(""));

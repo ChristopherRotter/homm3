@@ -124,10 +124,13 @@ impl Batch {
 pub fn names(list: &[Draw], layout: &BattleLayout) -> BTreeSet<String> {
     let boxes = &layout.count_box;
     let named = list.iter().flat_map(|d| match d {
-        Draw::Background { picture, .. } | Draw::AbsoluteObstacle { picture, .. } => vec![picture],
+        Draw::Background { picture, .. }
+        | Draw::AbsoluteObstacle { picture, .. }
+        | Draw::Wall { picture, .. } => vec![picture],
         Draw::Obstacle { def, .. }
         | Draw::Projectile { def, .. }
         | Draw::Creature { def, .. }
+        | Draw::Shooter { def, .. }
         | Draw::Hero { def, .. }
         | Draw::Magic { def, .. }
         | Draw::Tiled { def, .. } => vec![def],
