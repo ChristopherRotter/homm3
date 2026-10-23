@@ -136,7 +136,9 @@ whole or not at all:
   names a source (army, slot) and a target (army, slot); both armies the player's: the same hero,
   the two heroes of its open meeting, or the hero and the group of its open army dialog.
 - **Move** (ADV-ARM-001, -002): the target of the source's creature takes the stack whole (the
-  counts added, saturating at the counts' bound); an empty target takes it; any other swaps.
+  counts added; decision 109: a merge past a stack's count cap is refused, the cap's value and
+  its other uses settled at T50's start with ADR-0016 point 3's amendment, §16); an empty target
+  takes it; any other swaps.
   Between two armies the source's last stack never merges away nor goes to an empty slot (a swap
   is allowed); the group has no protected stack. Counts keep their width (A-15 fixed: the
   original's `army_swap_slots` moves one through 16 bits; ADR-0016 point 3 of the draft).
@@ -262,13 +264,14 @@ battle's observation shows both levels as 0 in such a battle.
 
 ### 14. Batch E6
 
-All eleven rows of survey §9 (decision 100), on the harness (`clients/capture/`: a common path
+Ten of survey §9's eleven rows (decision 100; E6-5 dropped by decision 109), on the harness (`clients/capture/`: a common path
 since CLT-Q18) in SoD on Easy, hot seat, from a map `h3-experiment` writes (battle-owned:
 `cross-lane`). The spec (the rows' setups, `experiments/specs/E08-batch-6*.toml`) and the
 results template are T46; the harness's new clicks and reads (survey §9's list), the recipes and
 the run T47 (as T36 and T37 for batch E5); the scoring T48 (an ADV-Q if a
-row contradicts the reading; A-15's E6-5 and A-16's E6-4 decide only the ledger's text, the
-rules being fixed by decision 98).
+row contradicts the reading; A-16's E6-4 decides only the ledger's text, the rule being fixed by
+decision 98). T47 is cut in T47a (the harness's clicks and reads), T47b1 (the recipe, checked
+with `fill`) and T47b2 (the run; decisions 108, 110).
 
 ### 15. Shared and `cross-lane` work; the building tasks; the exit criteria
 
@@ -279,7 +282,7 @@ else is the lane's own.
 
 **The building tasks**, in rounds of one or two (task ids continue the epic's; each round's cut
 confirmed at its checkpoint). As in increment 5, **batch E6 runs before the build**: it tests the
-original only, and its answers (A-15's and A-16's texts, the assembly's questions, the tactics
+original only, and its answers (A-16's text, the assembly's questions, the tactics
 flag) land once:
 
 | Round | Tasks | Content |
@@ -310,7 +313,7 @@ flag) land once:
    (coverage, determinism with the re-recorded and the two new replays, the benchmarks at their
    baselines and the new one baselined); the env plays on through meetings and army dialogs; the
    encoding is the AI lane's in `lanes.toml`.
-7. Batch E6 run and scored; D-27, D-28, A-15, A-16 and the consensus rows `verified` or reopened.
+7. Batch E6 run and scored; D-27, D-28, A-16 and the consensus rows `verified` or reopened.
 
 ### 16. Risks and open points
 
@@ -325,6 +328,11 @@ flag) land once:
 - **The handover of the env**: the AI lane takes an env whose encoding lacks increment 6's
   commands; agents trained before E13's macro-actions manage nothing. The masks' `Decline` keeps
   the env playable; the encoding's growth is the AI lane's call (its inbox).
+- **A stack's count cap** (decision 109): the original's 16-bit limits (the map's count, A-15's
+  moves) do not bind the engine; it supports a reasonable count and handles saturation
+  gracefully, a merge past the cap refused. Open until T50's start: the cap's value (data, ADR-0006),
+  and what else meets it (a join onto a stack, the split's target, the import's 16-bit count,
+  later recruiting and growth), with ADR-0016 point 3's amendment.
 - **A-16 and the split's bounds** rest on the code reading; E6-4 checks them. The engine's
   [1, t − 1] with the move reproduces the original's reachable outcomes (§7): a row that showed
   the dialog allowing what the click refuses would reopen it.
