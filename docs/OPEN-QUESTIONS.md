@@ -116,9 +116,7 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### Map client lane (`MCL-Q<n>`)
 
-#### MCL-Q1 — The map's bottom edge tests x against the map's height (E24 M1 T1a)
-
-**Context.** Outside the map the original draws `edg.def` (the terrain pass 0x412900, `docs/epics/E24-design.md` §1.4). A tile of the row below the map (y = the height) takes its bottom-edge frame 28 + (x and 3) only while 0 ≤ x < the height (0x412B4D); the top row tests x against the width. The `.h3m` holds one side, so every map is square and nothing visible depends on it. **Options:** (a) copy the test; (b) test against the width, as the code means. Both draw the same on every map. **Recommendation: (b)**, with a comment naming the original's test; no `h3_render::Bugs` switch (nothing to compare). Blocks nothing.
+(no open questions)
 
 ## Answered
 
@@ -247,7 +245,7 @@ Newest first in each block. A lane adds an answered question at the top of its o
 
 ### Map client lane (`MCL-Q<n>`)
 
-(none yet)
+- *(2026-10-23, MCL-Q1, E24 M1 T1a; answered at T1b's start)* **The map's bottom edge tests x against the height: the viewer tests the width.** Below the map the original takes the bottom-edge frame 28 + (x and 3) only while 0 ≤ x < the height (0x412B4D; `docs/epics/E24-design.md` §1.4), the top row testing the width; every map is square, so both draw the same. The user took the recommendation: the viewer tests the width, with a comment naming the original's test, and no `h3_render::Bugs` switch (nothing to compare).
 
 ### Numbered questions (`Q<n>`) and earlier decisions
 

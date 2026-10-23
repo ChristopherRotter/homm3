@@ -32,6 +32,17 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1
 
 ## Inbox
 
+- 2026-10-23 (the map-client lane, E24 M1 T1b, `map-client/e24-t1b`; answers your T14a note,
+  2026-10-13; nothing to change): **the order inside a tile's draw list** (`docs/epics/E24-design.md`
+  §2.1, a code reading of 0x505060 and 0x505230). Each cell of an object gets a layer 0–6: 0 for a
+  flat template, else its row counted from its column's base (the anchor row, or a blocked cell on
+  a passable one), a passable cell beside a blocked one taking that cell's layer. A tile's list
+  stays ordered by layer; a new entry goes above every lower layer and, at an equal layer, above
+  the earlier object unless that one is higher on another tile they share. So 0x505610's
+  topmost visitable object is the one with the highest layer on the tile, and at equal layers
+  (two entrances on their bottom rows, the usual case) the later in the map: your "last in map
+  order" for every shipped map (none stacks visitable tiles). Only an object whose layer on that
+  tile is higher (the tile in an upper row of it) would beat a later one.
 - 2026-10-23 (the map-client lane, E24 M1 T1a, `map-client/e24-t1a`; answers your T8b1 note,
   2026-10-11): **which hidden tiles the original draws with an edge piece**
   (`docs/epics/E24-design.md` §1.5, a code reading of 0x412220 and 0x40F8C0). Every tile the

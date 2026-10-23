@@ -27,12 +27,12 @@ i = −1 … 19 (inner), each call taking the tile (vx + i, vy + j) and its plac
 | 1 | 0x412900 | always | terrain, the map's edge outside it (§1.3, §1.4) |
 | 2 | 0x411B80 | not the puzzle | rivers |
 | 3 | 0x411D60 | not the puzzle | roads |
-| 4 | 0x412470 | not the puzzle | objects (T1b) |
-| 5 | 0x411590 | always | objects through the shadow drawer (T1b) |
-| 6 | 0x411F50 | a path shown (+0x4C), not the puzzle | the path (T1b) |
-| 7 | 0x410C00 | always | objects (T1b) |
-| 8 | 0x4120B0 | a path shown, not the puzzle | the path's arrows, `adag.def` (+0xB0) by the arrows of +0x48 (T1b) |
-| 9 | 0x47FC80 | manager +0x1EC (cleared when the current player has no selected hero) | not read (T1b) |
+| 4 | 0x412470 | not the puzzle | the flat objects (§2.2) |
+| 5 | 0x411590 | always | the shadows: objects', then heroes' and boats' (§2.2) |
+| 6 | 0x411F50 | a path shown (+0x4C), not the puzzle | the path arrows' shadows, `adag.def` (+0xB0) by the arrows of +0x48 (§2.2) |
+| 7 | 0x410C00 | always | the bodies: objects by layer, heroes and boats among them (§2.2) |
+| 8 | 0x4120B0 | a path shown, not the puzzle | the path's arrows (§2.2) |
+| 9 | 0x47FC80 | manager +0x1EC (a hero moving; cleared when the current player has no selected hero) | the moving hero's frame step and sounds (§2.2; M2) |
 | 10 | 0x412220 | not the puzzle | the unexplored tiles (§1.5) |
 | 11 | 0x40F2F0 | always | the view's four corner gems |
 
@@ -86,7 +86,8 @@ The terrain pass draws a tile outside the map (0x4B1330 false; the bounds 0x6783
 with `edg.def` (+0xAC), not mirrored: the corners 16 (−1, −1), 17 (W, −1), 18 (W, H), 19 (−1, H);
 the edges top 20 + (x and 3), right 24 + (y and 3), bottom 28 + (x and 3), left 32 + (y and 3);
 every tile further out ((x + 16) mod 4) + 4 ((y + 16) mod 4). The bottom edge tests x against the
-height (0x412B4D), harmless while maps are square (MCL-Q1).
+height (0x412B4D), harmless while maps are square (MCL-Q1: the viewer tests the width, the user,
+2026-10-23).
 
 ### 1.5 The unexplored tiles
 
@@ -178,6 +179,183 @@ The table, mask = 16 × row + column:
 - Terrain frames with runs (§1.3) and the DEFs' frame counts (`edg` 36, `tshre` 34, `tshrc` 4 at
   least): T2's gate on the user's files.
 - The mouse's tile and the 8-pixel offset (§1.2): M3, with a capture hovering at y = 8 + 32 k + 28.
-- Passes 4 to 9: T1b. The puzzle and covered modes: later (M5 for the hot seat).
+- Passes 4 to 9: read in T1b (§2). The puzzle and covered modes: later (M5 for the hot seat).
 - The minimap (0x412C40, inferred) takes a terrain's colour from its DEF's palette entry 22: M3.
 - What 0x6989C0 means and when the DEFs are reloaded (k's origin).
+
+## 2. The objects' draw order and shadows (M1 T1b, 2026-10-23; research item 9)
+
+Path read: the placement of an object on its tiles (place_object_tiles 0x505B20, its layers
+0x505060, the insertion 0x505230), passes 4 to 9 of §1.1, the hero and boat pieces (0x40FB30,
+0x40FE30, 0x410760, 0x4102C0, 0x4109B0), the drawers' wrappers. Not read: the moving hero's own
+pieces (0x47F860, 0x47FB40, pass 9) and the attacking monster's substitute (§2.2, both M2), the
+puzzle's class filter, the owners' tables (T5). The frames that confirm it: T4 (§2.5's
+situations).
+
+### 2.1 A tile's draw list
+
+- Each map tile keeps a list (map_item +0xE) of 4-byte entries, first drawn first: the object's
+  index (u16, map +0x14), its **cell** (byte 2: dy in the high nibble, dx in the low; the cell
+  dx columns left of and dy rows above the object's anchor, its bottom-right corner) and its
+  **layer** (byte 3).
+- **Placement** (0x505B20; at load for every object in the map's order, map_objects_place_all
+  0x4FD690, and for one placed in play): every cell of the template's width × height (+0x10,
+  +0x11, from its picture's `.msk`, msk_load 0x514610) whose tile lies on the map gets an entry,
+  column by column from the anchor leftwards, each bottom up, inserted by 0x505230 (then the
+  tile's object is recomputed, 0x505610). Heroes (class 34), boats (8), the Grail (36), random
+  heroes (70) and hero placeholders (214) get none; an event (26) only marks its entrance tiles
+  (the tile's class and word). Cells off the map (left of or above it, or right of and below it
+  when the anchor lies past the edge) have no entries: **those parts are never drawn**.
+- **A cell's layer** (0x505060) comes from the template's passability (+0x1C, a set bit
+  passable: the `.h3m`'s mask). A flat template (+0x40; inferred: the `.h3m` template's priority
+  byte not 0, which the special grounds set) gives every cell layer 0. Otherwise, per column
+  dx = 0 … w − 1, walking dy = 0 … h − 1 with L = 1 at the column's start:
+  1. if dy > 0, the cell is blocked and the cell below it passable: L = 1;
+  2. if dx > 0, the cell is passable and its right neighbour (dx − 1, dy) blocked: L = that
+     neighbour's layer;
+  3. the cell's layer is L, then L += 1.
+
+  So a layer counts the rows from the column's base (the anchor row, or a blocked cell standing
+  on a passable one) and a passable cell beside a blocked one takes the blocked cell's layer.
+  Layers run 0 to 6 (never above dy + 1).
+- **Insertion** (0x505230) keeps the list ordered by layer. The new entry N walks back from the
+  end: past every entry of a higher layer; at an entry P of the same layer it compares the two
+  objects' footprints (their rectangles' intersection, clipped to the map): if on any of those
+  tiles P's layer (its entry there) is above N's (N's cell there), N goes under P and walks on;
+  otherwise N stops right above P. It also stops above an entry of a lower layer, or at the
+  list's start. So on a tile **the higher layer is on top; at equal layers the later-placed
+  object is on top, unless the earlier one is higher on another tile they share.**
+- **The tile's object** (0x505610: the step, the visit, the pathfinder; E08 survey §2.5) is the
+  topmost visitable entry of that order: at equal layers the later object in the map, as the
+  engine takes it, but an object whose layer on that tile is higher wins whatever the map's order
+  (the adventure lane's T14a point; its inbox, 2026-10-23).
+
+### 2.2 How the passes draw them
+
+Each object pass walks the view's tiles (§1.1), skips tiles off the map, and draws an entry as
+**one 32 × 32 piece**: the frame (phase + manager +0x100) mod the frames of group 0 (§1.6) of the
+template's DEF (map +0x24 by template), its square at (32 (w − 1 − dx), 32 (h − 1 − dy)), at the
+tile's place (§1.2), clipped to the view. An object is drawn piece by piece; two objects may
+stack differently on different tiles.
+
+- **Pass 4** (0x412470): flat templates only, every cell (no mask), in list order, through the
+  flagged drawer (draw_frame_flagged 0x47D0A0: raw pixels, runs of 5 in a colour when one is
+  given, every other run skipped): the owner's colour (below) for classes 17, 20, 33, 42, 53, 77,
+  87, 98 (0x47BE10), none for every other class (0x47BDC0 passes 0: its flag pixels are skipped).
+- **Pass 5, the shadows** (0x411590): every entry, in list order, whose template is not flat and
+  whose shadow mask (+0x24; H3API: the `.msk`'s shadow mask) has the cell, through 0x47BE60 into
+  draw_frame_shadow_pass 0x47D930 (runs of 1 the border shadow, of 4 the body shadow; E17 design
+  §3.3); then the moving hero's shadow (below); then the heroes' and boats' shadows over the tile
+  (§2.3) in slots k = 0 … 5, at each k the hero's before the boat's (0x4102C0, 0x4109B0, through
+  0x47C0D0 into the same drawer).
+- **Pass 6** (0x411F50, a path shown): the arrows' shadows: `adag.def` frame a − 1 (a the tile's
+  arrow, manager +0x48) through 0x47BFA0 into draw_frame_run_shadows 0x47E820.
+- **Pass 7, the bodies** (0x410C00): for L = 0 … 6, every entry of layer L in list order whose
+  template is not flat and whose colour mask (+0x14; H3API: the `.msk`'s colour mask) has the cell, through the
+  flagged drawer, the owner's colour for the eight classes, none otherwise. **After L = 1** the
+  heroes and boats standing on the tile's row (k = 0, 1, 2), **after L = 2** those standing on the
+  row below (k = 3, 4, 5), at each k the hero before the boat (0x40FE30, 0x410760, through
+  0x47C080 into the flagged drawer). A tile with an empty list draws its heroes and boats
+  k = 0 … 5.
+- **Pass 8** (0x4120B0): the arrows: `adag.def` frame a − 1, raw pixels (def_draw_raw 0x47BF50).
+- **Pass 9** (0x47FC80): steps the moving hero's frame (manager +0x200) and plays its sounds.
+- **The owner** (0x40FD20, of the tile 0x4FEC30 gives: inferred, the object's entrance): the
+  dwelling's, garrison's, lighthouse's, mine's, shipyard's or town's owner from its table or word
+  (a hero standing there: the object under the hero), −1 none; the colour is game_palette16 entry
+  78 + owner (77 for none). The colours and the eight classes: T5.
+- **Substitutes, never in a still** (M2): the object whose index is manager +0x218 (a monster
+  attacking a hero: monster_attacks_guarded 0x4A79D2, visit_object 0x4A97B9) is drawn in passes 5
+  and 7 from the DEF at manager +0xE0, frame +0x220 + 2 × +0x21C. While a hero moves (manager
+  +0x1EC, set by hero_move_step 0x480922) 0x47FB40 (pass 5) and 0x47F860 (pass 7) draw it at the
+  view's places i = 8 … 10, its upper row at j = 7 after L = 2 and its lower at j = 8 after L = 1
+  (group +0x1FC, frame +0x200): the view keeps the moving hero at its centre.
+
+So every tile of the view is composed as: flat objects, **every shadow** (objects', the moving
+hero's, heroes', boats', the path's), the bodies by layer with the heroes and boats between layers
+1 and 2 and between 2 and 3, the path's arrows, the shroud (§1.5), the gems. **No shadow ever lies
+on a body**, and every shadow lies on the flat objects.
+
+### 2.3 Heroes and boats
+
+- They have no entries. For a tile (x, y) the passes look at the six tiles x − 1 … x + 1,
+  y … y + 1 for one whose class (+0x1E) is the hero's (34) or the boat's (8), with an entrance
+  there and a word other than −1 (0x40FB30; nothing in the puzzle): slot k = 3 dy + dx + 1. The
+  96 × 64 frame covers its tile's column ± 1 and its row and the one above; the piece is the
+  frame's square at (32 (2 − k mod 3), 32 (1 − k div 3)).
+- **So a hero is an object two rows tall with layers 1 and 2**, drawn after the objects of its
+  layer: on its row over every layer-1 piece and under every piece of layer 2 or more, on the row
+  above over layers 1 and 2. Among heroes and boats the right one is over the left one, the lower
+  over the upper.
+- **A hero on land** (0x40FE30, by the tile's word): its flag `af00` … `af07` (manager +0x16C by
+  owner +0x22), then the hero `ah00_` … `ah17_` (+0x10C by class +0x30; names 0x65F5F0,
+  0x65F5A8); group from 0x4D9110 (its facing; T5), frame manager +0x100 mod the group's frames
+  (no phase), mirrored when its facing (+0x47) is above 4.
+- **A hero in a boat** (status bit 18): the waves `abm01_` … `abm03_` (manager +0x160 by the
+  boat's type; names 0x65F67C) unless the hero's tile has map_item +0xD bit 0x02 (the coast,
+  water beside land), then the boat's flag `abf0Nx` (+0x18C, type × 8 + the boat's colour; names
+  0x65F610), then the boat `ab01_` … `ab03_` (+0x154; names 0x65F670); no hero picture. The boat
+  comes from 0x4CE900 (inferred: the hero's boat), its type +0x1A, its colour +0x1C.
+- **A boat without a hero** (0x410760, by the tile's word): the waves (but on the coast), then the
+  boat, group from 0x4D9160; its template's DEF (`avxboat0` …) is never drawn on the map.
+- 0x4102C0 and 0x4109B0 draw the same pictures in the same order through the shadow drawer.
+
+### 2.4 VCMI 1.7.5 compared
+
+VCMI orders a tile's objects by one comparator (`CMap::compareObjectBlitOrder`,
+`lib/mapping/CMap.cpp`: the print priority, the `.h3m`'s byte × 100, below everything; then the
+object with more blocked tiles directly under the other's blocked tiles on top; then the lower
+anchor row on top; then heroes on top; then the id), inserted per tile
+(`client/mapView/MapRendererContextState.cpp`) on every tile of the `.msk` rectangle in the map
+(`ObjectTemplate::readMap`: every cell visible; `readMsk` gives only the size). Per tile it draws
+terrain, river, road, then each object whole (its shadow with its body, then its flag, then its
+overlay; `MapRendererObjects::renderObject`), then the path, then the fog
+(`MapRenderer::renderTile`).
+
+| Point | Original | VCMI |
+|---|---|---|
+| Pieces | 32 × 32 per tile, the cell's square of the frame, nothing off the map | same |
+| Flat objects | layer 0, pass 4, under every shadow, without shadow or mask | print priority ≠ 0 first in the tile, with their shadow |
+| D1. Shadows | all before any body (pass 5) | each with its object's body, in the tile's order |
+| D2. Two objects | per tile, by their cells' layers: may stack differently on different tiles | one order for the pair on every tile |
+| D3. Equal layers | the later placed on top, unless the earlier is higher on a shared tile | blocked-tile counts, anchor row, heroes, id |
+| D4. Heroes and objects | a two-row object of layers 1 and 2 (§2.3) | by the comparator: above objects of its anchor row, below those anchored lower |
+| D5. Heroes among themselves | right over left, lower over upper | by the comparator: lower over upper, then the id |
+| D6. A hero's flag | under the hero | over it |
+| D7. Boats | waves (not on the coast), flag, boat; an empty boat waves and boat | boat, flag, waves; flag and waves only with a hero aboard |
+| D8. The `.msk` masks | a body only in cells of the colour mask, a shadow only in cells of the shadow mask | every cell of the rectangle |
+| D9. The path | the arrows' shadows under the bodies (pass 6), the arrows over them (pass 8) | the arrow whole over the tile's objects |
+| D10. Flag pixels | coloured for eight classes, skipped for the rest | coloured for any owner, neutral too |
+
+The user's note (neither their engine nor VCMI got the order right) is D1 to D5: VCMI's
+comparator approximates the layers with its blocked-tile rule (the layers' rule 1) but keeps one
+order per pair and draws shadows with bodies.
+
+### 2.5 T4's situations and open points
+
+Each a map of the writer (T3a: objects of any template) or a shipped map's view:
+
+1. **D1:** an object with shadow pixels in a cell where another object drawn before it in VCMI's
+   order has body pixels (a tree beside a resource pile on its left, the pile earlier in the
+   map): the original keeps the pile's body clear.
+2. **D2:** object A with a passable cell under a blocked one in a column (layers 1, 2, then 1)
+   and object B anchored one row higher with its blocked base on A's fringe row: A over B on the
+   fringe row, B over A on the row above.
+3. **D3:** two objects anchored on one row and overlapping in a column where the later one has a
+   blocked cell on a passable one (layer 1 on the upper row, rule 1) and the earlier one two
+   passable cells (layer 2 there): the earlier stays on top on every shared tile; VCMI (no
+   blocked tile under the other's, so the id) puts the later on top.
+4. **D4:** a hero beside (left or right of) a blocked cell standing on a passable one of an object
+   anchored one row lower (the cell's layer 1): the hero over that cell; VCMI under.
+5. **D5:** two heroes on neighbouring tiles of one row, the left one later in the map.
+6. **D6, D7:** heroes at rest (T5's situations), an empty boat and a hero in a boat, each in open
+   water and on a coast tile.
+7. **D8:** a template whose DEF has body or shadow pixels in a cell its `.msk` leaves clear, if any
+   (T4's gate lists them by checking every object DEF against its `.msk`).
+8. **D9:** a path arrow on a tile under an object's upper part.
+9. Flat objects (Cursed Ground, Magic Plains, …) under another object's shadow; objects cut by
+   the map's left and top edges and anchored past its right and bottom edges.
+
+Open points: +0x40 as the priority byte, 0x4FEC30 as the entrance, +0x14 and +0x24 as the
+`.msk`'s masks (inferred or H3API's; T4's flat and owned objects and its gate confirm); the
+coast test for the waves (T5's boats); which classes have flag pixels outside the eight (T5,
+D10; an `MCL-Q` if a drawn object loses its colours).
