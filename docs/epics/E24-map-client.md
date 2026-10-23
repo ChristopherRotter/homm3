@@ -1,7 +1,7 @@
 # E24 — The adventure map client
 
 Status: **refined** (2026-10-23, T0, with the user); M1 running (T1a, T1b, T2, T3a, T3b1, T3b2,
-T4a, T4b, T5a done; next T5b, `docs/lanes/map-client/QUEUE.md`).
+T4a, T4b, T5a done; next T5b1, then T5b2, `docs/lanes/map-client/QUEUE.md`).
 Lane: map-client (`docs/lanes/map-client/HANDOFF.md`: the autonomy contract, the user's asset
 notes). Opened 2026-10-23 when the user split the client lane at E17 M3's closure (CLT-Q18).
 Decisions so far live here (no ADR of its own yet; ADR-0020 and ADR-0024 bind it as they bind
