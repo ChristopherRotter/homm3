@@ -1,11 +1,11 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 done (2026-10-23: T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b, T8, T7b-1, T7b-2a, T7b-2b-1, T7b-2b-2a, T7b-2b-2b, T7b-2b-3, T7c-1, T7c-2, T7c-3, T7d, T9a, T9b-1, T9b, T9c, T9d); M4 refined (2026-10-23, T0); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 done (2026-10-23: T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b, T8, T7b-1, T7b-2a, T7b-2b-1, T7b-2b-2a, T7b-2b-2b, T7b-2b-3, T7c-1, T7c-2, T7c-3, T7d, T9a, T9b-1, T9b, T9c, T9d); M4 refined (2026-10-23, T0), T1a done (2026-10-23); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
 [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
-are there). Next: M4 T1a (sieges: the still's reading), M5 live play after M4
+are there). Next: M4 T1b (sieges: the still captured), M5 live play after M4
 (`docs/lanes/client/QUEUE.md`). Since T9c (2026-10-23) this epic
 is the battle client's; the adventure map client is E24, the map-client lane's.
 
@@ -559,14 +559,14 @@ states; the Tower 26, without the moat).
 - **T1a, the siege still read:** the redraw's siege branches (`battle_redraw` 0x494440's parts,
   the row passes' pass 0, the moat's second call, the towers last), which picture a part shows by
   its hit points, what the background buffer composes once; compared with VCMI; the town tables
-  harvested into the asset tables. It says which towns follow the same rules (the user: then
-  only a subset is captured in T1b).
+  harvested into the asset tables (moved into T1b by the user at T1a). It says which towns
+  follow the same rules (the user: then only a subset is captured in T1b).
 - **T1b, the siege still captured:** the situation writer places a town (faction, fort level),
   the harness steps the attacker in, the viewer draws the background, walls, gate, moat, towers,
   turret shooters and the Catapult; situations for every town with a Castle, one Fort, one
   Citadel; **damaged and destroyed walls as stills** (the user, 2026-10-23): the harness sets
   the walls' hit points in the original's memory at the start and the situation gives the viewer
-  the same values, for a subset of towns where T1a shows the rules are the same.
+  the same values, on Castle and Conflux (T1a: the rules are the same in every town).
 - **T2a, the siege over time read:** the Catapult's shot (`wall_shot_animate` 0x445FD0), a
   turret's (`turret_shot` 0x465AD0), the drawbridge (`gate_open` 0x4671C0, `gate_close`
   0x4672E0: the engine reports `GateOpened` after the step, the original opens the gate
@@ -583,6 +583,11 @@ states; the Tower 26, without the moat).
   classified quirk.
 - **T0 done 2026-10-23** ([log](E17-log.md#m4-t0--m4-sieges-refined-2026-10-23)): the cut
   above agreed; the wall states as stills by memory, on a subset of towns if the rules agree.
+- **T1a done 2026-10-23** ([log](E17-log.md#m4-t1a--the-siege-still-read-2026-10-23), design
+  §10.1): the siege still read (the 18 parts and their picture states, the drawbridge and its
+  rope, the walls drawn in three strips across the rows, the turrets' shooters, the moat over a
+  stack), the same rules in every town; VCMI differs on a few points; the harvest moved into
+  T1b, the wall states on Castle and Conflux (the user).
 
 ### The adventure lane's harness (H1, H2: its batch E3)
 

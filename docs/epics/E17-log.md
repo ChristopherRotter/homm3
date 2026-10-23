@@ -2262,6 +2262,36 @@ On `client/e17-m4-t0`, the user present. #413 (T9d) had merged; `master` at #414
   hit points into the running copy's memory at the start, the viewer gets the same values), and
   only a subset of towns if they follow the exact same rules (T1a says which).
 
+### M4 T1a — The siege still read (2026-10-23)
+
+On `client/e17-m4-t1a`, the user present. A code reading (`scripts/exe.py`; the user's
+`Heroes3.exe`, the four LODs staged for the pictures), compared with VCMI 1.7.5's
+`BattleSiegeController` and the factions' siege positions. Design §10.1; the address map
+(`siege_parts_at_hex`, `draw_turret_shooter`, `battle_draw_pcx_rect`, `moat_over_stack` new;
+`siege_wall_parts_by_town` moved to its true start 0x66D848: the map's 0x66D868 was the first
+record's hit points, the record holding x, y, the hex and five pictures before WALLS.TXT's name
+and hit points; `siege_turrets_by_town` read) and `structs.toml` (the battle manager's
+`siege_pictures`, `wall_picture_states`).
+
+- **Read:** the 18 parts in WALLS.TXT's order, each showing the slot of its picture state (2
+  whole, 1 hit, 0 destroyed; a Castle's walls start at 2 with 3 hit points); the drawbridge by
+  the gate's state at row 5's start and its rope after row 5 while open; the back wall after the
+  layer-1 obstacles; the upper tower before the rows, the lower one after them; walls and
+  buttresses in three vertical strips at the wall line's hexes of three rows (the lower wall's
+  last strip on hex 200, the redraw's call there explained); the turrets' shooters (the town's
+  creature standing, mirrored, the canvas's top 232 rows); a 44 × 6 strip of the moat over a
+  stack in it. Every picture name is in the LODs (Conflux's in `H3ab_bmp.lod`); `SgOb1h` and
+  `SgOb2h`, seen at T0, are the town screen's (`BoSgob1h.pcx`).
+- **The same rules in every town:** only the points, the pictures, the shooter (the Medusa's
+  two-hex shift and its own 5 pixels), the moat (none in the Tower; the Fortress's second row)
+  differ. **VCMI** differs on the drawbridge (one pixel left everywhere), Necropolis's lip
+  (absent), the Dungeon's points (one to five pixels), the walls' hexes (whole, a row earlier),
+  the battlements at a Fort (hidden), and draws neither the moving bridge, the rope nor the moat
+  over stacks. No oddity of the original found that a picture of it shows (a composition of
+  the pictures by the reading looked right in all nine towns): the captures decide, T1b.
+- **The user:** the harvest of the tables moves into T1b (where the drawer decides the table's
+  shape); the wall states are captured on Castle and Conflux only.
+
 ## Accepted review lists (M1, M2, M3)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its
