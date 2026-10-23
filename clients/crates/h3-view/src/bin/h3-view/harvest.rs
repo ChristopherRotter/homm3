@@ -316,11 +316,14 @@ struct Harvest {
     towns: Vec<SiegeTown>,
 }
 
+/// A siege part's point, the hex it is drawn at (none: −1) and its pictures by slot.
+type SiegePart = ([i16; 2], Option<i16>, [Option<String>; SIEGE_SLOTS]);
+
 /// A town's siege tables (the asset tables' `[[town]]`, E17 M4 T1b).
 struct SiegeTown {
     background: String,
     /// Each part's point, the hex it is drawn at and its pictures by slot.
-    parts: Vec<([i16; 2], Option<i16>, [Option<String>; SIEGE_SLOTS])>,
+    parts: Vec<SiegePart>,
     shooter: usize,
     missile: String,
     /// The keep's, the lower tower's and the upper tower's point.

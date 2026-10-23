@@ -298,6 +298,22 @@ mod tests {
                 y: 0,
                 hot: [0, 0],
             },
+            // A siege's part its picture, a shooter its DEF (M4 T1b).
+            Draw::Wall {
+                picture: "SgCsTw21.pcx".to_string(),
+                x: 0,
+                y: 0,
+                clip: None,
+            },
+            Draw::Shooter {
+                def: "clcbow.def".to_string(),
+                group: 2,
+                frame: 0,
+                anchor: [0, 0],
+                mirrored: true,
+                outline: None,
+                rows: 232,
+            },
         ];
         let names: Vec<String> = names(&list, &layout).into_iter().collect();
         assert_eq!(
@@ -308,6 +324,7 @@ mod tests {
                 "C06SPF0.DEF",
                 "CBAR.PCX",
                 "CH00.DEF",
+                "CLCBOW.DEF",
                 "CMFLAGL.DEF",
                 "CMNUMWIN.PCX",
                 "CR.DEF",
@@ -319,6 +336,7 @@ mod tests {
                 "OTHER.PCX",
                 "PLAYERS.PAL",
                 "PLCBOWX.DEF",
+                "SGCSTW21.PCX",
                 "SMALFONT.FNT",
                 "SP12_.DEF",
                 "TINY.FNT"

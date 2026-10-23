@@ -363,6 +363,50 @@ fn images_are_drawn_opaque_and_clipped() {
 }
 
 #[test]
+fn a_clipped_image_draws_only_inside_its_rectangle() {
+    // E17 M4 T1b: a siege's wall strips and the moat over a stack.
+    let indexed = Pcx::Indexed(Box::new(IndexedImage {
+        width: 3,
+        height: 2,
+        pixels: vec![5, 0, 7, 8, 9, 10],
+        palette: palette_of_greys(),
+    }));
+    let mut s = screen(4, 2);
+    draw_image_keyed_clipped(&mut s, &indexed, 1, 0, [2, 1, 4, 2]);
+    assert_eq!(row(&s, 0), [WHITE; 4]);
+    assert_eq!(row(&s, 1), [WHITE, WHITE, grey(9), grey(10)]);
+    // Index 0 stays transparent inside it; the screen still clips.
+    let mut s = screen(4, 2);
+    draw_image_keyed_clipped(&mut s, &indexed, 1, 0, [i32::MIN, 0, i32::MAX, 1]);
+    assert_eq!(row(&s, 0), [WHITE, grey(5), WHITE, grey(7)]);
+    assert_eq!(row(&s, 1), [WHITE; 4]);
+}
+
+#[test]
+fn a_frame_cut_to_its_canvas_s_top_rows() {
+    // E17 M4 T1b: a turret's shooter, its canvas's top 232 rows (0x495090).
+    let f = frame(1, 0, 0, (1, 3), vec![10, 20, 30], vec![]);
+    let at = Placement {
+        x: 0,
+        y: 0,
+        mirrored: false,
+    };
+    let mut s = screen(1, 3);
+    draw_frame_rows(&mut s, &f, &palette(), at, SHADOWED, 2);
+    assert_eq!(s.pixels(), [grey(10), grey(20), WHITE]);
+}
+
+/// [`palette`]'s greys as an image's palette.
+fn palette_of_greys() -> Palette {
+    let mut p = Palette::default();
+    for (i, c) in p.0.iter_mut().enumerate() {
+        let v = u8::try_from(i).unwrap();
+        *c = Rgb { r: v, g: v, b: v };
+    }
+    p
+}
+
+#[test]
 fn the_translucent_drawer_blends_literal_pixels_and_skips_runs() {
     // E17 M3 T3b (0x47EF60): half the frame's colour plus half the screen's, per channel.
     let half = F.half_mask();

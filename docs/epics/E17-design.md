@@ -3032,3 +3032,36 @@ cursors) is T2a's.
   cut and the moat's strip (a stack on a moat hex).
 - **Not read:** the grid and shade options in a siege; the siege drawers' dirty rectangles beyond
   the shared rule (each extends or tests the rectangle, §7.11).
+
+**Captured (M4 T1b, 2026-10-23).** The viewer draws the reading (`h3_view::siege`, the town
+tables harvested as `[[town]]`) and the 15 siege situations of the capture set are exact
+(`clients/situations/set.toml`): every town with a Castle, a Rampart with a Fort, a Fortress with
+a Citadel, and on Castle and Conflux the walls hit with the gate open and everything destroyed
+with the gate destroyed. So the executable's points stand against VCMI's (the drawbridge, the
+Dungeon's points, Necropolis's lip are VCMI's own), and a Fort's towers, keep and covers, the
+shooter's cut to 232 rows, the Medusa's shift of 39 (44 − 5), the walls' strips across the rows,
+the drawbridge's three states and the rope are as read. Findings:
+
+- **The opening.** Every round the turrets act first, then the Catapult (BAT-SIE-016, BAT-SIE-011):
+  on their own, they act in the original's first frames, while the engine's record opens after
+  them (`BattleState::new` drops the start's events, `h3-protocol`'s session uses it). So a siege
+  situation is hot seat with both heroes commanding their machines (Ballistics, Artillery; the
+  situation writes their skills): the opening is the keep's turn in both, or the Catapult's
+  without turrets. Recording an automatic shot needs the start's events in the record (T2b).
+- **The side to act's view.** In hot seat the original shows the side to act; on the keep's turn
+  the defender's hidden objects show, a Tower's mines among them (the Land Mine pictures on its
+  moat hexes, BAT-SIE-007), which a spectator's record lacks: the Tower's situation renders the
+  defender's record (`seat`, `h3-view render --seat`).
+- **The wall states by memory.** Written after the siege's setup (the parts' states above 0) and
+  before the battle screen first shows (some 100 ms of the frozen clock later), the parts' states
+  (+0x13FA8) and the gate's (+0x53A4) show in the first frame. The hit points (+0x13F60) stay: a
+  tower's or the keep's written 0 makes the original pass its turn (its opening then the
+  attacker's). The viewer takes the same states in place of the record's (`--walls`,
+  *provisional*): a record's hit points give a part's state only whole or destroyed (a Castle's
+  walls start at 3), a hit's 1 comes from its history (T2b's timeline).
+- **Data.** Conflux's upper tower names its destroyed picture in slot 3 and leaves slot 4 empty,
+  its walls slot 4 empty, its lower tower `SGElTw11.pcx` in slot 3: states 3 and 4 never occur
+  (§10.1, the picture state), so nothing shows it.
+- **Not captured yet:** the moat's strip over a stack (no stack stands in the moat at an opening:
+  T2c's stack in the moat), the moving drawbridge (state 2, T2c), the turrets' and the Catapult's
+  poses beyond the standing frame (T2b).

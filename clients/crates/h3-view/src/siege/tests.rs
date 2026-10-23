@@ -205,7 +205,7 @@ fn the_background_holds_the_moat_and_its_lip() {
     assert_eq!(castle.back_wall(), Some(wall("TpWl.pcx", [600, 49], None)));
     // No moat: none drawn (a Tower's pictures; a moat absent).
     let tower = look(&t, &siege(3), "base:tower", None, &stacks, None).unwrap();
-    assert_eq!(tower.background(), [background.clone()]);
+    assert_eq!(tower.background(), core::slice::from_ref(&background));
     let mut dry = siege(2);
     dry.moat = 0;
     let dry = look(&t, &dry, "base:castle", None, &stacks, None).unwrap();
@@ -380,7 +380,7 @@ fn the_moat_covers_a_stack_s_feet_and_its_box_is_drawn_again() {
     // Not in the moat: the box again only; a war machine's none.
     assert_eq!(
         castle.over_stack((40, false, false), 4, &lay, Some(&count)),
-        [count.clone()]
+        core::slice::from_ref(&count)
     );
     assert!(
         castle
@@ -424,4 +424,100 @@ fn the_moat_covers_a_stack_s_feet_and_its_box_is_drawn_again() {
             .over_stack((44, false, false), 4, &lay, Some(&count))
             .is_empty()
     );
+}
+
+/// A draw's name for the order tests: a wall's picture, a shooter, a creature's stack hex, a
+/// count box's stack.
+fn name(d: &Draw) -> String {
+    match d {
+        Draw::Background { picture, .. } | Draw::Wall { picture, .. } => picture.clone(),
+        Draw::Shooter { outline, .. } => alloc::format!("shooter {outline:?}"),
+        Draw::Creature { anchor, .. } => alloc::format!("creature {anchor:?}"),
+        Draw::CountBox { stack, .. } => alloc::format!("box {stack}"),
+        other => alloc::format!("{other:?}"),
+    }
+}
+
+#[test]
+fn the_scene_draws_the_siege_in_the_redraws_order() {
+    use crate::record::tests::{manifest, observation};
+    use crate::scene::{Moment, battle_at};
+    use h3_protocol::wire::KeyTables;
+    let t = siege_tables();
+    let lay = layout();
+    let keys = manifest(KeyTables {
+        creatures: vec!["base:pikeman".into()],
+        factions: vec!["base:castle".into(), "base:rampart".into()],
+        ..KeyTables::default()
+    });
+    let mut o = observation();
+    o.siege = Some(siege(3));
+    // A stack on the moat's hex 44 (row 2), two on row 6 (drawn right to left), the turrets.
+    o.stacks = vec![
+        stack(0, Side::Attacker, 0, 44, false),
+        stack(1, Side::Attacker, 0, 102, false),
+        stack(2, Side::Defender, 0, 110, false),
+        stack(7, Side::Defender, 0, 254, false),
+        stack(8, Side::Defender, 0, 255, false),
+        stack(9, Side::Defender, 0, 251, false),
+    ];
+    let moment = Moment {
+        active: Some(7),
+        ..Moment::default()
+    };
+    let names: Vec<String> = battle_at(&o, &moment, &keys, &t, &lay)
+        .unwrap()
+        .iter()
+        .map(name)
+        .collect();
+    let at = |n: &str| names.iter().position(|x| x == n).unwrap();
+    assert_eq!(
+        names[..4],
+        ["SgCsBack.pcx", "Moat.pcx", "Mlip.pcx", "TpWl.pcx"]
+    );
+    // The upper tower before the rows, its shooter, the keep's outlined in the active turret's
+    // pulse; the lower tower after them, last.
+    assert_eq!(names[4..7], ["Tw21.pcx", "shooter None", "Tw2C.pcx"]);
+    let keep = alloc::format!("shooter {:?}", Some(lay.outline_after(0)));
+    assert!(names.contains(&keep));
+    assert_eq!(
+        names[names.len() - 3..],
+        ["Tw11.pcx", "shooter None", "Tw1C.pcx"]
+    );
+    // The moat's strip and the box again after the stack on 44; row 6 right to left.
+    let box0 = at("box 0");
+    assert_eq!(names[box0 + 1..box0 + 3], ["Moat.pcx", "box 0"]);
+    assert!(at("box 2") < at("box 1"));
+    // The turrets are no stacks drawn: three creatures in all.
+    assert_eq!(
+        names.iter().filter(|n| n.starts_with("creature")).count(),
+        3
+    );
+    // The gate open: the drawbridge before row 5's passes, its rope after them.
+    let open = Moment {
+        walls: Some(Walls {
+            gate: GATE_OPEN,
+            ..Walls::of(&siege(3))
+        }),
+        ..Moment::default()
+    };
+    let names: Vec<String> = battle_at(&o, &open, &keys, &t, &lay)
+        .unwrap()
+        .iter()
+        .map(name)
+        .collect();
+    let (bridge, rope) = (at_in(&names, "Drw2.pcx"), at_in(&names, "DrwC.pcx"));
+    assert!(bridge < at_in(&names, "box 1") && at_in(&names, "box 1") > rope);
+    assert!(bridge < rope);
+    // Below a Fort an ordinary battlefield: no siege drawn; a town the tables lack: an error.
+    o.siege.as_mut().unwrap().fort = 0;
+    let none = battle_at(&o, &moment, &keys, &t, &lay).unwrap();
+    assert!(none.iter().all(|d| !matches!(d, Draw::Wall { .. })));
+    o.siege.as_mut().unwrap().faction = 1;
+    o.siege.as_mut().unwrap().fort = 3;
+    assert!(battle_at(&o, &moment, &keys, &t, &lay).is_err());
+}
+
+fn at_in(names: &[String], n: &str) -> usize {
+    names.iter().position(|x| x == n).unwrap()
 }
