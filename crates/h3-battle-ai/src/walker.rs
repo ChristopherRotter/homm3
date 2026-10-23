@@ -863,10 +863,11 @@ impl<'a> Walker<'a> {
         let me = self.me;
         let speed = usize::from(me.speed_now());
         // The walk's search is the pathfinder's last now (survey slip 30), its stops the walker's
-        // own; a bound walker or one without speed searches nothing (0x41F58D to 0x41F5A7).
-        if speed > 0 && !computer::bound(self.state, self.id) {
-            self.after_map.set(None);
-        }
+        // own; a bound walker or one without speed searches nothing (0x41F58D to 0x41F5A7) and
+        // keeps a cast entry's.
+        let searches = speed > 0 && !computer::bound(self.state, self.id);
+        self.after_map
+            .set(self.after_map.get().filter(|_| !searches));
         let path = computer::path(self.state, self.ruleset, (self.id, self.side), to);
         let steps = path.steps();
         let n = steps.len();
