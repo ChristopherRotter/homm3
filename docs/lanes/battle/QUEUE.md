@@ -24,8 +24,8 @@ Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure ar
   release about 85 s and 15 s; `python/records/README.md`):
   `cargo run --release -p h3-cli -- ai eval --set report-v1 --json python/records/bots-report-v1.json`
   and the same with `--set neutral-v1 --json python/records/bots-neutral-v1.json`. Today's
-  numbers (version 15): the system actor beats Greedy 0.659 and Aggressor 0.678 on the report
-  set, and attacks best on the neutral set (value +0.283, Greedy's +0.223).
+  numbers (version 18): the system actor beats Greedy 0.653 and Aggressor 0.681 on the report
+  set, and attacks best on the neutral set (value +0.285, Greedy's +0.223).
 - 2026-10-23 (the adventure lane, E08 T45, `shared/e08-t45`, `cross-lane` with the user's consent;
   for your information, nothing to do): **pack format v47, core ruleset hash v48**: two hero-effect
   kinds (`meeting_spells`, `gives_spell_book`; ADR-0013 points 3 and 14) that only `h3-heroes`

@@ -13,7 +13,7 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   (T7, the neutral share; design §12): T7a (#420), T7b (#421, C ABI v32) and T7c (the neutral
   set v1, the system actor on the ladder: the strongest bot; #426, open) done 2026-10-23.
   **Next:** #426's merge, then T7d, the user's run (`configs/e06-t7.toml`; QUEUE).
-- **Versions:** battle action encoding v13, observation encoding v21, replay format v29, the adventure env's action encoding v4 (E08 T45), C ABI v32 (E06 T7b: `H3_SEAT_SYSTEM`) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q10, AI-QUIRK-1, AI-STUB-1.
+- **Versions:** battle action encoding v13, observation encoding v21, replay format v30 (E23 T6), the adventure env's action encoding v4 (E08 T45), C ABI v32 (E06 T7b: `H3_SEAT_SYSTEM`) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q10, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
 ## Standing traps

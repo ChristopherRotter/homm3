@@ -518,22 +518,25 @@ entry only where a task builds on it.
 - **`h3 ai eval`:** the system actor in the default list; `--json` schema 2 (`defender`, the
   engine's `system_policy`); both tables regenerated (`bots-report-v1.json`, new
   `bots-neutral-v1.json`); the old bots' rows did not move (only the ratings, with more games).
-- **The bots' tables** (release, the sandbox: 84 s and 14.5 s). Report set v1, row against
+- **The bots' tables** (release, the sandbox: 84 s and 14.5 s; `POLICY_VERSION` 18, E23 T6
+  merged first: the tactics phase, the tent, the Catapult; its retreat needs facts the encounters
+  leave at their defaults, so the system actor never retreats here). Report set v1, row against
   column:
 
   | | Random | Aggressor | Greedy | System |
   |---|---|---|---|---|
   | Aggressor | 0.810 | – | 0.467 | 0.322 |
   | Greedy | 0.832 | 0.533 | – | 0.340 |
-  | System | 0.871 | 0.678 | 0.659 | – |
+  | System | 0.875 | 0.681 | 0.653 | – |
 
-  The system actor's value efficiency +0.323, +0.140, +0.116 against Random, Aggressor, Greedy;
-  Glicko-2 1708 (Greedy 1560, Aggressor 1530, Random 1203). Decision 7's 0.75 targets against
-  Aggressor and Greedy now stand beside a bot at 0.68 and 0.66 (`t5-3`: 0.557, 0.533).
+  The system actor's value efficiency +0.324, +0.140, +0.115 against Random, Aggressor, Greedy;
+  Glicko-2 1709 (Greedy 1561, Aggressor 1529, Random 1201). Decision 7's 0.75 targets against
+  Aggressor and Greedy now stand beside a bot at 0.68 and 0.65 (`t5-3`: 0.557, 0.533).
   Neutral set v1, attacking the system actor: Random 0.743 ± 0.036 (value −0.056), Aggressor
-  0.967 ± 0.014 (+0.216), Greedy 0.956 ± 0.016 (+0.223), the system actor 0.993 ± 0.005
-  (+0.283). The neutral target is a value efficiency above +0.283, the system actor's own (its hero
-  casts since E23 T5a; it does not retreat yet, BAT-STUB-5).
+  0.967 ± 0.014 (+0.216), Greedy 0.956 ± 0.016 (+0.223), the system actor 0.991 ± 0.006
+  (+0.285). The neutral target is a value efficiency above +0.285, the system actor's own (its hero
+  casts since E23 T5a; it retreats only with the adventure's facts, which the encounters leave at
+  their defaults).
 - **Throughput** (`h3 ai bench`, 64 envs, one thread, 2 000 calls, the sandbox): the default
   kinds 43 111 caller steps/s inside the step, the census shares 20 872, a third neutral
   (`78,2,100,50,25,3`) 33 888; every mix far above the trainer's 5 000 samples/s. The user's

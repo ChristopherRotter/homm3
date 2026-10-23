@@ -346,9 +346,10 @@ original's computer, complete for a side without a hero since E23 T4c). Refined 
   the bots do. It reads the whole state (a trusted host, ADR-0027 point 4) and plays its side as
   the computer's whatever `human` says (point 8); the batch's `human = [true, true]` stays
   (ADR-0025 point 6). Its commands always apply (it validates them; the batch's property test
-  plays it on both sides of every synthetic scenario, a hero's side included). It never retreats
-  (BAT-STUB-5): once E23 T6 lets it, an escape would end the episode inside the call, and
-  ADR-0025 point 7 then needs a decision (the battle lane tells this lane's inbox).
+  plays it on both sides of every synthetic scenario, a hero's side included). A hero's side
+  retreats only with the setup's adventure facts (E23 T6, BAT-AI-024, ADR-0027 point 14), which
+  the encounters leave at their defaults: it never retreats here. Once the sampler fills them,
+  an escape would end the episode inside the call, and ADR-0025 point 7 then needs a decision.
 - **The neutral kinds' defender** is `Internal(System)` (A12; it was `Random`): the caller always
   plays the attacker of a neutral encounter, and an evaluation's seats still replace it.
 - **The weights stay where they are** (the user, 2026-10-23): the distribution's defaults keep
@@ -381,7 +382,7 @@ original's computer, complete for a side without a hero since E23 T4c). Refined 
   `ladder.ladder_opponents` and `h3 ai eval`'s default list name it; `h3 ai eval --json` schema
   2 names the engine's `system_policy` and a set's fixed `defender`; both bots' tables
   regenerated. The bots on the report set (`bots-report-v1.json`): the system actor beats
-  Greedy 0.659, Aggressor 0.678, Random 0.871; on the neutral set it attacks best (value +0.283
+  Greedy 0.653, Aggressor 0.681, Random 0.875; on the neutral set it attacks best (value +0.285
   against Greedy's +0.223, Aggressor's +0.216, Random's −0.056; `E06-log.md`, T7c).
 - **The run** (T7d; `configs/e06-t7.toml`, `t5-3`'s settings at the census shares): the census
   shares put 82.5 % of the episodes in the neutral kinds, each with one learning side; the user

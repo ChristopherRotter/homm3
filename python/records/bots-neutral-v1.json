@@ -2,7 +2,7 @@
   "schema": 2,
   "set": "neutral-v1",
   "max_steps": 2000,
-  "engine": {"encounters": 1, "core": "1ac6c50d158057de", "battle": "c14c573e9d2ee26f", "adventure": "483fb763b1a0ebbf", "system_policy": 15},
+  "engine": {"encounters": 1, "core": "1ac6c50d158057de", "battle": "c14c573e9d2ee26f", "adventure": "483fb763b1a0ebbf", "system_policy": 18},
   "policies": ["random", "aggressor", "greedy", "system"],
   "defender": "system",
   "strata": [
@@ -20,15 +20,15 @@
     {"attacker": "greedy", "defender": "system", "stratum": "wandering", "episodes": 500, "wins": [480, 20], "truncated": 0, "reward": [0.2260, -0.2260]},
     {"attacker": "greedy", "defender": "system", "stratum": "guards", "episodes": 500, "wins": [474, 26], "truncated": 0, "reward": [0.2177, -0.2177]},
     {"attacker": "greedy", "defender": "system", "stratum": "siege_neutral", "episodes": 500, "wins": [418, 82], "truncated": 0, "reward": [0.1270, -0.1270]},
-    {"attacker": "system", "defender": "system", "stratum": "wandering", "episodes": 500, "wins": [498, 2], "truncated": 0, "reward": [0.2863, -0.2863]},
-    {"attacker": "system", "defender": "system", "stratum": "guards", "episodes": 500, "wins": [492, 7], "truncated": 0, "reward": [0.2731, -0.2731]},
-    {"attacker": "system", "defender": "system", "stratum": "siege_neutral", "episodes": 500, "wins": [448, 52], "truncated": 0, "reward": [0.1951, -0.1951]}
+    {"attacker": "system", "defender": "system", "stratum": "wandering", "episodes": 500, "wins": [497, 3], "truncated": 0, "reward": [0.2877, -0.2877]},
+    {"attacker": "system", "defender": "system", "stratum": "guards", "episodes": 500, "wins": [496, 4], "truncated": 0, "reward": [0.2777, -0.2777]},
+    {"attacker": "system", "defender": "system", "stratum": "siege_neutral", "episodes": 500, "wins": [452, 48], "truncated": 0, "reward": [0.1964, -0.1964]}
   ],
   "rates": [
     {"policy": "random", "opponent": "system", "win_rate": 0.7432, "interval": 0.0361, "value": -0.0555, "by_stratum": {"wandering": {"attacker": 0.7460}, "guards": {"attacker": 0.7640}, "siege_neutral": {"attacker": 0.6380}}},
     {"policy": "aggressor", "opponent": "system", "win_rate": 0.9667, "interval": 0.0137, "value": 0.2163, "by_stratum": {"wandering": {"attacker": 0.9720}, "guards": {"attacker": 0.9420}, "siege_neutral": {"attacker": 0.8220}}},
     {"policy": "greedy", "opponent": "system", "win_rate": 0.9560, "interval": 0.0163, "value": 0.2228, "by_stratum": {"wandering": {"attacker": 0.9600}, "guards": {"attacker": 0.9480}, "siege_neutral": {"attacker": 0.8360}}},
-    {"policy": "system", "opponent": "system", "win_rate": 0.9927, "interval": 0.0053, "value": 0.2832, "by_stratum": {"wandering": {"attacker": 0.9960}, "guards": {"attacker": 0.9840}, "siege_neutral": {"attacker": 0.8960}}}
+    {"policy": "system", "opponent": "system", "win_rate": 0.9912, "interval": 0.0065, "value": 0.2847, "by_stratum": {"wandering": {"attacker": 0.9940}, "guards": {"attacker": 0.9920}, "siege_neutral": {"attacker": 0.9040}}}
   ],
   "ratings": []
 }
