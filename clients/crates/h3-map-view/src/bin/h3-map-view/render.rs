@@ -11,7 +11,7 @@ use std::process::ExitCode;
 
 use h3_map::Limits;
 use h3_map::writer::ObjectTemplate;
-use h3_map_view::art::MapArt;
+use h3_map_view::art::{MapArt, ObjectArt};
 use h3_map_view::batch::{self, Batch};
 use h3_map_view::compose::compose;
 use h3_map_view::live::{Drawn, Live, Moment};
@@ -228,7 +228,8 @@ fn render(options: &Options) -> Result<PathBuf, String> {
 /// The original's live part as the harness read it (`h3map.py still`'s `live.toml`): `cycles`,
 /// the palette step; `frames`, the objects' frame step the screen shows; `viewer`, the viewing
 /// player's colour; `phases`, every object's animation phase in the map's order; `anchors`, every
-/// object's anchor in that order, which must be the map's (so the phases are the objects' own);
+/// object's anchor in that order, which must be the map's (so the phases are the objects' own; a
+/// random object's may differ, MCL-STUB-1);
 /// `defs` and `classes`, every object's template in the original's memory, its DEF and its class
 /// and subclass, in that order: one that differs from the map's is what a random object became
 /// (E24 M1 T4b, design §2.7), its own picture the last of the game's `templates` of that class and
@@ -264,39 +265,6 @@ fn read_live(
             .filter(|&c| c < 8)
             .ok_or_else(|| failed("`viewer` is not a colour, 0-7"))?;
     }
-    if let Some(anchors) = table.get("anchors") {
-        let ours: Vec<toml::Value> = art
-            .objects
-            .iter()
-            .map(|o| {
-                let a = o.anchor;
-                toml::Value::Array([a.x, a.y, a.z].map(|v| i64::from(v).into()).to_vec())
-            })
-            .collect();
-        if anchors.as_array() != Some(&ours) {
-            return Err(failed(
-                "the original's objects are not the map's (`anchors`)",
-            ));
-        }
-    }
-    if let Some(phases) = table.get("phases") {
-        let phases: Option<Vec<u8>> = phases.as_array().and_then(|a| {
-            a.iter()
-                .map(|v| v.as_integer().and_then(|n| u8::try_from(n).ok()))
-                .collect()
-        });
-        let phases = phases.ok_or_else(|| failed("`phases` is not a list of bytes"))?;
-        if phases.len() != live.objects.len() {
-            return Err(failed(&format!(
-                "{} phases for {} objects",
-                phases.len(),
-                live.objects.len()
-            )));
-        }
-        for (object, phase) in live.objects.iter_mut().zip(phases) {
-            object.phase = phase;
-        }
-    }
     if let (Some(defs), Some(classes)) = (table.get("defs"), table.get("classes")) {
         let defs: Option<Vec<&str>> = defs
             .as_array()
@@ -331,6 +299,41 @@ fn read_live(
                     subclass,
                 });
             }
+        }
+    }
+    if let Some(anchors) = table.get("anchors") {
+        // A random object the original drew may stand elsewhere: a random dwelling's anchor
+        // moved by a tile in a shipped map (E24 M1 T4b). Drawn at the map's until T5 reads the
+        // random dwellings (stub: MCL-STUB-1); any other object must be where the map has it.
+        let theirs = anchors.as_array().filter(|a| a.len() == art.objects.len());
+        let moved = |(index, (object, theirs)): (usize, (&ObjectArt, &toml::Value))| {
+            let a = object.anchor;
+            let ours = toml::Value::Array([a.x, a.y, a.z].map(|v| i64::from(v).into()).to_vec());
+            ours != *theirs && live.objects[index].drawn.is_none()
+        };
+        let same = theirs.is_some_and(|t| !art.objects.iter().zip(t).enumerate().any(moved));
+        if !same {
+            return Err(failed(
+                "the original's objects are not the map's (`anchors`)",
+            ));
+        }
+    }
+    if let Some(phases) = table.get("phases") {
+        let phases: Option<Vec<u8>> = phases.as_array().and_then(|a| {
+            a.iter()
+                .map(|v| v.as_integer().and_then(|n| u8::try_from(n).ok()))
+                .collect()
+        });
+        let phases = phases.ok_or_else(|| failed("`phases` is not a list of bytes"))?;
+        if phases.len() != live.objects.len() {
+            return Err(failed(&format!(
+                "{} phases for {} objects",
+                phases.len(),
+                live.objects.len()
+            )));
+        }
+        for (object, phase) in live.objects.iter_mut().zip(phases) {
+            object.phase = phase;
         }
     }
     Ok(())

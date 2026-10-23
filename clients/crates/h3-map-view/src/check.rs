@@ -119,8 +119,12 @@ pub fn undrawn_frame(frame: &Frame, shape: &Shape) -> Undrawn {
     let width = usize::try_from(frame.width).unwrap_or(usize::MAX).max(1);
     let mut out = Undrawn::default();
     for (i, (&index, &run)) in frame.pixels.iter().zip(&frame.runs).enumerate() {
-        let x = frame.left.saturating_add(i32::try_from(i % width).unwrap_or(i32::MAX));
-        let y = frame.top.saturating_add(i32::try_from(i / width).unwrap_or(i32::MAX));
+        let x = frame
+            .left
+            .saturating_add(i32::try_from(i % width).unwrap_or(i32::MAX));
+        let y = frame
+            .top
+            .saturating_add(i32::try_from(i / width).unwrap_or(i32::MAX));
         let cell = cell(shape, x, y);
         if !run || index == 5 {
             out.body += u64::from(!cell.is_some_and(|(dx, dy)| shape.body(dx, dy)));

@@ -107,16 +107,24 @@ def cycling():
     return found
 
 
-def cycle_fits(mem):
-    """The palette cycles' steps k (mod 36) the original's palettes in memory fit (design §1.6):
-    each range of every cycling DEF is its file's colours rotated up by k."""
-    fits = set(range(36))
+def range_fits(mem):
+    """Each cycling DEF's ranges and the steps k (mod 36) each fits in memory (design §1.6): the
+    range is its file's colours rotated up by k."""
+    found = []
     for field, name, ranges in cycling():
         held, original = mem.def_palette(field), def_palette565(name)
         for first, last in ranges:
             n = last - first + 1
-            fits &= {k for k in range(36)
-                     if all(held[first + j] == original[first + (j - k) % n] for j in range(n))}
+            found.append((name, first, {k for k in range(36) if all(
+                held[first + j] == original[first + (j - k) % n] for j in range(n))}))
+    return found
+
+
+def cycle_fits(mem):
+    """The palette cycles' steps k (mod 36) every range of every cycling DEF fits."""
+    fits = set(range(36))
+    for _, _, ks in range_fits(mem):
+        fits &= ks
     return fits
 
 
@@ -131,7 +139,9 @@ def cycle_step(mem, tries=20):
             return min(fits)
         last = fits
         time.sleep(0.1)
-    raise RuntimeError(f"the palettes in memory are no steady rotation of the files' ({last})")
+    each = "; ".join(f"{name} {first}: {sorted(ks)[:4]}" for name, first, ks in range_fits(mem))
+    raise RuntimeError(f"the palettes in memory are no steady rotation of the files' ({last}; "
+                       f"{each})")
 
 
 def masked(names, shape=(600, 800)):
@@ -227,7 +237,9 @@ def still(situation_path, out=None, keep=False):
         steps = mem.frame_steps()
         now = game.clock(f"step {max(tick, redraw) - now}")
         # The clock's 20 reads can come before the main loop's idle step has run: wait for both.
-        h3adv.wait_for(lambda: mem.frame_steps() == steps + 1 and mem.map_due()[0] > tick,
+        # A second redraw at the same time can come too (E24 M1 T4b: once in eleven, the redraw
+        # due before the tick): the screen then shows the last, whose step memory holds as well.
+        h3adv.wait_for(lambda: mem.frame_steps() > steps and mem.map_due()[0] > tick,
                        f"the redraw and the tick at {now} ({tick}, {redraw})")
         k = cycle_step(mem)
         cap = game.settled()

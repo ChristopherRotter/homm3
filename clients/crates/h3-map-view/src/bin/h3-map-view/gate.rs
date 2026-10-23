@@ -16,11 +16,11 @@ use std::process::ExitCode;
 use h3_assets::palette::decode_pal;
 use h3_assets::pcx::{Pcx, decode_pcx};
 use h3_map::Limits;
-use h3_map_view::art::{Layer, MapArt};
 use h3_map::writer::ObjectTemplate;
+use h3_map_view::art::{Layer, MapArt};
 use h3_map_view::check::{self, DefSummary};
-use h3_map_view::objects::Shape;
 use h3_map_view::layout::GEM_FRAMES;
+use h3_map_view::objects::Shape;
 use h3_map_view::tables::Tables;
 
 use crate::files;
@@ -319,7 +319,9 @@ fn object_pictures(
             .or_insert_with(|| (t.def.clone(), t.class));
     }
     for (key, picture) in shipped {
-        pictures.entry(key.clone()).or_insert_with(|| picture.clone());
+        pictures
+            .entry(key.clone())
+            .or_insert_with(|| picture.clone());
     }
     let mut shapes = BTreeMap::new();
     let mut lose = 0;

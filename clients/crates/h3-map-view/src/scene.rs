@@ -451,11 +451,14 @@ impl<'a> View<'a> {
         let shape = objects::shape(self.art, self.live, self.shapes, index, self.bugs);
         let def = objects::def(self.art, self.live, index, self.bugs);
         let (dx, dy) = (entry.dx, entry.dy);
-        let drawn = template.zip(shape).zip(def).filter(|((t, s), _)| match pass {
-            Pass::Flat => t.flat(),
-            Pass::Shadow => !t.flat() && s.shadow(dx, dy),
-            _ => !t.flat() && s.body(dx, dy),
-        });
+        let drawn = template
+            .zip(shape)
+            .zip(def)
+            .filter(|((t, s), _)| match pass {
+                Pass::Flat => t.flat(),
+                Pass::Shadow => !t.flat() && s.shadow(dx, dy),
+                _ => !t.flat() && s.body(dx, dy),
+            });
         drawn.map(|((_, shape), def)| {
             let tile = self.layout.view.tile;
             let phase = self.live.objects.get(index).map_or(0, |o| o.phase);

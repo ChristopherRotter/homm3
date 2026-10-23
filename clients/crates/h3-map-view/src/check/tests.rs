@@ -118,7 +118,11 @@ fn a_body_pixel_outside_the_colour_mask_is_never_drawn() {
         Undrawn { body: 2, shadow: 0 }
     );
     // Shadows in both cells, other runs drawn by neither pass.
-    let frame = row(30, 0, &[(1, true), (4, true), (0, true), (2, true), (4, true)]);
+    let frame = row(
+        30,
+        0,
+        &[(1, true), (4, true), (0, true), (2, true), (4, true)],
+    );
     assert_eq!(undrawn_frame(&frame, &shape), Undrawn::default());
     assert!(!Undrawn::default().any());
 }

@@ -330,7 +330,13 @@ fn a_random_object_keeps_its_templates_place_and_masks() {
         assert_eq!(def(&a, &l, 0, bugs), Some("gold.def"));
         assert_eq!(def(&a, &live(1), 0, bugs), Some("random.def"));
         let drawn = super::shape(&a, &l, &s, 0, bugs);
-        assert_eq!(drawn, Some(Shape { frames: 3, ..random }));
+        assert_eq!(
+            drawn,
+            Some(Shape {
+                frames: 3,
+                ..random
+            })
+        );
         assert_eq!(super::shape(&a, &live(1), &s, 0, bugs), Some(random));
         // No such object, no shape for the drawn picture or the template's.
         assert_eq!((template(&a, 1), def(&a, &l, 1, bugs)), (None, None));
@@ -368,7 +374,13 @@ fn the_client_draws_a_random_objects_own_picture_and_masks() {
     assert_eq!(super::shape(&a, &l, &s, 0, Bugs::Fixed), Some(own));
     assert_eq!(def(&a, &l, 0, Bugs::Original), Some("ava0129.def"));
     let original = super::shape(&a, &l, &s, 0, Bugs::Original);
-    assert_eq!(original, Some(Shape { frames: 4, ..random }));
+    assert_eq!(
+        original,
+        Some(Shape {
+            frames: 4,
+            ..random
+        })
+    );
     // Placed by the map's template either way.
     let lists = DrawLists::build(&a, &l, &s, 0).unwrap();
     assert_eq!(list(&lists, 2, 3), [(0, 1)]);

@@ -74,3 +74,9 @@ epic   = "E10"
 # --- client (CLT-STUB-<n>) ---
 
 # --- map-client (MCL-STUB-<n>) ---
+
+[[stub]]
+id     = "MCL-STUB-1"
+where  = "clients/crates/h3-map-view/src/bin/h3-map-view/render.rs::read_live"
+reason = "A random dwelling the original resolves at a new game can stand a tile away from the map's anchor (seen in a shipped map, E24 M1 T4b; not read: it is resolved outside 0x4C9990's copy, docs/epics/E24-design.md §2.7). `render --live` accepts a random object's moved anchor and draws it at the map's until T5 reads the random dwellings (an owned class: no T4b view holds one)"
+epic   = "E24"
