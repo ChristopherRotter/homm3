@@ -1,7 +1,8 @@
 # ADR-0013 amendment (draft): artifacts on positions, artifact moves, combinations, Scholar
 
 - Status: Proposed (E08 T44b, 2026-10-23), from the answers at ADV-Q24 (the epic's decisions
-  93–100); for the user's acceptance at ADV-Q25. The round-1 `shared/` task applies it to
+  93–100). **Accepted by the user** (ADV-Q25, 2026-10-23; decisions 102–105), with decision 104
+  (the expansions are the game's configuration) written in. The round-1 `shared/` task applies it to
   ADR-0013.
 - Amends: ADR-0013 point 1 (the details' artifacts), point 3 (two effect kinds); adds point 14.
 - Detail: `docs/epics/E08-design.md` part A (§1–§6); facts: survey
@@ -52,8 +53,9 @@ assembled and disassembled while worn (§5.3).
        the positions in descending order, leave; the combination goes to the first position that
        takes it. A worn combination is disassembled: it leaves, and each part, in the ruleset's
        artifact order, goes to the first position that takes it. A combination in the backpack is
-       neither (D-28, the original's). Combinations follow the game's edition (ADR-0017's draft):
-       none in a map before SoD. The original's once-per-player question after an equip and its
+       neither (D-28, the original's). Combinations exist where the game's configuration enables
+       them (ADR-0017's draft: the expansions the ruleset is compiled from), whatever the map's
+       version. The original's once-per-player question after an equip and its
        question at a received part are the assembly offered as a command; a computer player's
        build at once is E10's.
     3. **Scholar at a meeting**: s is the greater `meeting_spells` level of the two heroes; with

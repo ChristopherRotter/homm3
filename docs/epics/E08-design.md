@@ -3,7 +3,8 @@
 A handover, not binding (`docs/adr/README.md`): the working detail behind increment 6's amendment
 drafts of ADR-0013 (points 1, 3, 14), ADR-0016 (points 3, 4, 6) and ADR-0017 (points 1, 6, 8, 9,
 11), drafted in T44b (`docs/lanes/adventure/adr-drafts/*-increment-6.md`) from the answers at
-ADV-Q24 (the epic's decisions 93–100), for the user's acceptance at ADV-Q25 with the cut. The task
+ADV-Q24 (the epic's decisions 93–100), accepted at ADV-Q25 with the cut (decisions 102–105;
+decision 104's expansions written in). The task
 that builds a section deletes it; the file goes when the epic closes. Facts and sources: survey
 `docs/rules/surveys/E08-army.md` (§ numbers are the survey's unless they name this note).
 
@@ -34,8 +35,8 @@ canonical hash and the pack's checks grow by one each):
 pack, `gives_spell_book` on Titan's Thunder in the SoD pack (its `pending` mark goes). Pack format
 and core ruleset hash bump (v48); both lanes' replay headers follow (`cross-lane`).
 
-**No data for the positions**: they follow from the slots' order and counts (§2). **The edition**
-is the game's (part B §10; ADV-Q25 question 3).
+**No data for the positions**: they follow from the slots' order and counts (§2). **The expansions**
+are the game's configuration (part B §10; decision 104).
 
 ### 2. Positions (HER-ART-001 amended; HER-CHG-002, HER-ART-004, HER-WAR-002 restated)
 
@@ -92,8 +93,7 @@ moves within the backpack; no command of its own.
 
 ### 4. Combinations and Titan's Thunder (HER-ART-006, HER-ART-007)
 
-- **Assembly** at a worn part's position p (`check_assemble`, `assemble_changes`): the edition
-  allows combinations (part B §10); the artifact at p is a part of combination c (the ruleset's
+- **Assembly** at a worn part's position p (`check_assemble`, `assemble_changes`): the artifact at p is a part of combination c (the ruleset's
   `parts`); every part of c is worn (each type once at least). Changes: remove p, then for each
   other part one copy from the positions in descending order (the original walks 18 down to 0;
   within a slot that is the descending index, and parts of one slot are different types), then
@@ -127,7 +127,7 @@ original's order (the 70 spells by id, each direction checked per spell) gives t
 | HER-CHG-002 (amended) | a received artifact at its first position, else the backpack's end | 2 |
 | HER-ART-004, HER-WAR-002 (restated) | the capture and a lost machine's artifact by position | 2 |
 | HER-ART-005 | moves within a hero and between two | 3 |
-| HER-ART-006 | assembly and disassembly (SoD; the edition) | 4 |
+| HER-ART-006 | assembly and disassembly (the combinations the ruleset has) | 4 |
 | HER-ART-007 | Titan's Thunder's Spell Book | 4 |
 | HER-SPL-007 | Scholar at a meeting | 5 |
 
@@ -197,7 +197,7 @@ whole or not at all:
   events: no other actor can act in between. The system actor's default answer is `Decline` (as
   for every offer).
 
-### 10. Commands, `legal_commands`, events, the observation, the edition (GAM-MAN-001, -002; GAM-SET-003)
+### 10. Commands, `legal_commands`, events, the observation, the expansions (GAM-MAN-001, -002)
 
 - **The command** (GAM-MAN-001): `GameCommand::Manage(Manage)` with `Manage::{Army(h3_adventure::
   ArmyCommand), Formation, Tactics, Artifact { from: (HeroId, ArtifactPlace), to: (HeroId,
@@ -218,11 +218,12 @@ whole or not at all:
   A meeting's step is a step (its viewers as today).
 - **The observation** (the owner's): each own hero's tactics flag beside its formation; the open
   meeting (the two heroes) or army dialog (the hero, the group's stacks) as the decision's view.
-- **The edition** (GAM-SET-003; ADV-Q25 question 3): `GameSetup.edition` (RoE, AB, SoD; the map's
-  version, set by the import), in the state, read by HER-ART-006 (no combinations before SoD) and
-  by the misc positions' count (the fifth misc only in SoD: today every map has the SoD pack's
-  five, HER-ART-001's "four before SoD"), later by the moat (E09). Without it (option b), the
-  combinations hold in every map, as the packs give them.
+- **The expansions** (decision 104, the user at ADV-Q25: "it must depend on the game configuration
+  that is used to play, i.e. the enabled expansions"): the packs the game's ruleset is compiled
+  from. The combinations (the SoD pack's artifacts with `parts`) and the fifth misc position (the
+  SoD pack's slot override) follow them, so no setup field and no map version reach the rules: a
+  map of RoE played with SoD enabled has both (the original follows the map's `mapKind`). A rule
+  the packs cannot express yet (the moat, E09) gains data or a configuration input then.
 
 ### 11. The tactics flag in battle (GAM-BAT-009; ADR-0017 point 11 of the draft)
 
@@ -236,8 +237,7 @@ battle's observation shows both levels as 0 in such a battle.
 
 ### 12. The env, the encoding's move, replays, fixtures, properties, benchmarks
 
-- **The encoding to the AI lane** (decision 99; ADR-0017 point 8 of the draft; ADV-Q25 question
-  2): the env (`crates/h3-sim/src/adventure/`: `AdventureEnv`, the action encoding v4 and its
+- **The encoding to the AI lane** (decisions 99, 103; ADR-0017 point 8 of the draft): the env (`crates/h3-sim/src/adventure/`: `AdventureEnv`, the action encoding v4 and its
   masks, the observation's planes, the rollout, their tests) moves to the AI lane in `lanes.toml`
   (round 1's shared task, with the versions table in `docs/08-work-process.md` and the global
   HANDOFF's lane table); the replay model there (`replay.rs`: game commands, not actions) stays the
@@ -267,8 +267,8 @@ battle's observation shows both levels as 0 in such a battle.
 | core ruleset hash v48, pack format | two effect kinds, the packs' data | round 1 (shared) |
 | details (in the game state hash) | positions | T49 |
 | adventure state hash v11 | the tactics flag | T50 |
-| game state hash v12 | the meeting and army dialog decisions, the edition | T51 |
-| map import v9 | positions, the edition | T49, T51 |
+| game state hash v12 | the meeting and army dialog decisions | T51 |
+| map import v9 | positions | T49 |
 | adventure replay format v6 | `Manage` | T52 |
 | action encoding | unchanged (v4); the AI lane's from the move on | — |
 
@@ -301,7 +301,7 @@ flag) land once:
 | 1 | **T45** + **T46** | T45: the shared groundwork (`shared/`, `cross-lane`): ADR-0013, -0016, -0017 amended; `meeting_spells`, `gives_spell_book`; the packs; core ruleset hash v48; the encoding's move to the AI lane (`lanes.toml`, the versions table, the global HANDOFF, the AI lane's inbox). T46: batch E6's spec and results template (§14; `h3-experiment` `cross-lane`) |
 | 2 | **T47** + **T48** | T47: the harness's clicks and reads (the hero, exchange, split, creature and army dialogs; the spells, backpack, flags and tactics reads), the recipes and the run. T48: scored; the survey's §8 and the rules' sources; an ADV-Q if a row contradicts the reading |
 | 3 | **T49** | `h3-heroes`: positions (§2: the model, validation, the first position, the capture, the import v9, the constructor and the other lanes' call sites, `cross-lane`), moves (§3), combinations and Titan's book (§4), Scholar (§5). The largest task: cut at its start if needed (positions alone; then the rest) |
-| 4 | **T50** + **T51** | T50: `h3-adventure`: the army commands, the split's bounds, dismissal, the formation and the flag, the meeting's visit, the join without room's report (§7, §8 visit, §9 offer); adventure state hash v11. T51: `h3-game`: `Manage`, the meeting and army dialog decisions, Scholar's application, `legal_commands` and `split_range`, events, the observation, the edition, the tactics flag in battle (§8–§11); game state hash v12; `ADV-STUB-2` closed |
+| 4 | **T50** + **T51** | T50: `h3-adventure`: the army commands, the split's bounds, dismissal, the formation and the flag, the meeting's visit, the join without room's report (§7, §8 visit, §9 offer); adventure state hash v11. T51: `h3-game`: `Manage`, the meeting and army dialog decisions, Scholar's application, `legal_commands` and `split_range`, events, the observation, the tactics flag in battle (§8–§11); game state hash v12; `ADV-STUB-2` closed |
 | 5 | **T52** + **T53** | T52: the env's masks (if still this lane's), replays v6 and the two new goldens, fixtures, plans, properties, benchmarks, `--with-original-data` (§12). T53: the audit against the exit criteria, increment 6 closed, increment 7 refined |
 
 **Increment 6's exit criteria:**
@@ -316,7 +316,7 @@ flag) land once:
 4. Worn artifacts sit on the original's positions: moves, the first position that takes an
    artifact, the capture and a lost machine's artifact follow it; the Spell Book and the Catapult
    never move, the machines only between machine positions, the backpack holds 64 in order;
-   combinations assemble and disassemble while worn (SoD by the edition, if chosen), Titan's
+   combinations assemble and disassemble while worn (where the game's configuration enables them), Titan's
    Thunder gives its book (HER-ART-001 to -007).
 5. A hero whose flag is off denies the tactics phase it would get, and the two heroes' Tactics
    still cancel as before (GAM-BAT-009).
@@ -342,8 +342,8 @@ flag) land once:
 - **A-16 and the split's bounds** rest on the code reading; E6-4 checks them. The engine's
   [1, t − 1] with the move reproduces the original's reachable outcomes (§7): a row that showed
   the dialog allowing what the click refuses would reopen it.
-- **The edition** (ADV-Q25 question 3): without it, RoE and AB maps get combinations and five misc
-  positions, as today.
+- **The expansions** (decision 104): a game's packs decide; the import's map version does not
+  reach the rules. The moat (E09) is the next rule that differs by expansion.
 - **Not in increment 6** (survey §12 point 9, decision 100): allied heroes' meetings and one-way
   trades (teams, E10), the computer player's join without room and meetings (E10), hero
   dismissal and the creature dialog's upgrade (E09), the backpack's rotation as a command of its

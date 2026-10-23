@@ -4823,5 +4823,10 @@ closes the two new decisions: the env's v4 mask needs only to allow it, no new e
 **The cut** (§15): five rounds, batch E6 first as increment 5's (T45 shared groundwork + T46 the
 batch's spec; T47 the harness and the run + T48 the scoring; T49 `h3-heroes`; T50 `h3-adventure`
 + T51 `h3-game`; T52 the env's masks, replays v6, fixtures, plans, properties, benchmarks + T53
-the audit). T45 and T46 queued, waiting for ADV-Q25. The AI lane's inbox told of the proposed
-paths.
+the audit). T45 and T46 queued. The AI lane's inbox told of the paths.
+
+**The checkpoint** (ADV-Q25, asked interactively; decisions 102–105): the drafts and the design
+accepted; the encoding's paths (`crates/h3-sim/src/adventure/` to the AI lane but `replay.rs`);
+the expansions as the game's configuration, not the map's edition (the user's own answer: the
+drafts' and the design's edition clauses rewritten: the packs the ruleset is compiled from
+decide, no setup field); batch E6 first. Round 1 (T45, T46) is ready.

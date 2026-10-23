@@ -4,7 +4,7 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 
 ## Current state
 
-- **E08**: increments 1 to 5 **closed** (5, movement and scouting: decisions 71–89; survey `E08-hero-movement.md`; its design note in `E08-log.md`). **Increment 6: army and hero management** (decisions 90–92; ADV-Q23): T44a done (survey `E08-army.md`; ADV-Q24: decisions 93–100); T44b done (drafts in `adr-drafts/`, design `E08-design.md`; ADV-Q25 open). Records: `E08-log.md`.
+- **E08**: increments 1 to 5 **closed** (5, movement and scouting: decisions 71–89; survey `E08-hero-movement.md`; its design note in `E08-log.md`). **Increment 6: army and hero management** (decisions 90–92; ADV-Q23): T44a done (survey `E08-army.md`; ADV-Q24: decisions 93–100); T44b done (drafts in `adr-drafts/`, design `E08-design.md`; ADV-Q25: decisions 102–105). Records: `E08-log.md`.
 - **Map reader and import** (`h3-map`): `read`/`parse` into `model::RawMap`; `import` into `h3_game::GameSetup`, `import_map` its static layer (`MAP_IMPORT_VERSION` 8, `docs/formats/h3m.md` "Import"). Every shipped map's static layer imports and validates; of the 160 shipped maps 5 import whole (9 heroes, 41 levels at load), the rest are typed `Unsupported`. `verify --with-original-data` runs `crates/h3-map/examples/original_data.rs` on the shipped maps.
 - **Monsters, grounds, guarded piles** (T20a2a to T21a; ADV-MON-002 to -010, ADV-GRD-001, ADV-PIK-004): kinds `Monster`, `Ground`; `[params.monsters]`; `ObjectSetup.monster`/`.drawn`; `army_left`; `battle_ground`; `guard_of`; `answer.rs` (`Join`, `JoinForGold`, `Pursue`); `split` (flag 24); `Defender::{Monster, Guards}`, `Actor::System`, `end_monster_battle`, `end_unowned_battle`; `MonsterChanged`; `state/piles.rs` (`Guards`, `OfferKind::Fight`).
 - **The store of heroes** (T18b, GAM-HER-001): `GameState` keeps `Arc<HeroDetails>` by `HeroId` (`GameHeroSetup.details` or defaults, validated by `h3-heroes`); `attack_defense`, `join_bonus`; `GameObservation.heroes`. T39: `movement.rs` (HER-ADV-003 to -007). Progression (T26b–T30): `level.rs`, `level_up.rs` (`draw_level_up`), `GainLevel`, `offered`; no level above the experience's; `original_choice` (HER-LVL-006); `state/levels.rs`' `Progression` (GAM-HER-002, flag 27), levels at load (GAM-SET-002), `StaticMap::terrain_shares`; levels in play (`give_levels`, `Decision::LevelUp`, `default_answer`; GAM-DEC-002, GAM-BAT-008).
@@ -19,7 +19,7 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 - **Experiments**: `h3-experiment` (battle's) has the adventure shape; batches 1 to E5 scored (`e4_score`: E4, E5-2, -3, -10). **Agents run batches** on the harness (decision 21; a common path since CLT-Q18).
 - **Adventure ruleset part** (v10 since T40: fly and water-walk prices, terrain walkers, `no_native`): terrains, roads, rivers, movement and setup parameters, object types, starting resources by difficulty, battle terrains, monsters' parameters (with the price resource).
 - **Properties** on generated playable maps (`h3-map`'s `play.rs`, `view.rs`): `Step::Fight` runs (hero casts via `h3-battle`, a dev-dependency), monsters, grounds, the system actor, guarded piles, level-ups (T30), `check_progression` after every command (T31); `the_plans_play_battles_to_a_victory`: 192 fixed cases; T42: kits, flyers and water walkers, Nomads (`the_plans_fly_and_walk_on_water`).
-- **Next:** ADV-Q25 answered with the user; T44b's pull request to merge; round 1 (T45, T46).
+- **Next:** T44b's pull request to merge; round 1 (T45, T46).
 - **ADRs accepted**: ADR-0015 to -0017 (2026-10-10), amended for increments 2 (#115), 3 (T18a, #185, with ADR-0013), 4 (T26a, #325) and 5 (T35a, #377: ADR-0013, -0016, -0017).
 - **R01** (the content split): the core `h3-content` and `h3-pack` (`core.toml`) are shared; the writer is `h3_map::writer`.
 - **Ownership:** the four crates and `h3-heroes` (since E04c), `src/adventure/` in `h3-sim` and `h3-cli` (their `Cargo.toml`, `lib.rs` and `h3-cli`'s `main.rs` are battle's: `cross-lane`), `crates/h3-cli/tests/adventure_replays.rs`, `fixtures/replays/adventure/`, `fixtures/maps/`, `benches/adventure/`, each pack's `adventure.toml`, `docs/formats/h3m.md`, `docs/rules/catalog/{adventure,game,heroes,town}.toml`.
@@ -41,7 +41,7 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 
 ### 2026-10-23 — increment 6, second session: T44b
 
-Baseline 1d9cda5. Decision 101; ADV-Q25 open.
+Baseline 1d9cda5. Decisions 101–105 (ADV-Q25).
 
 ### 2026-10-23 — increment 6, first session: T44a
 

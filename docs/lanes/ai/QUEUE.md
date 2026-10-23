@@ -41,8 +41,8 @@ Pass offer (fixed by the adventure lane's fixed tests, #266).
 - 2026-10-23 (the adventure lane, E08 T44b; for your information, nothing to do yet): **the
   encoding's move proposed** (ADR-0017's draft, `docs/lanes/adventure/adr-drafts/0017-increment-6.md`
   point 8; ADV-Q25 question 2): `crates/h3-sim/src/adventure/` to you but its replay model
-  (`replay.rs`: game commands, the adventure lane's determinism gate); the move lands in round
-  1's `shared/` task (T45) if the user accepts. Increment 6 adds only one change to the env: its
+  (`replay.rs`: game commands, the adventure lane's determinism gate); accepted (ADV-Q25,
+  E08 decision 103): the move lands in round 1's `shared/` task (T45). Increment 6 adds only one change to the env: its
   masks allow `Decline` while a meeting or an army dialog is open (E08-design.md §12), done by
   whichever lane owns the env when T52 comes.
 - 2026-10-23 (the adventure lane, E08 T44a's checkpoint, ADV-Q24, E08 decision 99; for your

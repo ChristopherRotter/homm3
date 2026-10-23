@@ -503,6 +503,13 @@ Refined with the user on 2026-10-23 (T43; ADV-Q23). Built like increments 1 to 5
 
 101. **T44b whole** (the user's instruction: "Do T44b please"): the three ADR amendment drafts, the design note and the cut in one session and one pull request, as T34b (decision 76).
 
+### Decisions at T44b's checkpoint (2026-10-23, user; ADV-Q25)
+
+102. **The drafts and the design accepted** (the user's choice of two): the amendment drafts of ADR-0013, -0016 and -0017 and `E08-design.md` as written, with decisions 103 and 104 written in. Not chosen: changes first.
+103. **The encoding's paths** (the user's choice of three): `crates/h3-sim/src/adventure/` goes to the AI lane but its replay model (`replay.rs`: game commands, this lane's determinism gate), which stays the adventure lane's; `h3-cli`'s adventure commands, the golden replays and `benches/adventure/` stay too. Not chosen: the whole sub-path, or only the action encoding and its masks.
+104. **The expansions are the game's configuration** (the user's own answer to the edition: "Yes, but this is not a 'map edition'; it must depend on the game configuration that is used to play, i.e. the enabled expansions"): the rules that differ by expansion follow the packs the game's ruleset is compiled from (the combinations and the fifth misc position come with the SoD pack), never the map's version; no setup field from the import (a map of RoE played with SoD enabled has both; the original follows the map's `mapKind`). The moat (E09) gains data or a configuration input when it comes. Not chosen: the map's edition as a setup input, or later.
+105. **Five rounds with batch E6 first** (the user's choice of two; `E08-design.md` §15): T45 + T46, T47 + T48, T49, T50 + T51, T52 + T53. Not chosen: the build first, the batch at the end.
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T43 Increment 6 refined** (with increment 5's closure). Done (2026-10-23, `adventure/e08-t43`; decisions 90, 91): army and hero management, the first round queued (T44a, T44b).

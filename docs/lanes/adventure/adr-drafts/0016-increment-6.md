@@ -1,7 +1,7 @@
 # ADR-0016 amendment (draft): a hero's army, its formation and tactics flag; meeting an own hero
 
 - Status: Proposed (E08 T44b, 2026-10-23), from the answers at ADV-Q24 (the epic's decisions
-  93–100); for the user's acceptance at ADV-Q25. The round-1 `shared/` task applies it to
+  93–100). **Accepted by the user** (ADV-Q25, 2026-10-23; decisions 102–105). The round-1 `shared/` task applies it to
   ADR-0016.
 - Amends: ADR-0016 points 3, 4 and 6.
 - Detail: `docs/epics/E08-design.md` part B (§7–§10); facts: survey
