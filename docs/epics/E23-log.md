@@ -1401,4 +1401,15 @@ Teleport's caster turns' spell contexts set the planned damage the hero's later 
 `POLICY_VERSION` 18. The default facts never retreat, so no golden replay or existing test changed
 its commands; the Normal draw now comes before every hero cast's choice (the streams moved, the
 tests' choices held). The property over random battles draws retreat facts and funds.
+*Verify* (the third session): the battle lane's scoped verify on 54dcb37 failed `check-lane`
+(stacked on the seam, `cross-lane`) and coverage (lines and regions the random battles had reached
+only by chance: fixed tests in bb7a295, a bound walker's choice among them); the full verify with
+the original data green on bb7a295 (`verify-once: verified (sandbox) code
+b78ab748a2a372885542109d125928082f30ea7d on bb7a295c7f948e8c7b42c4597076579d4e22bbec`), the
+clients' check green (`verify-once: clients verified (sandbox) code
+61a3bebb5aa8eaa98b1077bc7e22aef64db1668b on bb7a295c7f948e8c7b42c4597076579d4e22bbec`; SDL's build
+packages installed first). A trial merge with `master` (23e7924) conflicts in the AI and adventure
+queues and the lane HANDOFF; #418 moved the twenty replays' `ruleset_hash` (core ruleset hash
+v48): at the pull request, after the seam's, take `master`'s replays and rehash them on the merged
+code.
 
