@@ -62,7 +62,7 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
-- **2026-10-23, E17 M4 T0 (done; docs only).** M4 cut with the user: T1a, T1b (the still),
+- **2026-10-23, E17 M4 T0 (done; #415, docs only).** M4 cut with the user: T1a, T1b (the still),
   T2a to T2c (over time), T3; the wall states as stills by memory, on a subset of towns if T1a
   finds the rules the same.
 - **2026-10-23, E17 M3 T9d (done; #413).** Not split (the user): the fixes behind
