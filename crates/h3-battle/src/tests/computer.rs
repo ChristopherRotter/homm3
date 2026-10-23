@@ -19,7 +19,8 @@ use super::spells::{arena, arena_on, mage, spell};
 use super::support::*;
 use crate::geometry::{Field, Hex};
 use crate::{
-    BattleState, CastSpell, CastTarget, Command, Event, EventKind, StackId, Status, computer,
+    BattleState, CastSpell, CastTarget, Command, Event, EventKind, StackId, Status, TacticsPhase,
+    computer,
 };
 
 /// Places `side`'s obstacles of `kind` (the spell `name`'s) on `cells` with `value`, as a cast
@@ -419,6 +420,63 @@ fn a_turns_map_reaches_within_the_speed() {
     let ctx = computer::context(&s, &r, BattleSide::Attacker);
     let threat = computer::threat(&s, &r, &ctx, StackId(0)).unwrap();
     assert_eq!(threat.turns_at(0), 1);
+}
+
+// covers: BAT-AI-023, BAT-MAG-032
+#[test]
+fn in_the_tactics_phase_the_searches_reach_the_field_but_not_beyond_a_stop() {
+    let r = ruleset();
+    let phase = Some(TacticsPhase {
+        side: BattleSide::Attacker,
+        columns: 3,
+    });
+    // In the open: the attacker's walker (speed 5) at (2, 5), the defender at (14, 5), struck from
+    // (13, 5) at 11. Its threat records' map reaches within its speed only, outside the phase.
+    let mut s = arena(
+        &r,
+        [None, None],
+        &[("fixed", 1, 2, 5)],
+        &[("fixed", 1, 14, 5)],
+        1,
+    );
+    let me = (StackId(0), BattleSide::Attacker);
+    let far = at(&r, 14, 5);
+    assert_eq!(computer::turn_map(&s, &r, me.0, me.1).mark(far), None);
+    assert_eq!(computer::map(&s, &r, me.0, me.1).mark(far), Some(11));
+    s.tactics = phase;
+    assert_eq!(computer::turn_map(&s, &r, me.0, me.1).mark(far), Some(11));
+    assert_eq!(computer::map_within(&s, &r, me, 0).mark(far), Some(11));
+    assert_eq!(computer::path(&s, &r, me, at(&r, 13, 5)).steps().len(), 11);
+    // A corridor on row 5 closed at its right end (rows 4 and 6 blocked from x = 3 to 13, and
+    // (13, 5)) with the attacker's own pit at (6, 5): the pit is reached at the whole range of
+    // 1000 and nothing beyond it; a walk to the pit ends on it (0x4B34DE).
+    let walls: Vec<(i32, i32)> = (3..=13)
+        .flat_map(|x| [(x, 4), (x, 6)])
+        .chain([(13, 5)])
+        .collect();
+    let mut s = battle_with_obstacles(&r, &[(0, "fixed", 1)], &[(0, "fixed", 1)], &walls);
+    place(&mut s, &r, 0, 2, 5);
+    place(&mut s, &r, 1, 14, 5);
+    obstacles(
+        &mut s,
+        &r,
+        ("quicksand", ObstacleKind::Pit),
+        BattleSide::Attacker,
+        (&[(6, 5)], 0),
+    );
+    s.tactics = phase;
+    let map = computer::map(&s, &r, me.0, me.1);
+    let pit = at(&r, 6, 5);
+    assert!(map.is_stop(pit));
+    assert_eq!(
+        (map.position(at(&r, 5, 5)), map.position(pit)),
+        (Some(3), Some(1000))
+    );
+    assert!(!map.reached(at(&r, 7, 5)));
+    let path = computer::path(&s, &r, me, pit);
+    assert_eq!(path.steps().last(), Some(&(pit, false)));
+    assert_eq!(path.steps().len(), 4);
+    assert!(computer::path(&s, &r, me, at(&r, 7, 5)).steps().is_empty());
 }
 
 /// The test ruleset with a Fight Value of 100 for every creature (the computer's worth; the test

@@ -50,6 +50,7 @@ mod predict;
 mod specials;
 mod speed;
 mod spells;
+mod tactics;
 mod teleport;
 mod values;
 
@@ -1726,9 +1727,9 @@ fn a_walker_attacks_and_a_blocked_shooter_strikes_back() {
     );
 }
 
-// covers: BAT-AI-001, BAT-AI-002
+// covers: BAT-AI-001, BAT-AI-002, BAT-AI-022
 #[test]
-fn the_commanded_ballista_shoots_and_the_tent_defends() {
+fn the_commanded_ballista_shoots_and_the_tent_heals() {
     let r = ruleset();
     // The runner wounds the gogs in its first turn, so that the commanded tent has a patient and
     // takes its turns (BAT-WAR-007); the gogs defend (the walker is not under test here).
@@ -1769,24 +1770,13 @@ fn the_commanded_ballista_shoots_and_the_tent_defends() {
             }
             TENT => {
                 seen[1] = true;
-                assert_eq!(command, Command::Defend);
+                assert_eq!(command, Command::Heal { target: StackId(0) });
             }
             _ => {}
         }
         play(&mut state, &r, command);
     }
     assert_eq!(seen, [true, true]);
-}
-
-// covers: BAT-AI-001
-#[test]
-fn the_tactics_phase_ends_at_once() {
-    let r = ruleset();
-    let mut setup = setup(&[(IMP, 3)], &[(GOG, 2)]);
-    setup.heroes = [Some(hero(2)), None];
-    let state = BattleState::new(&r, &setup, 5).unwrap();
-    assert!(state.tactics().is_some());
-    assert_eq!(decide(&state, &r), Command::EndTactics);
 }
 
 // covers: BAT-AI-001
@@ -1830,7 +1820,7 @@ fn a_refused_choice_falls_back_to_defend() {
     assert!(validate(&state, &r, side, refused).is_err());
     assert_eq!(checked(&state, &r, side, refused), Command::Defend);
     assert_eq!(checked(&state, &r, side, Command::Wait), Command::Wait);
-    assert_eq!(POLICY_VERSION, 16);
+    assert_eq!(POLICY_VERSION, 17);
 }
 
 /// The setup of `setup` on `difficulty`.

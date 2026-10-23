@@ -34,8 +34,12 @@
 //! the hexes Teleport could put it (§7.58), a caster among them asking its own cast entry from its
 //! record (§7.59). A commanded Catapult aims as the original's computer does with Ballistics: the
 //! gate while it stands, then the weakest wall while all four stand, then the rest (0x473C00;
-//! E23 T6). The rest stands in until its task builds it: the hero never retreats (BAT-STUB-13),
-//! the tactics phase ends at once and the First Aid Tent defends (BAT-STUB-5, T6).
+//! E23 T6); a commanded First Aid Tent heals the patient with the most hit points lost by its top
+//! creature (0x473EA0). In the tactics phase ([`tactics`], §7.60) the side ends its phase after a
+//! round without a placement or after three, its shooters move to the hex in the zone with the
+//! fewest free neighbours (0x422060) and its walkers walk towards their plans as far as the zone
+//! lets them (0x421F80 with the phase's flag). The rest stands in until its task builds it: the
+//! hero never retreats (BAT-STUB-5, BAT-STUB-13; T6).
 //!
 //! The original's slips in its own estimates (survey `E23-battle-ai.md` §4) follow the quirk
 //! BAT-QUIRK-25 (`quirk.battle.original_ai_slips`, ADR-0027 point 9): on in `faithful`, off in
@@ -75,6 +79,7 @@ mod predict;
 mod scores;
 mod shooter;
 mod spells;
+mod tactics;
 mod walker;
 
 #[cfg(test)]
@@ -87,7 +92,7 @@ use h3_kernel::Rng;
 /// The policy's behaviour version (ADR-0027 point 12): bumped with every change of a choice, so
 /// that a training record names its opponent (the AI lane's engine identity includes it).
 /// Replays store commands and do not change with it.
-pub const POLICY_VERSION: u32 = 16;
+pub const POLICY_VERSION: u32 = 17;
 
 /// The command the original's computer gives for `side`, the side to act in `state` (the active
 /// stack's controller, BAT-MAG-026), whatever `BattleSetup.human` says (ADR-0027 point 8):
@@ -108,7 +113,8 @@ pub fn choose(
 }
 
 /// The original's computer's choice for `side` before validation (the property tests assert the
-/// engine accepts it): first its hero's cast ([`hero::cast`], 0x422DA0; BAT-AI-017: its spell
+/// engine accepts it): in the tactics phase the phase's turn ([`tactics::turn`], BAT-AI-023);
+/// else first its hero's cast ([`hero::cast`], 0x422DA0; BAT-AI-017: its spell
 /// context's and its choice's draws from `rng`), then the stack's action (0x477EE0, 0x4221F0;
 /// BAT-AI-001). A stack that can shoot
 /// now ([`computer::shoots`]; the original's Ballista always can) shoots ([`shooter::shoot`],
@@ -124,14 +130,15 @@ pub fn unchecked(
     let Some(id) = state.active().filter(|_| state.side_to_act() == Some(side)) else {
         return Command::Defend;
     };
-    if state.tactics().is_some() {
-        // stub: BAT-STUB-5
-        // The shooters' placement and the walkers' choice in the zone (§7.34): T6.
-        return Command::EndTactics;
+    if let Some(phase) = state.tactics() {
+        return tactics::turn(state, ruleset, (id, side, phase), rng);
     }
     if let Some(cast) = hero::cast(state, ruleset, (id, side), rng) {
         return cast;
     }
+    // stub: BAT-STUB-5
+    // The retreat test before the stack's action (0x477EE0, 0x41E570; §7.55, §7.60): T6's last
+    // part; until then the side never retreats.
     if computer::shoots(state, ruleset, id) {
         return shooter::shoot(state, ruleset, id, rng);
     }
@@ -142,15 +149,13 @@ pub fn unchecked(
         .stack(id)
         .is_some_and(|s| s.has(StackTraits::FIRST_AID))
     {
-        // stub: BAT-STUB-5
-        // The First Aid Tent's patient (§7.14, BAT-Q51): T6; until then the original's default
-        // action, Defend.
-        return Command::Defend;
+        return tent(state, id);
     }
     walker::turn(state, ruleset, (id, side), rng)
 }
 
-/// `command` when the engine accepts it from `side`, else Defend (ADR-0027 point 3).
+/// `command` when the engine accepts it from `side`, else Defend, in the tactics phase Wait,
+/// which ends no turn there (ADR-0027 point 3).
 fn checked(
     state: &BattleState,
     ruleset: &BattleRuleset,
@@ -159,9 +164,33 @@ fn checked(
 ) -> Command {
     if h3_battle::validate(state, ruleset, side, command).is_ok() {
         command
+    } else if state.tactics().is_some() {
+        Command::Wait
     } else {
         Command::Defend
     }
+}
+
+/// The commanded First Aid Tent's heal (0x473EA0; BAT-AI-022): of the stacks of its side, alive,
+/// not war machines, whose top creature has lost hit points, the one that lost the most, the
+/// later at a tie; Defend without one (the engine asks a commanded tent only with a patient,
+/// BAT-WAR-007). The battle's own automatic tent keeps BAT-WAR-003's uniform draw (BAT-Q51).
+// rule: BAT-AI-022
+fn tent(state: &BattleState, id: StackId) -> Command {
+    let side = state.stacks()[id.index()].side;
+    let mut best: Option<(StackId, u32)> = None;
+    for (i, s) in (0u8..).zip(state.stacks()) {
+        let lost = s.max_hp - s.top_hp;
+        if s.side == side
+            && s.is_alive()
+            && !s.has(StackTraits::WAR_MACHINE)
+            && lost > 0
+            && best.is_none_or(|(_, most)| lost >= most)
+        {
+            best = Some((StackId(i), lost));
+        }
+    }
+    best.map_or(Command::Defend, |(target, _)| Command::Heal { target })
 }
 
 /// The commanded Catapult's shot (0x473C00 with Ballistics; BAT-AI-021): at the computer's aim

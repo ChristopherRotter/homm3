@@ -22,7 +22,7 @@ epic   = "E05"
 [[stub]]
 id     = "BAT-STUB-5"
 where  = "crates/h3-battle-ai/src/lib.rs::unchecked"
-reason = "The hero's side of the computer (E23 T6): no retreat test (0x41E570; BAT-STUB-13 for the cast choice's answer); the tactics phase ends at once instead of the shooters' placement and the walkers' choice in the zone (§7.34); a commanded First Aid Tent defends instead of healing the computer's patient (§7.14, BAT-Q51) (BAT-AI-001)"
+reason = "The hero's side of the computer (E23 T6): no retreat test before the stack's action (0x477EE0, 0x41E570; BAT-STUB-13 for the cast choice's answer), so the side never retreats (BAT-AI-001)"
 epic   = "E23"
 
 [[stub]]
@@ -53,6 +53,18 @@ epic   = "E23"
 id     = "BAT-STUB-13"
 where  = "crates/h3-battle-ai/src/hero.rs::cast"
 reason = "The computer's hero cast asks the retreat test (0x41E570, installation.md §7.55) and, when its side would retreat, casts its best damage spell valued in the desperate mode. The test reads the adventure's state no seam carries (the hero's artifacts and experience, the player's gold and towns, the victory condition): until T6 adds a seam input its answer is no (the user, 2026-10-22, BAT-Q61 option c), so the choice is never desperate (BAT-AI-017)"
+epic   = "E23"
+
+[[stub]]
+id     = "BAT-STUB-15"
+where  = "crates/h3-battle-ai/src/tactics.rs::in_zone"
+reason = "In the tactics phase the original's computer tests only a stack's position hex against the zone (0x4763F0: its shooter's placement, its walk's end); the engine places a two-hex stack only with both hexes in the zone (BAT-TAC-002), so the policy asks both and a two-hex walker stops a hex short of the original's end (BAT-AI-023)"
+epic   = "E23"
+
+[[stub]]
+id     = "BAT-STUB-16"
+where  = "crates/h3-battle-ai/src/tactics.rs::turn"
+reason = "The original's Defend in the tactics phase ends the stack's turn (0x479706); the engine's phase has no Defend and its Wait makes the stack wait first (BAT-TAC-002). The policy gives Wait, and a walker below Hard that has waited Wait again at once, but on Hard and above a walker that defended is asked again among the waited stacks, where the original's turn had ended (BAT-AI-023)"
 epic   = "E23"
 
 # --- adventure (ADV-STUB-<n>) ---

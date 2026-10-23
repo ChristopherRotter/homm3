@@ -200,6 +200,7 @@ pub(crate) fn path(
         avoid: false,
         spare: None,
         speed: None,
+        tactics: false,
     };
     Search::run(state, field, (id, mover), query).path()
 }

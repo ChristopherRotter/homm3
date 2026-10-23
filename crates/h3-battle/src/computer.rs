@@ -18,7 +18,8 @@ use crate::magic;
 use crate::movement::MAX_PATH;
 use crate::pathfinder::{self, AI_RANGE, Goal, Query, Search};
 use crate::siege::{self, SiegeState};
-use crate::state::{BattleState, StackId, StackTraits};
+use crate::state::{BattleState, StackFlags, StackId, StackTraits};
+use crate::tactics::TacticsRounds;
 
 pub use crate::aim::{Context, Planned, Shot, Threat};
 
@@ -138,9 +139,22 @@ pub fn human(state: &BattleState, side: BattleSide) -> bool {
     state.human[side.index()]
 }
 
-/// Whether the round is in its wait phase (+0x13DE4), where a stack cannot wait again.
+/// Whether the round is in its wait phase (+0x13DE4), where a stack cannot wait again. In the
+/// tactics phase, whose rounds hand the waited stacks over after the others (BAT-TAC-002), whether
+/// the active stack has waited: the original's pick sets the flag there too (0x465080; BAT-AI-023).
+// rule: BAT-AI-023
 pub fn wait_phase(state: &BattleState) -> bool {
     state.wait_phase
+        || (state.tactics.is_some()
+            && state
+                .active
+                .is_some_and(|id| state.at(id).flags.contains(StackFlags::WAITED)))
+}
+
+/// The rounds of the running tactics phase the computer counts (the original's +0x13D6C and
+/// +0x14030; BAT-AI-023): [`TacticsRounds`].
+pub fn tactics_rounds(state: &BattleState) -> TacticsRounds {
+    state.tactics_rounds
 }
 
 /// The computer's context for `side` (0x435EC0; BAT-SIE-023): the least attack and defense
@@ -364,11 +378,12 @@ impl Map {
 }
 
 /// The walker's map of stack `id` for the computer's `side` (0x421680's 0x4B2DA0, 0x4217BE;
-/// BAT-AI-005): range 127 (0 for a bound stack or one without speed); the stacks of `side` are not
-/// marked; at a town the moat's damage may keep it out of its stops (BAT-SIE-022, the
+/// BAT-AI-005): range 127 (0 for a bound stack or one without speed); in the tactics phase the
+/// tactics flag's range and turn's speed of 1000 (0x4B34DE; BAT-AI-023); the stacks of `side` are
+/// not marked; at a town the moat's damage may keep it out of its stops (BAT-SIE-022, the
 /// computer's). (The original's range 0 for a stack blind, petrified or paralysed matters only for
 /// the predictions' stacks, E23 T4: such a stack has no turn.)
-// rule: BAT-AI-005, BAT-SIE-022
+// rule: BAT-AI-005, BAT-AI-023, BAT-SIE-022
 pub fn map(state: &BattleState, ruleset: &BattleRuleset, id: StackId, side: BattleSide) -> Map {
     let field = Field::new(ruleset.battle().field);
     let me = state.at(id);
@@ -378,6 +393,7 @@ pub fn map(state: &BattleState, ruleset: &BattleRuleset, id: StackId, side: Batt
         avoid: aim::fears_moat(state, ruleset, me, Some(side)),
         spare: Some(side),
         speed: None,
+        tactics: state.tactics.is_some(),
     };
     Map(Search::run(state, field, (id, me), query))
 }
@@ -398,6 +414,7 @@ pub fn reach_map(state: &BattleState, ruleset: &BattleRuleset, id: StackId) -> M
         avoid: aim::avoids_stops(state, ruleset, me, Some(me.side)),
         spare: Some(me.side),
         speed: Some(speed),
+        tactics: false,
     };
     Map(Search::run(state, field, (id, me), query))
 }
@@ -512,9 +529,10 @@ impl Path {
 }
 
 /// The computer's path for stack `id` of the computer's `side` to the position `to` (0x41F580's
-/// search: 0x4B3400 with `side`, range 127; BAT-AI-006): empty without one or for its own
-/// position; at a town the moat's damage may keep it out of its stops (BAT-SIE-022).
-// rule: BAT-AI-006
+/// search: 0x4B3400 with `side`, range 127, in the tactics phase the tactics flag's 1000;
+/// BAT-AI-006, BAT-AI-023): empty without one or for its own position; at a town the moat's
+/// damage may keep it out of its stops (BAT-SIE-022).
+// rule: BAT-AI-006, BAT-AI-023
 pub fn path(
     state: &BattleState,
     ruleset: &BattleRuleset,
@@ -529,6 +547,7 @@ pub fn path(
         avoid: aim::fears_moat(state, ruleset, me, Some(side)),
         spare: Some(side),
         speed: None,
+        tactics: state.tactics.is_some(),
     };
     let search = Search::run(state, field, (id, me), query);
     let (hexes, len) = search.path();
@@ -550,9 +569,10 @@ pub fn path(
 /// A walker's map for its side's threat records on its turn (0x421F80's 0x422B20 with flag 1,
 /// 0x4B2DA0 at 0x422C51; BAT-AI-009): the computer's pathfinder for stack `id` of the computer's
 /// `side` with its speed as the range (0 for a bound stack or one without speed), so a stop
-/// marks nothing; the stacks of `side` are not marked; at a town the moat avoided by a weak
-/// stack (BAT-SIE-022, the computer's).
-// rule: BAT-AI-009, BAT-SIE-022
+/// marks nothing; in the tactics phase the tactics flag's range and turn's speed of 1000, which
+/// reach the whole field (BAT-AI-023); the stacks of `side` are not marked; at a town the moat
+/// avoided by a weak stack (BAT-SIE-022, the computer's).
+// rule: BAT-AI-009, BAT-AI-023, BAT-SIE-022
 pub fn turn_map(
     state: &BattleState,
     ruleset: &BattleRuleset,
@@ -567,6 +587,7 @@ pub fn turn_map(
         avoid: aim::fears_moat(state, ruleset, me, Some(side)),
         spare: Some(side),
         speed: None,
+        tactics: state.tactics.is_some(),
     };
     Map(Search::run(state, field, (id, me), query))
 }
@@ -1071,6 +1092,7 @@ pub fn map_within(
         avoid: aim::fears_moat(state, ruleset, me, Some(side)),
         spare: Some(side),
         speed: None,
+        tactics: state.tactics.is_some(),
     };
     Map(Search::run(state, field, (id, me), query))
 }

@@ -9,7 +9,7 @@ use h3_contracts::{BallistaControl, BattleHero, BattleSide, TentControl};
 use super::support::*;
 use crate::{
     BattleSetup, BattleState, Command, CommandError, Event, EventKind, Hex, LegalCommands,
-    StackFlags, StackId, TacticsPhase, legal_commands, observe,
+    StackFlags, StackId, TacticsPhase, computer, legal_commands, observe,
 };
 
 /// The test hero with Tactics at `level`.
@@ -206,6 +206,11 @@ fn stacks_are_handed_over_in_rounds_and_next_creature_waits() {
         double_damage_chance_bp: 0,
     });
     let (mut state, _) = start(&r, &s);
+    let rounds = |state: &BattleState| {
+        let t = computer::tactics_rounds(state);
+        (t.completed, t.placed, t.placed_last)
+    };
+    assert_eq!(rounds(&state), (0, false, false));
     // Speed 9 (slot 1, then slot 3), 5, 2; the Ballista (stack 4) is never handed over. Wait
     // ("next creature") makes each stack wait; the waiting stacks come back slowest first, and
     // Wait on a stack that has waited ends its turn; then the next round of the phase starts
@@ -218,6 +223,8 @@ fn stacks_are_handed_over_in_rounds_and_next_creature_waits() {
             .unwrap()
             .flags
             .contains(StackFlags::WAITED);
+        // The computer's wait phase: the waited stacks' part of the phase's round (BAT-AI-023).
+        assert_eq!(computer::wait_phase(&state), waited);
         let events = act(&mut state, &r, Command::Wait).unwrap();
         let next = EventKind::TurnStarted {
             stack: state.active().unwrap(),
@@ -231,6 +238,8 @@ fn stacks_are_handed_over_in_rounds_and_next_creature_waits() {
         seen.push(active(&state));
     }
     assert_eq!(seen, [1, 3, 2, 0, 0, 2, 1, 3, 1]);
+    // A round without a placement is counted (BAT-AI-023).
+    assert_eq!(rounds(&state), (1, false, false));
     assert!(
         state
             .stacks()
@@ -259,10 +268,12 @@ fn stacks_are_handed_over_in_rounds_and_next_creature_waits() {
     }
     // 2 and 0 wait, 0 and 2 end their turns, 1 (waited) ends its turn: a new round.
     assert_eq!(seen, [0, 0, 2, 1, 1]);
+    assert_eq!(rounds(&state), (2, false, true));
     act(&mut state, &r, Command::Wait).unwrap();
     assert_eq!(active(&state), 3);
     act(&mut state, &r, Command::Move { to: at(&r, 7, 10) }).unwrap();
     assert_eq!(state.stack(StackId(3)).unwrap().hex, at(&r, 7, 10));
+    assert_eq!(rounds(&state), (2, true, true));
     // Round 1 resets the phase's turn flags (BAT-TRN-003).
     act(&mut state, &r, Command::EndTactics).unwrap();
     assert!(

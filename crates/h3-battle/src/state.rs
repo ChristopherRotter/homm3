@@ -30,7 +30,7 @@ use crate::morale::{self, Modifiers};
 use crate::natural::{NaturalObstacles, RemovableObstacle};
 use crate::obstacles::{self, SpellObstacle, SpellObstacles};
 use crate::siege::{self, SiegeState};
-use crate::tactics::{self, TacticsPhase};
+use crate::tactics::{self, TacticsPhase, TacticsRounds};
 use crate::vitality::Vitality;
 use crate::{flee, terrain, turn};
 
@@ -80,7 +80,7 @@ const _: () = assert!(MAX_SIDE_STACKS <= SIDE_STACK_SLOTS);
 pub const CREATED_SLOT: u8 = u8::MAX;
 
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
-pub const BATTLE_STATE_HASH_VERSION: u32 = 52;
+pub const BATTLE_STATE_HASH_VERSION: u32 = 53;
 
 /// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks, then
 /// the stacks created in the battle in the order they appear, BAT-MAG-037).
@@ -992,6 +992,9 @@ pub struct BattleState {
     /// original's +0x13DE4; no Wraith drains then, BAT-MAG-056).
     pub(crate) wait_phase: bool,
     pub(crate) tactics: Option<TacticsPhase>,
+    /// The tactics phase's rounds as the computer counts them (BAT-AI-023; public, not observed:
+    /// no rule reads them).
+    pub(crate) tactics_rounds: TacticsRounds,
     pub(crate) active: Option<StackId>,
     pub(crate) last_side_acted: Option<BattleSide>,
     pub(crate) result: Option<BattleResult>,
@@ -1189,6 +1192,7 @@ impl BattleState {
             round: 1,
             wait_phase: false,
             tactics: None,
+            tactics_rounds: TacticsRounds::default(),
             active: None,
             last_side_acted: None,
             result: None,
@@ -1611,6 +1615,7 @@ impl CanonicalHash for BattleState {
         h.write_u16(self.round);
         h.write_bool(self.wait_phase);
         self.tactics.hash_into(h);
+        self.tactics_rounds.hash_into(h);
         self.active.map(|s| s.0).hash_into(h);
         self.last_side_acted.map(side_code).hash_into(h);
         self.result.map(result_code).hash_into(h);

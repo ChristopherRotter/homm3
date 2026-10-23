@@ -80,7 +80,7 @@ pub use state::{
     BATTLE_STATE_HASH_VERSION, BattleState, CREATED_SLOT, NO_CORPSE, SIDE_STACK_SLOTS,
     STACK_CAPACITY, Stack, StackFlags, StackId, StackTraits, UNLIMITED_RETALIATIONS,
 };
-pub use tactics::TacticsPhase;
+pub use tactics::{TacticsPhase, TacticsRounds};
 pub use terrain::{generate_battlefield_obstacles, generate_obstacles, generate_setup_obstacles};
 
 #[cfg(test)]
