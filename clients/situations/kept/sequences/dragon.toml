@@ -327,6 +327,7 @@ t = 2080
 file = "t02080b.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+before = [[0, 0, 0], [1, 0, 0]]
 cursor = [618, 593]
 
 [[frame]]
@@ -593,6 +594,7 @@ t = 5172
 file = "t05172b.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+before = [[0, 0, 0], [1, 0, 0]]
 cursor = [618, 593]
 
 [[frame]]
@@ -831,6 +833,7 @@ t = 8264
 file = "t08264b.npz"
 fidgets = []
 heroes = [[0, 0, 0], [1, 0, 0]]
+before = [[0, 0, 0], [1, 0, 0]]
 cursor = [618, 593]
 
 [[frame]]

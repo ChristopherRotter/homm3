@@ -1,11 +1,12 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b, T8, T7b-1, T7b-2a, T7b-2b-1, T7b-2b-2a, T7b-2b-2b, T7b-2b-3, T7c-1, T7c-2, T7c-3, T7d done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b, T8, T7b-1, T7b-2a, T7b-2b-1, T7b-2b-2a, T7b-2b-2b, T7b-2b-3, T7c-1, T7c-2, T7c-3, T7d, T9a done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
 [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
-are there). Next: M3 T9, M3's closure (`docs/lanes/client/QUEUE.md`).
+are there). Next: M3's closure, split with the user in T9a (every capture afresh, done), T9b
+(the review, next) and T9c (the next milestone) (`docs/lanes/client/QUEUE.md`).
 
 ## Goal
 
@@ -507,6 +508,9 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   caster's group by the rows' angle, a missed caster standing at once, the mouse's stack
   unmarked at the action's start), the original's kept for the comparisons by
   `anim::Stage::bugs` (`h3-view sequences` only). Every sequence and situation drawn as before.
+- **T9a done 2026-10-23** ([log](E17-log.md#m3-t9a--every-capture-afresh-2026-10-22-to-23)):
+  every sequence (31) and situation (57) captured afresh, each as recorded (four after a rerun:
+  the original's rolls and a step's lag, known traps); `kept/` refreshed, `drawn` the same.
 
 ### The adventure lane's harness (H1, H2: its batch E3)
 

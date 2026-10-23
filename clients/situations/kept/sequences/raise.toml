@@ -174,7 +174,7 @@ t = 1312
 file = "t01312b.npz"
 fidgets = []
 heroes = [[0, 2, 1], [1, 0, 0]]
-before = [[0, 2, 0], [1, 0, 0]]
+before = [[0, 2, 1], [1, 0, 0]]
 cursor = [618, 593]
 
 [[frame]]
