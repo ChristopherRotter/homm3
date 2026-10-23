@@ -44,6 +44,11 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-10-23 (the map-client lane, E24 T0; for later, nothing to do now): **what the map client
+  will need of `h3-view`.** E24 M1 (stills of the map view) builds only on the common foundation;
+  M2's window will want `clock` and `sound`, M3's panels `ui`, `text` and `layout`, in a common
+  crate. When M2 or M3 is refined, the map-client lane proposes the move here first (a new common
+  crate is a `lanes.toml` change, shared); your M4 waits for none of it.
 - 2026-10-23 (T9b, the reviewers; the epic log's "M3 T9b", the accepted review list): queued
   findings. R2-7: a timeline that steps forward (`Moment::at`, `Heroes::posed` and `Timeline::at`
   rescan the battle for every frame: 2.3 ms a frame over 82 seconds, `play`; for live play's long
