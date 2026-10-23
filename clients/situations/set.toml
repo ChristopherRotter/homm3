@@ -870,3 +870,59 @@ key = "Up"
 at = 0
 differing = 0
 why = "exact: a Citadel's keep with its shooter, the towers without, the Fortress's moat (M4 T1b)"
+
+# E17 M4 T1b: the wall states as stills (the user, 2026-10-23: on Castle and Conflux, one town per
+# archive, the rules being the same in every town). The harness writes `walls` (the 18 parts'
+# picture states by index, design §10.1, and the gate's: 3 closed, 1 open, 0 destroyed) into the
+# original's memory after the siege's setup and before its first frame (`h3mem.write_walls`; the
+# hit points stay, or a destroyed turret's turn would pass); the viewer draws the same states in
+# place of the record's (`h3-view render --walls`, *provisional*). `hit`: the walls hit (their slot 1), the towers and the keep hit (still whole),
+# the gate open (the drawbridge down, its rope); `ruined`: every wall, tower and the keep
+# destroyed (their covers and shooters gone), the gate destroyed.
+[[situation]]
+id = "siege-castle-hit"
+scenario = "siege-castle.toml"
+hot_seat = true
+key = "Up"
+walls = { parts = [0, 0, 0, 0, 0, 1, 1, 0, 1, 2, 1, 0, 1, 1, 1, 1, 1, 1], gate = 1 }
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: the walls' hit pictures, the towers and the keep whole at state 1, the drawbridge down with its rope (M4 T1b)"
+
+[[situation]]
+id = "siege-castle-ruined"
+scenario = "siege-castle.toml"
+hot_seat = true
+key = "Up"
+walls = { parts = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], gate = 0 }
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: no walls, the towers' and the keep's ruins without covers and shooters, the destroyed drawbridge (M4 T1b)"
+
+[[situation]]
+id = "siege-conflux-hit"
+scenario = "siege-conflux.toml"
+hot_seat = true
+key = "Up"
+walls = { parts = [0, 0, 0, 0, 0, 1, 1, 0, 1, 2, 1, 0, 1, 1, 1, 1, 1, 1], gate = 1 }
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: as siege-castle-hit, Conflux's pictures (M4 T1b)"
+
+[[situation]]
+id = "siege-conflux-ruined"
+scenario = "siege-conflux.toml"
+hot_seat = true
+key = "Up"
+walls = { parts = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], gate = 0 }
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: as siege-castle-ruined, Conflux's pictures (M4 T1b)"

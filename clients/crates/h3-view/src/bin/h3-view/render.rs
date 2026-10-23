@@ -15,6 +15,7 @@ use h3_view::anim::{self, Speed};
 use h3_view::batch::{self, Batch};
 use h3_view::compose::compose;
 use h3_view::scene::Panels;
+use h3_view::siege::Walls;
 use h3_view::{layout, record, scene};
 
 use crate::gate::{find_ci, timed};
@@ -39,13 +40,15 @@ pub struct Options {
     frames: Option<PathBuf>,
     /// Whose record a scenario plays into (E17 M4 T1b: a side's shows its hidden objects).
     seat: Seat,
+    /// A siege's wall states in place of the record's (E17 M4 T1b, *provisional*).
+    walls: Option<Walls>,
 }
 
 impl Options {
     /// Parses `<scenario.toml | record.jsonl> [--seed <n>] [--packs <dir>] [--install <dir>]
     /// [--out <file.png>] [--list] [--at <ms> | --frames <dir>] [--speed <0-2>] [--seat
-    /// <attacker | defender>]`; the installation defaults as the gate's, the record a
-    /// spectator's.
+    /// <attacker | defender>] [--walls <the 18 parts' picture states>,<the gate's>]`; the
+    /// installation defaults as the gate's, the record a spectator's, the walls the record's.
     pub fn parse(args: &[String]) -> Result<Self, String> {
         let env = std::env::var_os("H3_INSTALL").map(PathBuf::from);
         Self::parse_with(args, env)
@@ -56,7 +59,7 @@ impl Options {
         let (mut input, mut seed, mut packs, mut install, mut out, mut list) =
             (None, 1, None, None, None, false);
         let (mut at, mut speed, mut frames) = (None, 0, None);
-        let mut seat = Seat::Spectator;
+        let (mut seat, mut walls) = (Seat::Spectator, None);
         let mut rest = args.iter();
         while let Some(arg) = rest.next() {
             let mut value = || {
@@ -78,6 +81,7 @@ impl Options {
                     at = Some(v.parse().map_err(|_| format!("render: bad time `{v}`"))?);
                 }
                 "--frames" => frames = Some(PathBuf::from(value()?)),
+                "--walls" => walls = Some(parse_walls(&value()?)?),
                 "--seat" => {
                     seat = match value()?.as_str() {
                         "attacker" => Seat::Attacker,
@@ -116,6 +120,7 @@ impl Options {
             speed,
             frames,
             seat,
+            walls,
         })
     }
 
@@ -201,6 +206,21 @@ pub fn lookup(archives: &[(&str, LodArchive<'_>)], name: &str) -> Result<Vec<u8>
     Err(format!("{name}: in none of {}", list.join(", ")))
 }
 
+/// A siege's wall states as `--walls` gives them (E17 M4 T1b): the 18 parts' picture states,
+/// then the gate's, comma-separated.
+fn parse_walls(text: &str) -> Result<Walls, String> {
+    let bad = || format!("render: bad walls `{text}` (the 18 parts' states, then the gate's)");
+    let numbers = text
+        .split(',')
+        .map(|n| n.trim().parse::<u8>().map_err(|_| bad()))
+        .collect::<Result<Vec<_>, _>>()?;
+    let (gate, parts) = numbers.split_last().ok_or_else(bad)?;
+    Ok(Walls {
+        parts: parts.try_into().map_err(|_| bad())?,
+        gate: *gate,
+    })
+}
+
 /// Renders the still; the lines to print: the PNG, the record written (from a scenario), the
 /// counts and the times, and with `--list` the draw list.
 fn render(options: &Options) -> Result<Vec<String>, String> {
@@ -280,6 +300,7 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
             panels: &panels,
             legal: &h3_view::mouse::Legal::new(&legal),
             shown: None,
+            walls: options.walls,
         };
         let drawn = crate::sequences::draw_frames(
             dir,
@@ -296,7 +317,14 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
     // The panel at the opening, or at `--at` as the record's turns and lines left it (E17 M3 T6b).
     let mut panel = Panels::new(observation, &[], Vec::new()).at(observation, &[], 0, &layout);
     let list = match options.at {
-        None => scene::battle(observation, manifest, &tables, &layout),
+        None => {
+            let moment = scene::Moment {
+                active: observation.active,
+                walls: options.walls,
+                ..scene::Moment::default()
+            };
+            scene::battle_at(observation, &moment, manifest, &tables, &layout)
+        }
         Some(t) => {
             // The record's commands at the original's timing (E17 M2 T4a, `h3_view::anim`).
             let looks = motion::looks(&record, &tables, &archives)?;
@@ -318,7 +346,8 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
             .map_err(|e| e.to_string())?
             .with_heroes(motion::heroes(&record, &tables, &archives, Some(seed))?);
             lines.push(format!("the timeline ends at {} ms", timeline.end));
-            let moment = scene::Moment::at(&timeline, t);
+            let mut moment = scene::Moment::at(&timeline, t);
+            moment.walls = options.walls;
             // The mouse parked as the harness parks it (E17 M3 T6c-2): a human's turn writes the
             // hint there, none, which needs no words (an installation without text tables).
             let catalogue = crate::log::catalogue(&tables, &archives, &exe).unwrap_or_default();
@@ -415,13 +444,20 @@ mod tests {
         assert!(o.png().ends_with("out/render/a-s1-250ms.png"));
         let o = Options::parse_with(&args(&["a.toml", "--frames", "/f"]), None).unwrap();
         assert_eq!((o.at, o.frames), (None, Some(PathBuf::from("/f"))));
-        assert_eq!(o.seat, Seat::Spectator);
+        assert_eq!((o.seat, o.walls), (Seat::Spectator, None));
+        let states = "0,0,0,0,0,2,1,0,1,2,1,0,1,2,2,1,1,1,3";
+        let o = Options::parse_with(&args(&["a.toml", "--walls", states]), None).unwrap();
+        let walls = o.walls.unwrap();
+        assert_eq!((walls.parts[6], walls.parts[17], walls.gate), (1, 1, 3));
         for (name, seat) in [("attacker", Seat::Attacker), ("defender", Seat::Defender)] {
             let o = Options::parse_with(&args(&["a.toml", "--seat", name]), None).unwrap();
             assert_eq!(o.seat, seat);
         }
         for bad in [
             &["a.toml", "--seat", "spectator"][..],
+            &["a.toml", "--walls", "1,2,3"],
+            &["a.toml", "--walls", ""],
+            &["a.toml", "--walls", "x"],
             &["a.toml", "--at", "1", "--frames", "/f"],
             &["--seed"],
             &["--seed", "x", "a.toml"],

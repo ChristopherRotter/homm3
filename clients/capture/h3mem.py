@@ -2,8 +2,9 @@
 """Reads the running original's state from its memory: the battle's (E17 M2 T3) and the
 adventure map's (M2 T6), *provisional*; clients/capture/README.md, "The original's state". Under
 Wine the game is a Linux process that maps Heroes3.exe at its image base, so /proc/<pid>/mem
-gives its globals and records at their addresses (docs/exe/map.toml, structs.toml). Read only:
-nothing is written into the game.
+gives its globals and records at their addresses (docs/exe/map.toml, structs.toml). Read only
+but for the harness's own timers and a siege's wall states before its first frame (E17 M4 T1b,
+`write_walls`).
 
   h3mem.py            print the battle's clocks and its stacks' animation state as JSON
   h3mem.py adventure  print the adventure map's state as JSON: the current player, the view,
@@ -21,6 +22,9 @@ import subprocess
 import sys
 
 BATTLE_MANAGER_POINTER = 0x6993D0  # the battle manager while a battle runs
+# A siege's walls (E17 M4 T1b; structs.toml, battle_manager): the parts' picture states and hit
+# points (i32 by part), the gate's state.
+WALL_STATES, WALL_HIT_POINTS, GATE_STATE = 0x13FA8, 0x13F60, 0x53A4
 # The adventure map (M2 T6; structs.toml: game, hero, player_record, adventure_manager).
 GAME_POINTER = 0x6994E8
 ADVENTURE_MANAGER_POINTER = 0x699268
@@ -208,6 +212,29 @@ class Mem:
         set to `now` (the opening), the grid runs from the opening in every run (M3 T6c-2,
         design §9.10), so the frames a sequence keeps where the cursor moves keep their times."""
         self.write_u32(MOUSE_POLL_NEXT, now)
+
+    def walls(self):
+        """A siege's 18 parts' picture states (+0x13FA8, i32 each), their hit points (+0x13F60)
+        and the gate's state (+0x53A4: 3 closed, 2 moving, 1 open, 0 destroyed; E17 design
+        §10.1)."""
+        m = self.manager()
+        return (list(struct.unpack("<18i", self.read(m + WALL_STATES, 72))),
+                list(struct.unpack("<18i", self.read(m + WALL_HIT_POINTS, 72))),
+                self.i32(m + GATE_STATE))
+
+    def write_walls(self, states, gate):
+        """Writes a siege's wall states (E17 M4 T1b, the wall states as stills): each part's
+        picture state and the gate's state, what the redraw reads (E17 design §10.1). Written
+        after the siege's setup and before the battle's first redraw (`h3drive.into_battle`),
+        the first frame shows them. The hit points stay: a tower's or the keep's written 0 makes
+        the original skip its turn (its first frame then the attacker's, the record's the
+        keep's)."""
+        m = self.manager()
+        with open(f"/proc/{self.pid}/mem", "r+b", buffering=0) as f:
+            f.seek(m + WALL_STATES)
+            f.write(struct.pack("<18i", *states))
+            f.seek(m + GATE_STATE)
+            f.write(struct.pack("<i", gate))
 
     def u32(self, address):
         return struct.unpack("<I", self.read(address, 4))[0]

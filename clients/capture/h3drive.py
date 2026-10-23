@@ -394,14 +394,33 @@ def hex_point(hex_id):
     return 14 + 44 * col + (22 if row % 2 == 0 else 0) + 22, 86 + 42 * row + 26
 
 
-def into_battle(game, key="Right"):
+def into_battle(game, key="Right", walls=None):
     """From the adventure map: freezes the clock, moves the selected hero with `key` into the
     enemy, and steps the clock to the battle screen (`battle_book` when the acting hero's spell
-    book lights its button, M3 T7a-2a). Returns the clock's time at the opening."""
+    book lights its button, M3 T7a-2a). Returns the clock's time at the opening. With `walls`
+    (E17 M4 T1b: a siege's `parts`, its 18 picture states, and `gate`) they are written into the
+    game's memory once the siege's setup has set its parts' states (some above 0) and before the
+    battle screen shows, so that its first frame draws them (`h3mem.write_walls`)."""
     game.clock("freeze")
     game.key(key)
     game.move(*PARK)
-    return game.step_until(("battle", "battle_book"), 10)
+    if walls is None:
+        return game.step_until(("battle", "battle_book"), 10)
+    import h3mem
+
+    mem = None
+    for _ in range(2000):
+        t = game.clock("step 10")
+        pix = game.settled()
+        shown = game.matches("battle", pix) or game.matches("battle_book", pix)
+        if mem is None:
+            mem = h3mem.Mem()
+        if any(mem.walls()[0]):
+            if shown:
+                raise RuntimeError("the battle showed before its walls could be written")
+            mem.write_walls(walls["parts"], walls["gate"])
+            return game.step_until(("battle", "battle_book"), 10)
+    raise TimeoutError("the siege's walls were never set up")
 
 
 def main(args):
@@ -487,14 +506,16 @@ def write_screens(screens):
     SCREENS.write_text("\n".join(lines) + "\n")
 
 
-def capture(game, map_path, out, frames, key="Right", stacks=None, hot_seat=False, mouse=None):
+def capture(game, map_path, out, frames, key="Right", stacks=None, hot_seat=False, mouse=None,
+            walls=None):
     """The battle of the map: its opening, then a dump at each time in `frames` (ms after the
     opening, ascending); returns the dumps' paths. With `stacks` (a list; M3 T1b-2) the stacks
     the game's memory holds at each dump (h3mem: the fidgets) are appended to it. With
     `hot_seat` (M3 T3b) the map starts in hot seat, Red and Blue both humans, so that a faster
     stack of Blue's opens idle. With `mouse` (M3 T6c-1) the mouse moves there at the opening, the
     clock frozen, after the first turn started (its cursor, the status line's hint, a stack it
-    marks: design §9.9)."""
+    marks: design §9.9). With `walls` (M4 T1b) a siege's wall states, written before its first
+    frame (`into_battle`)."""
     game.start(map_path)
     if hot_seat:
         import h3adv
@@ -502,7 +523,7 @@ def capture(game, map_path, out, frames, key="Right", stacks=None, hot_seat=Fals
         h3adv.to_hot_seat(game, ["Red", "Blue"])
     else:
         to_scenario(game)
-    t0 = into_battle(game, key)
+    t0 = into_battle(game, key, walls)
     if mouse is not None:
         game.move(*mouse)
         time.sleep(0.3)
@@ -561,7 +582,8 @@ def run_set(rest):
             # The step into the battle (E17 M4 T1b): a siege's attacker stands south of the
             # town's entrance (`key = "Up"`), any other west of the defender.
             paths = capture(game, map_path, here, list(frames), key=sit.get("key", "Right"),
-                            stacks=stacks, hot_seat=bool(hot_seat), mouse=mouse)
+                            stacks=stacks, hot_seat=bool(hot_seat), mouse=mouse,
+                            walls=sit.get("walls"))
         finally:
             game.stop()
         # Our frame at each time (M3 T1b-2): the battle's idle steps (the outline's pulse) on the
@@ -573,7 +595,8 @@ def run_set(rest):
         # Whose record (E17 M4 T1b): a side's shows its hidden objects (a Tower's mines on the
         # defender's turn in hot seat), a spectator's by default.
         seat = ["--seat", sit["seat"]] if "seat" in sit else []
-        view([h3view, "render", str(scenario), "--out", str(ours), "--frames", str(here), *seat])
+        view([h3view, "render", str(scenario), "--out", str(ours), "--frames", str(here), *seat,
+              *walls_args(sit)])
         changed = False
         for (at, frame), path in zip(sorted(frames.items()), paths):
             # The pixels' digest: an XWD file's colour map holds bytes the X server leaves unset.
@@ -894,6 +917,15 @@ def sequence_command(map_path, out, rest):
     finally:
         game.stop()
     print(f"sequence: {out}/timeline.txt")
+
+
+def walls_args(entry):
+    """`h3-view render`'s `--walls` for a situation's wall states (E17 M4 T1b): the 18 parts'
+    picture states, then the gate's, as the harness writes them into the original."""
+    walls = entry.get("walls")
+    if walls is None:
+        return []
+    return ["--walls", ",".join(map(str, [*walls["parts"], walls["gate"]]))]
 
 
 def only_one(selected, ident, where):
@@ -1235,6 +1267,7 @@ def run_drawn(rest):
             args = [h3view, "render", str(situations / entry["scenario"]), "--out",
                     str(here / "ours.png"), "--frames", str(here)]
             args += ["--seat", entry["seat"]] if "seat" in entry else []
+            args += walls_args(entry)
         run_result = subprocess.run(args, capture_output=True, text=True)
         if run_result.returncode != 0:
             last = (run_result.stdout + run_result.stderr).strip().splitlines()[-1:]
