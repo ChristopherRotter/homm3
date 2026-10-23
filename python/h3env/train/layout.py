@@ -35,8 +35,8 @@ ACTIVE = 18
 #: The behaviour analysis's columns: the globals' round (0 in the tactics phase); a public hero
 #: block's (the viewer's at `HEROES`, the opponent's after it) mana, maximum mana and casts this
 #: round; a stack slot's alive and own flags, count, top creature's and full hit points, acted,
-#: waited, retaliations left (255 unlimited), shooter, war machine, creatures at the start, its
-#: turn has started this round, a town's turret.
+#: waited, defending, retaliations left (255 unlimited), shooter, war machine, creatures at the
+#: start, its turn has started this round, a town's turret.
 ROUND = 0
 HERO_MANA = 6
 HERO_MAX_MANA = 7
@@ -48,6 +48,7 @@ TOP_HP = 5
 MAX_HP = 6
 ACTED = 14
 WAITED = 15
+DEFENDING = 17
 RETALIATIONS_LEFT = 22
 SHOOTER = 26
 WAR_MACHINE = 27

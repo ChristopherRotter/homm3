@@ -25,8 +25,13 @@ group (`summary`):
   opponent stack's turn and no new round between) the hit points it dealt and those it cost
   (retaliation, Fire Shield), and whether its target lost at least the least kills previewed (a
   check of the reading); melee strikes into a target with retaliations left (some attackers
-  suffer none); who struck first (the first interval between two observations with hit points
-  lost: the agent's when its own strike opened it).
+  suffer none), and of them those made while a target without one was in reach; who struck
+  first (the first interval between two observations with hit points lost: the agent's when its
+  own strike opened it);
+- **turns:** the share of the stack turns that waited and that defended, the agent's (its
+  decisions after the tactics phase but a turret's, less the waits and the hero's casts) and the
+  opponent's (its creature stacks' flags, the most seen in each round: a turn after the agent's
+  last decision of a round is missed).
 
 Hit points are the creatures' (no war machines, no turrets): a stack's `(count - 1) × hp + top
 hp`. The opponent's decisions are not seen (its seat plays inside the batch); its hero's casts
@@ -123,9 +128,10 @@ def category(
 def view(obs: np.ndarray) -> dict[str, np.ndarray]:
     """What the analysis reads of observations [m, len]: per row the round, the creatures' hit
     points on each side now and at the start (`base count × hp`), each hero's presence, mana and
-    maximum (the viewer's, the opponent's), whether the active stack is a turret; per stack slot
-    its count, hit points per creature, retaliations left and the opponent's turn flags (0 for no
-    opponent stack)."""
+    maximum (the viewer's, the opponent's), whether the active stack is a turret, the opponent's
+    creature stacks whose turn started this round and of them those that waited and that defend;
+    per stack slot its count, hit points per creature, retaliations left and the opponent's turn
+    flags (0 for no opponent stack)."""
     s = obs[:, L.STACKS : L.OBSERVATION_LEN].reshape(len(obs), L.STACK_CAPACITY, L.STACK_FEATURES)
     present = s[..., L.PRESENT] > 0
     army = present & (s[..., L.WAR_MACHINE] == 0) & (s[..., L.TURRET] == 0)
@@ -135,6 +141,7 @@ def view(obs: np.ndarray) -> dict[str, np.ndarray]:
     start = np.where(army, s[..., L.BASE_COUNT] * max_hp, 0.0)
     turns = 8 + s[..., L.ACTED] + 2 * s[..., L.WAITED] + 4 * s[..., L.STARTED]
     heroes = obs[:, L.HEROES : L.OWN_HERO].reshape(len(obs), 2, L.HERO_PUBLIC_FEATURES)
+    started = army & ~own & (s[..., L.STARTED] > 0)
     return {
         "round": obs[:, L.ROUND],
         "turret": ((s[..., L.ACTIVE] > 0) & (s[..., L.TURRET] > 0)).any(1),
@@ -147,13 +154,21 @@ def view(obs: np.ndarray) -> dict[str, np.ndarray]:
         "max_hp": max_hp,
         "retaliations": s[..., L.RETALIATIONS_LEFT],
         "turns": np.where(present & ~own, turns, 0.0),
+        "opponent_turns": np.stack(
+            [
+                started.sum(1),
+                (started & (s[..., L.WAITED] > 0)).sum(1),
+                (started & (s[..., L.DEFENDING] > 0)).sum(1),
+            ],
+            1,
+        ),
     }
 
 
 class _Battle:
     """A counted episode in progress: its numbers (`Counter`), the hero's spells, the rounds it
-    could cast and cast in, who struck first, the last observation's heroes and the last
-    decision (settled at the next call)."""
+    could cast and cast in, who struck first, the opponent's stacks' turns per round (the most
+    seen), the last observation's heroes and the last decision (settled at the next call)."""
 
     def __init__(self, episode: int, kind: int) -> None:
         self.episode = episode
@@ -163,6 +178,7 @@ class _Battle:
         self.castable: set[int] = set()
         self.cast: set[int] = set()
         self.first: str | None = None
+        self.opponent_turns: dict[int, np.ndarray] = {}
         self.round = 0
         self.heroes = None
         self.pending = None
@@ -236,6 +252,9 @@ class Recorder:
         strikes = mask[:, L.ATTACK_BASE : L.HEAL_BASE].astype(bool) & ~seen["turret"][:, None]
         shot_legal = strikes[:, L.SHOOT_BASE - L.ATTACK_BASE :].any(1)
         castable = mask[:, _ffi.HERO_CAST] > 0
+        # The stack slots a melee strike may target, and whether one of them has no retaliation.
+        attackable = mask[:, L.ATTACK_BASE : L.SHOOT_BASE].reshape(len(rows), -1, L.ATTACK_SLOTS)
+        unanswered = (attackable.any(2) & (seen["retaliations"] == 0)).any(1)
         preview = batch.preview[rows]
         kill_hp = preview.mean(2) * seen["max_hp"][:, _PREVIEW_SLOT]
         best = np.where(strikes, kill_hp, 0.0).max(1)
@@ -254,6 +273,9 @@ class Recorder:
             st["decisions"] += 1
             st[CATEGORIES[c]] += 1
             battle.round = max(battle.round, r)
+            if r > 0:
+                before = battle.opponent_turns.get(r, 0)
+                battle.opponent_turns[r] = np.maximum(before, seen["opponent_turns"][i])
             if castable[i]:
                 battle.castable.add(r)
             if c == HERO_CAST:
@@ -272,7 +294,9 @@ class Recorder:
                 st["at_best"] += bool(chosen[i] >= best[i])
                 st["no_kill"] += bool(chosen[i] == 0 and best[i] > 0)
             if c == MELEE:
-                st["melee_into_retaliation"] += bool(seen["retaliations"][i, slot[i]] > 0)
+                into = bool(seen["retaliations"][i, slot[i]] > 0)
+                st["melee_into_retaliation"] += into
+                st["melee_avoidable"] += into and bool(unanswered[i])
             battle.pending = (
                 rounds[i],
                 seen["hp"][i].copy(),
@@ -307,6 +331,10 @@ class Recorder:
         if hero[0]:
             st["castable_rounds"] = len(battle.castable)
             st["cast_rounds"] = len(battle.cast)
+        if battle.opponent_turns:
+            turns = sum(battle.opponent_turns.values())
+            for j, name in enumerate(("started", "waited", "defended")):
+                st[f"opponent_{name}"] = int(turns[j])
         self.battles.append((battle.kind, won, st, battle.spells))
 
 
@@ -339,6 +367,9 @@ def summary(stats: Counter, spells: Counter, names: list[str] | None = None) -> 
         for name in ("melee", "shot")
     }
     names = names or []
+    # The agent's stack turns: its decisions after the tactics phase but a turret's, less the
+    # waits and the hero's casts (each followed by another decision of the same turn).
+    turns = d - sum(stats[c] for c in ("tactics", "turret", "wait", "hero_cast"))
     return {
         "battles": n,
         "won": _share(stats["won"], n),
@@ -347,6 +378,12 @@ def summary(stats: Counter, spells: Counter, names: list[str] | None = None) -> 
         "rounds": _share(stats["rounds"], n),
         "decisions": _share(d, n),
         "mix": {c: _share(stats[c], d) for c in CATEGORIES},
+        "turns": {
+            "waited": _share(stats["wait"], turns),
+            "defended": _share(stats["defend"], turns),
+            "opponent_waited": _share(stats["opponent_waited"], stats["opponent_started"]),
+            "opponent_defended": _share(stats["opponent_defended"], stats["opponent_started"]),
+        },
         "hero": {
             "battles": hero,
             "castable_rounds": _share(stats["castable_rounds"], hero),
@@ -382,6 +419,7 @@ def summary(stats: Counter, spells: Counter, names: list[str] | None = None) -> 
         },
         "trades": {
             "melee_into_retaliation": _share(stats["melee_into_retaliation"], stats["melee"]),
+            "melee_avoidable": _share(stats["melee_avoidable"], stats["melee"]),
             **clean,
             "least_killed": _share(
                 stats["clean_least_killed"], stats["clean_melee"] + stats["clean_shot"]
@@ -515,16 +553,23 @@ def lines(opponent: str, result: dict) -> list[str]:
         f"against {opponent}: win rate {lad['win_rate']:.3f} ± {lad['interval']:.3f} ({kinds}), "
         f"value {lad['value']:+.3f}, {lad['games']} games",
         f"{'group':26} {'n':>4} {'rnds':>5} {'dec':>5} "
-        + " ".join(f"{c[:5]:>5}" for c in CATEGORIES),
+        + " ".join(f"{c[:5]:>5}" for c in CATEGORIES)
+        + " w.own w.opp d.own d.opp",
     ]
     for name, g in _rows(result["groups"]):
         out.append(
             f"{name:26} {g['battles']:>4} {_cell(g['rounds'], 1)} {_cell(g['decisions'], 1)} "
             + " ".join(_cell(g["mix"][c]) for c in CATEGORIES)
+            + " "
+            + " ".join(
+                _cell(g["turns"][k])
+                for k in ("waited", "opponent_waited", "defended", "opponent_defended")
+            )
         )
     out.append(
         f"{'group':26} {'cr/b':>5} {'cast':>5} {'mana':>5} {'opp':>5} {'shot':>5} {'shoot':>5} "
-        f"{'str':>5} {'best':>5} {'kills':>5} {'none':>5} {'ret':>5} {'m.dlt':>6} {'m.tkn':>6} "
+        f"{'str':>5} {'best':>5} {'kills':>5} {'none':>5} {'ret':>5} {'avoid':>5} {'m.dlt':>6} "
+        f"{'m.tkn':>6} "
         f"{'s.dlt':>6} {'first':>5}"
     )
     for name, g in _rows(result["groups"]):
@@ -535,6 +580,7 @@ def lines(opponent: str, result: dict) -> list[str]:
             f"{g['shooting']['decisions']:>5} {_cell(g['shooting'].get('shot'))} "
             f"{_cell(t['struck'])} {_cell(t['at_best'])} {_cell(t['kills'])} "
             f"{_cell(t['no_kill'])} {_cell(tr['melee_into_retaliation'])} "
+            f"{_cell(tr['melee_avoidable'])} "
             f"{_cell(tr['melee']['dealt'], 1, 6)} {_cell(tr['melee']['taken'], 1, 6)} "
             f"{_cell(tr['shot']['dealt'], 1, 6)} {_cell(tr['first'])}"
         )

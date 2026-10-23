@@ -598,12 +598,17 @@ mod tests {
         let obs = observe(&s, &r, BattleSide::Defender);
         encode(&obs, width, &mut out).unwrap();
         assert_eq!(out[column("ROUND")], f32::from(obs.round));
-        let mut flags = [0usize; 3];
+        let mut flags = [0usize; 4];
         for (i, st) in obs.stacks.iter().enumerate() {
             let f = stack(&out, i);
             let is = |set: bool| if set { 1.0 } else { 0.0 };
-            let turn = [StackFlags::ACTED, StackFlags::WAITED, StackFlags::STARTED];
-            for ((name, bit), seen) in ["ACTED", "WAITED", "STARTED"]
+            let turn = [
+                StackFlags::ACTED,
+                StackFlags::WAITED,
+                StackFlags::STARTED,
+                StackFlags::DEFENDING,
+            ];
+            for ((name, bit), seen) in ["ACTED", "WAITED", "STARTED", "DEFENDING"]
                 .iter()
                 .zip(turn)
                 .zip(&mut flags)

@@ -48,6 +48,8 @@ def test_the_analysis_plays_the_ladders_battles() -> None:
     assert 0 < t["strikes"] <= t["strike_legal"] and 0.0 <= t["at_best"] <= 1.0
     assert t["kills"] is None or t["kills"] <= 1.0
     assert 0.0 <= whole["trades"]["first"] <= 1.0
+    assert whole["trades"]["melee_avoidable"] <= whole["trades"]["melee_into_retaliation"]
+    assert all(0.0 <= share <= 1.0 for share in whole["turns"].values())
     text = lines("greedy", result)
     assert text[0].startswith("against greedy: win rate") and text[-1].startswith("hero's spells")
     assert sum(line.startswith("all") for line in text) == 2
@@ -116,12 +118,13 @@ def test_the_categories_and_the_observations_reading() -> None:
     hero[1, [0, L.HERO_MANA, L.HERO_MAX_MANA]] = 1, 4, 20
     stacks = obs[0, L.STACKS :].reshape(L.STACK_CAPACITY, L.STACK_FEATURES)
     # Own: 3 creatures of 10 hit points, the top one at 4 (24), 5 at the start; a war machine.
-    # The opponent's: 2 of 7 (14), acted; a turret, the active stack; a dead stack.
+    # The opponent's: 2 of 7 (14), its turn started, it defended; a turret, the active stack; a
+    # dead stack.
     for slot, values in enumerate(
         [
             {L.OWN: 1, L.COUNT: 3, L.TOP_HP: 4, L.MAX_HP: 10, L.BASE_COUNT: 5},
             {L.OWN: 1, L.COUNT: 1, L.TOP_HP: 250, L.MAX_HP: 250, L.WAR_MACHINE: 1},
-            {L.COUNT: 2, L.TOP_HP: 7, L.MAX_HP: 7, L.ACTED: 1, L.BASE_COUNT: 2},
+            {L.COUNT: 2, L.TOP_HP: 7, L.MAX_HP: 7, L.STARTED: 1, L.DEFENDING: 1, L.BASE_COUNT: 2},
             {L.COUNT: 1, L.TOP_HP: 10, L.MAX_HP: 10, L.TURRET: 1, L.ACTIVE: 1},
             {L.COUNT: 0, L.TOP_HP: 0, L.MAX_HP: 9, L.BASE_COUNT: 4},
         ]
@@ -133,8 +136,10 @@ def test_the_categories_and_the_observations_reading() -> None:
     assert v["round"][0] == 3 and v["turret"][0]
     assert v["hp"][0].tolist() == [24, 14] and v["start"][0].tolist() == [50, 14 + 36]
     assert v["hero"][0].tolist() == [False, True] and v["mana"][0, 1] == 4
-    # Turn flags: the opponent's stacks only (8 marks one), the acted one's bit set.
-    assert v["turns"][0, :5].tolist() == [0, 0, 9, 8, 8]
+    # Turn flags: the opponent's stacks only (8 marks one), the started one's bit set; its
+    # creature stacks' turns this round: one started, none waited, one defends.
+    assert v["turns"][0, :5].tolist() == [0, 0, 12, 8, 8]
+    assert v["opponent_turns"][0].tolist() == [1, 0, 1]
 
 
 def test_the_spells_are_named_in_load_order() -> None:
