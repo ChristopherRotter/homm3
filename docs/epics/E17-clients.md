@@ -1,11 +1,11 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 done (2026-10-23: T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b, T8, T7b-1, T7b-2a, T7b-2b-1, T7b-2b-2a, T7b-2b-2b, T7b-2b-3, T7c-1, T7c-2, T7c-3, T7d, T9a, T9b-1, T9b, T9c, T9d); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 done (2026-10-23: T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b, T8, T7b-1, T7b-2a, T7b-2b-1, T7b-2b-2a, T7b-2b-2b, T7b-2b-3, T7c-1, T7c-2, T7c-3, T7d, T9a, T9b-1, T9b, T9c, T9d); M4 refined (2026-10-23, T0); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
 [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
-are there). Next: M4 T0 (sieges refined), M5 live play after it
+are there). Next: M4 T1a (sieges: the still's reading), M5 live play after M4
 (`docs/lanes/client/QUEUE.md`). Since T9c (2026-10-23) this epic
 is the battle client's; the adventure map client is E24, the map-client lane's.
 
@@ -543,6 +543,47 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   dissolve's seven blending steps. Every other sequence and situation drawn as before. **M3
   done.**
 
+### M4 — sieges
+
+Refined at T0 (2026-10-23) with the user; the tasks in `docs/lanes/client/QUEUE.md`. The engine
+plays sieges since E04c (`Siege` with the wall parts' hit points, the gate and the moat;
+`WallShot`, `WallQuaked`, `WallDestroyed`, `GateOpened`, `GateClosed`, `MoatDamage`; the turrets
+as stacks at hexes 251, 254, 255; BAT-SIE-*); the viewer draws none of it yet. The original's
+siege drawing rests on tables the battle lane read (`installation.md` §7.27 to §7.31): per town
+18 wall parts (`siege_wall_parts_by_town` 0x66D868: hit points, screen point, the hex after which
+each is drawn, six pictures), the turrets (0x63CF88), the backgrounds (0x63D2A0); the pictures
+are 28 PCX per town (`Sg<town><part>.pcx`: the background, five walls in two states, the arch,
+two towers and the keep with their caps, the top wall, the moat and its lip, four drawbridge
+states; the Tower 26, without the moat).
+
+- **T1a, the siege still read:** the redraw's siege branches (`battle_redraw` 0x494440's parts,
+  the row passes' pass 0, the moat's second call, the towers last), which picture a part shows by
+  its hit points, what the background buffer composes once; compared with VCMI; the town tables
+  harvested into the asset tables. It says which towns follow the same rules (the user: then
+  only a subset is captured in T1b).
+- **T1b, the siege still captured:** the situation writer places a town (faction, fort level),
+  the harness steps the attacker in, the viewer draws the background, walls, gate, moat, towers,
+  turret shooters and the Catapult; situations for every town with a Castle, one Fort, one
+  Citadel; **damaged and destroyed walls as stills** (the user, 2026-10-23): the harness sets
+  the walls' hit points in the original's memory at the start and the situation gives the viewer
+  the same values, for a subset of towns where T1a shows the rules are the same.
+- **T2a, the siege over time read:** the Catapult's shot (`wall_shot_animate` 0x445FD0), a
+  turret's (`turret_shot` 0x465AD0), the drawbridge (`gate_open` 0x4671C0, `gate_close`
+  0x4672E0: the engine reports `GateOpened` after the step, the original opens the gate
+  before it),
+  Earthquake (0x5A7C80), the moat's damage, the Tower's mines, the siege's cursors, status lines
+  and log lines.
+- **T2b, the Catapult and the turrets recorded:** hot-seat siege sequences with the original's
+  rolls forced (hits, misses, a wall and a tower destroyed; the keep's and the towers' shots).
+- **T2c, the gate, the moat, Earthquake and the mouse recorded:** a defender out through the
+  gate and back, a stack in the moat, a mine, Earthquake, a hero with Ballistics aiming the
+  Catapult, a shot through the walls; the siege cursors.
+- **T3, M4's closure:** a fresh reviewer, every capture afresh, the review list, M5 refined.
+- **Exit:** the siege situations and sequences pass, or each difference is a listed fix or a
+  classified quirk.
+- **T0 done 2026-10-23** ([log](E17-log.md#m4-t0--m4-sieges-refined-2026-10-23)): the cut
+  above agreed; the wall states as stills by memory, on a subset of towns if the rules agree.
+
 ### The adventure lane's harness (H1, H2: its batch E3)
 
 Taken ahead of M3's remainder on 2026-10-19 (the user): the adventure lane's E08 T22a waits on
@@ -563,7 +604,7 @@ it (`docs/rules/surveys/E08-battles.md` §13; the requests in the queue's inbox 
 
 ### Later (refined when they come up)
 
-**M4, sieges** (walls, towers, the Catapult, the moat; refined in M4 T0, next), then **M5,
+After M4 (sieges, above), **M5,
 live play** (a battle played: hot seat in-process first, then against a server: the content
 check, accounts; the server lane's notes in `NOTES.md`), in that order (the user, 2026-10-23,
 T9c). Later: HD layouts, graphics options beyond `faithful`, the client's options (volumes),
