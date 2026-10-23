@@ -190,12 +190,12 @@ The table, mask = 16 × row + column:
   player's 32 colours (0x5FFE20, as a dialog picture's), drawn opaque from (0, 0) at its own size
   (0x44FDB0 with the last argument 0); then the panels (not read), the view (0x40F3F0 from the
   manager's +0xE4), the minimap (0x412C40), and the whole 800 × 600 shown when its first argument
-  is set. The view's 8-pixel columns and rows beside it are the frame's pixels until the view's
-  passes draw over them (§1.2's clip). VCMI 1.7.5 agrees: its frame is parts of the same
+  is set. The columns x 0–7 and 600–607, which the idle step shows with the view (§1.2), keep
+  the frame's pixels: the passes' clip leaves them. VCMI 1.7.5 agrees: its frame is parts of the same
   picture in the player's colours (`config/widgets/adventureMap.json`, `imagesPlayerColored`).
 - **The gate** (`h3-map-view gate`, T2) on the user's files: every name of the tables and the
-  layout is in `H3sprite.lod` (the DEFs) or `H3bitmap.lod` (`AdvMap.pcx`, 800 × 600, 8-bit;
-  `PLAYERS.PAL`), none in the AB archives. Group 0's frames: the terrains dirt 46, sand 24, grass,
+  layout is found in the base archive searched first, `H3sprite.lod` (the DEFs) or
+  `H3bitmap.lod` (`AdvMap.pcx`, 800 × 600, 8-bit; `PLAYERS.PAL`), and decodes. Group 0's frames: the terrains dirt 46, sand 24, grass,
   snow, swamp, rough, subterranean and lava 79, water 33, rock 48; each river 13, each road 17;
   `edg` 36, `tshrc` 4, `tshre` 34, each gem 8: exactly what the view draws (§1.4, §1.5, §1.1).
   The 159 shipped `.h3m` maps all read and give pictures up to dirt 45, sand 23, grass, snow,
