@@ -62,7 +62,7 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
-- **2026-10-23, E17 M3 T9d (done; PR_NUMBER).** Not split (the user): the fixes behind
+- **2026-10-23, E17 M3 T9d (done; #413 open).** Not split (the user): the fixes behind
   `anim::Stage::bugs`; `sacrifice` recorded (Q17 confirmed; the victim's dissolve: its time
   built, its blend in the inbox). M3 done.
 - **2026-10-23, E17 M3 T9c (done; `shared/map-client-lane`, `cross-lane`).** The user split the
