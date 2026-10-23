@@ -5672,3 +5672,55 @@ destination map 1, where a teleported stack strikes from where it stands.
 
 **Draws.** Per R: the first call's (0x421B02 per candidate, the cast entry's when it runs), then the
 second's (0x421B02 per candidate); then 0x43C800's draw for Teleport's value (§7.56).
+
+### 7.59 Code reading: a caster's cast entry in Teleport's turns (E23 T5b2b, 2026-10-23)
+
+Read for E23 T5b2b (the user, 2026-10-23: whole, with each stack's drawn spell in the engine,
+`cross-lane`): 0x421280, 0x421000 and 0x420D20 for what they read of their caster, 0x4476C0's
+cases, 0x420F00, the manager fields 0x43C330 and 0x43C4A0 read, the writes of +0x4E0 and the
+record's set-up, the reads of the active record in the computer's code and in 0x446C40, and the
+calls after the entry in 0x421680. §7.50, §7.51, §7.53 and §7.58 stand. Insight only, nothing
+copied (Q29).
+
+**What the entry reads of its caster R.** 0x421280 takes R as its argument and reads only R's
+record (casts left +0xDC, creature +0x34 for its table) besides the battle-wide blocks. 0x421000
+tests R's creature and casts left again, passes over R itself among the side's records (0x4210DF)
+and counts the raise with `this` = R (0x447330); its records are the battle context's side
+(+0x20). 0x420D20 takes R's strength (0x442E60), passes over R (0x420E02) and creature 149, and asks
+0x4476C0 with `this` = R (0x420E15), which reads R's casts left, R's controller (+0xF4, flipped by
++0x288) for 0x41F890 and, by R's creature, Bloodlust (43) for R's controller (the Ogre Mage), a spell
+0x447A80 takes for the target (the Master Genie) or R's +0x4E0 (the Faerie Dragon); R's creature
+then picks 0x43C330 or 0x43C4A0, which read nothing of the manager but the battlefield (+0x53C0).
+0x420F00 reads R's +0x4E0 (0x420F63) and R's count (+0x4C: the power 5 × count). The spell
+context 0x4369C0 is the side's. **Nothing reads the active record** (+0x132B8, +0x132BC,
++0x132C8): in the computer's code only "now" (0x436C60, 0x43A670) and the hero's cases (0x422DFA,
+0x43AB78, 0x43AE83, 0x43B0F8) do, and no creature cast reads "now". In Teleport's turns a stack that
+is not the active one so asks its own cast entry as on its own turn, from its record as it
+stands. The maps of those turns free the stack's own hexes, as the port's: the computer's
+searches call 0x446C40 with its second argument 0 (0x4B3753, 0x4B305B), where a hex's stack fits
+only as the mover itself (0x446CC6); the active record is compared only with that argument set
+(0x446D7F onwards: a two-hex stack's shifted position, for Teleport's handler, a clone's and an
+elemental's placement).
+
+**The drawn spell +0x4E0.** Written only by the draw (0x447588, at each activation of a dragon with
+casts left, §7.21) and by the removal's copy (0x437E9E, §7.54). The records are constructed once
+per session (0x462760 with 0x43D250 through the vector constructor, 0x4627BF) and set up per
+battle by 0x43D730, whose reset 0x43D5C0 clears +0x198 to +0x2DB only (0x43D610); a created
+stack's set-up (0x47A100) leaves it too. So a dragon that has not acted this round reads the spell
+of its last activation (this round's when it waited, else an earlier round's), a reused record
+its earlier occupant's, and a record that never drew in the battle what it held from an earlier
+battle of the session, or the heap's first contents (0x43C620 values any spell outside 15 to 23 at
+0). The engine keeps each stack's last draw for the battle, a reused record's too, and none
+before a stack's first: its battles start afresh (as BAT-QUIRK-14's counters do not; the earlier
+battle's spell is a gap, not modelled).
+
+**After the entry** (the stops of survey slip 30). In 0x421680 after the entry (0x421CE4) only the
+walk 0x41F580 searches (0x41F5CA, for R: R's own stops); the guard 0x420760 and the step to safety
+0x4208F0 search only through it (0x4208D8, 0x420A5B), 0x4205D0 and 0x4B3F20 read the cells. 0x421F80
+asks the entry again after a choice of nothing (0x421FF8), which may build a second context. So
+the last search of the first call after R's map is the last context an entry built (its last
+search: the last evaluator's, else the threat records' last, §7.53's slip 22) unless a walk came
+after it, and R's own map without a context. A raise builds none.
+
+**Draws.** As §7.58; the first call's entry draws as on the stack's own turn (the context's
+predictions, the scan's 1 to 100).
