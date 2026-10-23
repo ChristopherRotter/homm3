@@ -4830,3 +4830,62 @@ accepted; the encoding's paths (`crates/h3-sim/src/adventure/` to the AI lane bu
 the expansions as the game's configuration, not the map's edition (the user's own answer: the
 drafts' and the design's edition clauses rewritten: the packs the ruleset is compiled from
 decide, no setup field); batch E6 first. Round 1 (T45, T46) is ready.
+
+### Increment 6, round 1: T45, the shared groundwork (2026-10-23, `shared/e08-t45`, `cross-lane`)
+
+**The cut** (decision 106; asked at the start, `AskUserQuestion`): T45 whole, in one session and
+one `shared/` pull request (`cross-lane`); T46 in the next session. Recommended was T45 in two
+pull requests (the ADRs and the move, then the kinds and packs); not chosen either: T45a alone,
+T45a with T46. The summary the user pasted at the start was T36a's (#383), older than `master`;
+the repository's HANDOFF and queue decided the next task.
+
+**Baseline:** `master` 5c09687 (#415), engine code 33e32dfd verified on 7ab66ede (the sandbox ran
+only the light gates). The user's PC was linked at the start: the repository from GitHub, the
+original data from the PC (the executable, both LODs, `maps.tar`, `extracted.tar`). CI cannot run
+(billing): the latest runs on `master` failed unstarted.
+
+- **The ADRs** (the three accepted drafts applied, then deleted): ADR-0013 point 1 (the worn
+  artifacts by position, the locks per slot, the walk's order), point 3 (the two kinds), point 14
+  added (moves, combinations, Scholar, the hero changes); ADR-0016 point 3 (the army commands, the
+  formation and the tactics flag), point 4 (an own hero met, a join without room offered and held
+  as the army dialog, with the increment-3 sentences they replace pointed to it), point 6 (what
+  the owner alone sees); ADR-0017 point 1 (the management commands, the expansions as the game's
+  configuration), point 6 (the meeting and the army dialog), point 8 (the env's opening reworded
+  for the move, the encoding to the AI lane, the masks' `Decline`), point 9 (the versions), point
+  11 (the tactics flag zeroing both heroes' Tactics); each ADR's consequences, alternatives and
+  history; the index's three Read-when cells.
+- **The encoding's move** (decisions 99, 103): `lanes.toml` gives `crates/h3-sim/src/adventure/`
+  to the AI lane (its `crates/h3-sim/`) and keeps `replay.rs` for the adventure lane by a file
+  pattern; `xtask`'s ownership test follows (`replay.rs` the adventure's, `env.rs` and `tests/`
+  the AI lane's). The versions table splits the row (the replay format the adventure lane's, the
+  action and observation encodings the AI lane's); the global HANDOFF's adventure row (kept under
+  its 6 000 bytes by two abbreviations); `docs/07`'s env line; the AI lane's inbox (its two notes
+  of T44a and T44b folded into one: what moved, what stayed, the mask check due when T51 lands,
+  likely a test only since `legal_mask` builds the answers from `legal_commands`).
+- **`h3-content`** (part A §1): `HeroEffect::MeetingSpells { level }` (1..=5) and `GivesSpellBook`,
+  codes 51 and 52, with `NAMES`, `try_map`, the parameter check and the hash (the book with the
+  kinds without parameters); **core ruleset hash v48** (the golden base hash moved).
+- **`h3-pack`**: **pack format v47** (`gives_spell_book` a struct variant `{}`, so an unknown key is
+  a syntax error, a trap of the global HANDOFF); a syntax test
+  (`the_meeting_and_spell_book_kinds_parse`) and a harvested test
+  (`the_harvested_scholar_and_titans_thunder`: Scholar 2, 3, 4 with and without the expansions,
+  Titan's Thunder's book with SoD).
+- **The harvester** (battle-owned, `cross-lane`): the gap-fill's `[[heroes.skill_effects]]` for
+  Scholar, `gives_spell_book` beside Titan's Thunder's spell, the Thunder out of the `pending`
+  list (its entry now "spell points per day" for the four mana artifacts); six sources
+  (`exe-scholar` 0x4A2940, `exe-titans-thunder` 0x4E2A00, VCMI 1.7.5's `config/skills.json`
+  `LEARN_MEETING_SPELL_LIMIT` 2, 3, 4 and `CGameHandler.cpp`'s `useScholarSkill` and
+  `checkSpellbookIsNeeded`, re-read for this in a sparse checkout, and the survey's two wiki
+  pages). `base` and `sod` re-harvested from the staged installation: only those lines changed;
+  the harvest check matches. `synthetic-ext`'s `wayfarer_sash` uses both kinds (`h3-pack-battle`'s
+  every-kind check; no new artifact, so its artifact count stays). `packs/README.md`'s effect table.
+- **Replays and records**: the 20 golden replays keep commands and state hashes; only
+  `ruleset_hash` in their headers moved (synthetic faithful `0x3156c56f2211ba02`, base faithful
+  `0x1ac6c50d158057de`, strict-fixed `0xc01284bbdbb004c1`); `duel-s2-d7` and `duel-s5-strict-d7`
+  re-recorded with their options differed in that line only. The AI lane's `bots-report-v1.json`
+  regenerated: only `engine.core` moved.
+- **Docs**: two code comments repointed to increment 5's design note in this log (the design
+  note's request); the design note's §1, §6, §12, §13 and §15 cut to what later tasks need;
+  decision 106 and the task's line in the epic; the queue (T45 out, an inbox note for T49 and
+  T51); the battle lane's inbox and its HANDOFF's shared versions; `docs/03`'s glossary (the
+  tactics flag, positions from T49, the meeting and the army dialog).
