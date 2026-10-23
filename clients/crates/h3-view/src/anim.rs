@@ -1802,13 +1802,29 @@ const fn still(group: u32, hex: u8) -> Pose {
     }
 }
 
-/// Whether the `TurnStarted` of `stack` followed by `next` is a turn its pick freezes (bad morale,
-/// Fear: `next_stack_to_act` 0x465283; E17 M3 T7b-2b-2b): the stack never becomes the active one.
+/// Whether the `TurnStarted` of `stack` followed by the events `after` is a turn its pick freezes
+/// (bad morale, Fear: `next_stack_to_act` 0x465283; E17 M3 T7b-2b-2b): the stack never becomes
+/// the active one. A first turn's regeneration and the effects its start ends come before the
+/// roll (the engine's `pick`; E17 M3 T9b, the reviewer).
 #[must_use]
-pub fn freezes(next: Option<&Event>, stack: u8) -> bool {
-    next.is_some_and(|e| {
-        matches!(*e, Event::BadMorale { stack: s } | Event::Frightened { stack: s } if s == stack)
-    })
+pub fn freezes(after: &[Event], stack: u8) -> bool {
+    after
+        .iter()
+        .find(|e| {
+            !matches!(
+                e,
+                Event::Regenerated { .. } | Event::EffectApplied { .. } | Event::EffectEnded { .. }
+            )
+        })
+        .is_some_and(|e| {
+            matches!(*e, Event::BadMorale { stack: s } | Event::Frightened { stack: s } if s == stack)
+        })
+}
+
+/// Whether `event` is what a hit ends before the strike's next hit (the engine's `strike` and
+/// `effects::damaged`): an effect the damage ends, a clone gone with its original.
+fn damage_ended(event: &Event) -> bool {
+    matches!(event, Event::EffectEnded { .. } | Event::Vanished { .. })
 }
 
 /// A frame of `group` on `hex`, facing right, standing's layer.
@@ -2138,8 +2154,26 @@ impl Player<'_> {
 
     /// A dead stack leaves the living for the corpses (a raise may bring it back).
     fn bury(&mut self, stack: u8) {
-        let live = self.stacks.remove(&stack);
-        self.corpses.extend(live.map(|l| (stack, l)));
+        // A death ends every spell with a duration, unreported (the engine's `remove_dead`, the
+        // original's 0x444120): Disrupting Ray stays, so a stack raised or reborn comes back
+        // without the others' hue and walk (E17 M3 T9b, the reviewer).
+        let casts = self.stage.casts;
+        let live = self.stacks.remove(&stack).map(|mut l| {
+            let before = l.spells.len();
+            l.spells.retain(|h| {
+                casts
+                    .spells
+                    .get(h)
+                    .is_some_and(|s| s.original == DISRUPTING_RAY)
+            });
+            (l.spells.len() != before, l)
+        });
+        self.pending_tints.extend(
+            live.iter()
+                .filter(|(ended, _)| *ended)
+                .map(|(_, l)| (stack, hue(l, casts))),
+        );
+        self.corpses.extend(live.map(|(_, l)| (stack, l)));
     }
 
     /// One command's events, in order.
@@ -2201,20 +2235,29 @@ impl Player<'_> {
                 } if !flags.secondary => {
                     let mut hit = vec![(target, kills)];
                     let mut hits = vec![(target, damage.0, kills)];
-                    while let Some(&Event::Struck {
-                        attacker: a,
-                        target: t,
-                        damage: ref d,
-                        kills: k,
-                        flags: f,
-                    }) = events.get(i)
-                    {
-                        if a != attacker || !f.secondary {
-                            break;
+                    // What a hit ends comes before the next hit (the engine's `strike`: Blind,
+                    // Paralyze or Stone the damage ends, a clone gone with its original): it takes
+                    // effect after the strike (E17 M3 T9b, the reviewer).
+                    let mut ended = Vec::new();
+                    let mut j = i;
+                    while let Some(e) = events.get(j) {
+                        match *e {
+                            Event::Struck {
+                                attacker: a,
+                                target: t,
+                                damage: ref d,
+                                kills: k,
+                                flags: f,
+                            } if a == attacker && f.secondary => {
+                                hit.push((t, k));
+                                hits.push((t, d.0, k));
+                                ended.extend(events[i..j].iter().cloned());
+                                j += 1;
+                                i = j;
+                            }
+                            _ if damage_ended(e) => j += 1,
+                            _ => break,
                         }
-                        hit.push((t, k));
-                        hits.push((t, d.0, k));
-                        i += 1;
                     }
                     // The line (E17 M3 T6b): the striker by its number before the strike.
                     let count = self.live(attacker).map_or(0, |l| l.count);
@@ -2272,7 +2315,7 @@ impl Player<'_> {
                         };
                         // The spells it leaves pending, cast at its animation's end (E17 M3
                         // T7b-2b-3).
-                        let (casts, next) = self.pending_casts(events, i, attacker);
+                        let (casts, next) = self.pending_casts(events, i, attacker, &mut ended);
                         self.strike_casts = casts;
                         i = next;
                         last_hit = self.live(target).map(|l| (target, l.count));
@@ -2287,9 +2330,12 @@ impl Player<'_> {
                         };
                         self.log.push((self.clock.now, line));
                     }
+                    self.effects(&ended);
                 }
+                // A hit no strike leads: its reaction alone, its kills taken (E17 M3 T9b, the
+                // reviewer: they were counted with no reaction, the dead never buried).
                 Event::Struck { target, kills, .. } => {
-                    self.reactions(&[(target, kills)]);
+                    self.react_alone(&[(target, kills)], [STANDING, STRUCK]);
                 }
                 // A spell after a strike that is the striker's own effect (E17 M3 T7b-2b-3): the
                 // Thunderbird's bolt with its damage; another's effects at once.
@@ -2385,12 +2431,14 @@ impl Player<'_> {
                     target,
                     ..
                 } => {
-                    // Its effects follow it (E17 M3 T7b-1; the objects it places, T7c-2).
+                    // Its effects follow it (E17 M3 T7b-1; the objects it places, T7c-2; Magic
+                    // Mirror's redirect before them, T9b).
                     let from = i;
                     while events.get(i).is_some_and(|e| {
                         matches!(
                             e,
-                            Event::EffectApplied { .. }
+                            Event::SpellRedirected { .. }
+                                | Event::EffectApplied { .. }
                                 | Event::EffectEnded { .. }
                                 | Event::SpellResisted { .. }
                                 | Event::SpellDamage { .. }
@@ -2482,8 +2530,17 @@ impl Player<'_> {
                     }
                 }
                 Event::TurnStarted { stack } => {
-                    // The attack ends before the next turn starts (E17 M2 T5c, the reviewer).
+                    // The attack ends before the next turn starts (E17 M2 T5c, the reviewer); a
+                    // turn the command plays on (a berserk stack's, a war machine's) is an attack
+                    // of its own (E17 M3 T9b, the reviewer).
                     self.attack_over(&mut melee, &mut shooter);
+                    struck = false;
+                    before_move = None;
+                    last_hit = None;
+                    shields.clear();
+                    // A war machine's turn that drew nothing keeps its outline no longer (E17 M3
+                    // T9b, the reviewer: the next command's first frame cleared it).
+                    self.machine = None;
                     // The turn's start redraws the battle (its outline): the hues a round's start
                     // changed show (E17 M3 T7b-2a, `resist` at 2 900: Slow's end).
                     self.show_tints(self.clock.now);
@@ -2491,7 +2548,7 @@ impl Player<'_> {
                     // A stack its pick freezes (bad morale, Fear) never becomes the active one:
                     // the pick goes on to the next (`next_stack_to_act` 0x465283; E17 M3
                     // T7b-2b-2b).
-                    let frozen = freezes(events.get(i), stack);
+                    let frozen = freezes(&events[i..], stack);
                     if !frozen {
                         self.turns.push((self.clock.now, stack));
                         self.log.push((self.clock.now, Logged::Turn(stack)));
@@ -2760,14 +2817,23 @@ impl Player<'_> {
         events: &[Event],
         mut i: usize,
         attacker: u8,
+        ended: &mut Vec<Event>,
     ) -> (Vec<StrikeCast>, usize) {
         let mut casts = Vec::new();
-        while let Some(&Event::StrikeSpell {
-            striker,
-            target,
-            spell,
-        }) = events.get(i)
-        {
+        loop {
+            // What the last hit ended comes first ([`damage_ended`]).
+            let mut j = i;
+            while events.get(j).is_some_and(damage_ended) {
+                j += 1;
+            }
+            let Some(&Event::StrikeSpell {
+                striker,
+                target,
+                spell,
+            }) = events.get(j)
+            else {
+                break;
+            };
             let pending = self
                 .stage
                 .casts
@@ -2777,7 +2843,8 @@ impl Player<'_> {
             if striker != attacker || !pending {
                 break;
             }
-            let from = i + 1;
+            ended.extend(events[i..j].iter().cloned());
+            let from = j + 1;
             let mut end = from;
             while events.get(end).is_some_and(|e| {
                 matches!(e, Event::EffectApplied { .. } | Event::EffectEnded { .. })
@@ -3031,6 +3098,16 @@ impl Player<'_> {
                 self.hero_frame(s, (casting, f), time, false);
             }
         }
+        // Magic Mirror sends it on to a stack of the caster's side (the engine's `mirror`: its
+        // `SpellRedirected` comes before the effects; E17 M3 T9b, the reviewer: it was drawn at
+        // the mirroring stack, its kills lost). The mirror's own animation is not built.
+        let target = effects
+            .iter()
+            .find_map(|e| match *e {
+                Event::SpellRedirected { to, .. } => Some(Target::Stack { stack: to }),
+                _ => None,
+            })
+            .unwrap_or(target);
         let aimed = match target {
             Target::Stack { stack } => self.live(stack).map(|l| (stack, l)),
             _ => None,
@@ -3134,6 +3211,7 @@ impl Player<'_> {
                                 };
                                 self.log.push((self.clock.now, line));
                             }
+                            (Some(_), _) => self.spell_hits((spell, look.animation), effects),
                             _ if applied => {
                                 self.effects(effects);
                                 self.log.push((self.clock.now, line));
@@ -3613,6 +3691,7 @@ impl Player<'_> {
         let (Target::Hex { hex }, true, FROST_RING..=METEOR_SHOWER) =
             (target, self.stacks.contains_key(&stack), look.original)
         else {
+            self.spell_hits((spell, look.animation), effects);
             self.effects(effects);
             return;
         };
@@ -4030,6 +4109,33 @@ impl Player<'_> {
             [STANDING, STRUCK],
             riding.as_ref(),
         );
+    }
+
+    /// The hits of a damage spell the timeline draws no other way (a hero's Implosion, a Faerie
+    /// Dragon's Ice Bolt at a stack; E17 M3 T9b, the reviewer: their kills were dropped, the
+    /// dead left standing): each its spell's animation over the stack with its reaction, as
+    /// [`Self::marked`], its line after (*provisional*: their handlers not read).
+    fn spell_hits(&mut self, (spell, animation): (u16, Option<u8>), effects: &[Event]) {
+        let hits: Vec<(u8, Live, u64, u32)> = effects
+            .iter()
+            .filter_map(|e| match *e {
+                Event::SpellDamage {
+                    target,
+                    ref damage,
+                    kills,
+                    ..
+                } => self.live(target).map(|l| (target, l, damage.0, kills)),
+                _ => None,
+            })
+            .collect();
+        for (t, live, damage, kills) in hits {
+            self.marked((t, &live), kills, animation);
+            let line = Logged::SpellDamage {
+                spell,
+                hit: (t, damage, kills),
+            };
+            self.log.push((self.clock.now, line));
+        }
     }
 
     /// An attack is over: a melee's target turns back, then its striker at the attack's end
