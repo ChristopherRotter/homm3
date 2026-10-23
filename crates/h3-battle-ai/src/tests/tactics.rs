@@ -95,18 +95,21 @@ fn a_shooter_takes_the_hex_of_the_zone_with_the_fewest_free_neighbours() {
     let walk = decide(&state, &r);
     assert!(matches!(walk, Command::Move { .. }), "{walk:?}");
     play(&mut state, &r, walk);
-    // The first archer stands in the field's corner, four free neighbours (two lie off the
-    // field): no hex of the zone has fewer, so it stays (Wait).
+    // The first archer stands in the field's corner, three free neighbours (two lie off the
+    // field, one in the side column, which the original's table leaves out): no hex of the zone
+    // has fewer, so it stays (Wait).
     assert_eq!(state.active(), Some(StackId(0)));
     assert_eq!(decide(&state, &r), Command::Wait);
     play(&mut state, &r, Command::Wait);
-    // The second takes the first hex with four, on the top row: not hex 2, next to the first
-    // archer (a shooter sets the score to 1000), but hex 3.
+    // The second, on hex 52 in column 1 of an odd row, has three too (its three neighbours in
+    // column 0 are none): hex 2 next to the first archer scores 1000 (a shooter beside it), and
+    // no hex has fewer, so it stays as well.
     assert_eq!(state.active(), Some(StackId(1)));
-    assert_eq!(decide(&state, &r), Command::Move { to: Hex(3) });
-    play(&mut state, &r, Command::Move { to: Hex(3) });
-    // The first, among the waited stacks, still stays: its Wait ends its turn.
-    assert_eq!(state.active(), Some(StackId(0)));
+    assert_eq!(decide(&state, &r), Command::Wait);
+    play(&mut state, &r, Command::Wait);
+    // Among the waited stacks they still stay: a Wait ends the turn.
+    let waited = state.active().unwrap();
+    assert!(waited == StackId(0) || waited == StackId(1), "{waited:?}");
     assert_eq!(decide(&state, &r), Command::Wait);
 }
 
@@ -119,9 +122,15 @@ fn a_shooter_counts_no_neighbour_in_a_side_column() {
     let r = ruleset();
     let mut setup = setup(&[(IMP, 20)], &[(ARCHER, 20)]);
     setup.heroes = [Some(hero(0)), Some(hero(3))];
-    let state = BattleState::new(&r, &setup, 5).unwrap();
+    let mut state = BattleState::new(&r, &setup, 5).unwrap();
     assert!(state.tactics().is_some());
-    assert_eq!(state.stacks()[1].hex, Hex(100));
+    // The test's formation puts them on hex 15 already: they stay (with the field's neighbours
+    // they went to hex 9).
+    assert_eq!(state.stacks()[1].hex, Hex(15));
+    assert_eq!(state.active(), Some(StackId(1)));
+    assert_eq!(decide(&state, &r), Command::Wait);
+    // Placed on hex 100 as in the original's battle, they go back to hex 15 the next round.
+    play(&mut state, &r, Command::Move { to: Hex(100) });
     assert_eq!(state.active(), Some(StackId(1)));
     assert_eq!(decide(&state, &r), Command::Move { to: Hex(15) });
 }

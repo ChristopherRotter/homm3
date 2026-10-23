@@ -2334,8 +2334,10 @@ fn the_hexes_around_the_side_lose_the_area_threat_on_hard() {
     };
     assert!(threat > 0);
     let low = (-threat).max(floor);
-    let near = |a: Hex| field.distance(a, state.stacks()[0].hex) == 1;
-    let near_gog = |a: Hex| field.distance(a, state.stacks()[1].hex) == 1;
+    // The original's neighbour table: none in a side column (batch 4b H1).
+    let near = |a: Hex| field.is_standable(a) && field.distance(a, state.stacks()[0].hex) == 1;
+    let near_gog =
+        |a: Hex| field.is_standable(a) && field.distance(a, state.stacks()[1].hex) == 1;
     for hex in all_hexes() {
         let want = match (near(hex), near_gog(hex)) {
             (true, true) => (low - 1).max(floor),
@@ -2381,11 +2383,14 @@ fn a_breath_attackers_line_and_an_enemy_dragons_threat() {
     let scores = scores_of(&state, &r, me);
     let at = state.stacks()[0].hex;
     for hex in all_hexes() {
+        // Through the original's neighbour table: no hex in a side column (batch 4b H1).
         let behind = field.distance(hex, at) == 2
+            && field.is_standable(hex)
             && field
                 .neighbors(at)
                 .into_iter()
                 .flatten()
+                .filter(|&n| field.is_standable(n))
                 .any(|n| field.direction(at, n) == field.direction(n, hex));
         let want = if behind {
             (-k).max(floor_of(&state, &r, me))
