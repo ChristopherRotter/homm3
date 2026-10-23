@@ -229,7 +229,7 @@ fn render(options: &Options) -> Result<PathBuf, String> {
 /// the palette step; `frames`, the objects' frame step the screen shows; `viewer`, the viewing
 /// player's colour; `phases`, every object's animation phase in the map's order; `anchors`, every
 /// object's anchor in that order, which must be the map's (so the phases are the objects' own; a
-/// random object's may differ, MCL-STUB-1);
+/// random object's may differ, T5);
 /// `defs` and `classes`, every object's template in the original's memory, its DEF and its class
 /// and subclass, in that order: one that differs from the map's is what a random object became
 /// (E24 M1 T4b, design §2.7), its own picture the last of the game's `templates` of that class and
@@ -304,7 +304,8 @@ fn read_live(
     if let Some(anchors) = table.get("anchors") {
         // A random object the original drew may stand elsewhere: a random dwelling's anchor
         // moved by a tile in a shipped map (E24 M1 T4b). Drawn at the map's until T5 reads the
-        // random dwellings (stub: MCL-STUB-1); any other object must be where the map has it.
+        // random dwellings (design §2.7, the queue's T5); any other object must be where the map
+        // has it.
         let theirs = anchors.as_array().filter(|a| a.len() == art.objects.len());
         let moved = |(index, (object, theirs)): (usize, (&ObjectArt, &toml::Value))| {
             let a = object.anchor;

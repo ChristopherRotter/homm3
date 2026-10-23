@@ -502,7 +502,11 @@ points 4, 5, 6 and 8 moved to T5 with the heroes and the path, point 7 to T4b. S
   that screen's probes hold the level button greyed, as a map without an underground shows it);
   the human player's explored bits written; `live.toml` gains the viewer and every object's
   template in memory (its DEF, class and subclass), which `render --live` compares with the map's:
-  a differing one is what a random object became.
+  a differing one is what a random object became. **Not read:** the random dwellings (216–218,
+  resolved outside 0x4C9990's copy): in one start of four Tale of two lands' had moved a tile
+  from the map's anchor (as an Angel Portal; at a Hydra Pond it had not), so `render --live`
+  accepts a random object's moved anchor and draws it at the map's until T5 reads them (an owned
+  class: no T4b view holds one).
 - **The captures** (`clients/map/situations/shipped-*`): five views of four shipped maps (72, 108
   and 144 tiles) without heroes, boats or owned objects near them, one underground, with 3 to 6
   random artifacts, 4 to 9 random monsters and 2 to 8 random resources each among 110 to 217

@@ -24,7 +24,9 @@ task (the HANDOFF's autonomy contract).
 - **Acceptance:** those situations match pixel for pixel outside the panels' masks.
 - **Depends on:** T4a, T4b (done). **Status:** ready. Shipped maps load whole since T4b
   (`map`): their heroes and owned objects are T5's to draw; a town's picture follows its
-  buildings through the same copy as a random object's (0x4C9990, `E24-design.md` §2.7).
+  buildings through the same copy as a random object's (0x4C9990, `E24-design.md` §2.7); a
+  random dwelling can move its anchor at a new game (§2.7, not read: `render --live` draws it at
+  the map's meanwhile).
 
 ### E24 M1 T6 — the capture set and M1's closure
 
