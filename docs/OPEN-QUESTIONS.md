@@ -112,10 +112,6 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### Map client lane (`MCL-Q<n>`)
 
-#### MCL-Q2 — A road on the map's last row vanishes at the view's last row (E24 M1 T3b1)
-
-**Context.** The road pass (`view_road_pass` 0x411D60; `docs/epics/E24-design.md` §1.3) draws a road 16 pixels below its tile, cuts its 32 × 32 rectangle to the view (rows up to 551), and on the map's last row then takes 16 rows off what that cut left (0x411ED3), so that nothing reaches past the map. When the map's last row is the view's bottom row (row 16), the view's cut has already left only the road's top 16 rows; the second cut leaves none, and the road is not drawn: that tile's lower half shows its terrain without the road, while one row further down the view (the map's last row at the view's row 15) the same road shows. A drawing bug, harmless to play, and play reaches that view: a minimap click puts the view's top-left there (T3b2's situation `road-last-row-19` shows the roads missing in the original and matches it exactly with the bug reproduced; drawn fixed it differs by 2 382 pixels; one row lower, `road-last-row-20`, both agree). **Options:** (a) the client draws the road, the comparisons reproduce the original (`h3_render::Bugs`, E17's rule for drawing bugs); (b) the client copies it always; (c) a graphics option. **Recommendation:** (a), as built: `h3-map-view render` draws it by default and drops it with `--bugs original`.
-
 ## Answered
 
 Newest first in each block. A lane adds an answered question at the top of its own block, so lanes working at once never edit the same lines; a numbered question (`Q55`) and the decisions from before the lanes go to the last block.
@@ -244,6 +240,7 @@ Newest first in each block. A lane adds an answered question at the top of its o
 
 ### Map client lane (`MCL-Q<n>`)
 
+- *(2026-10-23, MCL-Q2, E24 M1 T3b1; answered at T4a's start)* **A road on the map's last row vanishes at the view's last row: the client draws it, the comparisons reproduce the original.** The road pass (`view_road_pass` 0x411D60; `docs/epics/E24-design.md` §1.3) cuts a road on the map's last row by 16 rows from what the view's clip left (0x411ED3), so at the view's bottom row (row 16) nothing of it is drawn; play reaches that view by a minimap click (T3b2's `road-last-row-19`). Options were (a) the client draws it and the comparisons reproduce the bug (`h3_render::Bugs`, E17's rule for drawing bugs), (b) copy it always, (c) a graphics option. The user took the recommendation (a), as T3b1 built it: `h3-map-view render` draws the road by default and drops it with `--bugs original`.
 - *(2026-10-23, MCL-Q1, E24 M1 T1a; answered at T1b's start)* **The map's bottom edge tests x against the height: the viewer tests the width.** Below the map the original takes the bottom-edge frame 28 + (x and 3) only while 0 ≤ x < the height (0x412B4D; `docs/epics/E24-design.md` §1.4), the top row testing the width; every map is square, so both draw the same. The user took the recommendation: the viewer tests the width, with a comment naming the original's test, and no `h3_render::Bugs` switch (nothing to compare).
 
 ### Numbered questions (`Q<n>`) and earlier decisions
