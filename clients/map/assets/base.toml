@@ -39,6 +39,29 @@ pieces = [
      11,   7,   8, 115,   9,  10, 114, 103, 108,  15,  30,   5,  14,   3,   1,   0,
 ]
 
+# The heroes' and boats' pictures (E24 M1 T5a; design §2.3, §2.8): the manager's DEFs by its
+# name tables (0x65F5A8 by class, 0x65F5F0 by owner, 0x65F670 and 0x65F67C by type, 0x65F610 by
+# type x 8 + colour) and the group each facing draws (0x4D9110, 0x4D9160), mirrored above 4.
+[map.heroes]
+classes = [
+    "ah00_.def", "ah01_.def", "ah02_.def", "ah03_.def", "ah04_.def", "ah05_.def",
+    "ah06_.def", "ah07_.def", "ah08_.def", "ah09_.def", "ah10_.def", "ah11_.def",
+    "ah12_.def", "ah13_.def", "ah14_.def", "ah15_.def", "ah16_.def", "ah17_.def",
+]
+flags = ["af00.def", "af01.def", "af02.def", "af03.def",
+         "af04.def", "af05.def", "af06.def", "af07.def"]
+boats = ["ab01_.def", "ab02_.def", "ab03_.def"]
+waves = ["abm01_.def", "abm02_.def", "abm03_.def"]
+boat_flags = [
+    "abf01l.def", "abf01g.def", "abf01r.def", "abf01d.def",
+    "abf01b.def", "abf01p.def", "abf01w.def", "abf01k.def",
+    "abf02l.def", "abf02g.def", "abf02r.def", "abf02d.def",
+    "abf02b.def", "abf02p.def", "abf02w.def", "abf02k.def",
+    "abf03l.def", "abf03g.def", "abf03r.def", "abf03d.def",
+    "abf03b.def", "abf03p.def", "abf03w.def", "abf03k.def",
+]
+groups = [0, 1, 2, 3, 4, 3, 2, 1]
+
 # The terrains by the .h3m's codes (the packs' [[terrain]] in this order); `cycles`: the palette
 # ranges the tick rotates (design §1.6).
 

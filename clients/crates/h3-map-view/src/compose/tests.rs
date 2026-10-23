@@ -38,6 +38,7 @@ fn piece(pass: Pass, def: &str, frame: u32, x: i32, y: i32, clip: [i32; 4]) -> D
     Draw::Piece {
         pass,
         def: def.to_string(),
+        group: 0,
         frame,
         x,
         y,

@@ -1,4 +1,4 @@
-# The map's capture set (E24 M1 T3b2, T4a, T4b, *provisional*; clients/capture/README.md, "The
+# The map's capture set (E24 M1 T3b2, T4a, T4b, T5a, *provisional*; clients/capture/README.md, "The
 # map's stills"): the situations beside this file, each a still the harness shows the original
 # and compares with ours (`python3 capture/h3map.py set`, from clients/): its map built with the
 # writer (`h3-map-view situation`) or a shipped map loaded whole (`map`, T4b), the human
@@ -117,3 +117,29 @@ why = "exact: a 108-tile shipped map whole, its random objects as drawn"
 id = "shipped-dwarven-tunnels"
 differing = 0
 why = "exact: a shipped map's underground, its random objects as drawn"
+
+# The heroes and boats (E24 M1 T5a; design §2.8).
+[[situation]]
+id = "heroes-classes-0"
+differing = 0
+why = "exact: the classes 0 to 5 facing each way, the eight colours' flags (D6)"
+
+[[situation]]
+id = "heroes-classes-1"
+differing = 0
+why = "exact: the classes 6 to 11 facing each way"
+
+[[situation]]
+id = "heroes-classes-2"
+differing = 0
+why = "exact: the classes 12 to 17 facing each way"
+
+[[situation]]
+id = "heroes-objects"
+differing = 0
+why = "exact: heroes on objects' passable cells between layers 1 and 2 (D4), side by side and one above the other (D5)"
+
+[[situation]]
+id = "boats"
+differing = 0
+why = "exact: empty boats in open water and on the coast, Red's heroes boarded (D7)"

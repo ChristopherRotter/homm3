@@ -46,6 +46,27 @@ pub struct TileArt {
     pub flags: u8,
 }
 
+/// The water's terrain code.
+pub const WATER: u8 = 8;
+/// The water's pictures below this one are its shores (map_tiles_load 0x4FE220).
+pub const SHORE_PICTURES: u8 = 20;
+/// The tile record's coast bit (on land, the map file's own).
+pub const COAST_BIT: u8 = 0x40;
+
+impl TileArt {
+    /// The coast (map_item +0xD bit 0x02, map_tiles_load 0x4FE220; design §2.8): water of a
+    /// shore picture, or land whose record has the coast bit. A boat's waves are not drawn there
+    /// (0x40FE30, 0x410760).
+    #[must_use]
+    pub fn coast(&self) -> bool {
+        if self.terrain.code == WATER {
+            self.terrain.picture < SHORE_PICTURES
+        } else {
+            self.flags & COAST_BIT != 0
+        }
+    }
+}
+
 /// One layer of a tile: group 0's frame `picture` of the DEF the asset tables give the code.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Piece {

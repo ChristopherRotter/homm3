@@ -29,6 +29,9 @@ pub struct DefSummary {
     /// The pixels that came from runs, by index (0–6; 7 counts every higher index, which only
     /// encoding 1 can repeat).
     pub run_pixels: [u64; 8],
+    /// Every group's id and frames, in the DEF's order (E24 M1 T5a: a hero's picture is its
+    /// facing's group).
+    pub groups: Vec<(u32, usize)>,
 }
 
 impl DefSummary {
@@ -49,6 +52,11 @@ pub fn summarize(bytes: &[u8]) -> Result<DefSummary, Error> {
         frames: 0,
         encodings: BTreeSet::new(),
         run_pixels: [0; 8],
+        groups: parsed
+            .groups
+            .iter()
+            .map(|g| (g.id, g.frames.len()))
+            .collect(),
     };
     for frame_ref in group_0(&parsed) {
         let frame = def::decode_frame(bytes, frame_ref.offset)?;
@@ -150,9 +158,12 @@ pub fn undrawn(bytes: &[u8], shape: &Shape) -> Result<Undrawn, Error> {
     Ok(out)
 }
 
-/// What is wrong with a DEF that must hold `frames` frames in group 0: too few, or none at all.
+/// What is wrong with a DEF that must hold `frames` frames in group 0 and draws the groups of id
+/// 0 to `groups` (exclusive): group 0 with too few frames or none at all, a group missing or with
+/// fewer frames than group 0 (the view draws a hero's facing's group at a frame counted by group
+/// 0's: E24 M1 T5a, design §2.8).
 #[must_use]
-pub fn problems(summary: &DefSummary, frames: usize) -> Vec<String> {
+pub fn problems(summary: &DefSummary, frames: usize, groups: u32) -> Vec<String> {
     let mut found = Vec::new();
     if summary.frames < frames.max(1) {
         found.push(format!(
@@ -160,6 +171,16 @@ pub fn problems(summary: &DefSummary, frames: usize) -> Vec<String> {
             summary.frames,
             frames.max(1)
         ));
+    }
+    for id in 1..groups {
+        match summary.groups.iter().find(|(g, _)| *g == id) {
+            None => found.push(format!("no group {id}, the view draws it")),
+            Some(&(_, n)) if n < summary.frames => found.push(format!(
+                "{n} frames in group {id}, fewer than group 0's {}",
+                summary.frames
+            )),
+            Some(_) => {}
+        }
     }
     found
 }

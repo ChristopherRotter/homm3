@@ -100,6 +100,7 @@ fn the_names_a_scene_draws() {
             Draw::Piece {
                 pass: Pass::Terrain,
                 def: "grastl.def".to_string(),
+                group: 0,
                 frame: 0,
                 x: 0,
                 y: 0,

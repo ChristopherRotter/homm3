@@ -151,8 +151,9 @@ search the parent directories).
   exits 1 on a problem (findings: `docs/epics/E24-design.md` §1.9).
 - **A still of the adventure map** (E24 M1 T3b1): `cargo run --release -p h3-map-view -- render
   <map.h3m> --view <x>,<y>[,<z>]` (from `clients/`) draws the adventure screen at that view as
-  the original does, so far its frame and the view's terrain, rivers, roads, edge, unexplored
-  tiles and corner gems (objects and heroes with T4, T5), and writes a PNG under
+  the original does, so far its frame and the view's terrain, rivers, roads, edge, objects and
+  their shadows (T4), heroes and boats (T5a), unexplored tiles and corner gems, and writes a PNG
+  under
   `clients/out/map/`; `--at`, `--cycles`, `--viewer`, `--hidden`, `--bugs original` and `--list`
   as its usage says (findings: `docs/epics/E24-design.md` §1.10). `h3-map-view situation
   <situation.toml> --out <map.h3m>` writes a situation's map (`map/situations/`, E24 M1 T3b2);
@@ -264,7 +265,11 @@ The format:
 - `[map]` (in exactly one table of a selection): `edge` (the map's edge, `edg.def`),
   `road_offset` (how far below its tile a road is drawn, 16), `cycle_ms` (the palette cycles'
   step, 200), `frame_ms` (the objects' frame step, 180); `[map.shroud]`: `full` and `edge` (the
-  unexplored tiles' DEFs) and `pieces` (each mask's piece, 256 numbers: the executable's table).
+  unexplored tiles' DEFs) and `pieces` (each mask's piece, 256 numbers: the executable's table);
+  `[map.heroes]` (E24 M1 T5a): `classes` (a hero's map DEF by class, 18), `flags` (its flag by
+  owner, 8), `boats` and `waves` (by type, 3 each), `boat_flags` (by type × 8 + colour, 24) and
+  `groups` (the group each facing 0–7 draws; mirrored above 4), each list of exactly its
+  length.
 - `[[terrain]]`, `[[river]]`, `[[road]]`: `code` (the `.h3m`'s; 0 is no river or road), `def` (a
   tile's picture is its group 0's frame), optional `cycles` (the palette ranges the tick rotates,
   first and last entry). A code defined twice in a selection is an error.

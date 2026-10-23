@@ -1,12 +1,15 @@
 use super::*;
+use alloc::collections::BTreeSet;
 use alloc::string::ToString;
 use alloc::vec;
+
+use h3_map::model::Pos;
 
 use h3_map::Limits;
 use h3_map::writer::{self, AnyObject, Extras, GivenTile, RiverKind, RoadKind, Terrain};
 
 use crate::art::tests::{map, raw, template};
-use crate::live::Moment;
+use crate::live::{Boat, Moment};
 use crate::objects::Shape;
 use crate::tables;
 
@@ -30,7 +33,9 @@ fn art_with(tiles: Vec<GivenTile>) -> (MapArt, Live) {
     let bytes = writer::write_with(&map(), &extras).unwrap();
     let raw = h3_map::parse(&bytes, &Limits::default()).unwrap();
     let art = MapArt::from_raw(&raw).unwrap();
-    let live = Live::at_start(&raw, &art, 0);
+    let mut live = Live::at_start(&raw, &art, 0);
+    // The map's heroes are the heroes' tests' (below), which give their own.
+    live.heroes.clear();
     (art, live)
 }
 
@@ -70,6 +75,7 @@ fn pieces(scene: &Scene, of: Pass) -> Vec<Seen> {
             Draw::Piece {
                 pass,
                 def,
+                group: _,
                 frame,
                 x,
                 y,
@@ -529,7 +535,9 @@ fn art_with_objects(objects: Vec<AnyObject>) -> (MapArt, Live) {
     let bytes = writer::write_with(&map(), &extras).unwrap();
     let raw = h3_map::parse(&bytes, &Limits::default()).unwrap();
     let art = MapArt::from_raw(&raw).unwrap();
-    let live = Live::at_start(&raw, &art, 0);
+    let mut live = Live::at_start(&raw, &art, 0);
+    // The map's heroes are the heroes' tests' (below), which give their own.
+    live.heroes.clear();
     (art, live)
 }
 
@@ -714,4 +722,232 @@ fn an_object_without_a_shape_has_no_scene() {
         SceneError::Objects(ObjectsError::Shape(1, _))
     ));
     assert_eq!(err.to_string(), "object 1: no .msk for cursed.def");
+}
+
+// -- the heroes and boats (E24 M1 T5a; design §2.3, §2.8) -------------------------------------
+
+/// A hero or boat piece: its DEF, group, frame, canvas, mirror and clip.
+type HeroSeen = (String, u32, u32, [i32; 2], bool, [i32; 4]);
+
+/// The pieces of one pass, with their groups.
+fn grouped(scene: &Scene, of: Pass) -> Vec<HeroSeen> {
+    scene
+        .draws
+        .iter()
+        .filter_map(|d| match d {
+            Draw::Piece {
+                pass,
+                def,
+                group,
+                frame,
+                x,
+                y,
+                mirror_x,
+                clip,
+                ..
+            } if *pass == of => Some((def.clone(), *group, *frame, [*x, *y], *mirror_x, *clip)),
+            _ => None,
+        })
+        .collect()
+}
+
+/// The DEFs one pass draws on the view tile (x, y), in order (the view at (0, 0)).
+fn on_tile(scene: &Scene, of: Pass, x: i32, y: i32) -> Vec<String> {
+    let clip = [32 * x, 8 + 32 * y, 32 * x + 32, 40 + 32 * y];
+    grouped(scene, of)
+        .into_iter()
+        .filter(|p| p.5 == clip)
+        .map(|p| p.0)
+        .collect()
+}
+
+fn pos(x: u8, y: u8) -> Pos {
+    Pos { x, y, z: 0 }
+}
+
+fn land_hero(x: u8, y: u8, class: u8, owner: u8, facing: Facing) -> LiveHero {
+    LiveHero {
+        at: pos(x, y),
+        class,
+        owner,
+        facing,
+        boat: None,
+    }
+}
+
+/// `shapes_of(art)` with group 0's frames of the hero and boat pictures the tests draw.
+fn hero_shapes(art: &MapArt, frames: &[(&str, u32)]) -> Shapes {
+    let mut shapes = shapes_of(art);
+    for &(def, n) in frames {
+        shapes.insert_frames(def, n);
+    }
+    shapes
+}
+
+fn drawn(art: &MapArt, live: &Live, shapes: &Shapes, view: ViewAt) -> Scene {
+    scene(art, live, &tables(), &layout(), shapes, view, Bugs::Fixed).unwrap()
+}
+
+#[test]
+fn a_hero_on_land_is_two_rows_of_three_pieces_its_flag_under_it() {
+    // At (5, 5) facing down-left: group 3 mirrored; frame step 11, the flag's 8 frames: 3.
+    let (art, mut live) = art_with(vec![]);
+    live.heroes = vec![land_hero(5, 5, 3, 2, Facing::DownLeft)];
+    live.moment.frames = 11;
+    let shapes = hero_shapes(&art, &[("af02.def", 8), ("ah03_.def", 1)]);
+    let s = drawn(&art, &live, &shapes, at(0, 0));
+    // The 96 × 64 frame's canvas on tile (4, 4), a piece on each of the six tiles it covers.
+    let tile = |x: i32, y: i32| [32 * x, 8 + 32 * y, 32 * x + 32, 40 + 32 * y];
+    let tiles = [(4, 4), (5, 4), (6, 4), (4, 5), (5, 5), (6, 5)];
+    let expected: Vec<HeroSeen> = tiles
+        .iter()
+        .flat_map(|&(x, y)| {
+            [("af02.def", 3), ("ah03_.def", 0)]
+                .map(|(def, frame)| (def.to_string(), 3, frame, [128, 136], true, tile(x, y)))
+        })
+        .collect();
+    assert_eq!(grouped(&s, Pass::Shadow), expected);
+    assert_eq!(grouped(&s, Pass::Body), expected);
+    // Every facing's group and mirror.
+    for (facing, group, mirrored) in [
+        (Facing::Up, 0, false),
+        (Facing::UpRight, 1, false),
+        (Facing::Right, 2, false),
+        (Facing::DownRight, 3, false),
+        (Facing::Down, 4, false),
+        (Facing::DownLeft, 3, true),
+        (Facing::Left, 2, true),
+        (Facing::UpLeft, 1, true),
+    ] {
+        live.heroes[0].facing = facing;
+        let first = grouped(&drawn(&art, &live, &shapes, at(0, 0)), Pass::Body)[0].clone();
+        assert_eq!((first.1, first.4), (group, mirrored), "{facing:?}");
+    }
+}
+
+#[test]
+fn heroes_lie_between_the_layers_1_and_2() {
+    // The 2 × 2 tree anchored at (6, 6), blocked at its anchor: on row 6 its cells' layer is 1,
+    // on row 5 2 (design §2.1). A hero's row is drawn after layer 1, the row above after layer 2.
+    let (art, mut live) = art_with_objects(vec![object("tree.def", 6, 6, 0)]);
+    let shapes = with_shape(&art, "tree.def", [0xff; 6], [0xff; 6], 1);
+    let order =
+        |live: &Live, x, y| on_tile(&drawn(&art, live, &shapes, at(0, 0)), Pass::Body, x, y);
+    let (flag, hero, tree) = ("af00.def", "ah00_.def", "tree.def");
+    // On the tree's passable cell of layer 2 the tree covers the hero.
+    live.heroes = vec![land_hero(6, 5, 0, 0, Facing::Right)];
+    assert_eq!(order(&live, 6, 5), [flag, hero, tree]);
+    // On its cell of layer 1 the hero covers it, and on the row above it too (layer 2).
+    live.heroes = vec![land_hero(5, 6, 0, 0, Facing::Right)];
+    assert_eq!(order(&live, 5, 6), [tree, flag, hero]);
+    assert_eq!(order(&live, 5, 5), [tree, flag, hero]);
+    // The shadows: the objects' first, then the heroes'.
+    let shadows = on_tile(&drawn(&art, &live, &shapes, at(0, 0)), Pass::Shadow, 5, 5);
+    assert_eq!(shadows, [tree, flag, hero]);
+}
+
+#[test]
+fn heroes_right_over_left_and_lower_over_upper() {
+    // Two heroes side by side and one below: on a tile all three cover, the slots' order.
+    let (art, mut live) = art_with(vec![]);
+    live.heroes = vec![
+        land_hero(6, 5, 1, 1, Facing::Right),
+        land_hero(5, 5, 0, 0, Facing::Right),
+        land_hero(5, 6, 2, 2, Facing::Right),
+    ];
+    let s = drawn(&art, &live, &hero_shapes(&art, &[]), at(0, 0));
+    // Tile (5, 5): the left hero (k 1), the right one (k 2), then the lower one (k 4).
+    assert_eq!(
+        on_tile(&s, Pass::Body, 5, 5),
+        [
+            "af00.def",
+            "ah00_.def",
+            "af01.def",
+            "ah01_.def",
+            "af02.def",
+            "ah02_.def"
+        ]
+    );
+    // No frames known: frame 0.
+    assert!(grouped(&s, Pass::Body).iter().all(|p| p.2 == 0));
+}
+
+#[test]
+fn boats_their_waves_but_on_the_coast_and_a_heros_boat_flag() {
+    // Water of an open picture (21) and of shore pictures (3, 0): the coast.
+    let water = |x: u8, picture: u8| GivenTile {
+        level: 0,
+        tile: (x, 8),
+        terrain: Terrain::Water,
+        picture,
+        river: None,
+        road: None,
+        flags: 0,
+    };
+    let (art, mut live) = art_with(vec![water(4, 21), water(8, 3), water(12, 25), water(16, 0)]);
+    let sail = |x: u8, kind: u8, colour: u8| LiveHero {
+        boat: Some(Boat { kind, colour }),
+        ..land_hero(x, 8, 4, 0, Facing::Up)
+    };
+    live.heroes = vec![sail(4, 1, 3), sail(16, 2, 8)];
+    live.boats = vec![
+        LiveBoat {
+            at: pos(8, 8),
+            kind: 2,
+            facing: Facing::Left,
+        },
+        LiveBoat {
+            at: pos(12, 8),
+            kind: 0,
+            facing: Facing::Up,
+        },
+    ];
+    let s = drawn(&art, &live, &hero_shapes(&art, &[]), at(0, 0));
+    // A hero in a boat in open water: the waves, the boat's flag (type 1, colour 3), the boat;
+    // no hero picture.
+    assert_eq!(
+        on_tile(&s, Pass::Body, 4, 8),
+        ["abm02_.def", "abf02d.def", "ab02_.def"]
+    );
+    // On the coast without waves, a colour past 7 without a flag.
+    assert_eq!(on_tile(&s, Pass::Body, 16, 8), ["ab03_.def"]);
+    // An empty boat on the coast: the boat alone, its own facing's group, mirrored.
+    let coast = grouped(&s, Pass::Body);
+    let boat = coast
+        .iter()
+        .find(|p| p.0 == "ab03_.def" && p.3 == [224, 232]);
+    assert_eq!(boat.map(|p| (p.1, p.4)), Some((2, true)));
+    assert_eq!(on_tile(&s, Pass::Body, 8, 8), ["ab03_.def"]);
+    // In open water its waves first.
+    assert_eq!(on_tile(&s, Pass::Body, 12, 8), ["abm01_.def", "ab01_.def"]);
+    // The shadows draw the same.
+    assert_eq!(
+        on_tile(&s, Pass::Shadow, 4, 8),
+        ["abm02_.def", "abf02d.def", "ab02_.def"]
+    );
+}
+
+#[test]
+fn heroes_off_the_map_another_level_or_a_second_on_a_tile_are_left() {
+    let (art, mut live) = art_with(vec![]);
+    live.heroes = vec![
+        // At the map's left edge: its frame's left column lies off the map.
+        land_hero(0, 3, 0, 0, Facing::Right),
+        // A second on the same tile, and one underground: not drawn.
+        land_hero(0, 3, 1, 1, Facing::Right),
+        LiveHero {
+            at: Pos { x: 9, y: 9, z: 1 },
+            ..land_hero(9, 9, 2, 2, Facing::Right)
+        },
+        // A class past the tables' own: its flag alone.
+        land_hero(9, 3, 18, 3, Facing::Right),
+    ];
+    let s = drawn(&art, &live, &hero_shapes(&art, &[]), at(-2, 0));
+    let body = grouped(&s, Pass::Body);
+    let defs: BTreeSet<&str> = body.iter().map(|p| p.0.as_str()).collect();
+    assert_eq!(defs, BTreeSet::from(["af00.def", "ah00_.def", "af03.def"]));
+    // The first hero's pieces on the map's tiles 0 and 1 of rows 2 and 3 only (the view's
+    // column 2 is the map's 0).
+    let first = body.iter().filter(|p| p.0 == "ah00_.def").count();
+    assert_eq!(first, 4);
 }

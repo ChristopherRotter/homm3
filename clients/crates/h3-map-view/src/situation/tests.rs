@@ -2,14 +2,14 @@ use super::*;
 use alloc::collections::BTreeMap;
 
 use h3_map::Limits;
-use h3_map::writer::{self, AnyObject};
+use h3_map::writer::{self, AnyObject, ObjectTemplate};
 
 use crate::art::MapArt;
 
 const PLAIN: &str = r#"
 size = 36
 terrain = "grass"
-heroes = [[34, 34], [34, 1]]
+heroes = [{ at = [34, 34], class = 2 }, { at = [34, 1], owner = 1 }]
 view = [0, 0, 0]
 "#;
 
@@ -94,7 +94,7 @@ fn patches_roads_copies_and_tiles_in_order() {
     let drawn = art(r#"
 size = 36
 terrain = "sand"
-heroes = [[34, 34], [34, 1]]
+heroes = [{ at = [34, 34], class = 2 }, { at = [34, 1], owner = 1 }]
 view = [0, 0, 0]
 hidden = [[2, 3, 4, 5]]
 patches = [{ terrain = "snow", from = [20, 20], to = [22, 22] }]
@@ -266,7 +266,7 @@ fn a_copy_brings_its_objects_but_heroes() {
 size = 36
 terrain = "grass"
 copy = [{ map = "Shipped.h3m", from = [2, 0], to = [35, 4], at = [0, 10], objects = true }]
-heroes = [[34, 34], [34, 1]]
+heroes = [{ at = [34, 34], class = 2 }, { at = [34, 1], owner = 1 }]
 view = [0, 0, 0]
 "#;
     let situation = Situation::parse(text).unwrap();
@@ -314,7 +314,7 @@ fn objects_given_by_their_templates_def() {
     ];
     let text = |objects: &str| {
         format!(
-            "size = 36\nterrain = \"grass\"\nheroes = [[34, 34], [34, 1]]\nview = [0, 0, 0]\n{objects}"
+            "size = 36\nterrain = \"grass\"\nheroes = [{{ at = [34, 34], class = 2 }}, {{ at = [34, 1], owner = 1 }}]\nview = [0, 0, 0]\n{objects}"
         )
     };
     let given = text(
@@ -341,5 +341,156 @@ fn objects_given_by_their_templates_def() {
             .build(&BTreeMap::new(), &templates)
             .unwrap_err(),
         "a.def: no such template in Objects.txt"
+    );
+}
+
+#[test]
+fn heroes_of_every_colour_and_class_and_boats() {
+    let boat = |kind| {
+        ObjectTemplate::from_objects_txt(&format!(
+            "AVXboat{kind}.def 1011{} 01{} 100000000 100000000 8 {kind} 0 0",
+            "1".repeat(44),
+            "0".repeat(46)
+        ))
+        .unwrap()
+    };
+    let templates = [boat(0), boat(1), boat(2)];
+    let text = r#"
+size = 36
+terrain = "water"
+heroes = [
+    { at = [1, 1], class = 4, facing = 3, walk = [[2, 1], [3, 1]] },
+    { at = [5, 1], owner = 7, class = 4 },
+    { at = [9, 1], owner = 3, class = 16 },
+    { at = [13, 1], owner = 3, class = 17 },
+]
+boats = [{ at = [3, 1], kind = 1, facing = 5 }, { at = [20, 4], kind = 2 }]
+view = [0, 0, 0]
+"#;
+    let situation = Situation::parse(text).unwrap();
+    assert!(situation.needs_templates());
+    assert_eq!(situation.heroes[0].walk, [[2, 1], [3, 1]]);
+    assert_eq!(
+        (situation.heroes[0].facing, situation.boats[0].facing),
+        (Some(3), Some(5))
+    );
+    let (map, extras) = situation.build(&BTreeMap::new(), &templates).unwrap();
+    // Red, Green and Pink play; each hero of its class's next free type.
+    let playing: Vec<bool> = map.players.iter().map(Option::is_some).collect();
+    assert_eq!(
+        playing,
+        [true, false, false, true, false, false, false, true]
+    );
+    let heroes: Vec<(u8, u8, u8)> = map
+        .objects
+        .iter()
+        .filter_map(|o| match o {
+            MapObject::Hero(h) => Some((h.owner, h.hero_type, h.class)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(heroes, [(0, 32, 4), (7, 33, 4), (3, 128, 16), (3, 136, 17)]);
+    // The boats after the objects, each its type's template anchored one column right.
+    let boats: Vec<((u8, u8), u32)> = extras
+        .objects
+        .iter()
+        .map(|o| (o.tile, o.template.subclass))
+        .collect();
+    assert_eq!(boats, [((4, 1), 1), ((21, 4), 2)]);
+    let bytes = writer::write_with(&map, &extras).unwrap();
+    assert!(h3_map::parse(&bytes, &Limits::default()).is_ok());
+}
+
+#[test]
+fn the_hero_types_of_a_class() {
+    assert_eq!(hero_type(0, 0), Some(0));
+    assert_eq!(hero_type(15, 7), Some(127));
+    assert_eq!(hero_type(16, 0), Some(128));
+    assert_eq!(hero_type(17, 7), Some(143));
+    assert_eq!(hero_type(17, 8), None);
+    assert_eq!(hero_type(18, 0), None);
+}
+
+#[test]
+fn refuses_heroes_and_boats_it_cannot_write() {
+    let boat0 = ObjectTemplate::from_objects_txt(&format!(
+        "AVXboat0.def {} {} 100000000 100000000 8 0 0 0",
+        "1".repeat(48),
+        "0".repeat(48)
+    ))
+    .unwrap();
+    let build = |heroes: &str, boats: &str| {
+        let text = format!(
+            "size = 36\nterrain = \"water\"\nheroes = [{heroes}]\nboats = [{boats}]\nview = [0, 0, 0]\n"
+        );
+        Situation::parse(&text)
+            .unwrap()
+            .build(&BTreeMap::new(), core::slice::from_ref(&boat0))
+            .map(|_| ())
+    };
+    let two = "{ at = [1, 1] }, { at = [3, 3], owner = 1 }";
+    assert_eq!(build(two, "{ at = [5, 5], kind = 0 }"), Ok(()));
+    for (heroes, boats, error) in [
+        (
+            "{ at = [1, 1] }",
+            "",
+            "a situation needs a hero of Red's and of another colour",
+        ),
+        (
+            "{ at = [1, 1], owner = 1 }, { at = [3, 3], owner = 2 }",
+            "",
+            "a situation needs a hero of Red's and of another colour",
+        ),
+        (
+            "{ at = [1, 1], owner = 8 }",
+            "",
+            "hero at [1, 1]: owner 8 or facing 0 past 7",
+        ),
+        (
+            "{ at = [1, 1], facing = 8 }",
+            "",
+            "hero at [1, 1]: owner 0 or facing 8 past 7",
+        ),
+        (
+            "{ at = [1, 1], class = 18 }",
+            "",
+            "hero at [1, 1]: a ninth of its colour or class 18",
+        ),
+        (
+            "{ at = [1, 1], owner = 1, walk = [[2, 2]] }",
+            "",
+            "hero at [1, 1]: only Red's heroes walk",
+        ),
+        (
+            two,
+            "{ at = [5, 5], kind = 1 }",
+            "boat at [5, 5]: no template of type 1 or a facing past 7",
+        ),
+        (
+            two,
+            "{ at = [5, 5], kind = 0, facing = 9 }",
+            "boat at [5, 5]: no template of type 0 or a facing past 7",
+        ),
+    ] {
+        assert_eq!(
+            build(heroes, boats),
+            Err(error.to_string()),
+            "{heroes} {boats}"
+        );
+    }
+    // A ninth hero of a colour (each of another class), a ninth of a class (of two colours).
+    let nine = |hero: &dyn Fn(usize) -> String| {
+        let list: Vec<String> = (0..9)
+            .map(|i| format!("{{ at = [{}, 1]{} }}", 2 * i, hero(i)))
+            .collect();
+        format!("{}, {{ at = [1, 9], owner = 1 }}", list.join(", "))
+    };
+    assert_eq!(
+        build(&nine(&|i| format!(", class = {i}")), ""),
+        Err("hero at [16, 1]: a ninth of its colour or class 8".to_string())
+    );
+    assert_eq!(
+        build(&nine(&|i| format!(", class = 5, owner = {}", i % 2)), ""),
+        Err("hero at [16, 1]: a ninth of its colour or class 5".to_string())
     );
 }

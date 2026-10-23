@@ -1,0 +1,29 @@
+# Boats (E24 M1 T5a; design §2.3, §2.8: D6, D7): Deluge's lake, its tiles (4, 16)-(22, 32) copied
+# to the top-left. Empty boats of the three types in open water (waves, boat) and on the coast
+# (water of a shore picture: the boat alone), turned by the harness; Red's heroes walk onto three
+# boats beside the land (by play: a map's hero on water starts on horseback; boarding takes the
+# day's points, hero_boards_boat 0x4A1010, so none sails on): one on the coast, two on tiles given
+# an open water picture (the coast test is the tile's picture, map_tiles_load 0x4FE220): waves,
+# the boat's flag in Red's colour, the boat, no hero picture.
+size = 36
+terrain = "grass"
+copy = [{ map = "Deluge.h3m", from = [4, 16], to = [22, 32], at = [0, 0] }]
+tiles = [
+    { at = [9, 12], terrain = "water", picture = 21 },
+    { at = [17, 8], terrain = "water", picture = 22 },
+]
+heroes = [
+    { at = [4, 8], class = 1, walk = [[5, 8]], facing = 6 },
+    { at = [8, 12], class = 6, walk = [[9, 12]], facing = 1 },
+    { at = [18, 8], class = 12, walk = [[17, 8]], facing = 3 },
+    { at = [2, 14], owner = 1 },
+]
+boats = [
+    { at = [5, 8], kind = 0 },
+    { at = [9, 12], kind = 1 },
+    { at = [17, 8], kind = 2 },
+    { at = [13, 9], kind = 0, facing = 5 },
+    { at = [1, 6], kind = 2, facing = 0 },
+    { at = [4, 6], kind = 1, facing = 7 },
+]
+view = [0, 0, 0]

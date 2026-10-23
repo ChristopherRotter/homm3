@@ -92,20 +92,39 @@ impl Shape {
     }
 }
 
-/// The shapes by DEF name, upper-cased (the archives look names up ignoring case).
+/// The shapes by DEF name, upper-cased (the archives look names up ignoring case), and the frames
+/// of group 0 of the pictures drawn without a `.msk` (the heroes' and boats', E24 M1 T5a).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct Shapes(BTreeMap<String, Shape>);
+pub struct Shapes {
+    shapes: BTreeMap<String, Shape>,
+    frames: BTreeMap<String, u32>,
+}
 
 impl Shapes {
     /// Keeps `shape` as the shape of the DEF `name`.
     pub fn insert(&mut self, name: &str, shape: Shape) {
-        self.0.insert(name.to_ascii_uppercase(), shape);
+        self.shapes.insert(name.to_ascii_uppercase(), shape);
     }
 
     /// The shape of the DEF `name`.
     #[must_use]
     pub fn get(&self, name: &str) -> Option<&Shape> {
-        self.0.get(&name.to_ascii_uppercase())
+        self.shapes.get(&name.to_ascii_uppercase())
+    }
+
+    /// Keeps `frames` as the frames of the DEF `name`'s group 0, for a picture without a shape.
+    pub fn insert_frames(&mut self, name: &str, frames: u32) {
+        self.frames.insert(name.to_ascii_uppercase(), frames);
+    }
+
+    /// The frames of the DEF `name`'s group 0: its shape's, or those kept without one.
+    #[must_use]
+    pub fn frames(&self, name: &str) -> Option<u32> {
+        let upper = name.to_ascii_uppercase();
+        self.shapes
+            .get(&upper)
+            .map(|s| s.frames)
+            .or_else(|| self.frames.get(&upper).copied())
     }
 }
 

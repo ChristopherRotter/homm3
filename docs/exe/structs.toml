@@ -342,6 +342,7 @@ fields = [
   { offset = 0x23, name = "name", type = "char[13]", summary = "the hero's name (an experiment map's custom name: D3a, Wood 1); observed in the running game (h3mem.py), not read", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
   { offset = 0x30, name = "class", type = "i32", summary = "the hero's class, 0-17: the level-up reads its record (hero_classes_pointer 0x67DCEC)", confidence = "read", refs = ["rules/surveys/E08-progression.md §2.3"] },
   { offset = 0x3F, name = "school_offer_level", type = "i16", summary = "the level at which a magic school was last offered at a level-up, 0 at a new game: a school is due when it plus 3 or 4 is reached (0x4DAD00)", confidence = "read", refs = ["rules/surveys/E08-progression.md §2.4"] },
+  { offset = 0x47, name = "facing", type = "u8", summary = "where the hero faces on the map, 0 up, clockwise to 7 up-left (hero_map_group 0x4D9110 gives its pictures' group, mirrored above 4); 2 (right) at a new game (observed; hero_reset 0x4D8720 writes 2 at 0x4D883C), the direction of its last step after a move", confidence = "read", refs = ["epics/E24-design.md §2.8"] },
   { offset = 0x48, name = "flags", type = "u8", summary = "bit 0 the tight formation: the battle places the army by it for a human player's side (0x463673); the hero screen's buttons clear and set it (0x4DD577, 0x4DD587); the map's formation flag never reaches it (map_hero_setup, E08 T22b). Bit 1 the tactics formation (E08 T44a): toggled by the hero screen's item 126 (0x4DD5AD); a human player's side whose Tactics would give it the tactics phase gets none while it is clear (battle_start 0x462D07); every hero starts with +0x48 = 2 (0x4D8ADD)", confidence = "read", refs = ["rules/surveys/E08-battles.md §6.4", "rules/surveys/E08-army.md §4"] },
   { offset = 0x49, name = "day_points", type = "i32", summary = "the movement points the day began with; observed in the running game (h3mem.py), not read", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
   { offset = 0x4D, name = "points", type = "i32", summary = "the movement points left (rules/surveys/E08-adventure-core.md §1.1); the harness reads them for an experiment's record", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
@@ -393,6 +394,7 @@ fields = [
   { offset = 0x4E364, name = "keys", type = "u8[8]", summary = "per Keymaster colour the bits of the players holding its key (H3API's keymasterVisited)", confidence = "read", refs = ["rules/surveys/E08-objects.md §6"] },
   { offset = 0x4E36C, name = "cartographer_masks", type = "u16[3]", summary = "terrain bits each Cartographer kind reveals: water 0x100, land 0xBF, subterranean 0x40", confidence = "read", refs = ["rules/surveys/E08-objects.md §4"] },
   { offset = 0x4E372, name = "cartographer_bought", type = "u8[3]", summary = "per Cartographer kind the bits of the players who paid", confidence = "read", refs = ["rules/surveys/E08-objects.md §4"] },
+  { offset = 0x4E3BC, name = "boats", type = "boat*", summary = "the boats' vector (begin; its end at +0x4E3C0), 0x28 bytes each, indexed by a boat tile's word (view_boat_piece 0x410760, hero_boat 0x4CE900)", confidence = "read", refs = ["epics/E24-design.md §2.8"] },
   { offset = 0x4E658, name = "banned_skills", type = "u8[28]", summary = "per secondary skill id, set when the map bans it (H3API's bannedSkills): the level-up offers no new banned skill (0x4DAD00)", confidence = "read", refs = ["rules/surveys/E08-progression.md §2.4"] },
 ]
 
@@ -660,4 +662,21 @@ fields = [
   { offset = 0x50, name = "melee_threats", type = "entry[20]", summary = "per record of the side {the stack, its damage, how many, their sum}: the strongest melee threat, seeded with the retaliation at the record's target (0x43BF20)", confidence = "read" },
   { offset = 0x190, name = "shot_threats", type = "entry[20]", summary = "the same for the enemies that can shoot now", confidence = "read" },
   { offset = 0x2D0, name = "worst_threats", type = "entry[20]", summary = "per record the melee entry, or the shot entry when its damage is larger", confidence = "read" },
+]
+
+[[struct]]
+name = "boat"
+size = 0x28
+summary = "A boat of the game's boats (game +0x4E3BC); only what the docs cite (E24 M1 T5a)."
+refs = ["epics/E24-design.md §2.8"]
+fields = [
+  { offset = 0x0, name = "x", type = "i16", summary = "its tile, x (the low 10 bits, as a hero's; view_boat_piece 0x410760)", confidence = "read", refs = ["epics/E24-design.md §2.8"] },
+  { offset = 0x2, name = "y", type = "i16", summary = "its tile, y", confidence = "read", refs = ["epics/E24-design.md §2.8"] },
+  { offset = 0x4, name = "level", type = "i16", summary = "its tile's level (the low 4 bits)", confidence = "read", refs = ["epics/E24-design.md §2.8"] },
+  { offset = 0x18, name = "used", type = "u8", summary = "the record is a boat (hero_boat 0x4CE900 skips the others)", confidence = "read", refs = ["epics/E24-design.md §2.8"] },
+  { offset = 0x1A, name = "type", type = "i8", summary = "its type 0-2 (the template's subclass at a new game, observed): its DEFs ab0N_ and waves abm0N_", confidence = "read", refs = ["epics/E24-design.md §2.8"] },
+  { offset = 0x1B, name = "facing", type = "i8", summary = "where an empty boat faces (boat_map_group 0x4D9160); 2 at a new game (observed)", confidence = "read", refs = ["epics/E24-design.md §2.8"] },
+  { offset = 0x1C, name = "colour", type = "i8", summary = "its flag's colour abf0Nc (by type x 8 + colour, view_hero_piece 0x40FE30); -1 for a map's boat at a new game, the boarding hero's owner after (observed)", confidence = "read", refs = ["epics/E24-design.md §2.8"] },
+  { offset = 0x20, name = "hero", type = "i32", summary = "the id (+0x1A) of the hero it carries (hero_boat 0x4CE900), -1 for none (observed)", confidence = "read", refs = ["epics/E24-design.md §2.8"] },
+  { offset = 0x24, name = "aboard", type = "u8", summary = "1 with its hero aboard (hero_boat 0x4CE900)", confidence = "read", refs = ["epics/E24-design.md §2.8"] },
 ]

@@ -2,5 +2,5 @@
 size = 36
 terrain = "grass"
 copy = [{ map = "Dragon Pass.h3m", from = [18, 0], to = [37, 17], at = [0, 0] }]
-heroes = [[33, 33], [33, 30]]
+heroes = [{ at = [33, 33], class = 2 }, { at = [33, 30], owner = 1 }]
 view = [0, 0, 0]

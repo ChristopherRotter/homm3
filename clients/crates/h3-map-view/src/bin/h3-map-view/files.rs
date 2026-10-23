@@ -118,6 +118,26 @@ pub fn load_shapes(archives: &[LodArchive<'_>], defs: &[String]) -> Result<Shape
     Ok(shapes)
 }
 
+/// Adds the frames of group 0 (by id) of each DEF in `defs` to `shapes` (E24 M1 T5a: the heroes'
+/// and boats' pictures, drawn without a `.msk`).
+pub fn load_frames(
+    archives: &[LodArchive<'_>],
+    defs: &[String],
+    shapes: &mut Shapes,
+) -> Result<(), String> {
+    for def in defs {
+        let (_, bytes) = find(archives, def)?.ok_or_else(|| format!("{def}: in no archive"))?;
+        let parsed = parse_def(&bytes).map_err(|e| format!("{def}: {e:?}"))?;
+        let frames = parsed
+            .groups
+            .iter()
+            .find(|g| g.id == 0)
+            .map_or(0, |g| g.frames.len());
+        shapes.insert_frames(def, u32::try_from(frames).unwrap_or(u32::MAX));
+    }
+    Ok(())
+}
+
 /// The shape of the object picture `def`: its `.msk` (its name with the extension replaced;
 /// `default.msk` when the archives lack it, as msk_load 0x514610 falls back) and the frames of
 /// its DEF's first group.

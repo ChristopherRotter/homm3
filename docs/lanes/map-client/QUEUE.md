@@ -11,32 +11,35 @@ detail in `docs/epics/E24-design.md`; captures by the harness (`clients/capture/
 in git. Every oddity of the original a reading or a capture finds is an `MCL-Q<n>` in the same
 task (the HANDOFF's autonomy contract).
 
-### E24 M1 T5 — heroes, boats, flags, owners and the path's arrows
+T5 split with the user (2026-10-23) into T5a (heroes and boats, done) and T5b (owners, the path,
+the explored tiles).
 
-- **Scope:** a reading where T1a and T1b did not cover it (a hero's map DEF by class, its group by
-  facing, its frame at rest, its flag by colour, boats, an owned object's colours: mines,
-  dwellings, towns, the eight classes' flag pixels, D10), the tables' entries; heroes and boats
-  as two-row objects among the objects' layers (§2.2, §2.3: D4, D5; from T4 with the user's
-  split), the path's arrows and their shadows (passes 6 and 8, D9; from T4); the unexplored tiles
-  from the original's explored tiles (`h3mem.py`) in the live part; situations of heroes of every
-  class facing each way, of a hero beside an object's blocked cell and two heroes side by side, of
-  boats (D6, D7), of a path under an object, and of owned objects of every colour.
+### E24 M1 T5b — owners' colours, the path's arrows and the explored tiles
+
+- **Scope:** an owned object's colours (mines, dwellings, towns, the eight classes' flag pixels,
+  D10; the owner's tile 0x4FEC30 as the entrance), the tables' entries; a town's picture by its
+  buildings (the same copy as a random object's, 0x4C9990, `E24-design.md` §2.7); a random
+  dwelling's anchor at a new game (§2.7, not read: `render --live` draws it at the map's
+  meanwhile); the path's arrows and their shadows (passes 6 and 8, D9); the unexplored tiles from
+  the original's explored tiles (`h3mem.py`) in the live part; situations of a path under an
+  object, of owned objects of every colour, and shipped maps' views with heroes and owned objects;
+  if cheap, a boat's flag of a colour other than Red's (T5a captured Red's only: another colour's
+  hero must board, hot seat).
 - **Acceptance:** those situations match pixel for pixel outside the panels' masks.
-- **Depends on:** T4a, T4b (done). **Status:** ready. Shipped maps load whole since T4b
-  (`map`): their heroes and owned objects are T5's to draw; a town's picture follows its
-  buildings through the same copy as a random object's (0x4C9990, `E24-design.md` §2.7); a
-  random dwelling can move its anchor at a new game (§2.7, not read: `render --live` draws it at
-  the map's meanwhile).
+- **Depends on:** T5a (done). **Status:** ready. Since T5a the situations give heroes of any
+  colour and boats, Red's heroes walk by play and the harness turns heroes and boats
+  (`E24-design.md` §2.8); a path is shown by a hero's first click on a tile (`h3adv.walk`'s
+  first click; `setup.sh` sets Show Route).
 
 ### E24 M1 T6 — the capture set and M1's closure
 
 - **Scope:** the map's capture set (`clients/map/situations/`, started by T3b2 with `set.toml`
-  and `h3map.py set`: every situation of T3b2 to T5 with
+  and `h3map.py set`: every situation of T3b2 to T5b with
   its masks) and its digests, so a later task captures only what it changes (as E17's `drawn`,
   the runbook's "Which captures a change needs"); M1's closure: a fresh reviewer agent, its
   findings fixed or queued, the review list (the epic's), the user's checkpoint; M2 T0 queued.
 - **Acceptance:** the whole set matches as recorded; the review list accepted by the user.
-- **Depends on:** T5. **Status:** waiting (T5).
+- **Depends on:** T5b. **Status:** waiting (T5b).
 
 ## Inbox
 

@@ -1,0 +1,22 @@
+# Heroes among objects (E24 M1 T5a; design §2.2, §2.3: D4, D5): objects-mandate's copy of The
+# Mandate of Heaven's (24, 24)-(45, 43) with heroes on its objects' passable cells, found in the
+# original's draw lists: beside a blocked cell on a cell of layer 1 of an object anchored a row
+# lower, (16, 7) and (8, 14), drawn over it (VCMI: under); on cells of layers 2 and 3, under them
+# on their own row; two side by side on row 6, the left one later in the map (the right one over
+# it), and two one above the other on column 14 (the lower one over the upper).
+size = 36
+terrain = "grass"
+copy = [{ map = "The Mandate of Heaven.h3m", from = [24, 24], to = [45, 43], at = [0, 0], objects = true }]
+heroes = [
+    { at = [16, 7], class = 2 },
+    { at = [8, 14], owner = 1, class = 5, facing = 6 },
+    { at = [7, 3], owner = 2, class = 8, facing = 3 },
+    { at = [10, 3], owner = 3, class = 11, facing = 1 },
+    { at = [14, 1], owner = 4, class = 13 },
+    { at = [14, 11], owner = 5, class = 15, facing = 7 },
+    { at = [14, 6], owner = 6, class = 16 },
+    { at = [13, 6], owner = 7, class = 17, facing = 6 },
+    { at = [14, 9], class = 0, facing = 4 },
+    { at = [14, 8], owner = 1, class = 9, facing = 0 },
+]
+view = [0, 0, 0]

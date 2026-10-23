@@ -10,11 +10,12 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 use h3_map::Limits;
+use h3_map::model::Pos;
 use h3_map::writer::ObjectTemplate;
 use h3_map_view::art::{MapArt, ObjectArt};
 use h3_map_view::batch::{self, Batch};
 use h3_map_view::compose::compose;
-use h3_map_view::live::{Drawn, Live, Moment};
+use h3_map_view::live::{Boat, Drawn, Facing, Live, LiveBoat, LiveHero, Moment};
 use h3_map_view::objects;
 use h3_map_view::scene::{self, Draw, ViewAt};
 use h3_render::Bugs;
@@ -196,7 +197,15 @@ fn render(options: &Options) -> Result<PathBuf, String> {
             }
         }
     }
-    let shapes = files::load_shapes(&archives, &objects::pictures(&art, &live))?;
+    let mut shapes = files::load_shapes(&archives, &objects::pictures(&art, &live))?;
+    let heroes: Vec<String> = tables
+        .map
+        .heroes
+        .defs()
+        .into_iter()
+        .map(|(d, _)| d)
+        .collect();
+    files::load_frames(&archives, &heroes, &mut shapes)?;
     let scene = scene::scene(
         &art,
         &live,
@@ -233,7 +242,9 @@ fn render(options: &Options) -> Result<PathBuf, String> {
 /// `defs` and `classes`, every object's template in the original's memory, its DEF and its class
 /// and subclass, in that order: one that differs from the map's is what a random object became
 /// (E24 M1 T4b, design §2.7), its own picture the last of the game's `templates` of that class and
-/// subclass (MCL-Q3). Each key is optional; other keys are left.
+/// subclass (MCL-Q3); `heroes` and `boats` (E24 M1 T5a), the heroes and empty boats the view
+/// draws, each `[x, y, level, class, facing, owner, boat type, boat colour]` (the boat's -1 -1 on
+/// land) and `[x, y, level, type, facing]`. Each key is optional; other keys are left.
 fn read_live(
     path: &PathBuf,
     art: &MapArt,
@@ -301,6 +312,20 @@ fn read_live(
             }
         }
     }
+    if let Some(heroes) = table.get("heroes") {
+        live.heroes = rows::<8>(heroes)
+            .and_then(|rows| rows.into_iter().map(hero).collect())
+            .ok_or_else(|| {
+                failed(
+                    "`heroes` is not a list of [x, y, level, class, facing, owner, boat, colour]",
+                )
+            })?;
+    }
+    if let Some(boats) = table.get("boats") {
+        live.boats = rows::<5>(boats)
+            .and_then(|rows| rows.into_iter().map(boat).collect())
+            .ok_or_else(|| failed("`boats` is not a list of [x, y, level, type, facing]"))?;
+    }
     if let Some(anchors) = table.get("anchors") {
         // A random object the original drew may stand elsewhere: a random dwelling's anchor
         // moved by a tile in a shipped map (E24 M1 T4b). Drawn at the map's until T5 reads the
@@ -340,6 +365,62 @@ fn read_live(
     Ok(())
 }
 
+/// A TOML list of lists of `N` integers.
+fn rows<const N: usize>(value: &toml::Value) -> Option<Vec<[i64; N]>> {
+    value
+        .as_array()?
+        .iter()
+        .map(|row| {
+            let row: Option<Vec<i64>> = row
+                .as_array()?
+                .iter()
+                .map(toml::Value::as_integer)
+                .collect();
+            <[i64; N]>::try_from(row?).ok()
+        })
+        .collect()
+}
+
+/// A byte of a `live.toml` row.
+fn byte(n: i64) -> Option<u8> {
+    u8::try_from(n).ok()
+}
+
+/// A hero of `live.toml`'s `heroes` (its class below 18, a colour 0-7, a boat's type 0-2 or -1).
+fn hero([x, y, z, class, facing, owner, kind, colour]: [i64; 8]) -> Option<LiveHero> {
+    let boat = match (kind, colour) {
+        (-1, -1) => None,
+        _ => Some(Boat {
+            kind: byte(kind).filter(|&k| k < 3)?,
+            colour: byte(colour).filter(|&c| c < 8)?,
+        }),
+    };
+    Some(LiveHero {
+        at: Pos {
+            x: byte(x)?,
+            y: byte(y)?,
+            z: byte(z)?,
+        },
+        class: byte(class).filter(|&c| c < 18)?,
+        owner: byte(owner).filter(|&c| c < 8)?,
+        facing: Facing::from_number(byte(facing)?)?,
+        boat,
+    })
+}
+
+/// A boat of `live.toml`'s `boats`.
+fn boat([x, y, z, kind, facing]: [i64; 5]) -> Option<LiveBoat> {
+    Some(LiveBoat {
+        at: Pos {
+            x: byte(x)?,
+            y: byte(y)?,
+            z: byte(z)?,
+        },
+        kind: byte(kind).filter(|&k| k < 3)?,
+        facing: Facing::from_number(byte(facing)?)?,
+    })
+}
+
 /// A TOML integer as a `u32`.
 fn count(value: &toml::Value) -> Option<u32> {
     value.as_integer().and_then(|n| u32::try_from(n).ok())
@@ -357,6 +438,7 @@ fn print_list(scene: &scene::Scene) {
             Draw::Piece {
                 pass,
                 def,
+                group,
                 frame,
                 x,
                 y,
@@ -371,7 +453,7 @@ fn print_list(scene: &scene::Scene) {
                     (true, true) => " mirrored flipped",
                 };
                 println!(
-                    "{pass:?} {def} {frame} at {x},{y}{mirrors} clip {},{}-{},{}",
+                    "{pass:?} {def} {group}/{frame} at {x},{y}{mirrors} clip {},{}-{},{}",
                     clip[0], clip[1], clip[2], clip[3]
                 );
             }

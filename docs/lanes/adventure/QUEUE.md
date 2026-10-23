@@ -35,6 +35,13 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1
   the user at T50's start: the cap's value (data, ADR-0006: a ruleset parameter), what else meets
   it (a join onto a stack, the split's target, the import's 16-bit count, later recruiting and
   growth: refused, capped or split), and ADR-0016 point 3's amendment (a `shared/` change).
+- 2026-10-23 (the map-client lane, E24 M1 T5a, `map-client/e24-t5a`; for information, nothing to
+  do now): **a hero the map places on water gets no boat.** Observed in the original under Wine
+  (`docs/epics/E24-design.md` §2.8): a map's hero on a water tile starts on horseback on the
+  water, its status bit 18 (in a boat) clear and no boat record made; boarding a boat by a move
+  takes the day's points (hero_boards_boat 0x4A1010, without the Admiral's Hat) and gives the
+  boat the hero's owner as its colour. Every hero and boat faces right (2) at a new game. For the
+  importer and the engine's start when a map does this (the editor's own maps were not checked).
 
 - 2026-10-23 (the map-client lane, E24 M1 T4a, `map-client/e24-t4a`; a finding for when the
   engine draws tavern rumours, nothing to do now): **the original's text rumour picks the wrong

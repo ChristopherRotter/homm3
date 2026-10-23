@@ -1,7 +1,7 @@
 # E24 — The adventure map client
 
 Status: **refined** (2026-10-23, T0, with the user); M1 running (T1a, T1b, T2, T3a, T3b1, T3b2,
-T4a, T4b done; next T5, `docs/lanes/map-client/QUEUE.md`).
+T4a, T4b, T5a done; next T5b, `docs/lanes/map-client/QUEUE.md`).
 Lane: map-client (`docs/lanes/map-client/HANDOFF.md`: the autonomy contract, the user's asset
 notes). Opened 2026-10-23 when the user split the client lane at E17 M3's closure (CLT-Q18).
 Decisions so far live here (no ADR of its own yet; ADR-0020 and ADR-0024 bind it as they bind
@@ -119,6 +119,11 @@ autonomy contract (lane HANDOFF) says what the agent decides alone in between. T
   loses; the random objects read (a copy of the random template with the drawn DEF, §2.7) and
   taken from memory (`Drawn`); shipped maps loaded whole: five views of four maps, one
   underground, with random artifacts, monsters and resources, exact; research item 9 closed.
+  T5a (2026-10-23; T5 split with the user into T5a and T5b): heroes and boats read (their groups
+  by facing, frames, flags, the coast's waves, a hero's boat; `E24-design.md` §2.8) and drawn as
+  two-row objects among the layers (passes 5 and 7), taken from memory with their facings; the
+  situations' heroes of any colour and class, Red's walks by play, boats; five situations (the
+  18 classes × 8 facings, heroes among objects: D4, D5; boats: D7), exact.
 - **Exit:** the capture set's stills match the original pixel for pixel outside the masks of
   what M1 does not draw (the panels, the mouse), or list each difference as an M2 item; the
   review list accepted; research item 9 closed by the reading and its frames.
@@ -149,7 +154,7 @@ checked frame by frame against recorded sequences as E17 M2 did for the battle.
 
 | Item | Where |
 |---|---|
-| 9. The adventure map's object draw order (the user: neither they nor VCMI got it exactly right); the objects' shadows | **Closed** (T4b): M1 T1b (read, `E24-design.md` §2), T4a (its frames, §2.6), T4b (random objects, shipped maps' views, §2.7); heroes and boats among the layers in T5 |
+| 9. The adventure map's object draw order (the user: neither they nor VCMI got it exactly right); the objects' shadows | **Closed** (T4b): M1 T1b (read, `E24-design.md` §2), T4a (its frames, §2.6), T4b (random objects, shipped maps' views, §2.7); heroes and boats among the layers since T5a (§2.8) |
 | 3. Licences of MMArchive and homm3-unpacker before reading their code | stop the line: a question first, when a task wants them |
 | 4. The video archives | later |
 | 7. The HD patch as a source of fixes and for HD | later |
@@ -179,8 +184,9 @@ The M1 review list starts here (the autonomy contract's "queue for the milestone
 - **M1 T2, the library's dependency on `h3-map`** (its raw model; no I/O): the static art is
   converted in the pure library, so its tests use the writer; the purity test is a copy of
   `h3-view`'s for this crate.
-- **M1 T2, the live part at a map's start:** heroes and boats facing right and every tile
-  explored until T5 reads the original's start; phases 0 (the original's are random).
+- **M1 T2, the live part at a map's start:** heroes and boats facing right (T5a: as the
+  original's new game) and every tile explored until T5b reads the original's start; phases 0
+  (the original's are random).
 - **M1 T3a, the writer's additions** (the adventure lane's crate): a second entry point
   (`write_with(&Map, &Extras)`) instead of new `Map` fields and `MapObject` variants, which would
   have changed struct literals and matches in four other lanes' crates; the editor's bodies taken
@@ -213,3 +219,12 @@ The M1 review list starts here (the autonomy contract's "queue for the milestone
   `render` taking the own from `Objects.txt`'s last template of the class and subclass); MCL-Q3's
   fix the default (`--bugs original` the copy's); the gate's object pictures (D8 a problem, the
   random copies' losses listed, not problems).
+- **M1 T5a, heroes and boats** (*provisional*): the situations' `heroes` a list (tile, owner,
+  class, facing, walk; a class's hero types in order) and `boats` (tile, type, facing), the 17
+  earlier situations rewritten to it (their maps byte for byte the same); the harness walks Red's
+  heroes by play (a hero boards a boat so) and writes the heroes' and boats' facings into their
+  records (a still's staging, as the explored bits), and `live.toml`'s `heroes` and `boats`; the
+  `boats` situation's two boarding tiles given an open water picture (no hero sails on its first
+  day); the boats' flags of colours other than Red's not captured (the gate checks them);
+  `[map.heroes]`'s format; `Shapes` holding the frames of pictures without a `.msk`;
+  `Draw::Piece`'s group.

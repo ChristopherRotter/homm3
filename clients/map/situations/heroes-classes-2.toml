@@ -1,0 +1,58 @@
+# Heroes of the classes 12 to 17 facing each way (E24 M1 T5a; design §2.3, §2.8): a class a column
+# (x 1, 4, … 16), a facing a row (y 1, 3, … 15: facing 0 up to 7 up-left, the harness turns them;
+# a new game faces them right, 2), the owner (class + facing) mod 8, so that every colour's flag
+# shows each facing over the three situations and each colour has six heroes. Their frames do not
+# overlap; the view at (0, 0) over all of them, on snow.
+size = 36
+terrain = "snow"
+heroes = [
+    { at = [1, 1], owner = 4, class = 12, facing = 0 },
+    { at = [4, 1], owner = 5, class = 13, facing = 0 },
+    { at = [7, 1], owner = 6, class = 14, facing = 0 },
+    { at = [10, 1], owner = 7, class = 15, facing = 0 },
+    { at = [13, 1], class = 16, facing = 0 },
+    { at = [16, 1], owner = 1, class = 17, facing = 0 },
+    { at = [1, 3], owner = 5, class = 12, facing = 1 },
+    { at = [4, 3], owner = 6, class = 13, facing = 1 },
+    { at = [7, 3], owner = 7, class = 14, facing = 1 },
+    { at = [10, 3], class = 15, facing = 1 },
+    { at = [13, 3], owner = 1, class = 16, facing = 1 },
+    { at = [16, 3], owner = 2, class = 17, facing = 1 },
+    { at = [1, 5], owner = 6, class = 12 },
+    { at = [4, 5], owner = 7, class = 13 },
+    { at = [7, 5], class = 14 },
+    { at = [10, 5], owner = 1, class = 15 },
+    { at = [13, 5], owner = 2, class = 16 },
+    { at = [16, 5], owner = 3, class = 17 },
+    { at = [1, 7], owner = 7, class = 12, facing = 3 },
+    { at = [4, 7], class = 13, facing = 3 },
+    { at = [7, 7], owner = 1, class = 14, facing = 3 },
+    { at = [10, 7], owner = 2, class = 15, facing = 3 },
+    { at = [13, 7], owner = 3, class = 16, facing = 3 },
+    { at = [16, 7], owner = 4, class = 17, facing = 3 },
+    { at = [1, 9], class = 12, facing = 4 },
+    { at = [4, 9], owner = 1, class = 13, facing = 4 },
+    { at = [7, 9], owner = 2, class = 14, facing = 4 },
+    { at = [10, 9], owner = 3, class = 15, facing = 4 },
+    { at = [13, 9], owner = 4, class = 16, facing = 4 },
+    { at = [16, 9], owner = 5, class = 17, facing = 4 },
+    { at = [1, 11], owner = 1, class = 12, facing = 5 },
+    { at = [4, 11], owner = 2, class = 13, facing = 5 },
+    { at = [7, 11], owner = 3, class = 14, facing = 5 },
+    { at = [10, 11], owner = 4, class = 15, facing = 5 },
+    { at = [13, 11], owner = 5, class = 16, facing = 5 },
+    { at = [16, 11], owner = 6, class = 17, facing = 5 },
+    { at = [1, 13], owner = 2, class = 12, facing = 6 },
+    { at = [4, 13], owner = 3, class = 13, facing = 6 },
+    { at = [7, 13], owner = 4, class = 14, facing = 6 },
+    { at = [10, 13], owner = 5, class = 15, facing = 6 },
+    { at = [13, 13], owner = 6, class = 16, facing = 6 },
+    { at = [16, 13], owner = 7, class = 17, facing = 6 },
+    { at = [1, 15], owner = 3, class = 12, facing = 7 },
+    { at = [4, 15], owner = 4, class = 13, facing = 7 },
+    { at = [7, 15], owner = 5, class = 14, facing = 7 },
+    { at = [10, 15], owner = 6, class = 15, facing = 7 },
+    { at = [13, 15], owner = 7, class = 16, facing = 7 },
+    { at = [16, 15], class = 17, facing = 7 },
+]
+view = [0, 0, 0]

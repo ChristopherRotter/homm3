@@ -330,3 +330,41 @@ One session, the user present at its start; branch `map-client/e24-t4a`.
   loading; `live.toml`'s new keys; `Drawn` and the own template's choice (the last of
   `Objects.txt`, as 0x505EA0); the gate's listing.
 - **Questions:** MCL-Q3 (answered).
+
+### M1 T5a — heroes and boats (2026-10-23)
+
+- **The seam** (asked): T5 split into T5a (heroes and boats) and T5b (owners' colours, the path's
+  arrows, the explored tiles), the user's choice of two.
+- **Read** (§2.8): hero_map_group 0x4D9110 and boat_map_group 0x4D9160 (one table: facing to
+  standing group 0–4, mirrored above 4), the pictures' frames (group 0's of each DEF: a hero's and
+  boat's one, a flag's eight), view_hero_piece 0x40FE30 and its shadow 0x4102C0 again (the
+  hero's facing drives a boat's pictures; the shadow pass checks the owner in a boat too:
+  0x410325, never seen), view_boat_piece 0x410760, hero_boat 0x4CE900 (the boats' vector at game
+  +0x4E3BC, `structs.toml`'s `boat`), the coast (map_tiles_load 0x4FE220's +0xD bit 0x02).
+- **Found by the original's memory:** a new game faces every hero and boat right (2), a map's
+  boat has colour −1; a hero the map places on water gets no boat (on horseback on the water;
+  the adventure lane's inbox has it); boarding takes the day's points (hero_boards_boat
+  0x4A1010), so no hero sails on its first day; at a human player's turn start the selected hero
+  is off its tile (manager +0x1EC set) until the view moves, which the harness's first facing
+  write met.
+- **Built** (`clients/crates/h3-map-view`): the tables' `[map.heroes]` (`HeroArt`: the DEFs by
+  class, colour, type, type and colour, the facings' groups, each list checked for its length;
+  `DefNeed::groups`); `TileArt::coast`; `Shapes`' frames of pictures without a `.msk`;
+  `Draw::Piece`'s group (compose draws it); the scene's heroes and boats by tile, pass 5's six
+  slots after the objects' shadows and pass 7's after layers 1 and 2; the gate's groups check
+  (`check::problems`); the situations' `heroes` list (`HeroSpec`, `hero_type`) and `boats`
+  (`BoatSpec`), the 17 earlier situations rewritten (their maps byte for byte as before);
+  `render --live` reads `heroes` and `boats`, loads the hero DEFs' frames. 100 % covered.
+- **The harness** (common path, additive): `h3mem.Mem.{boats, standing, map_heroes, hero_on,
+  write_facing, write_bytes}`; `h3map.py still` walks Red's heroes (`arrange`, `h3adv.walk`),
+  turns heroes and boats after the view moved, writes `heroes` and `boats` into `live.toml`.
+- **Captures:** a probe of 12 heroes and 5 boats facing right, then turned: exact at once.
+  `heroes-classes-0` to `-2` (144 heroes), `heroes-objects` (10 heroes among The Mandate of
+  Heaven's objects: D4 on (16, 7) and (8, 14), found by a throwaway scan of the original's draw
+  lists), `boats` (Deluge's lake; 3 boarded, 3 empty): each exact on its first run. The full set
+  (27) after: every one as recorded, none shown again.
+- **Agent decisions (provisional, on the review list):** the situations' format, the walks and
+  written facings, the boarding tiles' open pictures, `[map.heroes]`, `Shapes`' frames,
+  `Draw::Piece`'s group; the boats' flags of other colours not captured.
+- **Questions:** none (the shadow pass's owner check differs from the body's only for a hero
+  without an owner, which the map never has).

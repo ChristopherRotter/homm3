@@ -4,21 +4,24 @@
 //! rows outer and columns inner: the terrain with the map's edge (§1.3, §1.4), the rivers, the
 //! roads, the flat objects, the objects' shadows, their bodies by layer (§2.2: one 32 × 32 piece
 //! per entry of a tile's draw list, [`crate::objects`]), the unexplored tiles (§1.5), the corner
-//! gems. Heroes and boats among the bodies and the path's passes come with T5.
-//! [`crate::compose`] draws the list.
+//! gems; the heroes and boats as two-row objects among them (E24 M1 T5a, §2.3, §2.8): their
+//! shadows after the objects', their pictures after the bodies of layers 1 and 2. The path's
+//! passes come with T5b. [`crate::compose`] draws the list.
 //!
 //! Each piece of the view carries its clip: the 32 × 32 rectangle of its tile (a road's 16 pixels
 //! lower) inside the view's clip (§1.2), as the passes cut their source rectangles.
 
+use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt;
+use core::ops::Range;
 
 use h3_render::Bugs;
 
 use crate::art::{Layer, MapArt};
 use crate::layout::AdventureLayout;
-use crate::live::Live;
+use crate::live::{Facing, Live, LiveBoat, LiveHero};
 use crate::objects::{self, DrawLists, Entry, ObjectsError, Shapes};
 use crate::tables::{ShroudPiece, Tables};
 
@@ -50,9 +53,10 @@ pub enum Pass {
     /// A piece of a flat object (pass 4): its pixels, its flag runs skipped (T5 colours the
     /// owned classes').
     Flat,
-    /// A piece of an object's shadow (pass 5).
+    /// A piece of an object's, a hero's or a boat's shadow (pass 5).
     Shadow,
-    /// A piece of an object's body (pass 7), as the flat objects'.
+    /// A piece of an object's body (pass 7), as the flat objects', or of a hero's or boat's
+    /// pictures (through 0x47C080: no colour, its flag runs skipped).
     Body,
     /// An unexplored tile (pass 10), drawn twice: its pixels, then its runs as shadows (§1.5).
     Shroud,
@@ -71,15 +75,17 @@ pub enum Draw {
         /// The viewer's colour (0–7).
         viewer: u8,
     },
-    /// A piece of the view: frame `frame` of `def`'s group 0, its canvas's top-left corner at
-    /// (`x`, `y`), mirrored, drawn only inside `clip` (left, top, right, bottom; the last two
-    /// exclusive).
+    /// A piece of the view: frame `frame` of `def`'s group `group` (0 but a hero's or a boat's,
+    /// §2.8), its canvas's top-left corner at (`x`, `y`), mirrored, drawn only inside `clip`
+    /// (left, top, right, bottom; the last two exclusive).
     Piece {
         /// The pass.
         pass: Pass,
         /// The DEF.
         def: String,
-        /// The frame in group 0.
+        /// The group (by id).
+        group: u32,
+        /// The frame in the group.
         frame: u32,
         /// The canvas's left edge.
         x: i32,
@@ -192,6 +198,7 @@ pub fn scene(
         layout,
         shapes,
         lists,
+        standing: standing(live, at.z),
         at,
         bugs,
     };
@@ -243,9 +250,33 @@ struct View<'a> {
     layout: &'a AdventureLayout,
     shapes: &'a Shapes,
     lists: DrawLists,
+    standing: BTreeMap<(i32, i32), Standing<'a>>,
     at: ViewAt,
     bugs: Bugs,
 }
+
+/// A hero or a boat without one on its tile (design §2.3: the view finds them by the tiles' class
+/// and word, one per tile).
+#[derive(Debug, Clone, Copy)]
+enum Standing<'a> {
+    Hero(&'a LiveHero),
+    Boat(&'a LiveBoat),
+}
+
+/// The heroes and boats on level `z` by their tiles (the first on a tile, should two be given).
+fn standing(live: &Live, z: u8) -> BTreeMap<(i32, i32), Standing<'_>> {
+    let heroes = live.heroes.iter().map(|h| (h.at, Standing::Hero(h)));
+    let boats = live.boats.iter().map(|b| (b.at, Standing::Boat(b)));
+    let mut out = BTreeMap::new();
+    for (at, s) in heroes.chain(boats).filter(|(at, _)| at.z == z) {
+        out.entry((i32::from(at.x), i32::from(at.y))).or_insert(s);
+    }
+    out
+}
+
+/// The slots of the heroes and boats over a tile (design §2.3): k = 3 dy + dx + 1 for the one
+/// standing dx columns right of and dy rows below it.
+const SLOTS: usize = 6;
 
 /// One pass's work on one tile: its map coordinates, its place, the list.
 type TilePass<'v> = fn(&View<'v>, i32, i32, [i32; 2], &mut Vec<Draw>);
@@ -332,6 +363,7 @@ impl<'a> View<'a> {
                 Draw::Piece {
                     pass: Pass::Terrain,
                     def: self.def(Layer::Terrain, p.code).into(),
+                    group: 0,
                     frame: u32::from(p.picture),
                     x: place[0],
                     y: place[1],
@@ -343,6 +375,7 @@ impl<'a> View<'a> {
             None => Draw::Piece {
                 pass: Pass::Edge,
                 def: self.tables.map.edge.clone(),
+                group: 0,
                 frame: edge_frame(x, y, self.side()),
                 x: place[0],
                 y: place[1],
@@ -388,6 +421,7 @@ impl<'a> View<'a> {
             out.push(Draw::Piece {
                 pass,
                 def: self.def(layer, piece.code).into(),
+                group: 0,
                 frame: u32::from(piece.picture),
                 x: place[0],
                 y: place[1].saturating_add(down),
@@ -403,16 +437,127 @@ impl<'a> View<'a> {
         self.objects(x, y, place, out, Pass::Flat, None);
     }
 
-    /// Pass 5: the tile's pieces of the objects' shadows, in list order (0x411590).
+    /// Pass 5: the tile's pieces of the objects' shadows, in list order, then the heroes' and
+    /// boats' by slot (0x411590; design §2.2).
     fn shadows(&self, x: i32, y: i32, place: [i32; 2], out: &mut Vec<Draw>) {
         self.objects(x, y, place, out, Pass::Shadow, None);
+        self.standing(x, y, place, out, Pass::Shadow, 0..SLOTS);
     }
 
-    /// Pass 7: the tile's pieces of the objects' bodies, layer by layer, each in list order
-    /// (0x410C00).
+    /// Pass 7: the tile's pieces of the objects' bodies, layer by layer, each in list order, the
+    /// heroes and boats on the tile's row after layer 1 and those on the row below after layer 2
+    /// (0x410C00; design §2.2, §2.3: a tile with an empty list draws them all, in the same order).
     fn bodies(&self, x: i32, y: i32, place: [i32; 2], out: &mut Vec<Draw>) {
         for layer in 0..=MAX_LAYER {
             self.objects(x, y, place, out, Pass::Body, Some(layer));
+            match layer {
+                1 => self.standing(x, y, place, out, Pass::Body, 0..3),
+                2 => self.standing(x, y, place, out, Pass::Body, 3..SLOTS),
+                _ => {}
+            }
+        }
+    }
+
+    /// The pieces of the heroes and boats in `slots` over a tile of the map (view_tile_heroes_boats
+    /// 0x40FB30), the hero's or boat's in each slot in order.
+    fn standing(
+        &self,
+        x: i32,
+        y: i32,
+        place: [i32; 2],
+        out: &mut Vec<Draw>,
+        pass: Pass,
+        slots: Range<usize>,
+    ) {
+        let on_map = self.art.tile(x, y, self.at.z).is_some();
+        let Some(clip) = self.clip(place, 0).filter(|_| on_map) else {
+            return;
+        };
+        for k in slots {
+            let (dx, dy) = (k % 3, k / 3);
+            let (dx, dy) = (
+                i32::try_from(dx).unwrap_or(0) - 1,
+                i32::try_from(dy).unwrap_or(0),
+            );
+            if let Some(&s) = self.standing.get(&(x + dx, y + dy)) {
+                self.standing_pieces(s, [1 - dx, 1 - dy], place, clip, pass, out);
+            }
+        }
+    }
+
+    /// A hero's or boat's pictures in order (design §2.3, §2.8): on land the flag by the owner
+    /// and the hero by its class (0x40FE30); in a boat the waves unless its tile is the coast,
+    /// the boat's flag by its type and colour, the boat; an empty boat's waves and boat
+    /// (0x410760). Each its facing's group, mirrored above facing 4, its frame the moment's
+    /// frame step modulo group 0's frames (no phase); the 96 × 64 frame's square `square` (in
+    /// tiles from its top-left) at the tile's place. The shadow pass draws the same through the
+    /// shadow drawer (0x4102C0, 0x4109B0).
+    fn standing_pieces(
+        &self,
+        standing: Standing<'_>,
+        square: [i32; 2],
+        place: [i32; 2],
+        clip: [i32; 4],
+        pass: Pass,
+        out: &mut Vec<Draw>,
+    ) {
+        let art = &self.tables.map.heroes;
+        let pick = |list: &'a [String], i: usize| list.get(i).map(String::as_str);
+        let waves = |at: h3_map::model::Pos, kind: usize| {
+            let coast = self
+                .art
+                .tile(at.x.into(), at.y.into(), at.z)
+                .is_some_and(|t| t.coast());
+            pick(&art.waves, kind).filter(|_| !coast)
+        };
+        let (facing, defs): (Facing, [Option<&str>; 3]) = match standing {
+            Standing::Hero(h) => match h.boat {
+                None => (
+                    h.facing,
+                    [
+                        pick(&art.flags, h.owner.into()),
+                        pick(&art.classes, h.class.into()),
+                        None,
+                    ],
+                ),
+                Some(boat) => {
+                    let (kind, colour) = (usize::from(boat.kind), usize::from(boat.colour));
+                    let flag = (colour < 8).then(|| kind * 8 + colour);
+                    (
+                        h.facing,
+                        [
+                            waves(h.at, kind),
+                            flag.and_then(|i| pick(&art.boat_flags, i)),
+                            pick(&art.boats, kind),
+                        ],
+                    )
+                }
+            },
+            Standing::Boat(b) => {
+                let kind = usize::from(b.kind);
+                (b.facing, [waves(b.at, kind), pick(&art.boats, kind), None])
+            }
+        };
+        let group = art
+            .groups
+            .get(usize::from(facing.number()))
+            .copied()
+            .unwrap_or(0);
+        let tile = self.layout.view.tile;
+        for def in defs.into_iter().flatten() {
+            let frames = self.shapes.frames(def).unwrap_or(0);
+            let frame = self.live.moment.frames.checked_rem(frames).unwrap_or(0);
+            out.push(Draw::Piece {
+                pass,
+                def: String::from(def),
+                group,
+                frame,
+                x: place[0] - tile * square[0],
+                y: place[1] - tile * square[1],
+                mirror_x: facing.mirrored(),
+                mirror_y: false,
+                clip,
+            });
         }
     }
 
@@ -468,6 +613,7 @@ impl<'a> View<'a> {
             Draw::Piece {
                 pass,
                 def: String::from(def),
+                group: 0,
                 frame: u32::try_from(frame).unwrap_or(0),
                 x: place[0] - tile * (columns - 1 - i32::from(dx)),
                 y: place[1] - tile * (rows - 1 - i32::from(dy)),
@@ -512,6 +658,7 @@ impl<'a> View<'a> {
         out.push(Draw::Piece {
             pass: Pass::Shroud,
             def: def.clone(),
+            group: 0,
             frame: frame.into(),
             x: place[0],
             y: place[1],

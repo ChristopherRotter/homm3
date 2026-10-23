@@ -6,9 +6,9 @@
 //! shipped map (its transitions, rivers and roads as the editor wrote them; the file names the
 //! map, the harness's copy of the installation holds it) and tiles given one by one (a later
 //! one replaces an earlier on its tile), objects (E24 M1 T4a: a copy's objects with its tiles,
-//! and objects given by their template's DEF, its line of the game's `Objects.txt`), Red's and
-//! Blue's heroes (outside the view: T5 draws heroes), the view's top-left and the rectangles left
-//! unexplored. The surface only. A situation that names a shipped map whole (`map`, E24 M1 T4b)
+//! and objects given by their template's DEF, its line of the game's `Objects.txt`), the heroes
+//! of up to eight colours and the boats without a hero (E24 M1 T5a: each with the facing the
+//! harness turns it to), the view's top-left and the rectangles left unexplored. The surface only. A situation that names a shipped map whole (`map`, E24 M1 T4b)
 //! is the harness's alone: it loads that map, this module does not read it.
 
 use alloc::collections::BTreeMap;
@@ -48,8 +48,13 @@ pub struct Situation {
     /// Objects given one by one, after the copies' (in this order: the map's order).
     #[serde(default)]
     pub objects: Vec<ObjectSpec>,
-    /// Red's hero's tile, then Blue's.
-    pub heroes: [[u8; 2]; 2],
+    /// The heroes (E24 M1 T5a), the map's first objects in this order: Red's (the human player)
+    /// and another colour's at least, at most eight of a colour; every colour with a hero a
+    /// player.
+    pub heroes: Vec<HeroSpec>,
+    /// The boats without a hero (E24 M1 T5a), the map's last objects in this order.
+    #[serde(default)]
+    pub boats: Vec<BoatSpec>,
     /// The view's top-left tile and level (0).
     pub view: [i32; 3],
     /// Rectangles of tiles Red has not explored (corners inclusive); every other tile explored.
@@ -176,6 +181,58 @@ pub struct ObjectSpec {
     pub at: [u8; 2],
 }
 
+/// A hero (E24 M1 T5a).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HeroSpec {
+    /// The tile it stands on (the writer puts its anchor one column right).
+    pub at: [u8; 2],
+    /// Its owner's colour (0 Red … 7 Pink).
+    #[serde(default)]
+    pub owner: u8,
+    /// Its class (0–17), which gives its map picture: its hero type is the class's first not
+    /// taken by an earlier hero ([`hero_type`]).
+    #[serde(default)]
+    pub class: u8,
+    /// The tiles the harness walks it to in turn before the still, by play (Red's heroes only:
+    /// the human player's; a hero boards a boat by walking onto it, design §2.8).
+    #[serde(default)]
+    pub walk: Vec<[u8; 2]>,
+    /// Where the harness turns it before the still, after its walk (0–7, the hero record's +0x47;
+    /// design §2.8): a new game faces every hero right (2).
+    #[serde(default)]
+    pub facing: Option<u8>,
+}
+
+/// A boat without a hero (E24 M1 T5a).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BoatSpec {
+    /// The tile it lies on: its template's visitable cell, the anchor one column right.
+    pub at: [u8; 2],
+    /// Its type (0–2): the template `AVXboat0.def` … `AVXboat2.def` of class 8.
+    pub kind: u8,
+    /// Where the harness turns it before the still (0–7, the boat record's +0x1B; design §2.8).
+    #[serde(default)]
+    pub facing: Option<u8>,
+}
+
+/// The boats' class.
+const BOAT_CLASS: u32 = 8;
+
+/// The hero type of the `nth` hero (from 0) of `class` on a map: the class's eight types in
+/// order (classes 0–15 the types 8 × class onwards, the AB classes 16 and 17 the types 128 and
+/// 136 onwards: the packs' hero list), `None` past the eighth or for no class.
+#[must_use]
+pub fn hero_type(class: u8, nth: usize) -> Option<u8> {
+    let first = match class {
+        0..=15 => class * 8,
+        16 | 17 => 128 + (class - 16) * 8,
+        _ => return None,
+    };
+    u8::try_from(nth).ok().filter(|&n| n < 8).map(|n| first + n)
+}
+
 /// The classes whose bodies name a hero (the writer's `AnyObject` takes none of them).
 const HERO_CLASSES: [u32; 4] = [34, 62, 70, 214];
 
@@ -219,21 +276,24 @@ impl Situation {
         self.copy.iter().map(|c| c.map.clone()).collect()
     }
 
-    /// Whether objects are given by their DEF (then [`Situation::build`] needs the game's
-    /// templates).
+    /// Whether objects or boats are given by their DEF (then [`Situation::build`] needs the
+    /// game's templates).
     #[must_use]
     pub fn needs_templates(&self) -> bool {
-        !self.objects.is_empty()
+        !self.objects.is_empty() || !self.boats.is_empty()
     }
 
     /// The map, its given tiles and its objects, the copies read from `sources` (the shipped maps
-    /// by file name; [`Situation::sources`]), the given objects' templates from `templates` (the
-    /// game's `Objects.txt`, in its order). Red and Blue are human and computer players with a
-    /// hero each (hero types 16 and 0, classes 2 and 0), Red's first; the objects follow them.
+    /// by file name; [`Situation::sources`]), the given objects' and boats' templates from
+    /// `templates` (the game's `Objects.txt`, in its order). Every colour with a hero is a player
+    /// that may be human or computer (the scenario list makes Red the human one); the heroes come
+    /// first, then the objects, then the boats.
     ///
     /// # Errors
     /// A source missing, a copied rectangle outside its map or the situation's, a code with no
-    /// name, a given object's template not among `templates`.
+    /// name, a given object's or boat's template not among `templates`; no hero of Red's or of
+    /// another colour, an owner past 7, more than eight heroes of a colour or of a class, a
+    /// facing past 7, a walk of a hero not Red's.
     pub fn build(
         &self,
         sources: &BTreeMap<String, RawMap>,
@@ -280,27 +340,8 @@ impl Situation {
             };
             given.insert(tile.tile, tile);
         }
-        let player = Some(Player {
-            human: true,
-            computer: true,
-            towns: 0x1ff,
-        });
-        let hero = |owner: u8, [x, y]: [u8; 2], hero_type, class| {
-            MapObject::Hero(Hero {
-                tile: (x, y),
-                owner,
-                hero_type,
-                class,
-                name: None,
-                experience: None,
-                skills: None,
-                army: None,
-                tight_formation: false,
-                artifacts: None,
-                spells: None,
-                primary: None,
-            })
-        };
+        objects.extend(self.boats(templates)?);
+        let (players, heroes) = self.heroes()?;
         let map = Map {
             name: "situation".into(),
             description: String::new(),
@@ -325,11 +366,8 @@ impl Situation {
                     to: r.to,
                 })
                 .collect(),
-            players: [player.clone(), player, None, None, None, None, None, None],
-            objects: vec![
-                hero(0, self.heroes[0], 16, 2),
-                hero(1, self.heroes[1], 0, 0),
-            ],
+            players,
+            objects: heroes,
             underground: None,
             level_limit: 0,
             banned_skills: vec![],
@@ -339,6 +377,87 @@ impl Situation {
             objects,
         };
         Ok((map, extras))
+    }
+
+    /// The players and the heroes: every colour with a hero a player (human or computer), each
+    /// hero of the next free type of its class.
+    fn heroes(&self) -> Result<([Option<Player>; 8], Vec<MapObject>), String> {
+        let mut players: [Option<Player>; 8] = Default::default();
+        let mut of_owner = [0usize; 8];
+        let mut of_class = [0usize; 18];
+        let mut heroes = Vec::new();
+        for h in &self.heroes {
+            let facing = h.facing.unwrap_or(0);
+            let owner = usize::from(h.owner);
+            let (Some(count), true) = (of_owner.get_mut(owner), facing < 8) else {
+                return Err(format!(
+                    "hero at {:?}: owner {} or facing {facing} past 7",
+                    h.at, h.owner
+                ));
+            };
+            if h.owner != 0 && !h.walk.is_empty() {
+                return Err(format!("hero at {:?}: only Red's heroes walk", h.at));
+            }
+            *count += 1;
+            let nth = of_class.get(usize::from(h.class)).copied().unwrap_or(0);
+            let hero_type = hero_type(h.class, nth)
+                .filter(|_| *count <= 8)
+                .ok_or_else(|| {
+                    format!(
+                        "hero at {:?}: a ninth of its colour or class {}",
+                        h.at, h.class
+                    )
+                })?;
+            of_class[usize::from(h.class)] += 1;
+            players[owner] = Some(Player {
+                human: true,
+                computer: true,
+                towns: 0x1ff,
+            });
+            heroes.push(MapObject::Hero(Hero {
+                tile: (h.at[0], h.at[1]),
+                owner: h.owner,
+                hero_type,
+                class: h.class,
+                name: None,
+                experience: None,
+                skills: None,
+                army: None,
+                tight_formation: false,
+                artifacts: None,
+                spells: None,
+                primary: None,
+            }));
+        }
+        if of_owner[0] == 0 || of_owner[1..].iter().all(|&n| n == 0) {
+            return Err("a situation needs a hero of Red's and of another colour".into());
+        }
+        Ok((players, heroes))
+    }
+
+    /// The boats as objects: each of its type's template, anchored one column right of its tile.
+    fn boats(&self, templates: &[ObjectTemplate]) -> Result<Vec<AnyObject>, String> {
+        self.boats
+            .iter()
+            .map(|b| {
+                let template = templates
+                    .iter()
+                    .find(|t| (t.class, t.subclass) == (BOAT_CLASS, u32::from(b.kind)))
+                    .filter(|_| b.facing.unwrap_or(0) < 8)
+                    .ok_or_else(|| {
+                        format!(
+                            "boat at {:?}: no template of type {} or a facing past 7",
+                            b.at, b.kind
+                        )
+                    })?;
+                Ok(AnyObject {
+                    level: 0,
+                    tile: (b.at[0].saturating_add(1), b.at[1]),
+                    template: template.clone(),
+                    owner: None,
+                })
+            })
+            .collect()
     }
 }
 

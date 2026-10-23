@@ -50,11 +50,23 @@ fn counts_group_0s_frames_encodings_and_runs() {
     // Runs of 0 (2 pixels), 5 (3), and in encoding 1 of 200 and 7 (2 each: 7 and above in 7).
     assert_eq!(summary.run_pixels, [2, 0, 0, 0, 0, 3, 0, 4]);
     assert_eq!(summary.runs(), 9);
-    assert_eq!(problems(&summary, 3), Vec::<String>::new());
+    assert_eq!(problems(&summary, 3, 1), Vec::<String>::new());
     assert_eq!(
-        problems(&summary, 4),
+        problems(&summary, 4, 1),
         ["3 frames in group 0, the view draws 4"]
     );
+    // The groups drawn (a hero's facings, E24 M1 T5a): group 1 holds fewer frames than group 0,
+    // there is no group 2.
+    assert_eq!(summary.groups, [(0, 3), (1, 1)]);
+    assert_eq!(
+        problems(&summary, 1, 3),
+        [
+            "1 frames in group 1, fewer than group 0's 3",
+            "no group 2, the view draws it"
+        ]
+    );
+    let full = def(&[(0, &[("a", 0)]), (1, &[("b", 1)])], &frames[..2]);
+    assert!(problems(&summarize(&full).unwrap(), 1, 2).is_empty());
 }
 
 #[test]
@@ -64,7 +76,7 @@ fn a_def_without_group_0_holds_no_frames() {
     assert_eq!((summary.frames, summary.runs()), (0, 0));
     assert!(summary.encodings.is_empty());
     assert_eq!(
-        problems(&summary, 0),
+        problems(&summary, 0, 1),
         ["0 frames in group 0, the view draws 1"]
     );
 }
