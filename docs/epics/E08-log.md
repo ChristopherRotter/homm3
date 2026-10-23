@@ -4944,3 +4944,8 @@ data from the PC (the executable, both LODs, `Objects.txt`, `maps.tar`, `extract
 - **Checked in the engine**: the map reads, imports whole and validates (`original_data` on a
   folder holding only it: 16 heroes, 4 monsters, a backpack of 6, 8 heroes per player).
 - **Not built**: the harness's clicks and reads and the recipe, the run (T47); the scoring (T48).
+- **Verify**: no fingerprinted path changed (docs and experiments only), so
+  `scripts/verify-once.sh engine --base origin/master -- --with-original-data` ran the light
+  gates on efcbb36 (engine code fe96ce40, verified on `master` f3c8fab): check-rules,
+  check-stubs, check-docs, check-exe-map passed; `check-lane --cross-lane` passed (the battle
+  lane's `docs/experiments/README.md`). CI cannot run (billing).
