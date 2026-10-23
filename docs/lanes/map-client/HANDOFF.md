@@ -39,5 +39,5 @@ The map client lane's living state; read after the global `docs/HANDOFF.md`. For
 
 ## Recent sessions
 
-- **2026-10-23, E24 T0** (`map-client/e24-t0`, docs only, `cross-lane` for the BACKLOG row with the user's consent): E24 refined with the user, every recommendation taken (M1 the map view and frame; M2 the map moving before M3 the panels; the writer's additions as `cross-lane` PRs; the string catalogue common). The epic file, its log, M1's eight tasks; inbox notes to the adventure and client lanes. Next: T1a.
+- **2026-10-23, E24 T0** (`map-client/e24-t0`, docs only, `cross-lane` for the BACKLOG row with the user's consent): E24 refined with the user, every recommendation taken (M1 the map view and frame; M2 the map moving before M3 the panels; the writer's additions as `cross-lane` PRs; the string catalogue common). The epic file, its log, M1's eight tasks; inbox notes to the adventure and client lanes. **#411 open** (docs only, no CI run): check it first. Next: T1a.
 - **2026-10-23, the lane opened** (`shared/map-client-lane`, with the client lane's E17 M3 T9c): the user split the client lane; this HANDOFF and `QUEUE.md` written, E24 T0 queued.
