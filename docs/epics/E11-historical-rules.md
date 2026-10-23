@@ -1,6 +1,7 @@
 # E11 — Historical rules of RoE and AB
 
-Status: **refined** 2026-10-24 (Q58), not started · Waits for the user's original media (T1) ·
+Status: **refined** 2026-10-24 (Q58), not started · Opens after E23's closure and one battle-lane
+session on its inbox's leftovers (the user, 2026-10-24), with the user's original media (T1) ·
 The battle lane leads (the executable's tools, `installation.md`, `h3-harvest`, the packs); each
 difference is built by the lane that owns its rule (BACKLOG).
 

@@ -38,7 +38,7 @@ Status: `todo` · `next` · `in-progress` · `partial` · `done`
 
 ## Ordering rationale
 
-*(2026-10-24, Q58)* E11 is re-scoped from "AB and SoD completeness" (folded: every epic covers the three editions for what it builds) to the historical rules of RoE and AB. The battle lane takes it up after E23 closes, as soon as the user's original media are at hand (T1); until then it waits without blocking anything.
+*(2026-10-24, Q58)* E11 is re-scoped from "AB and SoD completeness" (folded: every epic covers the three editions for what it builds) to the historical rules of RoE and AB. The order (the user, 2026-10-24): the battle lane closes E23 first (done the same night), spends one session on its inbox's leftovers, and only then opens E11 with T1, once the user's original media are at hand; until then E11 waits without blocking anything.
 
 *(2026-10-23, CLT-Q18)* The client lane split at E17 M3's closure: the client lane continues E17 as the battle client (M3's last task, then sieges as M4 and live play as M5), and the new map-client lane opens with E24, the adventure map client, in parallel on the same foundation (the client foundation and the capture harness are common paths).
 
