@@ -120,13 +120,9 @@ impl Stratum {
     ///
     /// A message: `per_kind` is 0 or above 500.
     pub fn report_v1(per_kind: u32) -> Result<Vec<Self>, String> {
-        Self::by_kind(
-            "report set v1",
-            &REPORT_V1_KINDS,
-            REPORT_V1_SEED,
-            per_kind,
-            |k| EncounterTable::v1().kinds[k].weight,
-        )
+        let table = EncounterTable::v1();
+        let set = ("report set v1", REPORT_V1_SEED, REPORT_V1_ENVS);
+        Self::by_kind(set, &REPORT_V1_KINDS, per_kind, |k| table.kinds[k].weight)
     }
 
     /// The neutral set v1 (E06 T7c), the first `per_kind` of its 500 envs of each neutral kind,
@@ -136,27 +132,23 @@ impl Stratum {
     ///
     /// A message: `per_kind` is 0 or above 500.
     pub fn neutral_v1(per_kind: u32) -> Result<Vec<Self>, String> {
-        Self::by_kind(
-            "neutral set v1",
-            &NEUTRAL_V1_KINDS,
-            NEUTRAL_V1_SEED,
-            per_kind,
-            |k| EncounterTable::v1().kinds[k].share,
-        )
+        let table = EncounterTable::v1();
+        let set = ("neutral set v1", NEUTRAL_V1_SEED, NEUTRAL_V1_ENVS);
+        Self::by_kind(set, &NEUTRAL_V1_KINDS, per_kind, |k| table.kinds[k].share)
     }
 
-    /// One stratum per kind of `kinds`: batch seed `seed + k`, the kind one-hot, the first episode
-    /// of each of `per_kind` envs (at most 500), weighed by `weight(k)`.
+    /// One stratum per kind of `kinds` of the set `(name, seed, envs)`: batch seed `seed + k`, the
+    /// kind one-hot, the first episode of each of `per_kind` envs (at most `envs`), weighed by
+    /// `weight(k)`.
     fn by_kind(
-        set: &str,
+        (set, seed, envs): (&str, u64, u32),
         kinds: &[usize],
-        seed: u64,
         per_kind: u32,
         weight: impl Fn(usize) -> u32,
     ) -> Result<Vec<Self>, String> {
-        if !(1..=REPORT_V1_ENVS).contains(&per_kind) {
+        if !(1..=envs).contains(&per_kind) {
             return Err(format!(
-                "--episodes: the {set} has 1 to {REPORT_V1_ENVS} episodes per kind"
+                "--episodes: the {set} has 1 to {envs} episodes per kind"
             ));
         }
         Ok(kinds
