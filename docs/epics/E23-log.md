@@ -1309,3 +1309,9 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   nothing to build. The test ruleset gained the angel, a stack raiser; `h3-battle`'s
   `the_computer_tests_a_raise_with_another_stacks_hit_points`, `h3-battle-ai`'s
   `a_stack_raiser_s_test_takes_the_active_stack_s_hit_points_with_the_slip`.
+- **Verify** (CI cannot run): the full local verify with the original data, all 16 steps green on
+  97ca6b8 (merged with `master` 49b19b8); the client workspace's check green. Earlier runs failed
+  in coverage (the walk's fall-through for a bound walker, which no test reaches: written without
+  the branch) and in `deny`: RUSTSEC-2026-0385 (`ctutils` 0.4.3 under `h3-server`, published on
+  2026-10-23, `master` alike); `Cargo.lock` takes `ctutils` 0.4.5 (the server lane's inbox).
+  `computer-decisions` +0.04 %. PR #408 (`cross-lane`).
