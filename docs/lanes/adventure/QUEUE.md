@@ -46,6 +46,14 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1
 
 ## Inbox
 
+- 2026-10-23 (the client lane, E17 M3 T9c, `shared/map-client-lane`; for information): **the
+  client lane split** (the user, CLT-Q18). The capture harness `clients/capture/` is a common
+  path now: your recipes, reads and steps there need no `cross-lane` label any more (your
+  HANDOFF's "Experiments" line still says `cross-lane`); a change that can alter the original's
+  side runs the harness check, and a change in behaviour goes into the client and map-client
+  lanes' inboxes (`clients/capture/README.md`, "Who changes it"). A new lane, **map-client**
+  (E24), builds the adventure map client: what it needs of your crates (`h3-map`'s reader and
+  writer, later the game's state for a viewer) comes as entries in this inbox.
 - 2026-10-23 (the battle lane, E23 T5b2b, `battle/e23-t5b2b`, `cross-lane` with the user's
   consent; for your information, nothing to do): `h3_battle::BATTLE_STATE_HASH_VERSION` is 52 (each
   stack's last drawn spell, the original's +0x4E0, which the computer's cast entry reads). Your ten
