@@ -3263,8 +3263,8 @@ Q21 (the user, 2026-10-23).
   left). The turrets' damage (random(2, 4) per creature, 0x465D3E) stays free: the engine's seed
   is searched to match the line and the box.
 - **T2b's sequences** (hot seat, SoD rules, a Castle unless named; the heroes' skills as T1b's):
-  `keep` (Artillery: the keep, then the upper and lower towers shoot an attacker's stack, one a
-  two-hex one; free damage), `hit` (Basic Ballistics at a wall: `wall_hit` falls, `wall_damage`
+  `keep` (Artillery: the keep's and both towers' shots at the attacker's stacks, one a two-hex
+  one; free damage), `hit` (Basic Ballistics at a wall: `wall_hit` falls, `wall_damage`
   1: the wall's state 1), `missed` (`wall_hit` fails: the nearest other wall takes it, a tie
   forced where two are equally near), `breach` (Expert at a Citadel's wall of 2 hit points:
   destroyed by the first shot, the second retargeted, `wall_retarget_tie` where needed), `tower`
@@ -3276,8 +3276,8 @@ Q21 (the user, 2026-10-23).
   mid-walk, the gate closing after it, then a walk back in from its first step; the moving state
   in the frames), `gate-fortress` (a stack on 94 keeping a Fortress's gate open), `moat` (an
   attacker's walk into a Castle's moat: `MoatDamage`, the strip over it and its box, then Wait in
-  it: the re-entry), `mine` (a Tower: an attacker's walk over a hidden mine, recorded from both
-  seats), `quake` (the attacker's hero casts Earthquake: `quake_target` forced per hit, a wall
+  it: the re-entry), `mine` (a Tower: an attacker's walk over a hidden mine, on the attacker's
+  turn: the spectator's record), `quake` (the attacker's hero casts Earthquake: `quake_target` forced per hit, a wall
   destroyed), `aim` (the mouse over the targets on the Catapult's turn, 16 and its lines over
   0xFE, 0xFF and the hexes; 22 on a defender's turn), `through` (an attacker's shooter at a stack
   behind the walls: the broken arrow and the halved damage, `shot_wall_test` 0x467510),
