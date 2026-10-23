@@ -15,8 +15,9 @@
 # the content split (R01 decision 6) made these core crates shared paths; the battle's parts
 # (`h3-content-battle`, `h3-pack-battle`) are battle's. The formats/tools crates (`h3-formats`,
 # `h3-harvest`, `h3-experiment`) are battle's until a formats/tools lane opens. The AI lane took
-# `h3-sim` and `h3-ffi` at E05 (the user, 2026-10-18, AI-Q1). The epics E11, E15 and E18–E20
-# have no lane yet: their files get a pattern here when they start.
+# `h3-sim` and `h3-ffi` at E05 (the user, 2026-10-18, AI-Q1). The battle lane leads E11 (the
+# user, 2026-10-24, Q58). The epics E15 and E18–E20 have no lane yet: their files get a pattern
+# here when they start.
 
 [shared]
 paths = [
@@ -143,6 +144,7 @@ paths = [
     "docs/epics/E02*",
     "docs/epics/E03*",
     "docs/epics/E04*",
+    "docs/epics/E11*",
     "docs/epics/E23*",
     "docs/lanes/battle/",
 ]
