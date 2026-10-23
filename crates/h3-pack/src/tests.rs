@@ -385,8 +385,9 @@ fn the_level_data_and_class_overrides_parse() {
 #[test]
 fn the_harvested_movement_and_scouting_effects() {
     // E08 T35b (pack format v46): the three skills' and six artifacts' effects from the gap-fill,
-    // and the three flags of increment 5, on in `faithful` and off in `strict-fixed`.
-    use h3_content::{DROP_IGNORES_ARTIFACTS, FLYING_INLAND_PRICE, RADIUS_WAITS_FOR_A_STEP};
+    // and the flags of increment 5, on in `faithful` and off in `strict-fixed` (the third, flag
+    // 30, retired in E08 T41: ADV-Q22).
+    use h3_content::{DROP_IGNORES_ARTIFACTS, RADIUS_WAITS_FOR_A_STEP};
     for packs in [
         &[SOD_CORE, AB_CORE, BASE_CORE][..],
         &[AB_CORE, BASE_CORE],
@@ -437,13 +438,8 @@ fn the_harvested_movement_and_scouting_effects() {
             );
             let q = r.quirks();
             assert_eq!(
-                [
-                    FLYING_INLAND_PRICE,
-                    DROP_IGNORES_ARTIFACTS,
-                    RADIUS_WAITS_FOR_A_STEP
-                ]
-                .map(|f| q.is_enabled(f)),
-                [on; 3],
+                [DROP_IGNORES_ARTIFACTS, RADIUS_WAITS_FOR_A_STEP].map(|f| q.is_enabled(f)),
+                [on; 2],
                 "{profile}"
             );
         }

@@ -25,7 +25,7 @@ water-walking levels, `scouting_radius`; HER-ADV-003 to -007 in `heroes.toml`; Q
 names HER-ADV-003), and the adventure part in T40 (ruleset part v10: `[params]`' `fly_cost` and
 `water_walk_cost`, the `ab` pack's `[[terrain_walker]]` for Nomads, both Cursed Grounds'
 `no_native`; the log). Part B reads them: since T40 `day_points`, `Pricing`'s Pathfinding and the
-reveals' radius (§5, §6); flying and water walking with T41.
+reveals' radius (§5, §6); flying and water walking since T41 (§6, §7).
 
 ## Part B — the map, the game, the batch and the cut
 
@@ -40,84 +40,15 @@ levels at load, `start_turn` with the store, the radius per move, `ADV-QUIRK-18`
 `AdventureState::start_day`, called in `advance_day` and for day 1. A step over a tile a flight
 passes reveals as any step (T41's passage).
 
-### 6. The step's price (ADV-MOV-003 to -006 amended, ADV-MOV-009, -010)
+### 6, 7. The step's price; the passage, the reach and `MoveHero` (ADV-MOV-005 to -007, -009, -010)
 
-**Built by T40** (the log): `Pricing::new(core, part, army, movement)` precomputes per terrain
-the walking price at the hero's Pathfinding level after a terrain walker and whether it is
-native (points 1, 2); Cursed Ground's `StaticTile::no_native` (point 7) in the price and in the
-drop's walking case. Left for T41, from the original's `step_cost` 0x4B1740 (§2.1):
-
-3. **Water walking** (ADV-MOV-010; level `w`): from a water tile, `water_walk_cost[w]` replaces
-   the price.
-4. **Flying** (ADV-MOV-009; level `f`): from a land tile no object blocks (an object's entrance
-   included: the original's tile bit +0xC 0x40, which T34a misread as the coast flag; T38, survey
-   §2.1 point 5) the lesser of `fly_cost[f]` and the price so far; from water or from a tile the
-   live occupancy blocks (an obstacle flown over) `fly_cost[f]` replaces it. In every profile
-   (ADV-Q22, decision 85: the original's rule, batch E5's E5-4; the wiki's text agrees; VCMI's
-   lesser over obstacles too not taken; `ADV-QUIRK-16` withdrawn). At level 3 only a blocked tile
-   carrying a road prices above the lesser.
-5. **The diagonal** (ADV-MOV-005, -006): the exception's check cost C, under `ADV-QUIRK-2` or
-   `-3`, is the walking check of today's code (the source terrain's price at the Pathfinding level
-   after Nomads; water's 100), never the fly or water-walk price (the original); with both off,
-   C is the step's own straight price, whatever priced it, the fly or water-walk price included
-   (the existing fix's natural extension: agent's call, ADV-Q21 point 4). At level 3 only
-   flying from rough terrain tells the two apart (a swamp's diagonal at 175 to 247 points costs
-   100 in `faithful`, 141 in `strict-fixed`).
-6. **The drop to 0** (ADV-MOV-006, A-12): after each step the points left fall to 0 when below
-   the cheapest straight step from the new tile, priced against itself: its road's price, else
-   the native cost (the terrain's price at the Pathfinding level, after Nomads, under a
-   `no_native` ground: built, T40), then water walking (on water) and flying (point 4: the lesser from a free
-   land tile, else the fly price) by the hero's **spell** levels under `ADV-QUIRK-17` (none in increment 5:
-   a walking step), by its flying and water-walking levels without it (§2.5). Today's
-   `left_after` is the walking case.
-
-`Pricing::cheapest` (the reach's window bound) includes the fly and water-walk prices the hero
-has.
-
-### 7. The passage, the reach and `MoveHero` (ADV-MOV-007 to -010)
-
-**The tiles by how a hero moves** (§3.1, the second reading; A-13 fixed, A-14 withdrawn).
-"Stop" is a node the hero may end a move on and visit from; "pass" a node it only flies or walks
-over; a flying hero that also water-walks is a flyer:
-
-| The step enters | Walking | Flying | Water walking |
-|---|---|---|---|
-| off the map, rock, an unexplored tile | never | never | never |
-| a free land tile, a gate whose key the owner holds | stop | stop | stop |
-| a blocked tile (live occupancy) | never | pass | never |
-| plain water | never | pass | pass |
-| water holding an object | never (boats later) | pass | never |
-| an entered object's visitable tile (a Cartographer) | stop: the visit ends the move | stop (the visit, from any node) and pass | stop |
-| a neighbour-visited object's visitable tile (a pile, a monster, a border guard or gate) | a visit from the tile before, which ends the move | the same from a stop node; else and also pass | as walking |
-| another player's hero's tile | a visit from the tile before: a battle | the same from a stop node; else and also pass | as walking |
-| an own hero's tile | never (meetings later) | pass | never |
-| a guarded tile | stop: the move ends, the guard visits | stop and the flight goes on; the guard only at the end | as walking |
-| down onto the visitable tile of an object not visited from above | never | never | never |
-| up off such a tile (the hero's own, or one flown over) | never | pass | never |
-
-A town (98) is entered as a stop only from a stop node too (§3.1 point 6; towns are E09). The
-start node is a stop node. Rock never; a hero in a boat neither flies nor water-walks (boats
-later).
-
-**The reach** (`Reach::search`): a walking hero's search is today's (one node per tile; no new
-test in its hot loop: a const generic or a second function, `bench-check`). A flying or
-water-walking hero's window holds a second layer of pass nodes (points left and the entering
-direction), and each direction byte gains the predecessor's kind (the original's bit 11,
-0x4B1B15): Dijkstra's over (tile, kind), each node replaced only by a strictly better one of its
-kind, as the original's two nodes per tile (0x4B1C4B). The drop to 0 applies at every step of
-either kind. `points_left`, `path` and `tiles` read the stop nodes; `path` follows each node's
-predecessor of its recorded kind. The env's mask and `legal_moves` are the stop tiles (no
-encoding change). Properties: every path the reach reports is one `MoveHero` accepts, every tile
-one step away a stop tile is reported, and the exhaustive search's equality without the diagonal
-exception holds over both kinds.
-
-**`MoveHero`** (ADV-MOV-007 amended): validated step by step with the node kind the table gives;
-a path may go on after a pass. New: `AdventureCommandError::NoStop { step }` (name the agent's
-call), the path ends on a pass, or its last step visits from a pass; `Blocked` and `PastVisit`
-keep their meaning for a walker (a flyer's step over an entrance mid-path is a pass, not a
-visit). The `Unexplored` check stays first (nothing about a hidden tile leaks). A flyer's guard is
-tested at its last tile only, and only that tile's object is visited (0x48147D to 0x4814E1). Each
-step, passes included, emits `HeroStepped` with its viewers and reveals (§5).
+**Built by T40 and T41** (the log): `Pricing` with the hero's Pathfinding, a terrain walker and
+Cursed Ground (T40), the fly and water-walk prices, the diagonal's check and the drop under
+`ADV-QUIRK-17` (T41, `Pricing::lifted`); `AdventureState::passage` (this note's table, now in its
+doc comment and ADR-0016 point 4; `ADV-QUIRK-15`), `MoveHero`'s passage with `NoStop` and a
+flight's guard and visit at its end, the reach's pass nodes (`Reach::search_layered`). The
+exhaustive search's equality without the diagonal exception was measured (the log), not added as
+a test, as for the walker in increment 1.
 
 ### 8. The env, replays, fixtures, properties and benchmarks
 
@@ -139,18 +70,9 @@ step, passes included, emits `HeroStepped` with its viewers and reveals (§5).
 
 ### 9. Rule ids and quirks (the map side)
 
-- **Amended:** ADV-MOV-001 (§5), -002 (§5), -003 (§6 points 1, 2, 7), -005 and -006 (§6 points
-  5, 6), -007 (§7), ADV-FOG-001 and -003 (§5). T40 amended ADV-MOV-001 to -004 (-004 verified by
-  E5-6), -006's Cursed Ground, ADV-FOG-001 (verified by E5-10) and -003.
-- **New:** **ADV-MOV-009** flying (the price §6.4, the passage §7, the end of a move §3.4),
-  **ADV-MOV-010** water walking (the same).
-- **Quirks** (`docs/rules/quirks-adventure.md`, each written with its rule): **ADV-QUIRK-15** a
-  flight crosses unexplored tiles (A-13; fixed for now, no flag: Q-0002's class, **provisional**:
-  the user's caveat at ADV-Q20 and ADV-Q21, §13; its class is revisited with the compromise), ~~**ADV-QUIRK-16**~~ withdrawn (D-24: the corrected reading is the original's rule in every
-  profile, ADV-Q22, decision 85), **ADV-QUIRK-17** the drop to 0 forgets the artifacts (A-12; fix-optional),
-  **ADV-QUIRK-18** a grown radius waits for the hero's next step (D-26; fix-optional, decision 77;
-  in the ledger since T40).
-  A-14 is withdrawn (no entry); D-23 is a rule (Cursed Ground: E5-6 confirmed it).
+**Built** (T40, T41): ADV-MOV-001 to -007 and ADV-FOG-001, -003 amended, ADV-MOV-009 and -010 new
+(`verified` by batch E5); the ledger holds `ADV-QUIRK-15`, `-17` and `-18` (`-16` withdrawn, flag
+30 retired in T41's shared part).
 
 ### 10. Versions
 
@@ -161,7 +83,7 @@ v47 (T35: the six kinds, the three flags), the adventure ruleset part v10 (the f
 prices, the terrain walker; Cursed Ground's `no_native` in the same bump if E5-6 is scored first,
 which the cut does; bumped by T40). The game and adventure state hashes, the map import, the action encoding and
 the replay format do not change (no new state; a flyer's destinations are tiles of the same
-mask). Each bumps once, in the task that first changes it.
+mask): T41 bumped nothing. Each bumps once, in the task that first changes it.
 
 ### 11. Batch E5
 
@@ -215,7 +137,7 @@ the scorer needs only increment 4's draws):
 | 1 | **T35** + **T36** | T35: the shared groundwork (`shared/`, `cross-lane`): ADR-0013, -0016 and -0017 amended from the accepted drafts; the six kinds, the three flags, their syntax; the packs' effects through the gap-fill; pack format v46, core ruleset hash v47; both lanes' replay headers; `clients/` checked (part A §1, §4). T36: batch E5's specs, results templates and scorer (§11; `cross-lane`) |
 | 2 | **T37** + **T38** | T37: the harness's reads, the recipes and the run of batch E5 (`cross-lane`). T38: batch E5 scored, D-23 decided by E5-6; the survey's §8 and the rules' sources updated; an ADV-Q if a row contradicts the reading. *Added by decision 85:* **T38b** (done), ADV-MAP-002's count corrected (every tile no object blocks but rock, water included), `ADV-QUIRK-14` withdrawn, before round 3 |
 | 3 | **T39** + **T40** | T39 (done alone, decision 86): `h3-heroes`' derivations (part A; HER-ADV-003 to -007, §1.3's vectors; Q-0005's line). T40 (done whole, decision 87): the day's points, the radius and the walking price (§5, §6 points 1, 2, 7): ADV-MOV-001 to -004 amended, the build's order, `start_turn` and the reveals with the store, `ADV-QUIRK-18` and the strict start-of-day reveal, Nomads, Cursed Ground (confirmed); adventure ruleset part v10 |
-| 4 | **T41** | Flying and water walking (§6 points 3 to 6, §7): the price (the original's, decision 85; flag 30 retired and ADR-0016 point 4's words corrected in its shared part), the drop (`ADV-QUIRK-17`), the passage, the reach's two kinds of node, `MoveHero`'s passage, end, visits and guards; ADV-MOV-006, -007 amended, -009, -010; `ADV-QUIRK-15` and `-17`. The largest task: cut at its start if needed (the price and the drop; the reach and `MoveHero`) |
+| 4 | **T41** (done whole, decision 88) | Flying and water walking (§6 points 3 to 6, §7): the price (the original's, decision 85; flag 30 retired and ADR-0016 point 4's words corrected in its shared part), the drop (`ADV-QUIRK-17`), the passage, the reach's two kinds of node, `MoveHero`'s passage, end, visits and guards; ADV-MOV-006, -007 amended, -009, -010; `ADV-QUIRK-15` and `-17`. The largest task: cut at its start if needed (the price and the drop; the reach and `MoveHero`) |
 | 5 | **T42** + **T43** | T42: the env, the plans and properties, the fixtures and replays, the benchmarks, `--with-original-data` (§8). T43: the audit against the exit criteria, increment 5 closed, increment 6 refined |
 
 *Not chosen* at ADV-Q21: the batch at the end as in increment 4 (T35, T39 to T42 first, then
@@ -245,7 +167,8 @@ and building Cursed Ground late).
 
 - **The passage table rests on the code reading alone** where the wiki and VCMI are silent: a
   flyer passing over a border gate without its key, over another player's hero, and a step up
-  off an object not visited from above landing only in flight. Fixed tests pin the reading;
+  off an object not visited from above landing only in flight. Fixed tests pin the reading
+  (`crates/h3-adventure/src/state/tests/flight.rs`, T41);
   E5-11 checks the gate in SoD; the wiki's Border Gate and Border Guard pages are worth a look in
   T41. E5-11 confirmed the gate (a flyer passes over its entrance without the key, no message).
   A-14's gap (0x4E5CE0) was the tile bit misread as the coast (T38): the test passes on every free
@@ -258,7 +181,8 @@ and building Cursed Ground late).
   player (`docs/06-security.md`). Keep the reach's passage rules in one place, so that the
   compromise changes the unexplored tile's row of §7's table and nothing else.
 - **The reach's speed:** the second layer only for flyers and water walkers; the walker's hot
-  loop must not gain a branch (`bench-check`'s +2 %).
+  loop must not gain a branch (`bench-check`'s +2 %). T41: `reach` +0.89 %, `play` +0.83 % with
+  the walker's own unlifted price (the log); a flyer's reach is baselined in T42.
 - **Not in increment 5** (survey §6): the sea's points (Navigation, its specialists, the
   Necklace of Ocean Guidance, the Sea Captain's Hat, the Admiral's Hat, Lighthouses, Favorable
   Winds), Stables, the spells Fly, Water Walk and Dimension Door with their levels 0 to 2 (the

@@ -1818,7 +1818,8 @@ fn hero_details_fit_the_harvested_slots() {
 /// exists and `strict-fixed` none, so the two profiles differ exactly by the quirks of the
 /// ledger that have a flag, the data quirks' included (E04b T8e). The position of a retired
 /// flag is no flag, and no profile sets its bit: 10 and 14 (BAT-QUIRK-2 and BAT-QUIRK-9,
-/// retired on 2026-10-12) and 9 (BAT-QUIRK-1, retired on 2026-10-13).
+/// retired on 2026-10-12), 9 (BAT-QUIRK-1, retired on 2026-10-13) and 30 (ADV-QUIRK-16,
+/// retired on 2026-10-22, E08 T41).
 #[test]
 fn the_profiles_differ_exactly_by_the_quirk_flags() {
     let registry = h3_content::REGISTRY;
@@ -1827,7 +1828,7 @@ fn the_profiles_differ_exactly_by_the_quirk_flags() {
         .fold(0u64, |bits, flag| bits | 1 << flag.index());
     assert_eq!(
         all,
-        ((1 << registry.len()) - 1) & !(1 << 9 | 1 << 10 | 1 << 14)
+        ((1 << registry.len()) - 1) & !(1 << 9 | 1 << 10 | 1 << 14 | 1 << 30)
     );
     for (profile, bits) in [("base:faithful", all), ("base:strict-fixed", 0)] {
         let r = compile(&[&SOD_PACK, &AB_PACK, &BASE_PACK], profile).unwrap();

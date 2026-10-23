@@ -179,6 +179,35 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 ### ADV-QUIRK-14 — Withdrawn (was: the computer's terrain shares count only the coast)
 - **Withdrawn** (the user, 2026-10-22, ADV-Q22; the epic's decision 85; removed from the rules by E08 T38b). T25 read the tile flag `0x40` (+0xC) that `ai_map_terrain_shares` (0x52B9C0) tests as the map file's coast flag, so the shares would count the coast alone (ADV-Q17, decision 60: reproduced). E08 T38 found it means "no object blocks the tile": `map_tiles_load` (0x4FE220) sets it on every tile but rock, `tile_refresh_object` (0x505610) clears it where an object blocks the tile without an entrance there (survey `E08-progression.md` §10.3's correction). The original counts every tile no object blocks but rock, water included, which is no quirk: ADV-MAP-002 counts so (`crates/h3-adventure/src/state/tests.rs`, `the_terrain_shares_count_the_tiles_no_object_blocks`). The id is not reused.
 
+### ADV-QUIRK-15 — A flight crosses unexplored tiles
+- Class: always fixed for now, **provisional** (no flag: the user, 2026-10-22, ADV-Q20 and ADV-Q21, A-13: "probably fix, but gameplay impacts have to be considered (wide obstacle ranges become impassable); perhaps deserves a compromise, like allowing to route to the closest unexplored, but free hex; TBD later anyway"; the epic's decisions 75, 78). The compromise, and with it this class, is designed later.
+- Context / rules affected: adventure, ADV-MOV-009 with ADV-MOV-008 (E08 T41)
+- Original behavior: the pathfinder treats a tile the human player has not explored as one a flight passes over (`pathfinder_expand` 0x4B2300, the fog test at 0x4B25D4 with the blocked tiles, survey `E08-hero-movement.md` §3.1 point 3), so a flying hero's path may cross the unexplored, and its route and price depend on what lies hidden there (rock, water, the coast).
+- Intended/expected behavior: moves stay on explored tiles for every hero (ADV-MOV-008): a flight never crosses an unexplored tile, and the legal moves never depend on a hidden tile (ADR-0016 point 4, ADR-0017 point 8). `AdventureState::passage` holds the row, so the compromise changes it alone.
+- Impact: information (the original's flights tell a player what hidden tiles are not); gameplay: a flight over a wide obstacle range stops at its unexplored edge.
+- Community status: not documented; VCMI 1.7.5 never paths through unexplored tiles (`evaluateAccessibility`).
+- Sources: code reading (E08 T34a, survey §3.1, §3.2); batch E5's E5-9 (`experiments/results/E08-batch-5b.md`: the Angel Wings hero flew 13 tiles straight through an unexplored strip and arrived; the walker had no path; survey §13).
+- Flag: none (fixed in every profile)
+- Defaults: fixed in every profile
+- Regression test: `crates/h3-adventure/src/state/tests/flight.rs`, `a_flight_never_crosses_an_unexplored_tile`
+- Decided by / date: the user 2026-10-22 (ADV-Q20, ADV-Q21; the epic's decisions 75, 78); built by E08 T41
+
+### ADV-QUIRK-16 — Withdrawn (was: a flight from an inland tile costs the fly price)
+- **Withdrawn** (the user, 2026-10-22, ADV-Q22; the epic's decision 85). T34a read the tile bit +0xC 0x40 that `step_cost` (0x4B1740) tests as the map file's coast flag, so a flight would cost the fly price from every inland tile, roads included (D-24, the flag `quirk.adventure.flying_inland_price`). Batch E5's E5-4 refuted it and T38 found that the bit means "no object blocks the tile" (survey `E08-hero-movement.md` §2.1 point 5): the lesser of the fly and walking prices from every free land tile is the original's rule, which ADV-MOV-009 builds in every profile. The flag's registry position 30 was retired in E08 T41's shared part; the id is not reused.
+
+### ADV-QUIRK-17 — The drop to 0 forgets the artifacts' flying and water walking
+- Class: fix-optional (the user, 2026-10-22, ADV-Q20, A-12; the epic's decision 75)
+- Context / rules affected: adventure, ADV-MOV-006 with ADV-MOV-009, ADV-MOV-010 (E08 T41)
+- Original behavior: after each step the move drops the points left to 0 when they are below the cheapest straight step from the new tile (`hero_move_step` 0x48084E → `cheapest_step_from` 0x4B1880), which it prices with the hero's own fly and water-walk fields (+0x112, +0x116: the spells'), not the level 3 that `hero_step_cost` (0x4B18C0) forces for Angel Wings and Boots of Levitation. So the drop prices a walking step for a hero with the artifacts: on Cursed Ground's swamp an Expert flyer with 100 to 174 points left loses them, though its next step costs 100 (survey `E08-hero-movement.md` §2.5).
+- Intended/expected behavior: the drop prices the cheapest step with the hero's flying and water-walking levels, as its steps are priced.
+- Impact: gameplay, rare: only where the walking price is above the artifacts' (Cursed Ground; a blocked tile or water flown over, where the walking cheapest is 100 and the fly price at the spells' levels above it, comes with the spells); no shipped hero wears Angel Wings (survey §7).
+- Community status: not documented; VCMI has its own last-step rule (D-3).
+- Sources: code reading (E08 T34a, survey §2.5).
+- Flag: `quirk.adventure.drop_ignores_artifacts`
+- Defaults: faithful = on (the walking drop), strict-fixed = off (`Pricing::left_after` with the hero's fly and water-walk prices)
+- Regression test: `crates/h3-adventure/src/movement/tests.rs`, `the_drop_forgets_flying_and_water_walking_under_adv_quirk_17`
+- Decided by / date: the user 2026-10-22 (ADV-Q20; the epic's decision 75); built by E08 T41
+
 ### ADV-QUIRK-18 — A grown scouting radius waits for the hero's next step
 - Class: fix-optional (the user, 2026-10-22, at T34b's checkpoint: the original's way as a fix-optional quirk; the epic's decision 77, ADV-Q21)
 - Context / rules affected: adventure, ADV-FOG-003 (E08 T40), with ADV-FOG-001

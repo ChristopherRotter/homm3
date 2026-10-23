@@ -2239,7 +2239,8 @@ fn check_decisions(
 }
 
 /// Ownership isolation: a command of `actor` moves no other player's hero, changes no other
-/// player's army, explored tiles, treasury, purchases, open decision (E08 T14b) or keys (T15a),
+/// player's army, explored tiles (but for a new day's reveal in strict-fixed, which only adds,
+/// E08 T40), treasury, purchases, open decision (E08 T14b) or keys (T15a),
 /// and changes another player's heroes' points only when that player's turn starts
 /// (ADV-MOV-002); but a battle (E08 T19a) the actor owns with another player: its commands play
 /// the battle both own, and the one that ends it changes the other's hero (its army, or its
@@ -2282,9 +2283,31 @@ fn check_isolation(
     let surrendered = ended(events)
         .iter()
         .any(|(_, result)| matches!(result, BattleResult::Surrender(_)));
+    // A new day's start (E08 T40): in strict-fixed (`ADV-QUIRK-18` off) every hero reveals around
+    // it to its owner, so another player's explored tiles may grow then, never shrink.
+    let new_day = events
+        .iter()
+        .any(|e| matches!(e, GameEvent::DayStarted { .. }));
+    let kept = |was: &h3_adventure::BitGrid, is: &h3_adventure::BitGrid| {
+        (0..was.levels()).all(|z| {
+            (0..was.height()).all(|y| {
+                (0..was.width()).all(|x| {
+                    let pos = TilePos::new(x, y, z);
+                    !was.get(pos) || is.get(pos)
+                })
+            })
+        })
+    };
     for player in (0..before.players()).map(|p| PlayerId::new(u8::try_from(p).unwrap())) {
         if player != actor {
-            prop_assert!(before.adventure().explored(player) == after.adventure().explored(player));
+            let (was, is) = (
+                before.adventure().explored(player),
+                after.adventure().explored(player),
+            );
+            match (was, is) {
+                (Some(was), Some(is)) if new_day => prop_assert!(kept(was, is)),
+                _ => prop_assert!(was == is),
+            }
             if !partners.contains(&player) {
                 prop_assert_eq!(before.battle(player), after.battle(player));
             }
