@@ -1,7 +1,7 @@
 # E24 — The adventure map client
 
 Status: **refined** (2026-10-23, T0, with the user); M1 running (T1a, T1b, T2, T3a, T3b1, T3b2,
-T4a, T4b, T5a done; next T5b1, then T5b2, `docs/lanes/map-client/QUEUE.md`).
+T4a, T4b, T5a, T5b1 done; next T5b2, `docs/lanes/map-client/QUEUE.md`).
 Lane: map-client (`docs/lanes/map-client/HANDOFF.md`: the autonomy contract, the user's asset
 notes). Opened 2026-10-23 when the user split the client lane at E17 M3's closure (CLT-Q18).
 Decisions so far live here (no ADR of its own yet; ADR-0020 and ADR-0024 bind it as they bind
@@ -123,7 +123,14 @@ autonomy contract (lane HANDOFF) says what the agent decides alone in between. T
   by facing, frames, flags, the coast's waves, a hero's boat; `E24-design.md` §2.8) and drawn as
   two-row objects among the layers (passes 5 and 7), taken from memory with their facings; the
   situations' heroes of any colour and class, Red's walks by play, boats; five situations (the
-  18 classes × 8 facings, heroes among objects: D4, D5; boats: D7), exact.
+  18 classes × 8 facings, heroes among objects: D4, D5; boats: D7), exact. T5b1 (2026-10-24; T5b
+  split with the user into T5b1 and T5b2; MCL-Q4 asked): the owners' colours read (the owned
+  classes, the vertical garrison and the AB mine loaded as two of them, the entrance's owner,
+  `game.pal`'s entries 63 to 71; D10 settled: no drawn picture loses its colours), the towns'
+  pictures by their buildings and the random dwellings resolved at the load (`E24-design.md`
+  §2.9); drawn (`Draw::Piece`'s flag), taken from the start and from memory; eight situations
+  (owned objects of every colour, random dwellings, the nine factions' towns by their buildings,
+  random towns, two shipped maps' views), exact.
 - **Exit:** the capture set's stills match the original pixel for pixel outside the masks of
   what M1 does not draw (the panels, the mouse), or list each difference as an M2 item; the
   review list accepted; research item 9 closed by the reading and its frames.
@@ -185,7 +192,7 @@ The M1 review list starts here (the autonomy contract's "queue for the milestone
   converted in the pure library, so its tests use the writer; the purity test is a copy of
   `h3-view`'s for this crate.
 - **M1 T2, the live part at a map's start:** heroes and boats facing right (T5a: as the
-  original's new game) and every tile explored until T5b reads the original's start; phases 0
+  original's new game) and every tile explored until T5b2 reads the original's start; phases 0
   (the original's are random).
 - **M1 T3a, the writer's additions** (the adventure lane's crate): a second entry point
   (`write_with(&Map, &Extras)`) instead of new `Map` fields and `MapObject` variants, which would
@@ -211,7 +218,7 @@ The M1 review list starts here (the autonomy contract's "queue for the milestone
   (the harness's `live.toml`: the palette step, the frame step the screen shows, every object's
   anchor, checked, and phase); the situations' objects (`copy`'s `objects = true`, neutral,
   without the hero classes; `objects` given by DEF through the game's `Objects.txt`); the eight
-  owned classes' flag runs skipped until T5 colours them (no situation has them yet).
+  owned classes' flag runs skipped until T5b1 coloured them.
 - **M1 T4b, random objects and shipped maps** (*provisional*): a situation names a shipped map
   whole (`map`), loaded with the scenario list's setup (its first human player) and its first
   day's messages closed; `live.toml`'s `viewer`, `defs` and `classes` (every object's template
@@ -228,3 +235,13 @@ The M1 review list starts here (the autonomy contract's "queue for the milestone
   day); the boats' flags of colours other than Red's not captured (the gate checks them);
   `[map.heroes]`'s format; `Shapes` holding the frames of pictures without a `.msk`;
   `Draw::Piece`'s group.
+- **M1 T5b1, the owners** (*provisional*): `[map.owners]` (the palette, the neutral entry, the
+  classes with 219 and 220 as loaded) and `[map.towns]` (three lists by faction); `Draw::Piece`'s
+  `flag` and `Scene::flags` (an entry of a named palette rather than a colour, the scene staying
+  free of assets); the owner per object in the live part (the original's per entrance tile: the
+  same but for MCL-Q4's case); `Live::at_start` taking the towns' pictures; `render --live`'s town
+  check and its own picture only for an artifact (a class the game loads as another kept its DEF:
+  the vertical garrison would have drawn a horizontal one); the situations' `towns` (a faction,
+  an owner and `village`, `fort`, `citadel`, `castle` or `capitol`) and objects' `owner`, every
+  owning colour given a hero outside the view; the random dwellings' situation drawing the Angel
+  Portal's moved anchor only in about one run of two.

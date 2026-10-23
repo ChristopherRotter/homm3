@@ -427,8 +427,8 @@ button that shows in more than one place (a dialog's OK): `python3 capture/h3adv
 <name> x0,y0,x1,y1 [<dump.xwd>]` records 12 probes relative to its corner (`[button.<name>]`);
 `h3adv.find_button` finds it anywhere on the screen.
 
-**The map's stills** (E24 M1 T3b2, T4a, T4b, the map client lane; `docs/epics/E24-design.md`
-§1.10, §2.6, §2.7): from
+**The map's stills** (E24 M1 T3b2, T4a, T4b, T5a, T5b1, the map client lane;
+`docs/epics/E24-design.md` §1.10, §2.6 to §2.9): from
 `clients/`, after `cargo build --release -p h3-map-view`,
 
 ```
@@ -468,9 +468,13 @@ less one: the redraw draws before it counts) and every object's anchor and anima
 object's template in memory, its DEF, class and subclass (`Mem.map_templates`; T4b: a random
 object's is the copy a new game made, design §2.7) and the heroes and empty boats the view
 draws (`Mem.map_heroes`: by the tiles of class 34 and 8 with a word, each hero's class, facing,
-owner and boat; T5a), all into `live.toml`. Ours:
+owner and boat; T5a) and every object's owner as the view finds it (`Mem.map_owners`, by its
+entrance tile and the owner's record, -1 none; T5b1), all into `live.toml`. Ours:
 `h3-map-view render --bugs original --live live.toml` with the same view and hidden rectangles;
-it refuses a `live.toml` whose anchors are not its map's. A game that crashes on its way to the
+it refuses a `live.toml` whose anchors are not its map's (but a random dwelling's, which the
+map's load moves: T5b1, design §2.9) and one whose towns' pictures are not those their buildings
+give. A situation's objects may have an owner and its towns a faction, owner and buildings
+(T5b1); every owning colour needs a hero, which makes it a player. A game that crashes on its way to the
 map (`wine.log`'s "Unhandled page fault") is started once more: the original's tavern rumour at
 a new game reads past its table about once in 800 games (`rumour_pick_text` 0x4CCF20; T4a saw
 it once); so is one whose Wine exits before the main menu with an empty log (T4b saw it once,

@@ -107,6 +107,14 @@ checkpoint.
 
 ### Map client lane (`MCL-Q<n>`)
 
+#### MCL-Q4 — An owned object without an entrance on the map takes tile (0, 0)'s owner (E24 M1 T5b1)
+
+**Context.** Passes 4 and 7 colour an owned object's flag pixels by the owner of the object on its entrance tile (tile_object_owner 0x40FD20 of object_entrance_tile 0x4FEC30: the template's first visitable cell on the map; `docs/epics/E24-design.md` §2.9). When none of its visitable cells lies on the map, the passes take tile (0, 0) of the surface instead (0x410FC8, 0x4126B9): the object's flags show that tile's object's owner, grey when it has none. None of the 159 shipped maps the reader reads has such an owned object (the gate counts them); the map editor places an object's entrance on the map, the writer can place one past the right or bottom edge.
+
+**Options.** (a) The client takes the object's own owner, the comparisons reproduce the original's (`h3_render::Bugs`, as MCL-Q2 and MCL-Q3). (b) Copy it always. (c) A graphics option.
+
+**Recommendation.** (a), as T5b1 built it: `objects::flag_owner` gives the object's own owner, and tile (0, 0)'s with `--bugs original`; no capture has the case (a unit test does).
+
 ## Answered
 
 Newest first in each block. A lane adds an answered question at the top of its own block, so lanes working at once never edit the same lines; a numbered question (`Q55`) and the decisions from before the lanes go to the last block.

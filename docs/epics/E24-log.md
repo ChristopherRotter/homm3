@@ -368,3 +368,43 @@ One session, the user present at its start; branch `map-client/e24-t4a`.
   `Draw::Piece`'s group; the boats' flags of other colours not captured.
 - **Questions:** none (the shadow pass's owner check differs from the body's only for a hero
   without an owner, which the map never has).
+
+### M1 T5b1 — the owners' colours, the towns' pictures, the random dwellings (2026-10-24)
+
+- **The seam** (asked): T5b split into T5b1 (the owners: colours, towns by their buildings, random
+  dwellings) and T5b2 (the path's arrows, the explored tiles), the user's choice of three.
+- **Session:** no GitHub in this session (no linked account in the cloud, no credentials on the
+  user's computer); the user chose to work without it: the sandbox cloned from a bundle of the
+  user's repo (its `origin/master` held #444's merge), the branch handed back as a bundle for the
+  user to push and open the pull request.
+- **Read** (§2.9): tile_object_owner 0x40FD20 and object_entrance_tile 0x4FEC30 (read now), the
+  passes' colour (game_palette16's +0x9C + 2 × owner: entry 64 + owner, 63 none; §2.2 said 78,
+  forgetting the palette's +0x1C header), the passes' jump tables on the drawn class, the
+  template's class as loaded (map_template_read 0x503780 through object_class_values 0x63A6E4:
+  219 as 33, 220 as 53, decorations as others; found when the original's memory showed the
+  vertical garrisons as class 33), the towns' pictures (0x4C9990's town branch, the three tables,
+  setup_towns 0x4CAA70 redrawing every town after town_buildings_setup 0x5C08C0, the map's
+  building bits 0x6888C0), the random dwellings (random_dwellings_resolve 0x502B60 and
+  object_set_class_template 0x505F20, from map_objects_place_all before the placement).
+- **Built** (`clients/crates/h3-map-view`): the tables' `[map.owners]` (`OwnerArt::entry`) and
+  `[map.towns]` (`TownArt::picture`, `FACTIONS`, the building ids); `Draw::Piece`'s `flag`,
+  `Scene::flags`, the batch naming the palette, the compose's flag colour (0 none);
+  `objects::{class, entrance, flag_owner}` (MCL-Q4's tile (0, 0) with `Bugs::Original`);
+  `Live::at_start` gives the towns their pictures (`built_at_start`); the situations' `towns`
+  (`TownSpec`, `TownBuilt`) and objects' `owner`; `render --live` reads `owners`, checks the
+  towns' pictures, takes a random dwelling's template and moved anchor from memory, keeps an own
+  picture for artifacts only; the gate lists the owners' palette, the pictures with flag pixels
+  by class, the towns' pictures with each town template's masks (none loses a pixel) and the
+  shipped maps' owned objects without an entrance on the map (none). 100 % covered.
+- **The harness** (common path, additive): `h3mem.Mem.map_owners` (the original's walk and
+  records); `h3map.py still` writes `owners` into `live.toml`.
+- **Captures:** `owners-objects`, `owners-random-dwellings` (run until an Angel Portal came: its
+  anchor one right of the map's, exact), `towns-0`, `-1`, `-2`, `towns-random`, `shipped-hoard`,
+  `shipped-too-many-monsters`: each exact on its first run. The full set (35) after: every one as
+  recorded, three shown again for the palettes' half tick (the inbox's T6 item).
+- **Agent decisions (provisional, on the review list):** the tables' formats, the scene's flag as
+  a palette entry, the owner per object, the situations' formats, the heroes outside the view
+  making the owning colours players, `own` for artifacts only.
+- **Questions:** MCL-Q4 (an owned object without an entrance on the map takes tile (0, 0)'s
+  owner; none in the shipped maps; built as recommended: the client the object's own, the
+  comparisons the original's).
