@@ -2,7 +2,8 @@
 
 - Status: Accepted (user, 2026-10-13, BAT-Q40 and BAT-Q41; drafted at E04c T4); point 6 amended
   2026-10-14 (user, BAT-Q43; E04c T6); point 7 added 2026-10-14 (user, BAT-Q46; E04c T7d); points
-  1, 2 and 7 amended 2026-10-15 (user, BAT-Q50; E04c T10b)
+  1, 2 and 7 amended 2026-10-15 (user, BAT-Q50; E04c T10b); point 7 widened 2026-10-23 (user,
+  BAT-Q33; E23 T7)
 - Date: 2026-10-13
 - Deciders: user; battle lane session (E04c T4, T5)
 - Working detail: the survey [`docs/rules/surveys/E04c-sieges.md`](../rules/surveys/E04c-sieges.md),
@@ -77,7 +78,14 @@ the adventure lane derives the battlefield (ADR-0022).
    a side without a player). Both are public and battle state. They do not decide who commands a
    side: every side's player commands its stacks as before. The defaults (0, no human) are a
    battle between two computer players on Easy; the game orchestrator sets them from the game
-   (the adventure lane), scenarios and replays name them.
+   (the adventure lane), scenarios and replays name them. **Widened** (E23 T7, BAT-Q33): one rule
+   reads `human` too, the bad-morale check's second draw (0x464BDB, BAT-MOR-004): with the
+   fix-optional quirk BAT-QUIRK-27 (`quirk.battle.computer_morale_let_off`, on in `faithful`,
+   off in `strict-fixed`; the user, 2026-10-23) a frozen stack of a side whose player is not human
+   (a neutral side, a computer player's) is let off one time in four (batch 4a's and 4b's rows,
+   survey S-25). It applies to whoever commands the stack; a caller that wants the original's
+   handicap for a side sets `human` as the game has it (the AI lane's training batch plays both
+   sides as human players', AI-Q3: no let-off).
 
 ## Consequences
 

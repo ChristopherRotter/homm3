@@ -20,8 +20,8 @@ use std::time::{Duration, Instant};
 
 use h3_battle::{BattleState, Command, LegalCommands, NoopSink, apply, legal_commands};
 use h3_cli::{CliError, RunOptions, load_scenario, run_random, verify_file};
-use h3_content::{CreatureFlag, CreatureTypeId, Formation};
-use h3_contracts::{Army, ArmyStack, BattleSetup, BattleSide, FortLevel, Moat, Siege};
+use h3_content::{CreatureFlag, CreatureTypeId, Formation, HeroTypeId, SpellCategory, SpellId};
+use h3_contracts::{Army, ArmyStack, BattleHero, BattleSetup, BattleSide, FortLevel, Moat, Siege};
 use h3_kernel::{Rng, StreamId};
 use h3_sim::rollout::{pick, step_command};
 use h3_sim::{BattleEnv, OBSERVATION_LEN, random_rollout};
@@ -31,7 +31,7 @@ const USAGE: &str = "usage:
          [--checkpoint-every N] [--record <out.toml>]
   h3 verify [--packs-dir packs] <replay.toml>...
   h3 bench [--scenario <file>] [--packs-dir packs] [--games N] [--seed N] [--observe 0|1]
-  h3 bench-computer [--games N] [--seed N] [--max-steps N]
+  h3 bench-computer [--games N] [--seed N] [--max-steps N] [--heroes 0|1]
   h3 adventure run|verify|bench …   (`h3 adventure` lists them)
   h3 ai bench …                      (`h3 ai` lists them)";
 
@@ -198,12 +198,15 @@ fn bench(args: &Args) -> Result<(), String> {
 /// every difficulty in turn: on the open field the defender is the computer and the attacker
 /// plays random legal commands that stay in the battle; every second battle is at a random town's
 /// Fort, where both sides are the computer (the Cyclops's wall shot). Each battle stops after
-/// `--max-steps`.
+/// `--max-steps`. With `--heroes 1` (the hero's budget, E23 T7) each side has a hero with every
+/// combat spell at a mastery drawn per school (Basic to Expert), 500 mana, power and knowledge 10,
+/// and the towns are Citadels with a damaging moat.
 fn bench_computer(args: &Args) -> Result<(), String> {
-    args.check_known(&["games", "seed", "max-steps"])?;
+    args.check_known(&["games", "seed", "max-steps", "heroes"])?;
     let games: u64 = args.num("games", 40)?;
     let seed: u64 = args.num("seed", 1)?;
     let max_steps: u32 = args.num("max-steps", 300)?;
+    let heroes = args.num::<u8>("heroes", 0)? == 1;
     let r = h3_pack_battle::compile(
         &[
             h3_pack_battle::SOD_PACK,
@@ -230,6 +233,35 @@ fn bench_computer(args: &Args) -> Result<(), String> {
             })
             .collect(),
     };
+    let book: Vec<SpellId> = (0..r.spells().len())
+        .filter_map(SpellId::from_index)
+        .filter(|&s| {
+            r.spell(s)
+                .is_some_and(|s| s.category == SpellCategory::Combat)
+        })
+        .collect();
+    let hero = |rng: &mut Rng| {
+        let mut h = BattleHero::new(HeroTypeId::from_raw(0));
+        (h.power, h.knowledge) = (10, 10);
+        let levels: Vec<u8> = (0..4)
+            .map(|_| 1 + u8::try_from(rng.below(3)).unwrap_or(0))
+            .collect();
+        h.magic.masteries = book
+            .iter()
+            .map(|&s| {
+                let schools = r.spell(s).map(|s| s.schools.as_slice()).unwrap_or_default();
+                let level = schools
+                    .iter()
+                    .filter_map(|school| levels.get(school.index()).copied())
+                    .max()
+                    .unwrap_or(1);
+                (s, level)
+            })
+            .collect();
+        h.magic.spell_book = Some(book.clone());
+        (h.magic.mana, h.magic.max_mana) = (500, 500);
+        h
+    };
     let mut rng = Rng::from_seed(seed);
     let mut legal = LegalCommands::new();
     let (mut steps, mut decisions, mut time) = (0u64, 0u64, Duration::ZERO);
@@ -238,8 +270,12 @@ fn bench_computer(args: &Args) -> Result<(), String> {
         let walled = game % 2 == 1;
         let siege = walled.then(|| Siege {
             faction: r.sieges()[below(&mut rng, r.sieges().len())].faction,
-            fort: FortLevel::Fort,
-            moat: Moat::Absent,
+            fort: if heroes {
+                FortLevel::Citadel
+            } else {
+                FortLevel::Fort
+            },
+            moat: if heroes { Moat::Damaging } else { Moat::Absent },
             structures: 0,
             escape_tunnel: false,
             morale: 0,
@@ -251,6 +287,11 @@ fn bench_computer(args: &Args) -> Result<(), String> {
             siege,
             formations: [Formation::Loose, Formation::Loose],
             difficulty: u8::try_from(game % 5).unwrap_or(0),
+            heroes: if heroes {
+                [Some(hero(&mut rng)), Some(hero(&mut rng))]
+            } else {
+                [None, None]
+            },
             ..BattleSetup::default()
         };
         let mut state = BattleState::new(&r, &setup, seed.wrapping_add(game))

@@ -49,12 +49,6 @@ where  = "crates/h3-battle-ai/src/tactics.rs::turn"
 reason = "The original's Defend in the tactics phase ends the stack's turn (0x479706); the engine's phase has no Defend and its Wait makes the stack wait first (BAT-TAC-002). The policy gives Wait, and a walker below Hard that has waited Wait again at once, but on Hard and above a walker that defended is asked again among the waited stacks, where the original's turn had ended (BAT-AI-023)"
 epic   = "E23"
 
-[[stub]]
-id     = "BAT-STUB-17"
-where  = "crates/h3-battle-ai/src/hero/teleport.rs::teleport"
-reason = "The original's slip 33 (survey E23-battle-ai.md §4, found in E23 T6): Teleport's walker turns are real ones, and a creature caster among its candidates may build a spell context in its cast entry (0x421280, §7.59), whose predictions (0x422A40 with flag 0) replace the planned damage on every stack (+0x534); the hero's later spells then read that context's planned damage (0x443080 with flag 1). The port's choice keeps its own context's (or, with slip 26, the retreat test's) in both profiles: a gap of faithful (BAT-AI-020, BAT-AI-024)"
-epic   = "E23"
-
 # --- adventure (ADV-STUB-<n>) ---
 
 [[stub]]

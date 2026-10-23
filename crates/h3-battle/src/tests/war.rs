@@ -622,6 +622,37 @@ fn the_tent_heals_a_hurt_allied_stack_by_one_to_twenty_five() {
     assert_eq!(amounts.len(), 25, "every amount occurs");
 }
 
+/// BAT-Q51's row (batch 4c TP): the original's automatic tent heals the stack whose top creature
+/// lost the most (0x473EA0), not a uniformly drawn one; at a tie the later stack.
+// covers: BAT-WAR-003
+#[test]
+fn the_tent_heals_the_stack_that_lost_the_most_the_later_at_a_tie() {
+    let r = ruleset();
+    // 0 and 1 = tanks (attacker, 100 HP each), 2 = the attacker's tent.
+    for (hp, patient) in [([60, 30], 1), ([30, 60], 0), ([40, 40], 1)] {
+        for seed in 0..20u64 {
+            let mut s = start(
+                &r,
+                &with_machines(
+                    &r,
+                    &[(0, "tank", 3), (1, "tank", 3)],
+                    &[(0, "tank", 1)],
+                    [&["tent"], &[]],
+                ),
+                seed,
+            );
+            s.stacks.as_mut_slice()[0].top_hp = hp[0];
+            s.stacks.as_mut_slice()[1].top_hp = hp[1];
+            let heals = healed(&defend_round(&mut s, &r));
+            assert_eq!(
+                heals.iter().map(|h| (h.0, h.1)).collect::<Vec<_>>(),
+                vec![(2, patient)],
+                "{hp:?}, seed {seed}"
+            );
+        }
+    }
+}
+
 // covers: BAT-WAR-003
 #[test]
 fn the_tent_heals_at_most_the_missing_hit_points_and_waits_without_patients() {

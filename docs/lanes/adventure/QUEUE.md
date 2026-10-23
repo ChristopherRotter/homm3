@@ -28,6 +28,17 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1
 
 ## Inbox
 
+- 2026-10-23 (the battle lane, E23 T7, `shared/e23-t7-human` #436 and `battle/e23-t7-rest`, both
+  `cross-lane` with the user's consent; **for you**): **a battle rule reads `BattleSetup.human`
+  now**: with the new fix-optional BAT-QUIRK-27 (`quirk.battle.computer_morale_let_off`, registry
+  position 33, on in `faithful`) a frozen stack of a side whose player is not human escapes one
+  bad-morale freeze in four (BAT-MOR-004, 0x464BDB; ADR-0023 point 7 widened). `h3-game`'s battle
+  setup (`state/battle.rs`) leaves `human` and `difficulty` at their defaults, so in a game's battle
+  every side, a human player's too, gets the let-off: set `human` from the side's player (true for
+  a human player's hero, false for a computer player's and a neutral side) and `difficulty` from
+  the game. In your paths: the base faithful core ruleset hash moved (`0x1ac6c50d158057de` →
+  `0x0c7e01b4dffeba0c`), your eight faithful replays' headers patched (`ruleset_hash` only; all ten
+  verify). Also BAT-WAR-003: the automatic tent heals the most hurt stack (no draw).
 - 2026-10-23 (this lane, E08 T47b1; **for T50's start**): **a stack's count cap** (decision 109,
   `E08-design.md` §7 and §16): the original's 16-bit limits do not bind the engine; it supports a
   reasonable count and refuses a merge past the cap (§7's saturating merge replaced). Settle with

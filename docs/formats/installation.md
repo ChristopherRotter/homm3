@@ -4687,7 +4687,9 @@ striker always touches the stack it strikes).
 **0x523DF0 and 0x523D90.** A two-hex stack's directions 0 to 2 and 6, 7 are taken from its right
 hex, 3 to 5 from its left hex, whichever is its position (+0x44: the position + 1 facing right, − 1
 facing left); 6 and 7 are the hexes above and below its middle (0x523D90: 5 or 0 and 3 or 2 by the
-facing).
+facing). Both read the neighbour table +0x13468 (0x4640A0, filled at the battle's setup): no
+neighbour lies in a side column, column 0 or 16, nor off the field; a side column's own hex keeps
+its neighbours in the next column (E23 T7, batch 4b H1; the port's `hexes::table_neighbor`).
 
 **0x41F580's details** (beyond §7.38). The search is 0x4B3400 with the acting side (+0x132C0),
 the target hex, the tactics flag, range 127 and speed −1. **The flag's player test reads the
@@ -5823,7 +5825,7 @@ but a type and a count above 0, the arrow towers included (count × the record's
 walls, the Catapult and the Cyclops; then 0x4428F0) and every defender record in use but
 creature 149. 0x477A00 multiplies the halved sum (`cdq; sub; sar`, towards 0) as an `f32` by
 0x4E4580's `1.0 − d` (st(0), not stored: the discount `d` an `f32`). **Found** (survey slip 33,
-not built, BAT-STUB-17): Teleport's walker turns are real (§7.58), and a creature caster's cast
+built in E23 T7, BAT-AI-020): Teleport's walker turns are real (§7.58), and a creature caster's cast
 entry in them (§7.59) may build a spell context whose predictions (0x422A40 with flag 0) set every
 listed stack's planned damage (+0x534) anew, which the hero's later spells read (0x443080 with
 flag 1). Nothing copied (Q29).
