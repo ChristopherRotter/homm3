@@ -12,6 +12,14 @@ M4's checkpoint passed 2026-10-12 (SRV-Q22); T8 and M4's review items done the s
 
 ## Inbox
 
+- 2026-10-23 (the client lane, E17 M4 T2a, CLT-Q20; the user's choice): **record the start's
+  events.** `Session::new` starts a battle with `BattleState::new`, which drops the events of its
+  start (`BattleState::start` reports them): the tactics phase, a bad-morale freeze and, at a
+  town, the turrets' and the Catapult's own acts of round 1 (BAT-SIE-016, BAT-SIE-011). The
+  client lane's M4 T2b needs them in the record, as its first message before any command, to
+  play the opening's automatic shots (`docs/epics/E17-design.md` §10.2). A record format change
+  (the client's reader too: one `Events` message per command today); the client lane's T2b
+  records the commanded shots meanwhile.
 - 2026-10-23 (the battle lane, E23 T5b2b, `battle/e23-t5b2b`; for your information, nothing to do):
   RUSTSEC-2026-0385 (`ctutils` 0.4.3, non-constant-time mask generation; through `digest` 0.11 to
   `argon2`, `ed25519-dalek` and `tungstenite`) failed `cargo deny` on `master` from 2026-10-23;
