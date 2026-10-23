@@ -4959,15 +4959,14 @@ whole.
 
 **Baseline:** `master` e3cfe7c; the session had GitHub access again (cloned from GitHub). Its
 engine code (9a54eabd) had no run on record, so the sandbox's baseline ran the full verify with
-the original data (RESULT_PLACEHOLDER). The user's PC was linked: the original's sixteen files
+the original data: all 16 steps passed (code 9a54eabd verified on fbbf53b). The user's PC was linked: the original's sixteen files
 staged from it as T37a's. The branch changes no engine code (the harness, a common path since
 CLT-Q18: no `cross-lane`; the client and map-client lanes' inboxes told).
 
 - **Screens and items from memory, not coordinates.** The window manager's topmost dialog
-  (`h3mem.dialog`: its vtable and box, H3API's H3BaseDlg +0x18) tells the screen: the map
-  0x63A5E4, the battle 0x63D528, the hero screen 0x63EAE8, the exchange 0x642428, the army
-  dialog 0x643854, the creature dialog 0x643C14, the split dialog 0x63B8F8, a message 0x63DB40
-  (observed under Wine). Each item holds its box relative to the dialog (i16 x +0x18, y +0x1A,
+  (`h3mem.dialog`: its vtable and box, H3API's H3BaseDlg +0x18) tells the screen by its vtable
+  (`h3adv.SCREEN_KINDS`, observed under Wine: the map, the battle, the hero screen, the exchange,
+  the army, creature and split dialogs, a message). Each item holds its box relative to the dialog (i16 x +0x18, y +0x1A,
   u16 width +0x1C, height +0x1E) and its state (+0x16, bit 0x4 while drawn), so a click goes to
   the centre of the item with the procedure's id (survey `E08-army.md`, all as read: the hero
   screen's army slots 68-74, worn positions 2 + p, backpack places 40-44, arrows 77 and 78,
@@ -4995,7 +4994,9 @@ CLT-Q18: no `cross-lane`; the client and map-client lanes' inboxes told).
   there, the right arrow; then a battle whose tactics phase is ended) and Full (seven stacks
   joined by 5 compliant Wolf Riders: the army dialog's title, a dismissal in it, the group into
   the freed slot; then the exchange with Full B: a move, a split, closing). Blue holds eight
-  heroes. **Passed under Wine in two full runs** RUN2_PLACEHOLDER: every row as the reading, no
+  heroes. **Passed under Wine in two full runs** (about four minutes each; every record of Kit and Full
+  the same in both, the runs differing only in the random starting gold, seed bytes and their
+  draws): every row as the reading, no
   oddity (Kit: flags 2, 0, 2, 3, 2; the assembly's question GENRLTXT 733 after the equip and on
   the right click, the Well at position 9; the backpack's right click a window, no question; the
   arrow's rotation; the tactics phase opened and ended. Full: GENRLTXT 36, the dismissal's
@@ -5010,3 +5011,6 @@ CLT-Q18: no `cross-lane`; the client and map-client lanes' inboxes told).
   the army dialog, the tactics flag and the Well's assembly as the spec's predictions. Not
   recorded as results: batch E6 is T47b's run.
 - **Not built:** batch E6's recipe and its run (T47b); the scoring (T48).
+- **Verify:** the baseline's full run (above); the branch changes no fingerprinted path, so the
+  light gates ran on it (check-rules, check-stubs, check-docs, check-exe-map) with `check-lane`
+  (an `adventure` change: no `cross-lane`): all passed. CI's recent runs fail unstarted.
