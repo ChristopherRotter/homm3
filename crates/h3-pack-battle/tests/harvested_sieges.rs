@@ -293,6 +293,7 @@ fn random_legal_sod_heroes_besiege_every_town() {
                 funds: [rng.next_u32(), rng.next_u32()],
                 difficulty: u8::try_from(rng.below(5)).unwrap(),
                 human: [rng.below(2) == 0, rng.below(2) == 0],
+                ..BattleSetup::default()
             };
             let mut state = BattleState::new(&sod, &setup, game)
                 .unwrap_or_else(|e| panic!("{profile} game {game}: the setup is refused: {e:?}"));

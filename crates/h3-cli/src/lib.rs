@@ -677,6 +677,9 @@ impl ReplayDoc {
                 difficulty: f.setup.difficulty,
                 human: h3_pack_battle::parse_sides(&f.setup.human)
                     .map_err(|e| CliError::Format(e.to_string()))?,
+                // The adventure's facts for the computer (ADR-0027 point 14): E23 T6 names them.
+                retreat: Default::default(),
+                attacker_ground: None,
             },
             commands: f
                 .commands
