@@ -65,7 +65,7 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
-- **2026-10-23, E17 M4 T2a (done; not split, the user; docs only).** What moves in a siege read
+- **2026-10-23, E17 M4 T2a (done; #431 open; docs only; not split).** What moves in a siege read
   (§10.2, the map), T2b's and T2c's sequences listed; CLT-Q19 (slips fixed, the shake
   copied), Q20 (the server lane records the opening's events: its inbox), Q21 answered.
 - **2026-10-23, E17 M4 T1b (done; #427).** `[[town]]` harvested, the siege drawn; 15 siege
