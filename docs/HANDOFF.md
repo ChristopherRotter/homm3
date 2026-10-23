@@ -1,19 +1,19 @@
 # HANDOFF
 
-Read first, then your lane's HANDOFF: the lane index and every lane's traps (a lane's state: its own HANDOFF). Rules: `docs/08-work-process.md` ("Lanes", "Keeping the start-of-session reading small"); under 6 000 bytes (`check-docs`); changed by `shared/` pull requests.
+Read first, then your lane's HANDOFF: the lane index and every lane's traps (a lane's state: its own HANDOFF). Rules: `docs/08-work-process.md` ("Lanes", "Keeping the start-of-session reading small"); under 6 000 bytes (`check-docs`); changed by `shared/` PRs.
 
 ## Lanes
 
 | Lane | Owns (`lanes.toml`) | State, traps, tasks |
 |---|---|---|
 | battle | `h3-battle`, `h3-content-battle`, `h3-pack-battle`, `h3-cli`, formats/tools crates, packs, fixtures, experiments | [HANDOFF](lanes/battle/HANDOFF.md), [QUEUE](lanes/battle/QUEUE.md) |
-| adventure | `h3-adventure`, `h3-game`, `h3-map`, `h3-pack-adventure`, `h3-heroes`; `src/adventure/` in `h3-sim` and `h3-cli`, its replays, `h3m.md` | [HANDOFF](lanes/adventure/HANDOFF.md), [QUEUE](lanes/adventure/QUEUE.md) |
+| adventure | `h3-adventure`, `h3-game`, `h3-map`, `h3-pack-adventure`, `h3-heroes`; `src/adventure/` in `h3-cli`, its `replay.rs` in `h3-sim`, its replays, `h3m.md` | [HANDOFF](lanes/adventure/HANDOFF.md), [QUEUE](lanes/adventure/QUEUE.md) |
 | ai | `h3-sim`, `h3-ffi`, `python/` | [HANDOFF](lanes/ai/HANDOFF.md), [QUEUE](lanes/ai/QUEUE.md) |
 | server | `h3-protocol`, `h3-server` | [HANDOFF](lanes/server/HANDOFF.md), [QUEUE](lanes/server/QUEUE.md) |
 | client | battle client: `clients/` (own Cargo workspace) | [HANDOFF](lanes/client/HANDOFF.md), [QUEUE](lanes/client/QUEUE.md) |
 | map-client | adventure map client: `clients/crates/h3-map…`, `clients/map/` | [HANDOFF](lanes/map-client/HANDOFF.md), [QUEUE](lanes/map-client/QUEUE.md) |
 
-Shared (own pull request, merged first): `h3-kernel`, `h3-contracts`, the core `h3-content`, `h3-pack` (R01), workspace and gate files (`Cargo.toml`, `arch.toml`, `lanes.toml`, `xtask`, CI), ADRs, process docs, `BACKLOG.md`, this file. Common: `OPEN-QUESTIONS.md`, `docs/stubs.toml` (a block per lane), both `Cargo.lock`s, `docs/exe/map.toml`, `structs.toml` (a line per entry), the client foundation and harness, each lane's `QUEUE.md` inbox.
+Shared (own PR, merged first): `h3-kernel`, `h3-contracts`, the core `h3-content`, `h3-pack` (R01), workspace and gate files (`Cargo.toml`, `arch.toml`, `lanes.toml`, `xtask`, CI), ADRs, process docs, `BACKLOG.md`, this file. Common: `OPEN-QUESTIONS.md`, `docs/stubs.toml` (a block per lane), both `Cargo.lock`s, `docs/exe/map.toml`, `structs.toml` (a line per entry), the client foundation and harness, each lane's `QUEUE.md` inbox.
 
 - **GitHub and CI:** `ChristopherRotter/homm3` (private, free plan: without minutes or billing runs fail unstarted, the full local verify stands in, `05-testing.md` "CI"). `ci.yml` runs `check-lane` and the full verify for pull requests and `master` (once per code, not for docs only), weekly `cargo deny check advisories`. Changes reach `master` by pull request only, **opened when its branch is ready to merge**; each push to an open one runs CI: merge `master` into it after `master`'s latest run finished.
 

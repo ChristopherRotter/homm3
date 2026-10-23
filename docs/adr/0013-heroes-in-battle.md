@@ -23,7 +23,17 @@ are computed before the seam (03-domain). The seam must change once for E04a and
    counters (the levels at which Wisdom and a magic school were last offered; E08 increment 4);
    their level is the levels given, at most the experience's level, the difference the hero's
    pending level-ups. A hero's level seed is not part of them: it is the game's server-only state
-   (ADR-0017 point 1).
+   (ADR-0017 point 1). From E08 increment 6 the details hold the **worn artifacts by position**:
+   one place per position of the ruleset's artifact slots, in the slots' order and each slot's
+   count (head, shoulders, neck, right hand, left hand, torso, two rings, feet, the misc
+   positions, the four war machines, the spell book), each empty or holding an artifact
+   instance; the backpack stays an ordered list. A combination's locks stay counts per slot (the
+   original's): the free positions of every slot, less the locks of the worn combinations, never
+   go below zero. The positions' order is the original's walk for "the first position that takes
+   it" (a received artifact, a disassembled part, a combination built) and for the capture
+   (HER-ART-004); within one slot it is the original's numbering; across slots the war machines
+   and the spell book, which no walk takes, sit before the fifth misc position in the original
+   and after it here, which no rule can tell apart. The import keeps the map's positions.
 2. **Crates.** `h3-heroes` is the **hero model**: a logic crate in the shared layer beneath the
    contexts (kernel, content, contracts only) with `HeroDetails`, its validation, the translations
    (`derive_battle_hero`, `war_machines`) and the typed hero changes (`HeroChange`: experience,
@@ -50,7 +60,10 @@ are computed before the seam (03-domain). The seam must change once for E04a and
    table; the artifacts give 3) and a **scouting radius bonus** (tiles). Each artifact type counts
    once, worn or as a part of a worn combination. The tables they apply to (the land points by
    speed, the base radius, the step, fly and water-walk prices) are the adventure part's data and
-   come in as arguments.
+   come in as arguments. E08 increment 6 adds two: **`meeting_spells { level }`** (Scholar: the
+   highest spell level a meeting may teach, 2, 3, 4 by the skill's level; several sources: the
+   highest) and **`gives_spell_book`** (Titan's Thunder: equipping the artifact puts a Spell Book
+   into the empty spell book position; removing it takes nothing back). The packs carry them.
 4. **`BattleHero` is a hybrid:** typed fields for what the battle reads by name (primary skills,
    Tactics level, damage bonuses, war-machine control as derived numbers (the Catapult's: the
    Ballistics level, ADR-0023 point 6; the Ballista's also the Artillery level), surrender
@@ -132,6 +145,34 @@ are computed before the seam (03-domain). The seam must change once for E04a and
     5. **When** a property takes effect is the adventure's and the game's (ADR-0016 points 3 and
        5, ADR-0017 point 3): a gain in the day changes neither the points left nor the explored
        tiles until the owner's next turn start or the hero's next step.
+14. **Artifact moves, combinations and Scholar are `h3-heroes`' rules** (E08 increment 6; pure
+    functions of one or two heroes' details and the ruleset, checked before they change anything,
+    applied as hero changes, point 2):
+    1. **A move** takes an artifact from a position or a backpack place of a hero to a position
+       or a backpack place of the same hero or of the hero it meets (ADR-0017 point 6): to a
+       position of its slot when the locks fit (an artifact there swaps back to the source's
+       place), into the backpack at an index (refused at the ruleset's 64 and for the slots not
+       carried: the war machines, the Catapult, the spell book). The Spell Book and the Catapult
+       never move; the war machines move only between machine positions; an artifact without a
+       slot (the Grail) only between backpacks. A move that equips Titan's Thunder applies
+       `gives_spell_book`, as every equip does (a received artifact, a built combination).
+    2. **A combination** is assembled at the position of a worn part when every part is worn
+       (each part's type at least once): the part there, then one copy of each other part from
+       the positions in descending order, leave; the combination goes to the first position that
+       takes it. A worn combination is disassembled: it leaves, and each part, in the ruleset's
+       artifact order, goes to the first position that takes it. A combination in the backpack is
+       neither (D-28, the original's). Combinations exist where the game's configuration enables
+       them (the expansions the ruleset is compiled from, ADR-0017 point 1), whatever the map's
+       version. The original's once-per-player question after an equip and its question at a
+       received part are the assembly offered as a command; a computer player's build at once is
+       E10's.
+    3. **Scholar at a meeting**: s is the greater `meeting_spells` level of the two heroes; with
+       none, or either hero without a worn spell book, nothing; else each hero learns the spells
+       the other has learned (the details' spells, not an artifact's or a scroll's) and it has not,
+       of a level at most the lesser of its learnable level (HER-SPL-005) and s, in spell order.
+    4. **Hero changes** grow by what a move, an assembly and a disassembly need (a placed
+       artifact, a removal at a position, the swap's return); a move between two heroes is checked
+       on both before either changes.
 
 ## Consequences
 
@@ -157,6 +198,14 @@ are computed before the seam (03-domain). The seam must change once for E04a and
   and artifacts getting their effects through the harvester's gap-fill; later sources (Stables,
   Lighthouses, Fly, Water Walk) add to the same functions, Navigation's sea points become a
   sibling of point 13.1 with boats; nothing in increment 5 writes a hero.
+- Artifacts by position (point 1, increment 6): every place that builds `HeroDetails` changes
+  (the import, the setup's defaults, the tests and the experiments of the battle, AI and client
+  lanes); a constructor that places a list of artifacts at their first free positions keeps
+  those call sites one line each (`cross-lane` where they are another lane's). The capture, a
+  lost war machine's artifact and a received artifact follow positions; the details' hash and the
+  game state hash change; the golden replays are re-recorded. Two effect kinds (the pack format,
+  the core ruleset hash). A meeting's Scholar and a hero's moves are deterministic functions: no
+  stream, no draw.
 
 ## Alternatives considered
 
@@ -183,6 +232,11 @@ are computed before the seam (03-domain). The seam must change once for E04a and
   count towards the slowest creature, against the code and the wiki; its integer percents round
   the specialists differently from both profiles, D-22); the Scouting specialty built from the
   code (no SoD content reaches it; the wiki and VCMI each have another formula).
+- Artifacts and Scholar (E08 ADV-Q24): the slot kinds kept, positions interchangeable (no command
+  could name a position, and the capture's order would follow the list, not the original's
+  positions); the combination at the clicked part's position (VCMI; the original equips it at the
+  first position that takes it); disassembly in the backpack (VCMI, with room for the parts; the
+  original disassembles only a worn combination).
 
 ## Revision history
 
@@ -232,3 +286,9 @@ are computed before the seam (03-domain). The seam must change once for E04a and
   a creature's speed for them, the Pathfinding, flying and water-walking levels and the scouting
   radius as `h3-heroes`' derivations, taking effect at the owner's next turn or the hero's next
   step. Drafted in E08 T34b (#375; survey `E08-hero-movement.md`).
+- 2026-10-23 (E08 T45; the user at ADV-Q24 and ADV-Q25): points 1 and 3 amended and point 14
+  added for E08 increment 6, army and hero management: the worn artifacts by position (the
+  original's walk and the capture's order; the locks per slot), two effect kinds
+  (`meeting_spells`, `gives_spell_book`), artifact moves, combinations (where the game's
+  configuration enables them, E08 decision 104) and Scholar at a meeting as `h3-heroes`' rules.
+  Drafted in E08 T44b (#412; survey `E08-army.md` §2.2, §5).

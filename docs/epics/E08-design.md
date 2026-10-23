@@ -1,17 +1,14 @@
 # E08 design note: increment 6
 
-A handover, not binding (`docs/adr/README.md`): the working detail behind increment 6's amendment
-drafts of ADR-0013 (points 1, 3, 14), ADR-0016 (points 3, 4, 6) and ADR-0017 (points 1, 6, 8, 9,
-11), drafted in T44b (`docs/lanes/adventure/adr-drafts/*-increment-6.md`) from the answers at
-ADV-Q24 (the epic's decisions 93–100), accepted at ADV-Q25 with the cut (decisions 102–105;
-decision 104's expansions written in). The task
-that builds a section deletes it; the file goes when the epic closes. Facts and sources: survey
-`docs/rules/surveys/E08-army.md` (§ numbers are the survey's unless they name this note).
+A handover, not binding (`docs/adr/README.md`): the working detail behind increment 6's
+amendments of ADR-0013 (points 1, 3, 14), ADR-0016 (points 3, 4, 6) and ADR-0017 (points 1, 6, 8,
+9, 11), drafted in T44b from the answers at ADV-Q24 (the epic's decisions 93–100), accepted at
+ADV-Q25 with the cut (decisions 102–105; decision 104's expansions written in) and applied by T45.
+The task that builds a section deletes it; the file goes when the epic closes. Facts and sources:
+survey `docs/rules/surveys/E08-army.md` (§ numbers are the survey's unless they name this note).
 
-Increment 5's note is in `E08-log.md` ("Increment 5's design note at its closure", moved by T43).
-Two code comments still cite it as "design note" by section (`crates/h3-adventure/src/state/
-passage.rs`, §7's table; `crates/h3-sim/src/adventure/tests.rs`, §8): they mean that copy, and
-the lane's next code change repoints them.
+Increment 5's note is in `E08-log.md` ("Increment 5's design note at its closure", moved by T43);
+T45 repointed the two code comments that cited it.
 
 Written whole (decision 101): **part A**, the hero side (`h3-heroes` and the core content); **part
 B**, the map, the game, the batch and the cut.
@@ -24,16 +21,10 @@ the draft). When the game applies them is part B's.
 
 ### 1. The data
 
-**Two hero-effect kinds** (`h3_content::HeroEffect`, after increment 5's six; `NAMES`, `code`, the
-canonical hash and the pack's checks grow by one each):
-- `meeting_spells { level }`: the highest spell level a meeting may teach (Scholar: 2 at Basic, 3
-  at Advanced, 4 at Expert; the original's s + 1, survey §2.2). Several sources: the highest.
-- `gives_spell_book`: equipping the artifact puts a Spell Book (the ruleset's artifact with the
-  `spell_book` effect) into the empty spell book position (Titan's Thunder, 0x4E2A64).
-
-**The packs** (battle-owned, through the gap-fill as T35 did): Scholar's three levels in the base
-pack, `gives_spell_book` on Titan's Thunder in the SoD pack (its `pending` mark goes). Pack format
-and core ruleset hash bump (v48); both lanes' replay headers follow (`cross-lane`).
+**Built in T45:** the kinds `meeting_spells { level }` (Scholar: 2, 3, 4) and `gives_spell_book`
+(Titan's Thunder) in `h3-content` and `h3-pack` (codes 51, 52), their data in the packs; pack
+format v47, core ruleset hash v48. §4 and §5 read them (T49): `gives_spell_book` puts the
+ruleset's artifact with the `spell_book` effect into the empty spell book position.
 
 **No data for the positions**: they follow from the slots' order and counts (§2). **The expansions**
 are the game's configuration (part B §10; decision 104).
@@ -131,9 +122,8 @@ original's order (the 70 spells by id, each direction checked per spell) gives t
 | HER-ART-007 | Titan's Thunder's Spell Book | 4 |
 | HER-SPL-007 | Scholar at a meeting | 5 |
 
-No quirk on the hero side (D-28 the original's; Titan's book a rule). **Shared:** the two kinds
-(`h3-content`, `h3-pack`); the packs (battle-owned) and the replay headers `cross-lane`, in round
-1's shared task. **`cross-lane` in the positions task:** the call sites of the battle, AI and client
+No quirk on the hero side (D-28 the original's; Titan's book a rule). The shared part (the two
+kinds, the packs, the replay headers) was T45's. **`cross-lane` in the positions task:** the call sites of the battle, AI and client
 lanes that build `HeroDetails` (§2's constructor), as their lanes' inbox notes say.
 
 ## Part B — the map, the game, the batch and the cut
@@ -237,14 +227,12 @@ battle's observation shows both levels as 0 in such a battle.
 
 ### 12. The env, the encoding's move, replays, fixtures, properties, benchmarks
 
-- **The encoding to the AI lane** (decisions 99, 103; ADR-0017 point 8 of the draft): the env (`crates/h3-sim/src/adventure/`: `AdventureEnv`, the action encoding v4 and its
-  masks, the observation's planes, the rollout, their tests) moves to the AI lane in `lanes.toml`
-  (round 1's shared task, with the versions table in `docs/08-work-process.md` and the global
-  HANDOFF's lane table); the replay model there (`replay.rs`: game commands, not actions) stays the
-  adventure lane's by a file pattern, as do `h3-cli`'s adventure commands, the golden replays and
-  `benches/adventure/`. Increment 6 changes only the env's masks: `Decline` while a meeting or an
-  army dialog is open (§8, §9), done by this lane before the move or by the AI lane after it (its
-  inbox), so the rollout and the replays' recorder never stall in a meeting.
+- **The env is the AI lane's** since T45 (decisions 99, 103; ADR-0017 point 8); the replay model
+  (`replay.rs`), `h3-cli`'s adventure commands, the golden replays and `benches/adventure/` stay
+  this lane's. Increment 6 changes only the env's masks: `Decline` while a meeting or an army dialog is open
+  (§8, §9), so the rollout and the replays' recorder never stall in a meeting; the masks are built
+  from `legal_commands`, so this may need only the AI lane's test (its inbox; this lane tells it
+  when T51 lands).
 - **Replays** (format v6): the management commands (`Manage`); two new golden replays, scripted
   (the rollout does not manage): a meeting with Scholar and exchanges of stacks and artifacts, and
   a join into a full army through the army dialog; the ten re-recorded (the hashes move).
@@ -264,7 +252,7 @@ battle's observation shows both levels as 0 in such a battle.
 
 | Version | Change | Task |
 |---|---|---|
-| core ruleset hash v48, pack format | two effect kinds, the packs' data | round 1 (shared) |
+| core ruleset hash v48, pack format v47 | two effect kinds, the packs' data | T45 (done) |
 | details (in the game state hash) | positions | T49 |
 | adventure state hash v11 | the tactics flag | T50 |
 | game state hash v12 | the meeting and army dialog decisions | T51 |
@@ -284,11 +272,9 @@ rules being fixed by decision 98).
 
 ### 15. Shared and `cross-lane` work; the building tasks; the exit criteria
 
-**Shared and `cross-lane`:** round 1's `shared/` task (the three accepted drafts applied; the two
-effect kinds; the packs through the gap-fill and both lanes' replay headers `cross-lane`; the
-encoding's move in `lanes.toml`, `docs/08-work-process.md`'s versions table and the global
-HANDOFF; the AI lane's inbox); batch E6's spec (`h3-experiment`, `cross-lane`); the
-positions' call sites in other lanes' code (T49, `cross-lane`). The harness is common. Everything
+**Shared and `cross-lane`:** round 1's `shared/` task done (T45: the ADRs, the two kinds, the
+packs, the replay headers, the encoding's move); batch E6's spec (`h3-experiment`, `cross-lane`);
+the positions' call sites in other lanes' code (T49, `cross-lane`). The harness is common. Everything
 else is the lane's own.
 
 **The building tasks**, in rounds of one or two (task ids continue the epic's; each round's cut
@@ -298,7 +284,7 @@ flag) land once:
 
 | Round | Tasks | Content |
 |---|---|---|
-| 1 | **T45** + **T46** | T45: the shared groundwork (`shared/`, `cross-lane`): ADR-0013, -0016, -0017 amended; `meeting_spells`, `gives_spell_book`; the packs; core ruleset hash v48; the encoding's move to the AI lane (`lanes.toml`, the versions table, the global HANDOFF, the AI lane's inbox). T46: batch E6's spec and results template (§14; `h3-experiment` `cross-lane`) |
+| 1 | **T45** + **T46** | T45 (done): the shared groundwork (`shared/`, `cross-lane`): ADR-0013, -0016, -0017 amended; `meeting_spells`, `gives_spell_book`; the packs; core ruleset hash v48; the encoding's move to the AI lane (`lanes.toml`, the versions table, the global HANDOFF, the AI lane's inbox). T46: batch E6's spec and results template (§14; `h3-experiment` `cross-lane`) |
 | 2 | **T47** + **T48** | T47: the harness's clicks and reads (the hero, exchange, split, creature and army dialogs; the spells, backpack, flags and tactics reads), the recipes and the run. T48: scored; the survey's §8 and the rules' sources; an ADV-Q if a row contradicts the reading |
 | 3 | **T49** | `h3-heroes`: positions (§2: the model, validation, the first position, the capture, the import v9, the constructor and the other lanes' call sites, `cross-lane`), moves (§3), combinations and Titan's book (§4), Scholar (§5). The largest task: cut at its start if needed (positions alone; then the rest) |
 | 4 | **T50** + **T51** | T50: `h3-adventure`: the army commands, the split's bounds, dismissal, the formation and the flag, the meeting's visit, the join without room's report (§7, §8 visit, §9 offer); adventure state hash v11. T51: `h3-game`: `Manage`, the meeting and army dialog decisions, Scholar's application, `legal_commands` and `split_range`, events, the observation, the tactics flag in battle (§8–§11); game state hash v12; `ADV-STUB-2` closed |

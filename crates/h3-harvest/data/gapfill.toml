@@ -1897,6 +1897,49 @@ ref = "Scouting - Heroes 3 wiki: the radius grows by 1, 2, 3 in SoD (1, 3, 5 in 
 url = "https://heroes.thelazy.net/index.php/Scouting_radius"
 retrieved = "2026-10-21"
 
+# Army and hero management (E08 T45, pack format v47; survey E08-army.md §2.2, §5.4).
+[[source]]
+id = "exe-scholar"
+kind = "original-data"
+ref = "Heroes3.exe code reading (E08 T44a; docs/exe/map.toml 0x4A2940): meeting_scholar takes s, the greater Scholar level (+0xDB, skill 18) of the two heroes of a meeting; nothing for 0 or unless both wear the Spell Book; each hero's limit is the lesser of its Wisdom level + 2 and s + 1, so a meeting teaches spells up to level 2, 3, 4 at Basic, Advanced, Expert Scholar; each learns the other's learned spells (+0x3EA) of a level within its limit"
+url = "docs/rules/surveys/E08-army.md"
+retrieved = "2026-10-23"
+
+[[source]]
+id = "vcmi-scholar"
+kind = "vcmi"
+ref = "config/skills.json (1.7.5): scholar LEARN_MEETING_SPELL_LIMIT 2, 3, 4; server/CGameHandler.cpp useScholarSkill: the greater limit of the two heroes, both spell books, each learns the other's spells up to its own maxSpellLevel and the limit"
+url = "https://github.com/vcmi/vcmi/blob/1.7.5/config/skills.json"
+retrieved = "2026-10-23"
+
+[[source]]
+id = "wiki-scholar"
+kind = "wiki"
+ref = "Scholar - Heroes 3 wiki: heroes meeting 'teach each other 1st and 2nd level spells' at Basic, up to the 3rd and the 4th at Advanced and Expert; both gathering heroes learn (survey E08-army.md §2.2)"
+url = "https://heroes.thelazy.net/index.php/Scholar"
+retrieved = "2026-10-23"
+
+[[source]]
+id = "exe-titans-thunder"
+kind = "original-data"
+ref = "Heroes3.exe code reading (E08 T44a; docs/exe/map.toml 0x4E2A00): hero_equip_artifact puts a Spell Book into an empty book position when it equips Titan's Thunder (135, at 0x4E2A64), on every path (a drop, a give, a combination's build); hero_remove_artifact takes nothing back"
+url = "docs/rules/surveys/E08-army.md"
+retrieved = "2026-10-23"
+
+[[source]]
+id = "vcmi-titans-thunder"
+kind = "vcmi"
+ref = "server/CGameHandler.cpp (1.7.5): ArtifactUtils::checkSpellbookIsNeeded on a move of Titan's Thunder into a hero's right hand gives a hero without a spell book one, which stays"
+url = "https://github.com/vcmi/vcmi/blob/1.7.5/server/CGameHandler.cpp"
+retrieved = "2026-10-23"
+
+[[source]]
+id = "wiki-titans-thunder"
+kind = "wiki"
+ref = "Titan's Thunder - Heroes 3 wiki: 'Gain a Spell Book' (survey E08-army.md §5.4)"
+url = "https://heroes.thelazy.net/index.php/Titan%27s_Thunder"
+retrieved = "2026-10-23"
+
 [[source]]
 id = "wiki-flying-artifacts"
 kind = "wiki"
@@ -2005,6 +2048,15 @@ basic = [{ kind = "scouting_radius", tiles = 1 }]
 advanced = [{ kind = "scouting_radius", tiles = 2 }]
 expert = [{ kind = "scouting_radius", tiles = 3 }]
 sources = ["exe-scouting", "vcmi-movement", "wiki-scouting"]
+
+# Scholar (E08 T45, pack format v47; ADR-0013 point 14.3): the highest spell level a meeting
+# teaches, the code's s + 1 (HER-SPL-007; read by h3-heroes from E08 T49).
+[[heroes.skill_effects]]
+skill = "Scholar"
+basic = [{ kind = "meeting_spells", level = 2 }]
+advanced = [{ kind = "meeting_spells", level = 3 }]
+expert = [{ kind = "meeting_spells", level = 4 }]
+sources = ["exe-scholar", "vcmi-scholar", "wiki-scholar"]
 
 # Specialty parts the executable's fixed-stat record has no field for (dispute H-2: speed).
 [[heroes.specialty_extra]]
@@ -2787,10 +2839,11 @@ effects = [
 ]
 sources = ["exe-available-spells", "exe-spell-defences"]
 
+# Its Spell Book on equipping (E08 T45, pack format v47; HER-ART-007, read from E08 T49).
 [[artifacts.effects]]
 artifacts = ["Titan's Thunder"]
-effects = [{ kind = "spells", spell = "titans_lightning_bolt" }]
-sources = ["exe-available-spells"]
+effects = [{ kind = "spells", spell = "titans_lightning_bolt" }, { kind = "gives_spell_book" }]
+sources = ["exe-available-spells", "exe-titans-thunder", "vcmi-titans-thunder", "wiki-titans-thunder"]
 
 # The casting limits (E04b T8b1; pack format v31; HER-BAT-015, BAT-MAG-061, BAT-MAG-062).
 [[artifacts.effects]]
@@ -2965,15 +3018,13 @@ what = "the Catapult every hero carries (the battle's own since E04c T6, BAT-SIE
 artifacts = ["Catapult"]
 
 
-# Mana is derived before the battle (E04b's non-goals): the daily spell points and Titan's
-# Thunder's spell book when equipped (installation.md §7.22) come with the hero's progression and
-# equipment.
+# Mana is derived before the battle (E04b's non-goals): the daily spell points (installation.md
+# §7.22) come with the hero's progression and equipment. Titan's Thunder's book left this list in
+# E08 T45 (`gives_spell_book`).
 [[artifacts.pending]]
 epic = "E08-E10"
-what = "spell points per day, the spell book that equipping Titan's Thunder adds"
-artifacts = [
-    "Charm of Mana", "Talisman of Mana", "Mystic Orb of Mana", "Wizard's Well", "Titan's Thunder",
-]
+what = "spell points per day"
+artifacts = ["Charm of Mana", "Talisman of Mana", "Mystic Orb of Mana", "Wizard's Well"]
 
 [[artifacts.pending]]
 epic = "E08-E10"

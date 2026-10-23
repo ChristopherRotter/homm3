@@ -596,6 +596,11 @@ enum EffectDto {
     ScoutingRadius {
         tiles: u8,
     },
+    /// Pack format v47 (E08 T45, increment 6): Scholar at a meeting, Titan's Thunder's book.
+    MeetingSpells {
+        level: u8,
+    },
+    GivesSpellBook {},
 }
 
 /// Whose stacks a morale or luck effect changes, as files write it (`own` by default, `enemy`,
@@ -846,6 +851,8 @@ impl EffectDto {
             Self::Flying { level } => HeroEffect::Flying { level },
             Self::WaterWalking { level } => HeroEffect::WaterWalking { level },
             Self::ScoutingRadius { tiles } => HeroEffect::ScoutingRadius { tiles },
+            Self::MeetingSpells { level } => HeroEffect::MeetingSpells { level },
+            Self::GivesSpellBook {} => HeroEffect::GivesSpellBook,
         })
     }
 }

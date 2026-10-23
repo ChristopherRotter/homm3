@@ -510,11 +510,16 @@ Refined with the user on 2026-10-23 (T43; ADV-Q23). Built like increments 1 to 5
 104. **The expansions are the game's configuration** (the user's own answer to the edition: "Yes, but this is not a 'map edition'; it must depend on the game configuration that is used to play, i.e. the enabled expansions"): the rules that differ by expansion follow the packs the game's ruleset is compiled from (the combinations and the fifth misc position come with the SoD pack), never the map's version; no setup field from the import (a map of RoE played with SoD enabled has both; the original follows the map's `mapKind`). The moat (E09) gains data or a configuration input when it comes. Not chosen: the map's edition as a setup input, or later.
 105. **Five rounds with batch E6 first** (the user's choice of two; `E08-design.md` §15): T45 + T46, T47 + T48, T49, T50 + T51, T52 + T53. Not chosen: the build first, the batch at the end.
 
+### Decisions at T45 (2026-10-23, user)
+
+106. **T45 whole** (the user's own answer to the cut, `AskUserQuestion`: "T45 whole"): the ADRs and the encoding's move, then the two effect kinds and the packs, in one session and one `shared/` pull request (`cross-lane`); T46 in the next session. Recommended was T45 in two pull requests (T45a the ADRs and the move, T45b the kinds and packs); not chosen either: T45a alone, T45a with T46.
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T43 Increment 6 refined** (with increment 5's closure). Done (2026-10-23, `adventure/e08-t43`; decisions 90, 91): army and hero management, the first round queued (T44a, T44b).
 - **T44a The army and hero management survey.** Done (2026-10-23, `adventure/e08-t44a`; decision 92): survey `docs/rules/surveys/E08-army.md`, the checkpoint's questions ADV-Q24.
 - **T44b The ADR amendment drafts, the design note and the cut.** Done (2026-10-23, `adventure/e08-t44b`; decision 101): drafts `docs/lanes/adventure/adr-drafts/*-increment-6.md` (ADR-0013 positions, moves, combinations, Scholar; ADR-0016 the army, the flag, the meeting's visit; ADR-0017 the commands, the two decisions, the tactics flag in battle, the encoding to the AI lane), `E08-design.md` for increment 6 (five rounds, batch E6 first; the exit criteria); the checkpoint's questions ADV-Q25.
+- **T45 The shared groundwork of increment 6.** Done (2026-10-23, `shared/e08-t45`, `cross-lane`; decision 106): ADR-0013, -0016 and -0017 amended from the accepted drafts (deleted); the adventure env to the AI lane but `replay.rs` (`lanes.toml`, the versions table, the global HANDOFF); `meeting_spells`, `gives_spell_book`, Scholar's and Titan's Thunder's data; pack format v47, core ruleset hash v48; the replays' headers.
 
 ## Later increments (sketch)
 

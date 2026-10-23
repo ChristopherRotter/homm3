@@ -685,7 +685,7 @@ paths = ["crates/h3-adventure/", "crates/h3-battle/src/seam/"]
         let battle = Owner::Lane("battle".to_owned());
         for path in [
             "crates/h3-game/src/lib.rs",
-            "crates/h3-sim/src/adventure/env.rs",
+            "crates/h3-sim/src/adventure/replay.rs",
             "fixtures/replays/adventure/walk-s1.toml",
             "crates/h3-cli/tests/adventure_replays.rs",
             "packs/sod/adventure.toml",
@@ -701,10 +701,13 @@ paths = ["crates/h3-adventure/", "crates/h3-battle/src/seam/"]
         ] {
             assert_eq!(c.owner(path), battle, "{path}");
         }
-        // The AI lane's (E05, AI-Q1): the sim layer and the C ABI, the CLI's `src/ai/`.
+        // The AI lane's (E05, AI-Q1): the sim layer and the C ABI, the CLI's `src/ai/`; the
+        // adventure env but its replay model (E08 T45, E08 decision 103).
         let ai = Owner::Lane("ai".to_owned());
         for path in [
             "crates/h3-sim/src/env.rs",
+            "crates/h3-sim/src/adventure/env.rs",
+            "crates/h3-sim/src/adventure/tests/battles.rs",
             "crates/h3-ffi/src/lib.rs",
             "crates/h3-cli/src/ai/mod.rs",
             "python/README.md",

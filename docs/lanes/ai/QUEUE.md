@@ -38,21 +38,22 @@ Sorted by destination at E05's audit (T9a, 2026-10-19); the origin stays in brac
 done: BAT-Q33's point for E05 (AI-Q3, ADR-0025 point 6), the `h3-game` coverage gap of a pending
 Pass offer (fixed by the adventure lane's fixed tests, #266).
 
-- 2026-10-23 (the adventure lane, E08 T44b; for your information, nothing to do yet): **the
-  encoding's move proposed** (ADR-0017's draft, `docs/lanes/adventure/adr-drafts/0017-increment-6.md`
-  point 8; ADV-Q25 question 2): `crates/h3-sim/src/adventure/` to you but its replay model
-  (`replay.rs`: game commands, the adventure lane's determinism gate); accepted (ADV-Q25,
-  E08 decision 103): the move lands in round 1's `shared/` task (T45). Increment 6 adds only one change to the env: its
-  masks allow `Decline` while a meeting or an army dialog is open (E08-design.md §12), done by
-  whichever lane owns the env when T52 comes.
-- 2026-10-23 (the adventure lane, E08 T44a's checkpoint, ADV-Q24, E08 decision 99; for your
-  information, nothing to do yet): **the user hands the adventure's RL encoding to this lane.**
-  Increment 6 (army and hero management: meetings, the army dialog, stack, formation, tactics
-  flag and artifact commands) adds no entries to the adventure lane's action encoding (v4); its
-  commands reach agents through `h3_game::legal_commands`. The adventure lane's T44b drafts the
-  ADR-0017 amendment and a `shared/` change (`lanes.toml`, the global HANDOFF): which paths of
-  `crates/h3-sim/src/adventure/` move to you and what the adventure lane keeps are proposed to the
-  user there; the survey is `docs/rules/surveys/E08-army.md` (§6).
+- 2026-10-23 (the adventure lane, E08 T45, `shared/e08-t45`, `cross-lane` with the user's
+  consent; **for you**): **the adventure env is yours** (the user at ADV-Q24 and ADV-Q25, E08
+  decisions 99 and 103; ADR-0017 point 8): `crates/h3-sim/src/adventure/` (`AdventureEnv`, the
+  action encoding v4 and its masks, the rollout, `tests.rs` and `tests/`) moved to you in
+  `lanes.toml`, with `ACTION_ENCODING_VERSION` (`docs/08-work-process.md`'s versions table); the
+  adventure lane keeps `replay.rs` (the replay model of game commands, `REPLAY_FORMAT_VERSION`),
+  `h3-cli`'s `src/adventure/`, the golden replays and `benches/adventure/`. The adventure lane's
+  increment 6 (army and hero management) adds no entry to the encoding: its management commands
+  reach agents through `h3_game::legal_commands` only. **One check is due by the adventure lane's
+  T52** (round 5; `docs/epics/E08-design.md` §12): once T51 opens a meeting or an army dialog as a
+  pending decision (each blocks its owner's `EndTurn`, as an offer does), the masks must allow
+  `Decline` while one is open, so the rollout and the replays' recorder close it and play on.
+  `legal_mask` builds the answers from `legal_commands`, which will list `Decline` there, so this
+  may need only a test; the adventure lane tells this inbox when T51 lands. The core ruleset hash moved to
+  v48 in the same pull request (two hero-effect kinds the adventure reads): `bots-report-v1.json`
+  regenerated (`h3 ai eval --set report-v1 --json`).
 - 2026-10-23 (the battle lane, E23 T5b2b, `battle/e23-t5b2b`, `cross-lane` with the user's consent;
   for your information, nothing to do): `h3_battle_ai::POLICY_VERSION` is 15: in a computer hero's
   Teleport value every stack's first turn asks its creature cast entry (a Faerie Dragon's spell
