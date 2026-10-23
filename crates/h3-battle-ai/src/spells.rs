@@ -18,8 +18,11 @@
 //! With BAT-QUIRK-25 (survey slip 26) the hero's choice reads what the retreat test's predictions
 //! left when the test got that far ([`SpellContext::after_retreat`]): both sides' planned damage
 //! and each side's threat records as the last predicted turn that wrote them left them, until
-//! Teleport's evaluation fills the records again ([`SpellContext::refill`]). The threat tables
-//! and "the enemy beaten", which the original fills at the context's build, keep the context's.
+//! Teleport's evaluation fills the records again ([`SpellContext::refill`]). With the flag too
+//! (survey slip 33) the spells valued after Teleport read the damage the last spell context a
+//! creature cast entry built in its walker turns planned ([`SpellContext::after_teleport`]). The
+//! threat tables and "the enemy beaten", which the original fills at the context's build, keep
+//! the context's.
 
 pub(crate) mod boosts;
 mod defenses;
@@ -297,6 +300,9 @@ pub(crate) struct SpellContext<'a> {
     second_beaten: bool,
     /// With BAT-QUIRK-25 (survey slip 26), what the retreat test's predictions left.
     retreated: Option<Box<Retreated>>,
+    /// With BAT-QUIRK-25 (survey slip 33), the damage the last spell context a creature cast
+    /// entry built in Teleport's walker turns planned on every stack.
+    teleported: OnceCell<Planned>,
 }
 
 /// What the retreat test's predictions left on the stacks (survey slip 26): the planned damage of
@@ -374,7 +380,14 @@ impl<'a> SpellContext<'a> {
             searched: Cell::new(None),
             second_beaten: beaten(state, &planned, side.opponent()),
             retreated: None,
+            teleported: OnceCell::new(),
         }
+    }
+
+    /// The damage the context's predictions planned on every stack (each stack's +0x534 after
+    /// 0x4369C0).
+    pub(crate) const fn planned(&self) -> Planned {
+        self.planned
     }
 
     /// With BAT-QUIRK-25 (survey slip 26; the caller asks only then), the retreat test's
@@ -399,12 +412,24 @@ impl<'a> SpellContext<'a> {
         }
     }
 
-    /// The planned damage the choice reads: the retreat test's predictions' with survey slip 26,
-    /// else the context's.
-    fn planned_now(&self) -> &Planned {
-        self.retreated
-            .as_ref()
-            .map_or(&self.planned, |r| &r.planned)
+    /// With BAT-QUIRK-25 (survey slip 33; the caller asks only then), a creature cast entry in
+    /// Teleport's walker turns built a spell context whose predictions planned `planned` on every
+    /// stack (0x422A40 with flag 0 in 0x421280's context, §7.59): the hero's later spells read it
+    /// (0x443080 with flag 1). Teleport is valued once per choice: the first call holds.
+    // rule: BAT-AI-020
+    pub(crate) fn after_teleport(&self, planned: Planned) {
+        let _ = self.teleported.set(planned);
+    }
+
+    /// The planned damage the choice reads: with the slips the last a creature cast entry's
+    /// context in Teleport's turns planned (survey slip 33), else the retreat test's predictions'
+    /// (survey slip 26), else the context's.
+    pub(crate) fn planned_now(&self) -> &Planned {
+        self.teleported.get().unwrap_or_else(|| {
+            self.retreated
+                .as_ref()
+                .map_or(&self.planned, |r| &r.planned)
+        })
     }
 
     /// Whether the original's slips are kept (BAT-QUIRK-25).
