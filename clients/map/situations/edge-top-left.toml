@@ -3,5 +3,5 @@
 size = 36
 terrain = "grass"
 copy = [{ map = "Deluge.h3m", from = [10, 10], to = [29, 27], at = [0, 0] }]
-heroes = [[33, 33], [33, 2]]
+heroes = [{ at = [33, 33], class = 2 }, { at = [33, 2], owner = 1 }]
 view = [-2, -2, 0]

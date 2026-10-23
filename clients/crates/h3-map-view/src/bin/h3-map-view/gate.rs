@@ -123,18 +123,18 @@ fn gate(options: &Options) -> Result<usize, String> {
     println!(
         "\nDEFs (group 0): name, archive, frames held / drawn, encodings, run pixels by index"
     );
-    let mut needs: Vec<(String, String, usize)> = Vec::new();
+    let mut needs: Vec<(String, String, usize, u32)> = Vec::new();
     for need in tables.defs() {
         let maps = need
             .layer
             .and_then(|key| highest.get(&key))
             .map_or(0, |(picture, _)| usize::from(*picture) + 1);
-        needs.push((need.what, need.name, need.frames.max(maps)));
+        needs.push((need.what, need.name, need.frames.max(maps), need.groups));
     }
     for (i, gem) in layout.view.gems.iter().enumerate() {
-        needs.push((format!("gem {i}"), gem.def.clone(), GEM_FRAMES));
+        needs.push((format!("gem {i}"), gem.def.clone(), GEM_FRAMES, 1));
     }
-    for (what, name, frames) in &needs {
+    for (what, name, frames, groups) in &needs {
         let Some((archive, data)) = find(name)? else {
             problems.push(format!("{what}: {name} in no archive"));
             continue;
@@ -145,7 +145,7 @@ fn gate(options: &Options) -> Result<usize, String> {
                     "  {what:<13} {name:<12} {archive:<13} {}",
                     line(&summary, *frames)
                 );
-                for p in check::problems(&summary, *frames) {
+                for p in check::problems(&summary, *frames, *groups) {
                     problems.push(format!("{what}: {name}: {p}"));
                 }
             }

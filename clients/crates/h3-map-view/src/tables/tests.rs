@@ -11,6 +11,24 @@ fn pieces(set: &[(u8, u8)]) -> String {
     list.join(", ")
 }
 
+/// `n` DEF names `<stem>0.def` …
+fn names(stem: &str, n: usize) -> String {
+    let list: Vec<String> = (0..n).map(|i| format!("\"{stem}{i}.def\"")).collect();
+    list.join(", ")
+}
+
+/// The `[map.heroes]` section: every list of its length.
+fn heroes() -> String {
+    format!(
+        "[map.heroes]\nclasses = [{}]\nflags = [{}]\nboats = [{}]\nwaves = [{}]\nboat_flags = [{}]\ngroups = [0, 1, 2, 3, 4, 3, 2, 1]\n",
+        names("ah", HERO_CLASSES),
+        names("af", COLOURS),
+        names("ab", BOAT_TYPES),
+        names("abm", BOAT_TYPES),
+        names("abf", BOAT_TYPES * COLOURS),
+    )
+}
+
 /// A table with `[map]`.
 fn base(extra: &str) -> String {
     format!(
@@ -30,6 +48,8 @@ full = "tshrc.def"
 edge = "tshre.def"
 pieces = [{}]
 
+{}
+
 [[terrain]]
 code = 0
 def = "dirttl.def"
@@ -47,7 +67,8 @@ def = "clrrvr.def"
 code = 3
 def = "cobbrd.def"
 {extra}"#,
-        pieces(&[(0, 34), (1, 133), (2, 0)])
+        pieces(&[(0, 34), (1, 133), (2, 0)]),
+        heroes(),
     )
 }
 
@@ -120,8 +141,22 @@ fn every_def_with_the_frames_the_view_draws() {
         .iter()
         .map(|n| (n.name.as_str(), n.what.as_str(), n.layer, n.frames))
         .collect();
+    // The heroes' and boats' DEFs after the rest, each drawn in the facings' five groups.
+    let heroes = HERO_CLASSES + COLOURS + 2 * BOAT_TYPES + BOAT_TYPES * COLOURS;
+    assert_eq!(needs.len(), 7 + heroes);
+    assert!(defs[..7].iter().all(|n| n.groups == 1));
+    assert!(defs[7..].iter().all(|n| n.groups == 5 && n.frames == 1));
+    let ends = [&needs[7], &needs[6 + heroes]];
     assert_eq!(
-        needs,
+        ends,
+        [
+            &("ah0.def", "hero 0", None, 1),
+            &("abf23.def", "boat flag 23", None, 1)
+        ]
+    );
+    assert_eq!(needs[7 + HERO_CLASSES].1, "hero flag 0");
+    assert_eq!(
+        needs[..7],
         [
             ("dirttl.def", "terrain 0", Some((Layer::Terrain, 0)), 1),
             ("watrtl.def", "terrain 8", Some((Layer::Terrain, 8)), 1),
@@ -132,7 +167,11 @@ fn every_def_with_the_frames_the_view_draws() {
             ("tshre.def", "edge shroud", None, 34),
         ]
     );
-    let names: Vec<String> = tables.names().into_iter().collect();
+    let names: Vec<String> = tables
+        .names()
+        .into_iter()
+        .filter(|n| !n.starts_with('A'))
+        .collect();
     assert_eq!(
         names,
         [
@@ -296,6 +335,47 @@ fn refuses_what_breaks_the_format() {
         entry("shroud", "257 pieces, not one per mask (256)"),
         "`shroud`: 257 pieces, not one per mask (256)",
     );
+    // The heroes' and boats' lists: one entry per class, colour, type, type and colour, facing.
+    for (list, what, want) in [
+        ("classes = [", "heroes", HERO_CLASSES),
+        ("flags = [", "hero flags", COLOURS),
+        ("boats = [", "boats", BOAT_TYPES),
+        ("waves = [", "waves", BOAT_TYPES),
+        ("boat_flags = [", "boat flags", BOAT_TYPES * COLOURS),
+        ("groups = [", "groups", FACINGS),
+    ] {
+        let one = if list.starts_with("groups") {
+            "0, "
+        } else {
+            "\"x.def\", "
+        };
+        let long = base("").replacen(&format!("\n{list}"), &format!("\n{list}{one}"), 1);
+        let rule = format!("{} entries, not {want}", want + 1);
+        check(
+            &[long],
+            "base",
+            entry(what, &rule),
+            &format!("`{what}`: {rule}"),
+        );
+    }
+    let pcx = base("").replacen("\"ab1.def\"", "\"ab1.pcx\"", 1);
+    check(
+        &[pcx],
+        "base",
+        entry("boat 1", "`ab1.pcx` is not a .DEF name"),
+        "`boat 1`: `ab1.pcx` is not a .DEF name",
+    );
+}
+
+#[test]
+fn the_facings_groups() {
+    let tables = load(&files(&[base("")]), "base").unwrap();
+    assert_eq!(tables.map.heroes.drawn_groups(), 5);
+    let none = HeroArt {
+        groups: vec![],
+        ..tables.map.heroes
+    };
+    assert_eq!(none.drawn_groups(), 0);
 }
 
 #[test]

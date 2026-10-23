@@ -11,5 +11,5 @@ objects = [
     { def = "AVLmtgr1.def", at = [10, 2] },
     { def = "AVMwndd0.def", at = [14, 1] },
 ]
-heroes = [[33, 33], [33, 2]]
+heroes = [{ at = [33, 33], class = 2 }, { at = [33, 2], owner = 1 }]
 view = [-2, -2, 0]

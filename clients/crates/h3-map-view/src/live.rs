@@ -71,7 +71,7 @@ pub struct Drawn {
 pub struct LiveHero {
     /// The tile it stands on (its template's visitable cell, not the anchor).
     pub at: Pos,
-    /// Its class (0–17: its map DEF `ah00_` … `ah17_`, design §2.3; T5 reads the original's).
+    /// Its class (0–17: its map DEF `ah00_` … `ah17_`; the hero record's +0x30, design §2.3).
     pub class: u8,
     /// Its owner's colour (0–7): its flag.
     pub owner: u8,
@@ -101,9 +101,10 @@ pub struct LiveBoat {
     pub facing: Facing,
 }
 
-/// Where a hero or boat faces, in the original's numbering (the hero record's +0x47, the
-/// pictures mirrored above 4: design §2.3; *provisional*, inferred from the mirror test: T5
-/// reads the groups).
+/// Where a hero or boat faces, in the original's numbering (the hero record's +0x47, the boat
+/// record's +0x1B; design §2.3, §2.8): each draws its group of the tables' `groups` (0x4D9110,
+/// 0x4D9160: up 0, up-right 1, right 2, down-right 3, down 4, the left ones those of the right
+/// ones), mirrored above 4.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Facing {
     /// 0.
@@ -233,10 +234,10 @@ impl Live {
     /// The live part at a map's start, as far as it needs no draw: every object standing and
     /// undrawn, phase 0 (the original's are random: a comparison reads them), the owners the map
     /// gives (a colour above 7, `0xFF` among them, is no owner); the heroes placed with an owner
-    /// and a class (a random hero, class 70, needs a draw and is left out), facing right
-    /// (*provisional*: T5 reads the original's start), on land; the boats of the map, facing
-    /// right; every tile explored (*provisional*: what a start reveals is the engine's, a
-    /// comparison reads it); the moment 0.
+    /// and a class (a random hero, class 70, needs a draw and is left out), facing right, on land
+    /// (as the original's new game has them, a hero on water too: E24 M1 T5a, design §2.8); the
+    /// boats of the map, facing right; every tile explored (*provisional*: what a start reveals
+    /// is the engine's, a comparison reads it); the moment 0.
     #[must_use]
     pub fn at_start(raw: &RawMap, art: &MapArt, viewer: u8) -> Self {
         let mut heroes = Vec::new();

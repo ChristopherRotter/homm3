@@ -10,5 +10,5 @@ objects = [
     { def = "AVLvol50.def", at = [37, 40] },
     { def = "AVMwndd0.def", at = [30, 37] },
 ]
-heroes = [[2, 2], [5, 2]]
+heroes = [{ at = [2, 2], class = 2 }, { at = [5, 2], owner = 1 }]
 view = [22, 21, 0]

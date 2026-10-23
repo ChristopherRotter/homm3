@@ -4,7 +4,8 @@
 //! `h3-view`'s compose is for the battle: the frame's picture opaque in the viewer's colours
 //! (design §1.9), the view's tiles through `draw_frame_raw` ([`crate::draw::raw`]) and the
 //! unexplored tiles' second time through 0x47E820 ([`crate::draw::shadows`]), the objects' bodies
-//! and flat objects through the flagged drawer ([`crate::draw::flagged`]), their shadows through
+//! and flat objects and the heroes' and boats' pictures through the flagged drawer
+//! ([`crate::draw::flagged`]), their shadows through
 //! the shadow pass ([`crate::draw::shadow_pass`], §2.2), the gems through the plain drawer with
 //! runs skipped (`h3_render::blit`). A DEF's palette is cycled once per scene
 //! (design §1.6).
@@ -75,6 +76,7 @@ pub fn compose(scene: &Scene, batch: &Batch, frame: [u32; 2]) -> Result<Screen, 
             Draw::Piece {
                 pass,
                 def,
+                group,
                 frame,
                 x,
                 y,
@@ -82,7 +84,7 @@ pub fn compose(scene: &Scene, batch: &Batch, frame: [u32; 2]) -> Result<Screen, 
                 mirror_y,
                 clip,
             } => {
-                let (sprite, f) = frame_of(batch, def, *frame)?;
+                let (sprite, f) = frame_of(batch, def, *group, *frame)?;
                 let palette = palettes
                     .entry(def.to_ascii_uppercase())
                     .or_insert_with(|| cycled(sprite, def, &scene.cycles));
@@ -104,7 +106,7 @@ pub fn compose(scene: &Scene, batch: &Batch, frame: [u32; 2]) -> Result<Screen, 
                 }
             }
             Draw::Gem { def, frame, x, y } => {
-                let (sprite, f) = frame_of(batch, def, *frame)?;
+                let (sprite, f) = frame_of(batch, def, 0, *frame)?;
                 let palette = ScreenPalette::new(&sprite.def.palette, FORMAT);
                 let at = Placement {
                     x: *x,
@@ -170,14 +172,15 @@ fn rotate(palette: &mut Palette, first: u8, last: u8, steps: u32) {
 fn frame_of<'b>(
     batch: &'b Batch,
     def: &str,
+    group: u32,
     index: u32,
 ) -> Result<(&'b Sprite, &'b Frame), ComposeError> {
     let sprite = batch
         .sprite(def)
         .ok_or_else(|| ComposeError::Missing(def.into()))?;
     let frame = sprite
-        .frame(0, index)
-        .ok_or_else(|| ComposeError::Missing(format!("{def} group 0 frame {index}")))?;
+        .frame(group, index)
+        .ok_or_else(|| ComposeError::Missing(format!("{def} group {group} frame {index}")))?;
     Ok((sprite, frame))
 }
 

@@ -67,6 +67,65 @@ pub struct ViewArt {
     pub frame_ms: u32,
     /// The unexplored tiles' pieces (design §1.5).
     pub shroud: Shroud,
+    /// The heroes' and boats' pictures (E24 M1 T5a; design §2.3, §2.8).
+    pub heroes: HeroArt,
+}
+
+/// The heroes' and boats' pictures (E24 M1 T5a; design §2.3, §2.8): the adventure manager's DEFs
+/// by their name tables, and the group each facing draws in all of them.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HeroArt {
+    /// A hero's map DEF by its class, 0–17 (hero_map_def_names 0x65F5A8).
+    pub classes: Vec<String>,
+    /// A hero's flag by its owner's colour, 0–7 (hero_flag_def_names 0x65F5F0).
+    pub flags: Vec<String>,
+    /// A boat by its type, 0–2 (boat_def_names 0x65F670).
+    pub boats: Vec<String>,
+    /// A boat's waves by its type (boat_wave_def_names 0x65F67C).
+    pub waves: Vec<String>,
+    /// A boat's flag by its type × 8 + its colour (boat_flag_def_names 0x65F610).
+    pub boat_flags: Vec<String>,
+    /// The group a facing (0–7) draws (hero_map_group 0x4D9110, boat_map_group 0x4D9160); the
+    /// pictures are mirrored above facing 4.
+    pub groups: Vec<u32>,
+}
+
+/// The hero classes (the map DEFs of [`HeroArt::classes`]).
+pub const HERO_CLASSES: usize = 18;
+/// The players' colours.
+pub const COLOURS: usize = 8;
+/// The boats' types.
+pub const BOAT_TYPES: usize = 3;
+/// The facings.
+pub const FACINGS: usize = 8;
+
+impl HeroArt {
+    /// Every DEF it names with what it is, in its lists' order.
+    #[must_use]
+    pub fn defs(&self) -> Vec<(String, String)> {
+        let lists = [
+            ("hero", &self.classes),
+            ("hero flag", &self.flags),
+            ("boat", &self.boats),
+            ("waves", &self.waves),
+            ("boat flag", &self.boat_flags),
+        ];
+        lists
+            .into_iter()
+            .flat_map(|(word, list)| {
+                list.iter()
+                    .enumerate()
+                    .map(move |(i, name)| (name.clone(), format!("{word} {i}")))
+            })
+            .collect()
+    }
+
+    /// The groups the facings draw: one past the highest.
+    #[must_use]
+    pub fn drawn_groups(&self) -> u32 {
+        self.groups.iter().max().map_or(0, |g| g + 1)
+    }
 }
 
 /// The unexplored tiles' pieces (design §1.5).
@@ -182,7 +241,7 @@ pub struct Tables {
     pub roads: BTreeMap<u8, LayerArt>,
 }
 
-/// A DEF the tables name and the frames of its group 0 the view draws.
+/// A DEF the tables name, the frames of its group 0 the view draws and the groups it draws.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DefNeed {
     /// The entry's name, as written.
@@ -194,6 +253,10 @@ pub struct DefNeed {
     pub layer: Option<(Layer, u8)>,
     /// The frames group 0 must hold at least.
     pub frames: usize,
+    /// The groups the view draws (ids 0 to this, exclusive; 1 but the heroes' and boats'), each
+    /// with group 0's frames at least: a hero's picture is its facing's group at a frame counted
+    /// by group 0's frames (design §2.8).
+    pub groups: u32,
 }
 
 impl Tables {
@@ -223,6 +286,7 @@ impl Tables {
                     what: format!("{word} {code}"),
                     layer: Some((layer, *code)),
                     frames: 1,
+                    groups: 1,
                 });
             }
         }
@@ -237,6 +301,16 @@ impl Tables {
                 what: what.to_string(),
                 layer: None,
                 frames,
+                groups: 1,
+            });
+        }
+        for (name, what) in map.heroes.defs() {
+            needs.push(DefNeed {
+                name,
+                what,
+                layer: None,
+                frames: 1,
+                groups: map.heroes.drawn_groups(),
             });
         }
         needs
@@ -298,7 +372,8 @@ pub fn parse(text: &str) -> Result<TableFile, TableError> {
 /// # Errors
 /// [`TableError`]: two files with one id, an unknown or circular dependency, `[map]` in no table
 /// of the selection or in several, a code defined twice, a river or road of code 0, a name
-/// without its extension, a cycle's range backwards, a shroud table not of 256 entries.
+/// without its extension, a cycle's range backwards, a shroud table not of 256 entries, a
+/// heroes' or boats' list of another length than its classes, colours, types or facings.
 pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
     let mut by_id = BTreeMap::new();
     for file in files {
@@ -320,6 +395,7 @@ pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
     name("edge", &map.edge, ".DEF")?;
     name("full shroud", &map.shroud.full, ".DEF")?;
     name("edge shroud", &map.shroud.edge, ".DEF")?;
+    heroes(&map.heroes)?;
     if map.shroud.pieces.len() != MASKS {
         return Err(entry(
             "shroud",
@@ -358,6 +434,28 @@ pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
         }
     }
     Ok(tables)
+}
+
+/// The heroes' and boats' lists: one name per class, colour, type or type and colour, one group
+/// per facing.
+fn heroes(art: &HeroArt) -> Result<(), TableError> {
+    let lists = [
+        ("heroes", art.classes.len(), HERO_CLASSES),
+        ("hero flags", art.flags.len(), COLOURS),
+        ("boats", art.boats.len(), BOAT_TYPES),
+        ("waves", art.waves.len(), BOAT_TYPES),
+        ("boat flags", art.boat_flags.len(), BOAT_TYPES * COLOURS),
+        ("groups", art.groups.len(), FACINGS),
+    ];
+    for (what, len, want) in lists {
+        if len != want {
+            return Err(entry(what, &format!("{len} entries, not {want}")));
+        }
+    }
+    for (def, what) in art.defs() {
+        name(&what, &def, ".DEF")?;
+    }
+    Ok(())
 }
 
 fn visit<'a>(

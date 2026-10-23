@@ -4,7 +4,8 @@ adventure map's (M2 T6), *provisional*; clients/capture/README.md, "The original
 Wine the game is a Linux process that maps Heroes3.exe at its image base, so /proc/<pid>/mem
 gives its globals and records at their addresses (docs/exe/map.toml, structs.toml). Read only
 but for the harness's own timers, a siege's wall states before its first frame (E17 M4 T1b,
-`write_walls`) and a map still's explored tiles (E24 M1 T3b2, `write_explored`).
+`write_walls`), a map still's explored tiles (E24 M1 T3b2, `write_explored`) and its heroes' and
+boats' facings (E24 M1 T5a, `write_facing`).
 
   h3mem.py            print the battle's clocks and its stacks' animation state as JSON
   h3mem.py adventure  print the adventure map's state as JSON: the current player, the view,
@@ -14,7 +15,8 @@ Library use: `Mem` (globals, stacks, battle_heroes, battle_outcome, battlefield;
 player, heroes, all_heroes, hero, hero_named, view, mouse_tile, path, difficulty, tile, explored,
 monster, creature_name, artifact_name, dialog_text, dialog_items, level_up_dialog; since E08 T47a
 dialog, item_text, spell_name, held_artifact, tactics_phase; the map's
-stills: write_explored, def_palette, map_due, frame_steps). Needs a running game
+stills: write_explored, def_palette, map_due, frame_steps; since E24 M1 T5a boats, standing,
+map_heroes, hero_on, write_facing, write_bytes). Needs a running game
 (h3drive.py) and the rights to read its memory (root in a sandbox).
 """
 
@@ -89,6 +91,17 @@ MANAGER_MAP, MAP_OBJECTS, OBJECT_RECORD = 0x5C, 0x14, 12
 # +0x38, the subclass at +0x3C. A new game appends a copy for each random object it draws
 # (0x4C9990) and points the object's record at it.
 MAP_TEMPLATES, TEMPLATE_RECORD, TEMPLATE_CLASS = 0x4, 0x44, 0x38
+# The heroes and boats on the map (E24 M1 T5a; design §2.8): a tile's word (+0x0) is the index
+# of the hero (class 34, among the 156 by type) or boat (class 8) standing there when the tile has
+# the entrance bit (+0xD 0x10) and the word is not -1 (view_tile_heroes_boats 0x40FB30). A hero's
+# class (i32 +0x30: its map DEF), facing (u8 +0x47) and status (u32 +0x105: bit 18 in a boat);
+# its boat is the one in use (u8 +0x18) whose hero (i32 +0x20) is its id (i32 +0x1A) with a hero
+# aboard (u8 +0x24; hero_boat 0x4CE900). The boats: a vector at game +0x4E3BC (begin, end), 0x28
+# bytes each: tile x, y, level (i16 +0x0, +0x2, +0x4), type (i8 +0x1A), facing (i8 +0x1B), the
+# flag's colour (i8 +0x1C).
+HERO_CLASS_FIELD, HERO_ID, HERO_FACING, HERO_STATUS, IN_BOAT = 0x30, 0x1A, 0x47, 0x105, 1 << 18
+BOATS, BOAT_RECORD, BOAT_FACING = 0x4E3BC, 0x28, 0x1B
+HERO_OBJECT, BOAT_OBJECT, ENTRANCE = 34, 8, 0x10
 # The palette tick's next time (palette_tick_time 0x6989B4: the tick 0x4ED490 rotates once the
 # clock reaches it and sets it to now + 200 on the map). The adventure map's idle step redraws
 # the view once the clock reaches FRAME_DEADLINE (0x408A88; design §1.6).
@@ -682,6 +695,86 @@ class Mem:
             name = self.read(chars, length).decode("cp1252") if length else ""
             out.append((name,) + struct.unpack("<II", self.read(record + TEMPLATE_CLASS, 8)))
         return out
+
+    def write_bytes(self, address, data):
+        """Writes `data` into the game (E24 M1 T5a: a hero's or boat's facing before a still)."""
+        with open(f"/proc/{self.pid}/mem", "r+b", buffering=0) as f:
+            f.seek(address)
+            f.write(data)
+
+    def boats(self):
+        """Every boat record's address and fields (E24 M1 T5a): [{address, tile, used, type,
+        facing, colour, hero, aboard}]."""
+        begin, end = struct.unpack("<II", self.read(self.game() + BOATS, 8))
+        raw = self.read(begin, end - begin) if end > begin else b""
+        out = []
+        for i in range(0, len(raw) - BOAT_RECORD + 1, BOAT_RECORD):
+            x, y, z = struct.unpack_from("<3h", raw, i)
+            kind, facing, colour = struct.unpack_from("<3b", raw, i + 0x1A)
+            out.append({"address": begin + i, "tile": [x, y, z], "used": raw[i + 0x18],
+                        "type": kind, "facing": facing, "colour": colour,
+                        "hero": struct.unpack_from("<i", raw, i + 0x20)[0],
+                        "aboard": raw[i + 0x24]})
+        return out
+
+    def standing(self, z=0):
+        """The heroes and boats the view draws on a level (E24 M1 T5a; view_tile_heroes_boats
+        0x40FB30): {(x, y): ("hero", index) | ("boat", index)} for each tile of class 34 or 8
+        with the entrance bit and a word other than -1."""
+        game = self.game()
+        side = self.i32(game + MAP_SIDE)
+        raw = self.read(self.u32(game + TILES) + TILE_SIZE * z * side * side,
+                        TILE_SIZE * side * side)
+        out = {}
+        for i in range(side * side):
+            at = TILE_SIZE * i
+            word, = struct.unpack_from("<I", raw, at)
+            kind, = struct.unpack_from("<i", raw, at + 0x1E)
+            if kind in (HERO_OBJECT, BOAT_OBJECT) and raw[at + 0xD] & ENTRANCE and word != 0xFFFFFFFF:
+                out[(i % side, i // side)] = ("hero" if kind == HERO_OBJECT else "boat", word)
+        return out
+
+    def map_heroes(self, z=0):
+        """The heroes and boats the view draws on a level (E24 M1 T5a), as `render --live` takes
+        them: heroes [x, y, z, class, facing, owner, boat type, boat colour] (the boat's -1 -1 on
+        land) and boats [x, y, z, type, facing], each by its tile, rows then columns."""
+        boats = self.boats()
+        heroes, empty = [], []
+        for (x, y), (kind, index) in sorted(self.standing(z).items(), key=lambda t: t[0][::-1]):
+            if kind == "boat":
+                b = boats[index]
+                empty.append([x, y, z, b["type"], b["facing"]])
+                continue
+            raw = self.read(self.game() + HEROES + HERO_SIZE * index, HERO_SIZE)
+            hero_id, = struct.unpack_from("<i", raw, HERO_ID)
+            status, = struct.unpack_from("<I", raw, HERO_STATUS)
+            boat = [-1, -1]
+            if status & IN_BOAT:
+                sailed = [b for b in boats if b["used"] and b["hero"] == hero_id and b["aboard"] == 1]
+                boat = [sailed[0]["type"], sailed[0]["colour"]] if sailed else [-1, -1]
+            heroes.append([x, y, z, struct.unpack_from("<i", raw, HERO_CLASS_FIELD)[0],
+                           raw[HERO_FACING], struct.unpack_from("<b", raw, 0x22)[0]] + boat)
+        return heroes, empty
+
+    def hero_on(self, x, y, z=0):
+        """The index of the hero a player owns whose record stands on (x, y, z), None for none
+        (E24 M1 T5a). By the records, not the tiles: at a human player's turn start the original
+        lifts its selected hero off its tile (adventure manager +0x1EC set) until the view moves."""
+        found = [h["index"] for h in self.heroes() if h["tile"] == [x, y, z]]
+        return found[0] if found else None
+
+    def write_facing(self, x, y, z, facing):
+        """Turns the hero, or else the empty boat, on (x, y, z) to `facing` (0-7; E24 M1 T5a):
+        the hero record's +0x47 or the boat record's +0x1B. The view's next draw shows it."""
+        index = self.hero_on(x, y, z)
+        if index is not None:
+            address = self.game() + HEROES + HERO_SIZE * index + HERO_FACING
+        else:
+            boats = [b for b in self.boats() if b["used"] and b["tile"] == [x, y, z]]
+            if not boats:
+                raise KeyError(f"no hero or boat on {(x, y, z)}")
+            address = boats[0]["address"] + BOAT_FACING
+        self.write_bytes(address, bytes([facing]))
 
     def monster(self, x, y, z=0):
         """The wandering monster on a tile from its word (E17 H1; E3-3), None for none: its

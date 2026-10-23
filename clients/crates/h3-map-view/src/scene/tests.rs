@@ -30,7 +30,9 @@ fn art_with(tiles: Vec<GivenTile>) -> (MapArt, Live) {
     let bytes = writer::write_with(&map(), &extras).unwrap();
     let raw = h3_map::parse(&bytes, &Limits::default()).unwrap();
     let art = MapArt::from_raw(&raw).unwrap();
-    let live = Live::at_start(&raw, &art, 0);
+    let mut live = Live::at_start(&raw, &art, 0);
+    // The map's heroes are the heroes' tests' (below), which give their own.
+    live.heroes.clear();
     (art, live)
 }
 
@@ -70,6 +72,7 @@ fn pieces(scene: &Scene, of: Pass) -> Vec<Seen> {
             Draw::Piece {
                 pass,
                 def,
+                group: _,
                 frame,
                 x,
                 y,
@@ -529,7 +532,9 @@ fn art_with_objects(objects: Vec<AnyObject>) -> (MapArt, Live) {
     let bytes = writer::write_with(&map(), &extras).unwrap();
     let raw = h3_map::parse(&bytes, &Limits::default()).unwrap();
     let art = MapArt::from_raw(&raw).unwrap();
-    let live = Live::at_start(&raw, &art, 0);
+    let mut live = Live::at_start(&raw, &art, 0);
+    // The map's heroes are the heroes' tests' (below), which give their own.
+    live.heroes.clear();
     (art, live)
 }
 

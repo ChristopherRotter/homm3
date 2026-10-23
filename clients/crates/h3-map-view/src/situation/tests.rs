@@ -9,7 +9,7 @@ use crate::art::MapArt;
 const PLAIN: &str = r#"
 size = 36
 terrain = "grass"
-heroes = [[34, 34], [34, 1]]
+heroes = [{ at = [34, 34], class = 2 }, { at = [34, 1], owner = 1 }]
 view = [0, 0, 0]
 "#;
 
@@ -94,7 +94,7 @@ fn patches_roads_copies_and_tiles_in_order() {
     let drawn = art(r#"
 size = 36
 terrain = "sand"
-heroes = [[34, 34], [34, 1]]
+heroes = [{ at = [34, 34], class = 2 }, { at = [34, 1], owner = 1 }]
 view = [0, 0, 0]
 hidden = [[2, 3, 4, 5]]
 patches = [{ terrain = "snow", from = [20, 20], to = [22, 22] }]
@@ -266,7 +266,7 @@ fn a_copy_brings_its_objects_but_heroes() {
 size = 36
 terrain = "grass"
 copy = [{ map = "Shipped.h3m", from = [2, 0], to = [35, 4], at = [0, 10], objects = true }]
-heroes = [[34, 34], [34, 1]]
+heroes = [{ at = [34, 34], class = 2 }, { at = [34, 1], owner = 1 }]
 view = [0, 0, 0]
 "#;
     let situation = Situation::parse(text).unwrap();
@@ -314,7 +314,7 @@ fn objects_given_by_their_templates_def() {
     ];
     let text = |objects: &str| {
         format!(
-            "size = 36\nterrain = \"grass\"\nheroes = [[34, 34], [34, 1]]\nview = [0, 0, 0]\n{objects}"
+            "size = 36\nterrain = \"grass\"\nheroes = [{{ at = [34, 34], class = 2 }}, {{ at = [34, 1], owner = 1 }}]\nview = [0, 0, 0]\n{objects}"
         )
     };
     let given = text(

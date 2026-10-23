@@ -6,16 +6,17 @@ compared pixel for pixel outside the masks of what the viewer does not draw yet.
   h3map.py still <situation.toml> [--out <dir>] [--keep]
       builds the situation's map (`h3-map-view situation`), or takes the shipped map it names
       whole (`map`, from the installation copy's Maps: E24 M1 T4b), loads it in the original as a
-      single scenario (the scenario list's first human player, Red on the built maps), writes that
-      player's explored tiles as the situation gives them (every tile but its `hidden`
-      rectangles), centres the view by the minimap so that its top-left is the
+      single scenario (the scenario list's first human player, Red on the built maps), walks the
+      heroes the situation walks (by play, E24 M1 T5a), writes that player's explored tiles as
+      the situation gives them (every tile but its `hidden` rectangles) and the heroes' and
+      boats' facings it gives, centres the view by the minimap so that its top-left is the
       situation's `view`, parks the mouse, freezes the clock, steps it to the next moment both
       the palette tick and the view's redraw come (so the screen shows the palettes memory
       holds) and dumps the screen (`still.xwd`);
       reads the palette cycles' step k from the cycling DEFs' palettes in memory and writes it
       with the view, the objects' frame step the screen shows, the viewing player, every
-      object's anchor and phase and its template in memory (what a random object became:
-      `live.toml`); draws ours (`h3-map-view render --bugs original --live live.toml`,
+      object's anchor and phase and its template in memory (what a random object became), the
+      heroes and boats the view draws (`live.toml`); draws ours (`h3-map-view render --bugs original --live live.toml`,
       `ours.png`) and prints the pixels that differ outside the masks (`diff.png`: differing
       pixels red, masked ones blue). <dir> defaults to clients/out/map/<situation>.
   h3map.py set [--only <id>] [--out <dir>]
@@ -197,6 +198,24 @@ def started(map_path, run_dir, shipped=False, tries=2):
             print(f"{map_path}: the original {why}; started again", file=sys.stderr, flush=True)
 
 
+def arrange(game, mem, sit):
+    """The heroes' walks a situation gives, by play (E24 M1 T5a: Red's heroes, each to its tiles in
+    turn; a hero boards a boat by walking onto it), each checked to arrive; returns the facings to
+    write [(x, y, facing)]: a hero's on its last tile, a boat's on its own."""
+    turn = []
+    for hero in sit.get("heroes", []):
+        x, y = hero["at"]
+        for target in hero.get("walk", []):
+            obs = h3adv.walk(game, mem, mem.hero(mem.hero_on(x, y))["name"], target)
+            if not obs["arrived"]:
+                raise RuntimeError(f"the hero from {(x, y)} did not arrive at {target}: {obs}")
+            x, y = target
+        if "facing" in hero:
+            turn.append((x, y, hero["facing"]))
+    turn += [(*boat["at"], boat["facing"]) for boat in sit.get("boats", []) if "facing" in boat]
+    return turn
+
+
 def still(situation_path, out=None, keep=False):
     """Shows and draws one situation; returns the differing pixels, the compared ones and where
     the differing lie (text)."""
@@ -214,6 +233,7 @@ def still(situation_path, out=None, keep=False):
     game = started(map_path, out / "run", shipped="map" in sit)
     try:
         mem = h3mem.Mem()
+        turn = arrange(game, mem, sit)
         mem.write_explored(vz, hidden_test(hidden), mem.current_player())
         # The view's top-left from a minimap click on the tile it puts at CENTRE; another view
         # first when it is there already, so that the click redraws it.
@@ -222,6 +242,10 @@ def still(situation_path, out=None, keep=False):
             h3adv.centre(game, mem, vx + cx + 2, vy + cy, vz)
         h3adv.centre(game, mem, vx + cx, vy + cy, vz)
         game.move(*h3adv.PARK)
+        # After the view moved: the selected hero is back on its tile (hero_on). The redraws
+        # below show the facings.
+        for x, y, facing in turn:
+            mem.write_facing(x, y, 0, facing)
         game.clock("step 100")
         now = game.clock("freeze")
         # The moment: the idle step redraws the view only once the clock reaches the frame
@@ -252,12 +276,14 @@ def still(situation_path, out=None, keep=False):
         # Each object's template in memory: a random one's is the copy a new game made (design
         # §2.7), whose DEF, class and subclass the viewer draws it as.
         objects, templates = mem.map_objects(), mem.map_templates()
+        heroes, boats = mem.map_heroes(vz)
         live = {"view": list(mem.view()) + [mem.view_level()], "cycles": k,
                 "frames": mem.frame_steps() - 1, "viewer": mem.current_player(),
                 "anchors": [list(o[:3]) for o in objects],
                 "phases": [o[4] for o in objects],
                 "defs": json.dumps([templates[o[3]][0] for o in objects]),
-                "classes": [list(templates[o[3]][1:]) for o in objects]}
+                "classes": [list(templates[o[3]][1:]) for o in objects],
+                "heroes": heroes, "boats": boats}
         (out / "live.toml").write_text(
             "# The original's live part at the still (h3map.py still).\n"
             + "".join(f"{key} = {value}\n" for key, value in live.items()))
