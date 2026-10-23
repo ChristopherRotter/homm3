@@ -41,5 +41,5 @@ The map client lane's living state; read after the global `docs/HANDOFF.md`. For
 
 ## Recent sessions
 
-- **2026-10-23, E24 M1 T4b** (`map-client/e24-t4b`; done whole, the user's choice): the gate checks the object pictures against their `.msk`s; random objects read (0x4C9990 copies the random template) and taken from memory (`Mem.map_templates`, `live::Drawn`); MCL-Q3 answered (a); shipped maps loaded whole; five shipped views exact, the set (22) again after.
+- **2026-10-23, E24 M1 T4b** (`map-client/e24-t4b`; done whole): the gate checks the object pictures against their `.msk`s; random objects read (0x4C9990 copies the template) and taken from memory (`Mem.map_templates`, `live::Drawn`); MCL-Q3 answered (a); shipped maps loaded whole; five shipped views exact, the set (22) again. **#439 open:** check it first.
 - **2026-10-23, E24 M1 T4a** (`map-client/e24-t4a`): T4 split with the user; MCL-Q2 answered (a). The objects drawn (passes 4, 5, 7), phases and frame step from memory; six object situations exact. #434 merged.
