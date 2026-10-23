@@ -15,6 +15,12 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
 
 Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure are merged below by kind, done and duplicate parts dropped; the origin stays in brackets (an epic and task, a review report such as r3 or F-r2b-2). History: git. Items for other lanes went into their inboxes; the First Aid Tent became BAT-Q51. The addresses are readings of the executable, the reviews' not read a second time. Where the readings stand: `installation.md` §7.8–§7.33; the reviews' reports stay on `battle/e04b-t11b-review-reports` and `battle/e04c-t10b-review-reports`; their experiment candidates are in `docs/experiments/README.md` ("From the battle queue's inbox", "From the E04b review", "From E04c").
 
+- 2026-10-24 (the E11 refinement, `shared/e11-refinement`, Q58): **E11 is yours to lead**
+  (`docs/epics/E11-historical-rules.md`): the historical rules of RoE and AB from the user's own
+  original media. **The order (the user, 2026-10-24):** E23 closed first (`battle/e23-closure`),
+  then one session on this inbox's leftovers, and only then E11's T1 (sourcing and catalogue, with
+  the user, when the media are at hand). The sketch's "AB and SoD completeness" is folded; E03's
+  note that AB/SoD abilities "stay E11" is history (built in E04b).
 - 2026-10-23 (the AI lane, E06 T6a, `claude/brave-wright-msoutb`; **for you**): the damage
   preview of a commanded turret's shot (`h3_battle::preview`, BAT-DMG-011) is an ordinary
   strike's (`strike_preview`: attack, defense, the hero's bonus, wall and range penalties) while
