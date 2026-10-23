@@ -174,26 +174,13 @@ fn checked(
     }
 }
 
-/// The commanded First Aid Tent's heal (0x473EA0; BAT-AI-022): of the stacks of its side, alive,
-/// not war machines, whose top creature has lost hit points, the one that lost the most, the
-/// later at a tie; Defend without one (the engine asks a commanded tent only with a patient,
-/// BAT-WAR-007). The battle's own automatic tent keeps BAT-WAR-003's uniform draw (BAT-Q51).
+/// The commanded First Aid Tent's heal (0x473EA0; BAT-AI-022): the patient the battle's
+/// automatic tent heals too ([`computer::tent_patient`], BAT-WAR-003: the stack whose top creature
+/// lost the most, the later at a tie); Defend without one (the engine asks a commanded tent only
+/// with a patient, BAT-WAR-007).
 // rule: BAT-AI-022
 fn tent(state: &BattleState, id: StackId) -> Command {
-    let side = state.stacks()[id.index()].side;
-    let mut best: Option<(StackId, u32)> = None;
-    for (i, s) in (0u8..).zip(state.stacks()) {
-        let lost = s.max_hp - s.top_hp;
-        if s.side == side
-            && s.is_alive()
-            && !s.has(StackTraits::WAR_MACHINE)
-            && lost > 0
-            && best.is_none_or(|(_, most)| lost >= most)
-        {
-            best = Some((StackId(i), lost));
-        }
-    }
-    best.map_or(Command::Defend, |(target, _)| Command::Heal { target })
+    computer::tent_patient(state, id).map_or(Command::Defend, |target| Command::Heal { target })
 }
 
 /// The commanded Catapult's shot (0x473C00 with Ballistics; BAT-AI-021): at the computer's aim

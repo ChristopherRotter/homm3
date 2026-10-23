@@ -417,19 +417,30 @@ pub(crate) fn good_morale(state: &mut BattleState, ruleset: &BattleRuleset, id: 
     roll(state, params.morale_dice, chance)
 }
 
+/// The die of the second draw that lets a stack of a side without a human player off a
+/// bad-morale freeze (0x464BF0: `random(1, 4)`, a 1 lets it off; BAT-MOR-004, BAT-Q33): the
+/// original's constant, as the computer's numbers in `aim.rs` are.
+const LET_OFF_DIE: u32 = 4;
+
 /// Whether stack `id`, picked to act outside the round's wait phase, freezes from bad morale:
-/// negative morale and the roll succeeds (BAT-MOR-004). In the wait phase nobody freezes, not
-/// even a stack that never waited (one whose blindness ended there): the original's pick skips
-/// the check for the whole phase (+0x13DE4, the site 0x465283), as it skips Fear.
+/// negative morale and the roll succeeds (BAT-MOR-004), and for a stack of a side whose player is
+/// not human (`BattleSetup.human`, ADR-0023 point 7; a neutral side has none) a second draw, 1 to
+/// [`LET_OFF_DIE`], is not 1 (0x464BDB; BAT-Q33, survey S-25). In the wait phase nobody freezes,
+/// not even a stack that never waited (one whose blindness ended there): the original's pick
+/// skips the check for the whole phase (+0x13DE4, the site 0x465283), as it skips Fear.
 // rule: BAT-MOR-004
 pub(crate) fn bad_morale(state: &mut BattleState, ruleset: &BattleRuleset, id: StackId) -> bool {
     let s = state.at(id);
     if s.morale >= 0 || state.wait_phase {
         return false;
     }
+    // The stack's own side's player, a hypnotized stack's too: the original asks the side whose
+    // record array holds the stack (0x464B40's first argument).
+    let human = state.human[s.side.index()];
     let params = ruleset.battle();
     let chance = params.bad_morale.chance(s.morale.unsigned_abs());
     roll(state, params.morale_dice, chance)
+        && (human || state.rng.range_inclusive(1, LET_OFF_DIE) != 1)
 }
 
 /// Whether stack `id`, picked to act outside the round's wait phase, freezes from Fear
