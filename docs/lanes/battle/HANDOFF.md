@@ -4,10 +4,10 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E23, the original's battle AI, in progress** (`docs/epics/E23-original-battle-ai.md`; BAT-Q52). **T1 to T5 done** (#288 to #408): the reading §7.34 to §7.59, **ADR-0027**, BAT-QUIRK-25, slips 1 to 32 but 26; a side without a hero complete. **The budget** (the user): the gated count +2 %, re-set per part; ≤ 1 ms for the slowest decision, a hero's ≤ 5 ms (`master` 5.1 to 5.3 ms on the rebuilt harness). **T6 in progress** (the user: whole): `shared/e23-t6-seam` (`BattleSetup.retreat`, `attacker_ground`, ADR-0027 point 14; verified; no PR yet, the user) and `battle/e23-t6` stacked on it (the Catapult's aim, BAT-AI-021, `POLICY_VERSION` 16). Next: the tent (the reading's patient), the tactics phase, the retreat test, slips 26 and 6 (BAT-Q56); BAT-Q33 waits for S-25's row.
+- **E23, the original's battle AI, in progress** (`docs/epics/E23-original-battle-ai.md`; BAT-Q52). **T1 to T5 done** (#288 to #408): the reading §7.34 to §7.59, **ADR-0027**, BAT-QUIRK-25, slips 1 to 32 but 26; a side without a hero complete. **The budget** (the user): the gated count +2 %, re-set per part; ≤ 1 ms for the slowest decision, a hero's ≤ 5 ms (`master` 5.1 to 5.3 ms on the rebuilt harness). **T6 in progress** (the user: whole): `shared/e23-t6-seam` (`BattleSetup.retreat`, `attacker_ground`, ADR-0027 point 14; verified; no PR yet, the user) and `battle/e23-t6` stacked on it (`cross-lane`): the Catapult (BAT-AI-021), the tent (BAT-AI-022), the tactics phase (BAT-AI-023, v53), `POLICY_VERSION` 17. Next: the retreat test, slips 26 and 6 (BAT-Q56; the log's design); BAT-Q33 waits for S-25's row.
 - E05, `h3-sim` and `h3-ffi` are the AI lane's (AI-Q1), `h3-heroes` the adventure lane's.
 - **Open:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35, BAT-Q51, BAT-Q58 (none blocks; BAT-Q33 and BAT-Q51 wait for batch rows), BAT-STUB-1, the inbox (by kind since 2026-10-19), Q43; S-23, S-24, batch 2g.
-- **Versions:** battle state hash v52, battle part hash v7 (E23 T3-0; the encodings, replay format and C ABI are the AI lane's); shared: core ruleset hash v47, pack format v46 (E08 T35b), protocol v34. Next ids: BAT-Q62, BAT-QUIRK-27, BAT-STUB-15, BAT-AI-022, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-24, S-30.
+- **Versions:** battle state hash v53, battle part hash v7 (E23 T3-0; the encodings, replay format and C ABI are the AI lane's); shared: core ruleset hash v47, pack format v46 (E08 T35b), protocol v34. Next ids: BAT-Q62, BAT-QUIRK-27, BAT-STUB-17, BAT-AI-024, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-24, S-30.
 - Working agreement: increments with a user checkpoint (Q41); the user confirms seams and ADRs; batches by the user or an agent; small increments (the user, 2026-10-19).
 
 ## Standing traps
@@ -54,14 +54,14 @@ Area traps live where they are used: experiments in `docs/experiments/README.md`
 
 ## Recent sessions
 
-### 2026-10-23 (105th) — E23 T6 started, checkpoint after the Catapult (in progress)
+### 2026-10-23 (106th) — E23 T6: the tent and the tactics phase
 
-The user: T6 whole; the seam (CLT-Q4, Q6 later); BAT-Q33 waits. The tactics end read (0x475ED0). Nothing half-done; the rest's design in the epic's log. Stacked on the seam: `check-lane` fails until it merges.
+The user: both this session, `cross-lane` (v53: `TacticsRounds`; all twenty replays rehashed). Pathfinder `Query.tactics`; stubs 15, 16. Stacked on the seam: `check-lane` fails until it merges.
+
+### 2026-10-23 (105th) — E23 T6 started, checkpoint after the Catapult
+
+The user: T6 whole; the seam (CLT-Q4, Q6 later); BAT-Q33 waits. The tactics end read (0x475ED0).
 
 ### 2026-10-23 (104th) — E23 T5b2b, a caster's cast entry in Teleport's turns
 
 The user: whole, `cross-lane` (v52; replays rehashed). §7.59; slips 30, 32.
-
-### 2026-10-22 (103rd) — E23 T5b2a, the hero's Teleport
-
-The user cut T5b2 in two; slips 30, 31. The search keeps its stops inline (a call cost 2.6 %).

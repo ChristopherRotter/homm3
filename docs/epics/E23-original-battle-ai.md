@@ -270,8 +270,11 @@ found after that decision) belong to the neutral side's map too and are read (§
   and `attacker_ground`, ADR-0027 point 14; BAT-Q61 (a), BAT-Q56 (b); CLT-Q4 and CLT-Q6 later);
   the policy's tent heals the reading's patient, BAT-WAR-003 waits for BAT-Q51's row; BAT-Q33
   waits for S-25's row (the user). Done: the commanded Catapult's aim (BAT-AI-021,
-  `POLICY_VERSION` 16; the user's checkpoint). Next: the tent, the tactics phase, the retreat test
-  with slips 26 and 6.
+  `POLICY_VERSION` 16; the user's checkpoint); the tent's patient (BAT-AI-022) and the tactics
+  phase (BAT-AI-023: its end by the rounds the battle counts, battle state hash v53, the replays
+  rehashed, `cross-lane`; the shooters' placement; the walkers' searches with the phase's flag;
+  BAT-STUB-15, BAT-STUB-16; `POLICY_VERSION` 17; the user: both in one session). Next: the
+  retreat test with slips 26 and 6.
 - [ ] **T7 The closure** — the batch rows' leftovers, the benchmarks, the docs.
 
 ## Exit criteria

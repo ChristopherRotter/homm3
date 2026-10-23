@@ -1338,28 +1338,33 @@ level 0 with the battle's draw, `computer::catapult_aim` the policy's with its o
 `POLICY_VERSION` 16; the harvested test plays eight battles at a Fort (a missed gate shot lands
 on a wall, so not every battle reaches the four standing walls).
 
-**The design for the rest** (from §7.60; for the next session):
-- *The tent*: `Heal` at the patient of the tent's side with the most lost top hit points, the
-  later stack at a tie (BAT-AI-022); the engine asks only a commanded tent with a patient.
-- *The tactics phase* (BAT-AI-023): the policy ends the phase (`EndTactics`) at the first call
-  after a phase round without a placement, or after three rounds: the engine keeps per phase the
-  completed rounds and whether the running and the last one had a placement (a state field outside
-  `TacticsPhase`, which the observation and the wire carry; no rule reads it). Shooters: 0x422060
-  as read (Wait, or a move to the fewest-free-neighbours hex). Walkers: the pathfinder's tactics
-  flag (range and speed 1000; a stop's cost 1000 is no queue bucket: reach it without queueing it
-  and end a `Reach` search on it after the loop) for the walker's map, its walk's path and its
-  side's flag-1 records (`computer::map`, `path`, `turn_map`); no cast entry; the attack always
-  a walk towards the plan's hex; the walk takes the whole path, no score test, the end the last
-  step whose position hex lies in the zone, and the engine's footprint rule (a two-hex walker's
-  other hex in the zone too: a stub); the guard's turns 1; the flag-1 records count turns at the
-  record's speed (one turn for the mask, the fewer turns first). The original's Defend in the
-  phase ends the turn, the engine's Wait makes the stack wait: below Hard (where a walker never
-  waits) a walker that has waited gives Wait at once; on Hard a defended walker is asked again in
-  the wait part (a stub). `checked`'s fallback in the phase: Wait.
+**Done in the second session** (the user: the tent and the whole tactics phase, `cross-lane` for
+the state hash): the tent (BAT-AI-022, `h3_battle_ai::tent`) heals the patient of its side with the
+most lost top hit points, the later record at a tie; the battle's automatic tent keeps its draw.
+The tactics phase (BAT-AI-023, `tactics.rs`): the battle counts the phase's rounds for the
+computer (`TacticsRounds`: the completed rounds, a placement in the running and the last one;
+`BattleState.tactics_rounds`, outside `TacticsPhase`, so neither the observation nor the wire
+moves; battle state hash v53, the ten golden and the adventure lane's replays rehashed with their
+commands); the policy gives `EndTactics` at the first turn after a round without a placement or
+after three. `computer::wait_phase` answers in the phase whether the active stack has waited (the
+original's pick sets +0x13DE4 there too). The pathfinder's `Query.tactics` (0x4B34DE: range and
+turn's speed 1000, before the speed-0 and Bind test) for `computer::map`, `map_within`, `path` and
+`turn_map` while the phase runs: a stop's step costs the rest of 1000 and is reached without being
+queued (the queue's buckets end at 255); a `Reach` search to it ends on it after the loop. The
+shooters: 0x422060 over `Map::position` (a flyer's hexes flown over left out: no shooter of the
+game flies). The walkers: no cast entry, the attack a walk, the walk the whole path without the
+score test, its end in the zone (`tactics::in_zone`, with the engine's footprint rule, BAT-STUB-15);
+the guard's turns 1; the flag-1 records' turns at the record's speed (`gain::Record.turns`; the run-up
+only within the speed). Defend becomes Wait in the phase; a walker below Hard (not a human side)
+that has waited gives Wait at once; on Hard a walker that defended is asked again (BAT-STUB-16);
+`checked`'s fallback in the phase is Wait. BAT-STUB-5 now holds only the retreat test.
+`POLICY_VERSION` 17.
+
+**The design for the retreat** (from §7.60; for the next session):
 - *The retreat* (BAT-AI-024): the test (§7.55, §7.60) at the hero's cast (when the hero may cast)
   and again at the stack's action outside the phase (not for the Catapult's or the tent's turns;
   the Ballista's yes); a yes is `Retreat` (the computer never surrenders, 0x47815A). The battle
-  keeps the facts and the attacker's ground (hashed, v53; scenarios and the replay file name them:
+  keeps the facts and the attacker's ground (hashed: still v53 while T6's branch is unmerged; scenarios and the replay file name them:
   the replay format's bump is the AI lane's, `cross-lane`); the price as 0x477A00 (the temporary
   creatures out, halved, × the hero's factor in `f32`); the predictions with flag 1 (the side's run
   and then the other side's from where it ended); slip 26 in `faithful`: the cast choice reads both

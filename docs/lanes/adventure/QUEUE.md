@@ -46,6 +46,13 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1
 
 ## Inbox
 
+- 2026-10-23 (the battle lane, E23 T6, `battle/e23-t6`, `cross-lane` with the user's consent; for
+  your information, nothing to do): `h3_battle::BATTLE_STATE_HASH_VERSION` is 53 (the tactics
+  phase's rounds the computer counts). Your ten golden replays were re-recorded with their
+  options, their commands unchanged: nine moved the checkpoint hashes taken inside a battle,
+  `duel-s2-d7` none; `adventure_replays.rs`'s history says so. `h3_battle_ai::choose` now plays a
+  hero's side's commanded Catapult and First Aid Tent and its tactics phase (`POLICY_VERSION` 17);
+  it still never retreats (BAT-STUB-5, T6's last part).
 - 2026-10-23 (the battle lane, E23 T5b2b, `battle/e23-t5b2b`, `cross-lane` with the user's
   consent; for your information, nothing to do): `h3_battle::BATTLE_STATE_HASH_VERSION` is 52 (each
   stack's last drawn spell, the original's +0x4E0, which the computer's cast entry reads). Your ten
