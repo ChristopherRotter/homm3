@@ -4,14 +4,12 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E17 M0–M3 done** (M3 closed by T9d, 2026-10-23: CLT-Q9 to Q17's fixes; **the lane split at
-  T9c**, CLT-Q18: this lane keeps the battle client, the adventure map client is the map-client
-  lane's E24); **M4 (sieges): T0, T1a done** (the siege still read, design §10.1); **next: M4
-  T1b** (the harvest, the still drawn and captured; M5 live play after M4; `QUEUE.md`).
-  Workspace `clients/`
-  (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in
-  `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§10; records in
-  `E17-log.md`.
+- **E17 M0–M3 done** (the lane split at M3 T9c, CLT-Q18: the battle client here, the adventure
+  map client the map-client lane's E24); **M4 (sieges): T0, T1a, T1b done** (15 siege situations
+  exact, design §10.1); **next: M4 T2a** (what moves in a siege, read; M5 live play after M4).
+  Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+
+  drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§10;
+  records in `E17-log.md`.
 - **Captures** (the user, 2026-10-20): `h3drive.py drawn` first (no Wine); capture what it lists or the task changes, all at a milestone's closure or a harness change (runbook); a capture not as recorded leaves `kept/` (T9b: record, then `--reuse`); later tasks' detail in `NOTES.md`.
 - **The user's requirements** (epic, "Decisions"): a string catalogue (JSON packs, no committed translation, CLT-Q7); graphics options (`faithful` default); exhaustive diffs; drawing bugs fixed, the original's only for comparisons (`Bugs`).
 - The lane owns `clients/` but the map-client lane's paths and the common ones (`lanes.toml`: the foundation, `text/`, the harness; an additive change freely, a change in behaviour into the map-client lane's inbox), plus `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
@@ -41,7 +39,7 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Standing traps
 
-- **CI may be out** (billing, since 2026-10-12): `clients/scripts/check.sh` stands in, its result in the pull request (needs `cargo-deny`, `cargo-llvm-cov`, the LLVM tools `scripts/llvm-tools.sh` picks).
+- **CI may be out** (billing, since 2026-10-12): `clients/scripts/check.sh` stands in, its result in the pull request.
 - A new dependency of a pure crate goes into `h3-view/tests/purity.rs`'s allowlist deliberately; a window or audio crate belongs in an adapter crate, not in `h3-view`'s pure library.
 - Sound in a sandbox: `SDL_AUDIO_DRIVER=disk` (the mix in `./sdlaudio.raw`).
 - `winit`, `cpal`, `hound` (and Bevy, eframe, `rodio`) are Apache-2.0-only (`deny.toml`, ADR-0009): the window is SDL 3 (`h3-sdl`; building it: CMake, a C compiler, `clients.yml`'s apt list). Windows: `x86_64-pc-windows-gnu`, `mingw-w64`, the user's `clients/out/win/`.
@@ -60,14 +58,16 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - A capture times out at the main menu when the CPU is busy: run it alone. A fresh sandbox's
   first capture once differed (T7c-2): recapture. A background job stops at 2 h: batches (T9a,
   runbook).
+- Sieges: machines acting on their own act before the record opens; in hot seat the original
+  shows the side to act's view (runbook, "A siege").
 
 ## Recent sessions
 
+- **2026-10-23, E17 M4 T1b (done; #427 open; not split, the user).** `[[town]]` harvested, the
+  siege drawn; 15 siege situations exact (every town's Castle, a Fort, a Citadel; the walls hit
+  and destroyed on Castle and Conflux by memory writes); the Tower by the defender's record.
 - **2026-10-23, E17 M4 T1a (done; #417, docs only).** The siege still read (design §10.1, the address
   map): the same rules in every town; the harvest moved into T1b, the wall states on Castle and
   Conflux (the user).
 - **2026-10-23, E17 M4 T0 (done; #415).** M4 cut with the user: T1a, T1b (the still), T2a to
   T2c (over time), T3; the wall states as stills by memory.
-- **2026-10-23, E17 M3 T9d (done; #413).** Not split (the user): the fixes behind
-  `anim::Stage::bugs`; `sacrifice` recorded (Q17 confirmed; the victim's dissolve: its time
-  built, its blend in the inbox). M3 done.

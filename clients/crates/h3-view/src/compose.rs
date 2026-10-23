@@ -12,7 +12,8 @@ use h3_assets::def::Frame;
 use h3_assets::palette::{Palette, Rgb};
 use h3_render::Bugs;
 use h3_render::blit::{
-    Drawer, Placement, draw_frame, draw_image, draw_image_keyed, draw_image_keyed_in,
+    Drawer, Placement, draw_frame, draw_frame_rows, draw_image, draw_image_keyed,
+    draw_image_keyed_clipped, draw_image_keyed_in,
 };
 use h3_render::palette::{ScreenPalette, with_player_colours};
 use h3_render::screen::{PixelFormat, Screen};
@@ -310,6 +311,19 @@ pub fn compose(
                 };
                 draw_text(&mut screen, &encode_1252(text).0, area, style);
             }
+            Draw::Wall {
+                picture,
+                x,
+                y,
+                clip,
+            } => {
+                // A siege's part (0x4957B0 → 0x44FDB0, index 0 transparent; E17 M4 T1b).
+                let image = picture_of(batch, picture)?;
+                match clip {
+                    Some(clip) => draw_image_keyed_clipped(&mut screen, image, *x, *y, *clip),
+                    None => draw_image_keyed(&mut screen, image, *x, *y),
+                }
+            }
             Draw::Creature {
                 def,
                 group,
@@ -317,8 +331,22 @@ pub fn compose(
                 anchor,
                 mirrored,
                 outline,
+            }
+            | Draw::Shooter {
+                def,
+                group,
+                frame,
+                anchor,
+                mirrored,
+                outline,
+                ..
             } => {
-                // 0x43E140: the shadowed drawer, the canvas placed by facing (§4.2).
+                // 0x43E140: the shadowed drawer, the canvas placed by facing (§4.2); a siege's
+                // shooter only its canvas's top rows (0x495090, E17 M4 T1b).
+                let rows = match item {
+                    Draw::Shooter { rows, .. } => *rows,
+                    _ => u32::MAX,
+                };
                 let (sprite, frame) = frame_of(batch, def, *group, *frame)?;
                 let [dx, dy] = layout.stack_canvas;
                 let width = i32::try_from(sprite.def.width).unwrap_or(i32::MAX);
@@ -344,12 +372,13 @@ pub fn compose(
                     None => None,
                 };
                 let palette = ScreenPalette::new(&sprite.def.palette, FORMAT);
-                draw_frame(
+                draw_frame_rows(
                     &mut screen,
                     frame,
                     &palette,
                     at,
                     Drawer::Shadowed { colour },
+                    rows,
                 );
             }
         }

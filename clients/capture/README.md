@@ -39,13 +39,13 @@ adventure).
 Before the first run: stage the copy's files (`Heroes3.exe`, the five DLLs `BINKW32.DLL`,
 `IFC20.dll`, `MP3DEC.ASI`, `MSS32.DLL`, `SMACKW32.DLL`, `Data/` with the four LODs, `Heroes3.snd`,
 `H3ab_ahd.snd`, `H3ab_ahd.vid`; one large file per staging call), run `clients/capture/setup.sh`,
-and build `cargo build --release -p h3-view` in `clients/`. A run of the whole set (31 situations since M3 T4a) takes about 4 minutes.
+and build `cargo build --release -p h3-view` in `clients/`. A run of the whole set (72 situations since M4 T1b) takes about 15 minutes.
 
 ## Which captures a change needs
 
 Capturing the original is slow (M3 T9a, in a fresh sandbox, which keeps no frames of an earlier
-one: the 31 sequences about 3½ hours, 2 to 18 minutes each, in batches (Traps); the 57
-situations 8 minutes), so a task captures only what its change can
+one: the 31 sequences about 3½ hours, 2 to 18 minutes each, in batches (Traps); the 72
+situations about 15 minutes, M4 T1b), so a task captures only what its change can
 alter (the user, 2026-10-20):
 
 1. **Always, without the original:** from `clients/`, after `cargo build --release -p h3-view`,
@@ -132,6 +132,22 @@ the packs in their order (base, ab, sod) give the original's hero types. A scena
 (`base:shore`, on sand), a special ground under both heroes for the nine ground fields; `find`
 then tries the field's own obstacle types. The deck and the two boats cannot be set up yet
 (CLT-Q5).
+
+**A siege** (E17 M4 T1b, design §10.1): a scenario's `[scenario.siege]` (faction, fort level,
+moat) makes `h3-view situation` write Blue's town of that faction (Objects.txt's first picture
+of class 98; the fort level's buildings, each with those below; an empty garrison) with Blue's
+hero on its entrance and Red's south of it; the entry's `key = "Up"` steps Red north into it.
+The turrets act first every round, then the Catapult: on their own they would act before the
+engine's record opens (`BattleState::new` drops the start's events), so a siege's entry is
+`hot_seat = true` and its heroes command their machines (`catapult = 1`, `[...ballista]`: the
+situation writes Ballistics and Artillery); the keep's turn opens it (the Catapult's without
+turrets). In hot seat the original shows the side to act's view: `seat = "defender"` renders
+the defender's record instead of a spectator's (`h3-view render --seat`; a Tower's mines on the
+keep's turn). `walls = { parts = [18 picture states], gate = n }` writes a siege's wall states
+into the original once its setup has set them and before the battle screen shows
+(`h3drive.into_battle`, `h3mem.write_walls`: the parts' states +0x13FA8 and the gate's
++0x53A4, the hit points left, or a destroyed turret's turn would pass), and the viewer draws the
+same (`h3-view render --walls`, *provisional*).
 
 **Another battlefield:** the original's obstacles depend on the battle's tile, the background on
 what stands around it (§4.4): `--tile x,y` (the set's `tile`) moves the battle. At (20, 20) on dirt

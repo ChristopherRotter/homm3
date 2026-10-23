@@ -1,11 +1,11 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 done (2026-10-23: T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b, T8, T7b-1, T7b-2a, T7b-2b-1, T7b-2b-2a, T7b-2b-2b, T7b-2b-3, T7c-1, T7c-2, T7c-3, T7d, T9a, T9b-1, T9b, T9c, T9d); M4 refined (2026-10-23, T0), T1a done (2026-10-23); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 done (2026-10-23: T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b, T8, T7b-1, T7b-2a, T7b-2b-1, T7b-2b-2a, T7b-2b-2b, T7b-2b-3, T7c-1, T7c-2, T7c-3, T7d, T9a, T9b-1, T9b, T9c, T9d); M4 refined (2026-10-23, T0), T1a and T1b done (2026-10-23); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
 [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
-are there). Next: M4 T1b (sieges: the still captured), M5 live play after M4
+are there). Next: M4 T2a (sieges: what moves, read), M5 live play after M4
 (`docs/lanes/client/QUEUE.md`). Since T9c (2026-10-23) this epic
 is the battle client's; the adventure map client is E24, the map-client lane's.
 
@@ -588,6 +588,12 @@ states; the Tower 26, without the moat).
   rope, the walls drawn in three strips across the rows, the turrets' shooters, the moat over a
   stack), the same rules in every town; VCMI differs on a few points; the harvest moved into
   T1b, the wall states on Castle and Conflux (the user).
+- **T1b done 2026-10-23** ([log](E17-log.md#m4-t1b--the-siege-still-captured-2026-10-23), design
+  §10.1 "Captured"; not split, the user): the town tables harvested (`[[town]]`), the siege
+  drawn (`h3_view::siege`), 15 siege situations exact: every town with a Castle, a Fort, a
+  Citadel, and the walls hit and destroyed on Castle and Conflux (memory writes); hot seat with
+  commanded war machines (the record opens after automatic shots), the Tower by the defender's
+  record (its mines).
 
 ### The adventure lane's harness (H1, H2: its batch E3)
 
@@ -655,3 +661,17 @@ video. The adventure map and the full game viewer: E24, the map-client lane.
 Accepted by the user (M1 2026-10-13, M2 2026-10-14, M3 2026-10-23); in the log,
 [`E17-log.md`](E17-log.md#accepted-review-lists-m1-m2-m3) (M1 and M2 moved there on 2026-10-20,
 M3 at its review, T9b). The next milestone's list starts here.
+
+**M4** (for its closure, T3):
+
+1. The asset tables' `[[town]]` (T1b, `clients/README.md`): the background, the turrets (the
+   shooter by its original id, its drawer's `shift` harvested as one number, 44 for a two-hex
+   creature less the Medusa's 5) and the 18 parts by index with five pictures each, an empty
+   name for none.
+2. The capture set's siege keys (T1b, the runbook): `key` (the step into the battle), `seat` (a
+   side's record), `walls` (the wall states written into the original, the viewer's override
+   `h3-view render --walls`; *provisional* until a record carries a hit part's state, T2b).
+3. The siege situations are hot seat with both heroes commanding their war machines (T1b): the
+   record opens after the machines' own acts (`BattleState::new` drops the start's events).
+4. A record's hit points give a part's picture state only whole or destroyed (`Walls::of`): a
+   hit (1) needs the timeline (T2b).

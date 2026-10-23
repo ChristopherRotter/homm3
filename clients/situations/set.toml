@@ -744,3 +744,185 @@ mouse = [608, 238]
 at = 100
 differing = 0
 why = "exact: the cursor, the hint and the marked stack (M3 T6c-1)"
+
+# E17 M4 T1b: the sieges (design §10.1). `h3-view situation` puts Blue's hero into its town and
+# Red's south of the entrance; `key` steps Red north. Hot seat, both heroes commanding their war
+# machines: the first frame is the keep's turn, before any shot (the scenarios say why); `seat`
+# renders that side's record instead of a spectator's (the original shows the side to act).
+[[situation]]
+id = "siege-castle"
+scenario = "siege-castle.toml"
+hot_seat = true
+key = "Up"
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: the background, moat and lip, the walls in strips, the towers, the keep and their Archers cut to 232 rows, the keep's outlined (M4 T1b)"
+
+[[situation]]
+id = "siege-rampart"
+scenario = "siege-rampart.toml"
+hot_seat = true
+key = "Up"
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: Rampart's pictures, points and Wood Elves (M4 T1b)"
+
+[[situation]]
+id = "siege-tower"
+scenario = "siege-tower.toml"
+hot_seat = true
+key = "Up"
+seat = "defender"
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: no moat drawn, the keep's turn showing the defender's hidden mines (the defender's record, `seat`; M4 T1b)"
+
+[[situation]]
+id = "siege-inferno"
+scenario = "siege-inferno.toml"
+hot_seat = true
+key = "Up"
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: Inferno's pictures, points and Gogs (M4 T1b)"
+
+[[situation]]
+id = "siege-necropolis"
+scenario = "siege-necropolis.toml"
+hot_seat = true
+key = "Up"
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: Necropolis's moat lip drawn (VCMI draws none), its Liches (M4 T1b)"
+
+[[situation]]
+id = "siege-dungeon"
+scenario = "siege-dungeon.toml"
+hot_seat = true
+key = "Up"
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: the Dungeon's points (VCMI's differ by one to five pixels), its two-hex Medusas 39 pixels right (M4 T1b)"
+
+[[situation]]
+id = "siege-stronghold"
+scenario = "siege-stronghold.toml"
+hot_seat = true
+key = "Up"
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: the Stronghold's moat under SoD rules, its Orcs (M4 T1b)"
+
+[[situation]]
+id = "siege-fortress"
+scenario = "siege-fortress.toml"
+hot_seat = true
+key = "Up"
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: the Fortress's pictures, points and Lizardmen (M4 T1b)"
+
+[[situation]]
+id = "siege-conflux"
+scenario = "siege-conflux.toml"
+hot_seat = true
+key = "Up"
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: Conflux's pictures from H3ab_bmp.lod, its Storm Elementals (M4 T1b)"
+
+[[situation]]
+id = "siege-fort"
+scenario = "siege-fort.toml"
+hot_seat = true
+key = "Up"
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: a Fort draws the towers, the keep and their covers without shooters, no moat; the Catapult's turn (M4 T1b)"
+
+[[situation]]
+id = "siege-citadel"
+scenario = "siege-citadel.toml"
+hot_seat = true
+key = "Up"
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: a Citadel's keep with its shooter, the towers without, the Fortress's moat (M4 T1b)"
+
+# E17 M4 T1b: the wall states as stills (the user, 2026-10-23: on Castle and Conflux, one town per
+# archive, the rules being the same in every town). The harness writes `walls` (the 18 parts'
+# picture states by index, design §10.1, and the gate's: 3 closed, 1 open, 0 destroyed) into the
+# original's memory after the siege's setup and before its first frame (`h3mem.write_walls`; the
+# hit points stay, or a destroyed turret's turn would pass); the viewer draws the same states in
+# place of the record's (`h3-view render --walls`, *provisional*). `hit`: the walls hit (their slot 1), the towers and the keep hit (still whole),
+# the gate open (the drawbridge down, its rope); `ruined`: every wall, tower and the keep
+# destroyed (their covers and shooters gone), the gate destroyed.
+[[situation]]
+id = "siege-castle-hit"
+scenario = "siege-castle.toml"
+hot_seat = true
+key = "Up"
+walls = { parts = [0, 0, 0, 0, 0, 1, 1, 0, 1, 2, 1, 0, 1, 1, 1, 1, 1, 1], gate = 1 }
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: the walls' hit pictures, the towers and the keep whole at state 1, the drawbridge down with its rope (M4 T1b)"
+
+[[situation]]
+id = "siege-castle-ruined"
+scenario = "siege-castle.toml"
+hot_seat = true
+key = "Up"
+walls = { parts = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], gate = 0 }
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: no walls, the towers' and the keep's ruins without covers and shooters, the destroyed drawbridge (M4 T1b)"
+
+[[situation]]
+id = "siege-conflux-hit"
+scenario = "siege-conflux.toml"
+hot_seat = true
+key = "Up"
+walls = { parts = [0, 0, 0, 0, 0, 1, 1, 0, 1, 2, 1, 0, 1, 1, 1, 1, 1, 1], gate = 1 }
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: as siege-castle-hit, Conflux's pictures (M4 T1b)"
+
+[[situation]]
+id = "siege-conflux-ruined"
+scenario = "siege-conflux.toml"
+hot_seat = true
+key = "Up"
+walls = { parts = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], gate = 0 }
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: as siege-castle-ruined, Conflux's pictures (M4 T1b)"

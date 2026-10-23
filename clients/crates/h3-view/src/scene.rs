@@ -16,6 +16,7 @@ use h3_protocol::wire::{Event, Manifest, Observation, Side, Stack};
 use crate::anim::{Field, GONE, Magic, Object, Pose, Projectile, Ray, Spot, Timeline};
 use crate::hero::{FLAG_START, HeroPose};
 use crate::layout::BattleLayout;
+use crate::siege::{AFTER_ROWS, BEFORE_ROWS, Context, GATE_ROW, SiegeLook, Walls};
 use crate::tables::{ObstacleArt, Tables};
 use crate::ui::Text;
 
@@ -63,6 +64,9 @@ pub struct Moment {
     /// The stack the mouse marks (E17 M3 T6c-1, `crate::mouse`): its outline the mouse's unless
     /// it is the active stack (0x43E23A to 0x43E261, §4.2).
     pub marked: Option<u8>,
+    /// A siege's picture states, when they are not the record's own (E17 M4 T1b: a hit part's;
+    /// *provisional*, [`crate::siege::Walls::of`]).
+    pub walls: Option<Walls>,
 }
 
 impl Moment {
@@ -85,6 +89,7 @@ impl Moment {
             counts: timeline.counts(t),
             hues: timeline.hues(t),
             marked: None,
+            walls: None,
         }
     }
 }
@@ -228,6 +233,39 @@ pub enum Draw {
         mirrored: bool,
         /// Its outline: the layout's outline palette's entry, none for no outline.
         outline: Option<u8>,
+    },
+    /// A siege's part (E17 M4 T1b, design §10.1): its picture with index 0 transparent, its
+    /// top-left corner at (`x`, `y`), only its pixels inside `clip` (`battle_draw_pcx_rect`
+    /// 0x4957B0's strips, `moat_over_stack` 0x495A10's: left, top, right and bottom edges, the
+    /// last two excluded; none: whole).
+    Wall {
+        /// The picture.
+        picture: String,
+        /// Its left edge.
+        x: i32,
+        /// Its top edge.
+        y: i32,
+        /// The screen's rectangle it is cut to.
+        clip: Option<[i32; 4]>,
+    },
+    /// A turret's shooter (E17 M4 T1b, `draw_turret_shooter` 0x495090): drawn as a creature
+    /// ([`Draw::Creature`]: its canvas placed by facing from `anchor`), but only its canvas's top
+    /// `rows` rows.
+    Shooter {
+        /// The DEF.
+        def: String,
+        /// The DEF group.
+        group: u32,
+        /// The frame in the group.
+        frame: u32,
+        /// Its point, the shift of a two-hex creature included.
+        anchor: [i32; 2],
+        /// Drawn mirrored (facing left).
+        mirrored: bool,
+        /// Its outline's palette entry, if any.
+        outline: Option<u8>,
+        /// The canvas's rows drawn from its top.
+        rows: u32,
     },
     /// A dialog's picture (`H3DlgPcx`, E17 M3 T6a; §9.7): index 0 transparent, in its own colours
     /// or a player's.
@@ -558,7 +596,24 @@ pub fn battle_at(
         (None, Some(handle)) => Some(key(&keys.terrains, "terrains", handle)?),
         (None, None) => None,
     };
-    if let Some(key) = field {
+    // A siege (E17 M4 T1b, design §10.1): with a fort the town's background, walls and turrets.
+    let siege = match &observation.siege {
+        Some(siege) => {
+            let faction = key(&keys.factions, "factions", siege.faction)?;
+            let context = Context {
+                walls: moment.walls.unwrap_or_else(|| Walls::of(siege)),
+                stacks: &observation.stacks,
+                active: moment
+                    .active
+                    .map(|id| (id, layout.outline_after(moment.pulse))),
+            };
+            SiegeLook::new(siege, faction, tables, context, width)?
+        }
+        None => None,
+    };
+    if let Some(siege) = &siege {
+        list.extend(siege.background());
+    } else if let Some(key) = field {
         let field = tables
             .battlefields
             .get(key)
@@ -640,7 +695,9 @@ pub fn battle_at(
             list.extend(here.map(obstacle_draw));
         }
     }
-    // The heroes (§4.5, `battle_redraw` 0x494701, after the siege's parts): each side's flag,
+    // A siege's back wall (0x4946BB).
+    list.extend(siege.as_ref().and_then(SiegeLook::back_wall));
+    // The heroes (§4.5, `battle_redraw` 0x494701, after the siege's back wall): each side's flag,
     // then its hero, the left side first; the right hero mirrored in its canvas.
     let standing = u32::from(tables.battle.hero_groups.standing);
     for (side, view) in observation.sides.iter().enumerate() {
@@ -675,6 +732,10 @@ pub fn battle_at(
             mirrored: side == 1,
         });
     }
+    // A siege's parts on hex 255: the upper tower, its shooter and cover (0x4947AB).
+    if let Some(siege) = &siege {
+        list.extend(siege.parts_at(BEFORE_ROWS.0, BEFORE_ROWS.1, layout));
+    }
     // The hexes a count box cannot take (0x43E605): a living stack's (each of its poses' hexes)
     // while it holds them (not dead since, its box not hidden: E17 M3 T5a), and the blocked ones.
     let mut taken: BTreeSet<u8> = observation.obstacles.iter().copied().collect();
@@ -694,10 +755,13 @@ pub fn battle_at(
             taken.extend(ahead(pose.hex, !pose.mirrored, 0));
         }
     }
-    // A stack gone without a corpse (`anim::GONE`, E17 M3 T9d) is not drawn.
+    // A stack gone without a corpse (`anim::GONE`, E17 M3 T9d) is not drawn, nor one off the
+    // field: a siege's turrets (their shooters are the town's, `draw_hex_stack` 0x494F4F).
+    let cells = u16::from(width) * u16::from(height);
     let stacks = observation
         .stacks
         .iter()
+        .filter(|s| u16::from(pose_of(s, moment, tables).hex) < cells)
         .filter(|s| match moment.poses.get(&s.id) {
             Some(pose) => pose.layer != GONE,
             None => s.alive,
@@ -723,12 +787,35 @@ pub fn battle_at(
             let shown = moment.counts.get(&s.id).copied().unwrap_or(s.count);
             let hue = moment.hues.get(&s.id).copied();
             let count = count_box(s, pose, (shown, hue), &sprite, &taken, layout);
-            Ok((sprite.at, pose.layer, [Some(sprite.draw), count, magic]))
+            // In a siege the moat over the stack and its box again (E17 M4 T1b, 0x494FCE).
+            let over = siege.as_ref().map_or_else(Vec::new, |siege| {
+                let stack = (pose.hex, s.two_hex, pose.mirrored);
+                siege.over_stack(stack, pose.layer, layout, count.as_ref())
+            });
+            let draws: Vec<Draw> = [Some(sprite.draw), count, magic]
+                .into_iter()
+                .flatten()
+                .chain(over)
+                .collect();
+            Ok((sprite.at, pose.layer, draws))
         })
         .collect::<Result<Vec<_>, SceneError>>()?;
     for row in 0..height {
+        // A siege's columns run right to left from row 6, its gate row's drawbridge before the
+        // passes and its rope after them (0x4947C8 to 0x494A5D, design §10.1).
+        let (columns, d) = siege
+            .as_ref()
+            .map_or_else(|| ((0..width).collect(), 1), |s| s.columns(row));
+        if row == GATE_ROW {
+            list.extend(siege.as_ref().and_then(SiegeLook::drawbridge));
+        }
         for pass in 0..PASSES {
-            for column in 0..width {
+            for &column in &columns {
+                if pass == 0
+                    && let Some(siege) = &siege
+                {
+                    list.extend(siege.parts_at(row * width + column, d, layout));
+                }
                 if pass == OBSTACLE_PASS {
                     let here = placed
                         .iter()
@@ -738,8 +825,18 @@ pub fn battle_at(
                 let here = stacks
                     .iter()
                     .filter(|(at, layer, _)| *layer == pass && *at == (row, column));
-                list.extend(here.flat_map(|(_, _, draws)| draws.iter().flatten().cloned()));
+                list.extend(here.flat_map(|(_, _, draws)| draws.iter().cloned()));
             }
+        }
+        if row == GATE_ROW {
+            list.extend(siege.as_ref().and_then(SiegeLook::rope));
+        }
+    }
+    // A siege's parts on hexes 200 and 251: the lower wall's last strip, the lower tower, its
+    // shooter and cover (0x494A74).
+    if let Some(siege) = &siege {
+        for (hex, d) in AFTER_ROWS {
+            list.extend(siege.parts_at(hex, d, layout));
         }
     }
     // A flier between its hexes: off them, drawn by itself over everything (anim::FLYING).
@@ -747,7 +844,7 @@ pub fn battle_at(
         stacks
             .iter()
             .filter(|(_, layer, _)| *layer >= PASSES)
-            .flat_map(|(_, _, draws)| draws.iter().flatten().cloned()),
+            .flat_map(|(_, _, draws)| draws.iter().cloned()),
     );
     if let Some(p) = &moment.projectile {
         list.push(Draw::Projectile {

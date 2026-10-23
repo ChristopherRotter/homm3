@@ -2292,6 +2292,57 @@ and hit points; `siege_turrets_by_town` read) and `structs.toml` (the battle man
 - **The user:** the harvest of the tables moves into T1b (where the drawer decides the table's
   shape); the wall states are captured on Castle and Conflux only.
 
+### M4 T1b — The siege still captured (2026-10-23)
+
+On `client/e17-m4-t1b`, the user present at the start (not split: "No cut"). Design §10.1
+"Captured"; the runbook's siege keys.
+
+- **Harvest:** `h3-view harvest` reads `siege_backgrounds`, `siege_wall_parts_by_town` and
+  `siege_turrets_by_town` for the packs' factions in order (the town types) into `[[town]]`
+  entries (`base.toml` the eight, `ab.toml` Conflux): the background, the turrets (the shooter's
+  original id, its drawer's shift: 44 for a two-hex creature, the Medusa's 5 back, 39 for the
+  Dungeon; the missile; the three points) and the 18 parts (point, hex, five pictures). `h3-view
+  gate` finds and decodes every name (677 in the tables).
+- **The viewer** (`h3_view::siege`, the scene, the compositor): the town's background, the moat
+  and its lip under the moat flag (a moat and pictures for it: not the Tower's, not a
+  Stronghold's before SoD), the back wall, the parts at 255 before the rows, at 200 and 251
+  after them; the columns right to left from row 6; in pass 0 `siege_parts_at_hex` ported (the
+  towers, the keep, the arch and the covers whole at their hex, a cover after its shooter; the
+  walls' three strips by the visiting row's direction, cut at the part's own hex's left edge);
+  the drawbridge by the gate's state before row 5's passes, the rope after them; after a stack
+  the moat's strip at its hex (and a two-hex stack's other) and its box again; the turret stacks
+  (off the field) not drawn, nor timed (`anim`, `motion::looks`). New draws `Wall` (a picture
+  cut to a rectangle, `h3_render::blit::draw_image_keyed_clipped`) and `Shooter` (a creature cut
+  to its canvas's top rows, `draw_frame_rows`). The states: `Walls::of` from the record (whole
+  or destroyed by the hit points, the covers by their parts, the gate by its hit points and
+  `gate_open`), a moment's override (`Moment::walls`).
+- **The situations:** `h3-view situation` writes a town of the scenario's faction and fort level
+  (Objects.txt's first picture of class 98, the fort's map bits each with those below, an empty
+  garrison) with Blue's hero on its entrance and Red's south of it; the harness steps north
+  (`key = "Up"`). A first capture of Castle (Blue a computer) differed by the opening: the
+  original's keep acts first (its turn the computer's), the engine's record opens after the
+  turrets' and the Catapult's shots (`BattleState::new` drops the start's events): the archers'
+  count, a hit wall, the Griffins outlined. So every siege situation is hot seat with both
+  heroes commanding their machines (the scenario's `catapult` and `ballista`; the situation
+  writes Ballistics and Artillery at those levels, `machine_skills`): the keep's turn opens both
+  (the Catapult's at the Fort).
+- **Captured, all exact (0 pixels):** Castle, Rampart, Inferno, Necropolis, Dungeon,
+  Stronghold, Fortress, Conflux with a Castle; a Rampart with a Fort; a Fortress with a Citadel;
+  the Tower after one fix: the original shows the side to act's view, the defender's hidden
+  mines on the keep's turn, which the spectator's record lacks, so its situation renders the
+  defender's record (`seat = "defender"`, `h3-view render --seat`). VCMI's differing points
+  (the drawbridge, the Dungeon, Necropolis's lip) are VCMI's own.
+- **The wall states as stills** (Castle and Conflux; `-hit`: the walls hit, the towers and the
+  keep at state 1, the gate open; `-ruined`: all destroyed, the gate destroyed): the harness
+  writes the 18 parts' picture states and the gate's state once the siege's setup has set them
+  and before the battle screen shows (`h3drive.into_battle`, `h3mem.write_walls`); the first
+  frame draws them. Writing the hit points too (the brief) made the original pass the destroyed
+  turrets' turns (the Griffins' turn opened, 5 645 pixels: the outline and the panel): the hit
+  points stay. The viewer takes the same states (`--walls`, the set's `walls`). All four exact.
+- **Checks:** `drawn` the same for the 89 earlier items, the 15 new recorded; the whole capture
+  set (72 situations) as recorded; `clients/scripts/check.sh` green. Not captured: the moat's
+  strip over a stack and the moving bridge (T2c), the machines' shots (T2b).
+
 ## Accepted review lists (M1, M2, M3)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its
