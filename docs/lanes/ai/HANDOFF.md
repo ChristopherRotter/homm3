@@ -94,7 +94,7 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 
 - T5a (#385), T5c (#396) merged. `t5-1` stalled (diagnosed from its files: both sides hid at
   their edges); the user: no geometry features, a penalty for stalling (T5c). T5d: the entity
-  network parked, the penalty a large gain. Diagnosing a run: the user uploads `metrics.jsonl`,
+  network parked, the penalty a large gain (#419). Diagnosing a run: the user uploads `metrics.jsonl`,
   `best.pt`, `checkpoint.pt`; `evaluate.load` builds them on the CPU.
 
 ### 2026-10-22 — E06 T4b (the league runs), increment 3 closed
