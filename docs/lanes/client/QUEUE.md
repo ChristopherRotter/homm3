@@ -6,18 +6,13 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024). M3 (fidelity) below, refined at M2's closure (T5c) and agreed by the user there, each task about half a context; the exit: the reference set passes, or each difference is a listed fix or a classified quirk. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
 
-T9b (M3's review) split with the user (2026-10-23): T9b-1 T9a's two points; the fresh
-reviewer in three parts by area, each a narrow read-only sub-agent whose findings the session
-checks against the code (and the executable where one names the original: `scripts/exe.py`)
-and fixes or lists; the review list with the user last. A reviewer's brief: its files, M3's
+T9b (M3's review) split with the user (2026-10-23): T9b-1 T9a's two points (done, the epic's
+log); the fresh reviewer in three parts by area, each a narrow read-only sub-agent whose
+findings the session checks against the code (and the executable where one names the original:
+`scripts/exe.py`) and fixes or lists; the review list with the user last. A reviewer's brief: its files, M3's
 tasks that built them (the epic's log), the design sections they cite; findings as
 `file:line`, the failure, a fix; no style notes. A fix that changes a drawn frame needs
 `drawn` and the captures it lists (runbook).
-
-### E17 M3 T9b-1 — T9a's two points
-
-- **Scope:** `raise`'s kept `before` at 1 312 ms; the dump at a game's start.
-- **Depends on:** T9a (done 2026-10-23). **Status:** in progress (2026-10-23, `client/e17-m3-t9b1`).
 
 ### E17 M3 T9b-2 — The reviewer: the timeline
 
@@ -25,7 +20,7 @@ tasks that built them (the epic's log), the design sections they cite; findings 
   and `compose` (about 8 000 lines; M3 T1a–T7d); its findings fixed or listed.
 - **Acceptance:** each finding fixed (with a test), listed for the review, or shown not a bug;
   `drawn` the same or the changed captures recorded; the client check passes.
-- **Depends on:** T9b-1. **Status:** ready once T9b-1 merges.
+- **Depends on:** T9b-1 (done 2026-10-23). **Status:** ready.
 
 ### E17 M3 T9b-3 — The reviewer: the interface and the adapters
 

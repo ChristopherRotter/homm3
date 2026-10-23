@@ -4,7 +4,7 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E17 M0–M2 done; M3 T1a–T9a done; H1, H2 done (the adventure lane's harness); next: M3 T9b-2** (T9b, the review, split in five with the user, 2026-10-23: T9b-1 T9a's two points, the reviewer in three parts by area, the review list with the user; then T9c the next milestone; `QUEUE.md`). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
+- **E17 M0–M2 done; M3 T1a–T9a done; H1, H2 done (the adventure lane's harness); next: M3 T9b-2, the timeline's reviewer** (T9b, the review, split in five with the user, 2026-10-23: T9b-1 T9a's two points, the reviewer in three parts by area, the review list with the user; then T9c the next milestone; `QUEUE.md`). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
 - **Captures** (the user, 2026-10-20): `h3drive.py drawn` first (no Wine); capture what it lists or the task changes, all at a milestone's closure or a harness change (runbook); later tasks' detail in `NOTES.md`.
 - **The user's requirements** (epic, "Decisions"): a string catalogue (JSON packs, no committed translation, CLT-Q7); graphics options (`faithful` default); exhaustive diffs; drawing bugs fixed, the original's only for comparisons (`Bugs`).
 - The lane owns `clients/`, `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
@@ -57,9 +57,9 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
-- **2026-10-23, E17 M3 T9b-1 (in progress, `client/e17-m3-t9b1`).** T9b split (the user);
-  `raise`'s `before`: harmless, the runbook; `Game.wait` takes an unreadable dump as the screen
-  not yet there (mock-tested). Next: a full `set` under Wine, the docs, the PR.
+- **2026-10-23, E17 M3 T9b-1 (done; `client/e17-m3-t9b1`'s PR open).** T9b split in five
+  (the user); `raise`'s `before` harmless (runbook); `Game.wait` waits through an unreadable
+  dump: a whole `set` as recorded.
 - **2026-10-22/23, E17 M3 T9a (two sessions; #402, merged).** T9 split (the user); all 88 as
   recorded (four after a rerun), `drawn` the same; the epic file's conflict markers resolved.
 - **2026-10-22, E17 M3 T7d (#391, merged).** CLT-Q8's bugs fixed (`anim::Stage::bugs`,

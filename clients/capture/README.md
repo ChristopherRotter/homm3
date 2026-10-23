@@ -593,7 +593,9 @@ design §7.1.
   and all 31 sequences take longer: T9a's first loop over every `frames --only <id>` was stopped
   inside `dispel`. Run them in batches of up to ten, one background job each, that start no new
   sequence after about 75 minutes (a sequence takes 2 to 18), and the next batch after it.
-- A game started right after another stopped can still dump no 5-6-5 screen after
+- A game started right after another stopped can dump no 5-6-5 screen for longer than
   `xwd_bytes`' five tries (M3 T9a: `set` stopped so twice, after 27 and 62 frames, and one
-  `frames --only` at its start; the display dumped as it should afterwards). `set --only <id>`
-  for each situation, a crashed one run again, passed all 57 at their first try (8 minutes).
+  `frames --only` at its start). Since M3 T9b-1 a game's menus (`Game.wait`) wait through it
+  until their timeout, saying so on stderr (`came after an unreadable display`, with the
+  dump's header), and a timeout names the fault; a whole `set` passed at once (8 minutes).
+  Elsewhere `xwd_bytes` still stops after five tries (`Unreadable`, with the last fault).

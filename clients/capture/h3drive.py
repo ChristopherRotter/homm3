@@ -250,12 +250,16 @@ class Game:
         """Waits until the screen `name`'s probes all match (the clock running). A display that
         dumps no 5-6-5 screen counts as the screen not there yet: a game started right after
         another stopped can dump so for longer than `xwd_bytes`' tries (M3 T9a: `set` stopped
-        so at a game's first screen; T9b-1). The timeout names the last such fault."""
+        so at a game's first screen; T9b-1). Such a wait says so on stderr; the timeout names
+        the last such fault."""
         end = time.monotonic() + timeout
         fault = None
         while time.monotonic() < end:
             try:
                 if self.matches(name):
+                    if fault:
+                        print(f"(the screen `{name}` came after an unreadable display: {fault})",
+                              file=sys.stderr)
                     return
             except Unreadable as err:
                 fault = err

@@ -2112,8 +2112,11 @@ T9b-5 the review list with the user (QUEUE).
   (depth, byte order, masks, size) or its short length, `xwd_bytes` raises `Unreadable` with the
   last try's fault (`check=False` for a timeout's own dump). Mock-checked (twelve bad dumps
   before the menu, more than `xwd_bytes`' five tries; the timeout's message). A change to the
-  harness's failure path only, not to how the original is driven, captured or read: one full `set` run under Wine (running).
-- **`drawn`:** (running).
+  harness's failure path only, not to how the original is driven, captured or read, so one
+  full `set` run under Wine, not the sequences: all 57 situations (85 frames) as recorded in
+  one run (8 minutes), `kept/` unchanged. Whether a game's start dumped badly in it is not
+  known: `Game.wait` now says so on stderr (added after the run, a print only).
+- **`drawn`:** all 88 the same.
 
 ## Accepted review lists (M1, M2)
 
