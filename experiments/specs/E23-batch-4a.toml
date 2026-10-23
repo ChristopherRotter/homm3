@@ -94,18 +94,21 @@ id = "W1"
 title = "W1: a walker that chooses nothing defends on Normal, waits on Hard"
 questions = ["E23 survey row 4a W1"]
 procedure = [
-    "Step north into the neutral Citadel. Red's Champions defend (no shooter, no spell book): Red is the weaker at range, the keep's turret makes the garrison the stronger, so its Swordsmen hold the walls with no enemy inside them.",
-    "Played twice: on Normal and on Hard. Note the Swordsmen's action in rounds 1 and 2 (the battle manager's action), then Red retreats.",
+    "Step north into the neutral Citadel. Red's Champions and Dwarves defend (no shooter, no spell book): Red is the weaker at range, the keep's turret makes the garrison the stronger, so its Swordsmen hold the walls with no enemy inside them. Red's Catapult shoots on its own.",
+    "Played twice: on Normal and on Hard. At each turn of Red's Dwarves (speed 3, after the Swordsmen's first turn and before the wait phase; ten Peasants died to the keep's first arrow in the first runs) note whether the Swordsmen defend or wait (their flags), and the log's lines; while every wall stands. Red retreats after round 4.",
 ]
 predictions = """
 The garrison's Swordsmen hold the walls (0x4213F0: a fort without an open hex, the defender the
 stronger at range by its keep, every defender inside): only enemies inside the walls are
 candidates, so none. No besieger, so the fallback: no shooter to guard (the arrow towers are left
 out, 0x420760), on Hard 0x4208F0 finds no hex scoring below 0 inside the walls; no cast. Then
-0x421F80: **Normal: Defend (3); Hard: Wait (8), and in the wait phase Defend (3)**. VCMI and the
-port's strict reading alike (BAT-AI-001); the survey's "otherwise": a Wait on Normal. The walls
-are read at each turn: a breach before the Swordsmen's turn (Red's automatic Catapult) spoils the
-round (the garrison may then sally).
+0x421F80: **Normal: Defend (3); Hard: Wait (8), and in the wait phase Defend (3)**: at the turn
+of Red's Dwarves the Swordsmen show the defending bit on Normal, the waited bit on Hard. VCMI and
+the port alike (BAT-AI-001; the port replayed on this siege in the engine: Defend on Normal, Wait
+then Defend on Hard while the walls stand); the survey's "otherwise": a Wait on Normal. The walls
+are read at each turn: a breach before the Swordsmen's turn (Red's automatic Catapult) ends the
+holding: a destroyed mid-lower wall or gate fails the test (S4), a mid-upper or lower wall does
+not (slip 2).
 """
 [encounter.hero]
 type = "Caitlin"
@@ -113,7 +116,7 @@ specialty = "resource gold"
 at = [8, 30]
 primary = [0, 10, 1, 1]
 skills = []
-army = [["Champion", 10]]
+army = [["Champion", 10], ["Dwarf", 30]]
 [encounter.opponent.town]
 faction = "castle"
 owner = "neutral"
@@ -141,7 +144,7 @@ id = "S4"
 title = "S4: a garrison holds the walls behind a destroyed mid-upper wall, not behind the mid-lower"
 questions = ["E23 survey row 4a S4", "slip 2"]
 procedure = [
-    "Step north into the neutral Citadel. Red's hero has Expert Ballistics: the agent aims the Catapult at one wall until it falls (the mid-upper in one run, the mid-lower in the other); Red's Champions defend.",
+    "Step north into the neutral Citadel. Red's hero has Basic Ballistics (one aimed shot a turn; Expert's second shot broke a second wall in the first runs): the agent aims the Catapult at one wall until it falls (the mid-upper in one run, the mid-lower in the other); Red's Champions defend.",
     "Note the Swordsmen's action at each turn and the walls' hit points before it; after round 6 Red retreats.",
 ]
 predictions = """
@@ -158,7 +161,7 @@ type = "Jenova"
 specialty = "resource gold"
 at = [18, 30]
 primary = [0, 10, 1, 1]
-skills = [["Ballistics", 3]]
+skills = [["Ballistics", 1]]
 army = [["Champion", 10]]
 [encounter.opponent.town]
 faction = "castle"

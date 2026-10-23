@@ -83,3 +83,10 @@ rounds = 1
 id = "TP"
 step = 20
 rounds = 8
+
+[[run]]
+id = "SC"
+key = "Up"
+auto = true
+step = 20
+rounds = 5

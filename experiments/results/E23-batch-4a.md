@@ -2,7 +2,7 @@
 
 Map file: `E23-batch-4a.h3m`. Fill in the blanks below and keep this file; an agent records the results (`docs/experiments/README.md`).
 
-**Stamp `37789ec3`.** The map's description in the scenario list starts with "Stamp 37789ec3.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
+**Stamp `8027ee14`.** The map's description in the scenario list starts with "Stamp 8027ee14.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
 
 1. Played by an agent (experiments/agent/ai.py): one map per encounter, `h3-experiment E23-batch-4a.toml --only <id>`. By hand: copy the map into `Maps`, start it in hot seat (Red and Blue human) at the difficulty the run names, select the Red hero and step east into the guards (north into a town).
 2. Every Red stack defends unless the procedure says otherwise. Note what the encounter asks, then end the battle (retreat) as the procedure says.
@@ -26,12 +26,12 @@ Map file: `E23-batch-4a.h3m`. Fill in the blanks below and keep this file; an ag
 
 ## W1 — W1: a walker that chooses nothing defends on Normal, waits on Hard (E23 survey row 4a W1)
 
-- Red hero **W1** (Caitlin, specialty resource gold): attack 0, defense 10, power 1, knowledge 1; no skills; no artifacts; no spells; army 10 Champion
+- Red hero **W1** (Caitlin, specialty resource gold): attack 0, defense 10, power 1, knowledge 1; no skills; no artifacts; no spells; army 10 Champion, 10 Peasant
 - Opponent: Neutral Castle town (Village Hall, fort, citadel); garrison 20 Swordsman
 - Blue hero **Sylvia** (Sylvia, specialty skill Navigation): attack 0, defense 0, power 1, knowledge 1; no skills; no artifacts; no spells; army 1 Peasant
 
-1. Step north into the neutral Citadel. Red's Champions defend (no shooter, no spell book): Red is the weaker at range, the keep's turret makes the garrison the stronger, so its Swordsmen hold the walls with no enemy inside them.
-2. Played twice: on Normal and on Hard. Note the Swordsmen's action in rounds 1 and 2 (the battle manager's action), then Red retreats.
+1. Step north into the neutral Citadel. Red's Champions and Peasants defend (no shooter, no spell book): Red is the weaker at range, the keep's turret makes the garrison the stronger, so its Swordsmen hold the walls with no enemy inside them. Red's Catapult shoots on its own.
+2. Played twice: on Normal and on Hard. At each turn of Red's Peasants (speed 3, after the Swordsmen's first turn and before the wait phase) note whether the Swordsmen defend or wait (their flags), and the log's lines; while every wall stands. Red retreats after round 4.
 
 **Record**
 
@@ -41,11 +41,11 @@ Map file: `E23-batch-4a.h3m`. Fill in the blanks below and keep this file; an ag
 
 ## S4 — S4: a garrison holds the walls behind a destroyed mid-upper wall, not behind the mid-lower (E23 survey row 4a S4, slip 2)
 
-- Red hero **S4** (Jenova, specialty resource gold): attack 0, defense 10, power 1, knowledge 1; Expert Ballistics; no artifacts; no spells; army 10 Champion
+- Red hero **S4** (Jenova, specialty resource gold): attack 0, defense 10, power 1, knowledge 1; Basic Ballistics; no artifacts; no spells; army 10 Champion
 - Opponent: Neutral Castle town (Village Hall, fort, citadel); garrison 20 Swordsman
 - Blue hero **Piquedram** (Piquedram, specialty creature Stone Gargoyle): attack 0, defense 0, power 1, knowledge 1; no skills; no artifacts; no spells; army 1 Peasant
 
-1. Step north into the neutral Citadel. Red's hero has Expert Ballistics: the agent aims the Catapult at one wall until it falls (the mid-upper in one run, the mid-lower in the other); Red's Champions defend.
+1. Step north into the neutral Citadel. Red's hero has Basic Ballistics (one aimed shot a turn; Expert's second shot broke a second wall in the first runs): the agent aims the Catapult at one wall until it falls (the mid-upper in one run, the mid-lower in the other); Red's Champions defend.
 2. Note the Swordsmen's action at each turn and the walls' hit points before it; after round 6 Red retreats.
 
 **Record**

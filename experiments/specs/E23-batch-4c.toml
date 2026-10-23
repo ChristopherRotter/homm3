@@ -127,3 +127,55 @@ army = [["Peasant", 1]]
 field = "TP: per tent turn: both stacks' top lost hit points, the stack healed (or Defend)"
 [[encounter.record]]
 field = "anything odd"
+
+# --- S1, S2: the besieger's wall shot and its walk to the wall (§7.35, 0x41EEA0, 0x421E0E) ---------
+
+[[encounter]]
+id = "SC"
+title = "S1, S2: Red's Cyclops in auto combat batter the weakest wall while Red is locked out"
+questions = ["E23 survey rows 4b S1, S2", "BAT-AI-004", "BAT-AI-005"]
+procedure = [
+    "Step north into the neutral Castle (a Fort: walls and gate, no moat or turrets; 100 Archers inside, which shoot and never sally). At Red's first turn auto combat is switched on: the computer plays Red's Cyclops and Pikemen through the same stack turn as a computer side's (installation.md §7.34), with Red's human flag set; Red's Catapult shoots on its own.",
+    "Note each Cyclops turn's action (a wall shot and its wall, or a shot at the Archers) with the walls' hit points before it, and each Pikemen turn's move, over 5 rounds; then auto combat off and Red retreats.",
+]
+predictions = """
+Not from a computer player's side (the survey's 4b rows): auto combat runs 0x477EE0 and 0x4221F0
+for Red with +0x54A4 set; the wall shot (0x41EEA0) and the besieger's walk read no human flag.
+The port replayed on this siege in the engine (the same armies and fort, Red human; three
+streams): the Cyclops' first turn a wall shot, later shots at the Archers once a wall is down.
+- The reading (S1): while Red's walkers are locked out (no wall or gate down: no defender within
+  reach) the Cyclops' best shot is worth little against 3.0 x the share locked out: **a wall
+  shot** (action 9) at **the standing wall with the fewest hit points**, drawn uniformly among
+  those (random(1, n), in the list's order); once a wall is down, Red's Pikemen reach the
+  Archers and the Cyclops shoot them (7).
+- S2: a Pikemen turn with every wall and the gate standing has no candidate (the Archers inside
+  have no hex to strike from): it walks to its own row's wall, **the first hex left of the row's
+  wall hex that its map reaches** (no moat at a Fort); after a breach a walk towards the Archers.
+- Otherwise (VCMI): the Cyclops shoot a stack, or a wall at random, whatever the walls' hit points.
+"""
+[encounter.hero]
+type = "Gelare"
+specialty = "resource gold"
+at = [18, 30]
+primary = [0, 10, 1, 1]
+skills = []
+army = [["Cyclops", 5], ["Pikeman", 200]]
+[encounter.opponent.town]
+faction = "castle"
+owner = "neutral"
+buildings = ["fort"]
+garrison = [["Archer", 100]]
+[[encounter.also]]
+type = "Aeris"
+specialty = "creature Pegasus"
+owner = "blue"
+at = [33, 32]
+primary = [0, 0, 1, 1]
+skills = []
+army = [["Peasant", 1]]
+[[encounter.record]]
+field = "SC: per Cyclops turn, the walls' hit points and its action (wall shot at which wall, or a shot)"
+[[encounter.record]]
+field = "SC: per Pikemen turn with every wall standing, its move's hex"
+[[encounter.record]]
+field = "anything odd"

@@ -19,28 +19,44 @@ rounds = 15
 id = "W1n"
 encounter = "W1"
 key = "Up"
-rounds = 2
+rounds = 4
 
 [[run]]
 id = "W1h"
 encounter = "W1"
 key = "Up"
 difficulty = "hard"
-rounds = 2
+rounds = 4
 
 [[run]]
 id = "S4u"
 encounter = "S4"
 key = "Up"
 catapult = [2]
-rounds = 6
+rounds = 8
+
+[[run]]
+id = "S4u1"
+encounter = "S4"
+key = "Up"
+catapult = [2]
+seed = 3000
+rounds = 8
+
+[[run]]
+id = "S4u2"
+encounter = "S4"
+key = "Up"
+catapult = [2]
+seed = 6000
+rounds = 8
 
 [[run]]
 id = "S4l"
 encounter = "S4"
 key = "Up"
 catapult = [4]
-rounds = 6
+rounds = 8
 
 [[run]]
 id = "C1"

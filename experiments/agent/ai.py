@@ -42,6 +42,7 @@ sys.path.insert(0, str(ROOT / "clients" / "capture"))
 
 import h3adv  # noqa: E402
 import h3drive  # noqa: E402
+import h3lod  # noqa: E402
 import h3mem  # noqa: E402
 
 # Battle manager (structs.toml, battle_manager).
@@ -50,7 +51,10 @@ ACTIVE, ACTING_SIDE = 0x132C8, 0x132C0
 HUMAN, TACTICS, HEROES = 0x54A4, 0x13D68, 0x53CC
 GATE, WALLS = 0x53A4, 0x13F60  # the gate's state; the 18 parts' hit points (siege.py, catapult.py)
 SIEGE = 0x132F4  # above 0 in a siege (structs.toml, siege_town's note)
-WORN, WORN_SLOTS, CATAPULT_ARTIFACT = 0x12D, 19, 3
+WORN, WORN_SLOTS = 0x12D, 19
+# The artifacts a spec gives (the spell book 0, the war machines 3 to 6): a random starting
+# bonus is a minor artifact (an id above these), which a run must not have.
+SPEC_ARTIFACTS = {0, 3, 4, 5, 6}
 # Stack record (structs.toml, battle_stack): name -> offset (i32).
 STACK = {"creature": 0x34, "hex": 0x38, "count": 0x4C, "lost": 0x58, "flags": 0x84,
          "hit_points": 0xC0, "turned": 0x4F0, "morale": 0x4E8, "luck": 0x4EC,
@@ -116,7 +120,9 @@ def opening_facts(mem):
     m = mem.manager()
     return {"human": list(mem.read(m + HUMAN, 2)),
             "heroes": [mem.u32(m + HEROES + 4 * side) != 0 for side in (0, 1)],
-            "difficulty": mem.difficulty(), "worn": worn(mem)}
+            "difficulty": mem.difficulty(), "worn": worn(mem),
+            # Red's, Blue's and Tan's gold (the retreat test's step 6 reads the side's player's).
+            "gold": [mem.player(colour)["resources"]["gold"] for colour in (0, 1, 2)]}
 
 
 def commanded(mem, state, catapult=False):
@@ -144,22 +150,34 @@ def key(state):
 class Run:
     def __init__(self, game, mem, out, catapult=False):
         self.game, self.mem, self.out, self.catapult = game, mem, out, catapult
-        self.t, self.round, self.last, self.cleared = 0, 1, None, False
+        self.t, self.round, self.last, self.logged = 0, 1, None, 0
         self.timeline = open(out / "timeline.jsonl", "w")
-        self.turns, self.turn = [], None
+        self.turns, self.turn, self.turned = [], None, {}
 
     def step(self, ms=10):
         self.t = self.game.clock(f"step {ms}")
         state = read_state(self.mem)
-        # A round begins when every living creature's acted bit is cleared (catapult.py); the
-        # machines' bits do not follow it.
-        living = [s for s in state["stacks"]
-                  if s["count"] > 0 and s["creature"] not in MACHINES]
-        cleared = bool(living) and all("acted" not in s["bits"] for s in living)
-        if cleared and not self.cleared and self.last is not None:
+        # A round begins when the turn flags are cleared (0x44713F): a creature's flag that
+        # falls from 1 to 0. The computer's turns at the frozen clock can pass between two reads
+        # with the round's end and the next start (a lone Defend), so the acted bits need not
+        # all show cleared at any read; a flag set at the last read and clear now does.
+        turned = {(s["side"], s["record"]): s["turned"] for s in state["stacks"]
+                  if s["creature"] not in MACHINES}
+        if any(self.turned.get(who) and not now for who, now in turned.items()):
             self.round += 1
-        self.cleared = cleared
+        self.turned = turned
         state["round"] = self.round
+        # The log's new entries, as the records they were written from (h3lod; never the
+        # text): Defend, Wait and a freeze write lines even when their turn passes between reads.
+        log = self.mem.battle_log()
+        entries = log["entries"] if log else []
+        fresh = entries[self.logged:]
+        state["log"] = [h3lod.identify(e) or "?" for e in fresh]
+        if fresh:
+            # The lines themselves only in the run's folder (never committed: the game's text).
+            with open(self.out / "log.txt", "a", encoding="utf-8") as f:
+                f.writelines(f"{self.t}\t{e}\n" for e in fresh)
+        self.logged = max(self.logged, len(entries))
         k = key(state)
         if k != self.last:
             self.timeline.write(json.dumps({"t": self.t, **state}) + "\n")
@@ -185,6 +203,7 @@ class Run:
             s = stacks.get(who)
             if state["magic"] in FREEZES and s and s["shown"]:
                 self.turn["frozen"] = FREEZES[state["magic"]]
+            self.turn.setdefault("log", []).extend(state["log"])
             # The computer's stack turn clears the active stack before it writes its action
             # (0x4221F0): an action written while the turn is open is the turn's.
             if state["action"][0] and (
@@ -297,6 +316,23 @@ def play(game, out, run):
     set_rolls(game, run.get("rolls", {}))
     plan = [dict(p, done=False) for p in run.get("plan", [])]
     first, ended = True, False
+    if run.get("auto"):
+        # Auto combat (key a, setup.sh's `Combat Auto Creatures`): the computer plays Red's
+        # stacks too, through the same stack turn as a computer side's (installation.md §7.34)
+        # with Red's human flag set. After `rounds` the key again, then Red retreats.
+        state = r.until_commanded(run.get("step", 10))
+        if not state["decided"]:
+            game.key("a", 0.5)
+            waiting, ms = 0, run.get("step", 10)
+            while not state["decided"] and r.round <= run.get("rounds", 10):
+                state = r.step(ms)
+                # A key the game did not take (a turn of Red's still waiting 2 s later): again.
+                waiting = waiting + ms if commanded(mem, state, bool(walls)) else 0
+                if waiting >= 2000:
+                    game.key("a", 0.5)
+                    waiting = 0
+            if not state["decided"]:
+                game.key("a", 0.5)
     while True:
         state = r.until_commanded(run.get("step", 10))
         if state["decided"]:
@@ -369,7 +405,7 @@ def main(args):
                 game.start(map_path)
                 h3adv.to_hot_seat(game, ["Red", "Blue"], run.get("difficulty", "normal"))
                 h3drive.into_battle(game, key=run.get("key", "Right"))
-                extra = sorted(set(worn(h3mem.Mem())[0]) - {CATAPULT_ARTIFACT})
+                extra = sorted(set(worn(h3mem.Mem())[0]) - SPEC_ARTIFACTS)
                 if extra:
                     print(f"{run['id']}: attempt {attempt}: bonus artifacts {extra}",
                           file=sys.stderr, flush=True)
