@@ -1553,3 +1553,37 @@ estimates, ADR-0027 point 9), so it is BAT-QUIRK-27 of its own, its registration
 - **Left for E23's closure:** exit criterion 4's gated batch workload with `System` seats (the AI
   lane's `benches/ai/`, their inbox), criterion 6 on the user's Windows machine, `BACKLOG.md`
   (`shared/`). BAT-Q62's row with the next batch.
+
+## T7 — the closure (2026-10-24)
+
+**Decision (the user, 2026-10-24).** Close E23 now that the AI lane's part is done. The lane's
+next session works off the inbox's leftovers; only then does it open E11 (refined the same night,
+Q58).
+
+The exit criteria, each with its record:
+
+1. **A legal command, the same for the same state and stream:** the property
+   `the_choice_is_legal_and_the_same_for_the_same_stream` (`h3-battle-ai`'s tests: random
+   battles of both sides, every difficulty, with and without heroes, on the field and at the town
+   with every fort level, both profiles).
+2. **Every branch of T1a's map modelled or recorded as a gap:** the survey
+   (`docs/rules/surveys/E23-battle-ai.md`) and the stubs left with their reasons: BAT-STUB-8 (the
+   dragon's free-hex targets, BAT-Q32 (1)), BAT-STUB-10 (a hypnotized walker on itself, BAT-Q58),
+   BAT-STUB-11 (the action fields a failed walk leaves, slip 22), BAT-STUB-15 and BAT-STUB-16
+   (the tactics phase's zone test and Defend). None blocks play.
+3. **Readings at risk against played rows:** batches 4a to 4c, every played row as read; H1
+   resolved in the port; S1, S2 not reached and W2, W4, W5, P1, C5, S3, H2 not staged (above),
+   left with the readings they rest on. BAT-Q62 waits for a row of the next batch.
+4. **The cost:** within T1b's budget (T7's rest: the slowest hero decision 3.0 to 4.1 ms of 5;
+   the mean without heroes 30 µs); the batch benchmark with `System` seats is the AI lane's gated
+   workload `batch-system-neutral-v1` (#442, re-baselined on `POLICY_VERSION` 19).
+5. **The function in the other lanes' inboxes:** since T2a; the AI lane's `Policy::System` plays
+   it, the adventure's neutral seat calls it.
+6. **`cargo xtask verify` on Linux and Windows with the original data:** the full local Linux
+   verify, 16 of 16 steps, on #441 (CI cannot start: billing); the user's Windows verify passed on
+   2026-10-23.
+
+Left for the lane (its inbox and OPEN-QUESTIONS): the AI lane's turret-shot preview (E06 T6a),
+BAT-Q62's row, BAT-Q28, BAT-Q32, BAT-Q35, BAT-Q58 and the stubs above. `BACKLOG.md`:
+`shared/e23-closure`.
+
