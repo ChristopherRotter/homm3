@@ -29,6 +29,13 @@ which plays one side (only the learner's decisions train), and its result counts
 member's score. A member's network sits on the device and in its file (`league/<id>.pt`, or its
 `promoted/<n>.pt`), outside the checkpoint, which names the members; a retired snapshot's file is
 deleted after the next checkpoint, and a resume removes the files its checkpoint does not name.
+
+The neutral share (E06 T7c, design §12): a neutral kind's episode (a wandering monster, a pile's or
+a garrison's guards, a neutral town; `[env] kinds` draws them) has the system actor in the
+defender's seat inside the batch, so the learner plays only its attacker and the league draws no
+member for it. The update record splits the self-play episodes' rates by kind (`by_kind`), and
+the ladder also plays the neutral set v1 (`[ladder] ladder_neutral`), the learner attacking the
+system actor.
 """
 
 from __future__ import annotations
@@ -45,7 +52,7 @@ import torch
 from .. import _ffi
 from ..batch import BattleBatch
 from ..seats import SeatBook
-from .evaluate import Stopped, compact, held_out_seeds, ladder, load
+from .evaluate import NEUTRAL_KINDS, Stopped, compact, held_out_seeds, ladder, load
 from .gate import Bounds, game_score, gate
 from .league import League, Member
 from .policy import Choice, Policy, build
@@ -337,9 +344,11 @@ class Trainer:
 
     def assign(self, envs: np.ndarray) -> None:
         """Draws the opponent of each of `envs`' new episodes (`League.opponent`): a live member
-        on a uniformly drawn side, or self-play."""
+        on a uniformly drawn side, or self-play. A neutral kind's episode draws none: its defender
+        is the system actor, so the learner's attacker is its only external seat (design §12)."""
+        kind = self.batch.encounter
         for e in envs:
-            member = self.league.opponent()
+            member = None if int(kind[e]) in NEUTRAL_KINDS else self.league.opponent()
             if member is None:
                 self.frozen_side[e], self.frozen_id[e], self.frozen_net[e] = -1, -1, None
             else:
@@ -387,8 +396,6 @@ class Trainer:
             Bounds(c.elo0, c.elo1, c.alpha, c.beta, c.max_pairs),
             threads=c.threads,
             max_steps=c.max_steps,
-            currency=c.currency,
-            mana_price=c.mana_price,
             stop=stop,
         )
         self.last_gate = self.updates
@@ -397,21 +404,28 @@ class Trainer:
     def ladder(self, final: bool, stop: Stop | None = None) -> dict[str, Any]:
         """The best's ladder (design §7): against the config's engine seats and the promoted
         networks before it, on the report set v1's first `ladder_episodes` per kind (the final
-        one: `ladder_final_episodes`); raises `Stopped` on a stop."""
+        one: `ladder_final_episodes`), and with `ladder_neutral` attacking the system actor on
+        the neutral set v1's as many (`neutral`; design §12); its values at reward v1's settings
+        (`evaluate.CURRENCY`, `MANA_PRICE`), whatever the run trains with; raises `Stopped` on a
+        stop."""
         c = self.config
         index, best = self.lineage[-1]
         per_kind = c.ladder_final_episodes if final else c.ladder_episodes
+        settings = dict(
+            per_kind=per_kind,
+            threads=c.threads,
+            max_steps=c.max_steps,
+            stop=stop,
+        )
         rows = ladder(
             best,
             opponents=c.ladder_opponents,
             networks={f"promoted-{i}": net for i, net in self.lineage[:-1]},
-            per_kind=per_kind,
-            threads=c.threads,
-            max_steps=c.max_steps,
-            currency=c.currency,
-            mana_price=c.mana_price,
-            stop=stop,
+            **settings,
         )
+        neutral = None
+        if c.ladder_neutral:
+            neutral = compact(ladder(best, held_out="neutral-v1", **settings)["system"])
         if final:
             self.last_final = [index, self.updates]
         return {
@@ -419,7 +433,9 @@ class Trainer:
             "final": final,
             "per_kind": per_kind,
             "opponents": {name: compact(row) for name, row in rows.items()},
-            "seconds": sum(row["seconds"] for row in rows.values()),
+            "neutral": neutral,
+            "seconds": sum(row["seconds"] for row in rows.values())
+            + (neutral["seconds"] if neutral else 0.0),
         }
 
     def join(self, index: int | None = None) -> tuple[Member, Member | None]:
@@ -474,6 +490,8 @@ class Trainer:
         drawn = self.league.draw(self.samples)
         #: Per member id: the learner's score sum and games in this rollout.
         tally: dict[int, list[float]] = {}
+        #: Per encounter kind, the self-play episodes': the attacker's wins, truncations, games.
+        by_kind: dict[int, list[int]] = {}
         passes = 0
         for t in range(c.rollout):
             if stop is not None and stop.requested:
@@ -488,6 +506,8 @@ class Trainer:
             a = b.actions
             a["entry"], a["spell"] = choice.entry, choice.spell
             a["target"], a["second"] = choice.target, choice.second
+            # The kind of each env's episode before the step (an ended one's next comes after).
+            kinds = b.encounter.copy()
             b.step()
             closed = self.book.settle(b)
             e, s = np.nonzero(closed.closed)
@@ -518,6 +538,11 @@ class Trainer:
                 for value in res[res >= 0]:
                     results[int(value)] += 1
                 truncated += int(b.truncated[own].sum())
+                for env in own:
+                    row = by_kind.setdefault(int(kinds[env]), [0, 0, 0])
+                    row[0] += int(b.result[env]) == _ffi.RESULT_ATTACKER
+                    row[1] += int(b.truncated[env])
+                    row[2] += 1
                 # The learner's side is the one the member does not play.
                 for env in done[against]:
                     entry = tally.setdefault(int(self.frozen_id[env]), [0.0, 0])
@@ -546,6 +571,16 @@ class Trainer:
             "self_play_episodes": ended,
             "attacker_won": int(results[_ffi.RESULT_ATTACKER]) / max(ended, 1),
             "truncated": truncated / max(ended, 1),
+            # The same per encounter kind (in a neutral kind the learner's attacker against the
+            # system actor).
+            "by_kind": {
+                _ffi.ENCOUNTER_KINDS[k]: {
+                    "episodes": n,
+                    "attacker_won": won / n,
+                    "truncated": cut / n,
+                }
+                for k, (won, cut, n) in sorted(by_kind.items())
+            },
             "league": len(self.league.members),
             "live": list(self.league.live),
             "drawn": drawn,

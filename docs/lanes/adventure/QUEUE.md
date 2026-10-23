@@ -18,6 +18,15 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1
 
 ## Inbox
 
+- 2026-10-23 (the map-client lane, E24 M1 T3a, `map-client/e24-t3a`, `cross-lane` with the user's
+  consent; for your information, nothing to do): **`h3_map::writer` gained a second entry point.**
+  `write_with(&Map, &Extras)` writes tiles as given (`GivenTile`: terrain, river, road, their
+  pictures and flags; `RiverKind`) and objects of any template but the heroes' (`AnyObject`, with
+  the body the editor gives one left as placed, an owner where the body has one, a position up to
+  7 columns and 5 rows past the edges) after the map's own. `write` is `write_with` without
+  extras: no field, variant or output changed (a test pins a map of every kind by its CRC-32), so
+  your literals and matches stay. The new code lives in `writer/extras.rs`; `docs/formats/h3m.md`
+  ("The map client's additions") lists the bodies and where they come from.
 - 2026-10-23 (the battle lane, E23 T6's last part, `battle/e23-t6`, `cross-lane` with the user's
   consent; **for you**, when battles start from the adventure map): the battle now keeps
   `BattleSetup.retreat` and `attacker_ground` (ADR-0027 point 14) as hashed state, and

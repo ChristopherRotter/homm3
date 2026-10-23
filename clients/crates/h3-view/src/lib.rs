@@ -44,6 +44,7 @@ pub mod panel;
 pub mod ray;
 pub mod record;
 pub mod scene;
+pub mod siege;
 pub mod sound;
 pub mod tables;
 pub mod text;

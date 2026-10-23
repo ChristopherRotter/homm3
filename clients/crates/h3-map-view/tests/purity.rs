@@ -11,8 +11,12 @@ use std::path::{Path, PathBuf};
 /// The pure crate (its library; the binary under `src/bin/` is an adapter) with the dependencies
 /// it may have. A new dependency is added here deliberately. `h3-view`'s `tests/purity.rs` checks
 /// the client lane's crates and the foundation; this copy of it checks this lane's crate. `h3-map`
-/// gives the raw map's model (its parser reads bytes; the crate has no I/O).
-const PURE: [(&str, &[&str]); 1] = [("h3-map-view", &["h3-assets", "h3-map", "serde", "toml"])];
+/// gives the raw map's model (its parser reads bytes; the crate has no I/O); `h3-render` the
+/// compositor (pure, E17's foundation; since T3b1).
+const PURE: [(&str, &[&str]); 1] = [(
+    "h3-map-view",
+    &["h3-assets", "h3-map", "h3-render", "serde", "toml"],
+)];
 
 /// Dependencies of the package that only its binary (an adapter) uses: Cargo has no binary-only
 /// dependencies, so the library's sources must never name them (*provisional*, E24 M1 T2: the

@@ -138,9 +138,24 @@ pub fn draw_frame(
     at: Placement,
     drawer: Drawer,
 ) {
+    draw_frame_rows(screen, frame, palette, at, drawer, u32::MAX);
+}
+
+/// Draws `frame` as [`draw_frame`] does, but only its canvas's top `rows` rows: the source
+/// rectangle a siege's turret shooter is drawn with (`draw_turret_shooter` 0x495090, 232 rows;
+/// E17 M4 T1b).
+pub fn draw_frame_rows(
+    screen: &mut Screen,
+    frame: &Frame,
+    palette: &ScreenPalette,
+    at: Placement,
+    drawer: Drawer,
+    rows: u32,
+) {
     let format = screen.format();
     let width = index(frame.width).max(1);
-    let (canvas_w, canvas_h) = (i64::from(frame.full_width), i64::from(frame.full_height));
+    let canvas_w = i64::from(frame.full_width);
+    let canvas_h = i64::from(frame.full_height).min(i64::from(rows));
     for (i, &pixel_index) in frame.pixels.iter().enumerate() {
         let run = frame.runs.get(i).copied().unwrap_or(false);
         let cx = i64::from(frame.left) + to_i64(i % width);
@@ -182,6 +197,13 @@ pub fn draw_image_keyed_in(screen: &mut Screen, image: &Pcx, palette: &Palette, 
     put_image(screen, image, Some(palette), x, y, true);
 }
 
+/// Draws an image as [`draw_image_keyed`] does, but only its pixels inside the screen's rectangle
+/// `clip` (left, top, right, bottom; the last two excluded): a siege's wall strips and the moat
+/// over a stack (`battle_draw_pcx_rect` 0x4957B0, `moat_over_stack` 0x495A10; E17 M4 T1b).
+pub fn draw_image_keyed_clipped(screen: &mut Screen, image: &Pcx, x: i32, y: i32, clip: [i32; 4]) {
+    put_image_in(screen, image, None, (x, y), true, clip);
+}
+
 fn put_image(
     screen: &mut Screen,
     image: &Pcx,
@@ -190,11 +212,33 @@ fn put_image(
     y: i32,
     keyed: bool,
 ) {
+    let all = [i32::MIN, i32::MIN, i32::MAX, i32::MAX];
+    put_image_in(screen, image, palette, (x, y), keyed, all);
+}
+
+fn put_image_in(
+    screen: &mut Screen,
+    image: &Pcx,
+    palette: Option<&Palette>,
+    (x, y): (i32, i32),
+    keyed: bool,
+    [left, top, right, bottom]: [i32; 4],
+) {
     let format = screen.format();
     let width = index(image.width()).max(1);
+    let (xs, ys) = (
+        i64::from(left)..i64::from(right),
+        i64::from(top)..i64::from(bottom),
+    );
     let mut put = |i: usize, pixel: u16| {
-        let (px, py) = (to_i64(i % width), to_i64(i / width));
-        if let Some(p) = screen.pixel_mut(i64::from(x) + px, i64::from(y) + py) {
+        let (px, py) = (
+            i64::from(x) + to_i64(i % width),
+            i64::from(y) + to_i64(i / width),
+        );
+        if !xs.contains(&px) || !ys.contains(&py) {
+            return;
+        }
+        if let Some(p) = screen.pixel_mut(px, py) {
             *p = pixel;
         }
     };

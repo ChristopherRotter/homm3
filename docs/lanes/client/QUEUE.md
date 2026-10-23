@@ -4,35 +4,7 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024; the battle client since the split of 2026-10-23, the adventure map client being the map-client lane's E24). M3 (fidelity) done 2026-10-23 with T9d; M4 (sieges) refined at T0 (2026-10-23, with the user); T1a done (2026-10-23); T1b to T3 below, in order. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
-
-### E17 M4 T1b — the siege still captured
-
-- **Scope:** design §10.1 (T1a's reading). First the town tables harvested into the asset
-  tables (moved here from T1a, the user, 2026-10-23): per town the background, the 18 parts'
-  points, hexes and five pictures (`siege_wall_parts_by_town` 0x66D848), the turrets' shooter
-  creature, its three points and the missile (`siege_turrets_by_town` 0x63CF88); `h3-view
-  harvest`, the format a review-list item, every name found by `h3-view gate`. Then
-  `h3-view situation` writes a town (the writer's `Town`, `TownBuildings::Custom` for
-  the fort level) with the defender inside and the attacker beside it; the harness steps the
-  attacker in (as `experiments/agent/siege.py`) and captures the battle's first frame; the viewer
-  draws a record's `Siege` by T1a's reading: the background, the walls by their parts, the gate,
-  the moat and its lip, the towers and the keep with their shooters (the turret stacks at 251,
-  254, 255 are not drawn as field stacks), the Catapult. Situations: every town with a Castle,
-  one Fort, one Citadel. **The wall states as stills** (the user, 2026-10-23): the harness writes
-  the parts' hit points and picture states (+0x13F60, +0x13FA8) and the gate (+0x53A4) into the
-  running copy's memory before the first frame and has it redrawn; the situation gives the
-  viewer the same values (a client-side override of the snapshot's `parts`, *provisional*);
-  hit and destroyed walls, towers and keep, the gate open and destroyed, on **Castle and
-  Conflux** only (the user, 2026-10-23: one town per archive, the rules being the same). The
-  captures settle T1a's open points: VCMI's drawbridge one pixel left, Necropolis's lip, the
-  Dungeon's points, a Fort's covers, the shooter's cut to 232 rows, the moat's strip over a
-  stack on a moat hex (each difference a fix, an asset fix or a `CLT-Q<n>`).
-- **Acceptance:** the new situations captured, each exact or its difference listed (a fix or a
-  `CLT-Q<n>`); `drawn` the same for every earlier item; the runbook names the new step;
-  `clients/scripts/check.sh` green. Too big at the start: split with the user (the intact sieges,
-  then the wall states).
-- **Depends on:** T1a (done). **Status:** ready.
+Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024; the battle client since the split of 2026-10-23, the adventure map client being the map-client lane's E24). M3 (fidelity) done 2026-10-23 with T9d; M4 (sieges) refined at T0 (2026-10-23, with the user); T1a and T1b done (2026-10-23); T2a to T3 below, in order. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
 
 ### E17 M4 T2a — the siege over time read
 
@@ -58,14 +30,22 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
   tower destroyed, the keep's and the towers' shots on a stack.
 - **Acceptance:** the sequences as recorded (the timeline check), their frames exact or each
   difference listed; `drawn` the same for every earlier item; `clients/scripts/check.sh` green.
-- **Depends on:** T1b, T2a. **Status:** waiting for them.
+- **Note (T1b):** a war machine acting on its own before the first command (the turrets every
+  round first, then the Catapult) acts before the engine's record opens (`BattleState::new`
+  drops the start's events, `h3-protocol`'s session uses it): a sequence's shots at the opening
+  come from commanded machines (Ballistics, Artillery: the T1b situations' heroes), automatic
+  ones need the start's events in the record (another lane's change: ask first). A hit part's
+  picture state (1) comes from the timeline then, `Moment::walls` (T1b's override is
+  *provisional*).
+- **Depends on:** T2a. **Status:** waiting for it.
 
 ### E17 M4 T2c — the gate, the moat, Earthquake and the mouse recorded
 
 - **Scope:** `GateOpened` and `GateClosed` (the drawbridge before the step), `MoatDamage` and a
   Tower's mine, `WallQuaked`; sequences: a defender out through the gate and back, a stack in the
   moat, a mine, Earthquake, a hero with Ballistics aiming the Catapult, a shot through the walls;
-  the siege's cursors and status lines in the mouse's model.
+  the siege's cursors and status lines in the mouse's model; with them the moat's strip over a
+  stack and its box drawn again, and the moving drawbridge (state 2), which no T1b still shows.
 - **Acceptance:** as T2b's.
 - **Depends on:** T2b. **Status:** waiting for it.
 
@@ -140,8 +120,9 @@ Other lanes add entries here. The client lane turns each into a task, or moves i
   tactics phase and for live play. Design §9.7.
 - When CLT-Q5 is answered: the deck and the two boats as situations; CLT-Q4: the background
   variants 0 and 1. NOTES, "Battlefields and boats".
-- Sieges (the battle lane, 2026-10-14 to 16): the turrets as stacks, the Catapult, the gate
-  opening before the step. NOTES, "Sieges"; M4 T1b and T2a take them.
+- Sieges (the battle lane, 2026-10-14 to 16): the turrets as stacks (drawn as the town's
+  shooters since T1b), the Catapult, the gate opening before the step. NOTES, "Sieges"; M4 T2a
+  to T2c take them.
 - Later milestones: graphics options (the user, at M1), an HD layout's origin and viewport.
   NOTES, "Options and layouts". (The adventure map's object draw order, research item 9, went to
   the map-client lane at the split, 2026-10-23.)

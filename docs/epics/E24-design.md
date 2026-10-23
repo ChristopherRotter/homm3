@@ -74,7 +74,9 @@ once (0x406FD0) from a name table, drawn through 0x47BF50 into `draw_frame_raw` 
 | road 1–3 (0 none) | +0x9C + 4 r: `dirtrd`, `gravrd`, `cobbrd` (0x65F59C) | +0x9 | bits 4, 5 | 16 pixels down |
 
 - A road covers the lower half of its tile and the upper half of the one below; on the map's last
-  row (y = side − 1) only its top 16 rows are drawn, so nothing reaches past the map.
+  row (y = side − 1) only its top 16 rows are drawn, so nothing reaches past the map. The pass
+  takes the 16 rows off what the view's cut (§1.2) left (0x411ED3), so at the view's bottom row,
+  where that cut already left 16, it draws nothing (MCL-Q2; T3b1 read it).
 - Rivers and roads skip tiles outside the map; no pass checks a picture against the DEF's frame
   count (the viewer refuses such a map, *provisional*).
 - A run in a terrain frame would leave what the buffer held. **None has one** (T2's gate on the
@@ -204,6 +206,26 @@ The table, mask = 16 × row + column:
   meets a shipped map, and every code they use has its table entry. Encodings: terrains and `edg`,
   `tshrc` 0; rivers, roads and `tshre` 2 (`tshre`'s runs: index 0 and the shadow codes 1–4, as
   §1.5's second drawer reads them); the gems 1, runs of index 0 only.
+
+### 1.10 The still (M1 T3b1, 2026-10-23)
+
+- **The cut and the mirrors** (read at T3b1): a pass hands `def_draw_raw` a source rectangle of
+  the tile's 32 × 32 picture as placed, (8 − x, …) when the tile starts left of the clip and so
+  on (the roads' 0x411E67 to 0x411EC6; the others' the same, §1.2); `draw_frame_raw` turns it
+  into the frame's own when mirrored (0x47DDD9: full width − x − w, and the height alike), so the
+  rectangle cuts the picture as drawn. The viewer clips each piece on the screen to its tile's
+  rectangle inside the view's clip (`h3_map_view::scene`), the same thing.
+- **What `render` draws** (`h3-map-view render`): the frame's picture in the viewer's colours
+  (§1.9), the passes 1, 2, 3, 10 and 11 (§1.1), each piece through the map's two drawers
+  (`h3_map_view::draw`: `draw_frame_raw`'s literal pixels with runs skipped, mirrored both ways;
+  0x47E820's runs 1–2 and 3–4 as shadows, the unexplored tiles' second time), the gems through
+  the compositor's plain drawer with runs skipped. The palettes cycle by the moment's k, each
+  step giving a range's entries their lower neighbour's colour (§1.6).
+- **The canvases:** every frame of the twenty DEFs the passes draw (the terrains, rivers, roads,
+  `edg`, `tshrc`, `tshre`) has a 32 × 32 canvas, the passes' source rectangle (a one-off read of
+  the user's `H3sprite.lod` at T3b1).
+- **Open for T3b2:** whether the original's view can put the map's last row at the view's bottom
+  row (MCL-Q2's case); the moment (k and the frame steps) of a capture.
 
 ## 2. The objects' draw order and shadows (M1 T1b, 2026-10-23; research item 9)
 

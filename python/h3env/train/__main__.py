@@ -94,6 +94,12 @@ def line(record: dict) -> str | None:
             for name, r in record["opponents"].items()
         )
         final = " final" if record["final"] else ""
+        neutral = record.get("neutral")
+        if neutral is not None:
+            rows += (
+                f"; neutral (attacking system) {neutral['win_rate']:.3f} ± "
+                f"{neutral['interval']:.3f}, value {neutral['value']:+.3f}"
+            )
         return (
             f"ladder{final} #{record['index']} ({record['per_kind']} per kind): {rows} "
             f"[{record['seconds']:.0f} s]"
@@ -108,6 +114,10 @@ def line(record: dict) -> str | None:
             f"pg {record['policy_loss']:+.4f} v {record['value_loss']:.4f} "
             f"ent {record['entropy']:.3f} kl {record['kl']:.4f} "
             f"ev {record['explained_variance']:+.2f}"
+            + "".join(
+                f" {name} {row['attacker_won']:.2f}"
+                for name, row in record.get("by_kind", {}).items()
+            )
         )
     if kind == "end":
         return f"end ({record['reason']}): {record['samples']} samples, {record['minutes']:.1f} min"

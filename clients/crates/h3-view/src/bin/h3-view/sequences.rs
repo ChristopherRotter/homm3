@@ -24,6 +24,7 @@ use h3_view::mouse::track::Shown;
 use h3_view::mouse::{self, Legal};
 use h3_view::record::Record;
 use h3_view::scene::Panels;
+use h3_view::siege::Walls;
 use h3_view::tables::Tables;
 use h3_view::{layout, record, scene};
 use serde::Deserialize;
@@ -116,6 +117,9 @@ pub(crate) struct Interface<'a> {
     pub legal: &'a Legal,
     /// The mouse over time.
     pub shown: Option<&'a Shown>,
+    /// A siege's wall states in place of the record's (E17 M4 T1b: the harness writes them
+    /// into the original before its first frame; *provisional*).
+    pub walls: Option<Walls>,
 }
 
 /// One kept frame: its time, the stacks the original shows fidgeting then (the viewer draws
@@ -364,6 +368,7 @@ fn sequences(options: &Options) -> Result<usize, String> {
                 panels: &panels,
                 legal: &Legal::default(),
                 shown: Some(&shown),
+                walls: None,
             };
             let drawn = draw_frames(
                 &here,
@@ -490,6 +495,7 @@ pub(crate) fn draw_frames(
     };
     for frame in &kept.frame {
         let mut moment = scene::Moment::at(timeline, frame.t);
+        moment.walls = interface.walls;
         moment.marked = match interface.shown {
             Some(shown) => shown.marked(frame.t),
             None => pointer.as_ref().and_then(|(_, p)| p.marked),

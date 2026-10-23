@@ -149,6 +149,12 @@ search the parent directories).
   frames the view draws, the terrains', rivers' and roads' as many as the highest picture any
   shipped map gives (`<install>/Maps`); it prints each DEF's frames, encodings and run pixels and
   exits 1 on a problem (findings: `docs/epics/E24-design.md` §1.9).
+- **A still of the adventure map** (E24 M1 T3b1): `cargo run --release -p h3-map-view -- render
+  <map.h3m> --view <x>,<y>[,<z>]` (from `clients/`) draws the adventure screen at that view as
+  the original does, so far its frame and the view's terrain, rivers, roads, edge, unexplored
+  tiles and corner gems (objects and heroes with T4, T5), and writes a PNG under
+  `clients/out/map/`; `--at`, `--viewer`, `--hidden`, `--bugs original` and `--list` as its
+  usage says (findings: `docs/epics/E24-design.md` §1.10).
 
 | Path | What |
 |---|---|
@@ -163,7 +169,7 @@ search the parent directories).
 | `clients/scenarios/*.toml` | the client's battle scenarios (the scenario format of `packs/README.md`) for `h3-view render` and `play`: the stills T7 renders, `smoke.toml` the captured smoke battle (T8), `battle.toml` the whole battle `play` fights (M2 T4b-2a) |
 | `clients/capture/` | the reference captures (below; the runbook `capture/README.md`): `setup.sh`, the driver `h3drive.py` and its screens' probes, `h3cap.py` (diffs, obstacles), the `xdd.dll` source (forwarder and virtual clock) |
 | `clients/situations/` | the capture set (`set.toml`) and its situations' scenario files: what the harness shows the original, with each frame's recorded differences; the recorded sequences (`sequences.toml`, `timelines/`) with their engine commands (the casts' since M3 T7a-2a, with the screen's changes); `kept/`, what the last captures kept and the viewer's digests at those times |
-| `clients/crates/h3-map-view` | the adventure map's viewer (the map-client lane, E24): the library (pure, `no_std`) holds the map's static art read from the raw `.h3m` (`art`), its live part (`live`: the objects standing, a random object's drawn template, owners, heroes, boats, the viewer's explored tiles, the moment), the map's asset tables (`tables`), the adventure screen's layout (`layout`) and what the gate checks of a DEF (`check`); its binary the map's real-asset gate. Its package depends on `h3-assets`, `h3-map` (the raw model) and, for the binary only, `h3-formats` (`tests/purity.rs`, a copy of `h3-view`'s for this crate) |
+| `clients/crates/h3-map-view` | the adventure map's viewer (the map-client lane, E24): the library (pure, `no_std`) holds the map's static art read from the raw `.h3m` (`art`), its live part (`live`: the objects standing, a random object's drawn template, owners, heroes, boats, the viewer's explored tiles, the moment), the map's asset tables (`tables`), the adventure screen's layout (`layout`), what the gate checks of a DEF (`check`), and the still: the draw list at a view (`scene`), its decoded assets (`batch`), the map's drawers (`draw`) and the composition into a frame (`compose`); its binary the map's real-asset gate and `render`. Its package depends on `h3-assets`, `h3-map` (the raw model), `h3-render` and, for the binary only, `h3-formats` (`tests/purity.rs`, a copy of `h3-view`'s for this crate) |
 | `clients/map/assets/base.toml` | the map's asset tables (below, "The map's asset tables") |
 | `clients/map/layouts/adventure.toml` | the adventure screen's layout at the native resolution: the frame and its picture, the view's place, tile, loops and clip, the corner gems (`docs/epics/E24-design.md` §1.1, §1.2, §1.9); an HD layout is another file of the same format (*provisional*) |
 | `clients/out/` | local output (renders, reports); gitignored |
@@ -223,6 +229,14 @@ on the M1 review list):
 - `[[battlefield]]`: `key` (a terrain's, or a special battlefield's: the packs' `[[battlefield]]`
   of `battle.toml`, M3 T2) and `backgrounds` (the pictures by the variant the adventure map
   picks; a special battlefield has one, which wins over the terrain's).
+- `[[town]]` (M4 T1b, design §10.1; *provisional*, a review-list item): `key` (a faction's: the
+  packs' `[[faction]]`, whose order is the town type), `original` (the town type), `background`
+  (the siege's, in place of the terrain's), `turrets` (`shooter`, the creature drawn in them by
+  its original id; `shift`, its drawer's extra x: 44 for a two-hex creature, 5 less for the
+  Medusa; `missile`; the `keep`'s, `lower` and `upper` tower's points) and `parts`, the 18 wall
+  parts by index (WALLS.TXT's rows): `at` (the picture's top-left), `hex` (the hex whose pass
+  draws it, absent for the drawbridge, its rope, the moat, its lip and the back wall) and
+  `pictures` (five, by the part's picture state; empty: none).
 - `[[obstacle]]`: `key` (`obstacle_<n>`, the packs' numbering) and either `def`, `rows` (height in
   hex rows) and `layer` (1: drawn before every stack, 0: in the row passes) for a usual obstacle,
   or `pcx` and `at` (its top-left on the screen) for an absolute one.

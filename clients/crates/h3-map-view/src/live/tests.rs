@@ -175,3 +175,25 @@ fn the_explored_tiles() {
     assert_eq!(explored, before);
     assert!(Explored::all(4, 2, true).explored(3, 3, 1));
 }
+
+#[test]
+fn the_moment_at_a_time() {
+    // 1000 ms: five 200-ms cycle steps, five whole 180-ms frame steps.
+    assert_eq!(
+        Moment::at(1000, 200, 180),
+        Moment {
+            cycles: 5,
+            frames: 5
+        }
+    );
+    assert_eq!(
+        Moment::at(1079, 200, 180),
+        Moment {
+            cycles: 5,
+            frames: 5
+        }
+    );
+    assert_eq!(Moment::at(0, 200, 180), Moment::default());
+    // A step of 0 never comes.
+    assert_eq!(Moment::at(5000, 0, 0), Moment::default());
+}

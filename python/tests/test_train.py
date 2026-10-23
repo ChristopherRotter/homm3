@@ -24,6 +24,8 @@ from h3env.train import EVAL_SEED, Config, Policy, Rollout, gae, resume, train  
 from h3env.train.entity import Entity  # noqa: E402
 from h3env.train.evaluate import (  # noqa: E402
     GATE_V1_SEED,
+    NEUTRAL_KINDS,
+    NEUTRAL_V1_SEED,
     REPORT_V1_SEED,
     Stopped,
     episode_seeds,
@@ -258,6 +260,9 @@ def test_a_short_run_writes_its_files_and_round_trips_its_checkpoint(tmp_path) -
     ladders = [r for r in records if r["type"] == "ladder"]
     assert (ladders[0]["index"], ladders[0]["final"], ladders[-1]["final"]) == (0, False, True)
     assert ladders[0]["opponents"]["random"]["games"] == 6
+    # E06 T7c: and the neutral set's, attacking the system actor (one episode per neutral kind).
+    assert ladders[0]["neutral"]["games"] == 3
+    assert list(ladders[0]["neutral"]["sides"]) == ["wandering", "guards", "siege_neutral"]
     assert (tmp_path / "promoted" / "0.pt").exists()
     for r in updates:
         assert all(np.isfinite(r[k]) for k in ("policy_loss", "value_loss", "entropy", "kl"))
@@ -514,6 +519,44 @@ def test_a_frozen_network_plays_its_side_and_only_the_learner_trains() -> None:
     assert stats["update_samples"] > 0 and np.isfinite(stats["policy_loss"])
 
 
+def test_a_neutral_episode_draws_no_member_and_the_rates_split_by_kind() -> None:
+    # E06 T7c (design §12): wandering monsters beside hero battles, no self-play. A neutral
+    # episode's defender is the system actor inside the batch, so it gets no league member and
+    # the learner plays its attacker alone; a hero battle gets the member.
+    trainer = Trainer(Config(**{**SMALL, "max_steps": 10}, self_play=0.0, kinds=[1, 0, 1, 0, 0, 0]))
+    member, _ = trainer.join()
+    assert trainer.league.draw(0)
+    trainer.assign(np.arange(trainer.config.envs))
+    batch = trainer.batch
+    neutral = np.isin(batch.encounter, list(NEUTRAL_KINDS))
+    assert neutral.any() and (~neutral).any()
+    assert (trainer.frozen_side[neutral] == -1).all()
+    assert (trainer.frozen_id[~neutral] == member.id).all()
+    roll = trainer.collect()
+    # Only the neutral episodes are the learner's own: their rates by kind, the attacker's.
+    assert roll["self_play_episodes"] > 0 and roll["league_episodes"] > 0
+    assert list(roll["by_kind"]) == ["wandering"]
+    wandering = roll["by_kind"]["wandering"]
+    assert wandering["episodes"] == roll["self_play_episodes"]
+    assert wandering["attacker_won"] == roll["attacker_won"]
+    # The episodes the rollout's ends started drew alike.
+    for e in np.nonzero(trainer.frozen_side >= 0)[0]:
+        assert int(batch.encounter[e]) not in NEUTRAL_KINDS
+
+
+def test_the_ladder_scores_at_reward_v1s_settings_whatever_the_run_trains_with() -> None:
+    # The mana-price experiment (decision 10): `[env] currency` and `mana_price` shape the
+    # training's reward only; the ladders score at reward v1's, as the bots' tables do.
+    trainer = Trainer(Config(**{**SMALL, "max_steps": 2000}, currency="gold", mana_price=1000))
+    trainer.promote()
+    row = trainer.ladder(final=False)["opponents"]["random"]
+    best = trainer.lineage[-1][1]
+    settings = dict(opponents=["random"], per_kind=1, threads=2, max_steps=2000)
+    plain = ladder(best, **settings)["random"]
+    trained = ladder(best, **settings, currency="gold", mana_price=1000)["random"]
+    assert row["value"] == plain["value"] != trained["value"]
+
+
 def _gate(result: str):
     """A stand-in for `gate.gate` that decides at once (`result`)."""
 
@@ -667,7 +710,7 @@ def test_a_checkpoint_plays_the_ladder(tmp_path, capsys) -> None:
     train(Config(**SMALL, samples=1), tmp_path)
     policy = load(tmp_path / "checkpoint.pt")
     rows = ladder(policy, held_out="v0", episodes=4, envs=2, max_steps=300)
-    assert list(rows) == ["random", "aggressor", "greedy"]
+    assert list(rows) == ["random", "aggressor", "greedy", "system"]
     for row in rows.values():
         assert row["attacker"]["episodes"] == row["defender"]["episodes"] == 4
         assert row["attacker"]["skipped"] == row["defender"]["skipped"] == 0
@@ -681,17 +724,27 @@ def test_a_checkpoint_plays_the_ladder(tmp_path, capsys) -> None:
     assert again["by_kind"] == row["by_kind"]
     with pytest.raises(ValueError, match="held-out set"):
         ladder(policy, held_out="v7")
+    # E06 T7c: the neutral set, attacking its one opponent, the system actor; no networks there.
+    rows = ladder(policy, opponents=["greedy"], held_out="neutral-v1", per_kind=2, max_steps=300)
+    assert list(rows) == ["system"] and rows["system"]["games"] == 6
+    assert list(rows["system"]["kinds"]) == ["wandering", "guards", "siege_neutral"]
+    with pytest.raises(ValueError, match="no network opponents"):
+        ladder(policy, held_out="neutral-v1", networks={"me": policy})
     from h3env.train.ladder import main
 
     checkpoint = ["--checkpoint", str(tmp_path / "checkpoint.pt")]
     out = tmp_path / "ladder.json"
     main([*checkpoint, "--episodes", "1", "--max-steps", "300", "--json", str(out)])
     lines = capsys.readouterr().out.splitlines()
-    assert [line.split(":")[0].split()[-1] for line in lines] == ["random", "aggressor", "greedy"]
+    opponents = ["random", "aggressor", "greedy", "system"]
+    assert [line.split(":")[0].split()[-1] for line in lines] == opponents
     assert all("±" in line and "siege_garrison" in line for line in lines)
-    assert set(json.loads(out.read_text())) == {"random", "aggressor", "greedy"}
+    assert set(json.loads(out.read_text())) == set(opponents)
     main([*checkpoint, "--set", "v0", "--episodes", "2", "--envs", "2"])
-    assert len(capsys.readouterr().out.splitlines()) == 3
+    assert len(capsys.readouterr().out.splitlines()) == 4
+    main([*checkpoint, "--set", "neutral-v1", "--episodes", "1", "--max-steps", "300"])
+    (line,) = capsys.readouterr().out.splitlines()
+    assert line.startswith("against system") and "wandering" in line
     with pytest.raises(SystemExit):
         main([*checkpoint, "--envs", "2"])
     with pytest.raises(ValueError, match="unknown opponent"):
@@ -699,7 +752,7 @@ def test_a_checkpoint_plays_the_ladder(tmp_path, capsys) -> None:
     # E05 T9b, E06 T3a: a network trained on a held-out set's episodes (its run's seed one of
     # theirs) is refused.
     saved = torch.load(tmp_path / "checkpoint.pt", weights_only=True)
-    for seed in (EVAL_SEED, REPORT_V1_SEED + 4):
+    for seed in (EVAL_SEED, REPORT_V1_SEED + 4, NEUTRAL_V1_SEED + 5):
         saved["config"]["seed"] = seed
         torch.save(saved, tmp_path / "same.pt")
         with pytest.raises(SystemExit):

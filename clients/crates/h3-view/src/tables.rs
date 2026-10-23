@@ -44,6 +44,9 @@ pub struct TableFile {
     /// Obstacle graphics, by key.
     #[serde(default)]
     pub obstacle: Vec<ObstacleEntry>,
+    /// The siege's pictures and points, by a faction's key (E17 M4 T1b).
+    #[serde(default)]
+    pub town: Vec<Town>,
     /// Asset fixes.
     #[serde(default)]
     pub fix: Vec<Fix>,
@@ -407,6 +410,63 @@ pub struct Battlefield {
     pub backgrounds: Vec<String>,
 }
 
+/// The parts a siege draws, by their index (WALLS.TXT's rows; E17 M4 T1b, design §10.1).
+pub const SIEGE_PARTS: usize = 18;
+
+/// A town's siege tables (E17 M4 T1b, design §10.1; `h3-view harvest` from
+/// `siege_backgrounds` 0x63D2A0, `siege_wall_parts_by_town` 0x66D848 and
+/// `siege_turrets_by_town` 0x63CF88): the background, the 18 wall parts and the turrets.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Town {
+    /// The faction's key.
+    pub key: String,
+    /// Its town type, the executable's index of the tables.
+    pub original: u8,
+    /// The siege's background, in place of the terrain's.
+    pub background: String,
+    /// The shooters in its turrets.
+    pub turrets: Turrets,
+    /// The wall parts by index (0 the drawbridge, 1 its rope, 2 the moat, 3 its lip, 4 the back
+    /// wall, 5 the upper tower, 6 to 12 the walls, buttresses and the gate's arch from the top,
+    /// 13 the lower tower, 14 the keep, 15 to 17 the keep's, the lower and the upper tower's
+    /// covers).
+    pub parts: Vec<WallPart>,
+}
+
+/// A siege's wall part: its picture's top-left corner, the hex it is drawn at and its pictures
+/// by the part's picture state.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WallPart {
+    /// The picture's top-left corner (x, y).
+    pub at: [i16; 2],
+    /// The hex whose row pass draws it (255, 251 and 200 after the rows; none: drawn apart).
+    #[serde(default)]
+    pub hex: Option<u8>,
+    /// The pictures by picture state (0 to 4); empty: none.
+    pub pictures: [String; 5],
+}
+
+/// A town's turrets: the shooter drawn in each and where it stands.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Turrets {
+    /// The shooter's creature, by its original id.
+    pub shooter: u16,
+    /// The shooter's shift right: 44 for a two-hex creature, 5 less for the Medusa (0x494E6F,
+    /// 0x494E79).
+    pub shift: i16,
+    /// Its shot's missile.
+    pub missile: String,
+    /// The keep's shooter's point.
+    pub keep: [i16; 2],
+    /// The lower tower's.
+    pub lower: [i16; 2],
+    /// The upper tower's.
+    pub upper: [i16; 2],
+}
+
 /// An obstacle's graphics as written: a usual obstacle names a DEF, its height in hex rows and
 /// its layer; an absolute one a picture and its screen position.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -484,6 +544,8 @@ pub struct Tables {
     pub battlefields: BTreeMap<String, Battlefield>,
     /// Obstacles.
     pub obstacles: BTreeMap<String, ObstacleArt>,
+    /// The sieges' tables, by faction (E17 M4 T1b).
+    pub towns: BTreeMap<String, Town>,
     /// Fixes, by id.
     pub fixes: BTreeMap<String, Fix>,
 }
@@ -517,12 +579,19 @@ impl Tables {
                     .flat_map(|s| s.objects.iter().map(|o| &o.def)),
             );
         let fields = self.battlefields.values().flat_map(|b| &b.backgrounds);
+        let towns = self.towns.values().flat_map(|t| {
+            core::iter::once(&t.background)
+                .chain(core::iter::once(&t.turrets.missile))
+                .chain(t.parts.iter().flat_map(|p| &p.pictures))
+                .filter(|n| !n.is_empty())
+        });
         let obstacles = self.obstacles.values().map(|o| match o {
             ObstacleArt::Usual { def, .. } => def,
             ObstacleArt::Absolute { pcx, .. } => pcx,
         });
         creatures
             .chain(fields)
+            .chain(towns)
             .chain(obstacles)
             .map(|n| n.to_ascii_uppercase())
             .collect()
@@ -613,6 +682,7 @@ pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
         spells: BTreeMap::new(),
         battlefields: BTreeMap::new(),
         obstacles: BTreeMap::new(),
+        towns: BTreeMap::new(),
         fixes: BTreeMap::new(),
     };
     for file in selected {
@@ -680,6 +750,22 @@ pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
                 names(&key, &[(name, ".PCX")])?;
             }
             insert(&mut tables.battlefields, key, b.clone())?;
+        }
+        for town in &file.town {
+            let key = qualify(id, &town.key)?;
+            if town.parts.len() != SIEGE_PARTS {
+                return Err(entry(&key, "a town has 18 wall parts"));
+            }
+            names(
+                &key,
+                &[(&town.background, ".PCX"), (&town.turrets.missile, ".DEF")],
+            )?;
+            for name in town.parts.iter().flat_map(|p| &p.pictures) {
+                if !name.is_empty() {
+                    names(&key, &[(name, ".PCX")])?;
+                }
+            }
+            insert(&mut tables.towns, key, town.clone())?;
         }
         for o in &file.obstacle {
             let key = qualify(id, &o.key)?;
@@ -873,6 +959,7 @@ at = [124, 254]
             spell: Vec::new(),
             battlefield: Vec::new(),
             obstacle: Vec::new(),
+            town: Vec::new(),
             fix: Vec::new(),
         }
     }
@@ -1109,6 +1196,80 @@ at = [124, 254]
         assert_eq!(
             rule(&[b], "base").to_string(),
             "`BAT-QUIRK-1`: a fix's id is CLT-QUIRK-<n>"
+        );
+    }
+
+    /// A town's tables as written (E17 M4 T1b): the background, the turrets and 18 parts, the
+    /// upper tower's with pictures, the others without.
+    fn town_text(parts: usize) -> String {
+        let mut text = String::from(
+            "[table]\nid = \"base\"\ndepends = []\n\n[[town]]\nkey = \"castle\"\noriginal = 0\n\
+             background = \"SgCsBack.pcx\"\nturrets = { shooter = 2, shift = 0, missile = \
+             \"plcbowx.def\", keep = [780, 238], lower = [648, 566], upper = [596, 80] }\nparts = [\n",
+        );
+        for k in 0..parts {
+            text += if k == 5 {
+                "{ at = [569, 35], hex = 255, pictures = [\"SgCsTw22.pcx\", \"SgCsTw21.pcx\", \
+                 \"SgCsTw21.pcx\", \"\", \"\"] },\n"
+            } else {
+                "{ at = [400, 276], pictures = [\"\", \"\", \"\", \"\", \"\"] },\n"
+            };
+        }
+        text + "]\n"
+    }
+
+    #[test]
+    fn a_town_is_loaded_with_its_names() {
+        let mut b = base();
+        b.town = parse(&town_text(SIEGE_PARTS)).unwrap().town;
+        let t = load(&[b], "base").unwrap();
+        let castle = &t.towns["base:castle"];
+        assert_eq!(castle.parts[5].hex, Some(255));
+        assert_eq!(castle.parts[0].hex, None);
+        assert_eq!(castle.turrets.upper, [596, 80]);
+        let names = t.names();
+        for n in [
+            "SGCSBACK.PCX",
+            "PLCBOWX.DEF",
+            "SGCSTW21.PCX",
+            "SGCSTW22.PCX",
+        ] {
+            assert!(names.contains(n), "{n}");
+        }
+        assert!(!names.contains(""));
+        let mut b = base();
+        b.town = parse(&town_text(17)).unwrap().town;
+        assert_eq!(
+            rule(&[b], "base").to_string(),
+            "`base:castle`: a town has 18 wall parts"
+        );
+        let mut b = base();
+        b.town = parse(&town_text(SIEGE_PARTS)).unwrap().town;
+        b.town[0].parts[5].pictures[1] = "SgCsTw21.def".to_string();
+        assert_eq!(
+            rule(&[b], "base").to_string(),
+            "`base:castle`: `SgCsTw21.def` is not a PCX name"
+        );
+        let mut b = base();
+        b.town = parse(&town_text(SIEGE_PARTS)).unwrap().town;
+        b.town[0].turrets.missile = "plcbowx".to_string();
+        assert_eq!(
+            rule(&[b], "base").to_string(),
+            "`base:castle`: `plcbowx` is not a DEF name"
+        );
+        let mut b = base();
+        b.town = parse(&town_text(SIEGE_PARTS)).unwrap().town;
+        b.town[0].key = "base:castle".to_string();
+        assert_eq!(
+            rule(&[b], "base").to_string(),
+            "`base:base:castle`: a key is a pack's key, without its namespace"
+        );
+        let mut b = base();
+        let town = parse(&town_text(SIEGE_PARTS)).unwrap().town;
+        b.town = [town.clone(), town].concat();
+        assert_eq!(
+            rule(&[b], "base"),
+            TableError::DuplicateKey("base:castle".to_string())
         );
     }
 

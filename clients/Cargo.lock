@@ -171,6 +171,7 @@ dependencies = [
  "h3-assets",
  "h3-formats",
  "h3-map",
+ "h3-render",
  "serde",
  "toml 1.1.8+spec-1.1.0",
 ]

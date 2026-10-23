@@ -1,6 +1,6 @@
 # E06 — Battle AI v1 and the local training pipeline v0
 
-Status: **in progress**, refined 2026-10-20 (AI-Q8); increment 1 (T1, T2a, T2b1, T2c) done; increment 2 (T3a, T3b) done; increment 3 (T4a, T4b) done; increment 4 (T5a to T5d) done 2026-10-23; increment 5 (T7) refined 2026-10-23, T7a and T7b done · Lane: **ai** · Follows E05 (closed
+Status: **in progress**, refined 2026-10-20 (AI-Q8); increment 1 (T1, T2a, T2b1, T2c) done; increment 2 (T3a, T3b) done; increment 3 (T4a, T4b) done; increment 4 (T5a to T5d) done 2026-10-23; increment 5 (T7) refined 2026-10-23, T7a to T7c done, T7d the user's; T5's rest beside it · Lane: **ai** · Follows E05 (closed
 2026-10-20) · Runs beside E23 (the battle lane: the original's battle AI, the system actor's
 policy), whose neutral side opens E06's neutral share (decision 1)
 
@@ -158,15 +158,19 @@ the weights in the run's config, design §12): T7a and T7b, then the checkpoint,
 - [x] **T7b The system actor's seat** — done 2026-10-23: `Policy::System`, the neutral kinds'
   defender, C ABI v32 (`H3_SEAT_SYSTEM`, `h3_system_policy_version`), `h3env`'s `"system"`,
   `h3 ai eval --policies system`; the record in `E06-log.md`.
-- [ ] **T7c The trainer's neutral share** — no league member in a neutral episode, the rates by
-  kind, the neutral held-out set `neutral-v1` and its target, the system actor in the ladder and
-  the bots' table (design §12).
-- [ ] **T7d The run** — the user's, its mix chosen with T7c's numbers.
+- [x] **T7c The trainer's neutral share** — done 2026-10-23: no league member in a neutral
+  episode, the rates by kind, the neutral set v1 (`h3 ai eval --set neutral-v1`, the ladder's
+  `neutral`), the system actor on the ladder, both bots' tables (`--json` schema 2),
+  `configs/e06-t7.toml`; the record in `E06-log.md`.
+- [ ] **T7d The run** — the user's, a third neutral (the user, 2026-10-23, with T7c's numbers:
+  `configs/e06-t7.toml`).
 
 **Later increments** (cut at each checkpoint; proposed in design §10):
 
 - [ ] **T5 The rest** — AI-Q7 (b); the mana-price experiment; batch size and threads from T9c's
-  table; the observations in place.
+  table; the observations in place. Beside T7d (the user, 2026-10-23): the mana price's
+  preparation done 2026-10-23 (the ladders at reward v1's settings, `configs/e06-mana.toml`; the
+  record in `E06-log.md`), then AI-Q7 (b)'s batch output.
 - [ ] **T6 Toward the targets** — runs on the best configuration until decision 7's targets hold,
   or the evidence says PPO plateaus (then T8).
 - [ ] **T8 Search** (only if PPO plateaus below the targets) — determinized search over the fork

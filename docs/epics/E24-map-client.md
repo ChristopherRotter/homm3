@@ -1,7 +1,7 @@
 # E24 — The adventure map client
 
-Status: **refined** (2026-10-23, T0, with the user); M1 running (T1a, T1b, T2 done; next T3a,
-`docs/lanes/map-client/QUEUE.md`).
+Status: **refined** (2026-10-23, T0, with the user); M1 running (T1a, T1b, T2, T3a, T3b1 done;
+next T3b2, `docs/lanes/map-client/QUEUE.md`).
 Lane: map-client (`docs/lanes/map-client/HANDOFF.md`: the autonomy contract, the user's asset
 notes). Opened 2026-10-23 when the user split the client lane at E17 M3's closure (CLT-Q18).
 Decisions so far live here (no ADR of its own yet; ADR-0020 and ADR-0024 bind it as they bind
@@ -99,7 +99,12 @@ autonomy contract (lane HANDOFF) says what the agent decides alone in between. T
   differences and T4's situations (`E24-design.md` §2). T2 (2026-10-23): the crate
   `h3-map-view` (the static art from `RawMap`, the live part, the tables
   `clients/map/assets/base.toml`, the layout `clients/map/layouts/adventure.toml`, the gate);
-  the frame's picture read, T1a's open points closed by the gate (`E24-design.md` §1.9).
+  the frame's picture read, T1a's open points closed by the gate (`E24-design.md` §1.9). T3a
+  (2026-10-23): the writer's additions (`h3_map::writer::write_with`: tiles as given, objects of
+  any template with the editor's body; `docs/formats/h3m.md`), a `cross-lane` pull request.
+  T3b1 (2026-10-23): `h3-map-view render`, the frame and the view's tiles (terrain, rivers,
+  roads, the edge, the unexplored tiles, the gems) as a PNG through the scene, its batch and
+  compose, and the map's two drawers (`E24-design.md` §1.10; MCL-Q2 asked: the last row's road).
 - **Exit:** the capture set's stills match the original pixel for pixel outside the masks of
   what M1 does not draw (the panels, the mouse), or list each difference as an M2 item; the
   review list accepted; research item 9 closed by the reading and its frames.
@@ -139,7 +144,7 @@ checked frame by frame against recorded sequences as E17 M2 did for the battle.
 
 - **The original's moment.** A still is exact only at a known game time: whether the harness's
   virtual clock (`xdd.dll`) drives the adventure map's animations and colour cycles as it drives
-  the battle's is checked in T3; if not, the moment is read from memory.
+  the battle's is checked in T3b2; if not, the moment is read from memory.
 - **Random objects drawn in real time** (above): the comparisons depend on reading them from the
   original's memory.
 - **The engine lags the viewer:** 5 of 160 shipped maps import whole, and the observation has no
@@ -162,3 +167,16 @@ The M1 review list starts here (the autonomy contract's "queue for the milestone
   `h3-view`'s for this crate.
 - **M1 T2, the live part at a map's start:** heroes and boats facing right and every tile
   explored until T5 reads the original's start; phases 0 (the original's are random).
+- **M1 T3a, the writer's additions** (the adventure lane's crate): a second entry point
+  (`write_with(&Map, &Extras)`) instead of new `Map` fields and `MapObject` variants, which would
+  have changed struct literals and matches in four other lanes' crates; the editor's bodies taken
+  from the SoD maps' most common ones (a scroll's spell 0, the grail's radius 0 and a random
+  dwelling's levels 0–6 without a default seen); heroes, prisons and hero placeholders not among
+  the objects of any template.
+- **M1 T3b1, the still** (*provisional*): the map's own drawers in `h3-map-view` (`draw`: the
+  top-to-bottom mirror and the clip, which `h3_render::blit` lacks; a field in its `Placement`
+  would change the client lane's literals) and its own asset batch (`h3-view`'s is the client
+  lane's; M3's common crate may merge them); the dependency on `h3-render`; each piece clipped on
+  the screen (the original's source rectangles, the same, §1.10); `render`'s flags (`--hidden`, a
+  rectangle unexplored for a look at the shroud until T5 reads the original's; `--bugs`; `--at`
+  on a clock that is never late); MCL-Q2's fix the default (`--bugs original` the comparisons').
