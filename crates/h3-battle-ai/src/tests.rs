@@ -2336,8 +2336,7 @@ fn the_hexes_around_the_side_lose_the_area_threat_on_hard() {
     let low = (-threat).max(floor);
     // The original's neighbour table: none in a side column (batch 4b H1).
     let near = |a: Hex| field.is_standable(a) && field.distance(a, state.stacks()[0].hex) == 1;
-    let near_gog =
-        |a: Hex| field.is_standable(a) && field.distance(a, state.stacks()[1].hex) == 1;
+    let near_gog = |a: Hex| field.is_standable(a) && field.distance(a, state.stacks()[1].hex) == 1;
     for hex in all_hexes() {
         let want = match (near(hex), near_gog(hex)) {
             (true, true) => (low - 1).max(floor),

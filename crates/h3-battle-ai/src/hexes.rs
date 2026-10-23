@@ -220,13 +220,27 @@ mod tests {
         // Hex 9: four.
         assert_eq!(
             around(9),
-            [None, Some(Hex(10)), Some(Hex(27)), Some(Hex(26)), Some(Hex(8)), None]
+            [
+                None,
+                Some(Hex(10)),
+                Some(Hex(27)),
+                Some(Hex(26)),
+                Some(Hex(8)),
+                None
+            ]
         );
         // A side column's own hexes have their neighbours in the next column only: 34 (row 2,
         // shifted right) three, 17 (row 1) one.
         assert_eq!(
             around(34),
-            [Some(Hex(18)), Some(Hex(35)), Some(Hex(52)), None, None, None]
+            [
+                Some(Hex(18)),
+                Some(Hex(35)),
+                Some(Hex(52)),
+                None,
+                None,
+                None
+            ]
         );
         assert_eq!(around(17), [None, Some(Hex(18)), None, None, None, None]);
         // The defender's two-hex war machine at 169 (its rear in the side column, its front 168):

@@ -1510,7 +1510,7 @@ estimates, ADR-0027 point 9), so it is BAT-QUIRK-27 of its own, its registration
   defender's Archers on hex 15 stay, from hex 100 they go back to 15; the field's neighbours sent
   them to 9), the table's own (hexes 15, 9, 34, 17, a machine's ring), and the shooter placement,
   the area threat and the breath line at the table (no side-column hex). **The rules' uses**
-  (the table's readers: 0x4674C0, 0x469612, 0x523C21 to 0x523EB2, 0x4B4748; 0x523D90's callers):
+  (the table's readers: 0x4674C0, 0x469612, 0x523C21, 0x523D90, 0x523DF0 and two unnamed routines of the pathfinder's and the neighbours'; 0x523D90's callers):
   a stack's adjacency, the pathfinder's marks and the shooter-blocked test come out the same,
   since every column-1 or column-15 neighbour of a war machine's rear hex also touches its front
   hex; the breath's second hex (melee_strike 0x441739) does not: BAT-Q62.

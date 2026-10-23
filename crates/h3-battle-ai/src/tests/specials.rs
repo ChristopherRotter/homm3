@@ -225,6 +225,27 @@ fn sacrifice_weighs_each_victim_against_the_creatures_it_raises() {
     assert!(values[0] < values[1], "{values:?}");
 }
 
+// covers: BAT-AI-019
+#[test]
+fn sacrifice_keeps_the_first_of_equal_victims() {
+    // Two stacks of 5 imps would raise the same 6 archers: the later is worth no more than the
+    // earlier, which stays the victim.
+    let r = ruleset();
+    let state = bolted(
+        &r,
+        (&[(ARCHER, 8), (IMP, 5), (IMP, 5)], &[(GOG, 30)]),
+        hero_with(&r, &["sacrifice"], 1, 999),
+        0,
+    );
+    assert_eq!(state.stacks()[0].count, 2);
+    let v = valued(&state, &r, "sacrifice");
+    assert!(v.value > 0);
+    assert_eq!(
+        (v.target, v.second),
+        (CastTarget::Stack(StackId(0)), CastTarget::Stack(StackId(1)))
+    );
+}
+
 /// A battle at the test town's Fort: `own` led by a hero with Earthquake at `mastery` against
 /// `enemies`, until an attacker's stack acts.
 fn at_fort(r: &BattleRuleset, (own, enemies): Armies<'_>, mastery: u8) -> BattleState {
