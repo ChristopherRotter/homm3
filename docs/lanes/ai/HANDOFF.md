@@ -92,7 +92,7 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 ### 2026-10-23 — E06 T6a, the behaviour analysis
 
 - Built `python -m h3env.train.inspect`, ran it on the user's `t7-1` best (records
-  `t7-1-inspect-*.json`; E06-log T6a). Found the turret shot's preview (battle lane's inbox).
+  `inspect/t7-1-*.json`; E06-log T6a). Found the turret shot's preview (battle lane's inbox).
   Increment 6's lever put to the user (QUEUE).
 
 ### 2026-10-23 — T7d's mix; T5's rest beside it

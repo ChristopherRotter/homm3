@@ -649,7 +649,7 @@ entry only where a task builds on it.
   was in reach), who struck first; the share of the stack turns that waited and defended, the
   agent's (its decisions) and the opponent's (its stacks' flags, the most seen per round).
   `layout.py` names the columns it reads; `h3-sim`'s layout test pins them (after a Wait and a
-  Defend; a swapped pair fails it). The results: `python/records/t7-1-inspect-*.json`.
+  Defend; a swapped pair fails it). The results: `python/records/inspect/t7-1-*.json`.
 - **The reading checked:** a clean strike's target lost at least the least kills previewed in
   98.9 % (Random against Aggressor, 60 battles per kind and side; 350 clean strikes) and 100 %
   (against the system actor); the four misses were melee strikes on Vampire Lords, whose
