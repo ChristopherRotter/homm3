@@ -11,21 +11,6 @@ detail in `docs/epics/E24-design.md`; captures by the harness (`clients/capture/
 in git. Every oddity of the original a reading or a capture finds is an `MCL-Q<n>` in the same
 task (the HANDOFF's autonomy contract).
 
-### E24 M1 T1a — code reading: the view's tiles and the moment
-
-- **Scope:** how the original draws the adventure map's view at 800 × 600: the view's rectangle
-  and clipping, how the view's top-left (adventure manager +0xE4) places the tiles, the map's edge
-  outside the map; a tile's terrain, river and road (the DEF by code, the frame by the tile's
-  picture, the flips by its flag bits, their order); the unexplored tiles and the pieces at their
-  edges (which piece by which neighbours); **the moment**: which frame an animated tile or object
-  shows at a game time and the colour cycles of the animated terrains (water, lava, the rivers),
-  as far as a still needs them. VCMI 1.7.5 compared on each point. Result: `E24-design.md` §1, map
-  entries for every function read; the unexplored tiles' edges answer the adventure lane's open
-  point (its inbox, 2026-10-11, T8b1): a note in its inbox.
-- **Acceptance:** the design notes say, for each point, the reading, its addresses and VCMI's
-  agreement or difference; the open points listed; `check-exe-map` passes.
-- **Depends on:** nothing (`Heroes3.exe` staged in the sandbox). **Status:** ready.
-
 ### E24 M1 T1b — code reading: the objects' draw order and shadows (research item 9)
 
 - **Scope:** how the original orders and draws the objects over the view: how a tile's draw list
@@ -39,7 +24,7 @@ task (the HANDOFF's autonomy contract).
   tile's list answers the adventure lane's open point (its inbox, 2026-10-13, T14a): a note there.
 - **Acceptance:** the order written as an algorithm a test can follow, with its addresses; the
   differences from VCMI listed with a situation each that would show them (T4's situations).
-- **Depends on:** nothing (T1a may run first for the view's walk). **Status:** ready.
+- **Depends on:** nothing (T1a's passes, `E24-design.md` §1.1, frame it). **Status:** ready.
 
 ### E24 M1 T2 — the crate, the map's asset tables and the layout
 
@@ -52,11 +37,12 @@ task (the HANDOFF's autonomy contract).
   heroes' and flags' DEFs come with T5) and the adventure screen's layout
   `clients/map/layouts/adventure.toml` (the frame picture, the view's origin and size: an HD
   layout needs both in the format); a `gate` command checking the tables' names against the
-  archives (`h3-assets`' checks). The checks of `clients/scripts/check.sh` cover the new crate
+  archives (`h3-assets`' checks) and T1a's open points (`E24-design.md` §1.8: the frame counts,
+  runs in terrain frames). The checks of `clients/scripts/check.sh` cover the new crate
   (100 % on its library).
 - **Acceptance:** the tables and the layout load (pure loaders, tested on synthetic data); the
   gate finds and decodes every name on the user's files; `check.sh` passes.
-- **Depends on:** T1a (the tiles' assets). **Status:** waiting (T1a).
+- **Depends on:** T1a (done: `E24-design.md` §1, the fog table among the tables). **Status:** ready.
 
 ### E24 M1 T3a — the writer's additions (`cross-lane`)
 
@@ -68,7 +54,7 @@ task (the HANDOFF's autonomy contract).
   its inbox; `cargo xtask verify --scope adventure` without a failing step.
 - **Acceptance:** the writer's tests cover the additions; every map the writer wrote before is
   byte for byte unchanged (the fixtures and the replays pass as they are).
-- **Depends on:** T1a, T1b (what the situations need). **Status:** waiting (T1a, T1b).
+- **Depends on:** T1a (done), T1b (what the situations need). **Status:** waiting (T1b).
 
 ### E24 M1 T3b — the tiles drawn and the first exact diff
 

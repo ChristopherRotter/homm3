@@ -39,3 +39,32 @@ What shaped the proposal (the epic file's "How the viewer sees a map" keeps the 
 
 Inbox notes written: the adventure lane's (the writer's additions to come; the object identity
 M4 needs), the client lane's (the common crate M3 needs).
+
+### M1 T1a — code reading: the view's tiles and the moment (2026-10-23)
+
+One session, branch `map-client/e24-t1a` (docs only: the design notes §1, `docs/exe/map.toml` and
+`structs.toml`, MCL-Q1, an inbox note). The user kept the task whole when asked for a seam
+(the agent had proposed the moment as a second part).
+
+- **Path:** the adventure manager's DEF loads (0x406FD0) led to the view draw 0x40F3F0 and its
+  eleven passes; read in full: the terrain and edge, river, road and unexplored-tile passes, the
+  unexplored tiles' mask and table, the run-shadow drawer 0x47E820 (formerly
+  `draw_frame_variant`, inferred), the corner gems, the tick 0x4ED490 with its palette ranges, the
+  idle step's animation counter; the object and path passes only for their place in the order and
+  their frame rule (T1b reads them).
+- **Findings that change earlier text:** a tile's left edge is at 32 (x − vx), not 8 + 32 (x − vx)
+  (E17 design §6.3 had it from clicks; the epic file and `structs.toml` corrected); the view has no
+  pixel scrolling (+0xF4, +0xF8 stay 0); the four corner gems are drawn by the view, after the
+  shroud, in the viewing player's colour; objects get a random animation phase per object at load.
+- **VCMI 1.7.5** (§1.7): agrees on the tile layers, mirrors, the road's offset, the edge's
+  corners and sides, which hidden tiles get a piece, the palette ranges and direction; differs on
+  the place and clip (one pixel), the far edge pattern for odd negative coordinates, the full
+  piece's frame, 16 of 256 edge-piece masks and the parity variants, the shadows' rounding, the
+  palette step (180 ms continuous against 200 ms polled) and the objects' phase. The edge-piece
+  comparison ran VCMI's table through the original's masks (a throwaway script).
+- **Agent decision (provisional):** a map whose picture lies past its DEF's frames is refused by
+  the viewer (the original reads past the table).
+- **Questions:** MCL-Q1 (the bottom edge's x test against the height; harmless). The mouse's
+  possible 8-pixel offset stays an open point for M3 (§1.8) until a capture shows it.
+- **Verify:** `cargo xtask check-exe-map`, `check-docs` and `check-lane` passed; `scripts/exe.py
+  check` agrees with the executable (44 entries added, one renamed and read).
