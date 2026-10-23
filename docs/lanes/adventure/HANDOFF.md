@@ -41,7 +41,7 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 
 ### 2026-10-23 — increment 6, round 2: T47b1
 
-Baseline 8ac0949. Decisions 109 (E6-5 dropped; a count cap), 110 (T47b in two). The spec, the recipe, `fill`. VERIFY_SHORT.
+Baseline 8ac0949. Decisions 109 (E6-5 dropped; a count cap), 110 (T47b in two). The spec, the recipe, `fill`. Full verify green.
 
 ### 2026-10-23 — increment 6, round 2: T47a
 

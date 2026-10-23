@@ -5029,7 +5029,7 @@ the run next (recommended was T47b whole).
 
 **Baseline:** `master` 8ac0949 (#437 merged). GitHub reached through the session's repository
 grant (the token of an earlier attempt was refused). The sandbox's baseline ran the full verify
-with the original data on engine code 9a54eabd: VERIFY_RESULT. The edits were made in a `git
+with the original data on engine code 9a54eabd: all 16 steps passed (h3-map's step skipped the shipped maps, not staged; code 9a54eabd verified on 8ac0949). The edits were made in a `git
 worktree` meanwhile, so the baseline tested `master`'s files.
 
 - **The spec** (`experiments/specs/E08-batch-6.toml`): E6-5 and its two heroes removed (14 heroes:
@@ -5038,7 +5038,7 @@ worktree` meanwhile, so the baseline tested `master`'s files.
   fields renamed so that one read fills each: E6-1's and E6-2's "Wolf Riders still on the map
   (yes/no)" became "Wolf Riders on (4, 3) after (count, or none)" (and (10, 3)), the tile's
   monster as memory holds it; E6-8's "worn and backpack at the start" and "… at the end" became
-  "worn at the … (positions)" and "backpack at the …". Compiled again: STAMP_LINE.
+  "worn at the … (positions)" and "backpack at the …". Compiled again: stamp e17cb77c (was ddd4ee4e); the map reads, imports whole and validates in the engine (`original_data` on a folder holding only it: 14 heroes, 8 per player at most, 4 monsters, a backpack of 6).
 - **The recipe** (`clients/capture/batches/E08-batch-6.toml`, 18 steps): each row's procedure as
   T47a's steps and actions. Red: E6-1 (the gold and slots, the join answered yes, the army
   dialog's title, OK), E6-2 (the Swordsmen dismissed in the dialog, the group into slot 3), E6-3
@@ -5055,8 +5055,8 @@ worktree` meanwhile, so the baseline tested `master`'s files.
   `swap_army_click` calls it after every second click, a refused move included, and it clears
   the selection (+0x48 to +0x58), so E6-3's second and third clicks start from none and do not
   open the creature dialog.
-- **The check with `fill`**: every record key of the recipe (FILL_COUNT) is a field or table cell
+- **The check with `fill`**: every record key of the recipe (61) is a field or table cell
   of the compiled template (h3adv's `fill` raises on any other); against the template of before
-  only the six renamed fields failed. Left empty: FILL_EMPTY.
+  only the six renamed fields failed. Left empty: E6-8's screen line only.
 - **Not built:** the run (T47b2); the scoring (T48); the cap (T50's start).
 - **Verify:** VERIFY_BRANCH
