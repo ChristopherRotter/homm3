@@ -155,8 +155,8 @@ pub struct BattleSetup {
     /// Whether each side's player is human (indexed by [`BattleSide::index`]; the original's
     /// battle byte +0x54A4, false for a side without a player: monsters, a neutral town). As
     /// `difficulty`, read for the computer's choices, and by the bad-morale let-off of a side
-    /// without a human player (ADR-0023 point 7, BAT-MOR-004); it does not decide who commands a
-    /// side. Public.
+    /// without a human player (ADR-0023 point 7, BAT-MOR-004, with the quirk BAT-QUIRK-27); it
+    /// does not decide who commands a side. Public.
     pub human: [bool; 2],
     /// What each side's hero would lose by a retreat and whether it could come back (indexed by
     /// [`BattleSide::index`]), as the original's computer weighs them (ADR-0027 point 14). Read

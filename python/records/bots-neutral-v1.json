@@ -2,7 +2,7 @@
   "schema": 2,
   "set": "neutral-v1",
   "max_steps": 2000,
-  "engine": {"encounters": 1, "core": "1ac6c50d158057de", "battle": "c14c573e9d2ee26f", "adventure": "483fb763b1a0ebbf", "system_policy": 18},
+  "engine": {"encounters": 1, "core": "0c7e01b4dffeba0c", "battle": "c14c573e9d2ee26f", "adventure": "483fb763b1a0ebbf", "system_policy": 18},
   "policies": ["random", "aggressor", "greedy", "system"],
   "defender": "system",
   "strata": [

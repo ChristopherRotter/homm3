@@ -79,11 +79,13 @@ the adventure lane derives the battlefield (ADR-0022).
    side: every side's player commands its stacks as before. The defaults (0, no human) are a
    battle between two computer players on Easy; the game orchestrator sets them from the game
    (the adventure lane), scenarios and replays name them. **Widened** (E23 T7, BAT-Q33): one rule
-   reads `human` too, the bad-morale check's second draw (0x464BDB, BAT-MOR-004): a frozen stack
-   of a side whose player is not human (a neutral side, a computer player's) is let off one time
-   in four (batch 4a's and 4b's rows, survey S-25). It applies to whoever commands the stack; a
-   caller that wants the original's handicap for a side sets `human` as the game has it (the AI
-   lane's training batch plays both sides as human players', AI-Q3: no let-off).
+   reads `human` too, the bad-morale check's second draw (0x464BDB, BAT-MOR-004): with the
+   fix-optional quirk BAT-QUIRK-27 (`quirk.battle.computer_morale_let_off`, on in `faithful`,
+   off in `strict-fixed`; the user, 2026-10-23) a frozen stack of a side whose player is not human
+   (a neutral side, a computer player's) is let off one time in four (batch 4a's and 4b's rows,
+   survey S-25). It applies to whoever commands the stack; a caller that wants the original's
+   handicap for a side sets `human` as the game has it (the AI lane's training batch plays both
+   sides as human players', AI-Q3: no let-off).
 
 ## Consequences
 

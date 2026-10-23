@@ -120,6 +120,7 @@ pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&[
     RETIRED,
     "quirk.adventure.drop_ignores_artifacts",
     "quirk.adventure.radius_waits_for_a_step",
+    "quirk.battle.computer_morale_let_off",
 ]);
 
 /// Q-0003: creatures of a side without a hero never get lucky strikes (BAT-LCK-002).
@@ -274,6 +275,12 @@ pub const DROP_IGNORES_ARTIFACTS: QuirkFlag = QuirkFlag(31);
 /// the game from E08 T40.
 pub const RADIUS_WAITS_FOR_A_STEP: QuirkFlag = QuirkFlag(32);
 
+/// BAT-QUIRK-27 (BAT-Q33, survey S-25): a stack of a side whose player is not human (a neutral
+/// side, a computer player's; `BattleSetup.human`, ADR-0023 point 7) is let off a bad-morale
+/// freeze one time in four (the original's second draw, 0x464BDB). Off: one roll for every side
+/// (BAT-MOR-004). Read by the battle from E23 T7.
+pub const COMPUTER_MORALE_LET_OFF: QuirkFlag = QuirkFlag(33);
+
 /// The prefix of the flags of data quirks: a gated override names one of them (`fixes`), and
 /// rule code never reads them (ADR-0007, amendment E04b T8e).
 pub const DATA_QUIRK_PREFIX: &str = "quirk.content.";
@@ -316,7 +323,11 @@ mod tests {
 
     #[test]
     fn registry_lookup_and_bitset() {
-        assert_eq!(REGISTRY.len(), 33);
+        assert_eq!(REGISTRY.len(), 34);
+        assert_eq!(
+            REGISTRY.lookup("quirk.battle.computer_morale_let_off"),
+            Some(COMPUTER_MORALE_LET_OFF)
+        );
         assert_eq!(
             REGISTRY.lookup("quirk.adventure.drop_ignores_artifacts"),
             Some(DROP_IGNORES_ARTIFACTS)
@@ -469,7 +480,7 @@ mod tests {
         }
         // The positions stay taken, so the flags after them keep their indices
         // (`registry_lookup_and_bitset`), and the flags that exist are every other position.
-        assert_eq!(REGISTRY.len(), 33);
+        assert_eq!(REGISTRY.len(), 34);
         assert_eq!(
             [
                 REGISTRY.names[9],
@@ -483,7 +494,7 @@ mod tests {
             REGISTRY
                 .flags()
                 .map(QuirkFlag::index)
-                .eq((0..33).filter(|i| ![9, 10, 14, 30].contains(i)))
+                .eq((0..34).filter(|i| ![9, 10, 14, 30].contains(i)))
         );
         // A registry without retired flags has them all.
         assert!(TEST.flags().map(QuirkFlag::index).eq(0..2));
