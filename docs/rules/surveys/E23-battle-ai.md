@@ -192,11 +192,14 @@ each estimate as the rule it estimates:
 | 27 | the hero's Expert Dispel is valued at the other side's sum alone: its case sums both sides, then falls into the stacks' case, whose mass evaluations overwrite the value with the side's sum and then the other side's (§7.56; built, BAT-AI-017, E23 T5a; found by T5a's blind check) | the side's sum and the other side's |
 | 28 | Sacrifice values the raised target's worth with the victim's shot flag (0x43B06F asks 0x4428F0 of the victim's record; §7.57; built, BAT-AI-019, E23 T5b1; found in T5b1) | the target's own, as the raises' |
 | 29 | Earthquake tests whether the walls halve a shooter's shot from the shooter's position, where the rule's halving tests from the hex it turns to: a two-hex shooter's differs (§7.57; built, BAT-AI-019, E23 T5b1; found in T5b1) | the rule's hex (BAT-SIE-008) |
-| 30 | Teleport's destination map writes no stops, so its plan counts a turn more at a stop of the pathfinder's last search, another stack's: a destination in the moat or on a pit that stack's controller sees (§7.58; built, BAT-AI-020, E23 T5b2a; found in T5b2a) | none: a teleported stack enters no hex and acts from it on its next turn (BAT-MAG-029, BAT-SIE-004; batch 3g TV, which the user asked for, 2026-10-22) |
+| 30 | Teleport's destination map writes no stops, so its plan counts a turn more at a stop of the pathfinder's last search, another stack's or a spell context's that the stack's first turn's cast entry built: a destination in the moat or on a pit that stack's controller sees (§7.58, §7.59; built, BAT-AI-020, E23 T5b2a, the cast entry's context E23 T5b2b; found in T5b2a) | none: a teleported stack enters no hex and acts from it on its next turn (BAT-MAG-029, BAT-SIE-004; batch 3g TV, which the user asked for, 2026-10-22) |
 | 31 | on the destination map the melee value's jousting run-up is the plan's hex's cost there, 1, where a teleported stack strikes from where it stands (§7.58; built, BAT-AI-020, E23 T5b2a; found by T5b2a's blind check) | no run-up |
 
 The ledger entry lists them; a slip found later joins the same flag. The tie orders, the library
-sort (§7.37) and the draws are the original's behaviour, not slips: no flag.
+sort (§7.37) and the draws are the original's behaviour, not slips: no flag. Not modelled, no
+slip either: a Faerie Dragon's spell before its first draw in a battle, which the original reads
+from its record as an earlier battle of the session left it (+0x4E0 is never initialised,
+§7.59); the engine's battles start afresh, with none (E23 T5b2b).
 
 ## 5. For the ADR (ADR-0027)
 

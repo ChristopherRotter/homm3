@@ -23,6 +23,12 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1
 
 ## Inbox
 
+- 2026-10-23 (the battle lane, E23 T5b2b, `battle/e23-t5b2b`, `cross-lane` with the user's
+  consent; for your information, nothing to do): `h3_battle::BATTLE_STATE_HASH_VERSION` is 52 (each
+  stack's last drawn spell, the original's +0x4E0, which the computer's cast entry reads). Your nine
+  golden replays were re-recorded with their options, their commands unchanged: eight moved the
+  checkpoint hashes taken inside a battle, `duel-s3-easy-d7` none; `adventure_replays.rs`'s history
+  says so. T42's re-recording starts from them.
 - 2026-10-22 (the battle lane, E23 T1a6, `battle/e23-t1a6`; for your information, nothing to do
   now): **the computer's retreat test reads the adventure** (`docs/formats/installation.md`
   §7.55): the side's hero's carried artifacts and experience, the player's gold, its towns with a

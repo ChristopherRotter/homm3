@@ -66,7 +66,9 @@
 //! Pathfinding and radius from their details; adventure ruleset part v10) changed every game:
 //! all nine re-recorded with their options, their commands new, so what each meets is T31's list
 //! above only where the new game meets it too; E08 T42 checks them again when it re-records them
-//! for flyers and water walkers (and may replace the searched ones, as T31).
+//! for flyers and water walkers (and may replace the searched ones, as T31). E23 T5b2b (battle
+//! state hash v52, `cross-lane`) re-recorded all nine with their options, their commands
+//! unchanged: eight moved checkpoint hashes taken inside a battle, `duel-s3-easy-d7` none.
 
 use std::path::PathBuf;
 

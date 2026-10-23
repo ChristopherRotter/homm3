@@ -2,7 +2,7 @@
 
 Status: **in progress**, refined 2026-10-19 (BAT-Q52); T1a1 to T1a4 done (the cuts confirmed
 2026-10-20), T1c done (BAT-Q53, BAT-Q54); T1a5 done as cut (part C, §7.42 to §7.45); T1a5e (the spell evaluators) done (§7.46); T1b done, ADR-0027 accepted (BAT-Q55); T2 done (T2a the crate and the plain shooters, T2b the area value, the wall shot, the benchmark), the budget
-set; T3 done (cut in four: T3-0, T3a, T3b, T3c); T4 done (T4a, T4b in two, T4c, T4d); T1a6 done; slip 25 done; T5 cut in two, T5a done; T5b cut in two, T5b1 done; T5b2 cut in two, T5b2a done; T5b2b next · Follows E05 (the
+set; T3 done (cut in four: T3-0, T3a, T3b, T3c); T4 done (T4a, T4b in two, T4c, T4d); T1a6 done; slip 25 done; T5 cut in two, T5a done; T5b cut in two, T5b1 done; T5b2 done (in two); T6 next · Follows E05 (the
 AI lane, done) · Followed by E06 (training: this policy holds the neutral seat; AI-Q1) ·
 The battle lane's, later the AI lane's (BACKLOG).
 
@@ -256,10 +256,13 @@ found after that decision) belong to the neutral side's map too and are read (§
         and the walker's flag-1 turn, a disabled stack's turns, "now" (BAT-AI-020; §7.58; slips 30
         and 31 found and built under BAT-QUIRK-25, strict-fixed without stops on batch 3g TV and
         without a run-up; slip 5 changes no choice; `POLICY_VERSION` 14; the slowest decision 3.5 to 4.3 ms; the log).
-      - [ ] **T5b2b A caster's cast entry in Teleport's turns** (BAT-STUB-14) — 0x421280 and its
-        callees on a stack that is not the active one (what they read of its record: the Faerie
-        Dragon's spell drawn at its last turn, the casts left), the engine's cast targets for a
-        given caster, and the stops a cast entry's spell context leaves to the destination map.
+      - [x] **T5b2b A caster's cast entry in Teleport's turns** (2026-10-23; the user: whole,
+        `cross-lane`) — 0x421280 and its callees read only their caster's record (§7.59): every
+        stack's first turn asks its entry at the engine's targets for it
+        (`computer::creature_cast_targets_of`), a Faerie Dragon's spell its last activation's
+        (`h3-battle` keeps each stack's, battle state hash v52, the golden and the adventure
+        lane's replays rehashed); slip 30 widened to a cast entry's spell context; BAT-STUB-14
+        retired; `POLICY_VERSION` 15; the log.
 - [ ] **T6 The hero's other choices** — retreat and surrender, the tactics phase, the Catapult's
   aim, the First Aid Tent's patient (BAT-Q51); BAT-Q33's rule.
 - [ ] **T7 The closure** — the batch rows' leftovers, the benchmarks, the docs.

@@ -1253,3 +1253,45 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   (518.27 M Ir against `master`'s 518.17 M, +0.02 %); `computer::search_stops` calls
   `pathfinder::stops`, and `the_search_stops_are_the_searchs_own` holds the two together. No
   re-baseline.
+
+## T5b2b — a caster's cast entry in Teleport's turns (2026-10-23)
+
+- **The user** (T5b2b's start, 2026-10-23): whole, `cross-lane`, rather than the agent's proposed
+  cut (T5b2b1 the raisers, the scan and the stops; T5b2b2 the dragon's spell with the state hash)
+  or the dragon as a gap.
+- **Read** (`docs/formats/installation.md` §7.59): 0x421280, 0x421000, 0x420D20 with 0x4476C0's
+  cases and 0x420F00 read only their caster's record (casts left, creature, count, controller,
+  +0x4E0); nothing in the computer's creature casts reads the active record (only "now" and the
+  hero's cases do); 0x446C40 compares the active record only with its second argument, which the
+  computer's searches leave 0. +0x4E0 is written only by the draw and the removal's copy and never
+  initialised (the records live for the session): a stack holds its last activation's draw, a
+  reused record its occupant's, a record that never drew an earlier battle's (not modelled: the
+  engine's battles start afresh). After the entry only the walk searches (0x41F580: the guard and
+  the step to safety through it).
+- **Built:** `h3-battle`: `Casts::last` (each stack's last draw; battle state hash v52, its pinned
+  test), `computer::drawn_spell`, `computer::creature_cast_targets_of` (the targets of any caster
+  as if it were the active stack, a random caster's at its last draw; `casters::cast_with` shares
+  `stack_cast`'s match), `Map::stops`. `h3-battle-ai`: the entry takes its walker's own targets and
+  drawn spell; `Walker::teleport_turns` asks it for every stack (BAT-STUB-14 retired); with
+  BAT-QUIRK-25 a cast entry's spell context in the first turn leaves its last search's stops
+  (`Walker::after_map`, `Walker::tracking`) unless a walk searched after it, the destination map's
+  stops when no reach and no threat record searched (slip 30 widened); `POLICY_VERSION` 15.
+- **Replays** (`cross-lane`, the user's consent): the ten golden battle replays keep their
+  commands (`duel-s1`, `field-s5` rehashed from their stored setups, the others re-recorded); the
+  adventure lane's nine re-recorded with their options, the commands unchanged, eight moving
+  checkpoint hashes taken inside a battle (`fixtures/README.md` says how).
+- **Tests:** `h3-battle`'s `a_random_caster_keeps_its_last_draw_for_the_computer`; `h3-battle-ai`
+  (the test ruleset gained the faerie, a random caster of the bolt): a waited Master Genie asked
+  its entry at the gogs' turn (it casts on them, leaving Teleport to the gogs); a Faerie Dragon
+  that drew nothing walks (Teleport's best, not now: no cast) and one round later casts its kept
+  bolt (Teleport goes to the gogs, now); after the faerie's context the destination map takes the
+  defender's gogs' stops (the moat, not the bridge), its own (the bridge too) only untracked, none
+  in strict-fixed, and the genie's walk after its context leaves its own (a flyer: none).
+- **The cost** (the harness rebuilt, not committed: 40 battles of 7 random harvested stacks a
+  side, heroes with every combat spell, 500 mana, power and knowledge 10, each school Basic to
+  Expert, half at a Citadel with a damaging moat; best of five): seeds 77, 5, 9 on Hard and
+  Impossible, mean 0.41 to 0.44 ms, the slowest 3.8 to 5.2 ms (one run 7.6 ms, a sandbox burst);
+  `master` on the same harness 0.40 to 0.45 ms and 4.1 to 5.3 ms. This harness is heavier than
+  T5b2a's (`master`'s slowest was 3.5 to 4.3 ms there): the hero's 5 ms budget is at its edge on
+  `master` already, T5b2b adds nothing measurable. Without Teleport the branch plays `master`'s
+  battles command for command (2 191 decisions).
