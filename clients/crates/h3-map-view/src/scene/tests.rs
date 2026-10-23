@@ -831,7 +831,8 @@ fn heroes_lie_between_the_layers_1_and_2() {
     // on row 5 2 (design §2.1). A hero's row is drawn after layer 1, the row above after layer 2.
     let (art, mut live) = art_with_objects(vec![object("tree.def", 6, 6, 0)]);
     let shapes = with_shape(&art, "tree.def", [0xff; 6], [0xff; 6], 1);
-    let order = |live: &Live, x, y| on_tile(&drawn(&art, live, &shapes, at(0, 0)), Pass::Body, x, y);
+    let order =
+        |live: &Live, x, y| on_tile(&drawn(&art, live, &shapes, at(0, 0)), Pass::Body, x, y);
     let (flag, hero, tree) = ("af00.def", "ah00_.def", "tree.def");
     // On the tree's passable cell of layer 2 the tree covers the hero.
     live.heroes = vec![land_hero(6, 5, 0, 0, Facing::Right)];
@@ -858,7 +859,14 @@ fn heroes_right_over_left_and_lower_over_upper() {
     // Tile (5, 5): the left hero (k 1), the right one (k 2), then the lower one (k 4).
     assert_eq!(
         on_tile(&s, Pass::Body, 5, 5),
-        ["af00.def", "ah00_.def", "af01.def", "ah01_.def", "af02.def", "ah02_.def"]
+        [
+            "af00.def",
+            "ah00_.def",
+            "af01.def",
+            "ah01_.def",
+            "af02.def",
+            "ah02_.def"
+        ]
     );
     // No frames known: frame 0.
     assert!(grouped(&s, Pass::Body).iter().all(|p| p.2 == 0));
@@ -905,7 +913,9 @@ fn boats_their_waves_but_on_the_coast_and_a_heros_boat_flag() {
     assert_eq!(on_tile(&s, Pass::Body, 16, 8), ["ab03_.def"]);
     // An empty boat on the coast: the boat alone, its own facing's group, mirrored.
     let coast = grouped(&s, Pass::Body);
-    let boat = coast.iter().find(|p| p.0 == "ab03_.def" && p.3 == [224, 232]);
+    let boat = coast
+        .iter()
+        .find(|p| p.0 == "ab03_.def" && p.3 == [224, 232]);
     assert_eq!(boat.map(|p| (p.1, p.4)), Some((2, true)));
     assert_eq!(on_tile(&s, Pass::Body, 8, 8), ["ab03_.def"]);
     // In open water its waves first.

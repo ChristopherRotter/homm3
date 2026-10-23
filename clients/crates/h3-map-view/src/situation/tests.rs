@@ -370,11 +370,17 @@ view = [0, 0, 0]
     let situation = Situation::parse(text).unwrap();
     assert!(situation.needs_templates());
     assert_eq!(situation.heroes[0].walk, [[2, 1], [3, 1]]);
-    assert_eq!((situation.heroes[0].facing, situation.boats[0].facing), (Some(3), Some(5)));
+    assert_eq!(
+        (situation.heroes[0].facing, situation.boats[0].facing),
+        (Some(3), Some(5))
+    );
     let (map, extras) = situation.build(&BTreeMap::new(), &templates).unwrap();
     // Red, Green and Pink play; each hero of its class's next free type.
     let playing: Vec<bool> = map.players.iter().map(Option::is_some).collect();
-    assert_eq!(playing, [true, false, false, true, false, false, false, true]);
+    assert_eq!(
+        playing,
+        [true, false, false, true, false, false, false, true]
+    );
     let heroes: Vec<(u8, u8, u8)> = map
         .objects
         .iter()
@@ -414,7 +420,9 @@ fn refuses_heroes_and_boats_it_cannot_write() {
     ))
     .unwrap();
     let build = |heroes: &str, boats: &str| {
-        let text = format!("size = 36\nterrain = \"water\"\nheroes = [{heroes}]\nboats = [{boats}]\nview = [0, 0, 0]\n");
+        let text = format!(
+            "size = 36\nterrain = \"water\"\nheroes = [{heroes}]\nboats = [{boats}]\nview = [0, 0, 0]\n"
+        );
         Situation::parse(&text)
             .unwrap()
             .build(&BTreeMap::new(), core::slice::from_ref(&boat0))
@@ -423,20 +431,58 @@ fn refuses_heroes_and_boats_it_cannot_write() {
     let two = "{ at = [1, 1] }, { at = [3, 3], owner = 1 }";
     assert_eq!(build(two, "{ at = [5, 5], kind = 0 }"), Ok(()));
     for (heroes, boats, error) in [
-        ("{ at = [1, 1] }", "", "a situation needs a hero of Red's and of another colour"),
-        ("{ at = [1, 1], owner = 1 }, { at = [3, 3], owner = 2 }", "", "a situation needs a hero of Red's and of another colour"),
-        ("{ at = [1, 1], owner = 8 }", "", "hero at [1, 1]: owner 8 or facing 0 past 7"),
-        ("{ at = [1, 1], facing = 8 }", "", "hero at [1, 1]: owner 0 or facing 8 past 7"),
-        ("{ at = [1, 1], class = 18 }", "", "hero at [1, 1]: a ninth of its colour or class 18"),
-        ("{ at = [1, 1], owner = 1, walk = [[2, 2]] }", "", "hero at [1, 1]: only Red's heroes walk"),
-        (two, "{ at = [5, 5], kind = 1 }", "boat at [5, 5]: no template of type 1 or a facing past 7"),
-        (two, "{ at = [5, 5], kind = 0, facing = 9 }", "boat at [5, 5]: no template of type 0 or a facing past 7"),
+        (
+            "{ at = [1, 1] }",
+            "",
+            "a situation needs a hero of Red's and of another colour",
+        ),
+        (
+            "{ at = [1, 1], owner = 1 }, { at = [3, 3], owner = 2 }",
+            "",
+            "a situation needs a hero of Red's and of another colour",
+        ),
+        (
+            "{ at = [1, 1], owner = 8 }",
+            "",
+            "hero at [1, 1]: owner 8 or facing 0 past 7",
+        ),
+        (
+            "{ at = [1, 1], facing = 8 }",
+            "",
+            "hero at [1, 1]: owner 0 or facing 8 past 7",
+        ),
+        (
+            "{ at = [1, 1], class = 18 }",
+            "",
+            "hero at [1, 1]: a ninth of its colour or class 18",
+        ),
+        (
+            "{ at = [1, 1], owner = 1, walk = [[2, 2]] }",
+            "",
+            "hero at [1, 1]: only Red's heroes walk",
+        ),
+        (
+            two,
+            "{ at = [5, 5], kind = 1 }",
+            "boat at [5, 5]: no template of type 1 or a facing past 7",
+        ),
+        (
+            two,
+            "{ at = [5, 5], kind = 0, facing = 9 }",
+            "boat at [5, 5]: no template of type 0 or a facing past 7",
+        ),
     ] {
-        assert_eq!(build(heroes, boats), Err(error.to_string()), "{heroes} {boats}");
+        assert_eq!(
+            build(heroes, boats),
+            Err(error.to_string()),
+            "{heroes} {boats}"
+        );
     }
     // A ninth hero of a colour (each of another class), a ninth of a class (of two colours).
     let nine = |hero: &dyn Fn(usize) -> String| {
-        let list: Vec<String> = (0..9).map(|i| format!("{{ at = [{}, 1]{} }}", 2 * i, hero(i))).collect();
+        let list: Vec<String> = (0..9)
+            .map(|i| format!("{{ at = [{}, 1]{} }}", 2 * i, hero(i)))
+            .collect();
         format!("{}, {{ at = [1, 9], owner = 1 }}", list.join(", "))
     };
     assert_eq!(
