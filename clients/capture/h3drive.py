@@ -159,6 +159,16 @@ def run(*args, **kw):
     return subprocess.run(args, env=env(), check=True, **kw)
 
 
+def view(args):
+    """Runs `h3-view` (`args`, the binary first); its own message on a failure (E17 M3 T9b, the
+    reviewer: a non-zero exit said no more)."""
+    done = subprocess.run(args, capture_output=True, text=True)
+    if done.returncode != 0:
+        said = (done.stdout + done.stderr).strip().splitlines()[-3:]
+        raise RuntimeError(f"`h3-view {args[1]}` failed ({done.returncode}): {' / '.join(said)}")
+    return done
+
+
 def xwd_bytes(check=True):
     """An XWD dump of the display; with `check`, one that reads as a 5-6-5 screen (`xwd565`).
     A dump right after the display starts can fail once (seen in M3 T2's set runs), or come back
@@ -177,10 +187,13 @@ def xwd_bytes(check=True):
         if not check:
             return data
         try:
-            xwd565(data)
-            return data
+            shape = xwd565(data).shape
         except ValueError as err:
             fault = str(err)
+            continue
+        if shape == (HEIGHT, WIDTH):
+            return data
+        fault = f"a dump of {shape[1]} × {shape[0]}, not {WIDTH} × {HEIGHT}"
     raise Unreadable(f"the display dumped no 5-6-5 screen in five tries: {fault}")
 
 
@@ -230,7 +243,13 @@ class Game:
     def stop(self):
         subprocess.run(["wineserver", "-k"], env=env(), check=False)
         if self.proc:
-            self.proc.wait(timeout=30)
+            # One `wineserver -k` did not end is killed, not left running, and the error that
+            # stopped the run is not hidden (E17 M3 T9b, the reviewer).
+            try:
+                self.proc.wait(timeout=30)
+            except subprocess.TimeoutExpired:
+                self.proc.kill()
+                self.proc.wait(timeout=30)
 
     # -- the screen ---------------------------------------------------------------------------
     def pixels(self):
@@ -244,6 +263,8 @@ class Game:
     def matches(self, name, pix=None):
         pix = self.pixels() if pix is None else pix
         probes = self.screens[name]["probes"]
+        if not probes:  # E17 M3 T9b, the reviewer: `all([])` matched any screen
+            raise ValueError(f"the screen `{name}` has no probes (screens.toml)")
         return all(int(pix[y, x]) == v for x, y, v in probes)
 
     def wait(self, name, timeout=60.0):
@@ -253,19 +274,29 @@ class Game:
         so at a game's first screen; T9b-1). Such a wait says so on stderr; the timeout names
         the last such fault."""
         end = time.monotonic() + timeout
-        fault = None
+        fault = earlier = None
         while time.monotonic() < end:
+            # A game that exited never shows it (E17 M3 T9b, the reviewer).
+            if self.proc is not None and self.proc.poll() is not None:
+                raise RuntimeError(f"the game exited ({self.proc.returncode}) before the screen "
+                                   f"`{name}` (its log: {self.out / 'wine.log'})")
             try:
-                if self.matches(name):
-                    if fault:
-                        print(f"(the screen `{name}` came after an unreadable display: {fault})",
-                              file=sys.stderr)
-                    return
+                matched = self.matches(name)
             except Unreadable as err:
-                fault = err
+                fault = earlier = err
+            else:
+                fault = None
+                if matched:
+                    if earlier:
+                        print(f"(the screen `{name}` came after an unreadable display: "
+                              f"{earlier})", file=sys.stderr)
+                    return
             time.sleep(0.1)
         bad = self.out / f"not-{name}.xwd"
-        bad.write_bytes(xwd_bytes(check=False))
+        try:
+            bad.write_bytes(xwd_bytes(check=False))
+        except Unreadable as err:
+            bad = f"none: {err}"
         also = f"; {fault}" if fault else ""
         raise TimeoutError(f"the screen `{name}` did not appear (the display: {bad}{also})")
 
@@ -428,6 +459,8 @@ def learn(name, inside, avoid, also=()):
     # Spread over the screen, preferring distinct values.
     probes.sort(key=lambda p: p[2])
     pick = probes[:: max(1, len(probes) // 12)][:12]
+    if len(pick) < 12:  # E17 M3 T9b, the reviewer: a screen of few probes matches others
+        sys.exit(f"{name}: {len(pick)} probes found, 12 needed (a larger --in, fewer --avoid)")
     screens = load_screens()
     screens[name] = {"probes": pick}
     write_screens(screens)
@@ -508,6 +541,7 @@ def run_set(rest):
     situations = tomllib.loads(set_path.read_text())["situation"]
     if "--only" in opts:
         situations = [s for s in situations if s["id"] == opts["--only"]]
+        only_one(situations, opts["--only"], set_path)
     h3view = str(h3cap.H3VIEW)
     failed, digests = 0, []
     for sit in situations:
@@ -517,8 +551,7 @@ def run_set(rest):
         map_path = here / f"{sid}.h3m"
         tile = ["--tile", ",".join(map(str, sit["tile"]))] if "tile" in sit else []
         hot_seat = ["--hot-seat"] if sit.get("hot_seat") else []
-        subprocess.run([h3view, "situation", str(scenario), "--out", str(map_path), *tile,
-                        *hot_seat], check=True, capture_output=True)
+        view([h3view, "situation", str(scenario), "--out", str(map_path), *tile, *hot_seat])
         frames = {f["at"]: f for f in sit.get("frame", [])} or {0: {"at": 0}}
         # Where the mouse rests (M3 T6c-1): the situation's point, else the parked one; the
         # viewer draws its cursor and hint there.
@@ -534,10 +567,9 @@ def run_set(rest):
         kept = [{"t": at, "frame": p.name, "stacks": st}
                 for at, p, st in zip(sorted(frames), paths, stacks)]
         (here / "frames.toml").write_text(frames_toml(kept, mouse))
-        keep(set_path, "set", sid, here / "frames.toml")
         ours = here / "ours.png"  # its record: ours.jsonl (the count boxes' masks)
-        subprocess.run([h3view, "render", str(scenario), "--out", str(ours), "--frames",
-                        str(here)], check=True, capture_output=True)
+        view([h3view, "render", str(scenario), "--out", str(ours), "--frames", str(here)])
+        changed = False
         for (at, frame), path in zip(sorted(frames.items()), paths):
             # The pixels' digest: an XWD file's colour map holds bytes the X server leaves unset.
             pixels = xwd565(path.read_bytes()).tobytes()
@@ -547,7 +579,9 @@ def run_set(rest):
             expected = frame.get("differing")
             verdict = "ok" if n == expected else "CHANGED" if expected is not None else "new"
             failed += verdict != "ok"
+            changed |= verdict == "CHANGED"
             print(f"{sid} t={at}: {n} differing (recorded {expected}) {verdict}", flush=True)
+        kept_or_not(set_path, "set", sid, here / "frames.toml", changed)
     (out / "frames.sha1").write_text("\n".join(digests) + "\n")
     print(f"set: {len(situations)} situations, {failed} not as recorded; digests {out / 'frames.sha1'}")
     return 1 if failed else 0
@@ -710,6 +744,10 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
 
     import h3mem
 
+    # An earlier run's frames are no `--reuse`'s once this one starts (E17 M3 T9b, the reviewer):
+    # the new list is written only when the run passed its checks, below.
+    if frames:
+        (Path(out) / "frames.jsonl").unlink(missing_ok=True)
     game.start(map_path)
     if hot_seat:
         import h3adv
@@ -719,15 +757,18 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
         to_scenario(game)
     t0 = into_battle(game)
     mem = h3mem.Mem()
+    # xdd.dll redirected every roll's and logged draw's call (M3 T7b-2b-1), each checked against
+    # the bytes it replaces: the executable is the one read, before the harness writes into its
+    # memory or forces a roll (E17 M3 T9b, the reviewer: checked only with forced rolls, after
+    # the write).
+    rolls = bool(fail) or any(a.startswith("roll:") for a in actions)
+    sites = len(ROLLS) + len(LOGGED)
+    if game.ack()[5] != sites:
+        raise RuntimeError(f"xdd.dll redirected {game.ack()[5]} of the {sites} rolls' and "
+                           "logged draws' calls (another Heroes3.exe?)")
     # The mouse poll's grid from the opening (M3 T6c-2): the cursor moves at the same times in
     # every run.
     mem.align_mouse_poll(t0)
-    # The forced rolls (M3 T7b-2b-1): xdd.dll redirected every roll's call, or none is forced.
-    rolls = bool(fail) or any(a.startswith("roll:") for a in actions)
-    sites = len(ROLLS) + len(LOGGED)
-    if rolls and game.ack()[5] != sites:
-        raise RuntimeError(f"xdd.dll redirected {game.ack()[5]} of the {sites} rolls' and "
-                           "logged draws' calls (another Heroes3.exe?)")
     for name in fail:
         if name not in ROLLS:
             raise ValueError(f"`fail`: {name}: the rolls are {', '.join(ROLLS)}")
@@ -795,11 +836,6 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
         for _ in range(ms):
             now = step()
             states.append(state(now))
-    if frames:
-        with open(Path(out) / "frames.jsonl", "w") as f:
-            for s in states:
-                if "kept" in s:
-                    f.write(json.dumps({"frame": s.pop("kept"), **s}) + "\n")
     out = Path(out)
     with open(out / "states.jsonl", "w") as f:
         for s in states:
@@ -811,6 +847,11 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
     if rolls and game.ack()[4]:
         raise RuntimeError(f"{game.ack()[4]} forced draws no roll took (the states: "
                            f"{out / 'states.jsonl'})")
+    if frames:
+        with open(out / "frames.jsonl", "w") as f:
+            for s in states:
+                if "kept" in s:
+                    f.write(json.dumps({"frame": s.pop("kept"), **s}) + "\n")
     return states
 
 
@@ -850,6 +891,12 @@ def sequence_command(map_path, out, rest):
     print(f"sequence: {out}/timeline.txt")
 
 
+def only_one(selected, ident, where):
+    """Stops when `--only <ident>` selected nothing (E17 M3 T9b, the reviewer: a typo passed)."""
+    if not selected:
+        sys.exit(f"--only {ident}: no such entry in {where}")
+
+
 def situation_args(h3view, set_path, entry, map_path):
     """`h3-view situation`'s command line for a sequence's map (Blue a human too in hot seat)."""
     args = [h3view, "situation", str(set_path.parent / entry["scenario"]), "--out", str(map_path)]
@@ -866,14 +913,14 @@ def run_sequences(rest):
     entries = tomllib.loads(set_path.read_text())["sequence"]
     if "--only" in opts:
         entries = [e for e in entries if e["id"] == opts["--only"]]
+        only_one(entries, opts["--only"], set_path)
     h3view = str(ROOT / "clients" / "target" / "release" / "h3-view")
     failed = 0
     for e in entries:
         here = out / e["id"]
         here.mkdir(parents=True, exist_ok=True)
         map_path = here / f"{e['id']}.h3m"
-        subprocess.run(situation_args(h3view, set_path, e, map_path), check=True,
-                       capture_output=True)
+        view(situation_args(h3view, set_path, e, map_path))
         game = Game(here)
         try:
             sequence(game, map_path, here, e.get("pre", 0), e.get("actions", []), e["ms"],
@@ -960,6 +1007,7 @@ def run_frames(rest):
     entries = tomllib.loads(set_path.read_text())["sequence"]
     if "--only" in opts:
         entries = [e for e in entries if e["id"] == opts["--only"]]
+        only_one(entries, opts["--only"], set_path)
     h3view = str(ROOT / "clients" / "target" / "release" / "h3-view")
     failed = 0
     for e in entries:
@@ -969,8 +1017,7 @@ def run_frames(rest):
         here.mkdir(parents=True, exist_ok=True)
         if not (reuse and (here / "frames.jsonl").exists()):
             map_path = here / f"{e['id']}.h3m"
-            subprocess.run(situation_args(h3view, set_path, e, map_path), check=True,
-                           capture_output=True)
+            view(situation_args(h3view, set_path, e, map_path))
             game = Game(here)
             try:
                 sequence(game, map_path, here, e.get("pre", 0), e.get("actions", []), e["ms"],
@@ -988,9 +1035,7 @@ def run_frames(rest):
                 kept[i + 1]["before"] = kept[i]["heroes"]
         kept = [k for i, k in enumerate(kept) if i + 1 == len(kept) or kept[i + 1]["t"] != k["t"]]
         (here / "frames.toml").write_text(frames_toml(kept, rays=ray_draws(here / "clock")))
-        keep(set_path, "sequences", e["id"], here / "frames.toml")
-        subprocess.run([h3view, "sequences", e["id"], "--frames", str(out), "--out", str(here)],
-                       check=True, capture_output=True)
+        view([h3view, "sequences", e["id"], "--frames", str(out), "--out", str(here)])
         observation = h3cap.snapshot(here / f"{e['id']}.jsonl")
         # The poses the viewer drew (its `ours.txt`): the count boxes are masked where they show.
         drawn, boxed = {}, {}
@@ -1067,6 +1112,7 @@ def run_frames(rest):
         failed += verdict != "ok"
         print(f"{e['id']}: {len(kept)} frames, {differing} differ outside the masks "
               f"({only_redraws} only by redraw artifacts) {verdict}", flush=True)
+        kept_or_not(set_path, "sequences", e["id"], here / "frames.toml", verdict == "CHANGED")
     print(f"frames: {len(entries)} sequences, {failed} not as recorded; under {out}")
     return 1 if failed else 0
 
@@ -1109,6 +1155,18 @@ def png_digest(path, boxes):
     return hashlib.sha1(bytes(raw)).hexdigest()[:16]
 
 
+def kept_or_not(set_path, kind, ident, frames, changed):
+    """Keeps a capture's `frames.toml` ([`keep`]) unless it is not as recorded (E17 M3 T9b, the
+    reviewer: a capture that differed became the kept state, so `drawn` vouched for counts no
+    capture gave): once its counts are recorded, `frames --only <id> --reuse` (or `set --only
+    <id>` again) keeps it."""
+    if changed:
+        print(f"{kind}/{ident}: not as recorded, `kept/` left as it was ({frames} not kept)",
+              flush=True)
+    else:
+        keep(set_path, kind, ident, frames)
+
+
 def keep(set_path, kind, ident, frames):
     """Keeps a capture's `frames.toml` (its frames' times, the fidgets and heroes the original's
     memory showed: numbers only, ADR-0009) in `situations/kept/<kind>/<id>.toml`, beside the set
@@ -1144,6 +1202,7 @@ def run_drawn(rest):
               for s in tomllib.loads((situations / "set.toml").read_text())["situation"]]
     if "--only" in opts:
         items = [i for i in items if i[1] == opts["--only"]]
+        only_one(items, opts["--only"], situations)
     digests_path = kept_dir / "drawn.txt"
     recorded = {}
     if digests_path.exists():
@@ -1151,7 +1210,7 @@ def run_drawn(rest):
             if line and not line.startswith("#"):
                 name, stem, digest = line.split()
                 recorded.setdefault(name, {})[stem] = digest
-    got, failed = {}, 0
+    got, failed, broken = {}, 0, 0
     for kind, ident, entry in items:
         name = f"{kind}/{ident}"
         kept = kept_dir / kind / f"{ident}.toml"
@@ -1159,6 +1218,7 @@ def run_drawn(rest):
             command = "frames" if kind == "sequences" else "set"
             print(f"{name}: no kept frames (capture it: `{command} --only {ident}`)", flush=True)
             failed += 1
+            broken += 1
             continue
         here = out / kind / ident
         shutil.rmtree(here, ignore_errors=True)
@@ -1174,6 +1234,7 @@ def run_drawn(rest):
             last = (run_result.stdout + run_result.stderr).strip().splitlines()[-1:]
             print(f"{name}: the viewer failed ({' '.join(last)})", flush=True)
             failed += 1
+            broken += 1
             continue
         listed = tomllib.loads(kept.read_text())["frame"]
         frames = [Path(f["file"]).stem for f in listed]
@@ -1202,8 +1263,9 @@ def run_drawn(rest):
         lines += [f"{name} {stem} {digest}" for name in sorted(recorded)
                   for stem, digest in recorded[name].items()]
         digests_path.write_text("\n".join(lines) + "\n")
-        print(f"drawn: {len(got)} recorded in {digests_path}")
-        return 0
+        print(f"drawn: {len(got)} recorded in {digests_path}"
+              + (f"; {broken} not drawn, their digests left as they were" if broken else ""))
+        return 1 if broken else 0
     print(f"drawn: {len(items)} sequences and situations, {failed} not the same; under {out}")
     return 1 if failed else 0
 

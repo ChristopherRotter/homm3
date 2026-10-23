@@ -51,8 +51,11 @@ i686-w64-mingw32-gcc -O2 -Wall -shared -o "$game/xdd.dll" "$root/clients/capture
 #    executable's): no intro, no combat grid, hex shade or movement shade, full screen, no sound.
 if [ ! -f "$WINEPREFIX/system.reg" ]; then
     Xvfb :98 -screen 0 800x600x16 -nolisten tcp & xvfb=$!
+    # A failing wineboot leaves no display behind (E17 M3 T9b, the reviewer).
+    trap 'kill "$xvfb" 2> /dev/null' EXIT
     DISPLAY=:98 wineboot -i > /dev/null 2>&1
     kill "$xvfb"
+    trap - EXIT
 fi
 ln -sfn "$game" "$WINEPREFIX/dosdevices/d:"
 # The key's name holds the registered sign in Windows-1252 (0xAE).
