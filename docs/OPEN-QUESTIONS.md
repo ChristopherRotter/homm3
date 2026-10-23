@@ -88,7 +88,9 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### Adventure lane (`ADV-Q<n>`)
 
-(no open questions)
+#### ADV-Q25 — Increment 6's drafts, the encoding's paths, the edition, the cut (E08 T44b's checkpoint)
+
+**Context.** T44b drafted the amendments of ADR-0013 (worn artifacts on the original's positions, moves, combinations, Scholar, two effect kinds), ADR-0016 (a hero's army commands, the tactics flag, the meeting's visit, the join without room) and ADR-0017 (the management command, the meeting and army dialog decisions closed by `Decline`, the tactics flag in battle by both heroes' Tactics at 0, the encoding to the AI lane) in `docs/lanes/adventure/adr-drafts/*-increment-6.md`, with the design note `docs/epics/E08-design.md` (parts A and B, five rounds, the exit criteria). A finding of the design: the engine's split (both stacks kept, [1, t − 1]) with the move gives the original's outcomes, so A-16 needs nothing more. **Questions:** (1) accept the three drafts and the design (recommended) or change them; (2) the encoding's move to the AI lane: `crates/h3-sim/src/adventure/` but its replay model (recommended: the replays record game commands and stay this lane's gate), the whole sub-path, or only the action encoding and its masks; (3) the map's **edition** in the game's setup (RoE, AB, SoD: combinations only in SoD maps, four misc positions before SoD, later the moat; recommended) or later (combinations and five misc positions in every map, as today); (4) the cut: five rounds with batch E6 first (recommended, as increment 5), or the build first and the batch at the end.
 
 ### Server lane (`SRV-Q<n>`)
 
