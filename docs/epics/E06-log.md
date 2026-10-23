@@ -628,3 +628,36 @@ entry only where a task builds on it.
   alike in every kind and seat (its hero casts, Greedy never; its waits, defends and targets);
   the agent never met the system actor in a hero battle (decision 9); more samples barely help
   (`t4-2` at 60 M against `t5-3` at 20 M).
+
+## T6a — The behaviour analysis (2026-10-23)
+
+- **The command:** `python -m h3env.train.inspect --checkpoint …` (`h3env.train.inspect`; Python
+  only, any checkpoint): the sampled policy plays a stratified set as on the ladder
+  (`evaluate.report` with `evaluate.sampled`, now the ladder's own agents: the same episodes and,
+  on the same device, the same draws) against the system actor and Greedy (`--opponents`; the
+  neutral set: the system actor) with the batch's kill preview on (the play is the same), and
+  sorts every battle by kind, the agent's side and its outcome (lost: a truncation too). Per group
+  (`--json` keeps them all, the console two tables per opponent): the decision mix (wait, defend,
+  move, melee, shot, the hero's and a stack's casts, a commanded turret's, the tactics phase's,
+  the rest), decisions and rounds per battle; the rounds the hero could cast in and the share it
+  cast in, its spells (named by the packs' load order), both heroes' mana spent (the maximum less
+  the last observation's; the encounters start each hero full); the choices when a shot was
+  legal; each melee strike's and shot's previewed kills in hit points against the best legal
+  strike's, strikes killing nothing while one could, strikes when one was legal; per *clean*
+  strike (no opponent turn and no new round before the next observation) the hit points dealt
+  and lost, melee into a target with retaliations left, who struck first. `layout.py` names the
+  columns it reads; `h3-sim`'s layout test pins them (after a Wait and a Defend; a swapped pair
+  fails it).
+- **The reading checked:** a clean strike's target lost at least the least kills previewed in
+  98.9 % (Random against Aggressor, 60 battles per kind and side; 350 clean strikes) and 100 %
+  (against the system actor); the four misses were melee strikes on Vampire Lords, whose
+  retaliation drains some back. The first misses were a commanded turret's shots (a hero with
+  Artillery commands its towers, BAT-SIE-016): **the engine's preview of a turret's shot is an
+  ordinary strike's, the shot itself BAT-SIE-018's** (`turret_shot`; previewed 3 to 6 kills, 1
+  killed): in the battle lane's inbox; a turret's decisions are a category of their own here and
+  stay out of the targeting and the trades. It matters for AI-Q7 (b) part 2 (the network would
+  read it) and the Greedy bot (reads it for its turrets).
+- **Tests:** without torch (`tests/test_inspect.py`): the battles, wins and rates are `report`'s,
+  each decision in one category, the clean strikes against the preview, the neutral set, the
+  observation's reading by hand, the spells' names; with torch: a checkpoint's analysis plays its
+  ladder's draws, the command's tables and JSON, a held-out seed refused.

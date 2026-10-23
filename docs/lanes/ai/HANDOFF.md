@@ -92,6 +92,13 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 
 ## Recent sessions
 
+### 2026-10-23 — E06 T6a, the behaviour analysis (in progress)
+
+- Built and pushed (`claude/brave-wright-msoutb`): `python -m h3env.train.inspect` (E06-log,
+  T6a); found the turret shot's preview (battle lane's inbox). **Next:** the user's
+  `runs/t7-1/best.pt`, the analysis against the system actor and Greedy, the findings in
+  E06-log, the pull request, increment 6's lever put to the user.
+
 ### 2026-10-23 — T7d's mix; T5's rest beside it
 
 - The user: T7d at a third neutral (their machine); here the mana price's preparation (#429),
