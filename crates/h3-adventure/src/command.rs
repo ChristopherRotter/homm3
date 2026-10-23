@@ -82,6 +82,14 @@ pub enum AdventureCommandError {
         /// The step after the visit.
         step: usize,
     },
+    /// A flying or water-walking hero's path ends on a tile it only passes over (blocked, water,
+    /// an object's tile flown over, a tile entered by a step up off the visitable tile of an
+    /// object not visited from above), or a visit is made from such a tile (ADV-MOV-009,
+    /// ADV-MOV-010; E08 T41): a move ends only where the hero may stop (D-25).
+    NoStop {
+        /// The step.
+        step: usize,
+    },
     /// A step costs more than the points left before it (ADV-MOV-006).
     TooFewPoints {
         /// The step.
@@ -113,6 +121,7 @@ impl fmt::Display for AdventureCommandError {
                 )
             }
             Self::PastVisit { step } => write!(f, "step {step} follows a visit"),
+            Self::NoStop { step } => write!(f, "step {step} lands where the hero may not stop"),
             Self::TooFewPoints { step, cost, points } => {
                 write!(f, "step {step} costs {cost} with {points} points left")
             }

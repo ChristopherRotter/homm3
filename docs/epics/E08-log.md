@@ -4340,3 +4340,83 @@ Decision 87: T40 whole (the price and the day in one session and one pull reques
   -- --with-original-data` on engine code 8235b24f (commit 55d1642, 2026-10-22, the sandbox,
   Linux x86_64): all 16 steps passed; `original-data`: 9 heroes levelled at load with 41
   level-ups (unchanged). The baseline on `master` e4dd551 (code 7214d773): all passed.
+
+### Increment 5, round 4: T41, flying and water walking; round 4 closed (2026-10-22, `shared/e08-t41`, `adventure/e08-t41`, `cross-lane`)
+
+Decision 88: T41 whole (the user: "no cut"), its shared part in its own pull request.
+
+- **The shared part** (`shared/e08-t41` #401, `cross-lane` with the user's consent): `h3-content`'s
+  registry position 30 (`quirk.adventure.flying_inland_price`, `ADV-QUIRK-16`) `RETIRED` with a
+  note, `FLYING_INLAND_PRICE` gone; `h3-pack`'s harvested test on the two flags left; both
+  harvested profiles (`h3-harvest`) and `packs/base/core.toml` without the line, and
+  `h3-pack-battle`'s profile test with position 30 among the retired ones (battle-owned);
+  ADR-0016 point 4's price as built (one fix-optional quirk, `ADV-QUIRK-17`; Cursed Ground
+  confirmed). `base:faithful`'s core ruleset hash moved (0x1259740d4579c6b3 →
+  0xde583eb06ef4dd73; strict-fixed and the synthetic packs unchanged): the seven faithful
+  adventure replays' headers (commands and hashes unchanged), `python/records/bots-report-v1.json`
+  regenerated (AI-owned: `engine.core`, and `engine.adventure` catching up with T40's part v10,
+  which #399 left at v9's; every rate unchanged). The battle and AI lanes' inboxes.
+- **Two properties after T40** (in the shared pull request, and on the lane branch alike): the
+  shared branch's full verifies found, in their coverage runs, a case each of `h3-map`'s
+  `views_move_as_the_events_say` and `every_step_keeps_the_commands_invariants` where an end of
+  turn that starts a day changed another player's explored tiles: in strict-fixed `start_day`
+  reveals around each hero (`ADV-QUIRK-18` off, T40), so a radius grown since the hero's last step
+  shows then. On a new day both now ask only that those tiles grow (the view's fringe follows
+  them); both cases are in the regressions files. Master fails them rarely until this merges.
+- **The shared verify** took four full runs: coverage is a full verify's only run of the tests
+  (`test` then runs the doc tests alone) and stops at the first failing test binary, so each fix
+  uncovered the next (the two properties, then the battle's profile test).
+  `cargo test --workspace --exclude xtask --all-targets --no-fail-fast` lists every failure at
+  once. The fourth, `scripts/verify-once.sh engine --base origin/master -- --with-original-data`
+  on b154ce9 (code 8b89cb94, 2026-10-23, the sandbox): all 16 steps passed.
+- **The price** (`movement.rs`): `Pricing` holds the hero's fly and water-walk prices (`Lifts`,
+  from `Movement`'s levels by `AdventureParams::fly_cost`, `water_walk_cost`) and the ones the
+  drop counts (none under `ADV-QUIRK-17`, flag 31); each terrain's `water` bit. `lifted`: from
+  water the water-walk price, then the fly price from water or a live-blocked tile and the lesser
+  from a free land tile (an entrance included); `step` applies it, its diagonal check C is the
+  walking one under `ADV-QUIRK-2` or `-3` and the step's own straight price clean; `left_after`
+  applies it with the drop's lifts; `cheapest` includes both prices. Callers pass the tiles as they
+  stand now (`MoveHero`'s start tile through `live` too).
+- **The passage** (`state/passage.rs`): `Mode` (walk, fly, water walk; a flyer that water-walks
+  flies), `Node` (stop, pass), `Entry` (the live tile, the stop it allows: a free stand or a
+  visit, and whether the hero may pass) and `AdventureState::passage`, the design note's §7 table
+  for a flyer or a water walker, its rows in order: off the map, unexplored (`ADV-QUIRK-15`),
+  down onto a closed top, up off one (a flight's pass), rock, water (a flight passes, a water walk
+  plain water), heroes (own: a flight's pass; another player's: a battle from a stop, a flight's
+  pass), blocked tiles, a visit not built, a gate with its key, an entered object (from any
+  node), a neighbour's (from a stop). A walker keeps `check_step` and its own search. `Meets` is
+  `pub(crate)`.
+- **`MoveHero`** (`state.rs`): a flyer's or water walker's step goes through `passage` from the
+  node the step before left it on; a step before the last continues (a pass when the hero may pass,
+  else a stop), the last stops or visits, or `AdventureCommandError::NoStop { step }` (new). A
+  flyer meets a guard only at its last step's tile and visits only there (0x48147D); a water walk
+  meets guards as a walk. Every step, passes included, reveals and emits `HeroStepped`.
+- **The reach** (`reach.rs`): for a flyer or water walker `search_layered`, Dijkstra's over
+  (slot, kind) with a second layer `passing`/`passing_via`, each node replaced only by a strictly
+  better one of its kind, the predecessor's kind in the direction byte's bit 3 (`FROM_PASS`); a
+  visit's stop node ends there, a guard ends any node of a hero that does not fly; `path` follows
+  the recorded kinds. The walker's search keeps its loop (`bench-check` below).
+- **Tests:** `movement/tests.rs` (a flight's prices by level from free land, an entrance, an
+  obstacle with a road, water; a water walk's, E5-5's 450 and 491; the diagonal check with and
+  without the quirks; the drop under `ADV-QUIRK-17`; the levels from the details), the new
+  `state/tests/flight.rs` (E5-7, E5-9 and E5-11 as cases: passes, `NoStop`, visits only at the end
+  and from a stop, objects without a visit, own and other heroes, guards only at the end, closed
+  tops, the query's stop tiles and paths), `the_query_and_move_hero_agree` over the three modes
+  and levels (`hero_rules`, a store). The test rules' faithful profile has flag 31; `hero_skills`
+  gains invented flying and water-walking skills (levels 1 to 3: 140, 120, 100).
+- **Measured** (an ad-hoc test, not committed, as increment 1's): with the diagonal exception
+  switched off the layered query matched an exhaustive search over (tile, kind, points) on all 600
+  random maps up to 8 × 8 (both profiles, flyers, water walkers and both, levels 1 to 3): 12 316
+  stop tiles, none differing; with the exception on, none differed either on these maps.
+- **Replays:** none changed (no fixture hero flies or water-walks; T42 adds them).
+- **Benchmarks:** the first lane verify measured `reach-xl-144` +7.32 % and `random-play-duel-36`
+  +6.76 % on the same games (4 784 queries): callgrind showed the walking search's loop with the
+  price inlined into it (master keeps `Pricing::step` a call). The walker now prices by
+  `Pricing::walking_step` (`#[inline(never)]`, without the lifts' test) and
+  `walking_left_after`, the same prices for a hero that neither flies nor water-walks: `reach`
+  +0.89 %, `play` +0.83 %, `fork` +0.17 %, within the 2 % (not re-baselined). The rest is the
+  search's set-up (the terrains' water bit, the mode).
+- **The lane's full verify** (CI cannot run): `scripts/verify-once.sh engine --base origin/master
+  -- --with-original-data` on fd4f16f (code d82c93aa, 2026-10-23, the sandbox, Linux x86_64): all
+  16 steps passed (the first run on 04e16ff failed coverage, `NoStop`'s message, and the benchmarks
+  above). Merges cleanly with `master` 2ad29e2 and with #401.

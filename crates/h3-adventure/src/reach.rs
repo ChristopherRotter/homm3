@@ -27,6 +27,15 @@
 //! it; an own hero's tile blocks. A tile a monster guards (ADV-MON-005) is a destination as well:
 //! the search does not go on from it, but from the hero's own tile (ADV-MON-006, E08 T20a2b; the
 //! original's pathfinder, 0x56BC05).
+//!
+//! A flying or water-walking hero (E08 T41; ADV-MOV-009, ADV-MOV-010) is searched over two kinds
+//! of node per tile, as the original's pathfinder keeps two (flags bit 10, 0x4B1C4B): a stop node,
+//! where a move may end and a visit be made from, and a pass node, over which a flight or a water
+//! walk only goes on (`AdventureState::passage`'s table). Each node is replaced only by a strictly
+//! better one of its kind, and records the kind of the node it was entered from (the original's
+//! bit 11, 0x4B1B15), so that a path follows each node's predecessor of its kind. A flying hero's
+//! search goes on over guarded tiles (0x56BBCE). Its destinations are the stop nodes. A walking
+//! hero's search keeps its one node per tile and its own loop (`bench-check`).
 
 use alloc::collections::BinaryHeap;
 use alloc::sync::Arc;
@@ -41,7 +50,7 @@ use h3_heroes::HeroDetails;
 use crate::movement::{DIRECTIONS, Pricing, details_of, hero_movement};
 use crate::ruleset::AdventureRuleset;
 use crate::setup::Pos;
-use crate::state::{AdventureState, HeroOnMap, StaticMap, enterable_terrain};
+use crate::state::{AdventureState, HeroOnMap, Mode, Node, StaticMap, enterable_terrain};
 
 /// What a search reads besides its window: the state, the rules, the hero's pricing and owner,
 /// and the window's tiles other heroes stand on ([`FREE`], [`OWN`] or [`ENEMY`]).
@@ -50,6 +59,7 @@ struct Search<'s> {
     part: &'s AdventureRuleset,
     map: &'s StaticMap,
     pricing: Pricing<'s>,
+    hero: HeroId,
     owner: PlayerId,
     occupied: Vec<u8>,
     /// Whether the map holds a monster, so that a tile may be guarded (E08 T20a2b): the search
@@ -73,6 +83,10 @@ const OWN: u8 = 1;
 /// Another player's hero stands there: a visit, which ends the path (GAM-BAT-004).
 const ENEMY: u8 = 2;
 
+/// The bit of a node's direction byte that says its predecessor is a pass node (a flying or
+/// water-walking hero's search, E08 T41); the low three bits are the direction.
+const FROM_PASS: u8 = 8;
+
 /// The tiles a hero can reach today ([`AdventureState::reach`]): a window of the map around the
 /// hero, as far as its points can take it, with the points left on each tile reached and the
 /// direction of the step the chosen path enters it by.
@@ -86,6 +100,10 @@ pub struct Reach {
     height: u16,
     points: Vec<Option<u32>>,
     via: Vec<u8>,
+    /// A flying or water-walking hero's pass nodes, by slot (E08 T41): the points left on each
+    /// and its direction byte; empty for a walking hero.
+    passing: Vec<Option<u32>>,
+    passing_via: Vec<u8>,
 }
 
 impl Reach {
@@ -100,6 +118,7 @@ impl Reach {
     ) -> Self {
         let map = state.map();
         let movement = hero_movement(core, details_of(heroes, hero.id));
+        let mode = Mode::of(&movement);
         let pricing = Pricing::new(core, part, &hero.army, &movement);
         // No step costs less than the cheapest straight step, so none goes farther than this.
         let radius = u16::try_from(hero.movement / pricing.cheapest()).unwrap_or(u16::MAX);
@@ -119,6 +138,8 @@ impl Reach {
             height,
             points: vec![None; size],
             via: vec![0; size],
+            passing: Vec::new(),
+            passing_via: Vec::new(),
         };
         let mut occupied = vec![FREE; size];
         for other in state.heroes().iter().filter(|h| h.id != hero.id) {
@@ -135,11 +156,16 @@ impl Reach {
             part,
             map,
             pricing,
+            hero: hero.id,
             owner: hero.owner,
             occupied,
             guards: map.any_monster(),
         };
         reach.points[reach.start] = Some(hero.movement);
+        if mode != Mode::Walk {
+            reach.search_layered(&search, mode, hero.movement);
+            return reach;
+        }
         let mut queue = BinaryHeap::new();
         // ADV-OBJ-004: a hero standing on the tile of an object not visited from above leaves it
         // toward none of the three tiles above (E08 T14a); the start's own expansion only, so the
@@ -209,11 +235,11 @@ impl Reach {
                     continue;
                 }
             }
-            let Some(left) = points.checked_sub(pricing.step(&from, &to, dir % 2 == 1, points))
-            else {
+            let price = pricing.walking_step(&from, &to, dir % 2 == 1, points);
+            let Some(left) = points.checked_sub(price) else {
                 continue;
             };
-            let left = pricing.left_after(&to, left);
+            let left = pricing.walking_left_after(&to, left);
             if self.points[next].is_none_or(|best| left > best) {
                 self.points[next] = Some(left);
                 self.via[next] = dir as u8;
@@ -224,6 +250,101 @@ impl Reach {
                 }
             }
         }
+    }
+
+    /// A flying or water-walking hero's search (E08 T41): Dijkstra's over the nodes (tile, kind),
+    /// the most points first (ties by slot, then the stop node first), from the hero's tile as a
+    /// stop node with `points`.
+    fn search_layered(&mut self, search: &Search<'_>, mode: Mode, points: u32) {
+        let size = self.points.len();
+        self.passing = vec![None; size];
+        self.passing_via = vec![0; size];
+        let mut queue = BinaryHeap::new();
+        self.expand_layered(search, &mut queue, mode, (self.start, Node::Stop), points);
+        while let Some((points, Reverse(index))) = queue.pop() {
+            let node = (
+                index / 2,
+                if index % 2 == 0 {
+                    Node::Stop
+                } else {
+                    Node::Pass
+                },
+            );
+            if self.node_points(node) != Some(points) {
+                continue;
+            }
+            self.expand_layered(search, &mut queue, mode, node, points);
+        }
+    }
+
+    /// The points left on a node, if the search reached it.
+    fn node_points(&self, (slot, kind): (usize, Node)) -> Option<u32> {
+        match kind {
+            Node::Stop => self.points[slot],
+            Node::Pass => self.passing[slot],
+        }
+    }
+
+    /// Relaxes the steps from the node `(slot, kind)`, reached with `points` left, in the eight
+    /// directions (a flying or water-walking hero, E08 T41): each step [`AdventureState::passage`]
+    /// allows, priced from and to the tiles as they stand now, makes the step's stop node, its
+    /// pass node or both; a node reached with more points than before goes on the queue unless a
+    /// visit ends the path there, or a guard does for a hero that does not fly (ADV-MON-006: a
+    /// flight goes on over guarded tiles, 0x56BBCE).
+    // rule: ADV-MOV-009, ADV-MOV-010, ADV-MON-006
+    fn expand_layered(
+        &mut self,
+        search: &Search<'_>,
+        queue: &mut BinaryHeap<(u32, Reverse<usize>)>,
+        mode: Mode,
+        (slot, kind): (usize, Node),
+        points: u32,
+    ) {
+        let (state, part, pricing) = (search.state, search.part, &search.pricing);
+        let at = self.pos(slot);
+        let from = state.live(at, search.map.at(at));
+        let mover = (search.owner, search.hero, mode);
+        for (dir, &(dx, dy)) in DIRECTIONS.iter().enumerate() {
+            let Some(next) = self.neighbour(slot, dx, dy) else {
+                continue;
+            };
+            let pos = self.pos(next);
+            let Ok(entry) = state.passage(part, mover, (at, kind), pos, dir, 0) else {
+                continue;
+            };
+            let price = pricing.step(&from, &entry.tile, dir % 2 == 1, points);
+            let Some(left) = points.checked_sub(price) else {
+                continue;
+            };
+            let left = pricing.left_after(&entry.tile, left);
+            let via = dir as u8 | if kind == Node::Pass { FROM_PASS } else { 0 };
+            let guarded = || mode != Mode::Fly && search.guards && search.guarded(pos);
+            if let Some(met) = entry.stop
+                && self.improve((next, Node::Stop), left, via)
+                && met.is_none()
+                && !guarded()
+            {
+                queue.push((left, Reverse(next * 2)));
+            }
+            if entry.pass && self.improve((next, Node::Pass), left, via) && !guarded() {
+                queue.push((left, Reverse(next * 2 + 1)));
+            }
+        }
+    }
+
+    /// Records `left` points on a node entered by `via` when they are more than it had; whether
+    /// they were.
+    fn improve(&mut self, (slot, kind): (usize, Node), left: u32, via: u8) -> bool {
+        let (points, vias) = match kind {
+            Node::Stop => (&mut self.points, &mut self.via),
+            Node::Pass => (&mut self.passing, &mut self.passing_via),
+        };
+        if points[slot].is_some_and(|best| left <= best) {
+            return false;
+        }
+        points[slot] = Some(left);
+        vias[slot] = via;
+        true
     }
 
     /// The window's slot of `pos`, if the window holds it.
@@ -264,15 +385,24 @@ impl Reach {
 
     /// The chosen path to `pos`, if the hero can reach it: the tiles it steps onto, in order,
     /// without its own (empty for its own tile), as `MoveHero` takes them (a visit's tile last).
+    /// A flying or water-walking hero's path follows each node's predecessor of the kind it
+    /// recorded (E08 T41).
     pub fn path(&self, pos: Pos) -> Option<Vec<Pos>> {
         let mut slot = self.slot(pos)?;
         self.points[slot]?;
         let width = isize::try_from(self.width).unwrap_or(isize::MAX);
         let mut path = Vec::new();
-        while slot != self.start {
+        let mut pass = false;
+        while pass || slot != self.start {
             path.push(self.pos(slot));
-            // Back along the step that entered the slot: the chain ends at the start.
-            let (dx, dy) = DIRECTIONS[usize::from(self.via[slot])];
+            // Back along the step that entered the node: the chain ends at the start's stop node.
+            let via = if pass {
+                self.passing_via[slot]
+            } else {
+                self.via[slot]
+            };
+            let (dx, dy) = DIRECTIONS[usize::from(via & !FROM_PASS)];
+            pass = via & FROM_PASS != 0;
             slot = slot.wrapping_add_signed(-(isize::from(dy) * width + isize::from(dx)));
         }
         path.reverse();
@@ -294,7 +424,8 @@ impl AdventureState {
     /// The tiles `hero` can reach today over the tiles its owner has explored (ADV-MOV-008), if it
     /// is on the map (see [`Reach`]). The caller decides whose hero it may ask about. `heroes` is
     /// the game's store of heroes' details, as for [`Self::apply`] (E08 T20a2b): the hero's
-    /// Pathfinding prices its steps (E08 T40; its flying and water walking with T41).
+    /// Pathfinding prices its steps (E08 T40), its flying and water walking price them and decide
+    /// where it passes and stops (T41).
     // rule: ADV-MOV-008
     pub fn reach(
         &self,
