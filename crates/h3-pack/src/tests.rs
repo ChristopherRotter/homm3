@@ -383,15 +383,23 @@ fn the_harvested_scholar_and_titans_thunder() {
         &[BASE_CORE],
     ] {
         let r = compile(packs, "base:faithful").unwrap();
-        let scholar = &r.skill(r.skill_by_key("base:scholar").unwrap()).unwrap().levels;
+        let scholar = &r
+            .skill(r.skill_by_key("base:scholar").unwrap())
+            .unwrap()
+            .levels;
         assert_eq!(
             scholar.clone(),
             [2, 3, 4].map(|level| vec![HeroEffect::MeetingSpells { level }])
         );
     }
     let r = compile(&[SOD_CORE, AB_CORE, BASE_CORE], "base:faithful").unwrap();
-    let thunder = r.artifact(r.artifact_by_key("sod:titans_thunder").unwrap()).unwrap();
-    assert!(thunder.effects.contains(&HeroEffect::GivesSpellBook), "{thunder:?}");
+    let thunder = r
+        .artifact(r.artifact_by_key("sod:titans_thunder").unwrap())
+        .unwrap();
+    assert!(
+        thunder.effects.contains(&HeroEffect::GivesSpellBook),
+        "{thunder:?}"
+    );
 }
 
 #[test]
