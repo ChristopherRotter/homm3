@@ -3,7 +3,7 @@
 //! asks, "now", a disabled stack's turns, the destination map's stops with survey slip 30 and its
 //! run-up with slip 31; a caster's cast entry in those turns from its own record (E23 T5b2b).
 
-use h3_battle::computer;
+use h3_battle::computer::{self, Planned};
 use h3_battle::{
     BattleState, CastTarget, CastTargets, Command, Field, Hex, HexSet, StackId, second_targets,
     validate,
@@ -457,18 +457,75 @@ fn a_caster_that_is_not_the_active_stack_asks_its_own_cast_entry() {
                 target: CastTarget::Stack(StackId(0)),
             }
         );
-        let (before, (_, after)) = Walker::teleport_turns(
+        let turns = Walker::teleport_turns(
             &state,
             &r,
             (genie, ATTACKER),
             dest,
             &mut Rng::from_seed(seed),
         );
+        let (before, (_, after)) = (turns.before, turns.after);
         assert_eq!(before, real.1);
         assert!(after < before, "{before} {after}");
     }
     let v = teleport_value(&state, &r, ATTACKER, 9);
     assert_eq!((v.target, v.now), (CastTarget::Stack(StackId(0)), true));
+}
+
+// covers: BAT-AI-020
+#[test]
+fn with_the_slip_a_casters_context_in_teleports_turns_leaves_its_planned_damage() {
+    // Survey slip 33: the Master Genie's cast entry in its Teleport turns builds a spell context;
+    // with BAT-QUIRK-25 the damage its predictions planned stays on the stacks, and the spells the
+    // hero values after Teleport read it. The gogs' turns build none, nor do the genie's without
+    // the flag.
+    for (profile, slips) in [("t:faithful", true), ("t:fixed", false)] {
+        let r = ruleset_as(profile);
+        let state = gogs_turn(&r, &[(GOG, 50), (GENIE, 5)], &[(IMP, 1)]);
+        let mut rng = Rng::from_seed(3);
+        let mut last = None;
+        for (id, caster) in [(StackId(0), false), (StackId(1), true)] {
+            let dest = destinations(&state, &r, ATTACKER, id);
+            let turns = Walker::teleport_turns(&state, &r, (id, ATTACKER), dest, &mut rng);
+            assert_eq!(turns.planned.is_some(), slips && caster, "{profile} {id:?}");
+            last = turns.planned.or(last);
+        }
+        // Teleport's valuation asks the same turns from the same stream.
+        let ctx = computer::context(&state, &r, ATTACKER);
+        let sc = SpellContext::new(&state, &r, (&ctx, ATTACKER), &mut Rng::from_seed(5));
+        let own = sc.planned();
+        let h = Hero::new(&sc, (&state, &r), (state.active().unwrap(), ATTACKER, ctx));
+        let id = spell(&r, "teleport");
+        let hc = computer::hero_cast(&state, &r, ATTACKER, (id, r.spell(id).unwrap()));
+        let c = Candidate {
+            spell: id,
+            mastery: hc.mastery,
+            power: u32::from(hc.power),
+            rounds: u32::from(hc.rounds),
+            cast: true,
+        };
+        let _ = hero::value(&h, (id, r.spell(id).unwrap()), c, &mut Rng::from_seed(3));
+        assert_eq!(*sc.planned_now(), last.unwrap_or(own), "{profile}");
+    }
+}
+
+// covers: BAT-AI-020
+#[test]
+fn the_first_teleports_planned_damage_holds_for_the_choice() {
+    // `SpellContext::after_teleport`: the planned damage replaces the context's, the retreat
+    // test's too, and the at-risk test reads it; Teleport is valued once per choice, so a second
+    // call changes nothing.
+    let r = ruleset();
+    let state = gogs_turn(&r, &[(GOG, 50), (GENIE, 5)], &[(IMP, 1)]);
+    let ctx = computer::context(&state, &r, ATTACKER);
+    let sc = SpellContext::new(&state, &r, (&ctx, ATTACKER), &mut Rng::from_seed(5));
+    assert!(!sc.at_risk());
+    let mut planned = Planned::new();
+    planned.add(&state, StackId(0), 1_000_000);
+    sc.after_teleport(planned);
+    assert!(sc.at_risk());
+    sc.after_teleport(Planned::new());
+    assert_eq!(*sc.planned_now(), planned);
 }
 
 // covers: BAT-AI-020, BAT-AI-013, BAT-MAG-049

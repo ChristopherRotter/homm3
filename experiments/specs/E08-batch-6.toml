@@ -1,7 +1,7 @@
-# Experiment batch E6 (E08 T46; decisions 100, 105, 107): all eleven rows of increment 6's plan
-# (survey docs/rules/surveys/E08-army.md §9; docs/epics/E08-design.md §14), army and hero
-# management, in SoD on Easy, hot seat, on one map (decision 107: 16 heroes, the original's eight
-# per player). Build: docs/experiments/README.md. Predictions are for the agent who evaluates the
+# Experiment batch E6 (E08 T46, T47b1; decisions 100, 105, 107, 109): ten of the eleven rows of
+# increment 6's plan (survey docs/rules/surveys/E08-army.md §9; docs/epics/E08-design.md §14),
+# army and hero management, in SoD on Easy, hot seat, on one map (decision 107: 14 heroes since
+# E6-5 left, Red's eight and Blue's six). Build: docs/experiments/README.md. Predictions are for the agent who evaluates the
 # results; the template never shows them.
 #
 # | row   | settles                                      | the reading (faithful)                          | the other source(s)                      |
@@ -9,8 +9,6 @@
 # | E6-2  | §1.1 point 3: room made in the dialog        | the group in the freed slot                      | VCMI the same                            |
 # | E6-3  | §3.2: a hero's last stack in the exchange    | move refused, merge refused, swap allowed        | VCMI and the wiki the same               |
 # | E6-4  | A-16, D-27: the split's bounds               | the source keeps one creature                    | VCMI: the whole stack moves              |
-# | E6-5  | A-15: a count through 16 bits                | a move in the hero screen whole; the exchange's  | VCMI: 32 bits everywhere                 |
-# |       |                                              | move and the screen's swap onto it -25 536       |                                          |
 # | E6-6  | §4: the tactics formation                    | off: no tactics phase; on: the phase             | VCMI and the wiki the same               |
 # | E6-7  | §2.2: Scholar at a meeting                   | each learns up to min(Wisdom + 2, Scholar + 1)   | VCMI and the wiki the same               |
 # | E6-8  | §5.3: the assembly's questions and position; | asked once after an equip; the right-click asks; | VCMI: at the clicked part's position;    |
@@ -20,26 +18,23 @@
 # | E6-10 | §5.1: the backpack's arrows                  | the array rotated by one                         | VCMI: a view, not observable here        |
 # | E6-11 | §2.1: a meeting's price                      | the step's price, the visitor stays              | not compared                             |
 #
-# **Where the plan changed** (T46): E6-5 as survey §9 wrote it (a move to an empty slot in the
-# hero screen, -25 536) contradicts §3.5's roles (`army_swap_slots` 0x44AD60, re-read: slot b
-# receives a's count through 16 bits; the hero screen passes a = the clicked slot, b = the
-# selected one, 0x4DDB53; the exchange a = the source, b = the target, 0x5B0ED5), so a move in the
-# hero screen keeps 40 000 and wraps only the emptied slot's 0; the row moves (control), then
-# moves to the other hero in the exchange and swaps in the hero screen with the big stack clicked
-# (both -25 536 by the reading). E6-7 gives each hero a spell above the other's limit, so both
-# sides of the limit show. E6-8 uses Wizard's Well (three misc parts) with the first misc position
+# **Where the plan changed**: T46 re-planned E6-5 (a stack of 40 000 through `army_swap_slots`'
+# 16 bits, A-15); T47a found that the map's 16-bit count of 40 000 loads as an empty slot
+# (creature -1, count -25 536), and the user dropped the row (decision 109: the original's 16-bit
+# limits do not matter; the engine caps a stack's count and refuses a merge past the cap). E6-7
+# gives each hero a spell above the other's limit, so both sides of the limit show. E6-8 uses Wizard's Well (three misc parts) with the first misc position
 # free, so "the first position that takes it" and VCMI's clicked position differ, and ends with
 # the Well right-clicked in the backpack (D-28, which exit criterion 7 lists). E6-9 and E6-10
-# share one hero (Blue's eighth went to E6-5's second hero): the rotation first, then the Thunder.
+# share one hero (T46: Blue's eighth went to E6-5's second hero): the rotation first, then the
+# Thunder.
 #
 # The trap of the starting bonus: a hot-seat player's random starting bonus may give a hero an
 # artifact. Rows E6-8 to E6-10 read the artifacts first; an artifact the spec does not give goes
-# under "anything odd". A stack of 40 000 is loaded from the map's 16-bit count: E6-5 reads the
-# counts first, as a loader that sign-extends would show -25 536 before any click.
+# under "anything odd".
 
 [map]
 name = "E08 batch E6"
-description = "Engine-generated experiment map (E08, batch E6): army and hero management: the army dialog, a hero's last stack, the split, a stack of 40 000, the tactics formation, Scholar, a combination, Titan's Thunder, the backpack, a meeting's price. Hot seat, Red and Blue human, difficulty Easy; follow the results template."
+description = "Engine-generated experiment map (E08, batch E6): army and hero management: the army dialog, a hero's last stack, the split, the tactics formation, Scholar, a combination, Titan's Thunder, the backpack, a meeting's price. Hot seat, Red and Blue human, difficulty Easy; follow the results template."
 size = 36
 terrain = "grass"
 difficulty = "easy"
@@ -51,7 +46,7 @@ instructions = [
     "Positions are the original's numbers: head 0, shoulders 1, neck 2, right hand 3, left hand 4, torso 5, rings 6 and 7, feet 8, misc 9 to 12 (the hero screen's misc 1 to 4) and 18 (misc 5), war machines 13 to 16, spell book 17. Army slots count from 0 at the left.",
     "Answer questions as the encounter says; write each question's or message's text (or its first words) down where the encounter asks for it.",
     "Each battle by auto combat; a tactics phase is ended at once (its Start button) before the auto combat.",
-    "Order: day 1, Red's turn: E6-1, E6-2, E6-3, E6-4, E6-11; end the turn. Blue's turn (save 2 at its start): E6-6a, E6-6b, E6-7, E6-8, E6-10 (with E6-9 on the same hero), then save 3 and E6-5 last. Then the map is done.",
+    "Order: day 1, Red's turn: E6-1, E6-2, E6-3, E6-4, E6-11; end the turn. Blue's turn (save 2 at its start): E6-6a, E6-6b, E6-7, E6-8, E6-10 (with E6-9 on the same hero). Then the map is done.",
     "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
 ]
 
@@ -74,7 +69,7 @@ record = [
     { field = "the dialog's title (or: no dialog)" },
     { field = "army after" },
     { field = "gold after" },
-    { field = "Wolf Riders still on the map (yes/no)" },
+    { field = "Wolf Riders on (4, 3) after (count, or none)" },
     { field = "anything odd" },
 ]
 predictions = """
@@ -115,7 +110,7 @@ record = [
     { field = "army before" },
     { field = "the dismiss question" },
     { field = "army after" },
-    { field = "Wolf Riders still on the map (yes/no)" },
+    { field = "Wolf Riders on (10, 3) after (count, or none)" },
     { field = "anything odd" },
 ]
 predictions = """
@@ -379,7 +374,8 @@ procedure = [
     "Pick the Wizard's Well up and put it into the backpack. Right-click it there: note what opens (a question, and its first words, or only the artifact's window); answer a question **No**. Read the worn positions and the backpack. Close the screen.",
 ]
 record = [
-    { field = "worn and backpack at the start" },
+    { field = "worn at the start (positions)" },
+    { field = "backpack at the start" },
     { field = "question after the first equip" },
     { field = "worn after the first equip" },
     { field = "question after the second equip" },
@@ -387,7 +383,8 @@ record = [
     { field = "worn after the assembly (positions)" },
     { field = "on screen: the Well's slot and the locked slots" },
     { field = "right-click on the Well in the backpack: what opens" },
-    { field = "worn and backpack at the end" },
+    { field = "worn at the end (positions)" },
+    { field = "backpack at the end" },
     { field = "anything odd" },
 ]
 predictions = """
@@ -460,55 +457,3 @@ backpack = [
     "Centaurs Axe", "Greater Gnoll's Flail", "Titan's Thunder", "Ogre's Club of Havoc",
     "Sword of Hellfire", "Shield of the Dwarven Lords",
 ]
-
-# --- §3.5: a count through 16 bits (Blue, last) --------------------------------------------------
-
-[[encounter]]
-id = "E6-5"
-title = "A stack of 40 000: a move in the hero screen, a move to another hero, a swap onto it (A-15)"
-questions = ["A-15", "ADV-ARM-001"]
-procedure = [
-    "Day 1, Blue's turn, last, after save 3: read E6-5's army (40 000 Peasants in slot 0, 40 000 Gnolls in slot 1, 1 Pikeman in slot 2) and E6-5 B's (east of it: 1 Archer in slot 0), counts from memory and as the screen shows them.",
-    "Open E6-5's hero screen: click the Peasants (slot 0), then the empty slot 4. Read the army. Close the screen.",
-    "Click E6-5 B twice: the exchange opens. Click E6-5's Peasants (slot 4), then E6-5 B's empty slot 1. Read both armies. Close the exchange.",
-    "Open E6-5's hero screen: click the Pikeman (slot 2), then the Gnolls (slot 1). Read the army. Close the screen. The map is done.",
-]
-record = [
-    { field = "E6-5 army at the start (memory)" },
-    { field = "E6-5 army at the start (screen)" },
-    { field = "E6-5 B army at the start" },
-    { field = "after the move in the hero screen (memory; screen)" },
-    { field = "after the move to E6-5 B: E6-5's army" },
-    { field = "after the move to E6-5 B: E6-5 B's army (memory; screen)" },
-    { field = "after the swap: E6-5's army (memory; screen)" },
-    { field = "anything odd" },
-]
-predictions = """
-- **At the start: 40 000 and 40 000** (the map's 16-bit counts; -25 536 here: the loader
-  sign-extends, and the rest of the row reads only the clicks' other side).
-- **The reading** (§3.5, `army_swap_slots` 0x44AD60 re-read in T46: slot a receives b's count
-  whole, b receives a's through 16 bits; the hero screen passes a = the clicked slot, b = the
-  selected one; the exchange a = the source, b = the target):
-  - the move in the hero screen: **40 000 Peasants in slot 4**, slot 0 empty (it receives the
-    empty slot's 0);
-  - the move to E6-5 B: **-25 536 Peasants** in E6-5 B's slot 1 (b, the target), E6-5's slot 4
-    empty;
-  - the swap with the Gnolls clicked: **-25 536 Gnolls in slot 2** (b, the selected Pikeman's
-    slot), **1 Pikeman in slot 1**.
-- **VCMI 1.7.5** (32-bit counts): 40 000 everywhere. A-15 is fixed in every profile either way
-  (decision 98); the row decides the ledger's text.
-"""
-[encounter.hero]
-type = "Gretchin"
-specialty = "creature Goblin"
-owner = "blue"
-primary = [1, 1, 1, 1]
-army = [["Peasant", 40000], ["Gnoll", 40000], ["Pikeman", 1]]
-[[encounter.also]]
-type = "Jabarkas"
-specialty = "creature Orc"
-owner = "blue"
-name = "E6-5 B"
-at = [28, 8]
-primary = [1, 1, 1, 1]
-army = [["Archer", 1]]

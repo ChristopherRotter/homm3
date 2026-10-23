@@ -32,6 +32,14 @@ pub fn shoots(state: &BattleState, ruleset: &BattleRuleset, id: StackId) -> bool
     can_shoot(state, Field::new(ruleset.battle().field), id)
 }
 
+/// The stack the computer's First Aid Tent `id` heals (0x473EA0; BAT-WAR-003 for the automatic
+/// tent, BAT-AI-022 for the commanded one): of the stacks of its side, alive, not war machines,
+/// whose top creature has lost hit points, the one that lost the most, the later at a tie; `None`
+/// without one. `id` must be a stack of `state`.
+pub fn tent_patient(state: &BattleState, id: StackId) -> Option<StackId> {
+    crate::war::patient(state, id)
+}
+
 /// The stack the computer's shooter `shooter` of `state` shoots (0x41F060, 0x41EB80): the
 /// automatic Ballista's target (BAT-WAR-008) and every computer shooter's (BAT-AI-002), the best
 /// by not disabled, then the computer's shot value, ties to the later stack; `None` without a

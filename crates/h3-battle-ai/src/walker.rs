@@ -131,12 +131,27 @@ pub(crate) struct Walker<'a> {
     /// walker's map when a creature cast entry's spell context made it (survey slip 30,
     /// [`Walker::searched`]); none when its own map's or its walk's search was the last.
     after_map: Cell<Option<HexSet>>,
+    /// With BAT-QUIRK-25, in Teleport's turns, the damage the predictions of the last spell
+    /// context a creature cast entry built planned on every stack (survey slip 33,
+    /// [`Walker::planned_by_entry`]); none when no entry built one.
+    entry_planned: Cell<Option<Planned>>,
     /// The choice's flag 1 (0x421680 from the hero's Teleport, 0x43AA60; BAT-AI-020): the map is
     /// the destination map and the choice ends in a move and attack or Defend
     /// ([`Walker::teleported`]).
     teleport: bool,
     /// The running tactics phase (the original's +0x13D68; BAT-AI-023).
     pub(crate) tactics: Option<TacticsPhase>,
+}
+
+/// Teleport's two walker turns of a stack ([`Walker::teleport_turns`]).
+pub(crate) struct TeleportTurns {
+    /// The real turn's value.
+    pub(crate) before: i32,
+    /// The command and value of the turn on the destination map.
+    pub(crate) after: (Command, i32),
+    /// With BAT-QUIRK-25, the damage the last spell context a cast entry of the two turns built
+    /// planned on every stack (survey slip 33); none without one.
+    pub(crate) planned: Option<Planned>,
 }
 
 /// The living stack on each hex but the turrets (0x4E7170).
@@ -225,6 +240,7 @@ impl<'a> Walker<'a> {
             asks_entry: planned.is_none() && state.tactics().is_none(),
             tracks: false,
             after_map: Cell::new(None),
+            entry_planned: Cell::new(None),
             teleport: false,
             tactics: state.tactics(),
         }
@@ -278,7 +294,9 @@ impl<'a> Walker<'a> {
     /// creature cast entry asked as on the stack's own turn, the active stack or not, from its
     /// record, §7.59), then the command and value of its turn on the destination map of
     /// `destinations` ([`Walker::teleported`]). The scores, the odds and the threat records are the
-    /// first turn's: they read nothing the map changes (ADR-0027 point 11).
+    /// first turn's: they read nothing the map changes (ADR-0027 point 11). With BAT-QUIRK-25
+    /// also the damage the last spell context a cast entry of the two turns built planned on
+    /// every stack, which the hero's later spells read (survey slip 33).
     // rule: BAT-AI-020
     pub(crate) fn teleport_turns(
         state: &'a BattleState,
@@ -286,10 +304,16 @@ impl<'a> Walker<'a> {
         (id, side): (StackId, BattleSide),
         destinations: HexSet,
         rng: &mut Rng,
-    ) -> (i32, (Command, i32)) {
+    ) -> TeleportTurns {
         let real = Self::tracking(state, ruleset, (id, side));
         let (_, before) = real.turn(rng);
-        (before, real.teleported(destinations).turn(rng))
+        let moved = real.teleported(destinations);
+        let after = moved.turn(rng);
+        TeleportTurns {
+            before,
+            after,
+            planned: moved.entry_planned.get(),
+        }
     }
 
     /// The walker `id` of `side` for Teleport's first turn ([`Walker::teleport_turns`]): it
@@ -314,6 +338,15 @@ impl<'a> Walker<'a> {
     /// pathfinder after the walker's map (survey slip 30; [`Walker::after_map`]).
     pub(crate) fn searched(&self, stops: HexSet) {
         self.after_map.set(Some(stops));
+    }
+
+    /// A creature cast entry in Teleport's turns built a spell context whose predictions planned
+    /// `planned` on every stack (survey slip 33; [`Walker::teleport_turns`]); asked with
+    /// BAT-QUIRK-25 only.
+    pub(crate) fn planned_by_entry(&self, planned: Planned) {
+        if self.tracks {
+            self.entry_planned.set(Some(planned));
+        }
     }
 
     /// The walker on the destination map of `destinations` with the choice's flag 1 (0x421680

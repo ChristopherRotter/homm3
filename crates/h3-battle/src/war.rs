@@ -3,7 +3,7 @@
 //! Without a hero's Artillery or First Aid skill war machines are controlled by the engine: when
 //! one becomes active it acts at once and its turn ends. The Ballista shoots the target the
 //! original's computer picks (BAT-WAR-002, BAT-WAR-008: [`crate::aim::ballista_target`]), the First
-//! Aid Tent heals a random damaged stack of its side (BAT-WAR-003); the Ammo Cart never becomes
+//! Aid Tent heals the most hurt stack of its side (BAT-WAR-003); the Ammo Cart never becomes
 //! active (BAT-WAR-004). A hero with Artillery commands its side's Ballista instead (BAT-WAR-006),
 //! one with First Aid its tent (BAT-WAR-007).
 
@@ -122,20 +122,35 @@ pub(crate) fn act<S: Sink>(
     }
 }
 
-/// The First Aid Tent's automatic turn (BAT-WAR-003): a uniformly chosen patient
-/// ([`is_patient`]) is healed ([`heal`]); nothing happens without patients.
+/// The patient the computer's First Aid Tent `healer` heals (0x473EA0, 0x473F3C; BAT-WAR-003,
+/// BAT-Q51's row): of its patients ([`is_patient`]), the one whose top creature lost the most hit
+/// points, the later stack at a tie; `None` without one. The automatic tent's and the computer's
+/// commanded tent's (BAT-AI-022) alike.
+// rule: BAT-WAR-003
+pub(crate) fn patient(state: &BattleState, healer: StackId) -> Option<StackId> {
+    patients(state, healer)
+        .iter()
+        .copied()
+        .fold(None, |best: Option<(StackId, u32)>, id| {
+            let s = state.at(id);
+            let lost = s.max_hp - s.top_hp;
+            if best.is_none_or(|(_, most)| lost >= most) {
+                Some((id, lost))
+            } else {
+                best
+            }
+        })
+        .map(|(id, _)| id)
+}
+
+/// The First Aid Tent's automatic turn (BAT-WAR-003): its [`patient`] is healed ([`heal`]);
+/// nothing happens without patients (the original's tent defends, which changes nothing for a
+/// war machine, BAT-Q51).
 // rule: BAT-WAR-003
 fn first_aid<S: Sink>(state: &mut BattleState, ruleset: &BattleRuleset, id: StackId, sink: &mut S) {
-    let hurt = patients(state, id);
-    let n = u32::try_from(hurt.len()).unwrap_or(u32::MAX);
-    if n == 0 {
-        return;
+    if let Some(target) = patient(state, id) {
+        heal(state, ruleset, id, target, sink);
     }
-    let target = hurt
-        .get(usize::try_from(state.rng.below(n)).unwrap_or(0))
-        .copied()
-        .unwrap_or(id);
-    heal(state, ruleset, id, target, sink);
 }
 
 /// The first-aid war machine `healer` heals the top creature of `target` by a uniform

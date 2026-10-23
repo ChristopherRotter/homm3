@@ -5014,3 +5014,86 @@ CLT-Q18: no `cross-lane`; the client and map-client lanes' inboxes told).
 - **Verify:** the baseline's full run (above); the branch changes no fingerprinted path, so the
   light gates ran on it (check-rules, check-stubs, check-docs, check-exe-map) with `check-lane`
   (an `adventure` change: no `cross-lane`): all passed. CI's recent runs fail unstarted.
+
+### Increment 6, round 2: T47b1, batch E6's recipe; E6-5 dropped (2026-10-23, `adventure/e08-t47b1`, `cross-lane`)
+
+**The start's two questions** (`AskUserQuestion`): E6-5's setup, after T47a found that the map's
+count of 40 000 loads as an empty slot. Recommended was two stacks of 20 000 of each creature
+merged in the hero screen first, then the row's three moves, with one untouched stack of 40 000
+on E6-5 B recording the load (the engine's import reads the count as 40 000). The user's own
+answer (decision 109): the original's behaviour here does not matter, its oddity being a
+limitation or a bug; the engine supports a reasonable count and handles saturation gracefully,
+a merge past the cap refused. So E6-5 left the batch, and the cap waits for T50's start (the
+queue's inbox; `E08-design.md` §7 and §16). The cut (decision 110): T47b in two, the recipe now,
+the run next (recommended was T47b whole).
+
+**Baseline:** `master` 8ac0949 (#437 merged). GitHub reached through the session's repository
+grant (the token of an earlier attempt was refused). The sandbox's baseline ran the full verify
+with the original data on engine code 9a54eabd: all 16 steps passed (h3-map's step skipped the shipped maps, not staged; code 9a54eabd verified on 8ac0949). The edits were made in a `git
+worktree` meanwhile, so the baseline tested `master`'s files.
+
+- **The spec** (`experiments/specs/E08-batch-6.toml`): E6-5 and its two heroes removed (14 heroes:
+  Red's eight, Blue's six; the other rows' places unchanged, encounter i at column 3 + 6 (i mod
+  6), row 3 + 5 (i div 6)); its header, the map's description and the order without it. Four
+  fields renamed so that one read fills each: E6-1's and E6-2's "Wolf Riders still on the map
+  (yes/no)" became "Wolf Riders on (4, 3) after (count, or none)" (and (10, 3)), the tile's
+  monster as memory holds it; E6-8's "worn and backpack at the start" and "… at the end" became
+  "worn at the … (positions)" and "backpack at the …". Compiled again: stamp e17cb77c (was ddd4ee4e); the map reads, imports whole and validates in the engine (`original_data` on a folder holding only it: 14 heroes, 8 per player at most, 4 monsters, a backpack of 6).
+- **The recipe** (`clients/capture/batches/E08-batch-6.toml`, 18 steps): each row's procedure as
+  T47a's steps and actions. Red: E6-1 (the gold and slots, the join answered yes, the army
+  dialog's title, OK), E6-2 (the Swordsmen dismissed in the dialog, the group into slot 3), E6-3
+  (the three clicks in the exchange, each cell of the table read after its click: a message, both
+  armies), E6-4 (the split from the left army into the right's slot 1, the slider at its maximum,
+  OK), E6-11 (the points before and after the meeting, both tiles); Blue: E6-6a (the flags, the
+  tactics button, the battle by auto combat with the tactics phase read), E6-6b (the control),
+  E6-7 (the spells, Scholar's message from the walk's messages), E6-8 (the Orb on position 12
+  twice answered no, the right click answered yes, the Well into the backpack and right-clicked
+  there), E6-10 (the right arrow; the screen opened again for E6-9: the Thunder on the right hand
+  and back into the backpack's first place). Fields left to a player by hand: E6-8's "on screen:
+  the Well's slot and the locked slots" (no read of the screen's locks).
+- **A code reading for the recipe** (`docs/exe/map.toml`: 0x5AE5B0 `swap_selection_reset`):
+  `swap_army_click` calls it after every second click, a refused move included, and it clears
+  the selection (+0x48 to +0x58), so E6-3's second and third clicks start from none and do not
+  open the creature dialog.
+- **The check with `fill`**: every record key of the recipe (61) is a field or table cell
+  of the compiled template (h3adv's `fill` raises on any other); against the template of before
+  only the six renamed fields failed. Left empty: E6-8's screen line only.
+- **Not built:** the run (T47b2); the scoring (T48); the cap (T50's start).
+- **Verify:** the branch changes no fingerprinted path (docs, experiments and the harness's
+  recipe), so the light gates ran on it (check-rules, check-stubs, check-docs, check-exe-map):
+  all passed. `check-lane` names one battle path, `docs/experiments/README.md`'s status row:
+  `cross-lane` with the user's consent. CI's recent runs fail unstarted.
+
+### Increment 6, round 2: T47b2, batch E6's run (2026-10-23, `adventure/e08-t47b2`, `cross-lane`)
+
+**Baseline:** `master` 0fd0383 (#440 merged). Its engine code (e2785835) was verified on 17dd372,
+so the sandbox's baseline ran only the light gates: all passed. The user's PC was linked: the
+original's files staged from it as T47a's, `clients/capture/setup.sh` run.
+
+- **The run** (`h3adv.py batch capture/batches/E08-batch-6.toml`, about three minutes): three
+  runs, the 59 filled records the same in all three (`compare`). No step stopped and no screen
+  differed from the recipe's plan. The only recipe fix: E6-7's walk expects its dialog
+  (`expect = { dialogs = true }`), since run 1 noted Scholar's message under "anything odd".
+  `experiments/results/E08-batch-6.md` is run 3's filled template.
+- **Two lines filled by the agent** from run 3, through a wrapper kept in the sandbox (the
+  harness unchanged; no text or picture committed). E6-7's message, which `h3lod` names `?`, is
+  composed of GENRLTXT 140, 141, 142, 143, **148 and 149** (survey §2.2 names 140 to 143 only: for
+  T48) with the names, and names the spells the memory reads show. E6-8's screen line is from a
+  dump at the read after the assembly: the Well on misc 1 (9), **locks on misc 4 and misc 5 (12,
+  18)**, misc 2 and 3 empty (the locks drawn from a count, not on the parts' old positions).
+  E6-9's dumps: the Spell Book shows with the Thunder on and after it is off; locks on the head,
+  torso and left hand while it is worn.
+- **A first look** (the scoring is T48): every row as the spec's reading. E6-1 ADVEVENT 86, the
+  dialog GENRLTXT 36, the army and gold unchanged, the group gone; E6-2 the dismissal's GENRLTXT
+  13, the group in slot 3; E6-3 refused, refused, swapped, no message; E6-4 10 : 0, then 0 : 10,
+  1 and 9 Pikemen (A-16 as read, not VCMI's); E6-11 1 560 to 1 460 points, both heroes on their
+  tiles; E6-6 flags 2 then 0 and no phase, the control 2 with a phase, both won; E6-7 learns
+  Bless and Chain Lightning (not Implosion), E6-7 B Precision only; E6-8 GENRLTXT 733 after the
+  first equip only and on the right click, the Well at 9 (not VCMI's 12), its right click in the
+  backpack a window; E6-10 the right arrow moves the first to the end; E6-9 the book (17) after
+  both.
+- **Not built:** the scoring (T48); the cap (T50's start).
+- **Verify:** the branch changes no fingerprinted path (the recipe, the results, docs).
+  `verify --scope adventure` passed every step but `check-lane`, which names one battle path,
+  `docs/experiments/README.md`'s status row: `cross-lane` with the user's consent (asked at the
+  end). CI's recent runs fail unstarted.

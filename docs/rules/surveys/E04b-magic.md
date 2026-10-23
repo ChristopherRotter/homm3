@@ -393,6 +393,10 @@ brackets, the review's finding (report, number).
   S-25 is a rule of the original, for which the battle must know who commands a side (a seam
   question, BAT-Q33); as a quirk it would be **preserve**.
 - The engine today: one roll for every side (BAT-MOR-004), the original's rule for a human's side.
+- **Settled** (E23 T7, 2026-10-23): batches 4a LO and 4b LC confirmed it (28 of 105 neutral, 14 of
+  60 computer player's picks let off, a human's none); the user made it the fix-optional
+  BAT-QUIRK-27 (`quirk.battle.computer_morale_let_off`, on in `faithful`), read from
+  `BattleSetup.human` (ADR-0023 point 7).
 
 ### S-26 — An obstacle removed early is removed again when its rounds run out
 - Original (code reading, one reviewer, not observed; the control and battlefield report's "left

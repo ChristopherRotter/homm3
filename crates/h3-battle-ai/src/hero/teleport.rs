@@ -24,7 +24,10 @@ use crate::walker::Walker;
 /// stack itself still can. Once a walker was asked the original fills both sides' threat records
 /// again (0x422B20 with flag 0), which leaves them as the spell context built them: with
 /// BAT-QUIRK-25 the retreat test's records are gone for the spells after it (survey slip 26,
-/// [`SpellContext::refill`](crate::spells::SpellContext::refill)).
+/// [`SpellContext::refill`](crate::spells::SpellContext::refill)). With BAT-QUIRK-25 too, when a
+/// creature cast entry in those turns built a spell context, the damage the last such context
+/// planned stays on the stacks for the spells after it (survey slip 33,
+/// [`SpellContext::after_teleport`](crate::spells::SpellContext::after_teleport)).
 // rule: BAT-AI-020
 pub(super) fn teleport(h: &Hero<'_, '_>, spell: SpellId, rng: &mut Rng) -> Valued {
     let (state, ruleset, side) = (h.state, h.ruleset, h.side);
@@ -32,6 +35,7 @@ pub(super) fn teleport(h: &Hero<'_, '_>, spell: SpellId, rng: &mut Rng) -> Value
     let mut best = Valued::ZERO;
     let mut list = CastTargets::new();
     let mut asked = false;
+    let mut planned = None;
     for (i, st) in (0u8..).zip(state.stacks()) {
         let r = StackId(i);
         if st.side != side
@@ -58,8 +62,10 @@ pub(super) fn teleport(h: &Hero<'_, '_>, spell: SpellId, rng: &mut Rng) -> Value
                     set.insert(hex);
                     set
                 });
-        let (before, after) = Walker::teleport_turns(state, ruleset, (r, side), destinations, rng);
+        let turns = Walker::teleport_turns(state, ruleset, (r, side), destinations, rng);
+        let (before, after) = (turns.before, turns.after);
         asked = true;
+        planned = turns.planned.or(planned);
         // The walker never attacks itself (BAT-STUB-10): the original's test that the attacked
         // stack is not the one moved (0x43AB34) always passes.
         let (Command::Attack { from, .. }, value) = after else {
@@ -79,8 +85,8 @@ pub(super) fn teleport(h: &Hero<'_, '_>, spell: SpellId, rng: &mut Rng) -> Value
     if asked {
         h.sc.refill();
     }
-    // stub: BAT-STUB-17
-    // A caster's cast entry in those turns may build a spell context whose predictions replace the
-    // planned damage the hero's later spells read (slip 33): the choice keeps its own.
+    if let Some(planned) = planned {
+        h.sc.after_teleport(planned);
+    }
     best
 }

@@ -3,7 +3,8 @@
 //! right clockwise (0 top right, 1 right, 2 bottom right, 3 bottom left, 4 left, 5 top left), and
 //! eight around a two-hex stack (0 to 2 around its right hex, 3 to 5 around its left hex, 6 and 7
 //! the hexes above and below its middle). A stack's facing is its side's: the attacker's faces
-//! right (the original's facing 1), the defender's left.
+//! right (the original's facing 1), the defender's left. The neighbours are the original's table
+//! ([`table_neighbor`]): none in a side column.
 
 use h3_battle::{BattleSide, Direction, Field, Hex, Stack};
 
@@ -59,8 +60,17 @@ impl Shape {
     }
 }
 
+/// The neighbour of `hex` in `dir` as the original's neighbour table has it (the battle manager's
+/// +0x13468, filled at the battle's setup by 0x4640A0, which 0x523D90, 0x523DF0 and the hex
+/// scores read; E23 T7, batch 4b H1): `None` off the field or in a side column, where only the war
+/// machines' rear hexes stand (a side column's own hex has its neighbours in the next column).
+pub(crate) fn table_neighbor(field: Field, hex: Hex, dir: Direction) -> Option<Hex> {
+    field.neighbor(hex, dir).filter(|&n| field.is_standable(n))
+}
+
 /// The neighbour of `hex` in the original's direction `d` (0x523D90): 6 and 7 are 5 and 3 for a
-/// stack facing right, 0 and 2 for one facing left; `None` off the field.
+/// stack facing right, 0 and 2 for one facing left; `None` off the field or in a side column
+/// ([`table_neighbor`]).
 pub(crate) fn neighbor(field: Field, shape: Shape, hex: Hex, d: u8) -> Option<Hex> {
     let d = match (d, shape.faces_right()) {
         (6, true) => 5,
@@ -71,7 +81,7 @@ pub(crate) fn neighbor(field: Field, shape: Shape, hex: Hex, d: u8) -> Option<He
     };
     DIRECTIONS
         .get(usize::from(d))
-        .and_then(|&dir| field.neighbor(hex, dir))
+        .and_then(|&dir| table_neighbor(field, hex, dir))
 }
 
 /// The neighbour of a stack of `shape` at the position `pos` in direction `d` (0x523DF0): a
@@ -188,6 +198,67 @@ mod tests {
         assert_eq!(neighbor(field, defender, Hex(23), 6), Some(Hex(6)));
         assert_eq!(neighbor(field, defender, Hex(23), 7), Some(Hex(40)));
         assert_eq!(neighbor(field, one, Hex(23), 8), None);
+    }
+
+    #[test]
+    fn the_table_has_no_neighbour_in_a_side_column() {
+        let field = Field::new(h3_content_battle::FieldParams {
+            width: 17,
+            height: 11,
+            side_columns: 1,
+        });
+        let one = shape(false, BattleSide::Defender);
+        let around = |hex: u8| -> Vec<Option<Hex>> {
+            (0..6).map(|d| neighbor(field, one, Hex(hex), d)).collect()
+        };
+        // Hex 15 (row 0, column 15): two neighbours, 32 below and 14 (batch 4b H1, read from the
+        // original's table in a running battle); 16 and 33 lie in the side column.
+        assert_eq!(
+            around(15),
+            [None, None, None, Some(Hex(32)), Some(Hex(14)), None]
+        );
+        // Hex 9: four.
+        assert_eq!(
+            around(9),
+            [
+                None,
+                Some(Hex(10)),
+                Some(Hex(27)),
+                Some(Hex(26)),
+                Some(Hex(8)),
+                None
+            ]
+        );
+        // A side column's own hexes have their neighbours in the next column only: 34 (row 2,
+        // shifted right) three, 17 (row 1) one.
+        assert_eq!(
+            around(34),
+            [
+                Some(Hex(18)),
+                Some(Hex(35)),
+                Some(Hex(52)),
+                None,
+                None,
+                None
+            ]
+        );
+        assert_eq!(around(17), [None, Some(Hex(18)), None, None, None, None]);
+        // The defender's two-hex war machine at 169 (its rear in the side column, its front 168):
+        // its ring has no hex in column 16.
+        let machine = shape(true, BattleSide::Defender);
+        let ring: Vec<Option<Hex>> = (0..8)
+            .map(|d| stack_neighbor(field, machine, Hex(169), d))
+            .collect();
+        assert!(
+            ring.iter()
+                .flatten()
+                .all(|h| field.coords(*h).0 != 16 && field.contains(*h))
+        );
+        assert_eq!(table_neighbor(field, Hex(168), Direction::Right), None);
+        assert_eq!(
+            table_neighbor(field, Hex(169), Direction::Left),
+            Some(Hex(168))
+        );
     }
 
     #[test]

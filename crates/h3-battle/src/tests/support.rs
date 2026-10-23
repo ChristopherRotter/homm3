@@ -1940,6 +1940,10 @@ pub fn try_ruleset_from(
                 quirks: vec![(String::from("quirk.battle.original_ai_slips"), true)],
             },
             ProfileDef {
+                key: ContentKey::new("t", "let_off").unwrap(),
+                quirks: vec![(String::from("quirk.battle.computer_morale_let_off"), true)],
+            },
+            ProfileDef {
                 key: ContentKey::new("t", "original").unwrap(),
                 quirks: vec![
                     (String::from("quirk.battle.first_protection"), true),

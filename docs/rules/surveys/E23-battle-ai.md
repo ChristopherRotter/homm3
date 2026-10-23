@@ -159,13 +159,14 @@ stack, the later record first); S4 agrees (a destroyed mid-upper wall leaves the
 to round 9 in three runs, a destroyed mid-lower wall sends it out at once; slip 2); H1 **against
 the port, not the rule** (the Archers go to hex 15, the corner of column 15: the original's
 neighbour table, battle manager +0x13468, has no neighbours in the side columns 0 and 16; the
-port counts them and goes to hex 9); H3 agrees (Bless at the Archers' own activation, none at the
+port counted them and went to hex 9; E23 T7 aligned the policy's neighbours with the table,
+BAT-Q62 the rules' one use that differs, a breath's second hex); H3 agrees (Bless at the Archers' own activation, none at the
 Wolf Riders' before); H4 agrees (none of six never-cast spells in four rounds); R1 agrees (a
 retreat at 0.143; a fight at 0.172, then a retreat at the second activation at 0.158, the first
 stack no longer × 1.2). S1 and S2 were not reached (batch 4c SC, Red in auto combat: Red's
 Catapult breached a wall before the Cyclops' first turn; afterwards the Cyclops shot the
 Archers, as read). S-25 (BAT-Q33): a neutral side's and a computer player's stacks are let off
-one freeze in four (28 of 105, 14 of 60), a human's never. Not staged: W2, W4, W5 and P1
+one freeze in four (28 of 105, 14 of 60), a human's never (BAT-QUIRK-27 since E23 T7). Not staged: W2, W4, W5 and P1
 (positions the formations and the tile's obstacles do not give), C5 (the Genie's mean on the
 original's state), S3 (an RoE map), H2 (no single choice shows it).
 
@@ -217,7 +218,7 @@ each estimate as the rule it estimates:
 | 30 | Teleport's destination map writes no stops, so its plan counts a turn more at a stop of the pathfinder's last search, another stack's or a spell context's that the stack's first turn's cast entry built: a destination in the moat or on a pit that stack's controller sees (§7.58, §7.59; built, BAT-AI-020, E23 T5b2a, the cast entry's context E23 T5b2b; found in T5b2a) | none: a teleported stack enters no hex and acts from it on its next turn (BAT-MAG-029, BAT-SIE-004; batch 3g TV, which the user asked for, 2026-10-22) |
 | 31 | on the destination map the melee value's jousting run-up is the plan's hex's cost there, 1, where a teleported stack strikes from where it stands (§7.58; built, BAT-AI-020, E23 T5b2a; found by T5b2a's blind check) | no run-up |
 | 32 | the Archangel's raise test takes the active record's hit points (its count × 100 for an Archangel, else × 50), so in the hero's Teleport turns of another Archangel the active stack's (§7.59; built, BAT-AI-012, E23 T5b2b; found by T5b2b's blind check) | the raiser's own |
-| 33 | Teleport's walker turns are real ones: a creature caster among its candidates may build a spell context in its cast entry (0x421280, §7.59), whose predictions replace the planned damage on every stack, and the hero's later spells read that context's (0x443080 with flag 1; found in E23 T6 from §7.42 and §7.59; not built, BAT-STUB-17) | the choice's own context's |
+| 33 | Teleport's walker turns are real ones: a creature caster among its candidates may build a spell context in its cast entry (0x421280, §7.59), whose predictions replace the planned damage on every stack, and the hero's later spells read that context's (0x443080 with flag 1; found in E23 T6 from §7.42 and §7.59; built in E23 T7, BAT-AI-020) | the choice's own context's |
 
 The ledger entry lists them; a slip found later joins the same flag. The tie orders, the library
 sort (§7.37) and the draws are the original's behaviour, not slips: no flag. Not modelled, no
