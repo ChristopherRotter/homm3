@@ -79,6 +79,10 @@ TILE_VISION_POINTER = 0x6989F8
 # colours from +0x1C (H3API's H3LoadedDef, H3Palette565; palette16_rotate 0x522950). The objects'
 # frame steps: manager +0x100 (design §1.6).
 TERRAIN_DEFS, RIVER_DEFS, DEF_PALETTE, PALETTE_COLOURS, FRAME_STEPS = 0x60, 0x88, 0x20, 0x1C, 0x100
+# The map's objects (E24 M1 T4a; structs.toml adventure_manager +0x5C, map_object): the map at
+# manager +0x5C, its object records' vector at map +0x14 (begin, end), 12 bytes each in the map's
+# order: +0x4 x, y, level; +0x8 the template (u16); +0xA the animation phase (design §1.6).
+MANAGER_MAP, MAP_OBJECTS, OBJECT_RECORD = 0x5C, 0x14, 12
 # The palette tick's next time (palette_tick_time 0x6989B4: the tick 0x4ED490 rotates once the
 # clock reaches it and sets it to now + 200 on the map). The adventure map's idle step redraws
 # the view once the clock reaches FRAME_DEADLINE (0x408A88; design §1.6).
@@ -586,6 +590,15 @@ class Mem:
     def frame_steps(self):
         """The objects' frame steps (adventure manager +0x100, design §1.6)."""
         return self.manager_field(FRAME_STEPS)
+
+    def map_objects(self):
+        """The map's objects in its order (E24 M1 T4a): [(x, y, level, template, phase)] from
+        their 12-byte records (the anchor, the template's index, the animation phase)."""
+        begin, end = struct.unpack("<II", self.read(self.manager_field(MANAGER_MAP) + MAP_OBJECTS, 8))
+        count = (end - begin) // OBJECT_RECORD
+        raw = self.read(begin, OBJECT_RECORD * count) if count else b""
+        return [(raw[i + 4], raw[i + 5], raw[i + 6]) + struct.unpack_from("<HB", raw, i + 8)
+                for i in range(0, len(raw), OBJECT_RECORD)]
 
     def monster(self, x, y, z=0):
         """The wandering monster on a tile from its word (E17 H1; E3-3), None for none: its

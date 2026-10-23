@@ -184,7 +184,7 @@ fn render(options: &Options) -> Result<PathBuf, String> {
         live.moment.cycles = cycles;
     }
     if let Some(path) = &options.live {
-        read_live(path, &mut live)?;
+        read_live(path, &art, &mut live)?;
     }
     for &[x0, y0, x1, y1] in &options.hidden {
         for y in y0.min(y1)..=y0.max(y1) {
@@ -226,8 +226,9 @@ fn render(options: &Options) -> Result<PathBuf, String> {
 
 /// The original's live part as the harness read it (`h3map.py still`'s `live.toml`): `cycles`,
 /// the palette step; `frames`, the objects' frame step the screen shows; `phases`, every object's
-/// animation phase in the map's order. Each key is optional; other keys are left.
-fn read_live(path: &PathBuf, live: &mut Live) -> Result<(), String> {
+/// animation phase in the map's order; `anchors`, every object's anchor in that order, which must
+/// be the map's (so the phases are the objects' own). Each key is optional; other keys are left.
+fn read_live(path: &PathBuf, art: &MapArt, live: &mut Live) -> Result<(), String> {
     let failed = |why: &str| format!("{}: {why}", path.display());
     let text = fs::read_to_string(path).map_err(|e| failed(&e.to_string()))?;
     let table: toml::Table = text
@@ -246,6 +247,21 @@ fn read_live(path: &PathBuf, live: &mut Live) -> Result<(), String> {
     }
     if let Some(frames) = number("frames")? {
         live.moment.frames = frames;
+    }
+    if let Some(anchors) = table.get("anchors") {
+        let ours: Vec<toml::Value> = art
+            .objects
+            .iter()
+            .map(|o| {
+                let a = o.anchor;
+                toml::Value::Array([a.x, a.y, a.z].map(|v| i64::from(v).into()).to_vec())
+            })
+            .collect();
+        if anchors.as_array() != Some(&ours) {
+            return Err(failed(
+                "the original's objects are not the map's (`anchors`)",
+            ));
+        }
     }
     if let Some(phases) = table.get("phases") {
         let phases: Option<Vec<u8>> = phases.as_array().and_then(|a| {

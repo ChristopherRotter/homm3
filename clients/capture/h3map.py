@@ -11,10 +11,10 @@ compared pixel for pixel outside the masks of what the viewer does not draw yet.
       the palette tick and the view's redraw come (so the screen shows the palettes memory
       holds) and dumps the screen (`still.xwd`);
       reads the palette cycles' step k from the cycling DEFs' palettes in memory and writes it
-      with the view and the objects' frame steps (`live.toml`); draws ours (`h3-map-view render
-      --bugs original --cycles k`, `ours.png`) and prints the pixels that differ outside the
-      masks (`diff.png`: differing pixels red, masked ones blue). <dir> defaults to
-      clients/out/map/<situation>.
+      with the view, the objects' frame step the screen shows and every object's anchor and
+      phase (`live.toml`); draws ours (`h3-map-view render --bugs original --live live.toml`,
+      `ours.png`) and prints the pixels that differ outside the masks (`diff.png`: differing
+      pixels red, masked ones blue). <dir> defaults to clients/out/map/<situation>.
   h3map.py set [--only <id>] [--out <dir>]
       every situation of clients/map/situations/set.toml (or one), each count against the one
       recorded; exit 1 if any changed.
@@ -178,16 +178,22 @@ def still(situation_path, out=None, keep=False):
         game.dump(out / "still.xwd")
         if cycle_step(mem) != k:
             raise RuntimeError("the palettes changed at the frozen clock")
+        # The redraw drew with the manager's +0x100 before it grew it (design §1.6): the screen
+        # shows the step before the one memory holds. The objects in the map's order: their
+        # anchors (the viewer checks them against its map's) and phases.
+        objects = mem.map_objects()
         live = {"view": list(mem.view()) + [mem.view_level()], "cycles": k,
-                "frames": mem.frame_steps()}
+                "frames": mem.frame_steps() - 1,
+                "anchors": [list(o[:3]) for o in objects],
+                "phases": [o[4] for o in objects]}
         (out / "live.toml").write_text(
             "# The original's live part at the still (h3map.py still).\n"
             + "".join(f"{key} = {value}\n" for key, value in live.items()))
     finally:
         if not keep:
             game.stop()
-    args = [MAP_VIEW, "render", map_path, "--view", f"{vx},{vy},{vz}", "--cycles",
-            live["cycles"], "--bugs", "original", "--out", out / "ours.png"]
+    args = [MAP_VIEW, "render", map_path, "--view", f"{vx},{vy},{vz}", "--live",
+            out / "live.toml", "--bugs", "original", "--out", out / "ours.png"]
     for rect in hidden:
         args += ["--hidden", ",".join(map(str, rect))]
     run(*args)

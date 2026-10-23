@@ -2,7 +2,7 @@ use super::*;
 use alloc::collections::BTreeMap;
 
 use h3_map::Limits;
-use h3_map::writer;
+use h3_map::writer::{self, AnyObject};
 
 use crate::art::MapArt;
 
@@ -18,7 +18,7 @@ view = [0, 0, 0]
 fn source() -> RawMap {
     let mut map = Situation::parse(PLAIN)
         .unwrap()
-        .build(&BTreeMap::new())
+        .build(&BTreeMap::new(), &[])
         .unwrap()
         .0;
     map.terrain = Terrain::Dirt;
@@ -57,7 +57,7 @@ fn sources() -> BTreeMap<String, RawMap> {
 /// The art of a situation's map.
 fn art(text: &str) -> MapArt {
     let situation = Situation::parse(text).unwrap();
-    let (map, extras) = situation.build(&sources()).unwrap();
+    let (map, extras) = situation.build(&sources(), &[]).unwrap();
     let bytes = writer::write_with(&map, &extras).unwrap();
     MapArt::from_raw(&h3_map::parse(&bytes, &Limits::default()).unwrap()).unwrap()
 }
@@ -67,7 +67,7 @@ fn a_plain_map_with_two_heroes() {
     let situation = Situation::parse(PLAIN).unwrap();
     assert!(situation.sources().is_empty());
     assert!(situation.hidden.is_empty());
-    let (map, extras) = situation.build(&BTreeMap::new()).unwrap();
+    let (map, extras) = situation.build(&BTreeMap::new(), &[]).unwrap();
     assert_eq!((map.size, map.terrain), (36, Terrain::Grass));
     assert!(
         map.players[..2]
@@ -174,7 +174,7 @@ fn the_sources_and_the_hidden_rectangles() {
     assert_eq!(names, ["A.h3m", "B.h3m"]);
     assert_eq!(situation.hidden, [[1, 2, 3, 4], [5, 5, 5, 5]]);
     assert_eq!(
-        situation.build(&BTreeMap::new()).unwrap_err(),
+        situation.build(&BTreeMap::new(), &[]).unwrap_err(),
         "A.h3m: not read"
     );
 }
@@ -183,7 +183,7 @@ fn the_sources_and_the_hidden_rectangles() {
 fn refuses_what_it_cannot_build() {
     let with = |copy: &str| {
         let text = alloc::format!("{PLAIN}copy = [{copy}]");
-        Situation::parse(&text).unwrap().build(&sources())
+        Situation::parse(&text).unwrap().build(&sources(), &[])
     };
     // Outside the source, reversed, past the situation's side, on a level the source lacks.
     for copy in [
@@ -204,7 +204,7 @@ fn refuses_what_it_cannot_build() {
         ))
         .unwrap();
         situation
-            .build(&BTreeMap::from([("Shipped.h3m".to_string(), raw)]))
+            .build(&BTreeMap::from([("Shipped.h3m".to_string(), raw)]), &[])
             .unwrap_err()
     };
     assert_eq!(
@@ -229,4 +229,117 @@ fn refuses_what_it_cannot_build() {
         "a situation's view is on the surface (level 0)"
     );
     assert!(Situation::parse("size = 36").is_err());
+}
+
+/// The source with objects after its two heroes: a tree at (3, 3), a pile at (4, 4).
+fn source_with_objects() -> RawMap {
+    let mut map = Situation::parse(PLAIN)
+        .unwrap()
+        .build(&BTreeMap::new(), &[])
+        .unwrap()
+        .0;
+    map.terrain = Terrain::Dirt;
+    let object = |def: &str, class, tile| AnyObject {
+        level: 0,
+        tile,
+        template: crate::art::tests::template(def, class, 0, 0),
+        owner: None,
+    };
+    let extras = Extras {
+        tiles: vec![],
+        objects: vec![
+            object("tree.def", 155, (3, 3)),
+            object("pile.def", 79, (4, 4)),
+        ],
+    };
+    let bytes = writer::write_with(&map, &extras).unwrap();
+    h3_map::parse(&bytes, &Limits::default()).unwrap()
+}
+
+#[test]
+fn a_copy_brings_its_objects_but_heroes() {
+    // The rectangle (2, 0)-(35, 4) holds Blue's hero at (34, 1), the tree at (3, 3) and the pile
+    // at (4, 4); the pile's template index is broken, so it is left out with the hero.
+    let mut raw = source_with_objects();
+    raw.objects[3].template = 99;
+    let text = r#"
+size = 36
+terrain = "grass"
+copy = [{ map = "Shipped.h3m", from = [2, 0], to = [35, 4], at = [0, 10], objects = true }]
+heroes = [[34, 34], [34, 1]]
+view = [0, 0, 0]
+"#;
+    let situation = Situation::parse(text).unwrap();
+    let (_, extras) = situation
+        .build(&BTreeMap::from([("Shipped.h3m".to_string(), raw)]), &[])
+        .unwrap();
+    assert_eq!(extras.objects.len(), 1);
+    let tree = &extras.objects[0];
+    assert_eq!(
+        (tree.tile, tree.template.def.as_str()),
+        ((1, 13), "tree.def")
+    );
+    assert_eq!((tree.template.class, tree.owner), (155, None));
+    // Without `objects` a copy brings none; a copy elsewhere none either.
+    let text = text.replace(", objects = true", "");
+    let sources = BTreeMap::from([("Shipped.h3m".to_string(), source_with_objects())]);
+    let (_, extras) = Situation::parse(&text)
+        .unwrap()
+        .build(&sources, &[])
+        .unwrap();
+    assert!(extras.objects.is_empty());
+    let text = text.replace("at = [0, 10] }", "at = [0, 10], objects = true }");
+    let text = text.replace("from = [2, 0]", "from = [5, 0]");
+    let (_, extras) = Situation::parse(&text)
+        .unwrap()
+        .build(&sources, &[])
+        .unwrap();
+    assert!(extras.objects.is_empty());
+}
+
+#[test]
+fn objects_given_by_their_templates_def() {
+    let line = |def: &str, class, subclass| {
+        ObjectTemplate::from_objects_txt(&format!(
+            "{def} {} {} 111111111 111111111 {class} {subclass} 0 0",
+            "1".repeat(48),
+            "0".repeat(48)
+        ))
+        .unwrap()
+    };
+    let templates = [
+        line("A.def", 1, 0),
+        line("a.def", 2, 0),
+        line("a.def", 2, 5),
+    ];
+    let text = |objects: &str| {
+        format!(
+            "size = 36\nterrain = \"grass\"\nheroes = [[34, 34], [34, 1]]\nview = [0, 0, 0]\n{objects}"
+        )
+    };
+    let given = text(
+        r#"objects = [
+    { def = "a.DEF", at = [3, 4] },
+    { def = "a.def", class = 2, at = [5, 6] },
+    { def = "a.def", subclass = 5, at = [40, 39] },
+]"#,
+    );
+    let situation = Situation::parse(&given).unwrap();
+    assert!(situation.needs_templates());
+    assert!(!Situation::parse(PLAIN).unwrap().needs_templates());
+    let (_, extras) = situation.build(&BTreeMap::new(), &templates).unwrap();
+    let seen: Vec<_> = extras
+        .objects
+        .iter()
+        .map(|o| (o.tile, o.template.class, o.template.subclass))
+        .collect();
+    assert_eq!(seen, [((3, 4), 1, 0), ((5, 6), 2, 0), ((40, 39), 2, 5)]);
+    let missing = text(r#"objects = [{ def = "a.def", class = 3, at = [1, 1] }]"#);
+    assert_eq!(
+        Situation::parse(&missing)
+            .unwrap()
+            .build(&BTreeMap::new(), &templates)
+            .unwrap_err(),
+        "a.def: no such template in Objects.txt"
+    );
 }
