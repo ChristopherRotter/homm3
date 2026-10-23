@@ -466,13 +466,14 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
     let rules = load_rules(&root().join("packs"), &ids, DEFAULT_PROFILE).unwrap();
     let (_, setup) = load_map(&root(), DUEL, &rules).unwrap();
     let env = h3_sim::adventure::AdventureEnv::new(rules, Arc::new(setup), 1, 2).unwrap();
-    for (player, kinds) in [(0, (0, 2)), (1, (2, 0))] {
+    let both: [(u8, &[u16], &[u16]); 2] = [(0, &[0, 2], &[]), (1, &[], &[1, 3])];
+    for (player, lifted, walkers) in both {
         let player = PlayerId::new(player);
-        let queries = (
-            bench::reach_queries(&env, player),
-            bench::lifted_queries(&env, player),
-        );
-        assert_eq!(queries, kinds, "{player:?}");
+        let ids = |ids: &[u16]| ids.iter().map(|&id| HeroId::new(id)).collect::<Vec<_>>();
+        let (up, down) = bench::heroes_by_lift(&env, player);
+        assert_eq!((&up, &down), (&ids(lifted), &ids(walkers)), "{player:?}");
+        assert_eq!(bench::reach_queries(&env, player, &down), down.len() as u64);
+        assert_eq!(bench::lifted_queries(&env, player, &up), up.len() as u64);
     }
     let fork = bench(bench::Workload::Fork, false, false);
     assert_eq!((fork.operations, fork.steps), (14, play.steps));
