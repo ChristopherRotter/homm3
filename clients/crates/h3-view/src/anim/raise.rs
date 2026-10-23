@@ -6,6 +6,7 @@
 use alloc::vec;
 
 use h3_protocol::wire::Event;
+use h3_render::Bugs;
 
 use super::{CORPSE, MagicKey, Player, Pose, Sound, SpellLook, TICK};
 use crate::battle_log::Logged;
@@ -17,7 +18,8 @@ pub const ANIMATE_DEAD: u16 = 39;
 /// Sacrifice.
 pub const SACRIFICE: u16 = 40;
 /// Resurrection's animation (spell 38's +8), which `raise_stack` plays whatever raised the stack
-/// (0x5A7740): Animate Dead's own (4) never plays (CLT-Q13, built as the original's).
+/// (0x5A7740): Animate Dead's own (4) never plays (CLT-Q13; with the bugs fixed, E17 M3 T9d,
+/// Animate Dead plays its own, [`Player::raising`]).
 pub const RAISE: u8 = 50;
 /// Sacrifice's animation over its victim (`cast_spell` 0x5A1A37; the spell's own is 52).
 pub const SACRIFICED: u8 = 51;
@@ -26,9 +28,11 @@ impl Player<'_> {
     /// A hero's raise among a cast's `effects`, if `look` is a raising spell's (`cast_spell`
     /// 0x5A1907, 0x5A199C): the spell's sound on the stack raised (0x5A0331); Sacrifice first
     /// kills its victim: the cast's line on it (written after its damage, so by its number 0:
-    /// 0x5A1A30) and animation [`SACRIFICED`] over it with its death (`strike_animation`;
-    /// *provisional*: not recorded, and its corpse, which the original removes, stays); then
-    /// [`Player::raise`]. Returns whether it drew a raise.
+    /// 0x5A1A30, CLT-Q17) and animation [`SACRIFICED`] over it with its death
+    /// (`strike_animation`; its corpse, which the original removes, stays: *provisional*); then
+    /// [`Player::raise`] with [`RAISE`]. With the bugs fixed (E17 M3 T9d) the line names the victim
+    /// by its number before its death (CLT-Q17) and Animate Dead raises with its own animation,
+    /// the spell's (CLT-Q13). Returns whether it drew a raise.
     pub(super) fn raising(
         &mut self,
         side: u8,
@@ -46,6 +50,7 @@ impl Player<'_> {
             return false;
         };
         self.cue(target, Sound::Spell(spell), false);
+        let fixed = self.stage.bugs == Bugs::Fixed;
         let victim = effects.iter().find_map(|e| match *e {
             Event::Sacrificed { victim, creatures } => Some((victim, creatures)),
             _ => None,
@@ -56,24 +61,29 @@ impl Player<'_> {
                 side,
                 spell,
                 target: victim,
-                count: 0,
+                count: if fixed { live.count } else { 0 },
             };
             self.log.push((self.clock.now, line));
             self.marked((victim, &live), killed, Some(SACRIFICED));
         }
-        self.raise(target, creatures);
+        let number = match look.animation {
+            Some(own) if fixed && look.original == ANIMATE_DEAD => own,
+            _ => RAISE,
+        };
+        self.raise(target, creatures, number);
         true
     }
 
     /// `raise_stack` 0x5A7560 (player 4, design §7.16; E17 M3 T7c-3, `raise`): `creatures`
     /// brought back to `stack`, living or among the corpses. Its line first (GENRLTXT 117, 118 by
     /// the creatures raised, 0x5A772F), then L = max(n, d) redraws of trunc(100 F) on the deadline
-    /// (n the frames of [`RAISE`], d of the stack's death group), each with the animation's frame
+    /// (n the frames of magic animation `number`, the original's always [`RAISE`], d of the stack's
+    /// death group), each with the animation's frame
     /// i over the stack (none after n) and a lying stack's death group backwards (frame d − 1 − i)
     /// until it stands (i ≥ d), still among the corpses; then its dead bit and mark cleared and
     /// a redraw at once: it stands with its new count, the animation gone (0x5A7867 to
     /// 0x5A7881).
-    pub(super) fn raise(&mut self, stack: u8, creatures: u32) {
+    pub(super) fn raise(&mut self, stack: u8, creatures: u32, number: u8) {
         let lying = !self.stacks.contains_key(&stack);
         let Some(mut live) = self
             .stacks
@@ -90,7 +100,7 @@ impl Player<'_> {
         self.log.push((self.clock.now, line));
         let death = self.stage.groups.death;
         let d = live.look.count(death);
-        let look = self.stage.magic.get(&RAISE).cloned().unwrap_or_default();
+        let look = self.stage.magic.get(&number).cloned().unwrap_or_default();
         let over = vec![(stack, self.magic_at(&live, &look), !live.right)];
         let tick = self.speed.scale(TICK);
         for i in 0..look.frames.max(d) {
@@ -108,12 +118,12 @@ impl Player<'_> {
                 ));
             }
             let frame = (i < look.frames).then_some(i);
-            self.magic_frame((RAISE, &look), &over, frame, tick);
+            self.magic_frame((number, &look), &over, frame, tick);
         }
         live.count += creatures;
         let now = self.clock.now;
         self.magics.push(MagicKey {
-            animation: RAISE,
+            animation: number,
             drawn: now,
             shown: now,
             frame: None,
@@ -145,7 +155,7 @@ impl Player<'_> {
         if let Some(spell) = self.spell_handle(RESURRECTION) {
             self.cue(target, Sound::SpellFile(spell), false);
         }
-        self.raise(target, creatures);
+        self.raise(target, creatures, RAISE);
         self.creature_cast_over(stack, turned);
     }
 
@@ -155,7 +165,7 @@ impl Player<'_> {
         if let Some(spell) = self.spell_handle(RESURRECTION) {
             self.cue(stack, Sound::Spell(spell), false);
         }
-        self.raise(stack, creatures);
+        self.raise(stack, creatures, RAISE);
     }
 
     /// Teleport moves `stack` to `to` (E17 M3 T7c-3, *provisional*: the handler's dissolve of the

@@ -6,14 +6,17 @@ use alloc::vec::Vec;
 
 use h3_protocol::wire::Event;
 
-use super::{Beam, Player, Riding, STANDING, STRUCK, Sound, SpellLook, TICK};
+use h3_render::Bugs;
+
+use super::{BOLT_TIME, Beam, Player, Riding, STANDING, STRUCK, Sound, SpellLook, TICK};
 use crate::battle_log::Logged;
 use crate::ray;
 
 /// Chain Lightning (the executable's spell number).
 pub const CHAIN_LIGHTNING: u16 = 19;
 /// Its opening animation over the first stack struck (0x5A6416), at 0 ms a frame: drawn, never
-/// on the screen (CLT-Q11, built as the original's).
+/// on the screen (CLT-Q11); with the bugs fixed (E17 M3 T9d) at the bolt from the sky's pace
+/// ([`super::BOLT_TIME`]).
 pub const CHAIN_START: u8 = 37;
 
 /// The draws Chain Lightning's rays turn by: the kept ones in order ([`super::Casts::rays`]),
@@ -51,7 +54,7 @@ impl Draws {
 impl Player<'_> {
     /// Chain Lightning's handler (`chain_lightning` 0x5A6360, design §7.16; E17 M3 T7c-3,
     /// `bolt`) on the stacks its `effects` strike, in the chain's order: the mouse hidden
-    /// (0x5A6380); [`CHAIN_START`] over the first at 0 ms a frame; then a ray from each struck
+    /// (0x5A6380); [`CHAIN_START`] over the first at 0 ms a frame (fixed: 10); then a ray from each struck
     /// stack's centre (`stack_screen_x`, `stack_screen_y`) to the next's ([`ray::chain`], its
     /// ticks at once), on the screen for trunc(100 F) outside the deadline (0x5A6517) and erased
     /// by a redraw at once; then the spell's animation over every stack struck with their
@@ -79,6 +82,10 @@ impl Player<'_> {
         let hidden = self.clock.now;
         let beams = self.beams.len();
         let wait = self.speed.scale(TICK);
+        let opening = match self.stage.bugs {
+            Bugs::Original => 0,
+            Bugs::Fixed => self.speed.scale(BOLT_TIME),
+        };
         let mut from = None;
         for &(t, ..) in &hits {
             let Some(live) = self.live(t) else {
@@ -87,7 +94,7 @@ impl Player<'_> {
             let point = self.centre(&live);
             match from {
                 None => {
-                    self.over_one(CHAIN_START, (t, &live), 0, false);
+                    self.over_one(CHAIN_START, (t, &live), opening, false);
                 }
                 Some(start) => {
                     let draws = &mut self.draws;

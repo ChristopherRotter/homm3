@@ -4352,41 +4352,7 @@ fn hurt(target: u8, caster: u64, damage: u64, kills: u32) -> Event {
 
 #[test]
 fn the_mass_sequence_plays_as_recorded() {
-    // E17 M3 T7c-1 (`seq-mass.toml`): Orrin's Slow at Expert on the four Swordsmen (round 1), their
-    // defends, Death Ripple on every stack with their reactions (round 2).
-    let o = snapshot(vec![
-        at(0, Side::Attacker, MARKSMAN, 86, false),
-        at(1, Side::Defender, SWORDSMAN, 15, false),
-        at(2, Side::Defender, SWORDSMAN, 83, false),
-        at(3, Side::Defender, SWORDSMAN, 117, false),
-        at(4, Side::Defender, SWORDSMAN, 185, false),
-    ]);
-    let none = Target::None {};
-    let mut slow = vec![cast_at(54, none)];
-    slow.extend((1..5).map(|t| applied(t, 54)));
-    let defend = |stack| {
-        vec![
-            Event::Defended { stack },
-            Event::TurnStarted { stack: stack + 1 },
-        ]
-    };
-    let mut round = vec![
-        Event::Defended { stack: 4 },
-        Event::RoundStarted { round: 2 },
-    ];
-    round.extend((1..5).map(|target| Event::EffectEnded { target, spell: 54 }));
-    round.push(Event::TurnStarted { stack: 0 });
-    let mut ripple = vec![cast_at(24, none), hurt(0, 35, 35, 3)];
-    ripple.extend((1..5).map(|t| hurt(t, 35, 35, 1)));
-    let commands = [
-        (Some(0), slow),
-        (Some(2800), defend(0)),
-        (Some(2800), defend(1)),
-        (Some(2800), defend(2)),
-        (Some(2800), defend(3)),
-        (Some(2800), round),
-        (Some(2800), ripple),
-    ];
+    let (o, commands) = mass_sequence();
     let t = play_area(&o, &commands);
     assert_eq!(t.lines_with_heroes(5300), until(&screenless(MASS), 5300));
     // The lines: the casts' before their animations, Death Ripple's damage after its cast's.
@@ -4419,6 +4385,72 @@ fn the_mass_sequence_plays_as_recorded() {
     assert_eq!(t.counts(4899).get(&1), None);
     assert_eq!(t.counts(4900).get(&1), Some(&39));
     assert_eq!(t.counts(4900).get(&0), Some(&37));
+}
+
+/// A command's time (none: after the one before) and its events, as the players here take them.
+type Played = (Option<u32>, Vec<Event>);
+
+/// E17 M3 T7c-1 (`seq-mass.toml`): Orrin's Slow at Expert on the four Swordsmen (round 1), their
+/// defends, Death Ripple on every stack with their reactions (round 2).
+fn mass_sequence() -> (Observation, Vec<Played>) {
+    let o = snapshot(vec![
+        at(0, Side::Attacker, MARKSMAN, 86, false),
+        at(1, Side::Defender, SWORDSMAN, 15, false),
+        at(2, Side::Defender, SWORDSMAN, 83, false),
+        at(3, Side::Defender, SWORDSMAN, 117, false),
+        at(4, Side::Defender, SWORDSMAN, 185, false),
+    ]);
+    let none = Target::None {};
+    let mut slow = vec![cast_at(54, none)];
+    slow.extend((1..5).map(|t| applied(t, 54)));
+    let defend = |stack| {
+        vec![
+            Event::Defended { stack },
+            Event::TurnStarted { stack: stack + 1 },
+        ]
+    };
+    let mut round = vec![
+        Event::Defended { stack: 4 },
+        Event::RoundStarted { round: 2 },
+    ];
+    round.extend((1..5).map(|target| Event::EffectEnded { target, spell: 54 }));
+    round.push(Event::TurnStarted { stack: 0 });
+    let mut ripple = vec![cast_at(24, none), hurt(0, 35, 35, 3)];
+    ripple.extend((1..5).map(|t| hurt(t, 35, 35, 1)));
+    let commands = vec![
+        (Some(0), slow),
+        (Some(2800), defend(0)),
+        (Some(2800), defend(1)),
+        (Some(2800), defend(2)),
+        (Some(2800), defend(3)),
+        (Some(2800), round),
+        (Some(2800), ripple),
+    ];
+    (o, commands)
+}
+
+#[test]
+fn mass_animations_with_the_bugs_fixed() {
+    // E17 M3 T9d: `mass`'s casts with the original's slips fixed. CLT-Q9: Slow's animation shows
+    // its last frame (19) once, where the original shows the one before it twice. CLT-Q10: the
+    // Marksmen's hit by Death Ripple ends on the standing group's frame 0; the original's runs on
+    // into the standing group.
+    let (o, commands) = mass_sequence();
+    let original = play_area(&o, &commands);
+    let fixed = play_area_with(&o, &commands, Bugs::Fixed);
+    let frame = |t: &Timeline, at| t.magic(at).map(|m| m.frame);
+    assert_eq!(
+        [2400, 2500, 2600].map(|at| frame(&original, at)),
+        [Some(18), Some(18), None]
+    );
+    assert_eq!(
+        [2400, 2500, 2600].map(|at| frame(&fixed, at)),
+        [Some(18), Some(19), None]
+    );
+    let pose = |t: &Timeline| t.at(t.end).get(&0).map(|p| (p.group, p.frame));
+    assert_eq!(pose(&fixed), Some((2, 0)));
+    assert!(pose(&original).is_some_and(|(group, frame)| group == 2 && frame > 0));
+    assert_eq!(original.end, fixed.end);
 }
 
 #[test]
@@ -4978,7 +5010,18 @@ fn object_casts() -> Casts {
 fn play_objects_with(
     snapshot: &Observation,
     commands: &[(Option<u32>, Vec<Event>)],
+    looks: (&BTreeMap<u8, MagicLook>, Casts),
+) -> Timeline {
+    play_objects_bugs(snapshot, commands, looks, Bugs::Original)
+}
+
+/// As [`play_objects_with`], the original's drawing bugs reproduced or fixed by `bugs` (E17 M3
+/// T9d).
+fn play_objects_bugs(
+    snapshot: &Observation,
+    commands: &[(Option<u32>, Vec<Event>)],
     (magic, casts): (&BTreeMap<u8, MagicLook>, Casts),
+    bugs: Bugs,
 ) -> Timeline {
     let layout = layout();
     let stage = Stage {
@@ -4987,7 +5030,7 @@ fn play_objects_with(
         groups: tables().battle.groups,
         magic,
         casts: &casts,
-        bugs: Bugs::Original,
+        bugs,
     };
     let commands: Vec<Command<'_>> = commands
         .iter()
@@ -5162,6 +5205,63 @@ fn the_obstacles_sequence_plays_as_recorded() {
     assert_eq!(line.1, Logged::Armageddon { damage: 80 });
     assert!(line.0 >= t.fields[19].shown);
     assert!(t.changes(t.end).contains(&t.fields[0].shown));
+}
+
+#[test]
+fn a_fire_wall_and_armageddon_with_the_bugs_fixed() {
+    // E17 M3 T9d: Orrin's Fire Wall at 146 (its second object at 130), then Armageddon, whose
+    // value the caster's bonuses raise from 80 to 100. CLT-Q12: each object's placing animation
+    // at its own hex, where the original plays both at the hex aimed at. CLT-Q16: Armageddon's
+    // line with the caster's bonuses. CLT-Q10: a stack it struck ends on its standing frame 0.
+    let o = snapshot(vec![
+        at(1, Side::Defender, SWORDSMAN, 49, false),
+        at(2, Side::Defender, SWORDSMAN, 151, false),
+        at(0, Side::Attacker, PIKEMAN, 86, false),
+    ]);
+    let hurt = |target, kills| Event::SpellDamage {
+        target,
+        value: WireU64(80),
+        caster: WireU64(100),
+        damage: WireU64(100),
+        kills,
+    };
+    let commands = [
+        (
+            Some(0),
+            vec![
+                cast_at(13, Target::Hex { hex: 146 }),
+                placed(13, &[146]),
+                placed(13, &[130]),
+            ],
+        ),
+        (
+            None,
+            vec![
+                cast_at(26, Target::None {}),
+                hurt(0, 8),
+                hurt(1, 2),
+                hurt(2, 2),
+            ],
+        ),
+    ];
+    let magic = object_magic();
+    let original = play_objects_with(&o, &commands, (&magic, object_casts()));
+    let fixed = play_objects_bugs(&o, &commands, (&magic, object_casts()), Bugs::Fixed);
+    let places =
+        |t: &Timeline| -> BTreeSet<[i32; 2]> { spots_of(t, 65).iter().map(|w| w.2).collect() };
+    assert_eq!(places(&original).len(), 1);
+    assert_eq!(places(&fixed).len(), 2);
+    assert!(places(&fixed).is_superset(&places(&original)));
+    let line = |t: &Timeline| {
+        t.log.iter().find_map(|(_, l)| match *l {
+            Logged::Armageddon { damage } => Some(damage),
+            _ => None,
+        })
+    };
+    assert_eq!((line(&original), line(&fixed)), (Some(80), Some(100)));
+    let pose = |t: &Timeline| t.at(t.end).get(&1).map(|p| (p.group, p.frame));
+    assert_eq!(pose(&fixed), Some((2, 0)));
+    assert!(pose(&original).is_some_and(|(group, frame)| group == 2 && frame > 0));
 }
 
 #[test]
