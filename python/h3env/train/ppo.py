@@ -396,8 +396,6 @@ class Trainer:
             Bounds(c.elo0, c.elo1, c.alpha, c.beta, c.max_pairs),
             threads=c.threads,
             max_steps=c.max_steps,
-            currency=c.currency,
-            mana_price=c.mana_price,
             stop=stop,
         )
         self.last_gate = self.updates
@@ -407,7 +405,9 @@ class Trainer:
         """The best's ladder (design §7): against the config's engine seats and the promoted
         networks before it, on the report set v1's first `ladder_episodes` per kind (the final
         one: `ladder_final_episodes`), and with `ladder_neutral` attacking the system actor on
-        the neutral set v1's as many (`neutral`; design §12); raises `Stopped` on a stop."""
+        the neutral set v1's as many (`neutral`; design §12); its values at reward v1's settings
+        (`evaluate.CURRENCY`, `MANA_PRICE`), whatever the run trains with; raises `Stopped` on a
+        stop."""
         c = self.config
         index, best = self.lineage[-1]
         per_kind = c.ladder_final_episodes if final else c.ladder_episodes
@@ -415,8 +415,6 @@ class Trainer:
             per_kind=per_kind,
             threads=c.threads,
             max_steps=c.max_steps,
-            currency=c.currency,
-            mana_price=c.mana_price,
             stop=stop,
         )
         rows = ladder(

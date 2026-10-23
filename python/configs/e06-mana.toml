@@ -1,0 +1,28 @@
+# E06 T5's mana-price experiment (decision 10; design §10): `t5-3`'s settings (`e06-t5c.toml`
+# with the MLP and the truncation penalty, the default kinds) with the training's reward at
+# another price per spell point. Reward v1's price is 10 `ai_value` (provisional); 0 makes every
+# cast free, so the run shows what the price costs the agent's play. The gates read results only
+# and the ladders score at reward v1's price whatever the run trains with, so its win rates and
+# values compare with `t5-3`'s directly. Another price: `--set env.mana_price=30`.
+#
+#   uv run --group train python -m h3env.train --config configs/e06-mana.toml --out runs/t5-4
+
+seed = 1
+samples = 20_000_000
+
+[env]
+mana_price = 0
+
+[league]
+self_play = 0.5
+snapshot_every = 1_000_000
+max_members = 16
+live = 4
+live_every = 250_000
+
+[gate]
+gate_every = 10_000_000
+
+[ladder]
+ladder_episodes = 250
+ladder_final_episodes = 500

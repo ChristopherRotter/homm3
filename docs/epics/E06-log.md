@@ -549,3 +549,18 @@ entry only where a task builds on it.
   sandbox reached PyTorch's index): a neutral episode draws no member while a hero battle does,
   the rates by kind, the ladder's neutral row, the ladder command on `--set neutral-v1`.
 
+## T7d's mix; T5's rest beside it: the mana price's preparation (2026-10-23)
+
+- **The user:** T7d at a third neutral (`[78, 2, 100, 50, 25, 3]`: the census's neutral shares a
+  tenth beside the default 4 : 2 : 1; `configs/e06-t7.toml` now says so); in the sandbox
+  meanwhile the mana price's preparation, then AI-Q7 (b)'s batch output (its first part).
+- **The evaluation at reward v1's settings:** a run's `[env] currency` and `mana_price` now shape
+  only the training's reward. The ladders score their value efficiency at reward v1's
+  (`evaluate.CURRENCY`, `MANA_PRICE`: `ai_value`, 10), as `h3 ai eval` scores the bots' tables;
+  the gate reads results only (`play_gate` takes no reward settings). Before, the ladders scored
+  at the run's own settings, so a run at another price could not compare its values with the
+  others' (every record so far trained at v1's: nothing recorded moves).
+- **`configs/e06-mana.toml`:** `t5-3`'s settings with the training's price at 0 (every cast free),
+  the run `t5-4`; another price by `--set env.mana_price=…`. The user's, after T7d.
+- **Test:** a trainer at `gold` and price 1 000 ladders as a run at v1's settings (and the
+  ladder at its own settings scores differently).

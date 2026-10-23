@@ -130,15 +130,14 @@ def play_gate(
     *,
     threads: int = 0,
     max_steps: int = 2000,
-    currency: str = "ai_value",
-    mana_price: int = 10,
     rng_seed: int = 0,
     stop=None,
 ) -> dict:
     """Plays the gate set's pairs in order until the test decides (see the module's
     documentation): `candidate` and `best` are networks (`Policy`). Returns the decision
-    (`result`), `Sprt.summary`'s numbers, the games played and the seconds. Raises `Stopped` when
-    `stop` was requested before one of its batch calls (the gate has no result)."""
+    (`result`), `Sprt.summary`'s numbers, the games played and the seconds; it reads the games'
+    results, never their rewards. Raises `Stopped` when `stop` was requested before one of its
+    batch calls (the gate has no result)."""
     if not 1 <= bounds.max_pairs <= GATE_V1_ENVS * GATE_V1_EPISODES:
         raise ValueError(f"max_pairs lies in 1 to {GATE_V1_ENVS * GATE_V1_EPISODES}")
     start = time.monotonic()
@@ -152,8 +151,6 @@ def play_gate(
             threads=threads,
             seed=GATE_V1_SEED,
             max_steps=max_steps,
-            currency=currency,
-            mana_price=mana_price,
             final_obs=False,
         )
         batch.add_encounters(attacker="external", defender="external")

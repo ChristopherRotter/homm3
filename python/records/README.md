@@ -35,7 +35,9 @@ also accepts schema 4, before the league: `t3b-1`, its config's `[pool]`):
   seconds and (schema 5, E06 T4a) the league's member table at the gate (each member's id, kind,
   birth in samples, `p`, decayed and plain games, whether live; the last gate's is the end's); `promotions`: each promoted network's index, how (`start`, `init`, `gate`), samples
   and update; `ladders`: each ladder's promoted network, whether final, episodes per kind, and per
-  opponent the win rate, its 95 % interval, the value efficiency, each kind's rate and (after
+  opponent the win rate, its 95 % interval, the value efficiency (at reward v1's currency and
+  price whatever the run trains with, from E06 T5's mana-price preparation; no run before it
+  trained at others), each kind's rate and (after
   `t3b-1`) its truncations' share, and (E06 T7c, null before or without `ladder_neutral`)
   `neutral`, the same on the neutral set v1, attacking the system actor; `best`: the latest
   promotion's index and samples.
