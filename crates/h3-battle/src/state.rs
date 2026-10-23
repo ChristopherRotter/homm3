@@ -13,7 +13,7 @@ use h3_content_battle::{
 
 use h3_contracts::{
     Army, ArmyStack, BattleOutcome, BattleResult, BattleSetup, BattleSide, HeroOutcome,
-    StackOrigin, StackRecord,
+    RetreatFacts, StackOrigin, StackRecord,
 };
 use h3_kernel::{CanonicalHash, FixedVec, Rng, StateHasher, StreamId};
 
@@ -1013,6 +1013,14 @@ pub struct BattleState {
     pub(crate) difficulty: u8,
     /// See `difficulty`.
     pub(crate) human: [bool; 2],
+    /// What each side's hero would lose by a retreat and whether it could be hired again
+    /// (`BattleSetup.retreat`, ADR-0027 point 14; private to the side, not observed: no rule
+    /// reads them), read only by the computer's retreat test (BAT-AI-024).
+    pub(crate) retreat: [RetreatFacts; 2],
+    /// The special battlefield of the attacking hero's own adventure tile, if any
+    /// (`BattleSetup.attacker_ground`, ADR-0027 point 14; public, not observed: no rule reads it),
+    /// read only by the computer's odds with BAT-QUIRK-25 (survey slip 6, BAT-AI-008).
+    pub(crate) attacker_ground: Option<BattlefieldId>,
     /// The town the battle is fought at, if any (BAT-SIE-001; public).
     pub(crate) siege: Option<SiegeState>,
     /// The timed effects on stacks (ADR-0014 point 5).
@@ -1077,6 +1085,15 @@ impl BattleState {
         // rule: BAT-TER-002
         let battlefield = setup
             .battlefield
+            .as_ref()
+            .map(|k| {
+                ruleset
+                    .battlefield_by_key(k.as_str())
+                    .ok_or(SetupError::UnknownBattlefield)
+            })
+            .transpose()?;
+        let attacker_ground = setup
+            .attacker_ground
             .as_ref()
             .map(|k| {
                 ruleset
@@ -1204,6 +1221,8 @@ impl BattleState {
             anti_magic: setup.anti_magic,
             difficulty: setup.difficulty,
             human: setup.human,
+            retreat: setup.retreat,
+            attacker_ground,
             siege,
             effects: Effects::new(),
             spell_obstacles: SpellObstacles::new(),
@@ -1629,6 +1648,13 @@ impl CanonicalHash for BattleState {
         h.write_bool(self.anti_magic);
         h.write_u8(self.difficulty);
         self.human.iter().for_each(|&h_| h.write_bool(h_));
+        for facts in &self.retreat {
+            h.write_u32(facts.experience);
+            h.write_u32(facts.artifacts);
+            h.write_bool(facts.tavern);
+            h.write_bool(facts.wanted);
+        }
+        self.attacker_ground.hash_into(h);
         self.siege.hash_into(h);
         self.effects.hash_into(h);
         self.spell_obstacles.hash_into(h);

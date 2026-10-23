@@ -1,11 +1,11 @@
 //! Library side of the `h3` tool: loading packs and scenarios from disk, running random battles,
 //! and the replay file format (TOML). The binary (`main.rs`) only parses arguments.
 //!
-//! Replay file format v29 (`fixtures/replays/*.toml` are examples):
+//! Replay file format v30 (`fixtures/replays/*.toml` are examples):
 //!
 //! ```toml
 //! [replay]
-//! format = 29
+//! format = 30
 //! engine = "0.1.0"
 //! scenario = "skirmish"
 //! seed = "7"                      # u64 as a decimal string
@@ -31,6 +31,14 @@
 //! difficulty = 2                  # the game's difficulty (format 28; omitted when 0)
 //! human = ["attacker"]            # the sides whose player is human (format 28; omitted when
 //!                                 #   none)
+//! attacker_ground = "base:shore"  # the attacking hero's own special ground (format 30; omitted
+//!                                 #   when none)
+//!
+//! [setup.attacker_retreat]        # what the side's hero would lose by a retreat (format 30;
+//! experience = 5000               #   omitted when nothing is known): `RetreatEntry`, each
+//! artifacts = 1200                #   field omitted when 0 or false
+//! tavern = true
+//! wanted = false
 //!
 //! [setup.siege]                   # the town the battle is fought at (format 26; omitted when
 //! faction = "base:castle"         #   none): `h3_pack_battle::SiegeEntry`
@@ -96,7 +104,9 @@ use h3_content::{ContentKey, CreatureTypeId, SpellId};
 use h3_content_battle::BattleRuleset;
 use h3_contracts::{Army, ArmyStack, BattleHero, BattleResult, BattleSetup, BattleSide};
 use h3_kernel::{Rng, StreamId};
-use h3_pack_battle::{BattlePackError, HeroEntry, ObstacleEntry, ScenarioDef, SiegeEntry};
+use h3_pack_battle::{
+    BattlePackError, HeroEntry, ObstacleEntry, RetreatEntry, ScenarioDef, SiegeEntry,
+};
 use h3_sim::{Replay, ReplayError, ReplayHeader};
 use serde::{Deserialize, Serialize};
 
@@ -241,6 +251,8 @@ struct SetupEntry {
     difficulty: u8,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     human: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    attacker_ground: Option<String>,
     // Tables last: TOML writes values before tables.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     siege: Option<SiegeEntry>,
@@ -250,6 +262,10 @@ struct SetupEntry {
     attacker_hero: Option<HeroEntry>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     defender_hero: Option<HeroEntry>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    attacker_retreat: Option<RetreatEntry>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    defender_retreat: Option<RetreatEntry>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -521,8 +537,15 @@ pub fn replay_to_toml(
             defender_funds: replay.setup.funds[1],
             difficulty: replay.setup.difficulty,
             human: h3_pack_battle::side_names(replay.setup.human),
+            attacker_ground: replay
+                .setup
+                .attacker_ground
+                .as_ref()
+                .map(|k| k.as_str().to_owned()),
             attacker_hero: hero(&replay.setup.heroes[0])?,
             defender_hero: hero(&replay.setup.heroes[1])?,
+            attacker_retreat: RetreatEntry::of(replay.setup.retreat[0]),
+            defender_retreat: RetreatEntry::of(replay.setup.retreat[1]),
         },
         attacker: stacks(&replay.setup.attacker),
         defender: stacks(&replay.setup.defender),
@@ -677,9 +700,17 @@ impl ReplayDoc {
                 difficulty: f.setup.difficulty,
                 human: h3_pack_battle::parse_sides(&f.setup.human)
                     .map_err(|e| CliError::Format(e.to_string()))?,
-                // The adventure's facts for the computer (ADR-0027 point 14): E23 T6 names them.
-                retreat: Default::default(),
-                attacker_ground: None,
+                retreat: [
+                    RetreatEntry::facts(f.setup.attacker_retreat),
+                    RetreatEntry::facts(f.setup.defender_retreat),
+                ],
+                attacker_ground: f
+                    .setup
+                    .attacker_ground
+                    .as_deref()
+                    .map(ContentKey::parse)
+                    .transpose()
+                    .map_err(|e| CliError::Format(e.to_string()))?,
             },
             commands: f
                 .commands
@@ -921,6 +952,31 @@ mod tests {
             (3, [true, false])
         );
         let bad = text.replace("human = [\"attacker\"]", "human = [\"nobody\"]");
+        assert!(matches!(
+            ReplayDoc::parse(&bad).unwrap().into_replay(&ruleset),
+            Err(CliError::Format(_))
+        ));
+        // The retreat facts and the attacking hero's own ground (format 30, E23 T6) round-trip;
+        // none is written while nothing is known.
+        assert!(!text.contains("retreat") && !text.contains("attacker_ground"));
+        game.setup.retreat[1] = h3_contracts::RetreatFacts {
+            experience: 2000,
+            artifacts: 0,
+            tavern: true,
+            wanted: true,
+        };
+        game.setup.attacker_ground = ContentKey::parse("synthetic:hallow").ok();
+        let text = replay_to_toml(&game, "skirmish", &ruleset).unwrap();
+        assert!(text.contains("[setup.defender_retreat]") && !text.contains("artifacts"));
+        let back = ReplayDoc::parse(&text)
+            .unwrap()
+            .into_replay(&ruleset)
+            .unwrap();
+        assert_eq!(
+            (back.setup.retreat, back.setup.attacker_ground),
+            (game.setup.retreat, game.setup.attacker_ground.clone())
+        );
+        let bad = text.replace("synthetic:hallow", "hallow");
         assert!(matches!(
             ReplayDoc::parse(&bad).unwrap().into_replay(&ruleset),
             Err(CliError::Format(_))

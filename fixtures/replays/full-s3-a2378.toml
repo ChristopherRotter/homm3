@@ -481,29 +481,29 @@ commands = [
     "D shoot 1 117",
 ]
 checkpoints = [
-    "0x1da309b40ddc403b",
-    "0x6f5f08d2e10e7033",
-    "0xcf280318949aba75",
-    "0x5829ced5a37aab54",
-    "0xf73e263bb8ce7e50",
-    "0xdbedf1aea63e0122",
-    "0xd58af588e0667edd",
-    "0x7843619394c8f027",
-    "0x90a3e9cc0ff77cdb",
-    "0x0d3495c8aa7a3b5f",
-    "0x3347d22c460ce99e",
-    "0xeee257326402fa70",
-    "0xf7c83e21ff614ac9",
-    "0x468212b02378163b",
-    "0xbe2a7beb0292e895",
-    "0xf33f7e9644cfaee4",
-    "0xf43859ed1af469f3",
-    "0x7b8c5495616efd8b",
-    "0x487da1cc4bcd01f6",
+    "0x1dc6c1e933e6aa79",
+    "0x8c18f1b17d2aee01",
+    "0xcac33559a3fc1c81",
+    "0x59bd889033ee68e6",
+    "0xf41f331798281282",
+    "0x1e617b8c3dce7bc0",
+    "0x7095158c26fbf55b",
+    "0x692c69cd1b274dc1",
+    "0xc62e1fbfcf9ac093",
+    "0x7877785f6be8fb23",
+    "0x6181cab01177b63a",
+    "0x5fba93843c1f93a6",
+    "0xc4d210c5e9db0337",
+    "0xe3c548f5df0d6d99",
+    "0xefb2902c9b51aaad",
+    "0x4fcc58e1ca0cc864",
+    "0x709b9c2fa66eed57",
+    "0x01c1d8932a809985",
+    "0x37647e1d134bcdce",
 ]
 
 [replay]
-format = 29
+format = 30
 engine = "0.1.0"
 scenario = "full"
 seed = "3"
@@ -889,4 +889,4 @@ count = 4
 
 [result]
 winner = "defender"
-final_hash = "0x25b86e744928452d"
+final_hash = "0x8850b06523b3bf7b"

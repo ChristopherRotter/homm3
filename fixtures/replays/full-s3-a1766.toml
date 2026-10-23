@@ -283,21 +283,21 @@ commands = [
     "D attack 1 73",
 ]
 checkpoints = [
-    "0x6bbf0b7b6d1c70b4",
-    "0xef52a5490f6680a2",
-    "0xe53b6b32c6a62bfd",
-    "0xf8125acbe6b13cd7",
-    "0x014267a90e8ae9c2",
-    "0x8a2d9347bbe09758",
-    "0x5ecaf5eade84f72d",
-    "0x055be0f57389a20c",
-    "0x0848cb79a2c6acd3",
-    "0xa3645956267c7450",
-    "0x2798f9ef37257761",
+    "0x448ecce5d3bd00c4",
+    "0xafe39468ade2d666",
+    "0xcaaf66ef69dc5a0f",
+    "0xdcb30bb2a5429b19",
+    "0xf16d0621279009ee",
+    "0xf68ef30943360cd8",
+    "0x38e1cfb90a65eca9",
+    "0x8afc8da53e7b5e36",
+    "0xe7acc154f0a6e127",
+    "0xc326e098ae62b382",
+    "0xee123a754f8d3335",
 ]
 
 [replay]
-format = 29
+format = 30
 engine = "0.1.0"
 scenario = "full"
 seed = "3"
@@ -683,4 +683,4 @@ count = 4
 
 [result]
 winner = "defender"
-final_hash = "0x32a5bb2935d75012"
+final_hash = "0xec4b296bea83b354"

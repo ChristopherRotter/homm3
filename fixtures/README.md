@@ -27,7 +27,8 @@ replay's setup and commands and change the `ruleset_hash` in its header, then `h
 Re-running its spec is no substitute: since E04c T10b's obstacle draw (17a0489b) `duel-s1` and
 `field-s5` get other obstacles than the ones they store (E23 T1c).
 
-**Only the state hash moved** (`BATTLE_STATE_HASH_VERSION`, E23 T5b2b's v52, E23 T6's v53): the
+**Only the state hash moved** (`BATTLE_STATE_HASH_VERSION`, E23 T5b2b's v52, E23 T6's v53; E23
+T6 also the replay format v30, the setup's retreat facts and the attacker's ground): the
 commands stay. The loop below re-records the eight others with the same commands; `duel-s1` and
 `field-s5` (E23 T6: all ten) are rehashed from their stored setup and commands by a throwaway test
 in `crates/h3-cli/tests`

@@ -11,7 +11,7 @@ use h3_content::{
 };
 use h3_contracts::{
     ArmyStack, BallistaControl, BattleEffect, BattleHero, BattleSide, DamageBonuses, EagleEye,
-    FactionGroup, FortLevel, Moat, Obstacle, Rate, StatOp, TentControl,
+    FactionGroup, FortLevel, Moat, Obstacle, Rate, RetreatFacts, StatOp, TentControl,
 };
 
 /// A pack's `core.toml` and `battle.toml`, patched together (R01b3).
@@ -429,6 +429,40 @@ fn scenario_errors() {
     assert_eq!(
         parse_scenario(&format!("{header}human = [\"nobody\"]\n")),
         Err(BattlePackError::Syntax("unknown side `nobody`".to_owned()))
+    );
+    // The adventure's facts for the computer (E23 T6, ADR-0027 point 14), defaulting to nothing
+    // known and an ordinary ground; an entry of the default facts is none.
+    assert_eq!(
+        (plain.retreat, plain.attacker_ground),
+        ([RetreatFacts::default(); 2], None)
+    );
+    let facts = parse_scenario(&format!(
+        "{header}attacker_ground = \"base:shore\"\n\
+         [scenario.defender_retreat]\nexperience = 5000\nartifacts = 1200\ntavern = true\n"
+    ))
+    .unwrap();
+    let defender = RetreatFacts {
+        experience: 5000,
+        artifacts: 1200,
+        tavern: true,
+        wanted: false,
+    };
+    assert_eq!(facts.retreat, [RetreatFacts::default(), defender]);
+    assert_eq!(facts.attacker_ground, ContentKey::parse("base:shore").ok());
+    assert_eq!(RetreatEntry::of(RetreatFacts::default()), None);
+    assert_eq!(
+        RetreatEntry::of(defender).map(RetreatEntry::to_facts),
+        Some(defender)
+    );
+    assert!(parse_scenario(&format!("{header}attacker_ground = \"shore\"\n")).is_err());
+    let (_, setup) = synthetic(&SYNTHETIC_DUEL.replace(
+        "[scenario]\n",
+        "[scenario]\nattacker_ground = \"synthetic:hallow\"\n",
+    ))
+    .unwrap();
+    assert_eq!(
+        setup.attacker_ground,
+        ContentKey::parse("synthetic:hallow").ok()
     );
 }
 

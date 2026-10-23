@@ -372,24 +372,24 @@ commands = [
     "A attack 1 23",
 ]
 checkpoints = [
-    "0x508b59e8ae6f6ea7",
-    "0x5e8c6028aa34a891",
-    "0x26add6196fda6a26",
-    "0xa08ac0fd8bf7f81d",
-    "0x856c692e3a5d4161",
-    "0xa57aa3a7554f0f75",
-    "0x9eb3485057615834",
-    "0xd8416665040a5a89",
-    "0x92bea598e30f01f9",
-    "0x34ba3a68d0f664c8",
-    "0xd8749d3b42c51fac",
-    "0x4325310d2e7e8fac",
-    "0x298850f03815c9fd",
-    "0x0528fcb9ae5b2da0",
+    "0xc6abc466831489d3",
+    "0xdaf42eae3173bbf7",
+    "0xd66da4719c9dedfe",
+    "0x4626e5632581e8b3",
+    "0x2a7fb6901a0eac79",
+    "0xa1fa4d06d05df97b",
+    "0xd4a103f91549e2c6",
+    "0x7957c9935425c6b7",
+    "0xc5a5b795d97ed407",
+    "0xd665bb64d7149152",
+    "0x445134488f94d698",
+    "0xd781de9f9f57df38",
+    "0xcca9c19b11028fbf",
+    "0xda23b5b07c552bfe",
 ]
 
 [replay]
-format = 29
+format = 30
 engine = "0.1.0"
 scenario = "duel"
 seed = "1"
@@ -448,4 +448,4 @@ count = 20
 
 [result]
 winner = "attacker"
-final_hash = "0xf7f669eb0f53c2b6"
+final_hash = "0x4d30ad585f76f446"

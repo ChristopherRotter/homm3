@@ -147,15 +147,15 @@ commands = [
     "A move 111",
 ]
 checkpoints = [
-    "0x061f4d7c3c1e63d7",
-    "0xa2aadcb1acd32428",
-    "0x4266680ef96df974",
-    "0xdf4f53bb115d2e19",
-    "0x356eb93c695bf2f0",
+    "0xc9cc29608cae269d",
+    "0xf65002a4942a7fce",
+    "0x86ce962f5f467394",
+    "0x12da028c716409a9",
+    "0x981635d16eb471de",
 ]
 
 [replay]
-format = 29
+format = 30
 engine = "0.1.0"
 scenario = "siege"
 seed = "7"
@@ -238,4 +238,4 @@ count = 15
 
 [result]
 winner = "defender"
-final_hash = "0x6578f1f9b9c50f96"
+final_hash = "0x4f1dbe475940287a"

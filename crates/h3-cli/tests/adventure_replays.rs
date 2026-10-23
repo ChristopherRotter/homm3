@@ -80,7 +80,8 @@
 //! every game again: the first four re-recorded with their options, the searched ones replaced and
 //! the tenth added. E23 T5b2b (battle state hash v52, `cross-lane`) re-recorded all ten with their
 //! options, their commands unchanged: nine moved checkpoint hashes taken inside a battle,
-//! `duel-s2-d7` none; so did E23 T6 (battle state hash v53, the tactics phase's rounds).
+//! `duel-s2-d7` none; so did E23 T6 twice (battle state hash v53: the tactics phase's rounds,
+//! then the retreat facts and the attacking hero's own ground).
 
 use std::path::PathBuf;
 

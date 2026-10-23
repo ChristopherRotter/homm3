@@ -5,8 +5,8 @@
 //! battle's private state is added here by the battle lane.
 
 use h3_content::{CreatureTypeId, SchoolId, SpellId};
-use h3_content_battle::{BattleRuleset, BattleSpell, SpellTarget};
-use h3_contracts::BattleSide;
+use h3_content_battle::{BattleRuleset, BattleSpell, BattlefieldId, SpellTarget};
+use h3_contracts::{BattleSide, RetreatFacts};
 use h3_kernel::Rng;
 use h3_kernel::arith::X87;
 
@@ -137,6 +137,20 @@ pub fn difficulty(state: &BattleState) -> u8 {
 /// branches marked for Hard and above take such a side as Hard (ADR-0027 point 8).
 pub fn human(state: &BattleState, side: BattleSide) -> bool {
     state.human[side.index()]
+}
+
+/// What `side`'s hero would lose by a retreat and whether it could be hired again
+/// (`BattleSetup.retreat`, ADR-0027 point 14): the adventure's facts the computer's retreat test
+/// reads (0x41E570; BAT-AI-024). Private to the side.
+pub fn retreat_facts(state: &BattleState, side: BattleSide) -> RetreatFacts {
+    state.retreat[side.index()]
+}
+
+/// The special battlefield of the attacking hero's own adventure tile, if any
+/// (`BattleSetup.attacker_ground`, ADR-0027 point 14), at which the original's computer values
+/// that hero's spells (survey slip 6, BAT-AI-008).
+pub fn attacker_ground(state: &BattleState) -> Option<BattlefieldId> {
+    state.attacker_ground
 }
 
 /// Whether the round is in its wait phase (+0x13DE4), where a stack cannot wait again. In the

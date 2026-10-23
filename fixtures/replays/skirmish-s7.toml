@@ -400,25 +400,25 @@ commands = [
     "D attack 0 127",
 ]
 checkpoints = [
-    "0x9d2a2b34031405ef",
-    "0xb678e23be36ac6df",
-    "0x8e20477394d34dec",
-    "0xa62cb6a05ed84aff",
-    "0x8e51abe36a2930fb",
-    "0x28292d920474f48d",
-    "0xbfae786c56bd5acf",
-    "0xd0fb63bb5ab91890",
-    "0xcc0d17b11ab328e5",
-    "0x638b0e95e55597d7",
-    "0x62bb496370bff62f",
-    "0xcb1937d263553ef2",
-    "0x58ff5441a159e559",
-    "0xefc3370c3db28a9d",
-    "0xca1c12afbcdd22ac",
+    "0x0822d4a05f3f2881",
+    "0x6fc69e388bfe9bc3",
+    "0x8cf068265b517c1e",
+    "0xb63fda23681027c7",
+    "0x5d85ce20f06d48c5",
+    "0xf6082c83a81ab959",
+    "0xa02dd4948718d3b9",
+    "0x30b3a6027ba2e5b4",
+    "0x2db2140368f815ab",
+    "0x31dc3456a490a223",
+    "0x60752aaaea3d8d4b",
+    "0x5f510b301b03b25e",
+    "0xb1e504108ced6b1d",
+    "0xcb8a2c4d91f87369",
+    "0x5ced8f163541371a",
 ]
 
 [replay]
-format = 29
+format = 30
 engine = "0.1.0"
 scenario = "skirmish"
 seed = "7"
@@ -480,4 +480,4 @@ count = 15
 
 [result]
 winner = "defender"
-final_hash = "0x0483bc18de967a3e"
+final_hash = "0x1279918b130bb4b4"

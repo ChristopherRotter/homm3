@@ -317,22 +317,22 @@ commands = [
     "A shoot 11 80",
 ]
 checkpoints = [
-    "0x78baa4747a975a37",
-    "0x8623b3461df04517",
-    "0xbfaf6b6da275bda2",
-    "0x047154e7ca24f2ed",
-    "0x84ec6a50824b1455",
-    "0x5438a47de0bf2105",
-    "0xcdd1e5dc949e7bf2",
-    "0x96ec2903612690c7",
-    "0x1e730406b61ecea8",
-    "0xdf3d75cd128ce8b9",
-    "0x9165f25ec1db3399",
-    "0x6ceb2d0f63f2682d",
+    "0x81d788224fc6e75f",
+    "0xe67f5664a039c513",
+    "0xb1574ebfc0bb3fea",
+    "0x187018a7f6bbddc5",
+    "0xf10124cac42750a9",
+    "0xd51e9059be41c83d",
+    "0x22eef0fc399e334a",
+    "0x56fa988369b0d9ab",
+    "0xfc29a73d6abe5eb2",
+    "0x0f0eee0e4d27737d",
+    "0x3d3cdcde9df99707",
+    "0xd900db7dadef91ff",
 ]
 
 [replay]
-format = 29
+format = 30
 engine = "0.1.0"
 scenario = "full"
 seed = "3"
@@ -718,4 +718,4 @@ count = 4
 
 [result]
 winner = "attacker"
-final_hash = "0xfb5b07acc02e5fa7"
+final_hash = "0x5c1a3f3b4169734d"
