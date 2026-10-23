@@ -10,11 +10,10 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 - **E06** (AI-Q8; `docs/epics/E06-battle-ai.md`, design `E06-design.md`, record `E06-log.md`):
   increments 1 to 4 done (#306 to #419; best so far `t5-3`'s MLP 0.832, 0.557, 0.533 against
   Random, Aggressor, Greedy in 20 M, `t4-2`'s 0.839, 0.578, 0.559 in 60 M). **Increment 5**
-  (T7, the neutral share; design §12): T7a (#420), T7b (#421, C ABI v32) and T7c (the neutral
-  set v1, the system actor on the ladder: the strongest bot; #426) done 2026-10-23. T7d, the
-  user's run at a third neutral; beside it T5's rest (the mana price's preparation, #429; AI-Q7
-  (b) part 1, the batch's kill preview, C ABI v33, #432 open). **Next:** #432's merge, T7d's
-  checkpoint (QUEUE).
+  (T7, the neutral share; design §12) done 2026-10-23: T7a to T7c (#420, #421, #426), T7d
+  (`t7-1`: the report set as `t5-3`'s, the system actor 0.374, the neutral value +0.245 below the
+  target +0.285); beside it the mana price's preparation (#429) and AI-Q7 (b) part 1 (C ABI v33,
+  #432). **Next:** increment 6's refinement with the user (QUEUE's choices).
 - **Versions:** battle action encoding v13, observation encoding v21, replay format v30 (E23 T6), the adventure env's action encoding v4 (E08 T45), C ABI v33 (E06 T5: the kill preview) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q10, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
@@ -96,7 +95,7 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 
 - The user: T7d at a third neutral (their machine); here the mana price's preparation (#429),
   then AI-Q7 (b) part 1 (#432): the preview of every entry halves the engine's step (29 µs),
-  still far above training's 5 000 samples/s.
+  still far above training's 5 000 samples/s. `t7-1` recorded; increment 6 later (no run).
 
 ### 2026-10-23 — E06 T7c, the trainer's neutral share
 

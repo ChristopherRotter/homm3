@@ -282,10 +282,10 @@ Each with the user's checkpoint; only the next one refined (Q41's pattern).
   and the visualization command), T5b (`t5-1`: stalled), T5c (the truncation penalty), T5d
   (`t5-2`, `t5-3`: the entity network parked, the MLP with the penalty near `t4-2`'s 60 M in
   20 M).
-- **Increment 5** (refined 2026-10-23, the user: T7 first, no run meanwhile): T7a (`shared/`:
-  `h3-sim` may depend on `h3-battle-ai`), T7b (the system actor's seat, C ABI v32; §12), then
-  at the checkpoint T7c (the trainer's neutral share, the neutral held-out set, the system actor
-  in the ladder) and T7d (the run).
+- **Increment 5** (refined 2026-10-23, the user: T7 first, no run meanwhile; done 2026-10-23,
+  `E06-log.md`): T7a (`shared/`: `h3-sim` may depend on `h3-battle-ai`), T7b (the system
+  actor's seat, C ABI v32; §12), then at the checkpoint T7c (the trainer's neutral share, the
+  neutral held-out set, the system actor in the ladder) and T7d (`t7-1`).
 - **Then** T5's rest (AI-Q7 (b), the mana price, the batch size and threads from T9c's table,
   the observations in place), T6, T8 (only if PPO plateaus), T9. Built beside T7d (the user,
   2026-10-23): the mana price's preparation (the evaluation at reward v1's settings,
@@ -393,4 +393,5 @@ original's computer, complete for a side without a hero since E23 T4c). Refined 
 - **The run** (T7d; `configs/e06-t7.toml`, `t5-3`'s settings): the census shares would put
   82.5 % of the episodes in the neutral kinds, each with one learning side; the user chose a
   third neutral with T7c's numbers (2026-10-23: `[78, 2, 100, 50, 25, 3]`, the census's neutral
-  shares a tenth).
+  shares a tenth). `t7-1` (`E06-log.md`, T7d): the report set as `t5-3`'s, the neutral set
+  0.972 at value +0.245, flat from 10 M, below the system actor's +0.285.

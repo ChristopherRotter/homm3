@@ -21,24 +21,23 @@ stalled: both sides hid), T5c (the truncation penalty, the user's amendment of d
 (`t5-2`, `t5-3`: the entity network parked; the MLP with the penalty reached 0.832, 0.557,
 0.533 in 20 M samples and 70 minutes, near `t4-2`'s 60 M).
 
-**Increment 5** (refined 2026-10-23, the user: T7 first, no run meanwhile; the neutral weights
-in the run's config; design §12): T7a (#420), T7b (the system actor's seat, C ABI v32; #421) and
-T7c (the trainer's neutral share, the neutral set v1, the system actor on the ladder; one pull
-request, the user) done. **Next:**
-- **T7d The run:** the user's, at a third neutral (the user, 2026-10-23; `configs/e06-t7.toml`,
-  `t5-3`'s settings, `runs/t7-1`): its record into `python/records/t7-1.json`, its results into
-  `E06-log.md`, then the checkpoint (increment 6's refinement). Read with it: the system actor is
-  the strongest ladder bot (0.653 against Greedy); the neutral target is a value efficiency above
-  +0.285; the engine at that mix 33 888 caller steps/s a thread in the sandbox.
-- **Beside T7d** (the user, 2026-10-23; T5's rest, design §10), done: the mana price's
-  preparation (#429: the ladders at reward v1's settings, `configs/e06-mana.toml`, the run
-  `t5-4` on offer after T7d) and AI-Q7 (b) part 1 (the batch's previewed kills per attack and
-  shot entry, C ABI v33; `E06-log.md`). At the checkpoint: **AI-Q7 (b) part 2** (the network
-  reads `batch.preview` beside the entry mask, `[network]` opt-in, the rollout keeps it; an A/B
-  config against `t5-3`), the mana run, or a longer run.
-- Later (design §10): T5's rest (AI-Q7 (b), the mana price, throughput), T6, T8, T9; the run
-  that compares the penalty at 60 M with `t4-2` (`configs/e06-t5c.toml`, `--set
-  network.kind=mlp --set samples=60_000_000`) stays on offer.
+**Increment 5** done 2026-10-23 (`E06-log.md`): T7a (#420), T7b (the system actor's seat, C
+ABI v32; #421), T7c (the trainer's neutral share, the neutral set v1, the system actor on the
+ladder; #426), T7d (`t7-1` at a third neutral: the report set as `t5-3`'s, 0.828, 0.551, 0.528;
+the system actor 0.374; the neutral set 0.972, value +0.245 against the target +0.285). Beside
+it T5's rest: the mana price's preparation (#429) and AI-Q7 (b) part 1 (C ABI v33, #432).
+
+**Next: increment 6's refinement** (the user, 2026-10-23: `t7-1` recorded, nothing built and no
+run meanwhile; the choices put to them, `E06-log.md`, T7d):
+- Code: **AI-Q7 (b) part 2** (the network reads `batch.preview` beside the entry mask, an
+  opt-in `[network]` key, the rollout keeps it; an A/B config against `t7-1`'s settings), or
+  the system actor as a league opponent in the hero kinds too (a change of decision 9: the
+  strongest opponent, played inside the batch; its ladder row then measures a training
+  opponent).
+- Runs on the user's machine: 60 M at T7's mix (`configs/e06-t7.toml --set
+  samples=60_000_000`, about 4 hours: whether PPO plateaus below the targets, T8's trigger);
+  the mana run `t5-4` (`configs/e06-mana.toml`, about 75 minutes).
+- Later (design §10): T5's rest (throughput, the observations in place), T6, T8, T9.
 
 ## Inbox
 
