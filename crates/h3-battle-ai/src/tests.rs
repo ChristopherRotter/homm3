@@ -1821,7 +1821,7 @@ fn a_refused_choice_falls_back_to_defend() {
     assert!(validate(&state, &r, side, refused).is_err());
     assert_eq!(checked(&state, &r, side, refused), Command::Defend);
     assert_eq!(checked(&state, &r, side, Command::Wait), Command::Wait);
-    assert_eq!(POLICY_VERSION, 18);
+    assert_eq!(POLICY_VERSION, 19);
 }
 
 /// The setup of `setup` on `difficulty`.

@@ -110,6 +110,22 @@ fn a_shooter_takes_the_hex_of_the_zone_with_the_fewest_free_neighbours() {
     assert_eq!(decide(&state, &r), Command::Wait);
 }
 
+/// Batch 4b H1 (E23 T7): a computer hero's Archers alone in the defender's zone of Expert Tactics
+/// go to hex 15 (row 0, column 15), two free neighbours in the original's table, which has none in
+/// the side column; with the field's own neighbours hex 15 had four and the port took hex 9.
+// covers: BAT-AI-023
+#[test]
+fn a_shooter_counts_no_neighbour_in_a_side_column() {
+    let r = ruleset();
+    let mut setup = setup(&[(IMP, 20)], &[(ARCHER, 20)]);
+    setup.heroes = [Some(hero(0)), Some(hero(3))];
+    let state = BattleState::new(&r, &setup, 5).unwrap();
+    assert!(state.tactics().is_some());
+    assert_eq!(state.stacks()[1].hex, Hex(100));
+    assert_eq!(state.active(), Some(StackId(1)));
+    assert_eq!(decide(&state, &r), Command::Move { to: Hex(15) });
+}
+
 // covers: BAT-AI-023
 #[test]
 fn on_easy_a_computers_shooter_waits_in_the_phase() {

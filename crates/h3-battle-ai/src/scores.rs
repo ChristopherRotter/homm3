@@ -288,7 +288,7 @@ impl<'a> Scorer<'a> {
                 .hexes()
                 .filter(|_| e.is_two_hex())
                 .filter(|&h| map.reached(h) && !map.is_stop(h))
-                .filter_map(|h| field.neighbor(h, d))
+                .filter_map(|h| hexes::table_neighbor(field, h, d))
                 .filter(|&n| !map.reached(n));
             for hex in beside {
                 self.lower(scores, hex, minus);
