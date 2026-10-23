@@ -172,6 +172,12 @@ impl BattleEnv {
         }
     }
 
+    /// Writes the engine's preview of each attack and shot in `legal` for `actor` into `out`
+    /// ([`action::preview_kills`]; `legal` as [`Self::legal_mask`] left it).
+    pub fn preview_kills(&self, actor: BattleSide, legal: &LegalCommands, out: &mut [f32]) {
+        action::preview_kills(&self.state, &self.ruleset, actor, legal, out);
+    }
+
     /// Fills `mask` with the legal spells of `actor` after choosing `entry`
     /// ([`action::spell_mask`]).
     pub fn spell_mask(

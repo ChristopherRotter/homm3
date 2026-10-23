@@ -127,7 +127,7 @@ static int play(H3Env *env, Played *out) {
 /* A batch of BATCH envs on two threads (E05 T3d): the siege against a random defender and in
  * self-play, (v28) the encounter distribution with its neutral kinds and (v29) at its default
  * weights against a random defender, CALLS calls of random legal actions from the batch's
- * masks. */
+ * masks; (v33) the previewed kills of the legal strikes only. */
 #define BATCH 4
 #define CALLS 300
 
@@ -135,6 +135,7 @@ typedef struct Batched {
     int episodes;
     int decided;
     int encounters;
+    int previewed;
 } Batched;
 
 static int play_batch(Batched *out) {
@@ -173,11 +174,14 @@ static int play_batch(Batched *out) {
     uint32_t n_spells = h3_spell_count();
     uint32_t n_targets = h3_target_count();
     uint32_t n_obs = h3_observation_len();
+    uint32_t base = h3_preview_base(), n_preview = h3_preview_len();
+    CHECK(base < n_actions && base + n_preview / 2 <= n_actions);
     float *obs = malloc(sizeof(float) * BATCH * n_obs);
     float *final_obs = malloc(sizeof(float) * BATCH * 2 * n_obs);
+    float *preview = malloc(sizeof(float) * BATCH * n_preview);
     uint8_t *mask = malloc((size_t)BATCH * n_actions);
     uint8_t *heads = malloc((size_t)BATCH * (n_spells > n_targets ? n_spells : n_targets));
-    CHECK(obs && final_obs && mask && heads);
+    CHECK(obs && final_obs && preview && mask && heads);
     int8_t to_move[BATCH], result[BATCH];
     float reward[2 * BATCH];
     uint8_t done[BATCH], truncated[BATCH];
@@ -188,7 +192,7 @@ static int play_batch(Batched *out) {
     int8_t encounter[BATCH];
     H3Action actions[BATCH];
     H3BatchBuffers buffers = {obs,     mask,     to_move, reward, done,     truncated, result,
-                              final_obs, episode, scenario, seed, status, encounter};
+                              final_obs, episode, scenario, seed, status, encounter, preview};
     CHECK(h3_batch_reset(batch, &buffers) == H3_OK);
     uint64_t lcg = 777;
     memset(out, 0, sizeof *out);
@@ -224,11 +228,18 @@ static int play_batch(Batched *out) {
                                    : encounter[i] == H3_ENCOUNTER_NONE);
             CHECK(scenario[i] != 3 || to_move[i] == 0); /* v29: the defender plays inside */
             out->encounters += done[i] && scenario[i] >= 2;
+            for (uint32_t j = 0; j < n_preview / 2; j++) {
+                const float *kills = preview + (size_t)i * n_preview + 2 * j;
+                CHECK(kills[0] <= kills[1]);
+                CHECK(mask[(size_t)i * n_actions + base + j] || kills[1] == 0.0f);
+                out->previewed += kills[1] > 0.0f;
+            }
         }
     }
     CHECK(seed[0] == h3_batch_episode_seed(9, 0, episode[0]));
     free(obs);
     free(final_obs);
+    free(preview);
     free(mask);
     free(heads);
     h3_batch_destroy(batch);
@@ -236,7 +247,7 @@ static int play_batch(Batched *out) {
 }
 
 int main(void) {
-    CHECK(h3_abi_version() == 32);
+    CHECK(h3_abi_version() == 33);
     CHECK(h3_observation_encoding_version() == 21 && h3_action_encoding_version() == 13);
     CHECK(h3_encounters_version() == 1);
     CHECK(h3_system_policy_version() > 0); /* v32 */
@@ -276,13 +287,14 @@ int main(void) {
 
     Batched batched;
     CHECK(play_batch(&batched) == 0);
-    CHECK(batched.decided > 0);
+    CHECK(batched.decided > 0 && batched.previewed > 0);
 
     printf("ffi smoke ok: %d steps, %d casts, %d stack casts, result %d, final hash %016llx; "
            "siege: %d steps, %d wall shots, result %d, final hash %016llx; "
-           "batch: %d episodes, %d decided, %d encounters\n",
+           "batch: %d episodes, %d decided, %d encounters, %d previewed strikes\n",
            full.steps, full.casts, full.stack_casts, (int)full.result.result,
            (unsigned long long)hash, town.steps, town.wall_shots, (int)town.result.result,
-           (unsigned long long)siege_hash, batched.episodes, batched.decided, batched.encounters);
+           (unsigned long long)siege_hash, batched.episodes, batched.decided, batched.encounters,
+           batched.previewed);
     return 0;
 }

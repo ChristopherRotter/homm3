@@ -4,6 +4,7 @@
 //! ```text
 //! h3 ai bench [--scenario <file>] [--packs-dir packs] [--envs 64] [--threads 0] [--calls 1000]
 //!             [--seed 1] [--max-steps 0] [--encounters default|<six weights, a,b,c,d,e,f>]
+//!             [--preview false|true]
 //! h3 ai census <maps folder or file>... [--out <file>]
 //! h3 ai eval [--set report-v1|neutral-v1|v0] [--policies random,aggressor,greedy,system]
 //!            [--max-steps 2000] [--episodes <per kind, 500 | v0: 1000>] [--json <file>]
@@ -27,6 +28,7 @@ use h3_sim::EncounterTable;
 pub const USAGE: &str = "usage:
   h3 ai bench [--scenario <file>] [--packs-dir packs] [--envs 64] [--threads 0] [--calls 1000]
               [--seed 1] [--max-steps 0] [--encounters default|<six weights, a,b,c,d,e,f>]
+              [--preview false|true]
   h3 ai census <maps folder or file>... [--out <file>]
   h3 ai eval [--set report-v1|neutral-v1|v0] [--policies random,aggressor,greedy,system]
              [--max-steps 2000] [--episodes <per kind, 500 | v0: 1000>] [--json <file>]
@@ -118,6 +120,7 @@ fn bench(args: &Args) -> Result<(), String> {
         "seed",
         "max-steps",
         "encounters",
+        "preview",
     ])?;
     let options = BenchOptions {
         scenario: args.path("scenario", "packs/synthetic/scenarios/full.toml"),
@@ -128,6 +131,7 @@ fn bench(args: &Args) -> Result<(), String> {
         seed: args.num("seed", 1)?,
         max_steps: args.num("max-steps", 0)?,
         encounters: args.get("encounters").map(encounter_weights).transpose()?,
+        preview: args.num("preview", false)?,
     };
     let report = bench::run(&options)?;
     println!(
@@ -139,7 +143,8 @@ fn bench(args: &Args) -> Result<(), String> {
         report.secs, report.step_secs
     );
     println!(
-        "steps/s inside BattleBatch::step (observations and entry masks written): {:.0}",
+        "steps/s inside BattleBatch::step (observations, entry masks{} written): {:.0}",
+        if options.preview { ", previews" } else { "" },
         report.steps as f64 / report.step_secs
     );
     println!(

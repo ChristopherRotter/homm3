@@ -10,7 +10,7 @@ use h3_kernel::{Rng, StreamId};
 use proptest::prelude::*;
 
 use super::*;
-use crate::action::{CREATURE_CAST, HERO_CAST, RETREAT, SURRENDER};
+use crate::action::{CREATURE_CAST, HERO_CAST, PREVIEW_BASE, PREVIEW_ENTRIES, RETREAT, SURRENDER};
 use crate::encounter::Kind;
 use crate::reward::{self, Currency, RewardConfig};
 use crate::rollout;
@@ -41,6 +41,7 @@ struct Arrays {
     obs: Vec<f32>,
     mask: Vec<u8>,
     final_obs: Vec<f32>,
+    preview: Vec<f32>,
     reports: Vec<EnvReport>,
 }
 
@@ -50,6 +51,7 @@ impl Arrays {
             obs: vec![0.0; n * OBSERVATION_LEN],
             mask: vec![0; n * ACTION_COUNT],
             final_obs: vec![0.0; n * 2 * OBSERVATION_LEN],
+            preview: vec![0.0; n * PREVIEW_LEN],
             reports: vec![EnvReport::default(); n],
         }
     }
@@ -59,8 +61,13 @@ impl Arrays {
             obs: Some(&mut self.obs),
             entry_mask: Some(&mut self.mask),
             final_obs: Some(&mut self.final_obs),
+            preview: Some(&mut self.preview),
             reports: Some(&mut self.reports),
         }
+    }
+
+    fn preview(&self, i: usize) -> &[f32] {
+        &self.preview[i * PREVIEW_LEN..(i + 1) * PREVIEW_LEN]
     }
 
     fn mask(&self, i: usize) -> &[u8] {
@@ -125,14 +132,38 @@ struct Single {
     legal: LegalCommands,
 }
 
-/// What a single env shows: its report, observation, mask and final observations.
+/// What a single env shows: its report, observation, mask, previewed kills and final
+/// observations.
 #[derive(Debug, PartialEq)]
 struct Shown {
     report: EnvReport,
     obs: Vec<u32>,
     mask: Vec<u8>,
+    preview: Vec<u32>,
     final_obs: Option<Vec<u32>>,
     hash: Option<u64>,
+}
+
+/// The engine's preview of each legal attack and shot entry of `mask` (`h3_battle::preview` of
+/// the entry's command), as the batch lays it out; 0 elsewhere.
+fn engine_preview(env: &BattleEnv, side: BattleSide, mask: &ActionMask) -> Vec<f32> {
+    let mut preview = vec![0.0; PREVIEW_LEN];
+    for j in 0..PREVIEW_ENTRIES {
+        let entry = PREVIEW_BASE + j;
+        if !mask[entry] {
+            continue;
+        }
+        let state = env.state();
+        let command = crate::action::decode(state, env.ruleset(), Action::entry(entry)).unwrap();
+        assert!(matches!(
+            command,
+            Command::Attack { .. } | Command::Shoot { .. }
+        ));
+        let p = h3_battle::preview(state, env.ruleset(), side, command).unwrap();
+        preview[2 * j] = p.kills[0] as f32;
+        preview[2 * j + 1] = p.kills[1] as f32;
+    }
+    preview
 }
 
 struct Reference<'a> {
@@ -270,6 +301,7 @@ impl<'a> Reference<'a> {
     fn show(&self, single: &Single, mut report: EnvReport, final_obs: Option<Vec<u32>>) -> Shown {
         let mut obs = vec![0.0; OBSERVATION_LEN];
         let mut mask = [false; ACTION_COUNT];
+        let mut preview = vec![0.0; PREVIEW_LEN];
         let env = single.env.as_ref();
         let to_move = env.and_then(BattleEnv::to_move);
         if let (Some(env), Some(side)) = (env, to_move) {
@@ -277,6 +309,7 @@ impl<'a> Reference<'a> {
             env.legal_mask(side, &mut LegalCommands::new(), &mut mask);
             mask[RETREAT] = false;
             mask[SURRENDER] = false;
+            preview = engine_preview(env, side, &mask);
         }
         report.to_move = to_move;
         report.episode = single.started - 1;
@@ -287,6 +320,7 @@ impl<'a> Reference<'a> {
             report,
             obs: bits(&obs),
             mask: mask.iter().map(|m| u8::from(*m)).collect(),
+            preview: bits(&preview),
             final_obs,
             hash: env.map(BattleEnv::state_hash),
         }
@@ -301,6 +335,7 @@ fn batch_shown(batch: &BattleBatch, arrays: &Arrays, i: usize) -> Shown {
         report,
         obs: bits(&arrays.obs[i * OBSERVATION_LEN..(i + 1) * OBSERVATION_LEN]),
         mask: arrays.mask(i).to_vec(),
+        preview: bits(arrays.preview(i)),
         final_obs: report
             .truncated
             .then(|| bits(&arrays.final_obs[i * rows..(i + 1) * rows])),
@@ -380,6 +415,41 @@ fn a_batch_steps_as_single_envs() {
     let (ended, rewarded) = same_as_single_envs(config, scenarios, 400, 5);
     assert!(ended > 4, "{ended}");
     assert!(rewarded > 0, "{rewarded} of {ended}");
+}
+
+#[test]
+fn the_preview_shows_the_kills_of_attacks_and_shots() {
+    // AI-Q7 (b): `same_as_single_envs` compares each env's preview with the engine's; here both
+    // kinds of strike show kills, and a strike never kills fewer at most than at least.
+    let config = BatchConfig {
+        envs: 8,
+        threads: 2,
+        seed: 3,
+        max_steps: 200,
+        reward: RewardConfig::default(),
+    };
+    let mut batch = BattleBatch::new(config).unwrap();
+    batch.add_scenario(scenario(TEXTS[2], 1, EXTERNAL)).unwrap();
+    let mut arrays = Arrays::new(8);
+    batch.reset(&mut arrays.outputs()).unwrap();
+    let mut rng = Rng::for_stream(4, StreamId::AGENT);
+    let shots = (PREVIEW_ENTRIES - 2 * h3_battle::STACK_CAPACITY)..PREVIEW_ENTRIES;
+    let (mut attacks, mut shot) = (0, 0);
+    for _ in 0..200 {
+        for (j, kills) in arrays.preview.chunks_exact(2).enumerate() {
+            assert!(kills[0] <= kills[1]);
+            if kills[1] > 0.0 {
+                *if shots.contains(&(j % PREVIEW_ENTRIES)) {
+                    &mut shot
+                } else {
+                    &mut attacks
+                } += 1;
+            }
+        }
+        let actions = actions(&mut batch, &arrays, &mut rng);
+        batch.step(&actions, &mut arrays.outputs()).unwrap();
+    }
+    assert!(attacks > 0 && shot > 0, "{attacks} attacks, {shot} shots");
 }
 
 #[test]
@@ -842,6 +912,13 @@ fn errors() {
             ..none()
         }),
         buffer("final_obs", 1, 4 * OBSERVATION_LEN)
+    );
+    assert_eq!(
+        batch.reset(&mut Outputs {
+            preview: Some(&mut short),
+            ..none()
+        }),
+        buffer("preview", 1, 2 * PREVIEW_LEN)
     );
     assert_eq!(
         batch.reset(&mut Outputs {

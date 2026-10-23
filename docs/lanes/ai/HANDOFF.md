@@ -12,9 +12,10 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   Random, Aggressor, Greedy in 20 M, `t4-2`'s 0.839, 0.578, 0.559 in 60 M). **Increment 5**
   (T7, the neutral share; design §12): T7a (#420), T7b (#421, C ABI v32) and T7c (the neutral
   set v1, the system actor on the ladder: the strongest bot; #426) done 2026-10-23. T7d, the
-  user's run at a third neutral, beside it T5's rest in the sandbox (the mana price's
-  preparation; **next** AI-Q7 (b) part 1; QUEUE).
-- **Versions:** battle action encoding v13, observation encoding v21, replay format v30 (E23 T6), the adventure env's action encoding v4 (E08 T45), C ABI v32 (E06 T7b: `H3_SEAT_SYSTEM`) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q10, AI-QUIRK-1, AI-STUB-1.
+  user's run at a third neutral; beside it T5's rest (the mana price's preparation, #429; AI-Q7
+  (b) part 1, the batch's kill preview, C ABI v33, #432 open). **Next:** #432's merge, T7d's
+  checkpoint (QUEUE).
+- **Versions:** battle action encoding v13, observation encoding v21, replay format v30 (E23 T6), the adventure env's action encoding v4 (E08 T45), C ABI v33 (E06 T5: the kill preview) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q10, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
 ## Standing traps
@@ -93,15 +94,11 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 
 ### 2026-10-23 — T7d's mix; T5's rest beside it
 
-- The user: T7d at a third neutral (their machine); here the mana price's preparation (one pull
-  request), then AI-Q7 (b) part 1. `preview` validates each command (a path search each):
-  measure it over every entry first.
+- The user: T7d at a third neutral (their machine); here the mana price's preparation (#429),
+  then AI-Q7 (b) part 1 (#432): the preview of every entry halves the engine's step (29 µs),
+  still far above training's 5 000 samples/s.
 
 ### 2026-10-23 — E06 T7c, the trainer's neutral share
 
 - The user: T7c in one pull request (#426, merged): the neutral set v1, the system actor on the
   ladder, both bots' tables, no league member in a neutral episode, the rates by kind.
-
-### 2026-10-23 — E06 increment 5 refined, T7a and T7b
-
-- The user: T7, no run meanwhile; the neutral weights in the run's config (#420, #421).

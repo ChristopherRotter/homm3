@@ -43,6 +43,9 @@ The binding loads `$H3_LIBRARY`, else `../target/release/`, and refuses a librar
 engine it trained on (C ABI v31): `h3env._ffi.versions()` (the ABI's, the encodings' and the
 encounter distribution's versions, since v32 the system actor's policy's) and
 `BattleBatch.entries()` (each episode source's kind, weight and its rulesets' content hashes).
+`BattleBatch(…, preview=True)` (v33, AI-Q7 (b)) also writes `batch.preview`: the acting side's
+least and greatest kills of each legal attack and shot entry from `batch.preview_base`, the
+engine's damage preview (about 29 µs a step more in the engine, E06 T5).
 
 ```python
 import numpy as np

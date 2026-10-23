@@ -72,6 +72,7 @@ _OUTPUTS = (
     "episode_seed",
     "status",
     "encounter",
+    "preview",
 )
 
 
@@ -95,7 +96,11 @@ class BattleBatch:
       the battle's draws: never an agent's input); a single env of the episode's scenario with
       both sides human and this seed plays the same battle;
     - `status` [N] int32: `H3_OK`, or why the env refused this call's action (it is unchanged);
-    - `encounter` [N] int8: the episode's encounter kind (`H3_ENCOUNTER_*`, -1 for a scenario).
+    - `encounter` [N] int8: the episode's encounter kind (`H3_ENCOUNTER_*`, -1 for a scenario);
+    - `preview` [N, `preview_entries`, 2] float32 (v33, AI-Q7 (b); None without `preview=True`):
+      the acting side's least and greatest kills of each attack and shot entry from
+      `preview_base` (the engine's damage preview of the entry's first strike, what the
+      original shows a player), 0 for an entry not legal.
 
     A handle must not be used from two threads at once; the engine's own threads (`threads`) run
     inside each call, without the GIL.
@@ -111,11 +116,13 @@ class BattleBatch:
         currency: str = "ai_value",
         mana_price: int = 10,
         final_obs: bool = True,
+        preview: bool = False,
     ) -> None:
         h = _ffi.lib()
         self._lib = h
         self._handle = None
         self.action_count, self.spell_count, self.target_count, self.observation_len = _ffi.sizes()
+        self.preview_base, self.preview_entries = _ffi.preview()
         if currency not in _ffi.CURRENCIES:
             raise ValueError(f"unknown currency {currency!r} (one of {sorted(_ffi.CURRENCIES)})")
         config = _ffi.H3BatchConfig(
@@ -149,6 +156,7 @@ class BattleBatch:
             "episode_seed": np.zeros(n, np.uint64),
             "status": np.zeros(n, np.int32),
             "encounter": np.full(n, _ffi.ENCOUNTER_NONE, np.int8),
+            "preview": np.zeros((n, self.preview_entries, 2), np.float32) if preview else None,
         }
         self._buffers = _ffi.H3BatchBuffers(
             *(None if a is None else a.ctypes.data for a in map(self._out.get, _OUTPUTS))

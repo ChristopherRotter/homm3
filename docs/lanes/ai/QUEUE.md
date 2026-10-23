@@ -30,11 +30,12 @@ request, the user) done. **Next:**
   `E06-log.md`, then the checkpoint (increment 6's refinement). Read with it: the system actor is
   the strongest ladder bot (0.653 against Greedy); the neutral target is a value efficiency above
   +0.285; the engine at that mix 33 888 caller steps/s a thread in the sandbox.
-- **Beside T7d** (the user, 2026-10-23; T5's rest, design §10): the mana price's preparation
-  (done: the ladders at reward v1's settings, `configs/e06-mana.toml`, the run `t5-4` on offer
-  after T7d), then **AI-Q7 (b) part 1**: the batch's previewed kills per attack and shot entry
-  (`h3-sim`, C ABI v33, `h3env`), its tests and cost; part 2 (the network reads them, an A/B
-  config) after the checkpoint.
+- **Beside T7d** (the user, 2026-10-23; T5's rest, design §10), done: the mana price's
+  preparation (#429: the ladders at reward v1's settings, `configs/e06-mana.toml`, the run
+  `t5-4` on offer after T7d) and AI-Q7 (b) part 1 (the batch's previewed kills per attack and
+  shot entry, C ABI v33; `E06-log.md`). At the checkpoint: **AI-Q7 (b) part 2** (the network
+  reads `batch.preview` beside the entry mask, `[network]` opt-in, the rollout keeps it; an A/B
+  config against `t5-3`), the mana run, or a longer run.
 - Later (design §10): T5's rest (AI-Q7 (b), the mana price, throughput), T6, T8, T9; the run
   that compares the penalty at 60 M with `t4-2` (`configs/e06-t5c.toml`, `--set
   network.kind=mlp --set samples=60_000_000`) stays on offer.
@@ -44,6 +45,11 @@ request, the user) done. **Next:**
 Sorted by destination at E05's audit (T9a, 2026-10-19); the origin stays in brackets. Dropped as
 done: BAT-Q33's point for E05 (AI-Q3, ADR-0025 point 6), the `h3-game` coverage gap of a pending
 Pass offer (fixed by the adventure lane's fixed tests, #266).
+
+- 2026-10-23 (this lane, E06 T5; for the next `shared/` change): `docs/07-simulation-and-ai.md`
+  (shared) should name the batch's optional kill preview (C ABI v33: the acting side's previewed
+  kills of each legal attack and shot entry, the engine's BAT-DMG-011 preview, what the original
+  shows a player) under "The batch" and "Information".
 
 - 2026-10-23 (the battle lane, E23 T6's last part, `battle/e23-t6`, `cross-lane` with the user's
   consent; **for you**): the replay format is **v30** (`h3_sim::REPLAY_FORMAT_VERSION`: the setup
@@ -157,7 +163,10 @@ Pass offer (fixed by the adventure lane's fixed tests, #266).
   moved there (T7c; the user, 2026-10-19).
 - **Encodings:** `h3_sim::action::encode` answers without a viewer (the same root as F-sec-2's
   leak, which the sim's `step` closes); it leaks nothing today (E04b T11b, the battle lane).
-- **Performance**, each worth a look when a profile of training shows it: the flat observation
+- **Performance**, each worth a look when a profile of training shows it: the kill preview
+  (AI-Q7 (b), E06 T5) validates each legal strike again (a path search each: 29 µs a step, as
+  much as the step); one `h3-battle` function previewing every attack over one reach would cut
+  it (the battle lane's); the flat observation
   costs about a third of a step (`observe` ≈ 1 µs, `observe + encode` ≈ 3.5 µs; the buffer is
   zeroed and mostly rewritten zeros); `state_hash` ≈ 4.3 µs at 6.3 KB, too slow for per-node
   hashing (E04b T11a); an encounter sample costs 50 µs (two heroes derived, each artifact through

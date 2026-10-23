@@ -29,7 +29,7 @@ from pathlib import Path
 import numpy as np
 
 #: The C ABI version this binding speaks (`h3_abi_version()`).
-ABI_VERSION = 32
+ABI_VERSION = 33
 
 #: The most envs a batch holds (`H3_BATCH_MAX_ENVS`, v31): the engine refuses more.
 BATCH_MAX_ENVS = 1 << 16
@@ -176,6 +176,7 @@ class H3BatchBuffers(ctypes.Structure):
         ("episode_seed", c_void_p),
         ("status", c_void_p),
         ("encounter", c_void_p),
+        ("preview", c_void_p),
     ]
 
 
@@ -192,6 +193,8 @@ _SIGNATURES = {
     "h3_spell_count": (c_uint32, []),
     "h3_target_count": (c_uint32, []),
     "h3_observation_len": (c_uint32, []),
+    "h3_preview_base": (c_uint32, []),
+    "h3_preview_len": (c_uint32, []),
     "h3_observation_encoding_version": (c_uint32, []),
     "h3_action_encoding_version": (c_uint32, []),
     "h3_encounters_version": (c_uint32, []),
@@ -325,6 +328,13 @@ def versions() -> dict[str, int]:
         "encounters": h.h3_encounters_version(),
         "system_policy": h.h3_system_policy_version(),
     }
+
+
+def preview() -> tuple[int, int]:
+    """The batch's kill preview (v33): its first entry and its entries (each holding the least
+    and the greatest kills)."""
+    h = lib()
+    return h.h3_preview_base(), h.h3_preview_len() // 2
 
 
 def sizes() -> tuple[int, int, int, int]:

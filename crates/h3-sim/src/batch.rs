@@ -23,7 +23,9 @@
 //!   what an env does never depends on T.
 //!
 //! Trusted tooling may read an env's full state ([`BattleBatch::env`]); agents see only the
-//! observations the batch writes (ADR-0025 point 12).
+//! observations the batch writes (ADR-0025 point 12) and, as an option, the engine's damage
+//! preview of their attacks and shots (`Outputs::preview`; what the original shows a player,
+//! BAT-DMG-011, AI-Q7 (b)).
 
 use std::ops::Range;
 use std::sync::Arc;
@@ -34,8 +36,8 @@ use h3_contracts::{BattleResult, BattleSetup, BattleSide};
 use h3_kernel::{Rng, StreamId};
 
 use crate::action::{
-    ACTION_COUNT, Action, ActionMask, CREATURE_CAST, HERO_CAST, RETREAT, SPELL_COUNT, SURRENDER,
-    SpellMask, TARGET_COUNT, TargetMask,
+    ACTION_COUNT, Action, ActionMask, CREATURE_CAST, HERO_CAST, PREVIEW_LEN, RETREAT, SPELL_COUNT,
+    SURRENDER, SpellMask, TARGET_COUNT, TargetMask,
 };
 use crate::bots;
 use crate::encounter::{Kind, Sampler};
@@ -408,7 +410,8 @@ pub struct EnvReport {
 /// contiguous: `obs` holds N × [`OBSERVATION_LEN`] values (the acting seat's observation),
 /// `entry_mask` N × [`ACTION_COUNT`] (0/1), `final_obs` N × 2 × [`OBSERVATION_LEN`] (both sides'
 /// last observations, written only for envs whose episode was truncated in this call, for
-/// bootstrapping), `reports` N.
+/// bootstrapping), `preview` N × [`PREVIEW_LEN`] (the acting seat's previewed kills per attack
+/// and shot entry, [`crate::action::preview_kills`]), `reports` N.
 #[derive(Debug, Default)]
 pub struct Outputs<'a> {
     /// The acting seat's observation per env.
@@ -417,6 +420,8 @@ pub struct Outputs<'a> {
     pub entry_mask: Option<&'a mut [u8]>,
     /// Both sides' last observations of a truncated episode.
     pub final_obs: Option<&'a mut [f32]>,
+    /// The acting seat's previewed kills per attack and shot entry (AI-Q7 (b)).
+    pub preview: Option<&'a mut [f32]>,
     /// What happened per env.
     pub reports: Option<&'a mut [EnvReport]>,
 }
@@ -451,6 +456,7 @@ struct Rows<'a> {
     obs: Option<&'a mut [f32]>,
     mask: Option<&'a mut [u8]>,
     final_obs: Option<&'a mut [f32]>,
+    preview: Option<&'a mut [f32]>,
     report: Option<&'a mut EnvReport>,
 }
 
@@ -739,6 +745,9 @@ impl BattleBatch {
         if let Some(final_obs) = &out.final_obs {
             check("final_obs", final_obs.len(), n * 2 * OBSERVATION_LEN)?;
         }
+        if let Some(preview) = &out.preview {
+            check("preview", preview.len(), n * PREVIEW_LEN)?;
+        }
         if let Some(reports) = &out.reports {
             check("reports", reports.len(), n)?;
         }
@@ -764,22 +773,27 @@ fn parts<'a>(
     let obs = split_optional(out.obs.as_deref_mut(), OBSERVATION_LEN, ranges);
     let mask = split_optional(out.entry_mask.as_deref_mut(), ACTION_COUNT, ranges);
     let final_obs = split_optional(out.final_obs.as_deref_mut(), 2 * OBSERVATION_LEN, ranges);
+    let preview = split_optional(out.preview.as_deref_mut(), PREVIEW_LEN, ranges);
     let reports = split_optional(out.reports.as_deref_mut(), 1, ranges);
     split(slots, 1, ranges)
         .into_iter()
         .zip(obs)
         .zip(mask)
         .zip(final_obs)
+        .zip(preview)
         .zip(reports)
-        .map(|((((slots, obs), entry_mask), final_obs), reports)| {
-            let out = Outputs {
-                obs,
-                entry_mask,
-                final_obs,
-                reports,
-            };
-            (slots, out)
-        })
+        .map(
+            |(((((slots, obs), entry_mask), final_obs), preview), reports)| {
+                let out = Outputs {
+                    obs,
+                    entry_mask,
+                    final_obs,
+                    preview,
+                    reports,
+                };
+                (slots, out)
+            },
+        )
         .collect()
 }
 
@@ -798,12 +812,17 @@ fn rows<'a>(out: &'a mut Outputs<'_>) -> impl Iterator<Item = Rows<'a>> {
         .final_obs
         .as_deref_mut()
         .map(|o| o.chunks_exact_mut(2 * OBSERVATION_LEN));
+    let mut preview = out
+        .preview
+        .as_deref_mut()
+        .map(|p| p.chunks_exact_mut(PREVIEW_LEN));
     let mut reports = out.reports.as_deref_mut().map(|r| r.iter_mut());
     std::iter::from_fn(move || {
         Some(Rows {
             obs: obs.as_mut().and_then(Iterator::next),
             mask: mask.as_mut().and_then(Iterator::next),
             final_obs: final_obs.as_mut().and_then(Iterator::next),
+            preview: preview.as_mut().and_then(Iterator::next),
             report: reports.as_mut().and_then(Iterator::next),
         })
     })
@@ -886,6 +905,7 @@ fn step_slot(slot: &mut Slot, source: Source<'_>, action: Action, rows: Rows<'_>
         obs,
         mask,
         final_obs,
+        preview,
         report: row,
     } = rows;
     let mut report = EnvReport::default();
@@ -894,6 +914,7 @@ fn step_slot(slot: &mut Slot, source: Source<'_>, action: Action, rows: Rows<'_>
         obs,
         mask,
         final_obs: None,
+        preview,
         report: row,
     };
     write_state(slot, rows, &mut report);
@@ -936,9 +957,10 @@ fn advance(
     Ok(())
 }
 
-/// Writes the slot's current state (the acting seat's observation and entry mask, without the
-/// escapes) and `report` with its episode into `rows`. The slot keeps that entry mask for the head
-/// calls ([`plain_head`]): an escape's later heads are as refused as the escape.
+/// Writes the slot's current state (the acting seat's observation, entry mask without the
+/// escapes, and previewed kills) and `report` with its episode into `rows`. The slot keeps that
+/// entry mask for the head calls ([`plain_head`]): an escape's later heads are as refused as the
+/// escape.
 fn write_state(slot: &mut Slot, rows: Rows<'_>, report: &mut EnvReport) {
     slot.mask.fill(false);
     let acting = acting(slot.env.as_ref());
@@ -949,6 +971,12 @@ fn write_state(slot: &mut Slot, rows: Rows<'_>, report: &mut EnvReport) {
     }
     if let Some(mask) = rows.mask {
         write_mask(&slot.mask, mask);
+    }
+    if let Some(preview) = rows.preview {
+        match acting {
+            Some((env, side)) => env.preview_kills(side, &slot.legal, preview),
+            None => preview.fill(0.0),
+        }
     }
     if let Some(obs) = rows.obs {
         match acting {
