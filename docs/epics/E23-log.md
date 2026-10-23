@@ -1316,7 +1316,7 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   2026-10-23, `master` alike); `Cargo.lock` takes `ctutils` 0.4.5 (the server lane's inbox).
   `computer-decisions` +0.04 %. PR #408 (`cross-lane`).
 
-## T6 — the hero's other choices (2026-10-23; in progress)
+## T6 — the hero's other choices (2026-10-23)
 
 **Decisions (the user, at the start).** T6 whole, no cut (the agent proposed three parts: the war
 machines, the tactics phase, the retreat). The policy's First Aid Tent heals the reading's patient
@@ -1372,3 +1372,33 @@ that has waited gives Wait at once; on Hard a walker that defended is asked agai
   runs' planned damage and, until Teleport's evaluation, each side's last predicted walker's flag-1
   records. Slip 6 (BAT-STUB-7) in `faithful`: an attacking hero's spells at the mastery of
   `attacker_ground`.
+
+**Done in the third session** (the user: the retreat test with slips 26 and 6 in one session, no
+cut; `cross-lane` again for the replay format and the rehash). *The facts*: `BattleState` keeps
+`retreat` and `attacker_ground` (resolved; an unknown key is `UnknownBattlefield`) as hashed state
+(still v53), not observed; `computer::retreat_facts`, `attacker_ground`, `funds`. Scenarios
+(`attacker_retreat`, `defender_retreat` tables, `attacker_ground`) and the replay file name them
+(`RetreatEntry`, each field omitted at 0 or false; replay format v30 in `h3-sim`); the ten golden
+replays rehashed with their commands, the adventure lane's ten re-recorded with their options
+(only hash lines moved; `duel-s2-d7` none). *The test* (BAT-AI-024, `retreat.rs`; re-read: §7.60's
+last paragraph): in its order, the Normal draw after the hero test; `state.may_retreat` stands
+for the Shackles and a town's defender without the Escape Tunnel; the walled-out siege
+(`computer::walled_out`: an attacker's living Catapult or Cyclops keeps it out, as the original's
+flag `0x20`); the price (`computer::retreat_price`, the reading's: temporary creatures and
+created stacks out, the surrender share before the discount, 0 for a ruleset that prices none;
+`flee::surrender_price` is unchanged, BAT-Q28 row 7); the predictions with flag 1
+(`predict::plan_both`: the other side's run from the stack that ended the first); the strengths
+over the first 20 stacks of each side with the turrets, `_ftol` of the products; the threshold as
+`f32` steps; the quotient of two `f32`s. Asked in `hero::cast` between the context and the choice,
+and in `unchecked` after the Catapult's and the tent's turns, before the shot or walk. *Slip 26*:
+`SpellContext::after_retreat` takes the test's planned damage and each side's last overwrite of
+the threat records (`predict::Overwrite`: a walker's records of its side via `gain::records`, now
+with each record's cost; a shot's of the other side via `computer::threat`, which now passes over
+spent stacks in a predicting context); Teleport's walkers refill them (`refill`); the threat
+tables read the context's (`View::built_on`), "the enemy beaten" of both halves is fixed at the
+build. *Slip 6*: `aim::ground`. *Found*: slip 33 (§7.60's last paragraph; BAT-STUB-17, not built):
+Teleport's caster turns' spell contexts set the planned damage the hero's later spells read.
+`POLICY_VERSION` 18. The default facts never retreat, so no golden replay or existing test changed
+its commands; the Normal draw now comes before every hero cast's choice (the streams moved, the
+tests' choices held). The property over random battles draws retreat facts and funds.
+

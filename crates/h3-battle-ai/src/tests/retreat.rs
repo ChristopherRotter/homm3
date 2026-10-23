@@ -387,3 +387,24 @@ fn a_predicted_shot_leaves_the_other_sides_records() {
     assert_eq!(computer::threat(&state, &r, &spent, StackId(0)), None);
     assert_eq!(computer::threat(&state, &r, &spent, StackId(1)), None);
 }
+
+// covers: BAT-AI-024
+#[test]
+fn a_predicted_walker_leaves_its_sides_records_by_stack_id() {
+    let r = ruleset_as("t:faithful");
+    // Two Runners against Gogs: on the first Runner's predicted turn the second records the Gogs,
+    // which act after it, as its nearest within a turn; the walker's own record is cleared.
+    let s = led((&[(RUNNER, 1), (RUNNER, 1)], &[(GOG, 5)]), KEEPER, 0, 2);
+    let state = BattleState::new(&r, &s, 1).unwrap();
+    let (first, second, gogs) = (StackId(0), StackId(1), StackId(2));
+    assert_eq!(state.active(), Some(first));
+    let o = Overwrite::Walker {
+        walker: first,
+        planned: Planned::default(),
+    };
+    let records = crate::spells::records_after(&state, &r, ATTACKER, o);
+    assert!(records[first.index()].is_none());
+    let t = records[second.index()].unwrap();
+    assert_eq!((t.enemy, t.turns, t.mask), (gogs, 1, 1 << gogs.index()));
+    assert!(records[gogs.index()].is_none());
+}

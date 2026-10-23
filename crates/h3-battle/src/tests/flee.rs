@@ -426,6 +426,11 @@ fn the_computer_expects_the_original_s_surrender_price() {
     }
     let unpriced = ruleset_with("t:faithful", |b| b.surrender = None);
     assert_eq!(retreat_price(&r4(&unpriced, 0), &unpriced, Attacker), 0);
+    // The original's 32-bit sum wraps: 40 000 000 Pikemen at 60 gold and the rest, −1 894 964 771,
+    // halved towards 0 (−947 482 385, an `f32` of −947 482 368).
+    let mut huge = r4(&r, 0);
+    huge.stacks.as_mut_slice()[0].count = 40_000_000;
+    assert_eq!(retreat_price(&huge, &r, Attacker), -947_482_368);
     // The funds the test compares it with are the hero's side's; 0 without a hero.
     assert_eq!(crate::computer::funds(&r4(&r, 77), Attacker), 77);
     let s = BattleState::new(&r, &setup(&r, &[(0, "fixed", 1)], &[(0, "slow", 1)]), 1).unwrap();

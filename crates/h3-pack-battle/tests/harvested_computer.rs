@@ -587,3 +587,56 @@ fn a_walker_strikes_from_a_hex_off_the_fire_wall() {
         assert_eq!(from == target, profile == "base:strict-fixed", "{profile}");
     }
 }
+
+// A bound walker (BAT-MAG-045) values only the enemies next to it (0x421680's marks at 0; the
+// walker's choice, BAT-AI-005): the Dendroid Guards bind the Pikemen that attacked them, and the
+// Pikemen's next choice is legal and strikes a Dendroid stack beside them or does not move. A fixed
+// game for the line the random battles reach only by chance.
+// covers: BAT-AI-005
+#[test]
+fn a_bound_walker_values_only_the_enemies_beside_it() {
+    let r = sod("base:faithful");
+    let mut state = walled(
+        &r,
+        &[("base:pikeman", 20)],
+        &[("base:dendroid_guard", 10)],
+        false,
+    );
+    let pikemen = h3_battle::StackId(0);
+    let mut legal = LegalCommands::new();
+    for _ in 0..40 {
+        let side = state.side_to_act().unwrap();
+        if computer::bound(&state, pikemen) && state.active() == Some(pikemen) {
+            let command = h3_battle_ai::choose(&state, &r, side, &mut Rng::from_seed(1));
+            assert!(validate(&state, &r, side, command).is_ok(), "{command:?}");
+            assert!(
+                !matches!(command, Command::Move { .. }),
+                "a bound walker does not move: {command:?}"
+            );
+            return;
+        }
+        legal_commands(&state, &r, side, &mut legal);
+        let attack = legal
+            .iter()
+            .copied()
+            .find(|c| matches!(c, Command::Attack { .. }));
+        // Otherwise the attacker walks the furthest it may towards the defender, which waits.
+        let command = attack.unwrap_or_else(|| {
+            if side == BattleSide::Attacker {
+                legal
+                    .iter()
+                    .copied()
+                    .filter_map(|c| match c {
+                        Command::Move { to } => Some((to.0 % 17, c)),
+                        _ => None,
+                    })
+                    .max_by_key(|&(x, _)| x)
+                    .map_or(Command::Defend, |(_, c)| c)
+            } else {
+                Command::Defend
+            }
+        });
+        apply(&mut state, &r, side, command, &mut NoopSink).unwrap();
+    }
+    panic!("the pikemen were never bound on their turn");
+}

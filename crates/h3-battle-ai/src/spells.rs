@@ -522,7 +522,7 @@ impl<'a> SpellContext<'a> {
 /// context, the walker's own cleared), each record's nearest enemy with its cost, turns and the
 /// enemies within a turn by stack id; or a predicted shot's records of the other side (0x422B20
 /// with flag 0, [`computer::threat`] in the shooter's predicting context).
-fn records_after(
+pub(crate) fn records_after(
     state: &BattleState,
     ruleset: &BattleRuleset,
     side: BattleSide,

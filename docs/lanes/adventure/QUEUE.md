@@ -46,6 +46,19 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1
 
 ## Inbox
 
+- 2026-10-23 (the battle lane, E23 T6's last part, `battle/e23-t6`, `cross-lane` with the user's
+  consent; **for you**, when battles start from the adventure map): the battle now keeps
+  `BattleSetup.retreat` and `attacker_ground` (ADR-0027 point 14) as hashed state, and
+  `h3_battle_ai::choose` reads them: a hero's side retreats as the original's computer does
+  (BAT-AI-024; `POLICY_VERSION` 18) when the facts allow it, and the odds value an attacking hero's
+  spells at its own ground's mastery in `faithful`. The game orchestrator (`h3-game`) should derive
+  them: per side the hero's experience, its artifacts' worth by the original's count (per worn or
+  carried artifact the larger of the adventure AI's value, 0x433AA0, and half its gold cost), a
+  Tavern town of its player to hire it again from (another than the battle's town for its
+  defender), whether the scenario's victory condition wants that hero defeated; and the special
+  battlefield of the attacking hero's own tile. The defaults never retreat. Your ten golden
+  replays were re-recorded again with their options, their commands unchanged (only hash lines;
+  `duel-s2-d7` none): the hash covers the new fields.
 - 2026-10-23 (the battle lane, E23 T6, `battle/e23-t6`, `cross-lane` with the user's consent; for
   your information, nothing to do): `h3_battle::BATTLE_STATE_HASH_VERSION` is 53 (the tactics
   phase's rounds the computer counts). Your ten golden replays were re-recorded with their
