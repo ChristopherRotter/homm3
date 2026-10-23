@@ -1,8 +1,9 @@
 //! `render`: a still of the adventure screen (E24 M1 T3b1): a map's static art from its `.h3m`,
 //! the live part at the map's start (every tile explored but a chosen rectangle, the moment from
-//! a time), the scene at a view, its assets from the installation copy's archives, composed and
-//! written as a PNG. The comparisons with the original (T3b2) add the live part read from its
-//! memory.
+//! a time), the objects' shapes and the scene at a view, its assets from the installation copy's
+//! archives, composed and written as a PNG. The comparisons with the original (T3b2, T4a) give
+//! the live part read from its memory (`--live`: the palette step, the frame step, the objects'
+//! phases).
 
 use std::fs;
 use std::path::PathBuf;
@@ -13,6 +14,7 @@ use h3_map_view::art::MapArt;
 use h3_map_view::batch::{self, Batch};
 use h3_map_view::compose::compose;
 use h3_map_view::live::{Live, Moment};
+use h3_map_view::objects;
 use h3_map_view::scene::{self, Draw, ViewAt};
 use h3_render::Bugs;
 
@@ -25,6 +27,7 @@ pub struct Options {
     view: ViewAt,
     at: u32,
     cycles: Option<u32>,
+    live: Option<PathBuf>,
     viewer: u8,
     hidden: Vec<[i32; 4]>,
     bugs: Bugs,
@@ -44,13 +47,14 @@ fn numbers<const N: usize>(value: &str, what: &str) -> Result<[i32; N], String> 
 }
 
 impl Options {
-    /// Parses `<map.h3m> --view <x>,<y>[,<z>] [--at <ms>] [--cycles <k>] [--viewer <0-7>]
-    /// [--hidden <x0>,<y0>,<x1>,<y1>]... [--bugs fixed|original] [--install <dir>] [--map <dir>]
-    /// [--out <file.png>] [--list]`.
+    /// Parses `<map.h3m> --view <x>,<y>[,<z>] [--at <ms>] [--cycles <k>] [--live <live.toml>]
+    /// [--viewer <0-7>] [--hidden <x0>,<y0>,<x1>,<y1>]... [--bugs fixed|original]
+    /// [--install <dir>] [--map <dir>] [--out <file.png>] [--list]`.
     pub fn parse(args: &[String]) -> Result<Self, String> {
         let mut rest = args.iter();
         let mut map_file = None;
         let (mut view, mut at, mut cycles, mut viewer, mut hidden) = (None, 0, None, 0, Vec::new());
+        let mut live = None;
         let (mut bugs, mut install, mut map, mut out, mut list) =
             (Bugs::Fixed, None, None, None, false);
         while let Some(arg) = rest.next() {
@@ -97,6 +101,7 @@ impl Options {
                         .filter(|&c: &u8| c < 8)
                         .ok_or("render: --viewer takes a colour, 0-7")?;
                 }
+                "--live" => live = Some(PathBuf::from(value)),
                 "--hidden" => hidden.push(numbers::<4>(value, "--hidden")?),
                 "--bugs" => {
                     bugs = match value.as_str() {
@@ -116,6 +121,7 @@ impl Options {
             view: view.ok_or("render: --view is required")?,
             at,
             cycles,
+            live,
             viewer,
             hidden,
             bugs,
@@ -177,6 +183,9 @@ fn render(options: &Options) -> Result<PathBuf, String> {
     if let Some(cycles) = options.cycles {
         live.moment.cycles = cycles;
     }
+    if let Some(path) = &options.live {
+        read_live(path, &mut live)?;
+    }
     for &[x0, y0, x1, y1] in &options.hidden {
         for y in y0.min(y1)..=y0.max(y1) {
             for x in x0.min(x1)..=x0.max(x1) {
@@ -184,13 +193,22 @@ fn render(options: &Options) -> Result<PathBuf, String> {
             }
         }
     }
-    let scene = scene::scene(&art, &live, &tables, &layout, options.view, options.bugs)
-        .map_err(|e| e.to_string())?;
+    let archive_bytes = files::read_archives(&options.install)?;
+    let archives = files::parse_archives(&archive_bytes)?;
+    let shapes = files::load_shapes(&archives, &objects::pictures(&art, &live))?;
+    let scene = scene::scene(
+        &art,
+        &live,
+        &tables,
+        &layout,
+        &shapes,
+        options.view,
+        options.bugs,
+    )
+    .map_err(|e| e.to_string())?;
     if options.list {
         print_list(&scene);
     }
-    let archive_bytes = files::read_archives(&options.install)?;
-    let archives = files::parse_archives(&archive_bytes)?;
     let mut batch = Batch::default();
     for name in batch::names(&scene) {
         let (_, data) = files::find(&archives, &name)?.ok_or(format!("{name}: in no archive"))?;
@@ -204,6 +222,50 @@ fn render(options: &Options) -> Result<PathBuf, String> {
     fs::write(&out, h3_render::png::encode(&screen))
         .map_err(|e| format!("{}: {e}", out.display()))?;
     Ok(out)
+}
+
+/// The original's live part as the harness read it (`h3map.py still`'s `live.toml`): `cycles`,
+/// the palette step; `frames`, the objects' frame step the screen shows; `phases`, every object's
+/// animation phase in the map's order. Each key is optional; other keys are left.
+fn read_live(path: &PathBuf, live: &mut Live) -> Result<(), String> {
+    let failed = |why: &str| format!("{}: {why}", path.display());
+    let text = fs::read_to_string(path).map_err(|e| failed(&e.to_string()))?;
+    let table: toml::Table = text
+        .parse()
+        .map_err(|e: toml::de::Error| failed(&e.to_string()))?;
+    let number = |key: &str| -> Result<Option<u32>, String> {
+        table.get(key).map_or(Ok(None), |v| {
+            v.as_integer()
+                .and_then(|n| u32::try_from(n).ok())
+                .map(Some)
+                .ok_or_else(|| failed(&format!("`{key}` is not a count")))
+        })
+    };
+    if let Some(cycles) = number("cycles")? {
+        live.moment.cycles = cycles;
+    }
+    if let Some(frames) = number("frames")? {
+        live.moment.frames = frames;
+    }
+    if let Some(phases) = table.get("phases") {
+        let phases: Option<Vec<u8>> = phases.as_array().and_then(|a| {
+            a.iter()
+                .map(|v| v.as_integer().and_then(|n| u8::try_from(n).ok()))
+                .collect()
+        });
+        let phases = phases.ok_or_else(|| failed("`phases` is not a list of bytes"))?;
+        if phases.len() != live.objects.len() {
+            return Err(failed(&format!(
+                "{} phases for {} objects",
+                phases.len(),
+                live.objects.len()
+            )));
+        }
+        for (object, phase) in live.objects.iter_mut().zip(phases) {
+            object.phase = phase;
+        }
+    }
+    Ok(())
 }
 
 /// The draw list, one line per draw, and the palette cycles.

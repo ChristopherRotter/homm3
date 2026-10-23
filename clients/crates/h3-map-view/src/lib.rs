@@ -5,7 +5,8 @@
 //! objects stand, what a random object became, the owners, the heroes and boats, the tiles the
 //! viewer has explored, the moment). [`tables`] are the map's asset tables
 //! (`clients/map/assets/`), [`layout`] the adventure screen's layout (`clients/map/layouts/`),
-//! [`check`] what the real-asset gate checks of the archives' entries they name. [`scene`] is
+//! [`check`] what the real-asset gate checks of the archives' entries they name. [`objects`] are
+//! the tiles' draw lists of objects, from the templates' `.msk` shapes. [`scene`] is
 //! what the screen shows at a view and a moment, as a draw list in the original's order;
 //! [`batch`] the assets it needs, decoded; [`compose`] draws it into a frame in the original's
 //! screen format with the view's drawers ([`draw`]) and the compositor's (`h3-render`).
@@ -40,6 +41,7 @@ pub mod compose;
 pub mod draw;
 pub mod layout;
 pub mod live;
+pub mod objects;
 pub mod scene;
 pub mod situation;
 pub mod tables;

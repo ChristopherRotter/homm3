@@ -142,6 +142,30 @@ fn the_pieces_through_the_raw_drawer_and_the_shroud_twice() {
 }
 
 #[test]
+fn the_objects_through_the_flagged_drawer_and_the_shadow_pass() {
+    // An object's 2 × 2 frame: a literal 9, a flag's run of 5, a shadow's runs of 1 and 4.
+    let mut b = batch();
+    let mut object = raw_frame(2, 2, &[9, 5, 1, 4]);
+    object.encoding = Encoding::PackedRows;
+    object.runs = vec![false, true, true, true];
+    b.add("object.def", &def(&pixels(), &[object])).unwrap();
+    let list = vec![
+        piece(Pass::Terrain, "terrain.def", 0, 0, 0, [0, 0, 2, 2]),
+        piece(Pass::Flat, "object.def", 0, 2, 0, [2, 0, 4, 2]),
+        piece(Pass::Shadow, "object.def", 0, 0, 0, [0, 0, 2, 2]),
+        piece(Pass::Body, "object.def", 0, 0, 0, [0, 0, 2, 2]),
+    ];
+    let screen = compose(&scene(list), &b, [4, 2]).unwrap();
+    let f = FORMAT;
+    // The flat piece at (2, 0): its literal 9 only (the flag skipped, the shadow's runs too);
+    // the shadow darkens the terrain's 3 and 4, the body then puts its 9 over the terrain's 1.
+    assert_eq!(
+        screen.pixels(),
+        [9, 2, 9, 0, f.shadow_border(3), f.shadow_body(4), 0, 0]
+    );
+}
+
+#[test]
 fn the_gems_skip_their_runs() {
     let list = vec![
         frame_of_viewer(0),

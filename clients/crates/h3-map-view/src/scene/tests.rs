@@ -3,10 +3,11 @@ use alloc::string::ToString;
 use alloc::vec;
 
 use h3_map::Limits;
-use h3_map::writer::{self, Extras, GivenTile, RiverKind, RoadKind, Terrain};
+use h3_map::writer::{self, AnyObject, Extras, GivenTile, RiverKind, RoadKind, Terrain};
 
-use crate::art::tests::{map, raw};
+use crate::art::tests::{map, raw, template};
 use crate::live::Moment;
+use crate::objects::Shape;
 use crate::tables;
 
 /// The committed tables and layout (`clients/map/`).
@@ -33,12 +34,28 @@ fn art_with(tiles: Vec<GivenTile>) -> (MapArt, Live) {
     (art, live)
 }
 
+/// A one-cell shape with both masks and one frame for every template of `art`.
+fn shapes_of(art: &MapArt) -> Shapes {
+    let mut shapes = Shapes::default();
+    for t in &art.templates {
+        let one = Shape {
+            width: 1,
+            height: 1,
+            colour: [0xff; 6],
+            shadow: [0xff; 6],
+            frames: 1,
+        };
+        shapes.insert(&t.def, one);
+    }
+    shapes
+}
+
 fn at(x: i32, y: i32) -> ViewAt {
     ViewAt { x, y, z: 0 }
 }
 
 fn still(art: &MapArt, live: &Live, view: ViewAt, bugs: Bugs) -> Scene {
-    scene(art, live, &tables(), &layout(), view, bugs).unwrap()
+    scene(art, live, &tables(), &layout(), &shapes_of(art), view, bugs).unwrap()
 }
 
 /// A piece as (def, frame, its place, its mirrors, its clip).
@@ -334,7 +351,16 @@ fn the_unexplored_tiles_pieces() {
     // A mask whose entry gives no piece draws nothing.
     let mut none = tables.clone();
     none.map.shroud.pieces[0xDF] = 0;
-    let drawn = super::scene(&art, &live, &none, &layout(), at(0, 0), Bugs::Fixed).unwrap();
+    let drawn = super::scene(
+        &art,
+        &live,
+        &none,
+        &layout(),
+        &shapes_of(&art),
+        at(0, 0),
+        Bugs::Fixed,
+    )
+    .unwrap();
     assert_eq!(pieces(&drawn, Pass::Shroud).len(), 23);
 }
 
@@ -415,13 +441,21 @@ fn refuses_a_level_a_viewer_or_a_code_it_cannot_draw() {
     let (t, l) = (tables(), layout());
     let view = ViewAt { x: 0, y: 0, z: 1 };
     assert_eq!(
-        scene(&art, &live, &t, &l, view, Bugs::Fixed),
+        scene(&art, &live, &t, &l, &shapes_of(&art), view, Bugs::Fixed),
         Err(SceneError::Level(1))
     );
     let mut lacking = t.clone();
     lacking.roads.remove(&1);
     assert_eq!(
-        scene(&art, &live, &lacking, &l, at(0, 0), Bugs::Fixed),
+        scene(
+            &art,
+            &live,
+            &lacking,
+            &l,
+            &shapes_of(&art),
+            at(0, 0),
+            Bugs::Fixed
+        ),
         Err(SceneError::Code {
             layer: Layer::Road,
             code: 1,
@@ -429,11 +463,30 @@ fn refuses_a_level_a_viewer_or_a_code_it_cannot_draw() {
         })
     );
     // Off the view (its rows −1 to 17 are the map's 6 to 24), the code is not needed.
-    assert!(scene(&art, &live, &lacking, &l, at(0, 7), Bugs::Fixed).is_ok());
+    assert!(
+        scene(
+            &art,
+            &live,
+            &lacking,
+            &l,
+            &shapes_of(&art),
+            at(0, 7),
+            Bugs::Fixed
+        )
+        .is_ok()
+    );
     let mut lacking = t.clone();
     lacking.terrains.remove(&8);
     assert!(matches!(
-        scene(&art, &live, &lacking, &l, at(0, 0), Bugs::Fixed),
+        scene(
+            &art,
+            &live,
+            &lacking,
+            &l,
+            &shapes_of(&art),
+            at(0, 0),
+            Bugs::Fixed
+        ),
         Err(SceneError::Code {
             layer: Layer::Terrain,
             code: 8,
@@ -442,7 +495,7 @@ fn refuses_a_level_a_viewer_or_a_code_it_cannot_draw() {
     ));
     live.viewer = 8;
     assert_eq!(
-        scene(&art, &live, &t, &l, at(0, 0), Bugs::Fixed),
+        scene(&art, &live, &t, &l, &shapes_of(&art), at(0, 0), Bugs::Fixed),
         Err(SceneError::Viewer(8))
     );
     let messages = [
@@ -465,4 +518,200 @@ fn refuses_a_level_a_viewer_or_a_code_it_cannot_draw() {
     );
     // The raw map's own art reads too (no given tiles).
     assert!(MapArt::from_raw(&raw(&map())).is_ok());
+}
+
+/// The art test's map with `objects` after its own (a hero, a flat ground at (20, 20), a town).
+fn art_with_objects(objects: Vec<AnyObject>) -> (MapArt, Live) {
+    let extras = Extras {
+        tiles: vec![],
+        objects,
+    };
+    let bytes = writer::write_with(&map(), &extras).unwrap();
+    let raw = h3_map::parse(&bytes, &Limits::default()).unwrap();
+    let art = MapArt::from_raw(&raw).unwrap();
+    let live = Live::at_start(&raw, &art, 0);
+    (art, live)
+}
+
+/// An object of the art test's template (`def`, one blocked cell at the anchor) at (x, y).
+fn object(def: &str, x: u8, y: u8, priority: u8) -> AnyObject {
+    AnyObject {
+        level: 0,
+        tile: (x, y),
+        template: template(def, 155, 0, priority),
+        owner: None,
+    }
+}
+
+/// `shapes_of(art)` with `def` a 2 × 2 shape of `frames`, its masks as stored.
+fn with_shape(art: &MapArt, def: &str, colour: [u8; 6], shadow: [u8; 6], frames: u32) -> Shapes {
+    let mut shapes = shapes_of(art);
+    let shape = Shape {
+        width: 2,
+        height: 2,
+        colour,
+        shadow,
+        frames,
+    };
+    shapes.insert(def, shape);
+    shapes
+}
+
+/// The first and last index of `of`'s draws.
+fn span(scene: &Scene, of: Pass) -> (usize, usize) {
+    let at: Vec<usize> = scene
+        .draws
+        .iter()
+        .enumerate()
+        .filter(|(_, d)| matches!(d, Draw::Piece { pass, .. } if *pass == of))
+        .map(|(i, _)| i)
+        .collect();
+    (at[0], at[at.len() - 1])
+}
+
+#[test]
+fn an_objects_shadow_and_body_pieces_in_their_masks_cells() {
+    // A 2 × 2 tree anchored at (5, 5): its body in cells (0, 0), (1, 0), (0, 1), its shadow in
+    // (1, 0) and (1, 1) (bit 7 − dx of byte 5 − dy). Phase 3, frame step 2, four frames: frame 1.
+    let (art, mut live) = art_with_objects(vec![object("tree.def", 5, 5, 0)]);
+    let tree = art.objects.len() - 1;
+    live.objects[tree].phase = 3;
+    live.moment.frames = 2;
+    let colour = [0, 0, 0, 0, 0x80, 0xc0];
+    let shadow = [0, 0, 0, 0, 0x40, 0x40];
+    let shapes = with_shape(&art, "tree.def", colour, shadow, 4);
+    let s = scene(
+        &art,
+        &live,
+        &tables(),
+        &layout(),
+        &shapes,
+        at(0, 0),
+        Bugs::Fixed,
+    )
+    .unwrap();
+    // The frame's canvas (64 × 64) has its top-left on tile (4, 4): (128, 136).
+    let tile = |x: i32, y: i32| [32 * x, 8 + 32 * y, 32 * x + 32, 40 + 32 * y];
+    let piece = |x, y| {
+        (
+            "tree.def".to_string(),
+            1,
+            [128, 136],
+            [false, false],
+            tile(x, y),
+        )
+    };
+    assert_eq!(pieces(&s, Pass::Shadow), [piece(4, 4), piece(4, 5)]);
+    assert_eq!(
+        pieces(&s, Pass::Body),
+        [piece(5, 4), piece(4, 5), piece(5, 5)]
+    );
+    assert!(pieces(&s, Pass::Flat).is_empty());
+    // The passes' order: roads, flat objects, shadows, bodies, the unexplored tiles.
+    let (_, roads) = span(&s, Pass::Road);
+    let (shadows, last_shadow) = span(&s, Pass::Shadow);
+    let (bodies, _) = span(&s, Pass::Body);
+    assert!(roads < shadows && last_shadow < bodies);
+}
+
+#[test]
+fn a_flat_object_in_every_cell_without_masks() {
+    // A flat 2 × 2 with empty masks at (6, 3), under the tree at (5, 5) placed after it.
+    let (art, mut live) = art_with_objects(vec![
+        object("plain.def", 6, 3, 1),
+        object("tree.def", 5, 5, 0),
+    ]);
+    live.explored.set(0, 0, 0, false);
+    let mut shapes = with_shape(&art, "plain.def", [0; 6], [0; 6], 1);
+    shapes.insert(
+        "tree.def",
+        *with_shape(&art, "tree.def", [0xff; 6], [0xff; 6], 1)
+            .get("tree.def")
+            .unwrap(),
+    );
+    let s = scene(
+        &art,
+        &live,
+        &tables(),
+        &layout(),
+        &shapes,
+        at(0, 0),
+        Bugs::Fixed,
+    )
+    .unwrap();
+    let flat = pieces(&s, Pass::Flat);
+    assert_eq!(flat.len(), 4);
+    assert!(flat.iter().all(|p| p.0 == "plain.def" && p.2 == [160, 72]));
+    assert!(pieces(&s, Pass::Shadow).iter().all(|p| p.0 == "tree.def"));
+    assert!(pieces(&s, Pass::Body).iter().all(|p| p.0 == "tree.def"));
+    let (_, roads) = span(&s, Pass::Road);
+    let (flats, last_flat) = span(&s, Pass::Flat);
+    let (shadows, _) = span(&s, Pass::Shadow);
+    let (_, last_body) = span(&s, Pass::Body);
+    let (shroud, _) = span(&s, Pass::Shroud);
+    assert!(roads < flats && last_flat < shadows && last_body < shroud);
+}
+
+#[test]
+fn an_object_off_the_view_and_its_level_are_left() {
+    // The tree at (25, 5) lies right of the view at (0, 0); on the underground nothing is drawn.
+    let (art, live) = art_with_objects(vec![object("tree.def", 25, 5, 0)]);
+    let shapes = with_shape(&art, "tree.def", [0xff; 6], [0xff; 6], 1);
+    let s = scene(
+        &art,
+        &live,
+        &tables(),
+        &layout(),
+        &shapes,
+        at(0, 0),
+        Bugs::Fixed,
+    )
+    .unwrap();
+    assert!(pieces(&s, Pass::Body).is_empty());
+    let s = scene(
+        &art,
+        &live,
+        &tables(),
+        &layout(),
+        &shapes,
+        at(7, 0),
+        Bugs::Fixed,
+    )
+    .unwrap();
+    // Columns 24 and 25 at the view's columns 17 and 18 (24 pixels shown), rows 4 and 5.
+    let bodies = pieces(&s, Pass::Body);
+    assert_eq!(bodies.len(), 4);
+    assert_eq!(bodies[1].4, [576, 136, 600, 168]);
+}
+
+#[test]
+fn an_object_without_a_shape_has_no_scene() {
+    let (art, live) = art_with_objects(vec![object("tree.def", 5, 5, 0)]);
+    let err = scene(
+        &art,
+        &live,
+        &tables(),
+        &layout(),
+        &shapes_of(&art),
+        at(0, 0),
+        Bugs::Fixed,
+    );
+    assert!(err.is_ok());
+    let mut lacking = Shapes::default();
+    lacking.insert("tree.def", *shapes_of(&art).get("tree.def").unwrap());
+    let err = scene(
+        &art,
+        &live,
+        &tables(),
+        &layout(),
+        &lacking,
+        at(0, 0),
+        Bugs::Fixed,
+    )
+    .unwrap_err();
+    assert!(matches!(
+        err,
+        SceneError::Objects(ObjectsError::Shape(1, _))
+    ));
+    assert_eq!(err.to_string(), "object 1: no .msk for cursed.def");
 }

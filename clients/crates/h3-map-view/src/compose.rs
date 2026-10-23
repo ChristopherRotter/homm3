@@ -2,9 +2,11 @@
 //! the executable uses for it, from a [`Batch`], into a screen in the original's 16-bit format
 //! (`docs/epics/E17-design.md` §3.2). The one place that decides how a named thing is drawn, as
 //! `h3-view`'s compose is for the battle: the frame's picture opaque in the viewer's colours
-//! (design §1.9), the view's pieces through `draw_frame_raw` ([`crate::draw::raw`]) and the
-//! unexplored tiles' second time through 0x47E820 ([`crate::draw::shadows`]), the gems through the
-//! plain drawer with runs skipped (`h3_render::blit`). A DEF's palette is cycled once per scene
+//! (design §1.9), the view's tiles through `draw_frame_raw` ([`crate::draw::raw`]) and the
+//! unexplored tiles' second time through 0x47E820 ([`crate::draw::shadows`]), the objects' bodies
+//! and flat objects through the flagged drawer ([`crate::draw::flagged`]), their shadows through
+//! the shadow pass ([`crate::draw::shadow_pass`], §2.2), the gems through the plain drawer with
+//! runs skipped (`h3_render::blit`). A DEF's palette is cycled once per scene
 //! (design §1.6).
 
 use alloc::boxed::Box;
@@ -90,7 +92,13 @@ pub fn compose(scene: &Scene, batch: &Batch, frame: [u32; 2]) -> Result<Screen, 
                     mirror_x: *mirror_x,
                     mirror_y: *mirror_y,
                 };
-                draw::raw(&mut screen, f, palette, at, *clip);
+                match pass {
+                    Pass::Flat | Pass::Body => {
+                        draw::flagged(&mut screen, f, palette, at, *clip, None)
+                    }
+                    Pass::Shadow => draw::shadow_pass(&mut screen, f, at, *clip),
+                    _ => draw::raw(&mut screen, f, palette, at, *clip),
+                }
                 if *pass == Pass::Shroud {
                     draw::shadows(&mut screen, f, at, *clip);
                 }

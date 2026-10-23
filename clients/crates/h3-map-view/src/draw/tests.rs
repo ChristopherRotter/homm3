@@ -153,3 +153,38 @@ fn shadows_darken_under_runs_of_one_to_four() {
     assert_eq!(rows(&s)[0], [body, body, white, white, white]);
     assert_eq!(rows(&s)[1], [white; 5]);
 }
+
+#[test]
+fn flagged_draws_literal_pixels_and_flag_runs_in_the_colour() {
+    // Literal 7, runs of 0, 1, 4 and 5, literal 5.
+    let f = frame([7, 0, 1, 4, 5, 5], [false, true, true, true, true, false]);
+    let w = 0xFFFF;
+    let mut s = screen(w);
+    flagged(&mut s, &f, &palette(), Place::default(), ALL, Some(0xF800));
+    assert_eq!(rows(&s)[..2], [[7, w, w, w, w], [w, 0xF800, 5, w, w]]);
+    // Without a colour the flag's run is skipped too; clipped to the first column.
+    let mut s = screen(w);
+    flagged(&mut s, &f, &palette(), Place::default(), [0, 0, 1, 4], None);
+    assert_eq!(rows(&s)[..2], [[7, w, w, w, w], [w, w, w, w, w]]);
+}
+
+#[test]
+fn the_shadow_pass_darkens_under_runs_of_one_and_four_only() {
+    let white = FORMAT.pack(Rgb {
+        r: 255,
+        g: 255,
+        b: 255,
+    });
+    // Runs of 1, 2, 3, 4 and 5, and a literal 1.
+    let f = frame([1, 2, 3, 4, 5, 1], [true, true, true, true, true, false]);
+    let mut s = screen(white);
+    shadow_pass(&mut s, &f, Place::default(), ALL);
+    let (border, body) = (FORMAT.shadow_border(white), FORMAT.shadow_body(white));
+    assert_eq!(
+        rows(&s)[..2],
+        [
+            [border, white, white, white, white],
+            [body, white, white, white, white]
+        ]
+    );
+}
