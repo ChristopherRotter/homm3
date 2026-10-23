@@ -1,6 +1,6 @@
 # E06 — Battle AI v1 and the local training pipeline v0
 
-Status: **in progress**, refined 2026-10-20 (AI-Q8); increment 1 (T1, T2a, T2b1, T2c) done; increment 2 (T3a, T3b) done; increment 3 (T4a, T4b) done; increment 4 refined 2026-10-22: T5a to T5c done, T5d next · Lane: **ai** · Follows E05 (closed
+Status: **in progress**, refined 2026-10-20 (AI-Q8); increment 1 (T1, T2a, T2b1, T2c) done; increment 2 (T3a, T3b) done; increment 3 (T4a, T4b) done; increment 4 (T5a to T5d) done 2026-10-23; increment 5 next (its refinement open) · Lane: **ai** · Follows E05 (closed
 2026-10-20) · Runs beside E23 (the battle lane: the original's battle AI, the system actor's
 policy), whose neutral side opens E06's neutral share (decision 1)
 
@@ -146,8 +146,9 @@ T5b's stalling, T5c and T5d (the user, 2026-10-22).
   record and the diagnosis in `E06-log.md`.
 - [x] **T5c The truncation penalty** — done 2026-10-22 (the user's amendment of decision 10):
   `[ppo] truncation_penalty` 1.0; `configs/e06-t5c.toml`.
-- [ ] **T5d The runs with the penalty** — the user's 20 M samples each: the entity network
-  (`t5-2`) and the MLP (`t5-3`), against each other and `t4-2`'s first 20 M.
+- [x] **T5d The runs with the penalty** — done 2026-10-23 (`t5-2`, `t5-3`): the entity network
+  parked (behind the MLP per sample from 10 M, 3.4 times slower); the MLP with the penalty
+  0.832, 0.557, 0.533 in 20 M samples, near `t4-2`'s 60 M; the record in `E06-log.md`.
 
 **Later increments** (cut at each checkpoint; proposed in design §10):
 

@@ -16,21 +16,22 @@ hour `t3b-1`: evaluation 21.4 %, stalling suspected, AI-Q9). Increment 3 done 20
 (the league), T4b (the user's runs `t4-1`, `t4-2`: γ 1.0 ends the stalling, AI-Q9; the best
 plays 0.839, 0.578, 0.559 against Random, Aggressor, Greedy; `E06-log.md`).
 
-**Increment 4** refined 2026-10-22 (the user, `E06-log.md`): the entity network first, T5a then
-T5b; no spare MLP run. T5a done, T5b done (negative: `t5-1` stalled), T5c done (the
-truncation penalty, the user's amendment of decision 10), all 2026-10-22 (`E06-log.md`). Still open for later increments: AI-Q7 (b), throughput (`t4-2`'s dip to
-about 4 000 samples/s from 20 M to 40 M), the mana price, T7 (E23's neutral side is complete).
+**Increment 4** done 2026-10-23 (`E06-log.md`): T5a (the entity network), T5b (`t5-1`
+stalled: both sides hid), T5c (the truncation penalty, the user's amendment of decision 10), T5d
+(`t5-2`, `t5-3`: the entity network parked; the MLP with the penalty reached 0.832, 0.557,
+0.533 in 20 M samples and 70 minutes, near `t4-2`'s 60 M).
 
-### T5d — The runs with the truncation penalty
-
-- **Scope:** the user runs `configs/e06-t5c.toml` twice on their machine, 20 M samples each:
-  the entity network (`runs/t5-2`) and the MLP (`runs/t5-3`, `--set network.kind=mlp`; the
-  config's comment); the records committed, compared with each other and with `t4-2`'s first
-  20 M in `E06-log.md` (truncations, samples/s, gates, ladders).
-- **Acceptance:** the records pass `check_record`; the ladders compared per opponent; the
-  entity network's stalling gone or explained.
-- **Depends on:** T5c's pull request merged; the user's machine. **Status:** waiting (the
-  merge, then the user).
+**Next: increment 5's refinement, with the user** (no task is ready until then; the user closed
+the session after T5d without choosing). Put to them:
+- **A run:** the MLP with the penalty for 60 M samples (`configs/e06-t5c.toml`, `--set
+  network.kind=mlp --set samples=60_000_000`; about 3.5 hours): the clean comparison with
+  `t4-2` (only the penalty differs) and how far the gain goes (`t5-3`'s last gate still
+  promoted); or `--init-from runs/t5-3/best.pt` with a fresh schedule.
+- **The code:** (a) T7, the neutral battles (`Policy::System` as an opponent, the neutral kinds
+  at their census weights; the user, 2026-10-22: the system actor will not cower); (b)
+  throughput (about 4 900 samples/s against the engine's 100 000+: a training step's profile,
+  the batch size and threads, the observations in place); (c) AI-Q7 (b), the preview's kills per
+  attack and shot entry (C ABI v32); the mana price.
 
 ## Inbox
 

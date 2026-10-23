@@ -432,3 +432,33 @@ entry only where a task builds on it.
   `configs/e06-t5c.toml` the next runs. Tests: both cases in a rollout of battles cut after 6
   steps.
 
+## T5d — The runs with the truncation penalty (2026-10-22 to 23)
+
+- **The runs** (`python/records/t5-2.json`, `t5-3.json`; `configs/e06-t5c.toml`: `t4-2`'s
+  settings with the penalty 1.0 and 20 M samples, the learning rate's horizon 20 M): `t5-2`, the
+  entity network (250 minutes in three segments, two of them resumed; 1 463 to 1 502 samples/s),
+  and `t5-3`, the MLP (70 minutes; 4 914 to 5 433 samples/s).
+- **The penalty ends the stalling:** self-play truncations 2.8 % and 0.4 % (`t5-2`, the two
+  halves; `t5-1`: 45 %), 0.001 % (`t5-3`; `t4-2`'s first 20 M: 11.7 %, 10.1 %).
+- **Results** (ladders on the report set; at 10 M 250 per kind, the finals 500):
+
+  | Random / Aggressor / Greedy | 10 M | 20 M (final) |
+  |---|---|---|
+  | `t4-2` (MLP, no penalty, 60 M horizon) | 0.719 / 0.440 / 0.422 | 0.790 / 0.500 / 0.487 (250 per kind) |
+  | `t5-2` (entity + penalty) | 0.771 / 0.461 / 0.452 | 0.770 / 0.470 / 0.468 (best #1, from 10 M) |
+  | `t5-3` (MLP + penalty) | 0.821 / 0.535 / 0.511 | **0.832 / 0.557 / 0.533** (best #2) |
+
+  Gates at 10 M and 20 M: `t5-2` +243 Elo promoted, −8 rejected; `t5-3` +330 and +14, both
+  promoted. `t4-2`'s final (best #5, 50 M, 233 minutes): 0.839, 0.578, 0.559.
+- **The entity network is parked:** with the same penalty and schedule the MLP led from 10 M on
+  and kept improving while the entity network's gate rejected, at 3.4 times the MLP's speed; the
+  entity network's entropy barely fell (3.44 to 3.11; the MLP's 2.74 to 1.89), its explained
+  variance stayed at 0.52 (0.78). Its lead over `t4-2` at 10 M was the penalty's.
+- **The penalty (with the 20 M schedule) is the gain:** `t5-3` came near `t4-2`'s 60 M level in a
+  third of the samples and of the time; the shorter horizon's faster decay may share in it (a 60 M
+  run with the penalty separates the two). The targets (0.95, 0.75, 0.75) are not met; a positive
+  value against every ladder member: `t5-3`'s best yes (+0.272, +0.030, +0.008, +0.022 against
+  #1), `t5-2`'s no (−0.032, −0.043 against the bots).
+- **Increment 4 closed** at the checkpoint (2026-10-23): the user ran nothing further and closed
+  the session; increment 5's refinement is the next session's (the QUEUE's choices).
+
