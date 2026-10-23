@@ -23,16 +23,19 @@ the screen.
 A recipe (clients/capture/batches/): `spec` (the batch's spec, from the repository's root),
 `players` (the hot-seat names, one per human colour from red on) and `[[step]]`s, each either
 `end_turn = true` or a hero's: `encounter` (the template's section), `hero` (its name on the map),
-`walk = [x, y]` (click the tile twice: a walk, or a visit to what stands there) or `equip = {
-"<artifact>" = "<slot>" }` (put on from the backpack in the hero screen, E08 T37a; without
-either the step only reads), `record = { "<field, table row or `<row> | <column>`>" =
+`walk = [x, y]` (click the tile twice: a walk, or a visit to what stands there), `equip = {
+"<artifact>" = "<slot>" }` (put on from the backpack in the hero screen, E08 T37a) or `screen =
+"hero"` (E08 T47a; without any of them the step only reads), `actions = [{ click = [<item>, …] |
+right = "<item>" | slider = "max", answer, record, note }]` (E08 T47a: played in the hero
+screen, or in the exchange or army dialog a walk opens; items by name, SCREEN_ITEMS), `record = { "<field, table row or `<row> | <column>`>" =
 "<observation>" }` and `expect = { marks = <n>, path = "green" | "red" }` (a difference goes into
 the encounter's "anything odd"). Observations (the README's table): arrived, moved (yes/no), mark
 (the target's mark at the first click: green, red or none), marks (their number), points (the
 points left), points_if_moved, resource:<name>, explored:x,y[:colour] (E08 T37a), hero:<detail>, …
 
 Library use: to_hot_seat, dismiss, end_turn, select, centre, hover, walk, observe,
-open_hero_screen, equip. Needs a game
+open_hero_screen, equip; since E08 T47a screen_kind, click_item, right_click, run_actions,
+hero_screen. Needs a game
 set up by setup.sh (Show Route on), numpy, xdotool and the rights to read the game's memory.
 """
 
@@ -468,6 +471,20 @@ def attack_to_the_end(game, mem, end):
     play_turns(game, mem, lambda s: nearest_enemy(mem, s), lambda: False, end, "attack")
 
 
+def end_tactics_phase(game, mem, end):
+    """Ends a battle's tactics phase (E08 T47a): the message that opens it (GENRLTXT 373) closed
+    with its OK, then the battle's Start button (item 30722, "Start Combat") clicked, until the
+    phase's flag clears."""
+    while mem.tactics_phase():
+        if time.monotonic() > end:
+            raise TimeoutError("the tactics phase does not end")
+        kind = screen_kind(mem)
+        if kind in ("message", "battle"):
+            click_item(game, mem, "ok" if kind == "message" else "start", {})
+        time.sleep(0.2)
+    game.move(*BATTLE_PARK)
+
+
 def fight(game, mem, plan, limit=300.0):
     """Plays the battle on the screen as `plan` says and returns its record: the stacks at the
     start and the end, the outcome and how it was played. `plan`: "auto" (auto combat: the
@@ -498,6 +515,11 @@ def fight(game, mem, plan, limit=300.0):
     time.sleep(0.5)
     record = {"plan": plan, "field": mem.battlefield(), "start": stacks(mem)}
     end = time.monotonic() + limit
+    # E08 T47a (batch E6's E6-6): a tactics phase (battle manager +0x13D68 at the start) is ended
+    # at once, as the templates say: its message's OK, then its Start button.
+    record["tactics"] = mem.tactics_phase()
+    if record["tactics"]:
+        end_tactics_phase(game, mem, end)
     if action == "first":
         attack_until_gone(game, mem, side, plan["attack"], end)
         if find_button(game, "battle_ok"):
@@ -579,7 +601,7 @@ def side_of(choice, shown):
                 "left")
 
 
-def settle(game, mem, index, answer=None, battle=None, level_up="left"):
+def settle(game, mem, index, answer=None, battle=None, level_up="left", actions=None):
     """Waits until the hero, its points and the players' resources stay the same for QUIET
     seconds on the adventure map (the walk and any visit over), on the way answering each question
     as `answer` says, playing each battle as `battle` says and clicking any other dialog's OK;
@@ -588,13 +610,25 @@ def settle(game, mem, index, answer=None, battle=None, level_up="left"):
     two offers: `level_up`, one choice or a list of them in order, the last one repeated) and
     since E08 T32b1 every level-up dialog's record (`level_up_dialogs`: hero, level, primary skill,
     offers, the one taken) and the records of the other dialogs closed with their OK
-    (`messages`: `GENRLTXT:<n>` from h3lod, `?` for a text not identified)."""
+    (`messages`: `GENRLTXT:<n>` from h3lod, `?` for a text not identified). Since E08 T47a an
+    exchange screen (a meeting) or an army dialog (a join without room) that opens plays the
+    step's `actions` (run_actions; once) and is then closed if they left it open (its close or
+    OK: no change); `screens` lists them."""
     events = {"dialogs": 0, "questions": [], "battles": [], "level_ups": [],
-              "level_up_dialogs": [], "messages": []}
+              "level_up_dialogs": [], "messages": [], "screens": [], "actions": []}
     choices = [level_up] if isinstance(level_up, str) else list(level_up)
     last, since, known = None, time.monotonic(), time.monotonic()
     end = time.monotonic() + 600
     while time.monotonic() < end:
+        kind = screen_kind(mem)
+        if kind in ("exchange", "army"):
+            events["screens"].append(kind)
+            if actions and not events["actions"]:
+                events["actions"] = run_actions(game, mem, index, actions)
+            if (now := screen_kind(mem)) in ("exchange", "army"):
+                close_screen(game, mem, now, screen_heroes(mem, now, index))
+            last, since, known = None, time.monotonic(), time.monotonic()
+            continue
         pix = game.pixels()
         if game.matches("adventure", pix) or in_battle(game, pix):
             known = time.monotonic()
@@ -666,7 +700,7 @@ def settle(game, mem, index, answer=None, battle=None, level_up="left"):
     raise TimeoutError(f"hero {index} does not come to rest")
 
 
-def walk(game, mem, name, target, answer=None, battle=None, level_up="left"):
+def walk(game, mem, name, target, answer=None, battle=None, level_up="left", actions=None):
     """Selects the hero, clicks the target tile once (the path shows: its marks are read) and
     again (the hero goes, or not, or visits what stands there), waits until it rests, answering
     questions and playing battles on the way (settle); returns the observation."""
@@ -687,7 +721,7 @@ def walk(game, mem, name, target, answer=None, battle=None, level_up="left"):
     if not first_walked:
         game.click(*hover(game, mem, x, y, z), 0.3)
         game.move(*PARK)
-    after, events = settle(game, mem, index, answer, battle, level_up)
+    after, events = settle(game, mem, index, answer, battle, level_up, actions)
     colours = sorted(set(path.values()))
     return {
         "hero": name, "index": index, "from": before["tile"], "target": list(target),
@@ -703,7 +737,8 @@ def walk(game, mem, name, target, answer=None, battle=None, level_up="left"):
 # The hero screen's artifact places (800 x 600; the README's table): the backpack's five visible
 # places from the left, and each worn slot's place, by h3mem.ARTIFACT_SLOTS' names (centres of
 # 44 x 44 places). Checked in the original under Wine (E08 T37a): the backpack's, the feet's and misc
-# 1's; the others as VCMI's hero window places them, not checked.
+# 1's; since E08 T47a every one against its item's box in memory (worn position p is item 2 + p,
+# backpack place k item 40 + k: SCREEN_ITEMS), each within a pixel of the box's centre.
 BACKPACK_PLACES = (425, 387, 46, 5)  # the first place's centre, the step, the places shown
 SLOT_PLACES = {
     "head": (531, 52), "shoulders": (590, 264), "neck": (531, 102), "right hand": (405, 91),
@@ -752,6 +787,284 @@ def equip(game, mem, name, moves):
     game.key("Return", 0.5)
     game.wait("adventure", 10)
     return {"hero": name, "equipped": dict(moves)}
+
+
+# -- screens and their items (E08 T47a: batch E6) --------------------------------------------
+# The topmost dialog's kind by its vtable (h3mem.dialog), observed under Wine (E08 T47a): what a
+# click lands on is found by the dialog's items in memory (their ids and boxes), never by fixed
+# coordinates or probes. The adventure map and the battle are dialogs too.
+SCREEN_KINDS = {0x63A5E4: "map", 0x63D528: "battle", 0x63EAE8: "hero", 0x642428: "exchange",
+                0x643854: "army", 0x643C14: "creature", 0x63B8F8: "split", 0x63DB40: "message"}
+# Each screen's items by name (survey E08-army §1.1, §2.3, §3.1-§3.4, §4, §5.1: the procedures'
+# item ids; checked under Wine, E08 T47a). A name `<part>:<n>` is the part's n-th (an army slot
+# from 0 at the left, a worn position by its number 0-18, a backpack place from 0 at the left of
+# the five shown); a range's first id here. The hero screen (`hero_screen_proc` 0x4DD2D0): army
+# slots 68-74, worn positions 2-20, backpack places 40-44, its arrows 77 (left: the last becomes
+# the first) and 78 (right: the first becomes the last), loose 122, tight 124, the tactics
+# formation 126, split 127, close 30720. The exchange (`swap_manager_proc` 0x5AFDF0; left the
+# visitor, right the visited): armies 13-19 and 20-26, worn positions 27-45 and 46-64, backpack
+# places 89-93 and 94-98, their arrows 99 and 101, 100 and 102, the split buttons 103 and 104,
+# close 30720. The army dialog (0x5D0910): the group's slots (upper) 115-121, the hero's army
+# (lower) 140-146, split 154, OK 30722. The creature dialog (0x4C6C50): dismiss 30723, OK 30722.
+# The split dialog (0x449E90): OK 30722, cancel 30721, the slider 6, the counts 4 (the source)
+# and 5 (the target). A message: OK 30722; a question: yes 30725, no 30726. The battle: the
+# tactics phase's Start 30722.
+SCREEN_ITEMS = {
+    "hero": {"army": 68, "worn": 2, "backpack": 40, "backpack left": 77, "backpack right": 78,
+             "loose": 122, "tight": 124, "tactics": 126, "split": 127, "close": 30720},
+    "exchange": {"left army": 13, "right army": 20, "left worn": 27, "right worn": 46,
+                 "left backpack": 89, "right backpack": 94, "left backpack left": 99,
+                 "left backpack right": 101, "right backpack left": 100,
+                 "right backpack right": 102, "left split": 103, "right split": 104,
+                 "close": 30720},
+    "army": {"upper": 115, "lower": 140, "split": 154, "ok": 30722},
+    "creature": {"dismiss": 30723, "ok": 30722},
+    "split": {"ok": 30722, "cancel": 30721},
+    "message": {"ok": 30722, "yes": 30725, "no": 30726},
+    "battle": {"start": 30722},
+}
+# The counts each screen shows under its army slots (text items, first id): the hero screen's
+# 61-67, the exchange's 65-71 and 72-78, the army dialog's 108-114 and 133-139.
+SHOWN_COUNTS = {("hero", "army"): 61, ("exchange", "left army"): 65,
+                ("exchange", "right army"): 72, ("army", "upper"): 108, ("army", "lower"): 133}
+SPLIT_SLIDER, SPLIT_COUNTS = 6, (4, 5)
+SHOWN = 0x4  # an item's state bit while it is drawn (an empty slot's count, an empty place: clear)
+QUESTION = (30725, 30726)  # a message's yes and no
+EXCHANGE_MANAGER, EXCHANGE_HEROES = 0x6A3D30, 0x40  # swap_manager_create 0x5AE500: this
+SCREEN_ACTIONS = ("click", "right", "slider")
+
+
+def screen_kind(mem):
+    """The kind of the topmost dialog (SCREEN_KINDS), `other` for an unknown one, None for none."""
+    shown = mem.dialog()
+    return SCREEN_KINDS.get(shown["vtable"], "other") if shown else None
+
+
+def hero_index(mem, pointer):
+    return (pointer - mem.game() - h3mem.HEROES) // h3mem.HERO_SIZE
+
+
+def screen_heroes(mem, kind, step_hero):
+    """Whose screen it is (E08 T47a): the hero screen's and the army dialog's the step's hero,
+    the exchange's left the visitor and right the visited (its manager +0x40, +0x44)."""
+    if kind == "exchange":
+        manager = mem.u32(EXCHANGE_MANAGER)
+        left, right = (mem.u32(manager + EXCHANGE_HEROES + 4 * k) for k in range(2))
+        return {"left": hero_index(mem, left), "right": hero_index(mem, right)}
+    return {"": step_hero}
+
+
+def item_id(mem, kind, name, heroes):
+    """The id of the item `name` on a screen of `kind`: `<part>` or `<part>:<n>`, where for a worn
+    position or a backpack place n may be an artifact's name (the position that holds it, or the
+    place that shows it: the backpack's first five entries; E08 T47a)."""
+    items = SCREEN_ITEMS.get(kind, {})
+    part, _, arg = name.partition(":")
+    if part not in items:
+        raise ValueError(f"no item `{name}` on the {kind} screen ({', '.join(items)})")
+    if not arg:
+        return items[part]
+    if arg.lstrip("-").isdigit():
+        return items[part] + int(arg)
+    side = part.split()[0] if kind == "exchange" else ""
+    hero = mem.hero(heroes[side])
+    names = {a: mem.artifact_name(a) for a in [*hero["positions"].values(), *hero["backpack"]]}
+    if part.endswith("worn"):
+        found = [p for p, a in hero["positions"].items() if names[a] == arg]
+    elif part.endswith("backpack"):
+        found = [k for k, a in enumerate(hero["backpack"][:5]) if names[a] == arg]
+    else:
+        raise ValueError(f"`{name}`: only a worn position or a backpack place takes a name")
+    if not found:
+        raise ValueError(f"`{name}`: {hero['name']} shows no {arg} there")
+    return items[part] + found[0]
+
+
+def item_centre(mem, wanted):
+    for item in mem.dialog_items():
+        if item["id"] == wanted:
+            x, y, width, height = item["box"]
+            return x + width // 2, y + height // 2
+    raise RuntimeError(f"the topmost dialog has no item {wanted}")
+
+
+def quiet_screen(game, pause=0.4):
+    time.sleep(pause)
+    game.settled()
+
+
+def click_item(game, mem, name, heroes):
+    """A left click on the item `name` of the screen showing (its box's centre); the mouse
+    parked after it."""
+    kind = screen_kind(mem)
+    game.click(*item_centre(mem, item_id(mem, kind, name, heroes)), 0.3)
+    game.move(*PARK)
+    quiet_screen(game)
+
+
+def question_record(mem):
+    """A question showing (a message with yes and no): the record its text was written from (or
+    `?`); None when none shows."""
+    if screen_kind(mem) != "message":
+        return None
+    ids = {i["id"] for i in mem.dialog_items()}
+    if not set(QUESTION) <= ids:
+        return None
+    return h3lod.identify(mem.dialog_text()) or "?"
+
+
+def answer_question(game, mem, answer, heroes):
+    """Answers the question showing with `answer` (yes or no); returns its record."""
+    record = question_record(mem)
+    if answer not in ("yes", "no"):
+        raise RuntimeError(f"a question ({record}) the action does not answer (`answer`)")
+    click_item(game, mem, answer, heroes)
+    return record
+
+
+def right_click(game, mem, name, heroes, answer):
+    """A right click on the item `name` (E08 T47a): the button held while the screen is read. A
+    question (the assembly's, GENRLTXT 733) stays after the release and is answered; a window
+    shown while the button is held (an artifact's or a creature's) goes with it. Returns what
+    opened: `question <record>`, `window <record>` (`?` for a text not identified) or `none`, and
+    the question's record if one came."""
+    kind = screen_kind(mem)
+    before = mem.dialog()["at"]
+    game.move(*item_centre(mem, item_id(mem, kind, name, heroes)))
+    time.sleep(0.1)
+    h3drive.run("xdotool", "mousedown", "3")
+    time.sleep(0.6)
+    shown = mem.dialog()
+    opened = shown is not None and shown["at"] != before
+    record = (h3lod.identify(mem.dialog_text()) or "?") if opened else None
+    asked = question_record(mem) if opened else None
+    h3drive.run("xdotool", "mouseup", "3")
+    game.move(*PARK)
+    quiet_screen(game)
+    if asked is not None:
+        answer_question(game, mem, answer, heroes)
+        return f"question {asked}", asked
+    return (f"window {record}" if opened else "none"), None
+
+
+def slider_max(game, mem):
+    """The split dialog's slider to its maximum (toward the target): its right arrow clicked until
+    the counts stop changing (E08 T47a; the arrow moves one creature a click)."""
+    x, y, width, height = next(i["box"] for i in mem.dialog_items() if i["id"] == SPLIT_SLIDER)
+    arrow = (x + width - height // 2, y + height // 2)
+    last, same = split_counts(mem), 0
+    for _ in range(100000):
+        game.click(*arrow, 0.05)
+        now = split_counts(mem)
+        same = same + 1 if now == last else 0
+        if same >= 2:
+            break
+        last = now
+    game.move(*PARK)
+    quiet_screen(game)
+
+
+def split_counts(mem):
+    """The split dialog's two counts as it shows them, `<source> : <target>`."""
+    if screen_kind(mem) != "split":
+        raise RuntimeError("no split dialog shows")
+    texts = {i["id"]: i["text"] for i in mem.dialog_items()}
+    return " : ".join((texts.get(k) or "").strip() for k in SPLIT_COUNTS)
+
+
+def shown_counts(mem, part, heroes=None):
+    """The counts a screen shows under the army slots `part` (SHOWN_COUNTS): `slot: count` for
+    each slot that shows one (`none`)."""
+    kind = screen_kind(mem)
+    if (kind, part) not in SHOWN_COUNTS:
+        raise ValueError(f"the {kind} screen shows no counts of `{part}`")
+    first = SHOWN_COUNTS[(kind, part)]
+    texts = {i["id"]: i["text"] for i in mem.dialog_items() if i["state"] & SHOWN}
+    shown = [(k, (texts.get(first + k) or "").strip()) for k in range(7)]
+    return ", ".join(f"{k}: {t}" for k, t in shown if t) or "none"
+
+
+def shown_backpack(mem):
+    """The hero screen's five backpack places as it shows them, left to right (their pictures'
+    frames: the artifacts' ids), `empty` for an empty place."""
+    if screen_kind(mem) != "hero":
+        raise RuntimeError("the hero screen does not show")
+    frames = {i["id"]: i["frame"] for i in mem.dialog_items()
+              if i["vtable"] == h3mem.PICTURE_VTABLE and i["state"] & SHOWN}
+    first = SCREEN_ITEMS["hero"]["backpack"]
+    hero_items = [frames.get(first + k, -1) for k in range(5)]
+    return ", ".join(mem.artifact_name(a) if a > 0 else "empty" for a in hero_items)
+
+
+def run_actions(game, mem, step_hero, actions):
+    """Plays a step's `actions` in the screens showing (E08 T47a): each action one `click` (a list
+    of item names, clicked in order on whichever screen shows at each), `right` (an item's name)
+    or `slider = "max"` (the split dialog's), or none (only reads); a question that comes is
+    answered with the action's `answer`, a message's OK clicked (its record kept). `record` and
+    `note` read right after the action, as a step's do (the step's hero before and after it).
+    Returns each action's observation: what it clicked, the questions' and messages' records,
+    what a right click opened, the screen showing after it, its records and notes."""
+    done = []
+    for action in actions:
+        kinds = [k for k in SCREEN_ACTIONS if k in action]
+        if len(kinds) > 1 or set(action) - {*SCREEN_ACTIONS, "answer", "record", "note"}:
+            raise ValueError(f"an action does one of {', '.join(SCREEN_ACTIONS)}: {action}")
+        obs = {"action": action, "questions": [], "messages": [],
+               "before": snapshot(mem, step_hero)}
+        names = action.get("click", [])
+        for name in [names] if isinstance(names, str) else names:
+            heroes = screen_heroes(mem, screen_kind(mem), step_hero)
+            click_item(game, mem, name, heroes)
+            pass_dialogs(game, mem, obs, action.get("answer"), heroes)
+        if "right" in action:
+            heroes = screen_heroes(mem, screen_kind(mem), step_hero)
+            obs["shown"], asked = right_click(game, mem, action["right"], heroes,
+                                              action.get("answer"))
+            if asked is not None:
+                obs["questions"].append({"record": asked, "kind": "other",
+                                         "answer": action["answer"]})
+            pass_dialogs(game, mem, obs, action.get("answer"), heroes)
+        if "slider" in action:
+            if action["slider"] != "max":
+                raise ValueError(f"`slider = {action['slider']!r}`: only \"max\"")
+            slider_max(game, mem)
+        obs["screen"] = screen_kind(mem)
+        obs["after"] = snapshot(mem, step_hero)
+        obs["record"] = {field: value(obs, what, mem)
+                         for field, what in action.get("record", {}).items()}
+        obs["notes"] = [f"{label}: {got}" for label, what in action.get("note", {}).items()
+                        if (got := value(obs, what, mem)) != "none"]
+        done.append(obs)
+    return done
+
+
+def pass_dialogs(game, mem, obs, answer, heroes):
+    """After a click: answers each question that shows (`answer`) and clicks each message's OK,
+    keeping their records in `obs`."""
+    while screen_kind(mem) == "message":
+        if (asked := question_record(mem)) is not None:
+            answer_question(game, mem, answer, heroes)
+            obs["questions"].append({"record": asked, "kind": "other", "answer": answer})
+        else:
+            obs["messages"].append(h3lod.identify(mem.dialog_text()) or "?")
+            click_item(game, mem, "ok", heroes)
+
+
+def close_screen(game, mem, kind, heroes):
+    """Closes a hero screen, exchange or army dialog an action left open (its close or OK)."""
+    if screen_kind(mem) == kind:
+        click_item(game, mem, "ok" if kind == "army" else "close", heroes)
+
+
+def hero_screen(game, mem, name, actions):
+    """A step's `screen = "hero"` (E08 T47a): the hero's screen opened (a click on it on the map),
+    the actions played, the screen closed (if an action did not) and the map back."""
+    index = open_hero_screen(game, mem, name)["index"]
+    wait_for(lambda: screen_kind(mem) == "hero", f"{name}'s hero screen")
+    done = run_actions(game, mem, index, actions)
+    close_screen(game, mem, "hero", {"": index})
+    game.wait("adventure", 10)
+    return {"hero": name, "index": index, "actions": done}
 
 
 # -- a batch ---------------------------------------------------------------------------------
@@ -817,6 +1130,22 @@ def hero_value(mem, hero, field):
     # bar's length), read without a walk: at a turn start, the points the turn start set.
     if field in ("points", "day_points"):
         return str(hero[field])
+    # E08 T47a (batch E6): the army slot by slot, as memory holds it (`0: 10 Pikemen, 4: -25536
+    # Peasants`; a count without a creature `2: -25536 (no creature)`), the worn artifacts by
+    # position number (`9: Wizard's Well, 16: Catapult`), the flags (+0x48: `2 (loose, tactics
+    # formation on)`) and the learned spells (+0x3EA, in the spells' order).
+    if field == "slots":
+        return ", ".join(f"{k}: {c} " + (mem.creature_name(t, c) if t >= 0 else "(no creature)")
+                         for k, (t, c) in enumerate(hero["slots"]) if t >= 0 or c) or "none"
+    if field == "positions":
+        return ", ".join(f"{p}: {mem.artifact_name(a)}" for p, a in hero["positions"].items()) \
+            or "none"
+    if field == "flags":
+        flags = hero["flags"]
+        return (f"{flags} ({'tight' if flags & 1 else 'loose'}, tactics formation "
+                f"{'on' if flags & 2 else 'off'})")
+    if field == "spells":
+        return ", ".join(mem.spell_name(s) for s in hero["spells"]) or "none"
     raise ValueError(f"unknown hero detail `{field}`")
 
 
@@ -928,6 +1257,24 @@ def value(obs, what, mem):
         if kind == "stacks":
             return stacks_text(mem, fought[moment], side)
         return ", ".join(str(h) for sd, _, _, h in fought[moment] if side in (None, sd))
+    # E08 T47a (batch E6): whether the last battle opened in its tactics phase (battle manager
+    # +0x13D68 at its start); an action's right click (what opened); the screen showing and the
+    # record of the topmost dialog's text (a title: GENRLTXT 36); the split dialog's counts; the
+    # counts a screen shows under an army's slots; the hero screen's five backpack places.
+    if what == "tactics":
+        return yes[battles[-1]["tactics"]] if battles else "no battle"
+    if what == "shown":
+        return obs.get("shown", "none")
+    if what == "screen":
+        return screen_kind(mem) or "none"
+    if what == "dialog":
+        return (h3lod.identify(mem.dialog_text()) or "?") if mem.dialog() else "none"
+    if what == "split:counts":
+        return split_counts(mem)
+    if what == "shown:backpack":
+        return shown_backpack(mem)
+    if what.startswith("shown:"):
+        return shown_counts(mem, what.split(":", 1)[1])
     if what.startswith("hero:"):
         return hero_value(mem, after["hero"], what.split(":", 1)[1])
     if m := re.match(r"hero\[(.+)\]:(.+)$", what):
@@ -1069,19 +1416,32 @@ def batch(recipe_path, map_path=None, out=None):
             else:
                 index = select(game, mem, step["hero"])["index"]
                 before = snapshot(mem, index)
-                if "walk" in step and "equip" in step:
-                    raise ValueError("a step either walks or equips (E08 T37a)")
+                if sum(k in step for k in ("walk", "equip", "screen")) > 1:
+                    raise ValueError("a step walks, equips or opens a screen (E08 T37a, T47a)")
+                if "actions" in step and "walk" not in step and "screen" not in step:
+                    raise ValueError("`actions` play in a screen a walk or `screen` opens")
                 if "walk" in step:
                     obs = walk(game, mem, step["hero"], step["walk"], step.get("answer"),
-                               step.get("battle"), step.get("level_up", "left"))
+                               step.get("battle"), step.get("level_up", "left"),
+                               step.get("actions"))
                 elif "equip" in step:
                     obs = equip(game, mem, step["hero"], step["equip"])
+                elif "screen" in step:
+                    if step["screen"] != "hero":
+                        raise ValueError(f"`screen = {step['screen']!r}`: only \"hero\"")
+                    obs = hero_screen(game, mem, step["hero"], step.get("actions", []))
                 else:
                     obs = {"hero": step["hero"]}
                 obs.update(before=before, after=snapshot(mem, index))
             obs["encounter"] = step.get("encounter")
-            obs["record"] = {field: value(obs, what, mem)
-                             for field, what in step.get("record", {}).items()}
+            # E08 T47a: an action's records and notes were read right after it; the step's
+            # after the step.
+            obs["record"] = {}
+            for done in obs.get("actions", []):
+                obs["record"].update(done["record"])
+                notes.setdefault(step["encounter"], []).extend(done["notes"])
+            obs["record"].update({field: value(obs, what, mem)
+                                  for field, what in step.get("record", {}).items()})
             steps.append(obs)
             log.write(json.dumps(obs) + "\n")
             log.flush()

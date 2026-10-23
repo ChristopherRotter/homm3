@@ -12,7 +12,8 @@ but for the harness's own timers, a siege's wall states before its first frame (
 
 Library use: `Mem` (globals, stacks, battle_heroes, battle_outcome, battlefield; current_player,
 player, heroes, all_heroes, hero, hero_named, view, mouse_tile, path, difficulty, tile, explored,
-monster, creature_name, artifact_name, dialog_text, dialog_items, level_up_dialog; the map's
+monster, creature_name, artifact_name, dialog_text, dialog_items, level_up_dialog; since E08 T47a
+dialog, item_text, spell_name, held_artifact, tactics_phase; the map's
 stills: write_explored, def_palette, map_due, frame_steps). Needs a running game
 (h3drive.py) and the rights to read its memory (root in a sandbox).
 """
@@ -106,6 +107,21 @@ WINDOW_MANAGER_POINTER, TOP_DIALOG, FIRST_ITEM, NEXT_ITEM, ITEM_ID, ITEM_TEXT = 
 PICTURE_VTABLE, PICTURE_DEF, PICTURE_FRAME, DEF_NAME = 0x63EC48, 0x30, 0x34, 0x4
 LEVEL_UP_PRIMARY, LEVEL_UP_LEFT, LEVEL_UP_RIGHT = 2009, 2010, 2011
 PRIMARY_SKILLS = ("attack", "defense", "power", "knowledge")
+# A dialog's place (E08 T47a, observed; H3API's H3BaseDlg): x, y, width, height (i32 +0x18 to
+# +0x24); an item's (H3DlgItem) relative to it (i16 x +0x18, y +0x1A, u16 width +0x1C, height
+# +0x1E) and its state (u16 +0x16). So a click finds an item by its id wherever its dialog stands.
+DIALOG_BOX, ITEM_STATE, ITEM_BOX = 0x18, 0x16, 0x18
+# The artifact held on the cursor in the hero screen and the exchange (map.toml held_artifact
+# 0x698A88: its id, -1 none; E08 T47a).
+HELD_ARTIFACT = 0x698A88
+# The spell table (map.toml spell_table_pointer 0x687F58, 0x88 bytes a record): the name (char*
+# +0x10) and the level (i32 +0x18), observed (E08 T47a; H3API's H3Spell).
+SPELL_TABLE_POINTER, SPELL_SIZE, SPELL_NAME = 0x687F58, 0x88, 0x10
+# Hero (E08 T47a; structs.toml, hero): the flags (u8 +0x48: bit 0 tight, bit 1 the tactics
+# formation) and the learned spells (u8[70] +0x3EA, one byte per spell id).
+FLAGS, LEARNED_SPELLS, SPELL_COUNT = 0x48, 0x3EA, 70
+# The battle manager's tactics phase (i32 +0x13D68, structs.toml battle_manager; E08 T47a).
+TACTICS_PHASE = 0x13D68
 # Player: the selected hero (i32 +0x4, -1 none), the hero count (i8 +0x1) and the heroes (i32[8]
 # +0x8, the hero list's order), the resources (i32[7] +0x9C).
 RESOURCES = ("wood", "mercury", "ore", "sulfur", "crystal", "gems", "gold")
@@ -447,6 +463,13 @@ class Mem:
             "backpack": [a for a in packed if a >= 0],
             "backpack_count": raw[BACKPACK_COUNT],
             "primary": list(struct.unpack_from("<4b", raw, PRIMARY)),
+            # E08 T47a (batch E6): the seven army slots as they stand ([creature, count], the
+            # count signed: a 16-bit wrap shows as -25 536; an empty slot [-1, 0]), the worn
+            # artifacts by position number (0-18), the flags and the learned spells' ids.
+            "slots": [[t, c] for t, c in zip(types, counts)],
+            "positions": {s: a for s, a in enumerate(worn) if a >= 0},
+            "flags": raw[FLAGS],
+            "spells": [s for s in range(SPELL_COUNT) if raw[LEARNED_SPELLS + s]],
         }
 
     def artifact_name(self, artifact):
@@ -454,20 +477,64 @@ class Mem:
         record = self.u32(ARTIFACT_TABLE_POINTER) + ARTIFACT_SIZE * artifact
         return self.c_string(self.u32(record), 64)
 
+    def spell_name(self, spell):
+        """A spell's name from the game's spell table (E08 T47a)."""
+        record = self.u32(SPELL_TABLE_POINTER) + SPELL_SIZE * spell
+        return self.c_string(self.u32(record + SPELL_NAME), 64)
+
+    def held_artifact(self):
+        """The artifact held on the cursor (E08 T47a): its id, -1 for none."""
+        return self.i32(HELD_ARTIFACT)
+
+    def tactics_phase(self):
+        """Whether the battle is in its tactics phase (E08 T47a; battle manager +0x13D68)."""
+        return self.i32(self.manager() + TACTICS_PHASE) != 0
+
+    def dialog(self):
+        """The topmost dialog (E08 T47a): its address, vtable (what kind of screen it is) and box
+        (x, y, width, height); None for none."""
+        dialog = self.u32(self.u32(WINDOW_MANAGER_POINTER) + TOP_DIALOG)
+        if not dialog:
+            return None
+        return {"at": dialog, "vtable": self.u32(dialog),
+                "box": list(struct.unpack("<4i", self.read(dialog + DIALOG_BOX, 16)))}
+
     def dialog_items(self):
         """The topmost dialog's items (E08 T32b1): id, vtable and the i32 at +0x34 (a picture's
-        frame); [] for none."""
-        dialog = self.u32(self.u32(WINDOW_MANAGER_POINTER) + TOP_DIALOG)
-        items, item, seen = [], self.u32(dialog + FIRST_ITEM) if dialog else 0, set()
-        while item and item not in seen and len(seen) < 256:
+        frame); since E08 T47a each item's box on the screen (x, y, width, height), its state
+        and its text (None for an item that holds none); [] for none."""
+        shown = self.dialog()
+        dx, dy = shown["box"][:2] if shown else (0, 0)
+        items, item = [], self.u32(shown["at"] + FIRST_ITEM) if shown else 0
+        seen = set()
+        while item and item not in seen and len(seen) < 512:
             seen.add(item)
-            raw = self.read(item, PICTURE_FRAME + 4)
+            raw = self.read(item, ITEM_TEXT + 12)
+            x, y, width, height = struct.unpack_from("<2h2H", raw, ITEM_BOX)
             items.append({"at": item, "id": struct.unpack_from("<H", raw, ITEM_ID)[0],
                           "vtable": struct.unpack_from("<I", raw, 0)[0],
                           "def": struct.unpack_from("<I", raw, PICTURE_DEF)[0],
-                          "frame": struct.unpack_from("<i", raw, PICTURE_FRAME)[0]})
+                          "frame": struct.unpack_from("<i", raw, PICTURE_FRAME)[0],
+                          "box": [dx + x, dy + y, width, height],
+                          "state": struct.unpack_from("<H", raw, ITEM_STATE)[0],
+                          "text": self.item_text(raw)})
             item = struct.unpack_from("<I", raw, NEXT_ITEM)[0]
         return items
+
+    def item_text(self, raw):
+        """A dialog item's text from its first bytes (`raw`, at least ITEM_TEXT + 12 of them), or
+        None: an item is a text item when its string record holds a pointer to exactly that many
+        characters (other items hold pictures or numbers there)."""
+        chars, length, capacity = struct.unpack_from("<3I", raw, ITEM_TEXT)
+        if not (0x10000 <= chars < 0x80000000 and 0 < length <= capacity < 0x10000):
+            return None
+        try:
+            data = self.read(chars, length + 1)
+        except OSError:
+            return None
+        if len(data) == length + 1 and data[length] == 0 and b"\0" not in data[:length]:
+            return data[:length].decode("cp1252")
+        return None
 
     def level_up_dialog(self):
         """The level-up dialog on top (E08 T32b1), None if another or none shows: the primary
@@ -627,14 +694,9 @@ class Mem:
         while item and item not in seen and len(seen) < 256:
             seen.add(item)
             raw = self.read(item, ITEM_TEXT + 12)
-            chars, length, capacity = struct.unpack_from("<3I", raw, ITEM_TEXT)
-            if 0x10000 <= chars < 0x80000000 and 0 < length <= capacity < 0x10000:
-                try:
-                    data = self.read(chars, length + 1)
-                except OSError:
-                    data = b""
-                if len(data) == length + 1 and data[length] == 0 and b"\0" not in data[:length]:
-                    texts.append(data[:length].decode("cp1252"))
+            text = self.item_text(raw)
+            if text is not None:
+                texts.append(text)
             item = struct.unpack_from("<I", raw, NEXT_ITEM)[0]
         return "\n".join(texts)
 

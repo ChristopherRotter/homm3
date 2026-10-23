@@ -100,6 +100,68 @@ hero = "Equip"
 equip = { "Boots of Speed" = "feet", "Spyglass" = "misc 1" }
 record = { "artifacts after (worn, by slot)" = "hero:artifacts", "backpack after" = "hero:backpack", "points after" = "hero:points", "day's points after (hero +0x49)" = "hero:day_points" }
 
+# E08 T47a (batch E6's clicks and reads): Kit's hero screen (army slots, split and slider, the
+# creature dialog's dismiss, the formation buttons, artifacts, a combination's questions, right
+# clicks, the backpack's arrow; slots, counts shown, flags, spells, positions) and a battle's
+# tactics phase; Full's army dialog after a join without room and its exchange with Full B.
+
+[[step]]
+encounter = "Kit"
+hero = "Kit"
+screen = "hero"
+actions = [
+    { record = { "slots at the start" = "hero:slots", "counts shown at the start" = "shown:army", "flags at the start" = "hero:flags", "learned spells" = "hero:spells", "positions at the start" = "hero:positions", "backpack at the start" = "hero:backpack", "backpack shown at the start" = "shown:backpack" } },
+    { click = ["army:0", "army:1"], record = { "slots after the swap" = "hero:slots" } },
+    { click = ["army:0", "split", "army:3"], record = { "split dialog at the start" = "split:counts" } },
+    { slider = "max", record = { "split dialog at the maximum" = "split:counts" } },
+    { click = ["ok"], record = { "slots after the split" = "hero:slots" } },
+    { click = ["army:3", "army:3", "dismiss"], answer = "yes", record = { "the dismiss question" = "questions", "slots after the dismissal" = "hero:slots", "counts shown after the dismissal" = "shown:army" } },
+    { click = ["tactics"], record = { "flags after the tactics button" = "hero:flags" } },
+    { click = ["tactics"], record = { "flags after it again" = "hero:flags" } },
+    { click = ["tight"], record = { "flags after tight" = "hero:flags" } },
+    { click = ["loose"], record = { "flags after loose" = "hero:flags" } },
+    { click = ["backpack:Mystic Orb of Mana", "worn:12"], answer = "no", record = { "the first equip's question" = "questions", "positions after it" = "hero:positions" } },
+    { right = "worn:12", answer = "yes", record = { "the right click" = "shown", "positions after the assembly" = "hero:positions" } },
+    { click = ["worn:Wizard's Well", "backpack:0"], record = { "backpack after the Well put in" = "hero:backpack" } },
+    { right = "backpack:Wizard's Well", answer = "no", record = { "the right click in the backpack" = "shown" } },
+    { click = ["backpack right"], record = { "backpack after the arrow" = "hero:backpack", "backpack shown after the arrow" = "shown:backpack", "positions at the end" = "hero:positions" } },
+]
+
+[[step]]
+encounter = "Kit"
+hero = "Kit"
+walk = [29, 8]
+battle = "auto"
+expect = { question = "none", battle = true, dialogs = true }
+record = { "tactics phase (yes/no)" = "tactics", "the battle's winner" = "winner" }
+
+[[step]]
+encounter = "Full"
+hero = "Full"
+walk = [29, 13]
+answer = "yes"
+expect = { question = "join" }
+actions = [
+    { record = { "the dialog's title" = "dialog", "the dialog's counts, upper" = "shown:upper", "the dialog's counts, lower" = "shown:lower" } },
+    { click = ["lower:3", "lower:3", "dismiss"], answer = "yes", record = { "the dismiss question" = "questions", "the army after the dismissal" = "hero:slots" } },
+    { click = ["upper:0", "lower:3"], record = { "the army after the group taken" = "hero:slots" } },
+    { click = ["ok"] },
+]
+record = { "the join question" = "questions", "the group's tile after" = "monster:29,13" }
+
+[[step]]
+encounter = "Full"
+hero = "Full"
+walk = [27, 13]
+actions = [
+    { record = { "the exchange's counts, left" = "shown:left army", "the exchange's counts, right" = "shown:right army" } },
+    { click = ["left army:0", "right army:1"], record = { "the hero's army after the move" = "hero:slots", "Full B's army after the move" = "hero[Full B]:slots" } },
+    { click = ["right army:0", "right split", "left army:0"], record = { "split dialog at the start" = "split:counts" } },
+    { slider = "max", record = { "split dialog at the maximum" = "split:counts" } },
+    { click = ["ok"], record = { "the hero's army after the split" = "hero:slots", "Full B's army after the split" = "hero[Full B]:slots", "counts shown after the split, left" = "shown:left army", "counts shown after the split, right" = "shown:right army" } },
+    { click = ["close"] },
+]
+
 [[step]]
 end_turn = true
 
