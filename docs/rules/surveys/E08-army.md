@@ -4,7 +4,8 @@ Date: 2026-10-23. Scope: E08 increment 6 (decisions 90, 91; T44a whole: decision
 T44b's ADR amendment drafts, the design note and the cut. Input, not rules (`README.md`): a fact
 becomes binding when a task writes it into the catalog with its sources and tests. **The
 checkpoint** (ADV-Q24, 2026-10-23: the epic's decisions 93–100) answered §12's questions; §12
-carries the answers.
+carries the answers. **Batch E6** (run in T47b2) is scored in §13 (T48, 2026-10-23): every row as
+the reading, three of them against VCMI (E6-4, E6-8, E6-10); no question.
 
 **Sources** (retrieved 2026-10-23):
 - `original-data`: a code reading of the user's `Heroes3.exe` (SoD 4.0 Complete); every address
@@ -169,7 +170,7 @@ The engine refuses the step today (`a_hero_visit_ends_the_move_and_an_own_hero_b
 level (+0xD0) + 2 and s + 1. For every spell 0 to 69: a spell one hero has learned (+0x3EA) and the
 other has not is learned by the other (`hero_learn_spell` 0x4D9330) when its level is at most the
 learner's limit. Only learned spells pass (not an artifact's or a scroll's). A human current
-player gets a message (GENRLTXT 140 to 143, presentation). It runs at every meeting, before the
+player gets a message (GENRLTXT 140 to 143, 148 and 149 with the names, presentation; batch E6). It runs at every meeting, before the
 screen. `vcmi` `useScholarSkill`: the same (`LEARN_MEETING_SPELL_LIMIT` 2, 3, 4; each hero's
 `maxSpellLevel`; both spell books; each learns the other's). `wiki` (Scholar): "teach each other
 1st and 2nd level spells" at Basic, to the 3rd and 4th above; "both gathering heroes learn".
@@ -355,6 +356,10 @@ AB map the parts never combine.
   equips each part at the first position that takes it (a part that found none would be lost;
   the combination's locks kept those places, so none can). A combination in the backpack is not
   disassembled (a right-click there shows it).
+- **The screen** (batch E6's E6-8, presentation): the assembled Wizard's Well on misc 1 (9) with
+  positions 10 to 12 empty in memory, the hero screen drawing its two locks on misc 4 and misc 5
+  (12, 18), not on the parts' old positions: the locks are a count (+0x1C5), drawn apart from
+  the positions.
 - The combination's bonuses are its own plus its parts' (`hero_equip_artifact` adds both, T20a1;
   the wiki: "Original artifacts still give their regular bonuses").
 
@@ -447,10 +452,10 @@ little of increment 6 at the start; play does (joins, meetings, captures, later 
 | Id | What | Sources | Proposal |
 |---|---|---|---|
 | D7 | the backpack's capacity (HER-ART-002) | code 64, wiki 64; VCMI unlimited | the original's 64 (as HER-ART-002 has it) |
-| D-27 | the split's bounds: the original keeps one creature on the source side when the target hero has a single stack (A-16) | code; VCMI (`minLeft` only for the source's last stack); wiki silent | see A-16 |
-| D-28 | disassembling a combination in the backpack | code: worn only; VCMI: in the backpack too, with room for the parts; wiki: "right-clicking" a worn one | the original's (worn only) |
+| D-27 | the split's bounds: the original keeps one creature on the source side when the target hero has a single stack (A-16) | code; VCMI (`minLeft` only for the source's last stack); wiki silent | see A-16; **E6-4 observed the reading** (§13) |
+| D-28 | disassembling a combination in the backpack | code: worn only; VCMI: in the backpack too, with room for the parts; wiki: "right-clicking" a worn one | the original's (worn only); **E6-8 observed the reading** (§13) |
 | A-15 | `army_swap_slots` moves a count through 16 bits (§3.5) | code; VCMI 32 bits | state-corrupting: fixed in every profile (recorded in the ledger as fixed) |
-| A-16 | the split dialog's source-keeps-one when the target hero has one stack (§3.3) | code | harmless (a plain click moves the stack whole); (a) the original's bounds in every profile, (b) a flag, faithful the original's, strict-fixed VCMI's, (c) VCMI's bounds; recommended (a) |
+| A-16 | the split dialog's source-keeps-one when the target hero has one stack (§3.3) | code; **E6-4** (§13) | harmless (a plain click moves the stack whole); (a) the original's bounds in every profile, (b) a flag, faithful the original's, strict-fixed VCMI's, (c) VCMI's bounds; recommended (a); decision 98: (a) |
 
 Not quirks: Titan's Thunder's book (the original's rule, §5.4); the held artifact given to the
 visitor when the exchange closes and the once-per-player assembly question (screens, gone with
@@ -571,3 +576,28 @@ to the battle as 0 when the side that would get the phase has the flag off (deci
    computer player's join without room and meetings (E10), hero dismissal (E09), the creature
    dialog's upgrade (E09), the game's version for combinations (an RoE or AB map: no assembly;
    with the game's version, as the moat's, E04c's hand-on).
+
+## 13. Batch E6 scored (T48)
+
+Played by the harness under Wine in T47b2 (`experiments/results/E08-batch-6.md`, run 3 of three
+whose every field agreed; the map compiled with its template, stamp e17cb77c; Easy, hot seat). Two lines were filled by the agent
+from that run: E6-7's message (composed, so `h3lod` names no record) and E6-8's screen (a dump).
+"Conclusive": another source predicted otherwise. A-15 has no row (E6-5 dropped, decision 109).
+
+| Row | Observed | Reading | Other source | Verdict |
+|---|---|---|---|---|
+| E6-1 (§1) | the join asked (ADVEVENT 86); the army dialog titled GENRLTXT 36; OK: the seven stacks and 30 000 gold unchanged, no monster left on (4, 3) | the same | VCMI the same; the wiki silent | confirmed |
+| E6-2 (§1.1 point 3) | the dismissal asked (GENRLTXT 13); the Swordsmen gone, 10 Wolf Riders in slot 3, the other six stacks as before; no monster left | the same | VCMI the same | confirmed |
+| E6-3 (§3.2) | the move into the empty slot and the merge onto the Pikemen changed nothing, no message; the swap gave E6-3 5 Archers, E6-3 B 5 Pikemen and 10 Pikemen | refused, refused, swapped | VCMI and the manual the same | confirmed |
+| E6-4 (A-16, D-27) | the split dialog from the exchange showed 10 : 0, at its maximum 0 : 10; OK left E6-4 1 Pikeman and gave E6-4 B 9 | the target takes [1, t − 1]: 1 and 9 | VCMI: 10 whole | **conclusive**: the reading (decision 98's bounds) |
+| E6-11 (§2.1) | 1 560 to 1 460 points, E6-11 on (27, 3), E6-11 B unchanged on (28, 3) | 100 less, on its tile | — (the spec names the reading only; GAM-BAT-004's visit) | the reading |
+| E6-6 (§4) | flags 2 at the start; the tactics button 0; no tactics phase; the control (flags 2) opened one; both battles won | the same | VCMI the same | confirmed |
+| E6-7 (§2.2) | E6-7 learned Bless and Chain Lightning (not Implosion), E6-7 B Precision only (not Fireball nor Prayer); the message (GENRLTXT 140 to 143, 148, 149) names them | the limits 4 and 2 | VCMI and the wiki the same | confirmed |
+| E6-8 (§5.3, D-28) | GENRLTXT 733 after the first equip (declined), nothing after the second, 733 on the right click; Yes: the Well on 9, 10 to 12 empty (the screen's locks on misc 4 and 5); in the backpack its right click only the artifact's window | the same | VCMI: the question after the second equip too, the Well on 12, the locks on 10 and 11, a disassembly question in the backpack | **conclusive**: the reading |
+| E6-10 (§5.1) | the right arrow: the first entry to the end, the five shown the array's first five | item 78 rotates the array | VCMI: the arrows only scroll a view | **conclusive**: the reading |
+| E6-9 (§5.4) | the Thunder on the right hand: a Spell Book on 17 (shown; locks on the head, torso and left hand); taken off into the backpack's first place: the book stays | the book after both | VCMI and the wiki the same | confirmed |
+
+No row contradicts the reading, so no question follows (`E08-design.md` §14). The rules these rows
+settle are written in T49 to T51 and cite the batch's rows as their observation, `verified` where
+the row matches (§10's ids; HER-ART-001's locks now). A-16's ledger entry (decision 98: the
+original's bounds, no flag) takes E6-4 as its observation.

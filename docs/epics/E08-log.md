@@ -5097,3 +5097,32 @@ original's files staged from it as T47a's, `clients/capture/setup.sh` run.
   `verify --scope adventure` passed every step but `check-lane`, which names one battle path,
   `docs/experiments/README.md`'s status row: `cross-lane` with the user's consent (asked at the
   end). CI's recent runs fail unstarted.
+
+### Increment 6, round 2: T48, batch E6 scored; round 2 closed (2026-10-23, `adventure/e08-t48`, `cross-lane`)
+
+**Baseline:** `master` b8c5172 (#443 merged); its engine code (c4721d3e) was verified on 3a21abe
+(#441's record), so the sandbox ran only the light gates: all passed. T48 whole (the user: "Go
+on"; a scoring of docs only).
+
+- **Batch E6 scored** (survey `E08-army.md` §13, from T47b2's results): every row as the code
+  reading. Conclusive against VCMI: **E6-4** (A-16, D-27: the split's maximum leaves 1 Pikeman and
+  gives 9; VCMI 10 whole), **E6-8** (§5.3, D-28: GENRLTXT 733 after the first equip only and on
+  the right click, the Well on position 9 with 10 to 12 empty; VCMI asks again, puts it on 12 and
+  locks 10 and 11; in the backpack only the artifact's window, VCMI a disassembly question),
+  **E6-10** (the right arrow rotates the array; VCMI only scrolls a view). Confirmed with every
+  source: E6-1, E6-2, E6-3, E6-6, E6-7, E6-9; E6-11 as the reading (the spec named no other).
+  No ADV-Q: no row contradicts the reading.
+- **Survey corrections** (presentation): Scholar's message is composed of GENRLTXT 140 to 143,
+  148 and 149 (§2.2 named 140 to 143); the hero screen draws a combination's locks apart from
+  the positions (the Well's two on misc 4 and 5, §5.3); §8's D-27, D-28 and A-16 cite their rows.
+- **The catalog:** HER-ART-001 (the locks) `verified` with E6-8's and E6-9's observation. The
+  rules the other rows settle (§10's ids: ADV-ARM-*, GAM-MET-001, HER-ART-005 to -007,
+  HER-SPL-007, GAM-BAT-009, ADV-MON-008's amendment) cite them when T49 to T51 write them;
+  A-16's ledger entry (decision 98, no flag) takes E6-4.
+- **The next round's cut** (decision 111, asked at the end): T49 in two, T49a the positions
+  (design §2), T49b the moves, combinations and Scholar (§3 to §5); recommended so. Not chosen:
+  three parts, T49 whole.
+- **Docs:** `E08-design.md` §14 to §16; the experiments README's status row (**evaluated**;
+  `cross-lane` with the user's consent, battle's path); the queue: T49a and T49b (round 3).
+- **Verify:** docs only (no fingerprinted path). `verify --scope adventure` (below, in the pull
+  request).
