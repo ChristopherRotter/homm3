@@ -236,3 +236,22 @@ impl TemplateArt {
         }
     }
 }
+
+#[test]
+fn the_coast_water_of_a_shore_picture_or_land_of_the_coast_bit() {
+    let tile = |code: u8, picture: u8, flags: u8| TileArt {
+        terrain: Piece {
+            code,
+            picture,
+            mirror_x: false,
+            mirror_y: false,
+        },
+        river: None,
+        road: None,
+        flags,
+    };
+    assert!(tile(WATER, 19, 0).coast());
+    assert!(!tile(WATER, 20, COAST_BIT).coast());
+    assert!(tile(2, 30, COAST_BIT).coast());
+    assert!(!tile(2, 0, 0).coast());
+}
