@@ -159,10 +159,12 @@ paths = [
     # moved from battle when E04c closed (the user, ADV-Q13: once the battle lane is done with it).
     "crates/h3-heroes/",
     "docs/rules/catalog/heroes.toml",
-    # Adventure-owned sub-paths of the battle lane's crates and folders, by the longest match
-    # (ADR-0017 point 8): AdventureEnv, the CLI's adventure commands and the test that re-runs the
-    # adventure's golden replays (`cargo xtask determinism`), the replays, test maps.
-    "crates/h3-sim/src/adventure/",
+    # Adventure-owned sub-paths of the battle and AI lanes' crates and folders, by the longest
+    # match (ADR-0017 point 8): the adventure replay model of game commands (the env and its
+    # encoding are the AI lane's since E08 T45, E08 decisions 99 and 103), the CLI's adventure
+    # commands and the test that re-runs the adventure's golden replays (`cargo xtask
+    # determinism`), the replays, test maps.
+    "crates/h3-sim/src/adventure/replay.rs",
     "crates/h3-cli/src/adventure/",
     "crates/h3-cli/tests/adventure_replays.rs",
     "fixtures/replays/adventure/",
@@ -250,6 +252,9 @@ paths = [
 # The battle agent (E05, E06; the user, 2026-10-18, AI-Q1): the sim layer and its encodings, the
 # C ABI, the Python side, the AI benchmarks. A battle rule that changes the observation or the
 # action encoding is a `cross-lane` change from the battle lane (`docs/08-work-process.md`).
+# The adventure env (`crates/h3-sim/src/adventure/`: AdventureEnv, its action encoding and
+# masks, the rollout, their tests) since E08 T45 (the user, E08 decisions 99 and 103; ADR-0017
+# point 8), but its replay model (`replay.rs`, the adventure lane's above).
 [[lane]]
 name = "ai"
 code = "AI"

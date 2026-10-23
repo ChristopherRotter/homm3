@@ -62,6 +62,19 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    from its details through `h3-heroes` (ADR-0013 point 13), set when the game builds the state,
    after the levels at load (ADR-0017 point 1), and the points again at each turn start of its
    owner (ADV-MOV-002); a gain in the day changes neither the points left nor the explored tiles.
+   From increment 6 a hero on the map holds its army (at most the ruleset's seven slots, at least
+   one stack), its **formation** (loose or tight) and its **tactics flag** (on at the start, the
+   original's +0x48 = 2), besides its tile and points. Its owner **manages the army**: a stack
+   moved onto another slot merges into one of its creature, fills an empty slot or swaps; a split
+   leaves both stacks non-empty (the original's dialog's bounds, A-16's included, refuse only a
+   split's 0 or full count, which a move covers where the original's click allows it: E08
+   decision 98); a stack is dismissed while its army keeps another. Between two armies a hero's
+   last stack never merges away nor moves to an empty slot (it may swap). The armies are the
+   hero's own, the two heroes of a meeting, or the hero and the group of an army dialog (a small
+   army of the decision, seven slots, no hero, none of whose stacks is protected); counts keep
+   their full width (A-15 fixed). The formation and the flag change at no cost. The adventure
+   validates and applies these commands; the game routes them and checks the turn and the
+   decision (ADR-0017 points 1 and 6).
 4. **Map objects are closed behaviour kinds with data parameters** (as abilities, ADR-0012;
    answers the `docs/03` question). An object is its static part (position, template masks of
    blocked and visitable tiles, object type), a kind from a closed enum in `h3-adventure` with
@@ -85,8 +98,8 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
      resource's resource, a pile's amount, a campfire's content). A rule that draws at a visit
      draws from the visitor's stream (ADR-0017 point 4); increment 2 has none.
    - A tile holding another player's hero is visited from a neighbouring tile, and the visit is
-     a battle at once; an own hero's tile still blocks (meetings and the army exchange come with
-     increment 4's army management); a hero's own tile is always leavable.
+     a battle at once; an own hero is met (increment 6, below); a hero's own tile is always
+     leavable.
    - **Increment 2's kinds** (E08 decision 13): `Blocker`; `Pickup` (resources gained, then the
      object leaves: piles, random resources, campfires); `RevealTerrain` (a price, a set of
      terrains on every level, once per player and type: the Cartographers); `RevealArea` (a
@@ -107,7 +120,7 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
      (join, join for gold, pursue); the monster leaves after a declined pursuit or when it
      joins. A joining group becomes one stack of the hero's army (with a stack of its
      creature, else in a free slot) and its treasure's resources go to the owner; with
-     neither, the join offer is skipped as declined (a feature to-do, decision 22). **The
+     neither, the join offer was skipped as declined until increment 6 (below). **The
      split** (ADV-MON-009): a monster's stacks in its battle follow from its count and the
      visitor's army by the original's table and two draws, in `faithful` the original's
      generator seeded from the tile, written as the rule (`ADV-QUIRK-6`, fix-optional), in
@@ -147,6 +160,13 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
      `ADV-QUIRK-16` withdrawn). One fix-optional quirk: the drop to 0 after a step prices the
      cheapest step without the artifacts' flying and water walking (A-12, `ADV-QUIRK-17`). Cursed
      Ground takes the native price away (D-23, confirmed in SoD by batch E5's E5-6).
+   - **Increment 6's visits.** A hero visited from the neighbouring tile (a step toward it, at the
+     step's price, the move ending) is attacked when another player's (GAM-BAT-004) and **met**
+     when its owner's: the outcome reports the meeting, which the game opens as its owner's
+     decision (ADR-0017 point 6). The cases of an object under the visited hero and of tops not
+     visited from above stay as for the battle's visit. A join that finds no room is offered as
+     any join; accepted, it reports the group, which the game holds as the army dialog's
+     decision (ADV-MON-008 amended).
 5. **Fog of war.** Each player has an explored layer (a bitset grid). An explored tile stays
    visible with its current content until a rule clears it (Cover of Darkness): no line-of-sight
    memory (VCMI, survey `E08-adventure-core.md` §2). Reveals set disk-shaped areas;
@@ -175,7 +195,10 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    effects reach other viewers as removals where they see the tiles. The observation is materialised per viewer as flat planes; the env's encoding (T9)
    reads those, never the grids. T8 writes the viewer knowledge list into `docs/06-security.md`
    (the adventure epic owns it), including the fringe case of a public appearance with hidden
-   contents.
+   contents. From increment 6 a hero's army, formation, flag and details are its owner's only,
+   so every management change, a meeting and an army dialog are told to the owner alone; another
+   player learns of a meeting only the step it sees (a step is a step), and of the group only the
+   monster's leaving where it sees the tiles.
 
 ## Consequences
 
@@ -197,6 +220,11 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   at A-13's price: a flight over a wide range of obstacles stops at its unexplored edge until it
   is explored. The compromise (a route to the closest unexplored but free tile) would let a flight
   end there and must then settle what that tells the player of the hidden tiles it crosses.
+- Increment 6: `HeroOnMap` gains the flag (the adventure state hash and its version). The army
+  commands touch only armies; a meeting's artifact moves are the store's (ADR-0013 point 14), so
+  the game checks both before applying either. The original's human-only reading of the flags
+  (the formation and the tactics phase for a human player's side) has no counterpart: the engine
+  has no computer player (E08 decision 16); E10 decides for its computer players.
 
 ## Alternatives considered
 
@@ -218,6 +246,10 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   basis of a later compromise); a flyer's visit from its tile refused inland (A-14, withdrawn by
   the user); a reveal at once when the radius grows (VCMI's for a skill: it rewards swapping
   radius artifacts between heroes).
+- Increment 6 (ADV-Q24): exchanges whenever two heroes stand side by side, without a meeting (the
+  original exchanges only in the meeting a step opens, which costs the step's points); one answer
+  naming what to dismiss and where the group goes (a fraction of the original's dialog); VCMI's
+  split bounds, or a flag for A-16.
 
 ## Revision history
 
@@ -246,3 +278,9 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   a flying step costs the lesser of the fly and walking prices from every land tile no object
   blocks, in every profile (`ADV-QUIRK-16` withdrawn, its flag retired); Cursed Ground confirmed
   by batch E5.
+- 2026-10-23 (E08 T45; the user at ADV-Q24 and ADV-Q25): points 3, 4 and 6 amended for E08
+  increment 6, army and hero management: the hero's formation and tactics flag, the owner's army
+  commands within a hero, between two met heroes and with an army dialog's group (a hero's last
+  stack, the split's bounds with A-16 by E08 decision 98, A-15 fixed); an own hero met by a step
+  toward it, a join without room offered and held as the army dialog; management, meetings and
+  the group's army told to the owner alone. Drafted in E08 T44b (#412; survey `E08-army.md` §1–§4).
