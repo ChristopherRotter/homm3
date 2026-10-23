@@ -2091,6 +2091,30 @@ runbook's files); the captures ran in the sandbox under Wine, the machine otherw
   unchanged. Runbook, "Traps".
 - **`drawn`:** all 88 the same; `drawn --record` left `drawn.txt` unchanged.
 
+### M3 T9b-1 — T9a's two points (2026-10-23)
+
+On `client/e17-m3-t9b1`, the user present. T9b split in five with the user: T9b-1 T9a's two
+points; the fresh reviewer in three parts by area (T9b-2 the timeline, T9b-3 the interface and
+the adapters, T9b-4 the harness), each a narrow sub-agent, its findings fixed in its session;
+T9b-5 the review list with the user (QUEUE).
+
+- **Starting point:** `master` at #402's merge and the battle lane's E23 T5b2a; CI unstarted
+  (billing); the baseline `verify-once clients` ran the full client check: all gates passed.
+- **`raise`'s `before` at 1 312 ms** (frame 1 in both of T9a's runs, 0 at T7c-3): read, no
+  difference. `frames` writes a frame's `before` from its memory read of the screen the frame
+  replaced within its millisecond, and the hero's frame step can fall before either read;
+  `h3-view sequences` uses a `before` only where the frame's own hero is in the cast group
+  (`Kept::before`'s match), and at 1 312 ms the hero plays its defeat (group 2): the compared
+  pixels are the same either way. Runbook, "Traps".
+- **The dump at a game's start:** `Game.wait` (the menus' wait, the clock running; the first
+  screen of every game) counts a display that dumps no 5-6-5 screen as the screen not there yet
+  and polls on until its timeout, which names the last fault; `xwd565` names a dump's header
+  (depth, byte order, masks, size) or its short length, `xwd_bytes` raises `Unreadable` with the
+  last try's fault (`check=False` for a timeout's own dump). Mock-checked (twelve bad dumps
+  before the menu, more than `xwd_bytes`' five tries; the timeout's message). A change to the
+  harness's failure path only, not to how the original is driven, captured or read: one full `set` run under Wine (running).
+- **`drawn`:** (running).
+
 ## Accepted review lists (M1, M2)
 
 Moved from the epic file on 2026-10-20 (less start-up reading), unchanged.
