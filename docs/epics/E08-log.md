@@ -4949,3 +4949,64 @@ data from the PC (the executable, both LODs, `Objects.txt`, `maps.tar`, `extract
   gates on efcbb36 (engine code fe96ce40, verified on `master` f3c8fab): check-rules,
   check-stubs, check-docs, check-exe-map passed; `check-lane --cross-lane` passed (the battle
   lane's `docs/experiments/README.md`). CI cannot run (billing).
+
+### Increment 6, round 2: T47a, the harness's clicks and reads for batch E6 (2026-10-23, `adventure/e08-t47a`)
+
+**The cut** (decision 108; asked at the start, `AskUserQuestion`): T47 in two, as T37: the clicks
+and reads with the harness check first, the recipe and the run (T47b) next. Not chosen: three
+parts (the recommendation: the reads and the hero screen, then the dialogs, then the run), T47
+whole.
+
+**Baseline:** `master` e3cfe7c; the session had GitHub access again (cloned from GitHub). Its
+engine code (9a54eabd) had no run on record, so the sandbox's baseline ran the full verify with
+the original data (RESULT_PLACEHOLDER). The user's PC was linked: the original's sixteen files
+staged from it as T37a's. The branch changes no engine code (the harness, a common path since
+CLT-Q18: no `cross-lane`; the client and map-client lanes' inboxes told).
+
+- **Screens and items from memory, not coordinates.** The window manager's topmost dialog
+  (`h3mem.dialog`: its vtable and box, H3API's H3BaseDlg +0x18) tells the screen: the map
+  0x63A5E4, the battle 0x63D528, the hero screen 0x63EAE8, the exchange 0x642428, the army
+  dialog 0x643854, the creature dialog 0x643C14, the split dialog 0x63B8F8, a message 0x63DB40
+  (observed under Wine). Each item holds its box relative to the dialog (i16 x +0x18, y +0x1A,
+  u16 width +0x1C, height +0x1E) and its state (+0x16, bit 0x4 while drawn), so a click goes to
+  the centre of the item with the procedure's id (survey `E08-army.md`, all as read: the hero
+  screen's army slots 68-74, worn positions 2 + p, backpack places 40-44, arrows 77 and 78,
+  loose 122, tight 124, tactics 126, split 127, close 30720; the exchange's armies 13-19 and
+  20-26, counts shown 65-78, split buttons 103 and 104; the army dialog's upper 115-121, lower
+  140-146, counts shown 108-114 and 133-139, OK 30722; the creature dialog's dismiss 30723; the
+  split dialog's slider 6, counts 4 and 5, OK 30722; a question's yes 30725 and no 30726; the
+  battle's Start Combat 30722). T37a's fixed places of the worn slots lie within a pixel of
+  their items' centres.
+- **The recipe's language** (`clients/capture/README.md`, "Screens and their items"): a step's
+  `screen = "hero"`, and `actions` played in the hero screen or in the exchange or army dialog a
+  walk opens: `click = [items…]`, `right = "<item>"` (held while read: a question stays and is
+  answered, a window goes with the release), `slider = "max"`, `answer`, and `record`/`note`
+  read right after each action; a worn position or a backpack place may be named by its
+  artifact. A screen left open is closed (no change). A tactics phase is ended at once in
+  `fight` (its message, GENRLTXT 373, then Start).
+- **The reads:** a hero's slots as memory holds them (signed counts, a count without a creature
+  shown), worn positions by number, flags (+0x48), learned spells (+0x3EA, names from the spell
+  table +0x10), the counts a screen shows, the hero screen's five backpack places, the split
+  dialog's counts, the topmost dialog's record (a title), what a right click opened, the battle's
+  tactics phase (+0x13D68 at its start); the held artifact (0x698A88, a library read).
+- **The harness check** gained Kit (the hero screen: a swap, the split at the slider's maximum,
+  a dismissal, both formation buttons and the tactics formation twice, the Orb put on misc 4 and
+  the assembly declined, the right click's assembly, the Well into the backpack and right-clicked
+  there, the right arrow; then a battle whose tactics phase is ended) and Full (seven stacks
+  joined by 5 compliant Wolf Riders: the army dialog's title, a dismissal in it, the group into
+  the freed slot; then the exchange with Full B: a move, a split, closing). Blue holds eight
+  heroes. **Passed under Wine in two full runs** RUN2_PLACEHOLDER: every row as the reading, no
+  oddity (Kit: flags 2, 0, 2, 3, 2; the assembly's question GENRLTXT 733 after the equip and on
+  the right click, the Well at position 9; the backpack's right click a window, no question; the
+  arrow's rotation; the tactics phase opened and ended. Full: GENRLTXT 36, the dismissal's
+  GENRLTXT 13, the group in slot 3).
+- **Seen while exploring on batch E6's map** (by hand, not a run; for T47b and T48): **E6-5's
+  stacks of 40 000 load as empty slots**: each slot reads creature -1 with the count -25 536 (the
+  map's 16-bit count sign-extended, the creature dropped), so the hero screen shows only the
+  Pikeman and the row cannot run as specified. T47b's spec change (proposed): two stacks of
+  20 000 of each creature merged in the hero screen first (a merge adds 32-bit counts, survey
+  §3.5), then the row's three moves. The exchange's split into a one-stack hero's empty slot
+  at the slider's maximum showed 0 : 10 and gave 1 and 9 (A-16 as read); the Scholar meeting,
+  the army dialog, the tactics flag and the Well's assembly as the spec's predictions. Not
+  recorded as results: batch E6 is T47b's run.
+- **Not built:** batch E6's recipe and its run (T47b); the scoring (T48).
