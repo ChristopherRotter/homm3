@@ -1,0 +1,312 @@
+use super::*;
+use alloc::vec;
+
+/// A shroud table: every mask piece 1 but the ones `pieces` set.
+fn pieces(set: &[(u8, u8)]) -> String {
+    let mut all = vec![1u8; MASKS];
+    for &(mask, piece) in set {
+        all[usize::from(mask)] = piece;
+    }
+    let list: Vec<String> = all.iter().map(ToString::to_string).collect();
+    list.join(", ")
+}
+
+/// A table with `[map]`.
+fn base(extra: &str) -> String {
+    format!(
+        r#"
+[table]
+id = "base"
+depends = []
+
+[map]
+edge = "edg.def"
+road_offset = 16
+cycle_ms = 200
+frame_ms = 180
+
+[map.shroud]
+full = "tshrc.def"
+edge = "tshre.def"
+pieces = [{}]
+
+[[terrain]]
+code = 0
+def = "dirttl.def"
+
+[[terrain]]
+code = 8
+def = "watrtl.def"
+cycles = [[229, 240], [242, 253]]
+
+[[river]]
+code = 1
+def = "clrrvr.def"
+
+[[road]]
+code = 3
+def = "cobbrd.def"
+{extra}"#,
+        pieces(&[(0, 34), (1, 133), (2, 0)])
+    )
+}
+
+fn table(id: &str, depends: &[&str], extra: &str) -> String {
+    let depends: Vec<String> = depends.iter().map(|d| format!("\"{d}\"")).collect();
+    format!(
+        "[table]\nid = \"{id}\"\ndepends = [{}]\n{extra}",
+        depends.join(", ")
+    )
+}
+
+fn files(texts: &[String]) -> Vec<TableFile> {
+    texts.iter().map(|t| parse(t).unwrap()).collect()
+}
+
+#[test]
+fn loads_a_selection_dependencies_first() {
+    let ab = table(
+        "ab",
+        &["base"],
+        "[[river]]\ncode = 4\ndef = \"lavrvr.def\"\ncycles = [[240, 248]]\n",
+    );
+    let files = files(&[ab, base("")]);
+    let tables = load(&files, "ab").unwrap();
+    assert_eq!(tables.order, ["base", "ab"]);
+    assert_eq!(tables.map.edge, "edg.def");
+    assert_eq!(tables.map.road_offset, 16);
+    assert_eq!((tables.map.cycle_ms, tables.map.frame_ms), (200, 180));
+    assert_eq!(
+        tables
+            .layer(Layer::Terrain)
+            .keys()
+            .copied()
+            .collect::<Vec<_>>(),
+        [0, 8]
+    );
+    assert_eq!(tables.terrains[&8].cycles, [[229, 240], [242, 253]]);
+    assert_eq!(
+        tables
+            .layer(Layer::River)
+            .keys()
+            .copied()
+            .collect::<Vec<_>>(),
+        [1, 4]
+    );
+    assert_eq!(tables.layer(Layer::Road)[&3].def, "cobbrd.def");
+    // The base alone leaves the expansion's river out.
+    assert_eq!(load(&files, "base").unwrap().rivers.len(), 1);
+    // A table two others build on loads once.
+    let diamond = self::files(&[
+        table("top", &["b", "c"], ""),
+        table("b", &["base"], ""),
+        table("c", &["base"], ""),
+        base(""),
+    ]);
+    assert_eq!(
+        load(&diamond, "top").unwrap().order,
+        ["base", "b", "c", "top"]
+    );
+}
+
+/// A need's name, what it is, its layer and frames.
+type Need<'a> = (&'a str, &'a str, Option<(Layer, u8)>, usize);
+
+#[test]
+fn every_def_with_the_frames_the_view_draws() {
+    let tables = load(&files(&[base("")]), "base").unwrap();
+    let defs = tables.defs();
+    let needs: Vec<Need<'_>> = defs
+        .iter()
+        .map(|n| (n.name.as_str(), n.what.as_str(), n.layer, n.frames))
+        .collect();
+    assert_eq!(
+        needs,
+        [
+            ("dirttl.def", "terrain 0", Some((Layer::Terrain, 0)), 1),
+            ("watrtl.def", "terrain 8", Some((Layer::Terrain, 8)), 1),
+            ("clrrvr.def", "river 1", Some((Layer::River, 1)), 1),
+            ("cobbrd.def", "road 3", Some((Layer::Road, 3)), 1),
+            ("edg.def", "edge", None, EDGE_FRAMES),
+            ("tshrc.def", "full shroud", None, FULL_FRAMES),
+            ("tshre.def", "edge shroud", None, 34),
+        ]
+    );
+    let names: Vec<String> = tables.names().into_iter().collect();
+    assert_eq!(
+        names,
+        [
+            "CLRRVR.DEF",
+            "COBBRD.DEF",
+            "DIRTTL.DEF",
+            "EDG.DEF",
+            "TSHRC.DEF",
+            "TSHRE.DEF",
+            "WATRTL.DEF"
+        ]
+    );
+}
+
+#[test]
+fn the_shrouds_pieces() {
+    let shroud = Shroud {
+        full: "tshrc.def".to_string(),
+        edge: "tshre.def".to_string(),
+        pieces: (0..=255)
+            .map(|m| match m {
+                0 => 1,
+                1 => 5,
+                2 => 3,
+                3 => 103,
+                4 => 0,
+                5 => 34,
+                6 => 133,
+                _ => 2,
+            })
+            .collect(),
+    };
+    let edge = |frame, mirror| ShroudPiece::Edge { frame, mirror };
+    // v of 1 or 5 on an odd x takes v + 1; v of 3 on an odd y takes 4; the frame is v − 1.
+    assert_eq!(shroud.piece(0, 2, 2), edge(0, false));
+    assert_eq!(shroud.piece(0, 3, 2), edge(1, false));
+    assert_eq!(shroud.piece(1, 1, 0), edge(5, false));
+    assert_eq!(shroud.piece(1, 0, 1), edge(4, false));
+    assert_eq!(shroud.piece(2, 1, 0), edge(2, false));
+    assert_eq!(shroud.piece(2, 0, 1), edge(3, false));
+    assert_eq!(shroud.piece(3, 0, 1), edge(3, true));
+    assert_eq!(shroud.piece(4, 0, 0), ShroudPiece::None);
+    assert_eq!(shroud.piece(5, 0, 0), edge(33, false));
+    assert_eq!(shroud.piece(6, 1, 1), edge(32, true));
+    assert_eq!(shroud.piece(7, 0, 0), edge(1, false));
+    // The full piece: ((85 x xor 85 y) div 64) and 3.
+    for (x, y, frame) in [
+        (0, 0, 0),
+        (1, 0, 1),
+        (2, 0, 2),
+        (3, 0, 3),
+        (1, 1, 0),
+        (4, 0, 1),
+        (4, 1, 0),
+    ] {
+        assert_eq!(
+            shroud.piece(ALL_HIDDEN, x, y),
+            ShroudPiece::Full(frame),
+            "({x}, {y})"
+        );
+    }
+    assert_eq!(shroud.edge_frames(), 34);
+    let none = Shroud {
+        pieces: vec![0; MASKS],
+        ..shroud
+    };
+    assert_eq!(none.edge_frames(), 0);
+}
+
+#[test]
+fn refuses_what_breaks_the_format() {
+    let check = |texts: &[String], top: &str, expected: TableError, message: &str| {
+        let err = load(&files(texts), top).unwrap_err();
+        assert_eq!(err, expected);
+        assert_eq!(err.to_string(), message);
+    };
+    check(
+        &[base(""), base("")],
+        "base",
+        TableError::DuplicateTable("base".to_string()),
+        "two tables have the id `base`",
+    );
+    check(
+        &[base("")],
+        "sod",
+        TableError::UnknownTable("sod".to_string()),
+        "no table has the id `sod`",
+    );
+    check(
+        &[table("a", &["b"], ""), table("b", &["a"], "")],
+        "a",
+        TableError::Cycle("a".to_string()),
+        "the dependencies go round through `a`",
+    );
+    check(
+        &[table("a", &[], "")],
+        "a",
+        TableError::Map(0),
+        "0 tables of the selection hold [map], not one",
+    );
+    let both = base("").replace("id = \"base\"", "id = \"ab\"\n");
+    check(
+        &[
+            base(""),
+            both.replace("depends = []", "depends = [\"base\"]"),
+        ],
+        "ab",
+        TableError::Map(2),
+        "2 tables of the selection hold [map], not one",
+    );
+    check(
+        &[base("[[river]]\ncode = 1\ndef = \"icyrvr.def\"\n")],
+        "base",
+        TableError::DuplicateCode("river 1".to_string()),
+        "`river 1` is defined twice",
+    );
+    check(
+        &[base("[[road]]\ncode = 0\ndef = \"dirtrd.def\"\n")],
+        "base",
+        entry("road 0", "code 0 is none"),
+        "`road 0`: code 0 is none",
+    );
+    check(
+        &[base("[[terrain]]\ncode = 1\ndef = \"sandtl.pcx\"\n")],
+        "base",
+        entry("terrain 1", "`sandtl.pcx` is not a .DEF name"),
+        "`terrain 1`: `sandtl.pcx` is not a .DEF name",
+    );
+    check(
+        &[base(
+            "[[terrain]]\ncode = 7\ndef = \".def\"\ncycles = [[1, 2]]\n",
+        )],
+        "base",
+        entry("terrain 7", "`.def` is not a .DEF name"),
+        "`terrain 7`: `.def` is not a .DEF name",
+    );
+    check(
+        &[base(
+            "[[terrain]]\ncode = 7\ndef = \"lavatl.def\"\ncycles = [[254, 246]]\n",
+        )],
+        "base",
+        entry("terrain 7", "a cycle's first entry is after its last"),
+        "`terrain 7`: a cycle's first entry is after its last",
+    );
+    for (field, what) in [
+        ("edge = \"edg.def\"", "edge"),
+        ("full = \"tshrc.def\"", "full shroud"),
+        ("edge = \"tshre.def\"", "edge shroud"),
+    ] {
+        let bad = base("").replacen(field, &field.replace(".def", ".pcx"), 1);
+        let err = load(&files(&[bad]), "base").unwrap_err();
+        assert!(
+            matches!(&err, TableError::Entry(w, _) if w == what),
+            "{field}: {err}"
+        );
+    }
+    let short = base("").replacen("pieces = [", "pieces = [1, ", 1);
+    check(
+        &[short],
+        "base",
+        entry("shroud", "257 pieces, not one per mask (256)"),
+        "`shroud`: 257 pieces, not one per mask (256)",
+    );
+}
+
+#[test]
+fn refuses_what_is_not_a_table() {
+    for text in [
+        "not toml",
+        "[table]\nid = \"a\"\ndepends = []\n[battle]\n",
+        "[table]\nid = \"a\"\n",
+    ] {
+        let err = parse(text).unwrap_err();
+        assert!(matches!(err, TableError::Syntax(_)), "{text}");
+        assert!(err.to_string().starts_with("not a table: "));
+    }
+}

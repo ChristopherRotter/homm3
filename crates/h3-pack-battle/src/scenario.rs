@@ -1149,6 +1149,9 @@ impl ScenarioDef {
             funds: self.funds,
             difficulty: self.difficulty,
             human: self.human,
+            // The adventure's facts for the computer (ADR-0027 point 14): E23 T6 names them.
+            retreat: Default::default(),
+            attacker_ground: None,
         })
     }
 }

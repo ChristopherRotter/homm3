@@ -1,6 +1,7 @@
 # ADR-0027: The original's battle AI: a policy crate beside the battle
 
-- Status: Accepted (E23 T1b, BAT-Q55; point 9 the user's own: one flag for all the slips)
+- Status: Accepted (E23 T1b, BAT-Q55; point 9 the user's own: one flag for all the slips); point 14
+  added 2026-10-23 (the user, BAT-Q61 and BAT-Q56; E23 T6)
 - Date: 2026-10-20
 - Deciders: the user; drafted by the battle lane's agent (E23 T1b)
 
@@ -70,6 +71,19 @@ computer's numbers its rules use (BAT-Q52). Layers forbid a domain crate to depe
 13. **The data it needs**: the creatures' Fight and AI values are in the packs. The spells' AI
     values (`SPTRAITS.TXT`, four per mastery: the hero's value in the odds, §7.39) join the battle
     pack before T3, because the neutral side reads them for the enemy hero.
+
+14. **The adventure's facts** (amendment, E23 T6; the user, BAT-Q61 option a, BAT-Q56 option b):
+    the retreat test (0x41E570) and the odds' hero value (0x420A80) read facts of the adventure
+    that no battle rule needs. The setup carries them derived, as ADR-0023 carries a town's:
+    `BattleSetup.retreat: [RetreatFacts; 2]` (the hero's experience, its artifacts' worth by the
+    computer's count, a Tavern town to be hired again from, whether the scenario wants the hero
+    defeated; private to the side) and `BattleSetup.attacker_ground` (the special battlefield of
+    the attacking hero's own tile; public). The battle keeps them as hashed state; no rule reads
+    them, so they stay out of the observation (ADR-0014 point 8 covers what rules read). The
+    defaults are a hero of whom nothing is known: it never retreats (no Tavern), and the attacker
+    stands on an ordinary ground. The game orchestrator derives them (the adventure lane);
+    scenarios and replays name them. The viewers' setup fields (CLT-Q4, CLT-Q6) come when a
+    full game's viewer needs them.
 
 ## Consequences
 

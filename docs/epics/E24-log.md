@@ -101,3 +101,34 @@ first, heroes, boats and the path second) and answered MCL-Q1 (the viewer tests 
 - **Questions:** none new; the open points (§2.5) wait for T4's and T5's captures.
 - **Verify:** see the pull request (`scripts/exe.py check`, `cited`: 23 entries added, 6 read or
   renamed, 0 uncovered).
+
+### M1 T2 — the crate, the map's asset tables and the layout (2026-10-23)
+
+One session, branch `map-client/e24-t2`. The user kept the task whole when asked for a seam (the
+agent had proposed the scene's input types as a second part, with T3a).
+
+- **Built:** `clients/crates/h3-map-view`, a member of the client workspace. Its pure library
+  (`no_std`, the logic header, 100 % lines and regions; `tests/purity.rs` a copy of `h3-view`'s
+  for this crate): `art` (the static art from `h3_map::RawMap`: each tile's terrain, river and
+  road with picture and mirrors, each template's DEF, masks, class and flatness, each object's
+  anchor and template by its map index; refuses only a tile count off the size, a template name
+  that is not printable ASCII, an object without its template), `live` (the objects standing,
+  a random object's drawn template, owners, heroes with class, owner, facing and boat, empty
+  boats, the viewer and its explored tiles, the moment's two counters; `Live::at_start` from a
+  map without a draw), `tables` (the format in `clients/README.md`; the shroud's piece rule of
+  §1.5 and the frames each DEF must hold), `layout` (the frame, its picture and the players'
+  palette, the view's origin, tile, loops, clip and gems), `check` (a DEF's group 0: frames,
+  encodings, run pixels by index). Its binary: `gate`. Data: `clients/map/assets/base.toml` (the
+  shroud's 256 pieces copied from 0x65F694 and checked against §1.5) and
+  `clients/map/layouts/adventure.toml`.
+- **Reading:** the frame picture's draw (0x417420's first part, §1.9): `AdvMap.pcx` opaque at
+  (0, 0) in the viewing player's colours; two map entries. VCMI 1.7.5 agrees (its frame is parts
+  of the same picture, player-coloured).
+- **The gate on the user's files** (§1.9): every name found in `H3sprite.lod` or `H3bitmap.lod`
+  and decoded; each DEF holds exactly the frames the view draws (`edg` 36, `tshrc` 4, `tshre` 34,
+  the gems 8; the terrains, rivers and roads one past the highest picture of the 159 shipped
+  maps, all read); terrain frames are encoding 0, so no run is skipped (T1a's open point closed).
+- **Agent decisions (provisional, on the review list):** the tables keyed by the `.h3m`'s codes;
+  the library depending on `h3-map` for the raw model; `Live::at_start`'s facing (right),
+  explored tiles (all) and phases (0) until T5 and the comparisons read the original's.
+- **Questions:** none (no oddity found).

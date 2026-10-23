@@ -157,6 +157,35 @@ pub struct BattleSetup {
     /// `difficulty`, read only for the computer's choices (ADR-0023 point 7); it does not decide
     /// who commands a side. Public.
     pub human: [bool; 2],
+    /// What each side's hero would lose by a retreat and whether it could come back (indexed by
+    /// [`BattleSide::index`]), as the original's computer weighs them (ADR-0027 point 14). Read
+    /// only for the computer's choices, never by the battle's rules; ignored for a side without
+    /// a hero. Private to the side.
+    pub retreat: [RetreatFacts; 2],
+    /// The special battlefield the attacking hero's own adventure tile gives, if any, by key as
+    /// [`Self::battlefield`] (`None`: an ordinary one). The defending hero stands on the battle's
+    /// tile, whose battlefield is [`Self::battlefield`]. The original's computer values a hero's
+    /// damage spells at the mastery its own tile gives (ADR-0027 point 14, BAT-Q56); read only
+    /// for the computer's choices. Public.
+    pub attacker_ground: Option<ContentKey>,
+}
+
+/// What a side's hero would lose by a retreat and whether it could be hired again, as the
+/// original's computer weighs a retreat (its retreat test 0x41E570; ADR-0027 point 14). Derived
+/// from the adventure before the seam. The default, nothing known, never retreats: no Tavern.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct RetreatFacts {
+    /// The hero's experience points.
+    pub experience: u32,
+    /// The worth of the hero's worn and carried artifacts as the original's computer counts it:
+    /// per artifact the larger of the adventure AI's value of it (at least 10) and half its gold
+    /// cost (rounded down), summed.
+    pub artifacts: u32,
+    /// The hero's player owns a town with a Tavern where the hero could be hired again: another
+    /// town than the battle's when the hero defends that town.
+    pub tavern: bool,
+    /// The scenario's victory condition is to defeat this hero.
+    pub wanted: bool,
 }
 
 impl BattleSetup {

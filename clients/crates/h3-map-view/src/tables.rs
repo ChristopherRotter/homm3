@@ -1,0 +1,401 @@
+//! The map's asset tables (E24 M1 T2; ADR-0020 points 5 and 6): `clients/map/assets/<id>.toml`,
+//! one per rule pack, in the packs' dependency graph. They give the archive entries and the
+//! numbers the view draws with: the terrains', rivers' and roads' DEFs by the `.h3m`'s codes and
+//! their palette cycles, the map's edge, the unexplored tiles' pieces and their table, the
+//! moment's steps (`docs/epics/E24-design.md` §1.3 to §1.6). Identifiers and numbers only
+//! (ADR-0009). The format is described in `clients/README.md` ("The map's asset tables"); it is
+//! *provisional* until the M1 review (keyed by the map's codes, not by the packs' keys: the
+//! static art is the raw map's).
+//!
+//! [`parse`] reads one file; [`load`] takes an expansion selection (the topmost table's id) and
+//! merges it with its dependencies, dependencies first. Unknown sections and fields, unknown or
+//! circular dependencies, a code defined twice and a `[map]` in other than exactly one table of
+//! the selection are errors.
+
+use alloc::collections::{BTreeMap, BTreeSet};
+use alloc::format;
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
+use core::fmt;
+
+use serde::Deserialize;
+
+use crate::art::Layer;
+
+/// One table file as written.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TableFile {
+    /// The table's id and dependencies.
+    pub table: Header,
+    /// The view's own art and numbers (one table of a selection holds them).
+    #[serde(default)]
+    pub map: Option<ViewArt>,
+    /// The terrains, by code (0 dirt … 9 rock).
+    #[serde(default)]
+    pub terrain: Vec<LayerArt>,
+    /// The rivers, by code (1 clear … 4 lava; 0 is none).
+    #[serde(default)]
+    pub river: Vec<LayerArt>,
+    /// The roads, by code (1 dirt … 3 cobblestone; 0 is none).
+    #[serde(default)]
+    pub road: Vec<LayerArt>,
+}
+
+/// A table's id (its pack's) and the tables it builds on.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Header {
+    /// The table's id: its pack's.
+    pub id: String,
+    /// The ids of the tables it depends on (its pack's dependencies).
+    pub depends: Vec<String>,
+}
+
+/// The view's own art and numbers.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ViewArt {
+    /// The map's edge, drawn on the view's tiles off the map (`edg.def`, design §1.4).
+    pub edge: String,
+    /// How far below its tile a road's picture is drawn (16: its lower half reaches into the
+    /// tile below, design §1.3).
+    pub road_offset: i32,
+    /// The palette cycles' step (200 ms: the tick 0x4ED490 on the map, design §1.6).
+    pub cycle_ms: u32,
+    /// The objects' frame step (180 ms: the manager's +0x100, design §1.6).
+    pub frame_ms: u32,
+    /// The unexplored tiles' pieces (design §1.5).
+    pub shroud: Shroud,
+}
+
+/// The unexplored tiles' pieces (design §1.5).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Shroud {
+    /// A tile with no explored neighbour: frame ((85 x xor 85 y) div 64) and 3 (`tshrc.def`).
+    pub full: String,
+    /// A tile beside an explored one: the frame its mask's piece gives (`tshre.def`).
+    pub edge: String,
+    /// The piece of each mask (the table 0x65F694, 256 entries: a bit per unexplored neighbour,
+    /// 1 north, 2 east, 4 south, 8 west, 0x10 north-east, 0x20 south-east, 0x40 south-west, 0x80
+    /// north-west): v ≥ 100 is mirrored left to right and v − 100; v of 1 or 5 on an odd x takes
+    /// v + 1, v of 3 on an odd y takes 4; the frame is v − 1.
+    pub pieces: Vec<u8>,
+}
+
+/// The mask of a tile none of whose neighbours is explored: the full piece.
+pub const ALL_HIDDEN: u8 = 0xFF;
+
+/// Which piece covers an unexplored tile.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ShroudPiece {
+    /// The full piece's frame.
+    Full(u8),
+    /// The edge piece's frame, mirrored left to right or not.
+    Edge {
+        /// The frame.
+        frame: u8,
+        /// Mirrored left to right.
+        mirror: bool,
+    },
+    /// The mask's entry gives no piece (0 outside the mask 255; none in the original's table).
+    None,
+}
+
+impl Shroud {
+    /// The piece of the unexplored tile (x, y) whose unexplored neighbours make `mask` (0x40F8C0,
+    /// 0x412220; design §1.5).
+    #[must_use]
+    pub fn piece(&self, mask: u8, x: u8, y: u8) -> ShroudPiece {
+        if mask == ALL_HIDDEN {
+            let (x, y) = (u32::from(x) * 85, u32::from(y) * 85);
+            return ShroudPiece::Full(u8::try_from(((x ^ y) / 64) & 3).unwrap_or(0));
+        }
+        let entry = self.pieces.get(usize::from(mask)).copied().unwrap_or(0);
+        let (base, mirror) = if entry >= 100 {
+            (entry - 100, true)
+        } else {
+            (entry, false)
+        };
+        let base = match base {
+            1 | 5 if x % 2 == 1 => base + 1,
+            3 if y % 2 == 1 => 4,
+            _ => base,
+        };
+        base.checked_sub(1)
+            .map_or(ShroudPiece::None, |frame| ShroudPiece::Edge {
+                frame,
+                mirror,
+            })
+    }
+
+    /// The frames the edge piece's DEF needs: one past the highest frame any mask gives, on an
+    /// even or odd x and y.
+    #[must_use]
+    pub fn edge_frames(&self) -> usize {
+        (0..ALL_HIDDEN)
+            .flat_map(|mask| [(0, 0), (1, 0), (0, 1)].map(|(x, y)| self.piece(mask, x, y)))
+            .filter_map(|p| match p {
+                ShroudPiece::Edge { frame, .. } => Some(usize::from(frame) + 1),
+                ShroudPiece::Full(_) | ShroudPiece::None => None,
+            })
+            .max()
+            .unwrap_or(0)
+    }
+}
+
+/// The frames of the full piece's DEF the view draws (0–3).
+pub const FULL_FRAMES: usize = 4;
+/// The frames of the edge's DEF the view draws (0–15 further out, 16–19 the corners, 20–35 the
+/// edges; design §1.4).
+pub const EDGE_FRAMES: usize = 36;
+/// The entries of the shroud's table (one per mask).
+pub const MASKS: usize = 256;
+
+/// A terrain's, river's or road's art.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LayerArt {
+    /// The `.h3m`'s code.
+    pub code: u8,
+    /// The DEF: group 0's frame number *picture* is a tile's (design §1.3).
+    pub def: String,
+    /// The ranges of the DEF's palette the tick rotates by one each step, first and last entry
+    /// (each entry takes its lower neighbour's colour, the first the last's; design §1.6).
+    #[serde(default)]
+    pub cycles: Vec<[u8; 2]>,
+}
+
+/// A selection's tables, merged.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Tables {
+    /// The tables loaded, dependencies first.
+    pub order: Vec<String>,
+    /// The view's own art.
+    pub map: ViewArt,
+    /// The terrains, by code.
+    pub terrains: BTreeMap<u8, LayerArt>,
+    /// The rivers, by code.
+    pub rivers: BTreeMap<u8, LayerArt>,
+    /// The roads, by code.
+    pub roads: BTreeMap<u8, LayerArt>,
+}
+
+/// A DEF the tables name and the frames of its group 0 the view draws.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DefNeed {
+    /// The entry's name, as written.
+    pub name: String,
+    /// What it is (`terrain 8`, `edge`, …).
+    pub what: String,
+    /// The layer and code it draws, for the terrains, rivers and roads (whose frames a map's
+    /// pictures decide).
+    pub layer: Option<(Layer, u8)>,
+    /// The frames group 0 must hold at least.
+    pub frames: usize,
+}
+
+impl Tables {
+    /// The layer's art by code.
+    #[must_use]
+    pub fn layer(&self, layer: Layer) -> &BTreeMap<u8, LayerArt> {
+        match layer {
+            Layer::Terrain => &self.terrains,
+            Layer::River => &self.rivers,
+            Layer::Road => &self.roads,
+        }
+    }
+
+    /// Every DEF the tables name with the frames the view draws of it: the layers' at least one
+    /// (a map's pictures decide the rest), the edge's, the shroud's pieces'.
+    #[must_use]
+    pub fn defs(&self) -> Vec<DefNeed> {
+        let mut needs = Vec::new();
+        for (layer, word) in [
+            (Layer::Terrain, "terrain"),
+            (Layer::River, "river"),
+            (Layer::Road, "road"),
+        ] {
+            for (code, art) in self.layer(layer) {
+                needs.push(DefNeed {
+                    name: art.def.clone(),
+                    what: format!("{word} {code}"),
+                    layer: Some((layer, *code)),
+                    frames: 1,
+                });
+            }
+        }
+        let map = &self.map;
+        for (name, what, frames) in [
+            (&map.edge, "edge", EDGE_FRAMES),
+            (&map.shroud.full, "full shroud", FULL_FRAMES),
+            (&map.shroud.edge, "edge shroud", map.shroud.edge_frames()),
+        ] {
+            needs.push(DefNeed {
+                name: name.clone(),
+                what: what.to_string(),
+                layer: None,
+                frames,
+            });
+        }
+        needs
+    }
+
+    /// Every archive entry name the tables mention, upper-cased, each once.
+    #[must_use]
+    pub fn names(&self) -> BTreeSet<String> {
+        self.defs()
+            .into_iter()
+            .map(|n| n.name.to_ascii_uppercase())
+            .collect()
+    }
+}
+
+/// Why tables do not load.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TableError {
+    /// A file is not valid TOML or not in the format (the parser's message).
+    Syntax(String),
+    /// Two files have the same id.
+    DuplicateTable(String),
+    /// The selection or a dependency names no file.
+    UnknownTable(String),
+    /// The dependencies go round through this table.
+    Cycle(String),
+    /// No table of the selection holds `[map]`, or several do.
+    Map(usize),
+    /// A layer's code is defined twice (`river 2`).
+    DuplicateCode(String),
+    /// An entry breaks a rule: what it is and the rule.
+    Entry(String, String),
+}
+
+impl fmt::Display for TableError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Syntax(m) => write!(f, "not a table: {m}"),
+            Self::DuplicateTable(id) => write!(f, "two tables have the id `{id}`"),
+            Self::UnknownTable(id) => write!(f, "no table has the id `{id}`"),
+            Self::Cycle(id) => write!(f, "the dependencies go round through `{id}`"),
+            Self::Map(n) => write!(f, "{n} tables of the selection hold [map], not one"),
+            Self::DuplicateCode(what) => write!(f, "`{what}` is defined twice"),
+            Self::Entry(what, rule) => write!(f, "`{what}`: {rule}"),
+        }
+    }
+}
+
+/// Parses one table file.
+///
+/// # Errors
+/// [`TableError::Syntax`]: not TOML, an unknown section or field, a missing or mistyped one.
+pub fn parse(text: &str) -> Result<TableFile, TableError> {
+    toml::from_str(text).map_err(|e| TableError::Syntax(e.to_string()))
+}
+
+/// Loads the selection `top` (a table id) and its dependencies from `files` into one [`Tables`].
+///
+/// # Errors
+/// [`TableError`]: two files with one id, an unknown or circular dependency, `[map]` in no table
+/// of the selection or in several, a code defined twice, a river or road of code 0, a name
+/// without its extension, a cycle's range backwards, a shroud table not of 256 entries.
+pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
+    let mut by_id = BTreeMap::new();
+    for file in files {
+        if by_id.insert(file.table.id.as_str(), file).is_some() {
+            return Err(TableError::DuplicateTable(file.table.id.clone()));
+        }
+    }
+    let mut order = Vec::new();
+    visit(&by_id, top, &mut Vec::new(), &mut order)?;
+    let selected: Vec<&TableFile> = order
+        .iter()
+        .filter_map(|id| by_id.get(id))
+        .copied()
+        .collect();
+    let maps: Vec<&ViewArt> = selected.iter().filter_map(|f| f.map.as_ref()).collect();
+    let [map] = maps[..] else {
+        return Err(TableError::Map(maps.len()));
+    };
+    name("edge", &map.edge, ".DEF")?;
+    name("full shroud", &map.shroud.full, ".DEF")?;
+    name("edge shroud", &map.shroud.edge, ".DEF")?;
+    if map.shroud.pieces.len() != MASKS {
+        return Err(entry(
+            "shroud",
+            &format!(
+                "{} pieces, not one per mask ({MASKS})",
+                map.shroud.pieces.len()
+            ),
+        ));
+    }
+    let mut tables = Tables {
+        order: order.iter().map(|id| (*id).to_string()).collect(),
+        map: map.clone(),
+        terrains: BTreeMap::new(),
+        rivers: BTreeMap::new(),
+        roads: BTreeMap::new(),
+    };
+    for file in selected {
+        for (word, list, into, zero) in [
+            ("terrain", &file.terrain, &mut tables.terrains, true),
+            ("river", &file.river, &mut tables.rivers, false),
+            ("road", &file.road, &mut tables.roads, false),
+        ] {
+            for art in list {
+                let what = format!("{word} {}", art.code);
+                if art.code == 0 && !zero {
+                    return Err(entry(&what, "code 0 is none"));
+                }
+                name(&what, &art.def, ".DEF")?;
+                if art.cycles.iter().any(|[first, last]| first > last) {
+                    return Err(entry(&what, "a cycle's first entry is after its last"));
+                }
+                if into.insert(art.code, art.clone()).is_some() {
+                    return Err(TableError::DuplicateCode(what));
+                }
+            }
+        }
+    }
+    Ok(tables)
+}
+
+fn visit<'a>(
+    by_id: &BTreeMap<&'a str, &'a TableFile>,
+    id: &str,
+    path: &mut Vec<&'a str>,
+    order: &mut Vec<&'a str>,
+) -> Result<(), TableError> {
+    let Some((&key, file)) = by_id.get_key_value(id) else {
+        return Err(TableError::UnknownTable(id.to_string()));
+    };
+    if order.contains(&key) {
+        return Ok(());
+    }
+    if path.contains(&key) {
+        return Err(TableError::Cycle(id.to_string()));
+    }
+    path.push(key);
+    for dep in &file.table.depends {
+        visit(by_id, dep, path, order)?;
+    }
+    path.pop();
+    order.push(key);
+    Ok(())
+}
+
+/// A name with its extension (`ext` upper case, with the dot) and something before it.
+fn name(what: &str, name: &str, ext: &str) -> Result<(), TableError> {
+    let upper = name.to_ascii_uppercase();
+    if upper.len() <= ext.len() || !upper.ends_with(ext) {
+        return Err(entry(what, &format!("`{name}` is not a {ext} name")));
+    }
+    Ok(())
+}
+
+fn entry(what: &str, rule: &str) -> TableError {
+    TableError::Entry(what.to_string(), rule.to_string())
+}
+
+#[cfg(test)]
+mod tests;
