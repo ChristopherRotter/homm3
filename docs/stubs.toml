@@ -22,7 +22,7 @@ epic   = "E05"
 [[stub]]
 id     = "BAT-STUB-5"
 where  = "crates/h3-battle-ai/src/lib.rs::unchecked"
-reason = "The hero's side of the computer (E23 T6): no retreat test (0x41E570; BAT-STUB-13 for the cast choice's answer); the tactics phase ends at once instead of the shooters' placement and the walkers' choice in the zone (§7.34); a commanded Catapult shoots the first wall the engine lists instead of the computer's aim (§7.29, the gate first); a commanded First Aid Tent defends instead of healing the computer's patient (§7.14, BAT-Q51) (BAT-AI-001)"
+reason = "The hero's side of the computer (E23 T6): no retreat test (0x41E570; BAT-STUB-13 for the cast choice's answer); the tactics phase ends at once instead of the shooters' placement and the walkers' choice in the zone (§7.34); a commanded First Aid Tent defends instead of healing the computer's patient (§7.14, BAT-Q51) (BAT-AI-001)"
 epic   = "E23"
 
 [[stub]]

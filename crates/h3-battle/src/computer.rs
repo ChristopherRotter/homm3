@@ -7,6 +7,7 @@
 use h3_content::{CreatureTypeId, SchoolId, SpellId};
 use h3_content_battle::{BattleRuleset, BattleSpell, SpellTarget};
 use h3_contracts::BattleSide;
+use h3_kernel::Rng;
 use h3_kernel::arith::X87;
 
 use crate::aim;
@@ -663,6 +664,25 @@ pub fn cast_mirror_chance(state: &BattleState, ruleset: &BattleRuleset, id: Stac
 /// turrets; `None` outside a town.
 pub fn siege(state: &BattleState) -> Option<&SiegeState> {
     state.siege.as_ref()
+}
+
+/// The wall-shot target the computer aims its side's commanded Catapult at (0x473C00 with the
+/// hero's Ballistics, the original's computer and hidden battles; BAT-AI-021), its tie's draw
+/// from `rng`: [`siege::aim_with`] at the Ballistics level of the hero commanding stack `id`
+/// (0 without one). None away from a siege or with nothing standing.
+// rule: BAT-AI-021
+pub fn catapult_aim(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    id: StackId,
+    rng: &mut Rng,
+) -> Option<u8> {
+    let level = siege::shooter_level(state, ruleset, id).unwrap_or(0);
+    state
+        .siege
+        .as_ref()
+        .zip(ruleset.siege_field())
+        .and_then(|(siege, field)| siege::aim_with(siege, field, level, rng))
 }
 
 /// Whether the walls would halve a shot of `shooter` at `target` from the shooter's position

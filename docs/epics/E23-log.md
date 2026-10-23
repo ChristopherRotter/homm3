@@ -1315,3 +1315,54 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   the branch) and in `deny`: RUSTSEC-2026-0385 (`ctutils` 0.4.3 under `h3-server`, published on
   2026-10-23, `master` alike); `Cargo.lock` takes `ctutils` 0.4.5 (the server lane's inbox).
   `computer-decisions` +0.04 %. PR #408 (`cross-lane`).
+
+## T6 — the hero's other choices (2026-10-23; in progress)
+
+**Decisions (the user, at the start).** T6 whole, no cut (the agent proposed three parts: the war
+machines, the tactics phase, the retreat). The policy's First Aid Tent heals the reading's patient
+(the most lost hit points of the top creature, the later stack at a tie); BAT-WAR-003 keeps the
+uniform draw until BAT-Q51's batch row. The seam (BAT-Q61 option a, BAT-Q56 option b): the
+retreat facts and the attacking hero's own ground now (`shared/e23-t6-seam`, ADR-0027 point 14),
+CLT-Q4's and CLT-Q6's viewer fields when a full game's viewer needs them. BAT-Q33: one bad-morale
+roll for every side until S-25's batch row (T7). Slip 26 joins BAT-QUIRK-25 by the standing rule
+(BAT-Q55). Checkpoint after the Catapult (the user): a branch, no pull request.
+
+**The seam** (`shared/e23-t6-seam`, the full verify green on its code
+3eeac6949ee2ad7aae0ae9b56ae43f3bddd6a306): `RetreatFacts { experience, artifacts, tavern, wanted }`
+per side and `attacker_ground: Option<ContentKey>` (`None`: an ordinary ground); nothing reads them
+yet, the two battle-lane literals take the defaults (`cross-lane`).
+
+**Done on `battle/e23-t6`** (stacked on the seam): the commanded Catapult (BAT-AI-021, §7.60):
+`siege::aim_with` holds the original's aim at any Ballistics level, the battle's automatic aim its
+level 0 with the battle's draw, `computer::catapult_aim` the policy's with its own stream;
+`POLICY_VERSION` 16; the harvested test plays eight battles at a Fort (a missed gate shot lands
+on a wall, so not every battle reaches the four standing walls).
+
+**The design for the rest** (from §7.60; for the next session):
+- *The tent*: `Heal` at the patient of the tent's side with the most lost top hit points, the
+  later stack at a tie (BAT-AI-022); the engine asks only a commanded tent with a patient.
+- *The tactics phase* (BAT-AI-023): the policy ends the phase (`EndTactics`) at the first call
+  after a phase round without a placement, or after three rounds: the engine keeps per phase the
+  completed rounds and whether the running and the last one had a placement (a state field outside
+  `TacticsPhase`, which the observation and the wire carry; no rule reads it). Shooters: 0x422060
+  as read (Wait, or a move to the fewest-free-neighbours hex). Walkers: the pathfinder's tactics
+  flag (range and speed 1000; a stop's cost 1000 is no queue bucket: reach it without queueing it
+  and end a `Reach` search on it after the loop) for the walker's map, its walk's path and its
+  side's flag-1 records (`computer::map`, `path`, `turn_map`); no cast entry; the attack always
+  a walk towards the plan's hex; the walk takes the whole path, no score test, the end the last
+  step whose position hex lies in the zone, and the engine's footprint rule (a two-hex walker's
+  other hex in the zone too: a stub); the guard's turns 1; the flag-1 records count turns at the
+  record's speed (one turn for the mask, the fewer turns first). The original's Defend in the
+  phase ends the turn, the engine's Wait makes the stack wait: below Hard (where a walker never
+  waits) a walker that has waited gives Wait at once; on Hard a defended walker is asked again in
+  the wait part (a stub). `checked`'s fallback in the phase: Wait.
+- *The retreat* (BAT-AI-024): the test (§7.55, §7.60) at the hero's cast (when the hero may cast)
+  and again at the stack's action outside the phase (not for the Catapult's or the tent's turns;
+  the Ballista's yes); a yes is `Retreat` (the computer never surrenders, 0x47815A). The battle
+  keeps the facts and the attacker's ground (hashed, v53; scenarios and the replay file name them:
+  the replay format's bump is the AI lane's, `cross-lane`); the price as 0x477A00 (the temporary
+  creatures out, halved, × the hero's factor in `f32`); the predictions with flag 1 (the side's run
+  and then the other side's from where it ended); slip 26 in `faithful`: the cast choice reads both
+  runs' planned damage and, until Teleport's evaluation, each side's last predicted walker's flag-1
+  records. Slip 6 (BAT-STUB-7) in `faithful`: an attacking hero's spells at the mastery of
+  `attacker_ground`.

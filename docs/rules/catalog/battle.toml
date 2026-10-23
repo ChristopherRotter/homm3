@@ -4378,7 +4378,7 @@ id       = "BAT-SIE-011"
 title    = "The Catapult's turn"
 context  = "battle"
 status   = "verified"
-summary  = "The Catapult acts in the round's order before every other stack of its phase but the turrets, which act first (BAT-SIE-016); after its turn the defender counts as the side that acted last, so at equal speeds the attacker's stack acts first (BAT-TRN-001). With no standing target its turn passes (no action and no Defend bonus: the original's action 12), at once when its hero's Earthquake brings down the last standing target during its commanded turn. Its side's hero commands it with a Ballistics level (BattleHero.war_machines.catapult, HER-BAT-018): the side then shoots the walls with Command::ShootWall at any standing target (the only legal command besides the side's hero's: no Wait and no Defend, refused with MustShoot, as the original offers neither; BAT-Q50), with that level's Ballistics record (BAT-SIE-014). Without the command the battle aims for it, with no Ballistics (the record of level 0): at the weakest standing wall of the siege field's automatic list (1, 2, 4, 5: the fewest hit points; a tie drawn with random(1, n) among the tied in that order), else at the first standing target of the fallback list (3 the gate, 7 the keep, 0 and 6 the towers), else at the first standing target by index; then it shoots as BAT-SIE-014 (D-13, the code: BAT-Q43). Its shots use no ammunition. The automatic aim with Ballistics that the original's computer player and hidden battles use (the gate first) is the agent's choice here."
+summary  = "The Catapult acts in the round's order before every other stack of its phase but the turrets, which act first (BAT-SIE-016); after its turn the defender counts as the side that acted last, so at equal speeds the attacker's stack acts first (BAT-TRN-001). With no standing target its turn passes (no action and no Defend bonus: the original's action 12), at once when its hero's Earthquake brings down the last standing target during its commanded turn. Its side's hero commands it with a Ballistics level (BattleHero.war_machines.catapult, HER-BAT-018): the side then shoots the walls with Command::ShootWall at any standing target (the only legal command besides the side's hero's: no Wait and no Defend, refused with MustShoot, as the original offers neither; BAT-Q50), with that level's Ballistics record (BAT-SIE-014). Without the command the battle aims for it, with no Ballistics (the record of level 0): at the weakest standing wall of the siege field's automatic list (1, 2, 4, 5: the fewest hit points; a tie drawn with random(1, n) among the tied in that order), else at the first standing target of the fallback list (3 the gate, 7 the keep, 0 and 6 the towers), else at the first standing target by index; then it shoots as BAT-SIE-014 (D-13, the code: BAT-Q43). Its shots use no ammunition. The automatic aim with Ballistics that the original's computer player and hidden battles use (the gate first) is the commanding side's choice here: the original's computer policy aims so (BAT-AI-021, E23 T6)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -5291,4 +5291,22 @@ summary  = "The computer hero's choice (BAT-AI-017) values Teleport by a case of
   [[rule.source]]
   kind       = "original-data"
   ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.59; E23 T5b2b, the user: whole, with each stack's drawn spell in the engine, cross-lane, 2026-10-23): 0x421280 and its callees read only their caster's record; +0x4E0 is its last activation's draw; after the entry (0x421CE4) only the walk 0x41F580 searches (0x41F5CA), the guard and the step to safety through it; 0x421F80 asks the entry again after a choice of nothing (0x421FF8)"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-AI-021"
+title    = "The original's battle AI: the commanded Catapult's aim"
+context  = "battle"
+status   = "implemented"
+numeric  = "integer"
+summary  = "When the computer's side commands its Catapult (its hero has Ballistics, BAT-SIE-011), the policy shoots the walls (ShootWall) where the original's Catapult turn aims with Ballistics for the computer and in hidden battles (0x473C00; h3_battle's computer::catapult_aim, one function with the battle's automatic aim at level 0): the gate while it stands; else, only while every wall of the siege field's automatic list stands (the four walls), the weakest of them (the fewest hit points, a tie drawn with random(1, n) among the tied in the list's order, from the policy's stream); else the first standing target of the field's fallback list (the gate, the keep, the towers), else the first standing target by index. Without Ballistics the battle aims for the Catapult (BAT-SIE-011, the same list without the gate's priority, the weakest wall whenever one stands). The shot itself is BAT-SIE-014's at the hero's Ballistics level. Draws: the tie's only."
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.29, re-read for the port in E23 T6): 0x473C00 (creature 145, +0x132F4, the standing test over 0x63BE68 and +0x13F60 with the towers' and keep's fort levels, the controlling hero's Ballistics +0xD3, 0x46A4A0 and 0x474BF0 before the player's aim, the gate's part from 0x63BE8C, the count of standing walls of 0x63D54C and its test against 4 with Ballistics, the least hit points from 100 with the tie count, random_between(1, n) 0x50B230, the k-th tied wall, 0x670198 with the fort tests, action 9)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "The user, E23 T6 (2026-10-23): T6 whole, a checkpoint after the Catapult"
   confidence = "high"

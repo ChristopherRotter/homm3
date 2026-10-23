@@ -5733,3 +5733,81 @@ after it, and R's own map without a context. A raise builds none.
 
 **Draws.** As §7.58; the first call's entry draws as on the stack's own turn (the context's
 predictions, the scan's 1 to 100).
+
+### 7.60 Code reading: the hero's other choices re-read for the port (E23 T6, 2026-10-23)
+
+Read for E23 T6 (the user, 2026-10-23: whole): the Catapult's turn 0x473C00 and the automatic
+tent 0x473EA0 in full, the tactics phase's start (0x462C16 to 0x462D0D), its ends (the battle
+loop's message case 0x47451A, round_start 0x475ED0), the tactics shooter 0x422060, the zone test
+0x4763F0 and its callers, the tactics flag in the pathfinder's head (0x4B34DE), the map 0x4B2DA0,
+the walk 0x41F580 and 0x436300, Defend in the dispatcher (0x479706), the writers of +0x14030, and
+the retreat test 0x41E570's strengths and threshold. §7.14, §7.29, §7.34 and §7.55 stand; these are
+the details the port needs. Insight only, nothing copied (Q29).
+
+**0x473C00 with Ballistics** (as §7.29): the controlling hero's Ballistics (+0xD3) above 0, the
+gate's part (target 3, 0x63BE8C) above 0 hit points: target 3. Then the standing walls of 0x63D54C
+are counted; with at least one standing and (no Ballistics, or all four standing) the weakest:
+the least hit points from 100, the tied counted, `random_between(1, n)` (0x50B230), the k-th tied
+in the list's order. Else 0x670198's first standing (the towers only with a Castle, the keep from a
+Citadel), else the first standing target by index; action 9 with the target's aim hex.
+
+**0x473EA0, the automatic tent** (0x196 bytes; the active record). The side is the record's
+(+0xF4), the other while it is hypnotized (+0x288); not the tent (147): false. Over that side's
+records: none dead or a war machine (`0x200040`), none without lost hit points of the top creature
+(+0x58); a record with at least the best's lost hit points (from 0) is the patient, so **the later
+record wins a tie** (creatures 60 and 61 take a branch of their own with the same test). None:
+Defend (3). Then the heal (action 11) unless the battle is shown, the tent not automatic (0x474BF0)
+and its hero has First Aid (+0xE4): then false, the player's choice.
+
+**The tactics phase.** At the start (0x462C16) the phase goes to the side with the higher Tactics;
+the game's settings and the players can turn it off only for a human side whose hero's flag
++0x48 bit 2 is clear (0x462CF5 to 0x462D0D): **a computer side keeps its phase.** The phase's
+round counter +0x13D6C starts at 0 (0x462D1E). A message (the battle loop's case 1008, 0x47451A;
+the buttons' 0x47522C) ends it for a player. **For the computer, round_start (0x475ED0)**, called
+at every round's end (the dispatcher 0x479C7E), counts the round (+0x13D6C + 1) and, in the
+phase, for a hidden battle or a last active record that acts on its own (0x474BF0), ends it
+(+0x13D68 = 0, the side acted last 1, the counter 0, round_start again for round 1) **when no
+action of the round set +0x14030, or the counter reached 3**. +0x14030 is set by the dispatcher's
+hero cast, move, retreat, surrender, move and attack, strike, wall shot and creature cast
+(0x479038 to 0x479AF6), not by Defend, Wait, the heal or nothing, and cleared later in
+round_start (0x4760A4). So a computer's phase ends after its first round without a placement, at
+most after its third. **Defend in the phase** (0x479706): the acted bit `0x4000000`, no bonus
+(0x479722): the stack's turn ends.
+
+**0x422060, a shooter in the phase** (§7.34): speed 0, or on Easy a side not human (+0x54A4 of
++0x132C0): Wait. Else the map 0x4B2DA0 (the stack, the acting side, range 127, the tactics flag,
+speed −1) and the hexes 0 to 186: in the acting side's zone (0x4763F0 at the hex) with the cell's
+bit `0x1`; the score over directions 0 to 5 (and 6, 7 for a two-hex stack) through 0x523DF0, on
+the field: +1 without a stack there (0x4E7170) or with the stack itself, a shooter's (`0x4`)
+setting it to 1000; a score below the best (from 100 at the stack's own hex) replaces it, an equal
+one only at the stack's own hex. A best other than its own hex: move (2) there; else Wait.
+
+**0x4763F0, the zone** (side, hex): the column `hex mod 17` above `2d + 1` for the attacker,
+below `2d + 15` for the defender, `d` = +0x13D70 (the attacker's Tactics less the defender's):
+one hex only. Its callers: 0x4B2DA0 (with the tactics flag a position whose hex, or a two-hex
+stack's other hex, lies outside gets no +0x4A mark), 0x41F580 (the walk's end, the position hex
+only) and 0x422060.
+
+**The tactics flag in the search** (0x4B34DE): range and speed both 1000, before the speed-0 and
+Bind test (which it skips). A stop's step then costs the rest of 1000, nothing is reached or
+marked from it; a flyer passes over hexes by its own speed (0x4B39E7). 0x436300 reads the cell's
+bit `0x1` (not +0x4A) and counts its turns with the plan's speed (+4), the stack's: the plan's
+hexes are not limited to the zone. **0x41F580 in the phase** (0x41F62F): the path's search with
+the flag; `s` = the path's length `n` (the whole path, `L` = 0: no score test), the flag (holding
+back) cleared (0x41F64E); an end only where the position hex lies in the stack's side's zone
+(0x41F7A7). So a walker walks towards its plan's hex and stops at the last hex of the path in
+its zone; with nothing, Defend.
+
+**0x41E570, steps 5 to 9 in the code.** Step 5: over the acting side's records (+0x54BC), the
+first neither dead (bit 21) nor a war machine with hit points left after the planned damage
+(0x443080 with 1) answers no further down; none: yes. Step 6: the player's gold (+0xB4) below the
+price + 2500: no. Step 7: per side over its records 0 to 19 with a creature and a count, `count ×`
+the Fight Value (+0xB0, a 32-bit product), for a record without the acted bit `0x4000000`
+`ftol(double × 1.2)`, summed in 32 bits; at a town (+0x53C8) the defender's sum `ftol(double ×
+1.1)`; then the side other than the acting one `ftol(double × 1.1)` in every battle (so at a town
+an attacker's enemy counts 1.21 times, a defender's attacker 1.1). Step 8: `x` (an `f32`) 0.16,
+0.2 (0x3E4CCCCC) for the worth above 0, 0.21 above 5000, 0.22 above 10 000; `x = f32(x − (4 −
+difficulty) × 0.015)` (the product a double); `k` = experience / 200 000 (signed), `f = f32(k)`,
+0.03 (0x3CF5C28F) when above 0.03 (a double), `x = f32(f + x)`; for the attacker `x = f32(x −
+0.06f)`; above 0.16 (a double) `x` = 0.16f. Step 9: `q = f32(f32(own) / f32(own + other))` (the
+sum in 32 bits): yes when `q < x` or unordered (0 / 0).

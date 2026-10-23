@@ -32,9 +32,10 @@
 //! it can cast now by its value, the best cast when it is due now; the raises, Sacrifice and
 //! Earthquake by cases of their own (§7.57), Teleport by each stack's walker turn as it is and on
 //! the hexes Teleport could put it (§7.58), a caster among them asking its own cast entry from its
-//! record (§7.59). The rest stands in until its task builds it: the hero never retreats
-//! (BAT-STUB-13), the tactics phase ends at once, the First Aid Tent defends and a commanded
-//! Catapult shoots the first wall (BAT-STUB-5, T6).
+//! record (§7.59). A commanded Catapult aims as the original's computer does with Ballistics: the
+//! gate while it stands, then the weakest wall while all four stand, then the rest (0x473C00;
+//! E23 T6). The rest stands in until its task builds it: the hero never retreats (BAT-STUB-13),
+//! the tactics phase ends at once and the First Aid Tent defends (BAT-STUB-5, T6).
 //!
 //! The original's slips in its own estimates (survey `E23-battle-ai.md` §4) follow the quirk
 //! BAT-QUIRK-25 (`quirk.battle.original_ai_slips`, ADR-0027 point 9): on in `faithful`, off in
@@ -79,16 +80,14 @@ mod walker;
 #[cfg(test)]
 mod tests;
 
-use h3_battle::{
-    BattleSide, BattleState, Command, LegalCommands, Stack, StackTraits, computer, legal_commands,
-};
+use h3_battle::{BattleSide, BattleState, Command, Stack, StackId, StackTraits, computer};
 use h3_content_battle::BattleRuleset;
 use h3_kernel::Rng;
 
 /// The policy's behaviour version (ADR-0027 point 12): bumped with every change of a choice, so
 /// that a training record names its opponent (the AI lane's engine identity includes it).
 /// Replays store commands and do not change with it.
-pub const POLICY_VERSION: u32 = 15;
+pub const POLICY_VERSION: u32 = 16;
 
 /// The command the original's computer gives for `side`, the side to act in `state` (the active
 /// stack's controller, BAT-MAG-026), whatever `BattleSetup.human` says (ADR-0027 point 8):
@@ -137,9 +136,7 @@ pub fn unchecked(
         return shooter::shoot(state, ruleset, id, rng);
     }
     if state.stack(id).is_some_and(Stack::is_catapult) {
-        // stub: BAT-STUB-5
-        // The commanded Catapult's aim (§7.29, the gate first): T6.
-        return first_wall_shot(state, ruleset, side);
+        return catapult(state, ruleset, id, rng);
     }
     if state
         .stack(id)
@@ -167,14 +164,11 @@ fn checked(
     }
 }
 
-/// The first wall shot the engine lists for `side`'s commanded Catapult (a stand-in, BAT-STUB-5),
-/// or Defend without one.
-fn first_wall_shot(state: &BattleState, ruleset: &BattleRuleset, side: BattleSide) -> Command {
-    let mut legal = LegalCommands::new();
-    legal_commands(state, ruleset, side, &mut legal);
-    legal
-        .iter()
-        .copied()
-        .find(|c| matches!(c, Command::ShootWall { .. }))
-        .unwrap_or(Command::Defend)
+/// The commanded Catapult's shot (0x473C00 with Ballistics; BAT-AI-021): at the computer's aim
+/// ([`computer::catapult_aim`]: the gate while it stands, then the weakest wall while all stand,
+/// its tie drawn from `rng`), or Defend with nothing standing (the engine passes such a turn).
+// rule: BAT-AI-021
+fn catapult(state: &BattleState, ruleset: &BattleRuleset, id: StackId, rng: &mut Rng) -> Command {
+    computer::catapult_aim(state, ruleset, id, rng)
+        .map_or(Command::Defend, |part| Command::ShootWall { part })
 }

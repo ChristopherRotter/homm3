@@ -2,7 +2,7 @@
 
 Status: **in progress**, refined 2026-10-19 (BAT-Q52); T1a1 to T1a4 done (the cuts confirmed
 2026-10-20), T1c done (BAT-Q53, BAT-Q54); T1a5 done as cut (part C, §7.42 to §7.45); T1a5e (the spell evaluators) done (§7.46); T1b done, ADR-0027 accepted (BAT-Q55); T2 done (T2a the crate and the plain shooters, T2b the area value, the wall shot, the benchmark), the budget
-set; T3 done (cut in four: T3-0, T3a, T3b, T3c); T4 done (T4a, T4b in two, T4c, T4d); T1a6 done; slip 25 done; T5 cut in two, T5a done; T5b cut in two, T5b1 done; T5b2 done (in two); T6 next · Follows E05 (the
+set; T3 done (cut in four: T3-0, T3a, T3b, T3c); T4 done (T4a, T4b in two, T4c, T4d); T1a6 done; slip 25 done; T5 cut in two, T5a done; T5b cut in two, T5b1 done; T5b2 done (in two); T6 in progress · Follows E05 (the
 AI lane, done) · Followed by E06 (training: this policy holds the neutral seat; AI-Q1) ·
 The battle lane's, later the AI lane's (BACKLOG).
 
@@ -265,7 +265,13 @@ found after that decision) belong to the neutral side's map too and are read (§
         Archangel's test at the active record's hit points, found by the blind check) built;
         BAT-STUB-14 retired; `POLICY_VERSION` 15; the log.
 - [ ] **T6 The hero's other choices** — retreat and surrender, the tactics phase, the Catapult's
-  aim, the First Aid Tent's patient (BAT-Q51); BAT-Q33's rule.
+  aim, the First Aid Tent's patient (BAT-Q51); BAT-Q33's rule. **In progress** (the user,
+  2026-10-23: whole, no cut; §7.60): the seam first (`shared/e23-t6-seam`: `BattleSetup.retreat`
+  and `attacker_ground`, ADR-0027 point 14; BAT-Q61 (a), BAT-Q56 (b); CLT-Q4 and CLT-Q6 later);
+  the policy's tent heals the reading's patient, BAT-WAR-003 waits for BAT-Q51's row; BAT-Q33
+  waits for S-25's row (the user). Done: the commanded Catapult's aim (BAT-AI-021,
+  `POLICY_VERSION` 16; the user's checkpoint). Next: the tent, the tactics phase, the retreat test
+  with slips 26 and 6.
 - [ ] **T7 The closure** — the batch rows' leftovers, the benchmarks, the docs.
 
 ## Exit criteria
