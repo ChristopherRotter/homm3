@@ -227,7 +227,7 @@ for the second part too.
   tick rotates whenever polled (design §1.6). The harness now steps the frozen clock to the
   later of the next tick and the next redraw and waits until both have come (the clock's 20
   reads can come before the main loop's idle step: the fourth run stopped there) before the
-  dump; the fifth run as recorded.
+  dump; the fifth and sixth runs as recorded (palette steps 10 and 11).
 - **Agent decisions (provisional, on the review list):** the situation format; writing Red's
   explored bits instead of revealing by play; a single scenario; the masks.
 - **Questions:** none new; MCL-Q2's context updated (reachable).
