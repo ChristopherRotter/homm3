@@ -15,7 +15,9 @@
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
-use h3_content::{Affects, CreatureFlag, CreatureTypeId, NO_LUCK_WITHOUT_HERO};
+use h3_content::{
+    Affects, COMPUTER_MORALE_LET_OFF, CreatureFlag, CreatureTypeId, NO_LUCK_WITHOUT_HERO,
+};
 use h3_content_battle::{Ability, AuraTarget, BattleRuleset, Battlefield, MAX_AURA_VALUES};
 use h3_contracts::{BattleEffect, BattleHero, BattleSide, Siege};
 use h3_kernel::modifier::evaluate;
@@ -418,16 +420,17 @@ pub(crate) fn good_morale(state: &mut BattleState, ruleset: &BattleRuleset, id: 
 }
 
 /// The die of the second draw that lets a stack of a side without a human player off a
-/// bad-morale freeze (0x464BF0: `random(1, 4)`, a 1 lets it off; BAT-MOR-004, BAT-Q33): the
-/// original's constant, as the computer's numbers in `aim.rs` are.
+/// bad-morale freeze (0x464BF0: `random(1, 4)`, a 1 lets it off; BAT-MOR-004, BAT-QUIRK-27): the
+/// original's constant, the quirk's own number.
 const LET_OFF_DIE: u32 = 4;
 
 /// Whether stack `id`, picked to act outside the round's wait phase, freezes from bad morale:
-/// negative morale and the roll succeeds (BAT-MOR-004), and for a stack of a side whose player is
-/// not human (`BattleSetup.human`, ADR-0023 point 7; a neutral side has none) a second draw, 1 to
-/// [`LET_OFF_DIE`], is not 1 (0x464BDB; BAT-Q33, survey S-25). In the wait phase nobody freezes,
-/// not even a stack that never waited (one whose blindness ended there): the original's pick
-/// skips the check for the whole phase (+0x13DE4, the site 0x465283), as it skips Fear.
+/// negative morale and the roll succeeds (BAT-MOR-004), and with quirk BAT-QUIRK-27 for a stack of
+/// a side whose player is not human (`BattleSetup.human`, ADR-0023 point 7; a neutral side has
+/// none) a second draw, 1 to [`LET_OFF_DIE`], is not 1 (0x464BDB; BAT-Q33, survey S-25); without
+/// the quirk one roll for every side. In the wait phase nobody freezes, not even a stack that
+/// never waited (one whose blindness ended there): the original's pick skips the check for the
+/// whole phase (+0x13DE4, the site 0x465283), as it skips Fear.
 // rule: BAT-MOR-004
 pub(crate) fn bad_morale(state: &mut BattleState, ruleset: &BattleRuleset, id: StackId) -> bool {
     let s = state.at(id);
@@ -436,11 +439,12 @@ pub(crate) fn bad_morale(state: &mut BattleState, ruleset: &BattleRuleset, id: S
     }
     // The stack's own side's player, a hypnotized stack's too: the original asks the side whose
     // record array holds the stack (0x464B40's first argument).
-    let human = state.human[s.side.index()];
+    let let_off =
+        !state.human[s.side.index()] && ruleset.quirks().is_enabled(COMPUTER_MORALE_LET_OFF);
     let params = ruleset.battle();
     let chance = params.bad_morale.chance(s.morale.unsigned_abs());
     roll(state, params.morale_dice, chance)
-        && (human || state.rng.range_inclusive(1, LET_OFF_DIE) != 1)
+        && !(let_off && state.rng.range_inclusive(1, LET_OFF_DIE) == 1)
 }
 
 /// Whether stack `id`, picked to act outside the round's wait phase, freezes from Fear

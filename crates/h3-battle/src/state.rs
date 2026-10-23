@@ -1010,7 +1010,7 @@ pub struct BattleState {
     /// human (ADR-0023 point 7; public): read only by the choices the battle makes for a side as
     /// the original's computer does (an automatic turret's desperate aim, BAT-SIE-023; the stops
     /// a computer's walker keeps out of in its turns, BAT-SIE-022) and, `human`, by the bad-morale
-    /// let-off of a side without a human player (BAT-MOR-004, BAT-Q33).
+    /// let-off of a side without a human player (BAT-MOR-004, BAT-QUIRK-27).
     pub(crate) difficulty: u8,
     /// See `difficulty`.
     pub(crate) human: [bool; 2],

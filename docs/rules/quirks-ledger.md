@@ -516,3 +516,16 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Defaults: n/a
 - Regression test: `crates/h3-battle-ai/src/tests/copies.rs`, `berserk_and_hypnotize_meet_the_stack_itself_on_the_copy` (valuing Hypnotize's end on a copy leaves the battle's state hash unchanged: the policy reads the battle through a shared reference)
 - Decided by / date: the standing rule (state-corrupting bugs are always fixed), E23 T4d, 2026-10-22; confirmed by the user, 2026-10-22 (at E23 T1a6's start)
+
+### BAT-QUIRK-27 — A side without a human player escapes one bad-morale freeze in four (E23 T7; BAT-Q33, survey S-25)
+- Class: fix-optional (the user, 2026-10-23: the original's, but an unfair advantage for no good reason; a quirk of its own, not one of BAT-QUIRK-25's slips, which change only the computer's estimates)
+- Context / rules affected: battle, BAT-MOR-004 (bad morale); reads `BattleSetup.human` (ADR-0023 point 7, widened in E23 T7)
+- Original behavior: after the freeze is rolled (0x464BC7: `random(1, 12) <= -morale`), a stack whose side's byte +0x54A4 is 0 (no human player: a neutral side, a computer player's) gets a second draw `random(1, 4)`, and a 1 lets it off (0x464BDB, 0x464BF0): such a side freezes at 6.25, 12.5 and 18.75 % at morale −1 to −3, a human player's at 8.3, 16.7 and 25 %. Observed: batches 4a LO and 4b LC (every freeze draw forced): 28 of 105 neutral and 14 of 60 computer player's picks let off, a human side's none (27 of 27).
+- Intended/expected behavior: one roll for every side, as the wiki and VCMI describe bad morale.
+- Impact: gameplay-altering (the computer's and the neutral sides' stacks lose fewer turns)
+- Community status: unknown (the wiki's Morale and Combat pages and VCMI have no such rule)
+- Sources: original-data (`docs/formats/installation.md` §7.21; the review r5b F-3, E04b T11b); observation (`experiments/results/E23-batch-4a.md` LO, `E23-batch-4b.md` LC)
+- Flag: `quirk.battle.computer_morale_let_off` (registry position 33, `shared/e23-t7-human`)
+- Defaults: faithful = on, strict-fixed = off
+- Regression test: `crates/h3-battle/src/tests/morale.rs`, `with_bat_quirk_27_a_side_without_a_human_player_escapes_one_freeze_in_four` (with and without the flag, a human side and one without)
+- Decided by / date: user, 2026-10-23 (E23 T7, BAT-Q33)
