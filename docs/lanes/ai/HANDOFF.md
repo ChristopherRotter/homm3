@@ -14,10 +14,11 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   v1, the bots' table, the SPRT gate, promotions, ladders, `--init-from`; `t3b-1`: stalling,
   AI-Q9). **Increment 3 done** 2026-10-22: T4a (#342: the league; checkpoint format 3, record
   schema 5), T4b (#381: γ 1.0 ends the stalling; best 0.839, 0.578, 0.559 against Random,
-  Aggressor, Greedy). **Increment 4** refined 2026-10-22: T5a (#385: the entity network,
-  design §11; `python -m h3env.train.network`), T5b (`t5-1`, negative: both sides hid, 45 %
-  stalled), T5c (`ppo.truncation_penalty` 1.0, decision 10 amended) done; next T5d, the user's
-  two 20 M runs (`configs/e06-t5c.toml`: entity `t5-2`, MLP `t5-3`) once #396 is merged.
+  Aggressor, Greedy). **Increment 4 done** 2026-10-23: T5a (#385: the entity network, design
+  §11; `python -m h3env.train.network`), T5b (`t5-1`: both sides hid, 45 % stalled), T5c (#396:
+  `ppo.truncation_penalty` 1.0, decision 10 amended), T5d (`t5-2`, `t5-3`: the entity network
+  parked; the MLP with the penalty 0.832, 0.557, 0.533 in 20 M and 70 minutes). **Next:**
+  increment 5's refinement with the user (the QUEUE lists the choices).
 - **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v31 (E06 T2c: the record's identity, N capped) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q10, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
@@ -89,18 +90,13 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 
 ## Recent sessions
 
-### 2026-10-22 — E06 increment 4: T5a (the entity network), T5b, T5c
+### 2026-10-22 to 23 — E06 increment 4 (T5a to T5d), closed
 
-- T5a merged (#385). `t5-1` stalled (diagnosed from its files: both sides hid at
-  their edges, 94 % of samples from stalled battles); the user: no geometry features, a penalty
-  for stalling instead (T5c). Diagnosing a run: the user uploads `metrics.jsonl`, `best.pt`,
-  `checkpoint.pt`; `evaluate.load` builds them on the CPU.
+- T5a (#385), T5c (#396) merged. `t5-1` stalled (diagnosed from its files: both sides hid at
+  their edges); the user: no geometry features, a penalty for stalling (T5c). T5d: the entity
+  network parked, the penalty a large gain (#419). Diagnosing a run: the user uploads `metrics.jsonl`,
+  `best.pt`, `checkpoint.pt`; `evaluate.load` builds them on the CPU.
 
 ### 2026-10-22 — E06 T4b (the league runs), increment 3 closed
 
 - `t4-1` and `t4-2` committed (#381), results in `E06-log.md`.
-
-### 2026-10-20 — E06 increment 3's refinement, T4a (the league)
-
-- The user (AI-Q9): two league runs in T4b (γ 1.0 beside 0.995). T4a: the live set drawn
-  every `live_every` samples.

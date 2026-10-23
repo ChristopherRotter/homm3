@@ -4,38 +4,88 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024). M3 (fidelity) below, refined at M2's closure (T5c) and agreed by the user there, each task about half a context; the exit: the reference set passes, or each difference is a listed fix or a classified quirk. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
+Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024; the battle client since the split of 2026-10-23, the adventure map client being the map-client lane's E24). M3 (fidelity) done 2026-10-23 with T9d; M4 (sieges) refined at T0 (2026-10-23, with the user); T1a done (2026-10-23); T1b to T3 below, in order. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M3 T9c — M3's closure: the next milestone
+### E17 M4 T1b — the siege still captured
 
-- **Scope:** the next milestone refined with the user (sieges, live play, HD or the adventure
-  map: the user's choice), its tasks queued, M3 marked done.
-- **Acceptance:** the next milestone's tasks in this queue, agreed by the user.
-- **Depends on:** T9b (done 2026-10-23: the review list accepted, CLT-Q9 to Q17 answered).
-  **Status:** ready (with the user).
+- **Scope:** design §10.1 (T1a's reading). First the town tables harvested into the asset
+  tables (moved here from T1a, the user, 2026-10-23): per town the background, the 18 parts'
+  points, hexes and five pictures (`siege_wall_parts_by_town` 0x66D848), the turrets' shooter
+  creature, its three points and the missile (`siege_turrets_by_town` 0x63CF88); `h3-view
+  harvest`, the format a review-list item, every name found by `h3-view gate`. Then
+  `h3-view situation` writes a town (the writer's `Town`, `TownBuildings::Custom` for
+  the fort level) with the defender inside and the attacker beside it; the harness steps the
+  attacker in (as `experiments/agent/siege.py`) and captures the battle's first frame; the viewer
+  draws a record's `Siege` by T1a's reading: the background, the walls by their parts, the gate,
+  the moat and its lip, the towers and the keep with their shooters (the turret stacks at 251,
+  254, 255 are not drawn as field stacks), the Catapult. Situations: every town with a Castle,
+  one Fort, one Citadel. **The wall states as stills** (the user, 2026-10-23): the harness writes
+  the parts' hit points and picture states (+0x13F60, +0x13FA8) and the gate (+0x53A4) into the
+  running copy's memory before the first frame and has it redrawn; the situation gives the
+  viewer the same values (a client-side override of the snapshot's `parts`, *provisional*);
+  hit and destroyed walls, towers and keep, the gate open and destroyed, on **Castle and
+  Conflux** only (the user, 2026-10-23: one town per archive, the rules being the same). The
+  captures settle T1a's open points: VCMI's drawbridge one pixel left, Necropolis's lip, the
+  Dungeon's points, a Fort's covers, the shooter's cut to 232 rows, the moat's strip over a
+  stack on a moat hex (each difference a fix, an asset fix or a `CLT-Q<n>`).
+- **Acceptance:** the new situations captured, each exact or its difference listed (a fix or a
+  `CLT-Q<n>`); `drawn` the same for every earlier item; the runbook names the new step;
+  `clients/scripts/check.sh` green. Too big at the start: split with the user (the intact sieges,
+  then the wall states).
+- **Depends on:** T1a (done). **Status:** ready.
 
-### E17 M3 T9d — CLT-Q9 to Q17's answers built
+### E17 M4 T2a — the siege over time read
 
-- **Scope:** the original's slips answered at M3's review (`OPEN-QUESTIONS.md`, answered
-  2026-10-23) fixed in what the client draws, the original's kept for the comparisons only
-  (`anim::Stage::bugs`, `h3_render::Bugs`, as T7d): Q9 a mass animation's last frame shown; Q10 a
-  mass reaction's hit ending on its standing frame 0 (only where a creature's standing frames
-  differ visibly: the DEFs tell); Q11 Chain Lightning's opening bolt (37) on the screen, at the
-  bolt from the sky's pace; Q12 each Fire Wall hex's placing animation at its own hex; Q13 Animate
-  Dead's own animation (4, the spell record's +8); Q14 the Liches' cloud translucent, as its table
-  entry says; Q16 Armageddon's line with the caster's bonuses; Q17 Sacrifice's line naming its
-  victim by its number before its death, once a new recording (a Sacrifice sequence) confirms the
-  original's. Q15 stays listed (the spectator's record) until live hot seat.
-- **Acceptance:** each fix tested with both switches; `drawn` the same (the comparisons draw the
-  original's); Q17's sequence recorded and as recorded; the client check passes.
-- **Depends on:** T9b (done 2026-10-23). **Status:** ready (T9c may make it the next
-  milestone's first task).
+- **Scope:** a code reading of what moves in a siege: the Catapult's shot (`wall_shot`
+  0x445D30, `wall_shot_animate` 0x445FD0: the rock, the explosion, the part's picture at frame 5,
+  the sounds), a turret's shot (`turret_shot` 0x465AD0: from which point, which missile), the
+  drawbridge (`gate_open` 0x4671C0, `gate_close` 0x4672E0: the original opens the gate as a
+  defender begins its step onto hex 96, the engine reports `GateOpened` after the `Moved`, so
+  the timeline reorders them; NOTES, "Sieges"), Earthquake (0x5A7C80), the moat's damage and the
+  Tower's mines, the siege's cursors (the kinds 16, the Catapult's wall targets, and 22, the
+  arrow towers; the mouse's siege rectangles 0xFE and 0xFF: design §9.9), its status lines and
+  log lines, the end tune at a town (design §8.2). The timeline's
+  plan for the siege events; T2b's and T2c's sequences listed, each with its forced rolls.
+- **Acceptance:** the design section's second part, each cited address in the map; T2b's and
+  T2c's sequence lists; each oddity a `CLT-Q<n>`.
+- **Depends on:** T1a (done). **Status:** ready.
+
+### E17 M4 T2b — the Catapult and the turrets recorded
+
+- **Scope:** the timeline plays `WallShot` and `WallDestroyed` (the Catapult's and a Cyclops'
+  shot) and the turrets' shots by T2a's reading, with their sounds; hot-seat siege sequences
+  with the original's rolls forced (the runbook's "Forced rolls"): a hit, a miss, a wall and a
+  tower destroyed, the keep's and the towers' shots on a stack.
+- **Acceptance:** the sequences as recorded (the timeline check), their frames exact or each
+  difference listed; `drawn` the same for every earlier item; `clients/scripts/check.sh` green.
+- **Depends on:** T1b, T2a. **Status:** waiting for them.
+
+### E17 M4 T2c — the gate, the moat, Earthquake and the mouse recorded
+
+- **Scope:** `GateOpened` and `GateClosed` (the drawbridge before the step), `MoatDamage` and a
+  Tower's mine, `WallQuaked`; sequences: a defender out through the gate and back, a stack in the
+  moat, a mine, Earthquake, a hero with Ballistics aiming the Catapult, a shot through the walls;
+  the siege's cursors and status lines in the mouse's model.
+- **Acceptance:** as T2b's.
+- **Depends on:** T2b. **Status:** waiting for it.
+
+### E17 M4 T3 — M4's closure
+
+- **Scope:** a fresh reviewer over M4, every capture afresh, the review list with the user, M5
+  (live play) refined with the user.
+- **Acceptance:** M4's exit (the epic file); the review list accepted; M5's tasks in this queue.
+- **Depends on:** T2c. **Status:** waiting for it.
 
 ## Inbox
 
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-10-23 (the map-client lane, E24 T0; for later, nothing to do now): **what the map client
+  will need of `h3-view`.** E24 M1 (stills of the map view) builds only on the common foundation;
+  M2's window will want `clock` and `sound`, M3's panels `ui`, `text` and `layout`, in a common
+  crate. When M2 or M3 is refined, the map-client lane proposes the move here first (a new common
+  crate is a `lanes.toml` change, shared); your M4 waits for none of it.
 - 2026-10-23 (T9b, the reviewers; the epic log's "M3 T9b", the accepted review list): queued
   findings. R2-7: a timeline that steps forward (`Moment::at`, `Heroes::posed` and `Timeline::at`
   rescan the battle for every frame: 2.3 ms a frame over 82 seconds, `play`; for live play's long
@@ -46,71 +96,9 @@ Other lanes add entries here. The client lane turns each into a task, or moves i
   stricter shadow chain in `h3cap.redraws` (a near-black pixel counts as an artifact over almost
   anything; the counts stay exact). R3-1 goes with the created stacks below.
 
-- 2026-10-22 (the adventure lane, E08 T37b, `adventure/e08-t37b`, `cross-lane` with the user's
-  consent; for information, nothing to do): batch E5's recipes `clients/capture/batches/E08-batch-5a.toml`
-  to `-5e.toml`, each run clean under Wine at its first run; `h3adv`'s `level_up` may name a skill
-  (`side_of`: taken on whichever side it stands) and `path_tiles[:<row>]` reads the path's marked
-  tiles (the walk's observation keeps them as `tiles`). The runbook says how.
-
-- 2026-10-22 (the adventure lane, E08 T37a, `adventure/e08-t37a`, `cross-lane` with the user's
-  consent; for information, nothing to do): what the two entries below announce is built in
-  `clients/capture/`.
-  `h3mem.Mem.explored` (a tile's explored bit, the vision words at 0x6989F8); `h3adv`'s
-  `explored:x,y[,level][:colour]`, the hero details `points` and `day_points`, the step `equip`
-  (the hero screen opened by a click on the hero, backpack to slot, closed with `Return`; probes
-  `hero_screen` in `screens.toml`) and a wider table's cells by `<row> | <column>` (`fill`,
-  `records`); the harness check's Fog and Equip (Blue's heroes). The runbook says how.
-
-- 2026-10-22 (the adventure lane, E08 T36b, `adventure/e08-t36b`, `cross-lane` with the user's
-  consent; for information): `h3_map::writer::Map` gained `banned_skills`; `h3-view`'s situation
-  map says none (one line, as for T32a's level limit). Batch E5e also needs an artifact moved from
-  the backpack to a slot in the hero screen (E5-3b, E5-10b); the adventure lane builds it with the
-  reads below in T37, or skips those two rows.
-
-- 2026-10-22 (the adventure lane, E08 T34b; for your information, nothing to do): batch E5 (the
-  hero's movement and scouting; `docs/epics/E08-design.md` §11) needs the harness to read a tile's
-  explored bit for a player (`explored:x,y`) and a hero's points at a turn start without a walk;
-  the adventure lane builds them in `clients/capture/` as `cross-lane` (T37, as T32b1 did) once the
-  user accepts the cut (ADV-Q21), with the recipes.
-
-- 2026-10-21 (the adventure lane, E08 T32b2, `adventure/e08-t32b2`, `cross-lane` as T32b1; for your
-  information, nothing to do): **four more harness changes** while batch E4 ran (runbook updated):
-  a step's `note` (read as `record`, under "anything odd" unless `none`) and the hero detail
-  `equipment` (the worn artifacts but the war machines and the spell book; every hero wears a
-  Catapult); `h3lod.identify` takes the most specific record (the most literal text) of any run
-  of the dialog's text items: it took the first match of the whole text, and `%s the %s`
-  (GENRLTXT 16) formats any text with " the " (a picture's caption is a text item of its own:
-  the Necromancy dialog, GENRLTXT 146, never matched); `strike` tries its hover pass four times,
-  a second apart (a good morale's extra turn showed only the plain pointer, frame 6). The
-  capture set does not use them: no capture was taken. The harness check passed after them.
-
-- 2026-10-21 (the adventure lane, E08 T32b1, `adventure/e08-t32b1`, `cross-lane` with the
-  user's consent, decision 68; **your harness changed**, nothing to do but read): the adventure
-  lane built batch E4's reads itself, so its two requests (2026-10-20, -21) are done and gone from
-  this inbox, and so is your T7a-2a note (`h3adv` now knows the battle screen in its
-  `battle_book` state too; the check's Gear hero carries a book). In `capture/`: `h3mem` reads a
-  hero's seed byte and offer counters, its skills in order, its artifacts worn and in the backpack
-  (names from the artifact table), the dialog's items and the level-up dialog (`level_up_dialog`
-  0x4F8880's DEF pictures 2009 to 2011, read for them), the battlefield, the hex records (stack,
-  flags, attack mark) and a stack's speed; `h3adv` records every level-up dialog (one or no offer
-  too), takes `level_up` as a list, notes other dialogs' records (`messages`), has the
-  observations of the runbook's table and plays battles by `attack` or a plan (`{ attack =
-  "Ballista", by = "defender", then = "attack" }`): **auto combat does not play a battle between
-  two human players in hot seat** (the runbook's traps), so the plans click like a player, the
-  mouse resting until the combat cursor shows a melee attack. Fixed on the way: a local `value`
-  in `value()` (your T6c-2 winner fix) made every `before:` read fail. `checks/harness-check.toml`
-  gained Exp's and Lvl's new reads and the encounter Gear; the check passes (about four minutes).
-  The recipes for batch E4 come with E08 T32b2 (`cross-lane` again).
-- 2026-10-21 (the adventure lane, E08 T30, decision 65, ADR-0017 point 6 amended in #353; for
-  the hot-seat client, when it plays whole games): **a level-up holds the game.** While a hero's
-  level-up with two offers is open, the engine accepts no command but its owner's answer
-  (`h3_game::GameState::waiting_for` names the owner; `level_up(owner)`, or the owner's
-  `GameObservation.decision` as `DecisionView::LevelUp`, gives the hero, level, primary skill and
-  the two offers; `Answer::First`/`Second` answer it). A battle's defender that won answers it
-  outside its turn. The user's requirement for hot seat: when the player who must act changes,
-  show a handover screen that hides everything (map, hero list, the dialog) until that player
-  confirms it is in control, then the level-up dialog alone, and hand back to the player whose
-  turn runs the same way, so no one sees another player's view.
+- 2026-10-21 to 22 (the adventure lane, E08 T32b1 to T37b; for information, nothing to do): the
+  harness's reads and steps for batches E4 and E5 (moved to NOTES, "The adventure lane's
+  harness", at T9c; the harness is common since the split, 2026-10-23).
 
 - 2026-10-21 (T7b-1): **a hero's aim.** Between the book's place and the target's click the
   cursor is the spell's (`crspell.DEF`, animated: not read; the viewer leaves it as it was) and the
@@ -139,7 +127,9 @@ Other lanes add entries here. The client lane turns each into a task, or moves i
   and a Pit Lord's `RoseFromCorpse` add a stack the record's first snapshot lacks, and the scene
   draws only the snapshot's stacks (a wire `Stack` each): the viewer needs the new stack's
   numbers (from the ruleset, or a later snapshot in the record), its record index and the
-  dissolve that shows it (`create_battle_stack`, 75 ms steps, the blend not read); with them the
+  dissolve that shows it (`create_battle_stack`, 75 ms steps, the blend not read; T9d built a
+  dissolve's time for Sacrifice's victim, `anim::GONE`, `DISSOLVE_STEP`, and the frame check of
+  `sacrifice` lists its blend: `screen_dissolve` 0x602DC0, read for both); with them the
   message when no hex is free, a clone's `Vanished`, Teleport's dissolve (moved at once now) and
   Sacrifice's victim leaving no corpse; and the panel's side by each turn's
   controller (T9b, R3-1: `scene::controller` takes the opening's, so Hypnotize and a created stack
@@ -151,9 +141,9 @@ Other lanes add entries here. The client lane turns each into a task, or moves i
 - When CLT-Q5 is answered: the deck and the two boats as situations; CLT-Q4: the background
   variants 0 and 1. NOTES, "Battlefields and boats".
 - Sieges (the battle lane, 2026-10-14 to 16): the turrets as stacks, the Catapult, the gate
-  opening before the step. NOTES, "Sieges".
-- Later milestones: graphics options (the user, at M1), an HD layout's origin and viewport, the
-  adventure map's object draw order (research item 9). NOTES, "Options, layouts, the adventure
-  map".
+  opening before the step. NOTES, "Sieges"; M4 T1b and T2a take them.
+- Later milestones: graphics options (the user, at M1), an HD layout's origin and viewport.
+  NOTES, "Options and layouts". (The adventure map's object draw order, research item 9, went to
+  the map-client lane at the split, 2026-10-23.)
 - The live client (the server lane, 2026-10-09 to 13): the record file, the content check, a
   server restart, accounts, ladders, the server browser. NOTES, "The live client".

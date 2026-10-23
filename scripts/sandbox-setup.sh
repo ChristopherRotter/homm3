@@ -18,7 +18,8 @@
 #    pefile (scripts/exe.py, docs/exe/README.md), then the baseline through
 #    scripts/verify-once.sh, which runs the full gates only for code no run has verified yet
 #    (docs/05-testing.md, "Each code state once"): `engine -- --with-original-data`, or for the
-#    client lane `clients` (with SDL's build dependencies, clients.yml's list). The apt step runs
+#    client lanes (`client`, `map-client`) `clients` (with SDL's build dependencies, clients.yml's
+#    list). The apt step runs
 #    a second time when the first fails (2026-10-20: clients/capture/setup.sh, started beside it,
 #    added the i386 architecture between its update and its install, and nothing was installed);
 #    apt.log ends with `apt: installed` or `apt: FAILED`. Logs in target/sandbox/.
@@ -87,7 +88,7 @@ fi
 deny_url=https://github.com/EmbarkStudios/cargo-deny/releases/download/0.20.2/cargo-deny-0.20.2-x86_64-unknown-linux-musl.tar.gz
 llvm_cov_url=https://github.com/taiki-e/cargo-llvm-cov/releases/download/v0.9.1/cargo-llvm-cov-x86_64-unknown-linux-musl.tar.gz
 packages=(llvm-20)
-if [ "$lane" = client ]; then
+if [ "$lane" = client ] || [ "$lane" = map-client ]; then
     baseline=(clients)
     log=target/sandbox/clients-check.log
     packages+=(cmake libx11-dev libxext-dev libxcursor-dev libxfixes-dev libxi-dev libxrandr-dev

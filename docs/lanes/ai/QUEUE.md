@@ -16,21 +16,22 @@ hour `t3b-1`: evaluation 21.4 %, stalling suspected, AI-Q9). Increment 3 done 20
 (the league), T4b (the user's runs `t4-1`, `t4-2`: γ 1.0 ends the stalling, AI-Q9; the best
 plays 0.839, 0.578, 0.559 against Random, Aggressor, Greedy; `E06-log.md`).
 
-**Increment 4** refined 2026-10-22 (the user, `E06-log.md`): the entity network first, T5a then
-T5b; no spare MLP run. T5a done, T5b done (negative: `t5-1` stalled), T5c done (the
-truncation penalty, the user's amendment of decision 10), all 2026-10-22 (`E06-log.md`). Still open for later increments: AI-Q7 (b), throughput (`t4-2`'s dip to
-about 4 000 samples/s from 20 M to 40 M), the mana price, T7 (E23's neutral side is complete).
+**Increment 4** done 2026-10-23 (`E06-log.md`): T5a (the entity network), T5b (`t5-1`
+stalled: both sides hid), T5c (the truncation penalty, the user's amendment of decision 10), T5d
+(`t5-2`, `t5-3`: the entity network parked; the MLP with the penalty reached 0.832, 0.557,
+0.533 in 20 M samples and 70 minutes, near `t4-2`'s 60 M).
 
-### T5d — The runs with the truncation penalty
-
-- **Scope:** the user runs `configs/e06-t5c.toml` twice on their machine, 20 M samples each:
-  the entity network (`runs/t5-2`) and the MLP (`runs/t5-3`, `--set network.kind=mlp`; the
-  config's comment); the records committed, compared with each other and with `t4-2`'s first
-  20 M in `E06-log.md` (truncations, samples/s, gates, ladders).
-- **Acceptance:** the records pass `check_record`; the ladders compared per opponent; the
-  entity network's stalling gone or explained.
-- **Depends on:** T5c's pull request merged; the user's machine. **Status:** waiting (the
-  merge, then the user).
+**Next: increment 5's refinement, with the user** (no task is ready until then; the user closed
+the session after T5d without choosing). Put to them:
+- **A run:** the MLP with the penalty for 60 M samples (`configs/e06-t5c.toml`, `--set
+  network.kind=mlp --set samples=60_000_000`; about 3.5 hours): the clean comparison with
+  `t4-2` (only the penalty differs) and how far the gain goes (`t5-3`'s last gate still
+  promoted); or `--init-from runs/t5-3/best.pt` with a fresh schedule.
+- **The code:** (a) T7, the neutral battles (`Policy::System` as an opponent, the neutral kinds
+  at their census weights; the user, 2026-10-22: the system actor will not cower); (b)
+  throughput (about 4 900 samples/s against the engine's 100 000+: a training step's profile,
+  the batch size and threads, the observations in place); (c) AI-Q7 (b), the preview's kills per
+  attack and shot entry (C ABI v32); the mana price.
 
 ## Inbox
 
@@ -38,6 +39,22 @@ Sorted by destination at E05's audit (T9a, 2026-10-19); the origin stays in brac
 done: BAT-Q33's point for E05 (AI-Q3, ADR-0025 point 6), the `h3-game` coverage gap of a pending
 Pass offer (fixed by the adventure lane's fixed tests, #266).
 
+- 2026-10-23 (the adventure lane, E08 T45, `shared/e08-t45`, `cross-lane` with the user's
+  consent; **for you**): **the adventure env is yours** (the user at ADV-Q24 and ADV-Q25, E08
+  decisions 99 and 103; ADR-0017 point 8): `crates/h3-sim/src/adventure/` (`AdventureEnv`, the
+  action encoding v4 and its masks, the rollout, `tests.rs` and `tests/`) moved to you in
+  `lanes.toml`, with `ACTION_ENCODING_VERSION` (`docs/08-work-process.md`'s versions table); the
+  adventure lane keeps `replay.rs` (the replay model of game commands, `REPLAY_FORMAT_VERSION`),
+  `h3-cli`'s `src/adventure/`, the golden replays and `benches/adventure/`. The adventure lane's
+  increment 6 (army and hero management) adds no entry to the encoding: its management commands
+  reach agents through `h3_game::legal_commands` only. **One check is due by the adventure lane's
+  T52** (round 5; `docs/epics/E08-design.md` §12): once T51 opens a meeting or an army dialog as a
+  pending decision (each blocks its owner's `EndTurn`, as an offer does), the masks must allow
+  `Decline` while one is open, so the rollout and the replays' recorder close it and play on.
+  `legal_mask` builds the answers from `legal_commands`, which will list `Decline` there, so this
+  may need only a test; the adventure lane tells this inbox when T51 lands. The core ruleset hash moved to
+  v48 in the same pull request (two hero-effect kinds the adventure reads): `bots-report-v1.json`
+  regenerated (`h3 ai eval --set report-v1 --json`).
 - 2026-10-23 (the battle lane, E23 T5b2b, `battle/e23-t5b2b`, `cross-lane` with the user's consent;
   for your information, nothing to do): `h3_battle_ai::POLICY_VERSION` is 15: in a computer hero's
   Teleport value every stack's first turn asks its creature cast entry (a Faerie Dragon's spell

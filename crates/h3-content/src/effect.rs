@@ -668,6 +668,18 @@ pub enum HeroEffect<C, K, S, F, L> {
         /// Tiles added (≥ 1).
         tiles: u8,
     },
+    /// At a meeting of two heroes of one player each learns the other's learned spells up to this
+    /// level and its own learnable level (pack format v47, E08 increment 6; ADR-0013 point 14.3,
+    /// HER-SPL-007; Scholar: 2, 3, 4, the original's level + 1, 0x4A2940). Several sources, and
+    /// the two heroes' sources: the highest.
+    MeetingSpells {
+        /// The highest spell level a meeting may teach (1..=5).
+        level: u8,
+    },
+    /// Equipping the artifact puts a Spell Book into the hero's empty spell book position;
+    /// removing it takes nothing back (pack format v47, E08 increment 6; ADR-0013 point 3,
+    /// HER-ART-007; Titan's Thunder, 0x4E2A64).
+    GivesSpellBook,
 }
 
 /// An effect as written in a pack (references are keys).
@@ -677,7 +689,7 @@ pub type CompiledHeroEffect = HeroEffect<CreatureTypeId, SkillId, SpellId, Facti
 
 impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
     /// Pack names, indexed by [`HeroEffect::code`].
-    pub const NAMES: [&'static str; 51] = [
+    pub const NAMES: [&'static str; 53] = [
         "morale",
         "luck",
         "ranged_damage",
@@ -729,6 +741,8 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
         "flying",
         "water_walking",
         "scouting_radius",
+        "meeting_spells",
+        "gives_spell_book",
     ];
 
     /// Stable code of the variant (canonical hash, duplicate checks).
@@ -785,6 +799,8 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
             Self::Flying { .. } => 48,
             Self::WaterWalking { .. } => 49,
             Self::ScoutingRadius { .. } => 50,
+            Self::MeetingSpells { .. } => 51,
+            Self::GivesSpellBook => 52,
         }
     }
 
@@ -979,6 +995,8 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
             Self::Flying { level } => HeroEffect::Flying { level: *level },
             Self::WaterWalking { level } => HeroEffect::WaterWalking { level: *level },
             Self::ScoutingRadius { tiles } => HeroEffect::ScoutingRadius { tiles: *tiles },
+            Self::MeetingSpells { level } => HeroEffect::MeetingSpells { level: *level },
+            Self::GivesSpellBook => HeroEffect::GivesSpellBook,
         })
     }
 
@@ -1093,6 +1111,9 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
                 Some("flying and water_walking levels must be 0..=3")
             }
             Self::ScoutingRadius { tiles: 0 } => Some("scouting_radius tiles must be at least 1"),
+            Self::MeetingSpells { level } if !(1..=MAX_SPELL_LEVEL).contains(level) => {
+                Some("meeting_spells level must be 1..=5")
+            }
             _ => None,
         }
     }
@@ -1303,7 +1324,8 @@ impl CanonicalHash for CompiledHeroEffect {
             | Self::Scroll
             | Self::NoCasting
             | Self::MindImmunity
-            | Self::NegateImmunities => {}
+            | Self::NegateImmunities
+            | Self::GivesSpellBook => {}
             Self::SpellLevelLimit { level } | Self::SpellLevelImmunity { level } => {
                 h.write_u8(*level);
             }
@@ -1345,7 +1367,8 @@ impl CanonicalHash for CompiledHeroEffect {
             | Self::Ballistics { level }
             | Self::Pathfinding { level }
             | Self::Flying { level }
-            | Self::WaterWalking { level } => h.write_u8(*level),
+            | Self::WaterWalking { level }
+            | Self::MeetingSpells { level } => h.write_u8(*level),
             Self::LearnLevel { levels } => h.write_u8(*levels),
             Self::LandMovement { bp } => h.write_u16(*bp),
             Self::LandMovementPoints { points } => h.write_u16(*points),
@@ -1493,6 +1516,8 @@ mod tests {
             E::Flying { level: 3 },
             E::WaterWalking { level: 0 },
             E::ScoutingRadius { tiles: 1 },
+            E::MeetingSpells { level: 2 },
+            E::GivesSpellBook,
         ]
     }
 
@@ -1815,6 +1840,8 @@ mod tests {
             E::Flying { level: 4 },
             E::WaterWalking { level: 4 },
             E::ScoutingRadius { tiles: 0 },
+            E::MeetingSpells { level: 0 },
+            E::MeetingSpells { level: 6 },
         ];
         for e in bad {
             assert!(e.parameter_error().is_some(), "{e:?}");

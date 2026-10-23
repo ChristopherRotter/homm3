@@ -15,6 +15,61 @@ a line there while the work waits.
 
 ## The adventure lane's harness
 
+- 2026-10-22 (the adventure lane, E08 T37b, `adventure/e08-t37b`, `cross-lane` with the user's
+  consent; for information, nothing to do): batch E5's recipes `clients/capture/batches/E08-batch-5a.toml`
+  to `-5e.toml`, each run clean under Wine at its first run; `h3adv`'s `level_up` may name a skill
+  (`side_of`: taken on whichever side it stands) and `path_tiles[:<row>]` reads the path's marked
+  tiles (the walk's observation keeps them as `tiles`). The runbook says how.
+
+- 2026-10-22 (the adventure lane, E08 T37a, `adventure/e08-t37a`, `cross-lane` with the user's
+  consent; for information, nothing to do): what the two entries below announce is built in
+  `clients/capture/`.
+  `h3mem.Mem.explored` (a tile's explored bit, the vision words at 0x6989F8); `h3adv`'s
+  `explored:x,y[,level][:colour]`, the hero details `points` and `day_points`, the step `equip`
+  (the hero screen opened by a click on the hero, backpack to slot, closed with `Return`; probes
+  `hero_screen` in `screens.toml`) and a wider table's cells by `<row> | <column>` (`fill`,
+  `records`); the harness check's Fog and Equip (Blue's heroes). The runbook says how.
+
+- 2026-10-22 (the adventure lane, E08 T36b, `adventure/e08-t36b`, `cross-lane` with the user's
+  consent; for information): `h3_map::writer::Map` gained `banned_skills`; `h3-view`'s situation
+  map says none (one line, as for T32a's level limit). Batch E5e also needs an artifact moved from
+  the backpack to a slot in the hero screen (E5-3b, E5-10b); the adventure lane builds it with the
+  reads below in T37, or skips those two rows.
+
+- 2026-10-22 (the adventure lane, E08 T34b; for your information, nothing to do): batch E5 (the
+  hero's movement and scouting; `docs/epics/E08-design.md` §11) needs the harness to read a tile's
+  explored bit for a player (`explored:x,y`) and a hero's points at a turn start without a walk;
+  the adventure lane builds them in `clients/capture/` as `cross-lane` (T37, as T32b1 did) once the
+  user accepts the cut (ADV-Q21), with the recipes.
+
+- 2026-10-21 (the adventure lane, E08 T32b2, `adventure/e08-t32b2`, `cross-lane` as T32b1; for your
+  information, nothing to do): **four more harness changes** while batch E4 ran (runbook updated):
+  a step's `note` (read as `record`, under "anything odd" unless `none`) and the hero detail
+  `equipment` (the worn artifacts but the war machines and the spell book; every hero wears a
+  Catapult); `h3lod.identify` takes the most specific record (the most literal text) of any run
+  of the dialog's text items: it took the first match of the whole text, and `%s the %s`
+  (GENRLTXT 16) formats any text with " the " (a picture's caption is a text item of its own:
+  the Necromancy dialog, GENRLTXT 146, never matched); `strike` tries its hover pass four times,
+  a second apart (a good morale's extra turn showed only the plain pointer, frame 6). The
+  capture set does not use them: no capture was taken. The harness check passed after them.
+
+- 2026-10-21 (the adventure lane, E08 T32b1, `adventure/e08-t32b1`, `cross-lane` with the
+  user's consent, decision 68; **your harness changed**, nothing to do but read): the adventure
+  lane built batch E4's reads itself, so its two requests (2026-10-20, -21) are done and gone from
+  this inbox, and so is your T7a-2a note (`h3adv` now knows the battle screen in its
+  `battle_book` state too; the check's Gear hero carries a book). In `capture/`: `h3mem` reads a
+  hero's seed byte and offer counters, its skills in order, its artifacts worn and in the backpack
+  (names from the artifact table), the dialog's items and the level-up dialog (`level_up_dialog`
+  0x4F8880's DEF pictures 2009 to 2011, read for them), the battlefield, the hex records (stack,
+  flags, attack mark) and a stack's speed; `h3adv` records every level-up dialog (one or no offer
+  too), takes `level_up` as a list, notes other dialogs' records (`messages`), has the
+  observations of the runbook's table and plays battles by `attack` or a plan (`{ attack =
+  "Ballista", by = "defender", then = "attack" }`): **auto combat does not play a battle between
+  two human players in hot seat** (the runbook's traps), so the plans click like a player, the
+  mouse resting until the combat cursor shows a melee attack. Fixed on the way: a local `value`
+  in `value()` (your T6c-2 winner fix) made every `before:` read fail. `checks/harness-check.toml`
+  gained Exp's and Lvl's new reads and the encounter Gear; the check passes (about four minutes).
+  The recipes for batch E4 come with E08 T32b2 (`cross-lane` again).
 - 2026-10-20 (the adventure lane, E08 T22a3, `adventure/e08-t22a3`, `cross-lane`, with the user's consent; for your information, review if you like): **a change to `capture/h3adv.py`'s auto combat.** Batch E3b stalled at its first battle in every run: `fight` sent `a` 0.5 s after the stacks appeared, before the game's first battle gave a stack its turn, and the key was lost (the attacker's stack stayed active; an `a` by hand then started auto combat; the later battles took the harness's key). The new `auto_combat` waits for an active stack (or the result's OK), presses `a`, and presses again when the same stack stays active with every stack unchanged for 10 s; the runbook's traps have a line. E3a, E3b and E3c then ran through (`experiments/results/E08-batch-3{a,b,c}.md`); the winner of -1 noted at T22a2b did not come up.
 - 2026-10-20 (the adventure lane, E08 T22a2b, `adventure/e08-t22a2b`, `cross-lane`, with the user's consent; for your information, nothing to do): **a third recipe in your folder**, `capture/batches/E08-batch-3c.toml` (Normal, 4 steps; spec `experiments/specs/E08-batch-3c.toml`), for batch E3's hero rows: two reads at the start (`heroes:experience`; a hero with 5 000 experience: `hero:level`, `hero:primary`, eight `hero:skill:<name>` rows of a table) and one of the defender's experience (`hero[E3-9]:experience`), then a hero battle the attacker surrenders (`battle = "surrender"`: Blue's stacks defend until Red's first acts) with both players' gold before and after, `hexes:start:attacker` and `:defender` (the defender tight on the map, five stacks, so both formations show), `surrendered`, `winner`, `hero:on_map`, `hero:army` and `hero[E3-9]:experience`. Only what H1 and H2 built; every record key checked against the compiled template's fields. Not run yet (T22a3). If a run shows a harness gap, the adventure lane's inbox. **One small thing for you** (found by the T22a2b review): `h3adv.value` prints `SIDES[fought["winner"]]`, and `h3mem.battle_outcome`'s winner is an `i32`, so a winner of -1 (none) would print `defender`; E3c reads it but decides by `surrendered` and the gold.
 - 2026-10-20 (the adventure lane, E08 T22a2a, `adventure/e08-t22a2a`, `cross-lane`, with the user's consent; for your information, nothing to do): **two recipes in your folder**, `capture/batches/E08-batch-3a.toml` (Easy, 4 steps) and `E08-batch-3b.toml` (Normal, 19 steps, both players' turns of day 1), for batch E3's monster rows (specs `experiments/specs/E08-batch-3{a,b}.toml`). They use only what H1 and H2 built: `answer = "no"` for every question (E3-5 B: `{ flee = "yes", other = "no" }`), `battle = "auto"` or `"retreat"`, a walk below (`[12, 27, 1]`), eight heroes for Red (the list scrolled), `before:hero:primary`, `aggression:` and `never_flees:` in a step without a walk, `stacks:start:defender`, `winner`, `monster:x,y[,level]`; every record key was checked against the compiled templates' fields. Not run yet (T22a3). If a run shows a harness gap, the adventure lane's inbox.
@@ -77,8 +132,9 @@ a line there while the work waits.
 - 2026-10-14 (the battle lane, E04c T6, `cross-lane`; for your information): the base pack gained the Catapult creature (145, `base:catapult`), so `clients/assets/base.toml` gained its entry as `h3-view harvest` writes it (`smcata.def`, missile `SMCatx.def`, the harvested times and offsets) for `every_pack_key_has_an_entry`; the battle sets the Catapult up in a siege for an attacker with a hero (BAT-SIE-009), and the protocol (v31) has `ShootWall`, `WallShot`, `WallQuaked`, `WallDestroyed` and `Siege.parts`.
 - 2026-10-16 (the battle lane, E04c T10c; for your information): the original opens a town's gate as a defender begins its step onto hex 96 (the walker still on 97, then the step); the engine reports `GateOpened` after the `Moved` onto 96 (the same state): whether the viewer's animation opens it before the step. Your note of 2026-10-15 for the battle lane (the First Aid Tent's patient, idle war machines defending) is in the battle queue's inbox now.
 
-## Options, layouts, the adventure map
+## Options and layouts
 
 - 2026-10-13 (the user, at E17 M1): **graphics options.** Eventually the user chooses per effect whether it is drawn the original's dated but familiar way or a modern one (shadows first). The agent's notes: `faithful` stays the default and the only setting the reference frames check (ADR-0020 point 9); an option is a field of a settings value the compositor takes, never a fork of the scene model, so the draw list keeps naming what is drawn and only `h3-render` decides how; a modern shadow may want more than the 16-bit screen (alpha over a 24-bit frame), which ADR-0020 point 3 has to allow; independent of the asset fixes' `faithful`/`fixed` profile (point 6). An ADR-0020 amendment when the first option is built.
 - 2026-10-13 (E17 M1 T8, the reviewer): an HD layout needs the battlefield's origin and viewport in the layout format (the heroes, war machines and the water and rock battles went into M3 T2 and T3 at T5c).
-- 2026-10-12 (the user, at E17 M0): the adventure map's object draw order is surprisingly complicated; the user's own engine and VCMI (at the time) did not get it exactly right. Research item 9 (HANDOFF): a code reading of the executable's map drawing (the order of objects, their shadows, heroes and overlapping tiles) when the adventure map viewer is refined, with reference frames from the original to confirm.
+- 2026-10-23 (E17 M3 T9c): the adventure map's object draw order (research item 9) went to the
+  map-client lane with the split (its queue's inbox).

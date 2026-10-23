@@ -275,8 +275,10 @@ Each with the user's checkpoint; only the next one refined (Q41's pattern).
   run by `t3b-1`'s costs), T4b (two league runs of 60 M samples, about 3.5 hours each, at γ 0.995
   and γ 1.0 against the stalling; one of them stopped and resumed for real).
 - **Increment 4** (refined 2026-10-22; T4b's evidence: the MLP at γ 1.0 still climbs slowly, the
-  learning rate at its floor at the budget): T5a (the entity network of §11 and the
-  visualization command), T5b (the user's A/B run, 60 M samples, `t4-2` the control).
+  learning rate at its floor at the budget; done 2026-10-23): T5a (the entity network of §11
+  and the visualization command), T5b (`t5-1`: stalled), T5c (the truncation penalty), T5d
+  (`t5-2`, `t5-3`: the entity network parked, the MLP with the penalty near `t4-2`'s 60 M in
+  20 M).
 - **Then** T5's rest (AI-Q7 (b), the mana price, the batch size and threads from T9c's table,
   the observations in place), T6, T7 (E23's neutral side is complete), T8 (only if PPO
   plateaus), T9.
@@ -318,6 +320,10 @@ key is an MLP). The comparison with the other architectures the user saw: `E06-l
   context, so "to my edge" is easy and "toward that stack" hard; both sides learned to hide and
   45 % of self-play stalled to the step limit. The user's remedy is the incentive, not features:
   `ppo.truncation_penalty` (T5c).
+- **Parked** (T5d, 2026-10-23): with the penalty the entity network stopped stalling but stayed
+  behind the MLP per sample from 10 M on (entropy 3.4 to 3.1, the MLP's 2.7 to 1.9; explained
+  variance 0.52 against 0.78) at 3.4 times its cost. It stays buildable (`kind = "entity"`);
+  a revival would start from the move head's view of the stacks.
 - **Visualization** (`python -m h3env.train.network`, no dependency beyond torch): a config's
   network (`--config`, `--set`) or a saved file's: each module's parameters and output shape on
   an observation, the multiply-adds of its linear layers and attention, the time of a forward

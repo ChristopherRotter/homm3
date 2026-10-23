@@ -1,0 +1,63 @@
+# E17 M3 T9d: Sacrifice (CLT-Q17; design §7.16, player 4): the cast's line names its victim
+# after its death (0x5A1A30: by its number 0), then the victim's animation 51 with its death,
+# then the raise. Hot seat: round 1 the Grand Elves (speed 7) shoot the lone Pikeman (row 2); on
+# the Swordsmen's turn Orrin casts Sacrifice on the Pikeman's corpse (hex 35) with the lone Archer
+# (row 5, hex 86) its victim, so that the line's name shows which number it was written with (the
+# singular for 1, the plural for 0). On grass at the capture set's tile.
+
+[scenario]
+id = "sequence-sacrifice"
+# Both players human, as the original's hot-seat map (`h3-view situation --hot-seat`).
+human = ["attacker", "defender"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:pikeman"
+count = 1
+
+[[attacker]]
+slot = 1
+creature = "base:archer"
+count = 1
+
+[[attacker]]
+slot = 2
+creature = "base:swordsman"
+count = 20
+
+[[defender]]
+slot = 0
+creature = "base:grand_elf"
+count = 10
+
+[[defender]]
+slot = 1
+creature = "base:marksman"
+count = 10
+
+# The heroes (E17 M3 T3a) with 1 in every primary skill but Orrin's knowledge: 40 spell points,
+# Sacrifice (25).
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 4
+mana = 40
+max_mana = 40
+spell_book = ["base:sacrifice"]
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1

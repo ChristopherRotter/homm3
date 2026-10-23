@@ -640,6 +640,8 @@ different creatures or statistics.
 | `land_movement_points` | `points` (≥ 1) | since v46: flat points added to the day's land points after the rates; sources add, each artifact type once (Boots of Speed 600, Equestrian's Gloves 300: `movement.txt`; HER-ADV-003) |
 | `flying`, `water_walking` | `level` (0..=3) | since v46: the hero flies / walks on water on the adventure map; the level indexes the adventure part's fly and water-walk prices, the highest counts (Angel Wings, Boots of Levitation: 3, 0x4B18C0; the spells' levels later; HER-ADV-005) |
 | `scouting_radius` | `tiles` (≥ 1) | since v46: the hero's scouting radius grows by `tiles` over the adventure part's base; sources add, each artifact type once (Scouting 1/2/3, the Speculum and the Spyglass 1 each, 0x4E4070; HER-ADV-006) |
+| `meeting_spells` | `level` (1..=5) | since v47 (E08 T45; read from E08 T49): at a meeting of two heroes of one player, each learns the other's learned spells up to the lesser of its learnable level and this level, the highest of both heroes' sources, if both wear a spell book (Scholar: 2/3/4, the code's level + 1, 0x4A2940; HER-SPL-007) |
+| `gives_spell_book` | — | since v47: equipping the artifact puts a Spell Book into the hero's empty spell book position, on every path (a move, a gain, a combination's build); removing it takes nothing back (Titan's Thunder, 0x4E2A00; HER-ART-007) |
 
 The three `*_specialty` kinds are allowed in a hero's `specialty` only.
 

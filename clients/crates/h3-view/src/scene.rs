@@ -13,7 +13,7 @@ use core::fmt;
 
 use h3_protocol::wire::{Event, Manifest, Observation, Side, Stack};
 
-use crate::anim::{Field, Magic, Object, Pose, Projectile, Ray, Spot, Timeline};
+use crate::anim::{Field, GONE, Magic, Object, Pose, Projectile, Ray, Spot, Timeline};
 use crate::hero::{FLAG_START, HeroPose};
 use crate::layout::BattleLayout;
 use crate::tables::{ObstacleArt, Tables};
@@ -694,10 +694,14 @@ pub fn battle_at(
             taken.extend(ahead(pose.hex, !pose.mirrored, 0));
         }
     }
+    // A stack gone without a corpse (`anim::GONE`, E17 M3 T9d) is not drawn.
     let stacks = observation
         .stacks
         .iter()
-        .filter(|s| s.alive || moment.poses.contains_key(&s.id))
+        .filter(|s| match moment.poses.get(&s.id) {
+            Some(pose) => pose.layer != GONE,
+            None => s.alive,
+        })
         .map(|s| {
             let pose = pose_of(s, moment, tables);
             let sprite = creature(s, pose, moment, manifest, tables, layout, at)?;

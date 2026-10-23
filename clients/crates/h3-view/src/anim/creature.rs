@@ -4,6 +4,8 @@
 
 use alloc::vec::Vec;
 
+use h3_render::Bugs;
+
 use super::{Explosion, MagicLook, Player, Riding, STANDING, STRUCK, Sound, SpotKey};
 use crate::battle_log::Logged;
 
@@ -68,9 +70,10 @@ impl Player<'_> {
     /// 0x43FF33; E17 M3 T7c-3, `creatures`): the spell's sound (category 3), then each frame of
     /// its animation a redraw waiting the explosion's time on the deadline, not shown, the frame
     /// drawn plain over everything at the creature's centre (as place 1, never mirrored; the
-    /// Liches' too, though the table marks theirs translucent: CLT-Q14, built as the original's;
-    /// its DEF loaded apart, so memory's magic animation does not name it), then shown; a redraw
-    /// at once erases it. The reactions follow (`strike_animation`).
+    /// Liches' too, though the table marks theirs translucent: CLT-Q14, translucent as the table
+    /// says with the bugs fixed, E17 M3 T9d; its DEF loaded apart, so memory's magic animation
+    /// does not name it), then shown; a redraw at once erases it. The reactions follow
+    /// (`strike_animation`).
     pub(super) fn explosion(&mut self, e: Explosion, target: u8) {
         let (Some(live), Some(look)) = (self.live(target), self.stage.magic.get(&e.animation))
         else {
@@ -83,12 +86,13 @@ impl Player<'_> {
         self.cue(target, Sound::Spell(e.spell), false);
         let at = self.magic_at(&live, &look);
         let time = self.speed.scale(e.time);
+        let translucent = look.translucent && self.stage.bugs == Bugs::Fixed;
         let key = |shown: u32, frame: Option<u32>| SpotKey {
             animation: e.animation,
             shown,
             frame,
             def: look.def.clone(),
-            translucent: false,
+            translucent,
             at,
         };
         for f in 0..look.frames {
