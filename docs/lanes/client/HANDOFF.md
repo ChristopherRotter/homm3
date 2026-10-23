@@ -6,8 +6,8 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 - **E17 M0–M3 done** (M3 closed by T9d, 2026-10-23: CLT-Q9 to Q17's fixes; **the lane split at
   T9c**, CLT-Q18: this lane keeps the battle client, the adventure map client is the map-client
-  lane's E24); **next: M4 T0** (sieges refined with the user; M5 live play after them;
-  `QUEUE.md`). Workspace `clients/`
+  lane's E24); **M4 (sieges) refined at T0**; **next: M4 T1a** (the siege still read; M5 live
+  play after M4; `QUEUE.md`). Workspace `clients/`
   (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in
   `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in
   `E17-log.md`.
@@ -62,11 +62,12 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
-- **2026-10-23, E17 M3 T9d (done; #413 open).** Not split (the user): the fixes behind
+- **2026-10-23, E17 M4 T0 (done; #415, docs only).** M4 cut with the user: T1a, T1b (the still),
+  T2a to T2c (over time), T3; the wall states as stills by memory, on a subset of towns if T1a
+  finds the rules the same.
+- **2026-10-23, E17 M3 T9d (done; #413).** Not split (the user): the fixes behind
   `anim::Stage::bugs`; `sacrifice` recorded (Q17 confirmed; the victim's dissolve: its time
   built, its blend in the inbox). M3 done.
 - **2026-10-23, E17 M3 T9c (done; `shared/map-client-lane`, `cross-lane`).** The user split the
   lane (CLT-Q18): the map-client lane opened (E24), the foundation and the harness common; T9d
-  stays M3's last, M4 sieges then M5 live play; adventure-map items moved to the new lane.
-- **2026-10-23, E17 M3 T9b (done; #405).** Three reviewers in parallel (the user): 26 findings,
-  20 fixed, 5 queued (inbox); the review list accepted, CLT-Q9 to Q17 answered (T9d).
+  stays M3's last, M4 sieges then M5 live play.

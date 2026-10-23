@@ -2237,6 +2237,31 @@ both executables, the five DLLs, the battle tunes, `extracted.tar`).
   `a_stack_gone_without_a_corpse_is_not_drawn`.
 - **Gates:** the full check: in the pull request. **M3 done.**
 
+### M4 T0 — M4 (sieges) refined (2026-10-23)
+
+On `client/e17-m4-t0`, the user present. #413 (T9d) had merged; `master` at #414. Docs only.
+
+- **What the agent surveyed** (no reading of code beyond names and tables): the engine plays
+  sieges since E04c, and the wire carries them (`Siege`: faction, fort, moat, gate, wall and moat
+  hexes, the parts' hit points; `WallShot`, `WallQuaked`, `WallDestroyed`, `GateOpened`,
+  `GateClosed`, `MoatDamage`; the turrets as stacks at 251, 254, 255); the viewer draws none of
+  it (a `WallShot` only stands the fidgeting stacks, `anim`). The battle lane's
+  readings (`installation.md` §7.27 to §7.31) and the address map hold the drawing's data: 18
+  wall parts per town (0x66D868: hit points, screen point, the hex after which it is drawn, six
+  pictures), the turrets' records (0x63CF88, inferred), the backgrounds (0x63D2A0); the
+  executable names 28 PCX per town (`Sg<town><part>.pcx`; the Tower 26, without the moat and its
+  lip; `TpWl` in five towns, `TpW1` in four, to check against the LODs; two more, `SgOb1h` and
+  `SgOb2h`). The harness sets sieges up already (the writer's `Town` with custom buildings,
+  `experiments/agent/siege.py` steps a hero in and reads the walls, the gate and the moat) and
+  can write the game's memory (`h3mem.write_u32`).
+- **The cut, agreed:** T1a the still read, T1b the still captured, T2a the siege over time read,
+  T2b the Catapult and the turrets recorded, T2c the gate, the moat, Earthquake and the mouse
+  recorded, T3 the closure (QUEUE; the epic's M4). R2-8 and R3-1 are not needed by sieges and
+  stay for M5.
+- **The user on the wall states:** stills by setting the walls (the harness writes the parts'
+  hit points into the running copy's memory at the start, the viewer gets the same values), and
+  only a subset of towns if they follow the exact same rules (T1a says which).
+
 ## Accepted review lists (M1, M2, M3)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its
