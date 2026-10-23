@@ -40,5 +40,5 @@ The map client lane's living state; read after the global `docs/HANDOFF.md`. For
 
 ## Recent sessions
 
-- **2026-10-23, E24 M1 T4a** (`map-client/e24-t4a`): T4 split with the user (T4a, T4b, heroes' order and the path's arrows to T5); MCL-Q2 answered (a), as built. The objects drawn (`objects`: `.msk` shapes, draw lists; passes 4, 5, 7), situations with objects (copies with `objects = true`, objects by DEF), phases and the frame step from memory (`h3mem.Mem.map_objects`, `render --live`); six object situations exact on their first runs, the whole set again after. **PR open:** check it first.
+- **2026-10-23, E24 M1 T4a** (`map-client/e24-t4a`): T4 split with the user (T4a, T4b, heroes' order and the path's arrows to T5); MCL-Q2 answered (a), as built. The objects drawn (`objects`: `.msk` shapes, draw lists; passes 4, 5, 7), situations with objects (copies with `objects = true`, objects by DEF), phases and the frame step from memory (`h3mem.Mem.map_objects`, `render --live`); six object situations exact on their first runs, the whole set again after. **#434 open:** check it first.
 - **2026-10-23, E24 M1 T3b2** (`map-client/e24-t3b2`): the situations (`h3_map_view::situation`) and `h3map.py` (Red's explored bits written, the view by the minimap, the clock frozen, k read from memory); 11 situations exact. #428 and #430 merged.
