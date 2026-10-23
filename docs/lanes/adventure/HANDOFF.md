@@ -41,7 +41,7 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 
 ### 2026-10-23 — increment 6, round 1: T45
 
-Baseline 5c09687. Decision 106 (T45 whole, `shared/`, `cross-lane`). Pack format v47, core hash v48.
+Baseline 5c09687. Decision 106 (T45 whole, `shared/`, `cross-lane`). Pack format v47, core hash v48. Full verify green on 00497ba.
 
 ### 2026-10-23 — increment 6, second session: T44b
 

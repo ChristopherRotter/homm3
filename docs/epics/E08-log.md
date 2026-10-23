@@ -4889,3 +4889,8 @@ original data from the PC (the executable, both LODs, `maps.tar`, `extracted.tar
   decision 106 and the task's line in the epic; the queue (T45 out, an inbox note for T49 and
   T51); the battle lane's inbox and its HANDOFF's shared versions; `docs/03`'s glossary (the
   tactics flag, positions from T49, the meeting and the army dialog).
+- **Verify**: the full run with the original data on 00497ba (engine code b28276c9) passed all 16
+  steps (benchmarks within +0.44 %, the harvest check matching the installation); a first run was
+  stopped when two comments changed the code. `master` (#416, docs only) merged in after it, its
+  adventure inbox note beside T45's; `check-lane`, `check-docs`, `check-exe-map` and `check-rules`
+  passed again. CI cannot run (billing).
