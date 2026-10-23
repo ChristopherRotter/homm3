@@ -11,8 +11,9 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   increments 1 to 4 done (#306 to #419; best so far `t5-3`'s MLP 0.832, 0.557, 0.533 against
   Random, Aggressor, Greedy in 20 M, `t4-2`'s 0.839, 0.578, 0.559 in 60 M). **Increment 5**
   (T7, the neutral share; design §12): T7a (#420), T7b (#421, C ABI v32) and T7c (the neutral
-  set v1, the system actor on the ladder: the strongest bot; #426, open) done 2026-10-23.
-  **Next:** #426's merge, then T7d, the user's run (`configs/e06-t7.toml`; QUEUE).
+  set v1, the system actor on the ladder: the strongest bot; #426) done 2026-10-23. T7d, the
+  user's run at a third neutral, beside it T5's rest in the sandbox (the mana price's
+  preparation; **next** AI-Q7 (b) part 1; QUEUE).
 - **Versions:** battle action encoding v13, observation encoding v21, replay format v30 (E23 T6), the adventure env's action encoding v4 (E08 T45), C ABI v32 (E06 T7b: `H3_SEAT_SYSTEM`) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q10, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
@@ -82,23 +83,25 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 - A network is made only by `policy.build` from a config (a saved file's: without `kind` an
   MLP); `Mlp`'s parameter names stay, so older files load. Time a kind with `python -m
   h3env.train.network --time` (the sandbox's CPU is noisy: `--repeats 30`).
-- Diagnosing a user's run: they upload `metrics.jsonl`, `best.pt`, `checkpoint.pt`;
-  `evaluate.load` builds them on the CPU.
+- A user's run: they upload `record.json`, `metrics.jsonl`, `best.pt`; `evaluate.load` builds
+  a network on the CPU.
 - The sandbox reaches PyTorch's index only while the environment's network access allows
-  `*.pytorch.org` (**Custom**; **Trusted** ignores the Allowed domains; a raw `CONNECT host:443`
-  to `$HTTPS_PROXY` shows the proxy's reason). `uv --directory python sync --group train`: 3 to
-  25 minutes.
+  `*.pytorch.org` (**Custom**; **Trusted** ignores the Allowed domains). `uv --directory python
+  sync --group train`: 3 to 25 minutes.
 
 ## Recent sessions
 
+### 2026-10-23 — T7d's mix; T5's rest beside it
+
+- The user: T7d at a third neutral (their machine); here the mana price's preparation (one pull
+  request), then AI-Q7 (b) part 1. `preview` validates each command (a path search each):
+  measure it over every entry first.
+
 ### 2026-10-23 — E06 T7c, the trainer's neutral share
 
-- The user: T7c in one pull request. The neutral set v1, `h3 ai eval --set neutral-v1` (a fixed
-  defender), `--json` schema 2, both bots' tables, no league member in a neutral episode, the
-  rates by kind, `ladder_neutral`, `configs/e06-t7.toml`. The sandbox reached PyTorch's index:
-  the torch tests ran. #426 open (full local verify green on its merged head); T7d next.
+- The user: T7c in one pull request (#426, merged): the neutral set v1, the system actor on the
+  ladder, both bots' tables, no league member in a neutral episode, the rates by kind.
 
 ### 2026-10-23 — E06 increment 5 refined, T7a and T7b
 
-- The user: T7, no run meanwhile; the neutral weights in the run's config. T7a (#420) and T7b
-  (#421) merged.
+- The user: T7, no run meanwhile; the neutral weights in the run's config (#420, #421).

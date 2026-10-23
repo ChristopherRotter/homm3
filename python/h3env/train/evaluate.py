@@ -79,6 +79,13 @@ NEUTRAL_KINDS = frozenset(NEUTRAL_V1_WEIGHTS)
 #: The held-out sets the ladder plays (`h3 ai eval --set`'s names).
 SETS = ("report-v1", "neutral-v1", "v0")
 
+#: Reward v1's currency and mana price (`h3_sim::reward::RewardConfig::default()`): every
+#: evaluation scores its value efficiency at them, the trainer's ladders too whatever the run
+#: trains with (`[env] currency`, `mana_price`), as `h3 ai eval` scores the bots' tables, so the
+#: records stay comparable (decision 7's mean reward v1).
+CURRENCY = "ai_value"
+MANA_PRICE = 10
+
 #: The sets stratified by kind (`report`): their base seed, envs per kind, kinds' weights and the
 #: sides the agent plays.
 STRATIFIED = {
@@ -206,8 +213,8 @@ def play(
     seed: int = EVAL_SEED,
     max_steps: int = 2000,
     kinds: Iterable[int] | None = None,
-    currency: str = "ai_value",
-    mana_price: int = 10,
+    currency: str = CURRENCY,
+    mana_price: int = MANA_PRICE,
     opponent: str = "random",
     sides: Iterable[str] = ("attacker", "defender"),
     stop=None,
@@ -299,8 +306,8 @@ def report(
     rng_seed: int = 0,
     threads: int = 0,
     max_steps: int = 2000,
-    currency: str = "ai_value",
-    mana_price: int = 10,
+    currency: str = CURRENCY,
+    mana_price: int = MANA_PRICE,
     stop=None,
 ) -> dict:
     """Plays a stratified set (design §5: the report set v1 by default; the neutral set v1, whose

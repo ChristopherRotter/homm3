@@ -82,6 +82,8 @@ class Config:
     max_steps: int = field(default=2000, metadata=_in("env"))
     #: The family's kind weights (`H3_ENCOUNTER_*` order); None: the distribution's defaults.
     kinds: list[int] | None = field(default=None, metadata=_in("env"))
+    #: The training's reward (the mana-price experiment, decision 10): the gate reads results
+    #: only, the ladders score at reward v1's (`evaluate.CURRENCY`, `MANA_PRICE`).
     currency: str = field(default="ai_value", metadata=_in("env"))
     mana_price: int = field(default=10, metadata=_in("env"))
     #: The network (design §11): "mlp" (E05's) or "entity"; a saved file without the key is an

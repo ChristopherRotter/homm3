@@ -544,6 +544,19 @@ def test_a_neutral_episode_draws_no_member_and_the_rates_split_by_kind() -> None
         assert int(batch.encounter[e]) not in NEUTRAL_KINDS
 
 
+def test_the_ladder_scores_at_reward_v1s_settings_whatever_the_run_trains_with() -> None:
+    # The mana-price experiment (decision 10): `[env] currency` and `mana_price` shape the
+    # training's reward only; the ladders score at reward v1's, as the bots' tables do.
+    trainer = Trainer(Config(**{**SMALL, "max_steps": 2000}, currency="gold", mana_price=1000))
+    trainer.promote()
+    row = trainer.ladder(final=False)["opponents"]["random"]
+    best = trainer.lineage[-1][1]
+    settings = dict(opponents=["random"], per_kind=1, threads=2, max_steps=2000)
+    plain = ladder(best, **settings)["random"]
+    trained = ladder(best, **settings, currency="gold", mana_price=1000)["random"]
+    assert row["value"] == plain["value"] != trained["value"]
+
+
 def _gate(result: str):
     """A stand-in for `gate.gate` that decides at once (`result`)."""
 

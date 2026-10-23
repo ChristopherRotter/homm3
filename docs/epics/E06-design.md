@@ -194,8 +194,10 @@ final best (`Trainer.ladder`), each a `ladder` record. Not built: `h3 ai eval --
   ladder, all 500 at the end and for any claim of a target (built as a tool in T3a:
   `evaluate.ladder`, `report`; T3b plays it inside a run).
 - **Per opponent:** the win rate per (kind, side), per kind and overall with the 95 % intervals
-  of §5, the value efficiency (mean reward v1, weighed alike), truncations, skipped episodes,
-  games and seconds. One `ladder` record and the record's ladder table.
+  of §5, the value efficiency (mean reward v1, weighed alike: at reward v1's currency and price,
+  `evaluate.CURRENCY`, `MANA_PRICE`, whatever the run's `[env]` trains with; the gate reads
+  results only), truncations, skipped episodes, games and seconds. One `ladder` record and the
+  record's ladder table.
 - **The bots' table** on the report set — built (T3a): `h3 ai eval --set report-v1 --json
   python/records/bots-report-v1.json` plays every pair of bots on the same episodes; the bots
   are deterministic and Random draws from the episode's seat stream, so the table is a function
@@ -285,7 +287,9 @@ Each with the user's checkpoint; only the next one refined (Q41's pattern).
   at the checkpoint T7c (the trainer's neutral share, the neutral held-out set, the system actor
   in the ladder) and T7d (the run).
 - **Then** T5's rest (AI-Q7 (b), the mana price, the batch size and threads from T9c's table,
-  the observations in place), T6, T8 (only if PPO plateaus), T9.
+  the observations in place), T6, T8 (only if PPO plateaus), T9. Built beside T7d (the user,
+  2026-10-23): the mana price's preparation (the evaluation at reward v1's settings,
+  `configs/e06-mana.toml`), then AI-Q7 (b)'s batch output.
 
 ## 11. The entity network — built (T5a)
 
@@ -384,7 +388,7 @@ original's computer, complete for a side without a hero since E23 T4c). Refined 
   regenerated. The bots on the report set (`bots-report-v1.json`): the system actor beats
   Greedy 0.653, Aggressor 0.681, Random 0.875; on the neutral set it attacks best (value +0.285
   against Greedy's +0.223, Aggressor's +0.216, Random's −0.056; `E06-log.md`, T7c).
-- **The run** (T7d; `configs/e06-t7.toml`, `t5-3`'s settings at the census shares): the census
-  shares put 82.5 % of the episodes in the neutral kinds, each with one learning side; the user
-  decides the mix with T7c's numbers (the census shares, or a curriculum that keeps more of the
-  player-against-player kinds, `--set "env.kinds=[...]"`).
+- **The run** (T7d; `configs/e06-t7.toml`, `t5-3`'s settings): the census shares would put
+  82.5 % of the episodes in the neutral kinds, each with one learning side; the user chose a
+  third neutral with T7c's numbers (2026-10-23: `[78, 2, 100, 50, 25, 3]`, the census's neutral
+  shares a tenth).

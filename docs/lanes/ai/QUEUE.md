@@ -25,13 +25,16 @@ stalled: both sides hid), T5c (the truncation penalty, the user's amendment of d
 in the run's config; design §12): T7a (#420), T7b (the system actor's seat, C ABI v32; #421) and
 T7c (the trainer's neutral share, the neutral set v1, the system actor on the ladder; one pull
 request, the user) done. **Next:**
-- **T7d The run:** the user's (`configs/e06-t7.toml`, `t5-3`'s settings); the mix chosen with
-  T7c's numbers (`E06-log.md`, T7c): the census shares put 82.5 % of the episodes in the
-  neutral kinds with one learning side; a third neutral (`--set "env.kinds=[78, 2, 100, 50, 25,
-  3]"`) keeps more of the player-against-player kinds. The engine at the census shares: 20 872
-  caller steps/s a thread in the sandbox, far above the trainer's 5 000 samples/s; the user's
-  machine measures the run's samples/s. Read with it: the system actor is now the strongest
-  ladder bot (0.653 against Greedy); the neutral target is a value efficiency above +0.285.
+- **T7d The run:** the user's, at a third neutral (the user, 2026-10-23; `configs/e06-t7.toml`,
+  `t5-3`'s settings, `runs/t7-1`): its record into `python/records/t7-1.json`, its results into
+  `E06-log.md`, then the checkpoint (increment 6's refinement). Read with it: the system actor is
+  the strongest ladder bot (0.653 against Greedy); the neutral target is a value efficiency above
+  +0.285; the engine at that mix 33 888 caller steps/s a thread in the sandbox.
+- **Beside T7d** (the user, 2026-10-23; T5's rest, design §10): the mana price's preparation
+  (done: the ladders at reward v1's settings, `configs/e06-mana.toml`, the run `t5-4` on offer
+  after T7d), then **AI-Q7 (b) part 1**: the batch's previewed kills per attack and shot entry
+  (`h3-sim`, C ABI v33, `h3env`), its tests and cost; part 2 (the network reads them, an A/B
+  config) after the checkpoint.
 - Later (design §10): T5's rest (AI-Q7 (b), the mana price, throughput), T6, T8, T9; the run
   that compares the penalty at 60 M with `t4-2` (`configs/e06-t5c.toml`, `--set
   network.kind=mlp --set samples=60_000_000`) stays on offer.
