@@ -460,6 +460,21 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
         (reach.steps..=2 * reach.steps).contains(&reach.operations),
         "{reach:?}"
     );
+    // E08 T42: the duel's red starts with a flyer and a water walker, blue with two walkers
+    // (`h3-map`'s `fixtures.rs` kits).
+    let ids: Vec<String> = DEFAULT_PACKS.iter().map(|&s| s.to_owned()).collect();
+    let rules = load_rules(&root().join("packs"), &ids, DEFAULT_PROFILE).unwrap();
+    let (_, setup) = load_map(&root(), DUEL, &rules).unwrap();
+    let env = h3_sim::adventure::AdventureEnv::new(rules, Arc::new(setup), 1, 2).unwrap();
+    let both: [(u8, &[u16], &[u16]); 2] = [(0, &[0, 2], &[]), (1, &[], &[1, 3])];
+    for (player, lifted, walkers) in both {
+        let player = PlayerId::new(player);
+        let ids = |ids: &[u16]| ids.iter().map(|&id| HeroId::new(id)).collect::<Vec<_>>();
+        let (up, down) = bench::heroes_by_lift(&env, player);
+        assert_eq!((&up, &down), (&ids(lifted), &ids(walkers)), "{player:?}");
+        assert_eq!(bench::reach_queries(&env, player, &down), down.len() as u64);
+        assert_eq!(bench::lifted_queries(&env, player, &up), up.len() as u64);
+    }
     let fork = bench(bench::Workload::Fork, false, false);
     assert_eq!((fork.operations, fork.steps), (14, play.steps));
     assert_eq!(fork.battles, 0);

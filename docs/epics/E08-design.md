@@ -52,21 +52,11 @@ a test, as for the walker in increment 1.
 
 ### 8. The env, replays, fixtures, properties and benchmarks
 
-- **The env** (`h3-sim`'s adventure sub-path): no encoding change (action v4); the mask is the
-  reach's stop tiles; `random_rollout` plays flyers and water walkers as any hero.
-- **The plans** (`h3-map`'s `play.rs`): heroes wearing each of the six artifacts and with the three
-  skills (one flyer, one water walker per plan where the generated map has water), an army with
-  Nomads under the `ab` pack, Cursed Ground objects if built; the seven properties and the
-  copy-on-write ones cover them; observation hygiene compares the legal moves too (A-13's fix: a
-  flyer's moves never depend on an unexplored tile).
-- **Fixtures and replays:** the duel and XL maps (`fixtures/maps/`) gain a flyer and a water
-  walker and heroes with the three skills; the nine golden replays are re-recorded (their
-  commands change where a search does; the five searched ones may be replaced as in T31).
-- **Benchmarks:** the reach workload stays within its +2 % (the walker's search unchanged); a
-  flyer's reach on the XL map is baselined as a new workload or a variant of `reach`.
-- **`--with-original-data`:** the 5 shipped maps import as before; the Tutorial's hero (Expert
-  Logistics, Boots of Speed, Equestrian's Gloves) gets its day's points printed and asserted
-  (its army's entry × 1.3 + 900).
+**Built by T42** (the log): the plans' kits, flyers and water walkers beside water and Nomads, a
+move's end where its hero may stop, `the_plans_fly_and_walk_on_water`; the duel's and XL map's
+kits; the env's test of a flyer's and a water walker's masks; the replays re-recorded (six
+searched, one added); the reach workload's walkers and lifted heroes apart (`reach-xl-144`,
+`reach-lifted-xl-144`); the Tutorial's hero's day's points checked under `--with-original-data`.
 
 ### 9. Rule ids and quirks (the map side)
 
@@ -83,7 +73,7 @@ v47 (T35: the six kinds, the three flags), the adventure ruleset part v10 (the f
 prices, the terrain walker; Cursed Ground's `no_native` in the same bump if E5-6 is scored first,
 which the cut does; bumped by T40). The game and adventure state hashes, the map import, the action encoding and
 the replay format do not change (no new state; a flyer's destinations are tiles of the same
-mask): T41 bumped nothing. Each bumps once, in the task that first changes it.
+mask): T41 and T42 bumped nothing. Each bumps once, in the task that first changes it.
 
 ### 11. Batch E5
 
@@ -138,7 +128,7 @@ the scorer needs only increment 4's draws):
 | 2 | **T37** + **T38** | T37: the harness's reads, the recipes and the run of batch E5 (`cross-lane`). T38: batch E5 scored, D-23 decided by E5-6; the survey's §8 and the rules' sources updated; an ADV-Q if a row contradicts the reading. *Added by decision 85:* **T38b** (done), ADV-MAP-002's count corrected (every tile no object blocks but rock, water included), `ADV-QUIRK-14` withdrawn, before round 3 |
 | 3 | **T39** + **T40** | T39 (done alone, decision 86): `h3-heroes`' derivations (part A; HER-ADV-003 to -007, §1.3's vectors; Q-0005's line). T40 (done whole, decision 87): the day's points, the radius and the walking price (§5, §6 points 1, 2, 7): ADV-MOV-001 to -004 amended, the build's order, `start_turn` and the reveals with the store, `ADV-QUIRK-18` and the strict start-of-day reveal, Nomads, Cursed Ground (confirmed); adventure ruleset part v10 |
 | 4 | **T41** (done whole, decision 88) | Flying and water walking (§6 points 3 to 6, §7): the price (the original's, decision 85; flag 30 retired and ADR-0016 point 4's words corrected in its shared part), the drop (`ADV-QUIRK-17`), the passage, the reach's two kinds of node, `MoveHero`'s passage, end, visits and guards; ADV-MOV-006, -007 amended, -009, -010; `ADV-QUIRK-15` and `-17`. The largest task: cut at its start if needed (the price and the drop; the reach and `MoveHero`) |
-| 5 | **T42** + **T43** | T42: the env, the plans and properties, the fixtures and replays, the benchmarks, `--with-original-data` (§8). T43: the audit against the exit criteria, increment 5 closed, increment 6 refined |
+| 5 | **T42** (done whole, decision 89) + **T43** | T42: the env, the plans and properties, the fixtures and replays, the benchmarks, `--with-original-data` (§8). T43: the audit against the exit criteria, increment 5 closed, increment 6 refined |
 
 *Not chosen* at ADV-Q21: the batch at the end as in increment 4 (T35, T39 to T42 first, then
 the batch and its scoring: the order of increments 3 and 4, at the risk of reopening a built rule
@@ -182,7 +172,8 @@ and building Cursed Ground late).
   compromise changes the unexplored tile's row of §7's table and nothing else.
 - **The reach's speed:** the second layer only for flyers and water walkers; the walker's hot
   loop must not gain a branch (`bench-check`'s +2 %). T41: `reach` +0.89 %, `play` +0.83 % with
-  the walker's own unlifted price (the log); a flyer's reach is baselined in T42.
+  the walker's own unlifted price (the log); a flyer's and a water walker's reach baselined by
+  T42 (`reach-lifted-xl-144`).
 - **Not in increment 5** (survey §6): the sea's points (Navigation, its specialists, the
   Necklace of Ocean Guidance, the Sea Captain's Hat, the Admiral's Hat, Lighthouses, Favorable
   Winds), Stables, the spells Fly, Water Walk and Dimension Door with their levels 0 to 2 (the

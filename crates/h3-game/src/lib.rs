@@ -51,6 +51,9 @@ pub use command::{Actor, Answer, GameCommand, GameCommandError, GameEvent, NoopS
 /// The hero changes a battle's outcome applies, which [`GameEvent::HeroChanged`] carries (E08
 /// T19a2a; `h3_heroes`' types).
 pub use h3_heroes::{ArtifactPlace, HeroChange};
+/// A hero's movement levels from its details ([`GameState::hero`]): whether it flies or walks on
+/// water (E08 T42, for the adventure's benchmarks; `h3_heroes`' derivation, HER-ADV-005).
+pub use h3_heroes::{Movement, movement};
 pub use legal::{default_answer, legal_commands, legal_moves};
 pub use observe::{
     DecisionView, GameObservation, HeroInfo, LevelUpView, PlayerView, Viewer, observe, project,
