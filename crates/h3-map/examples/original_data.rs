@@ -9,7 +9,8 @@
 //! sees names a typed object by its type and anchor, ADR-0016 point 6); since E08 T20a2a the
 //! monsters' and the special grounds' counts, since E08 T21a the guarded piles' and since E08 T29
 //! the level limits, the banned skills and the levels at load of the maps that import whole
-//! (`docs/formats/h3m.md`, "Import").
+//! (`docs/formats/h3m.md`, "Import"), and since E08 T42 the Tutorial's hero's day's points
+//! (checked).
 //!
 //! `cargo run -p h3-map --example original_data -- original-data/install`
 //!
@@ -21,7 +22,7 @@ use std::process::ExitCode;
 
 use std::sync::Arc;
 
-use h3_adventure::MapSetup;
+use h3_adventure::{MapSetup, land_table_points};
 use h3_game::{DEFAULT_DIFFICULTY, GameRuleset, GameSetup, GameState, PlayerSetup};
 use h3_map::model::{Artifacts, Body, Player, RawMap, SeerTask, Text, Version};
 use h3_map::{ImportError, Limits, gunzip, import, import_map};
@@ -232,12 +233,42 @@ fn check(
             );
             let ups: usize = levels.iter().map(|&l| usize::from(l - 1)).sum();
             add("level-ups at load", ups);
+            if name.eq_ignore_ascii_case("Tutorial.tut") {
+                tutorial(&game, rules)?;
+            }
             IMPORTED.to_owned()
         }
         Err(ImportError::Unsupported(what)) => format!("not supported: {}", what.reason()),
         Err(e) => return Err(format!("import: {e}")),
     };
     Ok((map.header.version, outcome))
+}
+
+/// The Tutorial's hero's day's points at the start (E08 T42, increment 5's exit criterion 1;
+/// survey `E08-hero-movement.md` §5): it has Expert Logistics and wears Boots of Speed and
+/// Equestrian's Gloves, so its army's entry of the land table grows by 30 % and 900 points
+/// (HER-ADV-003, ADV-MOV-001), printed and checked.
+fn tutorial(game: &GameState, rules: &GameRuleset) -> Result<(), String> {
+    let [hero] = game.adventure().heroes() else {
+        return Err("Tutorial.tut: one placed hero expected".to_owned());
+    };
+    let details = game
+        .hero(hero.id)
+        .ok_or("Tutorial.tut: the hero's details")?;
+    let entry = land_table_points(rules.core(), rules.adventure(), Some(details), &hero.army);
+    let expected = entry * 13 / 10 + 900;
+    println!(
+        "  Tutorial.tut's hero: {} day's points (its army's entry {entry} × 1.3 + 900)",
+        hero.movement
+    );
+    if hero.movement == expected {
+        Ok(())
+    } else {
+        Err(format!(
+            "Tutorial.tut: the hero's day's points {} are not {expected}",
+            hero.movement
+        ))
+    }
 }
 
 /// Counts the monsters' data the import reads or refuses and the special grounds (E08 T20a2a):

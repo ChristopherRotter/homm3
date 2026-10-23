@@ -20,8 +20,8 @@
 use std::sync::{Arc, LazyLock};
 
 use h3_adventure::{
-    AdventureCommand, AdventureEvent, AdventureEventKind, ObjectKind, Offer, OfferKind,
-    Pos as TilePos, Reach, Viewers,
+    AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, ObjectKind, Offer,
+    OfferKind, Passage, Pos as TilePos, Reach, Viewers,
 };
 use h3_battle::{
     CastTargets, Command, Event, EventKind, cast_targets, castable_spells, second_targets,
@@ -271,6 +271,13 @@ pub(super) struct Plan {
     /// (none: its type's; E08 T19b2: Necromancy, Eagle Eye and Wisdom more often than the types
     /// have them, so that battles' winners raise creatures and learn spells).
     pub(super) skills: Vec<Option<Vec<(u8, u8)>>>,
+    /// Each hero's movement and scouting kit, by the hero's index (none or empty: nothing of its
+    /// own; E08 T42): its worn artifacts join its backpack's, its skills join its own skills (a
+    /// hero with skills of its own wears the Spell Book as above).
+    pub(super) kits: Vec<Kit>,
+    /// A stack of Nomads (count) in the army of the hero of this index (modulo the heroes) on an
+    /// AB or SoD map (E08 T42: the `ab` pack's terrain walker), its first slot's or its only one.
+    pub(super) nomads: Option<(u8, u16)>,
     /// Each object's anchor (modulo the map) and object (shape and kind, [`OBJECTS`]; since E08
     /// T20b3b1 also the monsters' and grounds', [`MONSTER_OBJECTS`], [`GROUND_OBJECTS`]).
     pub(super) blockers: Vec<(Spot, usize)>,
@@ -314,6 +321,46 @@ fn skills() -> impl Strategy<Value = Option<Vec<(u8, u8)>>> {
         (subsequence(vec![4u8, 7, 12], 0..=3), vec(1u8..=3, 4))
             .prop_map(|(skills, levels)| [11].into_iter().chain(skills).zip(levels).collect()),
     )
+}
+
+/// The six artifacts of a hero's movement and scouting (E08 T42; HER-ADV-003 to -006), as code and
+/// position in a map's worn slots (the import keeps no position, ADR-0013, but the editor's are
+/// used): the Speculum (52) and the Spyglass (53) in the misc slots, Equestrian's Gloves (70) on a
+/// ring, Angel Wings (72) on the shoulders (flying, ADV-MOV-009), Boots of Levitation (90, water
+/// walking, ADV-MOV-010) and Boots of Speed (98) on the feet, one at a time.
+pub(super) const MOVERS: [(u16, usize); 6] =
+    [(52, 9), (53, 10), (70, 6), (72, 1), (90, 8), (98, 8)];
+/// Angel Wings' code ([`MOVERS`]).
+pub(super) const WINGS: u16 = 72;
+/// Boots of Levitation's code ([`MOVERS`]).
+pub(super) const LEVITATION: u16 = 90;
+/// Nomads' creature code (AB and SoD maps; the `ab` pack's terrain walker: sand as dirt, ADV-MOV-004).
+pub(super) const NOMADS: u16 = 142;
+
+/// A hero's movement and scouting kit of its own (E08 T42), beside its army and skills: what it
+/// wears of [`MOVERS`] and its Pathfinding (code 0), Logistics (2) and Scouting (3).
+#[derive(Debug, Clone, Default)]
+pub(super) struct Kit {
+    /// Worn artifacts of [`MOVERS`], at most one on the feet.
+    pub(super) worn: Vec<u16>,
+    /// Skill code and level (1 to 3).
+    pub(super) skills: Vec<(u8, u8)>,
+}
+
+/// A kit (E08 T42): in two heroes of five some of the Speculum, the Spyglass, Equestrian's Gloves
+/// and Boots of Speed, in two of five some of the three skills at a level each. Angel Wings and
+/// Boots of Levitation come with the plan's flyer and water walker ([`plan`]).
+fn kit() -> impl Strategy<Value = Kit> {
+    (
+        proptest::option::weighted(0.4, subsequence(vec![52u16, 53, 70, 98], 1..=4)),
+        proptest::option::weighted(0.4, (subsequence(vec![0u8, 2, 3], 1..=3), vec(1u8..=3, 3))),
+    )
+        .prop_map(|(worn, skills)| Kit {
+            worn: worn.unwrap_or_default(),
+            skills: skills.map_or_else(Vec::new, |(skills, levels)| {
+                skills.into_iter().zip(levels).collect()
+            }),
+        })
 }
 
 /// A hero's custom experience (E08 T31): mostly up to 300 below the threshold of a level 2 to 20,
@@ -375,6 +422,13 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                     proptest::sample::select(&GUARDED_OBJECTS[..]),
                 ),
             ),
+            // E08 T42, drawn last so that the draws before stay as they were (the regressions
+            // files' cases keep their maps).
+            (
+                vec(kit(), 0..=6),
+                proptest::option::weighted(0.75, (any::<bool>(), 0u8..4)),
+                proptest::option::weighted(0.5, (any::<u8>(), 1u16..=20)),
+            ),
         ),
     )
         .prop_map(
@@ -382,7 +436,7 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                 version,
                 side,
                 two_levels,
-                tiles,
+                mut tiles,
                 colours,
                 humans,
                 heroes,
@@ -390,8 +444,35 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                 mut blockers,
                 difficulty,
                 keyring,
-                (backpacks, mut skills, beside, pile),
+                (backpacks, mut skills, beside, pile, (mut kits, lifts, nomads)),
             )| {
+                // In three plans of four (E08 T42) a flyer and a water walker: the first two
+                // heroes in either order wear Angel Wings and Boots of Levitation (in place of
+                // Boots of Speed), in one of those cases of four the flyer both; and a strip of
+                // three water tiles two columns east of each, on its level, so that the flight
+                // and the water walk pass over water near the objects beside the first hero.
+                if let Some((swap, both)) = lifts {
+                    let levels = 1 + u8::from(two_levels);
+                    let (flyer, walker) = if swap { (1, 0) } else { (0, 1) };
+                    kits.resize_with(kits.len().max(2), Kit::default);
+                    for (index, lift) in [(flyer, WINGS), (walker, LEVITATION)] {
+                        let worn = &mut kits[index].worn;
+                        worn.retain(|&a| a != 98);
+                        worn.push(lift);
+                        if lift == WINGS && both == 0 {
+                            worn.push(LEVITATION);
+                        }
+                        let ((hx, hy, hz), _) = heroes[index];
+                        let (x, z) = ((hx % side + 2) % side, hz % levels);
+                        for dy in [side - 1, 0, 1] {
+                            let y = (hy % side + dy) % side;
+                            let i = (usize::from(z) * usize::from(side) + usize::from(y))
+                                * usize::from(side)
+                                + usize::from(x);
+                            tiles[i].0 = 8;
+                        }
+                    }
+                }
                 // In three plans of four a red tent within three tiles of the first hero, a red
                 // guard whose visitable tile is two columns east of the tent, a row up, level or
                 // down (E08 T15a), and a red gate whose visitable tile (blocked by its own mask,
@@ -453,6 +534,8 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                     hero_types,
                     backpacks,
                     skills,
+                    kits,
+                    nomads,
                     blockers,
                     difficulty,
                 }
@@ -553,26 +636,49 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
         }
     }
     let colours: Vec<u8> = plan.players.iter().map(|&(colour, _)| colour).collect();
+    // E08 T42: the hero with Nomads (AB and SoD know the creature).
+    let nomads = plan
+        .nomads
+        .filter(|_| v != Version::RoE)
+        .map(|(n, count)| (usize::from(n) % heroes.len(), count));
     for (index, &((x, y, z), army)) in (0u8..).zip(&heroes) {
-        let army = army.as_ref().map(|slots| {
+        let mut army: Option<Vec<Option<Stack>>> = army.as_ref().map(|slots| {
             slots
                 .iter()
                 .map(|slot| slot.map(|(creature, count)| Stack { creature, count }))
                 .collect()
         });
+        if let Some((_, count)) = nomads.filter(|&(hero, _)| hero == usize::from(index)) {
+            let slots = army.get_or_insert_with(|| vec![None; 7]);
+            slots[0] = Some(Stack {
+                creature: NOMADS,
+                count,
+            });
+        }
         let hero_type = (u16::from(plan.hero_types) + 7 * u16::from(index)) % 128;
         let backpack = plan
             .backpacks
             .get(usize::from(index))
             .filter(|b| !b.is_empty());
+        let kit = plan.kits.get(usize::from(index));
+        let worn_kit = kit.map_or(&[][..], |kit| &kit.worn[..]);
         // A hero with skills of its own wears a Spell Book (artifact 0, in any slot: the import
         // keeps no position, ADR-0013; E08 T19b2): Eagle Eye's picks are learned only with it
-        // (HER-SPL-006), and its type may have none.
-        let skills = plan.skills.get(usize::from(index)).cloned().flatten();
-        let artifacts = (backpack.is_some() || skills.is_some()).then(|| {
+        // (HER-SPL-006), and its type may have none. Since E08 T42 its kit's skills are its own
+        // too.
+        let mut skills = plan.skills.get(usize::from(index)).cloned().flatten();
+        if let Some(kit) = kit.filter(|kit| !kit.skills.is_empty()) {
+            skills.get_or_insert_with(Vec::new).extend(&kit.skills);
+        }
+        let own = backpack.is_some() || skills.is_some() || !worn_kit.is_empty();
+        let artifacts = own.then(|| {
             let mut worn = vec![None; v.artifact_slots()];
             if skills.is_some() {
                 worn[0] = Some(0);
+            }
+            for &artifact in worn_kit {
+                let (_, slot) = MOVERS.iter().find(|&&(a, _)| a == artifact).unwrap();
+                worn[*slot] = Some(artifact);
             }
             Artifacts {
                 worn,
@@ -968,6 +1074,34 @@ fn landing(
     }
     let walked = &path[..steps];
     Ok((walked.last().copied().unwrap_or(start), stays))
+}
+
+/// The live object tile bits of `pos` in `state`: whether an object not removed blocks it, and
+/// whether one is visited on it (`MapObject::covers`).
+fn live_bits(state: &GameState, pos: TilePos) -> (bool, bool) {
+    let adventure = state.adventure();
+    let objects = adventure.map().objects().iter().enumerate();
+    objects
+        .filter(|&(i, _)| !adventure.is_removed(i))
+        .map(|(_, o)| o.covers(pos))
+        .fold((false, false), |(b, v), (ob, ov)| (b || ob, v || ov))
+}
+
+/// Whether `pos` is water in `state`'s map.
+fn is_water(state: &GameState, rules: &GameRuleset, pos: TilePos) -> bool {
+    let tile = state.adventure().map().tile(pos);
+    let passage = tile.and_then(|t| rules.adventure().passage(t.terrain));
+    matches!(passage, Some(Passage::Water(_)))
+}
+
+/// Whether a move that ended on `pos` from `before` ended where a hero may stop (E08 T42;
+/// ADV-MOV-007, ADV-MOV-009, ADV-MOV-010): land, and no object blocks it but one visited on it (an
+/// entered object, a border gate its key's holder crosses).
+fn stops_on(before: &GameState, rules: &GameRuleset, pos: TilePos) -> bool {
+    let tile = before.adventure().map().tile(pos);
+    let land = tile.and_then(|t| rules.adventure().passage(t.terrain));
+    let (blocked, visited) = live_bits(before, pos);
+    matches!(land, Some(Passage::Land(_))) && (!blocked || visited)
 }
 
 /// The player who acts: the one whose turn is running (sequential play: one at a time), or, while
@@ -2379,6 +2513,9 @@ proptest! {
                 let start = before.adventure().hero(hero).unwrap().pos;
                 let (at, _) = landing(&before, start, path, &events)?;
                 prop_assert_eq!(state.adventure().hero(hero).map(|h| h.pos), Some(at));
+                // E08 T42 (increment 5's exit criterion 3): a flight or a water walk passes over
+                // water and blocked tiles but ends where a hero may stop, as a walk does.
+                prop_assert!(stops_on(&before, rules, at), "{:?} ends on {:?}", hero, at);
             }
             let player = player_of(&before, actor);
             check_decisions(rules, (&before, &state), player, &events)?;
@@ -2637,6 +2774,118 @@ fn the_plans_play_battles_to_a_victory() {
     assert!(f.level_ups > 0 && f.levels > 0, "{f:?}");
 }
 
+/// What a set of games moved (E08 T42): the games with a hero wearing each of [`MOVERS`] and with
+/// each of Pathfinding, Logistics and Scouting at the start; the accepted moves of a flyer over
+/// water and over a tile an object blocks, of a water walker over water, and of a hero whose army
+/// holds Nomads; the moves refused with `NoStop` (a path that ends where its hero may only pass).
+#[derive(Debug, Default)]
+struct Moved {
+    wearing: [usize; 6],
+    skilled: [usize; 3],
+    flown_over_water: usize,
+    flown_over_blocked: usize,
+    walked_on_water: usize,
+    with_nomads: usize,
+    no_stop: usize,
+}
+
+impl Moved {
+    /// Counts what the heroes of a game's first state wear and know.
+    fn start(&mut self, rules: &GameRuleset, state: &GameState) {
+        let core = rules.core();
+        for (i, &(code, _)) in MOVERS.iter().enumerate() {
+            let key = codes::ARTIFACTS[usize::from(code)];
+            let worn = |d: &h3_heroes::HeroDetails| {
+                d.worn.iter().any(|a| {
+                    core.artifact(a.artifact)
+                        .is_some_and(|ty| ty.key.as_str() == key)
+                })
+            };
+            self.wearing[i] += usize::from(state.heroes().iter().any(|d| worn(d)));
+        }
+        for (i, code) in [0usize, 2, 3].into_iter().enumerate() {
+            let skill = core.skill_by_key(codes::SKILLS[code]);
+            let known =
+                |d: &h3_heroes::HeroDetails| d.skills.iter().any(|&(s, _)| Some(s) == skill);
+            self.skilled[i] += usize::from(state.heroes().iter().any(|d| known(d)));
+        }
+    }
+
+    /// Counts the command `command` of `before`, accepted or refused (`result`).
+    fn count(
+        &mut self,
+        rules: &GameRuleset,
+        before: &GameState,
+        command: &GameCommand,
+        result: &Result<(), GameCommandError>,
+    ) {
+        let Some((hero, path)) = as_move(command) else {
+            return;
+        };
+        if let Err(GameCommandError::Adventure(AdventureCommandError::NoStop { .. })) = result {
+            self.no_stop += 1;
+        }
+        let (Ok(()), Some(details), Some(on_map)) =
+            (result, before.hero(hero), before.adventure().hero(hero))
+        else {
+            return;
+        };
+        let movement = h3_heroes::movement(details, rules.core());
+        let passed = &path[..path.len().saturating_sub(1)];
+        let over_water = passed.iter().any(|&pos| is_water(before, rules, pos));
+        if movement.flying.is_some() {
+            self.flown_over_water += usize::from(over_water);
+            let blocked = passed.iter().any(|&pos| live_bits(before, pos).0);
+            self.flown_over_blocked += usize::from(blocked);
+        } else if movement.water_walking.is_some() {
+            self.walked_on_water += usize::from(over_water);
+        }
+        let nomads = codes::CREATURES
+            .iter()
+            .find(|&&(code, _)| code == NOMADS)
+            .and_then(|&(_, key)| rules.core().creature_by_key(key));
+        let holds = on_map
+            .army
+            .iter()
+            .any(|stack| Some(stack.creature) == nomads);
+        self.with_nomads += usize::from(holds);
+    }
+}
+
+/// The plans fly and walk on water (E08 T42, increment 5's exit criterion 3): over a fixed set of
+/// cases (proptest's deterministic runner), heroes wear each of the six artifacts and know each of
+/// the three skills, and random play moves flyers over water and over tiles objects block, water
+/// walkers over water and heroes with Nomads, and refuses paths that end where their heroes may
+/// only pass (`NoStop`); every accepted move ends where its hero may stop
+/// (`every_step_keeps_the_commands_invariants`).
+#[test]
+fn the_plans_fly_and_walk_on_water() {
+    use proptest::strategy::ValueTree;
+    let mut runner = proptest::test_runner::TestRunner::deterministic();
+    let strategy = (plan(), any::<bool>(), any::<u64>(), steps());
+    let mut moved = Moved::default();
+    for _ in 0..64 {
+        let (plan, strict, seed, steps) = strategy.new_tree(&mut runner).unwrap().current();
+        let rules = if strict { &*STRICT } else { &*FAITHFUL };
+        let mut state = start(&plan, rules, seed);
+        moved.start(rules, &state);
+        for step in &steps {
+            let legal = options(&state, rules);
+            let (actor, command) = resolve(&state, rules, &legal, step);
+            let before = state.clone();
+            let result = apply(&mut state, rules, actor, command.clone(), &mut Vec::new());
+            moved.count(rules, &before, &command, &result);
+        }
+    }
+    let m = &moved;
+    assert!(m.wearing.iter().chain(&m.skilled).all(|&n| n > 0), "{m:?}");
+    assert!(m.flown_over_water > 0 && m.flown_over_blocked > 0, "{m:?}");
+    assert!(
+        m.walked_on_water > 0 && m.with_nomads > 0 && m.no_stop > 0,
+        "{m:?}"
+    );
+}
+
 /// The draws' source by the profile, on the original packs (E08 T31, design §14; GAM-HER-002,
 /// GAM-SET-002, `ADV-QUIRK-9`): in `faithful` a hero's levels at load come from its own level seed
 /// and the level (the original's generator), so the levels another hero gains at load before it
@@ -2655,6 +2904,8 @@ fn the_levels_at_load_follow_the_seed_in_faithful_and_the_stream_in_strict_fixed
         hero_types: 0,
         backpacks: vec![],
         skills: vec![],
+        kits: vec![],
+        nomads: None,
         blockers: vec![],
         difficulty: 1,
     };

@@ -461,6 +461,11 @@ Refined with the user on 2026-10-21 (T33; ADV-Q19). Built like increments 1 to 4
     bots' table, the adventure replays' headers), merged first. Not chosen: three parts (T41a the
     shared part, T41b the price and the drop, T41c the passage, the reach and `MoveHero`;
     recommended), or the price with `MoveHero` first.
+89. **T42 whole** (the user's choice, 2026-10-23): the plans and properties, the env, the fixtures,
+    the nine replays, the benchmarks and the Tutorial's check in one session and one lane pull
+    request. Not chosen: a cut at the committed fixtures (T42a the plans, the properties and
+    `--with-original-data`; T42b the fixtures with the env, the replays and the benchmarks;
+    recommended).
 
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 

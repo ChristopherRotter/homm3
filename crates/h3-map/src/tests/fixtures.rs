@@ -10,8 +10,8 @@ use std::path::PathBuf;
 
 use super::gzip_with;
 use super::play::{
-    BLOCKERS, FAITHFUL, GROUND_OBJECTS, GUARDED, KINDS, MONSTER_OBJECTS, Plan, Spot, experienced,
-    masks,
+    BLOCKERS, FAITHFUL, GROUND_OBJECTS, GUARDED, KINDS, Kit, MONSTER_OBJECTS, Plan, Spot,
+    experienced, masks,
 };
 use crate::model::Version;
 use crate::{Limits, import, read};
@@ -456,6 +456,8 @@ fn duel() -> Plan {
         hero_types: 3,
         backpacks: vec![],
         skills: vec![],
+        kits: kits(&DUEL_KITS),
+        nomads: None,
         blockers,
         difficulty: 1,
     }
@@ -493,10 +495,55 @@ fn xl() -> Plan {
         hero_types: 5,
         backpacks: vec![],
         skills: vec![],
+        kits: kits(&XL_KITS),
+        nomads: None,
         blockers,
         difficulty: 1,
     }
 }
+
+/// A hero's kit as worn artifacts and skills (code, level): [`Kit`].
+type KitSpec = (&'static [u16], &'static [(u8, u8)]);
+
+/// The kits of a fixture's heroes, in the map's order.
+fn kits(specs: &[KitSpec]) -> Vec<Kit> {
+    specs
+        .iter()
+        .map(|&(worn, skills)| Kit {
+            worn: worn.to_vec(),
+            skills: skills.to_vec(),
+        })
+        .collect()
+}
+
+/// The duel's heroes' kits (E08 T42, increment 5's movement and scouting): red's surface hero
+/// flies (Angel Wings) with the Speculum and basic Logistics, eight tiles from a lake (the surface's
+/// water patch at columns and rows 12 to 17); blue's surface hero wears Boots of Speed and
+/// Equestrian's Gloves with advanced Pathfinding; red's underground hero walks on water (Boots of
+/// Levitation) with the Spyglass, seven tiles from the underground's lake at columns 12 to 17 and
+/// rows 30 to 35 (the underground's other lakes lie beyond rock); blue's underground hero has
+/// expert Scouting and basic Pathfinding. Each skill code and artifact is `play.rs`' `MOVERS`'
+/// and the original's (0 Pathfinding, 2 Logistics, 3 Scouting).
+const DUEL_KITS: [KitSpec; 4] = [
+    (&[72, 52], &[(2, 1)]),
+    (&[98, 70], &[(0, 2)]),
+    (&[90, 53], &[]),
+    (&[], &[(3, 3), (0, 1)]),
+];
+/// The XL map's heroes' kits (E08 T42): each player a flyer and a water walker, one on each level
+/// (red's water walker two tiles from a lake, red's underground flyer on a water patch, blue's
+/// flyer six tiles from one, blue's water walker ten), the other artifacts and the three skills
+/// among the others; blue's last hero has nothing of its own.
+const XL_KITS: [KitSpec; 8] = [
+    (&[90, 52], &[(2, 1)]),
+    (&[98, 70], &[(0, 3)]),
+    (&[], &[(3, 2), (0, 1)]),
+    (&[72, 53], &[]),
+    (&[72], &[]),
+    (&[90], &[(2, 3)]),
+    (&[70, 98], &[(3, 1)]),
+    (&[], &[]),
+];
 
 /// The duel's heroes' custom experience, in the map's order (E08 T31, design §14): each a little
 /// below the threshold of level 2 (1 000), so that its first battle gives it a level-up, but red's

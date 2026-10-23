@@ -641,6 +641,83 @@ fn rollouts_are_deterministic_and_end_at_the_day_limit() {
     assert_eq!(random_rollout(&mut c, 11, 5).steps, 5);
 }
 
+/// Counts the moves `player`'s flyers (`passed[0]`) and water walkers (`passed[1]`) may make that
+/// pass over water or, for a flyer, over a tile an object blocks, and checks that each tile their
+/// move heads allow is one a hero may stop on: land no live object blocks but where one is visited
+/// (an entered object, a neighbour's visit; another player's hero stands on land).
+fn check_lifted(env: &AdventureEnv, player: PlayerId, passed: &mut [usize; 2]) {
+    let (state, rules) = (env.state(), env.rules());
+    let adventure = state.adventure();
+    let live = |pos: h3_adventure::Pos| {
+        let objects = adventure.map().objects().iter().enumerate();
+        objects
+            .filter(|&(i, _)| !adventure.is_removed(i))
+            .map(|(_, o)| o.covers(pos))
+            .fold((false, false), |(b, v), (ob, ov)| (b || ob, v || ov))
+    };
+    let water = |pos| {
+        let tile = adventure.map().tile(pos).unwrap();
+        matches!(
+            rules.adventure().passage(tile.terrain),
+            Some(h3_adventure::Passage::Water(_))
+        )
+    };
+    let mut tiles = Vec::new();
+    for slot in 0..HERO_SLOTS {
+        let Some(hero) = hero_in_slot(state, player, slot) else {
+            continue;
+        };
+        let movement = h3_heroes::movement(state.hero(hero).unwrap(), rules.core());
+        let kind = match (movement.flying, movement.water_walking) {
+            (Some(_), _) => 0,
+            (None, Some(_)) => 1,
+            (None, None) => continue,
+        };
+        env.tile_mask(player, MOVE_BASE + slot, &mut tiles);
+        let reach = legal_moves(state, rules, Actor::Player(player), hero);
+        for tile in (0u32..).zip(&tiles).filter(|&(_, &t)| t).map(|(i, _)| i) {
+            let pos = tile_pos(state, tile).unwrap();
+            let (blocked, visited) = live(pos);
+            assert!(
+                !water(pos) && (!blocked || visited),
+                "{hero:?} may stop on {pos:?}"
+            );
+            let path = reach.as_ref().and_then(|r| r.path(pos)).unwrap();
+            let over = &path[..path.len() - 1];
+            let lifted = over.iter().any(|&p| {
+                let (blocked, visited) = live(p);
+                water(p) || (kind == 0 && blocked && !visited)
+            });
+            passed[kind] += usize::from(lifted);
+        }
+    }
+}
+
+/// The env plays flyers and water walkers (E08 T42, design note §8: no encoding change): on the
+/// duel (red's surface hero flies, its underground hero walks on water, `fixtures.rs`' kits), over
+/// random games of two weeks, their move heads allow only tiles a hero may stop on, the reach's
+/// stop tiles (`steps_agree_with_the_masks_and_the_game` checks them against the reach), and some
+/// of those tiles are reached over water or (the flyer) over tiles objects block.
+#[test]
+fn a_flyer_and_a_water_walker_are_masked_by_their_stop_tiles() {
+    let mut passed = [0; 2];
+    for seed in 0..4 {
+        let mut env = env(seed, 14);
+        let mut rng = Rng::for_stream(seed, StreamId::AGENT);
+        loop {
+            let Some(seat) = env.to_move().next() else {
+                break;
+            };
+            if let (Seat::Player(player), Phase::Adventure) = (seat, env.phase(seat)) {
+                check_lifted(&env, player, &mut passed);
+            }
+            let action = choose(&env, seat, &mut rng);
+            env.step(seat, action).unwrap();
+        }
+    }
+    assert!(passed.iter().all(|&n| n > 0), "{passed:?}");
+}
+
 fn duel_map() -> replay::MapRef {
     replay::MapRef {
         path: "fixtures/maps/e08-duel-36.h3m".to_owned(),
@@ -769,7 +846,11 @@ fn a_tampered_replay_is_refused_with_its_reason() {
     ));
     let mut r = good.clone();
     r.seed ^= 1;
-    assert!(matches!(verify(&r), Err(E::HashMismatch { .. })));
+    let changed = verify(&r);
+    assert!(
+        matches!(changed, Err(E::HashMismatch { .. })),
+        "{changed:?}"
+    );
     // Each error explains itself.
     for e in [
         E::Incompatible("profile"),

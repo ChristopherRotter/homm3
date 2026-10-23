@@ -5,7 +5,9 @@
 //! * `play`: random legal play with the env's random agent, inside
 //!   `h3_sim::adventure::random_rollout` (choosing, the reachable-tiles query, `apply`).
 //! * `reach`: the reachable-tiles query of every hero of the acting player at each step of
-//!   random play, inside [`reach_queries`] (the play around it is not counted).
+//!   random play (the play around it is not counted): the walking heroes' inside
+//!   [`reach_queries`], the flying and water-walking heroes' inside [`lifted_queries`] (E08 T42:
+//!   two `bench-check` workloads of the same games, `reach-xl-144` and `reach-lifted-xl-144`).
 //! * `fork`: forks of the env after `days` days of random play, inside [`fork_workload`]; with
 //!   `--battle 1` (E08 T19b1) the heroes seek each other instead and the play stops at the step
 //!   that opens a battle, so the forks carry an open battle.
@@ -22,7 +24,7 @@ use std::time::Instant;
 use h3_adventure::Pos;
 use h3_battle::LegalCommands;
 use h3_contracts::PlayerId;
-use h3_game::{Actor, legal_moves};
+use h3_game::{Actor, legal_moves, movement};
 use h3_kernel::{Rng, StreamId};
 use h3_sim::action::{ACTION_COUNT, SPELL_COUNT, TARGET_COUNT};
 use h3_sim::adventure::action::{self, hero_in_slot, tile_index};
@@ -208,8 +210,9 @@ fn seek(env: &AdventureEnv, player: PlayerId) -> Action {
     best.map_or_else(Action::end_turn, |(_, action)| action)
 }
 
-/// Random play with every hero's reachable-tiles query at each step ([`reach_queries`], the
-/// counted and timed part): queries, steps, seconds.
+/// Random play with every hero's reachable-tiles query at each step (the counted and timed part):
+/// the walking heroes' ([`reach_queries`]), then the flying and water-walking heroes'
+/// ([`lifted_queries`], E08 T42): queries, steps, seconds.
 fn reach_rollout(env: &mut AdventureEnv, agent_seed: u64) -> (u64, u64, f64) {
     let mut rng = Rng::for_stream(agent_seed, StreamId::AGENT);
     let (mut queries, mut steps, mut seconds) = (0, 0, 0.0);
@@ -218,7 +221,9 @@ fn reach_rollout(env: &mut AdventureEnv, agent_seed: u64) -> (u64, u64, f64) {
             break;
         };
         let start = Instant::now();
-        queries += seat.player().map_or(0, |player| reach_queries(env, player));
+        queries += seat.player().map_or(0, |player| {
+            reach_queries(env, player) + lifted_queries(env, player)
+        });
         seconds += start.elapsed().as_secs_f64();
         let action = choose(env, seat, &mut rng);
         // A legal action is always accepted (h3-sim's tests).
@@ -228,15 +233,34 @@ fn reach_rollout(env: &mut AdventureEnv, agent_seed: u64) -> (u64, u64, f64) {
     (queries, steps, seconds)
 }
 
-/// The reachable-tiles query of every hero `player` owns, as a client asks for its heroes' moves:
-/// the number of queries. The `reach` workload counts the instructions inside this function.
+/// The reachable-tiles query of every walking hero `player` owns (neither flying nor
+/// water-walking, E08 T42), as a client asks for its heroes' moves: the number of queries. The
+/// `reach` workload counts the instructions inside this function: the walker's search.
 #[inline(never)]
 pub fn reach_queries(env: &AdventureEnv, player: PlayerId) -> u64 {
-    let state = env.state();
+    queries(env, player, false)
+}
+
+/// The reachable-tiles query of every flying or water-walking hero `player` owns (E08 T42, the
+/// reach's two kinds of node): the number of queries. The `reach-lifted` workload counts the
+/// instructions inside this function.
+#[inline(never)]
+pub fn lifted_queries(env: &AdventureEnv, player: PlayerId) -> u64 {
+    queries(env, player, true)
+}
+
+/// The reachable-tiles query of every hero `player` owns that flies or walks on water (`lifted`)
+/// or does neither: the number of queries.
+fn queries(env: &AdventureEnv, player: PlayerId, lifted: bool) -> u64 {
+    let (state, rules) = (env.state(), env.rules());
     let mut queries = 0;
     for hero in state.adventure().heroes() {
-        if hero.owner == player {
-            let reach = legal_moves(state, env.rules(), Actor::Player(player), hero.id);
+        let lifts = state.hero(hero.id).is_some_and(|details| {
+            let levels = movement(details, rules.core());
+            levels.flying.is_some() || levels.water_walking.is_some()
+        });
+        if hero.owner == player && lifts == lifted {
+            let reach = legal_moves(state, rules, Actor::Player(player), hero.id);
             black_box(reach.as_ref().map(|r| r.tiles().count()));
             queries += 1;
         }
