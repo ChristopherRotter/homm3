@@ -757,3 +757,37 @@ def test_a_checkpoint_plays_the_ladder(tmp_path, capsys) -> None:
         torch.save(saved, tmp_path / "same.pt")
         with pytest.raises(SystemExit):
             main(["--checkpoint", str(tmp_path / "same.pt")])
+
+
+def test_a_checkpoint_plays_the_behaviour_analysis(tmp_path, capsys) -> None:
+    # E06 T6a: the network's battles in the analysis are its ladder's (the same draws), and the
+    # command writes two tables per opponent and the JSON.
+    from h3env.train.evaluate import sampled
+    from h3env.train.inspect import inspect, main
+
+    train(Config(**SMALL, samples=1), tmp_path)
+    policy = load(tmp_path / "checkpoint.pt")
+    policy.eval()
+    result = inspect(sampled(policy), opponents=["greedy"], per_kind=2, max_steps=300)
+    row = ladder(policy, opponents=["greedy"], per_kind=2, max_steps=300)["greedy"]
+    assert result["greedy"]["ladder"]["sides"] == {
+        kind: [side["win_rate"] for side in sides.values()]
+        for kind, sides in row["by_kind"].items()
+    }
+    assert result["greedy"]["groups"]["all"]["battles"] == 12
+    out = tmp_path / "inspect.json"
+    checkpoint = ["--checkpoint", str(tmp_path / "checkpoint.pt")]
+    main([*checkpoint, "--episodes", "1", "--max-steps", "300", "--json", str(out)])
+    text = capsys.readouterr().out.splitlines()
+    assert [line.split(":")[0] for line in text if line.startswith("against")] == [
+        "against system",
+        "against greedy",
+    ]
+    assert set(json.loads(out.read_text())) == {"system", "greedy"}
+    main([*checkpoint, "--set", "neutral-v1", "--episodes", "1", "--max-steps", "300"])
+    assert capsys.readouterr().out.startswith("against system")
+    saved = torch.load(tmp_path / "checkpoint.pt", weights_only=True)
+    saved["config"]["seed"] = REPORT_V1_SEED + 2
+    torch.save(saved, tmp_path / "same.pt")
+    with pytest.raises(SystemExit):
+        main(["--checkpoint", str(tmp_path / "same.pt")])
