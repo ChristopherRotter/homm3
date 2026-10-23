@@ -50,11 +50,13 @@ pub const REPORT_V1_KINDS: [usize; 3] = [2, 3, 4];
 /// The two-sided 95 % quantile of the normal distribution.
 const Z95: f64 = 1.96;
 
-/// The policies `--policies` names.
-pub const POLICIES: [(&str, Policy); 3] = [
+/// The policies `--policies` names: the bots and the system actor (E06 T7), which the default list
+/// leaves out until the ladder takes it in.
+pub const POLICIES: [(&str, Policy); 4] = [
     ("random", Policy::Random),
     ("aggressor", Policy::Aggressor),
     ("greedy", Policy::Greedy),
+    ("system", Policy::System),
 ];
 
 /// One stratum of a held-out set: a batch of episodes, weighed in the overall rates.
@@ -566,7 +568,9 @@ pub fn policies(value: &str) -> Result<Vec<(String, Policy)>, String> {
                 .find(|(n, _)| *n == name)
                 .map(|&(n, p)| (n.to_owned(), p))
                 .ok_or_else(|| {
-                    format!("--policies: unknown policy `{name}` (random, aggressor, greedy)")
+                    format!(
+                        "--policies: unknown policy `{name}` (random, aggressor, greedy, system)"
+                    )
                 })
         })
         .collect()

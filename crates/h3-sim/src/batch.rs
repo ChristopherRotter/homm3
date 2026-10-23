@@ -63,6 +63,10 @@ pub enum Policy {
     Aggressor,
     /// The baseline bot [`bots::greedy`] (E05 T7): the most valuable previewed kills first.
     Greedy,
+    /// The system actor (E06 T7): the original's computer, [`h3_battle_ai::choose`] (ADR-0027),
+    /// which reads the whole state as a trusted host does and plays its side as the computer's
+    /// whatever `human` says. The neutral kinds' defender (A12).
+    System,
 }
 
 impl Policy {
@@ -78,6 +82,7 @@ impl Policy {
             Self::Random => rollout::pick(env, side, rng, legal),
             Self::Aggressor => bots::aggressor(env.state(), env.ruleset(), side, legal),
             Self::Greedy => bots::greedy(env.state(), env.ruleset(), side, legal),
+            Self::System => h3_battle_ai::choose(env.state(), env.ruleset(), side, rng),
         }
     }
 }

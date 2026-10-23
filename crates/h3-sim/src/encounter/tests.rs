@@ -271,10 +271,13 @@ fn every_sample_is_a_battle_the_engine_plays() {
         let defended = matches!(encounter.kind, Kind::Hero | Kind::SiegeHero);
         assert_eq!(setup.heroes[1].is_some(), defended);
         assert_eq!(setup.siege.is_some(), encounter.kind >= Kind::SiegeHero);
-        assert_eq!(
-            encounter.seats[1] == Seat::External,
-            !encounter.kind.neutral()
-        );
+        // A12 (E06 T7): a neutral kind's defender is the system actor, every other kind's a player.
+        let defender = if encounter.kind.neutral() {
+            Seat::Internal(Policy::System)
+        } else {
+            Seat::External
+        };
+        assert_eq!(encounter.seats, [Seat::External, defender]);
         let scenario = Scenario::new(Arc::clone(battle), setup, true, 1, encounter.seats);
         assert!(
             scenario.is_ok(),

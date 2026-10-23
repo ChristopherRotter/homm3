@@ -34,6 +34,7 @@ fn scenario(text: &str, weight: u32, seats: [Seat; 2]) -> Scenario {
 
 const EXTERNAL: [Seat; 2] = [Seat::External, Seat::External];
 const RANDOM: Seat = Seat::Internal(Policy::Random);
+const SYSTEM: Seat = Seat::Internal(Policy::System);
 
 /// The output arrays of a batch of `n` envs.
 struct Arrays {
@@ -945,10 +946,17 @@ proptest! {
         max_steps in prop::sample::select(vec![0u32, 3, 40]),
         currency in prop::sample::select(vec![Currency::AiValue, Currency::Gold]),
         mana_price in 0u32..30,
-        picks in prop::collection::vec((0usize..4, 1u32..4, 0usize..3), 1..4),
+        picks in prop::collection::vec((0usize..4, 1u32..4, 0usize..5), 1..4),
         play in any::<u64>(),
     ) {
-        let seats = [EXTERNAL, [Seat::External, RANDOM], [RANDOM, Seat::External]];
+        // The system actor (E06 T7) on either side, a hero's included: its commands always apply.
+        let seats = [
+            EXTERNAL,
+            [Seat::External, RANDOM],
+            [RANDOM, Seat::External],
+            [Seat::External, SYSTEM],
+            [SYSTEM, Seat::External],
+        ];
         let scenarios = picks
             .iter()
             .map(|&(text, weight, seat)| scenario(TEXTS[text], weight, seats[seat]))

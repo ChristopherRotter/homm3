@@ -41,8 +41,8 @@ at a conda env itself (`UV_PROJECT_ENVIRONMENT`): it removes every package the l
 The binding loads `$H3_LIBRARY`, else `../target/release/`, and refuses a library whose
 `h3_abi_version()` differs from `h3env.ABI_VERSION`: bump both together. A run's record names the
 engine it trained on (C ABI v31): `h3env._ffi.versions()` (the ABI's, the encodings' and the
-encounter distribution's versions) and `BattleBatch.entries()` (each episode source's kind, weight
-and its rulesets' content hashes).
+encounter distribution's versions, since v32 the system actor's policy's) and
+`BattleBatch.entries()` (each episode source's kind, weight and its rulesets' content hashes).
 
 ```python
 import numpy as np
