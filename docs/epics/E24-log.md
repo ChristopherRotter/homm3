@@ -306,15 +306,26 @@ One session, the user present at its start; branch `map-client/e24-t4a`.
   `Objects.txt`. 100 % covered.
 - **The harness** (common path, additive): `h3mem.Mem.map_templates`; `h3map.py`: a situation's
   `map` loads a shipped map whole (`to_shipped`: the scenario list's setup, the first day's
-  messages closed by OK, the screen `adventure`), `live.toml`'s `viewer`, `defs`, `classes`; a
-  game whose Wine exits before the main menu with an empty log is started again (seen once in a
-  set run).
+  messages closed by OK, the screen `adventure`), `live.toml`'s `viewer`, `defs`, `classes`. Its
+  robustness, from this sandbox's runs: a game whose Wine exits before the main menu with an
+  empty log is started again; before counting redraws `still` waits for the deadlines the frozen
+  clock passed, and accepts a second redraw at the same time; `set` shows a situation the harness
+  fails to show once more (with why); the palettes' failure names each range's fits.
+- **Found in the runs:** a shipped map's random dwelling can stand a tile from the map's anchor
+  after a new game (Tale of two lands, one start of four, underground, outside the view): not
+  read (resolved outside 0x4C9990); `render --live` accepts a random object's moved anchor and
+  draws it at the map's until T5. `check-stubs` reads only `crates/`, so a client stub cannot be
+  registered: the gap is in §2.7 and the queue's T5.
 - **Captures:** `shipped-divided-loyalties` (8, 38), `shipped-tale-of-two-lands` (31, 61),
   `shipped-good-witch` (82, 48), `shipped-gauntlet` (59, 51), `shipped-dwarven-tunnels` (11, 23,
   underground), the views picked by a throwaway scan (no hero, boat, random hero, placeholder or
   owned class within reach, the most random objects of each kind): each exact on its first run.
-  The first full run (22) stopped at `lava-water` (Wine exited before the menu); the second:
-  every one as recorded.
+  The full runs (22): the first two broke at `lava-water` while cargo built beside them (Wine
+  exited before its menu; unsteady palettes), the next ones alone met the flakes above (an extra
+  redraw, unsteady palettes three times, the moved anchor), each shown again exact; the last:
+  every one as recorded, three shown again for unsteady palettes. Those reads had the terrains'
+  palettes (`lavatl`, `watrtl`) one step ahead of the rivers' for the whole 2 s: the tick's two
+  halves apart at the frozen clock (queued for T6: the queue's inbox).
 - **Agent decisions (provisional, on the review list):** the shipped situations' format and
   loading; `live.toml`'s new keys; `Drawn` and the own template's choice (the last of
   `Objects.txt`, as 0x505EA0); the gate's listing.

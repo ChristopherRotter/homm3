@@ -43,6 +43,13 @@ task (the HANDOFF's autonomy contract).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-10-23 (this lane, E24 M1 T4b; for T6, the capture set): **the palettes at the frozen clock
+  can be half a tick apart.** In about one still of seven `h3map.py`'s palette read found the
+  terrains' cycling palettes (`lavatl`, `watrtl`) one step ahead of the rivers' for the whole 2 s
+  it reads (its error names each range's fits); `set` shows the situation again and it is exact.
+  Read whether the tick (0x4ED490) rotates the rivers apart from the terrains, what such a
+  screen shows, and either step the clock past it or give `render` a step per DEF.
+
 - 2026-10-23 (the client lane, E17 M3 T9c, at the split): moved here from the client lane's
   inbox, the adventure lane's entry of 2026-10-21 (E08 T30, decision 65, ADR-0017 point 6 amended
   in #353; for the hot-seat client, E24 M5): **a level-up holds the game.**
