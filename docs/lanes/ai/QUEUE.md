@@ -68,7 +68,9 @@ Pass offer (fixed by the adventure lane's fixed tests, #266).
   0.655, Aggressor 0.681, attacks best on the neutral set, value +0.285). **E23's exit criterion 4
   wants a gated batch workload with `System` seats** (`benches/ai/`; `h3 ai bench` has no `System`
   seat yet): yours to add when it suits; the computer's own cost is `h3 bench-computer` (now with
-  `--heroes 1`: the slowest decision 3.0 to 4.1 ms, the 5 ms budget).
+  `--heroes 1`: the slowest decision 3.0 to 4.1 ms, the 5 ms budget). **The workload: done**
+  (E06 T6a's pull request, `benches/ai/batch-system-neutral-v1.toml`); the let-off for a
+  `System` side in training is open (put to the user at T6a's checkpoint).
 - 2026-10-23 (this lane, E06 T5; for the next `shared/` change): `docs/07-simulation-and-ai.md`
   (shared) should name the batch's optional kill preview (C ABI v33: the acting side's previewed
   kills of each legal attack and shot entry, the engine's BAT-DMG-011 preview, what the original
