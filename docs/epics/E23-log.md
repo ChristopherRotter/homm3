@@ -1412,4 +1412,9 @@ packages installed first). A trial merge with `master` (23e7924) conflicts in th
 queues and the lane HANDOFF; #418 moved the twenty replays' `ruleset_hash` (core ruleset hash
 v48): at the pull request, after the seam's, take `master`'s replays and rehash them on the merged
 code.
+*At the pull requests* (the user, 2026-10-23): `master` (7bd83d5, #420) merged into the seam
+(#422, no conflict; `Cargo.lock`: tokio 1.54.1 for RUSTSEC-2026-0386, published that day) and the
+seam into this branch (the queues and the HANDOFF resolved by hand); the twenty replays verify as
+merged (#418's `ruleset_hash` lines and this branch's hash lines touch different lines and the
+merged ruleset plays them alike).
 
