@@ -2062,6 +2062,35 @@ both executables, `extracted.tar`); no Wine: nothing the original shows changed.
   dragon on the screen standing with the play-on's frame, 500 ms before the end's redraw; the casts' actions unmarking), `calms` both ways.
 - **Gates:** the full check: in the pull request.
 
+### M3 T9a — Every capture afresh (2026-10-22 to 23)
+
+On `client/e17-m3-t9a`, two sessions (T9 split in three with the user: T9a the captures, T9b
+the review, T9c the next milestone). The user's computer was linked for the staging only (the
+runbook's files); the captures ran in the sandbox under Wine, the machine otherwise idle.
+
+- **First session (2026-10-22):** one background loop over every `frames --only <id>`, stopped
+  at 2 hours inside `dispel` (the agent harness's limit for a background job, not the
+  sandbox's): 16 sequences, `walk` to `haste`, 15 as recorded; `melee`'s log item listed from
+  5 266 ms and its box n1.0 from 6 466 ms. `master` merged (#391); the merge left conflict
+  markers in the epic file's header, resolved in the second session.
+- **Second session (2026-10-22 to 23):** the baseline (`verify-once clients`: all gates
+  passed). The sequences in batches of up to ten, each a background job that starts no new
+  sequence after 75 minutes (runbook, "Traps"): `dispel` to `mass` 76 minutes, `dragon` to
+  `bolt` 39; a sequence 2 to 18 minutes. 27 of the 31 as recorded at their first run here or in
+  the first session; four differed once and were as recorded on a rerun: `melee` (the log's line
+  and a box: the original's damage roll), `mass` (the log's line from 2 800 to 3 200 ms: a
+  roll), `fear` (3 200 ms, 1 418 pixels: the Marksmen's (0.1) group-1 frame 1 a millisecond
+  later than recorded, `timeline.txt`), `raise` (2 733 ms, 1 389 pixels: the frame's `before` hero one frame
+  apart). `raise`'s kept `before` at 1 312 ms reads the hero's frame 1 in both runs, 0 at T7c-3,
+  the count the same (T9b looks at it). Every kept file gained only `before` (T7c-3's harness),
+  the frames' times unchanged.
+- **The set:** `set` stopped twice on a dump that was no 5-6-5 screen after `xwd_bytes`' five
+  tries, each as a game started right after the one before (after 27 and 62 frames; one
+  `frames --only melee` likewise at its start); `set --only <id>` for each of the 57, a crashed
+  one run again, passed all at their first try (8 minutes): 85 frames, each as recorded, `kept/`
+  unchanged. Runbook, "Traps".
+- **`drawn`:** all 88 the same; `drawn --record` left `drawn.txt` unchanged.
+
 ## Accepted review lists (M1, M2)
 
 Moved from the epic file on 2026-10-20 (less start-up reading), unchanged.

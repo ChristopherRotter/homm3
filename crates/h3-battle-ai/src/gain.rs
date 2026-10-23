@@ -55,6 +55,47 @@ fn is_ballista(s: &Stack) -> bool {
     s.has(StackTraits::SHOOTER) && !s.is_catapult() && !s.is_turret()
 }
 
+/// Whether the side's threat records on the walker's turn search stack `id` (0x422B20 with flag
+/// 1): a living stack of `side` but `walker`, with hit points left in a prediction, no war machine
+/// but the Ballista, not kept out ([`computer::kept_out`]), hypnotized or berserk, that cannot
+/// shoot now.
+fn recorded(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    ctx: &Context,
+    (walker, side): (StackId, BattleSide),
+    id: StackId,
+) -> bool {
+    let o = &state.stacks()[id.index()];
+    let status = o.spells.status;
+    o.side == side
+        && id != walker
+        && o.is_alive()
+        && !ctx.spent(state, id)
+        && (!o.has(StackTraits::WAR_MACHINE) || is_ballista(o))
+        && !computer::kept_out(state, ruleset, id)
+        && !status.contains(Status::HYPNOTIZED)
+        && !status.contains(Status::BERSERK)
+        && !computer::shoots(state, ruleset, id)
+}
+
+/// The stack the side's threat records on the walker's turn search last (0x422B20 with flag 1:
+/// [`records`]' last), none without one. The destination map keeps its search's stops when the
+/// hex scores search none (E23 T5b2a, survey slip 30).
+// rule: BAT-AI-020
+pub(crate) fn last_recorded(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    ctx: &Context,
+    (walker, side): (StackId, BattleSide),
+) -> Option<StackId> {
+    (0u8..)
+        .map(StackId)
+        .take(state.stacks().len())
+        .filter(|&id| recorded(state, ruleset, ctx, (walker, side), id))
+        .last()
+}
+
 /// The threat records of `side`'s stacks on the turn of its walker `walker` in the context `ctx`
 /// (0x422B20 with flag 1; BAT-AI-009). The order's first side among equal keys is the active
 /// stack's (+0x132B8: the walker's own on its turn, the deciding stack's in a prediction).
@@ -68,19 +109,8 @@ pub(crate) fn records(
     let mut out = [Record::default(); STACK_CAPACITY];
     let first = state.active().unwrap_or(walker);
     let ranks = order::ranks(state, ruleset, state.stacks()[first.index()].side);
-    for (i, o) in (0u8..).zip(state.stacks()) {
-        let id = StackId(i);
-        let status = o.spells.status;
-        if o.side != side
-            || id == walker
-            || !o.is_alive()
-            || ctx.spent(state, id)
-            || (o.has(StackTraits::WAR_MACHINE) && !is_ballista(o))
-            || computer::kept_out(state, ruleset, id)
-            || status.contains(Status::HYPNOTIZED)
-            || status.contains(Status::BERSERK)
-            || computer::shoots(state, ruleset, id)
-        {
+    for id in (0u8..).map(StackId).take(state.stacks().len()) {
+        if !recorded(state, ruleset, ctx, (walker, side), id) {
             continue;
         }
         // The range is the stack's speed and no mark comes from a stop: every enemy marked is

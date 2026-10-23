@@ -193,6 +193,7 @@ impl Search {
                 .flatten()
         };
         // rule: BAT-MAG-032, BAT-SIE-004
+        // [`stops`]'s code, kept inline: a call costs the computer's searches 5 % (E23 T5b2a).
         let stops = if flies {
             HexSet::new()
         } else {
@@ -316,6 +317,26 @@ impl Search {
         }
     }
 
+    /// A map set by hand (the computer's destination map, 0x4B2FF0): every hex of `reached` a
+    /// position at cost 1 with nothing passed over, every hex of `marked` marked at cost 1, the
+    /// walk's stops `stops`, no end; `start` the stack's position, not reached.
+    pub(crate) fn placed(start: Hex, (reached, marked): (HexSet, HexSet), stops: HexSet) -> Self {
+        let mut cost = [UNTOUCHED; HEXES];
+        for h in reached.union(marked).iter() {
+            cost[h.index()] = 1;
+        }
+        Self {
+            start,
+            cost,
+            from: [start; HEXES],
+            flown: [0; HEXES],
+            reached,
+            marked,
+            stops,
+            end: None,
+        }
+    }
+
     /// The mark of `hex`, if it is marked: a stack's position hex says whether it can be attacked
     /// and at what cost (the berserk candidates, 0x445490).
     pub(crate) fn mark_of(&self, hex: Hex) -> Option<u16> {
@@ -366,6 +387,29 @@ impl Search {
         out[..len].reverse();
         (out, len)
     }
+}
+
+/// The stops of a search for `mover` (the pathfinder's +0x68, which 0x4B3290 marks at every
+/// search's start for its stack): none for a flyer; else the pits its controller sees and a town's
+/// moat (BAT-MAG-032, BAT-SIE-004), not under the stack at its start. [`Search::run`] keeps its
+/// own copy of this code (a call there costs its searches 5 %); `h3-battle-ai`'s test
+/// `the_search_stops_are_the_searchs_own` holds the two together.
+// rule: BAT-MAG-032, BAT-SIE-004
+pub(crate) fn stops(state: &BattleState, field: Field, mover: &Stack) -> HexSet {
+    if mover.has(StackTraits::FLIES) {
+        return HexSet::new();
+    }
+    let side = mover.controller();
+    let own = mover
+        .footprint(field)
+        .hexes()
+        .fold(HexSet::new(), |mut own, h| {
+            own.insert(h);
+            own
+        });
+    obstacles::seen_pits(state, side)
+        .union(siege::stops(state, side))
+        .without(own)
 }
 
 /// The footprint and side of the living stack on each hex of the field (turrets stand off it).

@@ -81,7 +81,8 @@ pub(super) fn valued(state: &BattleState, r: &BattleRuleset, name: &str) -> Valu
     let sc = SpellContext::new(state, r, (&ctx, ATTACKER), &mut Rng::from_seed(5));
     let h = Hero::new(&sc, (state, r), (state.active().unwrap(), ATTACKER, ctx));
     let id = spell(r, name);
-    hero::value(&h, (id, r.spell(id).unwrap()), candidate(state, r, name))
+    let c = candidate(state, r, name);
+    hero::value(&h, (id, r.spell(id).unwrap()), c, &mut Rng::from_seed(5))
 }
 
 /// The cast of `name` at `target`.
@@ -339,7 +340,8 @@ fn valued_in(state: &BattleState, r: &BattleRuleset, sc: &SpellContext<'_>, name
     let ctx = computer::context(state, r, ATTACKER);
     let h = Hero::new(sc, (state, r), (state.active().unwrap(), ATTACKER, ctx));
     let id = spell(r, name);
-    hero::value(&h, (id, r.spell(id).unwrap()), candidate(state, r, name))
+    let c = candidate(state, r, name);
+    hero::value(&h, (id, r.spell(id).unwrap()), c, &mut Rng::from_seed(5))
 }
 
 // covers: BAT-AI-018

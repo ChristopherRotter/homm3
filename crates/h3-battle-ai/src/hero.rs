@@ -5,10 +5,12 @@
 //! value (0x43BB20, [`value`]), 2.5 times when its spell points cover seven casts, else times the
 //! square root of the casts they cover, drawn at 75 to 100 %; the best is cast when it is due now
 //! (+0x20) or when the side would retreat. The raises, Sacrifice and Earthquake have cases of
-//! their own ([`specials`], E23 T5b1); Teleport is T5b2's (BAT-STUB-14); the retreat test is T6's
-//! (BAT-STUB-13, BAT-Q61).
+//! their own ([`specials`], E23 T5b1), Teleport too ([`teleport`], E23 T5b2a: its stacks' walker
+//! turns, a caster's cast entry in them but the active stack's E23 T5b2b's, BAT-STUB-14); the
+//! retreat test is T6's (BAT-STUB-13, BAT-Q61).
 
 mod specials;
+mod teleport;
 
 use core::cell::OnceCell;
 
@@ -132,7 +134,7 @@ pub(crate) fn choose(
             rounds: u32::from(hc.rounds),
             cast: true,
         };
-        let v = value(&hero, (spell, s), c);
+        let v = value(&hero, (spell, s), c, rng);
         if v.value <= 0 {
             continue;
         }
@@ -257,24 +259,26 @@ impl<'h, 'a> Hero<'h, 'a> {
     }
 }
 
-/// A spell's value for the hero's choice (0x43BB20; BAT-AI-017 to BAT-AI-019), its candidate `c`:
+/// A spell's value for the hero's choice (0x43BB20; BAT-AI-017 to BAT-AI-020), its candidate `c`:
 /// Chain Lightning's ([`chain`]), an area spell's ([`area`]) and a mass damage spell's
 /// ([`mass_damage`]), the summons' ([`summon`]), Dispel's ([`dispel`]), the raises', Sacrifice's
-/// and Earthquake's ([`specials`]) by their own cases; Teleport nothing yet (T5b2); every other
-/// spell aimed at
-/// stacks by its evaluator ([`Kind`]) on the side's stacks for a positive spell, the other
-/// side's for a negative one ([`evaluated`]; the original weighs a neutral one on both, the only
-/// such spell Dispel, whose case falls into this one, [`dispel`]); any other nothing: the
-/// computer's hero never casts
-/// Quicksand, Land Mine, Force Field, Fire Wall, Berserk (aimed at a hex) or Remove Obstacle.
-// rule: BAT-AI-017, BAT-AI-018, BAT-AI-019
-pub(crate) fn value(h: &Hero<'_, '_>, (id, s): (SpellId, &BattleSpell), c: Candidate) -> Valued {
+/// and Earthquake's ([`specials`]) and Teleport's ([`teleport`], its walker turns' draws from
+/// `rng`) by their own cases; every other spell aimed at stacks by its evaluator ([`Kind`]) on the
+/// side's stacks for a positive spell, the other side's for a negative one ([`evaluated`]; the
+/// original weighs a neutral one on both, the only such spell Dispel, whose case falls into this
+/// one, [`dispel`]); any other nothing: the computer's hero never casts Quicksand, Land Mine,
+/// Force Field, Fire Wall, Berserk (aimed at a hex) or Remove Obstacle.
+// rule: BAT-AI-017, BAT-AI-018, BAT-AI-019, BAT-AI-020
+pub(crate) fn value(
+    h: &Hero<'_, '_>,
+    (id, s): (SpellId, &BattleSpell),
+    c: Candidate,
+    rng: &mut Rng,
+) -> Valued {
     let m = &s.magic;
     let has = |e: SpellEffect| m.effects.contains(&e);
     if has(SpellEffect::Teleport) {
-        // stub: BAT-STUB-14
-        // Teleport (0x43AA60, the walker's turn twice per stack it could move): E23 T5b2.
-        return Valued::ZERO;
+        return teleport::teleport(h, id, rng);
     }
     if has(SpellEffect::Earthquake) {
         return specials::earthquake(h, s, c);
