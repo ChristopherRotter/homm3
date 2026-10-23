@@ -218,13 +218,16 @@ def play(
     opponent: str = "random",
     sides: Iterable[str] = ("attacker", "defender"),
     stop=None,
+    preview: bool = False,
 ) -> dict:
     """Plays the evaluation's episodes with `agent` on each of `sides` against `opponent` (an
     engine seat: Random by default, or a baseline bot; `external`: both seats external, `agent`
     plays both, as `duel`'s); returns the rates per side, per kind and, with both sides, overall
     (both sides weighed equally), the agent's mean reward v1, the truncations and the episodes the
     batch skipped (ended before the agent could act: counted in no rate). Raises `Stopped` when
-    `stop` (`run.Stop`) was requested before one of its batch calls."""
+    `stop` (`run.Stop`) was requested before one of its batch calls. With `preview` the batches
+    write their kill preview (`BattleBatch.preview`; the play is the same) for an agent that reads
+    it (`inspect`)."""
     if opponent not in (*OPPONENTS, "external"):
         raise ValueError(f"unknown opponent {opponent!r} (one of {OPPONENTS})")
     k = episodes_per_env(episodes, envs)
@@ -245,6 +248,7 @@ def play(
             currency=currency,
             mana_price=mana_price,
             final_obs=False,
+            preview=preview,
         )
         batch.add_encounters(kinds=kinds, attacker=attacker, defender=defender)
         batch.reset()
@@ -309,13 +313,14 @@ def report(
     currency: str = CURRENCY,
     mana_price: int = MANA_PRICE,
     stop=None,
+    preview: bool = False,
 ) -> dict:
     """Plays a stratified set (design §5: the report set v1 by default; the neutral set v1, whose
     one opponent is the system actor, the agent attacking), its first `per_kind` episodes of each
     kind, against `opponent` (`play`'s), an agent per (kind, side) from `make_agent(seed, side)`
     (its draws seeded alike for every network: common random numbers); returns `stratified`'s
     rates, per kind each side's `play` report, and the games, skipped episodes, truncations and
-    seconds."""
+    seconds. `preview`: as `play`'s."""
     if held_out not in STRATIFIED:
         raise ValueError(f"not a stratified set: {held_out!r} (one of {tuple(STRATIFIED)})")
     seed, envs, weights, sides = STRATIFIED[held_out]
@@ -341,6 +346,7 @@ def report(
                 opponent=opponent,
                 sides=(side,),
                 stop=stop,
+                preview=preview,
             )[side]
             for j, side in enumerate(sides)
         }
@@ -396,6 +402,24 @@ def bots_table(held_out: str = "report-v1", path: Path | None = None) -> dict:
     return table
 
 
+def sampled(policy) -> Callable[[int, str], Agent]:
+    """The sampled policy as `report`'s agents (`make_agent(seed, side)`): each draws from its own
+    generator seeded `seed` on the network's device (the ladder's; `inspect` replays its draws)."""
+    import torch
+
+    device = next(policy.parameters()).device
+
+    def make(seed: int, side: str = "attacker") -> Agent:
+        generator = torch.Generator(device=device).manual_seed(seed)
+
+        def agent(batch: BattleBatch) -> None:
+            _fill(batch, policy.act(batch, generator=generator))
+
+        return agent
+
+    return make
+
+
 def _fill(batch: BattleBatch, choice, rows: np.ndarray | None = None) -> None:
     """`choice`'s heads into the batch's actions: every row's, or `rows`' (`choice` theirs)."""
     a = batch.actions
@@ -424,8 +448,6 @@ def ladder(
     its one opponent, the system actor (E06 T7c; the row `system`, whatever `opponents` names, no
     networks): the network's row beside `h3 ai eval`'s table on the same episodes. Each network's
     mode is restored after."""
-    import torch
-
     if held_out not in SETS:
         raise ValueError(f"unknown held-out set {held_out!r} (one of {SETS})")
     networks = dict(networks or {})
@@ -437,24 +459,15 @@ def ladder(
     modes = [net.training for net in nets]
     for net in nets:
         net.eval()
-    device = next(policy.parameters()).device
-
-    def sampled(seed: int, side: str = "attacker") -> Agent:
-        generator = torch.Generator(device=device).manual_seed(seed)
-
-        def agent(batch: BattleBatch) -> None:
-            _fill(batch, policy.act(batch, generator=generator))
-
-        return agent
-
+    agents = sampled(policy)
     out = {}
     try:
         for opponent in opponents:
             if held_out == "v0":
-                out[opponent] = play(sampled(rng_seed), opponent=opponent, stop=stop, **settings)
+                out[opponent] = play(agents(rng_seed), opponent=opponent, stop=stop, **settings)
             else:
                 out[opponent] = report(
-                    sampled,
+                    agents,
                     opponent=opponent,
                     per_kind=per_kind,
                     held_out=held_out,

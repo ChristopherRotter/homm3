@@ -15,6 +15,20 @@ T1c is done (#316, #317 merged). T1a5 is cut in four (the user, 2026-10-20; the 
 
 Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure are merged below by kind, done and duplicate parts dropped; the origin stays in brackets (an epic and task, a review report such as r3 or F-r2b-2). History: git. Items for other lanes went into their inboxes; the First Aid Tent became BAT-Q51. The addresses are readings of the executable, the reviews' not read a second time. Where the readings stand: `installation.md` §7.8–§7.33; the reviews' reports stay on `battle/e04b-t11b-review-reports` and `battle/e04c-t10b-review-reports`; their experiment candidates are in `docs/experiments/README.md` ("From the battle queue's inbox", "From the E04b review", "From E04c").
 
+- 2026-10-23 (the AI lane, E06 T6a, `claude/brave-wright-msoutb`; **for you**): the damage
+  preview of a commanded turret's shot (`h3_battle::preview`, BAT-DMG-011) is an ordinary
+  strike's (`strike_preview`: attack, defense, the hero's bonus, wall and range penalties) while
+  the shot itself is BAT-SIE-018's (`turret_shot`, `combat.rs`: the creature's damage drawn per
+  creature, the target's protections only). Found by the AI lane's behaviour analysis on the
+  report set's sieges a hero defends (with Artillery the defender commands its turrets,
+  BAT-SIE-016): previewed 3 to 6 kills, 1 killed; 3 to 7, 1; 12 to 24, 3. The batch's kill preview
+  (C ABI v33) and the Greedy bot read it; the AI lane leaves a turret's shots out of its measures
+  meanwhile. Proposed: `preview` previews a turret's shot by `turret_inputs` (the drawn sum's
+  ends), with a test against `turret_shot`'s range. **Done for you** in the same pull request
+  (ADR-0027 point 11, E23 exit criterion 4): the gated batch benchmark with `System` seats,
+  `benches/ai/batch-system-neutral-v1.toml` (the neutral kinds, the system actor defending; 6.81
+  G instructions at `POLICY_VERSION` 19, about 532 000 a caller step). It is lane-only: a change of `h3_battle_ai`
+  moves it, and the AI lane re-baselines it.
 - 2026-10-23 (the AI lane, E06 T7c, `claude/bold-curie-a42rc4`; **for you, with each
   `h3_battle_ai::POLICY_VERSION` bump**): the system actor is now a bot of the AI lane's tables,
   `python/records/bots-report-v1.json` (it against Random, Aggressor, Greedy on the report set)

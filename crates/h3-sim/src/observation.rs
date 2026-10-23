@@ -583,6 +583,79 @@ mod tests {
             assert_eq!(f[column("ACTIVE")], if active { 1.0 } else { 0.0 });
         }
         assert_eq!(stack(&out, obs.stacks.len())[column("PRESENT")], 0.0);
+        // E06 T6a: the behaviour analysis's columns (`h3env.train.inspect`), after a Wait and a
+        // Defend so that the turn flags differ between stacks.
+        let mut s = s;
+        for command in [h3_battle::Command::Wait, h3_battle::Command::Defend] {
+            let o = observe(&s, &r, BattleSide::Attacker);
+            let side = o
+                .stacks
+                .get(o.active.unwrap().index())
+                .unwrap()
+                .controller();
+            h3_battle::apply(&mut s, &r, side, command, &mut h3_battle::NoopSink).unwrap();
+        }
+        let obs = observe(&s, &r, BattleSide::Defender);
+        encode(&obs, width, &mut out).unwrap();
+        assert_eq!(out[column("ROUND")], f32::from(obs.round));
+        let mut flags = [0usize; 4];
+        for (i, st) in obs.stacks.iter().enumerate() {
+            let f = stack(&out, i);
+            let is = |set: bool| if set { 1.0 } else { 0.0 };
+            let turn = [
+                StackFlags::ACTED,
+                StackFlags::WAITED,
+                StackFlags::STARTED,
+                StackFlags::DEFENDING,
+            ];
+            for ((name, bit), seen) in ["ACTED", "WAITED", "STARTED", "DEFENDING"]
+                .iter()
+                .zip(turn)
+                .zip(&mut flags)
+            {
+                assert_eq!(f[column(name)], is(st.flags.contains(bit)), "{name}");
+                *seen += usize::from(st.flags.contains(bit));
+            }
+            for (name, value) in [
+                ("ALIVE", is(st.is_alive())),
+                ("OWN", is(st.side == BattleSide::Defender)),
+                ("COUNT", st.count as f32),
+                ("TOP_HP", st.top_hp as f32),
+                ("MAX_HP", st.max_hp as f32),
+                ("RETALIATIONS_LEFT", f32::from(st.retaliations_left)),
+                ("SHOOTER", is(st.has(StackTraits::SHOOTER))),
+                ("WAR_MACHINE", is(st.has(StackTraits::WAR_MACHINE))),
+                ("BASE_COUNT", st.base_count as f32),
+                ("TURRET", is(st.is_turret())),
+            ] {
+                assert_eq!(f[column(name)], value, "{name}");
+            }
+        }
+        // The Wait and the Defend set the flags on stacks of their own.
+        assert!(flags.iter().all(|&n| n >= 1), "{flags:?}");
+        let view = HeroView {
+            hero_type: h3_content::HeroTypeId::from_index(0).unwrap(),
+            attack: 1,
+            defense: 2,
+            power: 3,
+            knowledge: 4,
+            mana: 5,
+            max_mana: 6,
+            casts: 7,
+            commands_ballista: false,
+            commands_tent: false,
+            commands_catapult: false,
+            spell_book: true,
+        };
+        let mut block = [0.0; HERO_PUBLIC_FEATURES];
+        encode_hero(Some(view), 0, &mut block);
+        for (name, value) in [
+            ("HERO_MANA", 5.0),
+            ("HERO_MAX_MANA", 6.0),
+            ("HERO_CASTS", 7.0),
+        ] {
+            assert_eq!(block[column(name)], value, "{name}");
+        }
     }
 
     #[test]

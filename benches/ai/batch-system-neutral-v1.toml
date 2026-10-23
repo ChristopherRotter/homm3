@@ -1,0 +1,29 @@
+# Instruction-count baseline of one `cargo xtask bench-check` workload (valgrind/callgrind, event
+# Ir); the directory names the owning lane (lanes.toml). Counts are deterministic for a given
+# toolchain + target + source and are compared only when both match this file. A change above
+# `threshold_percent` fails verify. Update intentionally with
+# `cargo xtask bench-check --update --workload <name>` and state the reason in the commit message.
+
+toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
+target = "x86_64-unknown-linux-gnu"
+
+[workload]
+description = "a training batch of 64 envs of the encounter distribution v1's neutral kinds at the census's shares (780 wandering, 20 guards, 25 a neutral town's siege), the attacker external, the defender the system actor inside the call (Policy::System, h3_battle_ai::choose; ADR-0027 point 11, E23 exit criterion 4), in the caller's thread (threads 0), 200 calls of random legal actions from the batch's own masks; counts only inside h3_sim::batch::BattleBatch::step, the system actor's decisions included, so lane-only (E06 T6a)"
+args = [
+    "ai",
+    "bench",
+    "--envs",
+    "64",
+    "--threads",
+    "0",
+    "--calls",
+    "200",
+    "--encounters",
+    "780,20,0,0,0,25",
+    "--seed",
+    "1",
+]
+collect = "*BattleBatch>::step"
+instructions = 6808294645
+threshold_percent = 2
+lane_only = true
