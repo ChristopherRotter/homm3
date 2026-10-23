@@ -9,6 +9,7 @@ use alloc::vec::Vec;
 
 use h3_protocol::wire::{Siege, Stack};
 
+use crate::anim::TurretPose;
 use crate::layout::BattleLayout;
 use crate::scene::{Draw, SceneError};
 use crate::tables::{SIEGE_PARTS, Tables, Town};
@@ -140,10 +141,14 @@ impl Walls {
     }
 }
 
-/// A turret's shooter as its record holds it: the creature's DEF, its point and its outline.
+/// A turret's shooter as its record holds it: the creature's DEF, its pose, its point and its
+/// outline.
 #[derive(Debug, Clone)]
 struct Shooter {
     def: String,
+    group: u32,
+    frame: u32,
+    mirrored: bool,
     anchor: [i32; 2],
     outline: Option<u8>,
 }
@@ -161,7 +166,6 @@ pub struct SiegeLook<'t> {
     moat_hexes: BTreeSet<u8>,
     /// The keep's, the lower tower's and the upper tower's shooter, where its record is set up.
     shooters: [Option<Shooter>; 3],
-    standing: u32,
     width: u8,
 }
 
@@ -175,6 +179,8 @@ pub struct Context<'a> {
     pub stacks: &'a [Stack],
     /// The active stack's id and its outline's palette entry.
     pub active: Option<(u8, u8)>,
+    /// Each turret record's pose (E17 M4 T2b: a shot's; none: standing, facing left).
+    pub turrets: [Option<TurretPose>; 3],
 }
 
 impl<'t> SiegeLook<'t> {
@@ -203,9 +209,19 @@ impl<'t> SiegeLook<'t> {
             .find(|c| c.original == town.turrets.shooter)
             .ok_or_else(|| SceneError::Key(alloc::format!("creature {}", town.turrets.shooter)))?;
         let shift = i32::from(town.turrets.shift);
+        let standing = u32::from(tables.battle.groups.standing);
         let shooters = [Turret::Keep, Turret::Lower, Turret::Upper].map(|turret| {
             turret.built(siege.fort).then(|| {
                 let [x, y] = turret.point(town);
+                // Its record's pose (E17 M4 T2b): facing right it is drawn unmirrored, its canvas
+                // at x − 196 less the shift (`siege_parts_at_hex` 0x494EB3).
+                let pose = context.turrets[turret as usize].unwrap_or(TurretPose {
+                    group: standing,
+                    frame: 0,
+                    right: false,
+                });
+                let x = i32::from(x);
+                let x = if pose.right { x - shift } else { x + shift };
                 // The turret's stack outlined while it is the defender's active stack
                 // (0x494E98 to 0x494EAC): its id at the turret's position.
                 let id = context
@@ -213,12 +229,16 @@ impl<'t> SiegeLook<'t> {
                     .iter()
                     .find(|s| s.hex == turret.hex() && s.alive)
                     .map(|s| s.id);
+                // Outlined only while it stands (0x494E98).
                 Shooter {
                     def: creature.def.clone(),
-                    anchor: [i32::from(x) + shift, i32::from(y)],
+                    group: pose.group,
+                    frame: pose.frame,
+                    mirrored: !pose.right,
+                    anchor: [x, i32::from(y)],
                     outline: context
                         .active
-                        .filter(|&(active, _)| Some(active) == id)
+                        .filter(|&(active, _)| Some(active) == id && pose.group == standing)
                         .map(|(_, entry)| entry),
                 }
             })
@@ -230,7 +250,6 @@ impl<'t> SiegeLook<'t> {
             moat,
             moat_hexes: siege.moat_hexes.iter().copied().collect(),
             shooters,
-            standing: u32::from(tables.battle.groups.standing),
             width,
         }))
     }
@@ -323,10 +342,10 @@ impl<'t> SiegeLook<'t> {
                 if let Some(s) = shooter {
                     list.push(Draw::Shooter {
                         def: s.def.clone(),
-                        group: self.standing,
-                        frame: 0,
+                        group: s.group,
+                        frame: s.frame,
                         anchor: s.anchor,
-                        mirrored: true,
+                        mirrored: s.mirrored,
                         outline: s.outline,
                         rows: SHOOTER_ROWS,
                     });

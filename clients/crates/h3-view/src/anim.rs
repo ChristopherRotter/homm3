@@ -34,7 +34,7 @@ use crate::battle_log::{Logged, Spread};
 use crate::hero::{Action, Happening, Heroes};
 use crate::layout::BattleLayout;
 use crate::ray::{self, Stroke};
-use crate::siege::FIELD_HEXES;
+use crate::siege::{FIELD_HEXES, Walls};
 use crate::tables::Groups;
 
 /// Every frame outside a walk's group and the shot's: 100 ms times the factor (§7.1).
@@ -182,6 +182,8 @@ pub struct Missile {
     pub def: String,
     /// Its canvas's width and height (the DEF's): each step's canvas is centred on its point.
     pub size: [i32; 2],
+    /// The frames of its group 0 (a rock's cycle through them, E17 M4 T2b).
+    pub frames: u32,
     /// The creature's angle in degrees for each frame of group 0, from high to low: frame f is
     /// drawn when the first f midpoints between consecutive angles are at least the shot's angle
     /// and the next is not (0x469957).
@@ -212,6 +214,9 @@ pub struct Flight {
     pub start: [i32; 2],
     /// The move per step: the distance to the target over the steps, truncated.
     pub delta: [i32; 2],
+    /// Each step's canvas, where the steps follow no line (a wall shot's rock, E17 M4 T2b);
+    /// empty: `start` and `delta`.
+    pub path: Vec<[i32; 2]>,
 }
 
 /// A ray (`DrawRay` 0x5A5C20, [`crate::ray`], design §7.12): the ticks' strokes, tick k shown
@@ -290,6 +295,8 @@ pub struct Stage<'a> {
     /// Sacrifice's line naming its victim by its number before its death (E17 M3 T9d, CLT-Q9 to
     /// CLT-Q14, CLT-Q16, CLT-Q17).
     pub bugs: Bugs,
+    /// A siege's turrets and explosions (E17 M4 T2b; none: no siege).
+    pub siege: Option<&'a SiegeStage>,
 }
 
 /// What a battle's casts draw (E17 M3 T7b-1, design §7.16): each spell the record casts by its
@@ -854,6 +861,14 @@ pub enum Sound {
     /// A spell's own sound (its handle) started as a file, category 2, cued on the stack struck:
     /// Death Stare's (`play_sound_file` 0x441126) and the Rust Dragon's acid (0x44151A).
     SpellFile(u16),
+    /// A turret's shot, cued on its stack: its shooter creature's shot sound started as a file,
+    /// category 2 (`play_sound_file` from `turret_shot` 0x465C6D; E17 M4 T2b).
+    TurretShot,
+    /// A wall shot's landing with damage, cued on its shooter: the battle's sound by name
+    /// (`WallHit.82m`, `wav_load` 0x446199, `play_sample` 0x4462C8: category 0, volume 127).
+    WallHit,
+    /// A wall shot's landing without damage (`WallMiss.82m`), as [`Sound::WallHit`].
+    WallMiss,
 }
 
 /// A sound a stack starts at a time, or (`stop`) the move sound it ends then (E17 M2 T5b; the
@@ -921,6 +936,13 @@ pub struct Timeline {
     /// When the battle is decided and how (E17 M3 T8, design §8.2): the end of the command whose
     /// events end it, when `battle_end` plays the result's tune ([`crate::sound::end_tune`]).
     pub ended: Option<(u32, Outcome)>,
+    /// A siege's turret records' poses, in the order drawn (E17 M4 T2b): each built turret's
+    /// standing at 0.
+    pub turrets: Vec<TurretKey>,
+    /// A siege's walls' states, in the order drawn (E17 M4 T2b): the snapshot's at 0.
+    pub walls: Vec<WallKey>,
+    /// A siege's wall shots' explosions, in order (E17 M4 T2b).
+    pub blasts: Vec<BlastKey>,
     /// When the last frame shows.
     pub end: u32,
 }
@@ -1094,11 +1116,18 @@ impl Timeline {
                     0 => f.frame,
                     n => (f.frame + k) % n,
                 };
-                let k = i32::try_from(k).unwrap_or(0);
+                let at = usize::try_from(k)
+                    .ok()
+                    .and_then(|k| f.path.get(k))
+                    .copied()
+                    .unwrap_or_else(|| {
+                        let k = i32::try_from(k).unwrap_or(0);
+                        [f.start[0] + k * f.delta[0], f.start[1] + k * f.delta[1]]
+                    });
                 Projectile {
                     def: f.def.clone(),
                     frame,
-                    at: [f.start[0] + k * f.delta[0], f.start[1] + k * f.delta[1]],
+                    at,
                     mirrored: f.mirrored,
                 }
             })
@@ -1127,6 +1156,48 @@ impl Timeline {
             frame,
             translucent: key.translucent,
             over: key.over.clone(),
+        })
+    }
+
+    /// Each turret record's pose shown at `t` (E17 M4 T2b; none: a record no turret sets up).
+    pub fn turrets(&self, t: u32) -> [Option<TurretPose>; 3] {
+        let mut out = [None; 3];
+        for k in self.turrets.iter().filter(|k| k.shown <= t) {
+            if let Some(slot) = out.get_mut(usize::from(k.record)) {
+                *slot = Some(k.pose);
+            }
+        }
+        out
+    }
+
+    /// A siege's walls' states shown at `t` (E17 M4 T2b; none: no siege with a fort).
+    pub fn walls(&self, t: u32) -> Option<Walls> {
+        self.walls
+            .iter()
+            .rev()
+            .find(|k| k.shown <= t)
+            .map(|k| k.walls)
+    }
+
+    /// A wall shot's explosion showing at `t` (E17 M4 T2b): its last frame shown by then, and
+    /// unless each frame is drawn on a restored background, the frames before it.
+    pub fn blast(&self, t: u32) -> Option<Blast> {
+        let last = self.blasts.iter().rev().find(|k| k.shown <= t)?;
+        let frame = last.frame?;
+        let frames = if last.restored {
+            vec![(frame, last.walls)]
+        } else {
+            self.blasts
+                .iter()
+                .filter(|k| k.blast == last.blast && k.shown <= t)
+                .filter_map(|k| k.frame.map(|f| (f, k.walls)))
+                .collect()
+        };
+        Some(Blast {
+            def: last.def.clone(),
+            at: last.at,
+            rect: last.rect,
+            frames,
         })
     }
 
@@ -1246,6 +1317,9 @@ impl Timeline {
         times.extend(self.counts.iter().map(|k| k.shown));
         times.extend(self.tints.iter().map(|k| k.shown));
         times.extend(self.outlines.iter().map(|(t, _)| *t));
+        times.extend(self.turrets.iter().map(|k| k.shown));
+        times.extend(self.walls.iter().map(|k| k.shown));
+        times.extend(self.blasts.iter().map(|k| k.shown));
         times.extend(&self.steps);
         let mut idle = self.idle;
         idle.run(until, |t| times.push(t));
@@ -1287,6 +1361,8 @@ impl Timeline {
         let mut out = String::new();
         let mut times: Vec<u32> = self.keys.iter().map(|k| k.drawn).collect();
         times.extend(self.magics.iter().map(|k| k.drawn));
+        times.extend(self.turrets.iter().map(|k| k.drawn));
+        times.extend(self.walls.iter().map(|k| k.drawn));
         times.extend(self.ended.map(|(t, _)| t));
         times.push(0);
         let shown_heroes = self.heroes.as_ref().zip(heroes);
@@ -1300,6 +1376,9 @@ impl Timeline {
         times.sort_unstable();
         times.dedup();
         let mut heroes_printed: [Option<(u32, u32)>; 2] = [None; 2];
+        let mut turrets_now: BTreeMap<u8, TurretPose> = BTreeMap::new();
+        let mut turrets_printed: BTreeMap<u8, TurretPose> = BTreeMap::new();
+        let mut walls_printed: Option<Walls> = None;
         for t in times {
             for key in self.keys.iter().filter(|k| k.drawn == t) {
                 now.insert(key.stack, key.pose);
@@ -1327,6 +1406,21 @@ impl Timeline {
                         let _ = writeln!(out, "{t} hero {side} g{} f{}", p.group, p.frame);
                     }
                 }
+            }
+            // A siege's turret records and walls (E17 M4 T2b), as the harness reads them.
+            for key in self.turrets.iter().filter(|k| k.drawn == t) {
+                turrets_now.insert(key.record, key.pose);
+            }
+            for (&record, &pose) in &turrets_now {
+                if turrets_printed.insert(record, pose) != Some(pose) {
+                    out.push_str(&siege::turret_line(t, record, pose));
+                }
+            }
+            if let Some(key) = self.walls.iter().rev().find(|k| k.drawn == t)
+                && walls_printed != Some(key.walls)
+            {
+                walls_printed = Some(key.walls);
+                out.push_str(&siege::walls_line(t, &key.walls));
             }
             // Each key drawn differs from the one before it (a frame on, or the erasure).
             if let Some(key) = self.magics.iter().rev().find(|k| k.drawn == t) {
@@ -1414,6 +1508,8 @@ struct Live {
     frightens: bool,
     /// Its creature has a Fire Shield of its own ([`Casts::shielded`]; E17 M3 T7c-3).
     shielded: bool,
+    /// A siege's turret: its record ([`siege::turret_record`]; E17 M4 T2b).
+    turret: Option<u8>,
 }
 
 impl Live {
@@ -1512,14 +1608,10 @@ fn played(
     let mut stacks = BTreeMap::new();
     let mut records = [0u8; 2];
     // The harness's records follow the original's setup: each side's army, then its war
-    // machines in `battle_war_machine_stacks`' order (E17 M3 T3b).
-    // A siege's turrets stand off the field: their shooters are the town's, not stacks drawn (E17
-    // M4 T1b, `crate::siege`); being the defender's last records, the others' numbers hold.
-    let mut living: Vec<&Stack> = snapshot
-        .stacks
-        .iter()
-        .filter(|s| s.alive && s.hex < FIELD_HEXES)
-        .collect();
+    // machines in `battle_war_machine_stacks`' order (E17 M3 T3b). A siege's turrets are the
+    // defender's last (E17 M4 T2b): off the field, their shooters drawn by the town's records
+    // (`crate::siege`), never fidgeting.
+    let mut living: Vec<&Stack> = snapshot.stacks.iter().filter(|s| s.alive).collect();
     living.sort_by_key(|s| {
         (
             s.side == Side::Defender,
@@ -1543,7 +1635,8 @@ fn played(
         });
         records[side] += 1;
         let frames = look.count(stage.groups.mouse_over);
-        if frames > 0 {
+        let turret = turret_record(s.hex).filter(|_| s.hex >= FIELD_HEXES);
+        if frames > 0 && turret.is_none() {
             fidgeters.push(Fidget {
                 stack: s.id,
                 interval: look.times[0],
@@ -1570,6 +1663,7 @@ fn played(
                 defense: s.defense,
                 frightens: stage.casts.frighteners.contains(&s.creature),
                 shielded: stage.casts.shielded.contains(&s.creature),
+                turret,
             },
         );
     }
@@ -1616,7 +1710,39 @@ fn played(
         field_kept: None,
         corpses: BTreeMap::new(),
         draws: chain::Draws::new(&stage.casts.rays),
+        siege: None,
+        turret_keys: Vec::new(),
+        wall_keys: Vec::new(),
+        blasts: Vec::new(),
+        blast_count: 0,
     };
+    // A siege with a fort (E17 M4 T2b): the walls' states and hit points, each turret standing.
+    if let Some(s) = snapshot.siege.as_ref().filter(|s| s.fort > 0) {
+        let mut hit_points = [0; 8];
+        for (hp, &v) in hit_points.iter_mut().zip(&s.parts) {
+            *hp = v;
+        }
+        let walls = Walls::of(s);
+        player.siege = Some(siege::Siege { walls, hit_points });
+        player.wall_keys.push(WallKey {
+            drawn: 0,
+            shown: 0,
+            walls,
+        });
+        let standing = TurretPose {
+            group: u32::from(stage.groups.standing),
+            frame: 0,
+            right: false,
+        };
+        for record in player.stacks.values().filter_map(|l| l.turret) {
+            player.turret_keys.push(TurretKey {
+                record,
+                drawn: 0,
+                shown: 0,
+                pose: standing,
+            });
+        }
+    }
     let mut actions = Vec::new();
     let mut fidgets = seed.map(|rng| Fidgets {
         rng,
@@ -1761,6 +1887,9 @@ fn played(
         heroes: None,
         log: player.log,
         ended,
+        turrets: player.turret_keys,
+        walls: player.wall_keys,
+        blasts: player.blasts,
         end: player.clock.now,
     })
 }
@@ -2044,6 +2173,16 @@ struct Player<'a> {
     corpses: BTreeMap<u8, Live>,
     /// The draws of Chain Lightning's rays (E17 M3 T7c-3).
     draws: chain::Draws,
+    /// A siege's walls in memory (E17 M4 T2b; none: no siege with a fort).
+    siege: Option<siege::Siege>,
+    /// The turret records' poses (E17 M4 T2b).
+    turret_keys: Vec<TurretKey>,
+    /// The walls' states over time (E17 M4 T2b).
+    wall_keys: Vec<WallKey>,
+    /// The wall shots' explosions (E17 M4 T2b).
+    blasts: Vec<BlastKey>,
+    /// The explosions so far.
+    blast_count: usize,
 }
 
 /// A spell a melee strike leaves pending on the stack it struck ([`PENDING`]): the stack, the
@@ -2290,7 +2429,15 @@ impl Player<'_> {
                     }
                     // The line (E17 M3 T6b): the striker by its number before the strike.
                     let count = self.live(attacker).map_or(0, |l| l.count);
-                    if flags.ranged {
+                    // A siege's turret shoots on its own record (E17 M4 T2b): its line names
+                    // the arrow tower.
+                    let turret = self.live(attacker).and_then(|l| l.turret);
+                    if let Some(record) = turret.filter(|_| flags.ranged) {
+                        let line = Logged::Turret {
+                            hit: (target, damage.0, kills),
+                        };
+                        self.turret_shot((attacker, record), &hit, line);
+                    } else if flags.ranged {
                         if shooter.is_none() {
                             shooter = self.live(attacker).map(|l| (attacker, l.right));
                             self.face_shot(attacker, target);
@@ -2515,6 +2662,13 @@ impl Player<'_> {
                 Event::Frightened { stack } => self.frozen(stack, true),
                 Event::TacticsEnded {} => self.tactics = false,
                 Event::BattleEnded { result } => self.outcome = Some(result),
+                // A wall shot (E17 M4 T2b): its part's destruction is its damage's.
+                Event::WallShot {
+                    stack,
+                    part,
+                    damage,
+                    ..
+                } => self.wall_shot(stack, usize::from(part), damage),
                 Event::RoundStarted { .. } => {
                     self.acting = None;
                     self.happenings.push(Happening::Round);
@@ -4120,6 +4274,7 @@ impl Player<'_> {
             steps: n,
             start: [from[0] - w / 2, from[1] - h / 2],
             delta: [dx / steps, dy / steps],
+            path: Vec::new(),
         });
         self.clock.wait(n * step);
     }
@@ -4598,6 +4753,7 @@ impl Player<'_> {
                 steps: aim.steps,
                 start: [aim.from[0] - w / 2, aim.from[1] - h / 2],
                 delta: [dx / steps, dy / steps],
+                path: Vec::new(),
             });
         }
         self.clock.wait(aim.steps * step);
@@ -4681,23 +4837,20 @@ impl Player<'_> {
     /// The shot's group (0 up, 1 straight, 2 down), its start and target points and its
     /// projectile's steps (0x469880, 0x43F4A7).
     fn aim(&self, shooter: &Live, target: &Live) -> Aim {
-        let [sx, sy] = self.stage.anchor(shooter.position(shooter.hex));
+        let anchor = self.stage.anchor(shooter.position(shooter.hex));
+        self.aim_from(anchor, shooter.right, &shooter.look, target)
+    }
+
+    /// [`Player::aim`] from the point `[sx, sy]` facing right or not with `look`'s offsets (a
+    /// stack's anchor; a siege's turret's record point, E17 M4 T2b).
+    fn aim_from(&self, [sx, sy]: [i32; 2], right: bool, look: &Look, target: &Live) -> Aim {
         let start = |i: usize| {
-            let [x, y] = shooter.look.missile_offsets[i];
+            let [x, y] = look.missile_offsets[i];
             let x = i32::from(x);
-            [
-                if shooter.right { sx + x } else { sx - x },
-                sy + i32::from(y),
-            ]
+            [if right { sx + x } else { sx - x }, sy + i32::from(y)]
         };
         // A two-hex target is aimed at between its hexes, by its facing (0x43F323).
-        let [tx, ty] = self.stage.anchor(target.position(target.hex));
-        let tx = match (target.two_hex, target.right) {
-            (false, _) => tx,
-            (true, true) => tx + HALF_HEX,
-            (true, false) => tx - HALF_HEX,
-        };
-        let ty = ty - (self.stage.layout.stack_canvas[1] - target.look.top) / 2;
+        let [tx, ty] = self.centre(target);
         let [x, y] = start(1);
         let (dx, dy) = (i64::from(tx - x).abs(), i64::from(ty - y));
         // atan(−dy / |dx|) in degrees; straight up or down the sign is inverted (0x469880).
@@ -5064,10 +5217,15 @@ mod chain;
 mod creature;
 mod entered;
 mod raise;
+mod siege;
 
 pub use chain::{CHAIN_LIGHTNING, CHAIN_START};
 pub use creature::{FIRE_SHIELD, SHIELD_RETURN};
 pub use raise::{ANIMATE_DEAD, RAISE, RESURRECTION, SACRIFICE, SACRIFICED};
+pub use siege::{
+    Blast, BlastKey, Burst, SiegeStage, TARGET_POINTS, TurretKey, TurretPose, WallKey,
+    turret_record,
+};
 
 #[cfg(test)]
 pub(crate) mod tests;

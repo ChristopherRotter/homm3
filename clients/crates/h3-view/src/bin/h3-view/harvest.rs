@@ -154,6 +154,9 @@ const ROLL_SOUNDS: [u32; 4] = [0x66_FF6C, 0x66_FF7C, 0x66_FF88, 0x66_0A20];
 /// The sounds of the striker's effects (E17 M3 T7b-2b-3): Life Drain's (`striker_effects`
 /// 0x440E68, `DrainLif.wav`) and the Thunderbird's bolt's (0x4412FA, `LightBlt.wav`).
 const STRIKE_SOUNDS: [u32; 2] = [0x66_0A40, 0x66_0A30];
+/// A wall shot's explosions and sounds (E17 M4 T2b; `wall_shot_animate` 0x4462D5, 0x44618B):
+/// `SGEXPL.DEF`, `CSGRCK.DEF`, `WallHit.82m`, `WallMiss.82m`.
+const WALL_SHOT: [u32; 4] = [0x66_0A60, 0x66_0A6C, 0x66_0A78, 0x66_0A84];
 /// The spell records (`spell_table`, 81 records of 0x88 bytes; E17 M3 T7b-1): +0 the spell's sign
 /// (1 positive, −1 negative, 0 neither; the count box's tint sums it, 0x43E6C7, E17 M3 T7b-2a),
 /// +4 the sound's name (none: 0), +8 the magic animation's number (−1: none).
@@ -299,6 +302,8 @@ struct Harvest {
     /// Good morale's, bad morale's, Fear's and good luck's sounds.
     roll_sounds: [String; 4],
     strike_sounds: [String; 2],
+    /// A wall shot's explosions (a hit's, a miss's) and sounds (E17 M4 T2b).
+    wall_shot: [String; 4],
     /// The spells' sounds and animations by original id, their projectiles' DEFs and angles,
     /// and `sptraits.txt`'s numbers by name.
     spells: Vec<(Option<String>, Option<u8>, i8)>,
@@ -536,6 +541,13 @@ fn read_harvest(
     ];
     let [drain, thunderbolt] = STRIKE_SOUNDS;
     let strike_sounds = [stem(&string(drain)?), stem(&string(thunderbolt)?)];
+    let [hit_def, miss_def, hit_sound, miss_sound] = WALL_SHOT;
+    let wall_shot = [
+        string(hit_def)?,
+        string(miss_def)?,
+        stem(&string(hit_sound)?),
+        stem(&string(miss_sound)?),
+    ];
     let mut spells = Vec::new();
     for k in 0..SPELLS.1 {
         let record = bytes(&image, exe, SPELLS.0 + to_u32(k * SPELLS.2), 12)?;
@@ -650,6 +662,7 @@ fn read_harvest(
         resist_sound,
         roll_sounds,
         strike_sounds,
+        wall_shot,
         spells,
         projectiles,
         objects,
@@ -907,6 +920,15 @@ fn write_table(
             "drain_sound = \"{}\"\nthunderbolt_sound = \"{}\"",
             plain(drain)?,
             plain(thunderbolt)?
+        );
+        let [hit_def, miss_def, hit_sound, miss_sound] = &h.wall_shot;
+        let _ = writeln!(
+            t,
+            "wall_explosions = [\"{}\", \"{}\"]\nwall_sounds = [\"{}\", \"{}\"]",
+            plain(hit_def)?,
+            plain(miss_def)?,
+            plain(hit_sound)?,
+            plain(miss_sound)?
         );
     }
     for c in &pack.creature {

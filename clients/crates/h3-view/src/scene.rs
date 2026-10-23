@@ -13,7 +13,9 @@ use core::fmt;
 
 use h3_protocol::wire::{Event, Manifest, Observation, Side, Stack};
 
-use crate::anim::{Field, GONE, Magic, Object, Pose, Projectile, Ray, Spot, Timeline};
+use crate::anim::{
+    Blast, Field, GONE, Magic, Object, Pose, Projectile, Ray, Spot, Timeline, TurretPose,
+};
 use crate::hero::{FLAG_START, HeroPose};
 use crate::layout::BattleLayout;
 use crate::siege::{AFTER_ROWS, BEFORE_ROWS, Context, GATE_ROW, SiegeLook, Walls};
@@ -65,8 +67,12 @@ pub struct Moment {
     /// it is the active stack (0x43E23A to 0x43E261, §4.2).
     pub marked: Option<u8>,
     /// A siege's picture states, when they are not the record's own (E17 M4 T1b: a hit part's;
-    /// *provisional*, [`crate::siege::Walls::of`]).
+    /// *provisional*, [`crate::siege::Walls::of`]; E17 M4 T2b: the timeline's).
     pub walls: Option<Walls>,
+    /// A siege's turret records' poses (E17 M4 T2b; none: standing, facing left).
+    pub turrets: [Option<TurretPose>; 3],
+    /// A wall shot's explosion (E17 M4 T2b).
+    pub blast: Option<Blast>,
 }
 
 impl Moment {
@@ -89,7 +95,9 @@ impl Moment {
             counts: timeline.counts(t),
             hues: timeline.hues(t),
             marked: None,
-            walls: None,
+            walls: timeline.walls(t),
+            turrets: timeline.turrets(t),
+            blast: timeline.blast(t),
         }
     }
 }
@@ -266,6 +274,15 @@ pub enum Draw {
         outline: Option<u8>,
         /// The canvas's rows drawn from its top.
         rows: u32,
+    },
+    /// A draw list composed on its own frame, of which only the rectangle `rect` (left, top,
+    /// right, bottom, exclusive) is drawn here (E17 M4 T2b: a wall shot's explosion shown in its
+    /// rectangle alone, `screen_show_rect` 0x446485).
+    Within {
+        /// The rectangle.
+        rect: [i32; 4],
+        /// The list.
+        list: Vec<Draw>,
     },
     /// A dialog's picture (`H3DlgPcx`, E17 M3 T6a; §9.7): index 0 transparent, in its own colours
     /// or a player's.
@@ -580,6 +597,49 @@ pub fn battle_at(
     tables: &Tables,
     layout: &BattleLayout,
 ) -> Result<Vec<Draw>, SceneError> {
+    let (_, mut list) = drawn(observation, moment, manifest, tables, layout)?;
+    // A wall shot's explosion (E17 M4 T2b, design §10.2): in its rectangle each frame drawn over a
+    // redraw of the battle with its walls' states, without the background restored after the
+    // first (the original's, CLT-Q19 (4)); with the slip fixed, the last alone.
+    if let Some(blast) = &moment.blast {
+        let mut inner = Vec::new();
+        for (i, (frame, walls)) in blast.frames.iter().enumerate() {
+            let layer = Moment {
+                walls: Some(*walls),
+                blast: None,
+                ..moment.clone()
+            };
+            let (background, mut layer) = drawn(observation, &layer, manifest, tables, layout)?;
+            if i > 0 {
+                layer.drain(..background);
+            }
+            inner.extend(layer);
+            inner.push(Draw::Projectile {
+                def: blast.def.clone(),
+                frame: *frame,
+                x: blast.at[0],
+                y: blast.at[1],
+                mirrored: false,
+            });
+        }
+        list.push(Draw::Within {
+            rect: blast.rect,
+            list: inner,
+        });
+    }
+    Ok(list)
+}
+
+/// [`battle_at`] without a wall shot's explosion, and how many of its first draws are the
+/// background buffer's (§4.4: the battlefield's picture and the absolute obstacle; a siege's
+/// background, moat and lip).
+fn drawn(
+    observation: &Observation,
+    moment: &Moment,
+    manifest: &Manifest,
+    tables: &Tables,
+    layout: &BattleLayout,
+) -> Result<(usize, Vec<Draw>), SceneError> {
     let keys = &manifest.keys;
     let (width, height) = (manifest.field.width, manifest.field.height);
     let at = |hex: u8| (hex / width.max(1), hex % width.max(1));
@@ -606,6 +666,7 @@ pub fn battle_at(
                 active: moment
                     .active
                     .map(|id| (id, layout.outline_after(moment.pulse))),
+                turrets: moment.turrets,
             };
             SiegeLook::new(siege, faction, tables, context, width)?
         }
@@ -636,6 +697,7 @@ pub fn battle_at(
             y: i32::from(point[1]),
         });
     }
+    let background = list.len();
     let mut placed = Vec::new();
     for o in &observation.removable_obstacles {
         let Some(handle) = o.kind else {
@@ -879,7 +941,7 @@ pub fn battle_at(
             area: layout.mouse.field,
         });
     }
-    Ok(list)
+    Ok((background, list))
 }
 
 /// A stack's pose at `moment`: its own, else standing on its hex, facing its side's way.

@@ -103,6 +103,17 @@ pub fn compose(
             Draw::Tiled { def, frame, area } => {
                 tiled(&mut screen, batch, def, *frame, *area)?;
             }
+            Draw::Within { rect, list } => {
+                // Its own frame, of which the rectangle is copied (E17 M4 T2b).
+                let own = compose(list, batch, layout, bugs)?;
+                for y in rect[1]..rect[3] {
+                    for x in rect[0]..rect[2] {
+                        if let Some(p) = own.pixel(i64::from(x), i64::from(y)) {
+                            screen.set(i64::from(x), i64::from(y), p);
+                        }
+                    }
+                }
+            }
             Draw::Projectile {
                 def,
                 frame,

@@ -105,6 +105,13 @@ pub struct Battle {
     /// The Thunderbird's bolt's ([`Battle::drain_sound`]).
     #[serde(default)]
     pub thunderbolt_sound: Option<String>,
+    /// A wall shot's explosions (E17 M4 T2b; `wall_shot_animate` 0x4462D5): the one a shot with
+    /// damage lands in (`SGEXPL.DEF`), then the one of a shot without (`CSGRCK.DEF`).
+    #[serde(default)]
+    pub wall_explosions: Option<[String; 2]>,
+    /// Their sounds (0x44618B, loaded by name: category 0, volume 127): `WallHit`, `WallMiss`.
+    #[serde(default)]
+    pub wall_sounds: Option<[String; 2]>,
 }
 
 impl Battle {
@@ -118,6 +125,7 @@ impl Battle {
             .chain(&self.luck_sound)
             .chain(&self.drain_sound)
             .chain(&self.thunderbolt_sound)
+            .chain(self.wall_sounds.iter().flatten())
     }
 }
 
@@ -362,7 +370,8 @@ impl Sounds {
             Sound::Move => self.moving.as_deref(),
             Sound::Attack => self.attack.as_deref(),
             Sound::Wince => self.wince.as_deref(),
-            Sound::Shot => self.shot.as_deref(),
+            // A turret's shot plays its shooter's shot sound (E17 M4 T2b).
+            Sound::Shot | Sound::TurretShot => self.shot.as_deref(),
             Sound::Death => self.death.as_deref(),
             Sound::Defend => self.defend.as_deref(),
             Sound::Start => self.start.as_deref(),
@@ -378,7 +387,9 @@ impl Sounds {
             | Sound::Drain
             | Sound::Thunderbolt
             | Sound::SpellFile(_)
-            | Sound::Object(_) => None,
+            | Sound::Object(_)
+            | Sound::WallHit
+            | Sound::WallMiss => None,
         }
     }
 
@@ -571,6 +582,7 @@ impl Tables {
             .flat_map(|c| core::iter::once(&c.def).chain(&c.missile))
             .chain(self.heroes.values().map(|h| &h.def))
             .chain(&self.battle.flags)
+            .chain(self.battle.wall_explosions.iter().flatten())
             .chain(self.battle.magic.iter().map(|m| &m.def))
             .chain(self.spells.values().flat_map(|s| &s.projectile))
             .chain(
@@ -664,8 +676,8 @@ pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
     for flag in &battle.flags {
         names("[battle]", &[(flag, ".DEF")])?;
     }
-    for magic in &battle.magic {
-        names("[battle]", &[(&magic.def, ".DEF")])?;
+    for def in battle.magic.iter().map(|m| &m.def).chain(battle.wall_explosions.iter().flatten()) {
+        names("[battle]", &[(def, ".DEF")])?;
     }
     if battle.sounds().any(|s| s.is_empty() || s.contains('.')) {
         return Err(entry(

@@ -30,6 +30,11 @@ original = [
     { form = "other", at = "GENRLTXT:378", printf = ["attacker", "damage"] },
 ]
 
+# A siege's turret shot names its striker so, its number 1 (`turret_shot` 0x465D97; E17 M4 T2b).
+[[key]]
+id = "battle.log.arrow-tower"
+original = [{ at = "GENRLTXT:376" }]
+
 # The creatures a strike killed, after its damage line (the row starts a new line); `count`: how
 # many, which also picks the name (or the word for creatures when the strike killed several kinds).
 [[key]]

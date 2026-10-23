@@ -764,3 +764,52 @@ command = [
     { seat = "Defender", at = 1312, command = { Defend = {} } },
     { seat = "Attacker", at = 1312, command = { Cast = { spell = 40, target = { Stack = { stack = 0 } }, second = { Stack = { stack = 1 } } } } },
 ]
+
+# E17 M4 T2b: the turrets' shots (design §10.2, "A turret's shot"): a Castle's keep shoots the
+# Pikemen, the upper tower the Griffins (a two-hex stack), the lower tower the Archers, each
+# commanded by the defender's Artillery (hot seat; `key` steps Red into the town), up to the
+# Catapult's turn. `seed`: the engine's, whose damage is the original's (13, 11, 11).
+[[sequence]]
+id = "keep"
+scenario = "seq-keep.toml"
+hot_seat = true
+key = "Up"
+seed = 108
+actions = ["hex:35", "turn:1.4", "hex:86", "turn:1.5", "hex:137"]
+ms = 2200
+screens = true
+timeline = "timelines/keep.txt"
+frames = "timelines/keep-frames.txt"
+boxes = true
+command = [
+    { seat = "Defender", command = { Shoot = { target = 0, at = 35 } } },
+    { seat = "Defender", at = 1654, command = { Shoot = { target = 1, at = 87 } } },
+    { seat = "Defender", at = 3313, command = { Shoot = { target = 2, at = 137 } } },
+]
+
+# E17 M4 T2b: a wall shot that hits (design §10.2, "A wall shot"): in `keep`'s siege the turrets
+# defend, then the Catapult (Basic Ballistics) shoots the upper wall (hex 29, target 1) with the
+# damage roll forced to 1 (`wall_damage`, drawn first) and the hit roll to hit (`wall_hit`): its
+# frames to the climax, the rock's arc, `WallHit` and SGEXPL's ten frames, the wall's state 1 at
+# frame 5, the whole redraw. `seed`: the engine's, whose shot is the original's.
+[[sequence]]
+id = "hit"
+scenario = "seq-keep.toml"
+hot_seat = true
+key = "Up"
+seed = 1
+actions = [
+    "key:d", "turn:1.4", "key:d", "turn:1.5", "key:d", "turn:0.3",
+    "roll:wall_damage:1", "roll:wall_hit", "hex:29",
+]
+ms = 4500
+screens = true
+timeline = "timelines/hit.txt"
+frames = "timelines/hit-frames.txt"
+boxes = true
+command = [
+    { seat = "Defender", command = { Defend = {} } },
+    { seat = "Defender", at = 0, command = { Defend = {} } },
+    { seat = "Defender", at = 0, command = { Defend = {} } },
+    { seat = "Attacker", at = 0, command = { ShootWall = { part = 1 } } },
+]
