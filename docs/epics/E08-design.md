@@ -26,38 +26,16 @@ the draft). When the game applies them is part B's.
 format v47, core ruleset hash v48. §4 and §5 read them (T49): `gives_spell_book` puts the
 ruleset's artifact with the `spell_book` effect into the empty spell book position.
 
-**No data for the positions**: they follow from the slots' order and counts (§2). **The expansions**
+**No data for the positions**: they follow from the slots' order and counts (§2, built). **The expansions**
 are the game's configuration (part B §10; decision 104).
 
-### 2. Positions (HER-ART-001 amended; HER-CHG-002, HER-ART-004, HER-WAR-002 restated)
+### 2. Positions (built in T49a)
 
-- `HeroDetails.worn` becomes `Vec<Option<ArtifactInstance>>`, one entry per position:
-  `h3_heroes::positions(ruleset)` lists each position's slot, the ruleset's slots in their order,
-  each `count` times (19 in SoD: head 0, shoulders 1, neck 2, right hand 3, left hand 4, torso 5,
-  rings 6–7, feet 8, misc 9–13, war machines 14–17, spell book 18; the original numbers the fifth
-  misc 18 after the book, which no walk can tell apart, ADR-0013 point 1 of the draft). A
-  `Position` is an index into it; validation checks the length, each artifact's slot against its
-  position's, and that every slot's free positions less the worn combinations' locks stay ≥ 0
-  (today's check, counted the same way).
-- **The first position that takes it** (`first_position(details, ruleset, artifact)`): the lowest
-  empty position of the artifact's slot whose lock check passes with the artifact there (the
-  original's `hero_equip_artifact` with -1). HER-CHG-002's received artifact uses it (else the
-  backpack's end, as today).
-- **The capture** (HER-ART-004): the worn artifacts in position order, then the backpack from its
-  end (unchanged in words; the order is now the original's). **A lost war machine** (HER-WAR-002):
-  the first position holding the artifact that places it.
-- `ArtifactPlace::Worn(Position)` names a position; `HeroChange::AddArtifact` keeps its meaning;
-  a new `HeroChange::PlaceArtifact { artifact, at: ArtifactPlace }` puts one at a given empty
-  position or backpack index (a move's target), and `RemoveArtifact` at a position leaves it
-  empty (the backpack's later entries still move up).
-- **The import** (`h3-map`): the map's worn array is by position (`docs/formats/h3m.md`): position
-  i of the map's 18 (before SoD) or 19 entries maps to the content's position (the fifth misc,
-  the map's 18, to 13). Today's import keeps them as a list in that order: the order is kept, the
-  places become positions.
-- **A constructor for callers that list artifacts** (`HeroDetails::wearing(ruleset, list)`, each
-  placed at its first position): every test and experiment that builds details today (the battle
-  lane's `h3-pack-battle` tests and `h3-experiment`, the AI lane's `h3-sim` encounters, the client
-  lane's `h3-view` situations; §6) changes one line.
+Built in T49a (`E08-log.md`, "T49a"): `HeroDetails.worn` by position (`h3_heroes::positions`,
+`Position`), the validation with the locks counted per slot, `first_position` (HER-CHG-002),
+the capture and a lost machine's artifact in position order, `ArtifactPlace::Worn(Position)`,
+`HeroChange::PlaceArtifact` (a move's target, §3), `wearing` for callers that list artifacts,
+the import v9. §3 and §4 use them.
 
 ### 3. Moves (HER-ART-005)
 
@@ -124,7 +102,7 @@ original's order (the 70 spells by id, each direction checked per spell) gives t
 
 No quirk on the hero side (D-28 the original's; Titan's book a rule). The shared part (the two
 kinds, the packs, the replay headers) was T45's. **`cross-lane` in the positions task:** the call sites of the battle, AI and client
-lanes that build `HeroDetails` (§2's constructor), as their lanes' inbox notes say.
+lanes that build `HeroDetails` (§2's `wearing`), done in T49a with their inboxes told.
 
 ## Part B — the map, the game, the batch and the cut
 
@@ -255,10 +233,10 @@ battle's observation shows both levels as 0 in such a battle.
 | Version | Change | Task |
 |---|---|---|
 | core ruleset hash v48, pack format v47 | two effect kinds, the packs' data | T45 (done) |
-| details (in the game state hash) | positions | T49 |
+| game state hash v12 | the details' positions | T49a (done) |
 | adventure state hash v11 | the tactics flag | T50 |
-| game state hash v12 | the meeting and army dialog decisions | T51 |
-| map import v9 | positions | T49 |
+| game state hash v13 | the meeting and army dialog decisions | T51 |
+| map import v9 | positions | T49a (done) |
 | adventure replay format v6 | `Manage` | T52 |
 | action encoding | unchanged (v4); the AI lane's from the move on | — |
 
@@ -290,8 +268,8 @@ flag) land once:
 |---|---|---|
 | 1 | **T45** + **T46** | T45 (done): the shared groundwork (`shared/`, `cross-lane`): ADR-0013, -0016, -0017 amended; `meeting_spells`, `gives_spell_book`; the packs; core ruleset hash v48; the encoding's move to the AI lane (`lanes.toml`, the versions table, the global HANDOFF, the AI lane's inbox). T46: batch E6's spec and results template (§14; `h3-experiment` `cross-lane`) |
 | 2 | **T47** + **T48** | T47: the harness's clicks and reads (the hero, exchange, split, creature and army dialogs; the spells, backpack, flags and tactics reads), the recipes and the run. T48: scored; the survey's §8 and the rules' sources; an ADV-Q if a row contradicts the reading |
-| 3 | **T49** | `h3-heroes`: positions (§2: the model, validation, the first position, the capture, the import v9, the constructor and the other lanes' call sites, `cross-lane`), moves (§3), combinations and Titan's book (§4), Scholar (§5). The largest task: cut in T49a (positions, §2) and T49b (§3 to §5; decision 111) |
-| 4 | **T50** + **T51** | T50: `h3-adventure`: the army commands, the split's bounds, dismissal, the formation and the flag, the meeting's visit, the join without room's report (§7, §8 visit, §9 offer); adventure state hash v11. T51: `h3-game`: `Manage`, the meeting and army dialog decisions, Scholar's application, `legal_commands` and `split_range`, events, the observation, the tactics flag in battle (§8–§11); game state hash v12; `ADV-STUB-2` closed |
+| 3 | **T49** | `h3-heroes`: positions (§2: the model, validation, the first position, the capture, the import v9, the constructor and the other lanes' call sites, `cross-lane`), moves (§3), combinations and Titan's book (§4), Scholar (§5). The largest task: cut in T49a (positions, §2; done) and T49b (§3 to §5; decision 111) |
+| 4 | **T50** + **T51** | T50: `h3-adventure`: the army commands, the split's bounds, dismissal, the formation and the flag, the meeting's visit, the join without room's report (§7, §8 visit, §9 offer); adventure state hash v11. T51: `h3-game`: `Manage`, the meeting and army dialog decisions, Scholar's application, `legal_commands` and `split_range`, events, the observation, the tactics flag in battle (§8–§11); game state hash v13; `ADV-STUB-2` closed |
 | 5 | **T52** + **T53** | T52: the env's masks (if still this lane's), replays v6 and the two new goldens, fixtures, plans, properties, benchmarks, `--with-original-data` (§12). T53: the audit against the exit criteria, increment 6 closed, increment 7 refined |
 
 **Increment 6's exit criteria:**
@@ -318,11 +296,6 @@ flag) land once:
 
 ### 16. Risks and open points
 
-- **The positions' ripple**: `HeroDetails.worn` is built in about forty files, a dozen of them
-  other lanes' (the battle lane's `h3-pack-battle` tests and `h3-experiment`, the AI lane's
-  `h3-sim` encounter, the client lane's `h3-view`). The constructor keeps each one line; T49 is
-  `cross-lane` for them and tells their inboxes. The details' hash changes every replay's
-  checkpoints (re-recorded with their options, as before).
 - **`legal_commands`' size** during a meeting (§10): bounded, but a few thousand entries per call
   would slow a client that lists them every step; T52 measures it, and a per-hero query (the
   original's screens are per hero) replaces the flat list if it hurts.

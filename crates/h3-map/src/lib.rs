@@ -41,8 +41,9 @@ pub use parse::parse;
 /// special grounds with their tiles; a monster with an artifact unsupported. v7 (E08 T21a): the
 /// piles' guards (guarded piles supported; a random stack among them unsupported). v8 (E08 T29):
 /// the scenario's level limit and banned skills; a hero with an experience of 1 000 or more
-/// supported (its levels at load are the game's).
-pub const MAP_IMPORT_VERSION: u32 = 8;
+/// supported (its levels at load are the game's). v9 (E08 T49a): a placed hero's worn artifacts
+/// at the map's positions.
+pub const MAP_IMPORT_VERSION: u32 = 9;
 
 /// Reads a map file as the game stores it (gzip-compressed) within `limits`.
 ///

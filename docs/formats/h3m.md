@@ -206,9 +206,13 @@ content and draws nothing; it rejects what the current increment cannot represen
   Spell Power and Knowledge at least 1, as the original's carried-over hero's setup 0x486590;
   the placed hero's, `placed_hero_setup` 0x4D8B30, copies them as they are, and no shipped map has
   one above 9: survey `E08-progression.md` §3.1, §6.1),
-  secondary skills (skill code by `SSTRAITS.TXT` order, the level as stored, 1–3), artifacts (each
-  worn slot's code, the position not kept, ADR-0013; the backpack in order; codes by the packs'
-  `# original id`, 141–143 unused), spells (SoD's 9-byte set, spell `i` at bit `i mod 8` of byte
+  secondary skills (skill code by `SSTRAITS.TXT` order, the level as stored, 1–3), artifacts (since
+  v9, E08 T49a, each worn entry at its position, ADR-0013 point 1: the map's entries 0–12 (head
+  to the fourth misc) are the content's 0–12, its 13–17 (the four war machines, the spell book)
+  the content's 14–18 and SoD's 18 (the fifth misc) the content's 13, each the entry's slot and
+  rank among that slot's positions (`codes::WORN`); with RoE's rules, which have four misc
+  positions, an artifact on the fifth is missing content; the backpack in order; codes by the
+  packs' `# original id`, 141–143 unused), spells (SoD's 9-byte set, spell `i` at bit `i mod 8` of byte
   `i / 8`; AB's one byte: `0xFF` none, `0xFE` the type's own, else that spell beside the type's).
   The validation (`h3_heroes::validate`) checks the rest, so a war machine in the backpack or a
   scroll without its spell fails it (no shipped map that imports has one). Until v8 an experience

@@ -1817,12 +1817,12 @@ fn hero_details_fit_the_harvested_slots() {
         .skills
         .push((sod.skill_by_key("base:tactics").unwrap(), 2));
     assert_eq!(derive_battle_hero(&tactician, &sod).unwrap().tactics, 2);
-    // The Alliance locks the head; machines and the book stay out of the backpack.
-    let head = details(
-        &sod,
-        &[&full[..], &["base:helm_of_heavenly_enlightenment"]].concat(),
-        &[],
-    );
+    // The Alliance locks the head: its position (0) is empty but taken (E08 T49a); machines
+    // and the book stay out of the backpack.
+    let mut head = details(&sod, &full, &[]);
+    assert_eq!(head.worn[0], None);
+    let helm = sod.artifact_by_key("base:helm_of_heavenly_enlightenment");
+    head.worn[0] = Some(helm.unwrap().into());
     assert_eq!(
         validate(&head, &sod),
         Err(DetailsError::SlotFull(
@@ -1840,15 +1840,18 @@ fn hero_details_fit_the_harvested_slots() {
     }
     let crowded = details(&sod, &[], &["base:clover_of_fortune"; 65]);
     assert_eq!(validate(&crowded, &sod), Err(DetailsError::BackpackFull));
-    // Before SoD a hero has four misc positions.
-    let five = details(&ab, &misc, &[]);
+    // Before SoD a hero has four misc positions (18 in all, SoD 19): the fifth Clover finds
+    // none.
     assert_eq!(
-        validate(&five, &ab),
-        Err(DetailsError::SlotFull(
-            ab.artifact_slot_by_key("base:misc").unwrap()
-        ))
+        (
+            h3_heroes::positions(&ab).len(),
+            h3_heroes::positions(&sod).len()
+        ),
+        (18, 19)
     );
-    assert_eq!(validate(&details(&ab, &misc[1..], &[]), &ab), Ok(()));
+    let five = details(&ab, &misc, &[]);
+    assert_eq!(five.worn.iter().flatten().count(), 4);
+    assert_eq!(validate(&five, &ab), Ok(()));
 }
 
 // covers: HER-BAT-008, HER-BAT-009, HER-BAT-010, BAT-HER-005, BAT-HER-006, BAT-HER-007
