@@ -940,9 +940,13 @@ fn a_placed_heros_customisations_and_formation_carry_over() {
         h.experience = Some(999);
         h.primary_skills = Some([120, 0, 0, 3]);
         h.secondary_skills = Some(vec![(1, 2), (12, 3)]);
+        // By position (E08 T49a): the axe in the right hand (3), the Ballista on the first
+        // machine's (13), the book (17) and the Clover on SoD's fifth misc (18).
         let mut worn = vec![None; 19];
-        worn[0] = Some(7); // a slot's position is not kept
+        worn[3] = Some(7);
+        worn[13] = Some(4);
         worn[17] = Some(0);
+        worn[18] = Some(46);
         h.artifacts = Some(Artifacts {
             worn,
             backpack: vec![Some(8), None],
@@ -969,16 +973,20 @@ fn a_placed_heros_customisations_and_formation_carry_over() {
         ])
     );
     let artifacts = d.artifacts.as_ref().unwrap();
-    let worn: Vec<_> = artifacts
-        .worn
-        .iter()
-        .map(|a| (a.artifact, a.spell))
+    // The content's positions: the fifth misc (13) before the machines (14 to 17) and the book
+    // (18).
+    assert_eq!(artifacts.worn.len(), 19);
+    let worn: Vec<_> = (0..)
+        .zip(&artifacts.worn)
+        .filter_map(|(at, a)| a.map(|a| (at, a.artifact, a.spell)))
         .collect();
     assert_eq!(
         worn,
         [
-            (artifact("base:centaurs_axe"), None),
-            (artifact("base:spell_book"), None)
+            (3, artifact("base:centaurs_axe"), None),
+            (13, artifact("base:clover_of_fortune"), None),
+            (14, artifact("base:ballista"), None),
+            (18, artifact("base:spell_book"), None),
         ]
     );
     let backpack: Vec<_> = artifacts.backpack.iter().map(|a| a.artifact).collect();
@@ -991,6 +999,61 @@ fn a_placed_heros_customisations_and_formation_carry_over() {
         ])
     );
     assert_eq!(setup.validate(&SOD), Ok(()));
+}
+
+/// The test map's hero wearing these (map entry, artifact code) pairs.
+fn wearing(m: &mut RawMap, entries: &[(usize, u16)]) {
+    let mut worn = vec![None; 19];
+    for &(at, code) in entries {
+        worn[at] = Some(code);
+    }
+    body(m).artifacts = Some(Artifacts {
+        worn,
+        backpack: vec![],
+    });
+}
+
+// covers: HER-ART-001
+#[test]
+fn a_placed_heros_artifacts_keep_the_maps_positions() {
+    // Every entry to its position: the head to the feet, misc 1 to 4, the machines and the book
+    // in the map's order; SoD's fifth misc (the map's 18) before the machines (the content's 13).
+    let map_codes: [u16; 19] = [
+        19, 42, 33, 7, 13, 25, 37, 45, 32, 46, 47, 48, 49, 4, 5, 6, 3, 0, 50,
+    ];
+    let entries: Vec<(usize, u16)> = (0..).zip(map_codes).collect();
+    let artifacts = customised(|m| wearing(m, &entries)).artifacts.unwrap();
+    let core = SOD.core();
+    let keys: Vec<Option<String>> = artifacts
+        .worn
+        .iter()
+        .map(|a| a.map(|a| core.artifact(a.artifact).unwrap().key.to_string()))
+        .collect();
+    let content: [u16; 19] = [
+        19, 42, 33, 7, 13, 25, 37, 45, 32, 46, 47, 48, 49, 50, 4, 5, 6, 3, 0,
+    ];
+    let expected: Vec<Option<String>> = content
+        .iter()
+        .map(|&code| Some(codes::ARTIFACTS[usize::from(code)].to_string()))
+        .collect();
+    assert_eq!(keys, expected);
+    let mut m = map();
+    wearing(&mut m, &entries);
+    assert_eq!(import(&m, &SOD).unwrap().validate(&SOD), Ok(()));
+    // RoE's rules have no fifth misc position: an artifact there is missing content, an empty
+    // entry nothing.
+    let mut m = map();
+    wearing(&mut m, &[(18, 46)]);
+    assert_eq!(
+        import(&m, &rules(1)).unwrap_err(),
+        ImportError::MissingContent("base:misc")
+    );
+    let mut m = map();
+    wearing(&mut m, &[(17, 0)]);
+    let roe = import(&m, &rules(1)).unwrap();
+    let book = roe.heroes[0].details.artifacts.as_ref().unwrap();
+    assert_eq!(book.worn.len(), 18);
+    assert!(book.worn[17].is_some() && book.worn[..17].iter().all(Option::is_none));
 }
 
 #[test]

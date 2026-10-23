@@ -221,10 +221,13 @@ fn the_artifacts_give_the_originals_defences() {
         offered: Default::default(),
         primary: [0, 0, 1, 1],
         skills: vec![],
-        worn: keys
-            .iter()
-            .map(|k| r.artifact_by_key(k).unwrap().into())
-            .collect(),
+        worn: h3_heroes::wearing(
+            &r,
+            &keys
+                .iter()
+                .map(|k| r.artifact_by_key(k).unwrap().into())
+                .collect::<Vec<_>>(),
+        ),
         backpack: vec![],
         spells: vec![],
         mana: 0,

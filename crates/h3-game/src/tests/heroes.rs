@@ -5,7 +5,7 @@
 use std::sync::Arc;
 
 use h3_content::SkillId;
-use h3_heroes::{ArtifactInstance, DetailsError, HeroDetails, PrimarySkill};
+use h3_heroes::{ArtifactInstance, DetailsError, HeroDetails, PrimarySkill, wearing};
 use h3_kernel::hash::hash_of;
 
 use super::*;
@@ -46,16 +46,17 @@ fn a_hero_without_customisations_gets_its_types_and_classs_defaults() {
     assert_eq!(sage.primary, [1, 1, 1, 1], "the class's");
     let wits = rules.core().skill_by_key("t:wits").unwrap();
     assert_eq!(sage.skills, [(wits, 3)]);
+    // Positions: the book 0, the machine 1, the rings 2 and 3.
     assert_eq!(
         sage.worn,
-        [art(&rules, "t:book")],
+        [Some(art(&rules, "t:book")), None, None, None],
         "its type starts with a spell book"
     );
     assert!(sage.backpack.is_empty() && sage.spells.is_empty());
     // Spell points full: Knowledge 1 and Expert Wits (+100 %).
     assert_eq!(sage.mana, 20);
     let orrin = details(&rules, ORRIN, 3, |_| {});
-    assert!(orrin.worn.is_empty() && orrin.skills.is_empty());
+    assert!(orrin.worn.iter().all(Option::is_none) && orrin.skills.is_empty());
     assert_eq!(orrin.mana, 10);
     // The experience is 40 to 90, drawn from the setup stream: the same seed, the same draw.
     let drawn: Vec<u32> = (0..200)
@@ -74,7 +75,7 @@ fn a_war_machine_its_starting_army_gives_is_worn_as_its_artifact() {
         let rules = rules_with(chances, 2);
         details(&rules, GUNNER, 3, |hero| {
             hero.details.artifacts = worn.map(|worn| HeroArtifactsSetup {
-                worn,
+                worn: wearing(rules.core(), &worn),
                 backpack: vec![],
             });
         })
@@ -82,8 +83,11 @@ fn a_war_machine_its_starting_army_gives_is_worn_as_its_artifact() {
     };
     let rules = rules();
     let cart_art = art(&rules, "t:cart_art");
-    assert_eq!(cart(vec![100, 100], None), [cart_art]);
-    assert_eq!(cart(vec![0, 100], None), []);
+    assert_eq!(
+        cart(vec![100, 100], None),
+        [None, Some(cart_art), None, None]
+    );
+    assert_eq!(cart(vec![0, 100], None), [None; 4]);
     // A custom army draws nothing: no machine.
     let custom = details(&rules, GUNNER, 3, |hero| {
         hero.army = HeroArmy::Custom(vec![ArmyStack {
@@ -92,11 +96,11 @@ fn a_war_machine_its_starting_army_gives_is_worn_as_its_artifact() {
             count: 1,
         }]);
     });
-    assert!(custom.worn.is_empty());
+    assert!(custom.worn.iter().all(Option::is_none));
     // A machine whose slot a worn artifact takes is not given twice.
     assert_eq!(
         cart(vec![100, 100], Some(vec![cart_art])),
-        [cart_art],
+        [None, Some(cart_art), None, None],
         "the slot is taken"
     );
 }
@@ -113,7 +117,7 @@ fn the_setups_customisations_replace_the_defaults() {
             primary: Some([2, 3, 4, 8]),
             skills: Some(vec![(wits, 1)]),
             artifacts: Some(HeroArtifactsSetup {
-                worn: vec![],
+                worn: wearing(rules.core(), &[]),
                 backpack: vec![charm],
             }),
             spells: Some(vec![]),
@@ -123,7 +127,7 @@ fn the_setups_customisations_replace_the_defaults() {
     assert_eq!(custom.primary, [2, 3, 4, 8]);
     assert_eq!(custom.skills, [(wits, 1)]);
     // Custom artifacts replace the type's spell book.
-    assert!(custom.worn.is_empty());
+    assert!(custom.worn.iter().all(Option::is_none));
     assert_eq!(custom.backpack, [charm]);
     // Knowledge 8 and Basic Wits: 80 × 1.25.
     assert_eq!(custom.mana, 100);
@@ -163,15 +167,21 @@ fn the_store_is_in_the_hash_and_shared_by_forks() {
         |h| h.details.skills = Some(vec![(SkillId::from_raw(0), 1)]),
         |h| {
             h.details.artifacts = Some(HeroArtifactsSetup {
-                worn: vec![ArtifactInstance::from(
-                    h3_content::ArtifactTypeId::from_raw(0),
-                )],
+                // The book on its position 0 of four.
+                worn: vec![
+                    Some(ArtifactInstance::from(
+                        h3_content::ArtifactTypeId::from_raw(0),
+                    )),
+                    None,
+                    None,
+                    None,
+                ],
                 backpack: vec![],
             });
         },
         |h| {
             h.details.artifacts = Some(HeroArtifactsSetup {
-                worn: vec![],
+                worn: vec![None; 4],
                 backpack: vec![ArtifactInstance::from(
                     h3_content::ArtifactTypeId::from_raw(2),
                 )],
@@ -179,7 +189,7 @@ fn the_store_is_in_the_hash_and_shared_by_forks() {
         },
         |h| {
             h.details.artifacts = Some(HeroArtifactsSetup {
-                worn: vec![],
+                worn: vec![None; 4],
                 backpack: vec![ArtifactInstance::scroll(
                     h3_content::ArtifactTypeId::from_raw(3),
                     h3_content::SpellId::from_raw(0),

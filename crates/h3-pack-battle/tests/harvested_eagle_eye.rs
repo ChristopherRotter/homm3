@@ -32,10 +32,13 @@ fn chance(r: &BattleRuleset, (hero, level): (&str, u8), skill: u8, worn: &[&str]
         offered: Default::default(),
         primary: [0, 0, 1, 1],
         skills: vec![(r.skill_by_key("base:eagle_eye").unwrap(), skill)],
-        worn: worn
-            .iter()
-            .map(|k| r.artifact_by_key(k).unwrap().into())
-            .collect(),
+        worn: h3_heroes::wearing(
+            r,
+            &worn
+                .iter()
+                .map(|k| r.artifact_by_key(k).unwrap().into())
+                .collect::<Vec<_>>(),
+        ),
         backpack: vec![],
         spells: vec![],
         mana: 0,

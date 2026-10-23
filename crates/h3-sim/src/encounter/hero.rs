@@ -11,7 +11,7 @@ use h3_content::{
 use h3_contracts::BattleHero;
 use h3_heroes::{
     ArtifactInstance, HeroChange, HeroDetails, apply_change, derive_battle_hero, experience_for,
-    learn_level, max_mana, war_machines,
+    learn_level, max_mana, war_machines, wearing,
 };
 use h3_kernel::Rng;
 
@@ -144,7 +144,7 @@ impl HeroData {
             offered: Default::default(),
             primary,
             skills,
-            worn: Vec::new(),
+            worn: wearing(core, &[]),
             backpack: Vec::new(),
             spells: core
                 .hero_type(hero_type)

@@ -1069,7 +1069,7 @@ mod tests {
                 offered,
                 primary: [1, 1, 1, 1],
                 skills: known,
-                worn: Vec::new(),
+                worn: h3_heroes::wearing(core, &[]),
                 backpack: Vec::new(),
                 spells: Vec::new(),
                 mana: 0,
@@ -1195,7 +1195,7 @@ mod tests {
             offered: OfferLevels::default(),
             primary: [2, 2, 1, 1],
             skills: vec![(leadership, 1)],
-            worn: Vec::new(),
+            worn: h3_heroes::wearing(core, &[]),
             backpack: Vec::new(),
             spells: Vec::new(),
             mana: 0,
@@ -1317,7 +1317,7 @@ mod tests {
             } else {
                 vec![(skill, logistics)]
             },
-            worn: Vec::new(),
+            worn: h3_heroes::wearing(core, &[]),
             backpack: Vec::new(),
             spells: Vec::new(),
             mana: 0,
@@ -1378,12 +1378,15 @@ mod tests {
         let strict = strict_core().expect("strict-fixed");
         let art = |k: &str| h3_heroes::ArtifactInstance::from(core.artifact_by_key(k).expect(k));
         let mut hero = with_logistics(core, "Orrin", 1, 0);
-        hero.worn = vec![art("base:boots_of_speed")];
+        hero.worn = h3_heroes::wearing(core, &[art("base:boots_of_speed")]);
         assert_eq!(land_points(&hero, core, &strict, 1560), (2160, 2160));
-        hero.worn = vec![art("base:equestrians_gloves")];
+        hero.worn = h3_heroes::wearing(core, &[art("base:equestrians_gloves")]);
         assert_eq!(land_points(&hero, core, &strict, 1560), (1860, 1860));
         let mut hero = with_logistics(core, "Cuthbert", 1, 3);
-        hero.worn = vec![art("base:boots_of_speed"), art("base:equestrians_gloves")];
+        hero.worn = h3_heroes::wearing(
+            core,
+            &[art("base:boots_of_speed"), art("base:equestrians_gloves")],
+        );
         assert_eq!(land_points(&hero, core, &strict, 1560), (2928, 2928));
 
         let archer = core.creature_by_key("base:archer").expect("archer");
@@ -1402,7 +1405,10 @@ mod tests {
             h3_heroes::movement(&hero, core),
             h3_heroes::Movement::default()
         );
-        hero.worn = vec![art("base:angel_wings"), art("base:boots_of_levitation")];
+        hero.worn = h3_heroes::wearing(
+            core,
+            &[art("base:angel_wings"), art("base:boots_of_levitation")],
+        );
         let levels = h3_heroes::movement(&hero, core);
         assert_eq!((levels.flying, levels.water_walking), (Some(3), Some(3)));
         let pathfinding = skill("pathfinding", core).expect("Pathfinding");
@@ -1414,7 +1420,7 @@ mod tests {
             assert_eq!(h3_heroes::movement(&hero, core).pathfinding, level);
             assert_eq!(h3_heroes::scouting_radius(&hero, core, radius), 5 + level);
         }
-        hero.worn = vec![art("base:speculum"), art("base:spyglass")];
+        hero.worn = h3_heroes::wearing(core, &[art("base:speculum"), art("base:spyglass")]);
         assert_eq!(h3_heroes::scouting_radius(&hero, core, radius), 10);
     }
 

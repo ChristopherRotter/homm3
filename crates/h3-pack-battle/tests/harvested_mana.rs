@@ -149,7 +149,7 @@ fn batch_2a_r6_the_hero_casts_in_his_ballistas_turn() {
         offered: Default::default(),
         primary: [0, 0, 1, knowledge],
         skills,
-        worn: worn.iter().map(|k| artifact(k)).collect(),
+        worn: h3_heroes::wearing(&r, &worn.iter().map(|k| artifact(k)).collect::<Vec<_>>()),
         backpack: vec![],
         spells: vec![spell],
         mana: u16::from(knowledge) * 10,

@@ -2113,8 +2113,11 @@ fn check_heroes_after_battle(
             .iter()
             .filter(|(hero, _)| *hero == id)
             .map(|&(_, c)| c);
-        let (mut experience, mut mana, mut items) =
-            (b.experience, b.mana, b.worn.len() + b.backpack.len());
+        let (mut experience, mut mana, mut items) = (
+            b.experience,
+            b.mana,
+            b.worn.iter().flatten().count() + b.backpack.len(),
+        );
         let mut spells = b.spells.clone();
         for change in told {
             match change {
@@ -2134,10 +2137,12 @@ fn check_heroes_after_battle(
                 }
                 // E08 T27: a battle tells no level; the game gives them (T30).
                 HeroChange::GainLevel { .. } => prop_assert!(false, "{:?} told a level", id),
+                // E08 T49a: nor a placed artifact (a move's).
+                HeroChange::PlaceArtifact { .. } => prop_assert!(false, "{:?} told a place", id),
             }
         }
         prop_assert_eq!((a.experience, a.mana), (experience, mana));
-        prop_assert_eq!(a.worn.len() + a.backpack.len(), items);
+        prop_assert_eq!(a.worn.iter().flatten().count() + a.backpack.len(), items);
         prop_assert_eq!(&a.spells, &spells);
         check_levels(rules, (before, after), events, id)?;
     }
@@ -2173,6 +2178,7 @@ fn check_heroes_after_battle(
                 let d = state.hero(id).unwrap();
                 d.worn
                     .iter()
+                    .flatten()
                     .chain(&d.backpack)
                     .copied()
                     .collect::<Vec<_>>()
@@ -2796,7 +2802,7 @@ impl Moved {
         for (i, &(code, _)) in MOVERS.iter().enumerate() {
             let key = codes::ARTIFACTS[usize::from(code)];
             let worn = |d: &h3_heroes::HeroDetails| {
-                d.worn.iter().any(|a| {
+                d.worn.iter().flatten().any(|a| {
                     core.artifact(a.artifact)
                         .is_some_and(|ty| ty.key.as_str() == key)
                 })

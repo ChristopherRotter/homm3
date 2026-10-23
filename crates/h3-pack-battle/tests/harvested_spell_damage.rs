@@ -55,10 +55,13 @@ fn details(
         } else {
             vec![]
         },
-        worn: core::iter::once("base:spell_book")
-            .chain(worn.iter().copied())
-            .map(|k| r.artifact_by_key(k).unwrap().into())
-            .collect(),
+        worn: h3_heroes::wearing(
+            r,
+            &core::iter::once("base:spell_book")
+                .chain(worn.iter().copied())
+                .map(|k| r.artifact_by_key(k).unwrap().into())
+                .collect::<Vec<_>>(),
+        ),
         backpack: vec![],
         spells: spells.iter().map(|k| spell(r, k)).collect(),
         mana: u16::from(knowledge) * 10,
@@ -338,7 +341,7 @@ fn batch_2a_r1_r2_chain_lightning_by_the_screen_distance_and_the_army_slot() {
             offered: Default::default(),
             primary: [0; 4],
             skills: vec![(r.skill_by_key("base:tactics").unwrap(), 3)],
-            worn: vec![],
+            worn: h3_heroes::wearing(&r, &[]),
             backpack: vec![],
             spells: vec![],
             mana: 0,
