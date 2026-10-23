@@ -5126,3 +5126,49 @@ on"; a scoring of docs only).
   `cross-lane` with the user's consent, battle's path); the queue: T49a and T49b (round 3).
 - **Verify:** docs only (no fingerprinted path). `verify --scope adventure` (below, in the pull
   request).
+
+### Increment 6, round 3: T49a, the artifact positions (2026-10-24, `adventure/e08-t49a`, `cross-lane`)
+
+**Baseline:** `master` a5fbe80 (#446 merged); its engine code (c4721d3e) was verified on 3a21abe,
+so the sandbox ran only the light gates: all passed. T49a whole (the user's choice at its start,
+`AskUserQuestion`: recommended was two parts, the model with every caller first and the import
+v9 with `PlaceArtifact` after; not chosen either: a cross-lane constructor first).
+
+- **The model** (`h3_heroes`, design §2, ADR-0013 point 1): `HeroDetails.worn` is
+  `Vec<Option<ArtifactInstance>>`, one entry per position of `positions(ruleset)` (the slots in
+  their order, each `count` times; SoD's 19, the test packs' 9 and 4); `Position(usize)`.
+  `validate` checks the length (`DetailsError::Positions`), an artifact's slot against its
+  position's (`WrongPosition`, `NotWearable` for the Grail) and the locks per slot (`SlotFull`,
+  counted as before: `positions::full_slot`, shared with the first position and a placement).
+- **The first position** (`first_position`, HER-CHG-002): the lowest empty position of the
+  artifact's slot when the counts fit with it; `AddArtifact` wears it there, else the backpack's
+  end as before. `wearing(ruleset, list)` places a list at first positions, one that finds none
+  left out (the callers that list artifacts; a caller needing an invalid placement writes
+  positions). The capture (HER-ART-004) and a lost machine (HER-WAR-002) walk the positions;
+  `RemoveArtifact` at a position leaves it empty; `PlaceArtifact { artifact, at }` puts one at an
+  empty position of its slot with the locks fitting, or at a backpack index up to the length
+  while the backpack carries it and has room (`ChangeError::CannotPlace`); a battle never tells
+  one (the plans' property).
+- **The game** (`h3-game`): `HeroArtifactsSetup.worn` by position; the defaults' book and the
+  starting army's machines at their first positions; the details' hash writes each position (0
+  empty, 1 and the artifact): **game state hash v12** (T51's decisions become v13, design §13).
+  `h3_game` re-exports `positions`, `wearing`, `Position` (`h3-map` has no `h3-heroes`
+  dependency, `arch.toml`).
+- **The import v9** (`h3-map`): the map's worn entry `i` is `codes::WORN`'s slot and rank, placed
+  at that rank of the slot's content positions (the map's 13 to 17 to 14 to 18, SoD's 18, the
+  fifth misc, to 13); with RoE's rules an artifact on the fifth misc is missing content
+  (`base:misc`). `MAP_IMPORT_VERSION` 9; `h3m.md`'s import paragraph. The plans put a hero's Spell
+  Book on the map's book entry (17), until now the head's (0, "any slot"): the fixture maps
+  regenerated (`H3_WRITE_FIXTURES`), both changed only there.
+- **The other lanes' call sites** (`cross-lane`, ADR-0013's consequences): the battle lane's
+  `h3-pack-battle` tests (`src/tests.rs`, eleven `tests/harvested_*.rs`: `wearing`, the random
+  details through `first_position`; the Alliance's locked head and AB's four misc positions
+  restated by position), the AI lane's `h3-sim` encounter (`wearing` before its `AddArtifact`s).
+  The client lane's `h3-view` and the battle lane's `h3-experiment` build maps through the
+  writer's 19-entry array, not details: nothing to change (the design note named them). Their
+  inboxes told.
+- **Replays:** the ten re-recorded with their options (`adventure_replays.rs`' history), their
+  commands unchanged, every checkpoint moved (the version, the map's hash, the positions).
+- **Catalog:** HER-ART-001 amended (positions; batch E6's source kept, `verified`), HER-CHG-002,
+  HER-ART-004, HER-WAR-001, HER-WAR-002 restated by position. Design note §2 reduced to a pointer
+  here, §13's versions and §16's ripple risk updated.
