@@ -181,6 +181,33 @@ fn an_archangels_hit_points_equal_to_the_health_reach_it() {
     assert_eq!(s.stacks()[1].count, 2);
 }
 
+// covers: BAT-MAG-051
+#[test]
+fn the_computer_tests_a_raise_with_another_stacks_hit_points() {
+    // The computer's raise of a stack that is not the active one asks the test with the active
+    // record's hit points (E23 T5b2b, survey slip 32): `raise_test_takes` is the raise's test
+    // with given hit points, for a stack raiser only.
+    let r = ruleset();
+    let mut s = arena(
+        &r,
+        [None, None],
+        &[("herald", 2, 4, 5), ("seraph", 2, 8, 3), ("fixed", 3, 2, 7)],
+        &[("fixed", 3, 13, 5)],
+        1,
+    );
+    hurt(&mut s, &r, 1, 200);
+    let takes = |s: &BattleState, (caster, target): (u8, u8), hp| {
+        crate::computer::raise_test_takes(s, &r, (StackId(caster), StackId(target)), hp)
+    };
+    // A seraph's health is 200: the heralds' own 200 reach it, 199 not.
+    assert!(takes(&s, (0, 1), 200));
+    assert!(!takes(&s, (0, 1), 199));
+    // A stack that lost no creature, the enemy's, and a caster that raises no stack: none.
+    assert!(!takes(&s, (0, 2), 1000));
+    assert!(!takes(&s, (0, 3), 1000));
+    assert!(!takes(&s, (2, 1), 1000));
+}
+
 // covers: BAT-MAG-052, BAT-MAG-037, BAT-END-003
 #[test]
 fn a_pit_lord_raises_imps_from_a_corpse_of_its_side_into_its_army_slot() {

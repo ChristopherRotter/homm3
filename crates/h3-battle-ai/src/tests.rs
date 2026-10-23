@@ -93,9 +93,10 @@ const HEALS: Option<AbilityDef> = Some(AbilityDef::FirstAid {
 /// Fire Shield (the sultan), one that strikes twice (the crusader), kings of each level (the
 /// giant, the knight, the lord), a Master Genie (the genie: three casts of the test spells), the
 /// griffins with two and with unlimited retaliations, a shooter that shoots twice (the
-/// marksman), the creatures that change the heroes' spell costs (the pegasus, the mage) and a
-/// jouster (the champion).
-const CREATURES: [Creature; 29] = [
+/// marksman), the creatures that change the heroes' spell costs (the pegasus, the mage), a
+/// jouster (the champion), a random caster of the bolt (the faerie: five casts) and a stack
+/// raiser (the angel: one cast, 100 hit points per creature; E23 T5b2b).
+const CREATURES: [Creature; 31] = [
     ("imp", 5, 100, &[], [2, 3, 1, 2], 4, 0, None),
     ("gog", 3, 900, &[], [4, 4, 2, 3], 13, 0, None),
     ("runner", 20, 300, &["alive"], [5, 5, 2, 4], 10, 0, None),
@@ -342,6 +343,29 @@ const CREATURES: [Creature; 29] = [
         0,
         Some(AbilityDef::Jousting { percent_per_hex: 5 }),
     ),
+    (
+        "faerie",
+        2,
+        1000,
+        &["alive"],
+        [8, 8, 5, 10],
+        20,
+        0,
+        Some(AbilityDef::RandomSpellCaster {
+            mastery: 2,
+            power_per_creature: 5,
+        }),
+    ),
+    (
+        "angel",
+        12,
+        5000,
+        &["alive"],
+        [20, 20, 50, 50],
+        200,
+        0,
+        None,
+    ),
 ];
 
 const IMP: usize = 0;
@@ -373,6 +397,8 @@ const MARKSMAN: usize = 25;
 const PEGASUS: usize = 26;
 const MAGE: usize = 27;
 const CHAMPION: usize = 28;
+const FAERIE: usize = 29;
+const ANGEL: usize = 30;
 
 /// A test spell of the computer's spell values (E23 T4c): its key, level, value by mastery,
 /// polarity, timed changes, the mastery from which it is cast on the whole side, its usefulness
@@ -1172,6 +1198,18 @@ fn ruleset_as(profile: &str) -> BattleRuleset {
         spell: key("t:fireshield"),
         value: 20,
     });
+    let angel = &mut creatures[ANGEL];
+    angel.casts = 1;
+    angel.abilities.push(AbilityDef::StackRaiser {
+        spell: key("t:resurrect"),
+        hit_points_per_creature: 100,
+    });
+    let faerie = &mut creatures[FAERIE];
+    faerie.casts = 5;
+    faerie.abilities.push(AbilityDef::DrawnSpell {
+        spell: key("t:bolt"),
+        weight: 1,
+    });
     let genie = &mut creatures[GENIE];
     genie.casts = 3;
     genie.abilities.push(AbilityDef::HelpfulSpellCaster {
@@ -1792,7 +1830,7 @@ fn a_refused_choice_falls_back_to_defend() {
     assert!(validate(&state, &r, side, refused).is_err());
     assert_eq!(checked(&state, &r, side, refused), Command::Defend);
     assert_eq!(checked(&state, &r, side, Command::Wait), Command::Wait);
-    assert_eq!(POLICY_VERSION, 14);
+    assert_eq!(POLICY_VERSION, 15);
 }
 
 /// The setup of `setup` on `difficulty`.

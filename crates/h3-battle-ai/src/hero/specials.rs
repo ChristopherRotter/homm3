@@ -1,7 +1,7 @@
 //! The hero's special spells, 0x43BB20's cases of their own (`docs/formats/installation.md`
 //! §7.55, §7.57; BAT-AI-019; E23 T5b1): Resurrection and Animate Dead ([`raise`], 0x43ACA0),
 //! Sacrifice ([`sacrifice`], 0x43B1E0 with 0x43AF50) and Earthquake ([`earthquake`], 0x43B8F0).
-//! Teleport (0x43AA60) is E23 T5b2's (BAT-STUB-14). Every value is a 32-bit integer as the
+//! Teleport (0x43AA60) has a module of its own ([`super::teleport`]). Every value is a 32-bit integer as the
 //! original's; the policy casts only at the targets the engine takes (ADR-0027 point 3).
 
 use h3_battle::{

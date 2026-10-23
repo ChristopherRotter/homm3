@@ -431,6 +431,72 @@ fn a_random_caster_without_casts_draws_nothing_and_another_activation_forgets_it
     assert_eq!(act(&mut s, &r, at_stack(2)), Err(CommandError::CannotCast));
 }
 
+/// The targets of stack `caster`'s cast as if it were the active stack, for the computer
+/// ([`crate::computer::creature_cast_targets_of`]).
+fn targets_of(s: &BattleState, r: &BattleRuleset, caster: u8) -> Vec<CastTarget> {
+    let mut out = CastTargets::new();
+    crate::computer::creature_cast_targets_of(s, r, StackId(caster), &mut out);
+    out.iter().copied().collect()
+}
+
+// covers: BAT-MAG-049
+#[test]
+fn a_random_caster_keeps_its_last_draw_for_the_computer() {
+    // The original's +0x4E0 is written only by the draw: another stack's activation and a reused
+    // record keep it (installation.md §7.59; E23 T5b2b).
+    let r = ruleset();
+    let mut s = arena(
+        &r,
+        [None, None],
+        &[
+            ("boltling", 1, 3, 5),
+            ("conjurer", 5, 3, 7),
+            ("boltling", 1, 3, 9),
+        ],
+        &[("fixed", 3, 13, 5)],
+        1,
+    );
+    let bolt = spell(&r, "bolt");
+    // None before its first draw: no targets.
+    assert_eq!(crate::computer::drawn_spell(&s, StackId(2)), None);
+    assert!(targets_of(&s, &r, 2).is_empty());
+    drawing(&mut s, &r, 0);
+    // As the active stack, the rules' own targets.
+    assert_eq!(targets_of(&s, &r, 0), vec![stack(3)]);
+    assert_eq!(targets(&s, &r, BattleSide::Attacker), vec![3]);
+    // Another stack's activation forgets the active draw, not the last.
+    drawing(&mut s, &r, 1);
+    assert_eq!(stack_spell(&s, &r, StackId(0)), None);
+    assert_eq!(crate::computer::drawn_spell(&s, StackId(0)), Some(bolt));
+    assert_eq!(targets_of(&s, &r, 0), vec![stack(3)]);
+    // The other caster's targets while the dragon is active: the conjurer's own.
+    let conjurer = targets_of(&s, &r, 1);
+    drawing(&mut s, &r, 0);
+    assert_eq!(targets_of(&s, &r, 1), conjurer);
+    assert!(!conjurer.is_empty());
+    // The last draw is in the state hash (v52).
+    let mut other = s.clone();
+    other.casts.last[0] = crate::casters::NO_DRAW;
+    assert_ne!(other.state_hash(), s.state_hash());
+    // None without a cast left, in the tactics phase, while creatures may not cast (but for a
+    // creature that ignores the block), nor for a creature that casts nothing.
+    let mut spent = s.clone();
+    spent.casts.left[0] = 0;
+    assert!(targets_of(&spent, &r, 0).is_empty());
+    let mut tactics = s.clone();
+    tactics.tactics = Some(crate::TacticsPhase {
+        side: BattleSide::Attacker,
+        columns: 3,
+    });
+    assert!(targets_of(&tactics, &r, 0).is_empty());
+    let mut blocked = s.clone();
+    blocked.limits.no_creature_casts = true;
+    assert!(targets_of(&blocked, &r, 0).is_empty());
+    assert!(targets_of(&blocked, &r, 1).is_empty());
+    assert!(targets_of(&s, &r, 3).is_empty());
+    assert!(targets_of(&s, &r, 40).is_empty());
+}
+
 // covers: BAT-MAG-049
 #[test]
 fn a_drawn_spell_is_aimed_at_any_stack_but_the_caster_that_it_can_affect() {

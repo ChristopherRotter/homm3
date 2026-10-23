@@ -367,6 +367,11 @@ impl Search {
         self.stops.contains(hex)
     }
 
+    /// The stops the search marked (+0x68).
+    pub(crate) const fn stops(&self) -> HexSet {
+        self.stops
+    }
+
     /// Where the search ended: the position reached ([`Goal::Reach`]) or the one the stack attacks
     /// from ([`Goal::Attack`]).
     pub(crate) const fn end(&self) -> Option<Hex> {
