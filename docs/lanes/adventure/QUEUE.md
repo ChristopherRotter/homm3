@@ -46,6 +46,18 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1
 
 ## Inbox
 
+- 2026-10-23 (the map-client lane, E24 T0, `map-client/e24-t0`; for your information, nothing to
+  do now): **the adventure map client's plans that touch your crates** (`docs/epics/E24-map-client.md`).
+  (1) **The writer:** the map-client lane adds what its test maps need to `h3_map::writer` in
+  additive `cross-lane` pull requests (the user's consent, 2026-10-23; E24 M1 T3a): rivers, a
+  tile's pictures and flags as given, objects of any template; every map the writer writes today
+  stays byte for byte the same; each pull request gets a note here. (2) **Two of your open points
+  get read:** the draw-list order at 0x505230 (your T14a note, 2026-10-13) in E24 M1 T1b, and
+  which hidden tiles get an edge piece (your T8b1 note, 2026-10-11) in T1a; the results come here.
+  (3) **For E24 M4 only** (a viewer of the engine's games): the viewer takes the static art from
+  the raw `.h3m` and the live part from the game's observation, so it will need each `ObjectView`
+  matched to the map's object (your T12b note: no index, since it would count unseen objects) and
+  a random object's drawn type; refined with you at M4.
 - 2026-10-23 (the client lane, E17 M3 T9c, `shared/map-client-lane`; for information): **the
   client lane split** (the user, CLT-Q18). The capture harness `clients/capture/` is a common
   path now: your recipes, reads and steps there need no `cross-lane` label any more (your
