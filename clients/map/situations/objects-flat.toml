@@ -1,0 +1,8 @@
+# Flat objects under others (E24 M1 T4a; design §2.2, pass 4): Good Witch, Bad Witch's tiles
+# (56, 8)-(77, 27) and the objects anchored there (47 of them flat), to the top-left; the view
+# over them.
+size = 36
+terrain = "grass"
+copy = [{ map = "Good Witch, Bad Witch.h3m", from = [56, 8], to = [77, 27], at = [0, 0], objects = true }]
+heroes = [[33, 33], [33, 30]]
+view = [0, 0, 0]

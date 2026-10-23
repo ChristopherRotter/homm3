@@ -1,0 +1,8 @@
+# Objects copied from a shipped map (E24 M1 T4a; design §2.1, §2.2): Myth and Legend's tiles
+# (12, 12)-(33, 31) and the objects anchored there, to the top-left; the view over them. Monsters
+# at their phases among the decorations.
+size = 36
+terrain = "grass"
+copy = [{ map = "Myth and Legend.h3m", from = [12, 12], to = [33, 31], at = [0, 0], objects = true }]
+heroes = [[33, 33], [33, 30]]
+view = [0, 0, 0]

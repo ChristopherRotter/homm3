@@ -1,7 +1,7 @@
 # E24 — The adventure map client
 
-Status: **refined** (2026-10-23, T0, with the user); M1 running (T1a, T1b, T2, T3a, T3b1, T3b2
-done; next T4, `docs/lanes/map-client/QUEUE.md`).
+Status: **refined** (2026-10-23, T0, with the user); M1 running (T1a, T1b, T2, T3a, T3b1, T3b2,
+T4a done; next T4b, `docs/lanes/map-client/QUEUE.md`).
 Lane: map-client (`docs/lanes/map-client/HANDOFF.md`: the autonomy contract, the user's asset
 notes). Opened 2026-10-23 when the user split the client lane at E17 M3's closure (CLT-Q18).
 Decisions so far live here (no ADR of its own yet; ADR-0020 and ADR-0024 bind it as they bind
@@ -108,7 +108,12 @@ autonomy contract (lane HANDOFF) says what the agent decides alone in between. T
   T3b2 (2026-10-23): the map's stills in the original (`clients/capture/h3map.py`, the
   situations `clients/map/situations/` built by `h3-map-view situation`): eleven situations of
   terrain, water and lava, the four rivers, the roads, the edges and the unexplored tiles, all
-  exact outside the panels; the clock drives the map, its palette step read from memory.
+  exact outside the panels; the clock drives the map, its palette step read from memory. T4a
+  (2026-10-23; T4 split with the user into T4a, T4b and T5's share; MCL-Q2 answered): the
+  objects drawn (`h3_map_view::objects`: the `.msk` shapes, the draw lists; passes 4, 5, 7),
+  the situations' objects (copied with a shipped map's rectangle, or given by DEF), the phases
+  and frame step read from memory; six situations of copied dense corners and edge cuts, exact
+  (`E24-design.md` §2.6).
 - **Exit:** the capture set's stills match the original pixel for pixel outside the masks of
   what M1 does not draw (the panels, the mouse), or list each difference as an M2 item; the
   review list accepted; research item 9 closed by the reading and its frames.
@@ -139,7 +144,7 @@ checked frame by frame against recorded sequences as E17 M2 did for the battle.
 
 | Item | Where |
 |---|---|
-| 9. The adventure map's object draw order (the user: neither they nor VCMI got it exactly right); the objects' shadows | M1 T1b (read, `E24-design.md` §2), T4 (its frames) |
+| 9. The adventure map's object draw order (the user: neither they nor VCMI got it exactly right); the objects' shadows | M1 T1b (read, `E24-design.md` §2), T4a (its frames, §2.6), T4b (shipped maps' views; closes it) |
 | 3. Licences of MMArchive and homm3-unpacker before reading their code | stop the line: a question first, when a task wants them |
 | 4. The video archives | later |
 | 7. The HD patch as a source of fixes and for HD | later |
@@ -190,3 +195,9 @@ The M1 review list starts here (the autonomy contract's "queue for the milestone
   explored bits into the game (as E17 M4 T1b writes a siege's walls) instead of revealing by
   play; a single scenario (Red human) rather than hot seat; the masks (the panels right of x 608
   and below y 552); `render --cycles` (the original's palette step) and its `--hidden` repeated.
+- **M1 T4a, the objects** (*provisional*): the objects' shapes (`.msk` and the DEF's frame
+  count) loaded by the binary and handed to the scene, which stays free of I/O; `render --live`
+  (the harness's `live.toml`: the palette step, the frame step the screen shows, every object's
+  anchor, checked, and phase); the situations' objects (`copy`'s `objects = true`, neutral,
+  without the hero classes; `objects` given by DEF through the game's `Objects.txt`); the eight
+  owned classes' flag runs skipped until T5 colours them (no situation has them yet).

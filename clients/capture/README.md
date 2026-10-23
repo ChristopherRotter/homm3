@@ -392,7 +392,8 @@ button that shows in more than one place (a dialog's OK): `python3 capture/h3adv
 <name> x0,y0,x1,y1 [<dump.xwd>]` records 12 probes relative to its corner (`[button.<name>]`);
 `h3adv.find_button` finds it anywhere on the screen.
 
-**The map's stills** (E24 M1 T3b2, the map client lane; `docs/epics/E24-design.md` §1.10): from
+**The map's stills** (E24 M1 T3b2, T4a, the map client lane; `docs/epics/E24-design.md` §1.10,
+§2.6): from
 `clients/`, after `cargo build --release -p h3-map-view`,
 
 ```
@@ -401,8 +402,10 @@ python3 capture/h3map.py still map/situations/<id>.toml [--keep]  # one situatio
 ```
 
 A situation (`map/situations/<id>.toml`, its format in `h3_map_view::situation`) is a writer's
-map (tiles given, or copied from a rectangle of a shipped map in `original-data/install/Maps`),
-two heroes away from the view, the view's top-left and the tiles Red has not explored. `still`
+map (tiles given, or copied from a rectangle of a shipped map in `original-data/install/Maps`,
+with the objects anchored there when the copy says `objects = true`; objects given by their
+template's DEF, its line of the game's `Objects.txt`), two heroes away from the view, the view's
+top-left and the tiles Red has not explored. `still`
 writes the map (`h3-map-view situation`), loads it as a single scenario, writes Red's explored
 bit of every tile of the level (`h3mem.Mem.write_explored`: all but the situation's `hidden`
 rectangles; the game's own reveal around its heroes is overwritten), centres the view by a
@@ -414,9 +417,14 @@ and dumps the screen. The virtual clock drives the adventure map
 as it drives a battle: frozen, the map stays still; the palette cycles' step k is read from the
 cycling DEFs' palettes in memory (`Mem.def_palette`: each range a rotation of its file's by k,
 mod 36; read until two reads 0.1 s apart agree, and again after the dump, since a read can meet
-the tick's rotation half done) and the objects' frame steps from the manager
-(`Mem.frame_steps`), both into `live.toml`. Ours: `h3-map-view render --bugs original --cycles k` with the same view and hidden
-rectangles. Masked (`h3map.MASKS`): the panels right of x 608 and below y 552 (M3 draws them)
+the tick's rotation half done), the objects' frame step the screen shows (`Mem.frame_steps`
+less one: the redraw draws before it counts) and every object's anchor and animation phase
+(`Mem.map_objects`, the 12-byte records in the map's order; T4a), all into `live.toml`. Ours:
+`h3-map-view render --bugs original --live live.toml` with the same view and hidden rectangles;
+it refuses a `live.toml` whose anchors are not its map's. A game that crashes on its way to the
+map (`wine.log`'s "Unhandled page fault") is started once more: the original's tavern rumour at
+a new game reads past its table about once in 800 games (`rumour_pick_text` 0x4CCF20; T4a saw
+it once). Masked (`h3map.MASKS`): the panels right of x 608 and below y 552 (M3 draws them)
 and the cursor parked over the right panel. Every situation of T3b2 is exact; `set.toml` records
 the counts. The menus run in real time, so each run's k and frame steps differ: they are read,
 never assumed.

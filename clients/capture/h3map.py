@@ -136,6 +136,26 @@ def masked(names, shape=(600, 800)):
     return m
 
 
+def started(map_path, run_dir, tries=2):
+    """The original on the map's adventure screen (a single scenario). A game that crashes on its
+    way there is started once more: the original's tavern rumour at a new game reads one entry past
+    its table about once in 800 games (rumour_pick_text 0x4CCF20; E24 M1 T4a saw it)."""
+    for attempt in range(1, tries + 1):
+        game = h3drive.Game(run_dir)
+        game.start(map_path)
+        try:
+            h3drive.to_scenario(game)
+            return game
+        except TimeoutError:
+            log = run_dir / "wine.log"
+            crashed = log.exists() and "Unhandled page fault" in log.read_text(errors="replace")
+            game.stop()
+            if not crashed or attempt == tries:
+                raise
+            print(f"{map_path}: the original crashed on its way to the map; started again",
+                  file=sys.stderr, flush=True)
+
+
 def still(situation_path, out=None, keep=False):
     """Shows and draws one situation; returns the differing pixels, the compared ones and where
     the differing lie (text)."""
@@ -147,10 +167,8 @@ def still(situation_path, out=None, keep=False):
     run(MAP_VIEW, "situation", situation_path, "--out", map_path)
     vx, vy, vz = sit["view"]
     hidden = sit.get("hidden", [])
-    game = h3drive.Game(out / "run")
-    game.start(map_path)
+    game = started(map_path, out / "run")
     try:
-        h3drive.to_scenario(game)
         mem = h3mem.Mem()
         mem.write_explored(vz, hidden_test(hidden), mem.current_player())
         # The view's top-left from a minimap click on the tile it puts at CENTRE; another view

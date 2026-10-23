@@ -1,0 +1,8 @@
+# Objects copied from a shipped map (E24 M1 T4a; design §2.1, §2.2): Good Witch, Bad Witch's tiles
+# (12, 56)-(33, 75) and the objects anchored there, to the top-left; the view over them. Dense
+# forest and rough ground with flat objects among the trees.
+size = 36
+terrain = "grass"
+copy = [{ map = "Good Witch, Bad Witch.h3m", from = [12, 56], to = [33, 75], at = [0, 0], objects = true }]
+heroes = [[33, 33], [33, 30]]
+view = [0, 0, 0]

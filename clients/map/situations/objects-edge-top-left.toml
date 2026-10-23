@@ -1,0 +1,15 @@
+# Objects cut by the map's left and top edges (E24 M1 T4a; design §2.1: cells off the map have no
+# draw entries): a flat 8 x 6 Cursed Ground, a 5 x 5 volcano (animated), a 6 x 5 mountain and a
+# windmill reaching past the edges, over Deluge's ground as in edge-top-left; the view past the
+# corner.
+size = 36
+terrain = "grass"
+copy = [{ map = "Deluge.h3m", from = [10, 10], to = [29, 27], at = [0, 0] }]
+objects = [
+    { def = "AVXcg1.def", at = [2, 3] },
+    { def = "AVLvol50.def", at = [3, 9] },
+    { def = "AVLmtgr1.def", at = [10, 2] },
+    { def = "AVMwndd0.def", at = [14, 1] },
+]
+heroes = [[33, 33], [33, 2]]
+view = [-2, -2, 0]

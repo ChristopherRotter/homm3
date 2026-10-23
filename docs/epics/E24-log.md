@@ -231,3 +231,51 @@ for the second part too.
 - **Agent decisions (provisional, on the review list):** the situation format; writing Red's
   explored bits instead of revealing by play; a single scenario; the masks.
 - **Questions:** none new; MCL-Q2's context updated (reachable).
+
+### M1 T4a — the objects on the writer's maps (2026-10-23)
+
+One session, the user present at its start; branch `map-client/e24-t4a`.
+
+- **The split** (with the user): T4 became T4a (this), T4b (the masks' gate check and shipped
+  maps' views with their random objects read from memory) and, moved into T5, the heroes' and
+  boats' place among the objects' layers (D4, D5) and the path's arrows (D9). MCL-Q2 answered:
+  the client draws the last row's road, the comparisons reproduce the original (as built).
+- **Read:** msk_load 0x514610's bit layout and which mask is which (the first the colour mask,
+  the second the shadow mask), tile_draw_insert 0x505230 and object_tile_layers 0x505060 again
+  (§2.1 holds, the intersection clipped to the map), pass 7's frame and source rectangle
+  (0x410EA1 to 0x410F3E: the first group's frame count). A survey of the user's sprite archives
+  (a throwaway script, not committed): all 1 659 object DEFs encoding 3, first group id 0, every
+  body and shadow pixel inside its `.msk`'s masks but the radar's (no map object); swapped masks
+  miss hundreds (design §2.6).
+- **Built** (`clients/crates/h3-map-view`): the module `objects` (`Shape`: a `.msk`'s size and
+  masks and the DEF's frame count; `Shapes` by DEF name; `layers`; `DrawLists::build`: the
+  placement in the map's order and the insertion; `pictures`, `template`); the scene's passes 4,
+  5 and 7 (`Pass::Flat`, `Shadow`, `Body`; `scene` takes the shapes; `SceneError::Objects`); the
+  drawers `draw::flagged` (0x47D0A0) and `draw::shadow_pass` (0x47D930) with the view's clip;
+  compose by pass. The binary: `files::load_shapes` (the `.msk` searched in the sprite archives,
+  `default.msk` without one; the DEF's first group), `render --live <live.toml>` (`cycles`,
+  `frames`, `phases`, `anchors` checked against the map's). The situations: `copy` takes
+  `objects = true` (the objects anchored in the rectangle, but the hero classes, neutral, the
+  editor's bodies) and `objects` gives objects by their template's DEF (`Objects.txt` from the
+  bitmap archives, by DEF and optionally class and subclass). 100 % covered.
+- **The harness** (common path, additive): `h3mem.Mem.map_objects` (the 12-byte records: anchor,
+  template, phase); `h3map.py still` writes the frame step the screen shows (memory's less one),
+  the anchors and the phases into `live.toml` and draws ours with `--live`.
+- **Captures:** six new situations, each exact outside the panels on its first run:
+  `objects-mandate` (The Mandate of Heaven (24, 24)-(45, 43), 159 objects), `objects-witch` (Good
+  Witch, Bad Witch (12, 56)-(33, 75), 161), `objects-flat` (the same map's (56, 8)-(77, 27), 116,
+  47 flat), `objects-myth` (Myth and Legend (12, 12)-(33, 31), 148), `objects-edge-top-left` and
+  `objects-edge-bottom-right` (given objects cut by the four edges). The copies' rectangles were
+  picked by a throwaway scan of the shipped maps for dense corners without heroes, random or
+  owned objects. Counted in their views: D1 2 679 tile pairs, D2 17 pairs, D3 406 entries, 207
+  flat pieces under shadows, so §2.5's own maps for points 1 to 3 and 9 were not built. One frame
+  step more changes 620 pixels of `objects-mandate`. The first full run of the set (17) stopped
+  at `objects-witch`: the original crashed on its way to the map (a null read at 0x4CCF8C).
+  Read: the new game's text rumour (`rumour_pick_text` 0x4CCF20) draws n among the unused of 256
+  rumours but copies row n, so a draw of 256 reads one entry past its table, about once in 800
+  games; a finding for the adventure lane (its inbox), and `h3map.py` now starts a game that
+  crashes on its way to the map once more. The second full run: every one as recorded.
+- **Agent decisions (provisional, on the review list):** the shapes loaded by the binary and
+  passed to the scene; `render --live`; the situations' objects; the owned classes' flag runs
+  skipped until T5 (the copies avoid those classes).
+- **Questions:** none new.
