@@ -5059,4 +5059,7 @@ worktree` meanwhile, so the baseline tested `master`'s files.
   of the compiled template (h3adv's `fill` raises on any other); against the template of before
   only the six renamed fields failed. Left empty: E6-8's screen line only.
 - **Not built:** the run (T47b2); the scoring (T48); the cap (T50's start).
-- **Verify:** VERIFY_BRANCH
+- **Verify:** the branch changes no fingerprinted path (docs, experiments and the harness's
+  recipe), so the light gates ran on it (check-rules, check-stubs, check-docs, check-exe-map):
+  all passed. `check-lane` names one battle path, `docs/experiments/README.md`'s status row:
+  `cross-lane` with the user's consent. CI's recent runs fail unstarted.
