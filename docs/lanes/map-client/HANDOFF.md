@@ -40,6 +40,6 @@ The map client lane's living state; read after the global `docs/HANDOFF.md`. For
 
 ## Recent sessions
 
-- **2026-10-23, E24 M1 T3b2** (`map-client/e24-t3b2`, on T3b1's): the situations (`h3_map_view::situation`, copies from shipped maps) and `h3map.py` (Red's explored bits written, the view by the minimap, the clock frozen, k read from memory); 11 situations exact (a racing palette read fixed). **PR open, after #428**: merge `master` once #428 is merged.
+- **2026-10-23, E24 M1 T3b2** (`map-client/e24-t3b2`, on T3b1's): the situations (`h3_map_view::situation`, copies from shipped maps) and `h3map.py` (Red's explored bits written, the view by the minimap, the clock frozen, k read from memory); 11 situations exact (a racing palette read fixed). **#430 open, after #428**: merge `master` into it once #428 is merged.
 - **2026-10-23, E24 M1 T3b1** (`map-client/e24-t3b1`): T3b split with the user. `h3-map-view render`: the frame and passes 1–3, 10, 11; the map's drawers and batch in the crate; MCL-Q2 asked. **#428 open**: check it first.
 - **2026-10-23, E24 M1 T3a** (`map-client/e24-t3a`, `cross-lane`): `h3_map::writer::write_with` and its `Extras`, a second entry point; the bodies' defaults from the SoD maps. #425 merged.
