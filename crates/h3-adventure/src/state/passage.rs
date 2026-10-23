@@ -1,9 +1,10 @@
 //! The passage of a flying or water-walking hero (E08 T41; ADV-MOV-007, ADV-MOV-009, ADV-MOV-010;
-//! survey `E08-hero-movement.md` §3, the second reading; design note §7's table): what a step may
-//! enter, whether the hero may stop there or only pass over, and what it visits. One place for
-//! `MoveHero` and the reachable-tiles query, so that a later compromise for the unexplored tiles
-//! (`ADV-QUIRK-15`, ADR-0016 point 4) changes one row here. A walking hero's steps keep their own
-//! checks (`check_step` and the walking search), whose rows this table repeats for walking.
+//! survey `E08-hero-movement.md` §3, the second reading; increment 5's design note §7's table,
+//! `E08-log.md`): what a step may enter, whether the hero may stop there or only pass over, and
+//! what it visits. One place for `MoveHero` and the reachable-tiles query, so that a later
+//! compromise for the unexplored tiles (`ADV-QUIRK-15`, ADR-0016 point 4) changes one row here. A
+//! walking hero's steps keep their own checks (`check_step` and the walking search), whose rows
+//! this table repeats for walking.
 
 use h3_contracts::{HeroId, PlayerId};
 use h3_heroes::Movement;
