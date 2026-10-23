@@ -5093,6 +5093,7 @@ original's files staged from it as T47a's, `clients/capture/setup.sh` run.
   backpack a window; E6-10 the right arrow moves the first to the end; E6-9 the book (17) after
   both.
 - **Not built:** the scoring (T48); the cap (T50's start).
-- **Verify:** the branch changes no fingerprinted path (the recipe, the results, docs), so the
-  light gates ran on it with `check-lane` (`cross-lane`: `docs/experiments/README.md`'s status
-  row, a battle path, as the queue entry planned). CI's recent runs fail unstarted.
+- **Verify:** the branch changes no fingerprinted path (the recipe, the results, docs).
+  `verify --scope adventure` passed every step but `check-lane`, which names one battle path,
+  `docs/experiments/README.md`'s status row: `cross-lane` with the user's consent (asked at the
+  end). CI's recent runs fail unstarted.
