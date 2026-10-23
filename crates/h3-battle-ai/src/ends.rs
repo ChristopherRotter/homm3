@@ -163,8 +163,13 @@ impl Walker<'_> {
     }
 
     /// The turns the walker needs to reach `hex` (0x4B3F20): the cost on the map the fallbacks
-    /// read ([`Walker::cells`]) over its speed, rounded up, at least 1.
-    fn turns_to(&self, hex: Hex) -> u32 {
+    /// read ([`Walker::cells`]) over its speed, rounded up, at least 1; 1 in the tactics phase
+    /// (0x420760; BAT-AI-023).
+    // rule: BAT-AI-010, BAT-AI-023
+    pub(crate) fn turns_to(&self, hex: Hex) -> u32 {
+        if self.tactics.is_some() {
+            return 1;
+        }
         let speed = u32::from(self.me.speed_now()).max(1);
         u32::from(self.cells().cost(hex)).div_ceil(speed).max(1)
     }

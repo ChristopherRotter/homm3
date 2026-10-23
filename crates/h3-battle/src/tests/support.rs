@@ -1936,6 +1936,10 @@ pub fn try_ruleset_from(
                 )],
             },
             ProfileDef {
+                key: ContentKey::new("t", "slips").unwrap(),
+                quirks: vec![(String::from("quirk.battle.original_ai_slips"), true)],
+            },
+            ProfileDef {
                 key: ContentKey::new("t", "original").unwrap(),
                 quirks: vec![
                     (String::from("quirk.battle.first_protection"), true),

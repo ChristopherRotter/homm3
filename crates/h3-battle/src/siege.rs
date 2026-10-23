@@ -20,7 +20,7 @@ use h3_content_battle::{
 };
 use h3_contracts::{BattleSetup, BattleSide, FortLevel, Moat};
 use h3_kernel::arith::{DOUBLE_BITS, SINGLE_BITS, SINGLE_FRAC_BITS, X87, round_single};
-use h3_kernel::{CanonicalHash, StateHasher};
+use h3_kernel::{CanonicalHash, Rng, StateHasher};
 
 use crate::error::SetupError;
 use crate::event::{Event, EventKind, Sink};
@@ -867,21 +867,45 @@ pub(crate) fn nearest(state: &mut BattleState, candidates: &[u8], from: u8) -> O
 /// The automatic Catapult's aim (BAT-SIE-011; the original's 0x473C00 without Ballistics): the
 /// weakest standing wall of the field's `automatic` list (the fewest hit points, a tie drawn with
 /// `random(1, n)` in the list's order); else the first standing target of `fallback`, else of
-/// all targets in order; none when nothing stands.
+/// all targets in order; none when nothing stands. Its draw is the battle's.
 pub(crate) fn automatic_aim(
     state: &mut BattleState,
     (siege, field): (SiegeState, &SiegeField),
 ) -> Option<u8> {
+    aim_with(&siege, field, 0, &mut state.rng)
+}
+
+/// The Catapult's aim of the original's 0x473C00 with Ballistics `level` (the computer's and a
+/// hidden battle's; BAT-SIE-011 at level 0, BAT-AI-021 above it), its tie's draw from `rng`: with
+/// Ballistics the gate while it stands; the weakest standing wall of the field's `automatic` list
+/// (the fewest hit points, a tie drawn with `random(1, n)` in the list's order), with Ballistics
+/// only while every wall of the list stands; else the first standing target of `fallback`, else
+/// of all targets in order; none when nothing stands.
+// rule: BAT-SIE-011, BAT-AI-021
+pub(crate) fn aim_with(
+    siege: &SiegeState,
+    field: &SiegeField,
+    level: u8,
+    rng: &mut Rng,
+) -> Option<u8> {
+    if level > 0
+        && let Some(gate) =
+            (0..siege.targets).find(|&t| siege.kind(t) == Some(WallKind::Gate) && siege.stands(t))
+    {
+        return Some(gate);
+    }
+    let standing = field.automatic.iter().filter(|&&t| siege.stands(t)).count();
     let weakest = field
         .automatic
         .iter()
         .filter(|&&t| siege.stands(t))
         .map(|&t| siege.parts[usize::from(t)])
-        .min();
+        .min()
+        .filter(|_| level == 0 || standing == field.automatic.len());
     if let Some(least) = weakest {
         let tied = |t: &&u8| siege.stands(**t) && siege.parts[usize::from(**t)] == least;
         let n = u32::try_from(field.automatic.iter().filter(tied).count()).unwrap_or(1);
-        let k = state.rng.range_inclusive(1, n);
+        let k = rng.range_inclusive(1, n);
         return field
             .automatic
             .iter()

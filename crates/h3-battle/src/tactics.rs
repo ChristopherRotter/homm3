@@ -72,6 +72,28 @@ impl CanonicalHash for TacticsPhase {
     }
 }
 
+/// The rounds of a tactics phase as the original counts them for its computer (the phase's round
+/// counter +0x13D6C and the round's mark of an action +0x14030, which a placement sets;
+/// `installation.md` §7.60): the computer's policy ends its phase by them (BAT-AI-023). No rule
+/// reads them; they stay as the phase left them after its end.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct TacticsRounds {
+    /// The rounds of the phase completed (every stack had its turn).
+    pub completed: u8,
+    /// Whether a stack was placed in the running round.
+    pub placed: bool,
+    /// Whether a stack was placed in the last completed round.
+    pub placed_last: bool,
+}
+
+impl CanonicalHash for TacticsRounds {
+    fn hash_into(&self, h: &mut StateHasher) {
+        h.write_u8(self.completed);
+        h.write_bool(self.placed);
+        h.write_bool(self.placed_last);
+    }
+}
+
 /// The tactics phase of a battle led by `heroes`, if any: the side whose Tactics level exceeds
 /// the enemy's gets a zone as wide as the ruleset's entry for the difference; equal levels
 /// cancel, and a side without a hero has level 0.
@@ -126,7 +148,8 @@ fn pick(state: &BattleState, phase: TacticsPhase) -> Option<StackId> {
 }
 
 /// Hands the next stack to the phase's side; when every stack has had its turn, the next round
-/// of the phase starts (the stacks' turn flags are cleared, batch 2a R7c).
+/// of the phase starts (the stacks' turn flags are cleared, batch 2a R7c) and the round is
+/// counted ([`TacticsRounds`]).
 // rule: BAT-TAC-002
 fn activate<S: Sink>(state: &mut BattleState, phase: TacticsPhase, sink: &mut S) {
     let id = pick(state, phase).unwrap_or_else(|| {
@@ -134,6 +157,10 @@ fn activate<S: Sink>(state: &mut BattleState, phase: TacticsPhase, sink: &mut S)
             s.flags.set(StackFlags::ACTED, false);
             s.flags.set(StackFlags::WAITED, false);
         }
+        let rounds = &mut state.tactics_rounds;
+        rounds.completed = rounds.completed.saturating_add(1);
+        rounds.placed_last = rounds.placed;
+        rounds.placed = false;
         // The side has an army stack (the setup requires one), so a stack is always found.
         pick(state, phase).unwrap_or(StackId(0))
     });
@@ -152,7 +179,8 @@ pub(crate) fn begin<S: Sink>(state: &mut BattleState, phase: TacticsPhase, sink:
     activate(state, phase, sink);
 }
 
-/// Ends `current`'s turn in the phase after a placement; the next stack follows.
+/// Ends `current`'s turn in the phase after a placement, which the round's count records; the
+/// next stack follows.
 pub(crate) fn placed<S: Sink>(
     state: &mut BattleState,
     phase: TacticsPhase,
@@ -160,6 +188,7 @@ pub(crate) fn placed<S: Sink>(
     sink: &mut S,
 ) {
     state.at_mut(current).flags.set(StackFlags::ACTED, true);
+    state.tactics_rounds.placed = true;
     activate(state, phase, sink);
 }
 

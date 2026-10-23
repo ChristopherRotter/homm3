@@ -318,6 +318,17 @@ fn state_hash_is_pinned() {
         obstacles: vec![stone],
         battlefield: h3_content::ContentKey::parse("t:holy").ok(),
         anti_magic: true,
+        // The adventure's facts for the computer (v53, E23 T6).
+        retreat: [
+            h3_contracts::RetreatFacts {
+                experience: 2500,
+                artifacts: 1200,
+                tavern: true,
+                wanted: false,
+            },
+            h3_contracts::RetreatFacts::default(),
+        ],
+        attacker_ground: h3_content::ContentKey::parse("t:holy").ok(),
         siege: Some(h3_contracts::Siege {
             faction: r.faction_by_key("t:castle").unwrap(),
             fort: h3_contracts::FortLevel::Citadel,
@@ -337,12 +348,13 @@ fn state_hash_is_pinned() {
     // T6). v48: the turrets the targets hold, the Citadel's keep among the stacks (E04c T7). v49:
     // the game's difficulty and the human players (E04c T7d). v50: the town's Escape Tunnel
     // (E04c T8). v51: the Ballista's Artillery level (E04c T7e). v52: each stack's last drawn
-    // spell (E23 T5b2b).
-    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 52);
+    // spell (E23 T5b2b). v53: the tactics phase's rounds the computer counts, the retreat
+    // facts and the attacking hero's own ground (E23 T6).
+    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 53);
     assert_eq!(
         s.siege.unwrap().turret(7),
         Some(StackId(u8::try_from(s.stacks().len() - 1).unwrap()))
     );
 }
 
-const GOLDEN: u64 = 0x5e65_b2a5_f21e_1433;
+const GOLDEN: u64 = 0x604c_536d_b526_1504;
