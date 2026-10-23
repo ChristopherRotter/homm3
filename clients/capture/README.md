@@ -53,7 +53,10 @@ alter (the user, 2026-10-20):
    changes (scenario, actions, `ms`, `boxes`, masks: the kept times or the comparison change
    with it). Record their counts as before.
 3. **Then** `drawn --record`, and commit `kept/` and `drawn.txt` with the task (the captures
-   refresh `kept/` themselves).
+   refresh `kept/` themselves, but only from a capture as recorded or new, M3 T9b: one that
+   differs leaves `kept/` as it was; once its new counts are recorded, `frames --only <id>
+   --reuse` or `set --only <id>` keeps it). `drawn --record` fails when an item could not be
+   drawn, its digests left as they were.
 4. **Everything** (`frames` and `set` without `--only`): at a milestone's closure, and after a
    change to the harness (`capture/*.py`, `xdd.c`, `setup.sh`, `screens.toml`) that can change
    the original's side: how it is driven, captured or read. A change to `drawn` alone (how the
@@ -249,7 +252,8 @@ pixels outside the masks and how many of them are the original's **redraw artifa
 shadows, or one we drew there at an earlier moment of the sequence with at least one more. The
 diff PNG marks those yellow, any other difference red; a change in either count fails. The
 original's frames live only in the sandbox that captured them (`clients/out/`, never in git):
-a new sandbox captures them again (all nine with frames, about 60 minutes: `shots`, `fly` and `machines` about 9 each) before `--reuse` works. `--reuse` keeps the original's frames from an earlier run and only redraws
+a new sandbox captures them again (all nine with frames, about 60 minutes: `shots`, `fly` and `machines` about 9 each) before `--reuse` works (a run that stopped, stalled or left a forced draw untaken keeps none since
+M3 T9b). `--reuse` keeps the original's frames from an earlier run and only redraws
 and compares (after a change to the viewer). About 14 minutes for the first four sequences and 20
 more for `behind` (default `<dir>`: `clients/out/frames`). Only a fidget comes from the
 original's memory; everything else is the viewer's own timeline.

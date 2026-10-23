@@ -6,61 +6,45 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024). M3 (fidelity) below, refined at M2's closure (T5c) and agreed by the user there, each task about half a context; the exit: the reference set passes, or each difference is a listed fix or a classified quirk. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
 
-T9b (M3's review) split with the user (2026-10-23): T9b-1 T9a's two points (done, the epic's
-log); the fresh reviewer in three parts by area, each a narrow read-only sub-agent whose
-findings the session checks against the code (and the executable where one names the original:
-`scripts/exe.py`) and fixes or lists; the review list with the user last. A reviewer's brief: its files, M3's
-tasks that built them (the epic's log), the design sections they cite; findings as
-`file:line`, the failure, a fix; no style notes. A fix that changes a drawn frame needs
-`drawn` and the captures it lists (runbook).
-
-### E17 M3 T9b-2 — The reviewer: the timeline
-
-- **Scope:** a fresh reviewer over `h3-view`'s `anim` (and `anim/`), `ray`, `hero`, `scene`
-  and `compose` (about 8 000 lines; M3 T1a–T7d); its findings fixed or listed.
-- **Acceptance:** each finding fixed (with a test), listed for the review, or shown not a bug;
-  `drawn` the same or the changed captures recorded; the client check passes.
-- **Depends on:** T9b-1 (done 2026-10-23). **Status:** ready.
-
-### E17 M3 T9b-3 — The reviewer: the interface and the adapters
-
-- **Scope:** a fresh reviewer over `h3-view`'s `mouse` (and `mouse/track`), `panel`, `ui`,
-  `battle_log`, `text` (and `text/`), `cursor`, `layout`, `tables`; `h3-render`'s `text` and
-  `tint`; `h3-assets`' `fnt`; the binary's `sequences`, `situation`, `scenario`, `pointer`,
-  `log`, `motion`, `render`, `harvest`, `window`, `audio` (M3 T1a–T8). The library first: when
-  one brief is too wide, the binary's adapters go to a second agent.
-- **Acceptance:** as T9b-2.
-- **Depends on:** T9b-2. **Status:** waiting.
-
-### E17 M3 T9b-4 — The reviewer: the harness
-
-- **Scope:** a fresh reviewer over `clients/capture/` (`h3drive.py`, `h3mem.py`, `h3cap.py`,
-  `h3lod.py`, `xdd.c`, `setup.sh`; the client lane's parts of `h3adv.py`), against the runbook:
-  a read that can race the game, a capture that can pass while wrong, a write into the running
-  copy beyond the runbook's. A fix to how the original is driven, captured or read means every
-  capture again (runbook, "Which captures a change needs" 4).
-- **Acceptance:** as T9b-2.
-- **Depends on:** T9b-3. **Status:** waiting.
-
-### E17 M3 T9b-5 — The review list with the user
-
-- **Scope:** the epic's M3 review list (T1a–T7d and the reviewers' additions) and the open
-  CLT-Q9 to Q17 the recordings and readings raised, with the user; M3's exit stated (the reference set
-  passes, each difference a listed fix or a classified quirk).
-- **Acceptance:** the review list accepted or carried on; the answers built or queued.
-- **Depends on:** T9b-4. **Status:** waiting.
-
 ### E17 M3 T9c — M3's closure: the next milestone
 
 - **Scope:** the next milestone refined with the user (sieges, live play, HD or the adventure
   map: the user's choice), its tasks queued, M3 marked done.
 - **Acceptance:** the next milestone's tasks in this queue, agreed by the user.
-- **Depends on:** T9b-5 (T1a–T7d done). **Status:** waiting.
+- **Depends on:** T9b (done 2026-10-23: the review list accepted, CLT-Q9 to Q17 answered).
+  **Status:** ready (with the user).
+
+### E17 M3 T9d — CLT-Q9 to Q17's answers built
+
+- **Scope:** the original's slips answered at M3's review (`OPEN-QUESTIONS.md`, answered
+  2026-10-23) fixed in what the client draws, the original's kept for the comparisons only
+  (`anim::Stage::bugs`, `h3_render::Bugs`, as T7d): Q9 a mass animation's last frame shown; Q10 a
+  mass reaction's hit ending on its standing frame 0 (only where a creature's standing frames
+  differ visibly: the DEFs tell); Q11 Chain Lightning's opening bolt (37) on the screen, at the
+  bolt from the sky's pace; Q12 each Fire Wall hex's placing animation at its own hex; Q13 Animate
+  Dead's own animation (4, the spell record's +8); Q14 the Liches' cloud translucent, as its table
+  entry says; Q16 Armageddon's line with the caster's bonuses; Q17 Sacrifice's line naming its
+  victim by its number before its death, once a new recording (a Sacrifice sequence) confirms the
+  original's. Q15 stays listed (the spectator's record) until live hot seat.
+- **Acceptance:** each fix tested with both switches; `drawn` the same (the comparisons draw the
+  original's); Q17's sequence recorded and as recorded; the client check passes.
+- **Depends on:** T9b (done 2026-10-23). **Status:** ready (T9c may make it the next
+  milestone's first task).
 
 ## Inbox
 
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
+
+- 2026-10-23 (T9b, the reviewers; the epic log's "M3 T9b", the accepted review list): queued
+  findings. R2-7: a timeline that steps forward (`Moment::at`, `Heroes::posed` and `Timeline::at`
+  rescan the battle for every frame: 2.3 ms a frame over 82 seconds, `play`; for live play's long
+  games). R2-8: a record that opens mid-battle (the snapshot's dead stacks as corpses, a raise of
+  one drawn; the box by the timeline's living set, not the first snapshot's `alive`). R4-2:
+  `drawn`'s digest of what the masks depend on besides the pixels (`ours.txt`'s boxes, the log's
+  text: digests recorded again from `master`'s viewer first, the runbook's rule). R4-9: a
+  stricter shadow chain in `h3cap.redraws` (a near-black pixel counts as an artifact over almost
+  anything; the counts stay exact). R3-1 goes with the created stacks below.
 
 - 2026-10-22 (the adventure lane, E08 T37b, `adventure/e08-t37b`, `cross-lane` with the user's
   consent; for information, nothing to do): batch E5's recipes `clients/capture/batches/E08-batch-5a.toml`
@@ -157,7 +141,9 @@ Other lanes add entries here. The client lane turns each into a task, or moves i
   numbers (from the ruleset, or a later snapshot in the record), its record index and the
   dissolve that shows it (`create_battle_stack`, 75 ms steps, the blend not read); with them the
   message when no hex is free, a clone's `Vanished`, Teleport's dissolve (moved at once now) and
-  Sacrifice's victim leaving no corpse. The battle waits for the heal's sound (T3b) and the other
+  Sacrifice's victim leaving no corpse; and the panel's side by each turn's
+  controller (T9b, R3-1: `scene::controller` takes the opening's, so Hypnotize and a created stack
+  are not followed). The battle waits for the heal's sound (T3b) and the other
   effects' (T7b-2b, T7c-3). NOTES, "The battle screen".
 - 2026-10-20 (T6a): the tactics phase's panel (0x46C050, not read) and Auto Combat switched on
   (its button selected, the panel dimmed while stacks play themselves) wait for a record with a
