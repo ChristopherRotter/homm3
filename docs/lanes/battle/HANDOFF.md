@@ -56,7 +56,7 @@ Area traps live where they are used: experiments in `docs/experiments/README.md`
 
 ### 2026-10-23 (105th) — E23 T6 started, checkpoint after the Catapult (in progress)
 
-The user: T6 whole; the seam (CLT-Q4, Q6 later); BAT-Q33 waits. The tactics end read (0x475ED0). Nothing half-done; the rest's design in the epic's log. Stacked on the seam: `check-lane` fails until it merges (then rebase).
+The user: T6 whole; the seam (CLT-Q4, Q6 later); BAT-Q33 waits. The tactics end read (0x475ED0). Nothing half-done; the rest's design in the epic's log. Stacked on the seam: `check-lane` fails until it merges.
 
 ### 2026-10-23 (104th) — E23 T5b2b, a caster's cast entry in Teleport's turns
 
@@ -64,4 +64,4 @@ The user: whole, `cross-lane` (v52; replays rehashed). §7.59; slips 30, 32.
 
 ### 2026-10-22 (103rd) — E23 T5b2a, the hero's Teleport
 
-The user cut T5b2 in two; slips 30, 31. The search keeps its stops inline (a call cost `computer-decisions` 2.6 %).
+The user cut T5b2 in two; slips 30, 31. The search keeps its stops inline (a call cost 2.6 %).
