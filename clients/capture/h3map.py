@@ -4,15 +4,18 @@ stills"): a situation (clients/map/situations/) shown in the original and drawn 
 compared pixel for pixel outside the masks of what the viewer does not draw yet.
 
   h3map.py still <situation.toml> [--out <dir>] [--keep]
-      builds the situation's map (`h3-map-view situation`), loads it in the original as a single
-      scenario (Red human), writes Red's explored tiles as the situation gives them (every tile
-      but its `hidden` rectangles), centres the view by the minimap so that its top-left is the
+      builds the situation's map (`h3-map-view situation`), or takes the shipped map it names
+      whole (`map`, from the installation copy's Maps: E24 M1 T4b), loads it in the original as a
+      single scenario (the scenario list's first human player, Red on the built maps), writes that
+      player's explored tiles as the situation gives them (every tile but its `hidden`
+      rectangles), centres the view by the minimap so that its top-left is the
       situation's `view`, parks the mouse, freezes the clock, steps it to the next moment both
       the palette tick and the view's redraw come (so the screen shows the palettes memory
       holds) and dumps the screen (`still.xwd`);
       reads the palette cycles' step k from the cycling DEFs' palettes in memory and writes it
-      with the view, the objects' frame step the screen shows and every object's anchor and
-      phase (`live.toml`); draws ours (`h3-map-view render --bugs original --live live.toml`,
+      with the view, the objects' frame step the screen shows, the viewing player, every
+      object's anchor and phase and its template in memory (what a random object became:
+      `live.toml`); draws ours (`h3-map-view render --bugs original --live live.toml`,
       `ours.png`) and prints the pixels that differ outside the masks (`diff.png`: differing
       pixels red, masked ones blue). <dir> defaults to clients/out/map/<situation>.
   h3map.py set [--only <id>] [--out <dir>]
@@ -22,6 +25,8 @@ compared pixel for pixel outside the masks of what the viewer does not draw yet.
 Needs `clients/capture/setup.sh` and `cargo build --release -p h3-map-view` (from clients/).
 """
 
+import json
+import shutil
 import struct
 import subprocess
 import sys
@@ -43,6 +48,7 @@ MAP_VIEW = CLIENTS / "target/release/h3-map-view"
 SITUATIONS = CLIENTS / "map/situations"
 TABLES = CLIENTS / "map/assets/base.toml"
 OUT = CLIENTS / "out/map"
+SHIPPED = CLIENTS.parent / "original-data/install/Maps"
 SPRITES = "H3sprite.lod"
 # The manager's DEF fields of a terrain and a river by their .h3m code (design §1.3).
 TERRAIN_FIELD, RIVER_FIELD = h3mem.TERRAIN_DEFS, h3mem.RIVER_DEFS
@@ -101,16 +107,24 @@ def cycling():
     return found
 
 
-def cycle_fits(mem):
-    """The palette cycles' steps k (mod 36) the original's palettes in memory fit (design §1.6):
-    each range of every cycling DEF is its file's colours rotated up by k."""
-    fits = set(range(36))
+def range_fits(mem):
+    """Each cycling DEF's ranges and the steps k (mod 36) each fits in memory (design §1.6): the
+    range is its file's colours rotated up by k."""
+    found = []
     for field, name, ranges in cycling():
         held, original = mem.def_palette(field), def_palette565(name)
         for first, last in ranges:
             n = last - first + 1
-            fits &= {k for k in range(36)
-                     if all(held[first + j] == original[first + (j - k) % n] for j in range(n))}
+            found.append((name, first, {k for k in range(36) if all(
+                held[first + j] == original[first + (j - k) % n] for j in range(n))}))
+    return found
+
+
+def cycle_fits(mem):
+    """The palette cycles' steps k (mod 36) every range of every cycling DEF fits."""
+    fits = set(range(36))
+    for _, _, ks in range_fits(mem):
+        fits &= ks
     return fits
 
 
@@ -125,7 +139,9 @@ def cycle_step(mem, tries=20):
             return min(fits)
         last = fits
         time.sleep(0.1)
-    raise RuntimeError(f"the palettes in memory are no steady rotation of the files' ({last})")
+    each = "; ".join(f"{name} {first}: {sorted(ks)[:4]}" for name, first, ks in range_fits(mem))
+    raise RuntimeError(f"the palettes in memory are no steady rotation of the files' ({last}; "
+                       f"{each})")
 
 
 def masked(names, shape=(600, 800)):
@@ -136,24 +152,49 @@ def masked(names, shape=(600, 800)):
     return m
 
 
-def started(map_path, run_dir, tries=2):
+def to_shipped(game, timeout=120.0):
+    """From the start to a shipped map's adventure screen (a single scenario, as
+    h3drive.to_scenario), closing the messages its first day shows (a timed event's: E24 M1 T4b's
+    Divided Loyalties) by their OK. The screen is `adventure`: `adventure_map`'s probes hold the
+    level button greyed, as a map without an underground shows it."""
+    game.wait("main_menu", 90)
+    game.click(640, 75, 1.0)  # New Game
+    game.wait("new_game_menu")
+    game.click(640, 75, 1.0)  # Single Scenario
+    game.wait("scenario_list")
+    game.click(497, 553, 1.0)  # Begin
+    game.move(*h3adv.PARK)
+    end = time.monotonic() + timeout
+    while time.monotonic() < end:
+        pix = game.pixels()
+        if game.matches("adventure", pix) or h3adv.find_button(game, "ok", pix):
+            break
+        time.sleep(0.2)
+    h3adv.dismiss(game)
+
+
+def started(map_path, run_dir, shipped=False, tries=2):
     """The original on the map's adventure screen (a single scenario). A game that crashes on its
     way there is started once more: the original's tavern rumour at a new game reads one entry past
-    its table about once in 800 games (rumour_pick_text 0x4CCF20; E24 M1 T4a saw it)."""
+    its table about once in 800 games (rumour_pick_text 0x4CCF20; E24 M1 T4a saw it). So is one
+    whose Wine exits at once, before the main menu, writing nothing (E24 M1 T4b saw it once in a
+    set run, right after the game before it stopped)."""
     for attempt in range(1, tries + 1):
         game = h3drive.Game(run_dir)
         game.start(map_path)
         try:
-            h3drive.to_scenario(game)
+            (to_shipped if shipped else h3drive.to_scenario)(game)
             return game
-        except TimeoutError:
+        except (TimeoutError, RuntimeError) as err:
             log = run_dir / "wine.log"
-            crashed = log.exists() and "Unhandled page fault" in log.read_text(errors="replace")
+            text = log.read_text(errors="replace") if log.exists() else ""
+            crashed = isinstance(err, TimeoutError) and "Unhandled page fault" in text
+            vanished = isinstance(err, RuntimeError) and "main_menu" in str(err) and not text
             game.stop()
-            if not crashed or attempt == tries:
+            if not (crashed or vanished) or attempt == tries:
                 raise
-            print(f"{map_path}: the original crashed on its way to the map; started again",
-                  file=sys.stderr, flush=True)
+            why = "crashed on its way to the map" if crashed else "exited before its menu"
+            print(f"{map_path}: the original {why}; started again", file=sys.stderr, flush=True)
 
 
 def still(situation_path, out=None, keep=False):
@@ -164,10 +205,13 @@ def still(situation_path, out=None, keep=False):
     out.mkdir(parents=True, exist_ok=True)
     sit = tomllib.loads(situation_path.read_text())
     map_path = out / "map.h3m"
-    run(MAP_VIEW, "situation", situation_path, "--out", map_path)
+    if "map" in sit:
+        shutil.copy(SHIPPED / sit["map"], map_path)
+    else:
+        run(MAP_VIEW, "situation", situation_path, "--out", map_path)
     vx, vy, vz = sit["view"]
     hidden = sit.get("hidden", [])
-    game = started(map_path, out / "run")
+    game = started(map_path, out / "run", shipped="map" in sit)
     try:
         mem = h3mem.Mem()
         mem.write_explored(vz, hidden_test(hidden), mem.current_player())
@@ -184,12 +228,18 @@ def still(situation_path, out=None, keep=False):
         # deadline (every 180 ms), the tick rotates the palettes once it reaches its time (every
         # 200 ms, polled from many sites), so memory can be a step ahead of the screen (E24 M1
         # T3b2). Stepped to the later of the two, the redraw's own opening tick rotates first:
-        # the screen shows the palettes memory holds.
+        # the screen shows the palettes memory holds. A deadline the frozen clock already passed
+        # is met at the main loop's next idle step (each then lies ahead of it again): wait for
+        # that first, or the steps counted below hold an extra redraw (E24 M1 T4b saw it once).
+        h3adv.wait_for(lambda: min(mem.map_due()) > now,
+                       f"the deadlines past the frozen clock at {now} ({mem.map_due()})")
         tick, redraw = mem.map_due()
         steps = mem.frame_steps()
         now = game.clock(f"step {max(tick, redraw) - now}")
         # The clock's 20 reads can come before the main loop's idle step has run: wait for both.
-        h3adv.wait_for(lambda: mem.frame_steps() == steps + 1 and mem.map_due()[0] > tick,
+        # A second redraw at the same time can come too (E24 M1 T4b: once in eleven, the redraw
+        # due before the tick): the screen then shows the last, whose step memory holds as well.
+        h3adv.wait_for(lambda: mem.frame_steps() > steps and mem.map_due()[0] > tick,
                        f"the redraw and the tick at {now} ({tick}, {redraw})")
         k = cycle_step(mem)
         cap = game.settled()
@@ -199,11 +249,15 @@ def still(situation_path, out=None, keep=False):
         # The redraw drew with the manager's +0x100 before it grew it (design §1.6): the screen
         # shows the step before the one memory holds. The objects in the map's order: their
         # anchors (the viewer checks them against its map's) and phases.
-        objects = mem.map_objects()
+        # Each object's template in memory: a random one's is the copy a new game made (design
+        # §2.7), whose DEF, class and subclass the viewer draws it as.
+        objects, templates = mem.map_objects(), mem.map_templates()
         live = {"view": list(mem.view()) + [mem.view_level()], "cycles": k,
-                "frames": mem.frame_steps() - 1,
+                "frames": mem.frame_steps() - 1, "viewer": mem.current_player(),
                 "anchors": [list(o[:3]) for o in objects],
-                "phases": [o[4] for o in objects]}
+                "phases": [o[4] for o in objects],
+                "defs": json.dumps([templates[o[3]][0] for o in objects]),
+                "classes": [list(templates[o[3]][1:]) for o in objects]}
         (out / "live.toml").write_text(
             "# The original's live part at the still (h3map.py still).\n"
             + "".join(f"{key} = {value}\n" for key, value in live.items()))
@@ -231,7 +285,16 @@ def run_set(rest):
             sys.exit(f"no situation `{only}` in set.toml")
     changed = 0
     for e in entries:
-        n, compared, where = still(SITUATIONS / f"{e['id']}.toml", base / e["id"])
+        # A situation the harness fails to show (the game, the clock or a read gave up: E24 M1
+        # T4b saw three such in its runs, each passing alone) is shown once more, and says so.
+        for attempt in (1, 2):
+            try:
+                n, compared, where = still(SITUATIONS / f"{e['id']}.toml", base / e["id"])
+                break
+            except (TimeoutError, RuntimeError) as err:
+                if attempt == 2:
+                    raise
+                print(f"{e['id']}: not shown ({err}); shown again", file=sys.stderr, flush=True)
         recorded = e.get("differing")
         verdict = "new" if recorded is None else ("ok" if n == recorded else "CHANGED")
         changed += verdict != "ok"

@@ -1,11 +1,12 @@
-# The map's capture set (E24 M1 T3b2, T4a, *provisional*; clients/capture/README.md, "The map's
-# stills"): the situations beside this file, each a still the harness shows the original and
-# compares with ours (`python3 capture/h3map.py set`, from clients/): its map built with the
-# writer (`h3-map-view situation`), Red's explored tiles written (all but the situation's
-# `hidden`), the view by the minimap, the clock frozen; ours drawn with the original's drawing
-# bugs (`render --bugs original`) at the palette step the original's memory shows. Masked: the
-# panels (M3) and the parked cursor over them. Per situation the pixels that differ outside the
-# masks, with why; a run that counts another number fails.
+# The map's capture set (E24 M1 T3b2, T4a, T4b, *provisional*; clients/capture/README.md, "The
+# map's stills"): the situations beside this file, each a still the harness shows the original
+# and compares with ours (`python3 capture/h3map.py set`, from clients/): its map built with the
+# writer (`h3-map-view situation`) or a shipped map loaded whole (`map`, T4b), the human
+# player's explored tiles written (all but the situation's `hidden`), the view by the minimap,
+# the clock frozen; ours drawn with the original's drawing bugs (`render --bugs original`) at the
+# palette step the original's memory shows, a shipped map's random objects as its memory holds
+# them. Masked: the panels (M3) and the parked cursor over them. Per situation the pixels that
+# differ outside the masks, with why; a run that counts another number fails.
 
 [[situation]]
 id = "deluge-coast"
@@ -91,3 +92,28 @@ why = "exact: a flat ground, a volcano, a mountain and a windmill cut by the map
 id = "objects-edge-bottom-right"
 differing = 0
 why = "exact: the same kinds anchored past the map's right and bottom edges, only their cells on the map drawn"
+
+[[situation]]
+id = "shipped-divided-loyalties"
+differing = 0
+why = "exact: a shipped map whole, its first day's message closed; random artifacts, monsters and resources as the original drew them (design §2.7)"
+
+[[situation]]
+id = "shipped-tale-of-two-lands"
+differing = 0
+why = "exact: a 144-tile shipped map whole, its random objects as drawn"
+
+[[situation]]
+id = "shipped-good-witch"
+differing = 0
+why = "exact: a 108-tile shipped map whole, eight random resources among 217 objects"
+
+[[situation]]
+id = "shipped-gauntlet"
+differing = 0
+why = "exact: a 108-tile shipped map whole, its random objects as drawn"
+
+[[situation]]
+id = "shipped-dwarven-tunnels"
+differing = 0
+why = "exact: a shipped map's underground, its random objects as drawn"

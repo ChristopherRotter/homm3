@@ -19,6 +19,8 @@ use core::fmt;
 
 use h3_assets::msk::Mask;
 
+use h3_render::Bugs;
+
 use crate::art::{CELLS, MapArt, TemplateArt, mask_bit};
 use crate::live::Live;
 
@@ -107,15 +109,20 @@ impl Shapes {
     }
 }
 
-/// Every DEF the objects of `art` and `live` are drawn with (the map's templates', the drawn
-/// templates' of random objects), as named, without repeats (ignoring case).
+/// Every DEF whose shape the objects of `art` and `live` need (the map's templates', for their
+/// size and masks, and the DEFs random objects were drawn as and their own, §2.7), as named,
+/// without repeats (ignoring case).
 #[must_use]
 pub fn pictures(art: &MapArt, live: &Live) -> Vec<String> {
     let mut seen = BTreeMap::new();
-    let drawn = live.objects.iter().filter_map(|o| o.drawn.as_ref());
-    for template in art.templates.iter().chain(drawn) {
-        seen.entry(template.def.to_ascii_uppercase())
-            .or_insert_with(|| template.def.clone());
+    let drawn = live
+        .objects
+        .iter()
+        .filter_map(|o| o.drawn.as_ref())
+        .flat_map(|d| core::iter::once(&d.def).chain(&d.own));
+    for def in art.templates.iter().map(|t| &t.def).chain(drawn) {
+        seen.entry(def.to_ascii_uppercase())
+            .or_insert_with(|| def.clone());
     }
     seen.into_values().collect()
 }
@@ -218,8 +225,9 @@ pub struct DrawLists {
 }
 
 impl DrawLists {
-    /// The lists of level `z`: every standing object of the level in the map's order (a random
-    /// one by the template it was drawn as) put on the tiles of its footprint on the map.
+    /// The lists of level `z`: every standing object of the level in the map's order put on the
+    /// tiles of its footprint on the map, by its template in the map (a random object too: the
+    /// original places it before the draw, which keeps the template's size and masks, §2.7).
     ///
     /// # Errors
     /// [`ObjectsError::Shape`]: an object of the level with entries whose DEF has no shape.
@@ -228,7 +236,7 @@ impl DrawLists {
         let mut lists = vec![Vec::new(); size.saturating_mul(size)];
         let mut placed: Vec<Option<Placed>> = Vec::with_capacity(art.objects.len());
         for (index, object) in art.objects.iter().enumerate() {
-            let template = template(art, live, index);
+            let template = template(art, index);
             let alive = live.objects.get(index).is_none_or(|o| o.standing);
             let drawn = template
                 .filter(|t| alive && object.anchor.z == z && !NO_ENTRIES.contains(&t.class));
@@ -275,15 +283,53 @@ impl DrawLists {
     }
 }
 
-/// The template object `index` is drawn with: the one a random object was drawn as, else the
-/// map's.
+/// The template of object `index` in the map: its size, masks and priority, a random object's
+/// too (§2.7).
 #[must_use]
-pub fn template<'a>(art: &'a MapArt, live: &'a Live, index: usize) -> Option<&'a TemplateArt> {
+pub fn template(art: &MapArt, index: usize) -> Option<&TemplateArt> {
+    art.objects
+        .get(index)
+        .and_then(|o| art.templates.get(o.template))
+}
+
+/// The DEF object `index` is drawn from: a random object's own (the client's, MCL-Q3) or, with the
+/// original's bugs or without one, the one the original drew it as; else its template's.
+#[must_use]
+pub fn def<'a>(art: &'a MapArt, live: &'a Live, index: usize, bugs: Bugs) -> Option<&'a str> {
     let drawn = live.objects.get(index).and_then(|o| o.drawn.as_ref());
-    drawn.or_else(|| {
-        art.objects
-            .get(index)
-            .and_then(|o| art.templates.get(o.template))
+    drawn
+        .map(|d| match (bugs, &d.own) {
+            (Bugs::Fixed, Some(own)) => own.as_str(),
+            _ => d.def.as_str(),
+        })
+        .or_else(|| template(art, index).map(|t| t.def.as_str()))
+}
+
+/// The shape object `index` is drawn with: its template's size and masks (a random object's are
+/// its random template's, which the original's copy keeps: 0x4C9990, §2.7) and the frames of the
+/// DEF it is drawn from ([`def`]); a random object's own picture's whole shape when the client
+/// draws its own (MCL-Q3).
+#[must_use]
+pub fn shape(
+    art: &MapArt,
+    live: &Live,
+    shapes: &Shapes,
+    index: usize,
+    bugs: Bugs,
+) -> Option<Shape> {
+    let drawn = def(art, live, index, bugs).and_then(|d| shapes.get(d))?;
+    let own = live
+        .objects
+        .get(index)
+        .and_then(|o| o.drawn.as_ref())
+        .is_some_and(|d| bugs == Bugs::Fixed && d.own.is_some());
+    if own {
+        return Some(*drawn);
+    }
+    let template = template(art, index).and_then(|t| shapes.get(&t.def))?;
+    Some(Shape {
+        frames: drawn.frames,
+        ..*template
     })
 }
 

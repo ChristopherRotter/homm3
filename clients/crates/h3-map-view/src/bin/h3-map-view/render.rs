@@ -1,19 +1,20 @@
 //! `render`: a still of the adventure screen (E24 M1 T3b1): a map's static art from its `.h3m`,
 //! the live part at the map's start (every tile explored but a chosen rectangle, the moment from
 //! a time), the objects' shapes and the scene at a view, its assets from the installation copy's
-//! archives, composed and written as a PNG. The comparisons with the original (T3b2, T4a) give
-//! the live part read from its memory (`--live`: the palette step, the frame step, the objects'
-//! phases).
+//! archives, composed and written as a PNG. The comparisons with the original (T3b2, T4a, T4b)
+//! give the live part read from its memory (`--live`: the palette step, the frame step, the
+//! viewer, the objects' phases and what the random ones became).
 
 use std::fs;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
 use h3_map::Limits;
-use h3_map_view::art::MapArt;
+use h3_map::writer::ObjectTemplate;
+use h3_map_view::art::{MapArt, ObjectArt};
 use h3_map_view::batch::{self, Batch};
 use h3_map_view::compose::compose;
-use h3_map_view::live::{Live, Moment};
+use h3_map_view::live::{Drawn, Live, Moment};
 use h3_map_view::objects;
 use h3_map_view::scene::{self, Draw, ViewAt};
 use h3_render::Bugs;
@@ -183,8 +184,10 @@ fn render(options: &Options) -> Result<PathBuf, String> {
     if let Some(cycles) = options.cycles {
         live.moment.cycles = cycles;
     }
+    let archive_bytes = files::read_archives(&options.install)?;
+    let archives = files::parse_archives(&archive_bytes)?;
     if let Some(path) = &options.live {
-        read_live(path, &art, &mut live)?;
+        read_live(path, &art, &mut live, &files::templates(&archives)?)?;
     }
     for &[x0, y0, x1, y1] in &options.hidden {
         for y in y0.min(y1)..=y0.max(y1) {
@@ -193,8 +196,6 @@ fn render(options: &Options) -> Result<PathBuf, String> {
             }
         }
     }
-    let archive_bytes = files::read_archives(&options.install)?;
-    let archives = files::parse_archives(&archive_bytes)?;
     let shapes = files::load_shapes(&archives, &objects::pictures(&art, &live))?;
     let scene = scene::scene(
         &art,
@@ -225,10 +226,20 @@ fn render(options: &Options) -> Result<PathBuf, String> {
 }
 
 /// The original's live part as the harness read it (`h3map.py still`'s `live.toml`): `cycles`,
-/// the palette step; `frames`, the objects' frame step the screen shows; `phases`, every object's
-/// animation phase in the map's order; `anchors`, every object's anchor in that order, which must
-/// be the map's (so the phases are the objects' own). Each key is optional; other keys are left.
-fn read_live(path: &PathBuf, art: &MapArt, live: &mut Live) -> Result<(), String> {
+/// the palette step; `frames`, the objects' frame step the screen shows; `viewer`, the viewing
+/// player's colour; `phases`, every object's animation phase in the map's order; `anchors`, every
+/// object's anchor in that order, which must be the map's (so the phases are the objects' own; a
+/// random object's may differ, T5);
+/// `defs` and `classes`, every object's template in the original's memory, its DEF and its class
+/// and subclass, in that order: one that differs from the map's is what a random object became
+/// (E24 M1 T4b, design §2.7), its own picture the last of the game's `templates` of that class and
+/// subclass (MCL-Q3). Each key is optional; other keys are left.
+fn read_live(
+    path: &PathBuf,
+    art: &MapArt,
+    live: &mut Live,
+    templates: &[ObjectTemplate],
+) -> Result<(), String> {
     let failed = |why: &str| format!("{}: {why}", path.display());
     let text = fs::read_to_string(path).map_err(|e| failed(&e.to_string()))?;
     let table: toml::Table = text
@@ -248,16 +259,61 @@ fn read_live(path: &PathBuf, art: &MapArt, live: &mut Live) -> Result<(), String
     if let Some(frames) = number("frames")? {
         live.moment.frames = frames;
     }
+    if let Some(viewer) = number("viewer")? {
+        live.viewer = u8::try_from(viewer)
+            .ok()
+            .filter(|&c| c < 8)
+            .ok_or_else(|| failed("`viewer` is not a colour, 0-7"))?;
+    }
+    if let (Some(defs), Some(classes)) = (table.get("defs"), table.get("classes")) {
+        let defs: Option<Vec<&str>> = defs
+            .as_array()
+            .and_then(|a| a.iter().map(toml::Value::as_str).collect());
+        let classes: Option<Vec<[u32; 2]>> = classes.as_array().and_then(|a| {
+            a.iter()
+                .map(|v| {
+                    let pair: Option<Vec<u32>> = v.as_array()?.iter().map(count).collect();
+                    <[u32; 2]>::try_from(pair?).ok()
+                })
+                .collect()
+        });
+        let (defs, classes) = defs
+            .zip(classes)
+            .filter(|(d, c)| d.len() == art.objects.len() && c.len() == art.objects.len())
+            .ok_or_else(|| failed("`defs` and `classes` are not one template per object"))?;
+        for (index, (def, [class, subclass])) in defs.into_iter().zip(classes).enumerate() {
+            let Some(template) = objects::template(art, index) else {
+                continue;
+            };
+            let same = template.def.eq_ignore_ascii_case(def)
+                && (template.class, template.subclass) == (class, subclass);
+            if !same {
+                let own = templates
+                    .iter()
+                    .rev()
+                    .find(|t| (t.class, t.subclass) == (class, subclass));
+                live.objects[index].drawn = Some(Drawn {
+                    def: def.to_string(),
+                    own: own.map(|t| t.def.clone()),
+                    class,
+                    subclass,
+                });
+            }
+        }
+    }
     if let Some(anchors) = table.get("anchors") {
-        let ours: Vec<toml::Value> = art
-            .objects
-            .iter()
-            .map(|o| {
-                let a = o.anchor;
-                toml::Value::Array([a.x, a.y, a.z].map(|v| i64::from(v).into()).to_vec())
-            })
-            .collect();
-        if anchors.as_array() != Some(&ours) {
+        // A random object the original drew may stand elsewhere: a random dwelling's anchor
+        // moved by a tile in a shipped map (E24 M1 T4b). Drawn at the map's until T5 reads the
+        // random dwellings (design §2.7, the queue's T5); any other object must be where the map
+        // has it.
+        let theirs = anchors.as_array().filter(|a| a.len() == art.objects.len());
+        let moved = |(index, (object, theirs)): (usize, (&ObjectArt, &toml::Value))| {
+            let a = object.anchor;
+            let ours = toml::Value::Array([a.x, a.y, a.z].map(|v| i64::from(v).into()).to_vec());
+            ours != *theirs && live.objects[index].drawn.is_none()
+        };
+        let same = theirs.is_some_and(|t| !art.objects.iter().zip(t).enumerate().any(moved));
+        if !same {
             return Err(failed(
                 "the original's objects are not the map's (`anchors`)",
             ));
@@ -282,6 +338,11 @@ fn read_live(path: &PathBuf, art: &MapArt, live: &mut Live) -> Result<(), String
         }
     }
     Ok(())
+}
+
+/// A TOML integer as a `u32`.
+fn count(value: &toml::Value) -> Option<u32> {
+    value.as_integer().and_then(|n| u32::try_from(n).ok())
 }
 
 /// The draw list, one line per draw, and the palette cycles.

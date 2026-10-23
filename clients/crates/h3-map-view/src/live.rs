@@ -7,6 +7,7 @@
 //! [`Live::at_start`] gives what a map's start holds without a draw; from M4 on the engine fills
 //! it.
 
+use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
 
@@ -38,13 +39,31 @@ pub struct Live {
 pub struct LiveObject {
     /// Still on the map (a picked-up pile or a beaten monster is not).
     pub standing: bool,
-    /// What a random object became: the template the original gave it, drawn instead of the
-    /// map's (`None`: not random, or not drawn yet).
-    pub drawn: Option<TemplateArt>,
+    /// What a random object became (`None`: not random, or not drawn yet).
+    pub drawn: Option<Drawn>,
     /// The owner's colour (0–7), `None` for no owner.
     pub owner: Option<u8>,
     /// The object's animation phase (the 12-byte object record's +0xA, random at load; §1.6).
     pub phase: u8,
+}
+
+/// What a random object became (E24 M1 T4b; design §2.7). A new game copies the object's
+/// template and gives the copy this DEF, class and subclass (0x4C9990), keeping the template's
+/// size, masks, passability and priority; the object keeps the entries it was placed with. The
+/// original draws `def`'s frames with the random template's masks, and names an artifact's DEF by
+/// its id, which from 128 on is the picture of the artifact before it (MCL-Q3): the client draws
+/// `own` with its own masks, the comparisons the original's (`h3_render::Bugs::Original`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Drawn {
+    /// The DEF the copy names.
+    pub def: String,
+    /// The DEF of the game's template for the class and subclass it became (`Objects.txt`'s last
+    /// such, as 0x505EA0 finds a monster's), if the game has one.
+    pub own: Option<String>,
+    /// The class it became (an artifact 5, a monster 54, a resource pile 79, a town 98, …).
+    pub class: u32,
+    /// Its subclass.
+    pub subclass: u32,
 }
 
 /// A hero on the map.
