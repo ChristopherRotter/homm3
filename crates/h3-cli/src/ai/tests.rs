@@ -415,7 +415,8 @@ fn the_eval_runner_rates_the_policies() {
     assert!(main(&words(&["eval", "--set", "v0", "--seed", "0xZZ"])).is_err());
     assert!(main(&words(&["eval", "--colour", "red"])).is_err());
     assert!(main(&words(&["eval", "--max-steps", "0"])).is_err());
-    let v0 = ["eval", "--set", "v0", "--policies", "random,greedy"];
+    // E06 T7: the system actor is a policy the command names.
+    let v0 = ["eval", "--set", "v0", "--policies", "random,system"];
     main(&words(
         &[&v0[..], &["--episodes", "2", "--envs", "2", "--seed", "7"]].concat(),
     ))

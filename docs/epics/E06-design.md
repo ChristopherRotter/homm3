@@ -279,9 +279,12 @@ Each with the user's checkpoint; only the next one refined (Q41's pattern).
   and the visualization command), T5b (`t5-1`: stalled), T5c (the truncation penalty), T5d
   (`t5-2`, `t5-3`: the entity network parked, the MLP with the penalty near `t4-2`'s 60 M in
   20 M).
+- **Increment 5** (refined 2026-10-23, the user: T7 first, no run meanwhile): T7a (`shared/`:
+  `h3-sim` may depend on `h3-battle-ai`), T7b (the system actor's seat, C ABI v32; §12), then
+  at the checkpoint T7c (the trainer's neutral share, the neutral held-out set, the system actor
+  in the ladder) and T7d (the run).
 - **Then** T5's rest (AI-Q7 (b), the mana price, the batch size and threads from T9c's table,
-  the observations in place), T6, T7 (E23's neutral side is complete), T8 (only if PPO
-  plateaus), T9.
+  the observations in place), T6, T8 (only if PPO plateaus), T9.
 
 ## 11. The entity network — built (T5a)
 
@@ -329,3 +332,42 @@ key is an MLP). The comparison with the other architectures the user saw: `E06-l
   an observation, the multiply-adds of its linear layers and attention, the time of a forward
   and a training pass per sample (`--time`), and a Mermaid diagram (`--mermaid <file>`) of the
   data flow, which GitHub renders.
+
+## 12. The neutral share (T7) — T7b built
+
+Decisions 1, 7 and 9: the neutral kinds (a wandering monster, a pile's or a garrison's guards, a
+neutral town) join the training with the system actor as their defender (E23's policy of the
+original's computer, complete for a side without a hero since E23 T4c). Refined with the user on
+2026-10-23: T7a, T7b now; T7c and the run (T7d) after T7b's checkpoint.
+
+- **The seat** (T7b; ADR-0025 point 5, ADR-0027): `Policy::System` plays
+  `h3_battle_ai::choose(state, ruleset, side, rng)` from the seat's stream, inside the call as
+  the bots do. It reads the whole state (a trusted host, ADR-0027 point 4) and plays its side as
+  the computer's whatever `human` says (point 8); the batch's `human = [true, true]` stays
+  (ADR-0025 point 6). Its commands always apply (it validates them; the batch's property test
+  plays it on both sides of every synthetic scenario, a hero's side included). It never retreats
+  (BAT-STUB-5): once E23 T6 lets it, an escape would end the episode inside the call, and
+  ADR-0025 point 7 then needs a decision (the battle lane tells this lane's inbox).
+- **The neutral kinds' defender** is `Internal(System)` (A12; it was `Random`): the caller always
+  plays the attacker of a neutral encounter, and an evaluation's seats still replace it.
+- **The weights stay where they are** (the user, 2026-10-23): the distribution's defaults keep
+  the neutral kinds at 0, so the held-out sets (v0, the report set v1, the gate set) keep their
+  episodes and every recorded result stays comparable. A run draws the neutral share by its own
+  `[env] kinds` (A1's shares: 780, 20, 100, 50, 25, 25); no new encounters version.
+- **C ABI v32** (T7b): the seat `H3_SEAT_SYSTEM` (4) and `h3_system_policy_version()`
+  (`h3_battle_ai::POLICY_VERSION`, ADR-0027 point 12), which `h3env`'s `versions()` adds to a run
+  record's identity (`system_policy`; a record gains a key, the schema stays 5). `h3env`'s seat
+  name `"system"`; `h3 ai eval --policies` names `system` (not in its default list yet). The
+  encodings are unchanged.
+- **The trainer** (T7c, planned): a neutral episode has one learning side, the attacker, and no
+  league member (the league draws only for an episode with both seats external; today it would
+  give one side of a neutral battle to a frozen network); the metrics split the training's rates
+  by kind. **The neutral held-out set** (`neutral-v1`): one stratum per neutral kind, weighed by
+  A1's shares, the policy in the attacker's seat against the system actor; the bots play the same
+  episodes in the same seat, so the bots' table gains a neutral part and decision 7's neutral
+  target (a value efficiency above every ladder bot's) reads off it. The system actor joins the
+  ladder (decision 12) on the report set; `h3 ai eval`'s JSON names its policy version; the bots'
+  table is regenerated.
+- **The run** (T7d): the census shares put 82.5 % of the episodes in the neutral kinds, each with
+  one learning side; the user decides the mix with T7c's numbers (the census shares, or a
+  curriculum that keeps more of the player-against-player kinds).

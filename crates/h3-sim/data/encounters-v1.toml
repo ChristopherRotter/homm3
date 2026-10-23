@@ -14,19 +14,19 @@ version = 1
 census = "census-v1"
 
 # A1, A2, A12. Per kind: `share` is the estimated share of the battles fought (‰), `weight` what
-# the sampler draws (the neutral kinds 0 until E23's policy, after E05), `week` the weight of the
+# the sampler draws (the neutral kinds 0: a run's own weights draw them, E06 T7), `week` the weight of the
 # game weeks 1 to 16 (‰ of the first week's or the peak's).
 [kind.wandering]
 share = 780
 weight = 0
 week = [1000, 800, 640, 512, 410, 328, 262, 210, 168, 134, 107, 86, 69, 55, 44, 35]
-why = "A1: 87 monsters a map, cleared on the way; A2: 0.8^(w-1), neutrals fall early; A12: 0 until E23"
+why = "A1: 87 monsters a map, cleared on the way; A2: 0.8^(w-1), neutrals fall early; A12: 0 by default"
 
 [kind.guards]
 share = 20
 weight = 0
 week = [1000, 800, 640, 512, 410, 328, 262, 210, 168, 134, 107, 86, 69, 55, 44, 35]
-why = "A1: the 274 guarded piles and garrisons against 13 863 monsters; A2 as wandering; A12: 0 until E23"
+why = "A1: the 274 guarded piles and garrisons against 13 863 monsters; A2 as wandering; A12: 0 by default"
 
 [kind.hero]
 share = 100
@@ -50,7 +50,7 @@ why = "A1, A8: an owned town without a hero, its garrison; A2 as siege_hero"
 share = 25
 weight = 0
 week = [1000, 700, 490, 343, 240, 168, 118, 82, 58, 40, 28, 20, 14, 10, 7, 5]
-why = "A1, A8: a neutral town's garrison, taken early (0.7^(w-1)); A12: 0 until E23"
+why = "A1, A8: a neutral town's garrison, taken early (0.7^(w-1)); A12: 0 by default"
 
 # A3: a neutral stack. The level by the census's placements (fixed and random, the random ones of
 # any level spread evenly) times its ramp by week (‰, weeks 1 to 16): the adventure ranges make low

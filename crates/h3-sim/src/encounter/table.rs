@@ -44,7 +44,7 @@ impl Quantiles {
 pub struct KindRow {
     /// The estimated share of the battles fought (‰).
     pub share: u32,
-    /// What the sampler draws by default (‰; the neutral kinds 0 until E23).
+    /// What the sampler draws by default (‰; the neutral kinds 0, E06 T7).
     pub weight: u32,
     /// The weight of each game week.
     pub week: [u32; WEEKS],

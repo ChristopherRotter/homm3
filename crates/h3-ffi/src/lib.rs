@@ -31,11 +31,12 @@ pub use batch::{
     H3_BATCH_MAX_ENVS, H3_CURRENCY_AI_VALUE, H3_CURRENCY_GOLD, H3_ENCOUNTER_GUARDS,
     H3_ENCOUNTER_HERO, H3_ENCOUNTER_NONE, H3_ENCOUNTER_SIEGE_GARRISON, H3_ENCOUNTER_SIEGE_HERO,
     H3_ENCOUNTER_SIEGE_NEUTRAL, H3_ENCOUNTER_WANDERING, H3_ERR_NOT_READY, H3_SEAT_AGGRESSOR,
-    H3_SEAT_EXTERNAL, H3_SEAT_GREEDY, H3_SEAT_RANDOM, H3Batch, H3BatchBuffers, H3BatchConfig,
-    H3RewardConfig, H3ScenarioInfo, H3Seats, h3_batch_add_encounters, h3_batch_add_scenario,
-    h3_batch_create, h3_batch_destroy, h3_batch_episode_seed, h3_batch_reset,
-    h3_batch_scenario_count, h3_batch_scenario_info, h3_batch_second_mask, h3_batch_spell_mask,
-    h3_batch_step, h3_batch_target_mask, h3_encounters_version,
+    H3_SEAT_EXTERNAL, H3_SEAT_GREEDY, H3_SEAT_RANDOM, H3_SEAT_SYSTEM, H3Batch, H3BatchBuffers,
+    H3BatchConfig, H3RewardConfig, H3ScenarioInfo, H3Seats, h3_batch_add_encounters,
+    h3_batch_add_scenario, h3_batch_create, h3_batch_destroy, h3_batch_episode_seed,
+    h3_batch_reset, h3_batch_scenario_count, h3_batch_scenario_info, h3_batch_second_mask,
+    h3_batch_spell_mask, h3_batch_step, h3_batch_target_mask, h3_encounters_version,
+    h3_system_policy_version,
 };
 
 /// Version of this ABI (functions, structs, error codes, and the action/observation encodings).
@@ -99,8 +100,10 @@ pub use batch::{
 /// `h3_action_encoding_version`, `h3_encounters_version`, `h3_batch_scenario_count` and
 /// `h3_batch_scenario_info` (`H3ScenarioInfo`: each entry's rulesets' content hashes); a batch of
 /// more than `H3_BATCH_MAX_ENVS` envs is refused (it aborted on its allocation); the encodings
-/// unchanged.
-pub const H3_ABI_VERSION: u32 = 31;
+/// unchanged. v32 (E06 T7): the seat `H3_SEAT_SYSTEM` (the system actor, the original's computer,
+/// inside the call), which an encounter of a neutral kind now has as its defender (it had the
+/// random seat), and `h3_system_policy_version`; the encodings unchanged.
+pub const H3_ABI_VERSION: u32 = 32;
 
 /// `H3StepResult.result`: the battle is not decided (still running, or truncated).
 pub const H3_RESULT_NONE: i32 = -1;
@@ -649,7 +652,7 @@ mod tests {
 
     #[test]
     fn abi_smoke_create_step_destroy() {
-        assert_eq!(h3_abi_version(), 31);
+        assert_eq!(h3_abi_version(), 32);
         assert_eq!(
             h3_observation_encoding_version(),
             OBSERVATION_ENCODING_VERSION

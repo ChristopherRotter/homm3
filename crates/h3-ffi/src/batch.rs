@@ -12,8 +12,8 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 use h3_sim::batch::episode_seed;
 use h3_sim::{
     ACTION_COUNT, Action, BatchConfig, BatchError, BattleBatch, Currency, ENCOUNTERS_VERSION,
-    EnvReport, MAX_ENVS, OBSERVATION_LEN, Outputs, Policy, RewardConfig, SPELL_COUNT, Seat,
-    StepError, TARGET_COUNT,
+    EnvReport, MAX_ENVS, OBSERVATION_LEN, Outputs, Policy, RewardConfig, SPELL_COUNT,
+    SYSTEM_POLICY_VERSION, Seat, StepError, TARGET_COUNT,
 };
 
 use crate::{
@@ -33,6 +33,9 @@ pub const H3_SEAT_RANDOM: i32 = 1;
 pub const H3_SEAT_AGGRESSOR: i32 = 2;
 /// `H3Seats`: the baseline bot Greedy inside the call (v30, E05 T7; `h3_sim::bots`).
 pub const H3_SEAT_GREEDY: i32 = 3;
+/// `H3Seats`: the system actor inside the call, the original's computer (v32, E06 T7;
+/// `h3_battle_ai::choose`); an encounter of a neutral kind has it as its defender.
+pub const H3_SEAT_SYSTEM: i32 = 4;
 
 /// `H3BatchBuffers.encounter`: the env's scenario is no encounter distribution.
 pub const H3_ENCOUNTER_NONE: i32 = -1;
@@ -176,6 +179,7 @@ fn seat(code: i32) -> Option<Seat> {
         H3_SEAT_RANDOM => Some(Seat::Internal(Policy::Random)),
         H3_SEAT_AGGRESSOR => Some(Seat::Internal(Policy::Aggressor)),
         H3_SEAT_GREEDY => Some(Seat::Internal(Policy::Greedy)),
+        H3_SEAT_SYSTEM => Some(Seat::Internal(Policy::System)),
         _ => None,
     }
 }
@@ -423,7 +427,7 @@ pub unsafe extern "C" fn h3_batch_add_scenario(
 /// Adds the encounter distribution v1 (E05 T5b2, `docs/epics/E05-log.md` §4.2) as an episode
 /// source entry with `weight` (at least 1): each episode's battle and seats are drawn from its
 /// seed (a neutral defender is played inside the call). `kinds` is null for the distribution's
-/// weights (the neutral kinds 0 until E23) or points to six weights in `H3_ENCOUNTER_*` order (a
+/// weights (the neutral kinds 0, E06 T7) or points to six weights in `H3_ENCOUNTER_*` order (a
 /// curriculum; not all 0). `seats` is null for each encounter's own seats, or replaces them for
 /// every episode of the entry (v29, E05 T8b: an evaluation against an internal seat; at least one
 /// external). It runs on the original packs (`base`, `ab`, `sod`, `base:faithful`), sharing their
@@ -697,6 +701,13 @@ pub unsafe extern "C" fn h3_batch_scenario_info(
 #[unsafe(no_mangle)]
 pub extern "C" fn h3_encounters_version() -> u32 {
     ENCOUNTERS_VERSION
+}
+
+/// The behaviour version of the system actor's policy, `H3_SEAT_SYSTEM`
+/// (`h3_sim::SYSTEM_POLICY_VERSION`, ADR-0027 point 12; v32): a training run's record names it.
+#[unsafe(no_mangle)]
+pub extern "C" fn h3_system_policy_version() -> u32 {
+    SYSTEM_POLICY_VERSION
 }
 
 #[cfg(test)]

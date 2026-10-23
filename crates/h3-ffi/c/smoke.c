@@ -236,9 +236,10 @@ static int play_batch(Batched *out) {
 }
 
 int main(void) {
-    CHECK(h3_abi_version() == 31);
+    CHECK(h3_abi_version() == 32);
     CHECK(h3_observation_encoding_version() == 21 && h3_action_encoding_version() == 13);
     CHECK(h3_encounters_version() == 1);
+    CHECK(h3_system_policy_version() > 0); /* v32 */
 
     /* The full scenario: both sides are led by heroes with spell books. */
     H3Env *env = h3_env_create_synthetic(2, 42, 1000);

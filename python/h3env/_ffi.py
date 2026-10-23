@@ -29,7 +29,7 @@ from pathlib import Path
 import numpy as np
 
 #: The C ABI version this binding speaks (`h3_abi_version()`).
-ABI_VERSION = 31
+ABI_VERSION = 32
 
 #: The most envs a batch holds (`H3_BATCH_MAX_ENVS`, v31): the engine refuses more.
 BATCH_MAX_ENVS = 1 << 16
@@ -67,6 +67,9 @@ SEAT_RANDOM = 1
 #: The baseline bots inside the call (v30, E05 T7; `h3_sim::bots`).
 SEAT_AGGRESSOR = 2
 SEAT_GREEDY = 3
+#: The system actor inside the call, the original's computer (v32, E06 T7); a neutral kind's
+#: defender in the encounter distribution.
+SEAT_SYSTEM = 4
 
 ENCOUNTER_NONE = -1
 ENCOUNTER_WANDERING = 0
@@ -192,6 +195,7 @@ _SIGNATURES = {
     "h3_observation_encoding_version": (c_uint32, []),
     "h3_action_encoding_version": (c_uint32, []),
     "h3_encounters_version": (c_uint32, []),
+    "h3_system_policy_version": (c_uint32, []),
     "h3_env_create_synthetic": (_env, [c_uint32, c_uint64, c_uint32]),
     "h3_env_create_scenario": (
         _env,
@@ -311,13 +315,15 @@ def ptr(array: np.ndarray, ctype):
 
 def versions() -> dict[str, int]:
     """The versions a run's record names (v31): the C ABI's, the observation and action
-    encodings' and the encounter distribution's."""
+    encodings' and the encounter distribution's; since v32 (E06 T7) the system actor's policy's
+    (ADR-0027 point 12)."""
     h = lib()
     return {
         "abi": h.h3_abi_version(),
         "observation_encoding": h.h3_observation_encoding_version(),
         "action_encoding": h.h3_action_encoding_version(),
         "encounters": h.h3_encounters_version(),
+        "system_policy": h.h3_system_policy_version(),
     }
 
 

@@ -22,6 +22,7 @@ SEATS = {
     "random": _ffi.SEAT_RANDOM,
     "aggressor": _ffi.SEAT_AGGRESSOR,
     "greedy": _ffi.SEAT_GREEDY,
+    "system": _ffi.SEAT_SYSTEM,
 }
 
 
@@ -204,9 +205,9 @@ class BattleBatch:
         """Adds a scenario's text (the format of `packs/synthetic/scenarios/`) with its seats.
 
         Seats: `"external"` (the caller acts), `"aggressor"` or `"greedy"` (the baseline bots inside
-        the call, v30) or `"random"` (uniformly random legal commands inside
-        the call; tests); at least one external. Every side plays as a human player's whatever the
-        scenario says (ADR-0025 point 6).
+        the call, v30), `"system"` (the system actor, the original's computer, v32) or `"random"`
+        (uniformly random legal commands inside the call; tests); at least one external. Every side
+        plays as a human player's whatever the scenario says (ADR-0025 point 6).
         """
         text = toml.encode("utf-8") if isinstance(toml, str) else toml
         seats = _ffi.H3Seats(_seat(attacker), _seat(defender))
@@ -225,7 +226,7 @@ class BattleBatch:
     ) -> None:
         """Adds the encounter distribution v1 (on the original packs) with `weight`.
 
-        `kinds`: None for the distribution's weights (the neutral kinds 0 until E23), six weights in
+        `kinds`: None for the distribution's weights (the neutral kinds 0, E06 T7), six weights in
         `ENCOUNTER_KINDS` order, or a mapping from those names to weights (the others 0).
         `attacker`, `defender`: None for each encounter's own seats, or both given (as for
         `add_scenario`) to play every episode with them, e.g. against `"random"`.

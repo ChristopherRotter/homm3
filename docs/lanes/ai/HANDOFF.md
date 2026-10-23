@@ -4,22 +4,17 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 
 ## Current state
 
-- **Opened 2026-10-18** with E05's refinement (AI-Q1): the lane owns `h3-sim` (its `src/adventure/` stays the adventure lane's until E13), `h3-ffi`, `h3-cli`'s `src/ai/`, `python/`, `benches/ai/`, E05 and E06 (`lanes.toml`).
+- **Opened 2026-10-18** (AI-Q1): the lane owns `h3-sim` (its `src/adventure/` too since E08 T45, but `replay.rs`), `h3-ffi`, `h3-cli`'s `src/ai/`, `python/`, `benches/ai/`, E05 and E06 (`lanes.toml`).
 - **E05 closed 2026-10-20**: its record and design in `E05-log.md` (cited as §n), the
   environment as built in `docs/07-simulation-and-ai.md` §1.1.
-- **E06 refined 2026-10-20** (AI-Q8; `docs/epics/E06-battle-ai.md`): beside E23, the player
-  kinds first, the neutral share (T7) open since E23's neutral side; PPO and a league first,
-  search last; runs of hours, resumable. **Increments 1 and 2 done** (#306 to #328: ADR-0026,
-  design `E06-design.md`, config, record, checkpoint, `--resume`, C ABI v31, the held-out sets
-  v1, the bots' table, the SPRT gate, promotions, ladders, `--init-from`; `t3b-1`: stalling,
-  AI-Q9). **Increment 3 done** 2026-10-22: T4a (#342: the league; checkpoint format 3, record
-  schema 5), T4b (#381: γ 1.0 ends the stalling; best 0.839, 0.578, 0.559 against Random,
-  Aggressor, Greedy). **Increment 4 done** 2026-10-23: T5a (#385: the entity network, design
-  §11; `python -m h3env.train.network`), T5b (`t5-1`: both sides hid, 45 % stalled), T5c (#396:
-  `ppo.truncation_penalty` 1.0, decision 10 amended), T5d (`t5-2`, `t5-3`: the entity network
-  parked; the MLP with the penalty 0.832, 0.557, 0.533 in 20 M and 70 minutes). **Next:**
-  increment 5's refinement with the user (the QUEUE lists the choices).
-- **Versions:** action encoding v13, observation encoding v21, replay format v29 (taken over from the battle lane), C ABI v31 (E06 T2c: the record's identity, N capped) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q10, AI-QUIRK-1, AI-STUB-1.
+- **E06** (AI-Q8; `docs/epics/E06-battle-ai.md`, design `E06-design.md`, record `E06-log.md`):
+  increments 1 to 4 done (#306 to #419: ADR-0026, config, record, checkpoint, `--resume`, the
+  held-out sets v1, the bots' table, the SPRT gate, ladders, the league, γ 1.0, the entity
+  network parked, `ppo.truncation_penalty`; best so far `t5-3`'s MLP 0.832, 0.557, 0.533 against
+  Random, Aggressor, Greedy in 20 M, `t4-2`'s 0.839, 0.578, 0.559 in 60 M). **Increment 5**
+  (T7, the neutral share; design §12): T7a (`shared/e06-t7a`) and T7b (the system actor's seat,
+  C ABI v32) done 2026-10-23. **Next:** the user's checkpoint on T7b, then T7c (QUEUE).
+- **Versions:** battle action encoding v13, observation encoding v21, replay format v29, the adventure env's action encoding v4 (E08 T45), C ABI v32 (E06 T7b: `H3_SEAT_SYSTEM`) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q10, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
 ## Standing traps
@@ -45,7 +40,9 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   `ENCOUNTER` of the episode's seed, never `SETUP`, which draws the entry).
 - The encounter sampler (`h3_sim::encounter`) uses the engine's rules (ADV-MON-003, -004, -009,
   `derive_battle_hero`): a change to them changes the encounters (`encounter::tests`: 5 σ). The
-  neutral kinds weigh 0 by default (A12, until T7); tests use `with_shares`.
+  neutral kinds weigh 0 by default (the held-out sets; a run's `[env] kinds` draws them, T7);
+  tests use `with_shares`. Their defender is the system actor (`Policy::System`): a
+  `POLICY_VERSION` bump moves their battles (records name `system_policy`; design §12).
 - Scenario texts are parsed and packs compiled in `h3-ffi` (`src/scenario.rs`), never in `h3-sim`: `arch.toml` gives `h3-sim` `h3-pack-battle` for tests only. Each `h3_env_create_scenario` compiles its packs (about 18 ms for `base`, `ab`, `sod` in release, ten times that in debug).
 
 - The bots (`h3_sim::bots`) read the engine's preview (`h3_battle::preview`, BAT-DMG-011): a
@@ -90,13 +87,14 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 
 ## Recent sessions
 
+### 2026-10-23 — E06 increment 5 refined, T7a and T7b
+
+- The user: T7, no run meanwhile; the neutral weights in the run's config. T7a on
+  `shared/e06-t7a` (its own pull request, merged first), T7b on the session branch. In
+  progress: the user's checkpoint on T7b; T7c next (QUEUE).
+
 ### 2026-10-22 to 23 — E06 increment 4 (T5a to T5d), closed
 
-- T5a (#385), T5c (#396) merged. `t5-1` stalled (diagnosed from its files: both sides hid at
-  their edges); the user: no geometry features, a penalty for stalling (T5c). T5d: the entity
-  network parked, the penalty a large gain (#419). Diagnosing a run: the user uploads `metrics.jsonl`,
-  `best.pt`, `checkpoint.pt`; `evaluate.load` builds them on the CPU.
-
-### 2026-10-22 — E06 T4b (the league runs), increment 3 closed
-
-- `t4-1` and `t4-2` committed (#381), results in `E06-log.md`.
+- `t5-1` stalled (both sides hid); T5c's penalty; T5d parked the entity network (#419).
+  Diagnosing a run: the user uploads `metrics.jsonl`, `best.pt`, `checkpoint.pt`;
+  `evaluate.load` builds them on the CPU.
