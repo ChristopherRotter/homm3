@@ -11,18 +11,6 @@ detail in `docs/epics/E24-design.md`; captures by the harness (`clients/capture/
 in git. Every oddity of the original a reading or a capture finds is an `MCL-Q<n>` in the same
 task (the HANDOFF's autonomy contract).
 
-### E24 M1 T3a — the writer's additions (`cross-lane`)
-
-- **Scope:** what T3b's to T5's situations need of `h3_map::writer` (the adventure lane's crate),
-  added without changing what it writes today (the user's consent, 2026-10-23): rivers, a tile's
-  terrain, river and road pictures and flags as given (so transitions can be written exactly),
-  objects of any template (any class `Objects.txt` lists, without a body or with an empty one).
-  Its own small pull request, label `cross-lane`, with the adventure lane's tests and a note in
-  its inbox; `cargo xtask verify --scope adventure` without a failing step.
-- **Acceptance:** the writer's tests cover the additions; every map the writer wrote before is
-  byte for byte unchanged (the fixtures and the replays pass as they are).
-- **Depends on:** T1a, T1b (done; the situations' needs: `E24-design.md` §2.5). **Status:** ready.
-
 ### E24 M1 T3b — the tiles drawn and the first exact diff
 
 - **Scope:** `h3-map-view render <h3m> --view x,y,z [--at <ms>]`: the adventure screen's frame
@@ -34,8 +22,9 @@ task (the HANDOFF's autonomy contract).
   masks the panels and whatever the view shows that T4 and T5 draw.
 - **Acceptance:** each situation's still matches the original pixel for pixel outside its masks,
   or the differences are listed with their cause.
-- **Depends on:** T2 (done: `h3-map-view`, its tables, layout, `art` and `live`), T3a.
-  **Status:** waiting (T3a).
+- **Depends on:** T2 (done: `h3-map-view`, its tables, layout, `art` and `live`), T3a (done:
+  `h3_map::writer::write_with`, its `GivenTile` and `AnyObject`; merged with its pull request).
+  **Status:** ready once T3a's pull request is merged.
 
 ### E24 M1 T4 — the objects and their shadows in the original's order
 

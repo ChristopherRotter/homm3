@@ -1,7 +1,7 @@
 # E24 — The adventure map client
 
-Status: **refined** (2026-10-23, T0, with the user); M1 running (T1a, T1b, T2 done; next T3a,
-`docs/lanes/map-client/QUEUE.md`).
+Status: **refined** (2026-10-23, T0, with the user); M1 running (T1a, T1b, T2, T3a done; next
+T3b, `docs/lanes/map-client/QUEUE.md`).
 Lane: map-client (`docs/lanes/map-client/HANDOFF.md`: the autonomy contract, the user's asset
 notes). Opened 2026-10-23 when the user split the client lane at E17 M3's closure (CLT-Q18).
 Decisions so far live here (no ADR of its own yet; ADR-0020 and ADR-0024 bind it as they bind
@@ -99,7 +99,9 @@ autonomy contract (lane HANDOFF) says what the agent decides alone in between. T
   differences and T4's situations (`E24-design.md` §2). T2 (2026-10-23): the crate
   `h3-map-view` (the static art from `RawMap`, the live part, the tables
   `clients/map/assets/base.toml`, the layout `clients/map/layouts/adventure.toml`, the gate);
-  the frame's picture read, T1a's open points closed by the gate (`E24-design.md` §1.9).
+  the frame's picture read, T1a's open points closed by the gate (`E24-design.md` §1.9). T3a
+  (2026-10-23): the writer's additions (`h3_map::writer::write_with`: tiles as given, objects of
+  any template with the editor's body; `docs/formats/h3m.md`), a `cross-lane` pull request.
 - **Exit:** the capture set's stills match the original pixel for pixel outside the masks of
   what M1 does not draw (the panels, the mouse), or list each difference as an M2 item; the
   review list accepted; research item 9 closed by the reading and its frames.
@@ -162,3 +164,9 @@ The M1 review list starts here (the autonomy contract's "queue for the milestone
   `h3-view`'s for this crate.
 - **M1 T2, the live part at a map's start:** heroes and boats facing right and every tile
   explored until T5 reads the original's start; phases 0 (the original's are random).
+- **M1 T3a, the writer's additions** (the adventure lane's crate): a second entry point
+  (`write_with(&Map, &Extras)`) instead of new `Map` fields and `MapObject` variants, which would
+  have changed struct literals and matches in four other lanes' crates; the editor's bodies taken
+  from the SoD maps' most common ones (a scroll's spell 0, the grail's radius 0 and a random
+  dwelling's levels 0–6 without a default seen); heroes, prisons and hero placeholders not among
+  the objects of any template.
