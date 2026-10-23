@@ -122,14 +122,26 @@ ROLLS = {
 TURN_LIMIT = 30000
 
 
+class Unreadable(RuntimeError):
+    """The display dumped no 5-6-5 screen at any of `xwd_bytes`' tries."""
+
+
 def xwd565(data):
-    """The pixels of an XWD dump of a 16-bit TrueColor display (bytes), as 5-6-5 values."""
+    """The pixels of an XWD dump of a 16-bit TrueColor display (bytes), as 5-6-5 values; a
+    `ValueError` naming the header's fields for any other dump."""
+    if len(data) < 100:
+        raise ValueError(f"a dump of {len(data)} bytes")
     head = struct.unpack(">25I", data[:100])
     header_size, depth, width, height = head[0], head[3], head[4], head[5]
     byte_order, bytes_per_line, colours = head[7], head[12], head[19]
     if depth != 16 or byte_order != 0 or head[14:17] != (0xF800, 0x7E0, 0x1F):
-        raise ValueError("not a little-endian 5-6-5 dump")
+        masks = " ".join(f"{m:#x}" for m in head[14:17])
+        raise ValueError(f"not a little-endian 5-6-5 dump (depth {depth}, byte order "
+                         f"{byte_order}, masks {masks}, {width} × {height})")
     start = header_size + 12 * colours
+    if len(data) < start + height * bytes_per_line:
+        raise ValueError(f"a dump of {len(data)} bytes for {width} × {height} "
+                         f"({start + height * bytes_per_line} needed)")
     rows = np.frombuffer(data, np.uint8, height * bytes_per_line, start)
     rows = rows.reshape(height, bytes_per_line)[:, : 2 * width]
     return rows.copy().view("<u2").astype(np.uint16)
@@ -147,19 +159,29 @@ def run(*args, **kw):
     return subprocess.run(args, env=env(), check=True, **kw)
 
 
-def xwd_bytes():
-    # A dump right after the display starts can fail once (seen in M3 T2's set runs), or come
-    # back as no 5-6-5 dump (twice in one set run in M3 T5b-2a, between two situations): try
-    # again.
+def xwd_bytes(check=True):
+    """An XWD dump of the display; with `check`, one that reads as a 5-6-5 screen (`xwd565`).
+    A dump right after the display starts can fail once (seen in M3 T2's set runs), or come back
+    as no 5-6-5 dump (twice in one set run in M3 T5b-2a, between two situations): five tries
+    half a second apart, then `Unreadable` naming the last try's fault. A game's first screens
+    wait longer (`Game.wait`, M3 T9b-1)."""
+    fault = None
     for attempt in range(5):
+        if attempt:
+            time.sleep(0.5)
         try:
             data = run("xwd", "-root", "-silent", capture_output=True).stdout
+        except subprocess.CalledProcessError as err:
+            fault = f"xwd exited with {err.returncode}"
+            continue
+        if not check:
+            return data
+        try:
             xwd565(data)
             return data
-        except (subprocess.CalledProcessError, ValueError, struct.error):
-            if attempt == 4:
-                raise
-            time.sleep(0.5)
+        except ValueError as err:
+            fault = str(err)
+    raise Unreadable(f"the display dumped no 5-6-5 screen in five tries: {fault}")
 
 
 def load_screens():
@@ -225,15 +247,23 @@ class Game:
         return all(int(pix[y, x]) == v for x, y, v in probes)
 
     def wait(self, name, timeout=60.0):
-        """Waits until the screen `name`'s probes all match (the clock running)."""
+        """Waits until the screen `name`'s probes all match (the clock running). A display that
+        dumps no 5-6-5 screen counts as the screen not there yet: a game started right after
+        another stopped can dump so for longer than `xwd_bytes`' tries (M3 T9a: `set` stopped
+        so at a game's first screen; T9b-1). The timeout names the last such fault."""
         end = time.monotonic() + timeout
+        fault = None
         while time.monotonic() < end:
-            if self.matches(name):
-                return
+            try:
+                if self.matches(name):
+                    return
+            except Unreadable as err:
+                fault = err
             time.sleep(0.1)
         bad = self.out / f"not-{name}.xwd"
-        self.dump(bad)
-        raise TimeoutError(f"the screen `{name}` did not appear (the display: {bad})")
+        bad.write_bytes(xwd_bytes(check=False))
+        also = f"; {fault}" if fault else ""
+        raise TimeoutError(f"the screen `{name}` did not appear (the display: {bad}{also})")
 
     # -- input --------------------------------------------------------------------------------
     def click(self, x, y, settle=0.3):

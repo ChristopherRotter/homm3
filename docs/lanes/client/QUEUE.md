@@ -6,25 +6,61 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024). M3 (fidelity) below, refined at M2's closure (T5c) and agreed by the user there, each task about half a context; the exit: the reference set passes, or each difference is a listed fix or a classified quirk. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M3 T9b — M3's closure: the review
+T9b (M3's review) split with the user (2026-10-23): T9b-1 T9a's two points; the fresh
+reviewer in three parts by area, each a narrow read-only sub-agent whose findings the session
+checks against the code (and the executable where one names the original: `scripts/exe.py`)
+and fixes or lists; the review list with the user last. A reviewer's brief: its files, M3's
+tasks that built them (the epic's log), the design sections they cite; findings as
+`file:line`, the failure, a fix; no style notes. A fix that changes a drawn frame needs
+`drawn` and the captures it lists (runbook).
 
-- **Scope:** T9a's findings settled (a listed fix or a classified quirk each: M3's exit); a
-  fresh reviewer agent over M3; M3's review list with the user. T9a (2026-10-23, the epic's
-  log) left no difference: every sequence and situation as recorded, the four that differed in
-  one run (`melee`: the log's line and a box, `mass`: the log's line, the original's damage
-  rolls; `fear`: a frame 1 ms late; `raise`: a hero read a step apart) as recorded on a rerun,
-  the runbook's known traps. To look at: `raise`'s kept `before` at 1 312 ms (frame 1 in both of T9a's runs,
-  0 at T7c-3; the count the same); the dump that failed on a game started right after another
-  (runbook, "Traps": `xwd_bytes` could wait longer).
-- **Acceptance:** M3's exit holds; the review list answered or carried on.
-- **Depends on:** T9a (done 2026-10-23). **Status:** ready.
+### E17 M3 T9b-1 — T9a's two points
+
+- **Scope:** `raise`'s kept `before` at 1 312 ms; the dump at a game's start.
+- **Depends on:** T9a (done 2026-10-23). **Status:** in progress (2026-10-23, `client/e17-m3-t9b1`).
+
+### E17 M3 T9b-2 — The reviewer: the timeline
+
+- **Scope:** a fresh reviewer over `h3-view`'s `anim` (and `anim/`), `ray`, `hero`, `scene`
+  and `compose` (about 8 000 lines; M3 T1a–T7d); its findings fixed or listed.
+- **Acceptance:** each finding fixed (with a test), listed for the review, or shown not a bug;
+  `drawn` the same or the changed captures recorded; the client check passes.
+- **Depends on:** T9b-1. **Status:** ready once T9b-1 merges.
+
+### E17 M3 T9b-3 — The reviewer: the interface and the adapters
+
+- **Scope:** a fresh reviewer over `h3-view`'s `mouse` (and `mouse/track`), `panel`, `ui`,
+  `battle_log`, `text` (and `text/`), `cursor`, `layout`, `tables`; `h3-render`'s `text` and
+  `tint`; `h3-assets`' `fnt`; the binary's `sequences`, `situation`, `scenario`, `pointer`,
+  `log`, `motion`, `render`, `harvest`, `window`, `audio` (M3 T1a–T8). The library first: when
+  one brief is too wide, the binary's adapters go to a second agent.
+- **Acceptance:** as T9b-2.
+- **Depends on:** T9b-2. **Status:** waiting.
+
+### E17 M3 T9b-4 — The reviewer: the harness
+
+- **Scope:** a fresh reviewer over `clients/capture/` (`h3drive.py`, `h3mem.py`, `h3cap.py`,
+  `h3lod.py`, `xdd.c`, `setup.sh`; the client lane's parts of `h3adv.py`), against the runbook:
+  a read that can race the game, a capture that can pass while wrong, a write into the running
+  copy beyond the runbook's. A fix to how the original is driven, captured or read means every
+  capture again (runbook, "Which captures a change needs" 4).
+- **Acceptance:** as T9b-2.
+- **Depends on:** T9b-3. **Status:** waiting.
+
+### E17 M3 T9b-5 — The review list with the user
+
+- **Scope:** the epic's M3 review list (T1a–T7d and the reviewers' additions) and the open
+  CLT-Q9 to Q17 the recordings and readings raised, with the user; M3's exit stated (the reference set
+  passes, each difference a listed fix or a classified quirk).
+- **Acceptance:** the review list accepted or carried on; the answers built or queued.
+- **Depends on:** T9b-4. **Status:** waiting.
 
 ### E17 M3 T9c — M3's closure: the next milestone
 
 - **Scope:** the next milestone refined with the user (sieges, live play, HD or the adventure
   map: the user's choice), its tasks queued, M3 marked done.
 - **Acceptance:** the next milestone's tasks in this queue, agreed by the user.
-- **Depends on:** T9b (T1a–T7d done). **Status:** waiting.
+- **Depends on:** T9b-5 (T1a–T7d done). **Status:** waiting.
 
 ## Inbox
 

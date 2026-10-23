@@ -4,13 +4,13 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E17 M0–M2 done; M3 T1a–T7a-2b, T7b-1 to T7b-2b-3, T7c-1 to T7c-3, T7d (#391), T8, T9a done; H1, H2 done (the adventure lane's harness); next: M3 T9b** (the review; then T9c the next milestone; `QUEUE.md`). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
+- **E17 M0–M2 done; M3 T1a–T9a done; H1, H2 done (the adventure lane's harness); next: M3 T9b-2** (T9b, the review, split in five with the user, 2026-10-23: T9b-1 T9a's two points, the reviewer in three parts by area, the review list with the user; then T9c the next milestone; `QUEUE.md`). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
 - **Captures** (the user, 2026-10-20): `h3drive.py drawn` first (no Wine); capture what it lists or the task changes, all at a milestone's closure or a harness change (runbook); later tasks' detail in `NOTES.md`.
 - **The user's requirements** (epic, "Decisions"): a string catalogue (JSON packs, no committed translation, CLT-Q7); graphics options (`faithful` default); exhaustive diffs; drawing bugs fixed, the original's only for comparisons (`Bugs`).
 - The lane owns `clients/`, `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
 - **Checkpoints** per milestone (the autonomy contract below), a fresh reviewer agent first.
 - Stage first (the user's computer online) from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04`, the four end tunes, `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`; `cp -rn` the staged `original-data/.` into the clone first. Frames stay in their sandbox.
-- **Open:** CLT-Q4 (background variant), Q5 (boats), Q6 (colours, sex), Q9–Q14, Q16, Q17 (the original's oddities), Q15 (the dragon's draw line).
+- **Open:** CLT-Q4–Q6 (the setup's fields, boats); Q9–Q17 (the original's oddities, Q15 the dragon's draw line: T9b-5).
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
 
@@ -47,22 +47,20 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - The harness's `actions` are the viewer's mouse (`pointer::inputs`, design §9.10): a new action
   kind needs both; `hex_point` and `PARK` mirror `h3drive.py`'s; a `key:` right after a `cast:`
   acts at the cast's end in both (T7b-1).
-- The original's rolls: forced (`roll:`, `fail`; runbook), luck and morale by hero `effects`.
-- `turn:` naming the active stack passes at once: after a hero's cast a stack acts by `key:`
-  only (T7b-2a). Tell spells by `SpellLook::original`, not engine handles (Poison 70).
-- Sequences are spectators' records. The engine rolls its own: the frame check lists a box
-  (` n…`) or the log's item (` log`) unlike the original's; a seed searched by a loop over
-  `h3-view sequences <id>` matches it (`obstacles`: the kernel's generator alone). Records: army,
-  then war machines. Chain Lightning's rays: the original's draws (`xdd.dll`'s log, `rays`).
+- Tell spells by `SpellLook::original`, not engine handles (Poison 70). After a hero's cast a
+  stack acts by `key:` only (runbook).
+- Sequences are spectators' records; the engine rolls its own (a box ` n…` or the log ` log`
+  listed; a seed searched to match: runbook, "Forced rolls"). Records: army, then war machines.
 - A capture times out at the main menu when the CPU is busy: run it alone. A fresh sandbox's
-  first capture once differed (T7c-2): recapture. A background job stops at 2 h: batches;
-  `set` by `--only` (T9a, runbook).
+  first capture once differed (T7c-2): recapture. A background job stops at 2 h: batches (T9a,
+  runbook).
 
 ## Recent sessions
 
-- **2026-10-22/23, E17 M3 T9a (two sessions; done).** T9 split (the user); all 88 as recorded
-  (four after a rerun), `drawn` the same; the first loop stopped at the 2-hour job limit; the
-  epic file's conflict markers resolved. T9b's findings: QUEUE.
-- **2026-10-22, E17 M3 T7d (CLT-Q8's bugs fixed; #391, merged).** The switch
-  reaches the timeline (`anim::Stage::bugs`, `Original` only in `h3-view sequences`); `drawn`
-  all the same; the fixed group's points: review list.
+- **2026-10-23, E17 M3 T9b-1 (in progress, `client/e17-m3-t9b1`).** T9b split (the user);
+  `raise`'s `before`: harmless, the runbook; `Game.wait` takes an unreadable dump as the screen
+  not yet there (mock-tested). Next: a full `set` under Wine, the docs, the PR.
+- **2026-10-22/23, E17 M3 T9a (two sessions; #402, merged).** T9 split (the user); all 88 as
+  recorded (four after a rerun), `drawn` the same; the epic file's conflict markers resolved.
+- **2026-10-22, E17 M3 T7d (#391, merged).** CLT-Q8's bugs fixed (`anim::Stage::bugs`,
+  `Original` only in `h3-view sequences`); the fixed group's points: review list.

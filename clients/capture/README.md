@@ -496,6 +496,13 @@ design §7.1.
 - `machines`' timeline (M3 T3b) varies between runs: the automatic Ballistas' shots, and the
   heal after one, start 1 ms later than recorded in most runs (M3 T4b-2b-1, 8 runs, at either
   park point); a `CHANGED` there with only such shifts is that, not a change of the viewer.
+- A kept frame's `before` (the heroes of the screen it replaced within its millisecond) can vary
+  between runs: the harness reads the game's memory for both screens of that millisecond, and
+  a hero's frame step can fall before either read (`raise` at 1 312 ms: the hero's defeat,
+  frame 0 at T7c-3, 1 in both of T9a's runs). The frame check uses a `before` only where the
+  frame's own hero is in the cast group (`h3-view sequences`, `Kept::before`), so elsewhere it
+  changes no compared pixel: such a `kept/` change is that, not a change of the original's
+  (M3 T9b-1).
 - The battle panel's buttons change with whose turn it is: the `battle` probes are the ones equal
   in both states.
 - A click's hover leaves the status line's hint in the log's item (`Attack Pikemen` over a
