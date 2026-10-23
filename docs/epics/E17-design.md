@@ -3065,3 +3065,220 @@ the drawbridge's three states and the rope are as read. Findings:
 - **Not captured yet:** the moat's strip over a stack (no stack stands in the moat at an opening:
   T2c's stack in the moat), the moving drawbridge (state 2, T2c), the turrets' and the Catapult's
   poses beyond the standing frame (T2b).
+
+### 10.2 The siege over time (M4 T2a)
+
+Read 2026-10-23 in the user's `Heroes3.exe` (`scripts/exe.py`; not split, the user), compared
+with VCMI 1.7.5 (`client/battle/BattleAnimationClasses.cpp`'s `CatapultAnimation`,
+`BattleProjectileController.cpp`, `BattleSiegeController.cpp`). F is the speed factor and T =
+trunc(100 F) (§7); "through the deadline" is `battle_redraw`'s wait (§7.1; its arguments, in
+order show, mark the dirty rectangle, show that rectangle alone, time, restore the background and
+wait: §7.11 and the map); "on its own clock" a step timed from its own start outside the
+deadline, as a projectile's (§7.4). In a hidden battle every one of these only changes
+the state. The harness plays without sound, so the samples' waits (`sample_wait` 0x599EC0 on a
+handle, `wait_for_sample` 0x59A4C0 on a WAV, each up to 4 s of the game clock) pass at once there,
+as Quicksand's (§7.16); the timeline leaves them out. The decisions on the oddities: CLT-Q19 to
+Q21 (the user, 2026-10-23).
+
+- **A wall shot** (`wall_shot_animate` 0x445FD0 for each shot of `wall_shot` 0x445D30, so twice
+  with Advanced or Expert Ballistics; the Catapult, the Cyclops, the Cyclops King):
+  1. *The target* is the part hit, the engine's `WallShot.part` (not `aimed`: `wall_shot_once`
+     0x445EC0 passes the miss's part), at its point in `wall_shot_targets` 0x63BE60: the upper
+     tower (586, 48), the upper wall (564, 128), the mid-upper wall (520, 212), the gate (498,
+     296), the mid-lower wall (520, 380), the lower wall (586, 506), the lower tower (630, 506),
+     the keep (762, 212).
+  2. *The group:* from the shooter's anchor (its hex's point, the hex records' +0x1C4) plus its
+     straight missile offset (x subtracted facing left) to the target, the angle atan(Δy / |Δx|)
+     in degrees (f64, stored f32), Δy the target's y less the start's **not negated**: above 25°
+     group 14 (up), above −25° 15, else 16; Δx = 0 gives 90 for Δy ≤ 0, else −90. So a target
+     above takes the downward group and one below the upward, the reverse of a shot's
+     (`shot_angle_group` 0x469880 negates Δy); CLT-Q19 (1). The start is the anchor plus that
+     group's offset. The Catapult's groups 14 to 16 are the same 13 frames and its three offsets
+     equal (69, −119): only a Cyclops shows it.
+  3. *Its frames:* its shot sound (+0x17C, category 3, volume 64), then frames 0 to c − 1 (c the
+     climax +0x150, all the group's without one; the Catapult's 4 of 13) at trunc(trunc(A / c) ×
+     F) through the deadline (A the attack time +0x15C), only its rectangle redrawn and shown, as
+     `shot_animation`'s (§7.4). Then it stands in memory (group 2, frame 0, 0x4462A3) without a
+     redraw: its frames after the climax never play, and the screen keeps frame c − 1 until the
+     whole redraw of step 6 (CLT-Q19 (2)).
+  4. *The rock* (`catapult_rock_flight` 0x467A00), at once after the last frame, on its own clock:
+     d = trunc(√(Δx² + Δy²)) from the start to the target point, n = trunc((d + 10) / 20) steps of
+     trunc(100 F) ms (`crt_ftol` truncates toward 0). Step i, 0 to n − 1, at x0 + trunc(i Δx / n)
+     and y0 + trunc((Δy − (n − i) a) i / n) with a = 2 |Δx| / n (f64 in that order, the sum with
+     y0 then truncated; the x87 at 53 bits, `installation.md` §7.10): an arc |Δx| / 2 above the
+     chord at its middle, its last step one step short of the target. The missile (+0x168; the
+     Catapult's `SMCatx.def`, 8 frames) is drawn unmirrored with its canvas centred there (less
+     half its width and height), group 0 frame i modulo its frames, over the back buffer with a
+     save-under, shown together with the step before's rectangle, and restored at once. After the
+     last step nothing is shown: its last image stays on the screen until a later show covers it
+     (CLT-Q19 (3)). VCMI: a parabola y = 0.005 x² + b x + c through both points, 200 pixels a
+     second times the speed.
+  5. *The landing:* `WallMiss.82m` for 0 damage, else `WallHit.82m` (loaded by name: category 0,
+     sample handle 0, volume 127), then the explosion, `CSGRCK.DEF` for 0 damage (10 frames growing
+     to 110 × 143 in a 180 × 230 canvas) or `SGEXPL.DEF` (10 frames in 254 × 203, the largest frame
+     4, smaller after), group 0, its canvas centred on the target point. Each frame k, 0 to 9: an
+     unshown redraw of everything without the background restored, through the deadline at T
+     (`battle_redraw(0, 0, 1, 100, 0, 1)`), the frame drawn over it, its rectangle clipped to the
+     battlefield shown alone. The deadline being behind after the flight, frames 0 and 1 show at
+     the same moment (frame 0 for no time), then one every T. At frame 5, with damage, the part's
+     damage (`wall_part_damage` 0x465990: its picture state 1, or 0 destroyed; a destroyed tower's
+     or keep's cover 0 and its turret stack dead, so from then on neither the cover nor its shooter
+     is drawn, §10.1), drawn into frame 5. Without the restore the earlier frames stay where a
+     later one is transparent (SGEXPL's peak lingers), a hit part's whole picture under its
+     damaged one, a destroyed part's whole picture, until step 6 (CLT-Q19 (4)); the stacks in the
+     rectangle, drawn over themselves, darken their shadows (§7.11's artifacts, not copied).
+  6. *The end:* at once after frame 9 (frame 9 for no time) a whole redraw shown (`battle_redraw(1,
+     0, 0, 0, 1, 0)`: the background restored, everything drawn, the battlefield shown); then the
+     waits for the shot's sample and the landing's (`sample_wait`), Berserk ended (0x4464EA).
+  7. *From the engine:* `WallShot { stack, aimed, part, damage }`, and for a part destroyed
+     `WallDestroyed { part }` right after it (`damage_part`), applied at that shot's frame 5.
+     VCMI: the shot group by the right sign, the explosion when the projectile ends, the walls'
+     pictures after the whole animation.
+- **A turret's shot** (`turret_shot` 0x465AD0 from `shot_action` 0x440160 for creature 149; the
+  engine's `Struck` from a turret stack on 251, 254 or 255, `RANGED`; automatic every round first,
+  BAT-SIE-016, or commanded with Artillery, the same):
+  1. *The record* (§10.1): 251 the lower tower, 254 the keep, 255 the upper (record 1, 0, 2). Its
+     facing becomes 1 when the target's point x is at or right of the record's x, else 0; the
+     target's point is a shot's (`stack_screen_x` 0x446660, `stack_screen_y` 0x446630, §7.8).
+     Facing 1 draws the shooter unmirrored with its canvas at x − 196, a two-hex shooter's 44
+     further left and the Medusa's 5 right (`siege_parts_at_hex` 0x494EB3; facing 0 as in §10.1).
+     It is outlined only while standing (group 2).
+  2. *The group, the start* by `shot_angle_group` from the record's point and facing (a shot's
+     sign); the sound `<prefix>shot.82m` of the shooter creature by name (`play_sound_file`:
+     category 2, volume 127, where a stack's shot plays at 64).
+  3. *Its frames* 0 to c − 1 (the creature's climax and attack time, the animation table's +0x40
+     and +0x4C) at trunc(trunc(A / c) × F) through the deadline, its rectangle alone (its flag
+     +0x1402C + record); then an unshown whole redraw (`battle_redraw(0, 0, 0, 0, 1, 0)`).
+  4. *The arrow* (`turret_arrow_flight` 0x468220): n = trunc((d + 20) / 40) steps of trunc(33 F) ms
+     on its own clock, step k at the centred canvas plus k × (trunc(Δx / n), trunc(Δy / n)); its
+     frame by atan(−Δy / |Δx|) from the start (×57.2957763671875, stored f32) against the
+     midpoints of the creature's angles (+0xC), as `shot_angle_group` counts them (Δx = 0: frame 0
+     upward, the last downward), mirrored when Δx < 0; a save-under per step, restored, and after
+     the last its rectangle restored and shown (the ordinary shot's flight, §7.8, but on the
+     turret's own function).
+  5. *The hit:* the damage, its log line (`battle_log_damage` with GENRLTXT row 376, "arrow
+     tower", and one attacker: row 377 and the kills' row), the target's reaction
+     (`strike_animation(−1, 1)`: no striker, every reaction at once, §7.4).
+  6. *The rest:* frames c to the group's last at the same time through the deadline, never shown:
+     the reaction's `reset_dirty_rects` (0x468D08) cleared the turret's flag, so each redraw's
+     rectangle is empty and the screen keeps frame c − 1 (CLT-Q19 (5)); then facing 0, group 2,
+     frame 0 in a whole redraw shown at once (0x465E89); the sound's wait.
+- **The drawbridge** (`gate_open` 0x4671C0, `gate_close` 0x4672E0):
+  - *Opening:* when a defender's walker's next position, or a two-hex walker's other hex there, is
+    94, 95 or 96 with the gate closed (`defender_on_gate_hex` 0x467130 at 0x442186), before that
+    step. Mid-walk (not its first step) the walker first ends its walk: its end sound (+0x18C),
+    the move sound stopped, group 21's frames, one frame of group 2, standing in a whole redraw
+    shown at once (0x4421BC to 0x442225). Then `drawbrg.82m` (category 2, 127) and the gate
+    states 3, 2, 1 (closed, moving, open), each in a redraw through the deadline at T that
+    restores and draws the whole battlefield and shows only the drawbridge's rectangle (365, 211)
+    to (542, 380) (`drawbridge_rect` 0x694F30); the pathfinder renewed; the sound's wait. The
+    walk then goes on with a first step (group 20, the start and move sounds: walk_step's flag,
+    0x442247). A flyer whose destination is there stands in a whole redraw shown at once and the
+    gate opens before its flight (0x4B4A95); a summoned elemental placed there opens it too
+    (0x5A71F1).
+  - *Closing* (after a walk 0x4423F2, a flight 0x4B4A29, a teleporting move 0x4B4EF9 and every
+    action 0x479C65): with the gate open and no stack or corpse on 95 and 96 (and 94 in a
+    Fortress, town type 7), `drawbrg.82m` and the states 1, 2, 3 at T in the same rectangle, the
+    sound's wait.
+  - *From the engine:* `GateOpened` comes after the `Moved` onto 96 (BAT-SIE-003), `GateClosed`
+    at the action's end: the timeline plays the opening before the step its walk's path takes
+    onto 94 to 96 (the path hex by hex) and the closing after the walk's last frame. VCMI changes
+    the gate's picture at once with the sound, no moving state.
+- **The moat's damage** (`moat_damage` 0x469E50 from `enter_hex` 0x46A570; SoD rules and the moat
+  flag, so never the Tower): after the step onto a moat hex, which is a stop (so the walk's end,
+  group 21 and group 2's frame, comes first), the move sound stopped, the damage, the log line
+  (row 377 named by the town's moat, `moat_names` 0x6A5D60: `ArrayTxt.txt`'s nine names after
+  its "Moat Names" row, loaded by 0x5B9CC0), the stack's reaction (`strike_animation(−1, 1)`:
+  hit 3 or death 5, no animation of its own), the move sound again if it lives and walked, the
+  Phoenix's check. On re-entry (`reenter_own_hexes` 0x441F70: Wait at 0x479AD6, Defend at
+  0x4798F3, a shot or strike from the moat, a flight's or a teleport's landing) the same without
+  the sounds. The engine: `Moved`, `MoatDamage { stack, hex, damage, kills }`.
+- **A Tower's mine** (`land_mine_trigger` 0x59FB40; the defender's hidden Land Mines, BAT-SIE-007,
+  as any Land Mine): the move sound stopped, the damage, the log line (Land Mine's name, row 377),
+  the mine removed without a vanish animation (`remove_battle_object` 0x466B30), `landkill.wav`
+  (category 2, 127), animation 57 over the stack with its reaction (`strike_animation(57, 1)`,
+  §7.16), the sound's wait, the move sound again; the walk goes on (an unseen mine is no stop).
+  The engine: `ObstacleTriggered { stack, spell, hex }`, then `SpellDamage`. On the attacker's
+  turn its screen never shows the mine (removed before the blast's first redraw), only the blast;
+  the defender's record shows it before.
+- **Earthquake** (`earthquake` 0x5A7C80, the handler after the hero's frames 0 to c − 1 and the
+  spell's sound, §7.16; it writes no log line):
+  - *The shake:* the mouse hidden, the screen saved (the back buffer into the battle's 800 × 600
+    buffer +0x53B0), then 3 times the 15 offsets (2, 2), (4, 1), (3, −2), (0, −6), (2, −2), (−1,
+    3), (−5, 4), (−8, 6), (−4, 2), (−1, 1), (−3, −3), (−7, −5), (−5, −7), (−2, −3), (0, 0)
+    (`earthquake_shake_offsets` 0x642284), each step trunc(15 F) ms on its own clock: the saved
+    picture copied into the back buffer at the offset, the battlefield shown (0x493780). The
+    strips an offset uncovers keep the step before's pixels, and an upward offset shows the
+    panel's top rows in the field's bottom rows (copied in every profile, CLT-Q19 (6)). Then the
+    background to be composed again (+0x53B8 cleared) and a whole redraw shown at once.
+  - *The hits* (BAT-SIE-015), then with any target hit `WallHit.82m` once (`play_sound_async`
+    0x59A590, category 3) and SGEXPL's 10 frames, each trunc(15 F) ms on its own clock: an unshown
+    redraw without the background restored (`battle_redraw(0, 0, 1, 0, 0, 0)`), then over every
+    target hit its frame centred on its point, each rectangle shown; at frame 5 every target's
+    damage. After the last frame a whole redraw shown at once, the mouse shown; then the cast's
+    tail (the hero's last frames). The explosions' leftovers as a wall shot's (CLT-Q19 (4)).
+  - *From the engine:* the hero's `SpellCast`, then a `WallQuaked { part, damage }` per target and
+    `WallDestroyed`. VCMI: no shake; SGEXPL at the targets with `WALLHIT`, the walls after it.
+- **The mouse** (completing §9.9):
+  - *The siege's rectangles* of `screen_to_hex`, tested after the heroes' and before the hexes,
+    set statically for every battle (0x462700, 0x462730): 0xFE the keep (x 742–799, y 160–337),
+    0xFF the upper tower (x 564–651, y 0–85), bounds inclusive. The lower tower has none: its
+    target is hex 183. Over either no stack is marked (`battle_mouse_stack` takes hexes 0 to 186).
+    Outside a siege they give kind 0, but the keep's covers the right side column on rows 1 to
+    5, where a defender's war machine is then not marked: the client takes them in a siege only,
+    the original's everywhere for the comparisons (CLT-Q21).
+  - *The kinds* (`battle_cursor` 0x476490): **16**, the Catapult's target (`crcombat.DEF` frame
+    16), for an acting stack with the wall-shooter flag (+0x84 bit 5: the Catapult, the Cyclopes)
+    of the attacker (+0x132C0 0) outside the tactics phase: over 0xFF with a Castle and over 0xFE
+    with a Citadel or Castle while that part stands (the stack's target +0x14 the rectangle's
+    number, +0x10 −1), and over a field hex that is a standing target's aim hex (29, 62, 96, 130,
+    182; 183 with a Castle) when the hex is empty, for the Catapult whatever stands there
+    (0x4766B2). **22** (frame 5, "View arrow tower info", row 157) over 0xFF with a Castle or 0xFE
+    with a Citadel otherwise (a destroyed tower's too), and over hex 183 with a Castle when it is
+    no move.
+  - *The status lines* (`battle_status_line` 0x492840): 16 GENRLTXT row 221 ("Attack %s") with the
+    part's WALLS.TXT name for the town's type (the parts' +0x1C), not forced; 22 row 157.
+- **The end tune** (§8.2) at a town is the manager's +0x53C8, set for every battle at a town, a
+  fort or not: the viewer's town is the record's `Siege`, fort 0 included.
+- **Not read:** a turret's info window (22's click); the Cyclops' shot sound beside the Catapult's
+  (+0x17C, the same code); the drawers' tests of the dirty rectangle during the explosions.
+- **The timeline's plan** (T2b, T2c; `h3_view::anim`): `WallShot` plays steps 2 to 6 at the part
+  hit, `WallDestroyed` and the parts' states at its frame 5 (`Moment::walls` then takes a hit's
+  state 1 from the history, T1b's override retiring); a turret's `Struck` (the attacker's hex 251,
+  254, 255) plays the turret's shot instead of a stack's; `GateOpened` moves before the walk step
+  onto 94 to 96 (the stop and the restart around it), `GateClosed` after the walk; `MoatDamage` and
+  a mine's `ObstacleTriggered` after their step; `WallQuaked` the shake and the explosions inside
+  the hero's cast; the end tune's town from `Siege`. Under `Bugs::Original` (the comparisons) the
+  slips of CLT-Q19 (1) to (5) as read; in what the client draws (CLT-Q19, as CLT-Q8): the group
+  by a shot's sign, the shooter standing from the flight, the rock erased after its last step,
+  each explosion frame on a restored background with the parts' new pictures alone, the turret's
+  frames after the arrow shown.
+- **The forced rolls** (the runbook's "Forced rolls"; new sites in `xdd.dll`'s table): the damage
+  roll `wall_damage_draw` 0x445ED6 (random(1, 100) against the record's chances for 0, 1, 2), the
+  hit roll `wall_hit_draw` 0x445F25 (random(1, 100) up to the target kind's chance), a miss
+  between two equally near walls `wall_miss_tie_draw` 0x445F6C (up to 50 the later), the next
+  shot's new target at a tie `wall_retarget_tie_draw` 0x445E44, the automatic aim among the
+  weakest walls `catapult_tie_draw` 0x473DA0 (random(1, k), drawn even for k = 1), Earthquake's
+  target `quake_target_draw` 0x5A7DD8 (random(1, k): the k-th standing target with hit points
+  left). The turrets' damage (random(2, 4) per creature, 0x465D3E) stays free: the engine's seed
+  is searched to match the line and the box.
+- **T2b's sequences** (hot seat, SoD rules, a Castle unless named; the heroes' skills as T1b's):
+  `keep` (Artillery: the keep, then the upper and lower towers shoot an attacker's stack, one a
+  two-hex one; free damage), `hit` (Basic Ballistics at a wall: `wall_hit` falls, `wall_damage`
+  1: the wall's state 1), `missed` (`wall_hit` fails: the nearest other wall takes it, a tie
+  forced where two are equally near), `breach` (Expert at a Citadel's wall of 2 hit points:
+  destroyed by the first shot, the second retargeted, `wall_retarget_tie` where needed), `tower`
+  (Expert at the upper tower: destroyed at frame 5, its cover and shooter gone, the keep's later
+  shot), `cyclops` (a Cyclops' wall shot at the upper tower and at the lower wall: the reversed
+  groups), and with CLT-Q20's change `automatic` (no Ballistics and no Artillery: the turrets' and
+  the Catapult's own round, `catapult_tie`, a 0-damage roll forced: `CSGRCK` and `WallMiss`).
+- **T2c's sequences:** `gate` (a defender's walk out through the gate from inside, interrupted
+  mid-walk, the gate closing after it, then a walk back in from its first step; the moving state
+  in the frames), `gate-fortress` (a stack on 94 keeping a Fortress's gate open), `moat` (an
+  attacker's walk into a Castle's moat: `MoatDamage`, the strip over it and its box, then Wait in
+  it: the re-entry), `mine` (a Tower: an attacker's walk over a hidden mine, recorded from both
+  seats), `quake` (the attacker's hero casts Earthquake: `quake_target` forced per hit, a wall
+  destroyed), `aim` (the mouse over the targets on the Catapult's turn, 16 and its lines over
+  0xFE, 0xFF and the hexes; 22 on a defender's turn), `through` (an attacker's shooter at a stack
+  behind the walls: the broken arrow and the halved damage, `shot_wall_test` 0x467510),
+  `defended` (the keep kills the attacker's last stack: `defend castle`).

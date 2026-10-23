@@ -5,8 +5,10 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 ## Current state
 
 - **E17 M0–M3 done** (the lane split at M3 T9c, CLT-Q18: the battle client here, the adventure
-  map client the map-client lane's E24); **M4 (sieges): T0, T1a, T1b done** (15 siege situations
-  exact, design §10.1); **next: M4 T2a** (what moves in a siege, read; M5 live play after M4).
+  map client the map-client lane's E24); **M4 (sieges): T0, T1a, T1b, T2a done** (15 siege
+  situations exact, §10.1; what moves read, §10.2, CLT-Q19 to Q21 answered); **next: M4 T2b**
+  (the Catapult and the turrets recorded; its `automatic` waits for the server lane, CLT-Q20; M5
+  live play after M4).
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+
   drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§10;
   records in `E17-log.md`.
@@ -63,11 +65,10 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
-- **2026-10-23, E17 M4 T1b (done; #427 open; not split, the user).** `[[town]]` harvested, the
-  siege drawn; 15 siege situations exact (every town's Castle, a Fort, a Citadel; the walls hit
-  and destroyed on Castle and Conflux by memory writes); the Tower by the defender's record.
-- **2026-10-23, E17 M4 T1a (done; #417, docs only).** The siege still read (design §10.1, the address
-  map): the same rules in every town; the harvest moved into T1b, the wall states on Castle and
-  Conflux (the user).
-- **2026-10-23, E17 M4 T0 (done; #415).** M4 cut with the user: T1a, T1b (the still), T2a to
-  T2c (over time), T3; the wall states as stills by memory.
+- **2026-10-23, E17 M4 T2a (done; not split, the user; docs only).** What moves in a siege read
+  (§10.2, the map), T2b's and T2c's sequences listed; CLT-Q19 (slips fixed, the shake
+  copied), Q20 (the server lane records the opening's events: its inbox), Q21 answered.
+- **2026-10-23, E17 M4 T1b (done; #427).** `[[town]]` harvested, the siege drawn; 15 siege
+  situations exact (the walls' states by memory writes; the Tower by the defender's record).
+- **2026-10-23, E17 M4 T1a (done; #417, docs only).** The siege still read (§10.1): the same
+  rules in every town.

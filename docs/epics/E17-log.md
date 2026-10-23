@@ -2343,6 +2343,37 @@ On `client/e17-m4-t1b`, the user present at the start (not split: "No cut"). Des
   set (72 situations) as recorded; `clients/scripts/check.sh` green. Not captured: the moat's
   strip over a stack and the moving bridge (T2c), the machines' shots (T2b).
 
+### M4 T2a — The siege over time read (2026-10-23)
+
+On `client/e17-m4-t2a`, the user present (not split: the agent proposed T2a-1 for T2b and T2a-2
+for T2c). A code reading (`scripts/exe.py`; the user's `Heroes3.exe`, `H3sprite.lod` staged for
+the DEFs' frames), compared with VCMI 1.7.5 (`CatapultAnimation`, `ProjectileCatapult`,
+`BattleSiegeController`). Design §10.2; the address map (`catapult_rock_flight`,
+`turret_arrow_flight`, `sample_wait`, `arraytxt_load`, the three rectangles' initializers and
+globals, `earthquake_shake_offsets`, `moat_names` and seven roll sites new; ten summaries
+completed).
+
+- **Read:** a wall shot (the part hit; the shooter's group by an unnegated angle; its frames to
+  the climax, then standing unshown; the rock's arc in n = trunc((d + 10) / 20) steps of 100 F ms
+  on its own clock, not erased after its last step; WallHit or WallMiss, SGEXPL or CSGRCK over
+  unrestored redraws, frames 0 and 1 at once, the part's state at frame 5; a whole redraw); a
+  turret's (facing by the target's side, the unmirrored placement, the creature's sound by name
+  at 127, the frames, a turret arrow of its own, the log line "arrow tower", the reaction, the
+  rest unshown); the drawbridge (opened before the step onto 94 to 96, a walk stopped and
+  restarted around it, three states at T in its rectangle; closed after walks and actions);
+  the moat's damage and a mine (the move sound stopped and resumed, the lines, the reactions,
+  `landkill.wav` and animation 57); Earthquake (a 45-step shake of 15 F ms, explosions at 15 F,
+  no line); the mouse's 0xFE and 0xFF, the kinds 16 and 22 and their lines; the end tune's town.
+  The samples' waits (up to 4 s each) pass at once in the harness (no sound).
+- **The DEFs:** the Catapult's groups 14 to 16 are one (13 frames, climax 4); SGEXPL peaks at
+  frame 4 of 10; CSGRCK grows; `SMCatx` has 8 frames.
+- **The user** (CLT-Q19 to Q21): the slips fixed with the original's for the comparisons (the
+  reversed group, the frozen shooter, the stale rock, the explosions over each other, the
+  turret's unshown frames), the shake's strips copied everywhere; the opening's automatic acts
+  recorded by the server lane (its inbox; T2b's `automatic` waits for it); the siege's mouse
+  rectangles in a siege only.
+- **Lists:** T2b's and T2c's sequences with their forced rolls (§10.2, the queue).
+
 ## Accepted review lists (M1, M2, M3)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its
