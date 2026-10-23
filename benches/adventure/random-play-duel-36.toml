@@ -8,7 +8,7 @@ toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
 target = "x86_64-unknown-linux-gnu"
 
 [workload]
-description = "5 random-vs-random games of 28 days on the generated duel map (E08 decision 11; since E08 T20b3b2 with its monsters, guarded piles and grounds; since E04c T10b with the original's obstacles in its battles; since E08 T31 with its heroes' level-ups, the heroes near a level and one levelled at load; since E08 T40 the heroes' day's points, Pathfinding and radius from their details, which changed the games: 2 839 steps, many of them battle commands, the neutral seat playing the unowned sides; the same games under T40's code measured +0.13 %); counts only inside h3_sim::adventure::random_rollout (the agent, the reachable-tiles queries, apply)"
+description = "5 random-vs-random games of 28 days on the generated duel map (E08 decision 11; since E08 T20b3b2 with its monsters, guarded piles and grounds; since E04c T10b with the original's obstacles in its battles; since E08 T31 with its heroes' level-ups, the heroes near a level and one levelled at load; since E08 T40 the heroes' day's points, Pathfinding and radius from their details, which changed the games: 2 839 steps, many of them battle commands, the neutral seat playing the unowned sides; the same games under T40's code measured +0.13 %; since E08 T42 red's flyer and water walker, whose reachable-tiles queries search two kinds of node: 3 205 steps, +56 % per step, the code alone on the old duel +0.85 %); counts only inside h3_sim::adventure::random_rollout (the agent, the reachable-tiles queries, apply)"
 args = [
     "adventure",
     "bench",
@@ -24,5 +24,5 @@ args = [
     "1",
 ]
 collect = "*adventure*random_rollout*"
-instructions = 555555705
+instructions = 976085207
 threshold_percent = 2

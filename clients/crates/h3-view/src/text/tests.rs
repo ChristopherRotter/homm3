@@ -40,6 +40,10 @@ fn rules_by_language() {
         ("hu", Some(Rule::OneOther)),
         ("es", Some(Rule::OneManyOther)),
         ("pt_BR", Some(Rule::French)),
+        ("pt", Some(Rule::French)),
+        // E17 M3 T9b, the reviewer: CLDR's `pt_PT`, `one` for 1 only.
+        ("pt-PT", Some(Rule::OneManyOther)),
+        ("pt_pt", Some(Rule::OneManyOther)),
         ("fr", Some(Rule::French)),
         ("pl", Some(Rule::Polish)),
         ("uk", Some(Rule::EastSlavic)),

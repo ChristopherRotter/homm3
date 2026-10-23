@@ -4,13 +4,13 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E17 M0–M2 done; M3 T1a–T9a done; H1, H2 done (the adventure lane's harness); next: M3 T9b-2, the timeline's reviewer** (T9b, the review, split in five with the user, 2026-10-23: T9b-1 T9a's two points, the reviewer in three parts by area, the review list with the user; then T9c the next milestone; `QUEUE.md`). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
-- **Captures** (the user, 2026-10-20): `h3drive.py drawn` first (no Wine); capture what it lists or the task changes, all at a milestone's closure or a harness change (runbook); later tasks' detail in `NOTES.md`.
+- **E17 M0–M2 done; M3 T1a–T9b done (the review list accepted, CLT-Q9 to Q17 answered, 2026-10-23); H1, H2 done (the adventure lane's harness); next: M3 T9c** (the next milestone with the user: sieges, live play, HD or the adventure map; M3 marked done) and **T9d** (CLT-Q9 to Q17's fixes; `QUEUE.md`). Workspace `clients/` (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in `E17-log.md`.
+- **Captures** (the user, 2026-10-20): `h3drive.py drawn` first (no Wine); capture what it lists or the task changes, all at a milestone's closure or a harness change (runbook); a capture not as recorded leaves `kept/` (T9b: record, then `--reuse`); later tasks' detail in `NOTES.md`.
 - **The user's requirements** (epic, "Decisions"): a string catalogue (JSON packs, no committed translation, CLT-Q7); graphics options (`faithful` default); exhaustive diffs; drawing bugs fixed, the original's only for comparisons (`Bugs`).
 - The lane owns `clients/`, `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
 - **Checkpoints** per milestone (the autonomy contract below), a fresh reviewer agent first.
 - Stage first (the user's computer online) from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04`, the four end tunes, `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`; `cp -rn` the staged `original-data/.` into the clone first. Frames stay in their sandbox.
-- **Open:** CLT-Q4–Q6 (the setup's fields, boats); Q9–Q17 (the original's oddities, Q15 the dragon's draw line: T9b-5).
+- **Open:** CLT-Q4–Q6 (the setup's fields, boats).
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
 
@@ -57,10 +57,10 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
-- **2026-10-23, E17 M3 T9b-1 (done; `client/e17-m3-t9b1`'s PR open).** T9b split in five
-  (the user); `raise`'s `before` harmless (runbook); `Game.wait` waits through an unreadable
-  dump: a whole `set` as recorded.
+- **2026-10-23, E17 M3 T9b (done; `client/e17-m3-t9b`'s PR open, on #404).** Three reviewers in
+  parallel (the user): 26 findings, 20 fixed, 5 queued (inbox); `drawn` the same, `set` and a
+  sample as recorded; the review list accepted, CLT-Q9 to Q17 answered (T9d).
+- **2026-10-23, E17 M3 T9b-1 (done; #404 open).** `raise`'s `before` harmless (runbook);
+  `Game.wait` waits through an unreadable dump: a whole `set` as recorded.
 - **2026-10-22/23, E17 M3 T9a (two sessions; #402, merged).** T9 split (the user); all 88 as
   recorded (four after a rerun), `drawn` the same; the epic file's conflict markers resolved.
-- **2026-10-22, E17 M3 T7d (#391, merged).** CLT-Q8's bugs fixed (`anim::Stage::bugs`,
-  `Original` only in `h3-view sequences`); the fixed group's points: review list.

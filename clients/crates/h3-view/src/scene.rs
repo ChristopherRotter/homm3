@@ -406,32 +406,60 @@ impl Panels {
         text: &str,
         pressed: Option<u16>,
     ) -> Vec<Draw> {
-        let controller = |o: &Observation| {
-            o.active
-                .and_then(|id| snapshot.stacks.iter().find(|s| s.id == id))
-                .map(|s| s.controller)
-        };
+        let (kept, turns) = self.kept_at(snapshot, started, t);
         let since = started
             .iter()
             .rev()
             .find(|(at, _)| *at <= t)
             .map_or(0, |(at, _)| *at);
-        let started = started.iter().filter(|(at, _)| *at <= t).count();
-        let turns = self.turns.get(..started).unwrap_or(&self.turns);
-        let sides: Vec<(Side, bool)> = core::iter::once(snapshot)
-            .chain(turns)
-            .filter_map(|o| controller(o).map(|s| (s, o.tactics.is_some())))
-            .collect();
-        let built = controller(snapshot).unwrap_or(Side::Attacker);
-        let kept = crate::panel::kept(snapshot, &sides, built);
         let mut now = turns.last().unwrap_or(snapshot).clone();
         for &(_, side) in self.casts.iter().filter(|(at, _)| (since..=t).contains(at)) {
             if let Some(hero) = now.sides[usize::from(side == Side::Defender)].hero.as_mut() {
                 hero.casts = hero.casts.max(1);
             }
         }
-        pressed_panel(&now, controller(&now), kept, text, layout, pressed)
+        pressed_panel(
+            &now,
+            controller(snapshot, &now),
+            kept,
+            text,
+            layout,
+            pressed,
+        )
     }
+
+    /// Whether the log's scroll buttons are enabled at `t` ([`Panels::at`]'s arguments): a click
+    /// on a disabled one scrolls nothing (design §9.10, 0x4562DD; E17 M3 T9b, the reviewer).
+    #[must_use]
+    pub fn scrolls(&self, snapshot: &Observation, started: &[(u32, u8)], t: u32) -> bool {
+        self.kept_at(snapshot, started, t).0.scroll
+    }
+
+    /// What the panel kept from the turns started by `t` (`crate::panel::kept`), and those turns.
+    fn kept_at(
+        &self,
+        snapshot: &Observation,
+        started: &[(u32, u8)],
+        t: u32,
+    ) -> (crate::panel::Kept, &[Observation]) {
+        let started = started.iter().filter(|(at, _)| *at <= t).count();
+        let turns = self.turns.get(..started).unwrap_or(&self.turns);
+        let sides: Vec<(Side, bool)> = core::iter::once(snapshot)
+            .chain(turns)
+            .filter_map(|o| controller(snapshot, o).map(|s| (s, o.tactics.is_some())))
+            .collect();
+        let built = controller(snapshot, snapshot).unwrap_or(Side::Attacker);
+        (crate::panel::kept(snapshot, &sides, built), turns)
+    }
+}
+
+/// The controller of the battle `o`'s active stack, by the stacks of the opening `snapshot`
+/// (*provisional*: a controller Hypnotize changes and a stack the battle creates are not
+/// followed, as created stacks are not drawn; the queue's inbox).
+fn controller(snapshot: &Observation, o: &Observation) -> Option<Side> {
+    o.active
+        .and_then(|id| snapshot.stacks.iter().find(|s| s.id == id))
+        .map(|s| s.controller)
 }
 
 /// Why a snapshot has no draw list.

@@ -1278,8 +1278,9 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   stops when no reach and no threat record searched (slip 30 widened); `POLICY_VERSION` 15.
 - **Replays** (`cross-lane`, the user's consent): the ten golden battle replays keep their
   commands (`duel-s1`, `field-s5` rehashed from their stored setups, the others re-recorded); the
-  adventure lane's nine re-recorded with their options, the commands unchanged, eight moving
-  checkpoint hashes taken inside a battle (`fixtures/README.md` says how).
+  adventure lane's re-recorded with their options, the commands unchanged (its T42 replaced them
+  meanwhile: the ten of `master` 49b19b8, nine moving checkpoint hashes taken inside a battle;
+  `fixtures/README.md` says how).
 - **Tests:** `h3-battle`'s `a_random_caster_keeps_its_last_draw_for_the_computer`; `h3-battle-ai`
   (the test ruleset gained the faerie, a random caster of the bolt): a waited Master Genie asked
   its entry at the gogs' turn (it casts on them, leaving Teleport to the gogs); a Faerie Dragon

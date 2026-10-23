@@ -4420,3 +4420,317 @@ Decision 88: T41 whole (the user: "no cut"), its shared part in its own pull req
   -- --with-original-data` on fd4f16f (code d82c93aa, 2026-10-23, the sandbox, Linux x86_64): all
   16 steps passed (the first run on 04e16ff failed coverage, `NoStop`'s message, and the benchmarks
   above). Merges cleanly with `master` 2ad29e2 and with #401.
+
+### Increment 5, round 5: T42, the env, the plans, the fixtures, the replays and the benchmarks (2026-10-23, `adventure/e08-t42`, `cross-lane`)
+
+Decision 89: T42 whole (the user's choice; the cut at the committed fixtures not chosen).
+
+- **The plans** (`h3-map`'s `play.rs`): `Kit` (worn artifacts of `MOVERS`, the six with their
+  editor slots, and Pathfinding, Logistics, Scouting at a level), drawn last in the plan's
+  strategy so the regressions files' cases keep their maps: in two heroes of five some of the
+  Speculum, the Spyglass, Equestrian's Gloves and Boots of Speed, in two of five some of the
+  skills; in three plans of four the first two heroes fly (Angel Wings) and walk on water (Boots
+  of Levitation), in one of those of four the flyer both, with a strip of three water tiles two
+  columns east of each; in half the AB and SoD plans a stack of Nomads (`Plan.nomads`). A kit's
+  skills join the hero's own (the Spell Book with them). `every_step_keeps_the_commands_invariants`
+  checks that every accepted move ends where a hero may stop (`stops_on`: land no live object
+  blocks but where one is visited); the observation property compares the legal moves as before,
+  now over flyers' (`ADV-QUIRK-15`). New fixed test `the_plans_fly_and_walk_on_water` (64 cases):
+  the six artifacts worn in 21, 21, 21, 42, 42, 18 games, the three skills known in 33, 38, 35;
+  36 flights over water, 33 over blocked tiles, 20 water walks over water, 57 moves of armies with
+  Nomads, 6 paths refused with `NoStop`. All 71 of `h3-map`'s lib tests pass.
+- **The fixtures** (`fixtures.rs`' `DUEL_KITS`, `XL_KITS`; terrain and objects unchanged): the
+  duel's red surface hero flies with the Speculum and basic Logistics, eight tiles from the
+  surface lake; blue's surface hero wears Boots of Speed and Equestrian's Gloves with advanced
+  Pathfinding; red's underground hero walks on water with the Spyglass, seven tiles from a lake;
+  blue's underground hero has expert Scouting and basic Pathfinding. Blue's underground hero was
+  the water walker at first: the underground lakes nearest to it lie beyond rock, and in four
+  random weeks it never reached water. The XL map: each player a flyer and a water walker, one per
+  level, the other artifacts and the three skills among the others.
+- **The env** (`h3-sim`): `a_flyer_and_a_water_walker_are_masked_by_their_stop_tiles` (four
+  random games of two weeks: every tile a lifted hero's move head allows is one it may stop on,
+  some reached over water or blocked tiles); `steps_agree_with_the_masks_and_the_game` plays the
+  duel's flyer and water walker. The tampered-replay test prints the result it got.
+- **`h3_game` re-exports `h3_heroes::{Movement, movement}`** (for the benchmarks: which heroes fly
+  or walk on water).
+- **The replays** (`adventure_replays.rs`, its list rewritten): the four fixed ones re-recorded
+  with their options; a search over 5 000 seeds per profile (28 days, a scratch probe, not
+  committed) replaced T31's five searched ones by the closest games (`duel-s692-d28`,
+  `duel-s4893-d28`, `duel-s2517-d28`, `duel-s3127-d28`, `duel-s1308-strict-d28`) and added
+  `duel-s2931-d28`, the only faithful game with an offer to join for gold accepted (the fixed
+  `duel-s3-easy-d7` no longer meets one). Not met by any replay now: a strict-fixed monster's
+  battle lost together with a hero battle (no game has both). The test asks for ten files.
+- **The benchmarks:** the reach workload counts the walkers in `reach_queries` and the flyers and
+  water walkers in `lifted_queries`, which hero is which sorted out of the counted part
+  (`heroes_by_lift`); `queries` takes the kind so that the release build does not fold the two
+  identical functions into one symbol (it did: both names at one address, so the pattern
+  `*lifted_queries*` matched nothing). On master's maps the new code measures `reach-xl-144`
+  +0.86 % (T41's own +0.89 %), `random-play-duel-36` +0.85 %, `fork-xl-144` +0.17 %. Re-baselined
+  on the new maps: `reach-xl-144` 466 864 446 Ir (3 145 walkers' queries, about 148 k each),
+  `reach-lifted-xl-144` new, 880 080 619 Ir (3 158 queries, about 279 k each, 1.9 times a
+  walker's), `random-play-duel-36` 976 085 207 Ir (+75.7 %: 3 205 steps, +56 % a step, the duel's
+  flyer and water walker search two kinds of node at every step), `fork-xl-144` 356 400 024 Ir
+  (+0.17 %). `benches/README.md`'s two rows (a shared file) in the lane's pull request, `cross-lane`
+  with the user's consent.
+- **`--with-original-data`:** the Tutorial's red hero (Expert Logistics and Pathfinding, Boots of
+  Speed and Equestrian's Gloves, a speed-4 army) starts with 2 928 points, its entry 1 560 × 1.3 +
+  900, printed and checked (`original_data.rs`' `tutorial`).
+- **Docs:** the design note's §8 reduced to what was built, §10 and §13's lines; the queue (T43's
+  entry; the inbox's T40 note closed), the HANDOFF, the epic, `fixtures/maps/README.md`.
+- **The baseline:** `scripts/verify-once.sh engine -- --with-original-data` on master 8330f55
+  (code 70c8a38e, 2026-10-23, the sandbox): all 16 steps passed.
+- **The lane's full verify** (CI cannot run): `scripts/verify-once.sh engine --base origin/master
+  -- --with-original-data` on 678768f (code 68058c9c, 2026-10-23, the sandbox, Linux x86_64): all
+  16 steps passed (`original-data`: the Tutorial's 2 928 points; 9 heroes levelled at load with 41
+  level-ups, unchanged); `master`'s client-only 9cb5725 merged in after it (the code unchanged).
+
+### Increment 5, round 5: T43, the audit; increment 5 closed; increment 6 refined (2026-10-23, `adventure/e08-t43`)
+
+Baseline: `master` at afa36f8 (T42 merged, #406); its engine code (68058c9c) was verified on
+678768f (T42's full verify with the original data), so the sandbox ran the light gates (passed).
+No original files staged: the task changes docs only. T43 whole, one session and one pull request
+(the user's instruction for the session: a seam only for a significantly big task).
+
+**The audit of increment 5's exit criteria** (design §12, moved below), on `master`'s code:
+
+1. The day's points: `h3_heroes::land_points` (HER-ADV-003: the Logistics rate, a Logistics
+   specialist's growth under Q-0005, the worn Boots of Speed and Equestrian's Gloves) and
+   `movement_speed` (HER-ADV-004: a creature specialty's speed; T39), read by
+   `h3_adventure::day_points` (ADV-MOV-001, T40); set by `AdventureState::start_game` after the
+   levels at load and by `start_turn` for its owner's heroes (ADV-MOV-002, T40). Observed: E5-1,
+   E5-2 (D-22), E5-3; the Tutorial's red hero's 2 928 under `--with-original-data` (T42).
+2. The price: `Pricing` with the Pathfinding level (HER-ADV-007), a terrain walker (the `ab`
+   pack's Nomads) and Cursed Ground's `no_native` (T40); the fly and water-walk prices
+   (`Pricing::lifted`, T41: the lesser from a free land tile, the fly price from water and a
+   blocked tile, decision 85); the drop under `ADV-QUIRK-17` (`Pricing::left_after`, T41).
+   Observed: E5-4, E5-5, E5-6 (both Cursed Grounds).
+3. The passage: `AdventureState::passage` (ADV-MOV-009, -010; the unexplored tile's row under
+   `ADV-QUIRK-15`), `MoveHero` with `NoStop` and a flight's guard and visit at its end,
+   `Reach::search_layered`'s stop and pass nodes (T41); the env's masks
+   (`a_flyer_and_a_water_walker_are_masked_by_their_stop_tiles`), the ten replays (the duel's
+   flyer and water walker) and the plans (`the_plans_fly_and_walk_on_water`; every accepted move
+   ends where its hero may stop) play them (T42). Observed: E5-7 (D-25), E5-9 (A-13's original
+   path; the engine keeps to explored tiles), E5-11.
+4. The radius: `h3_heroes::scouting_radius` (HER-ADV-006, T39), `hero_radius` at the start and
+   at each step (ADV-FOG-001, -003, T40); `start_day` reveals around every hero in `strict-fixed`
+   (`ADV-QUIRK-18` off). Observed: E5-10 (D-26).
+5. `check-rules` passes (every rule an id, a source and a test); the ledger holds `ADV-QUIRK-15`,
+   `-17` and `-18` with their regression tests (`a_flight_never_crosses_an_unexplored_tile`,
+   `the_drop_forgets_flying_and_water_walking_under_adv_quirk_17`,
+   `a_gain_in_the_day_shows_at_the_next_turn_start_and_step`), `-14` and `-16` withdrawn, flag 30
+   retired (T41's shared part); Q-0005's entry names HER-ADV-003 (T39). The gates: T42's full
+   verify with the original data passed all 16 steps on the code `master` holds (68058c9c): the
+   replays re-recorded, `reach-xl-144` at the walkers' baseline (+0.86 % on the old maps),
+   `reach-lifted-xl-144` baselined.
+6. Batch E5 run (T37b) and scored (T38, survey §13): D-22 to D-26 decided and observed, A-13's
+   original path observed (E5-9; the fix provisional), E5-11 the reading's; none reopened.
+
+**The gap fixed:** HER-ADV-003, -004 and -006 cite batch E5's observations (E5-1, E5-2; E5-1h;
+E5-10), but T39 wrote them `implemented` after T38's scoring: now `verified`. HER-ADV-005 gains
+E5-4's and E5-5's observation (the steps from swamp and from water at 100: both artifacts at level
+3, where level 2 gives 120) and is `verified`. HER-ADV-007 (the Pathfinding level) stays
+`implemented`: no row of batch E5 had a Pathfinding hero. Nothing else was missing.
+
+**The design note** moved below ("Increment 5's design note at its closure"); `E08-design.md`
+keeps a pointer until T44b writes increment 6's note. Two code comments cite it by section
+(`crates/h3-adventure/src/state/passage.rs`: §7's table, since T41 the module's doc comment;
+`crates/h3-sim/src/adventure/tests.rs`: §8): kept, the next code change of the lane repoints them
+(a comment alone would cost a full verify).
+
+**Increment 5 closed** (2026-10-23).
+
+**Increment 6 refined** (ADV-Q23; decisions 90, 91): the user chose **army and hero management**
+of the sketch's item 6 cut in three (the army dialog of `ADV-STUB-2`, meetings and exchanges of a
+player's own heroes, moving, splitting, merging and dismissing stacks, the formation command, the
+hero's artifact commands), not rewards on the map, boats and the sea, or the whole item; the rest
+of item 6 is the sketch's increment 7, the week's 8. The first round is a survey and the ADR
+amendment drafts with the design note and the cut (T44a, T44b), not the survey alone. The inbox
+re-tagged: the army dialog (T17a, T17b), the formation (T22b), ADR-0016's line (T23), a received
+combination's part, Titan's Thunder's book and the Grail's capture (T19a2a), the backpack's
+capacity (E04a T3b) and the hero commands (the E04 refinement) for increment 6; Favorable Winds
+(T20a2a) and Pandora's Box's artifact (T20a2a) for the sketch's increment 7.
+
+#### Increment 5's design note at its closure (moved by T43)
+
+The note as T42 left it, every section built (T35 to T42); its § numbers are the ones the two
+code comments above cite as "design note".
+
+A handover, not binding (`docs/adr/README.md`): the working detail behind increment 5's amendments
+of ADR-0013 (point 13), ADR-0016 (points 3–5) and ADR-0017 (points 1, 3, 9), drafted in T34b from
+the answers at ADV-Q20 (the epic's decision 75) and at T34b (decision 77: D-26 revised), accepted
+at ADV-Q21 with the cut (decision 78; ADR-0016's with A-13's caveat restated) and applied in T35a
+(#377). The task that builds a section
+deletes it; the file goes when the epic closes. Facts and sources: survey
+`docs/rules/surveys/E08-hero-movement.md` (§ numbers are the survey's unless they name this note).
+
+Increment 4's note was moved by T34b into `E08-log.md` ("Increment 4's design note at its
+closure"): every section was built (T25 to T33); the code's citations of it were repointed (T35b,
+T39, T40).
+
+Written whole (decision 76): **part A**, the hero side (`h3-heroes` and the core content); **part
+B**, the map, the game, the batch and the cut.
+
+##### Part A — the hero side (`h3-heroes`, the core content)
+
+**Built** (the log): the core data in T35b (`shared/e08-t35b`: the six hero-effect kinds, the
+gap-fill's effects, the flags 30 to 32; flag 30 to be retired in T41's shared part, `ADV-QUIRK-16`
+withdrawn at ADV-Q22, decision 85), the derivations in T39 (`h3_heroes`' `movement.rs`:
+`land_points`, `movement_speed`, `movement` with its `Movement` of the Pathfinding, flying and
+water-walking levels, `scouting_radius`; HER-ADV-003 to -007 in `heroes.toml`; Q-0005's entry
+names HER-ADV-003), and the adventure part in T40 (ruleset part v10: `[params]`' `fly_cost` and
+`water_walk_cost`, the `ab` pack's `[[terrain_walker]]` for Nomads, both Cursed Grounds'
+`no_native`; the log). Part B reads them: since T40 `day_points`, `Pricing`'s Pathfinding and the
+reveals' radius (§5, §6); flying and water walking since T41 (§6, §7).
+
+##### Part B — the map, the game, the batch and the cut
+
+Rules of `h3-adventure` and `h3-game` around part A's: when a hero's properties are read, how
+its steps are priced and where it may pass and stop. ADR-0016 and ADR-0017 hold the
+decisions.
+
+###### 5. The day's points and the radius; the build and the day (ADV-MOV-001, -002, ADV-FOG-001, -003)
+
+**Built by T40** (the log): `day_points` from the store, `AdventureState::start_game` after the
+levels at load, `start_turn` with the store, the radius per move, `ADV-QUIRK-18` and the strict
+`AdventureState::start_day`, called in `advance_day` and for day 1. A step over a tile a flight
+passes reveals as any step (T41's passage).
+
+###### 6, 7. The step's price; the passage, the reach and `MoveHero` (ADV-MOV-005 to -007, -009, -010)
+
+**Built by T40 and T41** (the log): `Pricing` with the hero's Pathfinding, a terrain walker and
+Cursed Ground (T40), the fly and water-walk prices, the diagonal's check and the drop under
+`ADV-QUIRK-17` (T41, `Pricing::lifted`); `AdventureState::passage` (this note's table, now in its
+doc comment and ADR-0016 point 4; `ADV-QUIRK-15`), `MoveHero`'s passage with `NoStop` and a
+flight's guard and visit at its end, the reach's pass nodes (`Reach::search_layered`). The
+exhaustive search's equality without the diagonal exception was measured (the log), not added as
+a test, as for the walker in increment 1.
+
+###### 8. The env, replays, fixtures, properties and benchmarks
+
+**Built by T42** (the log): the plans' kits, flyers and water walkers beside water and Nomads, a
+move's end where its hero may stop, `the_plans_fly_and_walk_on_water`; the duel's and XL map's
+kits; the env's test of a flyer's and a water walker's masks; the replays re-recorded (six
+searched, one added); the reach workload's walkers and lifted heroes apart (`reach-xl-144`,
+`reach-lifted-xl-144`); the Tutorial's hero's day's points checked under `--with-original-data`.
+
+###### 9. Rule ids and quirks (the map side)
+
+**Built** (T40, T41): ADV-MOV-001 to -007 and ADV-FOG-001, -003 amended, ADV-MOV-009 and -010 new
+(`verified` by batch E5); the ledger holds `ADV-QUIRK-15`, `-17` and `-18` (`-16` withdrawn, flag
+30 retired in T41's shared part).
+
+###### 10. Versions
+
+Increment 4's last: core ruleset hash v46, pack format v45 (the battle lane's E23 T3-0), game
+state hash v11, adventure state hash v10, adventure ruleset part v9, map import v8, action
+encoding v4, adventure replay format v5. Increment 5: the pack format v46 and the core ruleset hash
+v47 (T35: the six kinds, the three flags), the adventure ruleset part v10 (the fly and water-walk
+prices, the terrain walker; Cursed Ground's `no_native` in the same bump if E5-6 is scored first,
+which the cut does; bumped by T40). The game and adventure state hashes, the map import, the action encoding and
+the replay format do not change (no new state; a flyer's destinations are tiles of the same
+mask): T41 and T42 bumped nothing. Each bumps once, in the task that first changes it.
+
+###### 11. Batch E5
+
+The plan is the survey's §9: rows E5-1 to E5-10, E5-8 dropped (A-14 withdrawn), E5-10's
+prediction corrected by T34b (§4.2: nothing new after the battle nor at day 2; the radius 6 after
+the first hero's step). *Agent's call (change freely):* **E5-11**, an Angel Wings hero facing a
+border gate whose key it lacks, clicks a free tile beyond it; the reading predicts a path over the
+gate (an entrance a flyer passes, §3.1 point 7), which no other source states (§13).
+
+- **Spec and scorer: built** (T36a, T36b; decisions 80, 81; the log): batches E5a to E5e
+  (`experiments/specs/E08-batch-5*.toml`, their templates in `experiments/results/`), E5-2 on two
+  maps (a hero type once per map; the level-6 heroes with eight skills, since the evaluation at
+  load takes Logistics whenever offered), E5-3 and E5-10 on a map banning all but Logistics and
+  Scouting (the forced offers), the gains in the day from the backpack instead of a pile;
+  `crates/h3-map/examples/e4_score.rs` scores E5-2's points (D-22) and E5-3's and E5-10's dialogs.
+  Since T39 the scorer calls `h3_heroes::land_points` under `faithful` and `strict-fixed` (the
+  same §1.3 vectors; its reports on batch E5 unchanged).
+- **The harness's reads** (`clients/capture/`, client-owned; built by this lane, `cross-lane`, as
+  T32b1): a tile's explored bit for a player (`explored:x,y`, the vision word against the player's
+  bit; E5-9, E5-10, E5-11), a hero's points at a turn start without a walk (check whether a read
+  step's `points` gives it), the next turn's start after `end_turn` (exists), the path's mark
+  (exists); for E5-3b and E5-10b an artifact moved from the backpack to a slot in the hero screen
+  (or the rows are skipped, as the survey's plan allows).
+- **The run: done** (T37b, decision 83; the log): the recipes
+  `clients/capture/batches/E08-batch-5*.toml`, every batch on the harness (decision 50) at its
+  first run, E5c and E5d twice; the results and the scorer's reports in `experiments/results/`.
+- **The scoring: done** (T38, decisions 84, 85; survey §13): every row the reading's but E5-4,
+  whose inland road steps cost 50; the re-read found the tile bit the flying price tests means "no
+  object blocks the tile", not the coast (§6 point 4). The same misreading had made A-14 and
+  `ADV-QUIRK-14` (A-11, the computer's terrain shares): ADV-Q22 (decision 85) withdraws
+  `ADV-QUIRK-16` and `-14`; ADV-MAP-002's count corrected by T38b (three golden replays' hashes moved).
+
+###### 12. Shared and `cross-lane` work; the building tasks; the exit criteria
+
+**Shared and `cross-lane`:** T35's `shared/` pull request (the three accepted drafts applied;
+`h3-content`'s kinds and flags, `h3-pack`'s syntax; part A §4) with the gap-fill and the packs
+(battle-owned) and both lanes' replays' headers as `cross-lane` in it, as T26b; batch E5's spec
+(`h3-experiment`, `docs/experiments/`; T36) and the harness's reads and recipes (`clients/capture/`;
+T37), `cross-lane`; the client lane's inbox if `clients/` needs the new kinds mapped. Everything
+else is the lane's own (`h3-heroes`, `h3-adventure`, `h3-game`, `h3-map`, `h3-pack-adventure`, the
+adventure packs, the env's and the CLI's adventure sub-paths, fixtures, replays, benchmarks).
+
+**The building tasks**, in rounds of one or two (task ids continue the epic's; each round's cut
+confirmed at its checkpoint). *Confirmed at ADV-Q21 (decision 78):* batch E5 runs **before** the build (rounds 1 and 2), so
+that its answers (D-23's Cursed Ground above all, and D-22, D-24) shape the rules once instead of
+reopening them, and nothing in the batch needs the engine's increment 5 (it tests the original;
+the scorer needs only increment 4's draws):
+
+| Round | Tasks | Content |
+|---|---|---|
+| 1 | **T35** + **T36** | T35: the shared groundwork (`shared/`, `cross-lane`): ADR-0013, -0016 and -0017 amended from the accepted drafts; the six kinds, the three flags, their syntax; the packs' effects through the gap-fill; pack format v46, core ruleset hash v47; both lanes' replay headers; `clients/` checked (part A §1, §4). T36: batch E5's specs, results templates and scorer (§11; `cross-lane`) |
+| 2 | **T37** + **T38** | T37: the harness's reads, the recipes and the run of batch E5 (`cross-lane`). T38: batch E5 scored, D-23 decided by E5-6; the survey's §8 and the rules' sources updated; an ADV-Q if a row contradicts the reading. *Added by decision 85:* **T38b** (done), ADV-MAP-002's count corrected (every tile no object blocks but rock, water included), `ADV-QUIRK-14` withdrawn, before round 3 |
+| 3 | **T39** + **T40** | T39 (done alone, decision 86): `h3-heroes`' derivations (part A; HER-ADV-003 to -007, §1.3's vectors; Q-0005's line). T40 (done whole, decision 87): the day's points, the radius and the walking price (§5, §6 points 1, 2, 7): ADV-MOV-001 to -004 amended, the build's order, `start_turn` and the reveals with the store, `ADV-QUIRK-18` and the strict start-of-day reveal, Nomads, Cursed Ground (confirmed); adventure ruleset part v10 |
+| 4 | **T41** (done whole, decision 88) | Flying and water walking (§6 points 3 to 6, §7): the price (the original's, decision 85; flag 30 retired and ADR-0016 point 4's words corrected in its shared part), the drop (`ADV-QUIRK-17`), the passage, the reach's two kinds of node, `MoveHero`'s passage, end, visits and guards; ADV-MOV-006, -007 amended, -009, -010; `ADV-QUIRK-15` and `-17`. The largest task: cut at its start if needed (the price and the drop; the reach and `MoveHero`) |
+| 5 | **T42** (done whole, decision 89) + **T43** | T42: the env, the plans and properties, the fixtures and replays, the benchmarks, `--with-original-data` (§8). T43: the audit against the exit criteria, increment 5 closed, increment 6 refined |
+
+*Not chosen* at ADV-Q21: the batch at the end as in increment 4 (T35, T39 to T42 first, then
+the batch and its scoring: the order of increments 3 and 4, at the risk of reopening a built rule
+and building Cursed Ground late).
+
+**Increment 5's exit criteria**:
+1. A hero's day's points follow its Logistics (a specialist's growth by Q-0005), its creature
+   specialty's speed and its worn Boots of Speed and Equestrian's Gloves (HER-ADV-003, -004,
+   ADV-MOV-001), set at the build after the levels at load and at each turn start of its owner
+   (ADV-MOV-002).
+2. A step's price follows the hero's Pathfinding, Nomads in its army, flying and water walking
+   (the original's flying price, decision 85), and Cursed Ground (E5-6); the drop to 0
+   follows `ADV-QUIRK-17`.
+3. A flying or water-walking hero passes as §7's table, never over an unexplored tile
+   (`ADV-QUIRK-15`), and ends a move only where it may stop; the reach reports those tiles with
+   paths `MoveHero` accepts; the env, the replays and the plans play flyers and water walkers.
+4. A hero's radius follows Scouting and its worn Speculum and Spyglass (HER-ADV-006); a grown
+   radius shows at the hero's next step, in `strict-fixed` also at the next day's start
+   (`ADV-QUIRK-18`).
+5. Every new rule has its id, source and tests; `ADV-QUIRK-15`, `-17` and `-18` are in the ledger (`-16` withdrawn, flag 30 retired) and
+   Q-0005's entry names HER-ADV-003; the gates pass (coverage, determinism with the re-recorded
+   replays, the benchmarks with the walker's search at its baseline and a flyer's baselined).
+6. Batch E5 run and scored; D-22 to D-26, A-13's original path and E5-11 `verified` or reopened.
+
+###### 13. Risks and open points
+
+- **The passage table rests on the code reading alone** where the wiki and VCMI are silent: a
+  flyer passing over a border gate without its key, over another player's hero, and a step up
+  off an object not visited from above landing only in flight. Fixed tests pin the reading
+  (`crates/h3-adventure/src/state/tests/flight.rs`, T41);
+  E5-11 checks the gate in SoD; the wiki's Border Gate and Border Guard pages are worth a look in
+  T41. E5-11 confirmed the gate (a flyer passes over its entrance without the key, no message).
+  A-14's gap (0x4E5CE0) was the tile bit misread as the coast (T38): the test passes on every free
+  land tile, so a flyer's start node is a walker's, as built.
+- **A-13's cost** (the user at ADV-Q20 and ADV-Q21: "probably fix, but gameplay impacts have to
+  be considered (wide obstacle ranges become impassable); perhaps deserves a compromise, like
+  allowing to route to the closest unexplored, but free hex; TBD later anyway"): a flight over a
+  wide obstacle range stops at its unexplored edge. Increment 5 builds the fix; the compromise is
+  designed later (the queue's inbox), with what a flight's end beyond hidden tiles may tell the
+  player (`docs/06-security.md`). Keep the reach's passage rules in one place, so that the
+  compromise changes the unexplored tile's row of §7's table and nothing else.
+- **The reach's speed:** the second layer only for flyers and water walkers; the walker's hot
+  loop must not gain a branch (`bench-check`'s +2 %). T41: `reach` +0.89 %, `play` +0.83 % with
+  the walker's own unlifted price (the log); a flyer's and a water walker's reach baselined by
+  T42 (`reach-lifted-xl-144`).
+- **Not in increment 5** (survey §6): the sea's points (Navigation, its specialists, the
+  Necklace of Ocean Guidance, the Sea Captain's Hat, the Admiral's Hat, Lighthouses, Favorable
+  Winds), Stables, the spells Fly, Water Walk and Dimension Door with their levels 0 to 2 (the
+  day's end of a spell, `new_day` 0x4C80CF), the computer players' bonus (E10), the cheat flag,
+  the new-day reveal after a Cover of Darkness (E09).

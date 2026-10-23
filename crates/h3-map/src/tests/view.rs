@@ -993,6 +993,8 @@ fn vary_changes_what_the_viewer_never_sees_only() {
         hero_types: 0,
         backpacks: vec![],
         skills: vec![],
+        kits: vec![],
+        nomads: None,
         blockers: vec![((4, 1, 0), 0), ((1, 5, 0), 1)],
         difficulty: 1,
     };
@@ -1085,6 +1087,8 @@ fn a_typed_object_in_sight_shows_its_type_never_its_drawn_contents() {
         hero_types: 0,
         backpacks: vec![],
         skills: vec![],
+        kits: vec![],
+        nomads: None,
         blockers: vec![((3, 1, 0), 3), ((1, 3, 0), 9)],
         difficulty: 1,
     };
@@ -1150,6 +1154,8 @@ fn another_players_level_up_shows_nothing_of_its_offers() {
         } else {
             vec![(13, 1)]
         })],
+        kits: vec![],
+        nomads: None,
         blockers: vec![((3, 2, 0), MONSTER_OBJECTS[3])],
         difficulty: 1,
     };

@@ -103,14 +103,15 @@ pub fn texts(
 /// The panel over the record's battle (E17 M3 T6b): its turns and its log's texts ([`texts`])
 /// through `logged` (the timeline's log, with the mouse's hints since T6c-2:
 /// `crate::pointer::shown`) in the original's words from `archives`' text tables (read only when
-/// the battle writes a line), measured in the log item's font of `layout`, drawn with the
-/// original's drawing bugs.
+/// the battle writes a line), measured in the log item's font of `layout` as the text drawer
+/// draws with `bugs` (the original's for the comparisons only: E17 M3 T9b, the reviewer).
 pub fn panels(
     record: &Record,
     logged: &[(u32, battle_log::Logged)],
     tables: &Tables,
     layout: &BattleLayout,
     (archives, exe): (&[(&str, LodArchive<'_>)], &[u8]),
+    bugs: Bugs,
 ) -> Result<Panels, String> {
     let writes = logged.iter().any(|(_, l)| {
         !matches!(
@@ -127,7 +128,7 @@ pub fn panels(
     } else {
         Catalogue::default()
     };
-    Writer::with(catalogue, layout, archives)?.panels(record, logged)
+    Writer::with(catalogue, layout, archives, bugs)?.panels(record, logged)
 }
 
 /// What words the log's lines and measures them, kept once the archives are gone (E17 M3
@@ -138,23 +139,26 @@ pub struct Writer {
     pub catalogue: Catalogue,
     font: Font,
     width: i32,
+    bugs: Bugs,
 }
 
 impl Writer {
     /// The original's words from `archives`' text tables and `exe`'s strings, the log item's
-    /// font of `layout`.
+    /// font of `layout`, the lines measured as the text drawer draws with `bugs`.
     pub fn new(
         tables: &Tables,
         layout: &BattleLayout,
         (archives, exe): (&[(&str, LodArchive<'_>)], &[u8]),
+        bugs: Bugs,
     ) -> Result<Self, String> {
-        Self::with(catalogue(tables, archives, exe)?, layout, archives)
+        Self::with(catalogue(tables, archives, exe)?, layout, archives, bugs)
     }
 
     fn with(
         catalogue: Catalogue,
         layout: &BattleLayout,
         archives: &[(&str, LodArchive<'_>)],
+        bugs: Bugs,
     ) -> Result<Self, String> {
         let item = layout.log().ok_or("the layout's panel has no log item")?;
         let font = h3_assets::fnt::decode_fnt(&lookup(archives, &item.font)?)
@@ -163,6 +167,7 @@ impl Writer {
             catalogue,
             font,
             width: item.size[0],
+            bugs,
         })
     }
 
@@ -181,7 +186,7 @@ impl Writer {
             &self.catalogue,
             &self.font,
             self.width,
-            Bugs::Original,
+            self.bugs,
         )
         .ok_or("the record holds no snapshot")?;
         // Each command's action starts at its `Action` (E17 M3 T7b-1: a hero's cast's).

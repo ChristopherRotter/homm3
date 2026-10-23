@@ -412,6 +412,11 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 Event::Key(Key::Right) => {}
                 Event::Key(Key::Home) => {
                     clock.seek(now, options.from);
+                    // The inputs and scrolls after it are gone (design §9.10; E17 M3 T9b, the
+                    // reviewer: they played again at their times).
+                    inputs.retain(|i| i.at() <= options.from);
+                    scrolls.retain(|&(t, _)| t <= options.from);
+                    mouse_changed = true;
                     shown = None;
                     next = Some(frame_at(&battle, changes.latest(&battle, options.from))?);
                     cue = battle.timeline.cue_from(options.from);
@@ -486,7 +491,8 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 }
                 Event::Click { down: false, .. } => {
                     if let Some(h) = held.take_if(|h| h.key.is_none()) {
-                        if let Some(by) = scroll_by(h.id).filter(|_| h.over) {
+                        // A disabled button takes none (0x4562DD; E17 M3 T9b, the reviewer).
+                        if let Some(by) = scroll_by(h.id).filter(|_| h.over && battle.scrolls(at)) {
                             scrolls.push((at, by));
                         }
                         mouse_changed = true;
@@ -613,8 +619,8 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             report
                 .late_us
                 .push(clock.late(win.ticks_ns(), due.t) / 1000);
-            if let Some(back) = back {
-                compare(&back, &due, &mut report);
+            if let Some((back, presented)) = back {
+                compare(&back, &due, &presented, &mut report);
             }
             next = next_frame(&battle, &mut changes, &due)?;
             shown = Some(due);
@@ -725,14 +731,15 @@ impl Cursors {
     }
 }
 
-/// Presents `frame`, with the drawn cursor at `pointer` if any; reads it back first if `read`.
+/// Presents `frame`, with the drawn cursor at `pointer` if any; reads it back first if `read`,
+/// with the pixels presented (the drawn cursor's among them: E17 M3 T9b, the reviewer).
 fn show(
     win: &mut Window,
     frame: &Frame,
     pointer: Option<(i32, i32)>,
     cursor: &Cursor,
     read: bool,
-) -> Result<Option<ReadBack>, String> {
+) -> Result<Option<(ReadBack, Vec<u32>)>, String> {
     let with_cursor;
     let pixels = match pointer {
         Some((x, y)) => {
@@ -744,14 +751,16 @@ fn show(
         None => &frame.xrgb,
     };
     if read {
-        win.present_read(pixels).map(Some)
+        win.present_read(pixels)
+            .map(|back| Some((back, pixels.clone())))
     } else {
         win.present(pixels).map(|()| None)
     }
 }
 
-/// Compares what the window read back with the frame at its scale, the black around it included.
-fn compare(back: &ReadBack, frame: &Frame, report: &mut Report) {
+/// Compares what the window read back with the pixels `presented` of `frame` at its scale, the
+/// black around them included.
+fn compare(back: &ReadBack, frame: &Frame, presented: &[u32], report: &mut Report) {
     report.read += 1;
     report.geometry = Some(format!(
         "output {} × {}, the frame at ({}, {}), scale {}",
@@ -766,7 +775,7 @@ fn compare(back: &ReadBack, frame: &Frame, report: &mut Report) {
     for y in 0..back.height {
         for x in 0..back.width {
             let got = back.pixels[(y * back.width + x) as usize] & 0x00FF_FFFF;
-            let want = inside(x, y).map_or(0, |i| frame.xrgb[i]);
+            let want = inside(x, y).map_or(0, |i| presented[i]);
             if got != want {
                 report.difference.get_or_insert_with(|| {
                     format!(
