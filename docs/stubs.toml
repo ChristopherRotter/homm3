@@ -2,7 +2,7 @@
 # Every todo!/unimplemented!/#[ignore]/TODO in logic code must have an entry here
 # and a matching `// stub: <id>` marker in the code. `cargo xtask check-stubs` enforces both directions.
 # Any lane may add entries. New ids carry the lane code from lanes.toml and count per lane:
-# `BAT-STUB-1`, `ADV-STUB-1`, `SRV-STUB-1`, `CLT-STUB-1`; ids from before the lanes look like `STUB-0001`.
+# `BAT-STUB-1`, `ADV-STUB-1`, `SRV-STUB-1`, `CLT-STUB-1`, `MCL-STUB-1`; ids from before the lanes look like `STUB-0001`.
 # Add an entry under its lane's block below, so that concurrent lanes do not edit the same lines.
 #
 # [[stub]]
@@ -78,3 +78,5 @@ epic   = "E10"
 # --- server (SRV-STUB-<n>) ---
 
 # --- client (CLT-STUB-<n>) ---
+
+# --- map-client (MCL-STUB-<n>) ---

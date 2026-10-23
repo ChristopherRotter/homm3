@@ -1,4 +1,12 @@
-# clients/ — playable clients (client lane)
+# clients/ — playable clients (client and map-client lanes)
+
+**Two lanes** (since 2026-10-23, `lanes.toml`): the **client** lane builds the battle client (E17,
+`h3-view`, the battle's tables, layouts, scenarios and situations), the **map-client** lane the
+adventure map client (E24, its crates `crates/h3-map…` and its folder `map/`). The foundation,
+`h3-assets`, `h3-render`, `h3-sdl`, this workspace's `Cargo.toml`, `deny.toml`, `.gitignore`,
+this file, `scripts/` and the string catalogue `text/`, and the capture harness `capture/` are
+common: either lane changes them in its own pull request, an additive change freely, a change in
+behaviour noted in the other lane's inbox (`docs/08-work-process.md`, "Lanes").
 
 Everything with graphics, sound, input or a window lives here, outside the engine core. The engine
 core (`crates/`) stays headless, deterministic and free of assets; clients use it through its
@@ -283,4 +291,4 @@ or `clients/out/` and are never committed (ADR-0009).
 - A **headless render-to-PNG mode** lets agents check what a screen looks like without a window.
   Screenshots stay local: they go to a gitignored directory (`clients/out/`) and are never
   committed.
-- The client lane needs the user's computer online for the real assets (`AGENTS.md`, "Lanes").
+- The client lanes need the user's computer online for the real assets (`AGENTS.md`, "Lanes").

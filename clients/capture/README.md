@@ -11,6 +11,14 @@ Two rules: the game runs from a copy under `original-data/wine/` (never the inst
 it writes saves and settings into its folder), and captures and renders of the original never
 enter git (they stay in the sandbox or `clients/out/`).
 
+**Who changes it** (the user, 2026-10-23, at the client lane's split): the harness is a common
+path (`lanes.toml`). Any lane changes it in its own pull request (the client and map-client
+lanes, the adventure lane's recipes and reads) without the `cross-lane` label; a change that can
+alter the original's side runs the harness's own check (`h3adv.py batch
+capture/batches/harness-check.toml`, "Common uses") and, for the battle's captures, point 4
+below; a change in behaviour goes into the inboxes of the lanes that use it (client, map-client,
+adventure).
+
 ## The pieces
 
 | File | What it does |

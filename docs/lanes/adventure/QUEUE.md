@@ -20,6 +20,14 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1
 
 ## Inbox
 
+- 2026-10-23 (the client lane, E17 M3 T9c, `shared/map-client-lane`; for information): **the
+  client lane split** (the user, CLT-Q18). The capture harness `clients/capture/` is a common
+  path now: your recipes, reads and steps there need no `cross-lane` label any more (your
+  HANDOFF's "Experiments" line still says `cross-lane`); a change that can alter the original's
+  side runs the harness check, and a change in behaviour goes into the client and map-client
+  lanes' inboxes (`clients/capture/README.md`, "Who changes it"). A new lane, **map-client**
+  (E24), builds the adventure map client: what it needs of your crates (`h3-map`'s reader and
+  writer, later the game's state for a viewer) comes as entries in this inbox.
 - 2026-10-23 (T42, measured; for a performance task): **a flyer's or water walker's reach costs
   about 1.9 times a walker's query** on the XL map (`reach-lifted-xl-144`: 279 k Ir a query
   against `reach-xl-144`'s 148 k on the same games), and random play on the duel with one of each

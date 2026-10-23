@@ -620,13 +620,46 @@ paths = ["crates/h3-adventure/", "crates/h3-battle/src/seam/"]
     #[test]
     fn the_repository_lanes_file_is_valid() {
         let c = Config::load(&workspace_root()).unwrap();
-        for lane in ["battle", "adventure", "ai", "server", "client"] {
+        for lane in [
+            "battle",
+            "adventure",
+            "ai",
+            "server",
+            "client",
+            "map-client",
+        ] {
             assert!(c.lane(lane).is_some(), "{lane}");
             assert_eq!(
                 c.owner(&format!("docs/lanes/{lane}/HANDOFF.md")),
                 Owner::Lane(lane.to_owned())
             );
+            assert_eq!(
+                c.owner(&format!("docs/lanes/{lane}/QUEUE.md")),
+                Owner::Common
+            );
         }
+        // The client lane's split (2026-10-23): the foundation and the harness are common, the
+        // battle viewer the client lane's, the map lane's crates and folder its own.
+        for common in [
+            "clients/crates/h3-render/src/lib.rs",
+            "clients/capture/h3drive.py",
+            "clients/text/keys.toml",
+            "clients/Cargo.toml",
+        ] {
+            assert_eq!(c.owner(common), Owner::Common, "{common}");
+        }
+        assert_eq!(
+            c.owner("clients/crates/h3-view/src/lib.rs"),
+            Owner::Lane("client".to_owned())
+        );
+        assert_eq!(
+            c.owner("clients/crates/h3-map-view/src/lib.rs"),
+            Owner::Lane("map-client".to_owned())
+        );
+        assert_eq!(
+            c.owner("clients/map/layouts/adventure.toml"),
+            Owner::Lane("map-client".to_owned())
+        );
         assert_eq!(c.owner("lanes.toml"), Owner::Shared);
         assert_eq!(c.owner("Cargo.lock"), Owner::Common);
         assert_eq!(c.owner("crates/h3-kernel/src/lib.rs"), Owner::Shared);
@@ -644,7 +677,7 @@ paths = ["crates/h3-adventure/", "crates/h3-battle/src/seam/"]
             Owner::Lane("battle".to_owned())
         );
         assert_eq!(
-            c.owner("clients/README.md"),
+            c.owner("clients/situations/set.toml"),
             Owner::Lane("client".to_owned())
         );
         // Adventure-owned sub-paths of battle's crates and folders (longest match, E08 T2).

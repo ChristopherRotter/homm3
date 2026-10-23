@@ -2164,6 +2164,34 @@ reviewers in parallel in this session, then the milestone finalized with their r
   slips fixed, the original's for the comparisons only (Q13 too, against the recommendation), Q15
   the spectator's record with the line listed. Their fixes: QUEUE, T9d.
 
+### M3 T9c — The next milestone: the lane split (2026-10-23)
+
+On `shared/map-client-lane` (`cross-lane`, as the AI lane's opening in #245), the user present.
+The agent offered the four candidates with their state: sieges (the engine done in E04c, the
+harness already sets sieges up and plays them, lane-internal; recommended), live play (needs
+R2-7, R2-8, R3-1 and new dependencies), HD, and the adventure map (no adventure messages in
+`h3-protocol`, the engine in E08 increment 2; stills of an `.h3m` possible now).
+
+- **The user: the client lane splits** ("rendering basics are done and hopefully stable
+  enough"): one lane builds sieges, then live play; the other the adventure map in parallel.
+  **T9d stays in M3** (M3 is marked done with it). The agent's proposal, accepted: this lane
+  keeps its name, ids and history as the battle client; the new lane is `map-client` (code
+  `MCL`, branches `map-client/<task>`, epic E24, refined in its first task, E24 T0, with the
+  user). CLT-Q18 records it.
+- **Ownership** (measured before asking: since 2026-10-16 `h3-assets` 0 commits, `h3-render` 2,
+  `h3-sdl` 1, `scripts/` 0, the harness 47, `h3-view` 65): the foundation (`h3-assets`,
+  `h3-render`, `h3-sdl`, the workspace's `Cargo.toml`, `deny.toml`, `.gitignore`, `README.md`,
+  `scripts/`) and the capture harness common (the user's choices over a `shared/` pull request
+  each time or this lane owning them); the agent added the string catalogue `clients/text/` to
+  the common paths (a registry both lanes add keys to). The map lane owns `clients/crates/h3-map…`
+  and `clients/map/`; what it needs of `h3-view` moves into a common crate later.
+- **The docs:** `lanes.toml` (and `check-lane`'s repository test), `scripts/sandbox-setup.sh
+  --lane map-client`, `AGENTS.md`, `08-work-process.md` ("Lanes"), the global HANDOFF, BACKLOG's
+  E24 row, the registries' blocks; the new lane's HANDOFF (the autonomy contract and the asset
+  notes copied) and QUEUE (E24 T0; research item 9, the hot-seat level-up and the graphics
+  options moved to its inbox); this lane's QUEUE (M4 T0 after T9d; the adventure lane's
+  information-only harness entries moved to `NOTES.md`).
+
 ## Accepted review lists (M1, M2, M3)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its
