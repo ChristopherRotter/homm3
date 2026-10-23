@@ -261,8 +261,9 @@ found after that decision) belong to the neutral side's map too and are read (§
         stack's first turn asks its entry at the engine's targets for it
         (`computer::creature_cast_targets_of`), a Faerie Dragon's spell its last activation's
         (`h3-battle` keeps each stack's, battle state hash v52, the golden and the adventure
-        lane's replays rehashed); slip 30 widened to a cast entry's spell context; BAT-STUB-14
-        retired; `POLICY_VERSION` 15; the log.
+        lane's replays rehashed); slip 30 widened to a cast entry's spell context; slip 32 (the
+        Archangel's test at the active record's hit points, found by the blind check) built;
+        BAT-STUB-14 retired; `POLICY_VERSION` 15; the log.
 - [ ] **T6 The hero's other choices** — retreat and surrender, the tactics phase, the Catapult's
   aim, the First Aid Tent's patient (BAT-Q51); BAT-Q33's rule.
 - [ ] **T7 The closure** — the batch rows' leftovers, the benchmarks, the docs.

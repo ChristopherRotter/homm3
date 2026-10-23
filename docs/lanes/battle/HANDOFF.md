@@ -56,11 +56,11 @@ Area traps live where they are used: experiments in `docs/experiments/README.md`
 
 ### 2026-10-23 (104th) — E23 T5b2b, a caster's cast entry in Teleport's turns
 
-The user: whole, `cross-lane` (each stack's last draw kept, v52; replays rehashed). §7.59; slip 30 widened. On the rebuilt cost harness `master`'s slowest hero decision is 5.1 to 5.3 ms.
+The user: whole, `cross-lane` (each stack's last draw kept, v52; replays rehashed). §7.59; slip 30 widened, slip 32 (blind check). On the rebuilt cost harness `master`'s slowest hero decision is 5.1 ms.
 
 ### 2026-10-22 (103rd) — E23 T5b2a, the hero's Teleport
 
-The user cut T5b2 in two; slips 30, 31; a blind check. The search keeps its stops inline (a call cost `computer-decisions` 2.6 %).
+The user cut T5b2 in two; slips 30, 31. The search keeps its stops inline (a call cost `computer-decisions` 2.6 %).
 
 ### 2026-10-22 (102nd) — E23 T5b1, the hero's raises, Sacrifice and Earthquake
 

@@ -5692,11 +5692,18 @@ and counts the raise with `this` = R (0x447330); its records are the battle cont
 0x447A80 takes for the target (the Master Genie) or R's +0x4E0 (the Faerie Dragon); R's creature
 then picks 0x43C330 or 0x43C4A0, which read nothing of the manager but the battlefield (+0x53C0).
 0x420F00 reads R's +0x4E0 (0x420F63) and R's count (+0x4C: the power 5 × count). The spell
-context 0x4369C0 is the side's. **Nothing reads the active record** (+0x132B8, +0x132BC,
-+0x132C8): in the computer's code only "now" (0x436C60, 0x43A670) and the hero's cases (0x422DFA,
-0x43AB78, 0x43AE83, 0x43B0F8) do, and no creature cast reads "now". In Teleport's turns a stack that
-is not the active one so asks its own cast entry as on its own turn, from its record as it
-stands. The maps of those turns free the stack's own hexes, as the port's: the computer's
+context 0x4369C0 is the side's. Of the active record (+0x132B8, +0x132BC, +0x132C8) the
+computer's own code reads only "now" (0x436C60, 0x43A670) and the hero's cases (0x422DFA, 0x43AB78,
+0x43AE83, 0x43B0F8), and no creature cast reads "now"; but the Archangel's test does, through the
+rules (found by T5b2b's blind check): 0x421000 asks 0x5A3CC0 with the caster kind 1 (0x421150,
+0x421179), which 0x5A3CC0 passes on to 0x5A8090 (0x5A3D39 to 0x5A3D47), whose raise case with that
+argument takes its hit points from the active record (0x5A846D to 0x5A84B5): its count × 100 when
+it is an Archangel (13), else × 50, against the target's hit points per creature (0x5A850C). On
+the Archangel's own turn that is its own budget; in Teleport's turns of another Archangel the
+active stack's (**survey slip 32**). The Pit Lord's corpse test 0x5A3E40 reads no such thing, and
+0x447A80 (the Master Genie's usefulness) takes the acting side +0x132C0, Teleport's side too. In
+Teleport's turns a stack that is not the active one so asks its own cast entry as on its own turn,
+from its record as it stands, but for that test. The maps of those turns free the stack's own hexes, as the port's: the computer's
 searches call 0x446C40 with its second argument 0 (0x4B3753, 0x4B305B), where a hex's stack fits
 only as the mover itself (0x446CC6); the active record is compared only with that argument set
 (0x446D7F onwards: a two-hex stack's shifted position, for Teleport's handler, a clone's and an
@@ -5715,7 +5722,9 @@ before a stack's first: its battles start afresh (as BAT-QUIRK-14's counters do 
 battle's spell is a gap, not modelled).
 
 **After the entry** (the stops of survey slip 30). In 0x421680 after the entry (0x421CE4) only the
-walk 0x41F580 searches (0x41F5CA, for R: R's own stops); the guard 0x420760 and the step to safety
+walk 0x41F580 searches (0x41F5CA, for R: R's own stops), and only for a stack that is not bound
+(+0x2B8) and has speed (0x41F58D to 0x41F5A7: a bound R, which Teleport may move, searches
+nothing); the guard 0x420760 and the step to safety
 0x4208F0 search only through it (0x4208D8, 0x420A5B), 0x4205D0 and 0x4B3F20 read the cells. 0x421F80
 asks the entry again after a choice of nothing (0x421FF8), which may build a second context. So
 the last search of the first call after R's map is the last context an entry built (its last

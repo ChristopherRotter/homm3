@@ -1295,3 +1295,16 @@ The record of E23's tasks: what each read, built and decided, beyond the one lin
   T5b2a's (`master`'s slowest was 3.5 to 4.3 ms there): the hero's 5 ms budget is at its edge on
   `master` already, T5b2b adds nothing measurable. Without Teleport the branch plays `master`'s
   battles command for command (2 191 decisions).
+- **The blind check** (a fresh agent with the tool, the port and the addresses, no reading in the
+  brief): agrees on what the entry reads of its caster, on +0x4E0 (its writers, no
+  initialisation, the earlier battle's spell not modelled) and on the searches after the entry.
+  It found **slip 32** (new, built under BAT-QUIRK-25): the Archangel's test (0x421000 → 0x5A3CC0
+  with caster kind 1 → 0x5A8090's raise case, 0x5A846D to 0x5A84B5) takes the hit points from the
+  active record, its count × 100 for an Archangel, else × 50; in Teleport's turns of another
+  Archangel the active stack's (`computer::raise_test_takes`; strict-fixed: the raiser's own), and
+  that the walk 0x41F580 searches only for a stack not bound with speed (0x41F58D to 0x41F5A7),
+  where the port had cleared a cast entry's stops for a bound one too (fixed; Teleport may move a
+  bound stack). Its other note, 0x447A80 taking the acting side (+0x132C0), is Teleport's side:
+  nothing to build. The test ruleset gained the angel, a stack raiser; `h3-battle`'s
+  `the_computer_tests_a_raise_with_another_stacks_hit_points`, `h3-battle-ai`'s
+  `a_stack_raiser_s_test_takes_the_active_stack_s_hit_points_with_the_slip`.
