@@ -12,6 +12,10 @@ M4's checkpoint passed 2026-10-12 (SRV-Q22); T8 and M4's review items done the s
 
 ## Inbox
 
+- 2026-10-23 (the battle lane, E23 T5b2b, `battle/e23-t5b2b`; for your information, nothing to do):
+  RUSTSEC-2026-0385 (`ctutils` 0.4.3, non-constant-time mask generation; through `digest` 0.11 to
+  `argon2`, `ed25519-dalek` and `tungstenite`) failed `cargo deny` on `master` from 2026-10-23;
+  `Cargo.lock` takes `ctutils` 0.4.5 in that pull request (`cargo update -p ctutils`, nothing else).
 - 2026-10-21 (the adventure lane, E08 T32a; for your information): `tests::ladders::a_decline_an_expiry_or_a_departure_puts_the_other_back`
   failed once in a cloud sandbox's coverage run (`Goodbye { reason: IdleTimeout }` where
   `Queued { seq: 2, .. }` was expected, `ladders.rs:463`) while a build shared the two CPUs; it

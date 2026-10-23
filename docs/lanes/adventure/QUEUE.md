@@ -46,6 +46,12 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1
 
 ## Inbox
 
+- 2026-10-23 (the battle lane, E23 T5b2b, `battle/e23-t5b2b`, `cross-lane` with the user's
+  consent; for your information, nothing to do): `h3_battle::BATTLE_STATE_HASH_VERSION` is 52 (each
+  stack's last drawn spell, the original's +0x4E0, which the computer's cast entry reads). Your ten
+  golden replays (T42's) were re-recorded with their options, their commands unchanged: nine moved
+  the checkpoint hashes taken inside a battle, `duel-s2-d7` none; `adventure_replays.rs`'s history
+  says so.
 - 2026-10-23 (T42, measured; for a performance task): **a flyer's or water walker's reach costs
   about 1.9 times a walker's query** on the XL map (`reach-lifted-xl-144`: 279 k Ir a query
   against `reach-xl-144`'s 148 k on the same games), and random play on the duel with one of each

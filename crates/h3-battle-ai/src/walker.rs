@@ -115,9 +115,15 @@ pub(crate) struct Walker<'a> {
     /// besieger's walk and the fallbacks read it ([`Walker::cells`]).
     pub(crate) held: OnceCell<Map>,
     /// Whether the turn asks the creature cast entry (0x421280): not in a prediction (its
-    /// context's +9) nor, until E23 T5b2b, in Teleport's turn of a stack that is not the active
-    /// one ([`Walker::teleport_turns`], BAT-STUB-14).
+    /// context's +9).
     asks_entry: bool,
+    /// Whether the turn records the stops of the pathfinder's last search after its map
+    /// ([`Walker::after_map`]): Teleport's first turn ([`Walker::teleport_turns`]).
+    tracks: bool,
+    /// With BAT-QUIRK-25, in Teleport's first turn, the stops of the last search after the
+    /// walker's map when a creature cast entry's spell context made it (survey slip 30,
+    /// [`Walker::searched`]); none when its own map's or its walk's search was the last.
+    after_map: Cell<Option<HexSet>>,
     /// The choice's flag 1 (0x421680 from the hero's Teleport, 0x43AA60; BAT-AI-020): the map is
     /// the destination map and the choice ends in a move and attack or Defend
     /// ([`Walker::teleported`]).
@@ -201,6 +207,8 @@ impl<'a> Walker<'a> {
             records: OnceCell::new(),
             held: OnceCell::new(),
             asks_entry: planned.is_none(),
+            tracks: false,
+            after_map: Cell::new(None),
             teleport: false,
         }
     }
@@ -249,10 +257,11 @@ impl<'a> Walker<'a> {
     }
 
     /// Teleport's two turns of the walker `id` of `side` (0x43AA60's calls of 0x421F80, casts not
-    /// skipped; BAT-AI-020), their draws from `rng`: the real turn's value ([`Walker::turn`]), then
-    /// the command and value of its turn on the destination map of `destinations`
-    /// ([`Walker::teleported`]). The scores, the odds and the threat records are the first
-    /// turn's: they read nothing the map changes (ADR-0027 point 11).
+    /// skipped; BAT-AI-020), their draws from `rng`: the real turn's value ([`Walker::turn`]: the
+    /// creature cast entry asked as on the stack's own turn, the active stack or not, from its
+    /// record, §7.59), then the command and value of its turn on the destination map of
+    /// `destinations` ([`Walker::teleported`]). The scores, the odds and the threat records are the
+    /// first turn's: they read nothing the map changes (ADR-0027 point 11).
     // rule: BAT-AI-020
     pub(crate) fn teleport_turns(
         state: &'a BattleState,
@@ -261,14 +270,33 @@ impl<'a> Walker<'a> {
         destinations: HexSet,
         rng: &mut Rng,
     ) -> (i32, (Command, i32)) {
-        let mut real = Self::new(state, ruleset, (id, side));
-        // stub: BAT-STUB-14
-        // The creature cast entry of a stack other than the active one reads its own record (the
-        // Faerie Dragon's spell drawn at its last turn) where the engine lists only the active
-        // stack's cast targets: E23 T5b2b. Until then its turns ask no cast entry.
-        real.asks_entry = state.active() == Some(id);
+        let real = Self::tracking(state, ruleset, (id, side));
         let (_, before) = real.turn(rng);
         (before, real.teleported(destinations).turn(rng))
+    }
+
+    /// The walker `id` of `side` for Teleport's first turn ([`Walker::teleport_turns`]): it
+    /// records the stops of the last search after its map ([`Walker::after_map`]).
+    pub(crate) fn tracking(
+        state: &'a BattleState,
+        ruleset: &'a BattleRuleset,
+        (id, side): (StackId, BattleSide),
+    ) -> Self {
+        Self {
+            tracks: true,
+            ..Self::new(state, ruleset, (id, side))
+        }
+    }
+
+    /// Whether the turn records the last search's stops after its map (Teleport's first turn).
+    pub(crate) const fn tracks_search(&self) -> bool {
+        self.tracks
+    }
+
+    /// A creature cast entry's spell context left a search with `stops` in the computer's
+    /// pathfinder after the walker's map (survey slip 30; [`Walker::after_map`]).
+    pub(crate) fn searched(&self, stops: HexSet) {
+        self.after_map.set(Some(stops));
     }
 
     /// The walker on the destination map of `destinations` with the choice's flag 1 (0x421680
@@ -279,7 +307,7 @@ impl<'a> Walker<'a> {
     pub(crate) fn teleported(self, destinations: HexSet) -> Self {
         let (state, ruleset) = (self.state, self.ruleset);
         let stops = if ruleset.quirks().is_enabled(ORIGINAL_AI_SLIPS) {
-            computer::search_stops(state, ruleset, self.last_search())
+            self.last_stops()
         } else {
             HexSet::new()
         };
@@ -293,12 +321,13 @@ impl<'a> Walker<'a> {
         }
     }
 
-    /// The stack of the pathfinder's last search before the destination map (survey slip 30):
-    /// 0x420260's last enemy, when the hex scores search the enemies' reach
-    /// ([`scores::last_reached`]); else the last of the side's threat records' searches
-    /// (0x422B20 with flag 1, [`gain::last_recorded`]); else the first turn's last, taken as the
-    /// walker's own map (a cast entry's spell context in that turn: E23 T5b2b, BAT-STUB-14).
-    fn last_search(&self) -> StackId {
+    /// The stops of the pathfinder's last search before the destination map (survey slip 30;
+    /// [`computer::search_stops`]): of 0x420260's last enemy, when the hex scores search the
+    /// enemies' reach ([`scores::last_reached`]); else of the last of the side's threat records'
+    /// searches (0x422B20 with flag 1, [`gain::last_recorded`]); else the first turn's last after
+    /// its map: a creature cast entry's spell context's, unless a walk searched after it
+    /// ([`Walker::after_map`], §7.59); else the walker's own.
+    fn last_stops(&self) -> HexSet {
         let (state, ruleset) = (self.state, self.ruleset);
         let reached = if self.normal {
             scores::last_reached(state, ruleset, self.side)
@@ -307,7 +336,9 @@ impl<'a> Walker<'a> {
         };
         reached
             .or_else(|| gain::last_recorded(state, ruleset, &self.ctx, (self.id, self.side)))
-            .unwrap_or(self.id)
+            .map(|id| computer::search_stops(state, ruleset, id))
+            .or_else(|| self.after_map.get())
+            .unwrap_or_else(|| computer::search_stops(state, ruleset, self.id))
     }
 
     /// Whether the walker's turn is a prediction (its context's +9).
@@ -831,6 +862,12 @@ impl<'a> Walker<'a> {
         }
         let me = self.me;
         let speed = usize::from(me.speed_now());
+        // The walk's search is the pathfinder's last now (survey slip 30), its stops the walker's
+        // own; a bound walker or one without speed searches nothing (0x41F58D to 0x41F5A7) and
+        // keeps a cast entry's.
+        let searches = speed > 0 && !computer::bound(self.state, self.id);
+        self.after_map
+            .set(self.after_map.get().filter(|_| !searches));
         let path = computer::path(self.state, self.ruleset, (self.id, self.side), to);
         let steps = path.steps();
         let n = steps.len();
