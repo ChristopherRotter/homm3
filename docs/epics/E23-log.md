@@ -1422,3 +1422,71 @@ literals kept this branch's), with the AI lane's System seat (#421, `h3_battle_a
 `Policy::System`): the full verify with the original data green on 8c37c73 (`verify-once: verified
 (sandbox) code ef5e62438e5d4a95d310840954860cb95b984300`), recorded in #424.
 
+
+## T7 — the batches 4a, 4b and 4c (2026-10-23)
+
+**Decisions (the user, at the start).** T7 is large (slip 33, the survey's rows, the rules they
+decide, the closure); the agent proposed five parts. The user: "design and run batches, no other
+seams yet": this session designs and plays the survey's rows (§3) and S-25; the rest of T7 is
+cut with the user later.
+
+**Tools.** `experiments/agent/ai.py` plays a battle on the stepped clock against the original's
+computer (`experiments/README.md`, "The original's computer played against by an agent"): one
+map per encounter, Red by the recipe's plan (else Defend), the computer's side on its own;
+`timeline.jsonl` holds every change (the battle manager's action +0x3C to +0x48, the turn
+flags, each stack's hex, count, flags, spells, a Faerie Dragon's drawn spell, the walls), the
+opening the setup's human bytes, the players' gold and the blocked hexes; forced rolls (S-25),
+seeds (the clock idled before Red's first command: the fidgets draw from the rules' generator,
+seeded per battle from its tile at 0x463A08), the aimed Catapult, auto combat. `ai_turns.py`
+lists the actions. h3-experiment: `owner = "tan"` (a computer-only player: hot seat with Red and
+Blue leaves it to the computer) and `[[map.town]]` (Tan's Tavern town for the retreat test).
+Batch 4a holds the neutral rows that fit one map (eight heroes a player), 4c the rest, 4b a
+computer player's hero. The port replayed in the engine (a throwaway test of the same armies,
+no obstacles, or a siege, which has none) checked set-ups before they were played: it showed
+W1's first design sallying after a breach, C4's first design without a walker's value (no skip
+draw), and found C4's Easy set-up and the floor's contrast.
+
+**Rows** (the results files hold the numbers):
+- *S-25 (BAT-Q33)*: with every bad-morale draw forced to fall, 28 of 105 neutral picks (LO) and
+  14 of 60 picks of Tan's stacks (LC) were let off, a human side's none (27 of 27): the second
+  draw for a side whose +0x54A4 is 0, as read (the setup's bytes [1, 0]); the rule waits.
+- *W1*: a Citadel's garrison walker holding its walls defends on Normal, waits on Hard (the
+  waited bit at Red's slower Dwarves' turn, four rounds each). The first design's 10 Peasants
+  died to the keep's first arrow; at the frozen clock the computer's Defend passes between two
+  reads, so a slower Red stack's turn is where its flags show.
+- *S4 (slip 2)*: behind a destroyed mid-upper wall the garrison holds (three runs, to round 9),
+  behind a destroyed mid-lower wall it sallies at once (and in W1's first runs); Expert
+  Ballistics' second shot broke a second wall in the first runs (Basic since).
+- *C1*: no elemental's cast in five rounds. *C2*: a cast at every dragon turn (8 of 8), the
+  area spells at the free hex between two stacks (4 of 4), the bolts at the first stack of the
+  best kill value. *C3*: ten dead Peasants left for an attack (rounds 2 to 4), two of three dead
+  Champions raised (round 2).
+- *C4*: on Normal with Red's Archangels alone, a cast at all 6 turns at the 10-Champion stacks in
+  the order records 5, 4, 3, as the port (the walker keeps no candidate: value 0, no draw); on
+  Easy (a computer's walker keeps its negative candidate) 3 turns of 21 without a cast at one
+  field across seeds, the casts at the 10-Champion stacks, the later record first. The floor
+  (C4f3, C4f2 in batch 4c): the lone Champion blessed when the casters are weaker (1344 against
+  1800), never when stronger (2016).
+- *W3*: a Gold Dragon between two equal stacks took each across ten seeds (6 and 4).
+- *H1*: the computer's Archers (Expert Tactics, the only stack) went in the tactics phase from
+  hex 100 to hex 15, the port to hex 9. The original's neighbour table (battle manager +0x13468,
+  read from memory in a running battle) has no neighbour in the side columns 0 and 16 for hexes
+  of columns 1 to 15: hex 15 has two (32, 14), hex 9 four, so the first hex with the fewest is
+  15. The reading's rule holds; the port's `hexes::neighbor` (the engine's field geometry) is
+  wrong at eight call sites: the battle queue's inbox.
+- *H3*: Bless at the Archers' own activation, none at the Wolf Riders' before it. *H4*: none of
+  six never-cast spells in four rounds.
+- *R1*: Hard, Tan's hero with 2000 experience and a Tavern town, 10 000 gold: a retreat at its
+  first activation at 3312 / 23220 = 0.143 (R1a); at 0.172 a fight (R1b), and at its second
+  stack's activation, the first having acted (× 1.0 instead of 1.2), 3726 / 23634 = 0.158 below
+  0.16: a retreat in the same round, the reading's steps 7 to 9 exactly.
+- *SC (S1, S2)*, Red in auto combat at a Castle's Fort with 100 Archers inside: Red's Catapult
+  breached the upper wall before the Cyclops' first turn, so the locked-out wall shot and the
+  walk to the row's wall were not reached; afterwards the Cyclops shot the Archers and the
+  Pikemen went through the breach, as read.
+- *TP, TP2, TP3 (BAT-Q51)*: in TP only the Swordsmen were ever hurt (the shooters' target): the
+  tent healed them at every turn, both rules alike. TP2 hurt both with Red's own spell (Armageddon
+  destroyed the tent with its first cast; Death Ripple spares it): one turn, the most hurt healed,
+  then the golems destroyed the tent. TP3 outside W1's held Citadel: the most hurt healed at 6 of 6
+  turns (7 of 7 with TP2; 0.8 % under a uniform draw). The idle tent's Defend left no trace.
+- Not staged: W2, W4, W5, P1, C5, S3, H2 (survey §3), BAT-Q58's Harpy.

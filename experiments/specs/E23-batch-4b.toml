@@ -1,0 +1,318 @@
+# Experiment batch 4b (E23 T7): the original's computer playing a side with a hero (the survey
+# docs/rules/surveys/E23-battle-ai.md §3, rows 4b; BAT-Q33's computer player). Each encounter is
+# one battle of a Red hero against a hero of Tan, a computer player (no human may play Tan: hot
+# seat makes Red and Blue human), on Red's first day before Tan moves. Played by an agent on the
+# capture harness (experiments/agent/ai.py, its recipe experiments/agent/E23-batch-4b.toml): one
+# map per encounter (`--only <id>`), the clock stepped 10 ms at a time; Red's stacks follow the
+# recipe's plan (else Defend), Tan's side acts on its own, and every pick, freeze and action is
+# read from the game's memory (the battle manager's action +0x3C to +0x48: 1 a hero's cast with
+# its spell at +0x40, 4 retreat; the stacks' flags, hexes, hit points and spells). Tan owns a
+# Castle with a Tavern far from the battles (`[[map.town]]`): its retreat test needs one.
+#
+# Predictions are for the agent who evaluates the results; the template never shows them. "The
+# reading" is installation.md §7.34 to §7.60 (the port, h3-battle-ai, faithful); "otherwise" the
+# survey's alternative (VCMI's AI). Formations (BAT-SET-001, loose): k stacks on these rows of
+# column 1 (Red) or 15 (Tan): 1 [5], 2 [2, 8], 3 [2, 5, 8], 4 [0, 4, 6, 10], 5 [0, 2, 5, 8, 10],
+# 7 every even row and row 5; hex = 17 x row + column.
+#
+# Not staged (the survey's rows): S1 and S2 (a computer besieger) need the computer to attack a
+# town on its own turn; batch 4c plays them with Red in auto combat, which runs the same choice
+# for a human side (installation.md §7.34). H2 (the hero's value at the odds' thresholds) shows in
+# no single choice the harness can set up. BAT-Q58's hypnotized Harpy waits for a later batch.
+
+[map]
+name = "E23 batch 4b"
+description = "Engine-generated experiment map (E23, batch 4b): the computer's hero. Follow the results template."
+size = 36
+terrain = "grass"
+instructions = [
+    "Played by an agent (experiments/agent/ai.py): one map per encounter, `h3-experiment E23-batch-4b.toml --only <id>`. By hand: copy the map into `Maps`, start it in hot seat (Red and Blue human; Tan is the computer's) at the difficulty the run names, select the Red hero and step east into Tan's hero.",
+    "Every Red stack defends unless the procedure says otherwise. Note what the encounter asks, then end the battle (retreat) as the procedure says.",
+    "Fill in this file (anything unexpected goes into the last line of an encounter) and keep it in the repo.",
+]
+
+[[map.town]]
+entrance = [22, 32]
+faction = "castle"
+owner = "tan"
+buildings = ["tavern"]
+
+# --- BAT-Q33, S-25: a computer player's stacks are let off too -------------------------------------
+
+[[encounter]]
+id = "LC"
+title = "BAT-Q33: a computer player's stack frozen by bad morale is let off one time in four"
+questions = ["BAT-Q33", "S-25", "BAT-MOR-004"]
+procedure = [
+    "Step east into Tan's hero. Red's Bone Dragons defend every turn; Red's Pikemen freeze (forced).",
+    "At the opening the harness forces every bad-morale draw to fall and every good-morale draw to fail. Count, for each of Tan's picks after the battle's first, whether the stack froze or took its turn; the same for Red's Pikemen. After round 12 Red retreats.",
+]
+predictions = """
+Tan's five shooter stacks of five towns stand at morale -1 or lower (Red's Bone Dragons: -1; the
+alignment): read at the opening; Red's Pikemen at -1, the Bone Dragons without morale.
+- The reading (0x464BDB, 0x463AA8): +0x54A4 is the side's player's human flag, 0 for Tan: about
+  **one Tan pick in four takes its turn**, Red's Pikemen never (batch 4a LO: 28 of 105 neutral
+  picks let off, 0 of 15 for the Pikemen).
+- The engine (BAT-MOR-004): every forced pick freezes.
+"""
+[encounter.hero]
+type = "Caitlin"
+specialty = "resource gold"
+at = [3, 2]
+primary = [0, 10, 1, 1]
+skills = []
+army = [["Bone Dragon", 20], ["Pikeman", 100]]
+[encounter.opponent.hero]
+type = "Sylvia"
+specialty = "skill Navigation"
+owner = "tan"
+primary = [0, 0, 1, 1]
+skills = []
+army = [["Archer", 10], ["Wood Elf", 10], ["Gog", 10], ["Orc", 10], ["Lizardman", 10]]
+[[encounter.also]]
+type = "Gunnar"
+specialty = "skill Logistics"
+owner = "blue"
+at = [33, 2]
+primary = [0, 0, 1, 1]
+skills = []
+army = [["Peasant", 1]]
+[[encounter.record]]
+field = "LC: the stacks' morale at the opening (Red's and Tan's)"
+[[encounter.record]]
+field = "LC: Tan's picks after the first: frozen, let off"
+[[encounter.record]]
+field = "LC: Red's Pikemen's picks: frozen, took their turn"
+[[encounter.record]]
+field = "anything odd"
+
+# --- H1: the shooter's tactics placement (§7.34, 0x422060) ------------------------------------------
+
+[[encounter]]
+id = "H1"
+title = "H1: a computer hero's Archers in the tactics phase go to the first hex with the fewest free neighbours"
+questions = ["E23 survey row 4b H1", "BAT-AI-023"]
+procedure = [
+    "Step east into Tan's hero (Expert Tactics; Red's hero has none): Tan places its stacks in the tactics phase.",
+    "Note the Archers' hex before and after the tactics phase, and the field's blocked hexes; after round 1 Red retreats.",
+]
+predictions = """
+Normal. Tan's only stack, 20 Archers (a shooter), starts at hex 100 (row 5, column 15).
+- The reading (0x422060): over the field's hexes in order, those the map reaches inside Tan's
+  tactics zone (0x4763F0, three columns of difference) are scored by their free neighbours on the
+  field (the Archers' own hex counts as free, an obstacle's too; a shooter beside makes it 1000):
+  the first hex with the fewest, the own hex kept at a tie (its score 6). With no other stack,
+  **the first reachable hex of row 0 inside the zone** (4 on-field neighbours, every row 0 hex
+  alike), or a hex beside an obstacle's edge if one scores lower: the evaluation recomputes it
+  from the field read at the opening. The tactics phase's move (2), then Wait (8) is not taken.
+- Otherwise (VCMI): no move in the tactics phase.
+"""
+[encounter.hero]
+type = "Jenova"
+specialty = "resource gold"
+at = [3, 5]
+primary = [0, 10, 1, 1]
+skills = []
+army = [["Pikeman", 20]]
+[encounter.opponent.hero]
+type = "Sanya"
+specialty = "skill Eagle Eye"
+owner = "tan"
+primary = [0, 0, 1, 1]
+skills = [["Tactics", 3]]
+army = [["Archer", 20]]
+[[encounter.also]]
+type = "Geon"
+specialty = "skill Eagle Eye"
+owner = "blue"
+at = [33, 5]
+primary = [0, 0, 1, 1]
+skills = []
+army = [["Peasant", 1]]
+[[encounter.record]]
+field = "H1: the Archers' hex before and after the tactics phase"
+[[encounter.record]]
+field = "anything odd"
+
+# --- H3: the hero's cast considered at every activation, cast only when due now (§7.55) -------------
+
+[[encounter]]
+id = "H3"
+title = "H3: a computer hero blesses its Archers at their own turn, not at the round's first"
+questions = ["E23 survey row 4b H3", "BAT-AI-017"]
+procedure = [
+    "Step east into Tan's hero (only Bless in its book, the mana for ten casts). Tan's Wolf Riders (speed 6) act before its Archers (speed 4); Red's Pikemen defend.",
+    "Note at whose activation Tan's hero casts (the action 1, its spell and hex), in rounds 1 and 2; after round 2 Red retreats.",
+]
+predictions = """
+Bless's best target is the Archers, which can shoot now (the Wolf Riders, more than a turn from
+Red, are worth nothing to it). An own target's cast is due now (0x43A670) only when it is the
+active stack, no other stack of the side can still act this round, or the spell protects.
+- The reading (0x422DA0 at every activation, 0x43C800): at the Wolf Riders' activation the best
+  cast is not due now: **no cast**; **at the Archers' activation: Bless on the Archers** (action
+  1, spell 41, the Archers' hex). Round 2 alike while Bless lasts no longer (the hero casts once
+  a round).
+- Otherwise: the cast at the side's first activation of the round (the Wolf Riders').
+"""
+[encounter.hero]
+type = "Rissa"
+specialty = "resource mercury"
+at = [3, 8]
+primary = [0, 10, 1, 1]
+skills = []
+army = [["Pikeman", 30]]
+[encounter.opponent.hero]
+type = "Kyrre"
+specialty = "skill Logistics"
+owner = "tan"
+primary = [0, 0, 5, 5]
+skills = []
+army = [["Wolf Rider", 10], ["Archer", 20]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Bless"]
+[[encounter.also]]
+type = "Dessa"
+specialty = "skill Logistics"
+owner = "blue"
+at = [33, 8]
+primary = [0, 0, 1, 1]
+skills = []
+army = [["Peasant", 1]]
+[[encounter.record]]
+field = "H3: per round, the activation at which Tan's hero cast, its spell and target"
+[[encounter.record]]
+field = "anything odd"
+
+# --- H4: the spells the computer's hero never casts (§7.55) -----------------------------------------
+
+[[encounter]]
+id = "H4"
+title = "H4: a computer hero never casts Berserk, Fire Wall, Land Mine, Quicksand, Force Field or Remove Obstacle"
+questions = ["E23 survey row 4b H4", "BAT-AI-017"]
+procedure = [
+    "Step east into Tan's hero (a book of those six spells only, mana for many casts). Red's seven stacks of Pikemen (three of them side by side on rows 4 to 6) defend.",
+    "Note every cast of Tan's hero over 4 rounds; after round 4 Red retreats.",
+]
+predictions = """
+- The reading (0x43C800): the choice passes over Quicksand, Land Mine, Force Field, Fire Wall,
+  Berserk and Remove Obstacle: **no cast** in 4 rounds (Tan's stacks act).
+- Otherwise (VCMI casts any spell by simulation): Berserk at Red's cluster, a Fire Wall or a mine.
+"""
+[encounter.hero]
+type = "Aine"
+specialty = "resource gold"
+at = [3, 11]
+primary = [0, 10, 1, 1]
+skills = []
+army = [["Pikeman", 10], ["Pikeman", 10], ["Pikeman", 10], ["Pikeman", 10], ["Pikeman", 10], ["Pikeman", 10], ["Pikeman", 10]]
+[encounter.opponent.hero]
+type = "Malcom"
+specialty = "skill Eagle Eye"
+owner = "tan"
+primary = [0, 0, 5, 10]
+skills = []
+army = [["Swordsman", 10]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Berserk", "Fire Wall", "Land Mine", "Quicksand", "Force Field", "Remove Obstacle"]
+[[encounter.also]]
+type = "Oris"
+specialty = "skill Eagle Eye"
+owner = "blue"
+at = [33, 11]
+primary = [0, 0, 1, 1]
+skills = []
+army = [["Peasant", 1]]
+[[encounter.record]]
+field = "H4: Tan's hero's casts over 4 rounds"
+[[encounter.record]]
+field = "anything odd"
+
+# --- R1: the retreat test's share of Fight Value and its cap (§7.55, 0x41E570) ----------------------
+
+[[encounter]]
+id = "R1a"
+title = "R1a: a computer hero defending on Hard retreats at a 14 % share of Fight Value"
+questions = ["E23 survey row 4b R1", "BAT-AI-024", "slip 26"]
+procedure = [
+    "Hard. Step east into Tan's hero (2000 experience; Tan owns a Tavern town). Red's 3 Archangels act first and defend.",
+    "Note Tan's first stack's action (a retreat, 4, or a move), Tan's gold at the opening; after round 2 Red retreats.",
+]
+predictions = """
+At Tan's first activation (round 1, after Red's Archangels defended): steps 1 to 6 pass (Hard,
+no Shackles; Tan's Tavern town; the worn Catapult's 500 and 2000 experience; Red's predicted turn
+kills at most one of Tan's two stacks; gold for the price, 700, and 2500 more: read Tan's gold).
+Step 7: Tan's 2 + 2 Dendroid Guards, not acted, 2 x trunc(1380 x 1.2) = 3312; Red's 3 Archangels,
+acted, 18099, x 1.1 = 19908. Step 8: 0.2 (artifacts worth above 0) - 2 x 0.015 = 0.17, capped at
+0.16. Step 9: 3312 / 23220 = 0.1426 < 0.16.
+- The reading: **Tan retreats** (action 4) at its first activation.
+- Otherwise: other thresholds (a fight here would refute the cap or the share).
+"""
+[encounter.hero]
+type = "Octavia"
+specialty = "resource gold"
+at = [3, 14]
+primary = [0, 10, 1, 1]
+skills = []
+army = [["Archangel", 3]]
+[encounter.opponent.hero]
+type = "Serena"
+specialty = "skill Eagle Eye"
+owner = "tan"
+experience = 2000
+primary = [0, 0, 1, 1]
+skills = []
+army = [["Dendroid Guard", 2], ["Dendroid Guard", 2]]
+[[encounter.also]]
+type = "Voy"
+specialty = "skill Navigation"
+owner = "blue"
+at = [33, 14]
+primary = [0, 0, 1, 1]
+skills = []
+army = [["Peasant", 1]]
+[[encounter.record]]
+field = "R1a: Tan's gold; Tan's first action (retreat or not)"
+[[encounter.record]]
+field = "anything odd"
+
+[[encounter]]
+id = "R1b"
+title = "R1b: a computer hero defending on Hard fights at a 17 % share of Fight Value"
+questions = ["E23 survey row 4b R1", "BAT-AI-024"]
+procedure = [
+    "Hard. Step east into Tan's hero (2000 experience; Tan owns a Tavern town). Red's 3 Archangels act first and defend.",
+    "Note Tan's first stack's action (a retreat, 4, or a move), Tan's gold at the opening; after round 2 Red retreats.",
+]
+predictions = """
+As R1a with 3 + 2 Dendroid Guards: step 7 trunc(2070 x 1.2) + trunc(1380 x 1.2) = 2484 + 1656 =
+4140; Red 19908; step 9: 4140 / 24048 = 0.1722, not below 0.16.
+- The reading: **Tan fights** (its Dendroids move; no retreat in rounds 1 and 2).
+- Otherwise: a retreat here would refute the cap (0.16) or the share.
+"""
+[encounter.hero]
+type = "Calid"
+specialty = "resource sulfur"
+at = [3, 17]
+primary = [0, 10, 1, 1]
+skills = []
+army = [["Archangel", 3]]
+[encounter.opponent.hero]
+type = "Nimbus"
+specialty = "skill Eagle Eye"
+owner = "tan"
+experience = 2000
+primary = [0, 0, 1, 1]
+skills = []
+army = [["Dendroid Guard", 3], ["Dendroid Guard", 2]]
+[[encounter.also]]
+type = "Tiva"
+specialty = "skill Eagle Eye"
+owner = "blue"
+at = [33, 17]
+primary = [0, 0, 1, 1]
+skills = []
+army = [["Peasant", 1]]
+[[encounter.record]]
+field = "R1b: Tan's gold; Tan's first action (retreat or not)"
+[[encounter.record]]
+field = "anything odd"

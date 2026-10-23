@@ -1,0 +1,131 @@
+# The runs of batch 4c (E23 T7) for experiments/agent/ai.py: one per encounter of the spec (and
+# per seed where a row compares the computer's draws). Keys: `id` (the run's folder), `encounter`
+# (default `id`), `difficulty` (default normal), `key` (the hero's step into the battle, default
+# Right), `rolls` (forced: every draw `falls` or `fails`), `seed` (ms the clock idles before Red's
+# first command), `step` (ms per clock step, default 10), `rounds` (then `end`, default retreat),
+# `catapult` (the walls Red's aimed Catapult shoots at in turn: 1 upper, 2 mid-upper, 3 gate, 4
+# mid-lower, 5 lower), `plan` (Red's commands: `{ round, side, record, action, argument }`, else
+# Defend; a hex may be `{ stack = [side, record] }`, that stack's hex at the turn; a cast's
+# argument is `[book place, hex]`).
+spec = "experiments/specs/E23-batch-4c.toml"
+
+[[run]]
+id = "W3s0"
+encounter = "W3"
+seed = 0
+step = 20
+rounds = 1
+
+[[run]]
+id = "W3s1"
+encounter = "W3"
+seed = 3000
+step = 20
+rounds = 1
+
+[[run]]
+id = "W3s2"
+encounter = "W3"
+seed = 6000
+step = 20
+rounds = 1
+
+[[run]]
+id = "W3s3"
+encounter = "W3"
+seed = 9000
+step = 20
+rounds = 1
+
+[[run]]
+id = "W3s4"
+encounter = "W3"
+seed = 12000
+step = 20
+rounds = 1
+
+[[run]]
+id = "W3s5"
+encounter = "W3"
+seed = 15000
+step = 20
+rounds = 1
+
+[[run]]
+id = "W3s6"
+encounter = "W3"
+seed = 18000
+step = 20
+rounds = 1
+
+[[run]]
+id = "W3s7"
+encounter = "W3"
+seed = 21000
+step = 20
+rounds = 1
+
+[[run]]
+id = "W3s8"
+encounter = "W3"
+seed = 24000
+step = 20
+rounds = 1
+
+[[run]]
+id = "W3s9"
+encounter = "W3"
+seed = 27000
+step = 20
+rounds = 1
+
+[[run]]
+id = "TP"
+step = 20
+rounds = 8
+
+[[run]]
+id = "SC"
+key = "Up"
+auto = true
+step = 20
+rounds = 5
+
+[[run]]
+id = "C4f3"
+difficulty = "easy"
+step = 20
+rounds = 1
+
+[[run]]
+id = "C4f2"
+difficulty = "easy"
+step = 20
+rounds = 1
+
+[[run]]
+id = "TP2"
+step = 20
+rounds = 8
+plan = [
+    { round = 2, side = 0, record = 0, action = "cast", argument = [0] },
+    { round = 3, side = 0, record = 0, action = "cast", argument = [0] },
+    { round = 4, side = 0, record = 0, action = "cast", argument = [0] },
+    { round = 5, side = 0, record = 0, action = "cast", argument = [0] },
+]
+
+[[run]]
+id = "TP3"
+key = "Up"
+step = 20
+rounds = 8
+plan = [
+    { round = 1, side = 0, record = 1, action = "cast", argument = [0] },
+    { round = 2, side = 0, record = 1, action = "cast", argument = [0] },
+    { round = 3, side = 0, record = 1, action = "cast", argument = [0] },
+    { round = 4, side = 0, record = 1, action = "cast", argument = [0] },
+    { round = 5, side = 0, record = 1, action = "cast", argument = [0] },
+    { round = 6, side = 0, record = 1, action = "cast", argument = [0] },
+    { round = 7, side = 0, record = 1, action = "cast", argument = [0] },
+    { round = 8, side = 0, record = 1, action = "cast", argument = [0] }
+]

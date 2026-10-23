@@ -1,0 +1,137 @@
+# The runs of batch 4a (E23 T7) for experiments/agent/ai.py: one per encounter of the spec (and
+# per seed where a row compares the computer's draws). Keys: `id` (the run's folder), `encounter`
+# (default `id`), `difficulty` (default normal), `key` (the hero's step into the battle, default
+# Right), `rolls` (forced: every draw `falls` or `fails`), `seed` (ms the clock idles before Red's
+# first command), `step` (ms per clock step, default 10), `rounds` (then `end`, default retreat),
+# `catapult` (the walls Red's aimed Catapult shoots at in turn: 1 upper, 2 mid-upper, 3 gate, 4
+# mid-lower, 5 lower), `plan` (Red's commands: `{ round, side, record, action, argument }`, else
+# Defend; a hex may be `{ stack = [side, record] }`, that stack's hex at the turn; a cast's
+# argument is `[book place, hex]`).
+spec = "experiments/specs/E23-batch-4a.toml"
+
+[[run]]
+id = "LO"
+rolls = { bad_morale = "falls", good_morale = "fails" }
+step = 50
+rounds = 15
+
+[[run]]
+id = "W1n"
+encounter = "W1"
+key = "Up"
+rounds = 4
+
+[[run]]
+id = "W1h"
+encounter = "W1"
+key = "Up"
+difficulty = "hard"
+rounds = 4
+
+[[run]]
+id = "S4u"
+encounter = "S4"
+key = "Up"
+catapult = [2]
+rounds = 8
+
+[[run]]
+id = "S4u1"
+encounter = "S4"
+key = "Up"
+catapult = [2]
+seed = 3000
+rounds = 8
+
+[[run]]
+id = "S4u2"
+encounter = "S4"
+key = "Up"
+catapult = [2]
+seed = 6000
+rounds = 8
+
+[[run]]
+id = "S4l"
+encounter = "S4"
+key = "Up"
+catapult = [4]
+rounds = 8
+
+[[run]]
+id = "C1"
+step = 20
+rounds = 5
+
+[[run]]
+id = "C2"
+step = 20
+rounds = 4
+
+[[run]]
+id = "C3a"
+step = 20
+rounds = 3
+plan = [{ round = 1, side = 0, record = 0, action = "cast", argument = [0, { stack = [1, 1] }] }]
+
+[[run]]
+id = "C3b"
+step = 20
+rounds = 3
+plan = [{ round = 1, side = 0, record = 0, action = "cast", argument = [0, { stack = [1, 1] }] }]
+
+[[run]]
+id = "C4e0"
+encounter = "C4"
+difficulty = "easy"
+seed = 0
+step = 20
+rounds = 1
+
+[[run]]
+id = "C4e1"
+encounter = "C4"
+difficulty = "easy"
+seed = 3000
+step = 20
+rounds = 1
+
+[[run]]
+id = "C4e2"
+encounter = "C4"
+difficulty = "easy"
+seed = 6000
+step = 20
+rounds = 1
+
+[[run]]
+id = "C4e3"
+encounter = "C4"
+difficulty = "easy"
+seed = 9000
+step = 20
+rounds = 1
+
+[[run]]
+id = "C4e4"
+encounter = "C4"
+difficulty = "easy"
+seed = 12000
+step = 20
+rounds = 1
+
+[[run]]
+id = "C4e5"
+encounter = "C4"
+difficulty = "easy"
+seed = 15000
+step = 20
+rounds = 1
+
+[[run]]
+id = "C4e6"
+encounter = "C4"
+difficulty = "easy"
+seed = 18000
+step = 20
+rounds = 1

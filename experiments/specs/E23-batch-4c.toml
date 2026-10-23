@@ -1,0 +1,363 @@
+# Experiment batch 4c (E23 T7): batch 4a's rest (a player has at most eight heroes on a map): the
+# walker's draw (the survey docs/rules/surveys/E23-battle-ai.md §3, row 4a W3) and BAT-Q51's tent. Each
+# encounter is one battle against neutral creatures: a guarded pile's guards (a mixed army in
+# slot order, up to seven stacks) or a neutral town's garrison. Played by an agent on the capture
+# harness (experiments/agent/ai.py, its recipe experiments/agent/E23-batch-4c.toml): one map per
+# encounter (`--only <id>`), hot seat (Red and Blue human), the clock stepped 10 ms at a time;
+# Red's stacks follow the recipe's plan (else Defend), the neutral side acts on its own, and every
+# pick, freeze and action is read from the game's memory (the battle manager's action +0x3C to
+# +0x48, the stacks' flags, hexes, hit points, spells and a Faerie Dragon's drawn spell +0x4E0).
+# A run per seed (ms the clock idles before Red's first command: the fidgets draw from the rules'
+# generator, which the battle's setup seeds from its tile, 0x463A08) gives the computer's draws
+# another stream on the same field.
+#
+# Predictions are for the agent who evaluates the results; the template never shows them. "The
+# reading" is installation.md §7.34 to §7.60 (the port, h3-battle-ai, faithful); "the engine" is
+# today's rules or the port where they differ; VCMI's AI where the survey names it. Formations
+# (BAT-SET-001, loose): k stacks stand on these rows of column 1 (Red, the attacker) or 15 (the
+# defender): 1 [5], 2 [2, 8], 3 [2, 5, 8], 4 [0, 4, 6, 10], 5 [0, 2, 5, 8, 10], 7 every even row
+# and row 5; hex = 17 x row + column.
+#
+# Not staged (the survey's rows): W2, W4, W5 and P1 need positions the formations and the
+# original's own obstacles (drawn from the tile) do not give; C5 needs the mean of the Genie's 34
+# evaluators on the original's state, which no tool computes yet; S3 needs an RoE map, and the
+# writer writes SoD maps only. They stay open (survey §3).
+
+[map]
+name = "E23 batch 4c"
+description = "Engine-generated experiment map (E23, batch 4c): the computer's neutral side. Follow the results template."
+size = 36
+terrain = "grass"
+instructions = [
+    "Played by an agent (experiments/agent/ai.py): one map per encounter, `h3-experiment E23-batch-4c.toml --only <id>`. By hand: copy the map into `Maps`, start it in hot seat (Red and Blue human) at the difficulty the run names, select the Red hero and step east into the guards (north into a town).",
+    "Every Red stack defends unless the procedure says otherwise. Note what the encounter asks, then end the battle (retreat) as the procedure says.",
+    "Fill in this file (anything unexpected goes into the last line of an encounter) and keep it in the repo.",
+]
+
+# --- W3: the walker's 75-100 % draw (§7.35, 0x421B02) ----------------------------------------------
+
+[[map.pile]]
+resource = "gold"
+row = 22
+from = 4
+to = 4
+amount = 1
+guards = [["Gold Dragon", 1]]
+
+[[encounter]]
+id = "W3"
+title = "W3: a neutral Gold Dragon's choice between two equal targets follows its draw"
+questions = ["E23 survey row 4a W3"]
+procedure = [
+    "Step east into the guard (one Gold Dragon, row 5). Red's two stacks of 5 Archangels (rows 2 and 8, the same distance) act first: the clock idles the run's seed, then both defend.",
+    "Note which stack the dragon attacks in round 1; ten runs with different seeds; after round 1 Red retreats.",
+]
+predictions = """
+Both targets one turn away (a flyer of speed 16), alike in value, both defending.
+- The reading: each candidate's value is drawn down to 75-100 % (`trunc(v x random(75, 100) /
+  100)`), one draw each, and the larger wins: **both targets are chosen across the seeds** (each
+  about half; all ten the same with chance 0.2 %).
+- Otherwise (no draw): equal values fall to the tie order (the top creature's lost hit points,
+  the lower cost to the plan's hex, the later record): **always the same target**.
+A rerun with the same stream is no new sample: runs whose draws are the same (the dragon's damage
+and every roll alike) count once.
+"""
+[encounter.hero]
+type = "Sephinroth"
+specialty = "resource crystal"
+at = [3, 22]
+primary = [0, 10, 1, 1]
+skills = []
+army = [["Archangel", 5], ["Archangel", 5]]
+[[encounter.also]]
+type = "Ryland"
+specialty = "creature Dendroid Guard"
+owner = "blue"
+at = [33, 26]
+primary = [0, 0, 1, 1]
+skills = []
+army = [["Peasant", 1]]
+[[encounter.record]]
+field = "W3: per run, the stack the dragon attacked (row 2 or 8) and its damage"
+[[encounter.record]]
+field = "anything odd"
+
+# --- BAT-Q51: the automatic First Aid Tent's patient (0x473EA0) -----------------------------------
+
+[[map.pile]]
+resource = "gold"
+row = 16
+from = 4
+to = 4
+amount = 1
+guards = [["Archer", 20], ["Wood Elf", 20], ["Halfling", 20]]
+
+[[encounter]]
+id = "TP"
+title = "TP: Red's automatic First Aid Tent heals the stack whose top creature lost the most"
+questions = ["BAT-Q51", "BAT-WAR-003", "BAT-AI-022"]
+procedure = [
+    "Step east into the guards (three shooter stacks). Red's hero has a First Aid Tent and no First Aid: the tent acts on its own at the end of each round. Red's Swordsmen and Champions defend.",
+    "Note at each tent turn the top creature's lost hit points of both Red stacks and the stack healed (or a Defend); after round 8 Red retreats.",
+]
+predictions = """
+The shooters wound both Red stacks most rounds.
+- The reading (0x473EA0): the tent heals **the stack whose top creature lost the most hit points**
+  (the later record at a tie) at every turn; with no wounded stack it defends (action 3).
+- BAT-WAR-003 (the wiki, VCMI): a wounded stack drawn uniformly: the other stack about half the
+  time when both are wounded; an idle tent does nothing.
+"""
+[encounter.hero]
+type = "Saurug"
+specialty = "resource gems"
+at = [3, 16]
+primary = [0, 10, 1, 1]
+skills = []
+army = [["Swordsman", 30], ["Champion", 10]]
+artifacts = { "war machine 3" = "First Aid Tent" }
+[[encounter.also]]
+type = "Clancy"
+specialty = "creature Unicorn"
+owner = "blue"
+at = [33, 29]
+primary = [0, 0, 1, 1]
+skills = []
+army = [["Peasant", 1]]
+[[encounter.record]]
+field = "TP: per tent turn: both stacks' top lost hit points, the stack healed (or Defend)"
+[[encounter.record]]
+field = "anything odd"
+
+# --- S1, S2: the besieger's wall shot and its walk to the wall (§7.35, 0x41EEA0, 0x421E0E) ---------
+
+[[encounter]]
+id = "SC"
+title = "S1, S2: Red's Cyclops in auto combat batter the weakest wall while Red is locked out"
+questions = ["E23 survey rows 4b S1, S2", "BAT-AI-004", "BAT-AI-005"]
+procedure = [
+    "Step north into the neutral Castle (a Fort: walls and gate, no moat or turrets; 100 Archers inside, which shoot and never sally). At Red's first turn auto combat is switched on: the computer plays Red's Cyclops and Pikemen through the same stack turn as a computer side's (installation.md §7.34), with Red's human flag set; Red's Catapult shoots on its own.",
+    "Note each Cyclops turn's action (a wall shot and its wall, or a shot at the Archers) with the walls' hit points before it, and each Pikemen turn's move, over 5 rounds; then auto combat off and Red retreats.",
+]
+predictions = """
+Not from a computer player's side (the survey's 4b rows): auto combat runs 0x477EE0 and 0x4221F0
+for Red with +0x54A4 set; the wall shot (0x41EEA0) and the besieger's walk read no human flag.
+The port replayed on this siege in the engine (the same armies and fort, Red human; three
+streams): the Cyclops' first turn a wall shot, later shots at the Archers once a wall is down.
+- The reading (S1): while Red's walkers are locked out (no wall or gate down: no defender within
+  reach) the Cyclops' best shot is worth little against 3.0 x the share locked out: **a wall
+  shot** (action 9) at **the standing wall with the fewest hit points**, drawn uniformly among
+  those (random(1, n), in the list's order); once a wall is down, Red's Pikemen reach the
+  Archers and the Cyclops shoot them (7).
+- S2: a Pikemen turn with every wall and the gate standing has no candidate (the Archers inside
+  have no hex to strike from): it walks to its own row's wall, **the first hex left of the row's
+  wall hex that its map reaches** (no moat at a Fort); after a breach a walk towards the Archers.
+- Otherwise (VCMI): the Cyclops shoot a stack, or a wall at random, whatever the walls' hit points.
+"""
+[encounter.hero]
+type = "Gelare"
+specialty = "resource gold"
+at = [18, 30]
+primary = [0, 10, 1, 1]
+skills = []
+army = [["Cyclops", 5], ["Pikeman", 200]]
+[encounter.opponent.town]
+faction = "castle"
+owner = "neutral"
+buildings = ["fort"]
+garrison = [["Archer", 100]]
+[[encounter.also]]
+type = "Aeris"
+specialty = "creature Pegasus"
+owner = "blue"
+at = [33, 32]
+primary = [0, 0, 1, 1]
+skills = []
+army = [["Peasant", 1]]
+[[encounter.record]]
+field = "SC: per Cyclops turn, the walls' hit points and its action (wall shot at which wall, or a shot)"
+[[encounter.record]]
+field = "SC: per Pikemen turn with every wall standing, its move's hex"
+[[encounter.record]]
+field = "anything odd"
+
+# --- C4f: the Ogre Mages' strength floor (§7.44, 0x420D20) -------------------------------------------
+
+[[map.pile]]
+resource = "gold"
+row = 25
+from = 4
+to = 4
+amount = 1
+guards = [["Ogre Mage", 3], ["Ogre Mage", 3], ["Ogre Mage", 3], ["Archer", 20], ["Archer", 20], ["Archer", 20], ["Champion", 1]]
+
+[[map.pile]]
+resource = "gold"
+row = 28
+from = 4
+to = 4
+amount = 1
+guards = [["Ogre Mage", 2], ["Ogre Mage", 2], ["Ogre Mage", 2], ["Archer", 20], ["Archer", 20], ["Archer", 20], ["Champion", 1]]
+
+[[encounter]]
+id = "C4f3"
+title = "C4f3: neutral Ogre Mages never bless a walker weaker than themselves while their walker has a value"
+questions = ["E23 survey row 4a C4"]
+procedure = [
+    "Easy. Step east into the guards (three stacks of 3 Ogre Mages, three of 20 Archers, one Champion). Red's Peasant and Pikemen defend.",
+    "Note each Ogre Mage turn's action in round 1; after round 1 Red retreats.",
+]
+predictions = """
+The Ogre Mages' walker values an attack on Red's lone Peasant above 0; the only stack Bloodlust
+helps is the lone Champion (the Archers can shoot now: 0), strength 1800 below a caster's 2016.
+- The reading (0x420D20): with a value above 0 to beat only a stack at least as strong as the
+  caster is a candidate: **no cast** at any Ogre Mage turn. The port replayed in the engine (no
+  obstacles): none in 200 streams.
+- Otherwise: the lone Champion blessed (C4f2's outcome).
+"""
+[encounter.hero]
+type = "Grindan"
+specialty = "resource gold"
+at = [3, 25]
+primary = [0, 10, 1, 1]
+skills = []
+army = [["Peasant", 1], ["Pikeman", 100]]
+[[encounter.also]]
+type = "Josephine"
+specialty = "creature Stone Golem"
+owner = "blue"
+at = [30, 2]
+primary = [0, 0, 1, 1]
+skills = []
+army = [["Peasant", 1]]
+[[encounter.record]]
+field = "C4f3: each Ogre Mage turn's action in round 1"
+[[encounter.record]]
+field = "anything odd"
+
+[[encounter]]
+id = "C4f2"
+title = "C4f2: the same with Ogre Mages weaker than the lone Champion: it is blessed"
+questions = ["E23 survey row 4a C4"]
+procedure = [
+    "Easy. Step east into the guards (three stacks of 2 Ogre Mages, three of 20 Archers, one Champion). Red's Peasant and Pikemen defend.",
+    "Note each Ogre Mage turn's action in round 1; after round 1 Red retreats.",
+]
+predictions = """
+As C4f3 with casters of strength 1344, below the Champion's 1800: the floor lets the Champion in.
+- The reading: the first Ogre Mage blesses the lone Champion unless its draw skips (three in
+  ten: then the next one draws again): **Bloodlust on the lone Champion in round 1** (all three
+  skip with chance 2.7 %); the port: 144 of 200 streams at the first turn.
+- Otherwise (no floor in C4f3 either): as here.
+"""
+[encounter.hero]
+type = "Nagash"
+specialty = "resource gold"
+at = [3, 28]
+primary = [0, 10, 1, 1]
+skills = []
+army = [["Peasant", 1], ["Pikeman", 100]]
+[[encounter.also]]
+type = "Fafner"
+specialty = "creature Naga"
+owner = "blue"
+at = [30, 5]
+primary = [0, 0, 1, 1]
+skills = []
+army = [["Peasant", 1]]
+[[encounter.record]]
+field = "C4f2: each Ogre Mage turn's action in round 1"
+[[encounter.record]]
+field = "anything odd"
+
+# --- BAT-Q51 again: both of Red's stacks hurt at every tent turn ------------------------------------
+
+[[map.pile]]
+resource = "gold"
+row = 31
+from = 4
+to = 4
+amount = 1
+guards = [["Diamond Golem", 20]]
+
+[[encounter]]
+id = "TP2"
+title = "TP2: Red's automatic First Aid Tent between two hurt stacks, and with none hurt"
+questions = ["BAT-Q51", "BAT-WAR-003", "BAT-AI-022"]
+procedure = [
+    "Step east into the guards (Diamond Golems: slow, a twentieth of spell damage). Round 1: no Red stack is hurt (the golems are far): the tent's turn has no patient. Rounds 2 to 5, Red's first turn: the hero casts Death Ripple (its book's only spell; power 6: 10 + 5 x 6 = 40 to every living stack, the tent spared): both Red stacks are hurt, the Champions' top creature (100 hit points) 40, the Swordsmen's (35) 5. A first run with Armageddon destroyed the tent with its first cast (80 against 75 hit points).",
+    "Note at each tent turn both stacks' top lost hit points and the stack healed (or Defend); after round 8 Red retreats.",
+]
+predictions = """
+TP's row hurt only the Swordsmen (the neutral shooters' target): both rules healed them. Here
+Death Ripple (power 6: 40 per living stack) leaves the Champions' top creature 40 down (more with
+the golems' blows), the Swordsmen's 40 - 35 = 5.
+- The reading (0x473EA0, 0x473F3C): the tent heals **the stack whose top creature lost the
+  most** at every turn (the Champions while they lead); **with no patient it defends** (action 3,
+  round 1).
+- BAT-WAR-003 (the wiki, VCMI): a hurt stack drawn uniformly (the Swordsmen about half the time);
+  with no patient nothing.
+"""
+[encounter.hero]
+type = "Clavius"
+specialty = "resource gold"
+at = [3, 31]
+primary = [0, 10, 6, 10]
+skills = []
+army = [["Swordsman", 30], ["Champion", 10]]
+artifacts = { "war machine 3" = "First Aid Tent", "spell book" = "Spell Book" }
+spells = ["Death Ripple"]
+[[encounter.also]]
+type = "Piquedram"
+specialty = "creature Stone Gargoyle"
+owner = "blue"
+at = [30, 8]
+primary = [0, 0, 1, 1]
+skills = []
+army = [["Peasant", 1]]
+[[encounter.record]]
+field = "TP2: per tent turn: both stacks' top lost hit points, the stack healed (or Defend)"
+[[encounter.record]]
+field = "anything odd"
+
+[[encounter]]
+id = "TP3"
+title = "TP3: the automatic tent between two hurt stacks, round after round, outside a held Citadel"
+questions = ["BAT-Q51", "BAT-WAR-003", "BAT-AI-022"]
+procedure = [
+    "Step north into the neutral Citadel (W1's: its Swordsmen hold the walls and stay inside while the mid-lower wall and the gate stand). Every round from round 1, Red's first turn: the hero casts Death Ripple (power 6: 40 to every living stack, the garrison's too): both of Red's stacks are hurt at every tent turn (the keep's arrows add more). TP2's golems destroyed the tent in round 3.",
+    "Note at each tent turn both stacks' top lost hit points and the stack healed; after round 8 Red retreats.",
+]
+predictions = """
+Death Ripple leaves the Champions' top creature 40 more down each round, the Swordsmen's 5 or 10
+(a Swordsman, 35 hit points, dies of it); the keep's arrows and the tent's heals (1 to 25) move
+the numbers between the turns.
+- The reading (0x473EA0): at every tent turn **the stack whose top creature lost the most** (the
+  later record at a tie); TP2's one turn agreed (40 against 5: the Champions).
+- BAT-WAR-003: a hurt stack drawn uniformly: the lesser one about half the time.
+"""
+[encounter.hero]
+type = "Caitlin"
+specialty = "resource gold"
+at = [28, 20]
+primary = [0, 10, 6, 10]
+skills = []
+army = [["Swordsman", 30], ["Champion", 10]]
+artifacts = { "war machine 3" = "First Aid Tent", "spell book" = "Spell Book" }
+spells = ["Death Ripple"]
+[encounter.opponent.town]
+faction = "castle"
+owner = "neutral"
+buildings = ["fort", "citadel"]
+garrison = [["Swordsman", 20]]
+[[encounter.also]]
+type = "Iona"
+specialty = "creature Genie"
+owner = "blue"
+at = [30, 11]
+primary = [0, 0, 1, 1]
+skills = []
+army = [["Peasant", 1]]
+[[encounter.record]]
+field = "TP3: per tent turn: both stacks' top lost hit points, the stack healed"
+[[encounter.record]]
+field = "anything odd"

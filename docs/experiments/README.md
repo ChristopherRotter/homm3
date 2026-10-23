@@ -115,6 +115,27 @@ ran so.
 every machine record), and Red's Ballista's shot is its target's drop of hit points while it is the
 last activated stack, printed one line per shot. Batch 3h ran so.
 
+**The original's computer played against by an agent** (E23 T7): `experiments/agent/ai.py <out>
+<recipe>` plays one map per run of a recipe (`experiments/agent/E23-batch-4a.toml`: each run an
+encounter, its difficulty, forced rolls, a seed, Red's plan, the rounds before Red retreats) on
+the stepped clock: Red's stacks follow the plan (else Defend), the other side's computer acts on
+its own, and every change of the battle's state is written to `timeline.jsonl` (the battle
+manager's action +0x3C to +0x48 as the dispatcher runs it, the turn flags, each stack's hex,
+count, flags, spells, a Faerie Dragon's drawn spell, the walls in a siege), the opening with the
+setup's human bytes, the players' gold and the field's blocked hexes. `ai_turns.py <run>
+--actions` lists the actions, the evaluation's evidence. A run's `seed` idles the clock before
+Red's first command: the fidgets draw from the rules' generator, which the battle's setup seeds
+from its tile (0x463A08), so a seed gives the computer's later draws another stream on the same
+field (it acts first, the seed does nothing); `auto` plays Red by auto combat (the computer's
+stack turn with Red's human flag). **Traps:** at the frozen clock the computer answers a command
+in the same instant, so its Defend or Wait, the round's end and the next start can pass between
+two reads (a slower Red stack's turn shows its flags); a frozen pick never becomes the active
+stack, the pointer still names the one before; the computer's stack turn clears the pointer
+before it writes its action; a Defend written at a turn's start is the turn's default, and the
+predictions may leave a passing value (read the last); count rounds by a turn flag falling, not
+by the acted bits; the computer's Tan hero gets a random starting bonus too (the recipe checks
+only Red's); the battle log's entries read as empty strings this way. Batches 4a to 4c ran so.
+
 ## Spec format (`h3-experiment`, `crates/h3-experiment/src/lib.rs`)
 
 - `[map]`: `name`, `description`, `size` (36, 72, 108 or 144), `terrain` (any land terrain; the
@@ -161,6 +182,9 @@ last activated stack, printed one line per shot. Batch 3h ran so.
   says to choose it in the scenario list (the map does not hold it; the harness's recipe names
   it too). `[map.underground]` (E08 T22a1): a second level, `terrain` (a land terrain) and its
   own `[[map.underground.patch]]` rectangles (`rock` for walls); no roads or grounds on it.
+  `[[map.town]]` (E23 T7): a town no encounter fights, `entrance = [column, row]`, `faction`,
+  `owner` (`blue`, the default, `tan` or `neutral`), `buildings`, `garrison`: batch 4b's Tavern
+  town of Tan's, which the computer's retreat test asks for.
 - `[[encounter]]`: `id` (also the hero's name in the game), `title`, `questions`, `level` (E08
   T22a1: 1 puts the encounter's heroes and opponent on the underground; the template says so),
   `procedure`
@@ -168,7 +192,9 @@ last activated stack, printed one line per shot. Batch 3h ran so.
   first column is filled in), `predictions`
   (for the evaluating agent; never shown in the template).
 - `[encounter.hero]`: `type` (name, or id if the name occurs twice), `specialty` (checked against
-  the executable so that no hero with an interfering specialty slips in), `owner` (red/blue),
+  the executable so that no hero with an interfering specialty slips in), `owner` (red/blue; since
+  E23 T7 also `tan`, a computer player: the map lets no human play it, so hot seat with Red and
+  Blue leaves it to the computer; an opponent hero or town of Tan's fights as the computer's),
   `at = [column, row]` (the hero's tile instead of the encounter's place in the grid; the
   opponent stands one column east unless it has its own `at`), `defaults = true` (E08 T10a: army,
   experience, primary and secondary skills, artifacts and spells all the hero type's own, as the
@@ -242,6 +268,9 @@ capture harness's frozen clock does; the client lane, E17 M2 T3).
 | 3f (`E04c-batch-3f`) | the automatic turret's target (E04c T7d): the Fight Value against the AI value, the turns to attack, desperate mode, a war machine's share (BAT-SIE-020 to 023) | **evaluated** (2026-10-14), **run by an agent** (`turrets.py`): every target as the code. `docs/epics/E04c-log.md`, T7d |
 | 3g (`E04c-batch-3g`) | the siege's other rules (E04c T8): the battle window's Surrender and Retreat buttons at a Castle, a Rampart and a Stronghold with the Escape Tunnel (BAT-SIE-024), the defenders' morale and luck (BAT-SIE-025), Teleport at Basic, Advanced and Expert across the moat and the walls (BAT-SIE-026, D-20), Force Field beside the walls (BAT-SIE-027) | **evaluated** (2026-10-15), **run by an agent** (`experiments/agent/town.py`): every value as the code; the Brotherhood of the Sword replaces the Tavern's morale (+2 in all, D-21: the wiki refuted, VCMI agrees). `docs/epics/E04c-log.md`, T8 |
 | 3h (`E04c-batch-3h`) | the automatic Ballista's target (E04c T7e): a tie to the later stack, the turns against "can attack next turn", desperate mode, the value of a small stack, an enemy Ballista under Expert Artillery and without (BAT-WAR-008, BAT-SIE-021) | **evaluated** (2026-10-15), **run by an agent** (`experiments/agent/ballista.py`): every shot as the code reading once the estimate starts from the Ballista's record (2..3, not its hero's multiplied range: the first port's predictions for TU and DN refuted, the port fixed); VCMI's rule refuted (TI, DE, DN, AR). `docs/epics/E04c-log.md`, T7e |
+| E23 4a (`E23-batch-4a`) | the original's computer for a side without a hero (E23 T7; survey `E23-battle-ai.md` §3): S-25's let-off from a forced bad-morale freeze (LO, BAT-Q33), no Wait below Hard (W1), the walls test's wrong records (S4, slip 2), the elementals never casting (C1), the Faerie Dragon's casts and their free hex (C2), the raise against the walker's value (C3a, C3b), the Ogre Mages' skip (C4) | **evaluated** (2026-10-23), **run by an agent** (`experiments/agent/ai.py`): as the code reading in every row: 28 of 105 neutral picks let off, a human's none; Defend on Normal, Wait on Hard; a garrison holding behind a destroyed mid-upper wall, sallying behind the mid-lower; no elemental cast; 8 dragon casts of 8, the area spells at the free hex; an attack instead of raising Peasants, two Champions raised; Bloodlust at every turn without a walker's value (Normal), 3 skips of 21 with one (Easy). `docs/epics/E23-log.md`, T7 |
+| E23 4b (`E23-batch-4b`) | a computer player's hero (Tan, `owner = "tan"`; E23 T7): the let-off for a computer player (LC), the shooter's tactics placement (H1), the hero's cast only when due now (H3), the never-cast spells (H4), the retreat test's share and cap on Hard (R1a, R1b) | **evaluated** (2026-10-23), **run by an agent**: as the reading in every row but one: 14 of 60 Tan picks let off; Bless at the Archers' own activation; no cast of the six spells; a retreat at 0.143, a fight at 0.172 and a retreat at the next activation at 0.158; **H1 against the port**: the Archers go to hex 15, the port's to 9 (the original's neighbour table has no side-column neighbours; the battle queue's inbox) |
+| E23 4c (`E23-batch-4c`) | batch 4a's rest (E23 T7): the walker's draw between two equal targets (W3, ten seeds), the Ogre Mages' strength floor (C4f3, C4f2), the besieger's wall shot and walk with Red in auto combat (SC: S1, S2), the automatic First Aid Tent's patient (TP, TP2, TP3: BAT-Q51) | **evaluated** (2026-10-23), **run by an agent**: as the reading: both targets across the seeds (6 and 4); the lone Champion blessed only by weaker casters; the tent heals the stack whose top creature lost the most, 7 of 7 with two hurt (against BAT-WAR-003's uniform draw, BAT-Q51); SC's locked-out wall shot not reached (Red's Catapult breached first) |
 | E08 1a (`E08-batch-1a`) | the adventure map's first batch (E08 T10a): when a day's movement points are set, two hot-seat battles that take a slow stack out of an army in the other player's turn, on day 1 and day 2, and a dismissed slow stack as their control (ADV-Q4, ADV-MOV-002); which tile prices a step off a road, on grass onto swamp and on swamp onto grass (ADV-Q3's D-2, ADV-MOV-003); the land table as a control (ADV-MOV-001). Paths are counted by their marks: scouts explore each walker's row beyond the farthest predicted step. Both specs were reviewed by a second agent before staging | **evaluated** (2026-10-12): as the code reading everywhere: points set at the owner's turn start on day 1 and day 2 (2000, not 1560; ADV-Q4 answered), off a road the tile left prices the step both ways (9 and 14 steps), the land table (15). The map played was a stale build without Q4c (the review's control); the user's statement stands in for it (no change of the day's points when a stack is dismissed or gained). `docs/epics/E08-log.md`, T10c |
 | E08 1b (`E08-batch-1b`) | the starting army of sixteen heroes placed with everything their hero type's own, over up to eight loads: the independence of the second and third slots' rolls and the war machine's chance (ADV-Q6, GAM-SET-001) | **evaluated** (2026-10-12): one load sufficed: a hero with its third stack but not its second (VCMI's single roll refuted) and a war-machine hero without its war machine (the wiki's 100 % refuted), as the code reading; ADV-Q6 answered; `docs/epics/E08-log.md`, T10c |
 | E08 2 (`E08-batch-2`) | the adventure map's second batch (E08 T16b), the first with the stamp: the points left after a step (D-3, ADV-Q3; ADV-MOV-006): sand onto a cobblestone road with 200 points (the survey's example: 50 left and one more road step by the reading and the wiki, 0 and no step by VCMI), onto a dirt road as the control (no step for any source; 0 left by the reading and VCMI, 50 by the wiki), 100 and 50 points left off a road (100 by the reading and the wiki, 0 by VCMI; 0, 0 and 50); the amounts of random resource piles (D-5, ADV-Q10; ADV-PIK-001): 16 wood and 16 mercury piles picked up one by one (a wood pile of 5 or a mercury pile of 6 refutes VCMI's ranges; neither in 32 refutes the reading, 0.054 % under it). Hot seat, one day: Red walks, Blue collects | **evaluated** (2026-10-13): as the code reading everywhere: D3a 50 points kept on a cobblestone road and a further step (VCMI: 0), D3b 0 on a dirt road and no step (the wiki: 50), D3c 100 kept on snow (VCMI: 0), D3d 50 dropped to 0 (the wiki: 50); D-5's piles: wood 5–9 with three of 5, mercury 3–6 with four of 6 (VCMI's ranges refuted). The stamp matched. `docs/epics/E08-log.md`, T16c |

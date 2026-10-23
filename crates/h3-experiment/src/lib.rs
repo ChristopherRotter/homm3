@@ -214,6 +214,30 @@ pub struct MapSpec {
     /// no level-up offers one the hero does not know (batch E5e's forced offers).
     #[serde(default)]
     pub banned_skills: Vec<String>,
+    /// Towns that are no encounter's opponent (`[[map.town]]`, E23 T7): a player's own town
+    /// elsewhere on the map (batch 4b: the Tavern the computer's retreat test asks for).
+    #[serde(default)]
+    pub town: Vec<MapTownSpec>,
+}
+
+/// A town of the map that no encounter fights (E23 T7): its entrance tile and the town as an
+/// opponent's ([`TownSpec`]), without a visiting hero.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MapTownSpec {
+    /// The entrance tile (the picture covers 5 columns west of it, 2 east and 5 rows north).
+    pub entrance: [u8; 2],
+    /// Faction ([`FACTIONS`]).
+    pub faction: String,
+    /// "blue" (the default), "tan" or "neutral".
+    #[serde(default = "blue")]
+    pub owner: String,
+    /// Built buildings by name, as a [`TownSpec`]'s.
+    #[serde(default)]
+    pub buildings: Option<Vec<String>>,
+    /// Garrison as (creature, count), at most seven stacks.
+    #[serde(default)]
+    pub garrison: Vec<(String, u16)>,
 }
 
 /// The underground level: its own terrain and rectangles; encounters and piles with `level = 1`
@@ -608,7 +632,7 @@ pub fn build_only(
     }
     let mut used_types = Vec::new();
     let mut heroes_per_player = [0usize; PLAYERS];
-    let mut blue_towns = 0usize;
+    let mut towns_per_player = [0usize; PLAYERS];
     let mut text = String::new();
     let _ = writeln!(text, "# {} — results\n", spec.map.name);
     let _ = writeln!(
@@ -739,10 +763,11 @@ pub fn build_only(
             }) => {
                 let entrance = (x, y.saturating_sub(1));
                 let (town, mut summary) = town_object(t, tables, entrance, size).map_err(ctx)?;
-                if town.owner == Some(1) {
-                    blue_towns += 1;
+                if let Some(owner) = town.owner {
+                    towns_per_player[usize::from(owner)] += 1;
                 }
                 let neutral = town.owner.is_none();
+                let tan = town.owner == Some(2);
                 placed_town = Some(town);
                 if let Some(h) = hero {
                     if neutral {
@@ -750,6 +775,9 @@ pub fn build_only(
                     }
                     if h.at.is_some() {
                         return Err(ctx("a town's hero stands on its entrance: no `at`".into()));
+                    }
+                    if tan != (h.owner == "tan") {
+                        return Err(ctx("a town's visiting hero is its owner's".into()));
                     }
                     let visiting = add_hero(h, entrance, Some(&enc.id), "blue")?;
                     summary = format!("{summary}; visiting hero: {visiting}");
@@ -786,6 +814,22 @@ pub fn build_only(
         }
         objects.extend(piles(p, tables, size)?.into_iter().map(|o| (p.level, o)));
     }
+    for t in &spec.map.town {
+        let [x, y] = t.entrance;
+        let as_opponent = TownSpec {
+            faction: t.faction.clone(),
+            owner: t.owner.clone(),
+            buildings: t.buildings.clone(),
+            garrison: t.garrison.clone(),
+            tight: false,
+        };
+        let (town, _) = town_object(&as_opponent, tables, (x, y), size)
+            .map_err(|e| format!("the town at {:?}: {e}", t.entrance))?;
+        if let Some(owner) = town.owner {
+            towns_per_player[usize::from(owner)] += 1;
+        }
+        objects.push((0, MapObject::Town(town)));
+    }
     // Heroes and monsters stand on grounds; two grounds may overlap (the game takes the last). A
     // plain object counts with every tile it covers.
     let mut tiles: Vec<(u8, (u8, u8))> = objects
@@ -815,15 +859,24 @@ pub fn build_only(
         computer: true,
         towns: 1,
     });
-    if heroes_per_player[1] > 0 || blue_towns > 0 {
+    if heroes_per_player[1] > 0 || towns_per_player[1] > 0 {
         players[1] = Some(Player {
             human: true,
             computer: true,
             towns: 1 << 6,
         });
     }
-    if heroes_per_player.iter().skip(2).any(|&n| n > 0) {
-        return Err("owners are red or blue".into());
+    // Tan, the computer's only (E23 T7, batch 4b): hot seat makes the named players human, Red
+    // and Blue, and leaves Tan to the computer.
+    if heroes_per_player[2] > 0 || towns_per_player[2] > 0 {
+        players[2] = Some(Player {
+            human: false,
+            computer: true,
+            towns: 1 << 7,
+        });
+    }
+    if heroes_per_player.iter().skip(3).any(|&n| n > 0) {
+        return Err("owners are red, blue or tan".into());
     }
     let banned_skills = spec
         .map
@@ -1023,8 +1076,13 @@ fn town_object(
         .ok_or_else(|| format!("no town template for {}", t.faction))?;
     let owner = match t.owner.as_str() {
         "blue" => Some(1),
+        "tan" => Some(2),
         "neutral" => None,
-        other => return Err(format!("a town's owner is blue or neutral, not `{other}`")),
+        other => {
+            return Err(format!(
+                "a town's owner is blue, tan or neutral, not `{other}`"
+            ));
+        }
     };
     // The picture (8 columns, 6 rows) ends two columns east of the entrance, on its row.
     let tile = (entrance.0.saturating_add(2), entrance.1);
@@ -1059,7 +1117,11 @@ fn town_object(
         }
         garrison[slot] = Some((creature as u16, *count));
     }
-    let owner_name = if owner.is_some() { "Blue" } else { "Neutral" };
+    let owner_name = match owner {
+        Some(1) => "Blue",
+        Some(_) => "Tan (the computer's)",
+        None => "Neutral",
+    };
     let mut faction_name = FACTIONS[faction].to_owned();
     faction_name[..1].make_ascii_uppercase();
     let built = t.buildings.as_ref().map_or_else(
@@ -1163,7 +1225,9 @@ fn hero(
         ("red", "blue") => 1, // an opponent hero always belongs to the second player
         ("red", _) => 0,
         ("blue", _) => 1,
-        (other, _) => return Err(format!("owner `{other}` (red or blue)")),
+        // A computer player's hero (E23 T7, batch 4b): the map lets no human play Tan.
+        ("tan", _) => 2,
+        (other, _) => return Err(format!("owner `{other}` (red, blue or tan)")),
     };
     let name = h.name.as_deref().or(name).map(str::to_owned);
     if h.defaults {
@@ -1287,7 +1351,7 @@ fn monster(
 
 /// One line describing a hero as the user should see it in the game.
 fn hero_summary(h: &HeroSpec, hero: &Hero, tables: &Tables) -> String {
-    let owner = if hero.owner == 0 { "Red" } else { "Blue" };
+    let owner = ["Red", "Blue", "Tan (the computer)"][usize::from(hero.owner.min(2))];
     let name = hero
         .name
         .as_deref()
@@ -1587,6 +1651,64 @@ mod tests {
     }
 
     #[test]
+    fn tan_is_the_computer_s_player() {
+        // E23 T7 (batch 4b): a town and its visiting hero of Tan, which no human may play.
+        let tan = SIEGE.replace("tight = true\n", "tight = true\n        owner = \"tan\"\n");
+        let tan = tan.replace(
+            "specialty = \"skill Archery\"\n",
+            "specialty = \"skill Archery\"\n        owner = \"tan\"\n",
+        );
+        let (map, text) = build(&parse(&tan).expect("spec"), &tables(), "t.h3m").expect("build");
+        let [_, MapObject::Town(town), MapObject::Hero(visitor)] = &map.objects[..] else {
+            panic!("not a hero, a town and its visitor: {:?}", map.objects);
+        };
+        assert_eq!((town.owner, visitor.owner), (Some(2), 2));
+        let player = map.players[2].as_ref().expect("Tan");
+        assert!(!player.human && player.computer && map.players[1].is_none());
+        assert!(text.contains("Tan (the computer's) Stronghold town"));
+        assert!(text.contains("visiting hero: Tan (the computer) hero **S1**"));
+        // A town's visitor is its owner's.
+        let mixed = SIEGE.replace("tight = true\n", "tight = true\n        owner = \"tan\"\n");
+        let error = build(&parse(&mixed).expect("spec"), &tables(), "t.h3m").expect_err("mixed");
+        assert!(
+            error.contains("a town's visiting hero is its owner's"),
+            "{error}"
+        );
+        let green = SIEGE.replace(
+            "specialty = \"skill Archery\"\n",
+            "specialty = \"skill Archery\"\n        owner = \"green\"\n",
+        );
+        let error = build(&parse(&green).expect("spec"), &tables(), "t.h3m").expect_err("green");
+        assert!(
+            error.contains("owner `green` (red, blue or tan)"),
+            "{error}"
+        );
+    }
+
+    #[test]
+    fn a_map_town_belongs_to_its_owner_and_no_encounter() {
+        // E23 T7 (batch 4b): Tan's own Tavern town far from the battle.
+        let spec = SIEGE.replace(
+            "[[encounter]]",
+            "[[map.town]]\n        entrance = [24, 20]\n        faction = \"stronghold\"\n        \
+             owner = \"tan\"\n        buildings = [\"tavern\"]\n\n        [[encounter]]",
+        );
+        let (map, _) = build(&parse(&spec).expect("spec"), &tables(), "t.h3m").expect("build");
+        let MapObject::Town(town) = map.objects.last().expect("objects") else {
+            panic!("not a town: {:?}", map.objects.last());
+        };
+        assert_eq!((town.tile, town.owner), ((26, 20), Some(2)));
+        assert!(
+            map.players[2]
+                .as_ref()
+                .is_some_and(|p| p.computer && !p.human)
+        );
+        let bad = spec.replace("entrance = [24, 20]", "entrance = [2, 20]");
+        let error = build(&parse(&bad).expect("spec"), &tables(), "t.h3m").expect_err("bad");
+        assert!(error.starts_with("the town at [2, 20]: "), "{error}");
+    }
+
+    #[test]
     fn rejects_mistakes_in_a_town() {
         let hero_part = SIEGE.find("[encounter.opponent.hero]").expect("hero");
         for (from, to, error) in [
@@ -1603,7 +1725,7 @@ mod tests {
             (
                 "tight = true",
                 "tight = true\nowner = \"red\"",
-                "a town's owner is blue or neutral, not `red`",
+                "a town's owner is blue, tan or neutral, not `red`",
             ),
             (
                 "\"Escape Tunnel\"",
