@@ -392,3 +392,47 @@ fn the_outcome_reports_every_stack_and_the_heroes() {
         (BattleResult::Retreat(Attacker), 1, None)
     );
 }
+
+// The surrender price the computer's retreat test expects (0x477A00; E23 T6): the side's
+// creatures but the temporary ones, of the stacks not created in the battle, at the surrender
+// share taken before the discount, the discount an `f32` under Q-0005; 0 without a price.
+// covers: BAT-AI-024
+#[test]
+fn the_computer_expects_the_original_s_surrender_price() {
+    use crate::computer::retreat_price;
+    let r = ruleset();
+    let mut state = r4(&r, 0);
+    // ½ × (7 × 60 + 25 + 2500), the halving first: 1472.
+    assert_eq!(retreat_price(&state, &r, Attacker), 1472);
+    // Basic Resurrection's 3 temporary Pikemen and a created Pixie are left out:
+    // ½ × (4 × 60 + 2500) = 1370; the battle's price counts them (BAT-Q28 row 7).
+    state.raised.temporary[0] = 3;
+    let pixie = &mut state.stacks.as_mut_slice()[1];
+    pixie.traits = pixie.traits.with(crate::StackTraits::SUMMONED, true);
+    assert_eq!(retreat_price(&state, &r, Attacker), 1370);
+    // A stack with no more creatures than its temporary ones adds nothing.
+    state.raised.temporary[0] = 7;
+    assert_eq!(retreat_price(&state, &r, Attacker), 1250);
+    for (profile, price) in [("t:faithful", 180), ("t:single", 179)] {
+        let r = ruleset_with(profile, |_| {});
+        let mut diplomat = hero(&r);
+        diplomat.surrender_discount_bp = 4000;
+        let s = BattleSetup {
+            heroes: [Some(diplomat), Some(hero(&r))],
+            ..setup(&r, &[(0, "fixed", 10)], &[(0, "slow", 10)])
+        };
+        let state = BattleState::new(&r, &s, 1).unwrap();
+        assert_eq!(retreat_price(&state, &r, Attacker), price, "{profile}");
+    }
+    let unpriced = ruleset_with("t:faithful", |b| b.surrender = None);
+    assert_eq!(retreat_price(&r4(&unpriced, 0), &unpriced, Attacker), 0);
+    // The original's 32-bit sum wraps: 40 000 000 Pikemen at 60 gold and the rest, −1 894 964 771,
+    // halved towards 0 (−947 482 385, an `f32` of −947 482 368).
+    let mut huge = r4(&r, 0);
+    huge.stacks.as_mut_slice()[0].count = 40_000_000;
+    assert_eq!(retreat_price(&huge, &r, Attacker), -947_482_368);
+    // The funds the test compares it with are the hero's side's; 0 without a hero.
+    assert_eq!(crate::computer::funds(&r4(&r, 77), Attacker), 77);
+    let s = BattleState::new(&r, &setup(&r, &[(0, "fixed", 1)], &[(0, "slow", 1)]), 1).unwrap();
+    assert_eq!(crate::computer::funds(&s, Defender), 0);
+}

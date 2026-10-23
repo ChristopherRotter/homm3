@@ -15,8 +15,10 @@ use h3_battle::{
     castable_spells, computer, legal_commands, second_targets, validate,
 };
 use h3_content::{CreatureFlag, CreatureTypeId, Formation, HeroTypeId, SpellCategory, SpellId};
-use h3_content_battle::BattleRuleset;
-use h3_contracts::{Army, ArmyStack, BattleSetup, BattleSide, FortLevel, Moat, Siege};
+use h3_content_battle::{BattleRuleset, WallKind};
+use h3_contracts::{
+    Army, ArmyStack, BattleHero, BattleSetup, BattleSide, CatapultControl, FortLevel, Moat, Siege,
+};
 use h3_heroes::{ArtifactInstance, HeroDetails, derive_battle_hero, war_machines};
 use h3_kernel::Rng;
 
@@ -388,6 +390,87 @@ fn the_cyclopes_batter_the_weakest_wall_while_their_army_is_locked_out() {
     }
 }
 
+// covers: BAT-AI-021
+#[test]
+fn a_commanded_catapult_aims_at_the_gate_then_the_weakest_wall_while_all_stand() {
+    for profile in ["base:faithful", "base:strict-fixed"] {
+        let r = sod(profile);
+        let field = r.siege_field().unwrap();
+        // An attacking hero with Basic Ballistics commands its Catapult at a Fort (walls and
+        // gate, no turrets): the Catapult acts first in every round.
+        let mut hero = BattleHero::new(HeroTypeId::from_index(0).unwrap());
+        hero.war_machines.catapult = Some(CatapultControl { level: 1 });
+        let setup = BattleSetup {
+            attacker: harvested(&r, &[("base:pikeman", 50)]),
+            defender: harvested(&r, &[("base:pikeman", 50)]),
+            heroes: [Some(hero), None],
+            siege: Some(Siege {
+                faction: r.sieges()[0].faction,
+                fort: FortLevel::Fort,
+                moat: Moat::Absent,
+                structures: 0,
+                escape_tunnel: false,
+                morale: 0,
+                luck: 0,
+            }),
+            formations: [Formation::Loose, Formation::Loose],
+            difficulty: 1,
+            ..BattleSetup::default()
+        };
+        let (mut gate, mut weakest, mut rest) = (0, 0, 0);
+        // A shot that misses the gate lands on a wall: over a few battles the gate falls with
+        // every wall standing too.
+        for seed in 0..8 {
+            let mut state = BattleState::new(&r, &setup, seed).unwrap();
+            let mut seat = Rng::from_seed(5);
+            for _ in 0..300 {
+                let Some(side) = state.side_to_act() else {
+                    break;
+                };
+                let id = state.active().unwrap();
+                if !state.stack(id).unwrap().is_catapult() {
+                    apply(&mut state, &r, side, Command::Defend, &mut NoopSink).unwrap();
+                    continue;
+                }
+                let siege = *computer::siege(&state).unwrap();
+                let gate_target = (0..siege.targets)
+                    .find(|&t| siege.kind(t) == Some(WallKind::Gate))
+                    .unwrap();
+                let walls: Vec<(u8, u8)> = computer::walls(&state).collect();
+                let command = h3_battle_ai::choose(&state, &r, side, &mut seat);
+                let Command::ShootWall { part } = command else {
+                    panic!("{profile}: {command:?}");
+                };
+                if siege.stands(gate_target) {
+                    assert_eq!(part, gate_target, "{profile}");
+                    gate += 1;
+                } else if walls.len() == field.automatic.len() {
+                    let least = walls.iter().map(|w| w.1).min();
+                    assert!(
+                        walls.iter().any(|w| w.0 == part && Some(w.1) == least),
+                        "{profile}: {part} of {walls:?}"
+                    );
+                    weakest += 1;
+                } else {
+                    let first = field
+                        .fallback
+                        .iter()
+                        .copied()
+                        .chain(0..siege.targets)
+                        .find(|&t| siege.stands(t));
+                    assert_eq!(Some(part), first, "{profile}: {walls:?}");
+                    rest += 1;
+                }
+                apply(&mut state, &r, side, command, &mut NoopSink).unwrap();
+            }
+        }
+        assert!(
+            gate > 0 && weakest > 0 && rest > 0,
+            "{profile}: {gate} {weakest} {rest}"
+        );
+    }
+}
+
 // covers: BAT-AI-004
 #[test]
 fn the_cyclopes_shoot_a_stack_without_walls_to_batter_or_with_their_army_free() {
@@ -425,7 +508,7 @@ fn the_cyclopes_shoot_a_stack_without_walls_to_batter_or_with_their_army_free() 
 }
 
 /// A hero of the first hero type with Fire Wall in its spell book, 100 mana and spell power 5.
-fn fire_mage(r: &BattleRuleset) -> h3_contracts::BattleHero {
+fn fire_mage(r: &BattleRuleset) -> BattleHero {
     let d = HeroDetails {
         hero_type: HeroTypeId::from_index(0).unwrap(),
         level: 1,
@@ -503,4 +586,57 @@ fn a_walker_strikes_from_a_hex_off_the_fire_wall() {
         let (from, target) = strike_hex(&r, "base:efreeti", true);
         assert_eq!(from == target, profile == "base:strict-fixed", "{profile}");
     }
+}
+
+// A bound walker (BAT-MAG-045) values only the enemies next to it (0x421680's marks at 0; the
+// walker's choice, BAT-AI-005): the Dendroid Guards bind the Pikemen that attacked them, and the
+// Pikemen's next choice is legal and strikes a Dendroid stack beside them or does not move. A fixed
+// game for the line the random battles reach only by chance.
+// covers: BAT-AI-005
+#[test]
+fn a_bound_walker_values_only_the_enemies_beside_it() {
+    let r = sod("base:faithful");
+    let mut state = walled(
+        &r,
+        &[("base:pikeman", 20)],
+        &[("base:dendroid_guard", 10)],
+        false,
+    );
+    let pikemen = h3_battle::StackId(0);
+    let mut legal = LegalCommands::new();
+    for _ in 0..40 {
+        let side = state.side_to_act().unwrap();
+        if computer::bound(&state, pikemen) && state.active() == Some(pikemen) {
+            let command = h3_battle_ai::choose(&state, &r, side, &mut Rng::from_seed(1));
+            assert!(validate(&state, &r, side, command).is_ok(), "{command:?}");
+            assert!(
+                !matches!(command, Command::Move { .. }),
+                "a bound walker does not move: {command:?}"
+            );
+            return;
+        }
+        legal_commands(&state, &r, side, &mut legal);
+        let attack = legal
+            .iter()
+            .copied()
+            .find(|c| matches!(c, Command::Attack { .. }));
+        // Otherwise the attacker walks the furthest it may towards the defender, which waits.
+        let command = attack.unwrap_or_else(|| {
+            if side == BattleSide::Attacker {
+                legal
+                    .iter()
+                    .copied()
+                    .filter_map(|c| match c {
+                        Command::Move { to } => Some((to.0 % 17, c)),
+                        _ => None,
+                    })
+                    .max_by_key(|&(x, _)| x)
+                    .map_or(Command::Defend, |(_, c)| c)
+            } else {
+                Command::Defend
+            }
+        });
+        apply(&mut state, &r, side, command, &mut NoopSink).unwrap();
+    }
+    panic!("the pikemen were never bound on their turn");
 }

@@ -9,7 +9,8 @@
 //! the computer's order of action ([`order::ranks`]) and that it can strike (the marks): their
 //! bits as its enemies within a turn, and the one with the fewest turns, then the strictly higher
 //! melee value (0x435C70 with the cost as its run-up within its speed), as its nearest with that
-//! value.
+//! value. Outside the tactics phase every enemy marked is within a turn; in the phase the map
+//! searches the whole field (BAT-AI-023) and the turns count at the stack's speed.
 //!
 //! The original also records a dead enemy whose place the stack can stand on this turn, by the
 //! rank its record kept from an earlier order (stale: the order leaves out the dead); the port
@@ -30,13 +31,15 @@ use h3_kernel::arith::X87;
 
 use crate::order;
 
-/// A stack's threat record on the walker's turn (+0x538, +0x53C, +0x544): its nearest enemy and
-/// that one's value, and its enemies within a turn by record bit.
+/// A stack's threat record on the walker's turn (+0x538 to +0x544): its nearest enemy, that
+/// one's value, cost and turns, and its enemies within a turn by record bit.
 #[derive(Debug, Clone, Copy, Default)]
 pub(crate) struct Record {
-    nearest: Option<StackId>,
-    value: i32,
-    mask: u32,
+    pub(crate) nearest: Option<StackId>,
+    pub(crate) value: i32,
+    pub(crate) cost: u16,
+    pub(crate) turns: u32,
+    pub(crate) mask: u32,
 }
 
 /// The threat records of a side by stack id.
@@ -48,6 +51,16 @@ fn bit(state: &BattleState, id: StackId) -> u32 {
     let before = state.stacks().iter().take(id.index());
     let r = before.filter(|s| s.side == side).count();
     1u32 << (r & 31)
+}
+
+/// The stack id bits of `side`'s stacks whose record bits (+0xF8) `mask` holds.
+pub(crate) fn stack_bits(state: &BattleState, side: BattleSide, mask: u32) -> u64 {
+    (0u8..)
+        .zip(state.stacks())
+        .filter(|(_, s)| s.side == side)
+        .zip(0u32..32)
+        .filter(|&(_, r)| mask & (1 << r) != 0)
+        .fold(0, |bits, ((i, _), _)| bits | 1 << i)
 }
 
 /// Whether `s` is the Ballista: a shooting war machine that is neither the Catapult nor a turret.
@@ -115,8 +128,10 @@ pub(crate) fn records(
         }
         // The range is the stack's speed and no mark comes from a stop: every enemy marked is
         // within one turn (0x448840's turns 1, a cost within the speed as the run-up), so each
-        // sets its bit and the nearest is the one of the strictly higher value.
+        // sets its bit and the nearest is the one of the strictly higher value; but in the
+        // tactics phase, whose map reaches the whole field (BAT-AI-023).
         let map = computer::turn_map(state, ruleset, id, side);
+        let speed = u16::from(state.stacks()[id.index()].speed_now());
         let mut record = Record::default();
         for (j, e) in (0u8..).zip(state.stacks()) {
             let enemy = StackId(j);
@@ -131,12 +146,22 @@ pub(crate) fn records(
             let Some(cost) = map.mark(e.hex) else {
                 continue;
             };
-            let run_up = u8::try_from(cost).unwrap_or(u8::MAX);
+            let within = cost <= speed;
+            let run_up = u8::try_from(cost).unwrap_or(u8::MAX) * u8::from(within);
             let value = computer::strike_value(state, ruleset, ctx, (id, enemy), run_up);
-            record.mask |= bit(state, enemy);
-            if record.nearest.is_none() || value > record.value {
+            // 0x448840: `max(1, ⌈cost / speed⌉)`, the bit at one turn.
+            let turns = u32::from(cost.div_ceil(speed.max(1))).max(1);
+            if turns == 1 {
+                record.mask |= bit(state, enemy);
+            }
+            if record.nearest.is_none()
+                || turns < record.turns
+                || (turns == record.turns && value > record.value)
+            {
                 record.nearest = Some(enemy);
                 record.value = value;
+                record.cost = cost;
+                record.turns = turns;
             }
         }
         out[id.index()] = record;

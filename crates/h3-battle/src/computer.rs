@@ -5,8 +5,9 @@
 //! battle's private state is added here by the battle lane.
 
 use h3_content::{CreatureTypeId, SchoolId, SpellId};
-use h3_content_battle::{BattleRuleset, BattleSpell, SpellTarget};
-use h3_contracts::BattleSide;
+use h3_content_battle::{BattleRuleset, BattleSpell, BattlefieldId, SpellTarget};
+use h3_contracts::{BattleSide, RetreatFacts};
+use h3_kernel::Rng;
 use h3_kernel::arith::X87;
 
 use crate::aim;
@@ -16,8 +17,10 @@ use crate::geometry::{Field, Hex, HexSet};
 use crate::magic;
 use crate::movement::MAX_PATH;
 use crate::pathfinder::{self, AI_RANGE, Goal, Query, Search};
+use crate::retreat;
 use crate::siege::{self, SiegeState};
-use crate::state::{BattleState, StackId, StackTraits};
+use crate::state::{BattleState, StackFlags, StackId, StackTraits};
+use crate::tactics::TacticsRounds;
 
 pub use crate::aim::{Context, Planned, Shot, Threat};
 
@@ -137,9 +140,54 @@ pub fn human(state: &BattleState, side: BattleSide) -> bool {
     state.human[side.index()]
 }
 
-/// Whether the round is in its wait phase (+0x13DE4), where a stack cannot wait again.
+/// What `side`'s hero would lose by a retreat and whether it could be hired again
+/// (`BattleSetup.retreat`, ADR-0027 point 14): the adventure's facts the computer's retreat test
+/// reads (0x41E570; BAT-AI-024). Private to the side.
+pub fn retreat_facts(state: &BattleState, side: BattleSide) -> RetreatFacts {
+    state.retreat[side.index()]
+}
+
+/// What `side`'s owner can pay (`BattleSetup.funds`: the player's gold, which the computer's
+/// retreat test reads, 0x41E8D1); 0 without a hero. Private to the side.
+pub fn funds(state: &BattleState, side: BattleSide) -> u32 {
+    state.heroes[side.index()].map_or(0, |h| h.funds)
+}
+
+/// The surrender price `side`'s computer expects in its retreat test (0x477A00; BAT-AI-024):
+/// [`retreat::price`]. Private to the side.
+pub fn retreat_price(state: &BattleState, ruleset: &BattleRuleset, side: BattleSide) -> i32 {
+    retreat::price(state, ruleset, side)
+}
+
+/// Whether `side`'s army is walled out of the siege, which its computer's retreat test answers
+/// with a retreat (0x41E440; BAT-AI-024): [`retreat::walled_out`].
+pub fn walled_out(state: &BattleState, ruleset: &BattleRuleset, side: BattleSide) -> bool {
+    retreat::walled_out(state, ruleset, side)
+}
+
+/// The special battlefield of the attacking hero's own adventure tile, if any
+/// (`BattleSetup.attacker_ground`, ADR-0027 point 14), at which the original's computer values
+/// that hero's spells (survey slip 6, BAT-AI-008).
+pub fn attacker_ground(state: &BattleState) -> Option<BattlefieldId> {
+    state.attacker_ground
+}
+
+/// Whether the round is in its wait phase (+0x13DE4), where a stack cannot wait again. In the
+/// tactics phase, whose rounds hand the waited stacks over after the others (BAT-TAC-002), whether
+/// the active stack has waited: the original's pick sets the flag there too (0x465080; BAT-AI-023).
+// rule: BAT-AI-023
 pub fn wait_phase(state: &BattleState) -> bool {
     state.wait_phase
+        || (state.tactics.is_some()
+            && state
+                .active
+                .is_some_and(|id| state.at(id).flags.contains(StackFlags::WAITED)))
+}
+
+/// The rounds of the running tactics phase the computer counts (the original's +0x13D6C and
+/// +0x14030; BAT-AI-023): [`TacticsRounds`].
+pub fn tactics_rounds(state: &BattleState) -> TacticsRounds {
+    state.tactics_rounds
 }
 
 /// The computer's context for `side` (0x435EC0; BAT-SIE-023): the least attack and defense
@@ -363,11 +411,12 @@ impl Map {
 }
 
 /// The walker's map of stack `id` for the computer's `side` (0x421680's 0x4B2DA0, 0x4217BE;
-/// BAT-AI-005): range 127 (0 for a bound stack or one without speed); the stacks of `side` are not
-/// marked; at a town the moat's damage may keep it out of its stops (BAT-SIE-022, the
+/// BAT-AI-005): range 127 (0 for a bound stack or one without speed); in the tactics phase the
+/// tactics flag's range and turn's speed of 1000 (0x4B34DE; BAT-AI-023); the stacks of `side` are
+/// not marked; at a town the moat's damage may keep it out of its stops (BAT-SIE-022, the
 /// computer's). (The original's range 0 for a stack blind, petrified or paralysed matters only for
 /// the predictions' stacks, E23 T4: such a stack has no turn.)
-// rule: BAT-AI-005, BAT-SIE-022
+// rule: BAT-AI-005, BAT-AI-023, BAT-SIE-022
 pub fn map(state: &BattleState, ruleset: &BattleRuleset, id: StackId, side: BattleSide) -> Map {
     let field = Field::new(ruleset.battle().field);
     let me = state.at(id);
@@ -377,6 +426,7 @@ pub fn map(state: &BattleState, ruleset: &BattleRuleset, id: StackId, side: Batt
         avoid: aim::fears_moat(state, ruleset, me, Some(side)),
         spare: Some(side),
         speed: None,
+        tactics: state.tactics.is_some(),
     };
     Map(Search::run(state, field, (id, me), query))
 }
@@ -397,6 +447,7 @@ pub fn reach_map(state: &BattleState, ruleset: &BattleRuleset, id: StackId) -> M
         avoid: aim::avoids_stops(state, ruleset, me, Some(me.side)),
         spare: Some(me.side),
         speed: Some(speed),
+        tactics: false,
     };
     Map(Search::run(state, field, (id, me), query))
 }
@@ -511,9 +562,10 @@ impl Path {
 }
 
 /// The computer's path for stack `id` of the computer's `side` to the position `to` (0x41F580's
-/// search: 0x4B3400 with `side`, range 127; BAT-AI-006): empty without one or for its own
-/// position; at a town the moat's damage may keep it out of its stops (BAT-SIE-022).
-// rule: BAT-AI-006
+/// search: 0x4B3400 with `side`, range 127, in the tactics phase the tactics flag's 1000;
+/// BAT-AI-006, BAT-AI-023): empty without one or for its own position; at a town the moat's
+/// damage may keep it out of its stops (BAT-SIE-022).
+// rule: BAT-AI-006, BAT-AI-023
 pub fn path(
     state: &BattleState,
     ruleset: &BattleRuleset,
@@ -528,6 +580,7 @@ pub fn path(
         avoid: aim::fears_moat(state, ruleset, me, Some(side)),
         spare: Some(side),
         speed: None,
+        tactics: state.tactics.is_some(),
     };
     let search = Search::run(state, field, (id, me), query);
     let (hexes, len) = search.path();
@@ -549,9 +602,10 @@ pub fn path(
 /// A walker's map for its side's threat records on its turn (0x421F80's 0x422B20 with flag 1,
 /// 0x4B2DA0 at 0x422C51; BAT-AI-009): the computer's pathfinder for stack `id` of the computer's
 /// `side` with its speed as the range (0 for a bound stack or one without speed), so a stop
-/// marks nothing; the stacks of `side` are not marked; at a town the moat avoided by a weak
-/// stack (BAT-SIE-022, the computer's).
-// rule: BAT-AI-009, BAT-SIE-022
+/// marks nothing; in the tactics phase the tactics flag's range and turn's speed of 1000, which
+/// reach the whole field (BAT-AI-023); the stacks of `side` are not marked; at a town the moat
+/// avoided by a weak stack (BAT-SIE-022, the computer's).
+// rule: BAT-AI-009, BAT-AI-023, BAT-SIE-022
 pub fn turn_map(
     state: &BattleState,
     ruleset: &BattleRuleset,
@@ -566,6 +620,7 @@ pub fn turn_map(
         avoid: aim::fears_moat(state, ruleset, me, Some(side)),
         spare: Some(side),
         speed: None,
+        tactics: state.tactics.is_some(),
     };
     Map(Search::run(state, field, (id, me), query))
 }
@@ -663,6 +718,25 @@ pub fn cast_mirror_chance(state: &BattleState, ruleset: &BattleRuleset, id: Stac
 /// turrets; `None` outside a town.
 pub fn siege(state: &BattleState) -> Option<&SiegeState> {
     state.siege.as_ref()
+}
+
+/// The wall-shot target the computer aims its side's commanded Catapult at (0x473C00 with the
+/// hero's Ballistics, the original's computer and hidden battles; BAT-AI-021), its tie's draw
+/// from `rng`: [`siege::aim_with`] at the Ballistics level of the hero commanding stack `id`
+/// (0 without one). None away from a siege or with nothing standing.
+// rule: BAT-AI-021
+pub fn catapult_aim(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    id: StackId,
+    rng: &mut Rng,
+) -> Option<u8> {
+    let level = siege::shooter_level(state, ruleset, id).unwrap_or(0);
+    state
+        .siege
+        .as_ref()
+        .zip(ruleset.siege_field())
+        .and_then(|(siege, field)| siege::aim_with(siege, field, level, rng))
 }
 
 /// Whether the walls would halve a shot of `shooter` at `target` from the shooter's position
@@ -1051,6 +1125,7 @@ pub fn map_within(
         avoid: aim::fears_moat(state, ruleset, me, Some(side)),
         spare: Some(side),
         speed: None,
+        tactics: state.tactics.is_some(),
     };
     Map(Search::run(state, field, (id, me), query))
 }

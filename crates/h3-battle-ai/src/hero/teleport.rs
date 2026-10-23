@@ -22,14 +22,16 @@ use crate::walker::Walker;
 /// a stack the engine takes. Due now when the stack is the active one or blind, petrified or
 /// paralysed, or when no other stack of the side can act this round: never otherwise, as the
 /// stack itself still can. Once a walker was asked the original fills both sides' threat records
-/// again (0x422B20 with flag 0), which leaves them as the spell context built them (until the
-/// retreat test's predictions, T6: survey slip 26).
+/// again (0x422B20 with flag 0), which leaves them as the spell context built them: with
+/// BAT-QUIRK-25 the retreat test's records are gone for the spells after it (survey slip 26,
+/// [`SpellContext::refill`](crate::spells::SpellContext::refill)).
 // rule: BAT-AI-020
 pub(super) fn teleport(h: &Hero<'_, '_>, spell: SpellId, rng: &mut Rng) -> Valued {
     let (state, ruleset, side) = (h.state, h.ruleset, h.side);
     let targets = h.targets(spell);
     let mut best = Valued::ZERO;
     let mut list = CastTargets::new();
+    let mut asked = false;
     for (i, st) in (0u8..).zip(state.stacks()) {
         let r = StackId(i);
         if st.side != side
@@ -57,6 +59,7 @@ pub(super) fn teleport(h: &Hero<'_, '_>, spell: SpellId, rng: &mut Rng) -> Value
                     set
                 });
         let (before, after) = Walker::teleport_turns(state, ruleset, (r, side), destinations, rng);
+        asked = true;
         // The walker never attacks itself (BAT-STUB-10): the original's test that the attacked
         // stack is not the one moved (0x43AB34) always passes.
         let (Command::Attack { from, .. }, value) = after else {
@@ -73,5 +76,11 @@ pub(super) fn teleport(h: &Hero<'_, '_>, spell: SpellId, rng: &mut Rng) -> Value
             };
         }
     }
+    if asked {
+        h.sc.refill();
+    }
+    // stub: BAT-STUB-17
+    // A caster's cast entry in those turns may build a spell context whose predictions replace the
+    // planned damage the hero's later spells read (slip 33): the choice keeps its own.
     best
 }
