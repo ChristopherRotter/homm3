@@ -516,6 +516,9 @@ fn the_scene_draws_the_siege_in_the_redraws_order() {
     o.siege.as_mut().unwrap().faction = 1;
     o.siege.as_mut().unwrap().fort = 3;
     assert!(battle_at(&o, &moment, &keys, &t, &lay).is_err());
+    // A faction handle the manifest lacks.
+    o.siege.as_mut().unwrap().faction = 9;
+    assert!(battle_at(&o, &moment, &keys, &t, &lay).is_err());
 }
 
 fn at_in(names: &[String], n: &str) -> usize {

@@ -1258,6 +1258,13 @@ at = [124, 254]
             "`base:castle`: `plcbowx` is not a DEF name"
         );
         let mut b = base();
+        b.town = parse(&town_text(SIEGE_PARTS)).unwrap().town;
+        b.town[0].key = "base:castle".to_string();
+        assert_eq!(
+            rule(&[b], "base").to_string(),
+            "`base:base:castle`: a key is a pack's key, without its namespace"
+        );
+        let mut b = base();
         let town = parse(&town_text(SIEGE_PARTS)).unwrap().town;
         b.town = [town.clone(), town].concat();
         assert_eq!(

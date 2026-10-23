@@ -231,6 +231,13 @@ fn what_the_batch_lacks_is_an_error() {
     let gone = |what: &str| ComposeError::Missing(what.to_string());
     assert_eq!(missing(&[picture("no.pcx")]), gone("no.pcx"));
     assert_eq!(missing(&[absolute]), gone("no.pcx"));
+    let wall = Draw::Wall {
+        picture: "no.pcx".to_string(),
+        x: 0,
+        y: 0,
+        clip: None,
+    };
+    assert_eq!(missing(&[wall]), gone("no.pcx"));
     assert_eq!(missing(&[obstacle("no.def", 0)]), gone("no.def"));
     let lost = creature_of("no.def", [1, 1], false, None);
     assert_eq!(missing(&[lost]), gone("no.def"));
