@@ -1,7 +1,7 @@
 # E24 — The adventure map client
 
-Status: **refined** (2026-10-23, T0, with the user); M1 running (T1a, T1b, T2, T3a, T3b1 done;
-next T3b2, `docs/lanes/map-client/QUEUE.md`).
+Status: **refined** (2026-10-23, T0, with the user); M1 running (T1a, T1b, T2, T3a, T3b1, T3b2
+done; next T4, `docs/lanes/map-client/QUEUE.md`).
 Lane: map-client (`docs/lanes/map-client/HANDOFF.md`: the autonomy contract, the user's asset
 notes). Opened 2026-10-23 when the user split the client lane at E17 M3's closure (CLT-Q18).
 Decisions so far live here (no ADR of its own yet; ADR-0020 and ADR-0024 bind it as they bind
@@ -105,6 +105,10 @@ autonomy contract (lane HANDOFF) says what the agent decides alone in between. T
   T3b1 (2026-10-23): `h3-map-view render`, the frame and the view's tiles (terrain, rivers,
   roads, the edge, the unexplored tiles, the gems) as a PNG through the scene, its batch and
   compose, and the map's two drawers (`E24-design.md` §1.10; MCL-Q2 asked: the last row's road).
+  T3b2 (2026-10-23): the map's stills in the original (`clients/capture/h3map.py`, the
+  situations `clients/map/situations/` built by `h3-map-view situation`): eleven situations of
+  terrain, water and lava, the four rivers, the roads, the edges and the unexplored tiles, all
+  exact outside the panels; the clock drives the map, its palette step read from memory.
 - **Exit:** the capture set's stills match the original pixel for pixel outside the masks of
   what M1 does not draw (the panels, the mouse), or list each difference as an M2 item; the
   review list accepted; research item 9 closed by the reading and its frames.
@@ -144,7 +148,7 @@ checked frame by frame against recorded sequences as E17 M2 did for the battle.
 
 - **The original's moment.** A still is exact only at a known game time: whether the harness's
   virtual clock (`xdd.dll`) drives the adventure map's animations and colour cycles as it drives
-  the battle's is checked in T3b2; if not, the moment is read from memory.
+  the battle's (T3b2: it does); the palette step is read from memory, the menus run in real time.
 - **Random objects drawn in real time** (above): the comparisons depend on reading them from the
   original's memory.
 - **The engine lags the viewer:** 5 of 160 shipped maps import whole, and the observation has no
@@ -180,3 +184,9 @@ The M1 review list starts here (the autonomy contract's "queue for the milestone
   the screen (the original's source rectangles, the same, §1.10); `render`'s flags (`--hidden`, a
   rectangle unexplored for a look at the shroud until T5 reads the original's; `--bugs`; `--at`
   on a clock that is never late); MCL-Q2's fix the default (`--bugs original` the comparisons').
+- **M1 T3b2, the map's stills** (*provisional*): the situations' format (`h3_map_view::situation`:
+  the writer's terrain, patches and roads, tiles given or copied from a rectangle of a shipped
+  map named by its file, two heroes, the view, the hidden rectangles); the harness writes Red's
+  explored bits into the game (as E17 M4 T1b writes a siege's walls) instead of revealing by
+  play; a single scenario (Red human) rather than hot seat; the masks (the panels right of x 608
+  and below y 552); `render --cycles` (the original's palette step) and its `--hidden` repeated.

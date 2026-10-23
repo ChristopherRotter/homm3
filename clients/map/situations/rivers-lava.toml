@@ -1,0 +1,7 @@
+# A lava river over the underground's terrains (E24 M1 T3b2): All for One's underground tiles
+# (18, 0)-(37, 17), copied to the surface.
+size = 36
+terrain = "grass"
+copy = [{ map = "All for One.h3m", from = [18, 0], to = [37, 17], level = 1, at = [0, 0] }]
+heroes = [[33, 33], [33, 30]]
+view = [0, 0, 0]

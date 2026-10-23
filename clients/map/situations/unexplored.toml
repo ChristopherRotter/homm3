@@ -1,0 +1,21 @@
+# The unexplored tiles (E24 M1 T3b2; design §1.5): blocks, single tiles, one-tile-wide rows and
+# columns, diagonal neighbours and a block on the map's left edge, so that many masks, both
+# parities of x and y and the full piece show; Deluge's coast under them.
+size = 36
+terrain = "grass"
+copy = [{ map = "Deluge.h3m", from = [10, 10], to = [29, 27], at = [0, 0] }]
+heroes = [[33, 33], [33, 30]]
+view = [0, 0, 0]
+hidden = [
+    [2, 2, 6, 5],
+    [9, 3, 9, 3],
+    [12, 2, 13, 7],
+    [3, 9, 3, 14],
+    [7, 10, 11, 10],
+    [14, 9, 17, 14],
+    [10, 12, 10, 12],
+    [11, 13, 11, 13],
+    [10, 14, 10, 14],
+    [0, 15, 1, 16],
+    [16, 1, 18, 1],
+]

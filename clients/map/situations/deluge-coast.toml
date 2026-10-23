@@ -1,0 +1,7 @@
+# Deluge's coast, roads and grass (E24 M1 T3b2): its tiles (10, 10)-(29, 27) copied to the top-left,
+# the view at (0, 0) over them; every tile explored.
+size = 36
+terrain = "grass"
+copy = [{ map = "Deluge.h3m", from = [10, 10], to = [29, 27], at = [0, 0] }]
+heroes = [[33, 33], [33, 2]]
+view = [0, 0, 0]

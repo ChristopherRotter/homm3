@@ -194,3 +194,40 @@ maps; T3b2 the harness side and the first exact comparisons (`QUEUE.md`).
   `h3-render`; `render`'s flags.
 - **Questions:** MCL-Q2 (the last row's road at the view's bottom row; recommendation: fix, the
   original's only for the comparisons, as built).
+
+### M1 T3b2 — the first exact diff of the tiles (2026-10-23)
+
+The same session as T3b1, branch `map-client/e24-t3b2` (on T3b1's, #428), after the user asked
+for the second part too.
+
+- **Built:** `h3_map_view::situation` (the situations' TOML: the map's side, terrain, patches and
+  roads as the writer takes them, rectangles copied from shipped maps by file name and level,
+  tiles given one by one, Red's and Blue's heroes, the view, the hidden rectangles; built into
+  the writer's `Map` and `Extras`; 100 % covered); the binary's `situation` (the copies' maps read
+  from the installation copy's `Maps`); `render --cycles` and `--hidden` repeated, and a
+  situation's uncompressed map read as well as a shipped gzip one. The harness (common path,
+  additive): `h3mem.Mem.write_explored`, `def_palette`, `frame_steps`; the new driver
+  `clients/capture/h3map.py` (`still`, `set`); the runbook's "The map's stills".
+- **Found:** the virtual clock drives the adventure map (frozen: two dumps 1.5 s apart the same;
+  a 400 ms step moves the hero's flag and the panels); the menus run in real time, so each run's
+  palette step k differs (9 in the first run) and is read from memory: each cycling range in
+  memory is its file's rotated up by k, one k fitting all five DEFs. Renders at k ± 1 differ by
+  about 44 000 pixels, at k + 36 by none. A minimap click reaches views past every edge and the
+  view whose bottom row is the map's last: MCL-Q2's road is missing there in the original
+  (exact with `--bugs original`; 2 382 pixels differ drawn fixed).
+- **The map's capture set** (`clients/map/situations/set.toml`): `deluge-coast`,
+  `edge-top-left`, `edge-bottom-right`, `road-last-row-19`, `road-last-row-20`, `rivers-clear`,
+  `rivers-mud`, `rivers-lava` (an underground copied to the surface), `rivers-icy`,
+  `lava-water`, `unexplored`: every one 0 differing pixels outside the panels (about a minute
+  each). The second full run stopped at `rivers-icy`: its palettes fitted no single k, a read
+  that met the tick's rotation half done (`palette16_rotate` moves the entries one by one); the
+  harness now reads until two reads agree and checks again after the dump. The third run
+  differed in one situation by 42 035 pixels of water, the screen a palette step behind memory:
+  the idle step redraws the view only at the frame deadline (0x408A88, every 180 ms) while the
+  tick rotates whenever polled (design §1.6). The harness now steps the frozen clock to the
+  later of the next tick and the next redraw and waits until both have come (the clock's 20
+  reads can come before the main loop's idle step: the fourth run stopped there) before the
+  dump; the fifth and sixth runs as recorded (palette steps 10 and 11).
+- **Agent decisions (provisional, on the review list):** the situation format; writing Red's
+  explored bits instead of revealing by play; a single scenario; the masks.
+- **Questions:** none new; MCL-Q2's context updated (reachable).

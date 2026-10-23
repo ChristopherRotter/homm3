@@ -1,0 +1,14 @@
+# A road on the map's last row (E24 M1 T3b2; MCL-Q2): dirt, gravel and cobblestone roads along
+# row 35 and a dirt road along row 34, the view's top row 19 (the last row at the view's row
+# 16); Deluge's coast copied above them.
+size = 36
+terrain = "grass"
+copy = [{ map = "Deluge.h3m", from = [10, 10], to = [29, 27], at = [0, 16] }]
+roads = [
+    { kind = "dirt", row = 35, from = 1, to = 5 },
+    { kind = "gravel", row = 35, from = 7, to = 11 },
+    { kind = "cobblestone", row = 35, from = 13, to = 17 },
+    { kind = "dirt", row = 34, from = 3, to = 15 },
+]
+heroes = [[33, 2], [30, 2]]
+view = [0, 19, 0]

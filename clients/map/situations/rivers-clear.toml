@@ -1,0 +1,6 @@
+# Clear rivers over dirt, grass and rough (E24 M1 T3b2): Dragon Pass's tiles (18, 0)-(37, 17).
+size = 36
+terrain = "grass"
+copy = [{ map = "Dragon Pass.h3m", from = [18, 0], to = [37, 17], at = [0, 0] }]
+heroes = [[33, 33], [33, 30]]
+view = [0, 0, 0]

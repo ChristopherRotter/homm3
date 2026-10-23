@@ -4,6 +4,7 @@
 mod files;
 mod gate;
 mod render;
+mod situation;
 
 use std::process::ExitCode;
 
@@ -22,19 +23,23 @@ commands:
           encodings and the pixels that came from runs (the view skips runs in the terrains',
           rivers' and roads' frames: E24 design §1.3), and exits 1 on a problem. <dir> defaults
           to $H3_INSTALL, then to the repository's original-data/install.
-  render <map.h3m> --view <x>,<y>[,<z>] [--at <ms>] [--viewer <0-7>]
-         [--hidden <x0>,<y0>,<x1>,<y1>] [--bugs fixed|original] [--install <dir>] [--map <dir>]
-         [--out <file.png>] [--list]
+  render <map.h3m> --view <x>,<y>[,<z>] [--at <ms>] [--cycles <k>] [--viewer <0-7>]
+         [--hidden <x0>,<y0>,<x1>,<y1>]... [--bugs fixed|original] [--install <dir>]
+         [--map <dir>] [--out <file.png>] [--list]
           draws the adventure screen as the original does at that view (the tile x, y of level z,
           default 0, at the view's top-left) and moment: the frame's picture in the viewer's
           colours (--viewer, default 0, red), the map's terrain, rivers, roads and edge, the
           unexplored tiles and the corner gems (objects and heroes not yet: E24 M1 T4, T5), and
           writes a PNG (default clients/out/map/<stem>-v<x>_<y>_<z>[-<ms>ms].png). The live part is
-          the map's start with every tile explored but the rectangle --hidden gives on the view's
+          the map's start with every tile explored but the rectangles --hidden gives on the view's
           level; the moment is --at ms (default 0) after the map's assets were loaded, on a clock
-          that never runs late (a palette cycle step every 200 ms). --bugs original reproduces the
+          that never runs late (a palette cycle step every 200 ms), its cycle steps --cycles
+          when given (the original's, read by the harness). --bugs original reproduces the
           original's drawing bugs (for the comparisons; MCL-Q2). --list prints the draw list.
           The assets come from the installation copy's archives (<dir> as for gate).
+  situation <situation.toml> --out <map.h3m> [--install <dir>]
+          writes a situation's map (clients/map/situations/; E24 M1 T3b2) with the adventure
+          lane's writer, the shipped maps its copies name read from <dir>/Maps.
 ";
 
 fn main() -> ExitCode {
@@ -49,6 +54,13 @@ fn main() -> ExitCode {
         },
         Some((command, rest)) if command == "render" => match render::Options::parse(rest) {
             Ok(options) => render::run(&options),
+            Err(message) => {
+                eprintln!("{message}");
+                ExitCode::from(2)
+            }
+        },
+        Some((command, rest)) if command == "situation" => match situation::Options::parse(rest) {
+            Ok(options) => situation::run(&options),
             Err(message) => {
                 eprintln!("{message}");
                 ExitCode::from(2)

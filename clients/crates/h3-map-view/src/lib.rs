@@ -8,8 +8,10 @@
 //! [`check`] what the real-asset gate checks of the archives' entries they name. [`scene`] is
 //! what the screen shows at a view and a moment, as a draw list in the original's order;
 //! [`batch`] the assets it needs, decoded; [`compose`] draws it into a frame in the original's
-//! screen format with the view's drawers ([`draw`]) and the compositor's (`h3-render`). The
-//! adapters (the gate, `render`) are the binary's modules, not this library.
+//! screen format with the view's drawers ([`draw`]) and the compositor's (`h3-render`).
+//! [`situation`] is a still of the capture set: a map built with the writer, its view and the
+//! tiles left unexplored. The adapters (the gate, `render`, `situation`) are the binary's
+//! modules, not this library.
 //!
 //! Pure: no I/O, clock, threads or globals, `no_std` + `alloc`; time is an input. The header below
 //! is checked by `tests/purity.rs`.
@@ -39,4 +41,5 @@ pub mod draw;
 pub mod layout;
 pub mod live;
 pub mod scene;
+pub mod situation;
 pub mod tables;

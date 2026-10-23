@@ -30,6 +30,7 @@ adventure).
 | `h3cap.py` | `diff` (our render against a capture, with masks) and `find` (the original's obstacles in a capture); `compare` and `boxes_at` for the frame check. |
 | `h3mem.py` | Reads the running game's state from its memory: the battle's clocks, idle steps, active stack and the mouse's highlight, each stack's group, frame, hex, offsets and draw layer, and each side's hero's group and frame and its flag's frame (M3 T3a), the magic animation drawn and the stacks under it (M3 T3b), the battle's outcome (H1); the adventure map's players, heroes (with their experience, level, army and skills: H1), view and path, the difficulty, a tile's monster, the topmost dialog's text (H1; below). |
 | `h3adv.py` | The adventure map (M2 T6, H1, H2): hot seat at a chosen difficulty, heroes (the list scrolled), tiles of either level clicked twice, questions answered, battles played, level-ups chosen, turns, artifacts put on from the backpack in the hero screen (E08 T37a); `batch` plays an experiment batch and fills its results template, `compare` sets two filled templates side by side, `learn-button`. |
+| `h3map.py` | The adventure map's stills (E24 M1 T3b2, the map client lane): `still` shows a situation of `../map/situations/` in the original (a single scenario, Red's explored tiles written, the view by the minimap, the clock frozen), draws ours and diffs them; `set` runs the map's capture set. Below, "The map's stills". |
 | `h3lod.py` | The original's text tables, read from the run directory's LODs at run time (H1): which record a dialog's text was written from (`ADVEVENT:86`); never their text. |
 | `batches/` | The batches' recipes: a spec's procedure as steps (`E08-batch-2.toml`), and the harness's own check (`harness-check.toml`, its spec in `checks/`). |
 | `../situations/` | The capture set: `set.toml` and its situations' scenario files; the recorded sequences, `sequences.toml`, their scenarios `seq-*.toml` and `timelines/`. |
@@ -391,6 +392,35 @@ button that shows in more than one place (a dialog's OK): `python3 capture/h3adv
 <name> x0,y0,x1,y1 [<dump.xwd>]` records 12 probes relative to its corner (`[button.<name>]`);
 `h3adv.find_button` finds it anywhere on the screen.
 
+**The map's stills** (E24 M1 T3b2, the map client lane; `docs/epics/E24-design.md` §1.10): from
+`clients/`, after `cargo build --release -p h3-map-view`,
+
+```
+python3 capture/h3map.py set [--only <id>]                       # the map's capture set
+python3 capture/h3map.py still map/situations/<id>.toml [--keep]  # one situation
+```
+
+A situation (`map/situations/<id>.toml`, its format in `h3_map_view::situation`) is a writer's
+map (tiles given, or copied from a rectangle of a shipped map in `original-data/install/Maps`),
+two heroes away from the view, the view's top-left and the tiles Red has not explored. `still`
+writes the map (`h3-map-view situation`), loads it as a single scenario, writes Red's explored
+bit of every tile of the level (`h3mem.Mem.write_explored`: all but the situation's `hidden`
+rectangles; the game's own reveal around its heroes is overwritten), centres the view by a
+minimap click (another view first if it is there already, so that it redraws), parks the mouse,
+steps 100 ms, freezes the clock, steps it to the later of the palette tick's next time and the
+view's next redraw (the view is redrawn every 180 ms, the palettes rotate every 200 ms: between
+the two memory is a step ahead of the screen; at that time the redraw's own tick rotates first)
+and dumps the screen. The virtual clock drives the adventure map
+as it drives a battle: frozen, the map stays still; the palette cycles' step k is read from the
+cycling DEFs' palettes in memory (`Mem.def_palette`: each range a rotation of its file's by k,
+mod 36; read until two reads 0.1 s apart agree, and again after the dump, since a read can meet
+the tick's rotation half done) and the objects' frame steps from the manager
+(`Mem.frame_steps`), both into `live.toml`. Ours: `h3-map-view render --bugs original --cycles k` with the same view and hidden
+rectangles. Masked (`h3map.MASKS`): the panels right of x 608 and below y 552 (M3 draws them)
+and the cursor parked over the right panel. Every situation of T3b2 is exact; `set.toml` records
+the counts. The menus run in real time, so each run's k and frame steps differ: they are read,
+never assumed.
+
 ## The recipes' coordinates (800 × 600)
 
 | Where | Action | Point |
@@ -511,8 +541,10 @@ stack its creature, hex, group, frame, facing, offsets, times, count, the count 
 (`shown`, M3 T5b), its morale and luck (M3 T7b-2b-2a) (`docs/exe/structs.toml`). On
 the adventure map (M2 T6): the current player, each player's selected hero, hero list and
 resources, every hero's name, tile and points, the view's top-left tile, the tile under the
-mouse and the selected hero's path (design §6.3). It only reads, but for the mouse poll's timer
-a sequence's opening sets (M3 T6c-2). `python3 capture/h3mem.py`
+mouse and the selected hero's path (design §6.3); for the map's stills (E24 M1 T3b2) the cycling
+DEFs' 16-bit palettes and the objects' frame steps. It only reads, but for the mouse poll's timer
+a sequence's opening sets (M3 T6c-2), a siege's wall states (M4 T1b) and a map still's explored
+tiles (E24 M1 T3b2). `python3 capture/h3mem.py`
 prints the battle's state as JSON while a battle runs, `h3mem.py adventure` the adventure map's;
 `Mem` is the library. How to read a battle's state (drawn now, shown at the next deadline):
 design §7.1.
