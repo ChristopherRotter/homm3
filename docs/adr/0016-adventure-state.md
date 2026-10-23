@@ -141,12 +141,12 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
      kind. Its destinations, and the env's mask (ADR-0017 point 8), are the tiles a hero may stop
      on.
    - **The step's price** follows the hero: its Pathfinding level, Nomads in its army, flying and
-     water walking (the original's `step_cost` 0x4B1740), with two fix-optional quirks: flying
-     costs the fly price from every inland tile, roads included (D-24, `ADV-QUIRK-16`;
-     `strict-fixed` takes the lesser of the fly and the walking price everywhere), and the drop
-     to 0 after a step prices the cheapest step without the artifacts' flying and water walking
-     (A-12, `ADV-QUIRK-17`). Cursed Ground's loss of the native price is built only if batch E5
-     confirms it in SoD (D-23).
+     water walking (the original's `step_cost` 0x4B1740). A flying step costs the lesser of the
+     fly and the walking price from a land tile no object blocks, and the fly price from water and
+     from a blocked tile, in every profile (D-24: the original's rule, batch E5's E5-4 and ADV-Q22;
+     `ADV-QUIRK-16` withdrawn). One fix-optional quirk: the drop to 0 after a step prices the
+     cheapest step without the artifacts' flying and water walking (A-12, `ADV-QUIRK-17`). Cursed
+     Ground takes the native price away (D-23, confirmed in SoD by batch E5's E5-6).
 5. **Fog of war.** Each player has an explored layer (a bitset grid). An explored tile stays
    visible with its current content until a rule clears it (Cover of Darkness): no line-of-sight
    memory (VCMI, survey `E08-adventure-core.md` §2). Reveals set disk-shaped areas;
@@ -242,3 +242,7 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   move's end only where a hero may stop (D-25), the query's two kinds of node, the step's price
   by the hero (`ADV-QUIRK-16`, `-17`; D-23 by batch E5); the radius's reveals (`ADV-QUIRK-18`,
   D-26). Drafted in E08 T34b (#375; survey `E08-hero-movement.md`).
+- 2026-10-22 (E08 T41's shared part; ADV-Q22, E08 decision 85): point 4's step price corrected:
+  a flying step costs the lesser of the fly and walking prices from every land tile no object
+  blocks, in every profile (`ADV-QUIRK-16` withdrawn, its flag retired); Cursed Ground confirmed
+  by batch E5.

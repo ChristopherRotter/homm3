@@ -38,6 +38,11 @@ Sorted by destination at E05's audit (T9a, 2026-10-19); the origin stays in brac
 done: BAT-Q33's point for E05 (AI-Q3, ADR-0025 point 6), the `h3-game` coverage gap of a pending
 Pass offer (fixed by the adventure lane's fixed tests, #266).
 
+- 2026-10-22 (the adventure lane, E08 T41's shared part, `shared/e08-t41`, `cross-lane` with the
+  user's consent; for your information, nothing to do): `python/records/bots-report-v1.json`
+  regenerated (`h3 ai eval --set report-v1 --json`): flag 30 retired moved `engine.core`
+  (`de583eb06ef4dd73`), and `engine.adventure` catches up with T40's adventure part v10
+  (`483fb763b1a0ebbf`; #399 left it at v9's). Every rate as before.
 - 2026-10-22 (the battle lane, E23 T5b2a, `battle/e23-t5b2a`; for your information, nothing to do): `h3_battle_ai::POLICY_VERSION` is 14: a computer side's hero now also casts Teleport (the original's value, BAT-AI-020; it still never retreats). A side without a hero is unchanged; a hero's decision stays within the 5 ms budget (the slowest 3.5 to 4.3 ms with every spell in the book). Name it in a run record's engine identity; the function's signature is unchanged.
 - 2026-10-22 (the battle lane, E23 T5b1, `battle/e23-t5b1`; for your information, nothing to do): `h3_battle_ai::POLICY_VERSION` is 13: a computer side's hero now also casts Resurrection, Animate Dead, Sacrifice and Earthquake (the original's values, BAT-AI-019; not yet Teleport, nor retreats). A side without a hero is unchanged; a hero's decision stays within the 5 ms budget. Name it in a run record's engine identity; the function's signature is unchanged.
 - 2026-10-22 (the battle lane, E23 T5a, `battle/e23-t5a`; for your information, nothing to do): `h3_battle_ai::POLICY_VERSION` is 12: a computer side's hero now casts spells (the original's choice, BAT-AI-017, BAT-AI-018; not yet the raises, Sacrifice, Earthquake, Teleport, nor retreats). A side without a hero is unchanged. A decision with a hero's cast takes up to 5 ms (the user's budget; mean 0.43 ms with every spell in the book). Name it in a run record's engine identity; the function's signature is unchanged.
