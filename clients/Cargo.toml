@@ -4,7 +4,14 @@
 # resolve from the engine's root manifest.
 [workspace]
 resolver = "3"
-members = ["crates/h3-assets", "crates/h3-render", "crates/h3-sdl", "crates/h3-view"]
+members = [
+    "crates/h3-assets",
+    "crates/h3-render",
+    "crates/h3-sdl",
+    "crates/h3-view",
+    # The adventure map client (the map-client lane, E24).
+    "crates/h3-map-view",
+]
 
 [workspace.package]
 version = "0.1.0"

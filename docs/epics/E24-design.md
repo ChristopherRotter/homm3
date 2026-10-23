@@ -77,8 +77,9 @@ once (0x406FD0) from a name table, drawn through 0x47BF50 into `draw_frame_raw` 
   row (y = side − 1) only its top 16 rows are drawn, so nothing reaches past the map.
 - Rivers and roads skip tiles outside the map; no pass checks a picture against the DEF's frame
   count (the viewer refuses such a map, *provisional*).
-- Terrain frames are encodings 0 and 2 (E17 design §3.3); a run in an encoding-2 terrain frame
-  would leave what the buffer held (open point, T2's gate counts them).
+- A run in a terrain frame would leave what the buffer held. **None has one** (T2's gate on the
+  user's files, §1.9): every terrain frame is encoding 0; the rivers' and roads' are encoding 2
+  with runs of index 0 only (their transparent parts), so the raw drawer skips no shadow.
 
 ### 1.4 The map's edge
 
@@ -176,12 +177,33 @@ The table, mask = 16 × row + column:
 
 ### 1.8 Open points
 
-- Terrain frames with runs (§1.3) and the DEFs' frame counts (`edg` 36, `tshre` 34, `tshrc` 4 at
-  least): T2's gate on the user's files.
+- ~~Terrain frames with runs (§1.3) and the DEFs' frame counts~~: closed by T2's gate (§1.9).
 - The mouse's tile and the 8-pixel offset (§1.2): M3, with a capture hovering at y = 8 + 32 k + 28.
 - Passes 4 to 9: read in T1b (§2). The puzzle and covered modes: later (M5 for the hot seat).
 - The minimap (0x412C40, inferred) takes a terrain's colour from its DEF's palette entry 22: M3.
 - What 0x6989C0 means and when the DEFs are reloaded (k's origin).
+
+### 1.9 The frame and the gate's findings (M1 T2, 2026-10-23)
+
+- **The frame picture** (adventure_full_update 0x417420, its first part read; called from 21
+  sites): `AdvMap.pcx` (0x6603E0) loaded, entries 224–255 of its 16-bit palette given the viewing
+  player's 32 colours (0x5FFE20, as a dialog picture's), drawn opaque from (0, 0) at its own size
+  (0x44FDB0 with the last argument 0); then the panels (not read), the view (0x40F3F0 from the
+  manager's +0xE4), the minimap (0x412C40), and the whole 800 × 600 shown when its first argument
+  is set. The columns x 0–7 and 600–607, which the idle step shows with the view (§1.2), keep
+  the frame's pixels: the passes' clip leaves them. VCMI 1.7.5 agrees: its frame is parts of the same
+  picture in the player's colours (`config/widgets/adventureMap.json`, `imagesPlayerColored`).
+- **The gate** (`h3-map-view gate`, T2) on the user's files: every name of the tables and the
+  layout is found in the base archive searched first, `H3sprite.lod` (the DEFs) or
+  `H3bitmap.lod` (`AdvMap.pcx`, 800 × 600, 8-bit; `PLAYERS.PAL`), and decodes. Group 0's frames: the terrains dirt 46, sand 24, grass,
+  snow, swamp, rough, subterranean and lava 79, water 33, rock 48; each river 13, each road 17;
+  `edg` 36, `tshrc` 4, `tshre` 34, each gem 8: exactly what the view draws (§1.4, §1.5, §1.1).
+  The 159 shipped `.h3m` maps all read and give pictures up to dirt 45, sand 23, grass, snow,
+  swamp and rough 78, subterranean 77, lava 76, water 32, rock 47, each river 12, each road 16:
+  inside every DEF, so the viewer's refusal of a picture past its DEF's frames (§1.3) never
+  meets a shipped map, and every code they use has its table entry. Encodings: terrains and `edg`,
+  `tshrc` 0; rivers, roads and `tshre` 2 (`tshre`'s runs: index 0 and the shadow codes 1–4, as
+  §1.5's second drawer reads them); the gems 1, runs of index 0 only.
 
 ## 2. The objects' draw order and shadows (M1 T1b, 2026-10-23; research item 9)
 

@@ -13,6 +13,7 @@ h3-content.workspace = true
 h3-content-battle.workspace = true
 h3-contracts.workspace = true
 h3-battle.workspace = true
+h3-battle-ai.workspace = true
 h3-adventure.workspace = true
 h3-game.workspace = true
 h3-heroes.workspace = true

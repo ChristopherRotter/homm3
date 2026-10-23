@@ -41,6 +41,9 @@ pub use batch::{
 };
 pub use encounter::{ENCOUNTERS_VERSION, Encounter, EncounterTable, Kind, Sampler};
 pub use env::{BattleEnv, StepError, StepResult};
+/// The behaviour version of the system actor's policy, [`Policy::System`] (ADR-0027 point 12): a
+/// training run's record names it with its opponents (E06 T7).
+pub use h3_battle_ai::POLICY_VERSION as SYSTEM_POLICY_VERSION;
 pub use observation::{OBSERVATION_ENCODING_VERSION, OBSERVATION_LEN};
 pub use replay::{Replay, ReplayError, ReplayHeader};
 pub use reward::{Currency, RewardConfig};

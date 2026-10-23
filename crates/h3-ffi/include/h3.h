@@ -1,5 +1,5 @@
 /*
- * h3 engine C ABI, version 31 (see crates/h3-ffi/src/lib.rs and ADR-0011; the batch: ADR-0025).
+ * h3 engine C ABI, version 32 (see crates/h3-ffi/src/lib.rs and ADR-0011; the batch: ADR-0025).
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
  * Handles are opaque. Functions return H3_OK (0) or a negative error code; they never unwind.
@@ -100,6 +100,8 @@ uint64_t h3_env_state_hash(const H3Env *env); /* trusted tooling: the full state
 #define H3_SEAT_RANDOM 1   /* uniformly random legal commands inside the call (tests) */
 #define H3_SEAT_AGGRESSOR 2 /* v30: the baseline bot Aggressor inside the call (E05 T7) */
 #define H3_SEAT_GREEDY 3    /* v30: the baseline bot Greedy inside the call (E05 T7) */
+#define H3_SEAT_SYSTEM 4    /* v32: the system actor, the original's computer, inside the call
+                              (E06 T7); a neutral kind's defender in the encounter distribution */
 /* The encounter distribution's kinds (v28): H3BatchBuffers.encounter and the weights of
  * h3_batch_add_encounters, in this order. */
 #define H3_ENCOUNTER_NONE (-1)          /* the episode's scenario is no encounter distribution */
@@ -200,6 +202,8 @@ uint64_t h3_batch_episode_seed(uint64_t batch_seed, uint32_t env, uint32_t episo
 uint32_t h3_batch_scenario_count(const H3Batch *batch);
 int32_t h3_batch_scenario_info(const H3Batch *batch, uint32_t index, H3ScenarioInfo *out);
 uint32_t h3_encounters_version(void);
+/* v32 (E06 T7): the behaviour version of H3_SEAT_SYSTEM's policy (ADR-0027 point 12). */
+uint32_t h3_system_policy_version(void);
 
 #ifdef __cplusplus
 }

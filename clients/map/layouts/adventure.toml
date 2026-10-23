@@ -1,0 +1,27 @@
+# The adventure screen's layout at the native resolution (E24 M1 T2; ADR-0020 point 3). The numbers
+# are the executable's (docs/epics/E24-design.md §1.1, §1.2, §1.9, read 2026-10-23); an HD layout
+# is another file of this format. Loader: h3_map_view::layout (the format is provisional until the
+# M1 review). The panels right of and below the view come with M3.
+
+frame = [800, 600]
+# Drawn opaque at (0, 0) before the view, entries 224-255 of its palette the viewing player's
+# colours (adventure_full_update 0x417420, §1.9).
+picture = "AdvMap.pcx"
+player_palette = "PLAYERS.PAL"
+
+[view]
+# The tile (vx + i, vy + j) at origin + 32 (i, j) (manager +0xF4 and +0xF8 are 0, §1.2).
+origin = [0, 8]
+tile = 32
+# The passes' loops (§1.1): the columns, then the rows.
+columns = [-1, 19]
+rows = [-1, 17]
+# Every pass's clip: x 8-599, y 8-551 (§1.2).
+clip = [8, 8, 600, 552]
+# The corner gems (0x40F2F0), 46 x 46 each.
+gems = [
+    { def = "agemul.def", at = [6, 6] },
+    { def = "agemur.def", at = [556, 6] },
+    { def = "agemll.def", at = [6, 508] },
+    { def = "agemlr.def", at = [556, 508] },
+]

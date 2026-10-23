@@ -462,3 +462,37 @@ entry only where a task builds on it.
 - **Increment 4 closed** at the checkpoint (2026-10-23): the user ran nothing further and closed
   the session; increment 5's refinement is the next session's (the QUEUE's choices).
 
+
+## Increment 5's refinement (2026-10-23)
+
+- The agent put the choices to the user (the QUEUE's): a run (the MLP with the penalty for 60 M,
+  its recommendation, or one from `t5-3`'s best) and the code (T7, its recommendation; AI-Q7
+  (b); throughput; the mana price). **User:** T7, no run meanwhile; cut at a seam: T7a (the
+  `shared/` dependency) and T7b (the system actor's seat) now, T7c (the trainer, the neutral
+  held-out set, the ladder) and T7d (the run) after the checkpoint.
+- **User:** the neutral kinds' weights live in the run's config (`[env] kinds`), not in the
+  distribution's defaults: the held-out sets keep their episodes and the records stay
+  comparable (design §12). The `shared/` change gets its own branch (`shared/e06-t7a`).
+
+## T7a, T7b — The system actor's seat (2026-10-23)
+
+- **T7a** (#420): `arch.toml` lets `h3-sim` depend on `h3-battle-ai` (ADR-0025
+  point 5 named `System` among the policies; ADR-0027 point 11 the batch with neutral `System`
+  seats); the sim doc's neutral kinds (`docs/07-simulation-and-ai.md`).
+- **T7b:** `Policy::System` (`h3_battle_ai::choose` from the seat's stream); the neutral kinds'
+  defender `Internal(System)` (was `Random`); `h3_sim::SYSTEM_POLICY_VERSION` (15); C ABI v32:
+  `H3_SEAT_SYSTEM` (4), `h3_system_policy_version()`; `h3env`: the seat `"system"`,
+  `versions()["system_policy"]` in a new record's identity (the schema stays 5); `h3 ai eval
+  --policies` names `system`, its default list and the bots' table unchanged (T7c). The
+  distribution's defaults and the held-out sets are unchanged, so is every gated workload (the
+  encounter workload draws the default kinds).
+- **Tests:** the batch's determinism property plays the system actor on either side of the four
+  synthetic scenarios (a hero's side with its spells, a siege); the encounter test checks each
+  kind's seats (the neutral kinds' defender the system actor); the C ABI's internal seats
+  (`H3_SEAT_SYSTEM` as a defender, refused as the second internal seat, the version); `h3 ai
+  eval --policies random,system`; Python: the seat on either side of a scenario.
+- **Cost** (`h3 ai bench`, 64 envs, one thread, 2 000 calls of random legal actions, the
+  sandbox's CPU): the neutral kinds alone (`--encounters 780,20,0,0,0,25`) 56 154 caller steps/s
+  inside the step with the random defender, 15 349 with the system actor (2 089 episodes against
+  979: it beats a random attacker fast); about 47 µs per system decision. The default kinds
+  unchanged (40 186 and 43 887, noise). The engine stays far above the trainer's 5 000 samples/s.

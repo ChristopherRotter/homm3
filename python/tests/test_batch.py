@@ -198,7 +198,7 @@ def test_encounters_are_an_episode_source() -> None:
         batch.random_actions(rng)
         batch.step()
         assert (batch.reward[:, 0] == -batch.reward[:, 1]).all()
-    # The default weights leave out the neutral kinds (A12, until E23).
+    # The default weights leave out the neutral kinds (A12, E06 T7).
     assert kinds and kinds <= {
         _ffi.ENCOUNTER_HERO,
         _ffi.ENCOUNTER_SIEGE_HERO,
@@ -206,7 +206,24 @@ def test_encounters_are_an_episode_source() -> None:
     }
 
 
+def test_the_system_actor_plays_inside_the_call() -> None:
+    # E06 T7 (v32): the system actor, the original's computer, as a scenario's seat on either side.
+    batch = BattleBatch(4, seed=7, max_steps=300)
+    batch.add_scenario(scenario("full"), defender="system")
+    batch.add_scenario(scenario("siege"), attacker="system")
+    batch.reset()
+    rng = np.random.default_rng(5)
+    ended = 0
+    for _ in range(150):
+        assert (batch.to_move == batch.scenario).all()
+        batch.random_actions(rng)
+        batch.step()
+        ended += int(batch.done.sum())
+    assert ended > 0
+
+
 def test_neutral_encounters_play_the_defender_inside_the_call() -> None:
+    # The neutral kinds' defender is the system actor (A12, E06 T7).
     batch = BattleBatch(8, seed=5, max_steps=300)
     batch.add_encounters(kinds={"wandering": 1, "guards": 1})
     batch.reset()

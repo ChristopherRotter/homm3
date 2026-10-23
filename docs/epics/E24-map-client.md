@@ -1,6 +1,6 @@
 # E24 — The adventure map client
 
-Status: **refined** (2026-10-23, T0, with the user); M1 running (T1a, T1b done; next T2 or T3a,
+Status: **refined** (2026-10-23, T0, with the user); M1 running (T1a, T1b, T2 done; next T3a,
 `docs/lanes/map-client/QUEUE.md`).
 Lane: map-client (`docs/lanes/map-client/HANDOFF.md`: the autonomy contract, the user's asset
 notes). Opened 2026-10-23 when the user split the client lane at E17 M3's closure (CLT-Q18).
@@ -40,7 +40,7 @@ inside a game are the battle client's (E17); this epic hands them over.
 - **The string catalogue stays common** (T0; `clients/text/`, as T9c made it): both client
   lanes add keys.
 
-## How the viewer sees a map (T0's finding; *provisional*, T2 settles the types)
+## How the viewer sees a map (T0's finding; the types since T2: `h3_map_view::art`, `live`, *provisional*)
 
 - **Two inputs.** The engine's import (`h3_map::import`) draws nothing and keeps no pictures: no
   terrain picture, no mirror flags, no template's DEF; it imports 5 of the 160 shipped maps
@@ -96,7 +96,10 @@ autonomy contract (lane HANDOFF) says what the agent decides alone in between. T
 - **Done:** T1a (2026-10-23): the view's passes, tiles, edge, unexplored tiles and the moment
   read, VCMI compared (`E24-design.md` §1; MCL-Q1, answered: the width). T1b (2026-10-23): the
   objects' draw lists, layers and passes, shadows, heroes and boats read, VCMI's ten
-  differences and T4's situations (`E24-design.md` §2).
+  differences and T4's situations (`E24-design.md` §2). T2 (2026-10-23): the crate
+  `h3-map-view` (the static art from `RawMap`, the live part, the tables
+  `clients/map/assets/base.toml`, the layout `clients/map/layouts/adventure.toml`, the gate);
+  the frame's picture read, T1a's open points closed by the gate (`E24-design.md` §1.9).
 - **Exit:** the capture set's stills match the original pixel for pixel outside the masks of
   what M1 does not draw (the panels, the mouse), or list each difference as an M2 item; the
   review list accepted; research item 9 closed by the reading and its frames.
@@ -149,3 +152,13 @@ checked frame by frame against recorded sequences as E17 M2 did for the battle.
 ## Review lists
 
 The M1 review list starts here (the autonomy contract's "queue for the milestone review").
+
+- **M1 T2, the formats** (*provisional*): the map's tables keyed by the `.h3m`'s codes, not the
+  packs' keys (the static art is the raw map's); `[map]` holds the moment's steps and the road's
+  offset, the layout the view's place, loops, clip and the gems; the shroud's 256 pieces as data,
+  their variant rules (mirror, odd x and y) in code.
+- **M1 T2, the library's dependency on `h3-map`** (its raw model; no I/O): the static art is
+  converted in the pure library, so its tests use the writer; the purity test is a copy of
+  `h3-view`'s for this crate.
+- **M1 T2, the live part at a map's start:** heroes and boats facing right and every tile
+  explored until T5 reads the original's start; phases 0 (the original's are random).

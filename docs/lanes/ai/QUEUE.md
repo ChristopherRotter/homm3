@@ -21,17 +21,21 @@ stalled: both sides hid), T5c (the truncation penalty, the user's amendment of d
 (`t5-2`, `t5-3`: the entity network parked; the MLP with the penalty reached 0.832, 0.557,
 0.533 in 20 M samples and 70 minutes, near `t4-2`'s 60 M).
 
-**Next: increment 5's refinement, with the user** (no task is ready until then; the user closed
-the session after T5d without choosing). Put to them:
-- **A run:** the MLP with the penalty for 60 M samples (`configs/e06-t5c.toml`, `--set
-  network.kind=mlp --set samples=60_000_000`; about 3.5 hours): the clean comparison with
-  `t4-2` (only the penalty differs) and how far the gain goes (`t5-3`'s last gate still
-  promoted); or `--init-from runs/t5-3/best.pt` with a fresh schedule.
-- **The code:** (a) T7, the neutral battles (`Policy::System` as an opponent, the neutral kinds
-  at their census weights; the user, 2026-10-22: the system actor will not cower); (b)
-  throughput (about 4 900 samples/s against the engine's 100 000+: a training step's profile,
-  the batch size and threads, the observations in place); (c) AI-Q7 (b), the preview's kills per
-  attack and shot entry (C ABI v32); the mana price.
+**Increment 5** (refined 2026-10-23, the user: T7 first, no run meanwhile; the neutral weights
+in the run's config; design §12): T7a (#420) and T7b (the system actor's seat, C ABI
+v32) done. **Next, after the user's checkpoint on T7b:**
+- **T7c The trainer's neutral share** (one pull request): the league draws no member for a
+  neutral episode (one learning side, the attacker); the training's rates by kind; the neutral
+  held-out set `neutral-v1` (a stratum per neutral kind at A1's shares, the policy attacking the
+  system actor) in `evaluate.py` and `h3 ai eval --set neutral-v1`, the bots on it in the same
+  seat (decision 7's neutral target); the system actor in the ladder and `h3 ai eval`'s default
+  list, its policy version in the JSON's engine identity, `bots-report-v1.json` regenerated; a
+  config for T7d. Then the throughput of a neutral mix on the user's machine.
+- **T7d The run:** the user's; the mix (A1's shares put 82.5 % of the episodes in the neutral
+  kinds) chosen with T7c's numbers.
+- Later (design §10): T5's rest (AI-Q7 (b), the mana price, throughput), T6, T8, T9; the run
+  that compares the penalty at 60 M with `t4-2` (`configs/e06-t5c.toml`, `--set
+  network.kind=mlp --set samples=60_000_000`) stays on offer.
 
 ## Inbox
 

@@ -755,10 +755,12 @@ fn encounter_seats_through_the_abi() {
     unsafe { h3_batch_destroy(b) };
 }
 
-/// E05 T7 (v30): the baseline bots as internal seats: a scenario against `H3_SEAT_GREEDY` or
-/// `H3_SEAT_AGGRESSOR` leaves the caller only its own side to move, and battles end.
+/// E05 T7 (v30), E06 T7 (v32): the baseline bots and the system actor as internal seats: a
+/// scenario against `H3_SEAT_GREEDY`, `H3_SEAT_AGGRESSOR` or `H3_SEAT_SYSTEM` leaves the caller
+/// only its own side to move, and battles end.
 #[test]
 fn bot_seats_play_inside_the_call() {
+    assert_eq!(h3_system_policy_version(), SYSTEM_POLICY_VERSION);
     let n = 6;
     let b = create(&config(n, 0, 3, 300)).unwrap();
     for seats in [
@@ -770,12 +772,16 @@ fn bot_seats_play_inside_the_call() {
             attacker: H3_SEAT_AGGRESSOR,
             defender: H3_SEAT_EXTERNAL,
         },
+        H3Seats {
+            attacker: H3_SEAT_EXTERNAL,
+            defender: H3_SEAT_SYSTEM,
+        },
     ] {
         assert_eq!(add(b, SKIRMISH, 1, seats).0, H3_OK);
     }
     let both = H3Seats {
         attacker: H3_SEAT_GREEDY,
-        defender: H3_SEAT_AGGRESSOR,
+        defender: H3_SEAT_SYSTEM,
     };
     assert_eq!(add(b, SKIRMISH, 1, both).0, H3_ERR_ARGUMENT);
     let mut arrays = Arrays::new(n as usize);
@@ -785,7 +791,7 @@ fn bot_seats_play_inside_the_call() {
     let mut ended = 0;
     for _ in 0..200 {
         for i in 0..n as usize {
-            let external = if arrays.scenario[i] == 0 { 0 } else { 1 };
+            let external = if arrays.scenario[i] == 1 { 1 } else { 0 };
             assert_eq!(arrays.to_move[i], external, "env {i}");
         }
         let actions = actions(b, &arrays, n as usize, &mut rng);
