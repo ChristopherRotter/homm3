@@ -1417,4 +1417,8 @@ code.
 seam into this branch (the queues and the HANDOFF resolved by hand); the twenty replays verify as
 merged (#418's `ruleset_hash` lines and this branch's hash lines touch different lines and the
 merged ruleset plays them alike).
+The user squash-merged #422; `master` (328b808) merged into this branch again (the two battle-lane
+literals kept this branch's), with the AI lane's System seat (#421, `h3_battle_ai::choose` behind
+`Policy::System`): the full verify with the original data green on 8c37c73 (`verify-once: verified
+(sandbox) code ef5e62438e5d4a95d310840954860cb95b984300`), recorded in #424.
 

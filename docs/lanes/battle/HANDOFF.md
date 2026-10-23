@@ -4,7 +4,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E23, the original's battle AI, in progress** (`docs/epics/E23-original-battle-ai.md`; BAT-Q52). **T1 to T6 done** (#288 to #408, then `battle/e23-t6`): the reading §7.34 to §7.60, **ADR-0027** (point 14: the adventure's facts), BAT-QUIRK-25, slips 1 to 32; slip 33 found (BAT-STUB-17). **Budget** (the user): the gated count +2 %, re-set per part; ≤ 1 ms per decision, a hero's ≤ 5 ms. **T6** (the user: whole): `shared/e23-t6-seam` (verified; no PR yet, the user) and `battle/e23-t6` stacked on it (`cross-lane`): Catapult, tent, tactics phase (v53), retreat test with slips 26 and 6 (BAT-AI-024; replay format v30), `POLICY_VERSION` 18. Merged with `master` (#420; the replays verify as merged). **PRs:** #422 (the seam) first, then this one (`cross-lane`). Next: T7 (BAT-Q33 with S-25's row; slip 33).
+- **E23, the original's battle AI, in progress** (`docs/epics/E23-original-battle-ai.md`; BAT-Q52). **T1 to T6 done** (#288 to #408, then `battle/e23-t6`): the reading §7.34 to §7.60, **ADR-0027** (point 14: the adventure's facts), BAT-QUIRK-25, slips 1 to 32; slip 33 found (BAT-STUB-17). **Budget** (the user): the gated count +2 %, re-set per part; ≤ 1 ms per decision, a hero's ≤ 5 ms. **T6** (the user: whole): the seam (#422, merged) and **#424** (`battle/e23-t6`, `cross-lane`, open): Catapult, tent, tactics phase (v53), retreat test with slips 26 and 6 (BAT-AI-024; replay format v30), `POLICY_VERSION` 18. Full verify and client check green on 8c37c73 (`master` with #422 merged in; CI cannot run, billing). Next: T7 (BAT-Q33 with S-25's row; slip 33).
 - E05, `h3-sim` and `h3-ffi` are the AI lane's (AI-Q1), `h3-heroes` the adventure lane's.
 - **Open:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35, BAT-Q51, BAT-Q58 (none blocks; BAT-Q33 and BAT-Q51 wait for batch rows), BAT-STUB-1, the inbox (by kind since 2026-10-19), Q43; S-23, S-24, batch 2g.
 - **Versions:** battle state hash v53, battle part hash v7 (E23 T3-0; the encodings, replay format and C ABI are the AI lane's); shared: core ruleset hash v48, pack format v47 (E08 T45), protocol v34. Next ids: BAT-Q62, BAT-QUIRK-27, BAT-STUB-18, BAT-AI-025, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-24, S-30.
@@ -56,7 +56,7 @@ Area traps live where they are used: experiments in `docs/experiments/README.md`
 
 ### 2026-10-23 (107th) — E23 T6: the retreat test with slips 26 and 6
 
-The user: one session, `cross-lane` (replay format v30; facts hashed, still v53; twenty replays rehashed). Slip 33 found (BAT-STUB-17). `check-lane` fails until the seam merges.
+The user: one session, `cross-lane` (replay format v30; facts hashed, still v53; twenty replays rehashed). Slip 33 found (BAT-STUB-17). #422 merged (squash), #424 open.
 
 ### 2026-10-23 (106th) — E23 T6: the tent and the tactics phase
 
