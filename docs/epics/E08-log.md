@@ -4778,6 +4778,13 @@ exchange's drops skipping a team-mate's owner check) are in the survey.
 **The census** (survey §7): 373 placed heroes, 40 with custom artifacts, 11 with a backpack, none
 with a combination, its parts or Titan's Thunder; 3 with seven stacks; one tight.
 
+**The checkpoint** (ADV-Q24, asked interactively; decisions 93–100): the meeting a pending
+decision per step; the army dialog a decision with the group as a small army; the original's 19
+artifact positions in `h3-heroes`; the tactics flag passed as Tactics 0, with the user's condition
+that the two heroes' Tactics keep cancelling (both go as 0 when the leading side's flag is off);
+Scholar with meetings; A-16 the original's bounds (A-15 fixed); the adventure's RL encoding handed
+to the AI lane (the user's own answer; the AI lane's inbox told); batch E6 whole. T44b is ready.
+
 **Not read** (survey's sources): network and allied play, the computer player's join without room
 and meeting (0x52BC60, 0x525DC0: E10), the town screen's own garrisons and the upgrade (E09), the
 reward callers of the army dialog (increment 7), `battle_start`'s other tactics branches

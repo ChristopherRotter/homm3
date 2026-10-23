@@ -2,8 +2,9 @@
 
 Date: 2026-10-23. Scope: E08 increment 6 (decisions 90, 91; T44a whole: decision 92), input for
 T44b's ADR amendment drafts, the design note and the cut. Input, not rules (`README.md`): a fact
-becomes binding when a task writes it into the catalog with its sources and tests. The checkpoint's
-questions are ADV-Q24 (§12).
+becomes binding when a task writes it into the catalog with its sources and tests. **The
+checkpoint** (ADV-Q24, 2026-10-23: the epic's decisions 93–100) answered §12's questions; §12
+carries the answers.
 
 **Sources** (retrieved 2026-10-23):
 - `original-data`: a code reading of the user's `Heroes3.exe` (SoD 4.0 Complete); every address
@@ -534,6 +535,12 @@ Gelu can carry Armageddon's Blade", GENRLTXT 762) tests the target position's wo
 callers of the army dialog.
 
 ## 12. For T44b: the checkpoint's questions (ADV-Q24)
+
+*Answered (2026-10-23, the epic's decisions 93–100):* 1 (a); 2 (a); 3 (a); 4 (b) with the user's
+condition that the two heroes' Tactics keep cancelling as the experiments confirmed, so both go
+to the battle as 0 when the side that would get the phase has the flag off (decision 96); 5 in;
+6 A-15 fixed, A-16 (a); 7 neither: **the adventure's RL encoding goes to the AI lane** (decision
+99); 8 all eleven rows; 9 stands.
 
 1. **The meeting's shape**: (a) a pending decision of the owner opened by the step, the exchange's
    commands legal while it is open, closed by an answer (the original's: one meeting per step,
