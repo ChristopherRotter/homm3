@@ -257,7 +257,7 @@ pub(crate) fn heroes_by_lift(env: &AdventureEnv, player: PlayerId) -> (Vec<HeroI
 /// `reach` workload counts the instructions inside this function: the walker's search.
 #[inline(never)]
 pub fn reach_queries(env: &AdventureEnv, player: PlayerId, heroes: &[HeroId]) -> u64 {
-    queries(env, player, heroes)
+    queries(env, player, heroes, false)
 }
 
 /// The reachable-tiles query of each of `heroes`, `player`'s flying or water-walking heroes (E08
@@ -265,11 +265,14 @@ pub fn reach_queries(env: &AdventureEnv, player: PlayerId, heroes: &[HeroId]) ->
 /// the instructions inside this function.
 #[inline(never)]
 pub fn lifted_queries(env: &AdventureEnv, player: PlayerId, heroes: &[HeroId]) -> u64 {
-    queries(env, player, heroes)
+    queries(env, player, heroes, true)
 }
 
-/// The reachable-tiles query of each of `heroes` for `player`: the number of queries.
-fn queries(env: &AdventureEnv, player: PlayerId, heroes: &[HeroId]) -> u64 {
+/// The reachable-tiles query of each of `heroes` for `player`: the number of queries. `lifted`
+/// only keeps the two callers' code apart: with identical bodies the release build folds them
+/// into one symbol, and `bench-check`'s pattern then finds one name only (E08 T42).
+fn queries(env: &AdventureEnv, player: PlayerId, heroes: &[HeroId], lifted: bool) -> u64 {
+    black_box(lifted);
     let (state, rules) = (env.state(), env.rules());
     for &hero in heroes {
         let reach = legal_moves(state, rules, Actor::Player(player), hero);
