@@ -4894,3 +4894,58 @@ original data from the PC (the executable, both LODs, `maps.tar`, `extracted.tar
   stopped when two comments changed the code. `master` (#416, docs only) merged in after it, its
   adventure inbox note beside T45's; `check-lane`, `check-docs`, `check-exe-map` and `check-rules`
   passed again. CI cannot run (billing).
+
+### Increment 6, round 1: T46, batch E6's spec and results template; round 1 closed (2026-10-23, `adventure/e08-t46`, `cross-lane`)
+
+**The cut** (decision 107; asked at the start, `AskUserQuestion`): T46 whole on one map. Sizing
+found the expected cut by rows unneeded: `h3-experiment` already writes two heroes of a player
+side by side (`also` with `at`), learned spells with Scholar, the backpack in order, a 16-bit
+count of 40 000, a compliant group beside a full army and worn parts, and one map holds the
+eleven rows in 16 heroes, the original's eight per player. Not chosen: two maps (E6a, E6b), the
+cut by rows anyway.
+
+**Baseline:** `master` f3c8fab (#431), engine code fe96ce40 verified on f3c8fab (the sandbox ran
+only the light gates). The session had **no GitHub access** to the repository (the proxy refused
+it: "not enabled for this session"): the clone came from the user's PC as a bundle of `master`
+(`original-data/sync/homm3-master.bundle`, the same commit as the PC's `master`), the original
+data from the PC (the executable, both LODs, `Objects.txt`, `maps.tar`, `extracted.tar`).
+
+- **The spec** `experiments/specs/E08-batch-6.toml` (36 x 36 grass, Easy, hot seat; no compiler
+  change): Red plays E6-1 and E6-2 (seven stacks beside 10 compliant Wolf Riders: OK without a
+  change; a stack dismissed in the dialog and the group taken into the freed slot), E6-3 (a last
+  stack's move and merge refused, the swap allowed), E6-4 (the split into a one-stack hero's empty
+  slot at the slider's maximum: A-16's 9 and 1 against VCMI's 10 and 0), E6-11 (a meeting's
+  price: 1560 to 1460, the visitor staying); Blue plays E6-6a and E6-6b (Advanced Tactics against
+  5 Pikemen with the flag toggled off, then left on), E6-7, E6-8, E6-10 with E6-9, and E6-5 last
+  (after save 3). Each row's settles, the reading and the other sources head the file.
+- **Where the plan changed**: **E6-5** as survey §9 wrote it (a move to an empty slot in the hero
+  screen giving -25 536) contradicted §3.5's roles; re-read in T46 (`army_swap_slots` 0x44AD60:
+  slot b receives a's count through 16 bits; the hero screen 0x4DDB53 passes a = the clicked
+  slot, b = the selected; the exchange 0x5B0ED5 a = the source, b = the target), the hero screen's
+  move keeps 40 000 and the exchange's move and the screen's swap onto a clicked big stack wrap.
+  So the row moves 40 000 Peasants in the hero screen (the control), then to E6-5 B's empty slot
+  in the exchange, and swaps a Pikeman onto 40 000 Gnolls (both -25 536 by the reading; VCMI 40
+  000); the survey's §9 row carries the correction. **E6-7**: Expert Scholar and Expert Wisdom
+  (Precision, Fireball, Prayer) meets no skills (Bless, Chain Lightning, Implosion), so both
+  sides of the limit show: Bless and Chain Lightning learned, Implosion not (Scholar's side);
+  Precision learned, Fireball and Prayer not (Wisdom's). **E6-8**: Wizard's Well's three misc
+  parts with misc 1 (9) free, the Orb equipped on misc 4 (12) and right-clicked there: the
+  reading's first position (9) against VCMI's clicked one (12); the question after the first
+  equip only (VCMI: after both); then the Well right-clicked in the backpack (D-28, in exit
+  criterion 7 but not in §9's plan: the reading shows its window only, VCMI asks to disassemble).
+  **E6-9 and E6-10** share one book-less hero with six backpack
+  artifacts (the Thunder third, visible after a rotation either way): the arrow first, then the
+  Thunder on and off, which freed Blue's eighth hero for E6-5's second.
+- **The template** `experiments/results/E08-batch-6.md` (stamp ddd4ee4e). Its instructions name
+  the memory reads T47's recipe needs (army +0x91/+0xAD, worn +0x12D, backpack +0x1D4/+0x3D4,
+  spells +0x3EA, flags +0x48, the battle's +0x13D68), the positions' numbers, gold as both
+  players' starting bonus where the options allow (else an artifact the spec does not give goes
+  under "anything odd"), and the order with three saves.
+- **Checked in the engine**: the map reads, imports whole and validates (`original_data` on a
+  folder holding only it: 16 heroes, 4 monsters, a backpack of 6, 8 heroes per player).
+- **Not built**: the harness's clicks and reads and the recipe, the run (T47); the scoring (T48).
+- **Verify**: no fingerprinted path changed (docs and experiments only), so
+  `scripts/verify-once.sh engine --base origin/master -- --with-original-data` ran the light
+  gates on efcbb36 (engine code fe96ce40, verified on `master` f3c8fab): check-rules,
+  check-stubs, check-docs, check-exe-map passed; `check-lane --cross-lane` passed (the battle
+  lane's `docs/experiments/README.md`). CI cannot run (billing).
