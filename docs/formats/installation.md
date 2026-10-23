@@ -5823,7 +5823,7 @@ but a type and a count above 0, the arrow towers included (count × the record's
 walls, the Catapult and the Cyclops; then 0x4428F0) and every defender record in use but
 creature 149. 0x477A00 multiplies the halved sum (`cdq; sub; sar`, towards 0) as an `f32` by
 0x4E4580's `1.0 − d` (st(0), not stored: the discount `d` an `f32`). **Found** (survey slip 33,
-not built, BAT-STUB-17): Teleport's walker turns are real (§7.58), and a creature caster's cast
+built in E23 T7, BAT-AI-020): Teleport's walker turns are real (§7.58), and a creature caster's cast
 entry in them (§7.59) may build a spell context whose predictions (0x422A40 with flag 0) set every
 listed stack's planned damage (+0x534) anew, which the hero's later spells read (0x443080 with
 flag 1). Nothing copied (Q29).
