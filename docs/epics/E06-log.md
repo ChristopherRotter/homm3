@@ -491,3 +491,8 @@ entry only where a task builds on it.
   kind's seats (the neutral kinds' defender the system actor); the C ABI's internal seats
   (`H3_SEAT_SYSTEM` as a defender, refused as the second internal seat, the version); `h3 ai
   eval --policies random,system`; Python: the seat on either side of a scenario.
+- **Cost** (`h3 ai bench`, 64 envs, one thread, 2 000 calls of random legal actions, the
+  sandbox's CPU): the neutral kinds alone (`--encounters 780,20,0,0,0,25`) 56 154 caller steps/s
+  inside the step with the random defender, 15 349 with the system actor (2 089 episodes against
+  979: it beats a random attacker fast); about 47 µs per system decision. The default kinds
+  unchanged (40 186 and 43 887, noise). The engine stays far above the trainer's 5 000 samples/s.
