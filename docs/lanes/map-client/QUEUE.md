@@ -11,21 +11,6 @@ detail in `docs/epics/E24-design.md`; captures by the harness (`clients/capture/
 in git. Every oddity of the original a reading or a capture finds is an `MCL-Q<n>` in the same
 task (the HANDOFF's autonomy contract).
 
-### E24 M1 T1b — code reading: the objects' draw order and shadows (research item 9)
-
-- **Scope:** how the original orders and draws the objects over the view: how a tile's draw list
-  is built (0x505B20, 0x505230: the order of entries by the template's priority, its layer per
-  tile from 0x505060, the anchor, flat templates), how the drawing walks the tiles and their
-  lists (an object drawn once or per tile, clipped; objects reaching past the map's top and
-  left), the passes (the shadows by 0x47D930 before the bodies, or per object), where heroes,
-  boats and the selected hero's path fall in that order. VCMI 1.7.5's order compared; the user's
-  note (neither their engine nor VCMI got it exactly right) answered by naming where VCMI
-  differs. Result: `E24-design.md` §2; the frames that confirm it come in T4. The order inside a
-  tile's list answers the adventure lane's open point (its inbox, 2026-10-13, T14a): a note there.
-- **Acceptance:** the order written as an algorithm a test can follow, with its addresses; the
-  differences from VCMI listed with a situation each that would show them (T4's situations).
-- **Depends on:** nothing (T1a's passes, `E24-design.md` §1.1, frame it). **Status:** ready.
-
 ### E24 M1 T2 — the crate, the map's asset tables and the layout
 
 - **Scope:** `clients/crates/h3-map-view` (a pure library with the purity test as `h3-view`'s
@@ -54,7 +39,7 @@ task (the HANDOFF's autonomy contract).
   its inbox; `cargo xtask verify --scope adventure` without a failing step.
 - **Acceptance:** the writer's tests cover the additions; every map the writer wrote before is
   byte for byte unchanged (the fixtures and the replays pass as they are).
-- **Depends on:** T1a (done), T1b (what the situations need). **Status:** waiting (T1b).
+- **Depends on:** T1a, T1b (done; the situations' needs: `E24-design.md` §2.5). **Status:** ready.
 
 ### E24 M1 T3b — the tiles drawn and the first exact diff
 
@@ -71,14 +56,16 @@ task (the HANDOFF's autonomy contract).
 
 ### E24 M1 T4 — the objects and their shadows in the original's order
 
-- **Scope:** the objects drawn as T1b read (the draw lists, the passes, the shadows by the
-  compositor's shadow drawer, objects past the map's edges); the situations T1b named (the
+- **Scope:** the objects drawn as T1b read (`E24-design.md` §2: the draw lists and layers, the
+  passes, the shadows by the compositor's shadow drawer, heroes and boats as two-row objects,
+  objects past the map's edges); a gate check of every object DEF against its `.msk`'s masks
+  (§2.5 point 7: pixels in cells the original does not draw); the situations T1b named (§2.5, the
   writer's maps of overlapping objects, each showing one rule or one difference from VCMI);
   shipped maps at chosen views, their random objects' drawn types read from the original's memory
   (`h3mem.py`, additive) into the live part.
 - **Acceptance:** the situations and the shipped maps' views match pixel for pixel outside the
   masks of what T5 draws; research item 9 closed in the design notes (the reading and its frames).
-- **Depends on:** T1b, T3b. **Status:** waiting (T1b, T3b).
+- **Depends on:** T1b (done), T3b. **Status:** waiting (T3b).
 
 ### E24 M1 T5 — heroes, flags, owners and the explored tiles
 

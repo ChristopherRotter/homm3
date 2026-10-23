@@ -1,6 +1,6 @@
 # E24 — The adventure map client
 
-Status: **refined** (2026-10-23, T0, with the user); M1 running (T1a done; next T1b or T2,
+Status: **refined** (2026-10-23, T0, with the user); M1 running (T1a, T1b done; next T2 or T3a,
 `docs/lanes/map-client/QUEUE.md`).
 Lane: map-client (`docs/lanes/map-client/HANDOFF.md`: the autonomy contract, the user's asset
 notes). Opened 2026-10-23 when the user split the client lane at E17 M3's closure (CLT-Q18).
@@ -63,6 +63,10 @@ inside a game are the battle client's (E17); this epic hands them over.
   shadow pass is the encoding 3 drawer 0x47D930 (E17 design §3.3). The view (T1a's reading,
   `E24-design.md` §1): eleven passes over the whole view, tile (x, y) at (32 (x − vx),
   8 + 32 (y − vy)) clipped to (8, 8)–(600, 552), the view's top-left at adventure manager +0xE4.
+  The objects (T1b's reading, `E24-design.md` §2): a 32 × 32 piece per tile of each object's
+  draw list, the list ordered by its cells' layers; flat objects first, then every shadow, then
+  the bodies by layer with heroes and boats as two-row objects (after layers 1 and 2), then the
+  path's arrows.
 
 ## Milestones
 
@@ -90,7 +94,9 @@ autonomy contract (lane HANDOFF) says what the agent decides alone in between. T
   overlapping objects, heroes by class and facing), and shipped maps at chosen views (their
   random objects read from memory).
 - **Done:** T1a (2026-10-23): the view's passes, tiles, edge, unexplored tiles and the moment
-  read, VCMI compared (`E24-design.md` §1; MCL-Q1).
+  read, VCMI compared (`E24-design.md` §1; MCL-Q1, answered: the width). T1b (2026-10-23): the
+  objects' draw lists, layers and passes, shadows, heroes and boats read, VCMI's ten
+  differences and T4's situations (`E24-design.md` §2).
 - **Exit:** the capture set's stills match the original pixel for pixel outside the masks of
   what M1 does not draw (the panels, the mouse), or list each difference as an M2 item; the
   review list accepted; research item 9 closed by the reading and its frames.
@@ -121,7 +127,7 @@ checked frame by frame against recorded sequences as E17 M2 did for the battle.
 
 | Item | Where |
 |---|---|
-| 9. The adventure map's object draw order (the user: neither they nor VCMI got it exactly right); the objects' shadows | M1 T1b (the reading), T4 (its frames) |
+| 9. The adventure map's object draw order (the user: neither they nor VCMI got it exactly right); the objects' shadows | M1 T1b (read, `E24-design.md` §2), T4 (its frames) |
 | 3. Licences of MMArchive and homm3-unpacker before reading their code | stop the line: a question first, when a task wants them |
 | 4. The video archives | later |
 | 7. The HD patch as a source of fixes and for HD | later |

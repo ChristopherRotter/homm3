@@ -68,3 +68,36 @@ One session, branch `map-client/e24-t1a` (docs only: the design notes §1, `docs
   possible 8-pixel offset stays an open point for M3 (§1.8) until a capture shows it.
 - **Verify:** `cargo xtask check-exe-map`, `check-docs` and `check-lane` passed; `scripts/exe.py
   check` agrees with the executable (44 entries added, one renamed and read).
+
+### M1 T1b — code reading: the objects' draw order and shadows (2026-10-23)
+
+One session, branch `map-client/e24-t1b` (docs only: the design notes §2, `docs/exe/map.toml`
+and `structs.toml`, MCL-Q1 moved to answered, a note in the adventure lane's inbox). The user kept
+the task whole when asked for a seam (the agent had proposed the draw lists and object passes
+first, heroes, boats and the path second) and answered MCL-Q1 (the viewer tests the width).
+
+- **Path:** placement (0x505B20) and its two helpers (the layers 0x505060, the insertion
+  0x505230) in full; passes 4, 5, 6, 7, 8 in full, pass 9 for its role; the hero and boat
+  collectors and pieces (0x40FB30, 0x40FE30, 0x410760 and their shadow twins) and the tile's owner
+  (0x40FD20) in full; the drawers' wrappers; the hero, flag and boat DEF tables in the manager's
+  start. Not read: the moving hero's pieces and the attacking monster's substitute (M2), the
+  puzzle's class filter, the owners' tables (T5), 0x4FEC30 and 0x4CE900 (roles inferred).
+- **Findings:** objects are drawn as 32 × 32 pieces per tile, from each tile's draw list ordered
+  by its cells' layers (a cell's row above its column's base, reset at a blocked cell on a
+  passable one, copied from a blocked right neighbour), equal layers by the later placement unless
+  the earlier object is higher on a shared tile; flat objects in their own pass; every shadow
+  (objects', heroes', boats', the path's) before every body; heroes and boats have no entries and
+  are drawn as two-row objects after layers 1 and 2, the right over the left; a hero's flag under
+  it; a boat's waves, flag and body from the manager's DEFs (never its template's), the waves
+  skipped on the coast; bodies and shadows only in the cells of the `.msk`'s masks (H3API); flag
+  pixels coloured for eight classes only. Pass 9 and the centre pieces are the moving hero;
+  manager +0x1EC renamed `hero_moving`. Earlier text changed: §1.1's passes 4–9; the E08 survey's
+  "not read" on 0x505230 answered in the adventure lane's inbox (nothing to change there).
+- **VCMI 1.7.5** (§2.4): agrees on per-tile pieces, nothing off the map, flat objects lowest and
+  boats drawn from their own DEFs; differs in ten points (D1–D10: shadows with bodies, one order
+  per pair, its tie rules, heroes' place and order, the flag over the hero, the boats' layers,
+  every cell drawn, the path's shadow, flag colours for every owner). §2.5 lists a situation per
+  difference for T4, and a gate check of every object DEF against its `.msk` (T4).
+- **Questions:** none new; the open points (§2.5) wait for T4's and T5's captures.
+- **Verify:** see the pull request (`scripts/exe.py check`, `cited`: 23 entries added, 6 read or
+  renamed, 0 uncovered).
