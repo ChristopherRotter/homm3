@@ -579,10 +579,10 @@ pub fn write(map: &Map) -> Result<Vec<u8>, WriteError> {
 
 /// Writes `map` with `extras` as an uncompressed SoD map (E24 M1 T3a): the given tiles in place
 /// of what the map gives them, the objects of any template after the map's own. Without extras
-/// the bytes are [`write`]'s.
+/// the bytes are [`write()`]'s.
 ///
 /// # Errors
-/// As [`write`]; also a given tile off the map or given twice, an object's level or position
+/// As [`write()`]; also a given tile off the map or given twice, an object's level or position
 /// off the map (past the edges by more than its template can reach), a hero class, an owner
 /// for a class without one or without a playable player.
 pub fn write_with(map: &Map, extras: &Extras) -> Result<Vec<u8>, WriteError> {

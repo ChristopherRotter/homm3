@@ -48,7 +48,7 @@ pub struct GivenTile {
 
 /// An object of any template but a hero's (34, 70: [`super::Hero`]), a prison's (62) or a hero
 /// placeholder's (214), whose bodies name a hero; written with the body the map editor gives
-/// such an object left as placed (`empty_body`).
+/// such an object left as placed (`write_empty_body`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AnyObject {
     /// Level: 0 the surface, 1 the underground.
