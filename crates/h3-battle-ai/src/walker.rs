@@ -32,8 +32,9 @@ use core::cell::{Cell, OnceCell};
 
 use h3_battle::computer::{self, Context, Map, Planned};
 use h3_battle::{
-    BattleSide, BattleState, Command, Field, Hex, Stack, StackId, StackTraits, Status,
+    BattleSide, BattleState, Command, Field, Hex, HexSet, Stack, StackId, StackTraits, Status,
 };
+use h3_content::ORIGINAL_AI_SLIPS;
 use h3_content_battle::{Ability, BattleRuleset};
 use h3_kernel::Rng;
 use h3_kernel::arith::{DOUBLE_BITS, X87};
@@ -113,6 +114,14 @@ pub(crate) struct Walker<'a> {
     /// creature cast entry that built a spell context and cast nothing ([`casts::entry`]): the
     /// besieger's walk and the fallbacks read it ([`Walker::cells`]).
     pub(crate) held: OnceCell<Map>,
+    /// Whether the turn asks the creature cast entry (0x421280): not in a prediction (its
+    /// context's +9) nor, until E23 T5b2b, in Teleport's turn of a stack that is not the active
+    /// one ([`Walker::teleport_turns`], BAT-STUB-14).
+    asks_entry: bool,
+    /// The choice's flag 1 (0x421680 from the hero's Teleport, 0x43AA60; BAT-AI-020): the map is
+    /// the destination map and the choice ends in a move and attack or Defend
+    /// ([`Walker::teleported`]).
+    teleport: bool,
 }
 
 /// The command of the computer's walker `id` of `side` (0x421F80; BAT-AI-005): the walker's choice
@@ -126,19 +135,7 @@ pub(crate) fn turn(
     (id, side): (StackId, BattleSide),
     rng: &mut Rng,
 ) -> Command {
-    let walker = Walker::new(state, ruleset, (id, side));
-    let mut value = 0;
-    let chosen = walker.choose(rng, &mut value);
-    chosen
-        .or_else(|| casts::entry(&walker, &mut value, rng))
-        .unwrap_or_else(|| {
-            let hard = computer::difficulty(state) >= 2 || computer::human(state, side);
-            if hard && !computer::wait_phase(state) {
-                Command::Wait
-            } else {
-                Command::Defend
-            }
-        })
+    Walker::new(state, ruleset, (id, side)).turn(rng).0
 }
 
 impl<'a> Walker<'a> {
@@ -179,15 +176,23 @@ impl<'a> Walker<'a> {
         let ctx = computer::context(state, ruleset, side);
         let ctx = planned.map_or(ctx, |p| ctx.predicting(p));
         let (scores, mask) = scores::build(state, ruleset, (id, side), &ctx);
+        let me = &state.stacks()[id.index()];
+        // The map's range is 0 while the stack is blind, petrified or paralysed (0x421771 to
+        // 0x42178B): only Teleport's turns ask such a stack.
+        let map = if me.spells.status.contains(Status::NO_TURNS) {
+            computer::map_within(state, ruleset, (id, side), 0)
+        } else {
+            computer::map(state, ruleset, id, side)
+        };
         Self {
             state,
             ruleset,
             field,
             id,
-            me: &state.stacks()[id.index()],
+            me,
             side,
             ctx,
-            map: computer::map(state, ruleset, id, side),
+            map,
             scores,
             mask,
             on,
@@ -195,6 +200,8 @@ impl<'a> Walker<'a> {
             stronger: Cell::new(None),
             records: OnceCell::new(),
             held: OnceCell::new(),
+            asks_entry: planned.is_none(),
+            teleport: false,
         }
     }
 
@@ -205,6 +212,102 @@ impl<'a> Walker<'a> {
     // rule: BAT-AI-005, BAT-AI-010
     pub(crate) fn cells(&self) -> &Map {
         self.held.get().unwrap_or(&self.map)
+    }
+
+    /// The walker's turn (0x421F80; BAT-AI-005) and its value: the choice ([`Walker::choose`],
+    /// its draws from `rng`) and the value it wrote; without one the creature cast entry again
+    /// with that value ([`casts::entry`], BAT-AI-012), when the turn asks it, and the value the
+    /// entry left; without a cast, Wait on Hard and above or for a human side outside the wait
+    /// phase, else Defend, and 0.
+    // rule: BAT-AI-005
+    pub(crate) fn turn(&self, rng: &mut Rng) -> (Command, i32) {
+        let mut value = 0;
+        self.choose(rng, &mut value)
+            .or_else(|| self.entry(&mut value, rng))
+            .map_or_else(
+                || {
+                    let hard = computer::difficulty(self.state) >= 2
+                        || computer::human(self.state, self.side);
+                    let idle = if hard && !computer::wait_phase(self.state) {
+                        Command::Wait
+                    } else {
+                        Command::Defend
+                    };
+                    (idle, 0)
+                },
+                |command| (command, value),
+            )
+    }
+
+    /// The creature cast entry with `value` ([`casts::entry`]) when the turn asks it.
+    fn entry(&self, value: &mut i32, rng: &mut Rng) -> Option<Command> {
+        if self.asks_entry {
+            casts::entry(self, value, rng)
+        } else {
+            None
+        }
+    }
+
+    /// Teleport's two turns of the walker `id` of `side` (0x43AA60's calls of 0x421F80, casts not
+    /// skipped; BAT-AI-020), their draws from `rng`: the real turn's value ([`Walker::turn`]), then
+    /// the command and value of its turn on the destination map of `destinations`
+    /// ([`Walker::teleported`]). The scores, the odds and the threat records are the first
+    /// turn's: they read nothing the map changes (ADR-0027 point 11).
+    // rule: BAT-AI-020
+    pub(crate) fn teleport_turns(
+        state: &'a BattleState,
+        ruleset: &'a BattleRuleset,
+        (id, side): (StackId, BattleSide),
+        destinations: HexSet,
+        rng: &mut Rng,
+    ) -> (i32, (Command, i32)) {
+        let mut real = Self::new(state, ruleset, (id, side));
+        // stub: BAT-STUB-14
+        // The creature cast entry of a stack other than the active one reads its own record (the
+        // Faerie Dragon's spell drawn at its last turn) where the engine lists only the active
+        // stack's cast targets: E23 T5b2b. Until then its turns ask no cast entry.
+        real.asks_entry = state.active() == Some(id);
+        let (_, before) = real.turn(rng);
+        (before, real.teleported(destinations).turn(rng))
+    }
+
+    /// The walker on the destination map of `destinations` with the choice's flag 1 (0x421680
+    /// from 0x43AA60; BAT-AI-020): every destination one turn away ([`computer::destination_map`])
+    /// at the stops of the pathfinder's last search before the map, with BAT-QUIRK-25 (survey slip
+    /// 30: [`Walker::last_search`]), else none (a teleported stack enters no hex, the user).
+    // rule: BAT-AI-020
+    pub(crate) fn teleported(self, destinations: HexSet) -> Self {
+        let (state, ruleset) = (self.state, self.ruleset);
+        let stops = if ruleset.quirks().is_enabled(ORIGINAL_AI_SLIPS) {
+            computer::search_stops(state, ruleset, self.last_search())
+        } else {
+            HexSet::new()
+        };
+        let map =
+            computer::destination_map(state, ruleset, (self.id, self.side), destinations, stops);
+        Self {
+            map,
+            held: OnceCell::new(),
+            teleport: true,
+            ..self
+        }
+    }
+
+    /// The stack of the pathfinder's last search before the destination map (survey slip 30):
+    /// 0x420260's last enemy, when the hex scores search the enemies' reach
+    /// ([`scores::last_reached`]); else the last of the side's threat records' searches
+    /// (0x422B20 with flag 1, [`gain::last_recorded`]); else the first turn's last, taken as the
+    /// walker's own map (a cast entry's spell context in that turn: E23 T5b2b, BAT-STUB-14).
+    fn last_search(&self) -> StackId {
+        let (state, ruleset) = (self.state, self.ruleset);
+        let reached = if self.normal {
+            scores::last_reached(state, ruleset, self.side)
+        } else {
+            None
+        };
+        reached
+            .or_else(|| gain::last_recorded(state, ruleset, &self.ctx, (self.id, self.side)))
+            .unwrap_or(self.id)
     }
 
     /// Whether the walker's turn is a prediction (its context's +9).
@@ -287,6 +390,16 @@ impl<'a> Walker<'a> {
         let holds = self.holds_walls();
         let hard = computer::difficulty(self.state) >= 2 || computer::human(self.state, self.side);
         let speed = u16::from(me.speed_now());
+        // On the destination map the run-up is the map's cost of 1 where a teleported stack
+        // strikes from where it stands: with BAT-QUIRK-25 as the original (survey slip 31), else
+        // none.
+        let runs = !self.teleport || self.ruleset.quirks().is_enabled(ORIGINAL_AI_SLIPS);
+        // The stack can act (0x4219DB to 0x421A18): not blind, petrified, paralysed or dead, not
+        // the First Aid Tent or the Ammo Cart.
+        let able = me.is_alive()
+            && !me.spells.status.contains(Status::NO_TURNS)
+            && !me.has(StackTraits::FIRST_AID)
+            && !me.has(StackTraits::AMMO_SUPPLY);
         let mut best: Option<Best> = None;
         for (i, t) in (0u8..).zip(self.state.stacks()) {
             let enemy = StackId(i);
@@ -306,10 +419,10 @@ impl<'a> Walker<'a> {
             {
                 continue;
             }
-            // The last retaliation's gain (a walker on its turn can act, a predicted one too: the
-            // original also asks whether it is blind, petrified or paralysed, or the First Aid
-            // Tent or the Ammo Cart, which the predictions pass over).
-            let gains = hard
+            // The last retaliation's gain and the melee value, for a walker that can act (on its
+            // turn and in a prediction always: only Teleport's turns ask one that cannot).
+            let gains = able
+                && hard
                 && self.map.mark(t.hex).is_some_and(|c| c <= speed)
                 && !t.has(StackTraits::ALL_ADJACENT)
                 && !t.has(StackTraits::THREE_HEADED);
@@ -318,17 +431,16 @@ impl<'a> Walker<'a> {
                 continue;
             };
             // The melee value with the run-up when the plan takes one turn.
-            let run_up = u8::try_from(self.map.cost(plan.hex) * u16::from(plan.turns == 1))
+            let run_up = u8::try_from(self.map.cost(plan.hex) * u16::from(plan.turns == 1 && runs))
                 .unwrap_or(u8::MAX);
             let pair = (self.id, enemy);
             let ctx = &self.ctx;
-            let mut v = gain.wrapping_add(computer::strike_value(
-                self.state,
-                self.ruleset,
-                ctx,
-                pair,
-                run_up,
-            ));
+            let melee = if able {
+                computer::strike_value(self.state, self.ruleset, ctx, pair, run_up)
+            } else {
+                0
+            };
+            let mut v = gain.wrapping_add(melee);
             let p = plan.value;
             let mut only = false;
             if p > 0 && !me.has(StackTraits::SUMMONED) && self.normal {
@@ -363,9 +475,17 @@ impl<'a> Walker<'a> {
             });
         }
         *value = best.map_or(0, |b| b.value.max(b.plan_value));
-        if !self.predicts()
-            && let Some(cast) = casts::entry(self, value, rng)
-        {
+        if self.teleport {
+            // With the flag 1 (0x421C89): the best from its plan's hex when the value is not
+            // below 0, else Defend; nothing else is asked.
+            return Some(best.filter(|_| *value >= 0).map_or(Command::Defend, |b| {
+                Command::Attack {
+                    target: b.enemy,
+                    from: b.plan.hex,
+                }
+            }));
+        }
+        if let Some(cast) = self.entry(value, rng) {
             return Some(cast);
         }
         let Some(b) = best else {

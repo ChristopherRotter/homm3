@@ -80,7 +80,7 @@ fn valued_for(state: &BattleState, r: &BattleRuleset, name: &str, side: BattleSi
         rounds: u32::from(hc.rounds),
         cast: true,
     };
-    hero::value(&h, (id, r.spell(id).unwrap()), c)
+    hero::value(&h, (id, r.spell(id).unwrap()), c, &mut Rng::from_seed(5))
 }
 
 // covers: BAT-AI-019

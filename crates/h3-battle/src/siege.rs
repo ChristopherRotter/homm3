@@ -484,8 +484,10 @@ pub(crate) fn teleport_allowed(
         sf.moat.get(row).is_some_and(|&m| hex.0 < m)
     };
     let across_moat = !s.moat.is_empty() && outside(from) != outside(to);
-    let through_walls = s.fort != FortLevel::None && line_blocked(&s, from, to);
-    !(mastery < sf.teleport_moat && across_moat) && !(mastery < sf.teleport_walls && through_walls)
+    // The mastery first: the line is the costly test (the computer's Teleport asks every hex).
+    let through_walls = || s.fort != FortLevel::None && line_blocked(&s, from, to);
+    !(mastery < sf.teleport_moat && across_moat)
+        && !(mastery < sf.teleport_walls && through_walls())
 }
 
 /// Where a walk of a stack its controller commands for `side` stops (BAT-SIE-004; the original's

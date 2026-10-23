@@ -5,6 +5,7 @@ t = 0
 file = "t00000b.npz"
 fidgets = [[0, 2, 1, 0]]
 heroes = [[0, 0, 0], [1, 0, 0]]
+before = [[0, 0, 0], [1, 0, 0]]
 cursor = [618, 593]
 
 [[frame]]
@@ -40,6 +41,7 @@ t = 200
 file = "t00200b.npz"
 fidgets = [[0, 1, 1, 0]]
 heroes = [[0, 0, 0], [1, 0, 0]]
+before = [[0, 0, 0], [1, 0, 0]]
 cursor = [300, 300]
 
 [[frame]]
