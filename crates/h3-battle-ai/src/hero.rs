@@ -5,9 +5,9 @@
 //! value (0x43BB20, [`value`]), 2.5 times when its spell points cover seven casts, else times the
 //! square root of the casts they cover, drawn at 75 to 100 %; the best is cast when it is due now
 //! (+0x20) or when the side would retreat. The raises, Sacrifice and Earthquake have cases of
-//! their own ([`specials`], E23 T5b1), Teleport too ([`teleport`], E23 T5b2a: its stacks' walker
-//! turns, a caster's cast entry in them but the active stack's E23 T5b2b's, BAT-STUB-14); the
-//! retreat test is T6's (BAT-STUB-13, BAT-Q61).
+//! their own ([`specials`], E23 T5b1), Teleport too ([`teleport`], E23 T5b2: its stacks' walker
+//! turns, each caster's cast entry in them from its own record); the retreat test is T6's
+//! (BAT-STUB-13, BAT-Q61).
 
 mod specials;
 mod teleport;

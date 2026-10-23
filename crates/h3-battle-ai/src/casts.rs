@@ -18,11 +18,17 @@
 //! T4a): the original's dragon may also aim an area spell at a free hex, its own or an immune
 //! stack's, which the rules' cursor refuses (BAT-MAG-049; BAT-STUB-8, BAT-Q32).
 //!
+//! The entry reads only its caster's record (`docs/formats/installation.md` §7.59): in the hero's
+//! Teleport turns ([`Walker::teleport_turns`]) a stack that is not the active one asks it as on
+//! its own turn, with the targets the engine would accept for it as the active stack
+//! ([`computer::creature_cast_targets_of`]) and a Faerie Dragon's spell drawn at its last
+//! activation ([`computer::drawn_spell`], the original's +0x4E0; E23 T5b2b).
+//!
 
 use h3_battle::computer::{self, Context, Map};
 use h3_battle::{
-    BattleSide, BattleState, CastSpell, CastTarget, CastTargets, Command, Hex, STACK_CAPACITY,
-    StackId, StackTraits, Status, creature_cast_spell, creature_cast_targets,
+    BattleSide, BattleState, CastTarget, CastTargets, Command, Hex, STACK_CAPACITY, StackId,
+    StackTraits, Status,
 };
 use h3_content::{CreatureTypeId, ORIGINAL_AI_SLIPS, SpellId};
 use h3_content_battle::{
@@ -45,9 +51,10 @@ const THRESHOLDS: [u32; 6] = [2600, 1900, 1500, 1310, 1200, 1130];
 /// The class below every threshold (0x435EC0's +0x1C: an even battle).
 const EVEN: u8 = 7;
 
-/// The creature cast entry (0x421280; BAT-AI-012): nothing while the creatures may not cast
-/// (Cursed Ground, an anti-magic garrison, the Orb of Inhibition; [`computer::creature_casts_blocked`],
-/// whatever a creature's `ignores_magic_block`) or without a cast left; a raiser's raise
+/// The creature cast entry (0x421280; BAT-AI-012) of the walker `w`, the active stack or not
+/// (§7.59): nothing while the creatures may not cast (Cursed Ground, an anti-magic garrison, the
+/// Orb of Inhibition; [`computer::creature_casts_blocked`], whatever a creature's
+/// `ignores_magic_block`) or without a cast left; a raiser's raise
 /// ([`raise`]); a random caster's drawn spell ([`dragon`]); the Ogre Mage's scan ([`scan`], its
 /// draw from `rng`); with BAT-QUIRK-25 off (survey slip 25) every caster of a fixed spell's
 /// scan, the elementals' too; any other stack nothing. `value` is the value so far, which a
@@ -114,9 +121,9 @@ enum Caster {
 /// cast must beat the walker's value, and the later stack stays at a tie.
 // rule: BAT-AI-014, BAT-AI-016
 fn scan(w: &Walker<'_>, caster: Caster, value: &mut i32, rng: &mut Rng) -> Option<Command> {
-    scan_as(&Scanner::of(w), caster, (value, rng), |sc| {
-        if slips(w.ruleset) {
-            hold(w, sc.cells());
+    scan_as(&Scanner::of(w), caster, (value, rng), |sc, cast| {
+        if slips(w.ruleset) && (!cast || w.tracks_search()) {
+            hold(w, sc.cells(), cast);
         }
     })
 }
@@ -154,20 +161,18 @@ impl<'a> Scanner<'a> {
     }
 }
 
-/// The scan ([`scan`]) for the stack `s`: the cast; when it casts nothing, `nothing` is given the
-/// spell context it built.
+/// The scan ([`scan`]) for the stack `s`: the cast; `then` is given the spell context it built
+/// and whether it casts.
 fn scan_as(
     s: &Scanner<'_>,
     caster: Caster,
     (value, rng): (&mut i32, &mut Rng),
-    nothing: impl FnOnce(&SpellContext<'_>),
+    then: impl FnOnce(&SpellContext<'_>, bool),
 ) -> Option<Command> {
     let strength = computer::strength(s.state, s.ruleset, &s.ctx, s.id);
     let sc = SpellContext::new(s.state, s.ruleset, (&s.ctx, s.side), rng);
     let cast = choose(s, (&sc, caster, strength), value, rng);
-    if cast.is_none() {
-        nothing(&sc);
-    }
+    then(&sc, cast.is_some());
     cast
 }
 
@@ -209,7 +214,7 @@ pub(crate) fn before_shot(
         (id, side),
         computer::context(state, ruleset, side),
     );
-    scan_as(&s, caster, (&mut value, rng), |_| ())
+    scan_as(&s, caster, (&mut value, rng), |_, _| ())
 }
 
 /// Whether the original's slips are kept (BAT-QUIRK-25).
@@ -217,15 +222,20 @@ fn slips(ruleset: &BattleRuleset) -> bool {
     ruleset.quirks().is_enabled(ORIGINAL_AI_SLIPS)
 }
 
-/// With BAT-QUIRK-25 (survey slip 22), a creature cast entry that built a spell context and cast
-/// nothing leaves `cells`, the map of the context's last search, to the walker's fallbacks
-/// ([`Walker::cells`]); none: the walker's own.
-// rule: BAT-AI-005, BAT-AI-010
-fn hold(w: &Walker<'_>, cells: Option<Map>) {
+/// With BAT-QUIRK-25, a creature cast entry that built a spell context leaves `cells`, the map of
+/// the context's last search, in the computer's pathfinder (none: what it held before): when it
+/// cast nothing (`cast` false) the walker's fallbacks read it (survey slip 22,
+/// [`Walker::cells`]), and in Teleport's first turn its stops are the last search's for the
+/// destination map unless a walk searches after it (survey slip 30, [`Walker::searched`]).
+// rule: BAT-AI-005, BAT-AI-010, BAT-AI-020
+fn hold(w: &Walker<'_>, cells: Option<Map>, cast: bool) {
     if let Some(map) = cells {
-        // The second entry of a turn (0x421F80 after a choice without an action) finds it set,
-        // and nothing reads it after that entry.
-        let _ = w.held.set(map);
+        w.searched(map.stops());
+        if !cast {
+            // The second entry of a turn (0x421F80 after a choice without an action) finds it
+            // set, and nothing reads it after that entry.
+            let _ = w.held.set(map);
+        }
     }
 }
 
@@ -253,7 +263,7 @@ fn choose(
     };
     let mut targets = CastTargets::new();
     if mass.is_none() {
-        creature_cast_targets(state, ruleset, side, &mut targets);
+        computer::creature_cast_targets_of(state, ruleset, w.id, &mut targets);
     }
     let mut best = None;
     for (i, s) in state.stacks().iter().enumerate().rev() {
@@ -420,7 +430,8 @@ pub(crate) fn balance(
 
 /// The computer's raise (0x421000; BAT-AI-012), for a corpse raiser of `created` (the Pit Lord's
 /// Demons) or a stack raiser (the Archangel, `created` none): over the walker's side's stacks
-/// from the last to the first, each that the engine accepts as the raise's target (another stack
+/// from the last to the first, each that the engine accepts as the walker's raise's target
+/// ([`computer::creature_cast_targets_of`]: another stack
 /// of the side: the Pit Lord's corpse on top, the Archangel's stack Resurrection's test takes,
 /// living or dead; BAT-MAG-051, BAT-MAG-052), its value `trunc(n × w)`: `n` the creatures raised
 /// ([`computer::raise_count`]; at least 1 for such a target), `w` one creature's worth
@@ -435,7 +446,7 @@ fn raise(w: &Walker<'_>, created: Option<CreatureTypeId>, value: &mut i32) -> Op
     let mut targets = CastTargets::new();
     // stub: BAT-STUB-8
     // Only the targets the engine accepts (ADR-0027 point 3; the user, E23 T4a).
-    creature_cast_targets(state, ruleset, side, &mut targets);
+    computer::creature_cast_targets_of(state, ruleset, w.id, &mut targets);
     if targets.is_empty() {
         return None;
     }
@@ -494,10 +505,13 @@ impl Kind {
 }
 
 /// The computer's Faerie Dragon (0x420F00 with 0x43C620; BAT-AI-013), a random caster at the
-/// ability's `mastery` with `per_creature` power per creature: its drawn spell's damage, factor ×
+/// ability's `mastery` with `per_creature` power per creature: its spell drawn at its last
+/// activation ([`computer::drawn_spell`], the original's +0x4E0: the active stack's this
+/// activation's; nothing before its first draw), its damage, factor ×
 /// power + its value at the estimate's mastery (the creature's, Expert on Magic Plains; with
 /// BAT-QUIRK-25 also on its school's field, survey slip 7, where the rules keep a creature's), at
-/// each hex but the side columns that the engine accepts as its target: a bolt's on the stack
+/// each hex but the side columns that the engine accepts as the walker's target
+/// ([`computer::creature_cast_targets_of`]): a bolt's on the stack
 /// there ([`computer::spell_damage_value`]; the side's hero's bonuses with the slip, none without,
 /// as the rules), a chain's from the stack there ([`computer::chain`]) and an area's around the
 /// hex ([`computer::area_stacks`]), each stack's value with the bonuses into the side's sum or
@@ -506,8 +520,7 @@ impl Kind {
 /// left casts whenever its spell is worth anything, before any attack. The original builds the
 /// spell context first (0x4369C0) and reads none of it but its battle context: the policy runs
 /// only its predictions, for their draws from `rng` ([`predict::plan`]; BAT-AI-015), and with
-/// BAT-QUIRK-25 holds its threat records' last map when it casts nothing ([`hold`], survey slip
-/// 22).
+/// BAT-QUIRK-25 holds its threat records' last map ([`hold`], survey slips 22 and 30).
 // rule: BAT-AI-013
 fn dragon(
     w: &Walker<'_>,
@@ -518,8 +531,8 @@ fn dragon(
     // rule: BAT-AI-015
     predict::plan(w.state, w.ruleset, w.side, rng);
     let cast = dragon_cast(w, (mastery, per_creature), value);
-    if cast.is_none() && slips(w.ruleset) {
-        hold(w, last_searched(w.state, w.ruleset));
+    if slips(w.ruleset) && (cast.is_none() || w.tracks_search()) {
+        hold(w, last_searched(w.state, w.ruleset), cast.is_some());
     }
     cast
 }
@@ -530,13 +543,12 @@ fn dragon_cast(
     (mastery, per_creature): (u8, u8),
     value: &mut i32,
 ) -> Option<Command> {
-    let (state, ruleset, side) = (w.state, w.ruleset, w.side);
+    let (state, ruleset) = (w.state, w.ruleset);
     let mut targets = CastTargets::new();
     // stub: BAT-STUB-8
     // Only the targets the engine accepts (ADR-0027 point 3; the user, E23 T4a).
-    creature_cast_targets(state, ruleset, side, &mut targets);
-    let drawn = creature_cast_spell(state, ruleset, side)
-        .and_then(CastSpell::named)
+    computer::creature_cast_targets_of(state, ruleset, w.id, &mut targets);
+    let drawn = computer::drawn_spell(state, w.id)
         .and_then(|id| ruleset.spell(id).map(|s| (id, s)))
         .and_then(|(id, s)| Kind::of(s).map(|kind| (id, s, kind)));
     drawn.and_then(|(id, spell, kind)| {

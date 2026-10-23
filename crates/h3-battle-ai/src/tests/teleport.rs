@@ -1,7 +1,7 @@
 //! The computer hero's Teleport (0x43AA60 with the destination map 0x4B2FF0; E23 T5b2a;
 //! BAT-AI-020) on the test ruleset: each stack's two walker turns and their gain, the stacks it
 //! asks, "now", a disabled stack's turns, the destination map's stops with survey slip 30 and its
-//! run-up with slip 31.
+//! run-up with slip 31; a caster's cast entry in those turns from its own record (E23 T5b2b).
 
 use h3_battle::computer;
 use h3_battle::{
@@ -15,8 +15,8 @@ use h3_kernel::arith::X87;
 
 use super::hero::{cast, led, until_side};
 use super::{
-    ARCHER, CAVALIER, CHAMPION, GOG, HARPY, IMP, RUNNER, active, at_town, cast_at, caster, decide,
-    hero_with, play, ruleset, ruleset_as, spell,
+    ARCHER, Armies, CAVALIER, CHAMPION, FAERIE, GENIE, GOG, HARPY, IMP, RUNNER, active, at_town,
+    cast_at, caster, decide, hero_with, play, ruleset, ruleset_as, spell,
 };
 use crate::hero::{self, Hero, Valued};
 use crate::spells::{Candidate, SpellContext};
@@ -422,4 +422,167 @@ fn the_search_stops_are_the_searchs_own() {
             }
         }
     }
+}
+
+/// The attacker's `own` led by a hero with Basic Teleport against `enemies`, at the first turn of
+/// the attacker's gogs once `caster` (another stack of the attacker) has waited if it acts first.
+fn gogs_turn(r: &BattleRuleset, own: &[(usize, u32)], enemies: &[(usize, u32)]) -> BattleState {
+    let hero = hero_with(r, &["teleport"], 1, 99);
+    let mut state = BattleState::new(r, &led(own, enemies, hero), 1).unwrap();
+    until_side(&mut state, r, ATTACKER);
+    if active(&state) != GOG {
+        play(&mut state, r, Command::Wait);
+        until_side(&mut state, r, ATTACKER);
+    }
+    assert_eq!(active(&state), GOG);
+    state
+}
+
+// covers: BAT-AI-020, BAT-AI-016
+#[test]
+fn a_caster_that_is_not_the_active_stack_asks_its_own_cast_entry() {
+    // The Master Genie waited; at the gogs' turn Teleport asks its turns too, and its first turn
+    // asks its cast entry from its own record, at the targets the engine would take from it
+    // (§7.59): a spell on the 50 gogs beats striking the lone imp. Worth more than its teleported
+    // attack, it leaves Teleport to the gogs, due now.
+    let r = ruleset();
+    let state = gogs_turn(&r, &[(GOG, 50), (GENIE, 5)], &[(IMP, 1)]);
+    let genie = StackId(1);
+    let dest = destinations(&state, &r, ATTACKER, genie);
+    for seed in 0..4 {
+        let real = Walker::new(&state, &r, (genie, ATTACKER)).turn(&mut Rng::from_seed(seed));
+        assert_eq!(
+            real.0,
+            Command::CreatureCast {
+                target: CastTarget::Stack(StackId(0)),
+            }
+        );
+        let (before, (_, after)) = Walker::teleport_turns(
+            &state,
+            &r,
+            (genie, ATTACKER),
+            dest,
+            &mut Rng::from_seed(seed),
+        );
+        assert_eq!(before, real.1);
+        assert!(after < before, "{before} {after}");
+    }
+    let v = teleport_value(&state, &r, ATTACKER, 9);
+    assert_eq!((v.target, v.now), (CastTarget::Stack(StackId(0)), true));
+}
+
+// covers: BAT-AI-020, BAT-AI-013, BAT-MAG-049
+#[test]
+fn a_faerie_dragon_that_is_not_active_casts_the_spell_of_its_last_activation() {
+    // The faerie acts after the gogs. In the first round it has drawn nothing: its first turn
+    // walks, Teleport's best is the faerie, not due now, and the hero casts nothing. It draws the
+    // bolt at its turn; at the gogs' next turn it still holds it (the original's +0x4E0): its
+    // first turn casts it, worth more than its teleported attack, and the hero teleports the
+    // gogs now.
+    let r = ruleset();
+    let mut state = gogs_turn(&r, &[(GOG, 50), (FAERIE, 5)], &[(IMP, 10)]);
+    let faerie = StackId(1);
+    assert_eq!(computer::drawn_spell(&state, faerie), None);
+    let (real, _) = turns(&state, &r, (faerie, ATTACKER), 3);
+    assert!(matches!(real.0, Command::Move { .. }), "{real:?}");
+    let v = teleport_value(&state, &r, ATTACKER, 9);
+    assert_eq!((v.target, v.now), (CastTarget::Stack(faerie), false));
+    assert_eq!(cast(&state, &r), None);
+    // Every stack defends until the gogs' next turn.
+    play(&mut state, &r, Command::Defend);
+    while active(&state) != GOG {
+        play(&mut state, &r, Command::Defend);
+    }
+    assert_eq!(state.round(), 2);
+    assert_eq!(
+        computer::drawn_spell(&state, faerie),
+        Some(spell(&r, "bolt"))
+    );
+    let (real, _) = turns(&state, &r, (faerie, ATTACKER), 3);
+    assert_eq!(
+        real.0,
+        Command::CreatureCast {
+            target: CastTarget::Stack(StackId(2)),
+        }
+    );
+    let v = teleport_value(&state, &r, ATTACKER, 9);
+    assert_eq!((v.target, v.now), (CastTarget::Stack(StackId(0)), true));
+    let Some(Command::Cast {
+        spell: s, target, ..
+    }) = cast(&state, &r)
+    else {
+        panic!("no cast");
+    };
+    assert_eq!(
+        (s, target),
+        (spell(&r, "teleport"), CastTarget::Stack(StackId(0)))
+    );
+}
+
+/// A Citadel with a harmless moat on Easy: the attacker's `own`, led by a hero with Expert
+/// Teleport, against `enemies`, at the first turn of the attacker's archers once `ready` holds.
+fn archers_turn(
+    r: &BattleRuleset,
+    (own, enemies): Armies<'_>,
+    ready: impl Fn(&BattleState) -> bool,
+) -> BattleState {
+    let mut s = at_town(r, (own, enemies), (FortLevel::Citadel, Moat::Harmless, 0));
+    s.heroes[0] = Some(hero_with(r, &["teleport"], 3, 99));
+    s.difficulty = 0;
+    let mut state = BattleState::new(r, &s, 1).unwrap();
+    for _ in 0..20 {
+        if state.side_to_act() == Some(ATTACKER) && active(&state) == ARCHER && ready(&state) {
+            return state;
+        }
+        let wait = active(&state) != ARCHER
+            && state.side_to_act() == Some(ATTACKER)
+            && !computer::wait_phase(&state);
+        play(
+            &mut state,
+            r,
+            if wait { Command::Wait } else { Command::Defend },
+        );
+    }
+    panic!("the archers never acted");
+}
+
+// covers: BAT-AI-020
+#[test]
+fn after_a_cast_entry_s_spell_context_the_destination_map_keeps_its_last_search_s_stops() {
+    // On Easy no reach is searched and the archers (shooters) are no threat records: the stops
+    // the destination map keeps are those of the last search of the faerie's first turn after its
+    // map (§7.59). Its cast entry builds a spell context, whose last search is the defender's gogs
+    // (their stops the moat but the bridge), and casts: with BAT-QUIRK-25 the moat is a stop, the
+    // bridge not; the faerie's own stops (the bridge too) only when the turn does not record its
+    // searches; without the slip none (survey slip 30).
+    for profile in ["t:faithful", "t:fixed"] {
+        let r = ruleset_as(profile);
+        let slip = profile == "t:faithful";
+        let faerie = StackId(1);
+        let state = archers_turn(&r, (&[(ARCHER, 20), (FAERIE, 5)], &[(GOG, 10)]), |s| {
+            computer::drawn_spell(s, faerie).is_some()
+        });
+        let dest = destinations(&state, &r, ATTACKER, faerie);
+        let w = Walker::tracking(&state, &r, (faerie, ATTACKER));
+        let real = w.turn(&mut Rng::from_seed(3));
+        assert!(matches!(real.0, Command::CreatureCast { .. }), "{real:?}");
+        let t = w.teleported(dest);
+        assert_eq!((t.map.is_stop(MOAT), t.map.is_stop(BRIDGE)), (slip, false));
+        let own = Walker::new(&state, &r, (faerie, ATTACKER)).teleported(dest);
+        assert_eq!(
+            (own.map.is_stop(MOAT), own.map.is_stop(BRIDGE)),
+            (slip, slip)
+        );
+    }
+    // The genie's context (the gogs' last too) is followed by its walk, which searches for the
+    // genie, a flyer: no stops.
+    let r = ruleset();
+    let genie = StackId(0);
+    let state = archers_turn(&r, (&[(GENIE, 5), (ARCHER, 50)], &[(GOG, 1)]), |_| true);
+    let dest = destinations(&state, &r, ATTACKER, genie);
+    let w = Walker::tracking(&state, &r, (genie, ATTACKER));
+    let real = w.turn(&mut Rng::from_seed(3));
+    assert!(matches!(real.0, Command::Move { .. }), "{real:?}");
+    let t = w.teleported(dest);
+    assert!(!t.map.is_stop(MOAT));
 }

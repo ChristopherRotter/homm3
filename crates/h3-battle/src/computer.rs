@@ -250,6 +250,30 @@ pub fn helpful_spells<'a>(
     crate::casters::useful_spells(state, ruleset, side, (caster, s)).map(|(spell, _)| spell)
 }
 
+/// The spell stack `id` drew at its last activation (a random caster's: the Faerie Dragon's,
+/// BAT-MAG-049; the original's +0x4E0, which the computer's cast entry reads for any caster, E23
+/// T5b2b, `installation.md` §7.59): kept over other stacks' activations; none before its first
+/// draw in the battle.
+pub fn drawn_spell(state: &BattleState, id: StackId) -> Option<SpellId> {
+    crate::casters::drawn_spell(state, id)
+}
+
+/// Fills `out` with the targets the engine accepts for stack `caster`'s creature cast as if it
+/// were the active stack (the original's 0x4476C0 with the caster as `this`, which the computer's
+/// cast entry asks for any caster, E23 T5b2b): for its controller, a random caster's at its last
+/// drawn spell ([`drawn_spell`]); for the active stack with a cast left the rules' own
+/// ([`crate::creature_cast_targets`]). Empty in the tactics phase, without a cast left, while its
+/// creatures may not cast, for a creature that casts nothing and for a random caster that has
+/// drawn nothing.
+pub fn creature_cast_targets_of(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    caster: StackId,
+    out: &mut magic::CastTargets,
+) {
+    crate::casters::caster_targets(state, ruleset, caster, out);
+}
+
 /// The computer's value of `a` striking `t` after `jousting` hexes (0x435C70 without the shot
 /// flag; BAT-AI-005): the exchange's damage to `t` less `a`'s losses, valued in `ctx`.
 pub fn strike_value(
@@ -301,6 +325,12 @@ impl Map {
     /// Whether `hex` is a stop of the stack's walk (the pathfinder's +0x68).
     pub fn is_stop(&self, hex: Hex) -> bool {
         self.0.is_stop(hex)
+    }
+
+    /// The stops of the stack's walk (the pathfinder's +0x68), which the destination map keeps
+    /// after the search (E23 T5b2a, survey slip 30).
+    pub fn stops(&self) -> HexSet {
+        self.0.stops()
     }
 
     /// Whether the search reached `hex` (the cell's bit 0): a position or a hex flown over, the
