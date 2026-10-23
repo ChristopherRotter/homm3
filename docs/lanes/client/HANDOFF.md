@@ -63,6 +63,11 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
+- **2026-10-23, E17 M4 T1b (in progress, branch `client/e17-m4-t1b`, not split: the user).**
+  Done: the town tables harvested (`[[town]]`), the siege still drawn (`h3_view::siege`), the
+  situation's town, all 11 intact sieges exact (hot seat, both heroes commanding their war
+  machines; the Tower by the defender's record, `seat`). Next: the wall states (memory writes),
+  then the docs and the pull request.
 - **2026-10-23, E17 M4 T1a (done; #417, docs only).** The siege still read (design §10.1, the address
   map): the same rules in every town; the harvest moved into T1b, the wall states on Castle and
   Conflux (the user).
