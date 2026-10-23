@@ -331,6 +331,70 @@ fn the_movement_and_scouting_kinds_parse() {
 }
 
 #[test]
+fn the_meeting_and_spell_book_kinds_parse() {
+    // E08 T45 (pack format v47, increment 6): Scholar at a meeting, Titan's Thunder's book.
+    let manifest = "[pack]\nid = \"x\"\nversion = \"1\"\n";
+    let pack = parse_pack(&format!(
+        "{manifest}[[secondary_skill]]\nid = \"s\"\n\
+         basic = [{{ kind = \"meeting_spells\", level = 2 }}]\n\
+         [[artifact]]\nid = \"a\"\nname = \"A\"\nclass = \"relic\"\n\
+         effects = [{{ kind = \"gives_spell_book\" }}]\n"
+    ))
+    .unwrap();
+    assert_eq!(
+        pack.skills[0].levels,
+        [vec![HeroEffect::MeetingSpells { level: 2 }], vec![], vec![]]
+    );
+    assert_eq!(pack.artifacts[0].effects, [HeroEffect::GivesSpellBook]);
+    // An unknown field is a syntax error, also on the kind without parameters.
+    for effect in [
+        "kind = \"meeting_spells\", level = 2, spells = 3",
+        "kind = \"gives_spell_book\", level = 1",
+    ] {
+        let unknown =
+            format!("{manifest}[[secondary_skill]]\nid = \"s\"\nbasic = [{{ {effect} }}]\n");
+        assert!(
+            matches!(parse_pack(&unknown), Err(PackError::Syntax(_))),
+            "{effect}"
+        );
+    }
+    for level in [0, 6] {
+        let bad = format!(
+            "{manifest}[[secondary_skill]]\nid = \"s\"\n\
+             basic = [{{ kind = \"meeting_spells\", level = {level} }}]\n"
+        );
+        let error = compile(&[bad.as_str(), SYNTHETIC_CORE], "synthetic:faithful").unwrap_err();
+        assert!(
+            error
+                .to_string()
+                .contains("meeting_spells level must be 1..=5"),
+            "{error}"
+        );
+    }
+}
+
+/// E08 T45 (pack format v47): Scholar's levels from the gap-fill in every expansion, Titan's
+/// Thunder's book with SoD (HER-SPL-007, HER-ART-007).
+#[test]
+fn the_harvested_scholar_and_titans_thunder() {
+    for packs in [
+        &[SOD_CORE, AB_CORE, BASE_CORE][..],
+        &[AB_CORE, BASE_CORE],
+        &[BASE_CORE],
+    ] {
+        let r = compile(packs, "base:faithful").unwrap();
+        let scholar = &r.skill(r.skill_by_key("base:scholar").unwrap()).unwrap().levels;
+        assert_eq!(
+            scholar.clone(),
+            [2, 3, 4].map(|level| vec![HeroEffect::MeetingSpells { level }])
+        );
+    }
+    let r = compile(&[SOD_CORE, AB_CORE, BASE_CORE], "base:faithful").unwrap();
+    let thunder = r.artifact(r.artifact_by_key("sod:titans_thunder").unwrap()).unwrap();
+    assert!(thunder.effects.contains(&HeroEffect::GivesSpellBook), "{thunder:?}");
+}
+
+#[test]
 fn the_level_data_and_class_overrides_parse() {
     // E08 T26b (pack format v44): the experience of the first levels, the highest level, the
     // skills offered when due, the class's intervals and a gated class override.

@@ -80,11 +80,11 @@ effects = [{ kind = "primary_skills", attack = 6, defense = 6, power = 6, knowle
 parts = ["base:quiet_eye_of_the_dragon", "base:red_dragon_flame_tongue", "base:dragon_scale_shield", "base:dragon_scale_armor", "base:dragonbone_greaves", "base:dragon_wing_tabard", "base:necklace_of_dragonteeth", "base:crown_of_dragontooth", "base:still_eye_of_the_dragon"]
 
 [[artifact]]
-id = "titans_thunder"  # original id 135; pending: E08-E10
+id = "titans_thunder"  # original id 135
 name = "Titan's Thunder"
 class = "relic"
 slot = "base:right_hand"
-effects = [{ kind = "spells", spell = "titans_lightning_bolt" }]
+effects = [{ kind = "spells", spell = "titans_lightning_bolt" }, { kind = "gives_spell_book" }]
 parts = ["base:titans_gladius", "base:sentinels_shield", "base:thunder_helmet", "base:titans_cuirass"]
 
 [[artifact]]
