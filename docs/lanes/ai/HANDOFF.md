@@ -13,7 +13,8 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   (T7, the neutral share; design §12): T7a (#420), T7b (#421, C ABI v32) and T7c (the neutral
   set v1, the system actor on the ladder: the strongest bot; #426) done 2026-10-23. T7d, the
   user's run at a third neutral; beside it T5's rest (the mana price's preparation, #429; AI-Q7
-  (b) part 1, the batch's kill preview, C ABI v33). **Next:** T7d's checkpoint (QUEUE).
+  (b) part 1, the batch's kill preview, C ABI v33, #432 open). **Next:** #432's merge, T7d's
+  checkpoint (QUEUE).
 - **Versions:** battle action encoding v13, observation encoding v21, replay format v30 (E23 T6), the adventure env's action encoding v4 (E08 T45), C ABI v33 (E06 T5: the kill preview) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q10, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
@@ -94,8 +95,8 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 ### 2026-10-23 — T7d's mix; T5's rest beside it
 
 - The user: T7d at a third neutral (their machine); here the mana price's preparation (#429),
-  then AI-Q7 (b) part 1 (its own pull request): the preview of every entry halves the engine's
-  step (29 µs), still far above training's 5 000 samples/s.
+  then AI-Q7 (b) part 1 (#432): the preview of every entry halves the engine's step (29 µs),
+  still far above training's 5 000 samples/s.
 
 ### 2026-10-23 — E06 T7c, the trainer's neutral share
 
