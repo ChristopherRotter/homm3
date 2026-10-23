@@ -345,8 +345,8 @@ fn a_towns_fort_is_its_highest_fort_building() {
     assert_eq!(fort_level(&custom(0x38)), 3);
 }
 
-/// E05 T9b, E06 T3a: `h3 ai eval`'s held-out sets are the Python evaluation's (the ladder's row
-/// stands beside its table): the seeds and the report set's size are one.
+/// E05 T9b, E06 T3a, T7c: `h3 ai eval`'s held-out sets are the Python evaluation's (the ladder's
+/// row stands beside its table): the seeds and the report and neutral sets' sizes are one.
 #[test]
 fn the_eval_seeds_are_the_python_evaluations() {
     let python = include_str!("../../../../python/h3env/train/evaluate.py");
@@ -368,6 +368,11 @@ fn the_eval_seeds_are_the_python_evaluations() {
         constant("REPORT_V1_ENVS"),
         u64::from(super::eval::REPORT_V1_ENVS)
     );
+    assert_eq!(constant("NEUTRAL_V1_SEED"), super::eval::NEUTRAL_V1_SEED);
+    assert_eq!(
+        constant("NEUTRAL_V1_ENVS"),
+        u64::from(super::eval::NEUTRAL_V1_ENVS)
+    );
 }
 
 /// E05 T7: `h3 ai eval` plays every ordered pair on the same episodes, the same way twice; the
@@ -378,6 +383,7 @@ fn the_eval_runner_rates_the_policies() {
     let options = EvalOptions {
         set: "v0".to_owned(),
         policies: eval::policies("random, greedy,aggressor").unwrap(),
+        defender: None,
         strata: Stratum::v0(12, 4, EVAL_SEED, [0, 0, 1, 1, 1, 0]),
         max_steps: 2000,
     };
@@ -447,6 +453,7 @@ fn the_report_set_is_stratified_by_kind() {
     let options = EvalOptions {
         set: "report-v1".to_owned(),
         policies: eval::policies("random,aggressor").unwrap(),
+        defender: None,
         strata,
         max_steps: 2000,
     };
@@ -467,6 +474,8 @@ fn the_report_set_is_stratified_by_kind() {
         "\"seed\": \"0x5eede7a100010003\"",
         "\"engine\": {\"encounters\": 1",
         "\"by_stratum\": {\"hero\"",
+        "\"defender\": null",
+        "\"defender\": 0.",
     ] {
         assert!(json.contains(key), "{key}: {json}");
     }
@@ -508,7 +517,106 @@ fn the_report_set_is_stratified_by_kind() {
     main(&words(&[&run[..], &["--json", path]].concat())).unwrap();
     let written = std::fs::read_to_string(&out).unwrap();
     std::fs::remove_file(&out).unwrap();
-    assert!(written.starts_with("{\n  \"schema\": 1,") && written.contains("\"greedy\""));
+    assert!(written.starts_with("{\n  \"schema\": 2,") && written.contains("\"greedy\""));
     let nowhere = [&run[..], &["--json", "/nonexistent/dir/table.json"]].concat();
     assert!(main(&words(&nowhere)).is_err());
+}
+
+/// E06 T7c: the neutral set v1, one stratum per neutral kind at the census's shares, every policy
+/// attacking the system actor (itself too): the attacker's rates alone, no ratings; its JSON and
+/// the command line.
+#[test]
+fn the_neutral_set_attacks_the_system_actor() {
+    use super::eval::{self, EvalOptions, EvalReport, NEUTRAL_V1_SEED, PairResult, Stratum};
+    let strata = Stratum::neutral_v1(2).unwrap();
+    let described: Vec<_> = strata
+        .iter()
+        .map(|s| (s.name.as_str(), s.weight, s.seed, s.envs, s.kinds))
+        .collect();
+    assert_eq!(
+        described,
+        [
+            ("wandering", 780, NEUTRAL_V1_SEED, 2, [1, 0, 0, 0, 0, 0]),
+            ("guards", 20, NEUTRAL_V1_SEED + 1, 2, [0, 1, 0, 0, 0, 0]),
+            (
+                "siege_neutral",
+                25,
+                NEUTRAL_V1_SEED + 5,
+                2,
+                [0, 0, 0, 0, 0, 1]
+            ),
+        ]
+    );
+    let error = Stratum::neutral_v1(501).unwrap_err();
+    assert!(error.contains("neutral set v1"), "{error}");
+    let (name, policy) = eval::NEUTRAL_DEFENDER;
+    let options = EvalOptions {
+        set: "neutral-v1".to_owned(),
+        policies: eval::policies("random,greedy").unwrap(),
+        defender: Some((name.to_owned(), policy)),
+        strata,
+        max_steps: 2000,
+    };
+    let report = eval::run(&super::bench::sampler().unwrap(), &options).unwrap();
+    // The system actor joins the policies and attacks itself.
+    assert_eq!(report.names, ["random", "greedy", "system"]);
+    assert_eq!(report.defender, Some(2));
+    assert_eq!(report.matchups(), [(0, 2), (1, 2), (2, 2)]);
+    assert!(report.ratings.is_empty());
+    for a in 0..3 {
+        assert!((0..3).all(|s| report.pairs[a][2][s].episodes == 2));
+        let by_kind: f64 = [780.0, 20.0, 25.0]
+            .iter()
+            .enumerate()
+            .map(|(s, w)| w * report.side_rate(a, 2, s, 0))
+            .sum();
+        assert!((report.win_rate(a, 2) - by_kind / 825.0).abs() < 1e-12);
+    }
+    assert!((0..3).all(|s| report.pairs[2][0][s].episodes == 0));
+    let text = report.to_text();
+    assert!(
+        text.contains("each attacking system") && !text.contains("Glicko-2"),
+        "{text}"
+    );
+    let json = report.to_json();
+    for key in [
+        "\"set\": \"neutral-v1\"",
+        "\"defender\": \"system\"",
+        "\"system_policy\": ",
+        "\"by_stratum\": {\"wandering\": {\"attacker\": ",
+        "\"ratings\": []",
+    ] {
+        assert!(json.contains(key), "{key}: {json}");
+    }
+    assert!(!json.contains("\"defender\": 0."), "{json}");
+    assert_eq!(json.matches('{').count(), json.matches('}').count());
+    // One side: 0.75 on every kind, 500 games each, is ±3.6 points at these weights.
+    let pair = PairResult {
+        episodes: 500,
+        wins: [375, 0],
+        ..PairResult::default()
+    };
+    let known = EvalReport {
+        strata: Stratum::neutral_v1(500).unwrap(),
+        pairs: vec![
+            vec![Vec::new(), vec![pair.clone(); 3]],
+            vec![Vec::new(), vec![pair; 3]],
+        ],
+        names: vec!["greedy".to_owned(), "system".to_owned()],
+        defender: Some(1),
+        ..report
+    };
+    assert!((known.win_rate(0, 1) - 0.75).abs() < 1e-12);
+    let shares: f64 = [780.0_f64, 20.0, 25.0]
+        .iter()
+        .map(|w| (w / 825.0).powi(2))
+        .sum();
+    let expected = 1.96 * (shares * 0.75 * 0.25 / 500.0).sqrt();
+    assert!((known.interval(0, 1) - expected).abs() < 1e-12);
+    // The command line: the set fixes its episodes; the system actor is in the default list.
+    let words = |w: &[&str]| w.iter().map(|s| (*s).to_owned()).collect::<Vec<_>>();
+    let neutral = ["eval", "--set", "neutral-v1"];
+    let error = main(&words(&[&neutral[..], &["--seed", "1"]].concat())).unwrap_err();
+    assert!(error.contains("neutral-v1 fixes its episodes"), "{error}");
+    main(&words(&[&neutral[..], &["--episodes", "1"]].concat())).unwrap();
 }

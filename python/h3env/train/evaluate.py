@@ -11,11 +11,15 @@ last. The held-out sets: v0 (E05's, `EVAL_SEED`: 1 000 episodes over 100 envs, t
 kept for comparisons), the report set v1 (`report`: per kind with a player on both sides, batch
 seed `REPORT_V1_SEED + k`, the kind one-hot, the first episode of each of 500 envs; the ladder's
 and the targets') and the gate set v1 (`GATE_V1_SEED`: 500 envs × 8 episodes of the default
-kinds; `gate.play_gate`). `h3 ai eval --set` plays the bots on the same episodes (its constants
-pinned to these by an `h3-cli` test); its table is `python/records/bots-report-v1.json`
-(`bots_table`). Every held-out seed (`held_out_seeds`) is checked against training's by the
-trainer. An episode the engine's seat ends before the agent could act is skipped by the batch
-(design §1): it is reported as `skipped`, not counted (none among v0's episodes, E05 T9b).
+kinds; `gate.play_gate`). The neutral set v1 (`report(held_out="neutral-v1")`, E06 T7c, design
+§12) is built as the report set from the neutral kinds (batch seed `NEUTRAL_V1_SEED + k`, weighed
+by the census's shares) with one side only: the agent attacks, the system actor defends (decision
+7's neutral target). `h3 ai eval --set` plays the bots on the same episodes (its constants pinned
+to these by an `h3-cli` test); its tables are `python/records/bots-report-v1.json` and
+`bots-neutral-v1.json` (`bots_table`). Every held-out seed (`held_out_seeds`) is checked against
+training's by the trainer. An episode the engine's seat ends before the agent could act is skipped
+by the batch (design §1): it is reported as `skipped`, not counted (none among v0's episodes, E05
+T9b).
 """
 
 from __future__ import annotations
@@ -55,26 +59,69 @@ GATE_V1_SEED = 0x5EED_E7A1_0002_0000
 GATE_V1_ENVS = 500
 GATE_V1_EPISODES = 8
 
+#: The neutral set v1's base seed: kind k's batch seed is `NEUTRAL_V1_SEED + k` (E06 T7c).
+NEUTRAL_V1_SEED = 0x5EED_E7A1_0003_0000
+
+#: The neutral set v1's envs per kind, the first episode of each.
+NEUTRAL_V1_ENVS = 500
+
+#: The neutral set v1's kinds (the system actor defends) and their weights in the overall rates:
+#: the census's shares (A1, `share` in `encounters-v1.toml`; the distribution draws them at 0).
+NEUTRAL_V1_WEIGHTS = {
+    _ffi.ENCOUNTER_WANDERING: 780,
+    _ffi.ENCOUNTER_GUARDS: 20,
+    _ffi.ENCOUNTER_SIEGE_NEUTRAL: 25,
+}
+
+#: The kinds whose defender is the system actor: one external seat, the attacker (design §12).
+NEUTRAL_KINDS = frozenset(NEUTRAL_V1_WEIGHTS)
+
 #: The held-out sets the ladder plays (`h3 ai eval --set`'s names).
-SETS = ("report-v1", "v0")
+SETS = ("report-v1", "neutral-v1", "v0")
+
+#: The sets stratified by kind (`report`): their base seed, envs per kind, kinds' weights and the
+#: sides the agent plays.
+STRATIFIED = {
+    "report-v1": (REPORT_V1_SEED, REPORT_V1_ENVS, REPORT_V1_WEIGHTS, ("attacker", "defender")),
+    "neutral-v1": (NEUTRAL_V1_SEED, NEUTRAL_V1_ENVS, NEUTRAL_V1_WEIGHTS, ("attacker",)),
+}
+
+#: The neutral set's one opponent, the system actor (`h3 ai eval --set neutral-v1`'s defender).
+NEUTRAL_OPPONENT = "system"
 
 #: Every held-out set's batch seeds: a run training on one of them is refused (`run.resolve`), and
 #: so is a ladder of a network trained on one.
 HELD_OUT_BATCH_SEEDS = frozenset(
-    {EVAL_SEED, GATE_V1_SEED, *(REPORT_V1_SEED + k for k in REPORT_V1_WEIGHTS)}
+    {
+        EVAL_SEED,
+        GATE_V1_SEED,
+        *(REPORT_V1_SEED + k for k in REPORT_V1_WEIGHTS),
+        *(NEUTRAL_V1_SEED + k for k in NEUTRAL_V1_WEIGHTS),
+    }
 )
 
 #: The two-sided 95 % quantile of the normal distribution.
 Z95 = 1.96
 
-#: The bots' table on the report set v1 (`h3 ai eval --set report-v1 --json …`).
-BOTS_TABLE = Path(__file__).resolve().parents[2] / "records" / "bots-report-v1.json"
+#: The bots' tables on the stratified sets (`h3 ai eval --set <set> --json …`).
+BOTS_TABLES = {
+    name: Path(__file__).resolve().parents[2] / "records" / f"bots-{name}.json"
+    for name in STRATIFIED
+}
+
+#: The bots' table on the report set v1.
+BOTS_TABLE = BOTS_TABLES["report-v1"]
+
+#: The schema of `h3 ai eval --json` the tables are written in (2: the fixed defender and the
+#: system actor's policy version, E06 T7c).
+BOTS_TABLE_SCHEMA = 2
 
 #: The agent's side and the winning result per side.
 SIDES = (("attacker", _ffi.RESULT_ATTACKER), ("defender", _ffi.RESULT_DEFENDER))
 
-#: The engine's seats an agent can be evaluated against (C ABI v30's bots, E05 T7).
-OPPONENTS = ("random", "aggressor", "greedy")
+#: The engine's seats an agent can be evaluated against (C ABI v30's bots, E05 T7; the system
+#: actor, v32, E06 T7c).
+OPPONENTS = ("random", "aggressor", "greedy", "system")
 
 #: An agent: fills `batch.actions` for every row from the batch's current outputs.
 Agent = Callable[[BattleBatch], None]
@@ -95,11 +142,11 @@ def episode_seeds(episodes: int, envs: int, seed: int = EVAL_SEED) -> set[int]:
     return {episode_seed(seed, e, i) for e in range(envs) for i in range(k)}
 
 
-def report_seeds(per_kind: int = REPORT_V1_ENVS) -> set[int]:
-    """The seeds of the report set v1's episodes, the first `per_kind` of each kind."""
-    return {
-        episode_seed(REPORT_V1_SEED + k, e, 0) for k in REPORT_V1_WEIGHTS for e in range(per_kind)
-    }
+def report_seeds(per_kind: int = REPORT_V1_ENVS, held_out: str = "report-v1") -> set[int]:
+    """The seeds of a stratified set's episodes (the report set v1's by default), the first
+    `per_kind` of each kind."""
+    seed, _, weights, _ = STRATIFIED[held_out]
+    return {episode_seed(seed + k, e, 0) for k in weights for e in range(per_kind)}
 
 
 def gate_seeds() -> set[int]:
@@ -109,8 +156,13 @@ def gate_seeds() -> set[int]:
 
 def held_out_seeds(episodes: int = 1000, envs: int = 100, seed: int = EVAL_SEED) -> set[int]:
     """Every held-out episode's seed (design §5): the evaluation's (v0, as `episode_seeds`), the
-    report set v1's and the gate set v1's."""
-    return episode_seeds(episodes, envs, seed) | report_seeds() | gate_seeds()
+    report and neutral sets v1's and the gate set v1's."""
+    return (
+        episode_seeds(episodes, envs, seed)
+        | report_seeds()
+        | report_seeds(held_out="neutral-v1")
+        | gate_seeds()
+    )
 
 
 def random_agent(rng: np.random.Generator) -> Agent:
@@ -243,6 +295,7 @@ def report(
     *,
     opponent: str = "random",
     per_kind: int = REPORT_V1_ENVS,
+    held_out: str = "report-v1",
     rng_seed: int = 0,
     threads: int = 0,
     max_steps: int = 2000,
@@ -250,15 +303,22 @@ def report(
     mana_price: int = 10,
     stop=None,
 ) -> dict:
-    """Plays the report set v1 (design §5), its first `per_kind` episodes of each kind, against
-    `opponent` (`play`'s), an agent per (kind, side) from `make_agent(seed, side)` (its draws
-    seeded alike for every network: common random numbers); returns `stratified`'s rates, per kind
-    each side's `play` report, and the games, skipped episodes, truncations and seconds."""
-    if not 1 <= per_kind <= REPORT_V1_ENVS:
-        raise ValueError(f"the report set v1 has 1 to {REPORT_V1_ENVS} episodes per kind")
+    """Plays a stratified set (design §5: the report set v1 by default; the neutral set v1, whose
+    one opponent is the system actor, the agent attacking), its first `per_kind` episodes of each
+    kind, against `opponent` (`play`'s), an agent per (kind, side) from `make_agent(seed, side)`
+    (its draws seeded alike for every network: common random numbers); returns `stratified`'s
+    rates, per kind each side's `play` report, and the games, skipped episodes, truncations and
+    seconds."""
+    if held_out not in STRATIFIED:
+        raise ValueError(f"not a stratified set: {held_out!r} (one of {tuple(STRATIFIED)})")
+    seed, envs, weights, sides = STRATIFIED[held_out]
+    if held_out == "neutral-v1" and opponent != NEUTRAL_OPPONENT:
+        raise ValueError(f"the neutral set v1's opponent is the system actor, not {opponent!r}")
+    if not 1 <= per_kind <= envs:
+        raise ValueError(f"the {held_out} set has 1 to {envs} episodes per kind")
     start = time.monotonic()
     by_kind = {}
-    for k in REPORT_V1_WEIGHTS:
+    for k in weights:
         one_hot = [int(i == k) for i in range(len(_ffi.ENCOUNTER_KINDS))]
         by_kind[_ffi.ENCOUNTER_KINDS[k]] = {
             side: play(
@@ -266,7 +326,7 @@ def report(
                 episodes=per_kind,
                 envs=per_kind,
                 threads=threads,
-                seed=REPORT_V1_SEED + k,
+                seed=seed + k,
                 max_steps=max_steps,
                 kinds=one_hot,
                 currency=currency,
@@ -275,9 +335,9 @@ def report(
                 sides=(side,),
                 stop=stop,
             )[side]
-            for j, (side, _) in enumerate(SIDES)
+            for j, side in enumerate(sides)
         }
-    out = stratified(by_kind)
+    out = stratified(by_kind, held_out)
     sides = [s for kind in by_kind.values() for s in kind.values()]
     games = sum(s["episodes"] for s in sides)
     out.update(
@@ -290,40 +350,41 @@ def report(
     return out
 
 
-def stratified(by_kind: dict[str, dict]) -> dict:
-    """The report set's overall rates from each kind's sides (`play`'s per-side reports): the win
-    rate and the value efficiency weighed by `REPORT_V1_WEIGHTS`, both sides equally, the win
-    rate's 95 % interval from the stratified variance `¼ Σ Σ w² r (1 − r) / n` (design §5), and
-    each kind's win rate (both sides)."""
-    total = sum(REPORT_V1_WEIGHTS.values())
+def stratified(by_kind: dict[str, dict], held_out: str = "report-v1") -> dict:
+    """A stratified set's overall rates from each kind's sides (`play`'s per-side reports): the
+    win rate and the value efficiency weighed by the set's weights (the report set's
+    `REPORT_V1_WEIGHTS`), its sides equally, the win rate's 95 % interval from the stratified
+    variance `Σ Σ w² r (1 − r) / n` over the sides' count squared (design §5), and each kind's
+    win rate (its sides)."""
+    _, _, weights, sides = STRATIFIED[held_out]
+    total = sum(weights.values())
+    m = len(sides)
     rate = value = variance = 0.0
     kinds = {}
-    for k, weight in REPORT_V1_WEIGHTS.items():
+    for k, weight in weights.items():
         name = _ffi.ENCOUNTER_KINDS[k]
         w = weight / total
-        for side in ("attacker", "defender"):
+        for side in sides:
             s = by_kind[name][side]
             r = s["win_rate"]
-            rate += w * r / 2
-            value += w * s["reward"] / 2
-            variance += w * w * r * (1 - r) / max(s["episodes"], 1) / 4
-        kinds[name] = (
-            by_kind[name]["attacker"]["win_rate"] + by_kind[name]["defender"]["win_rate"]
-        ) / 2
+            rate += w * r / m
+            value += w * s["reward"] / m
+            variance += w * w * r * (1 - r) / max(s["episodes"], 1) / (m * m)
+        kinds[name] = sum(by_kind[name][side]["win_rate"] for side in sides) / m
     return {"win_rate": rate, "interval": Z95 * math.sqrt(variance), "value": value, "kinds": kinds}
 
 
-def bots_table(path: Path = BOTS_TABLE) -> dict:
-    """The bots' table on the report set v1 (`h3 ai eval --set report-v1 --json`, committed):
-    its strata are the report set's (checked), its rates by `(policy, opponent)` under `rates`."""
-    table = json.loads(Path(path).read_text())
+def bots_table(held_out: str = "report-v1", path: Path | None = None) -> dict:
+    """The bots' table on a stratified set (`h3 ai eval --set <set> --json`, committed in
+    `BOTS_TABLES`, or `path`): its schema and strata are the set's (checked), its rates by
+    `(policy, opponent)` under `by_pair`."""
+    path = Path(path or BOTS_TABLES[held_out])
+    table = json.loads(path.read_text())
+    seed, envs, weights, _ = STRATIFIED[held_out]
     strata = [(s["name"], s["seed"], s["envs"]) for s in table["strata"]]
-    expected = [
-        (_ffi.ENCOUNTER_KINDS[k], f"{REPORT_V1_SEED + k:#018x}", REPORT_V1_ENVS)
-        for k in REPORT_V1_WEIGHTS
-    ]
-    if table["set"] != "report-v1" or strata != expected:
-        raise ValueError(f"{path}: not the report set v1's table")
+    expected = [(_ffi.ENCOUNTER_KINDS[k], f"{seed + k:#018x}", envs) for k in weights]
+    if table.get("schema") != BOTS_TABLE_SCHEMA or table["set"] != held_out or strata != expected:
+        raise ValueError(f"{path}: not the {held_out} set's table (schema {BOTS_TABLE_SCHEMA})")
     table["by_pair"] = {(r["policy"], r["opponent"]): r for r in table["rates"]}
     return table
 
@@ -351,14 +412,20 @@ def ladder(
 ) -> dict[str, dict]:
     """The sampled policy against each engine seat in `opponents` (E05 T7) and each network of
     `networks` (by name; both seats external, E06 T3b) on a held-out set: the report set v1's first
-    `per_kind` episodes of each kind (`report`; E06 T3a), or v0's episodes `settings` give (as
-    `play`'s; the engine seats only): the network's row beside `h3 ai eval`'s table on the same
-    episodes. Each network's mode is restored after."""
+    `per_kind` episodes of each kind (`report`; E06 T3a), v0's episodes `settings` give (as
+    `play`'s; the engine seats only), or the neutral set v1's first `per_kind` per kind against
+    its one opponent, the system actor (E06 T7c; the row `system`, whatever `opponents` names, no
+    networks): the network's row beside `h3 ai eval`'s table on the same episodes. Each network's
+    mode is restored after."""
     import torch
 
     if held_out not in SETS:
         raise ValueError(f"unknown held-out set {held_out!r} (one of {SETS})")
     networks = dict(networks or {})
+    if held_out != "report-v1" and networks:
+        raise ValueError(f"the held-out set {held_out} has no network opponents")
+    if held_out == "neutral-v1":
+        opponents = (NEUTRAL_OPPONENT,)
     nets = [policy, *networks.values()]
     modes = [net.training for net in nets]
     for net in nets:
@@ -383,13 +450,12 @@ def ladder(
                     sampled,
                     opponent=opponent,
                     per_kind=per_kind,
+                    held_out=held_out,
                     rng_seed=rng_seed,
                     stop=stop,
                     **settings,
                 )
         for name, net in networks.items():
-            if held_out == "v0":
-                raise ValueError("the held-out set v0 has no network opponents")
             out[name] = report(
                 lambda seed, side, net=net: duel(policy, net, side, seed),
                 opponent="external",
@@ -405,15 +471,16 @@ def ladder(
 
 
 def compact(row: dict) -> dict:
-    """A report set's row (`report`) as a record keeps it: the rates, each kind's per side, the
-    games, skipped episodes, truncations and seconds."""
+    """A stratified set's row (`report`) as a record keeps it: the rates, each kind's per side
+    (attacking, defending; the neutral set's attacking only), the games, skipped episodes,
+    truncations and seconds."""
     return {
         "win_rate": row["win_rate"],
         "interval": row["interval"],
         "value": row["value"],
         "kinds": row["kinds"],
         "sides": {
-            kind: [sides["attacker"]["win_rate"], sides["defender"]["win_rate"]]
+            kind: [side["win_rate"] for side in sides.values()]
             for kind, sides in row["by_kind"].items()
         },
         "games": row["games"],

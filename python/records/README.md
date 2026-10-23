@@ -26,31 +26,41 @@ also accepts schema 4, before the league: `t3b-1`, its config's `[pool]`):
 - `curve`: per gate interval, the means of its updates' losses, entropy, KL, clip fraction,
   explained variance, samples per second and training rates (schema 5: the learner's score
   against the league's members, `league_score`, and the frozen networks a call passed,
-  `frozen_passes`, instead of the pool's win rate).
+  `frozen_passes`, instead of the pool's win rate; from E06 T7c, once a run's updates have
+  them, `by_kind`: per encounter kind the self-play episodes, the attacker's wins and the
+  truncations, summed over the interval; a neutral kind's attacker is the learner against the
+  system actor).
 - `gates` (schema 4): each gate's samples, update, the best it played, its result (`promoted`,
   `rejected`, `inconclusive`), pairs, the pairs' counts per score, LLR, mean score, Elo, games,
   seconds and (schema 5, E06 T4a) the league's member table at the gate (each member's id, kind,
   birth in samples, `p`, decayed and plain games, whether live; the last gate's is the end's); `promotions`: each promoted network's index, how (`start`, `init`, `gate`), samples
   and update; `ladders`: each ladder's promoted network, whether final, episodes per kind, and per
   opponent the win rate, its 95 % interval, the value efficiency, each kind's rate and (after
-  `t3b-1`) its truncations' share; `best`: the latest promotion's index and samples.
+  `t3b-1`) its truncations' share, and (E06 T7c, null before or without `ladder_neutral`)
+  `neutral`, the same on the neutral set v1, attacking the system actor; `best`: the latest
+  promotion's index and samples.
 
 `tests/test_run.py` checks every record here against its schema (and every config in
 `python/configs/`). To commit a run's record: copy `runs/<run>/record.json` to
 `records/<run>.json`.
 
-## The bots' table
+## The bots' tables
 
-`bots-report-v1.json` (E06 T3a; design §7): Random, Aggressor and Greedy against each other on
-the report set v1, every ordered pair on its 1 500 battles: per kind and side the games, wins,
-truncations and mean rewards, per pair the overall win rate with its 95 % interval and the value
-efficiency, the Glicko-2 ratings, and the engine's identity (the encounter distribution's
-version, the rulesets' content hashes). It is a function of the engine; `tests/test_evaluate.py`
-checks its strata, its identity against the engine's and its rates. Regenerate it when the bots
-or the rules move (from the repository's root, about 15 s in release):
+`bots-report-v1.json` (E06 T3a; design §7): Random, Aggressor, Greedy and (E06 T7c) the system
+actor against each other on the report set v1, every ordered pair on its 1 500 battles: per kind
+and side the games, wins, truncations and mean rewards, per pair the overall win rate with its
+95 % interval and the value efficiency, the Glicko-2 ratings, and the engine's identity (the
+encounter distribution's version, the rulesets' content hashes, the system actor's policy
+version). `bots-neutral-v1.json` (E06 T7c; design §12): the same four, each attacking the system
+actor on the neutral set v1's 1 500 battles (the attacker's rates alone, no ratings; `defender`
+names the fixed seat). Both are `h3 ai eval --json`'s schema 2 and a function of the engine;
+`tests/test_evaluate.py` checks their strata, their identity against the engine's and their
+rates. Regenerate both when the bots, the system actor's policy (`POLICY_VERSION`) or the rules
+move (from the repository's root, in release about 85 s and 15 s):
 
 ```sh
 cargo run --release -p h3-cli -- ai eval --set report-v1 --json python/records/bots-report-v1.json
+cargo run --release -p h3-cli -- ai eval --set neutral-v1 --json python/records/bots-neutral-v1.json
 ```
 
 ## Lineage
