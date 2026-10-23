@@ -142,6 +142,14 @@ search the parent directories).
   (`situations/kept/`) and compares their digests with `kept/drawn.txt`: a task captures in the
   original only what it lists as changed (the runbook, "Which captures a change needs").
 
+- **The map's real-asset gate** (E24 M1 T2): `cargo run --release -p h3-map-view -- gate
+  [--install <dir>] [--map <dir>] [--maps <dir>]` (from `clients/`) loads the map's tables and
+  the adventure screen's layout (`clients/map/`), finds every name they hold where the game
+  searches it in the four LODs and decodes it, and checks that each DEF's group 0 holds the
+  frames the view draws, the terrains', rivers' and roads' as many as the highest picture any
+  shipped map gives (`<install>/Maps`); it prints each DEF's frames, encodings and run pixels and
+  exits 1 on a problem (findings: `docs/epics/E24-design.md` §1.9).
+
 | Path | What |
 |---|---|
 | `clients/Cargo.toml`, `clients/Cargo.lock`, `clients/deny.toml` | the client workspace (`deny.toml`: the engine's policy, kept identical by `check.sh` until M2) |
@@ -155,6 +163,9 @@ search the parent directories).
 | `clients/scenarios/*.toml` | the client's battle scenarios (the scenario format of `packs/README.md`) for `h3-view render` and `play`: the stills T7 renders, `smoke.toml` the captured smoke battle (T8), `battle.toml` the whole battle `play` fights (M2 T4b-2a) |
 | `clients/capture/` | the reference captures (below; the runbook `capture/README.md`): `setup.sh`, the driver `h3drive.py` and its screens' probes, `h3cap.py` (diffs, obstacles), the `xdd.dll` source (forwarder and virtual clock) |
 | `clients/situations/` | the capture set (`set.toml`) and its situations' scenario files: what the harness shows the original, with each frame's recorded differences; the recorded sequences (`sequences.toml`, `timelines/`) with their engine commands (the casts' since M3 T7a-2a, with the screen's changes); `kept/`, what the last captures kept and the viewer's digests at those times |
+| `clients/crates/h3-map-view` | the adventure map's viewer (the map-client lane, E24): the library (pure, `no_std`) holds the map's static art read from the raw `.h3m` (`art`), its live part (`live`: the objects standing, a random object's drawn template, owners, heroes, boats, the viewer's explored tiles, the moment), the map's asset tables (`tables`), the adventure screen's layout (`layout`) and what the gate checks of a DEF (`check`); its binary the map's real-asset gate. Its package depends on `h3-assets`, `h3-map` (the raw model) and, for the binary only, `h3-formats` (`tests/purity.rs`, a copy of `h3-view`'s for this crate) |
+| `clients/map/assets/base.toml` | the map's asset tables (below, "The map's asset tables") |
+| `clients/map/layouts/adventure.toml` | the adventure screen's layout at the native resolution: the frame and its picture, the view's place, tile, loops and clip, the corner gems (`docs/epics/E24-design.md` §1.1, §1.2, §1.9); an HD layout is another file of the same format (*provisional*) |
 | `clients/out/` | local output (renders, reports); gitignored |
 
 The decoders, the compositor and the scene model are pure (no I/O, clock or threads; time is an
@@ -229,6 +240,25 @@ on the M1 review list):
 Which table an entry belongs to is the pack that defines its key (since M3 T2 every entry's: the
 SoD fields and their obstacles in `sod.toml`); `harvest` would keep graphics no pack defines in
 `base.toml`. Where the names and numbers come from: `docs/epics/E17-design.md` §5.
+
+## The map's asset tables
+
+The adventure map's tables (E24 M1 T2), `clients/map/assets/<pack>.toml` (only `base.toml` so
+far: the AB and SoD packs add nothing the view draws until their objects come, T4), in the rule
+packs' dependency graph as the battle's; written from the code reading (`docs/epics/E24-design.md`
+§1.3 to §1.6) and maintained as source. Keyed by the `.h3m`'s codes, not by the packs' keys: the
+map's static art is the raw map's (*provisional*, on the M1 review list). Loader:
+`h3_map_view::tables` (pure); `tests/tables.rs` checks the committed table, the gate its names.
+The format:
+
+- `[table]`: `id`, `depends`, as the battle's tables.
+- `[map]` (in exactly one table of a selection): `edge` (the map's edge, `edg.def`),
+  `road_offset` (how far below its tile a road is drawn, 16), `cycle_ms` (the palette cycles'
+  step, 200), `frame_ms` (the objects' frame step, 180); `[map.shroud]`: `full` and `edge` (the
+  unexplored tiles' DEFs) and `pieces` (each mask's piece, 256 numbers: the executable's table).
+- `[[terrain]]`, `[[river]]`, `[[road]]`: `code` (the `.h3m`'s; 0 is no river or road), `def` (a
+  tile's picture is its group 0's frame), optional `cycles` (the palette ranges the tick rotates,
+  first and last entry). A code defined twice in a selection is an error.
 
 ## The string catalogue
 

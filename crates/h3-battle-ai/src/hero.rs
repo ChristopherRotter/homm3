@@ -4,10 +4,10 @@
 //! (0x422DA0, [`SpellContext`]) and weighs every spell it can cast now (0x43C800): the spell's
 //! value (0x43BB20, [`value`]), 2.5 times when its spell points cover seven casts, else times the
 //! square root of the casts they cover, drawn at 75 to 100 %; the best is cast when it is due now
-//! (+0x20) or when the side would retreat. The raises, Sacrifice and Earthquake have cases of
-//! their own ([`specials`], E23 T5b1), Teleport too ([`teleport`], E23 T5b2: its stacks' walker
-//! turns, each caster's cast entry in them from its own record); the retreat test is T6's
-//! (BAT-STUB-13, BAT-Q61).
+//! (+0x20) or when the side would retreat ([`retreat::test`], asked between the context and the
+//! choice, E23 T6). The raises, Sacrifice and Earthquake have cases of their own ([`specials`],
+//! E23 T5b1), Teleport too ([`teleport`], E23 T5b2: its stacks' walker turns, each caster's cast
+//! entry in them from its own record).
 
 mod specials;
 mod teleport;
@@ -26,6 +26,7 @@ use h3_kernel::arith::X87;
 
 use crate::casts::{self, Scanner, Spell};
 use crate::order;
+use crate::retreat;
 use crate::spells::{Candidate, Kind, SpellContext, has_spell};
 
 /// The choice's draw (0x43CA60: `random(75, 100)`), per spell with a value.
@@ -37,8 +38,11 @@ const CASTS: i32 = 7;
 /// The command of `side`'s hero at the activation of its stack `id` (0x422DA0; BAT-AI-017), its
 /// draws from `rng`: none without a hero with a spell book, once it has cast this round, while a
 /// hero forbids casting (BAT-MAG-061) or when `id` is a war machine; else the spell context for
-/// the side (its predictions' draws) and the choice ([`choose`]). The policy plays any side as
-/// the computer's: the original's tests for a human side are not asked (ADR-0027 point 8).
+/// the side (its predictions' draws), the retreat test (its draws; BAT-AI-024) and the choice
+/// with the test's answer ([`choose`]). With BAT-QUIRK-25 (survey slip 26) the choice reads what
+/// the test's predictions left, when it got that far ([`SpellContext::after_retreat`]). The
+/// policy plays any side as the computer's: the original's tests for a human side are not asked
+/// (ADR-0027 point 8).
 // rule: BAT-AI-017
 pub(crate) fn cast(
     state: &BattleState,
@@ -56,10 +60,18 @@ pub(crate) fn cast(
     }
     let ctx = computer::context(state, ruleset, side);
     let mut sc = SpellContext::new(state, ruleset, (&ctx, side), rng);
-    // stub: BAT-STUB-13
-    // The retreat test (0x41E570) reads the adventure's state no seam carries (BAT-Q61): no
-    // retreat until T6, so the choice is never desperate.
-    choose(&mut sc, (state, ruleset), (id, side, ctx), false, rng)
+    let slips = ruleset.quirks().is_enabled(ORIGINAL_AI_SLIPS);
+    let answer = retreat::test(state, ruleset, side, rng, slips);
+    if let Some(predicted) = answer.predicted {
+        sc.after_retreat(&predicted);
+    }
+    choose(
+        &mut sc,
+        (state, ruleset),
+        (id, side, ctx),
+        answer.retreat,
+        rng,
+    )
 }
 
 /// A spell's value for the hero's choice (0x43BB20's candidate after it): the value, the target

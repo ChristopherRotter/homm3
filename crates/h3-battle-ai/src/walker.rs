@@ -19,7 +19,12 @@
 //!
 //! The creature cast entry ([`casts::entry`], 0x421280; BAT-AI-012, BAT-AI-013) comes before the
 //! action, with the best's value per turn (0 without a candidate), and again after a choice of
-//! nothing. Not built yet: the walker's turn in the tactics phase is T6's (BAT-STUB-5).
+//! nothing.
+//!
+//! In the tactics phase (E23 T6, BAT-AI-023; [`crate::tactics`]) the walker's map, its walk's path
+//! and its side's threat records search with the phase's flag (the whole field, `computer`), no
+//! cast entry is asked, an attack is always a walk towards the plan's hex, and the walk takes the
+//! whole path and ends at its last position in the side's zone without a score test.
 //!
 //! The spell context's predictions (E23 T4b2, [`predict`](crate::predict)) run a stack's turn as a
 //! prediction ([`Walker::predicting`]: 0x421F80 with its flag): its context reads each stack's
@@ -33,6 +38,7 @@ use core::cell::{Cell, OnceCell};
 use h3_battle::computer::{self, Context, Map, Planned};
 use h3_battle::{
     BattleSide, BattleState, Command, Field, Hex, HexSet, Stack, StackId, StackTraits, Status,
+    TacticsPhase,
 };
 use h3_content::ORIGINAL_AI_SLIPS;
 use h3_content_battle::{Ability, BattleRuleset};
@@ -44,6 +50,7 @@ use crate::gain::{self, Records};
 use crate::hexes::{self, Shape};
 use crate::odds;
 use crate::scores;
+use crate::tactics;
 
 /// Hexes a table of hex scores covers.
 pub(crate) const HEXES: usize = 256;
@@ -128,6 +135,21 @@ pub(crate) struct Walker<'a> {
     /// the destination map and the choice ends in a move and attack or Defend
     /// ([`Walker::teleported`]).
     teleport: bool,
+    /// The running tactics phase (the original's +0x13D68; BAT-AI-023).
+    pub(crate) tactics: Option<TacticsPhase>,
+}
+
+/// The living stack on each hex but the turrets (0x4E7170).
+pub(crate) fn stacks_on(state: &BattleState, field: Field) -> [Option<StackId>; HEXES] {
+    let mut on = [None; HEXES];
+    for (i, s) in (0u8..).zip(state.stacks()) {
+        if s.is_alive() && !s.is_turret() {
+            for h in s.footprint(field).hexes() {
+                on[h.index()] = Some(StackId(i));
+            }
+        }
+    }
+    on
 }
 
 /// The command of the computer's walker `id` of `side` (0x421F80; BAT-AI-005): the walker's choice
@@ -171,14 +193,7 @@ impl<'a> Walker<'a> {
         planned: Option<&Planned>,
     ) -> Self {
         let field = Field::new(ruleset.battle().field);
-        let mut on = [None; HEXES];
-        for (i, s) in (0u8..).zip(state.stacks()) {
-            if s.is_alive() && !s.is_turret() {
-                for h in s.footprint(field).hexes() {
-                    on[h.index()] = Some(StackId(i));
-                }
-            }
-        }
+        let on = stacks_on(state, field);
         let ctx = computer::context(state, ruleset, side);
         let ctx = planned.map_or(ctx, |p| ctx.predicting(p));
         let (scores, mask) = scores::build(state, ruleset, (id, side), &ctx);
@@ -206,10 +221,12 @@ impl<'a> Walker<'a> {
             stronger: Cell::new(None),
             records: OnceCell::new(),
             held: OnceCell::new(),
-            asks_entry: planned.is_none(),
+            // Neither in a prediction nor in the tactics phase (0x421CE4; the entry's own test).
+            asks_entry: planned.is_none() && state.tactics().is_none(),
             tracks: false,
             after_map: Cell::new(None),
             teleport: false,
+            tactics: state.tactics(),
         }
     }
 
@@ -548,13 +565,14 @@ impl<'a> Walker<'a> {
         }
     }
 
-    /// The attack on the best candidate `b` (0x421EF8): within one turn a move and attack (a move
-    /// alone where the original's walk stops early, but the move and attack in a prediction, which
-    /// predicts the original's action); further, a careful walk towards the plan's hex (never the
-    /// walker's own: its own hexes are no stops, so a plan there takes one turn; the original's
-    /// test for it, 0x421F39, finds none).
+    /// The attack on the best candidate `b` (0x421EF8): within one turn and outside the tactics
+    /// phase a move and attack (a move alone where the original's walk stops early, but the move
+    /// and attack in a prediction, which predicts the original's action); further, or in the
+    /// tactics phase, a careful walk towards the plan's hex (outside the phase never the walker's
+    /// own: its own hexes are no stops, so a plan there takes one turn; the original's test for
+    /// it, 0x421F39, finds none; in the phase a walk to its own hex is nothing).
     pub(crate) fn attack(&self, b: &Best) -> Option<Command> {
-        if b.plan.turns <= 1 {
+        if b.plan.turns <= 1 && self.tactics.is_none() {
             // The original's move and attack stops where a step enters a stop and then skips the
             // attack (0x441FA0, 0x478971; §7.16): a two-hex walker whose other hex lies on one
             // at the plan's hex (the plan counts a stop by the position hex alone) only moves.
@@ -853,8 +871,10 @@ impl<'a> Walker<'a> {
     /// the path's `n` steps once an end was found, so it first reaches the hex from which the rest
     /// takes whole turns. Then, careful: an end short of the last hex reached with a score no
     /// lower than the start's is Wait; an end at its own position Wait, else Defend; any other end
-    /// a move there. Nothing in a prediction.
-    // rule: BAT-AI-006
+    /// a move there. Nothing in a prediction. In the tactics phase (0x41F62F, 0x41F7A7; BAT-AI-023)
+    /// the whole path, never careful, no score test, and an end only in the side's zone
+    /// ([`tactics::in_zone`]).
+    // rule: BAT-AI-006, BAT-AI-023
     pub(crate) fn walk_with(&self, to: Hex, careful: bool, scored: bool) -> Option<Command> {
         // A predicted walk plans nothing and draws nothing (ADR-0027 point 11: not built).
         if self.predicts() {
@@ -871,8 +891,14 @@ impl<'a> Walker<'a> {
         let path = computer::path(self.state, self.ruleset, (self.id, self.side), to);
         let steps = path.steps();
         let n = steps.len();
+        // In the tactics phase the whole path with `L` = 0: no score test.
+        let speed = if self.tactics.is_some() { n } else { speed };
         let hard = computer::difficulty(self.state) >= 2 || computer::human(self.state, me.side);
-        let careful = scored && careful && hard && !computer::wait_phase(self.state);
+        let careful = scored
+            && careful
+            && hard
+            && !computer::wait_phase(self.state)
+            && self.tactics.is_none();
         let shape = Shape::of(me);
         let start = self
             .score(me.hex)
@@ -886,7 +912,10 @@ impl<'a> Walker<'a> {
             }
             let other = shape.other(self.field, hex);
             let tested = careful || (scored && n - k <= whole && found);
-            if !tested || (self.score(hex) >= kept && self.score(other) >= kept) {
+            let zoned = self
+                .tactics
+                .is_none_or(|phase| tactics::in_zone(self.field, phase, shape, hex));
+            if zoned && (!tested || (self.score(hex) >= kept && self.score(other) >= kept)) {
                 (end, found, kept) = (hex, true, self.score(hex).min(self.score(other)));
             }
             if !me.has(StackTraits::FLIES) && (path.is_stop(hex) || path.is_stop(other)) {

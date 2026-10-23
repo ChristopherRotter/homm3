@@ -23,9 +23,15 @@
 //! speed nothing is marked from a stop (0x4B378D to 0x4B37D1). A flyer passes over hexes by its
 //! own speed (0x4B39E7).
 //!
+//! In the tactics phase the computer's searches take the original's tactics flag (0x4B34DE; E23
+//! T6): the range and the turn's speed are both [`TACTICS_RANGE`], whatever the stack's speed or
+//! Bind, so a stop's step costs the rest of that range and nothing is reached or marked from it.
+//! Such a stop is reached but not queued (its cost lies beyond the queue's), and a walk's search
+//! to it ends on it after the others, as the original takes it last.
+//!
 //! Not modelled, as no caller of the engine meets it: the original's cap of 500 queued entries (a
-//! position is queued at most twice, below); the tactics phase's
-//! range (no walk is searched there: a placement is one move); the computer's stop avoidance in
+//! position is queued at most twice, below); the tactics phase's range in the engine's own
+//! searches (no walk is searched there: a placement is one move); the computer's stop avoidance in
 //! a command's own walk (0x4B3420: for a stack the computer plays at a town; the engine's walks
 //! are commands, whose legality reads no player, and within one move a stop is an end that no
 //! path to another position passes, so no such path changes; the battle AI's own searches ask
@@ -44,6 +50,9 @@ use h3_contracts::BattleSide;
 /// The range of the computer's searches over the whole field (the berserk turn's 127: 0x445582,
 /// 0x42232C).
 pub(crate) const AI_RANGE: u16 = 127;
+
+/// The range and the turn's speed of the computer's searches in the tactics phase (0x4B34DE).
+pub(crate) const TACTICS_RANGE: u16 = 1000;
 
 /// Positions: every hex index.
 const HEXES: usize = MAX_FIELD_HEXES + 1;
@@ -96,6 +105,9 @@ pub(crate) struct Query {
     /// own (−1): a stop costs up to its next multiple, a mark from a stop one more of it, and a
     /// range within it marks nothing from a stop. A flyer passes over hexes by its own speed.
     pub(crate) speed: Option<u16>,
+    /// The original's tactics flag (0x4B34DE): the range and the turn's speed are both
+    /// [`TACTICS_RANGE`], for a bound stack or one without speed too.
+    pub(crate) tactics: bool,
 }
 
 /// The queue: a bucket per cost, first in first out within one.
@@ -178,11 +190,16 @@ impl Search {
         query: Query,
     ) -> Self {
         let own_speed = u16::from(mover.speed_now());
-        let speed = query.speed.unwrap_or(own_speed);
-        let range = if speed == 0 || binds::is_bound(state, id) {
-            0
+        let (range, speed) = if query.tactics {
+            (TACTICS_RANGE, TACTICS_RANGE)
         } else {
-            query.range
+            let speed = query.speed.unwrap_or(own_speed);
+            let range = if speed == 0 || binds::is_bound(state, id) {
+                0
+            } else {
+                query.range
+            };
+            (range, speed)
         };
         let blocked = state.blocked_for(field, id);
         let flies = mover.has(StackTraits::FLIES);
@@ -293,10 +310,20 @@ impl Search {
                 }
             }
         }
+        // A stop in the tactics phase was reached but not queued: a walk to it ends on it last.
+        if let Goal::Reach(to) = query.goal
+            && search.end.is_none()
+            && search.reached.contains(to)
+            && usize::from(search.cost[to.index()]) >= BUCKETS
+        {
+            search.end = Some(to);
+        }
         search
     }
 
     /// Reaches `n` from `at` at `cost` unless that is above `range` or `n` was reached at no more.
+    /// A cost beyond the queue's (a stop in the tactics phase, the whole [`TACTICS_RANGE`]) is
+    /// reached but not queued: no step or mark comes from it.
     fn push(&mut self, queue: &mut Queue, (n, at): (Hex, Hex), cost: u16, flown: u8, range: u16) {
         let i = n.index();
         if cost > range || (self.reached.contains(n) && self.cost[i] <= cost) {
@@ -306,7 +333,9 @@ impl Search {
         self.cost[i] = cost;
         self.from[i] = at;
         self.flown[i] = flown;
-        queue.push(n, cost, flown);
+        if usize::from(cost) < BUCKETS {
+            queue.push(n, cost, flown);
+        }
     }
 
     /// Marks `hex` attackable at `a` unless it is marked at no more.

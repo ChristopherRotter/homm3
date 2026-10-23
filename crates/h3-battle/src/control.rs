@@ -95,6 +95,7 @@ pub(crate) fn searched(
         avoid,
         spare: None,
         speed: None,
+        tactics: false,
     };
     let map = Search::run(state, field, (id, &me), query);
     // The start, reached at cost 0, is the stack's own position (0x4B2DA0 marks it).
@@ -149,6 +150,7 @@ fn walk_and_attack<S: Sink>(
         avoid,
         spare: None,
         speed: None,
+        tactics: false,
     };
     let walk = Search::run(state, field, (id, me), query);
     let Some(from) = walk.end() else {

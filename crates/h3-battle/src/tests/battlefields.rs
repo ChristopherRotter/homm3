@@ -98,6 +98,54 @@ fn the_battlefield_is_a_known_key_and_public() {
     assert_eq!((o.battlefield, o.anti_magic), (None, false));
 }
 
+// The adventure's facts for the computer (ADR-0027 point 14, E23 T6): the attacking hero's own
+// ground is a known battlefield key, the retreat facts are kept as given; both are hashed and
+// neither is observed (no rule reads them).
+// covers: BAT-AI-024
+#[test]
+fn the_adventure_facts_are_kept_hashed_and_not_observed() {
+    let r = ruleset();
+    let base = setup(&r, &[(0, "fixed", 1)], &[(0, "fixed", 1)]);
+    let bad = BattleSetup {
+        attacker_ground: key("t:nowhere"),
+        ..base.clone()
+    };
+    assert_eq!(
+        BattleState::new(&r, &bad, 1),
+        Err(SetupError::UnknownBattlefield)
+    );
+    let facts = h3_contracts::RetreatFacts {
+        experience: 3000,
+        artifacts: 10,
+        tavern: true,
+        wanted: true,
+    };
+    let known = BattleSetup {
+        attacker_ground: key("t:holy"),
+        retreat: [h3_contracts::RetreatFacts::default(), facts],
+        ..base.clone()
+    };
+    let plain = BattleState::new(&r, &base, 1).unwrap();
+    let s = BattleState::new(&r, &known, 1).unwrap();
+    assert_eq!(
+        crate::computer::attacker_ground(&s),
+        r.battlefield_by_key("t:holy")
+    );
+    assert_eq!(crate::computer::attacker_ground(&plain), None);
+    assert_eq!(
+        crate::computer::retreat_facts(&s, BattleSide::Defender),
+        facts
+    );
+    assert_eq!(
+        crate::computer::retreat_facts(&s, BattleSide::Attacker),
+        h3_contracts::RetreatFacts::default()
+    );
+    assert_ne!(plain.state_hash(), s.state_hash());
+    for side in BattleSide::BOTH {
+        assert_eq!(observe(&s, &r, side), observe(&plain, &r, side));
+    }
+}
+
 // ---------------------------------------------------------------- BAT-TER-003
 
 // covers: BAT-TER-003, BAT-MOR-002

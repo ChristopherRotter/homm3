@@ -4,10 +4,10 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E23, the original's battle AI, in progress** (`docs/epics/E23-original-battle-ai.md`; BAT-Q52). **T1 to T4 done** (#288 to #382): the reading §7.34 to §7.54, `pathfinder.rs`, the survey, **ADR-0027**, BAT-QUIRK-25, `computer-decisions`; a side without a hero is complete (slip 6: BAT-STUB-7, BAT-Q56). **The budget** (the user): the gated count +2 %, re-set per part; ≤ 1 ms for the slowest decision, a hero's ≤ 5 ms, recorded per task. **T1a6, slip 25 done** (§7.55; slip 26 at T6). **T5** (the hero's spells; the retreat a stub until T6, BAT-Q61) cut by the user into T5a (BAT-AI-017, 018, slip 27), T5b1 (BAT-AI-019, slips 28, 29), T5b2a (Teleport, BAT-AI-020, §7.58, slips 30, 31) and T5b2b (a caster's entry in Teleport's turns, §7.59, v52, `POLICY_VERSION` 15; **#408 open**, `cross-lane`). Next **T6**.
+- **E23, the original's battle AI, in progress** (`docs/epics/E23-original-battle-ai.md`; BAT-Q52). **T1 to T6 done** (#288 to #408, then `battle/e23-t6`): the reading §7.34 to §7.60, **ADR-0027** (point 14: the adventure's facts), BAT-QUIRK-25, slips 1 to 32; slip 33 found (BAT-STUB-17). **Budget** (the user): the gated count +2 %, re-set per part; ≤ 1 ms per decision, a hero's ≤ 5 ms. **T6** (the user: whole): the seam (#422, merged) and **#424** (`battle/e23-t6`, `cross-lane`, open): Catapult, tent, tactics phase (v53), retreat test with slips 26 and 6 (BAT-AI-024; replay format v30), `POLICY_VERSION` 18. Full verify and client check green on 8c37c73 (`master` with #422 merged in; CI cannot run, billing). Next: T7 (BAT-Q33 with S-25's row; slip 33).
 - E05, `h3-sim` and `h3-ffi` are the AI lane's (AI-Q1), `h3-heroes` the adventure lane's.
-- **Open:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35, BAT-Q51, BAT-Q56, BAT-Q58 (none blocks; BAT-Q33 and BAT-Q51 settle with E23's T6), BAT-STUB-1, the inbox (by kind since 2026-10-19), Q43; S-23, S-24, batch 2g.
-- **Versions:** battle state hash v52, battle part hash v7 (E23 T3-0; the encodings, replay format and C ABI are the AI lane's); shared: core ruleset hash v48, pack format v47 (E08 T45), protocol v34. Next ids: BAT-Q62, BAT-QUIRK-27, BAT-STUB-15, BAT-AI-021, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-24, S-30.
+- **Open:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35, BAT-Q51, BAT-Q58 (none blocks; BAT-Q33 and BAT-Q51 wait for batch rows), BAT-STUB-1, the inbox (by kind since 2026-10-19), Q43; S-23, S-24, batch 2g.
+- **Versions:** battle state hash v53, battle part hash v7 (E23 T3-0; the encodings, replay format and C ABI are the AI lane's); shared: core ruleset hash v48, pack format v47 (E08 T45), protocol v34. Next ids: BAT-Q62, BAT-QUIRK-27, BAT-STUB-18, BAT-AI-025, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-24, S-30.
 - Working agreement: increments with a user checkpoint (Q41); the user confirms seams and ADRs; batches by the user or an agent; small increments (the user, 2026-10-19).
 
 ## Standing traps
@@ -54,14 +54,14 @@ Area traps live where they are used: experiments in `docs/experiments/README.md`
 
 ## Recent sessions
 
-### 2026-10-23 (104th) — E23 T5b2b, a caster's cast entry in Teleport's turns
+### 2026-10-23 (107th) — E23 T6: the retreat test with slips 26 and 6
 
-The user: whole, `cross-lane` (each stack's last draw kept, v52; replays rehashed). §7.59; slips 30 (widened), 32. On the rebuilt cost harness `master`'s slowest hero decision is 5.1 ms.
+The user: one session, `cross-lane` (replay format v30; facts hashed, still v53; twenty replays rehashed). Slip 33 found (BAT-STUB-17). #422 merged (squash), #424 open.
 
-### 2026-10-22 (103rd) — E23 T5b2a, the hero's Teleport
+### 2026-10-23 (106th) — E23 T6: the tent and the tactics phase
 
-The user cut T5b2 in two; slips 30, 31. The search keeps its stops inline (a call cost `computer-decisions` 2.6 %).
+The user: both this session, `cross-lane` (v53: `TacticsRounds`; all twenty replays rehashed). Pathfinder `Query.tactics`; stubs 15, 16.
 
-### 2026-10-22 (102nd) — E23 T5b1, the hero's raises, Sacrifice and Earthquake
+### 2026-10-23 (105th) — E23 T6 started, the Catapult
 
-`hero/specials.rs`; slips 28, 29; #398.
+The user: T6 whole; the seam (CLT-Q4, Q6 later); BAT-Q33 waits.

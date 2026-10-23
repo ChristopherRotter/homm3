@@ -67,7 +67,7 @@ impl<'s> View<'s> {
     pub(crate) fn tables(&self) -> &'s Tables {
         self.half
             .tables
-            .get_or_init(|| self.on(self.root.state).fill())
+            .get_or_init(|| self.built_on(self.root.state).fill())
     }
 
     /// The seed of stack `r`'s melee entry (0x43BF20): when `r` can act ([`acts`]), cannot shoot

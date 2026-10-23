@@ -644,3 +644,84 @@ fn teleport_passes_the_closed_gate_for_the_caster_s_side_only() {
     activate(&mut s, d);
     assert!(reaches(&s, Defender, d));
 }
+
+// The computer's retreat test finds its army walled out (0x41E440; E23 T6): the attacker at a
+// town with walls and a closed gate, none of its living stacks flying, shooting walls (its
+// Catapult among them) or able to shoot, every wall standing and every living defender but the
+// turrets inside the walls.
+// covers: BAT-AI-024
+#[test]
+fn the_computer_finds_an_army_walled_out_of_a_closed_town() {
+    use crate::computer::walled_out;
+    let r = ruleset();
+    let fort = town(&r, "t:castle", FortLevel::Fort, Moat::Absent);
+    let led = [Some(hero(&r)), Some(hero(&r))];
+    // The attacker's stacks at `(x, y)`, the defender's 5 inside the walls (hex 100); the
+    // attacker's Catapult (stack 2 at a town) dead unless `catapult`.
+    let battle =
+        |town: Option<Siege>, attacker: &[(&'static str, u32, i32, i32)], catapult: bool| {
+            let mut s = at_town(
+                &r,
+                town,
+                led.clone(),
+                attacker,
+                &[("fixed", 5, 14, 5)],
+                |_| {},
+            );
+            for st in s.stacks.as_mut_slice() {
+                if st.is_catapult() && !catapult {
+                    st.count = 0;
+                }
+                if st.side == Defender {
+                    st.hex = Hex(100);
+                }
+            }
+            s
+        };
+    let walkers: &[(&'static str, u32, i32, i32)] = &[("fixed", 5, 1, 5), ("slow", 3, 1, 7)];
+    let s = battle(Some(fort), walkers, false);
+    assert!(walled_out(&s, &r, Attacker));
+    assert!(!walled_out(&s, &r, Defender));
+    // Its Catapult shoots the walls.
+    assert!(!walled_out(
+        &battle(Some(fort), walkers, true),
+        &r,
+        Attacker
+    ));
+    // Away from a town, at one without a fort.
+    assert!(!walled_out(&battle(None, walkers, false), &r, Attacker));
+    let open = town(&r, "t:castle", FortLevel::None, Moat::Absent);
+    assert!(!walled_out(
+        &battle(Some(open), walkers, false),
+        &r,
+        Attacker
+    ));
+    // A flyer, a shooter or a wall shooter among the attacker's living stacks.
+    for unit in ["flyer", "archer", "cyclops"] {
+        let s = battle(Some(fort), &[("fixed", 5, 1, 5), (unit, 1, 1, 7)], false);
+        assert!(!walled_out(&s, &r, Attacker), "{unit}");
+    }
+    // A dead one does not count.
+    let mut s = battle(Some(fort), &[("fixed", 5, 1, 5), ("flyer", 1, 1, 7)], false);
+    s.stacks.as_mut_slice()[1].count = 0;
+    assert!(walled_out(&s, &r, Attacker));
+    // The gate open, a wall down, a defender outside the walls.
+    let mut gate = battle(Some(fort), walkers, false);
+    gate.siege.as_mut().unwrap().gate_open = true;
+    assert!(!walled_out(&gate, &r, Attacker));
+    let mut breach = battle(Some(fort), walkers, false);
+    damage_part(&mut breach, 1, 2, &mut crate::NoopSink);
+    assert!(!walled_out(&breach, &r, Attacker));
+    let mut outside = battle(Some(fort), walkers, false);
+    let defender = outside.stacks.as_mut_slice().last_mut().unwrap();
+    defender.hex = Hex(5 * 17 + 4);
+    assert!(!walled_out(&outside, &r, Attacker));
+    defender_dies(&mut outside);
+    assert!(walled_out(&outside, &r, Attacker));
+}
+
+/// The defender's last stack dies.
+fn defender_dies(s: &mut BattleState) {
+    let defender = s.stacks.as_mut_slice().last_mut().unwrap();
+    defender.count = 0;
+}

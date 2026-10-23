@@ -10,8 +10,8 @@ use h3_content::{
 };
 use h3_contracts::{
     Army, ArmyStack, BallistaControl, BattleEffect, BattleHero, BattleSetup, BattleSide,
-    CatapultControl, DamageBonuses, EagleEye, FactionGroup, FortLevel, Moat, Obstacle, Rate, Siege,
-    StatOp, TentControl,
+    CatapultControl, DamageBonuses, EagleEye, FactionGroup, FortLevel, Moat, Obstacle, Rate,
+    RetreatFacts, Siege, StatOp, TentControl,
 };
 use h3_pack::{AffectsEntry, StatEntry};
 use serde::{Deserialize, Serialize};
@@ -71,6 +71,11 @@ struct ScenarioHeader {
     /// The sides whose player is human (`"attacker"`, `"defender"`; ADR-0023 point 7).
     #[serde(default)]
     human: Vec<String>,
+    /// The special battlefield of the attacking hero's own adventure tile (ADR-0027 point 14).
+    attacker_ground: Option<String>,
+    /// What each side's hero would lose by a retreat (ADR-0027 point 14; default: nothing known).
+    attacker_retreat: Option<RetreatEntry>,
+    defender_retreat: Option<RetreatEntry>,
 }
 
 #[derive(Deserialize, Clone)]
@@ -938,6 +943,53 @@ pub struct SiegeEntry {
     pub luck: i8,
 }
 
+/// What a side's hero would lose by a retreat and whether it could be hired again
+/// (`[scenario.attacker_retreat]`, a replay's `[setup.attacker_retreat]`; E23 T6, ADR-0027 point
+/// 14): `h3_contracts::RetreatFacts`, each field omitted when 0 or false.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RetreatEntry {
+    /// The hero's experience points.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub experience: u32,
+    /// The worth of the hero's artifacts by the computer's count.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub artifacts: u32,
+    /// The hero's player has a Tavern town to hire the hero again from.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub tavern: bool,
+    /// The scenario's victory condition is to defeat the hero.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub wanted: bool,
+}
+
+impl RetreatEntry {
+    /// The entry of `facts`; none for the default (nothing known).
+    pub fn of(facts: RetreatFacts) -> Option<Self> {
+        (facts != RetreatFacts::default()).then_some(Self {
+            experience: facts.experience,
+            artifacts: facts.artifacts,
+            tavern: facts.tavern,
+            wanted: facts.wanted,
+        })
+    }
+
+    /// The facts of the entry.
+    pub fn to_facts(self) -> RetreatFacts {
+        RetreatFacts {
+            experience: self.experience,
+            artifacts: self.artifacts,
+            tavern: self.tavern,
+            wanted: self.wanted,
+        }
+    }
+
+    /// The facts of an optional entry: the default without one.
+    pub fn facts(entry: Option<Self>) -> RetreatFacts {
+        entry.map(Self::to_facts).unwrap_or_default()
+    }
+}
+
 /// The names of the fort levels and the moats, in their order.
 const FORT_LEVELS: [(&str, FortLevel); 4] = [
     ("none", FortLevel::None),
@@ -1023,6 +1075,8 @@ pub struct ScenarioDef {
     pub(crate) funds: [u32; 2],
     pub(crate) difficulty: u8,
     pub(crate) human: [bool; 2],
+    pub(crate) retreat: [RetreatFacts; 2],
+    pub(crate) attacker_ground: Option<ContentKey>,
     /// Whether obstacles are generated for the terrain and the battlefield when the battle starts
     /// (the caller does it, with its seed; BAT-GEO-004). Excludes explicit obstacles.
     pub random_obstacles: bool,
@@ -1149,6 +1203,8 @@ impl ScenarioDef {
             funds: self.funds,
             difficulty: self.difficulty,
             human: self.human,
+            retreat: self.retreat,
+            attacker_ground: self.attacker_ground.clone(),
         })
     }
 }
@@ -1203,6 +1259,16 @@ pub fn parse_scenario(text: &str) -> Result<ScenarioDef, BattlePackError> {
         funds: [file.scenario.attacker_funds, file.scenario.defender_funds],
         difficulty: file.scenario.difficulty,
         human: parse_sides(&file.scenario.human)?,
+        retreat: [
+            RetreatEntry::facts(file.scenario.attacker_retreat),
+            RetreatEntry::facts(file.scenario.defender_retreat),
+        ],
+        attacker_ground: file
+            .scenario
+            .attacker_ground
+            .as_deref()
+            .map(ContentKey::parse)
+            .transpose()?,
         random_obstacles: file.scenario.random_obstacles,
     })
 }
