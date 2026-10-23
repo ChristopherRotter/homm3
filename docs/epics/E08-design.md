@@ -271,7 +271,8 @@ results template are T46; the harness's new clicks and reads (survey §9's list)
 the run T47 (as T36 and T37 for batch E5); the scoring T48 (an ADV-Q if a
 row contradicts the reading; A-16's E6-4 decides only the ledger's text, the rule being fixed by
 decision 98). T47 is cut in T47a (the harness's clicks and reads), T47b1 (the recipe, checked
-with `fill`) and T47b2 (the run; decisions 108, 110).
+with `fill`) and T47b2 (the run; decisions 108, 110). Scored in T48 (survey §13): every row as
+the reading, no question.
 
 ### 15. Shared and `cross-lane` work; the building tasks; the exit criteria
 
@@ -289,7 +290,7 @@ flag) land once:
 |---|---|---|
 | 1 | **T45** + **T46** | T45 (done): the shared groundwork (`shared/`, `cross-lane`): ADR-0013, -0016, -0017 amended; `meeting_spells`, `gives_spell_book`; the packs; core ruleset hash v48; the encoding's move to the AI lane (`lanes.toml`, the versions table, the global HANDOFF, the AI lane's inbox). T46: batch E6's spec and results template (§14; `h3-experiment` `cross-lane`) |
 | 2 | **T47** + **T48** | T47: the harness's clicks and reads (the hero, exchange, split, creature and army dialogs; the spells, backpack, flags and tactics reads), the recipes and the run. T48: scored; the survey's §8 and the rules' sources; an ADV-Q if a row contradicts the reading |
-| 3 | **T49** | `h3-heroes`: positions (§2: the model, validation, the first position, the capture, the import v9, the constructor and the other lanes' call sites, `cross-lane`), moves (§3), combinations and Titan's book (§4), Scholar (§5). The largest task: cut at its start if needed (positions alone; then the rest) |
+| 3 | **T49** | `h3-heroes`: positions (§2: the model, validation, the first position, the capture, the import v9, the constructor and the other lanes' call sites, `cross-lane`), moves (§3), combinations and Titan's book (§4), Scholar (§5). The largest task: cut in T49a (positions, §2) and T49b (§3 to §5; decision 111) |
 | 4 | **T50** + **T51** | T50: `h3-adventure`: the army commands, the split's bounds, dismissal, the formation and the flag, the meeting's visit, the join without room's report (§7, §8 visit, §9 offer); adventure state hash v11. T51: `h3-game`: `Manage`, the meeting and army dialog decisions, Scholar's application, `legal_commands` and `split_range`, events, the observation, the tactics flag in battle (§8–§11); game state hash v12; `ADV-STUB-2` closed |
 | 5 | **T52** + **T53** | T52: the env's masks (if still this lane's), replays v6 and the two new goldens, fixtures, plans, properties, benchmarks, `--with-original-data` (§12). T53: the audit against the exit criteria, increment 6 closed, increment 7 refined |
 
@@ -333,7 +334,7 @@ flag) land once:
   gracefully, a merge past the cap refused. Open until T50's start: the cap's value (data, ADR-0006),
   and what else meets it (a join onto a stack, the split's target, the import's 16-bit count,
   later recruiting and growth), with ADR-0016 point 3's amendment.
-- **A-16 and the split's bounds** rest on the code reading; E6-4 checks them. The engine's
+- **A-16 and the split's bounds** rest on the code reading; E6-4 confirmed them (T48: 1 and 9). The engine's
   [1, t − 1] with the move reproduces the original's reachable outcomes (§7): a row that showed
   the dialog allowing what the click refuses would reopen it.
 - **The expansions** (decision 104): a game's packs decide; the import's map version does not

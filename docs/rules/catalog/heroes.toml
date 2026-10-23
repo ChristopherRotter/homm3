@@ -51,7 +51,7 @@ numeric  = "integer"
 id       = "HER-ART-001"
 title    = "Worn artifacts and combination locks"
 context  = "heroes"
-status   = "implemented"
+status   = "verified"
 summary  = "Every worn artifact occupies one position of its slot; a slot kind has `count` positions (two rings; four misc positions before SoD, five in SoD; one of every other kind). A combination artifact also occupies one position of every slot in its locks (its parts' slots minus one position of its own; Angelic Alliance in the right hand also fills torso, feet, neck, left hand and head). The positions all worn artifacts and their locks need must fit every slot's count. An artifact without a slot (the Grail) cannot be worn. The same artifact type may be worn more than once while positions remain (two Quiet Eyes of the Dragon), and one war machine of each kind fits its own slot. Positions of one slot are interchangeable, so the details list artifacts, not positions."
 numeric  = "integer"
 
@@ -72,6 +72,12 @@ numeric  = "integer"
   ref        = "lib/entities/artifact/CArtifactSet.cpp lockSlot: a combination locks the slots of its other parts (survey docs/rules/surveys/E04-artifacts.md)"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/entities/artifact/CArtifactSet.cpp"
   retrieved  = "2026-10-03"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-6.md E6-8 (the capture harness, SoD 4.0 Complete under Wine, E08 T47b2): the Wizard's Well assembled from its three misc parts sits on one misc position (the original's 9), its positions 10 to 12 empty, and the hero screen draws two locks in the misc slot (on misc 4 and misc 5); with the Well in the backpack no position is locked. E6-9: Titan's Thunder on the right hand locks the head, torso and left hand (survey docs/rules/surveys/E08-army.md §13)"
+  retrieved  = "2026-10-23"
   confidence = "high"
 
 [[rule]]
