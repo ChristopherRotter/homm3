@@ -11,24 +11,6 @@ detail in `docs/epics/E24-design.md`; captures by the harness (`clients/capture/
 in git. Every oddity of the original a reading or a capture finds is an `MCL-Q<n>` in the same
 task (the HANDOFF's autonomy contract).
 
-### E24 M1 T2 — the crate, the map's asset tables and the layout
-
-- **Scope:** `clients/crates/h3-map-view` (a pure library with the purity test as `h3-view`'s
-  `tests/purity.rs`, the adapters in its binary; `clients/Cargo.toml`'s members, a common file:
-  an additive change); the scene's input types (the static art from `h3_map`'s `RawMap`, the
-  live part as its own type: the objects standing, a random object's drawn type, owners, heroes,
-  the explored tiles, the moment; *provisional*); the map's asset tables in `clients/map/assets/`
-  (terrain, river and road DEFs by code, the edge, the unexplored tiles' pieces, from T1a; the
-  heroes' and flags' DEFs come with T5) and the adventure screen's layout
-  `clients/map/layouts/adventure.toml` (the frame picture, the view's origin and size: an HD
-  layout needs both in the format); a `gate` command checking the tables' names against the
-  archives (`h3-assets`' checks) and T1a's open points (`E24-design.md` §1.8: the frame counts,
-  runs in terrain frames). The checks of `clients/scripts/check.sh` cover the new crate
-  (100 % on its library).
-- **Acceptance:** the tables and the layout load (pure loaders, tested on synthetic data); the
-  gate finds and decodes every name on the user's files; `check.sh` passes.
-- **Depends on:** T1a (done: `E24-design.md` §1, the fog table among the tables). **Status:** ready.
-
 ### E24 M1 T3a — the writer's additions (`cross-lane`)
 
 - **Scope:** what T3b's to T5's situations need of `h3_map::writer` (the adventure lane's crate),
@@ -52,7 +34,8 @@ task (the HANDOFF's autonomy contract).
   masks the panels and whatever the view shows that T4 and T5 draw.
 - **Acceptance:** each situation's still matches the original pixel for pixel outside its masks,
   or the differences are listed with their cause.
-- **Depends on:** T2, T3a. **Status:** waiting (T2, T3a).
+- **Depends on:** T2 (done: `h3-map-view`, its tables, layout, `art` and `live`), T3a.
+  **Status:** waiting (T3a).
 
 ### E24 M1 T4 — the objects and their shadows in the original's order
 

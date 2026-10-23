@@ -1,0 +1,20 @@
+[package]
+name = "h3-map-view"
+description = "The adventure map's viewer (E24): the map's static art, its live part, the asset tables and the screen's layout (pure, the library) and its adapters (the binary: the real-asset gate)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+h3-assets.workspace = true
+# The raw map's model (`h3_map::RawMap`): the static art is read from it (E24 T0's finding).
+h3-map.workspace = true
+serde.workspace = true
+toml.workspace = true
+# The binary's adapters only (`tests/purity.rs`: the library never names them): the archives.
+h3-formats.workspace = true
+
+[lints]
+workspace = true
