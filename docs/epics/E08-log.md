@@ -4770,6 +4770,11 @@ combinations' helpers, Scholar, the hero screen's globals; H3API's `UpdateLuckMo
 (the hero's +0x48 bit 1, the player record's +0xE8). The surveys' README gained this survey's row
 and `E08-hero-movement.md`'s, missing since T34a.
 
+**The second reading** (survey §11): a fresh agent, from ten questions and without the survey,
+confirmed §1 to §5 point by point; its additions (the held artifact lost when the visitor has no
+room, `hero_give_artifact`'s question for an equipped part only, +0x53C5's likely meaning, the
+exchange's drops skipping a team-mate's owner check) are in the survey.
+
 **The census** (survey §7): 373 placed heroes, 40 with custom artifacts, 11 with a backpack, none
 with a combination, its parts or Titan's Thunder; 3 with seven stacks; one tight.
 

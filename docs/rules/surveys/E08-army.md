@@ -82,7 +82,7 @@ questions are ADV-Q24 (§12).
   cursor when a screen closes is given back (equipped, else the backpack). **Combinations** (SoD
   maps only, the game's version +0x1F698 ≥ 2): assembled at a worn part's position when every part
   is worn (a right-click asks every time; equipping a part asks once per player and combination;
-  a part received asks a human, builds at once for a computer); the parts leave (one copy each,
+  a part received and equipped asks a human once, builds at once for a computer); the parts leave (one copy each,
   positions 18 down to 0) and the combination goes to the first position that takes it.
   Disassembly: a right-click on a worn combination, the parts to the first free positions; never
   in the backpack (VCMI allows it: D-28). Equipping Titan's Thunder gives a Spell Book to a hero
@@ -182,7 +182,8 @@ Wisdom side.
 local player), each hero's army (13-19 and 20-26; also 65-71, 72-78), worn positions (27-45,
 46-64) and backpack places (89-93, 94-98), the split button, the skills' views. Army clicks:
 §3.2; artifacts: §5.2. It stays open until closed; on closing (0x5AED20) an artifact still held
-on the cursor goes to the **visitor** (`hero_give_artifact`, whichever hero it came from). No
+on the cursor goes to the **visitor** (`hero_give_artifact`, whichever hero it came from; lost
+when the visitor has neither a position nor backpack room for it: the second reading). No
 formation buttons, no dismissal of a hero. **Not followed:** two heroes of different players of
 one team: a hero of the other player can only receive (a stack into an empty slot, 0x5B0DA0; an
 artifact into an empty position or the backpack, 0x5AF590, 0x5AF990), and network play's
@@ -272,8 +273,9 @@ button, 128 the quest log, 129 the hero's dismissal (GENRLTXT 23, E09); 77 and 7
 arrows (§5.1). A hero's flags start at 2 (0x4D8ADD: loose, the tactics formation on); the map's
 formation flag never reaches them (T22b, `ADV-QUIRK-8`). The battle: bit 0 places a human
 player's side tight (`battle_war_machine_stacks` 0x463673); `battle_start` (0x462C2C to 0x462D0D)
-opens the tactics phase when the two heroes' Tactics levels (+0xDC) differ (and +0x53C5 is clear),
-for the side with the higher one, and then clears it again when that side's player is human
+opens the tactics phase when the two heroes' Tactics levels (+0xDC; 0 without a hero) differ
+(and +0x53C5 is clear: a setup argument that also skips the obstacles, probably a creature bank's
+battle, not read), for the side with the higher one, and then clears it again when that side's player is human
 (+0x54A4 + side) and its hero's bit 1 is clear (0x462D07), unless the game's +0x1F69D or the
 global 0x69877C is set or network play takes the other branch (not read). `wiki` (the manual,
 pages 30 and 42): the Tactics Formation button appears only for heroes with Tactics and "toggles
@@ -342,12 +344,15 @@ AB map the parts never combine.
   components needed to assemble the %s. Do you wish to assemble this artifact?", GENRLTXT 733);
   after an equip in either screen 0x4DC100 asks once per player and combination: the player
   record's bit set at +0xE8 (bit c) is set when the question is asked, or when a combination is
-  equipped, and a set bit skips it; `hero_give_artifact` (an artifact received: a capture, later a
-  reward) asks the local human and builds at once for a computer player (T19a2a). A declined
-  question leaves the right-click.
+  equipped, and a set bit skips it; `hero_give_artifact` (an artifact received and equipped, not
+  one put into the backpack: a capture, later a reward) asks the local human while the bit is
+  clear, builds at once for a computer player, and sets the bit either way (T19a2a; the second
+  reading: a human's set bit means neither a question nor a build). A declined question leaves
+  the right-click.
 - **Disassembling** a worn combination: a right-click asks (GENRLTXT 734, 0x4D9B30) and then
   `hero_disassemble_combination` (0x4DC070, the hero screen's own copy at 0x4DDCDF) removes it and
-  equips each part at the first position that takes it. A combination in the backpack is not
+  equips each part at the first position that takes it (a part that found none would be lost;
+  the combination's locks kept those places, so none can). A combination in the backpack is not
   disassembled (a right-click there shows it).
 - The combination's bonuses are its own plus its parts' (`hero_equip_artifact` adds both, T20a1;
   the wiki: "Original artifacts still give their regular bonuses").
@@ -505,8 +510,28 @@ For T44b's cut; ids follow the catalogs' prefixes, each written when its rule is
 
 ## 11. The second reading
 
-*Pending: a fresh agent re-reads the deciding code without this survey from ten questions; its
-answers are compared here.*
+A fresh agent re-read the deciding code without this survey (2026-10-23), from ten questions,
+and **confirmed §1 to §5 point by point**: the army dialog's two armies, title and lost rest, its
+last-stack refusals with their status texts and the allowed swap (§1.1); the exchange's selection,
+merge, swap and move rules and the single-stack refusals (§3.2); `army_swap_slots`' 16-bit count
+(A-15, §3.5); the split dialog's bounds with both minima, A-16's included, and the flags the two
+screens pass (§3.3); the dismiss offered only above one stack, cleared without a refund (§3.4);
+the buttons 77, 78, 122, 124, 126, 127, the flags' default 2 and the tactics phase cleared for a
+human side whose hero's bit 1 is clear (§4); the artifacts that never move, the drop tests, the
+backpack's refusals and insertion, the rotation, the held artifact given back on closing (§5.1,
+§5.2); the combinations' questions, the bit set +0xE8, the build and the disassembly from worn
+only (§5.3); Scholar's levels, requirements and both directions (§2.2).
+
+**What it adds** (written into the sections above): a held artifact the exchange gives the
+visitor on closing is lost when the visitor has no room (§2.3); `hero_give_artifact`'s question
+only for an equipped part, and the bit set either way (§5.3); a disassembled part that found no
+position would be lost (none can, §5.3); +0x53C5 probably a creature bank's battle (§4). Also:
+in the exchange the drops into an empty slot, position or backpack place and the right-click's
+assembly and disassembly skip the target hero's owner (teams, E10); a campaign's check ("Only
+Gelu can carry Armageddon's Blade", GENRLTXT 762) tests the target position's worn artifact
+(campaigns, not built); the screen's view-only global 0x6AA9D8 is set by the town's sub-screens
+(not read). Not traced by it either: 0x5C8080, the town garrisons' modes 7 and 8, the reward
+callers of the army dialog.
 
 ## 12. For T44b: the checkpoint's questions (ADV-Q24)
 
