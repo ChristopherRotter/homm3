@@ -191,6 +191,20 @@ pub struct Moment {
     pub frames: u32,
 }
 
+impl Moment {
+    /// The moment `ms` after the DEFs were loaded on a clock that never runs late: a cycle step
+    /// every `cycle_ms`, a frame step every `frame_ms` (the tables' `[map]`; a step of 0 never
+    /// comes). The original polls both and catches no late step up (design §1.6), so its moment
+    /// at a time is at most this; a comparison reads the original's from memory (M1 T3b2).
+    #[must_use]
+    pub fn at(ms: u32, cycle_ms: u32, frame_ms: u32) -> Self {
+        Self {
+            cycles: ms.checked_div(cycle_ms).unwrap_or(0),
+            frames: ms.checked_div(frame_ms).unwrap_or(0),
+        }
+    }
+}
+
 /// The hero objects' class (34; design §2.1).
 pub const HERO_CLASS: u32 = 34;
 /// The boats' class (8).

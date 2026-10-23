@@ -161,3 +161,36 @@ One session, branch `map-client/e24-t3a`, a `cross-lane` pull request into the a
   adventure and map-client lanes' crates); the defaults without an editor's choice seen (a
   scroll's spell 0, the grail's radius 0, a random dwelling's levels 0–6).
 - **Questions:** none.
+
+### M1 T3b1 — the tiles drawn: `render` (2026-10-23)
+
+One session, branch `map-client/e24-t3b1`. T3b was split with the user at its start: T3b1 the
+`render` command and the tile passes, checked on the writer's maps and by a look at shipped
+maps; T3b2 the harness side and the first exact comparisons (`QUEUE.md`).
+
+- **Built** (the library, 100 % covered): `scene` (the draw list at a view: the frame's picture
+  in the viewer's colours, then passes 1 terrain and edge, 2 rivers, 3 roads, 10 unexplored
+  tiles, rows outer and columns inner, then the gems; each piece with its clip; the tables'
+  cycling DEFs with the moment's steps; a level, a viewer or a code the tables lack refused);
+  `draw` (the map's two drawers: `draw_frame_raw`'s literal pixels mirrored both ways, 0x47E820's
+  runs as shadows); `batch` (the decoded DEFs, pictures and palettes by name); `compose` (the
+  frame's picture opaque with entries 224–255 the viewer's, each DEF's palette cycled once, the
+  unexplored tiles drawn twice, the gems plain with runs skipped); `Moment::at` (a time on a
+  clock that is never late). The binary: `render` and the gate's file helpers shared
+  (`files.rs`).
+- **Read in the executable** (§1.3, §1.10): the road pass's cut (0x411E67 to 0x411ED3), and
+  `draw_frame_raw`'s source rectangle taken in the mirrored picture's space (0x47DDD9), so the
+  cuts are a clip on the screen. The last-row road's cut comes after the view's: at the view's
+  bottom row the road vanishes (MCL-Q2; `Bugs::Original` reproduces it).
+- **Checked:** the writer's maps in the scene's tests (given tiles: a lava terrain mirrored, a
+  mud river and a cobblestone road mirrored, roads on the map's last row at the view's rows 15
+  and 16 under both bugs settings, the edge around the map, the shroud's masks and pieces, the
+  full piece's frame, an empty table entry); the gate unchanged after the refactor; shipped maps
+  rendered and looked at (Deluge's roads, water and a hidden rectangle; Dragon Pass's rivers;
+  Adventures of Jared Haret's edge and icy river; Deluge's top-left beyond the edge): seamless.
+  Every frame of the twenty view DEFs has a 32 × 32 canvas (a one-off read).
+- **Agent decisions (provisional, on the review list):** the drawers and the batch in the map's
+  crate rather than the foundation's (no client-lane path changed); the dependency on
+  `h3-render`; `render`'s flags.
+- **Questions:** MCL-Q2 (the last row's road at the view's bottom row; recommendation: fix, the
+  original's only for the comparisons, as built).

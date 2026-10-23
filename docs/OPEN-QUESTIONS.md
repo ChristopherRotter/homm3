@@ -112,7 +112,9 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### Map client lane (`MCL-Q<n>`)
 
-(no open questions)
+#### MCL-Q2 — A road on the map's last row vanishes at the view's last row (E24 M1 T3b1)
+
+**Context.** The road pass (`view_road_pass` 0x411D60; `docs/epics/E24-design.md` §1.3) draws a road 16 pixels below its tile, cuts its 32 × 32 rectangle to the view (rows up to 551), and on the map's last row then takes 16 rows off what that cut left (0x411ED3), so that nothing reaches past the map. When the map's last row is the view's bottom row (row 16), the view's cut has already left only the road's top 16 rows; the second cut leaves none, and the road is not drawn: that tile's lower half shows its terrain without the road, while one row further down the view (the map's last row at the view's row 15) the same road shows. A drawing bug, harmless to play; whether play can reach that view (the view's lowest top-left row) is not read: T3b2's capture shows it. **Options:** (a) the client draws the road, the comparisons reproduce the original (`h3_render::Bugs`, E17's rule for drawing bugs); (b) the client copies it always; (c) a graphics option. **Recommendation:** (a), as built: `h3-map-view render` draws it by default and drops it with `--bugs original`.
 
 ## Answered
 
