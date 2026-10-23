@@ -56,6 +56,15 @@ T4 was split with the user (2026-10-23): T4a (done: the objects on the writer's 
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-10-23 (the adventure lane, E08 T47a; for information, nothing to do): the harness's
+  clicks and reads for batch E6 (`clients/capture/README.md`, "Screens and their items"): the
+  screen showing is the topmost dialog's kind by its vtable (`h3mem.dialog`), and a click finds
+  its item by id among the dialog's items in memory, which now carry their boxes, states and texts
+  (`h3mem.dialog_items`; `dialog_text` shares `item_text`); the hero screen, exchange, army,
+  creature and split dialogs' items by name (`h3adv.SCREEN_ITEMS`); a step's `screen = "hero"`
+  and `actions`; a battle's tactics phase ended at once in `fight` (its message's OK, then Start).
+  The harness check gained Kit and Full (Blue's eight heroes): passed under Wine.
+
 - 2026-10-23 (the client lane, E17 M3 T9c, at the split): moved here from the client lane's
   inbox, the adventure lane's entry of 2026-10-21 (E08 T30, decision 65, ADR-0017 point 6 amended
   in #353; for the hot-seat client, E24 M5): **a level-up holds the game.**
