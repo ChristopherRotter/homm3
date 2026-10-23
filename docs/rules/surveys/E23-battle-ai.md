@@ -147,6 +147,28 @@ an agent where the harness allows (`experiments/README.md`), else by the user.
 | 4b H4 | the hero never casts Berserk, Land Mine, Fire Wall or Remove Obstacle (§7.55) | a computer hero with only Berserk (then only Fire Wall) and the mana, enemies in a cluster, ten seeds | no cast | a cast |
 | 4b R1 | the retreat's share of Fight Value, its cap at 0.16 and the attacker's 0.06 (§7.55) | a computer hero defending on Hard at 15 % and at 17 % of both sides' Fight Value (artifacts worth over 1000, gold enough, a tavern town) | retreats at 15 %, fights at 17 % | other thresholds |
 
+**Played** (E23 T7, 2026-10-23; run by an agent, `experiments/agent/ai.py`; batches 4a and 4c for
+the neutral side, 4b for a computer player's hero, Tan; the results in `experiments/results/`):
+W1 agrees (a Citadel's walker holding its walls: Defend on Normal, Wait on Hard, four rounds
+each); W3 agrees (a Gold Dragon between two equal stacks: both taken across ten seeds, 6 and 4);
+C1 agrees (no elemental's cast in five rounds); C2 agrees (a cast at all 8 dragon turns, Fireball
+and Frost Ring at the free hex between two stacks 4 of 4); C3 agrees (ten dead Peasants left for
+an attack, two Champions raised); C4 agrees (on Normal no walker's value: a cast at 6 of 6 turns
+as the port; on Easy 3 skips in 21 turns at one field across seeds, every cast at a 10-Champion
+stack, the later record first); S4 agrees (a destroyed mid-upper wall leaves the garrison holding
+to round 9 in three runs, a destroyed mid-lower wall sends it out at once; slip 2); H1 **against
+the port, not the rule** (the Archers go to hex 15, the corner of column 15: the original's
+neighbour table, battle manager +0x13468, has no neighbours in the side columns 0 and 16; the
+port counts them and goes to hex 9); H3 agrees (Bless at the Archers' own activation, none at the
+Wolf Riders' before); H4 agrees (none of six never-cast spells in four rounds); R1 agrees (a
+retreat at 0.143; a fight at 0.172, then a retreat at the second activation at 0.158, the first
+stack no longer × 1.2). S1 and S2 were not reached (batch 4c SC, Red in auto combat: Red's
+Catapult breached a wall before the Cyclops' first turn; afterwards the Cyclops shot the
+Archers, as read). S-25 (BAT-Q33): a neutral side's and a computer player's stacks are let off
+one freeze in four (28 of 105, 14 of 60), a human's never. Not staged: W2, W4, W5 and P1
+(positions the formations and the tile's obstacles do not give), C5 (the Genie's mean on the
+original's state), S3 (an RoE map), H2 (no single choice shows it).
+
 Not rows: the order of more than 16 stacks (the library's sort, §7.37: ported as read, ADR draft);
 the tie orders (ported; batch 3c's M2 and G4 agree); everything the property tests and the
 replays of the built rules already cover (the walks' paths, the automatic machines).

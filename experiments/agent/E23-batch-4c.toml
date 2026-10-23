@@ -102,3 +102,30 @@ id = "C4f2"
 difficulty = "easy"
 step = 20
 rounds = 1
+
+[[run]]
+id = "TP2"
+step = 20
+rounds = 8
+plan = [
+    { round = 2, side = 0, record = 0, action = "cast", argument = [0] },
+    { round = 3, side = 0, record = 0, action = "cast", argument = [0] },
+    { round = 4, side = 0, record = 0, action = "cast", argument = [0] },
+    { round = 5, side = 0, record = 0, action = "cast", argument = [0] },
+]
+
+[[run]]
+id = "TP3"
+key = "Up"
+step = 20
+rounds = 8
+plan = [
+    { round = 1, side = 0, record = 1, action = "cast", argument = [0] },
+    { round = 2, side = 0, record = 1, action = "cast", argument = [0] },
+    { round = 3, side = 0, record = 1, action = "cast", argument = [0] },
+    { round = 4, side = 0, record = 1, action = "cast", argument = [0] },
+    { round = 5, side = 0, record = 1, action = "cast", argument = [0] },
+    { round = 6, side = 0, record = 1, action = "cast", argument = [0] },
+    { round = 7, side = 0, record = 1, action = "cast", argument = [0] },
+    { round = 8, side = 0, record = 1, action = "cast", argument = [0] }
+]

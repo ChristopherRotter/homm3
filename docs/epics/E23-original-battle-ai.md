@@ -2,7 +2,7 @@
 
 Status: **in progress**, refined 2026-10-19 (BAT-Q52); T1a1 to T1a4 done (the cuts confirmed
 2026-10-20), T1c done (BAT-Q53, BAT-Q54); T1a5 done as cut (part C, §7.42 to §7.45); T1a5e (the spell evaluators) done (§7.46); T1b done, ADR-0027 accepted (BAT-Q55); T2 done (T2a the crate and the plain shooters, T2b the area value, the wall shot, the benchmark), the budget
-set; T3 done (cut in four: T3-0, T3a, T3b, T3c); T4 done (T4a, T4b in two, T4c, T4d); T1a6 done; slip 25 done; T5 cut in two, T5a done; T5b cut in two, T5b1 done; T5b2 done (in two); T6 done · Follows E05 (the
+set; T3 done (cut in four: T3-0, T3a, T3b, T3c); T4 done (T4a, T4b in two, T4c, T4d); T1a6 done; slip 25 done; T5 cut in two, T5a done; T5b cut in two, T5b1 done; T5b2 done (in two); T6 done; T7 in progress (the batches played) · Follows E05 (the
 AI lane, done) · Followed by E06 (training: this policy holds the neutral seat; AI-Q1) ·
 The battle lane's, later the AI lane's (BACKLOG).
 
@@ -270,7 +270,16 @@ found after that decision) belong to the neutral side's map too and are read (§
   BAT-Q51's row), the tactics phase (BAT-AI-023, v53), the retreat test (BAT-AI-024: the facts kept
   in the state, replay format v30, `cross-lane`) with slips 26 and 6 (BAT-QUIRK-25), slip 33 found
   (BAT-STUB-17); `POLICY_VERSION` 18; BAT-Q33's rule waits for S-25's row (T7); the log.
-- [ ] **T7 The closure** — the batch rows' leftovers, the benchmarks, the docs.
+- [ ] **T7 The closure** — the batch rows' leftovers, the benchmarks, the docs. In progress:
+  - [x] **The batches** (2026-10-23; the user: design and run them, no other cut yet) — 4a, 4b and
+    4c (`experiments/specs/E23-batch-4*.toml`) played by an agent (`experiments/agent/ai.py`;
+    h3-experiment's Tan and `[[map.town]]`): every played row as read (W1, W3, S4, C1 to C4, H3,
+    H4, R1), S-25's let-off for a neutral and a computer side (BAT-Q33) and the tent's patient
+    (BAT-Q51) observed; **H1 against the port** (the original's neighbour table has no
+    side-column neighbours: the battle queue's inbox); S1, S2 not reached; W2, W4, W5, P1, C5,
+    S3, H2 not staged; the log.
+  - [ ] The rest, cut with the user: the rules the rows decide (BAT-Q33's escape roll,
+    BAT-WAR-003, the neighbour table), slip 33 (BAT-STUB-17), the benchmarks, the closure's docs.
 
 ## Exit criteria
 

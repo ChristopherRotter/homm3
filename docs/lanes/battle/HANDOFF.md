@@ -4,11 +4,11 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E23, the original's battle AI, in progress** (`docs/epics/E23-original-battle-ai.md`; BAT-Q52). **T1 to T6 done** (#288 to #408, then `battle/e23-t6`): the reading §7.34 to §7.60, **ADR-0027** (point 14: the adventure's facts), BAT-QUIRK-25, slips 1 to 32; slip 33 found (BAT-STUB-17). **Budget** (the user): the gated count +2 %, re-set per part; ≤ 1 ms per decision, a hero's ≤ 5 ms. **T6** (the user: whole): the seam (#422, merged) and **#424** (`battle/e23-t6`, `cross-lane`, open): Catapult, tent, tactics phase (v53), retreat test with slips 26 and 6 (BAT-AI-024; replay format v30), `POLICY_VERSION` 18. Full verify and client check green on 8c37c73 (`master` with #422 merged in; CI cannot run, billing). Next: T7 (BAT-Q33 with S-25's row; slip 33).
+- **E23, the original's battle AI, in progress** (`docs/epics/E23-original-battle-ai.md`; BAT-Q52). **T1 to T6 done** (#288 to #424): the reading §7.34 to §7.60, **ADR-0027**, BAT-QUIRK-25, slips 1 to 32; slip 33 found (BAT-STUB-17). **Budget** (the user): the gated count +2 %, re-set per part; ≤ 1 ms per decision, a hero's ≤ 5 ms. **T7's batches played** (`battle/e23-t7-batches`): 4a to 4c by an agent (`experiments/agent/ai.py`): rows as read, BAT-Q33's let-off and BAT-Q51's patient confirmed, **H1 against the port** (side-column neighbours: QUEUE inbox). Next: T7's rest, cut with the user (BAT-Q33's rule, BAT-WAR-003, the neighbours, slip 33, benchmarks, docs).
 - E05, `h3-sim` and `h3-ffi` are the AI lane's (AI-Q1), `h3-heroes` the adventure lane's.
-- **Open:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35, BAT-Q51, BAT-Q58 (none blocks; BAT-Q33 and BAT-Q51 wait for batch rows), BAT-STUB-1, the inbox (by kind since 2026-10-19), Q43; S-23, S-24, batch 2g.
+- **Open:** BAT-Q28, BAT-Q32, BAT-Q33, BAT-Q35, BAT-Q51, BAT-Q58 (none blocks; BAT-Q33's and BAT-Q51's rows are in: their rules wait for T7's rest), BAT-STUB-1, the inbox (by kind since 2026-10-19), Q43; S-23, S-24, batch 2g.
 - **Versions:** battle state hash v53, battle part hash v7 (E23 T3-0; the encodings, replay format and C ABI are the AI lane's); shared: core ruleset hash v48, pack format v47 (E08 T45), protocol v34. Next ids: BAT-Q62, BAT-QUIRK-27, BAT-STUB-18, BAT-AI-025, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-24, S-30.
-- Working agreement: increments with a user checkpoint (Q41); the user confirms seams and ADRs; batches by the user or an agent; small increments (the user, 2026-10-19).
+- Working agreement: increments with a user checkpoint (Q41); the user confirms seams and ADRs; batches by the user or an agent; small increments (2026-10-19).
 
 ## Standing traps
 
@@ -54,24 +54,16 @@ Area traps live where they are used: experiments in `docs/experiments/README.md`
 
 ## Recent sessions
 
-### 2026-10-23 (108th) — E23 T7: batches 4a, 4b, 4c designed and played (in progress)
+### 2026-10-23 (108th) — E23 T7: batches 4a, 4b, 4c designed and played
 
-The user: design and run the batches, no other cut yet. `battle/e23-t7-batches` (no pull request
-yet): specs `experiments/specs/E23-batch-4a|4b|4c.toml`, recipes and the agent
-`experiments/agent/ai.py` (+ `ai_turns.py`), h3-experiment's Tan and `[[map.town]]`. Played: LO,
-W1, S4, C1, C2, C3a/b, C4 (Normal), LC, H1, H3, H4, R1a/b, W3; running: TP, SC, C4f3/f2, then C4
-on Easy (`experiments/out/4a-run4.log`). Next: evaluate, fill the results, the docs (survey §3,
-catalog, OPEN-QUESTIONS, experiments README, epic, log). Finding: H1 (the port's neighbours
-include the side columns; the original's table +0x13468 does not).
+The user: design and run the batches, no other cut. `ai.py` (stepped clock, the battle manager's
+action, forced rolls, seeds, auto combat), h3-experiment's Tan and `[[map.town]]`; set-ups checked
+first by replaying the port in the engine (a throwaway test). H1 in the inbox.
 
 ### 2026-10-23 (107th) — E23 T6: the retreat test with slips 26 and 6
 
-The user: one session, `cross-lane` (replay format v30; facts hashed, still v53; twenty replays rehashed). Slip 33 found (BAT-STUB-17). #422 merged (squash), #424 open.
+The user: one session, `cross-lane` (replay format v30; twenty replays rehashed). Slip 33 found (BAT-STUB-17). #422 and #424 merged.
 
 ### 2026-10-23 (106th) — E23 T6: the tent and the tactics phase
 
-The user: both this session, `cross-lane` (v53: `TacticsRounds`; all twenty replays rehashed). Pathfinder `Query.tactics`; stubs 15, 16.
-
-### 2026-10-23 (105th) — E23 T6 started, the Catapult
-
-The user: T6 whole; the seam (CLT-Q4, Q6 later); BAT-Q33 waits.
+The user: both, `cross-lane` (v53: `TacticsRounds`; twenty replays rehashed). Stubs 15, 16.

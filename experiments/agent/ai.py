@@ -273,7 +273,9 @@ class Run:
                 raise RuntimeError("no confirmation after the retreat key")
             h3adv.click_button(g, "ok", found[0])
         elif action == "cast":  # [book place, hex or None]
-            place, hex_id = argument[0], hex_of(argument[1])
+            # A spell without a target (Armageddon) takes no hex: `[place]`.
+            place = argument[0]
+            hex_id = hex_of(argument[1]) if len(argument) > 1 else None
             g.key("c", 1.0)
             g.click(*h3drive.book_place(place), 1.0)
             if hex_id is not None:

@@ -268,3 +268,96 @@ army = [["Peasant", 1]]
 field = "C4f2: each Ogre Mage turn's action in round 1"
 [[encounter.record]]
 field = "anything odd"
+
+# --- BAT-Q51 again: both of Red's stacks hurt at every tent turn ------------------------------------
+
+[[map.pile]]
+resource = "gold"
+row = 31
+from = 4
+to = 4
+amount = 1
+guards = [["Diamond Golem", 20]]
+
+[[encounter]]
+id = "TP2"
+title = "TP2: Red's automatic First Aid Tent between two hurt stacks, and with none hurt"
+questions = ["BAT-Q51", "BAT-WAR-003", "BAT-AI-022"]
+procedure = [
+    "Step east into the guards (Diamond Golems: slow, a twentieth of spell damage). Round 1: no Red stack is hurt (the golems are far): the tent's turn has no patient. Rounds 2 to 5, Red's first turn: the hero casts Death Ripple (its book's only spell; power 6: 10 + 5 x 6 = 40 to every living stack, the tent spared): both Red stacks are hurt, the Champions' top creature (100 hit points) 40, the Swordsmen's (35) 5. A first run with Armageddon destroyed the tent with its first cast (80 against 75 hit points).",
+    "Note at each tent turn both stacks' top lost hit points and the stack healed (or Defend); after round 8 Red retreats.",
+]
+predictions = """
+TP's row hurt only the Swordsmen (the neutral shooters' target): both rules healed them. Here
+Death Ripple (power 6: 40 per living stack) leaves the Champions' top creature 40 down (more with
+the golems' blows), the Swordsmen's 40 - 35 = 5.
+- The reading (0x473EA0, 0x473F3C): the tent heals **the stack whose top creature lost the
+  most** at every turn (the Champions while they lead); **with no patient it defends** (action 3,
+  round 1).
+- BAT-WAR-003 (the wiki, VCMI): a hurt stack drawn uniformly (the Swordsmen about half the time);
+  with no patient nothing.
+"""
+[encounter.hero]
+type = "Clavius"
+specialty = "resource gold"
+at = [3, 31]
+primary = [0, 10, 6, 10]
+skills = []
+army = [["Swordsman", 30], ["Champion", 10]]
+artifacts = { "war machine 3" = "First Aid Tent", "spell book" = "Spell Book" }
+spells = ["Death Ripple"]
+[[encounter.also]]
+type = "Piquedram"
+specialty = "creature Stone Gargoyle"
+owner = "blue"
+at = [30, 8]
+primary = [0, 0, 1, 1]
+skills = []
+army = [["Peasant", 1]]
+[[encounter.record]]
+field = "TP2: per tent turn: both stacks' top lost hit points, the stack healed (or Defend)"
+[[encounter.record]]
+field = "anything odd"
+
+[[encounter]]
+id = "TP3"
+title = "TP3: the automatic tent between two hurt stacks, round after round, outside a held Citadel"
+questions = ["BAT-Q51", "BAT-WAR-003", "BAT-AI-022"]
+procedure = [
+    "Step north into the neutral Citadel (W1's: its Swordsmen hold the walls and stay inside while the mid-lower wall and the gate stand). Every round from round 1, Red's first turn: the hero casts Death Ripple (power 6: 40 to every living stack, the garrison's too): both of Red's stacks are hurt at every tent turn (the keep's arrows add more). TP2's golems destroyed the tent in round 3.",
+    "Note at each tent turn both stacks' top lost hit points and the stack healed; after round 8 Red retreats.",
+]
+predictions = """
+Death Ripple leaves the Champions' top creature 40 more down each round, the Swordsmen's 5 or 10
+(a Swordsman, 35 hit points, dies of it); the keep's arrows and the tent's heals (1 to 25) move
+the numbers between the turns.
+- The reading (0x473EA0): at every tent turn **the stack whose top creature lost the most** (the
+  later record at a tie); TP2's one turn agreed (40 against 5: the Champions).
+- BAT-WAR-003: a hurt stack drawn uniformly: the lesser one about half the time.
+"""
+[encounter.hero]
+type = "Caitlin"
+specialty = "resource gold"
+at = [28, 20]
+primary = [0, 10, 6, 10]
+skills = []
+army = [["Swordsman", 30], ["Champion", 10]]
+artifacts = { "war machine 3" = "First Aid Tent", "spell book" = "Spell Book" }
+spells = ["Death Ripple"]
+[encounter.opponent.town]
+faction = "castle"
+owner = "neutral"
+buildings = ["fort", "citadel"]
+garrison = [["Swordsman", 20]]
+[[encounter.also]]
+type = "Iona"
+specialty = "creature Genie"
+owner = "blue"
+at = [30, 11]
+primary = [0, 0, 1, 1]
+skills = []
+army = [["Peasant", 1]]
+[[encounter.record]]
+field = "TP3: per tent turn: both stacks' top lost hit points, the stack healed"
+[[encounter.record]]
+field = "anything odd"

@@ -4,6 +4,8 @@ Map file: `E23-batch-4b.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Stamp `d32ff7f5`.** The map's description in the scenario list starts with "Stamp d32ff7f5.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
 
+**Run by an agent** (E23 T7, 2026-10-23) on the client lane's capture harness, as batch 4a: one map per encounter of this build (stamp d32ff7f5), hot seat with Red and Blue human, Tan (`owner = "tan"`) the computer's; played by `experiments/agent/ai.py` with `experiments/agent/E23-batch-4b.toml`; every value read from the game's memory. Tan's heroes wore a random starting bonus's artifact in some runs (the recipe re-plays only for Red's): H1 64, R1a 84, R1b 74.
+
 1. Played by an agent (experiments/agent/ai.py): one map per encounter, `h3-experiment E23-batch-4b.toml --only <id>`. By hand: copy the map into `Maps`, start it in hot seat (Red and Blue human; Tan is the computer's) at the difficulty the run names, select the Red hero and step east into Tan's hero.
 2. Every Red stack defends unless the procedure says otherwise. Note what the encounter asks, then end the battle (retreat) as the procedure says.
 3. Fill in this file (anything unexpected goes into the last line of an encounter) and keep it in the repo.
@@ -19,10 +21,10 @@ Map file: `E23-batch-4b.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- LC: the stacks' morale at the opening (Red's and Tan's): 
-- LC: Tan's picks after the first: frozen, let off: 
-- LC: Red's Pikemen's picks: frozen, took their turn: 
-- anything odd: 
+- LC: the stacks' morale at the opening (Red's and Tan's): Red's Bone Dragons 0, Pikemen -1; Tan's five stacks -4; setup bytes +0x54A4 = [1, 0] (Tan's player record's human flag 0).
+- LC: Tan's picks after the first: frozen, let off: 46 frozen, 14 let off (23.3 %), 12 rounds.
+- LC: Red's Pikemen's picks: frozen, took their turn: 12 frozen, 0 took their turn.
+- anything odd: none
 
 ## H1 — H1: a computer hero's Archers in the tactics phase go to the first hex with the fewest free neighbours (E23 survey row 4b H1, BAT-AI-023)
 
@@ -35,8 +37,8 @@ Map file: `E23-batch-4b.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- H1: the Archers' hex before and after the tactics phase: 
-- anything odd: 
+- H1: the Archers' hex before and after the tactics phase: 100 before; one move in the tactics phase to hex 15 (row 0, column 15), then the phase ended.
+- anything odd: Not the first row-0 hex of the zone (hex 9, the port's): the original's neighbour table (battle manager +0x13468, read from memory in a later battle) gives hex 15 two neighbours (32, 14), hex 9 four: no neighbour lies in the side columns 0 and 16.
 
 ## H3 — H3: a computer hero blesses its Archers at their own turn, not at the round's first (E23 survey row 4b H3, BAT-AI-017)
 
@@ -49,8 +51,8 @@ Map file: `E23-batch-4b.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- H3: per round, the activation at which Tan's hero cast, its spell and target: 
-- anything odd: 
+- H3: per round, the activation at which Tan's hero cast, its spell and target: Round 1: no cast at the Wolf Riders' activation (they moved); at the Archers' activation Bless (41) on the Archers (hex 151), then their shot. Rounds 2 and 3: no cast (Bless still on the Archers).
+- anything odd: none
 
 ## H4 — H4: a computer hero never casts Berserk, Fire Wall, Land Mine, Quicksand, Force Field or Remove Obstacle (E23 survey row 4b H4, BAT-AI-017)
 
@@ -63,8 +65,8 @@ Map file: `E23-batch-4b.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- H4: Tan's hero's casts over 4 rounds: 
-- anything odd: 
+- H4: Tan's hero's casts over 4 rounds: None (no action 1); Tan's Swordsmen walked and attacked.
+- anything odd: none
 
 ## R1a — R1a: a computer hero defending on Hard retreats at a 14 % share of Fight Value (E23 survey row 4b R1, BAT-AI-024, slip 26)
 
@@ -77,8 +79,8 @@ Map file: `E23-batch-4b.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- R1a: Tan's gold; Tan's first action (retreat or not): 
-- anything odd: 
+- R1a: Tan's gold; Tan's first action (retreat or not): 10000 gold (Hard); Tan retreated at its first activation (round 1, its record 0).
+- anything odd: Tan's hero wore artifact 84 (a starting bonus): its worth only raises the threshold's start, capped at 0.16 on Hard either way.
 
 ## R1b — R1b: a computer hero defending on Hard fights at a 17 % share of Fight Value (E23 survey row 4b R1, BAT-AI-024)
 
@@ -91,5 +93,5 @@ Map file: `E23-batch-4b.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- R1b: Tan's gold; Tan's first action (retreat or not): 
-- anything odd: 
+- R1b: Tan's gold; Tan's first action (retreat or not): 10000 gold; Tan's record 0 moved (hex 49 to 80) at its first activation, and Tan retreated at its record 1's activation in the same round.
+- anything odd: The second activation's share: record 0 had acted, so 2070 + trunc(1380 x 1.2) = 3726 against 19908: 0.158, below 0.16 (the reading); the spec's prediction looked only at the first activation. Tan's hero wore artifact 74.

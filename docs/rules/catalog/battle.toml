@@ -1376,6 +1376,12 @@ numeric  = "integer"
   ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.21, Fear read for T7c3): the battle loop's pick 0x465080 asks bad morale (0x464B40) and then Fear (0x464D40) only outside the tactics phase and the round's wait phase and when called with argument 1: by the dispatcher after an action (0x479C73, 0x479C87) and after a tactics phase (0x474562, 0x475268); the battle start 0x462A20 picks the first stack with argument 0"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E23-batch-4a.md LO, experiments/results/E23-batch-4b.md LC (SoD 4.0 Complete under Wine, run by an agent on the capture harness (experiments/agent/ai.py), E23 T7, 2026-10-23): with every bad-morale draw forced to fall, 28 of 105 neutral picks (26.7 %) and 14 of 60 picks of a computer player's stacks (23.3 %) took their turn, a human side's Pikemen none (15 of 15, 12 of 12 frozen): the second draw random(1, 4) for a side whose +0x54A4 is 0 (BAT-Q33, S-25); the engine still rolls once for every side"
+  retrieved  = "2026-10-23"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-LCK-001"
 title    = "Luck of a stack"
@@ -1579,6 +1585,12 @@ numeric  = "integer"
   [[rule.source]]
   kind       = "original-data"
   ref        = "Heroes3.exe code reading (Q29): the tent heals Random(1, trunc(25 x (1 + First Aid value))), i.e. 1..=25 without the skill; confirms the wiki (docs/formats/installation.md section 7.5)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E23-batch-4c.md TP, TP2, TP3 (SoD 4.0 Complete under Wine, run by an agent on the capture harness (experiments/agent/ai.py), E23 T7, 2026-10-23): Red's automatic tent (no First Aid) with two hurt stacks healed the one whose top creature lost the most at 7 of 7 turns (the Champions 40 to 99 down against the Swordsmen 3 to 33), with one hurt stack that one (8 of 8): against this rule's uniform draw (BAT-Q51), with the reading 0x473EA0"
+  retrieved  = "2026-10-23"
   confidence = "high"
 
 [[rule]]
@@ -4934,6 +4946,12 @@ numeric  = "integer"
   ref        = "ADR-0027 (accepted, BAT-Q55): the crate h3-battle-ai, the function, always legal and always the same, the caller's stream, the computer's numbers through h3-battle's public computer module, POLICY_VERSION; VCMI 1.7.5's BattleAI is its own design and no source of the original's choices (survey §2)"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E23-batch-4a.md W1 (SoD 4.0 Complete under Wine, run by an agent on the capture harness (experiments/agent/ai.py), E23 T7, 2026-10-23): a neutral Citadel's walker holding its walls with nothing to do defends at every turn on Normal (4 rounds) and waits on Hard (the waited bit at Red's slower stack's turn, 4 rounds): no Wait below Hard"
+  retrieved  = "2026-10-23"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-AI-002"
 title    = "The original's battle AI: the computer's shooter"
@@ -4950,6 +4968,12 @@ numeric  = "float"
   [[rule.source]]
   kind       = "observation"
   ref        = "experiments/results/E04c-batch-3h.md (agent run under Wine, 2026-10-15): the automatic Ballista's targets in six encounters as the reading of 0x41F060 and 0x41EB80 (BAT-WAR-008), the routine every computer shooter takes"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E23-batch-4a.md C1 (SoD 4.0 Complete under Wine, run by an agent on the capture harness (experiments/agent/ai.py), E23 T7, 2026-10-23): neutral Storm, Ice, Energy and Magma Elementals beside an own stack, under an enemy hero with a spell of every school, never cast (no action 10, no spell on any stack) in 5 rounds"
+  retrieved  = "2026-10-23"
   confidence = "high"
 
 [[rule]]
@@ -4983,6 +5007,12 @@ numeric  = "float"
   ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.35; E23 T1a2, the comparison and the frame re-read in T2b): 0x41F060 (the target 0x41EB80, then 0x41EEA0 with the best value for flag 0x20 outside a prediction, then no target: action 3, else the desperate rerun) → 0x41EEA0 (side 1 or no fort or no wall of 0x63ABD0 with hit points: none; the own side's threat records 0x422B20, the sum of 0x442E60 over those with +0x538 = 0; fild, fdiv, fmul 3.0 (0x63AC28), fcompp, C0 tested at 0x41EFAD; the least hit points from 100 down, random_between(1, n) 0x41EFFB, the n-th such wall in the list; action 9 at its aim hex 0x63BE60); 0x422BD0 to 0x422BE9 (no record while Stone's or Blind's duration is above 1)"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E23-batch-4c.md SC (SoD 4.0 Complete under Wine, run by an agent on the capture harness (experiments/agent/ai.py), E23 T7, 2026-10-23): Red's Cyclops in auto combat shoot the Archers inside once Red's Catapult has breached the upper wall (rounds 1 to 5); the wall shot with every wall standing was not reached (the Catapult breached first)"
+  retrieved  = "2026-10-23"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-AI-005"
 title    = "The original's battle AI: the walker's choice"
@@ -4994,6 +5024,12 @@ numeric  = "float"
   [[rule.source]]
   kind       = "original-data"
   ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.35, §7.37, §7.47, §7.49; E23 T1a2, T1a3b, the melee half and the call sites read in T3a, the tail in T3c): 0x421F80 (the context, the threat records, 0x421680, the creature cast entry, action 8 when not +0x13DE4 and difficulty >= 2 or human, else the default 3) → 0x421680 (0x4B2DA0 with the acting side, range 127 or 0, at 0x4217BE; per record of the context's +0x24: 0x4360C0, 0x436840, 0x435C70 with shot 0 and the cell's cost when the plan's turns are 1; the plan's value at 0x421A55 to 0x421AF2; random_between(75, 100) at 0x421B02, the 32-bit product over 100; the comparison 0x421B2F to 0x421C16; the action 0x421C89 to 0x421F69; re-read in T3c, §7.49: the plan value per turn at 0x421C27, the besieger's walk 0x421D46 to 0x421E2D with 0x469DC0, the losing attack 0x421E30, the fallback 0x421E84 to 0x421EF5) → 0x436840, 0x436300, 0x436180, 0x436620, 0x436760, 0x448AB0, 0x445840, 0x523DF0, 0x523D90; 0x4359B0, 0x442780, 0x422440"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E23-batch-4c.md W3 (SoD 4.0 Complete under Wine, run by an agent on the capture harness (experiments/agent/ai.py), E23 T7, 2026-10-23): a neutral Gold Dragon between two equal stacks one turn away took the row-8 stack in 6 and the row-2 stack in 4 of ten seeds (at least five distinct streams by the damage): the candidates' 75-100 % draw"
+  retrieved  = "2026-10-23"
   confidence = "high"
 
 [[rule]]
@@ -5094,6 +5130,12 @@ numeric  = "integer"
   ref        = "ADR-0027 point 9 (BAT-Q55): the original's slips behind BAT-QUIRK-25; survey docs/rules/surveys/E23-battle-ai.md §4, slip 2"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E23-batch-4a.md S4, W1 (SoD 4.0 Complete under Wine, run by an agent on the capture harness (experiments/agent/ai.py), E23 T7, 2026-10-23): a neutral Citadel's Swordsmen hold the walls while every wall stands and behind a destroyed mid-upper wall (three runs, to round 9) or lower wall, and sally at once after the mid-lower wall falls (two runs): slip 2's wrong records as read"
+  retrieved  = "2026-10-23"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-AI-012"
 title    = "The original's battle AI: the creature cast entry and the raise"
@@ -5110,6 +5152,12 @@ numeric  = "integer"
   [[rule.source]]
   kind       = "original-data"
   ref        = "The user, E23 T4a (2026-10-21): the policy casts only at the targets the engine accepts (ADR-0027 point 3): a raise target the original's computer would take and the engine refuses (no slot for the raised stack) is passed over (BAT-STUB-8)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E23-batch-4a.md C3a, C3b (SoD 4.0 Complete under Wine, run by an agent on the capture harness (experiments/agent/ai.py), E23 T7, 2026-10-23): neutral Archangels attack rather than raise ten dead Peasants (rounds 2 to 4) and raise two of three dead Champions rather than attack weak Peasants (round 2): the raise against the walker's value, n = min(lost, trunc(100 x Archangels / hit points))"
+  retrieved  = "2026-10-23"
   confidence = "high"
 
 [[rule]]
@@ -5133,6 +5181,12 @@ numeric  = "integer"
   [[rule.source]]
   kind       = "original-data"
   ref        = "ADR-0027 point 9 (BAT-Q55): the original's slips behind BAT-QUIRK-25; survey docs/rules/surveys/E23-battle-ai.md §4, slip 7"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E23-batch-4a.md C2 (SoD 4.0 Complete under Wine, run by an agent on the capture harness (experiments/agent/ai.py), E23 T7, 2026-10-23): neutral Faerie Dragons cast at all 8 turns (every drawn spell a damage spell), Fireball and Frost Ring at the free hex 86 between two stacks (4 of 4), the bolts at the first stack of the best kill value"
+  retrieved  = "2026-10-23"
   confidence = "high"
 
 [[rule]]
@@ -5161,6 +5215,12 @@ summary  = "A computer spell_caster whose spell raises the melee attack (the Ogr
   [[rule.source]]
   kind       = "original-data"
   ref        = "ADR-0027 point 9 (BAT-Q55): the original's slips behind BAT-QUIRK-25; survey docs/rules/surveys/E23-battle-ai.md §4, slip 8"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E23-batch-4a.md C4 (SoD 4.0 Complete under Wine, run by an agent on the capture harness (experiments/agent/ai.py), E23 T7, 2026-10-23): neutral Ogre Mages beside three stacks of 10 Champions and one Champion, against 5 Archangels and 100 Pikemen: on Normal (no walker's value: the port alike) a cast at every turn (6 of 6), on Easy 3 of 21 turns without a cast at the same field across seeds (the scan's draw), every Bloodlust at a 10-Champion stack without it, the later record first, never the lone Champion"
+  retrieved  = "2026-10-23"
   confidence = "high"
 
 [[rule]]
@@ -5225,6 +5285,12 @@ summary  = "At the activation of each stack of a computer side but a war machine
   [[rule.source]]
   kind       = "original-data"
   ref        = "The user, E23 T5's checkpoint (2026-10-22): T5 in two parts (T5b the raises, Sacrifice, Earthquake and Teleport, BAT-STUB-14); BAT-Q61 option (c): the retreat test's answer no until T6 (BAT-STUB-13); the budget for a decision with a hero's cast at most 5 ms (the side without a hero keeps 1 ms)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E23-batch-4b.md H3, H4 (SoD 4.0 Complete under Wine, run by an agent on the capture harness (experiments/agent/ai.py), E23 T7, 2026-10-23): a computer hero's Bless goes to its Archers at their own activation, none at its Wolf Riders' before (the best cast not due now); a hero holding only Berserk, Fire Wall, Land Mine, Quicksand, Force Field and Remove Obstacle casts none in 4 rounds"
+  retrieved  = "2026-10-23"
   confidence = "high"
 
 [[rule]]
@@ -5329,6 +5395,12 @@ summary  = "When the computer's side commands its First Aid Tent (its hero has F
   ref        = "The user, E23 T6 (2026-10-23; BAT-Q51): the computer's policy heals the reading's patient now; BAT-WAR-003 waits for the batch row"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E23-batch-4c.md TP2, TP3 (SoD 4.0 Complete under Wine, run by an agent on the capture harness (experiments/agent/ai.py), E23 T7, 2026-10-23): the original's automatic tent heals the stack whose top creature lost the most (7 of 7 turns with two hurt stacks), the patient this policy gives the commanded tent"
+  retrieved  = "2026-10-23"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-AI-023"
 title    = "The original's battle AI: the tactics phase"
@@ -5345,6 +5417,12 @@ summary  = "In its tactics phase (BAT-TAC-001/002) the computer's side plays as 
   [[rule.source]]
   kind       = "original-data"
   ref        = "The user, E23 T6 (2026-10-23): T6 whole; this session the tent and the whole tactics phase; the battle state hash v53 for the phase's rounds, the replays rehashed (cross-lane)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E23-batch-4b.md H1 (SoD 4.0 Complete under Wine, run by an agent on the capture harness (experiments/agent/ai.py), E23 T7, 2026-10-23): a computer hero's 20 Archers (the only stack, Expert Tactics) move in the tactics phase from hex 100 to hex 15, the first hex with the fewest free neighbours when the side columns 0 and 16 are no neighbours (the original's table at battle manager +0x13468, read from memory: hex 15's neighbours 32 and 14 only); the port's hexes::neighbor counts them and moves to hex 9: against the port, not the reading's rule"
+  retrieved  = "2026-10-23"
   confidence = "high"
 
 [[rule]]
@@ -5370,4 +5448,10 @@ summary  = "Whether a computer side's hero leaves the battle (0x41E570; h3_battl
   [[rule.source]]
   kind       = "original-data"
   ref        = "ADR-0027 point 14 (the user, BAT-Q61 option a, BAT-Q56 option b; E23 T6): the adventure's facts in BattleSetup.retreat and attacker_ground; point 9 (BAT-Q55): slip 26 behind BAT-QUIRK-25; the user, E23 T6's last session (2026-10-23): the retreat test with slips 26 and 6 in one session"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E23-batch-4b.md R1a, R1b (SoD 4.0 Complete under Wine, run by an agent on the capture harness (experiments/agent/ai.py), E23 T7, 2026-10-23): a computer hero defending on Hard retreats at its first activation at a share of 3312 / 23220 = 0.143 (R1a); at 4140 / 24048 = 0.172 it fights, and at its second stack's activation, the first having acted (no longer x 1.2), 3726 / 23634 = 0.158 below 0.16, it retreats (R1b): steps 7 to 9 as read"
+  retrieved  = "2026-10-23"
   confidence = "high"
