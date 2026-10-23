@@ -476,7 +476,7 @@ entry only where a task builds on it.
 
 ## T7a, T7b — The system actor's seat (2026-10-23)
 
-- **T7a** (`shared/e06-t7a`): `arch.toml` lets `h3-sim` depend on `h3-battle-ai` (ADR-0025
+- **T7a** (#420): `arch.toml` lets `h3-sim` depend on `h3-battle-ai` (ADR-0025
   point 5 named `System` among the policies; ADR-0027 point 11 the batch with neutral `System`
   seats); the sim doc's neutral kinds (`docs/07-simulation-and-ai.md`).
 - **T7b:** `Policy::System` (`h3_battle_ai::choose` from the seat's stream); the neutral kinds'

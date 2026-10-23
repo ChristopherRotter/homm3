@@ -12,7 +12,7 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   held-out sets v1, the bots' table, the SPRT gate, ladders, the league, γ 1.0, the entity
   network parked, `ppo.truncation_penalty`; best so far `t5-3`'s MLP 0.832, 0.557, 0.533 against
   Random, Aggressor, Greedy in 20 M, `t4-2`'s 0.839, 0.578, 0.559 in 60 M). **Increment 5**
-  (T7, the neutral share; design §12): T7a (`shared/e06-t7a`) and T7b (the system actor's seat,
+  (T7, the neutral share; design §12): T7a (#420) and T7b (the system actor's seat,
   C ABI v32) done 2026-10-23. **Next:** the user's checkpoint on T7b, then T7c (QUEUE).
 - **Versions:** battle action encoding v13, observation encoding v21, replay format v29, the adventure env's action encoding v4 (E08 T45), C ABI v32 (E06 T7b: `H3_SEAT_SYSTEM`) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q10, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
@@ -89,9 +89,9 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 
 ### 2026-10-23 — E06 increment 5 refined, T7a and T7b
 
-- The user: T7, no run meanwhile; the neutral weights in the run's config. T7a on
-  `shared/e06-t7a` (its own pull request, merged first), T7b on the session branch. In
-  progress: the user's checkpoint on T7b; T7c next (QUEUE).
+- The user: T7, no run meanwhile; the neutral weights in the run's config. T7a merged first
+  (#420), T7b's pull request follows it. In progress: the user's checkpoint on T7b; T7c next
+  (QUEUE).
 
 ### 2026-10-22 to 23 — E06 increment 4 (T5a to T5d), closed
 

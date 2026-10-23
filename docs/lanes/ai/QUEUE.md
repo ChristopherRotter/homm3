@@ -22,7 +22,7 @@ stalled: both sides hid), T5c (the truncation penalty, the user's amendment of d
 0.533 in 20 M samples and 70 minutes, near `t4-2`'s 60 M).
 
 **Increment 5** (refined 2026-10-23, the user: T7 first, no run meanwhile; the neutral weights
-in the run's config; design §12): T7a (`shared/e06-t7a`) and T7b (the system actor's seat, C ABI
+in the run's config; design §12): T7a (#420) and T7b (the system actor's seat, C ABI
 v32) done. **Next, after the user's checkpoint on T7b:**
 - **T7c The trainer's neutral share** (one pull request): the league draws no member for a
   neutral episode (one learning side, the attacker); the training's rates by kind; the neutral

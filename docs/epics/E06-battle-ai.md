@@ -153,7 +153,7 @@ T5b's stalling, T5c and T5d (the user, 2026-10-22).
 **Increment 5:** T7 (refined 2026-10-23, the user: T7 before the rest of T5, no run meanwhile;
 the weights in the run's config, design §12): T7a and T7b, then the checkpoint, then T7c and T7d.
 
-- [x] **T7a `h3-sim` may depend on `h3-battle-ai`** — done 2026-10-23 (`shared/e06-t7a`):
+- [x] **T7a `h3-sim` may depend on `h3-battle-ai`** — done 2026-10-23 (#420):
   `arch.toml`, the sim doc's neutral kinds.
 - [x] **T7b The system actor's seat** — done 2026-10-23: `Policy::System`, the neutral kinds'
   defender, C ABI v32 (`H3_SEAT_SYSTEM`, `h3_system_policy_version`), `h3env`'s `"system"`,
