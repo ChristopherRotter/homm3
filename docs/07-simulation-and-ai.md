@@ -47,8 +47,9 @@ design note kept in `docs/epics/E05-log.md` (§1 to §9).
   sieges, integers only. Creatures, counts and splits come from the engine's own rules; a hero's
   level-ups, spells and artifacts are approximations. The default weights draw the kinds with a
   player on both sides (a hero battle 4/7, a siege a hero defends 2/7, a garrison's 1/7); the
-  neutral kinds are built and weigh 0 until E23's policy plays them. Encounters v2 will come from
-  the adventure's logged battles.
+  neutral kinds, whose defender the system actor plays (E06 T7), weigh 0 by default and join a
+  training run through its own weights (`[env] kinds`), so the held-out sets keep their episodes.
+  Encounters v2 will come from the adventure's logged battles.
 - **Reward v1:** `r_s = (K_o − K_s − p · (m_s − m_o)) / S` in `ai_value` (or the creatures' cost),
   K a side's losses including the war machines the battle placed, m its mana spent, p 10 per
   spell point (provisional), S both sides' value at the start; terminal, 0 after a truncation,

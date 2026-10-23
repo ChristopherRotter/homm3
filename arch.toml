@@ -241,10 +241,11 @@ dev_external = []
 [crate.h3-sim]
 layer = "adapter"
 logic = false
-# h3-game and h3-adventure: AdventureEnv in the adventure-owned src/adventure/ (ADR-0017 point 8).
+# h3-game and h3-adventure: AdventureEnv in src/adventure/ (ADR-0017 point 8).
 # h3-heroes, serde and toml: the encounter sampler (E05 T5b) reads its versioned TOML files and
 # derives a sampled hero's battle values (its creatures and places from h3-game's rulesets).
-deps = ["h3-kernel", "h3-content", "h3-content-battle", "h3-contracts", "h3-battle", "h3-adventure", "h3-game", "h3-heroes"]
+# h3-battle-ai: the system actor's seat, `Policy::System` (ADR-0025 point 5, ADR-0027; E06 T7).
+deps = ["h3-kernel", "h3-content", "h3-content-battle", "h3-contracts", "h3-battle", "h3-adventure", "h3-game", "h3-heroes", "h3-battle-ai"]
 external = ["serde", "toml"]
 dev_deps = ["h3-pack-battle", "h3-map", "h3-pack-adventure"]
 dev_external = ["proptest", "criterion"]
