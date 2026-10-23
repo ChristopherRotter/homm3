@@ -4734,3 +4734,58 @@ and building Cursed Ground late).
   Winds), Stables, the spells Fly, Water Walk and Dimension Door with their levels 0 to 2 (the
   day's end of a spell, `new_day` 0x4C80CF), the computer players' bonus (E10), the cheat flag,
   the new-day reveal after a Cover of Darkness (E09).
+
+### Increment 6, round 1: T44a, the army and hero management survey (2026-10-23, `adventure/e08-t44a`)
+
+Baseline: `master` at 49b19b8 (T43 merged, #407); its engine code (68058c9c) is the code T42's
+full verify passed, so the sandbox ran the light gates (passed). Staged from the user's repo
+folder once the device link was back: `Heroes3.exe`, `extracted.tar` (the text tables),
+`maps.tar` (the census); the wiki approved by the user for the session. **T44a whole** (decision
+92, the user's choice of four at the session's start; the instruction for the session: a seam only
+for a significantly big task, confirmed with the user). Docs only.
+
+**The survey** `docs/rules/surveys/E08-army.md` (§0 to §12): the army dialog (§1), meetings with
+Scholar and the exchange screen (§2), a hero's army in the hero screen and between two heroes, the
+split dialog's bounds, the dismissal and `army_swap_slots`' 16-bit count (§3), the formation and
+the tactics formation flag (§4), the artifacts: positions, the backpack, what never moves,
+combinations, Titan's Thunder, the derived properties (§5), the commands, decisions, visibility,
+env, replays and benchmarks (§6), the census (§7), disputes and quirk candidates (§8: D7, D-27,
+D-28, A-15, A-16), batch E6's plan (§9: E6-1 to E6-11), the proposed rule ids (§10), the second
+reading (§11), the checkpoint's questions (§12, ADV-Q24).
+
+**Findings beyond the queue's list:** the hero screen's third flag button (the tactics formation,
++0x48 bit 1, default on; off clears a human side's tactics phase: a seam question for the battle);
+Scholar at every meeting; the backpack's arrows rotate the stored array (the capture walks it
+from the end); the original's 19 positions decide "the first position that takes it" and the
+capture's order, which the engine's kinds-only `HeroDetails.worn` loses (question 3); the
+assembly question once per player and combination (the player record's +0xE8), the right-click
+always; disassembly from worn only (VCMI also from the backpack: D-28); a split oddity (A-16) and a
+state-corrupting 16-bit count on a move or swap (A-15).
+
+**The exe map:** 51 entries (the army dialog and its garrison exchange, the town screen's garrison
+logic it reuses, the exchange screen's manager and clicks, the split and creature dialogs, the
+combinations' helpers, Scholar, the hero screen's globals; H3API's `UpdateLuckMorale` guess at
+0x5AE500 contradicted: the exchange manager's constructor), four updated (`army_full_dialog`,
+`army_add_stack`, `hero_screen_proc`, `hero_can_replace_artifact`: now `read`), two struct fields
+(the hero's +0x48 bit 1, the player record's +0xE8). The surveys' README gained this survey's row
+and `E08-hero-movement.md`'s, missing since T34a.
+
+**The second reading** (survey §11): a fresh agent, from ten questions and without the survey,
+confirmed §1 to §5 point by point; its additions (the held artifact lost when the visitor has no
+room, `hero_give_artifact`'s question for an equipped part only, +0x53C5's likely meaning, the
+exchange's drops skipping a team-mate's owner check) are in the survey.
+
+**The census** (survey §7): 373 placed heroes, 40 with custom artifacts, 11 with a backpack, none
+with a combination, its parts or Titan's Thunder; 3 with seven stacks; one tight.
+
+**The checkpoint** (ADV-Q24, asked interactively; decisions 93–100): the meeting a pending
+decision per step; the army dialog a decision with the group as a small army; the original's 19
+artifact positions in `h3-heroes`; the tactics flag passed as Tactics 0, with the user's condition
+that the two heroes' Tactics keep cancelling (both go as 0 when the leading side's flag is off);
+Scholar with meetings; A-16 the original's bounds (A-15 fixed); the adventure's RL encoding handed
+to the AI lane (the user's own answer; the AI lane's inbox told); batch E6 whole. T44b is ready.
+
+**Not read** (survey's sources): network and allied play, the computer player's join without room
+and meeting (0x52BC60, 0x525DC0: E10), the town screen's own garrisons and the upgrade (E09), the
+reward callers of the army dialog (increment 7), `battle_start`'s other tactics branches
+(0x69877C, `game` +0x1F69D, network).

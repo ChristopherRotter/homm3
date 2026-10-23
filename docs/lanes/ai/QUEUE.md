@@ -38,6 +38,14 @@ Sorted by destination at E05's audit (T9a, 2026-10-19); the origin stays in brac
 done: BAT-Q33's point for E05 (AI-Q3, ADR-0025 point 6), the `h3-game` coverage gap of a pending
 Pass offer (fixed by the adventure lane's fixed tests, #266).
 
+- 2026-10-23 (the adventure lane, E08 T44a's checkpoint, ADV-Q24, E08 decision 99; for your
+  information, nothing to do yet): **the user hands the adventure's RL encoding to this lane.**
+  Increment 6 (army and hero management: meetings, the army dialog, stack, formation, tactics
+  flag and artifact commands) adds no entries to the adventure lane's action encoding (v4); its
+  commands reach agents through `h3_game::legal_commands`. The adventure lane's T44b drafts the
+  ADR-0017 amendment and a `shared/` change (`lanes.toml`, the global HANDOFF): which paths of
+  `crates/h3-sim/src/adventure/` move to you and what the adventure lane keeps are proposed to the
+  user there; the survey is `docs/rules/surveys/E08-army.md` (§6).
 - 2026-10-23 (the battle lane, E23 T5b2b, `battle/e23-t5b2b`, `cross-lane` with the user's consent;
   for your information, nothing to do): `h3_battle_ai::POLICY_VERSION` is 15: in a computer hero's
   Teleport value every stack's first turn asks its creature cast entry (a Faerie Dragon's spell
