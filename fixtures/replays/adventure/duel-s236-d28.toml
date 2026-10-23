@@ -388,20 +388,20 @@ commands = [
 ]
 checkpoints = [
     "0x5b9d4c8e8152f496",
-    "0xafecf5f5830f97d5",
-    "0xe688c4796dde128a",
-    "0xdcfdb92faddabcf9",
-    "0xb903f3b99b96fa28",
-    "0xae74f12f413ee808",
-    "0x68c6b9c9921f9667",
+    "0x46d99708f1bae91f",
+    "0x69c4584dbba52df3",
+    "0x2c1b050251a26172",
+    "0x0c731a369dc32cec",
+    "0x75a79e82dafa8a0b",
+    "0x7f8bd910e0774da9",
     "0xa879c1cdefca85d9",
     "0xcfcfbe91cc4d09d3",
     "0x9f913f87aa2e9a04",
     "0xd9fe7b11461e059d",
-    "0x1faced3202696a29",
-    "0x8a6c5b84815732f2",
-    "0x1b2d099d46e307b4",
-    "0x2da90e6667178d18",
+    "0xf766955fbc2af84f",
+    "0x6078975593ae63bd",
+    "0x0c4f3f1455b11667",
+    "0xc2660576fd2d4034",
 ]
 
 [replay]
