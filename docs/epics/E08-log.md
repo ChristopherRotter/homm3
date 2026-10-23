@@ -5014,3 +5014,49 @@ CLT-Q18: no `cross-lane`; the client and map-client lanes' inboxes told).
 - **Verify:** the baseline's full run (above); the branch changes no fingerprinted path, so the
   light gates ran on it (check-rules, check-stubs, check-docs, check-exe-map) with `check-lane`
   (an `adventure` change: no `cross-lane`): all passed. CI's recent runs fail unstarted.
+
+### Increment 6, round 2: T47b1, batch E6's recipe; E6-5 dropped (2026-10-23, `adventure/e08-t47b1`, `cross-lane`)
+
+**The start's two questions** (`AskUserQuestion`): E6-5's setup, after T47a found that the map's
+count of 40 000 loads as an empty slot. Recommended was two stacks of 20 000 of each creature
+merged in the hero screen first, then the row's three moves, with one untouched stack of 40 000
+on E6-5 B recording the load (the engine's import reads the count as 40 000). The user's own
+answer (decision 109): the original's behaviour here does not matter, its oddity being a
+limitation or a bug; the engine supports a reasonable count and handles saturation gracefully,
+a merge past the cap refused. So E6-5 left the batch, and the cap waits for T50's start (the
+queue's inbox; `E08-design.md` §7 and §16). The cut (decision 110): T47b in two, the recipe now,
+the run next (recommended was T47b whole).
+
+**Baseline:** `master` 8ac0949 (#437 merged). GitHub reached through the session's repository
+grant (the token of an earlier attempt was refused). The sandbox's baseline ran the full verify
+with the original data on engine code 9a54eabd: VERIFY_RESULT. The edits were made in a `git
+worktree` meanwhile, so the baseline tested `master`'s files.
+
+- **The spec** (`experiments/specs/E08-batch-6.toml`): E6-5 and its two heroes removed (14 heroes:
+  Red's eight, Blue's six; the other rows' places unchanged, encounter i at column 3 + 6 (i mod
+  6), row 3 + 5 (i div 6)); its header, the map's description and the order without it. Four
+  fields renamed so that one read fills each: E6-1's and E6-2's "Wolf Riders still on the map
+  (yes/no)" became "Wolf Riders on (4, 3) after (count, or none)" (and (10, 3)), the tile's
+  monster as memory holds it; E6-8's "worn and backpack at the start" and "… at the end" became
+  "worn at the … (positions)" and "backpack at the …". Compiled again: STAMP_LINE.
+- **The recipe** (`clients/capture/batches/E08-batch-6.toml`, 18 steps): each row's procedure as
+  T47a's steps and actions. Red: E6-1 (the gold and slots, the join answered yes, the army
+  dialog's title, OK), E6-2 (the Swordsmen dismissed in the dialog, the group into slot 3), E6-3
+  (the three clicks in the exchange, each cell of the table read after its click: a message, both
+  armies), E6-4 (the split from the left army into the right's slot 1, the slider at its maximum,
+  OK), E6-11 (the points before and after the meeting, both tiles); Blue: E6-6a (the flags, the
+  tactics button, the battle by auto combat with the tactics phase read), E6-6b (the control),
+  E6-7 (the spells, Scholar's message from the walk's messages), E6-8 (the Orb on position 12
+  twice answered no, the right click answered yes, the Well into the backpack and right-clicked
+  there), E6-10 (the right arrow; the screen opened again for E6-9: the Thunder on the right hand
+  and back into the backpack's first place). Fields left to a player by hand: E6-8's "on screen:
+  the Well's slot and the locked slots" (no read of the screen's locks).
+- **A code reading for the recipe** (`docs/exe/map.toml`: 0x5AE5B0 `swap_selection_reset`):
+  `swap_army_click` calls it after every second click, a refused move included, and it clears
+  the selection (+0x48 to +0x58), so E6-3's second and third clicks start from none and do not
+  open the creature dialog.
+- **The check with `fill`**: every record key of the recipe (FILL_COUNT) is a field or table cell
+  of the compiled template (h3adv's `fill` raises on any other); against the template of before
+  only the six renamed fields failed. Left empty: FILL_EMPTY.
+- **Not built:** the run (T47b2); the scoring (T48); the cap (T50's start).
+- **Verify:** VERIFY_BRANCH
