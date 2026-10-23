@@ -1,5 +1,9 @@
 # E08 batch E6 — results
 
+> Played by the capture harness on 2026-10-23 (`clients/capture/h3adv.py batch clients/capture/batches/E08-batch-6.toml`): the same Complete 4.0 `Heroes3.exe` under Wine, without the HD mod; hot seat, difficulty Easy, the starting bonus random, Show Route on; read from the game's memory.
+
+> Run 3 of 3 (E08 T47b2): the three runs recorded every field the same; run 1's recipe did not yet expect E6-7's message and noted it under "anything odd" (the recipe expects it since). Two lines were filled by the agent from this run, not by `fill`: E6-7's message, whose text `h3lod` does not name (it is composed of several records), from the dialog's text items as the run read them; and E6-8's screen line, from a dump of the screen taken at the read after the assembly. The dumps at E6-9's reads also show the Spell Book in its slot with the Thunder on and after it is off, and locks on the head, torso and left hand while the Thunder is worn (no picture committed).
+
 Map file: `E08-batch-6.h3m`. Fill in the blanks below and keep this file; an agent records the results (`docs/experiments/README.md`).
 
 **Stamp `e17cb77c`.** The map's description in the scenario list starts with "Stamp e17cb77c.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
@@ -28,13 +32,13 @@ Map file: `E08-batch-6.h3m`. Fill in the blanks below and keep this file; an age
 
 **Record**
 
-- army before (slot: creature count): 
-- gold before: 
-- the question: 
-- the dialog's title (or: no dialog): 
-- army after: 
-- gold after: 
-- Wolf Riders on (4, 3) after (count, or none): 
+- army before (slot: creature count): 0: 10 Pikemen, 1: 10 Archers, 2: 5 Griffins, 3: 5 Swordsmen, 4: 3 Monks, 5: 2 Cavaliers, 6: 1 Angel
+- gold before: 30000
+- the question: ADVEVENT:86
+- the dialog's title (or: no dialog): GENRLTXT:36
+- army after: 0: 10 Pikemen, 1: 10 Archers, 2: 5 Griffins, 3: 5 Swordsmen, 4: 3 Monks, 5: 2 Cavaliers, 6: 1 Angel
+- gold after: 30000
+- Wolf Riders on (4, 3) after (count, or none): none
 - anything odd: 
 
 ## E6-2 — The army dialog: room made by dismissing a stack, the group taken into the freed slot (ADV-MON-008, GAM-DEC-004, ADV-STUB-2)
@@ -50,10 +54,10 @@ Map file: `E08-batch-6.h3m`. Fill in the blanks below and keep this file; an age
 
 **Record**
 
-- army before: 
-- the dismiss question: 
-- army after: 
-- Wolf Riders on (10, 3) after (count, or none): 
+- army before: 0: 10 Pikemen, 1: 10 Archers, 2: 5 Griffins, 3: 5 Swordsmen, 4: 3 Monks, 5: 2 Cavaliers, 6: 1 Angel
+- the dismiss question: GENRLTXT:13
+- army after: 0: 10 Pikemen, 1: 10 Archers, 2: 5 Griffins, 3: 10 Wolf Riders, 4: 3 Monks, 5: 2 Cavaliers, 6: 1 Angel
+- Wolf Riders on (10, 3) after (count, or none): none
 - anything odd: 
 
 ## E6-3 — A hero's last stack in the exchange: a move and a merge refused, a swap allowed (ADV-ARM-001, GAM-MET-001)
@@ -70,9 +74,9 @@ Map file: `E08-batch-6.h3m`. Fill in the blanks below and keep this file; an age
 
 | click | message | E6-3's army after | E6-3 B's army after |
 |---|---|---|---|
-| to the empty slot 2 |   |   |   |
-| onto the Pikemen (slot 0) |   |   |   |
-| onto the Archers (slot 1) |   |   |   |
+| to the empty slot 2 | none | 0: 10 Pikemen | 0: 5 Pikemen, 1: 5 Archers |
+| onto the Pikemen (slot 0) | none | 0: 10 Pikemen | 0: 5 Pikemen, 1: 5 Archers |
+| onto the Archers (slot 1) | none | 0: 5 Archers | 0: 5 Pikemen, 1: 10 Pikemen |
 
 - anything odd: 
 
@@ -88,10 +92,10 @@ Map file: `E08-batch-6.h3m`. Fill in the blanks below and keep this file; an age
 
 **Record**
 
-- the dialog's counts at the start (E6-4 : E6-4 B): 
-- the dialog's counts at the maximum: 
-- E6-4's army after: 
-- E6-4 B's army after: 
+- the dialog's counts at the start (E6-4 : E6-4 B): 10 : 0
+- the dialog's counts at the maximum: 0 : 10
+- E6-4's army after: 0: 1 Pikeman, 1: 10 Archers
+- E6-4 B's army after: 0: 10 Swordsmen, 1: 9 Pikemen
 - anything odd: 
 
 ## E6-11 — A meeting's price: a straight grass step toward an own hero (GAM-MET-001, ADV-OBJ-003)
@@ -105,12 +109,12 @@ Map file: `E08-batch-6.h3m`. Fill in the blanks below and keep this file; an age
 
 **Record**
 
-- E6-11 points before: 
-- E6-11 B points before: 
-- E6-11 points after: 
-- E6-11 tile after: 
-- E6-11 B points after: 
-- E6-11 B tile after: 
+- E6-11 points before: 1560
+- E6-11 B points before: 1560
+- E6-11 points after: 1460
+- E6-11 tile after: 27,3,0
+- E6-11 B points after: 1560
+- E6-11 B tile after: 28,3,0
 - anything odd: 
 
 ## E6-6a — Advanced Tactics against a monster with the tactics formation off (GAM-BAT-009, BAT-TAC-001)
@@ -123,10 +127,10 @@ Map file: `E08-batch-6.h3m`. Fill in the blanks below and keep this file; an age
 
 **Record**
 
-- flags before: 
-- flags after the button: 
-- tactics phase (yes/no; +0x13D68): 
-- battle's outcome: 
+- flags before: 2 (loose, tactics formation on)
+- flags after the button: 0 (loose, tactics formation off)
+- tactics phase (yes/no; +0x13D68): no
+- battle's outcome: attacker
 - anything odd: 
 
 ## E6-6b — Advanced Tactics against a monster with the tactics formation on (the control) (GAM-BAT-009, BAT-TAC-001)
@@ -139,9 +143,9 @@ Map file: `E08-batch-6.h3m`. Fill in the blanks below and keep this file; an age
 
 **Record**
 
-- flags: 
-- tactics phase (yes/no; +0x13D68): 
-- battle's outcome: 
+- flags: 2 (loose, tactics formation on)
+- tactics phase (yes/no; +0x13D68): yes
+- battle's outcome: attacker
 - anything odd: 
 
 ## E6-7 — Scholar at a meeting: each hero learns the other's spells up to its own limit (HER-SPL-007, GAM-MET-001)
@@ -155,11 +159,11 @@ Map file: `E08-batch-6.h3m`. Fill in the blanks below and keep this file; an age
 
 **Record**
 
-- E6-7 spells before: 
-- E6-7 B spells before: 
-- the message: 
-- E6-7 spells after: 
-- E6-7 B spells after: 
+- E6-7 spells before: Fireball, Precision, Prayer
+- E6-7 B spells before: Implosion, Chain Lightning, Bless
+- the message: ? (not one record: composed of GENRLTXT 140, 141, 142, 143, 148 and 149 with the heroes' and spells' names; it says E6-7 learns Chain Lightning and Bless from E6-7 B and teaches Precision to E6-7 B; its pictures: Precision, Bless, Chain Lightning and Expert Scholar)
+- E6-7 spells after: Chain Lightning, Fireball, Bless, Precision, Prayer
+- E6-7 B spells after: Implosion, Chain Lightning, Bless, Precision
 - anything odd: 
 
 ## E6-8 — Wizard's Well: the question after an equip once, the right-click's question, the position, the backpack (HER-ART-006, HER-ART-001, D-28)
@@ -174,17 +178,17 @@ Map file: `E08-batch-6.h3m`. Fill in the blanks below and keep this file; an age
 
 **Record**
 
-- worn at the start (positions): 
-- backpack at the start: 
-- question after the first equip: 
-- worn after the first equip: 
-- question after the second equip: 
-- question on the right-click: 
-- worn after the assembly (positions): 
-- on screen: the Well's slot and the locked slots: 
-- right-click on the Well in the backpack: what opens: 
-- worn at the end (positions): 
-- backpack at the end: 
+- worn at the start (positions): 10: Charm of Mana, 11: Talisman of Mana, 16: Catapult
+- backpack at the start: Mystic Orb of Mana
+- question after the first equip: GENRLTXT:733
+- worn after the first equip: 10: Charm of Mana, 11: Talisman of Mana, 12: Mystic Orb of Mana, 16: Catapult
+- question after the second equip: none
+- question on the right-click: question GENRLTXT:733
+- worn after the assembly (positions): 9: Wizard's Well, 16: Catapult
+- on screen: the Well's slot and the locked slots: the Well on misc 1 (position 9); locks on misc 4 (12) and misc 5 (18); misc 2 and 3 (10, 11) shown empty
+- right-click on the Well in the backpack: what opens: window ?
+- worn at the end (positions): 16: Catapult
+- backpack at the end: Wizard's Well
 - anything odd: 
 
 ## E6-10 — The backpack's arrow rotates the array (E6-10); then Titan's Thunder's book (E6-9) (HER-ART-002, HER-ART-007)
@@ -198,13 +202,13 @@ Map file: `E08-batch-6.h3m`. Fill in the blanks below and keep this file; an age
 
 **Record**
 
-- backpack before (in order): 
-- book position at the start: 
-- on screen before the click (five, left to right): 
-- backpack after the click (in order): 
-- on screen after the click: 
-- E6-9: book position with the Thunder on: 
-- E6-9: message (or none): 
-- E6-9: book position with the Thunder off: 
-- E6-9: backpack after (in order): 
+- backpack before (in order): Centaurs Axe, Greater Gnoll's Flail, Titan's Thunder, Ogre's Club of Havoc, Sword of Hellfire, Shield of the Dwarven Lords
+- book position at the start: 16: Catapult
+- on screen before the click (five, left to right): Centaurs Axe, Greater Gnoll's Flail, Titan's Thunder, Ogre's Club of Havoc, Sword of Hellfire
+- backpack after the click (in order): Greater Gnoll's Flail, Titan's Thunder, Ogre's Club of Havoc, Sword of Hellfire, Shield of the Dwarven Lords, Centaurs Axe
+- on screen after the click: Greater Gnoll's Flail, Titan's Thunder, Ogre's Club of Havoc, Sword of Hellfire, Shield of the Dwarven Lords
+- E6-9: book position with the Thunder on: 3: Titan's Thunder, 16: Catapult, 17: Spell Book
+- E6-9: message (or none): none
+- E6-9: book position with the Thunder off: 16: Catapult, 17: Spell Book
+- E6-9: backpack after (in order): Titan's Thunder, Greater Gnoll's Flail, Ogre's Club of Havoc, Sword of Hellfire, Shield of the Dwarven Lords, Centaurs Axe
 - anything odd: 

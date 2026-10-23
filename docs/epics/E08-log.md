@@ -5063,3 +5063,36 @@ worktree` meanwhile, so the baseline tested `master`'s files.
   recipe), so the light gates ran on it (check-rules, check-stubs, check-docs, check-exe-map):
   all passed. `check-lane` names one battle path, `docs/experiments/README.md`'s status row:
   `cross-lane` with the user's consent. CI's recent runs fail unstarted.
+
+### Increment 6, round 2: T47b2, batch E6's run (2026-10-23, `adventure/e08-t47b2`, `cross-lane`)
+
+**Baseline:** `master` 0fd0383 (#440 merged). Its engine code (e2785835) was verified on 17dd372,
+so the sandbox's baseline ran only the light gates: all passed. The user's PC was linked: the
+original's files staged from it as T47a's, `clients/capture/setup.sh` run.
+
+- **The run** (`h3adv.py batch capture/batches/E08-batch-6.toml`, about three minutes): three
+  runs, the 59 filled records the same in all three (`compare`). No step stopped and no screen
+  differed from the recipe's plan. The only recipe fix: E6-7's walk expects its dialog
+  (`expect = { dialogs = true }`), since run 1 noted Scholar's message under "anything odd".
+  `experiments/results/E08-batch-6.md` is run 3's filled template.
+- **Two lines filled by the agent** from run 3, through a wrapper kept in the sandbox (the
+  harness unchanged; no text or picture committed). E6-7's message, which `h3lod` names `?`, is
+  composed of GENRLTXT 140, 141, 142, 143, **148 and 149** (survey §2.2 names 140 to 143 only: for
+  T48) with the names, and names the spells the memory reads show. E6-8's screen line is from a
+  dump at the read after the assembly: the Well on misc 1 (9), **locks on misc 4 and misc 5 (12,
+  18)**, misc 2 and 3 empty (the locks drawn from a count, not on the parts' old positions).
+  E6-9's dumps: the Spell Book shows with the Thunder on and after it is off; locks on the head,
+  torso and left hand while it is worn.
+- **A first look** (the scoring is T48): every row as the spec's reading. E6-1 ADVEVENT 86, the
+  dialog GENRLTXT 36, the army and gold unchanged, the group gone; E6-2 the dismissal's GENRLTXT
+  13, the group in slot 3; E6-3 refused, refused, swapped, no message; E6-4 10 : 0, then 0 : 10,
+  1 and 9 Pikemen (A-16 as read, not VCMI's); E6-11 1 560 to 1 460 points, both heroes on their
+  tiles; E6-6 flags 2 then 0 and no phase, the control 2 with a phase, both won; E6-7 learns
+  Bless and Chain Lightning (not Implosion), E6-7 B Precision only; E6-8 GENRLTXT 733 after the
+  first equip only and on the right click, the Well at 9 (not VCMI's 12), its right click in the
+  backpack a window; E6-10 the right arrow moves the first to the end; E6-9 the book (17) after
+  both.
+- **Not built:** the scoring (T48); the cap (T50's start).
+- **Verify:** the branch changes no fingerprinted path (the recipe, the results, docs), so the
+  light gates ran on it with `check-lane` (`cross-lane`: `docs/experiments/README.md`'s status
+  row, a battle path, as the queue entry planned). CI's recent runs fail unstarted.
