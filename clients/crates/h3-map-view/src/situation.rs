@@ -5,8 +5,10 @@
 //! terrain, patches and roads as the writer takes them, tiles copied from a rectangle of a
 //! shipped map (its transitions, rivers and roads as the editor wrote them; the file names the
 //! map, the harness's copy of the installation holds it) and tiles given one by one (a later
-//! one replaces an earlier on its tile), Red's and Blue's heroes (outside the view: T5 draws
-//! heroes), the view's top-left and the rectangles left unexplored. The surface only.
+//! one replaces an earlier on its tile), objects (E24 M1 T4a: a copy's objects with its tiles,
+//! and objects given by their template's DEF, its line of the game's `Objects.txt`), Red's and
+//! Blue's heroes (outside the view: T5 draws heroes), the view's top-left and the rectangles left
+//! unexplored. The surface only.
 
 use alloc::collections::BTreeMap;
 use alloc::collections::BTreeSet;
@@ -17,7 +19,8 @@ use alloc::vec::Vec;
 
 use h3_map::RawMap;
 use h3_map::writer::{
-    Extras, GivenTile, Hero, Map, MapObject, Patch, Player, RiverKind, Road, RoadKind, Terrain,
+    AnyObject, Extras, GivenTile, Hero, Map, MapObject, ObjectTemplate, Patch, Player, RiverKind,
+    Road, RoadKind, Terrain,
 };
 use serde::Deserialize;
 
@@ -41,6 +44,9 @@ pub struct Situation {
     /// Tiles given one by one, after the copies.
     #[serde(default)]
     pub tiles: Vec<TileSpec>,
+    /// Objects given one by one, after the copies' (in this order: the map's order).
+    #[serde(default)]
+    pub objects: Vec<ObjectSpec>,
     /// Red's hero's tile, then Blue's.
     pub heroes: [[u8; 2]; 2],
     /// The view's top-left tile and level (0).
@@ -143,7 +149,34 @@ pub struct CopySpec {
     pub level: u8,
     /// Where its top-left goes on the situation's map.
     pub at: [u8; 2],
+    /// Also the objects anchored in the rectangle (on its level), moved with its tiles, in the
+    /// shipped map's order, each with its template and the editor's body, neutral. Heroes,
+    /// prisons, random heroes and hero placeholders are left out (their bodies name a hero: the
+    /// writer writes only the situation's two).
+    #[serde(default)]
+    pub objects: bool,
 }
+
+/// An object given by its template: the first line of the game's `Objects.txt` with its DEF
+/// (ignoring case) and, when given, its class and subclass.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ObjectSpec {
+    /// The template's DEF.
+    pub def: String,
+    /// The class, to choose among the DEF's templates.
+    #[serde(default)]
+    pub class: Option<u32>,
+    /// The subclass, likewise.
+    #[serde(default)]
+    pub subclass: Option<u32>,
+    /// Its anchor (the bottom-right corner of its picture), which may lie past the map's right
+    /// and bottom edges (the writer's limits).
+    pub at: [u8; 2],
+}
+
+/// The classes whose bodies name a hero (the writer's `AnyObject` takes none of them).
+const HERO_CLASSES: [u32; 4] = [34, 62, 70, 214];
 
 /// A tile as given: the writer's [`GivenTile`] on the surface.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
@@ -185,15 +218,28 @@ impl Situation {
         self.copy.iter().map(|c| c.map.clone()).collect()
     }
 
-    /// The map and its given tiles, the copies read from `sources` (the shipped maps by file
-    /// name; [`Situation::sources`]). Red and Blue are human and computer players with a hero
-    /// each (hero types 16 and 0, classes 2 and 0), Red's first.
+    /// Whether objects are given by their DEF (then [`Situation::build`] needs the game's
+    /// templates).
+    #[must_use]
+    pub fn needs_templates(&self) -> bool {
+        !self.objects.is_empty()
+    }
+
+    /// The map, its given tiles and its objects, the copies read from `sources` (the shipped maps
+    /// by file name; [`Situation::sources`]), the given objects' templates from `templates` (the
+    /// game's `Objects.txt`, in its order). Red and Blue are human and computer players with a
+    /// hero each (hero types 16 and 0, classes 2 and 0), Red's first; the objects follow them.
     ///
     /// # Errors
     /// A source missing, a copied rectangle outside its map or the situation's, a code with no
-    /// name.
-    pub fn build(&self, sources: &BTreeMap<String, RawMap>) -> Result<(Map, Extras), String> {
+    /// name, a given object's template not among `templates`.
+    pub fn build(
+        &self,
+        sources: &BTreeMap<String, RawMap>,
+        templates: &[ObjectTemplate],
+    ) -> Result<(Map, Extras), String> {
         let mut given: BTreeMap<(u8, u8), GivenTile> = BTreeMap::new();
+        let mut objects = Vec::new();
         for c in &self.copy {
             let raw = sources
                 .get(&c.map)
@@ -201,6 +247,25 @@ impl Situation {
             for tile in copied(c, raw, self.size)? {
                 given.insert(tile.tile, tile);
             }
+            if c.objects {
+                objects.extend(copied_objects(c, raw));
+            }
+        }
+        for o in &self.objects {
+            let template = templates
+                .iter()
+                .find(|t| {
+                    t.def.eq_ignore_ascii_case(&o.def)
+                        && o.class.is_none_or(|c| c == t.class)
+                        && o.subclass.is_none_or(|s| s == t.subclass)
+                })
+                .ok_or_else(|| format!("{}: no such template in Objects.txt", o.def))?;
+            objects.push(AnyObject {
+                level: 0,
+                tile: (o.at[0], o.at[1]),
+                template: template.clone(),
+                owner: None,
+            });
         }
         for t in &self.tiles {
             let tile = GivenTile {
@@ -270,7 +335,7 @@ impl Situation {
         };
         let extras = Extras {
             tiles: given.into_values().collect(),
-            objects: vec![],
+            objects,
         };
         Ok((map, extras))
     }
@@ -322,6 +387,41 @@ fn copied(c: &CopySpec, raw: &RawMap, side: u8) -> Result<Vec<GivenTile>, String
         }
     }
     Ok(out)
+}
+
+/// The objects of a copy (it fitted: [`copied`]): those anchored in the rectangle on its level,
+/// but the hero classes, moved to `at`, with their templates as the shipped map gives them.
+fn copied_objects(c: &CopySpec, raw: &RawMap) -> Vec<AnyObject> {
+    let [x0, y0] = c.from;
+    let [x1, y1] = c.to;
+    raw.objects
+        .iter()
+        .filter(|o| {
+            o.pos.z == c.level && (x0..=x1).contains(&o.pos.x) && (y0..=y1).contains(&o.pos.y)
+        })
+        .filter_map(|o| {
+            let index = usize::try_from(o.template).unwrap_or(usize::MAX);
+            let template = raw.templates.get(index).map(|t| ObjectTemplate {
+                def: t.def.0.iter().map(|&b| char::from(b)).collect(),
+                passable: t.passable,
+                visitable: t.visitable,
+                terrains: t.terrains,
+                menu: t.editor_terrains,
+                class: t.class,
+                subclass: t.subclass,
+                group: t.group,
+                priority: t.priority,
+            });
+            template
+                .filter(|t| !HERO_CLASSES.contains(&t.class))
+                .map(|template| AnyObject {
+                    level: 0,
+                    tile: (c.at[0] + (o.pos.x - x0), c.at[1] + (o.pos.y - y0)),
+                    template,
+                    owner: None,
+                })
+        })
+        .collect()
 }
 
 impl Ground {

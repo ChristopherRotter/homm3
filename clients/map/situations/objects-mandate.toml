@@ -1,0 +1,8 @@
+# Objects copied from a shipped map (E24 M1 T4a; design §2.1, §2.2): The Mandate of Heaven's
+# tiles (24, 24)-(45, 43) and the objects anchored there, to the top-left; the view over them. Many
+# overlapping trees, mountains and decorations, flat objects, monsters at their phases.
+size = 36
+terrain = "grass"
+copy = [{ map = "The Mandate of Heaven.h3m", from = [24, 24], to = [45, 43], at = [0, 0], objects = true }]
+heroes = [[33, 33], [33, 30]]
+view = [0, 0, 0]

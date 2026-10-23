@@ -253,8 +253,8 @@ Path read: the placement of an object on its tiles (place_object_tiles 0x505B20,
 0x505060, the insertion 0x505230), passes 4 to 9 of §1.1, the hero and boat pieces (0x40FB30,
 0x40FE30, 0x410760, 0x4102C0, 0x4109B0), the drawers' wrappers. Not read: the moving hero's own
 pieces (0x47F860, 0x47FB40, pass 9) and the attacking monster's substitute (§2.2, both M2), the
-puzzle's class filter, the owners' tables (T5). The frames that confirm it: T4 (§2.5's
-situations).
+puzzle's class filter, the owners' tables (T5). The frames that confirm it: T4a (§2.6), T4b and
+T5.
 
 ### 2.1 A tile's draw list
 
@@ -419,7 +419,45 @@ Each a map of the writer (T3a: objects of any template) or a shipped map's view:
 9. Flat objects (Cursed Ground, Magic Plains, …) under another object's shadow; objects cut by
    the map's left and top edges and anchored past its right and bottom edges.
 
-Open points: +0x40 as the priority byte, 0x4FEC30 as the entrance, +0x14 and +0x24 as the
-`.msk`'s masks (inferred or H3API's; T4's flat and owned objects and its gate confirm); the
-coast test for the waves (T5's boats); which classes have flag pixels outside the eight (T5,
-D10; an `MCL-Q` if a drawn object loses its colours).
+Open points: 0x4FEC30 as the entrance (T5's owned objects); the coast test for the waves (T5's
+boats); which classes have flag pixels outside the eight (T5, D10; an `MCL-Q` if a drawn object
+loses its colours). Settled by T4a (§2.6): +0x40 as the priority byte, +0x14 and +0x24 as the
+`.msk`'s masks; points 1 to 3 and 9 are in the copies of §2.6, so their own maps were not built;
+points 4, 5, 6 and 8 moved to T5 with the heroes and the path, point 7 to T4b.
+
+### 2.6 The objects' frames (M1 T4a, 2026-10-23)
+
+- **The `.msk`** (msk_load 0x514610 read further): two bytes, the width and height in tiles, then
+  two masks of 6 bytes; bit i of a file mask (byte i div 8, bit i mod 8) becomes bit i of a 48-bit
+  set (0x51486F to 0x5148AF), so a cell (dx, dy) is bit 7 − dx of byte 5 − dy, as in the `.h3m`'s
+  masks; the first mask goes to the record's +8, the second to +0x10, and on to the template's
+  colour (+0x14) and shadow (+0x24) masks. A survey of the user's sprite archives (every DEF
+  with a `.msk`, 1 659, group 0's frames) agrees: every body pixel (literal or a flag's run of 5)
+  lies in a cell of the first mask and every shadow run (1 or 4) in one of the second, while the
+  masks swapped miss 800 and 604 DEFs; the one exception is `radar.def` (encoding 1, a 148 × 132
+  canvas for a 3 × 3 mask), which is no map object. So D8 finds nothing in the shipped files
+  (T4b's gate check keeps it so). Every object DEF is encoding 3 and its first group is id 0
+  (the passes take the first group's frame count, 0x410EA1). A DEF without a `.msk` takes
+  `default.msk` (1 × 1, in `H3sprite.lod`).
+- **The insertion and the layers read again** (0x505230, 0x505060): as §2.1 says. At equal
+  layers N's layer on each tile of the footprints' intersection comes from 0x505060 and P's from
+  its entry on that tile; the intersection is clipped to the map (0x505348 to 0x505384), so cells
+  off the map never decide. `h3_map_view::objects` follows it.
+- **Flat templates:** the `.h3m`'s priority byte (`Objects.txt`'s last column) is 1 for the
+  special grounds and for many swamp and other ground decorations (`AVLswp10` … `AVLswp70`);
+  their pieces are drawn in pass 4 under every shadow, confirmed by `objects-flat` (47 flat
+  objects) and `objects-witch`.
+- **The moment:** a frame is (phase + the frame step the draw saw) mod the first group's frames;
+  the harness reads the step after the redraw and subtracts one (§1.6), and every object's
+  anchor and phase from the 12-byte records (map +0x14 to +0x18, the map's order: the anchors
+  equal the `.h3m`'s, the two heroes included). One step more changes 620 pixels of
+  `objects-mandate`.
+- **The captures** (`clients/map/situations/`, `h3map.py`): four copies of shipped maps' dense
+  corners with their objects (`objects-mandate`, `-witch`, `-flat`, `-myth`: 116 to 161 objects
+  each) and objects cut by the map's four edges (`objects-edge-top-left`, `-bottom-right`: an
+  8 × 6 flat ground, a volcano, a mountain, a windmill) are exact outside the panels. Counted
+  from the draw lists in the views: a later entry's shadow cell over an earlier entry's body
+  cell (D1) on 2 679 tile pairs, 17 pairs of objects stacked both ways on different tiles (D2),
+  406 entries kept under an earlier object of the same layer (D3), 207 flat pieces under a
+  shadow: the cases where VCMI's order can draw otherwise (cells, not pixels: a cell pair need
+  not overlap in pixels), all drawn as the original draws them.

@@ -11,10 +11,10 @@ compared pixel for pixel outside the masks of what the viewer does not draw yet.
       the palette tick and the view's redraw come (so the screen shows the palettes memory
       holds) and dumps the screen (`still.xwd`);
       reads the palette cycles' step k from the cycling DEFs' palettes in memory and writes it
-      with the view and the objects' frame steps (`live.toml`); draws ours (`h3-map-view render
-      --bugs original --cycles k`, `ours.png`) and prints the pixels that differ outside the
-      masks (`diff.png`: differing pixels red, masked ones blue). <dir> defaults to
-      clients/out/map/<situation>.
+      with the view, the objects' frame step the screen shows and every object's anchor and
+      phase (`live.toml`); draws ours (`h3-map-view render --bugs original --live live.toml`,
+      `ours.png`) and prints the pixels that differ outside the masks (`diff.png`: differing
+      pixels red, masked ones blue). <dir> defaults to clients/out/map/<situation>.
   h3map.py set [--only <id>] [--out <dir>]
       every situation of clients/map/situations/set.toml (or one), each count against the one
       recorded; exit 1 if any changed.
@@ -136,6 +136,26 @@ def masked(names, shape=(600, 800)):
     return m
 
 
+def started(map_path, run_dir, tries=2):
+    """The original on the map's adventure screen (a single scenario). A game that crashes on its
+    way there is started once more: the original's tavern rumour at a new game reads one entry past
+    its table about once in 800 games (rumour_pick_text 0x4CCF20; E24 M1 T4a saw it)."""
+    for attempt in range(1, tries + 1):
+        game = h3drive.Game(run_dir)
+        game.start(map_path)
+        try:
+            h3drive.to_scenario(game)
+            return game
+        except TimeoutError:
+            log = run_dir / "wine.log"
+            crashed = log.exists() and "Unhandled page fault" in log.read_text(errors="replace")
+            game.stop()
+            if not crashed or attempt == tries:
+                raise
+            print(f"{map_path}: the original crashed on its way to the map; started again",
+                  file=sys.stderr, flush=True)
+
+
 def still(situation_path, out=None, keep=False):
     """Shows and draws one situation; returns the differing pixels, the compared ones and where
     the differing lie (text)."""
@@ -147,10 +167,8 @@ def still(situation_path, out=None, keep=False):
     run(MAP_VIEW, "situation", situation_path, "--out", map_path)
     vx, vy, vz = sit["view"]
     hidden = sit.get("hidden", [])
-    game = h3drive.Game(out / "run")
-    game.start(map_path)
+    game = started(map_path, out / "run")
     try:
-        h3drive.to_scenario(game)
         mem = h3mem.Mem()
         mem.write_explored(vz, hidden_test(hidden), mem.current_player())
         # The view's top-left from a minimap click on the tile it puts at CENTRE; another view
@@ -178,16 +196,22 @@ def still(situation_path, out=None, keep=False):
         game.dump(out / "still.xwd")
         if cycle_step(mem) != k:
             raise RuntimeError("the palettes changed at the frozen clock")
+        # The redraw drew with the manager's +0x100 before it grew it (design §1.6): the screen
+        # shows the step before the one memory holds. The objects in the map's order: their
+        # anchors (the viewer checks them against its map's) and phases.
+        objects = mem.map_objects()
         live = {"view": list(mem.view()) + [mem.view_level()], "cycles": k,
-                "frames": mem.frame_steps()}
+                "frames": mem.frame_steps() - 1,
+                "anchors": [list(o[:3]) for o in objects],
+                "phases": [o[4] for o in objects]}
         (out / "live.toml").write_text(
             "# The original's live part at the still (h3map.py still).\n"
             + "".join(f"{key} = {value}\n" for key, value in live.items()))
     finally:
         if not keep:
             game.stop()
-    args = [MAP_VIEW, "render", map_path, "--view", f"{vx},{vy},{vz}", "--cycles",
-            live["cycles"], "--bugs", "original", "--out", out / "ours.png"]
+    args = [MAP_VIEW, "render", map_path, "--view", f"{vx},{vy},{vz}", "--live",
+            out / "live.toml", "--bugs", "original", "--out", out / "ours.png"]
     for rect in hidden:
         args += ["--hidden", ",".join(map(str, rect))]
     run(*args)

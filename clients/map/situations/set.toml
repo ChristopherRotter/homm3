@@ -1,4 +1,4 @@
-# The map's capture set (E24 M1 T3b2, *provisional*; clients/capture/README.md, "The map's
+# The map's capture set (E24 M1 T3b2, T4a, *provisional*; clients/capture/README.md, "The map's
 # stills"): the situations beside this file, each a still the harness shows the original and
 # compares with ours (`python3 capture/h3map.py set`, from clients/): its map built with the
 # writer (`h3-map-view situation`), Red's explored tiles written (all but the situation's
@@ -61,3 +61,33 @@ why = "exact: lava and water cycling together (one step k for both)"
 id = "unexplored"
 differing = 0
 why = "exact: the shroud's edge pieces by mask, mirror and parity, the full piece"
+
+[[situation]]
+id = "objects-mandate"
+differing = 0
+why = "exact: 159 objects copied (snowy mountains and forest, Dragon Utopia, monsters) at the original's phases; shadows over bodies (D1), pairs stacked both ways (D2), equal layers kept (D3)"
+
+[[situation]]
+id = "objects-witch"
+differing = 0
+why = "exact: 161 objects copied, dense forest with flat objects under the shadows"
+
+[[situation]]
+id = "objects-flat"
+differing = 0
+why = "exact: 116 objects copied, 47 of them flat (pass 4) under the others' shadows"
+
+[[situation]]
+id = "objects-myth"
+differing = 0
+why = "exact: 148 objects copied, the most overlaps of the set (D1 to D3), monsters at their phases"
+
+[[situation]]
+id = "objects-edge-top-left"
+differing = 0
+why = "exact: a flat ground, a volcano, a mountain and a windmill cut by the map's left and top edges"
+
+[[situation]]
+id = "objects-edge-bottom-right"
+differing = 0
+why = "exact: the same kinds anchored past the map's right and bottom edges, only their cells on the map drawn"

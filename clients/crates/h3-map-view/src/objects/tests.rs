@@ -1,0 +1,328 @@
+use super::*;
+use alloc::string::ToString;
+
+use h3_map::model::Pos;
+
+use crate::art::ObjectArt;
+use crate::live::{Explored, LiveObject, Moment};
+
+/// A passability mask with every cell passable but `blocked` (dx, dy).
+fn passable_except(blocked: &[(u8, u8)]) -> [u8; 6] {
+    let mut mask = [0xff; 6];
+    for &(dx, dy) in blocked {
+        mask[usize::from(5 - dy)] &= !(1 << (7 - dx));
+    }
+    mask
+}
+
+fn tmpl(def: &str, class: u32, passable: [u8; 6], priority: u8) -> TemplateArt {
+    TemplateArt {
+        def: def.to_string(),
+        passable,
+        visitable: [0; 6],
+        class,
+        subclass: 0,
+        priority,
+    }
+}
+
+/// A `width` × `height` shape whose masks cover every cell, with `frames` frames.
+fn shape(width: u8, height: u8, frames: u32) -> Shape {
+    Shape {
+        width,
+        height,
+        colour: [0xff; 6],
+        shadow: [0xff; 6],
+        frames,
+    }
+}
+
+/// A 10 × 10 map (one level) with `templates` and objects (anchor x, y, level, template).
+fn art(templates: Vec<TemplateArt>, objects: &[(u8, u8, u8, usize)]) -> MapArt {
+    MapArt {
+        size: 10,
+        levels: 2,
+        tiles: Vec::new(),
+        templates,
+        objects: objects
+            .iter()
+            .map(|&(x, y, z, template)| ObjectArt {
+                anchor: Pos { x, y, z },
+                template,
+            })
+            .collect(),
+    }
+}
+
+fn live(objects: usize) -> Live {
+    Live {
+        objects: (0..objects)
+            .map(|_| LiveObject {
+                standing: true,
+                drawn: None,
+                owner: None,
+                phase: 0,
+            })
+            .collect(),
+        heroes: Vec::new(),
+        boats: Vec::new(),
+        viewer: 0,
+        explored: Explored::all(10, 2, true),
+        moment: Moment::default(),
+    }
+}
+
+fn shapes(entries: &[(&str, Shape)]) -> Shapes {
+    let mut shapes = Shapes::default();
+    for (name, shape) in entries {
+        shapes.insert(name, *shape);
+    }
+    shapes
+}
+
+/// The (object, layer) of each entry of tile (x, y).
+fn list(lists: &DrawLists, x: i32, y: i32) -> Vec<(usize, u8)> {
+    lists.at(x, y).iter().map(|e| (e.object, e.layer)).collect()
+}
+
+#[test]
+fn a_shape_is_its_msk_and_its_frames() {
+    let mask = Mask {
+        width: 3,
+        height: 2,
+        masks: [[0, 0, 0, 0, 0x01, 0x80], [0, 0, 0, 0, 0, 0x40]],
+    };
+    let s = Shape::new(&mask, 4).unwrap();
+    assert_eq!((s.width, s.height, s.frames), (3, 2, 4));
+    // The colour mask: (7, 1) and the anchor's cell (0, 0); the shadow mask: (1, 0).
+    assert!(s.body(0, 0) && s.body(7, 1) && !s.body(1, 0) && !s.body(8, 0));
+    assert!(s.shadow(1, 0) && !s.shadow(0, 0) && !s.shadow(0, 6));
+    let wide = Mask { width: 9, ..mask };
+    assert_eq!(Shape::new(&wide, 1), Err(ShapeError::Size(9, 2)));
+    let high = Mask { height: 7, ..mask };
+    assert_eq!(Shape::new(&high, 1), Err(ShapeError::Size(3, 7)));
+    assert_eq!(Shape::new(&mask, 0), Err(ShapeError::NoFrames));
+    assert_eq!(
+        ShapeError::Size(9, 2).to_string(),
+        "a 9 x 2 .msk is larger than 8 x 6"
+    );
+    assert_eq!(
+        ShapeError::NoFrames.to_string(),
+        "its DEF's first group has no frame"
+    );
+}
+
+#[test]
+fn shapes_are_found_by_name_ignoring_case() {
+    let s = shapes(&[("AvLTree0.def", shape(2, 2, 1))]);
+    assert_eq!(s.get("avltree0.DEF"), Some(&shape(2, 2, 1)));
+    assert_eq!(s.get("avltree1.def"), None);
+}
+
+#[test]
+fn the_pictures_are_the_templates_and_the_drawn_ones_once() {
+    let a = art(
+        vec![
+            tmpl("a.def", 1, [0xff; 6], 0),
+            tmpl("A.DEF", 1, [0xff; 6], 0),
+            tmpl("b.def", 1, [0xff; 6], 0),
+        ],
+        &[(1, 1, 0, 0)],
+    );
+    let mut l = live(1);
+    l.objects[0].drawn = Some(tmpl("c.def", 1, [0xff; 6], 0));
+    assert_eq!(pictures(&a, &l), ["a.def", "b.def", "c.def"]);
+}
+
+#[test]
+fn a_flat_template_has_every_layer_0() {
+    let t = tmpl("cursed.def", 223, passable_except(&[(0, 0)]), 1);
+    assert_eq!(layers(&t, &shape(2, 2, 1)), [[0; 6]; 8]);
+}
+
+#[test]
+fn layers_count_rows_from_the_base() {
+    // Column 0: passable, passable, blocked (on a passable cell: layer 1 again), blocked.
+    // Column 1: blocked, blocked, passable beside column 0's blocked cell (its layer 1), passable.
+    let t = tmpl(
+        "x.def",
+        1,
+        passable_except(&[(0, 2), (0, 3), (1, 0), (1, 1)]),
+        0,
+    );
+    let l = layers(&t, &shape(2, 4, 1));
+    assert_eq!(l[0][..4], [1, 2, 1, 2]);
+    assert_eq!(l[1][..4], [1, 2, 1, 2]);
+    // Only a blocked neighbour gives its layer: with (0, 3) passable, (1, 3) counts on from
+    // (1, 2); with no blocked cell in column 0, column 1 counts 1 to 4.
+    let t = tmpl("x.def", 1, passable_except(&[(0, 2), (1, 0), (1, 1)]), 0);
+    let l = layers(&t, &shape(2, 4, 1));
+    assert_eq!(l[1][..4], [1, 2, 1, 2]);
+    let t = tmpl("x.def", 1, passable_except(&[(1, 0), (1, 1)]), 0);
+    let l = layers(&t, &shape(2, 4, 1));
+    assert_eq!(l[1][..4], [1, 2, 3, 4]);
+    // Cells outside the footprint stay 0.
+    assert_eq!(l[2], [0; 6]);
+    assert_eq!(l[0][4..], [0, 0]);
+}
+
+#[test]
+fn at_equal_layers_the_later_object_is_on_top() {
+    let a = art(
+        vec![tmpl("a.def", 1, passable_except(&[(0, 0)]), 0)],
+        &[(4, 4, 0, 0), (4, 4, 0, 0)],
+    );
+    let lists = DrawLists::build(&a, &live(2), &shapes(&[("a.def", shape(1, 1, 1))]), 0).unwrap();
+    assert_eq!(list(&lists, 4, 4), [(0, 1), (1, 1)]);
+    assert!(lists.at(3, 4).is_empty());
+    let e = lists.at(4, 4)[1];
+    assert_eq!((e.dx, e.dy), (0, 0));
+}
+
+#[test]
+fn a_higher_layer_stays_on_top_whatever_the_order() {
+    // Object 0, two blocked cells high: layer 2 on (4, 3). Object 1, one cell on (4, 3): layer 1,
+    // so it goes under object 0 there; on (4, 4) object 0 alone, layer 1.
+    let a = art(
+        vec![
+            tmpl("tall.def", 1, passable_except(&[(0, 0), (0, 1)]), 0),
+            tmpl("low.def", 1, passable_except(&[(0, 0)]), 0),
+        ],
+        &[(4, 4, 0, 0), (4, 3, 0, 1)],
+    );
+    let s = shapes(&[("tall.def", shape(1, 2, 1)), ("low.def", shape(1, 1, 1))]);
+    let lists = DrawLists::build(&a, &live(2), &s, 0).unwrap();
+    assert_eq!(list(&lists, 4, 3), [(1, 1), (0, 2)]);
+    assert_eq!(list(&lists, 4, 4), [(0, 1)]);
+    // The other way round: the higher one placed later goes on top of the lower one.
+    let a = art(a.templates.clone(), &[(4, 3, 0, 1), (4, 4, 0, 0)]);
+    let lists = DrawLists::build(&a, &live(2), &s, 0).unwrap();
+    assert_eq!(list(&lists, 4, 3), [(0, 1), (1, 2)]);
+}
+
+#[test]
+fn at_equal_layers_an_earlier_object_higher_on_a_shared_tile_stays_on_top() {
+    // Both two cells high on (4, 5) and (4, 4). Object 0: blocked, blocked (layers 1, 2).
+    // Object 1: passable, blocked on it (layers 1, 1). On (4, 5) both are layer 1, but object 0
+    // is higher on (4, 4): object 1 goes under it on both tiles.
+    let a = art(
+        vec![
+            tmpl("a.def", 1, passable_except(&[(0, 0), (0, 1)]), 0),
+            tmpl("b.def", 1, passable_except(&[(0, 1)]), 0),
+        ],
+        &[(4, 5, 0, 0), (4, 5, 0, 1)],
+    );
+    let s = shapes(&[("a.def", shape(1, 2, 1)), ("b.def", shape(1, 2, 1))]);
+    let lists = DrawLists::build(&a, &live(2), &s, 0).unwrap();
+    assert_eq!(list(&lists, 4, 5), [(1, 1), (0, 1)]);
+    assert_eq!(list(&lists, 4, 4), [(1, 1), (0, 2)]);
+    // Placed the other way round, object 1 (now 0) is nowhere higher: object 0 (now 1) on top.
+    let a = art(a.templates.clone(), &[(4, 5, 0, 1), (4, 5, 0, 0)]);
+    let lists = DrawLists::build(&a, &live(2), &s, 0).unwrap();
+    assert_eq!(list(&lists, 4, 5), [(0, 1), (1, 1)]);
+    assert_eq!(list(&lists, 4, 4), [(0, 1), (1, 2)]);
+}
+
+#[test]
+fn the_comparison_looks_only_at_tiles_on_the_map() {
+    // Object 0, 3 × 2 at (1, 1): its column 2 is off the map, layers 1 and 2 there. Object 1,
+    // 2 × 2 at (0, 1): its column 1 is off the map too, layers 1 and 1. On the map both are
+    // layers 1 and 2 in column 0: object 0 is higher only off the map, so object 1 goes on top.
+    let a = art(
+        vec![
+            tmpl(
+                "wide.def",
+                1,
+                passable_except(&[(0, 0), (0, 1), (1, 0), (1, 1)]),
+                0,
+            ),
+            tmpl("b.def", 1, passable_except(&[(0, 0), (0, 1), (1, 1)]), 0),
+        ],
+        &[(1, 1, 0, 0), (0, 1, 0, 1)],
+    );
+    let s = shapes(&[("wide.def", shape(3, 2, 1)), ("b.def", shape(2, 2, 1))]);
+    assert_eq!(layers(&a.templates[0], &shape(3, 2, 1))[2][..2], [1, 2]);
+    assert_eq!(layers(&a.templates[1], &shape(2, 2, 1))[1][..2], [1, 1]);
+    let lists = DrawLists::build(&a, &live(2), &s, 0).unwrap();
+    assert_eq!(list(&lists, 0, 1), [(0, 1), (1, 1)]);
+    assert_eq!(list(&lists, 0, 0), [(0, 2), (1, 2)]);
+    assert_eq!(list(&lists, 1, 0), [(0, 2)]);
+}
+
+#[test]
+fn cells_off_the_map_have_no_entries() {
+    // A 3 × 3 object anchored at (1, 0): only (0, 0) and (1, 0) are on the map. One anchored past
+    // the bottom-right corner, at (11, 11): only (9, 9) is.
+    let a = art(
+        vec![tmpl("a.def", 1, passable_except(&[]), 0)],
+        &[(1, 0, 0, 0), (11, 11, 0, 0)],
+    );
+    let lists = DrawLists::build(&a, &live(2), &shapes(&[("a.def", shape(3, 3, 1))]), 0).unwrap();
+    assert_eq!(list(&lists, 0, 0), [(0, 1)]);
+    assert_eq!(list(&lists, 1, 0), [(0, 1)]);
+    assert_eq!(list(&lists, 9, 9), [(1, 3)]);
+    let e = lists.at(9, 9)[0];
+    assert_eq!((e.dx, e.dy), (2, 2));
+    let all: usize = (0..10)
+        .flat_map(|y| (0..10).map(move |x| (x, y)))
+        .map(|(x, y)| lists.at(x, y).len())
+        .sum();
+    assert_eq!(all, 3);
+    assert!(lists.at(-1, 0).is_empty() && lists.at(0, 10).is_empty());
+}
+
+#[test]
+fn heroes_boats_events_the_fallen_and_the_other_level_have_no_entries() {
+    let templates: Vec<TemplateArt> = NO_ENTRIES
+        .iter()
+        .map(|&class| tmpl("a.def", class, passable_except(&[(0, 0)]), 0))
+        .chain([tmpl("a.def", 1, passable_except(&[(0, 0)]), 0)])
+        .collect();
+    let mut objects: Vec<(u8, u8, u8, usize)> =
+        (0..NO_ENTRIES.len()).map(|t| (2, 2, 0, t)).collect();
+    // A standing object of the other level, and one picked up.
+    objects.extend([(2, 2, 1, NO_ENTRIES.len()), (2, 2, 0, NO_ENTRIES.len())]);
+    let a = art(templates, &objects);
+    let mut l = live(objects.len());
+    l.objects[objects.len() - 1].standing = false;
+    let s = shapes(&[("a.def", shape(1, 1, 1))]);
+    assert!(DrawLists::build(&a, &l, &s, 0).unwrap().at(2, 2).is_empty());
+    assert_eq!(
+        list(&DrawLists::build(&a, &l, &s, 1).unwrap(), 2, 2),
+        [(6, 1)]
+    );
+}
+
+#[test]
+fn a_random_object_is_placed_as_drawn() {
+    // The map's template is one cell; the drawn one two cells high.
+    let a = art(
+        vec![tmpl("random.def", 76, passable_except(&[(0, 0)]), 0)],
+        &[(3, 3, 0, 0)],
+    );
+    let mut l = live(1);
+    l.objects[0].drawn = Some(tmpl("gold.def", 79, passable_except(&[(0, 0), (0, 1)]), 0));
+    let s = shapes(&[("random.def", shape(1, 1, 1)), ("gold.def", shape(1, 2, 1))]);
+    let lists = DrawLists::build(&a, &l, &s, 0).unwrap();
+    assert_eq!(list(&lists, 3, 2), [(0, 2)]);
+    assert_eq!(
+        template(&a, &l, 0).map(|t| t.def.as_str()),
+        Some("gold.def")
+    );
+    assert_eq!(
+        template(&a, &live(1), 0).map(|t| t.def.as_str()),
+        Some("random.def")
+    );
+    assert_eq!(template(&a, &l, 1), None);
+}
+
+#[test]
+fn an_object_without_a_shape_is_refused() {
+    let a = art(
+        vec![tmpl("a.def", 1, passable_except(&[(0, 0)]), 0)],
+        &[(3, 3, 0, 0)],
+    );
+    let err = DrawLists::build(&a, &live(1), &Shapes::default(), 0).unwrap_err();
+    assert_eq!(err, ObjectsError::Shape(0, "a.def".to_string()));
+    assert_eq!(err.to_string(), "object 0: no .msk for a.def");
+}

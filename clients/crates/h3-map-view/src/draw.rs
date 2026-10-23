@@ -1,7 +1,7 @@
-//! The view's two drawers (E24 M1 T3b1, *provisional*; `docs/epics/E24-design.md` §1.3, §1.5):
-//! a DEF frame placed by its canvas, mirrored left to right and top to bottom, and clipped to a
-//! rectangle of the screen. The battle's drawers (`h3_render::blit`) mirror only left to right
-//! and never clip; the map's live here until another screen needs them.
+//! The view's drawers (E24 M1 T3b1, T4a, *provisional*; `docs/epics/E24-design.md` §1.3, §1.5,
+//! §2.2): a DEF frame placed by its canvas, mirrored left to right and top to bottom, and clipped
+//! to a rectangle of the screen. The battle's drawers (`h3_render::blit`) mirror only left to
+//! right and never clip; the map's live here until another screen needs them.
 //!
 //! - [`raw`]: `draw_frame_raw` (0x47DD40, through `def_draw_raw` 0x47BF50): the terrains, rivers,
 //!   roads and the map's edge, and the first half of the unexplored tiles. Literal pixels take
@@ -11,6 +11,14 @@
 //! - [`shadows`]: 0x47E820, the second half of the unexplored tiles (`def_draw_raw_shadowed`
 //!   0x47BFF0 calls both with the same arguments): runs of index 1 and 2 darken the screen as a
 //!   shadow's border, 3 and 4 as its body (E17 design §3.3's masks); everything else is left.
+//! - [`flagged`]: `draw_frame_flagged` (0x47D0A0, through 0x47BE10 and 0x47BDC0): the objects'
+//!   bodies and the flat objects (passes 4 and 7). Literal pixels take their palette colour, runs
+//!   of index 5 (a flag) the colour given, or are skipped without one, as every other run is. The
+//!   object DEFs are all encoding 3 (T4a's survey of the user's archives, the radar's DEF aside,
+//!   which is no map object).
+//! - [`shadow_pass`]: `draw_frame_shadow_pass` (0x47D930, through 0x47BE60): the objects' shadows
+//!   (pass 5). Runs of index 1 darken the screen as a shadow's border, of 4 as its body (E17
+//!   design §3.3); everything else is left.
 //!
 //! The clip: the passes give the drawer a source rectangle of the placed picture (0x411E67 to
 //! 0x411ED3 for the roads); `draw_frame_raw` turns it into the frame's own when mirrored (0x47DDD9:
@@ -52,6 +60,44 @@ pub fn shadows(screen: &mut Screen, frame: &Frame, at: Place, clip: [i32; 4]) {
         let shade = match (run, index) {
             (true, 1 | 2) => Some(format.shadow_border(screen.pixel(x, y).unwrap_or(0))),
             (true, 3 | 4) => Some(format.shadow_body(screen.pixel(x, y).unwrap_or(0))),
+            _ => None,
+        };
+        if let Some(pixel) = shade {
+            screen.set(x, y, pixel);
+        }
+    });
+}
+
+/// Draws `frame`'s literal pixels in `palette`'s colours and its runs of index 5 in `colour`, if
+/// one is given; every other run is skipped (0x47D0A0).
+pub fn flagged(
+    screen: &mut Screen,
+    frame: &Frame,
+    palette: &ScreenPalette,
+    at: Place,
+    clip: [i32; 4],
+    colour: Option<u16>,
+) {
+    each_pixel(frame, at, clip, |x, y, index, run| {
+        let pixel = match (run, index, colour) {
+            (false, ..) => Some(palette.get(index)),
+            (true, 5, Some(c)) => Some(c),
+            _ => None,
+        };
+        if let Some(pixel) = pixel {
+            screen.set(x, y, pixel);
+        }
+    });
+}
+
+/// Darkens the screen under `frame`'s runs of index 1 as a shadow's border, 4 as its body
+/// (0x47D930).
+pub fn shadow_pass(screen: &mut Screen, frame: &Frame, at: Place, clip: [i32; 4]) {
+    let format = screen.format();
+    each_pixel(frame, at, clip, |x, y, index, run| {
+        let shade = match (run, index) {
+            (true, 1) => Some(format.shadow_border(screen.pixel(x, y).unwrap_or(0))),
+            (true, 4) => Some(format.shadow_body(screen.pixel(x, y).unwrap_or(0))),
             _ => None,
         };
         if let Some(pixel) = shade {

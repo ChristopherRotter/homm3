@@ -31,6 +31,19 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1
 
 ## Inbox
 
+- 2026-10-23 (the map-client lane, E24 M1 T4a, `map-client/e24-t4a`; a finding for when the
+  engine draws tavern rumours, nothing to do now): **the original's text rumour picks the wrong
+  row and can crash.** `rumour_pick_text` (0x4CCF20, from 0x4C8780's roll of 1–100 below 33 at a
+  new day's rumour; `docs/exe/map.toml`) counts the unused of 256 flags (game +0x4E546, cleared
+  at a new game and when all are used), draws n = random_between(1, that count) and marks the
+  n-th unused flag, but copies row n of its table (the first 256 rows of `randtvrn.txt`,
+  `rumours_load` 0x4B8410), not that flag's row: row 0 never comes, rows repeat, and with all
+  256 unused a draw of 256 reads one entry past the table, a null string, and the game crashes
+  at 0x4CCF8C (about once in 800 new games; the map client's harness saw it once at a game's
+  start and now starts such a game again). A code reading only, no wiki or VCMI compared: by
+  the quirk rules the crash is always fixed; whether the skewed choice is kept is a
+  classification for your lane.
+
 - 2026-10-23 (the map-client lane, E24 M1 T3a, `map-client/e24-t3a`, `cross-lane` with the user's
   consent; for your information, nothing to do): **`h3_map::writer` gained a second entry point.**
   `write_with(&Map, &Extras)` writes tiles as given (`GivenTile`: terrain, river, road, their

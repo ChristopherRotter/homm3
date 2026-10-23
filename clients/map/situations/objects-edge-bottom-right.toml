@@ -1,0 +1,14 @@
+# Objects anchored past the map's right and bottom edges (E24 M1 T4a; design §2.1: only their
+# cells on the map are drawn): a flat 8 x 6 Magic Plains, a 6 x 5 mountain, a 5 x 5 volcano and a
+# windmill, over Deluge's ground as in edge-bottom-right; the view past the corner.
+size = 36
+terrain = "grass"
+copy = [{ map = "Deluge.h3m", from = [10, 10], to = [29, 27], at = [16, 18] }]
+objects = [
+    { def = "AVXmp1.def", at = [39, 38] },
+    { def = "AVLmtgr1.def", at = [40, 30] },
+    { def = "AVLvol50.def", at = [37, 40] },
+    { def = "AVMwndd0.def", at = [30, 37] },
+]
+heroes = [[2, 2], [5, 2]]
+view = [22, 21, 0]

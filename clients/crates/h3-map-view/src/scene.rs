@@ -1,10 +1,11 @@
-//! The adventure screen's scene (E24 M1 T3b1, *provisional*): what it shows at a view and a
-//! moment, as a draw list in the original's order (`docs/epics/E24-design.md` §1.1, §1.9). The
-//! frame's picture in the viewer's colours, then the view's passes, each over the whole view, rows
-//! outer and columns inner: the terrain with the map's edge (§1.3, §1.4), the rivers, the roads,
-//! the unexplored tiles (§1.5), the corner gems. The objects' passes (§2.2: the flat objects, the
-//! shadows, the bodies) come between the roads and the unexplored tiles with T4; the path's with
-//! M3. [`crate::compose`] draws the list.
+//! The adventure screen's scene (E24 M1 T3b1, T4a, *provisional*): what it shows at a view and a
+//! moment, as a draw list in the original's order (`docs/epics/E24-design.md` §1.1, §1.9, §2.2).
+//! The frame's picture in the viewer's colours, then the view's passes, each over the whole view,
+//! rows outer and columns inner: the terrain with the map's edge (§1.3, §1.4), the rivers, the
+//! roads, the flat objects, the objects' shadows, their bodies by layer (§2.2: one 32 × 32 piece
+//! per entry of a tile's draw list, [`crate::objects`]), the unexplored tiles (§1.5), the corner
+//! gems. Heroes and boats among the bodies and the path's passes come with T5.
+//! [`crate::compose`] draws the list.
 //!
 //! Each piece of the view carries its clip: the 32 × 32 rectangle of its tile (a road's 16 pixels
 //! lower) inside the view's clip (§1.2), as the passes cut their source rectangles.
@@ -18,7 +19,11 @@ use h3_render::Bugs;
 use crate::art::{Layer, MapArt};
 use crate::layout::AdventureLayout;
 use crate::live::Live;
+use crate::objects::{self, DrawLists, Entry, ObjectsError, Shapes};
 use crate::tables::{ShroudPiece, Tables};
+
+/// The highest layer a cell can have (a template is at most 6 rows high, design §2.1).
+pub const MAX_LAYER: u8 = 6;
 
 /// The view's top-left tile and level (the manager's +0xE4, design §1.1).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
@@ -42,6 +47,13 @@ pub enum Pass {
     River,
     /// A tile's road (pass 3).
     Road,
+    /// A piece of a flat object (pass 4): its pixels, its flag runs skipped (T5 colours the
+    /// owned classes').
+    Flat,
+    /// A piece of an object's shadow (pass 5).
+    Shadow,
+    /// A piece of an object's body (pass 7), as the flat objects'.
+    Body,
     /// An unexplored tile (pass 10), drawn twice: its pixels, then its runs as shadows (§1.5).
     Shroud,
 }
@@ -130,6 +142,8 @@ pub enum SceneError {
         /// The tile.
         at: [i32; 2],
     },
+    /// The level's objects have no draw lists.
+    Objects(ObjectsError),
 }
 
 impl fmt::Display for SceneError {
@@ -142,20 +156,25 @@ impl fmt::Display for SceneError {
                 "tile ({}, {}): {layer:?} code {code} is not in the tables",
                 at[0], at[1]
             ),
+            Self::Objects(e) => e.fmt(f),
         }
     }
 }
 
 /// The scene of the adventure screen at view `at`, with the original's drawing bugs fixed or,
 /// for the comparisons, reproduced (`bugs`; the one so far: MCL-Q2's road on the map's last row).
+/// `shapes` gives the objects' templates their `.msk` and frames ([`objects::pictures`] names
+/// them).
 ///
 /// # Errors
-/// [`SceneError`]: the level or the viewer out of range, a code the tables lack.
+/// [`SceneError`]: the level or the viewer out of range, a code the tables lack, an object's
+/// picture without a shape.
 pub fn scene(
     art: &MapArt,
     live: &Live,
     tables: &Tables,
     layout: &AdventureLayout,
+    shapes: &Shapes,
     at: ViewAt,
     bugs: Bugs,
 ) -> Result<Scene, SceneError> {
@@ -165,11 +184,14 @@ pub fn scene(
     if live.viewer > 7 {
         return Err(SceneError::Viewer(live.viewer));
     }
+    let lists = DrawLists::build(art, live, shapes, at.z).map_err(SceneError::Objects)?;
     let view = View {
         art,
         live,
         tables,
         layout,
+        shapes,
+        lists,
         at,
         bugs,
     };
@@ -180,7 +202,15 @@ pub fn scene(
         players: layout.player_palette.clone(),
         viewer: live.viewer,
     });
-    let passes: [TilePass<'_>; 4] = [View::terrain, View::river, View::road, View::shroud];
+    let passes: [TilePass<'_>; 7] = [
+        View::terrain,
+        View::river,
+        View::road,
+        View::flat,
+        View::shadows,
+        View::bodies,
+        View::shroud,
+    ];
     for pass in passes {
         view.pass(&mut draws, pass);
     }
@@ -211,6 +241,8 @@ struct View<'a> {
     live: &'a Live,
     tables: &'a Tables,
     layout: &'a AdventureLayout,
+    shapes: &'a Shapes,
+    lists: DrawLists,
     at: ViewAt,
     bugs: Bugs,
 }
@@ -364,6 +396,81 @@ impl<'a> View<'a> {
                 clip,
             });
         }
+    }
+
+    /// Pass 4: the tile's pieces of flat objects, in list order (0x412470).
+    fn flat(&self, x: i32, y: i32, place: [i32; 2], out: &mut Vec<Draw>) {
+        self.objects(x, y, place, out, Pass::Flat, None);
+    }
+
+    /// Pass 5: the tile's pieces of the objects' shadows, in list order (0x411590).
+    fn shadows(&self, x: i32, y: i32, place: [i32; 2], out: &mut Vec<Draw>) {
+        self.objects(x, y, place, out, Pass::Shadow, None);
+    }
+
+    /// Pass 7: the tile's pieces of the objects' bodies, layer by layer, each in list order
+    /// (0x410C00).
+    fn bodies(&self, x: i32, y: i32, place: [i32; 2], out: &mut Vec<Draw>) {
+        for layer in 0..=MAX_LAYER {
+            self.objects(x, y, place, out, Pass::Body, Some(layer));
+        }
+    }
+
+    /// The pieces one object pass draws on a tile: each entry of its list (of `layer` only, if
+    /// given) that the pass draws (§2.2: flat templates in pass 4, every cell; the others' shadow
+    /// mask's cells in pass 5, their colour mask's in pass 7), the cell's square of the object's
+    /// frame at the tile's place.
+    fn objects(
+        &self,
+        x: i32,
+        y: i32,
+        place: [i32; 2],
+        out: &mut Vec<Draw>,
+        pass: Pass,
+        layer: Option<u8>,
+    ) {
+        let Some(clip) = self.clip(place, 0) else {
+            return;
+        };
+        let entries = self.lists.at(x, y).iter();
+        for entry in entries.filter(|e| layer.is_none_or(|l| e.layer == l)) {
+            out.extend(self.object_piece(entry, place, clip, pass));
+        }
+    }
+
+    /// An entry's piece in a pass, if the pass draws it.
+    fn object_piece(
+        &self,
+        entry: &Entry,
+        place: [i32; 2],
+        clip: [i32; 4],
+        pass: Pass,
+    ) -> Option<Draw> {
+        let template = objects::template(self.art, self.live, entry.object);
+        let shaped = template.and_then(|t| self.shapes.get(&t.def).map(|s| (t, s)));
+        let (dx, dy) = (entry.dx, entry.dy);
+        let drawn = shaped.filter(|(t, s)| match pass {
+            Pass::Flat => t.flat(),
+            Pass::Shadow => !t.flat() && s.shadow(dx, dy),
+            _ => !t.flat() && s.body(dx, dy),
+        });
+        drawn.map(|(template, shape)| {
+            let tile = self.layout.view.tile;
+            let phase = self.live.objects.get(entry.object).map_or(0, |o| o.phase);
+            let step = u64::from(phase) + u64::from(self.live.moment.frames);
+            let frame = step.checked_rem(u64::from(shape.frames)).unwrap_or(0);
+            let (columns, rows) = (i32::from(shape.width), i32::from(shape.height));
+            Draw::Piece {
+                pass,
+                def: template.def.clone(),
+                frame: u32::try_from(frame).unwrap_or(0),
+                x: place[0] - tile * (columns - 1 - i32::from(dx)),
+                y: place[1] - tile * (rows - 1 - i32::from(dy)),
+                mirror_x: false,
+                mirror_y: false,
+                clip,
+            }
+        })
     }
 
     /// Pass 10: an unexplored tile of the map, its piece by its unexplored neighbours (0x412220,

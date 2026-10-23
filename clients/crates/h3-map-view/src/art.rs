@@ -102,7 +102,7 @@ impl TemplateArt {
 }
 
 /// Bit `7 − dx` of byte `5 − dy` (`docs/formats/h3m.md`, "Template masks").
-fn mask_bit(mask: &[u8; 6], dx: u8, dy: u8) -> Option<bool> {
+pub(crate) fn mask_bit(mask: &[u8; 6], dx: u8, dy: u8) -> Option<bool> {
     let row = (CELLS.1 - 1).checked_sub(dy);
     let bit = (CELLS.0 - 1).checked_sub(dx);
     row.zip(bit)

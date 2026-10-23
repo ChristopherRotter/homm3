@@ -5,8 +5,11 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use h3_assets::def::parse_def;
+use h3_assets::msk::decode_msk;
 use h3_formats::lod::LodArchive;
 use h3_map_view::layout::AdventureLayout;
+use h3_map_view::objects::{Shape, Shapes};
 use h3_map_view::tables::{self, Tables};
 
 /// The four LOD archives of the Complete edition.
@@ -81,10 +84,11 @@ pub fn parse_archives(bytes: &[Vec<u8>]) -> Result<Vec<LodArchive<'_>>, String> 
         .collect()
 }
 
-/// Where the game searches a name (`docs/epics/E17-design.md` §3.1): DEFs in `H3sprite`, then
-/// `H3ab_spr`; pictures and palettes in `H3bitmap`, then `H3ab_bmp`.
+/// Where the game searches a name (`docs/epics/E17-design.md` §3.1): DEFs and MSKs in
+/// `H3sprite`, then `H3ab_spr`; pictures and palettes in `H3bitmap`, then `H3ab_bmp`.
 fn search(name: &str) -> [usize; 2] {
-    if name.to_ascii_uppercase().ends_with(".DEF") {
+    let upper = name.to_ascii_uppercase();
+    if upper.ends_with(".DEF") || upper.ends_with(".MSK") {
         [1, 3]
     } else {
         [0, 2]
@@ -102,4 +106,30 @@ pub fn find(
         }
     }
     Ok(None)
+}
+
+/// The shapes of the object pictures `defs` (E24 M1 T4a): each one's `.msk` (its name with the
+/// extension replaced; `default.msk` when the archives lack it, as msk_load 0x514610 falls back)
+/// and the frames of its DEF's first group.
+pub fn load_shapes(archives: &[LodArchive<'_>], defs: &[String]) -> Result<Shapes, String> {
+    let mut shapes = Shapes::default();
+    for def in defs {
+        let stem = def.rsplit_once('.').map_or(def.as_str(), |(stem, _)| stem);
+        let msk = match find(archives, &format!("{stem}.msk"))? {
+            Some((_, bytes)) => bytes,
+            None => {
+                find(archives, "default.msk")?
+                    .ok_or("default.msk: in no archive")?
+                    .1
+            }
+        };
+        let mask = decode_msk(&msk).map_err(|e| format!("{stem}.msk: {e:?}"))?;
+        let (_, bytes) = find(archives, def)?.ok_or_else(|| format!("{def}: in no archive"))?;
+        let parsed = parse_def(&bytes).map_err(|e| format!("{def}: {e:?}"))?;
+        let frames = parsed.groups.first().map_or(0, |g| g.frames.len());
+        let frames = u32::try_from(frames).unwrap_or(u32::MAX);
+        let shape = Shape::new(&mask, frames).map_err(|e| format!("{def}: {e}"))?;
+        shapes.insert(def, shape);
+    }
+    Ok(shapes)
 }
