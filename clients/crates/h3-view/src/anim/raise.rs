@@ -29,7 +29,8 @@ impl Player<'_> {
     /// 0x5A1907, 0x5A199C): the spell's sound on the stack raised (0x5A0331); Sacrifice first
     /// kills its victim: the cast's line on it (written after its damage, so by its number 0:
     /// 0x5A1A30, CLT-Q17) and animation [`SACRIFICED`] over it with its death
-    /// (`strike_animation`; its corpse, which the original removes, stays: *provisional*); then
+    /// (`strike_animation`), leaving no corpse: it dissolves ([`super::GONE`]; E17 M3 T9d,
+    /// recorded in `sacrifice`); then
     /// [`Player::raise`] with [`RAISE`]. With the bugs fixed (E17 M3 T9d) the line names the victim
     /// by its number before its death (CLT-Q17) and Animate Dead raises with its own animation,
     /// the spell's (CLT-Q13). Returns whether it drew a raise.
@@ -64,6 +65,7 @@ impl Player<'_> {
                 count: if fixed { live.count } else { 0 },
             };
             self.log.push((self.clock.now, line));
+            self.vanishing.insert(victim);
             self.marked((victim, &live), killed, Some(SACRIFICED));
         }
         let number = match look.animation {

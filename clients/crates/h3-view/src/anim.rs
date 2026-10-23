@@ -63,6 +63,19 @@ const CORPSE: u8 = 1;
 /// 21 (0x4B4E24). The scene draws this layer after every row: the recorded `fly`'s cycles across
 /// rows match the original's frames (E17 M3 T1b-2).
 pub const FLYING: u8 = 8;
+/// Not a pass: a stack gone from the battlefield without a corpse (E17 M3 T9d, recorded in
+/// `sacrifice`): `stack_death` 0x444120 leaves none for a sacrificed or summoned stack (its
+/// +0x84 flags 0x10000000 or 0x400000, 0x4442C5) and marks it for the dissolve
+/// ([`DISSOLVE_STEP`]). The scene draws no stack in this layer.
+pub const GONE: u8 = u8::MAX;
+/// A dissolve's step (`sub_466E00` 0x4670EF: trunc(150 F) ms; E17 M3 T9d): at a strike's end,
+/// after the deaths, a stack [`GONE`] leaves the battlefield in `screen_dissolve` 0x602DC0's
+/// eight steps outside the deadline, the battle redrawn without it blended into the screen's
+/// rectangle by k / 8 at step k (the blend is not drawn: the viewer shows the picture before it
+/// until its end, *provisional*).
+const DISSOLVE_STEP: u32 = 150;
+/// A dissolve's steps (`screen_dissolve` 0x602DC0).
+const DISSOLVE_STEPS: u32 = 8;
 /// A projectile's step length in pixels: trunc((d + 20) / 40) steps (§7.4).
 const STEP_PIXELS: u64 = 40;
 /// Half a hex: a two-hex target is aimed at from its middle (0x43F323).
@@ -729,7 +742,7 @@ impl Pose {
     /// not hidden.
     #[must_use]
     pub const fn holds_hex(&self) -> bool {
-        !self.boxless && self.layer != CORPSE
+        !self.boxless && self.layer != CORPSE && self.layer != GONE
     }
 }
 
@@ -1585,6 +1598,7 @@ fn played(
         tactics: snapshot.tactics.is_some(),
         acting: snapshot.active,
         strike_casts: Vec::new(),
+        vanishing: BTreeSet::new(),
         erasing: Vec::new(),
         pending_counts: Vec::new(),
         objects: Vec::new(),
@@ -1995,6 +2009,9 @@ struct Player<'a> {
     /// The spells the melee strike playing leaves pending, cast at its animation's end
     /// ([`PENDING`]; E17 M3 T7b-2b-3).
     strike_casts: Vec<StrikeCast>,
+    /// The stacks whose death at the next strike's end leaves no corpse ([`GONE`]: Sacrifice's
+    /// victim; E17 M3 T9d).
+    vanishing: BTreeSet<u8>,
     /// The magic animations whose marks were cleared without a redraw (`mass_spell_animation`
     /// 0x5A6B50; E17 M3 T7c-1): erased with the next frame drawn, each with the time memory lost
     /// it.
@@ -4811,9 +4828,18 @@ impl Player<'_> {
         // The strike's end (`strike_animation` 0x4692A4 to 0x46938A, design §4.3; E17 M3 T5b):
         // the dead leave their hexes for the corpses, every stack's layer is 4 again and its
         // count box's number +0x4C (+0x50, the count before the kills, back to −1), and the
-        // whole battle is redrawn and shown at once, the deadline as it is.
+        // whole battle is redrawn and shown at once, the deadline as it is. A stack dying
+        // without a corpse dissolves first (0x469316; E17 M3 T9d): the eight steps of
+        // [`DISSOLVE_STEP`] outside the deadline.
         if let Some((id, _, standing)) = striker {
             self.pending.push((id, standing));
+        }
+        if reactions
+            .iter()
+            .any(|r| r.died && self.vanishing.contains(&r.stack))
+        {
+            let step = self.speed.scale(DISSOLVE_STEP);
+            self.clock.wait(DISSOLVE_STEPS * step);
         }
         let shown = self.clock.now;
         self.counts.extend(reactions.iter().filter_map(|r| {
@@ -4837,6 +4863,17 @@ impl Player<'_> {
                 },
                 (false, _) => r.base,
             };
+            if r.died && self.vanishing.remove(&r.stack) {
+                self.stacks.remove(&r.stack);
+                self.pending.push((
+                    r.stack,
+                    Pose {
+                        layer: GONE,
+                        ..pose
+                    },
+                ));
+                continue;
+            }
             self.pending.push((r.stack, pose));
             if r.died {
                 self.bury(r.stack);
