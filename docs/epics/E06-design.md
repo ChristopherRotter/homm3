@@ -131,7 +131,7 @@ Built (`h3env.train.evaluate`, `h3 ai eval --set`, `python -m h3env.train.ladder
   0.50 (one kind ±1.4, ±2.7, ±3.1). The first n envs of each kind are themselves a stratified
   set: 250 give ±2.5 at 0.75 (the intermediate ladders, §7). The sampled policy's generator is
   seeded per (kind, side) alike for every network (common random numbers). The neutral kinds
-  join as report set v2 with T7 (the player's seat only).
+  have a set of their own, the neutral set v1 (T7c, §12; the player's seat only).
 - **The gate set v1** (the SPRT, T3b): the default kinds, `GATE_V1_SEED`, 500 envs × 8
   episodes; pair j is episode ⌊j / 500⌋ of env j mod 500, 4 000 pairs at most, each played
   twice (the candidate attacking, then the best). Separate from the report set, so the networks
@@ -186,9 +186,10 @@ final best (`Trainer.ladder`), each a `ladder` record. Not built: `h3 ai eval --
 
 - **When:** for best #0 at the start, for every promoted network, and at the run's end for the
   final best on the full set. In the run's process, between updates (the GPU is the run's).
-- **Opponents:** Random, Aggressor, Greedy (the engine's seats), E23's policy once its seat
-  exists (T7), and the previous `ladder.ladder_promoted` (1) promoted networks of the lineage (both seats
-  external). Earlier ones are compared through the records, not replayed.
+- **Opponents:** Random, Aggressor, Greedy and the system actor (the engine's seats; the system
+  actor since T7c), and the previous `ladder.ladder_promoted` (1) promoted networks of the lineage (both seats
+  external). Earlier ones are compared through the records, not replayed. With
+  `ladder.ladder_neutral` (T7c) the neutral set v1 too, attacking the system actor (§12).
 - **Set:** the report set v1, the first `ladder.ladder_episodes` (250) per kind for an intermediate
   ladder, all 500 at the end and for any claim of a target (built as a tool in T3a:
   `evaluate.ladder`, `report`; T3b plays it inside a run).
@@ -224,8 +225,8 @@ member or fewer than it could, not at every rollout: an episode lasts longer tha
 (`t3b-1`: about 147 calls against 128) and keeps its opponent, so a draw per rollout would have a
 call pass two or three sets' networks; the update record's `frozen_passes` measures it (T4b).
 
-Still to come: the system actor as a member (T7: it plays only the side its encounter gives it);
-exploiters (decision 9) only if a check shows the agent exploitable: a fresh learner trained
+The system actor is no member (T7c): it plays the neutral kinds' defender inside the batch, so a
+neutral episode draws none (§12). Still to come: exploiters (decision 9) only if a check shows the agent exploitable: a fresh learner trained
 against the frozen best alone for a fixed budget; if it beats the best at least 0.70 on the gate
 set, main exploiters join (designed then, T6).
 
@@ -333,7 +334,7 @@ key is an MLP). The comparison with the other architectures the user saw: `E06-l
   and a training pass per sample (`--time`), and a Mermaid diagram (`--mermaid <file>`) of the
   data flow, which GitHub renders.
 
-## 12. The neutral share (T7) — T7b built
+## 12. The neutral share (T7) — T7b, T7c built
 
 Decisions 1, 7 and 9: the neutral kinds (a wandering monster, a pile's or a garrison's guards, a
 neutral town) join the training with the system actor as their defender (E23's policy of the
@@ -345,9 +346,10 @@ original's computer, complete for a side without a hero since E23 T4c). Refined 
   the bots do. It reads the whole state (a trusted host, ADR-0027 point 4) and plays its side as
   the computer's whatever `human` says (point 8); the batch's `human = [true, true]` stays
   (ADR-0025 point 6). Its commands always apply (it validates them; the batch's property test
-  plays it on both sides of every synthetic scenario, a hero's side included). It never retreats
-  (BAT-STUB-5): once E23 T6 lets it, an escape would end the episode inside the call, and
-  ADR-0025 point 7 then needs a decision (the battle lane tells this lane's inbox).
+  plays it on both sides of every synthetic scenario, a hero's side included). A hero's side
+  retreats only with the setup's adventure facts (E23 T6, BAT-AI-024, ADR-0027 point 14), which
+  the encounters leave at their defaults: it never retreats here. Once the sampler fills them,
+  an escape would end the episode inside the call, and ADR-0025 point 7 then needs a decision.
 - **The neutral kinds' defender** is `Internal(System)` (A12; it was `Random`): the caller always
   plays the attacker of a neutral encounter, and an evaluation's seats still replace it.
 - **The weights stay where they are** (the user, 2026-10-23): the distribution's defaults keep
@@ -359,15 +361,30 @@ original's computer, complete for a side without a hero since E23 T4c). Refined 
   record's identity (`system_policy`; a record gains a key, the schema stays 5). `h3env`'s seat
   name `"system"`; `h3 ai eval --policies` names `system` (not in its default list yet). The
   encodings are unchanged.
-- **The trainer** (T7c, planned): a neutral episode has one learning side, the attacker, and no
-  league member (the league draws only for an episode with both seats external; today it would
-  give one side of a neutral battle to a frozen network); the metrics split the training's rates
-  by kind. **The neutral held-out set** (`neutral-v1`): one stratum per neutral kind, weighed by
-  A1's shares, the policy in the attacker's seat against the system actor; the bots play the same
-  episodes in the same seat, so the bots' table gains a neutral part and decision 7's neutral
-  target (a value efficiency above every ladder bot's) reads off it. The system actor joins the
-  ladder (decision 12) on the report set; `h3 ai eval`'s JSON names its policy version; the bots'
-  table is regenerated.
-- **The run** (T7d): the census shares put 82.5 % of the episodes in the neutral kinds, each with
-  one learning side; the user decides the mix with T7c's numbers (the census shares, or a
-  curriculum that keeps more of the player-against-player kinds).
+- **The trainer** (T7c): a neutral episode has one learning side, the attacker, and no league
+  member (`Trainer.assign` draws none for a neutral kind; before T7c a member would have taken
+  one side of a neutral battle: the defender's, which the system actor plays, so the member never
+  moved but scored, or the attacker's, so nothing trained). The update record's `by_kind` splits
+  the self-play episodes' rates (the attacker's wins, the truncations) by kind, and the record's
+  curve sums them per gate interval. The gate stays on the gate set v1 (the default kinds).
+- **The neutral set v1** (T7c; `neutral-v1` in `evaluate.py`, `h3 ai eval --set neutral-v1`,
+  `python -m h3env.train.ladder --set neutral-v1`): one stratum per neutral kind (batch seed
+  `NEUTRAL_V1_SEED + k`, `0x5EED_E7A1_0003_0000`; the kind one-hot; the first episode of each of
+  500 envs), weighed by A1's shares (780 : 20 : 25, `share` in `encounters-v1.toml`), the
+  policy in the attacker's seat against the system actor: 1 500 games, ±1.8 points at 0.95, ±3.6
+  at 0.75 (the wandering stratum is 94.5 % of the weight). `h3 ai eval` plays every policy, the
+  system actor too, in the same seat on the same episodes (`bots-neutral-v1.json`); decision
+  7's neutral target reads off it (the value efficiency above every ladder bot's and the system
+  actor's own).
+  Its seeds are held out like the other sets'. Every ladder plays it (`ladder.ladder_neutral`,
+  true by default; as many per kind as the report set's), its row the ladder record's `neutral`.
+- **The system actor on the ladder** (T7c, decision 12): an opponent of `evaluate.OPPONENTS`, so
+  `ladder.ladder_opponents` and `h3 ai eval`'s default list name it; `h3 ai eval --json` schema
+  2 names the engine's `system_policy` and a set's fixed `defender`; both bots' tables
+  regenerated. The bots on the report set (`bots-report-v1.json`): the system actor beats
+  Greedy 0.653, Aggressor 0.681, Random 0.875; on the neutral set it attacks best (value +0.285
+  against Greedy's +0.223, Aggressor's +0.216, Random's −0.056; `E06-log.md`, T7c).
+- **The run** (T7d; `configs/e06-t7.toml`, `t5-3`'s settings at the census shares): the census
+  shares put 82.5 % of the episodes in the neutral kinds, each with one learning side; the user
+  decides the mix with T7c's numbers (the census shares, or a curriculum that keeps more of the
+  player-against-player kinds, `--set "env.kinds=[...]"`).

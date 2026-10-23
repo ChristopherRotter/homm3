@@ -5,8 +5,8 @@
 //! h3 ai bench [--scenario <file>] [--packs-dir packs] [--envs 64] [--threads 0] [--calls 1000]
 //!             [--seed 1] [--max-steps 0] [--encounters default|<six weights, a,b,c,d,e,f>]
 //! h3 ai census <maps folder or file>... [--out <file>]
-//! h3 ai eval [--set report-v1|v0] [--policies random,aggressor,greedy] [--max-steps 2000]
-//!            [--episodes <per kind, 500 | v0: 1000>] [--json <file>]
+//! h3 ai eval [--set report-v1|neutral-v1|v0] [--policies random,aggressor,greedy,system]
+//!            [--max-steps 2000] [--episodes <per kind, 500 | v0: 1000>] [--json <file>]
 //!            v0 only: [--envs 100] [--seed <s>] [--encounters default|<six weights, a,b,c,d,e,f>]
 //! ```
 
@@ -28,8 +28,8 @@ pub const USAGE: &str = "usage:
   h3 ai bench [--scenario <file>] [--packs-dir packs] [--envs 64] [--threads 0] [--calls 1000]
               [--seed 1] [--max-steps 0] [--encounters default|<six weights, a,b,c,d,e,f>]
   h3 ai census <maps folder or file>... [--out <file>]
-  h3 ai eval [--set report-v1|v0] [--policies random,aggressor,greedy] [--max-steps 2000]
-             [--episodes <per kind, 500 | v0: 1000>] [--json <file>]
+  h3 ai eval [--set report-v1|neutral-v1|v0] [--policies random,aggressor,greedy,system]
+             [--max-steps 2000] [--episodes <per kind, 500 | v0: 1000>] [--json <file>]
              v0 only: [--envs 100] [--seed <s>] [--encounters default|<six weights, a,b,c,d,e,f>]";
 
 /// Parsed arguments: `--name value` options and positional words.
@@ -150,7 +150,7 @@ fn bench(args: &Args) -> Result<(), String> {
 }
 
 /// `h3 ai eval`: the engine's policies against each other on a held-out set of encounters (E05
-/// T7; the sets E06 T3a).
+/// T7; the sets E06 T3a; the neutral set, every policy attacking the system actor, E06 T7c).
 fn eval(args: &Args) -> Result<(), String> {
     args.check(&[
         "set",
@@ -163,17 +163,22 @@ fn eval(args: &Args) -> Result<(), String> {
         "json",
     ])?;
     let set = args.get("set").unwrap_or("report-v1");
+    let fixed = || match ["envs", "seed", "encounters"]
+        .into_iter()
+        .find(|name| args.get(name).is_some())
+    {
+        Some(name) => Err(format!(
+            "--{name}: the set {set} fixes its episodes (only --set v0 takes it)"
+        )),
+        None => args.num("episodes", eval::REPORT_V1_ENVS),
+    };
+    let mut defender = None;
     let strata = match set {
-        "report-v1" => {
-            if let Some(name) = ["envs", "seed", "encounters"]
-                .into_iter()
-                .find(|name| args.get(name).is_some())
-            {
-                return Err(format!(
-                    "--{name}: the report set v1 fixes its episodes (only --set v0 takes it)"
-                ));
-            }
-            eval::Stratum::report_v1(args.num("episodes", eval::REPORT_V1_ENVS)?)?
+        "report-v1" => eval::Stratum::report_v1(fixed()?)?,
+        "neutral-v1" => {
+            let (name, policy) = eval::NEUTRAL_DEFENDER;
+            defender = Some((name.to_owned(), policy));
+            eval::Stratum::neutral_v1(fixed()?)?
         }
         "v0" => {
             let seed = match args.get("seed") {
@@ -191,11 +196,16 @@ fn eval(args: &Args) -> Result<(), String> {
                 weights,
             )
         }
-        _ => return Err(format!("--set: unknown set `{set}` (report-v1, v0)")),
+        _ => {
+            return Err(format!(
+                "--set: unknown set `{set}` (report-v1, neutral-v1, v0)"
+            ));
+        }
     };
     let options = eval::EvalOptions {
         set: set.to_owned(),
-        policies: eval::policies(args.get("policies").unwrap_or("random,aggressor,greedy"))?,
+        policies: eval::policies(args.get("policies").unwrap_or(eval::DEFAULT_POLICIES))?,
+        defender,
         strata,
         max_steps: args.num("max-steps", 2000)?,
     };

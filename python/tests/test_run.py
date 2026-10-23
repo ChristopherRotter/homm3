@@ -174,6 +174,12 @@ def test_the_gates_promotions_and_ladders_print_one_line_each() -> None:
     assert line(promotion) == "promoted #2 (gate) at update 4"
     assert line(ladder) == "ladder #2 (250 per kind): random 0.800 ± 0.020 [90 s]"
     assert line({**ladder, "final": True}).startswith("ladder final #2")
+    # E06 T7c: the neutral set's row, attacking the system actor.
+    neutral = {**ladder["opponents"]["random"], "win_rate": 0.9, "value": 0.6}
+    assert line({**ladder, "neutral": neutral}) == (
+        "ladder #2 (250 per kind): random 0.800 ± 0.020; neutral (attacking system) 0.900 ± "
+        "0.020, value +0.600 [90 s]"
+    )
 
 
 def test_the_learning_rate_follows_samples() -> None:
@@ -479,6 +485,52 @@ def test_a_run_writes_its_metrics_and_record(tmp_path: Path) -> None:
         Run(out, load_config(""), identity)
     with pytest.raises(SystemExit):
         parse(["--out", str(out)])
+
+
+def test_the_record_splits_the_rates_by_kind_and_keeps_the_neutral_ladder(tmp_path: Path) -> None:
+    # E06 T7c: the update records' rates per encounter kind become each curve point's, weighed
+    # by their episodes; a ladder's neutral row is kept (None without one).
+    run = Run(tmp_path / "r", load_config("samples = 30\n"), IDENTITY, "samples = 30\n")
+
+    def update(u: int, kinds: dict) -> dict:
+        return {**_update(u, 10 * u, 1.0), "by_kind": kinds}
+
+    hero = {"episodes": 2, "attacker_won": 0.5, "truncated": 0.0}
+    neutral = {**_ladder(2, 20, 1)["opponents"]["random"], "sides": {"wandering": [0.9]}}
+    records = [
+        {"type": "start", "name": "r", "update": 0, "samples": 0, "episodes": 0, "minutes": 0.0},
+        update(
+            1, {"hero": hero, "wandering": {"episodes": 6, "attacker_won": 1.0, "truncated": 0}}
+        ),
+        update(2, {"wandering": {"episodes": 2, "attacker_won": 0.5, "truncated": 0.5}}),
+        _gate(2, 20, "rejected"),
+        _update(3, 30, 1.0),
+        _gate(3, 30, "rejected"),
+        _ladder(3, 30, 0),
+        {**_ladder(3, 30, 0, final=True), "neutral": neutral},
+    ]
+    for r in records:
+        run.emit(r)
+    run.write_record()
+    run.close()
+    record = json.loads((tmp_path / "r" / "record.json").read_text())
+    assert check_record(record) == []
+    first, second = record["curve"]
+    assert first["by_kind"] == {
+        "hero": hero,
+        "wandering": {"episodes": 8, "attacker_won": 7 / 8, "truncated": 1 / 8},
+    }
+    assert "by_kind" not in second
+    assert record["ladders"][0]["neutral"] is None
+    assert record["ladders"][1]["neutral"] == {
+        k: neutral[k] for k in ("win_rate", "interval", "value", "kinds", "truncated")
+    }
+    shown = {
+        **records[1],
+        **dict.fromkeys(("samples_per_s", "attacker_won", "truncated", "league_score"), 0.5),
+        **dict.fromkeys(("league", "frozen_passes", "value_loss", "entropy", "kl"), 1),
+    }
+    assert line(shown).endswith(" ev +nan hero 0.50 wandering 1.00")
 
 
 def test_check_record_names_what_is_missing() -> None:

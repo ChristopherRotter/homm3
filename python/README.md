@@ -106,8 +106,13 @@ as before T5c. Reward v1 and the evaluation (a truncation is no win) are unchang
 
 Each update prints one line (samples, samples/s, self-play's attacker wins, truncations, the
 league's size, the learner's score against its members, the frozen networks a call passed, the
-losses). Every training episode's seed is checked against the held-out sets' (a hit stops the
-run).
+losses, and the attacker's wins per encounter kind: E06 T7c). Every training episode's seed is
+checked against the held-out sets' (a hit stops the run).
+
+**The neutral share** (E06 T7c, design §12): `env.kinds` (six weights, `H3_ENCOUNTER_*` order)
+draws the neutral kinds the defaults leave at 0 (`configs/e06-t7.toml`: the census's shares,
+82.5 % neutral). There the system actor defends inside the batch, so only the learner's attacker
+trains and the league draws no member.
 
 **The league** (E06 T4a, ADR-0026 point 8, design §8; `h3env.train.league`): prioritized
 fictitious self-play over the learner's past. Its members are a snapshot of the learner every
@@ -125,10 +130,11 @@ the run starts with best #0 (the untrained network, or the parent's with `--init
 gate, the learner plays the best on the gate set v1: pairs of one battle played from both sides,
 in order, until an SPRT decides (`elo0` 0, `elo1` 20, `alpha` and `beta` 0.05, at most
 `max_pairs` 4 000, which reject as inconclusive). A promoted learner becomes `promoted/<n>.pt` and
-`best.pt`, and its ladder plays it against `ladder.ladder_opponents` (Random, Aggressor, Greedy)
-and the `ladder_promoted` (1) promoted networks before it, on the report set v1's first
-`ladder_episodes` (250) per kind; at the end the final best's ladder plays all
-`ladder_final_episodes` (500). Each gate, promotion and ladder prints one line;
+`best.pt`, and its ladder plays it against `ladder.ladder_opponents` (Random, Aggressor, Greedy,
+the system actor) and the `ladder_promoted` (1) promoted networks before it, on the report set
+v1's first `ladder_episodes` (250) per kind, and with `ladder_neutral` (true) as many of the
+neutral set v1's, attacking the system actor (E06 T7c); at the end the final best's ladder plays
+all `ladder_final_episodes` (500). Each gate, promotion and ladder prints one line;
 `python -m h3env.train.gate --candidate b.pt --best a.pt` plays the same gate between any two saved
 networks. `--init-from <file>` starts a new run (fresh optimizer, counters and league) from a saved
 network (a `best.pt`, `promoted/<n>.pt` or `checkpoint.pt` of the same kind and size), its parent.
@@ -164,13 +170,16 @@ Older checkpoints (formats 1 and 2, before T4a's league) do not resume: start a 
 On Windows a file another process holds open (a ladder reading `best.pt`) is kept as it was after
 five refused replaces, with a warning; the run goes on.
 
-A checkpoint against Random and the baseline bots (E05 T7), on a held-out set (E06 T3a): the
-report set v1 by default (500 battles per kind with a player on both sides, each played from both
-sides; the overall win rate weighs the kinds 4 : 2 : 1, with its 95 % interval; `--episodes n`
-plays the first n per kind), or E05's v0 (`--set v0`). The episodes are `h3 ai eval`'s
-(`cargo run --release -p h3-cli -- ai eval [--set v0]`); on the whole report set each line ends
-with the bots' rates against the same opponent from their table
-(`records/bots-report-v1.json`). `--json <file>` keeps the results.
+A checkpoint against Random, the baseline bots (E05 T7) and the system actor (E06 T7c), on a
+held-out set (E06 T3a): the report set v1 by default (500 battles per kind with a player on both
+sides, each played from both sides; the overall win rate weighs the kinds 4 : 2 : 1, with its
+95 % interval; `--episodes n` plays the first n per kind), the neutral set v1 (`--set
+neutral-v1`: 500 battles per neutral kind, the checkpoint attacking the system actor, the kinds
+weighed by the census's shares), or E05's v0 (`--set v0`). The episodes are `h3 ai eval`'s
+(`cargo run --release -p h3-cli -- ai eval [--set neutral-v1|v0]`); on a whole stratified set
+each line ends with the bots' rates against the same opponent from their table
+(`records/bots-report-v1.json`, `records/bots-neutral-v1.json`). `--json <file>` keeps the
+results.
 
 ```sh
 uv run --group train python -m h3env.train.ladder --checkpoint runs/t4-1/best.pt [--episodes 250]
