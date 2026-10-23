@@ -179,3 +179,92 @@ field = "SC: per Cyclops turn, the walls' hit points and its action (wall shot a
 field = "SC: per Pikemen turn with every wall standing, its move's hex"
 [[encounter.record]]
 field = "anything odd"
+
+# --- C4f: the Ogre Mages' strength floor (§7.44, 0x420D20) -------------------------------------------
+
+[[map.pile]]
+resource = "gold"
+row = 25
+from = 4
+to = 4
+amount = 1
+guards = [["Ogre Mage", 3], ["Ogre Mage", 3], ["Ogre Mage", 3], ["Archer", 20], ["Archer", 20], ["Archer", 20], ["Champion", 1]]
+
+[[map.pile]]
+resource = "gold"
+row = 28
+from = 4
+to = 4
+amount = 1
+guards = [["Ogre Mage", 2], ["Ogre Mage", 2], ["Ogre Mage", 2], ["Archer", 20], ["Archer", 20], ["Archer", 20], ["Champion", 1]]
+
+[[encounter]]
+id = "C4f3"
+title = "C4f3: neutral Ogre Mages never bless a walker weaker than themselves while their walker has a value"
+questions = ["E23 survey row 4a C4"]
+procedure = [
+    "Easy. Step east into the guards (three stacks of 3 Ogre Mages, three of 20 Archers, one Champion). Red's Peasant and Pikemen defend.",
+    "Note each Ogre Mage turn's action in round 1; after round 1 Red retreats.",
+]
+predictions = """
+The Ogre Mages' walker values an attack on Red's lone Peasant above 0; the only stack Bloodlust
+helps is the lone Champion (the Archers can shoot now: 0), strength 1800 below a caster's 2016.
+- The reading (0x420D20): with a value above 0 to beat only a stack at least as strong as the
+  caster is a candidate: **no cast** at any Ogre Mage turn. The port replayed in the engine (no
+  obstacles): none in 200 streams.
+- Otherwise: the lone Champion blessed (C4f2's outcome).
+"""
+[encounter.hero]
+type = "Grindan"
+specialty = "resource gold"
+at = [3, 25]
+primary = [0, 10, 1, 1]
+skills = []
+army = [["Peasant", 1], ["Pikeman", 100]]
+[[encounter.also]]
+type = "Josephine"
+specialty = "creature Stone Golem"
+owner = "blue"
+at = [30, 2]
+primary = [0, 0, 1, 1]
+skills = []
+army = [["Peasant", 1]]
+[[encounter.record]]
+field = "C4f3: each Ogre Mage turn's action in round 1"
+[[encounter.record]]
+field = "anything odd"
+
+[[encounter]]
+id = "C4f2"
+title = "C4f2: the same with Ogre Mages weaker than the lone Champion: it is blessed"
+questions = ["E23 survey row 4a C4"]
+procedure = [
+    "Easy. Step east into the guards (three stacks of 2 Ogre Mages, three of 20 Archers, one Champion). Red's Peasant and Pikemen defend.",
+    "Note each Ogre Mage turn's action in round 1; after round 1 Red retreats.",
+]
+predictions = """
+As C4f3 with casters of strength 1344, below the Champion's 1800: the floor lets the Champion in.
+- The reading: the first Ogre Mage blesses the lone Champion unless its draw skips (three in
+  ten: then the next one draws again): **Bloodlust on the lone Champion in round 1** (all three
+  skip with chance 2.7 %); the port: 144 of 200 streams at the first turn.
+- Otherwise (no floor in C4f3 either): as here.
+"""
+[encounter.hero]
+type = "Nagash"
+specialty = "resource gold"
+at = [3, 28]
+primary = [0, 10, 1, 1]
+skills = []
+army = [["Peasant", 1], ["Pikeman", 100]]
+[[encounter.also]]
+type = "Fafner"
+specialty = "creature Naga"
+owner = "blue"
+at = [30, 5]
+primary = [0, 0, 1, 1]
+skills = []
+army = [["Peasant", 1]]
+[[encounter.record]]
+field = "C4f2: each Ogre Mage turn's action in round 1"
+[[encounter.record]]
+field = "anything odd"

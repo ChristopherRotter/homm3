@@ -311,6 +311,9 @@ def play(game, out, run):
     r = Run(game, mem, out, bool(walls))
     opening = r.step()
     opening["facts"] = opening_facts(mem)
+    # The field as the opening holds it (h3mem.hexes: flag 0x2 blocked): the obstacles, so that
+    # the engine can replay the same field (BattleSetup.obstacles takes blocked hexes).
+    opening["blocked"] = [h["hex"] for h in mem.hexes() if h["flags"] & 0x2]
     with open(out / "opening.json", "w") as f:
         json.dump(opening, f)
     set_rolls(game, run.get("rolls", {}))

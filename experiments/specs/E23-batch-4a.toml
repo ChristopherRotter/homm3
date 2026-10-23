@@ -379,7 +379,7 @@ field = "C3b: the Archangels' actions in rounds 1 to 3"
 [[encounter.record]]
 field = "anything odd"
 
-# --- C4: the Ogre Mages' skip and strength floor (§7.44, 0x420D20) ---------------------------------
+# --- C4: the Ogre Mages' skip (§7.44, 0x420D20) ----------------------------------------------------
 
 [[map.pile]]
 resource = "gold"
@@ -391,22 +391,24 @@ guards = [["Ogre Mage", 4], ["Ogre Mage", 4], ["Ogre Mage", 4], ["Champion", 10]
 
 [[encounter]]
 id = "C4"
-title = "C4: neutral Ogre Mages skip three casts in ten and bless only stacks at least as strong"
+title = "C4: neutral Ogre Mages with a walker's value to beat skip three casts in ten"
 questions = ["E23 survey row 4a C4"]
 procedure = [
-    "Step east into the guards (three stacks of 4 Ogre Mages, three of 10 Champions, one Champion). Red's Archangels act first: the clock idles the run's seed, then they defend.",
-    "Note each Ogre Mage turn's action (Bloodlust at which stack, or none) in round 1 and 2; seven runs with different seeds; after round 2 Red retreats.",
+    "Easy (the first runs on Normal: below). Step east into the guards (three stacks of 4 Ogre Mages, three of 10 Champions, one Champion). Red's Archangels act first: the clock idles the run's seed, then they and Red's Pikemen defend.",
+    "Note each Ogre Mage turn's action in round 1 (Bloodlust at which stack, or none); seven runs with different seeds; after round 1 Red retreats.",
 ]
 predictions = """
 Round 1: the Champions walk first (speed 9) and end within a turn of Red; then the Ogre Mages
-(speed 5), each with a walker's value above 0 (their walk's plan).
-- The reading (0x420D98): with a value to beat the scan draws random(1, 100) and **casts nothing
-  on 30 or less** (about 3 Ogre Mage turns in 10: over 21 turns about 6, 2 to 11); else
-  Bloodlust goes **only to a stack at least as strong as the caster** (4 x 672 = 2688): a stack
-  of 10 Champions without Bloodlust (the later record at a tie), **never the lone Champion**
-  (1800) nor a Champion stack already under Bloodlust (value 0). Round 2: the strong stacks
-  blessed, nothing left to cast at.
-- Otherwise: a cast at every turn, or the lone Champion blessed.
+(speed 5). The scan (0x420D20) draws random(1, 100) and casts nothing on 30 or less **only when
+the walker's value so far is not 0**. The port replayed in the engine (the same armies, no
+obstacles): on Normal with Red's 5 Archangels alone the Ogre Mages' walker keeps no candidate
+(value 0): no draw, a cast at every turn (the first runs on Normal agree: 6 casts of 6 in two
+runs, at the 10-Champion stacks in the order records 5, 4, 3, as the port's); on Easy a
+computer's walker keeps a negative candidate (no drop outside Easy is the reading's test), so the
+draw happens: the port casts at 144 of 200 streams per turn.
+- The reading: on Easy **about three Ogre Mage turns in ten cast nothing** (over 21 turns about
+  6, 2 to 11), the others Bloodlust at a 10-Champion stack without it, the later record first.
+- Otherwise: a cast at every turn (21 of 21).
 """
 [encounter.hero]
 type = "Damacon"
@@ -414,7 +416,7 @@ specialty = "resource gold"
 at = [3, 13]
 primary = [0, 10, 1, 1]
 skills = []
-army = [["Archangel", 5]]
+army = [["Archangel", 5], ["Pikeman", 100]]
 [[encounter.also]]
 type = "Ufretin"
 specialty = "creature Dwarf"
@@ -424,6 +426,6 @@ primary = [0, 0, 1, 1]
 skills = []
 army = [["Peasant", 1]]
 [[encounter.record]]
-field = "C4: per run, each Ogre Mage turn's action in rounds 1 and 2 (Bloodlust's target or none)"
+field = "C4: per run, each Ogre Mage turn's action in round 1 (Bloodlust's target or none)"
 [[encounter.record]]
 field = "anything odd"

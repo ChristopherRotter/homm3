@@ -81,50 +81,57 @@ rounds = 3
 plan = [{ round = 1, side = 0, record = 0, action = "cast", argument = [0, { stack = [1, 1] }] }]
 
 [[run]]
-id = "C4s0"
+id = "C4e0"
 encounter = "C4"
+difficulty = "easy"
 seed = 0
 step = 20
-rounds = 2
+rounds = 1
 
 [[run]]
-id = "C4s1"
+id = "C4e1"
 encounter = "C4"
+difficulty = "easy"
 seed = 3000
 step = 20
-rounds = 2
+rounds = 1
 
 [[run]]
-id = "C4s2"
+id = "C4e2"
 encounter = "C4"
+difficulty = "easy"
 seed = 6000
 step = 20
-rounds = 2
+rounds = 1
 
 [[run]]
-id = "C4s3"
+id = "C4e3"
 encounter = "C4"
+difficulty = "easy"
 seed = 9000
 step = 20
-rounds = 2
+rounds = 1
 
 [[run]]
-id = "C4s4"
+id = "C4e4"
 encounter = "C4"
+difficulty = "easy"
 seed = 12000
 step = 20
-rounds = 2
+rounds = 1
 
 [[run]]
-id = "C4s5"
+id = "C4e5"
 encounter = "C4"
+difficulty = "easy"
 seed = 15000
 step = 20
-rounds = 2
+rounds = 1
 
 [[run]]
-id = "C4s6"
+id = "C4e6"
 encounter = "C4"
+difficulty = "easy"
 seed = 18000
 step = 20
-rounds = 2
+rounds = 1

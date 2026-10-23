@@ -54,6 +54,16 @@ Area traps live where they are used: experiments in `docs/experiments/README.md`
 
 ## Recent sessions
 
+### 2026-10-23 (108th) — E23 T7: batches 4a, 4b, 4c designed and played (in progress)
+
+The user: design and run the batches, no other cut yet. `battle/e23-t7-batches` (no pull request
+yet): specs `experiments/specs/E23-batch-4a|4b|4c.toml`, recipes and the agent
+`experiments/agent/ai.py` (+ `ai_turns.py`), h3-experiment's Tan and `[[map.town]]`. Played: LO,
+W1, S4, C1, C2, C3a/b, C4 (Normal), LC, H1, H3, H4, R1a/b, W3; running: TP, SC, C4f3/f2, then C4
+on Easy (`experiments/out/4a-run4.log`). Next: evaluate, fill the results, the docs (survey §3,
+catalog, OPEN-QUESTIONS, experiments README, epic, log). Finding: H1 (the port's neighbours
+include the side columns; the original's table +0x13468 does not).
+
 ### 2026-10-23 (107th) — E23 T6: the retreat test with slips 26 and 6
 
 The user: one session, `cross-lane` (replay format v30; facts hashed, still v53; twenty replays rehashed). Slip 33 found (BAT-STUB-17). #422 merged (squash), #424 open.

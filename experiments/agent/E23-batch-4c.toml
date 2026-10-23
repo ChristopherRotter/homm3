@@ -90,3 +90,15 @@ key = "Up"
 auto = true
 step = 20
 rounds = 5
+
+[[run]]
+id = "C4f3"
+difficulty = "easy"
+step = 20
+rounds = 1
+
+[[run]]
+id = "C4f2"
+difficulty = "easy"
+step = 20
+rounds = 1
