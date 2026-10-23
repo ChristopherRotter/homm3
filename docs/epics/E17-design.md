@@ -2065,6 +2065,34 @@ resistance roll, if any (category 3, 0x5A0331); Curse's is named `Curse`, withou
 - **Not read:** the dissolve's blend; how the glows are painted; the summons' and the Pit Lord's
   creation beyond the dissolve; Earthquake (sieges); the force-feedback effects (IFC20, nothing
   drawn).
+- **Fixed (T9d)**, the user's answers to CLT-Q9 to Q14, Q16 and Q17 (M3's review), by
+  `anim::Stage::bugs` as T7d's (`Original` only in `h3-view sequences`): (Q9) `mass` sets the
+  animation's frame i while i < n, every frame once; (Q10) a hit in `mass` and in Armageddon's
+  `field` (the same run-on, 0x5A4D47) ends on the standing group's frame 0 (`Player::react`). The
+  DEFs say where Q10 shows (every creature's group 2 in the four LODs, frame 0 against the
+  last): in 87 of the 145 creature DEFs the last standing frame differs from frame 0 by 213 to
+  7 339 pixels, 55 end their cycle on frame 0's picture (the three war machines have one frame),
+  so the fix, built for all, changes
+  exactly those where it is visible (the user: fixed where the frames differ visibly, else
+  copied); (Q11) Chain Lightning's opening 37 at the bolt from the sky's 10 ms a frame; (Q12)
+  each Fire Wall object's 65 at its own hex; (Q13) Animate Dead raises with its spell's own
+  animation (4, `C01spE0`); (Q14) the Liches' cloud translucent, as its table entry; (Q16)
+  Armageddon's line with the caster's value (`SpellDamage`'s `caster`); (Q17) Sacrifice's line
+  on its victim by its number before its death.
+- **Read and recorded at T9d** (`sacrifice`, the frame check's below): *a stack leaving without
+  a corpse.* `stack_death` gives a stack whose +0x84 holds 0x10000000 (Sacrifice's victim, set
+  at 0x5A1A1D) or 0x400000 (a summoned one) no corpse, marks it in +0x13438 (side × 20 + slot)
+  and sets +0x13460 (0x4442C5 to 0x4442EE); after the deaths `strike_animation` (0x469307) then
+  calls `battle_dissolve_removed` (0x466E00): a rectangle around the stack saved
+  (`screen_save_rect`; recorded: the Archer's, 95 × 97), the battle redrawn
+  without the stack (not shown) and dissolved into the screen by `screen_dissolve` 0x602DC0
+  with trunc(150 F) a step (0x4670EF): eight steps, 1 200 ms at speed 0, outside the deadline,
+  memory unchanged meanwhile; then the marks' clearing and the whole redraw at once, and
+  `raise_stack`, whose first two frames the late deadline shows at once (§7.1). **Built:**
+  `anim::GONE` (a layer no pass draws, holding no hex; the scene skips it), `Player::vanishing`
+  (Sacrifice's victim), the dissolve's wait at `iterate`'s end (`DISSOLVE_STEP`,
+  `DISSOLVE_STEPS`). **Not built:** the blend (the viewer shows the picture before it until its
+  end, *provisional*; with the created stacks' dissolve, QUEUE's inbox).
 
 ## 8. The window, input and audio evaluation (M2 T2)
 

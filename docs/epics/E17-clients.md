@@ -1,12 +1,12 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b, T8, T7b-1, T7b-2a, T7b-2b-1, T7b-2b-2a, T7b-2b-2b, T7b-2b-3, T7c-1, T7c-2, T7c-3, T7d, T9a, T9b-1, T9b, T9c done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 done (2026-10-23: T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b, T8, T7b-1, T7b-2a, T7b-2b-1, T7b-2b-2a, T7b-2b-2b, T7b-2b-3, T7c-1, T7c-2, T7c-3, T7d, T9a, T9b-1, T9b, T9c, T9d); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
 [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
-are there). Next: T9d (CLT-Q9 to Q17's answers built, M3's last task), then M4 T0 (sieges
-refined), M5 live play after it (`docs/lanes/client/QUEUE.md`). Since T9c (2026-10-23) this epic
+are there). Next: M4 T0 (sieges refined), M5 live play after it
+(`docs/lanes/client/QUEUE.md`). Since T9c (2026-10-23) this epic
 is the battle client's; the adventure map client is E24, the map-client lane's.
 
 ## Goal
@@ -534,6 +534,14 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
 - **T9c done 2026-10-23** ([log](E17-log.md#m3-t9c--the-next-milestone-the-lane-split-2026-10-23)):
   the user split the lane (CLT-Q18): sieges (M4) and then live play (M5) here, the adventure map
   in the new map-client lane (E24); the foundation and the harness common; T9d stays M3's last.
+- **T9d done 2026-10-23** ([log](E17-log.md#m3-t9d--clt-q9-to-q17s-answers-built-2026-10-23),
+  design §7.16): not split, at the user's word. CLT-Q9 to Q14, Q16 and Q17 fixed in what the
+  client draws, the original's for the comparisons only (`anim::Stage::bugs`); Q10 in every
+  creature (the DEFs: visible in 87 of 145) and in Armageddon's loop. `sacrifice` recorded (seed
+  5): Q17's line confirmed, the victim leaving without a corpse in a dissolve (its time built,
+  `anim::GONE`; its blend listed); played as recorded, frames as the original's but the
+  dissolve's seven blending steps. Every other sequence and situation drawn as before. **M3
+  done.**
 
 ### The adventure lane's harness (H1, H2: its batch E3)
 
@@ -555,7 +563,7 @@ it (`docs/rules/surveys/E08-battles.md` §13; the requests in the queue's inbox 
 
 ### Later (refined when they come up)
 
-**M4, sieges** (walls, towers, the Catapult, the moat; refined in M4 T0 after T9d), then **M5,
+**M4, sieges** (walls, towers, the Catapult, the moat; refined in M4 T0, next), then **M5,
 live play** (a battle played: hot seat in-process first, then against a server: the content
 check, accounts; the server lane's notes in `NOTES.md`), in that order (the user, 2026-10-23,
 T9c). Later: HD layouts, graphics options beyond `faithful`, the client's options (volumes),

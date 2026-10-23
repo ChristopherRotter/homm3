@@ -63,6 +63,19 @@ const CORPSE: u8 = 1;
 /// 21 (0x4B4E24). The scene draws this layer after every row: the recorded `fly`'s cycles across
 /// rows match the original's frames (E17 M3 T1b-2).
 pub const FLYING: u8 = 8;
+/// Not a pass: a stack gone from the battlefield without a corpse (E17 M3 T9d, recorded in
+/// `sacrifice`): `stack_death` 0x444120 leaves none for a sacrificed or summoned stack (its
+/// +0x84 flags 0x10000000 or 0x400000, 0x4442C5) and marks it for the dissolve
+/// ([`DISSOLVE_STEP`]). The scene draws no stack in this layer.
+pub const GONE: u8 = u8::MAX;
+/// A dissolve's step (`battle_dissolve_removed` 0x4670EF: trunc(150 F) ms; E17 M3 T9d): at a
+/// strike's end, after the deaths, a stack [`GONE`] leaves the battlefield in `screen_dissolve`
+/// 0x602DC0's eight steps outside the deadline, the battle redrawn without it blended into the
+/// screen's rectangle by k / 8 at step k (the blend is not drawn: the viewer shows the picture
+/// before it until its end, *provisional*).
+const DISSOLVE_STEP: u32 = 150;
+/// A dissolve's steps (`screen_dissolve` 0x602DC0).
+const DISSOLVE_STEPS: u32 = 8;
 /// A projectile's step length in pixels: trunc((d + 20) / 40) steps (§7.4).
 const STEP_PIXELS: u64 = 40;
 /// Half a hex: a two-hex target is aimed at from its middle (0x43F323).
@@ -269,7 +282,12 @@ pub struct Stage<'a> {
     /// `h3_render::Bugs`): fixed for what the client shows, the original's for the comparisons
     /// with its captures (`h3-view sequences`). The design notes name each one (§7.16): a
     /// creature caster's group by the angle, a caster its spell missed standing at once, the
-    /// mouse's stack unmarked as a creature's cast starts.
+    /// mouse's stack unmarked as a creature's cast starts (CLT-Q8); a mass animation's every frame
+    /// shown, a mass reaction's hit ending on the standing group's frame 0, Chain Lightning's
+    /// opening bolt on the screen, each Fire Wall object animated at its own hex, Animate Dead's
+    /// own animation, the Liches' cloud translucent, Armageddon's line with the caster's bonuses,
+    /// Sacrifice's line naming its victim by its number before its death (E17 M3 T9d, CLT-Q9 to
+    /// CLT-Q14, CLT-Q16, CLT-Q17).
     pub bugs: Bugs,
 }
 
@@ -724,7 +742,7 @@ impl Pose {
     /// not hidden.
     #[must_use]
     pub const fn holds_hex(&self) -> bool {
-        !self.boxless && self.layer != CORPSE
+        !self.boxless && self.layer != CORPSE && self.layer != GONE
     }
 }
 
@@ -1580,6 +1598,7 @@ fn played(
         tactics: snapshot.tactics.is_some(),
         acting: snapshot.active,
         strike_casts: Vec::new(),
+        vanishing: BTreeSet::new(),
         erasing: Vec::new(),
         pending_counts: Vec::new(),
         objects: Vec::new(),
@@ -1990,6 +2009,9 @@ struct Player<'a> {
     /// The spells the melee strike playing leaves pending, cast at its animation's end
     /// ([`PENDING`]; E17 M3 T7b-2b-3).
     strike_casts: Vec<StrikeCast>,
+    /// The stacks whose death at the next strike's end leaves no corpse ([`GONE`]: Sacrifice's
+    /// victim; E17 M3 T9d).
+    vanishing: BTreeSet<u8>,
     /// The magic animations whose marks were cleared without a redraw (`mass_spell_animation`
     /// 0x5A6B50; E17 M3 T7c-1): erased with the next frame drawn, each with the time memory lost
     /// it.
@@ -3325,9 +3347,15 @@ impl Player<'_> {
                 let struck: Vec<(u8, u32)> = hits.iter().map(|h| (h.0, h.3)).collect();
                 self.field(look.animation, &struck);
                 // Its damage's line once it struck a stack (0x5A51DF to 0x5A5244): the spell's
-                // value without the caster's bonuses (0x5A78E0 given no hero, CLT-Q16).
+                // value without the caster's bonuses (0x5A78E0 given no hero, CLT-Q16); with the
+                // bugs fixed (E17 M3 T9d) with them, as every stack's damage has them.
+                let fixed = self.stage.bugs == Bugs::Fixed;
                 let value = effects.iter().find_map(|e| match *e {
-                    Event::SpellDamage { ref value, .. } => Some(value.0),
+                    Event::SpellDamage {
+                        ref value,
+                        ref caster,
+                        ..
+                    } => Some(if fixed { caster.0 } else { value.0 }),
                     _ => None,
                 });
                 if let Some(damage) = value {
@@ -3498,7 +3526,8 @@ impl Player<'_> {
     /// Mine's), its placing animation at a hex, kept, then the object placed and (Force Field
     /// excepted, 0x5A0806) a redraw shown at once; Fire Wall plays every object's at the hex aimed
     /// at (0x5A0884), Force Field at that hex, the others at the object's own. Then the cast's
-    /// line (0x5A0817, 0x5A04FF).
+    /// line (0x5A0817, 0x5A04FF). With the bugs fixed (E17 M3 T9d) each Fire Wall object's at its
+    /// own hex (CLT-Q12).
     fn place_objects(
         &mut self,
         (spell, look): (u16, &SpellLook),
@@ -3521,6 +3550,7 @@ impl Player<'_> {
                 self.cue(0, Sound::Object(spell), false);
             }
             let at = match look.original {
+                FIRE_WALL if self.stage.bugs == Bugs::Fixed => anchor,
                 FIRE_WALL | FORCE_FIELD => aimed.unwrap_or(anchor),
                 _ => anchor,
             };
@@ -3786,6 +3816,23 @@ impl Player<'_> {
         }
     }
 
+    /// One step of a reaction in the mass players' loops ([`Player::mass`], [`Player::field`]):
+    /// its group's next frame; after a hit's last frame the standing group's frame 0, from which
+    /// the original's loops run on a frame a step to the standing group's last and stay there
+    /// (CLT-Q10). `fixed` (E17 M3 T9d): the stack stays on the standing group's frame 0, as every
+    /// other reaction ends. A death stays on its last frame.
+    fn react(live: &Live, (group, frame): (&mut u8, &mut u32), g: Groups, fixed: bool) {
+        if fixed && *group == g.standing {
+            return;
+        }
+        if *frame + 1 < live.look.count(*group) {
+            *frame += 1;
+        } else if *group == g.hit {
+            *group = g.standing;
+            *frame = 0;
+        }
+    }
+
     /// Magic animation `number` over the stacks `hit` (`mass_spell_animation` 0x5A67C0, design
     /// §7.16, player 3; E17 M3 T7c-1), with their `reactions` to their kills: each takes its death
     /// group (no creature left) or its hit group at frame 0 and its sound as the animation starts;
@@ -3796,10 +3843,13 @@ impl Player<'_> {
     /// recorded at T7a-2b). Then the marks are cleared without a redraw (the animation goes with
     /// the next frame drawn), the dead die and, if any did, a redraw is shown at once (0x5A6C47).
     /// The count boxes keep the number before the kills (the stack's +0x50, which only
-    /// `strike_animation`'s end resets, design §4.3: *provisional*).
+    /// `strike_animation`'s end resets, design §4.3: *provisional*). With the bugs fixed (E17 M3
+    /// T9d) every frame of the animation shows once (CLT-Q9) and a hit ends on the standing group's
+    /// frame 0, as every other reaction does (CLT-Q10).
     fn mass(&mut self, number: Option<u8>, hit: &[(u8, u32)], reactions: bool) {
         let look = number.and_then(|n| Some((n, self.stage.magic.get(&n).cloned()?)));
         let g = self.stage.groups;
+        let fixed = self.stage.bugs == Bugs::Fixed;
         let mut over = Vec::new();
         // Each reacting stack: its id, its state then, its group and frame, whether it died.
         let mut reacting: Vec<(u8, Live, u8, u32, bool)> = Vec::new();
@@ -3833,16 +3883,12 @@ impl Player<'_> {
         for i in 0..loops {
             let mut poses = Vec::with_capacity(reacting.len());
             for (stack, live, group, frame, _) in &mut reacting {
-                if *frame + 1 < live.look.count(*group) {
-                    *frame += 1;
-                } else if *group == g.hit {
-                    *group = g.standing;
-                    *frame = 0;
-                }
+                Self::react(live, (group, frame), g, fixed);
                 poses.push((*stack, Self::posed(live, *group, *frame, live.hex)));
             }
             let frames = look.as_ref().map_or(0, |(_, l)| l.frames);
-            let frame = (i + 1 < frames).then_some(i).or(drawn_frame);
+            let shows = if fixed { i < frames } else { i + 1 < frames };
+            let frame = shows.then_some(i).or(drawn_frame);
             let drawn = self.clock.now;
             self.frame(&poses, tick);
             if let Some((n, l)) = look.as_ref().filter(|_| frame != drawn_frame) {
@@ -3896,10 +3942,12 @@ impl Player<'_> {
     /// iteration, to its last), a redraw at trunc(100 F) and, while the animation has a frame
     /// i, that frame tiled over the battlefield, shown (all n, unlike `mass_spell_animation`);
     /// the last stays on the screen until the next frame drawn. Then the dead die and, if one
-    /// did, a redraw shows at once (0x5A51C2).
+    /// did, a redraw shows at once (0x5A51C2). With the bugs fixed (E17 M3 T9d) a hit ends on the
+    /// standing group's frame 0, as in [`Player::mass`] (the same slip, CLT-Q10).
     fn field(&mut self, number: Option<u8>, hit: &[(u8, u32)]) {
         let look = number.and_then(|n| self.stage.magic.get(&n).cloned());
         let g = self.stage.groups;
+        let fixed = self.stage.bugs == Bugs::Fixed;
         let mut reacting: Vec<(u8, Live, u8, u32, bool)> = Vec::new();
         let mut loops = look.as_ref().map_or(0, |l| l.frames);
         for &(stack, kills) in hit {
@@ -3926,12 +3974,7 @@ impl Player<'_> {
         for i in 0..loops {
             let mut poses = Vec::with_capacity(reacting.len());
             for (stack, live, group, frame, _) in &mut reacting {
-                if *frame + 1 < live.look.count(*group) {
-                    *frame += 1;
-                } else if *group == g.hit {
-                    *group = g.standing;
-                    *frame = 0;
-                }
+                Self::react(live, (group, frame), g, fixed);
                 poses.push((*stack, Self::posed(live, *group, *frame, live.hex)));
             }
             self.frame(&poses, tick);
@@ -4785,9 +4828,18 @@ impl Player<'_> {
         // The strike's end (`strike_animation` 0x4692A4 to 0x46938A, design §4.3; E17 M3 T5b):
         // the dead leave their hexes for the corpses, every stack's layer is 4 again and its
         // count box's number +0x4C (+0x50, the count before the kills, back to −1), and the
-        // whole battle is redrawn and shown at once, the deadline as it is.
+        // whole battle is redrawn and shown at once, the deadline as it is. A stack dying
+        // without a corpse dissolves first (0x469316; E17 M3 T9d): the eight steps of
+        // [`DISSOLVE_STEP`] outside the deadline.
         if let Some((id, _, standing)) = striker {
             self.pending.push((id, standing));
+        }
+        if reactions
+            .iter()
+            .any(|r| r.died && self.vanishing.contains(&r.stack))
+        {
+            let step = self.speed.scale(DISSOLVE_STEP);
+            self.clock.wait(DISSOLVE_STEPS * step);
         }
         let shown = self.clock.now;
         self.counts.extend(reactions.iter().filter_map(|r| {
@@ -4811,6 +4863,17 @@ impl Player<'_> {
                 },
                 (false, _) => r.base,
             };
+            if r.died && self.vanishing.remove(&r.stack) {
+                self.stacks.remove(&r.stack);
+                self.pending.push((
+                    r.stack,
+                    Pose {
+                        layer: GONE,
+                        ..pose
+                    },
+                ));
+                continue;
+            }
             self.pending.push((r.stack, pose));
             if r.died {
                 self.bury(r.stack);

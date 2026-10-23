@@ -4,24 +4,7 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024; the battle client since the split of 2026-10-23, the adventure map client being the map-client lane's E24). M3 (fidelity) below, refined at M2's closure (T5c) and agreed by the user there, each task about half a context; the exit: the reference set passes, or each difference is a listed fix or a classified quirk. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
-
-### E17 M3 T9d — CLT-Q9 to Q17's answers built
-
-- **Scope:** the original's slips answered at M3's review (`OPEN-QUESTIONS.md`, answered
-  2026-10-23) fixed in what the client draws, the original's kept for the comparisons only
-  (`anim::Stage::bugs`, `h3_render::Bugs`, as T7d): Q9 a mass animation's last frame shown; Q10 a
-  mass reaction's hit ending on its standing frame 0 (only where a creature's standing frames
-  differ visibly: the DEFs tell); Q11 Chain Lightning's opening bolt (37) on the screen, at the
-  bolt from the sky's pace; Q12 each Fire Wall hex's placing animation at its own hex; Q13 Animate
-  Dead's own animation (4, the spell record's +8); Q14 the Liches' cloud translucent, as its table
-  entry says; Q16 Armageddon's line with the caster's bonuses; Q17 Sacrifice's line naming its
-  victim by its number before its death, once a new recording (a Sacrifice sequence) confirms the
-  original's. Q15 stays listed (the spectator's record) until live hot seat.
-- **Acceptance:** each fix tested with both switches; `drawn` the same (the comparisons draw the
-  original's); Q17's sequence recorded and as recorded; the client check passes.
-- **Depends on:** T9b (done 2026-10-23). **Status:** ready (M3's last task: the user,
-  2026-10-23, at T9c; M3 is marked done with it).
+Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024; the battle client since the split of 2026-10-23, the adventure map client being the map-client lane's E24). M3 (fidelity) done 2026-10-23 with T9d; M4 (sieges) next, refined by its T0 below. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
 
 ### E17 M4 T0 — M4 (sieges) refined
 
@@ -37,7 +20,7 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
   `h3-experiment`'s `[encounter.opponent.town]`, `experiments/agent/siege.py`) and the open
   questions; the inbox's siege entries (`NOTES.md`, "Sieges") and R2-8/R3-1 where M4 needs them.
 - **Acceptance:** M4's tasks in this queue and the epic file, agreed by the user.
-- **Depends on:** T9d (M3 marked done). **Status:** waiting (T9d).
+- **Depends on:** T9d (done 2026-10-23: M3 done). **Status:** ready.
 
 ## Inbox
 
@@ -90,7 +73,9 @@ Other lanes add entries here. The client lane turns each into a task, or moves i
   and a Pit Lord's `RoseFromCorpse` add a stack the record's first snapshot lacks, and the scene
   draws only the snapshot's stacks (a wire `Stack` each): the viewer needs the new stack's
   numbers (from the ruleset, or a later snapshot in the record), its record index and the
-  dissolve that shows it (`create_battle_stack`, 75 ms steps, the blend not read); with them the
+  dissolve that shows it (`create_battle_stack`, 75 ms steps, the blend not read; T9d built a
+  dissolve's time for Sacrifice's victim, `anim::GONE`, `DISSOLVE_STEP`, and the frame check of
+  `sacrifice` lists its blend: `screen_dissolve` 0x602DC0, read for both); with them the
   message when no hex is free, a clone's `Vanished`, Teleport's dissolve (moved at once now) and
   Sacrifice's victim leaving no corpse; and the panel's side by each turn's
   controller (T9b, R3-1: `scene::controller` takes the opening's, so Hypnotize and a created stack

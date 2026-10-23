@@ -737,3 +737,30 @@ command = [
     { seat = "Defender", at = 2020, command = { Defend = {} } },
     { seat = "Attacker", at = 2020, command = { Cast = { spell = 19, target = { Stack = { stack = 2 } }, second = { None = {} } } } },
 ]
+
+# E17 M3 T9d (CLT-Q17): Sacrifice (design §7.16, player 4): the Grand Elves shoot the lone Pikeman
+# (round 1), the Marksmen defend, and on the Swordsmen's turn Orrin casts Sacrifice on the
+# Pikeman's corpse (hex 35) with the lone Archer (hex 86) its victim: the cast's line names the
+# victim by its number after its death (0: the plural), animation 51 over it with its death, no
+# corpse but the dissolve's eight steps of 150 ms outside the deadline, then the raise. `seed`:
+# the engine's, whose damage is the original's (the Grand Elves 22). The frame check: as the
+# original's but the dissolve's seven blending steps (3 262 to 4 162 ms; the blend not drawn).
+[[sequence]]
+id = "sacrifice"
+scenario = "seq-sacrifice.toml"
+hot_seat = true
+seed = 5
+actions = [
+    "turn:1.0", "hex:35", "turn:1.1", "key:d", "turn:0.2", "cast:0:35", "hex:86",
+]
+ms = 6000
+heroes = true
+screens = true
+timeline = "timelines/sacrifice.txt"
+frames = "timelines/sacrifice-frames.txt"
+boxes = true
+command = [
+    { seat = "Defender", command = { Shoot = { target = 0, at = 35 } } },
+    { seat = "Defender", at = 1312, command = { Defend = {} } },
+    { seat = "Attacker", at = 1312, command = { Cast = { spell = 40, target = { Stack = { stack = 0 } }, second = { Stack = { stack = 1 } } } } },
+]

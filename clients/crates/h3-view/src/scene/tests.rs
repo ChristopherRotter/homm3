@@ -620,6 +620,34 @@ fn a_moment_draws_each_stack_in_its_pose() {
 }
 
 #[test]
+fn a_stack_gone_without_a_corpse_is_not_drawn() {
+    // E17 M3 T9d: a sacrificed stack (`anim::GONE`, beyond the passes) is drawn by no pass and
+    // not as a flier; the living stack on 4/9 without its pose would be.
+    let layout = layout();
+    let gone = Pose {
+        group: 5,
+        frame: 5,
+        hex: hex(4, 9),
+        offset: [0, 0],
+        mirrored: false,
+        layer: GONE,
+        boxless: false,
+    };
+    let creatures = |moment: &Moment| {
+        battle_at(&battle_view(), moment, &keys(), &tables(), &layout)
+            .unwrap()
+            .iter()
+            .filter(|d| matches!(d, Draw::Creature { .. }))
+            .count()
+    };
+    let moment = Moment {
+        poses: [(1, gone)].into_iter().collect(),
+        ..Moment::default()
+    };
+    assert_eq!(creatures(&moment) + 1, creatures(&Moment::default()));
+}
+
+#[test]
 fn a_magic_animation_at_a_hex_is_drawn_over_everything() {
     // E17 M3 T7c-1 (0x496A10): after the stacks, the flier and the projectile, never mirrored.
     let layout = layout();

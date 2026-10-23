@@ -22,11 +22,13 @@ use crate::anim::{
 const RAISE_LINES: &str = include_str!("../../../../../situations/timelines/raise.txt");
 const CREATURES: &str = include_str!("../../../../../situations/timelines/creatures.txt");
 const BOLT_LINES: &str = include_str!("../../../../../situations/timelines/bolt.txt");
+const SACRIFICE_LINES: &str = include_str!("../../../../../situations/timelines/sacrifice.txt");
 
 const SKELETON: u16 = 30;
 const GRAND_ELF: u16 = 31;
 const EFREET_SULTAN: u16 = 32;
 const POWER_LICH: u16 = 33;
+const ARCHER: u16 = 34;
 
 /// The spells' handles in these tests: the base pack's numbers.
 const FIRE_SHIELD: u16 = 29;
@@ -36,6 +38,8 @@ const SACRIFICE: u16 = 40;
 const CHAIN_LIGHTNING: u16 = 19;
 const DEATH_CLOUD: u16 = 76;
 const CLOUD: u8 = 72;
+/// Animate Dead's own animation (the spell record's +8; CLT-Q13).
+const ANIMATE_DEAD_OWN: u8 = 4;
 
 /// The sequences' creatures (their DEFs' groups, `clients/assets/base.toml`'s numbers).
 fn raise_looks() -> BTreeMap<u16, Look> {
@@ -106,6 +110,24 @@ fn raise_looks() -> BTreeMap<u16, Look> {
         time: 100,
     });
     l.insert(POWER_LICH, lich);
+    // `clcbow.def` (E17 M3 T9d, `sacrifice`).
+    l.insert(
+        ARCHER,
+        look(
+            [9000, 500, 500, 115],
+            &[
+                (0, 8),
+                (2, 8),
+                (3, 6),
+                (4, 9),
+                (5, 6),
+                (14, 8),
+                (15, 8),
+                (16, 8),
+            ],
+            190,
+        ),
+    );
     l
 }
 
@@ -122,6 +144,7 @@ fn raise_magic() -> BTreeMap<u8, MagicLook> {
         (BOLT, m("C11spA0.def", 1, [106, 494], 2, false)),
         (SHIELD_RETURN, m("C05spF0.def", 10, [75, 62], 1, false)),
         (CHAIN_START, m("C03spA0.def", 1, [106, 494], 2, false)),
+        (ANIMATE_DEAD_OWN, m("C01spE0.def", 10, [98, 95], 1, false)),
         (38, m("C03spA1.def", 12, [114, 110], 1, false)),
         (49, m("C11spA1.def", 12, [114, 110], 0, false)),
         (RAISE, m("C12spE0.def", 20, [98, 95], 1, true)),
@@ -143,7 +166,7 @@ fn raise_casts() -> Casts {
             (CHAIN_LIGHTNING, spell(CHAIN_LIGHTNING, Some(38))),
             (FIRE_SHIELD, spell(FIRE_SHIELD, Some(SHIELD_RETURN))),
             (RESURRECTION, spell(RESURRECTION, Some(RAISE))),
-            (ANIMATE_DEAD, spell(ANIMATE_DEAD, Some(4))),
+            (ANIMATE_DEAD, spell(ANIMATE_DEAD, Some(ANIMATE_DEAD_OWN))),
             (SACRIFICE, spell(SACRIFICE, Some(52))),
             (DEATH_CLOUD, spell(DEATH_CLOUD, Some(CLOUD))),
         ]),
@@ -167,6 +190,16 @@ fn play_raised(
     commands: &[(Option<u32>, Vec<Event>)],
     casts: &Casts,
 ) -> Timeline {
+    play_raised_with(snapshot, commands, casts, Bugs::Original)
+}
+
+/// As [`play_raised`], the original's drawing bugs reproduced or fixed by `bugs` (E17 M3 T9d).
+fn play_raised_with(
+    snapshot: &Observation,
+    commands: &[(Option<u32>, Vec<Event>)],
+    casts: &Casts,
+    bugs: Bugs,
+) -> Timeline {
     let layout = layout();
     let magic = raise_magic();
     let stage = Stage {
@@ -175,7 +208,7 @@ fn play_raised(
         groups: tables().battle.groups,
         magic: &magic,
         casts,
-        bugs: Bugs::Original,
+        bugs,
     };
     let commands: Vec<Command<'_>> = commands
         .iter()
@@ -759,4 +792,146 @@ fn chains_shields_and_raises_without_their_stacks_spells_or_looks() {
     let t = play_bare(&o, &commands[..1], &bare, &BTreeMap::new());
     assert_eq!(t.beams.len(), 1);
     assert!(t.magics.is_empty());
+}
+
+#[test]
+fn raises_a_chain_and_a_cloud_with_the_bugs_fixed() {
+    // E17 M3 T9d (CLT-Q11, Q13, Q14, Q17): the lone Skeleton shot and animated, the Pikeman shot
+    // and raised by a Sacrifice of the Swordsmen, Chain Lightning at the Marksmen and the Power
+    // Liches, the Liches' shot; played with the original's slips and with them fixed.
+    let o = snapshot(vec![
+        counted(at(0, Side::Attacker, PIKEMAN, 35, false), 1),
+        counted(at(1, Side::Attacker, SKELETON, 86, false), 1),
+        at(2, Side::Attacker, SWORDSMAN, 137, false),
+        at(3, Side::Defender, MARKSMAN, 151, false),
+        at(4, Side::Defender, POWER_LICH, 49, false),
+    ]);
+    let shot = flags(true, false, false);
+    let hurt = |target, damage| Event::SpellDamage {
+        target,
+        value: WireU64(damage),
+        caster: WireU64(damage),
+        damage: WireU64(damage),
+        kills: 0,
+    };
+    let commands = [
+        (Some(0), vec![struck(3, 1, 1, shot)]),
+        (None, vec![cast(ANIMATE_DEAD, 1), raised(1, 1)]),
+        (None, vec![struck(3, 0, 1, shot)]),
+        (
+            None,
+            vec![
+                cast(SACRIFICE, 0),
+                Event::Sacrificed {
+                    victim: 2,
+                    creatures: 40,
+                },
+                raised(0, 1),
+            ],
+        ),
+        (
+            None,
+            vec![cast(CHAIN_LIGHTNING, 3), hurt(3, 40), hurt(4, 20)],
+        ),
+        (None, vec![struck(4, 0, 0, shot)]),
+    ];
+    let original = play_raised(&o, &commands, &raise_casts());
+    let fixed = play_raised_with(&o, &commands, &raise_casts(), Bugs::Fixed);
+    // CLT-Q13: Animate Dead raises with its own animation's ten frames, where the original plays
+    // Resurrection's for both raises.
+    let frames = |t: &Timeline, n| {
+        t.magics
+            .iter()
+            .filter(|k| k.animation == n && k.frame.is_some())
+            .count()
+    };
+    assert_eq!(frames(&original, ANIMATE_DEAD_OWN), 0);
+    assert_eq!(frames(&fixed, ANIMATE_DEAD_OWN), 10);
+    assert_eq!(frames(&original, RAISE), 2 * frames(&fixed, RAISE));
+    // CLT-Q17: Sacrifice's line names its victim by its number before its death (the original's
+    // after it: 0).
+    let line = |count| Logged::Cast {
+        side: 0,
+        spell: SACRIFICE,
+        target: 2,
+        count,
+    };
+    assert!(original.log.iter().any(|(_, l)| *l == line(0)));
+    assert!(fixed.log.iter().any(|(_, l)| *l == line(40)));
+    assert!(!fixed.log.iter().any(|(_, l)| *l == line(0)));
+    // CLT-Q11: Chain Lightning's opening bolt on the screen for the bolt from the sky's 10 ms;
+    // the original's erased at the deadline that shows it.
+    let opening = |t: &Timeline| -> Vec<(u32, Option<u32>)> {
+        t.magics
+            .iter()
+            .filter(|k| k.animation == CHAIN_START)
+            .map(|k| (k.shown, k.frame))
+            .collect()
+    };
+    let (was, now) = (opening(&original), opening(&fixed));
+    assert_eq!(was.len(), 2);
+    assert_eq!((was[0].1, was[1].1), (Some(0), None));
+    assert_eq!(was[0].0, was[1].0);
+    assert_eq!(now[1].0 - now[0].0, 10);
+    // CLT-Q14: the Liches' cloud translucent, as its table entry says; the original's plain.
+    let clouds = |t: &Timeline| -> Vec<bool> {
+        t.spots
+            .iter()
+            .filter(|k| k.animation == CLOUD)
+            .map(|k| k.translucent)
+            .collect()
+    };
+    assert_eq!(clouds(&original), [false; 21]);
+    assert_eq!(clouds(&fixed), [true; 21]);
+}
+
+#[test]
+fn the_sacrifice_sequence_plays_as_recorded() {
+    // `seq-sacrifice.toml` (E17 M3 T9d): the Grand Elves shoot the lone Pikeman, the Marksmen
+    // defend, Orrin sacrifices the lone Archer to raise the Pikeman: the line on the victim by its
+    // number after its death (the original's 0), 51 over it with its death, no corpse but the
+    // dissolve's eight steps of 150 ms outside the deadline, then the raise, whose first two frames
+    // the late deadline shows at once.
+    let o = snapshot(vec![
+        counted(at(0, Side::Attacker, PIKEMAN, 35, false), 1),
+        counted(at(1, Side::Attacker, ARCHER, 86, false), 1),
+        at(2, Side::Attacker, SWORDSMAN, 137, false),
+        at(3, Side::Defender, GRAND_ELF, 49, false),
+        at(4, Side::Defender, MARKSMAN, 151, false),
+    ]);
+    let commands = [
+        (
+            Some(0),
+            vec![
+                struck(3, 0, 1, flags(true, false, false)),
+                Event::TurnStarted { stack: 4 },
+            ],
+        ),
+        (Some(1312), defend(4, 2)),
+        (
+            Some(1312),
+            vec![
+                cast(SACRIFICE, 0),
+                Event::Sacrificed {
+                    victim: 1,
+                    creatures: 1,
+                },
+                raised(0, 1),
+            ],
+        ),
+    ];
+    let t = play_raised(&o, &commands, &raise_casts());
+    assert_eq!(t.lines_with_heroes(6000), recorded(SACRIFICE_LINES, 6000));
+    // The victim gone without a corpse: no pass draws it, it holds no hex; the Pikeman stands.
+    let gone = t.at(t.end)[&1];
+    assert_eq!(gone.layer, crate::anim::GONE);
+    assert!(!gone.holds_hex());
+    assert_eq!(t.counts(t.end).get(&0), Some(&1));
+    let line = Logged::Cast {
+        side: 0,
+        spell: SACRIFICE,
+        target: 1,
+        count: 0,
+    };
+    assert!(t.log.iter().any(|(_, l)| *l == line));
 }

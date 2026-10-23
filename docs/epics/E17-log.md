@@ -2192,6 +2192,51 @@ R2-7, R2-8, R3-1 and new dependencies), HD, and the adventure map (no adventure 
   options moved to its inbox); this lane's QUEUE (M4 T0 after T9d; the adventure lane's
   information-only harness entries moved to `NOTES.md`).
 
+### M3 T9d — CLT-Q9 to Q17's answers built (2026-10-23)
+
+On `client/e17-m3-t9d`, the user present at the start. The agent proposed a split in two (the
+fixes the readings settle, then Q10's survey and Q17's recording); **the user: all of T9d at
+once**, and the string catalogue stays common (CLT-Q18, the agent's addition confirmed). The
+user's computer was linked for the staging (the four LODs, both sound archives, `H3ab_ahd.vid`,
+both executables, the five DLLs, the battle tunes, `extracted.tar`).
+
+- **Starting point:** `master` at `7ab66ed` (#409 merged); no client pull request open; CI on
+  `master` not started (billing); the client gates' full check on that code (`verify-once
+  clients`: all gates passed, coverage 100 %).
+- **Built** (design §7.16, "Fixed (T9d)"), each by `anim::Stage::bugs`, the original's kept for
+  the comparisons: Q9 `mass` shows every frame once; Q10 a hit ends on the standing group's frame
+  0 in `mass` and in Armageddon's `field` (`Player::react`; the same run-on in both loops, so
+  Q10's answer covers both: *for the user's attention*); Q11 Chain Lightning's opening at 10 ms
+  a frame; Q12 each Fire Wall object's 65 at its own hex; Q13 Animate Dead with its own 4; Q14
+  the Liches' cloud translucent; Q16 Armageddon's line with `caster`; Q17 Sacrifice's line by
+  the victim's number before its death.
+- **Q10's survey** (a throwaway script over the four LODs, numbers only): in 87 of the 145
+  creatures' DEFs group 2's last frame differs from frame 0 by 213 to 7 339 pixels (a breathing
+  cycle out and back that stops one frame short), in 55 it is frame 0's picture, and the three
+  war machines have one frame. So
+  the fix, built for every creature, changes exactly those where it is visible: the user's
+  "fixed where the frames differ visibly, else copied" without a per-creature table.
+- **Recorded:** `sacrifice` (`seq-sacrifice.toml`): hot seat, the Grand Elves shoot the lone
+  Pikeman, the Marksmen defend, Orrin's Sacrifice on the corpse (`cast:0:35`) with the lone
+  Archer its victim (`hex:86`: the harness's second target, nothing new needed). The original's
+  log: "Orrin casts 'Sacrifice' on the Archers." for one Archer: **Q17 confirmed** (number 0).
+  **Found:** the victim leaves no corpse but dissolves (`stack_death` 0x4442C5,
+  `battle_dissolve_removed`, `screen_dissolve` with trunc(150 F) a step: 1 200 ms outside the
+  deadline, memory unchanged),
+  before the strike's end and the raise, whose first two frames then show at once. **Built:**
+  `anim::GONE`, `Player::vanishing`, the dissolve's wait at `iterate`'s end; the blend not
+  drawn (*provisional*; QUEUE's inbox, with the created stacks' dissolve). The engine's seed
+  searched (5: the Grand Elves' 22, the original's).
+- **Checks:** `drawn` (from the release build): every earlier sequence and situation the same
+  (the comparisons draw the original's slips), `sacrifice` new and recorded; the timing check of
+  every sequence passes, `sacrifice` 72 changes as recorded; its frame check 81 frames, as the
+  original's but the dissolve's seven blending steps (3 262 to 4 162 ms, 951 to 1 000 pixels
+  each: the blend). Unit tests: `mass_animations_with_the_bugs_fixed`,
+  `a_fire_wall_and_armageddon_with_the_bugs_fixed`, `raises_a_chain_and_a_cloud_with_the_bugs_fixed`
+  (each fix both ways), `the_sacrifice_sequence_plays_as_recorded`, the scene's
+  `a_stack_gone_without_a_corpse_is_not_drawn`.
+- **Gates:** the full check: in the pull request. **M3 done.**
+
 ## Accepted review lists (M1, M2, M3)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its
