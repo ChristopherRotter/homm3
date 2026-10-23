@@ -570,7 +570,10 @@ def run_set(rest):
                 for at, p, st in zip(sorted(frames), paths, stacks)]
         (here / "frames.toml").write_text(frames_toml(kept, mouse))
         ours = here / "ours.png"  # its record: ours.jsonl (the count boxes' masks)
-        view([h3view, "render", str(scenario), "--out", str(ours), "--frames", str(here)])
+        # Whose record (E17 M4 T1b): a side's shows its hidden objects (a Tower's mines on the
+        # defender's turn in hot seat), a spectator's by default.
+        seat = ["--seat", sit["seat"]] if "seat" in sit else []
+        view([h3view, "render", str(scenario), "--out", str(ours), "--frames", str(here), *seat])
         changed = False
         for (at, frame), path in zip(sorted(frames.items()), paths):
             # The pixels' digest: an XWD file's colour map holds bytes the X server leaves unset.
@@ -1231,6 +1234,7 @@ def run_drawn(rest):
         else:
             args = [h3view, "render", str(situations / entry["scenario"]), "--out",
                     str(here / "ours.png"), "--frames", str(here)]
+            args += ["--seat", entry["seat"]] if "seat" in entry else []
         run_result = subprocess.run(args, capture_output=True, text=True)
         if run_result.returncode != 0:
             last = (run_result.stdout + run_result.stderr).strip().splitlines()[-1:]

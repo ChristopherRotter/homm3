@@ -747,7 +747,8 @@ why = "exact: the cursor, the hint and the marked stack (M3 T6c-1)"
 
 # E17 M4 T1b: the sieges (design §10.1). `h3-view situation` puts Blue's hero into its town and
 # Red's south of the entrance; `key` steps Red north. Hot seat, both heroes commanding their war
-# machines: the first frame is the keep's turn, before any shot (the scenarios say why).
+# machines: the first frame is the keep's turn, before any shot (the scenarios say why); `seat`
+# renders that side's record instead of a spectator's (the original shows the side to act).
 [[situation]]
 id = "siege-castle"
 scenario = "siege-castle.toml"
@@ -758,3 +759,114 @@ key = "Up"
 at = 0
 differing = 0
 why = "exact: the background, moat and lip, the walls in strips, the towers, the keep and their Archers cut to 232 rows, the keep's outlined (M4 T1b)"
+
+[[situation]]
+id = "siege-rampart"
+scenario = "siege-rampart.toml"
+hot_seat = true
+key = "Up"
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: Rampart's pictures, points and Wood Elves (M4 T1b)"
+
+[[situation]]
+id = "siege-tower"
+scenario = "siege-tower.toml"
+hot_seat = true
+key = "Up"
+seat = "defender"
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: no moat drawn, the keep's turn showing the defender's hidden mines (the defender's record, `seat`; M4 T1b)"
+
+[[situation]]
+id = "siege-inferno"
+scenario = "siege-inferno.toml"
+hot_seat = true
+key = "Up"
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: Inferno's pictures, points and Gogs (M4 T1b)"
+
+[[situation]]
+id = "siege-necropolis"
+scenario = "siege-necropolis.toml"
+hot_seat = true
+key = "Up"
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: Necropolis's moat lip drawn (VCMI draws none), its Liches (M4 T1b)"
+
+[[situation]]
+id = "siege-dungeon"
+scenario = "siege-dungeon.toml"
+hot_seat = true
+key = "Up"
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: the Dungeon's points (VCMI's differ by one to five pixels), its two-hex Medusas 39 pixels right (M4 T1b)"
+
+[[situation]]
+id = "siege-stronghold"
+scenario = "siege-stronghold.toml"
+hot_seat = true
+key = "Up"
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: the Stronghold's moat under SoD rules, its Orcs (M4 T1b)"
+
+[[situation]]
+id = "siege-fortress"
+scenario = "siege-fortress.toml"
+hot_seat = true
+key = "Up"
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: the Fortress's pictures, points and Lizardmen (M4 T1b)"
+
+[[situation]]
+id = "siege-conflux"
+scenario = "siege-conflux.toml"
+hot_seat = true
+key = "Up"
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: Conflux's pictures from H3ab_bmp.lod, its Storm Elementals (M4 T1b)"
+
+[[situation]]
+id = "siege-fort"
+scenario = "siege-fort.toml"
+hot_seat = true
+key = "Up"
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: a Fort draws the towers, the keep and their covers without shooters, no moat; the Catapult's turn (M4 T1b)"
+
+[[situation]]
+id = "siege-citadel"
+scenario = "siege-citadel.toml"
+hot_seat = true
+key = "Up"
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: a Citadel's keep with its shooter, the towers without, the Fortress's moat (M4 T1b)"

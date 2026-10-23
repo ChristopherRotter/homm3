@@ -9,6 +9,7 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use h3_formats::lod::LodArchive;
+use h3_protocol::wire::Seat;
 use h3_render::Bugs;
 use h3_view::anim::{self, Speed};
 use h3_view::batch::{self, Batch};
@@ -36,12 +37,15 @@ pub struct Options {
     at: Option<u32>,
     speed: u8,
     frames: Option<PathBuf>,
+    /// Whose record a scenario plays into (E17 M4 T1b: a side's shows its hidden objects).
+    seat: Seat,
 }
 
 impl Options {
     /// Parses `<scenario.toml | record.jsonl> [--seed <n>] [--packs <dir>] [--install <dir>]
-    /// [--out <file.png>] [--list] [--at <ms> | --frames <dir>] [--speed <0-2>]`; the
-    /// installation defaults as the gate's.
+    /// [--out <file.png>] [--list] [--at <ms> | --frames <dir>] [--speed <0-2>] [--seat
+    /// <attacker | defender>]`; the installation defaults as the gate's, the record a
+    /// spectator's.
     pub fn parse(args: &[String]) -> Result<Self, String> {
         let env = std::env::var_os("H3_INSTALL").map(PathBuf::from);
         Self::parse_with(args, env)
@@ -52,6 +56,7 @@ impl Options {
         let (mut input, mut seed, mut packs, mut install, mut out, mut list) =
             (None, 1, None, None, None, false);
         let (mut at, mut speed, mut frames) = (None, 0, None);
+        let mut seat = Seat::Spectator;
         let mut rest = args.iter();
         while let Some(arg) = rest.next() {
             let mut value = || {
@@ -73,6 +78,13 @@ impl Options {
                     at = Some(v.parse().map_err(|_| format!("render: bad time `{v}`"))?);
                 }
                 "--frames" => frames = Some(PathBuf::from(value()?)),
+                "--seat" => {
+                    seat = match value()?.as_str() {
+                        "attacker" => Seat::Attacker,
+                        "defender" => Seat::Defender,
+                        other => return Err(format!("render: bad seat `{other}`")),
+                    };
+                }
                 "--speed" => {
                     let v = value()?;
                     speed = v
@@ -103,6 +115,7 @@ impl Options {
             at,
             speed,
             frames,
+            seat,
         })
     }
 
@@ -193,7 +206,8 @@ pub fn lookup(archives: &[(&str, LodArchive<'_>)], name: &str) -> Result<Vec<u8>
 fn render(options: &Options) -> Result<Vec<String>, String> {
     let mut lines = Vec::new();
     let text = if options.scenario() {
-        let text = crate::scenario::record(&options.input, &options.packs, options.seed)?;
+        let text =
+            crate::scenario::record_of(&options.input, &options.packs, options.seed, options.seat)?;
         let path = options.png().with_extension("jsonl");
         write(&path, text.as_bytes())?;
         lines.push(format!("record: {}", path.display()));
@@ -401,8 +415,14 @@ mod tests {
         assert!(o.png().ends_with("out/render/a-s1-250ms.png"));
         let o = Options::parse_with(&args(&["a.toml", "--frames", "/f"]), None).unwrap();
         assert_eq!((o.at, o.frames), (None, Some(PathBuf::from("/f"))));
+        assert_eq!(o.seat, Seat::Spectator);
+        for (name, seat) in [("attacker", Seat::Attacker), ("defender", Seat::Defender)] {
+            let o = Options::parse_with(&args(&["a.toml", "--seat", name]), None).unwrap();
+            assert_eq!(o.seat, seat);
+        }
         for bad in [
-            &["a.toml", "--at", "1", "--frames", "/f"][..],
+            &["a.toml", "--seat", "spectator"][..],
+            &["a.toml", "--at", "1", "--frames", "/f"],
             &["--seed"],
             &["--seed", "x", "a.toml"],
             &["--at", "soon", "a.toml"],
@@ -450,11 +470,12 @@ mod tests {
             },
             first: 1,
         };
-        let text = crate::scenario::record(
+        let text = crate::scenario::record_of(
             &Path::new(env!("CARGO_MANIFEST_DIR"))
                 .join("../../../packs/synthetic/scenarios/duel.toml"),
             &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../packs"),
             1,
+            Seat::Spectator,
         )
         .unwrap();
         let mut snapshot = record::parse(&text).unwrap().messages.remove(0);

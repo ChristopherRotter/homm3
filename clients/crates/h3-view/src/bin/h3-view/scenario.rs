@@ -420,10 +420,11 @@ fn machine_skills(
     Ok(skills)
 }
 
-/// The record of a spectator of the battle `scenario` sets up with `seed`, its packs read from
-/// `packs`.
-pub fn record(scenario: &Path, packs: &Path, seed: u64) -> Result<String, String> {
-    played(scenario, packs, seed, &[])
+/// The record of `seat` (a spectator's, or a side's: what that side sees, its own hidden objects
+/// included; E17 M4 T1b, a Tower's mines on the defender's turn) of the battle `scenario` sets
+/// up with `seed`, its packs read from `packs`.
+pub fn record_of(scenario: &Path, packs: &Path, seed: u64, seat: Seat) -> Result<String, String> {
+    played_as(scenario, packs, seed, &[], seat)
 }
 
 /// The legal commands of the side to act at the opening of the battle `scenario` sets up with
@@ -544,6 +545,17 @@ pub fn played(
     seed: u64,
     commands: &[(Seat, Command)],
 ) -> Result<String, String> {
+    played_as(scenario, packs, seed, commands, Seat::Spectator)
+}
+
+/// [`played`], the record `seat`'s.
+fn played_as(
+    scenario: &Path,
+    packs: &Path,
+    seed: u64,
+    commands: &[(Seat, Command)],
+    seat: Seat,
+) -> Result<String, String> {
     let (ruleset, setup) = battle(scenario, packs, seed)?;
     let config = config(setup, seed);
     let seats = ["attacker", "defender"].map(|token| SeatKind::Player {
@@ -558,7 +570,7 @@ pub fn played(
         token: None,
     };
     session.handle(viewer, join, &mut out);
-    if !commands.is_empty() {
+    if !commands.is_empty() || seat != Seat::Spectator {
         for (conn, seat, token) in [
             (2, Seat::Attacker, "attacker"),
             (3, Seat::Defender, "defender"),
@@ -583,7 +595,12 @@ pub fn played(
             }
         }
     }
-    fetch_record(&mut session, viewer)
+    let reader = match seat {
+        Seat::Attacker => ConnId(2),
+        Seat::Defender => ConnId(3),
+        Seat::Spectator => viewer,
+    };
+    fetch_record(&mut session, reader)
 }
 
 #[cfg(test)]
@@ -598,11 +615,21 @@ mod tests {
     #[test]
     fn a_scenario_becomes_a_spectators_record() {
         let scenario = repo().join("packs/synthetic/scenarios/duel.toml");
-        let text = record(&scenario, &repo().join("packs"), 1).unwrap();
+        let text = record_of(&scenario, &repo().join("packs"), 1, Seat::Spectator).unwrap();
         let record = h3_view::record::parse(&text).unwrap();
         assert_eq!(record.header.seat, Seat::Spectator);
         let snapshot = record.first_snapshot().unwrap();
         assert!(snapshot.spectator);
+        // A side's record (E17 M4 T1b): what it sees.
+        let text = record_of(&scenario, &repo().join("packs"), 1, Seat::Defender).unwrap();
+        let record = h3_view::record::parse(&text).unwrap();
+        assert_eq!(record.header.seat, Seat::Defender);
+        assert!(!record.first_snapshot().unwrap().spectator);
+        let text = record_of(&scenario, &repo().join("packs"), 1, Seat::Attacker).unwrap();
+        assert_eq!(
+            h3_view::record::parse(&text).unwrap().header.seat,
+            Seat::Attacker
+        );
         assert!(!snapshot.stacks.is_empty());
         // The duel asks for random obstacles: each placed one has its type.
         let typed = snapshot
@@ -738,7 +765,7 @@ mod tests {
     #[test]
     fn a_bad_scenario_is_an_error() {
         let packs = repo().join("packs");
-        assert!(record(Path::new("/no/such.toml"), &packs, 1).is_err());
+        assert!(record_of(Path::new("/no/such.toml"), &packs, 1, Seat::Spectator).is_err());
         let dir = std::env::temp_dir().join(format!("h3-view-scenario-{}", std::process::id()));
         fs::create_dir_all(&dir).unwrap();
         let bad = dir.join("bad.toml");
@@ -748,7 +775,7 @@ mod tests {
         )
         .unwrap();
         assert!(
-            record(&bad, &packs, 1)
+            record_of(&bad, &packs, 1, Seat::Spectator)
                 .unwrap_err()
                 .contains("invalid pack id")
         );
