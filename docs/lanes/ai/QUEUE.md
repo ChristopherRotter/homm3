@@ -27,16 +27,26 @@ ladder; #426), T7d (`t7-1` at a third neutral: the report set as `t5-3`'s, 0.828
 the system actor 0.374; the neutral set 0.972, value +0.245 against the target +0.285). Beside
 it T5's rest: the mana price's preparation (#429) and AI-Q7 (b) part 1 (C ABI v33, #432).
 
-**Next: increment 6's refinement** (the user, 2026-10-23: `t7-1` recorded, nothing built and no
-run meanwhile; the choices put to them, `E06-log.md`, T7d):
-- Code: **AI-Q7 (b) part 2** (the network reads `batch.preview` beside the entry mask, an
-  opt-in `[network]` key, the rollout keeps it; an A/B config against `t7-1`'s settings), or
-  the system actor as a league opponent in the hero kinds too (a change of decision 9: the
-  strongest opponent, played inside the batch; its ladder row then measures a training
-  opponent).
-- Runs on the user's machine: 60 M at T7's mix (`configs/e06-t7.toml --set
-  samples=60_000_000`, about 4 hours: whether PPO plateaus below the targets, T8's trigger);
-  the mana run `t5-4` (`configs/e06-mana.toml`, about 75 minutes).
+**Next: T6a The behaviour analysis** (the user, 2026-10-23: diagnose first, in a fresh session;
+the critical path to beating the system actor, `E06-log.md`, T7d). Needs the user's upload of
+`runs/t7-1/best.pt`. A small command `python -m h3env.train.inspect` (Python only, rerun at
+every checkpoint; T5b's diagnosis was ad hoc): the network against the system actor, and
+against Greedy for comparison, on the report set (sampled play), per kind and side, wins and
+losses apart: the decision mix (waits, defends, moves, melee, shots, hero and stack casts); the
+hero's casts when castable, the spells, the mana spent; targeting with the kill preview (#432:
+a strike killing less than the best legal one; shooters that move or melee when they could
+shoot); trades (losses to retaliation against kills per strike, who strikes first, rounds).
+Its findings choose increment 6's lever:
+
+- **Increment 6's choices** (put to the user at T7d; refined with T6a's findings):
+  - Code: **AI-Q7 (b) part 2** (the network reads `batch.preview` beside the entry mask, an
+    opt-in `[network]` key, the rollout keeps it; an A/B config against `t7-1`'s settings);
+    the system actor as a league opponent in the hero kinds too (a change of decision 9: the
+    agent never met it there; its ladder row then measures a training opponent); the casts'
+    exploration or the mana price (if the hero rarely casts); potential-based shaping.
+  - Runs on the user's machine: 60 M at T7's mix (`configs/e06-t7.toml --set
+    samples=60_000_000`, about 4 hours: whether PPO plateaus, T8's trigger); the mana run
+    `t5-4` (`configs/e06-mana.toml`, about 75 minutes).
 - Later (design §10): T5's rest (throughput, the observations in place), T6, T8, T9.
 
 ## Inbox

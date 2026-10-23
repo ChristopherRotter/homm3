@@ -174,7 +174,8 @@ the weights in the run's config, design §12): T7a and T7b, then the checkpoint,
   record in `E06-log.md`); AI-Q7 (b) part 1 done 2026-10-23 (the batch's previewed kills, C ABI
   v33); part 2 (the network reads them) after the checkpoint.
 - [ ] **T6 Toward the targets** — runs on the best configuration until decision 7's targets hold,
-  or the evidence says PPO plateaus (then T8).
+  or the evidence says PPO plateaus (then T8). First T6a, the behaviour analysis against the
+  system actor (the user, 2026-10-23; the lane's QUEUE).
 - [ ] **T8 Search** (only if PPO plateaus below the targets) — determinized search over the fork
   with re-seeded streams, the learned network as its prior and value.
 - [ ] **T9 Closure** — the audit, an independent review, the verifies, the docs.

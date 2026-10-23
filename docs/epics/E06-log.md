@@ -622,4 +622,9 @@ entry only where a task builds on it.
   (b) part 2 (the agent's recommendation) or the system actor as a league opponent in the hero
   kinds (a change of decision 9); a run of 60 M at T7's mix (the recommendation: whether PPO
   plateaus) or the mana run `t5-4`. **User:** `t7-1` recorded, nothing built and no run for
-  now; increment 6 is refined later.
+  now; then (asked what lies on the critical path to beating the system actor): diagnose first,
+  a behaviour analysis as T5b's (T6a, in a fresh session; the lane's QUEUE has its plan). Known
+  so far: the agent plays at Greedy's level, the system actor beats Greedy 0.653 with an edge
+  alike in every kind and seat (its hero casts, Greedy never; its waits, defends and targets);
+  the agent never met the system actor in a hero battle (decision 9); more samples barely help
+  (`t4-2` at 60 M against `t5-3` at 20 M).

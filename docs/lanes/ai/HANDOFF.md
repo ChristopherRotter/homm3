@@ -13,7 +13,8 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   (T7, the neutral share; design §12) done 2026-10-23: T7a to T7c (#420, #421, #426), T7d
   (`t7-1`: the report set as `t5-3`'s, the system actor 0.374, the neutral value +0.245 below the
   target +0.285); beside it the mana price's preparation (#429) and AI-Q7 (b) part 1 (C ABI v33,
-  #432). **Next:** increment 6's refinement with the user (QUEUE's choices).
+  #432). **Next:** T6a, the behaviour analysis against the system actor (QUEUE; needs the
+  user's `runs/t7-1/best.pt`), then increment 6's lever.
 - **Versions:** battle action encoding v13, observation encoding v21, replay format v30 (E23 T6), the adventure env's action encoding v4 (E08 T45), C ABI v33 (E06 T5: the kill preview) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q10, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
@@ -95,9 +96,9 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 
 - The user: T7d at a third neutral (their machine); here the mana price's preparation (#429),
   then AI-Q7 (b) part 1 (#432): the preview of every entry halves the engine's step (29 µs),
-  still far above training's 5 000 samples/s. `t7-1` recorded; increment 6 later (no run).
+  still far above training's 5 000 samples/s. `t7-1` recorded; the user: diagnose first (T6a),
+  in a fresh session.
 
 ### 2026-10-23 — E06 T7c, the trainer's neutral share
 
-- The user: T7c in one pull request (#426, merged): the neutral set v1, the system actor on the
-  ladder, both bots' tables, no league member in a neutral episode, the rates by kind.
+- The user: T7c in one pull request (#426): the neutral set v1, the system actor on the ladder.
