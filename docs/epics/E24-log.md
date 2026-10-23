@@ -132,3 +132,32 @@ agent had proposed the scene's input types as a second part, with T3a).
   the library depending on `h3-map` for the raw model; `Live::at_start`'s facing (right),
   explored tiles (all) and phases (0) until T5 and the comparisons read the original's.
 - **Questions:** none (no oddity found).
+
+### M1 T3a — the writer's additions (2026-10-23)
+
+One session, branch `map-client/e24-t3a`, a `cross-lane` pull request into the adventure lane's
+`h3-map` (the user's consent of T0 for additive changes; a note in its inbox).
+
+- **Built:** `h3_map::writer::write_with(&Map, &Extras)` beside `write` (now `write_with` without
+  extras), the new code in `crates/h3-map/src/writer/extras.rs`. `GivenTile` writes a tile's seven
+  bytes as stated (`RiverKind` for rivers; no coast bit computed for it, its terrain counted for
+  its neighbours'); `AnyObject` places any template but a hero's, a prison's or a placeholder's
+  (34, 70, 62, 214: their bodies name a hero), after the map's own objects, at a position up to
+  7 columns and 5 rows past the edges, with an owner where its class's body has one, and writes
+  the body the editor gives an object left as placed.
+- **The bodies' defaults** (`docs/formats/h3m.md`, "The map client's additions"): a survey of the
+  56 SoD maps' bodies (a throwaway program over `h3_map::read`, not committed) gave the editor's
+  choices: monsters aggressive, events for every player and removed after their visit, scholars
+  random, garrisons removable, shrines random, witch huts all skills but Leadership and
+  Necromancy, abandoned mines all but wood, towns the standard buildings with a fort. Objects
+  anchored past the right and bottom edges are common there (decorations up to 5 and 2 past).
+- **Tests** (`writer::extras::tests`): a map of every kind the writer wrote before keeps its bytes
+  (length and CRC-32 of `master`'s writer at 328b808); given tiles over a road, a patch and the
+  underground read back as given and make the coast; extra objects reuse a map template and
+  continue the identifiers; every class 0–255 but the four reads back with the expected body (so
+  the writer's bodies have the reader's sizes); each refusal.
+- **Agent decisions (provisional, on the review list):** the second entry point rather than new
+  fields and variants (those would have changed literals and matches in the battle, client,
+  adventure and map-client lanes' crates); the defaults without an editor's choice seen (a
+  scroll's spell 0, the grail's radius 0, a random dwelling's levels 0–6).
+- **Questions:** none.

@@ -13,8 +13,16 @@
 //!
 //! Every value is validated before anything is written; [`write`] never panics. The writer moved
 //! here from `h3-formats` with the content split (R01a, ADR-0015 point 3).
+//!
+//! Since E24 M1 T3a, [`write_with`] also writes [`Extras`] for the map client's drawing
+//! situations: tiles as given (terrain, river and road pictures and their flags) and objects of
+//! any template with the editor's body.
+
+mod extras;
 
 use std::fmt;
+
+pub use extras::{AnyObject, Extras, GivenTile, RiverKind};
 
 use crate::gzip::crc32;
 
@@ -566,7 +574,20 @@ impl Map {
 /// [`WriteError::OutOfRange`] if a value does not fit the format or the map (tile outside the
 /// map, unknown hero, too many skills, an owner without a playable player, …).
 pub fn write(map: &Map) -> Result<Vec<u8>, WriteError> {
+    write_with(map, &Extras::default())
+}
+
+/// Writes `map` with `extras` as an uncompressed SoD map (E24 M1 T3a): the given tiles in place
+/// of what the map gives them, the objects of any template after the map's own. Without extras
+/// the bytes are [`write`]'s.
+///
+/// # Errors
+/// As [`write`]; also a given tile off the map or given twice, an object's level or position
+/// off the map (past the edges by more than its template can reach), a hero class, an owner
+/// for a class without one or without a playable player.
+pub fn write_with(map: &Map, extras: &Extras) -> Result<Vec<u8>, WriteError> {
     validate(map)?;
+    extras::validate(map, extras)?;
     let mut out = Out::default();
     out.u32(SOD_FORMAT);
     out.bool(map.players.iter().any(Option::is_some));
@@ -595,22 +616,29 @@ pub fn write(map: &Map) -> Result<Vec<u8>, WriteError> {
     out.bytes(&banned);
     out.u32(0); // no rumors
     out.bytes(&[0; HERO_COUNT as usize]); // no customised hero types
-    write_terrain(&mut out, map.size, map.terrain, &map.patches, &map.roads);
+    let surface = Level {
+        base: map.terrain,
+        patches: &map.patches,
+        roads: &map.roads,
+        given: &extras::given_tiles(map, extras, 0),
+    };
+    write_terrain(&mut out, map.size, &surface);
     if let Some(underground) = &map.underground {
-        write_terrain(
-            &mut out,
-            map.size,
-            underground.terrain,
-            &underground.patches,
-            &[],
-        );
+        let below = Level {
+            base: underground.terrain,
+            patches: &underground.patches,
+            roads: &[],
+            given: &extras::given_tiles(map, extras, 1),
+        };
+        write_terrain(&mut out, map.size, &below);
     }
-    let templates = templates(map);
+    let templates = templates(map, extras);
     out.u32(len32(templates.len()));
     for template in &templates {
         template.write(&mut out)?;
     }
-    out.u32(len32(map.placed().count()));
+    let placed = map.placed().count();
+    out.u32(len32(placed + extras.objects.len()));
     for (index, (level, object)) in map.placed().enumerate() {
         let template = object_template(object);
         let template_index = templates.iter().position(|t| *t == template).unwrap_or(0);
@@ -626,6 +654,15 @@ pub fn write(map: &Map) -> Result<Vec<u8>, WriteError> {
             MapObject::Ground(_) | MapObject::Plain(_) => {} // no body
             MapObject::Town(town) => write_town(&mut out, town, identifier),
         }
+    }
+    for (index, object) in extras.objects.iter().enumerate() {
+        let template_index = templates.iter().position(|t| *t == object.template);
+        let (x, y) = object.tile;
+        out.bytes(&[x, y, object.level]);
+        out.u32(len32(template_index.unwrap_or(0)));
+        out.bytes(&[0; 5]);
+        let identifier = len32(placed + index).saturating_add(1);
+        extras::write_empty_body(&mut out, object, identifier);
     }
     out.u32(0); // no timed events
     Ok(out.0)
@@ -883,15 +920,31 @@ fn write_player(
     Ok(())
 }
 
-/// One level's tiles, row by row: its base terrain, the patches over it, the roads on it.
-fn write_terrain(out: &mut Out, side: u8, base: Terrain, patches: &[Patch], roads: &[Road]) {
+/// What one level's tiles are made of.
+struct Level<'a> {
+    /// The terrain of every tile nothing else covers.
+    base: Terrain,
+    /// Rectangles of other terrains; a later one covers an earlier one.
+    patches: &'a [Patch],
+    /// Roads.
+    roads: &'a [Road],
+    /// Tiles as given (E24 M1 T3a), by tile row by row: over all the rest.
+    given: &'a [Option<GivenTile>],
+}
+
+/// One level's tiles, row by row: its base terrain, the patches over it, the roads on it, the
+/// tiles given as they are.
+fn write_terrain(out: &mut Out, side: u8, level: &Level<'_>) {
     let size = usize::from(side);
-    let terrain_at = |x: u8, y: u8| {
-        patches
+    let given = |x: u8, y: u8| level.given[usize::from(y) * size + usize::from(x)];
+    let terrain_at = |x: u8, y: u8| match given(x, y) {
+        Some(tile) => tile.terrain,
+        None => level
+            .patches
             .iter()
             .rev()
             .find(|patch| patch.covers(x, y))
-            .map_or(base, |patch| patch.terrain)
+            .map_or(level.base, |patch| patch.terrain),
     };
     let coastal = |x: u8, y: u8| {
         let near = |c: u8| c.saturating_sub(1)..=c.saturating_add(1).min(side - 1);
@@ -901,10 +954,15 @@ fn write_terrain(out: &mut Out, side: u8, base: Terrain, patches: &[Patch], road
         .flat_map(|y| (0..side).map(move |x| (y, x)))
         .enumerate()
     {
+        if let Some(tile) = given(x, y) {
+            out.bytes(&extras::tile_bytes(&tile));
+            continue;
+        }
         let terrain = terrain_at(x, y);
         // A deterministic spread over the eight interior pictures (the editor picks randomly).
         let variant = ((index * 7 + index / size * 3) % 8) as u8;
-        let road = roads
+        let road = level
+            .roads
             .iter()
             .filter(|road| road.row == y)
             .find_map(|road| Some((road.kind as u8, road.picture(x)?)));
@@ -935,11 +993,11 @@ fn object_template(object: &MapObject) -> ObjectTemplate {
     }
 }
 
-/// Distinct templates in order of first use.
-fn templates(map: &Map) -> Vec<ObjectTemplate> {
+/// Distinct templates in order of first use: the map's objects', then the extra objects'.
+fn templates(map: &Map, extras: &Extras) -> Vec<ObjectTemplate> {
     let mut templates: Vec<ObjectTemplate> = Vec::new();
-    for (_, object) in map.placed() {
-        let template = object_template(object);
+    let extra = extras.objects.iter().map(|o| o.template.clone());
+    for template in map.placed().map(|(_, o)| object_template(o)).chain(extra) {
         if !templates.contains(&template) {
             templates.push(template);
         }
@@ -1126,7 +1184,7 @@ mod tests {
                            100000000000000000000000000000000000000000000000 111111111 000000100 \
                            54 0 2 0";
 
-    fn smoke_like_map() -> Map {
+    pub(super) fn smoke_like_map() -> Map {
         let mut players: [Option<Player>; PLAYERS] = Default::default();
         players[0] = Some(Player {
             human: true,
@@ -1189,6 +1247,19 @@ mod tests {
             level_limit: 0,
             banned_skills: Vec::new(),
         }
+    }
+
+    /// A level of 36 × 36 tiles without given tiles, as `write` writes it.
+    fn terrain_bytes(base: Terrain, patches: &[Patch], roads: &[Road]) -> Vec<u8> {
+        let mut out = Out::default();
+        let level = Level {
+            base,
+            patches,
+            roads,
+            given: &[None; 36 * 36],
+        };
+        write_terrain(&mut out, 36, &level);
+        out.0
     }
 
     #[test]
@@ -1307,7 +1378,7 @@ mod tests {
         let hero_template = ObjectTemplate::hero(0);
         assert_eq!(hero_template.def, "ah00_e.def");
         assert_eq!(position(&map.objects[0]), (11, 10));
-        assert_eq!(templates(&map).len(), 2);
+        assert_eq!(templates(&map, &Extras::default()).len(), 2);
     }
 
     #[test]
@@ -1319,9 +1390,7 @@ mod tests {
             to: (35, 35),
         });
         assert!(write(&map).is_ok());
-        let mut out = Out::default();
-        write_terrain(&mut out, map.size, map.terrain, &map.patches, &map.roads);
-        let bytes = out.0;
+        let bytes = terrain_bytes(map.terrain, &map.patches, &map.roads);
         assert_eq!(bytes.len(), 7 * 36 * 36);
         let tile = |x: usize, y: usize| &bytes[7 * (y * 36 + x)..][..7];
         // Grass, then the swamp patch, then the later sand patch over the swamp's last tile.
@@ -1558,8 +1627,9 @@ mod tests {
             guards: None,
         }));
         let bytes = write(&map).unwrap();
-        assert_eq!(templates(&map).len(), 3);
-        assert_eq!(templates(&map)[2], template);
+        let templates = templates(&map, &Extras::default());
+        assert_eq!(templates.len(), 3);
+        assert_eq!(templates[2], template);
         assert_eq!(position(&map.objects[2]), (7, 9));
         // The last object: its position, template index, 5 zero bytes, then the body (no message,
         // the amount, 4 unused bytes), and the event count.
@@ -1663,13 +1733,11 @@ mod tests {
             one_level.len() + 7 * 36 * 36 + 5 + 12 + out.0.len()
         );
         let find = |level: &[u8]| bytes.windows(level.len()).position(|w| w == level).unwrap();
-        let mut surface = Out::default();
-        write_terrain(&mut surface, 36, map.terrain, &map.patches, &map.roads);
-        let mut out = Out::default();
+        let surface = terrain_bytes(map.terrain, &map.patches, &map.roads);
         let u = map.underground.as_ref().unwrap();
-        write_terrain(&mut out, 36, u.terrain, &u.patches, &[]);
-        assert_eq!(find(&out.0), find(&surface.0) + 7 * 36 * 36);
-        assert_eq!((out.0[0], out.0[7 * 36 * 2]), (9, 6));
+        let below = terrain_bytes(u.terrain, &u.patches, &[]);
+        assert_eq!(find(&below), find(&surface) + 7 * 36 * 36);
+        assert_eq!((below[0], below[7 * 36 * 2]), (9, 6));
         // Red's heroes: the surface's, then the underground's.
         let mut out = Out::default();
         write_player(&mut out, &map, 0, map.players[0].as_ref()).unwrap();

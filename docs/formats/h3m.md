@@ -335,6 +335,24 @@ the template from `Objects.txt`); since E08 T36a the trees (classes 135, 137, 15
 Border Gates (212, the key's colour as subclass), no body either; since E08 T36b SoD's banned
 skills (the header's four bytes, bit `code` for the skill of that code). `h3-map`'s read-back test reads them back and imports them.
 
+**The map client's additions** (E24 M1 T3a, `writer::write_with` and its `Extras`; the map client
+lane's additive change, the user's consent of 2026-10-23; a map without them is written byte for
+byte as before, a test pins one map of every kind by its CRC-32): **tiles as given**, the seven
+bytes as stated (terrain and picture, river and picture, road and picture, the flags with their
+mirror bits; the coast bit is not computed for them, but a given tile's terrain counts for its
+neighbours'), and **objects of any template** but the four whose bodies name a hero (34, 62, 70,
+214), written after the map's own, their position up to 7 columns past the right edge and 5 rows
+past the bottom one (the game's SoD maps place decorations up to 5 and 2 past), an owner for the
+classes whose body names one. Each gets the body the editor gives an object left as placed: nothing
+optional, no message, guards or quest, a random count or amount, neutral; where the editor
+chooses, the most common body in the 56 SoD maps: a monster aggressive (3 580 of 4 978), an event
+for every player, not the computer, removed after its visit (59 of 103), a scholar's bonus random
+(271 of 290), a garrison's troops removable (71 of 82), a shrine's spell random (`0xFF`, 403 of
+413), a witch hut's skills all but Leadership and Necromancy (213 of 259), an abandoned mine's
+resources all but wood (45 of 54), a town the standard buildings with a fort (284 of 564); a
+random dwelling every faction and level, a scroll spell 0 and the grail radius 0 (no default
+seen).
+
 **Town buildings** (a town's custom `built` and `forbidden` bits; VCMI 1.7.5's
 `config/gameConfig.json`, `mapFormat.restorationOfErathia`): 0 Town Hall, 1 City Hall, 2 Capitol,
 3 Fort, 4 Citadel, 5 Castle, 6 Tavern, 7 Blacksmith, 8 Marketplace, 9 Resource Silo, 10 the Tower's
