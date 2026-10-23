@@ -656,15 +656,18 @@ def book_place(k):
 def act(game, action):
     """One action at the frozen clock: hex:<n>, click:x,y, move:x,y, key:<name>, step:<ms>,
     cast:<k>[:<hex>] (M3 T7a-2a: the hero's spell book by its key C, its place k, then the target
-    hex if the spell takes one), roll:<name>[:fail|:<n>] (M3 T7b-2b-1: the roll's next draw
-    falls, or fails; E17 M4 T2b: or is n; ROLLS)."""
+    hex if the spell takes one), roll:<name>[:fail|:<n>][:<count>] (M3 T7b-2b-1: the roll's
+    next draw falls, or fails; E17 M4 T2b: or is n; its next <count> draws so; ROLLS)."""
     kind, _, arg = action.partition(":")
     if kind == "roll":
-        name, _, how = arg.partition(":")
-        if name not in ROLLS or not (how in ("", "fail") or how.isdigit()):
+        name, _, rest = arg.partition(":")
+        how, _, count = rest.partition(":")
+        if (name not in ROLLS or not (how in ("", "fail") or how.isdigit())
+                or not (count == "" or count.isdigit())):
             raise ValueError(f"`{action}`: the rolls are {', '.join(ROLLS)}; `:fail`, `:<n>` or "
-                             "nothing")
-        game.roll(name, falls=how != "fail", value=int(how) if how.isdigit() else None)
+                             "nothing, then `:<count>` or nothing")
+        game.roll(name, falls=how != "fail", count=int(count or 1),
+                  value=int(how) if how.isdigit() else None)
     elif kind == "cast":
         place, _, target = arg.partition(":")
         if not 0 <= int(place) < 12:

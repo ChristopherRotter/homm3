@@ -10,7 +10,7 @@ use alloc::vec::Vec;
 use h3_render::Bugs;
 
 use super::{
-    Flight, Key, Live, Player, STANDING, STEP, STRUCK, Sound, TAN_25, TAN_SCALE, TICK, isqrt,
+    Flight, Key, Live, Player, STANDING, STRUCK, Sound, TAN_25, TAN_SCALE, TICK, isqrt, launch,
 };
 use crate::battle_log::Logged;
 use crate::siege::{GATE_DESTROYED, Walls};
@@ -163,10 +163,10 @@ pub(super) struct Siege {
 impl Siege {
     /// `damage` on target `t` (`wall_part_damage` 0x465990): its hit points less it, at least 0;
     /// its part's state 1, or 0 once destroyed, a destroyed tower's or keep's cover 0 too and the
-    /// gate's state destroyed.
-    pub(super) fn damage(&mut self, t: usize, damage: u8) {
+    /// gate's state destroyed. False for no such target.
+    pub(super) fn damage(&mut self, t: usize, damage: u8) -> bool {
         let (Some(hp), Some(&part)) = (self.hit_points.get_mut(t), TARGET_PARTS.get(t)) else {
-            return;
+            return false;
         };
         *hp = hp.saturating_sub(damage);
         let destroyed = *hp == 0;
@@ -179,6 +179,7 @@ impl Siege {
                 self.walls.gate = GATE_DESTROYED;
             }
         }
+        true
     }
 }
 
@@ -204,7 +205,12 @@ impl Player<'_> {
     /// (category 2); the frames to the climax through the deadline; the arrow on its own clock;
     /// the line, the reactions without a striker; the rest of the group drawn, shown only with
     /// the slip fixed; then it stands facing left in a whole redraw shown at once.
-    pub(super) fn turret_shot(&mut self, (turret, record): (u8, u8), hit: &[(u8, u32)], line: Logged) {
+    pub(super) fn turret_shot(
+        &mut self,
+        (turret, record): (u8, u8),
+        hit: &[(u8, u32)],
+        line: Logged,
+    ) {
         let point = self
             .stage
             .siege
@@ -221,11 +227,7 @@ impl Player<'_> {
         let aim = self.aim_from(point, right, &live.look, &target);
         let group = self.stage.groups.shoot[aim.direction];
         let n = live.look.count(group);
-        let climax = if live.look.climax == 0 || live.look.climax > n {
-            n
-        } else {
-            live.look.climax
-        };
+        let climax = live.look.climax_in(n);
         let time = self.speed.scale(live.look.times[2] / climax.max(1));
         self.cue(turret, Sound::TurretShot, false);
         let pose = |frame| TurretPose {
@@ -236,25 +238,7 @@ impl Player<'_> {
         for f in 0..climax {
             self.turret_frame(record, pose(f), time, true);
         }
-        let step = self.speed.scale(STEP);
-        if let Some(missile) = live.look.missile.as_ref().filter(|_| aim.steps > 0) {
-            let [w, h] = missile.size;
-            let steps = i32::try_from(aim.steps).unwrap_or(i32::MAX);
-            let [dx, dy] = [aim.to[0] - aim.from[0], aim.to[1] - aim.from[1]];
-            self.flights.push(Flight {
-                def: missile.def.clone(),
-                frame: aim.frame(missile),
-                cycle: 0,
-                mirrored: aim.to[0] < aim.from[0],
-                from: self.clock.now,
-                step,
-                steps: aim.steps,
-                start: [aim.from[0] - w / 2, aim.from[1] - h / 2],
-                delta: [dx / steps, dy / steps],
-                path: Vec::new(),
-            });
-        }
-        self.clock.wait(aim.steps * step);
+        self.fly(&live.look, &aim);
         // The line before the reactions (0x465D9E), which play without a striker (0x465DB2).
         self.log.push((self.clock.now, line));
         self.react_alone(hit, [STANDING, STRUCK]);
@@ -292,36 +276,13 @@ impl Player<'_> {
         let fixed = self.stage.bugs == Bugs::Fixed;
         let to = TARGET_POINTS.get(t).copied().unwrap_or_default();
         let anchor = self.stage.anchor(live.position(live.hex));
-        let start = |i: usize| {
-            let [x, y] = live.look.missile_offsets[i];
-            let x = i32::from(x);
-            [
-                if live.right { anchor[0] + x } else { anchor[0] - x },
-                anchor[1] + i32::from(y),
-            ]
-        };
+        let start = |i: usize| launch(anchor, live.right, &live.look, i);
         let [x, y] = start(1);
-        let (dx, dy) = (i64::from(to[0] - x).abs(), i64::from(to[1] - y));
-        // 0x4460B5: atan(Δy / |Δx|), Δy not negated; straight up or down ±90°. Fixed: a shot's
-        // sign, atan(−Δy / |Δx|).
-        let dy = if fixed { -dy } else { dy };
-        let direction = if dx == 0 {
-            if dy <= 0 { 0 } else { 2 }
-        } else if dy * TAN_SCALE > dx * TAN_25 {
-            0
-        } else if dy * TAN_SCALE > -dx * TAN_25 {
-            1
-        } else {
-            2
-        };
+        let direction = wall_group(i64::from(to[0] - x), i64::from(to[1] - y), fixed);
         let from = start(direction);
         let group = self.stage.groups.shoot[direction];
         let n = live.look.count(group);
-        let climax = if live.look.climax == 0 || live.look.climax > n {
-            n
-        } else {
-            live.look.climax
-        };
+        let climax = live.look.climax_in(n);
         let time = self.speed.scale(live.look.times[2] / climax.max(1));
         self.cue(shooter, Sound::Shot, false);
         for f in 0..climax {
@@ -344,7 +305,13 @@ impl Player<'_> {
         let burst = self
             .stage
             .siege
-            .map(|s| if damage > 0 { s.hit.clone() } else { s.miss.clone() })
+            .map(|s| {
+                if damage > 0 {
+                    s.hit.clone()
+                } else {
+                    s.miss.clone()
+                }
+            })
             .unwrap_or_default();
         let sound = if damage > 0 {
             Sound::WallHit
@@ -355,22 +322,30 @@ impl Player<'_> {
         let [fw, fh] = self.stage.layout.mouse.field;
         let [w, h] = burst.size;
         let at = [to[0] - w / 2, to[1] - h / 2];
-        let rect = [at[0].max(0), at[1].max(0), (at[0] + w).min(fw), (at[1] + h).min(fh)];
+        let rect = [
+            at[0].max(0),
+            at[1].max(0),
+            (at[0] + w).min(fw),
+            (at[1] + h).min(fh),
+        ];
         let blast = self.blast_count;
         self.blast_count += 1;
         let tick = self.speed.scale(TICK);
         // The walls' key the damage adds, if any.
         let key = self.wall_keys.len();
+        let mut damaged = false;
         for k in 0..burst.frames {
             if k == DAMAGE_FRAME {
                 let drawn = self.clock.now;
                 self.damage_wall(t, damage, Some(drawn));
+                damaged = true;
             }
             let shown = self.clock.show(tick);
             // With the slip fixed the new states show with frame 5 everywhere; the original's
             // show them in the explosion's rectangle only, elsewhere with the end's redraw.
-            if let Some(w) = self.wall_keys.get_mut(key).filter(|_| fixed) {
-                w.shown = w.shown.max(shown);
+            let five = k == DAMAGE_FRAME && fixed;
+            if let Some(w) = self.wall_keys.get_mut(key).filter(|_| five) {
+                w.shown = shown;
             }
             let walls = self.siege.map(|s| s.walls).unwrap_or_default();
             self.blasts.push(BlastKey {
@@ -383,6 +358,10 @@ impl Player<'_> {
                 walls,
                 restored: fixed,
             });
+        }
+        // An explosion of fewer frames (none without the siege's stage) damages at its end.
+        if !damaged {
+            self.damage_wall(t, damage, None);
         }
         // The end: a whole redraw shown at once (0x4464B1).
         let now = self.clock.now;
@@ -413,10 +392,9 @@ impl Player<'_> {
         let Some(siege) = self.siege.as_mut() else {
             return;
         };
-        if damage == 0 {
+        if damage == 0 || !siege.damage(t, damage) {
             return;
         }
-        siege.damage(t, damage);
         let walls = siege.walls;
         let now = at.unwrap_or(self.clock.now);
         self.wall_keys.push(WallKey {
@@ -463,6 +441,25 @@ impl Player<'_> {
             path,
         });
         self.clock.wait(steps * step);
+    }
+}
+
+/// A wall shot's group (0 up, 1 straight, 2 down; 0x4460B5) by the angle from its start to the
+/// target, `dx` and `dy` the target less the start (screen y down): the original's atan(Δy /
+/// |Δx|), Δy not negated (CLT-Q19 (1)), with the slip fixed a shot's, atan(−Δy / |Δx|); above
+/// 25° up, above −25° straight. Straight above or below both take 90° for Δy ≤ 0, else −90°.
+pub(super) fn wall_group(dx: i64, dy: i64, fixed: bool) -> usize {
+    let dx = dx.abs();
+    if dx == 0 {
+        return if dy <= 0 { 0 } else { 2 };
+    }
+    let up = if fixed { -dy } else { dy };
+    if up * TAN_SCALE > dx * TAN_25 {
+        0
+    } else if up * TAN_SCALE > -dx * TAN_25 {
+        1
+    } else {
+        2
     }
 }
 
@@ -537,14 +534,11 @@ impl F64 {
         Self::round(at(self) - at(o), e, false)
     }
 
-    /// Truncated toward zero (`crt_ftol`).
+    /// Truncated toward zero (`crt_ftol`). Its exponent is never above 0 here: a value of
+    /// 2^53 or more does not occur.
     fn trunc(self) -> i128 {
-        let magnitude = self.m.unsigned_abs();
-        let magnitude = match u32::try_from(self.e) {
-            Ok(up) => magnitude << up,
-            Err(_) => magnitude >> self.e.unsigned_abs(),
-        };
-        let magnitude = i128::try_from(magnitude).unwrap_or(0);
+        let down = u32::try_from(-i64::from(self.e)).unwrap_or(0);
+        let magnitude = i128::try_from(self.m.unsigned_abs() >> down).unwrap_or(0);
         if self.m < 0 { -magnitude } else { magnitude }
     }
 }

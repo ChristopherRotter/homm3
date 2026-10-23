@@ -12,10 +12,11 @@ use h3_formats::lod::LodArchive;
 use h3_protocol::wire::{Event, ServerMessage, Side};
 use h3_render::Bugs;
 use h3_view::anim::{
-    ACID, ACID_BREATH, BAD_MORALE, BOLT, CHAIN_LIGHTNING, CHAIN_START, Caster, Casts, DEATH_STARE,
-    DEATH_STARE_SPELL, Explosion, FEAR, FIRE_SHIELD, GOOD_LUCK, GOOD_MORALE, HEAL, LIFE_DRAIN,
-    Burst, LIGHTNING_BOLT, Look, MagicLook, Missile, ObjectLook, RAISE, RESISTED, RESURRECTION,
-    SACRIFICED, SHIELD_RETURN, Shell, SiegeStage, SpellLook, Stage, THUNDERBOLT, TITAN_BOLT,
+    ACID, ACID_BREATH, BAD_MORALE, BOLT, Burst, CHAIN_LIGHTNING, CHAIN_START, Caster, Casts,
+    DEATH_STARE, DEATH_STARE_SPELL, Explosion, FEAR, FIRE_SHIELD, GOOD_LUCK, GOOD_MORALE, HEAL,
+    LIFE_DRAIN, LIGHTNING_BOLT, Look, MagicLook, Missile, ObjectLook, RAISE, RESISTED,
+    RESURRECTION, SACRIFICED, SHIELD_RETURN, Shell, SiegeStage, SpellLook, Stage, THUNDERBOLT,
+    TITAN_BOLT,
 };
 use h3_view::batch::Batch;
 use h3_view::hero::{HeroLook, Heroes};
@@ -62,7 +63,10 @@ pub fn looks(
                 .ok_or_else(|| format!("creature {}", town.turrets.shooter))?;
             (entry, Some(town.turrets.missile.clone()))
         };
-        looks.insert(stack.creature, look(record, tables, archives, (entry, missile))?);
+        looks.insert(
+            stack.creature,
+            look(record, tables, archives, (entry, missile))?,
+        );
     }
     Ok(looks)
 }

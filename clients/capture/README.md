@@ -134,6 +134,17 @@ the packs in their order (base, ab, sod) give the original's hero types. A scena
 then tries the field's own obstacle types. The deck and the two boats cannot be set up yet
 (CLT-Q5).
 
+**A siege over time** (E17 M4 T2b, design §10.2): a sequence's `key = "Up"` steps into the town
+(`sequence --key Up`); in a siege the timeline adds, after the heroes, each change of a turret
+record's pose, `<ms> turret <k> g<group> f<frame> d<facing>` (k 0 the keep, 1 the lower tower, 2
+the upper; `h3mem.Mem.siege`), and of the walls' picture states, `<ms> walls <18 states> gate
+<state>`. The turret stacks themselves are the defender's last records (`1.3 g2 f0 h254`…), whose
+poses never change. A commanded turret is shot with `hex:`, the Catapult or a Cyclops aimed with
+`hex:` at a wall's aim hex (29, 62, 96, 130, 182, 183) or `click:` into the keep's or the upper
+tower's rectangle; the wall shots' rolls are forced (above). The Catapult on its own acts in the
+command before it when the defender commands its turrets (Artillery): the record opens on the
+keep's turn.
+
 **A siege** (E17 M4 T1b, design §10.1): a scenario's `[scenario.siege]` (faction, fort level,
 moat) makes `h3-view situation` write Blue's town of that faction (Objects.txt's first picture
 of class 98; the fort level's buildings, each with those below; an empty garrison) with Blue's
@@ -495,8 +506,15 @@ calls redirected.
 | `thunderbird` | `random(1, 100) <= 20` (1, 100) | 0x44119D, the Thunderbird's bolt |
 | `acid` | `random(1, 100) <= 20` (1, 100) | 0x4414B7, the Rust Dragon's acid damage (its amount drawn after, not forced) |
 | `poison` | `random(1, 100) <= 30` (1, 100) | 0x440839, the Wyvern Monarch's Poison |
+| `wall_damage` | `random(1, 100)` against the chances for 0, 1, 2 (100, 1) | 0x445ED6, a wall shot's damage, drawn first (E17 M4 T2b) |
+| `wall_hit` | `random(1, 100) <=` the target kind's chance (1, 100) | 0x445F25, its hit; a miss lands on the nearest other wall |
+| `wall_miss_tie` | `random(1, 100) <= 50` the later (1, 100) | 0x445F6C, a miss between two walls equally near |
+| `wall_retarget_tie` | `random(1, 100) <= 50` the later (1, 100) | 0x445E44, the next shot's target once its own fell |
+| `catapult_tie` | `random(1, k)` (1, 1) | 0x473DA0, the Catapult's own aim: the k-th of the weakest walls |
 
-A sequence's action `roll:<name>` forces the roll's next draw to fall, `roll:<name>:fail` to fail;
+A sequence's action `roll:<name>` forces the roll's next draw to fall, `roll:<name>:fail` to fail,
+`roll:<name>:<n>` to be n (E17 M4 T2b: the wall shots' rolls, whose draw picks among more than
+two outcomes), each with `:<count>` after it for the next count draws (`roll:wall_hit::2`);
 its key `fail = ["<name>", …]` (`--fail <name>` for `sequence`) fails every other draw of those
 rolls, so nothing falls the sequence did not ask for (the runs' differences in "Traps" among
 them). Each draw is made for every stack at its moment whatever its morale or luck (a morale of 0

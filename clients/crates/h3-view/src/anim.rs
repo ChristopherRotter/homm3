@@ -268,6 +268,16 @@ impl Look {
     fn count(&self, group: u8) -> u32 {
         self.frames.get(&u32::from(group)).copied().unwrap_or(0)
     }
+
+    /// A shot group's climax in its `n` frames: the creature's, else (none, or past them) its
+    /// last.
+    fn climax_in(&self, n: u32) -> u32 {
+        if self.climax == 0 || self.climax > n {
+            n
+        } else {
+            self.climax
+        }
+    }
 }
 
 /// Where the battle is drawn: the layout, the field's width and the DEF groups, and whether the
@@ -1161,13 +1171,13 @@ impl Timeline {
 
     /// Each turret record's pose shown at `t` (E17 M4 T2b; none: a record no turret sets up).
     pub fn turrets(&self, t: u32) -> [Option<TurretPose>; 3] {
-        let mut out = [None; 3];
-        for k in self.turrets.iter().filter(|k| k.shown <= t) {
-            if let Some(slot) = out.get_mut(usize::from(k.record)) {
-                *slot = Some(k.pose);
-            }
-        }
-        out
+        [0, 1, 2].map(|record| {
+            self.turrets
+                .iter()
+                .rev()
+                .find(|k| k.shown <= t && k.record == record)
+                .map(|k| k.pose)
+        })
     }
 
     /// A siege's walls' states shown at `t` (E17 M4 T2b; none: no siege with a fort).
@@ -4710,11 +4720,7 @@ impl Player<'_> {
         let aim = target.map_or_else(Aim::default, |t| self.aim(&live, &t));
         let group = self.stage.groups.shoot[aim.direction];
         let n = live.look.count(group);
-        let climax = if live.look.climax == 0 || live.look.climax > n {
-            n
-        } else {
-            live.look.climax
-        };
+        let climax = live.look.climax_in(n);
         let time = self.speed.scale(live.look.times[2] / climax.max(1));
         // The shot's sound with its first frame (0x43F424).
         self.cue(shooter, Sound::Shot, false);
@@ -4736,27 +4742,7 @@ impl Player<'_> {
             );
             return start;
         }
-        let step = self.speed.scale(STEP);
-        if let Some(missile) = live.look.missile.as_ref().filter(|_| aim.steps > 0) {
-            // 0x43F5D6: the canvas centred on the start, moved by the distance over the steps
-            // (each truncated toward zero), mirrored when the target lies left of the start.
-            let [w, h] = missile.size;
-            let steps = i32::try_from(aim.steps).unwrap_or(i32::MAX);
-            let [dx, dy] = [aim.to[0] - aim.from[0], aim.to[1] - aim.from[1]];
-            self.flights.push(Flight {
-                def: missile.def.clone(),
-                frame: aim.frame(missile),
-                cycle: 0,
-                mirrored: aim.to[0] < aim.from[0],
-                from: self.clock.now,
-                step,
-                steps: aim.steps,
-                start: [aim.from[0] - w / 2, aim.from[1] - h / 2],
-                delta: [dx / steps, dy / steps],
-                path: Vec::new(),
-            });
-        }
-        self.clock.wait(aim.steps * step);
+        self.fly(&live.look, &aim);
         // The Magogs' and the Liches' explosion over their target (E17 M3 T7c-3).
         if let (Some(e), Some(&(t, _))) = (live.look.explosion, hit.first()) {
             self.explosion(e, t);
@@ -4834,6 +4820,32 @@ impl Player<'_> {
         self.beams[beam].cursor[1] = self.clock.now;
     }
 
+    /// A shot's projectile along `aim`, if `look` has one (0x43F5D6; a turret's arrow,
+    /// `turret_arrow_flight` 0x468220, the same): the canvas centred on the start, moved by the
+    /// distance over the steps (each truncated toward zero) every trunc(33 F) ms on its own
+    /// clock, mirrored when the target lies left of the start; the wait for its steps.
+    fn fly(&mut self, look: &Look, aim: &Aim) {
+        let step = self.speed.scale(STEP);
+        if let Some(missile) = look.missile.as_ref().filter(|_| aim.steps > 0) {
+            let [w, h] = missile.size;
+            let steps = i32::try_from(aim.steps).unwrap_or(i32::MAX);
+            let [dx, dy] = [aim.to[0] - aim.from[0], aim.to[1] - aim.from[1]];
+            self.flights.push(Flight {
+                def: missile.def.clone(),
+                frame: aim.frame(missile),
+                cycle: 0,
+                mirrored: aim.to[0] < aim.from[0],
+                from: self.clock.now,
+                step,
+                steps: aim.steps,
+                start: [aim.from[0] - w / 2, aim.from[1] - h / 2],
+                delta: [dx / steps, dy / steps],
+                path: Vec::new(),
+            });
+        }
+        self.clock.wait(aim.steps * step);
+    }
+
     /// The shot's group (0 up, 1 straight, 2 down), its start and target points and its
     /// projectile's steps (0x469880, 0x43F4A7).
     fn aim(&self, shooter: &Live, target: &Live) -> Aim {
@@ -4843,12 +4855,8 @@ impl Player<'_> {
 
     /// [`Player::aim`] from the point `[sx, sy]` facing right or not with `look`'s offsets (a
     /// stack's anchor; a siege's turret's record point, E17 M4 T2b).
-    fn aim_from(&self, [sx, sy]: [i32; 2], right: bool, look: &Look, target: &Live) -> Aim {
-        let start = |i: usize| {
-            let [x, y] = look.missile_offsets[i];
-            let x = i32::from(x);
-            [if right { sx + x } else { sx - x }, sy + i32::from(y)]
-        };
+    fn aim_from(&self, from: [i32; 2], right: bool, look: &Look, target: &Live) -> Aim {
+        let start = |i: usize| launch(from, right, look, i);
         // A two-hex target is aimed at between its hexes, by its facing (0x43F323).
         let [tx, ty] = self.centre(target);
         let [x, y] = start(1);
@@ -5045,6 +5053,14 @@ impl Player<'_> {
         }
         self.redraw();
     }
+}
+
+/// Where a projectile starts from `[sx, sy]` (a stack's anchor, a turret's point) with the
+/// creature's missile offset `i` (0 up, 1 straight, 2 down), mirrored facing left (0x43F4A7).
+fn launch([sx, sy]: [i32; 2], right: bool, look: &Look, i: usize) -> [i32; 2] {
+    let [x, y] = look.missile_offsets[i];
+    let x = i32::from(x);
+    [if right { sx + x } else { sx - x }, sy + i32::from(y)]
 }
 
 /// The projectile DEF of `shells` a spell flies along `[dx, dy]` (screen y down;

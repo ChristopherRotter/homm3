@@ -767,3 +767,41 @@ fn a_tiled_animation_covers_its_area_cut_to_it() {
         ComposeError::Missing("NONE.DEF".into())
     );
 }
+
+#[test]
+fn a_list_within_a_rectangle_draws_there_alone() {
+    // E17 M4 T2b: the inner list composed on a frame of its own (black where nothing is drawn),
+    // only its rectangle copied; what lies off the frame cut.
+    let list = [
+        Draw::Background {
+            picture: "bg.pcx".to_string(),
+            x: 0,
+            y: 0,
+        },
+        Draw::Within {
+            rect: [1, 0, 3, 1],
+            list: vec![Draw::AbsoluteObstacle {
+                picture: "abs.pcx".to_string(),
+                x: 1,
+                y: 0,
+            }],
+        },
+        Draw::Within {
+            rect: [5, 1, 9, 9],
+            list: vec![],
+        },
+    ];
+    let screen = compose(&list, &batch(), &small()).unwrap();
+    let [b, g] = [BLUE, GREEN].map(|c| FORMAT.pack(c));
+    assert_eq!(screen.pixels(), [b, 0, g, b, b, b, b, b, b, b, b, 0]);
+    // What the inner list lacks is an error.
+    let missing = [Draw::Within {
+        rect: [0, 0, 1, 1],
+        list: vec![Draw::Background {
+            picture: "none.pcx".to_string(),
+            x: 0,
+            y: 0,
+        }],
+    }];
+    assert!(compose(&missing, &batch(), &small()).is_err());
+}

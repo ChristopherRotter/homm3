@@ -319,6 +319,17 @@ mod tests {
                 outline: None,
                 rows: 232,
             },
+            // A list within a rectangle its own names (M4 T2b: a wall shot's explosion).
+            Draw::Within {
+                rect: [0, 0, 1, 1],
+                list: vec![Draw::Projectile {
+                    def: "SgExpl.def".to_string(),
+                    frame: 0,
+                    x: 0,
+                    y: 0,
+                    mirrored: false,
+                }],
+            },
         ];
         let names: Vec<String> = names(&list, &layout).into_iter().collect();
         assert_eq!(
@@ -342,6 +353,7 @@ mod tests {
                 "PLAYERS.PAL",
                 "PLCBOWX.DEF",
                 "SGCSTW21.PCX",
+                "SGEXPL.DEF",
                 "SMALFONT.FNT",
                 "SP12_.DEF",
                 "TINY.FNT"

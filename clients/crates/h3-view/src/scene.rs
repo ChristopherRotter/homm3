@@ -597,31 +597,41 @@ pub fn battle_at(
     tables: &Tables,
     layout: &BattleLayout,
 ) -> Result<Vec<Draw>, SceneError> {
-    let (_, mut list) = drawn(observation, moment, manifest, tables, layout)?;
     // A wall shot's explosion (E17 M4 T2b, design §10.2): in its rectangle each frame drawn over a
     // redraw of the battle with its walls' states, without the background restored after the
-    // first (the original's, CLT-Q19 (4)); with the slip fixed, the last alone.
-    if let Some(blast) = &moment.blast {
-        let mut inner = Vec::new();
-        for (i, (frame, walls)) in blast.frames.iter().enumerate() {
-            let layer = Moment {
-                walls: Some(*walls),
-                blast: None,
-                ..moment.clone()
-            };
-            let (background, mut layer) = drawn(observation, &layer, manifest, tables, layout)?;
-            if i > 0 {
-                layer.drain(..background);
-            }
-            inner.extend(layer);
-            inner.push(Draw::Projectile {
-                def: blast.def.clone(),
-                frame: *frame,
-                x: blast.at[0],
-                y: blast.at[1],
-                mirrored: false,
-            });
+    // first (the original's, CLT-Q19 (4)); with the slip fixed, the last alone. The battle's own
+    // list first, then each frame's redraw.
+    let frames = moment.blast.as_ref().map_or(&[][..], |b| &b.frames[..]);
+    let layers = core::iter::once((None, moment.walls)).chain(
+        frames
+            .iter()
+            .map(|&(frame, walls)| (Some(frame), Some(walls))),
+    );
+    let (mut list, mut inner) = (Vec::new(), Vec::new());
+    for (i, (frame, walls)) in layers.enumerate() {
+        let layer = Moment {
+            walls,
+            blast: None,
+            ..moment.clone()
+        };
+        let (background, mut drawn) = drawn(observation, &layer, manifest, tables, layout)?;
+        let Some((frame, blast)) = frame.zip(moment.blast.as_ref()) else {
+            list = drawn;
+            continue;
+        };
+        if i > 1 {
+            drawn.drain(..background);
         }
+        inner.extend(drawn);
+        inner.push(Draw::Projectile {
+            def: blast.def.clone(),
+            frame,
+            x: blast.at[0],
+            y: blast.at[1],
+            mirrored: false,
+        });
+    }
+    if let Some(blast) = &moment.blast {
         list.push(Draw::Within {
             rect: blast.rect,
             list: inner,
