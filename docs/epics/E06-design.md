@@ -289,7 +289,9 @@ Each with the user's checkpoint; only the next one refined (Q41's pattern).
 - **Then** T5's rest (AI-Q7 (b), the mana price, the batch size and threads from T9c's table,
   the observations in place), T6, T8 (only if PPO plateaus), T9. Built beside T7d (the user,
   2026-10-23): the mana price's preparation (the evaluation at reward v1's settings,
-  `configs/e06-mana.toml`), then AI-Q7 (b)'s batch output.
+  `configs/e06-mana.toml`), then AI-Q7 (b)'s batch output (part 1, C ABI v33: the acting side's
+  previewed kills per attack and shot entry, an option of the batch; part 2, the network reading
+  them beside the entry mask and an A/B config, after the checkpoint).
 
 ## 11. The entity network — built (T5a)
 

@@ -49,7 +49,7 @@
 use h3_battle::{
     ATTACK_SLOTS, BattleState, CastSpell, CastTarget, CastTargets, Command, Field, Hex,
     LegalCommands, STACK_CAPACITY, StackId, cast_targets, castable_spells, creature_cast_spell,
-    creature_cast_targets, second_targets, stack_spell,
+    creature_cast_targets, preview, second_targets, stack_spell,
 };
 use h3_content::{MAX_SPELLS, SpellId};
 use h3_content_battle::{BattleRuleset, MAX_FIELD_HEXES, MAX_WALL_TARGETS};
@@ -109,6 +109,17 @@ pub type SpellMask = [bool; SPELL_COUNT];
 
 /// Target-head mask (first and second target).
 pub type TargetMask = [bool; TARGET_COUNT];
+
+/// The first entry [`preview_kills`] writes: the first attack entry.
+pub const PREVIEW_BASE: usize = ATTACK_BASE;
+
+/// The entries [`preview_kills`] writes: the attack and shot entries, in their order from
+/// [`PREVIEW_BASE`].
+pub const PREVIEW_ENTRIES: usize = HEAL_BASE - PREVIEW_BASE;
+
+/// The values [`preview_kills`] writes: the least and the greatest kills of each of
+/// [`PREVIEW_ENTRIES`].
+pub const PREVIEW_LEN: usize = 2 * PREVIEW_ENTRIES;
 
 /// One action: an entry and the spell and target heads (all 0 for every entry but a cast).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -342,6 +353,30 @@ pub fn legal_mask(
     }
     mask[HERO_CAST] = !castable_spells(state, ruleset, actor).is_empty();
     mask[CREATURE_CAST] = creature_cast_possible(state, ruleset, actor);
+}
+
+/// Writes the engine's damage preview of every attack and shot in `legal`, the legal commands
+/// of `actor` (as [`legal_mask`] leaves them), into `out` (at least [`PREVIEW_LEN`] values): at
+/// `2 * (entry - PREVIEW_BASE)` the least and the greatest kills of the entry's first strike on
+/// its target ([`h3_battle::preview`], BAT-DMG-011: what the original shows a player before the
+/// strike), 0 for every entry not in `legal` (AI-Q7 (b), E06 T5).
+pub fn preview_kills(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    actor: BattleSide,
+    legal: &LegalCommands,
+    out: &mut [f32],
+) {
+    out[..PREVIEW_LEN].fill(0.0);
+    let strikes = legal
+        .iter()
+        .filter(|c| matches!(c, Command::Attack { .. } | Command::Shoot { .. }))
+        .filter_map(|&c| encode_entry(state, ruleset, c).zip(preview(state, ruleset, actor, c)));
+    for (entry, p) in strikes {
+        let i = 2 * (entry - PREVIEW_BASE);
+        out[i] = p.kills[0] as f32;
+        out[i + 1] = p.kills[1] as f32;
+    }
 }
 
 /// Whether the active stack of `actor` may cast at some target now (BAT-MAG-048).

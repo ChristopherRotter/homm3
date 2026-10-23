@@ -36,6 +36,7 @@ struct Arrays {
     seed: Vec<u64>,
     status: Vec<i32>,
     encounter: Vec<i8>,
+    preview: Vec<f32>,
 }
 
 impl Arrays {
@@ -54,6 +55,7 @@ impl Arrays {
             seed: vec![0; n],
             status: vec![0; n],
             encounter: vec![0; n],
+            preview: vec![0.0; n * PREVIEW_LEN],
         }
     }
 
@@ -72,6 +74,7 @@ impl Arrays {
             episode_seed: self.seed.as_mut_ptr(),
             status: self.status.as_mut_ptr(),
             encounter: self.encounter.as_mut_ptr(),
+            preview: self.preview.as_mut_ptr(),
         }
     }
 }
@@ -203,6 +206,7 @@ struct RustArrays {
     obs: Vec<f32>,
     mask: Vec<u8>,
     final_obs: Vec<f32>,
+    preview: Vec<f32>,
     reports: Vec<EnvReport>,
 }
 
@@ -212,6 +216,7 @@ impl RustArrays {
             obs: vec![0.0; n * OBSERVATION_LEN],
             mask: vec![0; n * ACTION_COUNT],
             final_obs: vec![0.0; n * 2 * OBSERVATION_LEN],
+            preview: vec![0.0; n * PREVIEW_LEN],
             reports: vec![EnvReport::default(); n],
         }
     }
@@ -221,6 +226,7 @@ impl RustArrays {
             obs: Some(&mut self.obs),
             entry_mask: Some(&mut self.mask),
             final_obs: Some(&mut self.final_obs),
+            preview: Some(&mut self.preview),
             reports: Some(&mut self.reports),
         }
     }
@@ -231,6 +237,7 @@ fn same(arrays: &Arrays, rust: &RustArrays) {
     let (final_obs, reports) = (&rust.final_obs, &rust.reports);
     assert_eq!(bits(&arrays.obs), bits(&rust.obs));
     assert_eq!(arrays.mask, rust.mask);
+    assert_eq!(bits(&arrays.preview), bits(&rust.preview));
     let rows = 2 * OBSERVATION_LEN;
     for (i, r) in reports.iter().enumerate() {
         assert_eq!(arrays.to_move[i] as i32, side_code(r.to_move), "env {i}");

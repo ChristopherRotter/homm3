@@ -564,3 +564,27 @@ entry only where a task builds on it.
   the run `t5-4`; another price by `--set env.mana_price=…`. The user's, after T7d.
 - **Test:** a trainer at `gold` and price 1 000 ladders as a run at v1's settings (and the
   ladder at its own settings scores differently).
+
+## T5's rest: AI-Q7 (b) part 1, the batch's kill preview (2026-10-23)
+
+- **The output:** `Outputs::preview` (`h3_sim::batch`), an option like `final_obs`: per env
+  `PREVIEW_LEN` (2 184) values, the least and the greatest kills of each attack and shot entry
+  from `PREVIEW_BASE` (257, the first attack entry; 1 092 entries), the engine's preview of the
+  entry's first strike (`h3_battle::preview`, BAT-DMG-011: what the original shows a player
+  before the strike; never the retaliation), 0 for an entry not legal or without a side to move
+  (`action::preview_kills`, `BattleEnv::preview_kills`). The encodings are unchanged.
+- **C ABI v33:** `H3BatchBuffers.preview` (the struct grows by one pointer at its end),
+  `h3_preview_base`, `h3_preview_len`; `h3env.BattleBatch(…, preview=True)` writes
+  `batch.preview` [N, 1 092, 2] (`preview_base`, `preview_entries`; `_ffi.preview()` pinned to
+  `layout.py`'s attack and heal bases); without it `None`, nothing computed.
+- **Cost** (`h3 ai bench --preview true`, 64 envs, one thread, 2 000 calls, the sandbox): the
+  default kinds 39 623 caller steps/s inside the step without, 18 487 with the preview; T7d's mix
+  (`78,2,100,50,25,3`) 31 497 and 16 905: about 29 µs a step more, as many as the step itself
+  (`preview` validates each command again, a path search each). Still far above the trainer's
+  5 000 samples/s; a preview of every attack that shares the reach (a `h3-battle` function, the
+  battle lane's) only if a profile of training shows it.
+- **Tests:** the batch's preview against the engine's of every legal attack and shot entry in the
+  batch-against-single-envs property (any thread count), both kinds of strike shown, the short
+  array refused; the ABI's preview against the Rust batch's; the C smoke test (the legal
+  strikes only, least ≤ greatest); `h3 ai bench --preview` plays as without; Python: the binding's
+  preview on the legal strikes only, the same play with and without.

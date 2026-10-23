@@ -170,7 +170,8 @@ the weights in the run's config, design §12): T7a and T7b, then the checkpoint,
 - [ ] **T5 The rest** — AI-Q7 (b); the mana-price experiment; batch size and threads from T9c's
   table; the observations in place. Beside T7d (the user, 2026-10-23): the mana price's
   preparation done 2026-10-23 (the ladders at reward v1's settings, `configs/e06-mana.toml`; the
-  record in `E06-log.md`), then AI-Q7 (b)'s batch output.
+  record in `E06-log.md`); AI-Q7 (b) part 1 done 2026-10-23 (the batch's previewed kills, C ABI
+  v33); part 2 (the network reads them) after the checkpoint.
 - [ ] **T6 Toward the targets** — runs on the best configuration until decision 7's targets hold,
   or the evidence says PPO plateaus (then T8).
 - [ ] **T8 Search** (only if PPO plateaus below the targets) — determinized search over the fork

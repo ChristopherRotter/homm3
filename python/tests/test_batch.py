@@ -117,6 +117,35 @@ def test_the_thread_count_changes_nothing() -> None:
             np.testing.assert_array_equal(x, y)
 
 
+def test_the_preview_shows_the_kills_of_the_legal_strikes_only() -> None:
+    # v33 (AI-Q7 (b)): the acting side's previewed kills, 0 for every entry not legal; writing
+    # them changes no play.
+    batches = [
+        BattleBatch(8, threads=2, seed=5, max_steps=200, preview=preview)
+        for preview in (False, True)
+    ]
+    plain, previewed = batches
+    assert plain.preview is None
+    assert previewed.preview.shape == (8, previewed.preview_entries, 2)
+    for batch in batches:
+        batch.add_scenario(scenario("full"))
+        batch.reset()
+    rng = [np.random.default_rng(2), np.random.default_rng(2)]
+    base, entries = previewed.preview_base, previewed.preview_entries
+    shown = 0
+    for _ in range(150):
+        kills = previewed.preview
+        legal = previewed.entry_mask[:, base : base + entries].astype(bool)
+        assert (kills[..., 0] <= kills[..., 1]).all()
+        assert (kills[~legal] == 0).all()
+        shown += int((kills[..., 1] > 0).sum())
+        for batch, r in zip(batches, rng, strict=True):
+            batch.random_actions(r)
+            batch.step()
+        np.testing.assert_array_equal(bits(plain.obs), bits(previewed.obs))
+    assert shown > 0
+
+
 def test_a_reset_replays_the_same_episodes() -> None:
     batch = BattleBatch(4, seed=9)
     batch.add_scenario(scenario("skirmish"))

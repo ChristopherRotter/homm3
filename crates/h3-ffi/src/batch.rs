@@ -12,7 +12,7 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 use h3_sim::batch::episode_seed;
 use h3_sim::{
     ACTION_COUNT, Action, BatchConfig, BatchError, BattleBatch, Currency, ENCOUNTERS_VERSION,
-    EnvReport, MAX_ENVS, OBSERVATION_LEN, Outputs, Policy, RewardConfig, SPELL_COUNT,
+    EnvReport, MAX_ENVS, OBSERVATION_LEN, Outputs, PREVIEW_LEN, Policy, RewardConfig, SPELL_COUNT,
     SYSTEM_POLICY_VERSION, Seat, StepError, TARGET_COUNT,
 };
 
@@ -133,6 +133,11 @@ pub struct H3BatchBuffers {
     /// [N]: the current episode's encounter kind (`H3_ENCOUNTER_*`), `H3_ENCOUNTER_NONE` for a
     /// scenario's episode (C ABI v28).
     pub encounter: *mut i8,
+    /// [N, `h3_preview_len()`]: the acting side's previewed kills of each attack and shot entry
+    /// from `h3_preview_base()`, the least and the greatest (the engine's damage preview of the
+    /// entry's first strike, what the original shows a player; 0 for an entry not legal or without
+    /// a side to move; C ABI v33, AI-Q7 (b)).
+    pub preview: *mut f32,
 }
 
 /// An episode source entry's engine identity (v31, E06 T2c): what a training run's record names,
@@ -239,6 +244,7 @@ unsafe fn with_outputs(
             obs: rows(b.obs, n * OBSERVATION_LEN),
             entry_mask: rows(b.entry_mask, n * ACTION_COUNT),
             final_obs: rows(b.final_obs, n * 2 * OBSERVATION_LEN),
+            preview: rows(b.preview, n * PREVIEW_LEN),
             reports: None,
         }
     });

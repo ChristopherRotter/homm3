@@ -19,6 +19,7 @@ fn options(scenario: &str, threads: u32) -> BenchOptions {
         seed: 3,
         max_steps: 0,
         encounters: None,
+        preview: false,
     }
 }
 
@@ -36,6 +37,16 @@ fn every_chosen_action_applies_whatever_the_thread_count() {
                 "{scenario}, {threads} threads"
             );
         }
+        // Writing the previews (AI-Q7 (b)) changes no play.
+        let previewed = run(&BenchOptions {
+            preview: true,
+            ..options(scenario, 2)
+        })
+        .unwrap();
+        assert_eq!(
+            (previewed.steps, previewed.episodes),
+            (one.steps, one.episodes)
+        );
     }
     // A step limit ends episodes; the batch resets them in the same call.
     let limited = run(&BenchOptions {
@@ -65,6 +76,12 @@ fn the_command_line() {
         "5",
     ]);
     main(&ok).unwrap();
+    main(&[ok.clone(), args(&["--preview", "true"])].concat()).unwrap();
+    assert!(
+        main(&[ok.clone(), args(&["--preview", "yes"])].concat())
+            .unwrap_err()
+            .contains("--preview")
+    );
     assert!(main(&[]).unwrap_err().starts_with("usage"));
     assert!(
         main(&args(&["fly"]))

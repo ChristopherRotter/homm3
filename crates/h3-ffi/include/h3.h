@@ -1,5 +1,5 @@
 /*
- * h3 engine C ABI, version 32 (see crates/h3-ffi/src/lib.rs and ADR-0011; the batch: ADR-0025).
+ * h3 engine C ABI, version 33 (see crates/h3-ffi/src/lib.rs and ADR-0011; the batch: ADR-0025).
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
  * Handles are opaque. Functions return H3_OK (0) or a negative error code; they never unwind.
@@ -65,6 +65,8 @@ uint32_t h3_action_count(void); /* entries */
 uint32_t h3_spell_count(void);  /* values of H3Action.spell */
 uint32_t h3_target_count(void); /* values of H3Action.target and .second */
 uint32_t h3_observation_len(void);
+uint32_t h3_preview_base(void); /* v33: the first entry of H3BatchBuffers.preview (an attack) */
+uint32_t h3_preview_len(void);  /* v33: its floats per env, two per entry from h3_preview_base() */
 uint32_t h3_observation_encoding_version(void); /* v31 */
 uint32_t h3_action_encoding_version(void);      /* v31 */
 
@@ -164,6 +166,9 @@ typedef struct H3BatchBuffers {
                                battle (an encounter's: Rust's Scenario::episode only) */
     int32_t *status;        /* H3_OK, or why the env refused this call's action (unchanged) */
     int8_t *encounter;      /* its episode's H3_ENCOUNTER_* kind (v28) */
+    float *preview;         /* [N, h3_preview_len()] (v33): the acting side's previewed kills of
+                               each attack and shot entry from h3_preview_base(), the least and
+                               the greatest; 0 for an entry not legal */
 } H3BatchBuffers;
 
 /* NULL on error, its message written into error[0..error_len] as for h3_env_create_scenario. */

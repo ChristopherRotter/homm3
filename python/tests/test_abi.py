@@ -12,11 +12,11 @@ from h3env import _ffi
 
 
 def test_the_library_speaks_the_bindings_abi() -> None:
-    assert _ffi.lib().h3_abi_version() == h3env.ABI_VERSION == 32
+    assert _ffi.lib().h3_abi_version() == h3env.ABI_VERSION == 33
 
 
 def test_a_library_of_another_version_is_refused() -> None:
-    with pytest.raises(ImportError, match="C ABI v32, this binding v31"):
+    with pytest.raises(ImportError, match="C ABI v33, this binding v31"):
         _ffi.check_version(_ffi.lib(), expected=31)
 
 
@@ -27,7 +27,7 @@ def test_the_versions_a_record_names() -> None:
     assert versions["system_policy"] > 0
     del versions["system_policy"]
     assert versions == {
-        "abi": 32,
+        "abi": 33,
         "observation_encoding": 21,
         "action_encoding": 13,
         "encounters": 1,
@@ -42,13 +42,20 @@ def test_the_encodings_sizes() -> None:
     assert observation > 0
 
 
+def test_the_preview_covers_the_attack_and_shot_entries() -> None:
+    # v33 (AI-Q7 (b)): from the first attack entry to the heals, as `layout.py` names them.
+    from h3env.train import layout
+
+    assert _ffi.preview() == (layout.ATTACK_BASE, layout.HEAL_BASE - layout.ATTACK_BASE)
+
+
 def test_the_layouts_match_h3_h() -> None:
     assert ctypes.sizeof(_ffi.H3Action) == h3env.ACTION_DTYPE.itemsize == 12
     for field in ("entry", "spell", "target", "second"):
         assert getattr(_ffi.H3Action, field).offset == h3env.ACTION_DTYPE.fields[field][1]
     assert ctypes.sizeof(_ffi.H3StepResult) == 16
     assert ctypes.sizeof(_ffi.H3BatchConfig) == 32
-    assert ctypes.sizeof(_ffi.H3BatchBuffers) == 13 * ctypes.sizeof(ctypes.c_void_p)
+    assert ctypes.sizeof(_ffi.H3BatchBuffers) == 14 * ctypes.sizeof(ctypes.c_void_p)
     assert ctypes.sizeof(_ffi.H3ScenarioInfo) == 32
 
 

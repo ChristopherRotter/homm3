@@ -20,8 +20,8 @@ use h3_battle::LegalCommands;
 use h3_contracts::{BattleResult, BattleSide};
 use h3_sim::{
     ACTION_COUNT, ACTION_ENCODING_VERSION, Action, ActionMask, BattleEnv,
-    OBSERVATION_ENCODING_VERSION, OBSERVATION_LEN, SPELL_COUNT, SpellMask, StepError, TARGET_COUNT,
-    TargetMask,
+    OBSERVATION_ENCODING_VERSION, OBSERVATION_LEN, PREVIEW_BASE, PREVIEW_LEN, SPELL_COUNT,
+    SpellMask, StepError, TARGET_COUNT, TargetMask,
 };
 
 mod batch;
@@ -102,8 +102,11 @@ pub use batch::{
 /// more than `H3_BATCH_MAX_ENVS` envs is refused (it aborted on its allocation); the encodings
 /// unchanged. v32 (E06 T7): the seat `H3_SEAT_SYSTEM` (the system actor, the original's computer,
 /// inside the call), which an encounter of a neutral kind now has as its defender (it had the
-/// random seat), and `h3_system_policy_version`; the encodings unchanged.
-pub const H3_ABI_VERSION: u32 = 32;
+/// random seat), and `h3_system_policy_version`; the encodings unchanged. v33 (E06 T5, AI-Q7
+/// (b)): `H3BatchBuffers.preview` (the acting side's previewed kills per attack and shot entry,
+/// [N, `h3_preview_len()`]; the struct grows by one pointer at its end), `h3_preview_base` and
+/// `h3_preview_len`; the encodings unchanged.
+pub const H3_ABI_VERSION: u32 = 33;
 
 /// `H3StepResult.result`: the battle is not decided (still running, or truncated).
 pub const H3_RESULT_NONE: i32 = -1;
@@ -266,6 +269,20 @@ pub extern "C" fn h3_target_count() -> u32 {
 #[unsafe(no_mangle)]
 pub extern "C" fn h3_observation_len() -> u32 {
     OBSERVATION_LEN as u32
+}
+
+/// The first entry of the batch's kill preview (`H3BatchBuffers.preview`; v33): the first
+/// attack entry; the attack and shot entries follow in their order.
+#[unsafe(no_mangle)]
+pub extern "C" fn h3_preview_base() -> u32 {
+    PREVIEW_BASE as u32
+}
+
+/// Number of `f32` per env of the batch's kill preview (v33): the least and the greatest kills
+/// of each entry from `h3_preview_base()`, two values each.
+#[unsafe(no_mangle)]
+pub extern "C" fn h3_preview_len() -> u32 {
+    PREVIEW_LEN as u32
 }
 
 /// The observation encoding's version (`h3_sim::OBSERVATION_ENCODING_VERSION`; v31).
@@ -652,7 +669,7 @@ mod tests {
 
     #[test]
     fn abi_smoke_create_step_destroy() {
-        assert_eq!(h3_abi_version(), 32);
+        assert_eq!(h3_abi_version(), 33);
         assert_eq!(
             h3_observation_encoding_version(),
             OBSERVATION_ENCODING_VERSION
@@ -662,6 +679,8 @@ mod tests {
         assert_eq!(h3_spell_count() as usize, SPELL_COUNT);
         assert_eq!(h3_target_count() as usize, TARGET_COUNT);
         assert_eq!(h3_observation_len() as usize, OBSERVATION_LEN);
+        assert_eq!(h3_preview_base() as usize, PREVIEW_BASE);
+        assert_eq!(h3_preview_len() as usize, PREVIEW_LEN);
         assert!(h3_env_create_synthetic(9, 1, 0).is_null());
         let env = h3_env_create_synthetic(1, 42, 500);
         assert!(!env.is_null());

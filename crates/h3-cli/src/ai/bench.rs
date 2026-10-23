@@ -2,7 +2,7 @@
 //! since T5b2, of the encounter distribution v1 on the original packs), the caller's seats
 //! external, called K times with random legal actions chosen from the batch's own
 //! masks (a cast through the head calls, made only when an env chose one), observations and entry
-//! masks written. It reports the steps per second of wall time, inside `BattleBatch::step` and
+//! masks written (with `preview`, the previewed kills too: AI-Q7 (b), E06 T5). It reports the steps per second of wall time, inside `BattleBatch::step` and
 //! with the head calls and the choice. `cargo xtask bench-check` counts the gated workloads'
 //! instructions (`benches/ai/`, the caller's thread) only inside
 //! `h3_sim::batch::BattleBatch::step`.
@@ -15,7 +15,7 @@ use h3_kernel::{Rng, StreamId};
 use h3_sim::action::{CREATURE_CAST, HERO_CAST};
 use h3_sim::{
     ACTION_COUNT, Action, BatchConfig, BattleBatch, EncounterTable, EnvReport, OBSERVATION_LEN,
-    Outputs, RewardConfig, SPELL_COUNT, Sampler, Scenario, Seat, TARGET_COUNT,
+    Outputs, PREVIEW_LEN, RewardConfig, SPELL_COUNT, Sampler, Scenario, Seat, TARGET_COUNT,
 };
 
 use crate::load_scenario;
@@ -40,6 +40,8 @@ pub struct BenchOptions {
     pub seed: u64,
     /// The step limit per episode (0 = none).
     pub max_steps: u32,
+    /// The batch also writes the previewed kills of every attack and shot entry.
+    pub preview: bool,
 }
 
 /// What [`run`] measured.
@@ -61,6 +63,8 @@ pub struct BenchReport {
 struct Arrays {
     obs: Vec<f32>,
     mask: Vec<u8>,
+    /// Empty without the preview.
+    preview: Vec<f32>,
     reports: Vec<EnvReport>,
     heads: Vec<u8>,
     entries: Vec<u32>,
@@ -71,10 +75,11 @@ struct Arrays {
 }
 
 impl Arrays {
-    fn new(n: usize) -> Self {
+    fn new(n: usize, preview: bool) -> Self {
         Self {
             obs: vec![0.0; n * OBSERVATION_LEN],
             mask: vec![0; n * ACTION_COUNT],
+            preview: vec![0.0; if preview { n * PREVIEW_LEN } else { 0 }],
             reports: vec![EnvReport::default(); n],
             heads: vec![0; n * SPELL_COUNT.max(TARGET_COUNT)],
             entries: vec![0; n],
@@ -90,6 +95,7 @@ impl Arrays {
             obs: Some(&mut self.obs),
             entry_mask: Some(&mut self.mask),
             final_obs: None,
+            preview: (!self.preview.is_empty()).then_some(self.preview.as_mut_slice()),
             reports: Some(&mut self.reports),
         }
     }
@@ -235,7 +241,7 @@ pub fn run(options: &BenchOptions) -> Result<BenchReport, String> {
     })
     .map_err(|e| e.to_string())?;
     batch.add_scenario(scenario).map_err(|e| e.to_string())?;
-    let mut arrays = Arrays::new(batch.len());
+    let mut arrays = Arrays::new(batch.len(), options.preview);
     batch
         .reset(&mut arrays.outputs())
         .map_err(|e| e.to_string())?;

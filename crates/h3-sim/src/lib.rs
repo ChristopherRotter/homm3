@@ -32,8 +32,8 @@ pub mod reward;
 pub mod rollout;
 
 pub use action::{
-    ACTION_COUNT, ACTION_ENCODING_VERSION, Action, ActionMask, SPELL_COUNT, SpellMask,
-    TARGET_COUNT, TargetMask,
+    ACTION_COUNT, ACTION_ENCODING_VERSION, Action, ActionMask, PREVIEW_BASE, PREVIEW_ENTRIES,
+    PREVIEW_LEN, SPELL_COUNT, SpellMask, TARGET_COUNT, TargetMask,
 };
 pub use batch::{
     BatchConfig, BatchError, BattleBatch, EnvReport, Episode, MAX_ENVS, Outputs, Policy, Scenario,
