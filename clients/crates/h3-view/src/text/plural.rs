@@ -67,10 +67,15 @@ pub enum Rule {
 
 impl Rule {
     /// The rule of a language by its primary subtag (`de`, `pt`; a region such as `pt-BR` is
-    /// cut off), or `None` for a language without one here.
+    /// cut off, but Portugal's Portuguese has a rule of its own, CLDR's `pt_PT`: `one` for 1
+    /// only, as Italian's), or `None` for a language without one here.
     #[must_use]
     pub fn of(language: &str) -> Option<Self> {
-        let primary = language.split(['-', '_']).next().unwrap_or_default();
+        let mut tags = language.split(['-', '_']);
+        let primary = tags.next().unwrap_or_default();
+        if primary == "pt" && tags.next().is_some_and(|r| r.eq_ignore_ascii_case("PT")) {
+            return Some(Self::OneManyOther);
+        }
         Some(match primary {
             "en" | "de" | "nl" | "sv" | "da" | "nb" | "nn" | "no" | "fi" | "et" | "hu" | "tr"
             | "el" | "bg" => Self::OneOther,

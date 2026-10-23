@@ -147,7 +147,14 @@ impl Battle {
             .map_err(|e| e.to_string())?
             .with_heroes(motion::heroes(&record, &tables, &parsed, Some(seed))?);
         let commands = commands.len();
-        let panels = crate::log::panels(&record, &timeline.log, &tables, &layout, (&parsed, &exe))?;
+        let panels = crate::log::panels(
+            &record,
+            &timeline.log,
+            &tables,
+            &layout,
+            (&parsed, &exe),
+            Bugs::Fixed,
+        )?;
         // The mouse (E17 M3 T6c-2): each turn's battle from the engine, the words of its hints,
         // the stacks' fidgets' frames.
         let turned = if source.scenario() {
@@ -155,7 +162,7 @@ impl Battle {
         } else {
             Vec::new()
         };
-        let writer = crate::log::Writer::new(&tables, &layout, (&parsed, &exe)).ok();
+        let writer = crate::log::Writer::new(&tables, &layout, (&parsed, &exe), Bugs::Fixed).ok();
         let group = tables.battle.groups.mouse_over;
         let fidget_frames = snapshot
             .stacks
@@ -260,6 +267,13 @@ impl Battle {
             self.pressed,
         ));
         Ok(list)
+    }
+
+    /// Whether the log's scroll buttons take a click at `t` (E17 M3 T9b, the reviewer).
+    pub fn scrolls(&self, t: u32) -> bool {
+        self.record
+            .first_snapshot()
+            .is_some_and(|s| self.panels.scrolls(s, &self.timeline.turns, t))
     }
 
     /// The draw list of the battle at `t`.

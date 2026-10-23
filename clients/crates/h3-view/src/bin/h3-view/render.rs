@@ -247,8 +247,14 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
         )
         .map_err(|e| e.to_string())?
         .with_heroes(motion::heroes(&record, &tables, &archives, None)?);
-        let panels =
-            crate::log::panels(&record, &timeline.log, &tables, &layout, (&archives, &exe))?;
+        let panels = crate::log::panels(
+            &record,
+            &timeline.log,
+            &tables,
+            &layout,
+            (&archives, &exe),
+            Bugs::Original,
+        )?;
         // The acting stack's legal commands at the opening, for the mouse (E17 M3 T6c-1): the
         // engine's, from the scenario; a record names none.
         let legal = if options.scenario() {
@@ -308,8 +314,14 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
             }];
             let shown =
                 crate::pointer::shown(&record, &timeline, &[], &parked, &layout, &catalogue);
-            let panels =
-                crate::log::panels(&record, &shown.log, &tables, &layout, (&archives, &exe))?;
+            let panels = crate::log::panels(
+                &record,
+                &shown.log,
+                &tables,
+                &layout,
+                (&archives, &exe),
+                Bugs::Fixed,
+            )?;
             panel = panels.at(observation, &timeline.turns, t, &layout);
             scene::battle_at(observation, &moment, manifest, &tables, &layout)
         }

@@ -352,7 +352,14 @@ fn sequences(options: &Options) -> Result<usize, String> {
         write(&ours_path, ours.as_bytes())?;
         if let Some(dir) = &options.frames {
             let here = dir.join(&sequence.id);
-            let panels = log::panels(&record, &shown.log, &tables, &layout, (&archives, &exe))?;
+            let panels = log::panels(
+                &record,
+                &shown.log,
+                &tables,
+                &layout,
+                (&archives, &exe),
+                Bugs::Original,
+            )?;
             let interface = Interface {
                 panels: &panels,
                 legal: &Legal::default(),

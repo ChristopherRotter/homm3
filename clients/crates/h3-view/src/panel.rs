@@ -87,7 +87,7 @@ pub fn turns(observation: &Observation, events: &[Event]) -> Vec<Observation> {
             }
             Event::TacticsEnded {} => now.tactics = None,
             // A turn its pick freezes is none (E17 M3 T7b-2b-2b, as the timeline's).
-            Event::TurnStarted { stack } if !crate::anim::freezes(events.get(i + 1), stack) => {
+            Event::TurnStarted { stack } if !crate::anim::freezes(&events[i + 1..], stack) => {
                 now.active = Some(stack);
                 now.wait_phase = waited.contains(&stack);
                 out.push(now.clone());

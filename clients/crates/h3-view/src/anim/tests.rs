@@ -1093,7 +1093,7 @@ fn strikes_react_by_direction_defence_and_death() {
             None,
             vec![Event::Defended { stack: 1 }, struck(0, 1, 1, melee)],
         ),
-        // Their turn clears it: hit (3). A stray secondary hit only counts its kills.
+        // Their turn clears it: hit (3).
         (
             Some(9000),
             vec![
@@ -1104,7 +1104,8 @@ fn strikes_react_by_direction_defence_and_death() {
         ),
         // Down at the Goblins below, the Angels beside hit too and die (a shorter death keeps its
         // last frame while the longer reaction runs); a strike of another attacker and a
-        // non-secondary strike end the run.
+        // non-secondary strike end the run, the stray hit reacting alone (E17 M3 T9b, the
+        // reviewer: it counted its kills only).
         (
             None,
             vec![
@@ -1126,7 +1127,7 @@ fn strikes_react_by_direction_defence_and_death() {
         g.dedup();
         g
     };
-    assert_eq!(groups(0), [11, 2, 11, 2, 13, 2, 11, 2]);
+    assert_eq!(groups(0), [11, 2, 11, 2, 13, 2, 11, 2, 3, 2]);
     assert_eq!(groups(1), [2, 4, 2, 3, 2, 3, 2]);
     let layers = |stack: u8| -> Vec<u8> {
         let mut l: Vec<u8> = t
@@ -1141,7 +1142,7 @@ fn strikes_react_by_direction_defence_and_death() {
     // T4b-2a (§7.9): the striker 6, then 5 for a later strike of the command; the struck 5;
     // each back in 4 at the strike's end (T5b: `strike_animation` sets every stack's +0x8 to 4
     // and redraws, 0x46934D, 0x46938A), before a later strike of the command takes its layer.
-    assert_eq!(layers(0), [6, 4, 6, 4, 6, 4, 5, 4]);
+    assert_eq!(layers(0), [6, 4, 6, 4, 6, 4, 5, 4, 5, 4]);
     assert_eq!(layers(1), [5, 4, 5, 4, 5, 4]);
     // The Goblins below: dead, their death's last frame stays among the corpses; the Angels too.
     let last = t.at(t.end);
@@ -5284,3 +5285,4 @@ fn objects_outside_casts_and_without_their_looks() {
 }
 
 mod raised;
+mod reviewed;
