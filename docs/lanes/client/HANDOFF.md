@@ -6,10 +6,11 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 - **E17 M0–M3 done** (M3 closed by T9d, 2026-10-23: CLT-Q9 to Q17's fixes; **the lane split at
   T9c**, CLT-Q18: this lane keeps the battle client, the adventure map client is the map-client
-  lane's E24); **M4 (sieges) refined at T0**; **next: M4 T1a** (the siege still read; M5 live
-  play after M4; `QUEUE.md`). Workspace `clients/`
+  lane's E24); **M4 (sieges): T0, T1a done** (the siege still read, design §10.1); **next: M4
+  T1b** (the harvest, the still drawn and captured; M5 live play after M4; `QUEUE.md`).
+  Workspace `clients/`
   (what is built: `clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in
-  `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§9; records in
+  `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§10; records in
   `E17-log.md`.
 - **Captures** (the user, 2026-10-20): `h3drive.py drawn` first (no Wine); capture what it lists or the task changes, all at a milestone's closure or a harness change (runbook); a capture not as recorded leaves `kept/` (T9b: record, then `--reuse`); later tasks' detail in `NOTES.md`.
 - **The user's requirements** (epic, "Decisions"): a string catalogue (JSON packs, no committed translation, CLT-Q7); graphics options (`faithful` default); exhaustive diffs; drawing bugs fixed, the original's only for comparisons (`Bugs`).
@@ -62,12 +63,11 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
-- **2026-10-23, E17 M4 T0 (done; #415, docs only).** M4 cut with the user: T1a, T1b (the still),
-  T2a to T2c (over time), T3; the wall states as stills by memory, on a subset of towns if T1a
-  finds the rules the same.
+- **2026-10-23, E17 M4 T1a (done; #417, docs only).** The siege still read (design §10.1, the address
+  map): the same rules in every town; the harvest moved into T1b, the wall states on Castle and
+  Conflux (the user).
+- **2026-10-23, E17 M4 T0 (done; #415).** M4 cut with the user: T1a, T1b (the still), T2a to
+  T2c (over time), T3; the wall states as stills by memory.
 - **2026-10-23, E17 M3 T9d (done; #413).** Not split (the user): the fixes behind
   `anim::Stage::bugs`; `sacrifice` recorded (Q17 confirmed; the victim's dissolve: its time
   built, its blend in the inbox). M3 done.
-- **2026-10-23, E17 M3 T9c (done; `shared/map-client-lane`, `cross-lane`).** The user split the
-  lane (CLT-Q18): the map-client lane opened (E24), the foundation and the harness common; T9d
-  stays M3's last, M4 sieges then M5 live play.
