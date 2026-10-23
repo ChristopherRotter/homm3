@@ -11,20 +11,8 @@ detail in `docs/epics/E24-design.md`; captures by the harness (`clients/capture/
 in git. Every oddity of the original a reading or a capture finds is an `MCL-Q<n>` in the same
 task (the HANDOFF's autonomy contract).
 
-T5 split with the user (2026-10-23) into T5a (heroes and boats) and T5b (owners, the path, the
-explored tiles).
-
-### E24 M1 T5a — heroes and boats
-
-- **Scope:** a reading where T1a and T1b did not cover it (a hero's map DEF by class, its group by
-  facing, its frame at rest, its flag by colour; boats: the waves, the coast test, the flag by
-  colour, the boat's group; a hero in a boat), the tables' entries; heroes and boats as two-row
-  objects among the objects' layers (§2.2, §2.3: D4, D5, D6, D7), taken from the original's
-  memory in the live part (`h3mem.py`); situations of heroes of every class facing each way, of a
-  hero beside an object's blocked cell and two heroes side by side, of an empty boat and a hero in
-  a boat, each in open water and on a coast tile.
-- **Acceptance:** those situations match pixel for pixel outside the panels' masks.
-- **Depends on:** T4a, T4b (done). **Status:** in progress (2026-10-23, `map-client/e24-t5a`).
+T5 split with the user (2026-10-23) into T5a (heroes and boats, done) and T5b (owners, the path,
+the explored tiles).
 
 ### E24 M1 T5b — owners' colours, the path's arrows and the explored tiles
 
@@ -34,9 +22,14 @@ explored tiles).
   dwelling's anchor at a new game (§2.7, not read: `render --live` draws it at the map's
   meanwhile); the path's arrows and their shadows (passes 6 and 8, D9); the unexplored tiles from
   the original's explored tiles (`h3mem.py`) in the live part; situations of a path under an
-  object, of owned objects of every colour, and shipped maps' views with heroes and owned objects.
+  object, of owned objects of every colour, and shipped maps' views with heroes and owned objects;
+  if cheap, a boat's flag of a colour other than Red's (T5a captured Red's only: another colour's
+  hero must board, hot seat).
 - **Acceptance:** those situations match pixel for pixel outside the panels' masks.
-- **Depends on:** T5a. **Status:** waiting (T5a).
+- **Depends on:** T5a (done). **Status:** ready. Since T5a the situations give heroes of any
+  colour and boats, Red's heroes walk by play and the harness turns heroes and boats
+  (`E24-design.md` §2.8); a path is shown by a hero's first click on a tile (`h3adv.walk`'s
+  first click; `setup.sh` sets Show Route).
 
 ### E24 M1 T6 — the capture set and M1's closure
 

@@ -352,7 +352,7 @@ on a body**, and every shadow lies on the flat objects.
   over the upper.
 - **A hero on land** (0x40FE30, by the tile's word): its flag `af00` … `af07` (manager +0x16C by
   owner +0x22), then the hero `ah00_` … `ah17_` (+0x10C by class +0x30; names 0x65F5F0,
-  0x65F5A8); group from 0x4D9110 (its facing; T5), frame manager +0x100 mod the group's frames
+  0x65F5A8); group from 0x4D9110 (its facing, §2.8), frame manager +0x100 mod group 0's frames
   (no phase), mirrored when its facing (+0x47) is above 4.
 - **A hero in a boat** (status bit 18): the waves `abm01_` … `abm03_` (manager +0x160 by the
   boat's type; names 0x65F67C) unless the hero's tile has map_item +0xD bit 0x02 (the coast,
@@ -420,9 +420,10 @@ Each a map of the writer (T3a: objects of any template) or a shipped map's view:
 9. Flat objects (Cursed Ground, Magic Plains, …) under another object's shadow; objects cut by
    the map's left and top edges and anchored past its right and bottom edges.
 
-Open points: 0x4FEC30 as the entrance (T5's owned objects); the coast test for the waves (T5's
-boats); which classes have flag pixels outside the eight (T5, D10; an `MCL-Q` if a drawn object
-loses its colours). Settled by T4a (§2.6): +0x40 as the priority byte, +0x14 and +0x24 as the
+Open points: 0x4FEC30 as the entrance (T5b's owned objects); which classes have flag pixels
+outside the eight (T5b, D10; an `MCL-Q` if a drawn object loses its colours). Settled by T5a
+(§2.8): the coast test for the waves; points 4, 5 and 6 in its captures; point 8 (D9) moved to
+T5b with the path. Settled by T4a (§2.6): +0x40 as the priority byte, +0x14 and +0x24 as the
 `.msk`'s masks; points 1 to 3 and 9 are in the copies of §2.6, so their own maps were not built;
 points 4, 5, 6 and 8 moved to T5 with the heroes and the path, point 7 to T4b. Settled by T4b
 (§2.7): point 7 (D8) finds nothing in the shipped files, the gate checks it.
@@ -514,4 +515,57 @@ points 4, 5, 6 and 8 moved to T5 with the heroes and the path, point 7 to T4b. S
   §2.6's copies this closes research item 9: the draw order (§2.1, §2.2), the shadows (pass 5,
   §2.2) and the random objects, read and confirmed by frames. Heroes and boats among the layers
   and the path's arrows: T5.
+
+### 2.8 Heroes and boats (M1 T5a, 2026-10-23)
+
+- **Their pictures** (view_hero_piece 0x40FE30, view_boat_piece 0x410760, their shadows 0x4102C0
+  and 0x4109B0; §2.3): every picture in the group of the hero's facing (a hero in a boat: its
+  waves, flag and boat too) or of an empty boat's: hero_map_group 0x4D9110 and boat_map_group
+  0x4D9160 share one table, facing 0 (up) group 0, 1 and 7 group 1, 2 and 6 group 2, 3 and 5
+  group 3, 4 (down) group 4, above 7 group 2; mirrored above 4. The frame is manager +0x100
+  modulo group 0's frames of each DEF (no phase): the heroes `ah00_` … `ah17_`, the boats `ab01_`
+  … and their waves `abm01_` … hold one frame in each standing group (ids 0–4; 5–9 are their
+  moving groups, eight frames each), the flags `af00` … `af07` and `abf01l` … eight, so at rest a
+  hero stands still and its flag waves with the objects' frame step. All through 0x47C080 with no
+  colour: the pictures' flag runs are skipped; each colour has flag DEFs of its own (by owner
+  0x65F5F0, a boat's by type × 8 + colour 0x65F610, its letters l g r d b p w k).
+- **The coast** (map_item +0xD bit 0x02, map_tiles_load 0x4FE220): water of a shore picture
+  (below 20) or land with the map file's coast bit, at the hero's or boat's own record's tile; no
+  waves there (`TileArt::coast`).
+- **Who is drawn:** a tile of class 34 or 8 with the entrance bit and a word (§2.3) names the
+  hero among the 156 by type or the boat; a hero needs an owner 0–7 (but its boat's body in pass
+  7, whose shadow pass checks the owner for both: 0x410325; no still has one). The hero record's
+  class +0x30, facing +0x47, status +0x105 bit 18 (in a boat) and id +0x1A; its boat from
+  hero_boat 0x4CE900 among the game's boats (a vector at game +0x4E3BC, 0x28 bytes: the tile, in
+  use +0x18, type +0x1A, facing +0x1B, colour +0x1C, hero +0x20, aboard +0x24; `structs.toml`).
+- **A new game** (observed in every capture): every hero faces right (2; hero_reset 0x4D8720
+  writes 2 at 0x4D883C) and every boat; a map's boat has colour −1 and the type of its template's
+  subclass. A hero the map places on water gets no boat: it stands on the water on horseback
+  (`Live::at_start` keeps such a hero on land, as drawn). Boarding (hero_boards_boat 0x4A1010)
+  takes the day's points without the Admiral's Hat, so a still's hero in a boat lies where the
+  boat lay, beside land; the boat takes the hero's owner as its colour. At a human player's turn
+  start the original lifts its selected hero off its tile (no class 34 there, adventure manager
+  +0x1EC set: §2.2's moving hero) until the view moves (observed, not read: M2's).
+- **The viewer** (`h3_map_view::scene`): the heroes and boats by tile from the live part; pass 5
+  draws the six slots after the objects' shadows, pass 7 slots 0–2 after layer 1 and 3–5 after
+  layer 2, each hero's or boat's pictures in the original's order, the frame's square on the tile
+  (`Draw::Piece`'s group), clipped; tiles off the map get none. The tables' `[map.heroes]`
+  (`clients/map/assets/base.toml`): the DEFs by class, colour, type, type and colour, and the
+  facings' groups; the gate checks each DEF's five groups against group 0's frames (all hold
+  them).
+- **The harness** (`h3map.py`, `h3mem`): a situation's heroes of any colour (a class's hero
+  types in order), Red's walks by play (`h3adv.walk`: a hero boards a boat by walking onto it),
+  the facings written into the records after the view moved (`write_facing`, the heroes found
+  by their records, `hero_on`: a still's staging, as the explored bits), the heroes and boats the
+  view draws into `live.toml` (`map_heroes`), which `render --live` draws.
+- **The captures:** `heroes-classes-0` to `-2` (the 18 classes × 8 facings, 48 heroes each, every
+  colour's flag in each facing over the three: D6); `heroes-objects` (on The Mandate of Heaven's
+  objects' passable cells, found in the original's draw lists: two beside a blocked cell on a
+  layer-1 cell of an object anchored a row lower, D4; others on layer-2 and layer-3 cells; two
+  side by side, the left one later in the map, and two one above the other, D5); `boats`
+  (Deluge's lake: empty boats of the three types in open water and on the coast, turned; three of
+  Red's heroes boarded, one on the coast and two on tiles given an open picture, D7): each exact
+  on its first run.
+- **Not captured:** the boats' flags of other colours than Red's (a computer player's hero would
+  have to board; the gate checks their names and groups); a moving hero (M2).
 

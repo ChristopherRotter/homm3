@@ -439,17 +439,23 @@ python3 capture/h3map.py still map/situations/<id>.toml [--keep]  # one situatio
 A situation (`map/situations/<id>.toml`, its format in `h3_map_view::situation`) is a writer's
 map (tiles given, or copied from a rectangle of a shipped map in `original-data/install/Maps`,
 with the objects anchored there when the copy says `objects = true`; objects given by their
-template's DEF, its line of the game's `Objects.txt`), two heroes away from the view, the view's
-top-left and the tiles Red has not explored; or a shipped map loaded whole (`map = "<file>"` and
+template's DEF, its line of the game's `Objects.txt`), its heroes (T5a: each with its tile and
+optionally its owner, class, facing and walk; Red's and another colour's at least) and empty
+boats (tile, type, facing), the view's top-left and the tiles Red has not explored; or a shipped
+map loaded whole (`map = "<file>"` and
 the view, T4b: `still` copies it from `original-data/install/Maps`, `to_shipped` begins it with
 the scenario list's setup and closes its first day's messages by their OK; the screen it waits
 for is `adventure`, since `adventure_map`'s probes hold the level button greyed, as a map without
 an underground shows it; the explored bits are its human player's). `still`
-writes the map (`h3-map-view situation`), loads it as a single scenario, writes Red's explored
+writes the map (`h3-map-view situation`), loads it as a single scenario, walks Red's heroes the
+situation walks, by play (`h3adv.walk`, each checked to arrive: a hero boards a boat by walking
+onto it; boarding takes the day's points, T5a), writes Red's explored
 bit of every tile of the level (`h3mem.Mem.write_explored`: all but the situation's `hidden`
 rectangles; the game's own reveal around its heroes is overwritten), centres the view by a
 minimap click (another view first if it is there already, so that it redraws), parks the mouse,
-steps 100 ms, freezes the clock, steps it to the later of the palette tick's next time and the
+turns the heroes and boats the situation turns (`Mem.write_facing` into their records, the
+heroes found by their records' tiles, `Mem.hero_on`: at a turn's start the original lifts the
+selected hero off its tile until the view moves, T5a), steps 100 ms, freezes the clock, steps it to the later of the palette tick's next time and the
 view's next redraw (the view is redrawn every 180 ms, the palettes rotate every 200 ms: between
 the two memory is a step ahead of the screen; at that time the redraw's own tick rotates first)
 and dumps the screen. The virtual clock drives the adventure map
@@ -460,7 +466,9 @@ the tick's rotation half done), the objects' frame step the screen shows (`Mem.f
 less one: the redraw draws before it counts) and every object's anchor and animation phase
 (`Mem.map_objects`, the 12-byte records in the map's order; T4a), the viewing player, and every
 object's template in memory, its DEF, class and subclass (`Mem.map_templates`; T4b: a random
-object's is the copy a new game made, design §2.7), all into `live.toml`. Ours:
+object's is the copy a new game made, design §2.7) and the heroes and empty boats the view
+draws (`Mem.map_heroes`: by the tiles of class 34 and 8 with a word, each hero's class, facing,
+owner and boat; T5a), all into `live.toml`. Ours:
 `h3-map-view render --bugs original --live live.toml` with the same view and hidden rectangles;
 it refuses a `live.toml` whose anchors are not its map's. A game that crashes on its way to the
 map (`wine.log`'s "Unhandled page fault") is started once more: the original's tavern rumour at
