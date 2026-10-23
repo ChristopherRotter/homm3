@@ -15,8 +15,8 @@ use h3_kernel::arith::X87;
 
 use super::hero::{cast, led, until_side};
 use super::{
-    ARCHER, Armies, CAVALIER, CHAMPION, FAERIE, GENIE, GOG, HARPY, IMP, RUNNER, active, at_town,
-    cast_at, caster, decide, hero_with, play, ruleset, ruleset_as, spell,
+    ANGEL, ARCHER, Armies, CAVALIER, CHAMPION, FAERIE, GENIE, GOG, HARPY, IMP, RUNNER, active,
+    at_town, cast_at, caster, decide, hero_with, play, ruleset, ruleset_as, spell,
 };
 use crate::hero::{self, Hero, Valued};
 use crate::spells::{Candidate, SpellContext};
@@ -585,4 +585,52 @@ fn after_a_cast_entry_s_spell_context_the_destination_map_keeps_its_last_search_
     assert!(matches!(real.0, Command::Move { .. }), "{real:?}");
     let t = w.teleported(dest);
     assert!(!t.map.is_stop(MOAT));
+}
+
+// covers: BAT-AI-012, BAT-AI-020
+#[test]
+fn a_stack_raiser_s_test_takes_the_active_stack_s_hit_points_with_the_slip() {
+    // The enemy's bolt kills one of the five cavaliers (100 hit points each). On the angels' own
+    // turn their raise test has their 2 × 100 hit points: they raise a cavalier. At the lone gog's
+    // turn Teleport asks the angels' turn too, and with BAT-QUIRK-25 the original's test reads the
+    // active record, one gog at 50 per creature, short of a cavalier (survey slip 32): no raise;
+    // without the slip the angels' own.
+    for profile in ["t:faithful", "t:fixed"] {
+        let r = ruleset_as(profile);
+        let slip = profile == "t:faithful";
+        let mut s = led(
+            &[(GOG, 1), (CAVALIER, 5), (ANGEL, 2)],
+            &[(IMP, 1)],
+            hero_with(&r, &["teleport"], 1, 99),
+        );
+        s.heroes[1] = Some(caster(&r, 3));
+        let mut state = BattleState::new(&r, &s, 1).unwrap();
+        let (cavaliers, angels) = (StackId(1), StackId(2));
+        cast_at(&mut state, &r, DEFENDER, "bolt", cavaliers);
+        assert_eq!(state.stacks()[1].count, 4);
+        let raise = Command::CreatureCast {
+            target: CastTarget::Stack(cavaliers),
+        };
+        let mut own_turn = None;
+        for _ in 0..20 {
+            let mine = state.side_to_act() == Some(ATTACKER);
+            if mine && active(&state) == GOG && state.round() >= 2 {
+                break;
+            }
+            if mine && active(&state) == ANGEL && !computer::wait_phase(&state) {
+                own_turn = Some(
+                    Walker::new(&state, &r, (angels, ATTACKER))
+                        .turn(&mut Rng::from_seed(3))
+                        .0,
+                );
+                play(&mut state, &r, Command::Wait);
+            } else {
+                play(&mut state, &r, Command::Defend);
+            }
+        }
+        assert_eq!(own_turn, Some(raise), "{profile}");
+        assert_eq!(active(&state), GOG);
+        let real = Walker::new(&state, &r, (angels, ATTACKER)).turn(&mut Rng::from_seed(3));
+        assert_eq!(real.0 == raise, !slip, "{profile}: {real:?}");
+    }
 }

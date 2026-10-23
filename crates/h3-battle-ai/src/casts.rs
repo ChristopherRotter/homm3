@@ -44,6 +44,10 @@ use crate::walker::Walker;
 /// The scan's draw (0x420D98: `random(1, 100)`) and the share that casts nothing (30 or less).
 const SKIP: (u32, u32, u32) = (1, 100, 30);
 
+/// The hit points per creature the original's raise test gives the active record when it is not
+/// the Archangel (0x5A84B3: 50, the Pit Lord's), for survey slip 32.
+const OTHER_RAISE_HIT_POINTS: u64 = 50;
+
 /// The balance class's thresholds (0x63B798, doubles): the larger able strength over the smaller,
 /// in thousandths.
 const THRESHOLDS: [u32; 6] = [2600, 1900, 1500, 1310, 1200, 1130];
@@ -439,7 +443,9 @@ pub(crate) fn balance(
 /// [`computer::created_worth`]; the stack's with its own); doubled when the side's able strength
 /// exceeds the other's and the balance class is 1 ([`balance`]). A value above `value` replaces
 /// it and takes the stack, so the raise must beat the walker's value, and the later stack stays
-/// at a tie.
+/// at a tie. With BAT-QUIRK-25 a stack raiser's target must also pass the raise test with the
+/// active stack's hit points (survey slip 32, [`original_raise_hit_points`]): another stack's in
+/// the hero's Teleport turns.
 // rule: BAT-AI-012
 fn raise(w: &Walker<'_>, created: Option<CreatureTypeId>, value: &mut i32) -> Option<Command> {
     let (state, ruleset, side) = (w.state, w.ruleset, w.side);
@@ -453,11 +459,18 @@ fn raise(w: &Walker<'_>, created: Option<CreatureTypeId>, value: &mut i32) -> Op
     let created = created.map(|c| computer::created_worth(state, ruleset, &w.ctx, side, c));
     let b = balance(state, ruleset, &w.ctx, side);
     let doubles = b.own > b.other && b.class <= 1;
+    let original = created
+        .is_none()
+        .then(|| original_raise_hit_points(w))
+        .flatten();
     let mut best = None;
     for i in (0..state.stacks().len()).rev() {
         let id = StackId(u8::try_from(i).unwrap_or(u8::MAX));
         let target = CastTarget::Stack(id);
-        if !targets.as_slice().contains(&target) {
+        if !targets.as_slice().contains(&target)
+            || original
+                .is_some_and(|hp| !computer::raise_test_takes(state, ruleset, (w.id, id), hp))
+        {
             continue;
         }
         let n = computer::raise_count(state, ruleset, w.id, id);
@@ -473,6 +486,37 @@ fn raise(w: &Walker<'_>, created: Option<CreatureTypeId>, value: &mut i32) -> Op
         }
     }
     best.map(|target| Command::CreatureCast { target })
+}
+
+/// With BAT-QUIRK-25 (survey slip 32), the hit points of the original's test of a stack raiser's
+/// target (0x5A3CC0 with caster kind 1, from 0x421000): its raise case reads the active record,
+/// whichever stack raises (0x5A846D): the active stack's creatures times its own hit points per
+/// creature when it is a stack raiser (the Archangel's 100, 0x5A84AE), else times 50
+/// ([`OTHER_RAISE_HIT_POINTS`]). On the raiser's own turn that is its own test; in the hero's
+/// Teleport turns of another stack (BAT-AI-020) the active stack's. None without the slip: the
+/// raiser's own (the engine's test).
+// rule: BAT-AI-012
+fn original_raise_hit_points(w: &Walker<'_>) -> Option<u64> {
+    let slips = slips(w.ruleset);
+    w.state
+        .active()
+        .and_then(|a| w.state.stack(a))
+        .filter(|_| slips)
+        .map(|active| {
+            let per_creature = w
+                .ruleset
+                .abilities(active.creature)
+                .iter()
+                .find_map(|a| match *a {
+                    Ability::StackRaiser {
+                        hit_points_per_creature,
+                        ..
+                    } => Some(u64::from(hit_points_per_creature)),
+                    _ => None,
+                })
+                .unwrap_or(OTHER_RAISE_HIT_POINTS);
+            per_creature * u64::from(active.count)
+        })
 }
 
 /// How the computer values a random caster's drawn spell (0x43C620's cases): a bolt (Magic Arrow,

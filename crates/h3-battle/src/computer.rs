@@ -274,6 +274,22 @@ pub fn creature_cast_targets_of(
     crate::casters::caster_targets(state, ruleset, caster, out);
 }
 
+/// Whether the stack raiser `caster`'s raise test, with `hit_points` in place of its own, takes
+/// stack `target` for its controller (BAT-MAG-051's test: of the side, having lost creatures,
+/// affected by the raise spell, a living stack or a corpse on top that qualifies, its hit points
+/// per creature at most `hit_points`): the original's 0x5A3CC0 with caster kind 1, whose raise
+/// case takes the active record's count and creature (0x5A846D to 0x5A84B5), which the computer's
+/// raise of another stack reads (E23 T5b2b, survey slip 32). False for a stack that raises no
+/// stack.
+pub fn raise_test_takes(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    (caster, target): (StackId, StackId),
+    hit_points: u64,
+) -> bool {
+    crate::casters::raise_test_takes(state, ruleset, (caster, target), hit_points)
+}
+
 /// The computer's value of `a` striking `t` after `jousting` hexes (0x435C70 without the shot
 /// flag; BAT-AI-005): the exchange's damage to `t` less `a`'s losses, valued in `ctx`.
 pub fn strike_value(

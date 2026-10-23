@@ -689,6 +689,26 @@ pub(crate) fn raise_target(
     })
 }
 
+/// Whether the stack raiser `caster`'s raise test with `hit_points` takes stack `target` for its
+/// controller ([`raise::raisable`] with [`raise::creature_test`]; the computer's estimate with
+/// another stack's hit points, [`crate::computer::raise_test_takes`]). False for a stack that
+/// raises no stack.
+pub(crate) fn raise_test_takes(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    (caster, target): (StackId, StackId),
+    hit_points: u64,
+) -> bool {
+    let stack = state.at(caster);
+    match raiser(ruleset, stack.creature) {
+        Some(Raiser::Stack { test, .. }) => ruleset.spell(test).is_some_and(|spell| {
+            let test = raise::creature_test((test, spell), hit_points);
+            raise::raisable(state, ruleset, stack.controller(), test, target)
+        }),
+        _ => false,
+    }
+}
+
 /// How many creatures of `creature` the corpse raiser `caster` raises from the corpse of stack
 /// `corpse` (BAT-MAG-052; the original's 0x447330): `min(start, min(per_creature × the raiser's
 /// creatures, start × health) div the creature's health)`, with the corpse's start count and its
