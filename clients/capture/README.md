@@ -28,8 +28,8 @@ adventure).
 | `h3drive.py` | The driver: starts the game, the recipes (fixed coordinates, screens by probes), the clock, dumps; the commands `battle`, `set`, `learn`, `shot`, `sequence`, `sequences`, `frames`. |
 | `screens.toml` | The screens the driver recognises: 12 probes `[x, y, 5-6-5 value]` each (numbers only). |
 | `h3cap.py` | `diff` (our render against a capture, with masks) and `find` (the original's obstacles in a capture); `compare` and `boxes_at` for the frame check. |
-| `h3mem.py` | Reads the running game's state from its memory: the battle's clocks, idle steps, active stack and the mouse's highlight, each stack's group, frame, hex, offsets and draw layer, and each side's hero's group and frame and its flag's frame (M3 T3a), the magic animation drawn and the stacks under it (M3 T3b), the battle's outcome (H1); the adventure map's players, heroes (with their experience, level, army and skills: H1), view and path, the difficulty, a tile's monster, the topmost dialog's text (H1; below). |
-| `h3adv.py` | The adventure map (M2 T6, H1, H2): hot seat at a chosen difficulty, heroes (the list scrolled), tiles of either level clicked twice, questions answered, battles played, level-ups chosen, turns, artifacts put on from the backpack in the hero screen (E08 T37a); `batch` plays an experiment batch and fills its results template, `compare` sets two filled templates side by side, `learn-button`. |
+| `h3mem.py` | Reads the running game's state from its memory: the battle's clocks, idle steps, active stack and the mouse's highlight, each stack's group, frame, hex, offsets and draw layer, and each side's hero's group and frame and its flag's frame (M3 T3a), the magic animation drawn and the stacks under it (M3 T3b), the battle's outcome (H1); the adventure map's players, heroes (with their experience, level, army and skills: H1), view and path, the difficulty, a tile's monster, the topmost dialog's text (H1; below); since E08 T47a the topmost dialog's kind and its items' boxes, states and texts, a hero's army slot by slot, worn positions, flags and learned spells, the artifact held, the battle's tactics phase. |
+| `h3adv.py` | The adventure map (M2 T6, H1, H2): hot seat at a chosen difficulty, heroes (the list scrolled), tiles of either level clicked twice, questions answered, battles played, level-ups chosen, turns, artifacts put on from the backpack in the hero screen (E08 T37a), the hero screen's, the exchange's, the army, creature and split dialogs' items clicked by their ids and a tactics phase ended (E08 T47a); `batch` plays an experiment batch and fills its results template, `compare` sets two filled templates side by side, `learn-button`. |
 | `h3map.py` | The adventure map's stills (E24 M1 T3b2, the map client lane): `still` shows a situation of `../map/situations/` in the original (a single scenario, a writer's map or a shipped one whole, the human's explored tiles written, the view by the minimap, the clock frozen), draws ours and diffs them; `set` runs the map's capture set. Below, "The map's stills". |
 | `h3lod.py` | The original's text tables, read from the run directory's LODs at run time (H1): which record a dialog's text was written from (`ADVEVENT:86`); never their text. |
 | `batches/` | The batches' recipes: a spec's procedure as steps (`E08-batch-2.toml`), and the harness's own check (`harness-check.toml`, its spec in `checks/`). |
@@ -346,9 +346,41 @@ Speed" = "feet", "Spyglass" = "misc 1" }` opens the hero's screen (a click on th
 the `hero_screen` probes), clicks each artifact in the backpack (the cursor takes it; the first five
 places shown, no scrolling) and then its slot, checks in memory that the slot holds it, and closes
 the screen (`Return`): the original's own equipping, as a player's (batch E5's E5-3b and E5-10b).
-A step either walks or equips.
 
-A step without `walk` or `equip` only reads. `record` fills the template's fields and table rows
+**Screens and their items** (E08 T47a, batch E6): `screen = "hero"` opens the hero's screen (as
+`equip` does) and plays the step's `actions` there; a walk that opens an exchange (a meeting with
+another of the player's heroes) or an army dialog (a join that finds no room) plays its `actions`
+there. Each action does one thing: `click = [<item>, …]` (left clicks in order, each on whichever
+screen shows then), `right = "<item>"` (the right button held while the screen is read: a question
+that stays after the release is answered, a window shown while it is held goes with it) or `slider
+= "max"` (the split dialog's slider moved by its right arrow until the counts stop changing), or
+nothing (only reads); a question that comes is answered with the action's `answer` (`yes`, `no`;
+one without stops the batch), a message's OK is clicked (its record kept), and `record` and `note`
+read right after the action, as a step's do. A screen the actions leave open is closed (the hero
+screen's and the exchange's close, the army dialog's OK: no change), so a walk without `actions`
+meets or joins and closes at once. Nothing is clicked by fixed coordinates: the screen showing is
+the topmost dialog's kind (`h3mem.dialog`, its vtable: `h3adv.SCREEN_KINDS`), and an item is found
+by its id among the dialog's items in memory, which hold their boxes (`h3mem.dialog_items`). The
+items by name (`h3adv.SCREEN_ITEMS`; the procedures' ids, survey `E08-army.md`; `<part>:<n>` the
+part's n-th: an army slot from 0 at the left, a worn position by its number 0 to 18, a backpack
+place from 0 at the left of the five shown; for a worn position or a backpack place n may be an
+artifact's name, the position that holds it or the place that shows it):
+
+| Screen | Items |
+|---|---|
+| hero (`hero_screen_proc` 0x4DD2D0) | `army:<slot>`, `worn:<position>`, `backpack:<place>`, `backpack left`, `backpack right` (the arrows: the last entry becomes the first, the first the last), `loose`, `tight`, `tactics` (the tactics formation), `split`, `close` |
+| exchange (`swap_manager_proc` 0x5AFDF0; left the visitor) | `left army:<slot>`, `right army:<slot>`, `left worn:<position>`, `right worn:<position>`, `left backpack:<place>`, `right backpack:<place>`, their arrows `left backpack left`, …, `left split`, `right split`, `close` |
+| army (the join's dialog, 0x5D11D0) | `upper:<slot>` (the group), `lower:<slot>` (the hero's army), `split`, `ok` |
+| creature (0x4C6C50, a slot clicked twice) | `dismiss`, `ok` |
+| split (0x449E90) | `ok`, `cancel` (and `slider = "max"`) |
+| message | `ok`; a question `yes`, `no` |
+| battle | `start` (the tactics phase's Start Combat) |
+
+A battle that opens in its tactics phase (battle manager +0x13D68 at its start; the observation
+`tactics`) is ended at once, as the templates ask: the phase's message's OK, then its Start
+button, before `battle` plays (batch E6's E6-6). A step walks, equips or opens a screen.
+
+A step without `walk`, `equip` or `screen` only reads. `record` fills the template's fields and table rows
 from the observation; `before:<observation>` reads the same before the step (not `explored:`: the
 step's snapshot holds no tiles, so a read before a walk is a step of its own). A table of one
 value column is filled by the row's label; since E08 T37a a wider one cell by cell, by `<row label>
@@ -373,6 +405,9 @@ the same way:
 | `stacks:start`, `stacks:end[:<side>]` | the battle's stacks (`attacker 20 Archangels \| defender 3 Pikemen, 2 Halberdiers`) |
 | `hexes:start[:<side>]` | their hexes at the start (the formation) |
 | `hero:<detail>`, `hero[<name>]:<detail>` | the step's hero after the step, or another by name: `experience`, `level`, `primary` (`3/5/1/2`), `army`, `skill:<name>` (none, basic, advanced, expert), `on_map`, `tile`; since E08 T32b1 `skills` (`Leadership expert, Wisdom basic`, in the hero's order), `seed` (the level seed, hero +0x8F), `wisdom_offer` and `school_offer` (the levels Wisdom and a school were last offered at, +0x90, +0x3F), `artifacts` (worn: `Ballista (war machine 1), …` in slot order) and `backpack`; since E08 T32b2 `equipment` (the worn artifacts but the war machines and the spell book: a starting bonus's); since E08 T37a `points` (the points left, +0x4D: read without a walk at a turn start, the points the turn start set) and `day_points` (+0x49, the day's points: the movement bar's length) |
+| `hero:slots`, `hero:positions`, `hero:flags`, `hero:spells` (also `hero[<name>]:`) | since E08 T47a: the army slot by slot as memory holds it, the count signed (`0: 10 Pikemen, 4: 40000 Peasants`; a count without a creature `2: -25536 (no creature)`), the worn artifacts by position number (`9: Wizard's Well, 16: Catapult`), the flags (+0x48: `2 (loose, tactics formation on)`), the learned spells (+0x3EA, in the spells' order) |
+| `shown:<army part>`, `shown:backpack` | since E08 T47a, read from the screen showing: the counts it shows under an army's slots (`shown:army` the hero screen's, `shown:left army`, `shown:right army` the exchange's, `shown:upper`, `shown:lower` the army dialog's: `0: 10, 3: 5`), the hero screen's five backpack places left to right (`empty` for an empty one) |
+| `screen`, `dialog`, `split:counts`, `shown`, `tactics` | since E08 T47a: the screen showing (`hero`, `exchange`, `army`, `map`, …), the record the topmost dialog's text was written from (a title: `GENRLTXT:36`), the split dialog's two counts as it shows them (`10 : 0`, the source first), what an action's right click opened (`question GENRLTXT:733`, `window ?`, `none`), whether the last battle opened in its tactics phase |
 | `explored:x,y[,level][:<colour>]` | yes or no: the player (the step's hero's owner, or `red`, `blue`, …) has explored the tile: its bit in the tile's vision word (`tile_vision_word` 0x4F79B0, the words at 0x6989F8; E08 T37a) |
 | `monster:x,y`, `aggression:x,y`, `never_flees:x,y` | the monster on a tile (`30 Pikemen`, `none`), its aggression (−4 to 10) and flag, from the tile's word |
 

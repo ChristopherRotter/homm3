@@ -588,3 +588,43 @@ entry only where a task builds on it.
   array refused; the ABI's preview against the Rust batch's; the C smoke test (the legal
   strikes only, least ≤ greatest); `h3 ai bench --preview` plays as without; Python: the binding's
   preview on the legal strikes only, the same play with and without.
+
+## T7d — The run at a third neutral (2026-10-23)
+
+- **The run** (`python/records/t7-1.json`; `configs/e06-t7.toml`: `t5-3`'s settings with the
+  kinds `[78, 2, 100, 50, 25, 3]`; commit 639ab77, C ABI v33, the system actor's policy v18; 20 M
+  samples in 79 minutes, one segment, 4 846 to 5 205 samples/s): gates at 10 M (+245 Elo) and
+  20 M (+24 Elo), both promoted; truncations 0.4 % and 0.001 % of self-play.
+- **The mix in episodes:** the neutral kinds 32 % of the draws but 49 % of the training episodes
+  (shorter battles, one learning side); their attackers won 0.974 (wandering), 0.972 (guards),
+  0.857 (a neutral town) in the second half, self-play's attacker 0.711 (hero), 0.615 (a siege a
+  hero defends), 0.940 (a garrison).
+- **Results** (the ladders; at 10 M and 20 M 250 per kind, the final 500):
+
+  | | Random | Aggressor | Greedy | System | Neutral set (value) |
+  |---|---|---|---|---|---|
+  | 10 M (#1) | 0.809 | 0.512 | 0.499 | 0.359 | 0.975 (+0.241) |
+  | 20 M (#2), final | 0.828 | 0.551 | 0.528 | 0.374 | 0.972 (+0.245) |
+  | `t5-3` final | 0.832 | 0.557 | 0.533 | – | – |
+
+  The value efficiency against Random, Aggressor, Greedy, the system actor: +0.273, +0.029,
+  +0.010, −0.101 (positive against every ladder member but the system actor); on the neutral
+  set the strata 0.976 (wandering), 0.966 (guards), 0.852 (a neutral town).
+- **Read:** a third neutral costs the player-against-player kinds nothing at 20 M (within the
+  intervals, ±0.013 to ±0.018, of `t5-3`; a little behind at 10 M). On the neutral set the agent
+  attacks better than every heuristic bot (Greedy +0.223, Aggressor +0.216) but not as well as
+  the system actor (+0.285): decision 7's neutral target is not met, and the value stayed flat
+  from 10 M. The system actor is the ladder's gap: it beats this agent 0.626; the 0.75 targets
+  against Aggressor and Greedy are as far as before.
+- **Evaluation:** 12.2 of 79.3 minutes (15.3 %; `t5-3` 6.8 %): the system actor's row and the
+  neutral set (ladders 93 s, 137 s, 138 s, the final 220 s; gates 13 s, 128 s).
+- **Increment 5 closed** at the checkpoint (2026-10-23). Put to the user for increment 6: AI-Q7
+  (b) part 2 (the agent's recommendation) or the system actor as a league opponent in the hero
+  kinds (a change of decision 9); a run of 60 M at T7's mix (the recommendation: whether PPO
+  plateaus) or the mana run `t5-4`. **User:** `t7-1` recorded, nothing built and no run for
+  now; then (asked what lies on the critical path to beating the system actor): diagnose first,
+  a behaviour analysis as T5b's (T6a, in a fresh session; the lane's QUEUE has its plan). Known
+  so far: the agent plays at Greedy's level, the system actor beats Greedy 0.653 with an edge
+  alike in every kind and seat (its hero casts, Greedy never; its waits, defends and targets);
+  the agent never met the system actor in a hero battle (decision 9); more samples barely help
+  (`t4-2` at 60 M against `t5-3` at 20 M).

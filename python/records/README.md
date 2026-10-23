@@ -86,3 +86,7 @@ its `parent`.
   1.0, 20 M samples each): the entity network (best #1 from 10 M: 0.770, 0.470, 0.468 on the full
   report set; 250 minutes) and the MLP (best #2, 20 M: 0.832, 0.557, 0.533; 70 minutes). Their
   networks are on the user's machine (`python/runs/t5-2/`, `t5-3/`).
+- `t7-1` (E06 T7d, 2026-10-23; `configs/e06-t7.toml`, a third neutral, 20 M samples, 79
+  minutes): best #2 at 20 M, on the full report set 0.828, 0.551, 0.528 against Random,
+  Aggressor, Greedy and 0.374 against the system actor; on the neutral set 0.972, value +0.245.
+  Its networks are on the user's machine (`python/runs/t7-1/`).

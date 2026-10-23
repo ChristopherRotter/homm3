@@ -402,3 +402,100 @@ field = "day 2 points (no walk)"
 field = "day 2 day's points (hero +0x49)"
 [[encounter.record]]
 field = "anything odd"
+
+# E08 T47a (batch E6's clicks and reads): Kit, the hero screen (army slots, split, the creature
+# dialog's dismiss, the formation and tactics formation buttons, artifacts picked up and put down,
+# a combination's questions, right clicks, the backpack's arrow; the flags, learned spells, worn
+# positions) and a battle's tactics phase; Full, the army dialog after a join without room and the
+# exchange with Full B (armies, split, closing). Blue then holds eight heroes, the list's most.
+
+[[encounter]]
+id = "Kit"
+title = "The hero screen's clicks; a tactics phase ended at once (E08 T47a)"
+questions = []
+procedure = [
+    "Day 1, Blue's turn: read the hero's army slot by slot, its flags (+0x48), learned spells, worn positions and backpack.",
+    "Open its hero screen. Swap slots 0 and 1; split slot 0 into the empty slot 3 with the split button, the slider at its maximum, OK; dismiss slot 3's stack from its creature dialog (Yes). Press the tactics formation button twice, the tight and the loose formation buttons.",
+    "Put the Mystic Orb of Mana from the backpack on misc 4 (position 12) and answer the assembly's question No; right-click it and answer Yes; put the Wizard's Well into the backpack's first place and right-click it there; press the backpack's right arrow. Close the screen.",
+    "Click the Pikemen east of the hero twice: end the tactics phase at once (Start); auto combat.",
+]
+[encounter.hero]
+type = "Christian"
+specialty = "creature Ballista"
+owner = "blue"
+at = [28, 8]
+primary = [2, 2, 1, 1]
+skills = [["Tactics", 2]]
+army = [["Swordsman", 20], ["Archer", 5]]
+artifacts = { "misc 2" = "Charm of Mana", "misc 3" = "Talisman of Mana", "spell book" = "Spell Book" }
+backpack = [
+    "Mystic Orb of Mana", "Centaurs Axe", "Greater Gnoll's Flail", "Ogre's Club of Havoc",
+    "Sword of Hellfire", "Shield of the Dwarven Lords",
+]
+spells = ["Bless"]
+[encounter.opponent]
+monster = "Pikeman"
+count = 5
+[[encounter.record]]
+table = ["read", "value"]
+labels = [
+    "slots at the start", "counts shown at the start", "flags at the start", "learned spells",
+    "positions at the start", "backpack at the start", "backpack shown at the start",
+    "slots after the swap", "split dialog at the start", "split dialog at the maximum",
+    "slots after the split", "the dismiss question", "slots after the dismissal",
+    "counts shown after the dismissal", "flags after the tactics button",
+    "flags after it again", "flags after tight", "flags after loose",
+    "the first equip's question", "positions after it", "the right click", "positions after the assembly",
+    "backpack after the Well put in", "the right click in the backpack", "backpack after the arrow",
+    "backpack shown after the arrow", "positions at the end",
+]
+[[encounter.record]]
+field = "tactics phase (yes/no)"
+[[encounter.record]]
+field = "the battle's winner"
+[[encounter.record]]
+field = "anything odd"
+
+[[encounter]]
+id = "Full"
+title = "The army dialog after a join without room; the exchange with an own hero (E08 T47a)"
+questions = []
+procedure = [
+    "Day 1, Blue's turn: click the compliant Wolf Riders east of the hero (seven stacks) twice, answer Yes. In the army dialog: read its title and counts; dismiss slot 3 of the hero's army (the lower bar) from its creature dialog (Yes); move the Wolf Riders (upper slot 0) into it; OK.",
+    "Click Full B west of the hero twice: in the exchange, move the hero's Pikeman (slot 0) into Full B's empty slot 1; split Full B's Pikemen (slot 0) into the hero's emptied slot 0 with the split button, the slider at its maximum, OK; close.",
+]
+[encounter.hero]
+type = "Ignatius"
+specialty = "creature Imp"
+owner = "blue"
+at = [28, 13]
+primary = [1, 1, 1, 1]
+army = [
+    ["Pikeman", 1], ["Archer", 1], ["Griffin", 1], ["Swordsman", 1], ["Monk", 1],
+    ["Cavalier", 1], ["Angel", 1],
+]
+[encounter.opponent]
+monster = "Wolf Rider"
+count = 5
+disposition = "compliant"
+[[encounter.also]]
+type = "Calh"
+specialty = "creature Gog"
+owner = "blue"
+name = "Full B"
+at = [27, 13]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+[[encounter.record]]
+table = ["read", "value"]
+labels = [
+    "the join question", "the dialog's title", "the dialog's counts, upper",
+    "the dialog's counts, lower", "the dismiss question", "the army after the dismissal",
+    "the army after the group taken", "the group's tile after", "the exchange's counts, left",
+    "the exchange's counts, right", "the hero's army after the move",
+    "Full B's army after the move", "split dialog at the start", "split dialog at the maximum",
+    "the hero's army after the split", "Full B's army after the split",
+    "counts shown after the split, left", "counts shown after the split, right",
+]
+[[encounter.record]]
+field = "anything odd"
