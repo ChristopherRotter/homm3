@@ -1,0 +1,468 @@
+use super::*;
+use alloc::string::ToString;
+use alloc::vec;
+
+use h3_map::Limits;
+use h3_map::writer::{self, Extras, GivenTile, RiverKind, RoadKind, Terrain};
+
+use crate::art::tests::{map, raw};
+use crate::live::Moment;
+use crate::tables;
+
+/// The committed tables and layout (`clients/map/`).
+fn tables() -> Tables {
+    let text = include_str!("../../../../map/assets/base.toml");
+    tables::load(&[tables::parse(text).unwrap()], "base").unwrap()
+}
+
+fn layout() -> AdventureLayout {
+    AdventureLayout::parse(include_str!("../../../../map/layouts/adventure.toml")).unwrap()
+}
+
+/// The art test's map (36 × 36 grass, a pool at the top-left, a dirt road on row 5 from column 3
+/// to 6) with the given tiles.
+fn art_with(tiles: Vec<GivenTile>) -> (MapArt, Live) {
+    let extras = Extras {
+        tiles,
+        objects: vec![],
+    };
+    let bytes = writer::write_with(&map(), &extras).unwrap();
+    let raw = h3_map::parse(&bytes, &Limits::default()).unwrap();
+    let art = MapArt::from_raw(&raw).unwrap();
+    let live = Live::at_start(&raw, &art, 0);
+    (art, live)
+}
+
+fn at(x: i32, y: i32) -> ViewAt {
+    ViewAt { x, y, z: 0 }
+}
+
+fn still(art: &MapArt, live: &Live, view: ViewAt, bugs: Bugs) -> Scene {
+    scene(art, live, &tables(), &layout(), view, bugs).unwrap()
+}
+
+/// A piece as (def, frame, its place, its mirrors, its clip).
+type Seen = (String, u32, [i32; 2], [bool; 2], [i32; 4]);
+
+/// The pieces of one pass.
+fn pieces(scene: &Scene, of: Pass) -> Vec<Seen> {
+    scene
+        .draws
+        .iter()
+        .filter_map(|d| match d {
+            Draw::Piece {
+                pass,
+                def,
+                frame,
+                x,
+                y,
+                mirror_x,
+                mirror_y,
+                clip,
+            } if *pass == of => {
+                Some((def.clone(), *frame, [*x, *y], [*mirror_x, *mirror_y], *clip))
+            }
+            _ => None,
+        })
+        .collect()
+}
+
+#[test]
+fn the_frame_then_the_passes_then_the_gems() {
+    let (art, live) = art_with(vec![]);
+    let scene = still(&art, &live, at(0, 0), Bugs::Fixed);
+    assert_eq!(
+        scene.draws[0],
+        Draw::Frame {
+            picture: "AdvMap.pcx".to_string(),
+            players: "PLAYERS.PAL".to_string(),
+            viewer: 0
+        }
+    );
+    // Columns 0 to 18 and rows 0 to 16 show (design §1.2): 19 × 17 terrains, no edge.
+    let terrain = pieces(&scene, Pass::Terrain);
+    assert_eq!(terrain.len(), 19 * 17);
+    assert!(pieces(&scene, Pass::Edge).is_empty());
+    // Rows outer, columns inner: the first two are (0, 0) and (1, 0), clipped to the view.
+    assert_eq!(terrain[0].0, "watrtl.def");
+    assert_eq!((terrain[0].2, terrain[0].4), ([0, 8], [8, 8, 32, 40]));
+    assert_eq!((terrain[1].2, terrain[1].4), ([32, 8], [32, 8, 64, 40]));
+    // Column 18 shows 24 pixels; the last is (18, 16).
+    let last = terrain.last().unwrap();
+    assert_eq!(
+        (last.0.as_str(), last.2, last.4),
+        ("grastl.def", [576, 520], [576, 520, 600, 552])
+    );
+    // Every tile explored at the start: no shroud. The gems last, in the viewer's colour.
+    assert!(pieces(&scene, Pass::Shroud).is_empty());
+    let gems: Vec<&Draw> = scene.draws.iter().rev().take(4).collect();
+    assert_eq!(
+        gems[3],
+        &Draw::Gem {
+            def: "agemul.def".to_string(),
+            frame: 0,
+            x: 6,
+            y: 6
+        }
+    );
+    assert_eq!(
+        gems[0],
+        &Draw::Gem {
+            def: "agemlr.def".to_string(),
+            frame: 0,
+            x: 556,
+            y: 508
+        }
+    );
+    // The order of the passes.
+    let order: Vec<Option<Pass>> = scene
+        .draws
+        .iter()
+        .map(|d| match d {
+            Draw::Piece { pass, .. } => Some(*pass),
+            _ => None,
+        })
+        .collect();
+    let mut runs = order.clone();
+    runs.dedup();
+    assert_eq!(runs, [None, Some(Pass::Terrain), Some(Pass::Road), None]);
+}
+
+#[test]
+fn the_terrains_pictures_and_mirrors() {
+    let given = GivenTile {
+        level: 0,
+        tile: (2, 3),
+        terrain: Terrain::Lava,
+        picture: 41,
+        river: None,
+        road: None,
+        flags: 0x03,
+    };
+    let (art, live) = art_with(vec![given]);
+    let scene = still(&art, &live, at(0, 0), Bugs::Fixed);
+    let lava = pieces(&scene, Pass::Terrain)
+        .into_iter()
+        .find(|p| p.2 == [64, 8 + 96])
+        .unwrap();
+    assert_eq!(
+        (lava.0.as_str(), lava.1, lava.3),
+        ("lavatl.def", 41, [true, true])
+    );
+}
+
+#[test]
+fn the_edge_around_the_map() {
+    let (art, live) = art_with(vec![]);
+    // The view's tile (0, 0) at (−2, −1): the edge's row −1 at view row 0, columns −2 and −1.
+    let scene = still(&art, &live, at(-2, -1), Bugs::Fixed);
+    let edge = pieces(&scene, Pass::Edge);
+    // Row −1 (19 columns) and column −2, −1 of rows 0 to 15.
+    assert_eq!(edge.len(), 19 + 2 * 16);
+    let frames: Vec<u32> = edge.iter().take(4).map(|p| p.1).collect();
+    // (−2, −1) further out, (−1, −1) the corner, then (0, −1), (1, −1) the top edge.
+    assert_eq!(frames, [edge_frame(-2, -1, 36), 16, 20, 21]);
+    // The bottom-right corner seen from (20, 20).
+    let scene = still(&art, &live, at(20, 20), Bugs::Fixed);
+    let corner = pieces(&scene, Pass::Edge)
+        .into_iter()
+        .find(|p| p.2 == [32 * 16, 8 + 32 * 16])
+        .unwrap();
+    assert_eq!((corner.0.as_str(), corner.1), ("edg.def", 18));
+}
+
+#[test]
+fn the_edges_frames() {
+    let side = 36;
+    for (x, y, frame) in [
+        (-1, -1, 16),
+        (36, -1, 17),
+        (36, 36, 18),
+        (-1, 36, 19),
+        (0, -1, 20),
+        (7, -1, 23),
+        (36, 1, 25),
+        (2, 36, 30),
+        (-1, 35, 35),
+        // Further out: ((x + 16) mod 4) + 4 ((y + 16) mod 4).
+        (-2, -2, 2 + 4 * 2),
+        (-3, 5, 1 + 4),
+        (38, -4, 2),
+        (40, 40, 0),
+        (-1, -5, 3 + 4 * 3),
+    ] {
+        assert_eq!(edge_frame(x, y, side), frame, "({x}, {y})");
+    }
+}
+
+#[test]
+fn rivers_and_roads_and_the_roads_offset() {
+    let river = GivenTile {
+        level: 0,
+        tile: (8, 4),
+        terrain: Terrain::Grass,
+        picture: 20,
+        river: Some((RiverKind::Muddy, 7)),
+        road: Some((RoadKind::Cobblestone, 2)),
+        flags: 0x0C | 0x10,
+    };
+    let (art, live) = art_with(vec![river]);
+    let scene = still(&art, &live, at(0, 0), Bugs::Fixed);
+    let rivers = pieces(&scene, Pass::River);
+    assert_eq!(
+        rivers,
+        [(
+            "mudrvr.def".to_string(),
+            7,
+            [256, 136],
+            [true, true],
+            [256, 136, 288, 168]
+        )]
+    );
+    // The roads: the writer's on row 5 (columns 3 to 6), the given one on (8, 4); 16 pixels down.
+    let roads = pieces(&scene, Pass::Road);
+    assert_eq!(roads.len(), 5);
+    assert_eq!(
+        roads[0],
+        (
+            "cobbrd.def".to_string(),
+            2,
+            [256, 152],
+            [true, false],
+            [256, 152, 288, 184]
+        )
+    );
+    assert_eq!(roads[1].2, [96, 8 + 160 + 16]);
+    // The rivers' pass comes before the roads'.
+    let first = |of: Pass| {
+        scene
+            .draws
+            .iter()
+            .position(|d| matches!(d, Draw::Piece { pass, .. } if *pass == of))
+            .unwrap()
+    };
+    assert!(first(Pass::Terrain) < first(Pass::River) && first(Pass::River) < first(Pass::Road));
+}
+
+#[test]
+fn a_road_above_the_view_shows_its_lower_half() {
+    let (art, live) = art_with(vec![]);
+    // The road's row 5 at view row −1: its picture from y −8, clipped to 8 … 23.
+    let scene = still(&art, &live, at(0, 6), Bugs::Fixed);
+    let roads = pieces(&scene, Pass::Road);
+    assert_eq!(roads.len(), 4);
+    assert_eq!((roads[0].2, roads[0].4), ([96, -8], [96, 8, 128, 24]));
+}
+
+#[test]
+fn a_road_on_the_maps_last_row() {
+    let road = |x| GivenTile {
+        level: 0,
+        tile: (x, 35),
+        terrain: Terrain::Grass,
+        picture: 20,
+        river: Some((RiverKind::Clear, 1)),
+        road: Some((RoadKind::Dirt, 1)),
+        flags: 0,
+    };
+    let (art, live) = art_with(vec![road(4)]);
+    let clip = |view: ViewAt, bugs| {
+        let roads = pieces(&still(&art, &live, view, bugs), Pass::Road);
+        roads.into_iter().map(|p| p.4).collect::<Vec<_>>()
+    };
+    // Row 35 at the view's row 15: only the tile's own lower half, whatever the bugs.
+    let row = 8 + 32 * 15;
+    for bugs in [Bugs::Fixed, Bugs::Original] {
+        assert_eq!(clip(at(0, 20), bugs), [[128, row + 16, 160, row + 32]]);
+    }
+    // At the view's row 16 the view's clip already cut it to 16 rows: the original then cuts 16
+    // more and draws nothing (MCL-Q2).
+    let row = 8 + 32 * 16;
+    assert_eq!(
+        clip(at(0, 19), Bugs::Fixed),
+        [[128, row + 16, 160, row + 32]]
+    );
+    assert!(clip(at(0, 19), Bugs::Original).is_empty());
+    // The river on the same tile is never cut.
+    let scene = still(&art, &live, at(0, 19), Bugs::Original);
+    assert_eq!(pieces(&scene, Pass::River)[0].4, [128, row, 160, row + 32]);
+}
+
+#[test]
+fn the_unexplored_tiles_pieces() {
+    let (art, mut live) = art_with(vec![]);
+    // Hide the block (4, 4)–(8, 8) but its centre (6, 6).
+    for y in 4..=8 {
+        for x in 4..=8 {
+            live.explored.set(x, y, 0, (x, y) == (6, 6));
+        }
+    }
+    let scene = still(&art, &live, at(0, 0), Bugs::Fixed);
+    let shroud = pieces(&scene, Pass::Shroud);
+    assert_eq!(shroud.len(), 24);
+    let piece = |x: i32, y: i32| {
+        shroud
+            .iter()
+            .find(|p| p.2 == [32 * x, 8 + 32 * y])
+            .map(|p| (p.0.as_str(), p.1, p.3[0]))
+            .unwrap()
+    };
+    let tables = tables();
+    let expect = |mask: u8, x: u8, y: u8| match tables.map.shroud.piece(mask, x, y) {
+        ShroudPiece::Full(f) => ("tshrc.def", u32::from(f), false),
+        ShroudPiece::Edge { frame, mirror } => ("tshre.def", u32::from(frame), mirror),
+        ShroudPiece::None => ("", 0, false),
+    };
+    // (5, 5): every neighbour hidden but the explored centre to its south-east (0x20).
+    assert_eq!(piece(5, 5), expect(!0x20, 5, 5));
+    // (4, 4): its north, west and the three corners off the block are explored.
+    assert_eq!(piece(4, 4), expect(0x02 | 0x04 | 0x20, 4, 4));
+    // (6, 4): explored to the north, north-east and north-west.
+    assert_eq!(piece(6, 4), expect(0x02 | 0x04 | 0x08 | 0x20 | 0x40, 6, 4));
+    // A tile with no explored neighbour gets the full piece, its frame by x and y.
+    let mut hidden = live.clone();
+    hidden.explored = crate::live::Explored::all(36, 1, false);
+    let scene = still(&art, &hidden, at(0, 0), Bugs::Fixed);
+    let shroud = pieces(&scene, Pass::Shroud);
+    assert_eq!(shroud.len(), 19 * 17);
+    let (_, frame, ..) = &shroud[19 * 3 + 2];
+    assert_eq!(shroud[19 * 3 + 2].2, [64, 8 + 96]);
+    assert_eq!(
+        (shroud[0].0.as_str(), *frame),
+        ("tshrc.def", expect(0xFF, 2, 3).1)
+    );
+    // A mask whose entry gives no piece draws nothing.
+    let mut none = tables.clone();
+    none.map.shroud.pieces[0xDF] = 0;
+    let drawn = super::scene(&art, &live, &none, &layout(), at(0, 0), Bugs::Fixed).unwrap();
+    assert_eq!(pieces(&drawn, Pass::Shroud).len(), 23);
+}
+
+#[test]
+fn the_shroud_is_drawn_over_the_roads() {
+    let (art, mut live) = art_with(vec![]);
+    live.explored.set(3, 5, 0, false);
+    let scene = still(&art, &live, at(0, 0), Bugs::Fixed);
+    let road = scene
+        .draws
+        .iter()
+        .position(|d| {
+            matches!(
+                d,
+                Draw::Piece {
+                    pass: Pass::Road,
+                    ..
+                }
+            )
+        })
+        .unwrap();
+    let shroud = scene
+        .draws
+        .iter()
+        .position(|d| {
+            matches!(
+                d,
+                Draw::Piece {
+                    pass: Pass::Shroud,
+                    ..
+                }
+            )
+        })
+        .unwrap();
+    assert!(road < shroud);
+    // A tile off the map is never shrouded: the edge shows.
+    let mut none = live.clone();
+    none.explored = crate::live::Explored::all(36, 1, false);
+    let scene = still(&art, &none, at(-3, -3), Bugs::Fixed);
+    assert_eq!(pieces(&scene, Pass::Shroud).len(), 16 * 14);
+}
+
+#[test]
+fn the_cycles_at_the_moment_and_the_viewers_colour() {
+    let (art, mut live) = art_with(vec![]);
+    live.moment = Moment {
+        cycles: 7,
+        frames: 3,
+    };
+    live.viewer = 5;
+    let scene = still(&art, &live, at(0, 0), Bugs::Fixed);
+    let cycling: Vec<(&str, u32)> = scene
+        .cycles
+        .iter()
+        .map(|c| (c.def.as_str(), c.steps))
+        .collect();
+    assert_eq!(
+        cycling,
+        [
+            ("lavatl.def", 7),
+            ("watrtl.def", 7),
+            ("clrrvr.def", 7),
+            ("mudrvr.def", 7),
+            ("lavrvr.def", 7)
+        ]
+    );
+    assert_eq!(scene.cycles[1].ranges, [[229, 240], [242, 253]]);
+    assert!(matches!(scene.draws[0], Draw::Frame { viewer: 5, .. }));
+    assert!(matches!(
+        scene.draws.last(),
+        Some(Draw::Gem { frame: 5, .. })
+    ));
+}
+
+#[test]
+fn refuses_a_level_a_viewer_or_a_code_it_cannot_draw() {
+    let (art, mut live) = art_with(vec![]);
+    let (t, l) = (tables(), layout());
+    let view = ViewAt { x: 0, y: 0, z: 1 };
+    assert_eq!(
+        scene(&art, &live, &t, &l, view, Bugs::Fixed),
+        Err(SceneError::Level(1))
+    );
+    let mut lacking = t.clone();
+    lacking.roads.remove(&1);
+    assert_eq!(
+        scene(&art, &live, &lacking, &l, at(0, 0), Bugs::Fixed),
+        Err(SceneError::Code {
+            layer: Layer::Road,
+            code: 1,
+            at: [3, 5]
+        })
+    );
+    // Off the view (its rows −1 to 17 are the map's 6 to 24), the code is not needed.
+    assert!(scene(&art, &live, &lacking, &l, at(0, 7), Bugs::Fixed).is_ok());
+    let mut lacking = t.clone();
+    lacking.terrains.remove(&8);
+    assert!(matches!(
+        scene(&art, &live, &lacking, &l, at(0, 0), Bugs::Fixed),
+        Err(SceneError::Code {
+            layer: Layer::Terrain,
+            code: 8,
+            at: [0, 0]
+        })
+    ));
+    live.viewer = 8;
+    assert_eq!(
+        scene(&art, &live, &t, &l, at(0, 0), Bugs::Fixed),
+        Err(SceneError::Viewer(8))
+    );
+    let messages = [
+        SceneError::Level(1).to_string(),
+        SceneError::Viewer(8).to_string(),
+        SceneError::Code {
+            layer: Layer::River,
+            code: 9,
+            at: [1, 2],
+        }
+        .to_string(),
+    ];
+    assert_eq!(
+        messages,
+        [
+            "level 1 is not on the map",
+            "viewer 8 is not a colour (0-7)",
+            "tile (1, 2): River code 9 is not in the tables"
+        ]
+    );
+    // The raw map's own art reads too (no given tiles).
+    assert!(MapArt::from_raw(&raw(&map())).is_ok());
+}

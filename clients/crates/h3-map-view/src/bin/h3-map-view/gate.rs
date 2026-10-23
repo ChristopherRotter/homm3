@@ -12,24 +12,13 @@ use std::process::ExitCode;
 
 use h3_assets::palette::decode_pal;
 use h3_assets::pcx::{Pcx, decode_pcx};
-use h3_formats::lod::LodArchive;
 use h3_map::Limits;
 use h3_map_view::art::{Layer, MapArt};
 use h3_map_view::check::{self, DefSummary};
-use h3_map_view::layout::{AdventureLayout, GEM_FRAMES};
-use h3_map_view::tables::{self, Tables};
+use h3_map_view::layout::GEM_FRAMES;
+use h3_map_view::tables::Tables;
 
-/// The four LOD archives of the Complete edition.
-const ARCHIVES: [&str; 4] = [
-    "H3bitmap.lod",
-    "H3sprite.lod",
-    "H3ab_bmp.lod",
-    "H3ab_spr.lod",
-];
-
-/// The table files, dependencies first, and the selection that holds them all.
-const TABLES: [&str; 1] = ["base"];
-const ALL: &str = "base";
+use crate::files;
 
 /// The command's options.
 #[derive(Debug, PartialEq, Eq)]
@@ -42,9 +31,6 @@ pub struct Options {
 impl Options {
     /// Parses `[--install <dir>] [--map <dir>] [--maps <dir>]`.
     pub fn parse(args: &[String]) -> Result<Self, String> {
-        // An adapter's ambient input, read once here.
-        let env = std::env::var_os("H3_INSTALL").map(PathBuf::from);
-        let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
         let (mut install, mut map, mut maps) = (None, None, None);
         let mut rest = args.iter();
         while let Some(flag) = rest.next() {
@@ -59,13 +45,11 @@ impl Options {
                 .ok_or_else(|| format!("gate: `{flag}` needs a path"))?;
             *slot = Some(PathBuf::from(value));
         }
-        let install = install
-            .or(env)
-            .unwrap_or_else(|| manifest.join("../../../original-data/install"));
+        let install = install.unwrap_or_else(files::default_install);
         Ok(Self {
             maps: maps.or_else(|| Some(install.join("Maps"))),
             install,
-            map: map.unwrap_or_else(|| manifest.join("../../map")),
+            map: map.unwrap_or_else(files::default_map),
         })
     }
 }
@@ -89,56 +73,15 @@ pub fn run(options: &Options) -> ExitCode {
     }
 }
 
-/// Reads and loads the committed tables.
-fn load_tables(dir: &Path) -> Result<Tables, String> {
-    let mut files = Vec::new();
-    for id in TABLES {
-        let path = dir.join(format!("{id}.toml"));
-        let text = fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
-        files.push(tables::parse(&text).map_err(|e| format!("{}: {e}", path.display()))?);
-    }
-    tables::load(&files, ALL).map_err(|e| format!("{}: {e}", dir.display()))
-}
-
-/// Where the game searches a name (`docs/epics/E17-design.md` §3.1): DEFs in `H3sprite`, then
-/// `H3ab_spr`; pictures and palettes in `H3bitmap`, then `H3ab_bmp`.
-fn search(name: &str) -> [usize; 2] {
-    if name.to_ascii_uppercase().ends_with(".DEF") {
-        [1, 3]
-    } else {
-        [0, 2]
-    }
-}
-
 /// The highest picture the shipped maps give each layer's code, and the map that gives it.
 type Highest = BTreeMap<(Layer, u8), (u8, String)>;
 
 fn gate(options: &Options) -> Result<usize, String> {
-    let tables = load_tables(&options.map.join("assets"))?;
-    let layout_path = options.map.join("layouts/adventure.toml");
-    let layout = fs::read_to_string(&layout_path)
-        .map_err(|e| e.to_string())
-        .and_then(|t| AdventureLayout::parse(&t))
-        .map_err(|e| format!("{}: {e}", layout_path.display()))?;
-    let data = options.install.join("Data");
-    let mut bytes = Vec::new();
-    for name in ARCHIVES {
-        let path = data.join(name);
-        bytes.push(fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?);
-    }
-    let archives = bytes
-        .iter()
-        .zip(ARCHIVES)
-        .map(|(b, name)| LodArchive::parse(b).map_err(|e| format!("{name}: {e}")))
-        .collect::<Result<Vec<_>, _>>()?;
-    let find = |name: &str| -> Result<Option<(&str, Vec<u8>)>, String> {
-        for a in search(name) {
-            if let Some(read) = archives[a].read_by_name(name).map_err(|e| e.to_string())? {
-                return Ok(Some((ARCHIVES[a], read)));
-            }
-        }
-        Ok(None)
-    };
+    let tables = files::load_tables(&options.map)?;
+    let layout = files::load_layout(&options.map)?;
+    let bytes = files::read_archives(&options.install)?;
+    let archives = files::parse_archives(&bytes)?;
+    let find = |name: &str| files::find(&archives, name);
     let mut problems = Vec::new();
 
     let highest = match &options.maps {
