@@ -4479,3 +4479,7 @@ Decision 89: T42 whole (the user's choice; the cut at the committed fixtures not
   entry; the inbox's T40 note closed), the HANDOFF, the epic, `fixtures/maps/README.md`.
 - **The baseline:** `scripts/verify-once.sh engine -- --with-original-data` on master 8330f55
   (code 70c8a38e, 2026-10-23, the sandbox): all 16 steps passed.
+- **The lane's full verify** (CI cannot run): `scripts/verify-once.sh engine --base origin/master
+  -- --with-original-data` on 678768f (code 68058c9c, 2026-10-23, the sandbox, Linux x86_64): all
+  16 steps passed (`original-data`: the Tutorial's 2 928 points; 9 heroes levelled at load with 41
+  level-ups, unchanged); `master`'s client-only 9cb5725 merged in after it (the code unchanged).
