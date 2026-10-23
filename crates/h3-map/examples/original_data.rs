@@ -245,12 +245,12 @@ fn check(
 }
 
 /// The Tutorial's hero's day's points at the start (E08 T42, increment 5's exit criterion 1;
-/// survey `E08-hero-movement.md` §5): it has Expert Logistics and wears Boots of Speed and
-/// Equestrian's Gloves, so its army's entry of the land table grows by 30 % and 900 points
-/// (HER-ADV-003, ADV-MOV-001), printed and checked.
+/// survey `E08-hero-movement.md` §5): red's hero, the map's first, has Expert Logistics and wears
+/// Boots of Speed and Equestrian's Gloves, so its army's entry of the land table grows by 30 % and
+/// 900 points (HER-ADV-003, ADV-MOV-001; 2 928 from its speed-4 army's 1 560), printed and checked.
 fn tutorial(game: &GameState, rules: &GameRuleset) -> Result<(), String> {
-    let [hero] = game.adventure().heroes() else {
-        return Err("Tutorial.tut: one placed hero expected".to_owned());
+    let Some(hero) = game.adventure().heroes().first() else {
+        return Err("Tutorial.tut: no placed hero".to_owned());
     };
     let details = game
         .hero(hero.id)

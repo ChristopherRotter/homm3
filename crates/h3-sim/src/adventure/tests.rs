@@ -698,6 +698,7 @@ fn check_lifted(env: &AdventureEnv, player: PlayerId, passed: &mut [usize; 2]) {
 /// random games of two weeks, their move heads allow only tiles a hero may stop on, the reach's
 /// stop tiles (`steps_agree_with_the_masks_and_the_game` checks them against the reach), and some
 /// of those tiles are reached over water or (the flyer) over tiles objects block.
+// covers: ADV-MOV-007, ADV-MOV-009, ADV-MOV-010
 #[test]
 fn a_flyer_and_a_water_walker_are_masked_by_their_stop_tiles() {
     let mut passed = [0; 2];

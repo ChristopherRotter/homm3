@@ -2858,6 +2858,7 @@ impl Moved {
 /// walkers over water and heroes with Nomads, and refuses paths that end where their heroes may
 /// only pass (`NoStop`); every accepted move ends where its hero may stop
 /// (`every_step_keeps_the_commands_invariants`).
+// covers: ADV-MOV-007, ADV-MOV-009, ADV-MOV-010
 #[test]
 fn the_plans_fly_and_walk_on_water() {
     use proptest::strategy::ValueTree;
