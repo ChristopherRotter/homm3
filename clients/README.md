@@ -212,6 +212,14 @@ on the M1 review list):
 - `[[battlefield]]`: `key` (a terrain's, or a special battlefield's: the packs' `[[battlefield]]`
   of `battle.toml`, M3 T2) and `backgrounds` (the pictures by the variant the adventure map
   picks; a special battlefield has one, which wins over the terrain's).
+- `[[town]]` (M4 T1b, design §10.1; *provisional*, a review-list item): `key` (a faction's: the
+  packs' `[[faction]]`, whose order is the town type), `original` (the town type), `background`
+  (the siege's, in place of the terrain's), `turrets` (`shooter`, the creature drawn in them by
+  its original id; `shift`, its drawer's extra x: 44 for a two-hex creature, 5 less for the
+  Medusa; `missile`; the `keep`'s, `lower` and `upper` tower's points) and `parts`, the 18 wall
+  parts by index (WALLS.TXT's rows): `at` (the picture's top-left), `hex` (the hex whose pass
+  draws it, absent for the drawbridge, its rope, the moat, its lip and the back wall) and
+  `pictures` (five, by the part's picture state; empty: none).
 - `[[obstacle]]`: `key` (`obstacle_<n>`, the packs' numbering) and either `def`, `rows` (height in
   hex rows) and `layer` (1: drawn before every stack, 0: in the row passes) for a usual obstacle,
   or `pcx` and `at` (its top-left on the screen) for an absolute one.
