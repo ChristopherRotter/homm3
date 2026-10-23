@@ -2,7 +2,7 @@
 
 Map file: `E08-batch-6.h3m`. Fill in the blanks below and keep this file; an agent records the results (`docs/experiments/README.md`).
 
-**Stamp `ddd4ee4e`.** The map's description in the scenario list starts with "Stamp ddd4ee4e.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
+**Stamp `e17cb77c`.** The map's description in the scenario list starts with "Stamp e17cb77c.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
 
 **Difficulty: Easy.** Choose it in the scenario list before you start.
 
@@ -13,7 +13,7 @@ Map file: `E08-batch-6.h3m`. Fill in the blanks below and keep this file; an age
 5. Positions are the original's numbers: head 0, shoulders 1, neck 2, right hand 3, left hand 4, torso 5, rings 6 and 7, feet 8, misc 9 to 12 (the hero screen's misc 1 to 4) and 18 (misc 5), war machines 13 to 16, spell book 17. Army slots count from 0 at the left.
 6. Answer questions as the encounter says; write each question's or message's text (or its first words) down where the encounter asks for it.
 7. Each battle by auto combat; a tactics phase is ended at once (its Start button) before the auto combat.
-8. Order: day 1, Red's turn: E6-1, E6-2, E6-3, E6-4, E6-11; end the turn. Blue's turn (save 2 at its start): E6-6a, E6-6b, E6-7, E6-8, E6-10 (with E6-9 on the same hero), then save 3 and E6-5 last. Then the map is done.
+8. Order: day 1, Red's turn: E6-1, E6-2, E6-3, E6-4, E6-11; end the turn. Blue's turn (save 2 at its start): E6-6a, E6-6b, E6-7, E6-8, E6-10 (with E6-9 on the same hero). Then the map is done.
 9. Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.
 
 ## E6-1 — The army dialog: a full army joined by a friendly group, OK without a change (ADV-MON-008, GAM-DEC-004, ADV-STUB-2)
@@ -34,7 +34,7 @@ Map file: `E08-batch-6.h3m`. Fill in the blanks below and keep this file; an age
 - the dialog's title (or: no dialog): 
 - army after: 
 - gold after: 
-- Wolf Riders still on the map (yes/no): 
+- Wolf Riders on (4, 3) after (count, or none): 
 - anything odd: 
 
 ## E6-2 — The army dialog: room made by dismissing a stack, the group taken into the freed slot (ADV-MON-008, GAM-DEC-004, ADV-STUB-2)
@@ -53,7 +53,7 @@ Map file: `E08-batch-6.h3m`. Fill in the blanks below and keep this file; an age
 - army before: 
 - the dismiss question: 
 - army after: 
-- Wolf Riders still on the map (yes/no): 
+- Wolf Riders on (10, 3) after (count, or none): 
 - anything odd: 
 
 ## E6-3 — A hero's last stack in the exchange: a move and a merge refused, a swap allowed (ADV-ARM-001, GAM-MET-001)
@@ -174,7 +174,8 @@ Map file: `E08-batch-6.h3m`. Fill in the blanks below and keep this file; an age
 
 **Record**
 
-- worn and backpack at the start: 
+- worn at the start (positions): 
+- backpack at the start: 
 - question after the first equip: 
 - worn after the first equip: 
 - question after the second equip: 
@@ -182,7 +183,8 @@ Map file: `E08-batch-6.h3m`. Fill in the blanks below and keep this file; an age
 - worn after the assembly (positions): 
 - on screen: the Well's slot and the locked slots: 
 - right-click on the Well in the backpack: what opens: 
-- worn and backpack at the end: 
+- worn at the end (positions): 
+- backpack at the end: 
 - anything odd: 
 
 ## E6-10 — The backpack's arrow rotates the array (E6-10); then Titan's Thunder's book (E6-9) (HER-ART-002, HER-ART-007)
@@ -205,25 +207,4 @@ Map file: `E08-batch-6.h3m`. Fill in the blanks below and keep this file; an age
 - E6-9: message (or none): 
 - E6-9: book position with the Thunder off: 
 - E6-9: backpack after (in order): 
-- anything odd: 
-
-## E6-5 — A stack of 40 000: a move in the hero screen, a move to another hero, a swap onto it (A-15) (A-15, ADV-ARM-001)
-
-- Blue hero **E6-5** (Gretchin, specialty creature Goblin): attack 1, defense 1, power 1, knowledge 1; no skills; no artifacts; no spells; army 40000 Peasant, 40000 Gnoll, 1 Pikeman
-- Blue hero **E6-5 B** (Jabarkas, specialty creature Orc): attack 1, defense 1, power 1, knowledge 1; no skills; no artifacts; no spells; army 1 Archer
-
-1. Day 1, Blue's turn, last, after save 3: read E6-5's army (40 000 Peasants in slot 0, 40 000 Gnolls in slot 1, 1 Pikeman in slot 2) and E6-5 B's (east of it: 1 Archer in slot 0), counts from memory and as the screen shows them.
-2. Open E6-5's hero screen: click the Peasants (slot 0), then the empty slot 4. Read the army. Close the screen.
-3. Click E6-5 B twice: the exchange opens. Click E6-5's Peasants (slot 4), then E6-5 B's empty slot 1. Read both armies. Close the exchange.
-4. Open E6-5's hero screen: click the Pikeman (slot 2), then the Gnolls (slot 1). Read the army. Close the screen. The map is done.
-
-**Record**
-
-- E6-5 army at the start (memory): 
-- E6-5 army at the start (screen): 
-- E6-5 B army at the start: 
-- after the move in the hero screen (memory; screen): 
-- after the move to E6-5 B: E6-5's army: 
-- after the move to E6-5 B: E6-5 B's army (memory; screen): 
-- after the swap: E6-5's army (memory; screen): 
 - anything odd: 

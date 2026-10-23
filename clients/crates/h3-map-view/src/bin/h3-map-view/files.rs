@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 use h3_assets::def::parse_def;
 use h3_assets::msk::decode_msk;
 use h3_formats::lod::LodArchive;
+use h3_map::writer::ObjectTemplate;
 use h3_map_view::layout::AdventureLayout;
 use h3_map_view::objects::{Shape, Shapes};
 use h3_map_view::tables::{self, Tables};
@@ -108,28 +109,47 @@ pub fn find(
     Ok(None)
 }
 
-/// The shapes of the object pictures `defs` (E24 M1 T4a): each one's `.msk` (its name with the
-/// extension replaced; `default.msk` when the archives lack it, as msk_load 0x514610 falls back)
-/// and the frames of its DEF's first group.
+/// The shapes of the object pictures `defs` (E24 M1 T4a): [`load_shape`] of each.
 pub fn load_shapes(archives: &[LodArchive<'_>], defs: &[String]) -> Result<Shapes, String> {
     let mut shapes = Shapes::default();
     for def in defs {
-        let stem = def.rsplit_once('.').map_or(def.as_str(), |(stem, _)| stem);
-        let msk = match find(archives, &format!("{stem}.msk"))? {
-            Some((_, bytes)) => bytes,
-            None => {
-                find(archives, "default.msk")?
-                    .ok_or("default.msk: in no archive")?
-                    .1
-            }
-        };
-        let mask = decode_msk(&msk).map_err(|e| format!("{stem}.msk: {e:?}"))?;
-        let (_, bytes) = find(archives, def)?.ok_or_else(|| format!("{def}: in no archive"))?;
-        let parsed = parse_def(&bytes).map_err(|e| format!("{def}: {e:?}"))?;
-        let frames = parsed.groups.first().map_or(0, |g| g.frames.len());
-        let frames = u32::try_from(frames).unwrap_or(u32::MAX);
-        let shape = Shape::new(&mask, frames).map_err(|e| format!("{def}: {e}"))?;
-        shapes.insert(def, shape);
+        shapes.insert(def, load_shape(archives, def)?);
     }
     Ok(shapes)
+}
+
+/// The shape of the object picture `def`: its `.msk` (its name with the extension replaced;
+/// `default.msk` when the archives lack it, as msk_load 0x514610 falls back) and the frames of
+/// its DEF's first group.
+pub fn load_shape(archives: &[LodArchive<'_>], def: &str) -> Result<Shape, String> {
+    let stem = def.rsplit_once('.').map_or(def, |(stem, _)| stem);
+    let msk = match find(archives, &format!("{stem}.msk"))? {
+        Some((_, bytes)) => bytes,
+        None => {
+            find(archives, "default.msk")?
+                .ok_or("default.msk: in no archive")?
+                .1
+        }
+    };
+    let mask = decode_msk(&msk).map_err(|e| format!("{stem}.msk: {e:?}"))?;
+    let (_, bytes) = find(archives, def)?.ok_or_else(|| format!("{def}: in no archive"))?;
+    let parsed = parse_def(&bytes).map_err(|e| format!("{def}: {e:?}"))?;
+    let frames = parsed.groups.first().map_or(0, |g| g.frames.len());
+    let frames = u32::try_from(frames).unwrap_or(u32::MAX);
+    Shape::new(&mask, frames).map_err(|e| format!("{def}: {e}"))
+}
+
+/// The game's object templates (E24 M1 T4a): `Objects.txt` of the bitmap archives, its first
+/// line the count.
+pub fn templates(archives: &[LodArchive<'_>]) -> Result<Vec<ObjectTemplate>, String> {
+    let (_, text) = find(archives, "Objects.txt")?.ok_or("Objects.txt: in no archive")?;
+    let text: String = text.iter().map(|&b| char::from(b)).collect();
+    text.lines()
+        .skip(1)
+        .filter(|line| !line.trim().is_empty())
+        .map(|line| {
+            ObjectTemplate::from_objects_txt(line)
+                .map_err(|e| format!("Objects.txt: {e:?}: {line}"))
+        })
+        .collect()
 }

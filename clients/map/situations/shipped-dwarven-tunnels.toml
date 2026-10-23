@@ -1,0 +1,5 @@
+# A shipped map loaded whole (E24 M1 T4b; design §2.7): Dwarven Tunnels' underground as a new game
+# starts it, every tile of the level explored, a view with three random artifacts, nine random
+# monsters and four random resources among 110 objects, no hero, boat or owned object near it.
+map = "Dwarven Tunnels.h3m"
+view = [11, 23, 1]

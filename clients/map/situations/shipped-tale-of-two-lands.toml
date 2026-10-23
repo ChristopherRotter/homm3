@@ -1,0 +1,5 @@
+# A shipped map loaded whole (E24 M1 T4b; design §2.7): Tale of two lands (144 tiles) as a new
+# game starts it, every tile explored, a view with five random artifacts, seven random monsters
+# and seven random resources among 184 objects, no hero, boat or owned object near it.
+map = "Tale of two lands.h3m"
+view = [31, 61, 0]

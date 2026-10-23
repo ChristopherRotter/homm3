@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 use h3_map::Limits;
-use h3_map::writer::{self, ObjectTemplate};
+use h3_map::writer;
 use h3_map_view::situation::Situation;
 
 use crate::files;
@@ -76,7 +76,8 @@ fn write(options: &Options) -> Result<(), String> {
         sources.insert(name, raw);
     }
     let templates = if situation.needs_templates() {
-        templates(&options.install)?
+        let bytes = files::read_archives(&options.install)?;
+        files::templates(&files::parse_archives(&bytes)?)?
     } else {
         Vec::new()
     };
@@ -86,20 +87,4 @@ fn write(options: &Options) -> Result<(), String> {
         fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
     }
     fs::write(&options.out, bytes).map_err(|e| format!("{}: {e}", options.out.display()))
-}
-
-/// The game's object templates: `Objects.txt` of the bitmap archives, its first line the count.
-fn templates(install: &std::path::Path) -> Result<Vec<ObjectTemplate>, String> {
-    let bytes = files::read_archives(install)?;
-    let archives = files::parse_archives(&bytes)?;
-    let (_, text) = files::find(&archives, "Objects.txt")?.ok_or("Objects.txt: in no archive")?;
-    let text: String = text.iter().map(|&b| char::from(b)).collect();
-    text.lines()
-        .skip(1)
-        .filter(|line| !line.trim().is_empty())
-        .map(|line| {
-            ObjectTemplate::from_objects_txt(line)
-                .map_err(|e| format!("Objects.txt: {e:?}: {line}"))
-        })
-        .collect()
 }

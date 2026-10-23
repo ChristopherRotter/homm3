@@ -8,7 +8,8 @@
 //! one replaces an earlier on its tile), objects (E24 M1 T4a: a copy's objects with its tiles,
 //! and objects given by their template's DEF, its line of the game's `Objects.txt`), Red's and
 //! Blue's heroes (outside the view: T5 draws heroes), the view's top-left and the rectangles left
-//! unexplored. The surface only.
+//! unexplored. The surface only. A situation that names a shipped map whole (`map`, E24 M1 T4b)
+//! is the harness's alone: it loads that map, this module does not read it.
 
 use alloc::collections::BTreeMap;
 use alloc::collections::BTreeSet;
