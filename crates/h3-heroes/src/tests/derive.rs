@@ -198,7 +198,7 @@ fn derived_primary_skills_and_tactics() {
     // Bare details: the base values (below-minimum knowledge raised) and the specialty only.
     let bare = HeroDetails {
         skills: vec![],
-        worn: vec![],
+        worn: wearing(&r, &[]),
         backpack: vec![],
         spells: vec![],
         mana: 7,
@@ -285,7 +285,7 @@ fn morale_and_luck_effects_are_combined_and_count_each_artifact_once() {
     let mut d = d;
     d.skills
         .extend([(skill(&r, "t:leadership"), 2), (skill(&r, "t:luck"), 1)]);
-    d.worn.retain(|&a| a != art(&r, "t:hook"));
+    take_off(&mut d.worn, art(&r, "t:hook"));
     let hero = derive_battle_hero(&d, &r).unwrap();
     assert_eq!(
         hero.effects,
@@ -334,7 +334,7 @@ fn a_worn_no_retreat_artifact_adds_one_no_retreat_effect() {
             .count()
     };
     assert_eq!(shackles(&hero), 1);
-    d.worn.retain(|&a| a != art(&r, "t:eye"));
+    take_off(&mut d.worn, art(&r, "t:eye"));
     assert_eq!(shackles(&derive_battle_hero(&d, &r).unwrap()), 0);
 }
 
@@ -375,7 +375,7 @@ fn casting_limits_are_kept_once_with_the_smallest_level() {
             BattleEffect::SpellLevelLimit { max_level: 2 }
         ]
     );
-    d.worn.retain(|&a| a != art(&r, "t:hook"));
+    take_off(&mut d.worn, art(&r, "t:hook"));
     assert_eq!(
         limits(&d),
         vec![
@@ -383,7 +383,7 @@ fn casting_limits_are_kept_once_with_the_smallest_level() {
             BattleEffect::SpellLevelLimit { max_level: 3 }
         ]
     );
-    d.worn.retain(|&a| a != art(&r, "t:eye"));
+    take_off(&mut d.worn, art(&r, "t:eye"));
     assert_eq!(limits(&d), vec![]);
 }
 
@@ -443,7 +443,7 @@ fn spell_defences_are_kept_once_with_the_largest_level() {
             BattleEffect::NegateImmunities,
         ]
     );
-    d.worn.retain(|&a| a != art(&r, "t:hook"));
+    take_off(&mut d.worn, art(&r, "t:hook"));
     assert_eq!(
         defences(&d),
         vec![
@@ -452,7 +452,7 @@ fn spell_defences_are_kept_once_with_the_largest_level() {
             BattleEffect::MindImmunity,
         ]
     );
-    d.worn.retain(|&a| a != art(&r, "t:eye"));
+    take_off(&mut d.worn, art(&r, "t:eye"));
     assert_eq!(defences(&d), vec![]);
 }
 
@@ -1042,12 +1042,12 @@ fn magic_and_spell_bonuses_are_derived() {
     );
     // Without the book no spell book; the highest mastery counts; an empty book is a book.
     let mut d2 = d.clone();
-    d2.worn.retain(|&a| a != art(&r, "t:book"));
+    take_off(&mut d2.worn, art(&r, "t:book"));
     let plain = derive_battle_hero(&d2, &r).unwrap();
     assert_eq!(plain.magic.spell_book, None);
     d2.skills.retain(|&(s, _)| s != skill(&r, "t:wisdom"));
     d2.skills.push((skill(&r, "t:wisdom"), 1));
-    d2.worn.push(art(&r, "t:book"));
+    put_on(&r, &mut d2.worn, art(&r, "t:book"));
     d2.spells.clear();
     let novice = derive_battle_hero(&d2, &r).unwrap();
     assert_eq!(novice.magic.masteries, air(1));
@@ -1062,14 +1062,14 @@ fn available_spells_and_masteries_come_from_the_details() {
     let scroll_of = |k| ArtifactInstance::scroll(art(&r, "t:scroll").artifact, id(k));
     let bare = HeroDetails {
         skills: vec![],
-        worn: vec![],
+        worn: wearing(&r, &[]),
         backpack: vec![],
         spells: vec![id("t:portal")],
         ..details(&r)
     };
     let have = |worn: &[ArtifactInstance]| {
         let d = HeroDetails {
-            worn: worn.to_vec(),
+            worn: wearing(&r, worn),
             ..bare.clone()
         };
         available_spells(&d, &r).unwrap()
@@ -1093,7 +1093,7 @@ fn available_spells_and_masteries_come_from_the_details() {
     // (Wisdom) every air spell at Advanced, the bolt still at Expert, whether the hero has the
     // spell or not.
     let wand = HeroDetails {
-        worn: vec![art(&r, "t:wand")],
+        worn: wearing(&r, &[art(&r, "t:wand")]),
         ..bare.clone()
     };
     assert_eq!(spell_masteries(&bare, &r), Ok(vec![]));
@@ -1112,7 +1112,7 @@ fn available_spells_and_masteries_come_from_the_details() {
     );
     // The battle hero's book holds them with a worn book.
     let booked = HeroDetails {
-        worn: vec![art(&r, "t:wand"), art(&r, "t:book")],
+        worn: wearing(&r, &[art(&r, "t:wand"), art(&r, "t:book")]),
         ..wise
     };
     let hero = derive_battle_hero(&booked, &r).unwrap();
@@ -1156,7 +1156,7 @@ fn more_battle_effects_than_the_seam_holds_are_an_error() {
     assert_eq!(error.to_string(), "too many battle effects");
     // Without the eye's 16: 64, the limit.
     let mut d = details(&r);
-    d.worn.retain(|&a| a != art(&r, "t:eye"));
+    take_off(&mut d.worn, art(&r, "t:eye"));
     assert_eq!(derive_battle_hero(&d, &r).unwrap().effects.len(), 64);
 }
 
@@ -1165,14 +1165,22 @@ proptest! {
     #[test]
     fn derivation_succeeds_exactly_for_valid_details_and_stays_in_limits(
         worn in proptest::collection::vec(0u16..10, 0..8),
+        // A swap of two positions makes some placements invalid.
+        swap in proptest::option::of((0usize..9, 0usize..9)),
         skills in proptest::collection::vec((0u16..10, 1u8..=3), 0..3),
         primary in proptest::array::uniform4(0u8..=100),
     ) {
         let r = morale_ruleset();
+        let listed: Vec<ArtifactInstance> =
+            worn.iter().map(|&a| ArtifactTypeId::from_raw(a).into()).collect();
+        let mut worn = wearing(&r, &listed);
+        if let Some((i, j)) = swap {
+            worn.swap(i, j);
+        }
         let d = HeroDetails {
             primary,
             skills: skills.iter().map(|&(s, l)| (SkillId::from_raw(s), l)).collect(),
-            worn: worn.iter().map(|&a| ArtifactTypeId::from_raw(a).into()).collect(),
+            worn,
             ..details(&r)
         };
         let derived = derive_battle_hero(&d, &r);
@@ -1333,7 +1341,7 @@ fn opening_spells_and_eagle_eye_are_derived() {
         d.experience = xp(&r, 2);
         d.skills.push((skill(&r, "t:luck"), 1));
         let hero = derive_battle_hero(&d, &r).unwrap();
-        // In the order of the artifact types, whatever the order worn: the helm (a part of the
+        // In the order of the artifact types, whatever the positions worn: the helm (a part of the
         // circle), the circle, then the hook's two in their order (HER-BAT-017).
         let opening = |spell, mastery, power| BattleEffect::OpeningSpell {
             spell,
@@ -1347,9 +1355,10 @@ fn opening_spells_and_eagle_eye_are_derived() {
             opening(id("t:titan"), 3, 50),
         ];
         assert_eq!(hero.effects, expected);
-        let mut reversed = d.clone();
-        reversed.worn.reverse();
-        assert_eq!(derive_battle_hero(&reversed, &r).unwrap().effects, expected);
+        let mut moved = d.clone();
+        moved.worn.swap(1, 2);
+        moved.worn.swap(3, 5);
+        assert_eq!(derive_battle_hero(&moved, &r).unwrap().effects, expected);
         // Basic Eagle Eye's 40 % grown by 10 %, then the eye's 5 % once; the combat spells of
         // level 2 at most the hero has not learned (the bolt is learned, the portal an adventure
         // spell, the gaze an ability, the storm of level 3) (HER-SPL-004). In single precision
@@ -1411,7 +1420,7 @@ fn the_maximum_spell_points_come_from_knowledge_and_intelligence() {
     let knowledge = derive_battle_hero(&d, &r).unwrap().knowledge;
     assert_eq!(max_mana(&d, &r), 10 * u16::from(knowledge));
     let mut d = details(&r);
-    d.worn.clear();
+    d.worn.fill(None);
     d.primary[3] = 0;
     assert_eq!(max_mana(&d, &r), 10, "Knowledge counts at least 1");
     d.primary[3] = 8;
@@ -1505,16 +1514,16 @@ fn the_map_reads_attack_and_defense_as_the_battle_hero_has_them() {
     assert_eq!(attack_defense(&d, &r), (hero.attack, hero.defense));
     assert_eq!(attack_defense(&d, &r), (99, 5));
     let mut d = details(&r);
-    d.worn = vec![art(&r, "t:band")];
+    d.worn = wearing(&r, &[art(&r, "t:band")]);
     d.primary = [3, 4, 1, 1];
     assert_eq!(attack_defense(&d, &r), (0, 0), "-5 each, at least 0");
-    d.worn.clear();
+    d.worn.fill(None);
     assert_eq!(attack_defense(&d, &r), (3, 5));
     // Without hero parameters (validation refuses them) the base values.
     let mut p = effect_pack();
     p.hero_params = None;
     let r = compile(p).unwrap();
-    d.worn = vec![art(&r, "t:eye")];
+    d.worn = wearing(&r, &[art(&r, "t:eye")]);
     assert_eq!(attack_defense(&d, &r), (3, 4));
 }
 
@@ -1542,7 +1551,7 @@ fn the_join_bonus_adds_the_levels_up_to_three() {
     let mut d = details(&r);
     // The combination `t:circle` brings its part `t:helm`'s 2.
     assert_eq!(join_bonus(&d, &r), 2);
-    d.worn.clear();
+    d.worn.fill(None);
     assert_eq!(join_bonus(&d, &r), 0);
     let offense = skill(&r, "t:offense");
     for level in 1..=3 {
@@ -1551,7 +1560,9 @@ fn the_join_bonus_adds_the_levels_up_to_three() {
     }
     // An artifact type counts once, however many copies are worn; the sum at most 3.
     d.skills.clear();
-    d.worn = vec![art(&r, "t:helm"), art(&r, "t:helm")];
+    // Two helms (on the head and a misc position: the derivation reads every worn copy).
+    d.worn[0] = Some(art(&r, "t:helm"));
+    d.worn[3] = Some(art(&r, "t:helm"));
     assert_eq!(join_bonus(&d, &r), 2);
     d.skills = vec![(offense, 2)];
     assert_eq!(join_bonus(&d, &r), MAX_JOIN_BONUS);

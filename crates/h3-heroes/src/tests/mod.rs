@@ -263,9 +263,44 @@ fn slot_id(r: &Ruleset, k: &str) -> ArtifactSlotId {
     r.artifact_slot_by_key(k).unwrap()
 }
 
+/// The test pack's positions by slot key: head 0, rings 1 and 2, misc 3 to 5, the machine 6, the
+/// engine 7, the book 8.
+const POSITIONS: [&str; 9] = [
+    "t:head",
+    "t:ring",
+    "t:ring",
+    "t:misc",
+    "t:misc",
+    "t:misc",
+    "t:machine",
+    "t:engine",
+    "t:book",
+];
+
+/// Nothing worn: every position of the test pack empty.
+fn bare(r: &Ruleset) -> Vec<Option<ArtifactInstance>> {
+    wearing(r, &[])
+}
+
+/// Clears every position holding `item`.
+fn take_off(worn: &mut [Option<ArtifactInstance>], item: ArtifactInstance) {
+    worn.iter_mut()
+        .filter(|a| **a == Some(item))
+        .for_each(|a| *a = None);
+}
+
+/// Puts `item` on the first position that takes it (one must).
+fn put_on(r: &Ruleset, worn: &mut [Option<ArtifactInstance>], item: ArtifactInstance) {
+    let artifact = r.artifact(item.artifact).unwrap();
+    let at = positions::first_free(worn, r, artifact).unwrap();
+    worn[at.0] = Some(item);
+}
+
 /// Valid details that use every feature: the combination fills both rings and the head, two
 /// copies of one misc artifact, every machine slot, the book, a backpack with an artifact
-/// without slot, an adventure and a combat spell, and Knowledge 0 (below the minimum).
+/// without slot, an adventure and a combat spell, and Knowledge 0 (below the minimum). The nine
+/// positions ([`POSITIONS`]): the combination on ring 1 (head 0 and ring 2 locked), the eyes on
+/// misc 3 and 4 (misc 5 free), the kit on 6, the hook on 7, the book on 8.
 fn details(r: &Ruleset) -> HeroDetails {
     HeroDetails {
         hero_type: r.hero_type_by_key("t:orrin").unwrap(),
@@ -274,14 +309,17 @@ fn details(r: &Ruleset) -> HeroDetails {
         offered: Default::default(),
         primary: [99, 0, 1, 0],
         skills: vec![(skill(r, "t:archery"), 1), (skill(r, "t:tactics"), 3)],
-        worn: vec![
-            art(r, "t:circle"),
-            art(r, "t:eye"),
-            art(r, "t:eye"),
-            art(r, "t:kit"),
-            art(r, "t:hook"),
-            art(r, "t:book"),
-        ],
+        worn: wearing(
+            r,
+            &[
+                art(r, "t:circle"),
+                art(r, "t:eye"),
+                art(r, "t:eye"),
+                art(r, "t:kit"),
+                art(r, "t:hook"),
+                art(r, "t:book"),
+            ],
+        ),
         backpack: vec![art(r, "t:helm"), art(r, "t:grail"), art(r, "t:eye")],
         spells: vec![spell_id(r, "t:portal"), spell_id(r, "t:bolt")],
         mana: u16::MAX,
@@ -294,14 +332,43 @@ fn valid_details_pass() {
     let r = ruleset();
     let d = details(&r);
     assert_eq!(validate(&d, &r), Ok(()));
-    // Positions are interchangeable: the order worn does not matter.
-    let mut reversed = d.clone();
-    reversed.worn.reverse();
-    assert_eq!(validate(&reversed, &r), Ok(()));
+    let at = |i: usize| d.worn[i].map(|item| item.artifact);
+    assert_eq!(
+        (
+            at(0),
+            at(1),
+            at(2),
+            at(3),
+            at(4),
+            at(5),
+            at(6),
+            at(7),
+            at(8)
+        ),
+        (
+            None,
+            Some(art(&r, "t:circle").artifact),
+            None,
+            Some(art(&r, "t:eye").artifact),
+            Some(art(&r, "t:eye").artifact),
+            None,
+            Some(art(&r, "t:kit").artifact),
+            Some(art(&r, "t:hook").artifact),
+            Some(art(&r, "t:book").artifact),
+        )
+    );
+    let slots: Vec<ArtifactSlotId> = POSITIONS.iter().map(|k| slot_id(&r, k)).collect();
+    assert_eq!(positions(&r), slots);
+    assert_eq!(Position(4).to_string(), "4");
+    // Another free position of the same slot is as good (HER-ART-001 counts per slot).
+    let mut moved = d.clone();
+    moved.worn.swap(1, 2);
+    moved.worn.swap(4, 5);
+    assert_eq!(validate(&moved, &r), Ok(()));
     // No skills, artifacts or spells at all.
     let bare = HeroDetails {
         skills: vec![],
-        worn: vec![],
+        worn: bare(&r),
         backpack: vec![],
         spells: vec![],
         ..d
@@ -349,30 +416,35 @@ fn invalid_details_are_rejected() {
             |r, d| d.skills.push((skill(r, "t:wisdom"), 4)),
             DetailsError::SkillLevel(SkillId::from_raw(2)),
         ),
+        // One entry per position.
+        (|_, d| _ = d.worn.pop(), DetailsError::Positions),
+        (|_, d| d.worn.push(None), DetailsError::Positions),
         (
-            |_, d| d.worn.push(ArtifactTypeId::from_raw(99).into()),
+            |_, d| d.worn[5] = Some(ArtifactTypeId::from_raw(99).into()),
             DetailsError::UnknownArtifact(unknown_art),
         ),
         (
-            |r, d| d.worn.push(art(r, "t:grail")),
+            |r, d| d.worn[5] = Some(art(r, "t:grail")),
             DetailsError::NotWearable(ArtifactTypeId::from_raw(8)),
         ),
-        // The combination locks the head and the second ring.
+        // An artifact on another slot's position, a free one or its own slot's taken.
         (
-            |r, d| d.worn.push(art(r, "t:helm")),
+            |r, d| d.worn[5] = Some(art(r, "t:helm")),
+            DetailsError::WrongPosition(ArtifactTypeId::from_raw(0)),
+        ),
+        (
+            |r, d| d.worn[7] = Some(art(r, "t:kit")),
+            DetailsError::WrongPosition(ArtifactTypeId::from_raw(5)),
+        ),
+        // The combination locks the head and the second ring: their positions are empty but
+        // taken.
+        (
+            |r, d| d.worn[0] = Some(art(r, "t:helm")),
             DetailsError::SlotFull(ArtifactSlotId::from_raw(0)),
         ),
         (
-            |r, d| d.worn.push(art(r, "t:band")),
+            |r, d| d.worn[2] = Some(art(r, "t:band")),
             DetailsError::SlotFull(ArtifactSlotId::from_raw(1)),
-        ),
-        (
-            |r, d| d.worn.extend([art(r, "t:eye"), art(r, "t:eye")]),
-            DetailsError::SlotFull(ArtifactSlotId::from_raw(2)),
-        ),
-        (
-            |r, d| d.worn.push(art(r, "t:kit")),
-            DetailsError::SlotFull(ArtifactSlotId::from_raw(3)),
         ),
         (
             |r, d| d.backpack.push(art(r, "t:eye")),
@@ -409,24 +481,33 @@ fn invalid_details_are_rejected() {
         // A scroll holds a spell of the ruleset that is not an ability; nothing else holds one
         // (HER-ART-003), worn or carried.
         (
-            |r, d| d.worn[1] = art(r, "t:scroll"),
+            |r, d| d.worn[3] = Some(art(r, "t:scroll")),
             DetailsError::ScrollWithoutSpell(ArtifactTypeId::from_raw(9)),
         ),
         (
-            |r, d| d.worn[1].spell = Some(spell_id(r, "t:bolt")),
+            |r, d| {
+                d.worn[3] = Some(ArtifactInstance::scroll(
+                    art(r, "t:eye").artifact,
+                    spell_id(r, "t:bolt"),
+                ))
+            },
             DetailsError::SpellOnArtifact(ArtifactTypeId::from_raw(4)),
         ),
         (
             |r, d| {
-                d.worn[1] =
-                    ArtifactInstance::scroll(art(r, "t:scroll").artifact, SpellId::from_raw(99));
+                d.worn[3] = Some(ArtifactInstance::scroll(
+                    art(r, "t:scroll").artifact,
+                    SpellId::from_raw(99),
+                ));
             },
             DetailsError::UnknownSpell(unknown_spell),
         ),
         (
             |r, d| {
-                d.worn[1] =
-                    ArtifactInstance::scroll(art(r, "t:scroll").artifact, spell_id(r, "t:gaze"));
+                d.worn[3] = Some(ArtifactInstance::scroll(
+                    art(r, "t:scroll").artifact,
+                    spell_id(r, "t:gaze"),
+                ));
             },
             DetailsError::NotAHeroSpell(SpellId::from_raw(2)),
         ),
@@ -463,7 +544,9 @@ fn war_machines_come_from_the_worn_artifacts() {
     assert_eq!(war_machines(&d, &r), [ballista]);
     // The machine slot's artifact in the backpack (invalid anyway) or an unknown artifact
     // brings nothing; an artifact without a war machine (the Catapult's kind) neither.
-    d.worn = vec![ArtifactTypeId::from_raw(99).into(), art(&r, "t:hook")];
+    d.worn = bare(&r);
+    d.worn[6] = Some(ArtifactTypeId::from_raw(99).into());
+    d.worn[7] = Some(art(&r, "t:hook"));
     d.backpack = vec![art(&r, "t:kit")];
     assert!(war_machines(&d, &r).is_empty());
 }
@@ -510,7 +593,15 @@ fn primary_skills_and_errors_have_names() {
             "secondary skill 3 needs level 1..=3",
         ),
         (DetailsError::UnknownArtifact(art), "unknown artifact 7"),
+        (
+            DetailsError::Positions,
+            "the worn artifacts do not match the positions",
+        ),
         (DetailsError::NotWearable(art), "artifact 7 has no slot"),
+        (
+            DetailsError::WrongPosition(art),
+            "artifact 7 is on another slot's position",
+        ),
         (
             DetailsError::SlotFull(slot),
             "artifact slot 2 has too few positions",
@@ -544,12 +635,13 @@ fn primary_skills_and_errors_have_names() {
 }
 
 /// Positions per slot that `worn` needs, counted independently of `validate`.
-fn positions(r: &Ruleset, worn: &[ArtifactInstance]) -> Vec<usize> {
+fn slot_use(r: &Ruleset, worn: &[Option<ArtifactInstance>]) -> Vec<usize> {
     r.artifact_slots()
         .iter()
         .enumerate()
         .map(|(i, _)| {
             worn.iter()
+                .flatten()
                 .filter_map(|a| r.artifact(a.artifact))
                 .map(|a| {
                     usize::from(a.slot.is_some_and(|s| s.index() == i))
@@ -561,11 +653,13 @@ fn positions(r: &Ruleset, worn: &[ArtifactInstance]) -> Vec<usize> {
 }
 
 proptest! {
-    // covers: HER-ART-001, HER-ART-002, HER-WAR-001
+    // covers: HER-ART-001, HER-ART-002, HER-WAR-001, HER-CHG-002
     #[test]
-    fn validation_is_total_and_order_independent(
-        // Mostly valid references and values, so that both outcomes are common.
-        worn in proptest::collection::vec(0u16..10, 0..8),
+    fn validation_is_total_and_positions_of_a_slot_interchangeable(
+        // Mostly valid references and values, so that both outcomes are common: a list placed
+        // at first positions, then a few positions swapped.
+        listed in proptest::collection::vec(0u16..12, 0..8),
+        swaps in proptest::collection::vec((0usize..9, 0usize..9), 0..3),
         backpack in proptest::collection::vec(0u16..10, 0..5),
         skills in proptest::collection::vec((0u16..10, 1u8..=3), 0..3),
         spells in proptest::collection::vec(0u16..2, 0..2),
@@ -573,6 +667,19 @@ proptest! {
         primary in proptest::array::uniform4(0u8..=100),
     ) {
         let r = ruleset();
+        let items: Vec<ArtifactInstance> =
+            listed.iter().map(|&a| ArtifactTypeId::from_raw(a).into()).collect();
+        let mut worn = wearing(&r, &items);
+        // A placed list fits: only a scroll without its spell fails it.
+        let placed = HeroDetails { worn: worn.clone(), ..details(&r) };
+        let fits = matches!(
+            validate(&HeroDetails { backpack: vec![], ..placed }, &r),
+            Ok(()) | Err(DetailsError::ScrollWithoutSpell(_))
+        );
+        prop_assert!(fits);
+        for &(i, j) in &swaps {
+            worn.swap(i, j);
+        }
         let d = HeroDetails {
             hero_type: HeroTypeId::from_raw(0),
             level,
@@ -580,20 +687,28 @@ proptest! {
             offered: Default::default(),
             primary,
             skills: skills.iter().map(|&(s, l)| (SkillId::from_raw(s), l)).collect(),
-            worn: worn.iter().map(|&a| ArtifactTypeId::from_raw(a).into()).collect(),
+            worn,
             backpack: backpack.iter().map(|&a| ArtifactTypeId::from_raw(a).into()).collect(),
             spells: spells.iter().map(|&s| SpellId::from_raw(s)).collect(),
             mana: 0,
         };
         let result = validate(&d, &r);
-        let mut reversed = d.clone();
-        reversed.worn.reverse();
-        reversed.backpack.reverse();
-        prop_assert_eq!(validate(&reversed, &r).is_ok(), result.is_ok());
+        let slots = positions(&r);
+        // Positions of one slot are interchangeable.
+        for (i, j) in [(1, 2), (3, 5)] {
+            let mut swapped = d.clone();
+            swapped.worn.swap(i, j);
+            prop_assert_eq!(slots[i], slots[j]);
+            prop_assert_eq!(validate(&swapped, &r).is_ok(), result.is_ok());
+        }
         if result.is_ok() {
-            let used = positions(&r, &d.worn);
+            let used = slot_use(&r, &d.worn);
             for (n, slot) in used.iter().zip(r.artifact_slots()) {
                 prop_assert!(*n <= usize::from(slot.count));
+            }
+            for (item, &slot) in d.worn.iter().zip(&slots) {
+                let own = item.and_then(|item| r.artifact(item.artifact)).and_then(|a| a.slot);
+                prop_assert!(item.is_none() || own == Some(slot));
             }
             prop_assert!(d.backpack.len() <= 3);
             // At most one war machine per machine slot.

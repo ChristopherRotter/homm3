@@ -704,7 +704,7 @@ fn worn_types<'a>(
     ruleset: &'a Ruleset,
 ) -> impl Iterator<Item = (ArtifactTypeId, &'a ArtifactType)> {
     let mut types = BTreeSet::new();
-    for item in &details.worn {
+    for item in details.worn.iter().flatten() {
         let id = item.artifact;
         types.insert(id);
         let parts = ruleset.artifact(id).map(|a| a.parts.as_slice());
@@ -1003,6 +1003,7 @@ fn artifact_effects<'a>(
     details
         .worn
         .iter()
+        .flatten()
         .flat_map(|item| {
             let id = item.artifact;
             let parts = ruleset.artifact(id).map(|a| a.parts.as_slice());

@@ -4,9 +4,8 @@
 //! received artifact goes (HER-CHG-002); what a defeated hero yields, in which order
 //! (HER-ART-004); the artifact a destroyed war machine takes with it (HER-WAR-002); since E08
 //! T19a2b a learned spell; since E08 T27 a level (HER-LVL-005) and the experience a gain gives
-//! under the scenario's level limit (HER-EXP-003).
-
-use alloc::vec;
+//! under the scenario's level limit (HER-EXP-003); since E08 T49a the worn artifacts by position
+//! and an artifact placed at a given place.
 
 use h3_content::{
     ArtifactType, CreatureFlag, CreatureTypeId, MAX_HERO_SKILLS, MAX_SKILL_LEVEL, Ruleset, SkillId,
@@ -18,12 +17,13 @@ use crate::details::{
 };
 use crate::error::ChangeError;
 use crate::level::{gained_under_limit, pending_levels};
+use crate::positions::{Position, first_free, full_slot, positions};
 
 /// Where an artifact is in a hero's details.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ArtifactPlace {
-    /// Worn: its index in [`HeroDetails::worn`].
-    Worn(usize),
+    /// Worn: its position ([`HeroDetails::worn`]).
+    Worn(Position),
     /// Carried: its index in [`HeroDetails::backpack`].
     Backpack(usize),
 }
@@ -37,10 +37,22 @@ pub enum HeroChange {
     GainExperience(u32),
     /// Its spell points become this many.
     SetSpellPoints(u16),
-    /// It receives an artifact: worn if it fits, else at the end of the backpack (HER-CHG-002).
+    /// It receives an artifact: worn at the first position that takes it, else at the end of the
+    /// backpack (HER-CHG-002).
     AddArtifact(ArtifactInstance),
-    /// It loses the artifact at this place; the later ones of that list move up.
+    /// It loses the artifact at this place: a position is left empty, the backpack's later
+    /// artifacts move up.
     RemoveArtifact(ArtifactPlace),
+    /// It gets an artifact at a given place (E08 T49a; ADR-0013 point 14.4, a move's target): an
+    /// empty position of the artifact's slot where the locks fit with it (HER-ART-001), or a
+    /// backpack index up to the backpack's length, inserted there, for an artifact the backpack
+    /// carries while it holds fewer than its most (HER-ART-002).
+    PlaceArtifact {
+        /// The artifact.
+        artifact: ArtifactInstance,
+        /// Where it goes.
+        at: ArtifactPlace,
+    },
     /// It learns a spell, added at the end of its learned spells (E08 T19a2b: an Eagle Eye pick,
     /// HER-SPL-006).
     LearnSpell(SpellId),
@@ -61,7 +73,8 @@ pub enum HeroChange {
 /// Checks a change against valid hero details (HER-CHG-001): the details stay valid with it
 /// ([`crate::validate`]). Experience and spell points always pass; a received artifact must be
 /// one of the ruleset holding a spell exactly when it is a scroll (HER-ART-003) and find room
-/// (HER-CHG-002); a removed one must be there; a learned spell must be a hero spell of the
+/// (HER-CHG-002); a removed one must be there; a placed one must be the ruleset's and fit its
+/// place ([`HeroChange::PlaceArtifact`]); a learned spell must be a hero spell of the
 /// ruleset (HER-SPL-001) the hero has not learned; a level must be pending, its learned skill the
 /// ruleset's, below Expert if known and new only below the most skills, the offers' levels at most
 /// the new level (HER-LVL-005). Whether the skill was one of the level's offers is the caller's
@@ -70,7 +83,8 @@ pub enum HeroChange {
 /// # Errors
 /// [`ChangeError::Artifact`] for an artifact the ruleset refuses, [`ChangeError::NoRoom`] when it
 /// fits no free position and the backpack cannot take it, [`ChangeError::NoArtifact`] when there
-/// is none at the place, [`ChangeError::Spell`] for a spell the ruleset refuses,
+/// is none at the place, [`ChangeError::CannotPlace`] for a place that refuses a placed artifact,
+/// [`ChangeError::Spell`] for a spell the ruleset refuses,
 /// [`ChangeError::KnownSpell`] for one the hero has learned; [`ChangeError::NoLevelPending`],
 /// [`ChangeError::CannotLearn`] and [`ChangeError::OfferedAboveLevel`] for a level.
 pub fn check_change(
@@ -90,6 +104,12 @@ pub fn check_change(
         HeroChange::RemoveArtifact(place) => artifact_at(details, place)
             .map(|_| ())
             .ok_or(ChangeError::NoArtifact(place)),
+        HeroChange::PlaceArtifact { artifact, at } => {
+            let artifact = check_artifact(artifact, ruleset).map_err(ChangeError::Artifact)?;
+            fits_at(details, ruleset, artifact, at)
+                .then_some(())
+                .ok_or(ChangeError::CannotPlace(at))
+        }
         HeroChange::LearnSpell(spell) => {
             hero_spell(spell, ruleset).map_err(ChangeError::Spell)?;
             (!details.spells.contains(&spell))
@@ -160,24 +180,29 @@ pub fn apply_change_limited(
         HeroChange::SetSpellPoints(points) => details.mana = points,
         HeroChange::AddArtifact(item) => {
             // Checked: the artifact is the ruleset's and finds room.
-            let worn = ruleset
+            let at = ruleset
                 .artifact(item.artifact)
-                .is_some_and(|artifact| fits_worn(details, ruleset, artifact));
-            if worn {
-                details.worn.push(item);
-            } else {
-                details.backpack.push(item);
+                .and_then(|artifact| first_free(&details.worn, ruleset, artifact));
+            match at {
+                Some(at) => place(details, item, ArtifactPlace::Worn(at)),
+                None => details.backpack.push(item),
             }
         }
-        HeroChange::RemoveArtifact(place) => {
-            let (list, index) = match place {
-                ArtifactPlace::Worn(i) => (&mut details.worn, i),
-                ArtifactPlace::Backpack(i) => (&mut details.backpack, i),
-            };
-            // Checked: there is an artifact at `index`.
-            let rest = list.split_off(index.min(list.len()));
-            list.extend(rest.into_iter().skip(1));
+        HeroChange::RemoveArtifact(ArtifactPlace::Worn(at)) => {
+            // Checked: there is an artifact at `at`.
+            details
+                .worn
+                .get_mut(at.0)
+                .into_iter()
+                .for_each(|item| *item = None);
         }
+        HeroChange::RemoveArtifact(ArtifactPlace::Backpack(i)) => {
+            // Checked: there is an artifact at `i`.
+            let backpack = &mut details.backpack;
+            let rest = backpack.split_off(i.min(backpack.len()));
+            backpack.extend(rest.into_iter().skip(1));
+        }
+        HeroChange::PlaceArtifact { artifact, at } => place(details, artifact, at),
         HeroChange::LearnSpell(spell) => details.spells.push(spell),
         HeroChange::GainLevel {
             primary,
@@ -202,60 +227,85 @@ pub fn apply_change_limited(
     }
 }
 
+/// Puts `item` at a checked place: an empty position, or a backpack index up to its length.
+fn place(details: &mut HeroDetails, item: ArtifactInstance, at: ArtifactPlace) {
+    match at {
+        ArtifactPlace::Worn(at) => details
+            .worn
+            .get_mut(at.0)
+            .into_iter()
+            .for_each(|place| *place = Some(item)),
+        ArtifactPlace::Backpack(i) => details.backpack.insert(i, item),
+    }
+}
+
 /// The artifact at `place`, if there is one.
 fn artifact_at(details: &HeroDetails, place: ArtifactPlace) -> Option<&ArtifactInstance> {
     match place {
-        ArtifactPlace::Worn(i) => details.worn.get(i),
+        ArtifactPlace::Worn(at) => details.worn.get(at.0).and_then(Option::as_ref),
         ArtifactPlace::Backpack(i) => details.backpack.get(i),
     }
 }
 
-/// Whether a received artifact finds room (HER-CHG-002): it is worn if its slot and each slot it
-/// locks have a free position ([`fits_worn`]: HER-ART-001 holds with it), else carried at the
-/// end of the backpack if its slot's artifacts may go there (HER-ART-002) and it is not full. The
-/// original equips it at the first body position that takes it, else appends it to the backpack,
-/// at most 64 and no war machine (`hero_give_artifact` 0x4E3070 through `hero_equip_artifact`
-/// 0x4E2A00 with position −1 and `hero_give_backpack_artifact` 0x4E2F90); positions of one slot
-/// are interchangeable here.
-fn has_room(details: &HeroDetails, ruleset: &Ruleset, artifact: &ArtifactType) -> bool {
-    // rule: HER-CHG-002
-    let carried = artifact
-        .slot
-        .and_then(|s| ruleset.artifact_slot(s))
-        .is_none_or(|slot| slot.backpack);
-    let room = ruleset
-        .hero_params()
-        .is_some_and(|params| details.backpack.len() < usize::from(params.backpack));
-    fits_worn(details, ruleset, artifact) || (carried && room)
-}
-
-/// Whether `artifact` has a slot and, with it and its locks, no slot needs more positions than
-/// it has.
-fn fits_worn(details: &HeroDetails, ruleset: &Ruleset, artifact: &ArtifactType) -> bool {
-    let slots = ruleset.artifact_slots();
-    let mut used = vec![0_u16; slots.len()];
-    let worn = details
-        .worn
-        .iter()
-        .filter_map(|item| ruleset.artifact(item.artifact));
-    for a in worn.chain(core::iter::once(artifact)) {
-        // The compiler resolved every slot and lock against the ruleset's slots.
-        for s in a.slot.into_iter().chain(a.locks.iter().copied()) {
-            used.get_mut(s.index())
-                .into_iter()
-                .for_each(|n| *n = n.saturating_add(1));
+/// Whether `artifact` fits `at` ([`HeroChange::PlaceArtifact`]): an empty position of its slot
+/// with the locks fitting (HER-ART-001), or a backpack index up to the backpack's length while the
+/// backpack carries it and has room (HER-ART-002).
+fn fits_at(
+    details: &HeroDetails,
+    ruleset: &Ruleset,
+    artifact: &ArtifactType,
+    at: ArtifactPlace,
+) -> bool {
+    match at {
+        ArtifactPlace::Worn(at) => {
+            let slot = positions(ruleset).get(at.0).copied();
+            let empty = details.worn.get(at.0).is_some_and(Option::is_none);
+            let worn = details
+                .worn
+                .iter()
+                .flatten()
+                .filter_map(|item| ruleset.artifact(item.artifact));
+            empty
+                && artifact.slot.is_some_and(|s| slot == Some(s))
+                && full_slot(ruleset, worn.chain(core::iter::once(artifact))).is_none()
+        }
+        ArtifactPlace::Backpack(i) => {
+            i <= details.backpack.len() && carried(ruleset, artifact) && has_space(details, ruleset)
         }
     }
-    artifact.slot.is_some()
-        && used
-            .iter()
-            .zip(slots)
-            .all(|(&n, slot)| n <= u16::from(slot.count))
+}
+
+/// Whether a received artifact finds room (HER-CHG-002): it is worn at the first position that
+/// takes it ([`crate::first_position`]: HER-ART-001 holds with it), else carried at the end of the
+/// backpack if its slot's artifacts may go there (HER-ART-002) and it is not full. The original
+/// equips it at the first body position that takes it, else appends it to the backpack, at most
+/// 64 and no war machine (`hero_give_artifact` 0x4E3070 through `hero_equip_artifact` 0x4E2A00
+/// with position −1 and `hero_give_backpack_artifact` 0x4E2F90).
+fn has_room(details: &HeroDetails, ruleset: &Ruleset, artifact: &ArtifactType) -> bool {
+    // rule: HER-CHG-002
+    first_free(&details.worn, ruleset, artifact).is_some()
+        || (carried(ruleset, artifact) && has_space(details, ruleset))
+}
+
+/// Whether the backpack carries `artifact`: it has no slot (the Grail) or its slot's artifacts
+/// may go there (HER-ART-002).
+fn carried(ruleset: &Ruleset, artifact: &ArtifactType) -> bool {
+    artifact
+        .slot
+        .and_then(|s| ruleset.artifact_slot(s))
+        .is_none_or(|slot| slot.backpack)
+}
+
+/// Whether the backpack holds fewer than the ruleset's most (HER-ART-002).
+fn has_space(details: &HeroDetails, ruleset: &Ruleset) -> bool {
+    ruleset
+        .hero_params()
+        .is_some_and(|params| details.backpack.len() < usize::from(params.backpack))
 }
 
 /// The next artifact a defeated hero yields to the winner, with its place (HER-ART-004): the
 /// first worn artifact of a slot whose artifacts may go into the backpack (so no war machine, no
-/// Catapult and no spell book), in the order worn, then the last one of the backpack. The
+/// Catapult and no spell book), in position order, then the last one of the backpack. The
 /// original takes the worn ones by body position, skipping the spell book, the Grail and the four
 /// war machines, then the backpack from its end (`battle_capture_artifacts` 0x46A070).
 pub fn next_capture(
@@ -263,15 +313,17 @@ pub fn next_capture(
     ruleset: &Ruleset,
 ) -> Option<(ArtifactPlace, ArtifactInstance)> {
     // rule: HER-ART-004
-    let capturable = |(_, item): &(usize, &ArtifactInstance)| {
+    let capturable = |item: &ArtifactInstance| {
         ruleset
             .artifact(item.artifact)
             .and_then(|a| a.slot)
             .and_then(|s| ruleset.artifact_slot(s))
             .is_some_and(|slot| slot.backpack)
     };
-    let worn = details.worn.iter().enumerate().find(capturable);
-    let worn = worn.map(|(i, &item)| (ArtifactPlace::Worn(i), item));
+    let worn = details.worn.iter().enumerate().find_map(|(i, item)| {
+        item.filter(capturable)
+            .map(|item| (ArtifactPlace::Worn(Position(i)), item))
+    });
     worn.or_else(|| {
         let last = details.backpack.iter().enumerate().next_back();
         last.map(|(i, &item)| (ArtifactPlace::Backpack(i), item))
@@ -279,7 +331,8 @@ pub fn next_capture(
 }
 
 /// The artifact a hero loses with its destroyed war machine `machine` (HER-WAR-002): the first
-/// worn artifact that places it; none for a machine with the `catapult` flag, which stays.
+/// position holding an artifact that places it; none for a machine with the `catapult` flag,
+/// which stays.
 pub fn lost_war_machine(
     details: &HeroDetails,
     ruleset: &Ruleset,
@@ -289,11 +342,11 @@ pub fn lost_war_machine(
     let catapult = ruleset
         .creature(machine)
         .is_some_and(|c| c.flags.contains(CreatureFlag::Catapult));
-    let places = |item: &ArtifactInstance| {
-        ruleset
-            .artifact(item.artifact)
+    let places = |item: &Option<ArtifactInstance>| {
+        item.and_then(|item| ruleset.artifact(item.artifact))
             .is_some_and(|a| a.war_machine == Some(machine))
     };
     let at = details.worn.iter().position(places);
-    at.filter(|_| !catapult).map(ArtifactPlace::Worn)
+    at.filter(|_| !catapult)
+        .map(|at| ArtifactPlace::Worn(Position(at)))
 }

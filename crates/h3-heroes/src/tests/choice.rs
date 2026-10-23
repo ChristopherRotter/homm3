@@ -135,7 +135,7 @@ fn the_primary_skills_are_seen_raised_with_the_worn_artifacts() {
     assert_eq!([v[wisdom], v[artillery]], [100, 0]);
     // Knowledge at 99 stays there (the gain saturates at `primary_max`).
     assert_eq!(values(&r, &d, PrimarySkill::Knowledge)[intelligence], 990);
-    d.worn.push(art(&r, "t:helm"));
+    put_on(&r, &mut d.worn, art(&r, "t:helm"));
     assert_eq!(values(&r, &d, PrimarySkill::Power)[wisdom], 125);
     d.primary[2] = 99;
     assert_eq!(values(&r, &d, PrimarySkill::Power)[wisdom], 2475);
