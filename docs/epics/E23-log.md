@@ -1358,7 +1358,8 @@ the guard's turns 1; the flag-1 records' turns at the record's speed (`gain::Rec
 only within the speed). Defend becomes Wait in the phase; a walker below Hard (not a human side)
 that has waited gives Wait at once; on Hard a walker that defended is asked again (BAT-STUB-16);
 `checked`'s fallback in the phase is Wait. BAT-STUB-5 now holds only the retreat test.
-`POLICY_VERSION` 17.
+`POLICY_VERSION` 17. The battle lane's scoped verify on 46e5b5e: every step but `check-lane`
+(stacked on the seam, `cross-lane`); `computer-decisions` (no heroes) within its gate.
 
 **The design for the retreat** (from §7.60; for the next session):
 - *The retreat* (BAT-AI-024): the test (§7.55, §7.60) at the hero's cast (when the hero may cast)
