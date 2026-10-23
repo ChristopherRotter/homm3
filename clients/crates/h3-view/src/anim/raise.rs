@@ -76,15 +76,14 @@ impl Player<'_> {
         true
     }
 
-    /// `raise_stack` 0x5A7560 (player 4, design §7.16; E17 M3 T7c-3, `raise`): `creatures`
-    /// brought back to `stack`, living or among the corpses. Its line first (GENRLTXT 117, 118 by
-    /// the creatures raised, 0x5A772F), then L = max(n, d) redraws of trunc(100 F) on the deadline
-    /// (n the frames of magic animation `number`, the original's always [`RAISE`], d of the stack's
-    /// death group), each with the animation's frame
-    /// i over the stack (none after n) and a lying stack's death group backwards (frame d − 1 − i)
-    /// until it stands (i ≥ d), still among the corpses; then its dead bit and mark cleared and
-    /// a redraw at once: it stands with its new count, the animation gone (0x5A7867 to
-    /// 0x5A7881).
+    /// `raise_stack` 0x5A7560 (player 4, design §7.16; E17 M3 T7c-3, `raise`): `creatures` brought
+    /// back to `stack`, living or among the corpses. Its line first (GENRLTXT 117, 118 by the
+    /// creatures raised, 0x5A772F), then L = max(n, d) redraws of trunc(100 F) on the deadline (n
+    /// the frames of magic animation `number`, the original's always [`RAISE`], d of the stack's
+    /// death group), each with the animation's frame i over the stack (none after n) and a lying
+    /// stack's death group backwards (frame d − 1 − i) until it stands (i ≥ d), still among the
+    /// corpses; then its dead bit and mark cleared and a redraw at once: it stands with its new
+    /// count, the animation gone (0x5A7867 to 0x5A7881).
     pub(super) fn raise(&mut self, stack: u8, creatures: u32, number: u8) {
         let lying = !self.stacks.contains_key(&stack);
         let Some(mut live) = self

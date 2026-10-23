@@ -68,11 +68,11 @@ pub const FLYING: u8 = 8;
 /// +0x84 flags 0x10000000 or 0x400000, 0x4442C5) and marks it for the dissolve
 /// ([`DISSOLVE_STEP`]). The scene draws no stack in this layer.
 pub const GONE: u8 = u8::MAX;
-/// A dissolve's step (`sub_466E00` 0x4670EF: trunc(150 F) ms; E17 M3 T9d): at a strike's end,
-/// after the deaths, a stack [`GONE`] leaves the battlefield in `screen_dissolve` 0x602DC0's
-/// eight steps outside the deadline, the battle redrawn without it blended into the screen's
-/// rectangle by k / 8 at step k (the blend is not drawn: the viewer shows the picture before it
-/// until its end, *provisional*).
+/// A dissolve's step (`battle_dissolve_removed` 0x4670EF: trunc(150 F) ms; E17 M3 T9d): at a
+/// strike's end, after the deaths, a stack [`GONE`] leaves the battlefield in `screen_dissolve`
+/// 0x602DC0's eight steps outside the deadline, the battle redrawn without it blended into the
+/// screen's rectangle by k / 8 at step k (the blend is not drawn: the viewer shows the picture
+/// before it until its end, *provisional*).
 const DISSOLVE_STEP: u32 = 150;
 /// A dissolve's steps (`screen_dissolve` 0x602DC0).
 const DISSOLVE_STEPS: u32 = 8;

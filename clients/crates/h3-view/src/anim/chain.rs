@@ -52,16 +52,16 @@ impl Draws {
 }
 
 impl Player<'_> {
-    /// Chain Lightning's handler (`chain_lightning` 0x5A6360, design §7.16; E17 M3 T7c-3,
-    /// `bolt`) on the stacks its `effects` strike, in the chain's order: the mouse hidden
-    /// (0x5A6380); [`CHAIN_START`] over the first at 0 ms a frame (fixed: 10); then a ray from each struck
-    /// stack's centre (`stack_screen_x`, `stack_screen_y`) to the next's ([`ray::chain`], its
-    /// ticks at once), on the screen for trunc(100 F) outside the deadline (0x5A6517) and erased
-    /// by a redraw at once; then the spell's animation over every stack struck with their
-    /// reactions (`strike_animation`, player 2), its damage's line (the first stack's value with
-    /// the caster's bonuses and every kill, named by the word for creatures: `battle_log_damage`
-    /// without a stack, 0x5A667C), a redraw at once, the mouse back. Returns whether it drew it
-    /// (a stack was struck).
+    /// Chain Lightning's handler (`chain_lightning` 0x5A6360, design §7.16; E17 M3 T7c-3, `bolt`)
+    /// on the stacks its `effects` strike, in the chain's order: the mouse hidden (0x5A6380);
+    /// [`CHAIN_START`] over the first at 0 ms a frame (fixed: 10); then a ray from each struck
+    /// stack's centre (`stack_screen_x`, `stack_screen_y`) to the next's ([`ray::chain`], its ticks
+    /// at once), on the screen for trunc(100 F) outside the deadline (0x5A6517) and erased by a
+    /// redraw at once; then the spell's animation over every stack struck with their reactions
+    /// (`strike_animation`, player 2), its damage's line (the first stack's value with the caster's
+    /// bonuses and every kill, named by the word for creatures: `battle_log_damage` without a
+    /// stack, 0x5A667C), a redraw at once, the mouse back. Returns whether it drew it (a stack was
+    /// struck).
     pub(super) fn chain(&mut self, spell: u16, look: &SpellLook, effects: &[Event]) -> bool {
         let hits: Vec<(u8, u64, u32)> = effects
             .iter()
