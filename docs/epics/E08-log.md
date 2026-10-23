@@ -4789,3 +4789,44 @@ to the AI lane (the user's own answer; the AI lane's inbox told); batch E6 whole
 and meeting (0x52BC60, 0x525DC0: E10), the town screen's own garrisons and the upgrade (E09), the
 reward callers of the army dialog (increment 7), `battle_start`'s other tactics branches
 (0x69877C, `game` +0x1F69D, network).
+
+### Increment 6, round 1: T44b, the ADR amendment drafts, the design note and the cut (2026-10-23, `adventure/e08-t44b`)
+
+Baseline: `master` at 1d9cda5 (T44a merged, #410); docs only, the engine code unchanged since
+T42's full verify (the light gates). **T44b whole** (decision 101, the user's instruction), one
+session and one pull request, as T34b.
+
+**The drafts** (`docs/lanes/adventure/adr-drafts/*-increment-6.md`): ADR-0013 points 1, 3, 14
+(worn artifacts on the original's positions, the locks counted per slot; the effect kinds
+`meeting_spells` and `gives_spell_book`; moves, combinations by the edition, Scholar as
+`h3-heroes`' rules); ADR-0016 points 3, 4, 6 (the army commands with the last stack's rules and
+full-width counts, the tactics flag, the meeting's visit, the join without room reported, the
+owner's visibility); ADR-0017 points 1, 6, 8, 9, 11 (the management command checked in every
+context first, the edition as a static setup input, the meeting and the army dialog as
+decisions closed by `Decline`, the encoding to the AI lane with the replay model kept, the
+versions, the tactics flag in battle as both heroes' Tactics at 0).
+
+**The design note** `E08-design.md` rewritten for increment 6: part A (§1 the data, §2 positions
+and the import, §3 moves, §4 combinations and Titan's book, §5 Scholar, §6 ids and needs), part B
+(§7 the army commands, §8 the meeting, §9 the army dialog, §10 the commands, `legal_commands`,
+events, observation and the edition, §11 the tactics flag, §12 the env's move and the gates, §13
+versions, §14 batch E6, §15 the cut and the exit criteria, §16 risks).
+
+**Findings of the design:** (1) the engine's split keeping both stacks ([1, t − 1]) with the move
+reproduces the original's dialog's outcomes, so A-16's extra bound needs no rule (decision 98's
+"the original's bounds" holds); (2) the positions' order: within a slot the original's numbering,
+across slots the war machines and the book sit after the fifth misc here and before it there,
+which no walk tells apart (the capture skips them); (3) zeroing only the flagged hero's Tactics
+would hand a lower side the phase, so both go to 0 (decision 96's condition); (4) `Decline`
+closes the two new decisions: the env's v4 mask needs only to allow it, no new entry.
+
+**The cut** (§15): five rounds, batch E6 first as increment 5's (T45 shared groundwork + T46 the
+batch's spec; T47 the harness and the run + T48 the scoring; T49 `h3-heroes`; T50 `h3-adventure`
++ T51 `h3-game`; T52 the env's masks, replays v6, fixtures, plans, properties, benchmarks + T53
+the audit). T45 and T46 queued. The AI lane's inbox told of the paths.
+
+**The checkpoint** (ADV-Q25, asked interactively; decisions 102–105): the drafts and the design
+accepted; the encoding's paths (`crates/h3-sim/src/adventure/` to the AI lane but `replay.rs`);
+the expansions as the game's configuration, not the map's edition (the user's own answer: the
+drafts' and the design's edition clauses rewritten: the packs the ruleset is compiled from
+decide, no setup field); batch E6 first. Round 1 (T45, T46) is ready.
