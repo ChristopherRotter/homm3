@@ -29,6 +29,7 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 - `legal_commands` lists no casts: the cast heads come from `cast_targets` × `second_targets` (the battle lane's trap; `h3_sim::action`).
 - The batch (`h3_sim::batch`) skips an episode that ends before an external seat could act and gives up after 64 in a row (no side to move until a reset): a scenario whose internal seat always acts first and ends it (a step limit of one) does that. Its per-env values come back as `EnvReport`s, which `h3-ffi` converts for the C arrays.
 - `batch::pool` holds this lane's only `unsafe` outside `h3-ffi`: `Pool::run` erases a job's lifetime and is sound only because it blocks until every worker is done (a worker's panic too). Keep any new call through `run`, never a stored job.
+- `batch-system-neutral-v1` moves with `h3_battle_ai` (lane-only): re-baseline it at a `POLICY_VERSION` bump.
 - The batch workloads count inside `*BattleBatch>::step` (v0 symbol names; `BattleBatch::step` is `#[inline(never)]`) with `--threads 0`: callgrind toggles per thread, and a pattern ending in `*` also matches the closures nested in `step` and turns the count off inside them.
 - The census counts through `h3_map::import_map`, a `GameState` and `battle_ground`: a change to
   them changes it; rerun `h3 ai census original-data/install/Maps --out
@@ -93,7 +94,8 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 
 - Built `python -m h3env.train.inspect`, ran it on the user's `t7-1` best (records
   `inspect/t7-1-*.json`; E06-log T6a). Found the turret shot's preview (battle lane's inbox).
-  Increment 6's lever put to the user (QUEUE).
+  Increment 6's lever put to the user (QUEUE). The user: the
+  System-seat benchmark (ADR-0027 point 11) into the same pull request.
 
 ### 2026-10-23 — T7d's mix; T5's rest beside it
 

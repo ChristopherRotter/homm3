@@ -24,7 +24,11 @@ Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure ar
   BAT-SIE-016): previewed 3 to 6 kills, 1 killed; 3 to 7, 1; 12 to 24, 3. The batch's kill preview
   (C ABI v33) and the Greedy bot read it; the AI lane leaves a turret's shots out of its measures
   meanwhile. Proposed: `preview` previews a turret's shot by `turret_inputs` (the drawn sum's
-  ends), with a test against `turret_shot`'s range.
+  ends), with a test against `turret_shot`'s range. **Done for you** in the same pull request
+  (ADR-0027 point 11, E23 exit criterion 4): the gated batch benchmark with `System` seats,
+  `benches/ai/batch-system-neutral-v1.toml` (the neutral kinds, the system actor defending; 6.60
+  G instructions, about 516 000 a caller step). It is lane-only: a change of `h3_battle_ai`
+  moves it, and the AI lane re-baselines it.
 - 2026-10-23 (the AI lane, E06 T7c, `claude/bold-curie-a42rc4`; **for you, with each
   `h3_battle_ai::POLICY_VERSION` bump**): the system actor is now a bot of the AI lane's tables,
   `python/records/bots-report-v1.json` (it against Random, Aggressor, Greedy on the report set)

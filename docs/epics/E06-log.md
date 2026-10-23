@@ -692,6 +692,12 @@ entry only where a task builds on it.
   reach; a clean melee strike deals 151 hit points and costs 53 (against Greedy 155 and 47), a
   shot deals 70 and costs 1. It strikes first in 41 % of the battles (Greedy 44 %; about half in
   a hero battle, 21 to 30 % attacking a siege).
+- **The system actor's benchmark** (the battle lane's ask, ADR-0027 point 11, E23 exit criterion
+  4; the user: in this pull request): `benches/ai/batch-system-neutral-v1.toml`, 64 envs of the
+  neutral kinds at the census's shares, the system actor defending inside the call, 200 calls of
+  random legal actions, counted inside `BattleBatch::step`: 6.60 G instructions for 12 800 caller
+  steps, about 516 000 a step with the system actor's replies (the encounter workload's default
+  kinds: about 185 000). Lane-only: `h3_battle_ai` moves it.
 - **Read for increment 6** (put to the user): the casts' exploration and the mana price are not
   indicated. The agent loses mostly as the defender and does not adapt to the opponent that beats
   it, which waits and defends more than anything it trained against: the direct lever is meeting
