@@ -1,7 +1,7 @@
 # E24 — The adventure map client
 
 Status: **refined** (2026-10-23, T0, with the user); M1 running (T1a, T1b, T2, T3a, T3b1, T3b2,
-T4a done; next T4b, `docs/lanes/map-client/QUEUE.md`).
+T4a, T4b done; next T5, `docs/lanes/map-client/QUEUE.md`).
 Lane: map-client (`docs/lanes/map-client/HANDOFF.md`: the autonomy contract, the user's asset
 notes). Opened 2026-10-23 when the user split the client lane at E17 M3's closure (CLT-Q18).
 Decisions so far live here (no ADR of its own yet; ADR-0020 and ADR-0024 bind it as they bind
@@ -55,7 +55,8 @@ inside a game are the battle client's (E17); this epic hands them over.
 - **Random objects.** The original draws a shipped map's random objects (monsters, resources,
   artifacts, towns, dwellings) when the game starts, and the harness saw them differ from run to
   run (E17 design §6.3: the piles' amounts): a comparison on such a map reads what the original
-  drew from its memory, never assumes the engine's draw.
+  drew from its memory, never assumes the engine's draw (T4b: each object's template in memory,
+  the copy a new game made for a random one, `E24-design.md` §2.7).
 - **Where the reading starts** (`docs/exe/map.toml`): each map tile keeps a draw list of the
   objects over it; `place_object_tiles` (0x505B20) adds an entry per tile of an object's
   footprint through 0x505230, `object_tile_layers` (0x505060) gives each tile a draw layer from
@@ -113,7 +114,11 @@ autonomy contract (lane HANDOFF) says what the agent decides alone in between. T
   objects drawn (`h3_map_view::objects`: the `.msk` shapes, the draw lists; passes 4, 5, 7),
   the situations' objects (copied with a shipped map's rectangle, or given by DEF), the phases
   and frame step read from memory; six situations of copied dense corners and edge cuts, exact
-  (`E24-design.md` §2.6).
+  (`E24-design.md` §2.6). T4b (2026-10-23; MCL-Q3 asked and answered): the gate checks every
+  object picture against its `.msk` (D8: none outside) and lists what a random object's picture
+  loses; the random objects read (a copy of the random template with the drawn DEF, §2.7) and
+  taken from memory (`Drawn`); shipped maps loaded whole: five views of four maps, one
+  underground, with random artifacts, monsters and resources, exact; research item 9 closed.
 - **Exit:** the capture set's stills match the original pixel for pixel outside the masks of
   what M1 does not draw (the panels, the mouse), or list each difference as an M2 item; the
   review list accepted; research item 9 closed by the reading and its frames.
@@ -144,7 +149,7 @@ checked frame by frame against recorded sequences as E17 M2 did for the battle.
 
 | Item | Where |
 |---|---|
-| 9. The adventure map's object draw order (the user: neither they nor VCMI got it exactly right); the objects' shadows | M1 T1b (read, `E24-design.md` §2), T4a (its frames, §2.6), T4b (shipped maps' views; closes it) |
+| 9. The adventure map's object draw order (the user: neither they nor VCMI got it exactly right); the objects' shadows | **Closed** (T4b): M1 T1b (read, `E24-design.md` §2), T4a (its frames, §2.6), T4b (random objects, shipped maps' views, §2.7); heroes and boats among the layers in T5 |
 | 3. Licences of MMArchive and homm3-unpacker before reading their code | stop the line: a question first, when a task wants them |
 | 4. The video archives | later |
 | 7. The HD patch as a source of fixes and for HD | later |
@@ -201,3 +206,10 @@ The M1 review list starts here (the autonomy contract's "queue for the milestone
   anchor, checked, and phase); the situations' objects (`copy`'s `objects = true`, neutral,
   without the hero classes; `objects` given by DEF through the game's `Objects.txt`); the eight
   owned classes' flag runs skipped until T5 colours them (no situation has them yet).
+- **M1 T4b, random objects and shipped maps** (*provisional*): a situation names a shipped map
+  whole (`map`), loaded with the scenario list's setup (its first human player) and its first
+  day's messages closed; `live.toml`'s `viewer`, `defs` and `classes` (every object's template
+  in memory); the live part's `Drawn` (the DEF the original's copy names and the object's own,
+  `render` taking the own from `Objects.txt`'s last template of the class and subclass); MCL-Q3's
+  fix the default (`--bugs original` the copy's); the gate's object pictures (D8 a problem, the
+  random copies' losses listed, not problems).

@@ -1,6 +1,6 @@
 # E06 — Battle AI v1 and the local training pipeline v0
 
-Status: **in progress**, refined 2026-10-20 (AI-Q8); increment 1 (T1, T2a, T2b1, T2c) done; increment 2 (T3a, T3b) done; increment 3 (T4a, T4b) done; increment 4 (T5a to T5d) done 2026-10-23; increment 5 (T7) refined 2026-10-23, T7a to T7c done, T7d the user's; T5's rest beside it · Lane: **ai** · Follows E05 (closed
+Status: **in progress**, refined 2026-10-20 (AI-Q8); increment 1 (T1, T2a, T2b1, T2c) done; increment 2 (T3a, T3b) done; increment 3 (T4a, T4b) done; increment 4 (T5a to T5d) done 2026-10-23; increment 5 (T7a to T7d) done 2026-10-23, with T5's mana preparation and AI-Q7 (b) part 1; increment 6 to refine · Lane: **ai** · Follows E05 (closed
 2026-10-20) · Runs beside E23 (the battle lane: the original's battle AI, the system actor's
 policy), whose neutral side opens E06's neutral share (decision 1)
 
@@ -162,8 +162,9 @@ the weights in the run's config, design §12): T7a and T7b, then the checkpoint,
   episode, the rates by kind, the neutral set v1 (`h3 ai eval --set neutral-v1`, the ladder's
   `neutral`), the system actor on the ladder, both bots' tables (`--json` schema 2),
   `configs/e06-t7.toml`; the record in `E06-log.md`.
-- [ ] **T7d The run** — the user's, a third neutral (the user, 2026-10-23, with T7c's numbers:
-  `configs/e06-t7.toml`).
+- [x] **T7d The run** — done 2026-10-23 (`t7-1`, a third neutral, 20 M samples): the report
+  set as `t5-3`'s (0.828, 0.551, 0.528), the system actor 0.374, the neutral set 0.972 at value
+  +0.245 (the target +0.285 not met); the record in `E06-log.md`.
 
 **Later increments** (cut at each checkpoint; proposed in design §10):
 
@@ -173,7 +174,8 @@ the weights in the run's config, design §12): T7a and T7b, then the checkpoint,
   record in `E06-log.md`); AI-Q7 (b) part 1 done 2026-10-23 (the batch's previewed kills, C ABI
   v33); part 2 (the network reads them) after the checkpoint.
 - [ ] **T6 Toward the targets** — runs on the best configuration until decision 7's targets hold,
-  or the evidence says PPO plateaus (then T8).
+  or the evidence says PPO plateaus (then T8). First T6a, the behaviour analysis against the
+  system actor (the user, 2026-10-23; the lane's QUEUE).
 - [ ] **T8 Search** (only if PPO plateaus below the targets) — determinized search over the fork
   with re-seeded streams, the learned network as its prior and value.
 - [ ] **T9 Closure** — the audit, an independent review, the verifies, the docs.

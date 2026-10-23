@@ -446,23 +446,28 @@ impl<'a> View<'a> {
         clip: [i32; 4],
         pass: Pass,
     ) -> Option<Draw> {
-        let template = objects::template(self.art, self.live, entry.object);
-        let shaped = template.and_then(|t| self.shapes.get(&t.def).map(|s| (t, s)));
+        let index = entry.object;
+        let template = objects::template(self.art, index);
+        let shape = objects::shape(self.art, self.live, self.shapes, index, self.bugs);
+        let def = objects::def(self.art, self.live, index, self.bugs);
         let (dx, dy) = (entry.dx, entry.dy);
-        let drawn = shaped.filter(|(t, s)| match pass {
-            Pass::Flat => t.flat(),
-            Pass::Shadow => !t.flat() && s.shadow(dx, dy),
-            _ => !t.flat() && s.body(dx, dy),
-        });
-        drawn.map(|(template, shape)| {
+        let drawn = template
+            .zip(shape)
+            .zip(def)
+            .filter(|((t, s), _)| match pass {
+                Pass::Flat => t.flat(),
+                Pass::Shadow => !t.flat() && s.shadow(dx, dy),
+                _ => !t.flat() && s.body(dx, dy),
+            });
+        drawn.map(|((_, shape), def)| {
             let tile = self.layout.view.tile;
-            let phase = self.live.objects.get(entry.object).map_or(0, |o| o.phase);
+            let phase = self.live.objects.get(index).map_or(0, |o| o.phase);
             let step = u64::from(phase) + u64::from(self.live.moment.frames);
             let frame = step.checked_rem(u64::from(shape.frames)).unwrap_or(0);
             let (columns, rows) = (i32::from(shape.width), i32::from(shape.height));
             Draw::Piece {
                 pass,
-                def: template.def.clone(),
+                def: String::from(def),
                 frame: u32::try_from(frame).unwrap_or(0),
                 x: place[0] - tile * (columns - 1 - i32::from(dx)),
                 y: place[1] - tile * (rows - 1 - i32::from(dy)),

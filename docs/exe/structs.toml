@@ -531,6 +531,8 @@ summary = "An object template of the map (the map's +0x4; H3API's H3ObjectAttrib
 refs = ["epics/E24-design.md §2.1"]
 h3api = "H3ObjectAttributes"
 fields = [
+  { offset = 0x4, name = "def_chars", type = "char*", summary = "the DEF's name (a string at +0: its characters here, its length at +0x8); a new game's copy for a random object gets the drawn DEF's (0x4C9990)", confidence = "read", refs = ["epics/E24-design.md §2.7"] },
+  { offset = 0x8, name = "def_length", type = "u32", summary = "the DEF name's length", confidence = "read", refs = ["epics/E24-design.md §2.7"] },
   { offset = 0x10, name = "width", type = "u8", summary = "the width in tiles (H3API: from the picture's .msk, msk_load 0x514610)", confidence = "read", refs = ["epics/E24-design.md §2.1"] },
   { offset = 0x11, name = "height", type = "u8", summary = "the height in tiles (H3API: from the .msk)", confidence = "read", refs = ["epics/E24-design.md §2.1"] },
   { offset = 0x14, name = "colour_mask", type = "bitset[48]", summary = "the cells with body pixels (H3API colors; the .msk's colour mask): pass 7 draws a body piece only there", confidence = "read", refs = ["epics/E24-design.md §2.2"] },
@@ -538,6 +540,7 @@ fields = [
   { offset = 0x24, name = "shadow_mask", type = "bitset[48]", summary = "the cells with shadow pixels (H3API shadows; the .msk's shadow mask): pass 5 draws a shadow piece only there", confidence = "read", refs = ["epics/E24-design.md §2.2"] },
   { offset = 0x2C, name = "entrances", type = "bitset[48]", summary = "the visitable cells, the .h3m's mask", confidence = "read", refs = ["epics/E24-design.md §2.1"] },
   { offset = 0x38, name = "class", type = "i32", summary = "the object class", confidence = "read", refs = ["epics/E24-design.md §2.1"] },
+  { offset = 0x3C, name = "subclass", type = "i32", summary = "the subclass (a creature, an artifact, a resource, a faction)", confidence = "read", refs = ["epics/E24-design.md §2.7"] },
   { offset = 0x40, name = "flat", type = "u8", summary = "every cell layer 0, drawn by pass 4 alone; inferred: the .h3m template's priority byte not 0 (the special grounds)", confidence = "inferred", refs = ["epics/E24-design.md §2.1"] },
 ]
 
