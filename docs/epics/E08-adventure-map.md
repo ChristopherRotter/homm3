@@ -522,6 +522,11 @@ Refined with the user on 2026-10-23 (T43; ADV-Q23). Built like increments 1 to 5
 
 108. **T47 in two, as T37** (the user's choice of three, `AskUserQuestion`): T47a the harness's clicks and reads with its check, T47b batch E6's recipe and its run. Recommended was three parts (T47a1 the reads and the hero screen's clicks, T47a2 the exchange, split, army and creature dialogs and the tactics phase's Start, then T47b); not chosen either: T47 whole.
 
+### Decisions at T47b (2026-10-23, user)
+
+109. **E6-5 dropped; a stack's count is capped, a merge past the cap refused** (the user's own answer to E6-5's setup, `AskUserQuestion`: "I don't think it really matters what the original does here. Any oddity is clearly a limitation or even a bug. We should just support a reasonable amount and handle saturation gracefully, e.g. by not allowing stack merges to exceed that number"): batch E6 runs without E6-5; A-15 stays fixed (decision 98) without a row; `E08-design.md` §7's saturating merge becomes a refused one. The cap's value and what else meets it (a join, the split's target, the import's 16-bit count, later recruiting and growth) are settled at T50's start with ADR-0016 point 3's amendment (§16). Not chosen: two stacks of 20 000 merged in the hero screen first, then the row's moves, with one untouched 40 000 stack recording the load (recommended); the same without that stack.
+110. **T47b in two** (the user's choice of two, `AskUserQuestion`): T47b1 the spec without E6-5 and the recipe, checked with `fill`; T47b2 the run. Not chosen: T47b whole (recommended).
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T43 Increment 6 refined** (with increment 5's closure). Done (2026-10-23, `adventure/e08-t43`; decisions 90, 91): army and hero management, the first round queued (T44a, T44b).

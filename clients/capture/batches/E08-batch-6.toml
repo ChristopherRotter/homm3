@@ -1,0 +1,177 @@
+# E08 batch E6 played by the capture harness (E08 T47b1; h3adv.py batch): the procedure of
+# experiments/specs/E08-batch-6.toml as steps, on Easy, with T47a's screens and items (README,
+# "Screens and their items"). Hot seat, Red and Blue human. The spec's grid puts encounter i at
+# column 3 + 6 (i mod 6), row 3 + 5 (i div 6), its monster one tile east; the other heroes stand
+# at their `at`. Day 1, Red: E6-1 and E6-2 (the army dialog), E6-3 (a hero's last stack in the
+# exchange), E6-4 (the split at the slider's maximum), E6-11 (a meeting's price). Blue: E6-6a and
+# E6-6b (the tactics formation off, then on; the tactics phase ended at once), E6-7 (Scholar's
+# message), E6-8 (Wizard's Well), E6-10 then E6-9 on the same hero. E6-5 left the batch
+# (decision 109). A refused move in the exchange clears the selection (`swap_army_click` calls
+# 0x5AE5B0 after every second click), so each of E6-3's clicks starts from none.
+
+spec = "experiments/specs/E08-batch-6.toml"
+players = ["Red", "Blue"]
+difficulty = "easy"
+
+# --- Day 1, Red: E6-1 (3, 3), the Wolf Riders on (4, 3) -----------------------------------------
+
+[[step]]
+encounter = "E6-1"
+hero = "E6-1"
+record = { "army before (slot: creature count)" = "hero:slots", "gold before" = "resource:gold" }
+
+[[step]]
+encounter = "E6-1"
+hero = "E6-1"
+walk = [4, 3]
+answer = "yes"
+expect = { question = "join" }
+actions = [
+    { record = { "the dialog's title (or: no dialog)" = "dialog" } },
+    { click = ["ok"] },
+]
+record = { "the question" = "questions", "army after" = "hero:slots", "gold after" = "resource:gold", "Wolf Riders on (4, 3) after (count, or none)" = "monster:4,3" }
+
+# --- E6-2 (9, 3), the Wolf Riders on (10, 3): the Swordsmen (slot 3) dismissed in the dialog -----
+
+[[step]]
+encounter = "E6-2"
+hero = "E6-2"
+record = { "army before" = "hero:slots" }
+
+[[step]]
+encounter = "E6-2"
+hero = "E6-2"
+walk = [10, 3]
+answer = "yes"
+expect = { question = "join" }
+actions = [
+    { click = ["lower:3", "lower:3", "dismiss"], answer = "yes", record = { "the dismiss question" = "questions" } },
+    { click = ["upper:0", "lower:3"] },
+    { click = ["ok"] },
+]
+record = { "army after" = "hero:slots", "Wolf Riders on (10, 3) after (count, or none)" = "monster:10,3" }
+
+# --- E6-3 (15, 3) meets E6-3 B (16, 3): its only stack moved, merged, swapped -------------------
+
+[[step]]
+encounter = "E6-3"
+hero = "E6-3"
+walk = [16, 3]
+actions = [
+    { click = ["left army:0", "right army:2"], record = { "to the empty slot 2 | message" = "messages", "to the empty slot 2 | E6-3's army after" = "hero:slots", "to the empty slot 2 | E6-3 B's army after" = "hero[E6-3 B]:slots" } },
+    { click = ["left army:0", "right army:0"], record = { "onto the Pikemen (slot 0) | message" = "messages", "onto the Pikemen (slot 0) | E6-3's army after" = "hero:slots", "onto the Pikemen (slot 0) | E6-3 B's army after" = "hero[E6-3 B]:slots" } },
+    { click = ["left army:0", "right army:1"], record = { "onto the Archers (slot 1) | message" = "messages", "onto the Archers (slot 1) | E6-3's army after" = "hero:slots", "onto the Archers (slot 1) | E6-3 B's army after" = "hero[E6-3 B]:slots" } },
+    { click = ["close"] },
+]
+
+# --- E6-4 (21, 3) meets E6-4 B (22, 3): the Pikemen split into its empty slot 1 at the maximum ---
+
+[[step]]
+encounter = "E6-4"
+hero = "E6-4"
+walk = [22, 3]
+actions = [
+    { click = ["left army:0", "left split", "right army:1"], record = { "the dialog's counts at the start (E6-4 : E6-4 B)" = "split:counts" } },
+    { slider = "max", record = { "the dialog's counts at the maximum" = "split:counts" } },
+    { click = ["ok"], record = { "E6-4's army after" = "hero:slots", "E6-4 B's army after" = "hero[E6-4 B]:slots" } },
+    { click = ["close"] },
+]
+
+# --- E6-11 (27, 3) meets E6-11 B (28, 3): the exchange closed without a change ------------------
+
+[[step]]
+encounter = "E6-11"
+hero = "E6-11"
+record = { "E6-11 points before" = "hero:points", "E6-11 B points before" = "hero[E6-11 B]:points" }
+
+[[step]]
+encounter = "E6-11"
+hero = "E6-11"
+walk = [28, 3]
+record = { "E6-11 points after" = "hero:points", "E6-11 tile after" = "hero:tile", "E6-11 B points after" = "hero[E6-11 B]:points", "E6-11 B tile after" = "hero[E6-11 B]:tile" }
+
+[[step]]
+end_turn = true
+
+# --- Day 1, Blue: E6-6a (33, 3), the tactics formation off; its Pikemen on (34, 3) --------------
+
+[[step]]
+encounter = "E6-6a"
+hero = "E6-6a"
+screen = "hero"
+actions = [
+    { record = { "flags before" = "hero:flags" } },
+    { click = ["tactics"], record = { "flags after the button" = "hero:flags" } },
+]
+
+[[step]]
+encounter = "E6-6a"
+hero = "E6-6a"
+walk = [34, 3]
+battle = "auto"
+expect = { question = "none", battle = true, dialogs = true }
+record = { "tactics phase (yes/no; +0x13D68)" = "tactics", "battle's outcome" = "winner" }
+
+# --- E6-6b (3, 8), the control: no button; its Pikemen on (4, 8) ---------------------------------
+
+[[step]]
+encounter = "E6-6b"
+hero = "E6-6b"
+record = { "flags" = "hero:flags" }
+
+[[step]]
+encounter = "E6-6b"
+hero = "E6-6b"
+walk = [4, 8]
+battle = "auto"
+expect = { question = "none", battle = true, dialogs = true }
+record = { "tactics phase (yes/no; +0x13D68)" = "tactics", "battle's outcome" = "winner" }
+
+# --- E6-7 (9, 8) meets E6-7 B (10, 8): Scholar's message, the exchange closed at once ------------
+
+[[step]]
+encounter = "E6-7"
+hero = "E6-7"
+record = { "E6-7 spells before" = "hero:spells", "E6-7 B spells before" = "hero[E6-7 B]:spells" }
+
+[[step]]
+encounter = "E6-7"
+hero = "E6-7"
+walk = [10, 8]
+record = { "the message" = "messages", "E6-7 spells after" = "hero:spells", "E6-7 B spells after" = "hero[E6-7 B]:spells" }
+
+# --- E6-8 (15, 8): Wizard's Well in the hero screen ---------------------------------------------
+
+[[step]]
+encounter = "E6-8"
+hero = "E6-8"
+screen = "hero"
+actions = [
+    { record = { "worn at the start (positions)" = "hero:positions", "backpack at the start" = "hero:backpack" } },
+    { click = ["backpack:Mystic Orb of Mana", "worn:12"], answer = "no", record = { "question after the first equip" = "questions", "worn after the first equip" = "hero:positions" } },
+    { click = ["worn:12", "worn:12"], answer = "no", record = { "question after the second equip" = "questions" } },
+    { right = "worn:12", answer = "yes", record = { "question on the right-click" = "shown", "worn after the assembly (positions)" = "hero:positions" } },
+    { click = ["worn:Wizard's Well", "backpack:0"] },
+    { right = "backpack:Wizard's Well", answer = "no", record = { "right-click on the Well in the backpack: what opens" = "shown", "worn at the end (positions)" = "hero:positions", "backpack at the end" = "hero:backpack" } },
+]
+
+# --- E6-10 (21, 8): the backpack's right arrow; the screen closed and opened again for E6-9 ------
+
+[[step]]
+encounter = "E6-10"
+hero = "E6-10"
+screen = "hero"
+actions = [
+    { record = { "backpack before (in order)" = "hero:backpack", "book position at the start" = "hero:positions", "on screen before the click (five, left to right)" = "shown:backpack" } },
+    { click = ["backpack right"], record = { "backpack after the click (in order)" = "hero:backpack", "on screen after the click" = "shown:backpack" } },
+]
+
+[[step]]
+encounter = "E6-10"
+hero = "E6-10"
+screen = "hero"
+actions = [
+    { click = ["backpack:Titan's Thunder", "worn:3"], record = { "E6-9: book position with the Thunder on" = "hero:positions", "E6-9: message (or none)" = "messages" } },
+    { click = ["worn:3", "backpack:0"], record = { "E6-9: book position with the Thunder off" = "hero:positions", "E6-9: backpack after (in order)" = "hero:backpack" } },
+]
