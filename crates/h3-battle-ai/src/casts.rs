@@ -122,12 +122,17 @@ enum Caster {
 /// and once the value so far is above 0 only one at least as strong as the caster (0x442E60 in
 /// the walker's context): its value, a fixed spell's [`fixed`], the Genie's [`genie`]; one
 /// above 0 and above `value` replaces it and takes the stack (the mass version: no target), so the
-/// cast must beat the walker's value, and the later stack stays at a tie.
+/// cast must beat the walker's value, and the later stack stays at a tie. With BAT-QUIRK-25 the
+/// context's planned damage stays on the stacks after a cast entry in Teleport's turns
+/// ([`Walker::planned_by_entry`], survey slip 33).
 // rule: BAT-AI-014, BAT-AI-016
 fn scan(w: &Walker<'_>, caster: Caster, value: &mut i32, rng: &mut Rng) -> Option<Command> {
     scan_as(&Scanner::of(w), caster, (value, rng), |sc, cast| {
         if slips(w.ruleset) && (!cast || w.tracks_search()) {
             hold(w, sc.cells(), cast);
+        }
+        if slips(w.ruleset) {
+            w.planned_by_entry(sc.planned());
         }
     })
 }
@@ -564,7 +569,8 @@ impl Kind {
 /// left casts whenever its spell is worth anything, before any attack. The original builds the
 /// spell context first (0x4369C0) and reads none of it but its battle context: the policy runs
 /// only its predictions, for their draws from `rng` ([`predict::plan`]; BAT-AI-015), and with
-/// BAT-QUIRK-25 holds its threat records' last map ([`hold`], survey slips 22 and 30).
+/// BAT-QUIRK-25 holds its threat records' last map ([`hold`], survey slips 22 and 30) and, in
+/// Teleport's turns, the damage they planned ([`Walker::planned_by_entry`], survey slip 33).
 // rule: BAT-AI-013
 fn dragon(
     w: &Walker<'_>,
@@ -573,10 +579,13 @@ fn dragon(
     rng: &mut Rng,
 ) -> Option<Command> {
     // rule: BAT-AI-015
-    predict::plan(w.state, w.ruleset, w.side, rng);
+    let planned = predict::plan(w.state, w.ruleset, w.side, rng);
     let cast = dragon_cast(w, (mastery, per_creature), value);
     if slips(w.ruleset) && (cast.is_none() || w.tracks_search()) {
         hold(w, last_searched(w.state, w.ruleset), cast.is_some());
+    }
+    if slips(w.ruleset) {
+        w.planned_by_entry(planned);
     }
     cast
 }

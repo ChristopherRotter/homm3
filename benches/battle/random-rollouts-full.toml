@@ -8,7 +8,7 @@ toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
 target = "x86_64-unknown-linux-gnu"
 
 [workload]
-description = "20 random-vs-random battles on the full synthetic scenario; counts only inside h3_sim::rollout::random_rollout (legal commands + agent + apply)"
+description = "20 random-vs-random battles on the full synthetic scenario; counts only inside h3_sim::rollout::random_rollout (legal commands + agent + apply); re-set in E23 T7: in faithful both sides (no human player) escape a bad-morale freeze one time in four (BAT-QUIRK-27), so the battles run longer, 7 768 steps against 7 279, about as many instructions per step"
 args = [
     "bench",
     "--games",
@@ -19,5 +19,5 @@ args = [
     "1",
 ]
 collect = "*random_rollout*"
-instructions = 577385268
+instructions = 614218369
 threshold_percent = 2

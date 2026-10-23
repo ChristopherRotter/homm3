@@ -139,6 +139,7 @@ record = { "E6-7 spells before" = "hero:spells", "E6-7 B spells before" = "hero[
 encounter = "E6-7"
 hero = "E6-7"
 walk = [10, 8]
+expect = { dialogs = true }
 record = { "the message" = "messages", "E6-7 spells after" = "hero:spells", "E6-7 B spells after" = "hero[E6-7 B]:spells" }
 
 # --- E6-8 (15, 8): Wizard's Well in the hero screen ---------------------------------------------

@@ -605,6 +605,33 @@ fn a_stack_that_sees_again_in_the_wait_phase_does_not_freeze() {
     assert!(!s.stacks()[0].flags.contains(StackFlags::WAITED));
 }
 
+/// BAT-Q33 (batches 4a LO and 4b LC): with BAT-QUIRK-27 a frozen stack of a side whose player is
+/// not human is let off when a second draw of 1 to 4 gives 1 (0x464BDB): a neutral side's or a
+/// computer player's; a human player's never, nor any side without the quirk.
+// covers: BAT-MOR-004
+#[test]
+fn with_bat_quirk_27_a_side_without_a_human_player_escapes_one_freeze_in_four() {
+    let frozen = |profile: &str, human: bool| {
+        let r = ruleset_with(profile, always);
+        (0..400u64)
+            .filter(|&seed| {
+                let mut setup = setup(&r, &[(0, "pikeman_c", 1), (1, "imp", 1)], &[(0, "slow", 1)]);
+                setup.human = [true, human];
+                let mut s = BattleState::new(&r, &setup, seed).unwrap();
+                stack(&mut s, 2).morale = -3;
+                act(&mut s, &r, Command::Defend).unwrap();
+                let events = act(&mut s, &r, Command::Defend).unwrap();
+                count(&events, bad) == 1
+            })
+            .count()
+    };
+    // 254 of 255 freeze, three in four of them stay frozen: about 299 of 400 (σ ≈ 8.7).
+    let let_off = frozen("t:let_off", false);
+    assert!((260..=340).contains(&let_off), "{let_off}");
+    assert!(frozen("t:let_off", true) >= 395);
+    assert!(frozen("t:faithful", false) >= 395);
+}
+
 // covers: BAT-MOR-004
 #[test]
 fn bad_morale_happens_with_its_chance() {
