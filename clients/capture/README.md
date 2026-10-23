@@ -496,6 +496,13 @@ design §7.1.
 - `machines`' timeline (M3 T3b) varies between runs: the automatic Ballistas' shots, and the
   heal after one, start 1 ms later than recorded in most runs (M3 T4b-2b-1, 8 runs, at either
   park point); a `CHANGED` there with only such shifts is that, not a change of the viewer.
+- A kept frame's `before` (the heroes of the screen it replaced within its millisecond) can vary
+  between runs: the harness reads the game's memory for both screens of that millisecond, and
+  a hero's frame step can fall before either read (`raise` at 1 312 ms: the hero's defeat,
+  frame 0 at T7c-3, 1 in both of T9a's runs). The frame check uses a `before` only where the
+  frame's own hero is in the cast group (`h3-view sequences`, `Kept::before`), so elsewhere it
+  changes no compared pixel: such a `kept/` change is that, not a change of the original's
+  (M3 T9b-1).
 - The battle panel's buttons change with whose turn it is: the `battle` probes are the ones equal
   in both states.
 - A click's hover leaves the status line's hint in the log's item (`Attack Pikemen` over a
@@ -586,7 +593,9 @@ design §7.1.
   and all 31 sequences take longer: T9a's first loop over every `frames --only <id>` was stopped
   inside `dispel`. Run them in batches of up to ten, one background job each, that start no new
   sequence after about 75 minutes (a sequence takes 2 to 18), and the next batch after it.
-- A game started right after another stopped can still dump no 5-6-5 screen after
+- A game started right after another stopped can dump no 5-6-5 screen for longer than
   `xwd_bytes`' five tries (M3 T9a: `set` stopped so twice, after 27 and 62 frames, and one
-  `frames --only` at its start; the display dumped as it should afterwards). `set --only <id>`
-  for each situation, a crashed one run again, passed all 57 at their first try (8 minutes).
+  `frames --only` at its start). Since M3 T9b-1 a game's menus (`Game.wait`) wait through it
+  until their timeout, saying so on stderr (`came after an unreadable display`, with the
+  dump's header), and a timeout names the fault; a whole `set` passed at once (8 minutes).
+  Elsewhere `xwd_bytes` still stops after five tries (`Unreadable`, with the last fault).
