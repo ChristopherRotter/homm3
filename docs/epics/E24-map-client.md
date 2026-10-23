@@ -1,6 +1,7 @@
 # E24 — The adventure map client
 
-Status: **refined** (2026-10-23, T0, with the user); M1 next (T1a, `docs/lanes/map-client/QUEUE.md`).
+Status: **refined** (2026-10-23, T0, with the user); M1 running (T1a done; next T1b or T2,
+`docs/lanes/map-client/QUEUE.md`).
 Lane: map-client (`docs/lanes/map-client/HANDOFF.md`: the autonomy contract, the user's asset
 notes). Opened 2026-10-23 when the user split the client lane at E17 M3's closure (CLT-Q18).
 Decisions so far live here (no ADR of its own yet; ADR-0020 and ADR-0024 bind it as they bind
@@ -59,9 +60,9 @@ inside a game are the battle client's (E17); this epic hands them over.
   objects over it; `place_object_tiles` (0x505B20) adds an entry per tile of an object's
   footprint through 0x505230, `object_tile_layers` (0x505060) gives each tile a draw layer from
   the template's masks (a flat template, the special grounds, keeps layer 0), and the objects'
-  shadow pass is the encoding 3 drawer 0x47D930 (E17 design §3.3). The view's geometry is known
-  from the harness (E17 design §6.3): tile (x, y) at (8 + 32 (x − vx), 8 + 32 (y − vy)), the
-  view's top-left at adventure manager +0xE4, starting at (−3, −2) beside the map's corner.
+  shadow pass is the encoding 3 drawer 0x47D930 (E17 design §3.3). The view (T1a's reading,
+  `E24-design.md` §1): eleven passes over the whole view, tile (x, y) at (32 (x − vx),
+  8 + 32 (y − vy)) clipped to (8, 8)–(600, 552), the view's top-left at adventure manager +0xE4.
 
 ## Milestones
 
@@ -88,6 +89,8 @@ autonomy contract (lane HANDOFF) says what the agent decides alone in between. T
   situations: the writer's maps built for one drawing question each (terrain transitions,
   overlapping objects, heroes by class and facing), and shipped maps at chosen views (their
   random objects read from memory).
+- **Done:** T1a (2026-10-23): the view's passes, tiles, edge, unexplored tiles and the moment
+  read, VCMI compared (`E24-design.md` §1; MCL-Q1).
 - **Exit:** the capture set's stills match the original pixel for pixel outside the masks of
   what M1 does not draw (the panels, the mouse), or list each difference as an M2 item; the
   review list accepted; research item 9 closed by the reading and its frames.

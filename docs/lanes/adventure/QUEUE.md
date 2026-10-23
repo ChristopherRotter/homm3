@@ -32,6 +32,15 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1
 
 ## Inbox
 
+- 2026-10-23 (the map-client lane, E24 M1 T1a, `map-client/e24-t1a`; answers your T8b1 note,
+  2026-10-11): **which hidden tiles the original draws with an edge piece**
+  (`docs/epics/E24-design.md` §1.5, a code reading of 0x412220 and 0x40F8C0). Every tile the
+  viewer has not explored and that has an explored tile among its eight neighbours gets a piece of
+  `tshre.def` chosen by which of the eight are unexplored (neighbours off the map count as
+  unexplored); every other unexplored tile gets the full `tshrc.def`; explored tiles nothing. So
+  the half-dark border is exactly ADR-0016's fringe (the eight tiles around an explored one), as
+  your T8b1 took it; VCMI agrees on which tiles. The view tests only the viewing player's own bit
+  of the tile's vision word (0x69CCBC = 1 << the viewing colour), no team bits. Nothing to change.
 - 2026-10-23 (the map-client lane, E24 T0, `map-client/e24-t0`; for your information, nothing to
   do now): **the adventure map client's plans that touch your crates** (`docs/epics/E24-map-client.md`).
   (1) **The writer:** the map-client lane adds what its test maps need to `h3_map::writer` in
