@@ -4420,3 +4420,61 @@ Decision 88: T41 whole (the user: "no cut"), its shared part in its own pull req
   -- --with-original-data` on fd4f16f (code d82c93aa, 2026-10-23, the sandbox, Linux x86_64): all
   16 steps passed (the first run on 04e16ff failed coverage, `NoStop`'s message, and the benchmarks
   above). Merges cleanly with `master` 2ad29e2 and with #401.
+
+### Increment 5, round 5: T42, the env, the plans, the fixtures, the replays and the benchmarks (2026-10-23, `adventure/e08-t42`)
+
+Decision 89: T42 whole (the user's choice; the cut at the committed fixtures not chosen).
+
+- **The plans** (`h3-map`'s `play.rs`): `Kit` (worn artifacts of `MOVERS`, the six with their
+  editor slots, and Pathfinding, Logistics, Scouting at a level), drawn last in the plan's
+  strategy so the regressions files' cases keep their maps: in two heroes of five some of the
+  Speculum, the Spyglass, Equestrian's Gloves and Boots of Speed, in two of five some of the
+  skills; in three plans of four the first two heroes fly (Angel Wings) and walk on water (Boots
+  of Levitation), in one of those of four the flyer both, with a strip of three water tiles two
+  columns east of each; in half the AB and SoD plans a stack of Nomads (`Plan.nomads`). A kit's
+  skills join the hero's own (the Spell Book with them). `every_step_keeps_the_commands_invariants`
+  checks that every accepted move ends where a hero may stop (`stops_on`: land no live object
+  blocks but where one is visited); the observation property compares the legal moves as before,
+  now over flyers' (`ADV-QUIRK-15`). New fixed test `the_plans_fly_and_walk_on_water` (64 cases):
+  the six artifacts worn in 21, 21, 21, 42, 42, 18 games, the three skills known in 33, 38, 35;
+  36 flights over water, 33 over blocked tiles, 20 water walks over water, 57 moves of armies with
+  Nomads, 6 paths refused with `NoStop`. All 71 of `h3-map`'s lib tests pass.
+- **The fixtures** (`fixtures.rs`' `DUEL_KITS`, `XL_KITS`; terrain and objects unchanged): the
+  duel's red surface hero flies with the Speculum and basic Logistics, eight tiles from the
+  surface lake; blue's surface hero wears Boots of Speed and Equestrian's Gloves with advanced
+  Pathfinding; red's underground hero walks on water with the Spyglass, seven tiles from a lake;
+  blue's underground hero has expert Scouting and basic Pathfinding. Blue's underground hero was
+  the water walker at first: the underground lakes nearest to it lie beyond rock, and in four
+  random weeks it never reached water. The XL map: each player a flyer and a water walker, one per
+  level, the other artifacts and the three skills among the others.
+- **The env** (`h3-sim`): `a_flyer_and_a_water_walker_are_masked_by_their_stop_tiles` (four
+  random games of two weeks: every tile a lifted hero's move head allows is one it may stop on,
+  some reached over water or blocked tiles); `steps_agree_with_the_masks_and_the_game` plays the
+  duel's flyer and water walker. The tampered-replay test prints the result it got.
+- **`h3_game` re-exports `h3_heroes::{Movement, movement}`** (for the benchmarks: which heroes fly
+  or walk on water).
+- **The replays** (`adventure_replays.rs`, its list rewritten): the four fixed ones re-recorded
+  with their options; a search over 5 000 seeds per profile (28 days, a scratch probe, not
+  committed) replaced T31's five searched ones by the closest games (`duel-s692-d28`,
+  `duel-s4893-d28`, `duel-s2517-d28`, `duel-s3127-d28`, `duel-s1308-strict-d28`) and added
+  `duel-s2931-d28`, the only faithful game with an offer to join for gold accepted (the fixed
+  `duel-s3-easy-d7` no longer meets one). Not met by any replay now: a strict-fixed monster's
+  battle lost together with a hero battle (no game has both). The test asks for ten files.
+- **The benchmarks:** the reach workload counts the walkers in `reach_queries` and the flyers and
+  water walkers in `lifted_queries`, which hero is which sorted out of the counted part
+  (`heroes_by_lift`); `queries` takes the kind so that the release build does not fold the two
+  identical functions into one symbol (it did: both names at one address, so the pattern
+  `*lifted_queries*` matched nothing). On master's maps the new code measures `reach-xl-144`
+  +0.86 % (T41's own +0.89 %), `random-play-duel-36` +0.85 %, `fork-xl-144` +0.17 %. Re-baselined
+  on the new maps: `reach-xl-144` 466 864 446 Ir (3 145 walkers' queries, about 148 k each),
+  `reach-lifted-xl-144` new, 880 080 619 Ir (3 158 queries, about 279 k each, 1.9 times a
+  walker's), `random-play-duel-36` 976 085 207 Ir (+75.7 %: 3 205 steps, +56 % a step, the duel's
+  flyer and water walker search two kinds of node at every step), `fork-xl-144` 356 400 024 Ir
+  (+0.17 %). `benches/README.md`'s rows are shared (see the pull request).
+- **`--with-original-data`:** the Tutorial's red hero (Expert Logistics and Pathfinding, Boots of
+  Speed and Equestrian's Gloves, a speed-4 army) starts with 2 928 points, its entry 1 560 × 1.3 +
+  900, printed and checked (`original_data.rs`' `tutorial`).
+- **Docs:** the design note's §8 reduced to what was built, §10 and §13's lines; the queue (T43's
+  entry; the inbox's T40 note closed), the HANDOFF, the epic, `fixtures/maps/README.md`.
+- **The baseline:** `scripts/verify-once.sh engine -- --with-original-data` on master 8330f55
+  (code 70c8a38e, 2026-10-23, the sandbox): all 16 steps passed.
