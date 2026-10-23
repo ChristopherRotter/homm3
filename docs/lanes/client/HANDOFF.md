@@ -63,9 +63,9 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
-- **2026-10-23, E17 M4 T1b (done; not split, the user).** `[[town]]` harvested, the siege drawn;
-  15 siege situations exact (every town's Castle, a Fort, a Citadel; the walls hit and destroyed
-  on Castle and Conflux by memory writes); the Tower by the defender's record (`seat`).
+- **2026-10-23, E17 M4 T1b (done; #427 open; not split, the user).** `[[town]]` harvested, the
+  siege drawn; 15 siege situations exact (every town's Castle, a Fort, a Citadel; the walls hit
+  and destroyed on Castle and Conflux by memory writes); the Tower by the defender's record.
 - **2026-10-23, E17 M4 T1a (done; #417, docs only).** The siege still read (design §10.1, the address
   map): the same rules in every town; the harvest moved into T1b, the wall states on Castle and
   Conflux (the user).
