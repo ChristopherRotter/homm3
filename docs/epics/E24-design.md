@@ -253,8 +253,8 @@ Path read: the placement of an object on its tiles (place_object_tiles 0x505B20,
 0x505060, the insertion 0x505230), passes 4 to 9 of §1.1, the hero and boat pieces (0x40FB30,
 0x40FE30, 0x410760, 0x4102C0, 0x4109B0), the drawers' wrappers. Not read: the moving hero's own
 pieces (0x47F860, 0x47FB40, pass 9) and the attacking monster's substitute (§2.2, both M2), the
-puzzle's class filter, the owners' tables (T5). The frames that confirm it: T4a (§2.6), T4b and
-T5.
+puzzle's class filter, the owners' tables (T5). The frames that confirm it: T4a (§2.6), T4b
+(§2.7) and T5.
 
 ### 2.1 A tile's draw list
 
@@ -389,6 +389,7 @@ overlay; `MapRendererObjects::renderObject`), then the path, then the fog
 | D8. The `.msk` masks | a body only in cells of the colour mask, a shadow only in cells of the shadow mask | every cell of the rectangle |
 | D9. The path | the arrows' shadows under the bodies (pass 6), the arrows over them (pass 8) | the arrow whole over the tile's objects |
 | D10. Flag pixels | coloured for eight classes, skipped for the rest | coloured for any owner, neutral too |
+| D11. A random object | a copy of its random template: its masks, layers and place kept, the drawn DEF's frames; an artifact's DEF by its id, one off from 128 (§2.7, MCL-Q3) | the new type's own template for the terrain, placed again (`CGObjectInstance::setType`) |
 
 The user's note (neither their engine nor VCMI got the order right) is D1 to D5: VCMI's
 comparator approximates the layers with its blocked-tile rule (the layers' rule 1) but keeps one
@@ -423,7 +424,8 @@ Open points: 0x4FEC30 as the entrance (T5's owned objects); the coast test for t
 boats); which classes have flag pixels outside the eight (T5, D10; an `MCL-Q` if a drawn object
 loses its colours). Settled by T4a (§2.6): +0x40 as the priority byte, +0x14 and +0x24 as the
 `.msk`'s masks; points 1 to 3 and 9 are in the copies of §2.6, so their own maps were not built;
-points 4, 5, 6 and 8 moved to T5 with the heroes and the path, point 7 to T4b.
+points 4, 5, 6 and 8 moved to T5 with the heroes and the path, point 7 to T4b. Settled by T4b
+(§2.7): point 7 (D8) finds nothing in the shipped files, the gate checks it.
 
 ### 2.6 The objects' frames (M1 T4a, 2026-10-23)
 
@@ -461,3 +463,51 @@ points 4, 5, 6 and 8 moved to T5 with the heroes and the path, point 7 to T4b.
   406 entries kept under an earlier object of the same layer (D3), 207 flat pieces under a
   shadow: the cases where VCMI's order can draw otherwise (cells, not pixels: a cell pair need
   not overlap in pixels), all drawn as the original draws them.
+
+### 2.7 Random objects and shipped maps' views (M1 T4b, 2026-10-23; research item 9 closed)
+
+- **When the original draws them** (resolve_random_objects 0x4C9DD0, from the new game's setup
+  0x4BFE70): after the map's load has placed every object on its tiles (map_objects_place_all
+  0x4FD690) and given it its phase (0x504470). Per tile with an entrance (level, row, column) a
+  random artifact (65–69) becomes an artifact of its level (random_artifact_of_level 0x4C94D0), a
+  random monster (71–75, 162–164) a monster of its levels (0x4C92C0), a random resource (76) a
+  pile (79) of a random resource; the tile's class and subclass are set, then
+  object_template_redraw 0x4C9990 gives the object its picture. The towns' setup does the same for
+  a random town and the towns' pictures by their buildings (0x4CAA70; T5).
+- **The picture** (0x4C9990): the object's template is **copied** onto the end of the map's
+  templates and the copy's DEF name, class (+0x38) and subclass (+0x3C) replaced: an artifact
+  `ava%04d.def` of its id (0x677974), a monster the DEF of the last template of class 54 with its
+  creature (0x505EA0, the game's per-class lists), a pile `avtwood0` … `avtgold0` by resource
+  (0x677958). The DEF is loaded onto the map's DEF list (+0x20) and the object's record points at
+  the copy; its draw entries stay as placed. So **a random object keeps its random template's
+  size, colour and shadow masks, passability (its layers) and priority, and is drawn with the new
+  DEF's frames** (its phase as before). `h3_map_view::objects::shape` follows it.
+- **What it changes on screen:** the random monsters' and resources' templates have the same
+  masks as every monster and pile (the gate compares them), so nothing; a random artifact's
+  (2 × 1, the body in the anchor's cell) cuts the Crown of Dragontooth (44: 2 body pixels) and the
+  combination artifacts' pictures (`AVA0130` … `AVA0141`: 10 to 584 body pixels), which random
+  relics can be (relics, not among the three disabled ids of 0x63B98C; 104 of the 160 shipped
+  maps allow them). And `ava%04d` is one off from 128 on: the editor's templates (`Objects.txt`)
+  name `AVA0129` for 128 (Armageddon's Blade), `AVA0130` for 129 and so on, `AVA0128` (a box) for
+  none, so a random relic that became Angelic Alliance shows Armageddon's Blade. **MCL-Q3**
+  (answered: the client draws the artifact's own picture and masks, the game's last template of
+  its class and subclass, `Drawn::own`; `--bugs original` the copy, for the comparisons).
+- **The gate** (`h3-map-view gate`): every template DEF of `Objects.txt` and of the shipped maps
+  (1 333) has a shape and no body or shadow pixel outside its `.msk`'s masks (D8: none); and the
+  pictures a random object can become, drawn with a random template's masks, listed with the
+  pixels they lose (the artifacts above).
+- **The harness** (`h3map.py`, `h3mem.Mem.map_templates`): a situation names a shipped map whole
+  (`map`); the original loads it as a single scenario with the scenario list's setup (its first
+  human player), its first day's messages closed by their OK (`adventure`, not `adventure_map`:
+  that screen's probes hold the level button greyed, as a map without an underground shows it);
+  the human player's explored bits written; `live.toml` gains the viewer and every object's
+  template in memory (its DEF, class and subclass), which `render --live` compares with the map's:
+  a differing one is what a random object became.
+- **The captures** (`clients/map/situations/shipped-*`): five views of four shipped maps (72, 108
+  and 144 tiles) without heroes, boats or owned objects near them, one underground, with 3 to 6
+  random artifacts, 4 to 9 random monsters and 2 to 8 random resources each among 110 to 217
+  objects: exact outside the panels on their first runs, the whole set of 22 again after. With
+  §2.6's copies this closes research item 9: the draw order (§2.1, §2.2), the shadows (pass 5,
+  §2.2) and the random objects, read and confirmed by frames. Heroes and boats among the layers
+  and the path's arrows: T5.
+

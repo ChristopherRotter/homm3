@@ -80,3 +80,124 @@ fn a_broken_def_or_frame_is_an_error() {
     let bytes = def(&[(0, &[("a", 5)])], &[frame(Encoding::Raw, [1; 8])]);
     assert!(summarize(&bytes).is_err());
 }
+
+/// A 2 × 1 shape: its body in the anchor's cell, its shadow in both.
+fn shape_2x1() -> Shape {
+    Shape {
+        width: 2,
+        height: 1,
+        colour: [0, 0, 0, 0, 0, 0x80],
+        shadow: [0, 0, 0, 0, 0, 0xC0],
+        frames: 1,
+    }
+}
+
+/// A one-row frame of `pixels` (their runs given) at (left, top).
+fn row(left: i32, top: i32, pixels: &[(u8, bool)]) -> Frame {
+    Frame {
+        encoding: Encoding::PackedBlocks,
+        full_width: 64,
+        full_height: 32,
+        left,
+        top,
+        width: u32::try_from(pixels.len()).unwrap(),
+        height: 1,
+        pixels: pixels.iter().map(|p| p.0).collect(),
+        runs: pixels.iter().map(|p| p.1).collect(),
+        short_header: false,
+    }
+}
+
+#[test]
+fn a_body_pixel_outside_the_colour_mask_is_never_drawn() {
+    let shape = shape_2x1();
+    // At x 30 and 31 the cell left of the anchor (shadow only), at 32 and 33 the anchor's.
+    let frame = row(30, 0, &[(9, false), (5, true), (9, false), (5, true)]);
+    assert_eq!(
+        undrawn_frame(&frame, &shape),
+        Undrawn { body: 2, shadow: 0 }
+    );
+    // Shadows in both cells, other runs drawn by neither pass.
+    let frame = row(30, 0, &[(1, true), (4, true), (0, true), (2, true), (4, true)]);
+    assert_eq!(undrawn_frame(&frame, &shape), Undrawn::default());
+    assert!(!Undrawn::default().any());
+}
+
+#[test]
+fn a_shadow_pixel_outside_the_shadow_mask_is_never_drawn() {
+    let mut shape = shape_2x1();
+    shape.shadow = [0, 0, 0, 0, 0, 0x80];
+    let frame = row(31, 0, &[(1, true), (4, true), (4, true)]);
+    let undrawn = undrawn_frame(&frame, &shape);
+    assert_eq!(undrawn, Undrawn { body: 0, shadow: 1 });
+    assert!(undrawn.any());
+    assert!(Undrawn { body: 1, shadow: 0 }.any());
+}
+
+#[test]
+fn pixels_outside_the_footprints_squares_are_never_drawn() {
+    let shape = shape_2x1();
+    let pixel = [(9, false)];
+    // Right of the anchor's square, below it, left of the footprint, above it.
+    for (left, top) in [(64, 0), (0, 32), (-1, 0), (0, -1)] {
+        assert_eq!(
+            undrawn_frame(&row(left, top, &pixel), &shape),
+            Undrawn { body: 1, shadow: 0 },
+            "{left},{top}"
+        );
+    }
+    // Rows wrap at the frame's width.
+    let mut two_rows = row(32, 0, &[(9, false), (9, false)]);
+    two_rows.width = 1;
+    two_rows.height = 2;
+    assert_eq!(undrawn_frame(&two_rows, &shape), Undrawn::default());
+    two_rows.top = 31;
+    assert_eq!(
+        undrawn_frame(&two_rows, &shape),
+        Undrawn { body: 1, shadow: 0 }
+    );
+}
+
+#[test]
+fn a_defs_undrawn_pixels_are_its_group_0s() {
+    let shape = shape_2x1();
+    // 64 × 2 canvases: the left 32 columns are the cell without a body.
+    let mut left = [0u8; 128];
+    left[..32].fill(9);
+    left[64..96].fill(9);
+    let both = [9u8; 128];
+    let frames = [frame_64([9; 128]), frame_64(left), frame_64(both)];
+    let bytes = build::def(
+        0x43,
+        (64, 2),
+        &Palette([Rgb::default(); 256]),
+        &[(1, &[("c", 0)]), (0, &[("a", 1), ("b", 2)])],
+        &frames,
+    );
+    assert_eq!(
+        undrawn(&bytes, &shape).unwrap(),
+        Undrawn {
+            body: 64 + 64,
+            shadow: 0
+        }
+    );
+    assert!(undrawn(&[1, 2, 3], &shape).is_err());
+    let truncated = &bytes[..bytes.len() - 4];
+    assert!(undrawn(truncated, &shape).is_err());
+}
+
+/// A 64 × 2 frame in encoding 3 (literal pixels: no two neighbours of a run's index repeat).
+fn frame_64(pixels: [u8; 128]) -> Frame {
+    Frame {
+        encoding: Encoding::PackedBlocks,
+        full_width: 64,
+        full_height: 2,
+        left: 0,
+        top: 0,
+        width: 64,
+        height: 2,
+        runs: build::runs_by_repetition(Encoding::PackedBlocks, 64, &pixels),
+        pixels: pixels.to_vec(),
+        short_header: false,
+    }
+}

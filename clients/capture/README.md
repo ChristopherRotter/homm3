@@ -30,7 +30,7 @@ adventure).
 | `h3cap.py` | `diff` (our render against a capture, with masks) and `find` (the original's obstacles in a capture); `compare` and `boxes_at` for the frame check. |
 | `h3mem.py` | Reads the running game's state from its memory: the battle's clocks, idle steps, active stack and the mouse's highlight, each stack's group, frame, hex, offsets and draw layer, and each side's hero's group and frame and its flag's frame (M3 T3a), the magic animation drawn and the stacks under it (M3 T3b), the battle's outcome (H1); the adventure map's players, heroes (with their experience, level, army and skills: H1), view and path, the difficulty, a tile's monster, the topmost dialog's text (H1; below). |
 | `h3adv.py` | The adventure map (M2 T6, H1, H2): hot seat at a chosen difficulty, heroes (the list scrolled), tiles of either level clicked twice, questions answered, battles played, level-ups chosen, turns, artifacts put on from the backpack in the hero screen (E08 T37a); `batch` plays an experiment batch and fills its results template, `compare` sets two filled templates side by side, `learn-button`. |
-| `h3map.py` | The adventure map's stills (E24 M1 T3b2, the map client lane): `still` shows a situation of `../map/situations/` in the original (a single scenario, Red's explored tiles written, the view by the minimap, the clock frozen), draws ours and diffs them; `set` runs the map's capture set. Below, "The map's stills". |
+| `h3map.py` | The adventure map's stills (E24 M1 T3b2, the map client lane): `still` shows a situation of `../map/situations/` in the original (a single scenario, a writer's map or a shipped one whole, the human's explored tiles written, the view by the minimap, the clock frozen), draws ours and diffs them; `set` runs the map's capture set. Below, "The map's stills". |
 | `h3lod.py` | The original's text tables, read from the run directory's LODs at run time (H1): which record a dialog's text was written from (`ADVEVENT:86`); never their text. |
 | `batches/` | The batches' recipes: a spec's procedure as steps (`E08-batch-2.toml`), and the harness's own check (`harness-check.toml`, its spec in `checks/`). |
 | `../situations/` | The capture set: `set.toml` and its situations' scenario files; the recorded sequences, `sequences.toml`, their scenarios `seq-*.toml` and `timelines/`. |
@@ -392,8 +392,8 @@ button that shows in more than one place (a dialog's OK): `python3 capture/h3adv
 <name> x0,y0,x1,y1 [<dump.xwd>]` records 12 probes relative to its corner (`[button.<name>]`);
 `h3adv.find_button` finds it anywhere on the screen.
 
-**The map's stills** (E24 M1 T3b2, T4a, the map client lane; `docs/epics/E24-design.md` §1.10,
-§2.6): from
+**The map's stills** (E24 M1 T3b2, T4a, T4b, the map client lane; `docs/epics/E24-design.md`
+§1.10, §2.6, §2.7): from
 `clients/`, after `cargo build --release -p h3-map-view`,
 
 ```
@@ -405,7 +405,11 @@ A situation (`map/situations/<id>.toml`, its format in `h3_map_view::situation`)
 map (tiles given, or copied from a rectangle of a shipped map in `original-data/install/Maps`,
 with the objects anchored there when the copy says `objects = true`; objects given by their
 template's DEF, its line of the game's `Objects.txt`), two heroes away from the view, the view's
-top-left and the tiles Red has not explored. `still`
+top-left and the tiles Red has not explored; or a shipped map loaded whole (`map = "<file>"` and
+the view, T4b: `still` copies it from `original-data/install/Maps`, `to_shipped` begins it with
+the scenario list's setup and closes its first day's messages by their OK; the screen it waits
+for is `adventure`, since `adventure_map`'s probes hold the level button greyed, as a map without
+an underground shows it; the explored bits are its human player's). `still`
 writes the map (`h3-map-view situation`), loads it as a single scenario, writes Red's explored
 bit of every tile of the level (`h3mem.Mem.write_explored`: all but the situation's `hidden`
 rectangles; the game's own reveal around its heroes is overwritten), centres the view by a
@@ -419,12 +423,19 @@ cycling DEFs' palettes in memory (`Mem.def_palette`: each range a rotation of it
 mod 36; read until two reads 0.1 s apart agree, and again after the dump, since a read can meet
 the tick's rotation half done), the objects' frame step the screen shows (`Mem.frame_steps`
 less one: the redraw draws before it counts) and every object's anchor and animation phase
-(`Mem.map_objects`, the 12-byte records in the map's order; T4a), all into `live.toml`. Ours:
+(`Mem.map_objects`, the 12-byte records in the map's order; T4a), the viewing player, and every
+object's template in memory, its DEF, class and subclass (`Mem.map_templates`; T4b: a random
+object's is the copy a new game made, design §2.7), all into `live.toml`. Ours:
 `h3-map-view render --bugs original --live live.toml` with the same view and hidden rectangles;
 it refuses a `live.toml` whose anchors are not its map's. A game that crashes on its way to the
 map (`wine.log`'s "Unhandled page fault") is started once more: the original's tavern rumour at
 a new game reads past its table about once in 800 games (`rumour_pick_text` 0x4CCF20; T4a saw
-it once). Masked (`h3map.MASKS`): the panels right of x 608 and below y 552 (M3 draws them)
+it once); so is one whose Wine exits before the main menu with an empty log (T4b saw it once,
+right after the game before it stopped). Before counting the redraws, `still` waits until the
+frozen clock lies before both deadlines (one already passed is met at the main loop's next idle
+step: T4b saw the extra redraw once), and `set` shows a situation the harness fails to show
+(the game, the clock or a read gave up) once more, saying so on stderr. A capture run alone:
+T4b's runs beside a build failed so. Masked (`h3map.MASKS`): the panels right of x 608 and below y 552 (M3 draws them)
 and the cursor parked over the right panel. Every situation of T3b2 is exact; `set.toml` records
 the counts. The menus run in real time, so each run's k and frame steps differ: they are read,
 never assumed.

@@ -279,3 +279,43 @@ One session, the user present at its start; branch `map-client/e24-t4a`.
   passed to the scene; `render --live`; the situations' objects; the owned classes' flag runs
   skipped until T5 (the copies avoid those classes).
 - **Questions:** none new.
+
+### M1 T4b — random objects and shipped maps' views (2026-10-23)
+
+- **The seam** (asked): split T4b into the gate check with plain shipped views and the random
+  objects; the user had it done whole.
+- **Read** (§2.7): resolve_random_objects 0x4C9DD0 runs at the new game's setup, after the load
+  placed every object (its entries and phase); object_template_redraw 0x4C9990 copies the
+  object's template and replaces only the DEF name, class and subclass (an artifact `ava%04d` by
+  id 0x677974, a monster the last class-54 template of its creature 0x505EA0, a pile by
+  resource 0x677958, a town by its buildings 0x677A0C …); random_artifact_of_level 0x4C94D0;
+  the towns' setup 0x4CAA70 (inferred); 0x505A10. VCMI 1.7.5 gives the new type its own template
+  and places it again (D11).
+- **Found:** the copy keeps the random template's masks: the gate's survey over `Objects.txt`
+  and the shipped maps' templates (1 333 pictures, none with pixels outside its own `.msk`: D8)
+  lists the pictures a random artifact's masks cut (44: 2 body pixels; `AVA0130` … `AVA0141`:
+  10 to 584); `ava%04d` is one off from 128 (the editor names `AVA0129` for 128), so a random
+  relic become Angelic Alliance shows Armageddon's Blade's picture (both looked at with `h3-view
+  sprite`; `AVA0128` is a box no template names). 104 of the 160 shipped maps allow the
+  combination artifacts. **MCL-Q3** asked and answered (a): the client draws the own template.
+- **Built:** `h3_map_view::check::{undrawn, undrawn_frame, Undrawn}`; `live::Drawn` (the copy's
+  DEF, the own DEF, class, subclass) in place of a whole drawn template; `objects::{template,
+  def, shape}` (placement by the map's template, the drawn DEF's frames with its masks, or the
+  own picture whole when the bugs are fixed); the gate's object pictures; `files::{load_shape,
+  templates}`; `render --live` reads `viewer`, `defs`, `classes` and fills `own` from
+  `Objects.txt`. 100 % covered.
+- **The harness** (common path, additive): `h3mem.Mem.map_templates`; `h3map.py`: a situation's
+  `map` loads a shipped map whole (`to_shipped`: the scenario list's setup, the first day's
+  messages closed by OK, the screen `adventure`), `live.toml`'s `viewer`, `defs`, `classes`; a
+  game whose Wine exits before the main menu with an empty log is started again (seen once in a
+  set run).
+- **Captures:** `shipped-divided-loyalties` (8, 38), `shipped-tale-of-two-lands` (31, 61),
+  `shipped-good-witch` (82, 48), `shipped-gauntlet` (59, 51), `shipped-dwarven-tunnels` (11, 23,
+  underground), the views picked by a throwaway scan (no hero, boat, random hero, placeholder or
+  owned class within reach, the most random objects of each kind): each exact on its first run.
+  The first full run (22) stopped at `lava-water` (Wine exited before the menu); the second:
+  every one as recorded.
+- **Agent decisions (provisional, on the review list):** the shipped situations' format and
+  loading; `live.toml`'s new keys; `Drawn` and the own template's choice (the last of
+  `Objects.txt`, as 0x505EA0); the gate's listing.
+- **Questions:** MCL-Q3 (answered).

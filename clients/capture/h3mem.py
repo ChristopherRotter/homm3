@@ -83,6 +83,11 @@ TERRAIN_DEFS, RIVER_DEFS, DEF_PALETTE, PALETTE_COLOURS, FRAME_STEPS = 0x60, 0x88
 # manager +0x5C, its object records' vector at map +0x14 (begin, end), 12 bytes each in the map's
 # order: +0x4 x, y, level; +0x8 the template (u16); +0xA the animation phase (design §1.6).
 MANAGER_MAP, MAP_OBJECTS, OBJECT_RECORD = 0x5C, 0x14, 12
+# The map's object templates (E24 M1 T4b; design §2.7): a vector at map +4 of 0x44-byte records,
+# the DEF's name a string at +0 (its characters' pointer at +4, its length at +8), the class at
+# +0x38, the subclass at +0x3C. A new game appends a copy for each random object it draws
+# (0x4C9990) and points the object's record at it.
+MAP_TEMPLATES, TEMPLATE_RECORD, TEMPLATE_CLASS = 0x4, 0x44, 0x38
 # The palette tick's next time (palette_tick_time 0x6989B4: the tick 0x4ED490 rotates once the
 # clock reaches it and sets it to now + 200 on the map). The adventure map's idle step redraws
 # the view once the clock reaches FRAME_DEADLINE (0x408A88; design §1.6).
@@ -599,6 +604,17 @@ class Mem:
         raw = self.read(begin, OBJECT_RECORD * count) if count else b""
         return [(raw[i + 4], raw[i + 5], raw[i + 6]) + struct.unpack_from("<HB", raw, i + 8)
                 for i in range(0, len(raw), OBJECT_RECORD)]
+
+    def map_templates(self):
+        """The map's object templates in memory (E24 M1 T4b): [(DEF, class, subclass)] in order,
+        the map's own and then the copies a new game made for its random objects."""
+        begin, end = struct.unpack("<II", self.read(self.manager_field(MANAGER_MAP) + MAP_TEMPLATES, 8))
+        out = []
+        for record in range(begin, end, TEMPLATE_RECORD):
+            chars, length = struct.unpack("<II", self.read(record + 4, 8))
+            name = self.read(chars, length).decode("cp1252") if length else ""
+            out.append((name,) + struct.unpack("<II", self.read(record + TEMPLATE_CLASS, 8)))
+        return out
 
     def monster(self, x, y, z=0):
         """The wandering monster on a tile from its word (E17 H1; E3-3), None for none: its

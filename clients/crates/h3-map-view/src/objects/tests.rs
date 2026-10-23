@@ -4,7 +4,8 @@ use alloc::string::ToString;
 use h3_map::model::Pos;
 
 use crate::art::ObjectArt;
-use crate::live::{Explored, LiveObject, Moment};
+use crate::live::{Drawn, Explored, LiveObject, Moment};
+use h3_render::Bugs;
 
 /// A passability mask with every cell passable but `blocked` (dx, dy).
 fn passable_except(blocked: &[(u8, u8)]) -> [u8; 6] {
@@ -23,6 +24,15 @@ fn tmpl(def: &str, class: u32, passable: [u8; 6], priority: u8) -> TemplateArt {
         class,
         subclass: 0,
         priority,
+    }
+}
+
+fn drawn(def: &str, class: u32) -> Drawn {
+    Drawn {
+        def: def.to_string(),
+        own: None,
+        class,
+        subclass: 2,
     }
 }
 
@@ -130,8 +140,11 @@ fn the_pictures_are_the_templates_and_the_drawn_ones_once() {
         &[(1, 1, 0, 0)],
     );
     let mut l = live(1);
-    l.objects[0].drawn = Some(tmpl("c.def", 1, [0xff; 6], 0));
-    assert_eq!(pictures(&a, &l), ["a.def", "b.def", "c.def"]);
+    l.objects[0].drawn = Some(Drawn {
+        own: Some("d.def".to_string()),
+        ..drawn("c.def", 1)
+    });
+    assert_eq!(pictures(&a, &l), ["a.def", "b.def", "c.def", "d.def"]);
 }
 
 #[test]
@@ -294,26 +307,71 @@ fn heroes_boats_events_the_fallen_and_the_other_level_have_no_entries() {
 }
 
 #[test]
-fn a_random_object_is_placed_as_drawn() {
-    // The map's template is one cell; the drawn one two cells high.
+fn a_random_object_keeps_its_templates_place_and_masks() {
+    // The map's template is one cell, its shadow mask empty; the drawn picture's two cells high,
+    // with three frames.
     let a = art(
         vec![tmpl("random.def", 76, passable_except(&[(0, 0)]), 0)],
         &[(3, 3, 0, 0)],
     );
     let mut l = live(1);
-    l.objects[0].drawn = Some(tmpl("gold.def", 79, passable_except(&[(0, 0), (0, 1)]), 0));
-    let s = shapes(&[("random.def", shape(1, 1, 1)), ("gold.def", shape(1, 2, 1))]);
+    l.objects[0].drawn = Some(drawn("gold.def", 79));
+    let random = Shape {
+        shadow: [0; 6],
+        ..shape(1, 1, 1)
+    };
+    let s = shapes(&[("random.def", random), ("gold.def", shape(1, 2, 3))]);
     let lists = DrawLists::build(&a, &l, &s, 0).unwrap();
-    assert_eq!(list(&lists, 3, 2), [(0, 2)]);
-    assert_eq!(
-        template(&a, &l, 0).map(|t| t.def.as_str()),
-        Some("gold.def")
+    assert_eq!(list(&lists, 3, 3), [(0, 1)]);
+    assert_eq!(list(&lists, 3, 2), []);
+    assert_eq!(template(&a, 0).map(|t| t.def.as_str()), Some("random.def"));
+    for bugs in [Bugs::Fixed, Bugs::Original] {
+        // Without its own picture the client draws it as the original does.
+        assert_eq!(def(&a, &l, 0, bugs), Some("gold.def"));
+        assert_eq!(def(&a, &live(1), 0, bugs), Some("random.def"));
+        let drawn = super::shape(&a, &l, &s, 0, bugs);
+        assert_eq!(drawn, Some(Shape { frames: 3, ..random }));
+        assert_eq!(super::shape(&a, &live(1), &s, 0, bugs), Some(random));
+        // No such object, no shape for the drawn picture or the template's.
+        assert_eq!((template(&a, 1), def(&a, &l, 1, bugs)), (None, None));
+        assert_eq!(super::shape(&a, &l, &s, 1, bugs), None);
+        let only_random = shapes(&[("random.def", random)]);
+        assert_eq!(super::shape(&a, &l, &only_random, 0, bugs), None);
+        let only_gold = shapes(&[("gold.def", random)]);
+        assert_eq!(super::shape(&a, &l, &only_gold, 0, bugs), None);
+    }
+}
+
+#[test]
+fn the_client_draws_a_random_objects_own_picture_and_masks() {
+    // MCL-Q3: the original names AVA0129 for artifact 129, the editor's template AVA0130.
+    let a = art(
+        vec![tmpl("avarnd4.def", 69, passable_except(&[(0, 0)]), 0)],
+        &[(3, 3, 0, 0)],
     );
-    assert_eq!(
-        template(&a, &live(1), 0).map(|t| t.def.as_str()),
-        Some("random.def")
-    );
-    assert_eq!(template(&a, &l, 1), None);
+    let mut l = live(1);
+    l.objects[0].drawn = Some(Drawn {
+        own: Some("AVA0130.def".to_string()),
+        ..drawn("ava0129.def", 5)
+    });
+    let random = shape(2, 1, 1);
+    let own = Shape {
+        colour: [0, 0, 0, 0, 0, 0xC0],
+        ..shape(2, 1, 8)
+    };
+    let s = shapes(&[
+        ("avarnd4.def", random),
+        ("ava0129.def", shape(2, 1, 4)),
+        ("ava0130.def", own),
+    ]);
+    assert_eq!(def(&a, &l, 0, Bugs::Fixed), Some("AVA0130.def"));
+    assert_eq!(super::shape(&a, &l, &s, 0, Bugs::Fixed), Some(own));
+    assert_eq!(def(&a, &l, 0, Bugs::Original), Some("ava0129.def"));
+    let original = super::shape(&a, &l, &s, 0, Bugs::Original);
+    assert_eq!(original, Some(Shape { frames: 4, ..random }));
+    // Placed by the map's template either way.
+    let lists = DrawLists::build(&a, &l, &s, 0).unwrap();
+    assert_eq!(list(&lists, 2, 3), [(0, 1)]);
 }
 
 #[test]
