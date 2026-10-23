@@ -1490,3 +1490,66 @@ draw), and found C4's Easy set-up and the floor's contrast.
   then the golems destroyed the tent. TP3 outside W1's held Citadel: the most hurt healed at 6 of 6
   turns (7 of 7 with TP2; 0.8 % under a uniform draw). The idle tent's Defend left no trace.
 - Not staged: W2, W4, W5, P1, C5, S3, H2 (survey §3), BAT-Q58's Harpy.
+
+## T7 — the rest (2026-10-23)
+
+**Decisions (the user).** All four parts the batches' session proposed in this one session (the
+neighbours, BAT-Q33 with BAT-WAR-003, slip 33, the benchmarks and docs). The rules' breath into a
+side column (BAT-Q62): the engine unchanged, an experiment first, a fix-optional quirk if it
+holds. The let-off: "an unfair advantage for no good reason": a fix-optional quirk; the agent
+judged it outside BAT-QUIRK-25 (a rule every side's stacks meet, not one of the computer's
+estimates, ADR-0027 point 9), so it is BAT-QUIRK-27 of its own, its registration `cross-lane`
+(#436).
+
+- **The neighbours (H1).** 0x4640A0 fills the battle manager's table +0x13468 (read for E17 M3
+  T6c-1, re-read): the field's geometry with every neighbour in column 0 or 16 or off the field
+  -1, a side column's hex only its inner three. `hexes::table_neighbor` is that filter;
+  `hexes::neighbor`, `stack_neighbor` and the hex scores' beside hex (0x420523, which reads the
+  table directly) go through it. The guard hex's touch test (0x4466C0 → 0x4674C0, `b` in `a`'s
+  row) needs nothing: a walker's hexes never lie in a side column. Tests: the H1 row (the
+  defender's Archers on hex 15 stay, from hex 100 they go back to 15; the field's neighbours sent
+  them to 9), the table's own (hexes 15, 9, 34, 17, a machine's ring), and the shooter placement,
+  the area threat and the breath line at the table (no side-column hex). **The rules' uses**
+  (the table's readers: 0x4674C0, 0x469612, 0x523C21 to 0x523EB2, 0x4B4748; 0x523D90's callers):
+  a stack's adjacency, the pathfinder's marks and the shooter-blocked test come out the same,
+  since every column-1 or column-15 neighbour of a war machine's rear hex also touches its front
+  hex; the breath's second hex (melee_strike 0x441739) does not: BAT-Q62.
+- **BAT-Q33 (BAT-QUIRK-27).** `morale::bad_morale` draws `range_inclusive(1, 4)` after a freeze
+  for a stack whose own side (its record array, 0x464B40's argument: a hypnotized stack's real
+  side) has no human player, with the flag; a 1 lets it off. The flag at position 33 in
+  `h3-content`, on in the faithful profiles (`packs/base`, `packs/synthetic`, `h3-harvest`'s
+  text, the pack tests' anchors): faithful core ruleset hashes synthetic `0x3156c56f2211ba02` →
+  `0xa72ea0e9930772bc`, base `0x1ac6c50d158057de` → `0x0c7e01b4dffeba0c`; the twenty replays'
+  headers patched in #436. With the rule `full-s3-a242` (both sides without a human player) let
+  off a stack at command 376: re-recorded from its spec, the defender still wins, in 434
+  commands. The defaults (`human` false) give every side of a game's battle the let-off until the
+  adventure lane sets `human` (their inbox); the AI lane's batch plays both sides as human
+  players'.
+- **BAT-WAR-003.** `war::patient` (the most hit points lost on the top creature, the later stack
+  at a tie) is the automatic tent's patient and, through `computer::tent_patient`, the policy's
+  commanded tent's (BAT-AI-022): one implementation, no draw. An idle tent's Defend changes
+  nothing for a war machine (0x479722) and is not modelled.
+- **Slip 33.** A cast entry that builds a spell context (the scan's `SpellContext::new`, the
+  Faerie Dragon's `predict::plan`) hands its planned damage to the walker in Teleport's turns
+  (`Walker::planned_by_entry`, only while tracking); `Walker::teleport_turns` returns the last
+  (`TeleportTurns`); `teleport` keeps the last over its stacks and, with the slips, gives it to the
+  hero's context (`SpellContext::after_teleport`, a `OnceCell`: Teleport is valued once per
+  choice); `planned_now` reads it before the retreat test's (slip 26) and the context's own. The
+  threat records need nothing: Teleport's refill restores them. Tests: the turns give planned
+  damage only for a caster and only with the slips, and the hero's valuation leaves the last
+  caster's; `after_teleport` replaces the planned damage, the at-risk test reads it, the first
+  holds. BAT-STUB-17 retired. `POLICY_VERSION` 19.
+- **The cost.** `h3 bench-computer --heroes 1` (new: each side a hero with every combat spell at
+  a mastery drawn per school, 500 mana, power and knowledge 10, Citadels with a damaging moat),
+  40 battles, five runs over seeds 1, 5, 9: the slowest decision 3.0 to 4.1 ms (the first run
+  7.3 ms, cold), the mean 0.24 to 0.33 ms: within the hero's 5 ms. Without heroes the mean 30 µs,
+  the slowest 164 to 235 µs (`master`: 54 µs and 669 µs over other battles). Re-set on purpose:
+  `computer-decisions` −9.89 % (1 482 decisions against `master`'s 1 052, about a third fewer
+  instructions each), `random-rollouts-full` +6.38 % (7 768 steps against 7 279: the let-off
+  makes the battles longer; about as many instructions per step).
+- **The AI lane's tables** (their inbox's instructions; `cross-lane`): #436 only `engine.core`;
+  the battle PR version 19: the system actor beats Greedy 0.655 (0.653 before) and Aggressor
+  0.681 (0.681), and attacks best on the neutral set (value +0.285, Greedy +0.224).
+- **Left for E23's closure:** exit criterion 4's gated batch workload with `System` seats (the AI
+  lane's `benches/ai/`, their inbox), criterion 6 on the user's Windows machine, `BACKLOG.md`
+  (`shared/`). BAT-Q62's row with the next batch.

@@ -4687,7 +4687,9 @@ striker always touches the stack it strikes).
 **0x523DF0 and 0x523D90.** A two-hex stack's directions 0 to 2 and 6, 7 are taken from its right
 hex, 3 to 5 from its left hex, whichever is its position (+0x44: the position + 1 facing right, − 1
 facing left); 6 and 7 are the hexes above and below its middle (0x523D90: 5 or 0 and 3 or 2 by the
-facing).
+facing). Both read the neighbour table +0x13468 (0x4640A0, filled at the battle's setup): no
+neighbour lies in a side column, column 0 or 16, nor off the field; a side column's own hex keeps
+its neighbours in the next column (E23 T7, batch 4b H1; the port's `hexes::table_neighbor`).
 
 **0x41F580's details** (beyond §7.38). The search is 0x4B3400 with the acting side (+0x132C0),
 the target hex, the tactics flag, range 127 and speed −1. **The flag's player test reads the

@@ -166,7 +166,7 @@ retreat at 0.143; a fight at 0.172, then a retreat at the second activation at 0
 stack no longer × 1.2). S1 and S2 were not reached (batch 4c SC, Red in auto combat: Red's
 Catapult breached a wall before the Cyclops' first turn; afterwards the Cyclops shot the
 Archers, as read). S-25 (BAT-Q33): a neutral side's and a computer player's stacks are let off
-one freeze in four (28 of 105, 14 of 60), a human's never. Not staged: W2, W4, W5 and P1
+one freeze in four (28 of 105, 14 of 60), a human's never (BAT-QUIRK-27 since E23 T7). Not staged: W2, W4, W5 and P1
 (positions the formations and the tile's obstacles do not give), C5 (the Genie's mean on the
 original's state), S3 (an RoE map), H2 (no single choice shows it).
 

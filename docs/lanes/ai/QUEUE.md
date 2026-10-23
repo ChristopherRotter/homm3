@@ -46,6 +46,20 @@ Sorted by destination at E05's audit (T9a, 2026-10-19); the origin stays in brac
 done: BAT-Q33's point for E05 (AI-Q3, ADR-0025 point 6), the `h3-game` coverage gap of a pending
 Pass offer (fixed by the adventure lane's fixed tests, #266).
 
+- 2026-10-23 (the battle lane, E23 T7, `battle/e23-t7-rest` on `shared/e23-t7-human` #436, both
+  `cross-lane` with the user's consent; **for you**): **`POLICY_VERSION` 19** (the computer's
+  neighbour table without the side columns, batch 4b H1; slip 33 under BAT-QUIRK-25) and two
+  rules: BAT-WAR-003's automatic tent heals the most hurt stack (no draw any more), and the new
+  fix-optional **BAT-QUIRK-27** (`quirk.battle.computer_morale_let_off`, registry position 33, on
+  in `faithful`): a frozen stack of a side whose `BattleSetup.human` is false escapes one freeze in
+  four (BAT-MOR-004; ADR-0023 point 7 widened). Your batch plays both sides as human players'
+  (AI-Q3), so a `System` neutral side in training gets no let-off: set that side's `human` false if
+  the original's handicap is wanted (a question for E06). Both bot reports regenerated in the two
+  pull requests (#436: only `engine.core`; the battle PR: version 19; the system actor beats Greedy
+  0.655, Aggressor 0.681, attacks best on the neutral set, value +0.285). **E23's exit criterion 4
+  wants a gated batch workload with `System` seats** (`benches/ai/`; `h3 ai bench` has no `System`
+  seat yet): yours to add when it suits; the computer's own cost is `h3 bench-computer` (now with
+  `--heroes 1`: the slowest decision 3.0 to 4.1 ms, the 5 ms budget).
 - 2026-10-23 (this lane, E06 T5; for the next `shared/` change): `docs/07-simulation-and-ai.md`
   (shared) should name the batch's optional kill preview (C ABI v33: the acting side's previewed
   kills of each legal attack and shot entry, the engine's BAT-DMG-011 preview, what the original
