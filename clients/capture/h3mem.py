@@ -3,8 +3,8 @@
 adventure map's (M2 T6), *provisional*; clients/capture/README.md, "The original's state". Under
 Wine the game is a Linux process that maps Heroes3.exe at its image base, so /proc/<pid>/mem
 gives its globals and records at their addresses (docs/exe/map.toml, structs.toml). Read only
-but for the harness's own timers and a siege's wall states before its first frame (E17 M4 T1b,
-`write_walls`).
+but for the harness's own timers, a siege's wall states before its first frame (E17 M4 T1b,
+`write_walls`) and a map still's explored tiles (E24 M1 T3b2, `write_explored`).
 
   h3mem.py            print the battle's clocks and its stacks' animation state as JSON
   h3mem.py adventure  print the adventure map's state as JSON: the current player, the view,
@@ -12,7 +12,8 @@ but for the harness's own timers and a siege's wall states before its first fram
 
 Library use: `Mem` (globals, stacks, battle_heroes, battle_outcome, battlefield; current_player,
 player, heroes, all_heroes, hero, hero_named, view, mouse_tile, path, difficulty, tile, explored,
-monster, creature_name, artifact_name, dialog_text, dialog_items, level_up_dialog). Needs a running game
+monster, creature_name, artifact_name, dialog_text, dialog_items, level_up_dialog; the map's
+stills: write_explored, def_palette, map_due, frame_steps). Needs a running game
 (h3drive.py) and the rights to read its memory (root in a sandbox).
 """
 
@@ -72,6 +73,16 @@ MONSTER_CLASS = 54
 # 0x4F79B0): a pointer to a u16 per tile at (level x side + y) x side + x, its low byte one
 # explored bit per player (bit n for colour n), its bit 8 the guard flag.
 TILE_VISION_POINTER = 0x6989F8
+# The adventure manager's DEFs of the view (E24 design §1.3, §1.6; adventure_tick 0x4ED490): a
+# DEF's pointer at manager +0x60 + 4 x terrain (water +0x80, lava +0x7C) and +0x88 + 4 x river
+# (clear +0x8C, mud +0x94, lava +0x98); a DEF's 16-bit palette (a pointer at +0x20), its 256
+# colours from +0x1C (H3API's H3LoadedDef, H3Palette565; palette16_rotate 0x522950). The objects'
+# frame steps: manager +0x100 (design §1.6).
+TERRAIN_DEFS, RIVER_DEFS, DEF_PALETTE, PALETTE_COLOURS, FRAME_STEPS = 0x60, 0x88, 0x20, 0x1C, 0x100
+# The palette tick's next time (palette_tick_time 0x6989B4: the tick 0x4ED490 rotates once the
+# clock reaches it and sets it to now + 200 on the map). The adventure map's idle step redraws
+# the view once the clock reaches FRAME_DEADLINE (0x408A88; design §1.6).
+PALETTE_TICK_TIME = 0x6989B4
 # The creature table (a pointer at 0x6747B0; 0x74 bytes a record): the singular and plural names
 # (char* +0x14, +0x18).
 CREATURE_TABLE_POINTER, CREATURE_SIZE = 0x6747B0, 0x74
@@ -546,6 +557,35 @@ class Mem:
         word = struct.unpack("<H", self.read(self.u32(TILE_VISION_POINTER)
                                              + 2 * ((z * side + y) * side + x), 2))[0]
         return bool(word >> colour & 1)
+
+    def write_explored(self, z, explored, colour=0):
+        """Writes a player's explored bit of every tile of a level (E24 M1 T3b2, the explored
+        tiles as stills): `explored(x, y)` says which; the other players' bits and the guard flag
+        stay. The view's next draw shows them (the unexplored pass reads only these bits, design
+        §1.5); nothing else of the game's state changes."""
+        side = self.i32(self.game() + MAP_SIDE)
+        base = self.u32(TILE_VISION_POINTER) + 2 * z * side * side
+        words = list(struct.unpack(f"<{side * side}H", self.read(base, 2 * side * side)))
+        bit = 1 << colour
+        for i, word in enumerate(words):
+            words[i] = word | bit if explored(i % side, i // side) else word & ~bit
+        with open(f"/proc/{self.pid}/mem", "r+b", buffering=0) as f:
+            f.seek(base)
+            f.write(struct.pack(f"<{side * side}H", *words))
+
+    def def_palette(self, field):
+        """The 256 colours (5-6-5) of the 16-bit palette of the DEF at adventure manager +`field`
+        (E24 M1 T3b2: the terrains' and rivers' palettes as the tick has rotated them)."""
+        palette = self.u32(self.manager_field(field) + DEF_PALETTE)
+        return list(struct.unpack("<256H", self.read(palette + PALETTE_COLOURS, 512)))
+
+    def map_due(self):
+        """The adventure map's next palette tick and next redraw (clock times, ms)."""
+        return self.u32(PALETTE_TICK_TIME), self.u32(FRAME_DEADLINE)
+
+    def frame_steps(self):
+        """The objects' frame steps (adventure manager +0x100, design §1.6)."""
+        return self.manager_field(FRAME_STEPS)
 
     def monster(self, x, y, z=0):
         """The wandering monster on a tile from its word (E17 H1; E3-3), None for none: its

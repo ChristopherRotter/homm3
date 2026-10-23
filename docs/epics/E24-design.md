@@ -161,6 +161,13 @@ The table, mask = 16 × row + column:
 - **What a still needs:** k (or the palettes read from memory), +0x100 at the last draw and every
   object's phase (memory): T3b settles how the harness gets them and whether its virtual clock
   drives clock_ms here.
+- **The screen lags the palettes** (T3b2, the idle step 0x408A88 read and a capture): the view is
+  redrawn only once the clock reaches frame_deadline (0x698998, every 180 ms), while the tick
+  rotates the palettes whenever one of its 71 callers polls it after its time; between a tick and
+  the next redraw (up to 180 ms) memory holds k and the screen shows k − 1 (a capture saw it:
+  42 035 pixels of water differed by that step). The screen's water and lava change at the
+  redraws, each showing the ticks before it (the redraw's own tick at its start included): M2's
+  animation follows the redraws, not the ticks.
 
 ### 1.7 VCMI 1.7.5 compared
 
@@ -207,7 +214,7 @@ The table, mask = 16 × row + column:
   `tshrc` 0; rivers, roads and `tshre` 2 (`tshre`'s runs: index 0 and the shadow codes 1–4, as
   §1.5's second drawer reads them); the gems 1, runs of index 0 only.
 
-### 1.10 The still (M1 T3b1, 2026-10-23)
+### 1.10 The still (M1 T3b1 and T3b2, 2026-10-23)
 
 - **The cut and the mirrors** (read at T3b1): a pass hands `def_draw_raw` a source rectangle of
   the tile's 32 × 32 picture as placed, (8 − x, …) when the tile starts left of the clip and so
@@ -224,8 +231,21 @@ The table, mask = 16 × row + column:
 - **The canvases:** every frame of the twenty DEFs the passes draw (the terrains, rivers, roads,
   `edg`, `tshrc`, `tshre`) has a 32 × 32 canvas, the passes' source rectangle (a one-off read of
   the user's `H3sprite.lod` at T3b1).
-- **Open for T3b2:** whether the original's view can put the map's last row at the view's bottom
-  row (MCL-Q2's case); the moment (k and the frame steps) of a capture.
+- **The captures (T3b2):** the virtual clock (`xdd.dll`) drives the adventure map as it drives
+  a battle: frozen, two dumps 1.5 s apart are the same, and a 400 ms step moves the hero's flag
+  and the panels; the menus run in real time, so a capture's palette step k (mod 36) is read
+  from the cycling DEFs' palettes in memory (each range its file's rotated up by k: one k fits
+  all five DEFs) and the objects' frame steps from the manager's +0x100, never assumed; the
+  harness steps the frozen clock to the later of the next tick and the next redraw, so the
+  screen shows the palettes memory holds (§1.6, the lag). A
+  minimap click reaches views past every edge ((−2, −2), (22, 21) on a 36-tile map) and the one
+  whose bottom row is the map's last (MCL-Q2's case: reachable, the roads missing). Red's
+  explored tiles are written into the vision words before the view is set (the harness,
+  `clients/capture/README.md`, "The map's stills"); the unexplored pass reads only those bits.
+  Every situation of the map's capture set (`clients/map/situations/`) matches the original pixel
+  for pixel outside the panels: terrain of every kind with its transitions and mirrors, water
+  and lava cycling, the four rivers, the three roads (the last row's at both views), the edge
+  at both corners, the unexplored tiles' pieces.
 
 ## 2. The objects' draw order and shadows (M1 T1b, 2026-10-23; research item 9)
 

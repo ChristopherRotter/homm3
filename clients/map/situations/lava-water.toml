@@ -1,0 +1,7 @@
+# Lava and water, both cycling (E24 M1 T3b2): Thousand Islands (allies)' tiles (108, 126)-(127,
+# 143).
+size = 36
+terrain = "grass"
+copy = [{ map = "Thousand Islands (allies).h3m", from = [108, 126], to = [127, 143], at = [0, 0] }]
+heroes = [[33, 33], [33, 30]]
+view = [0, 0, 0]

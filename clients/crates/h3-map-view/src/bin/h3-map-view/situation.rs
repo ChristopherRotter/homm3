@@ -1,0 +1,83 @@
+//! `situation`: a situation's map (E24 M1 T3b2): its file read (`h3_map_view::situation`), the
+//! shipped maps its copies name read from the installation copy's `Maps`, the map written with
+//! the adventure lane's writer.
+
+use std::collections::BTreeMap;
+use std::fs;
+use std::path::PathBuf;
+use std::process::ExitCode;
+
+use h3_map::Limits;
+use h3_map::writer;
+use h3_map_view::situation::Situation;
+
+use crate::files;
+
+/// The command's options.
+#[derive(Debug, PartialEq, Eq)]
+pub struct Options {
+    file: PathBuf,
+    install: PathBuf,
+    out: PathBuf,
+}
+
+impl Options {
+    /// Parses `<situation.toml> --out <map.h3m> [--install <dir>]`.
+    pub fn parse(args: &[String]) -> Result<Self, String> {
+        let (mut file, mut install, mut out) = (None, None, None);
+        let mut rest = args.iter();
+        while let Some(arg) = rest.next() {
+            let slot = match arg.as_str() {
+                "--install" => &mut install,
+                "--out" => &mut out,
+                other if !other.starts_with("--") && file.is_none() => {
+                    file = Some(PathBuf::from(other));
+                    continue;
+                }
+                other => return Err(format!("situation: unexpected `{other}`")),
+            };
+            let value = rest
+                .next()
+                .ok_or_else(|| format!("situation: `{arg}` needs a path"))?;
+            *slot = Some(PathBuf::from(value));
+        }
+        Ok(Self {
+            file: file.ok_or("situation: which situation?")?,
+            install: install.unwrap_or_else(files::default_install),
+            out: out.ok_or("situation: --out is required")?,
+        })
+    }
+}
+
+pub fn run(options: &Options) -> ExitCode {
+    match write(options) {
+        Ok(()) => {
+            println!("situation: wrote {}", options.out.display());
+            ExitCode::SUCCESS
+        }
+        Err(message) => {
+            eprintln!("situation: {message}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+fn write(options: &Options) -> Result<(), String> {
+    let path = &options.file;
+    let text = fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
+    let situation = Situation::parse(&text).map_err(|e| format!("{}: {e}", path.display()))?;
+    let mut sources = BTreeMap::new();
+    for name in situation.sources() {
+        let map = options.install.join("Maps").join(&name);
+        let bytes = fs::read(&map).map_err(|e| format!("{}: {e}", map.display()))?;
+        let raw = h3_map::read(&bytes, &Limits::default())
+            .map_err(|e| format!("{}: {e}", map.display()))?;
+        sources.insert(name, raw);
+    }
+    let (map, extras) = situation.build(&sources)?;
+    let bytes = writer::write_with(&map, &extras).map_err(|e| format!("{e:?}"))?;
+    if let Some(dir) = options.out.parent() {
+        fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+    }
+    fs::write(&options.out, bytes).map_err(|e| format!("{}: {e}", options.out.display()))
+}

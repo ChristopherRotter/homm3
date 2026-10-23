@@ -24,8 +24,9 @@ pub struct Options {
     map_file: PathBuf,
     view: ViewAt,
     at: u32,
+    cycles: Option<u32>,
     viewer: u8,
-    hidden: Option<[i32; 4]>,
+    hidden: Vec<[i32; 4]>,
     bugs: Bugs,
     install: PathBuf,
     map: PathBuf,
@@ -43,13 +44,13 @@ fn numbers<const N: usize>(value: &str, what: &str) -> Result<[i32; N], String> 
 }
 
 impl Options {
-    /// Parses `<map.h3m> --view <x>,<y>[,<z>] [--at <ms>] [--viewer <0-7>]
-    /// [--hidden <x0>,<y0>,<x1>,<y1>] [--bugs fixed|original] [--install <dir>] [--map <dir>]
+    /// Parses `<map.h3m> --view <x>,<y>[,<z>] [--at <ms>] [--cycles <k>] [--viewer <0-7>]
+    /// [--hidden <x0>,<y0>,<x1>,<y1>]... [--bugs fixed|original] [--install <dir>] [--map <dir>]
     /// [--out <file.png>] [--list]`.
     pub fn parse(args: &[String]) -> Result<Self, String> {
         let mut rest = args.iter();
         let mut map_file = None;
-        let (mut view, mut at, mut viewer, mut hidden) = (None, 0, 0, None);
+        let (mut view, mut at, mut cycles, mut viewer, mut hidden) = (None, 0, None, 0, Vec::new());
         let (mut bugs, mut install, mut map, mut out, mut list) =
             (Bugs::Fixed, None, None, None, false);
         while let Some(arg) = rest.next() {
@@ -82,6 +83,13 @@ impl Options {
                         .parse()
                         .map_err(|_| "render: --at takes milliseconds")?
                 }
+                "--cycles" => {
+                    cycles = Some(
+                        value
+                            .parse()
+                            .map_err(|_| "render: --cycles takes a count of steps")?,
+                    );
+                }
                 "--viewer" => {
                     viewer = value
                         .parse()
@@ -89,7 +97,7 @@ impl Options {
                         .filter(|&c: &u8| c < 8)
                         .ok_or("render: --viewer takes a colour, 0-7")?;
                 }
-                "--hidden" => hidden = Some(numbers::<4>(value, "--hidden")?),
+                "--hidden" => hidden.push(numbers::<4>(value, "--hidden")?),
                 "--bugs" => {
                     bugs = match value.as_str() {
                         "fixed" => Bugs::Fixed,
@@ -107,6 +115,7 @@ impl Options {
             map_file: map_file.ok_or("render: which map?")?,
             view: view.ok_or("render: --view is required")?,
             at,
+            cycles,
             viewer,
             hidden,
             bugs,
@@ -155,12 +164,20 @@ fn render(options: &Options) -> Result<PathBuf, String> {
     let layout = files::load_layout(&options.map)?;
     let path = &options.map_file;
     let bytes = fs::read(path).map_err(|e| format!("{}: {e}", path.display()))?;
-    let raw =
-        h3_map::read(&bytes, &Limits::default()).map_err(|e| format!("{}: {e}", path.display()))?;
+    // A shipped map is gzip-compressed, the writer's (a situation's) is not.
+    let raw = if bytes.starts_with(&[0x1F, 0x8B]) {
+        h3_map::read(&bytes, &Limits::default())
+    } else {
+        h3_map::parse(&bytes, &Limits::default())
+    }
+    .map_err(|e| format!("{}: {e}", path.display()))?;
     let art = MapArt::from_raw(&raw).map_err(|e| format!("{}: {e}", path.display()))?;
     let mut live = Live::at_start(&raw, &art, options.viewer);
     live.moment = Moment::at(options.at, tables.map.cycle_ms, tables.map.frame_ms);
-    if let Some([x0, y0, x1, y1]) = options.hidden {
+    if let Some(cycles) = options.cycles {
+        live.moment.cycles = cycles;
+    }
+    for &[x0, y0, x1, y1] in &options.hidden {
         for y in y0.min(y1)..=y0.max(y1) {
             for x in x0.min(x1)..=x0.max(x1) {
                 live.explored.set(x, y, options.view.z, false);

@@ -1,0 +1,7 @@
+# The map's edge at its top-left corner (E24 M1 T3b2; design §1.4): the view's top-left past the
+# map, so the corner, both edges and the tiles further out show; Deluge's coast on the map.
+size = 36
+terrain = "grass"
+copy = [{ map = "Deluge.h3m", from = [10, 10], to = [29, 27], at = [0, 0] }]
+heroes = [[33, 33], [33, 2]]
+view = [-2, -2, 0]

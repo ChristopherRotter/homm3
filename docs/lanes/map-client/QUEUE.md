@@ -11,25 +11,6 @@ detail in `docs/epics/E24-design.md`; captures by the harness (`clients/capture/
 in git. Every oddity of the original a reading or a capture finds is an `MCL-Q<n>` in the same
 task (the HANDOFF's autonomy contract).
 
-### E24 M1 T3b2 — the first exact diff of the tiles
-
-- **Scope:** the harness side (an additive change: `h3adv.py` or a new script loads a map in hot
-  seat, sets the view, parks the mouse, dumps at a known game time); whether the virtual clock
-  drives the adventure map's animations, and if not the moment (k and the frame steps, E24
-  design §1.6) read from memory; the live part a capture needs passed to `h3-map-view render`
-  (T3b1: it takes `--at` on a never-late clock and `--hidden`, a debug rectangle): the moment and
-  the explored tiles (the original's start reveals only around its heroes and towns, so a view
-  away from them is shroud: read the vision words, or reveal the map, the task decides); the
-  first situations (the writer's maps of terrain transitions, roads and rivers through
-  `GivenTile`, their heroes outside the view; a view at the map's corners for the edge; the view
-  whose bottom row is the map's last, if play reaches it: MCL-Q2); the comparison masks (the
-  panels, the mouse, and whatever the view shows that T4 and T5 draw). Compare with
-  `render --bugs original`.
-- **Acceptance:** each situation's still matches the original pixel for pixel outside its masks,
-  or the differences are listed with their cause (each oddity an `MCL-Q<n>`).
-- **Depends on:** T3b1 (done: `h3-map-view render`, the scene, the map's drawers; `E24-design.md`
-  §1.10). **Status:** ready.
-
 ### E24 M1 T4 — the objects and their shadows in the original's order
 
 - **Scope:** the objects drawn as T1b read (`E24-design.md` §2: the draw lists and layers, the
@@ -41,7 +22,12 @@ task (the HANDOFF's autonomy contract).
   (`h3mem.py`, additive) into the live part.
 - **Acceptance:** the situations and the shipped maps' views match pixel for pixel outside the
   masks of what T5 draws; research item 9 closed in the design notes (the reading and its frames).
-- **Depends on:** T1b (done), T3b2. **Status:** waiting (T3b2).
+- **Harness:** a situation (`clients/map/situations/`, `h3_map_view::situation`) gains objects
+  (the writer's `AnyObject`); `h3map.py still` already records the objects' frame steps
+  (`live.toml` `frames`, the manager's +0x100); the objects' phases (the 12-byte records' +0xA)
+  are a new `h3mem` read; the masks stay the panels'.
+- **Depends on:** T1b (done), T3b2 (done: `h3map.py`, the situations, every tile pass exact).
+  **Status:** ready.
 
 ### E24 M1 T5 — heroes, flags, owners and the explored tiles
 
@@ -55,7 +41,8 @@ task (the HANDOFF's autonomy contract).
 
 ### E24 M1 T6 — the capture set and M1's closure
 
-- **Scope:** the map's capture set (`clients/map/situations/`: every situation of T3b2 to T5 with
+- **Scope:** the map's capture set (`clients/map/situations/`, started by T3b2 with `set.toml`
+  and `h3map.py set`: every situation of T3b2 to T5 with
   its masks) and its digests, so a later task captures only what it changes (as E17's `drawn`,
   the runbook's "Which captures a change needs"); M1's closure: a fresh reviewer agent, its
   findings fixed or queued, the review list (the epic's), the user's checkpoint; M2 T0 queued.

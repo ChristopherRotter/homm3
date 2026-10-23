@@ -1,0 +1,63 @@
+# The map's capture set (E24 M1 T3b2, *provisional*; clients/capture/README.md, "The map's
+# stills"): the situations beside this file, each a still the harness shows the original and
+# compares with ours (`python3 capture/h3map.py set`, from clients/): its map built with the
+# writer (`h3-map-view situation`), Red's explored tiles written (all but the situation's
+# `hidden`), the view by the minimap, the clock frozen; ours drawn with the original's drawing
+# bugs (`render --bugs original`) at the palette step the original's memory shows. Masked: the
+# panels (M3) and the parked cursor over them. Per situation the pixels that differ outside the
+# masks, with why; a run that counts another number fails.
+
+[[situation]]
+id = "deluge-coast"
+differing = 0
+why = "exact: terrain transitions and mirrors, water at the original's palette step, dirt roads"
+
+[[situation]]
+id = "edge-top-left"
+differing = 0
+why = "exact: the corner, both edges and the tiles further out (design §1.4)"
+
+[[situation]]
+id = "edge-bottom-right"
+differing = 0
+why = "exact: the opposite corner and the tiles further out"
+
+[[situation]]
+id = "road-last-row-19"
+differing = 0
+why = "exact with the original's bug: the last row's roads missing at the view's bottom row (MCL-Q2)"
+
+[[situation]]
+id = "road-last-row-20"
+differing = 0
+why = "exact: the last row's roads' top halves, the bottom edge below them"
+
+[[situation]]
+id = "rivers-clear"
+differing = 0
+why = "exact: clear rivers cycling, dirt, grass and rough"
+
+[[situation]]
+id = "rivers-mud"
+differing = 0
+why = "exact: a muddy river cycling (three ranges)"
+
+[[situation]]
+id = "rivers-lava"
+differing = 0
+why = "exact: a lava river cycling over the underground's terrains"
+
+[[situation]]
+id = "rivers-icy"
+differing = 0
+why = "exact: an icy river (no cycle) over snow, the map's edge"
+
+[[situation]]
+id = "lava-water"
+differing = 0
+why = "exact: lava and water cycling together (one step k for both)"
+
+[[situation]]
+id = "unexplored"
+differing = 0
+why = "exact: the shroud's edge pieces by mask, mirror and parity, the full piece"

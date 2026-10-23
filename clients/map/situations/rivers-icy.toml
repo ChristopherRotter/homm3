@@ -1,0 +1,7 @@
+# An icy river over snow, by the map's edge (E24 M1 T3b2): Adventures of Jared Haret's tiles
+# (20, 20)-(35, 35) at the top-left.
+size = 36
+terrain = "grass"
+copy = [{ map = "Adventures of Jared Haret.h3m", from = [20, 20], to = [35, 35], at = [0, 0] }]
+heroes = [[33, 33], [33, 30]]
+view = [0, 0, 0]
