@@ -8,10 +8,10 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 - **E05 closed 2026-10-20**: its record and design in `E05-log.md` (cited as §n), the
   environment as built in `docs/07-simulation-and-ai.md` §1.1.
 - **E06** (AI-Q8; `docs/epics/E06-battle-ai.md`, design `E06-design.md`, record `E06-log.md`):
-  increments 1 to 5 done (#306 to #432). Best so far `t7-1` (20 M, a third neutral): 0.828,
-  0.551, 0.528 against Random, Aggressor, Greedy, the system actor 0.374; the neutral set's value
-  +0.245 below the target +0.285. **Now:** T6a, the behaviour analysis (QUEUE), then increment
-  6's lever.
+  increments 1 to 5 done (#306 to #432); T6a (the behaviour analysis) done 2026-10-23. Best so
+  far `t7-1` (20 M, a third neutral): 0.828, 0.551, 0.528 against Random, Aggressor, Greedy, the
+  system actor 0.374; the neutral set's value +0.245 below the target +0.285. **Next:**
+  increment 6's lever (QUEUE: the user's choice).
 - **Versions:** battle action encoding v13, observation encoding v21, replay format v30 (E23 T6), the adventure env's action encoding v4 (E08 T45), C ABI v33 (E06 T5: the kill preview) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q10, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
@@ -89,12 +89,11 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
 
 ## Recent sessions
 
-### 2026-10-23 — E06 T6a, the behaviour analysis (in progress)
+### 2026-10-23 — E06 T6a, the behaviour analysis
 
-- Built and pushed (`claude/brave-wright-msoutb`): `python -m h3env.train.inspect` (E06-log,
-  T6a); found the turret shot's preview (battle lane's inbox). **Next:** the user's
-  `runs/t7-1/best.pt`, the analysis against the system actor and Greedy, the findings in
-  E06-log, the pull request, increment 6's lever put to the user.
+- Built `python -m h3env.train.inspect`, ran it on the user's `t7-1` best (records
+  `t7-1-inspect-*.json`; E06-log T6a). Found the turret shot's preview (battle lane's inbox).
+  Increment 6's lever put to the user (QUEUE).
 
 ### 2026-10-23 — T7d's mix; T5's rest beside it
 

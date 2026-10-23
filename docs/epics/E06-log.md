@@ -645,9 +645,11 @@ entry only where a task builds on it.
   legal; each melee strike's and shot's previewed kills in hit points against the best legal
   strike's, strikes killing nothing while one could, strikes when one was legal; per *clean*
   strike (no opponent turn and no new round before the next observation) the hit points dealt
-  and lost, melee into a target with retaliations left, who struck first. `layout.py` names the
-  columns it reads; `h3-sim`'s layout test pins them (after a Wait and a Defend; a swapped pair
-  fails it).
+  and lost, melee into a target with retaliations left (and of them those while a target without
+  was in reach), who struck first; the share of the stack turns that waited and defended, the
+  agent's (its decisions) and the opponent's (its stacks' flags, the most seen per round).
+  `layout.py` names the columns it reads; `h3-sim`'s layout test pins them (after a Wait and a
+  Defend; a swapped pair fails it). The results: `python/records/t7-1-inspect-*.json`.
 - **The reading checked:** a clean strike's target lost at least the least kills previewed in
   98.9 % (Random against Aggressor, 60 battles per kind and side; 350 clean strikes) and 100 %
   (against the system actor); the four misses were melee strikes on Vampire Lords, whose
@@ -661,3 +663,40 @@ entry only where a task builds on it.
   each decision in one category, the clean strikes against the preview, the neutral set, the
   observation's reading by hand, the spells' names; with torch: a checkpoint's analysis plays its
   ladder's draws, the command's tables and JSON, a held-out seed refused.
+- **`t7-1`'s best** (the user's `best.pt`; the sandbox's CPU, 4 threads, about 8 minutes per
+  set; report set 3 000 battles per opponent, neutral set 1 500): the rates as the record's
+  within the device's draws (the system actor 0.371, Greedy 0.531, the neutral set 0.968 at
+  +0.236; recorded 0.374, 0.528, 0.972 at +0.245). Against the system actor, Greedy in brackets:
+
+  | | hero | siege, a hero defends | a garrison's siege |
+  |---|---|---|---|
+  | attacking | 0.55 (0.74) | 0.43 (0.64) | 0.92 (0.94) |
+  | defending | 0.17 (0.32) | 0.25 (0.42) | 0.04 (0.10) |
+
+- **The casts are not the gap:** the hero casts in 87 % of the rounds it could (88 against
+  Greedy) and spends 33 mana a battle, 44 % of its maximum; the system actor's hero 31, 41 %.
+  Magic Arrow, Ice Bolt and Lightning Bolt are 60 % of its casts, then Blind, Implosion, Curse,
+  Weakness, Chain Lightning, Slow, Resurrection. On the neutral set it casts in 67 % (17 mana).
+- **It plays the same against both opponents:** the mix (moves 27 and 24 %, melee 33 and 34,
+  shots 12 and 14, the hero's casts 10 and 10, waits 2, defends 1, the tactics phase 11),
+  shooting (it shoots at 88 % of the decisions with a legal shot, moves at 7 %), targeting and
+  trades within 1 to 3 points; only the outcomes differ. It never met the system actor in these
+  kinds (decision 9).
+- **The system actor waits and defends more:** its creature stacks wait in 7 % of their turns
+  (sieges 9 to 16 %) and defend in 3 % (up to 8 %); the agent's 3 % and 1 %; Greedy's none.
+- **Targeting leaves kills:** 53 % of its strikes are the best previewed strike (kills in hit
+  points; against Greedy 55 %); their previewed kills are 77 % of the best's; 12 % kill nothing
+  while a strike could (18 to 27 % in the battles it lost attacking); it strikes at 73 % of the decisions with a legal
+  strike. On the neutral set 72 %, 80 %, 9 %.
+- **Trades:** 77 % of its melee strikes meet a retaliation, 11 % while a target without one was in
+  reach; a clean melee strike deals 151 hit points and costs 53 (against Greedy 155 and 47), a
+  shot deals 70 and costs 1. It strikes first in 41 % of the battles (Greedy 44 %; about half in
+  a hero battle, 21 to 30 % attacking a siege).
+- **Read for increment 6** (put to the user): the casts' exploration and the mana price are not
+  indicated. The agent loses mostly as the defender and does not adapt to the opponent that beats
+  it, which waits and defends more than anything it trained against: the direct lever is meeting
+  the system actor in training, in the hero kinds (a change of decision 9; the agent's
+  recommendation, A/B against `t7-1`'s settings). Targeting leaves about a quarter of the
+  previewed kills and an eighth of the strikes kill nothing: AI-Q7 (b) part 2 addresses it, once
+  a turret's preview is right (the battle lane's inbox) or the turrets' entries are left out of
+  the feature.
