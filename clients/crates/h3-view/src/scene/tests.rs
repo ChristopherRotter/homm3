@@ -958,6 +958,10 @@ fn the_panel_over_time_follows_the_turns_and_the_log() {
     let none = Panels::new(&o, &[], Vec::new());
     assert_eq!(picture(&none.at(&o, &[], 0, &layout)), Some(0));
     assert_eq!(none.text(0), "");
+    // E17 M3 T9b, the reviewer: the scroll buttons take a click once a human's turn enabled them.
+    assert!(panels.scrolls(&o, &started, 300));
+    assert!(!panels.scrolls(&o, &started, 200));
+    assert!(!none.scrolls(&o, &[], 0));
 }
 
 #[test]
