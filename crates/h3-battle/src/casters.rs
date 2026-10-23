@@ -8,8 +8,9 @@
 //! (BAT-MAG-052, E04b T7b3); each cast uses one of the casts its creature has per battle. A
 //! periodic caster (the Enchanter, BAT-MAG-053, E04b T7b4) takes no action for it: it casts on
 //! its own at its activation, once in so many rounds of its side. The casts left, the active
-//! stack's drawn spell and each side's rounds since its periodic cast are kept beside the stacks
-//! (the hot paths never read them).
+//! stack's drawn spell, each stack's last drawn spell (the computer reads it, E23 T5b2b) and each
+//! side's rounds since its periodic cast are kept beside the stacks (the hot paths never read
+//! them).
 
 use h3_content::{CreatureFlag, CreatureTypeId, PERIODIC_FIRST_STACK, SpellId};
 use h3_content_battle::BattleSpell;
@@ -117,6 +118,22 @@ pub(crate) fn stack_cast(
     ruleset: &BattleRuleset,
     id: StackId,
 ) -> Option<CreatureSpell> {
+    let drawn = state
+        .casts
+        .drawn
+        .filter(|&(s, _)| s == id && state.active == Some(id))
+        .map(|(_, spell)| spell);
+    cast_with(state, ruleset, id, drawn)
+}
+
+/// What stack `id` casts as its action with `drawn` as a random caster's spell (none: it casts
+/// nothing), else as [`stack_cast`].
+fn cast_with(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    id: StackId,
+    drawn: Option<SpellId>,
+) -> Option<CreatureSpell> {
     let stack = state.stack(id)?;
     // rule: BAT-TER-005
     let mastery = |m| magic::other_mastery(state, m);
@@ -149,22 +166,22 @@ pub(crate) fn stack_cast(
             Ability::RandomSpellCaster {
                 mastery: m,
                 power_per_creature,
-            } => state
-                .casts
-                .drawn
-                .filter(|&(s, _)| s == id && state.active == Some(id))
-                .map(|(_, spell)| CreatureSpell {
-                    spell: CastSpell::Named(spell),
-                    mastery: mastery(m),
-                    power: u32::from(power_per_creature).saturating_mul(stack.count),
-                    drawn: true,
-                }),
+            } => drawn.map(|spell| CreatureSpell {
+                spell: CastSpell::Named(spell),
+                mastery: mastery(m),
+                power: u32::from(power_per_creature).saturating_mul(stack.count),
+                drawn: true,
+            }),
             _ => None,
         })
 }
 
+/// [`Casts::last`] of a stack that has drawn no spell in the battle.
+pub(crate) const NO_DRAW: u16 = u16::MAX;
+
 /// The casts left per stack, by stack id (the original's stack field +0xDC), the active stack's
-/// drawn spell (+0x4E0) and each side's rounds since its periodic cast (the battle's +0x132A0).
+/// drawn spell and each stack's last (+0x4E0), and each side's rounds since its periodic cast
+/// (the battle's +0x132A0).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct Casts {
     /// The casts each stack has left this battle.
@@ -172,6 +189,12 @@ pub(crate) struct Casts {
     /// The spell a random caster drew at its activation, with the stack (BAT-MAG-049); none after
     /// the activation of any other stack.
     pub(crate) drawn: Option<(StackId, SpellId)>,
+    /// Per stack, the raw spell a random caster drew at its last activation ([`NO_DRAW`] before
+    /// its first in the battle): the original's +0x4E0, which only the draw writes, so another
+    /// stack's activation and a reused record keep it (`installation.md` §7.59). The rules read
+    /// only the active stack's draw ([`Casts::drawn`]); the computer's cast entry of a stack that
+    /// is not the active one reads this (E23 T5b2b, [`drawn_spell`]).
+    pub(crate) last: [u16; STACK_CAPACITY],
     /// Per side, the round starts since its periodic casters cast, at most 255 (BAT-MAG-053):
     /// every battle starts with 255, ready (BAT-QUIRK-14: the original keeps the count of the
     /// battle before).
@@ -183,6 +206,7 @@ impl Default for Casts {
         Self {
             left: [0; STACK_CAPACITY],
             drawn: None,
+            last: [NO_DRAW; STACK_CAPACITY],
             periodic: [u8::MAX; 2],
         }
     }
@@ -201,11 +225,12 @@ impl Casts {
 
 impl CanonicalHash for Casts {
     /// Per stack, the casts left (v33); the drawn spell, if any: its stack and spell (v34); per
-    /// side, the rounds since its periodic cast (v37).
+    /// stack, the last drawn spell (v52); per side, the rounds since its periodic cast (v37).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_bytes(&self.left);
         self.drawn.map(|(s, _)| s.0).hash_into(h);
         self.drawn.map(|(_, spell)| spell.raw()).hash_into(h);
+        self.last.iter().for_each(|&spell| h.write_u16(spell));
         h.write_bytes(&self.periodic);
     }
 }
@@ -218,8 +243,9 @@ pub(crate) fn per_battle(ruleset: &BattleRuleset, creature: CreatureTypeId) -> u
 /// At the activation of stack `id` for its side's command (BAT-MAG-049; the original's 0x465330
 /// and 0x447510, `installation.md` §7.21): a random caster with a cast left draws its spell from
 /// its creature's `drawn_spell` entries, each with the chance of its weight among their sum, and
-/// its controller is told (`SpellDrawn`, private to it, ADR-0014 point 8); any other activation
-/// forgets the last drawn spell. (The tactics phase activates no stack for a command, as the
+/// its controller is told (`SpellDrawn`, private to it, ADR-0014 point 8) and the stack keeps it
+/// as its last ([`Casts::last`]); any other activation forgets the active stack's drawn spell.
+/// (The tactics phase activates no stack for a command, as the
 /// original's activation does nothing there.)
 // rule: BAT-MAG-049
 pub(crate) fn activated<S: Sink>(
@@ -259,6 +285,7 @@ pub(crate) fn activated<S: Sink>(
         .map(|(spell, _)| (id, spell));
     state.casts.drawn = drawn;
     drawn.into_iter().for_each(|(stack_id, spell)| {
+        state.casts.last[stack_id.index()] = spell.raw();
         sink.emit(Event {
             visibility: Visibility::Side(stack.controller()),
             kind: EventKind::SpellDrawn {
@@ -548,6 +575,50 @@ pub fn creature_cast_targets(
     magic::creature_targets(state, ruleset, actor, (caster, spell), out);
 }
 
+/// The spell stack `id` drew at its last activation (a random caster's, BAT-MAG-049; the original's
+/// +0x4E0, `installation.md` §7.59): kept over other stacks' activations and a reused record; none
+/// before its first draw in the battle (the original's record may hold an earlier battle's).
+pub(crate) fn drawn_spell(state: &BattleState, id: StackId) -> Option<SpellId> {
+    state
+        .casts
+        .last
+        .get(id.index())
+        .filter(|&&raw| raw != NO_DRAW)
+        .map(|&raw| SpellId::from_raw(raw))
+}
+
+/// Fills `out` with the targets of stack `caster`'s creature cast as if it were the active stack
+/// (BAT-MAG-048 to BAT-MAG-052, for its controller; the original's 0x4476C0 with the caster as
+/// `this`, `installation.md` §7.59): those [`creature_cast_targets`] would list, a random caster's
+/// at its last drawn spell ([`drawn_spell`]). Empty in the tactics phase, without a cast left,
+/// while its creatures may not cast, for a creature that casts nothing and for a random caster
+/// that has drawn nothing.
+pub(crate) fn caster_targets(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    caster: StackId,
+    out: &mut CastTargets,
+) {
+    out.clear();
+    let Some(stack) = state
+        .stack(caster)
+        .filter(|_| state.casts.left[caster.index()] > 0)
+    else {
+        return;
+    };
+    // rule: BAT-MAG-061, BAT-TER-004
+    let blocked = magic::creature_casting_forbidden(state)
+        && !ruleset
+            .abilities(stack.creature)
+            .contains(&Ability::IgnoresMagicBlock);
+    if state.tactics.is_some() || blocked {
+        return;
+    }
+    if let Some(spell) = cast_with(state, ruleset, caster, drawn_spell(state, caster)) {
+        magic::creature_targets(state, ruleset, stack.controller(), (caster, spell), out);
+    }
+}
+
 /// A creature's cast as its action, validated ([`plan`]).
 pub(crate) enum CreatureAction<'r> {
     /// A spell cast (BAT-MAG-048 to BAT-MAG-050).
@@ -616,6 +687,26 @@ pub(crate) fn raise_target(
                 && created::has_slot(state, ruleset, (side, creature))
         }
     })
+}
+
+/// Whether the stack raiser `caster`'s raise test with `hit_points` takes stack `target` for its
+/// controller ([`raise::raisable`] with [`raise::creature_test`]; the computer's estimate with
+/// another stack's hit points, [`crate::computer::raise_test_takes`]). False for a stack that
+/// raises no stack.
+pub(crate) fn raise_test_takes(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    (caster, target): (StackId, StackId),
+    hit_points: u64,
+) -> bool {
+    let stack = state.at(caster);
+    match raiser(ruleset, stack.creature) {
+        Some(Raiser::Stack { test, .. }) => ruleset.spell(test).is_some_and(|spell| {
+            let test = raise::creature_test((test, spell), hit_points);
+            raise::raisable(state, ruleset, stack.controller(), test, target)
+        }),
+        _ => false,
+    }
 }
 
 /// How many creatures of `creature` the corpse raiser `caster` raises from the corpse of stack

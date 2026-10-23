@@ -46,7 +46,13 @@ Pass offer (fixed by the adventure lane's fixed tests, #266).
   ADR-0017 amendment and a `shared/` change (`lanes.toml`, the global HANDOFF): which paths of
   `crates/h3-sim/src/adventure/` move to you and what the adventure lane keeps are proposed to the
   user there; the survey is `docs/rules/surveys/E08-army.md` (§6).
-
+- 2026-10-23 (the battle lane, E23 T5b2b, `battle/e23-t5b2b`, `cross-lane` with the user's consent;
+  for your information, nothing to do): `h3_battle_ai::POLICY_VERSION` is 15: in a computer hero's
+  Teleport value every stack's first turn asks its creature cast entry (a Faerie Dragon's spell
+  from its last activation; with BAT-QUIRK-25 an Archangel's raise test at the active stack's hit
+  points), so the hero may teleport another stack or none. A side without a hero is unchanged. `h3_battle::BATTLE_STATE_HASH_VERSION` is 52 (each stack's last drawn spell is
+  state, hidden: no observation, encoding or replay-format change; `h3-sim`'s replay header names
+  the version). Name both in a run record's engine identity.
 - 2026-10-22 (the adventure lane, E08 T41's shared part, `shared/e08-t41`, `cross-lane` with the
   user's consent; for your information, nothing to do): `python/records/bots-report-v1.json`
   regenerated (`h3 ai eval --set report-v1 --json`): flag 30 retired moved `engine.core`

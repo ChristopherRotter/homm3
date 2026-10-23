@@ -1,20 +1,21 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b, T8, T7b-1, T7b-2a, T7b-2b-1, T7b-2b-2a, T7b-2b-2b, T7b-2b-3, T7c-1, T7c-2, T7c-3, T7d, T9a, T9b-1, T9b done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 in progress (T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b, T8, T7b-1, T7b-2a, T7b-2b-1, T7b-2b-2a, T7b-2b-2b, T7b-2b-3, T7c-1, T7c-2, T7c-3, T7d, T9a, T9b-1, T9b, T9c done); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
 [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
-are there). Next: M3's closure, split with the user in T9a (every capture afresh, done), T9b
-(the review: done, the review list accepted, CLT-Q9 to Q17 answered), T9c (the next milestone
-with the user) and T9d (the answers built) (`docs/lanes/client/QUEUE.md`).
+are there). Next: T9d (CLT-Q9 to Q17's answers built, M3's last task), then M4 T0 (sieges
+refined), M5 live play after it (`docs/lanes/client/QUEUE.md`). Since T9c (2026-10-23) this epic
+is the battle client's; the adventure map client is E24, the map-client lane's.
 
 ## Goal
 
 Clients that show the engine's games with the original's own assets, truthful to the original
-down to the pixel and the frame: first a battle replay viewer, later a full game record/replay
-viewer and playable clients. Everything with graphics, sound, input or a window lives in
-`clients/`, outside the core.
+down to the pixel and the frame: first a battle replay viewer, then sieges and playable battles.
+Everything with graphics, sound, input or a window lives in `clients/`, outside the core. The
+adventure map, the full game record/replay viewer and whole games played are E24's (the
+map-client lane, since 2026-10-23), on the same foundation.
 
 ## Decisions (user, 2026-10-12; 2026-10-13 where dated)
 
@@ -73,6 +74,14 @@ viewer and playable clients. Everything with graphics, sound, input or a window 
   forgotten): a drawing quirk or bug a reading or a recording finds becomes a `CLT-Q<n>` in
   `docs/OPEN-QUESTIONS.md` in the same task (copy it, fix it with the original's only for the
   comparisons, or a player's option; a recommendation), and the review list names it.
+- **The client lane split** (2026-10-23, M3 T9c, CLT-Q18): with the rendering basics done, the
+  user split the lane: this lane (`client`) keeps the battle client, M3 closing with T9d, then
+  **M4 sieges, then M5 live play**; a new lane, `map-client` (ids `MCL`), builds the adventure map
+  client in parallel as **E24**. The client foundation (`h3-assets`, `h3-render`, `h3-sdl`, the
+  workspace's files and gates, the string catalogue) and the capture harness became common paths
+  (`lanes.toml`): either client lane changes them in its own pull request, an additive change
+  freely, a change in behaviour noted in the other's inbox; the adventure lane changes the
+  harness without the `cross-lane` label.
 - **The natural obstacles' types first** (2026-10-13, CLT-Q3): the engine dropped them at
   generation; a `cross-lane` change carries them to the wire before T7 draws obstacles.
 
@@ -522,6 +531,9 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   every frame drawn as before, the set and a sample of sequences as recorded; the review list
   accepted (the log); CLT-Q9 to Q17 answered (fixed, the original's for the comparisons only;
   Q15 listed).
+- **T9c done 2026-10-23** ([log](E17-log.md#m3-t9c--the-next-milestone-the-lane-split-2026-10-23)):
+  the user split the lane (CLT-Q18): sieges (M4) and then live play (M5) here, the adventure map
+  in the new map-client lane (E24); the foundation and the harness common; T9d stays M3's last.
 
 ### The adventure lane's harness (H1, H2: its batch E3)
 
@@ -543,9 +555,11 @@ it (`docs/rules/surveys/E08-battles.md` §13; the requests in the queue's inbox 
 
 ### Later (refined when they come up)
 
-Sieges (walls, towers, the Catapult, the moat), live play against a server (the content check,
-accounts; the server lane's inbox notes), HD layouts, graphics options beyond `faithful`, the
-client's options (volumes), the adventure map and the full game viewer, video.
+**M4, sieges** (walls, towers, the Catapult, the moat; refined in M4 T0 after T9d), then **M5,
+live play** (a battle played: hot seat in-process first, then against a server: the content
+check, accounts; the server lane's notes in `NOTES.md`), in that order (the user, 2026-10-23,
+T9c). Later: HD layouts, graphics options beyond `faithful`, the client's options (volumes),
+video. The adventure map and the full game viewer: E24, the map-client lane.
 
 ## Research items from the asset notes
 
@@ -559,7 +573,7 @@ client's options (volumes), the adventure map and the full game viewer, video.
 | 6. Per-expansion content and the ruleset profiles | M1 T4 |
 | 7. The HD patch as a source of fixes and for HD | M3, later |
 | 8. Shadows and the other keyed colours | M1 T1 (done: design §3.3) |
-| 9. The adventure map's object draw order (the user: neither they nor VCMI got it exactly right) | a code reading when the adventure map viewer is refined; M1 T5 reads only the battle's |
+| 9. The adventure map's object draw order (the user: neither they nor VCMI got it exactly right) | the map-client lane (E24) since the split (2026-10-23); M1 T5 read only the battle's |
 
 ## Risks and known gaps
 

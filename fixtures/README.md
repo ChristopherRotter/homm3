@@ -27,6 +27,14 @@ replay's setup and commands and change the `ruleset_hash` in its header, then `h
 Re-running its spec is no substitute: since E04c T10b's obstacle draw (17a0489b) `duel-s1` and
 `field-s5` get other obstacles than the ones they store (E23 T1c).
 
+**Only the state hash moved** (`BATTLE_STATE_HASH_VERSION`, E23 T5b2b's v52): the commands stay.
+The loop below re-records the eight others with the same commands; `duel-s1` and `field-s5` are
+rehashed from their stored setup and commands by a throwaway test in `crates/h3-cli/tests`
+(`ReplayDoc::parse`, `into_replay`, the header `ReplayHeader::current`, each command applied with
+the checkpoints taken, `replay_to_toml`), then `h3 verify`. Check that only hash lines and the
+version moved. The adventure lane's replays hold battles too: re-record them with their options
+(`crates/h3-cli/tests/adventure_replays.rs`), `cross-lane`.
+
 Regenerate (only when a change *intentionally* alters game behavior, the synthetic pack, or an
 algorithm/encoding version — say so in the commit message). To pick a new replay's agent seed,
 count the events per agent seed with a throwaway test in `crates/h3-cli/tests` (`run_random`, then

@@ -477,8 +477,9 @@ recipe are T44b's cut's tasks; this is the plan. Each row names what it settles 
 | E6-10 | §5.1 (the rotation) | a hero with six backpack artifacts: one click on the right arrow, close the screen | the backpack's order in memory | rotated by one |
 | E6-11 | §2.1 (the price) | A meets B from a straight grass step | A's points before and after, A's tile | 100 less, A on its tile |
 
-**What the harness lacks** (the client lane's inbox with T44b's batch task, or this lane builds it,
-`cross-lane`, as T32b1 and T37a did): clicks on the hero screen's army slots and buttons (split,
+**What the harness lacks** (`clients/capture/` is a common path since the client lane's split,
+CLT-Q18: this lane builds it with the harness check and tells the client and map-client lanes'
+inboxes): clicks on the hero screen's army slots and buttons (split,
 formation, tactics), the creature dialog's dismiss and its confirmation, the split dialog's slider
 and OK, right-clicks on artifacts, the backpack's arrows, the exchange screen (its armies, worn
 positions, backpack places; closing), the army dialog's bars and OK; reads of a hero's learned

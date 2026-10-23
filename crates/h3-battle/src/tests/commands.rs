@@ -336,12 +336,13 @@ fn state_hash_is_pinned() {
     // gate and moat (E04c T5). v47: the wall shots' state and the hero's Catapult control (E04c
     // T6). v48: the turrets the targets hold, the Citadel's keep among the stacks (E04c T7). v49:
     // the game's difficulty and the human players (E04c T7d). v50: the town's Escape Tunnel
-    // (E04c T8). v51: the Ballista's Artillery level (E04c T7e).
-    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 51);
+    // (E04c T8). v51: the Ballista's Artillery level (E04c T7e). v52: each stack's last drawn
+    // spell (E23 T5b2b).
+    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 52);
     assert_eq!(
         s.siege.unwrap().turret(7),
         Some(StackId(u8::try_from(s.stacks().len() - 1).unwrap()))
     );
 }
 
-const GOLDEN: u64 = 0x486b_dba7_eb36_85b8;
+const GOLDEN: u64 = 0x5e65_b2a5_f21e_1433;

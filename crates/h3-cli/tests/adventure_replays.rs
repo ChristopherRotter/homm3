@@ -78,7 +78,9 @@
 //! Pathfinding and radius from their details; adventure ruleset part v10) changed every game:
 //! all nine re-recorded with their options, their commands new. E08 T42 (the duel's kits) changed
 //! every game again: the first four re-recorded with their options, the searched ones replaced and
-//! the tenth added.
+//! the tenth added. E23 T5b2b (battle state hash v52, `cross-lane`) re-recorded all ten with their
+//! options, their commands unchanged: nine moved checkpoint hashes taken inside a battle,
+//! `duel-s2-d7` none.
 
 use std::path::PathBuf;
 
