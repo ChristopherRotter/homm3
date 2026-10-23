@@ -284,8 +284,9 @@ found after that decision) belong to the neutral side's map too and are read (§
     `shared/e23-t7-human`: ADR-0023 point 7 widened, flag 33, `cross-lane`), BAT-WAR-003's
     patient (BAT-Q51), slip 33 (BAT-STUB-17 retired), `POLICY_VERSION` 19, the benchmarks, the
     docs; the log.
-  - [ ] The closure checks: the user's Windows verify (criterion 6), the AI lane's gated batch
-    with `System` seats (criterion 4, their inbox), `BACKLOG.md` (`shared/`).
+  - [ ] The closure checks: the user's Windows verify (criterion 6) passed (the user,
+    2026-10-23, after #441); the AI lane's gated batch with `System` seats (criterion 4, their
+    inbox; in progress), then `BACKLOG.md` (`shared/`).
 
 ## Exit criteria
 
