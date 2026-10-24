@@ -174,8 +174,11 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
      the hero and the group's small army (ADR-0016 point 3) and on the hero alone, and `Decline`,
      which closes it; the group's rest is lost (`ADV-STUB-2` closed).
    Outside a decision the management commands are legal in the owner's turn on any of its heroes
-   on the map, but for the moves between two heroes, which need the meeting. `legal_commands`
-   lists every management command but the splits; a query gives a split's bounds.
+   on the map, but for the moves between two heroes, which need the meeting. They are listed
+   **per hero**, as moves are (the reachable-tiles query): `legal_commands` keeps `EndTurn` and
+   the answers, and a query lists one hero's management commands (with a meeting or an army
+   dialog open, those toward the other hero or the group too) but the splits, whose counts a
+   second query gives for a source and a target.
 7. **Simultaneous play is designed for, not built.** Built now: turn groups, streams per player,
    pending decisions. **Not decided** (deferred to the increment that builds it): the target
    that commands of the players of one group commute (any interleaving, the same state hash; a
@@ -341,7 +344,9 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   would hand the other side the phase when its level is lower but above 0, which the original
   never does); an answer of its own to close a meeting or an army dialog (`Decline` already
   closes a decision without carrying anything out); a subset of the management commands in the
-  adventure lane's encoding now.
+  adventure lane's encoding now. At T51's start: every management command in `legal_commands`
+  (each call in a player's turn would build up to a few thousand of them, and the env's random
+  rollout, which picks among its entries, would play differently).
 
 ## Revision history
 
@@ -386,3 +391,7 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   closed by `Decline`; the adventure's RL encoding to the AI lane, the replay model staying the
   adventure lane's (E08 decisions 99, 103); the versions; the tactics flag zeroing both heroes'
   Tactics. Drafted in E08 T44b (#412; survey `E08-army.md` §1, §2, §4, §6).
+- 2026-10-24 (E08 T51; the user at T51's start, E08 decision 117): point 6 amended: the
+  management commands are listed per hero by a query, as moves are, not by `legal_commands`,
+  which keeps `EndTurn` and the answers (the design note's fallback for the list's size, taken
+  before the build: `E08-design.md` §16).
