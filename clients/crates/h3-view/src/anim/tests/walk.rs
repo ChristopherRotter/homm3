@@ -307,7 +307,7 @@ fn the_moat_that_kills_a_walker_ends_its_walk() {
     assert!(
         t.log
             .iter()
-            .any(|(_, l)| *l == crate::anim::Logged::Moat { hit: (0, 500, 40) })
+            .any(|(_, l)| *l == Logged::Moat { hit: (0, 500, 40) })
     );
     let moves = t.cues.iter().filter(|c| c.sound == Sound::Move && !c.stop);
     assert_eq!(moves.count(), 1);
@@ -387,27 +387,27 @@ fn the_moat_sequence_plays_as_recorded() {
     assert_eq!(until(&t.lines(), 15934), recorded(MOAT, 15934));
     // The lines: the walk's damage after its end (8 159, the reaction's first frame), the
     // re-entry's after the wait's line.
-    let moats: Vec<(u32, &crate::anim::Logged)> = t
+    let moats: Vec<(u32, &Logged)> = t
         .log
         .iter()
-        .filter(|(_, l)| matches!(l, crate::anim::Logged::Moat { .. }))
+        .filter(|(_, l)| matches!(l, Logged::Moat { .. }))
         .map(|(at, l)| (*at, l))
         .collect();
     assert_eq!(
         moats,
         [
-            (8159, &crate::anim::Logged::Moat { hit: (0, 70, 0) }),
-            (12934, &crate::anim::Logged::Moat { hit: (0, 70, 1) })
+            (8159, &Logged::Moat { hit: (0, 70, 0) }),
+            (12934, &Logged::Moat { hit: (0, 70, 1) })
         ]
     );
     let waited = t
         .log
         .iter()
-        .position(|(_, l)| matches!(l, crate::anim::Logged::Wait { .. }));
+        .position(|(_, l)| matches!(l, Logged::Wait { .. }));
     let reentered = t
         .log
         .iter()
-        .position(|(_, l)| *l == crate::anim::Logged::Moat { hit: (0, 70, 1) });
+        .position(|(_, l)| *l == Logged::Moat { hit: (0, 70, 1) });
     assert!(waited < reentered);
 }
 

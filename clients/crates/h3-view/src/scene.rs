@@ -860,6 +860,10 @@ fn drawn(
             .values()
             .flat_map(|o| o.blocked.iter().copied()),
     );
+    // A siege's standing walls (E17 M4 T2c-1).
+    if let Some(s) = &observation.siege {
+        taken.extend(moment.walls.unwrap_or_else(|| Walls::of(s)).blocking(s));
+    }
     for s in observation.stacks.iter().filter(|s| s.alive) {
         let pose = pose_of(s, moment, tables);
         if !pose.holds_hex() {

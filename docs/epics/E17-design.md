@@ -3355,7 +3355,13 @@ it), `moat` and `mine` (below). Findings:
   front enters the moat at 77. The walk's end as any (group 21, group 2 through the deadline),
   then at once the line (named by the town's moat, GENRLTXT 377 with ARRAYTXT's name) and the
   reaction without a striker; then the box's whole redraw. In round 2 their Wait: its line, then
-  the re-entry's damage, its line and reaction, without the walk's sounds.
+  the re-entry's damage, its line and reaction, without the walk's sounds. Found by the frame
+  check: **a standing wall's hex takes a count box's place** (the hex records' blocked flag,
+  `draw_battle_stack` 0x43E629): the Champions' front at 77 faces the wall at 78, so their box
+  stands 37 pixels left (the hex ahead taken, §4.3); the scene's taken hexes gain the record's
+  wall hexes but those of the parts destroyed since (`Walls::blocking`). With it `moat`'s frames
+  exact but the Catapult's first frames' outline rows (T2b's), the strip over the front and the
+  box drawn again as read (§10.1).
 - **The drawbridge's rectangle** (CLT-Q23): its redraws show it alone, so a walker's box hidden
   at the walk's start stays on the screen outside it (`gate`'s round 2: the Hobgoblins' box at
   93, 319 pixels, from the first state's showing at 13 234 to their turn's first frame at
