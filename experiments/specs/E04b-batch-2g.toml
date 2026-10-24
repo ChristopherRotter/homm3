@@ -1,0 +1,203 @@
+# Experiment batch 2g (the battle lane's inbox, 2026-10-24), its first map: the E04b review's rows
+# the user chose (OPEN-QUESTIONS BAT-Q28 rows 4, 7 and 10; survey docs/rules/surveys/E04b-magic.md
+# §16 S-23, S-24) and BAT-Q62's breath into a side column (docs/experiments/README.md, "From
+# BAT-Q62"). Its second map, E04b-batch-2h.toml (a player has at most eight heroes): rows 8 and 9,
+# a hypnotized stack's morale and luck, the turn start of the wait phase and good morale before a
+# stack re-enters its hexes.
+#
+# Played by an agent on the capture harness (experiments/agent/ai.py, its recipe
+# experiments/agent/E04b-batch-2g.toml): one map per encounter (`--only <id>`), hot seat with Red
+# and Blue human, so the agent commands both armies from the recipe's plans (every other turn
+# defends); the clock stepped 10 ms at a time and the game's memory read after each step (the
+# stacks' hexes, counts, lost hit points, flags, morale +0x4E8, luck +0x4EC and retaliations
+# +0x454; the battle manager's action; the forced rolls' counters). Good and bad morale are forced
+# to fail unless a run says otherwise (the runbook's "Forced rolls"), so no extra turn or freeze
+# spoils an order.
+#
+# Predictions are for the agent who evaluates the results; the template never shows them. "The
+# reading" is the code reading the row names; "the engine" is h3-battle's faithful profile at the
+# batch's base (master f89aa89). On grass Castle, Rampart and Conflux creatures are natives (+1
+# attack, defense and speed; BAT-TER-001). Formations (BAT-SET-001, loose): k stacks on these
+# rows of column 1 (Red) or 15 (Blue): 1 [5], 2 [2, 8], 3 [2, 5, 8], 4 [0, 4, 6, 10]; hex = 17 x
+# row + column; a two-hex stack's hex is its rear one (Red's left, Blue's right; BAT-GEO-002).
+# Heroes at level 1 with resource or adventure-only specialties; casters get a Spell Book and only
+# the listed spell (the book's first place); full mana, 10 x knowledge.
+#
+# Not staged: BAT-Q28 row 6 (a raised stack's turn) and the rows the user left for later (1, 3,
+# 5, 11, 12, 13's statistics).
+
+[map]
+name = "E04b batch 2g"
+description = "Engine-generated experiment map (E04b, batch 2g): the review's rows. Follow the results template."
+size = 36
+terrain = "grass"
+instructions = [
+    "Played by an agent (experiments/agent/ai.py with experiments/agent/E04b-batch-2g.toml): one map per encounter, `h3-experiment E04b-batch-2g.toml --only <id>`. By hand: copy the map into `Maps`, start it in hot seat (Red and Blue human), select the Red hero and step east into the Blue hero; you command both sides.",
+    "Every stack defends unless the procedure says otherwise; a stack that gets an extra turn from good morale defends.",
+    "\"Up-right\", \"up-left\", \"down-left\", \"down-right\" mean the neighbouring hex in that direction; rows are counted from the top (row 0) to the bottom (row 10), columns from the left (0) to the right (16).",
+    "Fill in this file (anything unexpected goes into the last line of an encounter) and keep it in the repo.",
+]
+
+# --- BAT-Q62: a breath into a side column ---------------------------------------------------------
+
+[[encounter]]
+id = "BR"
+title = "A Red Dragon's breath behind a stack in column 15 with Blue's Ballista behind it"
+questions = ["BAT-Q62", "BAT-ATK-003"]
+procedure = [
+    "Attack the Blue hero. Blue's stacks stand in column 15 on rows 0, 4, 6 and 10: the Pikemen on (15, 4); Blue's Ballista on (15, 3) and (16, 3).",
+    "Round 1: the Red Dragon flies to the middle (its head on (8, 5)). Blue's stacks Defend; the Ballista shoots on its own.",
+    "Round 2: the Red Dragon attacks the Pikemen from (15, 5), its head there and its tail on (14, 5) (the breath goes on up-right, onto (16, 3)). Note the Pikemen's losses and the Ballista's health before and after the attack.",
+    "Retreat with Red.",
+    "The control (the run BC, on this map): in round 1 the Pikemen also walk one hex left, onto (14, 4); in round 2 the Red Dragon attacks them from (14, 5), its head there: the breath goes on up-right onto (15, 3), the Ballista's front hex.",
+]
+predictions = """
+The breath's second hex is the target's up-right neighbour (16, 3), the Ballista's rear hex.
+- The reading (melee_strike 0x441739 through the neighbour table +0x13468, which has no
+  neighbour in the side columns, 0x4640A0; BAT-Q62): the breath stops; **the Ballista keeps its
+  health**.
+- The engine (BAT-ATK-003, VCMI's pattern): the Ballista is struck too: one Red Dragon (40-50,
+  attack 19 against defense 10: +45 %) deals it about 58 to 72 of its 250.
+- BC, the control: both the reading (0x523DF0 then 0x523D90: (15, 3) has a neighbour entry) and
+  the engine: the Ballista is struck too.
+"""
+[encounter.hero]
+type = "Aine"
+specialty = "resource gold"
+primary = [0, 0, 1, 1]
+army = [["Red Dragon", 1]]
+[encounter.opponent.hero]
+name = "BRb"
+type = "Octavia"
+specialty = "resource gold"
+primary = [0, 0, 1, 1]
+army = [["Peasant", 1], ["Pikeman", 30], ["Peasant", 1], ["Peasant", 1]]
+artifacts = { "war machine 1" = "Ballista" }
+[[encounter.record]]
+field = "the Pikemen's count before and after the Red Dragon's attack; the Ballista's health before and after; the same in BC"
+[[encounter.record]]
+field = "anything odd"
+
+# --- BAT-Q28 row 7: the surrender price after a Basic Resurrection --------------------------------
+
+[[encounter]]
+id = "SP"
+title = "The surrender price with Basic Resurrection's temporary creatures"
+questions = ["BAT-Q28", "BAT-FLE-002"]
+procedure = [
+    "Attack the Blue hero. Round 1: the Swordsmen Defend. Blue's turn: Blue casts Lightning Bolt at the Swordsmen; the Peasants Defend.",
+    "Round 2, the Swordsmen's turn: open the surrender dialog and note its price; cancel. Red casts Resurrection on the Swordsmen; the surrender price again (cancel). The Swordsmen Defend. Blue's turn: Lightning Bolt at the Swordsmen again; the Peasants Defend.",
+    "Round 3, the Swordsmen's turn: the surrender price once more (cancel). Retreat with Red.",
+]
+predictions = """
+As batch 2d RA2 (the harness's cross-check): 10 Swordsmen -> 5 (top 25) -> raised to 8 (3
+temporary) -> 2. A Swordsman costs 300; the price is half the cost of the remaining creatures.
+- Before the raise: 5 x 300 / 2 = **750** (both).
+- After it: the reading ((count - temporary +0x54) x cost, 0x47502A to 0x47503E; BAT-Q28 row 7):
+  **750**; the engine (BAT-FLE-002, Stack::count): **1 200**.
+- Round 3 (2 left, 3 temporary): the reading's (2 - 3) x 300 is negative (what the dialog shows
+  then is unread); the engine: 300.
+"""
+[encounter.hero]
+type = "Gelare"
+specialty = "resource gold"
+primary = [0, 0, 1, 2]
+skills = [["Earth Magic", 1]]
+army = [["Swordsman", 10]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Resurrection"]
+[encounter.opponent.hero]
+name = "SPb"
+type = "Grindan"
+specialty = "resource gold"
+primary = [0, 0, 7, 2]
+army = [["Peasant", 10]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Lightning Bolt"]
+[[encounter.record]]
+field = "the Swordsmen after each Lightning Bolt and after Resurrection (number, top health)"
+[[encounter.record]]
+field = "the surrender price before Resurrection, after it, in round 3"
+[[encounter.record]]
+field = "anything odd"
+
+# --- BAT-Q28 row 4, S-23: the retaliation at a striker the Fire Shield killed ---------------------
+
+[[encounter]]
+id = "FS"
+title = "A striker killed by the Efreet Sultans' Fire Shield, then a second attacker"
+questions = ["BAT-Q28", "S-23", "BAT-RET-001", "BAT-MAG-058"]
+procedure = [
+    "Attack the Blue hero. Round 1: the Archangel Defends. The Sultans' turn: Blue casts Lightning Bolt at the Archangel (245: 5 health left); the Sultans Defend. The Royal Griffins fly to the middle.",
+    "Round 2: the Archangel attacks the Sultans from their left; the Fire Shield kills it. Do the Sultans strike back at it? The Sultans Defend. The Royal Griffins attack the Sultans from up-left: are they struck back?",
+    "Retreat with Red.",
+]
+predictions = """
+Lightning Bolt with Basic Air Magic: 25 x 9 + 20 = 245 of the Archangel's 250. Its strike (50,
+attack 31 as a native against the Sultans' defense 14: +85 %) deals about 92 (one Sultan of 90
+dies), the Fire Shield reflects a fifth (18), more than its 5: it dies.
+- The reading (0x441DD4 to 0x441E01; BAT-Q28 row 4, S-23): the Sultans retaliate at the dead
+  striker and spend their retaliation (+0x454 to 0): **the Royal Griffins are not struck back**.
+- The engine (BAT-RET-001): no retaliation at a dead striker, none spent: **the Royal Griffins
+  are struck back** (and the HotA changelog 1.7.1 fixed the reading's as a bug).
+"""
+[encounter.hero]
+type = "Caitlin"
+specialty = "resource gold"
+primary = [0, 0, 1, 1]
+army = [["Archangel", 1], ["Royal Griffin", 10]]
+[encounter.opponent.hero]
+name = "FSb"
+type = "Jenova"
+specialty = "resource gold"
+primary = [0, 0, 9, 2]
+skills = [["Air Magic", 1]]
+army = [["Efreet Sultan", 20]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Lightning Bolt"]
+[[encounter.record]]
+field = "the Archangel's health after the Lightning Bolt; its attack: damage, reflection, death; the Sultans' retaliation at it (yes/no)"
+[[encounter.record]]
+field = "the Royal Griffins' attack: struck back (yes/no)"
+[[encounter.record]]
+field = "anything odd"
+
+# --- BAT-Q28 row 10, S-24: the raise of a two-hex corpse aimed at its front hex -------------------
+
+[[encounter]]
+id = "RS"
+title = "Resurrection at a two-hex corpse's front hex with a later corpse on its rear hex"
+questions = ["BAT-Q28", "S-24", "BAT-MAG-035"]
+procedure = [
+    "Attack the Blue hero. Red's Wolf Riders stand on row 2 (their rear hex (1, 2), their head (2, 2)), the Swordsman on (1, 5), the Archers on (1, 8).",
+    "Round 1: Red's stacks Defend. Blue's turn: Lightning Bolt at the Wolf Riders (they die); the Peasant Defends.",
+    "Round 2: the Swordsman walks onto the Wolf Riders' rear hex (1, 2). Blue's turn: Lightning Bolt at the Swordsman (it dies there); the Peasant Defends.",
+    "Round 3, the Archers' turn: Red casts Resurrection at the Wolf Riders' head (2, 2). Which stack comes back, and how many? The Archers Defend. Retreat with Red.",
+]
+predictions = """
+Lightning Bolt 25 x 10 + 10 = 260; Resurrection 50 x 5 + 40 = 290 hit points (temporary).
+- The reading (0x5A1917; BAT-Q28 row 10, S-24): the raise takes the top corpse on the aimed
+  corpse's rear hex: **the Swordsman** comes back (1), the Wolf Riders stay dead.
+- The engine (BAT-MAG-035: the corpse aimed at): **the 2 Wolf Riders** come back (the HotA
+  changelog 1.5.4 fixed the reading's as a bug).
+"""
+[encounter.hero]
+type = "Dessa"
+specialty = "skill Logistics"
+primary = [0, 0, 5, 3]
+army = [["Wolf Rider", 2], ["Swordsman", 1], ["Archer", 5]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Resurrection"]
+[encounter.opponent.hero]
+name = "RSb"
+type = "Gunnar"
+specialty = "skill Logistics"
+primary = [0, 0, 10, 3]
+army = [["Peasant", 1]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Lightning Bolt"]
+[[encounter.record]]
+field = "Resurrection at the Wolf Riders' head raises (Wolf Riders/Swordsman), how many"
+[[encounter.record]]
+field = "anything odd"
+

@@ -260,6 +260,19 @@ fn the_surrender_price_is_half_the_cost_of_the_living_stacks_war_machines_includ
 
 // covers: BAT-FLE-002
 #[test]
+fn basic_resurrection_s_creatures_for_the_battle_only_are_not_priced() {
+    // Batch 2g SP (as the original's 0x47502A): 3 of the 7 Pikemen temporary: ½ × (4 × 60 + 25 +
+    // 2500) = 1382; a stack with no more creatures than its temporary ones adds nothing.
+    let r = ruleset();
+    let mut state = r4(&r, 0);
+    state.raised.temporary[0] = 3;
+    assert_eq!(state.surrender_price(&r, Attacker), Some(1382));
+    state.raised.temporary[0] = 9;
+    assert_eq!(state.surrender_price(&r, Attacker), Some(1262));
+}
+
+// covers: BAT-FLE-002
+#[test]
 fn the_discount_enters_as_a_single_precision_rate_under_q_0005() {
     // Batch 1b R4: 10 Pikemen at 40 % discount cost 179 in the original, 180 exactly.
     for (profile, price) in [("t:faithful", 180), ("t:single", 179)] {

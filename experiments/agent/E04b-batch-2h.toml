@@ -1,0 +1,75 @@
+# The runs of batch 2g's second map (the battle lane's inbox, 2026-10-24) for experiments/agent/ai.py:
+# one per encounter of the spec, and a second for WP (WK: the elementals press Wait) and MR (MRc:
+# the control without the Fire Wall). Hot seat with Red and Blue human: the agent commands both
+# sides, `side` 0 Red, 1 Blue; `record` in army slot order. Keys as batch 4a's recipe; a plan step
+# `roll` or `price` comes before the stack's command in the same turn (ai.py). Good and bad morale
+# fail in every run unless it forces one draw.
+spec = "experiments/specs/E04b-batch-2h.toml"
+
+[[run]]
+id = "HM"
+rolls = { good_morale = "fails", bad_morale = "fails" }
+rounds = 2
+plan = [
+    { round = 1, side = 0, record = 0, action = "cast", argument = [0, { stack = [1, 0] }] },
+]
+
+[[run]]
+id = "WP"
+rolls = { good_morale = "fails", bad_morale = "fails" }
+rounds = 1
+plan = [
+    { round = 1, side = 0, record = 1, action = "wait" },
+    { round = 1, side = 0, record = 0, action = "wait" },
+    { round = 1, side = 0, record = 0, action = "cast", argument = [0] },
+]
+
+[[run]]
+id = "WK"
+encounter = "WP"
+rolls = { good_morale = "fails", bad_morale = "fails" }
+rounds = 1
+plan = [
+    { round = 1, side = 0, record = 1, action = "wait" },
+    { round = 1, side = 0, record = 0, action = "wait" },
+    { round = 1, side = 0, record = 0, action = "cast", argument = [0] },
+    { round = 1, side = 0, record = 2, action = "wait" },
+]
+
+[[run]]
+id = "FT"
+rolls = { good_morale = "fails", bad_morale = "fails" }
+rounds = 1
+plan = [
+    { round = 1, side = 1, record = 0, action = "roll", argument = ["bad_morale", "falls", 1] },
+]
+
+[[run]]
+id = "TS"
+rolls = { good_morale = "fails", bad_morale = "fails" }
+rounds = 2
+plan = [
+    { round = 1, side = 0, record = 0, action = "wait" },
+    { round = 1, side = 1, record = 0, action = "cast", argument = [0, { stack = [0, 0] }] },
+]
+
+[[run]]
+id = "MR"
+rolls = { good_morale = "fails", bad_morale = "fails" }
+rounds = 2
+plan = [
+    { round = 1, side = 1, record = 0, action = "cast", argument = [0, 87] },
+    { round = 1, side = 0, record = 0, action = "move", argument = 87 },
+    { round = 2, side = 0, record = 0, action = "roll", argument = ["good_morale", "falls", 1] },
+    { round = 2, side = 0, record = 0, action = "shoot", argument = { stack = [1, 0] } },
+]
+
+[[run]]
+id = "MRc"
+encounter = "MR"
+rolls = { good_morale = "fails", bad_morale = "fails" }
+rounds = 2
+plan = [
+    { round = 2, side = 0, record = 0, action = "roll", argument = ["good_morale", "falls", 1] },
+    { round = 2, side = 0, record = 0, action = "shoot", argument = { stack = [1, 0] } },
+]

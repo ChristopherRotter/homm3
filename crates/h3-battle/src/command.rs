@@ -243,7 +243,9 @@ fn plan<'r>(
         Command::Wait => {
             not_the_catapult(&mover)?;
             // rule: BAT-TRN-002
-            if mover.flags.contains(StackFlags::WAITED) {
+            // Not in the round's wait phase either (the original's Wait button disabled there,
+            // 0x478755; batch 2g WP, WK: neither the button nor the key).
+            if mover.flags.contains(StackFlags::WAITED) || state.wait_phase {
                 return Err(CommandError::AlreadyWaited);
             }
             Ok(Plan::Wait { mover: id })

@@ -1149,3 +1149,54 @@ fn good_morale_gives_a_berserk_stack_another_turn() {
     assert!(!has(&s, 0, Status::BERSERK));
     assert!(!s.stacks()[0].flags.contains(StackFlags::ACTED));
 }
+
+// covers: BAT-MAG-026, BAT-SIE-025
+#[test]
+fn a_hypnotized_stack_takes_its_controller_s_morale_and_luck() {
+    // Batch 2g HM (the original's 0x469750 reads the record's controller): Red's hero gives its
+    // stacks morale +2 and luck +1; Blue's stack, hypnotized by Red, has Red's values while the
+    // effect lasts and its own again when it ends.
+    use h3_content::Affects;
+    use h3_contracts::BattleEffect;
+    let r = ruleset_with("t:faithful", |b| {
+        b.good_morale_chances = vec![1, 2, 3];
+        b.bad_morale_chances = vec![2, 4, 6];
+        b.good_luck_chances = vec![1, 2, 3];
+    });
+    let mut red = hero(&r);
+    red.effects = vec![
+        BattleEffect::Morale {
+            amount: 2,
+            affects: Affects::Own,
+        },
+        BattleEffect::Luck {
+            amount: 1,
+            affects: Affects::Own,
+        },
+    ];
+    let setup = h3_contracts::BattleSetup {
+        heroes: [Some(red), None],
+        ..setup(&r, &[(0, "fixed", 5)], &[(0, "slow", 5)])
+    };
+    let mut s = crate::BattleState::new(&r, &setup, 1).unwrap();
+    let values = |s: &crate::BattleState, id: usize| (s.stacks()[id].morale, s.stacks()[id].luck);
+    let (own, reds) = (values(&s, 1), values(&s, 0));
+    assert_ne!(own, reds);
+    let spell_id = spell(&r, "hypnotize");
+    let cast = TimedCast {
+        id: spell_id,
+        spell: r.spell(spell_id).unwrap(),
+        mastery: 1,
+        rounds: 1,
+        own: crate::magic::SpellBonus::default(),
+    };
+    crate::effects::apply(&mut s, &r, cast, StackId(1), &mut Vec::<Event>::new());
+    assert_eq!(values(&s, 1), reds);
+    // The effect ends when the next round starts: its owner's values again.
+    let round = s.round();
+    while s.round() == round {
+        act(&mut s, &r, Command::Defend).unwrap();
+    }
+    assert!(!s.stacks()[1].spells.status.contains(Status::HYPNOTIZED));
+    assert_eq!(values(&s, 1), own);
+}

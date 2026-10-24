@@ -210,7 +210,8 @@ pub enum CommandError {
     BattleOver,
     /// It is not the actor's turn (the active stack belongs to the other side).
     NotYourTurn,
-    /// The active stack has already waited this round (BAT-TRN-002).
+    /// The active stack has already waited this round, or the round's wait phase has begun
+    /// (BAT-TRN-002).
     AlreadyWaited,
     /// The hex is not a standable hex of the field.
     InvalidHex,
