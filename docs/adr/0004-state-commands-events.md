@@ -48,7 +48,9 @@ full amendment text of E01–E03 is in git history (this file at commit `22b6bc0
 - **Seam growth (E03):** `BattleSetup` and `BattleOutcome` grow by fields that default to
   "absent"; each change is a user decision (Q16, Q17, Q24, Q25; heroes: ADR-0013; the obstacles
   as pieces with anchors, a change of a field's type: ADR-0014 point 10, Q55; each obstacle's
-  type by key, for viewers: CLT-Q3).
+  type by key, for viewers: CLT-Q3; the battlefield picture's variant, each side's player colour
+  and a hero's sex, for viewers, public and read by no rule: CLT-Q4, CLT-Q6, the user
+  2026-10-24).
 - **Setup randomness before the seam (E03 T7):** random battle inputs such as obstacles are drawn
   before the seam (`h3_battle::generate_obstacles`, stream `OBSTACLES`) and passed in; the battle
   draws only in-battle randomness.

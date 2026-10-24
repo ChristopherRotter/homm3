@@ -1205,6 +1205,9 @@ impl ScenarioDef {
             human: self.human,
             retreat: self.retreat,
             attacker_ground: self.attacker_ground.clone(),
+            // The viewers' facts (CLT-Q4, CLT-Q6): not in the scenario format yet.
+            background: None,
+            colours: [None; 2],
         })
     }
 }

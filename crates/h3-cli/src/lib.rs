@@ -711,6 +711,9 @@ impl ReplayDoc {
                     .map(ContentKey::parse)
                     .transpose()
                     .map_err(|e| CliError::Format(e.to_string()))?,
+                // The viewers' facts (CLT-Q4, CLT-Q6): not in the replay format yet.
+                background: None,
+                colours: [None; 2],
             },
             commands: f
                 .commands
