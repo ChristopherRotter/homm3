@@ -62,43 +62,17 @@ lanes that build `HeroDetails` (§2's `wearing`), done in T49a with their inboxe
 
 ## Part B — the map, the game, the batch and the cut
 
-### 7. A hero's army, formation and flag (ADV-ARM-001 to -006; ADR-0016 point 3 of the draft)
+### 7. A hero's army, formation and flag (built in T50)
 
-`h3-adventure` gains the army commands, validated against the trusted player and applied
-whole or not at all:
-- **The armies**: `ArmyRef::Hero(HeroId)` or `ArmyRef::Group` (the army dialog's, §9); a command
-  names a source (army, slot) and a target (army, slot); both armies the player's: the same hero,
-  the two heroes of its open meeting, or the hero and the group of its open army dialog.
-- **Move** (ADV-ARM-001, -002): the target of the source's creature takes the stack whole (the
-  counts added; decision 109: a merge past a stack's count cap is refused, the cap's value and
-  its other uses settled at T50's start with ADR-0016 point 3's amendment, §16); an empty target
-  takes it; any other swaps.
-  Between two armies the source's last stack never merges away nor goes to an empty slot (a swap
-  is allowed); the group has no protected stack. Counts keep their width (A-15 fixed: the
-  original's `army_swap_slots` moves one through 16 bits; ADR-0016 point 3 of the draft).
-- **Split** (ADV-ARM-003): `count`, the target's new count, the target empty or of the source's
-  creature, t the two counts: any count in [1, t − 1], so both stacks stay. The original's dialog
-  (survey §3.3) allows [m₂, t − m₁]; its m₁ and m₂ only ever refuse 0 or t, which leave one of the
-  two slots empty: a move (or a merge back), which the engine's move allows exactly where the
-  original's click does (§7's move; A-16's refused full split is the click's allowed move, survey
-  §3.2). So [1, t − 1] with the move gives the original's outcomes, A-16's included (decision 98:
-  the original's bounds, no flag). `h3_adventure::split_range` gives the range for a source and a
-  target (the query of §10).
-- **Dismiss** (ADV-ARM-004): the stack leaves; refused for a hero's last stack; the group's are
-  always allowed.
-- **Formation and flag** (ADV-ARM-006): `SetFormation { hero, formation }`, `SetTactics { hero,
-  on }`; `HeroOnMap.tactics: bool`, true at the build (the original's 2), in the state hash
-  (adventure state hash v11). The map's formation stays the setup's (`ADV-QUIRK-8` as is).
-- **ADV-ARM-005**: a move or swap keeps both counts whole (the A-15 regression test).
+Built: `E08-log.md`, T50 (ADV-ARM-001 to -007; the cap, decisions 109, 114, 115; adventure state
+hash v11, ruleset part v11). For T51: `h3_adventure::{ArmyCommand, ArmyRef, ArmySlot}` and
+`AdventureState::{manage_army, split_range, set_formation, set_tactics}` (the group passed in as
+`Option<&mut Vec<ArmyStack>>`, by slot like a hero's army); they emit no event: the game tells the
+owner (§10).
 
 ### 8. The meeting (GAM-MET-001; GAM-DEC-003)
 
-- **The visit** (GAM-MET-001; ADR-0016 point 4 of the draft): `MoveHero`'s last step toward a hero
-  of the same player visits it from the neighbouring tile at the step's price (ADV-OBJ-003's
-  neighbour visit, as GAM-BAT-004's): the move ends there, the outcome reports
-  `Meeting { visitor, visited }` (today's refusal goes: `a_hero_visit_ends_the_move_and_an_own_
-  hero_blocks` changes). The objects under the visited hero and the tops not visited from above
-  stay GAM-BAT-004's cases. An own hero's tile is still never entered or passed.
+- **The visit** (GAM-MET-001): built in T50 (`AdventureOutcome::meeting`, log); T51 opens it.
 - **Scholar** (HER-SPL-007): the game applies both heroes' learned spells as `LearnSpell`
   changes, visitor first, then opens the decision.
 - **The decision** (GAM-DEC-003): `Decision::Meeting { owner, heroes: [HeroId; 2] }`; while open
@@ -108,13 +82,14 @@ whole or not at all:
 
 ### 9. The army dialog (ADV-MON-008 amended; GAM-DEC-004; `ADV-STUB-2` closed)
 
-- **The offer**: `answer_to` no longer skips a join without room (the stub's `has_room` test goes):
-  the offer to join (free or for gold) is made as for any join.
-- **Accepted**: the price paid, the treasure given and the monster removed as today; when
-  `army_add_stack`'s rule (a stack of the creature, else a free slot) finds no room, the outcome
-  reports `NoRoom { hero, stack }` instead of `CreaturesJoined`, and the game opens
-  `Decision::ArmyDialog { owner, hero, group: [Option<ArmyStack>; 7] }` with the whole group in the
-  group's first slot (the original's local army).
+- **The offer** (T51, moved from T50 so that no build loses a group): `answer_to` no longer skips
+  a join without room (the stub's `has_room` test goes): the offer to join (free or for gold) is
+  made as for any join.
+- **Accepted**: the price paid, the treasure given and the monster removed as today; when the room
+  rule (a stack of the creature that takes it within the cap, else a free slot; decision 115)
+  finds none, the outcome reports `AdventureOutcome::no_room` (`NoRoom { hero, creature, count }`,
+  built in T50) instead of `CreaturesJoined`, and the game opens `Decision::ArmyDialog { owner,
+  hero, group }` with the whole group in the group's first slot (the original's local army).
 - **Open**: its owner's legal commands are the army commands between the hero and the group and on
   the hero alone, the hero's formation, flag and artifact commands (the original's portrait opens
   the hero screen), and `Decline`, which closes it: the group's rest is gone (an event to the owner
@@ -190,7 +165,7 @@ battle's observation shows both levels as 0 in such a battle.
 |---|---|---|
 | core ruleset hash v48, pack format v47 | two effect kinds, the packs' data | T45 (done) |
 | game state hash v12 | the details' positions | T49a (done) |
-| adventure state hash v11 | the tactics flag | T50 |
+| adventure state hash v11, adventure ruleset part v11 | the tactics flag; a stack's most creatures | T50 (done) |
 | game state hash v13 | the meeting and army dialog decisions | T51 |
 | map import v9 | positions | T49a (done) |
 | map import v10 | Titan's Thunder's book at load | T49b (done) |
@@ -226,7 +201,7 @@ flag) land once:
 | 1 | **T45** + **T46** | T45 (done): the shared groundwork (`shared/`, `cross-lane`): ADR-0013, -0016, -0017 amended; `meeting_spells`, `gives_spell_book`; the packs; core ruleset hash v48; the encoding's move to the AI lane (`lanes.toml`, the versions table, the global HANDOFF, the AI lane's inbox). T46: batch E6's spec and results template (§14; `h3-experiment` `cross-lane`) |
 | 2 | **T47** + **T48** | T47: the harness's clicks and reads (the hero, exchange, split, creature and army dialogs; the spells, backpack, flags and tactics reads), the recipes and the run. T48: scored; the survey's §8 and the rules' sources; an ADV-Q if a row contradicts the reading |
 | 3 | **T49** | `h3-heroes`: positions (§2: the model, validation, the first position, the capture, the import v9, the constructor and the other lanes' call sites, `cross-lane`), moves, combinations and Titan's book, Scholar (§3). The largest task: cut in T49a (positions, §2; done) and T49b (§3; decision 111; done) |
-| 4 | **T50** + **T51** | T50: `h3-adventure`: the army commands, the split's bounds, dismissal, the formation and the flag, the meeting's visit, the join without room's report (§7, §8 visit, §9 offer); adventure state hash v11. T51: `h3-game`: `Manage`, the meeting and army dialog decisions, Scholar's application, `legal_commands` and `split_range`, events, the observation, the tactics flag in battle (§8–§11); game state hash v13; `ADV-STUB-2` closed |
+| 4 | **T50** + **T51** | T50 (done whole, decision 113): `h3-adventure`: the army commands, the split's bounds, dismissal, the formation and the flag, the cap, the meeting's visit, the join without room's report (§7, §8 visit, §9); adventure state hash v11, ruleset part v11. T51: `h3-game`: `Manage`, the meeting and army dialog decisions, Scholar's application, `legal_commands` and `split_range`, events, the observation, the tactics flag in battle (§8–§11), the join offered without room (§9); game state hash v13; `ADV-STUB-2` closed |
 | 5 | **T52** + **T53** | T52: the env's masks (if still this lane's), replays v6 and the two new goldens, fixtures, plans, properties, benchmarks, `--with-original-data` (§12). T53: the audit against the exit criteria, increment 6 closed, increment 7 refined |
 
 **Increment 6's exit criteria:**
@@ -259,11 +234,8 @@ flag) land once:
 - **The handover of the env**: the AI lane takes an env whose encoding lacks increment 6's
   commands; agents trained before E13's macro-actions manage nothing. The masks' `Decline` keeps
   the env playable; the encoding's growth is the AI lane's call (its inbox).
-- **A stack's count cap** (decision 109): the original's 16-bit limits (the map's count, A-15's
-  moves) do not bind the engine; it supports a reasonable count and handles saturation
-  gracefully, a merge past the cap refused. Open until T50's start: the cap's value (data, ADR-0006),
-  and what else meets it (a join onto a stack, the split's target, the import's 16-bit count,
-  later recruiting and growth), with ADR-0016 point 3's amendment.
+- **A stack's count cap**: settled at T50's start (decisions 109, 114, 115; ADR-0016 point 3) and
+  built (ADV-ARM-007); recruiting and growth keep it when they come.
 - **A-16 and the split's bounds** rest on the code reading; E6-4 confirmed them (T48: 1 and 9). The engine's
   [1, t − 1] with the move reproduces the original's reachable outcomes (§7): a row that showed
   the dialog allowing what the click refuses would reopen it.

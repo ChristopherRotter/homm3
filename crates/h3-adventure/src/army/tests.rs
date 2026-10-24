@@ -556,6 +556,26 @@ fn the_split_query_gives_the_range_of_a_possible_split() {
         assert_eq!(range(from, to, Some(&found)), None, "{from:?} {to:?}");
     }
     assert_eq!(range(hero(1, 0), group(0), None), None);
+    // A split the query allows applies: the group's peasants into the hero's stack, and a part of
+    // the hero's to the other hero.
+    let mut found = found.to_vec();
+    state
+        .manage_army(
+            part,
+            RED,
+            &split(group(1), hero(1, 0), 14),
+            Some(&mut found),
+        )
+        .unwrap();
+    assert_eq!(found, [stack(1, PEASANT, 1), stack(2, GNOLL, 1)]);
+    state
+        .manage_army(part, RED, &split(hero(1, 0), hero(3, 3), 4), None)
+        .unwrap();
+    assert_eq!(army_of(&state, 1), [stack(0, PEASANT, 10)]);
+    assert_eq!(
+        army_of(&state, 3),
+        [stack(0, PIKEMAN, 1), stack(3, PEASANT, 4)]
+    );
 }
 
 // covers: ADV-ARM-006
