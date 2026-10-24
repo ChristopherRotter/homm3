@@ -153,6 +153,11 @@ pub struct Observation {
     /// Whether each side's player is human, indexed by [`BattleSide::index`] (public; ADR-0023
     /// point 7, BAT-SIE-023).
     pub human: [bool; 2],
+    /// The battlefield picture's variant, 0 to 2 (public, for viewers: CLT-Q4; `None` not known).
+    pub background: Option<u8>,
+    /// Each side's player colour, 0 red to 7 pink, indexed by [`BattleSide::index`] (public, for
+    /// viewers: CLT-Q6; `None` no player or not known).
+    pub colours: [Option<u8>; 2],
     /// The town the battle is fought at, if any: its walls, gate and moat (public; BAT-SIE-001);
     /// its Escape Tunnel for the defender only (BAT-SIE-024, BAT-Q50 (4)).
     pub siege: Option<SiegeState>,
@@ -243,6 +248,8 @@ pub fn observe_as(state: &BattleState, ruleset: &BattleRuleset, viewer: Viewer) 
         anti_magic: state.anti_magic,
         difficulty: state.difficulty,
         human: state.human,
+        background: state.background,
+        colours: state.colours,
         // rule: BAT-SIE-024
         siege: state.siege.map(|s| s.seen_by(side)),
         effects: state.effects().to_vec(),

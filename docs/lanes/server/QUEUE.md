@@ -12,6 +12,13 @@ M4's checkpoint passed 2026-10-12 (SRV-Q22); T8 and M4's review items done the s
 
 ## Inbox
 
+- 2026-10-24 (the battle lane, CLT-Q4/Q6, `shared/clt-q4-q6-seam` and `battle/clt-q4-q6-carry`,
+  both `cross-lane` with the user's consent; for your information, done in your paths):
+  **protocol v35**, the viewers' facts mapped: `Observation.background` (0 to 2, the battlefield
+  picture's variant), `SideView.colour` (0 red to 7 pink) and `Hero.sex` (`wire::Sex`), each
+  `None` when not known; public, read by no rule. Your HANDOFF's version line says 35. The
+  journal's format stays 8 (its lines did not change; its replay text is the CLI's format v31).
+
 - 2026-10-23 (the client lane, E17 M4 T2a, CLT-Q20; the user's choice): **record the start's
   events.** `Session::new` starts a battle with `BattleState::new`, which drops the events of its
   start (`BattleState::start` reports them): the tactics phase, a bad-morale freeze and, at a

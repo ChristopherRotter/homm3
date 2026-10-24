@@ -8,6 +8,20 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`. Increment 1
 
 ## Inbox
 
+- 2026-10-24 (the battle lane, CLT-Q4/Q6, `shared/clt-q4-q6-seam` and `battle/clt-q4-q6-carry`,
+  both `cross-lane` with the user's consent; **for you**, when battles start from the adventure
+  map): the seam carries three facts for viewers, read by no rule, each defaulting to "not
+  known": `BattleSetup.background` (the battlefield picture's variant on dirt, grass and snow:
+  0x41ADB0 counts the dead vegetation, mountains and trees within 3 tiles of the battle's tile, 0
+  where dead vegetation is the most, 1 where mountains are, 2 otherwise, an empty surrounding
+  included; `docs/epics/E17-design.md` §5), `BattleSetup.colours` (each side's player colour by
+  `BattleSide::index`, 0 red to 7 pink; `None` for a side without a player, a monster's or a
+  neutral town's; one colour for both sides is `SetupError::InvalidColour`) and `BattleHero.sex`
+  (`HeroSex`, where the map gave a placed hero one; `None` the hero type's own). `h3-game` should
+  set them when it starts a battle. The battle keeps them as hashed state (battle state hash v54)
+  and observes them; your ten golden replays were re-recorded with their options, their commands
+  unchanged (only checkpoint hashes taken inside a battle moved).
+
 - 2026-10-24 (the E11 refinement, `shared/e11-refinement`, Q58; for your information, nothing to
   do now): **E08 decision 104 is extended**: the enabled packs decide the edition's *rules* too,
   each at its latest patch (`base` alone RoE's executable, `base`+`ab` AB's, all three SoD's), read

@@ -12,7 +12,7 @@ The AI lane's living state; read after the global `docs/HANDOFF.md`. Format and 
   far `t7-1` (20 M, a third neutral): 0.828, 0.551, 0.528 against Random, Aggressor, Greedy, the
   system actor 0.374; the neutral set's value +0.245 below the target +0.285. **Next:**
   increment 6's lever (QUEUE: the user's choice).
-- **Versions:** battle action encoding v13, observation encoding v21, replay format v30 (E23 T6), the adventure env's action encoding v4 (E08 T45), C ABI v33 (E06 T5: the kill preview) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q10, AI-QUIRK-1, AI-STUB-1.
+- **Versions:** battle action encoding v13, observation encoding v21, replay format v31 (CLT-Q4/Q6), the adventure env's action encoding v4 (E08 T45), C ABI v33 (E06 T5: the kill preview) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q10, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
 ## Standing traps

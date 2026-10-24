@@ -304,6 +304,8 @@ fn state_hash_is_pinned() {
         spells: vec![bolt],
     });
     led.magic.masteries = masteries(&r, [2, 1, 0, 0]);
+    // The viewers' facts (v54, CLT-Q4, CLT-Q6): the hero's sex, the picture's variant, a colour.
+    led.sex = Some(h3_contracts::HeroSex::Female);
     // One removable obstacle (v28): a stone with its anchor beside it, and its type (v42).
     let stone = h3_contracts::Obstacle {
         hexes: vec![at(&r, 7, 4).0, at(&r, 8, 4).0],
@@ -329,6 +331,8 @@ fn state_hash_is_pinned() {
             h3_contracts::RetreatFacts::default(),
         ],
         attacker_ground: h3_content::ContentKey::parse("t:holy").ok(),
+        background: Some(1),
+        colours: [Some(3), None],
         siege: Some(h3_contracts::Siege {
             faction: r.faction_by_key("t:castle").unwrap(),
             fort: h3_contracts::FortLevel::Citadel,
@@ -349,12 +353,13 @@ fn state_hash_is_pinned() {
     // the game's difficulty and the human players (E04c T7d). v50: the town's Escape Tunnel
     // (E04c T8). v51: the Ballista's Artillery level (E04c T7e). v52: each stack's last drawn
     // spell (E23 T5b2b). v53: the tactics phase's rounds the computer counts, the retreat
-    // facts and the attacking hero's own ground (E23 T6).
-    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 53);
+    // facts and the attacking hero's own ground (E23 T6). v54: the viewers' facts, the
+    // battlefield picture's variant, each side's colour and a hero's sex (CLT-Q4, CLT-Q6).
+    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 54);
     assert_eq!(
         s.siege.unwrap().turret(7),
         Some(StackId(u8::try_from(s.stacks().len() - 1).unwrap()))
     );
 }
 
-const GOLDEN: u64 = 0x604c_536d_b526_1504;
+const GOLDEN: u64 = 0xa42e_086f_ad3a_8421;

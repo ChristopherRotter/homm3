@@ -313,17 +313,17 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x0a9d93a566afe6ff",
-    "0x417702857b474c8e",
-    "0xc05c6073cbc2072e",
-    "0xd208a8f416df029b",
-    "0x51df9f62dd84efd1",
-    "0x4e2ba9e928f0df7d",
-    "0xd4b99444a7dcafb6",
-    "0xb7729b9f6595098c",
-    "0x47c1fdd7544b85b4",
-    "0xc704a23d05975057",
-    "0x3abfdd1551301ae4",
+    "0xf85383a06fe4044d",
+    "0xc1c12a2f9de977ff",
+    "0x03cfab3ca8f93ae2",
+    "0xc489b9a8d6fbf0d7",
+    "0xac5475fb7f67dd01",
+    "0xf7ccd053e4808fb0",
+    "0xa55fe000a72291c8",
+    "0xe4656093ccaa664e",
+    "0xec0ae0436c64dc93",
+    "0x591bfe0ae77acd12",
+    "0x9f6c35bce646328d",
     "0xeb082d861b1c17a8",
 ]
 

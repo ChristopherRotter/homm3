@@ -14,7 +14,7 @@ use h3_content::{
 };
 use h3_content_battle::{BattleRuleset, CreatureType};
 use h3_contracts::{
-    BallistaControl, BattleEffect, BattleHero, BattleSide, CatapultControl, DamageBonuses,
+    BallistaControl, BattleEffect, BattleHero, BattleSide, CatapultControl, DamageBonuses, HeroSex,
     MAX_BATTLE_EFFECTS, Rate, StatOp, TentControl,
 };
 use h3_kernel::{CanonicalHash, FixedVec, StateHasher};
@@ -55,6 +55,9 @@ pub struct HeroView {
     /// The hero carries a spell book (public, ADR-0014 point 8: the Master Genie's test reads it,
     /// BAT-MAG-050); the spells in it are private.
     pub spell_book: bool,
+    /// The hero's sex where its map gave it one (`BattleHero.sex`, CLT-Q6): for viewers only, no
+    /// rule reads it.
+    pub sex: Option<HeroSex>,
 }
 
 /// What only the hero's own side sees of it (ADR-0013 point 9, ADR-0014 point 8;
@@ -297,6 +300,12 @@ impl CanonicalHash for HeroRecord {
         h.write_u32(self.funds);
         self.magic.hash_into(h);
         h.write_bool(v.spell_book);
+        // State hash v54 (CLT-Q6): the sex, 0 the hero type's own, 1 male, 2 female.
+        h.write_u8(match v.sex {
+            None => 0,
+            Some(HeroSex::Male) => 1,
+            Some(HeroSex::Female) => 2,
+        });
     }
 }
 
@@ -470,6 +479,7 @@ pub(crate) fn check(
             commands_tent: hero.war_machines.tent.is_some(),
             commands_catapult: hero.war_machines.catapult.is_some(),
             spell_book: hero.magic.spell_book.is_some(),
+            sex: hero.sex,
         },
         tactics: hero.tactics,
         damage: hero.damage,

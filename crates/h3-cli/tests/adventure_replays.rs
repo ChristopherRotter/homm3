@@ -88,7 +88,9 @@
 //! Book, which the duel's heroes do not wear) moved only the header's import version; every hash
 //! stayed. E08 T50 (adventure state hash v11: the tactics flag; adventure ruleset part v11: a
 //! stack's most creatures) re-recorded all ten with their options, their commands unchanged:
-//! every hash moved.
+//! every hash moved. CLT-Q4/Q6 (battle state hash v54: the viewers' facts, `cross-lane`)
+//! re-recorded all ten with their options, their commands unchanged: nine moved checkpoint hashes
+//! taken inside a battle, `duel-s2-d7` none.
 
 use std::path::PathBuf;
 

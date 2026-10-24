@@ -77,6 +77,13 @@ pub enum SetupError {
     /// The town's siege is not sound: a moat below a Citadel, or a natural obstacle on the walls,
     /// the moat or the town's mines (BAT-SIE-001).
     InvalidSiege,
+    /// The battlefield picture's variant is above 2 (CLT-Q4).
+    InvalidBackground,
+    /// A side's player colour is above 7, or the defender's is the attacker's (CLT-Q6).
+    InvalidColour {
+        /// The side.
+        side: BattleSide,
+    },
     /// A side's hero cannot be used (BAT-HER-001).
     InvalidHero {
         /// The side.
@@ -196,6 +203,10 @@ impl fmt::Display for SetupError {
             Self::InvalidSiege => f.write_str(
                 "the siege has a moat below a Citadel or an obstacle on its walls or moat",
             ),
+            Self::InvalidBackground => f.write_str("the battlefield picture's variant is above 2"),
+            Self::InvalidColour { side } => {
+                write!(f, "{side:?} colour is above 7 or the other side's")
+            }
             Self::InvalidHero { side, error } => write!(f, "{side:?} hero: {error}"),
         }
     }
@@ -421,6 +432,14 @@ mod tests {
         assert_eq!(
             SetupError::InvalidSiege.to_string(),
             "the siege has a moat below a Citadel or an obstacle on its walls or moat"
+        );
+        assert_eq!(
+            SetupError::InvalidBackground.to_string(),
+            "the battlefield picture's variant is above 2"
+        );
+        assert_eq!(
+            SetupError::InvalidColour { side: Defender }.to_string(),
+            "Defender colour is above 7 or the other side's"
         );
         assert_eq!(
             SetupError::InvalidHero {

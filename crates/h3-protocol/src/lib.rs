@@ -72,8 +72,10 @@ pub mod wire;
 /// human. v33 (E04c T7e, ADR-0013 point 4): the own hero's Ballista names its Artillery level.
 /// v34 (the server lane's inbox, 2026-10-19): the query `CreatureCastTargets`; a side's
 /// `may_retreat` is as the viewer knows it (a town's Escape Tunnel shows to its defender only,
-/// BAT-Q50 (4)): the field is unchanged, its meaning is new.
-pub const PROTOCOL_VERSION: u32 = 34;
+/// BAT-Q50 (4)): the field is unchanged, its meaning is new. v35 (CLT-Q4, CLT-Q6): for viewers,
+/// the observation names the battlefield picture's variant, each side's player colour and a
+/// hero's sex where its map gave it one.
+pub const PROTOCOL_VERSION: u32 = 35;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes.

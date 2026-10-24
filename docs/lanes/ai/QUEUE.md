@@ -55,6 +55,15 @@ Sorted by destination at E05's audit (T9a, 2026-10-19); the origin stays in brac
 done: BAT-Q33's point for E05 (AI-Q3, ADR-0025 point 6), the `h3-game` coverage gap of a pending
 Pass offer (fixed by the adventure lane's fixed tests, #266).
 
+- 2026-10-24 (the battle lane, CLT-Q4/Q6, `shared/clt-q4-q6-seam` and `battle/clt-q4-q6-carry`,
+  both `cross-lane` with the user's consent; for your information, done in your paths): **replay
+  format v31** (`h3_sim::REPLAY_FORMAT_VERSION`: the setup names the battlefield picture's
+  variant, each side's player colour and a hero's sex, for viewers; the CLI's file writes
+  `background`, `attacker_colour`, `defender_colour` and a hero's `sex`, each omitted when not
+  known); your HANDOFF's versions say so. `h3_battle::Observation` gained `background` and
+  `colours`, `HeroView` `sex` (your observation test's literal: `sex: None`): read by no rule, so
+  the observation encoding stays v21.
+
 - 2026-10-24 (the battle lane, `battle/e04b-batch-2g` on `shared/batch-2g-quirks`, both
   `cross-lane` with the user's consent; for your information): **batch 2g's rules.** In the wait
   phase every stack not done is ordered alike, slower first, and none may Wait (`legal_commands`

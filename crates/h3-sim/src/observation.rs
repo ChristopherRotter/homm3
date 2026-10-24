@@ -646,6 +646,7 @@ mod tests {
             commands_tent: false,
             commands_catapult: false,
             spell_book: true,
+            sex: None,
         };
         let mut block = [0.0; HERO_PUBLIC_FEATURES];
         encode_hero(Some(view), 0, &mut block);

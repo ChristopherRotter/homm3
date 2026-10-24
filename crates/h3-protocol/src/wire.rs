@@ -52,6 +52,15 @@ pub enum Side {
     Defender,
 }
 
+/// A hero's sex, as its map gave it (v35, CLT-Q6).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Sex {
+    /// Male.
+    Male,
+    /// Female.
+    Female,
+}
+
 /// What a connection asks to be in a game, and what it holds once joined.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Seat {
@@ -697,6 +706,8 @@ pub struct Hero {
     pub commands_catapult: bool,
     /// It carries a spell book.
     pub spell_book: bool,
+    /// Its sex where its map gave it one, for viewers (v35, CLT-Q6): `None` the hero type's own.
+    pub sex: Option<Sex>,
 }
 
 /// The commanded Ballista.
@@ -834,6 +845,9 @@ pub struct SideView {
     pub cost_change: i8,
     /// Its player is human (v32, ADR-0023 point 7).
     pub human: bool,
+    /// Its player's colour, 0 red to 7 pink, for viewers (v35, CLT-Q6): `None` no player or not
+    /// known (a viewer takes red for the attacker, blue for the defender).
+    pub colour: Option<u8>,
     /// Its hero's public part, if a hero leads it.
     pub hero: Option<Hero>,
 }
@@ -914,6 +928,9 @@ pub struct Observation {
     pub anti_magic: bool,
     /// The game's difficulty, 0 (Easy) to 4 (Impossible) (v32, ADR-0023 point 7).
     pub difficulty: u8,
+    /// The battlefield picture's variant, 0 to 2, for viewers (v35, CLT-Q4): `None` not known (a
+    /// viewer takes 2).
+    pub background: Option<u8>,
     /// The town the battle is fought at (v30, ADR-0023): its walls, gate and moat.
     pub siege: Option<Siege>,
     /// The attacker's and the defender's public state.

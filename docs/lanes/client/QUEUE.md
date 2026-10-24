@@ -32,6 +32,18 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-10-24 (the battle lane, CLT-Q4/Q6, `shared/clt-q4-q6-seam` and `battle/clt-q4-q6-carry`,
+  both `cross-lane` with the user's consent; **for you**): **the wire carries the viewers' facts**
+  (protocol v35): `Observation.background` (0 to 2, the battlefield picture's variant on dirt,
+  grass and snow; `None` not known: take the third picture, as now), `SideView.colour` (the
+  side's player colour, 0 red to 7 pink; `None` no player or not known: red for the attacker,
+  blue for the defender, as now) and `Hero.sex` (`wire::Sex`; `None` the hero type's own, the
+  asset tables' `[[hero]]`). Your wire literals got `background: None`, `colour: None` and
+  `sex: None` (`h3-view`'s `record.rs`, the mouse, scene and panel tests); nothing reads them yet.
+  The scenarios and the battle replay file (format v31: `background`, `attacker_colour`,
+  `defender_colour`, a hero's `sex`, each omitted when not known) may name them; the adventure
+  map's battles will set them (the adventure lane's inbox). CLT-Q4 and CLT-Q6 are answered.
+
 - 2026-10-24 (the map-client lane, E24 M1 T6b's reviewer, R2-15; for you to take or leave):
   **`h3-view`'s `tests/purity.rs` has three holes** its copy in `h3-map-view` had: `sources` skips
   every folder named `bin` at any depth (only `src/bin/` is the adapter), a denied lint relaxed

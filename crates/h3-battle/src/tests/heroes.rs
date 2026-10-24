@@ -11,14 +11,14 @@ use h3_content::{
     SpellId, SpellScope,
 };
 use h3_contracts::{
-    BallistaControl, BattleEffect, BattleHero, CatapultControl, DamageBonuses, MAX_BATTLE_EFFECTS,
-    StatOp, TentControl,
+    BallistaControl, BattleEffect, BattleHero, CatapultControl, DamageBonuses, HeroSex,
+    MAX_BATTLE_EFFECTS, StatOp, TentControl,
 };
 
 use super::support::*;
 use crate::{
     BattleSetup, BattleSide, BattleState, Command, EventKind, HeroError, HeroView, OwnHeroView,
-    SetupError, StackId, observe,
+    SetupError, StackId, Viewer, observe, observe_as,
 };
 
 fn with_heroes(
@@ -119,6 +119,7 @@ fn heroes_are_kept_and_shown_to_both_sides() {
         commands_tent: false,
         commands_catapult: false,
         spell_book: false,
+        sex: None,
     };
     let s = BattleState::new(&r, &with_heroes(&r, [Some(hero(&r)), None]), 1).unwrap();
     assert_eq!(s.hero(BattleSide::Attacker), Some(view));
@@ -141,6 +142,103 @@ fn heroes_are_kept_and_shown_to_both_sides() {
     .unwrap();
     assert_eq!((both.tactics(), other.tactics()), (None, None));
     assert_ne!(both.state_hash(), other.state_hash());
+}
+
+/// The viewers' facts (CLT-Q4, CLT-Q6): the battlefield picture's variant, each side's player
+/// colour and a hero's sex are kept, shown to every viewer and hashed; values out of their ranges
+/// and one colour for both sides are setup errors.
+#[test]
+fn the_viewers_facts_are_kept_shown_and_hashed() {
+    let r = ruleset();
+    let mut her = hero(&r);
+    her.sex = Some(HeroSex::Female);
+    let setup = BattleSetup {
+        background: Some(1),
+        colours: [Some(0), Some(5)],
+        ..with_heroes(&r, [Some(her), Some(hero(&r))])
+    };
+    let s = BattleState::new(&r, &setup, 1).unwrap();
+    let sexes = |o: &crate::Observation| o.heroes.map(|h| h.and_then(|h| h.sex));
+    for viewer in [Viewer::Side(BattleSide::Defender), Viewer::Spectator] {
+        let o = observe_as(&s, &r, viewer);
+        assert_eq!((o.background, o.colours), (Some(1), [Some(0), Some(5)]));
+        assert_eq!(sexes(&o), [Some(HeroSex::Female), None]);
+    }
+    let plain =
+        BattleState::new(&r, &with_heroes(&r, [Some(hero(&r)), Some(hero(&r))]), 1).unwrap();
+    let o = observe(&plain, &r, BattleSide::Attacker);
+    assert_eq!(
+        (o.background, o.colours, sexes(&o)),
+        (None, [None; 2], [None; 2])
+    );
+    let mut male = hero(&r);
+    male.sex = Some(HeroSex::Male);
+    for other in [
+        BattleSetup {
+            background: Some(0),
+            ..setup.clone()
+        },
+        BattleSetup {
+            colours: [Some(0), None],
+            ..setup.clone()
+        },
+        BattleSetup {
+            heroes: [Some(male), Some(hero(&r))],
+            ..setup.clone()
+        },
+    ] {
+        let o = BattleState::new(&r, &other, 1).unwrap();
+        assert_ne!(o.state_hash(), s.state_hash());
+    }
+    for (bad, error) in [
+        (
+            BattleSetup {
+                background: Some(3),
+                ..setup.clone()
+            },
+            SetupError::InvalidBackground,
+        ),
+        (
+            BattleSetup {
+                colours: [Some(8), None],
+                ..setup.clone()
+            },
+            SetupError::InvalidColour {
+                side: BattleSide::Attacker,
+            },
+        ),
+        (
+            BattleSetup {
+                colours: [Some(4), Some(4)],
+                ..setup.clone()
+            },
+            SetupError::InvalidColour {
+                side: BattleSide::Defender,
+            },
+        ),
+        (
+            BattleSetup {
+                colours: [None, Some(9)],
+                ..setup.clone()
+            },
+            SetupError::InvalidColour {
+                side: BattleSide::Defender,
+            },
+        ),
+    ] {
+        assert_eq!(BattleState::new(&r, &bad, 1).err(), Some(error));
+    }
+    assert!(
+        BattleState::new(
+            &r,
+            &BattleSetup {
+                colours: [Some(7), Some(2)],
+                ..setup
+            },
+            1
+        )
+        .is_ok()
+    );
 }
 
 // covers: BAT-HER-001, BAT-FLE-002
@@ -218,7 +316,7 @@ fn the_private_part_of_a_hero_shows_only_to_its_side() {
     assert!(observe(&lone, &r, BattleSide::Attacker).own_hero.is_some());
     assert_eq!(observe(&lone, &r, BattleSide::Defender).own_hero, None);
     // A spectator sees both public parts and no private one (SRV-Q4).
-    let spectator = crate::observe_as(&s, &r, crate::Viewer::Spectator);
+    let spectator = observe_as(&s, &r, Viewer::Spectator);
     assert_eq!(
         (spectator.heroes, spectator.own_hero),
         (attacker.heroes, None)

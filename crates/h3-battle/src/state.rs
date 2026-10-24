@@ -79,8 +79,14 @@ const _: () = assert!(MAX_SIDE_STACKS <= SIDE_STACK_SLOTS);
 /// the army slots and the war machines in the turn order's tie-break (BAT-TRN-001).
 pub const CREATED_SLOT: u8 = u8::MAX;
 
+/// The highest battlefield picture variant (`BattleSetup.background`, CLT-Q4: 0x41ADB0's 0 to 2).
+const MAX_BACKGROUND: u8 = 2;
+
+/// The highest player colour (`BattleSetup.colours`, CLT-Q6: 0 red to 7 pink).
+const MAX_COLOUR: u8 = 7;
+
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
-pub const BATTLE_STATE_HASH_VERSION: u32 = 53;
+pub const BATTLE_STATE_HASH_VERSION: u32 = 54;
 
 /// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks, then
 /// the stacks created in the battle in the order they appear, BAT-MAG-037).
@@ -1029,6 +1035,12 @@ pub struct BattleState {
     /// (`BattleSetup.attacker_ground`, ADR-0027 point 14; public, not observed: no rule reads it),
     /// read only by the computer's odds with BAT-QUIRK-25 (survey slip 6, BAT-AI-008).
     pub(crate) attacker_ground: Option<BattlefieldId>,
+    /// The battlefield picture's variant (`BattleSetup.background`, CLT-Q4) and each side's player
+    /// colour (`BattleSetup.colours`, CLT-Q6): for viewers only, public and observed; no rule
+    /// reads them.
+    pub(crate) background: Option<u8>,
+    /// See `background`.
+    pub(crate) colours: [Option<u8>; 2],
     /// The town the battle is fought at, if any (BAT-SIE-001; public).
     pub(crate) siege: Option<SiegeState>,
     /// The timed effects on stacks (ADR-0014 point 5).
@@ -1089,6 +1101,19 @@ impl BattleState {
             .is_some_and(|t| ruleset.terrains().get(t.index()).is_none())
         {
             return Err(SetupError::UnknownTerrain);
+        }
+        // The viewers' facts (CLT-Q4, CLT-Q6): a variant 0x41ADB0 picks, a colour of the eight, not
+        // one for both sides.
+        if setup.background.is_some_and(|b| b > MAX_BACKGROUND) {
+            return Err(SetupError::InvalidBackground);
+        }
+        for side in BattleSide::BOTH {
+            let colour = setup.colours[side.index()];
+            if colour.is_some_and(|c| c > MAX_COLOUR)
+                || (side == BattleSide::Defender && colour.is_some() && colour == setup.colours[0])
+            {
+                return Err(SetupError::InvalidColour { side });
+            }
         }
         // rule: BAT-TER-002
         let battlefield = setup
@@ -1231,6 +1256,8 @@ impl BattleState {
             human: setup.human,
             retreat: setup.retreat,
             attacker_ground,
+            background: setup.background,
+            colours: setup.colours,
             siege,
             effects: Effects::new(),
             spell_obstacles: SpellObstacles::new(),
@@ -1663,6 +1690,8 @@ impl CanonicalHash for BattleState {
             h.write_bool(facts.wanted);
         }
         self.attacker_ground.hash_into(h);
+        self.background.hash_into(h);
+        self.colours.iter().for_each(|c| c.hash_into(h));
         self.siege.hash_into(h);
         self.effects.hash_into(h);
         self.spell_obstacles.hash_into(h);

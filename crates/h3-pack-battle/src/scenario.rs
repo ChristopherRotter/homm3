@@ -10,8 +10,8 @@ use h3_content::{
 };
 use h3_contracts::{
     Army, ArmyStack, BallistaControl, BattleEffect, BattleHero, BattleSetup, BattleSide,
-    CatapultControl, DamageBonuses, EagleEye, FactionGroup, FortLevel, Moat, Obstacle, Rate,
-    RetreatFacts, Siege, StatOp, TentControl,
+    CatapultControl, DamageBonuses, EagleEye, FactionGroup, FortLevel, HeroSex, Moat, Obstacle,
+    Rate, RetreatFacts, Siege, StatOp, TentControl,
 };
 use h3_pack::{AffectsEntry, StatEntry};
 use serde::{Deserialize, Serialize};
@@ -76,6 +76,11 @@ struct ScenarioHeader {
     /// What each side's hero would lose by a retreat (ADR-0027 point 14; default: nothing known).
     attacker_retreat: Option<RetreatEntry>,
     defender_retreat: Option<RetreatEntry>,
+    /// The battlefield picture's variant, 0 to 2, for viewers (CLT-Q4; default not known).
+    background: Option<u8>,
+    /// Each side's player colour, 0 red to 7 pink, for viewers (CLT-Q6; default not known).
+    attacker_colour: Option<u8>,
+    defender_colour: Option<u8>,
 }
 
 #[derive(Deserialize, Clone)]
@@ -170,6 +175,38 @@ pub struct HeroEntry {
     /// Battle effects (default none; written only when there are some, after the values).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub effects: Vec<EffectEntry>,
+    /// The hero's sex where its map gave it one, for viewers ([`BattleHero::sex`], CLT-Q6;
+    /// default the hero type's own, written only when set; replay format v31).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sex: Option<SexEntry>,
+}
+
+/// A hero's sex ([`HeroSex`]) in scenario and replay files: `"male"` or `"female"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SexEntry {
+    /// [`HeroSex::Male`].
+    Male,
+    /// [`HeroSex::Female`].
+    Female,
+}
+
+impl From<SexEntry> for HeroSex {
+    fn from(e: SexEntry) -> Self {
+        match e {
+            SexEntry::Male => Self::Male,
+            SexEntry::Female => Self::Female,
+        }
+    }
+}
+
+impl From<HeroSex> for SexEntry {
+    fn from(s: HeroSex) -> Self {
+        match s {
+            HeroSex::Male => Self::Male,
+            HeroSex::Female => Self::Female,
+        }
+    }
 }
 
 /// How a hero commands its Ballista ([`BallistaControl`]) in scenario and replay files.
@@ -758,6 +795,7 @@ impl HeroEntry {
                 })
             })
             .transpose()?;
+        hero.sex = self.sex.map(HeroSex::from);
         Ok(hero)
     }
 
@@ -836,6 +874,7 @@ impl HeroEntry {
             eagle_eye,
             masteries,
             effects,
+            sex: hero.sex.map(SexEntry::from),
         })
     }
 }
@@ -1077,6 +1116,8 @@ pub struct ScenarioDef {
     pub(crate) human: [bool; 2],
     pub(crate) retreat: [RetreatFacts; 2],
     pub(crate) attacker_ground: Option<ContentKey>,
+    pub(crate) background: Option<u8>,
+    pub(crate) colours: [Option<u8>; 2],
     /// Whether obstacles are generated for the terrain and the battlefield when the battle starts
     /// (the caller does it, with its seed; BAT-GEO-004). Excludes explicit obstacles.
     pub random_obstacles: bool,
@@ -1205,9 +1246,8 @@ impl ScenarioDef {
             human: self.human,
             retreat: self.retreat,
             attacker_ground: self.attacker_ground.clone(),
-            // The viewers' facts (CLT-Q4, CLT-Q6): not in the scenario format yet.
-            background: None,
-            colours: [None; 2],
+            background: self.background,
+            colours: self.colours,
         })
     }
 }
@@ -1272,6 +1312,8 @@ pub fn parse_scenario(text: &str) -> Result<ScenarioDef, BattlePackError> {
             .as_deref()
             .map(ContentKey::parse)
             .transpose()?,
+        background: file.scenario.background,
+        colours: [file.scenario.attacker_colour, file.scenario.defender_colour],
         random_obstacles: file.scenario.random_obstacles,
     })
 }

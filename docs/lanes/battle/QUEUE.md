@@ -6,14 +6,7 @@ Pre-refined tasks of the battle lane, in order, then the inbox of discovered wor
 
 E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-original-battle-ai.md`, its log's "T7 — the closure"; the cuts of its tasks: OPEN-QUESTIONS BAT-Q52 to BAT-Q61 and the epic file). E04b closed on 2026-10-12, E04c on 2026-10-16 (their epic files and logs; their cuts: OPEN-QUESTIONS BAT-Q10 to BAT-Q27, BAT-Q37 to BAT-Q50).
 
-**Next (the user, 2026-10-24):** the inbox session's leftovers are done (#458, batch 2g's pull request) but for CLT-Q4/Q6, a fresh session's task below; then **E11, the historical rules of RoE and AB** (refined 2026-10-24, Q58; `docs/epics/E11-historical-rules.md`): T1, the sourcing and catalogue with the user's own original media.
-
-### CLT-Q4/Q6 — the viewers' setup facts, seam to wire (the user, 2026-10-24)
-
-The battlefield picture's variant (`BattleSetup.background`, 0x41ADB0's 0 to 2), each side's player colour (`BattleSetup.colours`, 0 red to 7 pink) and a hero's sex (`BattleHero.sex`, `HeroSex`): for viewers only, read by no rule, every default "not known". Two pull requests, both `cross-lane` (the user's consent: seam to wire):
-
-1. **The seam, `shared/clt-q4-q6-seam`** (d8631b56, pushed, on `master` e816f204): `h3-contracts` and ADR-0004's seam growth; the two exhaustive setup literals (`h3-pack-battle`'s scenario, `h3-cli`'s replay reader) set None. Left: the full local verify (started and stopped on 2026-10-24), then open it; it merges first.
-2. **The carry, `battle/clt-q4-q6-carry`** (65972d0b, pushed, a WIP commit on the seam, **not compiled yet**): `BattleState` keeps `background` and `colours` (`SetupError::InvalidBackground`, `InvalidColour`: above the range, or one colour for both sides), `HeroView.sex`, all hashed (state hash v54); the observation; the wire (protocol v35: `Observation.background`, `SideView.colour`, `Hero.sex`, `wire::Sex`); scenarios and the replay file (format v31: `background`, `attacker_colour`, `defender_colour`, a hero's `sex` as `SexEntry`); tests in `tests/heroes.rs` and `h3-cli`'s round trip. Left: compile and test; the golden state hash (`tests/commands.rs`, `GOLDEN`); the client lane's wire literals (`clients/crates/h3-view`: `record.rs`, the tests' `SideView` and `Hero`); every golden replay and the adventure lane's rehashed with their commands (`fixtures/README.md`, "Only the state hash moved"); the version notes (the HANDOFFs, the server lane's included); inbox notes for the adventure lane (`h3-game` sets the three from the map and the players; 0x41ADB0's count of the surrounding tiles) and the client lane (the fields to read, the defaults a viewer takes); then the full verify. Rebase on `master` once batch 2g's pull request merges (both move the replays).
+**Next (the user, 2026-10-24):** the inbox session's leftovers are done (#458, #464; CLT-Q4/Q6's seam and carry, the 112th session); next **E11, the historical rules of RoE and AB** (refined 2026-10-24, Q58; `docs/epics/E11-historical-rules.md`): T1, the sourcing and catalogue with the user's own original media.
 
 ## Inbox
 

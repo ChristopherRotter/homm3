@@ -19,7 +19,7 @@ use h3_battle::{
 };
 use h3_content::{CreatureTypeId, SpellId};
 use h3_content_battle::{BattleRuleset, ObstacleTypeId};
-use h3_contracts::{BallistaControl, CatapultControl, DamageBonuses, Rate, TentControl};
+use h3_contracts::{BallistaControl, CatapultControl, DamageBonuses, HeroSex, Rate, TentControl};
 use h3_kernel::hash::{HASH_ALGORITHM, HASH_VERSION};
 use h3_kernel::rng::{RNG_ALGORITHM, RNG_VERSION};
 
@@ -29,7 +29,7 @@ use crate::PROTOCOL_VERSION;
 use crate::wire::{
     Algorithm, Ballista, BookSpell, Command, Defences, Effect, Event, Field, Hero, KeyTables,
     Manifest, Observation, Offer, OpeningSpell, Outcome, OwnHero, PackRef, Query,
-    RemovableObstacle, Seat, Side, SideView, Siege, SpellBonus, SpellObstacle, Stack, Strike,
+    RemovableObstacle, Seat, Sex, Side, SideView, Siege, SpellBonus, SpellObstacle, Stack, Strike,
     Tactics, Target, WireU64,
 };
 
@@ -321,6 +321,8 @@ pub(crate) fn observation(o: &h3_battle::Observation) -> Observation {
         anti_magic,
         difficulty,
         human,
+        background,
+        colours,
         siege,
         effects,
         spell_obstacles,
@@ -334,6 +336,7 @@ pub(crate) fn observation(o: &h3_battle::Observation) -> Observation {
             summoned: summoned[i].map(CreatureTypeId::raw),
             cost_change: cost_change[i],
             human: human[i],
+            colour: colours[i],
             hero: heroes[i].map(hero),
         }
     };
@@ -368,6 +371,7 @@ pub(crate) fn observation(o: &h3_battle::Observation) -> Observation {
         battlefield: battlefield.map(h3_content_battle::BattlefieldId::raw),
         anti_magic: *anti_magic,
         difficulty: *difficulty,
+        background: *background,
         siege: siege.map(|s| Siege {
             faction: s.faction.raw(),
             fort: s.fort as u8,
@@ -418,6 +422,7 @@ fn hero(h: HeroView) -> Hero {
         commands_tent,
         commands_catapult,
         spell_book,
+        sex,
     } = h;
     Hero {
         hero_type: hero_type.raw(),
@@ -432,6 +437,10 @@ fn hero(h: HeroView) -> Hero {
         commands_tent,
         commands_catapult,
         spell_book,
+        sex: sex.map(|s| match s {
+            HeroSex::Male => Sex::Male,
+            HeroSex::Female => Sex::Female,
+        }),
     }
 }
 
