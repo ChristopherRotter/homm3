@@ -34,8 +34,13 @@ pub enum DetailsError {
     SkillLevel(SkillId),
     /// An artifact is not in the ruleset.
     UnknownArtifact(ArtifactTypeId),
+    /// The worn artifacts do not have one entry per position of the ruleset's slots
+    /// ([`crate::positions`], HER-ART-001).
+    Positions,
     /// A worn artifact has no slot (it is carried in the backpack only, like the Grail).
     NotWearable(ArtifactTypeId),
+    /// A worn artifact is on a position of another slot than its own (HER-ART-001).
+    WrongPosition(ArtifactTypeId),
     /// The worn artifacts and their locks need more positions of a slot than it has.
     SlotFull(ArtifactSlotId),
     /// More artifacts in the backpack than it holds.
@@ -75,7 +80,11 @@ impl fmt::Display for DetailsError {
             Self::DuplicateSkill(id) => write!(f, "secondary skill {} listed twice", id.raw()),
             Self::SkillLevel(id) => write!(f, "secondary skill {} needs level 1..=3", id.raw()),
             Self::UnknownArtifact(id) => write!(f, "unknown artifact {}", id.raw()),
+            Self::Positions => f.write_str("the worn artifacts do not match the positions"),
             Self::NotWearable(id) => write!(f, "artifact {} has no slot", id.raw()),
+            Self::WrongPosition(id) => {
+                write!(f, "artifact {} is on another slot's position", id.raw())
+            }
             Self::SlotFull(id) => write!(f, "artifact slot {} has too few positions", id.raw()),
             Self::BackpackFull => f.write_str("too many artifacts in the backpack"),
             Self::NotForBackpack(id) => {
@@ -104,6 +113,9 @@ pub enum ChangeError {
     NoRoom(ArtifactTypeId),
     /// There is no artifact at the place.
     NoArtifact(ArtifactPlace),
+    /// The placed artifact cannot go to the place (E08 T49a): the position is not empty or of
+    /// another slot, the locks would not fit, or the backpack index, slot or room refuses it.
+    CannotPlace(ArtifactPlace),
     /// The learned spell is not a hero spell of the ruleset (HER-SPL-001).
     Spell(DetailsError),
     /// The hero has learned the spell already.
@@ -125,6 +137,12 @@ impl fmt::Display for ChangeError {
             Self::NoArtifact(ArtifactPlace::Worn(i)) => write!(f, "no artifact worn at {i}"),
             Self::NoArtifact(ArtifactPlace::Backpack(i)) => {
                 write!(f, "no artifact in the backpack at {i}")
+            }
+            Self::CannotPlace(ArtifactPlace::Worn(i)) => {
+                write!(f, "the artifact cannot be worn at {i}")
+            }
+            Self::CannotPlace(ArtifactPlace::Backpack(i)) => {
+                write!(f, "the artifact cannot go into the backpack at {i}")
             }
             Self::Spell(error) => write!(f, "the spell does not fit the ruleset: {error}"),
             Self::KnownSpell(id) => write!(f, "spell {} is learned already", id.raw()),

@@ -1558,10 +1558,13 @@ fn harvested_magic_derives() {
             .iter()
             .map(|&(k, l)| (sod.skill_by_key(k).unwrap(), l))
             .collect(),
-        worn: worn
-            .iter()
-            .map(|k| sod.artifact_by_key(k).unwrap().into())
-            .collect(),
+        worn: h3_heroes::wearing(
+            &sod,
+            &worn
+                .iter()
+                .map(|k| sod.artifact_by_key(k).unwrap().into())
+                .collect::<Vec<_>>(),
+        ),
         backpack: vec![],
         spells: vec![spell("base:magic_arrow"), spell("base:chain_lightning")],
         mana: 50,
@@ -1655,7 +1658,7 @@ fn hero_details_fit_the_harvested_slots() {
             offered: Default::default(),
             primary: [5, 4, 2, 2],
             skills: vec![(r.skill_by_key("base:archery").unwrap(), 3)],
-            worn: worn.iter().map(art).map(Into::into).collect(),
+            worn: h3_heroes::wearing(r, &worn.iter().map(art).map(Into::into).collect::<Vec<_>>()),
             backpack: backpack.iter().map(art).map(Into::into).collect(),
             spells: vec![r.spell_by_key("base:magic_arrow").unwrap()],
             mana: 20,
@@ -1814,12 +1817,12 @@ fn hero_details_fit_the_harvested_slots() {
         .skills
         .push((sod.skill_by_key("base:tactics").unwrap(), 2));
     assert_eq!(derive_battle_hero(&tactician, &sod).unwrap().tactics, 2);
-    // The Alliance locks the head; machines and the book stay out of the backpack.
-    let head = details(
-        &sod,
-        &[&full[..], &["base:helm_of_heavenly_enlightenment"]].concat(),
-        &[],
-    );
+    // The Alliance locks the head: its position (0) is empty but taken (E08 T49a); machines
+    // and the book stay out of the backpack.
+    let mut head = details(&sod, &full, &[]);
+    assert_eq!(head.worn[0], None);
+    let helm = sod.artifact_by_key("base:helm_of_heavenly_enlightenment");
+    head.worn[0] = Some(helm.unwrap().into());
     assert_eq!(
         validate(&head, &sod),
         Err(DetailsError::SlotFull(
@@ -1837,15 +1840,18 @@ fn hero_details_fit_the_harvested_slots() {
     }
     let crowded = details(&sod, &[], &["base:clover_of_fortune"; 65]);
     assert_eq!(validate(&crowded, &sod), Err(DetailsError::BackpackFull));
-    // Before SoD a hero has four misc positions.
-    let five = details(&ab, &misc, &[]);
+    // Before SoD a hero has four misc positions (18 in all, SoD 19): the fifth Clover finds
+    // none.
     assert_eq!(
-        validate(&five, &ab),
-        Err(DetailsError::SlotFull(
-            ab.artifact_slot_by_key("base:misc").unwrap()
-        ))
+        (
+            h3_heroes::positions(&ab).len(),
+            h3_heroes::positions(&sod).len()
+        ),
+        (18, 19)
     );
-    assert_eq!(validate(&details(&ab, &misc[1..], &[]), &ab), Ok(()));
+    let five = details(&ab, &misc, &[]);
+    assert_eq!(five.worn.iter().flatten().count(), 4);
+    assert_eq!(validate(&five, &ab), Ok(()));
 }
 
 // covers: HER-BAT-008, HER-BAT-009, HER-BAT-010, BAT-HER-005, BAT-HER-006, BAT-HER-007
@@ -1892,7 +1898,7 @@ fn the_data_quirks_are_fixed_in_strict_fixed() {
             offered: Default::default(),
             primary: [0, 0, 1, 1],
             skills: vec![],
-            worn: vec![],
+            worn: h3_heroes::wearing(r, &[]),
             backpack: vec![],
             spells: vec![],
             mana: 0,
@@ -1958,10 +1964,13 @@ fn harvested_hero_effects_reproduce_the_experiments() {
             offered: Default::default(),
             primary,
             skills: vec![],
-            worn: worn
-                .iter()
-                .map(|k| sod.artifact_by_key(k).unwrap().into())
-                .collect(),
+            worn: h3_heroes::wearing(
+                &sod,
+                &worn
+                    .iter()
+                    .map(|k| sod.artifact_by_key(k).unwrap().into())
+                    .collect::<Vec<_>>(),
+            ),
             backpack: vec![],
             spells: vec![],
             mana: 0,

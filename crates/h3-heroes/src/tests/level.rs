@@ -125,7 +125,7 @@ pub(super) fn hero(r: &Ruleset, hero: &str, experience: u32, skills: &[(&str, u8
         offered: OfferLevels::default(),
         primary: [2, 2, 1, 1],
         skills: skills.iter().map(|&(k, l)| (s(r, k), l)).collect(),
-        worn: vec![],
+        worn: wearing(r, &[]),
         backpack: vec![],
         spells: vec![],
         mana: 0,

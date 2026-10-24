@@ -54,6 +54,10 @@ pub use h3_heroes::{ArtifactPlace, HeroChange};
 /// A hero's movement levels from its details ([`GameState::hero`]): whether it flies or walks on
 /// water (E08 T42, for the adventure's benchmarks; `h3_heroes`' derivation, HER-ADV-005).
 pub use h3_heroes::{Movement, movement};
+/// The worn artifacts' positions (E08 T49a, ADR-0013 point 1): a [`HeroArtifactsSetup`]'s are
+/// `h3_heroes`' (the map's import places a map's entries where they are taken; `wearing` places
+/// a list).
+pub use h3_heroes::{Position, positions, takes, wearing};
 pub use legal::{default_answer, legal_commands, legal_moves};
 pub use observe::{
     DecisionView, GameObservation, HeroInfo, LevelUpView, PlayerView, Viewer, observe, project,
@@ -73,5 +77,6 @@ pub use state::{GameState, OpenBattle};
 /// wandering monsters' offer kinds and whether a guard's visit waits for an offer's answer. v8
 /// (E08 T21a): a guarded pile's offer to fight. v9 (E08 T27): a hero's offers' levels. v10 (E08
 /// T29): the heroes' progression (the scenario's level limit and banned skills, the level seeds).
-/// v11 (E08 T30): the level-ups among the decisions.
-pub const GAME_STATE_HASH_VERSION: u32 = 11;
+/// v11 (E08 T30): the level-ups among the decisions. v12 (E08 T49a): a hero's worn artifacts by
+/// position.
+pub const GAME_STATE_HASH_VERSION: u32 = 12;

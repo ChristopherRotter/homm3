@@ -8,7 +8,9 @@
 //! experience, the scenario's level limit, a level-up's draws and the answer as a change (ADR-0013
 //! point 12), and since E08 T28 the original's choice between two offers, and since E08 T39 what
 //! the map reads to move and scout (the day's land points, a creature's speed, the Pathfinding,
-//! flying and water-walking levels, the scouting radius; ADR-0013 point 13). No commands and no
+//! flying and water-walking levels, the scouting radius; ADR-0013 point 13), and since E08 T49a
+//! the worn artifacts by position (`positions`, the first position that takes one, `wearing`;
+//! ADR-0013 point 1). No commands and no
 //! map or battle state: who levels a hero up, when, and equipping and learning arrive with the
 //! adventure and game epics (E08–E10); the battle never depends on this crate and reads only the
 //! battle hero of the seam (`h3_contracts::BattleHero`).
@@ -41,6 +43,7 @@ mod error;
 mod level;
 mod level_up;
 mod movement;
+mod positions;
 mod spells;
 
 pub use change::{
@@ -61,6 +64,7 @@ pub use level::{
 };
 pub use level_up::{Choice, Draws, LevelUp, Offers, OriginalDraws, draw_level_up};
 pub use movement::{Movement, land_points, movement, movement_speed, scouting_radius};
+pub use positions::{Position, first_position, positions, takes, wearing};
 pub use spells::{available_spells, learn_level, learns_spell, spell_masteries};
 
 #[cfg(test)]

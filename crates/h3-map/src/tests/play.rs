@@ -324,8 +324,8 @@ fn skills() -> impl Strategy<Value = Option<Vec<(u8, u8)>>> {
 }
 
 /// The six artifacts of a hero's movement and scouting (E08 T42; HER-ADV-003 to -006), as code and
-/// position in a map's worn slots (the import keeps no position, ADR-0013, but the editor's are
-/// used): the Speculum (52) and the Spyglass (53) in the misc slots, Equestrian's Gloves (70) on a
+/// position in a map's worn slots (the editor's, which the import keeps since v9, ADR-0013 point
+/// 1): the Speculum (52) and the Spyglass (53) in the misc slots, Equestrian's Gloves (70) on a
 /// ring, Angel Wings (72) on the shoulders (flying, ADV-MOV-009), Boots of Levitation (90, water
 /// walking, ADV-MOV-010) and Boots of Speed (98) on the feet, one at a time.
 pub(super) const MOVERS: [(u16, usize); 6] =
@@ -662,8 +662,8 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
             .filter(|b| !b.is_empty());
         let kit = plan.kits.get(usize::from(index));
         let worn_kit = kit.map_or(&[][..], |kit| &kit.worn[..]);
-        // A hero with skills of its own wears a Spell Book (artifact 0, in any slot: the import
-        // keeps no position, ADR-0013; E08 T19b2): Eagle Eye's picks are learned only with it
+        // A hero with skills of its own wears a Spell Book (artifact 0, on the map's book entry
+        // 17; E08 T19b2, until T49a in the head's): Eagle Eye's picks are learned only with it
         // (HER-SPL-006), and its type may have none. Since E08 T42 its kit's skills are its own
         // too.
         let mut skills = plan.skills.get(usize::from(index)).cloned().flatten();
@@ -674,7 +674,7 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
         let artifacts = own.then(|| {
             let mut worn = vec![None; v.artifact_slots()];
             if skills.is_some() {
-                worn[0] = Some(0);
+                worn[17] = Some(0);
             }
             for &artifact in worn_kit {
                 let (_, slot) = MOVERS.iter().find(|&&(a, _)| a == artifact).unwrap();
@@ -2113,8 +2113,11 @@ fn check_heroes_after_battle(
             .iter()
             .filter(|(hero, _)| *hero == id)
             .map(|&(_, c)| c);
-        let (mut experience, mut mana, mut items) =
-            (b.experience, b.mana, b.worn.len() + b.backpack.len());
+        let (mut experience, mut mana, mut items) = (
+            b.experience,
+            b.mana,
+            b.worn.iter().flatten().count() + b.backpack.len(),
+        );
         let mut spells = b.spells.clone();
         for change in told {
             match change {
@@ -2134,10 +2137,12 @@ fn check_heroes_after_battle(
                 }
                 // E08 T27: a battle tells no level; the game gives them (T30).
                 HeroChange::GainLevel { .. } => prop_assert!(false, "{:?} told a level", id),
+                // E08 T49a: nor a placed artifact (a move's).
+                HeroChange::PlaceArtifact { .. } => prop_assert!(false, "{:?} told a place", id),
             }
         }
         prop_assert_eq!((a.experience, a.mana), (experience, mana));
-        prop_assert_eq!(a.worn.len() + a.backpack.len(), items);
+        prop_assert_eq!(a.worn.iter().flatten().count() + a.backpack.len(), items);
         prop_assert_eq!(&a.spells, &spells);
         check_levels(rules, (before, after), events, id)?;
     }
@@ -2173,6 +2178,7 @@ fn check_heroes_after_battle(
                 let d = state.hero(id).unwrap();
                 d.worn
                     .iter()
+                    .flatten()
                     .chain(&d.backpack)
                     .copied()
                     .collect::<Vec<_>>()
@@ -2796,7 +2802,7 @@ impl Moved {
         for (i, &(code, _)) in MOVERS.iter().enumerate() {
             let key = codes::ARTIFACTS[usize::from(code)];
             let worn = |d: &h3_heroes::HeroDetails| {
-                d.worn.iter().any(|a| {
+                d.worn.iter().flatten().any(|a| {
                     core.artifact(a.artifact)
                         .is_some_and(|ty| ty.key.as_str() == key)
                 })

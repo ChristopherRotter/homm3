@@ -783,6 +783,32 @@ pub(crate) const SPELLS: [&str; 81] = [
     "base:acid_breath",
 ];
 
+/// A hero's worn entries by their index in the map (E08 T49a; `docs/formats/h3m.md`, the
+/// customised hero's artifacts, `ArtSlots.txt`'s order): each one's slot and its rank among that
+/// slot's positions. 18 before SoD; SoD's 19th is the fifth misc position, which the content
+/// numbers before the war machines (ADR-0013 point 1).
+pub(crate) const WORN: [(&str, usize); 19] = [
+    ("base:head", 0),
+    ("base:shoulders", 0),
+    ("base:neck", 0),
+    ("base:right_hand", 0),
+    ("base:left_hand", 0),
+    ("base:torso", 0),
+    ("base:ring", 0),
+    ("base:ring", 1),
+    ("base:feet", 0),
+    ("base:misc", 0),
+    ("base:misc", 1),
+    ("base:misc", 2),
+    ("base:misc", 3),
+    ("base:war_machine_1", 0),
+    ("base:war_machine_2", 0),
+    ("base:war_machine_3", 0),
+    ("base:war_machine_4", 0),
+    ("base:spell_book", 0),
+    ("base:misc", 4),
+];
+
 /// Secondary skills by original id (the index; E08 T18b): the base pack's order (`SSTRAITS.TXT`).
 pub(crate) const SKILLS: [&str; 28] = [
     "base:pathfinding",

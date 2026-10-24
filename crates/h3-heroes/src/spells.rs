@@ -87,7 +87,7 @@ pub fn spell_masteries(
 pub(crate) fn available(details: &HeroDetails, ruleset: &Ruleset) -> Vec<SpellId> {
     // rule: HER-SPL-002
     let mut set: BTreeSet<SpellId> = details.spells.iter().copied().collect();
-    set.extend(details.worn.iter().filter_map(|item| item.spell));
+    set.extend(details.worn.iter().flatten().filter_map(|item| item.spell));
     for effect in effects(details, ruleset, Count::OncePerType) {
         if let HeroEffect::Spells { grant } = *effect {
             set.extend(all_spells(ruleset).filter(|&s| grant.gives(ruleset, s)));

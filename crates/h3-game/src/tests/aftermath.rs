@@ -6,7 +6,7 @@ use h3_adventure::{AdventureEvent, AdventureEventKind};
 use h3_contracts::{
     Army, BattleOutcome, BattleResult, BattleSide, HeroOutcome, StackOrigin, StackRecord,
 };
-use h3_heroes::{ArtifactInstance, ArtifactPlace, HeroChange};
+use h3_heroes::{ArtifactInstance, ArtifactPlace, HeroChange, Position, wearing};
 
 use super::*;
 
@@ -35,14 +35,14 @@ fn equipped(rules: &GameRuleset) -> GameSetup {
     setup.heroes[0].details = HeroDetailsSetup {
         skills: Some(vec![(lore, 3)]),
         artifacts: Some(HeroArtifactsSetup {
-            worn: vec![ring, cart],
+            worn: wearing(core, &[ring, cart]),
             backpack: vec![charm],
         }),
         ..HeroDetailsSetup::default()
     };
     setup.heroes[1].details = HeroDetailsSetup {
         artifacts: Some(HeroArtifactsSetup {
-            worn: vec![ring, ring, cart, book],
+            worn: wearing(core, &[ring, ring, cart, book]),
             backpack: vec![scroll, charm],
         }),
         ..HeroDetailsSetup::default()
@@ -156,19 +156,21 @@ fn a_victory_over_a_hero_gives_experience_and_its_artifacts() {
     let scroll = ArtifactInstance::scroll(art(&rules, "t:scroll").artifact, gust);
     let red = |change| (RED, RED_HERO, change);
     let blue = |change| (BLUE, BLUE_HERO, change);
+    let worn = |at| ArtifactPlace::Worn(Position(at));
     assert_eq!(
         changes,
         [
             red(HeroChange::SetSpellPoints(3)),
-            red(HeroChange::RemoveArtifact(ArtifactPlace::Worn(1))),
+            red(HeroChange::RemoveArtifact(worn(1))),
             blue(HeroChange::SetSpellPoints(7)),
-            blue(HeroChange::RemoveArtifact(ArtifactPlace::Worn(2))),
+            blue(HeroChange::RemoveArtifact(worn(1))),
             red(HeroChange::GainExperience(experience)),
-            // The worn ones first (the book stays), then the backpack from its end.
+            // The worn ones first in position order (the book stays), then the backpack from
+            // its end.
             red(HeroChange::AddArtifact(ring)),
-            blue(HeroChange::RemoveArtifact(ArtifactPlace::Worn(0))),
+            blue(HeroChange::RemoveArtifact(worn(2))),
             red(HeroChange::AddArtifact(ring)),
-            blue(HeroChange::RemoveArtifact(ArtifactPlace::Worn(0))),
+            blue(HeroChange::RemoveArtifact(worn(3))),
             red(HeroChange::AddArtifact(charm)),
             blue(HeroChange::RemoveArtifact(ArtifactPlace::Backpack(1))),
             red(HeroChange::AddArtifact(scroll)),
@@ -179,15 +181,16 @@ fn a_victory_over_a_hero_gives_experience_and_its_artifacts() {
         ended.hero(RED_HERO).unwrap(),
         ended.hero(BLUE_HERO).unwrap(),
     );
-    // The second ring finds both ring positions taken: the backpack.
-    assert_eq!(red.worn, [ring, ring]);
+    // The first ring takes red's second ring position; the second finds both taken: the
+    // backpack. Positions: the book 0, the machine 1, the rings 2 and 3.
+    assert_eq!(red.worn, [None, None, Some(ring), Some(ring)]);
     assert_eq!(red.backpack, [charm, ring, charm, scroll]);
     assert_eq!(
         red.experience,
         game.hero(RED_HERO).unwrap().experience + experience
     );
     assert_eq!((red.mana, blue.mana), (3, 7));
-    assert_eq!(blue.worn, [art(&rules, "t:book")]);
+    assert_eq!(blue.worn, [Some(art(&rules, "t:book")), None, None, None]);
     assert!(blue.backpack.is_empty());
     assert_eq!(blue.experience, game.hero(BLUE_HERO).unwrap().experience);
     // The changes are what the store shows.
@@ -272,9 +275,9 @@ fn a_draw_gives_no_experience_but_spends_mana_and_machines() {
         changes.iter().map(|&(_, _, c)| c).collect::<Vec<_>>(),
         [
             HeroChange::SetSpellPoints(3),
-            HeroChange::RemoveArtifact(ArtifactPlace::Worn(1)),
+            HeroChange::RemoveArtifact(ArtifactPlace::Worn(Position(1))),
             HeroChange::SetSpellPoints(7),
-            HeroChange::RemoveArtifact(ArtifactPlace::Worn(2)),
+            HeroChange::RemoveArtifact(ArtifactPlace::Worn(Position(1))),
         ]
     );
     assert_eq!(
@@ -335,7 +338,7 @@ fn the_capture_stops_at_the_first_artifact_the_winner_has_no_room_for() {
     let charm = art(&rules, "t:charm");
     let ring = art(&rules, "t:ring");
     let red = setup.heroes[0].details.artifacts.as_mut().unwrap();
-    red.worn = vec![ring, ring];
+    red.worn = wearing(rules.core(), &[ring, ring]);
     red.backpack = vec![charm; 63];
     let game = GameState::new(&rules, &setup, 5).unwrap();
     let mut outcome = outcome(BattleResult::Victory(BattleSide::Attacker));
@@ -349,7 +352,10 @@ fn the_capture_stops_at_the_first_artifact_the_winner_has_no_room_for() {
         .collect();
     assert_eq!(added, [HeroChange::AddArtifact(ring)]);
     let blue = ended.hero(BLUE_HERO).unwrap();
-    assert_eq!(blue.worn, [ring, art(&rules, "t:book")]);
+    assert_eq!(
+        blue.worn,
+        [Some(art(&rules, "t:book")), None, None, Some(ring)]
+    );
     assert_eq!(blue.backpack.len(), 2);
     assert_eq!(ended.hero(RED_HERO).unwrap().backpack.len(), 64);
 }
@@ -391,11 +397,7 @@ fn necromancer(rules: &GameRuleset, dark: u8, sense: u8, book: bool) -> GameSetu
         }
     }
     if book {
-        red.artifacts
-            .as_mut()
-            .unwrap()
-            .worn
-            .push(art(rules, "t:book"));
+        red.artifacts.as_mut().unwrap().worn[0] = Some(art(rules, "t:book"));
     }
     setup
 }

@@ -49,10 +49,10 @@ numeric  = "integer"
 
 [[rule]]
 id       = "HER-ART-001"
-title    = "Worn artifacts and combination locks"
+title    = "Worn artifacts on positions and combination locks"
 context  = "heroes"
 status   = "verified"
-summary  = "Every worn artifact occupies one position of its slot; a slot kind has `count` positions (two rings; four misc positions before SoD, five in SoD; one of every other kind). A combination artifact also occupies one position of every slot in its locks (its parts' slots minus one position of its own; Angelic Alliance in the right hand also fills torso, feet, neck, left hand and head). The positions all worn artifacts and their locks need must fit every slot's count. An artifact without a slot (the Grail) cannot be worn. The same artifact type may be worn more than once while positions remain (two Quiet Eyes of the Dragon), and one war machine of each kind fits its own slot. Positions of one slot are interchangeable, so the details list artifacts, not positions."
+summary  = "A hero's worn artifacts sit on positions (E08 T49a, ADR-0013 point 1): one per position of the ruleset's slots, in the slots' order and each slot's `count` (two rings; four misc positions before SoD, five in SoD; one of every other kind): SoD's 19 are head 0, shoulders 1, neck 2, right hand 3, left hand 4, torso 5, rings 6 and 7, feet 8, misc 9 to 13, the war machines 14 to 17, the spell book 18 (the original numbers its fifth misc 18, after the book; no rule tells the two apart). Each position is empty or holds an artifact of its slot. A combination artifact also takes one position of every slot in its locks (its parts' slots minus one position of its own; Angelic Alliance in the right hand also takes torso, feet, neck, left hand and head), counted per slot, not on given positions: the free positions of every slot less the worn combinations' locks never go below zero. An artifact without a slot (the Grail) cannot be worn. The same artifact type may be worn more than once while positions remain (two Quiet Eyes of the Dragon), and one war machine of each kind fits its own slot. A map's import keeps the map's positions, entry by entry in the map's order, and leaves out an artifact its position does not take (another slot's position, a locked one, the fifth misc before SoD), as the original's loader and VCMI's: the Tutorial's second hero loses the Shackles of War the map stores on its left hand. E08 T49a: `h3_heroes::positions`, `takes`, `validate`; `h3_map`'s import."
 numeric  = "integer"
 
   [[rule.source]]
@@ -78,6 +78,18 @@ numeric  = "integer"
   kind       = "observation"
   ref        = "experiments/results/E08-batch-6.md E6-8 (the capture harness, SoD 4.0 Complete under Wine, E08 T47b2): the Wizard's Well assembled from its three misc parts sits on one misc position (the original's 9), its positions 10 to 12 empty, and the hero screen draws two locks in the misc slot (on misc 4 and misc 5); with the Well in the backpack no position is locked. E6-9: Titan's Thunder on the right hand locks the head, torso and left hand (survey docs/rules/surveys/E08-army.md §13)"
   retrieved  = "2026-10-23"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T49a): placed_hero_setup 0x4D8B30 removes the hero's worn artifacts (0x4D8D3E) and equips the map's 19 entries one by one at their positions through hero_equip_artifact 0x4E2A00 (0x4D8D63), which places one only where hero_can_place_artifact 0x4E2550 allows it (the position empty and among the artifact's slot's, its locks counted; position 18 refused before SoD) and otherwise returns without it; the loader ignores the result"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapping/MapFormatH3M.cpp loadArtifactToSlot: an artifact that canBePutAt refuses at its slot is skipped with a warning (the comment names the Shackles of War on a left hand in Good1.h3c's third scenario: 'Artifact seems to be missing in game')"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapping/MapFormatH3M.cpp#L1658-L1696"
+  retrieved  = "2026-10-24"
   confidence = "high"
 
 [[rule]]
@@ -180,7 +192,7 @@ id       = "HER-WAR-001"
 title    = "War machines a hero brings"
 context  = "heroes"
 status   = "implemented"
-summary  = "A hero brings to a battle the war machine of every worn artifact that places one (Ballista, Ammo Cart, First Aid Tent; each in its own slot, so at most one of each), in the order worn; they become BattleSetup.war_machines (BAT-WAR-001). The Catapult's artifact places none: the battle sets the Catapult up for any attacking hero at a town with a fort (BAT-SIE-009); artifacts in the backpack never place one."
+summary  = "A hero brings to a battle the war machine of every worn artifact that places one (Ballista, Ammo Cart, First Aid Tent; each in its own slot, so at most one of each), in position order (E08 T49a: the machine slots' order); they become BattleSetup.war_machines (BAT-WAR-001). The Catapult's artifact places none: the battle sets the Catapult up for any attacking hero at a town with a fort (BAT-SIE-009); artifacts in the backpack never place one."
 numeric  = "integer"
 
   [[rule.source]]
@@ -921,7 +933,7 @@ id       = "HER-CHG-002"
 title    = "Where a received artifact goes"
 context  = "heroes"
 status   = "implemented"
-summary  = "A hero that receives an artifact wears it if its slot and each slot it locks have a free position (HER-ART-001 holds with it); else it goes to the end of the backpack if its slot's artifacts may be carried (HER-ART-002: not the war machines, the Catapult or the spell book) and the backpack holds fewer than the ruleset's backpack size (64); else there is no room. Positions of one slot are interchangeable (the original tries its body positions in order). A combination's assembly when a received part completes it (SoD) and the spell book that equipping Titan's Thunder adds are not built (increment 4). E08 T19a2a: `h3_heroes::check_change`, `apply_change`."
+summary  = "A hero that receives an artifact wears it at the first position that takes it: the lowest empty position of its slot when, with it there, HER-ART-001 holds (each slot it locks keeps a free position); else it goes to the end of the backpack if its slot's artifacts may be carried (HER-ART-002: not the war machines, the Catapult or the spell book) and the backpack holds fewer than the ruleset's backpack size (64); else there is no room. The same first position places a hero's spell book and war machines at a game's start. A combination's assembly when a received part completes it (SoD) and the spell book that equipping Titan's Thunder adds come with T49b (HER-ART-006, -007). E08 T19a2a: `h3_heroes::check_change`, `apply_change`; T49a: by position, `h3_heroes::first_position`."
 numeric  = "integer"
 
   [[rule.source]]
@@ -941,7 +953,7 @@ id       = "HER-ART-004"
 title    = "What a defeated hero yields, in which order"
 context  = "heroes"
 status   = "implemented"
-summary  = "A hero defeated by another hero yields its artifacts one at a time (GAM-BAT-004): first each worn one whose slot's artifacts may be carried (so neither a war machine, nor the Catapult, nor the spell book), in the order worn (the map's position order on import), then the backpack's from its last to its first. The original also keeps the Grail, which the packs do not mark yet. E08 T19a2a: `h3_heroes::next_capture`."
+summary  = "A hero defeated by another hero yields its artifacts one at a time (GAM-BAT-004): first each worn one whose slot's artifacts may be carried (so neither a war machine, nor the Catapult, nor the spell book), in position order (HER-ART-001; since E08 T49a the original's: the fifth misc position, the original's 18, comes before the machines and the book here, which the walk skips), then the backpack's from its last to its first. The original also keeps the Grail, which the packs do not mark yet. E08 T19a2a: `h3_heroes::next_capture`."
 numeric  = "integer"
 
   [[rule.source]]
@@ -968,7 +980,7 @@ id       = "HER-WAR-002"
 title    = "A destroyed war machine takes its artifact"
 context  = "heroes"
 status   = "verified"
-summary  = "A hero whose war machine was destroyed in battle loses the first worn artifact that places that machine (HER-WAR-001), whatever the battle's result; a machine with the catapult flag stays. The original's handling was not read; batch E4's E4-9 shows it (E08 T33: the Ballista's slot empty after a victory). E08 T19a2a: `h3_heroes::lost_war_machine` (GAM-BAT-002)."
+summary  = "A hero whose war machine was destroyed in battle loses the artifact on the first position that places that machine (HER-WAR-001; its position is left empty, E08 T49a), whatever the battle's result; a machine with the catapult flag stays. The original's handling was not read; batch E4's E4-9 shows it (E08 T33: the Ballista's slot empty after a victory). E08 T19a2a: `h3_heroes::lost_war_machine` (GAM-BAT-002)."
 numeric  = "integer"
 
   [[rule.source]]

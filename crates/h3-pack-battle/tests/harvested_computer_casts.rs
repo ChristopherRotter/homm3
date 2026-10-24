@@ -56,9 +56,12 @@ fn mage(r: &BattleRuleset, spells: &[&str], power: u8) -> BattleHero {
         offered: Default::default(),
         primary: [0, 0, power, 10],
         skills: vec![],
-        worn: vec![ArtifactInstance::from(
-            r.artifact_by_key("base:spell_book").unwrap(),
-        )],
+        worn: h3_heroes::wearing(
+            r,
+            &[ArtifactInstance::from(
+                r.artifact_by_key("base:spell_book").unwrap(),
+            )],
+        ),
         backpack: vec![],
         spells: spells.iter().map(|s| r.spell_by_key(s).unwrap()).collect(),
         mana: 100,

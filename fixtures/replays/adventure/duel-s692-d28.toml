@@ -772,36 +772,36 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x699bc88cb91c038e",
-    "0x3d1cb8bca27936eb",
-    "0x02f57842a8a3f1ef",
-    "0xbc1e0bf642d8e4fb",
-    "0xadc22ca608642c57",
-    "0x325b48ac42deedb6",
-    "0xd33b2b9eac5a4cc3",
-    "0x42a580202e4e0d79",
-    "0x5eabe23f24c54d1c",
-    "0x6a5ca772a0aab163",
-    "0xd757067467b14a2a",
-    "0x7a5fb101a285a98c",
-    "0xe4b519c2ea687535",
-    "0x1c6dfdaaef96d200",
-    "0xca8b679c7e7a4c9c",
-    "0xa27a448f7501e1c5",
-    "0x4871ad6354a32258",
-    "0xd27cd4d553e2ab0b",
-    "0xb4141e299ade6fe3",
-    "0xbab70279a72936b1",
-    "0x079d1f6beb5d847c",
-    "0xc20206a42e8085e8",
-    "0xf34b1bf77f9335e3",
-    "0x131bfaac0f4ae12e",
-    "0x0f92bf88495f3695",
-    "0x992c6eea8bae3ce2",
-    "0x069879e3e3bb2e3d",
-    "0xdf9382923d1c1979",
-    "0x9b122fd1fe03176f",
-    "0xe6d816147b3ae9d6",
+    "0x678b4dc773b08be3",
+    "0xbd9cf3f9fcfcc7c8",
+    "0x29e14a73308ccce8",
+    "0xdf8b84f4561f63f4",
+    "0xabe0806a749279ec",
+    "0xfb525f0c6ad4c1ad",
+    "0x180e35f32e75c9e0",
+    "0x47a1eeac7b1a058e",
+    "0xe37501eea9184d43",
+    "0x486c72b596138470",
+    "0xf603c66413184be5",
+    "0xfd2d879163543a43",
+    "0x80568a93395fef6e",
+    "0x51c6fe0c79ad8aeb",
+    "0xa3810e9a1a098e57",
+    "0x0f75b2757d8fd00e",
+    "0x2d3aee317c41aef9",
+    "0xc69f8cf0cb14b0ce",
+    "0x7835a09b69550e74",
+    "0xcd2d66d77c1254ee",
+    "0x599d7c0628711707",
+    "0x8dabaa519012d62b",
+    "0xcdeeb0bb693e45fe",
+    "0xd18b985db3122663",
+    "0x01a104cc044bcec4",
+    "0x8b81306884b1bc4b",
+    "0x683df55a79138be8",
+    "0x4b0217fd57e90dc4",
+    "0xe201690cd18405da",
+    "0x23420ed7c25ba04f",
 ]
 
 [replay]
@@ -830,15 +830,15 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 11
+game_state_hash_version = 12
 adventure_state_hash_version = 10
 checkpoint_every = 25
 
 [map]
 path = "fixtures/maps/e08-duel-36.h3m"
-hash = "0xb519ff4e974286e9"
-import_version = 8
+hash = "0x37d348cff2785a01"
+import_version = 9
 
 [result]
 day = 29
-final_hash = "0x8cc30dec2000d661"
+final_hash = "0x94147056b65014a4"

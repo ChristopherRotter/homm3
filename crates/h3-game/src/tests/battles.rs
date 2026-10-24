@@ -622,7 +622,7 @@ fn a_battle_its_part_refuses_does_not_open() {
     let mut setup = three_players();
     let cart = rules.core().artifact_by_key("t:cart_art").unwrap().into();
     setup.heroes[0].details.artifacts = Some(HeroArtifactsSetup {
-        worn: vec![cart],
+        worn: wearing(rules.core(), &[cart]),
         backpack: vec![],
     });
     let mut game = GameState::new(&rules, &setup, 5).unwrap();
