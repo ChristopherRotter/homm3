@@ -4,7 +4,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E23 closed 2026-10-24** (`docs/epics/E23-original-battle-ai.md`; `POLICY_VERSION` 19). **The inbox's leftovers (111th session):** #458 merged; batch 2g's pull request (`battle/e04b-batch-2g`, on the flags' `shared/batch-2g-quirks`, both `cross-lane`) open: watch both. **Next (the user, 2026-10-24):** a fresh session for **CLT-Q4/Q6** (QUEUE), then **E11** (`docs/epics/E11-historical-rules.md`, Q58): T1 with the user's RoE and AB media.
+- **E23 closed 2026-10-24** (`docs/epics/E23-original-battle-ai.md`; `POLICY_VERSION` 19). **The inbox's leftovers (111th session):** #458 and the flags (#462) merged; batch 2g's #464 (`battle/e04b-batch-2g`, `cross-lane`) open: watch it. **Next (the user, 2026-10-24):** a fresh session for **CLT-Q4/Q6** (QUEUE), then **E11** (`docs/epics/E11-historical-rules.md`, Q58): T1 with the user's RoE and AB media.
 - E05, `h3-sim` and `h3-ffi` are the AI lane's (AI-Q1), `h3-heroes` the adventure lane's.
 - **Open:** BAT-Q28 (rows 1, 3, 5, 6, 11, 12), BAT-Q32, BAT-Q35, BAT-Q58, BAT-STUB-1, CLT-Q4, CLT-Q6, the inbox (by kind since 2026-10-19), Q43.
 - **Versions:** battle state hash v53, battle part hash v7 (E23 T3-0; the encodings, replay format and C ABI are the AI lane's); shared: core ruleset hash v48, pack format v47 (E08 T45), protocol v34, quirk flags 37 (batch 2g's PR). Next ids: BAT-Q63, BAT-QUIRK-31, BAT-STUB-18, BAT-AI-025, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-24, S-30.
