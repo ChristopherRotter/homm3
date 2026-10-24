@@ -30,36 +30,39 @@ Do not over-specify. A refined epic is allowed to be wrong after first contact; 
 
 ## Keeping the start-of-session reading small
 
-Every session pays for what it reads before it works, and everything read stays in the context for
-every later step (user, 2026-10-04: the project docs had grown to about 50k tokens of start-up
-reading). So the files every session reads stay short, and detail lives where it is used: rules in
-the catalog, quirks in the ledgers, decisions in ADRs, formats in `packs/README.md` and
-`docs/formats/`, history in git. Each lane has a reading list in `AGENTS.md` ("Lanes").
+Every session pays for what it reads before it works, and everything read stays in the context for every later step (user, 2026-10-04: the project docs had grown to about 50k tokens of start-up reading; housekeeping of 2026-10-24: the queues, the epic files and the answered questions had grown again). The rule: **what a session must read is short; everything else is found by grep or by the pointer a doc gives, and is never read whole.** History is not deleted: it is moved, verbatim, to an archive next to the file it came from (the code fingerprint ignores `docs/` and `*.md`, so moving text never forces a re-verify), and git keeps the rest.
 
-- **The global `docs/HANDOFF.md`** is the lane index plus the traps that apply to every lane
-  (sandbox and sync, sources, coverage and lints). It has no session entries and no lane's state:
-  a lane's progress lives in its own HANDOFF only, so a lane changes the global one only for a
-  trap of every lane (user, 2026-10-11: rows every lane rewrote made most merge conflicts).
-  `cargo xtask check-docs` fails above 6 000 bytes. It is a shared path.
-- **A lane's `docs/lanes/<lane>/HANDOFF.md`** has four parts: a short intro; `## Current state`
-  (branch, the epic's position and next step, decisions waiting for the user, the versions the
-  lane owns; rewritten each session); `## Standing traps` (grouped bullets that still apply to the
-  lane: delete a trap when it stops applying, merge duplicates, never copy a trap into a session
-  entry); `## Recent sessions` (one `###` entry per session, newest first, about ten lines: what
-  was done with commit ids and pointers, user and agent decisions, new traps moved up into
-  Standing traps). Keep at most three entries; delete the oldest, git history keeps it.
-  `cargo xtask check-docs` fails above 10 000 bytes or three entries per lane: shorten, do not
-  raise the limit. The client and server lanes also hold their autonomy contract there.
-- **Epic files:** a done task keeps one line in the task list (date, sub-tasks, rule ids,
-  versions). Its full record (what was built, refinements, agent decisions marked "change
-  freely", measurements) goes into the epic's log, `docs/epics/<epic>-log.md`, which is read only
-  when a task builds on it. The design note is pruned as before (`docs/adr/README.md`).
-- **OPEN-QUESTIONS.md:** sessions read the "Open" section; an answered entry only when a doc
-  points to it. Both sections have one block per lane (and one for the numbered questions): a
-  lane adds an open question at the end of its block in "Open" and an answered one at the top
-  of its block in "Answered", so lanes working at once never edit the same lines.
-- **`verify --summary`** keeps the gate's output out of the context: one line per gate plus the
-  end of the first failure; the full log goes to `<target>/verify/verify.log`.
+| Tier | Files (size aim; `check-docs` enforces the HANDOFFs only) | Read |
+|---|---|---|
+| Always | `AGENTS.md` (10 KB), `docs/HANDOFF.md` (6 000 bytes enforced, aim 3 000), the lane's `HANDOFF.md` (10 000 enforced, aim 5 000) | at the start |
+| By task | the lane's `QUEUE.md` (15 KB: open tasks and open inbox items), the epic file (35 KB: the open increment or milestone), the ADRs named by the index's "Read when", the "Open" section of `docs/OPEN-QUESTIONS.md` | the entry or section of the task |
+| On demand | `TRAPS.md`, `OVERVIEW.md`, `*-log.md`, `*-design.md`, `*-archive.md`, `QUEUE-ARCHIVE.md`, `QUESTIONS-ANSWERED.md`, `docs/rules/`, `docs/formats/`, the surveys | grep an id; read the section a doc points to |
+
+A file above its size aim is trimmed at the next session's end by moving its finished part to the archive (below), in the same pull request, not in a pull request of its own.
+
+**Write each fact once, where it is read.**
+
+| Fact | Where | Not in |
+|---|---|---|
+| The lane's position, next step, open pull requests, versions, next ids | the lane `HANDOFF.md`, "Current state" (rewritten each session) | the epic, the queue |
+| What the session did | the lane `HANDOFF.md`, "Recent sessions": one `###` entry of about ten lines, newest first, at most three (`check-docs`); delete the oldest | the "Current state", the traps |
+| A trap | the lane's `TRAPS.md` under its area; a trap of every lane: the topic doc (sandbox and sync: this file, "Cloud sandbox" step 6; gates: `05-testing.md`; sources: `04-rules-and-sources.md` §7) and, only if it breaks another lane, the global `docs/HANDOFF.md` | a HANDOFF entry, a second doc |
+| A done task | one line in the epic's task list (date, sub-tasks, rule ids, versions); the full record (what was built, refinements, agent decisions marked "change freely", measurements) in `docs/epics/<epic>-log.md` | the queue, the HANDOFF |
+| A closed increment or milestone | the epic's `<epic>-archive.md` (verbatim: scope, decisions, task lists, review lists), a table row and a pointer left in the epic | the epic file |
+| A task waiting; discovered work someone must act on | the lane's `QUEUE.md`, "Tasks" or "Inbox" (another lane's inbox: straight into that lane's) | the HANDOFF |
+| A notice nobody has to act on; a finished item | do not write it; or append it to `QUEUE-ARCHIVE.md` at once | the inbox |
+| A question | `docs/OPEN-QUESTIONS.md` "Open", under the lane's block; answered: the decision into an ADR or the doc it changes, the entry **moved** to the top of the lane's `docs/lanes/<lane>/QUESTIONS-ANSWERED.md` (numbered `Q<n>`: `docs/adr/answered-questions.md`) | "Open" |
+| What the lane has built (a code map by area) | `docs/lanes/<lane>/OVERVIEW.md` (adventure) or the epic log | the HANDOFF |
+
+- **The global `docs/HANDOFF.md`** is the lane index plus the traps that cross lanes and a table saying where the other traps live. It has no session entries and no lane's state (user, 2026-10-11: rows every lane rewrote made most merge conflicts). `cargo xtask check-docs` fails above 6 000 bytes. It is a shared path.
+- **A lane's `docs/lanes/<lane>/HANDOFF.md`** has: a short intro; `## Current state` (branch, the epic's position and next step, decisions waiting for the user, the versions and next ids the lane owns); `## Standing traps` (a pointer to `TRAPS.md`: the group names and what each covers); `## Recent sessions`. The client, server and map-client lanes also hold their autonomy contract there. `check-docs` fails above 10 000 bytes or three entries: shorten, do not raise the limit.
+- **A lane's `TRAPS.md`** holds the lane's standing traps in groups by area, read for the area the task touches. Delete a trap when it stops applying and merge duplicates.
+- **Epic files:** the open increment or milestone, the decisions that apply to the whole epic, the risks. A done task keeps one line; when an increment or milestone closes, the next session moves its scope, decisions and task list into `<epic>-archive.md` (E08, E16, E17 and E24 have one) and leaves a row in a "Closed increments" table. Decision numbers and ids stay as they were: "E08 decision 75" is found by `git grep -n 'decision 75' docs/epics/E08-archive.md`. Design notes are read by section and pruned as their tasks implement them.
+- **`QUEUE.md`:** open tasks, then the inbox of items someone must act on. A finished task leaves it with the session that did it; a finished or purely informational inbox item moves to `QUEUE-ARCHIVE.md` in the same session (the lane that writes a notice for another lane writes it only when that lane has to act or decide).
+- **`OPEN-QUESTIONS.md`:** only the "Open" section plus a table of where the answered entries are. A lane adds an open question at the end of its block and, when it is answered, moves it to the top of its own `QUESTIONS-ANSWERED.md`, so lanes working at once never edit the same lines. Lane folders are owned by their lanes, so this needs no shared change.
+- **Moving text to an archive:** copy it verbatim (a script, not a retyping), keep the ids and the file path of the original, leave a pointer, and check that the two files together hold every line of the old one. Never delete a file that code or docs cite: the references would have to be repointed (and the check `check-exe-map` reads docs too).
+- **Bookkeeping rides with the work.** A session's HANDOFF, epic, log, queue and question updates belong in the pull request of its task. Shared files a session must change (process docs, ADRs, `BACKLOG.md`, the global HANDOFF) go in one `shared/<topic>` pull request per session, not one per file; a closure or refinement that only moves docs needs no pull request of its own beyond that.
+- **`verify --summary`** keeps the gate's output out of the context: one line per gate plus the end of the first failure; the full log goes to `<target>/verify/verify.log`.
 
 ## Lanes
 
@@ -279,6 +282,14 @@ Agents usually work in a cloud sandbox cloned from GitHub.
    even when writing fails). Stop a running verify by its processes' ids (`ps`), never
    `pkill -f`, whose pattern also matches the agent's own shell.
 
+6. **Habits that save a session.**
+   - Cloud sessions open pull requests through the REST API (`gh api repos/ChristopherRotter/homm3/pulls`, labels the same way): GraphQL is blocked, so `gh pr create` fails.
+   - Git on the user's machine: delete permission for the repo folder first (even `git status` leaves `.git/index.lock`), `-c user.name -c user.email`; no GitHub credentials there.
+   - The VM can restart (files stay, jobs die): check `ps` before assuming a job still runs.
+   - `cargo xtask verify` outlasts a tool call: run `scripts/sandbox-verify.sh` in the background (the coverage tools: `scripts/llvm-tools.sh`) and poll its log; the inner loop is `verify --scope <lane> --quick`.
+   - The background verify tests whatever is in the clone: try ad-hoc tests in a `git worktree` with a `CARGO_TARGET_DIR` of its own under `target/` (never shared: `xtask` roots at its build), and remove it afterwards.
+   - bench-check at 0 Ir: valgrind 3.22 found no symbols in the lld-linked `h3` (the gate links with `-z norelro`).
+
 ## Stub registry
 
 Incomplete or deferred code is tracked in `docs/stubs.toml` (a common file; new ids are numbered
@@ -301,7 +312,7 @@ See `AGENTS.md` for the list. Protocol:
 
 1. Write the question in `OPEN-QUESTIONS.md` with a lane id (`ADV-Q1`): context, options, consequences of each, your recommendation, what is blocked.
 2. If the user is present, ask interactively (short, concrete, with options). If not, finish the safe work, record the state in HANDOFF, and stop.
-3. When answered: record the decision (ADR for architecture-level; note in the relevant doc otherwise), and move the question to the top of its lane's block under "Answered".
+3. When answered: record the decision (ADR for architecture-level; note in the relevant doc otherwise), and move the entry to the top of its lane's `QUESTIONS-ANSWERED.md` ("Keeping the start-of-session reading small").
 
 ## ADRs
 

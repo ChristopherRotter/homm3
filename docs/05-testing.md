@@ -78,6 +78,13 @@ A `windows-2025` job passed once (2026-10-06) and is disabled for being slow (ab
 
 **Coverage lesson (E01):** LLVM counts the implicit `else` of an `if let` and the error path of `?` as regions. Code must not contain branches that cannot execute: express invariants structurally (validated ids → infallible accessors; combinators such as `Option::inspect`/`or_else`), not as defensive dead branches.
 
+## Traps in the gates
+
+- **Coverage:** LLVM counts the implicit `else` of `if let`, the error arm of `?` and rare closures: no defensive dead branches; use infallible accessors and combinators; saturate, do not return `Option`. Lines only proptests reach make the gate flaky: give each a fixed test (`cargo llvm-cov -p <crate> -- --skip <proptest>`). Misses on non-code lines mean stale binaries (`cargo llvm-cov clean --workspace`).
+- **clippy:** `should_implement_trait` rejects methods named `div`/`shr`/`mul`/`add`/`sub`; `type_complexity` fires on arrays of fn pointers in tests (use a type alias). `cargo fmt` reflows code: match scripted patches against the formatted text.
+- **Layers:** dev-dependencies obey them too (`check-arch`): domain crates build test rulesets in code.
+- **serde:** it ignores unknown keys of a unit variant in an internally tagged enum (use struct variants); TOML serialization needs table fields after plain values.
+
 ## Mechanisms that keep agents from "forgetting" tests
 
 1. **One command, required in CI.** Nothing merges/counts as done unless `verify` is green (in CI, or locally while CI cannot run: "CI" above).

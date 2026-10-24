@@ -52,11 +52,7 @@ Other lanes add entries here. The client lane turns each into a task, or moves i
   passes). `clients/crates/h3-map-view/tests/purity.rs` (E24 M1 T6b) has the fixes:
   `walk` from `src` leaving out `src/bin` only, `attributes` joining an attribute's lines, the
   `GROUPS` list, the header as a line of its own.
-- 2026-10-23 (the map-client lane, E24 T0; for later, nothing to do now): **what the map client
-  will need of `h3-view`.** E24 M1 (stills of the map view) builds only on the common foundation;
-  M2's window will want `clock` and `sound`, M3's panels `ui`, `text` and `layout`, in a common
-  crate. When M2 or M3 is refined, the map-client lane proposes the move here first (a new common
-  crate is a `lanes.toml` change, shared); your M4 waits for none of it.
+
 - 2026-10-23 (T9b, the reviewers; the epic log's "M3 T9b", the accepted review list): queued
   findings. R2-7: a timeline that steps forward (`Moment::at`, `Heroes::posed` and `Timeline::at`
   rescan the battle for every frame: 2.3 ms a frame over 82 seconds, `play`; for live play's long
@@ -66,19 +62,6 @@ Other lanes add entries here. The client lane turns each into a task, or moves i
   text: digests recorded again from `master`'s viewer first, the runbook's rule). R4-9: a
   stricter shadow chain in `h3cap.redraws` (a near-black pixel counts as an artifact over almost
   anything; the counts stay exact). R3-1 goes with the created stacks below.
-
-- 2026-10-23 (the adventure lane, E08 T47a; for information, nothing to do): the harness's
-  clicks and reads for batch E6 (`clients/capture/README.md`, "Screens and their items"): the
-  screen showing is the topmost dialog's kind by its vtable (`h3mem.dialog`), and a click finds
-  its item by id among the dialog's items in memory, which now carry their boxes, states and texts
-  (`h3mem.dialog_items`; `dialog_text` shares `item_text`); the hero screen, exchange, army,
-  creature and split dialogs' items by name (`h3adv.SCREEN_ITEMS`); a step's `screen = "hero"`
-  and `actions`; a battle's tactics phase ended at once in `fight` (its message's OK, then Start).
-  The harness check gained Kit and Full (Blue's eight heroes): passed under Wine.
-
-- 2026-10-21 to 22 (the adventure lane, E08 T32b1 to T37b; for information, nothing to do): the
-  harness's reads and steps for batches E4 and E5 (moved to NOTES, "The adventure lane's
-  harness", at T9c; the harness is common since the split, 2026-10-23).
 
 - 2026-10-21 (T7b-1): **a hero's aim.** Between the book's place and the target's click the
   cursor is the spell's (`crspell.DEF`, animated: not read; the viewer leaves it as it was) and the
@@ -95,14 +78,14 @@ Other lanes add entries here. The client lane turns each into a task, or moves i
   (0x5996C0) and a track resuming where it stopped (0x59AA82) with the client's options and a
   second battle (later); the network's `remote_turn` in the end's choice with live play.
 
-- 2026-10-20 (the adventure lane, E08 T22a2b): its three recipes, its auto combat's change, for
-  information (NOTES, "The adventure lane's harness"; the winner of −1 fixed in E17 M3 T6c-2).
 - 2026-10-19 (E17 H1, H2; the adventure lane, E08 T22a1): the harness's check
   (`capture/checks/harness-check.toml`) can gain a monster's offers, a pile's question and a walk
   below: the tools are in. NOTES, "The adventure lane's harness".
+
 - CLT-Q2 (2026-10-12, 2026-10-19): the table-only LOD reader is in `h3-formats`: switch the
   archive set to the directories and a batch's ranges, `h3-view gate` measuring it. NOTES,
   "Assets and archives".
+
 - 2026-10-22 (T7c-3): **created stacks are not drawn.** `StackCreated` (Summon Elemental, Clone)
   and a Pit Lord's `RoseFromCorpse` add a stack the record's first snapshot lacks, and the scene
   draws only the snapshot's stacks (a wire `Stack` each): the viewer needs the new stack's
@@ -115,17 +98,24 @@ Other lanes add entries here. The client lane turns each into a task, or moves i
   controller (T9b, R3-1: `scene::controller` takes the opening's, so Hypnotize and a created stack
   are not followed). The battle waits for the heal's sound (T3b) and the other
   effects' (T7b-2b, T7c-3). NOTES, "The battle screen".
+
 - 2026-10-20 (T6a): the tactics phase's panel (0x46C050, not read) and Auto Combat switched on
   (its button selected, the panel dimmed while stacks play themselves) wait for a record with a
   tactics phase and for live play. Design §9.7.
+
 - When CLT-Q5 is answered: the deck and the two boats as situations; CLT-Q4: the background
   variants 0 and 1. NOTES, "Battlefields and boats".
+
 - Sieges (the battle lane, 2026-10-14 to 16): the turrets as stacks (drawn as the town's
   shooters since T1b), the Catapult, the gate opening before the step. NOTES, "Sieges"; M4 T2b
   and T2c-1 took the shots, the gate, the moat and the mines; T2c-2 takes Earthquake and the
   mouse (read at T2a, design §10.2).
+
 - Later milestones: graphics options (the user, at M1), an HD layout's origin and viewport.
   NOTES, "Options and layouts". (The adventure map's object draw order, research item 9, went to
   the map-client lane at the split, 2026-10-23.)
+
 - The live client (the server lane, 2026-10-09 to 13): the record file, the content check, a
   server restart, accounts, ladders, the server browser. NOTES, "The live client".
+
+Archive of the lane's finished and informational entries: `QUEUE-ARCHIVE.md` (grep it for an id or a task a doc cites). Keep this file to what is open: a done task leaves it, a notice nobody has to act on goes to the archive at once (`docs/08-work-process.md`, "Keeping the start-of-session reading small").

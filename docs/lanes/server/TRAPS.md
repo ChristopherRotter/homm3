@@ -1,0 +1,40 @@
+# Server lane — standing traps
+
+Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short; verbatim, grouped by area. Read the group for the area your task touches; delete a trap when it stops applying, merge duplicates, add a new one under its area (a trap of every lane goes into `docs/HANDOFF.md` or the topic doc it belongs to, a `shared/` change).
+
+- `h3-protocol` is `no_std`: take `serde` (`derive`, `alloc`) and `serde_json` (`alloc`) with `default-features = false` in its own manifest, not `workspace = true` (the workspace entries enable `std`).
+- `postcard` (and any format that is not self-describing) cannot decode `#[serde(tag = ...)]`, `untagged` or `flatten`: keep the wire types in serde's default enum form (SRV-Q5).
+- A 64-bit integer on the wire is a string (JavaScript loses precision above 2^53).
+- A wildcard arm after every variant of an enum still counts as one uncovered region (llvm-cov), and `#[coverage(off)]` is unstable: no fallback arms in `h3-protocol` (ADR-0018 point 5 as amended).
+- A test client picking uniformly among legal commands rarely ends a `full` battle: pick strikes first (`tests/session.rs`, `play`).
+- A test `Client` answers pings only while it reads: one unread beyond `ping_timeout_ms` is dropped (its late pong draws a reset).
+- Automated clients exceed the default rates (20 messages/s, 40 per address): end-to-end tests that play raise both (`tests.rs`, `fast()`).
+- A frame the game marks `left` is acted on only if the task passed the game exactly that many messages (`Bound::passed`): leaving after a pipelined join would drop its `Joined` and token.
+- A game leaves the lobby only under the registry's lock, after its bound connections are counted down (`registry.rs`): deciding by the game's own connection list races a queued join.
+- A socket closed over unread data is reset, the peer's unread `Goodbye` lost: the close reads on (`net.rs`, `LINGER`).
+- A journal's line holds tokens: errors reading one name its line and column, never its text (serde_json quotes values); a log line never carries a hash (`journal.rs`).
+- No file I/O under the registry's lock (T5e): a game opens its journal on its own thread (`game::launch`); its opening is queued under the lock first (`registry::Opening::first`).
+- Replays go into `archive::dir` through `game::finish`, then `Registry::archived`: one written elsewhere is neither listed nor trimmed.
+- `PROPTEST_CASES` applies to every proptest of a crate: name the test for a longer mutation run (`cargo test -p h3-protocol mutat`).
+- A game's frames go through `game::Outbox` (`offer`, or `last` for a goodbye), never a bare channel: the task subtracts each frame's bytes as it takes it (a frame queued around the count wraps it).
+- Write-ahead order in a game's thread: drain and sync the session's entries before `deliver`; anything a restart must redo needs an `Entry` (`Entry::Resumed`), or the restore diverges.
+- The observation's mapping (`map/mod.rs`) names every field of the engine's types in patterns, without `..` (a field left out: `name: _` with its reason), those read through a method too.
+- The workspace's clippy bans `std::time::Instant` and `SystemTime`: the server uses `tokio::time::Instant`, a file's age `fs::metadata(p)?.modified()?.elapsed()`.
+- A `watch::Receiver` whose sender is gone fails `wait_for` at once, repeatedly: a select arm on it must then never resolve (`net::stopped`).
+- A paused game has no thread: `Hosted::Paused` holds its tokens, `registry::bind` restores it for a join. A game's thread ignores `ToGame::Open` (a resuming game would pause again).
+- An account's request goes through `spawn_blocking`, the player log under its own lock (`accounts.rs`), the signature first, never the registry's lock. The lock waits on syncs: `Accounts::get` from a game's thread (`game::seated`), never a connection's task.
+- A running server holds `<data>/lock` until `shutdown` returns: a test's second server on its data directory shuts the first down; crash tests start on a copy (`crashed()`).
+- `Key::derive` costs 64 MiB and ~1 s in a debug build: tests use `Key::from_seed`.
+- `f64::exp` and `ln` are banned workspace-wide (ADR-0003 §3): Glicko-2 calls them behind a local `allow` (`rating.rs`); a rating is written to the ladder's log and read back, never recomputed.
+- A queued connection hears its queue only through its own channel (`registry::ToConn`), sent under the registry's lock with `try_send`; a message answered by nothing (`AcceptMatch` first) is `Routed::Passed`.
+- A ranked game's time moves only through `Session::elapse`, which the game's thread calls before every message, close and tick (`game::run`): a new event calls it first. A game's end is `Session::over` (a forfeit leaves `result()` empty).
+- A server's bot account has no `key` (T5): a login, a re-key and `rebind` must never match it.
+- A paused journal's last write starts its deadline and an agreed pause's due time: never append to one. A pause's hold returns at a restore from `agreed_pause()` or `held_pause()` (`Held`); `game::resume` re-applies either.
+- A game whose thread ends with its journal kept leaves by `Registry::stopped`, not `leave` (a match keeps its players). A start re-runs journals one by one by id (rating order).
+- A ranked game's end is told only by the host's verdict (`publish_replay`/`withhold_replay`): a new way to end must reach `finish`. A ladder's log names a game once (`<data>/next-game`): never hand out ids below `GameIds::last`.
+- **The workload is lane-only and follows `master`** (55 % battle engine; not in the full verify): `verify --scope server` measures it; re-baseline a drift from `master` (`cargo xtask bench-check --update --workload session-random-play-full`), the range in the commit; only with the file's arguments.
+- A connection's server id is `Connection::id`, set by its hello: logins sign it, not `Host::id` (M6 T1).
+- A card travels as the text its key signed (`SignedCard::card`): relay it verbatim. The server re-signs its own a minute old (`card::RESIGN`).
+- Windows refuses `set_len` through an `append(true)` handle (logs open `write(true)`, `journal::open_log`) and a connect to `0.0.0.0` (`crate::reachable`). Check with clippy `--target x86_64-pc-windows-gnu`; Wine is no test.
+- A `wss://` dial passes `Connector::Rustls` (`Client::dial`), or tokio-tungstenite panics (no process-wide provider). Graviola panics on a processor without its extensions: each fetch is a task of its own.
+- `ListPeers` serves `peers::relay`'s rebuild (peers, listed servers, chains), chains checked against served cards. A fetch below `depth` pages `ListPeers`: a fake peer must answer it (`tests/peers.rs`). A fetch dials through `Tls::to` (the roots at the first `wss://`); a listed card must name its list's address.
