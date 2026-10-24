@@ -1181,7 +1181,7 @@ checkpoint_every = 25
 [map]
 path = "fixtures/maps/e08-duel-36.h3m"
 hash = "0x37d348cff2785a01"
-import_version = 9
+import_version = 10
 
 [result]
 day = 29

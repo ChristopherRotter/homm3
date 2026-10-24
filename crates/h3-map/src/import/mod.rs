@@ -614,15 +614,17 @@ fn details(
     })
 }
 
-/// A hero's stored artifacts (since v9, E08 T49a): each worn entry's artifact at its position
-/// (ADR-0013 point 1: the map's entry `i` is [`codes::WORN`]'s slot and rank, the content's
-/// position the rank-th of that slot's in `h3_game::positions`), in the map's order and only
-/// where the position takes it (`h3_game::takes`: empty, of the artifact's slot, the locks
+/// A hero's stored artifacts (since v9, E08 T49a): each worn entry's artifact equipped at its
+/// position (ADR-0013 point 1: the map's entry `i` is [`codes::WORN`]'s slot and rank, the
+/// content's position the rank-th of that slot's in `h3_game::positions`), in the map's order and
+/// only where the position takes it (`h3_game::equip`: empty, of the artifact's slot, the locks
 /// fitting), else left out: the original's loader equips entry by entry and drops what its
 /// position refuses (`placed_hero_setup` 0x4D8D63 through `hero_equip_artifact` 0x4E2A00 and
 /// `hero_can_place_artifact` 0x4E2550; the fifth misc refused before SoD), as VCMI's
-/// (`loadArtifactToSlot`; the Tutorial's second hero's Shackles of War on the left hand). The
-/// backpack in order.
+/// (`loadArtifactToSlot`; the Tutorial's second hero's Shackles of War on the left hand). Since
+/// v10 (E08 T49b) an equipped Titan's Thunder adds a Spell Book on the empty book position, as
+/// the original's equip does (0x4E2A64, HER-ART-007): the map's own book entry, later in its
+/// order, then finds the position taken. The backpack in order.
 fn hero_artifacts(
     rules: &GameRuleset,
     stored: &Artifacts,
@@ -636,11 +638,10 @@ fn hero_artifacts(
         let slot = core.artifact_slot_by_key(key);
         let at = (0..positions.len())
             .filter(|&p| slot == positions.get(p).copied())
-            .nth(rank)
-            .filter(|&at| h3_game::takes(&worn, core, id, h3_game::Position(at)));
-        at.and_then(|at| worn.get_mut(at))
-            .into_iter()
-            .for_each(|place| *place = Some(id.into()));
+            .nth(rank);
+        if let Some(at) = at {
+            h3_game::equip(&mut worn, core, id.into(), h3_game::Position(at));
+        }
     }
     let backpack = stored
         .backpack
