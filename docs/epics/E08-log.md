@@ -5291,3 +5291,56 @@ docs only).
   duel meets an own hero: each player's two heroes start on different levels); every hash moved.
 - **Found and fixed:** the epic held decision 112's block five times (T49b's edit had put it
   before every increment's task list); the four extra copies removed.
+
+### Increment 6, round 4: T51a, the game's management commands on one hero, their listing, the tactics flag in battle (2026-10-24, `shared/e08-t51a-legal`, `adventure/e08-t51a`)
+
+**Baseline:** `master` e816f20 (#458 merged); its engine code (31a2e374) not verified yet, so the
+sandbox ran the full verify with the original data first: BASELINE_RESULT. At its start the user
+cut T51 in two (decision 116: T51a here, T51b the meeting and the army dialog) and consented to
+`h3-sim`'s one arm (`cross-lane`). Reading the env's rollout before the build showed that
+ADR-0017 point 6's flat list would change it: the user chose the listing per hero (decision 117),
+ADR-0017 point 6 amended in `shared/e08-t51a-legal` (docs only, with `docs/06-security.md`'s line).
+
+- **The command** (GAM-MAN-001): `GameCommand::Manage(Manage)`, `Manage::{Army(ArmyCommand),
+  Formation, Tactics, Artifact { from: (HeroId, ArtifactPlace), to: (HeroId, ArtifactPlace) },
+  Assemble, Disassemble}` (`manage.rs`), `GameCommandError::Manage(ManageError::{NotYourHero,
+  NotTogether, Army, Artifact, Combine})`; the adventure's `NotYourHero` named as the game's
+  (`ManageError::of_army`). `state/manage.rs`: `check_ready` (turn, decision, a level-up's hold),
+  then `alone` (an army command on one hero's army: the group alone is `NoGroup`, two armies
+  `NotTogether` until T51b), `manage_army` with no group, `set_formation`, `set_tactics`; an
+  artifact command checks both heroes are the player's on the map (`own_details`), then
+  `NotTogether` for two, then `move_changes` (its `from` changes), `assemble_changes`,
+  `disassemble_changes`, applied in order through the battle's `change_hero` (now `pub(super)`).
+- **Events**, the owner's alone (`project`): `StackChanged { player, at, stack }` for each slot an
+  army command names, the stack's first, with what it holds after it (an agent's call against the
+  design's `ArmyChanged` with the whole army: `GameEvent` stays `Copy`); `FormationSet`,
+  `TacticsSet`; `HeroChanged` per artifact change. `ArmyCommand::slots` gives the slots;
+  `ArmyCommand::armies` is public now.
+- **The listing** (GAM-MAN-002; decision 117): `legal_management(state, rules, actor, hero)`: the
+  army's commands (`AdventureState::army_commands(part, player, (from, to), group)`: each stack's
+  moves onto the other slots of `from` and, with `to`, of `to`, then the dismissals, each checked
+  by the plan without applying it, `plan_army`, which `manage_army` now shares), both formations,
+  both flag values, each artifact's moves onto every place `check_move` takes (sources and targets
+  by position, then by backpack index up to its length), the assemblies and disassemblies by
+  position; empty for the system actor, outside the turn or with a decision open, another
+  player's hero, a hero not on the map. `split_range(state, rules, actor, (from, to))`: one army's
+  split counts (`None` for two armies). `legal_commands` unchanged.
+- **The tactics flag in battle** (GAM-BAT-009): `Combatant::tactics` (built in one place,
+  `HeroOnMap::combatant`, for the three battle starts), `deny_tactics` in `start_battle`: the side
+  with the greater level's flag off zeroes both heroes' Tactics; equal levels cancel as before;
+  a side without a hero counts as on.
+- **The CLI and the replays**: `h3-cli`'s command text gains the management commands (`army
+  move|split|dismiss <army>:<slot> …`, `formation`, `tactics`, `artifact <hero>:w<p>|b<i> …`,
+  `assemble`, `disassemble`), adventure replay format v6 (moved from T52: the text's match is
+  exhaustive); the ten replays' headers only (`format = 6`), their commands and hashes unchanged
+  (no replay manages; every flag stays on). `h3-sim`'s `tileless_entry` maps `Manage` to no entry
+  (the AI lane's inbox told); `h3-map`'s tests' matches gained the variant and the events.
+- **Rules**: GAM-MAN-001 and -002 `implemented`, GAM-BAT-009 `verified` (batch E6's E6-6).
+  Versions: game state hash, adventure state hash, ruleset parts and map import unchanged (the
+  flag and the armies were hashed since T50).
+- **Tests**: `h3-game`'s `tests/manage.rs` (the army commands and their refusals, the formation
+  and flag with their projection, the artifacts' moves, assembly and disassembly against
+  `h3-heroes`' changes, the listing against every candidate `apply` accepts, the split's query,
+  six battles of the flag), `h3-adventure`'s listing against the state's command (within, toward
+  another hero, the last stack, the group), the battle start's flag, the CLI's round trip and
+  refusals.

@@ -4,8 +4,8 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 
 ## Current state
 
-- **E08**: increments 1 to 5 **closed** (5, movement and scouting: decisions 71–89, survey `E08-hero-movement.md`). **Increment 6: army and hero management** (decisions 90–111; survey `E08-army.md`, design `E08-design.md`): rounds 1 to 3 done (T44a to T49b: survey, ADRs, the env to the AI lane, batch E6 run and scored as read; the positions; moves, combinations, Titan's book, Scholar); round 4: T50 done (decisions 113–115). Records: `E08-log.md`.
-- **Map reader and import** (`h3-map`): `read`/`parse` into `model::RawMap`; `import` into `h3_game::GameSetup`, `import_map` its static layer (`MAP_IMPORT_VERSION` 10: T49a's worn positions, T49b's Titan's book equipped, `docs/formats/h3m.md` "Import"). Every shipped map's static layer imports and validates; of the 160 shipped maps 5 import whole (9 heroes, 41 levels at load), the rest are typed `Unsupported`. `verify --with-original-data` runs `crates/h3-map/examples/original_data.rs` on the shipped maps.
+- **E08**: increments 1 to 5 **closed**. **Increment 6: army and hero management** (decisions 90–117; survey `E08-army.md`, design `E08-design.md`): rounds 1 to 3 done (T44a to T49b); round 4: T50, T51a done, T51b next. Records: `E08-log.md`.
+- **Map reader and import** (`h3-map`): `read`/`parse` into `model::RawMap`; `import` into `h3_game::GameSetup`, `import_map` its static layer (`MAP_IMPORT_VERSION` 10, `docs/formats/h3m.md` "Import"). Every shipped map's static layer imports and validates; of the 160 shipped maps 5 import whole (9 heroes, 41 levels at load), the rest are typed `Unsupported`. `verify --with-original-data` runs `crates/h3-map/examples/original_data.rs` on the shipped maps.
 - **Monsters, grounds, guarded piles** (T20a2a to T21a; ADV-MON-002 to -010, ADV-GRD-001, ADV-PIK-004): kinds `Monster`, `Ground`; `[params.monsters]`; `ObjectSetup.monster`/`.drawn`; `army_left`; `battle_ground`; `guard_of`; `answer.rs`; `split` (flag 24); `Defender::{Monster, Guards}`, `Actor::System`, `end_monster_battle`; `MonsterChanged`; `state/piles.rs`.
 - **The store of heroes** (T18b, GAM-HER-001): `GameState` keeps `Arc<HeroDetails>` by `HeroId` (`GameHeroSetup.details` or defaults, validated by `h3-heroes`); `attack_defense`, `join_bonus`; `GameObservation.heroes`. T39: `movement.rs` (HER-ADV-003 to -007). T49a: `worn` by position (`positions.rs`, `PlaceArtifact`; re-exported by `h3_game`). T49b: `moves.rs`, `combine.rs`, `equip` (Titan's book), `meeting_spells`. Progression (T26b–T30): `level.rs`, `level_up.rs`, `GainLevel`, `offered`; `original_choice` (HER-LVL-006); `state/levels.rs` (GAM-HER-002, flag 27), levels at load (GAM-SET-002), in play (`give_levels`, `Decision::LevelUp`; GAM-DEC-002, GAM-BAT-008).
 - **Objects** (T12–T15): types (`ruleset/objects.rs`, ADV-OBJ-002); contents drawn at the build (ADV-PIK-001 to -003); removals (`state/occupancy.rs`); `ObjectView`s (no index). Visits (ADV-OBJ-003, -004; `visit_at`, `tile_object`); gains and offers in `AdventureOutcome` (ADV-OBJ-005). Purchases and keys (`state/flags.rs`; ADV-VIS-001 to -004); `offer_stands`.
@@ -15,12 +15,12 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 - **Fog of war** (T8a, `BitGrid`, 32 × 32 leaves): an explored layer per player, `fog::reveal` (ADV-FOG-002, -003), moves and `Reach` on explored tiles only (ADV-MOV-008), events `{ kind, seen_by: Viewers }` (ADV-FOG-004); the fringe (ADV-FOG-005 under `ADV-QUIRK-1`), `observe` and `project` in both crates (ADV-FOG-006).
 - **Commands** (T8b2): `h3_game::legal_commands` and `legal_moves` (a hero's `Reach`, the user), empty outside the turn.
 - **The env** (T9a; the AI lane's since T45 but `replay.rs`): `AdventureEnv`, action encoding v4 (`EndTurn`, eight hero slots, the answers, a tile; in a battle the battle's; `to_move` yields `Seat`s, `Seat::Neutral` played as `Actor::System`), `random_rollout`.
-- **Replays and benchmarks** (T9b): `adventure::replay` (format v5), `h3 adventure run/verify/bench`, ten golden replays (options in `adventure_replays.rs`), the maps `fixtures/maps/e08-{duel-36,xl-144}.h3m` (`h3-map`'s `tests/fixtures.rs`; T31: heroes near a level; T42: flyers, water walkers, the skills), four gated workloads in `benches/adventure/` (play, reach by walkers and by lifted heroes, fork with a battle open).
+- **Replays and benchmarks** (T9b): `adventure::replay` (format v6), `h3 adventure run/verify/bench`, ten golden replays (options in `adventure_replays.rs`), the maps `fixtures/maps/e08-{duel-36,xl-144}.h3m` (`h3-map`'s `tests/fixtures.rs`; T31: heroes near a level; T42: flyers, water walkers, the skills), four gated workloads in `benches/adventure/` (play, reach by walkers and by lifted heroes, fork with a battle open).
 - **Experiments**: `h3-experiment` (battle's) has the adventure shape; batches 1 to E6 scored (`e4_score`); agents run them on the harness (decision 21).
-- **Army management** (T50): `army.rs` (`ArmyCommand`, `split_range`), `state/manage.rs` (the group passed in); `max_stack_count` (ADV-ARM-007); `AdventureOutcome::{meeting, no_room}` for T51.
+- **Army management** (T50): `army.rs` (`ArmyCommand`, `split_range`), `state/manage.rs` (the group passed in, `army_commands`); `max_stack_count` (ADV-ARM-007); `AdventureOutcome::{meeting, no_room}` for T51b. T51a: `h3_game::{Manage, legal_management, split_range}` (per hero), `state/manage.rs` (`alone`: one army until T51b), `deny_tactics` (GAM-BAT-009).
 - **Adventure ruleset part** (v11 since T50: a stack's most): terrains, roads, rivers, movement and setup parameters, object types, starting resources by difficulty, battle terrains, monsters' parameters (with the price resource).
 - **Properties** on generated playable maps (`h3-map`'s `play.rs`, `view.rs`): `Step::Fight` (hero casts via `h3-battle`, a dev-dependency), monsters, grounds, the system actor, piles, level-ups, `check_progression` per command; 192 fixed battle cases; T42: kits, flyers, water walkers, Nomads.
-- **Next:** merge #455 (`shared/e08-t50-cap`), then #457 (`adventure/e08-t50`); T51 (`E08-design.md` §8–§11; it drops the join's no-room skip).
+- **Next:** merge `shared/e08-t51a-legal`, then `adventure/e08-t51a` (`cross-lane`); T51b (`E08-design.md` §8, §9, §10's T51b list; it drops the join's no-room skip).
 - **ADRs accepted**: ADR-0015 to -0017 (2026-10-10), amended for increments 2 to 6 (last: T45).
 - **R01** (the content split): the core `h3-content` and `h3-pack` (`core.toml`) are shared; the writer is `h3_map::writer`.
 - **Ownership:** the four crates, `h3-heroes`, `h3-sim`'s `src/adventure/replay.rs`, `h3-cli`'s `src/adventure/` (`h3-cli`'s `Cargo.toml`, `lib.rs`, `main.rs` battle's, `h3-sim`'s the AI lane's: `cross-lane`), `crates/h3-cli/tests/adventure_replays.rs`, `fixtures/replays/adventure/`, `fixtures/maps/`, `benches/adventure/`, each pack's `adventure.toml`, `docs/formats/h3m.md`, `docs/rules/catalog/{adventure,game,heroes,town}.toml`.
@@ -40,6 +40,10 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 
 ## Recent sessions
 
+### 2026-10-24 — increment 6, round 4: T51a
+
+Baseline e816f20. T51 cut in two (decision 116), the listing per hero (decision 117, ADR-0017 amended first); `Manage` on one hero, the flag in battle, replay format v6.
+
 ### 2026-10-24 — increment 6, round 4: T50
 
 Baseline f89aa89. T50 whole (decision 113), the cap first (#455); the no-room offer left to T51; four duplicate decision-112 blocks removed from the epic.
@@ -47,7 +51,3 @@ Baseline f89aa89. T50 whole (decision 113), the cap first (#455); the no-room of
 ### 2026-10-24 — increment 6, round 3: T49b; round 3 closed
 
 Baseline d0d7bb8. T49b whole plus the import's Titan's book (decision 112), import v10; full verify.
-
-### 2026-10-24 — increment 6, round 3: T49a
-
-Baseline a5fbe80. T49a whole: positions, hash v12, import v9, two lanes' call sites; full verify.
