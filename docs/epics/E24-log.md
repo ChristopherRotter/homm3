@@ -408,3 +408,35 @@ One session, the user present at its start; branch `map-client/e24-t4a`.
 - **Questions:** MCL-Q4 (an owned object without an entrance on the map takes tile (0, 0)'s
   owner; none in the shipped maps): answered by the user at the task's end, (a) as built (the
   client the object's own, the comparisons the original's).
+
+### M1 T5b2 — the path's arrows and the explored tiles (2026-10-24)
+
+- **The seam:** T5b2 taken whole (the path's arrows, the explored tiles from memory, and the
+  boats' flags of other colours, which proved cheap by a staging write).
+- **Session:** GitHub reachable from the cloud session again (the repository attached); the
+  starting point's clients check (master `d0d7bb8`, its clients code not verified since E08
+  T49a) passed in full in a worktree.
+- **Read** (§2.10): view_path_shadows_pass 0x411F50 and view_path_arrows_pass 0x4120B0 in detail:
+  the u16 per tile at the manager's +0x48 by (level × height + y) × width + x (`structs.toml`'s
+  `path_arrows` now read), skipped at 0, `adag.def` frame a − 1, pass 6 the shadows alone
+  (0x47BFA0 into 0x47E820), pass 8 the pixels (0x47BF50), the tile passes' clip. `adag.def`: 50
+  frames, 32 × 32, encoding 2. How the arrows are chosen is M2's.
+- **Built** (`clients/crates/h3-map-view`): the tables' `[map] path` (`PATH_FRAMES`, the gate
+  checks it); `live::Arrow`, `Live::path`; `Pass::PathShadow` and `Pass::Path` in the scene
+  (between the shadows and the bodies, between the bodies and the shroud), the compose's
+  shadows-alone drawer for pass 6; the situations' hero `path` (Red's, one) and boat `colour`;
+  `render --live` reads `explored` and `path`. 100 % covered.
+- **The harness** (common path, additive): `h3mem.Mem.path_arrows`, `explored_rows`,
+  `write_boat_colour`; `h3map.py still` sets the view by `set_view`, shows a hero's path
+  (`show_path`), leaves a shipped map's start explored with `explored = "start"`, writes the
+  boats' colours, and puts `explored` and `path` into every `live.toml`.
+- **Captures:** `path-objects` (D9: the arrows over the decorations' upper parts at (8, 3) to
+  (11, 3), their shadows under them, the first arrow over the hero; arrows 8, 16, 17, 25, 26,
+  41), `path-edge` (cut at the view's columns 18 and 0), `start-dwarven-tunnels`, `start-hoard`
+  (an explored circle at the map's right column beside the edge), `boats-colours` (Blue to Pink,
+  the three types): each exact on its first run. The full set (40) after: every one as recorded,
+  `shipped-good-witch` shown again for the palettes' half tick (the inbox's T6 item).
+- **Agent decisions (provisional, on the review list):** the arrows from memory as frame numbers,
+  the two passes, `live.toml`'s `explored` and `path` always written, the situations' `path`,
+  `colour` and `explored = "start"`, the boats' colours staged.
+- **Questions:** none (no oddity of the original found).

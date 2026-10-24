@@ -1,11 +1,12 @@
-# The map's capture set (E24 M1 T3b2, T4a, T4b, T5a, T5b1, *provisional*; clients/capture/README.md, "The
-# map's stills"): the situations beside this file, each a still the harness shows the original
-# and compares with ours (`python3 capture/h3map.py set`, from clients/): its map built with the
-# writer (`h3-map-view situation`) or a shipped map loaded whole (`map`, T4b), the human
-# player's explored tiles written (all but the situation's `hidden`), the view by the minimap,
-# the clock frozen; ours drawn with the original's drawing bugs (`render --bugs original`) at the
-# palette step the original's memory shows, a shipped map's random objects as its memory holds
-# them. Masked: the panels (M3) and the parked cursor over them. Per situation the pixels that
+# The map's capture set (E24 M1 T3b2, T4a, T4b, T5a, T5b1, T5b2, *provisional*;
+# clients/capture/README.md, "The map's stills"): the situations beside this file, each a still
+# the harness shows the original and compares with ours (`python3 capture/h3map.py set`, from
+# clients/): its map built with the writer (`h3-map-view situation`) or a shipped map loaded whole
+# (`map`, T4b), the human player's explored tiles written (all but the situation's `hidden`) or,
+# with `explored = "start"`, as the new game left them (T5b2), the view by the minimap, a hero's
+# path shown (T5b2), the clock frozen; ours drawn with the original's drawing bugs (`render --bugs
+# original`) at the palette step the original's memory shows, a shipped map's random objects, the
+# explored tiles and the path as its memory holds them. Masked: the panels (M3) and the parked cursor over them. Per situation the pixels that
 # differ outside the masks, with why; a run that counts another number fails.
 
 [[situation]]
@@ -185,3 +186,28 @@ why = "exact: a 72-tile shipped map whole, an owned town, neutral mines and dwel
 id = "shipped-too-many-monsters"
 differing = 0
 why = "exact: a 36-tile shipped map whole, an owned town, neutral mines and dwellings"
+
+[[situation]]
+id = "path-objects"
+differing = 0
+why = "exact: a path's arrows over the bodies of the objects whose upper parts cover it, their shadows under them (D9), green and red"
+
+[[situation]]
+id = "path-edge"
+differing = 0
+why = "exact: a path from a hero right of the view, its arrows cut by the view's right and left columns"
+
+[[situation]]
+id = "start-dwarven-tunnels"
+differing = 0
+why = "exact: a shipped map's start, the explored tiles as the game left them, the shroud's edge on every side"
+
+[[situation]]
+id = "start-hoard"
+differing = 0
+why = "exact: a shipped map's start, an explored circle at the map's right column, the edge beside it"
+
+[[situation]]
+id = "boats-colours"
+differing = 0
+why = "exact: seven boarded boats of the three types, their flags in the seven colours but Red's (written)"

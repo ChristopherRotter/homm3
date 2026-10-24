@@ -1,0 +1,8 @@
+# The path's arrows cut by the view (E24 M1 T5b2; design §2.10): a Red hero right of the view
+# shows its path to the view's left column, entering at its right column (both cut to 24 pixels),
+# green while the day's points last, then red.
+size = 36
+terrain = "grass"
+patches = [{ terrain = "dirt", from = [8, 6], to = [13, 10] }]
+heroes = [{ at = [22, 3], class = 9, path = [2, 15] }, { at = [33, 33], owner = 1 }]
+view = [2, 0, 0]

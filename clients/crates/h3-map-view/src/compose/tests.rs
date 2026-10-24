@@ -145,6 +145,21 @@ fn the_pieces_through_the_raw_drawer_and_the_shroud_twice() {
 }
 
 #[test]
+fn the_paths_shadow_alone_then_its_pixels_alone() {
+    // E24 M1 T5b2: pass 6 draws an arrow's runs as shadows only, pass 8 its pixels only.
+    let terrain = piece(Pass::Terrain, "terrain.def", 1, 0, 0, [0, 0, 2, 2]);
+    let shadow = piece(Pass::PathShadow, "shroud.def", 0, 0, 0, ALL);
+    let screen = compose(&scene(vec![terrain.clone(), shadow]), &batch(), [2, 2]).unwrap();
+    let f = FORMAT;
+    // The literal 9 and the run of 0 leave frame 1's pixels; the runs of 3 halve the row below.
+    assert_eq!(screen.pixels(), [5, 6, f.shadow_body(7), f.shadow_body(8)]);
+    let arrow = piece(Pass::Path, "shroud.def", 0, 0, 0, ALL);
+    let screen = compose(&scene(vec![terrain, arrow]), &batch(), [2, 2]).unwrap();
+    // The literal 9 alone.
+    assert_eq!(screen.pixels(), [9, 6, 7, 8]);
+}
+
+#[test]
 fn the_objects_through_the_flagged_drawer_and_the_shadow_pass() {
     // An object's 2 × 2 frame: a literal 9, a flag's run of 5, a shadow's runs of 1 and 4.
     let mut b = batch();

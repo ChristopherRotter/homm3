@@ -5,8 +5,9 @@
 //! roads, the flat objects, the objects' shadows, their bodies by layer (§2.2: one 32 × 32 piece
 //! per entry of a tile's draw list, [`crate::objects`]), the unexplored tiles (§1.5), the corner
 //! gems; the heroes and boats as two-row objects among them (E24 M1 T5a, §2.3, §2.8): their
-//! shadows after the objects', their pictures after the bodies of layers 1 and 2. The path's
-//! passes come with T5b. [`crate::compose`] draws the list.
+//! shadows after the objects', their pictures after the bodies of layers 1 and 2; the path's
+//! arrows (E24 M1 T5b2, §2.10): their shadows after every other shadow, their pixels after the
+//! bodies. [`crate::compose`] draws the list.
 //!
 //! Each piece of the view carries its clip: the 32 × 32 rectangle of its tile (a road's 16 pixels
 //! lower) inside the view's clip (§1.2), as the passes cut their source rectangles.
@@ -55,9 +56,14 @@ pub enum Pass {
     Flat,
     /// A piece of an object's, a hero's or a boat's shadow (pass 5).
     Shadow,
+    /// A path arrow's shadow (pass 6): its runs as shadows alone (0x47BFA0 into 0x47E820,
+    /// design §2.2).
+    PathShadow,
     /// A piece of an object's body (pass 7), drawn as the flat objects', or of a hero's or boat's
     /// pictures (through 0x47C080: no colour, its flag runs skipped).
     Body,
+    /// A path arrow (pass 8): its pixels, runs skipped (def_draw_raw 0x47BF50).
+    Path,
     /// An unexplored tile (pass 10), drawn twice: its pixels, then its runs as shadows (§1.5).
     Shroud,
 }
@@ -205,6 +211,7 @@ pub fn scene(
         shapes,
         lists,
         standing: standing(live, at.z),
+        arrows: arrows(live, at.z),
         at,
         bugs,
     };
@@ -215,13 +222,15 @@ pub fn scene(
         players: layout.player_palette.clone(),
         viewer: live.viewer,
     });
-    let passes: [TilePass<'_>; 7] = [
+    let passes: [TilePass<'_>; 9] = [
         View::terrain,
         View::river,
         View::road,
         View::flat,
         View::shadows,
+        View::path_shadow,
         View::bodies,
+        View::path,
         View::shroud,
     ];
     for pass in passes {
@@ -261,6 +270,7 @@ struct View<'a> {
     shapes: &'a Shapes,
     lists: DrawLists,
     standing: BTreeMap<(i32, i32), Standing<'a>>,
+    arrows: BTreeMap<(i32, i32), u16>,
     at: ViewAt,
     bugs: Bugs,
 }
@@ -282,6 +292,16 @@ fn standing(live: &Live, z: u8) -> BTreeMap<(i32, i32), Standing<'_>> {
         out.entry((i32::from(at.x), i32::from(at.y))).or_insert(s);
     }
     out
+}
+
+/// The path's arrows on level `z` by their tiles (the last given on a tile; an arrow 0 is none,
+/// as the passes skip it).
+fn arrows(live: &Live, z: u8) -> BTreeMap<(i32, i32), u16> {
+    live.path
+        .iter()
+        .filter(|a| a.at.z == z && a.arrow > 0)
+        .map(|a| ((i32::from(a.at.x), i32::from(a.at.y)), a.arrow))
+        .collect()
 }
 
 /// The slots of the heroes and boats over a tile (design §2.3): k = 3 dy + dx + 1 for the one
@@ -644,6 +664,42 @@ impl<'a> View<'a> {
                 flag,
             }
         })
+    }
+
+    /// Pass 6: the shadow of the tile's path arrow (0x411F50).
+    fn path_shadow(&self, x: i32, y: i32, place: [i32; 2], out: &mut Vec<Draw>) {
+        self.arrow(x, y, place, out, Pass::PathShadow);
+    }
+
+    /// Pass 8: the tile's path arrow (0x4120B0).
+    fn path(&self, x: i32, y: i32, place: [i32; 2], out: &mut Vec<Draw>) {
+        self.arrow(x, y, place, out, Pass::Path);
+    }
+
+    /// The tile's path arrow a in `pass`: the path DEF's frame a − 1 on the tile, a tile of the
+    /// map with an arrow only (design §2.2).
+    fn arrow(&self, x: i32, y: i32, place: [i32; 2], out: &mut Vec<Draw>, pass: Pass) {
+        let on_map = self.art.tile(x, y, self.at.z).is_some();
+        let Some((&arrow, clip)) = self
+            .arrows
+            .get(&(x, y))
+            .filter(|_| on_map)
+            .zip(self.clip(place, 0))
+        else {
+            return;
+        };
+        out.push(Draw::Piece {
+            pass,
+            def: self.tables.map.path.clone(),
+            group: 0,
+            frame: u32::from(arrow).saturating_sub(1),
+            x: place[0],
+            y: place[1],
+            mirror_x: false,
+            mirror_y: false,
+            clip,
+            flag: None,
+        });
     }
 
     /// Pass 10: an unexplored tile of the map, its piece by its unexplored neighbours (0x412220,

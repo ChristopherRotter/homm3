@@ -264,6 +264,11 @@ pub struct HeroSpec {
     /// design §2.8): a new game faces every hero right (2).
     #[serde(default)]
     pub facing: Option<u8>,
+    /// The tile its path leads to, shown by the harness after the view is set: the hero selected
+    /// and the tile clicked once (E24 M1 T5b2; design §2.10, passes 6 and 8). Red's heroes only,
+    /// one at most (the selected hero's path is the one shown).
+    #[serde(default)]
+    pub path: Option<[u8; 2]>,
 }
 
 /// A boat without a hero (E24 M1 T5a).
@@ -277,6 +282,11 @@ pub struct BoatSpec {
     /// Where the harness turns it before the still (0–7, the boat record's +0x1B; design §2.8).
     #[serde(default)]
     pub facing: Option<u8>,
+    /// The flag's colour the harness writes into its record once a Red hero boarded it (0–7, the
+    /// boat record's +0x1C; E24 M1 T5b2): a still's staging, as the facings (boarding gives the
+    /// boat its hero's owner, design §2.8), so that the boats' flags of every colour are drawn.
+    #[serde(default)]
+    pub colour: Option<u8>,
 }
 
 /// The boats' class.
@@ -355,7 +365,7 @@ impl Situation {
     /// A source missing, a copied rectangle outside its map or the situation's, a code with no
     /// name, a given object's, town's or boat's template not among `templates`; no hero of Red's or of
     /// another colour, an owner past 7, more than eight heroes of a colour or of a class, a
-    /// facing past 7, a walk of a hero not Red's.
+    /// facing or a boat's colour past 7, a walk or a path of a hero not Red's, a second path.
     pub fn build(
         &self,
         sources: &BTreeMap<String, RawMap>,
@@ -463,6 +473,7 @@ impl Situation {
         let mut players: [Option<Player>; 8] = Default::default();
         let mut of_owner = [0usize; 8];
         let mut of_class = [0usize; 18];
+        let mut paths = None;
         let mut heroes = Vec::new();
         for h in &self.heroes {
             let facing = h.facing.unwrap_or(0);
@@ -473,8 +484,14 @@ impl Situation {
                     h.at, h.owner
                 ));
             };
-            if h.owner != 0 && !h.walk.is_empty() {
-                return Err(format!("hero at {:?}: only Red's heroes walk", h.at));
+            if h.owner != 0 && (!h.walk.is_empty() || h.path.is_some()) {
+                return Err(format!(
+                    "hero at {:?}: only Red's heroes walk or show a path",
+                    h.at
+                ));
+            }
+            if h.path.is_some() && paths.replace(h.at).is_some() {
+                return Err(format!("hero at {:?}: a second path shown", h.at));
             }
             *count += 1;
             let nth = of_class.get(usize::from(h.class)).copied().unwrap_or(0);
@@ -521,10 +538,10 @@ impl Situation {
                 let template = templates
                     .iter()
                     .find(|t| (t.class, t.subclass) == (BOAT_CLASS, u32::from(b.kind)))
-                    .filter(|_| b.facing.unwrap_or(0) < 8)
+                    .filter(|_| b.facing.unwrap_or(0) < 8 && b.colour.unwrap_or(0) < 8)
                     .ok_or_else(|| {
                         format!(
-                            "boat at {:?}: no template of type {} or a facing past 7",
+                            "boat at {:?}: no template of type {} or a facing or colour past 7",
                             b.at, b.kind
                         )
                     })?;

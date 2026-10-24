@@ -1,9 +1,10 @@
 //! `render`: a still of the adventure screen (E24 M1 T3b1): a map's static art from its `.h3m`,
 //! the live part at the map's start (every tile explored but a chosen rectangle, the moment from
 //! a time), the objects' shapes and the scene at a view, its assets from the installation copy's
-//! archives, composed and written as a PNG. The comparisons with the original (T3b2, T4a, T4b)
+//! archives, composed and written as a PNG. The comparisons with the original (T3b2 to T5b2)
 //! give the live part read from its memory (`--live`: the palette step, the frame step, the
-//! viewer, the objects' phases and what the random ones became).
+//! viewer, the objects' phases and what the random ones became, the heroes and boats, the owners,
+//! the explored tiles and the path's arrows).
 
 use std::fs;
 use std::path::PathBuf;
@@ -15,9 +16,12 @@ use h3_map::writer::ObjectTemplate;
 use h3_map_view::art::{MapArt, TemplateArt};
 use h3_map_view::batch::{self, Batch};
 use h3_map_view::compose::compose;
-use h3_map_view::live::{Boat, Drawn, Facing, Live, LiveBoat, LiveHero, Moment, TOWN_CLASS};
+use h3_map_view::live::{
+    Arrow, Boat, Drawn, Explored, Facing, Live, LiveBoat, LiveHero, Moment, TOWN_CLASS,
+};
 use h3_map_view::objects;
 use h3_map_view::scene::{self, Draw, ViewAt};
+use h3_map_view::tables::PATH_FRAMES;
 use h3_render::Bugs;
 
 use crate::files;
@@ -250,7 +254,10 @@ const RANDOM_DWELLINGS: [u32; 3] = [216, 217, 218];
 /// (E24 M1 T4b, design §2.7), its own picture the last of the game's `templates` of that class and
 /// subclass (MCL-Q3); `heroes` and `boats` (E24 M1 T5a), the heroes and empty boats the view
 /// draws, each `[x, y, level, class, facing, owner, boat type, boat colour]` (the boat's -1 -1 on
-/// land) and `[x, y, level, type, facing]`. Each key is optional; other keys are left.
+/// land) and `[x, y, level, type, facing]`; `explored` (E24 M1 T5b2), the viewer's explored
+/// tiles, a string per row of every level in turn (level by level, rows top to bottom), `1` a tile
+/// explored and `0` not; `path` (T5b2), the path shown, each arrow `[x, y, level, arrow]`. Each key
+/// is optional; other keys are left.
 fn read_live(
     path: &PathBuf,
     art: &mut MapArt,
@@ -387,6 +394,20 @@ fn read_live(
             .and_then(|rows| rows.into_iter().map(boat).collect())
             .ok_or_else(|| failed("`boats` is not a list of [x, y, level, type, facing]"))?;
     }
+    if let Some(rows) = table.get("explored") {
+        live.explored = explored(rows, art.size, art.levels).ok_or_else(|| {
+            failed(&format!(
+                "`explored` is not {} rows of {} tiles of 0 and 1",
+                art.size * art.levels,
+                art.size
+            ))
+        })?;
+    }
+    if let Some(path) = table.get("path") {
+        live.path = rows::<4>(path)
+            .and_then(|rows| rows.into_iter().map(arrow).collect())
+            .ok_or_else(|| failed("`path` is not a list of [x, y, level, arrow 1-50]"))?;
+    }
     if let Some(anchors) = table.get("anchors") {
         // A random dwelling stands where its dwelling's template put it when the map loaded
         // (0x502B60, design §2.9: its anchor moved right past the bottom row's passable cells
@@ -471,6 +492,48 @@ fn hero([x, y, z, class, facing, owner, kind, colour]: [i64; 8]) -> Option<LiveH
         owner: byte(owner).filter(|&c| c < 8)?,
         facing: Facing::from_number(byte(facing)?)?,
         boat,
+    })
+}
+
+/// `live.toml`'s `explored`: `levels` × `size` rows of `size` tiles each.
+fn explored(value: &toml::Value, size: usize, levels: usize) -> Option<Explored> {
+    let rows: Vec<&str> = value
+        .as_array()?
+        .iter()
+        .map(toml::Value::as_str)
+        .collect::<Option<_>>()?;
+    if rows.len() != size * levels || rows.iter().any(|r| r.len() != size) {
+        return None;
+    }
+    let mut explored = Explored::all(size, levels, false);
+    for (index, row) in rows.into_iter().enumerate() {
+        let (z, y) = (
+            u8::try_from(index / size).ok()?,
+            i32::try_from(index % size).ok()?,
+        );
+        for (x, tile) in row.bytes().enumerate() {
+            let seen = match tile {
+                b'0' => false,
+                b'1' => true,
+                _ => return None,
+            };
+            explored.set(i32::try_from(x).ok()?, y, z, seen);
+        }
+    }
+    Some(explored)
+}
+
+/// An arrow of `live.toml`'s `path` (1 to 50: the path DEF's frames).
+fn arrow([x, y, z, arrow]: [i64; 4]) -> Option<Arrow> {
+    Some(Arrow {
+        at: Pos {
+            x: byte(x)?,
+            y: byte(y)?,
+            z: byte(z)?,
+        },
+        arrow: u16::try_from(arrow)
+            .ok()
+            .filter(|&a| a > 0 && usize::from(a) <= PATH_FRAMES)?,
     })
 }
 

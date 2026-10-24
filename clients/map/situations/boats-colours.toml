@@ -1,0 +1,27 @@
+# The boats' flags of every colour but Red's (E24 M1 T5b2; design §2.8, §2.10): boats' Deluge lake
+# (its tiles (4, 16)-(22, 32) copied to the top-left), seven of Red's heroes each boarding a boat
+# beside the land by play, every boat's flag colour then written into its record (Blue to Pink,
+# the three types in turn): a still's staging, since a computer player's hero would have to board.
+size = 36
+terrain = "grass"
+copy = [{ map = "Deluge.h3m", from = [4, 16], to = [22, 32], at = [0, 0] }]
+heroes = [
+    { at = [1, 8], class = 0, walk = [[1, 7]], facing = 0 },
+    { at = [4, 8], class = 3, walk = [[4, 7]], facing = 7 },
+    { at = [6, 10], class = 5, walk = [[7, 10]], facing = 2 },
+    { at = [8, 12], class = 8, walk = [[9, 12]], facing = 3 },
+    { at = [13, 12], class = 11, walk = [[12, 12]], facing = 5 },
+    { at = [15, 10], class = 14, walk = [[14, 10]], facing = 6 },
+    { at = [8, 6], class = 17, walk = [[9, 6]], facing = 1 },
+    { at = [2, 14], owner = 1 },
+]
+boats = [
+    { at = [1, 7], kind = 0, colour = 1 },
+    { at = [4, 7], kind = 1, colour = 2 },
+    { at = [7, 10], kind = 2, colour = 3 },
+    { at = [9, 12], kind = 0, colour = 4 },
+    { at = [12, 12], kind = 1, colour = 5 },
+    { at = [14, 10], kind = 2, colour = 6 },
+    { at = [9, 6], kind = 0, colour = 7 },
+]
+view = [0, 0, 0]

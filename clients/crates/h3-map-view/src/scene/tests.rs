@@ -9,7 +9,7 @@ use h3_map::Limits;
 use h3_map::writer::{self, AnyObject, Extras, GivenTile, RiverKind, RoadKind, Terrain};
 
 use crate::art::tests::{map, raw, template};
-use crate::live::{Boat, Moment};
+use crate::live::{Arrow, Boat, Moment};
 use crate::objects::Shape;
 use crate::tables;
 
@@ -1049,4 +1049,52 @@ fn heroes_off_the_map_another_level_or_a_second_on_a_tile_are_left() {
     // column 2 is the map's 0).
     let first = body.iter().filter(|p| p.0 == "ah00_.def").count();
     assert_eq!(first, 4);
+}
+
+#[test]
+fn the_paths_shadows_under_the_bodies_its_arrows_over_them() {
+    // The 2 × 2 tree anchored at (6, 6) covers (5, 5) to (6, 6); a path through (5, 5) and (6, 5)
+    // ends at (7, 5) (E24 M1 T5b2, design §2.2: passes 6 and 8).
+    let (art, mut live) = art_with_objects(vec![object("tree.def", 6, 6, 0)]);
+    let shapes = with_shape(&art, "tree.def", [0xff; 6], [0xff; 6], 1);
+    let arrow = |x, y, z, arrow| Arrow {
+        at: Pos { x, y, z },
+        arrow,
+    };
+    live.path = vec![
+        arrow(5, 5, 0, 3),
+        arrow(6, 5, 0, 29),
+        arrow(7, 5, 0, 1),
+        // Not drawn: an arrow 0 (none), one off the view, one underground.
+        arrow(8, 5, 0, 0),
+        arrow(30, 30, 0, 2),
+        arrow(5, 6, 1, 2),
+    ];
+    let s = drawn(&art, &live, &shapes, at(0, 0));
+    let tile = |x: i32, y: i32| [32 * x, 8 + 32 * y];
+    let clip = |x: i32, y: i32| [32 * x, 8 + 32 * y, 32 * x + 32, 40 + 32 * y];
+    let expected: Vec<Seen> = [(5, 5, 2), (6, 5, 28), (7, 5, 0)]
+        .into_iter()
+        .map(|(x, y, frame)| {
+            (
+                "adag.def".to_string(),
+                frame,
+                tile(x, y),
+                [false; 2],
+                clip(x, y),
+            )
+        })
+        .collect();
+    assert_eq!(pieces(&s, Pass::PathShadow), expected);
+    assert_eq!(pieces(&s, Pass::Path), expected);
+    // Each pass over the whole view: every shadow, the arrows' shadows, the bodies, the arrows.
+    let order = [Pass::Shadow, Pass::PathShadow, Pass::Body, Pass::Path].map(|p| span(&s, p));
+    assert!(order.windows(2).all(|w| w[0].1 < w[1].0), "{order:?}");
+    // An arrow on a tile off the map is left.
+    live.path = vec![arrow(190, 5, 0, 3)];
+    let left = drawn(&art, &live, &shapes, at(180, 0));
+    assert!(pieces(&left, Pass::Path).is_empty());
+    // No path shown: neither pass draws.
+    live.path.clear();
+    assert!(pieces(&drawn(&art, &live, &shapes, at(0, 0)), Pass::PathShadow).is_empty());
 }

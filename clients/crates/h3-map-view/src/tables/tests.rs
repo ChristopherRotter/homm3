@@ -49,6 +49,7 @@ depends = []
 
 [map]
 edge = "edg.def"
+path = "adag.def"
 road_offset = 16
 cycle_ms = 200
 frame_ms = 180
@@ -157,26 +158,26 @@ fn every_def_with_the_frames_the_view_draws() {
     // The heroes' and boats' DEFs after the rest, each drawn in the facings' five groups.
     let heroes = HERO_CLASSES + COLOURS + 2 * BOAT_TYPES + BOAT_TYPES * COLOURS;
     // Then the towns' pictures, one frame of one group each (E24 M1 T5b1).
-    assert_eq!(needs.len(), 7 + heroes + 3 * FACTIONS);
-    assert!(defs[..7].iter().all(|n| n.groups == 1));
+    assert_eq!(needs.len(), 8 + heroes + 3 * FACTIONS);
+    assert!(defs[..8].iter().all(|n| n.groups == 1));
     assert!(
-        defs[7..7 + heroes]
+        defs[8..8 + heroes]
             .iter()
             .all(|n| n.groups == 5 && n.frames == 1)
     );
     assert!(
-        defs[7 + heroes..]
+        defs[8 + heroes..]
             .iter()
             .all(|n| n.groups == 1 && n.frames == 1)
     );
     assert_eq!(
-        [&needs[7 + heroes], needs.last().unwrap()],
+        [&needs[8 + heroes], needs.last().unwrap()],
         [
             &("tv0.def", "town village 0", None, 1),
             &("tc8.def", "town capitol 8", None, 1)
         ]
     );
-    let ends = [&needs[7], &needs[6 + heroes]];
+    let ends = [&needs[8], &needs[7 + heroes]];
     assert_eq!(
         ends,
         [
@@ -184,9 +185,9 @@ fn every_def_with_the_frames_the_view_draws() {
             &("abf23.def", "boat flag 23", None, 1)
         ]
     );
-    assert_eq!(needs[7 + HERO_CLASSES].1, "hero flag 0");
+    assert_eq!(needs[8 + HERO_CLASSES].1, "hero flag 0");
     assert_eq!(
-        needs[..7],
+        needs[..8],
         [
             ("dirttl.def", "terrain 0", Some((Layer::Terrain, 0)), 1),
             ("watrtl.def", "terrain 8", Some((Layer::Terrain, 8)), 1),
@@ -195,6 +196,7 @@ fn every_def_with_the_frames_the_view_draws() {
             ("edg.def", "edge", None, EDGE_FRAMES),
             ("tshrc.def", "full shroud", None, FULL_FRAMES),
             ("tshre.def", "edge shroud", None, 34),
+            ("adag.def", "path", None, PATH_FRAMES),
         ]
     );
     let names: Vec<String> = tables
@@ -348,6 +350,7 @@ fn refuses_what_breaks_the_format() {
         ("edge = \"edg.def\"", "edge"),
         ("full = \"tshrc.def\"", "full shroud"),
         ("edge = \"tshre.def\"", "edge shroud"),
+        ("path = \"adag.def\"", "path"),
     ] {
         let bad = base("").replacen(field, &field.replace(".def", ".pcx"), 1);
         let err = load(&files(&[bad]), "base").unwrap_err();

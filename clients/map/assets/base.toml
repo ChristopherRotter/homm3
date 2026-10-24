@@ -12,6 +12,7 @@ depends = []
 
 [map]
 edge = "edg.def"
+path = "adag.def"
 road_offset = 16
 cycle_ms = 200
 frame_ms = 180
