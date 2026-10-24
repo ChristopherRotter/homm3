@@ -434,3 +434,29 @@ Refined at M2's closure (T5c) with the user; the tasks in `docs/lanes/client/QUE
   `anim::GONE`; its blend listed); played as recorded, frames as the original's but the
   dissolve's seven blending steps. Every other sequence and situation drawn as before. **M3
   done.**
+
+## clients/README.md's state history
+
+Moved out of `clients/README.md` on 2026-10-24, verbatim: its "State" paragraph, last written at M3 T3b.
+
+**State:** E17 M0 built (2026-10-12): the workspace, its gates (`scripts/check.sh`, the CI job
+`.github/workflows/clients.yml`) and the real-asset gate. M1 T2 + T3 (2026-10-12): the decoders
+for palettes, PCX, DEF and MSK (`h3-assets`); the gate decodes every one of them in the user's
+archives (findings: `docs/epics/E17-design.md`). M1 T1 + T6 (2026-10-12): the code reading of
+the executable's drawing (design §3) and the compositor (`h3-render`) that follows it; `h3-view
+sprite` draws a DEF's group over an image into a PNG. M1 T5 + T4 (2026-10-13): the battle
+screen's reading (design §4) and the asset tables (`clients/assets/`, below). M1 T7 (2026-10-13):
+`h3-view render`, a battle still from a record or a scenario file. M1 T8 (2026-10-13): reference
+captures of the original, run under Wine in a sandbox, and the first exact diff (below). M2 T1,
+T3 (2026-10-13): the capture harness and the animation timing. M2 T4a (2026-10-13): the scene
+over time (`anim`), checked against the recorded sequences, and `render --at`. M2 T4b-1
+(2026-10-13): the frame check, every frame of the recorded sequences against the original's. M2
+T2 (2026-10-14): the window, input and audio library chosen by measurement and the user: SDL 3
+(ADR-0024, `docs/epics/E17-design.md` §8). M2 T5a (2026-10-14): the SDL 3 adapter `h3-sdl` and
+`h3-view window`, a battle in a window at the original's frame times (M2's exit). M2 T5b
+(2026-10-14): the sound archives decoded (`h3-assets`), the battle's music and creature sounds in
+the window at the times the executable plays them (design §8.2). M2 T5c (2026-10-14): M2 closed
+after a fresh review; M3 (fidelity) refined. M3 T1a, T1c (2026-10-14/15): a battle in progress in
+hot seat, the redraw artifacts classified. M3 T1b-1 (2026-10-15): the Arch Magi's and Beholders'
+energy ray (`h3_view::ray`, design §7.12). M3 T3a, T3b (2026-10-15): the heroes and their flags;
+the war machines and the First Aid Tent's heal under its magic animation (design §7.14, §7.15).
