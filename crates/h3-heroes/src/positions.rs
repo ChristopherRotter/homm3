@@ -1,12 +1,14 @@
 //! The positions of a hero's worn artifacts (E08 T49a; ADR-0013 point 1, HER-ART-001): one per
 //! position of the ruleset's artifact slots, in the slots' order and each slot's count; the
 //! locks of the worn combinations counted per slot; the first position that takes an artifact
-//! (HER-CHG-002); a list of artifacts placed at their first positions ([`wearing`]).
+//! (HER-CHG-002); a list of artifacts placed at their first positions ([`wearing`]); since E08
+//! T49b an artifact equipped at a position with the Spell Book Titan's Thunder adds ([`equip`],
+//! HER-ART-007).
 
 use alloc::vec;
 use alloc::vec::Vec;
 
-use h3_content::{ArtifactSlotId, ArtifactType, ArtifactTypeId, Ruleset};
+use h3_content::{ArtifactSlotId, ArtifactType, ArtifactTypeId, HeroEffect, Ruleset};
 
 use crate::details::{ArtifactInstance, HeroDetails};
 
@@ -102,10 +104,58 @@ pub(crate) fn fits(
         && full_slot(ruleset, worn.chain(core::iter::once(artifact))).is_none()
 }
 
+/// Equips `item` at `at` when the position takes it ([`takes`]), with the Spell Book an artifact
+/// with the `gives_spell_book` effect adds (HER-ART-007): the ruleset's first artifact with the
+/// `spell_book` effect at its first position, when one takes it (the empty spell book
+/// position). Whether `item` was equipped. The original's `hero_equip_artifact` (0x4E2A00) at a
+/// position, which equips a Spell Book at the empty book position with Titan's Thunder
+/// (0x4E2A64); a map's import equips entry by entry through it (E08 T49b). A worn
+/// [`crate::HeroChange::PlaceArtifact`] or [`crate::HeroChange::AddArtifact`] equips the same way.
+pub fn equip(
+    worn: &mut [Option<ArtifactInstance>],
+    ruleset: &Ruleset,
+    item: ArtifactInstance,
+    at: Position,
+) -> bool {
+    let fits = takes(worn, ruleset, item.artifact, at);
+    if fits {
+        worn.get_mut(at.0)
+            .into_iter()
+            .for_each(|place| *place = Some(item));
+        give_book(worn, ruleset, item.artifact);
+    }
+    fits
+}
+
+/// The Spell Book equipping `artifact` adds (HER-ART-007; [`equip`]): with the
+/// `gives_spell_book` effect, the ruleset's first artifact with the `spell_book` effect at its
+/// first position when one takes it; nothing otherwise. Nothing takes it back: the book stays
+/// when the artifact leaves (the original's `hero_remove_artifact` gives nothing back).
+fn give_book(worn: &mut [Option<ArtifactInstance>], ruleset: &Ruleset, artifact: ArtifactTypeId) {
+    // rule: HER-ART-007
+    let has = |a: &ArtifactType, wanted: fn(&h3_content::CompiledHeroEffect) -> bool| {
+        a.effects.iter().any(wanted)
+    };
+    let gives = ruleset
+        .artifact(artifact)
+        .is_some_and(|a| has(a, |e| matches!(e, HeroEffect::GivesSpellBook)));
+    let book = (0_u16..)
+        .zip(ruleset.artifacts())
+        .filter(|_| gives)
+        .find(|(_, a)| has(a, |e| matches!(e, HeroEffect::SpellBook)));
+    let at = book.and_then(|(raw, a)| first_free(worn, ruleset, a).map(|at| (raw, at)));
+    if let Some((raw, at)) = at {
+        worn.get_mut(at.0)
+            .into_iter()
+            .for_each(|place| *place = Some(ArtifactTypeId::from_raw(raw).into()));
+    }
+}
+
 /// The positions of a hero wearing `items` (E08 T49a): each placed in list order at the first
 /// position that takes it ([`first_position`]); one that none takes is left out. For callers
 /// that list artifacts (tests, experiments, generated heroes); a caller that needs a given
-/// placement, or an invalid one, writes the positions itself. Validate what it builds.
+/// placement, or an invalid one, writes the positions itself. Validate what it builds. It places
+/// without equipping: Titan's Thunder adds no Spell Book here ([`equip`] does, HER-ART-007).
 pub fn wearing(ruleset: &Ruleset, items: &[ArtifactInstance]) -> Vec<Option<ArtifactInstance>> {
     let mut worn = vec![None; positions(ruleset).len()];
     for &item in items {

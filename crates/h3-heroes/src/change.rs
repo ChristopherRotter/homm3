@@ -5,7 +5,8 @@
 //! (HER-ART-004); the artifact a destroyed war machine takes with it (HER-WAR-002); since E08
 //! T19a2b a learned spell; since E08 T27 a level (HER-LVL-005) and the experience a gain gives
 //! under the scenario's level limit (HER-EXP-003); since E08 T49a the worn artifacts by position
-//! and an artifact placed at a given place.
+//! and an artifact placed at a given place; since E08 T49b the Spell Book an equipped Titan's
+//! Thunder adds (HER-ART-007).
 
 use h3_content::{
     ArtifactType, CreatureFlag, CreatureTypeId, MAX_HERO_SKILLS, MAX_SKILL_LEVEL, Ruleset, SkillId,
@@ -17,7 +18,7 @@ use crate::details::{
 };
 use crate::error::ChangeError;
 use crate::level::{gained_under_limit, pending_levels};
-use crate::positions::{Position, first_free, fits};
+use crate::positions::{Position, equip, first_free, fits};
 
 /// Where an artifact is in a hero's details.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -38,7 +39,8 @@ pub enum HeroChange {
     /// Its spell points become this many.
     SetSpellPoints(u16),
     /// It receives an artifact: worn at the first position that takes it, else at the end of the
-    /// backpack (HER-CHG-002).
+    /// backpack (HER-CHG-002). Worn, it is equipped: Titan's Thunder adds a Spell Book
+    /// (HER-ART-007, [`crate::equip`]).
     AddArtifact(ArtifactInstance),
     /// It loses the artifact at this place: a position is left empty, the backpack's later
     /// artifacts move up.
@@ -46,7 +48,8 @@ pub enum HeroChange {
     /// It gets an artifact at a given place (E08 T49a; ADR-0013 point 14.4, a move's target): an
     /// empty position of the artifact's slot where the locks fit with it (HER-ART-001), or a
     /// backpack index up to the backpack's length, inserted there, for an artifact the backpack
-    /// carries while it holds fewer than its most (HER-ART-002).
+    /// carries while it holds fewer than its most (HER-ART-002). Worn, it is equipped: Titan's
+    /// Thunder adds a Spell Book (HER-ART-007, [`crate::equip`]).
     PlaceArtifact {
         /// The artifact.
         artifact: ArtifactInstance,
@@ -184,7 +187,7 @@ pub fn apply_change_limited(
                 .artifact(item.artifact)
                 .and_then(|artifact| first_free(&details.worn, ruleset, artifact));
             match at {
-                Some(at) => place(details, item, ArtifactPlace::Worn(at)),
+                Some(at) => place(details, ruleset, item, ArtifactPlace::Worn(at)),
                 None => details.backpack.push(item),
             }
         }
@@ -202,7 +205,7 @@ pub fn apply_change_limited(
             let rest = backpack.split_off(i.min(backpack.len()));
             backpack.extend(rest.into_iter().skip(1));
         }
-        HeroChange::PlaceArtifact { artifact, at } => place(details, artifact, at),
+        HeroChange::PlaceArtifact { artifact, at } => place(details, ruleset, artifact, at),
         HeroChange::LearnSpell(spell) => details.spells.push(spell),
         HeroChange::GainLevel {
             primary,
@@ -227,14 +230,13 @@ pub fn apply_change_limited(
     }
 }
 
-/// Puts `item` at a checked place: an empty position, or a backpack index up to its length.
-fn place(details: &mut HeroDetails, item: ArtifactInstance, at: ArtifactPlace) {
+/// Puts `item` at a checked place: equipped at an empty position (with the Spell Book Titan's
+/// Thunder adds, HER-ART-007), or inserted at a backpack index up to its length.
+fn place(details: &mut HeroDetails, ruleset: &Ruleset, item: ArtifactInstance, at: ArtifactPlace) {
     match at {
-        ArtifactPlace::Worn(at) => details
-            .worn
-            .get_mut(at.0)
-            .into_iter()
-            .for_each(|place| *place = Some(item)),
+        ArtifactPlace::Worn(at) => {
+            equip(&mut details.worn, ruleset, item, at);
+        }
         ArtifactPlace::Backpack(i) => details.backpack.insert(i, item),
     }
 }

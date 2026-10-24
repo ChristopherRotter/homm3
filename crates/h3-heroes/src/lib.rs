@@ -10,7 +10,9 @@
 //! the map reads to move and scout (the day's land points, a creature's speed, the Pathfinding,
 //! flying and water-walking levels, the scouting radius; ADR-0013 point 13), and since E08 T49a
 //! the worn artifacts by position (`positions`, the first position that takes one, `wearing`;
-//! ADR-0013 point 1). No commands and no
+//! ADR-0013 point 1), and since E08 T49b an artifact's moves, the combinations' assembly and
+//! disassembly, Titan's Thunder's Spell Book and Scholar at a meeting (ADR-0013 point 14). No
+//! commands and no
 //! map or battle state: who levels a hero up, when, and equipping and learning arrive with the
 //! adventure and game epics (E08–E10); the battle never depends on this crate and reads only the
 //! battle hero of the seam (`h3_contracts::BattleHero`).
@@ -37,12 +39,14 @@ extern crate alloc;
 
 mod change;
 mod choice;
+mod combine;
 mod derive;
 mod details;
 mod error;
 mod level;
 mod level_up;
 mod movement;
+mod moves;
 mod positions;
 mod spells;
 
@@ -51,6 +55,7 @@ pub use change::{
     next_capture,
 };
 pub use choice::{ArmyWorth, TerrainShares, original_choice};
+pub use combine::{assemble_changes, check_assemble, check_disassemble, disassemble_changes};
 pub use derive::{
     MANA_PER_KNOWLEDGE, MAX_JOIN_BONUS, Necromancy, attack_defense, derive_battle_hero,
     gained_experience, join_bonus, max_mana, necromancy,
@@ -58,14 +63,15 @@ pub use derive::{
 pub use details::{
     ArtifactInstance, HeroDetails, OfferLevels, PrimarySkill, validate, war_machines,
 };
-pub use error::{ChangeError, DetailsError};
+pub use error::{ChangeError, CombineError, DetailsError, MoveError};
 pub use level::{
     experience_bound, experience_cap, experience_for, gained_under_limit, level_of, pending_levels,
 };
 pub use level_up::{Choice, Draws, LevelUp, Offers, OriginalDraws, draw_level_up};
 pub use movement::{Movement, land_points, movement, movement_speed, scouting_radius};
-pub use positions::{Position, first_position, positions, takes, wearing};
-pub use spells::{available_spells, learn_level, learns_spell, spell_masteries};
+pub use moves::{ArtifactMove, MoveChanges, check_move, move_changes};
+pub use positions::{Position, equip, first_position, positions, takes, wearing};
+pub use spells::{available_spells, learn_level, learns_spell, meeting_spells, spell_masteries};
 
 #[cfg(test)]
 mod tests;
