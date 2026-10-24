@@ -64,8 +64,8 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 ## Recent sessions
 
 - **2026-10-24, E17 M4 T2c-1 (in progress, `client/e17-m4-t2c1`).** T2c cut in two (the user).
-  Done: the drawbridge, the moat's damage, a mine's blast (`anim::siege`), `gate` and
-  `gate-fortress` as recorded. Next: `moat`, `mine` (entries in), the frame checks, docs.
+  Done: the drawbridge, the moat's damage, a mine's blast (`anim::siege`), `gate`,
+  `gate-fortress` and `moat` as recorded. Next: `mine` (entry in), the frame checks, docs.
 - **2026-10-23, E17 M4 T2b (done; #452).** Turret and wall shots played (`anim::siege`), seven
   sequences as recorded, frames exact but listed differences; the harness's wall-shot rolls;
   CLT-Q22 asked (the explosion cut at the top edge, built as recommended).

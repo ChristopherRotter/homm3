@@ -55,6 +55,7 @@ const PACK: &str = r#"{
         "resist_one": "shrugs", "resist_other": "shrug"
     },
     "spell": { "t:arrow": "Dart" },
+    "moat": { "t:castle": "Moat" },
     "hero": { "t:mage": "Mage" },
     "creature": {
         "t:ant_one": "Ant", "t:ant_other": "Ants",
@@ -249,6 +250,7 @@ fn key(name: Name) -> Option<String> {
     match name {
         Name::Spell(15) => Some("spell.t:arrow".into()),
         Name::Hero(0) => Some("hero.t:mage".into()),
+        Name::Moat => Some("moat.t:castle".into()),
         _ => None,
     }
 }
@@ -721,4 +723,20 @@ fn a_turret_s_shot_names_the_arrow_tower() {
         Some("tower hits for 13.\nA Bee falls.")
     );
     assert_eq!(worded(&turret((9, 13, 1))), None);
+}
+
+#[test]
+fn the_moat_s_damage_names_the_town_s_moat() {
+    // E17 M4 T2c-1: `battle_log_damage` named by the town's moat, its number 1; none without
+    // the town's name or the stack.
+    let moat = |hit| Logged::Moat { hit };
+    assert_eq!(
+        worded(&moat((1, 70, 0))).as_deref(),
+        Some("Moat hits for 70.")
+    );
+    assert_eq!(worded(&moat((9, 70, 0))), None);
+    assert_eq!(
+        word(&catalogue(), &moat((1, 70, 0)), &named, &|_| None),
+        None
+    );
 }

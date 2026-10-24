@@ -268,71 +268,72 @@ impl Player<'_> {
         mine && matches!(next, Some(&Event::ObstacleTriggered { stack: s, .. }) if s == stack)
     }
 
-    /// What a hex `stack` entered brings (`enter_hex` 0x46A570; E17 M4 T2c-1), or the moat's
-    /// re-entry: `walking` while its walk goes on (the move sound stopped first and, if it lives,
-    /// started again). The moat's damage (`moat_damage` 0x469E50): the line named by the town's
-    /// moat, the reaction without a striker (`strike_animation(-1, 1)`). A Land Mine's blast
+    /// What a hex the walker `live` (`stack`) entered brings (`enter_hex` 0x46A570; E17 M4
+    /// T2c-1), `walking` while its walk goes on (the move sound stopped first and, if it lives,
+    /// started again): the moat's damage ([`Self::moat`]) or a Land Mine's blast
     /// (`land_mine_trigger` 0x59FB40): the line named by the spell, the mine gone without its
     /// vanish animation (`remove_battle_object` 0x466B30), `landkill.wav`, animation
     /// [`MINE_BLAST`] over the stack with its reaction (`strike_animation(57, 1)`).
-    pub(super) fn entered(&mut self, stack: u8, events: &[Event], walking: bool) {
+    pub(super) fn entered(&mut self, (stack, live): (u8, &Live), events: &[Event], walking: bool) {
         for e in events {
             match *e {
                 Event::MoatDamage {
-                    stack: s,
-                    ref damage,
-                    kills,
-                    ..
-                } => {
+                    ref damage, kills, ..
+                } => self.moat(stack, (damage.0, kills), walking),
+                Event::ObstacleTriggered { spell, .. } => {
+                    let (damage, kills) = events
+                        .iter()
+                        .find_map(|d| match *d {
+                            Event::SpellDamage {
+                                target,
+                                ref damage,
+                                kills,
+                                ..
+                            } if target == stack => Some((damage.0, kills)),
+                            _ => None,
+                        })
+                        .unwrap_or_default();
                     if walking {
-                        self.cue(s, Sound::Move, true);
-                    }
-                    let line = Logged::Moat {
-                        hit: (s, damage.0, kills),
-                    };
-                    self.log.push((self.clock.now, line));
-                    self.react_alone(&[(s, kills)], [STANDING, STRUCK]);
-                }
-                Event::ObstacleTriggered {
-                    stack: s, spell, ..
-                } => {
-                    let hit = events.iter().find_map(|d| match *d {
-                        Event::SpellDamage {
-                            target,
-                            ref damage,
-                            kills,
-                            ..
-                        } if target == s => Some((damage.0, kills)),
-                        _ => None,
-                    });
-                    let (Some((damage, kills)), Some(live)) = (hit, self.live(s)) else {
-                        continue;
-                    };
-                    if walking {
-                        self.cue(s, Sound::Move, true);
+                        self.cue(stack, Sound::Move, true);
                     }
                     let line = Logged::SpellDamage {
                         spell,
-                        hit: (s, damage, kills),
+                        hit: (stack, damage, kills),
                     };
                     self.log.push((self.clock.now, line));
-                    for gone in events {
-                        if let Event::ObstacleRemoved { ref hexes, .. } = *gone
-                            && let Some(&anchor) = hexes.iter().max()
-                            && self.placed.remove(&anchor).is_some()
-                        {
+                    let removed = events.iter().filter_map(|g| match *g {
+                        Event::ObstacleRemoved { ref hexes, .. } => hexes.iter().max().copied(),
+                        _ => None,
+                    });
+                    for anchor in removed {
+                        if self.placed.remove(&anchor).is_some() {
                             self.pending_objects.push((anchor, None));
                         }
                     }
-                    self.cue(s, Sound::Mine, false);
-                    self.marked((s, &live), kills, Some(MINE_BLAST));
+                    self.cue(stack, Sound::Mine, false);
+                    self.marked((stack, live), kills, Some(MINE_BLAST));
                 }
                 _ => {}
             }
         }
-        if walking && self.live(stack).is_some() {
+        if walking && self.stacks.contains_key(&stack) {
             self.cue(stack, Sound::Move, false);
         }
+    }
+
+    /// The moat's damage on stack `s` (`moat_damage` 0x469E50; E17 M4 T2c-1), entering it or
+    /// acting where it stands in it (the re-entry, `reenter_own_hexes` 0x441F70): a walker's move
+    /// sound stopped (`walking`), the line named by the town's moat, the reaction without a
+    /// striker (`strike_animation(-1, 1)`).
+    pub(super) fn moat(&mut self, s: u8, (damage, kills): (u64, u32), walking: bool) {
+        if walking {
+            self.cue(s, Sound::Move, true);
+        }
+        let line = Logged::Moat {
+            hit: (s, damage, kills),
+        };
+        self.log.push((self.clock.now, line));
+        self.react_alone(&[(s, kills)], [STANDING, STRUCK]);
     }
 
     /// A turret's frame `pose` of `record` drawn now, shown at the deadline (a redraw of its

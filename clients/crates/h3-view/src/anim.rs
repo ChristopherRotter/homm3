@@ -2717,9 +2717,12 @@ impl Player<'_> {
                 Event::GateOpened {} => self.drawbridge(true),
                 // The moat's damage on a stack that acts where it stands in it (the re-entry,
                 // `reenter_own_hexes` 0x441F70), as on entering it without the walk.
-                Event::MoatDamage { stack, .. } => {
-                    self.entered(stack, core::slice::from_ref(event), false);
-                }
+                Event::MoatDamage {
+                    stack,
+                    ref damage,
+                    kills,
+                    ..
+                } => self.moat(stack, (damage.0, kills), false),
                 Event::RoundStarted { .. } => {
                     self.acting = None;
                     self.happenings.push(Happening::Round);
@@ -4597,7 +4600,7 @@ impl Player<'_> {
             // Where it lands, the moat's re-entry or a mine (0x4B4A1E; *provisional*: not
             // recorded).
             if let Some(events) = entered.at(path.len() - 1) {
-                self.entered(stack, events, false);
+                self.entered((stack, &live), events, false);
                 let Some(l) = self.live(stack) else {
                     self.redraw();
                     return;
@@ -4670,12 +4673,9 @@ impl Player<'_> {
             if let Some(events) = entered.at(i + 1).filter(|_| i < last) {
                 live.hex = pair[1];
                 self.stacks.insert(stack, live.clone());
-                self.entered(stack, events, true);
-                let Some(l) = self.live(stack) else {
-                    self.redraw();
-                    return;
-                };
-                live = l;
+                self.entered((stack, &live), events, true);
+                // A blast that kills ends the walk there: the engine reports no step after it.
+                live = self.live(stack).unwrap_or(live);
             }
         }
         // The last step (0x43F267): the end's sound with group 21, the move's stopped.
@@ -4690,8 +4690,9 @@ impl Player<'_> {
         self.stacks.insert(stack, live.clone());
         // What the last hex brings (the moat's damage, a mine's blast), before the turn back.
         if let Some(events) = entered.at(path.len() - 1) {
-            self.entered(stack, events, false);
+            self.entered((stack, &live), events, false);
             let Some(l) = self.live(stack) else {
+                // Dead: no turn back, the box's redraw (0x4423D1).
                 self.redraw();
                 return;
             };

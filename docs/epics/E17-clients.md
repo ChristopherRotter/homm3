@@ -575,9 +575,10 @@ states; the Tower 26, without the moat).
   and log lines.
 - **T2b, the Catapult and the turrets recorded:** hot-seat siege sequences with the original's
   rolls forced (hits, misses, a wall and a tower destroyed; the keep's and the towers' shots).
-- **T2c, the gate, the moat, Earthquake and the mouse recorded:** a defender out through the
-  gate and back, a stack in the moat, a mine, Earthquake, a hero with Ballistics aiming the
-  Catapult, a shot through the walls; the siege cursors.
+- **T2c, the gate, the moat, Earthquake and the mouse recorded** (cut in two by the user,
+  2026-10-24: T2c-1 the gate, the moat and a mine; T2c-2 Earthquake, the shots and the mouse): a
+  defender out through the gate and back, a stack in the moat, a mine, Earthquake, a hero with
+  Ballistics aiming the Catapult, a shot through the walls; the siege cursors.
 - **T3, M4's closure:** a fresh reviewer, every capture afresh, the review list, M5 refined.
 - **Exit:** the siege situations and sequences pass, or each difference is a listed fix or a
   classified quirk.

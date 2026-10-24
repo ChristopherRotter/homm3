@@ -1,9 +1,9 @@
 # E17 M4 T2c-1: the recorded sequence `moat` (sequences.toml; design §10.2, "The moat's
 # damage"): a siege of a Castle town with a Citadel (the keep, a damaging moat under SoD rules),
 # both heroes human (hot seat) commanding their machines. The attacker's Champions walk until
-# their front enters the moat on the closed drawbridge (95): the walk stops there, the moat's
-# damage, its line and their reaction; the moat's strip over them and their box drawn again. In
-# round 2 they wait in the moat: the re-entry's damage (`reenter_own_hexes` 0x441F70).
+# their front enters the moat (77): the walk stops there, the moat's damage, its line and their
+# reaction; the moat's strip over their front and their box drawn again. In round 2 they wait in
+# the moat: the re-entry's damage (`reenter_own_hexes` 0x441F70).
 
 [scenario]
 id = "sequence-moat"

@@ -10,12 +10,16 @@ use alloc::vec::Vec;
 use h3_protocol::wire::{Event, Observation, Side, Siege};
 use h3_render::Bugs;
 
-use super::siege::{CATAPULT, HOBGOBLIN, PIKEMAN, castle, machine_at, play_siege, recorded};
+use super::siege::{
+    CATAPULT, CHAMPION, GOBLIN, HOBGOBLIN, PIKEMAN, TURRET, castle, machine_at, play_siege,
+    recorded,
+};
 use super::{at, snapshot, until};
 use crate::anim::{Sound, Timeline};
 use crate::siege::{GATE_CLOSED, GATE_MOVING, GATE_OPEN};
 
 const GATE: &str = include_str!("../../../../../situations/timelines/gate.txt");
+const MOAT: &str = include_str!("../../../../../situations/timelines/moat.txt");
 
 /// A town's walls, the gate closed: a Fort's without a moat (`fort` 1), or with its moat's hexes.
 fn town(faction: u16, fort: u8, moat: u8, moat_hexes: Vec<u8>) -> Siege {
@@ -171,4 +175,214 @@ fn the_gate_sequence_plays_as_recorded() {
             .collect()
     };
     assert_eq!(bridge(gate_states(&fixed)), bridge(states));
+}
+
+#[test]
+fn a_flyer_landing_on_the_gate_opens_it_before_its_flight() {
+    // A defender's flyer whose destination is the gate's hex stands in a whole redraw shown at
+    // once and the gate opens before its flight (0x4B4A95; *provisional*, not recorded).
+    let mut o = gate_siege(0);
+    o.stacks[2].flies = true;
+    let commands = [(
+        Some(0),
+        vec![
+            Event::Moved {
+                stack: 2,
+                from: 100,
+                to: 96,
+            },
+            Event::GateOpened {},
+            Event::TurnStarted { stack: 0 },
+        ],
+    )];
+    let t = play_siege(&o, &commands, Bugs::Original, Some(&castle()));
+    let states = gate_states(&t);
+    assert_eq!(states[1..], [(0, 100, 3), (100, 200, 2), (200, 300, 1)]);
+    // Its flight starts after the opening: group 20 drawn as the gate shows open.
+    let first = t.keys.iter().find(|k| k.stack == 2 && k.pose.group == 20);
+    assert_eq!(first.map(|k| k.drawn), Some(300));
+    // It stood in the redraw before (shown at once, at 0).
+    assert!(
+        t.keys
+            .iter()
+            .any(|k| k.stack == 2 && k.shown == 0 && k.pose.group == 2)
+    );
+}
+
+#[test]
+fn the_gate_opened_or_closed_outside_a_move_plays_at_once() {
+    // A gate opened with no move before it (a summoned elemental placed on it, 0x5A71F1) and
+    // closed after an action: each the drawbridge's three states from the command's time.
+    let o = gate_siege(0);
+    let commands = [(Some(0), vec![Event::GateOpened {}, Event::GateClosed {}])];
+    let t = play_siege(&o, &commands, Bugs::Original, Some(&castle()));
+    let gates: Vec<u8> = gate_states(&t).iter().map(|s| s.2).collect();
+    assert_eq!(gates, [3, 3, 2, 1, 1, 2, 3]);
+    assert_eq!(gate_states(&t).last(), Some(&(500, 600, GATE_CLOSED)));
+    // A destroyed gate (the gate's target at 0) never moves, nor a battle without a fort.
+    let mut broken = gate_siege(0);
+    if let Some(s) = broken.siege.as_mut() {
+        s.parts[3] = 0;
+    }
+    let t = play_siege(&broken, &commands, Bugs::Original, Some(&castle()));
+    assert_eq!(t.walls.len(), 1);
+    assert!(t.cues.iter().all(|c| c.sound != Sound::Drawbridge));
+    let mut field = gate_siege(0);
+    field.siege = None;
+    let t = play_siege(&field, &commands, Bugs::Original, None);
+    assert!(t.walls.is_empty());
+}
+
+/// A Castle town's Citadel with its moat, the attacker's Pikemen (0) at 74 or a flyer there.
+fn moat_siege(flies: bool) -> Observation {
+    let mut pikemen = at(0, Side::Attacker, PIKEMAN, 74, false);
+    pikemen.flies = flies;
+    let mut o = snapshot(vec![pikemen, at(2, Side::Defender, HOBGOBLIN, 100, false)]);
+    o.siege = Some(town(
+        0,
+        2,
+        2,
+        vec![11, 28, 44, 61, 77, 95, 111, 129, 146, 164, 181],
+    ));
+    o
+}
+
+#[test]
+fn the_moat_that_kills_a_walker_ends_its_walk() {
+    // The Pikemen (40) walk into the moat at 77 and die of its damage: the walk's end, the line,
+    // their death without a striker, no turn back; the move sound not started again.
+    let o = moat_siege(false);
+    let moat = Event::MoatDamage {
+        stack: 0,
+        hex: 77,
+        damage: h3_protocol::wire::WireU64(500),
+        kills: 40,
+    };
+    let walked = vec![
+        Event::Moved {
+            stack: 0,
+            from: 74,
+            to: 75,
+        },
+        Event::Moved {
+            stack: 0,
+            from: 75,
+            to: 76,
+        },
+        Event::Moved {
+            stack: 0,
+            from: 76,
+            to: 77,
+        },
+        moat.clone(),
+        Event::TurnStarted { stack: 2 },
+    ];
+    let t = play_siege(&o, &[(Some(0), walked)], Bugs::Original, Some(&castle()));
+    let last = t.keys.iter().rfind(|k| k.stack == 0);
+    assert_eq!(last.map(|k| (k.pose.group, k.pose.hex)), Some((5, 77)));
+    assert!(
+        t.log
+            .iter()
+            .any(|(_, l)| *l == crate::anim::Logged::Moat { hit: (0, 500, 40) })
+    );
+    let moves = t.cues.iter().filter(|c| c.sound == Sound::Move && !c.stop);
+    assert_eq!(moves.count(), 1);
+    // A flyer landing there dies alike (its landing's re-entry, 0x4B4A1E; *provisional*).
+    let o = moat_siege(true);
+    let flown = vec![
+        Event::Moved {
+            stack: 0,
+            from: 74,
+            to: 77,
+        },
+        moat,
+        Event::TurnStarted { stack: 2 },
+    ];
+    let t = play_siege(&o, &[(Some(0), flown)], Bugs::Original, Some(&castle()));
+    let last = t.keys.iter().rfind(|k| k.stack == 0);
+    assert_eq!(last.map(|k| (k.pose.group, k.pose.hex)), Some((5, 77)));
+}
+
+#[test]
+fn the_moat_sequence_plays_as_recorded() {
+    // `moat`: a Castle town's Citadel; the Champions walk until their front enters the moat at
+    // 77: the walk's end, then the damage, its line and their reaction (group 3); in round 2
+    // they wait there: the re-entry's damage after the wait's line.
+    let mut catapult = machine_at(1, Side::Attacker, CATAPULT, (119, 19));
+    catapult.two_hex = true;
+    let mut champions = at(0, Side::Attacker, CHAMPION, 86, true);
+    champions.count = 5;
+    let mut o = snapshot(vec![
+        machine_at(3, Side::Defender, TURRET, (254, 20)),
+        champions,
+        catapult,
+        at(2, Side::Defender, GOBLIN, 100, false),
+    ]);
+    o.siege = Some(town(
+        0,
+        2,
+        2,
+        vec![11, 28, 44, 61, 77, 95, 111, 129, 146, 164, 181],
+    ));
+    let turn = |stack| Event::TurnStarted { stack };
+    let moat = |kills| Event::MoatDamage {
+        stack: 0,
+        hex: 77,
+        damage: h3_protocol::wire::WireU64(70),
+        kills,
+    };
+    let mut walked: Vec<Event> = [86, 69, 70, 71, 72, 73, 74, 75, 76]
+        .windows(2)
+        .map(|p| Event::Moved {
+            stack: 0,
+            from: p[0],
+            to: p[1],
+        })
+        .collect();
+    walked.extend([moat(0), turn(2)]);
+    let commands = [
+        (Some(0), vec![Event::Defended { stack: 3 }, turn(1)]),
+        (Some(0), shot(1, 0)),
+        (Some(3775), walked),
+        (
+            Some(9059),
+            vec![
+                Event::Defended { stack: 2 },
+                Event::RoundStarted { round: 2 },
+                turn(3),
+            ],
+        ),
+        (Some(9059), vec![Event::Defended { stack: 3 }, turn(1)]),
+        (Some(9059), shot(5, 0)),
+        (
+            Some(12934),
+            vec![Event::Waited { stack: 0 }, moat(1), turn(2)],
+        ),
+    ];
+    let t = play_siege(&o, &commands, Bugs::Original, Some(&castle()));
+    assert_eq!(until(&t.lines(), 15934), recorded(MOAT, 15934));
+    // The lines: the walk's damage after its end (8 159, the reaction's first frame), the
+    // re-entry's after the wait's line.
+    let moats: Vec<(u32, &crate::anim::Logged)> = t
+        .log
+        .iter()
+        .filter(|(_, l)| matches!(l, crate::anim::Logged::Moat { .. }))
+        .map(|(at, l)| (*at, l))
+        .collect();
+    assert_eq!(
+        moats,
+        [
+            (8159, &crate::anim::Logged::Moat { hit: (0, 70, 0) }),
+            (12934, &crate::anim::Logged::Moat { hit: (0, 70, 1) })
+        ]
+    );
+    let waited = t
+        .log
+        .iter()
+        .position(|(_, l)| matches!(l, crate::anim::Logged::Wait { .. }));
+    let reentered = t
+        .log
+        .iter()
+        .position(|(_, l)| *l == crate::anim::Logged::Moat { hit: (0, 70, 1) });
+    assert!(waited < reentered);
 }

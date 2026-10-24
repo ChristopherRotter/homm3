@@ -3327,3 +3327,26 @@ group 14, the upper tower above the other in group 16: CLT-Q19 (1)). Findings:
 - **The explosion over the top edge** (`tower`, `cyclops`: the upper tower's, its canvas from
   y −53) shows cut at screen row 97, step 5's double clip (CLT-Q22): reproduced in the original's
   profile (`Draw::Explosion`'s rows), whole in the fixed one; with it every explosion frame exact.
+
+**Recorded (M4 T2c-1, 2026-10-24).** T2c cut in two by the user: T2c-1 the walk's siege events
+here, T2c-2 Earthquake, the shots and the mouse. The viewer plays the reading (`anim::siege`:
+`drawbridge`, `halt`, `entered`, `moat`; the walk's events gathered in the `Moved` run; the
+asset tables' `siege_sounds`, `drawbrg` and `landkill`, harvested from 0x66FFB0 and 0x688410;
+the moat's line named by the town, the key family `moat` over ARRAYTXT's records 260 to 268) and
+the sequences are as recorded (`clients/situations/sequences.toml`, hot seat, `key = "Up"`,
+seeds searched for the engine's wall shots): `gate` (a Castle town's Fort, no turrets or moat:
+the Hobgoblins out from 100 to 93 and, in round 2, back in), `gate-fortress` (a Fortress's
+Fort: out onto the outer bridge 94, which keeps the gate open; in round 2 the step off it closes
+it), `moat` and `mine` (below). Findings:
+
+- **The walk's stop** before the step onto the gate (`gate`: the Hobgoblins at 97, 5 743 to
+  5 911) is the reading's: group 21 and one frame of group 2 through the deadline, a whole redraw
+  shown at once; the gate's states 3, 2, 1 each at trunc(100 F), the first drawn as the stop's
+  redraw shows; the walk goes on with a first step (group 20, its start sound). At the walk's
+  first step (round 2, from 93 onto 94) no stop: the gate opens first, then the step's turn
+  (`walk_step`'s, animated) and group 20. The box stays hidden through the stop and the opening
+  (+0x30 from 0x442145): the opening's redraws draw the walker without it.
+- **The closing** follows the walk's whole redraw (and a plain move's turn back), states 1, 2, 3
+  at trunc(100 F); the closed state's line repeats nothing (the walls' line lists changes). A
+  stack on 94 in a Fortress keeps the gate open (`gate-fortress`), the engine's `GateClosed`
+  coming only with the step off it.
