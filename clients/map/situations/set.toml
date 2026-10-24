@@ -1,14 +1,15 @@
 # The map's capture set (E24 M1 T3b2, T4a, T4b, T5a, T5b1, T5b2, T6a, *provisional*;
-# clients/capture/README.md, "The map's stills"): the situations beside this file, each a still
-# the harness shows the original and compares with ours (`python3 capture/h3map.py set`, from
-# clients/): its map built with the writer (`h3-map-view situation`) or a shipped map loaded whole
-# (`map`, T4b), the human player's explored tiles written (all but the situation's `hidden`) or,
-# with `explored = "start"`, as the new game left them (T5b2), the view by the minimap, a hero's
-# path shown (T5b2), the clock frozen; ours drawn with the original's drawing bugs (`render --bugs
-# original`) at the palette steps the original's memory shows (the terrains' and the rivers', T6a), a
-# shipped map's random objects, the explored tiles and the path as its memory holds them; each capture
-# as recorded keeps its live part in `kept/` for `h3map.py drawn` (T6a). Masked: the panels (M3) and the parked cursor over them. Per situation the pixels that
-# differ outside the masks, with why; a run that counts another number fails.
+# clients/capture/README.md, "The map's stills"): the situations beside this file, each a still the
+# harness shows the original and compares with ours (`python3 capture/h3map.py set`, from clients/):
+# its map built with the writer (`h3-map-view situation`) or a shipped map loaded whole (`map`,
+# T4b), the human player's explored tiles written (all but the situation's `hidden`) or, with
+# `explored = "start"`, as the new game left them (T5b2), the view by the minimap, a hero's path
+# shown (T5b2), the clock frozen; ours drawn with the original's drawing bugs (`render --bugs
+# original`) at the palette steps the original's memory shows (the terrains' and the rivers', T6a),
+# a shipped map's random objects, the explored tiles and the path as its memory holds them; each
+# capture as recorded keeps its live part in `kept/` for `h3map.py drawn` (T6a). Masked: the panels
+# (M3) and the parked cursor over them. Per situation the pixels that differ outside the masks, with
+# why; a run that counts another number fails.
 
 [[situation]]
 id = "deluge-coast"

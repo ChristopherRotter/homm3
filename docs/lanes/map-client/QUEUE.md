@@ -13,35 +13,22 @@ task (the HANDOFF's autonomy contract).
 
 T5 split with the user (2026-10-23) into T5a (heroes and boats, done) and T5b; T5b split with
 the user (2026-10-24) into T5b1 (the owners, done) and T5b2 (the path, the explored tiles, done).
-T6 split with the user (2026-10-24) into T6a (the set's digests, the half tick) and T6b (the
-closure).
-
-### E24 M1 T6a — the capture set's digests and the half tick (**in progress**, 2026-10-24)
-
-- **Scope:** `h3map.py drawn` (ours from each situation's kept live part, the digests against
-  `map/situations/kept/drawn.txt`; `set` keeps a capture's `live.toml`), the runbook's rule for
-  the map; the inbox's half tick read and fixed; the whole set captured and recorded.
-- **Acceptance:** the whole set (40) matches as recorded; `drawn` reports every one the same.
-- **Depends on:** T5b2 (done). **Status:** in progress (branch `map-client/e24-t6a`).
+T6 split with the user (2026-10-24) into T6a (the set's digests, the half tick, done) and T6b
+(the closure).
 
 ### E24 M1 T6b — M1's closure
 
 - **Scope:** M1's closure: a fresh reviewer agent, its findings fixed or queued, the review list
   (the epic's), the user's checkpoint; M2 T0 queued.
-- **Acceptance:** the review list accepted by the user.
-- **Depends on:** T6a.
+- **Acceptance:** the review list accepted by the user; the whole set as recorded (`h3map.py
+  set`, 40, captured whole at T6a: a change since then captures what `drawn` lists).
+- **Depends on:** T6a (done). **Status:** ready. `h3map.py drawn` gives the set's state without
+  the original; the review list is the epic's (T2 to T6a).
 
 ## Inbox
 
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
-
-- 2026-10-23 (this lane, E24 M1 T4b; for T6, the capture set): **the palettes at the frozen clock
-  can be half a tick apart.** In about one still of seven `h3map.py`'s palette read found the
-  terrains' cycling palettes (`lavatl`, `watrtl`) one step ahead of the rivers' for the whole 2 s
-  it reads (its error names each range's fits); `set` shows the situation again and it is exact.
-  Read whether the tick (0x4ED490) rotates the rivers apart from the terrains, what such a
-  screen shows, and either step the clock past it or give `render` a step per DEF.
 
 - 2026-10-23 (the adventure lane, E08 T47a; for information, nothing to do): the harness's
   clicks and reads for batch E6 (`clients/capture/README.md`, "Screens and their items"): the

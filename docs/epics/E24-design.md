@@ -181,7 +181,10 @@ The table, mask = 16 × row + column:
   two steps, the terrains' and the rivers' (`h3_map_view::live::Moment`'s `cycles` and
   `river_cycles`); the harness reads each kind's k from memory (`h3map.py`'s `cycle_step`, which
   refuses any other difference) and `live.toml` gives both. The viewer's own clock keeps them
-  together (`Moment::at`): the split is an accident of the original's load time (MCL-Q5).
+  together (`Moment::at`): the split is an accident of the original's load time (MCL-Q5, answered
+  (a): in step, the comparisons alone take the two). The captures (T6a): three stills of 56 with
+  the rivers behind (`rivers-lava`, `rivers-mud`; T6a's sandbox loaded faster than T4b's), each
+  exact; drawn in step, the first differs in 3 655 pixels of its lava river.
 
 ### 1.7 VCMI 1.7.5 compared
 

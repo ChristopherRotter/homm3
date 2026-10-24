@@ -440,3 +440,39 @@ One session, the user present at its start; branch `map-client/e24-t4a`.
   the two passes, `live.toml`'s `explored` and `path` always written, the situations' `path`,
   `colour` and `explored = "start"`, the boats' colours staged.
 - **Questions:** none (no oddity of the original found).
+
+### M1 T6a — the capture set's digests and the half tick (2026-10-24)
+
+- **The seam:** T6 split with the user into T6a (the set's digests, the inbox's half tick, the
+  whole set captured) and T6b (the fresh reviewer agent, the review list, the checkpoint).
+- **Session:** GitHub reachable from the cloud session (the repository attached); the starting
+  point's clients check (master `f89aa89`, its clients code not verified since E08 T49b) passed
+  in full, its coverage step built with this task's first change (the rivers' step, below) already
+  in place.
+- **Read** (§1.6): adventure_manager_start 0x406FD0 loads the DEFs kind by kind with a progress
+  step between the kinds (load_progress_step 0x4ED2A0, read now: the loading bar's count, its
+  pieces, the bar's rectangle shown through screen_show_rect 0x602BD0, read now: the tick before
+  and after); the tick (0x4ED490) skips a DEF field still empty. A tick due at the step after the
+  terrains rotates water and lava alone, and the rivers trail by one step for the whole game;
+  within a kind no step, so the terrains share one k and the rivers one.
+- **Built:** `h3_map_view::live::Moment::river_cycles` (the scene's rivers drawn with it;
+  `Moment::at` keeps it with `cycles`), `render --live`'s `river_cycles`, `--cycles` setting
+  both. 100 % covered.
+- **The harness** (common path, additive): `h3map.py`'s `cycle_step` reads each kind's step
+  (refusing any difference but the rivers one behind) and `still` writes `river_cycles`; `set`
+  keeps each capture's `live.toml` as recorded or new in `map/situations/kept/<id>.toml`; `drawn
+  [--only] [--record]` draws ours from the kept ones and compares the digests of the pixels
+  outside the masks with `kept/drawn.txt` (`h3drive.png_digest`); the runbook's rule for the map.
+- **Captures:** the whole set (40), every one as recorded on its first run (one game started again
+  after the tavern rumour's crash), none with the rivers behind; then `rivers-mud` and
+  `rivers-lava` shown again and again until the rivers trailed three times: 56 stills, the
+  rivers a step behind in three (`rivers-lava` twice, `rivers-mud` once), every one exact (in
+  this sandbox about one game in 30, T4b's about one in seven: the load's speed). Drawn with
+  the rivers in step, the first such still of `rivers-lava` differs in 3 655 pixels of its lava
+  river; with the rivers' own step it is exact. `drawn --record` (40), `drawn`: every one the
+  same.
+- **Agent decisions (provisional, on the review list):** the kept live parts as copies of
+  `live.toml`, one digest per situation, `drawn` in `h3map.py`, `river_cycles`.
+- **Questions:** MCL-Q5 (the rivers' cycle a step behind the terrains' for a whole game, about one
+  game in seven): answered by the user in the task, (a) as built (the viewer in step, the
+  comparisons the original's two steps).

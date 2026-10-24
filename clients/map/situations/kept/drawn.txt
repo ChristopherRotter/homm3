@@ -1,0 +1,43 @@
+# Ours at each situation's last kept live part (h3map.py drawn --record): the
+# digest of its pixels outside the masks (h3drive.png_digest, h3map.MASKS),
+# `<id> <sha1, 16 digits>`.
+boats 6f4580db6ca03ed4
+boats-colours 13a27ffa00fe75b7
+deluge-coast b43221742eb75373
+edge-bottom-right d904128fc28f2ce7
+edge-top-left f82fb6709fbb72df
+heroes-classes-0 b53784882a592823
+heroes-classes-1 4f0acde155abae0a
+heroes-classes-2 7c30bb3056d02810
+heroes-objects 05bc8a1a595d75f2
+lava-water be723ba4e9d0c02d
+objects-edge-bottom-right 4cf7c3f17d66938a
+objects-edge-top-left a2f088966b4ddc7a
+objects-flat d92290292dc7bf53
+objects-mandate bf5b9a10c45e8076
+objects-myth 848cf685e88228dd
+objects-witch 3acbd028eb7646ca
+owners-objects aaf1eb0a75b4e0c6
+owners-random-dwellings 79a65b6169f22397
+path-edge f93e7a29686b9dd5
+path-objects 0892af7411c6e859
+rivers-clear 2bdbdd77a873dd35
+rivers-icy 6142ce0918278ac0
+rivers-lava c384585185778b5b
+rivers-mud 3c1e79f36297ba4a
+road-last-row-19 6c1db5967bced5c3
+road-last-row-20 c547db604e86c09a
+shipped-divided-loyalties c3f68efc9e995797
+shipped-dwarven-tunnels de5cd275c31f4c08
+shipped-gauntlet 749e41b7a088f35c
+shipped-good-witch 9376f3f539039d9f
+shipped-hoard e134aa18d5afa31b
+shipped-tale-of-two-lands 48caf14729791e8f
+shipped-too-many-monsters f66ea6796cf2f76c
+start-dwarven-tunnels 803be05f85941886
+start-hoard cdce855931af815f
+towns-0 9bf850058a745958
+towns-1 60e69cfefd3aec88
+towns-2 9301462dcf72dfc5
+towns-random 150e1ca463db784e
+unexplored 77a2f74acc199b7d
