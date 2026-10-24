@@ -101,10 +101,11 @@ an explored tile gets nothing (the original has no fog of war over explored tile
 - **The mask** (0x40F8C0): a bit for each of the eight neighbours **not** explored: 1 north, 2 east,
   4 south, 8 west, 0x10 north-east, 0x20 south-east, 0x40 south-west, 0x80 north-west; neighbours
   outside the map count as unexplored (set from the tile's side of the map, never read).
-- **Mask 255:** `tshrc.def` (+0xC4) frame ((85 x xor 85 y) div 64) and 3.
-- **Any other mask:** v = the table 0x65F694 [mask] (below; only 255 gives 0); v ≥ 100 means
-  mirrored left-right and v − 100; v of 1 or 5 on an odd x takes v + 1, v of 3 on an odd y takes
-  4; `tshre.def` (+0xCC) frame v − 1 (34 frames used).
+- **v = 0** (the table 0x65F694 [mask], below; only mask 255 gives 0): `tshrc.def` (+0xC4) frame
+  ((85 x xor 85 y) div 64) and 3 (the pass draws it whenever 0x40F8C0 returns 0, 0x41237F; M1 T6b,
+  the reviewer: the viewer takes the table's 0 so too, not the mask 255).
+- **Any other v:** v ≥ 100 means mirrored left-right and v − 100; v of 1 or 5 on an odd x takes
+  v + 1, v of 3 on an odd y takes 4; `tshre.def` (+0xCC) frame v − 1 (34 frames used).
 - **Drawn twice** (0x47BFF0): `draw_frame_raw` (the raw pixels in their colours), then 0x47E820
   over the runs of encoding 2's layout: codes 1 and 2 the border shadow ⌊c/4⌋ + ⌊c/2⌋, 3 and 4 the
   body shadow ⌊c/2⌋ per channel (E17 design §3.3's masks), the rest untouched; it mirrors both
@@ -306,6 +307,13 @@ puzzle's class filter; the owners' tables in T5b1 (§2.9). The frames that confi
   otherwise N stops right above P. It also stops above an entry of a lower layer, or at the
   list's start. So on a tile **the higher layer is on top; at equal layers the later-placed
   object is on top, unless the earlier one is higher on another tile they share.**
+- **Removal** (remove_map_object 0x4AABB0; M1 T6b, the reviewer's R1-1): an object taken off the
+  map loses its entry on each tile of its footprint, the later entries moving down a place in
+  their order (0x4AACE2 to 0x4AAD03). The lists of a game played from its start are therefore
+  those of every object placed, the fallen ones' entries taken out, which can differ from lists
+  built without them (an object between two others decided their order): `DrawLists::build`
+  builds them so. What a loaded saved game's lists hold (the objects gone before the save) is not
+  read (M4).
 - **The tile's object** (0x505610: the step, the visit, the pathfinder; E08 survey §2.5) is the
   topmost visitable entry of that order: at equal layers the later object in the map, as the
   engine takes it, but an object whose layer on that tile is higher wins whatever the map's order
@@ -638,6 +646,13 @@ points 4, 5, 6 and 8 moved to T5 with the heroes and the path, point 7 to T4b. S
   `flags` palette) for the owned classes' flat and body pieces, the compose's flagged drawer in its
   colour; `objects::entrance`, `objects::flag_owner`; the live part's owners from the map at the
   start, from memory in the comparisons (`Mem.map_owners`, by the original's walk and records).
+  `objects::entrance` walks all 8 × 6 cells where the original stays within the `.msk`'s width
+  and height: the same while no template has a visitable cell outside it, which the gate checks
+  (none of the 2 622 of `Objects.txt` and the shipped maps; M1 T6b, the reviewer's R1-5).
+  `--bugs original`'s owner for MCL-Q4 takes the last object whose entrance is tile (0, 0), where
+  the original takes that tile's object (the topmost visitable entry of its list, 0x505610, a hero
+  there standing for the one under it): *provisional*, compared nowhere, since no shipped map has
+  the case (the review list).
 - **The captures:** `owners-objects` (the seven mines and an abandoned one, a dwelling, the Golem
   Factory and the Elemental Conflux, the garrisons, both vertical ones, a lighthouse, a shipyard:
   every colour and neutral), `owners-random-dwellings` (random dwellings of any kind, of level 7

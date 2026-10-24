@@ -267,3 +267,12 @@ The M1 review list starts here (the autonomy contract's "queue for the milestone
   `kept/drawn.txt`, `drawn` in `h3map.py` beside E17's `h3drive.py drawn` rather than in it;
   `Moment::river_cycles` and `live.toml`'s `river_cycles` (the rivers' step, MCL-Q5), `render
   --cycles` setting both.
+- **M1 T6b, the reviewers' findings** (*provisional*): `--bugs original`'s owner for MCL-Q4 the
+  last object whose entrance is tile (0, 0), not the original's tile object (the topmost
+  visitable entry, a hero standing for the one under it): compared nowhere, no shipped map has
+  the case (R1-5); a kept live part records the digest of the situation it showed (its parsed
+  keys), `drawn` calling one of another staging `STALE` (R3-10); the scene refuses a live part
+  that does not fit the map and a picture without its shape (R1-3, R1-4), `render --live` a view,
+  owner or dwelling anchor the original cannot have given (R2-3 to R2-5). Queued: the writer's
+  edge bound one too generous (R2-8, the next writer pull request: the adventure lane's crate); a
+  loaded saved game's draw lists (M4).
