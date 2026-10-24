@@ -112,6 +112,11 @@ pub struct Battle {
     /// Their sounds (0x44618B, loaded by name: category 0, volume 127): `WallHit`, `WallMiss`.
     #[serde(default)]
     pub wall_sounds: Option<[String; 2]>,
+    /// A siege's walk sounds (E17 M4 T2c-1), each played as a file (category 2, volume 127): the
+    /// drawbridge's as the gate opens or closes (`gate_open` 0x467236: `drawbrg`) and a Land
+    /// Mine's blast (`land_mine_trigger` 0x59FC5E: `landkill`).
+    #[serde(default)]
+    pub siege_sounds: Option<[String; 2]>,
 }
 
 impl Battle {
@@ -126,6 +131,7 @@ impl Battle {
             .chain(&self.drain_sound)
             .chain(&self.thunderbolt_sound)
             .chain(self.wall_sounds.iter().flatten())
+            .chain(self.siege_sounds.iter().flatten())
     }
 }
 
@@ -389,7 +395,9 @@ impl Sounds {
             | Sound::SpellFile(_)
             | Sound::Object(_)
             | Sound::WallHit
-            | Sound::WallMiss => None,
+            | Sound::WallMiss
+            | Sound::Drawbridge
+            | Sound::Mine => None,
         }
     }
 
@@ -911,6 +919,7 @@ drain_sound = "DrainLif"
 thunderbolt_sound = "LightBlt"
 wall_explosions = ["SGEXPL.DEF", "CSGRCK.DEF"]
 wall_sounds = ["WallHit", "WallMiss"]
+siege_sounds = ["drawbrg", "landkill"]
 
 [[hero]]
 key = "orrin"
@@ -1038,7 +1047,7 @@ at = [124, 254]
             t.battle.sounds().collect::<Vec<_>>(),
             [
                 "Regener", "MagicRes", "GoodMrle", "BadMrle", "Fear", "goodluck", "DrainLif",
-                "LightBlt", "WallHit", "WallMiss"
+                "LightBlt", "WallHit", "WallMiss", "drawbrg", "landkill"
             ]
         );
         assert_eq!(
@@ -1503,6 +1512,8 @@ at = [124, 254]
             Sound::TurretShot,
             Sound::WallHit,
             Sound::WallMiss,
+            Sound::Drawbridge,
+            Sound::Mine,
         ] {
             assert_eq!(pikeman.name(none), None);
         }

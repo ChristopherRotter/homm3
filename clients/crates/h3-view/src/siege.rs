@@ -44,6 +44,8 @@ const WHOLE_STATE: u8 = 2;
 pub const GATE_DESTROYED: u8 = 0;
 /// The gate open (its rope drawn).
 pub const GATE_OPEN: u8 = 1;
+/// The drawbridge moving, between open and closed (E17 M4 T2c-1: `gate_open` 0x4671C0).
+pub const GATE_MOVING: u8 = 2;
 /// The gate closed (no drawbridge: the arch over the background).
 pub const GATE_CLOSED: u8 = 3;
 /// The hex whose parts the redraw draws before the rows (the upper tower's), with the rows'
@@ -113,7 +115,7 @@ impl Turret {
 pub struct Walls {
     /// Each part's picture state, by index.
     pub parts: [u8; SIEGE_PARTS],
-    /// The gate's: [`GATE_DESTROYED`], [`GATE_OPEN`], 2 moving, [`GATE_CLOSED`].
+    /// The gate's: [`GATE_DESTROYED`], [`GATE_OPEN`], [`GATE_MOVING`], [`GATE_CLOSED`].
     pub gate: u8,
 }
 

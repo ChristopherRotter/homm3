@@ -23,8 +23,8 @@ pub fn default_keys() -> PathBuf {
     assets::clients_dir().join("text").join("keys.toml")
 }
 
-/// The families' entries: the asset tables' creatures, spells and heroes (E17 M3 T7b-1), by
-/// qualified key, with their original ids.
+/// The families' entries: the asset tables' creatures, spells and heroes (E17 M3 T7b-1) and the
+/// towns' moats by their faction (E17 M4 T2c-1), by qualified key, with their original ids.
 pub fn entries(tables: &AssetTables) -> BTreeMap<String, Vec<Entry>> {
     let entry = |key: &String, original: u16| Entry {
         key: key.clone(),
@@ -45,9 +45,15 @@ pub fn entries(tables: &AssetTables) -> BTreeMap<String, Vec<Entry>> {
         .iter()
         .map(|(key, h)| entry(key, h.original))
         .collect();
+    let moats = tables
+        .towns
+        .iter()
+        .map(|(key, t)| entry(key, u16::from(t.original)))
+        .collect();
     BTreeMap::from([
         (String::from("creature"), creatures),
         (String::from("hero"), heroes),
+        (String::from("moat"), moats),
         (String::from("spell"), spells),
     ])
 }

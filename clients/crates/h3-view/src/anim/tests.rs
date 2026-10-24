@@ -2615,7 +2615,7 @@ fn the_log_records_what_the_battle_writes_and_when() {
             | Logged::Thunderbolt { .. }
             | Logged::Poisoned { .. }
             | Logged::AcidBreath { .. } => "striker",
-            Logged::Turret { .. } => "turret",
+            Logged::Turret { .. } | Logged::Moat { .. } => "siege",
         })
         .collect();
     // E17 M3 T6c-2: a wait, two strikes, a defend's command.
@@ -5414,3 +5414,4 @@ fn objects_outside_casts_and_without_their_looks() {
 mod raised;
 mod reviewed;
 mod siege;
+mod walk;

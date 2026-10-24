@@ -1,0 +1,47 @@
+# E17 M4 T2c-1: the recorded sequence `gate` (sequences.toml; design §10.2, "The drawbridge"): a
+# siege of a Castle town with a Fort (walls and the gate, no turrets, no moat), both heroes human
+# (hot seat), the attacker's Catapult commanded (Basic Ballistics). The defender's Hobgoblins walk
+# out through the closed gate from inside (the walk stops before its step onto the gate, the gate
+# opens, the walk goes on with a first step; the gate closes after it), and in round 2 back in
+# (the gate opens before the walk's first step, onto the bridge).
+
+[scenario]
+id = "sequence-gate"
+# Both human (hot seat): the attacker commands the Catapult.
+human = ["attacker", "defender"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+
+# The town: a Fort has walls and a gate, no turrets and no moat.
+[scenario.siege]
+faction = "base:castle"
+fort = "fort"
+moat = "absent"
+
+[[attacker]]
+slot = 0
+creature = "base:pikeman"
+count = 12
+
+[[defender]]
+slot = 0
+creature = "base:hobgoblin"
+count = 20
+
+# The heroes, each with 1 in every primary skill (`h3-view situation` writes them so).
+[scenario.attacker_hero]
+hero_type = "base:valeska"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+# Basic Ballistics: the Catapult waits for its command.
+catapult = 1
+
+[scenario.defender_hero]
+hero_type = "base:ufretin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1

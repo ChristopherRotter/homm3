@@ -555,6 +555,9 @@ pub const ARMAGEDDON: u16 = 26;
 pub const QUICKSAND: u16 = 10;
 /// Land Mine ([`QUICKSAND`]).
 pub const LAND_MINE: u16 = 11;
+/// The magic animation over the stack a Land Mine hurts (`land_mine_trigger` 0x59FC78,
+/// `strike_animation(57, 1)`; E17 M4 T2c-1).
+pub const MINE_BLAST: u8 = 57;
 /// Force Field ([`QUICKSAND`]).
 pub const FORCE_FIELD: u16 = 12;
 /// Fire Wall ([`QUICKSAND`]).
@@ -879,6 +882,13 @@ pub enum Sound {
     WallHit,
     /// A wall shot's landing without damage (`WallMiss.82m`), as [`Sound::WallHit`].
     WallMiss,
+    /// The drawbridge moving, cued on no stack (stack 0): the battle's sound played as a file,
+    /// category 2 (the asset tables' `siege_sounds`, `play_sound_file` from `gate_open` 0x46723B
+    /// and `gate_close` 0x4673D2; E17 M4 T2c-1).
+    Drawbridge,
+    /// A Land Mine's blast, cued on the stack it hurts (`landkill.wav`, `play_sound_file` from
+    /// `land_mine_trigger` 0x59FC63), as [`Sound::Drawbridge`].
+    Mine,
 }
 
 /// A sound a stack starts at a time, or (`stop`) the move sound it ends then (E17 M2 T5b; the
@@ -2377,17 +2387,38 @@ impl Player<'_> {
             match *event {
                 Event::Moved { stack, from, to } => {
                     let mut path = vec![from, to];
-                    // A walk comes hex by hex (CLT-Q1): the run of this stack's moves.
-                    while let Some(&Event::Moved {
-                        stack: s,
-                        from: f,
-                        to: t,
-                    }) = events.get(i)
-                    {
-                        if s != stack || path.last() != Some(&f) {
-                            break;
+                    // A walk comes hex by hex (CLT-Q1): the run of this stack's moves, with what
+                    // its hexes bring in a siege (E17 M4 T2c-1): the gate opened at a step, a
+                    // mine's blast or the moat's damage after one.
+                    let mut entered = siege::Entered::default();
+                    while let Some(e) = events.get(i) {
+                        match *e {
+                            Event::Moved {
+                                stack: s,
+                                from: f,
+                                to: t,
+                            } if s == stack && path.last() == Some(&f) => path.push(t),
+                            Event::GateOpened {} if entered.gate.is_none() => {
+                                entered.gate = Some(path.len() - 2);
+                            }
+                            Event::MoatDamage { stack: s, .. } if s == stack => {
+                                entered.after.push((path.len() - 1, vec![e.clone()]));
+                            }
+                            Event::ObstacleRevealed { spell, .. }
+                                if self.mine_under(stack, spell, events.get(i + 1)) =>
+                            {
+                                // The blast's events, to the mine's removal.
+                                let end = events[i..]
+                                    .iter()
+                                    .position(|e| matches!(e, Event::ObstacleRemoved { .. }))
+                                    .map_or(i + 1, |k| i + k);
+                                entered
+                                    .after
+                                    .push((path.len() - 1, events[i..=end].to_vec()));
+                                i = end;
+                            }
+                            _ => break,
                         }
-                        path.push(t);
                         i += 1;
                     }
                     // A melee's target turns back before its striker returns (the Harpies,
@@ -2402,7 +2433,7 @@ impl Player<'_> {
                     if strikes && melee.is_none() {
                         before_move = self.live(stack).map(|l| (stack, l.right));
                     }
-                    self.moved(stack, &path, !strikes);
+                    self.moved(stack, &path, !strikes, &entered);
                 }
                 Event::Struck {
                     attacker,
@@ -2679,6 +2710,16 @@ impl Player<'_> {
                     damage,
                     ..
                 } => self.wall_shot(stack, usize::from(part), damage),
+                // The gate (E17 M4 T2c-1): closed after a walk, a flight, a teleporting move or
+                // an action (`gate_close` 0x4672E0); opened outside a move (a summoned
+                // elemental placed on it, 0x5A71F1; *provisional*: not recorded).
+                Event::GateClosed {} => self.drawbridge(false),
+                Event::GateOpened {} => self.drawbridge(true),
+                // The moat's damage on a stack that acts where it stands in it (the re-entry,
+                // `reenter_own_hexes` 0x441F70), as on entering it without the walk.
+                Event::MoatDamage { stack, .. } => {
+                    self.entered(stack, core::slice::from_ref(event), false);
+                }
                 Event::RoundStarted { .. } => {
                     self.acting = None;
                     self.happenings.push(Happening::Round);
@@ -4473,8 +4514,12 @@ impl Player<'_> {
     }
 
     /// A move along `path` (its start first): a walk hex by hex, or a flight (§7.3); a plain move
-    /// turns back at its end to the facing it started with (`turn_back`).
-    fn moved(&mut self, stack: u8, path: &[u8], turn_back: bool) {
+    /// turns back at its end to the facing it started with (`turn_back`). In a siege (E17 M4
+    /// T2c-1, design §10.2) what its hexes bring: the closed gate opening before a walk's step
+    /// (`stack_walk` 0x442186: mid-walk the walk stops first and goes on with a first step) or
+    /// before a flight (0x4B4A95, *provisional*: not recorded), a mine's blast after a step and
+    /// the moat's damage after the last (`enter_hex` 0x46A570 from 0x44237E).
+    fn moved(&mut self, stack: u8, path: &[u8], turn_back: bool, entered: &siege::Entered) {
         let Some(mut live) = self.live(stack) else {
             return;
         };
@@ -4486,6 +4531,13 @@ impl Player<'_> {
         let start = path.first().copied().unwrap_or(live.hex);
         let end = path.last().copied().unwrap_or(live.hex);
         if live.flies {
+            // A flyer that lands on the gate's hexes stands in a whole redraw shown at once and
+            // the gate opens before its flight (0x4B4A95).
+            if entered.gate.is_some() {
+                self.pending.push((stack, self.standing(&live, start)));
+                self.redraw();
+                self.drawbridge(true);
+            }
             // A flight (0x4B4A40) turns first when it goes the other way by columns.
             let width = self.stage.width.max(1);
             let (from, to) = (start % width, end % width);
@@ -4542,6 +4594,16 @@ impl Player<'_> {
             // draws it.
             live.boxless = false;
             self.stacks.insert(stack, live.clone());
+            // Where it lands, the moat's re-entry or a mine (0x4B4A1E; *provisional*: not
+            // recorded).
+            if let Some(events) = entered.at(path.len() - 1) {
+                self.entered(stack, events, false);
+                let Some(l) = self.live(stack) else {
+                    self.redraw();
+                    return;
+                };
+                live = l;
+            }
             if turn_back && live.right != home {
                 live = self.turn(stack, live);
             }
@@ -4554,11 +4616,25 @@ impl Player<'_> {
         // (0x43F15E: up 3, down 7); one cycle per hex, the stack drawn along the step. Its count
         // box is hidden from before the first turn (0x442145).
         live.boxless = true;
+        // A step is a first one at the walk's start and after the gate opened (walk_step's flag,
+        // 0x442247): its turn animated, group 20 and the start's sound before it.
+        let mut first = true;
+        let last = path.len().saturating_sub(2);
         for (i, pair) in path.windows(2).enumerate() {
+            if entered.gate == Some(i) {
+                if first {
+                    // Its box hidden already (0x442145): the gate's redraws draw it so.
+                    self.pending.push((stack, self.standing(&live, pair[0])));
+                } else {
+                    self.halt(stack, &mut live, pair[0]);
+                }
+                self.drawbridge(true);
+                first = true;
+            }
             let [ax, ay] = self.stage.anchor(pair[0]);
             let [bx, by] = self.stage.anchor(pair[1]);
             if (bx > ax) != live.right {
-                if i == 0 {
+                if first {
                     live = self.turn(stack, live);
                 } else {
                     live.right = !live.right;
@@ -4569,24 +4645,37 @@ impl Player<'_> {
                 Ordering::Greater => WALK_DOWN,
                 Ordering::Equal => STANDING,
             };
-            if i == 0 {
+            if first {
                 // The first step's sounds (0x43F19B): the start's with group 20, the move's
                 // (looping) with the first cycle.
                 self.cue(stack, Sound::Start, false);
                 for f in 0..live.look.count(g.move_start) {
                     let p = Pose {
                         layer,
-                        ..Self::posed(&live, g.move_start, f, start)
+                        ..Self::posed(&live, g.move_start, f, pair[0])
                     };
                     self.frame(&[(stack, p)], tick);
                 }
                 self.cue(stack, Sound::Move, false);
             }
+            first = false;
             for f in 0..n {
                 let mut p = Self::posed(&live, g.moving, f, pair[0]);
                 p.offset = [share(bx - ax, f, n), share(by - ay, f, n)];
                 p.layer = layer;
                 self.frame(&[(stack, p)], step);
+            }
+            // What the hex entered brings on the way (a mine's blast; `enter_hex` with the walk
+            // going on): the stack stands on it meanwhile (0x4687C0).
+            if let Some(events) = entered.at(i + 1).filter(|_| i < last) {
+                live.hex = pair[1];
+                self.stacks.insert(stack, live.clone());
+                self.entered(stack, events, true);
+                let Some(l) = self.live(stack) else {
+                    self.redraw();
+                    return;
+                };
+                live = l;
             }
         }
         // The last step (0x43F267): the end's sound with group 21, the move's stopped.
@@ -4599,6 +4688,15 @@ impl Player<'_> {
         self.frame(&[(stack, standing)], tick);
         live.hex = end;
         self.stacks.insert(stack, live.clone());
+        // What the last hex brings (the moat's damage, a mine's blast), before the turn back.
+        if let Some(events) = entered.at(path.len() - 1) {
+            self.entered(stack, events, false);
+            let Some(l) = self.live(stack) else {
+                self.redraw();
+                return;
+            };
+            live = l;
+        }
         // `stack_walk` 0x4423A2: a plain move turns back at its end.
         if turn_back && live.right != home {
             live = self.turn(stack, live);

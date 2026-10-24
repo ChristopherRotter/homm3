@@ -958,3 +958,128 @@ command = [
     { seat = "Attacker", at = 3375, command = { ShootWall = { part = 6 } } },
     { seat = "Attacker", at = 7801, command = { ShootWall = { part = 0 } } },
 ]
+
+# E17 M4 T2c-1: the drawbridge (design §10.2, "The drawbridge"): a Castle town with a Fort (no
+# turrets, no moat). Round 1: the Catapult (Basic Ballistics) hits the upper wall (hex 29, target
+# 1) for 1, forced; the defender's Hobgoblins walk out from 100 to 93: the walk stops before its
+# step onto the gate (96), the gate opens (states 3, 2, 1), the walk goes on with a first step,
+# and the gate closes after it (1, 2, 3); the Pikemen defend. Round 2: the Catapult hits the lower
+# wall (hex 182, target 5); the Hobgoblins walk back in, the gate opening before the first step
+# (onto 94) and closing after the walk.
+[[sequence]]
+id = "gate"
+scenario = "seq-gate.toml"
+hot_seat = true
+key = "Up"
+seed = 6
+fail = ["good_morale"]
+actions = [
+    "turn:0.1", "roll:wall_damage:1", "roll:wall_hit", "hex:29",
+    "turn:1.0", "hex:93", "turn:0.0", "key:d",
+    "turn:0.1", "roll:wall_damage:1", "roll:wall_hit", "hex:182",
+    "turn:1.0", "hex:100",
+]
+ms = 6000
+screens = true
+timeline = "timelines/gate.txt"
+frames = "timelines/gate-frames.txt"
+boxes = true
+command = [
+    { seat = "Attacker", command = { ShootWall = { part = 1 } } },
+    { seat = "Defender", at = 3775, command = { Move = { to = 93 } } },
+    { seat = "Attacker", at = 9259, command = { Defend = {} } },
+    { seat = "Attacker", at = 9259, command = { ShootWall = { part = 5 } } },
+    { seat = "Defender", at = 13134, command = { Move = { to = 100 } } },
+]
+
+# E17 M4 T2c-1: a Fortress's outer bridge (design §10.2, "The drawbridge"): as `gate` at a
+# Fortress town with a Fort. Round 1: the Catapult hits the upper wall; the Hobgoblins walk out
+# onto the outer bridge (94): the gate opens before the step onto 96 and stays open (94 holds a
+# Fortress's gate, `gate_close` 0x4672E0); the Pikemen defend. Round 2: the Catapult hits the
+# lower wall with the gate open; the Hobgoblins step off the bridge (93) and the gate closes.
+[[sequence]]
+id = "gate-fortress"
+scenario = "seq-gate-fortress.toml"
+hot_seat = true
+key = "Up"
+seed = 6
+fail = ["good_morale"]
+actions = [
+    "turn:0.1", "roll:wall_damage:1", "roll:wall_hit", "hex:29",
+    "turn:1.0", "hex:94", "turn:0.0", "key:d",
+    "turn:0.1", "roll:wall_damage:1", "roll:wall_hit", "hex:182",
+    "turn:1.0", "hex:93",
+]
+ms = 6000
+screens = true
+timeline = "timelines/gate-fortress.txt"
+frames = "timelines/gate-fortress-frames.txt"
+boxes = true
+command = [
+    { seat = "Attacker", command = { ShootWall = { part = 1 } } },
+    { seat = "Defender", at = 3775, command = { Move = { to = 94 } } },
+    { seat = "Attacker", at = 8347, command = { Defend = {} } },
+    { seat = "Attacker", at = 8347, command = { ShootWall = { part = 5 } } },
+    { seat = "Defender", at = 12222, command = { Move = { to = 93 } } },
+]
+
+# E17 M4 T2c-1: the moat's damage (design §10.2, "The moat's damage"): a Castle town with a
+# Citadel (the keep commanded, a damaging moat). Round 1: the keep defends, the Catapult hits the
+# upper wall; the Champions walk until their front enters the moat on the closed drawbridge (95,
+# their position 94): the walk's end, the damage, its line and their reaction, the moat's strip
+# over their front and their box again; the Goblins defend. Round 2: the keep defends, the
+# Catapult hits the lower wall, the Champions wait in the moat: the re-entry's damage.
+[[sequence]]
+id = "moat"
+scenario = "seq-moat.toml"
+hot_seat = true
+key = "Up"
+seed = 1
+fail = ["good_morale"]
+actions = [
+    "key:d", "turn:0.1", "roll:wall_damage:1", "roll:wall_hit", "hex:29",
+    "turn:0.0", "hex:95", "turn:1.0", "key:d",
+    "turn:1.1", "key:d", "turn:0.1", "roll:wall_damage:1", "roll:wall_hit", "hex:182",
+    "turn:0.0", "key:w",
+]
+ms = 3000
+screens = true
+timeline = "timelines/moat.txt"
+frames = "timelines/moat-frames.txt"
+boxes = true
+command = [
+    { seat = "Defender", command = { Defend = {} } },
+    { seat = "Attacker", at = 0, command = { ShootWall = { part = 1 } } },
+    { seat = "Attacker", at = 0, command = { Move = { to = 94 } } },
+    { seat = "Defender", at = 0, command = { Defend = {} } },
+    { seat = "Defender", at = 0, command = { Defend = {} } },
+    { seat = "Attacker", at = 0, command = { ShootWall = { part = 5 } } },
+    { seat = "Attacker", at = 0, command = { Wait = {} } },
+]
+
+# E17 M4 T2c-1: a Tower's mine (design §10.2, "A Tower's mine"): a Tower town with a Citadel (the
+# keep commanded; the defender's hidden Land Mines on the moat's hexes). The keep defends, the
+# Catapult hits the upper wall; the Titans walk over a mine: the move sound stopped, the damage
+# and its line, the mine gone, animation 57 over them with their reaction, the walk going on.
+# The spectator's record: the attacker's screen never shows the mine.
+[[sequence]]
+id = "mine"
+scenario = "seq-mine.toml"
+hot_seat = true
+key = "Up"
+seed = 2
+fail = ["good_morale"]
+actions = [
+    "key:d", "turn:0.2", "roll:wall_damage:100", "roll:wall_hit", "hex:62",
+    "turn:0.0", "hex:79",
+]
+ms = 3000
+screens = true
+timeline = "timelines/mine.txt"
+frames = "timelines/mine-frames.txt"
+boxes = true
+command = [
+    { seat = "Defender", command = { Defend = {} } },
+    { seat = "Attacker", at = 0, command = { ShootWall = { part = 2 } } },
+    { seat = "Attacker", at = 0, command = { Move = { to = 79 } } },
+]
