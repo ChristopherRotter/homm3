@@ -284,7 +284,7 @@ Agents usually work in a cloud sandbox cloned from GitHub.
 
 6. **Habits that save a session.**
    - Cloud sessions open pull requests through the REST API (`gh api repos/ChristopherRotter/homm3/pulls`, labels the same way): GraphQL is blocked, so `gh pr create` fails.
-   - Git on the user's machine: delete permission for the repo folder first (even `git status` leaves `.git/index.lock`), `-c user.name -c user.email` with the user's GitHub no-reply address (Q59); no GitHub credentials there.
+   - Git on the user's machine: delete permission for the repo folder first (even `git status` leaves `.git/index.lock`), `-c user.name -c user.email`; no GitHub credentials there.
    - The VM can restart (files stay, jobs die): check `ps` before assuming a job still runs.
    - `cargo xtask verify` outlasts a tool call: run `scripts/sandbox-verify.sh` in the background (the coverage tools: `scripts/llvm-tools.sh`) and poll its log; the inner loop is `verify --scope <lane> --quick`.
    - The background verify tests whatever is in the clone: try ad-hoc tests in a `git worktree` with a `CARGO_TARGET_DIR` of its own under `target/` (never shared: `xtask` roots at its build), and remove it afterwards.
