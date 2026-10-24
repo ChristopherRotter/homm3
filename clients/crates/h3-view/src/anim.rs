@@ -2746,7 +2746,7 @@ impl Player<'_> {
                     ref damage,
                     kills,
                     ..
-                } => self.moat(stack, (damage.0, kills), false),
+                } => self.moat(stack, (damage.0, kills)),
                 Event::RoundStarted { .. } => {
                     self.acting = None;
                     self.happenings.push(Happening::Round);

@@ -302,7 +302,7 @@ impl Player<'_> {
             match *e {
                 Event::MoatDamage {
                     ref damage, kills, ..
-                } => self.moat(stack, (damage.0, kills), walking),
+                } => self.moat(stack, (damage.0, kills)),
                 Event::ObstacleTriggered { spell, .. } => {
                     let (damage, kills) = events
                         .iter()
@@ -345,13 +345,11 @@ impl Player<'_> {
     }
 
     /// The moat's damage on stack `s` (`moat_damage` 0x469E50; E17 M4 T2c-1), entering it or
-    /// acting where it stands in it (the re-entry, `reenter_own_hexes` 0x441F70): a walker's move
-    /// sound stopped (`walking`), the line named by the town's moat, the reaction without a
-    /// striker (`strike_animation(-1, 1)`).
-    pub(super) fn moat(&mut self, s: u8, (damage, kills): (u64, u32), walking: bool) {
-        if walking {
-            self.cue(s, Sound::Move, true);
-        }
+    /// acting where it stands in it (the re-entry, `reenter_own_hexes` 0x441F70): the line named
+    /// by the town's moat, the reaction without a striker (`strike_animation(-1, 1)`). The moat
+    /// stops a walk (BAT-SIE-004), so its move sound has stopped already (the original stops it
+    /// again, 0x469E96).
+    pub(super) fn moat(&mut self, s: u8, (damage, kills): (u64, u32)) {
         let line = Logged::Moat {
             hit: (s, damage, kills),
         };
