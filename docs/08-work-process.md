@@ -6,7 +6,7 @@
 2. **Backlog** (`BACKLOG.md`) — coarse epics in rough priority order. Cheap to reorder. One or two lines each until they are close.
 3. **Refined epic** (`epics/Exx-*.md`) — only for the next one or two epics: goal, scope, non-goals, exit criteria, task list. Refine an epic when it becomes next, not before.
 4. **Task** — sized to fit one focused agent session (a coherent change that can be verified). If it does not fit, split it or deliver partially (below).
-5. **HANDOFF** — the living state between sessions, within a size budget ("Keeping the start-of-session reading small"): the global `docs/HANDOFF.md` (lane index, traps of every lane) and one per lane, `docs/lanes/<lane>/HANDOFF.md`.
+5. **HANDOFF** — the living state between sessions, within a size budget ("Keeping the start-of-session reading small"): the global `docs/HANDOFF.md` (lane index, the traps that cross lanes) and one per lane, `docs/lanes/<lane>/HANDOFF.md` (its standing traps in the lane's `TRAPS.md`).
 6. **Lane queue** (`docs/lanes/<lane>/QUEUE.md`) — the lane's pre-refined tasks, each about half a context, and an inbox of discovered work ("Lanes").
 
 Do not over-specify. A refined epic is allowed to be wrong after first contact; update it.

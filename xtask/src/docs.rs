@@ -1,6 +1,6 @@
 //! `cargo xtask check-docs`: keeps the start-of-session reading small (docs/08-work-process.md,
 //! "Keeping the start-of-session reading small"). Every session reads the global
-//! `docs/HANDOFF.md` (an index plus the traps of every lane) and its lane's
+//! `docs/HANDOFF.md` (the lane index plus the traps that cross lanes) and its lane's
 //! `docs/lanes/<lane>/HANDOFF.md`, so both have a size budget, and a lane HANDOFF holds at most
 //! [`MAX_SESSIONS`] entries under "## Recent sessions"; older entries live in git history only.
 //! Every lane in `lanes.toml` has a HANDOFF and a `QUEUE.md`.
@@ -11,7 +11,7 @@ use std::path::Path;
 use crate::lanes::Config;
 use crate::util::workspace_root;
 
-/// The file every session reads first: the lane index and the traps of every lane.
+/// The file every session reads first: the lane index and the traps that cross lanes.
 pub const HANDOFF: &str = "docs/HANDOFF.md";
 /// Size budget of [`HANDOFF`] in bytes.
 pub const GLOBAL_MAX_BYTES: usize = 6_000;
@@ -37,7 +37,8 @@ pub fn global_problems(text: &str) -> Vec<String> {
     if text.len() > GLOBAL_MAX_BYTES {
         vec![format!(
             "{HANDOFF} is {} bytes, the budget is {GLOBAL_MAX_BYTES}: it holds the lane index and \
-             the traps of every lane only; move lane traps into the lane's HANDOFF",
+             the traps that cross lanes only; move a trap to its topic doc or the lane's TRAPS.md \
+             (docs/08-work-process.md)",
             text.len()
         )]
     } else {
@@ -52,7 +53,7 @@ pub fn lane_problems(file: &str, text: &str) -> Vec<String> {
     if text.len() > MAX_BYTES {
         problems.push(format!(
             "{file} is {} bytes, the budget is {MAX_BYTES}: shorten the session entries and \
-             prune \"Standing traps\" (docs/08-work-process.md)",
+             move traps to the lane's TRAPS.md (docs/08-work-process.md)",
             text.len()
         ));
     }
