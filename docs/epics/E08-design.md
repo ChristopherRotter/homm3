@@ -98,27 +98,29 @@ owner (§10).
   events: no other actor can act in between. The system actor's default answer is `Decline` (as
   for every offer).
 
-### 10. Commands, `legal_commands`, events, the observation, the expansions (GAM-MAN-001, -002)
+### 10. Commands, the listing, events, the observation, the expansions (GAM-MAN-001, -002)
 
-- **The command** (GAM-MAN-001): `GameCommand::Manage(Manage)` with `Manage::{Army(h3_adventure::
-  ArmyCommand), Formation, Tactics, Artifact { from: (HeroId, ArtifactPlace), to: (HeroId,
-  Target) }, Assemble { hero, at }, Disassemble { hero, at }}`. Legal in the actor's turn, on its
-  heroes on the map; a command between two heroes needs their open meeting; with a meeting or an
-  army dialog open, only on its heroes (and the group). The game checks the adventure's or
-  `h3-heroes`' rules on every hero it touches, then applies. Rejections are typed
-  (`GameCommandError::Manage(..)`), state untouched.
-- **`legal_commands`** (GAM-MAN-002): lists every management command of the actor but the
-  splits, whose counts `split_range` gives per source and target (a client enumerates them; the
-  AI lane's encoding decides how agents choose). The list grows with a meeting (two armies, two
-  heroes' artifacts: a few thousand commands at most, bounded by 7 slots, 19 positions and 64
-  places); measured in T52 (§12).
-- **Events**, every one seen by the owner alone (ADR-0016 point 6 of the draft): `ArmyChanged {
-  player, hero, army }` after an army command (the group's own after a group's change), `HeroChanged`
-  per hero change (existing), `FormationSet`, `TacticsSet`, `MeetingOpened { heroes, learned }` and
-  `DecisionClosed` for the meeting, `ArmyDialogOpened { hero, stack }` and `GroupLost { stacks }`.
-  A meeting's step is a step (its viewers as today).
-- **The observation** (the owner's): each own hero's tactics flag beside its formation; the open
-  meeting (the two heroes) or army dialog (the hero, the group's stacks) as the decision's view.
+Built in T51a (`E08-log.md`, T51a; decisions 116, 117): `GameCommand::Manage(Manage)` with
+`Manage::{Army(ArmyCommand), Formation, Tactics, Artifact { from: (HeroId, ArtifactPlace), to:
+(HeroId, ArtifactPlace) }, Assemble, Disassemble}` and `GameCommandError::Manage(ManageError)`,
+in the actor's turn without a decision, on one hero (two armies: `NotTogether`); the listing per
+hero, not in `legal_commands` (`legal_management`, `split_range`, `AdventureState::army_commands`;
+ADR-0017 point 6 amended, decision 117); the events `StackChanged { player, at, stack }` per slot
+an army command names (an agent's call: `GameEvent` stays `Copy`, which an army in the event
+would not), `FormationSet`, `TacticsSet` and `HeroChanged` per change, the owner's alone; the
+observation's flag (the adventure's `OwnHeroView::tactics`, T50); the replay format v6 with the
+commands' text (moved from T52: the CLI's command text is an exhaustive match). For T51b:
+
+- **A meeting open**: the commands between its two heroes (`alone` in `state/manage.rs` becomes
+  the check of which armies are together; `move_changes`' `to` changes applied to the other hero);
+  the listing toward the other hero (`army_commands`' `to`, the other hero's artifact places as
+  targets); `split_range` between the two.
+- **An army dialog open**: the group passed to `manage_army`, `army_commands` and `split_range`;
+  `StackChanged` for its slots (`ArmyRef::Group`); with either decision open, the commands only on
+  its heroes (and the group).
+- **Events and views**: `MeetingOpened { heroes, learned }` and `DecisionClosed` for the meeting,
+  `ArmyDialogOpened { hero, stack }` and `GroupLost { stacks }`; the open meeting (the two heroes)
+  or army dialog (the hero, the group's stacks) as the decision's view in the observation.
 - **The expansions** (decision 104, the user at ADV-Q25: "it must depend on the game configuration
   that is used to play, i.e. the enabled expansions"): the packs the game's ruleset is compiled
   from. The combinations (the SoD pack's artifacts with `parts`) and the fifth misc position (the
@@ -126,15 +128,12 @@ owner (§10).
   map of RoE played with SoD enabled has both (the original follows the map's `mapKind`). A rule
   the packs cannot express yet (the moat, E09) gains data or a configuration input then.
 
-### 11. The tactics flag in battle (GAM-BAT-009; ADR-0017 point 11 of the draft)
+### 11. The tactics flag in battle (GAM-BAT-009; ADR-0017 point 11)
 
-The game's battle setup (GAM-BAT-001): with `BattleHero.tactics` derived as today, when the side
-with the greater level is a hero on the map whose flag is off, **both** sides' `tactics` are 0. So
-equal levels still cancel, the difference still decides (BAT-TAC-001; the experiments), and a
-flag off where the original's would clear the phase clears it (survey §4). A side without a hero
-on the map (a monster, a guard) has no flag. Every player's hero's flag counts (the engine has no
-computer player, decision 16; the original reads a human side's only). No seam changes; the
-battle's observation shows both levels as 0 in such a battle.
+Built in T51a (`deny_tactics` in `state/battle.rs`, `Combatant::tactics`): when the side with
+the greater Tactics level is a hero whose flag is off, both sides' Tactics go as 0 (equal levels
+still cancel, the difference still decides; survey §4). Every player's hero's flag counts (the
+original reads a human side's only, decision 16); a side without a hero has no flag.
 
 ### 12. The env, the encoding's move, replays, fixtures, properties, benchmarks
 
@@ -144,7 +143,7 @@ battle's observation shows both levels as 0 in such a battle.
   (§8, §9), so the rollout and the replays' recorder never stall in a meeting; the masks are built
   from `legal_commands`, so this may need only the AI lane's test (its inbox; this lane tells it
   when T51 lands).
-- **Replays** (format v6): the management commands (`Manage`); two new golden replays, scripted
+- **Replays** (format v6, built in T51a): the management commands (`Manage`); two new golden replays, scripted
   (the rollout does not manage): a meeting with Scholar and exchanges of stacks and artifacts, and
   a join into a full army through the army dialog; the ten re-recorded (the hashes move).
 - **Fixtures and plans** (`h3-map`'s `play.rs`): two heroes of one player side by side, a full
@@ -156,7 +155,7 @@ battle's observation shows both levels as 0 in such a battle.
   changes another player's view; a rejected command leaves the state's hash; a move and its
   inverse restore the hero (where the original allows the inverse).
 - **Benchmarks**: `fork-xl-144` with an open meeting (no new copy per fork beyond the decision's);
-  `legal_commands` during a meeting (a new workload, T52); the four gated workloads at their
+  `legal_management` during a meeting (a new workload, T52); the four gated workloads at their
   baselines (the walker's search untouched).
 
 ### 13. Versions
@@ -166,10 +165,10 @@ battle's observation shows both levels as 0 in such a battle.
 | core ruleset hash v48, pack format v47 | two effect kinds, the packs' data | T45 (done) |
 | game state hash v12 | the details' positions | T49a (done) |
 | adventure state hash v11, adventure ruleset part v11 | the tactics flag; a stack's most creatures | T50 (done) |
-| game state hash v13 | the meeting and army dialog decisions | T51 |
+| game state hash v13 | the meeting and army dialog decisions | T51b |
 | map import v9 | positions | T49a (done) |
 | map import v10 | Titan's Thunder's book at load | T49b (done) |
-| adventure replay format v6 | `Manage` | T52 |
+| adventure replay format v6 | `Manage` | T51a (done) |
 | action encoding | unchanged (v4); the AI lane's from the move on | — |
 
 ### 14. Batch E6
@@ -201,7 +200,7 @@ flag) land once:
 | 1 | **T45** + **T46** | T45 (done): the shared groundwork (`shared/`, `cross-lane`): ADR-0013, -0016, -0017 amended; `meeting_spells`, `gives_spell_book`; the packs; core ruleset hash v48; the encoding's move to the AI lane (`lanes.toml`, the versions table, the global HANDOFF, the AI lane's inbox). T46: batch E6's spec and results template (§14; `h3-experiment` `cross-lane`) |
 | 2 | **T47** + **T48** | T47: the harness's clicks and reads (the hero, exchange, split, creature and army dialogs; the spells, backpack, flags and tactics reads), the recipes and the run. T48: scored; the survey's §8 and the rules' sources; an ADV-Q if a row contradicts the reading |
 | 3 | **T49** | `h3-heroes`: positions (§2: the model, validation, the first position, the capture, the import v9, the constructor and the other lanes' call sites, `cross-lane`), moves, combinations and Titan's book, Scholar (§3). The largest task: cut in T49a (positions, §2; done) and T49b (§3; decision 111; done) |
-| 4 | **T50** + **T51** | T50 (done whole, decision 113): `h3-adventure`: the army commands, the split's bounds, dismissal, the formation and the flag, the cap, the meeting's visit, the join without room's report (§7, §8 visit, §9); adventure state hash v11, ruleset part v11. T51: `h3-game`: `Manage`, the meeting and army dialog decisions, Scholar's application, `legal_commands` and `split_range`, events, the observation, the tactics flag in battle (§8–§11), the join offered without room (§9); game state hash v13; `ADV-STUB-2` closed |
+| 4 | **T50** + **T51** | T50 (done whole, decision 113): `h3-adventure`: the army commands, the split's bounds, dismissal, the formation and the flag, the cap, the meeting's visit, the join without room's report (§7, §8 visit, §9); adventure state hash v11, ruleset part v11. T51 in two (decision 116): T51a (done): `h3-game`: `Manage` on one hero, its per-hero listing and `split_range` (decision 117), events, the tactics flag in battle, replay format v6 (§10, §11); T51b: the meeting and army dialog decisions, Scholar's application, the commands between two armies, the join offered without room (§8, §9, §10's T51b list); game state hash v13; `ADV-STUB-2` closed |
 | 5 | **T52** + **T53** | T52: the env's masks (if still this lane's), replays v6 and the two new goldens, fixtures, plans, properties, benchmarks, `--with-original-data` (§12). T53: the audit against the exit criteria, increment 6 closed, increment 7 refined |
 
 **Increment 6's exit criteria:**
@@ -228,9 +227,9 @@ flag) land once:
 
 ### 16. Risks and open points
 
-- **`legal_commands`' size** during a meeting (§10): bounded, but a few thousand entries per call
-  would slow a client that lists them every step; T52 measures it, and a per-hero query (the
-  original's screens are per hero) replaces the flat list if it hurts.
+- **The listing's size** (§10): settled at T51's start by listing per hero (decision 117,
+  ADR-0017 point 6), so `legal_commands` and the env's rollout stay as they were; a hero with
+  seven stacks and a full backpack still lists a few thousand commands, which T52 measures.
 - **The handover of the env**: the AI lane takes an env whose encoding lacks increment 6's
   commands; agents trained before E13's macro-actions manage nothing. The masks' `Decline` keeps
   the env playable; the encoding's growth is the AI lane's call (its inbox).

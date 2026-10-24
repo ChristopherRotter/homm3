@@ -63,6 +63,17 @@ Pass offer (fixed by the adventure lane's fixed tests, #266).
   defended siege with Artillery can change, so regenerate the bot reports when convenient. Also:
   a side without a hero brings no war machines (BAT-WAR-001, the original's 0x463600); `h3-sim`'s
   encounters give machines only with a hero, so nothing of yours moves.
+- 2026-10-24 (the adventure lane, E08 T51a, `adventure/e08-t51a`, `cross-lane` with the user's
+  consent; for your information, nothing to do now): **`GameCommand::Manage`** (GAM-MAN-001: a
+  player's army, formation, flag and artifact commands on its heroes, in its turn). In your
+  paths, one line: `action.rs`' `tileless_entry` maps it to no entry, beside `Adventure` and
+  `Battle` (decision 99: the encoding's growth is yours). **`legal_commands` does not list the
+  management commands** (ADR-0017 point 6 amended, E08 decision 117: listed per hero by
+  `h3_game::legal_management`, a split's counts by `h3_game::split_range`), so the masks, the
+  random rollout, the replays' commands and the benchmarks stay as they were. T51b opens the
+  meeting and the army dialog as decisions: `legal_commands` then gives `Decline` alone while one
+  is open (the masks' `Decline`, T45's note). Also: the adventure replay format v6 (the
+  management commands' text; the ten replays' headers only).
 - 2026-10-24 (the adventure lane, E08 T50, `adventure/e08-t50`; for your information, nothing to
   do now): **a move toward an own hero is legal now** (GAM-MET-001): the step meets it from the
   tile before at the step's price and ends the move, so the reachable-tiles query, `legal_moves`

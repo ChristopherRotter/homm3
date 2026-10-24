@@ -60,20 +60,8 @@ impl AdventureState {
         let open = group.is_some();
         let mut none = Vec::new();
         let group = group.unwrap_or(&mut none);
-        let (from, to) = command.armies();
-        let source = self.held(player, from, open)?;
-        let target = to.map(|to| self.held(player, to, open)).transpose()?;
-        let rules = (part.params().army_slots(), part.params().max_stack_count());
-        let read = |held: Held| match held {
-            Held::Hero(index) => &self.heroes[index].army[..],
-            Held::Group => &group[..],
-        };
-        let (source_army, target_army) = army::plan(
-            command,
-            (read(source), source != Held::Group),
-            target.map(read),
-            rules,
-        )?;
+        let ((source, target), (source_army, target_army)) =
+            self.plan_army(part, player, command, open.then_some(&group[..]))?;
         for (held, stacks) in core::iter::once((source, source_army)).chain(target.zip(target_army))
         {
             match held {
@@ -82,6 +70,66 @@ impl AdventureState {
             }
         }
         Ok(())
+    }
+
+    /// The armies `command` names, found, and its plan ([`crate::army`]), checked whole; nothing
+    /// changes.
+    fn plan_army(
+        &self,
+        part: &AdventureRuleset,
+        player: PlayerId,
+        command: &ArmyCommand,
+        group: Option<&[ArmyStack]>,
+    ) -> Result<((Held, Option<Held>), army::Plan), ArmyCommandError> {
+        let open = group.is_some();
+        let (from, to) = command.armies();
+        let source = self.held(player, from, open)?;
+        let target = to.map(|to| self.held(player, to, open)).transpose()?;
+        let rules = (part.params().army_slots(), part.params().max_stack_count());
+        let read = |held: Held| match held {
+            Held::Hero(index) => &self.heroes[index].army[..],
+            Held::Group => group.unwrap_or_default(),
+        };
+        let plan = army::plan(
+            command,
+            (read(source), source != Held::Group),
+            target.map(read),
+            rules,
+        )?;
+        Ok(((source, target), plan))
+    }
+
+    /// The army commands `player` may give on its army `from` but the splits (GAM-MAN-002; E08
+    /// T51a, ADR-0017 point 6: listed per army, as a hero's moves are): each stack's moves, in
+    /// slot order, onto every other slot of `from`, then, with `to`, onto every slot of `to` (a
+    /// meeting's other hero, an army dialog's group: the game names them), then the dismissals,
+    /// each as [`Self::manage_army`] would accept it with `group` as the open army dialog's. None
+    /// when `from` is not the player's or the group is not given. A split's counts are
+    /// [`Self::split_range`]'s.
+    // rule: ADV-ARM-001, ADV-ARM-002, ADV-ARM-004
+    pub fn army_commands(
+        &self,
+        part: &AdventureRuleset,
+        player: PlayerId,
+        (from, to): (ArmyRef, Option<ArmyRef>),
+        group: Option<&[ArmyStack]>,
+    ) -> Vec<ArmyCommand> {
+        let slots = part.params().army_slots();
+        let slot = |army, slot| ArmySlot { army, slot };
+        let targets = core::iter::once(from).chain(to);
+        let moves = (0..slots).flat_map(|source| {
+            targets.clone().flat_map(move |army| {
+                (0..slots).map(move |target| ArmyCommand::Move {
+                    from: slot(from, source),
+                    to: slot(army, target),
+                })
+            })
+        });
+        let dismissals = (0..slots).map(|at| ArmyCommand::Dismiss { at: slot(from, at) });
+        moves
+            .chain(dismissals)
+            .filter(|command| self.plan_army(part, player, command, group).is_ok())
+            .collect()
     }
 
     /// The counts a split of `player`'s stack at `from` with `to` may leave in `to` (ADV-ARM-003,

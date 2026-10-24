@@ -14,7 +14,7 @@ use h3_heroes::HeroDetails;
 use super::AdventureState;
 use crate::answer::{Answer, Temper, Wanderer};
 use crate::command::{
-    AdventureEvent, AdventureEventKind, AdventureOutcome, BattleStart, Combatant, Defender, NoRoom,
+    AdventureEvent, AdventureEventKind, AdventureOutcome, BattleStart, Defender, NoRoom,
     Offer, OfferKind, Sink, Viewers,
 };
 use crate::ruleset::{AdventureRuleset, ObjectKind, ObjectTypeId};
@@ -225,12 +225,7 @@ impl AdventureState {
         let tile = self.map.objects()[index].anchor;
         let (terrain, battlefield) = self.battle_ground(part, tile);
         let battle = self.hero(hero).map(|attacker| BattleStart {
-            attacker: Combatant {
-                hero: attacker.id,
-                owner: attacker.owner,
-                army: attacker.army.clone(),
-                formation: attacker.formation,
-            },
+            attacker: attacker.combatant(),
             defender: Defender::Monster {
                 creature: monster.creature,
                 count: monster.count,

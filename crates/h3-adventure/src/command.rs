@@ -228,7 +228,7 @@ pub enum Defender {
 }
 
 /// A side of a battle on the map as the adventure has it: a hero on the map, its owner, its army
-/// by slot and the army's formation.
+/// by slot, the army's formation and the hero's tactics flag.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Combatant {
     /// The hero.
@@ -239,6 +239,9 @@ pub struct Combatant {
     pub army: Vec<ArmyStack>,
     /// The army's formation.
     pub formation: Formation,
+    /// The hero's tactics flag (ADV-ARM-006): off, the game denies the tactics phase the side
+    /// would get (GAM-BAT-009; E08 T51a).
+    pub tactics: bool,
 }
 
 /// An offer a visit makes to its visitor's owner, answered yes or no (ADR-0017 points 6 and 10;

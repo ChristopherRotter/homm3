@@ -24,6 +24,7 @@ use levels::Progression;
 
 mod battle;
 mod levels;
+mod manage;
 
 pub use battle::OpenBattle;
 #[cfg(test)]

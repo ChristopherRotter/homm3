@@ -9,7 +9,7 @@ use h3_content::{ResourceId, Ruleset};
 use h3_contracts::{ArmyStack, HeroId};
 
 use super::AdventureState;
-use crate::command::{AdventureOutcome, BattleStart, Combatant, Defender, Offer, OfferKind, Sink};
+use crate::command::{AdventureOutcome, BattleStart, Defender, Offer, OfferKind, Sink};
 use crate::ruleset::{AdventureRuleset, ObjectKind, ObjectTypeId};
 use crate::setup::Pos;
 
@@ -88,12 +88,7 @@ impl AdventureState {
             .map(|(attacker, tile)| {
                 let (terrain, battlefield) = self.battle_ground(part, tile);
                 BattleStart {
-                    attacker: Combatant {
-                        hero: attacker.id,
-                        owner: attacker.owner,
-                        army: attacker.army.clone(),
-                        formation: attacker.formation,
-                    },
+                    attacker: attacker.combatant(),
                     defender: Defender::Guards {
                         army: guards.to_vec(),
                     },

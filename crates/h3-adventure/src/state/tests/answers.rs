@@ -610,6 +610,7 @@ fn a_fight_starts_a_battle_against_the_unsplit_monster_at_its_tile() {
             owner: RED,
             army: s.hero(HERO).unwrap().army.clone(),
             formation: Formation::Loose,
+            tactics: true,
         }
     );
     assert_eq!(

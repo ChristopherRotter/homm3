@@ -12,6 +12,7 @@ mod heroes;
 mod legal;
 mod level_ups;
 mod levels;
+mod manage;
 mod monsters;
 mod moves;
 mod observe;

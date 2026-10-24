@@ -28,9 +28,9 @@ use super::rollout::choose;
 /// adventure lane (`docs/08-work-process.md`, the versions table). Version 2 (E08 T14b): the
 /// game's difficulty and the answers to decisions; version 3 (E08 T19b1): each command's actor
 /// (ADR-0017 point 8) and battle commands; version 4 (E08 T20b2): the system actor, which plays a
-/// battle's unowned side; version 5 (E08 T30): a level-up's answers. A replay of another version is
-/// refused ([`ReplayHeader::check`]).
-pub const REPLAY_FORMAT_VERSION: u32 = 5;
+/// battle's unowned side; version 5 (E08 T30): a level-up's answers; version 6 (E08 T51a): the
+/// management commands. A replay of another version is refused ([`ReplayHeader::check`]).
+pub const REPLAY_FORMAT_VERSION: u32 = 6;
 
 /// Identity of the rules and algorithms a replay depends on.
 #[derive(Debug, Clone, PartialEq, Eq)]

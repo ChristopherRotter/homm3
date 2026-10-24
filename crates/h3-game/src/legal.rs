@@ -6,17 +6,25 @@
 //! reaches thousands of tiles, each with its own path. They are given per hero as the
 //! reachable-tiles query ([`legal_moves`]), a path built only for the destination chosen, as the
 //! battle gives casts by their targets. Consistency with `apply` is property-tested on imported
-//! maps (`h3-map`'s tests).
+//! maps (`h3-map`'s tests). The management commands are listed per hero too ([`legal_management`],
+//! a split's counts by [`split_range`]; E08 T51a, ADR-0017 point 6): a flat list would grow every
+//! call in a player's turn by up to a few thousand commands.
 
 use alloc::vec;
 use alloc::vec::Vec;
+use core::ops::RangeInclusive;
 
-use h3_adventure::Reach;
+use h3_adventure::{ArmyRef, ArmySlot, Reach};
 use h3_battle::LegalCommands;
+use h3_content::Formation;
 use h3_contracts::{HeroId, PlayerId};
-use h3_heroes::{ArmyWorth, original_choice};
+use h3_heroes::{
+    ArmyWorth, ArtifactMove, ArtifactPlace, Position, check_assemble, check_disassemble,
+    check_move, original_choice,
+};
 
 use crate::command::{Actor, Answer, GameCommand};
+use crate::manage::Manage;
 use crate::{GameRuleset, GameState, OpenBattle};
 
 /// The commands `actor` may issue now but its moves: with an open battle the battle's legal
@@ -141,4 +149,89 @@ pub fn legal_moves(
         .hero(hero)
         .filter(|h| h.owner == player)
         .and_then(|h| adventure.reach(rules.core(), rules.adventure(), state.heroes(), h.id))
+}
+
+/// The management commands `actor` may give on its hero `hero` now but the splits (GAM-MAN-002;
+/// E08 T51a, ADR-0017 point 6: listed per hero, as its moves are), each as `apply` accepts it: its
+/// army's commands ([`h3_adventure::AdventureState::army_commands`]: each stack's moves onto the
+/// army's other slots, then its dismissals), both formations and both values of the flag, each
+/// artifact's moves onto every place of the hero that takes it (`h3_heroes::check_move`: the
+/// sources and the targets in position order, then by backpack index, a target up to the
+/// backpack's length), then the assemblies and the disassemblies by position. Empty when the
+/// actor's turn is not running or it has an open decision, by `apply`'s own checks, or the hero
+/// is not its on the map. A split's counts are [`split_range`]'s.
+// rule: GAM-MAN-002
+pub fn legal_management(
+    state: &GameState,
+    rules: &GameRuleset,
+    actor: Actor,
+    hero: HeroId,
+) -> Vec<Manage> {
+    let own = match actor {
+        Actor::Player(player) => state
+            .check_ready(player)
+            .ok()
+            .and_then(|()| state.own_details(player, hero).ok())
+            .map(|details| (player, details)),
+        Actor::System => None,
+    };
+    let Some((player, details)) = own else {
+        return Vec::new();
+    };
+    let core = rules.core();
+    let army = state
+        .adventure()
+        .army_commands(rules.adventure(), player, (ArmyRef::Hero(hero), None), None)
+        .into_iter()
+        .map(Manage::Army);
+    let formations =
+        [Formation::Loose, Formation::Tight].map(|formation| Manage::Formation { hero, formation });
+    let flags = [true, false].map(|on| Manage::Tactics { hero, on });
+    let positions = (0..details.worn.len()).map(Position);
+    let worn = positions.clone().map(ArtifactPlace::Worn);
+    let carried = |end: usize| (0..end).map(ArtifactPlace::Backpack);
+    let targets = worn.clone().chain(carried(details.backpack.len() + 1));
+    let moves = worn
+        .chain(carried(details.backpack.len()))
+        .flat_map(|from| targets.clone().map(move |to| ArtifactMove { from, to }))
+        .filter(|&moved| check_move(details, None, core, moved).is_ok())
+        .map(|moved| Manage::Artifact {
+            from: (hero, moved.from),
+            to: (hero, moved.to),
+        });
+    let assemblies = positions
+        .clone()
+        .filter(|&at| check_assemble(details, core, at).is_ok())
+        .map(|at| Manage::Assemble { hero, at });
+    let disassemblies = positions
+        .filter(|&at| check_disassemble(details, core, at).is_ok())
+        .map(|at| Manage::Disassemble { hero, at });
+    army.chain(formations)
+        .chain(flags)
+        .chain(moves)
+        .chain(assemblies)
+        .chain(disassemblies)
+        .collect()
+}
+
+/// The counts a split of `actor`'s stack at `from` with `to` may leave in `to` (GAM-MAN-002,
+/// ADV-ARM-003, ADV-ARM-007; E08 T51a): the adventure's
+/// [`h3_adventure::AdventureState::split_range`]. `None` when the actor may not give the split
+/// now (its turn, its open decision: `apply`'s checks), the two slots are not of one army
+/// (outside a meeting and an army dialog), or no split is possible there.
+// rule: GAM-MAN-002
+pub fn split_range(
+    state: &GameState,
+    rules: &GameRuleset,
+    actor: Actor,
+    (from, to): (ArmySlot, ArmySlot),
+) -> Option<RangeInclusive<u32>> {
+    let Actor::Player(player) = actor else {
+        return None;
+    };
+    state.check_ready(player).ok()?;
+    (from.army == to.army).then_some(())?;
+    state
+        .adventure()
+        .split_range(rules.adventure(), player, (from, to), None)
 }

@@ -468,6 +468,10 @@ fn check_told(
                 decision = Some(Open::Offer(hero, object_type, anchor));
             }
             GameEvent::OfferRefused { player, .. } => prop_assert_eq!(player, viewer),
+            // E08 T51a: the management's events are the owner's (the plans manage nothing yet).
+            GameEvent::StackChanged { player, .. }
+            | GameEvent::FormationSet { player, .. }
+            | GameEvent::TacticsSet { player, .. } => prop_assert_eq!(player, viewer),
             GameEvent::OfferAnswered {
                 player,
                 object_type,

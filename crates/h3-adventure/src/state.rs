@@ -798,6 +798,19 @@ pub struct HeroOnMap {
     pub movement: u32,
 }
 
+impl HeroOnMap {
+    /// The hero as a side of a battle on the map.
+    pub(crate) fn combatant(&self) -> Combatant {
+        Combatant {
+            hero: self.id,
+            owner: self.owner,
+            army: self.army.clone(),
+            formation: self.formation,
+            tactics: self.tactics,
+        }
+    }
+}
+
 /// The adventure context's state.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AdventureState {
@@ -1256,17 +1269,11 @@ impl AdventureState {
         attacker: usize,
         defender: usize,
     ) -> BattleStart {
-        let side = |hero: &HeroOnMap| Combatant {
-            hero: hero.id,
-            owner: hero.owner,
-            army: hero.army.clone(),
-            formation: hero.formation,
-        };
         let tile = self.heroes[defender].pos;
         let (terrain, battlefield) = self.battle_ground(part, tile);
         BattleStart {
-            attacker: side(&self.heroes[attacker]),
-            defender: Defender::Hero(side(&self.heroes[defender])),
+            attacker: self.heroes[attacker].combatant(),
+            defender: Defender::Hero(self.heroes[defender].combatant()),
             tile,
             terrain,
             battlefield,

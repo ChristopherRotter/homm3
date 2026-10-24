@@ -65,13 +65,24 @@ pub enum ArmyCommand {
 }
 
 impl ArmyCommand {
-    /// The army the command takes a stack from, and the other army it changes, if any.
-    pub(crate) fn armies(&self) -> (ArmyRef, Option<ArmyRef>) {
+    /// The army the command takes a stack from, and the other army it changes, if any (the game
+    /// checks that the two may meet: a meeting's heroes, a hero and its army dialog's group;
+    /// E08 T51).
+    pub fn armies(&self) -> (ArmyRef, Option<ArmyRef>) {
         match *self {
             Self::Move { from, to } | Self::Split { from, to, .. } => {
                 (from.army, (to.army != from.army).then_some(to.army))
             }
             Self::Dismiss { at } => (at.army, None),
+        }
+    }
+
+    /// The slots the command changes when it applies: the stack's, and its target's (the game
+    /// tells the owner what each holds after it; E08 T51a).
+    pub const fn slots(&self) -> (ArmySlot, Option<ArmySlot>) {
+        match *self {
+            Self::Move { from, to } | Self::Split { from, to, .. } => (from, Some(to)),
+            Self::Dismiss { at } => (at, None),
         }
     }
 }

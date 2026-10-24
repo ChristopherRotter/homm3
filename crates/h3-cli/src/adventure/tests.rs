@@ -3,6 +3,14 @@ use h3_content::SpellId;
 
 use super::*;
 
+fn manage(command: Manage) -> GameCommand {
+    GameCommand::Manage(command)
+}
+
+const fn slot(army: ArmyRef, slot: u8) -> ArmySlot {
+    ArmySlot { army, slot }
+}
+
 fn root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
@@ -89,6 +97,81 @@ fn commands_round_trip_through_their_text() {
             GameCommand::Battle(Command::Wait),
             "0 battle wait",
         ),
+        // Format v6 (E08 T51a): the management commands.
+        (
+            PlayerId::new(0),
+            manage(Manage::Army(ArmyCommand::Move {
+                from: slot(ArmyRef::Hero(hero), 0),
+                to: slot(ArmyRef::Hero(HeroId::new(3)), 6),
+            })),
+            "0 army move 12:0 3:6",
+        ),
+        (
+            PlayerId::new(1),
+            manage(Manage::Army(ArmyCommand::Split {
+                from: slot(ArmyRef::Group, 2),
+                to: slot(ArmyRef::Hero(hero), 1),
+                count: 40000,
+            })),
+            "1 army split g:2 12:1 40000",
+        ),
+        (
+            PlayerId::new(1),
+            manage(Manage::Army(ArmyCommand::Dismiss {
+                at: slot(ArmyRef::Hero(hero), 4),
+            })),
+            "1 army dismiss 12:4",
+        ),
+        (
+            PlayerId::new(2),
+            manage(Manage::Formation {
+                hero,
+                formation: Formation::Tight,
+            }),
+            "2 formation 12 tight",
+        ),
+        (
+            PlayerId::new(2),
+            manage(Manage::Formation {
+                hero,
+                formation: Formation::Loose,
+            }),
+            "2 formation 12 loose",
+        ),
+        (
+            PlayerId::new(0),
+            manage(Manage::Tactics { hero, on: false }),
+            "0 tactics 12 off",
+        ),
+        (
+            PlayerId::new(0),
+            manage(Manage::Tactics { hero, on: true }),
+            "0 tactics 12 on",
+        ),
+        (
+            PlayerId::new(0),
+            manage(Manage::Artifact {
+                from: (hero, ArtifactPlace::Backpack(0)),
+                to: (HeroId::new(3), ArtifactPlace::Worn(Position(18))),
+            }),
+            "0 artifact 12:b0 3:w18",
+        ),
+        (
+            PlayerId::new(0),
+            manage(Manage::Assemble {
+                hero,
+                at: Position(6),
+            }),
+            "0 assemble 12 6",
+        ),
+        (
+            PlayerId::new(0),
+            manage(Manage::Disassemble {
+                hero,
+                at: Position(2),
+            }),
+            "0 disassemble 12 2",
+        ),
     ];
     for (player, command, text) in cases {
         let actor = Actor::Player(player);
@@ -125,6 +208,32 @@ fn commands_round_trip_through_their_text() {
         "0 battle wait now",
         "system",
         "systems battle wait",
+        "0 army",
+        "0 army jump 1:0",
+        "0 army move 1:0",
+        "0 army move 1-0 1:1",
+        "0 army move x:0 1:1",
+        "0 army move 1:0 1:x",
+        "0 army split 1:0 1:1",
+        "0 army split 1:0 1:1 x",
+        "0 army dismiss",
+        "0 army dismiss 1:0 now",
+        "0 formation 1",
+        "0 formation 1 wedge",
+        "0 formation x loose",
+        "0 tactics 1",
+        "0 tactics 1 maybe",
+        "0 artifact 1:w0",
+        "0 artifact 1:w0 1",
+        "0 artifact 1:x0 1:b0",
+        "0 artifact 1:w 1:b0",
+        "0 artifact 1:b0 1:wx",
+        "0 artifact x:b0 1:w0",
+        "0 artifact 1: 1:w0",
+        "0 assemble 1",
+        "0 assemble 1 x",
+        "0 disassemble",
+        "0 disassemble 1",
     ] {
         assert!(
             matches!(parse_command(bad), Err(AdventureCliError::Format(_))),
@@ -221,7 +330,7 @@ fn the_difficulty_and_the_answers_round_trip_through_the_file() {
     };
     let (replay, text) = run_random(&packs, &dir, &easy).unwrap();
     assert_eq!(replay.difficulty, 0);
-    assert!(text.contains("format = 5\n"), "{text}");
+    assert!(text.contains("format = 6\n"), "{text}");
     assert!(text.contains("difficulty = 0\n"), "{text}");
     let (normal, _) = run_random(&packs, &dir, &options(1)).unwrap();
     assert_eq!(normal.difficulty, h3_game::DEFAULT_DIFFICULTY);
@@ -250,7 +359,7 @@ fn the_difficulty_and_the_answers_round_trip_through_the_file() {
     assert!(matches!(e, AdventureCliError::Format(_)), "{e}");
     // A v1 file: no difficulty, refused by its version before its map is read.
     let v1 = text
-        .replacen("format = 5", "format = 1", 1)
+        .replacen("format = 6", "format = 1", 1)
         .replacen("difficulty = 0\n", "", 1);
     assert_eq!(
         parse_replay(&v1).unwrap().difficulty,

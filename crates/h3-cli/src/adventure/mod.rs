@@ -2,12 +2,16 @@
 //! with their adventure files and `.h3m` maps from disk, recording random games and the adventure
 //! replay file format (TOML). The commands themselves are in [`cli`].
 //!
-//! Replay file format v5 (`fixtures/replays/adventure/*.toml` are examples; v2 added the
+//! Replay file format v6 (`fixtures/replays/adventure/*.toml` are examples; v2 added the
 //! difficulty and the answers, E08 T14b: a v1 file has no difficulty, reads as normal and is
 //! refused by its format version; a later file without one is malformed; v3 added the battle
 //! commands, E08 T19b1, and names each command's actor: a player by its number; v4 the system
 //! actor, `system`, whose commands are a battle's unowned side's, E08 T20b2; v5 a level-up's
-//! answers, `answer first` and `answer second`, E08 T30):
+//! answers, `answer first` and `answer second`, E08 T30; v6 the management commands, E08 T51a:
+//! `army move|split|dismiss` naming slots as `<army>:<slot>`, the army a hero's id or `g` the
+//! army dialog's group; `formation <hero> loose|tight`; `tactics <hero> on|off`; `artifact
+//! <hero>:<place> <hero>:<place>`, a place `w<position>` worn or `b<index>` in the backpack;
+//! `assemble` and `disassemble <hero> <position>`):
 //!
 //! ```toml
 //! commands = [                        # the game commands in order, each after its actor:
@@ -17,11 +21,14 @@
 //!     "1 answer first",               #   `<player> answer first` or `second`: a level-up's
 //!     "1 battle attack 3 41",         #   `<player> battle <command>`: a command in its battle,
 //!     "system battle wait",           #   the battle replays' text without the side letter;
-//! ]                                   #   `system battle …`: the unowned side's
+//!                                     #   `system battle …`: the unowned side's
+//!     "0 army split 1:0 1:3 5",       #   `<player> army …`, `formation …`, `tactics …`,
+//!     "0 artifact 1:b0 1:w2",         #   `artifact …`, `assemble …`, `disassemble …`: a
+//! ]                                   #   management command
 //! checkpoints = ["0x…"]               # state hash after every `checkpoint_every` commands
 //!
 //! [replay]
-//! format = 5
+//! format = 6
 //! engine = "0.1.0"
 //! seed = "1"                          # u64 as a decimal string
 //! difficulty = 1                      # the game's (GameSetup::difficulty), 1 the import's
@@ -58,7 +65,11 @@ use std::sync::Arc;
 
 use h3_adventure::{AdventureCommand, Pos};
 use h3_contracts::{BattleSide, HeroId, PlayerId};
-use h3_game::{Actor, Answer, GameCommand, GameRuleset, GameSetup};
+use h3_content::Formation;
+use h3_game::{
+    Actor, Answer, ArmyCommand, ArmyRef, ArmySlot, ArtifactPlace, GameCommand, GameRuleset,
+    GameSetup, Manage, Position,
+};
 use h3_sim::adventure::replay::{
     MapRef, RecordError, RecordOptions, Replay, ReplayError, ReplayHeader, map_content_hash,
 };
@@ -245,9 +256,10 @@ fn parse_hex64(s: &str) -> Result<u64> {
         .ok_or_else(|| AdventureCliError::Format(format!("bad hash `{s}`")))
 }
 
-/// A command as a replay file writes it (format v5, the module's docs): its actor, then the
+/// A command as a replay file writes it (format v6, the module's docs): its actor, then the
 /// command; a battle command (E08 T19b1) as the battle replays write it ([`crate::format_command`])
-/// without the side, which is the actor's in its battle.
+/// without the side, which is the actor's in its battle; a management command (E08 T51a) by its
+/// own words ([`format_manage`]).
 pub fn format_command(actor: Actor, command: &GameCommand) -> String {
     let player = match actor {
         Actor::Player(player) => player.raw().to_string(),
@@ -274,7 +286,132 @@ pub fn format_command(actor: Actor, command: &GameCommand) -> String {
             }
             text
         }
+        GameCommand::Manage(command) => format!("{player} {}", format_manage(command)),
     }
+}
+
+/// An army slot as `<army>:<slot>`: the army a hero's id, or `g` for the group.
+fn format_slot(at: ArmySlot) -> String {
+    match at.army {
+        ArmyRef::Hero(hero) => format!("{}:{}", hero.raw(), at.slot),
+        ArmyRef::Group => format!("g:{}", at.slot),
+    }
+}
+
+/// A hero's artifact place as `<hero>:w<position>` or `<hero>:b<index>`.
+fn format_place((hero, place): (HeroId, ArtifactPlace)) -> String {
+    match place {
+        ArtifactPlace::Worn(at) => format!("{}:w{}", hero.raw(), at.0),
+        ArtifactPlace::Backpack(index) => format!("{}:b{index}", hero.raw()),
+    }
+}
+
+/// A management command's words (format v6, E08 T51a), without its actor.
+fn format_manage(command: &Manage) -> String {
+    match *command {
+        Manage::Army(ArmyCommand::Move { from, to }) => {
+            format!("army move {} {}", format_slot(from), format_slot(to))
+        }
+        Manage::Army(ArmyCommand::Split { from, to, count }) => {
+            format!("army split {} {} {count}", format_slot(from), format_slot(to))
+        }
+        Manage::Army(ArmyCommand::Dismiss { at }) => format!("army dismiss {}", format_slot(at)),
+        Manage::Formation { hero, formation } => {
+            let word = match formation {
+                Formation::Loose => "loose",
+                Formation::Tight => "tight",
+            };
+            format!("formation {} {word}", hero.raw())
+        }
+        Manage::Tactics { hero, on } => {
+            format!("tactics {} {}", hero.raw(), if on { "on" } else { "off" })
+        }
+        Manage::Artifact { from, to } => {
+            format!("artifact {} {}", format_place(from), format_place(to))
+        }
+        Manage::Assemble { hero, at } => format!("assemble {} {}", hero.raw(), at.0),
+        Manage::Disassemble { hero, at } => format!("disassemble {} {}", hero.raw(), at.0),
+    }
+}
+
+/// Parses an army slot written by [`format_slot`].
+fn parse_slot(word: &str) -> Option<ArmySlot> {
+    let (army, slot) = word.split_once(':')?;
+    let army = match army {
+        "g" => ArmyRef::Group,
+        id => ArmyRef::Hero(HeroId::new(id.parse().ok()?)),
+    };
+    Some(ArmySlot {
+        army,
+        slot: slot.parse().ok()?,
+    })
+}
+
+/// Parses a place written by [`format_place`].
+fn parse_place(word: &str) -> Option<(HeroId, ArtifactPlace)> {
+    let (hero, place) = word.split_once(':')?;
+    let hero = HeroId::new(hero.parse().ok()?);
+    let place = match place.split_at_checked(1)? {
+        ("w", at) => ArtifactPlace::Worn(Position(at.parse().ok()?)),
+        ("b", index) => ArtifactPlace::Backpack(index.parse().ok()?),
+        _ => return None,
+    };
+    Some((hero, place))
+}
+
+/// Parses a management command's words written by [`format_manage`], its kind's word first.
+fn parse_manage<'a>(kind: &str, words: &mut impl Iterator<Item = &'a str>) -> Option<Manage> {
+    let mut next = || words.next();
+    let hero = |word: Option<&str>| word?.parse().ok().map(HeroId::new);
+    let command = match kind {
+        "army" => {
+            let army = match next()? {
+                "move" => ArmyCommand::Move {
+                    from: parse_slot(next()?)?,
+                    to: parse_slot(next()?)?,
+                },
+                "split" => ArmyCommand::Split {
+                    from: parse_slot(next()?)?,
+                    to: parse_slot(next()?)?,
+                    count: next()?.parse().ok()?,
+                },
+                "dismiss" => ArmyCommand::Dismiss {
+                    at: parse_slot(next()?)?,
+                },
+                _ => return None,
+            };
+            Manage::Army(army)
+        }
+        "formation" => Manage::Formation {
+            hero: hero(next())?,
+            formation: match next()? {
+                "loose" => Formation::Loose,
+                "tight" => Formation::Tight,
+                _ => return None,
+            },
+        },
+        "tactics" => Manage::Tactics {
+            hero: hero(next())?,
+            on: match next()? {
+                "on" => true,
+                "off" => false,
+                _ => return None,
+            },
+        },
+        "artifact" => Manage::Artifact {
+            from: parse_place(next()?)?,
+            to: parse_place(next()?)?,
+        },
+        "assemble" => Manage::Assemble {
+            hero: hero(next())?,
+            at: Position(next()?.parse().ok()?),
+        },
+        _ => Manage::Disassemble {
+            hero: hero(next())?,
+            at: Position(next()?.parse().ok()?),
+        },
+    };
+    Some(command)
 }
 
 /// Parses a command written by [`format_command`].
@@ -331,6 +468,10 @@ pub fn parse_command(text: &str) -> Result<(Actor, GameCommand)> {
                 .ok_or_else(bad)?;
             GameCommand::Adventure(AdventureCommand::MoveHero { hero, path })
         }
+        // Format v6 (E08 T51a): the management commands.
+        Some(
+            kind @ ("army" | "formation" | "tactics" | "artifact" | "assemble" | "disassemble"),
+        ) => GameCommand::Manage(parse_manage(kind, &mut words).ok_or_else(bad)?),
         _ => return Err(bad()),
     };
     if words.next().is_some() {
