@@ -1,7 +1,8 @@
 # E24 — The adventure map client
 
-Status: **refined** (2026-10-23, T0, with the user); M1 running (T1a, T1b, T2, T3a, T3b1, T3b2,
-T4a, T4b, T5a, T5b1, T5b2, T6a done; next T6b, M1's closure, `docs/lanes/map-client/QUEUE.md`).
+Status: **refined** (2026-10-23, T0, with the user); **M1 closed** (2026-10-24, T6b: the
+reviewers, the review list accepted by the user); next M2 T0, M2 refined with the user
+(`docs/lanes/map-client/QUEUE.md`).
 Lane: map-client (`docs/lanes/map-client/HANDOFF.md`: the autonomy contract, the user's asset
 notes). Opened 2026-10-23 when the user split the client lane at E17 M3's closure (CLT-Q18).
 Decisions so far live here (no ADR of its own yet; ADR-0020 and ADR-0024 bind it as they bind
@@ -139,8 +140,14 @@ autonomy contract (lane HANDOFF) says what the agent decides alone in between. T
   step between the terrains' DEFs and the rivers' leaves the rivers a step behind for the whole
   game, `E24-design.md` §1.6), each kind's step read and drawn (`Moment::river_cycles`); `h3map.py
   drawn` (ours from each situation's kept live part, the digests in
-  `map/situations/kept/drawn.txt`), the whole set (40) captured, exact, and recorded.
-- **Exit:** the capture set's stills match the original pixel for pixel outside the masks of
+  `map/situations/kept/drawn.txt`), the whole set (40) captured, exact, and recorded. T6b
+  (2026-10-24, M1's closure): three fresh reviewers (the library, the binary and its data, the
+  harness), 37 findings, 35 fixed (the fallen objects' entries taken out of built lists as
+  0x4AABB0 does, the harness's checks before its writes and of its staging, a failing situation
+  failing alone, `drawn`'s `STALE`, the refusals of what does not fit) and 2 queued (the writer's
+  edge bound, a saved game's lists); the whole set (40) captured again, exact; the review list
+  accepted by the user. **M1 closed.**
+- **Exit** (met at T6b): the capture set's stills match the original pixel for pixel outside the masks of
   what M1 does not draw (the panels, the mouse), or list each difference as an M2 item; the
   review list accepted; research item 9 closed by the reading and its frames.
 
@@ -160,7 +167,8 @@ checked frame by frame against recorded sequences as E17 M2 did for the battle.
   the engine (`h3_game`'s observation needs an object identity matching the map's object list:
   the adventure lane's inbox), the protocol's adventure messages (the server lane, E16); a battle
   handed to the battle client's viewer (CLT-Q4's background variant and CLT-Q6's colours then
-  come from the map).
+  come from the map); a loaded saved game's draw lists (the objects gone before the save: not
+  read, M1 T6b).
 - **M5, hot seat:** whole games played in-process: the handover screen when the player who must
   act changes, the level-up dialog (the inbox), the hero and town screens as play needs them;
   then live play against the server.

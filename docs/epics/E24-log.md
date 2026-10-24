@@ -476,3 +476,59 @@ One session, the user present at its start; branch `map-client/e24-t4a`.
 - **Questions:** MCL-Q5 (the rivers' cycle a step behind the terrains' for a whole game, about one
   game in seven): answered by the user in the task, (a) as built (the viewer in step, the
   comparisons the original's two steps).
+
+### M1 T6b — M1's closure: the reviewers and the review list (2026-10-24)
+
+On `map-client/e24-t6b`, the user present. **The user: T6b kept whole; the reviewers may run in
+parallel.**
+
+- **Starting point:** `master` at #456's merge; its clients code verified (#456's sandbox line),
+  the lane's scoped verify without a failing step, `drawn` all 40 the same.
+- **The reviewers:** three fresh read-only sub-agents, one per area (the drawing library; the
+  binary, the tables, the gate and the situations with the writer's extension; the harness),
+  each against the design's readings; 10, 15 and 12 findings, each checked against the code and,
+  where it named the original, against the executable (`scripts/exe.py`: 0x4AABB0's removal,
+  0x412378's 0 from 0x40F8C0, 0x4FEC30's bounds).
+- **Fixed, the library** (tests beside each): R1-1, objects fallen before a still were left out
+  of the lists, where the original builds every object's and takes a fallen one's entries out
+  (remove_map_object 0x4AABB0, read now: the later entries move down in their order): an object
+  between two others decided their order (the reviewer's case, a test); R1-2, a shroud entry 0
+  draws the full piece (0x41237F), not only the mask 255 (the same pixels with the original's
+  table); R1-3, `scene` refuses a live part that does not fit the map (the objects' count, the
+  explored tiles' size, a hero, boat or arrow off the map, a hero without an owner); R1-4, a
+  random object's drawn or own picture without a shape and a hero's DEF without frames refused,
+  not skipped; R1-6, a shape cut to the 8 × 6 cells; R1-8, the scene's doc of `bugs`; R1-9, a
+  scene of the underground; R1-10, a road's cycles refused. R1-5 and R1-7 checked by the gate
+  (none of the 2 622 templates has a visitable cell outside its `.msk`; no artifact's own picture
+  is larger than its random template), documented; MCL-Q4's approximation on the review list.
+- **Fixed, the binary and its data:** R2-1, the gate without its maps directory or with a map
+  refused passed: problems now; R2-2, `defs` without `classes` skipped silently; R2-3, `render
+  --live` checks the original's view against `--view` (the file's steps and viewer override the
+  flags, documented); R2-4, an owner past 7 became none: refused; R2-5, a random dwelling's anchor
+  only to the right on its row, its template the original's or refused; R2-6, the neutral entry's
+  room; R2-7, a missing town picture aborted the gate's report; R2-9, an object picture whose first
+  group is not group 0 a problem (D8 checks group 0, the passes draw the first); R2-10 to R2-12,
+  a situation's comment, the usage text, three messages (the writer's error, a ninth hero, a
+  shipped map's situation given to `situation`); R2-13, `--hidden` clamped to the map; R2-14,
+  `read_live`'s refusals tested, the tables' owners, towns and heroes pinned; R2-15, the purity
+  test's holes (any `bin` folder skipped, lint groups and attributes over several lines unseen,
+  the header as a substring; `h3-view`'s copy: the client lane's inbox).
+- **Fixed, the harness:** R3-1, `still` wrote into the game's memory before checking the
+  executable: `game_mem` checks xdd.dll's redirected calls and that the process read is the game
+  started (its clock directory); R3-2, a viewer's refusal or any failure stopped `set`: the
+  situation fails alone (`REFUSED`, `FAILED`), the set goes on; R3-3, the staged facings and
+  boats' colours read back, a boarded boat's facing refused; R3-4, `to_shipped`'s wait as
+  `Game.wait`; R3-5, `still`'s exit code, the docstring; R3-6, the viewer's last three lines;
+  R3-7, `still.xwd` checked to be the screen compared; R3-8, a game left running by an
+  unexpected failure on its way; R3-9, timeouts naming the state at the timeout (`wait_for`
+  takes a function, additively); R3-10, a kept live part records its situation's digest, `drawn`
+  says `STALE`; R3-11, a shipped map's situation's keys checked; R3-12, the docs, `map.toml`'s
+  `frame_deadline` and `remove_map_object`, `structs.toml`'s game vectors, the hero's object
+  under it, the loaded DEF's palette.
+- **Queued:** R2-8, the writer's edge bound one too generous (the adventure lane's crate: the
+  next writer pull request, QUEUE's inbox); a loaded saved game's draw lists (M4).
+- **Captures:** after the fixes the whole set (40), every one as recorded on its first run (the
+  rivers a step behind in three, each exact); `drawn --record`, `drawn` all the same; the kept
+  live parts carry their situations' digests.
+- **The review list** (T2 to T6b, summarised in the session) accepted by the user. **M1 closed;**
+  M2 T0 queued.
