@@ -4,6 +4,8 @@
 //! sequences' events with their creatures' numbers (the asset tables' times, the DEFs' frame
 //! counts, read from the user's archives: numbers only, ADR-0009).
 
+use alloc::collections::BTreeMap;
+use alloc::string::ToString;
 use alloc::vec;
 use alloc::vec::Vec;
 
@@ -11,15 +13,19 @@ use h3_protocol::wire::{Event, Observation, Side, Siege};
 use h3_render::Bugs;
 
 use super::siege::{
-    CATAPULT, CHAMPION, GOBLIN, HOBGOBLIN, PIKEMAN, TURRET, castle, machine_at, play_siege,
-    recorded,
+    CATAPULT, CHAMPION, GOBLIN, HOBGOBLIN, PIKEMAN, TITAN, TURRET, castle, machine_at, play_siege,
+    recorded, siege_looks,
 };
-use super::{at, snapshot, until};
-use crate::anim::{BridgeKey, Sound, Timeline};
+use super::{at, layout, snapshot, tables, until};
+use crate::anim::{
+    BridgeKey, Casts, Command, Logged, MINE_BLAST, MagicLook, ObjectLook, Sound, Speed, SpellLook,
+    Stage, Timeline, timeline,
+};
 use crate::siege::{GATE_CLOSED, GATE_MOVING, GATE_OPEN};
 
 const GATE: &str = include_str!("../../../../../situations/timelines/gate.txt");
 const MOAT: &str = include_str!("../../../../../situations/timelines/moat.txt");
+const MINE: &str = include_str!("../../../../../situations/timelines/mine.txt");
 
 /// A town's walls, the gate closed: a Fort's without a moat (`fort` 1), or with its moat's hexes.
 fn town(faction: u16, fort: u8, moat: u8, moat_hexes: Vec<u8>) -> Siege {
@@ -403,4 +409,183 @@ fn the_moat_sequence_plays_as_recorded() {
         .iter()
         .position(|(_, l)| *l == crate::anim::Logged::Moat { hit: (0, 70, 1) });
     assert!(waited < reentered);
+}
+
+/// Land Mine (spell 11 here as in the record): its object and animations (the asset tables').
+fn mine_casts() -> Casts {
+    let mut casts = Casts::default();
+    casts.spells.insert(
+        11,
+        SpellLook {
+            original: 11,
+            animation: Some(47),
+            objects: vec![ObjectLook {
+                def: "C09spF1.def".to_string(),
+                frames: 4,
+                hexes: 1,
+                rows: 1,
+                before_stacks: true,
+                placed: 47,
+                vanish: 59,
+            }],
+            object_sound: true,
+            ..SpellLook::default()
+        },
+    );
+    casts
+}
+
+/// The timeline of `snapshot` and `commands` at a Tower with Land Mine's casts and the blast
+/// (animation 57, `C09spF3.def`'s 17 frames).
+fn play_mine(snapshot: &Observation, commands: &[(Option<u32>, Vec<Event>)]) -> Timeline {
+    let layout = layout();
+    let magic = BTreeMap::from([(
+        MINE_BLAST,
+        MagicLook {
+            def: "C09spF3.def".to_string(),
+            frames: 17,
+            size: [140, 153],
+            place: 0,
+            translucent: false,
+        },
+    )]);
+    let casts = mine_casts();
+    let castle = castle();
+    let stage = Stage {
+        layout: &layout,
+        width: 17,
+        groups: tables().battle.groups,
+        magic: &magic,
+        casts: &casts,
+        bugs: Bugs::Original,
+        siege: Some(&castle),
+    };
+    let commands: Vec<Command<'_>> = commands
+        .iter()
+        .map(|(at, events)| Command { at: *at, events })
+        .collect();
+    timeline(snapshot, &commands, &siege_looks(), stage, Speed::default()).unwrap()
+}
+
+/// `mine`'s siege (`seq-mine.toml`): a Tower town's Citadel (its mines hidden from the
+/// spectator), the attacker's Titans, Pikemen and Catapult, the defender's Goblins and keep.
+fn mine_siege() -> Observation {
+    let mut catapult = machine_at(2, Side::Attacker, CATAPULT, (119, 19));
+    catapult.two_hex = true;
+    let mut titans = at(0, Side::Attacker, TITAN, 35, false);
+    titans.count = 3;
+    let mut o = snapshot(vec![
+        machine_at(4, Side::Defender, TURRET, (254, 20)),
+        titans,
+        at(1, Side::Attacker, PIKEMAN, 137, false),
+        catapult,
+        at(3, Side::Defender, GOBLIN, 100, false),
+    ]);
+    o.siege = Some(town(2, 2, 2, Vec::new()));
+    o
+}
+
+/// The Titans' walk from 35 into the town through the mid-upper wall's breach, over the mine at
+/// 61: its blast's events after the step onto it.
+fn over_the_mine() -> Vec<Event> {
+    let step = |from, to| Event::Moved { stack: 0, from, to };
+    let mut events: Vec<Event> = [35, 36, 37, 38, 39, 40, 41, 42, 43, 61]
+        .windows(2)
+        .map(|p| step(p[0], p[1]))
+        .collect();
+    events.extend([
+        Event::ObstacleRevealed {
+            side: Side::Defender,
+            spell: 11,
+            hexes: vec![61],
+        },
+        Event::ObstacleTriggered {
+            stack: 0,
+            spell: 11,
+            hex: 61,
+        },
+        Event::SpellDamage {
+            target: 0,
+            value: h3_protocol::wire::WireU64(150),
+            caster: h3_protocol::wire::WireU64(150),
+            damage: h3_protocol::wire::WireU64(150),
+            kills: 0,
+        },
+        Event::ObstacleRemoved {
+            spell: 11,
+            hexes: vec![61],
+        },
+        step(61, 78),
+        step(78, 79),
+        Event::TurnStarted { stack: 3 },
+    ]);
+    events
+}
+
+#[test]
+fn the_mine_sequence_plays_as_recorded() {
+    // `mine`: the keep defends, the Catapult breaks the mid-upper wall; the Titans walk over the
+    // mine at 61: their reaction under animation 57 (held at its last frame until the iterations
+    // left are no more than its frames), the walk going on with the moving group.
+    let o = mine_siege();
+    let turn = |stack| Event::TurnStarted { stack };
+    let commands = [
+        (Some(0), vec![Event::Defended { stack: 4 }, turn(2)]),
+        (
+            Some(0),
+            vec![
+                Event::WallShot {
+                    stack: 2,
+                    aimed: 2,
+                    part: 2,
+                    damage: 2,
+                },
+                Event::WallDestroyed { part: 2 },
+                turn(0),
+            ],
+        ),
+        (Some(3375), over_the_mine()),
+    ];
+    let t = play_mine(&o, &commands);
+    assert_eq!(until(&t.lines(), 12875), recorded(MINE, 12875));
+    // The line named by Land Mine before the blast; its sound, the move sound stopped first and
+    // started again after it.
+    assert!(t.log.iter().any(|(at, l)| *at == 9655
+        && *l
+            == Logged::SpellDamage {
+                spell: 11,
+                hit: (0, 150, 0)
+            }));
+    let at = |sound: Sound, stop: bool| -> Vec<u32> {
+        t.cues
+            .iter()
+            .filter(|c| c.stack == 0 && c.sound == sound && c.stop == stop)
+            .map(|c| c.at)
+            .collect()
+    };
+    assert_eq!(at(Sound::Mine, false), [9655]);
+    assert!(at(Sound::Move, true).contains(&9655));
+    assert!(at(Sound::Move, false).contains(&11331));
+}
+
+#[test]
+fn a_mine_the_screen_shows_goes_without_its_vanish_animation() {
+    // The defender's view shows its mines: the blast removes the one at 61 from the next frame
+    // on, without its vanish animation (59).
+    let o = mine_siege();
+    let commands = [
+        (
+            Some(0),
+            vec![Event::ObstaclePlaced {
+                side: Side::Defender,
+                spell: 11,
+                hexes: vec![61],
+            }],
+        ),
+        (Some(100), over_the_mine()),
+    ];
+    let t = play_mine(&o, &commands);
+    assert!(t.objects(200).contains_key(&61));
+    assert!(!t.objects(10_000).contains_key(&61));
+    assert!(t.spots.iter().all(|s| s.animation != 59));
 }

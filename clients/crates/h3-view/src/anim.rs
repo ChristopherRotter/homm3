@@ -5083,9 +5083,15 @@ impl Player<'_> {
             for r in reactions {
                 // It reacts once the iterations left are no more than its frames.
                 let k = i64::from(i) - (i64::from(reacting) - 1 - i64::from(r.frames));
+                // Without a striker a reaction at its last frame holds it while the iterations
+                // left are more than its frames (0x468EBA, 0x468FA1; E17 M4 T2c-1, `mine`: the
+                // Titans' 7 frames under the mine's 17).
+                let held = striker.is_none()
+                    && k >= i64::from(r.frames)
+                    && i64::from(i) < i64::from(loops) - 1 - i64::from(r.frames);
                 let frame = if (0..i64::from(r.frames)).contains(&k) {
                     u32::try_from(k).ok()
-                } else if r.died && k >= 0 {
+                } else if (r.died && k >= 0) || held {
                     r.frames.checked_sub(1)
                 } else {
                     None

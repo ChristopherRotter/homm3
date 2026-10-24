@@ -3363,3 +3363,14 @@ it), `moat` and `mine` (below). Findings:
   battle shown before, the moment's inside the rectangle), the whole battle in the fixed one.
   With it `gate`'s frames are exact but T2b's listed differences (the Catapult's first frame's
   outline row, 11 pixels at 100 and 9 359; the status line's ` log` hint, T2c-2).
+- **A Tower's mine** (`mine`: a Tower town's Citadel, the keep commanded, the spectator's
+  record): the moat's column holds only mines between the walls and the second column, so a walk
+  passes one only through a breach: the Catapult destroys the mid-upper wall (2 forced, its wall
+  hex 78 opens, BAT-SIE-012) and the Titans walk from 35 into the town (79), over the mine at 61.
+  After the step onto it, at once: the line (named by Land Mine), the blast's sound, animation 57
+  (`C09spF3.def`, 17 frames) over them with their reaction; then the walk goes on with the
+  moving group (no group 20). The screen never shows the mine on the attacker's turn. Found by
+  the timeline check: **without a striker a reaction holds its last frame** while the iterations
+  left are more than its frames (`strike_animation` 0x468EBA, 0x468FA1): the Titans' 7 frames of
+  group 3 under the animation's 17 stand at iteration 9 (max(R, L − 1 − R)), not 7; no earlier
+  recording had an animation longer than 2R + 1 over a struck stack (`thunder`'s 12 over 9 frames).

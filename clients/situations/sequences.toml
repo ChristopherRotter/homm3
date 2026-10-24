@@ -1081,5 +1081,5 @@ boxes = true
 command = [
     { seat = "Defender", command = { Defend = {} } },
     { seat = "Attacker", at = 0, command = { ShootWall = { part = 2 } } },
-    { seat = "Attacker", at = 0, command = { Move = { to = 79 } } },
+    { seat = "Attacker", at = 3375, command = { Move = { to = 79 } } },
 ]
