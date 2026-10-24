@@ -5295,7 +5295,7 @@ docs only).
 ### Increment 6, round 4: T51a, the game's management commands on one hero, their listing, the tactics flag in battle (2026-10-24, `shared/e08-t51a-legal`, `adventure/e08-t51a`)
 
 **Baseline:** `master` e816f20 (#458 merged); its engine code (31a2e374) not verified yet, so the
-sandbox ran the full verify with the original data first: BASELINE_RESULT. At its start the user
+sandbox ran the full verify with the original data first: every step passed. At its start the user
 cut T51 in two (decision 116: T51a here, T51b the meeting and the army dialog) and consented to
 `h3-sim`'s one arm (`cross-lane`). Reading the env's rollout before the build showed that
 ADR-0017 point 6's flat list would change it: the user chose the listing per hero (decision 117),
