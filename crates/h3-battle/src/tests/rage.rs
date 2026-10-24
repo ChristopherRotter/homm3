@@ -484,3 +484,35 @@ fn frenzy_lasts_through_the_stacks_next_turn() {
     assert_eq!(rounds(&s, 0, "frenzy"), None);
     assert_eq!(s.stacks()[0].spells.frenzy, 0);
 }
+
+// covers: BAT-RET-001, BAT-MAG-018
+#[test]
+fn with_quirk_bat_quirk_29_a_striker_the_fire_shield_killed_uses_up_the_retaliation() {
+    // Batch 2g FS (S-23, the original's 0x441DD4 to 0x441E01): a lone striker of 100 damage with 5
+    // hit points left dies of the shielded stack's reflection; with the quirk the struck stack
+    // spends its retaliation on it, striking nothing, so the second attacker is not struck back.
+    for (profile, struck_back) in [("t:faithful", true), ("t:nowhere", false)] {
+        let r = ruleset_with(profile, |_| {});
+        let mut s = field_of(
+            &r,
+            &[(0, "fixed", 1), (1, "fixed", 10)],
+            &[(0, "fixed", 30)],
+            &[(7, 5), (8, 4), (8, 5)],
+        );
+        give(&mut s, &r, 2, "fireshield", 1);
+        let lone = &mut s.stacks.as_mut_slice()[0];
+        (lone.damage_min, lone.damage_max, lone.top_hp) = (100, 100, 5);
+        let events = hit(&mut s, &r, 2, (7, 5));
+        assert!(!s.stacks()[0].is_alive(), "{profile}");
+        assert_eq!(strikes(&events).len(), 1, "{profile}");
+        assert_eq!(
+            s.stacks()[2].retaliations_left,
+            u8::from(struck_back),
+            "{profile}"
+        );
+        act(&mut s, &r, Command::Defend).unwrap();
+        let events = hit(&mut s, &r, 2, (8, 4));
+        let back = strikes(&events).iter().any(|&(a, t, _)| (a, t) == (2, 1));
+        assert_eq!(back, struck_back, "{profile}");
+    }
+}

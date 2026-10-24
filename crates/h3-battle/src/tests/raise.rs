@@ -721,3 +721,34 @@ fn a_side_left_with_creatures_raised_for_the_battle_only_keeps_one() {
         (1, 1)
     );
 }
+
+// covers: BAT-MAG-035
+#[test]
+fn with_quirk_bat_quirk_30_a_two_hex_corpse_is_found_by_its_rear_hex_alone() {
+    // Batch 2g RS (S-24, the original's 0x5A1917): the ogres die on (10, 7) and (11, 7), a serf
+    // later on their rear hex (10, 7): without the quirk both corpses are targets (the ogres by
+    // their front hex), with it only the serf; a serf on their front hex instead hides nothing.
+    for (profile, ogres) in [("t:faithful", true), ("t:rear_raise", false)] {
+        let r = ruleset_with(profile, |_| {});
+        let raised = |s: &BattleState| targets(s, &r, "rise");
+        let mut s = arena(
+            &r,
+            [Some(raiser(&r, 3, 0)), None],
+            &[("fixed", 1, 2, 1), ("serf", 2, 5, 5), ("ogre", 2, 10, 7)],
+            &[("serf", 1, 14, 1)],
+            1,
+        );
+        let ogre = s.stacks()[2].footprint(field(&r));
+        assert_eq!(field(&r).coords(ogre.position()), (10, 7));
+        kill(&mut s, &r, 2);
+        let mut t = s.clone();
+        place(&mut s, &r, 1, 10, 7);
+        kill(&mut s, &r, 1);
+        let expected: &[u8] = if ogres { &[1, 2] } else { &[1] };
+        assert_eq!(raised(&s), expected, "{profile}");
+        // A serf dead on the ogres' front hex covers that hex only.
+        t.stacks.as_mut_slice()[1].hex = ogre.front;
+        kill(&mut t, &r, 1);
+        assert_eq!(raised(&t), [1, 2], "{profile}");
+    }
+}

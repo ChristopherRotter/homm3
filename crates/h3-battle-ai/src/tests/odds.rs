@@ -1,10 +1,11 @@
 //! The computer's odds (0x420A80; BAT-AI-008): the strength at range, the turrets with and
 //! without the original's slip 20. The hero's value: `h3-battle`'s `tests/computer.rs`.
 
-use h3_battle::{BattleState, computer};
+use h3_battle::{BattleState, CastTarget, Command, NoopSink, apply, computer};
+use h3_content_battle::WallKind;
 use h3_contracts::{BattleSide, FortLevel, Moat};
 
-use super::{ARCHER, GOG, IMP, at_town, ruleset, ruleset_as, setup};
+use super::{ARCHER, GOG, IMP, at_town, hero_with, ruleset, ruleset_as, setup, spell};
 use crate::odds::{stronger, turrets};
 
 /// Whether `side` is the stronger at range in `state`.
@@ -70,4 +71,44 @@ fn the_turrets_count_as_creature_2_with_the_slip_else_as_themselves() {
     );
     let state = BattleState::new(&r, &town, 1).unwrap();
     assert!(is_stronger(&state, "t:faithful", BattleSide::Defender));
+}
+
+// covers: BAT-AI-008
+#[test]
+fn a_fallen_keep_counts_nothing() {
+    // The keep counts only while it stands: Earthquakes at Expert bring it down at the test
+    // town's Citadel (the attacker's hero casts one a round, every stack defends), and the turrets
+    // count nothing more.
+    let r = ruleset();
+    let mut town = at_town(
+        &r,
+        (&[(GOG, 500)], &[(IMP, 10)]),
+        (FortLevel::Citadel, Moat::Absent, 0),
+    );
+    town.heroes[0] = Some(hero_with(&r, &["quake"], 3, 999));
+    let mut state = BattleState::new(&r, &town, 1).unwrap();
+    assert_eq!(turrets(&state, &r), 4 * 126);
+    let keep_stands = |s: &BattleState| {
+        let siege = computer::siege(s).unwrap();
+        (0..siege.targets).any(|t| siege.kind(t) == Some(WallKind::Keep) && siege.stands(t))
+    };
+    let quake = Command::Cast {
+        spell: spell(&r, "quake"),
+        target: CastTarget::None,
+        second: CastTarget::None,
+    };
+    while keep_stands(&state) {
+        assert!(
+            state.round() < 50,
+            "the keep stands at round {}",
+            state.round()
+        );
+        let side = state.side_to_act().unwrap();
+        if side != BattleSide::Attacker
+            || apply(&mut state, &r, side, quake, &mut NoopSink).is_err()
+        {
+            apply(&mut state, &r, side, Command::Defend, &mut NoopSink).unwrap();
+        }
+    }
+    assert_eq!(turrets(&state, &r), 0);
 }

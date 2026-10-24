@@ -472,11 +472,12 @@ fn bad_morale_freezes_a_stack_at_its_activation() {
     let kinds: Vec<EventKind> = start.iter().map(|e| e.kind).collect();
     assert_eq!(kinds, vec![EventKind::TurnStarted { stack: StackId(0) }]);
     // Then the defender (the side that did not act last); after its turn the other two freeze,
-    // each with an event, and a new round starts.
+    // each with an event, and a new round starts. A freeze is no activation (BAT-TRN-001), so
+    // the defender still acted last: round 2 begins with the attacker's three, which freeze.
     let events = act(&mut s, &r, Command::Defend).unwrap();
     assert_eq!((count(&events, bad), s.active()), (0, Some(StackId(3))));
     let events = act(&mut s, &r, Command::Defend).unwrap();
-    assert_eq!(count(&events, bad), 2);
+    assert_eq!(count(&events, bad), 5);
     assert_eq!((s.round(), s.active()), (2, Some(StackId(3))));
     // From round 2 the first stack freezes too.
     let events = act(&mut s, &r, Command::Defend).unwrap();
@@ -654,4 +655,27 @@ fn bad_morale_happens_with_its_chance() {
         .count();
     // Morale −3: 6/24 = 25 % of 400 = 100 (σ ≈ 8.7).
     assert!((70..=130).contains(&frozen), "{frozen}");
+}
+
+// covers: BAT-TRN-001, BAT-MOR-004
+#[test]
+fn a_freeze_does_not_count_as_its_side_s_action_in_a_speed_tie() {
+    // Batch 2g FT (the original's 0x465283 to 0x46529C, 0x46502A): Blue's fast (9) acts, Red's
+    // sprite (7) freezes from bad morale, then one fixed (5) of each side: Red's goes first, Blue
+    // having acted last.
+    let r = ruleset_with("t:faithful", always);
+    let mut s = battle(
+        &r,
+        &[(0, "sprite", 1), (1, "fixed", 1)],
+        &[(0, "fast", 1), (1, "fixed", 1)],
+        1,
+    );
+    // Only the sprite can freeze: morale -3, the others 0.
+    for (i, st) in s.stacks.as_mut_slice().iter_mut().enumerate() {
+        st.morale = if i == 0 { -3 } else { 0 };
+    }
+    assert_eq!(s.active(), Some(StackId(2)));
+    let events = act(&mut s, &r, Command::Defend).unwrap();
+    assert!(events.contains(&Event::public(EventKind::BadMorale { stack: StackId(0) })));
+    assert_eq!(s.active(), Some(StackId(1)));
 }

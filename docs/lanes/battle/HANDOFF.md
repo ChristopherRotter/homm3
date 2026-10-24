@@ -4,10 +4,10 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E23 closed 2026-10-24** (`docs/epics/E23-original-battle-ai.md`, the log's "T7 — the closure"; BAT-Q52; #288 to #441, the AI lane's #442; `POLICY_VERSION` 19). **Next (the user, 2026-10-24):** one session on the inbox's leftovers (the turret-shot preview, BAT-Q62's row, the open questions below), then **E11** (`docs/epics/E11-historical-rules.md`, Q58, once #447 merges): T1 with the user's RoE and AB media.
+- **E23 closed 2026-10-24** (`docs/epics/E23-original-battle-ai.md`; `POLICY_VERSION` 19). **The inbox's leftovers (111th session):** #458 and the flags (#462) merged; batch 2g's #464 (`battle/e04b-batch-2g`, `cross-lane`) open: watch it. **Next (the user, 2026-10-24):** a fresh session for **CLT-Q4/Q6** (QUEUE), then **E11** (`docs/epics/E11-historical-rules.md`, Q58): T1 with the user's RoE and AB media.
 - E05, `h3-sim` and `h3-ffi` are the AI lane's (AI-Q1), `h3-heroes` the adventure lane's.
-- **Open:** BAT-Q28, BAT-Q32, BAT-Q35, BAT-Q58, BAT-Q62 (none blocks; BAT-Q62 waits for a row), BAT-STUB-1, the inbox (by kind since 2026-10-19), Q43; S-23, S-24, batch 2g.
-- **Versions:** battle state hash v53, battle part hash v7 (E23 T3-0; the encodings, replay format and C ABI are the AI lane's); shared: core ruleset hash v48, pack format v47 (E08 T45), protocol v34. Next ids: BAT-Q63, BAT-QUIRK-28, BAT-STUB-18, BAT-AI-025, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-24, S-30.
+- **Open:** BAT-Q28 (rows 1, 3, 5, 6, 11, 12), BAT-Q32, BAT-Q35, BAT-Q58, BAT-STUB-1, CLT-Q4, CLT-Q6, the inbox (by kind since 2026-10-19), Q43.
+- **Versions:** battle state hash v53, battle part hash v7 (E23 T3-0; the encodings, replay format and C ABI are the AI lane's); shared: core ruleset hash v48, pack format v47 (E08 T45), protocol v34, quirk flags 37 (batch 2g's PR). Next ids: BAT-Q63, BAT-QUIRK-31, BAT-STUB-18, BAT-AI-025, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-24, S-30.
 - Working agreement: increments with a user checkpoint (Q41); the user confirms seams and ADRs; batches by the user or an agent; small increments (2026-10-19).
 
 ## Standing traps
@@ -54,18 +54,14 @@ Area traps live where they are used: experiments in `docs/experiments/README.md`
 
 ## Recent sessions
 
-### 2026-10-24 (111th) — the inbox's leftovers (in progress)
+### 2026-10-24 (111th) — the inbox's leftovers
 
-The user's list: batch 2g's rows (BAT-Q62, BAT-Q28 rows 4, 7 to 10, the hypnotized stack's
-morale, two turn-order readings), the heroless side's war machines, the turret-shot preview, the
-test gaps and the `verified` clauses (`battle/inbox-leftovers`, done), CLT-Q4/Q6 seam to wire.
+#458: the heroless side's war machines, the turret-shot preview, batch 2d's replays, the
+`verified` clauses. Batch 2g and 2h played by an agent (`ai.py`'s rolls and surrender price):
+the surrender price, the hypnotized stack's morale, the wait phase, a freeze aligned; S-23, S-24
+and BAT-Q62 fix-optional quirks (BAT-QUIRK-28 to 30, flags 34 to 36, the user); three golden
+replays re-recorded. CLT-Q4/Q6 (seam to wire, the user) not done: see QUEUE.
 
 ### 2026-10-24 (110th) — E23 closed
 
 The user: close E23 now, then the inbox, then E11. Every exit criterion met (the log); CI cannot start (billing), so criterion 6 rests on #441's full local verify and the user's Windows run.
-
-### 2026-10-23 (109th) — E23 T7's rest: H1, BAT-Q33, BAT-WAR-003, slip 33
-
-The user: all four parts in one session; the let-off a fix-optional quirk of its own (BAT-QUIRK-27,
-flag 33 in #436, `cross-lane`); BAT-Q62 (the rules' breath into a side column) waits for a row.
-`full-s3-a242` re-recorded; both bot reports regenerated.

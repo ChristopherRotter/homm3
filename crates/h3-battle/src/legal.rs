@@ -98,7 +98,8 @@ fn turn_commands(
     (id, mover): (StackId, &Stack),
     out: &mut LegalCommands,
 ) {
-    if !mover.flags.contains(StackFlags::WAITED) {
+    // rule: BAT-TRN-002
+    if !mover.flags.contains(StackFlags::WAITED) && !state.wait_phase {
         let _ = out.push(Command::Wait);
     }
     let _ = out.push(Command::Defend);

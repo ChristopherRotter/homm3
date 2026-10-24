@@ -41,11 +41,13 @@ pub(crate) fn next_active(state: &BattleState) -> Option<StackId> {
                 && !passed_without_turns(s)
         })
         .min_by_key(|(id, s)| {
-            // Phases: normal, waited during a good-morale turn, waited (BAT-MOR-003).
-            let phase = match (
-                s.flags.contains(StackFlags::WAITED),
-                s.flags.contains(StackFlags::HAD_MORALE),
-            ) {
+            // Phases: normal, waited during a good-morale turn, waited (BAT-MOR-003). Once the
+            // wait phase has begun every stack not done is a waited one (the original's pick
+            // clears the waited bits there and orders all alike, 0x4652A7, 0x464FDB): a stack
+            // created in the wait phase takes its place by its speed, the slower first (batch 2g
+            // WP: the Pikemen before the elementals summoned there).
+            let waited = s.flags.contains(StackFlags::WAITED) || state.wait_phase;
+            let phase = match (waited, s.flags.contains(StackFlags::HAD_MORALE)) {
                 (false, _) => 0,
                 (true, true) => 1,
                 (true, false) => 2,
@@ -263,10 +265,15 @@ fn activate<S: Sink>(
         // A waited stack acts once no other is left: the round's wait phase has begun (the
         // original's +0x13DE4, BAT-MAG-056).
         state.wait_phase |= state.at(id).flags.contains(StackFlags::WAITED);
+        let waiting = state.wait_phase;
         let stack = state.at_mut(id);
         // rule: BAT-TRN-004
         stack.flags.set(StackFlags::DEFENDING, false);
-        let first = !stack.flags.contains(StackFlags::STARTED);
+        // The turn start runs at a stack's first activation of the round outside the wait phase:
+        // the original's pick runs none there (0x465211 to 0x46521D), so a stack first picked
+        // in the wait phase (created there) gets none that round (batch 2g TS: waited Wights
+        // wounded after their wait do not regenerate in the wait phase).
+        let first = !stack.flags.contains(StackFlags::STARTED) && !waiting;
         stack.flags.set(StackFlags::STARTED, true);
         sink.emit(Event::public(EventKind::TurnStarted { stack: id }));
         if first {
@@ -279,20 +286,30 @@ fn activate<S: Sink>(
             next = pick(state, ruleset, sink);
             continue;
         }
+        // A frozen stack goes back to the pick without an activation (0x465283 to 0x46529C):
+        // the speed tie-break still goes by the side that acted before it (BAT-TRN-001; batch
+        // 2g FT: after Blue's Griffins and Red's frozen Wolf Riders, Red's Demons before Blue's
+        // Medusas of equal speed).
+        let mut activated = true;
         // rule: BAT-MOR-004
         if checks && morale::bad_morale(state, ruleset, id) {
             sink.emit(Event::public(EventKind::BadMorale { stack: id }));
             state.at_mut(id).flags.set(StackFlags::ACTED, true);
+            activated = false;
         // rule: BAT-MAG-060
         } else if checks && morale::frightened(state, ruleset, id) {
             sink.emit(Event::public(EventKind::Frightened { stack: id }));
             state.at_mut(id).flags.set(StackFlags::ACTED, true);
+            activated = false;
         } else if begins(state, ruleset, id, sink) {
             break;
         }
         // Later picks follow an action: the original's dispatcher asks with the checks on.
         checks = true;
-        state.last_side_acted = Some(acted_side(state.at(id)));
+        // rule: BAT-TRN-001
+        if activated {
+            state.last_side_acted = Some(acted_side(state.at(id)));
+        }
         // A war machine's shot can end the battle.
         next = if state.result.is_some() {
             None

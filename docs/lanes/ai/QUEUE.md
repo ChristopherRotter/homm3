@@ -55,6 +55,15 @@ Sorted by destination at E05's audit (T9a, 2026-10-19); the origin stays in brac
 done: BAT-Q33's point for E05 (AI-Q3, ADR-0025 point 6), the `h3-game` coverage gap of a pending
 Pass offer (fixed by the adventure lane's fixed tests, #266).
 
+- 2026-10-24 (the battle lane, `battle/e04b-batch-2g` on `shared/batch-2g-quirks`, both
+  `cross-lane` with the user's consent; for your information): **batch 2g's rules.** In the wait
+  phase every stack not done is ordered alike, slower first, and none may Wait (`legal_commands`
+  lists no Wait there: your masks follow it); a freeze no longer counts as its side's action in
+  the speed tie-break; a hypnotized stack's morale and luck are its controller's; the surrender
+  price leaves Basic Resurrection's temporary creatures out; three fix-optional quirks on in
+  `faithful` (flags 34 to 36: a breath never reaches a side column, a retaliation spent on a
+  striker the Fire Shield killed, a raise finding a two-hex corpse by its rear hex). The shared
+  pull request regenerated your two bot reports (their hash lines).
 - 2026-10-24 (the battle lane, `battle/inbox-leftovers`; **for you**, your E06 T6a request):
   **a commanded turret's shot is previewed as it is made** (BAT-DMG-011, BAT-SIE-018):
   `h3_battle::preview` gives its creature's least and greatest damage times its count through the

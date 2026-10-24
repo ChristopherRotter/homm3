@@ -529,3 +529,42 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Defaults: faithful = on, strict-fixed = off
 - Regression test: `crates/h3-battle/src/tests/morale.rs`, `with_bat_quirk_27_a_side_without_a_human_player_escapes_one_freeze_in_four` (with and without the flag, a human side and one without)
 - Decided by / date: user, 2026-10-23 (E23 T7, BAT-Q33)
+
+### BAT-QUIRK-28 — A breath never reaches a side column (batch 2g; BAT-Q62)
+- Class: fix-optional (the user, 2026-10-23: the original's breath in `faithful` if a row confirms the reading; confirmed 2026-10-24)
+- Context / rules affected: battle, BAT-ATK-003 (the breath's second hex)
+- Original behavior: the breath's second hex is found through the battle's neighbour table (+0x13468, filled by 0x4640A0), which has no entry in the side columns 0 and 16 (melee_strike 0x441739: 0x523DF0 from the striker, then 0x523D90 one further), so a breath never reaches a hex there: a war machine's rear hex is not struck. Observed: batch 2g BR, a Red Dragon's head on (15, 5) striking Pikemen on (15, 4): the Ballista whose rear hex is (16, 3) kept its 250; BC, the control: struck from (13, 3) onto (14, 3), the breath took 63 off the Ballista's front hex (15, 3).
+- Intended/expected behavior: the stack behind the attacked hex is struck wherever it stands (VCMI's pattern; the wiki is silent).
+- Impact: rare (a war machine behind a stack in column 1 or 15, in the breath's line)
+- Community status: unknown
+- Sources: original-data (`docs/formats/installation.md`, OPEN-QUESTIONS BAT-Q62); observation (`experiments/results/E04b-batch-2g.md` BR, BC)
+- Flag: `quirk.battle.breath_skips_side_columns` (registry position 34, `shared/batch-2g-quirks`)
+- Defaults: faithful = on, strict-fixed = off
+- Regression test: `crates/h3-battle/src/tests/abilities.rs`, `with_quirk_bat_quirk_28_a_breath_never_reaches_a_side_column` (with and without the flag, the control in column 15)
+- Decided by / date: user, 2026-10-23 and 2026-10-24 (BAT-Q62, batch 2g)
+
+### BAT-QUIRK-29 — The retaliation is spent on a striker the Fire Shield killed (batch 2g; survey S-23, BAT-Q28 row 4)
+- Class: fix-optional (the user, 2026-10-24)
+- Context / rules affected: battle, BAT-RET-001 (retaliation), BAT-MAG-018 (Fire Shield)
+- Original behavior: a striker killed by its target's Fire Shield reflection is struck back all the same: the target spends its retaliation on it and strikes nothing (0x441DD4 to 0x441E01), so the round's next attacker is not struck back. Observed: batch 2g FS, an Archangel with 15 hit points left attacks 20 Efreet Sultans and dies of the reflection; their retaliations left (+0x454) fall from 1 to 0 in its action, and the Royal Griffins attacking next lose only the reflection.
+- Intended/expected behavior: no retaliation at a dead striker (VCMI; HotA 1.7.1 fixed it: "when attacking stack died from Fire Shield, retaliation strike into nowhere still happened").
+- Impact: rare (a striker the reflection kills, then another attacker in the round)
+- Community status: known (the HotA changelog)
+- Sources: original-data (`docs/formats/installation.md` §7, the E04b review r2b F-2); observation (`experiments/results/E04b-batch-2g.md` FS); community (HotA 1.7.1's changelog, the wiki checks in `docs/experiments/README.md`)
+- Flag: `quirk.battle.retaliation_at_a_dead_striker` (registry position 35, `shared/batch-2g-quirks`)
+- Defaults: faithful = on, strict-fixed = off
+- Regression test: `crates/h3-battle/src/tests/rage.rs`, `with_quirk_bat_quirk_29_a_striker_the_fire_shield_killed_uses_up_the_retaliation` (with and without the flag)
+- Decided by / date: user, 2026-10-24 (batch 2g)
+
+### BAT-QUIRK-30 — A raise finds a two-hex corpse by its rear hex alone (batch 2g; survey S-24, BAT-Q28 row 10)
+- Class: fix-optional (the user, 2026-10-24)
+- Context / rules affected: battle, BAT-MAG-035 (Resurrection's and Animate Dead's targets)
+- Original behavior: a hero's raising spell aimed at a two-hex corpse raises the top corpse on that corpse's rear hex (0x5A1917), so a later corpse there hides the two-hex one, aimed at either of its hexes. Observed: batch 2g RS, Wolf Riders die, a Swordsman later on their rear hex; Resurrection aimed at the Wolf Riders' head raises the Swordsman.
+- Intended/expected behavior: the corpse aimed at comes back (VCMI; HotA 1.5.4 fixed it: a two-hex corpse whose hind hex a one-hex corpse covers "could not be targeted ... even when pointing at its front hex").
+- Impact: rare (a later corpse on a two-hex corpse's rear hex)
+- Community status: known (the HotA changelog)
+- Sources: original-data (`docs/formats/installation.md` §7, the E04b review r4a F-5); observation (`experiments/results/E04b-batch-2g.md` RS); community (HotA 1.5.4's changelog)
+- Flag: `quirk.battle.raise_by_rear_hex` (registry position 36, `shared/batch-2g-quirks`)
+- Defaults: faithful = on, strict-fixed = off
+- Regression test: `crates/h3-battle/src/tests/raise.rs`, `with_quirk_bat_quirk_30_a_two_hex_corpse_is_found_by_its_rear_hex_alone` (with and without the flag, a corpse on the front hex as the control)
+- Decided by / date: user, 2026-10-24 (batch 2g)

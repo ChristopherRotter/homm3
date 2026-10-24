@@ -251,10 +251,16 @@ fn basic_resurrection(ballista: bool) {
         .collect();
     assert_eq!(raised, [(90, 3, true)]);
     assert_eq!((left(&s).0, s.temporary(StackId(swordsmen))), (8, 3));
+    // Batch 2g SP (RA2's battle): the surrender price leaves the temporary three out, 750 before
+    // and after the raise, and 0 once fewer are left than were raised (a Ballista adds 1 250).
+    let price = |s: &BattleState| s.surrender_price(&r, BattleSide::Attacker);
+    let machine = if ballista { 1250 } else { 0 };
+    assert_eq!(price(&s), Some(750 + machine));
     turn(&mut s, &r, swordsmen, Command::Defend);
     let events = turn(&mut s, &r, peasants, cast(bolt, stack(swordsmen)));
     assert_eq!(spell_damage(&events), [(swordsmen, 185, 6)]);
     assert_eq!(left(&s).0, 2);
+    assert_eq!(price(&s), Some(machine));
     turn(&mut s, &r, peasants, Command::Defend);
     // From round 3: the Swordsmen walk to the Peasants and attack; the Peasants Defend.
     for _ in 0..40 {

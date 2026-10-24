@@ -788,3 +788,31 @@ fn directions_turn_clockwise_and_connect_neighbours() {
     assert_eq!(f.direction(b, a), Some(Direction::TopRight));
     assert_eq!(f.direction(a, at(&r, 9, 5)), None);
 }
+
+// covers: BAT-ATK-003
+#[test]
+fn with_quirk_bat_quirk_28_a_breath_never_reaches_a_side_column() {
+    // Batch 2g BR, BC (BAT-Q62): the drake's front hex on (15, 5) strikes the stack on (15, 4),
+    // and the defender's Ballista's rear hex (16, 3) lies up-right behind it: VCMI's pattern
+    // breathes onto it, the original's neighbour table (no side columns) does not. The control:
+    // from (13, 3) onto the stack on (14, 3) the breath reaches the Ballista's front hex (15, 3).
+    for (profile, reaches) in [("t:faithful", true), ("t:table_breath", false)] {
+        let r = ruleset_with(profile, |_| {});
+        let ballista = r.creature_by_key("t:ballista").unwrap();
+        let led = crate::BattleSetup {
+            heroes: [None, Some(bare_hero(&r))],
+            war_machines: [vec![], vec![ballista]],
+            ..setup(&r, &[(0, "drake", 10)], &[(0, "fixed", 10)])
+        };
+        // Stacks: 0 the drake, 1 the fixed, 2 the Ballista on (16, 3), its front hex (15, 3).
+        let mut s = BattleState::new(&r, &led, 1).unwrap();
+        assert_eq!(field(&r).coords(s.stacks()[2].hex), (16, 3));
+        arrange(&mut s, &r, &[(14, 5), (15, 4)]);
+        let events = hit(&mut s, &r, 1, (14, 5));
+        assert_eq!(targets_of(&events, 0).contains(&2), reaches, "{profile}");
+        let mut s = BattleState::new(&r, &led, 1).unwrap();
+        arrange(&mut s, &r, &[(12, 3), (14, 3)]);
+        let events = hit(&mut s, &r, 1, (12, 3));
+        assert_eq!(targets_of(&events, 0), [1, 2], "{profile}");
+    }
+}

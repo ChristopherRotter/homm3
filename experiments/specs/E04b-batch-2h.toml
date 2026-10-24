@@ -1,0 +1,221 @@
+# Experiment batch 2g's second map (the battle lane's inbox, 2026-10-24; the first is
+# E04b-batch-2g.toml): the E04b review's rows 8 and 9 (OPEN-QUESTIONS BAT-Q28), a hypnotized
+# stack's morale and luck (BAT-MAG-026, BAT-SIE-025; installation.md §7.32), the turn start the
+# original skips in the wait phase (0x446E30; §7.25's review re-read) and the good morale the
+# dispatcher rolls before a stack re-enters its hexes (0x47927A, 0x441F70; §7.18).
+#
+# Played by an agent on the capture harness (experiments/agent/ai.py, its recipe
+# experiments/agent/E04b-batch-2h.toml): one map per encounter (`--only <id>`), hot seat with Red
+# and Blue human, so the agent commands both armies from the recipe's plans (every other turn
+# defends); the clock stepped 10 ms at a time and the game's memory read after each step (the
+# stacks' hexes, counts, lost hit points, flags, morale +0x4E8, luck +0x4EC and retaliations
+# +0x454; the battle manager's action; the forced rolls' counters). Good and bad morale are forced
+# to fail unless a run says otherwise (the runbook's "Forced rolls"), so no extra turn or freeze
+# spoils an order.
+#
+# Predictions are for the agent who evaluates the results; the template never shows them. "The
+# reading" is the code reading the row names; "the engine" is h3-battle's faithful profile at the
+# batch's base (master f89aa89). On grass Castle, Rampart and Conflux creatures are natives (+1
+# attack, defense and speed; BAT-TER-001). Formations (BAT-SET-001, loose): k stacks on these
+# rows of column 1 (Red) or 15 (Blue): 1 [5], 2 [2, 8], 3 [2, 5, 8], 4 [0, 4, 6, 10]; hex = 17 x
+# row + column; a two-hex stack's hex is its rear one (Red's left, Blue's right; BAT-GEO-002).
+# Heroes at level 1 with resource or adventure-only specialties; casters get a Spell Book and only
+# the listed spell (the book's first place); full mana, 10 x knowledge.
+#
+# Not staged: BAT-Q28 row 6 (a raised stack's turn) and the rows the user left for later (1, 3,
+# 5, 11, 12, 13's statistics).
+
+[map]
+name = "E04b batch 2h"
+description = "Engine-generated experiment map (E04b, batch 2g's second map): morale and the turn order. Follow the results template."
+size = 36
+terrain = "grass"
+instructions = [
+    "Played by an agent (experiments/agent/ai.py with experiments/agent/E04b-batch-2h.toml): one map per encounter, `h3-experiment E04b-batch-2h.toml --only <id>`. By hand: copy the map into `Maps`, start it in hot seat (Red and Blue human), select the Red hero and step east into the Blue hero; you command both sides.",
+    "Every stack defends unless the procedure says otherwise; a stack that gets an extra turn from good morale defends.",
+    "\"Up-right\", \"up-left\", \"down-left\", \"down-right\" mean the neighbouring hex in that direction; rows are counted from the top (row 0) to the bottom (row 10), columns from the left (0) to the right (16).",
+    "Fill in this file (anything unexpected goes into the last line of an encounter) and keep it in the repo.",
+]
+
+# --- BAT-MAG-026, BAT-SIE-025: a hypnotized stack's morale and luck -------------------------------
+
+[[encounter]]
+id = "HM"
+title = "A hypnotized stack's morale and luck: its controller's or its owner's"
+questions = ["BAT-MAG-026", "BAT-SIE-025", "BAT-MOR-002"]
+procedure = [
+    "Attack the Blue hero. Right-click Blue's Swordsman: morale, luck.",
+    "Round 1, the Wolf Riders' turn: Red casts Hypnotize on the Swordsman; right-click it: morale, luck. The Wolf Riders Defend. The Swordsman (Red's now) Defends; its morale and luck again. Blue's Dwarves Defend.",
+    "Round 2: every stack Defends; the Swordsman's morale and luck at its turn. Retreat with Red.",
+]
+predictions = """
+Red: Expert Leadership (+3), Expert Luck (+3), one alignment (+1): morale 3 (the clamp), luck 3.
+Blue: no skills, two alignments (Castle, Rampart): morale 0, luck 0.
+- The reading (0x469750 after every action, from the controller +0xF4 while +0x288 is set;
+  installation.md §7.32): from the cast's end on the hypnotized Swordsman has **morale 3 and
+  luck 3**.
+- The engine (BAT-MAG-026: its own side's): **0 and 0**.
+"""
+[encounter.hero]
+type = "Clavius"
+specialty = "resource gold"
+primary = [0, 0, 2, 2]
+skills = [["Leadership", 3], ["Luck", 3]]
+army = [["Wolf Rider", 5]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Hypnotize"]
+[encounter.opponent.hero]
+name = "HMb"
+type = "Kyrre"
+specialty = "skill Logistics"
+primary = [0, 0, 1, 1]
+army = [["Swordsman", 1], ["Dwarf", 10]]
+[[encounter.record]]
+field = "the Swordsman's morale and luck: before, after the Hypnotize, at its turn, in round 2"
+[[encounter.record]]
+field = "anything odd"
+
+# --- BAT-Q28 row 8: the wait phase's order and Wait ------------------------------------------------
+
+[[encounter]]
+id = "WP"
+title = "Elementals summoned in the wait phase: who acts next, and is Wait offered"
+questions = ["BAT-Q28", "BAT-TRN-002", "BAT-MAG-039"]
+procedure = [
+    "Attack the Blue hero. Round 1: Blue's Swordsmen Defend; Red's Pikemen Wait, then the Peasants Wait.",
+    "The wait phase: the Peasants' turn: Red casts Air Elemental; the Peasants Defend. Which stack acts next, the Pikemen or the elementals? On the elementals' turn: is the Wait button lit? They Defend (the WK run: press W).",
+    "Retreat with Red at its next turn.",
+]
+predictions = """
+Speeds on grass: Peasants 3, Pikemen 5, Air Elementals 8 (natives), Blue's Swordsmen 6.
+- The reading (0x4652A7, 0x464FDB; BAT-Q28 row 8): every stack not done is ordered alike in the
+  wait phase, the slower first: **the Pikemen act before the elementals**; the Wait button is
+  disabled (0x478755, control 2009); a Wait that arrives anyway (the key) costs the stack its
+  turn (0x479906, its bit never cleared before the round's end).
+- The engine (BAT-TRN-002): a stack that has not waited goes before every waited one: **the
+  elementals act next** and may Wait, acting once more after the Pikemen.
+"""
+[encounter.hero]
+type = "Nagash"
+specialty = "resource gold"
+primary = [0, 0, 2, 3]
+army = [["Peasant", 10], ["Pikeman", 10]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Air Elemental"]
+[encounter.opponent.hero]
+name = "WPb"
+type = "Sylvia"
+specialty = "skill Navigation"
+primary = [0, 0, 1, 1]
+army = [["Swordsman", 5]]
+[[encounter.record]]
+field = "after the summon in the wait phase: the next stack (Pikemen/elementals); the Wait button on the elementals' turn (lit/disabled); with W pressed (WK): what happened"
+[[encounter.record]]
+field = "anything odd"
+
+# --- BAT-Q28 row 9: a freeze and the speed tie ------------------------------------------------------
+
+[[encounter]]
+id = "FT"
+title = "A stack frozen by bad morale, then a speed tie across the sides"
+questions = ["BAT-Q28", "BAT-TRN-001", "BAT-MOR-004"]
+procedure = [
+    "Attack the Blue hero. Round 1: Blue's Royal Griffins Defend. Red's Wolf Riders freeze from bad morale (the harness forces the roll). Then the Demons (Red) and the Medusas (Blue), both of speed 5: which acts first? Every stack Defends.",
+    "Retreat with Red at its next turn.",
+]
+predictions = """
+Red: Stronghold, Inferno, Necropolis (-1) and the Skeletons (undead, -1): morale -2 for the Wolf
+Riders and the Demons. Blue: Castle and Dungeon: 0. Speeds: Royal Griffins 10 (natives), Wolf
+Riders 6, Demons 5, Medusas 5, Skeletons 4.
+- The reading (0x465283 to 0x46529C, 0x46502A; BAT-Q28 row 9): a freeze is no activation, so
+  Blue's Griffins acted last: **the Demons go first**.
+- The engine (BAT-TRN-001 counts the freeze as Red's action): **the Medusas go first**.
+"""
+[encounter.hero]
+type = "Saurug"
+specialty = "resource gems"
+primary = [0, 0, 1, 1]
+army = [["Wolf Rider", 5], ["Demon", 5], ["Skeleton", 5]]
+[encounter.opponent.hero]
+name = "FTb"
+type = "Sephinroth"
+specialty = "resource crystal"
+primary = [0, 0, 1, 1]
+army = [["Royal Griffin", 2], ["Medusa", 5]]
+[[encounter.record]]
+field = "the Wolf Riders froze (yes/no); then first: Demons/Medusas"
+[[encounter.record]]
+field = "anything odd"
+
+# --- The turn start the wait phase skips ------------------------------------------------------------
+
+[[encounter]]
+id = "TS"
+title = "Wights wounded after they waited: do they regenerate in the wait phase"
+questions = ["BAT-Q28", "BAT-TRN-002", "BAT-TRN-005"]
+procedure = [
+    "Attack the Blue hero. Round 1: the Wights Wait. Blue's Dwarves' turn: Blue casts Magic Arrow at the Wights (20: one dies, the top one loses 2); the Dwarves Defend.",
+    "The wait phase, the Wights' turn: right-click them: health of the top one. They Defend.",
+    "Round 2, the Wights' turn: the top one's health again. Retreat with Red.",
+]
+predictions = """
+Wights 18 health, speed 5, regenerate at their turn's start; Dwarves 4 (natives).
+- The reading (the pick runs no turn start 0x446E30 in the wait phase, 0x465211 to 0x46521D):
+  in the wait phase **the top Wight stays at 16**; at round 2's turn it is whole again.
+- The engine (the turn start at every activation): **it regenerates to 18** in the wait phase.
+"""
+[encounter.hero]
+type = "Rissa"
+specialty = "resource mercury"
+primary = [0, 0, 1, 1]
+army = [["Wight", 5]]
+[encounter.opponent.hero]
+name = "TSb"
+type = "Halon"
+specialty = "skill Mysticism"
+primary = [0, 0, 1, 1]
+army = [["Dwarf", 10]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Magic Arrow"]
+[[encounter.record]]
+field = "the top Wight's health: after the Magic Arrow, at its wait-phase turn, at round 2's turn"
+[[encounter.record]]
+field = "anything odd"
+
+# --- The good morale rolled before a stack re-enters its hexes --------------------------------------
+
+[[encounter]]
+id = "MR"
+title = "Archers that shoot from a Fire Wall and burn to death: is good morale rolled first"
+questions = ["BAT-MOR-003", "BAT-MAG-028"]
+procedure = [
+    "Attack the Blue hero. Round 1: Blue's Wolf Riders' turn: Blue casts Fire Wall at (2, 5), the hex right of the Archers (it burns on (2, 5) and (1, 4)); the Wolf Riders Defend. The Archers walk onto (2, 5) and burn (30: 2 of 5 left).",
+    "Round 2: the Wolf Riders Defend. The Archers shoot them; they burn again where they stand and die. (The harness forces the next good-morale draw to fall just before the shot.) The battle ends.",
+    "The MRc run: no Fire Wall; the Archers Defend in round 1 and shoot in round 2: the control, where the forced draw gives them another turn.",
+]
+predictions = """
+Fire Wall at no mastery: 10 x 2 + 10 = 30 a burn; the Archers' morale 1 (one alignment).
+- The reading (the dispatcher's strike case 0x47927A rolls good morale, 0x464920, before the
+  stack re-enters its hexes, 0x441F70): the forced draw is taken by the dying Archers (the
+  harness's pending count drops to 0; their record may keep the good-morale bit 0x1000000).
+- The engine (re-enter first, BAT-MAG-028, then no roll for a dead stack): the draw stays
+  pending; the battle has ended.
+- MRc: the draw is taken and the Archers get another turn (both).
+"""
+[encounter.hero]
+type = "Voy"
+specialty = "skill Navigation"
+primary = [0, 0, 1, 1]
+army = [["Archer", 5]]
+[encounter.opponent.hero]
+name = "MRb"
+type = "Axsis"
+specialty = "skill Mysticism"
+primary = [0, 0, 2, 1]
+army = [["Wolf Rider", 5]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Fire Wall"]
+[[encounter.record]]
+field = "the Archers' count after the walk; after the shot (dead?); the forced draw taken (yes/no); the good-morale bit"
+[[encounter.record]]
+field = "anything odd"

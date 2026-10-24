@@ -4,7 +4,7 @@
 //! A dead stack lies on its hexes as a corpse, the last to die on top
 //! ([`BattleState::corpse`]). The Phoenix's rebirth raises it the same way (BAT-MAG-059).
 
-use h3_content::SACRIFICE_TESTS_AS_RESURRECTION;
+use h3_content::{RAISE_BY_REAR_HEX, SACRIFICE_TESTS_AS_RESURRECTION};
 use h3_content_battle::BattleSpell;
 use h3_content_battle::{Ability, BattleRuleset};
 use h3_contracts::BattleSide;
@@ -54,12 +54,16 @@ pub(crate) fn mark_corpses(state: &mut BattleState) {
 /// Dead, case 0x5A8467): the spell whose conditions, level and immunities apply and, unless the
 /// test has none, the hit points the cast raises, with the caster's bonuses for that spell, which
 /// must reach one creature's health. A sacrifice that finds its stack by another spell's test
-/// (quirk BAT-QUIRK-5) then asks its `own` of the stack found ([`sacrifice_admits`]).
+/// (quirk BAT-QUIRK-5) then asks its `own` of the stack found ([`sacrifice_admits`]). A hero's
+/// raising spell searches again from the found stack's position (`hero_raise`: with quirk
+/// BAT-QUIRK-30 a two-hex corpse is found by its rear hex alone, 0x5A1917); a sacrifice and a
+/// stack raiser raise the stack they found (0x5A1A49, 0x4485BE).
 #[derive(Clone, Copy)]
 pub(crate) struct RaiseTest<'r> {
     spell: SpellRef<'r>,
     hit_points: Option<(u64, SpellBonus)>,
     own: Option<SpellRef<'r>>,
+    hero_raise: bool,
 }
 
 /// The test of a stack raiser's raise (BAT-MAG-051; the original's 0x5A3CC0 with its third
@@ -78,6 +82,7 @@ pub(crate) const fn creature_test(spell: SpellRef<'_>, hit_points: u64) -> Raise
             },
         )),
         own: None,
+        hero_raise: false,
     }
 }
 
@@ -101,6 +106,7 @@ pub(crate) fn test_for<'r>(
             spell: (id, spell),
             hit_points: None,
             own: None,
+            hero_raise: false,
         },
         (true, Some((t, s))) => RaiseTest {
             spell: (t, s),
@@ -109,11 +115,13 @@ pub(crate) fn test_for<'r>(
                 hero.magic.bonuses.spell(t),
             )),
             own: Some((id, spell)),
+            hero_raise: false,
         },
         (false, _) => RaiseTest {
             spell: (id, spell),
             hit_points: Some((base_value(hero, spell, at), hero.magic.bonuses.spell(id))),
             own: None,
+            hero_raise: true,
         },
     }
 }
@@ -186,10 +194,13 @@ pub(crate) fn raisable(
     test: RaiseTest<'_>,
     s: StackId,
 ) -> bool {
+    // With quirk BAT-QUIRK-30 a hero's raising spell finds a two-hex corpse by its rear hex
+    // alone (0x5A1917; batch 2g RS).
+    let rear = test.hero_raise && ruleset.quirks().is_enabled(RAISE_BY_REAR_HEX);
     let found = if state.at(s).is_alive() {
         eligible(state, ruleset, side, test, s)
     } else {
-        on_top(state, ruleset, s, |t| {
+        on_top(state, ruleset, (s, rear), |t| {
             eligible(state, ruleset, side, test, t)
         })
     };
@@ -202,13 +213,13 @@ pub(crate) fn raisable(
 }
 
 /// Whether the dead stack `s` is a corpse that `qualifies`, whose hexes hold no living stack and
-/// are not blocked (an obstacle, Force Field), and which on one of its hexes lies above every
-/// other such corpse that qualifies (BAT-MAG-035, BAT-MAG-052; the original's searches from the
-/// last corpse of a hex, 0x5A3CC0, 0x5A3F50, 0x5A3E40).
+/// are not blocked (an obstacle, Force Field), and which on one of its hexes (its position alone
+/// with `rear`) lies above every other such corpse that qualifies (BAT-MAG-035, BAT-MAG-052; the
+/// original's searches from the last corpse of a hex, 0x5A3CC0, 0x5A3F50, 0x5A3E40).
 fn on_top(
     state: &BattleState,
     ruleset: &BattleRuleset,
-    s: StackId,
+    (s, rear): (StackId, bool),
     qualifies: impl Fn(StackId) -> bool,
 ) -> bool {
     // The cheap tests first: most dead stacks are the other side's or out of the test.
@@ -221,17 +232,22 @@ fn on_top(
     if covers(field, state, s, occupied) {
         return false;
     }
-    state.at(s).footprint(field).hexes().any(|h| {
-        !(0u8..).take(state.stacks.len()).map(StackId).any(|t| {
-            let (other, above) = (state.at(t), state.corpse(t));
-            !other.is_alive()
-                && above > corpse
-                && above != NO_CORPSE
-                && other.footprint(field).hexes().any(|x| x == h)
-                && qualifies(t)
-                && !covers(field, state, t, occupied)
+    let footprint = state.at(s).footprint(field);
+    let position = footprint.position();
+    footprint
+        .hexes()
+        .filter(|&h| !rear || h == position)
+        .any(|h| {
+            !(0u8..).take(state.stacks.len()).map(StackId).any(|t| {
+                let (other, above) = (state.at(t), state.corpse(t));
+                !other.is_alive()
+                    && above > corpse
+                    && above != NO_CORPSE
+                    && other.footprint(field).hexes().any(|x| x == h)
+                    && qualifies(t)
+                    && !covers(field, state, t, occupied)
+            })
         })
-    })
 }
 
 /// Whether the dead stack `s` is a corpse a corpse raiser of `side` may raise (BAT-MAG-052; the
@@ -248,7 +264,7 @@ pub(crate) fn corpse_raisable(
         let stack = state.at(t);
         stack.side == side && stack.has(StackTraits::ALIVE)
     };
-    !state.at(s).is_alive() && on_top(state, ruleset, s, qualifies)
+    !state.at(s).is_alive() && on_top(state, ruleset, (s, false), qualifies)
 }
 
 /// Whether one of stack `t`'s hexes is in `set`.

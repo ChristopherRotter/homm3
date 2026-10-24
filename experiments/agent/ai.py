@@ -27,10 +27,21 @@ active spells. Writes <out>/<run>/opening.json, timeline.jsonl (every change), t
 line per stack's turn: who, the round, frozen or not, the actions written while it was active and
 what changed) and prints one line per turn. Only reads the game; never the installation.
 
+Since batch 2g (the battle lane's inbox, 2026-10-24) a plan step may also be done before the
+stack's command, in the same turn: `roll` (argument `[roll, "falls" | "fails", count]`: the next
+`count` draws of that roll, the runbook's "Forced rolls") and `price` (the surrender dialog
+opened by its button, the numbers of its text written to prices.jsonl, the dialog cancelled);
+every state records the forced rolls' counters (`rolls`: forced so far, still pending) and each
+stack's retaliations left (+0x454); at every commanded turn the battle window's Surrender,
+Retreat and Wait buttons (2001, 2002, 2009: their bytes +0x10 to +0x40, the state 0x1000 a
+disabled one's) go to controls.jsonl. The run is played again when either side's hero wears an
+artifact the spec did not give (hot seat gives both players a random starting bonus).
+
 Needs clients/capture/setup.sh run once and `cargo build --release -p h3-experiment`.
 """
 
 import json
+import re
 import struct
 import subprocess
 import sys
@@ -58,7 +69,14 @@ SPEC_ARTIFACTS = {0, 3, 4, 5, 6}
 # Stack record (structs.toml, battle_stack): name -> offset (i32).
 STACK = {"creature": 0x34, "hex": 0x38, "count": 0x4C, "lost": 0x58, "flags": 0x84,
          "hit_points": 0xC0, "turned": 0x4F0, "morale": 0x4E8, "luck": 0x4EC,
-         "drawn": 0x4E0}  # a Faerie Dragon's drawn spell, its last activation's
+         "drawn": 0x4E0,  # a Faerie Dragon's drawn spell, its last activation's
+         "retaliations": 0x454}  # retaliations left this round (structs.toml)
+# The battle window (town.py): +0x132FC, its items a list from +0x2C (next +0x8, id i16 +0x10);
+# the Surrender, Retreat and Wait buttons.
+WINDOW, BUTTONS = 0x132FC, (2001, 2002, 2009)
+SURRENDER = 2001
+# A plan's steps done before the stack's command, in its turn.
+BEFORE = ("roll", "price")
 CATAPULT = 145
 # The wall-shot targets' parts (0x63BE60, installation.md §7.29; catapult.py) and their aim
 # hexes: 1 the upper wall, 2 the mid-upper, 3 the gate, 4 the mid-lower, 5 the lower wall.
@@ -157,6 +175,8 @@ class Run:
     def step(self, ms=10):
         self.t = self.game.clock(f"step {ms}")
         state = read_state(self.mem)
+        ack = self.game.ack()
+        state["rolls"] = list(ack[3:5]) if ack else None
         # A round begins when the turn flags are cleared (0x44713F): a creature's flag that
         # falls from 1 to 0. The computer's turns at the frozen clock can pass between two reads
         # with the round's end and the next start (a lone Defend), so the acted bits need not
@@ -297,6 +317,53 @@ class Run:
         g.move(*PARK)
 
 
+def buttons(mem):
+    """The battle window's Surrender, Retreat and Wait buttons: id -> (their bytes +0x10 to
+    +0x40 in hex, their centre on the screen)."""
+    window = mem.u32(mem.manager() + WINDOW)
+    if not window:
+        return {}
+    wx, wy = struct.unpack("<2i", mem.read(window + h3mem.DIALOG_BOX, 8))
+    found, item = {}, mem.u32(window + h3mem.FIRST_ITEM)
+    for _ in range(400):
+        if not item:
+            break
+        raw = mem.read(item, 0x40)
+        ident = struct.unpack_from("<h", raw, h3mem.ITEM_ID)[0]
+        if ident in BUTTONS:
+            x, y, width, height = struct.unpack_from("<2h2H", raw, h3mem.ITEM_BOX)
+            found[ident] = (raw[0x10:0x40].hex(), (wx + x + width // 2, wy + y + height // 2))
+        item = struct.unpack_from("<I", raw, h3mem.NEXT_ITEM)[0]
+    return found
+
+
+def price(r):
+    """Opens the surrender dialog by its button, returns the numbers of its text (never the text
+    itself) and cancels it."""
+    g, mem = r.game, r.mem
+    found = buttons(mem).get(SURRENDER)
+    if not found:
+        return {"error": "no surrender button"}
+    g.move(*found[1])
+    r.step(10)
+    g.click(*found[1])
+    g.move(*PARK)
+    text = ""
+    for _ in range(200):
+        r.step(10)
+        if mem.dialog() is not None:
+            text = mem.dialog_text()
+            if text:
+                break
+    numbers = [int(n) for n in re.findall(r"\d+", text)]
+    g.key("Escape", 0.5)
+    for _ in range(100):
+        r.step(10)
+        if mem.dialog() is None:
+            break
+    return {"numbers": numbers, "shown": bool(text)}
+
+
 def set_rolls(game, rolls):
     for name, how in rolls.items():
         if how == "falls":
@@ -352,8 +419,26 @@ def play(game, out, run):
             ended = True
             continue
         stack = next(s for s in state["stacks"] if s["side"] == side and s["record"] == record)
-        found = next((p for p in plan if not p["done"] and p["round"] == r.round
-                      and p["side"] == side and p["record"] == record), None)
+        here = {"round": r.round, "side": side, "record": record, "t": r.t}
+        with open(out / "controls.jsonl", "a") as f:
+            f.write(json.dumps(here | {"buttons": {k: v[0] for k, v in buttons(mem).items()}})
+                    + "\n")
+        while True:
+            found = next((p for p in plan if not p["done"] and p["round"] == r.round
+                          and p["side"] == side and p["record"] == record), None)
+            if not found or found["action"] not in BEFORE:
+                break
+            found["done"] = True
+            if found["action"] == "roll":
+                name, how, count = found["argument"]
+                game.roll(name, falls=how == "falls", count=count)
+                print(json.dumps(here | {"roll": found["argument"]}), flush=True)
+            else:
+                seen = price(r)
+                with open(out / "prices.jsonl", "a") as f:
+                    f.write(json.dumps(here | seen) + "\n")
+                print(json.dumps(here | {"price": seen}), flush=True)
+            state = r.step()
         if stack["creature"] == CATAPULT:
             # The aimed Catapult: the first standing wall of the run's list, else Defend.
             standing = [t for t in walls if state["walls"][TARGET_PART[t]] > 0]
@@ -410,7 +495,7 @@ def main(args):
                 game.start(map_path)
                 h3adv.to_hot_seat(game, ["Red", "Blue"], run.get("difficulty", "normal"))
                 h3drive.into_battle(game, key=run.get("key", "Right"))
-                extra = sorted(set(worn(h3mem.Mem())[0]) - SPEC_ARTIFACTS)
+                extra = sorted(set().union(*worn(h3mem.Mem())) - SPEC_ARTIFACTS)
                 if extra:
                     print(f"{run['id']}: attempt {attempt}: bonus artifacts {extra}",
                           file=sys.stderr, flush=True)

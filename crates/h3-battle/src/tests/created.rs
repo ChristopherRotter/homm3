@@ -1072,3 +1072,54 @@ fn a_battle_wide_spell_passes_over_a_clone_gone_with_its_original() {
     assert!(!struck(&events).contains(&2));
     assert_eq!(vanished(&events), vec![(2, 1)]);
 }
+
+// covers: BAT-TRN-002, BAT-TRN-005
+#[test]
+fn a_stack_summoned_in_the_wait_phase_takes_its_place_by_speed_and_cannot_wait() {
+    // Batch 2g WP (the original's 0x4652A7, 0x464FDB, 0x478755): Red's fixed (speed 5) and slow
+    // (2) wait; in slow's wait-phase turn Red's hero summons sprites (7): fixed acts before them,
+    // and neither may Wait there. The sprites' first activation, in the wait phase, has no turn
+    // start (0x465211): no regeneration that round (batch 2g TS's reading).
+    let r = ruleset();
+    let setup = h3_contracts::BattleSetup {
+        heroes: [Some(creator(&r, 0, 1)), None],
+        ..setup(&r, &[(0, "slow", 1), (1, "fixed", 1)], &[(0, "serf", 1)])
+    };
+    let mut s = BattleState::new(&r, &setup, 1).unwrap();
+    // Stacks: 0 slow, 1 fixed (Red), 2 serf (Blue); the sprites become 3.
+    assert_eq!(s.active(), Some(StackId(1)));
+    act(&mut s, &r, Command::Wait).unwrap();
+    assert_eq!(s.active(), Some(StackId(2)));
+    act(&mut s, &r, Command::Defend).unwrap();
+    assert_eq!(s.active(), Some(StackId(0)));
+    act(&mut s, &r, Command::Wait).unwrap();
+    // The wait phase: slow first; its hero summons.
+    assert_eq!(s.active(), Some(StackId(0)));
+    assert_eq!(
+        created(&cast(&mut s, &r, "sprites", CastTarget::None).unwrap()).len(),
+        1
+    );
+    let sprites = &mut s.stacks.as_mut_slice()[3];
+    sprites.traits = sprites.traits.with(StackTraits::REGENERATES, true);
+    sprites.top_hp -= 5;
+    act(&mut s, &r, Command::Defend).unwrap();
+    // fixed (5) before the sprites (7): every stack not done is a waited one now.
+    assert_eq!(s.active(), Some(StackId(1)));
+    act(&mut s, &r, Command::Defend).unwrap();
+    assert_eq!(s.active(), Some(StackId(3)));
+    assert_eq!(s.stacks()[3].top_hp, s.stacks()[3].max_hp - 5);
+    let mut legal = crate::LegalCommands::new();
+    crate::legal_commands(&s, &r, BattleSide::Attacker, &mut legal);
+    assert!(!legal.iter().any(|c| *c == Command::Wait));
+    assert_eq!(
+        act(&mut s, &r, Command::Wait),
+        Err(CommandError::AlreadyWaited)
+    );
+    act(&mut s, &r, Command::Defend).unwrap();
+    assert_eq!(s.round(), 2);
+    // At its next round's first activation it regenerates.
+    while s.active() != Some(StackId(3)) {
+        act(&mut s, &r, Command::Defend).unwrap();
+    }
+    assert_eq!(s.stacks()[3].top_hp, s.stacks()[3].max_hp);
+}

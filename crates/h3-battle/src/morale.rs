@@ -296,8 +296,8 @@ pub(crate) fn setup(
 /// of the Sword, the Fountain of Fortune, as the town context derives them) as changes of its
 /// defender's side (BAT-SIE-025; the original's 0x44AE60 and 0x44B2D0 add them last to the base
 /// values, before the clamp). The original passes the town to the stacks the defender controls
-/// (0x469750, after every action): here a hypnotized stack keeps its own side's, as its other
-/// morale and luck (BAT-MAG-026).
+/// (0x469750, after every action), as every other side term: a hypnotized stack takes its
+/// controller's ([`stat`]; BAT-MAG-026, batch 2g HM).
 // rule: BAT-SIE-025
 fn town_modifiers(state: &mut BattleState, town: Option<&Siege>) {
     let Some(town) = town else {
@@ -326,7 +326,7 @@ fn town_modifiers(state: &mut BattleState, town: Option<&Siege>) {
 /// value, which the rolls and the observation read. Creatures with flag `no_morale` have morale
 /// 0 (BAT-MOR-001, BAT-LCK-001); on a battlefield with `no_morale` or `no_luck` every stack has
 /// 0 (BAT-TER-003: the original's 0x43E00F and 0x43DF2B return 0 before anything else).
-// rule: BAT-MOR-001, BAT-LCK-001, BAT-MAG-011, BAT-TER-003
+// rule: BAT-MOR-001, BAT-LCK-001, BAT-MAG-011, BAT-TER-003, BAT-MAG-026
 pub(crate) fn materialize(state: &mut BattleState, ruleset: &BattleRuleset) {
     let params = ruleset.battle();
     let pool = state.modifiers;
@@ -352,7 +352,10 @@ pub(crate) fn materialize(state: &mut BattleState, ruleset: &BattleRuleset) {
 }
 
 /// The morale or luck of `s` before the roll levels' clamp: its spells' change and the field's,
-/// then the side's modifiers in `pool` and its creature's minimum.
+/// then the modifiers in `pool` of the side that controls it (a hypnotized stack's controller's:
+/// its hero, army and town, as the original's 0x469750 reads them from the record's controller,
+/// installation.md §7.32; batch 2g HM: Red's morale 4 and luck 3 on Blue's hypnotized Swordsman)
+/// and its creature's minimum.
 fn stat(
     pool: &Modifiers,
     ruleset: &BattleRuleset,
@@ -360,7 +363,7 @@ fn stat(
     s: &Stack,
     stat: Stat,
 ) -> i32 {
-    let bearer = Bearer::Side(s.side);
+    let bearer = Bearer::Side(s.controller());
     let minimum = ruleset
         .abilities(s.creature)
         .iter()

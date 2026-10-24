@@ -1944,6 +1944,21 @@ pub fn try_ruleset_from(
                 quirks: vec![(String::from("quirk.battle.computer_morale_let_off"), true)],
             },
             ProfileDef {
+                key: ContentKey::new("t", "table_breath").unwrap(),
+                quirks: vec![(String::from("quirk.battle.breath_skips_side_columns"), true)],
+            },
+            ProfileDef {
+                key: ContentKey::new("t", "nowhere").unwrap(),
+                quirks: vec![(
+                    String::from("quirk.battle.retaliation_at_a_dead_striker"),
+                    true,
+                )],
+            },
+            ProfileDef {
+                key: ContentKey::new("t", "rear_raise").unwrap(),
+                quirks: vec![(String::from("quirk.battle.raise_by_rear_hex"), true)],
+            },
+            ProfileDef {
                 key: ContentKey::new("t", "original").unwrap(),
                 quirks: vec![
                     (String::from("quirk.battle.first_protection"), true),
