@@ -19,8 +19,8 @@ use crate::ruleset::ObjectTypeId;
 use crate::setup::SetupError;
 use crate::state::AdventureState;
 use crate::testing::{
-    CHART, FIRE, GNOLL, GUARD, OPEN_CHART, PEASANT, PIKEMAN, TOWER, WOLF, WOOD_PILE, draws,
-    hero_at, movement_rules, world, world_state,
+    CHART, FIRE, GNOLL, GUARD, MAX_STACK, OPEN_CHART, PEASANT, PIKEMAN, TOWER, WOLF, WOOD_PILE,
+    draws, hero_at, movement_rules, world, world_state,
 };
 
 const RED: PlayerId = PlayerId::new(0);
@@ -1561,7 +1561,7 @@ fn a_battle_is_fought_on_the_ground_its_tile_gives() {
     );
 }
 
-// covers: GAM-BAT-006
+// covers: GAM-BAT-006, ADV-ARM-007
 #[test]
 fn raised_creatures_join_their_stack_a_free_slot_or_the_upgrades_stack() {
     // The peasant upgrades to the pikeman; armies have seven slots.
@@ -1604,6 +1604,27 @@ fn raised_creatures_join_their_stack_a_free_slot_or_the_upgrades_stack() {
     let slots: Vec<(u8, CreatureTypeId)> =
         army(&gap).iter().map(|s| (s.slot, s.creature)).collect();
     assert_eq!(slots, [(0, GNOLL), (1, WOLF), (3, GNOLL)]);
+    // The first stack of the creature that takes them within a stack's most does (slot 3's 1
+    // here, not slot 0's 2); when none can, the first free slot (E08 decision 115).
+    for _ in 0..2 {
+        assert_eq!(
+            raise(&mut gap, GNOLL, MAX_STACK - 1),
+            Some((GNOLL, MAX_STACK - 1))
+        );
+    }
+    let stacks: Vec<(u8, CreatureTypeId, u32)> = army(&gap)
+        .iter()
+        .map(|s| (s.slot, s.creature, s.count))
+        .collect();
+    assert_eq!(
+        stacks,
+        [
+            (0, GNOLL, 2),
+            (1, WOLF, 4),
+            (2, GNOLL, MAX_STACK - 1),
+            (3, GNOLL, MAX_STACK)
+        ]
+    );
     // A full army without the creature: two thirds of it, rounded up, as its upgrade, joining
     // the upgrade's stack; without an upgrade's stack or an upgrade, none.
     let full = |first: CreatureTypeId| {
@@ -1614,11 +1635,16 @@ fn raised_creatures_join_their_stack_a_free_slot_or_the_upgrades_stack() {
         state
     };
     let mut state = full(PIKEMAN);
-    for (count, joined) in [(1, 1), (2, 2), (3, 2), (4, 3), (u32::MAX, 2_863_311_530)] {
+    // At most a stack's most are raised (ADV-ARM-007): u32::MAX as MAX_STACK, 2 730 upgrades.
+    for (count, joined) in [(1, 1), (2, 2), (3, 2), (4, 3), (u32::MAX, 2_730)] {
         let before = army(&state)[0].count;
         assert_eq!(raise(&mut state, PEASANT, count), Some((PIKEMAN, joined)));
-        assert_eq!(army(&state)[0].count, before.saturating_add(joined));
+        assert_eq!(army(&state)[0].count, before + joined);
     }
+    // An upgrade's stack that cannot take them within the most takes none.
+    let before = state.clone();
+    assert_eq!(raise(&mut state, PEASANT, MAX_STACK), None);
+    assert_eq!(state, before);
     let mut state = full(GNOLL);
     let before = state.clone();
     assert_eq!(raise(&mut state, PEASANT, 3), None);

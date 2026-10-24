@@ -1323,15 +1323,16 @@ impl AdventureState {
     }
 
     /// Adds creatures a battle raised to a hero's army (GAM-BAT-006, E08 T19a2b; a hero's
-    /// Necromancy after its side won): `count` of `creature` join its stack of that creature,
-    /// else a new stack in its first free slot; if neither is possible (a full army without the
-    /// creature), ⌈2 · `count` / 3⌉ of the creature's first upgrade join its stack of the
-    /// upgrade, if it has one; else none join. Returns the creature and the count that joined,
-    /// `None` when none did, `count` was 0 or the hero is not on the map. Counts saturate. The
+    /// Necromancy after its side won): `count` of `creature`, at most a stack's most (ADV-ARM-007,
+    /// E08 T50), join its first stack of that creature that takes them within the most, else a
+    /// new stack in its first free slot; if neither is possible (a full army without such a
+    /// stack), ⌈2 · that count / 3⌉ of the creature's first upgrade join its first stack of the
+    /// upgrade, if it takes them within the most; else none join. Returns the creature and the
+    /// count that joined, `None` when none did, `count` was 0 or the hero is not on the map. The
     /// original's `necromancy_add_raised` (0x469F20): `army_add_stack` (0x44ACE0), then once the
     /// upgrade (0x47B1A0) at (2c + 2) / 3; its exception for the four elementals (112 to 115, no
     /// upgrade while a game flag is off) is not modelled, as no hero raises them.
-    // rule: GAM-BAT-006
+    // rule: GAM-BAT-006, ADV-ARM-007
     pub fn raise(
         &mut self,
         core: &Ruleset,
@@ -1339,19 +1340,23 @@ impl AdventureState {
         hero: HeroId,
         (creature, count): (CreatureTypeId, u32),
     ) -> Option<(CreatureTypeId, u32)> {
-        let slots = part.params().army_slots();
+        let most = part.params().max_stack_count();
+        let rules = (part.params().army_slots(), most);
         let army = &mut self.heroes.iter_mut().find(|h| h.id == hero)?.army;
+        let count = count.min(most);
         if count == 0 {
             return None;
         }
-        if monsters::add_stack(army, slots, creature, count) {
+        if monsters::add_stack(army, rules, creature, count) {
             return Some((creature, count));
         }
         let upgrade = core.upgrades(creature).first().copied()?;
-        let stack = army.iter_mut().find(|s| s.creature == upgrade)?;
         // ⌈2c / 3⌉ = (2c + 2) / 3, exact in 64 bits and below 2^32 again.
         let fewer = u32::try_from((u64::from(count) * 2).div_ceil(3)).unwrap_or(u32::MAX);
-        stack.count = stack.count.saturating_add(fewer);
+        let stack = army
+            .iter_mut()
+            .find(|s| s.creature == upgrade && fewer <= most.saturating_sub(s.count))?;
+        stack.count += fewer;
         Some((upgrade, fewer))
     }
 
@@ -1905,7 +1910,9 @@ impl CanonicalHash for AdventureState {
 }
 
 /// Checks an army against the ruleset (one or more stacks of known creatures with at least one
-/// creature each, in distinct slots below the army slots) and returns its stacks by slot.
+/// creature each and at most a stack's most (ADV-ARM-007, E08 T50), in distinct slots below the
+/// army slots) and returns its stacks by slot.
+// rule: ADV-ARM-007
 fn check_army(
     core: &Ruleset,
     part: &AdventureRuleset,
@@ -1924,6 +1931,9 @@ fn check_army(
         }
         if stack.count == 0 {
             return Err(ArmyError::EmptyStack(stack.slot));
+        }
+        if stack.count > part.params().max_stack_count() {
+            return Err(ArmyError::TooManyCreatures(stack.slot));
         }
         if core.creature(stack.creature).is_none() {
             return Err(ArmyError::UnknownCreature(stack.slot));

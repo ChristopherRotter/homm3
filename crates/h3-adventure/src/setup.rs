@@ -239,6 +239,8 @@ pub enum ArmyError {
     EmptyStack(u8),
     /// A stack's creature type is not part of the ruleset.
     UnknownCreature(u8),
+    /// A stack has more creatures than a stack holds (ADV-ARM-007, E08 T50).
+    TooManyCreatures(u8),
 }
 
 impl fmt::Display for ArmyError {
@@ -249,6 +251,9 @@ impl fmt::Display for ArmyError {
             Self::DuplicateSlot(slot) => write!(f, "slot {slot} is used twice"),
             Self::EmptyStack(slot) => write!(f, "slot {slot} has no creatures"),
             Self::UnknownCreature(slot) => write!(f, "slot {slot} has an unknown creature type"),
+            Self::TooManyCreatures(slot) => {
+                write!(f, "slot {slot} has more creatures than a stack holds")
+            }
         }
     }
 }
@@ -295,7 +300,7 @@ pub enum SetupError {
     Monster(usize),
     /// The object at this index has guards and is no pile, or its guards are invalid
     /// (ADV-PIK-004): no stack, a slot beyond the army slots or used twice, a stack without
-    /// creatures, an unknown creature or a war machine.
+    /// creatures or with more than a stack holds, an unknown creature or a war machine.
     Guards(usize),
     /// More objects than the state tracks (32 × 65 535); the number.
     Objects(usize),

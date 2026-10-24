@@ -56,7 +56,7 @@ mod testing;
 
 pub use command::{
     AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, AdventureOutcome,
-    BattleStart, Combatant, Defender, Offer, OfferKind, Sink, Viewers,
+    BattleStart, Combatant, Defender, Meeting, NoRoom, Offer, OfferKind, Sink, Viewers,
 };
 pub use movement::{day_points, diagonal_cost, land_table_points, native_terrain};
 pub use observe::{AdventureObservation, HeroView, MonsterView, ObjectView, OwnHeroView, TileView};
@@ -95,5 +95,6 @@ pub const ADVENTURE_STATE_HASH_VERSION: u32 = 10;
 /// ground kinds, the monsters' parameters and the creatures no random monster becomes. v8 (E08
 /// T20b1): the resource a monster's price to join is paid in. v9 (E08 T29): the terrains' costs
 /// by Pathfinding level. v10 (E08 T40): the fly and water-walk prices, the terrain walkers and a
-/// ground's loss of the native price (Cursed Ground's `no_native`).
-pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 10;
+/// ground's loss of the native price (Cursed Ground's `no_native`). v11 (E08 T50): a stack's most
+/// creatures.
+pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 11;
