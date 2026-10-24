@@ -376,9 +376,11 @@ fn war_machine_kind(
 }
 
 /// The war machine stacks of `side`, by kind, placed with their front hexes on the ruleset's
-/// hexes (mirrored for the defender) and reserved in `taken` (BAT-WAR-001); in a siege with a
-/// fort the attacker's Catapult, which the setup never lists (BAT-SIE-009), and with quirk
-/// BAT-QUIRK-23 no Ballista for the defender, which it may list (BAT-SIE-029).
+/// hexes (mirrored for the defender) and reserved in `taken` (BAT-WAR-001); none for a side
+/// without a hero, whose listed machines are checked but not set up (the original's 0x463600 sets
+/// up none there, 0x46374D); in a siege with a fort the attacker's Catapult, which the setup never
+/// lists (BAT-SIE-009), and with quirk BAT-QUIRK-23 no Ballista for the defender, which it may
+/// list (BAT-SIE-029).
 // rule: BAT-WAR-001
 fn war_machines(
     ruleset: &BattleRuleset,
@@ -400,6 +402,11 @@ fn war_machines(
             return Err(invalid);
         }
         listed[kind] = true;
+        // A side without a hero brings none (0x46374D to 0x463752; VCMI takes them from the
+        // hero's artifacts too).
+        if setup.heroes[side.index()].is_none() {
+            continue;
+        }
         // With quirk BAT-QUIRK-23 a town with a fort sets up no Ballista for its defender (the
         // original's 0x463600): the hero keeps it, the battle leaves it out.
         if walled

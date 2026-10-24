@@ -524,7 +524,10 @@ fn a_berserk_walker_aims_at_a_war_machines_hex_on_the_field() {
         &[("fixed", 5, 11, 9)],
         &[("slow", 1, 8, 0)],
         1,
-        |setup| setup.war_machines = [vec![], vec![tent]],
+        |setup| {
+            setup.war_machines = [vec![], vec![tent]];
+            setup.heroes[1] = Some(bare_hero(&r));
+        },
     );
     assert_eq!(field(&r).coords(s.stacks()[2].hex), (16, 9));
     give(&mut s, &r, (0, "berserk"), 1);

@@ -3130,6 +3130,22 @@ pub fn hero(rules: &BattleRuleset) -> BattleHero {
     hero
 }
 
+/// A hero without skills, statistics, book or mana: a side brings its war machines only with a
+/// hero (BAT-WAR-001).
+pub fn bare_hero(rules: &BattleRuleset) -> BattleHero {
+    BattleHero::new(rules.hero_type_by_key("t:orrin").unwrap())
+}
+
+/// `setup` with a [`bare_hero`] for each side that lists war machines and has no hero.
+pub fn lead_machines(rules: &BattleRuleset, mut setup: BattleSetup) -> BattleSetup {
+    for (hero, machines) in setup.heroes.iter_mut().zip(&setup.war_machines) {
+        if hero.is_none() && !machines.is_empty() {
+            *hero = Some(bare_hero(rules));
+        }
+    }
+    setup
+}
+
 pub fn setup(rules: &BattleRuleset, attacker: &[Spec], defender: &[Spec]) -> BattleSetup {
     BattleSetup {
         attacker: army(rules, attacker),

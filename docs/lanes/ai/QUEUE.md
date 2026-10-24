@@ -55,6 +55,14 @@ Sorted by destination at E05's audit (T9a, 2026-10-19); the origin stays in brac
 done: BAT-Q33's point for E05 (AI-Q3, ADR-0025 point 6), the `h3-game` coverage gap of a pending
 Pass offer (fixed by the adventure lane's fixed tests, #266).
 
+- 2026-10-24 (the battle lane, `battle/inbox-leftovers`; **for you**, your E06 T6a request):
+  **a commanded turret's shot is previewed as it is made** (BAT-DMG-011, BAT-SIE-018):
+  `h3_battle::preview` gives its creature's least and greatest damage times its count through the
+  target's protections alone (no attack, defense, hero's bonus or penalties), tested against the
+  shot's own range. Your measures may count a turret's shots again; the Greedy bot's choices at a
+  defended siege with Artillery can change, so regenerate the bot reports when convenient. Also:
+  a side without a hero brings no war machines (BAT-WAR-001, the original's 0x463600); `h3-sim`'s
+  encounters give machines only with a hero, so nothing of yours moves.
 - 2026-10-24 (the adventure lane, E08 T50, `adventure/e08-t50`; for your information, nothing to
   do now): **a move toward an own hero is legal now** (GAM-MET-001): the step meets it from the
   tile before at the step's price and ends the move, so the reachable-tiles query, `legal_moves`

@@ -246,10 +246,12 @@ fn a_war_machine_is_worth_its_share_of_its_army() {
     let r = rules();
     let mut setup = siege(&r, &[(0, "archer", 1)], &[(0, "slow", 10)]);
     setup.war_machines[0] = std::vec![r.creature_by_key("t:ballista").unwrap()];
+    // A side brings its machines with a hero only (BAT-WAR-001), here with the Catapult (1).
+    setup.heroes[0] = Some(bare_hero(&r));
     let mut s = fresh(&r, &setup);
     let ctx = context(&s, &r, field(&r), BattleSide::Defender);
     assert_eq!(
-        worth(&s, (&r, field(&r)), &ctx, StackId(1), true),
+        worth(&s, (&r, field(&r)), &ctx, StackId(2), true),
         X87::int(25)
     );
     // A clone is created: its worth is shared too, its own hit points counted 1 and the army's
@@ -280,12 +282,15 @@ fn the_aim_s_sums_saturate_with_extreme_stacks() {
         &[(0, "slow", 10)],
     );
     setup.war_machines[0] = std::vec![r.creature_by_key("t:ballista").unwrap()];
+    setup.heroes[0] = Some(bare_hero(&r));
     let mut s = fresh(&r, &setup);
     for st in &mut s.stacks.as_mut_slice()[..2] {
         (st.count, st.max_hp, st.top_hp) = (u32::MAX, u32::MAX, u32::MAX);
     }
     let ctx = context(&s, &r, field(&r), BattleSide::Defender);
-    let ballista = worth(&s, (&r, field(&r)), &ctx, StackId(2), true);
+    // The Catapult is 2 (BAT-SIE-009), the Ballista 3.
+    assert!(s.at(StackId(3)).has(StackTraits::WAR_MACHINE) && !s.at(StackId(3)).is_catapult());
+    let ballista = worth(&s, (&r, field(&r)), &ctx, StackId(3), true);
     assert!(
         ballista > X87::ZERO && ballista <= X87::int(650),
         "{ballista:?}"
@@ -614,7 +619,8 @@ fn gunner(r: &BattleRuleset, attack: u8) -> BattleHero {
 }
 
 /// A battle away from towns: the attacker's army and its Ballista under a hero of `attack`, the
-/// defender's army and war machines; ids: the attacker's stacks, its Ballista, the defender's.
+/// defender's army and war machines (under a bare hero); ids: the attacker's stacks, its
+/// Ballista, the defender's.
 fn ballista_battle(
     r: &BattleRuleset,
     attack: u8,
@@ -630,7 +636,8 @@ fn ballista_battle(
             .map(|k| r.creature_by_key(&std::format!("t:{k}")).unwrap())
             .collect(),
     ];
-    s
+    // The defender's machines come with a hero (BAT-WAR-001).
+    lead_machines(r, s)
 }
 
 /// The attacker's Ballista's id in [`ballista_battle`].

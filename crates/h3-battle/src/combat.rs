@@ -499,6 +499,9 @@ pub(crate) fn strike_preview(
     charge: u8,
 ) -> DamagePreview {
     let (striker, victim) = (state.at(attacker), state.at(target));
+    if striker.is_turret() {
+        return turret_preview(state, ruleset, striker, victim);
+    }
     let n = u64::from(striking_count(striker));
     let (min, max) = (striker.damage_min, striker.damage_max);
     let ends = striker
@@ -515,6 +518,29 @@ pub(crate) fn strike_preview(
     };
     let terms = specialist_terms(state, ruleset, attacker);
     let (inputs, _) = strike_inputs(ruleset, state, (striker, victim), (flags, terms), blow);
+    let (params, staged) = (ruleset.battle(), staged(ruleset));
+    let damage = ends.map(|each| inputs.damage(n.saturating_mul(each), params, staged));
+    let kills = damage.map(|d| {
+        let mut copy = *victim;
+        apply_damage(&mut copy, d)
+    });
+    DamagePreview { damage, kills }
+}
+
+/// The preview of a turret's shot at `victim` (BAT-DMG-011): its sum's ends, the creature's least
+/// and greatest damage times the turret's count, through the target's protections alone
+/// ([`turret_inputs`], BAT-SIE-018), as [`turret_shot`] draws it (the AI lane's E06 T6a).
+fn turret_preview(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    turret: &Stack,
+    victim: &Stack,
+) -> DamagePreview {
+    let n = u64::from(turret.count);
+    let ends = ruleset.creature(turret.creature).map_or([0, 0], |c| {
+        [u64::from(c.damage_min), u64::from(c.damage_max)]
+    });
+    let inputs = turret_inputs(state, victim);
     let (params, staged) = (ruleset.battle(), staged(ruleset));
     let damage = ends.map(|each| inputs.damage(n.saturating_mul(each), params, staged));
     let kills = damage.map(|d| {

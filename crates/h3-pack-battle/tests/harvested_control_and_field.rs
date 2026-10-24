@@ -376,6 +376,19 @@ fn batch_2c_h1_hypnotize_counts_full_hit_points_and_expert_cure_passes_over_it()
         } else {
             BattleSide::Defender
         };
+        // The batch's last line: while hypnotized, the one Swordsman may attack Blue's stacks
+        // and Blue's stacks may not attack it (BAT-MAG-026's relations, `Stack::may_attack`).
+        let attacks = |s: &BattleState, side: BattleSide| {
+            let mut legal = LegalCommands::new();
+            legal_commands(s, &r, side, &mut legal);
+            legal
+                .iter()
+                .filter_map(|c| match *c {
+                    Command::Attack { target, .. } => Some(target.0),
+                    _ => None,
+                })
+                .collect::<std::collections::BTreeSet<u8>>()
+        };
         for round in [2, 3] {
             defend_until(&mut s, &r, &[one]);
             assert_eq!(
@@ -383,7 +396,16 @@ fn batch_2c_h1_hypnotize_counts_full_hit_points_and_expert_cure_passes_over_it()
                 (round, Some(commander)),
                 "{profile}"
             );
+            if still {
+                assert!(attacks(&s, commander).contains(&two), "{profile}");
+            }
             turn(&mut s, &r, one, Command::Defend);
+            if still && s.active() == Some(StackId(3)) {
+                assert!(
+                    !attacks(&s, BattleSide::Defender).contains(&one),
+                    "{profile}"
+                );
+            }
         }
     }
 }

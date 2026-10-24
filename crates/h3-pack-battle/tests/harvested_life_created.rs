@@ -1,14 +1,18 @@
 //! Batch 2d's raised and created stacks on the harvested SoD packs (E04b T11b review, r4a
-//! F-10): RA2, CL1 and SU a of `experiments/results/E04b-batch-2d.md` (SoD 4.0 Complete, plain HD,
-//! 2026-10-08) replayed through real commands with the heroes the batch used, derived in the
-//! Heroes context: Basic Resurrection and the army after the battle (BAT-MAG-035, BAT-END-003),
+//! F-10): every encounter of `experiments/results/E04b-batch-2d.md` (SoD 4.0 Complete, plain HD,
+//! 2026-10-08; CL2, RA1, RA3, RA4 and NE since the battle lane's inbox session, 2026-10-24)
+//! replayed through real commands with the heroes the batch used, derived in the Heroes context:
+//! Resurrection's and Sacrifice's targets and corpses (BAT-MAG-035, BAT-MAG-036), Basic
+//! Resurrection and the army after the battle (BAT-MAG-035, BAT-END-003), the natives on grass
+//! (BAT-TER-001),
 //! Clone (BAT-MAG-038), Summon Elemental and the stacks a battle creates (BAT-MAG-037,
 //! BAT-MAG-039), the surrender price (BAT-FLE-002), the end of a side left with created stacks
 //! only (BAT-END-001).
 
 use h3_battle::{
-    BattleResult, BattleState, CastTarget, Command, CommandError, Direction, Event, EventKind,
-    Field, LegalCommands, NO_CORPSE, StackId, apply, castable_spells, legal_commands,
+    BattleResult, BattleState, CastTarget, CastTargets, Command, CommandError, Direction, Event,
+    EventKind, Field, LegalCommands, NO_CORPSE, StackId, apply, cast_targets, castable_spells,
+    legal_commands, second_targets,
 };
 use h3_content::{Formation, SkillId, SpellId};
 use h3_content_battle::BattleRuleset;
@@ -184,26 +188,37 @@ fn spell_damage(events: &[Event]) -> Vec<(u8, u64, u32)> {
 /// five Swordsmen are left, the top one at 25; Basic Resurrection (50 + 40 = 90 hit points)
 /// makes them eight; after the second bolt two are left. The Swordsmen then win, and Red's army
 /// after the battle is one Swordsman: the three raised for the battle only do not stay, and an
-/// army whose living creatures were all raised so keeps one in its last living stack. (RA3, the
-/// same with a Ballista, left Red no army in the original: quirk BAT-QUIRK-6, fixed in every
-/// profile.)
+/// army whose living creatures were all raised so keeps one in its last living stack.
 #[test]
 fn batch_2d_ra2_basic_resurrection_raises_for_the_battle_only() {
+    basic_resurrection(false);
+}
+
+// covers: BAT-MAG-035, BAT-END-003, BAT-WAR-001
+/// Batch 2d RA3: RA2 with Saurug and a Ballista, which shoots the Peasants on its own every
+/// round: the same counts (5 at 25, 8, 2). The original then left Red no army but the Ballista
+/// (survey S-20, its end of battle counts war machines too): quirk BAT-QUIRK-6, fixed in every
+/// profile, so here too the last living army stack keeps one Swordsman, and the Ballista stays.
+#[test]
+fn batch_2d_ra3_with_a_ballista_the_army_keeps_one_creature() {
+    basic_resurrection(true);
+}
+
+/// RA2 and, with `ballista`, RA3.
+fn basic_resurrection(ballista: bool) {
     let r = sod();
     let (rise, bolt) = (
         spell(&r, "base:resurrection"),
         spell(&r, "base:lightning_bolt"),
     );
     let earth = vec![(r.skill_by_key("base:earth_magic").unwrap(), 1)];
-    let gelare = details(&r, "ab:gelare", (1, 2), earth, &[], &["base:resurrection"]);
-    let grindan = details(
-        &r,
-        "ab:grindan",
-        (7, 2),
-        vec![],
-        &[],
-        &["base:lightning_bolt"],
-    );
+    let (red, blue, worn): (_, _, &[&str]) = if ballista {
+        ("base:saurug", "base:sephinroth", &["base:ballista"])
+    } else {
+        ("ab:gelare", "ab:grindan", &[])
+    };
+    let gelare = details(&r, red, (1, 2), earth, worn, &["base:resurrection"]);
+    let grindan = details(&r, blue, (7, 2), vec![], &[], &["base:lightning_bolt"]);
     let mut s = battle(
         &r,
         [&gelare, &grindan],
@@ -211,8 +226,8 @@ fn batch_2d_ra2_basic_resurrection_raises_for_the_battle_only() {
         &[("ab:peasant", 10)],
         None,
     );
-    // Stacks: 0 the Swordsmen (they act first), 1 the Peasants.
-    let (swordsmen, peasants) = (0, 1);
+    // Stacks: 0 the Swordsmen (they act first), (1 the Ballista,) then the Peasants.
+    let (swordsmen, peasants) = (0, if ballista { 2 } else { 1 });
     let left = |s: &BattleState| (s.stacks()[0].count, s.stacks()[0].top_hp);
     // Round 1: the Swordsmen Defend; Blue's Lightning Bolt.
     turn(&mut s, &r, swordsmen, Command::Defend);
@@ -264,6 +279,12 @@ fn batch_2d_ra2_basic_resurrection_raises_for_the_battle_only() {
         .map(|a| a.count)
         .collect();
     assert_eq!(survivors, [1]);
+    let machines = if ballista {
+        vec![r.creature_by_key("base:ballista").unwrap()]
+    } else {
+        vec![]
+    };
+    assert_eq!(outcome.war_machines[0], machines);
 }
 
 // covers: BAT-MAG-038, BAT-MAG-037, BAT-FLE-002
@@ -658,4 +679,429 @@ fn batch_2d_su_a_side_of_elementals_loses_too_when_the_enemy_leaves() {
             [record(&r, StackOrigin::Army(0), "base:skeleton", (10, 10))]
         );
     }
+}
+
+/// The first targets of `spell` for `side` now.
+fn aims(s: &BattleState, r: &BattleRuleset, side: BattleSide, spell: SpellId) -> Vec<CastTarget> {
+    let mut out = CastTargets::new();
+    cast_targets(s, r, side, spell, &mut out);
+    out.iter().copied().collect()
+}
+
+/// The active stack Defends until stack `id` of `side` is the active one or the battle is over.
+fn defend_to(s: &mut BattleState, r: &BattleRuleset, id: u8) {
+    while s.active().is_some_and(|a| a != StackId(id)) {
+        let active = s.active().unwrap().0;
+        turn(s, r, active, Command::Defend);
+    }
+}
+
+// covers: BAT-MAG-035, BAT-MAG-036, BAT-MAG-005
+/// Batch 2d RA1: Sylvia (power 5, Resurrection, Sacrifice) with ten Swordsmen, two Titans, two
+/// Gold Dragons and ten Pikemen against Kyrre (power 10, Implosion) with ten Archers. Implosion
+/// (850) kills both Titans in round 1 and both Gold Dragons in round 2; the Archers' shots wound
+/// the Swordsmen (a full stack, ten left) and kill a Pikeman. In round 3 Resurrection's cast (50
+/// × 5 + 40 = 290 hit points) refuses the wounded full stack, the Titans (300 each, more than it
+/// raises) and the Gold Dragons (immune to level 4); it takes the Pikemen. Sacrifice's first
+/// target is the Pikemen alone; its victim, with the Pikemen chosen, is never the stack itself:
+/// the Swordsmen, not the Pikemen.
+#[test]
+fn batch_2d_ra1_resurrection_and_sacrifice_choose_their_targets() {
+    let r = sod();
+    let (rise, sacrifice, implosion) = (
+        spell(&r, "base:resurrection"),
+        spell(&r, "base:sacrifice"),
+        spell(&r, "base:implosion"),
+    );
+    let sylvia = details(
+        &r,
+        "base:sylvia",
+        (5, 5),
+        vec![],
+        &[],
+        &["base:resurrection", "base:sacrifice"],
+    );
+    let kyrre = details(&r, "base:kyrre", (10, 6), vec![], &[], &["base:implosion"]);
+    let mut s = battle(
+        &r,
+        [&sylvia, &kyrre],
+        &[
+            ("base:swordsman", 10),
+            ("base:titan", 2),
+            ("base:gold_dragon", 2),
+            ("base:pikeman", 10),
+        ],
+        &[("base:archer", 10)],
+        None,
+    );
+    // Stacks: 0 the Swordsmen, 1 the Titans, 2 the Gold Dragons, 3 the Pikemen; 4 the Archers.
+    let (swordsmen, titans, dragons, pikemen, archers) = (0, 1, 2, 3, 4);
+    for (round, victim, shot_at) in [(1, titans, swordsmen), (2, dragons, pikemen)] {
+        defend_to(&mut s, &r, archers);
+        assert_eq!(s.round(), round);
+        let events = turn(&mut s, &r, archers, cast(implosion, stack(victim)));
+        assert_eq!(spell_damage(&events), [(victim, 850, 2)]);
+        let at = s.stacks()[usize::from(shot_at)].hex;
+        turn(
+            &mut s,
+            &r,
+            archers,
+            Command::Shoot {
+                target: StackId(shot_at),
+                at,
+            },
+        );
+    }
+    let left = |id: u8| {
+        (
+            s.stacks()[usize::from(id)].count,
+            s.stacks()[usize::from(id)].top_hp,
+        )
+    };
+    assert!(left(swordsmen).0 == 10 && left(swordsmen).1 < 35);
+    assert_eq!(left(pikemen).0, 9);
+    // Round 3, Red's first turn: the Swordsmen's.
+    defend_to(&mut s, &r, swordsmen);
+    assert_eq!(s.round(), 3);
+    assert_eq!(aims(&s, &r, BattleSide::Attacker, rise), [stack(pikemen)]);
+    assert_eq!(
+        aims(&s, &r, BattleSide::Attacker, sacrifice),
+        [stack(pikemen)]
+    );
+    let mut victims = CastTargets::new();
+    second_targets(
+        &s,
+        &r,
+        BattleSide::Attacker,
+        (sacrifice, stack(pikemen)),
+        &mut victims,
+    );
+    assert_eq!(
+        victims.iter().copied().collect::<Vec<_>>(),
+        [stack(swordsmen)]
+    );
+}
+
+/// The active stack walks to `to`.
+fn walk(s: &mut BattleState, r: &BattleRuleset, stack: u8, to: h3_battle::Hex) {
+    turn(s, r, stack, Command::Move { to });
+}
+
+// covers: BAT-MAG-035
+/// Batch 2d RA4: Dessa (power 5, Resurrection) with two Pikemen, a Swordsman, two Wolf Riders
+/// and five Archers against Gunnar (power 10, Lightning Bolt: 260) with a Peasant. The bolts kill
+/// the Pikemen (on hex P) in round 1, the Swordsman on P in round 2 and the Wolf Riders in round
+/// 3; the Archers stand on the Wolf Riders' front hex from round 4. In round 5 Resurrection
+/// refuses the Wolf Riders (a living stack on one of their hexes) and on P raises the corpse on
+/// top: one Swordsman, not the Pikemen below it. Once the Archers have walked away (round 6) the
+/// Wolf Riders are a target again.
+#[test]
+fn batch_2d_ra4_corpses_are_raised_from_the_top_and_free_hexes() {
+    let r = sod();
+    let field = Field::new(r.battle().field);
+    let (rise, bolt) = (
+        spell(&r, "base:resurrection"),
+        spell(&r, "base:lightning_bolt"),
+    );
+    let dessa = details(
+        &r,
+        "base:dessa",
+        (5, 4),
+        vec![],
+        &[],
+        &["base:resurrection"],
+    );
+    let gunnar = details(
+        &r,
+        "base:gunnar",
+        (10, 3),
+        vec![],
+        &[],
+        &["base:lightning_bolt"],
+    );
+    let mut s = battle(
+        &r,
+        [&dessa, &gunnar],
+        &[
+            ("base:pikeman", 2),
+            ("base:swordsman", 1),
+            ("base:wolf_rider", 2),
+            ("base:archer", 5),
+        ],
+        &[("ab:peasant", 1)],
+        None,
+    );
+    // Stacks: 0 the Pikemen, 1 the Swordsman, 2 the Wolf Riders, 3 the Archers; 4 the Peasant.
+    let (pikemen, swordsman, riders, archers, peasant) = (0, 1, 2, 3, 4);
+    let p = s.stacks()[usize::from(pikemen)].hex;
+    let bolt_at = |s: &mut BattleState, victim: u8| {
+        defend_to(s, &r, peasant);
+        let events = turn(s, &r, peasant, cast(bolt, stack(victim)));
+        assert_eq!(spell_damage(&events)[0].1, 260);
+        assert!(!s.stacks()[usize::from(victim)].is_alive());
+        turn(s, &r, peasant, Command::Defend);
+    };
+    bolt_at(&mut s, pikemen);
+    // Round 2: the Swordsman walks onto P and dies there.
+    defend_to(&mut s, &r, swordsman);
+    assert_eq!(s.round(), 2);
+    walk(&mut s, &r, swordsman, p);
+    bolt_at(&mut s, swordsman);
+    assert_eq!(
+        (s.corpse(StackId(pikemen)), s.corpse(StackId(swordsman))),
+        (1, 2)
+    );
+    bolt_at(&mut s, riders);
+    // Round 4: the Archers walk onto the Wolf Riders' front hex.
+    let footprint = s.stacks()[usize::from(riders)].footprint(field);
+    defend_to(&mut s, &r, archers);
+    assert_eq!(s.round(), 4);
+    walk(&mut s, &r, archers, footprint.front);
+    // Round 5, the Archers' turn: the Wolf Riders refused; on P the Swordsman comes back.
+    defend_to(&mut s, &r, archers);
+    assert_eq!(s.round(), 5);
+    assert_eq!(aims(&s, &r, BattleSide::Attacker, rise), [stack(swordsman)]);
+    let events = turn(&mut s, &r, archers, cast(rise, stack(swordsman)));
+    let raised: Vec<u32> = events
+        .iter()
+        .filter_map(|e| match e.kind {
+            EventKind::SpellRaised { creatures, .. } => Some(creatures),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(raised, [1]);
+    assert_eq!(
+        (
+            s.stacks()[usize::from(swordsman)].count,
+            s.stacks()[usize::from(swordsman)].hex
+        ),
+        (1, p)
+    );
+    // The Archers walk to a hex that touches neither of the Wolf Riders' hexes.
+    let mut legal = LegalCommands::new();
+    legal_commands(&s, &r, BattleSide::Attacker, &mut legal);
+    let away = legal
+        .iter()
+        .find_map(|c| match *c {
+            Command::Move { to } if footprint.hexes().all(|h| field.distance(h, to) > 1) => {
+                Some(to)
+            }
+            _ => None,
+        })
+        .unwrap();
+    walk(&mut s, &r, archers, away);
+    // Round 6, Red's first turn: the Wolf Riders are a target again.
+    while s.round() < 6 || s.side_to_act() != Some(BattleSide::Attacker) {
+        let active = s.active().unwrap().0;
+        turn(&mut s, &r, active, Command::Defend);
+    }
+    assert_eq!(aims(&s, &r, BattleSide::Attacker, rise), [stack(riders)]);
+}
+
+// covers: BAT-MAG-038
+/// Batch 2d CL2: Caitlin (power 1, Clone) with two Griffins, a Cavalier, two Marksmen and two
+/// Pikemen against Jenova (power 1, Clone) with two Wolf Riders, two Goblins, two Hobgoblins and
+/// two Orcs. The Griffins (head G) and the Wolf Riders (head W) stand in row 0; in round 1 the
+/// Cavalier covers the hexes below G and the Marksmen stand two hexes right of G, Blue's Goblins
+/// below W and its Hobgoblins two hexes left of W, so neither two-hex stack has room for a clone.
+/// In round 2 each side's Clone makes no new stack: with quirk BAT-QUIRK-7 (fix-optional, on in
+/// `faithful`) the crowded original itself becomes the clone, ends when round 3 starts without a
+/// corpse, and is gone from Red's army after the battle.
+#[test]
+fn batch_2d_cl2_a_crowded_two_hex_original_becomes_the_clone() {
+    use Direction::{BottomLeft, BottomRight, Left, Right};
+    let r = sod();
+    let field = Field::new(r.battle().field);
+    let clone = spell(&r, "base:clone");
+    let caitlin = details(&r, "base:caitlin", (1, 3), vec![], &[], &["base:clone"]);
+    let jenova = details(&r, "base:jenova", (1, 3), vec![], &[], &["base:clone"]);
+    let mut s = battle(
+        &r,
+        [&caitlin, &jenova],
+        &[
+            ("base:griffin", 2),
+            ("base:cavalier", 1),
+            ("base:marksman", 2),
+            ("base:pikeman", 2),
+        ],
+        &[
+            ("base:wolf_rider", 2),
+            ("base:goblin", 2),
+            ("base:hobgoblin", 2),
+            ("base:orc", 2),
+        ],
+        None,
+    );
+    // Stacks: 0 Griffins, 1 Cavalier, 2 Marksmen, 3 Pikemen; 4 Wolf Riders, 5 Goblins, 6
+    // Hobgoblins, 7 Orcs.
+    let (griffins, cavalier, marksmen, riders, goblins, hobgoblins) = (0, 1, 2, 4, 5, 6);
+    let front = |s: &BattleState, id: u8| s.stacks()[usize::from(id)].footprint(field).front;
+    let (g, w) = (front(&s, griffins), front(&s, riders));
+    assert_eq!((field.coords(g).1, field.coords(w).1), (0, 0));
+    let step = |hex, d| field.neighbor(hex, d).unwrap();
+    // Round 1: the Cavalier's head on G's down-right neighbour, its rear on the down-left one.
+    let plan = [
+        (cavalier, step(g, BottomLeft)),
+        (marksmen, step(step(g, Right), Right)),
+        (goblins, step(w, BottomLeft)),
+        (hobgoblins, step(step(w, Left), Left)),
+    ];
+    assert_eq!(step(step(g, BottomLeft), Right), step(g, BottomRight));
+    while s.round() == 1 {
+        let active = s.active().unwrap().0;
+        match plan.iter().find(|(id, _)| *id == active) {
+            Some(&(id, to)) => walk(&mut s, &r, id, to),
+            None => {
+                turn(&mut s, &r, active, Command::Defend);
+            }
+        }
+    }
+    assert_eq!(front(&s, cavalier), step(g, BottomRight));
+    // Round 2: each side's Clone on its two-hex stack makes no new stack.
+    for (side, original) in [
+        (BattleSide::Attacker, griffins),
+        (BattleSide::Defender, riders),
+    ] {
+        while s.side_to_act() != Some(side) {
+            let active = s.active().unwrap().0;
+            turn(&mut s, &r, active, Command::Defend);
+        }
+        let active = s.active().unwrap().0;
+        let stacks = s.stacks().len();
+        let events = turn(&mut s, &r, active, cast(clone, stack(original)));
+        assert!(created(&r, &events).is_empty());
+        assert_eq!(s.stacks().len(), stacks);
+        assert!(s.stacks()[usize::from(original)].is_alive());
+    }
+    // Round 3 starts: both originals are gone, without a corpse.
+    while s.round() < 3 {
+        let active = s.active().unwrap().0;
+        turn(&mut s, &r, active, Command::Defend);
+    }
+    for original in [griffins, riders] {
+        assert_eq!(
+            (
+                s.stacks()[usize::from(original)].count,
+                s.corpse(StackId(original))
+            ),
+            (0, NO_CORPSE)
+        );
+    }
+    // Red wins: its army afterwards has no Griffins.
+    for _ in 0..200 {
+        match s.side_to_act() {
+            Some(BattleSide::Attacker) => {
+                let target = (4u8..8).find(|&t| s.stacks()[usize::from(t)].is_alive());
+                advance(&mut s, &r, target.unwrap());
+            }
+            Some(BattleSide::Defender) => {
+                let active = s.active().unwrap().0;
+                turn(&mut s, &r, active, Command::Defend);
+            }
+            None => break,
+        }
+    }
+    let outcome = s.outcome().unwrap();
+    assert_eq!(outcome.result, BattleResult::Victory(BattleSide::Attacker));
+    let griffin = r.creature_by_key("base:griffin").unwrap();
+    assert!(
+        outcome.survivors[0]
+            .stacks
+            .iter()
+            .all(|a| a.creature != griffin)
+    );
+    assert!(!outcome.survivors[0].stacks.is_empty());
+}
+
+// covers: BAT-TER-001, BAT-MAG-039, BAT-MAG-038, BAT-END-003
+/// Batch 2d NE on grass: Clavius (Expert Necromancy) with three Archangels, five Air Elementals
+/// and ten Pixies against Rissa (power 3, Earth Elemental, Clone) with ten Pikemen. Every stack
+/// is native on grass: the Conflux elementals and Pixies too (+1 attack, defense and speed:
+/// 31/31/19, 10/10/8, 3/3/8; the Earth Elementals 11/11/5), the reading of 0x43D730 refuted.
+/// Blue's Earth Elementals appear in its column 15; its Clone on the Pikemen too. Red kills them
+/// all: the outcome records the Pikemen as Blue's army and both created stacks as created, with
+/// their losses, which the aftermath's Necromancy counts (BAT-Q7; the batch: seven Skeletons,
+/// 600 experience, the game's part).
+#[test]
+fn batch_2d_ne_natives_on_grass_and_the_created_stacks_records() {
+    let r = sod();
+    let field = Field::new(r.battle().field);
+    let (earth, clone) = (spell(&r, "base:earth_elemental"), spell(&r, "base:clone"));
+    let necromancy = vec![(r.skill_by_key("base:necromancy").unwrap(), 3)];
+    let mut clavius = details(&r, "base:clavius", (1, 1), necromancy, &[], &[]);
+    clavius.worn = h3_heroes::wearing(&r, &[]);
+    let rissa = details(
+        &r,
+        "base:rissa",
+        (3, 6),
+        vec![],
+        &[],
+        &["base:earth_elemental", "base:clone"],
+    );
+    let mut s = battle(
+        &r,
+        [&clavius, &rissa],
+        &[
+            ("base:archangel", 3),
+            ("base:air_elemental", 5),
+            ("ab:pixie", 10),
+        ],
+        &[("base:pikeman", 10)],
+        Some("base:grass"),
+    );
+    // Stacks: 0 Archangels, 1 Air Elementals, 2 Pixies; 3 Pikemen; 4 the Earth Elementals, 5
+    // the clone.
+    let stats = |s: &BattleState, id: usize| {
+        let st = s.stacks()[id];
+        (st.attack, st.defense, st.speed)
+    };
+    assert_eq!(
+        [stats(&s, 0), stats(&s, 1), stats(&s, 2)],
+        [(31, 31, 19), (10, 10, 8), (3, 3, 8)]
+    );
+    let pikemen = 3;
+    defend_to(&mut s, &r, pikemen);
+    let made = created(
+        &r,
+        &turn(&mut s, &r, pikemen, cast(earth, CastTarget::None)),
+    );
+    assert_eq!(made.len(), 1);
+    assert_eq!((made[0].0, made[0].2), (4, 15));
+    assert_eq!(stats(&s, 4), (11, 11, 5));
+    turn(&mut s, &r, pikemen, Command::Defend);
+    defend_to(&mut s, &r, pikemen);
+    assert_eq!(s.round(), 2);
+    let made = created(&r, &turn(&mut s, &r, pikemen, cast(clone, stack(pikemen))));
+    assert_eq!(made.len(), 1);
+    // Red attacks the clone first, then the Pikemen and the elementals; Blue Defends.
+    for _ in 0..200 {
+        match s.side_to_act() {
+            Some(BattleSide::Attacker) => {
+                let target = [5u8, 3, 4]
+                    .into_iter()
+                    .find(|&t| s.stacks()[usize::from(t)].is_alive());
+                advance(&mut s, &r, target.unwrap());
+            }
+            Some(BattleSide::Defender) => {
+                let active = s.active().unwrap().0;
+                turn(&mut s, &r, active, Command::Defend);
+            }
+            None => break,
+        }
+    }
+    let outcome = s.outcome().unwrap();
+    assert_eq!(outcome.result, BattleResult::Victory(BattleSide::Attacker));
+    let blue: Vec<(StackOrigin, u32)> = outcome.stacks[1]
+        .iter()
+        .map(|rec| (rec.origin, rec.end))
+        .collect();
+    assert_eq!(
+        blue,
+        [
+            (StackOrigin::Army(0), 0),
+            (StackOrigin::Created, 0),
+            (StackOrigin::Created, 0)
+        ]
+    );
+    let _ = field;
 }
