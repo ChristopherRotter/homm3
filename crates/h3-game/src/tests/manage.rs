@@ -104,7 +104,12 @@ fn run(
 }
 
 /// Applies `actor`'s `command`, which must be refused with `error`, nothing changed or told.
-fn refused(game: &mut GameState, rules: &GameRuleset, actor: Actor, command: GameCommand) -> GameCommandError {
+fn refused(
+    game: &mut GameState,
+    rules: &GameRuleset,
+    actor: Actor,
+    command: GameCommand,
+) -> GameCommandError {
     let before = game.clone();
     let mut events = Vec::new();
     let error = apply(game, rules, actor, command.clone(), &mut events).unwrap_err();
@@ -264,7 +269,10 @@ fn the_formation_and_the_flag_are_set_and_told_to_the_owner_alone() {
         }]
     );
     let on_map = game.adventure().hero(RED_HERO).unwrap();
-    assert_eq!((on_map.formation, on_map.tactics), (Formation::Tight, false));
+    assert_eq!(
+        (on_map.formation, on_map.tactics),
+        (Formation::Tight, false)
+    );
     // The owner sees both; another player's view of the events is nothing.
     let seen = observe(&game, &rules, Viewer::Player(RED));
     let own = seen.adventure.hero(RED_HERO).unwrap().own.as_ref().unwrap();
@@ -338,7 +346,10 @@ fn a_heros_artifacts_move_assemble_and_disassemble_through_its_changes() {
     assert_eq!(events, told(&changes));
     let after = game.hero(RED_HERO).unwrap();
     assert_eq!(after, &changed(&rules, &before, &changes));
-    assert_eq!((after.worn[3], &after.backpack[..]), (Some(band), &[charm][..]));
+    assert_eq!(
+        (after.worn[3], &after.backpack[..]),
+        (Some(band), &[charm][..])
+    );
     // The ring completes the pair: assembled, then disassembled again.
     let worn = after.clone();
     let changes = assemble_changes(&worn, core, Position(2)).unwrap();
@@ -363,7 +374,11 @@ fn a_heros_artifacts_move_assemble_and_disassemble_through_its_changes() {
         &changed(&rules, &assembled, &changes)
     );
     // Told to red alone.
-    assert!(events.iter().all(|e| project(e, Viewer::Player(BLUE)).is_none()));
+    assert!(
+        events
+            .iter()
+            .all(|e| project(e, Viewer::Player(BLUE)).is_none())
+    );
     // Refused, nothing changed or told: an empty place, two heroes without a meeting, another
     // player's hero on either end, a hero not on the map; a part of no complete combination, an
     // empty position, an artifact that is no combination.
@@ -430,7 +445,10 @@ fn a_heros_artifacts_move_assemble_and_disassemble_through_its_changes() {
         "the artifact is there already"
     );
     assert_eq!(
-        manage_error(ManageError::Combine(CombineError::NotCombination(Position(2)))).to_string(),
+        manage_error(ManageError::Combine(CombineError::NotCombination(
+            Position(2)
+        )))
+        .to_string(),
         "the artifact at 2 is no combination"
     );
 }
@@ -438,11 +456,7 @@ fn a_heros_artifacts_move_assemble_and_disassemble_through_its_changes() {
 /// Every management command of red on `hero` but the splits, among its army's slots, the
 /// formations, the flag's values, `places` worn positions and backpack indices up to `carried`,
 /// and the positions.
-fn candidates(
-    rules: &GameRuleset,
-    hero: HeroId,
-    (worn, carried): (usize, usize),
-) -> Vec<Manage> {
+fn candidates(rules: &GameRuleset, hero: HeroId, (worn, carried): (usize, usize)) -> Vec<Manage> {
     let slots = rules.adventure().params().army_slots();
     let mut all = Vec::new();
     for from in 0..slots {
@@ -484,7 +498,14 @@ fn candidates(
 /// Whether `apply` accepts `command` of `actor` in `game`.
 fn accepts(game: &GameState, rules: &GameRuleset, actor: Actor, command: Manage) -> bool {
     let mut copy = game.clone();
-    apply(&mut copy, rules, actor, GameCommand::Manage(command), &mut NoopSink).is_ok()
+    apply(
+        &mut copy,
+        rules,
+        actor,
+        GameCommand::Manage(command),
+        &mut NoopSink,
+    )
+    .is_ok()
 }
 
 // covers: GAM-MAN-002
@@ -551,7 +572,10 @@ fn the_split_query_gives_one_armys_counts_in_the_players_turn() {
     let red = Actor::Player(RED);
     let range = |actor, from, to| split_range(&game, &rules, actor, (from, to));
     // Nine imps: one to eight into an empty slot.
-    assert_eq!(range(red, slot(RED_HERO, 1), slot(RED_HERO, 3)), Some(1..=8));
+    assert_eq!(
+        range(red, slot(RED_HERO, 1), slot(RED_HERO, 3)),
+        Some(1..=8)
+    );
     // None for the system actor, a player outside its turn, two armies without a meeting, an
     // empty slot.
     assert_eq!(
@@ -580,7 +604,13 @@ fn tactics_battle(levels: (u8, u8), flags: (bool, bool)) -> (Option<BattleSide>,
     for (player, hero, on) in [(RED, RED_HERO, flags.0), (BLUE, BLUE_HERO, flags.1)] {
         let flag = GameCommand::Manage(Manage::Tactics { hero, on });
         run(&mut game, &rules, Actor::Player(player), flag).unwrap();
-        run(&mut game, &rules, Actor::Player(player), GameCommand::EndTurn).unwrap();
+        run(
+            &mut game,
+            &rules,
+            Actor::Player(player),
+            GameCommand::EndTurn,
+        )
+        .unwrap();
     }
     let attack = GameCommand::Adventure(AdventureCommand::MoveHero {
         hero: RED_HERO,

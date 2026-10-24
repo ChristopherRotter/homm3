@@ -1004,7 +1004,10 @@ fn move_hero(hero: HeroId, path: Vec<TilePos>) -> GameCommand {
 fn as_move(command: &GameCommand) -> Option<(HeroId, &[TilePos])> {
     match command {
         GameCommand::Adventure(AdventureCommand::MoveHero { hero, path }) => Some((*hero, path)),
-        GameCommand::EndTurn | GameCommand::Answer(_) | GameCommand::Battle(_) => None,
+        GameCommand::EndTurn
+        | GameCommand::Answer(_)
+        | GameCommand::Battle(_)
+        | GameCommand::Manage(_) => None,
     }
 }
 

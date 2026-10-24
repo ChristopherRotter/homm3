@@ -50,6 +50,8 @@ mod treasury;
 mod tests;
 
 pub use command::{Actor, Answer, GameCommand, GameCommandError, GameEvent, NoopSink, Sink, apply};
+/// The army commands a [`Manage::Army`] carries (E08 T51a; `h3_adventure`'s, ADR-0016 point 3).
+pub use h3_adventure::{ArmyCommand, ArmyCommandError, ArmyRef, ArmySlot};
 /// The hero changes a battle's outcome applies, which [`GameEvent::HeroChanged`] carries (E08
 /// T19a2a; `h3_heroes`' types).
 pub use h3_heroes::{ArtifactPlace, HeroChange};
@@ -60,8 +62,6 @@ pub use h3_heroes::{Movement, movement};
 /// `h3_heroes`' (the map's import equips a map's entries where they are taken, since E08 T49b
 /// with Titan's Thunder's Spell Book; `wearing` places a list).
 pub use h3_heroes::{Position, equip, positions, takes, wearing};
-/// The army commands a [`Manage::Army`] carries (E08 T51a; `h3_adventure`'s, ADR-0016 point 3).
-pub use h3_adventure::{ArmyCommand, ArmyCommandError, ArmyRef, ArmySlot};
 pub use legal::{default_answer, legal_commands, legal_management, legal_moves, split_range};
 pub use manage::{Manage, ManageError};
 pub use observe::{

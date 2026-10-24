@@ -14,8 +14,8 @@ use h3_heroes::HeroDetails;
 use super::AdventureState;
 use crate::answer::{Answer, Temper, Wanderer};
 use crate::command::{
-    AdventureEvent, AdventureEventKind, AdventureOutcome, BattleStart, Defender, NoRoom,
-    Offer, OfferKind, Sink, Viewers,
+    AdventureEvent, AdventureEventKind, AdventureOutcome, BattleStart, Defender, NoRoom, Offer,
+    OfferKind, Sink, Viewers,
 };
 use crate::ruleset::{AdventureRuleset, ObjectKind, ObjectTypeId};
 use crate::setup::Pos;

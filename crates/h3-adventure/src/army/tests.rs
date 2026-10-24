@@ -631,10 +631,10 @@ fn the_listing_gives_every_move_and_dismissal_the_state_accepts() {
     assert_eq!(last, accepted(&state, part, &[three, one], None));
     // The group: its stacks onto its own slots and the hero's, each dismissed.
     let found = [stack(0, WOLF, 7), stack(2, PIKEMAN, 4)];
-    let group = state.army_commands(part, RED, (ArmyRef::Group, Some(one)), Some(&found));
-    assert_eq!(group.len(), 2 * (6 + 7) + 2);
+    let from_group = state.army_commands(part, RED, (ArmyRef::Group, Some(one)), Some(&found));
+    assert_eq!(from_group.len(), 2 * (6 + 7) + 2);
     assert_eq!(
-        group,
+        from_group,
         accepted(&state, part, &[ArmyRef::Group, one], Some(&found))
     );
     // None for another player's hero, a hero not on the map or the group without a dialog;

@@ -204,7 +204,10 @@ impl GameState {
                 .unwrap_or(0)
         };
         let mut heroes = sides.map(|side| side.and_then(|side| self.battle_hero(core, side.hero)));
-        deny_tactics(&mut heroes, sides.map(|side| side.is_none_or(|side| side.tactics)));
+        deny_tactics(
+            &mut heroes,
+            sides.map(|side| side.is_none_or(|side| side.tactics)),
+        );
         let war_machines = sides.map(|side| {
             side.and_then(|side| self.hero(side.hero))
                 .map(|details| war_machines(details, core))
@@ -629,7 +632,10 @@ fn deny_tactics(heroes: &mut [Option<BattleHero>; 2], flags: [bool; 2]) {
         Ordering::Equal => false,
     };
     if denied {
-        heroes.iter_mut().flatten().for_each(|hero| hero.tactics = 0);
+        heroes
+            .iter_mut()
+            .flatten()
+            .for_each(|hero| hero.tactics = 0);
     }
 }
 

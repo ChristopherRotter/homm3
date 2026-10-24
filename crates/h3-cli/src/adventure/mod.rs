@@ -64,8 +64,8 @@ use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 
 use h3_adventure::{AdventureCommand, Pos};
-use h3_contracts::{BattleSide, HeroId, PlayerId};
 use h3_content::Formation;
+use h3_contracts::{BattleSide, HeroId, PlayerId};
 use h3_game::{
     Actor, Answer, ArmyCommand, ArmyRef, ArmySlot, ArtifactPlace, GameCommand, GameRuleset,
     GameSetup, Manage, Position,
@@ -313,7 +313,11 @@ fn format_manage(command: &Manage) -> String {
             format!("army move {} {}", format_slot(from), format_slot(to))
         }
         Manage::Army(ArmyCommand::Split { from, to, count }) => {
-            format!("army split {} {} {count}", format_slot(from), format_slot(to))
+            format!(
+                "army split {} {} {count}",
+                format_slot(from),
+                format_slot(to)
+            )
         }
         Manage::Army(ArmyCommand::Dismiss { at }) => format!("army dismiss {}", format_slot(at)),
         Manage::Formation { hero, formation } => {
