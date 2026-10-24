@@ -1,0 +1,6 @@
+# A shipped map's start with its unexplored tiles (E24 M1 T5b2; design §1.5, §2.10): Dwarven
+# Tunnels as a new game starts it, the human player's explored tiles as the game left them (around
+# its hero, 97 tiles), the start's view: the shroud's edge pieces on every side of them.
+map = "Dwarven Tunnels.h3m"
+explored = "start"
+view = [3, 29, 0]

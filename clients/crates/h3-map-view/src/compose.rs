@@ -2,8 +2,9 @@
 //! the executable uses for it, from a [`Batch`], into a screen in the original's 16-bit format
 //! (`docs/epics/E17-design.md` §3.2). The one place that decides how a named thing is drawn, as
 //! `h3-view`'s compose is for the battle: the frame's picture opaque in the viewer's colours
-//! (design §1.9), the view's tiles through `draw_frame_raw` ([`crate::draw::raw`]) and the
-//! unexplored tiles' second time through 0x47E820 ([`crate::draw::shadows`]), the objects' bodies
+//! (design §1.9), the view's tiles and the path's arrows through `draw_frame_raw`
+//! ([`crate::draw::raw`]), the unexplored tiles' second time and the arrows' shadows through
+//! 0x47E820 ([`crate::draw::shadows`]; E24 M1 T5b2, §2.2), the objects' bodies
 //! and flat objects and the heroes' and boats' pictures through the flagged drawer
 //! ([`crate::draw::flagged`]; an owned object's flag pixels in its entry of the flag palette,
 //! E24 M1 T5b1, design §2.9), their shadows through
@@ -102,6 +103,7 @@ pub fn compose(scene: &Scene, batch: &Batch, frame: [u32; 2]) -> Result<Screen, 
                         draw::flagged(&mut screen, f, palette, at, *clip, colour);
                     }
                     Pass::Shadow => draw::shadow_pass(&mut screen, f, at, *clip),
+                    Pass::PathShadow => draw::shadows(&mut screen, f, at, *clip),
                     _ => draw::raw(&mut screen, f, palette, at, *clip),
                 }
                 if *pass == Pass::Shroud {

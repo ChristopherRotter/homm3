@@ -438,8 +438,8 @@ button that shows in more than one place (a dialog's OK): `python3 capture/h3adv
 <name> x0,y0,x1,y1 [<dump.xwd>]` records 12 probes relative to its corner (`[button.<name>]`);
 `h3adv.find_button` finds it anywhere on the screen.
 
-**The map's stills** (E24 M1 T3b2, T4a, T4b, T5a, T5b1, the map client lane;
-`docs/epics/E24-design.md` §1.10, §2.6 to §2.9): from
+**The map's stills** (E24 M1 T3b2, T4a, T4b, T5a, T5b1, T5b2, the map client lane;
+`docs/epics/E24-design.md` §1.10, §2.6 to §2.10): from
 `clients/`, after `cargo build --release -p h3-map-view`,
 
 ```
@@ -451,22 +451,28 @@ A situation (`map/situations/<id>.toml`, its format in `h3_map_view::situation`)
 map (tiles given, or copied from a rectangle of a shipped map in `original-data/install/Maps`,
 with the objects anchored there when the copy says `objects = true`; objects given by their
 template's DEF, its line of the game's `Objects.txt`), its heroes (T5a: each with its tile and
-optionally its owner, class, facing and walk; Red's and another colour's at least) and empty
-boats (tile, type, facing), the view's top-left and the tiles Red has not explored; or a shipped
+optionally its owner, class, facing and walk; Red's and another colour's at least; one of Red's
+with the tile its `path` shows, T5b2) and boats (tile, type, facing; a boarded one's flag
+`colour`, T5b2), the view's top-left and the tiles Red has not explored; or a shipped
 map loaded whole (`map = "<file>"` and
 the view, T4b: `still` copies it from `original-data/install/Maps`, `to_shipped` begins it with
 the scenario list's setup and closes its first day's messages by their OK; the screen it waits
 for is `adventure`, since `adventure_map`'s probes hold the level button greyed, as a map without
-an underground shows it; the explored bits are its human player's). `still`
+an underground shows it; the explored bits are its human player's, and with `explored = "start"`
+(T5b2) they stay as the new game left them). `still`
 writes the map (`h3-map-view situation`), loads it as a single scenario, walks Red's heroes the
 situation walks, by play (`h3adv.walk`, each checked to arrive: a hero boards a boat by walking
 onto it; boarding takes the day's points, T5a), writes Red's explored
 bit of every tile of the level (`h3mem.Mem.write_explored`: all but the situation's `hidden`
-rectangles; the game's own reveal around its heroes is overwritten), centres the view by a
-minimap click (another view first if it is there already, so that it redraws), parks the mouse,
-turns the heroes and boats the situation turns (`Mem.write_facing` into their records, the
+rectangles; the game's own reveal around its heroes is overwritten; not with `explored =
+"start"`), centres the view by a minimap click (another view first if it is there already, so
+that it redraws), parks the mouse, shows the path of the hero the situation gives one (T5b2: the
+hero selected by the hero list, which centres the view on it, the view set again, the path's tile
+clicked once as `h3adv.walk`'s first click, its arrow there awaited), turns the heroes and boats
+the situation turns (`Mem.write_facing` into their records, the
 heroes found by their records' tiles, `Mem.hero_on`: at a turn's start the original lifts the
-selected hero off its tile until the view moves, T5a), steps 100 ms, freezes the clock, steps it to the later of the palette tick's next time and the
+selected hero off its tile until the view moves, T5a), writes the flag colour a situation gives
+a boarded boat into its record (`Mem.write_boat_colour`, T5b2), steps 100 ms, freezes the clock, steps it to the later of the palette tick's next time and the
 view's next redraw (the view is redrawn every 180 ms, the palettes rotate every 200 ms: between
 the two memory is a step ahead of the screen; at that time the redraw's own tick rotates first)
 and dumps the screen. The virtual clock drives the adventure map
@@ -480,7 +486,9 @@ object's template in memory, its DEF, class and subclass (`Mem.map_templates`; T
 object's is the copy a new game made, design §2.7) and the heroes and empty boats the view
 draws (`Mem.map_heroes`: by the tiles of class 34 and 8 with a word, each hero's class, facing,
 owner and boat; T5a) and every object's owner as the view finds it (`Mem.map_owners`, by its
-entrance tile and the owner's record, -1 none; T5b1), all into `live.toml`. Ours:
+entrance tile and the owner's record, -1 none; T5b1), the viewer's explored bits of every level
+(`Mem.explored_rows`) and the path's arrows while one is shown (`Mem.path_arrows`: the manager's
++0x48 while +0x4C is set; T5b2), all into `live.toml`. Ours:
 `h3-map-view render --bugs original --live live.toml` with the same view and hidden rectangles;
 it refuses a `live.toml` whose anchors are not its map's (but a random dwelling's, which the
 map's load moves: T5b1, design §2.9) and one whose towns' pictures are not those their buildings

@@ -1,0 +1,7 @@
+# A shipped map's start with its unexplored tiles at the map's edge (E24 M1 T5b2; design §1.5,
+# §2.10): Hoard as a new game starts it, the human player's explored tiles as the game left them,
+# a view over its second hero's circle, which reaches the map's right column: the hidden tiles
+# beside the edge count the tiles off the map as unexplored.
+map = "Hoard.h3m"
+explored = "start"
+view = [54, 12, 0]

@@ -3,9 +3,9 @@
 //! what a random object became (the original draws them at the game's start, and the harness saw
 //! the draws differ from run to run: E17 design §6.3), the owners, the heroes and the boats
 //! (they have no draw lists, E24 design §2.3), the viewer and the tiles it has explored (§1.5),
-//! and the moment (§1.6). In M1 a comparison fills it from the original's memory (`h3mem.py`);
-//! [`Live::at_start`] gives what a map's start holds without a draw; from M4 on the engine fills
-//! it.
+//! the path shown (§2.10) and the moment (§1.6). In M1 a comparison fills it from the original's
+//! memory (`h3mem.py`); [`Live::at_start`] gives what a map's start holds without a draw; from M4
+//! on the engine fills it.
 
 use alloc::string::String;
 use alloc::vec;
@@ -31,8 +31,22 @@ pub struct Live {
     pub viewer: u8,
     /// The tiles the viewer has explored.
     pub explored: Explored,
+    /// The path shown, its arrows by tile (E24 M1 T5b2, design §2.10); empty when none is shown.
+    pub path: Vec<Arrow>,
     /// The moment drawn.
     pub moment: Moment,
+}
+
+/// One arrow of the path shown (E24 M1 T5b2; design §2.2, §2.10): the adventure manager's
+/// +0x48 by tile while its +0x4C shows a path, the selected hero's to the tile clicked. Passes 6
+/// and 8 draw frame `arrow` − 1 of the tables' `path` DEF: its shadow under the bodies, its
+/// pixels over them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Arrow {
+    /// The tile.
+    pub at: Pos,
+    /// The arrow (1–50; 1 to 25 green, a tile the hero reaches this turn, 26 to 50 red).
+    pub arrow: u16,
 }
 
 /// One object's live state.
@@ -242,7 +256,7 @@ impl Live {
     /// boats of the map, facing right; every town (not a random one) with its picture by its
     /// buildings at the start (`towns`; E24 M1 T5b1, design §2.9: a new game redraws every town
     /// so, as a copy of its template); every tile explored (*provisional*: what a start reveals
-    /// is the engine's, a comparison reads it); the moment 0.
+    /// is the engine's, a comparison reads it); no path shown; the moment 0.
     #[must_use]
     pub fn at_start(raw: &RawMap, art: &MapArt, viewer: u8, towns: &TownArt) -> Self {
         let mut heroes = Vec::new();
@@ -300,6 +314,7 @@ impl Live {
             boats,
             viewer,
             explored: Explored::all(art.size, art.levels, true),
+            path: Vec::new(),
             moment: Moment::default(),
         }
     }

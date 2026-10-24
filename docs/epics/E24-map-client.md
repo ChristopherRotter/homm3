@@ -1,7 +1,7 @@
 # E24 — The adventure map client
 
 Status: **refined** (2026-10-23, T0, with the user); M1 running (T1a, T1b, T2, T3a, T3b1, T3b2,
-T4a, T4b, T5a, T5b1 done; next T5b2, `docs/lanes/map-client/QUEUE.md`).
+T4a, T4b, T5a, T5b1, T5b2 done; next T6, M1's closure, `docs/lanes/map-client/QUEUE.md`).
 Lane: map-client (`docs/lanes/map-client/HANDOFF.md`: the autonomy contract, the user's asset
 notes). Opened 2026-10-23 when the user split the client lane at E17 M3's closure (CLT-Q18).
 Decisions so far live here (no ADR of its own yet; ADR-0020 and ADR-0024 bind it as they bind
@@ -130,7 +130,11 @@ autonomy contract (lane HANDOFF) says what the agent decides alone in between. T
   pictures by their buildings and the random dwellings resolved at the load (`E24-design.md`
   §2.9); drawn (`Draw::Piece`'s flag), taken from the start and from memory; eight situations
   (owned objects of every colour, random dwellings, the nine factions' towns by their buildings,
-  random towns, two shipped maps' views), exact.
+  random towns, two shipped maps' views), exact. T5b2 (2026-10-24): the path's arrows read (passes
+  6 and 8: `adag.def` by the manager's +0x48 per tile; `E24-design.md` §2.10) and drawn, taken
+  from memory with the explored tiles; five situations (a path under the objects' upper parts,
+  D9; a path cut by the view; two shipped maps' starts with their unexplored tiles; boats' flags
+  of the seven other colours), exact, the set (40) again.
 - **Exit:** the capture set's stills match the original pixel for pixel outside the masks of
   what M1 does not draw (the panels, the mouse), or list each difference as an M2 item; the
   review list accepted; research item 9 closed by the reading and its frames.
@@ -192,8 +196,8 @@ The M1 review list starts here (the autonomy contract's "queue for the milestone
   converted in the pure library, so its tests use the writer; the purity test is a copy of
   `h3-view`'s for this crate.
 - **M1 T2, the live part at a map's start:** heroes and boats facing right (T5a: as the
-  original's new game) and every tile explored until T5b2 reads the original's start; phases 0
-  (the original's are random).
+  original's new game) and every tile explored (T5b2: what a start reveals is the engine's, the
+  comparisons read the original's); phases 0 (the original's are random).
 - **M1 T3a, the writer's additions** (the adventure lane's crate): a second entry point
   (`write_with(&Map, &Extras)`) instead of new `Map` fields and `MapObject` variants, which would
   have changed struct literals and matches in four other lanes' crates; the editor's bodies taken
@@ -245,3 +249,10 @@ The M1 review list starts here (the autonomy contract's "queue for the milestone
   an owner and `village`, `fort`, `citadel`, `castle` or `capitol`) and objects' `owner`, every
   owning colour given a hero outside the view; the random dwellings' situation drawing the Angel
   Portal's moved anchor only in about one run of two.
+- **M1 T5b2, the path and the explored tiles** (*provisional*): `Live::path` as arrows by tile
+  (the original's frame numbers, read from memory; choosing them from a path is M2's) and
+  `Pass::PathShadow`, `Pass::Path`; `[map] path`; `live.toml`'s `explored` (a string of `0` and
+  `1` per row of each level) and `path`, always written, so every comparison draws the explored
+  tiles memory holds; the situations' hero `path` (one, Red's) and boat `colour` (written into the
+  boarded boat's record: a still's staging, since a computer player's hero would have to board),
+  a shipped map's `explored = "start"`.

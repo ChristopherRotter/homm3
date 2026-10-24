@@ -507,7 +507,28 @@ fn refuses_heroes_and_boats_it_cannot_write() {
     };
     let two = "{ at = [1, 1] }, { at = [3, 3], owner = 1 }";
     assert_eq!(build(two, "{ at = [5, 5], kind = 0 }"), Ok(()));
+    // A Red hero's path and a boat's flag colour (E24 M1 T5b2), the harness's alone.
+    let shown = "{ at = [1, 1], path = [4, 2] }, { at = [3, 3], owner = 1 }";
+    assert_eq!(
+        build(shown, "{ at = [5, 5], kind = 0, colour = 7 }"),
+        Ok(())
+    );
     for (heroes, boats, error) in [
+        (
+            "{ at = [1, 1], owner = 1, path = [2, 2] }, { at = [3, 3] }",
+            "",
+            "hero at [1, 1]: only Red's heroes walk or show a path",
+        ),
+        (
+            "{ at = [1, 1], path = [2, 2] }, { at = [3, 3], path = [4, 4] }",
+            "",
+            "hero at [3, 3]: a second path shown",
+        ),
+        (
+            two,
+            "{ at = [5, 5], kind = 0, colour = 8 }",
+            "boat at [5, 5]: no template of type 0 or a facing or colour past 7",
+        ),
         (
             "{ at = [1, 1] }",
             "",
@@ -536,17 +557,17 @@ fn refuses_heroes_and_boats_it_cannot_write() {
         (
             "{ at = [1, 1], owner = 1, walk = [[2, 2]] }",
             "",
-            "hero at [1, 1]: only Red's heroes walk",
+            "hero at [1, 1]: only Red's heroes walk or show a path",
         ),
         (
             two,
             "{ at = [5, 5], kind = 1 }",
-            "boat at [5, 5]: no template of type 1 or a facing past 7",
+            "boat at [5, 5]: no template of type 1 or a facing or colour past 7",
         ),
         (
             two,
             "{ at = [5, 5], kind = 0, facing = 9 }",
-            "boat at [5, 5]: no template of type 0 or a facing past 7",
+            "boat at [5, 5]: no template of type 0 or a facing or colour past 7",
         ),
     ] {
         assert_eq!(

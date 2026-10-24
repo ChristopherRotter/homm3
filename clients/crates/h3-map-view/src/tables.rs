@@ -58,6 +58,10 @@ pub struct Header {
 pub struct ViewArt {
     /// The map's edge, drawn on the view's tiles off the map (`edg.def`, design §1.4).
     pub edge: String,
+    /// The path's arrows and their shadows (`adag.def`, the manager's +0xB0): a tile's arrow a
+    /// draws frame a − 1, 1 to 25 green, 26 to 50 red (passes 6 and 8; E24 M1 T5b2, design
+    /// §2.2, §2.10).
+    pub path: String,
     /// How far below its tile a road's picture is drawn (16: its lower half reaches into the
     /// tile below, design §1.3).
     pub road_offset: i32,
@@ -303,6 +307,8 @@ pub const FULL_FRAMES: usize = 4;
 /// The frames of the edge's DEF the view draws (0–15 further out, 16–19 the corners, 20–35 the
 /// edges; design §1.4).
 pub const EDGE_FRAMES: usize = 36;
+/// The frames of the path's DEF a tile's arrow can name (arrows 1–50; design §2.10).
+pub const PATH_FRAMES: usize = 50;
 /// The entries of the shroud's table (one per mask).
 pub const MASKS: usize = 256;
 
@@ -365,7 +371,7 @@ impl Tables {
     }
 
     /// Every DEF the tables name with the frames the view draws of it: the layers' at least one
-    /// (a map's pictures decide the rest), the edge's, the shroud's pieces'.
+    /// (a map's pictures decide the rest), the edge's, the shroud's pieces', the path's arrows.
     #[must_use]
     pub fn defs(&self) -> Vec<DefNeed> {
         let mut needs = Vec::new();
@@ -389,6 +395,7 @@ impl Tables {
             (&map.edge, "edge", EDGE_FRAMES),
             (&map.shroud.full, "full shroud", FULL_FRAMES),
             (&map.shroud.edge, "edge shroud", map.shroud.edge_frames()),
+            (&map.path, "path", PATH_FRAMES),
         ] {
             needs.push(DefNeed {
                 name: name.clone(),
@@ -498,6 +505,7 @@ pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
     name("edge", &map.edge, ".DEF")?;
     name("full shroud", &map.shroud.full, ".DEF")?;
     name("edge shroud", &map.shroud.edge, ".DEF")?;
+    name("path", &map.path, ".DEF")?;
     heroes(&map.heroes)?;
     owners_and_towns(map)?;
     if map.shroud.pieces.len() != MASKS {

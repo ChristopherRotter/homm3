@@ -12,20 +12,7 @@ in git. Every oddity of the original a reading or a capture finds is an `MCL-Q<n
 task (the HANDOFF's autonomy contract).
 
 T5 split with the user (2026-10-23) into T5a (heroes and boats, done) and T5b; T5b split with
-the user (2026-10-24) into T5b1 (the owners, done) and T5b2 (the path, the explored tiles).
-
-### E24 M1 T5b2 — the path's arrows and the explored tiles
-
-- **Scope:** the path's arrows and their shadows (passes 6 and 8, D9); the unexplored tiles from
-  the original's explored tiles (`h3mem.py`) in the live part; situations of a path under an
-  object, and shipped maps' views with their start's unexplored tiles; if cheap, a boat's flag of a
-  colour other than Red's (T5a captured Red's only: another colour's hero must board, hot seat).
-- **Acceptance:** those situations match pixel for pixel outside the panels' masks.
-- **Depends on:** T5b1 (done). **Status:** ready. Since T5a the situations give heroes of any
-  colour and boats, Red's heroes walk by play and the harness turns heroes and boats
-  (`E24-design.md` §2.8); a path is shown by a hero's first click on a tile (`h3adv.walk`'s
-  first click; `setup.sh` sets Show Route). Since T5b1 objects and towns with owners (every owning
-  colour needs a hero to be a player), `live.toml`'s `owners` (§2.9).
+the user (2026-10-24) into T5b1 (the owners, done) and T5b2 (the path, the explored tiles, done).
 
 ### E24 M1 T6 — the capture set and M1's closure
 
@@ -35,7 +22,8 @@ the user (2026-10-24) into T5b1 (the owners, done) and T5b2 (the path, the explo
   the runbook's "Which captures a change needs"); M1's closure: a fresh reviewer agent, its
   findings fixed or queued, the review list (the epic's), the user's checkpoint; M2 T0 queued.
 - **Acceptance:** the whole set matches as recorded; the review list accepted by the user.
-- **Depends on:** T5b2. **Status:** waiting (T5b2).
+- **Depends on:** T5b2 (done). **Status:** ready. The set holds 40 situations since T5b2
+  (`set.toml`); `live.toml` gives every comparison the explored tiles and the path from memory.
 
 ## Inbox
 

@@ -78,6 +78,7 @@ fn live(objects: usize) -> Live {
         boats: Vec::new(),
         viewer: 0,
         explored: Explored::all(10, 2, true),
+        path: Vec::new(),
         moment: Moment::default(),
     }
 }

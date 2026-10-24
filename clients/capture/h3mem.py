@@ -105,7 +105,7 @@ MAP_TEMPLATES, TEMPLATE_RECORD, TEMPLATE_CLASS = 0x4, 0x44, 0x38
 # bytes each: tile x, y, level (i16 +0x0, +0x2, +0x4), type (i8 +0x1A), facing (i8 +0x1B), the
 # flag's colour (i8 +0x1C).
 HERO_CLASS_FIELD, HERO_ID, HERO_FACING, HERO_STATUS, IN_BOAT = 0x30, 0x1A, 0x47, 0x105, 1 << 18
-BOATS, BOAT_RECORD, BOAT_FACING = 0x4E3BC, 0x28, 0x1B
+BOATS, BOAT_RECORD, BOAT_FACING, BOAT_COLOUR = 0x4E3BC, 0x28, 0x1B, 0x1C
 HERO_OBJECT, BOAT_OBJECT, ENTRANCE = 34, 8, 0x10
 # The palette tick's next time (palette_tick_time 0x6989B4: the tick 0x4ED490 rotates once the
 # clock reaches it and sets it to now + 200 on the map). The adventure map's idle step redraws
@@ -152,6 +152,9 @@ RESOURCES = ("wood", "mercury", "ore", "sulfur", "crystal", "gems", "gold")
 # level by level: the underground's after the surface's, E17 H2), the view's top-left tile (+0xE4)
 # and the tile under the mouse (+0xE8), both packed (unpack; the level in bit 26).
 PATH, VIEW, MOUSE_TILE = 0x48, 0xE4, 0xE8
+# Adventure manager +0x4C: a path shown (not 0: the view's passes 6 and 8 draw the arrows of +0x48,
+# adventure_view_draw 0x40F5F2; E24 M1 T5b2, design §2.10).
+PATH_SHOWN = 0x4C
 # A path arrow's frame: 0 none, 1 to 25 a move today (green), 26 to 50 a later one (red).
 GREEN_FRAMES = range(1, 26)
 FRAME_DEADLINE = 0x698998  # battle animations' next frame time (0x4F82F0 waits for it)
@@ -637,6 +640,27 @@ class Mem:
         return {(i % side, i // side % side, i // (side * side)):
                 "green" if f in GREEN_FRAMES else "red" for i, f in enumerate(frames) if f}
 
+    def path_arrows(self):
+        """The path the view draws (E24 M1 T5b2; design §2.10), as `render --live` takes it:
+        [x, y, level, arrow] for each tile with an arrow, level by level and rows then columns;
+        none while the manager's +0x4C shows no path."""
+        if not self.manager_field(PATH_SHOWN):
+            return []
+        side = self.i32(self.game() + MAP_SIDE)
+        tiles = side * side * self.levels()
+        arrows = struct.unpack(f"<{tiles}H", self.read(self.manager_field(PATH), 2 * tiles))
+        return [[i % side, i // side % side, i // (side * side), a]
+                for i, a in enumerate(arrows) if a]
+
+    def explored_rows(self, colour):
+        """A player's explored bits of every tile (E24 M1 T5b2), as `render --live` takes them: a
+        string per row of each level in turn, `1` explored, `0` not (tile_vision_word 0x4F79B0)."""
+        side = self.i32(self.game() + MAP_SIDE)
+        count = side * side * self.levels()
+        words = struct.unpack(f"<{count}H", self.read(self.u32(TILE_VISION_POINTER), 2 * count))
+        bits = "".join("1" if w >> colour & 1 else "0" for w in words)
+        return [bits[i:i + side] for i in range(0, count, side)]
+
     def date(self):
         """(month, week, day of the week), each from 1 (E17 H2)."""
         day, week, month = struct.unpack("<3H", self.read(self.game() + DATE, 6))
@@ -854,6 +878,18 @@ class Mem:
                 raise KeyError(f"no hero or boat on {(x, y, z)}")
             address = boats[0]["address"] + BOAT_FACING
         self.write_bytes(address, bytes([facing]))
+
+    def write_boat_colour(self, x, y, z, colour):
+        """Gives the boat of the hero on (x, y, z) the flag colour `colour` (0-7; E24 M1 T5b2):
+        the boat record's +0x1C, which boarding sets to the hero's owner (design §2.8). A still's
+        staging, as the facings: the view's next draw shows the boat's flag of that colour."""
+        index = self.hero_on(x, y, z)
+        hero_id = None if index is None else struct.unpack(
+            "<i", self.read(self.game() + HEROES + HERO_SIZE * index + HERO_ID, 4))[0]
+        boats = [b for b in self.boats() if b["used"] and b["aboard"] == 1 and b["hero"] == hero_id]
+        if not boats:
+            raise KeyError(f"no hero in a boat on {(x, y, z)}")
+        self.write_bytes(boats[0]["address"] + BOAT_COLOUR, struct.pack("<b", colour))
 
     def monster(self, x, y, z=0):
         """The wandering monster on a tile from its word (E17 H1; E3-3), None for none: its

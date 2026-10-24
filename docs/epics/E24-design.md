@@ -421,8 +421,9 @@ Each a map of the writer (T3a: objects of any template) or a shipped map's view:
 9. Flat objects (Cursed Ground, Magic Plains, …) under another object's shadow; objects cut by
    the map's left and top edges and anchored past its right and bottom edges.
 
-Open points: none. Settled by T5b1 (§2.9): 0x4FEC30 is the entrance; the flag pixels outside the
-eight classes are in pictures the map never draws (D10). Settled by T5a
+Open points: none. Settled by T5b2 (§2.10): point 8 (D9) in `path-objects`. Settled by T5b1
+(§2.9): 0x4FEC30 is the entrance; the flag pixels outside the eight classes are in pictures the
+map never draws (D10). Settled by T5a
 (§2.8): the coast test for the waves; points 4, 5 and 6 in its captures; point 8 (D9) moved to
 T5b with the path. Settled by T4a (§2.6): +0x40 as the priority byte, +0x14 and +0x24 as the
 `.msk`'s masks; points 1 to 3 and 9 are in the copies of §2.6, so their own maps were not built;
@@ -628,3 +629,42 @@ points 4, 5, 6 and 8 moved to T5 with the heroes and the path, point 7 to T4b. S
   colour and neutral), `towns-random`, and the shipped maps `shipped-hoard` and
   `shipped-too-many-monsters` (owned towns, neutral mines and dwellings, heroes): each exact on
   its first run, the whole set (35) again.
+
+### 2.10 The path's arrows and the explored tiles (M1 T5b2, 2026-10-24)
+
+- **The arrows** (view_path_shadows_pass 0x411F50, view_path_arrows_pass 0x4120B0, read): while
+  the manager's +0x4C is set, each pass takes the tile's u16 from the array at manager +0x48, at
+  (level × height + y) × width + x (every level, `structs.toml`), skips 0 and draws `adag.def`
+  (+0xB0) frame a − 1 of group 0 at the tile's place, clipped to the tile inside the view's clip
+  as every tile pass (§1.2): pass 6 through def_draw_run_shadows 0x47BFA0 into 0x47E820 (the
+  frame's runs 1–2 as the border shadow and 3–4 as the body shadow, its pixels not drawn), pass 8
+  through def_draw_raw 0x47BF50 (its pixels, the runs skipped). `adag.def` holds 50 frames of a
+  32 × 32 canvas in encoding 2 (`PackedRows`, the shroud's layout): 1–25 green (a move today),
+  26–50 the same arrows red (`h3mem.GREEN_FRAMES`, observed); arrow 26 (frame 25) the red cross
+  at a path's end (both captures), frame 0 its green twin by its size. So an arrow's shadow lies under every body and over every other shadow, and the
+  arrow over every body, under the shroud (§2.2). How a path's arrows are chosen from its steps
+  and the hero's points is not read: M2's (the hero's walk), the engine's path from M4; in M1
+  the live part takes them from memory.
+- **The explored tiles** (§1.5): the unexplored pass reads only the viewer's bit of each tile's
+  vision word; a new game sets it around the human player's heroes and towns (the reveal is the
+  engine's, ADR-0016). The live part takes every level's bits from memory (`Mem.explored_rows`);
+  `Live::at_start` keeps every tile explored.
+- **The viewer**: the tables' `[map] path` (the gate checks its 50 frames); `Live::path`, one
+  `Arrow` (tile, arrow) per tile; `Pass::PathShadow` (pass 6, the compose's `draw::shadows`
+  alone) and `Pass::Path` (pass 8, `draw::raw`), each over the whole view between the shadows and
+  the bodies and between the bodies and the shroud; an arrow 0, off the map or on another level
+  is not drawn.
+- **The harness** (`h3map.py`, `h3mem`): a situation's Red hero with a `path` is selected (the
+  hero list centres the view on it), the view set again, the path's tile clicked once (as
+  `h3adv.walk`'s first click) and its arrow there awaited; `explored = "start"` (a shipped map)
+  leaves the new game's explored bits as they are; a boat's `colour` is written into the record
+  of the boat its hero boarded (+0x1C, a still's staging as the facings, §2.8). `live.toml`
+  gains `explored` (a row string of `0` and `1` per row of each level) and `path` (`[x, y,
+  level, arrow]` while +0x4C is set, `Mem.path_arrows`).
+- **The captures:** `path-objects` (objects-mandate's copy, a Red hero's path along a row the
+  decorations' upper parts cover, D9: the arrows over their bodies, their shadows under them, the
+  last arrow over the hero; green and red), `path-edge` (a path from a hero right of the view,
+  cut by the view's right and left columns), `start-dwarven-tunnels` and `start-hoard` (shipped
+  maps as a new game starts them, the shroud's edges around the explored circles, one reaching
+  the map's right column beside the edge), `boats-colours` (seven boarded boats of the three
+  types, Blue to Pink): each exact on its first run, the whole set (40) again.
