@@ -193,6 +193,7 @@ fn the_moment_at_a_time() {
         Moment::at(1000, 200, 180),
         Moment {
             cycles: 5,
+            river_cycles: 5,
             frames: 5
         }
     );
@@ -200,6 +201,7 @@ fn the_moment_at_a_time() {
         Moment::at(1079, 200, 180),
         Moment {
             cycles: 5,
+            river_cycles: 5,
             frames: 5
         }
     );

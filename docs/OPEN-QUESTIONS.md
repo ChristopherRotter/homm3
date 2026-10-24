@@ -111,6 +111,10 @@ checkpoint.
 
 ### Map client lane (`MCL-Q<n>`)
 
+#### MCL-Q5 — The rivers' colour cycle can run a step behind the terrains' for a whole game (E24 M1 T6a)
+
+**Context.** The adventure manager loads the map's DEFs kind by kind with a step of the loading screen's progress bar between the kinds (adventure_manager_start 0x406FD0, load_progress_step 0x4ED2A0); showing the bar runs the palette tick (screen_show_rect 0x602BD0, adventure_tick 0x4ED490), and the load runs in real time. When a tick falls due at the step after the terrains, it rotates the terrains' palettes (water, lava) before the rivers are loaded, so the rivers' cycles run one step behind the water's and lava's for the whole game (`docs/epics/E24-design.md` §1.6). The harness saw it in about one still of seven (the inbox's "half tick"). Nothing a player can tell: the two cycles are on different tiles and the step between them is random per game. **Options:** (a) the viewer keeps the terrains and rivers in step on its own clock (`Moment::at`), and only the comparisons take the original's two steps from its memory (`live.toml`'s `river_cycles`); (b) the viewer copies it, the rivers a step behind in a share of games (needs a draw where the original has a race); (c) a graphics option. **Recommendation:** (a), as built.
+
 ## Answered
 
 Newest first in each block. A lane adds an answered question at the top of its own block, so lanes working at once never edit the same lines; a numbered question (`Q55`) and the decisions from before the lanes go to the last block.

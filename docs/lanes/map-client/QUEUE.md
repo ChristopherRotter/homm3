@@ -13,17 +13,23 @@ task (the HANDOFF's autonomy contract).
 
 T5 split with the user (2026-10-23) into T5a (heroes and boats, done) and T5b; T5b split with
 the user (2026-10-24) into T5b1 (the owners, done) and T5b2 (the path, the explored tiles, done).
+T6 split with the user (2026-10-24) into T6a (the set's digests, the half tick) and T6b (the
+closure).
 
-### E24 M1 T6 — the capture set and M1's closure
+### E24 M1 T6a — the capture set's digests and the half tick (**in progress**, 2026-10-24)
 
-- **Scope:** the map's capture set (`clients/map/situations/`, started by T3b2 with `set.toml`
-  and `h3map.py set`: every situation of T3b2 to T5b with
-  its masks) and its digests, so a later task captures only what it changes (as E17's `drawn`,
-  the runbook's "Which captures a change needs"); M1's closure: a fresh reviewer agent, its
-  findings fixed or queued, the review list (the epic's), the user's checkpoint; M2 T0 queued.
-- **Acceptance:** the whole set matches as recorded; the review list accepted by the user.
-- **Depends on:** T5b2 (done). **Status:** ready. The set holds 40 situations since T5b2
-  (`set.toml`); `live.toml` gives every comparison the explored tiles and the path from memory.
+- **Scope:** `h3map.py drawn` (ours from each situation's kept live part, the digests against
+  `map/situations/kept/drawn.txt`; `set` keeps a capture's `live.toml`), the runbook's rule for
+  the map; the inbox's half tick read and fixed; the whole set captured and recorded.
+- **Acceptance:** the whole set (40) matches as recorded; `drawn` reports every one the same.
+- **Depends on:** T5b2 (done). **Status:** in progress (branch `map-client/e24-t6a`).
+
+### E24 M1 T6b — M1's closure
+
+- **Scope:** M1's closure: a fresh reviewer agent, its findings fixed or queued, the review list
+  (the epic's), the user's checkpoint; M2 T0 queued.
+- **Acceptance:** the review list accepted by the user.
+- **Depends on:** T6a.
 
 ## Inbox
 

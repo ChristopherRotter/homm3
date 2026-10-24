@@ -168,6 +168,20 @@ The table, mask = 16 × row + column:
   42 035 pixels of water differed by that step). The screen's water and lava change at the
   redraws, each showing the ticks before it (the redraw's own tick at its start included): M2's
   animation follows the redraws, not the ticks.
+- **The rivers can trail the terrains by a step** (T6a, the inbox's half tick: about one still
+  in seven found `lavatl` and `watrtl` one step ahead of the rivers for as long as it read). The
+  manager loads the DEFs kind by kind (adventure_manager_start 0x406FD0: the terrains, then the
+  rivers, the roads, …) with a step of the loading screen's progress bar between the kinds
+  (load_progress_step 0x4ED2A0), which shows the bar through screen_show_rect 0x602BD0, and that
+  runs the tick before and after. The map's load runs in real time, so when a tick falls due at
+  the step after the terrains, it rotates their palettes alone (the rivers' fields are still
+  empty, which the tick skips), and the rivers start one step behind for the whole game; within a
+  kind there is no step, so all terrains share one k and all rivers one, k or k − 1. The screen
+  draws each DEF with its own palette: water and lava at k, the rivers at k − 1. So a still has
+  two steps, the terrains' and the rivers' (`h3_map_view::live::Moment`'s `cycles` and
+  `river_cycles`); the harness reads each kind's k from memory (`h3map.py`'s `cycle_step`, which
+  refuses any other difference) and `live.toml` gives both. The viewer's own clock keeps them
+  together (`Moment::at`): the split is an accident of the original's load time (MCL-Q5).
 
 ### 1.7 VCMI 1.7.5 compared
 

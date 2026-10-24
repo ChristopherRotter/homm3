@@ -24,7 +24,13 @@ compared pixel for pixel outside the masks of what the viewer does not draw yet.
       pixels red, masked ones blue). <dir> defaults to clients/out/map/<situation>.
   h3map.py set [--only <id>] [--out <dir>]
       every situation of clients/map/situations/set.toml (or one), each count against the one
-      recorded; exit 1 if any changed.
+      recorded; exit 1 if any changed. Each capture as recorded or new keeps its live.toml as
+      clients/map/situations/kept/<id>.toml (E24 M1 T6a).
+  h3map.py drawn [--only <id>] [--out <dir>] [--record]
+      without the original: ours drawn with each situation's kept live part, the digest of its
+      pixels outside the masks against kept/drawn.txt (`same`, `CHANGED`, `new`); exit 1 unless
+      every one is the same; --record writes the digests (E24 M1 T6a; the runbook, "Which
+      captures a change needs"). <dir> defaults to clients/out/map-drawn.
 
 Needs `clients/capture/setup.sh` and `cargo build --release -p h3-map-view` (from clients/).
 """
@@ -100,50 +106,63 @@ def def_palette565(name):
     return [pack565(data[16 + 3 * i:19 + 3 * i]) for i in range(256)]
 
 
+# The kinds of cycling DEFs, in the order the manager loads them (design §1.6).
+KINDS = ("terrain", "river")
+
+
 def cycling():
-    """The cycling DEFs of the map's tables: (manager field, DEF, ranges)."""
+    """The cycling DEFs of the map's tables: (kind, manager field, DEF, ranges)."""
     tables = tomllib.loads(TABLES.read_text())
     found = []
-    for kind, field in (("terrain", TERRAIN_FIELD), ("river", RIVER_FIELD)):
+    for kind, field in zip(KINDS, (TERRAIN_FIELD, RIVER_FIELD)):
         for entry in tables[kind]:
             if entry.get("cycles"):
-                found.append((field + 4 * entry["code"], entry["def"], entry["cycles"]))
+                found.append((kind, field + 4 * entry["code"], entry["def"], entry["cycles"]))
     return found
 
 
 def range_fits(mem):
     """Each cycling DEF's ranges and the steps k (mod 36) each fits in memory (design §1.6): the
-    range is its file's colours rotated up by k."""
+    range is its file's colours rotated up by k. Each (kind, DEF, first entry, steps)."""
     found = []
-    for field, name, ranges in cycling():
+    for kind, field, name, ranges in cycling():
         held, original = mem.def_palette(field), def_palette565(name)
         for first, last in ranges:
             n = last - first + 1
-            found.append((name, first, {k for k in range(36) if all(
+            found.append((kind, name, first, {k for k in range(36) if all(
                 held[first + j] == original[first + (j - k) % n] for j in range(n))}))
     return found
 
 
 def cycle_fits(mem):
-    """The palette cycles' steps k (mod 36) every range of every cycling DEF fits."""
-    fits = set(range(36))
-    for _, _, ks in range_fits(mem):
-        fits &= ks
-    return fits
+    """The palette cycles' steps k (mod 36) every range of every cycling DEF of each kind fits:
+    (the terrains', the rivers')."""
+    fits = {kind: set(range(36)) for kind in KINDS}
+    for kind, _, _, ks in range_fits(mem):
+        fits[kind] &= ks
+    return tuple(fits[kind] for kind in KINDS)
 
 
 def cycle_step(mem, tries=20):
-    """The palette cycles' step k at the frozen clock: the smallest k that fits, once two reads
-    0.1 s apart fit the same. A read can meet the tick's rotation half done (`palette16_rotate`
-    moves the entries one by one; E24 M1 T3b2 saw one such read in 22): it is read again."""
+    """The palette cycles' steps at the frozen clock, the terrains' and the rivers': the smallest
+    k of each kind that fits, once two reads 0.1 s apart fit the same. A read can meet the tick's
+    rotation half done (`palette16_rotate` moves the entries one by one; E24 M1 T3b2 saw one such
+    read in 22): it is read again. The rivers' can be a step behind the terrains' for the whole
+    game (E24 M1 T6a, design §1.6: the map's load runs the tick through its progress bar between
+    the terrains' DEFs and the rivers', so a tick due then rotates the terrains alone); any other
+    difference is no state the reading knows."""
     last = None
     for _ in range(tries):
         fits = cycle_fits(mem)
-        if fits and fits == last:
-            return min(fits)
+        if all(fits) and fits == last:
+            terrains, rivers = (min(ks) for ks in fits)
+            if (terrains - rivers) % 36 not in (0, 1):
+                raise RuntimeError(f"the rivers' palettes at step {rivers}, the terrains' at "
+                                   f"{terrains}: no tick between their loads explains it")
+            return terrains, rivers
         last = fits
         time.sleep(0.1)
-    each = "; ".join(f"{name} {first}: {sorted(ks)[:4]}" for name, first, ks in range_fits(mem))
+    each = "; ".join(f"{name} {first}: {sorted(ks)[:4]}" for _, name, first, ks in range_fits(mem))
     raise RuntimeError(f"the palettes in memory are no steady rotation of the files' ({last}; "
                        f"{each})")
 
@@ -246,6 +265,25 @@ def show_path(game, mem, sit, view):
                        f"the path to {(tx, ty)} shown")
 
 
+def write_map(situation_path, sit, map_path):
+    """A situation's map: the shipped one it names, or the writer's (`h3-map-view situation`)."""
+    if "map" in sit:
+        shutil.copy(SHIPPED / sit["map"], map_path)
+    else:
+        run(MAP_VIEW, "situation", situation_path, "--out", map_path)
+
+
+def draw_ours(map_path, sit, live_path, png):
+    """Ours at a situation's view and hidden rectangles, with the original's live part
+    (`live_path`) and its drawing bugs."""
+    vx, vy, vz = sit["view"]
+    args = [MAP_VIEW, "render", map_path, "--view", f"{vx},{vy},{vz}", "--live", live_path,
+            "--bugs", "original", "--out", png]
+    for rect in sit.get("hidden", []):
+        args += ["--hidden", ",".join(map(str, rect))]
+    run(*args)
+
+
 def still(situation_path, out=None, keep=False):
     """Shows and draws one situation; returns the differing pixels, the compared ones and where
     the differing lie (text)."""
@@ -254,10 +292,7 @@ def still(situation_path, out=None, keep=False):
     out.mkdir(parents=True, exist_ok=True)
     sit = tomllib.loads(situation_path.read_text())
     map_path = out / "map.h3m"
-    if "map" in sit:
-        shutil.copy(SHIPPED / sit["map"], map_path)
-    else:
-        run(MAP_VIEW, "situation", situation_path, "--out", map_path)
+    write_map(situation_path, sit, map_path)
     vx, vy, vz = sit["view"]
     hidden = sit.get("hidden", [])
     # `explored = "start"` (E24 M1 T5b2): the explored tiles as the new game left them, not written.
@@ -298,11 +333,14 @@ def still(situation_path, out=None, keep=False):
         # due before the tick): the screen then shows the last, whose step memory holds as well.
         h3adv.wait_for(lambda: mem.frame_steps() > steps and mem.map_due()[0] > tick,
                        f"the redraw and the tick at {now} ({tick}, {redraw})")
-        k = cycle_step(mem)
+        k, k_rivers = cycle_step(mem)
         cap = game.settled()
         game.dump(out / "still.xwd")
-        if cycle_step(mem) != k:
+        if cycle_step(mem) != (k, k_rivers):
             raise RuntimeError("the palettes changed at the frozen clock")
+        if k != k_rivers:
+            print(f"{situation_path.stem}: the rivers' palettes a step behind the terrains' (a "
+                  "tick between their loads, design §1.6)", file=sys.stderr, flush=True)
         # The redraw drew with the manager's +0x100 before it grew it (design §1.6): the screen
         # shows the step before the one memory holds. The objects in the map's order: their
         # anchors (the viewer checks them against its map's) and phases.
@@ -313,6 +351,7 @@ def still(situation_path, out=None, keep=False):
         objects, templates = mem.map_objects(), mem.map_templates()
         heroes, boats = mem.map_heroes(vz)
         live = {"view": list(mem.view()) + [mem.view_level()], "cycles": k,
+                "river_cycles": k_rivers,
                 "frames": mem.frame_steps() - 1, "viewer": mem.current_player(),
                 "anchors": [list(o[:3]) for o in objects],
                 "phases": [o[4] for o in objects],
@@ -327,11 +366,7 @@ def still(situation_path, out=None, keep=False):
     finally:
         if not keep:
             game.stop()
-    args = [MAP_VIEW, "render", map_path, "--view", f"{vx},{vy},{vz}", "--live",
-            out / "live.toml", "--bugs", "original", "--out", out / "ours.png"]
-    for rect in hidden:
-        args += ["--hidden", ",".join(map(str, rect))]
-    run(*args)
+    draw_ours(map_path, sit, out / "live.toml", out / "ours.png")
     ours = h3cap.png565(out / "ours.png")
     mask = masked(["panels"], cap.shape)
     n, where = h3cap.compare(cap, ours, mask, out / "diff.png")
@@ -363,7 +398,86 @@ def run_set(rest):
         changed += verdict != "ok"
         print(f"{e['id']}: {n} differing of {compared} (recorded {recorded}) {verdict}{where}",
               flush=True)
+        keep_live(e["id"], base / e["id"] / "live.toml", verdict == "CHANGED")
     return 1 if changed else 0
+
+
+def keep_live(ident, live_path, changed):
+    """Keeps a still's `live.toml` (the original's live part: numbers and the DEFs' names only,
+    ADR-0009) as `kept/<id>.toml` beside the set, so that `drawn` draws ours without the
+    original (E24 M1 T6a). Only a capture as recorded or new (E17 M3 T9b, the reviewer: one that
+    differed would let `drawn` vouch for a count no capture gave): once its count is recorded,
+    `set --only <id>` again keeps it."""
+    if changed:
+        print(f"{ident}: not as recorded, `kept/` left as it was", flush=True)
+        return
+    kept = SITUATIONS / "kept" / f"{ident}.toml"
+    kept.parent.mkdir(exist_ok=True)
+    shutil.copy(live_path, kept)
+
+
+def run_drawn(rest):
+    """Ours without the original (runbook, "Which captures a change needs"; E24 M1 T6a): each
+    situation of the set drawn with the live part its last capture kept (`kept/<id>.toml`, written
+    by `set`), the digest of its pixels outside the masks (`h3drive.png_digest`: a change only
+    under them leaves the recorded count true) compared with `kept/drawn.txt`. One line per
+    situation (`same`, `CHANGED`, `new`, or no kept live part); exits 1 unless every one is the
+    same. With `--record` it writes the digests instead (those not drawn kept). Needs the release
+    `h3-map-view` and the user's original files only (the archives, the shipped maps)."""
+    record = "--record" in rest
+    only = rest[rest.index("--only") + 1] if "--only" in rest else None
+    base = Path(rest[rest.index("--out") + 1]) if "--out" in rest else OUT.parent / "map-drawn"
+    entries = tomllib.loads((SITUATIONS / "set.toml").read_text())["situation"]
+    if only:
+        entries = [e for e in entries if e["id"] == only]
+        if not entries:
+            sys.exit(f"no situation `{only}` in set.toml")
+    digests_path = SITUATIONS / "kept" / "drawn.txt"
+    recorded = {}
+    if digests_path.exists():
+        for line in digests_path.read_text().splitlines():
+            if line and not line.startswith("#"):
+                ident, digest = line.split()
+                recorded[ident] = digest
+    got, failed, broken = {}, 0, 0
+    for e in entries:
+        ident = e["id"]
+        kept = SITUATIONS / "kept" / f"{ident}.toml"
+        if not kept.exists():
+            print(f"{ident}: no kept live part (capture it: `set --only {ident}`)", flush=True)
+            failed += 1
+            broken += 1
+            continue
+        here = base / ident
+        shutil.rmtree(here, ignore_errors=True)
+        here.mkdir(parents=True)
+        situation_path = SITUATIONS / f"{ident}.toml"
+        sit = tomllib.loads(situation_path.read_text())
+        try:
+            write_map(situation_path, sit, here / "map.h3m")
+            draw_ours(here / "map.h3m", sit, kept, here / "ours.png")
+        except RuntimeError as err:
+            print(f"{ident}: the viewer failed ({str(err).splitlines()[-1]})", flush=True)
+            failed += 1
+            broken += 1
+            continue
+        got[ident] = h3drive.png_digest(here / "ours.png", MASKS["panels"])
+        before = recorded.get(ident)
+        verdict = "new" if before is None else ("same" if before == got[ident] else "CHANGED")
+        failed += verdict != "same"
+        print(f"{ident}: {verdict}", flush=True)
+    if record:
+        recorded.update(got)
+        lines = ["# Ours at each situation's last kept live part (h3map.py drawn --record): the",
+                 "# digest of its pixels outside the masks (h3drive.png_digest, h3map.MASKS),",
+                 "# `<id> <sha1, 16 digits>`."]
+        lines += [f"{ident} {recorded[ident]}" for ident in sorted(recorded)]
+        digests_path.write_text("\n".join(lines) + "\n")
+        print(f"drawn: {len(got)} recorded in {digests_path}"
+              + (f"; {broken} not drawn, their digests left as they were" if broken else ""))
+        return 1 if broken else 0
+    print(f"drawn: {len(entries)} situations, {failed} not the same; under {base}")
+    return 1 if failed else 0
 
 
 def main(args):
@@ -374,6 +488,8 @@ def main(args):
         return 0
     if args[:1] == ["set"]:
         return run_set(args[1:])
+    if args[:1] == ["drawn"]:
+        return run_drawn(args[1:])
     print(__doc__, file=sys.stderr)
     return 2
 
