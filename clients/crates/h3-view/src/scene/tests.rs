@@ -518,6 +518,7 @@ fn a_moment_draws_each_stack_in_its_pose() {
         walls: None,
         turrets: [None; 3],
         blast: None,
+        bridge: None,
     };
     let list = battle_at(&battle_view(), &moment, &keys(), &tables(), &layout).unwrap();
     // The magic animation right after its stack's sprite, once.
@@ -1125,4 +1126,38 @@ fn spell_objects_go_through_the_obstacles_passes() {
             area: layout.mouse.field,
         })
     );
+}
+
+#[test]
+fn the_drawbridge_s_redraws_show_its_rectangle_alone() {
+    // E17 M4 T2c-1 (CLT-Q23): the battle as the screen showed it before, the moment's inside the
+    // drawbridge's rectangle (x 365 to 542, y 211 to 380).
+    let layout = layout();
+    let before = Moment {
+        active: Some(1),
+        ..Moment::default()
+    };
+    let moment = Moment {
+        bridge: Some(Box::new(before.clone())),
+        ..Moment::default()
+    };
+    let list = battle_at(&battle_view(), &moment, &keys(), &tables(), &layout).unwrap();
+    let base = battle_at(&battle_view(), &before, &keys(), &tables(), &layout).unwrap();
+    let now = battle_at(
+        &battle_view(),
+        &Moment::default(),
+        &keys(),
+        &tables(),
+        &layout,
+    )
+    .unwrap();
+    assert_eq!(list[..base.len()], base[..]);
+    assert_eq!(
+        list.last(),
+        Some(&Draw::Within {
+            rect: [365, 211, 543, 381],
+            list: now,
+        })
+    );
+    assert_eq!(list.len(), base.len() + 1);
 }

@@ -15,7 +15,7 @@ use super::siege::{
     recorded,
 };
 use super::{at, snapshot, until};
-use crate::anim::{Sound, Timeline};
+use crate::anim::{BridgeKey, Sound, Timeline};
 use crate::siege::{GATE_CLOSED, GATE_MOVING, GATE_OPEN};
 
 const GATE: &str = include_str!("../../../../../situations/timelines/gate.txt");
@@ -175,6 +175,24 @@ fn the_gate_sequence_plays_as_recorded() {
             .collect()
     };
     assert_eq!(bridge(gate_states(&fixed)), bridge(states));
+    // The drawbridge's redraws show its rectangle alone (CLT-Q23): round 2's from its first
+    // state's showing to the turn's first frame, the screen beyond it the one before (the
+    // Hobgoblins' box still drawn); with the slip fixed the whole battle.
+    assert!(t.bridges.contains(&BridgeKey {
+        from: 13234,
+        until: 13534
+    }));
+    assert_eq!(t.bridges.len(), 4);
+    assert_eq!(
+        [
+            t.bridge(13233),
+            t.bridge(13234),
+            t.bridge(13533),
+            t.bridge(13534)
+        ],
+        [None, Some(13233), Some(13233), None]
+    );
+    assert!(fixed.bridges.is_empty());
 }
 
 #[test]

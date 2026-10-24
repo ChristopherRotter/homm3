@@ -963,6 +963,9 @@ pub struct Timeline {
     pub walls: Vec<WallKey>,
     /// A siege's wall shots' explosions, in order (E17 M4 T2b).
     pub blasts: Vec<BlastKey>,
+    /// The spans in which the screen shows the drawbridge's rectangle alone (E17 M4 T2c-1; the
+    /// original's, CLT-Q23).
+    pub bridges: Vec<BridgeKey>,
     /// When the last frame shows.
     pub end: u32,
 }
@@ -1197,6 +1200,16 @@ impl Timeline {
             .rev()
             .find(|k| k.shown <= t)
             .map(|k| k.walls)
+    }
+
+    /// While the screen shows the drawbridge's rectangle alone at `t` (E17 M4 T2c-1, the
+    /// original's: CLT-Q23), the time whose screen it shows elsewhere: the one before the
+    /// drawbridge's first redraw showed.
+    pub fn bridge(&self, t: u32) -> Option<u32> {
+        self.bridges
+            .iter()
+            .find(|b| b.from <= t && t < b.until)
+            .map(|b| b.from.saturating_sub(1))
     }
 
     /// A wall shot's explosion showing at `t` (E17 M4 T2b): its last frame shown by then, and
@@ -1735,6 +1748,8 @@ fn played(
         wall_keys: Vec::new(),
         blasts: Vec::new(),
         blast_count: 0,
+        bridges: Vec::new(),
+        bridge_from: None,
     };
     // A siege with a fort (E17 M4 T2b): the walls' states and hit points, each turret standing.
     if let Some(s) = snapshot.siege.as_ref().filter(|s| s.fort > 0) {
@@ -1910,6 +1925,7 @@ fn played(
         turrets: player.turret_keys,
         walls: player.wall_keys,
         blasts: player.blasts,
+        bridges: player.bridges,
         end: player.clock.now,
     })
 }
@@ -2203,6 +2219,10 @@ struct Player<'a> {
     blasts: Vec<BlastKey>,
     /// The explosions so far.
     blast_count: usize,
+    /// The drawbridge's rectangle-only spans (E17 M4 T2c-1).
+    bridges: Vec<BridgeKey>,
+    /// The start of the span the drawbridge's last redraws opened: the next frame shown ends it.
+    bridge_from: Option<u32>,
 }
 
 /// A spell a melee strike leaves pending on the stack it struck ([`PENDING`]): the stack, the
@@ -2266,6 +2286,10 @@ impl Player<'_> {
     /// The pending poses, drawn at `drawn` and shown at `shown`, and the pending hues and erasures
     /// with them.
     fn flush(&mut self, drawn: u32, shown: u32) {
+        // The first frame after the drawbridge's redraws shows beyond its rectangle again.
+        if let Some(from) = self.bridge_from.take() {
+            self.bridges.push(BridgeKey { from, until: shown });
+        }
         self.show_tints(shown);
         for erased in core::mem::take(&mut self.erasing) {
             self.magics.push(MagicKey { shown, ..erased });
@@ -5338,8 +5362,8 @@ pub use chain::{CHAIN_LIGHTNING, CHAIN_START};
 pub use creature::{FIRE_SHIELD, SHIELD_RETURN};
 pub use raise::{ANIMATE_DEAD, RAISE, RESURRECTION, SACRIFICE, SACRIFICED};
 pub use siege::{
-    Blast, BlastKey, Burst, SiegeStage, TARGET_POINTS, TurretKey, TurretPose, WallKey,
-    turret_record,
+    Blast, BlastKey, BridgeKey, Burst, DRAWBRIDGE_RECT, SiegeStage, TARGET_POINTS, TurretKey,
+    TurretPose, WallKey, turret_record,
 };
 
 #[cfg(test)]

@@ -3350,3 +3350,16 @@ it), `moat` and `mine` (below). Findings:
   at trunc(100 F); the closed state's line repeats nothing (the walls' line lists changes). A
   stack on 94 in a Fortress keeps the gate open (`gate-fortress`), the engine's `GateClosed`
   coming only with the step off it.
+- **The moat** (`moat`: a Castle town's Citadel, the keep commanded): the closed drawbridge's
+  hex (95) is no hex an attacker may enter (the engine's walls, BAT-SIE-003), so the Champions'
+  front enters the moat at 77. The walk's end as any (group 21, group 2 through the deadline),
+  then at once the line (named by the town's moat, GENRLTXT 377 with ARRAYTXT's name) and the
+  reaction without a striker; then the box's whole redraw. In round 2 their Wait: its line, then
+  the re-entry's damage, its line and reaction, without the walk's sounds.
+- **The drawbridge's rectangle** (CLT-Q23): its redraws show it alone, so a walker's box hidden
+  at the walk's start stays on the screen outside it (`gate`'s round 2: the Hobgoblins' box at
+  93, 319 pixels, from the first state's showing at 13 234 to their turn's first frame at
+  13 534): reproduced in the original's profile (`Timeline::bridges`, `Moment::bridge`: the
+  battle shown before, the moment's inside the rectangle), the whole battle in the fixed one.
+  With it `gate`'s frames are exact but T2b's listed differences (the Catapult's first frame's
+  outline row, 11 pixels at 100 and 9 359; the status line's ` log` hint, T2c-2).

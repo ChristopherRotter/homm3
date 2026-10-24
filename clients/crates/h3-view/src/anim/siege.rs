@@ -58,6 +58,23 @@ pub const TARGET_POINTS: [[i32; 2]; 8] = [
     [762, 212],
 ];
 
+/// The drawbridge's rectangle (`drawbridge_rect` 0x694F30, set by 0x462670: x 365 to 542, y 211
+/// to 380, bounds inclusive) as left, top, right and bottom, exclusive: `gate_open` and
+/// `gate_close` make it the dirty rectangle and show it alone (E17 M4 T2c-1).
+pub const DRAWBRIDGE_RECT: [i32; 4] = [365, 211, 543, 381];
+
+/// A span in which the screen shows the drawbridge's rectangle alone (E17 M4 T2c-1): from its
+/// first redraw's showing to the next frame's, the rest of the screen as before (the original's,
+/// CLT-Q23: a walker's box hidden at its walk's start shows outside the rectangle until its first
+/// frame).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BridgeKey {
+    /// When the first redraw shows.
+    pub from: u32,
+    /// When the next frame shows the battle beyond the rectangle.
+    pub until: u32,
+}
+
 /// The wall-shot targets' parts (`wall_shot_targets`' +0x8): target `t`'s part is entry `t`.
 const TARGET_PARTS: [usize; 8] = [5, 6, 8, 9, 10, 12, 13, 14];
 /// The gate's target.
@@ -210,8 +227,9 @@ impl Siege {
 impl Player<'_> {
     /// The drawbridge moves (`gate_open` 0x4671C0, `gate_close` 0x4672E0; E17 M4 T2c-1): its
     /// sound, then the gate's states closed, moving and open (or back), each in a redraw through
-    /// the deadline at trunc(100 F) that draws the whole battle and shows the drawbridge's
-    /// rectangle (`drawbridge_rect` 0x694F30) alone; nothing without a gate.
+    /// the deadline at trunc(100 F) that draws the whole battle and shows [`DRAWBRIDGE_RECT`]
+    /// alone (CLT-Q23: in the original's profile; with the slip fixed the whole battle); nothing
+    /// without a gate.
     pub(super) fn drawbridge(&mut self, open: bool) {
         let Some(mut siege) = self.siege.filter(|s| s.walls.gate != GATE_DESTROYED) else {
             return;
@@ -223,11 +241,13 @@ impl Player<'_> {
         } else {
             [GATE_OPEN, GATE_MOVING, GATE_CLOSED]
         };
+        let mut first = None;
         for gate in states {
             siege.walls.gate = gate;
             let drawn = self.clock.now;
             let shown = self.clock.show(tick);
             self.flush(drawn, shown);
+            first = first.or(Some(shown));
             self.wall_keys.push(WallKey {
                 drawn,
                 shown,
@@ -235,6 +255,9 @@ impl Player<'_> {
             });
         }
         self.siege = Some(siege);
+        if self.stage.bugs == Bugs::Original {
+            self.bridge_from = first;
+        }
     }
 
     /// A walk stops before its step onto the closed gate's hexes (`stack_walk` 0x4421BC to
