@@ -1,11 +1,11 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 done (2026-10-23: T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b, T8, T7b-1, T7b-2a, T7b-2b-1, T7b-2b-2a, T7b-2b-2b, T7b-2b-3, T7c-1, T7c-2, T7c-3, T7d, T9a, T9b-1, T9b, T9c, T9d); M4 refined (2026-10-23, T0), T1a, T1b, T2a and T2b done (2026-10-23); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 done (2026-10-23: T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b, T8, T7b-1, T7b-2a, T7b-2b-1, T7b-2b-2a, T7b-2b-2b, T7b-2b-3, T7c-1, T7c-2, T7c-3, T7d, T9a, T9b-1, T9b, T9c, T9d); M4 refined (2026-10-23, T0), T1a, T1b, T2a and T2b done (2026-10-23), T2c-1 (2026-10-24); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
 [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
-are there). Next: M4 T2c (sieges: the gate, the moat, Earthquake and the mouse recorded), M5 live play after M4
+are there). Next: M4 T2c-2 (sieges: Earthquake, the shots and the mouse recorded), M5 live play after M4
 (`docs/lanes/client/QUEUE.md`). Since T9c (2026-10-23) this epic
 is the battle client's; the adventure map client is E24, the map-client lane's.
 
@@ -575,9 +575,10 @@ states; the Tower 26, without the moat).
   and log lines.
 - **T2b, the Catapult and the turrets recorded:** hot-seat siege sequences with the original's
   rolls forced (hits, misses, a wall and a tower destroyed; the keep's and the towers' shots).
-- **T2c, the gate, the moat, Earthquake and the mouse recorded:** a defender out through the
-  gate and back, a stack in the moat, a mine, Earthquake, a hero with Ballistics aiming the
-  Catapult, a shot through the walls; the siege cursors.
+- **T2c, the gate, the moat, Earthquake and the mouse recorded** (cut in two by the user,
+  2026-10-24: T2c-1 the gate, the moat and a mine; T2c-2 Earthquake, the shots and the mouse): a
+  defender out through the gate and back, a stack in the moat, a mine, Earthquake, a hero with
+  Ballistics aiming the Catapult, a shot through the walls; the siege cursors.
 - **T3, M4's closure:** a fresh reviewer, every capture afresh, the review list, M5 refined.
 - **Exit:** the siege situations and sequences pass, or each difference is a listed fix or a
   classified quirk.
@@ -606,6 +607,12 @@ states; the Tower 26, without the moat).
   `breach`, `tower`, `cyclops`), every timeline as recorded, the frames exact but the listed
   differences (the first frame's outline row, the explosions' shadows, the status line's hint,
   one stale square); CLT-Q22 asked (the explosion cut at the top edge, built as recommended).
+- **T2c-1 done 2026-10-24** ([log](E17-log.md#m4-t2c-1--the-gate-the-moat-and-a-mine-recorded-2026-10-24),
+  design §10.2 "Recorded (M4 T2c-1)"; T2c cut in two by the user): the drawbridge (the walk's
+  stop and restart, the closing, its rectangle alone: CLT-Q23 asked, built as recommended), the
+  moat's damage and re-entry, a mine's blast mid-walk; `gate`, `gate-fortress`, `moat` and
+  `mine` as recorded, their frames exact but the listed differences; found: a reaction's hold
+  without a striker, a standing wall's hex taking a count box's place.
 
 ### The adventure lane's harness (H1, H2: its batch E3)
 
@@ -687,3 +694,7 @@ M3 at its review, T9b). The next milestone's list starts here.
    record opens after the machines' own acts (`BattleState::new` drops the start's events).
 4. A record's hit points give a part's picture state only whole or destroyed (`Walls::of`): a
    hit (1) needs the timeline (T2b).
+5. The asset tables' `siege_sounds` (T2c-1: the drawbridge's and a mine's blast's, harvested by
+   name) and the key family `moat` (ARRAYTXT's nine moat names by town type, keyed by faction).
+6. A siege's sounds in the window (T2c-1): the drawbridge's and the blast's play in category 2;
+   T2b's `WallHit` and `WallMiss` (category 0) are cued but not played yet (*provisional*).

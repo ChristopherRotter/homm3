@@ -171,6 +171,25 @@ fn the_states_follow_the_hit_points_and_the_gate() {
 }
 
 #[test]
+fn standing_walls_block_a_count_box() {
+    // E17 M4 T2c-1 (`moat`): the record's wall hexes, the gate's included, but those of the
+    // targets the states show destroyed (the mid-upper wall's 78, the gate's 96).
+    let s = siege(3);
+    let whole = Walls::of(&s);
+    assert_eq!(
+        whole.blocking(&s).collect::<Vec<u8>>(),
+        [12, 29, 45, 62, 78, 96, 112, 130, 147, 165, 182]
+    );
+    let mut broken = whole;
+    broken.parts[8] = 0;
+    broken.parts[9] = 0;
+    assert_eq!(
+        broken.blocking(&s).collect::<Vec<u8>>(),
+        [12, 29, 45, 62, 112, 130, 147, 165, 182]
+    );
+}
+
+#[test]
 fn a_town_without_a_fort_or_tables_draws_no_siege() {
     let t = siege_tables();
     let stacks = stacks();

@@ -6,6 +6,7 @@
 //! how each is drawn, so a later graphics option changes only the compositor (the user,
 //! 2026-10-13).
 
+use alloc::boxed::Box;
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
@@ -14,7 +15,8 @@ use core::fmt;
 use h3_protocol::wire::{Event, Manifest, Observation, Side, Stack};
 
 use crate::anim::{
-    Blast, Field, GONE, Magic, Object, Pose, Projectile, Ray, Spot, Timeline, TurretPose,
+    Blast, DRAWBRIDGE_RECT, Field, GONE, Magic, Object, Pose, Projectile, Ray, Spot, Timeline,
+    TurretPose,
 };
 use crate::hero::{FLAG_START, HeroPose};
 use crate::layout::BattleLayout;
@@ -73,6 +75,9 @@ pub struct Moment {
     pub turrets: [Option<TurretPose>; 3],
     /// A wall shot's explosion (E17 M4 T2b).
     pub blast: Option<Blast>,
+    /// While the drawbridge's redraws show its rectangle alone (E17 M4 T2c-1, the original's:
+    /// CLT-Q23), the battle the screen shows beyond it.
+    pub bridge: Option<Box<Moment>>,
 }
 
 impl Moment {
@@ -98,6 +103,9 @@ impl Moment {
             walls: timeline.walls(t),
             turrets: timeline.turrets(t),
             blast: timeline.blast(t),
+            bridge: timeline
+                .bridge(t)
+                .map(|before| Box::new(Self::at(timeline, before))),
         }
     }
 }
@@ -612,6 +620,25 @@ pub fn battle_at(
     tables: &Tables,
     layout: &BattleLayout,
 ) -> Result<Vec<Draw>, SceneError> {
+    // The drawbridge's redraws (E17 M4 T2c-1, CLT-Q23): the battle as the screen showed it
+    // before, the moment's inside the drawbridge's rectangle.
+    if let Some(before) = &moment.bridge {
+        let now = Moment {
+            bridge: None,
+            ..moment.clone()
+        };
+        let [shown, drawn] =
+            [before.as_ref(), &now].map(|m| battle_at(observation, m, manifest, tables, layout));
+        return shown.and_then(|mut list| {
+            drawn.map(|inner| {
+                list.push(Draw::Within {
+                    rect: DRAWBRIDGE_RECT,
+                    list: inner,
+                });
+                list
+            })
+        });
+    }
     // A wall shot's explosion (E17 M4 T2b, design §10.2): in its rectangle each frame drawn over a
     // redraw of the battle with its walls' states, without the background restored after the
     // first (the original's, CLT-Q19 (4)); with the slip fixed, the last alone. The battle's own
@@ -838,6 +865,10 @@ fn drawn(
             .values()
             .flat_map(|o| o.blocked.iter().copied()),
     );
+    // A siege's standing walls (E17 M4 T2c-1).
+    if let Some(s) = &observation.siege {
+        taken.extend(moment.walls.unwrap_or_else(|| Walls::of(s)).blocking(s));
+    }
     for s in observation.stacks.iter().filter(|s| s.alive) {
         let pose = pose_of(s, moment, tables);
         if !pose.holds_hex() {

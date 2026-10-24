@@ -157,6 +157,10 @@ const STRIKE_SOUNDS: [u32; 2] = [0x66_0A40, 0x66_0A30];
 /// A wall shot's explosions and sounds (E17 M4 T2b; `wall_shot_animate` 0x4462D5, 0x44618B):
 /// `SGEXPL.DEF`, `CSGRCK.DEF`, `WallHit.82m`, `WallMiss.82m`.
 const WALL_SHOT: [u32; 4] = [0x66_0A60, 0x66_0A6C, 0x66_0A78, 0x66_0A84];
+/// A siege's walk sounds (E17 M4 T2c-1): the drawbridge's (`gate_open` 0x467236, `gate_close`
+/// 0x4673CD: `drawbrg.82m`) and a Land Mine's blast (`land_mine_trigger` 0x59FC5E,
+/// `landkill.wav`), each played as a file (category 2, volume 127).
+const SIEGE_SOUNDS: [u32; 2] = [0x66_FFB0, 0x68_8410];
 /// The spell records (`spell_table`, 81 records of 0x88 bytes; E17 M3 T7b-1): +0 the spell's sign
 /// (1 positive, −1 negative, 0 neither; the count box's tint sums it, 0x43E6C7, E17 M3 T7b-2a),
 /// +4 the sound's name (none: 0), +8 the magic animation's number (−1: none).
@@ -304,6 +308,8 @@ struct Harvest {
     strike_sounds: [String; 2],
     /// A wall shot's explosions (a hit's, a miss's) and sounds (E17 M4 T2b).
     wall_shot: [String; 4],
+    /// The drawbridge's and a mine's blast's sounds (E17 M4 T2c-1).
+    siege_sounds: [String; 2],
     /// The spells' sounds and animations by original id, their projectiles' DEFs and angles,
     /// and `sptraits.txt`'s numbers by name.
     spells: Vec<(Option<String>, Option<u8>, i8)>,
@@ -548,6 +554,8 @@ fn read_harvest(
         stem(&string(hit_sound)?),
         stem(&string(miss_sound)?),
     ];
+    let [drawbridge, mine] = SIEGE_SOUNDS;
+    let siege_sounds = [stem(&string(drawbridge)?), stem(&string(mine)?)];
     let mut spells = Vec::new();
     for k in 0..SPELLS.1 {
         let record = bytes(&image, exe, SPELLS.0 + to_u32(k * SPELLS.2), 12)?;
@@ -663,6 +671,7 @@ fn read_harvest(
         roll_sounds,
         strike_sounds,
         wall_shot,
+        siege_sounds,
         spells,
         projectiles,
         objects,
@@ -929,6 +938,13 @@ fn write_table(
             plain(miss_def)?,
             plain(hit_sound)?,
             plain(miss_sound)?
+        );
+        let [drawbridge, mine] = &h.siege_sounds;
+        let _ = writeln!(
+            t,
+            "siege_sounds = [\"{}\", \"{}\"]",
+            plain(drawbridge)?,
+            plain(mine)?
         );
     }
     for c in &pack.creature {

@@ -14,9 +14,9 @@ use h3_render::Bugs;
 use h3_view::anim::{
     ACID, ACID_BREATH, BAD_MORALE, BOLT, Burst, CHAIN_LIGHTNING, CHAIN_START, Caster, Casts,
     DEATH_STARE, DEATH_STARE_SPELL, Explosion, FEAR, FIRE_SHIELD, GOOD_LUCK, GOOD_MORALE, HEAL,
-    LIFE_DRAIN, LIGHTNING_BOLT, Look, MagicLook, Missile, ObjectLook, RAISE, RESISTED,
-    RESURRECTION, SACRIFICED, SHIELD_RETURN, Shell, SiegeStage, SpellLook, Stage, THUNDERBOLT,
-    TITAN_BOLT,
+    LAND_MINE, LIFE_DRAIN, LIGHTNING_BOLT, Look, MINE_BLAST, MagicLook, Missile, ObjectLook, RAISE,
+    RESISTED, RESURRECTION, SACRIFICED, SHIELD_RETURN, Shell, SiegeStage, SpellLook, Stage,
+    THUNDERBOLT, TITAN_BOLT,
 };
 use h3_view::batch::Batch;
 use h3_view::hero::{HeroLook, Heroes};
@@ -260,8 +260,8 @@ fn missile(
 /// ([`GOOD_MORALE`], [`BAD_MORALE`], [`FEAR`], [`GOOD_LUCK`]); since E17 M3 T7b-2b-3 each spell
 /// after a strike's, the bolt from the sky ([`BOLT`], the Thunderbird's [`THUNDERBOLT`] after it),
 /// Life Drain's, Death Stare's and the acid's ([`LIFE_DRAIN`], [`DEATH_STARE`], [`ACID`]); since
-/// E17 M3 T7c-2 each spell object's placing and vanishing ones; each with its DEF's frames and
-/// size.
+/// E17 M3 T7c-2 each spell object's placing and vanishing ones; since E17 M4 T2c-1 a Land Mine's
+/// blast ([`MINE_BLAST`]); each with its DEF's frames and size.
 pub fn magic(
     record: &Record,
     tables: &Tables,
@@ -352,6 +352,12 @@ pub fn magic(
             }
             Event::StrikeDamage { .. } => {
                 numbers.insert(ACID);
+            }
+            // A Land Mine's blast over the stack it hurts (E17 M4 T2c-1).
+            Event::ObstacleTriggered { spell, .. }
+                if spell_entry(record, tables, *spell).is_some_and(|e| e.original == LAND_MINE) =>
+            {
+                numbers.insert(MINE_BLAST);
             }
             _ => {}
         }

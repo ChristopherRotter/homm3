@@ -2417,6 +2417,46 @@ pushes it and opens the pull request). The original files staged from the user's
   `stare`, `bolt`, `machines`, `walk` as recorded; `machines` once 1 ms late at its last line
   while the coverage run loaded the sandbox, as recorded when run again).
 
+### M4 T2c-1 — The gate, the moat and a mine recorded (2026-10-24)
+
+On `client/e17-m4-t2c1`, the user present at the start: the agent proposed T2c in three parts,
+the user chose two (T2c-1 `gate`, `gate-fortress`, `moat`, `mine`; T2c-2 `quake`, `through`,
+`defended`, `aim` and the mouse). GitHub reachable this session (the repository attached); the
+original files staged from the user's `original-data/install/`, the link dropping once before.
+
+- **Starting point:** `master` at `bb82352` (#452 merged); the client gates' full check on that
+  code (`verify-once clients`: all gates passed); `drawn`: the 111 items the same.
+- **A code reading** (the walk in `stack_walk` 0x441FA0: the gate's test before each step, the
+  stop and the first-step flag, `enter_hex` after it; `gate_open`, `gate_close`, `moat_damage`,
+  `land_mine_trigger`'s order; the Wait's line before its re-entry, 0x479A88; `strike_animation`'s
+  reaction without a striker, 0x468EBA to 0x468FE6; `draw_battle_stack`'s hex ahead, 0x43E605):
+  design §10.2. The address map: `drawbridge_sound_name`, `land_mine_sound_name`.
+- **The viewer:** `anim::siege` (`Entered`, `drawbridge`, `halt`, `entered`, `moat`, the
+  drawbridge's spans `BridgeKey`, `DRAWBRIDGE_RECT`), the `Moved` run gathering the gate, a
+  mine's events and the moat's damage, `Sound::Drawbridge`, `Sound::Mine` (category 2 in the
+  window), `MINE_BLAST`; `Logged::Moat` (`battle_log_damage` named by the town's moat, the key
+  family `moat`); the scene's `Moment::bridge` and the walls in the taken hexes
+  (`Walls::blocking`); the asset tables' `siege_sounds` (harvested; the harvest equals the
+  committed tables).
+- **Recorded** (`sequences.toml`, hot seat, `key = "Up"`): `gate` (seed 6), `gate-fortress`
+  (6), `moat` (6), `mine` (2), seeds searched for the engine's wall shots; every timeline as
+  recorded. `moat`'s first capture failed (its actions aimed at the closed bridge, which the
+  attacker may not enter) and `mine`'s first stopped before the mine (the Titans' 684 ms a hex):
+  recaptured. A Tower's mines lie only between the walls and the second column, so `mine` walks
+  through a breach (the mid-upper wall's hex 78, BAT-SIE-012).
+- **Found by the timeline check:** without a striker a reaction holds its last frame while the
+  iterations left are more than its frames (`mine`: the Titans stand at iteration 9 under the
+  blast's 17 frames); the blast's animation was missing from the record's magic list.
+- **Found by the frame check:** the drawbridge's redraws show its rectangle alone (`gate`: the
+  Hobgoblins' box outside it for 300 ms; CLT-Q23 asked, built as recommended: reproduced in the
+  original's profile); a standing wall's hex takes a count box's place (`moat`: the Champions'
+  box 37 pixels left beside the wall at 78).
+- **Checked:** the frame check of the four (`timelines/<id>-frames.txt`): every frame exact but
+  the listed (design §10.2, "Recorded (M4 T2c-1)"): the Catapult's first frames' outline rows
+  and the ` log` hints (T2b's), `mine`'s restored screen after the blast (§7.11) and its last
+  frame's defender's view; the real-asset gate (437 keys, the moat's nine among them; the siege
+  sounds found); the library's tests; the timeline check of all 43 sequences as recorded.
+
 ## Accepted review lists (M1, M2, M3)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its

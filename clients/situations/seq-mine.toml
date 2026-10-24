@@ -1,0 +1,62 @@
+# E17 M4 T2c-1: the recorded sequence `mine` (sequences.toml; design §10.2, "A Tower's mine"): a
+# siege of a Tower town with a Citadel (the keep; under SoD rules its moat hexes hold the
+# defender's hidden Land Mines instead of a moat, BAT-SIE-007), both heroes human (hot seat)
+# commanding their machines. The Catapult breaks the mid-upper wall; on the attacker's turn its
+# Titans walk through the breach over a mine: the blast (animation 57) and their reaction
+# mid-walk, the walk going on. The attacker's screen never shows the mine: the spectator's
+# record (as the defender's turn starts the original shows the defender's view, its mines among
+# it).
+
+[scenario]
+id = "sequence-mine"
+# Both human (hot seat): the defender commands the keep, the attacker the Catapult.
+human = ["attacker", "defender"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+
+# The town: under SoD rules (the situation's map) the mines' damage is the moat's.
+[scenario.siege]
+faction = "base:tower"
+fort = "citadel"
+moat = "damaging"
+# The original's keep counts 5 creatures here (`town_turret_count` 0x5BF4F0: 4 plus one
+# structure of the situation's town; the engine's 4 + `structures`, BAT-SIE-016).
+structures = 1
+
+[[attacker]]
+slot = 0
+creature = "base:titan"
+count = 3
+
+[[attacker]]
+slot = 1
+creature = "base:pikeman"
+count = 12
+
+[[defender]]
+slot = 0
+creature = "base:goblin"
+count = 15
+# The heroes, each with 1 in every primary skill (`h3-view situation` writes them so).
+[scenario.attacker_hero]
+hero_type = "base:valeska"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+# Basic Ballistics: the Catapult waits for its command.
+catapult = 1
+
+[scenario.defender_hero]
+hero_type = "base:ufretin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+
+# Basic Artillery: the keep waits for its commands.
+[scenario.defender_hero.ballista]
+level = 1
+shots = 1
+double_damage_chance_bp = 5000

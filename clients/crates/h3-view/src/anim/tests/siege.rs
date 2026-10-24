@@ -24,15 +24,20 @@ const MISSED: &str = include_str!("../../../../../situations/timelines/missed.tx
 const AUTOMATIC: &str = include_str!("../../../../../situations/timelines/automatic.txt");
 
 /// The siege tests' creatures (invented handles).
-const PIKEMAN: u16 = 40;
+pub(super) const PIKEMAN: u16 = 40;
 const GRIFFIN: u16 = 41;
 const ARCHER: u16 = 42;
-const CATAPULT: u16 = 43;
-const GOBLIN: u16 = 44;
+pub(super) const CATAPULT: u16 = 43;
+pub(super) const GOBLIN: u16 = 44;
 const WOLF_RIDER: u16 = 45;
 const ORC: u16 = 46;
 /// The Arrow Tower: a turret, its look the town's shooter's (a Castle's Archer).
-const TURRET: u16 = 47;
+pub(super) const TURRET: u16 = 47;
+/// T2c-1's walkers (`clients/assets/base.toml`, their DEFs): the Hobgoblins, the Champions, the
+/// Titans.
+pub(super) const HOBGOBLIN: u16 = 48;
+pub(super) const CHAMPION: u16 = 49;
+pub(super) const TITAN: u16 = 50;
 
 /// The Archer's numbers (`clcbow.def`; its missile `plcbowx.def`, 30 × 30, nine frames).
 fn archer() -> Look {
@@ -82,7 +87,7 @@ fn catapult() -> Look {
 }
 
 /// The siege's creatures.
-fn siege_looks() -> BTreeMap<u16, Look> {
+pub(super) fn siege_looks() -> BTreeMap<u16, Look> {
     BTreeMap::from([
         (
             PIKEMAN,
@@ -127,12 +132,68 @@ fn siege_looks() -> BTreeMap<u16, Look> {
             ),
         ),
         (TURRET, archer()),
+        (
+            HOBGOBLIN,
+            look(
+                [9000, 620, 500, 115],
+                &[
+                    (0, 9),
+                    (2, 7),
+                    (3, 7),
+                    (5, 9),
+                    (7, 3),
+                    (8, 3),
+                    (9, 3),
+                    (10, 3),
+                    (20, 1),
+                    (21, 1),
+                ],
+                200,
+            ),
+        ),
+        (
+            CHAMPION,
+            look(
+                [9000, 450, 500, 115],
+                &[
+                    (0, 8),
+                    (2, 4),
+                    (3, 8),
+                    (5, 8),
+                    (7, 3),
+                    (8, 3),
+                    (9, 3),
+                    (10, 3),
+                    (20, 3),
+                    (21, 4),
+                ],
+                170,
+            ),
+        ),
+        (
+            TITAN,
+            look(
+                [9000, 690, 500, 115],
+                &[
+                    (0, 9),
+                    (2, 8),
+                    (3, 7),
+                    (5, 9),
+                    (7, 3),
+                    (8, 3),
+                    (9, 3),
+                    (10, 3),
+                    (20, 1),
+                ],
+                150,
+            ),
+        ),
     ])
 }
 
 /// A Castle's turret points and the wall shots' explosions (`SGEXPL.DEF` 254 × 203,
 /// `CSGRCK.DEF` 180 × 230, ten frames each).
-fn castle() -> SiegeStage {
+pub(super) fn castle() -> SiegeStage {
     SiegeStage {
         turrets: [[780, 238], [648, 566], [596, 80]],
         hit: Burst {
@@ -149,7 +210,7 @@ fn castle() -> SiegeStage {
 }
 
 /// A war machine (a turret, the Catapult) in `slot`.
-fn machine_at(id: u8, side: Side, creature: u16, (hex, slot): (u8, u8)) -> Stack {
+pub(super) fn machine_at(id: u8, side: Side, creature: u16, (hex, slot): (u8, u8)) -> Stack {
     let mut s = at(id, side, creature, hex, false);
     s.war_machine = true;
     s.slot = slot;
@@ -190,7 +251,7 @@ fn keep_siege() -> Observation {
 
 /// The timeline of `snapshot` and `commands` (each with its time) in a siege, the original's
 /// drawing bugs reproduced or fixed by `bugs`.
-fn play_siege(
+pub(super) fn play_siege(
     snapshot: &Observation,
     commands: &[(Option<u32>, Vec<Event>)],
     bugs: Bugs,
@@ -227,7 +288,7 @@ fn turret_shot(turret: u8, target: u8, damage: u64, kills: u32) -> Event {
 }
 
 /// A wall shot of the Catapult (3) aimed at `aimed` that hit `part` for `damage`.
-fn wall_shot(aimed: u8, part: u8, damage: u8) -> Event {
+pub(super) fn wall_shot(aimed: u8, part: u8, damage: u8) -> Event {
     Event::WallShot {
         stack: 3,
         aimed,
@@ -237,7 +298,7 @@ fn wall_shot(aimed: u8, part: u8, damage: u8) -> Event {
 }
 
 /// The recorded `lines` without their screens and the original's fidgets, up to `ms`.
-fn recorded(lines: &str, ms: u32) -> alloc::string::String {
+pub(super) fn recorded(lines: &str, ms: u32) -> alloc::string::String {
     until(
         &unfidgeted(&screenless(lines), &alloc::collections::BTreeSet::new()),
         ms,
