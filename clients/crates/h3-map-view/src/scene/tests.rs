@@ -39,18 +39,27 @@ fn art_with(tiles: Vec<GivenTile>) -> (MapArt, Live) {
     (art, live)
 }
 
-/// A one-cell shape with both masks and one frame for every template of `art`.
+/// A one-cell shape with both masks and one frame for every template of `art` and every town
+/// picture of the tables (a town is drawn by its buildings), one frame for every DEF of the
+/// tables' heroes.
 fn shapes_of(art: &MapArt) -> Shapes {
     let mut shapes = Shapes::default();
+    let one = Shape {
+        width: 1,
+        height: 1,
+        colour: [0xff; 6],
+        shadow: [0xff; 6],
+        frames: 1,
+    };
     for t in &art.templates {
-        let one = Shape {
-            width: 1,
-            height: 1,
-            colour: [0xff; 6],
-            shadow: [0xff; 6],
-            frames: 1,
-        };
         shapes.insert(&t.def, one);
+    }
+    let tables = tables();
+    for (def, _) in tables.map.towns.defs() {
+        shapes.insert(&def, one);
+    }
+    for (def, _) in tables.map.heroes.defs() {
+        shapes.insert_frames(&def, 1);
     }
     shapes
 }
@@ -355,9 +364,24 @@ fn the_unexplored_tiles_pieces() {
         (shroud[0].0.as_str(), *frame),
         ("tshrc.def", expect(0xFF, 2, 3).1)
     );
-    // A mask whose entry gives no piece draws nothing.
+    // A mask whose entry is 0 draws the full piece, as the mask 255's (0x41237F).
     let mut none = tables.clone();
     none.map.shroud.pieces[0xDF] = 0;
+    let drawn = super::scene(
+        &art,
+        &live,
+        &none,
+        &layout(),
+        &shapes_of(&art),
+        at(0, 0),
+        Bugs::Fixed,
+    )
+    .unwrap();
+    let drawn = pieces(&drawn, Pass::Shroud);
+    assert_eq!(drawn.len(), 24);
+    assert_eq!(drawn.iter().filter(|p| p.0 == "tshrc.def").count(), 1);
+    // An entry that gives no frame (100) draws nothing.
+    none.map.shroud.pieces[0xDF] = 100;
     let drawn = super::scene(
         &art,
         &live,
@@ -823,6 +847,77 @@ fn an_object_without_a_shape_has_no_scene() {
         SceneError::Objects(ObjectsError::Shape(1, _))
     ));
     assert_eq!(err.to_string(), "object 1: no .msk for cursed.def");
+    // The picture a random object was drawn as needs its shape too (E24 M1 T6b, R1-4).
+    let mut random = live.clone();
+    let tree = art.objects.len() - 1;
+    random.objects[tree].drawn = Some(crate::live::Drawn {
+        def: "gold.def".to_string(),
+        own: None,
+        class: 79,
+        subclass: 6,
+    });
+    let err = scene(
+        &art,
+        &random,
+        &tables(),
+        &layout(),
+        &shapes_of(&art),
+        at(0, 0),
+        Bugs::Fixed,
+    )
+    .unwrap_err();
+    assert_eq!(
+        err.to_string(),
+        format!("object {tree}: no .msk for gold.def")
+    );
+    // A hero's DEFs need their frames while a hero stands on the level.
+    let mut hero = live;
+    hero.heroes = vec![land_hero(9, 9, 2, 2, Facing::Right)];
+    let err = scene(
+        &art,
+        &hero,
+        &tables(),
+        &layout(),
+        &lacking,
+        at(0, 0),
+        Bugs::Fixed,
+    );
+    assert!(matches!(err, Err(SceneError::Objects(_))));
+    let mut frames = shapes_of(&art);
+    frames.insert("cursed.def", *shapes_of(&art).get("tree.def").unwrap());
+    let all = scene(
+        &art,
+        &hero,
+        &tables(),
+        &layout(),
+        &frames,
+        at(0, 0),
+        Bugs::Fixed,
+    );
+    assert!(all.is_ok());
+    let mut no_frames = Shapes::default();
+    let one = *shapes_of(&art).get("tree.def").unwrap();
+    let towns = tables().map.towns.defs();
+    for def in art
+        .templates
+        .iter()
+        .map(|t| &t.def)
+        .chain(towns.iter().map(|(d, _)| d))
+    {
+        no_frames.insert(def, one);
+    }
+    let first = tables().map.heroes.defs()[0].0.clone();
+    let err = scene(
+        &art,
+        &hero,
+        &tables(),
+        &layout(),
+        &no_frames,
+        at(0, 0),
+        Bugs::Fixed,
+    )
+    .unwrap_err();
+    assert_eq!(err.to_string(), format!("{first}: no frames"));
 }
 
 // -- the heroes and boats (E24 M1 T5a; design §2.3, §2.8) -------------------------------------
@@ -969,7 +1064,7 @@ fn heroes_right_over_left_and_lower_over_upper() {
             "ah02_.def"
         ]
     );
-    // No frames known: frame 0.
+    // One frame each: frame 0.
     assert!(grouped(&s, Pass::Body).iter().all(|p| p.2 == 0));
 }
 
@@ -1034,12 +1129,8 @@ fn heroes_off_the_map_another_level_or_a_second_on_a_tile_are_left() {
     live.heroes = vec![
         // At the map's left edge: its frame's left column lies off the map.
         land_hero(0, 3, 0, 0, Facing::Right),
-        // A second on the same tile, and one underground: not drawn.
+        // A second on the same tile: not drawn.
         land_hero(0, 3, 1, 1, Facing::Right),
-        LiveHero {
-            at: Pos { x: 9, y: 9, z: 1 },
-            ..land_hero(9, 9, 2, 2, Facing::Right)
-        },
         // A class past the tables' own: its flag alone.
         land_hero(9, 3, 18, 3, Facing::Right),
     ];
@@ -1051,6 +1142,74 @@ fn heroes_off_the_map_another_level_or_a_second_on_a_tile_are_left() {
     // column 2 is the map's 0).
     let first = body.iter().filter(|p| p.0 == "ah00_.def").count();
     assert_eq!(first, 4);
+}
+
+#[test]
+fn a_live_part_that_does_not_fit_the_map_has_no_scene() {
+    // E24 M1 T6b (the reviewer's R1-3): the map is 36 x 36, one level.
+    let (art, live) = art_with(vec![]);
+    let shapes = shapes_of(&art);
+    let refused = |live: &Live| {
+        scene(
+            &art,
+            live,
+            &tables(),
+            &layout(),
+            &shapes,
+            at(0, 0),
+            Bugs::Fixed,
+        )
+        .unwrap_err()
+        .to_string()
+    };
+    let mut fewer = live.clone();
+    fewer.objects.pop();
+    let n = art.objects.len();
+    assert_eq!(
+        refused(&fewer),
+        format!(
+            "the live part does not fit the map: {} objects for the map's {n}",
+            n - 1
+        )
+    );
+    let mut explored = live.clone();
+    explored.explored = crate::live::Explored::all(36, 2, true);
+    assert_eq!(
+        refused(&explored),
+        "the live part does not fit the map: the explored tiles are not of the map's size and levels"
+    );
+    let mut hero = live.clone();
+    hero.heroes = vec![LiveHero {
+        at: Pos { x: 9, y: 9, z: 1 },
+        ..land_hero(9, 9, 2, 2, Facing::Right)
+    }];
+    assert_eq!(
+        refused(&hero),
+        "the live part does not fit the map: a hero at (9, 9, 1) is off the map"
+    );
+    hero.heroes = vec![land_hero(9, 36, 2, 2, Facing::Right)];
+    assert!(refused(&hero).ends_with("a hero at (9, 36, 0) is off the map"));
+    hero.heroes = vec![LiveHero {
+        owner: 8,
+        ..land_hero(9, 9, 2, 2, Facing::Right)
+    }];
+    assert_eq!(
+        refused(&hero),
+        "the live part does not fit the map: a hero at (9, 9, 0) has no owner"
+    );
+    let mut boat = live.clone();
+    boat.boats = vec![LiveBoat {
+        at: Pos { x: 36, y: 0, z: 0 },
+        kind: 0,
+        facing: Facing::Right,
+    }];
+    assert!(refused(&boat).ends_with("a boat at (36, 0, 0) is off the map"));
+    let mut path = live;
+    path.path = vec![Arrow {
+        at: Pos { x: 190, y: 5, z: 0 },
+        arrow: 3,
+    }];
+    assert!(refused(&path).ends_with("an arrow at (190, 5, 0) is off the map"));
 }
 
 #[test]
@@ -1067,10 +1226,9 @@ fn the_paths_shadows_under_the_bodies_its_arrows_over_them() {
         arrow(5, 5, 0, 3),
         arrow(6, 5, 0, 29),
         arrow(7, 5, 0, 1),
-        // Not drawn: an arrow 0 (none), one off the view, one underground.
+        // Not drawn: an arrow 0 (none), one off the view.
         arrow(8, 5, 0, 0),
         arrow(30, 30, 0, 2),
-        arrow(5, 6, 1, 2),
     ];
     let s = drawn(&art, &live, &shapes, at(0, 0));
     let tile = |x: i32, y: i32| [32 * x, 8 + 32 * y];
@@ -1092,11 +1250,69 @@ fn the_paths_shadows_under_the_bodies_its_arrows_over_them() {
     // Each pass over the whole view: every shadow, the arrows' shadows, the bodies, the arrows.
     let order = [Pass::Shadow, Pass::PathShadow, Pass::Body, Pass::Path].map(|p| span(&s, p));
     assert!(order.windows(2).all(|w| w[0].1 < w[1].0), "{order:?}");
-    // An arrow on a tile off the map is left.
-    live.path = vec![arrow(190, 5, 0, 3)];
-    let left = drawn(&art, &live, &shapes, at(180, 0));
-    assert!(pieces(&left, Pass::Path).is_empty());
     // No path shown: neither pass draws.
     live.path.clear();
     assert!(pieces(&drawn(&art, &live, &shapes, at(0, 0)), Pass::PathShadow).is_empty());
+}
+
+#[test]
+fn the_underground_is_drawn_as_the_surface() {
+    // E24 M1 T6b (the reviewer's R1-9): a two-level map, the view on level 1: its terrain, its
+    // explored tiles, a hero and an arrow of that level; the surface's left.
+    let mut two = map();
+    two.underground = Some(writer::Underground {
+        terrain: Terrain::Subterranean,
+        patches: vec![],
+        objects: vec![],
+    });
+    let bytes = writer::write_with(&two, &Extras::default()).unwrap();
+    let raw = h3_map::parse(&bytes, &Limits::default()).unwrap();
+    let art = MapArt::from_raw(&raw).unwrap();
+    assert_eq!(art.levels, 2);
+    let mut live = Live::at_start(&raw, &art, 0, &tables().map.towns);
+    live.heroes = vec![
+        LiveHero {
+            at: Pos { x: 5, y: 5, z: 1 },
+            ..land_hero(5, 5, 0, 0, Facing::Right)
+        },
+        land_hero(5, 5, 1, 1, Facing::Right),
+    ];
+    live.path = vec![
+        Arrow {
+            at: Pos { x: 6, y: 5, z: 1 },
+            arrow: 3,
+        },
+        Arrow {
+            at: Pos { x: 7, y: 5, z: 0 },
+            arrow: 3,
+        },
+    ];
+    live.explored.set(9, 9, 1, false);
+    live.explored.set(12, 12, 0, false);
+    let s = drawn(
+        &art,
+        &live,
+        &hero_shapes(&art, &[]),
+        ViewAt { x: 0, y: 0, z: 1 },
+    );
+    let tables = tables();
+    let below = tables.terrains[&art.tile(0, 0, 1).unwrap().terrain.code]
+        .def
+        .clone();
+    assert_ne!(
+        below,
+        tables.terrains[&art.tile(0, 0, 0).unwrap().terrain.code].def
+    );
+    let terrain = pieces(&s, Pass::Terrain);
+    assert!(!terrain.is_empty() && terrain.iter().all(|p| p.0 == below));
+    let body: BTreeSet<String> = grouped(&s, Pass::Body).into_iter().map(|p| p.0).collect();
+    assert_eq!(
+        body,
+        BTreeSet::from(["af00.def".to_string(), "ah00_.def".to_string()])
+    );
+    assert_eq!(pieces(&s, Pass::Path).len(), 1);
+    assert_eq!(pieces(&s, Pass::Path)[0].2, [32 * 6, 8 + 32 * 5]);
+    let shroud = pieces(&s, Pass::Shroud);
+    assert_eq!(shroud.len(), 1);
+    assert_eq!(shroud[0].2, [32 * 9, 8 + 32 * 9]);
 }

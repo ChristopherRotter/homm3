@@ -241,7 +241,8 @@ pub struct Shroud {
     pub pieces: Vec<u8>,
 }
 
-/// The mask of a tile none of whose neighbours is explored: the full piece.
+/// The mask of a tile none of whose neighbours is explored (the original's table gives it 0, the
+/// full piece; the only mask it gives 0).
 pub const ALL_HIDDEN: u8 = 0xFF;
 
 /// Which piece covers an unexplored tile.
@@ -256,20 +257,21 @@ pub enum ShroudPiece {
         /// Mirrored left to right.
         mirror: bool,
     },
-    /// The mask's entry gives no piece (0 outside the mask 255; none in the original's table).
+    /// The mask's entry gives no frame (100: mirrored, frame −1; none in the original's table).
     None,
 }
 
 impl Shroud {
     /// The piece of the unexplored tile (x, y) whose unexplored neighbours make `mask` (0x40F8C0,
-    /// 0x412220; design §1.5).
+    /// 0x412220; design §1.5): the mask's entry, 0 the full piece (0x41237F: the pass draws
+    /// `full` when 0x40F8C0 gives 0; E24 M1 T6b, the reviewer's R1-2).
     #[must_use]
     pub fn piece(&self, mask: u8, x: u8, y: u8) -> ShroudPiece {
-        if mask == ALL_HIDDEN {
+        let entry = self.pieces.get(usize::from(mask)).copied().unwrap_or(0);
+        if entry == 0 {
             let (x, y) = (u32::from(x) * 85, u32::from(y) * 85);
             return ShroudPiece::Full(u8::try_from(((x ^ y) / 64) & 3).unwrap_or(0));
         }
-        let entry = self.pieces.get(usize::from(mask)).copied().unwrap_or(0);
         let (base, mirror) = if entry >= 100 {
             (entry - 100, true)
         } else {
@@ -525,10 +527,12 @@ pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
         roads: BTreeMap::new(),
     };
     for file in selected {
-        for (word, list, into, zero) in [
-            ("terrain", &file.terrain, &mut tables.terrains, true),
-            ("river", &file.river, &mut tables.rivers, false),
-            ("road", &file.road, &mut tables.roads, false),
+        // `cycle`: whether the scene cycles the layer's palettes (the terrains' and the rivers',
+        // design §1.6); a road's cycles would be ignored (E24 M1 T6b, the reviewer's R1-10).
+        for (word, list, into, zero, cycle) in [
+            ("terrain", &file.terrain, &mut tables.terrains, true, true),
+            ("river", &file.river, &mut tables.rivers, false, true),
+            ("road", &file.road, &mut tables.roads, false, false),
         ] {
             for art in list {
                 let what = format!("{word} {}", art.code);
@@ -536,6 +540,9 @@ pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
                     return Err(entry(&what, "code 0 is none"));
                 }
                 name(&what, &art.def, ".DEF")?;
+                if !cycle && !art.cycles.is_empty() {
+                    return Err(entry(&what, "a road's palette does not cycle"));
+                }
                 if art.cycles.iter().any(|[first, last]| first > last) {
                     return Err(entry(&what, "a cycle's first entry is after its last"));
                 }
@@ -573,6 +580,17 @@ fn heroes(art: &HeroArt) -> Result<(), TableError> {
 /// The owners' palette, one town picture per faction in each list.
 fn owners_and_towns(map: &ViewArt) -> Result<(), TableError> {
     name("owners' palette", &map.owners.palette, ".PAL")?;
+    // The neutral entry and the eight colours' after it lie in the palette's 256 (E24 M1 T6b, the
+    // reviewer's R2-6).
+    if map.owners.neutral > 255 - 8 {
+        return Err(entry(
+            "owners",
+            &format!(
+                "the neutral entry {} leaves no room for 8 colours",
+                map.owners.neutral
+            ),
+        ));
+    }
     let lists = [
         ("villages", map.towns.village.len()),
         ("forts", map.towns.fort.len()),

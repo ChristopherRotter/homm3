@@ -21,20 +21,25 @@ compared pixel for pixel outside the masks of what the viewer does not draw yet.
       heroes and boats the view draws, the owners, the viewer's explored tiles and the path's
       arrows (`live.toml`); draws ours (`h3-map-view render --bugs original --live live.toml`,
       `ours.png`) and prints the pixels that differ outside the masks (`diff.png`: differing
-      pixels red, masked ones blue). <dir> defaults to clients/out/map/<situation>.
+      pixels red, masked ones blue); exit 1 if any differ. <dir> defaults to
+      clients/out/map/<situation>.
   h3map.py set [--only <id>] [--out <dir>]
       every situation of clients/map/situations/set.toml (or one), each count against the one
-      recorded; exit 1 if any changed. Each capture as recorded or new keeps its live.toml as
-      clients/map/situations/kept/<id>.toml (E24 M1 T6a).
+      recorded; exit 1 if any changed, is new, failed or the viewer refused its live part (each
+      said, the others still run). Each capture as recorded or new keeps its live.toml as
+      clients/map/situations/kept/<id>.toml (E24 M1 T6a), with the digest of the situation it
+      showed (T6b).
   h3map.py drawn [--only <id>] [--out <dir>] [--record]
       without the original: ours drawn with each situation's kept live part, the digest of its
-      pixels outside the masks against kept/drawn.txt (`same`, `CHANGED`, `new`); exit 1 unless
-      every one is the same; --record writes the digests (E24 M1 T6a; the runbook, "Which
+      pixels outside the masks against kept/drawn.txt (`same`, `CHANGED`, `new`; `STALE` when the
+      situation changed since its capture: its staging is no longer what was kept, T6b); exit 1
+      unless every one is the same; --record writes the digests (E24 M1 T6a; the runbook, "Which
       captures a change needs"). <dir> defaults to clients/out/map-drawn.
 
 Needs `clients/capture/setup.sh` and `cargo build --release -p h3-map-view` (from clients/).
 """
 
+import hashlib
 import json
 import shutil
 import struct
@@ -187,11 +192,23 @@ def to_shipped(game, timeout=120.0):
     game.wait("scenario_list")
     game.click(497, 553, 1.0)  # Begin
     game.move(*h3adv.PARK)
+    # As `Game.wait` (E24 M1 T6b, the reviewer's R3-4): a game that exits says so, a display that
+    # dumps no screen is waited through, a timeout raises.
     end = time.monotonic() + timeout
-    while time.monotonic() < end:
-        pix = game.pixels()
-        if game.matches("adventure", pix) or h3adv.find_button(game, "ok", pix):
-            break
+    fault = None
+    while True:
+        if game.proc is not None and game.proc.poll() is not None:
+            raise RuntimeError(f"the game exited ({game.proc.returncode}) before the map showed")
+        try:
+            pix = game.pixels()
+        except h3drive.Unreadable as err:
+            fault = err
+        else:
+            if game.matches("adventure", pix) or h3adv.find_button(game, "ok", pix):
+                break
+        if time.monotonic() > end:
+            raise TimeoutError("the shipped map's adventure screen did not show"
+                               + (f" ({fault})" if fault else ""))
         time.sleep(0.2)
     h3adv.dismiss(game)
 
@@ -208,7 +225,12 @@ def started(map_path, run_dir, shipped=False, tries=2):
         try:
             (to_shipped if shipped else h3drive.to_scenario)(game)
             return game
-        except (TimeoutError, RuntimeError) as err:
+        except BaseException as err:
+            # Any other failure on the way stops the game too, so that no later `Mem()` reads it
+            # (E24 M1 T6b, the reviewer's R3-8).
+            if not isinstance(err, (TimeoutError, RuntimeError)):
+                game.stop()
+                raise
             log = run_dir / "wine.log"
             text = log.read_text(errors="replace") if log.exists() else ""
             crashed = isinstance(err, TimeoutError) and "Unhandled page fault" in text
@@ -220,6 +242,82 @@ def started(map_path, run_dir, shipped=False, tries=2):
             print(f"{map_path}: the original {why}; started again", file=sys.stderr, flush=True)
 
 
+def game_mem(game):
+    """The started game's memory, before any write into it (E24 M1 T6b, the reviewer's R3-1; as
+    `h3drive.sequence` checks it): xdd.dll redirected every roll's and logged draw's call, each
+    checked against the bytes it replaces, so the executable is the one the readings are of; and
+    the process `Mem` reads is the one `game` started (its clock directory)."""
+    sites = len(h3drive.ROLLS) + len(h3drive.LOGGED)
+    ack = game.ack()
+    if not ack or ack[5] != sites:
+        raise RuntimeError(f"xdd.dll redirected {ack and ack[5]} of the {sites} rolls' and logged "
+                           "draws' calls (another Heroes3.exe?)")
+    mem = h3mem.Mem()
+    clock = "H3CLOCK=Z:" + str(game.clock_dir.resolve()).replace("/", "\\")
+    environ = Path(f"/proc/{mem.pid}/environ").read_bytes().split(b"\0")
+    if clock.encode() not in environ:
+        raise RuntimeError(f"the Heroes3.exe read (pid {mem.pid}) is not the game started")
+    return mem
+
+
+# The keys a situation that loads a shipped map whole may have (E24 M1 T4b, T5b2): the Rust
+# parser sees only the writer's situations (E24 M1 T6b, the reviewer's R3-11).
+SHIPPED_KEYS = {"map", "view", "explored", "hidden"}
+
+
+def check_situation(situation_path, sit):
+    """What the harness stages that the viewer's parser does not check (E24 M1 T6b, the
+    reviewer's R3-3, R3-11): a shipped map's situation only its keys (no heroes or boats to
+    stage), `explored` only "start"; a boat's facing only on a boat no hero ends on (a boarded
+    boat faces as its hero)."""
+    if "map" in sit:
+        extra = set(sit) - SHIPPED_KEYS
+        if extra:
+            raise ValueError(f"{situation_path}: a shipped map's situation has no "
+                             f"{', '.join(sorted(extra))}")
+    if sit.get("explored", "start") != "start":
+        raise ValueError(f"{situation_path}: `explored` is \"start\" or not given")
+    ends = {tuple((h.get("walk") or [h["at"]])[-1]) for h in sit.get("heroes", [])}
+    for boat in sit.get("boats", []):
+        if "facing" in boat and tuple(boat["at"]) in ends:
+            raise ValueError(f"{situation_path}: the boat at {boat['at']} is boarded: its "
+                             "facing is its hero's")
+
+
+def hero_at(mem, x, y):
+    """The record of the player's hero on (x, y) of the surface; a situation's hero not there is
+    the harness's failure (E24 M1 T6b, the reviewer's R3-2: not a TypeError)."""
+    index = mem.hero_on(x, y)
+    if index is None:
+        raise RuntimeError(f"no hero of a player stands on {(x, y)}")
+    return mem.hero(index)
+
+
+def check_staged(sit, turn, heroes, boats):
+    """The facings and boats' colours the still staged are what memory holds at it (E24 M1 T6b,
+    the reviewer's R3-3): a write that did not stick, or turned another record, fails the
+    still."""
+    on = {(b[0], b[1]): ("boat", b[4], None) for b in boats}
+    on.update({(h[0], h[1]): ("hero", h[4], h[7]) for h in heroes})
+    for x, y, facing in turn:
+        held = on.get((x, y))
+        if held is None or held[1] != facing:
+            raise RuntimeError(f"the facing staged on {(x, y)}: {facing}, memory {held}")
+    for boat in sit.get("boats", []):
+        if "colour" in boat:
+            held = on.get(tuple(boat["at"]))
+            if held is None or held[0] != "hero" or held[2] != boat["colour"]:
+                raise RuntimeError(f"the boat's colour staged on {boat['at']}: {boat['colour']}, "
+                                   f"memory {held}")
+
+
+def situation_digest(sit):
+    """A digest of what a situation gives (its parsed keys, comments left out): `drawn` tells a
+    kept live part of another staging by it (E24 M1 T6b, the reviewer's R3-10)."""
+    text = json.dumps(sit, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha1(text.encode()).hexdigest()[:16]
+
+
 def arrange(game, mem, sit):
     """The heroes' walks a situation gives, by play (E24 M1 T5a: Red's heroes, each to its tiles in
     turn; a hero boards a boat by walking onto it), each checked to arrive; returns the facings to
@@ -228,7 +326,7 @@ def arrange(game, mem, sit):
     for hero in sit.get("heroes", []):
         x, y = hero["at"]
         for target in hero.get("walk", []):
-            obs = h3adv.walk(game, mem, mem.hero(mem.hero_on(x, y))["name"], target)
+            obs = h3adv.walk(game, mem, hero_at(mem, x, y)["name"], target)
             if not obs["arrived"]:
                 raise RuntimeError(f"the hero from {(x, y)} did not arrive at {target}: {obs}")
             x, y = target
@@ -243,7 +341,11 @@ def set_view(game, mem, vx, vy, vz):
     another view first when it is there already, so that the click redraws it."""
     cx, cy = h3adv.CENTRE
     if mem.view() == (vx, vy):
-        h3adv.centre(game, mem, vx + cx + 2, vy + cy, vz)
+        # Two tiles over, towards the map's middle (a click past the minimap's right edge would
+        # miss it: E24 M1 T6b, the reviewer).
+        side = mem.i32(mem.game() + h3mem.MAP_SIDE)
+        dx = 2 if vx + cx + 2 < side else -2
+        h3adv.centre(game, mem, vx + cx + dx, vy + cy, vz)
     h3adv.centre(game, mem, vx + cx, vy + cy, vz)
     game.move(*h3adv.PARK)
 
@@ -257,12 +359,12 @@ def show_path(game, mem, sit, view):
             continue
         x, y = (hero.get("walk") or [hero["at"]])[-1]
         tx, ty = hero["path"]
-        h3adv.select(game, mem, mem.hero(mem.hero_on(x, y))["name"])
+        h3adv.select(game, mem, hero_at(mem, x, y)["name"])
         set_view(game, mem, *view)
         game.click(*h3adv.hover(game, mem, tx, ty, view[2]), 0.3)
         game.move(*h3adv.PARK)
         h3adv.wait_for(lambda: [tx, ty, view[2]] in [a[:3] for a in mem.path_arrows()],
-                       f"the path to {(tx, ty)} shown")
+                       lambda: f"the path to {(tx, ty)} shown ({mem.path_arrows()})")
 
 
 def write_map(situation_path, sit, map_path):
@@ -289,8 +391,16 @@ def still(situation_path, out=None, keep=False):
     the differing lie (text)."""
     situation_path = Path(situation_path)
     out = Path(out or OUT / situation_path.stem)
+    cap = capture(situation_path, out, keep)
+    return compare(situation_path, out, cap)
+
+
+def capture(situation_path, out, keep=False):
+    """Shows one situation in the original: its screen (`still.xwd`, the array returned) and its
+    live part (`live.toml`) in `out`."""
     out.mkdir(parents=True, exist_ok=True)
     sit = tomllib.loads(situation_path.read_text())
+    check_situation(situation_path, sit)
     map_path = out / "map.h3m"
     write_map(situation_path, sit, map_path)
     vx, vy, vz = sit["view"]
@@ -301,7 +411,7 @@ def still(situation_path, out=None, keep=False):
         raise ValueError(f"{situation_path}: `hidden` with the start's explored tiles")
     game = started(map_path, out / "run", shipped="map" in sit)
     try:
-        mem = h3mem.Mem()
+        mem = game_mem(game)
         turn = arrange(game, mem, sit)
         if not start:
             mem.write_explored(vz, hidden_test(hidden), mem.current_player())
@@ -324,7 +434,7 @@ def still(situation_path, out=None, keep=False):
         # is met at the main loop's next idle step (each then lies ahead of it again): wait for
         # that first, or the steps counted below hold an extra redraw (E24 M1 T4b saw it once).
         h3adv.wait_for(lambda: min(mem.map_due()) > now,
-                       f"the deadlines past the frozen clock at {now} ({mem.map_due()})")
+                       lambda: f"the deadlines past the frozen clock at {now} ({mem.map_due()})")
         tick, redraw = mem.map_due()
         steps = mem.frame_steps()
         now = game.clock(f"step {max(tick, redraw) - now}")
@@ -332,10 +442,14 @@ def still(situation_path, out=None, keep=False):
         # A second redraw at the same time can come too (E24 M1 T4b: once in eleven, the redraw
         # due before the tick): the screen then shows the last, whose step memory holds as well.
         h3adv.wait_for(lambda: mem.frame_steps() > steps and mem.map_due()[0] > tick,
-                       f"the redraw and the tick at {now} ({tick}, {redraw})")
+                       lambda: f"the redraw and the tick at {now} ({tick}, {redraw}; now "
+                               f"{mem.map_due()}, {mem.frame_steps()} steps)")
         k, k_rivers = cycle_step(mem)
         cap = game.settled()
         game.dump(out / "still.xwd")
+        # The file kept is the screen compared (E24 M1 T6b, the reviewer's R3-7).
+        if not np.array_equal(h3drive.xwd565((out / "still.xwd").read_bytes()), cap):
+            raise RuntimeError("the screen changed at the frozen clock")
         if cycle_step(mem) != (k, k_rivers):
             raise RuntimeError("the palettes changed at the frozen clock")
         if k != k_rivers:
@@ -359,18 +473,42 @@ def still(situation_path, out=None, keep=False):
                 "classes": [list(templates[o[3]][1:]) for o in objects],
                 "heroes": heroes, "boats": boats, "owners": mem.map_owners(),
                 "explored": json.dumps(mem.explored_rows(mem.current_player())),
-                "path": mem.path_arrows()}
+                "path": mem.path_arrows(),
+                "situation": json.dumps(situation_digest(sit))}
+        check_staged(sit, turn, heroes, boats)
         (out / "live.toml").write_text(
             "# The original's live part at the still (h3map.py still).\n"
             + "".join(f"{key} = {value}\n" for key, value in live.items()))
     finally:
         if not keep:
             game.stop()
-    draw_ours(map_path, sit, out / "live.toml", out / "ours.png")
+    return cap
+
+
+def compare(situation_path, out, cap):
+    """Ours drawn with the live part `capture` read, compared with its screen `cap`: the
+    differing pixels, the compared ones and where the differing lie (text). The viewer's refusal
+    of the live part raises `Refused`."""
+    sit = tomllib.loads(situation_path.read_text())
+    try:
+        draw_ours(out / "map.h3m", sit, out / "live.toml", out / "ours.png")
+    except RuntimeError as err:
+        raise Refused(last_lines(err)) from err
     ours = h3cap.png565(out / "ours.png")
     mask = masked(["panels"], cap.shape)
     n, where = h3cap.compare(cap, ours, mask, out / "diff.png")
     return n, int((~mask).sum()), where
+
+
+class Refused(RuntimeError):
+    """The viewer refused a live part the original gave (E24 M1 T6b, the reviewer's R3-2): the
+    situation fails, the set goes on."""
+
+
+def last_lines(err, n=3):
+    """The last lines of a failed command's message (E24 M1 T6b, the reviewer's R3-6: a Rust
+    panic's last line is its backtrace note)."""
+    return " | ".join(str(err).strip().splitlines()[-n:])
 
 
 def run_set(rest):
@@ -384,15 +522,29 @@ def run_set(rest):
     changed = 0
     for e in entries:
         # A situation the harness fails to show (the game, the clock or a read gave up: E24 M1
-        # T4b saw three such in its runs, each passing alone) is shown once more, and says so.
-        for attempt in (1, 2):
-            try:
-                n, compared, where = still(SITUATIONS / f"{e['id']}.toml", base / e["id"])
-                break
-            except (TimeoutError, RuntimeError) as err:
-                if attempt == 2:
-                    raise
-                print(f"{e['id']}: not shown ({err}); shown again", file=sys.stderr, flush=True)
+        # T4b saw three such in its runs, each passing alone) is shown once more, and says so. A
+        # second failure, or any other, fails the situation alone, as the viewer's refusal of
+        # the live part does (E24 M1 T6b, the reviewer's R3-2): the set goes on.
+        path, out = SITUATIONS / f"{e['id']}.toml", base / e["id"]
+        try:
+            for attempt in (1, 2):
+                try:
+                    cap = capture(path, out)
+                    break
+                except (TimeoutError, RuntimeError, OSError, struct.error) as err:
+                    if attempt == 2:
+                        raise
+                    print(f"{e['id']}: not shown ({err}); shown again", file=sys.stderr,
+                          flush=True)
+            n, compared, where = compare(path, out, cap)
+        except Refused as err:
+            changed += 1
+            print(f"{e['id']}: REFUSED by the viewer ({err})", flush=True)
+            continue
+        except Exception as err:  # noqa: BLE001 (any failure fails this situation alone)
+            changed += 1
+            print(f"{e['id']}: FAILED ({type(err).__name__}: {err})", flush=True)
+            continue
         recorded = e.get("differing")
         verdict = "new" if recorded is None else ("ok" if n == recorded else "CHANGED")
         changed += verdict != "ok"
@@ -453,11 +605,19 @@ def run_drawn(rest):
         here.mkdir(parents=True)
         situation_path = SITUATIONS / f"{ident}.toml"
         sit = tomllib.loads(situation_path.read_text())
+        # A kept live part of another staging than the situation's (E24 M1 T6b, R3-10).
+        shown = tomllib.loads(kept.read_text()).get("situation")
+        if shown != situation_digest(sit):
+            print(f"{ident}: STALE (the situation changed since its capture: `set --only "
+                  f"{ident}`)", flush=True)
+            failed += 1
+            broken += 1
+            continue
         try:
             write_map(situation_path, sit, here / "map.h3m")
             draw_ours(here / "map.h3m", sit, kept, here / "ours.png")
         except RuntimeError as err:
-            print(f"{ident}: the viewer failed ({str(err).splitlines()[-1]})", flush=True)
+            print(f"{ident}: the viewer failed ({last_lines(err)})", flush=True)
             failed += 1
             broken += 1
             continue
@@ -485,7 +645,7 @@ def main(args):
         out = args[args.index("--out") + 1] if "--out" in args else None
         n, compared, where = still(args[1], out, "--keep" in args)
         print(f"differing: {n} of {compared} unmasked pixels{where}")
-        return 0
+        return 1 if n else 0
     if args[:1] == ["set"]:
         return run_set(args[1:])
     if args[:1] == ["drawn"]:

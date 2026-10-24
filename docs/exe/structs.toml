@@ -336,6 +336,8 @@ fields = [
   { offset = 0x0, name = "x", type = "i16", summary = "the hero's tile, x; observed in the running game (h3mem.py), not read", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
   { offset = 0x2, name = "y", type = "i16", summary = "the hero's tile, y; observed in the running game (h3mem.py), not read", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
   { offset = 0x4, name = "level", type = "i16", summary = "the hero's level of the map, 0 the surface; observed in the running game (h3mem.py), not read", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
+  { offset = 0xC, name = "under_class", type = "i32", summary = "the class of the object under the hero on its tile: tile_object_owner 0x40FD20 takes it for a hero's tile (E24 M1 T5b1)", confidence = "read", refs = ["epics/E24-design.md §2.9"] },
+  { offset = 0x14, name = "under_word", type = "u32", summary = "that object's word (the tile's +0x0 it covers), read with it (0x40FD52)", confidence = "read", refs = ["epics/E24-design.md §2.9"] },
   { offset = 0x18, name = "spell_points", type = "i16", summary = "spell points (mana); a Familiars' channel may raise it above the maximum", confidence = "read", refs = ["installation.md §7.21"] },
   { offset = 0x1A, name = "id", type = "i32", summary = "the hero's type (H3API's id): the victory condition's hero is tested against it (0x41E61D)", confidence = "read", refs = ["installation.md §7.55"] },
   { offset = 0x22, name = "owner", type = "i8", summary = "the owner's colour, -1 none (heroes not on the map); observed in the running game (h3mem.py), not read", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
@@ -394,6 +396,9 @@ fields = [
   { offset = 0x4E364, name = "keys", type = "u8[8]", summary = "per Keymaster colour the bits of the players holding its key (H3API's keymasterVisited)", confidence = "read", refs = ["rules/surveys/E08-objects.md §6"] },
   { offset = 0x4E36C, name = "cartographer_masks", type = "u16[3]", summary = "terrain bits each Cartographer kind reveals: water 0x100, land 0xBF, subterranean 0x40", confidence = "read", refs = ["rules/surveys/E08-objects.md §4"] },
   { offset = 0x4E372, name = "cartographer_bought", type = "u8[3]", summary = "per Cartographer kind the bits of the players who paid", confidence = "read", refs = ["rules/surveys/E08-objects.md §4"] },
+  { offset = 0x4E38C, name = "mines", type = "mine*", summary = "the lighthouses' and mines' vector (begin), 0x40 bytes each, the owner at +0x0 (tile_object_owner 0x40FD20 by the tile's word; E24 M1 T5b1)", confidence = "read", refs = ["epics/E24-design.md §2.9"] },
+  { offset = 0x4E39C, name = "dwellings", type = "dwelling*", summary = "the dwellings' vector (classes 17 and 20; begin), 0x5C bytes each, the owner at +0x57 (0x40FD20)", confidence = "read", refs = ["epics/E24-design.md §2.9"] },
+  { offset = 0x4E3AC, name = "garrisons", type = "garrison*", summary = "the garrisons' vector (class 33; begin), 0x40 bytes each, the owner at +0x0 (0x40FD20)", confidence = "read", refs = ["epics/E24-design.md §2.9"] },
   { offset = 0x4E3BC, name = "boats", type = "boat*", summary = "the boats' vector (begin; its end at +0x4E3C0), 0x28 bytes each, indexed by a boat tile's word (view_boat_piece 0x410760, hero_boat 0x4CE900)", confidence = "read", refs = ["epics/E24-design.md §2.8"] },
   { offset = 0x4E658, name = "banned_skills", type = "u8[28]", summary = "per secondary skill id, set when the map bans it (H3API's bannedSkills): the level-up offers no new banned skill (0x4DAD00)", confidence = "read", refs = ["rules/surveys/E08-progression.md §2.4"] },
 ]
@@ -679,4 +684,24 @@ fields = [
   { offset = 0x1C, name = "colour", type = "i8", summary = "its flag's colour abf0Nc (by type x 8 + colour, view_hero_piece 0x40FE30); -1 for a map's boat at a new game, the boarding hero's owner after (observed)", confidence = "read", refs = ["epics/E24-design.md §2.8"] },
   { offset = 0x20, name = "hero", type = "i32", summary = "the id (+0x1A) of the hero it carries (hero_boat 0x4CE900), -1 for none (observed)", confidence = "read", refs = ["epics/E24-design.md §2.8"] },
   { offset = 0x24, name = "aboard", type = "u8", summary = "1 with its hero aboard (hero_boat 0x4CE900)", confidence = "read", refs = ["epics/E24-design.md §2.8"] },
+]
+
+[[struct]]
+name = "loaded_def"
+size = 0x38
+summary = "A DEF loaded by the game (H3API's H3LoadedDef; the size H3API's); only what the docs cite (E24 M1 T3b2)."
+refs = ["epics/E24-design.md §1.6"]
+h3api = "H3LoadedDef"
+fields = [
+  { offset = 0x20, name = "palette16", type = "palette16*", summary = "its 16-bit palette, which palette16_rotate 0x522950 rotates for the cycling terrains and rivers (the harness reads it: h3mem.def_palette)", confidence = "read", refs = ["epics/E24-design.md §1.6"] },
+]
+
+[[struct]]
+name = "palette16"
+size = 0x21C
+summary = "A 16-bit palette (H3API's H3Palette565); only what the docs cite (E24 M1 T3b2)."
+refs = ["epics/E24-design.md §1.6"]
+h3api = "H3Palette565"
+fields = [
+  { offset = 0x1C, name = "colours", type = "u16[256]", summary = "its 256 colours in 5-6-5, the entries palette16_rotate 0x522950 rotates", confidence = "read", refs = ["epics/E24-design.md §1.6"] },
 ]

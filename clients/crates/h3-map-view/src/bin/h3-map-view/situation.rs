@@ -82,7 +82,8 @@ fn write(options: &Options) -> Result<(), String> {
         Vec::new()
     };
     let (map, extras) = situation.build(&sources, &templates)?;
-    let bytes = writer::write_with(&map, &extras).map_err(|e| format!("{e:?}"))?;
+    let bytes = writer::write_with(&map, &extras)
+        .map_err(|e| format!("the writer refuses the situation's map: {e}"))?;
     if let Some(dir) = options.out.parent() {
         fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
     }

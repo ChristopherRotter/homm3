@@ -552,7 +552,7 @@ fn refuses_heroes_and_boats_it_cannot_write() {
         (
             "{ at = [1, 1], class = 18 }",
             "",
-            "hero at [1, 1]: a ninth of its colour or class 18",
+            "hero at [1, 1]: class 18 is no hero class (0-17)",
         ),
         (
             "{ at = [1, 1], owner = 1, walk = [[2, 2]] }",
@@ -585,10 +585,24 @@ fn refuses_heroes_and_boats_it_cannot_write() {
     };
     assert_eq!(
         build(&nine(&|i| format!(", class = {i}")), ""),
-        Err("hero at [16, 1]: a ninth of its colour or class 8".to_string())
+        Err("hero at [16, 1]: a ninth of colour 0".to_string())
     );
     assert_eq!(
         build(&nine(&|i| format!(", class = 5, owner = {}", i % 2)), ""),
-        Err("hero at [16, 1]: a ninth of its colour or class 5".to_string())
+        Err("hero at [16, 1]: a ninth of class 5".to_string())
     );
+}
+
+#[test]
+fn a_shipped_map_loaded_whole_is_the_harnesss() {
+    // E24 M1 T6b (the reviewer's R2-12): not the writer's to build.
+    let text = alloc::format!("map = \"Hoard.h3m\"\n{PLAIN}");
+    assert_eq!(
+        Situation::parse(&text).unwrap_err(),
+        "it names a shipped map whole (`map`): the harness loads it"
+    );
+    // Not TOML, and TOML that is no situation.
+    assert!(Situation::parse("size = ").is_err());
+    let unknown = alloc::format!("{PLAIN}colour = 3\n");
+    assert!(Situation::parse(&unknown).unwrap_err().contains("colour"));
 }

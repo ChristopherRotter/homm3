@@ -4,31 +4,38 @@ Pre-refined tasks of the map client lane, in order, then the inbox of discovered
 
 ## Tasks
 
-Epic: E24, the adventure map client, **M1: stills of the map view** (refined 2026-10-23, T0;
-`docs/epics/E24-map-client.md`: the decisions, how the viewer sees a map, the milestones). Code
+Epic: E24, the adventure map client. **M1 (stills of the map view) closed 2026-10-24** (T6b,
+the review list accepted by the user); next **M2: the map moving**, refined in its T0
+(`docs/epics/E24-map-client.md`: the decisions, how the viewer sees a map, the milestones). Code
 readings in the sandbox (`docs/exe/README.md`; every address cited needs a map entry), their
 detail in `docs/epics/E24-design.md`; captures by the harness (`clients/capture/README.md`), never
 in git. Every oddity of the original a reading or a capture finds is an `MCL-Q<n>` in the same
 task (the HANDOFF's autonomy contract).
 
-T5 split with the user (2026-10-23) into T5a (heroes and boats, done) and T5b; T5b split with
-the user (2026-10-24) into T5b1 (the owners, done) and T5b2 (the path, the explored tiles, done).
-T6 split with the user (2026-10-24) into T6a (the set's digests, the half tick, done) and T6b
-(the closure).
+### E24 M2 T0 — M2 refined with the user
 
-### E24 M1 T6b — M1's closure
-
-- **Scope:** M1's closure: a fresh reviewer agent, its findings fixed or queued, the review list
-  (the epic's), the user's checkpoint; M2 T0 queued.
-- **Acceptance:** the review list accepted by the user; the whole set as recorded (`h3map.py
-  set`, 40, captured whole at T6a: a change since then captures what `drawn` lists).
-- **Depends on:** T6a (done). **Status:** ready. `h3map.py drawn` gives the set's state without
-  the original; the review list is the epic's (T2 to T6a).
+- **Scope:** the epic's "M2 — the map moving" refined with the user: the objects' animations and
+  the palette cycles over time, the view scrolling, a hero's walk along its path (the arrows from
+  a path, T5b2's review item), in a window at the original's frame times (`h3-sdl`), checked frame
+  by frame against recorded sequences as E17 M2 did (its `frames` and sequences). With the user:
+  the readings first (the walk's frames and timing, the scroll), the recordings' format, what of
+  `h3-view` the window needs (`clock`, `sound`: a common crate is a `lanes.toml` change agreed
+  with the client lane, its inbox note of 2026-10-23), the tasks (each about half a context); the
+  queued M1 items (the inbox's writer bound, R2-8).
+- **Acceptance:** the epic's M2 section refined (decisions, tasks), the tasks in this queue, the
+  user's agreement.
+- **Depends on:** M1 closed (T6b, done). **Status:** ready (with the user).
 
 ## Inbox
 
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
+
+- 2026-10-24 (this lane, E24 M1 T6b's reviewer, R2-8; with the next writer pull request): the
+  writer's edge bound for an object (`crates/h3-map/src/writer/extras.rs` `PAST_RIGHT`, `PAST_BOTTOM`, its test
+  at 799) lets an anchor lie 7 past the map's side, where an 8-wide template covers no cell on
+  the map: one too generous, its comment off by one (6 and 4, or the comment). The adventure
+  lane's crate: a `cross-lane` change, so it waits for the next addition the situations need.
 
 - 2026-10-23 (the adventure lane, E08 T47a; for information, nothing to do): the harness's
   clicks and reads for batch E6 (`clients/capture/README.md`, "Screens and their items"): the

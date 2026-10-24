@@ -13,11 +13,13 @@
 //! lower) inside the view's clip (§1.2), as the passes cut their source rectangles.
 
 use alloc::collections::BTreeMap;
+use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt;
 use core::ops::Range;
 
+use h3_map::model::Pos;
 use h3_render::Bugs;
 
 use crate::art::{Layer, MapArt};
@@ -160,8 +162,12 @@ pub enum SceneError {
         /// The tile.
         at: [i32; 2],
     },
-    /// The level's objects have no draw lists.
+    /// The level's objects have no draw lists, or an object's picture has no shape.
     Objects(ObjectsError),
+    /// A hero's or boat's DEF has no frames (`Shapes::insert_frames`).
+    Frames(String),
+    /// The live part does not fit the map: what does not.
+    Live(String),
 }
 
 impl fmt::Display for SceneError {
@@ -175,18 +181,22 @@ impl fmt::Display for SceneError {
                 at[0], at[1]
             ),
             Self::Objects(e) => e.fmt(f),
+            Self::Frames(def) => write!(f, "{def}: no frames"),
+            Self::Live(what) => write!(f, "the live part does not fit the map: {what}"),
         }
     }
 }
 
 /// The scene of the adventure screen at view `at`, with the original's drawing bugs fixed or,
-/// for the comparisons, reproduced (`bugs`; the one so far: MCL-Q2's road on the map's last row).
-/// `shapes` gives the objects' templates their `.msk` and frames ([`objects::pictures`] names
-/// them).
+/// for the comparisons, reproduced (`bugs`: MCL-Q2's road on the map's last row, MCL-Q3's random
+/// artifact's picture, MCL-Q4's flag of an object without an entrance on the map). `shapes` gives
+/// the objects' templates their `.msk` and frames ([`objects::pictures`] names them), and the
+/// heroes' and boats' DEFs their frames.
 ///
 /// # Errors
-/// [`SceneError`]: the level or the viewer out of range, a code the tables lack, an object's
-/// picture without a shape.
+/// [`SceneError`]: the level or the viewer out of range, a live part that does not fit the map, a
+/// code the tables lack, an object's picture without a shape, a hero's or boat's DEF without
+/// frames while one stands on the level.
 pub fn scene(
     art: &MapArt,
     live: &Live,
@@ -202,7 +212,9 @@ pub fn scene(
     if live.viewer > 7 {
         return Err(SceneError::Viewer(live.viewer));
     }
+    check_live(art, live)?;
     let lists = DrawLists::build(art, live, shapes, at.z).map_err(SceneError::Objects)?;
+    check_shapes(art, live, tables, shapes, at.z, bugs)?;
     let view = View {
         art,
         live,
@@ -296,6 +308,77 @@ fn standing(live: &Live, z: u8) -> BTreeMap<(i32, i32), Standing<'_>> {
         out.entry((i32::from(at.x), i32::from(at.y))).or_insert(s);
     }
     out
+}
+
+/// The live part fits the map (E24 M1 T6b, the reviewer's R1-3): one entry per object, the
+/// explored tiles of the map's size and levels, every hero, boat and arrow on the map, every hero
+/// owned by a colour (the original draws no hero on land without one, design §2.8).
+fn check_live(art: &MapArt, live: &Live) -> Result<(), SceneError> {
+    let wrong = |what: String| Err(SceneError::Live(what));
+    if live.objects.len() != art.objects.len() {
+        return wrong(format!(
+            "{} objects for the map's {}",
+            live.objects.len(),
+            art.objects.len()
+        ));
+    }
+    if live.explored.size() != (art.size, art.levels) {
+        return wrong(String::from(
+            "the explored tiles are not of the map's size and levels",
+        ));
+    }
+    let on_map = |at: Pos| {
+        usize::from(at.x) < art.size
+            && usize::from(at.y) < art.size
+            && usize::from(at.z) < art.levels
+    };
+    let heroes = live.heroes.iter().map(|h| ("a hero", h.at, h.owner < 8));
+    let boats = live.boats.iter().map(|b| ("a boat", b.at, true));
+    let arrows = live.path.iter().map(|a| ("an arrow", a.at, true));
+    for (what, at, owned) in heroes.chain(boats).chain(arrows) {
+        let tile = (at.x, at.y, at.z);
+        if !on_map(at) {
+            return wrong(format!("{what} at {tile:?} is off the map"));
+        }
+        if !owned {
+            return wrong(format!("{what} at {tile:?} has no owner"));
+        }
+    }
+    Ok(())
+}
+
+/// Every picture level `z` draws has its shape or frames (E24 M1 T6b, the reviewer's R1-4): each
+/// object with entries the one it is drawn with ([`objects::shape`]: a random object's drawn or
+/// own DEF too; [`DrawLists::build`] checked its template's), and while a hero or boat stands on
+/// the level every DEF of the tables' heroes.
+fn check_shapes(
+    art: &MapArt,
+    live: &Live,
+    tables: &Tables,
+    shapes: &Shapes,
+    z: u8,
+    bugs: Bugs,
+) -> Result<(), SceneError> {
+    for (index, object) in art.objects.iter().enumerate() {
+        let listed = objects::template(art, index)
+            .is_some_and(|t| object.anchor.z == z && !objects::NO_ENTRIES.contains(&t.class));
+        if listed && objects::shape(art, live, shapes, index, bugs).is_none() {
+            let def = objects::def(art, live, index, bugs).unwrap_or_default();
+            return Err(SceneError::Objects(ObjectsError::Shape(index, def.into())));
+        }
+    }
+    let standing = live
+        .heroes
+        .iter()
+        .map(|h| h.at)
+        .chain(live.boats.iter().map(|b| b.at));
+    if standing.into_iter().any(|at| at.z == z) {
+        let defs = tables.map.heroes.defs();
+        if let Some((def, _)) = defs.into_iter().find(|(d, _)| shapes.frames(d).is_none()) {
+            return Err(SceneError::Frames(def));
+        }
+    }
+    Ok(())
 }
 
 /// The path's arrows on level `z` by their tiles (the last given on a tile; an arrow 0 is none,
@@ -540,7 +623,7 @@ impl<'a> View<'a> {
     ) {
         let art = &self.tables.map.heroes;
         let pick = |list: &'a [String], i: usize| list.get(i).map(String::as_str);
-        let waves = |at: h3_map::model::Pos, kind: usize| {
+        let waves = |at: Pos, kind: usize| {
             let coast = self
                 .art
                 .tile(at.x.into(), at.y.into(), at.z)

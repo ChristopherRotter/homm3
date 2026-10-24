@@ -191,6 +191,12 @@ impl Explored {
         }
     }
 
+    /// The map's size and levels it is of.
+    #[must_use]
+    pub fn size(&self) -> (usize, usize) {
+        (self.size, self.levels)
+    }
+
     fn index(&self, x: i32, y: i32, z: u8) -> Option<usize> {
         let (x, y) = (usize::try_from(x).ok()?, usize::try_from(y).ok()?);
         let z = usize::from(z);

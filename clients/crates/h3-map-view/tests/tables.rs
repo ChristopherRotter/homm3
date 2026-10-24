@@ -63,3 +63,31 @@ fn the_native_layout() {
     assert_eq!(layout.view.place(18, 16), [576, 520]);
     assert_eq!(layout.view.gems.len(), 4);
 }
+
+#[test]
+fn the_owners_towns_and_heroes() {
+    // E24 M1 T6b (the reviewer's R2-14): what the captures alone checked. The owned classes as
+    // the game loads them, 219 and 220 among them (0x41153C's jump table, design §2.9); the
+    // neutral entry 63 of `game.pal`, the colours' 64 to 71; the towns' three lists (0x677A0C,
+    // 0x677A30, 0x677A54); the heroes' groups by facing (§2.8).
+    let tables = committed();
+    let owners = &tables.map.owners;
+    assert_eq!(owners.palette, "game.pal");
+    assert_eq!(owners.neutral, 63);
+    assert_eq!(owners.classes, [17, 20, 33, 42, 53, 77, 87, 98, 219, 220]);
+    assert_eq!(owners.entry(219, None), Some(63));
+    assert_eq!(owners.entry(33, Some(7)), Some(71));
+    let towns = &tables.map.towns;
+    assert_eq!(towns.village[0], "AVCcast0.def");
+    assert_eq!(towns.fort[8], "AVChforx.def");
+    assert_eq!(towns.capitol[7], "AVCforz0.def");
+    assert!(
+        [&towns.village, &towns.fort, &towns.capitol]
+            .iter()
+            .all(|list| list.len() == tables::FACTIONS)
+    );
+    let heroes = &tables.map.heroes;
+    assert_eq!(heroes.groups, [0, 1, 2, 3, 4, 3, 2, 1]);
+    assert_eq!(heroes.classes.len(), 18);
+    assert_eq!(heroes.classes[0], "ah00_.def");
+}
