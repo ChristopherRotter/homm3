@@ -623,16 +623,21 @@ pub fn battle_at(
     // The drawbridge's redraws (E17 M4 T2c-1, CLT-Q23): the battle as the screen showed it
     // before, the moment's inside the drawbridge's rectangle.
     if let Some(before) = &moment.bridge {
-        let mut list = battle_at(observation, before, manifest, tables, layout)?;
         let now = Moment {
             bridge: None,
             ..moment.clone()
         };
-        list.push(Draw::Within {
-            rect: DRAWBRIDGE_RECT,
-            list: battle_at(observation, &now, manifest, tables, layout)?,
+        let [shown, drawn] =
+            [before.as_ref(), &now].map(|m| battle_at(observation, m, manifest, tables, layout));
+        return shown.and_then(|mut list| {
+            drawn.map(|inner| {
+                list.push(Draw::Within {
+                    rect: DRAWBRIDGE_RECT,
+                    list: inner,
+                });
+                list
+            })
         });
-        return Ok(list);
     }
     // A wall shot's explosion (E17 M4 T2b, design §10.2): in its rectangle each frame drawn over a
     // redraw of the battle with its walls' states, without the background restored after the

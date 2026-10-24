@@ -199,6 +199,11 @@ fn the_gate_sequence_plays_as_recorded() {
         [None, Some(13233), Some(13233), None]
     );
     assert!(fixed.bridges.is_empty());
+    // A moment in the span carries the battle the screen shows beyond the rectangle.
+    let moment = crate::scene::Moment::at(&t, 13300);
+    let before = crate::scene::Moment::at(&t, 13233);
+    assert_eq!(moment.bridge.as_deref(), Some(&before));
+    assert!(before.bridge.is_none());
 }
 
 #[test]
@@ -322,9 +327,26 @@ fn the_moat_that_kills_a_walker_ends_its_walk() {
         moat,
         Event::TurnStarted { stack: 2 },
     ];
-    let t = play_siege(&o, &[(Some(0), flown)], Bugs::Original, Some(&castle()));
+    let t = play_siege(
+        &o,
+        &[(Some(0), flown.clone())],
+        Bugs::Original,
+        Some(&castle()),
+    );
     let last = t.keys.iter().rfind(|k| k.stack == 0);
     assert_eq!(last.map(|k| (k.pose.group, k.pose.hex)), Some((5, 77)));
+    // One that lives reacts and stands there.
+    let mut lived = flown;
+    lived[1] = Event::MoatDamage {
+        stack: 0,
+        hex: 77,
+        damage: h3_protocol::wire::WireU64(70),
+        kills: 1,
+    };
+    let t = play_siege(&o, &[(Some(0), lived)], Bugs::Original, Some(&castle()));
+    let last = t.keys.iter().rfind(|k| k.stack == 0);
+    assert_eq!(last.map(|k| (k.pose.group, k.pose.hex)), Some((2, 77)));
+    assert!(t.keys.iter().any(|k| k.stack == 0 && k.pose.group == 3));
 }
 
 #[test]
@@ -588,4 +610,26 @@ fn a_mine_the_screen_shows_goes_without_its_vanish_animation() {
     assert!(t.objects(200).contains_key(&61));
     assert!(!t.objects(10_000).contains_key(&61));
     assert!(t.spots.iter().all(|s| s.animation != 59));
+}
+
+#[test]
+fn a_mine_at_the_walk_s_end_blasts_after_it() {
+    // The Titans' walk ending on the mine at 61 (no breach): the walk's end first, then the
+    // blast, the move sound neither stopped again nor started.
+    let o = mine_siege();
+    let mut walked = over_the_mine();
+    walked.retain(|e| !matches!(e, Event::Moved { from: 61 | 78, .. }));
+    let t = play_mine(&o, &[(Some(0), walked)]);
+    let blast = t.cues.iter().find(|c| c.sound == Sound::Mine).map(|c| c.at);
+    let moves: Vec<(u32, bool)> = t
+        .cues
+        .iter()
+        .filter(|c| c.stack == 0 && c.sound == Sound::Move)
+        .map(|c| (c.at, c.stop))
+        .collect();
+    assert_eq!(moves.len(), 2);
+    assert!(moves.iter().all(|&(at, _)| Some(at) < blast));
+    assert!(t.magics.iter().any(|m| m.animation == MINE_BLAST));
+    let last = t.keys.iter().rfind(|k| k.stack == 0);
+    assert_eq!(last.map(|k| (k.pose.group, k.pose.hex)), Some((2, 61)));
 }
