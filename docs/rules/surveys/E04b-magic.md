@@ -357,6 +357,9 @@ brackets, the review's finding (report, number).
   (OPEN-QUESTIONS BAT-Q28, row 4).
 - The engine today (clean): no retaliation at a dead stack; the struck stack keeps its retaliation
   (BAT-RET-001, BAT-MAG-018).
+- **Confirmed (batch 2g FS, 2026-10-24):** the Sultans' retaliations left fell to 0 in the dead
+  Archangel's action and the Royal Griffins after it were not struck back. **The user:**
+  fix-optional, BAT-QUIRK-29 (`quirk.battle.retaliation_at_a_dead_striker`, on in `faithful`).
 
 ### S-24 — A hero's raise aimed at a two-hex corpse raises the top corpse on that corpse's rear hex
 - Original (code reading, one reviewer; r4a F-5): the handler of Resurrection and Animate Dead
@@ -378,6 +381,9 @@ brackets, the review's finding (report, number).
   searched) (BAT-Q28, row 10).
 - The engine today (clean): the corpse aimed at is raised, through any of its hexes on which no
   corpse lies above it (BAT-MAG-035).
+- **Confirmed (batch 2g RS, 2026-10-24):** Resurrection at the Wolf Riders' head raised the
+  Swordsman on their rear hex. **The user:** fix-optional, BAT-QUIRK-30
+  (`quirk.battle.raise_by_rear_hex`, on in `faithful`; Resurrection and Animate Dead only).
 
 ### S-25 — A side no human commands escapes one bad-morale freeze in four
 - Original (code reading; two reviewers read the same bytes; r5b F-3): after its roll the

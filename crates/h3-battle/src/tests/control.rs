@@ -1178,8 +1178,8 @@ fn a_hypnotized_stack_takes_its_controller_s_morale_and_luck() {
         heroes: [Some(red), None],
         ..setup(&r, &[(0, "fixed", 5)], &[(0, "slow", 5)])
     };
-    let mut s = crate::BattleState::new(&r, &setup, 1).unwrap();
-    let values = |s: &crate::BattleState, id: usize| (s.stacks()[id].morale, s.stacks()[id].luck);
+    let mut s = BattleState::new(&r, &setup, 1).unwrap();
+    let values = |s: &BattleState, id: usize| (s.stacks()[id].morale, s.stacks()[id].luck);
     let (own, reds) = (values(&s, 1), values(&s, 0));
     assert_ne!(own, reds);
     let spell_id = spell(&r, "hypnotize");

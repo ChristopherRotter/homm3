@@ -8,7 +8,8 @@
 //! second attack.
 
 use h3_content::{
-    CreatureFlag, FIRE_SHIELD_FIRST_STAGE, FRENZY_REDUCED_DEFENSE, FULL_BP, SINGLE_PRECISION_RATES,
+    BREATH_SKIPS_SIDE_COLUMNS, CreatureFlag, FIRE_SHIELD_FIRST_STAGE, FRENZY_REDUCED_DEFENSE,
+    FULL_BP, RETALIATION_AT_A_DEAD_STRIKER, SINGLE_PRECISION_RATES,
 };
 use h3_content_battle::{Ability, BattleParams, BattleRuleset, CompiledAbility, TimedChange};
 use h3_contracts::{BattleResult, BattleSide};
@@ -810,11 +811,12 @@ fn death_stare<S: Sink>(
 /// for breath attacks, any stack on the hex behind the attacked hex. Never the target or the
 /// attacker itself; enemies as [`Stack::is_hostile_to`] has them (BAT-MAG-025/026: a berserk
 /// Hydra strikes every adjacent stack, any Hydra a berserk one and a hypnotized stack of the
-/// side its controller fights).
+/// side its controller fights). With `table` (quirk BAT-QUIRK-28) the breath never reaches a side
+/// column ([`pattern_hexes`]).
 // rule: BAT-ATK-003
 fn melee_secondaries(
     state: &BattleState,
-    field: Field,
+    (field, table): (Field, bool),
     attacker: StackId,
     target: StackId,
 ) -> Targets {
@@ -824,7 +826,8 @@ fn melee_secondaries(
         return NO_TARGETS;
     }
     let fp = me.footprint(field);
-    let (enemy_hexes, any_hexes) = pattern_hexes(field, me, fp, state.at(target).footprint(field));
+    let victim = state.at(target).footprint(field);
+    let (enemy_hexes, any_hexes) = pattern_hexes((field, table), me, fp, victim);
     core::array::from_fn(|i| {
         state.stacks.get(i).is_some_and(|s| {
             let enemy = me.is_hostile_to(s);
@@ -849,8 +852,16 @@ fn melee_secondaries(
 /// adjacent, else at its front hex. Each
 /// pattern is a walk of directions turned relative to the attack direction; a walk whose first
 /// step would enter the attacker starts one step further, on the attacked hex. Hexes of the
-/// attacker are never hit.
-fn pattern_hexes(field: Field, me: &Stack, fp: Footprint, victim: Footprint) -> (HexSet, HexSet) {
+/// attacker are never hit. With `table` (quirk BAT-QUIRK-28) the breath's steps go through the
+/// original's neighbour table, which has no entry in the side columns (0x4640A0; melee_strike
+/// 0x441739): a breath whose attacked hex or second hex lies in one reaches nothing (batch 2g BR:
+/// a Ballista's rear hex in column 16 is not struck, BC: its front hex in column 15 is).
+fn pattern_hexes(
+    (field, table): (Field, bool),
+    me: &Stack,
+    fp: Footprint,
+    victim: Footprint,
+) -> (HexSet, HexSet) {
     let mut enemy = HexSet::new();
     let mut any = HexSet::new();
     let front = Footprint {
@@ -890,8 +901,14 @@ fn pattern_hexes(field: Field, me: &Stack, fp: Footprint, victim: Footprint) -> 
             enemy.insert(hex);
         }
     }
+    // rule: BAT-ATK-003
     if me.has(StackTraits::BREATH)
         && let Some(hex) = walk(0, &[0])
+        && (!table
+            || [walk(0, &[]), Some(hex)]
+                .into_iter()
+                .flatten()
+                .all(|h| field.is_standable(h)))
     {
         any.insert(hex);
     }
@@ -935,7 +952,8 @@ pub(crate) fn melee<S: Sink>(
         if !me.is_alive() || !state.at(target).is_alive() || lost {
             break;
         }
-        let others = melee_secondaries(state, field, attacker, target);
+        let table = ruleset.quirks().is_enabled(BREATH_SKIPS_SIDE_COLUMNS);
+        let others = melee_secondaries(state, (field, table), attacker, target);
         let charge = if i == 0 { charge } else { 0 };
         let pair = (attacker, target);
         let stopped = attack(
@@ -978,7 +996,8 @@ pub(crate) fn melee<S: Sink>(
 /// The retaliation of `retaliator` on `attacker` (BAT-RET-001): if both live, the attacker's
 /// strikes allow retaliation (BAT-RET-002), the retaliator is not petrified (BAT-MAG-043) and
 /// has a retaliation left this round (BAT-RET-003), it attacks back with its full attack
-/// pattern. A retaliator that was blind or paralysed when attacked (`blind`: Blind's or
+/// pattern. With quirk BAT-QUIRK-29 a striker its Fire Shield killed is retaliated at all the
+/// same: the retaliation is spent and strikes nothing (0x441DD4 to 0x441E01; batch 2g FS). A retaliator that was blind or paralysed when attacked (`blind`: Blind's or
 /// Paralyze's share) deals that share of its damage, and none at 0, keeping its retaliation
 /// (BAT-MAG-024, BAT-MAG-043).
 // rule: BAT-RET-001, BAT-RET-002, BAT-RET-003, BAT-MAG-024, BAT-MAG-043
@@ -991,9 +1010,10 @@ fn retaliate<S: Sink>(
 ) {
     let r = state.at(retaliator);
     let a = state.at(attacker);
+    let nowhere = !a.is_alive() && ruleset.quirks().is_enabled(RETALIATION_AT_A_DEAD_STRIKER);
     // War machines never retaliate (BAT-WAR-001), nor do petrified stacks (BAT-MAG-043).
     if !r.is_alive()
-        || !a.is_alive()
+        || (!a.is_alive() && !nowhere)
         || a.has(StackTraits::NO_ENEMY_RETALIATION)
         || r.has(StackTraits::WAR_MACHINE)
         || r.spells.status.contains(Status::PETRIFIED)
@@ -1008,8 +1028,12 @@ fn retaliate<S: Sink>(
         r.flags
             .set(StackFlags::RETALIATED, r.retaliations_left == 0);
     }
+    if nowhere {
+        return;
+    }
     let field = Field::new(ruleset.battle().field);
-    let others = melee_secondaries(state, field, retaliator, attacker);
+    let table = ruleset.quirks().is_enabled(BREATH_SKIPS_SIDE_COLUMNS);
+    let others = melee_secondaries(state, (field, table), retaliator, attacker);
     let pair = (retaliator, attacker);
     attack(
         state,

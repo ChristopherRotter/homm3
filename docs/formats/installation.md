@@ -1357,7 +1357,9 @@ are left out of the price: 5 of 10 Swordsmen at 300 gold cost 750, and after a r
 where the full count gives 1 200. And the halving comes before the factor: one Pixie (25 gold) at a
 discount of 10 % costs `trunc(12 × 0.9)` = 10, where one division at the end gives 11 (the report
 found no such case with discounts of 20, 40 and 60 %). Batch 2d showed created stacks left out and
-war machines counted; the rest is not observed. VCMI 1.7.5 takes cost × count of the units from the
+war machines counted, batch 2g SP (2026-10-24) the temporary creatures left out (750 before and
+after a raise to 8, 0 with 2 left of 3 raised; BAT-FLE-002 follows it); the halving's order is not
+observed. VCMI 1.7.5 takes cost × count of the units from the
 army's slots (`lib/battle/Unit.cpp` `getRawSurrenderCost`); the wiki is silent, by the report. The
 engine counts every living creature of an army stack and divides once at the end (BAT-FLE-002): it
 does not follow this yet: BAT-Q28.
@@ -1955,10 +1957,11 @@ phase is on (0x478755 to 0x478790: read as disabled; the state's meaning is H3AP
 dispatcher's case for action 8 (0x479906), which the report did not read, has no test of the phase
 at its head: it sets the waited bit, and nothing clears that bit again before the round ends, so a
 Wait that did arrive there in the wait phase would cost the stack its turn; whether the keyboard can
-send one was not read. Not observed (the report: confidence medium); neither VCMI nor the wiki was
-compared. The engine puts a stack that has not waited before every waited one, fastest first, in the
-wait phase too, and lets it Wait there and act once more (BAT-TRN-002): it does not follow this yet:
-BAT-Q28.
+send one was not read. **Observed** (batch 2g WP, WK, 2026-10-24): elementals summoned in the
+Peasants' wait-phase turn act after the slower Pikemen; the Wait button's state word gains the bit
+0x8 at the wait phase's first turn; the W key changes nothing there. The engine follows it since
+(BAT-TRN-002; BAT-TRN-005: no turn start at a first activation in the wait phase, the waited case
+observed in batch 2g TS).
 
 **Review re-read (E04b T11b, 2026-10-12): a freeze and the side that acted last.** For two stacks of
 equal speed and different sides the comparison prefers the one whose side is not the manager's
@@ -1972,11 +1975,10 @@ that bad morale or Fear freezes goes back to the pick's loop without an activati
 0x46529C), as a blind stack does, so its side is not recorded: after a freeze the tie-break still
 goes by the side of the stack that acted before it. Example: B's stack of speed 9 acts, A's stack of
 speed 6 freezes, and one stack of each side with speed 5 is left: A's goes first, B having acted
-last, where counting the freeze as A's action gives B's. Not observed (the report: confidence
-medium). VCMI 1.7.5 makes a frozen unit the active one (`server/battles/BattleFlowProcessor.cpp`
-`makeAutomaticAction`), as the engine; the wiki's wording fits both, by the report. The engine
-counts a frozen stack's side as the side that acted last (BAT-TRN-001): it does not follow this yet:
-BAT-Q28.
+last, where counting the freeze as A's action gives B's. **Observed** (batch 2g FT, 2026-10-24):
+Blue's Royal Griffins, Red's frozen Wolf Riders, then Red's Demons before Blue's Medusas of equal
+speed. VCMI 1.7.5 makes a frozen unit the active one (`server/battles/BattleFlowProcessor.cpp`
+`makeAutomaticAction`); the engine follows the original since (BAT-TRN-001).
 
 **The other sources for the casting creatures** (compared at the E04b T11b review, 2026-10-12; the
 wiki was not consulted). VCMI 1.7.5 agrees on the Archangel (Expert Resurrection, 100 hit points
@@ -2999,8 +3001,9 @@ hero's luck, −1 if the other army holds Devils or Arch Devils (54, 55), then +
 (type 1) with building 21 (the Fountain of Fortune, +0x158). The town context derives these as
 `Siege.morale` and `Siege.luck` (ADR-0023 point 2); the battle adds them to the defender's stacks
 as side terms. A stack another side controls takes that side's terms, the town's included, from
-the next action on: the engine keeps a hypnotized stack's own side's (BAT-MAG-026; the battle
-queue's inbox). `vcmi`: the buildings' bonuses (Tavern +1, Brotherhood +2, Fountain +2 luck) to
+the next action on: **observed** (batch 2g HM, 2026-10-24: Blue's hypnotized Swordsman at Red's
+morale 4 and luck 3 after the cast, 0 and 0 when Hypnotize ended), and the engine follows it
+(BAT-MAG-026). `vcmi`: the buildings' bonuses (Tavern +1, Brotherhood +2, Fountain +2 luck) to
 the town's defender; the `wiki` (Morale, Luck: "when defending against siege").
 
 **Experience** (0x46A350, re-read from 0x46A3D1 to 0x46A41C). After the kills (the other side's

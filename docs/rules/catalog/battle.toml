@@ -647,7 +647,8 @@ id       = "BAT-ATK-003"
 title    = "Attacks that hit several stacks"
 context  = "battle"
 status   = "implemented"
-summary  = "Some melee attacks also strike secondary targets, chosen from the positions at the time of the attack and never including the target itself: attacks_all_adjacent hits every living enemy stack whose footprint touches the attacker's; three_headed_attack hits enemy stacks on the two hexes beside the attacked hex; breath_attack hits any stack, friend or foe, on the hex behind the attacked hex. An enemy here is a stack whose own side is not the striker's controller, and any stack when either of the two is berserk (BAT-MAG-025, BAT-MAG-026). Pattern geometry (ported from VCMI): the origin is the attacker's front hex, or its rear hex if the front hex does not touch the target (VCMI's head and tail); the attack direction points from the origin to the target's rear hex if adjacent, else to its front hex; three-headed takes one step from the origin turned one sixth clockwise and one counter-clockwise from the attack direction, breath two steps in the attack direction; a walk whose first step would enter the attacker starts one step further (on the attacked hex); the attacker's own hexes are never hit. The target is struck first, then the secondary targets in stack-id order, each with its own damage roll; each stack is struck once per attack. Retaliations use the full pattern too. Secondary strikes carry the SECONDARY flag."
+summary  = "Some melee attacks also strike secondary targets, chosen from the positions at the time of the attack and never including the target itself: attacks_all_adjacent hits every living enemy stack whose footprint touches the attacker's; three_headed_attack hits enemy stacks on the two hexes beside the attacked hex; breath_attack hits any stack, friend or foe, on the hex behind the attacked hex. An enemy here is a stack whose own side is not the striker's controller, and any stack when either of the two is berserk (BAT-MAG-025, BAT-MAG-026). Pattern geometry (ported from VCMI): the origin is the attacker's front hex, or its rear hex if the front hex does not touch the target (VCMI's head and tail); the attack direction points from the origin to the target's rear hex if adjacent, else to its front hex; three-headed takes one step from the origin turned one sixth clockwise and one counter-clockwise from the attack direction, breath two steps in the attack direction; a walk whose first step would enter the attacker starts one step further (on the attacked hex); the attacker's own hexes are never hit. The target is struck first, then the secondary targets in stack-id order, each with its own damage roll; each stack is struck once per attack. Retaliations use the full pattern too. Secondary strikes carry the SECONDARY flag. With quirk BAT-QUIRK-28 (fix-optional, on in faithful) the breath's steps go through the original's neighbour table, which has no entry in the side columns: a breath whose attacked hex or second hex lies in column 0 or 16 strikes no second stack (a war machine's rear hex there is spared; batch 2g BR, BC; BAT-Q62)."
+quirks   = ["BAT-QUIRK-28"]
 numeric  = "integer"
 
   [[rule.source]]
@@ -697,6 +698,12 @@ numeric  = "integer"
   [[rule.source]]
   kind       = "original-data"
   ref        = "Heroes3.exe static creature table: flags multi_headed (Hydras, Cerberi) and breath_attack (dragons, Firebirds); the pattern kind is a gap-filled ability (crates/h3-harvest/data/gapfill.toml)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04b-batch-2g.md BR, BC (SoD 4.0 Complete, the capture harness under Wine, no HD mod, 2026-10-24): a Red Dragon's head on (15, 5) strikes Pikemen on (15, 4): the Ballista with its rear hex on (16, 3) keeps 250 (the breath stops at the side column); struck from (13, 3) onto (14, 3), the breath takes 63 off the Ballista's front hex (15, 3) (BAT-QUIRK-28, the code reading 0x441739 through 0x4640A0's table)"
+  retrieved  = "2026-10-24"
   confidence = "high"
 
 [[rule]]
@@ -1175,7 +1182,8 @@ id       = "BAT-RET-001"
 title    = "Retaliation"
 context  = "battle"
 status   = "implemented"
-summary  = "After the first melee attack (BAT-ATK-001/002), the target retaliates if both stacks are still alive, the attacker allows retaliation (BAT-RET-002) and the target has a retaliation left this round (BAT-RET-003); the retaliation is a normal attack of the target's remaining creatures against the attacker, with its full attack pattern (BAT-ATK-003) and abilities (BAT-DMG-007..009) but no jousting. Shots are never retaliated (BAT-RNG-001). Retaliations reset at the start of each round (BAT-TRN-003). Scope: blind/paralyze effects and first strike are E04."
+summary  = "After the first melee attack (BAT-ATK-001/002), the target retaliates if both stacks are still alive, the attacker allows retaliation (BAT-RET-002) and the target has a retaliation left this round (BAT-RET-003); the retaliation is a normal attack of the target's remaining creatures against the attacker, with its full attack pattern (BAT-ATK-003) and abilities (BAT-DMG-007..009) but no jousting. Shots are never retaliated (BAT-RNG-001). Retaliations reset at the start of each round (BAT-TRN-003). Scope: blind/paralyze effects and first strike are E04. With quirk BAT-QUIRK-29 (fix-optional, on in faithful) a striker its target's Fire Shield killed is retaliated at all the same: the retaliation is spent and strikes nothing, so the round's next attacker is not struck back (0x441DD4 to 0x441E01; batch 2g FS; survey S-23)."
+quirks   = ["BAT-QUIRK-29"]
 numeric  = "integer"
 
   [[rule.source]]
@@ -1198,6 +1206,12 @@ numeric  = "integer"
   url        = "https://heroes.thelazy.net/index.php/Horn_of_the_Abyss_(Changelog)"
   retrieved  = "2026-10-13"
   confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04b-batch-2g.md FS (SoD 4.0 Complete, the capture harness under Wine, no HD mod, 2026-10-24): an Archangel with 15 hit points left strikes 20 Efreet Sultans for 87 and dies of the reflection; the Sultans' retaliations left (+0x454) fall to 0 in its action; the Royal Griffins attacking next lose only their reflection (BAT-QUIRK-29)"
+  retrieved  = "2026-10-24"
+  confidence = "high"
 
 [[rule]]
 id       = "BAT-RET-002"
@@ -1331,7 +1345,7 @@ id       = "BAT-MOR-003"
 title    = "Good morale"
 context  = "battle"
 status   = "implemented"
-summary  = "After a stack moves, attacks, shoots or casts (BAT-MAG-048; not after Wait or Defend, and also when it acts in a wait phase), if its morale m is positive, it is still alive, it has had no good-morale turn this round and the battle is not over, it gets another turn right away with chance good_morale_chances[m] / morale_dice (original: 1, 2, 3 out of 24). The roll lifts the stack's acted mark (the original's 0x464920 clears its done bit: a stack reborn in its own action keeps the turn, BAT-MAG-059). The extra turn has no regeneration and no bad-morale check (a stack with good morale cannot freeze), but outside the wait phase Fear may freeze it (BAT-MAG-060: the turn is lost), and the activation's drain and periodic cast run (BAT-MAG-053, BAT-MAG-056); if the stack waits in it, it acts in the morale-and-wait phase (BAT-TRN-002). A stack its own action left blind, petrified or paralysed (a retaliation's spell) gets no turn now: like any such stack it is passed over while that lasts (the original's pick, 0x465222) and may act later in the round once it ends, struck (BAT-MAG-024). Event GoodMorale, then TurnStarted for the same stack (not while it cannot act). Rolls are independent (VCMI's optional bias is not used)."
+summary  = "After a stack moves, attacks, shoots or casts (BAT-MAG-048; not after Wait or Defend, and also when it acts in a wait phase), if its morale m is positive, it is still alive, it has had no good-morale turn this round and the battle is not over, it gets another turn right away with chance good_morale_chances[m] / morale_dice (original: 1, 2, 3 out of 24). The roll lifts the stack's acted mark (the original's 0x464920 clears its done bit: a stack reborn in its own action keeps the turn, BAT-MAG-059). The extra turn has no regeneration and no bad-morale check (a stack with good morale cannot freeze), but outside the wait phase Fear may freeze it (BAT-MAG-060: the turn is lost), and the activation's drain and periodic cast run (BAT-MAG-053, BAT-MAG-056); if the stack waits in it, it acts in the morale-and-wait phase (BAT-TRN-002). A stack its own action left blind, petrified or paralysed (a retaliation's spell) gets no turn now: like any such stack it is passed over while that lasts (the original's pick, 0x465222) and may act later in the round once it ends, struck (BAT-MAG-024). Event GoodMorale, then TurnStarted for the same stack (not while it cannot act). Rolls are independent (VCMI's optional bias is not used). The original rolls after a strike or shot from where the stack stands before it re-enters its hexes (0x47927A, 0x441F70): a stack its Fire Wall then kills has drawn (batch 2g MR: the dying Archers took a forced draw and kept the good-morale bit); the engine rolls after the re-entry and never for a dead stack: no outcome differs, only the order of the engine's own draws."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1358,6 +1372,12 @@ numeric  = "integer"
   [[rule.source]]
   kind       = "original-data"
   ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.21): the action dispatcher calls the good-morale roll 0x464920 (random(1, 24) <= morale, at most 3) after a walk, an attack, a shot and a creature's cast (case 10, 0x4793A9), not after Wait or Defend"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04b-batch-2h.md MR, MRc (SoD 4.0 Complete, the capture harness under Wine, no HD mod, 2026-10-24): Archers standing in a Fire Wall shoot, the forced good-morale draw is taken and their good-morale bit set, then the burn kills them; the control without the wall takes the draw and acts again"
+  retrieved  = "2026-10-24"
   confidence = "high"
 
 [[rule]]
@@ -3112,9 +3132,9 @@ id       = "BAT-MAG-035"
 title    = "Resurrection and Animate Dead"
 context  = "battle"
 status   = "verified"
-summary  = "A spell with a raise effect (SpellEffect::Raise, target stack: Resurrection, a positive earth spell of level 4 for living creatures (flag alive); Animate Dead, earth, level 3, for undead ones; neither on war machines) is aimed at a stack of the caster's side (its own, whoever controls it), living or dead, with fewer creatures than at the battle's start, that the spell can affect (its conditions and spell-level immunities, BAT-MAG-005; Anti-Magic on a living stack, BAT-MAG-021) and whose creature's health the cast's hit points reach: power x power factor + effect[mastery] plus the caster's specialist bonus for the stack (BAT-MAG-020). So a full stack that is only wounded is no target, nor a stack of creatures with more health than the cast raises. A dead stack lies on its hexes as a corpse, the last to die on top (BattleState::corpse, marked after the action that killed it); it is a target only if no living stack stands on its hexes, none of them is blocked (a natural obstacle, Force Field) and, on one of its hexes, no corpse above it is also a target. The cast adds the hit points to the stack's total health (the top creature first) up to its count at the start (SpellRaised): a dead stack comes back on its hexes without its timed effects (they ended at its death, BAT-MAG-010), with the permanent ones it died with (Disrupting Ray's and Acid Breath's defense loss: the original's raise 0x5A7560 writes no defense) and keeps its round's flags (if it had acted this round it stays done). Below the spell's temporary_below mastery (Resurrection: Advanced) the creatures gained count for the battle only (BattleState::temporary, at most the start count, never lowered during the battle: the original's counter, not VCMI's, which lowers it as creatures die): the outcome leaves them out (BAT-END-003). A side whose creatures are all such keeps fighting and may win; then its last living army stack keeps one creature (the original's end of battle, which counts war machines and summoned stacks too and so leaves a hero with a Ballista without an army: survey S-20, fixed by quirk BAT-QUIRK-6, the user, 2026-10-08). Not observed (the E04b review's doubt, kept `verified` for the observed core; the battle lane's inbox, 2026-10-24): the permanent effects kept through death and a raise (the code reading only, as BAT-MAG-010), and that a stack raised in a later round acts in it, which the review's reading contradicts (a dead stack's round state frozen, 0x44712D: BAT-Q28 row 6)."
+summary  = "A spell with a raise effect (SpellEffect::Raise, target stack: Resurrection, a positive earth spell of level 4 for living creatures (flag alive); Animate Dead, earth, level 3, for undead ones; neither on war machines) is aimed at a stack of the caster's side (its own, whoever controls it), living or dead, with fewer creatures than at the battle's start, that the spell can affect (its conditions and spell-level immunities, BAT-MAG-005; Anti-Magic on a living stack, BAT-MAG-021) and whose creature's health the cast's hit points reach: power x power factor + effect[mastery] plus the caster's specialist bonus for the stack (BAT-MAG-020). So a full stack that is only wounded is no target, nor a stack of creatures with more health than the cast raises. A dead stack lies on its hexes as a corpse, the last to die on top (BattleState::corpse, marked after the action that killed it); it is a target only if no living stack stands on its hexes, none of them is blocked (a natural obstacle, Force Field) and, on one of its hexes, no corpse above it is also a target. The cast adds the hit points to the stack's total health (the top creature first) up to its count at the start (SpellRaised): a dead stack comes back on its hexes without its timed effects (they ended at its death, BAT-MAG-010), with the permanent ones it died with (Disrupting Ray's and Acid Breath's defense loss: the original's raise 0x5A7560 writes no defense) and keeps its round's flags (if it had acted this round it stays done). Below the spell's temporary_below mastery (Resurrection: Advanced) the creatures gained count for the battle only (BattleState::temporary, at most the start count, never lowered during the battle: the original's counter, not VCMI's, which lowers it as creatures die): the outcome leaves them out (BAT-END-003). A side whose creatures are all such keeps fighting and may win; then its last living army stack keeps one creature (the original's end of battle, which counts war machines and summoned stacks too and so leaves a hero with a Ballista without an army: survey S-20, fixed by quirk BAT-QUIRK-6, the user, 2026-10-08). Not observed (the E04b review's doubt, kept `verified` for the observed core; the battle lane's inbox, 2026-10-24): the permanent effects kept through death and a raise (the code reading only, as BAT-MAG-010), and that a stack raised in a later round acts in it, which the review's reading contradicts (a dead stack's round state frozen, 0x44712D: BAT-Q28 row 6). With quirk BAT-QUIRK-30 (fix-optional, on in faithful) Resurrection and Animate Dead find a dead two-hex stack by its rear hex alone: a later corpse on that hex that passes the test hides it (0x5A1917; batch 2g RS; survey S-24)."
 numeric  = "integer"
-quirks   = ["BAT-QUIRK-6"]
+quirks   = ["BAT-QUIRK-6", "BAT-QUIRK-30"]
 
   [[rule.source]]
   kind       = "original-data"
@@ -3147,6 +3167,12 @@ quirks   = ["BAT-QUIRK-6"]
   url        = "https://heroes.thelazy.net/index.php/Horn_of_the_Abyss_(Changelog)"
   retrieved  = "2026-10-13"
   confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04b-batch-2g.md RS (SoD 4.0 Complete, the capture harness under Wine, no HD mod, 2026-10-24): Wolf Riders die on hexes 35 and 36, a Swordsman later on 35; Resurrection cast at 36 raises the Swordsman, the Wolf Riders stay dead (BAT-QUIRK-30)"
+  retrieved  = "2026-10-24"
+  confidence = "high"
 
 [[rule]]
 id       = "BAT-MAG-036"
