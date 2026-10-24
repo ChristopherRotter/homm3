@@ -29,6 +29,11 @@ BATTLE_MANAGER_POINTER = 0x6993D0  # the battle manager while a battle runs
 # A siege's walls (E17 M4 T1b; structs.toml, battle_manager): the parts' picture states and hit
 # points (i32 by part), the gate's state.
 WALL_STATES, WALL_HIT_POINTS, GATE_STATE = 0x13FA8, 0x13F60, 0x53A4
+# A siege's fort level (i32 +0x132F4: 0 none, 1 Fort, 2 Citadel, 3 Castle) and its turret records
+# (E17 M4 T2b; structs.toml, battle_manager's `turrets`, `siege_turret_records` 0x466C50): the
+# keep's, the lower tower's and the upper tower's, 0x24 bytes each, their battle DEF (a pointer
+# +0x4, 0: not set up), facing (+0x14), group (+0x18) and frame (+0x1C), i32 each.
+FORT, TURRETS, TURRET_SIZE, TURRET_DEF, TURRET_POSE = 0x132F4, 0x13D78, 0x24, 0x4, 0x14
 # The adventure map (M2 T6; structs.toml: game, hero, player_record, adventure_manager).
 GAME_POINTER = 0x6994E8
 ADVENTURE_MANAGER_POINTER = 0x699268
@@ -270,6 +275,22 @@ class Mem:
         return (list(struct.unpack("<18i", self.read(m + WALL_STATES, 72))),
                 list(struct.unpack("<18i", self.read(m + WALL_HIT_POINTS, 72))),
                 self.i32(m + GATE_STATE))
+
+    def siege(self):
+        """A siege's moving parts (E17 M4 T2b, design §10.2): its turrets' `[facing, group,
+        frame]` (None where the fort sets none up), its parts' picture states and the gate's;
+        None outside a siege (no fort)."""
+        m = self.manager()
+        if not m or self.i32(m + FORT) <= 0:
+            return None
+        turrets = []
+        for k in range(3):
+            base = m + TURRETS + k * TURRET_SIZE
+            built = self.u32(base + TURRET_DEF) != 0
+            turrets.append(list(struct.unpack("<3i", self.read(base + TURRET_POSE, 12)))
+                           if built else None)
+        states, _, gate = self.walls()
+        return {"turrets": turrets, "walls": states, "gate": gate}
 
     def write_walls(self, states, gate):
         """Writes a siege's wall states (E17 M4 T1b, the wall states as stills): each part's

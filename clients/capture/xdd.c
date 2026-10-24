@@ -19,7 +19,7 @@
       clock is idle: it has drawn everything up to that time). Without H3CLOCK nothing changes.
    3. Forced rolls (E17 M3 T7b-2b-1, *provisional*; the runbook, "Forced rolls"): with H3CLOCK
       set, the calls of the battle's rolls in `sites` (morale, fear, luck, the creatures'
-      strike abilities) go through
+      strike abilities; the wall shots', E17 M4 T2b) go through
       forced_between or forced_rand, which draw as the call would (random_between 0x50B230 or the
       C library's rand 0x617E5C, so the generator's sequence stays the original's) and return
       that draw unless the harness forced the site:
@@ -77,6 +77,18 @@ static struct site sites[] = {
     {"acid", 0x4414B7, RANDOM_BETWEEN, 0, 0, 0, 0, 0},
     /* strike_spell_choice 0x440500: the Wyvern Monarch's Poison, random_between(1, 100) <= 30 */
     {"poison", 0x440839, RANDOM_BETWEEN, 0, 0, 0, 0, 0},
+    /* The wall shots' rolls (E17 M4 T2b; design §10.2): wall_shot_once 0x445EC0's damage,
+       random_between(1, 100) against the BALLIST.TXT record's chances for 0, 1, 2 (in that
+       order: the draw falls into the first whose running sum reaches it) */
+    {"wall_damage", 0x445ED6, RANDOM_BETWEEN, 0, 0, 0, 0, 0},
+    /* its hit: random_between(1, 100) <= the target kind's chance hits the aimed target */
+    {"wall_hit", 0x445F25, RANDOM_BETWEEN, 0, 0, 0, 0, 0},
+    /* a miss between two other walls equally near the aimed one: <= 50 takes the later */
+    {"wall_miss_tie", 0x445F6C, RANDOM_BETWEEN, 0, 0, 0, 0, 0},
+    /* wall_shot 0x445D30's next shot once its target fell: <= 50 takes the later of two */
+    {"wall_retarget_tie", 0x445E44, RANDOM_BETWEEN, 0, 0, 0, 0, 0},
+    /* catapult_turn 0x473C00's automatic aim: random_between(1, k), the k-th weakest wall */
+    {"catapult_tie", 0x473DA0, RANDOM_BETWEEN, 0, 0, 0, 0, 0},
     /* ray_aim 0x5A5260: Chain Lightning's ray turns by random_between(10, 80) hundredths of a
        radian (or -80 to -10) at each aim while its target is far (E17 M3 T7c-3); logged */
     {"ray_aim", 0x5A53FC, RANDOM_BETWEEN, 0, 0, 0, 0, 0, 1},

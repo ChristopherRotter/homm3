@@ -270,6 +270,7 @@ fn sequences(options: &Options) -> Result<usize, String> {
         let tables = assets::load(&assets::default_dir(), top)?;
         let looks = motion::looks(&record, &tables, &archives)?;
         let magic = motion::magic(&record, &tables, &archives)?;
+        let siege = motion::siege(&record, &tables, &archives)?;
         let mut casts = motion::casts(&record, &tables, &archives, &options.packs)?;
         // The frame check draws Chain Lightning's rays from the original's draws (E17 M3 T7c-3).
         if let Some(dir) = &options.frames {
@@ -278,7 +279,7 @@ fn sequences(options: &Options) -> Result<usize, String> {
         // The original's drawing bugs, as its captures show them (E17 M3 T7d, CLT-Q8).
         let stage = anim::Stage {
             bugs: Bugs::Original,
-            ..motion::stage(&record, &tables, &layout, (&magic, &casts))
+            ..motion::stage(&record, &tables, &layout, (&magic, &casts, siege.as_ref()))
         };
         // The harness acts `pre` ms after the opening, and then at each command's `at`.
         let commands: Vec<anim::Command<'_>> = record
@@ -495,7 +496,7 @@ pub(crate) fn draw_frames(
     };
     for frame in &kept.frame {
         let mut moment = scene::Moment::at(timeline, frame.t);
-        moment.walls = interface.walls;
+        moment.walls = interface.walls.or(moment.walls);
         moment.marked = match interface.shown {
             Some(shown) => shown.marked(frame.t),
             None => pointer.as_ref().and_then(|(_, p)| p.marked),

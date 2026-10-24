@@ -29,7 +29,7 @@ xdd.dll (xdd.c: freeze, step, run), so that every frame is taken at an exact gam
                                             after the opening, default 0)
 
   h3drive.py sequence <map.h3m> <out-dir> [--pre <ms>] [--action <a>]... [--ms <n>] [--screen]
-                    [--hot-seat] [--heroes] [--screens] [--fail <roll>]...
+                    [--hot-seat] [--heroes] [--screens] [--fail <roll>]... [--key <key>]
                                             a sequence frame by frame (M2 T3): the opening, the
                                             clock stepped <pre> ms, the actions at the frozen
                                             clock (hex:<n> clicks a hex, click:x,y, move:x,y,
@@ -53,7 +53,9 @@ xdd.dll (xdd.c: freeze, step, run), so that every frame is taken at an exact gam
                                             changes (where the screen differs from the step
                                             before: the magic animations memory does not show,
                                             M3 T7a-2b); --fail makes every other draw of the
-                                            roll fail it (M3 T7b-2b-1)
+                                            roll fail it (M3 T7b-2b-1); --key steps the hero
+                                            into the battle (default Right; Up into a siege's
+                                            town, E17 M4 T2b)
   h3drive.py sequences [<sequences.toml>] [--out <dir>] [--only <id>]
                                             the recorded sequences (default
                                             clients/situations/sequences.toml) unattended: each
@@ -116,6 +118,12 @@ ROLLS = {
     "thunderbird": (1, 100),  # random(1, 100) <= 20: the Thunderbird's bolt
     "acid": (1, 100),        # random(1, 100) <= 20: the Rust Dragon's acid damage
     "poison": (1, 100),      # random(1, 100) <= 30: the Wyvern Monarch's Poison
+    # The wall shots' (E17 M4 T2b, design §10.2): a `roll:<name>:<n>` action forces the draw n.
+    "wall_damage": (100, 1),  # random(1, 100) against the chances for 0, 1, 2: 100 the most
+    "wall_hit": (1, 100),     # random(1, 100) <= the target kind's chance: the aimed one hit
+    "wall_miss_tie": (1, 100),  # a miss between two walls equally near: <= 50 the later
+    "wall_retarget_tie": (1, 100),  # the next shot's target once its own fell: <= 50 the later
+    "catapult_tie": (1, 1),   # random(1, k): the k-th of the weakest walls (automatic aim)
 }
 # How long `turn:` waits for the stack's turn (M3 T7a-2a): a human's stack waiting for an action
 # would keep the clock stepping for ever.
@@ -324,10 +332,11 @@ class Game:
             return None
         return tuple(fields + [0] * (6 - len(fields))) if len(fields) >= 3 else None
 
-    def roll(self, name, falls=True, count=1):
+    def roll(self, name, falls=True, count=1, value=None):
         """Forces the next `count` draws of the roll `name` (ROLLS) to make it fall, or fail (M3
-        T7b-2b-1)."""
-        self.clock(f"roll {name} {ROLLS[name][0 if falls else 1]} {count}")
+        T7b-2b-1), or (E17 M4 T2b) to return `value`."""
+        draw = ROLLS[name][0 if falls else 1] if value is None else value
+        self.clock(f"roll {name} {draw} {count}")
 
     def rolls_fail(self, name):
         """Every other draw of the roll `name` fails it (M3 T7b-2b-1)."""
@@ -647,14 +656,18 @@ def book_place(k):
 def act(game, action):
     """One action at the frozen clock: hex:<n>, click:x,y, move:x,y, key:<name>, step:<ms>,
     cast:<k>[:<hex>] (M3 T7a-2a: the hero's spell book by its key C, its place k, then the target
-    hex if the spell takes one), roll:<name>[:fail] (M3 T7b-2b-1: the roll's next draw falls, or
-    fails; ROLLS)."""
+    hex if the spell takes one), roll:<name>[:fail|:<n>][:<count>] (M3 T7b-2b-1: the roll's
+    next draw falls, or fails; E17 M4 T2b: or is n; its next <count> draws so; ROLLS)."""
     kind, _, arg = action.partition(":")
     if kind == "roll":
-        name, _, how = arg.partition(":")
-        if name not in ROLLS or how not in ("", "fail"):
-            raise ValueError(f"`{action}`: the rolls are {', '.join(ROLLS)}, `:fail` or nothing")
-        game.roll(name, falls=how != "fail")
+        name, _, rest = arg.partition(":")
+        how, _, count = rest.partition(":")
+        if (name not in ROLLS or not (how in ("", "fail") or how.isdigit())
+                or not (count == "" or count.isdigit())):
+            raise ValueError(f"`{action}`: the rolls are {', '.join(ROLLS)}; `:fail`, `:<n>` or "
+                             "nothing, then `:<count>` or nothing")
+        game.roll(name, falls=how != "fail", count=int(count or 1),
+                  value=int(how) if how.isdigit() else None)
     elif kind == "cast":
         place, _, target = arg.partition(":")
         if not 0 <= int(place) < 12:
@@ -715,7 +728,10 @@ def timeline(states, heroes=False):
     changes (`screens`, M3 T7a-2b) ends its time with `<ms> screen <x0>,<y0>,<x1>,<y1>`, the box
     of the pixels that differ from the step before (x1, y1 exclusive): what memory does not show
     (the at-hex and Armageddon players, the projectiles, design §7.16), numbers only. Before it,
-    `<ms> end` once the battle is decided (M3 T8, design §8.2: the result's tune starts then)."""
+    `<ms> end` once the battle is decided (M3 T8, design §8.2: the result's tune starts then).
+    In a siege (E17 M4 T2b, design §10.2), after the heroes, each change of a turret's pose,
+    `<ms> turret <k> g<group> f<frame> d<facing>` (k: 0 the keep, 1 the lower tower, 2 the upper),
+    and of the walls' picture states, `<ms> walls <18 states> gate <state>`."""
     lines, last, magic, box, ended = [], {}, None, None, False
     for i, state in enumerate(states):
         box = union(box, state.get("changed"))
@@ -732,6 +748,17 @@ def timeline(states, heroes=False):
             if last.get(key) != now:
                 lines.append(f"{state['t']} hero {hero['side']} g{now[0]} f{now[1]}")
                 last[key] = now
+        siege = state.get("siege")
+        for k, pose in enumerate(siege["turrets"] if siege else ()):
+            key = ("turret", k)
+            if pose is not None and last.get(key) != pose:
+                facing, group, frame = pose
+                lines.append(f"{state['t']} turret {k} g{group} f{frame} d{facing}")
+                last[key] = pose
+        if siege and last.get("walls") != (siege["walls"], siege["gate"]):
+            last["walls"] = (siege["walls"], siege["gate"])
+            lines.append(f"{state['t']} walls {','.join(map(str, siege['walls']))} "
+                         f"gate {siege['gate']}")
         over = [f"{st['side']}.{st['record']}" for st in state["stacks"] if st.get("magic")]
         drawn = state["clocks"].get("magic")
         if over and drawn:
@@ -751,7 +778,7 @@ def timeline(states, heroes=False):
 
 
 def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, frames=False,
-             hot_seat=False, heroes=False, screens=False, fail=()):
+             hot_seat=False, heroes=False, screens=False, fail=(), key="Right"):
     """The battle of the map: its opening, `pre` ms on, the actions, then `ms` steps of 1 ms,
     each followed by the game's state (h3mem); returns the states (times in ms after the
     opening, the clocks relative to it). An action `at:<ms>` (M3 T1a) steps 1 ms at a time, each
@@ -766,7 +793,7 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
     `screens` (M3 T7a-2b) each state the box where the screen changed since the step before
     (`changed`), which the timeline lists. With `fail` (M3 T7b-2b-1) every draw of those rolls
     (ROLLS) fails them but those a `roll:` action forces; a forced draw no roll took fails the
-    sequence."""
+    sequence. `key` steps the hero into the battle (E17 M4 T2b: `Up` into a siege's town)."""
     import hashlib
     import json
 
@@ -783,7 +810,7 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
         h3adv.to_hot_seat(game, ["Red", "Blue"])
     else:
         to_scenario(game)
-    t0 = into_battle(game)
+    t0 = into_battle(game, key)
     mem = h3mem.Mem()
     # xdd.dll redirected every roll's and logged draw's call (M3 T7b-2b-1), each checked against
     # the bytes it replaces: the executable is the one read, before the harness writes into its
@@ -813,6 +840,9 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
         for k in ("frame_deadline", "idle_step_time"):
             clocks[k] -= t0
         s = {"t": t - t0, "clocks": clocks, "stacks": mem.stacks(), "heroes": mem.battle_heroes()}
+        siege = mem.siege()  # E17 M4 T2b: the turrets' poses and the walls' states
+        if siege is not None:
+            s["siege"] = siege
         # The log's item and entries (M3 T6b): what the frame check compares the viewer's with.
         s["log"] = mem.battle_log()
         if s["log"] is not None:
@@ -884,7 +914,7 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
 
 
 def sequence_command(map_path, out, rest):
-    opts = {"--pre": "0", "--ms": "1000"}
+    opts = {"--pre": "0", "--ms": "1000", "--key": "Right"}
     actions, screen, frames, hot_seat, heroes, screens, i = [], False, False, False, False, False, 0
     fail = []
     while i < len(rest):
@@ -913,7 +943,7 @@ def sequence_command(map_path, out, rest):
     game = Game(out)
     try:
         sequence(game, map_path, out, int(opts["--pre"]), actions, int(opts["--ms"]), screen,
-                 frames, hot_seat, heroes, screens, fail)
+                 frames, hot_seat, heroes, screens, fail, opts["--key"])
     finally:
         game.stop()
     print(f"sequence: {out}/timeline.txt")
@@ -962,7 +992,8 @@ def run_sequences(rest):
         try:
             sequence(game, map_path, here, e.get("pre", 0), e.get("actions", []), e["ms"],
                      hot_seat=e.get("hot_seat", False), heroes=e.get("heroes", False),
-                     screens=e.get("screens", False), fail=e.get("fail", ()))
+                     screens=e.get("screens", False), fail=e.get("fail", ()),
+                     key=e.get("key", "Right"))
         finally:
             game.stop()
         recorded = set_path.parent / e["timeline"]
@@ -1058,7 +1089,8 @@ def run_frames(rest):
             game = Game(here)
             try:
                 sequence(game, map_path, here, e.get("pre", 0), e.get("actions", []), e["ms"],
-                         frames=True, hot_seat=e.get("hot_seat", False), fail=e.get("fail", ()))
+                         frames=True, hot_seat=e.get("hot_seat", False), fail=e.get("fail", ()),
+                         key=e.get("key", "Right"))
             finally:
                 game.stop()
         kept = [json.loads(line) for line in (here / "frames.jsonl").read_text().splitlines()]

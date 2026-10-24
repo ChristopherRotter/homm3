@@ -13,7 +13,9 @@ use core::fmt;
 
 use h3_protocol::wire::{Event, Manifest, Observation, Side, Stack};
 
-use crate::anim::{Field, GONE, Magic, Object, Pose, Projectile, Ray, Spot, Timeline};
+use crate::anim::{
+    Blast, Field, GONE, Magic, Object, Pose, Projectile, Ray, Spot, Timeline, TurretPose,
+};
 use crate::hero::{FLAG_START, HeroPose};
 use crate::layout::BattleLayout;
 use crate::siege::{AFTER_ROWS, BEFORE_ROWS, Context, GATE_ROW, SiegeLook, Walls};
@@ -65,8 +67,12 @@ pub struct Moment {
     /// it is the active stack (0x43E23A to 0x43E261, §4.2).
     pub marked: Option<u8>,
     /// A siege's picture states, when they are not the record's own (E17 M4 T1b: a hit part's;
-    /// *provisional*, [`crate::siege::Walls::of`]).
+    /// *provisional*, [`crate::siege::Walls::of`]; E17 M4 T2b: the timeline's).
     pub walls: Option<Walls>,
+    /// A siege's turret records' poses (E17 M4 T2b; none: standing, facing left).
+    pub turrets: [Option<TurretPose>; 3],
+    /// A wall shot's explosion (E17 M4 T2b).
+    pub blast: Option<Blast>,
 }
 
 impl Moment {
@@ -89,7 +95,9 @@ impl Moment {
             counts: timeline.counts(t),
             hues: timeline.hues(t),
             marked: None,
-            walls: None,
+            walls: timeline.walls(t),
+            turrets: timeline.turrets(t),
+            blast: timeline.blast(t),
         }
     }
 }
@@ -140,6 +148,21 @@ pub enum Draw {
         y: i32,
         /// Reflected across its canvas.
         mirrored: bool,
+    },
+    /// A wall shot's explosion frame (E17 M4 T2b, §10.2): drawn plain like a projectile; in the
+    /// original's profile only its canvas's top `rows` rows, the height of its rectangle clipped
+    /// to the battlefield (0x446453 passes the clipped size with the canvas's own place: CLT-Q22).
+    Explosion {
+        /// The DEF.
+        def: String,
+        /// The frame in group 0.
+        frame: u32,
+        /// The canvas's left edge.
+        x: i32,
+        /// The canvas's top edge.
+        y: i32,
+        /// The canvas's rows drawn from its top.
+        rows: u32,
     },
     /// A ray's strokes, each pixel in its colour straight into the screen (§7.12).
     Ray(Ray),
@@ -266,6 +289,15 @@ pub enum Draw {
         outline: Option<u8>,
         /// The canvas's rows drawn from its top.
         rows: u32,
+    },
+    /// A draw list composed on its own frame, of which only the rectangle `rect` (left, top,
+    /// right, bottom, exclusive) is drawn here (E17 M4 T2b: a wall shot's explosion shown in its
+    /// rectangle alone, `screen_show_rect` 0x446485).
+    Within {
+        /// The rectangle.
+        rect: [i32; 4],
+        /// The list.
+        list: Vec<Draw>,
     },
     /// A dialog's picture (`H3DlgPcx`, E17 M3 T6a; §9.7): index 0 transparent, in its own colours
     /// or a player's.
@@ -580,6 +612,65 @@ pub fn battle_at(
     tables: &Tables,
     layout: &BattleLayout,
 ) -> Result<Vec<Draw>, SceneError> {
+    // A wall shot's explosion (E17 M4 T2b, design §10.2): in its rectangle each frame drawn over a
+    // redraw of the battle with its walls' states, without the background restored after the
+    // first (the original's, CLT-Q19 (4)); with the slip fixed, the last alone. The battle's own
+    // list first, then each frame's redraw.
+    let frames = moment.blast.as_ref().map_or(&[][..], |b| &b.frames[..]);
+    let layers = core::iter::once((None, moment.walls)).chain(
+        frames
+            .iter()
+            .map(|&(frame, walls)| (Some(frame), Some(walls))),
+    );
+    let (mut list, mut inner) = (Vec::new(), Vec::new());
+    for (i, (frame, walls)) in layers.enumerate() {
+        let layer = Moment {
+            walls,
+            blast: None,
+            ..moment.clone()
+        };
+        let (background, mut drawn) = drawn(observation, &layer, manifest, tables, layout)?;
+        let Some((frame, blast)) = frame.zip(moment.blast.as_ref()) else {
+            list = drawn;
+            continue;
+        };
+        if i > 1 {
+            drawn.drain(..background);
+        }
+        inner.extend(drawn);
+        // 0x446453 draws the canvas's top as many rows as the clipped rectangle has from the
+        // canvas's own top, and the frame drawer clips the rows above the battlefield off them
+        // again: an explosion over the top edge loses as many rows at its bottom (CLT-Q22: the
+        // compose's original profile alone). Its columns alike at the left edge, which no wall's
+        // target reaches (the canvas 254 wide around x 400 or more).
+        let rows = u32::try_from(blast.rect[3] - blast.rect[1]).unwrap_or(0);
+        inner.push(Draw::Explosion {
+            def: blast.def.clone(),
+            frame,
+            x: blast.at[0],
+            y: blast.at[1],
+            rows,
+        });
+    }
+    if let Some(blast) = &moment.blast {
+        list.push(Draw::Within {
+            rect: blast.rect,
+            list: inner,
+        });
+    }
+    Ok(list)
+}
+
+/// [`battle_at`] without a wall shot's explosion, and how many of its first draws are the
+/// background buffer's (§4.4: the battlefield's picture and the absolute obstacle; a siege's
+/// background, moat and lip).
+fn drawn(
+    observation: &Observation,
+    moment: &Moment,
+    manifest: &Manifest,
+    tables: &Tables,
+    layout: &BattleLayout,
+) -> Result<(usize, Vec<Draw>), SceneError> {
     let keys = &manifest.keys;
     let (width, height) = (manifest.field.width, manifest.field.height);
     let at = |hex: u8| (hex / width.max(1), hex % width.max(1));
@@ -606,6 +697,7 @@ pub fn battle_at(
                 active: moment
                     .active
                     .map(|id| (id, layout.outline_after(moment.pulse))),
+                turrets: moment.turrets,
             };
             SiegeLook::new(siege, faction, tables, context, width)?
         }
@@ -636,6 +728,7 @@ pub fn battle_at(
             y: i32::from(point[1]),
         });
     }
+    let background = list.len();
     let mut placed = Vec::new();
     for o in &observation.removable_obstacles {
         let Some(handle) = o.kind else {
@@ -879,7 +972,7 @@ pub fn battle_at(
             area: layout.mouse.field,
         });
     }
-    Ok(list)
+    Ok((background, list))
 }
 
 /// A stack's pose at `moment`: its own, else standing on its hex, facing its side's way.

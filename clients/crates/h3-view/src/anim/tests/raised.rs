@@ -209,6 +209,7 @@ fn play_raised_with(
         magic: &magic,
         casts,
         bugs,
+        siege: None,
     };
     let commands: Vec<Command<'_>> = commands
         .iter()
@@ -623,6 +624,7 @@ fn creature_animations_without_their_looks_or_stacks() {
         magic: &magic,
         casts: &casts,
         bugs: Bugs::Original,
+        siege: None,
     };
     let commands: Vec<Command<'_>> = commands
         .iter()
@@ -662,6 +664,7 @@ fn play_bare(
         magic,
         casts,
         bugs: Bugs::Original,
+        siege: None,
     };
     let commands: Vec<Command<'_>> = commands
         .iter()

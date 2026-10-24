@@ -47,7 +47,8 @@ const PACK: &str = r#"{
         "cast": "{{hero}}: {{spell}}.",
         "death-ripple": "Ripple {{damage}}.",
         "armageddon": "Doom {{damage}}.",
-        "destroy-undead": "{{spell}} {{damage}}."
+        "destroy-undead": "{{spell}} {{damage}}.",
+        "arrow-tower": "tower"
     } },
     "word": {
         "creature_one": "beast", "creature_other": "beasts",
@@ -709,4 +710,15 @@ fn the_striker_effects_and_the_spells_after_a_strike_have_their_lines() {
     ] {
         assert_eq!(worded(&unnamed), None);
     }
+}
+
+#[test]
+fn a_turret_s_shot_names_the_arrow_tower() {
+    // E17 M4 T2b: `battle_log_damage` named by the arrow tower, its number 1.
+    let turret = |hit| Logged::Turret { hit };
+    assert_eq!(
+        worded(&turret((2, 13, 1))).as_deref(),
+        Some("tower hits for 13.\nA Bee falls.")
+    );
+    assert_eq!(worded(&turret((9, 13, 1))), None);
 }

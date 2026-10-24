@@ -138,8 +138,9 @@ impl Battle {
         let exe = crate::text::executable(&source.install).unwrap_or_default();
         let looks = motion::looks(&record, &tables, &parsed)?;
         let magic = motion::magic(&record, &tables, &parsed)?;
+        let siege = motion::siege(&record, &tables, &parsed)?;
         let casts = motion::casts(&record, &tables, &parsed, &source.packs)?;
-        let stage = motion::stage(&record, &tables, &layout, (&magic, &casts));
+        let stage = motion::stage(&record, &tables, &layout, (&magic, &casts, siege.as_ref()));
         let commands = anim::commands(&record.messages);
         // The viewer's own fidgets, from the battle's seed (`h3_view::anim::Fidgets`).
         let seed = u32::try_from(source.seed & u64::from(u32::MAX)).unwrap_or(1);

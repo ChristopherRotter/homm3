@@ -317,6 +317,43 @@ fn a_projectile_is_drawn_plain_and_mirrored_toward_the_left() {
 }
 
 #[test]
+fn an_explosion_draws_only_its_canvas_top_rows() {
+    // M4 T2b (CLT-Q22): a canvas over the top edge, its rows counted from the canvas's top; the
+    // original's slip for the comparisons alone.
+    let p = palette(&[(3, RED), (4, WHITE)]);
+    let column = Frame {
+        full_height: 3,
+        height: 3,
+        pixels: vec![3, 4, 4],
+        runs: vec![false; 3],
+        ..row(&[3], &[false])
+    };
+    let blast = build::def(0x40, (1, 3), &p, &[(0, &[("f", 0)])], &[column]);
+    let mut b = batch();
+    b.add("Ex.def", &blast).unwrap();
+    let explosion = |rows| Draw::Explosion {
+        def: "EX.DEF".to_string(),
+        frame: 0,
+        x: 0,
+        y: -1,
+        rows,
+    };
+    let background = Draw::Background {
+        picture: "bg.pcx".to_string(),
+        x: 0,
+        y: 0,
+    };
+    let [bl, w] = [BLUE, WHITE].map(|c| FORMAT.pack(c));
+    let list = [background, explosion(2)];
+    let cut = super::compose(&list, &b, &small(), Bugs::Original).unwrap();
+    assert_eq!([cut.pixels()[0], cut.pixels()[6]], [w, bl]);
+    let whole = compose(&list, &b, &small()).unwrap();
+    assert_eq!([whole.pixels()[0], whole.pixels()[6]], [w, w]);
+    let missing = compose(&[explosion(3)], &batch(), &small()).unwrap_err();
+    assert_eq!(missing, ComposeError::Missing("EX.DEF".into()));
+}
+
+#[test]
 fn a_magic_animation_is_drawn_translucent_or_plain() {
     // E17 M3 T3b (§7.15): group 0's frame over the screen; translucent, its literal pixels half
     // and half with what is under them and its runs skipped; else plain, its runs skipped.
@@ -766,4 +803,42 @@ fn a_tiled_animation_covers_its_area_cut_to_it() {
         compose(&[missing], &batch(), &small()).unwrap_err(),
         ComposeError::Missing("NONE.DEF".into())
     );
+}
+
+#[test]
+fn a_list_within_a_rectangle_draws_there_alone() {
+    // E17 M4 T2b: the inner list composed on a frame of its own (black where nothing is drawn),
+    // only its rectangle copied; what lies off the frame cut.
+    let list = [
+        Draw::Background {
+            picture: "bg.pcx".to_string(),
+            x: 0,
+            y: 0,
+        },
+        Draw::Within {
+            rect: [1, 0, 3, 1],
+            list: vec![Draw::AbsoluteObstacle {
+                picture: "abs.pcx".to_string(),
+                x: 1,
+                y: 0,
+            }],
+        },
+        Draw::Within {
+            rect: [5, 1, 9, 9],
+            list: vec![],
+        },
+    ];
+    let screen = compose(&list, &batch(), &small()).unwrap();
+    let [b, g] = [BLUE, GREEN].map(|c| FORMAT.pack(c));
+    assert_eq!(screen.pixels(), [b, 0, g, b, b, b, b, b, b, b, b, 0]);
+    // What the inner list lacks is an error.
+    let missing = [Draw::Within {
+        rect: [0, 0, 1, 1],
+        list: vec![Draw::Background {
+            picture: "none.pcx".to_string(),
+            x: 0,
+            y: 0,
+        }],
+    }];
+    assert!(compose(&missing, &batch(), &small()).is_err());
 }

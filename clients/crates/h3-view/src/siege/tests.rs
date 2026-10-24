@@ -3,6 +3,7 @@ use alloc::string::ToString;
 use alloc::vec;
 use h3_protocol::wire::Side;
 
+use crate::anim::TurretPose;
 use crate::scene::tests::{layout, stack, tables};
 use crate::tables::{Turrets, WallPart};
 
@@ -114,6 +115,7 @@ fn look<'t>(
         walls: walls.unwrap_or_else(|| Walls::of(siege)),
         stacks,
         active,
+        turrets: [None; 3],
     };
     SiegeLook::new(siege, faction, tables, context, 17).unwrap()
 }
@@ -177,6 +179,7 @@ fn a_town_without_a_fort_or_tables_draws_no_siege() {
         walls: Walls::default(),
         stacks: &stacks,
         active: None,
+        turrets: [None; 3],
     };
     let err = SiegeLook::new(&siege(3), "base:rampart", &t, context, 17).unwrap_err();
     assert_eq!(err, SceneError::Key("base:rampart".into()));
@@ -523,4 +526,105 @@ fn the_scene_draws_the_siege_in_the_redraws_order() {
 
 fn at_in(names: &[String], n: &str) -> usize {
     names.iter().position(|x| x == n).unwrap()
+}
+
+#[test]
+fn a_shooting_turret_takes_its_record_s_pose() {
+    // E17 M4 T2b (design §10.2): the keep's record shooting (group 15, frame 3) facing right is
+    // drawn unmirrored, its point the shift left of its own (`siege_parts_at_hex` 0x494EB3), not
+    // outlined while it shoots; the lower tower's facing left, as at rest.
+    let t = siege_tables();
+    let stacks = stacks();
+    let lay = layout();
+    let pose = |group, frame, right| {
+        Some(TurretPose {
+            group,
+            frame,
+            right,
+        })
+    };
+    let context = Context {
+        walls: Walls::of(&siege(3)),
+        stacks: &stacks,
+        active: Some((7, 96)),
+        turrets: [pose(15, 3, true), pose(14, 1, false), None],
+    };
+    let castle = SiegeLook::new(&siege(3), "base:castle", &t, context, 17)
+        .unwrap()
+        .unwrap();
+    let shooter = |group, frame, anchor, mirrored| Draw::Shooter {
+        def: "CBDRGN.DEF".into(),
+        group,
+        frame,
+        anchor,
+        mirrored,
+        outline: None,
+        rows: SHOOTER_ROWS,
+    };
+    assert_eq!(
+        castle.parts_at(135, 1, &lay)[1],
+        shooter(15, 3, [741, 238], false)
+    );
+    assert_eq!(
+        castle.parts_at(251, -1, &lay)[1],
+        shooter(14, 1, [687, 566], true)
+    );
+}
+
+#[test]
+fn an_explosion_draws_in_its_rectangle_over_the_redraws() {
+    // E17 M4 T2b (design §10.2, CLT-Q19 (4)): a wall shot's explosion is a list drawn within its
+    // rectangle: the battle with the background, the first frame; the battle again without it
+    // (the wall hit from frame 5), the next frame over it.
+    use crate::anim::Blast;
+    use crate::record::tests::{manifest, observation};
+    use crate::scene::{Moment, battle_at};
+    use h3_protocol::wire::KeyTables;
+    let t = siege_tables();
+    let lay = layout();
+    let keys = manifest(KeyTables {
+        creatures: vec!["base:pikeman".into()],
+        factions: vec!["base:castle".into()],
+        ..KeyTables::default()
+    });
+    let mut o = observation();
+    o.siege = Some(siege(3));
+    o.stacks = stacks();
+    let whole = Walls::of(&siege(3));
+    let mut hit = whole;
+    hit.parts[6] = 1;
+    let moment = Moment {
+        walls: Some(whole),
+        blast: Some(Blast {
+            def: "SGEXPL.DEF".into(),
+            at: [437, 27],
+            rect: [437, 27, 691, 230],
+            frames: vec![(0, whole), (5, hit)],
+        }),
+        ..Moment::default()
+    };
+    let list = battle_at(&o, &moment, &keys, &t, &lay).unwrap();
+    let Some(Draw::Within { rect, list: inner }) = list.last() else {
+        panic!("no explosion drawn: {list:?}");
+    };
+    assert_eq!(*rect, [437, 27, 691, 230]);
+    let names: Vec<String> = inner.iter().map(name).collect();
+    assert_eq!(
+        names
+            .iter()
+            .filter(|n| n.as_str() == "SgCsBack.pcx")
+            .count(),
+        1
+    );
+    let blasts: Vec<usize> = inner
+        .iter()
+        .enumerate()
+        .filter(|(_, d)| matches!(d, Draw::Explosion { def, rows: 203, .. } if def == "SGEXPL.DEF"))
+        .map(|(i, _)| i)
+        .collect();
+    assert_eq!(blasts.len(), 2);
+    let (whole_at, hit_at) = (at_in(&names, "Wa61.pcx"), at_in(&names, "Wa62.pcx"));
+    assert!(whole_at < blasts[0] && blasts[0] < hit_at && hit_at < blasts[1]);
+    // Outside it the battle as the moment's walls show it: whole.
+    assert!(list.iter().any(|d| name(d) == "Wa61.pcx"));
 }

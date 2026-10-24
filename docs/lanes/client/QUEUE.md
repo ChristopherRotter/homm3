@@ -4,23 +4,7 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024; the battle client since the split of 2026-10-23, the adventure map client being the map-client lane's E24). M3 (fidelity) done 2026-10-23 with T9d; M4 (sieges) refined at T0 (2026-10-23, with the user); T1a, T1b and T2a done (2026-10-23); T2b to T3 below, in order. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
-
-### E17 M4 T2b — the Catapult and the turrets recorded
-
-- **Scope:** the timeline plays `WallShot` and `WallDestroyed` (the Catapult's and a Cyclops'
-  shot) and the turrets' `Struck` by T2a's reading (design §10.2: the group, the rock's arc, the
-  landing's sound and explosion, the part's state at frame 5, the whole redraw; the turret's
-  frames, arrow, line, reaction and unshown rest), with their sounds; CLT-Q19's slips (1) to (5)
-  under `Bugs::Original` only, fixed in what the client draws (as CLT-Q8). The harness's
-  `ROLLS` gain the sites of §10.2 (`wall_damage`, `wall_hit`, `wall_miss_tie`,
-  `wall_retarget_tie`, `catapult_tie`); `Moment::walls` takes a hit's state from the history
-  (T1b's `--walls` override retiring where a record carries it). The sequences (§10.2): `keep`,
-  `hit`, `missed`, `breach`, `tower`, `cyclops`; `automatic` once the server lane records the
-  start's events (CLT-Q20, its inbox), else left listed.
-- **Acceptance:** the sequences as recorded (the timeline check), their frames exact or each
-  difference listed; `drawn` the same for every earlier item; `clients/scripts/check.sh` green.
-- **Depends on:** T2a (done). **Status:** ready.
+Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024; the battle client since the split of 2026-10-23, the adventure map client being the map-client lane's E24). M3 (fidelity) done 2026-10-23 with T9d; M4 (sieges) refined at T0 (2026-10-23, with the user); T1a, T1b, T2a and T2b done (2026-10-23); T2c and T3 below, in order. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
 
 ### E17 M4 T2c — the gate, the moat, Earthquake and the mouse recorded
 
@@ -31,9 +15,13 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
   0xFE and 0xFF (a siege only; the original's for the comparisons, CLT-Q21), the kinds 16 and 22
   and their status lines in the mouse's model; the moat's strip over a stack and its box again;
   the end tune at a town (`Siege` in the record). `ROLLS` gains `quake_target`. The sequences
-  (§10.2): `gate`, `gate-fortress`, `moat`, `mine`, `quake`, `aim`, `through`, `defended`.
-- **Acceptance:** as T2b's.
-- **Depends on:** T2b. **Status:** waiting for it.
+  (§10.2): `gate`, `gate-fortress`, `moat`, `mine`, `quake`, `aim`, `through`, `defended`. With
+  the kind 16's hint drawn, T2b's sequences lose their ` log` masks (`Attack Upper Wall` while
+  the Catapult or a Cyclops aims): their frames' counts recorded again (`frames --only <id>
+  --reuse` after a capture as recorded; design §10.2 "Recorded").
+- **Acceptance:** the sequences as recorded (the timeline check), their frames exact or each
+  difference listed; `drawn` the same for every earlier item; `clients/scripts/check.sh` green.
+- **Depends on:** T2b (done). **Status:** ready.
 
 ### E17 M4 T3 — M4's closure
 

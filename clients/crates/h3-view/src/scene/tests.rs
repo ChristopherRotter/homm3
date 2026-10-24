@@ -516,6 +516,8 @@ fn a_moment_draws_each_stack_in_its_pose() {
         // E17 M3 T6c-1: the mouse marks the walking Pikemen.
         marked: Some(0),
         walls: None,
+        turrets: [None; 3],
+        blast: None,
     };
     let list = battle_at(&battle_view(), &moment, &keys(), &tables(), &layout).unwrap();
     // The magic animation right after its stack's sprite, once.

@@ -129,6 +129,7 @@ pub fn names(list: &[Draw], layout: &BattleLayout) -> BTreeSet<String> {
         | Draw::Wall { picture, .. } => vec![picture],
         Draw::Obstacle { def, .. }
         | Draw::Projectile { def, .. }
+        | Draw::Explosion { def, .. }
         | Draw::Creature { def, .. }
         | Draw::Shooter { def, .. }
         | Draw::Hero { def, .. }
@@ -145,14 +146,19 @@ pub fn names(list: &[Draw], layout: &BattleLayout) -> BTreeSet<String> {
         }
         Draw::Button { def, .. } | Draw::Cursor { def, .. } => vec![def],
         Draw::Text { item, .. } => vec![&item.picture, &item.font, &item.font_palette],
-        Draw::Ray(_) => Vec::new(),
+        Draw::Ray(_) | Draw::Within { .. } => Vec::new(),
     });
-    named
+    let mut all: BTreeSet<String> = named
         .chain(core::iter::once(&layout.outline_palette))
         .map(|n| n.to_ascii_uppercase())
-        .collect::<Vec<_>>()
-        .into_iter()
-        .collect()
+        .collect();
+    // A list drawn within a rectangle names its own (E17 M4 T2b).
+    for d in list {
+        if let Draw::Within { list, .. } = d {
+            all.extend(names(list, layout));
+        }
+    }
+    all
 }
 
 #[cfg(test)]
@@ -314,6 +320,17 @@ mod tests {
                 outline: None,
                 rows: 232,
             },
+            // A list within a rectangle its own names (M4 T2b: a wall shot's explosion).
+            Draw::Within {
+                rect: [0, 0, 1, 1],
+                list: vec![Draw::Explosion {
+                    def: "SgExpl.def".to_string(),
+                    frame: 0,
+                    x: 0,
+                    y: 0,
+                    rows: 1,
+                }],
+            },
         ];
         let names: Vec<String> = names(&list, &layout).into_iter().collect();
         assert_eq!(
@@ -337,6 +354,7 @@ mod tests {
                 "PLAYERS.PAL",
                 "PLCBOWX.DEF",
                 "SGCSTW21.PCX",
+                "SGEXPL.DEF",
                 "SMALFONT.FNT",
                 "SP12_.DEF",
                 "TINY.FNT"

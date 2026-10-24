@@ -5,18 +5,17 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 ## Current state
 
 - **E17 M0–M3 done** (the lane split at M3 T9c, CLT-Q18: the battle client here, the adventure
-  map client the map-client lane's E24); **M4 (sieges): T0, T1a, T1b, T2a done** (15 siege
-  situations exact, §10.1; what moves read, §10.2, CLT-Q19 to Q21 answered); **next: M4 T2b**
-  (the Catapult and the turrets recorded; its `automatic` waits for the server lane, CLT-Q20; M5
-  live play after M4).
+  map client the map-client lane's E24); **M4 (sieges): T0 to T2b done** (15 siege situations
+  exact, §10.1; what moves read, §10.2, CLT-Q19 to Q21; seven siege sequences recorded, §10.2
+  "Recorded"); **next: M4 T2c** (the gate, the moat, Earthquake, the mouse; M5 live play after M4).
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+
   drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§10;
   records in `E17-log.md`.
 - **Captures** (the user, 2026-10-20): `h3drive.py drawn` first (no Wine); capture what it lists or the task changes, all at a milestone's closure or a harness change (runbook); a capture not as recorded leaves `kept/` (T9b: record, then `--reuse`); later tasks' detail in `NOTES.md`.
 - **The user's requirements** (epic, "Decisions"): a string catalogue (JSON packs, no committed translation, CLT-Q7); graphics options (`faithful` default); exhaustive diffs; drawing bugs fixed, the original's only for comparisons (`Bugs`).
 - The lane owns `clients/` but the map-client lane's paths and the common ones (`lanes.toml`: the foundation, `text/`, the harness; an additive change freely, a change in behaviour into the map-client lane's inbox), plus `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
-- **Checkpoints** per milestone (below), a fresh reviewer agent first. **Open:** CLT-Q4–Q6.
-- Stage first (the user's computer online) from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04`, the four end tunes, `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`; `cp -rn` the staged `original-data/.` into the clone first. Frames stay in their sandbox.
+- **Checkpoints** per milestone (below), a fresh reviewer agent first. **Open:** CLT-Q4–Q6, Q22.
+- Stage from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the end tunes, `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`; `cp -rn` the staged `original-data/.` into the clone. Frames stay in the sandbox.
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
 
@@ -47,7 +46,7 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - `winit`, `cpal`, `hound` (and Bevy, eframe, `rodio`) are Apache-2.0-only (`deny.toml`, ADR-0009): the window is SDL 3 (`h3-sdl`; building it: CMake, a C compiler, `clients.yml`'s apt list). Windows: `x86_64-pc-windows-gnu`, `mingw-w64`, the user's `clients/out/win/`.
 - `clients/Cargo.lock` is a common path: the verify's `clients-lock` gate (#202) fails when an engine crate's dependencies change it; fix: `cargo update --workspace --manifest-path clients/Cargo.toml`.
 - `ci.yml` ignores `clients/**`; `clients.yml` watches `clients/` and the engine crates the client builds (`check.sh`'s "ci paths" keeps that list complete).
-- Never run the original game from the installation: it writes saves, settings and DDrawCompat's log into its folder. Captures run the copy under `original-data/wine/` (the runbook's "Traps"); a Wine prefix sits in a directory the shell's user owns. Captures never enter git (ADR-0009).
+- Never run the original from the installation (it writes into its folder): captures run the copy under `original-data/wine/`, the Wine prefix in a directory the shell's user owns; captures never enter git (ADR-0009).
 - The original's memory holds the frame drawn, the screen the one shown (design §7.1, §7.9): never render memory's poses as the screen (a cast's first frame: `before`). More in the runbook's "Traps".
 - No float arithmetic or platform transcendental in the client's drawing and timing, the binary included (`clippy.toml`): f32 behaviour in fixed point (`anim::f32_round`), tangents by series; SDL's floats only at the adapter's edge (coordinates, `audio::gain`).
 - The harness's `actions` are the viewer's mouse (`pointer::inputs`, design §9.10): a new action
@@ -58,17 +57,18 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - Sequences are spectators' records; the engine rolls its own (a box ` n…` or the log ` log`
   listed; a seed searched to match: runbook, "Forced rolls"). Records: army, then war machines.
 - A capture times out at the main menu when the CPU is busy: run it alone. A fresh sandbox's
-  first capture once differed (T7c-2): recapture. A background job stops at 2 h: batches (T9a,
-  runbook).
-- Sieges: machines acting on their own act before the record opens; in hot seat the original
-  shows the side to act's view (runbook, "A siege").
+  first capture once differed (T7c-2): recapture. A background job stops at 2 h: batches.
+- Sieges: machines acting on their own at the opening act before the record opens (CLT-Q20: the
+  defender commands its turrets); the turrets' counts need `structures = 1`; in hot seat the
+  original shows the side to act's view (runbook, "A siege").
 
 ## Recent sessions
 
-- **2026-10-23, E17 M4 T2a (done; #431 open; docs only; not split).** What moves in a siege read
-  (§10.2, the map), T2b's and T2c's sequences listed; CLT-Q19 (slips fixed, the shake
-  copied), Q20 (the server lane records the opening's events: its inbox), Q21 answered.
+- **2026-10-23, E17 M4 T2b (done; not split).** No GitHub access: the branch went to the user as
+  a bundle (they push it, open the PR). Turret and wall shots played (`anim::siege`), seven
+  sequences as recorded, frames exact but listed differences; the harness's wall-shot rolls;
+  CLT-Q22 asked (the explosion cut at the top edge, built as recommended).
+- **2026-10-23, E17 M4 T2a (done; #431).** What moves in a siege read (§10.2, the map);
+  CLT-Q19 to Q21 answered.
 - **2026-10-23, E17 M4 T1b (done; #427).** `[[town]]` harvested, the siege drawn; 15 siege
-  situations exact (the walls' states by memory writes; the Tower by the defender's record).
-- **2026-10-23, E17 M4 T1a (done; #417, docs only).** The siege still read (§10.1): the same
-  rules in every town.
+  situations exact.

@@ -1,0 +1,70 @@
+# E17 M4 T2b: the recorded sequence `breach` (sequences.toml; design §10.2, "A wall shot"): a
+# Citadel (its walls and gate of 2 hit points, the keep alone), the Catapult with Expert
+# Ballistics: its first shot destroys the mid-upper wall, its second is retargeted to the gate
+# (a tie forced) and destroys it.
+[scenario]
+id = "sequence-breach"
+# Both human (hot seat): the defender commands the keep.
+human = ["attacker", "defender"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+
+# The town: under SoD rules (the situation's map) its moat damages.
+[scenario.siege]
+faction = "base:castle"
+fort = "citadel"
+moat = "damaging"
+
+[[attacker]]
+slot = 0
+creature = "base:pikeman"
+count = 12
+
+[[attacker]]
+slot = 3
+creature = "base:griffin"
+count = 4
+
+[[attacker]]
+slot = 6
+creature = "base:archer"
+count = 10
+
+[[defender]]
+slot = 0
+creature = "base:goblin"
+count = 15
+
+[[defender]]
+slot = 3
+creature = "base:wolf_rider"
+count = 6
+
+[[defender]]
+slot = 6
+creature = "base:orc"
+count = 8
+
+# The heroes, each with 1 in every primary skill (`h3-view situation` writes them so).
+[scenario.attacker_hero]
+hero_type = "base:valeska"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+# Expert Ballistics: two shots of 2 damage, commanded.
+catapult = 3
+
+[scenario.defender_hero]
+hero_type = "base:ufretin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+
+# Basic Artillery: the turrets wait for their commands.
+[scenario.defender_hero.ballista]
+level = 1
+shots = 1
+double_damage_chance_bp = 5000

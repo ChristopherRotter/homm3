@@ -105,6 +105,8 @@ fear_sound = "Fear"
 luck_sound = "goodluck"
 drain_sound = "DrainLif"
 thunderbolt_sound = "LightBlt"
+wall_explosions = ["SGEXPL.DEF", "CSGRCK.DEF"]
+wall_sounds = ["WallHit", "WallMiss"]
 
 [[creature]]
 key = "pikeman"

@@ -2374,6 +2374,49 @@ completed).
   rectangles in a siege only.
 - **Lists:** T2b's and T2c's sequences with their forced rolls (§10.2, the queue).
 
+### M4 T2b — The Catapult and the turrets recorded (2026-10-23)
+
+On `client/e17-m4-t2b`, the user present at the start (offered a cut at the turrets/the wall
+shot, the user chose the whole task). This session had no GitHub access: the user's clone came
+in as a git bundle through the device link and the branch goes back the same way (the user
+pushes it and opens the pull request). The original files staged from the user's
+`original-data/install/`.
+
+- **Starting point:** `master` at `f3c8fab` (#431 merged); the client gates' full check on that
+  code (`verify-once clients`: all gates passed).
+- **The harness** (common paths): `xdd.c`'s five wall-shot sites (`wall_damage`, `wall_hit`,
+  `wall_miss_tie`, `wall_retarget_tie`, `catapult_tie`); `roll:<name>:<n>[:<count>]` forces a
+  value and a count; a sequence's `key` (`Up` into a siege's town); `h3mem.Mem.siege` and the
+  timeline's `turret` and `walls` lines (a siege only, so no earlier timeline changes).
+- **The viewer:** `anim::siege` (`turret_shot`, `wall_shot`, the rock's arc in a 53-bit f64 of its
+  own, the walls' states and hit points, the explosions' keys; `Timeline::turrets`, `walls`,
+  `blast`), the turrets as members (their records' poses keyed apart), `Logged::Turret` (GENRLTXT
+  376, the key `battle.log.arrow-tower`), `Sound::TurretShot`, `WallHit`, `WallMiss`; the scene's
+  shooters by their pose (facing right unmirrored, the shift the other way), an explosion as a
+  `Draw::Within` of the redraws since its first frame (the original's) or the last alone (fixed);
+  the asset tables' `wall_explosions` and `wall_sounds` (harvested from 0x660A60 to 0x660A84);
+  `motion::siege` (the stage), the turrets' looks by the town's shooter.
+- **Recorded** (`sequences.toml`, hot seat, `key = "Up"`; seeds searched for the engine's rolls):
+  `keep` (seed 108), `hit` (1), `missed` (3), `automatic` (414), `breach` (3), `tower` (105),
+  `cyclops` (115); every timeline as recorded. The turrets' counts: `structures = 1` (design
+  §10.2, "Recorded"). `cyclops` recorded twice: its first targets (the upper tower from hex 35,
+  the lower wall from 137) took the straight group in both readings; the second (the lower tower
+  from 35, the upper tower from 137) shows the reversed groups 14 and 16.
+- **Found by the frame check:** the rock's arc first overflowed the fixed point (an f64 of the
+  rock's own since); the Catapult on its own outlined from its turn's start (*provisional*); the
+  upper tower's explosion cut at screen row 97 (0x446453's double clip, CLT-Q22: built as
+  recommended, `Draw::Explosion` with its rows cut in the original's profile alone).
+- **Checked:** the frame check of the seven (`timelines/<id>-frames.txt`): every frame exact
+  but the listed (design §10.2, "Recorded"): the shots' first frames' outline rows (4 to 11
+  pixels; a Cyclops' 103, then 5 until the next whole redraw), redraw artifacts (shadows; the
+  Archangel's flight in `tower`), `tower`'s 30 × 30 background square at the lower tower's
+  target (899 pixels, one frame), the ` log` hints; `drawn`: the 104 earlier sequences and
+  situations the same, the seven new recorded; the library's tests (100 % of lines and regions),
+  clippy, `clients/scripts/check.sh` (all gates); the forced-roll sequences' timelines again
+  after the new sites (`sequences --only`: `luck`, `morale`, `bad`, `fear`, `thunder`, `acid`,
+  `stare`, `bolt`, `machines`, `walk` as recorded; `machines` once 1 ms late at its last line
+  while the coverage run loaded the sandbox, as recorded when run again).
+
 ## Accepted review lists (M1, M2, M3)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its

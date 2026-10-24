@@ -105,6 +105,13 @@ pub struct Battle {
     /// The Thunderbird's bolt's ([`Battle::drain_sound`]).
     #[serde(default)]
     pub thunderbolt_sound: Option<String>,
+    /// A wall shot's explosions (E17 M4 T2b; `wall_shot_animate` 0x4462D5): the one a shot with
+    /// damage lands in (`SGEXPL.DEF`), then the one of a shot without (`CSGRCK.DEF`).
+    #[serde(default)]
+    pub wall_explosions: Option<[String; 2]>,
+    /// Their sounds (0x44618B, loaded by name: category 0, volume 127): `WallHit`, `WallMiss`.
+    #[serde(default)]
+    pub wall_sounds: Option<[String; 2]>,
 }
 
 impl Battle {
@@ -118,6 +125,7 @@ impl Battle {
             .chain(&self.luck_sound)
             .chain(&self.drain_sound)
             .chain(&self.thunderbolt_sound)
+            .chain(self.wall_sounds.iter().flatten())
     }
 }
 
@@ -362,7 +370,8 @@ impl Sounds {
             Sound::Move => self.moving.as_deref(),
             Sound::Attack => self.attack.as_deref(),
             Sound::Wince => self.wince.as_deref(),
-            Sound::Shot => self.shot.as_deref(),
+            // A turret's shot plays its shooter's shot sound (E17 M4 T2b).
+            Sound::Shot | Sound::TurretShot => self.shot.as_deref(),
             Sound::Death => self.death.as_deref(),
             Sound::Defend => self.defend.as_deref(),
             Sound::Start => self.start.as_deref(),
@@ -378,7 +387,9 @@ impl Sounds {
             | Sound::Drain
             | Sound::Thunderbolt
             | Sound::SpellFile(_)
-            | Sound::Object(_) => None,
+            | Sound::Object(_)
+            | Sound::WallHit
+            | Sound::WallMiss => None,
         }
     }
 
@@ -571,6 +582,7 @@ impl Tables {
             .flat_map(|c| core::iter::once(&c.def).chain(&c.missile))
             .chain(self.heroes.values().map(|h| &h.def))
             .chain(&self.battle.flags)
+            .chain(self.battle.wall_explosions.iter().flatten())
             .chain(self.battle.magic.iter().map(|m| &m.def))
             .chain(self.spells.values().flat_map(|s| &s.projectile))
             .chain(
@@ -664,8 +676,13 @@ pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
     for flag in &battle.flags {
         names("[battle]", &[(flag, ".DEF")])?;
     }
-    for magic in &battle.magic {
-        names("[battle]", &[(&magic.def, ".DEF")])?;
+    for def in battle
+        .magic
+        .iter()
+        .map(|m| &m.def)
+        .chain(battle.wall_explosions.iter().flatten())
+    {
+        names("[battle]", &[(def, ".DEF")])?;
     }
     if battle.sounds().any(|s| s.is_empty() || s.contains('.')) {
         return Err(entry(
@@ -892,6 +909,8 @@ fear_sound = "Fear"
 luck_sound = "goodluck"
 drain_sound = "DrainLif"
 thunderbolt_sound = "LightBlt"
+wall_explosions = ["SGEXPL.DEF", "CSGRCK.DEF"]
+wall_sounds = ["WallHit", "WallMiss"]
 
 [[hero]]
 key = "orrin"
@@ -1019,7 +1038,7 @@ at = [124, 254]
             t.battle.sounds().collect::<Vec<_>>(),
             [
                 "Regener", "MagicRes", "GoodMrle", "BadMrle", "Fear", "goodluck", "DrainLif",
-                "LightBlt"
+                "LightBlt", "WallHit", "WallMiss"
             ]
         );
         assert_eq!(
@@ -1077,10 +1096,12 @@ at = [124, 254]
                 "CMFLAGL.DEF",
                 "CMFLAGR.DEF",
                 "CPKMAN.DEF",
+                "CSGRCK.DEF",
                 "OBDINO1.DEF",
                 "OBDINO2.DEF",
                 "OBDTL04.PCX",
                 "PLCBOWX.DEF",
+                "SGEXPL.DEF",
                 "SP12_.DEF"
             ]
         );
@@ -1479,6 +1500,9 @@ at = [124, 254]
             Sound::Drain,
             Sound::Thunderbolt,
             Sound::SpellFile(79),
+            Sound::TurretShot,
+            Sound::WallHit,
+            Sound::WallMiss,
         ] {
             assert_eq!(pikeman.name(none), None);
         }
@@ -1489,6 +1513,8 @@ at = [124, 254]
             ..Sounds::default()
         };
         assert_eq!(all.name(Sound::Shot), Some("s"));
+        // A turret's shot plays its shooter's (E17 M4 T2b).
+        assert_eq!(all.name(Sound::TurretShot), Some("s"));
         assert_eq!(all.name(Sound::Start), Some("a"));
         assert_eq!(all.name(Sound::End), Some("e"));
         // The archer has none; the tent's heal sound is the battle's (E17 M3 T3b), and so are
@@ -1499,8 +1525,22 @@ at = [124, 254]
             names,
             [
                 "BADMRLE", "DRAINLIF", "FEAR", "GOODLUCK", "GOODMRLE", "LIGHTBLT", "MAGICRES",
-                "PIKEATTK", "PIKEDFND", "PIKEKILL", "PIKEMOVE", "PIKEWNCE", "REGENER", "SLOW"
+                "PIKEATTK", "PIKEDFND", "PIKEKILL", "PIKEMOVE", "PIKEWNCE", "REGENER", "SLOW",
+                "WALLHIT", "WALLMISS"
             ]
+        );
+    }
+
+    #[test]
+    fn a_wall_shot_s_explosions_are_named_defs() {
+        // E17 M4 T2b: the explosions among the names, each a DEF.
+        let tables = load(&[base()], "base").unwrap();
+        let names = tables.names();
+        assert!(names.contains("SGEXPL.DEF") && names.contains("CSGRCK.DEF"));
+        let bad = parse(&BASE.replace("\"CSGRCK.DEF\"", "\"CSGRCK.PCX\"")).unwrap();
+        assert_eq!(
+            load(&[bad], "base").unwrap_err(),
+            entry("[battle]", "`CSGRCK.PCX` is not a DEF name")
         );
     }
 

@@ -196,6 +196,12 @@ pub enum Logged {
         /// The stack, its damage and its kills.
         hit: (u8, u64, u32),
     },
+    /// A siege's turret's shot (`turret_shot` 0x465D9E; E17 M4 T2b): `battle_log_damage` named
+    /// by the arrow tower (GENRLTXT 376), its number 1, before the reactions.
+    Turret {
+        /// The stack, its damage and its kills.
+        hit: (u8, u64, u32),
+    },
     /// A hero's spell without a target (`battle_log_cast` 0x5A8950 for the caster kind 0 without
     /// one, GENRLTXT 197; E17 M3 T7c-1): a mass timed spell after its effects, before its
     /// animation (0x5A10D0); Death Ripple and Destroy Undead before their damage (0x5A0C89,
@@ -472,6 +478,22 @@ pub fn word(
             };
             let attacker = Stack {
                 creature: &spell,
+                count: 1,
+            };
+            Some(strike(catalogue, attacker, Spread::Target, &[hit]))
+        }
+        Logged::Turret {
+            hit: (target, damage, kills),
+        } => {
+            let struck = stack(*target)?;
+            let hit = Hit {
+                creature: &struck.creature,
+                war_machine: struck.war_machine,
+                damage: *damage,
+                kills: *kills,
+            };
+            let attacker = Stack {
+                creature: "battle.log.arrow-tower",
                 count: 1,
             };
             Some(strike(catalogue, attacker, Spread::Target, &[hit]))

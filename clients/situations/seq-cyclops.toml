@@ -1,0 +1,59 @@
+# E17 M4 T2b: the recorded sequence `cyclops` (sequences.toml; design §10.2, "A wall shot"): a
+# Castle, after the Catapult's shot two Cyclops stacks shoot the walls (their own Basic level):
+# one at the upper tower above it, one at the lower wall below it, the original's groups
+# reversed (CLT-Q19 (1)).
+
+[scenario]
+id = "sequence-cyclops"
+# Both human (hot seat): the defender commands the keep.
+human = ["attacker", "defender"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+
+# The town: under SoD rules (the situation's map) its moat damages.
+[scenario.siege]
+faction = "base:castle"
+fort = "castle"
+moat = "damaging"
+# The original's keep counts 5 creatures here, each tower 3 (`town_turret_count` 0x5BF4F0: 4 plus
+# one structure of the situation's town; the engine's 4 + `structures`, BAT-SIE-016).
+structures = 1
+
+[[attacker]]
+slot = 0
+creature = "base:cyclops"
+count = 4
+
+[[attacker]]
+slot = 1
+creature = "base:cyclops"
+count = 4
+
+[[defender]]
+slot = 0
+creature = "base:goblin"
+count = 15
+
+# The heroes, each with 1 in every primary skill (`h3-view situation` writes them so).
+[scenario.attacker_hero]
+hero_type = "base:valeska"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+# Basic Ballistics: the Catapult waits for its command.
+catapult = 1
+
+[scenario.defender_hero]
+hero_type = "base:ufretin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+
+# Basic Artillery: the turrets wait for their commands.
+[scenario.defender_hero.ballista]
+level = 1
+shots = 1
+double_damage_chance_bp = 5000

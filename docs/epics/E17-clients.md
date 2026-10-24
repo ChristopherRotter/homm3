@@ -1,11 +1,11 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 done (2026-10-23: T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b, T8, T7b-1, T7b-2a, T7b-2b-1, T7b-2b-2a, T7b-2b-2b, T7b-2b-3, T7c-1, T7c-2, T7c-3, T7d, T9a, T9b-1, T9b, T9c, T9d); M4 refined (2026-10-23, T0), T1a, T1b and T2a done (2026-10-23); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 done (2026-10-13: T1, T2, T3 and T6 on 2026-10-12, T5, T4, T7 and T8 on 2026-10-13); M2 done (2026-10-14: T1, T3, T4a, T6 and T4b-1 on 2026-10-13, T4b-2a, T2, T5a, T5b and T5c on 2026-10-14); M3 done (2026-10-23: T1a–T1c, T2, T3a, T3b, T4a, T4b-1, T4b-2a, T4b-2b-1, T4b-2b-2, T5a, T5b-1, T5b-2a, T5b-2b, T6a, T6b, T6c-1, T6c-2, T7a-1, T7a-2a, T7a-2b, T8, T7b-1, T7b-2a, T7b-2b-1, T7b-2b-2a, T7b-2b-2b, T7b-2b-3, T7c-1, T7c-2, T7c-3, T7d, T9a, T9b-1, T9b, T9c, T9d); M4 refined (2026-10-23, T0), T1a, T1b, T2a and T2b done (2026-10-23); the adventure lane's harness H1 and H2 done (2026-10-19). Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
 [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
-are there). Next: M4 T2b (sieges: the Catapult and the turrets recorded), M5 live play after M4
+are there). Next: M4 T2c (sieges: the gate, the moat, Earthquake and the mouse recorded), M5 live play after M4
 (`docs/lanes/client/QUEUE.md`). Since T9c (2026-10-23) this epic
 is the battle client's; the adventure map client is E24, the map-client lane's.
 
@@ -599,6 +599,13 @@ states; the Tower 26, without the moat).
   drawbridge, the moat, the mines, Earthquake, the mouse's siege kinds, the end tune's town);
   T2b's and T2c's sequences listed; CLT-Q19 to Q21 answered (the slips fixed, the original's for
   the comparisons; the opening's automatic acts recorded by the server lane).
+- **T2b done 2026-10-23** ([log](E17-log.md#m4-t2b--the-catapult-and-the-turrets-recorded-2026-10-23),
+  design §10.2 "Recorded"; not split, the user): the turrets' and the wall shots' animation
+  (the rock's arc, the explosions over the redraws, the parts' states at frame 5, CLT-Q19 (1) to
+  (5) under `Bugs::Original`); seven sequences recorded (`keep`, `hit`, `missed`, `automatic`,
+  `breach`, `tower`, `cyclops`), every timeline as recorded, the frames exact but the listed
+  differences (the first frame's outline row, the explosions' shadows, the status line's hint,
+  one stale square); CLT-Q22 asked (the explosion cut at the top edge, built as recommended).
 
 ### The adventure lane's harness (H1, H2: its batch E3)
 

@@ -12,21 +12,23 @@ use h3_formats::lod::LodArchive;
 use h3_protocol::wire::{Event, ServerMessage, Side};
 use h3_render::Bugs;
 use h3_view::anim::{
-    ACID, ACID_BREATH, BAD_MORALE, BOLT, CHAIN_LIGHTNING, CHAIN_START, Caster, Casts, DEATH_STARE,
-    DEATH_STARE_SPELL, Explosion, FEAR, FIRE_SHIELD, GOOD_LUCK, GOOD_MORALE, HEAL, LIFE_DRAIN,
-    LIGHTNING_BOLT, Look, MagicLook, Missile, ObjectLook, RAISE, RESISTED, RESURRECTION,
-    SACRIFICED, SHIELD_RETURN, Shell, SpellLook, Stage, THUNDERBOLT, TITAN_BOLT,
+    ACID, ACID_BREATH, BAD_MORALE, BOLT, Burst, CHAIN_LIGHTNING, CHAIN_START, Caster, Casts,
+    DEATH_STARE, DEATH_STARE_SPELL, Explosion, FEAR, FIRE_SHIELD, GOOD_LUCK, GOOD_MORALE, HEAL,
+    LIFE_DRAIN, LIGHTNING_BOLT, Look, MagicLook, Missile, ObjectLook, RAISE, RESISTED,
+    RESURRECTION, SACRIFICED, SHIELD_RETURN, Shell, SiegeStage, SpellLook, Stage, THUNDERBOLT,
+    TITAN_BOLT,
 };
 use h3_view::batch::Batch;
 use h3_view::hero::{HeroLook, Heroes};
 use h3_view::layout::BattleLayout;
 use h3_view::record::Record;
-use h3_view::tables::Tables;
+use h3_view::tables::{Creature, Tables, Town};
 
 use crate::render::lookup;
 
 /// The [`Look`] of every creature a living stack of the record's first snapshot shows, by its
-/// handle.
+/// handle; a siege's turrets (off the field, E17 M4 T2b) by the town's shooter's, its missile the
+/// turret's.
 pub fn looks(
     record: &Record,
     tables: &Tables,
@@ -36,73 +38,146 @@ pub fn looks(
         .first_snapshot()
         .ok_or("the record holds no snapshot")?;
     let keys = &record.header.manifest.keys.creatures;
-    let standing = u32::from(tables.battle.groups.standing);
     let mut looks = BTreeMap::new();
-    // The stacks on the field: a siege's turrets stand off it, their shooters the town's (E17
-    // M4 T1b).
     let field = record.header.manifest.field;
     let cells = u16::from(field.width) * u16::from(field.height);
-    for stack in snapshot
-        .stacks
-        .iter()
-        .filter(|s| s.alive && u16::from(s.hex) < cells)
-    {
+    for stack in snapshot.stacks.iter().filter(|s| s.alive) {
         if looks.contains_key(&stack.creature) {
             continue;
         }
-        let key = keys
-            .get(usize::from(stack.creature))
-            .ok_or_else(|| format!("no creature handle {}", stack.creature))?;
-        let entry = tables
-            .creatures
-            .get(key)
-            .ok_or_else(|| format!("the asset tables have no entry for `{key}`"))?;
-        let mut batch = Batch::default();
-        batch
-            .add(&entry.def, &lookup(archives, &entry.def)?)
-            .map_err(|e| e.to_string())?;
-        let sprite = batch
-            .sprite(&entry.def)
-            .ok_or_else(|| format!("{}: not a DEF", entry.def))?;
-        let frames = sprite
-            .def
-            .groups
-            .iter()
-            .map(|g| (g.id, u32::try_from(g.frames.len()).unwrap_or(0)))
-            .collect();
-        let standing_frame = sprite.frame(standing, 0);
-        let top = standing_frame.map_or(0, |f| f.top);
-        let front =
-            standing_frame.map_or(0, |f| f.left + i32::try_from(f.width).unwrap_or(i32::MAX));
-        let missile = match &entry.missile {
-            Some(def) => Some(missile(def, &entry.missile_angles, archives)?),
-            None => None,
+        let (entry, missile) = if u16::from(stack.hex) < cells {
+            let key = keys
+                .get(usize::from(stack.creature))
+                .ok_or_else(|| format!("no creature handle {}", stack.creature))?;
+            let entry = tables
+                .creatures
+                .get(key)
+                .ok_or_else(|| format!("the asset tables have no entry for `{key}`"))?;
+            (entry, entry.missile.clone())
+        } else {
+            let town = town(record, tables)?;
+            let entry = tables
+                .creatures
+                .values()
+                .find(|c| c.original == town.turrets.shooter)
+                .ok_or_else(|| format!("creature {}", town.turrets.shooter))?;
+            (entry, Some(town.turrets.missile.clone()))
         };
-        // The explosion its projectile ends in (E17 M3 T7c-3): its spell's handle, animation.
-        let explosion = entry.explosion.and_then(|e| {
-            let (spell, s) = spell_numbered(record, tables, e.spell)?;
-            Some(Explosion {
-                spell,
-                animation: s.animation?,
-                time: e.time,
-            })
-        });
         looks.insert(
             stack.creature,
-            Look {
-                frames,
-                times: entry.times,
-                climax: entry.attack_climax,
-                missile_offsets: entry.missile_offsets,
-                top,
-                front,
-                missile,
-                ray: entry.ray.clone(),
-                explosion,
-            },
+            look(record, tables, archives, (entry, missile))?,
         );
     }
     Ok(looks)
+}
+
+/// The town of a siege the record's battle is fought at.
+fn town<'t>(record: &Record, tables: &'t Tables) -> Result<&'t Town, String> {
+    let siege = record
+        .first_snapshot()
+        .and_then(|s| s.siege.as_ref())
+        .ok_or("a turret outside a siege")?;
+    let key = record
+        .header
+        .manifest
+        .keys
+        .factions
+        .get(usize::from(siege.faction))
+        .ok_or_else(|| format!("no faction handle {}", siege.faction))?;
+    tables
+        .towns
+        .get(key)
+        .ok_or_else(|| format!("the asset tables have no town `{key}`"))
+}
+
+/// A creature's [`Look`]: its DEF's groups, its standing frame's edges, its times and climax,
+/// its projectile `missile` and its explosion.
+fn look(
+    record: &Record,
+    tables: &Tables,
+    archives: &[(&str, LodArchive<'_>)],
+    (entry, missile): (&Creature, Option<String>),
+) -> Result<Look, String> {
+    let standing = u32::from(tables.battle.groups.standing);
+    let mut batch = Batch::default();
+    batch
+        .add(&entry.def, &lookup(archives, &entry.def)?)
+        .map_err(|e| e.to_string())?;
+    let sprite = batch
+        .sprite(&entry.def)
+        .ok_or_else(|| format!("{}: not a DEF", entry.def))?;
+    let frames = sprite
+        .def
+        .groups
+        .iter()
+        .map(|g| (g.id, u32::try_from(g.frames.len()).unwrap_or(0)))
+        .collect();
+    let standing_frame = sprite.frame(standing, 0);
+    let top = standing_frame.map_or(0, |f| f.top);
+    let front = standing_frame.map_or(0, |f| f.left + i32::try_from(f.width).unwrap_or(i32::MAX));
+    let missile = match &missile {
+        Some(def) => Some(self::missile(def, &entry.missile_angles, archives)?),
+        None => None,
+    };
+    // The explosion its projectile ends in (E17 M3 T7c-3): its spell's handle, animation.
+    let explosion = entry.explosion.and_then(|e| {
+        let (spell, s) = spell_numbered(record, tables, e.spell)?;
+        Some(Explosion {
+            spell,
+            animation: s.animation?,
+            time: e.time,
+        })
+    });
+    Ok(Look {
+        frames,
+        times: entry.times,
+        climax: entry.attack_climax,
+        missile_offsets: entry.missile_offsets,
+        top,
+        front,
+        missile,
+        ray: entry.ray.clone(),
+        explosion,
+    })
+}
+
+/// What a siege's shots draw (E17 M4 T2b): the town's turret points and the wall shots'
+/// explosions; none outside a siege with a fort.
+pub fn siege(
+    record: &Record,
+    tables: &Tables,
+    archives: &[(&str, LodArchive<'_>)],
+) -> Result<Option<SiegeStage>, String> {
+    let fort = record
+        .first_snapshot()
+        .and_then(|s| s.siege.as_ref())
+        .is_some_and(|s| s.fort > 0);
+    if !fort {
+        return Ok(None);
+    }
+    let town = town(record, tables)?;
+    let point = |p: [i16; 2]| [i32::from(p[0]), i32::from(p[1])];
+    let burst = |def: Option<&String>| -> Result<Burst, String> {
+        let Some(def) = def else {
+            return Ok(Burst::default());
+        };
+        let (size, frames) = def_numbers(def, archives)?;
+        Ok(Burst {
+            def: def.clone(),
+            size,
+            frames,
+        })
+    };
+    let explosions = tables.battle.wall_explosions.as_ref();
+    Ok(Some(SiegeStage {
+        turrets: [
+            point(town.turrets.keep),
+            point(town.turrets.lower),
+            point(town.turrets.upper),
+        ],
+        hit: burst(explosions.map(|e| &e[0]))?,
+        miss: burst(explosions.map(|e| &e[1]))?,
+    }))
 }
 
 /// The heroes of the record's battle (E17 M3 T3a): each side's hero's [`HeroLook`] (its DEF's
@@ -174,6 +249,7 @@ fn missile(
     Ok(Missile {
         def: def.to_owned(),
         size: [size(sprite.def.width), size(sprite.def.height)],
+        frames: u32::try_from(frames).unwrap_or(0),
         angles: angles[..frames.min(angles.len())].to_vec(),
     })
 }
@@ -559,7 +635,11 @@ pub fn stage<'a>(
     record: &Record,
     tables: &Tables,
     layout: &'a BattleLayout,
-    (magic, casts): (&'a BTreeMap<u8, MagicLook>, &'a Casts),
+    (magic, casts, siege): (
+        &'a BTreeMap<u8, MagicLook>,
+        &'a Casts,
+        Option<&'a SiegeStage>,
+    ),
 ) -> Stage<'a> {
     Stage {
         layout,
@@ -568,5 +648,6 @@ pub fn stage<'a>(
         magic,
         casts,
         bugs: Bugs::Fixed,
+        siege,
     }
 }
