@@ -601,4 +601,8 @@ fn a_shipped_map_loaded_whole_is_the_harnesss() {
         Situation::parse(&text).unwrap_err(),
         "it names a shipped map whole (`map`): the harness loads it"
     );
+    // Not TOML, and TOML that is no situation.
+    assert!(Situation::parse("size = ").is_err());
+    let unknown = alloc::format!("{PLAIN}colour = 3\n");
+    assert!(Situation::parse(&unknown).unwrap_err().contains("colour"));
 }
