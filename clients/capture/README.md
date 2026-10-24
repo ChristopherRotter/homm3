@@ -30,7 +30,7 @@ adventure).
 | `h3cap.py` | `diff` (our render against a capture, with masks) and `find` (the original's obstacles in a capture); `compare` and `boxes_at` for the frame check. |
 | `h3mem.py` | Reads the running game's state from its memory: the battle's clocks, idle steps, active stack and the mouse's highlight, each stack's group, frame, hex, offsets and draw layer, and each side's hero's group and frame and its flag's frame (M3 T3a), the magic animation drawn and the stacks under it (M3 T3b), the battle's outcome (H1); the adventure map's players, heroes (with their experience, level, army and skills: H1), view and path, the difficulty, a tile's monster, the topmost dialog's text (H1; below); since E08 T47a the topmost dialog's kind and its items' boxes, states and texts, a hero's army slot by slot, worn positions, flags and learned spells, the artifact held, the battle's tactics phase. |
 | `h3adv.py` | The adventure map (M2 T6, H1, H2): hot seat at a chosen difficulty, heroes (the list scrolled), tiles of either level clicked twice, questions answered, battles played, level-ups chosen, turns, artifacts put on from the backpack in the hero screen (E08 T37a), the hero screen's, the exchange's, the army, creature and split dialogs' items clicked by their ids and a tactics phase ended (E08 T47a); `batch` plays an experiment batch and fills its results template, `compare` sets two filled templates side by side, `learn-button`. |
-| `h3map.py` | The adventure map's stills (E24 M1 T3b2, the map client lane): `still` shows a situation of `../map/situations/` in the original (a single scenario, a writer's map or a shipped one whole, the human's explored tiles written, the view by the minimap, the clock frozen), draws ours and diffs them; `set` runs the map's capture set. Below, "The map's stills". |
+| `h3map.py` | The adventure map's stills (E24 M1 T3b2, the map client lane): `still` shows a situation of `../map/situations/` in the original (a single scenario, a writer's map or a shipped one whole, the human's explored tiles written, the view by the minimap, the clock frozen), draws ours and diffs them; `set` runs the map's capture set, keeping each live part; `drawn` (T6a) draws ours from the kept ones without the original. Below, "The map's stills". |
 | `h3lod.py` | The original's text tables, read from the run directory's LODs at run time (H1): which record a dialog's text was written from (`ADVEVENT:86`); never their text. |
 | `batches/` | The batches' recipes: a spec's procedure as steps (`E08-batch-2.toml`), and the harness's own check (`harness-check.toml`, its spec in `checks/`). |
 | `../situations/` | The capture set: `set.toml` and its situations' scenario files; the recorded sequences, `sequences.toml`, their scenarios `seq-*.toml` and `timelines/`. |
@@ -72,6 +72,17 @@ alter (the user, 2026-10-20):
    viewer's frames are digested) cannot: there the digests are recorded again from the last
    captured state, `drawn --record` with the viewer that state was compared with (E17 M3 T6a: a
    worktree of `master`), before the task's own change.
+
+**The map's stills** (E24 M1 T6a, the map client lane) follow the same rules with their own
+tools, from `clients/` after `cargo build --release -p h3-map-view`: 1. `python3
+capture/h3map.py drawn` (no Wine; about a minute) draws each situation of
+`map/situations/set.toml` with the live part its last capture kept (`map/situations/kept/<id>.toml`,
+the still's `live.toml`: numbers and the DEFs' names) and compares the digest of its pixels
+outside the masks with `map/situations/kept/drawn.txt`; 2. `h3map.py set --only <id>` for each
+`CHANGED` or `new` one and each situation whose file or entry the task adds or changes (its
+count recorded with why); 3. `h3map.py drawn --record`, `kept/` and `drawn.txt` committed with
+the task (`set` keeps a capture's live part only when it is as recorded or new); 4. the whole
+set at a milestone's closure and after a harness change that can alter the original's side.
 
 `drawn` reporting every one the same (a change that reaches no reference frame) needs no Wine
 setup at all. Its digests are of the PNG files' pixels (`h3_render::png`'s unfiltered rows): a
@@ -438,13 +449,14 @@ button that shows in more than one place (a dialog's OK): `python3 capture/h3adv
 <name> x0,y0,x1,y1 [<dump.xwd>]` records 12 probes relative to its corner (`[button.<name>]`);
 `h3adv.find_button` finds it anywhere on the screen.
 
-**The map's stills** (E24 M1 T3b2, T4a, T4b, T5a, T5b1, T5b2, the map client lane;
+**The map's stills** (E24 M1 T3b2, T4a, T4b, T5a, T5b1, T5b2, T6a, the map client lane;
 `docs/epics/E24-design.md` §1.10, §2.6 to §2.10): from
 `clients/`, after `cargo build --release -p h3-map-view`,
 
 ```
 python3 capture/h3map.py set [--only <id>]                       # the map's capture set
 python3 capture/h3map.py still map/situations/<id>.toml [--keep]  # one situation
+python3 capture/h3map.py drawn [--only <id>] [--record]          # ours from the kept live parts
 ```
 
 A situation (`map/situations/<id>.toml`, its format in `h3_map_view::situation`) is a writer's
@@ -479,7 +491,8 @@ and dumps the screen. The virtual clock drives the adventure map
 as it drives a battle: frozen, the map stays still; the palette cycles' step k is read from the
 cycling DEFs' palettes in memory (`Mem.def_palette`: each range a rotation of its file's by k,
 mod 36; read until two reads 0.1 s apart agree, and again after the dump, since a read can meet
-the tick's rotation half done), the objects' frame step the screen shows (`Mem.frame_steps`
+the tick's rotation half done; the terrains' and the rivers' each, T6a: the rivers' trail by one
+step in about one game of seven, a tick during the map's load, design §1.6), the objects' frame step the screen shows (`Mem.frame_steps`
 less one: the redraw draws before it counts) and every object's anchor and animation phase
 (`Mem.map_objects`, the 12-byte records in the map's order; T4a), the viewing player, and every
 object's template in memory, its DEF, class and subclass (`Mem.map_templates`; T4b: a random

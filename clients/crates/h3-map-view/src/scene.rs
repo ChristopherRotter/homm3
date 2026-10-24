@@ -244,16 +244,20 @@ pub fn scene(
             y: gem.at[1],
         });
     }
-    let cycles = [Layer::Terrain, Layer::River]
-        .into_iter()
-        .flat_map(|layer| tables.layer(layer).values())
-        .filter(|art| !art.cycles.is_empty())
-        .map(|art| Cycle {
-            def: art.def.clone(),
-            ranges: art.cycles.clone(),
-            steps: live.moment.cycles,
-        })
-        .collect();
+    let moment = live.moment;
+    let cycles = [
+        (Layer::Terrain, moment.cycles),
+        (Layer::River, moment.river_cycles),
+    ]
+    .into_iter()
+    .flat_map(|(layer, steps)| tables.layer(layer).values().map(move |art| (art, steps)))
+    .filter(|(art, _)| !art.cycles.is_empty())
+    .map(|(art, steps)| Cycle {
+        def: art.def.clone(),
+        ranges: art.cycles.clone(),
+        steps,
+    })
+    .collect();
     Ok(Scene {
         draws,
         cycles,

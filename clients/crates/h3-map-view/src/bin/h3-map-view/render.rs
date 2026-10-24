@@ -188,6 +188,7 @@ fn render(options: &Options) -> Result<PathBuf, String> {
     live.moment = Moment::at(options.at, tables.map.cycle_ms, tables.map.frame_ms);
     if let Some(cycles) = options.cycles {
         live.moment.cycles = cycles;
+        live.moment.river_cycles = cycles;
     }
     let archive_bytes = files::read_archives(&options.install)?;
     let archives = files::parse_archives(&archive_bytes)?;
@@ -245,7 +246,9 @@ const ARTIFACT_CLASS: u32 = 5;
 const RANDOM_DWELLINGS: [u32; 3] = [216, 217, 218];
 
 /// The original's live part as the harness read it (`h3map.py still`'s `live.toml`): `cycles`,
-/// the palette step; `frames`, the objects' frame step the screen shows; `viewer`, the viewing
+/// the palette step, and `river_cycles` the rivers' when it differs (E24 M1 T6a: one fewer when
+/// the original's load ran a tick between the terrains' DEFs and the rivers', design §1.6;
+/// otherwise `cycles`); `frames`, the objects' frame step the screen shows; `viewer`, the viewing
 /// player's colour; `phases`, every object's animation phase in the map's order; `anchors`, every
 /// object's anchor in that order, which must be the map's (so the phases are the objects' own; a
 /// random object's may differ, T5);
@@ -280,6 +283,10 @@ fn read_live(
     };
     if let Some(cycles) = number("cycles")? {
         live.moment.cycles = cycles;
+        live.moment.river_cycles = cycles;
+    }
+    if let Some(cycles) = number("river_cycles")? {
+        live.moment.river_cycles = cycles;
     }
     if let Some(frames) = number("frames")? {
         live.moment.frames = frames;

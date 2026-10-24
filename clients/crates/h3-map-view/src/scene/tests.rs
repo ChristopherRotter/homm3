@@ -415,6 +415,7 @@ fn the_cycles_at_the_moment_and_the_viewers_colour() {
     let (art, mut live) = art_with(vec![]);
     live.moment = Moment {
         cycles: 7,
+        river_cycles: 6,
         frames: 3,
     };
     live.viewer = 5;
@@ -429,9 +430,10 @@ fn the_cycles_at_the_moment_and_the_viewers_colour() {
         [
             ("lavatl.def", 7),
             ("watrtl.def", 7),
-            ("clrrvr.def", 7),
-            ("mudrvr.def", 7),
-            ("lavrvr.def", 7)
+            // The rivers' own step (a tick between the loads in the original, design §1.6).
+            ("clrrvr.def", 6),
+            ("mudrvr.def", 6),
+            ("lavrvr.def", 6)
         ]
     );
     assert_eq!(scene.cycles[1].ranges, [[229, 240], [242, 253]]);

@@ -39,8 +39,9 @@ commands:
           level; the moment is --at ms (default 0) after the map's assets were loaded, on a clock
           that never runs late (a palette cycle step every 200 ms), its cycle steps --cycles
           when given (the original's, read by the harness). --live takes the live part the
-          harness read from the original's memory (h3map.py's live.toml: the palette and frame
-          steps, the viewer, the objects' phases and what the random ones became). --bugs
+          harness read from the original's memory (h3map.py's live.toml: the palette steps, the
+          rivers' apart when the original's load set them apart, the frame
+          step, the viewer, the objects' phases and what the random ones became). --bugs
           original reproduces the original's drawing bugs (for the comparisons; MCL-Q2, MCL-Q3).
           --list prints the draw list.
           The assets come from the installation copy's archives (<dir> as for gate).
