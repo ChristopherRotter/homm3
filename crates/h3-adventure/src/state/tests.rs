@@ -667,6 +667,11 @@ fn each_broken_invariant_is_its_own_error() {
         error(|s| s.heroes[0].army[0].creature = CreatureTypeId::from_raw(2)),
         army(ArmyError::UnknownCreature(2))
     );
+    // A stack holds at most the ruleset's most creatures (ADV-ARM-007).
+    assert_eq!(
+        error(|s| s.heroes[0].army[1].count = crate::testing::MAX_STACK + 1),
+        army(ArmyError::TooManyCreatures(0))
+    );
 }
 
 #[test]
@@ -739,6 +744,10 @@ fn the_errors_read_well() {
         (
             ArmyError::UnknownCreature(1),
             "slot 1 has an unknown creature type",
+        ),
+        (
+            ArmyError::TooManyCreatures(1),
+            "slot 1 has more creatures than a stack holds",
         ),
     ];
     for (error, text) in armies {

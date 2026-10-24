@@ -107,6 +107,7 @@ drain_sound = "DrainLif"
 thunderbolt_sound = "LightBlt"
 wall_explosions = ["SGEXPL.DEF", "CSGRCK.DEF"]
 wall_sounds = ["WallHit", "WallMiss"]
+siege_sounds = ["drawbrg", "landkill"]
 
 [[creature]]
 key = "pikeman"

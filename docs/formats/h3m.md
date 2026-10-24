@@ -190,7 +190,9 @@ content and draws nothing; it rejects what the current increment cannot represen
 - **Placed heroes** (class 34): owner colour → player (a colour nobody plays is an error), hero
   type by original id → its key (the packs' `# original id`), the tile its template marks
   visitable (the editor's one column left of the position), the army's stacks by slot (creature by
-  original id, the count) or, when the map gives no stack, the hero type's starting army as a
+  original id, the count: its 16 bits whole, where the original loads 32 768 or more as no
+  creature, ADV-QUIRK-19; above the ruleset's most creatures in a stack the setup is invalid,
+  ADV-ARM-007, E08 T50) or, when the map gives no stack, the hero type's starting army as a
   placeholder that the game draws when it is built (E08 T6b; VCMI `CGHeroInstance::initHero`).
   Unsupported: a random hero (class 70), a campaign placeholder (214), a random stack (the 14 codes
   below the format's "none"), a hero standing on a town's blocked tile (VCMI moves it to its own

@@ -476,6 +476,7 @@ fn parses_every_field() {
         max_levels = 1
         max_players = 4
         army_slots = 5
+        max_stack_count = 5000
         starting_stack_chances = [80, 20]
         fly_cost = [140, 140, 120, 100]
         water_walk_cost = [150, 140, 125, 110]
@@ -782,6 +783,7 @@ fn parses_every_field() {
             max_levels: NonZeroU8::new(1).unwrap(),
             max_players: NonZeroU8::new(4).unwrap(),
             army_slots: NonZeroU8::new(5).unwrap(),
+            max_stack_count: NonZeroU32::new(5000).unwrap(),
             starting_stack_chances: vec![80, 20],
             battle: None,
             monsters: Some(MonsterParamsDef {
@@ -823,7 +825,8 @@ fn rejects_malformed_files() {
     assert!(syntax(
         "[params]\nnative_cost = 100\nland_points = [1]\nscouting_radius = 300"
     ));
-    let bounds = "native_cost = 100\nland_points = [1]\nscouting_radius = 1\nmax_map_size = 1";
+    let bounds = "native_cost = 100\nland_points = [1]\nscouting_radius = 1\nmax_map_size = 1\n\
+                  max_stack_count = 4095";
     let slots = "max_levels = 1\nmax_players = 1\narmy_slots";
     assert!(syntax(&format!(
         "[params]\n{bounds}\n{slots} = 0\nstarting_stack_chances = []"
@@ -906,6 +909,10 @@ fn rejects_malformed_files() {
         "[params]\n{bounds}\n{slots} = 1\nstarting_stack_chances = []\n{prices}\nwater_walk_cost = [0, 1, 1, 1]"
     )));
     let full = format!("[params]\n{bounds}\n{slots} = 1\nstarting_stack_chances = []\n{prices}");
+    // E08 T50: a stack's most creatures is above 0 (ADV-ARM-007).
+    assert!(syntax(
+        &full.replace("max_stack_count = 4095", "max_stack_count = 0")
+    ));
     let battle = |fields: &str| format!("{full}\n[params.battle]\n{fields}");
     let fine = "underground = \"u\"\ncoast = \"c\"\ncoast_battlefield = \"f\"";
     let parsed = parse(&battle(fine))

@@ -772,36 +772,36 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x678b4dc773b08be3",
-    "0xbd9cf3f9fcfcc7c8",
-    "0x29e14a73308ccce8",
-    "0xdf8b84f4561f63f4",
-    "0xabe0806a749279ec",
-    "0xfb525f0c6ad4c1ad",
-    "0x180e35f32e75c9e0",
-    "0x47a1eeac7b1a058e",
-    "0xe37501eea9184d43",
-    "0x486c72b596138470",
-    "0xf603c66413184be5",
-    "0xfd2d879163543a43",
-    "0x80568a93395fef6e",
-    "0x51c6fe0c79ad8aeb",
-    "0xa3810e9a1a098e57",
-    "0x0f75b2757d8fd00e",
-    "0x2d3aee317c41aef9",
-    "0xc69f8cf0cb14b0ce",
-    "0x7835a09b69550e74",
-    "0xcd2d66d77c1254ee",
-    "0x599d7c0628711707",
-    "0x8dabaa519012d62b",
-    "0xcdeeb0bb693e45fe",
-    "0xd18b985db3122663",
-    "0x01a104cc044bcec4",
-    "0x8b81306884b1bc4b",
-    "0x683df55a79138be8",
-    "0x4b0217fd57e90dc4",
-    "0xe201690cd18405da",
-    "0x23420ed7c25ba04f",
+    "0xec66aa51bdee3117",
+    "0x56deed6538db0063",
+    "0x67bfb17ec29c1d43",
+    "0x3813bba0253bc2bf",
+    "0x3e0c47d57e034b57",
+    "0x2fc721235f699aa2",
+    "0xd9e42b407014cfbb",
+    "0xe4125f654c854645",
+    "0x6961a7e06412d804",
+    "0x6b6e8d75cfc24b8b",
+    "0xfc4637a57aebe79a",
+    "0xa3368f15ee8661c4",
+    "0xca22ad4e3ae4bb8d",
+    "0xdf1ea2b6d9418cec",
+    "0xb2828b293b5074b0",
+    "0xfbd3fd4f3d8b716d",
+    "0xc56d7eb727523c5a",
+    "0xf8068218ce1f5811",
+    "0xdcb9bb8761bbbfa6",
+    "0x1dd7bc21c544b108",
+    "0x0270688d694acbe9",
+    "0xb948999ce76623f5",
+    "0x81fd7a89c32da7a9",
+    "0xb643dc57565e38a4",
+    "0x503243ce82ea56c7",
+    "0x46c1037fa06663ec",
+    "0x35bc1c45fa93cf6b",
+    "0x999356ffd68795c7",
+    "0xe48ba39ae4a80d1d",
+    "0xc03a9560fe063f90",
 ]
 
 [replay]
@@ -825,13 +825,13 @@ packs = [
 ]
 profile = "base:faithful"
 ruleset_hash = "0x0c7e01b4dffeba0c"
-adventure_ruleset_hash = "0x483fb763b1a0ebbf"
+adventure_ruleset_hash = "0xf9dc9fcea4630571"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
 game_state_hash_version = 12
-adventure_state_hash_version = 10
+adventure_state_hash_version = 11
 checkpoint_every = 25
 
 [map]
@@ -841,4 +841,4 @@ import_version = 10
 
 [result]
 day = 29
-final_hash = "0x94147056b65014a4"
+final_hash = "0x3092817da9ed0f88"

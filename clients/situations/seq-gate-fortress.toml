@@ -1,0 +1,46 @@
+# E17 M4 T2c-1: the recorded sequence `gate-fortress` (sequences.toml; design §10.2, "The
+# drawbridge"): as `gate`, at a Fortress town with a Fort (walls and the gate, no turrets, no
+# moat). The Hobgoblins walk out through the gate onto the outer bridge (94), which keeps a
+# Fortress's gate open (`gate_close` 0x4672E0: hex 94 in a town of type 7); in round 2 they step
+# off it and the gate closes.
+
+[scenario]
+id = "sequence-gate-fortress"
+# Both human (hot seat): the attacker commands the Catapult.
+human = ["attacker", "defender"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+
+# The town: a Fort has walls and a gate, no turrets and no moat.
+[scenario.siege]
+faction = "base:fortress"
+fort = "fort"
+moat = "absent"
+
+[[attacker]]
+slot = 0
+creature = "base:pikeman"
+count = 12
+
+[[defender]]
+slot = 0
+creature = "base:hobgoblin"
+count = 20
+
+# The heroes, each with 1 in every primary skill (`h3-view situation` writes them so).
+[scenario.attacker_hero]
+hero_type = "base:valeska"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+# Basic Ballistics: the Catapult waits for its command.
+catapult = 1
+
+[scenario.defender_hero]
+hero_type = "base:ufretin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1

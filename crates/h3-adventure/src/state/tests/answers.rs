@@ -10,11 +10,11 @@ use h3_content::{
 use std::format;
 
 use super::*;
-use crate::command::{AdventureCommand, AdventureEvent};
+use crate::command::{AdventureCommand, AdventureEvent, NoRoom};
 use crate::setup::MonsterSetup;
 use crate::testing::{
-    CHART, GNOLL, MONSTER, PEASANT, PIKEMAN, TOWER, WOLF, hero_at, key, movement_rules_edited,
-    world,
+    CHART, GNOLL, MAX_STACK, MONSTER, PEASANT, PIKEMAN, TOWER, WOLF, hero_at, key,
+    movement_rules_edited, world,
 };
 
 const RED: PlayerId = PlayerId::new(0);
@@ -267,7 +267,7 @@ fn easy_raises_diplomacy_and_a_creature_without_the_price_resource_joins_for_not
     );
 }
 
-// covers: ADV-MON-007, ADV-MON-008
+// covers: ADV-MON-007, ADV-MON-008, ADV-ARM-007
 #[test]
 fn a_join_offer_needs_room_for_the_group() {
     let rules = rules();
@@ -292,6 +292,22 @@ fn a_join_offer_needs_room_for_the_group() {
     let mut s = pikemen(&rules, &with, -4);
     let (outcome, _) = walk(&rules, &mut s, &[], &[(2, 0)]);
     assert_eq!(outcome.offer, offer(2, 0, OfferKind::Join));
+    // Unless it cannot take the group's 10 within a stack's most (E08 decision 115); with a free
+    // slot it has room again.
+    for (pikemen_before, room) in [(MAX_STACK - 10, true), (MAX_STACK - 9, false)] {
+        with[6] = (PIKEMAN, pikemen_before);
+        let mut s = pikemen(&rules, &with, -4);
+        let (outcome, _) = walk(&rules, &mut s, &[], &[(2, 0)]);
+        let kind = if room {
+            OfferKind::Join
+        } else {
+            OfferKind::Pursue
+        };
+        assert_eq!(outcome.offer, offer(2, 0, kind));
+        let mut s = pikemen(&rules, &with[1..], -4);
+        let (outcome, _) = walk(&rules, &mut s, &[], &[(2, 0)]);
+        assert_eq!(outcome.offer, offer(2, 0, OfferKind::Join));
+    }
 }
 
 /// The rules' tuple for `decline_offer` and `visit_guard`.
@@ -417,13 +433,15 @@ fn an_accepted_join_adds_the_group_gives_the_treasure_and_removes_the_monster() 
     );
 }
 
-// covers: ADV-MON-008
+// covers: ADV-MON-008, ADV-ARM-007
 #[test]
-fn an_offer_whose_monster_or_room_is_gone_does_nothing() {
+fn an_offer_whose_monster_is_gone_does_nothing_and_a_join_without_room_is_reported() {
     let rules = rules();
     let mut events: Vec<AdventureEvent> = Vec::new();
     let join = offer(2, 0, OfferKind::Join).unwrap();
-    // The army filled up since the offer (Necromancy's raise, say): the group stays.
+    // The army filled up since the offer (only in a test until the game's army dialog, T51): the
+    // group joins nothing and is reported; its treasure is given and the monster leaves as for
+    // any join (E08 T50).
     let c = |i: u16| CreatureTypeId::from_raw(4 + i);
     let six = [
         (PEASANT, 100),
@@ -435,10 +453,29 @@ fn an_offer_whose_monster_or_room_is_gone_does_nothing() {
     ];
     let mut s = pikemen(&rules, &six, -4);
     s.raise(&rules.0, &rules.1, HERO, (c(3), 1));
-    let before = s.clone();
+    let army = s.hero(HERO).unwrap().army.clone();
     let outcome = s.accept_offer(&rules.0, &rules.1, RED, &join, &mut events);
-    assert_eq!(outcome, AdventureOutcome::default());
-    assert_eq!(s, before);
+    let group = NoRoom {
+        hero: HERO,
+        creature: PIKEMAN,
+        count: 10,
+    };
+    assert_eq!(
+        outcome,
+        AdventureOutcome {
+            gains: vec![(GOLD, 500)],
+            no_room: Some(group),
+            ..AdventureOutcome::default()
+        }
+    );
+    assert_eq!(s.hero(HERO).unwrap().army, army);
+    assert!(s.is_removed(0));
+    assert!(
+        events
+            .iter()
+            .all(|e| !matches!(e.kind, AdventureEventKind::CreaturesJoined { .. }))
+    );
+    events.clear();
     // The monster left the map: nothing, accepted or declined.
     let mut s = pikemen(&rules, &[(PEASANT, 100)], -4);
     s.remove_object(0);

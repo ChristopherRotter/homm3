@@ -29,6 +29,13 @@ max_players = 8
 # A hero's army has seven slots: the .h3m hero body's army is 7 stacks (docs/formats/h3m.md);
 # VCMI 1.7.5 lib/constants/NumericConstants.h ARMY_SIZE = 7; the battle pack's army_slots.
 army_slots = 7
+# ADV-ARM-007 (E08 T50; the user, E08 decisions 109 and 114): a stack holds at most 1 000 000
+# creatures. Not the original's: its army keeps 32-bit counts, the map 16-bit ones and the exchange
+# moves a count through 16 bits (A-15, fixed); the engine supports a reasonable count instead, far
+# above any game's stacks, with count x the largest hit points (1 000) within 32 bits. A merge
+# past it is refused, a split keeps both stacks within it, a joining or raised group its stack
+# cannot take whole goes to a free slot (decision 115).
+max_stack_count = 1000000
 # GAM-SET-001 (E08 T6b): a hero placed without an army of its own gets its type's first starting
 # stack always, the second slot's with 88 % and the third's with 25 %, each its own roll of 1-100.
 # Code reading: 0x4C9730 (new_game_heroes 0x4BFEA6 for every hero, before a placed hero's custom

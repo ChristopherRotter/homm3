@@ -240,13 +240,13 @@ fn a_flight_visits_only_at_its_end_and_from_a_stop() {
     assert_eq!(at(&state).0, p(9, 0));
 }
 
-// covers: ADV-MOV-009, ADV-MOV-010
+// covers: ADV-MOV-009, ADV-MOV-010, GAM-MET-001
 #[test]
 fn a_flight_passes_objects_whose_visit_is_not_built_and_heroes() {
     // §7: an object's visitable tile no visit is built for (`V`, a town's `T`) a flight passes
-    // and a water walk does not enter (as a walk, `Visit`); an own hero's tile a flight passes, a
-    // water walk does not; another player's hero is visited from a stop (a battle) and passed by
-    // a flight.
+    // and a water walk does not enter (as a walk, `Visit`); another hero is visited from a stop
+    // (a meeting with an own one, E08 T50; a battle with another player's) and passed by a
+    // flight.
     let rules = hero_rules(true);
     let rows = ["gVTgggg"];
     let mut state = flight_world(&rules, &rows, p(0, 0), vec![]);
@@ -266,18 +266,17 @@ fn a_flight_passes_objects_whose_visit_is_not_built_and_heroes() {
         hero_at(3, 1, p(6, 0), &[PEASANT]),
     ];
     let rows = ["gggggggg"];
+    for store in [water_walker(), flyer()] {
+        let mut state = flight_world(&rules, &rows, p(3, 0), others.clone());
+        let (outcome, _) = fly(&mut state, &rules, &store, &[p(4, 0)]).unwrap();
+        let meeting = Meeting {
+            visitor: HeroId::new(1),
+            visited: HeroId::new(2),
+        };
+        assert_eq!(outcome.meeting, Some(meeting));
+        assert_eq!(at(&state).0, p(3, 0));
+    }
     let mut state = flight_world(&rules, &rows, p(3, 0), others.clone());
-    assert_eq!(
-        fly(&mut state, &rules, &water_walker(), &[p(4, 0)]),
-        Err(AdventureCommandError::Blocked {
-            step: 0,
-            error: StandError::Occupied
-        })
-    );
-    assert_eq!(
-        fly(&mut state, &rules, &flyer(), &[p(4, 0)]),
-        Err(AdventureCommandError::NoStop { step: 0 })
-    );
     // Over the own hero onto (5, 0), then over the blue hero to (7, 0).
     fly(&mut state, &rules, &flyer(), &[p(4, 0), p(5, 0)]).unwrap();
     fly(&mut state, &rules, &flyer(), &[p(6, 0), p(7, 0)]).unwrap();

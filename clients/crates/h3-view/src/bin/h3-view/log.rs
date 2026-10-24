@@ -87,6 +87,12 @@ pub fn texts(
             let k = manifest.hero_types.get(usize::from(hero.hero_type))?;
             Some(format!("hero.{k}"))
         }
+        // The town's moat names its damage (E17 M4 T2c-1).
+        battle_log::Name::Moat => {
+            let siege = snapshot.siege.as_ref()?;
+            let k = manifest.factions.get(usize::from(siege.faction))?;
+            Some(format!("moat.{k}"))
+        }
     };
     let word = |logged: &battle_log::Logged| battle_log::word(catalogue, logged, &named, &key);
     let lines = |text: &str| {

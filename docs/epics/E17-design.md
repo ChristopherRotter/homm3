@@ -3327,3 +3327,64 @@ group 14, the upper tower above the other in group 16: CLT-Q19 (1)). Findings:
 - **The explosion over the top edge** (`tower`, `cyclops`: the upper tower's, its canvas from
   y −53) shows cut at screen row 97, step 5's double clip (CLT-Q22): reproduced in the original's
   profile (`Draw::Explosion`'s rows), whole in the fixed one; with it every explosion frame exact.
+
+**Recorded (M4 T2c-1, 2026-10-24).** T2c cut in two by the user: T2c-1 the walk's siege events
+here, T2c-2 Earthquake, the shots and the mouse. The viewer plays the reading (`anim::siege`:
+`drawbridge`, `halt`, `entered`, `moat`; the walk's events gathered in the `Moved` run; the
+asset tables' `siege_sounds`, `drawbrg` and `landkill`, harvested from 0x66FFB0 and 0x688410;
+the moat's line named by the town, the key family `moat` over ARRAYTXT's records 260 to 268) and
+the sequences are as recorded (`clients/situations/sequences.toml`, hot seat, `key = "Up"`,
+seeds searched for the engine's wall shots): `gate` (a Castle town's Fort, no turrets or moat:
+the Hobgoblins out from 100 to 93 and, in round 2, back in), `gate-fortress` (a Fortress's
+Fort: out onto the outer bridge 94, which keeps the gate open; in round 2 the step off it closes
+it), `moat` and `mine` (below). Findings:
+
+- **The walk's stop** before the step onto the gate (`gate`: the Hobgoblins at 97, 5 743 to
+  5 911) is the reading's: group 21 and one frame of group 2 through the deadline, a whole redraw
+  shown at once; the gate's states 3, 2, 1 each at trunc(100 F), the first drawn as the stop's
+  redraw shows; the walk goes on with a first step (group 20, its start sound). At the walk's
+  first step (round 2, from 93 onto 94) no stop: the gate opens first, then the step's turn
+  (`walk_step`'s, animated) and group 20. The box stays hidden through the stop and the opening
+  (+0x30 from 0x442145): the opening's redraws draw the walker without it.
+- **The closing** follows the walk's whole redraw (and a plain move's turn back), states 1, 2, 3
+  at trunc(100 F); the closed state's line repeats nothing (the walls' line lists changes). A
+  stack on 94 in a Fortress keeps the gate open (`gate-fortress`), the engine's `GateClosed`
+  coming only with the step off it.
+- **The moat** (`moat`: a Castle town's Citadel, the keep commanded): the closed drawbridge's
+  hex (95) is no hex an attacker may enter (the engine's walls, BAT-SIE-003), so the Champions'
+  front enters the moat at 77. The walk's end as any (group 21, group 2 through the deadline),
+  then at once the line (named by the town's moat, GENRLTXT 377 with ARRAYTXT's name) and the
+  reaction without a striker; then the box's whole redraw. In round 2 their Wait: its line, then
+  the re-entry's damage, its line and reaction, without the walk's sounds. Found by the frame
+  check: **a standing wall's hex takes a count box's place** (the hex records' blocked flag,
+  `draw_battle_stack` 0x43E629): the Champions' front at 77 faces the wall at 78, so their box
+  stands 37 pixels left (the hex ahead taken, §4.3); the scene's taken hexes gain the record's
+  wall hexes but those of the parts destroyed since (`Walls::blocking`). With it `moat`'s frames
+  exact but the Catapult's first frames' outline rows (T2b's), the strip over the front and the
+  box drawn again as read (§10.1).
+- **The drawbridge's rectangle** (CLT-Q23): its redraws show it alone, so a walker's box hidden
+  at the walk's start stays on the screen outside it (`gate`'s round 2: the Hobgoblins' box at
+  93, 319 pixels, from the first state's showing at 13 234 to their turn's first frame at
+  13 534): reproduced in the original's profile (`Timeline::bridges`, `Moment::bridge`: the
+  battle shown before, the moment's inside the rectangle), the whole battle in the fixed one.
+  With it `gate`'s frames are exact but T2b's listed differences (the Catapult's first frame's
+  outline row, 11 pixels at 100 and 9 359; the status line's ` log` hint, T2c-2).
+- **A Tower's mine** (`mine`: a Tower town's Citadel, the keep commanded, the spectator's
+  record): the moat's column holds only mines between the walls and the second column, so a walk
+  passes one only through a breach: the Catapult destroys the mid-upper wall (2 forced, its wall
+  hex 78 opens, BAT-SIE-012) and the Titans walk from 35 into the town (79), over the mine at 61.
+  After the step onto it, at once: the line (named by Land Mine), the blast's sound, animation 57
+  (`C09spF3.def`, 17 frames) over them with their reaction; then the walk goes on with the
+  moving group (no group 20). The screen never shows the mine on the attacker's turn. Found by
+  the timeline check: **without a striker a reaction holds its last frame** while the iterations
+  left are more than its frames (`strike_animation` 0x468EBA, 0x468FA1): the Titans' 7 frames of
+  group 3 under the animation's 17 stand at iteration 9 (max(R, L − 1 − R)), not 7; no earlier
+  recording had an animation longer than 2R + 1 over a struck stack (`thunder`'s 12 over 9 frames).
+- **Differences listed** (the frame check's `frames` files): every sequence's Catapult's first
+  frame leaves its standing frame's outline top row (11 pixels, T2b's) with the status line's
+  ` log` hint (T2c-2's); in `mine` the walk's first frames after the blast show the Titans'
+  standing frame under the moving one where the saved screen comes back under the stack's
+  rectangle (11 431: 252 pixels beside 234 counted as artifacts; 11 507: 5; §7.11 (2), not
+  copied), and the last frame (12 799), the Goblins' turn's start, the defender's view in hot
+  seat: its mines on the moat's hexes (4 005 pixels), which a spectator's record lacks (T1b's
+  side to act's view). The rest of each sequence's frames exact.

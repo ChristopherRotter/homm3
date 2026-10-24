@@ -202,6 +202,13 @@ pub enum Logged {
         /// The stack, its damage and its kills.
         hit: (u8, u64, u32),
     },
+    /// A siege moat's damage on a stack that enters it, or acts where it stands in it
+    /// (`moat_damage` 0x469ED1; E17 M4 T2c-1): `battle_log_damage` named by the town's moat
+    /// (`moat_names` 0x6A5D60), its number 1, before the reaction.
+    Moat {
+        /// The stack, its damage and its kills.
+        hit: (u8, u64, u32),
+    },
     /// A hero's spell without a target (`battle_log_cast` 0x5A8950 for the caster kind 0 without
     /// one, GENRLTXT 197; E17 M3 T7c-1): a mass timed spell after its effects, before its
     /// animation (0x5A10D0); Death Ripple and Destroy Undead before their damage (0x5A0C89,
@@ -279,6 +286,8 @@ pub enum Name {
     Spell(u16),
     /// A side's hero.
     Hero(u8),
+    /// The battle's town's moat (E17 M4 T2c-1).
+    Moat,
 }
 
 /// The line `logged` writes (none for what writes none, or a stack `stack` or a spell or hero
@@ -494,6 +503,23 @@ pub fn word(
             };
             let attacker = Stack {
                 creature: "battle.log.arrow-tower",
+                count: 1,
+            };
+            Some(strike(catalogue, attacker, Spread::Target, &[hit]))
+        }
+        Logged::Moat {
+            hit: (target, damage, kills),
+        } => {
+            let moat = key(Name::Moat)?;
+            let struck = stack(*target)?;
+            let hit = Hit {
+                creature: &struck.creature,
+                war_machine: struck.war_machine,
+                damage: *damage,
+                kills: *kills,
+            };
+            let attacker = Stack {
+                creature: &moat,
                 count: 1,
             };
             Some(strike(catalogue, attacker, Spread::Target, &[hit]))

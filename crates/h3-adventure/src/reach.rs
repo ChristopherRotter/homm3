@@ -22,9 +22,9 @@
 //! those tiles reached from it when the hero stands there (ADV-OBJ-004, T14a). A border gate whose
 //! key the hero's owner holds is not visited: its tile is one like any other, on the way or at
 //! the end (ADV-VIS-005, T15b); a gate is visited from above (the ruleset part requires it), so
-//! the search goes on from it in every direction. Another player's hero's tile is a destination
-//! too, its visit a battle (GAM-BAT-004, E08 T19a), from any direction, whatever object lies under
-//! it; an own hero's tile blocks. A tile a monster guards (ADV-MON-005) is a destination as well:
+//! the search goes on from it in every direction. Another hero's tile is a destination too, its
+//! visit a battle with another player's (GAM-BAT-004, E08 T19a) or a meeting with an own one
+//! (GAM-MET-001, T50), from any direction, whatever object lies under it. A tile a monster guards (ADV-MON-005) is a destination as well:
 //! the search does not go on from it, but from the hero's own tile (ADV-MON-006, E08 T20a2b; the
 //! original's pathfinder, 0x56BC05).
 //!
@@ -53,7 +53,7 @@ use crate::setup::Pos;
 use crate::state::{AdventureState, HeroOnMap, Mode, Node, StaticMap, enterable_terrain};
 
 /// What a search reads besides its window: the state, the rules, the hero's pricing and owner,
-/// and the window's tiles other heroes stand on ([`FREE`], [`OWN`] or [`ENEMY`]).
+/// and whether another hero stands on each of the window's tiles.
 struct Search<'s> {
     state: &'s AdventureState,
     part: &'s AdventureRuleset,
@@ -61,7 +61,7 @@ struct Search<'s> {
     pricing: Pricing<'s>,
     hero: HeroId,
     owner: PlayerId,
-    occupied: Vec<u8>,
+    occupied: Vec<bool>,
     /// Whether the map holds a monster, so that a tile may be guarded (E08 T20a2b): the search
     /// asks [`Search::guarded`] only then (`bench-check`).
     guards: bool,
@@ -75,13 +75,6 @@ impl Search<'_> {
         self.map.near_monster(pos) && self.state.guard_of(self.part, pos).is_some()
     }
 }
-
-/// No other hero stands on the tile.
-const FREE: u8 = 0;
-/// Another hero of the same owner stands there: the tile blocks.
-const OWN: u8 = 1;
-/// Another player's hero stands there: a visit, which ends the path (GAM-BAT-004).
-const ENEMY: u8 = 2;
 
 /// The bit of a node's direction byte that says its predecessor is a pass node (a flying or
 /// water-walking hero's search, E08 T41); the low three bits are the direction.
@@ -141,14 +134,11 @@ impl Reach {
             passing: Vec::new(),
             passing_via: Vec::new(),
         };
-        let mut occupied = vec![FREE; size];
+        // Another hero's tile: a visit, which ends the path (GAM-BAT-004, GAM-MET-001).
+        let mut occupied = vec![false; size];
         for other in state.heroes().iter().filter(|h| h.id != hero.id) {
             if let Some(slot) = reach.slot(other.pos) {
-                occupied[slot] = if other.owner == hero.owner {
-                    OWN
-                } else {
-                    ENEMY
-                };
+                occupied[slot] = true;
             }
         }
         let search = Search {
@@ -210,17 +200,16 @@ impl Reach {
             if !state.is_explored(search.owner, pos) || !enterable_terrain(part, &to) {
                 continue;
             }
-            // Another player's hero is a visit (GAM-BAT-004), but not from above onto the tile of
-            // an object not visited from above (ADV-OBJ-004: the object under it decides, E08
-            // T33); an own hero blocks. Else what objects still on the map cover there (the
+            // Another hero is a visit (GAM-BAT-004, GAM-MET-001), but not from above onto the
+            // tile of an object not visited from above (ADV-OBJ-004: the object under it decides,
+            // E08 T33). Else what objects still on the map cover there (the
             // occupancy layer): a visit ends the path (ADV-OBJ-003), a blocked tile, a visit not
             // built yet or one entered from above against ADV-OBJ-004 stops it, and a gate the
             // owner holds the key of is crossed (ADV-VIS-005): `visit_at` with the owner, as
             // `MoveHero`'s step. Directions 3 to 5 step down (DIRECTIONS).
             let mut visit = false;
-            let occupied = search.occupied[next];
-            if occupied != FREE {
-                if occupied == OWN || ((3..=5).contains(&dir) && state.closed_above(part, pos)) {
+            if search.occupied[next] {
+                if (3..=5).contains(&dir) && state.closed_above(part, pos) {
                     continue;
                 }
                 visit = true;

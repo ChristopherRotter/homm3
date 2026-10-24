@@ -23,8 +23,8 @@ pub fn default_keys() -> PathBuf {
     assets::clients_dir().join("text").join("keys.toml")
 }
 
-/// The families' entries: the asset tables' creatures, spells and heroes (E17 M3 T7b-1), by
-/// qualified key, with their original ids.
+/// The families' entries: the asset tables' creatures, spells and heroes (E17 M3 T7b-1) and the
+/// towns' moats by their faction (E17 M4 T2c-1), by qualified key, with their original ids.
 pub fn entries(tables: &AssetTables) -> BTreeMap<String, Vec<Entry>> {
     let entry = |key: &String, original: u16| Entry {
         key: key.clone(),
@@ -45,9 +45,15 @@ pub fn entries(tables: &AssetTables) -> BTreeMap<String, Vec<Entry>> {
         .iter()
         .map(|(key, h)| entry(key, h.original))
         .collect();
+    let moats = tables
+        .towns
+        .iter()
+        .map(|(key, t)| entry(key, u16::from(t.original)))
+        .collect();
     BTreeMap::from([
         (String::from("creature"), creatures),
         (String::from("hero"), heroes),
+        (String::from("moat"), moats),
         (String::from("spell"), spells),
     ])
 }
@@ -458,14 +464,17 @@ mod tests {
         assert!(keys.keys.contains_key("creature.base:pikeman"));
         assert!(keys.keys.contains_key("spell.sod:titans_lightning_bolt"));
         assert!(keys.keys.contains_key("hero.base:orrin"));
+        // E17 M4 T2c-1: a town's moat by its faction.
+        assert!(keys.keys.contains_key("moat.base:castle"));
         let names: BTreeSet<&str> = keys
             .keys
             .values()
             .flat_map(|k| k.original.iter().map(|(_, s, _)| s.table.as_str()))
             .collect();
-        // E17 M3 T7b-2b-3: the executable's own strings too (Acid Breath's line).
+        // E17 M3 T7b-2b-3: the executable's own strings too (Acid Breath's line); E17 M4 T2c-1
+        // the moats' names.
         let tables = [
-            "CRTRAITS", "EXE", "GENRLTXT", "HELP", "HOTRAITS", "SPTRAITS",
+            "ARRAYTXT", "CRTRAITS", "EXE", "GENRLTXT", "HELP", "HOTRAITS", "SPTRAITS",
         ];
         assert_eq!(names, BTreeSet::from(tables));
     }

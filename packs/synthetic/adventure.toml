@@ -9,6 +9,7 @@ max_map_size = 16
 max_levels = 2
 max_players = 4
 army_slots = 5
+max_stack_count = 9999
 starting_stack_chances = [80, 20]
 fly_cost = [160, 150, 130, 110]
 water_walk_cost = [170, 150, 140, 120]

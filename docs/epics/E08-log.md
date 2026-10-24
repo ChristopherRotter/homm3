@@ -5236,3 +5236,58 @@ so the sandbox ran only the light gates: all passed. T49b whole and the import's
   E6-7; VCMI 1.7.5 read for the three code links); HER-CHG-001, -002 and HER-ART-001 amended.
   Design note §3 to §5 reduced to a pointer here (§3), §13's versions. Coverage of `h3-heroes`
   100 % with and without its proptests.
+
+### Increment 6, round 4: T50, the adventure's army management, the meeting's visit, the join without room (2026-10-24, `shared/e08-t50-cap` #455, `adventure/e08-t50`)
+
+**Baseline:** `master` f89aa89 (#454 merged); its engine code (808b7ac3) was verified on f89aa89, so
+the sandbox ran only the light gates: all passed. At its start the user chose T50 whole (decision
+113), a cap of 1 000 000 (decision 114) and, for a group its stack cannot take, a free slot, else
+the army dialog (decision 115). ADR-0016 point 3 amended first in `shared/e08-t50-cap` (#455,
+docs only).
+
+- **The cap** (ADV-ARM-007): `AdventureParamsDef::max_stack_count` (`NonZeroU32`; the pack format's
+  `[params] max_stack_count`, base 1 000 000, synthetic 9 999; the compiler refuses a value below
+  `MAX_MONSTER_COUNT`, so any monster's group fits a slot; the tests' rulesets use exactly that,
+  `testing::MAX_STACK`), adventure ruleset part v11. A setup's hero or guards' stack above it:
+  `ArmyError::TooManyCreatures`. `monsters::room` finds the army's first stack of the creature
+  that takes the group within the cap (the original's first stack, which takes any), else the
+  first free slot; `add_stack` (joins) and `raise` (Necromancy: at most the cap raised, the
+  upgrade's stack likewise within it) use it; `has_room` (the join's offer) too.
+- **The army commands** (`army.rs`, ADV-ARM-001 to -005): `ArmyRef::{Hero, Group}`, `ArmySlot`,
+  `ArmyCommand::{Move, Split, Dismiss}`, `ArmyCommandError`; `plan` works on copies of the one or
+  two armies and returns their new stacks (slot order kept by insertion: logic crates do not
+  sort). Checks in order: the slots, the source's stack, the same slot (refused, as T49b's no-op
+  artifact move), then the rule: a merge past the cap (`TooManyCreatures`), a hero's last stack
+  leaving its army (`LastStack`: moved to an empty slot or merged into another army, dismissed),
+  a split's other creature or count outside `split_range` (max(1, t − most) to min(t − 1, most)).
+  A split that leaves the counts as they were is allowed (the original's OK does the same). The
+  group has no protected stack. `state/manage.rs`: `manage_army(part, player, command, group:
+  Option<&mut Vec<ArmyStack>>)` finds the heroes (the player's on the map: `NotYourHero`) and the
+  group (`NoGroup` when none is given), plans and writes; `split_range` (the query, `None` when no
+  split is possible); `set_formation`, `set_tactics` (ADV-ARM-006, any number of times). No
+  events: the game tells the owner in T51.
+- **The tactics flag**: `HeroOnMap::tactics`, true at the build (the original's 2), in the hash
+  after the formation (adventure state hash v11) and `OwnHeroView::tactics`.
+- **The meeting's visit** (GAM-MET-001): `check_step` and `passage` treat every other hero alike
+  (another player's a battle, an own one a meeting, from a stop; a flight passes both), and the
+  walking query's occupancy is one bit (the own-hero block gone); `move_hero` reports
+  `AdventureOutcome::meeting` (`Meeting { visitor, visited }`). The game ignores it until T51.
+- **The join without room**: `join` reports an accepted group that finds no room as
+  `AdventureOutcome::no_room` (`NoRoom { hero, creature, count }`), its treasure given and the
+  monster removed. **Moved to T51** (an agent's call, told in the summary): dropping the offer's
+  `has_room` skip, so that no build between the two loses a group the game cannot hold yet
+  (`ADV-STUB-2` updated).
+- **Rules and ledger:** ADV-ARM-001 to -007 and GAM-MET-001 written (ADV-ARM-002, -003, -004,
+  -006 `verified` by batch E6's E6-3, E6-4, E6-2, E6-6; GAM-MET-001 `implemented`, its decision in
+  T51); ADV-MON-007, -008 and GAM-BAT-006 amended; ADV-QUIRK-19 (A-15, exploit-fix) and -20 (A-16,
+  the original's bounds, no flag) in the ledger; `h3m.md`'s import: a count kept whole.
+- **Tests:** `army/tests.rs` (the plan within one army, between two, with the group, the split's
+  range, the errors, the state's command and query, the formation and flag; the property
+  `commands_keep_the_armies_whole`: random commands keep every invariant and each creature's
+  total, and a move that is no merge undone by the move back restores both armies); the room and
+  the cap in the join's and the raise's tests; the meeting in the walk's, the flight's and the
+  query's tests and properties; `h3-map`'s step property counts an own hero's visit.
+- **Replays:** the ten re-recorded with their options, their commands unchanged (no game of the
+  duel meets an own hero: each player's two heroes start on different levels); every hash moved.
+- **Found and fixed:** the epic held decision 112's block five times (T49b's edit had put it
+  before every increment's task list); the four extra copies removed.

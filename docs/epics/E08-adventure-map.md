@@ -81,10 +81,6 @@ Refined with the user on 2026-10-12 (T10c; ADV-Q9). Built like increment 1: comm
 
 **Exit criteria (increment 2):** the ADR amendments accepted; full verify green in CI with the adventure logic crates at 100 %; the property tests hold with objects: atomicity, legality consistency (pending decisions included), ownership isolation (treasuries, and the streams if a command draws), conservation (an army changes by no accepted command of increment 2; a treasury only by a visit's rule), observation hygiene (typed objects, treasuries), clone equivalence, determinism; golden replays on a duel map with objects in the determinism matrix; the benchmarks re-baselined; every new `ADV-*`/`GAM-*` rule `implemented` with sources; batch 2 staged and scored; the lane HANDOFF, the epic log and `QUEUE.md` current.
 
-### Decisions at T49b (2026-10-24, user)
-
-112. **T49b whole, with the import's Titan's book** (the user's choices, `AskUserQuestion`, at T49b's start): the four rules in one task (not chosen: T49b1 moves and the book, T49b2 combinations and Scholar); the import equips each entry, so an equipped Titan's Thunder adds a Spell Book at load, as the original's loader through `hero_equip_artifact` (0x4D8D63, 0x4E2A64), map import v10, in the same pull request (not chosen, recommended: queued for T50's start).
-
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T11a Survey.** Done (2026-10-12): `docs/rules/surveys/E08-objects.md` from a code reading and VCMI (the wiki not reached): visit modes per class, all draws at setup, D-5 to D-7, A-5, starting resources as VCMI (log).
@@ -188,10 +184,6 @@ The drafts were accepted with these changes (applied to them in #181); the cut o
 47. **The seam** (confirmed before building; the user's choice of three): **T22b** the scoring of batch E3, E3-9's code reading with its quirk and increment 3's closure, in one pull request; **increment 4's refinement** next session (T23). Docs only: the batch becomes the rules' `observation` source, no test pins its rows (the user's choice of two). Not chosen: the scoring with the reading but the closure later, or the scoring alone. **At the reading** (the user): the status row in `docs/experiments/README.md` in this pull request (`cross-lane`). *Built:* the map's formation reaches no hero (`ADV-QUIRK-8`, fixed as decision 46 has it); the battle uses tight only for a human player's side (0x463679), noted for E10 and increment 4.
 
 **Exit criteria (increment 3)**, fixed with the tasks at T17's checkpoint; as increment 2's with battles: the ADR amendments accepted; the full verify green (CI or, while it cannot run, the full local verify) with the logic crates at 100 %; the property tests hold with battles (atomicity, legality consistency with a battle open, ownership isolation, conservation: an army changes only by a battle's outcome, observation hygiene, clone equivalence, determinism); golden replays with battles in the determinism matrix; the benchmarks re-baselined; every new `ADV-*`/`GAM-*` rule `implemented` with sources; the increment's batch staged and scored; the lane HANDOFF, the epic log and `QUEUE.md` current.
-
-### Decisions at T49b (2026-10-24, user)
-
-112. **T49b whole, with the import's Titan's book** (the user's choices, `AskUserQuestion`, at T49b's start): the four rules in one task (not chosen: T49b1 moves and the book, T49b2 combinations and Scholar); the import equips each entry, so an equipped Titan's Thunder adds a Spell Book at load, as the original's loader through `hero_equip_artifact` (0x4D8D63, 0x4E2A64), map import v10, in the same pull request (not chosen, recommended: queued for T50's start).
 
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
@@ -352,10 +344,6 @@ Refined with the user on 2026-10-20 (T23; ADV-Q14). Built like increments 1 to 3
     or the engine's attack kept). **D-17**: **one conclusive hero settles it** (HER-LVL-003
     `verified`; not chosen: more E4a runs, or a targeted batch later).
 
-### Decisions at T49b (2026-10-24, user)
-
-112. **T49b whole, with the import's Titan's book** (the user's choices, `AskUserQuestion`, at T49b's start): the four rules in one task (not chosen: T49b1 moves and the book, T49b2 combinations and Scholar); the import equips each entry, so an equipped Titan's Thunder adds a Spell Book at load, as the original's loader through `hero_equip_artifact` (0x4D8D63, 0x4E2A64), map import v10, in the same pull request (not chosen, recommended: queued for T50's start).
-
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T23 Increment 4 refined.** Done (2026-10-20, `adventure/e08-t23`; decisions 48–50): progression only, the first round queued (T24a, T24b), the inbox sorted; docs only (log).
@@ -479,10 +467,6 @@ Refined with the user on 2026-10-21 (T33; ADV-Q19). Built like increments 1 to 4
     `--with-original-data`; T42b the fixtures with the env, the replays and the benchmarks;
     recommended).
 
-### Decisions at T49b (2026-10-24, user)
-
-112. **T49b whole, with the import's Titan's book** (the user's choices, `AskUserQuestion`, at T49b's start): the four rules in one task (not chosen: T49b1 moves and the book, T49b2 combinations and Scholar); the import equips each entry, so an equipped Titan's Thunder adds a Spell Book at load, as the original's loader through `hero_equip_artifact` (0x4D8D63, 0x4E2A64), map import v10, in the same pull request (not chosen, recommended: queued for T50's start).
-
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T33 Increment 5 refined** (with increment 4's closure). Done (2026-10-21, `adventure/e08-t33`; decisions 71, 72): movement and scouting, the first round queued (T34a, T34b).
@@ -551,6 +535,12 @@ Refined with the user on 2026-10-23 (T43; ADV-Q23). Built like increments 1 to 5
 
 112. **T49b whole, with the import's Titan's book** (the user's choices, `AskUserQuestion`, at T49b's start): the four rules in one task (not chosen: T49b1 moves and the book, T49b2 combinations and Scholar); the import equips each entry, so an equipped Titan's Thunder adds a Spell Book at load, as the original's loader through `hero_equip_artifact` (0x4D8D63, 0x4E2A64), map import v10, in the same pull request (not chosen, recommended: queued for T50's start).
 
+### Decisions at T50 (2026-10-24, user)
+
+113. **T50 whole** (the user's choice of three, `AskUserQuestion`, at T50's start): the army commands with the split's range and the cap, the formation and the tactics flag, the meeting's visit and the join without room's report in one session and one pull request (`adventure/e08-t50`), after the cap's `shared/` pull request. Not chosen: two parts (recommended: T50a the army commands and the cap, T50b the flag, the visit and the report), three parts.
+114. **A stack's count cap of 1 000 000** (the user's choice of four, closing decision 109's open point): a ruleset parameter of the adventure part (`max_stack_count`, at least `MAX_MONSTER_COUNT`); a merge past it refused, a split's count within it, setups above it invalid, later rules that add creatures keep it; ADR-0016 point 3 amended (`shared/e08-t50-cap`). Not chosen: 65 535 (the map's width), 100 000, 2 147 483 647 (the original's 32-bit counts).
+115. **A join at the cap: a free slot, else the army dialog** (the user's choice of three): a group (a monster's joining, a raise's) goes onto the army's first stack of its creature that takes it whole within the cap, else into a free slot, else finds no room (the join's no room is the army dialog, nothing lost silently). Not chosen: straight to no room when the stack cannot take it, the stack filled to the cap and the rest lost.
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T43 Increment 6 refined** (with increment 5's closure). Done (2026-10-23, `adventure/e08-t43`; decisions 90, 91): army and hero management, the first round queued (T44a, T44b).
@@ -564,6 +554,7 @@ Refined with the user on 2026-10-23 (T43; ADV-Q23). Built like increments 1 to 5
 - **T48 Batch E6 scored.** Done (2026-10-23, `adventure/e08-t48`, `cross-lane`): survey `E08-army.md` §13: every row as the code reading, E6-4 (A-16, D-27), E6-8 (§5.3, D-28) and E6-10 conclusive against VCMI; no question; HER-ART-001 `verified` (the locks); T49 cut in two (decision 111) and queued. **Round 2 closed.**
 - **T49a The artifact positions.** Done whole (2026-10-24, `adventure/e08-t49a`, `cross-lane`; the user's choice at its start): `HeroDetails.worn` by position (`h3_heroes::positions`, `Position`, `first_position`, `wearing`), the validation by position with the locks per slot, HER-CHG-002's first position, the capture and a lost machine's artifact in position order, `ArtifactPlace::Worn(Position)`, `HeroChange::PlaceArtifact`; the setup's artifacts by position, game state hash v12, map import v9 (the map's entries at the content's positions where taken, as the original's loader and VCMI's); the battle lane's `h3-pack-battle` tests and the AI lane's `h3-sim` encounter on `wearing` (the client lane's `h3-view` needed nothing); the fixture maps regenerated, the ten replays re-recorded, their commands unchanged.
 - **T49b Moves, combinations, Titan's book, Scholar.** Done whole (2026-10-24, `adventure/e08-t49b`; decision 112): `h3_heroes::{check_move, move_changes}` (HER-ART-005), `check_assemble`, `assemble_changes`, `check_disassemble`, `disassemble_changes` (HER-ART-006), `equip` and every worn change equipped (HER-ART-007), `meeting_spells` (HER-SPL-007), all four `verified` by batch E6's rows; map import v10 (Titan's book at load; no shipped map changes; the ten replays' headers only). **Round 3 closed.**
+- **T50 The adventure's army management, the meeting's visit, the join without room.** Done whole (2026-10-24, `shared/e08-t50-cap` #455 and `adventure/e08-t50`; decisions 113–115): `h3_adventure::{ArmyCommand, ArmyRef, ArmySlot, split_range}`, `AdventureState::{manage_army, split_range, set_formation, set_tactics}` (ADV-ARM-001 to -006), a stack's most creatures (ADV-ARM-007, `max_stack_count` 1 000 000; ADR-0016 point 3), a step toward an own hero meets it (GAM-MET-001, `AdventureOutcome::meeting`), an accepted join without room reported (`no_room`; the offer still skipped until T51); A-15 and A-16 in the ledger (ADV-QUIRK-19, -20); adventure state hash v11, ruleset part v11; the ten replays re-recorded, their commands unchanged.
 
 ## Later increments (sketch)
 

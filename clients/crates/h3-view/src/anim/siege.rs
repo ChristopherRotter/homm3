@@ -1,19 +1,24 @@
-//! A siege's shots over time (E17 M4 T2b; `docs/epics/E17-design.md` §10.2): a turret's shot
-//! (`turret_shot` 0x465AD0) on the turret's own record, and a wall shot (`wall_shot_animate`
-//! 0x445FD0): the shooter's frames, the rock's arc (`catapult_rock_flight` 0x467A00), the
-//! landing's explosion with the part's new state at its frame 5, the whole redraw. The original's
-//! slips (CLT-Q19 (1) to (5)) under [`Bugs::Original`], fixed in what the client draws.
+//! A siege over time (`docs/epics/E17-design.md` §10.2): a turret's shot (`turret_shot`
+//! 0x465AD0) on the turret's own record, and a wall shot (`wall_shot_animate` 0x445FD0): the
+//! shooter's frames, the rock's arc (`catapult_rock_flight` 0x467A00), the landing's explosion
+//! with the part's new state at its frame 5, the whole redraw (E17 M4 T2b); the drawbridge
+//! (`gate_open` 0x4671C0, `gate_close` 0x4672E0) and what a walk's hexes bring, a Land Mine's
+//! blast and the moat's damage (E17 M4 T2c-1). The original's slips (CLT-Q19 (1) to (5)) under
+//! [`Bugs::Original`], fixed in what the client draws.
 
 use alloc::string::String;
 use alloc::vec::Vec;
 
 use h3_render::Bugs;
 
+use h3_protocol::wire::Event;
+
 use super::{
-    Flight, Key, Live, Player, STANDING, STRUCK, Sound, TAN_25, TAN_SCALE, TICK, isqrt, launch,
+    Flight, Key, LAND_MINE, Live, MINE_BLAST, Player, STANDING, STRUCK, Sound, TAN_25, TAN_SCALE,
+    TICK, isqrt, launch,
 };
 use crate::battle_log::Logged;
-use crate::siege::{GATE_DESTROYED, Walls};
+use crate::siege::{GATE_CLOSED, GATE_DESTROYED, GATE_MOVING, GATE_OPEN, Walls};
 
 /// What a siege's shots draw besides the creatures (E17 M4 T2b): the turrets' points and the
 /// explosions a wall shot lands in.
@@ -52,6 +57,23 @@ pub const TARGET_POINTS: [[i32; 2]; 8] = [
     [630, 506],
     [762, 212],
 ];
+
+/// The drawbridge's rectangle (`drawbridge_rect` 0x694F30, set by 0x462670: x 365 to 542, y 211
+/// to 380, bounds inclusive) as left, top, right and bottom, exclusive: `gate_open` and
+/// `gate_close` make it the dirty rectangle and show it alone (E17 M4 T2c-1).
+pub const DRAWBRIDGE_RECT: [i32; 4] = [365, 211, 543, 381];
+
+/// A span in which the screen shows the drawbridge's rectangle alone (E17 M4 T2c-1): from its
+/// first redraw's showing to the next frame's, the rest of the screen as before (the original's,
+/// CLT-Q23: a walker's box hidden at its walk's start shows outside the rectangle until its first
+/// frame).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BridgeKey {
+    /// When the first redraw shows.
+    pub from: u32,
+    /// When the next frame shows the battle beyond the rectangle.
+    pub until: u32,
+}
 
 /// The wall-shot targets' parts (`wall_shot_targets`' +0x8): target `t`'s part is entry `t`.
 const TARGET_PARTS: [usize; 8] = [5, 6, 8, 9, 10, 12, 13, 14];
@@ -153,6 +175,25 @@ pub struct Blast {
     pub frames: Vec<(u32, Walls)>,
 }
 
+/// What a walk's hexes bring in a siege (E17 M4 T2c-1): the step before which the closed gate
+/// opens (its index in the path's steps), and the events of the hexes it enters (a mine's blast,
+/// the moat's damage) by the path's index of the hex entered.
+#[derive(Debug, Clone, Default)]
+pub(super) struct Entered {
+    pub(super) gate: Option<usize>,
+    pub(super) after: Vec<(usize, Vec<Event>)>,
+}
+
+impl Entered {
+    /// The events entering the path's hex `k` brings.
+    pub(super) fn at(&self, k: usize) -> Option<&[Event]> {
+        self.after
+            .iter()
+            .find(|(at, _)| *at == k)
+            .map(|(_, events)| events.as_slice())
+    }
+}
+
 /// What a wall shot leaves the walls: the picture states and each target's hit points.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct Siege {
@@ -184,6 +225,138 @@ impl Siege {
 }
 
 impl Player<'_> {
+    /// The drawbridge moves (`gate_open` 0x4671C0, `gate_close` 0x4672E0; E17 M4 T2c-1): its
+    /// sound, then the gate's states closed, moving and open (or back), each in a redraw through
+    /// the deadline at trunc(100 F) that draws the whole battle and shows [`DRAWBRIDGE_RECT`]
+    /// alone (CLT-Q23: in the original's profile; with the slip fixed the whole battle); nothing
+    /// without a gate.
+    pub(super) fn drawbridge(&mut self, open: bool) {
+        let Some(mut siege) = self.siege.filter(|s| s.walls.gate != GATE_DESTROYED) else {
+            return;
+        };
+        self.cue(0, Sound::Drawbridge, false);
+        let tick = self.speed.scale(TICK);
+        let states = if open {
+            [GATE_CLOSED, GATE_MOVING, GATE_OPEN]
+        } else {
+            [GATE_OPEN, GATE_MOVING, GATE_CLOSED]
+        };
+        let mut first = None;
+        for gate in states {
+            siege.walls.gate = gate;
+            let drawn = self.clock.now;
+            let shown = self.clock.show(tick);
+            self.flush(drawn, shown);
+            first = first.or(Some(shown));
+            self.wall_keys.push(WallKey {
+                drawn,
+                shown,
+                walls: siege.walls,
+            });
+        }
+        self.siege = Some(siege);
+        if self.stage.bugs == Bugs::Original {
+            self.bridge_from = first;
+        }
+    }
+
+    /// A walk stops before its step onto the closed gate's hexes (`stack_walk` 0x4421BC to
+    /// 0x442225; E17 M4 T2c-1): its end sound, the move sound stopped, group 21's frames and one
+    /// of group 2 through the deadline on `hex`, then standing in a whole redraw shown at once.
+    pub(super) fn halt(&mut self, stack: u8, live: &mut Live, hex: u8) {
+        let g = self.stage.groups;
+        let tick = self.speed.scale(TICK);
+        self.cue(stack, Sound::End, false);
+        self.cue(stack, Sound::Move, true);
+        for f in 0..live.look.count(g.move_end) {
+            self.frame(&[(stack, Self::posed(live, g.move_end, f, hex))], tick);
+        }
+        live.hex = hex;
+        let standing = self.standing(live, hex);
+        self.frame(&[(stack, standing)], tick);
+        self.stacks.insert(stack, live.clone());
+        self.pending.push((stack, standing));
+        self.redraw();
+    }
+
+    /// Whether `revealed` (an object's spell) and the event after it are a Land Mine going off
+    /// under `stack` (the engine's `explode`: revealed, triggered, its damage, removed).
+    pub(super) fn mine_under(&self, stack: u8, revealed: u16, next: Option<&Event>) -> bool {
+        let mine = self
+            .stage
+            .casts
+            .spells
+            .get(&revealed)
+            .is_some_and(|s| s.original == LAND_MINE);
+        mine && matches!(next, Some(&Event::ObstacleTriggered { stack: s, .. }) if s == stack)
+    }
+
+    /// What a hex the walker `live` (`stack`) entered brings (`enter_hex` 0x46A570; E17 M4
+    /// T2c-1), `walking` while its walk goes on (the move sound stopped first and, if it lives,
+    /// started again): the moat's damage ([`Self::moat`]) or a Land Mine's blast
+    /// (`land_mine_trigger` 0x59FB40): the line named by the spell, the mine gone without its
+    /// vanish animation (`remove_battle_object` 0x466B30), `landkill.wav`, animation
+    /// [`MINE_BLAST`] over the stack with its reaction (`strike_animation(57, 1)`).
+    pub(super) fn entered(&mut self, (stack, live): (u8, &Live), events: &[Event], walking: bool) {
+        for e in events {
+            match *e {
+                Event::MoatDamage {
+                    ref damage, kills, ..
+                } => self.moat(stack, (damage.0, kills)),
+                Event::ObstacleTriggered { spell, .. } => {
+                    let (damage, kills) = events
+                        .iter()
+                        .find_map(|d| match *d {
+                            Event::SpellDamage {
+                                target,
+                                ref damage,
+                                kills,
+                                ..
+                            } if target == stack => Some((damage.0, kills)),
+                            _ => None,
+                        })
+                        .unwrap_or_default();
+                    if walking {
+                        self.cue(stack, Sound::Move, true);
+                    }
+                    let line = Logged::SpellDamage {
+                        spell,
+                        hit: (stack, damage, kills),
+                    };
+                    self.log.push((self.clock.now, line));
+                    let removed = events.iter().filter_map(|g| match *g {
+                        Event::ObstacleRemoved { ref hexes, .. } => hexes.iter().max().copied(),
+                        _ => None,
+                    });
+                    for anchor in removed {
+                        if self.placed.remove(&anchor).is_some() {
+                            self.pending_objects.push((anchor, None));
+                        }
+                    }
+                    self.cue(stack, Sound::Mine, false);
+                    self.marked((stack, live), kills, Some(MINE_BLAST));
+                }
+                _ => {}
+            }
+        }
+        if walking && self.stacks.contains_key(&stack) {
+            self.cue(stack, Sound::Move, false);
+        }
+    }
+
+    /// The moat's damage on stack `s` (`moat_damage` 0x469E50; E17 M4 T2c-1), entering it or
+    /// acting where it stands in it (the re-entry, `reenter_own_hexes` 0x441F70): the line named
+    /// by the town's moat, the reaction without a striker (`strike_animation(-1, 1)`). The moat
+    /// stops a walk (BAT-SIE-004), so its move sound has stopped already (the original stops it
+    /// again, 0x469E96).
+    pub(super) fn moat(&mut self, s: u8, (damage, kills): (u64, u32)) {
+        let line = Logged::Moat {
+            hit: (s, damage, kills),
+        };
+        self.log.push((self.clock.now, line));
+        self.react_alone(&[(s, kills)], [STANDING, STRUCK]);
+    }
+
     /// A turret's frame `pose` of `record` drawn now, shown at the deadline (a redraw of its
     /// rectangle through the deadline, `time` on), or never (`shown` false: its rectangle no
     /// longer dirty, CLT-Q19 (5)).

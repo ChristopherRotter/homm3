@@ -86,7 +86,9 @@
 //! on the map's book entry) re-recorded all ten with their options, their commands unchanged:
 //! every checkpoint moved. E08 T49b (map import v10: an equipped Titan's Thunder adds a Spell
 //! Book, which the duel's heroes do not wear) moved only the header's import version; every hash
-//! stayed.
+//! stayed. E08 T50 (adventure state hash v11: the tactics flag; adventure ruleset part v11: a
+//! stack's most creatures) re-recorded all ten with their options, their commands unchanged:
+//! every hash moved.
 
 use std::path::PathBuf;
 

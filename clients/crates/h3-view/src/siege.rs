@@ -20,6 +20,10 @@ use crate::tables::{SIEGE_PARTS, Tables, Town};
 const TARGET_PARTS: [usize; 8] = [5, 6, 8, 9, 10, 12, 13, 14];
 /// The gate's wall-shot target.
 const GATE_TARGET: usize = 3;
+/// The wall hexes of the targets that open one when destroyed, by target (BAT-SIE-012: the upper
+/// wall's 29, the mid-upper wall's 78, the gate's 96, the mid-lower wall's 130, the lower wall's
+/// 182).
+const TARGET_WALLS: [(usize, u8); 5] = [(1, 29), (2, 78), (3, 96), (4, 130), (5, 182)];
 /// The covers, the part each covers and its turret ([`Turret`]): the keep's, the lower tower's,
 /// the upper tower's (0x494E0B to 0x494E33).
 const COVERS: [(usize, usize, Turret); 3] = [
@@ -44,6 +48,8 @@ const WHOLE_STATE: u8 = 2;
 pub const GATE_DESTROYED: u8 = 0;
 /// The gate open (its rope drawn).
 pub const GATE_OPEN: u8 = 1;
+/// The drawbridge moving, between open and closed (E17 M4 T2c-1: `gate_open` 0x4671C0).
+pub const GATE_MOVING: u8 = 2;
 /// The gate closed (no drawbridge: the arch over the background).
 pub const GATE_CLOSED: u8 = 3;
 /// The hex whose parts the redraw draws before the rows (the upper tower's), with the rows'
@@ -113,7 +119,7 @@ impl Turret {
 pub struct Walls {
     /// Each part's picture state, by index.
     pub parts: [u8; SIEGE_PARTS],
-    /// The gate's: [`GATE_DESTROYED`], [`GATE_OPEN`], 2 moving, [`GATE_CLOSED`].
+    /// The gate's: [`GATE_DESTROYED`], [`GATE_OPEN`], [`GATE_MOVING`], [`GATE_CLOSED`].
     pub gate: u8,
 }
 
@@ -138,6 +144,22 @@ impl Walls {
             (true, false) => GATE_CLOSED,
         };
         Self { parts, gate }
+    }
+
+    /// The hexes of `siege`'s walls a count box cannot take (the hex records' blocked flag,
+    /// `draw_battle_stack` 0x43E629; E17 M4 T2c-1, `moat`: the Champions' box beside the wall at
+    /// 78): the record's wall hexes but those of the targets these states show destroyed.
+    pub fn blocking<'a>(&self, siege: &'a Siege) -> impl Iterator<Item = u8> + 'a {
+        let open: Vec<u8> = TARGET_WALLS
+            .iter()
+            .filter(|(t, _)| self.parts[TARGET_PARTS[*t]] == 0)
+            .map(|&(_, hex)| hex)
+            .collect();
+        siege
+            .walls
+            .iter()
+            .copied()
+            .filter(move |h| !open.contains(h))
     }
 }
 

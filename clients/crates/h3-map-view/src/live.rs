@@ -218,9 +218,13 @@ impl Explored {
 /// The moment a still shows (design §1.6).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Moment {
-    /// The palette cycles' steps since the DEFs were loaded (k: one step rotates every animated
-    /// terrain's and river's ranges by one).
+    /// The palette cycles' steps since the terrains' DEFs were loaded (k: one step rotates every
+    /// animated terrain's and river's ranges by one).
     pub cycles: u32,
+    /// The rivers' palette steps: the terrains' on a clock of the viewer's; in the original one
+    /// fewer when a tick came between the terrains' load and the rivers' (the load's progress
+    /// bar runs the tick, design §1.6; E24 M1 T6a), for the whole game.
+    pub river_cycles: u32,
     /// The objects' frame steps at the draw (the manager's +0x100): an object's frame is its
     /// phase plus this, modulo its group's frames; a hero's this alone.
     pub frames: u32,
@@ -233,8 +237,10 @@ impl Moment {
     /// at a time is at most this; a comparison reads the original's from memory (M1 T3b2).
     #[must_use]
     pub fn at(ms: u32, cycle_ms: u32, frame_ms: u32) -> Self {
+        let cycles = ms.checked_div(cycle_ms).unwrap_or(0);
         Self {
-            cycles: ms.checked_div(cycle_ms).unwrap_or(0),
+            cycles,
+            river_cycles: cycles,
             frames: ms.checked_div(frame_ms).unwrap_or(0),
         }
     }
