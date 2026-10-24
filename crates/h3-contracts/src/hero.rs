@@ -45,6 +45,10 @@ pub struct BattleHero {
     pub effects: Vec<BattleEffect>,
     /// Spell book, mana and schools (E04b; carried and ignored before).
     pub magic: BattleMagic,
+    /// The hero's sex where its map gave it one (an AB or SoD map may for a placed hero; the
+    /// original picks the hero's battle picture by it), `None`: the hero type's own. For viewers
+    /// only (CLT-Q6): no battle rule reads it. Public.
+    pub sex: Option<HeroSex>,
 }
 
 impl BattleHero {
@@ -77,8 +81,18 @@ impl BattleHero {
                 max_mana: 0,
                 eagle_eye: None,
             },
+            sex: None,
         }
     }
+}
+
+/// A hero's sex, as a map may give it (CLT-Q6; the map's code 0 male, 1 female).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum HeroSex {
+    /// Male.
+    Male,
+    /// Female.
+    Female,
 }
 
 /// A rate of the hero's as it crosses the seam (OPEN-QUESTIONS Q45): basis points, and the

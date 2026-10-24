@@ -28,7 +28,7 @@ use alloc::vec::Vec;
 
 pub use hero::{
     BallistaControl, BattleEffect, BattleHero, BattleMagic, CatapultControl, DamageBonuses,
-    EagleEye, FactionGroup, MAX_BATTLE_EFFECTS, MachineControl, Rate, StatOp, TentControl,
+    EagleEye, FactionGroup, HeroSex, MAX_BATTLE_EFFECTS, MachineControl, Rate, StatOp, TentControl,
 };
 pub use ids::{HeroId, PlayerId};
 pub use siege::{FortLevel, Moat, Siege};
@@ -169,6 +169,18 @@ pub struct BattleSetup {
     /// damage spells at the mastery its own tile gives (ADR-0027 point 14, BAT-Q56); read only
     /// for the computer's choices. Public.
     pub attacker_ground: Option<ContentKey>,
+    /// The battlefield picture's variant, for viewers (CLT-Q4; no battle rule reads it): on a
+    /// terrain with several pictures (dirt, grass, snow) the original picks one by what stands
+    /// around the battle on the adventure map (0x41ADB0: 0 where dead vegetation is the most, 1
+    /// where mountains are, 2 for anything else, an empty surrounding included). `None`: not
+    /// known (a viewer takes 2). Derived before the seam, as the battlefield is. Public.
+    pub background: Option<u8>,
+    /// Each side's player colour, for viewers (indexed by [`BattleSide::index`]; CLT-Q6; no
+    /// battle rule reads it): the original's colour index, 0 red to 7 pink, by which it draws a
+    /// hero's flag (`battle_load_heroes` 0x463370). `None`: a side without a player (a
+    /// monster's, a neutral town's) or not known (a viewer takes red for the attacker, blue for
+    /// the defender). Public.
+    pub colours: [Option<u8>; 2],
 }
 
 /// What a side's hero would lose by a retreat and whether it could be hired again, as the
@@ -354,6 +366,10 @@ mod tests {
         assert_eq!(hero.surrender_discount_bp, 0);
         assert!(hero.effects.is_empty());
         assert_eq!(hero.magic, BattleMagic::default());
+        assert_eq!(hero.sex, None);
+        // The viewers' facts default to "not known" (CLT-Q4, CLT-Q6).
+        let setup = BattleSetup::default();
+        assert_eq!((setup.background, setup.colours), (None, [None, None]));
     }
 
     #[test]
