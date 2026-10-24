@@ -1,10 +1,11 @@
 # E17 M4 T2c-1: the recorded sequence `mine` (sequences.toml; design §10.2, "A Tower's mine"): a
 # siege of a Tower town with a Citadel (the keep; under SoD rules its moat hexes hold the
 # defender's hidden Land Mines instead of a moat, BAT-SIE-007), both heroes human (hot seat)
-# commanding their machines. On the attacker's turn its Titans walk over a mine: the blast
-# (animation 57) and their reaction mid-walk, the walk going on. The attacker's screen never shows
-# the mine: the spectator's record (on the keep's turn the original shows the defender's view,
-# its mines among it).
+# commanding their machines. The Catapult breaks the mid-upper wall; on the attacker's turn its
+# Titans walk through the breach over a mine: the blast (animation 57) and their reaction
+# mid-walk, the walk going on. The attacker's screen never shows the mine: the spectator's
+# record (as the defender's turn starts the original shows the defender's view, its mines among
+# it).
 
 [scenario]
 id = "sequence-mine"

@@ -4,20 +4,7 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024; the battle client since the split of 2026-10-23, the adventure map client being the map-client lane's E24). M3 (fidelity) done 2026-10-23 with T9d; M4 (sieges) refined at T0 (2026-10-23, with the user); T1a, T1b, T2a and T2b done (2026-10-23); T2c-1, T2c-2 and T3 below, in order. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
-
-### E17 M4 T2c-1 — the gate, the moat and a mine recorded
-
-T2c cut in two by the user (2026-10-24): T2c-1 the walk's siege events, T2c-2 the rest.
-
-- **Scope:** `GateOpened` before the walk's step onto 94 to 96 (the stop and the restart around
-  it) and `GateClosed` after the walk, the moving drawbridge (state 2); `MoatDamage` after the
-  walk's last step and on re-entry; a Tower's mine (`ObstacleTriggered`, animation 57) mid-walk;
-  the moat's strip over a stack and its box again. The sequences (§10.2): `gate`,
-  `gate-fortress`, `moat`, `mine`.
-- **Acceptance:** the sequences as recorded (the timeline check), their frames exact or each
-  difference listed; `drawn` the same for every earlier item; `clients/scripts/check.sh` green.
-- **Depends on:** T2b (done). **Status:** in progress (`client/e17-m4-t2c1`).
+Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024; the battle client since the split of 2026-10-23, the adventure map client being the map-client lane's E24). M3 (fidelity) done 2026-10-23 with T9d; M4 (sieges) refined at T0 (2026-10-23, with the user); T1a, T1b, T2a and T2b done (2026-10-23), T2c-1 (2026-10-24, T2c cut in two by the user); T2c-2 and T3 below, in order. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
 
 ### E17 M4 T2c-2 — Earthquake, the shots and the mouse recorded
 
@@ -26,11 +13,12 @@ T2c cut in two by the user (2026-10-24): T2c-1 the walk's siege events, T2c-2 th
   the keep's last kill and the end tune at a town (`Siege` in the record); the siege's
   rectangles 0xFE and 0xFF (a siege only; the original's for the comparisons, CLT-Q21), the
   kinds 16 and 22 and their status lines in the mouse's model. The sequences (§10.2): `quake`,
-  `through`, `defended`, `aim`. With the kind 16's hint drawn, T2b's sequences lose their ` log`
-  masks (`Attack Upper Wall` while the Catapult or a Cyclops aims): their frames' counts recorded
+  `through`, `defended`, `aim`. With the kind 16's hint drawn, T2b's and T2c-1's sequences lose
+  their ` log` masks (`Attack Upper Wall` while the Catapult or a Cyclops aims): their frames' counts recorded
   again (`frames --only <id> --reuse` after a capture as recorded; design §10.2 "Recorded").
-- **Acceptance:** as T2c-1's.
-- **Depends on:** T2c-1. **Status:** waiting for it.
+- **Acceptance:** the sequences as recorded (the timeline check), their frames exact or each
+  difference listed; `drawn` the same for every earlier item; `clients/scripts/check.sh` green.
+- **Depends on:** T2c-1 (done). **Status:** ready.
 
 ### E17 M4 T3 — M4's closure
 
@@ -114,7 +102,8 @@ Other lanes add entries here. The client lane turns each into a task, or moves i
   variants 0 and 1. NOTES, "Battlefields and boats".
 - Sieges (the battle lane, 2026-10-14 to 16): the turrets as stacks (drawn as the town's
   shooters since T1b), the Catapult, the gate opening before the step. NOTES, "Sieges"; M4 T2b
-  and T2c take them (read at T2a, design §10.2).
+  and T2c-1 took the shots, the gate, the moat and the mines; T2c-2 takes Earthquake and the
+  mouse (read at T2a, design §10.2).
 - Later milestones: graphics options (the user, at M1), an HD layout's origin and viewport.
   NOTES, "Options and layouts". (The adventure map's object draw order, research item 9, went to
   the map-client lane at the split, 2026-10-23.)

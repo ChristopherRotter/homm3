@@ -3380,3 +3380,11 @@ it), `moat` and `mine` (below). Findings:
   left are more than its frames (`strike_animation` 0x468EBA, 0x468FA1): the Titans' 7 frames of
   group 3 under the animation's 17 stand at iteration 9 (max(R, L − 1 − R)), not 7; no earlier
   recording had an animation longer than 2R + 1 over a struck stack (`thunder`'s 12 over 9 frames).
+- **Differences listed** (the frame check's `frames` files): every sequence's Catapult's first
+  frame leaves its standing frame's outline top row (11 pixels, T2b's) with the status line's
+  ` log` hint (T2c-2's); in `mine` the walk's first frames after the blast show the Titans'
+  standing frame under the moving one where the saved screen comes back under the stack's
+  rectangle (11 431: 252 pixels beside 234 counted as artifacts; 11 507: 5; §7.11 (2), not
+  copied), and the last frame (12 799), the Goblins' turn's start, the defender's view in hot
+  seat: its mines on the moat's hexes (4 005 pixels), which a spectator's record lacks (T1b's
+  side to act's view). The rest of each sequence's frames exact.

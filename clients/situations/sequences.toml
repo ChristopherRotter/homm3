@@ -965,7 +965,10 @@ command = [
 # step onto the gate (96), the gate opens (states 3, 2, 1), the walk goes on with a first step,
 # and the gate closes after it (1, 2, 3); the Pikemen defend. Round 2: the Catapult hits the lower
 # wall (hex 182, target 5); the Hobgoblins walk back in, the gate opening before the first step
-# (onto 94) and closing after the walk.
+# (onto 94) and closing after the walk. `seed`: the engine's, whose shots are the forced ones.
+# Frames: the drawbridge's redraws show its rectangle alone, the Hobgoblins' box outside it until
+# their first frame (13 234 to 13 534, CLT-Q23, reproduced); the Catapult's first frames leave
+# their outline's top row (11 pixels, T2b's).
 [[sequence]]
 id = "gate"
 scenario = "seq-gate.toml"
@@ -997,6 +1000,7 @@ command = [
 # onto the outer bridge (94): the gate opens before the step onto 96 and stays open (94 holds a
 # Fortress's gate, `gate_close` 0x4672E0); the Pikemen defend. Round 2: the Catapult hits the
 # lower wall with the gate open; the Hobgoblins step off the bridge (93) and the gate closes.
+# Frames: exact but the Catapult's first frames' outline rows (T2b's).
 [[sequence]]
 id = "gate-fortress"
 scenario = "seq-gate-fortress.toml"
@@ -1028,7 +1032,9 @@ command = [
 # upper wall; the Champions walk until their front enters the moat (77, their position 76; the
 # closed drawbridge's 95 is no hex they may enter): the walk's end, the damage, its line and their
 # reaction, the moat's strip over their front and their box again; the Goblins defend. Round 2: the keep defends, the
-# Catapult hits the lower wall, the Champions wait in the moat: the re-entry's damage.
+# Catapult hits the lower wall, the Champions wait in the moat: the re-entry's damage. Frames:
+# their box beside the wall at 78 as the hex ahead taken (0x43E629); exact but the Catapult's
+# first frames' outline rows (T2b's).
 [[sequence]]
 id = "moat"
 scenario = "seq-moat.toml"
@@ -1059,9 +1065,13 @@ command = [
 
 # E17 M4 T2c-1: a Tower's mine (design §10.2, "A Tower's mine"): a Tower town with a Citadel (the
 # keep commanded; the defender's hidden Land Mines on the moat's hexes). The keep defends, the
-# Catapult hits the upper wall; the Titans walk over a mine: the move sound stopped, the damage
-# and its line, the mine gone, animation 57 over them with their reaction, the walk going on.
-# The spectator's record: the attacker's screen never shows the mine.
+# Catapult destroys the mid-upper wall (2 forced: its hex 78 opens); the Titans walk into the town
+# through the breach, over the mine at 61: the move sound stopped, the damage and its line, the
+# mine gone, animation 57 over them with their reaction (held at its last frame until the
+# iterations left are no more than its frames), the walk going on. The spectator's record: the
+# attacker's screen never shows the mine. Frames: the walk's first frames after the blast
+# show the standing frame under the moving one (252 and 5 pixels, §7.11 (2)); the last, the
+# Goblins' turn, the defender's mines (hot seat's view); the Catapult's outline row (T2b's).
 [[sequence]]
 id = "mine"
 scenario = "seq-mine.toml"
