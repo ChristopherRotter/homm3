@@ -274,7 +274,9 @@ def still(situation_path, out=None, keep=False):
         # shows the step before the one memory holds. The objects in the map's order: their
         # anchors (the viewer checks them against its map's) and phases.
         # Each object's template in memory: a random one's is the copy a new game made (design
-        # §2.7), whose DEF, class and subclass the viewer draws it as.
+        # §2.7), whose DEF, class and subclass the viewer draws it as; a random dwelling's the
+        # dwelling's it became, a town's its picture by its buildings (§2.9). Each object's owner
+        # as the view finds it (T5b1).
         objects, templates = mem.map_objects(), mem.map_templates()
         heroes, boats = mem.map_heroes(vz)
         live = {"view": list(mem.view()) + [mem.view_level()], "cycles": k,
@@ -283,7 +285,7 @@ def still(situation_path, out=None, keep=False):
                 "phases": [o[4] for o in objects],
                 "defs": json.dumps([templates[o[3]][0] for o in objects]),
                 "classes": [list(templates[o[3]][1:]) for o in objects],
-                "heroes": heroes, "boats": boats}
+                "heroes": heroes, "boats": boats, "owners": mem.map_owners()}
         (out / "live.toml").write_text(
             "# The original's live part at the still (h3map.py still).\n"
             + "".join(f"{key} = {value}\n" for key, value in live.items()))

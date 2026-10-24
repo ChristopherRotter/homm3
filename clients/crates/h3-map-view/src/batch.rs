@@ -107,7 +107,7 @@ impl Batch {
     }
 }
 
-/// Every asset `scene` draws, upper-cased.
+/// Every asset `scene` draws, upper-cased (the flag palette when a piece takes an entry of it).
 #[must_use]
 pub fn names(scene: &Scene) -> BTreeSet<String> {
     let mut names = BTreeSet::new();
@@ -119,7 +119,13 @@ pub fn names(scene: &Scene) -> BTreeSet<String> {
                 names.insert(picture.to_ascii_uppercase());
                 names.insert(players.to_ascii_uppercase());
             }
-            Draw::Piece { def, .. } | Draw::Gem { def, .. } => {
+            Draw::Piece { def, flag, .. } => {
+                names.insert(def.to_ascii_uppercase());
+                if flag.is_some() {
+                    names.insert(scene.flags.to_ascii_uppercase());
+                }
+            }
+            Draw::Gem { def, .. } => {
                 names.insert(def.to_ascii_uppercase());
             }
         }

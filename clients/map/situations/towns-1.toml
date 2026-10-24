@@ -1,0 +1,27 @@
+# Towns by their buildings (E24 M1 T5b1; design §2.9): the nine factions with a Fort, a Citadel
+# or a Castle (the fort's picture, 0x677A30), the colours shifted from towns-0's. The eight
+# colours' heroes stand outside the view.
+size = 36
+terrain = "grass"
+heroes = [
+    { at = [30, 30] },
+    { at = [32, 30], owner = 1 },
+    { at = [34, 30], owner = 2 },
+    { at = [30, 32], owner = 3 },
+    { at = [32, 32], owner = 4 },
+    { at = [34, 32], owner = 5 },
+    { at = [30, 34], owner = 6 },
+    { at = [32, 34], owner = 7 },
+]
+towns = [
+    { at = [5, 5], faction = 0, buildings = "fort" },
+    { at = [11, 5], faction = 1, owner = 0, buildings = "citadel" },
+    { at = [17, 5], faction = 2, owner = 1, buildings = "castle" },
+    { at = [5, 11], faction = 3, owner = 2, buildings = "fort" },
+    { at = [11, 11], faction = 4, owner = 3, buildings = "citadel" },
+    { at = [17, 11], faction = 5, owner = 4, buildings = "castle" },
+    { at = [5, 17], faction = 6, owner = 5, buildings = "fort" },
+    { at = [11, 17], faction = 7, owner = 6, buildings = "citadel" },
+    { at = [17, 17], faction = 8, owner = 7, buildings = "castle" },
+]
+view = [0, 0, 0]

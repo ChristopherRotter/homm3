@@ -311,6 +311,56 @@ pub fn template(art: &MapArt, index: usize) -> Option<&TemplateArt> {
         .and_then(|o| art.templates.get(o.template))
 }
 
+/// The class object `index` is drawn as: what a random object became, else its template's (the
+/// view passes switch on the drawn template's class, +0x38: design §2.9).
+#[must_use]
+pub fn class(art: &MapArt, live: &Live, index: usize) -> Option<u32> {
+    let drawn = live.objects.get(index).and_then(|o| o.drawn.as_ref());
+    drawn
+        .map(|d| d.class)
+        .or_else(|| template(art, index).map(|t| t.class))
+}
+
+/// The tile of object `index`'s entrance as the original finds it (object_entrance_tile
+/// 0x4FEC30; design §2.9): its template's first visitable cell on the map, by row from the
+/// anchor's upwards, each row from the anchor's column leftwards.
+#[must_use]
+pub fn entrance(art: &MapArt, index: usize) -> Option<(i32, i32)> {
+    let (object, template) = art.objects.get(index).zip(template(art, index))?;
+    let side = i32::try_from(art.size).unwrap_or(i32::MAX);
+    let on_map = |v: i32| (0..side).contains(&v);
+    (0..CELLS.1)
+        .flat_map(|dy| (0..CELLS.0).map(move |dx| (dx, dy)))
+        .map(|(dx, dy)| {
+            let at = (
+                i32::from(object.anchor.x) - i32::from(dx),
+                i32::from(object.anchor.y) - i32::from(dy),
+            );
+            (at, template.visitable(dx, dy))
+        })
+        .find(|&((x, y), visitable)| visitable && on_map(x) && on_map(y))
+        .map(|(at, _)| at)
+}
+
+/// The owner whose colour object `index`'s flag pixels take (passes 4 and 7: tile_object_owner
+/// 0x40FD20 of the tile object_entrance_tile 0x4FEC30 gives; design §2.9): its own. The original
+/// takes it from the object on its entrance tile, and from tile (0, 0) of the surface for an
+/// object without an entrance on the map (MCL-Q4): with its bugs, that tile's object's owner (the
+/// last object whose entrance it is), none without one.
+#[must_use]
+pub fn flag_owner(art: &MapArt, live: &Live, index: usize, bugs: Bugs) -> Option<u8> {
+    let own = |i: usize| live.objects.get(i).and_then(|o| o.owner);
+    if bugs == Bugs::Fixed || entrance(art, index).is_some() {
+        return own(index);
+    }
+    (0..art.objects.len())
+        .rev()
+        .find(|&i| {
+            art.objects.get(i).is_some_and(|o| o.anchor.z == 0) && entrance(art, i) == Some((0, 0))
+        })
+        .and_then(own)
+}
+
 /// The DEF object `index` is drawn from: a random object's own (the client's, MCL-Q3) or, with the
 /// original's bugs or without one, the one the original drew it as; else its template's.
 #[must_use]

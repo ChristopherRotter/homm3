@@ -1,0 +1,37 @@
+# Owned objects of every colour (E24 M1 T5b1; design §2.9: D10): the mines of the seven
+# resources and an abandoned one (no owner), a dwelling, the Golem Factory and the Elemental
+# Conflux (class 20), the garrisons (33), a lighthouse (42), a shipyard (87), each colour's and
+# neutral ones; and the vertical garrisons (219), owned and neutral, whose flag pixels the original
+# skips (MCL-Q5). The eight colours' heroes stand outside the view, so that each colour is a player.
+size = 36
+terrain = "grass"
+heroes = [
+    { at = [30, 30] },
+    { at = [32, 30], owner = 1 },
+    { at = [34, 30], owner = 2 },
+    { at = [30, 32], owner = 3 },
+    { at = [32, 32], owner = 4 },
+    { at = [34, 32], owner = 5 },
+    { at = [30, 34], owner = 6 },
+    { at = [32, 34], owner = 7 },
+]
+objects = [
+    { def = "AVMsawg0.def", at = [5, 3], owner = 0 },
+    { def = "AVMore0.def", at = [9, 3], owner = 1 },
+    { def = "AVMalch0.def", at = [13, 3], owner = 2 },
+    { def = "AVMsulf0.def", at = [17, 3], owner = 3 },
+    { def = "AVMcrys0.def", at = [4, 7], owner = 4 },
+    { def = "AVMgems0.def", at = [8, 7], owner = 5 },
+    { def = "AVMgold0.def", at = [12, 7], owner = 6 },
+    { def = "AVXabnd0.def", at = [17, 7] },
+    { def = "AVGpike0.def", at = [4, 12], owner = 7 },
+    { def = "AVGgolm0.def", at = [8, 12], owner = 0 },
+    { def = "AVGelem0.def", at = [13, 12] },
+    { def = "AVCgar10.def", at = [18, 12], owner = 1 },
+    { def = "AVXlths0.def", at = [4, 16], owner = 2 },
+    { def = "AVXshyd0.def", at = [8, 16], owner = 3 },
+    { def = "AVCvgr.def", at = [11, 16], owner = 4 },
+    { def = "avcvgarm.def", at = [14, 16] },
+    { def = "AVCgar20.def", at = [18, 16], owner = 5 },
+]
+view = [0, 0, 0]

@@ -269,7 +269,10 @@ The format:
   `[map.heroes]` (E24 M1 T5a): `classes` (a hero's map DEF by class, 18), `flags` (its flag by
   owner, 8), `boats` and `waves` (by type, 3 each), `boat_flags` (by type × 8 + colour, 24) and
   `groups` (the group each facing 0–7 draws; mirrored above 4), each list of exactly its
-  length.
+  length; `[map.owners]` (E24 M1 T5b1): `palette` (`game.pal`), `neutral` (the entry of an
+  object without an owner, 63; a colour's is the next but the colour) and `classes` (the classes
+  whose bodies draw their flag pixels in it); `[map.towns]`: `village`, `fort` and `capitol` (a
+  town's picture by faction without a Fort, with one, with a Capitol: 9 each).
 - `[[terrain]]`, `[[river]]`, `[[road]]`: `code` (the `.h3m`'s; 0 is no river or road), `def` (a
   tile's picture is its group 0's frame), optional `cycles` (the palette ranges the tick rotates,
   first and last entry). A code defined twice in a selection is an error.

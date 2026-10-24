@@ -107,6 +107,19 @@ fn the_names_a_scene_draws() {
                 mirror_x: false,
                 mirror_y: false,
                 clip: [0; 4],
+                flag: None,
+            },
+            Draw::Piece {
+                pass: Pass::Body,
+                def: "avmgems0.def".to_string(),
+                group: 0,
+                frame: 0,
+                x: 0,
+                y: 0,
+                mirror_x: false,
+                mirror_y: false,
+                clip: [0; 4],
+                flag: Some(63),
             },
             Draw::Gem {
                 def: "agemul.def".to_string(),
@@ -116,10 +129,19 @@ fn the_names_a_scene_draws() {
             },
         ],
         cycles: vec![],
+        flags: "game.pal".to_string(),
     };
+    // The flag palette with them, since a piece takes an entry of it.
     let got: Vec<String> = names(&scene).into_iter().collect();
     assert_eq!(
         got,
-        ["ADVMAP.PCX", "AGEMUL.DEF", "GRASTL.DEF", "PLAYERS.PAL"]
+        [
+            "ADVMAP.PCX",
+            "AGEMUL.DEF",
+            "AVMGEMS0.DEF",
+            "GAME.PAL",
+            "GRASTL.DEF",
+            "PLAYERS.PAL"
+        ]
     );
 }

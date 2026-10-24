@@ -1,0 +1,5 @@
+# A shipped map loaded whole with owned objects (E24 M1 T5b1; design §2.9): Hoard (72 tiles) as a
+# new game starts it, every tile explored, a view with a town, four mines and five dwellings of
+# their owners, and a hero.
+map = "Hoard.h3m"
+view = [52, 0, 0]

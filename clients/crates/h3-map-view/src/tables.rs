@@ -69,7 +69,101 @@ pub struct ViewArt {
     pub shroud: Shroud,
     /// The heroes' and boats' pictures (E24 M1 T5a; design §2.3, §2.8).
     pub heroes: HeroArt,
+    /// The owned objects' colours (E24 M1 T5b1; design §2.9).
+    pub owners: OwnerArt,
+    /// The towns' pictures by their buildings (E24 M1 T5b1; design §2.9).
+    pub towns: TownArt,
 }
+
+/// The owned objects' colours (E24 M1 T5b1; design §2.9): the bodies of a few classes draw their
+/// flag pixels (the runs of index 5) in an entry of a palette by the owner (passes 4 and 7,
+/// tile_object_owner 0x40FD20); every other class's are skipped.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct OwnerArt {
+    /// The palette (`game.pal`, as game_palette16 holds it: 0x4EE430).
+    pub palette: String,
+    /// The entry of an object without an owner (63); a colour's is the next but the colour (64
+    /// Red … 71 Pink).
+    pub neutral: u8,
+    /// The classes whose flag pixels take the owner's colour (the view passes' jump tables:
+    /// 0x41153C, 0x412470's), with the map's classes the game loads as one of them
+    /// (object_class_values 0x63A6E4: 219 as 33, 220 as 53).
+    pub classes: Vec<u32>,
+}
+
+impl OwnerArt {
+    /// The palette entry a body of `class` with `owner` (a colour, `None` for no owner) draws its
+    /// flag pixels in, `None` when its class's are skipped.
+    #[must_use]
+    pub fn entry(&self, class: u32, owner: Option<u8>) -> Option<u8> {
+        let colour = owner.map_or(0, |c| c.saturating_add(1));
+        self.classes
+            .contains(&class)
+            .then(|| self.neutral.saturating_add(colour))
+    }
+}
+
+/// A town's picture by its buildings and faction (E24 M1 T5b1; design §2.9): a new game gives
+/// every town the picture of its faction in one of three lists (object_template_redraw 0x4C9990,
+/// from the towns' setup 0x4CAA70), each by faction (0 Castle … 8 Conflux).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TownArt {
+    /// A town without a Fort, Citadel or Castle (0x677A0C).
+    pub village: Vec<String>,
+    /// A town with a Fort, a Citadel or a Castle but no Capitol (0x677A30).
+    pub fort: Vec<String>,
+    /// A town with a Capitol (0x677A54).
+    pub capitol: Vec<String>,
+}
+
+/// The towns' factions.
+pub const FACTIONS: usize = 9;
+
+impl TownArt {
+    /// Every DEF it names with what it is, in its lists' order.
+    #[must_use]
+    pub fn defs(&self) -> Vec<(String, String)> {
+        [
+            ("village", &self.village),
+            ("fort", &self.fort),
+            ("capitol", &self.capitol),
+        ]
+        .into_iter()
+        .flat_map(|(word, list)| {
+            list.iter()
+                .enumerate()
+                .map(move |(i, name)| (name.clone(), format!("town {word} {i}")))
+        })
+        .collect()
+    }
+
+    /// The picture of a town of `faction` with `built` (its buildings by the game's ids, bit `i`
+    /// building `i`: 7 Fort, 8 Citadel, 9 Castle, 13 Capitol), if the faction has one.
+    #[must_use]
+    pub fn picture(&self, faction: u32, built: u64) -> Option<&str> {
+        let has = |id: u32| built >> id & 1 == 1;
+        let list = if has(CAPITOL) {
+            &self.capitol
+        } else if has(FORT) || has(CITADEL) || has(CASTLE) {
+            &self.fort
+        } else {
+            &self.village
+        };
+        list.get(usize::try_from(faction).unwrap_or(usize::MAX))
+            .map(String::as_str)
+    }
+}
+
+/// The game's ids of the buildings a town's picture depends on (`building_bits` 0x66CD98).
+pub const FORT: u32 = 7;
+/// The Citadel.
+pub const CITADEL: u32 = 8;
+/// The Castle.
+pub const CASTLE: u32 = 9;
+/// The Capitol.
+pub const CAPITOL: u32 = 13;
 
 /// The heroes' and boats' pictures (E24 M1 T5a; design §2.3, §2.8): the adventure manager's DEFs
 /// by their name tables, and the group each facing draws in all of them.
@@ -313,6 +407,15 @@ impl Tables {
                 groups: map.heroes.drawn_groups(),
             });
         }
+        for (name, what) in map.towns.defs() {
+            needs.push(DefNeed {
+                name,
+                what,
+                layer: None,
+                frames: 1,
+                groups: 1,
+            });
+        }
         needs
     }
 
@@ -396,6 +499,7 @@ pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
     name("full shroud", &map.shroud.full, ".DEF")?;
     name("edge shroud", &map.shroud.edge, ".DEF")?;
     heroes(&map.heroes)?;
+    owners_and_towns(map)?;
     if map.shroud.pieces.len() != MASKS {
         return Err(entry(
             "shroud",
@@ -453,6 +557,25 @@ fn heroes(art: &HeroArt) -> Result<(), TableError> {
         }
     }
     for (def, what) in art.defs() {
+        name(&what, &def, ".DEF")?;
+    }
+    Ok(())
+}
+
+/// The owners' palette, one town picture per faction in each list.
+fn owners_and_towns(map: &ViewArt) -> Result<(), TableError> {
+    name("owners' palette", &map.owners.palette, ".PAL")?;
+    let lists = [
+        ("villages", map.towns.village.len()),
+        ("forts", map.towns.fort.len()),
+        ("capitols", map.towns.capitol.len()),
+    ];
+    for (what, len) in lists {
+        if len != FACTIONS {
+            return Err(entry(what, &format!("{len} entries, not {FACTIONS}")));
+        }
+    }
+    for (def, what) in map.towns.defs() {
         name(&what, &def, ".DEF")?;
     }
     Ok(())

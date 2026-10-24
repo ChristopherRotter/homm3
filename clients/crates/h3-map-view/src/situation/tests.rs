@@ -2,7 +2,7 @@ use super::*;
 use alloc::collections::BTreeMap;
 
 use h3_map::Limits;
-use h3_map::writer::{self, AnyObject, ObjectTemplate};
+use h3_map::writer::{self, AnyObject, MapObject, ObjectTemplate, TownBuildings};
 
 use crate::art::MapArt;
 
@@ -341,6 +341,83 @@ fn objects_given_by_their_templates_def() {
             .build(&BTreeMap::new(), &templates)
             .unwrap_err(),
         "a.def: no such template in Objects.txt"
+    );
+}
+
+#[test]
+fn owned_objects_and_towns_by_their_buildings() {
+    let line = |def: &str, class, subclass| {
+        ObjectTemplate::from_objects_txt(&format!(
+            "{def} {} {} 111111111 111111111 {class} {subclass} 0 0",
+            "1".repeat(48),
+            "0".repeat(47) + "1"
+        ))
+        .unwrap()
+    };
+    let templates = [
+        line("mine.def", 53, 0),
+        line("avccast0.def", 98, 0),
+        line("avcramp0.def", 98, 1),
+    ];
+    let text = r#"size = 36
+terrain = "grass"
+heroes = [{ at = [34, 34], class = 2 }, { at = [34, 1], owner = 1 }]
+view = [0, 0, 0]
+objects = [{ def = "mine.def", at = [3, 4], owner = 1 }, { def = "mine.def", at = [6, 4] }]
+towns = [
+    { at = [10, 10], faction = 1, owner = 0, buildings = "village" },
+    { at = [20, 10], faction = 0, buildings = "fort" },
+    { at = [10, 20], faction = 0, buildings = "citadel" },
+    { at = [20, 20], faction = 1, owner = 1, buildings = "castle" },
+    { at = [30, 20], faction = 0, buildings = "capitol" },
+]"#;
+    let situation = Situation::parse(text).unwrap();
+    assert!(situation.needs_templates());
+    let (map, extras) = situation.build(&BTreeMap::new(), &templates).unwrap();
+    let owners: Vec<_> = extras.objects.iter().map(|o| o.owner).collect();
+    assert_eq!(owners, [Some(1), None]);
+    // The towns after the heroes, each of its faction's template.
+    let towns: Vec<_> = map
+        .objects
+        .iter()
+        .filter_map(|o| match o {
+            MapObject::Town(t) => Some((t.tile, t.template.subclass, t.owner, t.buildings)),
+            _ => None,
+        })
+        .collect();
+    let custom = |byte: u8| TownBuildings::Custom {
+        built: [byte, 0, 0, 0, 0, 0],
+        forbidden: [0; 6],
+    };
+    assert_eq!(
+        towns,
+        [
+            (
+                (10, 10),
+                1,
+                Some(0),
+                TownBuildings::Standard { fort: false }
+            ),
+            ((20, 10), 0, None, TownBuildings::Standard { fort: true }),
+            ((10, 20), 0, None, custom(0x18)),
+            ((20, 20), 1, Some(1), custom(0x38)),
+            ((30, 20), 0, None, custom(0x3F)),
+        ]
+    );
+    assert!(matches!(map.objects[2], MapObject::Town(_)));
+    // The map writes and reads back; a faction without a template is refused.
+    let raw = h3_map::parse(
+        &writer::write_with(&map, &extras).unwrap(),
+        &Limits::default(),
+    );
+    assert!(raw.is_ok());
+    let none = text.replace("faction = 1, owner = 0", "faction = 2, owner = 0");
+    assert_eq!(
+        Situation::parse(&none)
+            .unwrap()
+            .build(&BTreeMap::new(), &templates)
+            .unwrap_err(),
+        "town at [10, 10]: no template of faction 2"
     );
 }
 

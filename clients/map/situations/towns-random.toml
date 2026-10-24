@@ -1,0 +1,23 @@
+# Random towns (E24 M1 T5b1; design §2.9): class 77, owned and neutral, which a new game makes
+# towns of a random faction with the standard buildings and a Fort (the editor's body) and
+# redraws by their buildings (0x4CAA70); beside a neutral Castle without a Fort. The eight
+# colours' heroes stand outside the view.
+size = 36
+terrain = "grass"
+heroes = [
+    { at = [30, 30] },
+    { at = [32, 30], owner = 1 },
+    { at = [34, 30], owner = 2 },
+    { at = [30, 32], owner = 3 },
+    { at = [32, 32], owner = 4 },
+    { at = [34, 32], owner = 5 },
+    { at = [30, 34], owner = 6 },
+    { at = [32, 34], owner = 7 },
+]
+towns = [{ at = [17, 11], faction = 0, buildings = "village" }]
+objects = [
+    { def = "AVCranx0.def", at = [5, 5], owner = 2 },
+    { def = "AVCranx0.def", at = [11, 5] },
+    { def = "AVCranx0.def", at = [5, 11], owner = 6 },
+]
+view = [0, 0, 0]

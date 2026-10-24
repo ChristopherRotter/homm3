@@ -1,4 +1,4 @@
-# The map's capture set (E24 M1 T3b2, T4a, T4b, T5a, *provisional*; clients/capture/README.md, "The
+# The map's capture set (E24 M1 T3b2, T4a, T4b, T5a, T5b1, *provisional*; clients/capture/README.md, "The
 # map's stills"): the situations beside this file, each a still the harness shows the original
 # and compares with ours (`python3 capture/h3map.py set`, from clients/): its map built with the
 # writer (`h3-map-view situation`) or a shipped map loaded whole (`map`, T4b), the human
@@ -143,3 +143,45 @@ why = "exact: heroes on objects' passable cells between layers 1 and 2 (D4), sid
 id = "boats"
 differing = 0
 why = "exact: empty boats in open water and on the coast, Red's heroes boarded (D7)"
+
+# The owners' colours, the towns by their buildings, the random dwellings (E24 M1 T5b1; design
+# §2.9).
+[[situation]]
+id = "owners-objects"
+differing = 0
+why = "exact: owned mines, dwellings, garrisons (the vertical ones loaded as 33), a lighthouse and a shipyard in their owners' colours, neutral ones grey (D10)"
+
+[[situation]]
+id = "owners-random-dwellings"
+differing = 0
+why = "exact: random dwellings as the map's load made them, the Angel Portal's anchor moved (when one is drawn), in their owners' colours"
+
+[[situation]]
+id = "towns-0"
+differing = 0
+why = "exact: the nine factions' villages (no Fort) in their owners' colours"
+
+[[situation]]
+id = "towns-1"
+differing = 0
+why = "exact: the nine factions with a Fort, a Citadel or a Castle"
+
+[[situation]]
+id = "towns-2"
+differing = 0
+why = "exact: the nine factions with a Capitol"
+
+[[situation]]
+id = "towns-random"
+differing = 0
+why = "exact: random towns made towns of a faction with a Fort, a village beside them"
+
+[[situation]]
+id = "shipped-hoard"
+differing = 0
+why = "exact: a 72-tile shipped map whole, an owned town, neutral mines and dwellings, a hero"
+
+[[situation]]
+id = "shipped-too-many-monsters"
+differing = 0
+why = "exact: a 36-tile shipped map whole, an owned town, neutral mines and dwellings"

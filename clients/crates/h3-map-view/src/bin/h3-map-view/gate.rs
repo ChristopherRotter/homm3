@@ -20,8 +20,8 @@ use h3_map::writer::ObjectTemplate;
 use h3_map_view::art::{Layer, MapArt};
 use h3_map_view::check::{self, DefSummary};
 use h3_map_view::layout::GEM_FRAMES;
-use h3_map_view::objects::Shape;
-use h3_map_view::tables::Tables;
+use h3_map_view::objects::{self, Shape};
+use h3_map_view::tables::{FACTIONS, Tables};
 
 use crate::files;
 
@@ -45,8 +45,9 @@ const RANDOM: [(u32, u32); 14] = [
     (76, 79),
 ];
 
-/// Object pictures by DEF name upper-cased: the name as first met and its template's class.
-type Pictures = BTreeMap<String, (String, u32)>;
+/// Object pictures by DEF name upper-cased: the name as first met and its template's class and
+/// subclass.
+type Pictures = BTreeMap<String, (String, u32, u32)>;
 
 /// The command's options.
 #[derive(Debug, PartialEq, Eq)]
@@ -192,7 +193,8 @@ fn gate(options: &Options) -> Result<usize, String> {
     }
 
     let templates = files::templates(&archives)?;
-    object_pictures(&archives, &templates, &shipped, &mut problems)?;
+    let pictures = object_pictures(&archives, &templates, &shipped, &mut problems)?;
+    owners_and_towns(&archives, &tables, &pictures, &mut problems)?;
 
     if !problems.is_empty() {
         println!("\nproblems:");
@@ -246,6 +248,9 @@ fn shipped_maps(
     let mut highest = Highest::new();
     let mut pictures = Pictures::new();
     let (mut read, mut refused) = (0, Vec::new());
+    // The owned objects without an entrance on the map (MCL-Q4: their flags take tile (0, 0)'s
+    // owner in the original).
+    let mut no_entrance = Vec::new();
     for path in &paths {
         let name = path
             .file_name()
@@ -266,10 +271,17 @@ fn shipped_maps(
             }
         };
         read += 1;
+        for (index, object) in art.objects.iter().enumerate() {
+            let class = art.templates.get(object.template).map(|t| t.class);
+            let owned = class.is_some_and(|c| tables.map.owners.classes.contains(&c));
+            if owned && objects::entrance(&art, index).is_none() {
+                no_entrance.push(format!("{name}: object {index} at {:?}", object.anchor));
+            }
+        }
         for t in &art.templates {
             pictures
                 .entry(t.def.to_ascii_uppercase())
-                .or_insert_with(|| (t.def.clone(), t.class));
+                .or_insert_with(|| (t.def.clone(), t.class, t.subclass));
         }
         for layer in [Layer::Terrain, Layer::River, Layer::Road] {
             for (code, picture) in art.pictures(layer) {
@@ -295,6 +307,13 @@ fn shipped_maps(
     for r in &refused {
         println!("  the reader refuses {r}");
     }
+    println!(
+        "owned objects without an entrance on the map: {}",
+        no_entrance.len()
+    );
+    for o in &no_entrance {
+        println!("  {o}");
+    }
     println!("the highest picture by layer and code (the map that gives it):");
     for ((layer, code), (picture, map)) in &highest {
         println!("  {layer:?} {code}: {picture} ({map})");
@@ -311,12 +330,12 @@ fn object_pictures(
     templates: &[ObjectTemplate],
     shipped: &Pictures,
     problems: &mut Vec<String>,
-) -> Result<(), String> {
+) -> Result<Pictures, String> {
     let mut pictures = Pictures::new();
     for t in templates {
         pictures
             .entry(t.def.to_ascii_uppercase())
-            .or_insert_with(|| (t.def.clone(), t.class));
+            .or_insert_with(|| (t.def.clone(), t.class, t.subclass));
     }
     for (key, picture) in shipped {
         pictures
@@ -325,7 +344,7 @@ fn object_pictures(
     }
     let mut shapes = BTreeMap::new();
     let mut lose = 0;
-    for (key, (name, _)) in &pictures {
+    for (key, (name, ..)) in &pictures {
         let shape = match files::load_shape(archives, name) {
             Ok(shape) => shape,
             Err(e) => {
@@ -352,14 +371,14 @@ fn object_pictures(
 
     println!("the random objects' pictures drawn with a random template's masks (design §2.7):");
     let mut cut = 0;
-    for (key, (name, class)) in &pictures {
+    for (key, (name, class, _)) in &pictures {
         let Some(&(_, becomes)) = RANDOM.iter().find(|(c, _)| c == class) else {
             continue;
         };
         let Some(random) = shapes.get(key) else {
             continue;
         };
-        for (other, (drawn, _)) in pictures.iter().filter(|(_, (_, c))| *c == becomes) {
+        for (other, (drawn, ..)) in pictures.iter().filter(|(_, (_, c, _))| *c == becomes) {
             let Some(own) = shapes.get(other) else {
                 continue;
             };
@@ -369,6 +388,85 @@ fn object_pictures(
                 continue;
             }
             let undrawn = undrawn(archives, drawn, random)?;
+            if undrawn.any() {
+                cut += 1;
+                println!(
+                    "  {drawn} as {name}: {} body and {} shadow pixels undrawn",
+                    undrawn.body, undrawn.shadow
+                );
+            }
+        }
+    }
+    println!("  {cut} picture(s) lose pixels");
+    Ok(pictures)
+}
+
+/// The owned objects' colours (E24 M1 T5b1; design §2.9): the owners' palette decodes, and its
+/// entries are listed; the object pictures with flag pixels (runs of index 5) by class, those of a
+/// class whose flags the view skips listed (D10); the towns' pictures drawn with each town
+/// template's masks (a new game's copy keeps them, 0x4C9990), those that lose pixels listed.
+fn owners_and_towns(
+    archives: &[h3_formats::lod::LodArchive<'_>],
+    tables: &Tables,
+    pictures: &Pictures,
+    problems: &mut Vec<String>,
+) -> Result<(), String> {
+    let owners = &tables.map.owners;
+    match files::find(archives, &owners.palette)? {
+        None => problems.push(format!("{}: in no archive", owners.palette)),
+        Some((archive, data)) => match decode_pal(&data) {
+            Ok(pal) => {
+                let entries: Vec<String> = (0..=8u8)
+                    .map(|i| {
+                        let c = pal.palette.0[usize::from(owners.neutral + i)];
+                        format!("{}:{},{},{}", owners.neutral + i, c.r, c.g, c.b)
+                    })
+                    .collect();
+                println!(
+                    "\nthe owners' palette {} ({archive}): {}",
+                    owners.palette,
+                    entries.join(" ")
+                );
+            }
+            Err(e) => problems.push(format!("{}: does not decode ({e:?})", owners.palette)),
+        },
+    }
+    let mut flagged: BTreeMap<u32, Vec<String>> = BTreeMap::new();
+    for (name, class, _) in pictures.values() {
+        let Some((_, data)) = files::find(archives, name)? else {
+            continue;
+        };
+        if check::summarize(&data).is_ok_and(|summary| summary.run_pixels[5] > 0) {
+            flagged.entry(*class).or_default().push(name.clone());
+        }
+    }
+    println!("the object pictures with flag pixels (runs of 5), by class:");
+    for (class, names) in &flagged {
+        let skipped = if owners.classes.contains(class) {
+            ""
+        } else {
+            " (skipped: not an owned class)"
+        };
+        println!("  {class}: {}{skipped}", names.len());
+        if !skipped.is_empty() {
+            println!("    {}", names.join(" "));
+        }
+    }
+    let towns = &tables.map.towns;
+    println!("the towns' pictures drawn with a town template's masks (design §2.9):");
+    let mut cut = 0;
+    for (name, class, subclass) in pictures.values().filter(|(_, c, _)| *c == 77 || *c == 98) {
+        let template = files::load_shape(archives, name).map_err(|e| format!("{name}: {e}"))?;
+        let defs = [&towns.village, &towns.fort, &towns.capitol];
+        let factions: Vec<usize> = match (*class, usize::try_from(*subclass)) {
+            (98, Ok(f)) => vec![f],
+            _ => (0..FACTIONS).collect(),
+        };
+        for drawn in factions
+            .iter()
+            .flat_map(|&f| defs.iter().filter_map(move |list| list.get(f)))
+        {
+            let undrawn = undrawn(archives, drawn, &template)?;
             if undrawn.any() {
                 cut += 1;
                 println!(

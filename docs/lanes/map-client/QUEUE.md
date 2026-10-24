@@ -11,25 +11,21 @@ detail in `docs/epics/E24-design.md`; captures by the harness (`clients/capture/
 in git. Every oddity of the original a reading or a capture finds is an `MCL-Q<n>` in the same
 task (the HANDOFF's autonomy contract).
 
-T5 split with the user (2026-10-23) into T5a (heroes and boats, done) and T5b (owners, the path,
-the explored tiles).
+T5 split with the user (2026-10-23) into T5a (heroes and boats, done) and T5b; T5b split with
+the user (2026-10-24) into T5b1 (the owners, done) and T5b2 (the path, the explored tiles).
 
-### E24 M1 T5b — owners' colours, the path's arrows and the explored tiles
+### E24 M1 T5b2 — the path's arrows and the explored tiles
 
-- **Scope:** an owned object's colours (mines, dwellings, towns, the eight classes' flag pixels,
-  D10; the owner's tile 0x4FEC30 as the entrance), the tables' entries; a town's picture by its
-  buildings (the same copy as a random object's, 0x4C9990, `E24-design.md` §2.7); a random
-  dwelling's anchor at a new game (§2.7, not read: `render --live` draws it at the map's
-  meanwhile); the path's arrows and their shadows (passes 6 and 8, D9); the unexplored tiles from
+- **Scope:** the path's arrows and their shadows (passes 6 and 8, D9); the unexplored tiles from
   the original's explored tiles (`h3mem.py`) in the live part; situations of a path under an
-  object, of owned objects of every colour, and shipped maps' views with heroes and owned objects;
-  if cheap, a boat's flag of a colour other than Red's (T5a captured Red's only: another colour's
-  hero must board, hot seat).
+  object, and shipped maps' views with their start's unexplored tiles; if cheap, a boat's flag of a
+  colour other than Red's (T5a captured Red's only: another colour's hero must board, hot seat).
 - **Acceptance:** those situations match pixel for pixel outside the panels' masks.
-- **Depends on:** T5a (done). **Status:** ready. Since T5a the situations give heroes of any
+- **Depends on:** T5b1 (done). **Status:** ready. Since T5a the situations give heroes of any
   colour and boats, Red's heroes walk by play and the harness turns heroes and boats
   (`E24-design.md` §2.8); a path is shown by a hero's first click on a tile (`h3adv.walk`'s
-  first click; `setup.sh` sets Show Route).
+  first click; `setup.sh` sets Show Route). Since T5b1 objects and towns with owners (every owning
+  colour needs a hero to be a player), `live.toml`'s `owners` (§2.9).
 
 ### E24 M1 T6 — the capture set and M1's closure
 
@@ -39,7 +35,7 @@ the explored tiles).
   the runbook's "Which captures a change needs"); M1's closure: a fresh reviewer agent, its
   findings fixed or queued, the review list (the epic's), the user's checkpoint; M2 T0 queued.
 - **Acceptance:** the whole set matches as recorded; the review list accepted by the user.
-- **Depends on:** T5b. **Status:** waiting (T5b).
+- **Depends on:** T5b2. **Status:** waiting (T5b2).
 
 ## Inbox
 

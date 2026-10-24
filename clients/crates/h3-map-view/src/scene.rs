@@ -50,12 +50,12 @@ pub enum Pass {
     River,
     /// A tile's road (pass 3).
     Road,
-    /// A piece of a flat object (pass 4): its pixels, its flag runs skipped (T5 colours the
-    /// owned classes').
+    /// A piece of a flat object (pass 4): its pixels, its flag runs in its owner's colour for
+    /// the owned classes, skipped for the rest (E24 M1 T5b1, design §2.9).
     Flat,
     /// A piece of an object's, a hero's or a boat's shadow (pass 5).
     Shadow,
-    /// A piece of an object's body (pass 7), as the flat objects', or of a hero's or boat's
+    /// A piece of an object's body (pass 7), drawn as the flat objects', or of a hero's or boat's
     /// pictures (through 0x47C080: no colour, its flag runs skipped).
     Body,
     /// An unexplored tile (pass 10), drawn twice: its pixels, then its runs as shadows (§1.5).
@@ -97,6 +97,10 @@ pub enum Draw {
         mirror_y: bool,
         /// The rectangle drawn into.
         clip: [i32; 4],
+        /// The entry of the scene's flag palette ([`Scene::flags`]) the piece's flag pixels (its
+        /// runs of index 5) take in the flagged drawer: an owned object's owner (E24 M1 T5b1,
+        /// design §2.9); `None` skips them.
+        flag: Option<u8>,
     },
     /// A corner gem: frame `frame` (the viewer's colour) of `def`'s group 0 at (`x`, `y`), through
     /// the plain drawer with runs skipped, not mirrored, not clipped (0x40F2F0, design §1.1).
@@ -130,6 +134,8 @@ pub struct Scene {
     pub draws: Vec<Draw>,
     /// Every cycling DEF of the tables, with the moment's steps.
     pub cycles: Vec<Cycle>,
+    /// The palette the pieces' flag entries index (the tables' owners' palette, `game.pal`).
+    pub flags: String,
 }
 
 /// Why a view has no scene.
@@ -239,7 +245,11 @@ pub fn scene(
             steps: live.moment.cycles,
         })
         .collect();
-    Ok(Scene { draws, cycles })
+    Ok(Scene {
+        draws,
+        cycles,
+        flags: tables.map.owners.palette.clone(),
+    })
 }
 
 /// The view being drawn.
@@ -370,6 +380,7 @@ impl<'a> View<'a> {
                     mirror_x: p.mirror_x,
                     mirror_y: p.mirror_y,
                     clip,
+                    flag: None,
                 }
             }
             None => Draw::Piece {
@@ -382,6 +393,7 @@ impl<'a> View<'a> {
                 mirror_x: false,
                 mirror_y: false,
                 clip,
+                flag: None,
             },
         });
     }
@@ -428,6 +440,7 @@ impl<'a> View<'a> {
                 mirror_x: piece.mirror_x,
                 mirror_y: piece.mirror_y,
                 clip,
+                flag: None,
             });
         }
     }
@@ -557,6 +570,7 @@ impl<'a> View<'a> {
                 mirror_x: facing.mirrored(),
                 mirror_y: false,
                 clip,
+                flag: None,
             });
         }
     }
@@ -604,6 +618,13 @@ impl<'a> View<'a> {
                 Pass::Shadow => !t.flat() && s.shadow(dx, dy),
                 _ => !t.flat() && s.body(dx, dy),
             });
+        let flag = match pass {
+            Pass::Flat | Pass::Body => objects::class(self.art, self.live, index).and_then(|c| {
+                let owner = objects::flag_owner(self.art, self.live, index, self.bugs);
+                self.tables.map.owners.entry(c, owner)
+            }),
+            _ => None,
+        };
         drawn.map(|((_, shape), def)| {
             let tile = self.layout.view.tile;
             let phase = self.live.objects.get(index).map_or(0, |o| o.phase);
@@ -620,6 +641,7 @@ impl<'a> View<'a> {
                 mirror_x: false,
                 mirror_y: false,
                 clip,
+                flag,
             }
         })
     }
@@ -665,6 +687,7 @@ impl<'a> View<'a> {
             mirror_x,
             mirror_y: false,
             clip,
+            flag: None,
         });
     }
 }
