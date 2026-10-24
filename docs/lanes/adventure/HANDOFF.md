@@ -20,7 +20,7 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 - **Army management** (T50): `army.rs` (`ArmyCommand`, `split_range`), `state/manage.rs` (the group passed in); `max_stack_count` (ADV-ARM-007); `AdventureOutcome::{meeting, no_room}` for T51.
 - **Adventure ruleset part** (v11 since T50: a stack's most): terrains, roads, rivers, movement and setup parameters, object types, starting resources by difficulty, battle terrains, monsters' parameters (with the price resource).
 - **Properties** on generated playable maps (`h3-map`'s `play.rs`, `view.rs`): `Step::Fight` (hero casts via `h3-battle`, a dev-dependency), monsters, grounds, the system actor, piles, level-ups, `check_progression` per command; 192 fixed battle cases; T42: kits, flyers, water walkers, Nomads.
-- **Next:** merge #455 (`shared/e08-t50-cap`), then T50's pull request; T51 (`E08-design.md` §8–§11; it drops the join's no-room skip).
+- **Next:** merge #455 (`shared/e08-t50-cap`), then #457 (`adventure/e08-t50`); T51 (`E08-design.md` §8–§11; it drops the join's no-room skip).
 - **ADRs accepted**: ADR-0015 to -0017 (2026-10-10), amended for increments 2 to 6 (last: T45).
 - **R01** (the content split): the core `h3-content` and `h3-pack` (`core.toml`) are shared; the writer is `h3_map::writer`.
 - **Ownership:** the four crates, `h3-heroes`, `h3-sim`'s `src/adventure/replay.rs`, `h3-cli`'s `src/adventure/` (`h3-cli`'s `Cargo.toml`, `lib.rs`, `main.rs` battle's, `h3-sim`'s the AI lane's: `cross-lane`), `crates/h3-cli/tests/adventure_replays.rs`, `fixtures/replays/adventure/`, `fixtures/maps/`, `benches/adventure/`, each pack's `adventure.toml`, `docs/formats/h3m.md`, `docs/rules/catalog/{adventure,game,heroes,town}.toml`.
